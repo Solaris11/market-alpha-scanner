@@ -44,9 +44,9 @@ pip install yfinance pandas numpy
 ▶️ Usage
 
 Run with default universe
-
+```bash
 python investment_scanner_mvp.py
-
+```bash
 python investment_scanner_mvp.py --universe-csv my_symbols.csv
 
 symbol
