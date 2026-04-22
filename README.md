@@ -57,6 +57,8 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
+This installs the scanner dependencies plus Streamlit for the internal dashboard.
+
 ## Usage
 
 Run with the default universe:
@@ -107,6 +109,12 @@ python investment_scanner_mvp.py --run-analysis
 python investment_scanner_mvp.py --run-analysis --no-save-history
 ```
 
+Run the internal dashboard:
+
+```bash
+streamlit run dashboard.py
+```
+
 ## Output
 
 The scanner writes:
@@ -116,6 +124,54 @@ The scanner writes:
 - `scanner_output/history/scan_YYYYMMDD_HHMMSS.csv`
 - `scanner_output/analysis/forward_returns.csv`
 - `scanner_output/analysis/performance_summary.csv`
+
+The dashboard reads those files directly from disk. It does not maintain a separate database or modify scanner behavior.
+
+## Dashboard
+
+The Streamlit dashboard is intended for internal operator use and provides four simple sections:
+
+- `Overview / Latest Scan`
+  - latest top candidates
+  - latest full ranking
+  - summary metrics and filters
+- `Symbol Detail`
+  - current row data
+  - score breakdown
+  - tags and diagnostics
+  - score / price history when snapshots exist
+- `Performance Analysis`
+  - grouped forward-return summary from `scanner_output/analysis/`
+- `Scan History`
+  - snapshot file list
+  - snapshot table view
+  - optional two-snapshot comparison
+
+### Local Run
+
+From the repo root:
+
+```bash
+source .venv/bin/activate
+streamlit run dashboard.py
+```
+
+### Linux Server Run
+
+On an Ubuntu or other Linux server, run from the project root inside the same virtual environment used for the scanner:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
+```
+
+Notes:
+
+- The app expects `dashboard.py` to live in the repo root.
+- It reads `scanner_output/`, `scanner_output/history/`, and `scanner_output/analysis/` using paths relative to the repo root.
+- If history or analysis files do not exist yet, the dashboard shows a friendly message instead of failing.
 
 The CSV schema now includes practical decision-support fields such as:
 
