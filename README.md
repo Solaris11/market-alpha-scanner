@@ -40,3 +40,26 @@ This is NOT a prediction engine.
 
 ```bash
 pip install yfinance pandas numpy
+
+▶️ Usage
+
+Run with default universe
+
+python investment_scanner_mvp.py
+
+python investment_scanner_mvp.py --universe-csv my_symbols.csv
+
+symbol
+NVDA
+MSFT
+QQQ
+BTC-USD
+GLD
+USO
+
+Adjust filters (recommended)
+
+python investment_scanner_mvp.py \
+  --min-price 3 \
+  --min-dollar-volume 5000000 \
+  --min-market-cap 500000000
