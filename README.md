@@ -99,12 +99,23 @@ python investment_scanner_mvp.py --news-limit 15
 python investment_scanner_mvp.py --skip-news
 ```
 
+Run with historical snapshot storage and forward-return analysis:
+
+```bash
+python investment_scanner_mvp.py --save-history
+python investment_scanner_mvp.py --run-analysis
+python investment_scanner_mvp.py --run-analysis --no-save-history
+```
+
 ## Output
 
 The scanner writes:
 
 - `scanner_output/full_ranking.csv`
 - `scanner_output/top_candidates.csv`
+- `scanner_output/history/scan_YYYYMMDD_HHMMSS.csv`
+- `scanner_output/analysis/forward_returns.csv`
+- `scanner_output/analysis/performance_summary.csv`
 
 The CSV schema now includes practical decision-support fields such as:
 
@@ -156,3 +167,4 @@ This is meant to keep the model explainable and avoid pretending that all asset 
 - ETF and proxy fundamentals are often not meaningful.
 - Headline scoring is shallow and can miss nuance.
 - Backtesting and signal validation still matter before trusting the output with capital.
+- Historical evaluation is useful, but it is not survivorship-free or point-in-time perfect.
