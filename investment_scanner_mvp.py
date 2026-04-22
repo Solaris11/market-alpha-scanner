@@ -27,6 +27,7 @@ from typing import Optional
 
 import numpy as np
 import pandas as pd
+from alerts import process_telegram_alerts
 
 try:
     import yfinance as yf
@@ -1890,6 +1891,7 @@ def main():
     parser.add_argument("--run-analysis", action="store_true", help="Compute forward returns and performance summaries from saved history")
     parser.add_argument("--save-history", dest="save_history", action="store_true", help="Save a timestamped snapshot after each scan")
     parser.add_argument("--no-save-history", dest="save_history", action="store_false", help="Do not save a timestamped snapshot")
+    parser.add_argument("--send-alerts", action="store_true", help="Send Telegram alerts for new high-conviction signals")
     parser.set_defaults(save_history=True)
     args = parser.parse_args()
 
@@ -1926,6 +1928,9 @@ def main():
     print(f"Saved top {args.top} to: {top_path}")
     if history_path is not None:
         print(f"Saved scan snapshot to: {history_path}")
+
+    if args.send_alerts:
+        process_telegram_alerts(df_rank, outdir)
 
     if args.run_analysis:
         history_dir = outdir / "history"

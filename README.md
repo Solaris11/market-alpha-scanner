@@ -109,6 +109,12 @@ python investment_scanner_mvp.py --run-analysis
 python investment_scanner_mvp.py --run-analysis --no-save-history
 ```
 
+Run with Telegram alerts enabled:
+
+```bash
+python investment_scanner_mvp.py --save-history --send-alerts
+```
+
 Run the internal dashboard:
 
 ```bash
@@ -124,8 +130,75 @@ The scanner writes:
 - `scanner_output/history/scan_YYYYMMDD_HHMMSS.csv`
 - `scanner_output/analysis/forward_returns.csv`
 - `scanner_output/analysis/performance_summary.csv`
+- `scanner_output/alerts/telegram_alert_state.json`
 
 The dashboard reads those files directly from disk. It does not maintain a separate database or modify scanner behavior.
+
+## Telegram Alerts
+
+The scanner supports a lightweight Telegram alert layer for internal operator notifications.
+
+### Required Environment Variables
+
+Set these before running with `--send-alerts`:
+
+```bash
+export TELEGRAM_BOT_TOKEN="your_bot_token"
+export TELEGRAM_CHAT_ID="your_chat_id"
+```
+
+### Trigger Logic
+
+An alert is sent when the latest scan contains any row matching one of these conditions:
+
+- `rating == "TOP"`
+- `final_score >= 80`
+- secondary inclusion:
+  - `rating == "ACTIONABLE"`
+  - `final_score >= 78`
+  - `risk_penalty == 0`
+
+If no rows qualify, nothing is sent.
+
+### Dedup Behavior
+
+Alerts are deduplicated using a small local state file:
+
+- `scanner_output/alerts/telegram_alert_state.json`
+
+The scanner fingerprints the current qualifying alert set and only sends a Telegram message when that qualifying set changes. This avoids resending the same alert every 15 minutes.
+
+### Create a Telegram Bot
+
+1. Open Telegram and message `@BotFather`
+2. Run `/newbot`
+3. Follow the prompts and copy the bot token
+
+### Get Your Chat ID
+
+Simple option:
+
+1. Start a chat with your bot and send any message
+2. Open this URL in a browser, replacing the token:
+
+```text
+https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getUpdates
+```
+
+3. Find the `chat` object in the JSON response and copy the numeric `id`
+
+### Manual Test
+
+From the repo root:
+
+```bash
+source .venv/bin/activate
+export TELEGRAM_BOT_TOKEN="your_bot_token"
+export TELEGRAM_CHAT_ID="your_chat_id"
+python investment_scanner_mvp.py --send-alerts
+```
+
+For a timer or systemd service, add `--send-alerts` to the scanner command once the environment variables are available to that service.
 
 ## Dashboard
 
