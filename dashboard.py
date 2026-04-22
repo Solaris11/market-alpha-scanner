@@ -106,6 +106,7 @@ PERFORMANCE_METRIC_COLUMNS = [
 ]
 PERCENT_COLUMNS = {"avg_return", "median_return", "hit_rate", "avg_negative_return", "min_return"}
 HISTORY_TIMELINE_COLUMNS = ["timestamp_utc", "price", "final_score", "rating"]
+RATING_STATUS_ORDER = ["TOP", "ACTIONABLE", "WATCH", "PASS"]
 
 
 def safe_read_csv(path: Path) -> tuple[pd.DataFrame | None, str | None]:
@@ -168,6 +169,23 @@ def format_timestamp(value: object) -> str:
     return ts.strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
+def format_percent(value: object) -> str:
+    numeric = pd.to_numeric(value, errors="coerce")
+    if pd.isna(numeric):
+        return "N/A"
+    return f"{numeric * 100:.2f}%"
+
+
+def infer_file_timestamp(paths: Iterable[Path]) -> str | None:
+    existing_paths = [path for path in paths if path.exists()]
+    if not existing_paths:
+        return None
+
+    latest_path = max(existing_paths, key=lambda path: path.stat().st_mtime)
+    latest_dt = datetime.fromtimestamp(latest_path.stat().st_mtime, tz=timezone.utc)
+    return latest_dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+
+
 def infer_latest_scan_timestamp(full_df: pd.DataFrame | None, snapshot_files: list[Path]) -> str:
     if full_df is not None and "timestamp_utc" in full_df.columns:
         ts_series = pd.to_datetime(full_df["timestamp_utc"], utc=True, errors="coerce").dropna()
@@ -214,19 +232,38 @@ def filter_scan_df(
     return filtered.reset_index(drop=True)
 
 
-def display_table(df: pd.DataFrame, preferred_columns: list[str], height: int = 420) -> None:
+def sort_scan_df(df: pd.DataFrame) -> pd.DataFrame:
+    sorted_df = df.copy()
+    if "final_score" in sorted_df.columns:
+        sorted_df = sorted_df.sort_values("final_score", ascending=False, na_position="last")
+    return sorted_df.reset_index(drop=True)
+
+
+def highlight_top_rows(row: pd.Series) -> list[str]:
+    if str(row.get("rating", "")).upper() == "TOP":
+        return ["background-color: #fff3cd; font-weight: 700;" for _ in row.index]
+    return ["" for _ in row.index]
+
+
+def display_table(df: pd.DataFrame, preferred_columns: list[str], height: int = 420, highlight_top: bool = False) -> None:
     if df.empty:
         st.info("No rows match the current selection.")
         return
 
-    visible_columns = [column for column in preferred_columns if column in df.columns]
-    display_df = df[visible_columns].copy() if visible_columns else df.copy()
+    sorted_df = sort_scan_df(df)
+    visible_columns = [column for column in preferred_columns if column in sorted_df.columns]
+    display_df = sorted_df[visible_columns].copy() if visible_columns else sorted_df.copy()
 
-    for column in display_df.columns:
-        if pd.api.types.is_numeric_dtype(display_df[column]):
-            display_df[column] = display_df[column].round(2)
+    format_map = {
+        column: "{:.2f}"
+        for column in display_df.columns
+        if pd.api.types.is_numeric_dtype(display_df[column])
+    }
+    styler = display_df.style.format(format_map)
+    if highlight_top and "rating" in display_df.columns:
+        styler = styler.apply(highlight_top_rows, axis=1)
 
-    st.dataframe(display_df, use_container_width=True, height=height)
+    st.dataframe(styler, use_container_width=True, height=height)
 
 
 def display_count_table(df: pd.DataFrame, column: str, title: str) -> None:
@@ -249,6 +286,115 @@ def display_key_value_table(data: dict[str, object], title: str) -> None:
     rows = [{"field": key, "value": value} for key, value in data.items()]
     st.subheader(title)
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
+def build_count_table(df: pd.DataFrame, column: str) -> pd.DataFrame:
+    if column not in df.columns:
+        return pd.DataFrame(columns=[column, "count"])
+
+    return (
+        df[column]
+        .fillna("Unknown")
+        .astype(str)
+        .value_counts(dropna=False)
+        .rename_axis(column)
+        .reset_index(name="count")
+    )
+
+
+def score_level(value: object) -> str:
+    numeric = pd.to_numeric(value, errors="coerce")
+    if pd.isna(numeric):
+        return "N/A"
+    if numeric >= 75:
+        return "High"
+    if numeric >= 55:
+        return "Medium"
+    return "Low"
+
+
+def risk_level(value: object) -> str:
+    numeric = pd.to_numeric(value, errors="coerce")
+    if pd.isna(numeric):
+        return "N/A"
+    if numeric <= 10:
+        return "Low"
+    if numeric <= 25:
+        return "Medium"
+    return "High"
+
+
+def render_status_panel(full_df: pd.DataFrame, snapshot_files: list[Path]) -> None:
+    st.subheader("Status")
+
+    last_analysis_timestamp = infer_file_timestamp([PERFORMANCE_SUMMARY_PATH, FORWARD_RETURNS_PATH])
+    status_columns = st.columns(4)
+    status_columns[0].metric("Last scan", infer_latest_scan_timestamp(full_df, snapshot_files))
+    status_columns[1].metric("Last analysis", last_analysis_timestamp or "Not ready")
+    status_columns[2].metric("Snapshots in history", f"{len(snapshot_files):,}")
+    status_columns[3].metric("Symbols in latest scan", f"{len(full_df):,}")
+
+    if not snapshot_files:
+        st.info("No historical snapshots yet. Scanner needs to run at least once.")
+
+    if last_analysis_timestamp is None:
+        st.info("No analysis data yet — run scanner and analysis jobs.")
+
+    rating_counts = build_count_table(full_df, "rating")
+    asset_type_counts = build_count_table(full_df, "asset_type")
+
+    rating_status_counts = (
+        rating_counts.set_index("rating")["count"].to_dict()
+        if not rating_counts.empty and "rating" in rating_counts.columns
+        else {}
+    )
+
+    st.caption("Count by rating")
+    rating_metric_columns = st.columns(len(RATING_STATUS_ORDER))
+    for index, rating in enumerate(RATING_STATUS_ORDER):
+        rating_metric_columns[index].metric(rating, int(rating_status_counts.get(rating, 0)))
+
+    st.caption("Count by asset_type")
+    if asset_type_counts.empty:
+        st.info("No asset type data available in the latest scan.")
+    else:
+        st.dataframe(asset_type_counts, use_container_width=True, height=min(260, 35 + (len(asset_type_counts) * 35)))
+
+
+def get_highlight_row(summary_df: pd.DataFrame, group_type: str, horizon: str = "20d", best: bool = True) -> pd.Series | None:
+    section = summary_df[(summary_df["group_type"] == group_type) & (summary_df["horizon"].astype(str) == horizon)].copy()
+    if section.empty:
+        return None
+
+    section["avg_return"] = pd.to_numeric(section["avg_return"], errors="coerce")
+    section = section.dropna(subset=["avg_return"])
+    if section.empty:
+        return None
+
+    ordered = section.sort_values("avg_return", ascending=not best)
+    return ordered.iloc[0]
+
+
+def render_performance_highlights(summary_df: pd.DataFrame) -> None:
+    st.subheader("Performance Highlights")
+    highlights = [
+        ("Best rating (20d)", get_highlight_row(summary_df, "rating", best=True)),
+        ("Worst rating (20d)", get_highlight_row(summary_df, "rating", best=False)),
+        ("Best setup_type (20d)", get_highlight_row(summary_df, "setup_type", best=True)),
+        ("Best score_bucket (20d)", get_highlight_row(summary_df, "score_bucket", best=True)),
+    ]
+
+    highlight_columns = st.columns(len(highlights))
+    for index, (label, row) in enumerate(highlights):
+        if row is None:
+            highlight_columns[index].metric(label, "Not ready", "No 20d data")
+            continue
+        highlight_columns[index].metric(
+            label,
+            str(row["group_value"]),
+            f"avg {format_percent(row['avg_return'])}",
+            delta_color="off",
+        )
 
 
 def load_history_df(snapshot_files: list[Path]) -> pd.DataFrame:
@@ -282,11 +428,12 @@ def render_overview_page(full_df: pd.DataFrame | None, top_df: pd.DataFrame | No
     st.header("Overview / Latest Scan")
 
     if full_df is None:
-        st.warning("`scanner_output/full_ranking.csv` is required to render the latest scan.")
+        st.info("Latest scan data is not available yet. Run the scanner to generate the latest ranking files.")
         return
 
     full_df = prepare_scan_df(full_df)
     top_df = prepare_scan_df(top_df) if top_df is not None else pd.DataFrame()
+    render_status_panel(full_df, snapshot_files)
 
     with st.sidebar:
         st.subheader("Overview Filters")
@@ -308,34 +455,23 @@ def render_overview_page(full_df: pd.DataFrame | None, top_df: pd.DataFrame | No
     filtered_full = filter_scan_df(full_df, symbol_query, asset_types, sectors, ratings, min_final_score)
     filtered_top = filter_scan_df(top_df, symbol_query, asset_types, sectors, ratings, min_final_score) if not top_df.empty else pd.DataFrame()
 
-    summary_columns = st.columns(4)
-    summary_columns[0].metric("Latest scan", infer_latest_scan_timestamp(full_df, snapshot_files))
-    summary_columns[1].metric("Symbols", f"{len(filtered_full):,}")
-    average_score = filtered_full["final_score"].mean() if "final_score" in filtered_full.columns and not filtered_full.empty else None
-    summary_columns[2].metric("Average final_score", f"{average_score:.2f}" if pd.notna(average_score) else "N/A")
-    summary_columns[3].metric("Snapshots", f"{len(snapshot_files):,}")
-
-    count_columns = st.columns(2)
-    with count_columns[0]:
-        display_count_table(filtered_full, "rating", "Count by rating")
-    with count_columns[1]:
-        display_count_table(filtered_full, "asset_type", "Count by asset_type")
+    st.caption(f"Filtered rows: {len(filtered_full):,}")
 
     st.subheader("Top Candidates")
     if top_df.empty:
-        st.info("`scanner_output/top_candidates.csv` is missing or empty.")
+        st.info("Top candidates data is not available yet. Run the scanner to generate `top_candidates.csv`.")
     else:
-        display_table(filtered_top, DEFAULT_TABLE_COLUMNS)
+        display_table(filtered_top, DEFAULT_TABLE_COLUMNS, highlight_top=True)
 
     st.subheader("Full Ranking")
-    display_table(filtered_full, DEFAULT_TABLE_COLUMNS, height=520)
+    display_table(filtered_full, DEFAULT_TABLE_COLUMNS, height=520, highlight_top=True)
 
 
 def render_symbol_detail_page(full_df: pd.DataFrame | None, history_df: pd.DataFrame) -> None:
     st.header("Symbol Detail")
 
     if full_df is None or full_df.empty:
-        st.warning("`scanner_output/full_ranking.csv` is required for symbol detail.")
+        st.info("Latest scan data is not available yet. Run the scanner to view symbol details.")
         return
 
     full_df = prepare_scan_df(full_df)
@@ -359,16 +495,29 @@ def render_symbol_detail_page(full_df: pd.DataFrame | None, history_df: pd.DataF
     display_key_value_table(overview_fields, "Latest Row")
 
     st.subheader("Score Breakdown")
+    grouped_scores = [
+        ("Technical", "technical_score", score_level),
+        ("Fundamental", "fundamental_score", score_level),
+        ("Macro", "macro_score", score_level),
+        ("News", "news_score", score_level),
+        ("Risk", "risk_penalty", risk_level),
+    ]
+    score_metrics = st.columns(len(grouped_scores))
+    for index, (label, column, level_fn) in enumerate(grouped_scores):
+        value = pd.to_numeric(current_row.get(column), errors="coerce")
+        score_metrics[index].metric(
+            label,
+            f"{value:.2f}" if pd.notna(value) else "N/A",
+            level_fn(value),
+            delta_color="off",
+        )
+
     score_data = pd.DataFrame(
         {
-            "score_component": SCORE_COLUMNS,
-            "value": [pd.to_numeric(current_row.get(column), errors="coerce") for column in SCORE_COLUMNS],
+            "score_component": [label for label, _, _ in grouped_scores],
+            "value": [pd.to_numeric(current_row.get(column), errors="coerce") for _, column, _ in grouped_scores],
         }
     )
-    score_metrics = st.columns(len(SCORE_COLUMNS))
-    for index, column in enumerate(SCORE_COLUMNS):
-        value = pd.to_numeric(current_row.get(column), errors="coerce")
-        score_metrics[index].metric(column, f"{value:.2f}" if pd.notna(value) else "N/A")
 
     score_chart = score_data.dropna(subset=["value"]).set_index("score_component")
     if not score_chart.empty:
@@ -387,12 +536,12 @@ def render_symbol_detail_page(full_df: pd.DataFrame | None, history_df: pd.DataF
 
     st.subheader("Historical Snapshots")
     if history_df.empty:
-        st.info("No history snapshots found yet. Run the scanner with `--save-history` to populate this section.")
+        st.info("No historical data yet for this symbol.")
         return
 
     symbol_history = history_df[history_df["symbol"] == selected_symbol].copy()
     if symbol_history.empty:
-        st.info("This symbol is not present in the saved snapshot history.")
+        st.info("No historical data yet for this symbol.")
         return
 
     symbol_history = symbol_history.sort_values("timestamp_utc")
@@ -474,10 +623,11 @@ def render_performance_page(summary_df: pd.DataFrame | None, forward_df: pd.Data
     st.header("Performance Analysis")
 
     if summary_df is None:
-        st.info("No performance summary found yet. Run the scanner with `--run-analysis` after you have snapshot history.")
+        st.info("Performance analysis not ready yet.")
         return
 
     summary_df = summary_df.copy()
+    render_performance_highlights(summary_df)
     render_performance_group(summary_df, "rating", "Performance by Rating")
     render_performance_group(summary_df, "setup_type", "Performance by Setup Type")
     render_performance_group(summary_df, "asset_type", "Performance by Asset Type")
@@ -485,7 +635,7 @@ def render_performance_page(summary_df: pd.DataFrame | None, forward_df: pd.Data
 
     st.subheader("Forward Return Rows")
     if forward_df is None or forward_df.empty:
-        st.info("`scanner_output/analysis/forward_returns.csv` is missing or empty.")
+        st.info("Forward return data not available yet. This will populate after enough historical scans.")
         return
 
     st.dataframe(forward_df, use_container_width=True, height=320)
@@ -536,7 +686,7 @@ def render_history_page(snapshot_files: list[Path]) -> None:
     st.header("Scan History")
 
     if not snapshot_files:
-        st.info("No history snapshots found yet. Run the scanner with `--save-history` to populate `scanner_output/history/`.")
+        st.info("No historical snapshots yet. Scanner needs to run at least once.")
         return
 
     snapshot_rows = []
@@ -557,7 +707,7 @@ def render_history_page(snapshot_files: list[Path]) -> None:
 
     st.subheader(f"Snapshot: {selected_path.name}")
     if error or selected_df is None:
-        st.warning(error or "Unable to read the selected snapshot.")
+        st.info("Selected snapshot could not be loaded.")
         return
 
     selected_df = prepare_scan_df(selected_df)
@@ -572,7 +722,7 @@ def render_history_page(snapshot_files: list[Path]) -> None:
         comparison_label = st.selectbox("Compare against", comparison_candidates)
         comparison_df, comparison_error = safe_read_csv(options[comparison_label])
         if comparison_error or comparison_df is None:
-            st.warning(comparison_error or "Unable to read the comparison snapshot.")
+            st.info("Comparison snapshot could not be loaded.")
             return
 
         comparison_view = compare_snapshots(comparison_df, selected_df)
@@ -589,10 +739,10 @@ def main() -> None:
     st.title("Market Scanner Dashboard")
     st.caption("Internal Streamlit dashboard for scanner outputs stored on disk.")
 
-    full_df, full_error = safe_read_csv(FULL_RANKING_PATH)
-    top_df, top_error = safe_read_csv(TOP_CANDIDATES_PATH)
-    summary_df, summary_error = safe_read_csv(PERFORMANCE_SUMMARY_PATH)
-    forward_df, forward_error = safe_read_csv(FORWARD_RETURNS_PATH)
+    full_df, _ = safe_read_csv(FULL_RANKING_PATH)
+    top_df, _ = safe_read_csv(TOP_CANDIDATES_PATH)
+    summary_df, _ = safe_read_csv(PERFORMANCE_SUMMARY_PATH)
+    forward_df, _ = safe_read_csv(FORWARD_RETURNS_PATH)
     snapshot_files = list_snapshot_files(HISTORY_DIR)
     history_df = load_history_df(snapshot_files)
 
@@ -609,10 +759,6 @@ def main() -> None:
         )
         st.caption(f"Base path: `{BASE_DIR}`")
         st.caption(f"Output path: `{OUTPUT_DIR}`")
-
-    for error in [full_error, top_error, summary_error, forward_error]:
-        if error:
-            st.info(error)
 
     if page == "Overview / Latest Scan":
         render_overview_page(full_df, top_df, snapshot_files)
