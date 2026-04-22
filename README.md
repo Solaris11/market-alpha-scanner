@@ -1,2 +1,42 @@
-# market-alpha-scanner
-Multi-asset market scanner that ranks stocks, crypto, and commodities using momentum, macro, and risk-based scoring to identify top opportunities.
+# 🚀 Market Alpha Scanner
+
+Multi-asset market scanner that ranks stocks, crypto, ETFs, and commodities using momentum, macro alignment, and risk-based scoring to identify top trading opportunities.
+
+---
+
+## 🧠 What This Project Does
+
+This tool scans a broad market universe and answers one key question:
+
+> **“What are the strongest assets RIGHT NOW?”**
+
+It evaluates each asset using:
+
+- 📈 Trend strength (moving averages)
+- ⚡ Momentum (multi-timeframe returns)
+- 💣 Breakout potential (near highs / resistance)
+- 📊 Volume expansion
+- 🧾 Basic fundamentals (for equities)
+- 🌍 Macro alignment (risk-on / risk-off)
+- ⚠️ Risk (volatility, drawdown, ATR)
+
+Then ranks everything and outputs:
+
+- ✅ **Top candidates (Strong Buy)**
+- 📊 Full ranking (CSV)
+- 💣 Explosion score (short-term opportunity)
+
+---
+
+## 🔥 Key Concept
+
+This is NOT a prediction engine.
+
+👉 It is a **ranking engine for market strength and opportunity**
+
+---
+
+## ⚙️ Installation
+
+```bash
+pip install yfinance pandas numpy
