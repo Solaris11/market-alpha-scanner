@@ -31,6 +31,45 @@ DEFAULT_TABLE_COLUMNS = [
     "rating",
     "setup_type",
 ]
+STRING_COLUMNS = [
+    "symbol",
+    "asset_type",
+    "sector",
+    "rating",
+    "setup_type",
+    "industry",
+    "valuation_flag",
+    "profitability_status",
+    "macro_sensitivity",
+    "upside_driver",
+    "key_risk",
+]
+NUMERIC_SCAN_COLUMNS = [
+    "price",
+    "market_cap",
+    "avg_dollar_volume",
+    "technical_score",
+    "fundamental_score",
+    "news_score",
+    "macro_score",
+    "risk_penalty",
+    "final_score",
+    "trend_score",
+    "supertrend_score",
+    "momentum_score",
+    "breakout_score",
+    "relative_volume_score",
+    "avwap_score",
+    "quality_score",
+    "growth_score",
+    "valuation_score",
+    "dividend_yield",
+    "current_rsi",
+    "current_macd_hist",
+    "atr_pct",
+    "annualized_volatility",
+    "max_drawdown",
+]
 SUMMARY_COUNT_COLUMNS = ["rating", "asset_type"]
 SCORE_COLUMNS = [
     "technical_score",
@@ -74,7 +113,9 @@ def safe_read_csv(path: Path) -> tuple[pd.DataFrame | None, str | None]:
         return None, f"Missing file: `{path.relative_to(BASE_DIR)}`"
 
     try:
-        return pd.read_csv(path), None
+        df = pd.read_csv(path)
+        df.columns = [str(column).strip() for column in df.columns]
+        return df, None
     except Exception as exc:
         return None, f"Failed to read `{path.relative_to(BASE_DIR)}`: {exc}"
 
@@ -88,11 +129,18 @@ def coerce_numeric(df: pd.DataFrame, columns: Iterable[str]) -> pd.DataFrame:
 
 def prepare_scan_df(df: pd.DataFrame) -> pd.DataFrame:
     prepared = df.copy()
-    if "symbol" in prepared.columns:
-        prepared["symbol"] = prepared["symbol"].astype(str).str.upper().str.strip()
+    prepared.columns = [str(column).strip() for column in prepared.columns]
 
-    numeric_columns = set(DEFAULT_TABLE_COLUMNS + SCORE_COLUMNS + DIAGNOSTIC_COLUMNS + ["price", "market_cap", "avg_dollar_volume"])
-    prepared = coerce_numeric(prepared, numeric_columns)
+    for column in STRING_COLUMNS:
+        if column in prepared.columns:
+            prepared[column] = prepared[column].where(prepared[column].notna(), pd.NA)
+            prepared[column] = prepared[column].astype("string").str.strip()
+            prepared[column] = prepared[column].replace("", pd.NA)
+
+    if "symbol" in prepared.columns:
+        prepared["symbol"] = prepared["symbol"].str.upper()
+
+    prepared = coerce_numeric(prepared, NUMERIC_SCAN_COLUMNS)
     return prepared
 
 
