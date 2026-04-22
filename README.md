@@ -49,6 +49,7 @@ Run with default universe
 ```
 python investment_scanner_mvp.py
 ```
+Run with a csv file
 ```
 python investment_scanner_mvp.py --universe-csv my_symbols.csv
 ```
@@ -63,7 +64,9 @@ USO
 
 Adjust filters (recommended)
 
+```
 python investment_scanner_mvp.py \
   --min-price 3 \
   --min-dollar-volume 5000000 \
   --min-market-cap 500000000
+```
