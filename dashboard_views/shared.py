@@ -167,7 +167,7 @@ def selected_symbol_index(symbols: list[str]) -> int:
 
 def open_symbol_detail(symbol: str) -> None:
     st.session_state["selected_symbol"] = symbol
-    st.session_state["page"] = "Symbol Detail"
+    st.session_state["current_page"] = "Symbol Detail"
     st.rerun()
 
 

@@ -27,6 +27,19 @@ def main() -> None:
     st.title("Market Scanner Dashboard")
     st.caption("Internal Streamlit dashboard for scanner outputs stored on disk.")
 
+    pages = [
+        "Overview / Latest Scan",
+        "Symbol Detail",
+        "Performance Analysis",
+        "Scan History",
+    ]
+    if "current_page" not in st.session_state:
+        st.session_state["current_page"] = "Overview / Latest Scan"
+    if st.session_state["current_page"] not in pages:
+        st.session_state["current_page"] = "Overview / Latest Scan"
+    if st.session_state.get("page_selector") != st.session_state["current_page"]:
+        st.session_state["page_selector"] = st.session_state["current_page"]
+
     full_df, _ = safe_read_csv(FULL_RANKING_PATH)
     top_df, _ = safe_read_csv(TOP_CANDIDATES_PATH)
     summary_df, _ = safe_read_csv(PERFORMANCE_SUMMARY_PATH)
@@ -36,24 +49,21 @@ def main() -> None:
 
     with st.sidebar:
         st.title("Navigation")
-        page = st.radio(
+        selected_page = st.radio(
             "Section",
-            [
-                "Overview / Latest Scan",
-                "Symbol Detail",
-                "Performance Analysis",
-                "Scan History",
-            ],
-            key="page",
+            pages,
+            index=pages.index(st.session_state["current_page"]),
+            key="page_selector",
         )
+        st.session_state["current_page"] = selected_page
         st.caption(f"Base path: `{BASE_DIR}`")
         st.caption(f"Output path: `{OUTPUT_DIR}`")
 
-    if page == "Overview / Latest Scan":
+    if st.session_state["current_page"] == "Overview / Latest Scan":
         render_overview_page(full_df, top_df, snapshot_files, PERFORMANCE_SUMMARY_PATH, FORWARD_RETURNS_PATH)
-    elif page == "Symbol Detail":
+    elif st.session_state["current_page"] == "Symbol Detail":
         render_symbol_detail_page(full_df, history_df)
-    elif page == "Performance Analysis":
+    elif st.session_state["current_page"] == "Performance Analysis":
         render_performance_page(summary_df, forward_df)
     else:
         render_history_page(snapshot_files)
