@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import pandas as pd
+from scanner.models import RankedAsset
 
 from .config import get_database_url
 from .repositories import (
@@ -86,7 +87,7 @@ def persist_scan_dataframe(df_rank: pd.DataFrame, *, scanner_version: str | None
     return counts
 
 
-def _build_snapshot_payload(asset) -> dict[str, object]:
+def _build_snapshot_payload(asset: RankedAsset) -> dict[str, object]:
     return {
         "symbol": asset.symbol,
         "asset_type": asset.asset_type,
@@ -110,7 +111,7 @@ def _build_snapshot_payload(asset) -> dict[str, object]:
     }
 
 
-def _build_reason_rows(asset) -> dict[str, list[str]]:
+def _build_reason_rows(asset: RankedAsset) -> dict[str, list[str]]:
     reason_map = {
         "short": _split_reason_text(asset.short_reason),
         "mid": _split_reason_text(asset.mid_reason),
@@ -154,7 +155,7 @@ def _build_price_rows(price_df: pd.DataFrame) -> list[dict[str, object]]:
     return rows
 
 
-def _build_fundamental_payload(asset, info: dict) -> dict[str, object]:
+def _build_fundamental_payload(asset: RankedAsset | None, info: dict) -> dict[str, object]:
     raw_payload = dict(info or {})
     return {
         "market_cap": getattr(asset, "market_cap", None) if asset is not None else info.get("marketCap"),
@@ -168,7 +169,7 @@ def _build_fundamental_payload(asset, info: dict) -> dict[str, object]:
     }
 
 
-def _safe_jsonable(value):
+def _safe_jsonable(value: Any) -> Any:
     if isinstance(value, dict):
         return {str(key): _safe_jsonable(item) for key, item in value.items()}
     if isinstance(value, list):

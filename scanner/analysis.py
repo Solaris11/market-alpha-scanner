@@ -82,7 +82,7 @@ def compute_forward_returns(history_dir: str) -> pd.DataFrame:
 
     rows: list[dict[str, object]] = []
     for row in history_df.itertuples(index=False):
-        price_df = price_map.get(row.symbol)
+        price_df = price_map.get(str(row.symbol))
         if price_df is None or price_df.empty:
             continue
         close = price_df["Close"].dropna()
@@ -154,7 +154,7 @@ def summarize_group_performance(df: pd.DataFrame, group_col: str, horizons: list
     return pd.DataFrame(rows)
 
 
-def print_performance_section(summary_df: pd.DataFrame, group_type: str, title: str):
+def print_performance_section(summary_df: pd.DataFrame, group_type: str, title: str) -> None:
     section = summary_df[summary_df["group_type"] == group_type].copy()
     if section.empty:
         print(f"\n=== {title} ===")
@@ -208,4 +208,3 @@ def analyze_performance(forward_returns_df: pd.DataFrame) -> pd.DataFrame:
     print_performance_section(summary_df, "score_bucket", "PERFORMANCE BY SCORE BUCKET")
     print(f"\nSaved performance summary to: {summary_path}")
     return summary_df
-

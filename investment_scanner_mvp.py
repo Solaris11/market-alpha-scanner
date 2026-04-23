@@ -38,7 +38,7 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main():
+def main() -> None:
     args = build_parser().parse_args()
     universe = load_universe_from_csv(args.universe_csv) if args.universe_csv else DEFAULT_UNIVERSE
 

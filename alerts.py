@@ -89,14 +89,14 @@ def build_alert_rows(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _clean_text(value: object, default: str = "n/a") -> str:
-    if value is None or pd.isna(value):
+    if value is None or pd.isna(value): # type: ignore
         return default
     text = str(value).strip()
     return text if text else default
 
 
 def _format_number(value: object, decimals: int = 2) -> str:
-    numeric = pd.to_numeric(value, errors="coerce")
+    numeric = pd.to_numeric(value, errors="coerce") # type: ignore
     if pd.isna(numeric):
         return "n/a"
     if float(numeric).is_integer():

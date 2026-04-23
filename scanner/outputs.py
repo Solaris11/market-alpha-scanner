@@ -7,7 +7,7 @@ from typing import Optional
 import pandas as pd
 
 
-def print_top_table(df_rank: pd.DataFrame, top_n: int):
+def print_top_table(df_rank: pd.DataFrame, top_n: int) -> None:
     if df_rank.empty:
         print("No ranked symbols found.")
         return
@@ -49,4 +49,3 @@ def save_snapshot(df_rank: pd.DataFrame, outdir: Path, snapshot_time: Optional[d
     snapshot_df.insert(0, "timestamp_utc", snapshot_time.isoformat())
     snapshot_df.to_csv(snapshot_path, index=False)
     return snapshot_path
-

@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from typing import Any
 
 from .models import RankedAsset
 from .scoring import extract_detail_fundamentals
@@ -16,7 +17,7 @@ def symbol_slug(symbol: str) -> str:
     return "".join(char if char.isalnum() or char in {"-", "_", "."} else "_" for char in symbol)
 
 
-def to_jsonable(value):
+def to_jsonable(value: Any) -> Any:
     if isinstance(value, dict):
         return {key: to_jsonable(val) for key, val in value.items()}
     if isinstance(value, list):
@@ -68,4 +69,3 @@ def save_symbol_detail_outputs(
             "fundamentals": extract_detail_fundamentals(info_cache.get(asset.symbol, {})),
         }
         (symbol_dir / "summary.json").write_text(json.dumps(to_jsonable(payload), indent=2), encoding="utf-8")
-

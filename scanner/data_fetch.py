@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Optional
 
 import pandas as pd
 import yfinance as yf
@@ -67,8 +67,11 @@ def batch_download(
     end: Optional[str] = None,
 ) -> dict[str, pd.DataFrame]:
     out: dict[str, pd.DataFrame] = {}
+    if not symbols:
+        return out
+
     joined = " ".join(normalize_symbol_for_download(s) for s in symbols)
-    download_kwargs = {
+    download_kwargs: dict[str, Any] = {
         "tickers": joined,
         "interval": "1d",
         "auto_adjust": True,
@@ -76,6 +79,7 @@ def batch_download(
         "group_by": "ticker",
         "threads": True,
     }
+
     if start or end:
         if start:
             download_kwargs["start"] = start
@@ -85,40 +89,63 @@ def batch_download(
         download_kwargs["period"] = period
 
     raw = yf.download(**download_kwargs)
-    if raw.empty:
+    if raw is None:
         return out
 
-    if isinstance(raw.columns, pd.MultiIndex):
+    raw_df = pd.DataFrame(raw)
+    if raw_df.empty:
+        return out
+
+    if isinstance(raw_df.columns, pd.MultiIndex):
         for symbol in symbols:
             try:
-                df = raw[symbol].dropna(how="all").copy()
-                if not df.empty:
-                    out[symbol] = df
+                symbol_df = pd.DataFrame(raw_df[str(symbol)]).dropna(how="all").copy()
+                if not symbol_df.empty:
+                    out[str(symbol)] = symbol_df
             except Exception:
-                pass
+                continue
     elif len(symbols) == 1:
-        out[symbols[0]] = raw.dropna(how="all").copy()
+        single_df = raw_df.dropna(how="all").copy()
+        if not single_df.empty:
+            out[str(symbols[0])] = single_df
 
     return out
 
 
-def fetch_info(symbol: str) -> dict:
+def fetch_info(symbol: str) -> dict[str, Any]:
     try:
-        return yf.Ticker(symbol).info or {}
+        info = yf.Ticker(symbol).info
+        if isinstance(info, dict):
+            return info
+        return {}
     except Exception:
         return {}
 
 
-def fetch_recent_news_items(symbol: str, lookback_days: int = 7, max_items: int = 6) -> list[dict[str, object]]:
+def fetch_recent_news_items(
+    symbol: str,
+    lookback_days: int = 7,
+    max_items: int = 6,
+) -> list[dict[str, object]]:
     try:
         items = yf.Ticker(symbol).news or []
     except Exception:
         return []
 
     normalized_items: list[dict[str, object]] = []
+
     for item in items:
-        content = item.get("content", {})
-        canonical = item.get("canonicalUrl", {})
+        if not isinstance(item, dict):
+            continue
+
+        content = item.get("content") or {}
+        canonical = item.get("canonicalUrl") or {}
+
+        if not isinstance(content, dict):
+            content = {}
+        if not isinstance(canonical, dict):
+            canonical = {}
+
         title = safe_str(content.get("title"))
         summary = safe_str(content.get("summary"))
         if not title and not summary:
@@ -132,13 +159,17 @@ def fetch_recent_news_items(symbol: str, lookback_days: int = 7, max_items: int 
             {
                 "title": title,
                 "summary": summary,
-                "source": safe_str(content.get("provider", {}).get("displayName")),
+                "source": safe_str((content.get("provider") or {}).get("displayName"))
+                if isinstance(content.get("provider"), dict)
+                else "",
                 "url": safe_str(canonical.get("url")),
                 "published_at": content.get("pubDate"),
             }
         )
+
         if len(normalized_items) >= max_items:
             break
+
     return normalized_items
 
 
@@ -148,27 +179,33 @@ def fetch_recent_news_score(
     max_items: int = 6,
     items: list[dict[str, object]] | None = None,
 ) -> tuple[float, str, str, str]:
-    items = items if items is not None else fetch_recent_news_items(symbol, lookback_days=lookback_days, max_items=max_items)
-    if not items:
+    normalized_items = (
+        items
+        if items is not None
+        else fetch_recent_news_items(
+            symbol,
+            lookback_days=lookback_days,
+            max_items=max_items,
+        )
+    )
+
+    if not normalized_items:
         return 50.0, "no recent headline signal", "", ""
 
     positive = 0.0
     negative = 0.0
     top_event = ""
     key_risk = ""
-    scanned = 0
 
-    for item in items:
+    for item in normalized_items:
         title = safe_str(item.get("title")).lower()
         summary = safe_str(item.get("summary")).lower()
         if not title and not summary:
             continue
 
         age_days = headline_age_days(item.get("published_at")) or 0
-
         decay = 1.0 if age_days <= 2 else 0.65 if age_days <= 5 else 0.40
         text = f"{title} {summary}"
-        scanned += 1
 
         for term, weight in POSITIVE_NEWS_TERMS.items():
             if term in text:
@@ -181,6 +218,14 @@ def fetch_recent_news_score(
                 negative += weight * decay
                 if not key_risk:
                     key_risk = term
+
     score = max(0.0, min(100.0, 50 + positive - negative))
-    bias = "positive headlines" if score > 56 else "negative headlines" if score < 44 else "mixed headlines"
+    bias = (
+        "positive headlines"
+        if score > 56
+        else "negative headlines"
+        if score < 44
+        else "mixed headlines"
+    )
+
     return score, bias, top_event.replace("_", " "), key_risk.replace("_", " ")

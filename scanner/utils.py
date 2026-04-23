@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Optional
+from typing import Any, Optional
 
 import numpy as np
 import pandas as pd
 
 
-def safe_float(x, default=np.nan):
+def safe_float(x: Any, default: float = np.nan) -> float:
     try:
         if x is None:
             return default
@@ -16,7 +16,7 @@ def safe_float(x, default=np.nan):
         return default
 
 
-def safe_str(x, default: str = "") -> str:
+def safe_str(x: Any, default: str = "") -> str:
     if x is None:
         return default
     return str(x).strip()

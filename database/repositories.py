@@ -208,7 +208,7 @@ def _coerce_date(value: object) -> date:
     return date.fromisoformat(str(value))
 
 
-def _number_or_none(value: object):
+def _number_or_none(value: object) -> float | None:
     if value is None:
         return None
     try:
