@@ -144,6 +144,19 @@ def render_top_candidate_cards(top_df: pd.DataFrame) -> None:
         display_table(top_df, OVERVIEW_TABLE_COLUMNS, height=340, highlight_top=True)
 
 
+def render_watchlist_overview() -> None:
+    watchlist = load_watchlist()
+    with st.container(border=True):
+        render_watchlist_panel(
+            watchlist,
+            panel_key="overview_watchlist",
+            title="Watchlist",
+            subtitle="Saved symbols ready for one-click return to the decision screen.",
+            eyebrow="Saved Symbols",
+            empty_message="No saved symbols yet. Add them from Symbol Detail.",
+        )
+
+
 def render_ranking_overview(filtered_full: pd.DataFrame) -> None:
     render_section_heading("Full Ranking", "Score-driven ranking with faster scanability on the most important columns.", eyebrow="Ranking")
     if filtered_full.empty:
@@ -181,19 +194,6 @@ def render_ranking_overview(filtered_full: pd.DataFrame) -> None:
 
     with st.container(border=True):
         display_table(filtered_full, OVERVIEW_TABLE_COLUMNS, height=620, highlight_top=True)
-
-
-def render_watchlist_overview() -> None:
-    watchlist = load_watchlist()
-    with st.container(border=True):
-        render_watchlist_panel(
-            watchlist,
-            panel_key="overview_watchlist",
-            title="Watchlist",
-            subtitle="Saved symbols ready for one-click return to the decision screen.",
-            eyebrow="Saved Symbols",
-            empty_message="No saved symbols yet. Add them from Symbol Detail.",
-        )
 
 
 def render_overview_page(
