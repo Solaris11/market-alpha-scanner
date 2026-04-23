@@ -71,6 +71,8 @@ python -m pip install -r requirements.txt
 
 This installs the scanner dependencies plus Streamlit for the internal dashboard.
 
+The project can still run locally without Docker. The Docker and PostgreSQL setup added below is groundwork for persistent app storage and containerized deployment.
+
 ## Usage
 
 Run with the default universe:
@@ -269,6 +271,135 @@ Notes:
 - It reads `scanner_output/`, `scanner_output/history/`, and `scanner_output/analysis/` using paths relative to the repo root.
 - It also reads per-symbol artifacts from `scanner_output/symbols/`.
 - If history or analysis files do not exist yet, the dashboard shows a friendly message instead of failing.
+
+## Docker And PostgreSQL
+
+The repo now includes a separate Docker Compose stack for `market-alpha-scanner`. It is isolated from any unrelated Docker workloads on the host:
+
+- PostgreSQL does not publish `5432` to the host
+- the stack uses its own private Docker network
+- runtime data uses bind mounts under `/opt/apps/market-alpha-scanner/runtime`
+- nothing here assumes ownership of any existing `hdsm-*` containers or networks
+
+### Files Added
+
+- `compose.yaml`
+- `Dockerfile`
+- `.env.example`
+- `database/`
+- `alembic.ini`
+- `alembic/`
+
+### Create Runtime Directories
+
+On the Linux host:
+
+```bash
+sudo mkdir -p /opt/apps/market-alpha-scanner/runtime/postgres
+sudo mkdir -p /opt/apps/market-alpha-scanner/runtime/scanner_output
+sudo mkdir -p /opt/apps/market-alpha-scanner/runtime/logs
+sudo chown -R "$USER":"$USER" /opt/apps/market-alpha-scanner/runtime
+```
+
+### Configure Environment
+
+Copy the example file and set a real PostgreSQL password:
+
+```bash
+cp .env.example .env
+```
+
+Important variables:
+
+- `POSTGRES_DB`
+- `POSTGRES_USER`
+- `POSTGRES_PASSWORD`
+- `DATABASE_URL`
+- `SCANNER_OUTPUT_DIR`
+- `APP_LOG_DIR`
+
+Inside Docker, `DATABASE_URL` should point at `market-alpha-postgres` on the private stack network.
+
+### Start PostgreSQL
+
+Bring up the isolated stack:
+
+```bash
+docker compose --env-file .env up -d market-alpha-postgres
+```
+
+Or start the full stack, including the app container:
+
+```bash
+docker compose --env-file .env up -d
+```
+
+The dashboard container publishes Streamlit on `STREAMLIT_HOST_PORT` from `.env.example`, which defaults to `18501`. PostgreSQL remains internal to the Docker network.
+
+### Verify Database Health
+
+Check container and health status:
+
+```bash
+docker compose ps
+docker compose logs market-alpha-postgres
+```
+
+The PostgreSQL service includes a `pg_isready` healthcheck in `compose.yaml`.
+
+### Run Alembic Migrations
+
+If you are running migrations from the host shell:
+
+```bash
+set -a
+source .env
+set +a
+alembic upgrade head
+```
+
+If you prefer to run them inside the app container:
+
+```bash
+docker compose --env-file .env run --rm market-alpha-app alembic upgrade head
+```
+
+You can also generate the SQL offline if you want to inspect the migration output first:
+
+```bash
+alembic upgrade head --sql
+```
+
+### Scanner And Dashboard Commands In Docker
+
+Run the scanner manually in the container:
+
+```bash
+docker compose --env-file .env run --rm market-alpha-app python investment_scanner_mvp.py --save-history
+```
+
+Run the dashboard via the container service:
+
+```bash
+docker compose --env-file .env up -d market-alpha-app
+```
+
+### Database Layer Notes
+
+The new `database/` package provides:
+
+- environment-based config loading
+- SQLAlchemy engine and session helpers
+- first-pass models for:
+  - `scan_runs`
+  - `symbol_snapshots`
+  - `symbol_reasons`
+  - `price_history`
+  - `fundamental_snapshots`
+  - `news_items`
+- lightweight repository helpers so the next task can write scanner output to PostgreSQL without another large refactor
+
+Current scanner and dashboard behavior remains file-based. The database layer is groundwork only; it does not yet replace the CSV / artifact outputs.
 
 The CSV schema now includes practical decision-support fields such as:
 

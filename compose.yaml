@@ -1,0 +1,61 @@
+name: market-alpha-scanner
+
+services:
+  market-alpha-postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-market_alpha}
+      POSTGRES_USER: ${POSTGRES_USER:-market_alpha}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_before_production}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - /opt/apps/market-alpha-scanner/runtime/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-market_alpha} -d ${POSTGRES_DB:-market_alpha}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - market-alpha-scanner-private
+
+  market-alpha-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      market-alpha-postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-market_alpha}
+      POSTGRES_USER: ${POSTGRES_USER:-market_alpha}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_before_production}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://market_alpha:change_me_before_production@market-alpha-postgres:5432/market_alpha}
+      SCANNER_OUTPUT_DIR: ${SCANNER_OUTPUT_DIR:-/app/scanner_output}
+      APP_LOG_DIR: ${APP_LOG_DIR:-/app/logs}
+    command:
+      [
+        "streamlit",
+        "run",
+        "dashboard.py",
+        "--server.address=0.0.0.0",
+        "--server.port=8501",
+      ]
+    ports:
+      - "${STREAMLIT_HOST_PORT:-18501}:8501"
+    volumes:
+      - /opt/apps/market-alpha-scanner/runtime/scanner_output:/app/scanner_output
+      - /opt/apps/market-alpha-scanner/runtime/logs:/app/logs
+    networks:
+      - market-alpha-scanner-private
+
+networks:
+  market-alpha-scanner-private:
+    name: market-alpha-scanner-private
+    driver: bridge
