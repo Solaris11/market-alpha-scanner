@@ -1,6 +1,8 @@
 from fastapi import FastAPI
 
-from api.routes import health, scans, symbols
+import health
+import scans
+import symbols
 
 app = FastAPI(title="Market Alpha Scanner API")
 
