@@ -15,6 +15,7 @@ from .shared import (
     open_symbol_detail,
     render_symbol_quick_actions,
     selected_symbol_index,
+    sort_scan_df,
 )
 
 
@@ -93,18 +94,27 @@ def render_overview_page(
     st.caption(f"Filtered rows: {len(filtered_full):,}")
     render_symbol_quick_actions(filtered_top["symbol"].dropna().astype(str).head(8).tolist() if not filtered_top.empty else [])
 
-    if not filtered_full.empty:
-        available_symbols = filtered_full["symbol"].dropna().astype(str).tolist()
+    visible_symbols: list[str] = []
+    for visible_df in [sort_scan_df(filtered_top), sort_scan_df(filtered_full)]:
+        if visible_df.empty or "symbol" not in visible_df.columns:
+            continue
+        for symbol in visible_df["symbol"].dropna().astype(str):
+            cleaned_symbol = symbol.strip()
+            if not cleaned_symbol or cleaned_symbol in visible_symbols:
+                continue
+            visible_symbols.append(cleaned_symbol)
+
+    if visible_symbols:
         selected_symbol = st.selectbox(
-            "Select a symbol to inspect",
-            available_symbols,
-            index=selected_symbol_index(available_symbols),
+            "Inspect Any Visible Symbol",
+            visible_symbols,
+            index=selected_symbol_index(visible_symbols),
             key="overview_selected_symbol",
         )
         inspect_columns = st.columns([1, 3])
-        if inspect_columns[0].button("Open detail view", use_container_width=True):
+        if inspect_columns[0].button("Open Symbol Detail", use_container_width=True):
             open_symbol_detail(selected_symbol)
-        inspect_columns[1].caption("The same selection opens in the dedicated Symbol Detail page.")
+        inspect_columns[1].caption("This includes symbols visible in Top Candidates and the filtered Full Ranking table.")
 
     st.subheader("Top Candidates")
     if top_df.empty:
