@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from html import escape
+from pathlib import Path
 from typing import Any, cast
 
 import pandas as pd
@@ -33,6 +35,9 @@ NEGATIVE_COLOR = "#ef4444"
 NEUTRAL_COLOR = "#94a3b8"
 ACCENT_COLOR = "#38bdf8"
 WARN_COLOR = "#f59e0b"
+BASE_DIR = Path(__file__).resolve().parent.parent
+OUTPUT_DIR = BASE_DIR / "scanner_output"
+WATCHLIST_PATH = OUTPUT_DIR / "watchlist.json"
 
 THEME_CSS = """
 <style>
@@ -259,6 +264,55 @@ def inject_dashboard_theme() -> None:
     st.markdown(THEME_CSS, unsafe_allow_html=True)
 
 
+def _normalize_watchlist_symbols(symbols: list[object]) -> list[str]:
+    ordered: list[str] = []
+    seen: set[str] = set()
+    for value in symbols:
+        symbol = str(value).strip().upper()
+        if not symbol or symbol in seen:
+            continue
+        seen.add(symbol)
+        ordered.append(symbol)
+    return ordered
+
+
+def load_watchlist() -> list[str]:
+    if not WATCHLIST_PATH.exists():
+        return []
+    try:
+        payload = json.loads(WATCHLIST_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+    if isinstance(payload, list):
+        return _normalize_watchlist_symbols(list(payload))
+    if isinstance(payload, dict):
+        symbols = payload.get("symbols", [])
+        if isinstance(symbols, list):
+            return _normalize_watchlist_symbols(list(symbols))
+    return []
+
+
+def save_watchlist(symbols: list[str]) -> list[str]:
+    normalized = _normalize_watchlist_symbols(cast(list[object], list(symbols)))
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    WATCHLIST_PATH.write_text(json.dumps(normalized, indent=2), encoding="utf-8")
+    return normalized
+
+
+def add_to_watchlist(symbol: str) -> list[str]:
+    watchlist = load_watchlist()
+    normalized_symbol = str(symbol).strip().upper()
+    if not normalized_symbol or normalized_symbol in watchlist:
+        return watchlist
+    return save_watchlist(watchlist + [normalized_symbol])
+
+
+def remove_from_watchlist(symbol: str) -> list[str]:
+    normalized_symbol = str(symbol).strip().upper()
+    watchlist = [item for item in load_watchlist() if item != normalized_symbol]
+    return save_watchlist(watchlist)
+
+
 def _coerce_numeric_scalar(value: object) -> float | None:
     if value is None:
         return None
@@ -467,6 +521,31 @@ def open_symbol_detail(symbol: str) -> None:
     st.session_state["selected_symbol"] = symbol
     st.session_state["current_page"] = "Symbol Detail"
     st.rerun()
+
+
+def render_watchlist_panel(
+    watchlist: list[str],
+    *,
+    panel_key: str,
+    title: str = "Watchlist",
+    subtitle: str = "Saved names for fast return access.",
+    eyebrow: str = "Watchlist",
+    empty_message: str = "No saved symbols yet.",
+    removable: bool = True,
+) -> None:
+    render_section_heading(title, subtitle, eyebrow=eyebrow)
+    if not watchlist:
+        st.info(empty_message)
+        return
+
+    st.caption(f"{len(watchlist)} saved symbol{'s' if len(watchlist) != 1 else ''}")
+    for index, symbol in enumerate(watchlist):
+        row_columns = st.columns([1.4, 0.8] if removable else [1], gap="small")
+        if row_columns[0].button(symbol, key=f"{panel_key}_open_{index}_{symbol}", use_container_width=True):
+            open_symbol_detail(symbol)
+        if removable and row_columns[1].button("Remove", key=f"{panel_key}_remove_{index}_{symbol}", use_container_width=True):
+            remove_from_watchlist(symbol)
+            st.rerun()
 
 
 def render_symbol_quick_actions(symbols: list[str]) -> None:

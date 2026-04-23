@@ -11,6 +11,7 @@ from .shared import (
     display_table,
     filter_scan_df,
     format_number,
+    load_watchlist,
     open_symbol_detail,
     render_action_badge,
     render_info_card,
@@ -18,6 +19,7 @@ from .shared import (
     render_score_badge,
     render_section_heading,
     render_symbol_quick_actions,
+    render_watchlist_panel,
     selected_symbol_index,
     sort_scan_df,
 )
@@ -181,6 +183,19 @@ def render_ranking_overview(filtered_full: pd.DataFrame) -> None:
         display_table(filtered_full, OVERVIEW_TABLE_COLUMNS, height=620, highlight_top=True)
 
 
+def render_watchlist_overview() -> None:
+    watchlist = load_watchlist()
+    with st.container(border=True):
+        render_watchlist_panel(
+            watchlist,
+            panel_key="overview_watchlist",
+            title="Watchlist",
+            subtitle="Saved symbols ready for one-click return to the decision screen.",
+            eyebrow="Saved Symbols",
+            empty_message="No saved symbols yet. Add them from Symbol Detail.",
+        )
+
+
 def render_overview_page(
     full_df: pd.DataFrame | None,
     top_df: pd.DataFrame | None,
@@ -218,4 +233,5 @@ def render_overview_page(
     render_status_panel(full_df, snapshot_files, performance_summary_path, forward_returns_path)
     st.caption(f"Filtered rows in view: {len(filtered_full):,}")
     render_top_candidate_cards(filtered_top if not filtered_top.empty else top_df)
+    render_watchlist_overview()
     render_ranking_overview(filtered_full)

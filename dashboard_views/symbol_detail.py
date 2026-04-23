@@ -9,10 +9,13 @@ import streamlit as st
 from .loaders import fetch_recent_news_items, filter_price_history, load_symbol_price_history, load_symbol_summary, prepare_scan_df
 from .shared import (
     HISTORY_TIMELINE_COLUMNS,
+    add_to_watchlist,
     display_key_value_table,
     format_billions,
     format_number,
     format_percent,
+    load_watchlist,
+    remove_from_watchlist,
     render_action_badge,
     render_info_card,
     render_rating_badge,
@@ -553,6 +556,29 @@ def render_symbol_detail_header(
         )
 
 
+def render_watchlist_actions(symbol: str) -> None:
+    watchlist = load_watchlist()
+    in_watchlist = symbol in watchlist
+    render_section_heading("Watchlist", "Save this symbol for fast return access later.", eyebrow="Workflow")
+    columns = st.columns([1, 1.8], gap="large")
+    if in_watchlist:
+        if columns[0].button("Remove from Watchlist", key=f"remove_watchlist_{symbol}", use_container_width=True):
+            remove_from_watchlist(symbol)
+            st.rerun()
+        columns[1].markdown(
+            render_info_card("Watchlist Status", "Saved", "This symbol is already on your personal watchlist.", "positive"),
+            unsafe_allow_html=True,
+        )
+    else:
+        if columns[0].button("Add to Watchlist", key=f"add_watchlist_{symbol}", use_container_width=True):
+            add_to_watchlist(symbol)
+            st.rerun()
+        columns[1].markdown(
+            render_info_card("Watchlist Status", "Not Saved", "Add it to reopen from the sidebar or overview watchlist panel.", "neutral"),
+            unsafe_allow_html=True,
+        )
+
+
 def render_price_context_panel(trade_plan: dict[str, object]) -> None:
     render_section_heading("Trade Plan", "Price location, target path, and basic risk framing.", eyebrow="Decision Support")
     columns = st.columns(5)
@@ -842,6 +868,7 @@ def render_symbol_detail_content(selected_symbol: str, full_df: pd.DataFrame, sn
     reason_groups = _build_reason_groups(current_row, confidence, trade_plan)
 
     render_symbol_detail_header(current_row, rank_context, trade_plan, confidence)
+    render_watchlist_actions(selected_symbol)
     render_score_stack(current_row)
     render_action_cards(current_row)
 

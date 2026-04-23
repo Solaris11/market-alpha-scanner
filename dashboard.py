@@ -20,7 +20,7 @@ from dashboard_views.loaders import (
     load_history_df,
     safe_read_csv,
 )
-from dashboard_views.shared import inject_dashboard_theme
+from dashboard_views.shared import inject_dashboard_theme, load_watchlist, render_watchlist_panel
 
 
 def main() -> None:
@@ -51,6 +51,7 @@ def main() -> None:
     forward_df, _ = safe_read_csv(FORWARD_RETURNS_PATH)
     snapshot_files = list_snapshot_files(HISTORY_DIR)
     history_df = load_history_df(snapshot_files)
+    watchlist = load_watchlist()
 
     st.markdown(
         (
@@ -83,6 +84,14 @@ def main() -> None:
             key="page_selector",
         )
         st.session_state["current_page"] = selected_page
+        render_watchlist_panel(
+            watchlist,
+            panel_key="sidebar_watchlist",
+            title="Desk Watchlist",
+            subtitle="Saved names you want to reopen quickly.",
+            eyebrow="Saved Symbols",
+            empty_message="Watchlist is empty. Add symbols from the detail screen.",
+        )
         st.caption(f"Base path: `{BASE_DIR}`")
         st.caption(f"Output path: `{OUTPUT_DIR}`")
 
