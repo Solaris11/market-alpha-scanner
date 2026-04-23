@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
+
 import pandas as pd
 import streamlit as st
 
@@ -25,8 +27,19 @@ DIAGNOSTIC_COLUMNS = [
 ]
 
 
-def render_fundamentals_tab(current_row: pd.Series, summary_payload: dict | None) -> None:
-    fundamentals = summary_payload.get("fundamentals", {}) if summary_payload else {}
+def _numeric_scalar(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        numeric = float(str(value))
+    except (TypeError, ValueError):
+        return None
+    return numeric if not pd.isna(numeric) else None
+
+
+def render_fundamentals_tab(current_row: pd.Series, summary_payload: Mapping[str, object] | None) -> None:
+    fundamentals_raw = summary_payload.get("fundamentals", {}) if summary_payload else {}
+    fundamentals = fundamentals_raw if isinstance(fundamentals_raw, Mapping) else {}
     rows = [
         {"field": "Market cap", "value": format_billions(fundamentals.get("market_cap", current_row.get("market_cap")))},
         {"field": "Trailing PE", "value": format_number(fundamentals.get("trailing_pe", current_row.get("trailing_pe")))},
@@ -153,13 +166,13 @@ def render_symbol_detail_content(selected_symbol: str, full_df: pd.DataFrame, sn
         ]
         score_metrics = st.columns(len(grouped_scores))
         for index, (label, column, level_fn) in enumerate(grouped_scores):
-            value = pd.to_numeric(current_row.get(column), errors="coerce")
+            value = _numeric_scalar(current_row.get(column))
             score_metrics[index].metric(label, format_number(value), level_fn(value), delta_color="off")
 
         score_chart = pd.DataFrame(
             {
                 "score_component": [label for label, _, _ in grouped_scores],
-                "value": [pd.to_numeric(current_row.get(column), errors="coerce") for _, column, _ in grouped_scores],
+                "value": [_numeric_scalar(current_row.get(column)) for _, column, _ in grouped_scores],
             }
         ).dropna(subset=["value"]).set_index("score_component")
         if not score_chart.empty:
@@ -220,4 +233,7 @@ def render_symbol_detail_page(full_df: pd.DataFrame | None, history_df: pd.DataF
         return
 
     selected_symbol = st.selectbox("Select symbol", symbols, index=selected_symbol_index(symbols), key="selected_symbol")
+    if not isinstance(selected_symbol, str):
+        st.info("Selected symbol is invalid.")
+        return
     render_symbol_detail_content(selected_symbol, full_df, history_df)

@@ -12,6 +12,8 @@ from .config import get_database_url
 
 def create_db_engine(database_url: str | None = None, echo: bool = False) -> Engine:
     url = database_url or get_database_url(required=True)
+    if url is None:
+        raise ValueError("DATABASE_URL is required")
     return create_engine(url, pool_pre_ping=True, echo=echo)
 
 

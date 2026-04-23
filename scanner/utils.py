@@ -151,7 +151,7 @@ def parse_datetime_like(value) -> Optional[pd.Timestamp]:
         return None
 
 
-def parse_earnings_date(info: dict) -> str:
+def parse_earnings_date(info: dict[str, object]) -> str:
     for key in ("earningsTimestamp", "earningsTimestampStart", "earningsDate"):
         parsed = parse_datetime_like(info.get(key))
         if parsed is not None:
@@ -169,7 +169,7 @@ def days_until(date_str: str) -> Optional[int]:
     return (target - datetime.now(timezone.utc).date()).days
 
 
-def headline_age_days(raw_date: str) -> Optional[int]:
+def headline_age_days(raw_date: object) -> Optional[int]:
     parsed = parse_datetime_like(raw_date)
     if parsed is None:
         return None

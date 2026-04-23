@@ -112,7 +112,7 @@ def batch_download(
     return out
 
 
-def fetch_info(symbol: str) -> dict[str, Any]:
+def fetch_info(symbol: str) -> dict[str, object]:
     try:
         info = yf.Ticker(symbol).info
         if isinstance(info, dict):

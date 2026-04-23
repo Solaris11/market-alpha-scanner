@@ -90,7 +90,7 @@ def compute_forward_returns(history_dir: str) -> pd.DataFrame:
             continue
 
         trade_dates = pd.to_datetime(close.index, utc=True).tz_localize(None).normalize()
-        snapshot_date = pd.Timestamp(row.timestamp_utc).tz_convert("UTC").tz_localize(None).normalize()
+        snapshot_date = pd.Timestamp(str(row.timestamp_utc)).tz_convert("UTC").tz_localize(None).normalize()
         entry_pos = trade_dates.searchsorted(snapshot_date)
         if entry_pos >= len(close):
             continue
@@ -100,7 +100,7 @@ def compute_forward_returns(history_dir: str) -> pd.DataFrame:
             continue
 
         result = {
-            "timestamp_utc": pd.Timestamp(row.timestamp_utc).isoformat(),
+            "timestamp_utc": pd.Timestamp(str(row.timestamp_utc)).isoformat(),
             "symbol": row.symbol,
             "asset_type": getattr(row, "asset_type", ""),
             "sector": getattr(row, "sector", ""),
@@ -119,7 +119,7 @@ def compute_forward_returns(history_dir: str) -> pd.DataFrame:
             result[col_name] = round((future_price / entry_price) - 1.0, 6) if future_price > 0 else np.nan
 
         if any(pd.notna(result[col]) for col in horizons):
-            rows.append(result)
+            rows.append(dict(result))
 
     forward_df = pd.DataFrame(rows, columns=output_columns)
     forward_df.attrs["analysis_dir"] = str(analysis_dir)
@@ -175,7 +175,7 @@ def print_performance_section(summary_df: pd.DataFrame, group_type: str, title: 
             item[f"avg_{horizon}"] = row["avg_return"]
             item[f"hit_{horizon}"] = row["hit_rate"]
             item[f"n_{horizon}"] = int(row["count"])
-        rows.append(item)
+        rows.append(dict(item))
 
     display = pd.DataFrame(rows).sort_values("label").reset_index(drop=True)
     percent_cols = [col for col in display.columns if col.startswith("avg_") or col.startswith("hit_")]

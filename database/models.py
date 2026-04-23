@@ -96,7 +96,7 @@ class FundamentalSnapshot(Base):
     earnings_growth: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
     operating_margin: Mapped[Decimal | None] = mapped_column(Numeric(12, 6))
     debt_to_equity: Mapped[Decimal | None] = mapped_column(Numeric(14, 6))
-    raw_json: Mapped[dict | None] = mapped_column(JSON)
+    raw_json: Mapped[dict[str, object] | None] = mapped_column(JSON)
 
 
 class NewsItem(Base):

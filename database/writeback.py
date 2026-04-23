@@ -155,7 +155,7 @@ def _build_price_rows(price_df: pd.DataFrame) -> list[dict[str, object]]:
     return rows
 
 
-def _build_fundamental_payload(asset: RankedAsset | None, info: dict) -> dict[str, object]:
+def _build_fundamental_payload(asset: RankedAsset | None, info: dict[str, object]) -> dict[str, object]:
     raw_payload = dict(info or {})
     return {
         "market_cap": getattr(asset, "market_cap", None) if asset is not None else info.get("marketCap"),

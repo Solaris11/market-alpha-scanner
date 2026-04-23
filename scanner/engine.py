@@ -59,7 +59,7 @@ def scan_symbols(
     regime = compute_macro_regime(macro_closes)
 
     ranked: list[RankedAsset] = []
-    info_cache: dict[str, dict] = {}
+    info_cache: dict[str, dict[str, object]] = {}
     horizon_context_cache: dict[str, dict[str, float | bool]] = {}
     macd_cache: dict[str, tuple[float, float]] = {}
     news_cache: dict[str, list[dict[str, object]]] = {}

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 import numpy as np
 import pandas as pd
 
@@ -216,7 +218,8 @@ def score_avwap(df: pd.DataFrame) -> tuple[float, float, float]:
     last = safe_float(close.iloc[-1])
     ytd_pos = first_index_of_year(df.index, pd.Timestamp(df.index[-1]).year)
     recent_window = df.iloc[-63:]
-    swing_low_pos = max(0, len(df) - 63 + int(np.argmin(recent_window["Close"].values)))
+    recent_close_values = pd.to_numeric(recent_window["Close"], errors="coerce").to_numpy(dtype=float)
+    swing_low_pos = max(0, len(df) - 63 + int(np.argmin(recent_close_values)))
 
     avwap_ytd = anchored_vwap(df, ytd_pos)
     avwap_swing = anchored_vwap(df, swing_low_pos)
@@ -273,7 +276,7 @@ def technical_scorecard(df: pd.DataFrame) -> dict[str, float]:
     }
 
 
-def infer_asset_type(symbol: str, info: dict) -> str:
+def infer_asset_type(symbol: str, info: dict[str, object]) -> str:
     quote_type = safe_str(info.get("quoteType")).upper()
     if symbol.endswith("-USD") or quote_type == "CRYPTOCURRENCY":
         return "CRYPTO"
@@ -290,7 +293,7 @@ def infer_asset_type(symbol: str, info: dict) -> str:
     return "EQUITY"
 
 
-def infer_sector(symbol: str, asset_type: str, info: dict) -> str:
+def infer_sector(symbol: str, asset_type: str, info: dict[str, object]) -> str:
     sector = safe_str(info.get("sector"))
     if sector:
         return sector
@@ -299,7 +302,7 @@ def infer_sector(symbol: str, asset_type: str, info: dict) -> str:
     return "Unknown"
 
 
-def score_quality(info: dict) -> float:
+def score_quality(info: dict[str, object]) -> float:
     gross = safe_float(info.get("grossMargins"))
     operating = safe_float(info.get("operatingMargins"))
     net = safe_float(info.get("profitMargins"))
@@ -337,7 +340,7 @@ def score_quality(info: dict) -> float:
     return clamp_score(score)
 
 
-def score_growth(info: dict) -> float:
+def score_growth(info: dict[str, object]) -> float:
     revenue_growth = safe_float(info.get("revenueGrowth"))
     earnings_growth = safe_float(info.get("earningsGrowth"))
     score = 50.0
@@ -353,7 +356,7 @@ def score_growth(info: dict) -> float:
     return clamp_score(score)
 
 
-def score_valuation(info: dict) -> float:
+def score_valuation(info: dict[str, object]) -> float:
     trailing_pe = safe_float(info.get("trailingPE"))
     forward_pe = safe_float(info.get("forwardPE"))
     peg = safe_float(info.get("pegRatio"))
@@ -394,7 +397,7 @@ def score_valuation(info: dict) -> float:
     return clamp_score(score)
 
 
-def infer_profitability_status(info: dict) -> str:
+def infer_profitability_status(info: dict[str, object]) -> str:
     net = safe_float(info.get("profitMargins"))
     fcf = safe_float(info.get("freeCashflow"))
     earnings_growth = safe_float(info.get("earningsGrowth"))
@@ -408,7 +411,7 @@ def infer_profitability_status(info: dict) -> str:
     return "mixed"
 
 
-def infer_valuation_flag(info: dict) -> str:
+def infer_valuation_flag(info: dict[str, object]) -> str:
     trailing_pe = safe_float(info.get("trailingPE"))
     forward_pe = safe_float(info.get("forwardPE"))
     peg = safe_float(info.get("pegRatio"))
@@ -425,7 +428,7 @@ def infer_valuation_flag(info: dict) -> str:
     return "mixed"
 
 
-def fundamentals_scorecard(info: dict, asset_type: str) -> dict[str, float | str]:
+def fundamentals_scorecard(info: dict[str, object], asset_type: str) -> dict[str, float | str]:
     if asset_type != "EQUITY":
         if asset_type in {"CRYPTO", "CRYPTO_PROXY"}:
             base = 40.0
@@ -815,7 +818,7 @@ def action_from_horizon_score(horizon: str, score: float, asset: RankedAsset, co
     if horizon == "short":
         if asset.momentum_score < 40 and asset.breakout_score < 40:
             index = min(index, 1)
-        if context.get("rsi_overbought") and asset.breakout_score < 55:
+        if bool(context.get("rsi_overbought", False)) and asset.breakout_score < 55:
             index = min(index, 2)
     elif horizon == "mid":
         if asset.trend_score < 40:
@@ -832,12 +835,16 @@ def action_from_horizon_score(horizon: str, score: float, asset: RankedAsset, co
     return action_from_index(index)
 
 
-def rank_reason_candidates(candidates: list[tuple[bool, float, str]]) -> list[tuple[float, str]]:
+def rank_reason_candidates(candidates: Sequence[tuple[bool, float, str]]) -> list[tuple[float, str]]:
     filtered = [(weight, text) for keep, weight, text in candidates if keep and text]
     return sorted(filtered, key=lambda item: item[0], reverse=True)
 
 
-def build_reason_text(positive_candidates: list[tuple[bool, float, str]], negative_candidates: list[tuple[bool, float, str]], action: str) -> str:
+def build_reason_text(
+    positive_candidates: Sequence[tuple[bool, float, str]],
+    negative_candidates: Sequence[tuple[bool, float, str]],
+    action: str,
+) -> str:
     positives = rank_reason_candidates(positive_candidates)
     negatives = rank_reason_candidates(negative_candidates)
     chosen: list[str] = []
@@ -891,14 +898,14 @@ def derive_horizon_reason(horizon: str, asset: RankedAsset, context: dict[str, f
         ]
     else:
         positives = [
-            (asset.trend_score >= 70 and context.get("above_sma200", False), asset.trend_score, "healthy long-term trend structure"),
+            (asset.trend_score >= 70 and bool(context.get("above_sma200", False)), asset.trend_score, "healthy long-term trend structure"),
             (asset.asset_type != "EQUITY" or asset.fundamental_score >= 65, asset.fundamental_score, "strong fundamentals support the long-term case"),
             (safe_float(context.get("distance_to_high"), np.nan) <= 0.08 and safe_float(context.get("ret_6m"), np.nan) > 0, 80 - safe_float(context.get("distance_to_high"), 0) * 100, "price is trading near the 52-week high"),
             (asset.macro_score >= 58, asset.macro_score, "macro backdrop supports the long-term view"),
             (safe_float(context.get("drawdown_quality"), np.nan) >= 65, safe_float(context.get("drawdown_quality"), 50), "drawdown profile is manageable"),
         ]
         negatives = [
-            (asset.trend_score <= 45 or not context.get("above_sma200", False), 100 - asset.trend_score, "price is below long-term trend support"),
+            (asset.trend_score <= 45 or not bool(context.get("above_sma200", False)), 100 - asset.trend_score, "price is below long-term trend support"),
             (asset.asset_type == "EQUITY" and asset.fundamental_score < 45, 100 - asset.fundamental_score, "poor fundamentals weaken the long-term case"),
             (safe_float(context.get("ret_1y"), np.nan) <= -0.05, 100 - safe_float(context.get("long_return_score"), 50), "long-term momentum is weak"),
             (asset.risk_penalty >= 12, asset.risk_penalty * 4, "risk profile remains elevated"),
@@ -927,7 +934,7 @@ def apply_horizon_recommendations(asset: RankedAsset, context: dict[str, float |
     asset.selection_reason = f"{best_horizon[0].title()}: {best_horizon[2]}"
 
 
-def extract_detail_fundamentals(info: dict) -> dict[str, object]:
+def extract_detail_fundamentals(info: dict[str, object]) -> dict[str, object]:
     return {
         "market_cap": safe_float(info.get("marketCap"), np.nan),
         "trailing_pe": safe_float(info.get("trailingPE"), np.nan),

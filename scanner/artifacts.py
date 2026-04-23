@@ -45,7 +45,7 @@ def to_jsonable(value: Any) -> Any:
 def save_symbol_detail_outputs(
     ranked_assets: list[RankedAsset],
     price_map: dict[str, pd.DataFrame],
-    info_cache: dict[str, dict],
+    info_cache: dict[str, dict[str, object]],
     outdir: Path,
 ) -> None:
     # This stays small on purpose because the dashboard only needs a narrow view of the artifact.

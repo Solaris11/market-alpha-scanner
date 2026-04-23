@@ -3,10 +3,10 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
 from urllib import error, parse, request
 
 import pandas as pd
@@ -55,6 +55,20 @@ def load_telegram_config() -> TelegramConfig | None:
     return TelegramConfig(bot_token=bot_token, chat_id=chat_id)
 
 
+def _string_series(df: pd.DataFrame, column: str) -> pd.Series:
+    if column in df.columns:
+        series = df[column]
+    else:
+        series = pd.Series("", index=df.index)
+    return series.fillna("").astype(str).str.strip()
+
+
+def _numeric_series(df: pd.DataFrame, column: str) -> pd.Series:
+    if column in df.columns:
+        return pd.to_numeric(df[column], errors="coerce")
+    return pd.Series(float("nan"), index=df.index)
+
+
 def build_alert_rows(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame(columns=[column for column in MESSAGE_COLUMNS if column in df.columns])
@@ -67,12 +81,16 @@ def build_alert_rows(df: pd.DataFrame) -> pd.DataFrame:
         if column in working.columns:
             working[column] = pd.to_numeric(working[column], errors="coerce")
 
-    rating_mask = working.get("rating", pd.Series("", index=working.index)).str.upper() == TOP_RATING
-    high_score_mask = working.get("final_score", pd.Series(float("nan"), index=working.index)).ge(HIGH_SCORE_THRESHOLD)
+    rating_series = _string_series(working, "rating")
+    final_score_series = _numeric_series(working, "final_score")
+    risk_penalty_series = _numeric_series(working, "risk_penalty")
+
+    rating_mask = rating_series.str.upper() == TOP_RATING
+    high_score_mask = final_score_series.ge(HIGH_SCORE_THRESHOLD)
     secondary_mask = (
-        working.get("rating", pd.Series("", index=working.index)).str.upper().eq(SECONDARY_RATING)
-        & working.get("final_score", pd.Series(float("nan"), index=working.index)).ge(SECONDARY_SCORE_THRESHOLD)
-        & working.get("risk_penalty", pd.Series(float("nan"), index=working.index)).eq(SECONDARY_RISK_PENALTY)
+        rating_series.str.upper().eq(SECONDARY_RATING)
+        & final_score_series.ge(SECONDARY_SCORE_THRESHOLD)
+        & risk_penalty_series.eq(SECONDARY_RISK_PENALTY)
     )
 
     alert_df = working[rating_mask | high_score_mask | secondary_mask].copy()
@@ -88,20 +106,40 @@ def build_alert_rows(df: pd.DataFrame) -> pd.DataFrame:
     return alert_df[visible_columns].reset_index(drop=True)
 
 
+def _is_missing_scalar(value: object) -> bool:
+    if value is None:
+        return True
+    if value is pd.NA:
+        return True
+    if isinstance(value, (str, bytes, bool, int, float)):
+        return bool(pd.isna(value))
+    return False
+
+
 def _clean_text(value: object, default: str = "n/a") -> str:
-    if value is None or pd.isna(value): # type: ignore
+    if _is_missing_scalar(value):
         return default
     text = str(value).strip()
     return text if text else default
 
 
+def _numeric_scalar(value: object) -> float | None:
+    if _is_missing_scalar(value):
+        return None
+    try:
+        numeric = float(str(value))
+    except (TypeError, ValueError):
+        return None
+    return None if pd.isna(numeric) else numeric
+
+
 def _format_number(value: object, decimals: int = 2) -> str:
-    numeric = pd.to_numeric(value, errors="coerce") # type: ignore
-    if pd.isna(numeric):
+    numeric = _numeric_scalar(value)
+    if numeric is None:
         return "n/a"
-    if float(numeric).is_integer():
+    if numeric.is_integer():
         return str(int(numeric))
-    return f"{float(numeric):.{decimals}f}"
+    return f"{numeric:.{decimals}f}"
 
 
 def format_telegram_message(rows: pd.DataFrame) -> str:
@@ -130,7 +168,8 @@ def _fingerprint_payload(rows: pd.DataFrame) -> str:
 
     payload_rows: list[dict[str, object]] = []
     for row in rows.to_dict(orient="records"):
-        payload_rows.append({column: row.get(column) for column in FINGERPRINT_COLUMNS})
+        row_map = row if isinstance(row, Mapping) else {}
+        payload_rows.append({column: row_map.get(column) for column in FINGERPRINT_COLUMNS})
     payload = json.dumps(payload_rows, sort_keys=True, default=str)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 

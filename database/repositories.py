@@ -212,7 +212,7 @@ def _number_or_none(value: object) -> float | None:
     if value is None:
         return None
     try:
-        numeric = float(value)
+        numeric = float(str(value))
     except (TypeError, ValueError):
         return None
     return None if numeric != numeric else numeric
@@ -222,7 +222,7 @@ def _int_or_none(value: object) -> int | None:
     if value is None:
         return None
     try:
-        numeric = int(value)
+        numeric = int(str(value))
     except (TypeError, ValueError):
         return None
     return numeric

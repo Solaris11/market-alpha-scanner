@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, cast
 
 import pandas as pd
 import streamlit as st
@@ -50,11 +51,14 @@ def safe_read_csv(path: Path) -> tuple[pd.DataFrame | None, str | None]:
         return None, f"Failed to read `{path.relative_to(BASE_DIR)}`: {exc}"
 
 
-def safe_read_json(path: Path) -> tuple[dict | None, str | None]:
+def safe_read_json(path: Path) -> tuple[dict[str, object] | None, str | None]:
     if not path.exists():
         return None, f"Missing file: `{path.relative_to(BASE_DIR)}`"
     try:
-        return json.loads(path.read_text(encoding="utf-8")), None
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if isinstance(payload, dict):
+            return {str(key): cast(object, value) for key, value in payload.items()}, None
+        return None, f"Expected JSON object in `{path.relative_to(BASE_DIR)}`"
     except Exception as exc:
         return None, f"Failed to read `{path.relative_to(BASE_DIR)}`: {exc}"
 
@@ -79,7 +83,6 @@ def prepare_scan_df(df: pd.DataFrame) -> pd.DataFrame:
     prepared.columns = [str(column).strip() for column in prepared.columns]
     for column in STRING_COLUMNS:
         if column in prepared.columns:
-            prepared[column] = prepared[column].where(prepared[column].notna(), pd.NA)
             prepared[column] = prepared[column].astype("string").str.strip()
             prepared[column] = prepared[column].replace("", pd.NA)
     if "symbol" in prepared.columns:
@@ -149,7 +152,7 @@ def load_history_df(snapshot_files: list[Path]) -> pd.DataFrame:
     return history_df.sort_values(["timestamp_utc", "symbol"]).reset_index(drop=True)
 
 
-def load_symbol_summary(symbol: str) -> dict | None:
+def load_symbol_summary(symbol: str) -> dict[str, object] | None:
     payload, _ = safe_read_json(symbol_dir(symbol) / "summary.json")
     return payload
 
@@ -170,9 +173,10 @@ def load_symbol_history_file(symbol: str) -> pd.DataFrame:
 @st.cache_data(ttl=900, show_spinner=False)
 def fetch_live_symbol_history(symbol: str, period: str = "2y") -> pd.DataFrame:
     try:
-        df = yf.download(symbol, period=period, interval="1d", auto_adjust=True, progress=False)
+        raw = yf.download(symbol, period=period, interval="1d", auto_adjust=True, progress=False)
     except Exception:
         return pd.DataFrame()
+    df = pd.DataFrame(raw)
     if df.empty:
         return pd.DataFrame()
     history_df = df.reset_index().rename(columns={"Date": "date"})
@@ -190,12 +194,21 @@ def fetch_recent_news_items(symbol: str, max_items: int = 8) -> list[dict[str, s
 
     news_rows: list[dict[str, str]] = []
     for item in items[:max_items]:
+        if not isinstance(item, Mapping):
+            continue
         content = item.get("content", {})
         canonical = item.get("canonicalUrl", {})
+        if not isinstance(content, Mapping):
+            content = {}
+        if not isinstance(canonical, Mapping):
+            canonical = {}
+        provider = content.get("provider", {})
+        if not isinstance(provider, Mapping):
+            provider = {}
         news_rows.append(
             {
                 "title": str(content.get("title", "")).strip(),
-                "source": str(content.get("provider", {}).get("displayName", "")).strip(),
+                "source": str(provider.get("displayName", "")).strip(),
                 "published": format_timestamp(content.get("pubDate")),
                 "summary": str(content.get("summary", "")).strip(),
                 "link": str(canonical.get("url", "")).strip(),

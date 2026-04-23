@@ -6,6 +6,17 @@ import streamlit as st
 from .shared import format_percent, format_performance_display
 
 
+def _float_value(row: pd.Series, column: str) -> float:
+    value = row.get(column)
+    if value is None:
+        return float("nan")
+    try:
+        numeric = float(str(value))
+    except (TypeError, ValueError):
+        return float("nan")
+    return numeric if not pd.isna(numeric) else float("nan")
+
+
 def get_highlight_row(summary_df: pd.DataFrame, group_type: str, horizon: str = "20d", best: bool = True) -> pd.Series | None:
     section = summary_df[(summary_df["group_type"] == group_type) & (summary_df["horizon"].astype(str) == horizon)].copy()
     if section.empty:
@@ -102,14 +113,16 @@ def generate_rule_based_insights(summary_df: pd.DataFrame) -> list[str]:
     if not rating_20d.empty:
         best_rating = rating_20d.sort_values("avg_return", ascending=False).iloc[0]
         worst_rating = rating_20d.sort_values("avg_return", ascending=True).iloc[0]
-        avg_spread = best_rating["avg_return"] - worst_rating["avg_return"]
+        avg_spread = _float_value(best_rating, "avg_return") - _float_value(worst_rating, "avg_return")
         insights.append(
             f"{best_rating['group_value']} signals outperform {worst_rating['group_value']} by {format_percent(avg_spread)} on 20d average return."
         )
 
         rating_lookup = rating_20d.set_index("group_value")
         if {"TOP", "ACTIONABLE"}.issubset(rating_lookup.index):
-            diff = rating_lookup.loc["TOP", "avg_return"] - rating_lookup.loc["ACTIONABLE", "avg_return"]
+            top_avg = pd.to_numeric(rating_lookup.loc["TOP", "avg_return"], errors="coerce")
+            actionable_avg = pd.to_numeric(rating_lookup.loc["ACTIONABLE", "avg_return"], errors="coerce")
+            diff = float(top_avg) - float(actionable_avg)
             direction = "outperform" if diff >= 0 else "trail"
             insights.append(f"TOP signals {direction} ACTIONABLE by {format_percent(abs(diff))} on 20d average return.")
 
@@ -126,9 +139,10 @@ def generate_rule_based_insights(summary_df: pd.DataFrame) -> list[str]:
     if not setup_20d.empty:
         best_setup = setup_20d.sort_values("avg_return", ascending=False).iloc[0]
         worst_setup = setup_20d.sort_values("avg_return", ascending=True).iloc[0]
+        setup_spread = _float_value(best_setup, "avg_return") - _float_value(worst_setup, "avg_return")
         insights.append(
             f"{best_setup['group_value']} is the strongest setup, beating {worst_setup['group_value']} by "
-            f"{format_percent(best_setup['avg_return'] - worst_setup['avg_return'])} on 20d average return."
+            f"{format_percent(setup_spread)} on 20d average return."
         )
 
     if not score_20d.empty:
@@ -139,7 +153,9 @@ def generate_rule_based_insights(summary_df: pd.DataFrame) -> list[str]:
                 baseline_bucket = candidate
                 break
         if "80+" in score_lookup.index and baseline_bucket is not None:
-            diff = score_lookup.loc["80+", "avg_return"] - score_lookup.loc[baseline_bucket, "avg_return"]
+            high_bucket = pd.to_numeric(score_lookup.loc["80+", "avg_return"], errors="coerce")
+            baseline_avg = pd.to_numeric(score_lookup.loc[baseline_bucket, "avg_return"], errors="coerce")
+            diff = float(high_bucket) - float(baseline_avg)
             if abs(diff) < 0.003:
                 insights.append(
                     f"High score (80+) does not improve returns materially versus {baseline_bucket} on 20d performance."

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path
+from typing import Any, cast
 
 import pandas as pd
 import streamlit as st
@@ -27,34 +29,45 @@ PERFORMANCE_METRIC_COLUMNS = ["avg_return", "median_return", "hit_rate", "avg_ne
 PERCENT_COLUMNS = {"avg_return", "median_return", "hit_rate", "avg_negative_return", "min_return"}
 
 
+def _coerce_numeric_scalar(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        numeric = float(str(value))
+    except (TypeError, ValueError):
+        return None
+    return None if pd.isna(numeric) else numeric
+
+
 def format_timestamp(value: object) -> str:
     if value is None or (isinstance(value, float) and pd.isna(value)):
         return "N/A"
-    ts = pd.to_datetime(value, utc=True, errors="coerce")
+    candidate: str | int | float = value if isinstance(value, (str, int, float)) else str(value)
+    ts = pd.to_datetime(candidate, utc=True, errors="coerce")
     if pd.isna(ts):
         return "N/A"
     return ts.strftime("%Y-%m-%d %H:%M:%S UTC")
 
 
 def format_percent(value: object) -> str:
-    numeric = pd.to_numeric(value, errors="coerce")
-    if pd.isna(numeric):
+    numeric = _coerce_numeric_scalar(value)
+    if numeric is None:
         return "N/A"
     return f"{numeric * 100:.2f}%"
 
 
 def format_number(value: object, decimals: int = 2) -> str:
-    numeric = pd.to_numeric(value, errors="coerce")
-    if pd.isna(numeric):
+    numeric = _coerce_numeric_scalar(value)
+    if numeric is None:
         return "N/A"
-    return f"{float(numeric):.{decimals}f}"
+    return f"{numeric:.{decimals}f}"
 
 
 def format_billions(value: object) -> str:
-    numeric = pd.to_numeric(value, errors="coerce")
-    if pd.isna(numeric):
+    numeric = _coerce_numeric_scalar(value)
+    if numeric is None:
         return "N/A"
-    number = float(numeric)
+    number = numeric
     if number >= 1_000_000_000_000:
         return f"{number / 1_000_000_000_000:.2f}T"
     if number >= 1_000_000_000:
@@ -106,7 +119,9 @@ def display_table(df: pd.DataFrame, preferred_columns: list[str], height: int = 
     sorted_df = sort_scan_df(df)
     visible_columns = [column for column in preferred_columns if column in sorted_df.columns]
     display_df = sorted_df[visible_columns].copy() if visible_columns else sorted_df.copy()
-    format_map = {column: "{:.2f}" for column in display_df.columns if pd.api.types.is_numeric_dtype(display_df[column])}
+    format_map: dict[str, Any] = {
+        column: "{:.2f}" for column in display_df.columns if pd.api.types.is_numeric_dtype(display_df[column])
+    }
     try:
         styler = display_df.style.format(format_map)
         if highlight_top and "rating" in display_df.columns:
@@ -117,7 +132,7 @@ def display_table(df: pd.DataFrame, preferred_columns: list[str], height: int = 
         st.dataframe(display_df, use_container_width=True, height=height)
 
 
-def display_key_value_table(data: dict[str, object], title: str) -> None:
+def display_key_value_table(data: Mapping[str, object], title: str) -> None:
     rows = [{"field": key, "value": value} for key, value in data.items()]
     st.subheader(title)
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
@@ -137,8 +152,8 @@ def build_count_table(df: pd.DataFrame, column: str) -> pd.DataFrame:
 
 
 def score_level(value: object) -> str:
-    numeric = pd.to_numeric(value, errors="coerce")
-    if pd.isna(numeric):
+    numeric = _coerce_numeric_scalar(value)
+    if numeric is None:
         return "N/A"
     if numeric >= 75:
         return "High"
@@ -148,8 +163,8 @@ def score_level(value: object) -> str:
 
 
 def risk_level(value: object) -> str:
-    numeric = pd.to_numeric(value, errors="coerce")
-    if pd.isna(numeric):
+    numeric = _coerce_numeric_scalar(value)
+    if numeric is None:
         return "N/A"
     if numeric <= 10:
         return "Low"
@@ -160,7 +175,7 @@ def risk_level(value: object) -> str:
 
 def selected_symbol_index(symbols: list[str]) -> int:
     selected_symbol = st.session_state.get("selected_symbol")
-    if selected_symbol in symbols:
+    if isinstance(selected_symbol, str) and selected_symbol in symbols:
         return symbols.index(selected_symbol)
     return 0
 
@@ -226,4 +241,4 @@ def format_performance_display(df: pd.DataFrame) -> pd.DataFrame:
             display_df[column] = display_df[column].apply(lambda value: f"{value * 100:.2f}%" if pd.notna(value) else "N/A")
     if "count" in display_df.columns:
         display_df["count"] = pd.to_numeric(display_df["count"], errors="coerce").fillna(0).astype(int)
-    return display_df
+    return cast(pd.DataFrame, display_df)
