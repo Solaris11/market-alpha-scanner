@@ -183,6 +183,39 @@ def render_symbol_quick_actions(symbols: list[str]) -> None:
                 open_symbol_detail(symbol)
 
 
+def render_clickable_symbol_rows(df: pd.DataFrame, section_key: str) -> None:
+    sorted_df = sort_scan_df(df)
+    if sorted_df.empty or "symbol" not in sorted_df.columns:
+        return
+
+    row_df = sorted_df.copy()
+    row_df["symbol"] = row_df["symbol"].astype("string").str.strip()
+    row_df = row_df[row_df["symbol"].notna() & (row_df["symbol"] != "")]
+    if row_df.empty:
+        return
+
+    st.caption("Clickable rows")
+    header_columns = st.columns([1.3, 1.0, 1.0, 1.4, 0.9])
+    header_columns[0].markdown("**Symbol**")
+    header_columns[1].markdown("**Asset**")
+    header_columns[2].markdown("**Rating**")
+    header_columns[3].markdown("**Setup**")
+    header_columns[4].markdown("**Score**")
+
+    for index, (_, row) in enumerate(row_df.iterrows()):
+        symbol = str(row["symbol"]).strip()
+        if not symbol:
+            continue
+
+        row_columns = st.columns([1.3, 1.0, 1.0, 1.4, 0.9])
+        if row_columns[0].button(symbol, key=f"{section_key}_symbol_{index}_{symbol}", use_container_width=True):
+            open_symbol_detail(symbol)
+        row_columns[1].write(str(row.get("asset_type", "N/A")))
+        row_columns[2].write(str(row.get("rating", "N/A")))
+        row_columns[3].write(str(row.get("setup_type", "N/A")))
+        row_columns[4].write(format_number(row.get("final_score")))
+
+
 def format_performance_display(df: pd.DataFrame) -> pd.DataFrame:
     display_df = df.copy()
     for column in PERFORMANCE_METRIC_COLUMNS:

@@ -10,6 +10,7 @@ from .shared import (
     DEFAULT_TABLE_COLUMNS,
     RATING_STATUS_ORDER,
     build_count_table,
+    render_clickable_symbol_rows,
     display_table,
     filter_scan_df,
     open_symbol_detail,
@@ -120,7 +121,9 @@ def render_overview_page(
     if top_df.empty:
         st.info("Top candidates data is not available yet. Run the scanner to generate `top_candidates.csv`.")
     else:
+        render_clickable_symbol_rows(filtered_top, "top_candidates")
         display_table(filtered_top, DEFAULT_TABLE_COLUMNS, highlight_top=True)
 
     st.subheader("Full Ranking")
+    render_clickable_symbol_rows(filtered_full, "full_ranking")
     display_table(filtered_full, DEFAULT_TABLE_COLUMNS, height=520, highlight_top=True)
