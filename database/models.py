@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
+from sqlalchemy import BigInteger, Date, DateTime, ForeignKey, Integer, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.types import JSON
 
@@ -80,7 +80,7 @@ class PriceHistory(Base):
     low: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
     close: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
     adj_close: Mapped[Decimal | None] = mapped_column(Numeric(18, 6))
-    volume: Mapped[int | None] = mapped_column(Integer)
+    volume: Mapped[int | None] = mapped_column(BigInteger)
 
 
 class FundamentalSnapshot(Base):
