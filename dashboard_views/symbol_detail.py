@@ -12,6 +12,12 @@ from .shared import (
     format_billions,
     format_number,
     format_percent,
+    render_action_badge,
+    render_info_card,
+    render_rating_badge,
+    render_score_badge,
+    render_section_heading,
+    render_symbol_header,
     risk_level,
     score_level,
     selected_symbol_index,
@@ -26,6 +32,19 @@ DIAGNOSTIC_COLUMNS = [
     "max_drawdown",
 ]
 
+FUNDAMENTAL_FIELDS = [
+    ("Market Cap", "market_cap", format_billions),
+    ("Trailing PE", "trailing_pe", format_number),
+    ("Forward PE", "forward_pe", format_number),
+    ("Revenue Growth", "revenue_growth", format_percent),
+    ("Earnings Growth", "earnings_growth", format_percent),
+    ("Gross Margin", "gross_margin", format_percent),
+    ("Operating Margin", "operating_margin", format_percent),
+    ("Profit Margin", "profit_margin", format_percent),
+    ("Debt To Equity", "debt_to_equity", format_number),
+    ("Return On Equity", "return_on_equity", format_percent),
+]
+
 
 def _numeric_scalar(value: object) -> float | None:
     if value is None:
@@ -37,31 +56,215 @@ def _numeric_scalar(value: object) -> float | None:
     return numeric if not pd.isna(numeric) else None
 
 
+def _reason_points(text: object) -> list[str]:
+    raw = str(text or "").strip()
+    if not raw:
+        return []
+    return [item.strip() for item in raw.split(";") if item.strip()]
+
+
+def render_symbol_detail_header(current_row: pd.Series) -> None:
+    symbol = str(current_row.get("symbol", "N/A"))
+    subtitle_bits = [
+        str(current_row.get("asset_type", "Unknown")),
+        str(current_row.get("sector", "Unknown")),
+        str(current_row.get("setup_type", "Mixed Setup")),
+    ]
+    render_symbol_header(
+        symbol,
+        " • ".join(bit for bit in subtitle_bits if bit and bit != "nan"),
+        [
+            render_rating_badge(current_row.get("rating", "N/A")),
+            render_action_badge(current_row.get("composite_action", current_row.get("long_action", "N/A"))),
+            render_score_badge(current_row.get("final_score")),
+        ],
+    )
+
+    summary_columns = st.columns(4)
+    with summary_columns[0]:
+        st.markdown(
+            render_info_card(
+                "Price",
+                format_number(current_row.get("price")),
+                f"Entry zone {current_row.get('entry_zone', 'N/A')}",
+                "accent",
+            ),
+            unsafe_allow_html=True,
+        )
+    with summary_columns[1]:
+        st.markdown(
+            render_info_card(
+                "Final Score",
+                format_number(current_row.get("final_score")),
+                f"Rating {current_row.get('rating', 'N/A')}",
+                "positive",
+            ),
+            unsafe_allow_html=True,
+        )
+    with summary_columns[2]:
+        st.markdown(
+            render_info_card(
+                "Upside Driver",
+                str(current_row.get("upside_driver", "N/A")),
+                f"Confidence {current_row.get('confidence_level', 'N/A')}",
+                "neutral",
+            ),
+            unsafe_allow_html=True,
+        )
+    with summary_columns[3]:
+        st.markdown(
+            render_info_card(
+                "Key Risk",
+                str(current_row.get("key_risk", "N/A")),
+                f"Invalidation {current_row.get('invalidation_level', 'N/A')}",
+                "negative",
+            ),
+            unsafe_allow_html=True,
+        )
+
+    selection_reason = str(current_row.get("selection_reason", "")).strip()
+    if selection_reason:
+        st.caption(selection_reason)
+
+
+def render_score_stack(current_row: pd.Series) -> None:
+    render_section_heading("Signal Stack", "Core inputs behind the current ranking and trade posture.", eyebrow="Decision Screen")
+    grouped_scores = [
+        ("Technical", "technical_score", score_level),
+        ("Fundamental", "fundamental_score", score_level),
+        ("Macro", "macro_score", score_level),
+        ("News", "news_score", score_level),
+        ("Risk", "risk_penalty", risk_level),
+    ]
+    columns = st.columns(len(grouped_scores))
+    for index, (label, column, level_fn) in enumerate(grouped_scores):
+        value = _numeric_scalar(current_row.get(column))
+        score_value = max(0, min(100, int(value))) if value is not None else 0
+        with columns[index]:
+            st.markdown(
+                render_info_card(label, format_number(value), level_fn(value), "positive" if label != "Risk" else "warning"),
+                unsafe_allow_html=True,
+            )
+            st.progress(score_value, text=f"{label} {format_number(value)}")
+
+
+def render_action_cards(current_row: pd.Series) -> None:
+    render_section_heading("Action Ladder", "Short, medium, and long horizon recommendations in one view.", eyebrow="Execution")
+    action_columns = st.columns(4)
+    horizons = [
+        ("Short-Term", "short_action", "short_score"),
+        ("Mid-Term", "mid_action", "mid_score"),
+        ("Long-Term", "long_action", "long_score"),
+        ("Composite", "composite_action", "final_score"),
+    ]
+    for column, (label, action_col, score_col) in zip(action_columns, horizons):
+        with column:
+            st.markdown(
+                render_info_card(label, str(current_row.get(action_col, "N/A")), f"Score {format_number(current_row.get(score_col))}", "accent"),
+                unsafe_allow_html=True,
+            )
+            st.markdown(render_action_badge(current_row.get(action_col, "N/A")), unsafe_allow_html=True)
+
+
+def render_summary_tab(current_row: pd.Series) -> None:
+    left, right = st.columns([1.15, 1], gap="large")
+
+    with left:
+        with st.container(border=True):
+            render_section_heading("Decision Snapshot", "Headline context, positioning, and execution anchors.", eyebrow="Summary")
+            display_key_value_table(
+                {
+                    "Rating": current_row.get("rating"),
+                    "Setup Type": current_row.get("setup_type"),
+                    "Asset Type": current_row.get("asset_type"),
+                    "Sector": current_row.get("sector"),
+                    "Entry Zone": current_row.get("entry_zone"),
+                    "Invalidation Level": current_row.get("invalidation_level"),
+                    "Upside Driver": current_row.get("upside_driver"),
+                    "Key Risk": current_row.get("key_risk"),
+                },
+                "Signal Readout",
+            )
+
+        diagnostic_data = {column.replace("_", " ").title(): current_row.get(column) for column in DIAGNOSTIC_COLUMNS if column in current_row.index}
+        if diagnostic_data:
+            with st.container(border=True):
+                render_section_heading("Diagnostics", "Short-form technical diagnostics for fast tape reading.", eyebrow="Monitoring")
+                display_key_value_table(diagnostic_data, "Diagnostics")
+
+    with right:
+        with st.container(border=True):
+            render_section_heading("Reason Stack", "Why the scanner surfaced this symbol across horizons.", eyebrow="Context")
+            for horizon in ["short", "mid", "long"]:
+                points = _reason_points(current_row.get(f"{horizon}_reason"))
+                st.markdown(
+                    (
+                        '<div class="scanner-panel">'
+                        f'<div class="scanner-info-label">{horizon.title()} Horizon</div>'
+                        f'<div class="scanner-badge-row">{render_action_badge(current_row.get(f"{horizon}_action", "N/A"))}{render_score_badge(current_row.get(f"{horizon}_score"), label="")}</div>'
+                        "</div>"
+                    ),
+                    unsafe_allow_html=True,
+                )
+                if points:
+                    st.markdown(
+                        "<ul class='scanner-reason-list'>"
+                        + "".join(f"<li>{point}</li>" for point in points)
+                        + "</ul>",
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.caption("No detailed reason provided.")
+
+
+def render_price_history_tab(selected_symbol: str) -> None:
+    history_df, history_source = load_symbol_price_history(selected_symbol)
+    if history_df.empty:
+        st.info("Historical price data not available for this symbol yet.")
+        return
+
+    render_section_heading("Price Structure", "Recent market behavior for the selected symbol.", eyebrow="Market Data")
+    range_label = st.selectbox("Range", ["1M", "3M", "6M", "1Y", "2Y"], index=3, key=f"price_range_{selected_symbol}")
+    filtered_history = filter_price_history(history_df, range_label)
+
+    top_columns = st.columns([1, 3])
+    with top_columns[0]:
+        st.markdown(render_info_card("Source", history_source.title(), f"Rows {len(filtered_history):,}", "neutral"), unsafe_allow_html=True)
+    with top_columns[1]:
+        st.caption("Auto-loaded from scanner artifacts first, then live market data when necessary.")
+
+    if not filtered_history.empty and "close" in filtered_history.columns:
+        with st.container(border=True):
+            st.line_chart(filtered_history.set_index("date")[["close"]], use_container_width=True)
+    st.dataframe(filtered_history, use_container_width=True, height=320, hide_index=True)
+
+
 def render_fundamentals_tab(current_row: pd.Series, summary_payload: Mapping[str, object] | None) -> None:
     fundamentals_raw = summary_payload.get("fundamentals", {}) if summary_payload else {}
     fundamentals = fundamentals_raw if isinstance(fundamentals_raw, Mapping) else {}
-    rows = [
-        {"field": "Market cap", "value": format_billions(fundamentals.get("market_cap", current_row.get("market_cap")))},
-        {"field": "Trailing PE", "value": format_number(fundamentals.get("trailing_pe", current_row.get("trailing_pe")))},
-        {"field": "Forward PE", "value": format_number(fundamentals.get("forward_pe", current_row.get("forward_pe")))},
-        {"field": "Revenue growth", "value": format_percent(fundamentals.get("revenue_growth", current_row.get("revenue_growth")))},
-        {"field": "Earnings growth", "value": format_percent(fundamentals.get("earnings_growth", current_row.get("earnings_growth")))},
-        {"field": "Gross margin", "value": format_percent(fundamentals.get("gross_margin", current_row.get("gross_margin")))},
-        {"field": "Operating margin", "value": format_percent(fundamentals.get("operating_margin", current_row.get("operating_margin")))},
-        {"field": "Profit margin", "value": format_percent(fundamentals.get("profit_margin", current_row.get("profit_margin")))},
-        {"field": "Debt to equity", "value": format_number(fundamentals.get("debt_to_equity", current_row.get("debt_to_equity")))},
-        {"field": "Return on equity", "value": format_percent(fundamentals.get("return_on_equity", current_row.get("return_on_equity")))},
-    ]
-    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+    render_section_heading("Fundamentals", "Quality, growth, valuation, and balance-sheet snapshot.", eyebrow="Reference")
+    rows = []
+    for label, field, formatter in FUNDAMENTAL_FIELDS:
+        value = fundamentals.get(field, current_row.get(field))
+        rows.append({"field": label, "value": formatter(value)})
+
+    left, right = st.columns([1, 1], gap="large")
+    with left:
+        st.dataframe(pd.DataFrame(rows[:5]), use_container_width=True, hide_index=True)
+    with right:
+        st.dataframe(pd.DataFrame(rows[5:]), use_container_width=True, hide_index=True)
 
     business_summary = str(fundamentals.get("long_business_summary", "")).strip()
     if business_summary:
-        st.caption("Business summary")
-        st.write(business_summary)
+        with st.container(border=True):
+            render_section_heading("Business Summary", "Narrative context from the latest underlying company profile.", eyebrow="Narrative")
+            st.write(business_summary)
 
 
 def render_news_tab(symbol: str) -> None:
     news_items = fetch_recent_news_items(symbol)
+    render_section_heading("Recent News", "Short-form event context around the selected name.", eyebrow="Catalysts")
     if not news_items:
         st.info("No recent news available for this symbol.")
         return
@@ -69,51 +272,80 @@ def render_news_tab(symbol: str) -> None:
     for item in news_items:
         title = item["title"]
         link = item["link"]
-        if link:
-            st.markdown(f"**[{title}]({link})**")
-        else:
-            st.markdown(f"**{title}**")
         meta_bits = [bit for bit in [item["source"], item["published"]] if bit and bit != "N/A"]
-        if meta_bits:
-            st.caption(" | ".join(meta_bits))
-        if item["summary"]:
-            st.write(item["summary"])
-        st.divider()
+        with st.container(border=True):
+            if link:
+                st.markdown(f"**[{title}]({link})**")
+            else:
+                st.markdown(f"**{title}**")
+            if meta_bits:
+                st.caption(" | ".join(meta_bits))
+            if item["summary"]:
+                st.write(item["summary"])
 
 
 def render_symbol_snapshot_timeline(symbol: str, snapshot_history_df: pd.DataFrame) -> None:
     if snapshot_history_df.empty:
-        st.info("No historical data yet for this symbol")
+        st.info("No historical data yet for this symbol.")
         return
 
     symbol_history = snapshot_history_df[snapshot_history_df["symbol"] == symbol].copy()
     if symbol_history.empty:
-        st.info("No historical data yet for this symbol")
+        st.info("No historical data yet for this symbol.")
         return
 
     symbol_history = symbol_history.sort_values("timestamp_utc")
     final_score_chart = symbol_history.set_index("timestamp_utc")[["final_score"]].dropna() if "final_score" in symbol_history.columns else pd.DataFrame()
     price_chart = symbol_history.set_index("timestamp_utc")[["price"]].dropna() if "price" in symbol_history.columns else pd.DataFrame()
 
-    chart_columns = st.columns(2)
+    render_section_heading("Scan History", "How price and scanner conviction evolved across saved snapshots.", eyebrow="History")
+    chart_columns = st.columns(2, gap="large")
     with chart_columns[0]:
-        if not final_score_chart.empty:
-            st.caption("Scanner final_score over time")
-            st.line_chart(final_score_chart)
+        with st.container(border=True):
+            st.caption("Final score over time")
+            if not final_score_chart.empty:
+                st.line_chart(final_score_chart, use_container_width=True)
+            else:
+                st.info("No score history available.")
     with chart_columns[1]:
-        if not price_chart.empty:
-            st.caption("Scanner price snapshots over time")
-            st.line_chart(price_chart)
+        with st.container(border=True):
+            st.caption("Scanner snapshot price")
+            if not price_chart.empty:
+                st.line_chart(price_chart, use_container_width=True)
+            else:
+                st.info("No price history available.")
 
     timeline_columns = [column for column in HISTORY_TIMELINE_COLUMNS if column in symbol_history.columns]
     timeline_df = symbol_history[timeline_columns].copy()
     if "timestamp_utc" in timeline_df.columns:
         timeline_df["timestamp_utc"] = timeline_df["timestamp_utc"].dt.strftime("%Y-%m-%d %H:%M:%S UTC")
-    st.dataframe(timeline_df, use_container_width=True, height=260)
+    st.dataframe(timeline_df, use_container_width=True, height=260, hide_index=True)
+
+
+def render_reason_tab(current_row: pd.Series) -> None:
+    render_section_heading("Reason Breakdown", "Readable horizon-based rationale instead of a flat text block.", eyebrow="Why It Ranked")
+    for horizon in ["short", "mid", "long"]:
+        points = _reason_points(current_row.get(f"{horizon}_reason"))
+        with st.container(border=True):
+            st.markdown(
+                (
+                    f"<div class='scanner-info-label'>{horizon.title()} Horizon</div>"
+                    f"<div class='scanner-badge-row'>{render_action_badge(current_row.get(f'{horizon}_action', 'N/A'))}{render_score_badge(current_row.get(f'{horizon}_score'), label='')}</div>"
+                ),
+                unsafe_allow_html=True,
+            )
+            if points:
+                st.markdown(
+                    "<ul class='scanner-reason-list'>"
+                    + "".join(f"<li>{point}</li>" for point in points)
+                    + "</ul>",
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.caption("No detailed reason provided.")
 
 
 def render_symbol_detail_content(selected_symbol: str, full_df: pd.DataFrame, snapshot_history_df: pd.DataFrame) -> None:
-    # The detail view prefers scanner artifacts first and only falls back to live yfinance calls when those files are missing.
     symbol_rows = full_df[full_df["symbol"] == selected_symbol].copy()
     if symbol_rows.empty:
         st.info("Selected symbol is not available in the latest scan.")
@@ -122,106 +354,29 @@ def render_symbol_detail_content(selected_symbol: str, full_df: pd.DataFrame, sn
     current_row = symbol_rows.iloc[0]
     summary_payload = load_symbol_summary(selected_symbol)
 
-    summary_columns = st.columns(4)
-    summary_columns[0].metric("Symbol", str(current_row.get("symbol", "N/A")))
-    summary_columns[1].metric("Asset type", str(current_row.get("asset_type", "N/A")))
-    summary_columns[2].metric("Price", format_number(current_row.get("price")))
-    summary_columns[3].metric("Composite action", str(current_row.get("composite_action", "N/A")))
+    render_symbol_detail_header(current_row)
+    render_score_stack(current_row)
+    render_action_cards(current_row)
 
-    action_columns = st.columns(3)
-    for index, horizon in enumerate(["short", "mid", "long"]):
-        action_columns[index].metric(
-            f"{horizon.title()}-term",
-            str(current_row.get(f"{horizon}_action", "N/A")),
-            f"score {format_number(current_row.get(f'{horizon}_score'))}",
-            delta_color="off",
-        )
-
-    selection_reason = str(current_row.get("selection_reason", "")).strip()
-    if selection_reason:
-        st.caption(selection_reason)
-
-    tabs = st.tabs(["Summary", "Price History", "Fundamentals", "News", "Why Selected", "Scan History"])
+    tabs = st.tabs(["Decision Screen", "Price History", "Fundamentals", "News", "Why Selected", "Scan History", "Full Row"])
 
     with tabs[0]:
-        display_key_value_table(
-            {
-                "symbol": current_row.get("symbol"),
-                "rating": current_row.get("rating"),
-                "setup_type": current_row.get("setup_type"),
-                "sector": current_row.get("sector"),
-                "asset_type": current_row.get("asset_type"),
-                "upside_driver": current_row.get("upside_driver"),
-                "key_risk": current_row.get("key_risk"),
-            },
-            "Summary",
-        )
-
-        grouped_scores = [
-            ("Technical", "technical_score", score_level),
-            ("Fundamental", "fundamental_score", score_level),
-            ("Macro", "macro_score", score_level),
-            ("News", "news_score", score_level),
-            ("Risk", "risk_penalty", risk_level),
-        ]
-        score_metrics = st.columns(len(grouped_scores))
-        for index, (label, column, level_fn) in enumerate(grouped_scores):
-            value = _numeric_scalar(current_row.get(column))
-            score_metrics[index].metric(label, format_number(value), level_fn(value), delta_color="off")
-
-        score_chart = pd.DataFrame(
-            {
-                "score_component": [label for label, _, _ in grouped_scores],
-                "value": [_numeric_scalar(current_row.get(column)) for _, column, _ in grouped_scores],
-            }
-        ).dropna(subset=["value"]).set_index("score_component")
-        if not score_chart.empty:
-            st.bar_chart(score_chart)
-
-        diagnostic_data = {column: current_row.get(column) for column in DIAGNOSTIC_COLUMNS if column in current_row.index}
-        if diagnostic_data:
-            display_key_value_table(diagnostic_data, "Diagnostics")
-
+        render_summary_tab(current_row)
     with tabs[1]:
-        history_df, history_source = load_symbol_price_history(selected_symbol)
-        if history_df.empty:
-            st.info("Historical price data not available for this symbol yet.")
-        else:
-            range_label = st.selectbox("Range", ["1M", "3M", "6M", "1Y", "2Y"], index=3, key=f"price_range_{selected_symbol}")
-            filtered_history = filter_price_history(history_df, range_label)
-            st.caption(f"Source: {history_source}")
-            if not filtered_history.empty and "close" in filtered_history.columns:
-                st.line_chart(filtered_history.set_index("date")[["close"]])
-            st.dataframe(filtered_history, use_container_width=True, height=320)
-
+        render_price_history_tab(selected_symbol)
     with tabs[2]:
         render_fundamentals_tab(current_row, summary_payload)
-
     with tabs[3]:
         render_news_tab(selected_symbol)
-
     with tabs[4]:
-        reason_rows = []
-        for horizon in ["short", "mid", "long"]:
-            reason_rows.append(
-                {
-                    "horizon": horizon.title(),
-                    "action": current_row.get(f"{horizon}_action"),
-                    "score": format_number(current_row.get(f"{horizon}_score")),
-                    "reason": current_row.get(f"{horizon}_reason"),
-                }
-            )
-        st.dataframe(pd.DataFrame(reason_rows), use_container_width=True, hide_index=True)
-
+        render_reason_tab(current_row)
     with tabs[5]:
         render_symbol_snapshot_timeline(selected_symbol, snapshot_history_df)
-
-    with st.expander("Full latest row"):
-        st.dataframe(symbol_rows, use_container_width=True, height=260)
+    with tabs[6]:
+        st.dataframe(symbol_rows, use_container_width=True, height=280, hide_index=True)
 
 
 def render_symbol_detail_page(full_df: pd.DataFrame | None, history_df: pd.DataFrame) -> None:
-    st.header("Symbol Detail")
     if full_df is None or full_df.empty:
         st.info("Latest scan data is not available yet. Run the scanner to view symbol details.")
         return
@@ -232,6 +387,7 @@ def render_symbol_detail_page(full_df: pd.DataFrame | None, history_df: pd.DataF
         st.info("No symbols found in the latest ranking.")
         return
 
+    render_section_heading("Symbol Detail", "Decision screen for a single scanner name.", eyebrow="Detail")
     selected_symbol = st.selectbox("Select symbol", symbols, index=selected_symbol_index(symbols), key="selected_symbol")
     if not isinstance(selected_symbol, str):
         st.info("Selected symbol is invalid.")

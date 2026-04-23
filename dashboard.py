@@ -20,12 +20,17 @@ from dashboard_views.loaders import (
     load_history_df,
     safe_read_csv,
 )
+from dashboard_views.shared import inject_dashboard_theme
 
 
 def main() -> None:
-    st.set_page_config(page_title="Market Scanner Dashboard", layout="wide")
-    st.title("Market Scanner Dashboard")
-    st.caption("Internal Streamlit dashboard for scanner outputs stored on disk.")
+    st.set_page_config(
+        page_title="Market Alpha Scanner",
+        page_icon="📈",
+        layout="wide",
+        initial_sidebar_state="expanded",
+    )
+    inject_dashboard_theme()
 
     pages = [
         "Overview / Latest Scan",
@@ -47,8 +52,30 @@ def main() -> None:
     snapshot_files = list_snapshot_files(HISTORY_DIR)
     history_df = load_history_df(snapshot_files)
 
+    st.markdown(
+        (
+            '<div class="scanner-shell">'
+            '<div class="scanner-hero">'
+            '<div class="scanner-eyebrow">Market Alpha Scanner</div>'
+            "<h1>Trading Desk Dashboard</h1>"
+            "<p>Scan leaders, inspect signal quality, and move from shortlist to decision view without leaving the dashboard.</p>"
+            "</div>"
+            "</div>"
+        ),
+        unsafe_allow_html=True,
+    )
+
     with st.sidebar:
-        st.title("Navigation")
+        st.markdown(
+            (
+                '<div class="scanner-panel">'
+                '<div class="scanner-eyebrow">Workspace</div>'
+                '<div class="scanner-info-value">Navigator</div>'
+                '<div class="scanner-info-meta">Scanner output, signal detail, performance, and snapshot history.</div>'
+                "</div>"
+            ),
+            unsafe_allow_html=True,
+        )
         selected_page = st.radio(
             "Section",
             pages,
@@ -60,7 +87,7 @@ def main() -> None:
         st.caption(f"Output path: `{OUTPUT_DIR}`")
 
     if st.session_state["current_page"] == "Overview / Latest Scan":
-        render_overview_page(full_df, top_df, snapshot_files, PERFORMANCE_SUMMARY_PATH, FORWARD_RETURNS_PATH)
+        render_overview_page(full_df, top_df, snapshot_files, PERFORMANCE_SUMMARY_PATH, forward_returns_path=FORWARD_RETURNS_PATH)
     elif st.session_state["current_page"] == "Symbol Detail":
         render_symbol_detail_page(full_df, history_df)
     elif st.session_state["current_page"] == "Performance Analysis":
