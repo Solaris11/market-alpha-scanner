@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
 import pandas as pd
 import streamlit as st
+import yfinance as yf
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -16,18 +18,20 @@ HISTORY_DIR = OUTPUT_DIR / "history"
 ANALYSIS_DIR = OUTPUT_DIR / "analysis"
 PERFORMANCE_SUMMARY_PATH = ANALYSIS_DIR / "performance_summary.csv"
 FORWARD_RETURNS_PATH = ANALYSIS_DIR / "forward_returns.csv"
+SYMBOLS_DIR = OUTPUT_DIR / "symbols"
 
 DEFAULT_TABLE_COLUMNS = [
     "symbol",
     "asset_type",
     "sector",
     "price",
-    "technical_score",
-    "fundamental_score",
-    "news_score",
-    "macro_score",
-    "risk_penalty",
+    "short_action",
+    "mid_action",
+    "long_action",
     "final_score",
+    "short_score",
+    "mid_score",
+    "long_score",
     "rating",
     "setup_type",
 ]
@@ -43,6 +47,15 @@ STRING_COLUMNS = [
     "macro_sensitivity",
     "upside_driver",
     "key_risk",
+    "short_action",
+    "mid_action",
+    "long_action",
+    "composite_action",
+    "short_reason",
+    "mid_reason",
+    "long_reason",
+    "selection_reason",
+    "headline_bias",
 ]
 NUMERIC_SCAN_COLUMNS = [
     "price",
@@ -54,6 +67,9 @@ NUMERIC_SCAN_COLUMNS = [
     "macro_score",
     "risk_penalty",
     "final_score",
+    "short_score",
+    "mid_score",
+    "long_score",
     "trend_score",
     "supertrend_score",
     "momentum_score",
@@ -69,6 +85,15 @@ NUMERIC_SCAN_COLUMNS = [
     "atr_pct",
     "annualized_volatility",
     "max_drawdown",
+    "trailing_pe",
+    "forward_pe",
+    "revenue_growth",
+    "earnings_growth",
+    "gross_margin",
+    "operating_margin",
+    "profit_margin",
+    "debt_to_equity",
+    "return_on_equity",
 ]
 SUMMARY_COUNT_COLUMNS = ["rating", "asset_type"]
 SCORE_COLUMNS = [
@@ -97,6 +122,21 @@ DIAGNOSTIC_COLUMNS = [
     "annualized_volatility",
     "max_drawdown",
 ]
+HORIZON_SCORE_COLUMNS = [
+    "short_score",
+    "mid_score",
+    "long_score",
+]
+HORIZON_ACTION_COLUMNS = [
+    "short_action",
+    "mid_action",
+    "long_action",
+]
+HORIZON_REASON_COLUMNS = [
+    "short_reason",
+    "mid_reason",
+    "long_reason",
+]
 PERFORMANCE_METRIC_COLUMNS = [
     "avg_return",
     "median_return",
@@ -119,6 +159,101 @@ def safe_read_csv(path: Path) -> tuple[pd.DataFrame | None, str | None]:
         return df, None
     except Exception as exc:
         return None, f"Failed to read `{path.relative_to(BASE_DIR)}`: {exc}"
+
+
+def safe_read_json(path: Path) -> tuple[dict | None, str | None]:
+    if not path.exists():
+        return None, f"Missing file: `{path.relative_to(BASE_DIR)}`"
+
+    try:
+        return json.loads(path.read_text(encoding="utf-8")), None
+    except Exception as exc:
+        return None, f"Failed to read `{path.relative_to(BASE_DIR)}`: {exc}"
+
+
+def symbol_slug(symbol: str) -> str:
+    return "".join(char if char.isalnum() or char in {"-", "_", "."} else "_" for char in symbol)
+
+
+def symbol_dir(symbol: str) -> Path:
+    return SYMBOLS_DIR / symbol_slug(symbol)
+
+
+def format_number(value: object, decimals: int = 2) -> str:
+    numeric = pd.to_numeric(value, errors="coerce")
+    if pd.isna(numeric):
+        return "N/A"
+    return f"{float(numeric):.{decimals}f}"
+
+
+def format_billions(value: object) -> str:
+    numeric = pd.to_numeric(value, errors="coerce")
+    if pd.isna(numeric):
+        return "N/A"
+    number = float(numeric)
+    if number >= 1_000_000_000_000:
+        return f"{number / 1_000_000_000_000:.2f}T"
+    if number >= 1_000_000_000:
+        return f"{number / 1_000_000_000:.2f}B"
+    if number >= 1_000_000:
+        return f"{number / 1_000_000:.2f}M"
+    return f"{number:,.0f}"
+
+
+def load_symbol_summary(symbol: str) -> dict | None:
+    payload, _ = safe_read_json(symbol_dir(symbol) / "summary.json")
+    return payload
+
+
+def load_symbol_history_file(symbol: str) -> pd.DataFrame:
+    history_df, _ = safe_read_csv(symbol_dir(symbol) / "history.csv")
+    if history_df is None or history_df.empty:
+        return pd.DataFrame()
+
+    history_df.columns = [str(column).strip().lower() for column in history_df.columns]
+    if "date" not in history_df.columns and "datetime" in history_df.columns:
+        history_df = history_df.rename(columns={"datetime": "date"})
+    if "date" in history_df.columns:
+        history_df["date"] = pd.to_datetime(history_df["date"], errors="coerce")
+        history_df = history_df.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
+    return history_df
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def fetch_live_symbol_history(symbol: str, period: str = "2y") -> pd.DataFrame:
+    try:
+        df = yf.download(symbol, period=period, interval="1d", auto_adjust=True, progress=False)
+    except Exception:
+        return pd.DataFrame()
+    if df.empty:
+        return pd.DataFrame()
+    history_df = df.reset_index().rename(columns={"Date": "date"})
+    history_df.columns = [str(column).strip().lower() for column in history_df.columns]
+    history_df["date"] = pd.to_datetime(history_df["date"], errors="coerce")
+    return history_df.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
+
+
+@st.cache_data(ttl=900, show_spinner=False)
+def fetch_recent_news_items(symbol: str, max_items: int = 8) -> list[dict[str, str]]:
+    try:
+        items = yf.Ticker(symbol).news or []
+    except Exception:
+        return []
+
+    news_rows: list[dict[str, str]] = []
+    for item in items[:max_items]:
+        content = item.get("content", {})
+        canonical = item.get("canonicalUrl", {})
+        news_rows.append(
+            {
+                "title": str(content.get("title", "")).strip(),
+                "source": str(content.get("provider", {}).get("displayName", "")).strip(),
+                "published": format_timestamp(content.get("pubDate")),
+                "summary": str(content.get("summary", "")).strip(),
+                "link": str(canonical.get("url", "")).strip(),
+            }
+        )
+    return [row for row in news_rows if row["title"]]
 
 
 def coerce_numeric(df: pd.DataFrame, columns: Iterable[str]) -> pd.DataFrame:
@@ -581,6 +716,247 @@ def load_history_df(snapshot_files: list[Path]) -> pd.DataFrame:
     return history_df.sort_values(["timestamp_utc", "symbol"]).reset_index(drop=True)
 
 
+def selected_symbol_index(symbols: list[str]) -> int:
+    selected_symbol = st.session_state.get("selected_symbol")
+    if selected_symbol in symbols:
+        return symbols.index(selected_symbol)
+    return 0
+
+
+def open_symbol_detail(symbol: str) -> None:
+    st.session_state["selected_symbol"] = symbol
+    st.session_state["page"] = "Symbol Detail"
+    st.rerun()
+
+
+def render_symbol_quick_actions(symbols: list[str]) -> None:
+    if not symbols:
+        return
+
+    st.subheader("Inspect Symbol")
+    for start in range(0, min(len(symbols), 12), 4):
+        row_symbols = symbols[start:start + 4]
+        columns = st.columns(len(row_symbols))
+        for column, symbol in zip(columns, row_symbols):
+            if column.button(symbol, key=f"inspect_{symbol}", use_container_width=True):
+                open_symbol_detail(symbol)
+
+
+def load_symbol_price_history(symbol: str) -> tuple[pd.DataFrame, str]:
+    file_df = load_symbol_history_file(symbol)
+    if not file_df.empty:
+        return file_df, "scanner output"
+
+    live_df = fetch_live_symbol_history(symbol)
+    if not live_df.empty:
+        return live_df, "live yfinance"
+
+    return pd.DataFrame(), "unavailable"
+
+
+def filter_price_history(history_df: pd.DataFrame, range_label: str) -> pd.DataFrame:
+    if history_df.empty or "date" not in history_df.columns:
+        return pd.DataFrame()
+
+    range_days = {
+        "1M": 31,
+        "3M": 92,
+        "6M": 183,
+        "1Y": 366,
+        "2Y": 731,
+    }
+    max_date = history_df["date"].max()
+    cutoff = max_date - pd.Timedelta(days=range_days.get(range_label, 366))
+    return history_df[history_df["date"] >= cutoff].copy()
+
+
+def render_fundamentals_tab(current_row: pd.Series, summary_payload: dict | None) -> None:
+    fundamentals = summary_payload.get("fundamentals", {}) if summary_payload else {}
+    rows = [
+        {"field": "Market cap", "value": format_billions(fundamentals.get("market_cap", current_row.get("market_cap")))},
+        {"field": "Trailing PE", "value": format_number(fundamentals.get("trailing_pe", current_row.get("trailing_pe")))},
+        {"field": "Forward PE", "value": format_number(fundamentals.get("forward_pe", current_row.get("forward_pe")))},
+        {"field": "Revenue growth", "value": format_percent(fundamentals.get("revenue_growth", current_row.get("revenue_growth")))},
+        {"field": "Earnings growth", "value": format_percent(fundamentals.get("earnings_growth", current_row.get("earnings_growth")))},
+        {"field": "Gross margin", "value": format_percent(fundamentals.get("gross_margin", current_row.get("gross_margin")))},
+        {"field": "Operating margin", "value": format_percent(fundamentals.get("operating_margin", current_row.get("operating_margin")))},
+        {"field": "Profit margin", "value": format_percent(fundamentals.get("profit_margin", current_row.get("profit_margin")))},
+        {"field": "Debt to equity", "value": format_number(fundamentals.get("debt_to_equity", current_row.get("debt_to_equity")))},
+        {"field": "Return on equity", "value": format_percent(fundamentals.get("return_on_equity", current_row.get("return_on_equity")))},
+    ]
+    st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+    business_summary = str(fundamentals.get("long_business_summary", "")).strip()
+    if business_summary:
+        st.caption("Business summary")
+        st.write(business_summary)
+
+
+def render_news_tab(symbol: str) -> None:
+    news_items = fetch_recent_news_items(symbol)
+    if not news_items:
+        st.info("No recent news available for this symbol.")
+        return
+
+    for item in news_items:
+        title = item["title"]
+        link = item["link"]
+        if link:
+            st.markdown(f"**[{title}]({link})**")
+        else:
+            st.markdown(f"**{title}**")
+        meta_bits = [bit for bit in [item["source"], item["published"]] if bit and bit != "N/A"]
+        if meta_bits:
+            st.caption(" | ".join(meta_bits))
+        if item["summary"]:
+            st.write(item["summary"])
+        st.divider()
+
+
+def render_symbol_snapshot_timeline(symbol: str, snapshot_history_df: pd.DataFrame) -> None:
+    if snapshot_history_df.empty:
+        st.info("No historical scan snapshots yet for this symbol.")
+        return
+
+    symbol_history = snapshot_history_df[snapshot_history_df["symbol"] == symbol].copy()
+    if symbol_history.empty:
+        st.info("No historical scan snapshots yet for this symbol.")
+        return
+
+    symbol_history = symbol_history.sort_values("timestamp_utc")
+    final_score_chart = symbol_history.set_index("timestamp_utc")[["final_score"]].dropna() if "final_score" in symbol_history.columns else pd.DataFrame()
+    price_chart = symbol_history.set_index("timestamp_utc")[["price"]].dropna() if "price" in symbol_history.columns else pd.DataFrame()
+
+    chart_columns = st.columns(2)
+    with chart_columns[0]:
+        if not final_score_chart.empty:
+            st.caption("Scanner final_score over time")
+            st.line_chart(final_score_chart)
+    with chart_columns[1]:
+        if not price_chart.empty:
+            st.caption("Scanner price snapshots over time")
+            st.line_chart(price_chart)
+
+    timeline_columns = [column for column in HISTORY_TIMELINE_COLUMNS if column in symbol_history.columns]
+    timeline_df = symbol_history[timeline_columns].copy()
+    if "timestamp_utc" in timeline_df.columns:
+        timeline_df["timestamp_utc"] = timeline_df["timestamp_utc"].dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+    st.dataframe(timeline_df, use_container_width=True, height=260)
+
+
+def render_symbol_detail_content(selected_symbol: str, full_df: pd.DataFrame, snapshot_history_df: pd.DataFrame) -> None:
+    # The detail view prefers scanner artifacts first and only falls back to live yfinance calls when those files are missing.
+    symbol_rows = full_df[full_df["symbol"] == selected_symbol].copy()
+    if symbol_rows.empty:
+        st.info("Selected symbol is not available in the latest scan.")
+        return
+
+    current_row = symbol_rows.iloc[0]
+    summary_payload = load_symbol_summary(selected_symbol)
+
+    summary_columns = st.columns(4)
+    summary_columns[0].metric("Symbol", str(current_row.get("symbol", "N/A")))
+    summary_columns[1].metric("Asset type", str(current_row.get("asset_type", "N/A")))
+    summary_columns[2].metric("Price", format_number(current_row.get("price")))
+    summary_columns[3].metric("Composite action", str(current_row.get("composite_action", "N/A")))
+
+    action_columns = st.columns(3)
+    for index, horizon in enumerate(["short", "mid", "long"]):
+        action_columns[index].metric(
+            f"{horizon.title()}-term",
+            str(current_row.get(f"{horizon}_action", "N/A")),
+            f"score {format_number(current_row.get(f'{horizon}_score'))}",
+            delta_color="off",
+        )
+
+    selection_reason = str(current_row.get("selection_reason", "")).strip()
+    if selection_reason:
+        st.caption(selection_reason)
+
+    tabs = st.tabs(["Summary", "Price History", "Fundamentals", "News", "Why Selected", "Scan History"])
+
+    with tabs[0]:
+        display_key_value_table(
+            {
+                "symbol": current_row.get("symbol"),
+                "rating": current_row.get("rating"),
+                "setup_type": current_row.get("setup_type"),
+                "sector": current_row.get("sector"),
+                "asset_type": current_row.get("asset_type"),
+                "upside_driver": current_row.get("upside_driver"),
+                "key_risk": current_row.get("key_risk"),
+            },
+            "Summary",
+        )
+
+        grouped_scores = [
+            ("Technical", "technical_score", score_level),
+            ("Fundamental", "fundamental_score", score_level),
+            ("Macro", "macro_score", score_level),
+            ("News", "news_score", score_level),
+            ("Risk", "risk_penalty", risk_level),
+        ]
+        score_metrics = st.columns(len(grouped_scores))
+        for index, (label, column, level_fn) in enumerate(grouped_scores):
+            value = pd.to_numeric(current_row.get(column), errors="coerce")
+            score_metrics[index].metric(
+                label,
+                format_number(value),
+                level_fn(value),
+                delta_color="off",
+            )
+
+        score_chart = pd.DataFrame(
+            {
+                "score_component": [label for label, _, _ in grouped_scores],
+                "value": [pd.to_numeric(current_row.get(column), errors="coerce") for _, column, _ in grouped_scores],
+            }
+        ).dropna(subset=["value"]).set_index("score_component")
+        if not score_chart.empty:
+            st.bar_chart(score_chart)
+
+        diagnostic_data = {column: current_row.get(column) for column in DIAGNOSTIC_COLUMNS if column in current_row.index}
+        if diagnostic_data:
+            display_key_value_table(diagnostic_data, "Diagnostics")
+
+    with tabs[1]:
+        history_df, history_source = load_symbol_price_history(selected_symbol)
+        if history_df.empty:
+            st.info("Historical price data not available for this symbol yet.")
+        else:
+            range_label = st.selectbox("Range", ["1M", "3M", "6M", "1Y", "2Y"], index=3, key=f"price_range_{selected_symbol}")
+            filtered_history = filter_price_history(history_df, range_label)
+            st.caption(f"Source: {history_source}")
+            if not filtered_history.empty and "close" in filtered_history.columns:
+                st.line_chart(filtered_history.set_index("date")[["close"]])
+            st.dataframe(filtered_history, use_container_width=True, height=320)
+
+    with tabs[2]:
+        render_fundamentals_tab(current_row, summary_payload)
+
+    with tabs[3]:
+        render_news_tab(selected_symbol)
+
+    with tabs[4]:
+        reason_rows = []
+        for horizon in ["short", "mid", "long"]:
+            reason_rows.append(
+                {
+                    "horizon": horizon.title(),
+                    "action": current_row.get(f"{horizon}_action"),
+                    "score": format_number(current_row.get(f"{horizon}_score")),
+                    "reason": current_row.get(f"{horizon}_reason"),
+                }
+            )
+        st.dataframe(pd.DataFrame(reason_rows), use_container_width=True, hide_index=True)
+
+    with tabs[5]:
+        render_symbol_snapshot_timeline(selected_symbol, snapshot_history_df)
+
+    with st.expander("Full latest row"):
+        st.dataframe(symbol_rows, use_container_width=True, height=260)
+
+
 def render_overview_page(full_df: pd.DataFrame | None, top_df: pd.DataFrame | None, snapshot_files: list[Path]) -> None:
     st.header("Overview / Latest Scan")
 
@@ -613,6 +989,20 @@ def render_overview_page(full_df: pd.DataFrame | None, top_df: pd.DataFrame | No
     filtered_top = filter_scan_df(top_df, symbol_query, asset_types, sectors, ratings, min_final_score) if not top_df.empty else pd.DataFrame()
 
     st.caption(f"Filtered rows: {len(filtered_full):,}")
+    render_symbol_quick_actions(filtered_top["symbol"].dropna().astype(str).head(8).tolist() if not filtered_top.empty else [])
+
+    if not filtered_full.empty:
+        available_symbols = filtered_full["symbol"].dropna().astype(str).tolist()
+        selected_symbol = st.selectbox(
+            "Select a symbol to inspect",
+            available_symbols,
+            index=selected_symbol_index(available_symbols),
+            key="overview_selected_symbol",
+        )
+        inspect_columns = st.columns([1, 3])
+        if inspect_columns[0].button("Open detail view", use_container_width=True):
+            open_symbol_detail(selected_symbol)
+        inspect_columns[1].caption("The same selection opens in the dedicated Symbol Detail page.")
 
     st.subheader("Top Candidates")
     if top_df.empty:
@@ -637,94 +1027,13 @@ def render_symbol_detail_page(full_df: pd.DataFrame | None, history_df: pd.DataF
         st.info("No symbols found in the latest ranking.")
         return
 
-    selected_symbol = st.selectbox("Select symbol", symbols)
-    symbol_rows = full_df[full_df["symbol"] == selected_symbol].copy()
-    current_row = symbol_rows.iloc[0]
-
-    overview_fields = {
-        "symbol": current_row.get("symbol"),
-        "price": current_row.get("price"),
-        "rating": current_row.get("rating"),
-        "setup_type": current_row.get("setup_type"),
-        "sector": current_row.get("sector"),
-        "asset_type": current_row.get("asset_type"),
-    }
-    display_key_value_table(overview_fields, "Latest Row")
-
-    st.subheader("Score Breakdown")
-    grouped_scores = [
-        ("Technical", "technical_score", score_level),
-        ("Fundamental", "fundamental_score", score_level),
-        ("Macro", "macro_score", score_level),
-        ("News", "news_score", score_level),
-        ("Risk", "risk_penalty", risk_level),
-    ]
-    score_metrics = st.columns(len(grouped_scores))
-    for index, (label, column, level_fn) in enumerate(grouped_scores):
-        value = pd.to_numeric(current_row.get(column), errors="coerce")
-        score_metrics[index].metric(
-            label,
-            f"{value:.2f}" if pd.notna(value) else "N/A",
-            level_fn(value),
-            delta_color="off",
-        )
-
-    score_data = pd.DataFrame(
-        {
-            "score_component": [label for label, _, _ in grouped_scores],
-            "value": [pd.to_numeric(current_row.get(column), errors="coerce") for _, column, _ in grouped_scores],
-        }
+    selected_symbol = st.selectbox(
+        "Select symbol",
+        symbols,
+        index=selected_symbol_index(symbols),
+        key="selected_symbol",
     )
-
-    score_chart = score_data.dropna(subset=["value"]).set_index("score_component")
-    if not score_chart.empty:
-        st.bar_chart(score_chart)
-
-    tag_data = {column: current_row.get(column) for column in TAG_COLUMNS if column in current_row.index}
-    if tag_data:
-        display_key_value_table(tag_data, "Tags / Fields")
-
-    diagnostic_data = {column: current_row.get(column) for column in DIAGNOSTIC_COLUMNS if column in current_row.index}
-    if diagnostic_data:
-        display_key_value_table(diagnostic_data, "Diagnostics")
-
-    st.subheader("Full Latest Row")
-    st.dataframe(symbol_rows, use_container_width=True, height=240)
-
-    st.subheader("Historical Snapshots")
-    if history_df.empty:
-        st.info("No historical data yet for this symbol.")
-        return
-
-    symbol_history = history_df[history_df["symbol"] == selected_symbol].copy()
-    if symbol_history.empty:
-        st.info("No historical data yet for this symbol.")
-        return
-
-    symbol_history = symbol_history.sort_values("timestamp_utc")
-    timeline_columns = [column for column in HISTORY_TIMELINE_COLUMNS if column in symbol_history.columns]
-    timeline_df = symbol_history[timeline_columns].copy()
-    timeline_df["timestamp_utc"] = timeline_df["timestamp_utc"].dt.strftime("%Y-%m-%d %H:%M:%S UTC")
-
-    final_score_chart = symbol_history.set_index("timestamp_utc")[["final_score"]].dropna() if "final_score" in symbol_history.columns else pd.DataFrame()
-    price_chart = symbol_history.set_index("timestamp_utc")[["price"]].dropna() if "price" in symbol_history.columns else pd.DataFrame()
-
-    chart_columns = st.columns(2)
-    with chart_columns[0]:
-        if not final_score_chart.empty:
-            st.caption("Final score over time")
-            st.line_chart(final_score_chart)
-        else:
-            st.info("No `final_score` history available.")
-    with chart_columns[1]:
-        if not price_chart.empty:
-            st.caption("Price over time")
-            st.line_chart(price_chart)
-        else:
-            st.info("No `price` history available.")
-
-    st.caption("History table")
-    st.dataframe(timeline_df, use_container_width=True, height=320)
+    render_symbol_detail_content(selected_symbol, full_df, history_df)
 
 
 def format_performance_display(df: pd.DataFrame) -> pd.DataFrame:
@@ -968,6 +1277,7 @@ def main() -> None:
                 "Performance Analysis",
                 "Scan History",
             ],
+            key="page",
         )
         st.caption(f"Base path: `{BASE_DIR}`")
         st.caption(f"Output path: `{OUTPUT_DIR}`")

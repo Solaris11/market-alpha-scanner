@@ -18,6 +18,7 @@ Important constraints:
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
 from dataclasses import asdict, dataclass
@@ -110,6 +111,7 @@ LOOKBACK_6M = 126
 LOOKBACK_1Y = 252
 DOWNLOAD_PERIOD = "2y"
 TOP_N = 20
+ACTION_LEVELS = ["STRONG SELL", "SELL", "WAIT / HOLD", "BUY", "STRONG BUY"]
 
 
 # -----------------------------
@@ -1156,14 +1158,34 @@ class RankedAsset:
     macro_score: float
     risk_penalty: float
     final_score: float
+    short_score: float
+    mid_score: float
+    long_score: float
     rating: str
     setup_type: str
+    short_action: str
+    mid_action: str
+    long_action: str
+    composite_action: str
+    short_reason: str
+    mid_reason: str
+    long_reason: str
+    selection_reason: str
     entry_zone: str
     invalidation_level: str
     upside_driver: str
     key_risk: str
     profitability_status: str
     valuation_flag: str
+    trailing_pe: float
+    forward_pe: float
+    revenue_growth: float
+    earnings_growth: float
+    gross_margin: float
+    operating_margin: float
+    profit_margin: float
+    debt_to_equity: float
+    return_on_equity: float
     macro_sensitivity: str
     confidence_level: str
     macro_note: str
@@ -1360,10 +1382,342 @@ def compute_risk_penalty(
 
 
 # -----------------------------
+# Horizon recommendations
+# -----------------------------
+
+def return_to_score(ret: float, upside_scale: float, downside_scale: float) -> float:
+    if np.isnan(ret):
+        return 50.0
+    scale = upside_scale if ret >= 0 else downside_scale
+    return clamp_score(50 + (ret * scale))
+
+
+def drawdown_quality_score(drawdown_pct: float) -> float:
+    if np.isnan(drawdown_pct):
+        return 50.0
+    drawdown = abs(drawdown_pct)
+    if drawdown <= 15:
+        return 82.0
+    if drawdown <= 25:
+        return 70.0
+    if drawdown <= 40:
+        return 56.0
+    if drawdown <= 55:
+        return 40.0
+    return 24.0
+
+
+def proximity_to_high_score(distance_to_high: float) -> float:
+    if np.isnan(distance_to_high):
+        return 50.0
+    return clamp_score(100 - (distance_to_high * 350))
+
+
+def build_horizon_context(df: pd.DataFrame, technical: dict[str, float], max_drawdown_pct: float) -> dict[str, float | bool]:
+    close = df["Close"].dropna()
+    last = safe_float(close.iloc[-1], np.nan)
+    sma50_value = safe_float(sma(close, 50).iloc[-1], np.nan)
+    sma200_value = safe_float(sma(close, 200).iloc[-1], np.nan)
+    ret_1m = pct_change(close, LOOKBACK_1M)
+    ret_3m = pct_change(close, LOOKBACK_3M)
+    ret_6m = pct_change(close, LOOKBACK_6M)
+    ret_1y = pct_change(close, LOOKBACK_1Y)
+    high_1y = safe_float(close.iloc[-252:].max(), np.nan) if len(close) >= 252 else safe_float(close.max(), np.nan)
+    distance_to_high = ((high_1y - last) / high_1y) if high_1y and not np.isnan(high_1y) and high_1y > 0 else np.nan
+
+    return {
+        "ret_1m": ret_1m,
+        "ret_3m": ret_3m,
+        "ret_6m": ret_6m,
+        "ret_1y": ret_1y,
+        "short_return_score": return_to_score(ret_1m, upside_scale=320, downside_scale=260),
+        "mid_return_score": return_to_score(ret_3m, upside_scale=190, downside_scale=160),
+        "long_return_score": clamp_score(
+            (return_to_score(ret_6m, upside_scale=130, downside_scale=120) * 0.55)
+            + (return_to_score(ret_1y, upside_scale=105, downside_scale=95) * 0.45)
+        ),
+        "distance_to_high": distance_to_high,
+        "proximity_score": proximity_to_high_score(distance_to_high),
+        "drawdown_quality": drawdown_quality_score(max_drawdown_pct),
+        "above_sma50": bool(not np.isnan(sma50_value) and not np.isnan(last) and last >= sma50_value),
+        "above_sma200": bool(not np.isnan(sma200_value) and not np.isnan(last) and last >= sma200_value),
+        "rsi_overbought": bool(safe_float(technical.get("current_rsi"), np.nan) >= 74),
+    }
+
+
+def score_to_action_index(score: float) -> int:
+    if score >= 82:
+        return 4
+    if score >= 68:
+        return 3
+    if score >= 52:
+        return 2
+    if score >= 38:
+        return 1
+    return 0
+
+
+def action_from_index(index: int) -> str:
+    return ACTION_LEVELS[max(0, min(index, len(ACTION_LEVELS) - 1))]
+
+
+def action_from_horizon_score(horizon: str, score: float, asset: RankedAsset, context: dict[str, float | bool]) -> str:
+    index = score_to_action_index(score)
+
+    if asset.risk_penalty >= 24:
+        index = min(index, 1)
+    elif asset.risk_penalty >= 18:
+        index = min(index, 2)
+
+    if horizon == "short":
+        if asset.momentum_score < 40 and asset.breakout_score < 40:
+            index = min(index, 1)
+        if context.get("rsi_overbought") and asset.breakout_score < 55:
+            index = min(index, 2)
+    elif horizon == "mid":
+        if asset.trend_score < 40:
+            index = min(index, 1)
+        if safe_float(context.get("ret_3m"), np.nan) < -0.08:
+            index = min(index, 1)
+    elif horizon == "long":
+        if asset.trend_score < 42 or not context.get("above_sma200", False):
+            index = min(index, 1)
+        if asset.asset_type == "EQUITY" and asset.fundamental_score < 45:
+            index = min(index, 2)
+
+    if asset.macro_score < 35 and index > 2:
+        index -= 1
+
+    return action_from_index(index)
+
+
+def rank_reason_candidates(candidates: list[tuple[bool, float, str]]) -> list[tuple[float, str]]:
+    filtered = [(weight, text) for keep, weight, text in candidates if keep and text]
+    return sorted(filtered, key=lambda item: item[0], reverse=True)
+
+
+def build_reason_text(
+    positive_candidates: list[tuple[bool, float, str]],
+    negative_candidates: list[tuple[bool, float, str]],
+    action: str,
+) -> str:
+    positives = rank_reason_candidates(positive_candidates)
+    negatives = rank_reason_candidates(negative_candidates)
+
+    chosen: list[str] = []
+    if action in {"STRONG BUY", "BUY"}:
+        chosen.extend(text for _, text in positives[:2])
+        if negatives:
+            chosen.append(negatives[0][1])
+    elif action == "WAIT / HOLD":
+        if positives:
+            chosen.append(positives[0][1])
+        if negatives:
+            chosen.append(negatives[0][1])
+    else:
+        chosen.extend(text for _, text in negatives[:2])
+        if positives:
+            chosen.append(positives[0][1])
+
+    return "; ".join(dict.fromkeys(chosen[:3])) or "mixed signal profile"
+
+
+def derive_horizon_reason(horizon: str, asset: RankedAsset, context: dict[str, float | bool], action: str) -> str:
+    if horizon == "short":
+        positives = [
+            (asset.momentum_score >= 68 or safe_float(context.get("ret_1m"), np.nan) >= 0.06, asset.momentum_score, "strong recent momentum"),
+            (asset.breakout_score >= 68, asset.breakout_score, "breakout behavior remains constructive"),
+            (asset.relative_volume_score >= 60, asset.relative_volume_score, "volume expansion supports the move"),
+            (asset.avwap_score >= 62, asset.avwap_score, "price is holding above key AVWAP support"),
+            (asset.news_score >= 56, asset.news_score, "recent news flow is supportive"),
+            (asset.macro_score >= 60, asset.macro_score, f"macro tailwind for {asset.asset_type.lower()}s"),
+        ]
+        negatives = [
+            (asset.momentum_score <= 45 or safe_float(context.get("ret_1m"), np.nan) <= -0.04, 100 - asset.momentum_score, "weak recent momentum"),
+            (asset.breakout_score <= 45, 100 - asset.breakout_score, "breakout structure is weak"),
+            (asset.risk_penalty >= 12, asset.risk_penalty * 4, "elevated volatility penalty"),
+            (asset.news_score <= 44, 100 - asset.news_score, "recent headline flow is negative"),
+            (asset.macro_score <= 40, 100 - asset.macro_score, "macro backdrop is unsupportive"),
+        ]
+    elif horizon == "mid":
+        positives = [
+            (safe_float(context.get("ret_3m"), np.nan) >= 0.10, safe_float(context.get("mid_return_score"), 50), "strong 3-month momentum"),
+            (asset.trend_score >= 68, asset.trend_score, "healthy medium-term trend structure"),
+            (asset.breakout_score >= 58 or asset.avwap_score >= 60, max(asset.breakout_score, asset.avwap_score), "pullback / breakout structure remains constructive"),
+            (asset.macro_score >= 58, asset.macro_score, "macro tailwind supports the medium-term setup"),
+            (asset.risk_penalty <= 8, 75 - asset.risk_penalty, "risk remains contained"),
+        ]
+        negatives = [
+            (safe_float(context.get("ret_3m"), np.nan) <= -0.06, 100 - safe_float(context.get("mid_return_score"), 50), "3-month momentum is weak"),
+            (asset.trend_score <= 45, 100 - asset.trend_score, "trend structure is deteriorating"),
+            (asset.risk_penalty >= 12, asset.risk_penalty * 4, "elevated volatility penalty"),
+            (asset.macro_score <= 40, 100 - asset.macro_score, "macro headwind is still present"),
+            (asset.news_score <= 44, 100 - asset.news_score, "headline flow is not helping"),
+        ]
+    else:
+        positives = [
+            (asset.trend_score >= 70 and context.get("above_sma200", False), asset.trend_score, "healthy long-term trend structure"),
+            (asset.asset_type != "EQUITY" or asset.fundamental_score >= 65, asset.fundamental_score, "strong fundamentals support the long-term case"),
+            (safe_float(context.get("distance_to_high"), np.nan) <= 0.08 and safe_float(context.get("ret_6m"), np.nan) > 0, 80 - safe_float(context.get("distance_to_high"), 0) * 100, "price is trading near the 52-week high"),
+            (asset.macro_score >= 58, asset.macro_score, "macro backdrop supports the long-term view"),
+            (safe_float(context.get("drawdown_quality"), np.nan) >= 65, safe_float(context.get("drawdown_quality"), 50), "drawdown profile is manageable"),
+        ]
+        negatives = [
+            (asset.trend_score <= 45 or not context.get("above_sma200", False), 100 - asset.trend_score, "price is below long-term trend support"),
+            (asset.asset_type == "EQUITY" and asset.fundamental_score < 45, 100 - asset.fundamental_score, "poor fundamentals weaken the long-term case"),
+            (safe_float(context.get("ret_1y"), np.nan) <= -0.05, 100 - safe_float(context.get("long_return_score"), 50), "long-term momentum is weak"),
+            (asset.risk_penalty >= 12, asset.risk_penalty * 4, "risk profile remains elevated"),
+            (safe_float(context.get("drawdown_quality"), np.nan) <= 40, 100 - safe_float(context.get("drawdown_quality"), 50), "drawdown history is still heavy"),
+        ]
+
+    return build_reason_text(positives, negatives, action)
+
+
+def apply_horizon_recommendations(asset: RankedAsset, context: dict[str, float | bool]) -> None:
+    # Keep the horizon logic separate from the base composite score so the dashboard can show each view directly.
+    short_score = clamp_score(
+        (asset.momentum_score * 0.30)
+        + (asset.breakout_score * 0.20)
+        + (asset.relative_volume_score * 0.15)
+        + (asset.avwap_score * 0.10)
+        + (safe_float(context.get("short_return_score"), 50) * 0.10)
+        + (asset.news_score * 0.10)
+        + (asset.macro_score * 0.05)
+        + (safe_float(context.get("proximity_score"), 50) * 0.05)
+        - asset.risk_penalty
+    )
+    mid_score = clamp_score(
+        (asset.trend_score * 0.26)
+        + (asset.momentum_score * 0.18)
+        + (asset.breakout_score * 0.14)
+        + (asset.avwap_score * 0.10)
+        + (safe_float(context.get("mid_return_score"), 50) * 0.12)
+        + (asset.macro_score * 0.10)
+        + (asset.fundamental_score * 0.06)
+        + (asset.news_score * 0.04)
+        - (asset.risk_penalty * 0.80)
+    )
+    long_score = clamp_score(
+        (asset.trend_score * 0.24)
+        + (asset.fundamental_score * 0.22)
+        + (asset.quality_score * 0.10)
+        + (asset.growth_score * 0.10)
+        + (asset.valuation_score * 0.06)
+        + (asset.macro_score * 0.12)
+        + (safe_float(context.get("long_return_score"), 50) * 0.10)
+        + (safe_float(context.get("drawdown_quality"), 50) * 0.06)
+        + (safe_float(context.get("proximity_score"), 50) * 0.05)
+        - (asset.risk_penalty * 0.55)
+    )
+
+    asset.short_score = round(short_score, 2)
+    asset.mid_score = round(mid_score, 2)
+    asset.long_score = round(long_score, 2)
+    asset.short_action = action_from_horizon_score("short", short_score, asset, context)
+    asset.mid_action = action_from_horizon_score("mid", mid_score, asset, context)
+    asset.long_action = action_from_horizon_score("long", long_score, asset, context)
+    asset.composite_action = action_from_index(score_to_action_index((short_score + mid_score + long_score) / 3.0))
+    asset.short_reason = derive_horizon_reason("short", asset, context, asset.short_action)
+    asset.mid_reason = derive_horizon_reason("mid", asset, context, asset.mid_action)
+    asset.long_reason = derive_horizon_reason("long", asset, context, asset.long_action)
+
+    best_horizon = max(
+        [
+            ("short-term", asset.short_score, asset.short_reason),
+            ("mid-term", asset.mid_score, asset.mid_reason),
+            ("long-term", asset.long_score, asset.long_reason),
+        ],
+        key=lambda item: item[1],
+    )
+    asset.selection_reason = f"{best_horizon[0].title()}: {best_horizon[2]}"
+
+
+def extract_detail_fundamentals(info: dict) -> dict[str, object]:
+    return {
+        "market_cap": safe_float(info.get("marketCap"), np.nan),
+        "trailing_pe": safe_float(info.get("trailingPE"), np.nan),
+        "forward_pe": safe_float(info.get("forwardPE"), np.nan),
+        "revenue_growth": safe_float(info.get("revenueGrowth"), np.nan),
+        "earnings_growth": safe_float(info.get("earningsGrowth"), np.nan),
+        "gross_margin": safe_float(info.get("grossMargins"), np.nan),
+        "operating_margin": safe_float(info.get("operatingMargins"), np.nan),
+        "profit_margin": safe_float(info.get("profitMargins"), np.nan),
+        "debt_to_equity": safe_float(info.get("debtToEquity"), np.nan),
+        "return_on_equity": safe_float(info.get("returnOnEquity"), np.nan),
+        "long_business_summary": safe_str(info.get("longBusinessSummary")),
+        "website": safe_str(info.get("website")),
+    }
+
+
+def symbol_slug(symbol: str) -> str:
+    return "".join(char if char.isalnum() or char in {"-", "_", "."} else "_" for char in symbol)
+
+
+def to_jsonable(value):
+    if isinstance(value, dict):
+        return {key: to_jsonable(val) for key, val in value.items()}
+    if isinstance(value, list):
+        return [to_jsonable(item) for item in value]
+    if isinstance(value, tuple):
+        return [to_jsonable(item) for item in value]
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    if isinstance(value, np.bool_):
+        return bool(value)
+    if isinstance(value, (np.integer,)):
+        return int(value)
+    if isinstance(value, (np.floating, float)):
+        return None if pd.isna(value) else float(value)
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except Exception:
+        pass
+    return value
+
+
+def save_symbol_detail_outputs(
+    ranked_assets: list[RankedAsset],
+    price_map: dict[str, pd.DataFrame],
+    info_cache: dict[str, dict],
+    outdir: Path,
+) -> None:
+    # These per-symbol artifacts keep the dashboard simple and avoid refetching the same price/fundamental data on every click.
+    symbols_dir = outdir / "symbols"
+    symbols_dir.mkdir(parents=True, exist_ok=True)
+    updated_at = datetime.now(timezone.utc).isoformat()
+
+    for asset in ranked_assets:
+        symbol_dir = symbols_dir / symbol_slug(asset.symbol)
+        symbol_dir.mkdir(parents=True, exist_ok=True)
+
+        price_df = price_map.get(asset.symbol)
+        if price_df is not None and not price_df.empty:
+            history_df = price_df.reset_index().rename(columns={"Date": "date"})
+            history_df.to_csv(symbol_dir / "history.csv", index=False)
+
+        payload = {
+            "symbol": asset.symbol,
+            "updated_at_utc": updated_at,
+            "summary": asdict(asset),
+            "fundamentals": extract_detail_fundamentals(info_cache.get(asset.symbol, {})),
+        }
+        (symbol_dir / "summary.json").write_text(json.dumps(to_jsonable(payload), indent=2), encoding="utf-8")
+
+
+# -----------------------------
 # Core engine
 # -----------------------------
 
-def scan_symbols(symbols: list[str], top_n: int = TOP_N, news_limit: int = DEFAULT_NEWS_LIMIT, skip_news: bool = False) -> pd.DataFrame:
+def scan_symbols(
+    symbols: list[str],
+    top_n: int = TOP_N,
+    news_limit: int = DEFAULT_NEWS_LIMIT,
+    skip_news: bool = False,
+    outdir: Optional[Path] = None,
+) -> pd.DataFrame:
     print(f"[1/5] Downloading price history for {len(symbols)} symbols...")
     price_map = batch_download(symbols, DOWNLOAD_PERIOD)
 
@@ -1378,6 +1732,8 @@ def scan_symbols(symbols: list[str], top_n: int = TOP_N, news_limit: int = DEFAU
     regime = compute_macro_regime(macro_closes)
 
     ranked: list[RankedAsset] = []
+    info_cache: dict[str, dict] = {}
+    horizon_context_cache: dict[str, dict[str, float | bool]] = {}
     ema20_cache: dict[str, float] = {}
     sma50_cache: dict[str, float] = {}
     macd_cache: dict[str, tuple[float, float]] = {}
@@ -1401,6 +1757,7 @@ def scan_symbols(symbols: list[str], top_n: int = TOP_N, news_limit: int = DEFAU
             continue
 
         info = fetch_info(symbol)
+        info_cache[symbol] = info
         asset_type = infer_asset_type(symbol, info)
         sector = infer_sector(symbol, asset_type, info)
         industry = safe_str(info.get("industry"))
@@ -1459,73 +1816,95 @@ def scan_symbols(symbols: list[str], top_n: int = TOP_N, news_limit: int = DEFAU
         ema20_cache[symbol] = ema20_value
         sma50_cache[symbol] = sma50_value
         macd_cache[symbol] = (current_macd, previous_macd)
+        horizon_context = build_horizon_context(df, technical, dd_pct)
+        horizon_context_cache[symbol] = horizon_context
 
-        ranked.append(
-            RankedAsset(
-                symbol=symbol,
-                asset_type=asset_type,
-                sector=sector,
-                industry=industry,
-                price=round(last_price, 4),
-                market_cap=round(market_cap, 2) if not np.isnan(market_cap) else np.nan,
-                avg_dollar_volume=round(avg_dollar_volume, 2),
-                dividend_yield=round(safe_float(info.get("dividendYield")), 2) if not np.isnan(safe_float(info.get("dividendYield"))) else np.nan,
-                earnings_date=earnings_date,
-                technical_score=round(technical["technical_score"], 2),
-                trend_score=technical["trend_score"],
-                supertrend_score=technical["supertrend_score"],
-                momentum_score=technical["momentum_score"],
-                breakout_score=technical["breakout_score"],
-                relative_volume_score=technical["relative_volume_score"],
-                avwap_score=technical["avwap_score"],
-                fundamental_score=safe_float(fundamentals["fundamental_score"]),
-                quality_score=safe_float(fundamentals["quality_score"]),
-                growth_score=safe_float(fundamentals["growth_score"]),
-                valuation_score=safe_float(fundamentals["valuation_score"]),
-                news_score=round(news_score, 2),
-                macro_score=round(macro_score, 2),
-                risk_penalty=round(risk_penalty, 2),
-                final_score=round(final_score, 2),
-                rating=rating,
-                setup_type=derive_setup_type(
-                    technical,
-                    last_price,
-                    technical["avwap_swing"],
-                    technical["supertrend_line"],
-                ),
-                entry_zone=derive_entry_zone(
-                    last_price,
-                    ema20_value,
-                    technical["avwap_ytd"],
-                    technical["avwap_swing"],
-                ),
-                invalidation_level=derive_invalidation_level(
-                    sma50_value,
-                    technical["supertrend_line"],
-                    technical["avwap_swing"],
-                ),
-                upside_driver=upside_driver,
-                key_risk=key_risk,
-                profitability_status=safe_str(fundamentals["profitability_status"]),
-                valuation_flag=safe_str(fundamentals["valuation_flag"]),
-                macro_sensitivity=macro_sensitivity,
-                confidence_level=derive_confidence_level(
-                    asset_type,
-                    technical["technical_score"],
-                    safe_float(fundamentals["fundamental_score"]),
-                    macro_score,
-                    news_score,
-                    risk_penalty,
-                ),
-                macro_note=macro_note,
-                headline_bias=headline_bias,
-                current_rsi=technical["current_rsi"],
-                current_macd_hist=technical["current_macd_hist"],
-                atr_pct=atr_pct,
-                annualized_volatility=ann_vol,
-                max_drawdown=dd_pct,
-            )
+        asset = RankedAsset(
+            symbol=symbol,
+            asset_type=asset_type,
+            sector=sector,
+            industry=industry,
+            price=round(last_price, 4),
+            market_cap=round(market_cap, 2) if not np.isnan(market_cap) else np.nan,
+            avg_dollar_volume=round(avg_dollar_volume, 2),
+            dividend_yield=round(safe_float(info.get("dividendYield")), 2) if not np.isnan(safe_float(info.get("dividendYield"))) else np.nan,
+            earnings_date=earnings_date,
+            technical_score=round(technical["technical_score"], 2),
+            trend_score=technical["trend_score"],
+            supertrend_score=technical["supertrend_score"],
+            momentum_score=technical["momentum_score"],
+            breakout_score=technical["breakout_score"],
+            relative_volume_score=technical["relative_volume_score"],
+            avwap_score=technical["avwap_score"],
+            fundamental_score=safe_float(fundamentals["fundamental_score"]),
+            quality_score=safe_float(fundamentals["quality_score"]),
+            growth_score=safe_float(fundamentals["growth_score"]),
+            valuation_score=safe_float(fundamentals["valuation_score"]),
+            news_score=round(news_score, 2),
+            macro_score=round(macro_score, 2),
+            risk_penalty=round(risk_penalty, 2),
+            final_score=round(final_score, 2),
+            short_score=np.nan,
+            mid_score=np.nan,
+            long_score=np.nan,
+            rating=rating,
+            setup_type=derive_setup_type(
+                technical,
+                last_price,
+                technical["avwap_swing"],
+                technical["supertrend_line"],
+            ),
+            short_action="WAIT / HOLD",
+            mid_action="WAIT / HOLD",
+            long_action="WAIT / HOLD",
+            composite_action="WAIT / HOLD",
+            short_reason="",
+            mid_reason="",
+            long_reason="",
+            selection_reason="",
+            entry_zone=derive_entry_zone(
+                last_price,
+                ema20_value,
+                technical["avwap_ytd"],
+                technical["avwap_swing"],
+            ),
+            invalidation_level=derive_invalidation_level(
+                sma50_value,
+                technical["supertrend_line"],
+                technical["avwap_swing"],
+            ),
+            upside_driver=upside_driver,
+            key_risk=key_risk,
+            profitability_status=safe_str(fundamentals["profitability_status"]),
+            valuation_flag=safe_str(fundamentals["valuation_flag"]),
+            trailing_pe=safe_float(info.get("trailingPE"), np.nan),
+            forward_pe=safe_float(info.get("forwardPE"), np.nan),
+            revenue_growth=safe_float(info.get("revenueGrowth"), np.nan),
+            earnings_growth=safe_float(info.get("earningsGrowth"), np.nan),
+            gross_margin=safe_float(info.get("grossMargins"), np.nan),
+            operating_margin=safe_float(info.get("operatingMargins"), np.nan),
+            profit_margin=safe_float(info.get("profitMargins"), np.nan),
+            debt_to_equity=safe_float(info.get("debtToEquity"), np.nan),
+            return_on_equity=safe_float(info.get("returnOnEquity"), np.nan),
+            macro_sensitivity=macro_sensitivity,
+            confidence_level=derive_confidence_level(
+                asset_type,
+                technical["technical_score"],
+                safe_float(fundamentals["fundamental_score"]),
+                macro_score,
+                news_score,
+                risk_penalty,
+            ),
+            macro_note=macro_note,
+            headline_bias=headline_bias,
+            current_rsi=technical["current_rsi"],
+            current_macd_hist=technical["current_macd_hist"],
+            atr_pct=atr_pct,
+            annualized_volatility=ann_vol,
+            max_drawdown=dd_pct,
         )
+        apply_horizon_recommendations(asset, horizon_context)
+        ranked.append(asset)
 
         if i % 15 == 0:
             print(f"    scored {i}/{len(symbols)}...")
@@ -1580,6 +1959,7 @@ def scan_symbols(symbols: list[str], top_n: int = TOP_N, news_limit: int = DEFAU
                 asset.news_score,
                 asset.risk_penalty,
             )
+            apply_horizon_recommendations(asset, horizon_context_cache.get(asset.symbol, {}))
 
     print("[5/5] Building ranking table...")
     df_rank = pd.DataFrame([asdict(x) for x in ranked])
@@ -1590,6 +1970,9 @@ def scan_symbols(symbols: list[str], top_n: int = TOP_N, news_limit: int = DEFAU
         by=["final_score", "technical_score", "macro_score"],
         ascending=[False, False, False],
     ).reset_index(drop=True)
+
+    if outdir is not None:
+        save_symbol_detail_outputs(ranked, price_map, info_cache, outdir)
 
     return df_rank
 
@@ -1621,6 +2004,9 @@ def print_top_table(df_rank: pd.DataFrame, top_n: int):
             "macro_score",
             "risk_penalty",
             "final_score",
+            "short_action",
+            "mid_action",
+            "long_action",
             "setup_type",
             "rating",
         ]
@@ -1907,7 +2293,7 @@ def main():
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
 
-    df_rank = scan_symbols(universe, top_n=args.top, news_limit=args.news_limit, skip_news=args.skip_news)
+    df_rank = scan_symbols(universe, top_n=args.top, news_limit=args.news_limit, skip_news=args.skip_news, outdir=outdir)
     if df_rank.empty:
         print("No results. Try lowering filters or changing the universe.")
         sys.exit(1)

@@ -10,6 +10,12 @@ Multi-asset market scanner that ranks equities, ETFs, crypto, and liquid proxy i
 
 This is a ranking tool for idea triage, not a prediction engine.
 
+The current version also adds:
+
+- short-term / mid-term / long-term recommendation scores
+- explainable horizon actions and reasons
+- per-symbol detail artifacts for the dashboard
+
 ## What It Measures
 
 The current scanner computes five main layers:
@@ -40,6 +46,12 @@ The current scanner computes five main layers:
   - drawdown
   - earnings proximity for equities
   - overextended momentum fade
+
+Those base layers are then reused to produce:
+
+- `short_score` / `short_action`
+- `mid_score` / `mid_action`
+- `long_score` / `long_action`
 
 ## What It Does Not Pretend To Do
 
@@ -115,6 +127,12 @@ Run with Telegram alerts enabled:
 python investment_scanner_mvp.py --save-history --send-alerts
 ```
 
+The scanner now also writes per-symbol detail artifacts automatically for the dashboard:
+
+```bash
+python investment_scanner_mvp.py --save-history
+```
+
 Run the internal dashboard:
 
 ```bash
@@ -131,6 +149,8 @@ The scanner writes:
 - `scanner_output/analysis/forward_returns.csv`
 - `scanner_output/analysis/performance_summary.csv`
 - `scanner_output/alerts/telegram_alert_state.json`
+- `scanner_output/symbols/<symbol>/history.csv`
+- `scanner_output/symbols/<symbol>/summary.json`
 
 The dashboard reads those files directly from disk. It does not maintain a separate database or modify scanner behavior.
 
@@ -208,11 +228,14 @@ The Streamlit dashboard is intended for internal operator use and provides four 
   - latest top candidates
   - latest full ranking
   - summary metrics and filters
+  - quick symbol inspection buttons
 - `Symbol Detail`
-  - current row data
-  - score breakdown
-  - tags and diagnostics
-  - score / price history when snapshots exist
+  - short / mid / long actions and scores
+  - historical price chart and table
+  - practical fundamentals
+  - recent news when available
+  - why-selected reasons
+  - scan snapshot timeline when history exists
 - `Performance Analysis`
   - grouped forward-return summary from `scanner_output/analysis/`
 - `Scan History`
@@ -244,6 +267,7 @@ Notes:
 
 - The app expects `dashboard.py` to live in the repo root.
 - It reads `scanner_output/`, `scanner_output/history/`, and `scanner_output/analysis/` using paths relative to the repo root.
+- It also reads per-symbol artifacts from `scanner_output/symbols/`.
 - If history or analysis files do not exist yet, the dashboard shows a friendly message instead of failing.
 
 The CSV schema now includes practical decision-support fields such as:
@@ -258,6 +282,16 @@ The CSV schema now includes practical decision-support fields such as:
 - `macro_score`
 - `risk_penalty`
 - `final_score`
+- `short_score`
+- `mid_score`
+- `long_score`
+- `short_action`
+- `mid_action`
+- `long_action`
+- `short_reason`
+- `mid_reason`
+- `long_reason`
+- `composite_action`
 - `setup_type`
 - `entry_zone`
 - `invalidation_level`
@@ -288,6 +322,27 @@ The final score is a weighted composite:
   - very low weight on fundamentals
 
 This is meant to keep the model explainable and avoid pretending that all asset classes should be scored the same way.
+
+## Recommendation Model
+
+Each symbol now gets three horizon recommendations:
+
+- `short-term`
+  - emphasizes recent momentum, breakout behavior, recent volume expansion, and near-term risk
+- `mid-term`
+  - emphasizes 1M / 3M trend quality, medium trend structure, pullback / breakout behavior, and macro support
+- `long-term`
+  - emphasizes 6M / 1Y trend structure, fundamentals, drawdown quality, and macro alignment
+
+The action labels are:
+
+- `STRONG BUY`
+- `BUY`
+- `WAIT / HOLD`
+- `SELL`
+- `STRONG SELL`
+
+The first version uses simple score bands plus a few guardrails so elevated risk or weak trend structure can cap otherwise noisy recommendations.
 
 ## Known Caveats
 
