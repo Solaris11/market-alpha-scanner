@@ -1,69 +1,63 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from sqlalchemy import (
+    BigInteger,
+    Column,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
+from sqlalchemy.orm import declarative_base, relationship
+from sqlalchemy.sql import func
+
+Base = declarative_base()
 
 
-@dataclass
-class RankedAsset:
-    symbol: str
-    asset_type: str
-    sector: str
-    industry: str
-    price: float
-    market_cap: float
-    avg_dollar_volume: float
-    dividend_yield: float
-    earnings_date: str
-    technical_score: float
-    trend_score: float
-    supertrend_score: float
-    momentum_score: float
-    breakout_score: float
-    relative_volume_score: float
-    avwap_score: float
-    fundamental_score: float
-    quality_score: float
-    growth_score: float
-    valuation_score: float
-    news_score: float
-    macro_score: float
-    risk_penalty: float
-    final_score: float
-    short_score: float
-    mid_score: float
-    long_score: float
-    rating: str
-    setup_type: str
-    short_action: str
-    mid_action: str
-    long_action: str
-    composite_action: str
-    short_reason: str
-    mid_reason: str
-    long_reason: str
-    selection_reason: str
-    entry_zone: str
-    invalidation_level: str
-    upside_driver: str
-    key_risk: str
-    profitability_status: str
-    valuation_flag: str
-    trailing_pe: float
-    forward_pe: float
-    revenue_growth: float
-    earnings_growth: float
-    gross_margin: float
-    operating_margin: float
-    profit_margin: float
-    debt_to_equity: float
-    return_on_equity: float
-    macro_sensitivity: str
-    confidence_level: str
-    macro_note: str
-    headline_bias: str
-    current_rsi: float
-    current_macd_hist: float
-    atr_pct: float
-    annualized_volatility: float
-    max_drawdown: float
+class ScanRun(Base):
+    __tablename__ = "scan_runs"
+    id = Column(Integer, primary_key=True)
+    timestamp_utc = Column(DateTime(timezone=True), server_default=func.now())
+    scanner_version = Column(String)
+    notes = Column(Text)
+    symbol_snapshots = relationship("SymbolSnapshot", back_populates="scan_run")
 
+
+class SymbolSnapshot(Base):
+    __tablename__ = "symbol_snapshots"
+    id = Column(Integer, primary_key=True)
+    scan_run_id = Column(Integer, ForeignKey("scan_runs.id"), nullable=False)
+    symbol = Column(String, nullable=False, index=True)
+    timestamp_utc = Column(DateTime(timezone=True), nullable=False)
+    price = Column(Float)
+    market_cap = Column(BigInteger)  # CORRECTED: Was Integer
+    avg_dollar_volume = Column(BigInteger)  # CORRECTED: Was Integer
+    asset_type = Column(String)
+    sector = Column(String)
+    rating = Column(String)
+    final_score = Column(Float)
+    scan_run = relationship("ScanRun", back_populates="symbol_snapshots")
+    __table_args__ = (UniqueConstraint("scan_run_id", "symbol", name="uq_scan_run_symbol"),)
+
+
+class PriceHistory(Base):
+    __tablename__ = "price_history"
+    id = Column(Integer, primary_key=True)
+    symbol = Column(String, nullable=False, index=True)
+    date = Column(DateTime(timezone=True), nullable=False)
+    open = Column(Float)
+    high = Column(Float)
+    low = Column(Float)
+    close = Column(Float)
+    volume = Column(BigInteger)  # CORRECTED: Was Integer
+    __table_args__ = (UniqueConstraint("symbol", "date", name="uq_symbol_date"),)
+
+
+class FundamentalSnapshot(Base):
+    __tablename__ = "fundamental_snapshots"
+    id = Column(Integer, primary_key=True)
+    symbol_snapshot_id = Column(Integer, ForeignKey("symbol_snapshots.id"), nullable=False, unique=True)
+    market_cap = Column(BigInteger)  # CORRECTED: Was Integer
