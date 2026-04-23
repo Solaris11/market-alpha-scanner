@@ -154,7 +154,16 @@ The scanner writes:
 - `scanner_output/symbols/<symbol>/history.csv`
 - `scanner_output/symbols/<symbol>/summary.json`
 
-The dashboard reads those files directly from disk. It does not maintain a separate database or modify scanner behavior.
+The scanner now also writes additive PostgreSQL records when `DATABASE_URL` is configured:
+
+- `scan_runs`
+- `symbol_snapshots`
+- `symbol_reasons`
+- `price_history`
+- `fundamental_snapshots`
+- `news_items`
+
+This is a hybrid-write phase. Existing file outputs remain the primary dashboard feed, and the dashboard still reads those files directly from disk.
 
 ## Telegram Alerts
 

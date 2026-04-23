@@ -11,6 +11,7 @@ from .repositories import (
     create_scan_run,
 )
 from .session import create_db_engine, get_engine, get_session_factory, session_scope
+from .writeback import persist_scan_dataframe
 
 __all__ = [
     "AppConfig",
@@ -30,5 +31,6 @@ __all__ = [
     "get_engine",
     "get_session_factory",
     "load_app_config",
+    "persist_scan_dataframe",
     "session_scope",
 ]

@@ -4,7 +4,11 @@ import hashlib
 from collections.abc import Mapping, Sequence
 from datetime import date, datetime, timezone
 
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 from .models import FundamentalSnapshot, NewsItem, PriceHistory, ScanRun, SymbolReason, SymbolSnapshot
 
@@ -46,18 +50,18 @@ def add_symbol_snapshot(
         scan_run_id=scan_run_id,
         symbol=str(snapshot_data.get("symbol", "")).strip(),
         asset_type=_string_or_none(snapshot_data.get("asset_type")),
-        price=snapshot_data.get("price"),
-        trend_score=snapshot_data.get("trend_score"),
-        momentum_score=snapshot_data.get("momentum_score"),
-        breakout_score=snapshot_data.get("breakout_score"),
-        rsi_macd_score=snapshot_data.get("rsi_macd_score"),
-        volume_score=snapshot_data.get("volume_score"),
-        fundamentals_score=snapshot_data.get("fundamentals_score"),
-        risk_penalty=snapshot_data.get("risk_penalty"),
-        macro_score=snapshot_data.get("macro_score"),
-        short_score=snapshot_data.get("short_score"),
-        mid_score=snapshot_data.get("mid_score"),
-        long_score=snapshot_data.get("long_score"),
+        price=_number_or_none(snapshot_data.get("price")),
+        trend_score=_number_or_none(snapshot_data.get("trend_score")),
+        momentum_score=_number_or_none(snapshot_data.get("momentum_score")),
+        breakout_score=_number_or_none(snapshot_data.get("breakout_score")),
+        rsi_macd_score=_number_or_none(snapshot_data.get("rsi_macd_score")),
+        volume_score=_number_or_none(snapshot_data.get("volume_score")),
+        fundamentals_score=_number_or_none(snapshot_data.get("fundamentals_score")),
+        risk_penalty=_number_or_none(snapshot_data.get("risk_penalty")),
+        macro_score=_number_or_none(snapshot_data.get("macro_score")),
+        short_score=_number_or_none(snapshot_data.get("short_score")),
+        mid_score=_number_or_none(snapshot_data.get("mid_score")),
+        long_score=_number_or_none(snapshot_data.get("long_score")),
         short_action=_string_or_none(snapshot_data.get("short_action")),
         mid_action=_string_or_none(snapshot_data.get("mid_action")),
         long_action=_string_or_none(snapshot_data.get("long_action")),
@@ -86,22 +90,36 @@ def add_symbol_snapshot(
 
 
 def add_price_history_rows(session: Session, *, symbol: str, rows: Sequence[Mapping[str, object]]) -> list[PriceHistory]:
-    created: list[PriceHistory] = []
+    normalized_symbol = symbol.strip()
+    payload_rows = []
     for row in rows:
-        price_row = PriceHistory(
-            symbol=symbol.strip(),
-            date=_coerce_date(row.get("date")),
-            open=row.get("open"),
-            high=row.get("high"),
-            low=row.get("low"),
-            close=row.get("close"),
-            adj_close=row.get("adj_close"),
-            volume=row.get("volume"),
+        date_value = row.get("date")
+        if date_value is None or date_value == "":
+            continue
+        payload_rows.append(
+            {
+                "symbol": normalized_symbol,
+                "date": _coerce_date(date_value),
+                "open": _number_or_none(row.get("open")),
+                "high": _number_or_none(row.get("high")),
+                "low": _number_or_none(row.get("low")),
+                "close": _number_or_none(row.get("close")),
+                "adj_close": _number_or_none(row.get("adj_close")),
+                "volume": _int_or_none(row.get("volume")),
+            }
         )
-        created.append(price_row)
-        session.add(price_row)
-    session.flush()
-    return created
+    if not payload_rows:
+        return []
+
+    _insert_ignore_rows(session, PriceHistory, payload_rows, conflict_columns=["symbol", "date"])
+
+    rows_in_db = session.scalars(
+        select(PriceHistory).where(
+            PriceHistory.symbol == normalized_symbol,
+            PriceHistory.date.in_([item["date"] for item in payload_rows]),
+        )
+    ).all()
+    return list(rows_in_db)
 
 
 def add_fundamental_snapshot(
@@ -114,13 +132,13 @@ def add_fundamental_snapshot(
     snapshot = FundamentalSnapshot(
         symbol=symbol.strip(),
         captured_at=captured_at or datetime.now(timezone.utc),
-        market_cap=data.get("market_cap"),
-        pe=data.get("pe"),
-        forward_pe=data.get("forward_pe"),
-        revenue_growth=data.get("revenue_growth"),
-        earnings_growth=data.get("earnings_growth"),
-        operating_margin=data.get("operating_margin"),
-        debt_to_equity=data.get("debt_to_equity"),
+        market_cap=_number_or_none(data.get("market_cap")),
+        pe=_number_or_none(data.get("pe")),
+        forward_pe=_number_or_none(data.get("forward_pe")),
+        revenue_growth=_number_or_none(data.get("revenue_growth")),
+        earnings_growth=_number_or_none(data.get("earnings_growth")),
+        operating_margin=_number_or_none(data.get("operating_margin")),
+        debt_to_equity=_number_or_none(data.get("debt_to_equity")),
         raw_json=data.get("raw_json"),
     )
     session.add(snapshot)
@@ -129,8 +147,8 @@ def add_fundamental_snapshot(
 
 
 def add_news_items(session: Session, *, symbol: str, items: Sequence[Mapping[str, object]]) -> list[NewsItem]:
-    created: list[NewsItem] = []
     normalized_symbol = symbol.strip()
+    payload_rows = []
     for item in items:
         title = str(item.get("title", "")).strip()
         if not title:
@@ -142,19 +160,25 @@ def add_news_items(session: Session, *, symbol: str, items: Sequence[Mapping[str
             url=item.get("url"),
             published_at=published_at,
         )
-        news_item = NewsItem(
-            symbol=normalized_symbol,
-            published_at=published_at,
-            source=_string_or_none(item.get("source")),
-            title=title,
-            url=_string_or_none(item.get("url")),
-            summary=_string_or_none(item.get("summary")),
-            fingerprint=fingerprint,
+        payload_rows.append(
+            {
+                "symbol": normalized_symbol,
+                "published_at": published_at,
+                "source": _string_or_none(item.get("source")),
+                "title": title,
+                "url": _string_or_none(item.get("url")),
+                "summary": _string_or_none(item.get("summary")),
+                "fingerprint": fingerprint,
+            }
         )
-        created.append(news_item)
-        session.add(news_item)
-    session.flush()
-    return created
+    if not payload_rows:
+        return []
+
+    _insert_ignore_rows(session, NewsItem, payload_rows, conflict_columns=["fingerprint"])
+    rows_in_db = session.scalars(
+        select(NewsItem).where(NewsItem.fingerprint.in_([item["fingerprint"] for item in payload_rows]))
+    ).all()
+    return list(rows_in_db)
 
 
 def build_news_fingerprint(symbol: str, *, title: str, url: object = None, published_at: datetime | None = None) -> str:
@@ -172,7 +196,7 @@ def _coerce_datetime(value: object) -> datetime | None:
     if value is None or value == "":
         return None
     if isinstance(value, datetime):
-        return value
+        return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
     return datetime.fromisoformat(str(value).replace("Z", "+00:00"))
 
 
@@ -182,3 +206,47 @@ def _coerce_date(value: object) -> date:
     if isinstance(value, datetime):
         return value.date()
     return date.fromisoformat(str(value))
+
+
+def _number_or_none(value: object):
+    if value is None:
+        return None
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        return None
+    return None if numeric != numeric else numeric
+
+
+def _int_or_none(value: object) -> int | None:
+    if value is None:
+        return None
+    try:
+        numeric = int(value)
+    except (TypeError, ValueError):
+        return None
+    return numeric
+
+
+def _insert_ignore_rows(session: Session, model, rows: Sequence[Mapping[str, object]], conflict_columns: Sequence[str]) -> None:
+    if not rows:
+        return
+
+    dialect_name = session.bind.dialect.name if session.bind is not None else ""
+    if dialect_name == "postgresql":
+        statement = pg_insert(model).values(list(rows)).on_conflict_do_nothing(index_elements=list(conflict_columns))
+        session.execute(statement)
+        session.flush()
+        return
+    if dialect_name == "sqlite":
+        statement = sqlite_insert(model).values(list(rows)).on_conflict_do_nothing(index_elements=list(conflict_columns))
+        session.execute(statement)
+        session.flush()
+        return
+
+    for row in rows:
+        try:
+            session.add(model(**dict(row)))
+            session.flush()
+        except IntegrityError:
+            session.rollback()

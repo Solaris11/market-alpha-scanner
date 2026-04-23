@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -10,7 +11,7 @@ import pandas as pd
 
 from .artifacts import save_symbol_detail_outputs
 from .config import DEFAULT_NEWS_LIMIT, DOWNLOAD_PERIOD, MACRO_SYMBOLS, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE, TOP_N
-from .data_fetch import batch_download, fetch_info, fetch_recent_news_score
+from .data_fetch import batch_download, fetch_info, fetch_recent_news_items, fetch_recent_news_score
 from .models import RankedAsset
 from .scoring import (
     apply_horizon_recommendations,
@@ -44,6 +45,7 @@ def scan_symbols(
     min_avg_dollar_volume: float = MIN_AVG_DOLLAR_VOL,
     min_market_cap: float = MIN_MARKET_CAP,
 ) -> pd.DataFrame:
+    started_at = datetime.now(timezone.utc)
     print(f"[1/5] Downloading price history for {len(symbols)} symbols...")
     price_map = batch_download(symbols, DOWNLOAD_PERIOD)
 
@@ -60,6 +62,8 @@ def scan_symbols(
     info_cache: dict[str, dict] = {}
     horizon_context_cache: dict[str, dict[str, float | bool]] = {}
     macd_cache: dict[str, tuple[float, float]] = {}
+    news_cache: dict[str, list[dict[str, object]]] = {}
+    scanned_count = 0
 
     print("[3/5] Scoring symbols...")
     for i, symbol in enumerate(symbols, start=1):
@@ -80,6 +84,7 @@ def scan_symbols(
 
         info = fetch_info(symbol)
         info_cache[symbol] = info
+        scanned_count += 1
         asset_type = infer_asset_type(symbol, info)
         sector = infer_sector(symbol, asset_type, info)
         industry = safe_str(info.get("industry"))
@@ -190,7 +195,9 @@ def scan_symbols(
             if asset.asset_type not in {"EQUITY", "CRYPTO", "CRYPTO_PROXY"}:
                 asset.headline_bias = "skipped for asset type"
                 continue
-            news_score, headline_bias, top_event, headline_risk = fetch_recent_news_score(asset.symbol)
+            news_items = fetch_recent_news_items(asset.symbol)
+            news_cache[asset.symbol] = news_items
+            news_score, headline_bias, top_event, headline_risk = fetch_recent_news_score(asset.symbol, items=news_items)
             current_macd, previous_macd = macd_cache.get(asset.symbol, (np.nan, np.nan))
             asset.news_score = round(news_score, 2)
             asset.headline_bias = headline_bias
@@ -206,6 +213,14 @@ def scan_symbols(
     if df_rank.empty:
         return df_rank
     df_rank = df_rank.sort_values(by=["final_score", "technical_score", "macro_score"], ascending=[False, False, False]).reset_index(drop=True)
+    df_rank.attrs["ranked_assets"] = ranked
+    df_rank.attrs["price_map"] = price_map
+    df_rank.attrs["info_cache"] = info_cache
+    df_rank.attrs["news_cache"] = news_cache
+    df_rank.attrs["requested_universe"] = symbols
+    df_rank.attrs["scanned_count"] = scanned_count
+    df_rank.attrs["scan_started_at"] = started_at
+    df_rank.attrs["scan_completed_at"] = datetime.now(timezone.utc)
 
     if outdir is not None:
         save_symbol_detail_outputs(ranked, price_map, info_cache, outdir)

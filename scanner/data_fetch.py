@@ -109,10 +109,47 @@ def fetch_info(symbol: str) -> dict:
         return {}
 
 
-def fetch_recent_news_score(symbol: str, lookback_days: int = 7, max_items: int = 6) -> tuple[float, str, str, str]:
+def fetch_recent_news_items(symbol: str, lookback_days: int = 7, max_items: int = 6) -> list[dict[str, object]]:
     try:
         items = yf.Ticker(symbol).news or []
     except Exception:
+        return []
+
+    normalized_items: list[dict[str, object]] = []
+    for item in items:
+        content = item.get("content", {})
+        canonical = item.get("canonicalUrl", {})
+        title = safe_str(content.get("title"))
+        summary = safe_str(content.get("summary"))
+        if not title and not summary:
+            continue
+
+        age_days = headline_age_days(content.get("pubDate"))
+        if age_days is None or age_days < 0 or age_days > lookback_days:
+            continue
+
+        normalized_items.append(
+            {
+                "title": title,
+                "summary": summary,
+                "source": safe_str(content.get("provider", {}).get("displayName")),
+                "url": safe_str(canonical.get("url")),
+                "published_at": content.get("pubDate"),
+            }
+        )
+        if len(normalized_items) >= max_items:
+            break
+    return normalized_items
+
+
+def fetch_recent_news_score(
+    symbol: str,
+    lookback_days: int = 7,
+    max_items: int = 6,
+    items: list[dict[str, object]] | None = None,
+) -> tuple[float, str, str, str]:
+    items = items if items is not None else fetch_recent_news_items(symbol, lookback_days=lookback_days, max_items=max_items)
+    if not items:
         return 50.0, "no recent headline signal", "", ""
 
     positive = 0.0
@@ -122,15 +159,12 @@ def fetch_recent_news_score(symbol: str, lookback_days: int = 7, max_items: int 
     scanned = 0
 
     for item in items:
-        content = item.get("content", {})
-        title = safe_str(content.get("title")).lower()
-        summary = safe_str(content.get("summary")).lower()
+        title = safe_str(item.get("title")).lower()
+        summary = safe_str(item.get("summary")).lower()
         if not title and not summary:
             continue
 
-        age_days = headline_age_days(content.get("pubDate"))
-        if age_days is None or age_days < 0 or age_days > lookback_days:
-            continue
+        age_days = headline_age_days(item.get("published_at")) or 0
 
         decay = 1.0 if age_days <= 2 else 0.65 if age_days <= 5 else 0.40
         text = f"{title} {summary}"
@@ -147,13 +181,6 @@ def fetch_recent_news_score(symbol: str, lookback_days: int = 7, max_items: int 
                 negative += weight * decay
                 if not key_risk:
                     key_risk = term
-
-        if scanned >= max_items:
-            break
-
-    if scanned == 0:
-        return 50.0, "no recent headline signal", "", ""
-
     score = max(0.0, min(100.0, 50 + positive - negative))
     bias = "positive headlines" if score > 56 else "negative headlines" if score < 44 else "mixed headlines"
     return score, bias, top_event.replace("_", " "), key_risk.replace("_", " ")

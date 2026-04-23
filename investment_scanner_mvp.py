@@ -13,6 +13,7 @@ import sys
 from pathlib import Path
 
 from alerts import process_telegram_alerts
+from database import persist_scan_dataframe
 from scanner.analysis import analyze_performance, compute_forward_returns
 from scanner.config import DEFAULT_NEWS_LIMIT, DEFAULT_UNIVERSE, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE
 from scanner.engine import load_universe_from_csv, scan_symbols
@@ -74,6 +75,24 @@ def main():
     print(f"Saved top {args.top} to: {top_path}")
     if history_path is not None:
         print(f"Saved scan snapshot to: {history_path}")
+
+    db_notes = f"skip_news={args.skip_news}; news_limit={args.news_limit}; outdir={outdir}"
+    try:
+        db_result = persist_scan_dataframe(df_rank, scanner_version="market-alpha-scanner", notes=db_notes)
+        if db_result.get("enabled"):
+            print(
+                "Wrote database rows:"
+                f" scan_runs={db_result['scan_runs']},"
+                f" symbol_snapshots={db_result['symbol_snapshots']},"
+                f" symbol_reasons={db_result['symbol_reasons']},"
+                f" price_history={db_result['price_history']},"
+                f" fundamental_snapshots={db_result['fundamental_snapshots']},"
+                f" news_items={db_result['news_items']}"
+            )
+        else:
+            print(f"Skipping database write: {db_result.get('reason', 'DATABASE_URL not configured')}")
+    except Exception as exc:
+        print(f"Warning: database write skipped due to error: {exc}")
 
     if args.send_alerts:
         process_telegram_alerts(df_rank, outdir)
