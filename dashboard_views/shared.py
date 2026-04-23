@@ -591,7 +591,7 @@ def display_table(df: pd.DataFrame, preferred_columns: list[str], height: int = 
         number_formats["volume"] = "{:,.0f}"
 
     try:
-        styler = display_df.style.format(number_formats, na_rep="—")
+        styler = display_df.style.format(cast(Any, number_formats), na_rep="—")
         gradient_columns = [
             column
             for column in ["final_score", "short_score", "mid_score", "long_score", "technical_score", "fundamental_score", "macro_score", "news_score"]
@@ -599,7 +599,7 @@ def display_table(df: pd.DataFrame, preferred_columns: list[str], height: int = 
         ]
         if gradient_columns:
             styler = styler.background_gradient(
-                subset=gradient_columns,
+                subset=cast(Any, gradient_columns),
                 cmap="RdYlGn",
                 low=0.25,
                 high=0.2,
@@ -607,13 +607,13 @@ def display_table(df: pd.DataFrame, preferred_columns: list[str], height: int = 
                 vmax=100,
             )
         if "rating" in display_df.columns:
-            styler = styler.map(_style_rating, subset=["rating"])
+            styler = cast(Any, styler).map(_style_rating, subset=["rating"])
         action_columns = [column for column in ["composite_action", "short_action", "mid_action", "long_action"] if column in display_df.columns]
         if action_columns:
-            styler = styler.map(_style_action, subset=action_columns)
+            styler = cast(Any, styler).map(_style_action, subset=action_columns)
         if highlight_top and "rating" in display_df.columns:
             styler = styler.apply(highlight_top_rows, axis=1)
-        styler = styler.set_properties(
+        styler = cast(Any, styler).set_properties(
             **{
                 "background-color": "rgba(15, 23, 42, 0.88)",
                 "color": "#e2e8f0",
@@ -623,7 +623,7 @@ def display_table(df: pd.DataFrame, preferred_columns: list[str], height: int = 
         )
         numeric_columns = [column for column in display_df.columns if pd.api.types.is_numeric_dtype(display_df[column])]
         if numeric_columns:
-            styler = styler.set_properties(subset=numeric_columns, **{"text-align": "right"})
+            styler = cast(Any, styler).set_properties(subset=numeric_columns, **{"text-align": "right"})
         styler = styler.hide(axis="index")
         st.dataframe(styler, use_container_width=True, height=height)
     except Exception:
