@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from typing import cast
 
 import pandas as pd
 import streamlit as st
@@ -167,7 +168,8 @@ def _build_trade_plan(current_row: pd.Series, history_df: pd.DataFrame) -> dict[
         else:
             entry_status = "below"
             entry_distance_pct = _percent_change(current_price, entry_low)
-            entry_context = f"Current price is {format_number(abs(entry_distance_pct))}% below entry zone"
+            below_distance = abs(entry_distance_pct) if entry_distance_pct is not None else None
+            entry_context = f"Current price is {format_number(below_distance)}% below entry zone"
 
     risk_to_invalidation_pct: float | None = None
     invalidation_context = "Invalidation unavailable"
@@ -455,9 +457,10 @@ def _build_reason_groups(
         + [item for item in all_reasons if any(term in item.lower() for term in NEGATIVE_REASON_TERMS)]
     )
 
-    supporting_evidence = _dedupe(list(confidence.get("aligned", [])) + short_reasons[:1] + mid_reasons[:1] + long_reasons[:1])
+    aligned_items = cast(list[str], confidence.get("aligned", []))
+    supporting_evidence = _dedupe(aligned_items + short_reasons[:1] + mid_reasons[:1] + long_reasons[:1])
 
-    caution_flags = _dedupe(list(confidence.get("conflicts", [])))
+    caution_flags = _dedupe(cast(list[str], confidence.get("conflicts", [])))
     risk_reward = trade_plan.get("risk_reward")
     if isinstance(risk_reward, float) and risk_reward < 1.5:
         caution_flags.append("risk/reward is not yet compelling")
@@ -580,8 +583,8 @@ def render_confidence_panel(confidence: dict[str, object]) -> None:
         )
     with right:
         st.markdown(f"**Confidence Note**: {confidence.get('summary', 'No confidence summary available.')}")
-        aligned = list(confidence.get("aligned", []))
-        conflicts = list(confidence.get("conflicts", []))
+        aligned = cast(list[str], confidence.get("aligned", []))
+        conflicts = cast(list[str], confidence.get("conflicts", []))
         if aligned:
             st.caption("Aligned inputs")
             st.markdown("<ul class='scanner-reason-list'>" + "".join(f"<li>{item}</li>" for item in aligned) + "</ul>", unsafe_allow_html=True)
