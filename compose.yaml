@@ -55,6 +55,26 @@ services:
     networks:
       - market-alpha-scanner-private
 
+  market-alpha-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      market-alpha-postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://market_alpha:change_me_before_production@market-alpha-postgres:5432/market_alpha}
+    command:
+      - "uvicorn"
+      - "api.main:app"
+      - "--host=0.0.0.0"
+      - "--port=8000"
+    ports:
+      - "${API_HOST_PORT:-18000}:8000"
+    networks:
+      - market-alpha-scanner-private
+
 networks:
   market-alpha-scanner-private:
     name: market-alpha-scanner-private
