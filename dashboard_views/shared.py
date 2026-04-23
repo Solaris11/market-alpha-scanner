@@ -548,15 +548,15 @@ def render_watchlist_panel(
             st.rerun()
 
 
-def render_symbol_quick_actions(symbols: list[str]) -> None:
+def render_symbol_quick_actions(symbols: list[str], key_prefix: str = "quick") -> None:
     if not symbols:
         return
     render_section_heading("Quick Access", "Jump directly into a visible name.", eyebrow="Workflow")
     for start in range(0, min(len(symbols), 12), 4):
         row_symbols = symbols[start : start + 4]
         columns = st.columns(len(row_symbols))
-        for column, symbol in zip(columns, row_symbols):
-            if column.button(symbol, key=f"inspect_{symbol}", use_container_width=True):
+        for index, (column, symbol) in enumerate(zip(columns, row_symbols)):
+            if column.button(symbol, key=f"{key_prefix}_inspect_{start}_{index}_{symbol}", use_container_width=True):
                 open_symbol_detail(symbol)
 
 

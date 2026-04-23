@@ -178,7 +178,7 @@ def render_ranking_overview(filtered_full: pd.DataFrame) -> None:
         _summary_card("Average Score", format_number(average_score), "Across the filtered universe", "neutral")
 
     visible_symbols = ordered["symbol"].dropna().astype(str).str.strip().tolist() if "symbol" in ordered.columns else []
-    render_symbol_quick_actions(visible_symbols[:8])
+    render_symbol_quick_actions(visible_symbols[:8], key_prefix="overview")
 
     if visible_symbols:
         selected_symbol = st.selectbox(
