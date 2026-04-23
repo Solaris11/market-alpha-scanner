@@ -1,0 +1,69 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+
+@dataclass
+class RankedAsset:
+    symbol: str
+    asset_type: str
+    sector: str
+    industry: str
+    price: float
+    market_cap: float
+    avg_dollar_volume: float
+    dividend_yield: float
+    earnings_date: str
+    technical_score: float
+    trend_score: float
+    supertrend_score: float
+    momentum_score: float
+    breakout_score: float
+    relative_volume_score: float
+    avwap_score: float
+    fundamental_score: float
+    quality_score: float
+    growth_score: float
+    valuation_score: float
+    news_score: float
+    macro_score: float
+    risk_penalty: float
+    final_score: float
+    short_score: float
+    mid_score: float
+    long_score: float
+    rating: str
+    setup_type: str
+    short_action: str
+    mid_action: str
+    long_action: str
+    composite_action: str
+    short_reason: str
+    mid_reason: str
+    long_reason: str
+    selection_reason: str
+    entry_zone: str
+    invalidation_level: str
+    upside_driver: str
+    key_risk: str
+    profitability_status: str
+    valuation_flag: str
+    trailing_pe: float
+    forward_pe: float
+    revenue_growth: float
+    earnings_growth: float
+    gross_margin: float
+    operating_margin: float
+    profit_margin: float
+    debt_to_equity: float
+    return_on_equity: float
+    macro_sensitivity: str
+    confidence_level: str
+    macro_note: str
+    headline_bias: str
+    current_rsi: float
+    current_macd_hist: float
+    atr_pct: float
+    annualized_volatility: float
+    max_drawdown: float
+
