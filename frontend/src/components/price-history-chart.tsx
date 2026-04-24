@@ -8,6 +8,12 @@ type HistoryRow = Record<string, ScannerScalar>;
 type PeriodKey = "1d" | "1wk" | "1mo" | "6mo" | "ytd" | "1y" | "5y" | "max";
 type ApiPayload = {
   ok: boolean;
+  requested_period?: string;
+  yf_period?: string;
+  yf_interval?: string;
+  point_count?: number;
+  start_date?: string | null;
+  end_date?: string | null;
   rows?: HistoryRow[];
   error?: string;
 };
@@ -53,8 +59,8 @@ function lowValue(row: HistoryRow, close: number) {
   return numeric(row.low) ?? close;
 }
 
-function pointsFromRows(rows: HistoryRow[], period = "1y") {
-  const parsed = rows
+function pointsFromRows(rows: HistoryRow[]) {
+  return rows
     .map((row) => {
       const date = dateValue(row);
       const close = closeValue(row);
@@ -64,21 +70,57 @@ function pointsFromRows(rows: HistoryRow[], period = "1y") {
     })
     .filter((point): point is Point => point !== null)
     .sort((a, b) => a.time - b.time);
-
-  if (!parsed.length || period === "all") return parsed;
-
-  const latest = parsed[parsed.length - 1].time;
-  const days = period === "1m" ? 31 : period === "3m" ? 93 : period === "6m" ? 186 : period === "2y" ? 730 : 365;
-  const cutoff = latest - days * 24 * 60 * 60 * 1000;
-  return parsed.filter((point) => point.time >= cutoff);
 }
 
-export function PriceHistoryChart({ symbol, initialRows, defaultPeriod = "1y" }: { symbol: string; initialRows: HistoryRow[]; defaultPeriod?: PeriodKey }) {
+function axisFormatter(period: PeriodKey) {
+  if (period === "1d") {
+    return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
+  }
+  if (period === "1wk") {
+    return new Intl.DateTimeFormat(undefined, { weekday: "short" });
+  }
+  if (period === "1mo") {
+    return new Intl.DateTimeFormat(undefined, { month: "2-digit", day: "2-digit" });
+  }
+  if (["6mo", "ytd", "1y"].includes(period)) {
+    return new Intl.DateTimeFormat(undefined, { month: "short" });
+  }
+  return new Intl.DateTimeFormat(undefined, { year: "numeric" });
+}
+
+function dateTimeFormatter(period: PeriodKey) {
+  if (period === "1d") {
+    return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+  if (period === "1wk") {
+    return new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", hour: "2-digit" });
+  }
+  return new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric" });
+}
+
+function xAxisTicks(points: Point[], period: PeriodKey, width: number, paddingLeft: number, paddingRight: number) {
+  if (!points.length) return [];
+  const count = Math.min(6, points.length);
+  const formatter = axisFormatter(period);
+  const minTime = points[0].time;
+  const maxTime = points[points.length - 1].time;
+  const timeSpan = Math.max(1, maxTime - minTime);
+  const ticks = Array.from({ length: count }, (_value, index) => {
+    const pointIndex = count === 1 ? 0 : Math.round((index / (count - 1)) * (points.length - 1));
+    const point = points[pointIndex];
+    const x = points.length === 1 ? width / 2 : paddingLeft + ((point.time - minTime) / timeSpan) * (width - paddingLeft - paddingRight);
+    return { x, label: formatter.format(new Date(point.time)), key: `${point.time}-${index}` };
+  });
+  return ticks.filter((tick, index) => index === 0 || tick.label !== ticks[index - 1].label);
+}
+
+export function PriceHistoryChart({ symbol, initialRows = [], defaultPeriod = "1y" }: { symbol: string; initialRows?: HistoryRow[]; defaultPeriod?: PeriodKey }) {
   const [period, setPeriod] = useState<PeriodKey>(defaultPeriod);
   const [rows, setRows] = useState<HistoryRow[]>(initialRows);
+  const [metadata, setMetadata] = useState<ApiPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const points = useMemo(() => pointsFromRows(rows, period), [period, rows]);
+  const points = useMemo(() => pointsFromRows(rows), [rows]);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,10 +134,12 @@ export function PriceHistoryChart({ symbol, initialRows, defaultPeriod = "1y" }:
         if (cancelled) return;
         if (!response.ok || !payload.ok || !payload.rows?.length) {
           setRows([]);
+          setMetadata(payload);
           setError(payload.error || "No price history returned for this range.");
           return;
         }
         setRows(payload.rows);
+        setMetadata(payload);
       } catch (requestError) {
         if (!cancelled) {
           setRows([]);
@@ -124,18 +168,22 @@ export function PriceHistoryChart({ symbol, initialRows, defaultPeriod = "1y" }:
   }
 
   const width = 680;
-  const height = 220;
-  const paddingX = 26;
-  const paddingY = 20;
+  const chartHeight = 220;
+  const height = 250;
+  const paddingLeft = 32;
+  const paddingRight = 54;
+  const paddingY = 18;
   const minTime = Math.min(...points.map((point) => point.time));
   const maxTime = Math.max(...points.map((point) => point.time));
   const minClose = Math.min(...points.map((point) => point.close));
   const maxClose = Math.max(...points.map((point) => point.close));
   const timeSpan = Math.max(1, maxTime - minTime);
   const priceSpan = Math.max(0.01, maxClose - minClose);
+  const yForPrice = (value: number) =>
+    points.length === 1 ? chartHeight / 2 : chartHeight - paddingY - ((value - minClose) / priceSpan) * (chartHeight - paddingY * 2);
   const plotted = points.map((point, index) => {
-    const x = points.length === 1 ? width / 2 : paddingX + ((point.time - minTime) / timeSpan) * (width - paddingX * 2);
-    const y = points.length === 1 ? height / 2 : height - paddingY - ((point.close - minClose) / priceSpan) * (height - paddingY * 2);
+    const x = points.length === 1 ? width / 2 : paddingLeft + ((point.time - minTime) / timeSpan) * (width - paddingLeft - paddingRight);
+    const y = yForPrice(point.close);
     return { ...point, x, y, index };
   });
   const path = plotted.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
@@ -146,6 +194,14 @@ export function PriceHistoryChart({ symbol, initialRows, defaultPeriod = "1y" }:
   const periodHigh = Math.max(...points.map((point) => point.high));
   const periodLow = Math.min(...points.map((point) => point.low));
   const positive = change >= 0;
+  const ticks = xAxisTicks(points, period, width, paddingLeft, paddingRight);
+  const yTicks = [
+    { value: maxClose, y: yForPrice(maxClose) },
+    { value: minClose + priceSpan / 2, y: yForPrice(minClose + priceSpan / 2) },
+    { value: minClose, y: yForPrice(minClose) },
+  ];
+  const tooltipFormatter = dateTimeFormatter(period);
+  const pointCount = metadata?.point_count ?? points.length;
 
   return (
     <div className="mt-3">
@@ -168,14 +224,39 @@ export function PriceHistoryChart({ symbol, initialRows, defaultPeriod = "1y" }:
       </div>
       <div className="overflow-x-auto rounded border border-slate-800/90 bg-slate-950/40 p-2">
         <div className="mb-1 flex items-center justify-between text-[11px] text-slate-500">
-          <span>{loading ? "Refreshing..." : `${points.length.toLocaleString()} points`}</span>
-          <span>{PERIODS.find((item) => item.key === period)?.label}</span>
+          <span>{loading ? "Refreshing..." : `${pointCount.toLocaleString()} points`}</span>
+          <span>
+            Close price · {metadata?.yf_period ?? period} / {metadata?.yf_interval ?? "artifact"}
+          </span>
         </div>
         <svg className="min-w-[680px]" height={height} role="img" viewBox={`0 0 ${width} ${height}`} width="100%">
-          <title>Price history</title>
-          <line stroke="rgba(148,163,184,0.20)" x1={paddingX} x2={width - paddingX} y1={height - paddingY} y2={height - paddingY} />
-          <line stroke="rgba(148,163,184,0.20)" x1={paddingX} x2={paddingX} y1={paddingY} y2={height - paddingY} />
+          <title>Price History - close price</title>
+          <line stroke="rgba(148,163,184,0.20)" x1={paddingLeft} x2={width - paddingRight} y1={chartHeight - paddingY} y2={chartHeight - paddingY} />
+          <line stroke="rgba(148,163,184,0.20)" x1={paddingLeft} x2={paddingLeft} y1={paddingY} y2={chartHeight - paddingY} />
+          {yTicks.map((tick) => (
+            <g key={tick.value}>
+              <line stroke="rgba(148,163,184,0.10)" x1={paddingLeft} x2={width - paddingRight} y1={tick.y} y2={tick.y} />
+              <text fill="rgb(100,116,139)" fontSize="10" textAnchor="end" x={width - 4} y={tick.y + 3}>
+                {formatNumber(tick.value)}
+              </text>
+            </g>
+          ))}
           <path d={path} fill="none" stroke={positive ? "rgb(52,211,153)" : "rgb(251,113,133)"} strokeWidth="2.2" />
+          {ticks.map((tick) => (
+            <g key={tick.key}>
+              <line stroke="rgba(148,163,184,0.16)" x1={tick.x} x2={tick.x} y1={chartHeight - paddingY} y2={chartHeight - paddingY + 5} />
+              <text fill="rgb(100,116,139)" fontSize="11" textAnchor="middle" x={tick.x} y={chartHeight + 10}>
+                {tick.label}
+              </text>
+            </g>
+          ))}
+          {plotted.map((point) => (
+            <circle cx={point.x} cy={point.y} fill="transparent" key={point.index} r="5">
+              <title>
+                {tooltipFormatter.format(new Date(point.time))} close {formatNumber(point.close)}
+              </title>
+            </circle>
+          ))}
           {plotted.length === 1 ? <circle cx={plotted[0].x} cy={plotted[0].y} fill="rgb(226,232,240)" r="3" /> : null}
         </svg>
       </div>

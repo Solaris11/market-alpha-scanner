@@ -384,7 +384,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
 
             <section className="terminal-panel rounded-md p-4">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Price History</div>
-              <PriceHistoryChart symbol={row.symbol} initialRows={detail.history} defaultPeriod="1y" />
+              <PriceHistoryChart symbol={row.symbol} defaultPeriod="1y" />
             </section>
           </div>
 

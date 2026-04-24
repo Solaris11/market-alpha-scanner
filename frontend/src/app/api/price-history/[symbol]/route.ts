@@ -7,6 +7,12 @@ type PriceHistoryPayload = {
   ok: boolean;
   symbol: string;
   period: string;
+  requested_period?: string;
+  yf_period?: string;
+  yf_interval?: string;
+  point_count?: number;
+  start_date?: string | null;
+  end_date?: string | null;
   interval?: string;
   rows: Record<string, unknown>[];
   error?: string;
