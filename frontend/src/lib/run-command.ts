@@ -1,37 +1,34 @@
 import "server-only";
 
 import { execFile } from "node:child_process";
-import fs from "node:fs";
-import path from "node:path";
 
 type RunResult = {
   ok: boolean;
   command: string;
-  message: string;
+  cwd: string;
   stdout: string;
   stderr: string;
-  code: number | null;
+  exitCode: number | null;
+  error?: string;
 };
 
 const DEFAULT_SCANNER_ROOT = "/opt/apps/market-alpha-scanner/app";
 const DEFAULT_PYTHON_BIN = "/opt/apps/market-alpha-scanner/venv/bin/python";
 
 function projectRoot() {
-  if (process.env.SCANNER_ROOT) return process.env.SCANNER_ROOT;
-  if (fs.existsSync(DEFAULT_SCANNER_ROOT)) return DEFAULT_SCANNER_ROOT;
-  return path.resolve(/*turbopackIgnore: true*/ process.cwd(), "..");
+  return process.env.SCANNER_ROOT ?? DEFAULT_SCANNER_ROOT;
 }
 
 function pythonBin() {
-  if (process.env.PYTHON_BIN) return process.env.PYTHON_BIN;
-  if (fs.existsSync(DEFAULT_PYTHON_BIN)) return DEFAULT_PYTHON_BIN;
-  return process.env.SCANNER_PYTHON_BIN ?? "python3";
+  return process.env.PYTHON_BIN ?? DEFAULT_PYTHON_BIN;
 }
 
 export async function runPythonCommand(args: string[]): Promise<RunResult> {
   const python = pythonBin();
   const cwd = projectRoot();
   const command = [python, ...args].join(" ");
+  console.log("[scanner-action] command:", command);
+  console.log("[scanner-action] cwd:", cwd);
 
   return new Promise((resolve) => {
     execFile(
@@ -45,29 +42,29 @@ export async function runPythonCommand(args: string[]): Promise<RunResult> {
       (error, stdout, stderr) => {
         if (error) {
           const nodeError = error as NodeJS.ErrnoException & { code?: string | number | null };
-          const code = typeof nodeError.code === "number" ? nodeError.code : null;
-          const message =
-            nodeError.code === "ENOENT"
-              ? `Python executable was not found: ${python}`
-              : `Command failed in ${cwd}: ${error.message}`;
+          const exitCode = typeof nodeError.code === "number" ? nodeError.code : null;
+          const message = nodeError.code === "ENOENT" ? `Python executable was not found: ${python}` : error.message;
+          console.log("[scanner-action] exit code:", exitCode ?? nodeError.code ?? "unknown");
           resolve({
             ok: false,
             command,
-            message,
+            cwd,
             stdout,
             stderr,
-            code,
+            exitCode,
+            error: message,
           });
           return;
         }
 
+        console.log("[scanner-action] exit code:", 0);
         resolve({
           ok: true,
           command,
-          message: `Command completed successfully in ${cwd}.`,
+          cwd,
           stdout,
           stderr,
-          code: 0,
+          exitCode: 0,
         });
       },
     );

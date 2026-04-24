@@ -13,6 +13,12 @@ function uniqueOptions(rows: RankingRow[], key: keyof RankingRow) {
   return Array.from(new Set(rows.map((row) => String(row[key] ?? "").trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b));
 }
 
+function matchesText(value: unknown, query: string) {
+  return String(value ?? "")
+    .toLowerCase()
+    .includes(query);
+}
+
 export function OverviewWorkspace({ ranking, topCandidates }: Props) {
   const [symbolSearch, setSymbolSearch] = useState("");
   const [assetType, setAssetType] = useState("");
@@ -27,26 +33,26 @@ export function OverviewWorkspace({ ranking, topCandidates }: Props) {
   }, [assetType, ranking]);
   const ratings = useMemo(() => uniqueOptions(ranking, "rating"), [ranking]);
 
-  const filterRow = useMemo(() => {
+  const filteredRows = useMemo(() => {
     const query = symbolSearch.trim().toLowerCase();
     const minScore = Number(minimumScore);
     const hasMinScore = minimumScore.trim() !== "" && Number.isFinite(minScore);
 
-    return (row: RankingRow) => {
+    return ranking.filter((row) => {
       if (query) {
-        const symbol = String(row.symbol ?? "").toLowerCase();
-        const company = String(row.company_name ?? "").toLowerCase();
-        if (!symbol.includes(query) && !company.includes(query)) return false;
+        if (!matchesText(row.symbol, query) && !matchesText(row.company_name, query)) return false;
       }
       if (assetType && String(row.asset_type ?? "") !== assetType) return false;
       if (sector && String(row.sector ?? "") !== sector) return false;
       if (rating && String(row.rating ?? "") !== rating) return false;
       if (hasMinScore && (typeof row.final_score !== "number" || row.final_score < minScore)) return false;
       return true;
-    };
+    });
   }, [assetType, minimumScore, ranking, rating, sector, symbolSearch]);
-  const filteredRows = useMemo(() => ranking.filter(filterRow), [filterRow, ranking]);
-  const filteredTopCandidates = useMemo(() => topCandidates.filter(filterRow), [filterRow, topCandidates]);
+  const filteredTopCandidates = useMemo(() => {
+    const visibleSymbols = new Set(filteredRows.map((row) => row.symbol));
+    return topCandidates.filter((row) => visibleSymbols.has(row.symbol));
+  }, [filteredRows, topCandidates]);
 
   function resetFilters() {
     setSymbolSearch("");

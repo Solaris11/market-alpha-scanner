@@ -123,9 +123,9 @@ export function HistoryWorkspace({ history, symbolHistory }: Props) {
   return (
     <div className="space-y-3">
       <section className="terminal-panel rounded-md p-4">
-        <div className="grid gap-3 lg:grid-cols-[320px_1fr]">
+        <div className="grid gap-3 lg:grid-cols-[260px_260px_1fr]">
           <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Symbol History
+            Type Symbol
             <input
               className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
               list="history-symbols"
@@ -138,6 +138,21 @@ export function HistoryWorkspace({ history, symbolHistory }: Props) {
                 <option key={symbol} value={symbol} />
               ))}
             </datalist>
+          </label>
+          <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Select Symbol
+            <select
+              className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
+              onChange={(event) => setSymbolQuery(event.target.value)}
+              value={exactSymbol}
+            >
+              <option value="">Select symbol</option>
+              {symbolHistory.symbols.map((symbol) => (
+                <option key={symbol} value={symbol}>
+                  {symbol}
+                </option>
+              ))}
+            </select>
           </label>
           <div className="text-xs text-slate-500">
             {exactSymbol ? (

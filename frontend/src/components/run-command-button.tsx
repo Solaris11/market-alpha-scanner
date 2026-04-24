@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 type CommandResult = {
   ok: boolean;
   command: string;
-  message?: string;
+  cwd?: string;
   error?: string;
   stdout?: string;
   stderr?: string;
-  code?: number | null;
+  exitCode?: number | null;
 };
 
 type Props = {
@@ -38,7 +38,7 @@ export function RunCommandButton({ endpoint, label }: Props) {
       setResult({
         ok: false,
         command: endpoint,
-        message: error instanceof Error ? error.message : "Request failed.",
+        error: error instanceof Error ? error.message : "Request failed.",
       });
     } finally {
       setLoading(false);
@@ -57,11 +57,12 @@ export function RunCommandButton({ endpoint, label }: Props) {
       </button>
 
       {result ? (
-        <div className={`rounded border p-3 text-xs ${result.ok ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100" : "border-rose-400/30 bg-rose-400/10 text-rose-100"}`}>
-          <div className="font-semibold">{result.ok ? "Success" : "Error"}</div>
-          <div className="mt-1 text-slate-300">{result.message ?? result.error}</div>
-          {typeof result.code === "number" && result.code !== 0 ? <div className="mt-1 text-slate-400">Exit code: {result.code}</div> : null}
+          <div className={`rounded border p-3 text-xs ${result.ok ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100" : "border-rose-400/30 bg-rose-400/10 text-rose-100"}`}>
+            <div className="font-semibold">{result.ok ? "Success" : "Error"}</div>
+          <div className="mt-1 text-slate-300">{result.ok ? "Command completed." : result.error}</div>
+          {typeof result.exitCode === "number" ? <div className="mt-1 text-slate-400">Exit code: {result.exitCode}</div> : null}
           {result.command ? <div className="mt-1 font-mono text-slate-400">{result.command}</div> : null}
+          {result.cwd ? <div className="mt-1 font-mono text-slate-500">cwd: {result.cwd}</div> : null}
           {result.stdout || result.stderr ? (
             <details className="mt-3 text-slate-300">
               <summary className="cursor-pointer text-slate-400">Logs</summary>
