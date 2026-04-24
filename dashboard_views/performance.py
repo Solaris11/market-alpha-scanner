@@ -3,15 +3,38 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from .loaders import FORWARD_RETURNS_PATH, FULL_RANKING_PATH, HISTORY_DIR, PERFORMANCE_SUMMARY_PATH, list_snapshot_files
-from .shared import format_percent, format_performance_display, render_info_card, render_section_heading
+from .loaders import BASE_DIR, FORWARD_RETURNS_PATH, FULL_RANKING_PATH, HISTORY_DIR, PERFORMANCE_SUMMARY_PATH, list_snapshot_files
+from .shared import (
+    format_percent,
+    format_performance_display,
+    render_command_logs,
+    render_info_card,
+    render_section_heading,
+    run_dashboard_command,
+)
 
 
-ANALYSIS_COMMAND = "/opt/apps/market-alpha-scanner/venv/bin/python investment_scanner_mvp.py --run-analysis"
+ANALYSIS_COMMAND_ARGS = ["/opt/apps/market-alpha-scanner/venv/bin/python", "investment_scanner_mvp.py", "--run-analysis"]
+ANALYSIS_COMMAND = " ".join(ANALYSIS_COMMAND_ARGS)
 
 
 def _status_text(path_exists: bool) -> str:
     return "Available" if path_exists else "Missing"
+
+
+def render_performance_run_button() -> None:
+    if not st.button("Run Performance Analysis", key="run_performance_analysis_now", use_container_width=True):
+        return
+
+    with st.spinner("Running performance analysis..."):
+        success, stdout, stderr, status = run_dashboard_command(ANALYSIS_COMMAND_ARGS, BASE_DIR)
+
+    if success:
+        st.success("Performance analysis completed. Refresh the dashboard to load the newest analysis files.")
+    else:
+        st.error("Performance analysis failed.")
+    st.caption(status)
+    render_command_logs("Performance analysis logs", stdout, stderr, expanded=not success)
 
 
 def render_performance_guidance() -> None:
@@ -40,7 +63,7 @@ def render_performance_guidance() -> None:
         )
 
     st.info("Performance analysis is not ready until forward-return observations can be computed from saved history.")
-    st.caption("Generate or refresh analysis files with:")
+    st.caption("The button above runs:")
     st.code(ANALYSIS_COMMAND, language="bash")
 
 
@@ -254,6 +277,7 @@ def render_performance_group(summary_df: pd.DataFrame, group_type: str, title: s
 
 def render_performance_page(summary_df: pd.DataFrame | None, forward_df: pd.DataFrame | None) -> None:
     st.header("Performance Analysis")
+    render_performance_run_button()
     if summary_df is None or summary_df.empty:
         render_performance_guidance()
         return

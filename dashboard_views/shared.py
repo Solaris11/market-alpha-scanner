@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from collections.abc import Mapping
 from html import escape
 from pathlib import Path
@@ -38,6 +39,7 @@ WARN_COLOR = "#f59e0b"
 BASE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = BASE_DIR / "scanner_output"
 WATCHLIST_PATH = OUTPUT_DIR / "watchlist.json"
+COMMAND_TIMEOUT_SECONDS = 600
 
 THEME_CSS = """
 <style>
@@ -534,6 +536,32 @@ def open_symbol_detail(symbol: str) -> None:
     st.session_state["selected_symbol"] = cleaned_symbol
     st.session_state["symbol_detail_selector"] = cleaned_symbol
     st.rerun()
+
+
+def run_dashboard_command(command: list[str], cwd: Path, timeout_seconds: int = COMMAND_TIMEOUT_SECONDS) -> tuple[bool, str, str, str]:
+    try:
+        result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, timeout=timeout_seconds, check=False)
+    except subprocess.TimeoutExpired as exc:
+        stdout = exc.stdout.decode("utf-8", errors="replace") if isinstance(exc.stdout, bytes) else str(exc.stdout or "")
+        stderr = exc.stderr.decode("utf-8", errors="replace") if isinstance(exc.stderr, bytes) else str(exc.stderr or "")
+        return False, stdout, stderr, f"Command timed out after {timeout_seconds} seconds."
+    except Exception as exc:
+        return False, "", "", f"Command failed to start: {exc}"
+
+    status = f"Command exited with code {result.returncode}."
+    return result.returncode == 0, result.stdout or "", result.stderr or "", status
+
+
+def render_command_logs(title: str, stdout: str, stderr: str, *, expanded: bool = False) -> None:
+    if not stdout and not stderr:
+        return
+    with st.expander(title, expanded=expanded):
+        if stdout:
+            st.caption("stdout")
+            st.code(stdout)
+        if stderr:
+            st.caption("stderr")
+            st.code(stderr)
 
 
 def go_to_overview() -> None:

@@ -5,11 +5,35 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from .loaders import compare_snapshots, parse_snapshot_timestamp, prepare_scan_df, safe_read_csv, snapshot_options
-from .shared import DEFAULT_TABLE_COLUMNS, display_table, format_timestamp, render_info_card, render_section_heading
+from .loaders import BASE_DIR, compare_snapshots, parse_snapshot_timestamp, prepare_scan_df, safe_read_csv, snapshot_options
+from .shared import (
+    DEFAULT_TABLE_COLUMNS,
+    display_table,
+    format_timestamp,
+    render_command_logs,
+    render_info_card,
+    render_section_heading,
+    run_dashboard_command,
+)
 
 
-SCAN_COMMAND = "/opt/apps/market-alpha-scanner/venv/bin/python investment_scanner_mvp.py --save-history"
+SCAN_COMMAND_ARGS = ["/opt/apps/market-alpha-scanner/venv/bin/python", "investment_scanner_mvp.py", "--save-history"]
+SCAN_COMMAND = " ".join(SCAN_COMMAND_ARGS)
+
+
+def render_scanner_run_button() -> None:
+    if not st.button("Run Scanner Now", key="run_scanner_now", use_container_width=True):
+        return
+
+    with st.spinner("Running scanner. This can take several minutes..."):
+        success, stdout, stderr, status = run_dashboard_command(SCAN_COMMAND_ARGS, BASE_DIR)
+
+    if success:
+        st.success("Scanner completed. Refresh the dashboard to load the newest history snapshot.")
+    else:
+        st.error("Scanner run failed.")
+    st.caption(status)
+    render_command_logs("Scanner run logs", stdout, stderr, expanded=not success)
 
 
 def render_scan_history_guidance() -> None:
@@ -20,11 +44,13 @@ def render_scan_history_guidance() -> None:
         st.markdown(render_info_card("Run Command", "Manual", "Use a shell so logs and long runtimes are visible.", "accent"), unsafe_allow_html=True)
     with status_columns[1]:
         st.markdown(render_info_card("Expected Output", "scanner_output/history", "Files should appear as scan_YYYYMMDD_HHMMSS.csv.", "neutral"), unsafe_allow_html=True)
+    st.caption("The button above runs:")
     st.code(SCAN_COMMAND, language="bash")
 
 
 def render_history_page(snapshot_files: list[Path]) -> None:
     st.header("Scan History")
+    render_scanner_run_button()
     if not snapshot_files:
         render_scan_history_guidance()
         return

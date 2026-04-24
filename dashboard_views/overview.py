@@ -28,6 +28,7 @@ FILTER_SECTORS_KEY = "overview_filter_sectors"
 FILTER_RATINGS_KEY = "overview_filter_ratings"
 FILTER_MIN_SCORE_KEY = "overview_filter_min_score"
 FILTER_DEFAULTS_MIGRATED_KEY = "overview_filter_defaults_migrated"
+RANK_PAGE_SIZE_KEY = "overview_rank_page_size_v2"
 
 
 def reset_overview_filters() -> None:
@@ -246,8 +247,8 @@ def render_watchlist_overview() -> None:
 def render_clickable_ranking_list(ordered: pd.DataFrame) -> None:
     if "overview_rank_page_selector" not in st.session_state:
         st.session_state["overview_rank_page_selector"] = 1
-    if "overview_rank_page_size" not in st.session_state:
-        st.session_state["overview_rank_page_size"] = "50"
+    if RANK_PAGE_SIZE_KEY not in st.session_state:
+        st.session_state[RANK_PAGE_SIZE_KEY] = "All"
     if ordered.empty or "symbol" not in ordered.columns:
         return
 
@@ -262,8 +263,8 @@ def render_clickable_ranking_list(ordered: pd.DataFrame) -> None:
         page_size_option = control_columns[0].selectbox(
             "Rows per page",
             ["25", "50", "100", "All"],
-            index=1,
-            key="overview_rank_page_size",
+            index=3,
+            key=RANK_PAGE_SIZE_KEY,
         )
 
         if page_size_option == "All":
