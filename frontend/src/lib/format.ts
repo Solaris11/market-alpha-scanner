@@ -19,7 +19,7 @@ export function compact(value: unknown, maxLength = 42) {
 }
 
 export function actionFor(row: RankingRow | Record<string, unknown>) {
-  const explicit = String(row.action ?? row.recommended_action ?? "").trim();
+  const explicit = String(row.action ?? row.recommended_action ?? row.composite_action ?? row.mid_action ?? row.short_action ?? row.long_action ?? "").trim();
   if (explicit) return explicit;
 
   const rating = String(row.rating ?? "").toUpperCase();

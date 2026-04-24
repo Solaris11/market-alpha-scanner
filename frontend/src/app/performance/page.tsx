@@ -1,8 +1,9 @@
 import { DataTable } from "@/components/data-table";
 import { MetricStrip } from "@/components/metric-strip";
+import { PerformanceDrift } from "@/components/performance-drift";
 import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/shell";
-import { getHistorySummary, getPerformanceData } from "@/lib/scanner-data";
+import { getHistorySummary, getIntradaySignalDrift, getPerformanceData } from "@/lib/scanner-data";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +19,9 @@ function fileStateLabel(state: string) {
 }
 
 export default async function PerformancePage() {
-  const [performance, history] = await Promise.all([getPerformanceData(), getHistorySummary()]);
+  const [performance, history, driftRows] = await Promise.all([getPerformanceData(), getHistorySummary(), getIntradaySignalDrift()]);
   const hasPerformance = performance.summary.rows.length > 0 || performance.forwardReturns.rows.length > 0;
+  const forwardReturnsReady = performance.forwardReturns.rows.length > 0;
   const isHeaderOnly = !hasPerformance && (performance.summary.state === "header-only" || performance.forwardReturns.state === "header-only");
 
   return (
@@ -36,7 +38,25 @@ export default async function PerformancePage() {
           ]}
         />
 
-        {!hasPerformance ? (
+        {hasPerformance ? (
+          <>
+            <section>
+              <div className="mb-2">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Performance Summary</div>
+                <h2 className="text-lg font-semibold text-slate-50">Grouped Results</h2>
+              </div>
+              <DataTable rows={performance.summary.rows} emptyMessage="performance_summary.csv has no grouped performance observations." />
+            </section>
+
+            <section>
+              <div className="mb-2">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Forward Returns</div>
+                <h2 className="text-lg font-semibold text-slate-50">Observation Rows</h2>
+              </div>
+              <DataTable rows={performance.forwardReturns.rows} emptyMessage="forward_returns.csv has no completed forward-return observations." />
+            </section>
+          </>
+        ) : (
           <section className="terminal-panel rounded-md p-4">
             <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Readiness</div>
             <h2 className="mt-1 text-lg font-semibold text-slate-50">{isHeaderOnly ? "Analysis Complete, No Observations Yet" : "Performance Analysis Not Ready"}</h2>
@@ -61,7 +81,7 @@ export default async function PerformancePage() {
             </pre>
             <RunCommandButton endpoint="/api/run-analysis" label="Run Analysis" />
           </section>
-        ) : null}
+        )}
 
         {hasPerformance ? (
           <section className="terminal-panel rounded-md p-4">
@@ -74,35 +94,7 @@ export default async function PerformancePage() {
           </section>
         ) : null}
 
-        <section>
-          <div className="mb-2">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Performance Summary</div>
-            <h2 className="text-lg font-semibold text-slate-50">Grouped Results</h2>
-          </div>
-          <DataTable
-            rows={performance.summary.rows}
-            emptyMessage={
-              performance.summary.state === "header-only"
-                ? "performance_summary.csv exists with headers only. No grouped performance observations are complete yet."
-                : "performance_summary.csv is missing."
-            }
-          />
-        </section>
-
-        <section>
-          <div className="mb-2">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Forward Returns</div>
-            <h2 className="text-lg font-semibold text-slate-50">Observation Rows</h2>
-          </div>
-          <DataTable
-            rows={performance.forwardReturns.rows}
-            emptyMessage={
-              performance.forwardReturns.state === "header-only"
-                ? "forward_returns.csv exists with headers only. No completed forward-return observations are available yet."
-                : "forward_returns.csv is missing."
-            }
-          />
-        </section>
+        <PerformanceDrift forwardReturnsReady={forwardReturnsReady} rows={driftRows} />
       </div>
     </TerminalShell>
   );

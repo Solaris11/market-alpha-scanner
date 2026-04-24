@@ -4,7 +4,7 @@ import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parse } from "csv-parse/sync";
-import type { CsvFileData, CsvRow, HistorySnapshot, HistorySummary, PerformanceData, RankingRow, ScannerScalar, SymbolDetail, SymbolHistoryData, SymbolHistoryRow } from "./types";
+import type { CsvFileData, CsvRow, HistorySnapshot, HistorySummary, IntradayDriftRow, PerformanceData, RankingRow, ScannerScalar, SymbolDetail, SymbolHistoryData, SymbolHistoryRow } from "./types";
 
 const NUMERIC_FIELDS = new Set([
   "price",
@@ -116,6 +116,16 @@ function normalizeRankingRow(raw: Record<string, unknown>): RankingRow {
   row.symbol = String(row.symbol ?? raw.symbol ?? "").trim().toUpperCase();
   row.company_name = displayName(row);
   return row;
+}
+
+function actionForRow(row: RankingRow) {
+  const explicit = String(row.action ?? row.recommended_action ?? row.composite_action ?? row.mid_action ?? row.short_action ?? row.long_action ?? "").trim();
+  if (explicit) return explicit;
+  const rating = String(row.rating ?? "").toUpperCase();
+  if (rating === "TOP" || rating === "ACTIONABLE") return "ACTIONABLE";
+  if (rating === "WATCH") return "WATCH";
+  if (rating === "PASS") return "PASS";
+  return "REVIEW";
 }
 
 async function readCsv(filePath: string) {
@@ -248,6 +258,51 @@ export async function getSymbolHistoryData(): Promise<SymbolHistoryData> {
     symbols: Array.from(new Set(rows.map((row) => row.symbol))).sort(),
     rows,
   };
+}
+
+export async function getIntradaySignalDrift(): Promise<IntradayDriftRow[]> {
+  const history = await getSymbolHistoryData();
+  const bySymbol = new Map<string, SymbolHistoryRow[]>();
+
+  for (const row of history.rows) {
+    const current = bySymbol.get(row.symbol) ?? [];
+    current.push(row);
+    bySymbol.set(row.symbol, current);
+  }
+
+  const driftRows: IntradayDriftRow[] = [];
+  for (const [symbol, rows] of bySymbol) {
+    rows.sort((a, b) => String(a.timestamp_utc).localeCompare(String(b.timestamp_utc)));
+    const first = rows[0];
+    const latest = rows[rows.length - 1];
+    const firstPrice = typeof first.price === "number" ? first.price : undefined;
+    const latestPrice = typeof latest.price === "number" ? latest.price : undefined;
+    const firstScore = typeof first.final_score === "number" ? first.final_score : undefined;
+    const latestScore = typeof latest.final_score === "number" ? latest.final_score : undefined;
+    const priceChange = typeof firstPrice === "number" && typeof latestPrice === "number" ? latestPrice - firstPrice : undefined;
+    const priceChangePct = typeof priceChange === "number" && typeof firstPrice === "number" && firstPrice !== 0 ? priceChange / firstPrice : undefined;
+    const scoreChange = typeof firstScore === "number" && typeof latestScore === "number" ? latestScore - firstScore : undefined;
+
+    driftRows.push({
+      symbol,
+      company_name: latest.company_name || first.company_name,
+      first_price: firstPrice,
+      latest_price: latestPrice,
+      price_change: priceChange,
+      price_change_pct: priceChangePct,
+      first_score: firstScore,
+      latest_score: latestScore,
+      score_change: scoreChange,
+      first_rating: first.rating,
+      latest_rating: latest.rating,
+      first_action: actionForRow(first),
+      latest_action: actionForRow(latest),
+      setup_type: latest.setup_type ?? first.setup_type,
+      snapshot_count: rows.length,
+    });
+  }
+
+  return driftRows.sort((a, b) => Math.abs(b.score_change ?? 0) - Math.abs(a.score_change ?? 0));
 }
 
 export async function getPerformanceData(): Promise<PerformanceData> {

@@ -68,3 +68,21 @@ export type SymbolHistoryData = {
   symbols: string[];
   rows: SymbolHistoryRow[];
 };
+
+export type IntradayDriftRow = {
+  symbol: string;
+  company_name?: string;
+  first_price?: number;
+  latest_price?: number;
+  price_change?: number;
+  price_change_pct?: number;
+  first_score?: number;
+  latest_score?: number;
+  score_change?: number;
+  first_rating?: string;
+  latest_rating?: string;
+  first_action?: string;
+  latest_action?: string;
+  setup_type?: string;
+  snapshot_count: number;
+};
