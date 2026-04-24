@@ -12,7 +12,7 @@ import argparse
 import sys
 from pathlib import Path
 
-from alerts import process_telegram_alerts
+from alerts import evaluate_alert_rules, read_alert_input_files
 from database import persist_scan_dataframe
 from scanner.analysis import analyze_performance, compute_forward_returns
 from scanner.config import DEFAULT_NEWS_LIMIT, DEFAULT_UNIVERSE, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE
@@ -33,7 +33,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--run-analysis", action="store_true", help="Compute forward returns and performance summaries from saved history")
     parser.add_argument("--save-history", dest="save_history", action="store_true", help="Save a timestamped snapshot after each scan")
     parser.add_argument("--no-save-history", dest="save_history", action="store_false", help="Do not save a timestamped snapshot")
-    parser.add_argument("--send-alerts", action="store_true", help="Send Telegram alerts for new high-conviction signals")
+    parser.add_argument("--send-alerts", action="store_true", help="Evaluate enabled alert rules and send configured Telegram/email alerts")
+    parser.add_argument("--alerts-only", action="store_true", help="Evaluate alerts from existing scanner_output CSVs without running a scan")
+    parser.add_argument("--alert-rules-path", help="Optional path to alert_rules.json")
+    parser.add_argument("--alert-state-path", help="Optional path to alert_state.json")
     parser.set_defaults(save_history=True)
     return parser
 
@@ -44,6 +47,21 @@ def main() -> None:
 
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
+
+    if args.alerts_only:
+        full_ranking, top_candidates = read_alert_input_files(outdir)
+        if full_ranking.empty:
+            print(f"No existing ranking rows found at: {outdir / 'full_ranking.csv'}")
+            sys.exit(1)
+        evaluate_alert_rules(
+            full_ranking,
+            top_candidates,
+            outdir,
+            alert_rules_path=args.alert_rules_path,
+            alert_state_path=args.alert_state_path,
+            send=args.send_alerts,
+        )
+        return
 
     df_rank = scan_symbols(
         universe,
@@ -95,7 +113,14 @@ def main() -> None:
         print(f"Warning: database write skipped due to error: {exc}")
 
     if args.send_alerts:
-        process_telegram_alerts(df_rank, outdir)
+        evaluate_alert_rules(
+            df_rank,
+            df_rank.head(args.top),
+            outdir,
+            alert_rules_path=args.alert_rules_path,
+            alert_state_path=args.alert_state_path,
+            send=True,
+        )
 
     if args.run_analysis:
         history_dir = outdir / "history"

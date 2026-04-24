@@ -150,7 +150,8 @@ The scanner writes:
 - `scanner_output/history/scan_YYYYMMDD_HHMMSS.csv`
 - `scanner_output/analysis/forward_returns.csv`
 - `scanner_output/analysis/performance_summary.csv`
-- `scanner_output/alerts/telegram_alert_state.json`
+- `scanner_output/alerts/alert_rules.json`
+- `scanner_output/alerts/alert_state.json`
 - `scanner_output/symbols/<symbol>/history.csv`
 - `scanner_output/symbols/<symbol>/summary.json`
 
@@ -165,39 +166,57 @@ The scanner now also writes additive PostgreSQL records when `DATABASE_URL` is c
 
 This is a hybrid-write phase. Existing file outputs remain the primary dashboard feed, and the dashboard still reads those files directly from disk.
 
-## Telegram Alerts
+## Rule-Based Alerts
 
-The scanner supports a lightweight Telegram alert layer for internal operator notifications.
+The scanner supports file-backed alert rules for Telegram and email notifications.
 
 ### Required Environment Variables
 
-Set these before running with `--send-alerts`:
+Set these before running Telegram alerts:
 
 ```bash
 export TELEGRAM_BOT_TOKEN="your_bot_token"
 export TELEGRAM_CHAT_ID="your_chat_id"
 ```
 
-### Trigger Logic
+Set these before running email alerts:
 
-An alert is sent when the latest scan contains any row matching one of these conditions:
+```bash
+export ALERT_EMAIL_FROM="scanner@example.com"
+export ALERT_EMAIL_TO="operator@example.com"
+export SMTP_HOST="smtp.example.com"
+export SMTP_PORT="587"
+export SMTP_USER="smtp_user"
+export SMTP_PASSWORD="smtp_password"
+```
 
-- `rating == "TOP"`
-- `final_score >= 80`
-- secondary inclusion:
-  - `rating == "ACTIONABLE"`
-  - `final_score >= 78`
-  - `risk_penalty == 0`
+### Rules
 
-If no rows qualify, nothing is sent.
+Rules are stored in:
+
+- `scanner_output/alerts/alert_rules.json`
+
+Supported alert types:
+
+- `price_above`
+- `price_below`
+- `buy_zone_hit`
+- `stop_loss_broken`
+- `take_profit_hit`
+- `score_above`
+- `score_below`
+- `score_changed_by`
+- `rating_changed`
+- `action_changed`
+- `new_top_candidate`
 
 ### Dedup Behavior
 
-Alerts are deduplicated using a small local state file:
+Alerts are deduplicated with cooldown state in:
 
-- `scanner_output/alerts/telegram_alert_state.json`
+- `scanner_output/alerts/alert_state.json`
 
-The scanner fingerprints the current qualifying alert set and only sends a Telegram message when that qualifying set changes. This avoids resending the same alert every 15 minutes.
+Each rule tracks last sent time, last trigger value, and message hash. A rule will not resend until its configured `cooldown_minutes` has elapsed.
 
 ### Create a Telegram Bot
 
@@ -226,10 +245,14 @@ From the repo root:
 source .venv/bin/activate
 export TELEGRAM_BOT_TOKEN="your_bot_token"
 export TELEGRAM_CHAT_ID="your_chat_id"
-python investment_scanner_mvp.py --send-alerts
+python investment_scanner_mvp.py --alerts-only --send-alerts
 ```
 
-For a timer or systemd service, add `--send-alerts` to the scanner command once the environment variables are available to that service.
+For a timer or systemd service, use:
+
+```bash
+/opt/apps/market-alpha-scanner/venv/bin/python investment_scanner_mvp.py --save-history --send-alerts
+```
 
 ## Dashboard
 
