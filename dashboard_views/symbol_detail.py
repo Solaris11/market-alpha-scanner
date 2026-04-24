@@ -736,9 +736,11 @@ def render_price_history_tab(selected_symbol: str, history_df: pd.DataFrame, his
     with top_columns[1]:
         st.caption("Artifacts are preferred first; live market data is used only as fallback.")
 
-    if not filtered_history.empty and "close" in filtered_history.columns:
+    if not filtered_history.empty and {"date", "close"}.issubset(filtered_history.columns):
         with st.container(border=True):
             st.line_chart(filtered_history.set_index("date")[["close"]], use_container_width=True)
+    elif not filtered_history.empty:
+        st.info("Price history is available, but chart columns are incomplete.")
     st.dataframe(filtered_history, use_container_width=True, height=320, hide_index=True)
 
 

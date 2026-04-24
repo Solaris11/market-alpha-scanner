@@ -80,8 +80,7 @@ def main() -> None:
 
     if st.session_state.get("page_selector") not in pages:
         st.session_state["page_selector"] = st.session_state["current_page"]
-    if st.session_state.get(PAGE_SELECTOR_WIDGET_KEY) not in pages:
-        st.session_state[PAGE_SELECTOR_WIDGET_KEY] = st.session_state["current_page"]
+    st.session_state[PAGE_SELECTOR_WIDGET_KEY] = st.session_state.get("page_selector", st.session_state["current_page"])
 
     def handle_page_selector_change() -> None:
         selected = st.session_state.get(PAGE_SELECTOR_WIDGET_KEY)

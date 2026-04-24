@@ -78,6 +78,22 @@ def coerce_numeric(df: pd.DataFrame, columns: Iterable[str]) -> pd.DataFrame:
     return df
 
 
+def normalize_history_columns(df: pd.DataFrame) -> pd.DataFrame:
+    normalized = df.copy()
+    if isinstance(normalized.columns, pd.MultiIndex):
+        flattened_columns: list[str] = []
+        preferred_names = {"date", "datetime", "open", "high", "low", "close", "adj close", "volume"}
+        for column in normalized.columns:
+            parts = [str(part).strip() for part in column if str(part).strip()]
+            preferred = next((part for part in parts if part.lower() in preferred_names), parts[0] if parts else "")
+            flattened_columns.append(preferred)
+        normalized.columns = flattened_columns
+    normalized.columns = [str(column).strip().lower() for column in normalized.columns]
+    if "date" not in normalized.columns and "datetime" in normalized.columns:
+        normalized = normalized.rename(columns={"datetime": "date"})
+    return normalized
+
+
 def prepare_scan_df(df: pd.DataFrame) -> pd.DataFrame:
     prepared = df.copy()
     prepared.columns = [str(column).strip() for column in prepared.columns]
@@ -161,9 +177,7 @@ def load_symbol_history_file(symbol: str) -> pd.DataFrame:
     history_df, _ = safe_read_csv(symbol_dir(symbol) / "history.csv")
     if history_df is None or history_df.empty:
         return pd.DataFrame()
-    history_df.columns = [str(column).strip().lower() for column in history_df.columns]
-    if "date" not in history_df.columns and "datetime" in history_df.columns:
-        history_df = history_df.rename(columns={"datetime": "date"})
+    history_df = normalize_history_columns(history_df)
     if "date" in history_df.columns:
         history_df["date"] = pd.to_datetime(history_df["date"], errors="coerce")
         history_df = history_df.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
@@ -180,7 +194,9 @@ def fetch_live_symbol_history(symbol: str, period: str = "2y") -> pd.DataFrame:
     if df.empty:
         return pd.DataFrame()
     history_df = df.reset_index().rename(columns={"Date": "date"})
-    history_df.columns = [str(column).strip().lower() for column in history_df.columns]
+    history_df = normalize_history_columns(history_df)
+    if "date" not in history_df.columns:
+        return pd.DataFrame()
     history_df["date"] = pd.to_datetime(history_df["date"], errors="coerce")
     return history_df.dropna(subset=["date"]).sort_values("date").reset_index(drop=True)
 
