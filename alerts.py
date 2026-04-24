@@ -32,6 +32,7 @@ VALID_ALERT_TYPES = {
     "new_top_candidate",
 }
 VALID_CHANNELS = {"telegram", "email"}
+VALID_ENTRY_FILTERS = {"any", "good_only", "good_or_wait", "avoid_overextended"}
 DEFAULT_DASHBOARD_URL = "http://192.168.0.125:3001"
 DEFAULT_RULES: list[dict[str, Any]] = [
     {
@@ -42,6 +43,7 @@ DEFAULT_RULES: list[dict[str, Any]] = [
         "enabled": True,
         "cooldown_minutes": 720,
         "source": "system",
+        "entry_filter": "any",
     },
     {
         "id": "avgo_price_above_430",
@@ -52,6 +54,7 @@ DEFAULT_RULES: list[dict[str, Any]] = [
         "enabled": True,
         "cooldown_minutes": 1440,
         "source": "user",
+        "entry_filter": "any",
     },
     {
         "id": "stop_broken",
@@ -61,6 +64,7 @@ DEFAULT_RULES: list[dict[str, Any]] = [
         "enabled": True,
         "cooldown_minutes": 1440,
         "source": "system",
+        "entry_filter": "any",
     },
     {
         "id": "score_above_75",
@@ -71,6 +75,7 @@ DEFAULT_RULES: list[dict[str, Any]] = [
         "enabled": True,
         "cooldown_minutes": 1440,
         "source": "user",
+        "entry_filter": "avoid_overextended",
     },
 ]
 
@@ -283,6 +288,18 @@ def _rule_source(rule: dict[str, Any]) -> str:
     return "user"
 
 
+def _entry_filter(rule: dict[str, Any]) -> str:
+    configured = _clean_text(rule.get("entry_filter"), "").lower()
+    if configured in VALID_ENTRY_FILTERS:
+        return configured
+    alert_type = _rule_type(rule)
+    if alert_type == "score_above":
+        return "avoid_overextended"
+    if alert_type in {"stop_loss_broken", "take_profit_hit"}:
+        return "any"
+    return "any"
+
+
 def _cooldown_minutes(rule: dict[str, Any]) -> int:
     value = _numeric(rule.get("cooldown_minutes"))
     if value is None:
@@ -408,6 +425,38 @@ def _condition_label(alert_type: str) -> str:
 def _alert_type_label(rule: dict[str, Any]) -> str:
     source = "System" if _rule_source(rule) == "system" else "User"
     return f"{source} {_condition_label(_rule_type(rule))} Alert"
+
+
+def _entry_status(row: dict[str, Any] | None) -> str:
+    if not row:
+        return "REVIEW"
+    text = " ".join(
+        [
+            _clean_text(row.get("trade_quality"), ""),
+            _clean_text(row.get("trade_quality_note"), ""),
+            _clean_text(row.get("target_warning"), ""),
+        ]
+    ).upper()
+    if "LOW EDGE" in text or "EXTENDED" in text:
+        return "OVEREXTENDED"
+    if "GOOD" in text:
+        return "GOOD ENTRY"
+    if "ACCEPTABLE" in text:
+        return "WAIT PULLBACK"
+    return "REVIEW"
+
+
+def _entry_filter_allows(rule: dict[str, Any], entry_status: str) -> bool:
+    configured_filter = _entry_filter(rule)
+    if configured_filter == "any":
+        return True
+    if configured_filter == "good_only":
+        return entry_status == "GOOD ENTRY"
+    if configured_filter == "good_or_wait":
+        return entry_status in {"GOOD ENTRY", "WAIT PULLBACK"}
+    if configured_filter == "avoid_overextended":
+        return entry_status != "OVEREXTENDED"
+    return True
 
 
 def _trigger_text(rule: dict[str, Any]) -> str:
@@ -581,11 +630,13 @@ def _build_message(rule: dict[str, Any], evaluation: AlertEvaluation) -> str:
     company = _company_for_row(row)
     symbol_line = f"📊 Symbol: {symbol}" if company == "N/A" else f"📊 Symbol: {symbol} ({company})"
     note = _clean_text(row.get("trade_quality_note") or row.get("target_warning"), "")
+    entry_status = _entry_status(row)
     lines = [
         "🚨 Market Alpha Alert",
         "",
         symbol_line,
         f"🔥 Trigger: {_trigger_text(rule)}",
+        f"🎯 Entry Status: {entry_status}",
         "",
         f"💰 Price: {_format_currency(row.get('price'))}",
         "",
@@ -732,6 +783,23 @@ def evaluate_alert_rules(
             continue
 
         triggered_count += 1
+        entry_status = _entry_status(evaluation.row)
+        if not _entry_filter_allows(rule, entry_status):
+            symbol = _clean_text((evaluation.row or {}).get("symbol"), _rule_symbol(rule) or "N/A").upper()
+            skipped_count += 1
+            rule_state.update(
+                {
+                    "alert_id": rule_id,
+                    "last_skipped_at": now.isoformat(),
+                    "last_skip_reason": f"entry_filter:{_entry_filter(rule)}",
+                    "last_entry_status": entry_status,
+                    "last_status": "suppressed",
+                }
+            )
+            state_changed = True
+            print(f"[alerts] suppressed by entry_filter: {symbol} {rule_id} entry_status={entry_status}")
+            continue
+
         message = _build_message(rule, evaluation)
         message_hash = _message_hash(message)
 

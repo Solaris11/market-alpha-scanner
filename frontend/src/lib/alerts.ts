@@ -19,9 +19,11 @@ export const ALERT_TYPES = [
 ] as const;
 
 export const ALERT_CHANNELS = ["telegram", "email"] as const;
+export const ENTRY_FILTERS = ["any", "good_only", "good_or_wait", "avoid_overextended"] as const;
 
 export type AlertType = (typeof ALERT_TYPES)[number];
 export type AlertChannel = (typeof ALERT_CHANNELS)[number];
+export type EntryFilter = (typeof ENTRY_FILTERS)[number];
 
 export type AlertRule = {
   id: string;
@@ -31,6 +33,7 @@ export type AlertRule = {
   channels: AlertChannel[];
   enabled: boolean;
   cooldown_minutes: number;
+  entry_filter?: EntryFilter;
   source?: "system" | "user";
   created_at_utc?: string;
   updated_at_utc?: string;
@@ -60,6 +63,7 @@ const DEFAULT_RULES: AlertRule[] = [
     channels: ["telegram"],
     enabled: true,
     cooldown_minutes: 720,
+    entry_filter: "any",
     source: "system",
   },
   {
@@ -70,6 +74,7 @@ const DEFAULT_RULES: AlertRule[] = [
     channels: ["telegram", "email"],
     enabled: true,
     cooldown_minutes: 1440,
+    entry_filter: "any",
     source: "user",
   },
   {
@@ -79,6 +84,7 @@ const DEFAULT_RULES: AlertRule[] = [
     channels: ["telegram"],
     enabled: true,
     cooldown_minutes: 1440,
+    entry_filter: "any",
     source: "system",
   },
   {
@@ -89,6 +95,7 @@ const DEFAULT_RULES: AlertRule[] = [
     channels: ["telegram"],
     enabled: true,
     cooldown_minutes: 1440,
+    entry_filter: "avoid_overextended",
     source: "user",
   },
 ];
@@ -161,8 +168,18 @@ function isAlertChannel(value: string): value is AlertChannel {
   return (ALERT_CHANNELS as readonly string[]).includes(value);
 }
 
+function isEntryFilter(value: string): value is EntryFilter {
+  return (ENTRY_FILTERS as readonly string[]).includes(value);
+}
+
 function needsThreshold(type: AlertType) {
   return ["price_above", "price_below", "score_above", "score_below"].includes(type);
+}
+
+function defaultEntryFilter(type: AlertType): EntryFilter {
+  if (type === "score_above") return "avoid_overextended";
+  if (type === "stop_loss_broken" || type === "take_profit_hit") return "any";
+  return "any";
 }
 
 export function sanitizeAlertRule(input: Record<string, unknown>, existing?: AlertRule): AlertRule {
@@ -192,6 +209,7 @@ export function sanitizeAlertRule(input: Record<string, unknown>, existing?: Ale
   const fallbackId = normalizeId(`${symbol || "global"}_${typeInput}_${Date.now()}`, `alert_${Date.now()}`);
   const cooldown = Number(input.cooldown_minutes ?? existing?.cooldown_minutes ?? 1440);
   const sourceInput = String(input.source ?? existing?.source ?? (needsThreshold(typeInput) ? "user" : "system")).toLowerCase();
+  const entryFilterInput = String(input.entry_filter ?? existing?.entry_filter ?? defaultEntryFilter(typeInput)).toLowerCase();
 
   return {
     id: normalizeId(input.id ?? existing?.id, fallbackId),
@@ -201,6 +219,7 @@ export function sanitizeAlertRule(input: Record<string, unknown>, existing?: Ale
     channels,
     enabled: Boolean(input.enabled ?? existing?.enabled ?? true),
     cooldown_minutes: Number.isFinite(cooldown) ? Math.max(0, Math.round(cooldown)) : 1440,
+    entry_filter: isEntryFilter(entryFilterInput) ? entryFilterInput : defaultEntryFilter(typeInput),
     source: sourceInput === "system" ? "system" : "user",
     created_at_utc: existing?.created_at_utc ?? now,
     updated_at_utc: now,

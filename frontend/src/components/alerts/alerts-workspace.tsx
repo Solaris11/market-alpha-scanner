@@ -10,6 +10,7 @@ type AlertRule = {
   channels: string[];
   enabled: boolean;
   cooldown_minutes: number;
+  entry_filter?: string;
   source?: "system" | "user";
 };
 
@@ -19,6 +20,7 @@ type AlertStateEntry = {
   last_observed_value?: string;
   last_status?: string;
   last_skip_reason?: string;
+  last_entry_status?: string;
   last_channel_results?: Record<string, string>;
 };
 
@@ -52,6 +54,12 @@ const FORM_TYPES = [
   "new_top_candidate",
 ];
 const THRESHOLD_TYPES = new Set(["price_above", "price_below", "score_above", "score_below"]);
+const ENTRY_FILTERS = [
+  { value: "any", label: "Any" },
+  { value: "good_only", label: "Good entry only" },
+  { value: "good_or_wait", label: "Good or wait" },
+  { value: "avoid_overextended", label: "Avoid overextended" },
+];
 
 function normalizeSymbol(symbol: string) {
   return symbol.trim().toUpperCase().replace(/[^A-Z0-9._-]/g, "");
@@ -80,6 +88,17 @@ function typeLabel(value: string) {
     .join(" ");
 }
 
+function entryFilterLabel(value?: string) {
+  return ENTRY_FILTERS.find((item) => item.value === value)?.label ?? "Any";
+}
+
+function defaultEntryFilter(type: string) {
+  if (type === "score_above") return "avoid_overextended";
+  if (type === "stop_loss_broken" || type === "take_profit_hit" || type === "buy_zone_hit") return "any";
+  if (type === "rating_changed" || type === "action_changed") return "good_or_wait";
+  return "any";
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const payload = (await response.json()) as T & { error?: string };
@@ -96,6 +115,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
   const [threshold, setThreshold] = useState("");
   const [channels, setChannels] = useState<string[]>(["telegram"]);
   const [cooldown, setCooldown] = useState("1440");
+  const [entryFilter, setEntryFilter] = useState("any");
   const [enabled, setEnabled] = useState(true);
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [message, setMessage] = useState("");
@@ -117,6 +137,10 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
 
   const sortedRules = useMemo(() => [...overview.rules].sort((a, b) => String(a.symbol ?? "").localeCompare(String(b.symbol ?? "")) || a.type.localeCompare(b.type)), [overview.rules]);
   const thresholdVisible = THRESHOLD_TYPES.has(type);
+
+  useEffect(() => {
+    setEntryFilter(defaultEntryFilter(type));
+  }, [type]);
 
   async function reload() {
     setOverview(await fetchJson<AlertOverview>("/api/alerts/rules"));
@@ -140,6 +164,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             threshold: thresholdVisible ? Number(threshold) : undefined,
             channels,
             cooldown_minutes: Number(cooldown),
+            entry_filter: entryFilter,
             enabled,
             source: THRESHOLD_TYPES.has(type) ? "user" : "system",
           },
@@ -214,6 +239,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             cooldown_minutes: 1440,
             enabled: true,
             source: "system",
+            entry_filter: defaultEntryFilter(nextType),
             ...extra,
           })
         }
@@ -245,7 +271,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
 
       <section className="terminal-panel rounded-md p-4">
         <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">New Alert</div>
-        <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-[1fr_1.2fr_0.8fr_1fr_0.7fr]">
+        <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-[1fr_1.2fr_0.8fr_1fr_1fr_0.7fr]">
           <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             Symbol
             <input className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setSymbol(event.target.value)} placeholder="AVGO" value={symbol} />
@@ -269,6 +295,16 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
           <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             Cooldown Minutes
             <input className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" min="0" onChange={(event) => setCooldown(event.target.value)} type="number" value={cooldown} />
+          </label>
+          <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+            Entry Filter
+            <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setEntryFilter(event.target.value)} value={entryFilter}>
+              {ENTRY_FILTERS.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="flex items-end gap-2 pb-1 text-xs text-slate-300">
             <input checked={enabled} onChange={(event) => setEnabled(event.target.checked)} type="checkbox" />
@@ -303,12 +339,12 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
               <div className="flex flex-col gap-2 py-2 lg:flex-row lg:items-center lg:justify-between" key={item}>
                 <div className="font-mono font-semibold text-sky-200">{item}</div>
                 <div className="flex flex-wrap gap-1.5">
-                  {quickRule(item, "buy_zone_hit", "Buy Zone")}
-                  {quickRule(item, "stop_loss_broken", "Stop Loss")}
-                  {quickRule(item, "take_profit_hit", "Take Profit")}
-                  {quickRule(item, "score_changed_by", "Score +/-2", { threshold: 2 })}
-                  {quickRule(item, "rating_changed", "Rating Change")}
-                  {quickRule(item, "action_changed", "Action Change")}
+                  {quickRule(item, "buy_zone_hit", "Buy Zone", { entry_filter: "any" })}
+                  {quickRule(item, "stop_loss_broken", "Stop Loss", { entry_filter: "any" })}
+                  {quickRule(item, "take_profit_hit", "Take Profit", { entry_filter: "any" })}
+                  {quickRule(item, "score_changed_by", "Score +/-2", { threshold: 2, entry_filter: "avoid_overextended" })}
+                  {quickRule(item, "rating_changed", "Rating Change", { entry_filter: "good_or_wait" })}
+                  {quickRule(item, "action_changed", "Action Change", { entry_filter: "good_or_wait" })}
                 </div>
               </div>
             ))
@@ -332,6 +368,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             <col style={{ width: 155 }} />
             <col style={{ width: 95 }} />
             <col style={{ width: 130 }} />
+            <col style={{ width: 150 }} />
             <col style={{ width: 105 }} />
             <col style={{ width: 170 }} />
             <col style={{ width: 180 }} />
@@ -343,6 +380,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
               <th className="px-2 py-1.5">Type</th>
               <th className="px-2 py-1.5">Threshold</th>
               <th className="px-2 py-1.5">Channels</th>
+              <th className="px-2 py-1.5">Entry Filter</th>
               <th className="px-2 py-1.5">Cooldown</th>
               <th className="px-2 py-1.5">Last Sent</th>
               <th className="px-2 py-1.5">Actions</th>
@@ -360,9 +398,24 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
                   <td className="truncate px-2 py-1.5">{typeLabel(rule.type)}</td>
                   <td className="px-2 py-1.5 font-mono">{rule.threshold ?? "N/A"}</td>
                   <td className="px-2 py-1.5">{rule.channels.join(", ")}</td>
+                  <td className="px-2 py-1.5">
+                    <select
+                      className="w-full rounded border border-slate-700/80 bg-slate-950/70 px-1.5 py-1 text-[11px] text-slate-100 outline-none focus:border-sky-400/60"
+                      disabled={busyId === rule.id}
+                      onChange={(event) => patchRule(rule, { entry_filter: event.target.value })}
+                      value={rule.entry_filter ?? "any"}
+                    >
+                      {ENTRY_FILTERS.map((item) => (
+                        <option key={item.value} value={item.value}>
+                          {item.label}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
                   <td className="px-2 py-1.5 font-mono">{rule.cooldown_minutes}</td>
                   <td className="truncate px-2 py-1.5" title={state.last_skip_reason ?? state.last_status ?? ""}>
                     {formatDate(state.last_sent_at)}
+                    {state.last_entry_status ? <div className="truncate text-[10px] text-slate-500">{state.last_entry_status}</div> : null}
                   </td>
                   <td className="px-2 py-1.5">
                     <div className="flex flex-wrap gap-1.5">
