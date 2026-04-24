@@ -535,6 +535,14 @@ def open_symbol_detail(symbol: str) -> None:
     st.rerun()
 
 
+def go_to_overview() -> None:
+    st.query_params.clear()
+    st.session_state["current_page"] = "Overview / Latest Scan"
+    st.session_state["page_selector"] = "Overview / Latest Scan"
+    st.session_state["_page_selector_widget"] = "Overview / Latest Scan"
+    st.rerun()
+
+
 def render_watchlist_panel(
     watchlist: list[str],
     *,

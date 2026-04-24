@@ -6,13 +6,27 @@ import pandas as pd
 import streamlit as st
 
 from .loaders import compare_snapshots, parse_snapshot_timestamp, prepare_scan_df, safe_read_csv, snapshot_options
-from .shared import DEFAULT_TABLE_COLUMNS, display_table, format_timestamp
+from .shared import DEFAULT_TABLE_COLUMNS, display_table, format_timestamp, render_info_card, render_section_heading
+
+
+SCAN_COMMAND = "/opt/apps/market-alpha-scanner/venv/bin/python investment_scanner_mvp.py --save-history"
+
+
+def render_scan_history_guidance() -> None:
+    render_section_heading("Create Scan History", "Saved snapshots power history comparison and performance analysis.", eyebrow="History")
+    st.info("No historical snapshots are available yet. Run the scanner with history saving enabled, then refresh the dashboard.")
+    status_columns = st.columns(2)
+    with status_columns[0]:
+        st.markdown(render_info_card("Run Command", "Manual", "Use a shell so logs and long runtimes are visible.", "accent"), unsafe_allow_html=True)
+    with status_columns[1]:
+        st.markdown(render_info_card("Expected Output", "scanner_output/history", "Files should appear as scan_YYYYMMDD_HHMMSS.csv.", "neutral"), unsafe_allow_html=True)
+    st.code(SCAN_COMMAND, language="bash")
 
 
 def render_history_page(snapshot_files: list[Path]) -> None:
     st.header("Scan History")
     if not snapshot_files:
-        st.info("No historical snapshots yet. Scanner needs to run at least once.")
+        render_scan_history_guidance()
         return
 
     snapshot_rows = []

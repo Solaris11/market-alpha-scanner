@@ -14,6 +14,7 @@ from .shared import (
     format_billions,
     format_number,
     format_percent,
+    go_to_overview,
     load_watchlist,
     normalize_symbol,
     remove_from_watchlist,
@@ -905,6 +906,11 @@ def render_symbol_detail_page(full_df: pd.DataFrame | None, history_df: pd.DataF
     if not symbols:
         st.info("No symbols found in the latest ranking.")
         return
+
+    nav_columns = st.columns([1, 4])
+    if nav_columns[0].button("Back to Overview", key="symbol_detail_back_to_overview", use_container_width=True):
+        go_to_overview()
+    nav_columns[1].caption("Return to the main ranking view without editing the browser URL.")
 
     render_section_heading("Symbol Detail", "Decision screen for a single scanner name.", eyebrow="Detail")
     requested_symbol = normalize_symbol(st.session_state.get("selected_symbol", ""))

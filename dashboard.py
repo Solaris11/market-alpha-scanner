@@ -24,6 +24,7 @@ from dashboard_views.shared import inject_dashboard_theme, load_watchlist, norma
 
 
 PAGE_SELECTOR_WIDGET_KEY = "_page_selector_widget"
+SIDEBAR_PAGE_CHANGE_KEY = "_sidebar_page_changed"
 
 
 def _query_param_value(name: str) -> str:
@@ -63,9 +64,11 @@ def main() -> None:
     if st.session_state["current_page"] not in pages:
         st.session_state["current_page"] = "Overview / Latest Scan"
 
+    sidebar_page_changed = bool(st.session_state.pop(SIDEBAR_PAGE_CHANGE_KEY, False))
+    sidebar_page = st.session_state.get(PAGE_SELECTOR_WIDGET_KEY)
     query_page = _query_param_value("page")
     query_symbol = normalize_symbol(_query_param_value("symbol"))
-    query_requests_symbol_detail = query_page == "symbol-detail"
+    query_requests_symbol_detail = query_page == "symbol-detail" and not (sidebar_page_changed and sidebar_page != "Symbol Detail")
     if query_requests_symbol_detail:
         _apply_symbol_detail_request(query_symbol, sync_sidebar_widget=True)
 
@@ -80,8 +83,9 @@ def main() -> None:
             selected = "Overview / Latest Scan"
         st.session_state["current_page"] = selected
         st.session_state["page_selector"] = selected
-        # Do not clear query params here.
-        # Symbol navigation uses ?page=symbol-detail&symbol=XXX as source of truth.
+        st.session_state[SIDEBAR_PAGE_CHANGE_KEY] = True
+        if selected != "Symbol Detail":
+            st.query_params.clear()
 
     full_df, _ = safe_read_csv(FULL_RANKING_PATH)
     top_df, _ = safe_read_csv(TOP_CANDIDATES_PATH)
@@ -124,7 +128,7 @@ def main() -> None:
         )
         st.session_state["current_page"] = selected_page
         st.session_state["page_selector"] = selected_page
-        if query_requests_symbol_detail:
+        if query_requests_symbol_detail and not sidebar_page_changed:
             _apply_symbol_detail_request(query_symbol, sync_sidebar_widget=False)
         render_watchlist_panel(
             watchlist,

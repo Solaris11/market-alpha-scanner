@@ -3,7 +3,45 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from .shared import format_percent, format_performance_display
+from .loaders import FORWARD_RETURNS_PATH, FULL_RANKING_PATH, HISTORY_DIR, PERFORMANCE_SUMMARY_PATH, list_snapshot_files
+from .shared import format_percent, format_performance_display, render_info_card, render_section_heading
+
+
+ANALYSIS_COMMAND = "/opt/apps/market-alpha-scanner/venv/bin/python investment_scanner_mvp.py --run-analysis"
+
+
+def _status_text(path_exists: bool) -> str:
+    return "Available" if path_exists else "Missing"
+
+
+def render_performance_guidance() -> None:
+    render_section_heading("Performance Data Status", "Performance metrics are generated from saved scan history.", eyebrow="Analysis")
+    snapshot_count = len(list_snapshot_files(HISTORY_DIR))
+    status_columns = st.columns(3)
+    with status_columns[0]:
+        st.markdown(
+            render_info_card("Latest Scan", _status_text(FULL_RANKING_PATH.exists()), "scanner_output/full_ranking.csv", "positive" if FULL_RANKING_PATH.exists() else "warning"),
+            unsafe_allow_html=True,
+        )
+    with status_columns[1]:
+        st.markdown(
+            render_info_card("Forward Returns", _status_text(FORWARD_RETURNS_PATH.exists()), "scanner_output/analysis/forward_returns.csv", "positive" if FORWARD_RETURNS_PATH.exists() else "warning"),
+            unsafe_allow_html=True,
+        )
+    with status_columns[2]:
+        st.markdown(
+            render_info_card(
+                "Performance Summary",
+                _status_text(PERFORMANCE_SUMMARY_PATH.exists()),
+                f"{snapshot_count:,} saved snapshot{'s' if snapshot_count != 1 else ''}",
+                "positive" if PERFORMANCE_SUMMARY_PATH.exists() else "warning",
+            ),
+            unsafe_allow_html=True,
+        )
+
+    st.info("Performance analysis is not ready until forward-return observations can be computed from saved history.")
+    st.caption("Generate or refresh analysis files with:")
+    st.code(ANALYSIS_COMMAND, language="bash")
 
 
 def _float_value(row: pd.Series, column: str) -> float:
@@ -216,11 +254,14 @@ def render_performance_group(summary_df: pd.DataFrame, group_type: str, title: s
 
 def render_performance_page(summary_df: pd.DataFrame | None, forward_df: pd.DataFrame | None) -> None:
     st.header("Performance Analysis")
-    if summary_df is None:
-        st.info("Performance analysis not ready yet.")
+    if summary_df is None or summary_df.empty:
+        render_performance_guidance()
         return
 
     summary_df = summary_df.copy()
+    if forward_df is None or forward_df.empty:
+        render_performance_guidance()
+
     render_edge_summary(summary_df)
     render_rule_based_insights(summary_df)
 

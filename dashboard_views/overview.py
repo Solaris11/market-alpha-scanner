@@ -22,8 +22,53 @@ from .shared import (
     sort_scan_df,
 )
 
+FILTER_SYMBOL_KEY = "overview_filter_symbol"
+FILTER_ASSET_TYPES_KEY = "overview_filter_asset_types"
+FILTER_SECTORS_KEY = "overview_filter_sectors"
+FILTER_RATINGS_KEY = "overview_filter_ratings"
+FILTER_MIN_SCORE_KEY = "overview_filter_min_score"
+
+
+def reset_overview_filters() -> None:
+    st.session_state[FILTER_SYMBOL_KEY] = ""
+    st.session_state[FILTER_ASSET_TYPES_KEY] = []
+    st.session_state[FILTER_SECTORS_KEY] = []
+    st.session_state[FILTER_RATINGS_KEY] = []
+    st.session_state[FILTER_MIN_SCORE_KEY] = 0.0
+
+
+def active_filter_count(symbol_query: str, asset_types: list[str], sectors: list[str], ratings: list[str], min_final_score: float) -> int:
+    return sum(
+        [
+            bool(symbol_query.strip()),
+            bool(asset_types),
+            bool(sectors),
+            bool(ratings),
+            min_final_score > 0,
+        ]
+    )
+
+
 def _summary_card(label: str, value: object, meta: str = "", tone: str = "neutral") -> None:
     st.markdown(render_info_card(label, value, meta, tone), unsafe_allow_html=True)
+
+
+def render_empty_filter_state(
+    symbol_query: str,
+    asset_types: list[str],
+    sectors: list[str],
+    ratings: list[str],
+    min_final_score: float,
+) -> None:
+    render_section_heading("Full Ranking", "Score-driven ranking with faster scanability on the most important columns.", eyebrow="Ranking")
+    st.info("No rows match this filter combination. Try clearing sector or asset type.")
+    with st.container(border=True):
+        st.caption("Active filters")
+        st.markdown(f"- Symbol search: `{symbol_query.strip() or 'None'}`")
+        st.markdown(f"- Asset types: `{', '.join(asset_types) if asset_types else 'None'}`")
+        st.markdown(f"- Sectors: `{', '.join(sectors) if sectors else 'None'}`")
+        st.markdown(f"- Ratings: `{', '.join(ratings) if ratings else 'None'}`")
+        st.markdown(f"- Minimum final_score: `{format_number(min_final_score)}`")
 
 
 def render_status_panel(
@@ -173,7 +218,7 @@ def render_clickable_ranking_list(ordered: pd.DataFrame) -> None:
     if "overview_rank_page_selector" not in st.session_state:
         st.session_state["overview_rank_page_selector"] = 1
     if "overview_rank_page_size" not in st.session_state:
-        st.session_state["overview_rank_page_size"] = "All"
+        st.session_state["overview_rank_page_size"] = "50"
     if ordered.empty or "symbol" not in ordered.columns:
         return
 
@@ -284,28 +329,48 @@ def render_overview_page(
 
     with st.sidebar:
         render_section_heading("Overview Filters", "Trim the ranking to the exact market slice you want to inspect.", eyebrow="Filters")
-        symbol_query = st.text_input("Symbol search")
+        st.button("Reset Filters", key="overview_reset_filters", use_container_width=True, on_click=reset_overview_filters)
+        symbol_query = st.text_input("Symbol search", key=FILTER_SYMBOL_KEY)
+        asset_type_options = sorted(full_df["asset_type"].dropna().astype(str).unique().tolist()) if "asset_type" in full_df.columns else []
         asset_types = st.multiselect(
             "Asset type",
-            sorted(full_df["asset_type"].dropna().astype(str).unique().tolist()) if "asset_type" in full_df.columns else [],
+            asset_type_options,
+            key=FILTER_ASSET_TYPES_KEY,
         )
+
+        sector_source = full_df
+        if asset_types and "asset_type" in full_df.columns:
+            sector_source = full_df[full_df["asset_type"].isin(asset_types)]
+        sector_options = sorted(sector_source["sector"].dropna().astype(str).unique().tolist()) if "sector" in sector_source.columns else []
+        selected_sectors = st.session_state.get(FILTER_SECTORS_KEY, [])
+        if isinstance(selected_sectors, list):
+            valid_selected_sectors = [sector for sector in selected_sectors if sector in sector_options]
+            if valid_selected_sectors != selected_sectors:
+                st.session_state[FILTER_SECTORS_KEY] = valid_selected_sectors
         sectors = st.multiselect(
             "Sector",
-            sorted(full_df["sector"].dropna().astype(str).unique().tolist()) if "sector" in full_df.columns else [],
+            sector_options,
+            key=FILTER_SECTORS_KEY,
         )
         ratings = st.multiselect(
             "Rating",
             sorted(full_df["rating"].dropna().astype(str).unique().tolist()) if "rating" in full_df.columns else [],
+            key=FILTER_RATINGS_KEY,
         )
-        min_final_score = st.number_input("Minimum final_score", value=0.0, step=1.0)
+        min_final_score = st.number_input("Minimum final_score", min_value=0.0, value=0.0, step=1.0, key=FILTER_MIN_SCORE_KEY)
+        filter_count = active_filter_count(symbol_query, asset_types, sectors, ratings, min_final_score)
+        st.caption(f"{filter_count} active filter{'s' if filter_count != 1 else ''}")
 
     filtered_full = filter_scan_df(full_df, symbol_query, asset_types, sectors, ratings, min_final_score)
     filtered_top = filter_scan_df(top_df, symbol_query, asset_types, sectors, ratings, min_final_score) if not top_df.empty else pd.DataFrame()
 
     render_status_panel(full_df, snapshot_files, performance_summary_path, forward_returns_path)
     st.caption(f"Filtered rows in view: {len(filtered_full):,}")
-    top_candidates_for_view = filtered_top if not filtered_top.empty else top_df
+    top_candidates_for_view = filtered_top if filter_count > 0 else top_df
     render_top_candidate_cards(top_candidates_for_view)
     render_clickable_top_candidate_list(top_candidates_for_view)
     render_watchlist_overview()
-    render_ranking_overview(filtered_full)
+    if filtered_full.empty:
+        render_empty_filter_state(symbol_query, asset_types, sectors, ratings, min_final_score)
+    else:
+        render_ranking_overview(filtered_full)
