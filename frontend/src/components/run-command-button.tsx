@@ -1,11 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 type CommandResult = {
   ok: boolean;
   command: string;
-  message: string;
+  message?: string;
+  error?: string;
   stdout?: string;
   stderr?: string;
   code?: number | null;
@@ -17,6 +19,7 @@ type Props = {
 };
 
 export function RunCommandButton({ endpoint, label }: Props) {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CommandResult | null>(null);
 
@@ -28,6 +31,9 @@ export function RunCommandButton({ endpoint, label }: Props) {
       const response = await fetch(endpoint, { method: "POST" });
       const payload = (await response.json()) as CommandResult;
       setResult({ ...payload, ok: response.ok && payload.ok });
+      if (response.ok && payload.ok) {
+        router.refresh();
+      }
     } catch (error) {
       setResult({
         ok: false,
@@ -53,7 +59,7 @@ export function RunCommandButton({ endpoint, label }: Props) {
       {result ? (
         <div className={`rounded border p-3 text-xs ${result.ok ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100" : "border-rose-400/30 bg-rose-400/10 text-rose-100"}`}>
           <div className="font-semibold">{result.ok ? "Success" : "Error"}</div>
-          <div className="mt-1 text-slate-300">{result.message}</div>
+          <div className="mt-1 text-slate-300">{result.message ?? result.error}</div>
           {typeof result.code === "number" && result.code !== 0 ? <div className="mt-1 text-slate-400">Exit code: {result.code}</div> : null}
           {result.command ? <div className="mt-1 font-mono text-slate-400">{result.command}</div> : null}
           {result.stdout || result.stderr ? (

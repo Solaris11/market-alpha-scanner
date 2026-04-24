@@ -1,6 +1,5 @@
 import { MetricStrip } from "@/components/metric-strip";
 import { OverviewWorkspace } from "@/components/overview-workspace";
-import { RankingTable } from "@/components/ranking-table";
 import { TerminalShell } from "@/components/shell";
 import { formatNumber } from "@/lib/format";
 import { getFullRanking, getTopCandidates } from "@/lib/scanner-data";
@@ -34,30 +33,7 @@ export default async function DashboardOverview() {
           ]}
         />
 
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_520px]">
-          <OverviewWorkspace ranking={ranking} />
-
-          <aside className="space-y-3">
-            <section>
-              <div className="mb-2">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Top Candidates</div>
-                <h2 className="text-lg font-semibold text-slate-50">High Conviction</h2>
-              </div>
-              <RankingTable rows={topCandidates} highlight limit={10} />
-            </section>
-
-            <section className="terminal-panel rounded-md p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Watchlist</div>
-              <div className="mt-2 divide-y divide-slate-800 text-xs text-slate-400">
-                {["Add symbols from detail pages", "Local persistence to be wired next"].map((item) => (
-                  <div className="py-2" key={item}>
-                    {item}
-                  </div>
-                ))}
-              </div>
-            </section>
-          </aside>
-        </div>
+        <OverviewWorkspace ranking={ranking} topCandidates={topCandidates} />
       </div>
     </TerminalShell>
   );

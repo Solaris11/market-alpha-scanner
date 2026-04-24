@@ -49,3 +49,13 @@ export type PerformanceData = {
   summary: CsvRow[];
   forwardReturns: CsvRow[];
 };
+
+export type SymbolHistoryRow = RankingRow & {
+  timestamp_utc: string;
+  source_file: string;
+};
+
+export type SymbolHistoryData = {
+  symbols: string[];
+  rows: SymbolHistoryRow[];
+};

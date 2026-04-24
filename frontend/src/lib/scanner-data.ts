@@ -1,9 +1,10 @@
 import "server-only";
 
+import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parse } from "csv-parse/sync";
-import type { CsvRow, HistorySnapshot, HistorySummary, PerformanceData, RankingRow, ScannerScalar, SymbolDetail } from "./types";
+import type { CsvRow, HistorySnapshot, HistorySummary, PerformanceData, RankingRow, ScannerScalar, SymbolDetail, SymbolHistoryData, SymbolHistoryRow } from "./types";
 
 const NUMERIC_FIELDS = new Set([
   "price",
@@ -50,8 +51,12 @@ const NAME_FIELDS = [
   "name",
 ];
 
+const DEFAULT_SCANNER_OUTPUT_DIR = "/opt/apps/market-alpha-scanner/app/scanner_output";
+
 export function scannerOutputDir() {
-  return process.env.SCANNER_OUTPUT_DIR ?? path.resolve(/*turbopackIgnore: true*/ process.cwd(), "..", "scanner_output");
+  if (process.env.SCANNER_OUTPUT_DIR) return process.env.SCANNER_OUTPUT_DIR;
+  if (fsSync.existsSync(DEFAULT_SCANNER_OUTPUT_DIR)) return DEFAULT_SCANNER_OUTPUT_DIR;
+  return path.resolve(/*turbopackIgnore: true*/ process.cwd(), "..", "scanner_output");
 }
 
 function symbolSlug(symbol: string) {
@@ -190,6 +195,31 @@ export async function getHistorySummary(): Promise<HistorySummary> {
     earliest: dated.length ? dated[dated.length - 1] : null,
     latest: dated.length ? dated[0] : null,
     uniqueDates,
+  };
+}
+
+export async function getSymbolHistoryData(): Promise<SymbolHistoryData> {
+  const history = await getHistorySummary();
+  const rows: SymbolHistoryRow[] = [];
+
+  for (const snapshot of history.snapshots) {
+    const snapshotRows = await readCsv(path.join(scannerOutputDir(), "history", snapshot.name));
+    const fallbackTimestamp = snapshot.timestamp ?? snapshot.modifiedAt;
+
+    for (const raw of snapshotRows) {
+      const row = normalizeRankingRow(raw) as SymbolHistoryRow;
+      if (!row.symbol) continue;
+      row.timestamp_utc = String(raw.timestamp_utc ?? fallbackTimestamp);
+      row.source_file = snapshot.name;
+      rows.push(row);
+    }
+  }
+
+  rows.sort((a, b) => String(a.timestamp_utc).localeCompare(String(b.timestamp_utc)));
+
+  return {
+    symbols: Array.from(new Set(rows.map((row) => row.symbol))).sort(),
+    rows,
   };
 }
 
