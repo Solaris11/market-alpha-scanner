@@ -48,8 +48,13 @@ function takeProfitDisplay(row: SymbolHistoryRow) {
   const value = valueFrom(row, ["take_profit_zone", "take_profit", "upside_target", "target_price", "target"]);
   const zone = parseTradeLevel(value);
   const currentPrice = typeof row.price === "number" ? row.price : null;
-  if (currentPrice === null || !zone || zone.low <= currentPrice || zone.high <= currentPrice) return "N/A";
-  return String(value ?? "N/A");
+  if (currentPrice !== null && zone && zone.low > currentPrice && zone.high > currentPrice) return String(value ?? "N/A");
+
+  const stopZone = parseTradeLevel(valueFrom(row, ["stop_loss", "invalidation_level"]));
+  if (currentPrice === null || !stopZone || stopZone.low >= currentPrice) return "N/A";
+
+  const risk = currentPrice - stopZone.low;
+  return `${formatNumber(currentPrice + 2 * risk)}-${formatNumber(currentPrice + 3 * risk)}`;
 }
 
 function averageInterval(rows: SymbolHistoryRow[]) {

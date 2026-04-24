@@ -51,6 +51,21 @@ function takeProfitValue(row: Record<string, unknown>, summary: Record<string, u
   return displayValue(value);
 }
 
+function resolvedTakeProfitValue(row: Record<string, unknown>, summary: Record<string, unknown> | null) {
+  const explicitTarget = takeProfitValue(row, summary);
+  if (explicitTarget !== "N/A") return explicitTarget;
+
+  const currentPrice = typeof row.price === "number" ? row.price : null;
+  const stopValue = valueFrom(row, summary, ["stop_loss", "invalidation_level"]);
+  const stopZone = parseTradeLevel(stopValue);
+  if (currentPrice === null || !stopZone || stopZone.low >= currentPrice) return "N/A";
+
+  const risk = currentPrice - stopZone.low;
+  const targetLow = currentPrice + 2 * risk;
+  const targetHigh = currentPrice + 3 * risk;
+  return `${formatNumber(targetLow)}-${formatNumber(targetHigh)}`;
+}
+
 function InfoTable({ rows }: { rows: { label: string; value: unknown }[] }) {
   return (
     <div className="divide-y divide-slate-800/90 rounded border border-slate-800/90">
@@ -120,7 +135,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
             ];
             const buyZone = displayValue(valueFrom(row, summary, ["buy_zone", "entry_zone"]));
             const stopLoss = displayValue(valueFrom(row, summary, ["stop_loss", "invalidation_level"]));
-            const takeProfit = takeProfitValue(row, summary);
+            const takeProfit = resolvedTakeProfitValue(row, summary);
             const riskReward = displayValue(valueFrom(row, summary, ["risk_reward"]));
             const tradePlanReasons = [
               { label: "Buy Zone Reason", value: valueFrom(row, summary, ["buy_zone_reason"]) },

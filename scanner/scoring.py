@@ -804,7 +804,7 @@ def derive_trade_plan(
 
     risk_per_share = current_price - stop_loss_value if stop_loss != "N/A" else np.nan
     take_profit_zone = "N/A"
-    take_profit_reason = "Take profit unavailable because stop/risk could not be validated"
+    take_profit_reason = "Take profit unavailable because stop loss or price is missing"
     risk_reward = np.nan
     if not np.isnan(risk_per_share) and risk_per_share > 0:
         two_r = current_price + (2.0 * risk_per_share)
@@ -816,24 +816,25 @@ def derive_trade_plan(
                 if not np.isnan(level) and level > current_price * 1.005
             }
         )
-        if resistances and resistances[0] < two_r:
+        take_profit_low = two_r
+        take_profit_high = three_r
+        take_profit_reason = "based on 2R–3R extension"
+        if resistances:
             take_profit_low = resistances[0]
-            take_profit_high = max(two_r, take_profit_low + atr_value)
-            take_profit_reason = "Take profit starts at prior resistance before 2R, then extends toward 2R"
-        elif resistances and two_r <= resistances[0] <= three_r:
-            take_profit_low = two_r
-            take_profit_high = resistances[0]
-            take_profit_reason = "Take profit based on 2R extension into prior resistance"
-        else:
-            take_profit_low = two_r
-            take_profit_high = three_r
-            take_profit_reason = "Take profit based on 2R-3R extension"
+            take_profit_high = resistances[1] if len(resistances) > 1 else max(two_r, take_profit_low + atr_value)
+            if take_profit_high < take_profit_low:
+                take_profit_high = max(two_r, three_r)
+            take_profit_reason = "based on resistance"
 
         if take_profit_low > current_price and take_profit_high > current_price:
             take_profit_zone = _format_zone(take_profit_low, take_profit_high)
             risk_reward = (take_profit_low - current_price) / risk_per_share
         else:
-            take_profit_reason = "Take profit unavailable because target is not above current price"
+            take_profit_low = two_r
+            take_profit_high = three_r
+            take_profit_zone = _format_zone(take_profit_low, take_profit_high)
+            take_profit_reason = "based on 2R–3R extension"
+            risk_reward = (take_profit_low - current_price) / risk_per_share
 
     return {
         "buy_zone": buy_zone,

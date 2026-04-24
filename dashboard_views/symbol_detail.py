@@ -153,25 +153,26 @@ def _derive_upside_target(
     entry_mid: float | None,
     invalidation: float | None,
 ) -> tuple[float | None, str]:
-    if current_price is None:
-        return None, "Target unavailable"
+    del entry_mid
+    if current_price is None or invalidation is None:
+        return None, "N/A"
+
+    risk_unit = current_price - invalidation
+    if risk_unit <= 0:
+        return None, "N/A"
+
+    two_r = current_price + (risk_unit * 2.0)
+    three_r = current_price + (risk_unit * 3.0)
 
     if not history_df.empty and "close" in history_df.columns:
         recent_close = pd.to_numeric(history_df["close"], errors="coerce").dropna()
         if not recent_close.empty:
             lookback_high = float(recent_close.tail(252).max())
-            if lookback_high > current_price * 1.02:
-                return lookback_high, "52-week high retest"
+            if lookback_high > current_price * 1.005:
+                target_high = max(two_r, lookback_high)
+                return lookback_high, f"{lookback_high:.2f}-{target_high:.2f}"
 
-    reference_entry = entry_mid if entry_mid is not None else current_price
-    if invalidation is not None and reference_entry > invalidation:
-        risk_unit = reference_entry - invalidation
-        if risk_unit > 0:
-            target = current_price + (risk_unit * 2.0)
-            if target > current_price:
-                return target, "2R extension"
-
-    return None, "Target unavailable"
+    return two_r, f"{two_r:.2f}-{three_r:.2f}"
 
 
 def _first_available(row: pd.Series, keys: list[str]) -> object:
@@ -603,7 +604,7 @@ def render_symbol_detail_header(
             render_info_card(
                 "Risk / Reward",
                 rr_text,
-                str(trade_plan.get("upside_context", "Target unavailable")),
+                str(trade_plan.get("upside_context", "Take profit unavailable")),
                 "neutral",
             ),
             unsafe_allow_html=True,
