@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import subprocess
 from collections.abc import Mapping
+from dataclasses import dataclass
 from html import escape
 from pathlib import Path
 from typing import Any, cast
@@ -40,6 +41,19 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 OUTPUT_DIR = BASE_DIR / "scanner_output"
 WATCHLIST_PATH = OUTPUT_DIR / "watchlist.json"
 COMMAND_TIMEOUT_SECONDS = 600
+APP_OUTPUT_FIX_PATH = "/opt/apps/market-alpha-scanner/app/scanner_output"
+RUNTIME_OUTPUT_FIX_PATH = "/opt/apps/market-alpha-scanner/runtime/scanner_output"
+
+
+@dataclass(frozen=True)
+class DashboardCommandResult:
+    success: bool
+    stdout: str
+    stderr: str
+    status: str
+    returncode: int | None = None
+    permission_error: bool = False
+    preflight_errors: tuple[str, ...] = ()
 
 THEME_CSS = """
 <style>
@@ -538,18 +552,154 @@ def open_symbol_detail(symbol: str) -> None:
     st.rerun()
 
 
-def run_dashboard_command(command: list[str], cwd: Path, timeout_seconds: int = COMMAND_TIMEOUT_SECONDS) -> tuple[bool, str, str, str]:
+def _write_test_directory(path: Path) -> str | None:
+    test_path = path / ".write_test"
+    try:
+        test_path.write_text("ok\n", encoding="utf-8")
+        test_path.unlink()
+    except Exception as exc:
+        try:
+            if test_path.exists():
+                test_path.unlink()
+        except Exception:
+            pass
+        return f"{path}: {exc}"
+    return None
+
+
+def _write_test_file(path: Path) -> str | None:
+    try:
+        with path.open("a", encoding="utf-8"):
+            pass
+    except Exception as exc:
+        return f"{path}: {exc}"
+    return None
+
+
+def check_scanner_output_writable(cwd: Path) -> tuple[bool, tuple[str, ...]]:
+    output_dir = cwd / "scanner_output"
+    history_dir = output_dir / "history"
+    symbols_dir = output_dir / "symbols"
+    analysis_dir = output_dir / "analysis"
+    errors: list[str] = []
+
+    for directory in (output_dir, history_dir, symbols_dir, analysis_dir):
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+        except Exception as exc:
+            errors.append(f"{directory}: could not create directory: {exc}")
+            continue
+        error = _write_test_directory(directory)
+        if error is not None:
+            errors.append(error)
+
+    if symbols_dir.exists():
+        try:
+            symbol_paths = sorted(path for path in symbols_dir.iterdir() if path.is_dir())
+        except Exception as exc:
+            errors.append(f"{symbols_dir}: could not list symbol directories: {exc}")
+            symbol_paths = []
+
+        for symbol_dir in symbol_paths:
+            directory_error = _write_test_directory(symbol_dir)
+            if directory_error is not None:
+                errors.append(directory_error)
+            history_file = symbol_dir / "history.csv"
+            if history_file.exists():
+                file_error = _write_test_file(history_file)
+                if file_error is not None:
+                    errors.append(file_error)
+
+    return not errors, tuple(errors)
+
+
+def run_dashboard_command(command: list[str], cwd: Path, timeout_seconds: int = COMMAND_TIMEOUT_SECONDS) -> DashboardCommandResult:
+    writable, preflight_errors = check_scanner_output_writable(cwd)
+    if not writable:
+        return DashboardCommandResult(
+            success=False,
+            stdout="",
+            stderr="\n".join(preflight_errors),
+            status="scanner_output is not writable by this Streamlit process.",
+            permission_error=True,
+            preflight_errors=preflight_errors,
+        )
+
     try:
         result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, timeout=timeout_seconds, check=False)
     except subprocess.TimeoutExpired as exc:
         stdout = exc.stdout.decode("utf-8", errors="replace") if isinstance(exc.stdout, bytes) else str(exc.stdout or "")
         stderr = exc.stderr.decode("utf-8", errors="replace") if isinstance(exc.stderr, bytes) else str(exc.stderr or "")
-        return False, stdout, stderr, f"Command timed out after {timeout_seconds} seconds."
+        return DashboardCommandResult(
+            False,
+            stdout,
+            stderr,
+            f"Command timed out after {timeout_seconds} seconds.",
+            permission_error=_contains_permission_error(stderr) or _contains_permission_error(stdout),
+        )
     except Exception as exc:
-        return False, "", "", f"Command failed to start: {exc}"
+        message = f"Command failed to start: {exc}"
+        return DashboardCommandResult(False, "", "", message, permission_error=_contains_permission_error(message))
 
+    stderr = result.stderr or ""
+    stdout = result.stdout or ""
     status = f"Command exited with code {result.returncode}."
-    return result.returncode == 0, result.stdout or "", result.stderr or "", status
+    return DashboardCommandResult(
+        success=result.returncode == 0,
+        stdout=stdout,
+        stderr=stderr,
+        status=status,
+        returncode=result.returncode,
+        permission_error=_contains_permission_error(stderr) or _contains_permission_error(stdout),
+    )
+
+
+def _contains_permission_error(text: str) -> bool:
+    lowered = text.lower()
+    return "permissionerror" in lowered or "permission denied" in lowered
+
+
+def render_output_permission_fix() -> None:
+    st.error("scanner_output is not writable by this Streamlit process.")
+    st.caption("Operator fix for the app path:")
+    st.code(
+        "\n".join(
+            [
+                f"sudo chown -R sre:sre {APP_OUTPUT_FIX_PATH}",
+                f"chmod -R u+rwX {APP_OUTPUT_FIX_PATH}",
+            ]
+        ),
+        language="bash",
+    )
+    st.caption("If scanner_output is a symlink, fix the real target:")
+    st.code(
+        "\n".join(
+            [
+                f"sudo chown -R sre:sre {RUNTIME_OUTPUT_FIX_PATH}",
+                f"chmod -R u+rwX {RUNTIME_OUTPUT_FIX_PATH}",
+            ]
+        ),
+        language="bash",
+    )
+
+
+def render_dashboard_command_result(
+    result: DashboardCommandResult,
+    *,
+    success_message: str,
+    failure_message: str,
+    log_title: str,
+) -> None:
+    if result.success:
+        st.success(success_message)
+    else:
+        st.error(failure_message)
+        if result.returncode is not None:
+            st.caption(f"Exit code: {result.returncode}")
+        if result.permission_error:
+            render_output_permission_fix()
+    st.caption(result.status)
+    render_command_logs(log_title, result.stdout, result.stderr, expanded=not result.success)
 
 
 def render_command_logs(title: str, stdout: str, stderr: str, *, expanded: bool = False) -> None:

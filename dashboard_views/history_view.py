@@ -10,7 +10,7 @@ from .shared import (
     DEFAULT_TABLE_COLUMNS,
     display_table,
     format_timestamp,
-    render_command_logs,
+    render_dashboard_command_result,
     render_info_card,
     render_section_heading,
     run_dashboard_command,
@@ -26,14 +26,14 @@ def render_scanner_run_button() -> None:
         return
 
     with st.spinner("Running scanner. This can take several minutes..."):
-        success, stdout, stderr, status = run_dashboard_command(SCAN_COMMAND_ARGS, BASE_DIR)
+        result = run_dashboard_command(SCAN_COMMAND_ARGS, BASE_DIR)
 
-    if success:
-        st.success("Scanner completed. Refresh the dashboard to load the newest history snapshot.")
-    else:
-        st.error("Scanner run failed.")
-    st.caption(status)
-    render_command_logs("Scanner run logs", stdout, stderr, expanded=not success)
+    render_dashboard_command_result(
+        result,
+        success_message="Scanner completed. Refresh the dashboard to load the newest history snapshot.",
+        failure_message="Scanner run failed.",
+        log_title="Scanner run logs",
+    )
 
 
 def render_scan_history_guidance() -> None:

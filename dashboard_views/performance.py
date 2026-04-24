@@ -7,7 +7,7 @@ from .loaders import BASE_DIR, FORWARD_RETURNS_PATH, FULL_RANKING_PATH, HISTORY_
 from .shared import (
     format_percent,
     format_performance_display,
-    render_command_logs,
+    render_dashboard_command_result,
     render_info_card,
     render_section_heading,
     run_dashboard_command,
@@ -27,14 +27,14 @@ def render_performance_run_button() -> None:
         return
 
     with st.spinner("Running performance analysis..."):
-        success, stdout, stderr, status = run_dashboard_command(ANALYSIS_COMMAND_ARGS, BASE_DIR)
+        result = run_dashboard_command(ANALYSIS_COMMAND_ARGS, BASE_DIR)
 
-    if success:
-        st.success("Performance analysis completed. Refresh the dashboard to load the newest analysis files.")
-    else:
-        st.error("Performance analysis failed.")
-    st.caption(status)
-    render_command_logs("Performance analysis logs", stdout, stderr, expanded=not success)
+    render_dashboard_command_result(
+        result,
+        success_message="Performance analysis completed. Refresh the dashboard to load the newest analysis files.",
+        failure_message="Performance analysis failed.",
+        log_title="Performance analysis logs",
+    )
 
 
 def render_performance_guidance() -> None:
