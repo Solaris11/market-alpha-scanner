@@ -658,6 +658,194 @@ def derive_invalidation_level(sma50_value: float, supertrend_line: float, avwap_
     return f"{min(candidates):.2f}" if candidates else "-"
 
 
+def _valid_level(value: object) -> float:
+    numeric = safe_float(value, np.nan)
+    return numeric if not np.isnan(numeric) and numeric > 0 else np.nan
+
+
+def _format_level(value: float) -> str:
+    return f"{value:.2f}" if not np.isnan(value) and value > 0 else "N/A"
+
+
+def _format_zone(low: float, high: float) -> str:
+    if np.isnan(low) or np.isnan(high) or low <= 0 or high <= 0:
+        return "N/A"
+    zone_low = min(low, high)
+    zone_high = max(low, high)
+    if abs(zone_high - zone_low) <= max(0.01, zone_high * 0.0005):
+        return f"{zone_high:.2f}"
+    return f"{zone_low:.2f}-{zone_high:.2f}"
+
+
+def _recent_extreme(df: pd.DataFrame, column: str, lookback: int, mode: str) -> float:
+    source_column = column if column in df.columns else "Close"
+    if source_column not in df.columns:
+        return np.nan
+    values = pd.to_numeric(df[source_column], errors="coerce").dropna()
+    if values.empty:
+        return np.nan
+    window = values.tail(lookback)
+    if window.empty:
+        return np.nan
+    return _valid_level(window.min() if mode == "min" else window.max())
+
+
+def _prior_high(df: pd.DataFrame, lookback: int) -> float:
+    source_column = "High" if "High" in df.columns else "Close"
+    if source_column not in df.columns:
+        return np.nan
+    values = pd.to_numeric(df[source_column], errors="coerce").dropna()
+    if len(values) < 2:
+        return np.nan
+    return _valid_level(values.iloc[-(lookback + 1) : -1].max())
+
+
+def _select_support(candidates: Sequence[tuple[float, str]], price: float) -> tuple[float, str]:
+    usable = [(level, reason) for level, reason in candidates if not np.isnan(level) and level > 0 and level <= price * 1.015]
+    if not usable:
+        return np.nan, "technical support unavailable"
+    below_or_at = [(level, reason) for level, reason in usable if level <= price]
+    pool = below_or_at if below_or_at else usable
+    return max(pool, key=lambda item: item[0])
+
+
+def derive_trade_plan(
+    df: pd.DataFrame,
+    price: float,
+    setup_type: str,
+    ema20_value: float,
+    sma50_value: float,
+    avwap_ytd: float,
+    avwap_swing: float,
+    supertrend_line: float,
+) -> dict[str, float | str]:
+    current_price = _valid_level(price)
+    if np.isnan(current_price):
+        return {
+            "buy_zone": "N/A",
+            "stop_loss": "N/A",
+            "take_profit_zone": "N/A",
+            "buy_zone_reason": "Current price unavailable",
+            "stop_loss_reason": "Current price unavailable",
+            "take_profit_reason": "Current price unavailable",
+            "risk_reward": np.nan,
+        }
+
+    atr_values = atr(df, 14).dropna() if not df.empty else pd.Series(dtype=float)
+    atr_value = _valid_level(atr_values.iloc[-1] if not atr_values.empty else np.nan)
+    if np.isnan(atr_value):
+        atr_value = current_price * 0.03
+    zone_buffer = max(atr_value * 0.35, current_price * 0.003)
+
+    recent_swing_low = _recent_extreme(df, "Low", 21, "min")
+    high_3m = _recent_extreme(df, "High", 63, "max")
+    high_6m = _recent_extreme(df, "High", 126, "max")
+    high_1y = _recent_extreme(df, "High", 252, "max")
+    prior_breakout = _prior_high(df, 20)
+
+    base_supports = [
+        (_valid_level(ema20_value), "MA20 support"),
+        (_valid_level(avwap_swing), "AVWAP support"),
+        (_valid_level(avwap_ytd), "YTD AVWAP support"),
+        (_valid_level(sma50_value), "MA50 support"),
+        (recent_swing_low, "recent swing low / pivot support"),
+        (_valid_level(supertrend_line), "SuperTrend support"),
+    ]
+    setup_key = setup_type.lower()
+    if "breakout" in setup_key:
+        support_candidates = [(prior_breakout, "prior breakout retest level")] + base_supports
+    elif "avwap" in setup_key:
+        support_candidates = [
+            (_valid_level(avwap_swing), "AVWAP support"),
+            (_valid_level(avwap_ytd), "YTD AVWAP support"),
+            (_valid_level(ema20_value), "MA20 support"),
+        ] + base_supports
+    elif "trend" in setup_key:
+        support_candidates = [
+            (_valid_level(ema20_value), "MA20 support"),
+            (_valid_level(avwap_swing), "AVWAP support"),
+            (_valid_level(sma50_value), "MA50 support"),
+        ] + base_supports
+    else:
+        support_candidates = base_supports
+
+    support_level, support_reason = _select_support(support_candidates, current_price)
+    if np.isnan(support_level):
+        support_level = current_price
+    if support_level > current_price:
+        buy_zone_low = max(current_price - zone_buffer, current_price * 0.995)
+        buy_zone_high = current_price
+    else:
+        buy_zone_low = max(0.01, support_level - zone_buffer)
+        buy_zone_high = min(current_price, support_level + zone_buffer)
+    if buy_zone_low > buy_zone_high:
+        buy_zone_low, buy_zone_high = buy_zone_high, buy_zone_low
+    buy_zone = _format_zone(buy_zone_low, buy_zone_high)
+    buy_zone_reason = f"Buy zone near {support_reason}"
+
+    stop_base_ceiling = min(current_price, buy_zone_low)
+    stop_candidates = [
+        (recent_swing_low, "recent swing low"),
+        (_valid_level(supertrend_line), "SuperTrend support"),
+        (_valid_level(sma50_value), "MA50 support"),
+        (_valid_level(avwap_swing), "AVWAP support"),
+        (_valid_level(avwap_ytd), "YTD AVWAP support"),
+        (support_level, support_reason),
+    ]
+    stop_pool = [(level, reason) for level, reason in stop_candidates if not np.isnan(level) and 0 < level <= stop_base_ceiling]
+    if stop_pool:
+        stop_support, stop_reason_source = max(stop_pool, key=lambda item: item[0])
+    else:
+        stop_support, stop_reason_source = buy_zone_low, "buy-zone support"
+
+    stop_loss_value = stop_support - (0.5 * atr_value)
+    stop_loss = _format_level(stop_loss_value) if stop_loss_value > 0 and stop_loss_value < min(current_price, buy_zone_low) else "N/A"
+    stop_loss_reason = f"Stop below {stop_reason_source} with ATR buffer" if stop_loss != "N/A" else "Stop loss unavailable because support relationship is invalid"
+
+    risk_per_share = current_price - stop_loss_value if stop_loss != "N/A" else np.nan
+    take_profit_zone = "N/A"
+    take_profit_reason = "Take profit unavailable because stop/risk could not be validated"
+    risk_reward = np.nan
+    if not np.isnan(risk_per_share) and risk_per_share > 0:
+        two_r = current_price + (2.0 * risk_per_share)
+        three_r = current_price + (3.0 * risk_per_share)
+        resistances = sorted(
+            {
+                level
+                for level in [prior_breakout, high_3m, high_6m, high_1y]
+                if not np.isnan(level) and level > current_price * 1.005
+            }
+        )
+        if resistances and resistances[0] < two_r:
+            take_profit_low = resistances[0]
+            take_profit_high = max(two_r, take_profit_low + atr_value)
+            take_profit_reason = "Take profit starts at prior resistance before 2R, then extends toward 2R"
+        elif resistances and two_r <= resistances[0] <= three_r:
+            take_profit_low = two_r
+            take_profit_high = resistances[0]
+            take_profit_reason = "Take profit based on 2R extension into prior resistance"
+        else:
+            take_profit_low = two_r
+            take_profit_high = three_r
+            take_profit_reason = "Take profit based on 2R-3R extension"
+
+        if take_profit_low > current_price and take_profit_high > current_price:
+            take_profit_zone = _format_zone(take_profit_low, take_profit_high)
+            risk_reward = (take_profit_low - current_price) / risk_per_share
+        else:
+            take_profit_reason = "Take profit unavailable because target is not above current price"
+
+    return {
+        "buy_zone": buy_zone,
+        "stop_loss": stop_loss,
+        "take_profit_zone": take_profit_zone,
+        "buy_zone_reason": buy_zone_reason,
+        "stop_loss_reason": stop_loss_reason,
+        "take_profit_reason": take_profit_reason,
+        "risk_reward": risk_reward,
+    }
+
+
 def derive_upside_driver(technical_score: float, fundamental_score: float, news_score: float, macro_score: float) -> str:
     driver_map = {
         "technical breakout": technical_score,

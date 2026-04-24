@@ -20,10 +20,9 @@ from .scoring import (
     compute_macro_regime,
     compute_risk_penalty,
     derive_confidence_level,
-    derive_entry_zone,
-    derive_invalidation_level,
     derive_key_risk,
     derive_setup_type,
+    derive_trade_plan,
     derive_upside_driver,
     fundamentals_scorecard,
     infer_asset_type,
@@ -111,6 +110,17 @@ def scan_symbols(
 
         ema20_value = safe_float(ema(close, 20).iloc[-1])
         sma50_value = safe_float(sma(close, 50).iloc[-1])
+        setup_type = derive_setup_type(technical, last_price, technical["avwap_swing"], technical["supertrend_line"])
+        trade_plan = derive_trade_plan(
+            df,
+            last_price,
+            setup_type,
+            ema20_value,
+            sma50_value,
+            technical["avwap_ytd"],
+            technical["avwap_swing"],
+            technical["supertrend_line"],
+        )
         macd_cache[symbol] = (current_macd, previous_macd)
         horizon_context = build_horizon_context(df, technical, dd_pct)
         horizon_context_cache[symbol] = horizon_context
@@ -145,7 +155,7 @@ def scan_symbols(
             mid_score=np.nan,
             long_score=np.nan,
             rating=rating,
-            setup_type=derive_setup_type(technical, last_price, technical["avwap_swing"], technical["supertrend_line"]),
+            setup_type=setup_type,
             short_action="WAIT / HOLD",
             mid_action="WAIT / HOLD",
             long_action="WAIT / HOLD",
@@ -154,8 +164,15 @@ def scan_symbols(
             mid_reason="",
             long_reason="",
             selection_reason="",
-            entry_zone=derive_entry_zone(last_price, ema20_value, technical["avwap_ytd"], technical["avwap_swing"]),
-            invalidation_level=derive_invalidation_level(sma50_value, technical["supertrend_line"], technical["avwap_swing"]),
+            entry_zone=str(trade_plan["buy_zone"]),
+            invalidation_level=str(trade_plan["stop_loss"]),
+            buy_zone=str(trade_plan["buy_zone"]),
+            stop_loss=str(trade_plan["stop_loss"]),
+            take_profit_zone=str(trade_plan["take_profit_zone"]),
+            buy_zone_reason=str(trade_plan["buy_zone_reason"]),
+            stop_loss_reason=str(trade_plan["stop_loss_reason"]),
+            take_profit_reason=str(trade_plan["take_profit_reason"]),
+            risk_reward=safe_float(trade_plan["risk_reward"], np.nan),
             upside_driver=upside_driver,
             key_risk=key_risk,
             profitability_status=safe_str(fundamentals["profitability_status"]),

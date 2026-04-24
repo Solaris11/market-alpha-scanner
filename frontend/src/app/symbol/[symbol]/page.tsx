@@ -17,8 +17,9 @@ function metricValue(row: Record<string, unknown>, key: string) {
 }
 
 function valueFrom(row: Record<string, unknown>, summary: Record<string, unknown> | null, keys: string[]) {
+  const nestedSummary = summary?.summary && typeof summary.summary === "object" ? (summary.summary as Record<string, unknown>) : null;
   for (const key of keys) {
-    const value = row[key] ?? summary?.[key];
+    const value = row[key] ?? summary?.[key] ?? nestedSummary?.[key];
     if (value === null || value === undefined || value === "") continue;
     return value;
   }
@@ -29,6 +30,25 @@ function displayValue(value: unknown) {
   if (typeof value === "number") return formatNumber(value);
   if (typeof value === "string" && value.trim()) return value;
   return "N/A";
+}
+
+function parseTradeLevel(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return { low: value, high: value };
+  const text = String(value ?? "").trim();
+  if (!text || ["N/A", "-", "nan", "none", "null"].includes(text.toLowerCase())) return null;
+  const matches = text.match(/\d+(?:\.\d+)?/g);
+  if (!matches?.length) return null;
+  const numbers = matches.map(Number).filter((item) => Number.isFinite(item));
+  if (!numbers.length) return null;
+  return { low: Math.min(...numbers), high: Math.max(...numbers) };
+}
+
+function takeProfitValue(row: Record<string, unknown>, summary: Record<string, unknown> | null) {
+  const currentPrice = typeof row.price === "number" ? row.price : null;
+  const value = valueFrom(row, summary, ["take_profit_zone", "take_profit", "upside_target", "target_price", "target"]);
+  const zone = parseTradeLevel(value);
+  if (currentPrice === null || !zone || zone.low <= currentPrice || zone.high <= currentPrice) return "N/A";
+  return displayValue(value);
 }
 
 function InfoTable({ rows }: { rows: { label: string; value: unknown }[] }) {
@@ -98,6 +118,15 @@ export default async function SymbolDetailPage({ params }: PageProps) {
               { label: "News Summary", value: valueFrom(row, summary, ["news_summary", "news"]) },
               { label: "Key Risk", value: valueFrom(row, summary, ["key_risk"]) },
             ];
+            const buyZone = displayValue(valueFrom(row, summary, ["buy_zone", "entry_zone"]));
+            const stopLoss = displayValue(valueFrom(row, summary, ["stop_loss", "invalidation_level"]));
+            const takeProfit = takeProfitValue(row, summary);
+            const riskReward = displayValue(valueFrom(row, summary, ["risk_reward"]));
+            const tradePlanReasons = [
+              { label: "Buy Zone Reason", value: valueFrom(row, summary, ["buy_zone_reason"]) },
+              { label: "Stop Loss Reason", value: valueFrom(row, summary, ["stop_loss_reason"]) },
+              { label: "Take Profit Reason", value: valueFrom(row, summary, ["take_profit_reason"]) },
+            ];
 
             return (
               <>
@@ -137,13 +166,13 @@ export default async function SymbolDetailPage({ params }: PageProps) {
 
           <MetricStrip
             metrics={[
-              { label: "Entry Zone", value: String(row.entry_zone ?? "N/A"), meta: "planned area" },
-              { label: "Invalidation", value: String(row.invalidation_level ?? "N/A"), meta: "risk line" },
+              { label: "Buy Zone", value: buyZone, meta: "support area" },
+              { label: "Stop Loss", value: stopLoss, meta: "risk line" },
+              { label: "Take Profit", value: takeProfit, meta: "above current" },
+              { label: "Risk / Reward", value: riskReward, meta: "target-to-risk" },
               { label: "Technical", value: metricValue(row, "technical_score"), meta: "signal input" },
               { label: "Fundamental", value: metricValue(row, "fundamental_score"), meta: "signal input" },
               { label: "Macro", value: metricValue(row, "macro_score"), meta: "signal input" },
-              { label: "News", value: metricValue(row, "news_score"), meta: "signal input" },
-              { label: "Risk Penalty", value: metricValue(row, "risk_penalty"), meta: "deduction" },
               { label: "History", value: detail.history.length, meta: "price rows" },
             ]}
           />
@@ -151,16 +180,19 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           <div className="grid gap-3 xl:grid-cols-[1.05fr_0.95fr]">
             <section className="terminal-panel rounded-md p-4">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Trade Plan</div>
-              <div className="mt-3 grid gap-2 text-sm text-slate-300">
-                <div>
-                  <span className="text-slate-500">Driver:</span> {String(row.upside_driver ?? "No driver listed")}
-                </div>
-                <div>
-                  <span className="text-slate-500">Risk:</span> {String(row.key_risk ?? "No key risk listed")}
-                </div>
-                <div>
-                  <span className="text-slate-500">Reason:</span> {String(row.selection_reason ?? "No selection reason listed")}
-                </div>
+              <div className="mt-3">
+                <InfoTable
+                  rows={[
+                    { label: "Current Price", value: row.price },
+                    { label: "Buy Zone", value: buyZone },
+                    { label: "Stop Loss", value: stopLoss },
+                    { label: "Take Profit Zone", value: takeProfit },
+                    { label: "Risk / Reward", value: riskReward },
+                    ...tradePlanReasons,
+                    { label: "Driver", value: row.upside_driver ?? "No driver listed" },
+                    { label: "Risk", value: row.key_risk ?? "No key risk listed" },
+                  ]}
+                />
               </div>
             </section>
 

@@ -33,6 +33,25 @@ function valueFrom(row: SymbolHistoryRow, keys: string[]) {
   return null;
 }
 
+function parseTradeLevel(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return { low: value, high: value };
+  const text = String(value ?? "").trim();
+  if (!text || ["N/A", "-", "nan", "none", "null"].includes(text.toLowerCase())) return null;
+  const matches = text.match(/\d+(?:\.\d+)?/g);
+  if (!matches?.length) return null;
+  const numbers = matches.map(Number).filter((item) => Number.isFinite(item));
+  if (!numbers.length) return null;
+  return { low: Math.min(...numbers), high: Math.max(...numbers) };
+}
+
+function takeProfitDisplay(row: SymbolHistoryRow) {
+  const value = valueFrom(row, ["take_profit_zone", "take_profit", "upside_target", "target_price", "target"]);
+  const zone = parseTradeLevel(value);
+  const currentPrice = typeof row.price === "number" ? row.price : null;
+  if (currentPrice === null || !zone || zone.low <= currentPrice || zone.high <= currentPrice) return "N/A";
+  return String(value ?? "N/A");
+}
+
 function averageInterval(rows: SymbolHistoryRow[]) {
   const ordered = rows
     .map(timestampMs)
@@ -198,7 +217,7 @@ export function HistoryWorkspace({ history, symbolHistory }: Props) {
               <h2 className="text-lg font-semibold text-slate-50">{exactSymbol} Snapshot History</h2>
             </div>
             <div className="terminal-panel overflow-x-auto rounded-md">
-              <table className="w-full min-w-[1120px] table-fixed border-collapse text-xs">
+              <table className="w-full min-w-[1260px] table-fixed border-collapse text-xs">
                 <colgroup>
                   <col style={{ width: 220 }} />
                   <col style={{ width: 95 }} />
@@ -206,8 +225,9 @@ export function HistoryWorkspace({ history, symbolHistory }: Props) {
                   <col style={{ width: 120 }} />
                   <col style={{ width: 145 }} />
                   <col style={{ width: 140 }} />
-                  <col style={{ width: 120 }} />
                   <col style={{ width: 130 }} />
+                  <col style={{ width: 130 }} />
+                  <col style={{ width: 150 }} />
                   <col style={{ width: 250 }} />
                 </colgroup>
                 <thead className="border-b border-slate-700/70 bg-slate-950/70 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -218,8 +238,9 @@ export function HistoryWorkspace({ history, symbolHistory }: Props) {
                     <th className="px-2 py-1.5 text-left">Rating</th>
                     <th className="px-2 py-1.5 text-left">Action</th>
                     <th className="px-2 py-1.5 text-left">Setup</th>
+                    <th className="px-2 py-1.5 text-left">Buy Zone</th>
                     <th className="px-2 py-1.5 text-left">Stop Loss</th>
-                    <th className="px-2 py-1.5 text-left">Upside Target</th>
+                    <th className="px-2 py-1.5 text-left">Take Profit Zone</th>
                     <th className="px-2 py-1.5 text-left">Source</th>
                   </tr>
                 </thead>
@@ -232,8 +253,9 @@ export function HistoryWorkspace({ history, symbolHistory }: Props) {
                       <td className="truncate px-2 py-1.5 text-slate-300">{row.rating ?? "N/A"}</td>
                       <td className="truncate px-2 py-1.5 text-slate-300">{actionFor(row)}</td>
                       <td className="truncate px-2 py-1.5 text-slate-400">{row.setup_type ?? "N/A"}</td>
+                      <td className="truncate px-2 py-1.5 text-slate-400">{String(valueFrom(row, ["buy_zone", "entry_zone"]) ?? "N/A")}</td>
                       <td className="truncate px-2 py-1.5 text-slate-400">{String(valueFrom(row, ["stop_loss", "invalidation_level"]) ?? "N/A")}</td>
-                      <td className="truncate px-2 py-1.5 text-slate-400">{String(valueFrom(row, ["upside_target", "target_price", "entry_zone"]) ?? "N/A")}</td>
+                      <td className="truncate px-2 py-1.5 text-slate-400">{takeProfitDisplay(row)}</td>
                       <td className="truncate px-2 py-1.5 font-mono text-slate-500">{row.source_file}</td>
                     </tr>
                   ))}

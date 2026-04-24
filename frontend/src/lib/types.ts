@@ -12,6 +12,13 @@ export type RankingRow = {
   setup_type?: string;
   entry_zone?: string | number;
   invalidation_level?: string | number;
+  buy_zone?: string | number;
+  stop_loss?: string | number;
+  take_profit_zone?: string | number;
+  buy_zone_reason?: string;
+  stop_loss_reason?: string;
+  take_profit_reason?: string;
+  risk_reward?: number;
   upside_driver?: string;
   key_risk?: string;
   selection_reason?: string;

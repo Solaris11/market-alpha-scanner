@@ -28,7 +28,16 @@ DEFAULT_TABLE_COLUMNS = [
     "setup_type",
 ]
 RATING_STATUS_ORDER = ["TOP", "ACTIONABLE", "WATCH", "PASS"]
-HISTORY_TIMELINE_COLUMNS = ["timestamp_utc", "price", "final_score", "rating"]
+HISTORY_TIMELINE_COLUMNS = [
+    "timestamp_utc",
+    "price",
+    "final_score",
+    "rating",
+    "setup_type",
+    "buy_zone",
+    "stop_loss",
+    "take_profit_zone",
+]
 PERFORMANCE_METRIC_COLUMNS = ["avg_return", "median_return", "hit_rate", "avg_negative_return", "min_return"]
 PERCENT_COLUMNS = {"avg_return", "median_return", "hit_rate", "avg_negative_return", "min_return"}
 DISPLAY_NAME_FIELDS = (

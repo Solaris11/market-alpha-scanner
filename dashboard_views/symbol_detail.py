@@ -167,61 +167,100 @@ def _derive_upside_target(
     if invalidation is not None and reference_entry > invalidation:
         risk_unit = reference_entry - invalidation
         if risk_unit > 0:
-            return reference_entry + (risk_unit * 2.0), "2R extension"
+            target = current_price + (risk_unit * 2.0)
+            if target > current_price:
+                return target, "2R extension"
 
     return None, "Target unavailable"
 
 
+def _first_available(row: pd.Series, keys: list[str]) -> object:
+    for key in keys:
+        if key not in row.index:
+            continue
+        value = row.get(key)
+        text = str(value or "").strip()
+        if text and text.lower() not in {"nan", "none", "n/a", "-"}:
+            return value
+    return None
+
+
+def _safe_take_profit_label(row: pd.Series) -> str:
+    current_price = _numeric_scalar(row.get("price"))
+    take_profit_value = _first_available(row, ["take_profit_zone", "take_profit", "upside_target", "target_price", "target"])
+    target_low, target_high, _target_mid, target_label = _parse_price_zone(take_profit_value)
+    if current_price is None or target_low is None or target_high is None:
+        return "N/A"
+    if target_low > current_price and target_high > current_price:
+        return target_label
+    return "N/A"
+
+
 def _build_trade_plan(current_row: pd.Series, history_df: pd.DataFrame) -> dict[str, object]:
     current_price = _numeric_scalar(current_row.get("price"))
-    entry_low, entry_high, entry_mid, entry_label = _parse_price_zone(current_row.get("entry_zone"))
-    invalidation = _numeric_scalar(current_row.get("invalidation_level"))
-    upside_target, target_label = _derive_upside_target(current_price, history_df, entry_mid, invalidation)
+    buy_zone_value = _first_available(current_row, ["buy_zone", "entry_zone"])
+    stop_loss_value = _first_available(current_row, ["stop_loss", "invalidation_level"])
+    take_profit_value = _first_available(current_row, ["take_profit_zone", "take_profit", "upside_target", "target_price", "target"])
+    entry_low, entry_high, entry_mid, entry_label = _parse_price_zone(buy_zone_value)
+    invalidation = _numeric_scalar(stop_loss_value)
+    target_low, target_high, _target_mid, target_label = _parse_price_zone(take_profit_value)
+    target_is_valid = current_price is not None and target_low is not None and target_low > current_price and target_high is not None and target_high > current_price
+    if target_is_valid:
+        upside_target = target_low
+    else:
+        upside_target, target_label = _derive_upside_target(current_price, history_df, entry_mid, invalidation)
 
     entry_distance_pct: float | None = None
-    entry_context = "Entry zone unavailable"
+    entry_context = str(_first_available(current_row, ["buy_zone_reason"]) or "Buy zone unavailable")
     entry_status = "unknown"
     if current_price is not None and entry_low is not None and entry_high is not None:
         if entry_low <= current_price <= entry_high:
             entry_status = "inside"
-            entry_context = "Current price is inside the entry zone"
+            entry_context = "Current price is inside the buy zone"
             entry_distance_pct = 0.0
         elif current_price > entry_high:
             entry_status = "above"
             entry_distance_pct = _percent_change(current_price, entry_high)
-            entry_context = f"Current price is {format_number(entry_distance_pct)}% above entry zone"
+            entry_context = f"Current price is {format_number(entry_distance_pct)}% above buy zone"
         else:
             entry_status = "below"
             entry_distance_pct = _percent_change(current_price, entry_low)
             below_distance = abs(entry_distance_pct) if entry_distance_pct is not None else None
-            entry_context = f"Current price is {format_number(below_distance)}% below entry zone"
+            entry_context = f"Current price is {format_number(below_distance)}% below buy zone"
 
     risk_to_invalidation_pct: float | None = None
-    invalidation_context = "Invalidation unavailable"
+    invalidation_context = str(_first_available(current_row, ["stop_loss_reason"]) or "Stop loss unavailable")
     if current_price is not None and invalidation is not None:
         risk_to_invalidation_pct = _distance_from_current(current_price, invalidation)
         if risk_to_invalidation_pct is not None:
             if risk_to_invalidation_pct < 0:
-                invalidation_context = f"Risk to invalidation: {format_number(abs(risk_to_invalidation_pct))}%"
+                invalidation_context = f"Risk to stop loss: {format_number(abs(risk_to_invalidation_pct))}%"
             elif risk_to_invalidation_pct > 0:
-                invalidation_context = "Invalidation sits above current price; setup is already compromised"
+                invalidation_context = "Stop loss sits above current price; setup is already compromised"
             else:
-                invalidation_context = "Current price is sitting on the invalidation level"
+                invalidation_context = "Current price is sitting on the stop-loss level"
 
     upside_to_target_pct: float | None = None
-    upside_context = target_label
+    upside_context = str(_first_available(current_row, ["take_profit_reason"]) or target_label)
     if current_price is not None and upside_target is not None:
         upside_to_target_pct = _distance_from_current(current_price, upside_target)
         if upside_to_target_pct is not None:
             if upside_to_target_pct > 0:
-                upside_context = f"Upside to target: {format_number(upside_to_target_pct)}%"
+                upside_context = f"Distance to take-profit zone: {format_number(upside_to_target_pct)}%"
             elif upside_to_target_pct < 0:
-                upside_context = "Target is below current price; upside is already consumed"
+                upside_context = "Take-profit level is below current price and will not be displayed"
+                upside_target = None
+                target_label = "N/A"
             else:
-                upside_context = "Current price is sitting on the target"
+                upside_context = "Current price is sitting on the take-profit level"
+                upside_target = None
+                target_label = "N/A"
 
     risk_reward: float | None = None
-    if risk_to_invalidation_pct is not None and upside_to_target_pct is not None:
+    row_risk_reward = _numeric_scalar(current_row.get("risk_reward"))
+    if row_risk_reward is not None and row_risk_reward > 0:
+        risk_reward = row_risk_reward
+    elif risk_to_invalidation_pct is not None and upside_to_target_pct is not None:
         risk_size = abs(risk_to_invalidation_pct) if risk_to_invalidation_pct < 0 else None
         reward_size = upside_to_target_pct if upside_to_target_pct > 0 else None
         if risk_size is not None and reward_size is not None and risk_size > 0:
@@ -240,7 +279,7 @@ def _build_trade_plan(current_row: pd.Series, history_df: pd.DataFrame) -> dict[
         "invalidation_context": invalidation_context,
         "risk_to_invalidation_pct": risk_to_invalidation_pct,
         "upside_target": upside_target,
-        "upside_target_label": target_label,
+        "upside_target_label": target_label if upside_target is not None else "N/A",
         "upside_context": upside_context,
         "upside_to_target_pct": upside_to_target_pct,
         "risk_reward": risk_reward,
@@ -432,7 +471,7 @@ def _build_decision_summary(
 
     posture = "Watch patiently until price improves."
     if entry_status == "inside" and confidence_label == "High" and (risk_reward_value is None or risk_reward_value >= 1.8):
-        posture = "Constructive entry if price holds the zone and risk is sized to invalidation."
+        posture = "Constructive entry if price holds the zone and risk is sized to the stop."
     elif entry_status == "above":
         posture = "Momentum is working, but price is extended versus the preferred entry."
     elif confidence_label == "Low":
@@ -440,9 +479,9 @@ def _build_decision_summary(
     elif risk_reward_value is not None and risk_reward_value < 1.4:
         posture = "Reward does not clearly dominate risk yet; wait for a cleaner location."
     else:
-        posture = "Actionable with measured size while price stays above invalidation."
+        posture = "Actionable with measured size while price stays above the stop."
 
-    invalidation_note = str(trade_plan.get("invalidation_context", "Invalidation unavailable"))
+    invalidation_note = str(trade_plan.get("invalidation_context", "Stop loss unavailable"))
     if "unavailable" in invalidation_note.lower():
         invalidation_note = f"Main caution flag: {key_risk}."
     else:
@@ -605,12 +644,12 @@ def render_watchlist_actions(symbol: str) -> None:
 
 
 def render_price_context_panel(trade_plan: dict[str, object]) -> None:
-    render_section_heading("Trade Plan", "Price location, target path, and basic risk framing.", eyebrow="Decision Support")
+    render_section_heading("Trade Plan", "Buy zone, stop loss, target path, and basic risk framing.", eyebrow="Decision Support")
     cards = [
         ("Current Price", format_number(trade_plan.get("current_price")), "Reference price now", "accent"),
-        ("Entry Zone", str(trade_plan.get("entry_label", "N/A")), str(trade_plan.get("entry_context", "")), "neutral"),
-        ("Invalidation", format_number(trade_plan.get("invalidation")), str(trade_plan.get("invalidation_context", "")), "negative"),
-        ("Upside Target", format_number(trade_plan.get("upside_target")), str(trade_plan.get("upside_target_label", "")), "positive"),
+        ("Buy Zone", str(trade_plan.get("entry_label", "N/A")), str(trade_plan.get("entry_context", "")), "neutral"),
+        ("Stop Loss", format_number(trade_plan.get("invalidation")), str(trade_plan.get("invalidation_context", "")), "negative"),
+        ("Take Profit Zone", str(trade_plan.get("upside_target_label", "N/A")), str(trade_plan.get("upside_context", "")), "positive"),
         ("Risk / Reward", format_number(trade_plan.get("risk_reward")), "Simple target-to-risk ratio", "positive"),
     ]
     for row_cards, column_count in ((cards[:3], 3), (cards[3:], 2)):
@@ -651,7 +690,7 @@ def render_decision_summary_panel(decision_summary: dict[str, str]) -> None:
         "<ul class='scanner-reason-list'>"
         f"<li><strong>Setup:</strong> {decision_summary['setup']}</li>"
         f"<li><strong>Why now:</strong> {decision_summary['why_now']}</li>"
-        f"<li><strong>Invalidation:</strong> {decision_summary['invalidation']}</li>"
+        f"<li><strong>Stop Loss:</strong> {decision_summary['invalidation']}</li>"
         f"<li><strong>Posture:</strong> {decision_summary['posture']}</li>"
         "</ul>",
         unsafe_allow_html=True,
@@ -721,8 +760,9 @@ def render_summary_tab(
                     "Setup Type": current_row.get("setup_type"),
                     "Asset Type": current_row.get("asset_type"),
                     "Sector": current_row.get("sector"),
-                    "Entry Zone": current_row.get("entry_zone"),
-                    "Invalidation Level": current_row.get("invalidation_level"),
+                    "Buy Zone": _first_available(current_row, ["buy_zone", "entry_zone"]),
+                    "Stop Loss": _first_available(current_row, ["stop_loss", "invalidation_level"]),
+                    "Take Profit Zone": trade_plan.get("upside_target_label", "N/A"),
                     "Upside Driver": current_row.get("upside_driver"),
                     "Key Risk": current_row.get("key_risk"),
                 },
@@ -853,6 +893,14 @@ def render_symbol_snapshot_timeline(symbol: str, snapshot_history_df: pd.DataFra
         return
 
     symbol_history = symbol_history.sort_values("timestamp_utc")
+    if "buy_zone" not in symbol_history.columns and "entry_zone" in symbol_history.columns:
+        symbol_history["buy_zone"] = symbol_history["entry_zone"]
+    if "stop_loss" not in symbol_history.columns and "invalidation_level" in symbol_history.columns:
+        symbol_history["stop_loss"] = symbol_history["invalidation_level"]
+    target_source_columns = {"take_profit_zone", "take_profit", "upside_target", "target_price", "target"}
+    if target_source_columns.intersection(symbol_history.columns):
+        symbol_history["take_profit_zone"] = symbol_history.apply(_safe_take_profit_label, axis=1)
+
     final_score_chart = symbol_history.set_index("timestamp_utc")[["final_score"]].dropna() if "final_score" in symbol_history.columns else pd.DataFrame()
     price_chart = symbol_history.set_index("timestamp_utc")[["price"]].dropna() if "price" in symbol_history.columns else pd.DataFrame()
 
@@ -877,6 +925,18 @@ def render_symbol_snapshot_timeline(symbol: str, snapshot_history_df: pd.DataFra
     timeline_df = symbol_history[timeline_columns].copy()
     if "timestamp_utc" in timeline_df.columns:
         timeline_df["timestamp_utc"] = timeline_df["timestamp_utc"].dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+    timeline_df = timeline_df.rename(
+        columns={
+            "timestamp_utc": "Timestamp",
+            "price": "Current Price",
+            "final_score": "Final Score",
+            "rating": "Rating",
+            "setup_type": "Setup",
+            "buy_zone": "Buy Zone",
+            "stop_loss": "Stop Loss",
+            "take_profit_zone": "Take Profit Zone",
+        }
+    )
     st.dataframe(timeline_df, use_container_width=True, height=260, hide_index=True)
 
 

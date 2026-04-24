@@ -14,6 +14,7 @@ const NUMERIC_FIELDS = new Set([
   "macro_score",
   "news_score",
   "risk_penalty",
+  "risk_reward",
   "short_score",
   "mid_score",
   "long_score",

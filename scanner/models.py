@@ -45,6 +45,13 @@ class RankedAsset:
     selection_reason: str
     entry_zone: str
     invalidation_level: str
+    buy_zone: str
+    stop_loss: str
+    take_profit_zone: str
+    buy_zone_reason: str
+    stop_loss_reason: str
+    take_profit_reason: str
+    risk_reward: float
     upside_driver: str
     key_risk: str
     profitability_status: str
