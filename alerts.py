@@ -192,14 +192,59 @@ def _format_number(value: object, decimals: int = 2) -> str:
     return f"{numeric:.{decimals}f}"
 
 
-def _format_range(low: object, high: object) -> str:
+def _format_currency(value: object) -> str:
+    numeric = _numeric(value)
+    if numeric is None:
+        return "N/A"
+    return f"${numeric:.2f}"
+
+
+def _format_level(value: object) -> str:
+    numeric = _numeric(value)
+    if numeric is None:
+        return "N/A"
+    if abs(numeric - round(numeric)) < 0.005:
+        return str(int(round(numeric)))
+    return f"{numeric:.2f}"
+
+
+def _format_range(low: object, high: object, collapse_equal: bool = False) -> str:
     low_num = _numeric(low)
     high_num = _numeric(high)
     if low_num is None and high_num is None:
         return "N/A"
     if low_num is not None and high_num is not None:
-        return f"{low_num:.2f}-{high_num:.2f}"
-    return f"{(low_num if low_num is not None else high_num):.2f}"
+        lower, upper = sorted((low_num, high_num))
+        if collapse_equal and abs(lower - upper) < 0.005:
+            return _format_level(lower)
+        return f"{_format_level(lower)}–{_format_level(upper)}"
+    return _format_level(low_num if low_num is not None else high_num)
+
+
+def _format_target_value(value: object) -> str:
+    text = _clean_text(value, "")
+    numbers = _extract_numbers(text)
+    if len(numbers) >= 2:
+        return _format_range(numbers[0], numbers[1], collapse_equal=True)
+    if len(numbers) == 1:
+        suffix = "+" if "+" in text else ""
+        return f"{_format_level(numbers[0])}{suffix}"
+    return text or "N/A"
+
+
+def _format_rr(value: object) -> str:
+    numeric = _numeric(value)
+    if numeric is None:
+        return "N/A"
+    return f"{numeric:.1f}R"
+
+
+def _average_rr(low: object, high: object) -> str:
+    low_num = _numeric(low)
+    high_num = _numeric(high)
+    if low_num is not None and high_num is not None:
+        return _format_rr((low_num + high_num) / 2.0)
+    return _format_rr(low_num if low_num is not None else high_num)
 
 
 def _message_hash(message: str) -> str:
@@ -287,7 +332,8 @@ def _company_for_row(row: dict[str, Any] | None) -> str:
 def _extract_numbers(text: object) -> list[float]:
     if text is None:
         return []
-    return [float(match) for match in re.findall(r"-?\d+(?:\.\d+)?", str(text).replace(",", ""))]
+    normalized = str(text).replace(",", "").replace("–", "-").replace("—", "-")
+    return [float(match) for match in re.findall(r"(?<!\d)-?\d+(?:\.\d+)?", normalized)]
 
 
 def _range_from_columns(row: dict[str, Any], low_column: str, high_column: str, text_columns: tuple[str, ...]) -> tuple[float | None, float | None]:
@@ -362,6 +408,59 @@ def _condition_label(alert_type: str) -> str:
 def _alert_type_label(rule: dict[str, Any]) -> str:
     source = "System" if _rule_source(rule) == "system" else "User"
     return f"{source} {_condition_label(_rule_type(rule))} Alert"
+
+
+def _trigger_text(rule: dict[str, Any]) -> str:
+    alert_type = _rule_type(rule)
+    label = _condition_label(alert_type)
+    if alert_type in {"price_above", "price_below", "score_above", "score_below"}:
+        return f"{label} {_format_level(rule.get('threshold'))}"
+    if alert_type == "score_changed_by":
+        threshold = _numeric(rule.get("threshold"))
+        return f"{label} by {_format_level(threshold if threshold is not None else 2)}+"
+    return label
+
+
+def _take_profit_lines(row: dict[str, Any]) -> list[str]:
+    tp_low, tp_high = _take_profit_zone(row)
+    conservative = _format_target_value(row.get("conservative_target"))
+    balanced = _format_target_value(row.get("balanced_target"))
+    aggressive = _format_target_value(row.get("aggressive_target"))
+
+    if conservative == "N/A":
+        conservative = _format_range(tp_low, tp_high, collapse_equal=True)
+    if balanced == "N/A" and tp_low is not None and tp_high is not None and abs(tp_low - tp_high) >= 0.005:
+        balanced = _format_range(tp_low, tp_high, collapse_equal=True)
+
+    return [
+        f"   - Conservative: {conservative}",
+        f"   - Balanced: {balanced}",
+        f"   - Aggressive: {aggressive}",
+    ]
+
+
+def _risk_reward_lines(row: dict[str, Any]) -> list[str]:
+    conservative = _format_rr(row.get("conservative_risk_reward"))
+    balanced = _average_rr(row.get("balanced_risk_reward_low"), row.get("balanced_risk_reward_high"))
+    aggressive = _average_rr(row.get("aggressive_risk_reward_low"), row.get("aggressive_risk_reward_high"))
+
+    if conservative == "N/A" or balanced == "N/A" or aggressive == "N/A":
+        numbers = _extract_numbers(row.get("target_risk_reward_label") or row.get("risk_reward_label"))
+        if len(numbers) >= 3:
+            conservative = conservative if conservative != "N/A" else _format_rr(numbers[0])
+            balanced = balanced if balanced != "N/A" else _format_rr(numbers[1])
+            aggressive = aggressive if aggressive != "N/A" else _format_rr(numbers[2])
+        elif len(numbers) == 2:
+            balanced = balanced if balanced != "N/A" else _format_rr(numbers[0])
+            aggressive = aggressive if aggressive != "N/A" else _format_rr(numbers[1])
+        elif len(numbers) == 1:
+            conservative = conservative if conservative != "N/A" else _format_rr(numbers[0])
+
+    return [
+        f"• Conservative: {conservative}",
+        f"• Balanced: {balanced}",
+        f"• Aggressive: {aggressive}",
+    ]
 
 
 def _evaluate_rule(
@@ -478,37 +577,35 @@ def _build_message(rule: dict[str, Any], evaluation: AlertEvaluation) -> str:
     row = evaluation.row or {}
     symbol = _clean_text(row.get("symbol"), _rule_symbol(rule) or "N/A").upper()
     buy_low, buy_high = _buy_zone(row)
-    tp_low, tp_high = _take_profit_zone(row)
     stop = _stop_loss(row)
+    company = _company_for_row(row)
+    symbol_line = f"📊 Symbol: {symbol}" if company == "N/A" else f"📊 Symbol: {symbol} ({company})"
+    note = _clean_text(row.get("trade_quality_note") or row.get("target_warning"), "")
     lines = [
         "🚨 Market Alpha Alert",
-        f"Type: {_alert_type_label(rule)}",
-        f"Symbol: {symbol}",
+        "",
+        symbol_line,
+        f"🔥 Trigger: {_trigger_text(rule)}",
+        "",
+        f"💰 Price: {_format_currency(row.get('price'))}",
+        "",
+        "🎯 Trade Plan",
+        f"• Buy Zone: {_format_range(buy_low, buy_high)}",
+        f"• Stop Loss: {_format_level(stop)}",
+        "• Take Profit:",
+        *_take_profit_lines(row),
+        "",
+        "⚖️ Risk/Reward:",
+        *_risk_reward_lines(row),
+        "",
+        "📈 Signal:",
+        f"• Rating: {_clean_text(row.get('rating'))}",
+        f"• Action: {_action_for_row(row)}",
+        f"• Score: {_format_number(row.get('final_score'))}",
     ]
-    company = _company_for_row(row)
-    if company != "N/A":
-        lines.append(f"Company: {company}")
-
-    if _rule_type(rule) in {"price_above", "price_below", "score_above", "score_below"}:
-        lines.append(f"Condition: {_condition_label(_rule_type(rule)).lower()} {_format_number(rule.get('threshold'))}")
-    else:
-        lines.append(f"Trigger: {_condition_label(_rule_type(rule))}")
-
-    lines.extend(
-        [
-            f"Price: {_format_number(row.get('price'))}",
-            f"Buy Zone: {_format_range(buy_low, buy_high)}",
-            f"Stop Loss: {_format_number(stop)}",
-            f"Take Profit: {_format_range(tp_low, tp_high)}",
-            f"Risk/Reward: {_clean_text(row.get('target_risk_reward_label') or row.get('risk_reward_label'))}",
-            f"Rating: {_clean_text(row.get('rating'))}",
-            f"Action: {_action_for_row(row)}",
-            f"Score: {_format_number(row.get('final_score'))}",
-            "",
-            "Dashboard:",
-            _dashboard_url(symbol),
-        ]
-    )
+    if note:
+        lines.extend(["", "⚠️ Note:", note])
+    lines.extend(["", "🔗 Open:", _dashboard_url(symbol)])
     return "\n".join(lines)
 
 
