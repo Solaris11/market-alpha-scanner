@@ -157,6 +157,39 @@ def render_watchlist_overview() -> None:
         )
 
 
+def render_clickable_ranking_list(ordered: pd.DataFrame, max_rows: int = 50) -> None:
+    if ordered.empty or "symbol" not in ordered.columns:
+        return
+
+    action_column = "composite_action" if "composite_action" in ordered.columns else "long_action"
+    clickable_rows = ordered.head(max_rows).reset_index(drop=True)
+
+    with st.container(border=True):
+        st.caption("Use the clickable symbol list below to open details. The dataframe is read-only.")
+        header_columns = st.columns([0.9, 1.0, 1.35, 0.8, 0.9, 0.9, 1.2], gap="small")
+        header_columns[0].markdown("**Symbol**")
+        header_columns[1].markdown("**Asset Type**")
+        header_columns[2].markdown("**Sector**")
+        header_columns[3].markdown("**Price**")
+        header_columns[4].markdown("**Final Score**")
+        header_columns[5].markdown("**Rating**")
+        header_columns[6].markdown("**Action**")
+
+        for index, (_, row) in enumerate(clickable_rows.iterrows()):
+            symbol = str(row.get("symbol", "")).strip().upper()
+            if not symbol:
+                continue
+            row_columns = st.columns([0.9, 1.0, 1.35, 0.8, 0.9, 0.9, 1.2], gap="small")
+            if row_columns[0].button(symbol, key=f"overview_rank_row_open_{index}_{symbol}", use_container_width=True):
+                open_symbol_detail(symbol)
+            row_columns[1].write(str(row.get("asset_type", "N/A")))
+            row_columns[2].write(str(row.get("sector", "N/A")))
+            row_columns[3].write(format_number(row.get("price")))
+            row_columns[4].write(format_number(row.get("final_score")))
+            row_columns[5].markdown(render_rating_badge(row.get("rating", "N/A")), unsafe_allow_html=True)
+            row_columns[6].markdown(render_action_badge(row.get(action_column, "N/A")), unsafe_allow_html=True)
+
+
 def render_ranking_overview(filtered_full: pd.DataFrame) -> None:
     render_section_heading("Full Ranking", "Score-driven ranking with faster scanability on the most important columns.", eyebrow="Ranking")
     if filtered_full.empty:
@@ -191,6 +224,8 @@ def render_ranking_overview(filtered_full: pd.DataFrame) -> None:
         if action_columns[0].button("Open Symbol Detail", key="overview_dropdown_open", use_container_width=True):
             open_symbol_detail(selected_symbol)
         action_columns[1].caption("Use this selector or the Quick Access buttons above to open symbol detail.")
+
+    render_clickable_ranking_list(ordered)
 
     with st.container(border=True):
         st.caption("Table cells are for inspection; use the selector/buttons above to open symbol detail.")
