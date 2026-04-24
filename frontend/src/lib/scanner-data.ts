@@ -3,7 +3,7 @@ import "server-only";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parse } from "csv-parse/sync";
-import type { RankingRow, ScannerScalar, SymbolDetail } from "./types";
+import type { CsvRow, HistorySnapshot, HistorySummary, PerformanceData, RankingRow, ScannerScalar, SymbolDetail } from "./types";
 
 const NUMERIC_FIELDS = new Set([
   "price",
@@ -26,6 +26,16 @@ const NUMERIC_FIELDS = new Set([
   "atr_pct",
   "annualized_volatility",
   "max_drawdown",
+  "forward_5d",
+  "forward_10d",
+  "forward_20d",
+  "forward_60d",
+  "count",
+  "avg_return",
+  "median_return",
+  "hit_rate",
+  "avg_negative_return",
+  "min_return",
 ]);
 
 const NAME_FIELDS = [
@@ -41,7 +51,7 @@ const NAME_FIELDS = [
 ];
 
 export function scannerOutputDir() {
-  return process.env.SCANNER_OUTPUT_DIR ?? path.resolve(process.cwd(), "..", "scanner_output");
+  return process.env.SCANNER_OUTPUT_DIR ?? path.resolve(/*turbopackIgnore: true*/ process.cwd(), "..", "scanner_output");
 }
 
 function symbolSlug(symbol: string) {
@@ -68,6 +78,14 @@ function coerceValue(key: string, value: unknown): ScannerScalar {
   }
 
   return text;
+}
+
+function normalizeCsvRow(raw: Record<string, unknown>): CsvRow {
+  const row: CsvRow = {};
+  for (const [key, value] of Object.entries(raw)) {
+    row[key] = coerceValue(key, value) ?? null;
+  }
+  return row;
 }
 
 export function displayName(row: Record<string, unknown>) {
@@ -105,6 +123,11 @@ async function readCsv(filePath: string) {
   }) as Record<string, unknown>[];
 }
 
+async function readScannerCsv(...parts: string[]) {
+  const rows = await readCsv(path.join(scannerOutputDir(), ...parts));
+  return rows.map(normalizeCsvRow);
+}
+
 export async function readJson(filePath: string) {
   if (!(await fileExists(filePath))) return null;
 
@@ -123,6 +146,59 @@ export async function getFullRanking(): Promise<RankingRow[]> {
 export async function getTopCandidates(): Promise<RankingRow[]> {
   const rows = await readCsv(path.join(scannerOutputDir(), "top_candidates.csv"));
   return rows.map(normalizeRankingRow).filter((row) => row.symbol);
+}
+
+function parseSnapshotTimestamp(name: string) {
+  const match = /^scan_(\d{8})_(\d{6})\.csv$/.exec(name);
+  if (!match) return null;
+  const [, date, time] = match;
+  return `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}T${time.slice(0, 2)}:${time.slice(2, 4)}:${time.slice(4, 6)}Z`;
+}
+
+export async function getHistorySummary(): Promise<HistorySummary> {
+  const historyDir = path.join(scannerOutputDir(), "history");
+  let entries: string[] = [];
+
+  try {
+    entries = await fs.readdir(historyDir);
+  } catch {
+    entries = [];
+  }
+
+  const snapshots: HistorySnapshot[] = [];
+  for (const name of entries.filter((entry) => /^scan_.*\.csv$/.test(entry))) {
+    const filePath = path.join(historyDir, name);
+    try {
+      const stat = await fs.stat(filePath);
+      snapshots.push({
+        name,
+        modifiedAt: stat.mtime.toISOString(),
+        timestamp: parseSnapshotTimestamp(name),
+      });
+    } catch {
+      // Ignore files that disappear between readdir and stat.
+    }
+  }
+
+  snapshots.sort((a, b) => String(b.timestamp ?? b.modifiedAt).localeCompare(String(a.timestamp ?? a.modifiedAt)));
+  const dated = snapshots.map((snapshot) => snapshot.timestamp).filter((timestamp): timestamp is string => Boolean(timestamp));
+  const uniqueDates = Array.from(new Set(dated.map((timestamp) => timestamp.slice(0, 10)))).sort();
+
+  return {
+    snapshots,
+    count: snapshots.length,
+    earliest: dated.length ? dated[dated.length - 1] : null,
+    latest: dated.length ? dated[0] : null,
+    uniqueDates,
+  };
+}
+
+export async function getPerformanceData(): Promise<PerformanceData> {
+  const [summary, forwardReturns] = await Promise.all([
+    readScannerCsv("analysis", "performance_summary.csv"),
+    readScannerCsv("analysis", "forward_returns.csv"),
+  ]);
+  return { summary, forwardReturns };
 }
 
 export async function getSymbolDetail(symbol: string): Promise<SymbolDetail> {

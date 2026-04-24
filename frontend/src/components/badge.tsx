@@ -11,7 +11,7 @@ const TONES: Record<string, string> = {
 export function Badge({ value }: { value: unknown }) {
   const tone = badgeTone(value);
   return (
-    <span className={`inline-flex max-w-full items-center whitespace-nowrap rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${TONES[tone]}`}>
+    <span className={`inline-flex min-w-max items-center whitespace-nowrap rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${TONES[tone]}`}>
       {String(value ?? "N/A")}
     </span>
   );

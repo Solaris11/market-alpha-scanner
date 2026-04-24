@@ -1,4 +1,5 @@
 import { MetricStrip } from "@/components/metric-strip";
+import { OverviewWorkspace } from "@/components/overview-workspace";
 import { RankingTable } from "@/components/ranking-table";
 import { TerminalShell } from "@/components/shell";
 import { formatNumber } from "@/lib/format";
@@ -33,17 +34,8 @@ export default async function DashboardOverview() {
           ]}
         />
 
-        <div className="grid gap-3 xl:grid-cols-[1fr_380px]">
-          <section className="min-w-0">
-            <div className="mb-2 flex items-end justify-between">
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Full Ranking</div>
-                <h2 className="text-lg font-semibold text-slate-50">Scanner Table</h2>
-              </div>
-              <div className="text-xs text-slate-500">{ranking.length.toLocaleString()} rows</div>
-            </div>
-            <RankingTable rows={ranking} />
-          </section>
+        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_520px]">
+          <OverviewWorkspace ranking={ranking} />
 
           <aside className="space-y-3">
             <section>

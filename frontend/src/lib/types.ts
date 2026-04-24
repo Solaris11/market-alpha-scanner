@@ -28,3 +28,24 @@ export type SymbolDetail = {
   summary: Record<string, unknown> | null;
   history: Record<string, ScannerScalar>[];
 };
+
+export type CsvRow = Record<string, ScannerScalar>;
+
+export type HistorySnapshot = {
+  name: string;
+  modifiedAt: string;
+  timestamp: string | null;
+};
+
+export type HistorySummary = {
+  snapshots: HistorySnapshot[];
+  count: number;
+  earliest: string | null;
+  latest: string | null;
+  uniqueDates: string[];
+};
+
+export type PerformanceData = {
+  summary: CsvRow[];
+  forwardReturns: CsvRow[];
+};
