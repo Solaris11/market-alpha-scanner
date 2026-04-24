@@ -31,6 +31,15 @@ export type SymbolDetail = {
 
 export type CsvRow = Record<string, ScannerScalar>;
 
+export type CsvFileState = "missing" | "header-only" | "data";
+
+export type CsvFileData = {
+  rows: CsvRow[];
+  state: CsvFileState;
+  columns: string[];
+  lineCount: number;
+};
+
 export type HistorySnapshot = {
   name: string;
   modifiedAt: string;
@@ -46,8 +55,8 @@ export type HistorySummary = {
 };
 
 export type PerformanceData = {
-  summary: CsvRow[];
-  forwardReturns: CsvRow[];
+  summary: CsvFileData;
+  forwardReturns: CsvFileData;
 };
 
 export type SymbolHistoryRow = RankingRow & {

@@ -4,7 +4,7 @@ import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parse } from "csv-parse/sync";
-import type { CsvRow, HistorySnapshot, HistorySummary, PerformanceData, RankingRow, ScannerScalar, SymbolDetail, SymbolHistoryData, SymbolHistoryRow } from "./types";
+import type { CsvFileData, CsvRow, HistorySnapshot, HistorySummary, PerformanceData, RankingRow, ScannerScalar, SymbolDetail, SymbolHistoryData, SymbolHistoryRow } from "./types";
 
 const NUMERIC_FIELDS = new Set([
   "price",
@@ -133,6 +133,33 @@ async function readScannerCsv(...parts: string[]) {
   return rows.map(normalizeCsvRow);
 }
 
+async function readScannerCsvWithState(...parts: string[]): Promise<CsvFileData> {
+  const filePath = path.join(scannerOutputDir(), ...parts);
+  if (!(await fileExists(filePath))) {
+    return { rows: [], state: "missing", columns: [], lineCount: 0 };
+  }
+
+  const text = await fs.readFile(filePath, "utf8");
+  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  const columns = lines[0]?.split(",").map((column) => column.trim()) ?? [];
+  if (lines.length <= 1) {
+    return { rows: [], state: "header-only", columns, lineCount: lines.length };
+  }
+
+  const rows = parse(text, {
+    columns: true,
+    skip_empty_lines: true,
+    trim: true,
+  }) as Record<string, unknown>[];
+
+  return {
+    rows: rows.map(normalizeCsvRow),
+    state: rows.length ? "data" : "header-only",
+    columns,
+    lineCount: lines.length,
+  };
+}
+
 export async function readJson(filePath: string) {
   if (!(await fileExists(filePath))) return null;
 
@@ -225,8 +252,8 @@ export async function getSymbolHistoryData(): Promise<SymbolHistoryData> {
 
 export async function getPerformanceData(): Promise<PerformanceData> {
   const [summary, forwardReturns] = await Promise.all([
-    readScannerCsv("analysis", "performance_summary.csv"),
-    readScannerCsv("analysis", "forward_returns.csv"),
+    readScannerCsvWithState("analysis", "performance_summary.csv"),
+    readScannerCsvWithState("analysis", "forward_returns.csv"),
   ]);
   return { summary, forwardReturns };
 }
