@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import { formatNumber } from "@/lib/format";
 import type { ScannerScalar } from "@/lib/types";
 
@@ -88,14 +88,24 @@ function axisFormatter(period: PeriodKey) {
   return new Intl.DateTimeFormat(undefined, { year: "numeric" });
 }
 
-function dateTimeFormatter(period: PeriodKey) {
+function hoverDateFormatter(period: PeriodKey) {
   if (period === "1d") {
-    return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+    return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
   }
   if (period === "1wk") {
-    return new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric", hour: "2-digit" });
+    return new Intl.DateTimeFormat(undefined, { weekday: "short" });
   }
-  return new Intl.DateTimeFormat(undefined, { year: "numeric", month: "short", day: "numeric" });
+  if (period === "1mo") {
+    return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+  }
+  if (["6mo", "ytd", "1y"].includes(period)) {
+    return new Intl.DateTimeFormat(undefined, { month: "short" });
+  }
+  return new Intl.DateTimeFormat(undefined, { year: "numeric" });
+}
+
+function tooltipPrice(value: number) {
+  return `$${value.toFixed(2)}`;
 }
 
 function xAxisTicks(points: Point[], period: PeriodKey, width: number, paddingLeft: number, paddingRight: number) {
@@ -120,6 +130,7 @@ export function PriceHistoryChart({ symbol, initialRows = [], defaultPeriod = "1
   const [metadata, setMetadata] = useState<ApiPayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
   const points = useMemo(() => pointsFromRows(rows), [rows]);
 
   useEffect(() => {
@@ -154,6 +165,10 @@ export function PriceHistoryChart({ symbol, initialRows = [], defaultPeriod = "1
     return () => {
       cancelled = true;
     };
+  }, [period, symbol]);
+
+  useEffect(() => {
+    setHoverIndex(null);
   }, [period, symbol]);
 
   if (!points.length) {
@@ -200,8 +215,28 @@ export function PriceHistoryChart({ symbol, initialRows = [], defaultPeriod = "1
     { value: minClose + priceSpan / 2, y: yForPrice(minClose + priceSpan / 2) },
     { value: minClose, y: yForPrice(minClose) },
   ];
-  const tooltipFormatter = dateTimeFormatter(period);
+  const hoverFormatter = hoverDateFormatter(period);
+  const hoverPoint = hoverIndex === null ? null : plotted[hoverIndex] ?? null;
+  const tooltipWidth = 112;
+  const tooltipHeight = 46;
+  const tooltipX = hoverPoint ? Math.min(Math.max(hoverPoint.x + 10, 8), width - tooltipWidth - 8) : 0;
+  const tooltipY = hoverPoint ? Math.min(Math.max(hoverPoint.y - tooltipHeight - 10, 8), chartHeight - tooltipHeight - 4) : 0;
   const pointCount = metadata?.point_count ?? points.length;
+
+  function handleChartMouseMove(event: MouseEvent<SVGSVGElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const cursorX = ((event.clientX - rect.left) / rect.width) * width;
+    let nearestIndex = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    for (const point of plotted) {
+      const distance = Math.abs(point.x - cursorX);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = point.index;
+      }
+    }
+    setHoverIndex(nearestIndex);
+  }
 
   return (
     <div className="mt-3">
@@ -229,7 +264,15 @@ export function PriceHistoryChart({ symbol, initialRows = [], defaultPeriod = "1
             Close price · {metadata?.yf_period ?? period} / {metadata?.yf_interval ?? "artifact"}
           </span>
         </div>
-        <svg className="min-w-[680px]" height={height} role="img" viewBox={`0 0 ${width} ${height}`} width="100%">
+        <svg
+          className="min-w-[680px]"
+          height={height}
+          onMouseLeave={() => setHoverIndex(null)}
+          onMouseMove={handleChartMouseMove}
+          role="img"
+          viewBox={`0 0 ${width} ${height}`}
+          width="100%"
+        >
           <title>Price History - close price</title>
           <line stroke="rgba(148,163,184,0.20)" x1={paddingLeft} x2={width - paddingRight} y1={chartHeight - paddingY} y2={chartHeight - paddingY} />
           <line stroke="rgba(148,163,184,0.20)" x1={paddingLeft} x2={paddingLeft} y1={paddingY} y2={chartHeight - paddingY} />
@@ -250,14 +293,23 @@ export function PriceHistoryChart({ symbol, initialRows = [], defaultPeriod = "1
               </text>
             </g>
           ))}
-          {plotted.map((point) => (
-            <circle cx={point.x} cy={point.y} fill="transparent" key={point.index} r="5">
-              <title>
-                {tooltipFormatter.format(new Date(point.time))} close {formatNumber(point.close)}
-              </title>
-            </circle>
-          ))}
           {plotted.length === 1 ? <circle cx={plotted[0].x} cy={plotted[0].y} fill="rgb(226,232,240)" r="3" /> : null}
+          <rect fill="transparent" height={chartHeight - paddingY * 2} width={width - paddingLeft - paddingRight} x={paddingLeft} y={paddingY} />
+          {hoverPoint ? (
+            <g pointerEvents="none">
+              <line stroke="rgba(125,211,252,0.55)" strokeDasharray="3 3" x1={hoverPoint.x} x2={hoverPoint.x} y1={paddingY} y2={chartHeight - paddingY} />
+              <circle cx={hoverPoint.x} cy={hoverPoint.y} fill="rgb(15,23,42)" r="4.5" stroke="rgb(125,211,252)" strokeWidth="2" />
+              <g transform={`translate(${tooltipX} ${tooltipY})`}>
+                <rect fill="rgba(2,6,23,0.96)" height={tooltipHeight} rx="6" stroke="rgba(125,211,252,0.45)" width={tooltipWidth} />
+                <text fill="rgb(203,213,225)" fontSize="11" fontWeight="600" x="10" y="18">
+                  {hoverFormatter.format(new Date(hoverPoint.time))}
+                </text>
+                <text fill="rgb(226,232,240)" fontFamily="monospace" fontSize="13" fontWeight="700" x="10" y="35">
+                  {tooltipPrice(hoverPoint.close)}
+                </text>
+              </g>
+            </g>
+          ) : null}
         </svg>
       </div>
     </div>
