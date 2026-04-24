@@ -42,6 +42,17 @@ def main() -> None:
         st.session_state["current_page"] = "Overview / Latest Scan"
     if st.session_state["current_page"] not in pages:
         st.session_state["current_page"] = "Overview / Latest Scan"
+
+    query_page = st.query_params.get("page")
+    query_symbol = st.query_params.get("symbol")
+    if query_page == "symbol-detail":
+        st.session_state["current_page"] = "Symbol Detail"
+        st.session_state["page_selector"] = "Symbol Detail"
+    if isinstance(query_symbol, str) and query_symbol.strip():
+        selected_symbol = query_symbol.strip().upper()
+        st.session_state["selected_symbol"] = selected_symbol
+        st.session_state["symbol_detail_selector"] = selected_symbol
+
     if st.session_state.get("page_selector") != st.session_state["current_page"]:
         st.session_state["page_selector"] = st.session_state["current_page"]
 

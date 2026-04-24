@@ -902,8 +902,14 @@ def render_symbol_detail_page(full_df: pd.DataFrame | None, history_df: pd.DataF
         return
 
     render_section_heading("Symbol Detail", "Decision screen for a single scanner name.", eyebrow="Detail")
-    selected_symbol = st.selectbox("Select symbol", symbols, index=selected_symbol_index(symbols), key="selected_symbol")
+    if st.session_state.get("symbol_detail_selector") not in symbols:
+        st.session_state["symbol_detail_selector"] = symbols[selected_symbol_index(symbols)]
+    selected_symbol = st.selectbox("Select symbol", symbols, index=selected_symbol_index(symbols), key="symbol_detail_selector")
     if not isinstance(selected_symbol, str):
         st.info("Selected symbol is invalid.")
         return
+    selected_symbol = selected_symbol.strip().upper()
+    st.session_state["selected_symbol"] = selected_symbol
+    st.query_params["page"] = "symbol-detail"
+    st.query_params["symbol"] = selected_symbol
     render_symbol_detail_content(selected_symbol, full_df, history_df)

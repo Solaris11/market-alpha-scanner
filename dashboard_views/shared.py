@@ -517,9 +517,21 @@ def selected_symbol_index(symbols: list[str]) -> int:
     return 0
 
 
+def symbol_detail_url(symbol: str) -> str:
+    cleaned = str(symbol).strip().upper()
+    return f"?page=symbol-detail&symbol={cleaned}"
+
+
 def open_symbol_detail(symbol: str) -> None:
-    st.session_state["selected_symbol"] = symbol
+    cleaned_symbol = str(symbol).strip().upper()
+    if not cleaned_symbol:
+        return
+    st.query_params["page"] = "symbol-detail"
+    st.query_params["symbol"] = cleaned_symbol
     st.session_state["current_page"] = "Symbol Detail"
+    st.session_state["page_selector"] = "Symbol Detail"
+    st.session_state["selected_symbol"] = cleaned_symbol
+    st.session_state["symbol_detail_selector"] = cleaned_symbol
     st.rerun()
 
 
@@ -541,8 +553,7 @@ def render_watchlist_panel(
     st.caption(f"{len(watchlist)} saved symbol{'s' if len(watchlist) != 1 else ''}")
     for index, symbol in enumerate(watchlist):
         row_columns = st.columns([1.4, 0.8] if removable else [1], gap="small")
-        if row_columns[0].button(symbol, key=f"{panel_key}_open_{index}_{symbol}", use_container_width=True):
-            open_symbol_detail(symbol)
+        row_columns[0].link_button(symbol, symbol_detail_url(symbol), use_container_width=True)
         if removable and row_columns[1].button("Remove", key=f"{panel_key}_remove_{index}_{symbol}", use_container_width=True):
             remove_from_watchlist(symbol)
             st.rerun()
@@ -555,9 +566,8 @@ def render_symbol_quick_actions(symbols: list[str], key_prefix: str = "quick") -
     for start in range(0, min(len(symbols), 12), 4):
         row_symbols = symbols[start : start + 4]
         columns = st.columns(len(row_symbols))
-        for index, (column, symbol) in enumerate(zip(columns, row_symbols)):
-            if column.button(symbol, key=f"{key_prefix}_inspect_{start}_{index}_{symbol}", use_container_width=True):
-                open_symbol_detail(symbol)
+        for column, symbol in zip(columns, row_symbols):
+            column.link_button(symbol, symbol_detail_url(symbol), use_container_width=True)
 
 
 def render_clickable_symbol_rows(df: pd.DataFrame, section_key: str) -> None:
@@ -585,8 +595,7 @@ def render_clickable_symbol_rows(df: pd.DataFrame, section_key: str) -> None:
         if not symbol:
             continue
         row_columns = st.columns([1.25, 0.95, 1.0, 1.3, 0.8])
-        if row_columns[0].button(symbol, key=f"{section_key}_symbol_{index}_{symbol}", use_container_width=True):
-            open_symbol_detail(symbol)
+        row_columns[0].link_button(symbol, symbol_detail_url(symbol), use_container_width=True)
         row_columns[1].write(str(row.get("asset_type", "N/A")))
         row_columns[2].markdown(render_rating_badge(row.get("rating", "N/A")), unsafe_allow_html=True)
         row_columns[3].markdown(render_action_badge(row.get(action_column, "N/A")), unsafe_allow_html=True)
