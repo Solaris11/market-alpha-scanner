@@ -44,6 +44,12 @@ def _apply_symbol_detail_request(requested_symbol: str, *, sync_sidebar_widget: 
         st.session_state["symbol_detail_selector"] = requested_symbol
 
 
+def _clear_symbol_detail_query_params() -> None:
+    for key in ("page", "symbol"):
+        if key in st.query_params:
+            del st.query_params[key]
+
+
 def main() -> None:
     st.set_page_config(
         page_title="Market Alpha Scanner",
@@ -85,7 +91,7 @@ def main() -> None:
         st.session_state["page_selector"] = selected
         st.session_state[SIDEBAR_PAGE_CHANGE_KEY] = True
         if selected != "Symbol Detail":
-            st.query_params.clear()
+            _clear_symbol_detail_query_params()
 
     full_df, _ = safe_read_csv(FULL_RANKING_PATH)
     top_df, _ = safe_read_csv(TOP_CANDIDATES_PATH)

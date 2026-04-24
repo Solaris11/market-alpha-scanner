@@ -530,13 +530,16 @@ def open_symbol_detail(symbol: str) -> None:
     st.query_params["symbol"] = cleaned_symbol
     st.session_state["current_page"] = "Symbol Detail"
     st.session_state["page_selector"] = "Symbol Detail"
+    st.session_state["_page_selector_widget"] = "Symbol Detail"
     st.session_state["selected_symbol"] = cleaned_symbol
     st.session_state["symbol_detail_selector"] = cleaned_symbol
     st.rerun()
 
 
 def go_to_overview() -> None:
-    st.query_params.clear()
+    for key in ("page", "symbol"):
+        if key in st.query_params:
+            del st.query_params[key]
     st.session_state["current_page"] = "Overview / Latest Scan"
     st.session_state["page_selector"] = "Overview / Latest Scan"
     st.session_state["_page_selector_widget"] = "Overview / Latest Scan"

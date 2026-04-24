@@ -27,6 +27,7 @@ FILTER_ASSET_TYPES_KEY = "overview_filter_asset_types"
 FILTER_SECTORS_KEY = "overview_filter_sectors"
 FILTER_RATINGS_KEY = "overview_filter_ratings"
 FILTER_MIN_SCORE_KEY = "overview_filter_min_score"
+FILTER_DEFAULTS_MIGRATED_KEY = "overview_filter_defaults_migrated"
 
 
 def reset_overview_filters() -> None:
@@ -35,6 +36,34 @@ def reset_overview_filters() -> None:
     st.session_state[FILTER_SECTORS_KEY] = []
     st.session_state[FILTER_RATINGS_KEY] = []
     st.session_state[FILTER_MIN_SCORE_KEY] = 0.0
+
+
+def _selected_filter_values(key: str) -> list[str]:
+    values = st.session_state.get(key, [])
+    if isinstance(values, list):
+        return [str(value) for value in values]
+    return []
+
+
+def _initialize_filter_state(asset_type_options: list[str], sector_options: list[str], rating_options: list[str]) -> None:
+    st.session_state.setdefault(FILTER_SYMBOL_KEY, "")
+    st.session_state.setdefault(FILTER_ASSET_TYPES_KEY, [])
+    st.session_state.setdefault(FILTER_SECTORS_KEY, [])
+    st.session_state.setdefault(FILTER_RATINGS_KEY, [])
+    st.session_state.setdefault(FILTER_MIN_SCORE_KEY, 0.0)
+
+    st.session_state[FILTER_ASSET_TYPES_KEY] = [value for value in _selected_filter_values(FILTER_ASSET_TYPES_KEY) if value in asset_type_options]
+    st.session_state[FILTER_SECTORS_KEY] = [value for value in _selected_filter_values(FILTER_SECTORS_KEY) if value in sector_options]
+    st.session_state[FILTER_RATINGS_KEY] = [value for value in _selected_filter_values(FILTER_RATINGS_KEY) if value in rating_options]
+
+    if not st.session_state.get(FILTER_DEFAULTS_MIGRATED_KEY):
+        if asset_type_options and set(st.session_state[FILTER_ASSET_TYPES_KEY]) == set(asset_type_options):
+            st.session_state[FILTER_ASSET_TYPES_KEY] = []
+        if sector_options and set(st.session_state[FILTER_SECTORS_KEY]) == set(sector_options):
+            st.session_state[FILTER_SECTORS_KEY] = []
+        if rating_options and set(st.session_state[FILTER_RATINGS_KEY]) == set(rating_options):
+            st.session_state[FILTER_RATINGS_KEY] = []
+        st.session_state[FILTER_DEFAULTS_MIGRATED_KEY] = True
 
 
 def active_filter_count(symbol_query: str, asset_types: list[str], sectors: list[str], ratings: list[str], min_final_score: float) -> int:
@@ -326,12 +355,15 @@ def render_overview_page(
 
     full_df = prepare_scan_df(full_df)
     top_df = prepare_scan_df(top_df) if top_df is not None else pd.DataFrame()
+    asset_type_options = sorted(full_df["asset_type"].dropna().astype(str).unique().tolist()) if "asset_type" in full_df.columns else []
+    all_sector_options = sorted(full_df["sector"].dropna().astype(str).unique().tolist()) if "sector" in full_df.columns else []
+    rating_options = sorted(full_df["rating"].dropna().astype(str).unique().tolist()) if "rating" in full_df.columns else []
+    _initialize_filter_state(asset_type_options, all_sector_options, rating_options)
 
     with st.sidebar:
         render_section_heading("Overview Filters", "Trim the ranking to the exact market slice you want to inspect.", eyebrow="Filters")
         st.button("Reset Filters", key="overview_reset_filters", use_container_width=True, on_click=reset_overview_filters)
         symbol_query = st.text_input("Symbol search", key=FILTER_SYMBOL_KEY)
-        asset_type_options = sorted(full_df["asset_type"].dropna().astype(str).unique().tolist()) if "asset_type" in full_df.columns else []
         asset_types = st.multiselect(
             "Asset type",
             asset_type_options,
@@ -354,7 +386,7 @@ def render_overview_page(
         )
         ratings = st.multiselect(
             "Rating",
-            sorted(full_df["rating"].dropna().astype(str).unique().tolist()) if "rating" in full_df.columns else [],
+            rating_options,
             key=FILTER_RATINGS_KEY,
         )
         min_final_score = st.number_input("Minimum final_score", min_value=0.0, value=0.0, step=1.0, key=FILTER_MIN_SCORE_KEY)
