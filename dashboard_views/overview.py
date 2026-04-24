@@ -8,7 +8,6 @@ import streamlit as st
 from .loaders import infer_file_timestamp, infer_latest_scan_timestamp, prepare_scan_df
 from .shared import (
     build_count_table,
-    display_table,
     filter_scan_df,
     format_number,
     load_watchlist,
@@ -22,21 +21,6 @@ from .shared import (
     render_watchlist_panel,
     sort_scan_df,
 )
-
-OVERVIEW_TABLE_COLUMNS = [
-    "symbol",
-    "asset_type",
-    "sector",
-    "price",
-    "final_score",
-    "rating",
-    "composite_action",
-    "short_action",
-    "mid_action",
-    "long_action",
-    "setup_type",
-]
-
 
 def _summary_card(label: str, value: object, meta: str = "", tone: str = "neutral") -> None:
     st.markdown(render_info_card(label, value, meta, tone), unsafe_allow_html=True)
@@ -138,9 +122,38 @@ def render_top_candidate_cards(top_df: pd.DataFrame) -> None:
                 if st.button("Open Detail", key=f"overview_top_open_{index}_{symbol}", use_container_width=True):
                     open_symbol_detail(symbol)
 
+
+def render_clickable_top_candidate_list(top_df: pd.DataFrame) -> None:
+    if top_df.empty or "symbol" not in top_df.columns:
+        return
+
+    action_column = "composite_action" if "composite_action" in top_df.columns else "long_action"
+    top_rows = sort_scan_df(top_df).reset_index(drop=True)
+
     with st.container(border=True):
-        st.caption("Top candidate table")
-        display_table(top_df, OVERVIEW_TABLE_COLUMNS, height=340, highlight_top=True)
+        st.caption("Use the symbol buttons below to open top candidate details.")
+        header_columns = st.columns([0.9, 1.0, 1.35, 0.8, 0.9, 0.9, 1.2], gap="small")
+        header_columns[0].markdown("**Symbol**")
+        header_columns[1].markdown("**Asset Type**")
+        header_columns[2].markdown("**Sector**")
+        header_columns[3].markdown("**Price**")
+        header_columns[4].markdown("**Final Score**")
+        header_columns[5].markdown("**Rating**")
+        header_columns[6].markdown("**Action**")
+
+        for index, (_, row) in enumerate(top_rows.iterrows()):
+            symbol = str(row.get("symbol", "")).strip().upper()
+            if not symbol:
+                continue
+            row_columns = st.columns([0.9, 1.0, 1.35, 0.8, 0.9, 0.9, 1.2], gap="small")
+            if row_columns[0].button(symbol, key=f"overview_top_candidate_row_open_{index}_{symbol}", use_container_width=True):
+                open_symbol_detail(symbol)
+            row_columns[1].write(str(row.get("asset_type", "N/A")))
+            row_columns[2].write(str(row.get("sector", "N/A")))
+            row_columns[3].write(format_number(row.get("price")))
+            row_columns[4].write(format_number(row.get("final_score")))
+            row_columns[5].markdown(render_rating_badge(row.get("rating", "N/A")), unsafe_allow_html=True)
+            row_columns[6].markdown(render_action_badge(row.get(action_column, "N/A")), unsafe_allow_html=True)
 
 
 def render_watchlist_overview() -> None:
@@ -169,7 +182,7 @@ def render_clickable_ranking_list(ordered: pd.DataFrame) -> None:
     total_rows = len(ranking_rows)
 
     with st.container(border=True):
-        st.caption("Use the clickable symbol list below to open details. The raw dataframe is available in the collapsed CSV-style view.")
+        st.caption("Use the clickable symbol list below to open details.")
 
         control_columns = st.columns([1.1, 1.0, 3.2], gap="small")
         page_size_option = control_columns[0].selectbox(
@@ -254,10 +267,6 @@ def render_ranking_overview(filtered_full: pd.DataFrame) -> None:
 
     render_clickable_ranking_list(ordered)
 
-    with st.expander("Raw dataframe / CSV-style view", expanded=False):
-        st.caption("Read-only scanner output for inspection.")
-        display_table(filtered_full, OVERVIEW_TABLE_COLUMNS, height=620, highlight_top=True)
-
 
 def render_overview_page(
     full_df: pd.DataFrame | None,
@@ -295,6 +304,8 @@ def render_overview_page(
 
     render_status_panel(full_df, snapshot_files, performance_summary_path, forward_returns_path)
     st.caption(f"Filtered rows in view: {len(filtered_full):,}")
-    render_top_candidate_cards(filtered_top if not filtered_top.empty else top_df)
+    top_candidates_for_view = filtered_top if not filtered_top.empty else top_df
+    render_top_candidate_cards(top_candidates_for_view)
+    render_clickable_top_candidate_list(top_candidates_for_view)
     render_watchlist_overview()
     render_ranking_overview(filtered_full)
