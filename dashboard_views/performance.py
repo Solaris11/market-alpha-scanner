@@ -1,11 +1,22 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 import streamlit as st
 
-from .loaders import BASE_DIR, FORWARD_RETURNS_PATH, FULL_RANKING_PATH, HISTORY_DIR, PERFORMANCE_SUMMARY_PATH, list_snapshot_files
+from .loaders import (
+    BASE_DIR,
+    FORWARD_RETURNS_PATH,
+    FULL_RANKING_PATH,
+    HISTORY_DIR,
+    PERFORMANCE_SUMMARY_PATH,
+    list_snapshot_files,
+    parse_snapshot_timestamp,
+)
 from .shared import (
     format_percent,
+    format_timestamp,
     format_performance_display,
     render_dashboard_command_result,
     render_info_card,
@@ -20,6 +31,22 @@ ANALYSIS_COMMAND = " ".join(ANALYSIS_COMMAND_ARGS)
 
 def _status_text(path_exists: bool) -> str:
     return "Available" if path_exists else "Missing"
+
+
+def _snapshot_stats(snapshot_files: list[Path]) -> dict[str, object]:
+    parsed_timestamps = sorted(
+        timestamp
+        for path in snapshot_files
+        if (timestamp := parse_snapshot_timestamp(path)) is not None
+    )
+    unique_dates = sorted({timestamp.date().isoformat() for timestamp in parsed_timestamps})
+    return {
+        "count": len(snapshot_files),
+        "parsed_count": len(parsed_timestamps),
+        "earliest": parsed_timestamps[0] if parsed_timestamps else None,
+        "latest": parsed_timestamps[-1] if parsed_timestamps else None,
+        "unique_dates": unique_dates,
+    }
 
 
 def render_performance_run_button() -> None:
@@ -39,7 +66,9 @@ def render_performance_run_button() -> None:
 
 def render_performance_guidance() -> None:
     render_section_heading("Performance Data Status", "Performance metrics are generated from saved scan history.", eyebrow="Analysis")
-    snapshot_count = len(list_snapshot_files(HISTORY_DIR))
+    snapshot_stats = _snapshot_stats(list_snapshot_files(HISTORY_DIR))
+    snapshot_count = int(snapshot_stats["count"])
+    unique_dates = list(snapshot_stats["unique_dates"])
     status_columns = st.columns(3)
     with status_columns[0]:
         st.markdown(
@@ -62,7 +91,28 @@ def render_performance_guidance() -> None:
             unsafe_allow_html=True,
         )
 
-    st.info("Performance analysis is not ready until forward-return observations can be computed from saved history.")
+    snapshot_columns = st.columns(4)
+    snapshot_columns[0].markdown(
+        render_info_card("Snapshots", f"{snapshot_count:,}", "scanner_output/history", "accent" if snapshot_count else "warning"),
+        unsafe_allow_html=True,
+    )
+    snapshot_columns[1].markdown(
+        render_info_card("Earliest Snapshot", format_timestamp(snapshot_stats["earliest"]), "First saved scan", "neutral"),
+        unsafe_allow_html=True,
+    )
+    snapshot_columns[2].markdown(
+        render_info_card("Latest Snapshot", format_timestamp(snapshot_stats["latest"]), "Most recent saved scan", "neutral"),
+        unsafe_allow_html=True,
+    )
+    snapshot_columns[3].markdown(
+        render_info_card("Unique Dates", f"{len(unique_dates):,}", ", ".join(unique_dates[:3]) if unique_dates else "No dated snapshots", "accent" if len(unique_dates) > 1 else "warning"),
+        unsafe_allow_html=True,
+    )
+
+    if snapshot_count > 0 and len(unique_dates) <= 1:
+        st.info("History exists but all snapshots are from the same trading day. Forward-return analysis needs earlier snapshots.")
+    else:
+        st.info("Performance analysis is not ready until forward-return observations can be computed from saved history.")
     st.caption("The button above runs:")
     st.code(ANALYSIS_COMMAND, language="bash")
 

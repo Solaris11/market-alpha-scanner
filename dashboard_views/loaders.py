@@ -29,6 +29,17 @@ STRING_COLUMNS = [
     "key_risk", "short_action", "mid_action", "long_action", "composite_action",
     "short_reason", "mid_reason", "long_reason", "selection_reason", "headline_bias",
 ]
+DISPLAY_NAME_SOURCE_COLUMNS = [
+    "company_name",
+    "long_name",
+    "longName",
+    "short_name",
+    "shortName",
+    "display_name",
+    "displayName",
+    "security_name",
+    "name",
+]
 NUMERIC_SCAN_COLUMNS = [
     "price", "market_cap", "avg_dollar_volume", "technical_score", "fundamental_score",
     "news_score", "macro_score", "risk_penalty", "final_score", "short_score", "mid_score",
@@ -97,6 +108,14 @@ def normalize_history_columns(df: pd.DataFrame) -> pd.DataFrame:
 def prepare_scan_df(df: pd.DataFrame) -> pd.DataFrame:
     prepared = df.copy()
     prepared.columns = [str(column).strip() for column in prepared.columns]
+    if "company_name" not in prepared.columns:
+        prepared["company_name"] = pd.NA
+    else:
+        prepared["company_name"] = prepared["company_name"].astype("string").str.strip().replace("", pd.NA)
+    for source_column in DISPLAY_NAME_SOURCE_COLUMNS:
+        if source_column in prepared.columns and source_column != "company_name":
+            candidate_names = prepared[source_column].astype("string").str.strip().replace("", pd.NA)
+            prepared["company_name"] = prepared["company_name"].fillna(candidate_names)
     for column in STRING_COLUMNS:
         if column in prepared.columns:
             prepared[column] = prepared[column].astype("string").str.strip()

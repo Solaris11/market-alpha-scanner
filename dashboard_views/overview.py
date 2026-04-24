@@ -212,7 +212,8 @@ def render_clickable_top_candidate_list(top_df: pd.DataFrame) -> None:
 
     with st.container(border=True):
         st.caption("Use the symbol buttons below to open top candidate details.")
-        header_columns = st.columns([0.9, 1.0, 1.35, 0.8, 0.9, 0.9, 1.2], gap="small")
+        top_candidate_columns = [1.05, 0.95, 1.25, 0.75, 0.85, 1.2, 1.65]
+        header_columns = st.columns(top_candidate_columns, gap="small")
         header_columns[0].markdown("**Symbol**")
         header_columns[1].markdown("**Asset Type**")
         header_columns[2].markdown("**Sector**")
@@ -225,7 +226,7 @@ def render_clickable_top_candidate_list(top_df: pd.DataFrame) -> None:
             symbol = str(row.get("symbol", "")).strip().upper()
             if not symbol:
                 continue
-            row_columns = st.columns([0.9, 1.0, 1.35, 0.8, 0.9, 0.9, 1.2], gap="small")
+            row_columns = st.columns(top_candidate_columns, gap="small")
             if row_columns[0].button(symbol, key=f"overview_top_candidate_row_open_{index}_{symbol}", use_container_width=True):
                 open_symbol_detail(symbol)
             display_name = get_symbol_display_name(row)
@@ -300,7 +301,8 @@ def render_clickable_ranking_list(ordered: pd.DataFrame) -> None:
         visible_rows = ranking_rows.iloc[start_index:end_index]
         control_columns[2].caption(f"Showing {start_index + 1}-{end_index} of {total_rows}")
 
-        header_columns = st.columns([0.9, 1.0, 1.35, 0.8, 0.9, 0.9, 1.2], gap="small")
+        ranking_columns = [1.05, 0.95, 1.25, 0.75, 0.85, 1.2, 1.65]
+        header_columns = st.columns(ranking_columns, gap="small")
         header_columns[0].markdown("**Symbol**")
         header_columns[1].markdown("**Asset Type**")
         header_columns[2].markdown("**Sector**")
@@ -314,7 +316,7 @@ def render_clickable_ranking_list(ordered: pd.DataFrame) -> None:
             symbol = str(row.get("symbol", "")).strip().upper()
             if not symbol:
                 continue
-            row_columns = st.columns([0.9, 1.0, 1.35, 0.8, 0.9, 0.9, 1.2], gap="small")
+            row_columns = st.columns(ranking_columns, gap="small")
             if row_columns[0].button(symbol, key=f"overview_rank_row_open_{index}_{symbol}", use_container_width=True):
                 open_symbol_detail(symbol)
             display_name = get_symbol_display_name(row)

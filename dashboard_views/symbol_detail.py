@@ -18,6 +18,7 @@ from .shared import (
     go_to_overview,
     load_watchlist,
     normalize_symbol,
+    open_symbol_detail,
     remove_from_watchlist,
     render_action_badge,
     render_info_card,
@@ -63,6 +64,14 @@ NEGATIVE_REASON_TERMS = (
     "heavy",
     "unsupportive",
 )
+
+SYMBOL_JUMP_INPUT_KEY = "symbol_detail_jump_input"
+SYMBOL_JUMP_SUBMITTED_KEY = "_symbol_detail_jump_submitted"
+SYMBOL_JUMP_ERROR_KEY = "_symbol_detail_jump_error"
+
+
+def _submit_symbol_jump() -> None:
+    st.session_state[SYMBOL_JUMP_SUBMITTED_KEY] = True
 
 
 def _numeric_scalar(value: object) -> float | None:
@@ -899,6 +908,34 @@ def render_symbol_detail_content(selected_symbol: str, full_df: pd.DataFrame, sn
         st.dataframe(symbol_rows, use_container_width=True, height=280, hide_index=True)
 
 
+def render_symbol_jump_control(symbols: list[str]) -> None:
+    jump_columns = st.columns([1.5, 0.7, 2.2], gap="small")
+    jump_columns[0].text_input(
+        "Jump to symbol",
+        key=SYMBOL_JUMP_INPUT_KEY,
+        placeholder="AVGO",
+        on_change=_submit_symbol_jump,
+    )
+    open_clicked = jump_columns[1].button("Open Symbol", key="symbol_detail_jump_open", use_container_width=True)
+    should_open = bool(st.session_state.pop(SYMBOL_JUMP_SUBMITTED_KEY, False)) or open_clicked
+
+    if should_open:
+        requested_symbol = normalize_symbol(st.session_state.get(SYMBOL_JUMP_INPUT_KEY, ""))
+        if not requested_symbol:
+            st.session_state[SYMBOL_JUMP_ERROR_KEY] = "Enter a symbol to open."
+        elif requested_symbol not in symbols:
+            st.session_state[SYMBOL_JUMP_ERROR_KEY] = f"{requested_symbol} is not in the current scan."
+        else:
+            if SYMBOL_JUMP_ERROR_KEY in st.session_state:
+                del st.session_state[SYMBOL_JUMP_ERROR_KEY]
+            open_symbol_detail(requested_symbol)
+
+    jump_columns[2].caption("Type a ticker and press Enter, or click Open Symbol.")
+    jump_error = st.session_state.pop(SYMBOL_JUMP_ERROR_KEY, "")
+    if jump_error:
+        st.warning(jump_error)
+
+
 def render_symbol_detail_page(full_df: pd.DataFrame | None, history_df: pd.DataFrame) -> None:
     if full_df is None or full_df.empty:
         st.info("Latest scan data is not available yet. Run the scanner to view symbol details.")
@@ -920,6 +957,8 @@ def render_symbol_detail_page(full_df: pd.DataFrame | None, history_df: pd.DataF
     nav_columns[1].caption("Return to the main ranking view without editing the browser URL.")
 
     render_section_heading("Symbol Detail", "Decision screen for a single scanner name.", eyebrow="Detail")
+    render_symbol_jump_control(symbols)
+
     requested_symbol = normalize_symbol(st.session_state.get("selected_symbol", ""))
     selector_symbol = normalize_symbol(st.session_state.get("symbol_detail_selector", ""))
     if selector_symbol in symbols:

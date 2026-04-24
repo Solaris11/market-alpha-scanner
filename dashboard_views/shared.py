@@ -33,14 +33,15 @@ PERFORMANCE_METRIC_COLUMNS = ["avg_return", "median_return", "hit_rate", "avg_ne
 PERCENT_COLUMNS = {"avg_return", "median_return", "hit_rate", "avg_negative_return", "min_return"}
 DISPLAY_NAME_FIELDS = (
     "company_name",
-    "company",
-    "name",
     "long_name",
-    "short_name",
-    "security_name",
-    "display_name",
     "longName",
+    "short_name",
     "shortName",
+    "display_name",
+    "displayName",
+    "security_name",
+    "name",
+    "company",
 )
 
 POSITIVE_COLOR = "#22c55e"
@@ -229,6 +230,11 @@ THEME_CSS = """
         border: 1px solid rgba(148, 163, 184, 0.2);
         background: rgba(51, 65, 85, 0.26);
         color: #cbd5e1;
+        white-space: nowrap;
+        word-break: keep-all;
+        overflow-wrap: normal;
+        min-width: max-content;
+        flex: 0 0 auto;
     }
     .scanner-badge--positive {
         background: rgba(34, 197, 94, 0.14);
@@ -602,7 +608,7 @@ def get_symbol_display_name(row: object, summary_payload: Mapping[str, object] |
     if top_level_name:
         return top_level_name
 
-    for key in ("fundamentals", "quote", "profile", "info", "metadata"):
+    for key in ("summary", "fundamentals", "quote", "profile", "info", "metadata"):
         nested = summary_payload.get(key)
         if isinstance(nested, Mapping):
             nested_name = _lookup_display_name(nested, symbol)
@@ -846,7 +852,8 @@ def render_clickable_symbol_rows(df: pd.DataFrame, section_key: str) -> None:
         return
 
     st.caption("Fast symbol jump")
-    header_columns = st.columns([1.25, 0.95, 1.0, 1.3, 0.8])
+    row_column_widths = [1.35, 0.9, 1.15, 1.6, 0.9]
+    header_columns = st.columns(row_column_widths)
     header_columns[0].markdown("**Symbol**")
     header_columns[1].markdown("**Asset**")
     header_columns[2].markdown("**Rating**")
@@ -858,7 +865,7 @@ def render_clickable_symbol_rows(df: pd.DataFrame, section_key: str) -> None:
         symbol = str(row["symbol"]).strip()
         if not symbol:
             continue
-        row_columns = st.columns([1.25, 0.95, 1.0, 1.3, 0.8])
+        row_columns = st.columns(row_column_widths)
         if row_columns[0].button(symbol, key=f"{section_key}_symbol_open_{index}_{symbol}", use_container_width=True):
             open_symbol_detail(symbol)
         row_columns[1].write(str(row.get("asset_type", "N/A")))
