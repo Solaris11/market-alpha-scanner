@@ -22,6 +22,14 @@ def safe_str(x: Any, default: str = "") -> str:
     return str(x).strip()
 
 
+def extract_company_name(info: dict[str, object]) -> str:
+    for key in ("longName", "shortName", "displayName", "name"):
+        value = safe_str(info.get(key))
+        if value and value.lower() not in {"nan", "none", "n/a", "na", "unknown"}:
+            return value
+    return ""
+
+
 def pct_change(series: pd.Series, periods: int) -> float:
     if len(series) <= periods:
         return np.nan

@@ -64,6 +64,7 @@ def save_symbol_detail_outputs(
 
         payload = {
             "symbol": asset.symbol,
+            "company_name": asset.company_name,
             "updated_at_utc": updated_at,
             "summary": asdict(asset),
             "fundamentals": extract_detail_fundamentals(info_cache.get(asset.symbol, {})),

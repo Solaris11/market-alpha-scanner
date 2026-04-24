@@ -6,6 +6,7 @@ from dataclasses import dataclass
 @dataclass
 class RankedAsset:
     symbol: str
+    company_name: str
     asset_type: str
     sector: str
     industry: str
@@ -66,4 +67,3 @@ class RankedAsset:
     atr_pct: float
     annualized_volatility: float
     max_drawdown: float
-

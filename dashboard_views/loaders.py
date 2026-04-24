@@ -24,7 +24,7 @@ FORWARD_RETURNS_PATH = ANALYSIS_DIR / "forward_returns.csv"
 SYMBOLS_DIR = OUTPUT_DIR / "symbols"
 
 STRING_COLUMNS = [
-    "symbol", "asset_type", "sector", "rating", "setup_type", "industry",
+    "symbol", "company_name", "asset_type", "sector", "rating", "setup_type", "industry",
     "valuation_flag", "profitability_status", "macro_sensitivity", "upside_driver",
     "key_risk", "short_action", "mid_action", "long_action", "composite_action",
     "short_reason", "mid_reason", "long_reason", "selection_reason", "headline_bias",

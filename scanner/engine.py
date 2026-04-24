@@ -32,7 +32,7 @@ from .scoring import (
     score_macro_alignment,
     technical_scorecard,
 )
-from .utils import ema, macd_hist, parse_earnings_date, safe_float, safe_str, sma
+from .utils import ema, extract_company_name, macd_hist, parse_earnings_date, safe_float, safe_str, sma
 
 
 def scan_symbols(
@@ -117,6 +117,7 @@ def scan_symbols(
 
         asset = RankedAsset(
             symbol=symbol,
+            company_name=extract_company_name(info),
             asset_type=asset_type,
             sector=sector,
             industry=industry,

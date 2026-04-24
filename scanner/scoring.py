@@ -25,6 +25,7 @@ from .utils import (
     clamp_score,
     days_until,
     ema,
+    extract_company_name,
     first_index_of_year,
     macd_hist,
     max_drawdown,
@@ -936,6 +937,7 @@ def apply_horizon_recommendations(asset: RankedAsset, context: dict[str, float |
 
 def extract_detail_fundamentals(info: dict[str, object]) -> dict[str, object]:
     return {
+        "company_name": extract_company_name(info),
         "market_cap": safe_float(info.get("marketCap"), np.nan),
         "trailing_pe": safe_float(info.get("trailingPE"), np.nan),
         "forward_pe": safe_float(info.get("forwardPE"), np.nan),
