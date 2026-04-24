@@ -915,17 +915,19 @@ def derive_trade_plan(
                 continue
             seen_resistance_levels.add(rounded_level)
             unique_resistances.append((level, reason))
-        conservative_target_value = unique_resistances[0][0] if unique_resistances else np.nan
-        conservative_target_reason = unique_resistances[0][1] if unique_resistances else "nearest resistance unavailable"
-
         balanced_target_low = current_price + (1.5 * risk_per_share)
         balanced_target_high = current_price + (2.0 * risk_per_share)
         aggressive_target_low = current_price + (2.0 * risk_per_share)
         aggressive_target_high = current_price + (3.0 * risk_per_share)
+        if unique_resistances:
+            conservative_target_value = unique_resistances[0][0]
+            conservative_target_reason = unique_resistances[0][1]
+        else:
+            conservative_target_value = current_price + risk_per_share
+            conservative_target_reason = "current price + 1R fallback (no resistance)"
 
-        if not np.isnan(conservative_target_value) and conservative_target_value > current_price:
-            conservative_target = _format_level(conservative_target_value)
-            conservative_risk_reward = (conservative_target_value - current_price) / risk_per_share
+        conservative_target = _format_level(conservative_target_value)
+        conservative_risk_reward = (conservative_target_value - current_price) / risk_per_share
         balanced_target = _format_zone(balanced_target_low, balanced_target_high)
         aggressive_target = _format_zone(aggressive_target_low, aggressive_target_high)
         balanced_risk_reward_low = (balanced_target_low - current_price) / risk_per_share

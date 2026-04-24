@@ -99,6 +99,12 @@ function riskTargetRange(row: Record<string, unknown>, summary: Record<string, u
   return `${formatNumber(context.currentPrice + lowMultiple * context.risk)}-${formatNumber(context.currentPrice + highMultiple * context.risk)}`;
 }
 
+function riskTargetPoint(row: Record<string, unknown>, summary: Record<string, unknown> | null, multiple: number) {
+  const context = riskContext(row, summary);
+  if (!context || context.risk <= 0) return "N/A";
+  return formatNumber(context.currentPrice + multiple * context.risk);
+}
+
 function resolvedTarget(row: Record<string, unknown>, summary: Record<string, unknown> | null, keys: string[], fallback: string) {
   const value = valueFrom(row, summary, keys);
   const text = displayValue(value);
@@ -132,7 +138,7 @@ function resolvedTargetRiskRewardValue(
   aggressiveTarget: string,
 ) {
   const explicitLabel = String(valueFrom(row, summary, ["target_risk_reward_label"]) ?? "").trim();
-  if (explicitLabel && !["nan", "none", "n/a", "null"].includes(explicitLabel.toLowerCase())) return explicitLabel;
+  if (explicitLabel && !["nan", "none", "n/a", "null"].includes(explicitLabel.toLowerCase()) && !explicitLabel.toUpperCase().includes("N/A")) return explicitLabel;
 
   const context = riskContext(row, summary);
   if (!context || context.risk <= 0) return "N/A";
@@ -156,7 +162,7 @@ function resolvedTradeQuality(
   balancedTarget: string,
 ) {
   const explicit = String(valueFrom(row, summary, ["trade_quality_note"]) ?? "").trim();
-  if (explicit) return explicit;
+  if (explicit && !explicit.toLowerCase().includes("unavailable")) return explicit;
 
   const context = riskContext(row, summary);
   if (!context || context.risk <= 0) return "LOW EDGE — trade plan unavailable";
@@ -255,7 +261,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
             const buyZone = displayValue(valueFrom(row, summary, ["buy_zone", "entry_zone"]));
             const stopLoss = displayValue(valueFrom(row, summary, ["stop_loss", "invalidation_level"]));
             const takeProfit = resolvedTakeProfitValue(row, summary);
-            const conservativeTarget = resolvedTarget(row, summary, ["conservative_target"], "N/A");
+            const conservativeTarget = resolvedTarget(row, summary, ["conservative_target"], riskTargetPoint(row, summary, 1.0));
             const balancedTarget = resolvedTarget(row, summary, ["balanced_target"], riskTargetRange(row, summary, 1.5, 2.0));
             const aggressiveTarget = resolvedTarget(row, summary, ["aggressive_target"], riskTargetRange(row, summary, 2.0, 3.0));
             const riskReward = resolvedTargetRiskRewardValue(row, summary, conservativeTarget, balancedTarget, aggressiveTarget);
@@ -266,7 +272,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
               { label: "Stop Loss Reason", value: displayReason(valueFrom(row, summary, ["stop_loss_reason"]), "below support with ATR buffer") },
               { label: "Take Profit Reason", value: displayReason(valueFrom(row, summary, ["take_profit_reason"]), takeProfit !== "N/A" ? "risk-based fallback (no resistance)" : "Take profit unavailable because stop loss or price is missing") },
               { label: "Risk/Reward Reason", value: displayReason(valueFrom(row, summary, ["risk_reward_reason"]), riskReward !== "N/A" ? "computed from current price, stop, and target" : "Risk/reward unavailable because stop loss or target is missing") },
-              { label: "Conservative Reason", value: displayReason(valueFrom(row, summary, ["conservative_target_reason"]), "nearest resistance above current price") },
+              { label: "Conservative Reason", value: displayReason(valueFrom(row, summary, ["conservative_target_reason"]), "current price + 1R fallback (no resistance)") },
               { label: "Balanced Reason", value: displayReason(valueFrom(row, summary, ["balanced_target_reason"]), "1.5R–2R target from current risk") },
               { label: "Aggressive Reason", value: displayReason(valueFrom(row, summary, ["aggressive_target_reason"]), "2R–3R target from current risk") },
             ];
