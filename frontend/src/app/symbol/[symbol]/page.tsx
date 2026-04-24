@@ -48,6 +48,10 @@ function formatRiskReward(low: number, high: number) {
   return `${low.toFixed(1)}R–${high.toFixed(1)}R`;
 }
 
+function formatRiskRewardPoint(value: number | null) {
+  return value !== null && value > 0 ? `${value.toFixed(1)}R` : "N/A";
+}
+
 function parseTradeLevel(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) return { low: value, high: value };
   const text = String(value ?? "").trim();
@@ -82,6 +86,25 @@ function resolvedTakeProfitValue(row: Record<string, unknown>, summary: Record<s
   return `${formatNumber(targetLow)}-${formatNumber(targetHigh)}`;
 }
 
+function riskContext(row: Record<string, unknown>, summary: Record<string, unknown> | null) {
+  const currentPrice = typeof row.price === "number" ? row.price : null;
+  const stopZone = parseTradeLevel(valueFrom(row, summary, ["stop_loss", "invalidation_level"]));
+  if (currentPrice === null || !stopZone || stopZone.low >= currentPrice) return null;
+  return { currentPrice, stopLoss: stopZone.low, risk: currentPrice - stopZone.low };
+}
+
+function riskTargetRange(row: Record<string, unknown>, summary: Record<string, unknown> | null, lowMultiple: number, highMultiple: number) {
+  const context = riskContext(row, summary);
+  if (!context || context.risk <= 0) return "N/A";
+  return `${formatNumber(context.currentPrice + lowMultiple * context.risk)}-${formatNumber(context.currentPrice + highMultiple * context.risk)}`;
+}
+
+function resolvedTarget(row: Record<string, unknown>, summary: Record<string, unknown> | null, keys: string[], fallback: string) {
+  const value = valueFrom(row, summary, keys);
+  const text = displayValue(value);
+  return text !== "N/A" ? text : fallback;
+}
+
 function resolvedRiskRewardValue(row: Record<string, unknown>, summary: Record<string, unknown> | null, takeProfit: string) {
   const explicitLabel = valueFrom(row, summary, ["risk_reward_label"]);
   const labelText = String(explicitLabel ?? "").trim();
@@ -99,6 +122,52 @@ function resolvedRiskRewardValue(row: Record<string, unknown>, summary: Record<s
   const risk = currentPrice - stopZone.low;
   if (risk <= 0) return "N/A";
   return formatRiskReward((targetZone.low - currentPrice) / risk, (targetZone.high - currentPrice) / risk);
+}
+
+function resolvedTargetRiskRewardValue(
+  row: Record<string, unknown>,
+  summary: Record<string, unknown> | null,
+  conservativeTarget: string,
+  balancedTarget: string,
+  aggressiveTarget: string,
+) {
+  const explicitLabel = String(valueFrom(row, summary, ["target_risk_reward_label"]) ?? "").trim();
+  if (explicitLabel && !["nan", "none", "n/a", "null"].includes(explicitLabel.toLowerCase())) return explicitLabel;
+
+  const context = riskContext(row, summary);
+  if (!context || context.risk <= 0) return "N/A";
+  const conservativeZone = parseTradeLevel(conservativeTarget);
+  const balancedZone = parseTradeLevel(balancedTarget);
+  const aggressiveZone = parseTradeLevel(aggressiveTarget);
+  const conservativeRr = numericValue(valueFrom(row, summary, ["conservative_risk_reward"])) ?? (conservativeZone && conservativeZone.low > context.currentPrice ? (conservativeZone.low - context.currentPrice) / context.risk : null);
+  const balancedLow = numericValue(valueFrom(row, summary, ["balanced_risk_reward_low"])) ?? (balancedZone && balancedZone.low > context.currentPrice ? (balancedZone.low - context.currentPrice) / context.risk : null);
+  const balancedHigh = numericValue(valueFrom(row, summary, ["balanced_risk_reward_high"])) ?? (balancedZone && balancedZone.high > context.currentPrice ? (balancedZone.high - context.currentPrice) / context.risk : null);
+  const aggressiveLow = numericValue(valueFrom(row, summary, ["aggressive_risk_reward_low"])) ?? (aggressiveZone && aggressiveZone.low > context.currentPrice ? (aggressiveZone.low - context.currentPrice) / context.risk : null);
+  const aggressiveHigh = numericValue(valueFrom(row, summary, ["aggressive_risk_reward_high"])) ?? (aggressiveZone && aggressiveZone.high > context.currentPrice ? (aggressiveZone.high - context.currentPrice) / context.risk : null);
+  const balancedMid = balancedLow !== null && balancedHigh !== null ? (balancedLow + balancedHigh) / 2 : null;
+  const aggressiveMid = aggressiveLow !== null && aggressiveHigh !== null ? (aggressiveLow + aggressiveHigh) / 2 : null;
+  return `${formatRiskRewardPoint(conservativeRr)} / ${formatRiskRewardPoint(balancedMid)} / ${formatRiskRewardPoint(aggressiveMid)}`;
+}
+
+function resolvedTradeQuality(
+  row: Record<string, unknown>,
+  summary: Record<string, unknown> | null,
+  conservativeTarget: string,
+  balancedTarget: string,
+) {
+  const explicit = String(valueFrom(row, summary, ["trade_quality_note"]) ?? "").trim();
+  if (explicit) return explicit;
+
+  const context = riskContext(row, summary);
+  if (!context || context.risk <= 0) return "LOW EDGE — trade plan unavailable";
+  const conservativeZone = parseTradeLevel(conservativeTarget);
+  const balancedZone = parseTradeLevel(balancedTarget);
+  const conservativeRr = numericValue(valueFrom(row, summary, ["conservative_risk_reward"])) ?? (conservativeZone && conservativeZone.low > context.currentPrice ? (conservativeZone.low - context.currentPrice) / context.risk : null);
+  if (conservativeRr !== null && conservativeRr < 1) return "LOW EDGE — Entry too extended. Wait for pullback.";
+  const qualityRr = conservativeRr ?? (balancedZone && balancedZone.low > context.currentPrice ? (balancedZone.low - context.currentPrice) / context.risk : null);
+  if (qualityRr !== null && qualityRr >= 2) return "GOOD — target reward clears 2R.";
+  if (qualityRr !== null && qualityRr >= 1.5) return "ACCEPTABLE — balanced target offers reasonable reward.";
+  return "LOW EDGE — wait for better entry.";
 }
 
 function resolvedTargetWarning(row: Record<string, unknown>, summary: Record<string, unknown> | null, takeProfit: string) {
@@ -186,13 +255,20 @@ export default async function SymbolDetailPage({ params }: PageProps) {
             const buyZone = displayValue(valueFrom(row, summary, ["buy_zone", "entry_zone"]));
             const stopLoss = displayValue(valueFrom(row, summary, ["stop_loss", "invalidation_level"]));
             const takeProfit = resolvedTakeProfitValue(row, summary);
-            const riskReward = resolvedRiskRewardValue(row, summary, takeProfit);
+            const conservativeTarget = resolvedTarget(row, summary, ["conservative_target"], "N/A");
+            const balancedTarget = resolvedTarget(row, summary, ["balanced_target"], riskTargetRange(row, summary, 1.5, 2.0));
+            const aggressiveTarget = resolvedTarget(row, summary, ["aggressive_target"], riskTargetRange(row, summary, 2.0, 3.0));
+            const riskReward = resolvedTargetRiskRewardValue(row, summary, conservativeTarget, balancedTarget, aggressiveTarget);
+            const tradeQuality = resolvedTradeQuality(row, summary, conservativeTarget, balancedTarget);
             const targetWarning = resolvedTargetWarning(row, summary, takeProfit);
             const tradePlanReasons = [
               { label: "Buy Zone Reason", value: displayReason(valueFrom(row, summary, ["buy_zone_reason"]), "near current technical support") },
               { label: "Stop Loss Reason", value: displayReason(valueFrom(row, summary, ["stop_loss_reason"]), "below support with ATR buffer") },
               { label: "Take Profit Reason", value: displayReason(valueFrom(row, summary, ["take_profit_reason"]), takeProfit !== "N/A" ? "risk-based fallback (no resistance)" : "Take profit unavailable because stop loss or price is missing") },
               { label: "Risk/Reward Reason", value: displayReason(valueFrom(row, summary, ["risk_reward_reason"]), riskReward !== "N/A" ? "computed from current price, stop, and target" : "Risk/reward unavailable because stop loss or target is missing") },
+              { label: "Conservative Reason", value: displayReason(valueFrom(row, summary, ["conservative_target_reason"]), "nearest resistance above current price") },
+              { label: "Balanced Reason", value: displayReason(valueFrom(row, summary, ["balanced_target_reason"]), "1.5R–2R target from current risk") },
+              { label: "Aggressive Reason", value: displayReason(valueFrom(row, summary, ["aggressive_target_reason"]), "2R–3R target from current risk") },
             ];
 
             return (
@@ -235,12 +311,12 @@ export default async function SymbolDetailPage({ params }: PageProps) {
             metrics={[
               { label: "Buy Zone", value: buyZone, meta: "support area" },
               { label: "Stop Loss", value: stopLoss, meta: "risk line" },
-              { label: "Take Profit", value: takeProfit, meta: "above current" },
-              { label: "Risk / Reward", value: riskReward, meta: "target-to-risk" },
+              { label: "Balanced Target", value: balancedTarget, meta: "1.5R-2R" },
+              { label: "Risk / Reward", value: riskReward, meta: "conservative / balanced / aggressive" },
+              { label: "Trade Quality", value: tradeQuality, meta: "edge check" },
               { label: "Technical", value: metricValue(row, "technical_score"), meta: "signal input" },
               { label: "Fundamental", value: metricValue(row, "fundamental_score"), meta: "signal input" },
               { label: "Macro", value: metricValue(row, "macro_score"), meta: "signal input" },
-              { label: "History", value: detail.history.length, meta: "price rows" },
             ]}
           />
 
@@ -258,8 +334,11 @@ export default async function SymbolDetailPage({ params }: PageProps) {
                     { label: "Current Price", value: row.price },
                     { label: "Buy Zone", value: buyZone },
                     { label: "Stop Loss", value: stopLoss },
-                    { label: "Take Profit Zone", value: takeProfit },
+                    { label: "Conservative Target", value: conservativeTarget },
+                    { label: "Balanced Target", value: balancedTarget },
+                    { label: "Aggressive Target", value: aggressiveTarget },
                     { label: "Risk / Reward", value: riskReward },
+                    { label: "Trade Quality", value: tradeQuality },
                     ...tradePlanReasons,
                     { label: "Driver", value: row.upside_driver ?? "No driver listed" },
                     { label: "Risk", value: row.key_risk ?? "No key risk listed" },

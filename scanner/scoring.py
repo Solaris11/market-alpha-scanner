@@ -747,6 +747,12 @@ def _risk_reward_label(low: float, high: float) -> str:
     return f"{low:.1f}R–{high:.1f}R"
 
 
+def _risk_reward_point_label(value: float) -> str:
+    if np.isnan(value) or value <= 0:
+        return "N/A"
+    return f"{value:.1f}R"
+
+
 def derive_trade_plan(
     df: pd.DataFrame,
     price: float,
@@ -769,10 +775,24 @@ def derive_trade_plan(
             "risk_reward_reason": "Current price unavailable",
             "take_profit_low": np.nan,
             "take_profit_high": np.nan,
+            "conservative_target": "N/A",
+            "balanced_target": "N/A",
+            "aggressive_target": "N/A",
+            "conservative_target_reason": "Current price unavailable",
+            "balanced_target_reason": "Current price unavailable",
+            "aggressive_target_reason": "Current price unavailable",
             "risk_reward": np.nan,
             "risk_reward_low": np.nan,
             "risk_reward_high": np.nan,
             "risk_reward_label": "N/A",
+            "conservative_risk_reward": np.nan,
+            "balanced_risk_reward_low": np.nan,
+            "balanced_risk_reward_high": np.nan,
+            "aggressive_risk_reward_low": np.nan,
+            "aggressive_risk_reward_high": np.nan,
+            "target_risk_reward_label": "N/A",
+            "trade_quality": "low edge",
+            "trade_quality_note": "LOW EDGE — price data unavailable",
             "target_warning": "",
         }
 
@@ -856,10 +876,24 @@ def derive_trade_plan(
     target_warning = ""
     take_profit_low = np.nan
     take_profit_high = np.nan
+    conservative_target = "N/A"
+    balanced_target = "N/A"
+    aggressive_target = "N/A"
+    conservative_target_reason = "nearest resistance unavailable"
+    balanced_target_reason = "1.5R–2R target from current risk"
+    aggressive_target_reason = "2R–3R target from current risk"
     risk_reward = np.nan
     risk_reward_low = np.nan
     risk_reward_high = np.nan
     risk_reward_label = "N/A"
+    conservative_risk_reward = np.nan
+    balanced_risk_reward_low = np.nan
+    balanced_risk_reward_high = np.nan
+    aggressive_risk_reward_low = np.nan
+    aggressive_risk_reward_high = np.nan
+    target_risk_reward_label = "N/A"
+    trade_quality = "low edge"
+    trade_quality_note = "LOW EDGE — trade plan unavailable"
     if not np.isnan(risk_per_share) and risk_per_share > 0:
         stop_distance_pct = risk_per_share / current_price
         resistance_candidates = [
@@ -881,6 +915,45 @@ def derive_trade_plan(
                 continue
             seen_resistance_levels.add(rounded_level)
             unique_resistances.append((level, reason))
+        conservative_target_value = unique_resistances[0][0] if unique_resistances else np.nan
+        conservative_target_reason = unique_resistances[0][1] if unique_resistances else "nearest resistance unavailable"
+
+        balanced_target_low = current_price + (1.5 * risk_per_share)
+        balanced_target_high = current_price + (2.0 * risk_per_share)
+        aggressive_target_low = current_price + (2.0 * risk_per_share)
+        aggressive_target_high = current_price + (3.0 * risk_per_share)
+
+        if not np.isnan(conservative_target_value) and conservative_target_value > current_price:
+            conservative_target = _format_level(conservative_target_value)
+            conservative_risk_reward = (conservative_target_value - current_price) / risk_per_share
+        balanced_target = _format_zone(balanced_target_low, balanced_target_high)
+        aggressive_target = _format_zone(aggressive_target_low, aggressive_target_high)
+        balanced_risk_reward_low = (balanced_target_low - current_price) / risk_per_share
+        balanced_risk_reward_high = (balanced_target_high - current_price) / risk_per_share
+        aggressive_risk_reward_low = (aggressive_target_low - current_price) / risk_per_share
+        aggressive_risk_reward_high = (aggressive_target_high - current_price) / risk_per_share
+        target_risk_reward_label = " / ".join(
+            [
+                _risk_reward_point_label(conservative_risk_reward),
+                _risk_reward_point_label((balanced_risk_reward_low + balanced_risk_reward_high) / 2.0),
+                _risk_reward_point_label((aggressive_risk_reward_low + aggressive_risk_reward_high) / 2.0),
+            ]
+        )
+
+        quality_rr = conservative_risk_reward if not np.isnan(conservative_risk_reward) else balanced_risk_reward_low
+        if not np.isnan(conservative_risk_reward) and conservative_risk_reward < 1.0:
+            trade_quality = "low edge"
+            trade_quality_note = "LOW EDGE — Entry too extended. Wait for pullback."
+        elif quality_rr >= 2.0:
+            trade_quality = "good"
+            trade_quality_note = "GOOD — target reward clears 2R."
+        elif quality_rr >= 1.5:
+            trade_quality = "acceptable"
+            trade_quality_note = "ACCEPTABLE — balanced target offers reasonable reward."
+        else:
+            trade_quality = "low edge"
+            trade_quality_note = "LOW EDGE — wait for better entry."
+
         if unique_resistances:
             take_profit_low = unique_resistances[0][0]
             take_profit_reason = unique_resistances[0][1]
@@ -932,6 +1005,20 @@ def derive_trade_plan(
         "risk_reward_low": risk_reward_low,
         "risk_reward_high": risk_reward_high,
         "risk_reward_label": risk_reward_label,
+        "conservative_target": conservative_target,
+        "balanced_target": balanced_target,
+        "aggressive_target": aggressive_target,
+        "conservative_target_reason": conservative_target_reason,
+        "balanced_target_reason": balanced_target_reason,
+        "aggressive_target_reason": aggressive_target_reason,
+        "conservative_risk_reward": conservative_risk_reward,
+        "balanced_risk_reward_low": balanced_risk_reward_low,
+        "balanced_risk_reward_high": balanced_risk_reward_high,
+        "aggressive_risk_reward_low": aggressive_risk_reward_low,
+        "aggressive_risk_reward_high": aggressive_risk_reward_high,
+        "target_risk_reward_label": target_risk_reward_label,
+        "trade_quality": trade_quality,
+        "trade_quality_note": trade_quality_note,
         "target_warning": target_warning,
     }
 

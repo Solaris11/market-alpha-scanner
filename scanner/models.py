@@ -54,10 +54,24 @@ class RankedAsset:
     risk_reward_reason: str
     take_profit_low: float
     take_profit_high: float
+    conservative_target: str
+    balanced_target: str
+    aggressive_target: str
+    conservative_target_reason: str
+    balanced_target_reason: str
+    aggressive_target_reason: str
     risk_reward: float
     risk_reward_low: float
     risk_reward_high: float
     risk_reward_label: str
+    conservative_risk_reward: float
+    balanced_risk_reward_low: float
+    balanced_risk_reward_high: float
+    aggressive_risk_reward_low: float
+    aggressive_risk_reward_high: float
+    target_risk_reward_label: str
+    trade_quality: str
+    trade_quality_note: str
     target_warning: str
     upside_driver: str
     key_risk: str
