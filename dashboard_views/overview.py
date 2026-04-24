@@ -20,7 +20,6 @@ from .shared import (
     render_section_heading,
     render_symbol_quick_actions,
     render_watchlist_panel,
-    selected_symbol_index,
     sort_scan_df,
 )
 
@@ -157,15 +156,50 @@ def render_watchlist_overview() -> None:
         )
 
 
-def render_clickable_ranking_list(ordered: pd.DataFrame, max_rows: int = 50) -> None:
+def render_clickable_ranking_list(ordered: pd.DataFrame) -> None:
     if ordered.empty or "symbol" not in ordered.columns:
         return
 
     action_column = "composite_action" if "composite_action" in ordered.columns else "long_action"
-    clickable_rows = ordered.head(max_rows).reset_index(drop=True)
+    ranking_rows = ordered.reset_index(drop=True)
+    total_rows = len(ranking_rows)
 
     with st.container(border=True):
-        st.caption("Use the clickable symbol list below to open details. The dataframe is read-only.")
+        st.caption("Use the clickable symbol list below to open details. The raw dataframe is available in the collapsed CSV-style view.")
+
+        control_columns = st.columns([1.1, 1.0, 3.2], gap="small")
+        page_size_option = control_columns[0].selectbox(
+            "Rows per page",
+            ["25", "50", "100", "All"],
+            index=1,
+            key="overview_rank_page_size",
+        )
+
+        if page_size_option == "All":
+            page_size = total_rows
+            page_count = 1
+            current_page = 1
+            st.session_state["overview_rank_page_selector"] = 1
+            control_columns[1].caption("Page 1 of 1")
+        else:
+            page_size = int(page_size_option)
+            page_count = max(1, (total_rows + page_size - 1) // page_size)
+            page_options = list(range(1, page_count + 1))
+            saved_page = st.session_state.get("overview_rank_page_selector", 1)
+            if saved_page not in page_options:
+                st.session_state["overview_rank_page_selector"] = min(max(int(saved_page) if isinstance(saved_page, int) else 1, 1), page_count)
+            current_page = control_columns[1].selectbox(
+                "Page",
+                page_options,
+                index=page_options.index(st.session_state["overview_rank_page_selector"]),
+                key="overview_rank_page_selector",
+            )
+
+        start_index = (current_page - 1) * page_size
+        end_index = min(start_index + page_size, total_rows)
+        visible_rows = ranking_rows.iloc[start_index:end_index]
+        control_columns[2].caption(f"Showing {start_index + 1}-{end_index} of {total_rows}")
+
         header_columns = st.columns([0.9, 1.0, 1.35, 0.8, 0.9, 0.9, 1.2], gap="small")
         header_columns[0].markdown("**Symbol**")
         header_columns[1].markdown("**Asset Type**")
@@ -175,7 +209,8 @@ def render_clickable_ranking_list(ordered: pd.DataFrame, max_rows: int = 50) -> 
         header_columns[5].markdown("**Rating**")
         header_columns[6].markdown("**Action**")
 
-        for index, (_, row) in enumerate(clickable_rows.iterrows()):
+        for offset, (_, row) in enumerate(visible_rows.iterrows()):
+            index = start_index + offset
             symbol = str(row.get("symbol", "")).strip().upper()
             if not symbol:
                 continue
@@ -213,22 +248,10 @@ def render_ranking_overview(filtered_full: pd.DataFrame) -> None:
     visible_symbols = ordered["symbol"].dropna().astype(str).str.strip().tolist() if "symbol" in ordered.columns else []
     render_symbol_quick_actions(visible_symbols[:8], key_prefix="overview")
 
-    if visible_symbols:
-        selected_symbol = st.selectbox(
-            "Select symbol from ranking",
-            visible_symbols,
-            index=selected_symbol_index(visible_symbols),
-            key="overview_selected_symbol",
-        )
-        action_columns = st.columns([1, 4])
-        if action_columns[0].button("Open Symbol Detail", key="overview_dropdown_open", use_container_width=True):
-            open_symbol_detail(selected_symbol)
-        action_columns[1].caption("Use this selector or the Quick Access buttons above to open symbol detail.")
-
     render_clickable_ranking_list(ordered)
 
-    with st.container(border=True):
-        st.caption("Table cells are for inspection; use the selector/buttons above to open symbol detail.")
+    with st.expander("Raw dataframe / CSV-style view", expanded=False):
+        st.caption("Read-only scanner output for inspection.")
         display_table(filtered_full, OVERVIEW_TABLE_COLUMNS, height=620, highlight_top=True)
 
 
