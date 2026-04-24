@@ -260,8 +260,7 @@ export async function getSymbolHistoryData(): Promise<SymbolHistoryData> {
   };
 }
 
-export async function getIntradaySignalDrift(): Promise<IntradayDriftRow[]> {
-  const history = await getSymbolHistoryData();
+export function buildIntradaySignalDrift(history: SymbolHistoryData): IntradayDriftRow[] {
   const bySymbol = new Map<string, SymbolHistoryRow[]>();
 
   for (const row of history.rows) {
@@ -303,6 +302,10 @@ export async function getIntradaySignalDrift(): Promise<IntradayDriftRow[]> {
   }
 
   return driftRows.sort((a, b) => Math.abs(b.score_change ?? 0) - Math.abs(a.score_change ?? 0));
+}
+
+export async function getIntradaySignalDrift(): Promise<IntradayDriftRow[]> {
+  return buildIntradaySignalDrift(await getSymbolHistoryData());
 }
 
 export async function getPerformanceData(): Promise<PerformanceData> {

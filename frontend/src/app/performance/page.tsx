@@ -3,7 +3,7 @@ import { MetricStrip } from "@/components/metric-strip";
 import { PerformanceDrift } from "@/components/performance-drift";
 import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/shell";
-import { getHistorySummary, getIntradaySignalDrift, getPerformanceData } from "@/lib/scanner-data";
+import { buildIntradaySignalDrift, getHistorySummary, getPerformanceData, getSymbolHistoryData } from "@/lib/scanner-data";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,8 @@ function fileStateLabel(state: string) {
 }
 
 export default async function PerformancePage() {
-  const [performance, history, driftRows] = await Promise.all([getPerformanceData(), getHistorySummary(), getIntradaySignalDrift()]);
+  const [performance, history, symbolHistory] = await Promise.all([getPerformanceData(), getHistorySummary(), getSymbolHistoryData()]);
+  const driftRows = buildIntradaySignalDrift(symbolHistory);
   const hasPerformance = performance.summary.rows.length > 0 || performance.forwardReturns.rows.length > 0;
   const forwardReturnsReady = performance.forwardReturns.rows.length > 0;
   const isHeaderOnly = !hasPerformance && (performance.summary.state === "header-only" || performance.forwardReturns.state === "header-only");
@@ -94,7 +95,7 @@ export default async function PerformancePage() {
           </section>
         ) : null}
 
-        <PerformanceDrift forwardReturnsReady={forwardReturnsReady} rows={driftRows} />
+        <PerformanceDrift forwardReturnsReady={forwardReturnsReady} rows={driftRows} symbolHistory={symbolHistory} />
       </div>
     </TerminalShell>
   );

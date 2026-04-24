@@ -2,12 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { compact, formatNumber } from "@/lib/format";
-import type { IntradayDriftRow } from "@/lib/types";
+import type { IntradayDriftRow, SymbolHistoryData, SymbolHistoryRow } from "@/lib/types";
 
 type Props = {
   rows: IntradayDriftRow[];
   forwardReturnsReady: boolean;
+  symbolHistory: SymbolHistoryData;
 };
+
+type SortKey = "symbol" | "company" | "price_change_pct" | "score_change" | "latest_score" | "rating_change" | "action" | "snapshot_count";
+type SortDirection = "asc" | "desc";
 
 const RATING_RANK: Record<string, number> = {
   PASS: 0,
@@ -45,11 +49,126 @@ function metricSymbol(row: IntradayDriftRow | undefined, field: "score_change" |
   return `${row.symbol} ${value}`;
 }
 
-export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
+const NUMERIC_SORT_KEYS = new Set<SortKey>(["price_change_pct", "score_change", "latest_score", "snapshot_count"]);
+
+function sortValue(row: IntradayDriftRow, key: SortKey) {
+  if (key === "symbol") return row.symbol;
+  if (key === "company") return row.company_name ?? "";
+  if (key === "price_change_pct") return row.price_change_pct;
+  if (key === "score_change") return row.score_change;
+  if (key === "latest_score") return row.latest_score;
+  if (key === "rating_change") return `${row.first_rating ?? ""} → ${row.latest_rating ?? ""}`;
+  if (key === "action") return row.latest_action ?? "";
+  return row.snapshot_count;
+}
+
+function compareRows(a: IntradayDriftRow, b: IntradayDriftRow, key: SortKey, direction: SortDirection) {
+  const aValue = sortValue(a, key);
+  const bValue = sortValue(b, key);
+  let comparison = 0;
+
+  if (NUMERIC_SORT_KEYS.has(key)) {
+    const aNumber = typeof aValue === "number" && Number.isFinite(aValue) ? aValue : null;
+    const bNumber = typeof bValue === "number" && Number.isFinite(bValue) ? bValue : null;
+    if (aNumber === null && bNumber === null) comparison = 0;
+    else if (aNumber === null) comparison = 1;
+    else if (bNumber === null) comparison = -1;
+    else comparison = aNumber - bNumber;
+  } else {
+    comparison = String(aValue ?? "").localeCompare(String(bValue ?? ""));
+  }
+
+  return direction === "desc" ? -comparison : comparison;
+}
+
+function timestampMs(row: SymbolHistoryRow) {
+  const ms = Date.parse(row.timestamp_utc);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function DetailChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: "final_score" | "price"; label: string }) {
+  const points = rows
+    .map((row) => ({ time: timestampMs(row), value: typeof row[field] === "number" ? row[field] : null }))
+    .filter((point): point is { time: number; value: number } => point.time !== null && point.value !== null);
+
+  if (!points.length) {
+    return <div className="rounded border border-dashed border-slate-700/70 px-3 py-8 text-center text-xs text-slate-500">{label} data not available.</div>;
+  }
+
+  const width = 520;
+  const height = 150;
+  const padding = 22;
+  const minTime = Math.min(...points.map((point) => point.time));
+  const maxTime = Math.max(...points.map((point) => point.time));
+  const minValue = Math.min(...points.map((point) => point.value));
+  const maxValue = Math.max(...points.map((point) => point.value));
+  const timeSpan = Math.max(1, maxTime - minTime);
+  const valueSpan = Math.max(1, maxValue - minValue);
+  const plotted = points.map((point, index) => {
+    if (points.length === 1) return { x: width / 2, y: height / 2, index };
+    return {
+      x: padding + ((point.time - minTime) / timeSpan) * (width - padding * 2),
+      y: height - padding - ((point.value - minValue) / valueSpan) * (height - padding * 2),
+      index,
+    };
+  });
+  const path = plotted.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
+
+  return (
+    <div className="terminal-panel overflow-x-auto rounded-md p-3">
+      <div className="mb-2 flex items-center justify-between text-xs">
+        <div className="font-semibold uppercase tracking-[0.14em] text-sky-300">{label}</div>
+        <div className="font-mono text-slate-400">
+          {formatNumber(points[0].value)} → {formatNumber(points[points.length - 1].value)}
+        </div>
+      </div>
+      <svg className="min-w-[520px]" height={height} role="img" viewBox={`0 0 ${width} ${height}`} width="100%">
+        <title>{label} over time</title>
+        <line stroke="rgba(148,163,184,0.22)" x1={padding} x2={width - padding} y1={height - padding} y2={height - padding} />
+        <line stroke="rgba(148,163,184,0.22)" x1={padding} x2={padding} y1={padding} y2={height - padding} />
+        <path d={path} fill="none" stroke={field === "price" ? "rgb(52,211,153)" : "rgb(125,211,252)"} strokeWidth="2" />
+        {plotted.map((point) => (
+          <circle cx={point.x} cy={point.y} fill="rgb(226,232,240)" key={point.index} r="2.8" />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
+function SortHeader({
+  label,
+  sortDirection,
+  sortKey,
+  thisKey,
+  onSort,
+  align = "left",
+}: {
+  label: string;
+  sortDirection: SortDirection;
+  sortKey: SortKey | null;
+  thisKey: SortKey;
+  onSort: (key: SortKey) => void;
+  align?: "left" | "right";
+}) {
+  const active = sortKey === thisKey;
+  return (
+    <th className={`px-2 py-1.5 ${align === "right" ? "text-right" : "text-left"}`}>
+      <button className="inline-flex items-center gap-1 hover:text-sky-300" onClick={() => onSort(thisKey)} type="button">
+        {label}
+        {active ? <span>{sortDirection === "asc" ? "▲" : "▼"}</span> : null}
+      </button>
+    </th>
+  );
+}
+
+export function PerformanceDrift({ rows, forwardReturnsReady, symbolHistory }: Props) {
   const [symbolSearch, setSymbolSearch] = useState("");
   const [onlyUpgrades, setOnlyUpgrades] = useState(false);
   const [onlyScoreGainers, setOnlyScoreGainers] = useState(false);
   const [minimumScoreChange, setMinimumScoreChange] = useState("");
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
 
   const summary = useMemo(() => {
     const withScore = rows.filter((row) => typeof row.score_change === "number");
@@ -69,8 +188,7 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
     const minChange = Number(minimumScoreChange);
     const hasMinChange = minimumScoreChange.trim() !== "" && Number.isFinite(minChange);
 
-    return rows
-      .filter((row) => {
+    const filtered = rows.filter((row) => {
         if (query) {
           const haystack = `${row.symbol} ${row.company_name ?? ""}`.toLowerCase();
           if (!haystack.includes(query)) return false;
@@ -79,9 +197,28 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
         if (onlyScoreGainers && !(typeof row.score_change === "number" && row.score_change > 0)) return false;
         if (hasMinChange && Math.abs(row.score_change ?? 0) < minChange) return false;
         return true;
-      })
-      .sort((a, b) => Math.abs(b.score_change ?? 0) - Math.abs(a.score_change ?? 0));
-  }, [minimumScoreChange, onlyScoreGainers, onlyUpgrades, rows, symbolSearch]);
+      });
+
+    if (sortKey) {
+      return [...filtered].sort((a, b) => compareRows(a, b, sortKey, sortDirection));
+    }
+    return [...filtered].sort((a, b) => Math.abs(b.score_change ?? 0) - Math.abs(a.score_change ?? 0));
+  }, [minimumScoreChange, onlyScoreGainers, onlyUpgrades, rows, sortDirection, sortKey, symbolSearch]);
+
+  const selectedRow = useMemo(() => rows.find((row) => row.symbol === selectedSymbol) ?? null, [rows, selectedSymbol]);
+  const selectedHistoryRows = useMemo(() => {
+    if (!selectedSymbol) return [];
+    return symbolHistory.rows.filter((row) => row.symbol === selectedSymbol).sort((a, b) => String(a.timestamp_utc).localeCompare(String(b.timestamp_utc)));
+  }, [selectedSymbol, symbolHistory.rows]);
+
+  function handleSort(nextKey: SortKey) {
+    if (sortKey === nextKey) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(nextKey);
+    setSortDirection(NUMERIC_SORT_KEYS.has(nextKey) ? "desc" : "asc");
+  }
 
   return (
     <section className="space-y-3">
@@ -159,20 +296,28 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
           </colgroup>
           <thead className="border-b border-slate-800 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             <tr>
-              <th className="px-2 py-1.5 text-left">Symbol</th>
-              <th className="px-2 py-1.5 text-left">Company</th>
-              <th className="px-2 py-1.5 text-right">Price %</th>
-              <th className="px-2 py-1.5 text-right">Score Change</th>
-              <th className="px-2 py-1.5 text-right">Latest Score</th>
-              <th className="px-2 py-1.5 text-left">Rating Change</th>
-              <th className="px-2 py-1.5 text-left">Action</th>
-              <th className="px-2 py-1.5 text-right">Snapshots</th>
+              <SortHeader label="Symbol" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="symbol" />
+              <SortHeader label="Company" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="company" />
+              <SortHeader align="right" label="Price %" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="price_change_pct" />
+              <SortHeader align="right" label="Score Change" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="score_change" />
+              <SortHeader align="right" label="Latest Score" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="latest_score" />
+              <SortHeader label="Rating Change" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="rating_change" />
+              <SortHeader label="Action" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="action" />
+              <SortHeader align="right" label="Snapshots" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="snapshot_count" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/90">
             {filteredRows.length ? (
               filteredRows.map((row) => (
-                <tr className="hover:bg-sky-400/5" key={row.symbol}>
+                <tr
+                  className={`cursor-pointer hover:bg-sky-400/5 ${selectedSymbol === row.symbol ? "bg-sky-400/10" : ""}`}
+                  key={row.symbol}
+                  onClick={() => setSelectedSymbol(row.symbol)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") setSelectedSymbol(row.symbol);
+                  }}
+                  tabIndex={0}
+                >
                   <td className="px-2 py-1.5 font-mono font-semibold text-sky-200">{row.symbol}</td>
                   <td className="truncate px-2 py-1.5 text-slate-400" title={row.company_name ?? ""}>
                     {compact(row.company_name || "—", 48)}
@@ -197,6 +342,61 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
           </tbody>
         </table>
       </div>
+
+      {selectedRow ? (
+        <section className="terminal-panel rounded-md p-4">
+          <div className="flex flex-col gap-3 border-b border-slate-800 pb-3 md:flex-row md:items-start md:justify-between">
+            <div className="min-w-0">
+              <div className="font-mono text-2xl font-semibold text-slate-50">{selectedRow.symbol}</div>
+              <div className="truncate text-sm text-slate-400">{selectedRow.company_name || "—"}</div>
+            </div>
+            <div className="grid grid-cols-2 gap-3 text-xs md:grid-cols-4">
+              <div>
+                <div className="uppercase tracking-[0.12em] text-slate-500">Latest Score</div>
+                <div className="font-mono text-slate-100">{formatNumber(selectedRow.latest_score)}</div>
+              </div>
+              <div>
+                <div className="uppercase tracking-[0.12em] text-slate-500">Rating</div>
+                <div className="text-slate-100">{selectedRow.latest_rating ?? "N/A"}</div>
+              </div>
+              <div>
+                <div className="uppercase tracking-[0.12em] text-slate-500">Action</div>
+                <div className="text-slate-100">{selectedRow.latest_action ?? "N/A"}</div>
+              </div>
+              <button
+                className="self-start rounded border border-slate-700/80 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200"
+                onClick={() => setSelectedSymbol(null)}
+                type="button"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-3 grid gap-2 md:grid-cols-4 xl:grid-cols-8">
+            {[
+              { label: "First Score", value: formatNumber(selectedRow.first_score) },
+              { label: "Latest Score", value: formatNumber(selectedRow.latest_score) },
+              { label: "Score Change", value: signedNumber(selectedRow.score_change) },
+              { label: "First Price", value: formatNumber(selectedRow.first_price) },
+              { label: "Latest Price", value: formatNumber(selectedRow.latest_price) },
+              { label: "Price Change", value: percent(selectedRow.price_change_pct) },
+              { label: "Snapshots", value: selectedRow.snapshot_count.toLocaleString() },
+              { label: "Rating", value: `${selectedRow.first_rating ?? "N/A"} → ${selectedRow.latest_rating ?? "N/A"}` },
+            ].map((metric) => (
+              <div className="rounded border border-slate-800 bg-slate-950/50 p-2" key={metric.label}>
+                <div className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{metric.label}</div>
+                <div className="mt-1 truncate font-mono text-xs text-slate-100">{metric.value}</div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-3 grid gap-3 xl:grid-cols-2">
+            <DetailChart field="final_score" label="Final Score" rows={selectedHistoryRows} />
+            <DetailChart field="price" label="Price" rows={selectedHistoryRows} />
+          </div>
+        </section>
+      ) : null}
     </section>
   );
 }
