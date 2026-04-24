@@ -15,6 +15,7 @@ from .shared import (
     format_number,
     format_percent,
     load_watchlist,
+    normalize_symbol,
     remove_from_watchlist,
     render_action_badge,
     render_info_card,
@@ -896,20 +897,38 @@ def render_symbol_detail_page(full_df: pd.DataFrame | None, history_df: pd.DataF
         return
 
     full_df = prepare_scan_df(full_df)
-    symbols = sorted(full_df["symbol"].dropna().astype(str).unique().tolist()) if "symbol" in full_df.columns else []
+    symbols = (
+        sorted({cleaned for symbol in full_df["symbol"].dropna().astype(str).tolist() if (cleaned := normalize_symbol(symbol))})
+        if "symbol" in full_df.columns
+        else []
+    )
     if not symbols:
         st.info("No symbols found in the latest ranking.")
         return
 
     render_section_heading("Symbol Detail", "Decision screen for a single scanner name.", eyebrow="Detail")
-    if st.session_state.get("symbol_detail_selector") not in symbols:
+    requested_symbol = normalize_symbol(st.session_state.get("selected_symbol", ""))
+    selector_symbol = normalize_symbol(st.session_state.get("symbol_detail_selector", ""))
+    if selector_symbol in symbols:
+        st.session_state["symbol_detail_selector"] = selector_symbol
+    elif requested_symbol in symbols:
+        st.session_state["symbol_detail_selector"] = requested_symbol
+    elif selector_symbol not in symbols:
         st.session_state["symbol_detail_selector"] = symbols[selected_symbol_index(symbols)]
-    selected_symbol = st.selectbox("Select symbol", symbols, index=selected_symbol_index(symbols), key="symbol_detail_selector")
+
+    selected_symbol = st.selectbox(
+        "Select symbol",
+        symbols,
+        index=symbols.index(st.session_state["symbol_detail_selector"]),
+        key="symbol_detail_selector",
+    )
     if not isinstance(selected_symbol, str):
         st.info("Selected symbol is invalid.")
         return
-    selected_symbol = selected_symbol.strip().upper()
+    selected_symbol = normalize_symbol(selected_symbol)
     st.session_state["selected_symbol"] = selected_symbol
-    st.query_params["page"] = "symbol-detail"
-    st.query_params["symbol"] = selected_symbol
+    if st.query_params.get("page") != "symbol-detail":
+        st.query_params["page"] = "symbol-detail"
+    if normalize_symbol(st.query_params.get("symbol", "")) != selected_symbol:
+        st.query_params["symbol"] = selected_symbol
     render_symbol_detail_content(selected_symbol, full_df, history_df)

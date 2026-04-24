@@ -12,6 +12,7 @@ from .shared import (
     filter_scan_df,
     format_number,
     load_watchlist,
+    open_symbol_detail,
     render_action_badge,
     render_info_card,
     render_rating_badge,
@@ -21,7 +22,6 @@ from .shared import (
     render_watchlist_panel,
     selected_symbol_index,
     sort_scan_df,
-    symbol_detail_url,
 )
 
 OVERVIEW_TABLE_COLUMNS = [
@@ -105,7 +105,7 @@ def render_top_candidate_cards(top_df: pd.DataFrame) -> None:
     columns = st.columns(3, gap="large")
 
     for index, (_, row) in enumerate(ranked_top.iterrows()):
-        symbol = str(row.get("symbol", "N/A"))
+        symbol = str(row.get("symbol", "N/A")).strip().upper()
         asset_type = str(row.get("asset_type", "Unknown"))
         sector = str(row.get("sector", "Unknown"))
         setup_type = str(row.get("setup_type", "Mixed"))
@@ -136,7 +136,8 @@ def render_top_candidate_cards(top_df: pd.DataFrame) -> None:
                 stat_columns[1].metric("Long", str(row.get("long_action", "N/A")), f"score {format_number(row.get('long_score'))}", delta_color="off")
                 st.caption(f"Driver: {upside_driver}")
                 st.caption(f"Risk: {key_risk}")
-                st.link_button("Open Detail", symbol_detail_url(symbol), use_container_width=True)
+                if st.button("Open Detail", key=f"overview_top_open_{index}_{symbol}", use_container_width=True):
+                    open_symbol_detail(symbol)
 
     with st.container(border=True):
         st.caption("Top candidate table")
@@ -187,7 +188,8 @@ def render_ranking_overview(filtered_full: pd.DataFrame) -> None:
             key="overview_selected_symbol",
         )
         action_columns = st.columns([1, 4])
-        action_columns[0].link_button("Open Symbol Detail", symbol_detail_url(selected_symbol), use_container_width=True)
+        if action_columns[0].button("Open Symbol Detail", key="overview_dropdown_open", use_container_width=True):
+            open_symbol_detail(selected_symbol)
         action_columns[1].caption("Selection follows the currently filtered ranking table.")
 
     with st.container(border=True):

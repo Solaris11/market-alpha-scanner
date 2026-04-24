@@ -20,7 +20,27 @@ from dashboard_views.loaders import (
     load_history_df,
     safe_read_csv,
 )
-from dashboard_views.shared import inject_dashboard_theme, load_watchlist, render_watchlist_panel
+from dashboard_views.shared import inject_dashboard_theme, load_watchlist, normalize_symbol, render_watchlist_panel
+
+
+PAGE_SELECTOR_WIDGET_KEY = "_page_selector_widget"
+
+
+def _query_param_value(name: str) -> str:
+    value = st.query_params.get(name)
+    if isinstance(value, list):
+        value = value[-1] if value else ""
+    return str(value).strip() if value is not None else ""
+
+
+def _apply_symbol_detail_request(requested_symbol: str, *, sync_sidebar_widget: bool) -> None:
+    st.session_state["current_page"] = "Symbol Detail"
+    st.session_state["page_selector"] = "Symbol Detail"
+    if sync_sidebar_widget:
+        st.session_state[PAGE_SELECTOR_WIDGET_KEY] = "Symbol Detail"
+    if requested_symbol:
+        st.session_state["selected_symbol"] = requested_symbol
+        st.session_state["symbol_detail_selector"] = requested_symbol
 
 
 def main() -> None:
@@ -43,18 +63,25 @@ def main() -> None:
     if st.session_state["current_page"] not in pages:
         st.session_state["current_page"] = "Overview / Latest Scan"
 
-    query_page = st.query_params.get("page")
-    query_symbol = st.query_params.get("symbol")
-    if query_page == "symbol-detail":
-        st.session_state["current_page"] = "Symbol Detail"
-        st.session_state["page_selector"] = "Symbol Detail"
-    if isinstance(query_symbol, str) and query_symbol.strip():
-        selected_symbol = query_symbol.strip().upper()
-        st.session_state["selected_symbol"] = selected_symbol
-        st.session_state["symbol_detail_selector"] = selected_symbol
+    query_page = _query_param_value("page")
+    query_symbol = normalize_symbol(_query_param_value("symbol"))
+    query_requests_symbol_detail = query_page == "symbol-detail"
+    if query_requests_symbol_detail:
+        _apply_symbol_detail_request(query_symbol, sync_sidebar_widget=True)
 
-    if st.session_state.get("page_selector") != st.session_state["current_page"]:
+    if st.session_state.get("page_selector") not in pages:
         st.session_state["page_selector"] = st.session_state["current_page"]
+    if st.session_state.get(PAGE_SELECTOR_WIDGET_KEY) not in pages:
+        st.session_state[PAGE_SELECTOR_WIDGET_KEY] = st.session_state["current_page"]
+
+    def handle_page_selector_change() -> None:
+        selected = st.session_state.get(PAGE_SELECTOR_WIDGET_KEY)
+        if selected not in pages:
+            selected = "Overview / Latest Scan"
+        st.session_state["current_page"] = selected
+        st.session_state["page_selector"] = selected
+        if selected != "Symbol Detail":
+            st.query_params.clear()
 
     full_df, _ = safe_read_csv(FULL_RANKING_PATH)
     top_df, _ = safe_read_csv(TOP_CANDIDATES_PATH)
@@ -91,10 +118,14 @@ def main() -> None:
         selected_page = st.radio(
             "Section",
             pages,
-            index=pages.index(st.session_state["current_page"]),
-            key="page_selector",
+            index=pages.index(st.session_state[PAGE_SELECTOR_WIDGET_KEY]),
+            key=PAGE_SELECTOR_WIDGET_KEY,
+            on_change=handle_page_selector_change,
         )
         st.session_state["current_page"] = selected_page
+        st.session_state["page_selector"] = selected_page
+        if query_requests_symbol_detail:
+            _apply_symbol_detail_request(query_symbol, sync_sidebar_widget=False)
         render_watchlist_panel(
             watchlist,
             panel_key="sidebar_watchlist",
