@@ -1,5 +1,6 @@
 import { DataTable } from "@/components/data-table";
 import { MetricStrip } from "@/components/metric-strip";
+import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/shell";
 import { getHistorySummary, getPerformanceData } from "@/lib/scanner-data";
 
@@ -31,6 +32,18 @@ export default async function PerformancePage() {
             <pre className="mt-3 overflow-x-auto rounded border border-slate-800 bg-slate-950/80 p-3 text-xs text-slate-300">
               python investment_scanner_mvp.py --run-analysis
             </pre>
+            <RunCommandButton endpoint="/api/run-analysis" label="Run Analysis" />
+          </section>
+        ) : null}
+
+        {hasPerformance ? (
+          <section className="terminal-panel rounded-md p-4">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Analysis Runner</div>
+            <h2 className="mt-1 text-lg font-semibold text-slate-50">Refresh Performance Analysis</h2>
+            <pre className="mt-3 overflow-x-auto rounded border border-slate-800 bg-slate-950/80 p-3 text-xs text-slate-300">
+              python investment_scanner_mvp.py --run-analysis
+            </pre>
+            <RunCommandButton endpoint="/api/run-analysis" label="Run Analysis" />
           </section>
         ) : null}
 

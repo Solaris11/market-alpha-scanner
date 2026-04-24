@@ -7,13 +7,14 @@ type Props = {
   rows: RankingRow[];
   highlight?: boolean;
   limit?: number;
+  emptyMessage?: string;
 };
 
-export function RankingTable({ rows, highlight = false, limit }: Props) {
+export function RankingTable({ rows, highlight = false, limit, emptyMessage = "No scanner rows available." }: Props) {
   const visibleRows = typeof limit === "number" ? rows.slice(0, limit) : rows;
 
   if (!visibleRows.length) {
-    return <div className="border border-dashed border-slate-700/70 px-3 py-6 text-center text-xs text-slate-500">No scanner rows available.</div>;
+    return <div className="border border-dashed border-slate-700/70 px-3 py-6 text-center text-xs text-slate-500">{emptyMessage}</div>;
   }
 
   return (

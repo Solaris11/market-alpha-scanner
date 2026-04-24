@@ -33,8 +33,9 @@ export function OverviewWorkspace({ ranking }: Props) {
 
     return ranking.filter((row) => {
       if (search) {
-        const haystack = `${row.symbol} ${row.company_name ?? ""}`.toUpperCase();
-        if (!haystack.includes(search)) return false;
+        const symbol = String(row.symbol ?? "").toUpperCase();
+        const company = String(row.company_name ?? "").toUpperCase();
+        if (!symbol.includes(search) && !company.includes(search)) return false;
       }
       if (assetType && String(row.asset_type ?? "") !== assetType) return false;
       if (sector && String(row.sector ?? "") !== sector) return false;
@@ -149,7 +150,7 @@ export function OverviewWorkspace({ ranking }: Props) {
         </div>
       </div>
 
-      <RankingTable rows={filteredRows} />
+      <RankingTable rows={filteredRows} emptyMessage="No matching symbols" />
     </section>
   );
 }

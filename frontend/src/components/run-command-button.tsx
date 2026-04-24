@@ -1,0 +1,70 @@
+"use client";
+
+import { useState } from "react";
+
+type CommandResult = {
+  ok: boolean;
+  command: string;
+  message: string;
+  stdout?: string;
+  stderr?: string;
+  code?: number | null;
+};
+
+type Props = {
+  endpoint: string;
+  label: string;
+};
+
+export function RunCommandButton({ endpoint, label }: Props) {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<CommandResult | null>(null);
+
+  async function runCommand() {
+    setLoading(true);
+    setResult(null);
+
+    try {
+      const response = await fetch(endpoint, { method: "POST" });
+      const payload = (await response.json()) as CommandResult;
+      setResult({ ...payload, ok: response.ok && payload.ok });
+    } catch (error) {
+      setResult({
+        ok: false,
+        command: endpoint,
+        message: error instanceof Error ? error.message : "Request failed.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="mt-4 space-y-3">
+      <button
+        className="rounded border border-sky-400/40 bg-sky-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-sky-100 hover:bg-sky-400/15 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={loading}
+        onClick={runCommand}
+        type="button"
+      >
+        {loading ? "Running..." : label}
+      </button>
+
+      {result ? (
+        <div className={`rounded border p-3 text-xs ${result.ok ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100" : "border-rose-400/30 bg-rose-400/10 text-rose-100"}`}>
+          <div className="font-semibold">{result.ok ? "Success" : "Error"}</div>
+          <div className="mt-1 text-slate-300">{result.message}</div>
+          {typeof result.code === "number" && result.code !== 0 ? <div className="mt-1 text-slate-400">Exit code: {result.code}</div> : null}
+          {result.command ? <div className="mt-1 font-mono text-slate-400">{result.command}</div> : null}
+          {result.stdout || result.stderr ? (
+            <details className="mt-3 text-slate-300">
+              <summary className="cursor-pointer text-slate-400">Logs</summary>
+              {result.stdout ? <pre className="mt-2 max-h-72 overflow-auto rounded bg-slate-950/70 p-3 whitespace-pre-wrap">{result.stdout}</pre> : null}
+              {result.stderr ? <pre className="mt-2 max-h-72 overflow-auto rounded bg-slate-950/70 p-3 whitespace-pre-wrap">{result.stderr}</pre> : null}
+            </details>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
