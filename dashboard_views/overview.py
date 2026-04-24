@@ -182,7 +182,7 @@ def render_ranking_overview(filtered_full: pd.DataFrame) -> None:
 
     if visible_symbols:
         selected_symbol = st.selectbox(
-            "Inspect visible symbol",
+            "Select symbol from ranking",
             visible_symbols,
             index=selected_symbol_index(visible_symbols),
             key="overview_selected_symbol",
@@ -190,9 +190,10 @@ def render_ranking_overview(filtered_full: pd.DataFrame) -> None:
         action_columns = st.columns([1, 4])
         if action_columns[0].button("Open Symbol Detail", key="overview_dropdown_open", use_container_width=True):
             open_symbol_detail(selected_symbol)
-        action_columns[1].caption("Selection follows the currently filtered ranking table.")
+        action_columns[1].caption("Use this selector or the Quick Access buttons above to open symbol detail.")
 
     with st.container(border=True):
+        st.caption("Table cells are for inspection; use the selector/buttons above to open symbol detail.")
         display_table(filtered_full, OVERVIEW_TABLE_COLUMNS, height=620, highlight_top=True)
 
 
