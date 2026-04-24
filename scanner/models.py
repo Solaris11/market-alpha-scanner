@@ -51,7 +51,14 @@ class RankedAsset:
     buy_zone_reason: str
     stop_loss_reason: str
     take_profit_reason: str
+    risk_reward_reason: str
+    take_profit_low: float
+    take_profit_high: float
     risk_reward: float
+    risk_reward_low: float
+    risk_reward_high: float
+    risk_reward_label: str
+    target_warning: str
     upside_driver: str
     key_risk: str
     profitability_status: str

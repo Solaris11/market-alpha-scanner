@@ -32,6 +32,22 @@ function displayValue(value: unknown) {
   return "N/A";
 }
 
+function displayReason(value: unknown, fallback: string) {
+  const text = String(value ?? "").trim();
+  if (!text || ["nan", "none", "n/a", "null"].includes(text.toLowerCase())) return fallback;
+  return text;
+}
+
+function numericValue(value: unknown) {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const parsed = Number(String(value ?? "").trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatRiskReward(low: number, high: number) {
+  return `${low.toFixed(1)}R–${high.toFixed(1)}R`;
+}
+
 function parseTradeLevel(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) return { low: value, high: value };
   const text = String(value ?? "").trim();
@@ -64,6 +80,40 @@ function resolvedTakeProfitValue(row: Record<string, unknown>, summary: Record<s
   const targetLow = currentPrice + 2 * risk;
   const targetHigh = currentPrice + 3 * risk;
   return `${formatNumber(targetLow)}-${formatNumber(targetHigh)}`;
+}
+
+function resolvedRiskRewardValue(row: Record<string, unknown>, summary: Record<string, unknown> | null, takeProfit: string) {
+  const explicitLabel = valueFrom(row, summary, ["risk_reward_label"]);
+  const labelText = String(explicitLabel ?? "").trim();
+  if (labelText && !["nan", "none", "n/a", "null"].includes(labelText.toLowerCase())) return labelText;
+
+  const low = numericValue(valueFrom(row, summary, ["risk_reward_low"]));
+  const high = numericValue(valueFrom(row, summary, ["risk_reward_high"]));
+  if (low !== null && high !== null && low > 0 && high > 0) return formatRiskReward(low, high);
+
+  const currentPrice = typeof row.price === "number" ? row.price : null;
+  const stopZone = parseTradeLevel(valueFrom(row, summary, ["stop_loss", "invalidation_level"]));
+  const targetZone = parseTradeLevel(takeProfit);
+  if (currentPrice === null || !stopZone || !targetZone || stopZone.low >= currentPrice || targetZone.low <= currentPrice) return "N/A";
+
+  const risk = currentPrice - stopZone.low;
+  if (risk <= 0) return "N/A";
+  return formatRiskReward((targetZone.low - currentPrice) / risk, (targetZone.high - currentPrice) / risk);
+}
+
+function resolvedTargetWarning(row: Record<string, unknown>, summary: Record<string, unknown> | null, takeProfit: string) {
+  const explicit = String(valueFrom(row, summary, ["target_warning", "trade_plan_warning"]) ?? "").trim();
+  if (explicit) return explicit;
+
+  const currentPrice = typeof row.price === "number" ? row.price : null;
+  const stopZone = parseTradeLevel(valueFrom(row, summary, ["stop_loss", "invalidation_level"]));
+  const targetZone = parseTradeLevel(takeProfit);
+  if (currentPrice === null || !stopZone || !targetZone || stopZone.low >= currentPrice) return "";
+
+  const stopDistancePct = (currentPrice - stopZone.low) / currentPrice;
+  const targetHighPct = (targetZone.high - currentPrice) / currentPrice;
+  if (stopDistancePct > 0.12 || targetHighPct > 0.35) return "Target is wide due to large stop distance";
+  return "";
 }
 
 function InfoTable({ rows }: { rows: { label: string; value: unknown }[] }) {
@@ -136,11 +186,13 @@ export default async function SymbolDetailPage({ params }: PageProps) {
             const buyZone = displayValue(valueFrom(row, summary, ["buy_zone", "entry_zone"]));
             const stopLoss = displayValue(valueFrom(row, summary, ["stop_loss", "invalidation_level"]));
             const takeProfit = resolvedTakeProfitValue(row, summary);
-            const riskReward = displayValue(valueFrom(row, summary, ["risk_reward"]));
+            const riskReward = resolvedRiskRewardValue(row, summary, takeProfit);
+            const targetWarning = resolvedTargetWarning(row, summary, takeProfit);
             const tradePlanReasons = [
-              { label: "Buy Zone Reason", value: valueFrom(row, summary, ["buy_zone_reason"]) },
-              { label: "Stop Loss Reason", value: valueFrom(row, summary, ["stop_loss_reason"]) },
-              { label: "Take Profit Reason", value: valueFrom(row, summary, ["take_profit_reason"]) },
+              { label: "Buy Zone Reason", value: displayReason(valueFrom(row, summary, ["buy_zone_reason"]), "near current technical support") },
+              { label: "Stop Loss Reason", value: displayReason(valueFrom(row, summary, ["stop_loss_reason"]), "below support with ATR buffer") },
+              { label: "Take Profit Reason", value: displayReason(valueFrom(row, summary, ["take_profit_reason"]), takeProfit !== "N/A" ? "risk-based fallback (no resistance)" : "Take profit unavailable because stop loss or price is missing") },
+              { label: "Risk/Reward Reason", value: displayReason(valueFrom(row, summary, ["risk_reward_reason"]), riskReward !== "N/A" ? "computed from current price, stop, and target" : "Risk/reward unavailable because stop loss or target is missing") },
             ];
 
             return (
@@ -196,6 +248,11 @@ export default async function SymbolDetailPage({ params }: PageProps) {
             <section className="terminal-panel rounded-md p-4">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Trade Plan</div>
               <div className="mt-3">
+                {targetWarning ? (
+                  <div className="mb-3 rounded border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-xs font-semibold text-amber-100">
+                    {targetWarning}
+                  </div>
+                ) : null}
                 <InfoTable
                   rows={[
                     { label: "Current Price", value: row.price },

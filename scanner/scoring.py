@@ -709,6 +709,44 @@ def _select_support(candidates: Sequence[tuple[float, str]], price: float) -> tu
     return max(pool, key=lambda item: item[0])
 
 
+def _buy_zone_reason(support_reason: str) -> str:
+    reason = support_reason.lower()
+    if "breakout" in reason:
+        return "breakout retest zone"
+    if "avwap" in reason:
+        return "pullback to AVWAP support"
+    if "ma20" in reason:
+        return "near MA20 / trend support"
+    if "ma50" in reason:
+        return "near MA50 trend support"
+    if "swing" in reason or "pivot" in reason:
+        return "near recent swing low support"
+    if "supertrend" in reason:
+        return "near SuperTrend support"
+    return "near current technical support"
+
+
+def _stop_loss_reason(stop_reason_source: str) -> str:
+    reason = stop_reason_source.lower()
+    if "swing" in reason:
+        return "below recent swing low"
+    if "avwap" in reason:
+        return "below AVWAP support with ATR buffer"
+    if "ma50" in reason:
+        return "below MA50 trend invalidation"
+    if "ma20" in reason:
+        return "below MA20 trend support with ATR buffer"
+    if "supertrend" in reason:
+        return "below SuperTrend support with ATR buffer"
+    return "below support with ATR buffer"
+
+
+def _risk_reward_label(low: float, high: float) -> str:
+    if np.isnan(low) or np.isnan(high) or low <= 0 or high <= 0:
+        return "N/A"
+    return f"{low:.1f}R–{high:.1f}R"
+
+
 def derive_trade_plan(
     df: pd.DataFrame,
     price: float,
@@ -728,11 +766,20 @@ def derive_trade_plan(
             "buy_zone_reason": "Current price unavailable",
             "stop_loss_reason": "Current price unavailable",
             "take_profit_reason": "Current price unavailable",
+            "risk_reward_reason": "Current price unavailable",
+            "take_profit_low": np.nan,
+            "take_profit_high": np.nan,
             "risk_reward": np.nan,
+            "risk_reward_low": np.nan,
+            "risk_reward_high": np.nan,
+            "risk_reward_label": "N/A",
+            "target_warning": "",
         }
 
     atr_values = atr(df, 14).dropna() if not df.empty else pd.Series(dtype=float)
-    atr_value = _valid_level(atr_values.iloc[-1] if not atr_values.empty else np.nan)
+    raw_atr_value = _valid_level(atr_values.iloc[-1] if not atr_values.empty else np.nan)
+    atr_from_data = not np.isnan(raw_atr_value)
+    atr_value = raw_atr_value
     if np.isnan(atr_value):
         atr_value = current_price * 0.03
     zone_buffer = max(atr_value * 0.35, current_price * 0.003)
@@ -781,7 +828,7 @@ def derive_trade_plan(
     if buy_zone_low > buy_zone_high:
         buy_zone_low, buy_zone_high = buy_zone_high, buy_zone_low
     buy_zone = _format_zone(buy_zone_low, buy_zone_high)
-    buy_zone_reason = f"Buy zone near {support_reason}"
+    buy_zone_reason = _buy_zone_reason(support_reason)
 
     stop_base_ceiling = min(current_price, buy_zone_low)
     stop_candidates = [
@@ -800,41 +847,76 @@ def derive_trade_plan(
 
     stop_loss_value = stop_support - (0.5 * atr_value)
     stop_loss = _format_level(stop_loss_value) if stop_loss_value > 0 and stop_loss_value < min(current_price, buy_zone_low) else "N/A"
-    stop_loss_reason = f"Stop below {stop_reason_source} with ATR buffer" if stop_loss != "N/A" else "Stop loss unavailable because support relationship is invalid"
+    stop_loss_reason = _stop_loss_reason(stop_reason_source) if stop_loss != "N/A" else "stop loss unavailable because support relationship is invalid"
 
     risk_per_share = current_price - stop_loss_value if stop_loss != "N/A" else np.nan
     take_profit_zone = "N/A"
     take_profit_reason = "Take profit unavailable because stop loss or price is missing"
+    risk_reward_reason = "Risk/reward unavailable because stop loss or target is missing"
+    target_warning = ""
+    take_profit_low = np.nan
+    take_profit_high = np.nan
     risk_reward = np.nan
+    risk_reward_low = np.nan
+    risk_reward_high = np.nan
+    risk_reward_label = "N/A"
     if not np.isnan(risk_per_share) and risk_per_share > 0:
-        two_r = current_price + (2.0 * risk_per_share)
-        three_r = current_price + (3.0 * risk_per_share)
-        resistances = sorted(
-            {
-                level
-                for level in [prior_breakout, high_3m, high_6m, high_1y]
-                if not np.isnan(level) and level > current_price * 1.005
-            }
-        )
-        take_profit_low = two_r
-        take_profit_high = three_r
-        take_profit_reason = "based on 2R–3R extension"
-        if resistances:
-            take_profit_low = resistances[0]
-            take_profit_high = resistances[1] if len(resistances) > 1 else max(two_r, take_profit_low + atr_value)
+        stop_distance_pct = risk_per_share / current_price
+        resistance_candidates = [
+            (high_3m, "based on 3M resistance"),
+            (high_6m, "based on 6M resistance"),
+            (high_1y, "based on 1Y high"),
+            (prior_breakout, "based on previous swing high"),
+        ]
+        resistances = [
+            (level, reason)
+            for level, reason in resistance_candidates
+            if not np.isnan(level) and level > current_price * 1.005
+        ]
+        unique_resistances: list[tuple[float, str]] = []
+        seen_resistance_levels: set[float] = set()
+        for level, reason in resistances:
+            rounded_level = round(level, 4)
+            if rounded_level in seen_resistance_levels:
+                continue
+            seen_resistance_levels.add(rounded_level)
+            unique_resistances.append((level, reason))
+        if unique_resistances:
+            take_profit_low = unique_resistances[0][0]
+            take_profit_reason = unique_resistances[0][1]
+            take_profit_high = unique_resistances[1][0] if len(unique_resistances) > 1 else take_profit_low
             if take_profit_high < take_profit_low:
-                take_profit_high = max(two_r, three_r)
-            take_profit_reason = "based on resistance"
-
-        if take_profit_low > current_price and take_profit_high > current_price:
-            take_profit_zone = _format_zone(take_profit_low, take_profit_high)
-            risk_reward = (take_profit_low - current_price) / risk_per_share
+                take_profit_high = take_profit_low
+        elif atr_from_data and atr_value > 0:
+            take_profit_low = current_price + (1.5 * atr_value)
+            take_profit_high = current_price + (2.5 * atr_value)
+            take_profit_reason = "ATR extension target"
         else:
-            take_profit_low = two_r
-            take_profit_high = three_r
-            take_profit_zone = _format_zone(take_profit_low, take_profit_high)
-            take_profit_reason = "based on 2R–3R extension"
-            risk_reward = (take_profit_low - current_price) / risk_per_share
+            low_multiple, high_multiple = (1.0, 2.0) if stop_distance_pct > 0.12 else (2.0, 3.0)
+            take_profit_low = current_price + (low_multiple * risk_per_share)
+            take_profit_high = current_price + (high_multiple * risk_per_share)
+            take_profit_reason = "risk-based fallback (no resistance)"
+
+        if not (take_profit_low > current_price and take_profit_high > current_price):
+            low_multiple, high_multiple = (1.0, 2.0) if stop_distance_pct > 0.12 else (2.0, 3.0)
+            take_profit_low = current_price + (low_multiple * risk_per_share)
+            take_profit_high = current_price + (high_multiple * risk_per_share)
+            take_profit_reason = "risk-based fallback (no resistance)"
+
+        take_profit_zone = _format_zone(take_profit_low, take_profit_high)
+        risk_reward_low = (take_profit_low - current_price) / risk_per_share
+        risk_reward_high = (take_profit_high - current_price) / risk_per_share
+        risk_reward = risk_reward_low
+        risk_reward_label = _risk_reward_label(risk_reward_low, risk_reward_high)
+        risk_reward_reason = "computed from current price, stop, and target"
+
+        target_high_pct = (take_profit_high - current_price) / current_price
+        if stop_distance_pct > 0.18:
+            target_warning = "Target is wide due to large stop distance"
+        elif stop_distance_pct > 0.12:
+            target_warning = "Target is wide due to large stop distance"
+        elif target_high_pct > 0.35:
+            target_warning = "Target is wide due to large stop distance"
 
     return {
         "buy_zone": buy_zone,
@@ -843,7 +925,14 @@ def derive_trade_plan(
         "buy_zone_reason": buy_zone_reason,
         "stop_loss_reason": stop_loss_reason,
         "take_profit_reason": take_profit_reason,
+        "risk_reward_reason": risk_reward_reason,
+        "take_profit_low": take_profit_low,
+        "take_profit_high": take_profit_high,
         "risk_reward": risk_reward,
+        "risk_reward_low": risk_reward_low,
+        "risk_reward_high": risk_reward_high,
+        "risk_reward_label": risk_reward_label,
+        "target_warning": target_warning,
     }
 
 

@@ -18,7 +18,14 @@ export type RankingRow = {
   buy_zone_reason?: string;
   stop_loss_reason?: string;
   take_profit_reason?: string;
+  risk_reward_reason?: string;
+  take_profit_low?: number;
+  take_profit_high?: number;
   risk_reward?: number;
+  risk_reward_low?: number;
+  risk_reward_high?: number;
+  risk_reward_label?: string;
+  target_warning?: string;
   upside_driver?: string;
   key_risk?: string;
   selection_reason?: string;
