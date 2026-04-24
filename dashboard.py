@@ -40,8 +40,13 @@ def _apply_symbol_detail_request(requested_symbol: str, *, sync_sidebar_widget: 
     if sync_sidebar_widget:
         st.session_state[PAGE_SELECTOR_WIDGET_KEY] = "Symbol Detail"
     if requested_symbol:
+        current_selector = normalize_symbol(st.session_state.get("symbol_detail_selector", ""))
+        last_selector = normalize_symbol(st.session_state.get("last_symbol_detail_selector", ""))
+        selector_changed_by_user = bool(current_selector and last_selector and current_selector != last_selector)
         st.session_state["selected_symbol"] = requested_symbol
-        st.session_state["symbol_detail_selector"] = requested_symbol
+        if not selector_changed_by_user:
+            st.session_state["symbol_detail_selector"] = requested_symbol
+            st.session_state["last_symbol_detail_selector"] = requested_symbol
 
 
 def _clear_symbol_detail_query_params() -> None:

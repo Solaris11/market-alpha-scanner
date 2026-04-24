@@ -25,7 +25,6 @@ from .shared import (
     render_score_badge,
     render_section_heading,
     render_symbol_header,
-    selected_symbol_index,
 )
 
 
@@ -65,25 +64,23 @@ NEGATIVE_REASON_TERMS = (
 )
 
 SYMBOL_JUMP_INPUT_KEY = "symbol_detail_jump_input"
-SYMBOL_JUMP_SUBMITTED_KEY = "_symbol_detail_jump_submitted"
-SYMBOL_JUMP_ERROR_KEY = "_symbol_detail_jump_error"
+LAST_SYMBOL_DETAIL_SELECTOR_KEY = "last_symbol_detail_selector"
+PENDING_SYMBOL_DETAIL_SELECTOR_KEY = "_pending_symbol_detail_selector"
 
 
-def _submit_symbol_jump() -> None:
-    st.session_state[SYMBOL_JUMP_SUBMITTED_KEY] = True
-
-
-def _navigate_to_symbol_detail(symbol: str, *, sync_selector: bool) -> None:
+def navigate_to_symbol(symbol: str, available_symbols: list[str]) -> None:
     cleaned_symbol = normalize_symbol(symbol)
     if not cleaned_symbol:
+        st.warning("Enter a symbol to open.")
+        return
+    if cleaned_symbol not in available_symbols:
+        st.warning(f"{cleaned_symbol} is not in the current scan.")
         return
     st.query_params["page"] = "symbol-detail"
     st.query_params["symbol"] = cleaned_symbol
-    st.session_state["current_page"] = "Symbol Detail"
-    st.session_state["page_selector"] = "Symbol Detail"
     st.session_state["selected_symbol"] = cleaned_symbol
-    if sync_selector:
-        st.session_state["symbol_detail_selector"] = cleaned_symbol
+    st.session_state[LAST_SYMBOL_DETAIL_SELECTOR_KEY] = cleaned_symbol
+    st.session_state[PENDING_SYMBOL_DETAIL_SELECTOR_KEY] = cleaned_symbol
     st.rerun()
 
 
@@ -927,26 +924,12 @@ def render_symbol_jump_control(symbols: list[str]) -> None:
         "Jump to symbol",
         key=SYMBOL_JUMP_INPUT_KEY,
         placeholder="AVGO",
-        on_change=_submit_symbol_jump,
     )
     open_clicked = jump_columns[1].button("Open Symbol", key="symbol_detail_jump_open", use_container_width=True)
-    should_open = bool(st.session_state.pop(SYMBOL_JUMP_SUBMITTED_KEY, False)) or open_clicked
+    if open_clicked:
+        navigate_to_symbol(st.session_state.get(SYMBOL_JUMP_INPUT_KEY, ""), symbols)
 
-    if should_open:
-        requested_symbol = normalize_symbol(st.session_state.get(SYMBOL_JUMP_INPUT_KEY, ""))
-        if not requested_symbol:
-            st.session_state[SYMBOL_JUMP_ERROR_KEY] = "Enter a symbol to open."
-        elif requested_symbol not in symbols:
-            st.session_state[SYMBOL_JUMP_ERROR_KEY] = f"{requested_symbol} is not in the current scan."
-        else:
-            if SYMBOL_JUMP_ERROR_KEY in st.session_state:
-                del st.session_state[SYMBOL_JUMP_ERROR_KEY]
-            _navigate_to_symbol_detail(requested_symbol, sync_selector=True)
-
-    jump_columns[2].caption("Type a ticker and press Enter, or click Open Symbol.")
-    jump_error = st.session_state.pop(SYMBOL_JUMP_ERROR_KEY, "")
-    if jump_error:
-        st.warning(jump_error)
+    jump_columns[2].caption("Type a ticker, then click Open Symbol.")
 
 
 def render_symbol_detail_page(full_df: pd.DataFrame | None, history_df: pd.DataFrame) -> None:
@@ -974,28 +957,31 @@ def render_symbol_detail_page(full_df: pd.DataFrame | None, history_df: pd.DataF
 
     requested_symbol = normalize_symbol(st.session_state.get("selected_symbol", ""))
     selector_symbol = normalize_symbol(st.session_state.get("symbol_detail_selector", ""))
-    if selector_symbol in symbols:
-        st.session_state["symbol_detail_selector"] = selector_symbol
+    pending_symbol = normalize_symbol(st.session_state.pop(PENDING_SYMBOL_DETAIL_SELECTOR_KEY, ""))
+    if pending_symbol in symbols:
+        selector_default = pending_symbol
+    elif selector_symbol in symbols:
+        selector_default = selector_symbol
     elif requested_symbol in symbols:
-        st.session_state["symbol_detail_selector"] = requested_symbol
-    elif selector_symbol not in symbols:
-        st.session_state["symbol_detail_selector"] = symbols[selected_symbol_index(symbols)]
+        selector_default = requested_symbol
+    else:
+        selector_default = symbols[0]
+    st.session_state["symbol_detail_selector"] = selector_default
 
     selected_symbol = st.selectbox(
         "Select symbol",
         symbols,
-        index=symbols.index(st.session_state["symbol_detail_selector"]),
+        index=symbols.index(selector_default),
         key="symbol_detail_selector",
     )
     if not isinstance(selected_symbol, str):
         st.info("Selected symbol is invalid.")
         return
     selected_symbol = normalize_symbol(selected_symbol)
-    previous_symbol = normalize_symbol(st.session_state.get("selected_symbol", ""))
-    query_page = str(st.query_params.get("page", "")).strip()
-    query_symbol = normalize_symbol(st.query_params.get("symbol", ""))
-    if selected_symbol != previous_symbol or query_page != "symbol-detail" or query_symbol != selected_symbol:
-        _navigate_to_symbol_detail(selected_symbol, sync_selector=False)
+    previous_selector = normalize_symbol(st.session_state.get(LAST_SYMBOL_DETAIL_SELECTOR_KEY, selected_symbol))
+    if selected_symbol != previous_selector:
+        navigate_to_symbol(selected_symbol, symbols)
 
+    st.session_state[LAST_SYMBOL_DETAIL_SELECTOR_KEY] = selected_symbol
     st.session_state["selected_symbol"] = selected_symbol
     render_symbol_detail_content(selected_symbol, full_df, history_df)
