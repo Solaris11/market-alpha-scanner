@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { Badge } from "@/components/badge";
 import { MetricStrip } from "@/components/metric-strip";
+import { PriceHistoryChart } from "@/components/price-history-chart";
 import { TerminalShell } from "@/components/shell";
+import { WatchlistButton } from "@/components/watchlist-controls";
 import { actionFor, formatNumber } from "@/lib/format";
 import { displayName, getSymbolDetail } from "@/lib/scanner-data";
 
@@ -287,6 +289,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
                 <div className="mt-2 truncate text-xs text-slate-500">
                   {row.asset_type || "N/A"} · {row.sector || "N/A"} · {row.setup_type || "N/A"}
                 </div>
+                <WatchlistButton symbol={row.symbol} />
               </div>
               <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
                 <div>
@@ -381,9 +384,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
 
             <section className="terminal-panel rounded-md p-4">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Price History</div>
-              <div className="mt-8 h-36 rounded border border-dashed border-slate-700/70 text-center text-xs text-slate-500">
-                <div className="pt-14">Chart placeholder · wire to history.csv next</div>
-              </div>
+              <PriceHistoryChart rows={detail.history} period="1y" />
             </section>
           </div>
 

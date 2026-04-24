@@ -24,6 +24,13 @@ const NUMERIC_FIELDS = new Set([
   "aggressive_risk_reward_high",
   "take_profit_low",
   "take_profit_high",
+  "open",
+  "high",
+  "low",
+  "close",
+  "adj_close",
+  "adjclose",
+  "volume",
   "short_score",
   "mid_score",
   "long_score",
@@ -332,7 +339,7 @@ export async function getSymbolDetail(symbol: string): Promise<SymbolDetail> {
   const row = ranking.find((item) => item.symbol === cleaned) ?? null;
   const symbolDir = path.join(scannerOutputDir(), "symbols", symbolSlug(cleaned));
   const summary = await readJson(path.join(symbolDir, "summary.json"));
-  const history = await readCsv(path.join(symbolDir, "history.csv"));
+  const history = await getSymbolPriceHistory(cleaned, "all");
 
   if (row && summary) {
     row.company_name = displayName({ ...summary, ...row });
@@ -341,12 +348,40 @@ export async function getSymbolDetail(symbol: string): Promise<SymbolDetail> {
   return {
     row,
     summary,
-    history: history.map((item) => {
-      const normalized: Record<string, ScannerScalar> = {};
-      for (const [key, value] of Object.entries(item)) {
-        normalized[key] = coerceValue(key.toLowerCase(), value) ?? null;
-      }
-      return normalized;
-    }),
+    history,
   };
+}
+
+function periodCutoff(latestMs: number, period: string) {
+  if (period === "all") return null;
+  const days = period === "1m" ? 31 : period === "3m" ? 93 : period === "6m" ? 186 : period === "2y" ? 730 : 365;
+  return latestMs - days * 24 * 60 * 60 * 1000;
+}
+
+export async function getSymbolPriceHistory(symbol: string, period = "1y"): Promise<Record<string, ScannerScalar>[]> {
+  const cleaned = symbol.trim().toUpperCase();
+  const symbolDir = path.join(scannerOutputDir(), "symbols", symbolSlug(cleaned));
+  const history = await readCsv(path.join(symbolDir, "history.csv"));
+  const normalized = history
+    .map((item) => {
+      const row: Record<string, ScannerScalar> = {};
+      for (const [key, value] of Object.entries(item)) {
+        const normalizedKey = key.toLowerCase().replace(/\s+/g, "_");
+        row[normalizedKey] = coerceValue(normalizedKey, value) ?? null;
+      }
+      return row;
+    })
+    .sort((a, b) => String(a.date ?? a.datetime ?? "").localeCompare(String(b.date ?? b.datetime ?? "")));
+
+  if (!normalized.length || period === "all") return normalized;
+
+  const dated = normalized
+    .map((row) => ({ row, time: Date.parse(String(row.date ?? row.datetime ?? "")) }))
+    .filter((item) => Number.isFinite(item.time));
+  if (!dated.length) return normalized;
+
+  const latest = Math.max(...dated.map((item) => item.time));
+  const cutoff = periodCutoff(latest, period);
+  if (cutoff === null) return normalized;
+  return dated.filter((item) => item.time >= cutoff).map((item) => item.row);
 }

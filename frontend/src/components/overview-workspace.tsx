@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { RankingTable } from "@/components/ranking-table";
+import { WatchlistPanel } from "@/components/watchlist-controls";
 import type { RankingRow } from "@/lib/types";
 
 type Props = {
@@ -172,16 +173,7 @@ export function OverviewWorkspace({ ranking, topCandidates }: Props) {
           <RankingTable rows={filteredTopCandidates} highlight limit={10} emptyMessage="No matching symbols" />
         </section>
 
-        <section className="terminal-panel rounded-md p-3">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Watchlist</div>
-          <div className="mt-2 divide-y divide-slate-800 text-xs text-slate-400">
-            {["Add symbols from detail pages", "Local persistence to be wired next"].map((item) => (
-              <div className="py-2" key={item}>
-                {item}
-              </div>
-            ))}
-          </div>
-        </section>
+        <WatchlistPanel />
       </aside>
     </div>
   );
