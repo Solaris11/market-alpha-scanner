@@ -1,16 +1,35 @@
+"use client";
+
 import Link from "next/link";
 import type { RankingRow } from "@/lib/types";
 import { actionFor, compact, formatNumber } from "@/lib/format";
 import { Badge } from "./badge";
+
+export type RankingSortKey = "symbol" | "company" | "asset" | "sector" | "price" | "score" | "rating" | "action";
+export type RankingSortDirection = "asc" | "desc";
 
 type Props = {
   rows: RankingRow[];
   highlight?: boolean;
   limit?: number;
   emptyMessage?: string;
+  sortKey?: RankingSortKey | null;
+  sortDirection?: RankingSortDirection;
+  onSort?: (key: RankingSortKey) => void;
 };
 
-export function RankingTable({ rows, highlight = false, limit, emptyMessage = "No scanner rows available." }: Props) {
+const COLUMNS: { key: RankingSortKey; label: string; align?: "left" | "right" }[] = [
+  { key: "symbol", label: "Symbol" },
+  { key: "company", label: "Company" },
+  { key: "asset", label: "Asset" },
+  { key: "sector", label: "Sector" },
+  { key: "price", label: "Price", align: "right" },
+  { key: "score", label: "Score", align: "right" },
+  { key: "rating", label: "Rating" },
+  { key: "action", label: "Action" },
+];
+
+export function RankingTable({ rows, highlight = false, limit, emptyMessage = "No scanner rows available.", sortKey = null, sortDirection = "asc", onSort }: Props) {
   const visibleRows = typeof limit === "number" ? rows.slice(0, limit) : rows;
 
   if (!visibleRows.length) {
@@ -32,14 +51,26 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
         </colgroup>
         <thead className="border-b border-slate-700/70 bg-slate-950/70 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
           <tr>
-            <th className="px-2 py-1.5 text-left">Symbol</th>
-            <th className="px-2 py-1.5 text-left">Company</th>
-            <th className="px-2 py-1.5 text-left">Asset</th>
-            <th className="px-2 py-1.5 text-left">Sector</th>
-            <th className="px-2 py-1.5 text-right">Price</th>
-            <th className="px-2 py-1.5 text-right">Score</th>
-            <th className="px-2 py-1.5 text-left">Rating</th>
-            <th className="px-2 py-1.5 text-left">Action</th>
+            {COLUMNS.map((column) => {
+              const active = sortKey === column.key;
+              const indicator = active ? (sortDirection === "asc" ? "▲" : "▼") : "";
+              return (
+                <th className={`px-2 py-1.5 ${column.align === "right" ? "text-right" : "text-left"}`} key={column.key}>
+                  {onSort ? (
+                    <button
+                      className={`inline-flex items-center gap-1 hover:text-sky-200 ${column.align === "right" ? "justify-end" : "justify-start"}`}
+                      onClick={() => onSort(column.key)}
+                      type="button"
+                    >
+                      <span>{column.label}</span>
+                      {indicator ? <span className="text-sky-300">{indicator}</span> : null}
+                    </button>
+                  ) : (
+                    column.label
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-800/90">

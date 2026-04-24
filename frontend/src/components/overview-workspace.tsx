@@ -2,7 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { RankingTable } from "@/components/ranking-table";
+import type { RankingSortDirection, RankingSortKey } from "@/components/ranking-table";
 import { WatchlistPanel } from "@/components/watchlist-controls";
+import { actionFor } from "@/lib/format";
 import type { RankingRow } from "@/lib/types";
 
 type Props = {
@@ -20,12 +22,86 @@ function matchesText(value: unknown, query: string) {
     .includes(query);
 }
 
+const NUMERIC_SORT_KEYS = new Set<RankingSortKey>(["price", "score"]);
+const RATING_PRIORITY: Record<string, number> = {
+  TOP: 0,
+  ACTIONABLE: 1,
+  WATCH: 2,
+  PASS: 3,
+};
+const ACTION_PRIORITY: Record<string, number> = {
+  "STRONG BUY": 0,
+  BUY: 1,
+  "WAIT / HOLD": 2,
+  "WAIT/HOLD": 2,
+  WAIT: 2,
+  HOLD: 3,
+  SELL: 4,
+  "STRONG SELL": 5,
+};
+
+function normalizeAction(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, " ");
+}
+
+function priorityCompare(left: number | null, right: number | null, direction: RankingSortDirection) {
+  if (left === null && right === null) return 0;
+  if (left === null) return 1;
+  if (right === null) return -1;
+  return direction === "desc" ? left - right : right - left;
+}
+
+function valueForSort(row: RankingRow, key: RankingSortKey) {
+  if (key === "symbol") return row.symbol;
+  if (key === "company") return row.company_name ?? "";
+  if (key === "asset") return row.asset_type ?? "";
+  if (key === "sector") return row.sector ?? "";
+  if (key === "price") return row.price;
+  if (key === "score") return row.final_score;
+  if (key === "rating") return row.rating ?? "";
+  if (key === "action") return actionFor(row);
+  return "";
+}
+
+function sortRows(rows: RankingRow[], key: RankingSortKey | null, direction: RankingSortDirection) {
+  if (!key) return rows;
+
+  return [...rows].sort((left, right) => {
+    if (key === "rating") {
+      return priorityCompare(RATING_PRIORITY[String(left.rating ?? "").toUpperCase()] ?? null, RATING_PRIORITY[String(right.rating ?? "").toUpperCase()] ?? null, direction);
+    }
+    if (key === "action") {
+      return priorityCompare(ACTION_PRIORITY[normalizeAction(actionFor(left))] ?? null, ACTION_PRIORITY[normalizeAction(actionFor(right))] ?? null, direction);
+    }
+    if (NUMERIC_SORT_KEYS.has(key)) {
+      const leftValue = typeof valueForSort(left, key) === "number" ? (valueForSort(left, key) as number) : null;
+      const rightValue = typeof valueForSort(right, key) === "number" ? (valueForSort(right, key) as number) : null;
+      if (leftValue === null && rightValue === null) return 0;
+      if (leftValue === null) return 1;
+      if (rightValue === null) return -1;
+      return direction === "desc" ? rightValue - leftValue : leftValue - rightValue;
+    }
+
+    const leftText = String(valueForSort(left, key) ?? "");
+    const rightText = String(valueForSort(right, key) ?? "");
+    if (!leftText && !rightText) return 0;
+    if (!leftText) return 1;
+    if (!rightText) return -1;
+    return direction === "desc" ? rightText.localeCompare(leftText) : leftText.localeCompare(rightText);
+  });
+}
+
 export function OverviewWorkspace({ ranking, topCandidates }: Props) {
   const [symbolSearch, setSymbolSearch] = useState("");
   const [assetType, setAssetType] = useState("");
   const [sector, setSector] = useState("");
   const [rating, setRating] = useState("");
   const [minimumScore, setMinimumScore] = useState("");
+  const [sortKey, setSortKey] = useState<RankingSortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<RankingSortDirection>("asc");
 
   const assetTypes = useMemo(() => uniqueOptions(ranking, "asset_type"), [ranking]);
   const sectors = useMemo(() => {
@@ -54,6 +130,7 @@ export function OverviewWorkspace({ ranking, topCandidates }: Props) {
     const visibleSymbols = new Set(filteredRows.map((row) => row.symbol));
     return topCandidates.filter((row) => visibleSymbols.has(row.symbol));
   }, [filteredRows, topCandidates]);
+  const sortedRows = useMemo(() => sortRows(filteredRows, sortKey, sortDirection), [filteredRows, sortDirection, sortKey]);
 
   function resetFilters() {
     setSymbolSearch("");
@@ -61,6 +138,17 @@ export function OverviewWorkspace({ ranking, topCandidates }: Props) {
     setSector("");
     setRating("");
     setMinimumScore("");
+    setSortKey(null);
+    setSortDirection("asc");
+  }
+
+  function handleSort(key: RankingSortKey) {
+    if (sortKey === key) {
+      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDirection(NUMERIC_SORT_KEYS.has(key) ? "desc" : "asc");
   }
 
   return (
@@ -161,7 +249,7 @@ export function OverviewWorkspace({ ranking, topCandidates }: Props) {
           </div>
         </div>
 
-        <RankingTable rows={filteredRows} emptyMessage="No matching symbols" />
+        <RankingTable rows={sortedRows} emptyMessage="No matching symbols" sortDirection={sortDirection} sortKey={sortKey} onSort={handleSort} />
       </section>
 
       <aside className="space-y-3">
