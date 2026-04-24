@@ -173,7 +173,7 @@ def render_clickable_ranking_list(ordered: pd.DataFrame) -> None:
     if "overview_rank_page_selector" not in st.session_state:
         st.session_state["overview_rank_page_selector"] = 1
     if "overview_rank_page_size" not in st.session_state:
-        st.session_state["overview_rank_page_size"] = 50
+        st.session_state["overview_rank_page_size"] = "All"
     if ordered.empty or "symbol" not in ordered.columns:
         return
 
