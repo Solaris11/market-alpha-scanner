@@ -230,11 +230,16 @@ THEME_CSS = """
         border: 1px solid rgba(148, 163, 184, 0.2);
         background: rgba(51, 65, 85, 0.26);
         color: #cbd5e1;
-        white-space: nowrap;
-        word-break: keep-all;
-        overflow-wrap: normal;
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        overflow-wrap: normal !important;
         min-width: max-content;
         flex: 0 0 auto;
+    }
+    .scanner-badge * {
+        white-space: nowrap !important;
+        word-break: keep-all !important;
+        overflow-wrap: normal !important;
     }
     .scanner-badge--positive {
         background: rgba(34, 197, 94, 0.14);
@@ -852,7 +857,7 @@ def render_clickable_symbol_rows(df: pd.DataFrame, section_key: str) -> None:
         return
 
     st.caption("Fast symbol jump")
-    row_column_widths = [1.35, 0.9, 1.15, 1.6, 0.9]
+    row_column_widths = [1.25, 0.8, 1.45, 2.05, 0.8]
     header_columns = st.columns(row_column_widths)
     header_columns[0].markdown("**Symbol**")
     header_columns[1].markdown("**Asset**")

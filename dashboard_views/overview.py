@@ -212,7 +212,7 @@ def render_clickable_top_candidate_list(top_df: pd.DataFrame) -> None:
 
     with st.container(border=True):
         st.caption("Use the symbol buttons below to open top candidate details.")
-        top_candidate_columns = [1.05, 0.95, 1.25, 0.75, 0.85, 1.2, 1.65]
+        top_candidate_columns = [1.15, 0.9, 1.1, 0.75, 0.85, 1.55, 2.2]
         header_columns = st.columns(top_candidate_columns, gap="small")
         header_columns[0].markdown("**Symbol**")
         header_columns[1].markdown("**Asset Type**")
@@ -301,7 +301,7 @@ def render_clickable_ranking_list(ordered: pd.DataFrame) -> None:
         visible_rows = ranking_rows.iloc[start_index:end_index]
         control_columns[2].caption(f"Showing {start_index + 1}-{end_index} of {total_rows}")
 
-        ranking_columns = [1.05, 0.95, 1.25, 0.75, 0.85, 1.2, 1.65]
+        ranking_columns = [1.15, 0.9, 1.1, 0.75, 0.85, 1.55, 2.2]
         header_columns = st.columns(ranking_columns, gap="small")
         header_columns[0].markdown("**Symbol**")
         header_columns[1].markdown("**Asset Type**")

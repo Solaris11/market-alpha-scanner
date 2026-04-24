@@ -18,7 +18,6 @@ from .shared import (
     go_to_overview,
     load_watchlist,
     normalize_symbol,
-    open_symbol_detail,
     remove_from_watchlist,
     render_action_badge,
     render_info_card,
@@ -72,6 +71,20 @@ SYMBOL_JUMP_ERROR_KEY = "_symbol_detail_jump_error"
 
 def _submit_symbol_jump() -> None:
     st.session_state[SYMBOL_JUMP_SUBMITTED_KEY] = True
+
+
+def _navigate_to_symbol_detail(symbol: str, *, sync_selector: bool) -> None:
+    cleaned_symbol = normalize_symbol(symbol)
+    if not cleaned_symbol:
+        return
+    st.query_params["page"] = "symbol-detail"
+    st.query_params["symbol"] = cleaned_symbol
+    st.session_state["current_page"] = "Symbol Detail"
+    st.session_state["page_selector"] = "Symbol Detail"
+    st.session_state["selected_symbol"] = cleaned_symbol
+    if sync_selector:
+        st.session_state["symbol_detail_selector"] = cleaned_symbol
+    st.rerun()
 
 
 def _numeric_scalar(value: object) -> float | None:
@@ -928,7 +941,7 @@ def render_symbol_jump_control(symbols: list[str]) -> None:
         else:
             if SYMBOL_JUMP_ERROR_KEY in st.session_state:
                 del st.session_state[SYMBOL_JUMP_ERROR_KEY]
-            open_symbol_detail(requested_symbol)
+            _navigate_to_symbol_detail(requested_symbol, sync_selector=True)
 
     jump_columns[2].caption("Type a ticker and press Enter, or click Open Symbol.")
     jump_error = st.session_state.pop(SYMBOL_JUMP_ERROR_KEY, "")
@@ -978,9 +991,11 @@ def render_symbol_detail_page(full_df: pd.DataFrame | None, history_df: pd.DataF
         st.info("Selected symbol is invalid.")
         return
     selected_symbol = normalize_symbol(selected_symbol)
+    previous_symbol = normalize_symbol(st.session_state.get("selected_symbol", ""))
+    query_page = str(st.query_params.get("page", "")).strip()
+    query_symbol = normalize_symbol(st.query_params.get("symbol", ""))
+    if selected_symbol != previous_symbol or query_page != "symbol-detail" or query_symbol != selected_symbol:
+        _navigate_to_symbol_detail(selected_symbol, sync_selector=False)
+
     st.session_state["selected_symbol"] = selected_symbol
-    if st.query_params.get("page") != "symbol-detail":
-        st.query_params["page"] = "symbol-detail"
-    if normalize_symbol(st.query_params.get("symbol", "")) != selected_symbol:
-        st.query_params["symbol"] = selected_symbol
     render_symbol_detail_content(selected_symbol, full_df, history_df)
