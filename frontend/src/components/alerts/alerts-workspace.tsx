@@ -4,9 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 
 type AlertRule = {
   id: string;
+  scope?: string;
   symbol?: string;
   type: string;
   threshold?: number;
+  min_score?: number;
   channels: string[];
   enabled: boolean;
   cooldown_minutes: number;
@@ -15,7 +17,10 @@ type AlertRule = {
 };
 
 type AlertStateEntry = {
+  alert_id?: string;
+  symbol?: string;
   last_sent_at?: string;
+  last_skipped_at?: string;
   last_trigger_value?: string;
   last_observed_value?: string;
   last_status?: string;
@@ -52,13 +57,19 @@ const FORM_TYPES = [
   "rating_changed",
   "action_changed",
   "new_top_candidate",
+  "entry_ready",
 ];
-const THRESHOLD_TYPES = new Set(["price_above", "price_below", "score_above", "score_below"]);
+const THRESHOLD_TYPES = new Set(["price_above", "price_below", "score_above", "score_below", "score_changed_by"]);
 const ENTRY_FILTERS = [
   { value: "any", label: "Any" },
   { value: "good_only", label: "Good entry only" },
   { value: "good_or_wait", label: "Good or wait" },
   { value: "avoid_overextended", label: "Avoid overextended" },
+];
+const SCOPES = [
+  { value: "symbol", label: "Single Symbol" },
+  { value: "watchlist", label: "Watchlist" },
+  { value: "global", label: "Global Scanner Universe" },
 ];
 
 function normalizeSymbol(symbol: string) {
@@ -92,11 +103,21 @@ function entryFilterLabel(value?: string) {
   return ENTRY_FILTERS.find((item) => item.value === value)?.label ?? "Any";
 }
 
+function scopeLabel(value?: string) {
+  return SCOPES.find((item) => item.value === value)?.label ?? "Single Symbol";
+}
+
 function defaultEntryFilter(type: string) {
   if (type === "score_above") return "avoid_overextended";
+  if (type === "entry_ready") return "good_or_wait";
   if (type === "stop_loss_broken" || type === "take_profit_hit" || type === "buy_zone_hit") return "any";
   if (type === "rating_changed" || type === "action_changed") return "good_or_wait";
   return "any";
+}
+
+function defaultMinScore(type: string, scope: string) {
+  if (type === "entry_ready" && scope === "global") return "70";
+  return "";
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -110,9 +131,11 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOverview }) {
   const [overview, setOverview] = useState(initialOverview);
+  const [scope, setScope] = useState("symbol");
   const [symbol, setSymbol] = useState("");
   const [type, setType] = useState("price_above");
   const [threshold, setThreshold] = useState("");
+  const [minScore, setMinScore] = useState("");
   const [channels, setChannels] = useState<string[]>(["telegram"]);
   const [cooldown, setCooldown] = useState("1440");
   const [entryFilter, setEntryFilter] = useState("any");
@@ -137,10 +160,13 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
 
   const sortedRules = useMemo(() => [...overview.rules].sort((a, b) => String(a.symbol ?? "").localeCompare(String(b.symbol ?? "")) || a.type.localeCompare(b.type)), [overview.rules]);
   const thresholdVisible = THRESHOLD_TYPES.has(type);
+  const symbolVisible = scope === "symbol";
+  const minScoreVisible = type === "entry_ready" || scope === "global" || type === "new_top_candidate";
 
   useEffect(() => {
     setEntryFilter(defaultEntryFilter(type));
-  }, [type]);
+    setMinScore(defaultMinScore(type, scope));
+  }, [scope, type]);
 
   async function reload() {
     setOverview(await fetchJson<AlertOverview>("/api/alerts/rules"));
@@ -150,18 +176,30 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
     setChannels((current) => (current.includes(channel) ? current.filter((item) => item !== channel) : [...current, channel]));
   }
 
+  async function syncWatchlistForRule(ruleScope: string | undefined) {
+    if (ruleScope !== "watchlist") return;
+    await fetchJson("/api/watchlist", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ symbols: readWatchlist() }),
+    });
+  }
+
   async function createRule(payload?: Partial<AlertRule>) {
     setBusyId("create");
     setMessage("");
     try {
+      await syncWatchlistForRule(payload?.scope ?? scope);
       await fetchJson("/api/alerts/rules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
           payload ?? {
-            symbol: normalizeSymbol(symbol),
+            scope,
+            symbol: symbolVisible ? normalizeSymbol(symbol) : undefined,
             type,
             threshold: thresholdVisible ? Number(threshold) : undefined,
+            min_score: minScore.trim() ? Number(minScore) : undefined,
             channels,
             cooldown_minutes: Number(cooldown),
             entry_filter: entryFilter,
@@ -233,6 +271,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
         onClick={() =>
           createRule({
             id: `${cleaned.toLowerCase()}_${nextType}`,
+            scope: "symbol",
             symbol: cleaned,
             type: nextType,
             channels: ["telegram"],
@@ -248,6 +287,50 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
         {label}
       </button>
     );
+  }
+
+  function quickScopedRule(label: string, payload: Partial<AlertRule>) {
+    return (
+      <button
+        className="rounded border border-sky-400/40 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-100 hover:bg-sky-400/15"
+        disabled={busyId === "create"}
+        onClick={() => createRule(payload)}
+        type="button"
+      >
+        {label}
+      </button>
+    );
+  }
+
+  function statesForRule(rule: AlertRule) {
+    const prefix = `${rule.id}:`;
+    return Object.entries(overview.state.alerts).filter(([key, state]) => key === rule.id || key.startsWith(prefix) || state.alert_id === rule.id);
+  }
+
+  function latestSentForRule(rule: AlertRule) {
+    const sent = statesForRule(rule)
+      .map(([, state]) => state.last_sent_at)
+      .filter((value): value is string => Boolean(value))
+      .sort();
+    return sent.length ? sent[sent.length - 1] : null;
+  }
+
+  async function testRule(rule: AlertRule, send = false) {
+    setBusyId(`test_${rule.id}`);
+    setTestResult(null);
+    try {
+      const result = await fetchJson<CommandResult>("/api/alerts/test-send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ruleId: rule.id, send }),
+      });
+      setTestResult(result);
+      await reload();
+    } catch (error) {
+      setTestResult({ ok: false, error: error instanceof Error ? error.message : "Alert test failed." });
+    } finally {
+      setBusyId("");
+    }
   }
 
   return (
@@ -270,12 +353,72 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
       </section>
 
       <section className="terminal-panel rounded-md p-4">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">New Alert</div>
-        <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-[1fr_1.2fr_0.8fr_1fr_1fr_0.7fr]">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Quick Global Alerts</div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {quickScopedRule("Alert me for all entry-ready opportunities", {
+            id: "global_entry_ready",
+            scope: "global",
+            type: "entry_ready",
+            min_score: 70,
+            channels: ["telegram"],
+            cooldown_minutes: 720,
+            enabled: true,
+            entry_filter: "good_or_wait",
+            source: "system",
+          })}
+          {quickScopedRule("Alert me for all TOP signals", {
+            id: "global_top_signals",
+            scope: "global",
+            type: "score_above",
+            threshold: 80,
+            channels: ["telegram"],
+            cooldown_minutes: 720,
+            enabled: true,
+            entry_filter: "avoid_overextended",
+            source: "system",
+          })}
+          {quickScopedRule("Alert me for all stop-loss breaks on watchlist", {
+            id: "watchlist_stop_loss_broken",
+            scope: "watchlist",
+            type: "stop_loss_broken",
+            channels: ["telegram"],
+            cooldown_minutes: 720,
+            enabled: true,
+            entry_filter: "any",
+            source: "system",
+          })}
+          {quickScopedRule("Alert me for all take-profit hits on watchlist", {
+            id: "watchlist_take_profit_hit",
+            scope: "watchlist",
+            type: "take_profit_hit",
+            channels: ["telegram"],
+            cooldown_minutes: 720,
+            enabled: true,
+            entry_filter: "any",
+            source: "system",
+          })}
+        </div>
+      </section>
+
+      <section className="terminal-panel rounded-md p-4">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Add Custom Alert</div>
+        <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1.2fr_0.8fr_0.8fr_1fr_1fr_0.7fr]">
           <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Symbol
-            <input className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setSymbol(event.target.value)} placeholder="AVGO" value={symbol} />
+            Scope
+            <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setScope(event.target.value)} value={scope}>
+              {SCOPES.map((item) => (
+                <option key={item.value} value={item.value}>
+                  {item.label}
+                </option>
+              ))}
+            </select>
           </label>
+          {symbolVisible ? (
+            <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Symbol
+              <input className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setSymbol(event.target.value)} placeholder="AVGO" value={symbol} />
+            </label>
+          ) : null}
           <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             Alert Type
             <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setType(event.target.value)} value={type}>
@@ -290,6 +433,12 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Threshold
               <input className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setThreshold(event.target.value)} placeholder="430" type="number" value={threshold} />
+            </label>
+          ) : null}
+          {minScoreVisible ? (
+            <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Min Score
+              <input className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setMinScore(event.target.value)} placeholder="70" type="number" value={minScore} />
             </label>
           ) : null}
           <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -361,26 +510,30 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             {busyId === "test-send" ? "Running..." : "Run Alert Evaluation"}
           </button>
         </div>
-        <table className="w-full min-w-[1060px] table-fixed border-collapse text-xs">
+        <table className="w-full min-w-[1320px] table-fixed border-collapse text-xs">
           <colgroup>
-            <col style={{ width: 135 }} />
-            <col style={{ width: 90 }} />
-            <col style={{ width: 155 }} />
-            <col style={{ width: 95 }} />
+            <col style={{ width: 85 }} />
             <col style={{ width: 130 }} />
             <col style={{ width: 150 }} />
+            <col style={{ width: 155 }} />
+            <col style={{ width: 90 }} />
+            <col style={{ width: 95 }} />
+            <col style={{ width: 150 }} />
+            <col style={{ width: 130 }} />
             <col style={{ width: 105 }} />
             <col style={{ width: 170 }} />
-            <col style={{ width: 180 }} />
+            <col style={{ width: 220 }} />
           </colgroup>
           <thead className="border-b border-slate-800 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             <tr>
-              <th className="px-2 py-1.5">Rule</th>
-              <th className="px-2 py-1.5">Symbol</th>
+              <th className="px-2 py-1.5">Enabled</th>
+              <th className="px-2 py-1.5">Scope</th>
+              <th className="px-2 py-1.5">Target</th>
               <th className="px-2 py-1.5">Type</th>
               <th className="px-2 py-1.5">Threshold</th>
-              <th className="px-2 py-1.5">Channels</th>
+              <th className="px-2 py-1.5">Min Score</th>
               <th className="px-2 py-1.5">Entry Filter</th>
+              <th className="px-2 py-1.5">Channels</th>
               <th className="px-2 py-1.5">Cooldown</th>
               <th className="px-2 py-1.5">Last Sent</th>
               <th className="px-2 py-1.5">Actions</th>
@@ -388,16 +541,26 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
           </thead>
           <tbody className="divide-y divide-slate-800/90">
             {sortedRules.map((rule) => {
-              const state = overview.state.alerts[rule.id] ?? {};
+              const ruleStates = statesForRule(rule);
+              const latestState = ruleStates
+                .map(([, state]) => state)
+                .sort((a, b) => String(a.last_sent_at ?? a.last_skipped_at ?? "").localeCompare(String(b.last_sent_at ?? b.last_skipped_at ?? "")))
+                .at(-1);
               return (
                 <tr className={rule.enabled ? "text-slate-300" : "text-slate-600"} key={rule.id}>
-                  <td className="truncate px-2 py-1.5 font-mono" title={rule.id}>
-                    {rule.id}
+                  <td className="px-2 py-1.5">
+                    <button className="rounded border border-slate-700/80 px-2 py-1 text-[11px] hover:border-sky-400/50 hover:text-sky-200" disabled={busyId === rule.id} onClick={() => patchRule(rule, { enabled: !rule.enabled })} type="button">
+                      {rule.enabled ? "On" : "Off"}
+                    </button>
                   </td>
-                  <td className="px-2 py-1.5 font-mono text-sky-200">{rule.symbol ?? "GLOBAL"}</td>
+                  <td className="truncate px-2 py-1.5" title={rule.id}>
+                    <div>{scopeLabel(rule.scope)}</div>
+                    <div className="truncate font-mono text-[10px] text-slate-500">{rule.id}</div>
+                  </td>
+                  <td className="px-2 py-1.5 font-mono text-sky-200">{rule.scope === "watchlist" ? "WATCHLIST" : rule.scope === "global" ? "GLOBAL" : rule.symbol ?? "N/A"}</td>
                   <td className="truncate px-2 py-1.5">{typeLabel(rule.type)}</td>
                   <td className="px-2 py-1.5 font-mono">{rule.threshold ?? "N/A"}</td>
-                  <td className="px-2 py-1.5">{rule.channels.join(", ")}</td>
+                  <td className="px-2 py-1.5 font-mono">{rule.min_score ?? "N/A"}</td>
                   <td className="px-2 py-1.5">
                     <select
                       className="w-full rounded border border-slate-700/80 bg-slate-950/70 px-1.5 py-1 text-[11px] text-slate-100 outline-none focus:border-sky-400/60"
@@ -412,15 +575,20 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
                       ))}
                     </select>
                   </td>
+                  <td className="px-2 py-1.5">{rule.channels.join(", ")}</td>
                   <td className="px-2 py-1.5 font-mono">{rule.cooldown_minutes}</td>
-                  <td className="truncate px-2 py-1.5" title={state.last_skip_reason ?? state.last_status ?? ""}>
-                    {formatDate(state.last_sent_at)}
-                    {state.last_entry_status ? <div className="truncate text-[10px] text-slate-500">{state.last_entry_status}</div> : null}
+                  <td className="truncate px-2 py-1.5" title={latestState?.last_skip_reason ?? latestState?.last_status ?? ""}>
+                    {formatDate(latestSentForRule(rule))}
+                    {latestState?.last_entry_status ? <div className="truncate text-[10px] text-slate-500">{latestState.last_entry_status}</div> : null}
+                    {ruleStates.length ? <div className="truncate text-[10px] text-slate-500">{ruleStates.length} symbol state{ruleStates.length === 1 ? "" : "s"}</div> : null}
                   </td>
                   <td className="px-2 py-1.5">
                     <div className="flex flex-wrap gap-1.5">
-                      <button className="rounded border border-slate-700/80 px-2 py-1 text-[11px] hover:border-sky-400/50 hover:text-sky-200" disabled={busyId === rule.id} onClick={() => patchRule(rule, { enabled: !rule.enabled })} type="button">
-                        {rule.enabled ? "Disable" : "Enable"}
+                      <button className="rounded border border-slate-700/80 px-2 py-1 text-[11px] hover:border-sky-400/50 hover:text-sky-200" disabled={busyId === `test_${rule.id}`} onClick={() => testRule(rule, false)} type="button">
+                        Test
+                      </button>
+                      <button className="rounded border border-sky-400/30 px-2 py-1 text-[11px] text-sky-200 hover:bg-sky-400/10" disabled={busyId === `test_${rule.id}`} onClick={() => testRule(rule, true)} type="button">
+                        Test Send
                       </button>
                       <button className="rounded border border-rose-400/30 px-2 py-1 text-[11px] text-rose-200 hover:bg-rose-400/10" disabled={busyId === rule.id} onClick={() => deleteRule(rule)} type="button">
                         Remove

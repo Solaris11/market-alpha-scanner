@@ -30,13 +30,16 @@ VALID_ALERT_TYPES = {
     "rating_changed",
     "action_changed",
     "new_top_candidate",
+    "entry_ready",
 }
 VALID_CHANNELS = {"telegram", "email"}
 VALID_ENTRY_FILTERS = {"any", "good_only", "good_or_wait", "avoid_overextended"}
+VALID_SCOPES = {"symbol", "watchlist", "global"}
 DEFAULT_DASHBOARD_URL = "http://192.168.0.125:3001"
 DEFAULT_RULES: list[dict[str, Any]] = [
     {
         "id": "nvda_buy_zone",
+        "scope": "symbol",
         "symbol": "NVDA",
         "type": "buy_zone_hit",
         "channels": ["telegram"],
@@ -47,6 +50,7 @@ DEFAULT_RULES: list[dict[str, Any]] = [
     },
     {
         "id": "avgo_price_above_430",
+        "scope": "symbol",
         "symbol": "AVGO",
         "type": "price_above",
         "threshold": 430,
@@ -58,6 +62,7 @@ DEFAULT_RULES: list[dict[str, Any]] = [
     },
     {
         "id": "stop_broken",
+        "scope": "symbol",
         "symbol": "MSFT",
         "type": "stop_loss_broken",
         "channels": ["telegram"],
@@ -68,6 +73,7 @@ DEFAULT_RULES: list[dict[str, Any]] = [
     },
     {
         "id": "score_above_75",
+        "scope": "symbol",
         "symbol": "TSM",
         "type": "score_above",
         "threshold": 75,
@@ -264,6 +270,13 @@ def _rule_symbol(rule: dict[str, Any]) -> str:
     return _clean_text(rule.get("symbol"), "").upper().strip()
 
 
+def _rule_scope(rule: dict[str, Any]) -> str:
+    scope = _clean_text(rule.get("scope"), "").lower().strip()
+    if scope in VALID_SCOPES:
+        return scope
+    return "symbol" if _rule_symbol(rule) else "global"
+
+
 def _rule_type(rule: dict[str, Any]) -> str:
     return _clean_text(rule.get("type"), "").lower().strip()
 
@@ -295,6 +308,8 @@ def _entry_filter(rule: dict[str, Any]) -> str:
     alert_type = _rule_type(rule)
     if alert_type == "score_above":
         return "avoid_overextended"
+    if alert_type == "entry_ready":
+        return "good_or_wait"
     if alert_type in {"stop_loss_broken", "take_profit_hit"}:
         return "any"
     return "any"
@@ -305,6 +320,19 @@ def _cooldown_minutes(rule: dict[str, Any]) -> int:
     if value is None:
         return 1440
     return max(0, int(value))
+
+
+def _min_score(rule: dict[str, Any]) -> float | None:
+    configured = _numeric(rule.get("min_score"))
+    if configured is not None:
+        return configured
+    if _rule_type(rule) == "entry_ready" and _rule_scope(rule) == "global":
+        return 70.0
+    return None
+
+
+def _state_key(rule_id: str, symbol: str) -> str:
+    return f"{rule_id}:{symbol.upper()}"
 
 
 def _normalize_df(df: pd.DataFrame) -> pd.DataFrame:
@@ -334,6 +362,10 @@ def _action_for_row(row: dict[str, Any] | None) -> str:
         if value:
             return value
     return "N/A"
+
+
+def _normalized_action(row: dict[str, Any] | None) -> str:
+    return re.sub(r"\s+", " ", _action_for_row(row).strip().upper())
 
 
 def _company_for_row(row: dict[str, Any] | None) -> str:
@@ -400,6 +432,15 @@ def _take_profit_zone(row: dict[str, Any] | None) -> tuple[float | None, float |
     return _range_from_columns(row, "take_profit_low", "take_profit_high", ("take_profit_zone", "take_profit", "target", "upside_target"))
 
 
+def _in_or_near_buy_zone(row: dict[str, Any] | None) -> bool:
+    price = _price(row)
+    low, high = _buy_zone(row)
+    if price is None or low is None or high is None:
+        return False
+    lower, upper = sorted((low, high))
+    return lower <= price <= upper or (upper < price <= upper * 1.02)
+
+
 def _dashboard_url(symbol: str) -> str:
     base = os.getenv("ALERT_DASHBOARD_URL", DEFAULT_DASHBOARD_URL).rstrip("/")
     return f"{base}/symbol/{symbol}"
@@ -418,6 +459,7 @@ def _condition_label(alert_type: str) -> str:
         "rating_changed": "Rating changed",
         "action_changed": "Action changed",
         "new_top_candidate": "New top candidate",
+        "entry_ready": "Entry ready",
     }
     return labels.get(alert_type, alert_type)
 
@@ -425,6 +467,15 @@ def _condition_label(alert_type: str) -> str:
 def _alert_type_label(rule: dict[str, Any]) -> str:
     source = "System" if _rule_source(rule) == "system" else "User"
     return f"{source} {_condition_label(_rule_type(rule))} Alert"
+
+
+def _scope_label(rule: dict[str, Any]) -> str:
+    scope = _rule_scope(rule)
+    if scope == "watchlist":
+        return "Watchlist"
+    if scope == "global":
+        return "Global Scanner Universe"
+    return "Single Symbol"
 
 
 def _entry_status(row: dict[str, Any] | None) -> str:
@@ -459,6 +510,54 @@ def _entry_filter_allows(rule: dict[str, Any], entry_status: str) -> bool:
     return True
 
 
+def _watchlist_path(outdir: Path) -> Path:
+    return outdir / "watchlist.json"
+
+
+def load_watchlist_symbols(outdir: Path) -> set[str]:
+    path = _watchlist_path(outdir)
+    if not path.exists():
+        return set()
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return set()
+    if isinstance(payload, list):
+        raw_symbols = payload
+    elif isinstance(payload, dict) and isinstance(payload.get("symbols"), list):
+        raw_symbols = payload["symbols"]
+    else:
+        raw_symbols = []
+    return {_clean_text(symbol, "").upper() for symbol in raw_symbols if _clean_text(symbol, "")}
+
+
+def _candidate_rows_for_rule(
+    rule: dict[str, Any],
+    rows_by_symbol: dict[str, dict[str, Any]],
+    top_rows_by_symbol: dict[str, dict[str, Any]],
+    watchlist_symbols: set[str],
+) -> list[dict[str, Any]]:
+    scope = _rule_scope(rule)
+    alert_type = _rule_type(rule)
+    symbol = _rule_symbol(rule)
+
+    if scope == "symbol":
+        row = rows_by_symbol.get(symbol) or top_rows_by_symbol.get(symbol)
+        return [row] if row is not None else []
+
+    if scope == "watchlist":
+        symbols = sorted(watchlist_symbols)
+    else:
+        symbols = sorted(rows_by_symbol)
+
+    rows: list[dict[str, Any]] = []
+    for candidate_symbol in symbols:
+        row = rows_by_symbol.get(candidate_symbol) or top_rows_by_symbol.get(candidate_symbol)
+        if row is not None:
+            rows.append(row)
+    return rows
+
+
 def _trigger_text(rule: dict[str, Any]) -> str:
     alert_type = _rule_type(rule)
     label = _condition_label(alert_type)
@@ -467,6 +566,9 @@ def _trigger_text(rule: dict[str, Any]) -> str:
     if alert_type == "score_changed_by":
         threshold = _numeric(rule.get("threshold"))
         return f"{label} by {_format_level(threshold if threshold is not None else 2)}+"
+    if alert_type == "entry_ready":
+        min_score = _min_score(rule)
+        return f"{label} >= {_format_level(min_score)} score" if min_score is not None else label
     return label
 
 
@@ -514,25 +616,26 @@ def _risk_reward_lines(row: dict[str, Any]) -> list[str]:
 
 def _evaluate_rule(
     rule: dict[str, Any],
-    rows_by_symbol: dict[str, dict[str, Any]],
+    row: dict[str, Any] | None,
     top_symbols: set[str],
-    top_rows_by_symbol: dict[str, dict[str, Any]],
     rule_state: dict[str, Any],
 ) -> AlertEvaluation:
     alert_type = _rule_type(rule)
-    symbol = _rule_symbol(rule)
-    row = rows_by_symbol.get(symbol) if symbol else None
+    symbol = _clean_text((row or {}).get("symbol"), _rule_symbol(rule)).upper()
 
     if alert_type not in VALID_ALERT_TYPES:
         return AlertEvaluation(False, "", reason=f"unsupported alert type {alert_type}")
-    if alert_type != "new_top_candidate" and not symbol:
+    if not symbol:
         return AlertEvaluation(False, "", reason="missing symbol")
-    if alert_type != "new_top_candidate" and row is None:
+    if row is None:
         return AlertEvaluation(False, "", reason=f"{symbol} not found in full_ranking.csv")
 
     price = _price(row)
     score = _score(row)
     threshold = _numeric(rule.get("threshold"))
+    min_score = _min_score(rule)
+    if min_score is not None and (score is None or score < min_score):
+        return AlertEvaluation(False, "", row, f"score below min_score {min_score:.2f}")
 
     if alert_type == "price_above":
         if price is None or threshold is None:
@@ -602,22 +705,23 @@ def _evaluate_rule(
         return AlertEvaluation(current != previous, current, row, f"action {previous} -> {current}")
 
     if alert_type == "new_top_candidate":
-        if symbol:
-            current = "present" if symbol in top_symbols else "absent"
-            previous = _clean_text(rule_state.get("last_observed_value") or rule_state.get("last_trigger_value"), "")
-            candidate_row = top_rows_by_symbol.get(symbol) or rows_by_symbol.get(symbol)
-            if not previous:
-                return AlertEvaluation(False, current, candidate_row, "baseline top-candidate state recorded", baseline_value=current)
-            return AlertEvaluation(previous != "present" and current == "present", current, candidate_row, f"{symbol} appeared in top_candidates.csv")
+        current = "present" if symbol in top_symbols else "absent"
+        previous = _clean_text(rule_state.get("last_observed_value") or rule_state.get("last_trigger_value"), "")
+        if not previous:
+            return AlertEvaluation(False, current, row, "baseline top-candidate state recorded", baseline_value=current)
+        return AlertEvaluation(previous != "present" and current == "present", current, row, f"{symbol} appeared in top_candidates.csv")
 
-        previous_symbols = set(str(rule_state.get("last_observed_value") or "").split(",")) - {""}
-        if not previous_symbols:
-            return AlertEvaluation(False, ",".join(sorted(top_symbols)), None, "baseline top candidates recorded", baseline_value=",".join(sorted(top_symbols)))
-        new_symbols = sorted(top_symbols - previous_symbols)
-        if not new_symbols:
-            return AlertEvaluation(False, ",".join(sorted(top_symbols)), None, "no new top candidates", baseline_value=",".join(sorted(top_symbols)))
-        first_new = new_symbols[0]
-        return AlertEvaluation(True, first_new, top_rows_by_symbol.get(first_new) or rows_by_symbol.get(first_new), f"{first_new} appeared in top_candidates.csv")
+    if alert_type == "entry_ready":
+        rating = _clean_text(row.get("rating"), "").upper()
+        action = _normalized_action(row)
+        entry_status = _entry_status(row)
+        triggered = (
+            rating in {"TOP", "ACTIONABLE"}
+            and action in {"STRONG BUY", "BUY"}
+            and entry_status in {"GOOD ENTRY", "WAIT PULLBACK"}
+            and _in_or_near_buy_zone(row)
+        )
+        return AlertEvaluation(triggered, f"{_format_number(score)}|{_format_number(price)}", row, "entry-ready opportunity")
 
     return AlertEvaluation(False, "", row, "not triggered")
 
@@ -635,6 +739,7 @@ def _build_message(rule: dict[str, Any], evaluation: AlertEvaluation) -> str:
         "🚨 Market Alpha Alert",
         "",
         symbol_line,
+        f"🌐 Scope: {_scope_label(rule)}",
         f"🔥 Trigger: {_trigger_text(rule)}",
         f"🎯 Entry Status: {entry_status}",
         "",
@@ -734,6 +839,7 @@ def evaluate_alert_rules(
     outdir: Path,
     alert_rules_path: str | None = None,
     alert_state_path: str | None = None,
+    only_rule_id: str | None = None,
     send: bool = True,
 ) -> AlertSummary:
     full_ranking = _normalize_df(full_ranking)
@@ -746,6 +852,7 @@ def evaluate_alert_rules(
     rows_by_symbol = _row_map(full_ranking)
     top_rows_by_symbol = _row_map(top_candidates)
     top_symbols = set(top_rows_by_symbol)
+    watchlist_symbols = load_watchlist_symbols(outdir)
     now = datetime.now(timezone.utc)
 
     triggered_count = 0
@@ -756,14 +863,12 @@ def evaluate_alert_rules(
 
     for rule in rules:
         rule_id = _rule_id(rule)
+        if only_rule_id and rule_id != only_rule_id:
+            continue
         if not rule_id:
             skipped_count += 1
             warnings.append("Skipping alert rule with missing id.")
             continue
-        rule_state = state_alerts.setdefault(rule_id, {})
-        if not isinstance(rule_state, dict):
-            rule_state = {}
-            state_alerts[rule_id] = rule_state
         if not _rule_enabled(rule):
             skipped_count += 1
             continue
@@ -774,90 +879,114 @@ def evaluate_alert_rules(
             warnings.append(f"[{rule_id}] no valid channels configured.")
             continue
 
-        evaluation = _evaluate_rule(rule, rows_by_symbol, top_symbols, top_rows_by_symbol, rule_state)
-        if evaluation.baseline_value is not None:
-            rule_state["last_observed_value"] = evaluation.baseline_value
-            rule_state["last_checked_at"] = now.isoformat()
-            state_changed = True
-        if not evaluation.triggered:
-            continue
-
-        triggered_count += 1
-        entry_status = _entry_status(evaluation.row)
-        if not _entry_filter_allows(rule, entry_status):
-            symbol = _clean_text((evaluation.row or {}).get("symbol"), _rule_symbol(rule) or "N/A").upper()
+        candidate_rows = _candidate_rows_for_rule(rule, rows_by_symbol, top_rows_by_symbol, watchlist_symbols)
+        if not candidate_rows:
             skipped_count += 1
-            rule_state.update(
-                {
-                    "alert_id": rule_id,
-                    "last_skipped_at": now.isoformat(),
-                    "last_skip_reason": f"entry_filter:{_entry_filter(rule)}",
-                    "last_entry_status": entry_status,
-                    "last_status": "suppressed",
-                }
-            )
-            state_changed = True
-            print(f"[alerts] suppressed by entry_filter: {symbol} {rule_id} entry_status={entry_status}")
+            warnings.append(f"[{rule_id}] no symbols matched scope={_rule_scope(rule)}.")
             continue
 
-        message = _build_message(rule, evaluation)
-        message_hash = _message_hash(message)
+        for candidate_row in candidate_rows:
+            symbol = _clean_text(candidate_row.get("symbol"), _rule_symbol(rule)).upper()
+            if not symbol:
+                continue
+            state_key = _state_key(rule_id, symbol)
+            existing_state = state_alerts.get(state_key)
+            rule_state = existing_state if isinstance(existing_state, dict) else {}
+            if not isinstance(rule_state, dict):
+                rule_state = {}
 
-        if _within_cooldown(rule, rule_state, now):
-            skipped_count += 1
-            rule_state["last_skipped_at"] = now.isoformat()
-            rule_state["last_skip_reason"] = "cooldown"
-            state_changed = True
-            print(f"[alerts] Skipping {rule_id}: cooldown active.")
-            continue
+            evaluation = _evaluate_rule(rule, candidate_row, top_symbols, rule_state)
+            if evaluation.baseline_value is not None:
+                state_alerts[state_key] = rule_state
+                rule_state["alert_id"] = rule_id
+                rule_state["symbol"] = symbol
+                rule_state["last_observed_value"] = evaluation.baseline_value
+                rule_state["last_checked_at"] = now.isoformat()
+                state_changed = True
+            if not evaluation.triggered:
+                continue
 
-        if not send:
-            skipped_count += 1
-            print(f"[alerts] Rule {rule_id} triggered, send disabled.")
-            continue
+            state_alerts[state_key] = rule_state
+            triggered_count += 1
+            entry_status = _entry_status(evaluation.row)
+            if not _entry_filter_allows(rule, entry_status):
+                skipped_count += 1
+                rule_state.update(
+                    {
+                        "alert_id": rule_id,
+                        "symbol": symbol,
+                        "last_skipped_at": now.isoformat(),
+                        "last_skip_reason": f"entry_filter:{_entry_filter(rule)}",
+                        "last_entry_status": entry_status,
+                        "last_status": "suppressed",
+                    }
+                )
+                state_changed = True
+                print(f"[alerts] suppressed by entry_filter: {symbol} {rule_id} entry_status={entry_status}")
+                continue
 
-        channel_results: dict[str, str] = {}
-        sent_any = False
-        for channel in channels:
-            if channel == "telegram":
-                ok, detail = _send_telegram(message)
-            elif channel == "email":
-                ok, detail = _send_email(message, f"Market Alpha Alert: {_rule_symbol(rule) or _condition_label(_rule_type(rule))}")
+            message = _build_message(rule, evaluation)
+            message_hash = _message_hash(message)
+
+            if _within_cooldown(rule, rule_state, now):
+                skipped_count += 1
+                rule_state["alert_id"] = rule_id
+                rule_state["symbol"] = symbol
+                rule_state["last_skipped_at"] = now.isoformat()
+                rule_state["last_skip_reason"] = "cooldown"
+                state_changed = True
+                print(f"[alerts] Skipping {rule_id}:{symbol}: cooldown active.")
+                continue
+
+            if not send:
+                skipped_count += 1
+                print(f"[alerts] Rule {rule_id}:{symbol} triggered, send disabled.")
+                continue
+
+            channel_results: dict[str, str] = {}
+            sent_any = False
+            for channel in channels:
+                if channel == "telegram":
+                    ok, detail = _send_telegram(message)
+                elif channel == "email":
+                    ok, detail = _send_email(message, f"Market Alpha Alert: {symbol}")
+                else:
+                    ok, detail = False, f"unsupported channel {channel}"
+                channel_results[channel] = detail
+                if ok:
+                    sent_any = True
+                else:
+                    warnings.append(f"[{rule_id}:{symbol}] {detail}")
+                    print(f"[alerts] {detail}")
+
+            if sent_any:
+                sent_count += 1
+                rule_state.update(
+                    {
+                        "alert_id": rule_id,
+                        "symbol": symbol,
+                        "last_sent_at": now.isoformat(),
+                        "last_trigger_value": evaluation.trigger_value,
+                        "last_observed_value": evaluation.trigger_value,
+                        "last_message_hash": message_hash,
+                        "last_channel_results": channel_results,
+                        "last_status": "sent",
+                    }
+                )
+                state_changed = True
             else:
-                ok, detail = False, f"unsupported channel {channel}"
-            channel_results[channel] = detail
-            if ok:
-                sent_any = True
-            else:
-                warnings.append(f"[{rule_id}] {detail}")
-                print(f"[alerts] {detail}")
-
-        if sent_any:
-            sent_count += 1
-            rule_state.update(
-                {
-                    "alert_id": rule_id,
-                    "last_sent_at": now.isoformat(),
-                    "last_trigger_value": evaluation.trigger_value,
-                    "last_observed_value": evaluation.trigger_value,
-                    "last_message_hash": message_hash,
-                    "last_channel_results": channel_results,
-                    "last_status": "sent",
-                }
-            )
-            state_changed = True
-        else:
-            skipped_count += 1
-            rule_state.update(
-                {
-                    "alert_id": rule_id,
-                    "last_skipped_at": now.isoformat(),
-                    "last_skip_reason": "no channel delivered",
-                    "last_channel_results": channel_results,
-                    "last_status": "skipped",
-                }
-            )
-            state_changed = True
+                skipped_count += 1
+                rule_state.update(
+                    {
+                        "alert_id": rule_id,
+                        "symbol": symbol,
+                        "last_skipped_at": now.isoformat(),
+                        "last_skip_reason": "no channel delivered",
+                        "last_channel_results": channel_results,
+                        "last_status": "skipped",
+                    }
+                )
+                state_changed = True
 
     if state_changed:
         save_alert_state(state_file, state)

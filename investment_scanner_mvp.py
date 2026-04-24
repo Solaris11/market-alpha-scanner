@@ -37,6 +37,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--alerts-only", action="store_true", help="Evaluate alerts from existing scanner_output CSVs without running a scan")
     parser.add_argument("--alert-rules-path", help="Optional path to alert_rules.json")
     parser.add_argument("--alert-state-path", help="Optional path to alert_state.json")
+    parser.add_argument("--alert-rule-id", help="Evaluate only one alert rule id")
     parser.set_defaults(save_history=True)
     return parser
 
@@ -59,6 +60,7 @@ def main() -> None:
             outdir,
             alert_rules_path=args.alert_rules_path,
             alert_state_path=args.alert_state_path,
+            only_rule_id=args.alert_rule_id,
             send=args.send_alerts,
         )
         return
@@ -119,6 +121,7 @@ def main() -> None:
             outdir,
             alert_rules_path=args.alert_rules_path,
             alert_state_path=args.alert_state_path,
+            only_rule_id=args.alert_rule_id,
             send=True,
         )
 
