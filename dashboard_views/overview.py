@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from html import escape
 from pathlib import Path
 
 import pandas as pd
@@ -10,6 +11,7 @@ from .shared import (
     build_count_table,
     filter_scan_df,
     format_number,
+    get_symbol_display_name,
     load_watchlist,
     open_symbol_detail,
     render_action_badge,
@@ -170,13 +172,16 @@ def render_top_candidate_cards(top_df: pd.DataFrame) -> None:
         upside_driver = str(row.get("upside_driver", "No driver listed")).strip() or "No driver listed"
         key_risk = str(row.get("key_risk", "No key risk listed")).strip() or "No key risk listed"
         composite_action = row.get("composite_action", row.get("long_action", "N/A"))
+        display_name = get_symbol_display_name(row)
         subtitle = f"{asset_type} • {sector} • {setup_type}"
+        display_name_html = f'<div class="scanner-symbol-name">{escape(display_name)}</div>' if display_name else ""
 
         with columns[index % 3]:
             with st.container(border=True):
                 st.markdown(
                     (
                         f'<div class="scanner-symbol">{symbol}</div>'
+                        f"{display_name_html}"
                         f'<div class="scanner-symbol-subtitle">{subtitle}</div>'
                         '<div class="scanner-badge-row">'
                         f"{render_rating_badge(row.get('rating', 'N/A'))}"
@@ -223,6 +228,9 @@ def render_clickable_top_candidate_list(top_df: pd.DataFrame) -> None:
             row_columns = st.columns([0.9, 1.0, 1.35, 0.8, 0.9, 0.9, 1.2], gap="small")
             if row_columns[0].button(symbol, key=f"overview_top_candidate_row_open_{index}_{symbol}", use_container_width=True):
                 open_symbol_detail(symbol)
+            display_name = get_symbol_display_name(row)
+            if display_name:
+                row_columns[0].caption(display_name)
             row_columns[1].write(str(row.get("asset_type", "N/A")))
             row_columns[2].write(str(row.get("sector", "N/A")))
             row_columns[3].write(format_number(row.get("price")))
@@ -309,6 +317,9 @@ def render_clickable_ranking_list(ordered: pd.DataFrame) -> None:
             row_columns = st.columns([0.9, 1.0, 1.35, 0.8, 0.9, 0.9, 1.2], gap="small")
             if row_columns[0].button(symbol, key=f"overview_rank_row_open_{index}_{symbol}", use_container_width=True):
                 open_symbol_detail(symbol)
+            display_name = get_symbol_display_name(row)
+            if display_name:
+                row_columns[0].caption(display_name)
             row_columns[1].write(str(row.get("asset_type", "N/A")))
             row_columns[2].write(str(row.get("sector", "N/A")))
             row_columns[3].write(format_number(row.get("price")))

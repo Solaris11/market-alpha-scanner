@@ -31,6 +31,17 @@ RATING_STATUS_ORDER = ["TOP", "ACTIONABLE", "WATCH", "PASS"]
 HISTORY_TIMELINE_COLUMNS = ["timestamp_utc", "price", "final_score", "rating"]
 PERFORMANCE_METRIC_COLUMNS = ["avg_return", "median_return", "hit_rate", "avg_negative_return", "min_return"]
 PERCENT_COLUMNS = {"avg_return", "median_return", "hit_rate", "avg_negative_return", "min_return"}
+DISPLAY_NAME_FIELDS = (
+    "company_name",
+    "company",
+    "name",
+    "long_name",
+    "short_name",
+    "security_name",
+    "display_name",
+    "longName",
+    "shortName",
+)
 
 POSITIVE_COLOR = "#22c55e"
 NEGATIVE_COLOR = "#ef4444"
@@ -167,11 +178,15 @@ THEME_CSS = """
         text-transform: uppercase;
         letter-spacing: 0.08em;
         margin-bottom: 0.55rem;
+        overflow-wrap: normal;
+        word-break: keep-all;
     }
     .scanner-info-value {
         color: #f8fafc;
         font-size: 1.2rem;
         font-weight: 700;
+        overflow-wrap: normal;
+        word-break: keep-all;
     }
     .scanner-info-meta {
         color: #94a3b8;
@@ -183,6 +198,12 @@ THEME_CSS = """
         font-size: 2rem;
         color: #f8fafc;
         margin: 0;
+    }
+    .scanner-symbol-name {
+        color: #e2e8f0;
+        margin-top: 0.22rem;
+        font-size: 1.02rem;
+        font-weight: 600;
     }
     .scanner-symbol-subtitle {
         color: #94a3b8;
@@ -470,12 +491,14 @@ def render_info_card(label: str, value: object, meta: str = "", tone: str = "neu
     )
 
 
-def render_symbol_header(symbol: str, subtitle: str, badges: list[str]) -> None:
+def render_symbol_header(symbol: str, subtitle: str, badges: list[str], display_name: str = "") -> None:
     badge_row = "".join(badges)
+    name_html = f'<div class="scanner-symbol-name">{escape(display_name)}</div>' if display_name else ""
     st.markdown(
         (
             '<div class="scanner-panel">'
             f'<h1 class="scanner-symbol">{escape(symbol)}</h1>'
+            f"{name_html}"
             f'<div class="scanner-symbol-subtitle">{escape(subtitle)}</div>'
             f'<div class="scanner-badge-row">{badge_row}</div>'
             "</div>"
@@ -536,6 +559,56 @@ def selected_symbol_index(symbols: list[str]) -> int:
 
 def normalize_symbol(symbol: object) -> str:
     return str(symbol).strip().upper()
+
+
+def _clean_display_name(value: object, symbol: str = "") -> str:
+    if value is None:
+        return ""
+    try:
+        if pd.isna(value):
+            return ""
+    except (TypeError, ValueError):
+        pass
+    text = str(value).strip()
+    if not text or text.lower() in {"nan", "none", "n/a", "na", "unknown"}:
+        return ""
+    if symbol and text.upper() == symbol.upper():
+        return ""
+    return text
+
+
+def _lookup_display_name(source: object, symbol: str = "") -> str:
+    if source is None:
+        return ""
+    for field in DISPLAY_NAME_FIELDS:
+        value = source.get(field) if hasattr(source, "get") else None
+        cleaned = _clean_display_name(value, symbol)
+        if cleaned:
+            return cleaned
+    return ""
+
+
+def get_symbol_display_name(row: object, summary_payload: Mapping[str, object] | None = None) -> str:
+    symbol_value = row.get("symbol") if hasattr(row, "get") else ""
+    symbol = normalize_symbol(symbol_value)
+    row_name = _lookup_display_name(row, symbol)
+    if row_name:
+        return row_name
+
+    if not summary_payload:
+        return ""
+
+    top_level_name = _lookup_display_name(summary_payload, symbol)
+    if top_level_name:
+        return top_level_name
+
+    for key in ("fundamentals", "quote", "profile", "info", "metadata"):
+        nested = summary_payload.get(key)
+        if isinstance(nested, Mapping):
+            nested_name = _lookup_display_name(nested, symbol)
+            if nested_name:
+                return nested_name
+    return ""
 
 
 def open_symbol_detail(symbol: str) -> None:

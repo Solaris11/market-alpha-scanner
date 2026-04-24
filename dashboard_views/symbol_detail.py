@@ -14,6 +14,7 @@ from .shared import (
     format_billions,
     format_number,
     format_percent,
+    get_symbol_display_name,
     go_to_overview,
     load_watchlist,
     normalize_symbol,
@@ -487,8 +488,10 @@ def render_symbol_detail_header(
     rank_context: dict[str, object],
     trade_plan: dict[str, object],
     confidence: dict[str, object],
+    summary_payload: Mapping[str, object] | None = None,
 ) -> None:
     symbol = str(current_row.get("symbol", "N/A"))
+    display_name = get_symbol_display_name(current_row, summary_payload)
     subtitle_bits = [
         str(current_row.get("asset_type", "Unknown")),
         str(current_row.get("sector", "Unknown")),
@@ -503,6 +506,7 @@ def render_symbol_detail_header(
             render_score_badge(current_row.get("final_score")),
             render_score_badge(rank_context.get("percentile"), label="Pct"),
         ],
+        display_name=display_name,
     )
 
     rank = rank_context.get("rank")
@@ -583,7 +587,6 @@ def render_watchlist_actions(symbol: str) -> None:
 
 def render_price_context_panel(trade_plan: dict[str, object]) -> None:
     render_section_heading("Trade Plan", "Price location, target path, and basic risk framing.", eyebrow="Decision Support")
-    columns = st.columns(5)
     cards = [
         ("Current Price", format_number(trade_plan.get("current_price")), "Reference price now", "accent"),
         ("Entry Zone", str(trade_plan.get("entry_label", "N/A")), str(trade_plan.get("entry_context", "")), "neutral"),
@@ -591,9 +594,11 @@ def render_price_context_panel(trade_plan: dict[str, object]) -> None:
         ("Upside Target", format_number(trade_plan.get("upside_target")), str(trade_plan.get("upside_target_label", "")), "positive"),
         ("Risk / Reward", format_number(trade_plan.get("risk_reward")), "Simple target-to-risk ratio", "positive"),
     ]
-    for column, (label, value, meta, tone) in zip(columns, cards):
-        with column:
-            st.markdown(render_info_card(label, value, meta, tone), unsafe_allow_html=True)
+    for row_cards, column_count in ((cards[:3], 3), (cards[3:], 2)):
+        columns = st.columns(column_count)
+        for column, (label, value, meta, tone) in zip(columns, row_cards):
+            with column:
+                st.markdown(render_info_card(label, value, meta, tone), unsafe_allow_html=True)
 
 
 def render_confidence_panel(confidence: dict[str, object]) -> None:
@@ -871,7 +876,7 @@ def render_symbol_detail_content(selected_symbol: str, full_df: pd.DataFrame, sn
     decision_summary = _build_decision_summary(current_row, trade_plan, confidence)
     reason_groups = _build_reason_groups(current_row, confidence, trade_plan)
 
-    render_symbol_detail_header(current_row, rank_context, trade_plan, confidence)
+    render_symbol_detail_header(current_row, rank_context, trade_plan, confidence, summary_payload)
     render_watchlist_actions(selected_symbol)
     render_score_stack(current_row)
     render_action_cards(current_row)
