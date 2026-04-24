@@ -80,8 +80,8 @@ def main() -> None:
             selected = "Overview / Latest Scan"
         st.session_state["current_page"] = selected
         st.session_state["page_selector"] = selected
-        if selected != "Symbol Detail":
-            st.query_params.clear()
+        # Do not clear query params here.
+        # Symbol navigation uses ?page=symbol-detail&symbol=XXX as source of truth.
 
     full_df, _ = safe_read_csv(FULL_RANKING_PATH)
     top_df, _ = safe_read_csv(TOP_CANDIDATES_PATH)
