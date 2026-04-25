@@ -14,6 +14,8 @@ from urllib import error, parse, request
 
 import pandas as pd
 
+from scanner.safety import check_data_freshness, ensure_action_column, validate_ranking_schema
+
 
 ALERTS_DIRNAME = "alerts"
 RULES_FILENAME = "alert_rules.json"
@@ -397,7 +399,7 @@ def _state_key(rule_id: str, symbol: str) -> str:
 def _normalize_df(df: pd.DataFrame) -> pd.DataFrame:
     if df.empty:
         return df.copy()
-    working = df.copy()
+    working = ensure_action_column(df)
     if "symbol" not in working.columns:
         working["symbol"] = ""
     working["symbol"] = working["symbol"].fillna("").astype(str).str.strip().str.upper()
@@ -1143,8 +1145,19 @@ def print_alert_summary(summary: AlertSummary) -> None:
 def read_alert_input_files(outdir: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
     full_path = outdir / "full_ranking.csv"
     top_path = outdir / "top_candidates.csv"
+    freshness = check_data_freshness(outdir)
+    if freshness.status == "missing":
+        print("[alerts] skipped due to missing data")
+        return pd.DataFrame(), pd.DataFrame()
+
     full_ranking = pd.read_csv(full_path) if full_path.exists() else pd.DataFrame()
     top_candidates = pd.read_csv(top_path) if top_path.exists() else pd.DataFrame()
+    if not validate_ranking_schema(full_ranking, full_path.name):
+        print("[alerts] skipped due to schema mismatch")
+        return pd.DataFrame(), pd.DataFrame()
+    if not top_candidates.empty and not validate_ranking_schema(top_candidates, top_path.name):
+        print("[alerts] skipped top candidates due to schema mismatch")
+        top_candidates = pd.DataFrame()
     return full_ranking, top_candidates
 
 

@@ -11,6 +11,7 @@ from typing import Any
 
 from .models import RankedAsset
 from .scoring import extract_detail_fundamentals
+from .safety import atomic_write_dataframe_csv
 
 
 def symbol_slug(symbol: str) -> str:
@@ -60,7 +61,7 @@ def save_symbol_detail_outputs(
         price_df = price_map.get(asset.symbol)
         if price_df is not None and not price_df.empty:
             history_df = price_df.reset_index().rename(columns={"Date": "date"})
-            history_df.to_csv(symbol_dir / "history.csv", index=False)
+            atomic_write_dataframe_csv(history_df, symbol_dir / "history.csv", index=False)
 
         payload = {
             "symbol": asset.symbol,

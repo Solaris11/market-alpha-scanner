@@ -55,6 +55,8 @@ const NUMERIC_FIELDS = new Set([
   "avg_negative_return",
   "min_return",
 ]);
+const REQUIRED_RANKING_COLUMNS = ["symbol", "price", "final_score", "rating", "action"];
+const DATA_STALE_AFTER_MS = 60 * 60 * 1000;
 
 const NAME_FIELDS = [
   "company_name",
@@ -69,6 +71,20 @@ const NAME_FIELDS = [
 ];
 
 const DEFAULT_SCANNER_OUTPUT_DIR = "/opt/apps/market-alpha-scanner/app/scanner_output";
+
+export type ScanDataHealth = {
+  status: "fresh" | "stale" | "missing" | "schema_mismatch";
+  lastUpdated: string | null;
+  ageMinutes: number | null;
+  message: string;
+  files: {
+    name: string;
+    status: "fresh" | "stale" | "missing" | "schema_mismatch";
+    lastUpdated: string | null;
+    ageMinutes: number | null;
+    missingColumns: string[];
+  }[];
+};
 
 export function scannerOutputDir() {
   if (process.env.SCANNER_OUTPUT_DIR) return process.env.SCANNER_OUTPUT_DIR;
@@ -155,14 +171,35 @@ function actionForRow(row: RankingRow) {
   return "REVIEW";
 }
 
-async function readCsv(filePath: string) {
-  if (!(await fileExists(filePath))) return [];
+async function readCsvPayload(filePath: string) {
+  if (!(await fileExists(filePath))) return { rows: [] as Record<string, unknown>[], columns: [] as string[] };
   const text = await fs.readFile(filePath, "utf8");
-  return parse(text, {
-    columns: true,
-    skip_empty_lines: true,
-    trim: true,
-  }) as Record<string, unknown>[];
+  try {
+    const headerRows = parse(text, {
+      skip_empty_lines: true,
+      to_line: 1,
+      trim: true,
+    }) as string[][];
+    const columns = headerRows[0] ?? [];
+    const rows = parse(text, {
+      columns: true,
+      skip_empty_lines: true,
+      trim: true,
+    }) as Record<string, unknown>[];
+    return { rows, columns };
+  } catch (error) {
+    console.error(`[data] failed to parse CSV ${path.basename(filePath)}:`, error);
+    return { rows: [], columns: [] };
+  }
+}
+
+async function readCsv(filePath: string) {
+  return (await readCsvPayload(filePath)).rows;
+}
+
+function missingRankingColumns(columns: string[]) {
+  const available = new Set(columns);
+  return REQUIRED_RANKING_COLUMNS.filter((column) => !available.has(column));
 }
 
 async function readScannerCsv(...parts: string[]) {
@@ -208,13 +245,70 @@ export async function readJson(filePath: string) {
 }
 
 export async function getFullRanking(): Promise<RankingRow[]> {
-  const rows = await readCsv(path.join(scannerOutputDir(), "full_ranking.csv"));
+  const filePath = path.join(scannerOutputDir(), "full_ranking.csv");
+  if (!(await fileExists(filePath))) return [];
+  const { rows, columns } = await readCsvPayload(filePath);
+  const missing = missingRankingColumns(columns);
+  if (missing.length) {
+    console.error(`[data] schema mismatch in full_ranking.csv: missing columns ${missing.join(", ")}`);
+    return [];
+  }
   return rows.map(normalizeRankingRow).filter((row) => row.symbol);
 }
 
 export async function getTopCandidates(): Promise<RankingRow[]> {
-  const rows = await readCsv(path.join(scannerOutputDir(), "top_candidates.csv"));
+  const filePath = path.join(scannerOutputDir(), "top_candidates.csv");
+  if (!(await fileExists(filePath))) return [];
+  const { rows, columns } = await readCsvPayload(filePath);
+  const missing = missingRankingColumns(columns);
+  if (missing.length) {
+    console.error(`[data] schema mismatch in top_candidates.csv: missing columns ${missing.join(", ")}`);
+    return [];
+  }
   return rows.map(normalizeRankingRow).filter((row) => row.symbol);
+}
+
+export async function getScanDataHealth(): Promise<ScanDataHealth> {
+  const now = Date.now();
+  const files = await Promise.all(
+    ["full_ranking.csv", "top_candidates.csv"].map(async (name) => {
+      const filePath = path.join(scannerOutputDir(), name);
+      if (!(await fileExists(filePath))) {
+        return { name, status: "missing" as const, lastUpdated: null, ageMinutes: null, missingColumns: [] };
+      }
+      const stat = await fs.stat(filePath);
+      const lastUpdated = stat.mtime.toISOString();
+      const ageMinutes = (now - stat.mtime.getTime()) / 60000;
+      const { columns } = await readCsvPayload(filePath);
+      const missingColumns = missingRankingColumns(columns);
+      if (missingColumns.length) {
+        return { name, status: "schema_mismatch" as const, lastUpdated, ageMinutes, missingColumns };
+      }
+      return { name, status: ageMinutes > 60 ? "stale" as const : "fresh" as const, lastUpdated, ageMinutes, missingColumns };
+    }),
+  );
+
+  const lastUpdatedValues = files.map((file) => file.lastUpdated).filter((value): value is string => Boolean(value));
+  const lastUpdated = lastUpdatedValues.length ? lastUpdatedValues.sort()[0] : null;
+  const ageValues = files.map((file) => file.ageMinutes).filter((value): value is number => typeof value === "number");
+  const ageMinutes = ageValues.length ? Math.max(...ageValues) : null;
+  const status = files.some((file) => file.status === "missing")
+    ? "missing"
+    : files.some((file) => file.status === "schema_mismatch")
+      ? "schema_mismatch"
+      : files.some((file) => file.status === "stale")
+        ? "stale"
+        : "fresh";
+  const message =
+    status === "missing"
+      ? "No scan data available"
+      : status === "schema_mismatch"
+        ? "Data schema mismatch"
+        : status === "stale"
+          ? `Data is stale (last updated ${Math.round(ageMinutes ?? 0)} minutes ago)`
+          : "Data is fresh";
+
+  return { status, lastUpdated, ageMinutes, message, files };
 }
 
 function parseSnapshotTimestamp(name: string) {

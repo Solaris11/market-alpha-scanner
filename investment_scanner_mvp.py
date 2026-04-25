@@ -9,7 +9,6 @@ CLI orchestration and output flow.
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 from alerts import evaluate_alert_rules, read_alert_input_files
@@ -18,6 +17,7 @@ from scanner.analysis import analyze_performance, compute_forward_returns
 from scanner.config import DEFAULT_NEWS_LIMIT, DEFAULT_UNIVERSE, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE
 from scanner.engine import load_universe_from_csv, scan_symbols
 from scanner.outputs import print_top_table, save_snapshot
+from scanner.safety import atomic_write_dataframe_csv, check_data_freshness, ensure_action_column, scanner_run_lock, validate_ranking_schema
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -49,11 +49,21 @@ def main() -> None:
     outdir = Path(args.outdir)
     outdir.mkdir(parents=True, exist_ok=True)
 
+    with scanner_run_lock(outdir) as lock_acquired:
+        if not lock_acquired:
+            return
+        run_with_lock(args, universe, outdir)
+
+
+def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -> None:
     if args.alerts_only:
+        if args.send_alerts and check_data_freshness(outdir).status != "fresh":
+            print("[alerts] skipped due to stale or missing data")
+            return
         full_ranking, top_candidates = read_alert_input_files(outdir)
         if full_ranking.empty:
-            print(f"No existing ranking rows found at: {outdir / 'full_ranking.csv'}")
-            sys.exit(1)
+            print(f"[alerts] No existing ranking rows found at: {outdir / 'full_ranking.csv'}")
+            return
         evaluate_alert_rules(
             full_ranking,
             top_candidates,
@@ -76,15 +86,19 @@ def main() -> None:
         min_market_cap=args.min_market_cap,
     )
     if df_rank.empty:
-        print("No results. Try lowering filters or changing the universe.")
-        sys.exit(1)
+        print("[scanner] No results. Try lowering filters or changing the universe.")
+        return
+    df_rank = ensure_action_column(df_rank)
+    if not validate_ranking_schema(df_rank, "scan results"):
+        print("[scanner] scan output schema invalid; skipping writes")
+        return
 
     full_path = outdir / "full_ranking.csv"
     top_path = outdir / "top_candidates.csv"
     history_path = None
 
-    df_rank.to_csv(full_path, index=False)
-    df_rank.head(args.top).to_csv(top_path, index=False)
+    atomic_write_dataframe_csv(df_rank, full_path, index=False)
+    atomic_write_dataframe_csv(df_rank.head(args.top), top_path, index=False)
 
     if args.save_history:
         history_path = save_snapshot(df_rank, outdir)
@@ -115,23 +129,27 @@ def main() -> None:
         print(f"Warning: database write skipped due to error: {exc}")
 
     if args.send_alerts:
-        evaluate_alert_rules(
-            df_rank,
-            df_rank.head(args.top),
-            outdir,
-            alert_rules_path=args.alert_rules_path,
-            alert_state_path=args.alert_state_path,
-            only_rule_id=args.alert_rule_id,
-            send=True,
-        )
+        if check_data_freshness(outdir).status != "fresh":
+            print("[alerts] skipped due to stale or missing data")
+        else:
+            evaluate_alert_rules(
+                df_rank,
+                df_rank.head(args.top),
+                outdir,
+                alert_rules_path=args.alert_rules_path,
+                alert_state_path=args.alert_state_path,
+                only_rule_id=args.alert_rule_id,
+                send=True,
+            )
 
     if args.run_analysis:
         history_dir = outdir / "history"
+        print("[analysis] starting forward-return analysis")
         forward_df = compute_forward_returns(str(history_dir))
         if forward_df.empty:
-            print("\nNo completed forward-return observations yet.")
+            print("\n[analysis] No completed forward-return observations yet.")
         else:
-            print(f"\nComputed forward returns for {len(forward_df)} snapshot rows.")
+            print(f"\n[analysis] Computed forward returns for {len(forward_df)} snapshot rows.")
         analyze_performance(forward_df)
 
     print("\nImportant:")

@@ -6,6 +6,8 @@ from typing import Optional
 
 import pandas as pd
 
+from .safety import atomic_write_dataframe_csv
+
 
 def print_top_table(df_rank: pd.DataFrame, top_n: int) -> None:
     if df_rank.empty:
@@ -47,5 +49,5 @@ def save_snapshot(df_rank: pd.DataFrame, outdir: Path, snapshot_time: Optional[d
 
     snapshot_df = df_rank.copy()
     snapshot_df.insert(0, "timestamp_utc", snapshot_time.isoformat())
-    snapshot_df.to_csv(snapshot_path, index=False)
+    atomic_write_dataframe_csv(snapshot_df, snapshot_path, index=False)
     return snapshot_path

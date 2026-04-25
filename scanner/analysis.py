@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 
 from .data_fetch import batch_download
+from .safety import atomic_write_dataframe_csv, validate_ranking_schema
 from .utils import safe_float, safe_str
 
 
@@ -23,6 +24,8 @@ def load_snapshot_history(history_dir: str) -> pd.DataFrame:
         except Exception:
             continue
         if df.empty:
+            continue
+        if not validate_ranking_schema(df, path.name):
             continue
         if "timestamp_utc" not in df.columns:
             inferred = path.stem.replace("scan_", "")
@@ -68,7 +71,7 @@ def compute_forward_returns(history_dir: str) -> pd.DataFrame:
 
     output_columns = ["timestamp_utc", "symbol", "asset_type", "sector", "rating", "setup_type", "final_score", "score_bucket", "forward_5d", "forward_10d", "forward_20d", "forward_60d"]
     if history_df.empty:
-        pd.DataFrame(columns=output_columns).to_csv(forward_path, index=False)
+        atomic_write_dataframe_csv(pd.DataFrame(columns=output_columns), forward_path, index=False)
         return pd.DataFrame(columns=output_columns)
 
     history_df["score_bucket"] = history_df["final_score"].apply(score_bucket_label)
@@ -123,7 +126,7 @@ def compute_forward_returns(history_dir: str) -> pd.DataFrame:
 
     forward_df = pd.DataFrame(rows, columns=output_columns)
     forward_df.attrs["analysis_dir"] = str(analysis_dir)
-    forward_df.to_csv(forward_path, index=False)
+    atomic_write_dataframe_csv(forward_df, forward_path, index=False)
     return forward_df
 
 
@@ -200,7 +203,7 @@ def analyze_performance(forward_returns_df: pd.DataFrame) -> pd.DataFrame:
         columns=["group_type", "group_value", "horizon", "count", "avg_return", "median_return", "hit_rate", "avg_negative_return", "min_return"]
     )
     summary_path = analysis_dir / "performance_summary.csv"
-    summary_df.to_csv(summary_path, index=False)
+    atomic_write_dataframe_csv(summary_df, summary_path, index=False)
 
     print_performance_section(summary_df, "rating", "PERFORMANCE BY RATING")
     print_performance_section(summary_df, "setup_type", "PERFORMANCE BY SETUP")
