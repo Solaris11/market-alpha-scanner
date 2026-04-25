@@ -2,7 +2,7 @@ import { MetricStrip } from "@/components/metric-strip";
 import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/shell";
 import { getAlertOverview } from "@/lib/alerts";
-import { getFullRanking, getHistorySummary, getTopCandidates, scannerOutputDir } from "@/lib/scanner-data";
+import { getFullRanking, getHistorySummary, getTopCandidates } from "@/lib/scanner-data";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,6 @@ export default async function ScannerPage() {
             python investment_scanner_mvp.py --save-history
           </pre>
           <RunCommandButton endpoint="/api/run-scanner" label="Run Scanner" />
-          <div className="mt-3 text-xs text-slate-500">Reading output from: {scannerOutputDir()}</div>
         </section>
 
         <section className="terminal-panel rounded-md p-4">
@@ -40,9 +39,7 @@ export default async function ScannerPage() {
           <div className="mt-2 grid gap-2 text-xs text-slate-400 md:grid-cols-3">
             <div className="rounded border border-slate-800 bg-slate-950/50 p-2">Active rules: {alerts.activeCount.toLocaleString()}</div>
             <div className="rounded border border-slate-800 bg-slate-950/50 p-2">Last sent: {alerts.lastSentAt ?? "Never"}</div>
-            <div className="truncate rounded border border-slate-800 bg-slate-950/50 p-2" title={alerts.rulesPath}>
-              Rules: {alerts.rulesPath}
-            </div>
+            <div className="rounded border border-slate-800 bg-slate-950/50 p-2">Status: {alerts.activeCount ? "Enabled" : "No active rules"}</div>
           </div>
           <pre className="mt-3 overflow-x-auto rounded border border-slate-800 bg-slate-950/80 p-3 text-xs text-slate-300">
             python investment_scanner_mvp.py --save-history --send-alerts

@@ -527,21 +527,20 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
         </div>
       ) : null}
 
-      <section className="grid gap-2 md:grid-cols-4">
-        {[
-          { label: "Active Rules", value: overview.activeCount.toLocaleString(), meta: `${overview.rules.length.toLocaleString()} total` },
-          { label: "Last Sent", value: formatDate(overview.lastSentAt), meta: "alert_state.json" },
-          { label: "Rules File", value: "alert_rules.json", meta: overview.rulesPath },
-          { label: "State File", value: "alert_state.json", meta: overview.statePath },
-        ].map((metric) => (
-          <div className="terminal-panel min-w-0 rounded-md px-3 py-2" key={metric.label}>
-            <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{metric.label}</div>
-            <div className="mt-1 truncate font-mono text-sm font-semibold text-slate-100">{metric.value}</div>
-            <div className="mt-0.5 truncate text-[11px] text-slate-500" title={metric.meta}>
-              {metric.meta}
+      <section className="terminal-panel rounded-md p-4">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Alert System Status</div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          {[
+            { label: "Active Rules", value: overview.activeCount.toLocaleString(), meta: `${overview.rules.length.toLocaleString()} total configured` },
+            { label: "Last Alert Sent", value: formatDate(overview.lastSentAt), meta: "delivery status" },
+          ].map((metric) => (
+            <div className="min-w-0 rounded border border-slate-800 bg-slate-950/50 px-3 py-2" key={metric.label}>
+              <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{metric.label}</div>
+              <div className="mt-1 truncate font-mono text-sm font-semibold text-slate-100">{metric.value}</div>
+              <div className="mt-0.5 truncate text-[11px] text-slate-500">{metric.meta}</div>
             </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </section>
 
       <section className="terminal-panel rounded-md p-4">

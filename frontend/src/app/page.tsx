@@ -1,6 +1,7 @@
 import { MetricStrip } from "@/components/metric-strip";
 import { OverviewWorkspace } from "@/components/overview-workspace";
 import { TerminalShell } from "@/components/shell";
+import { getAlertOverview } from "@/lib/alerts";
 import { formatNumber } from "@/lib/format";
 import { getFullRanking, getTopCandidates } from "@/lib/scanner-data";
 
@@ -11,7 +12,11 @@ function countBy(rows: { rating?: string }[], rating: string) {
 }
 
 export default async function DashboardOverview() {
-  const [ranking, topCandidates] = await Promise.all([getFullRanking(), getTopCandidates()]);
+  const [ranking, topCandidates, alertOverview] = await Promise.all([
+    getFullRanking(),
+    getTopCandidates(),
+    getAlertOverview().catch(() => ({ rules: [] })),
+  ]);
   const leader = ranking[0];
   const averageScore = ranking.length
     ? ranking.reduce((total, row) => total + (typeof row.final_score === "number" ? row.final_score : 0), 0) / ranking.length
@@ -29,11 +34,11 @@ export default async function DashboardOverview() {
             { label: "ACTIONABLE", value: countBy(ranking, "ACTIONABLE"), meta: "signals" },
             { label: "WATCH", value: countBy(ranking, "WATCH"), meta: "signals" },
             { label: "PASS", value: countBy(ranking, "PASS"), meta: "signals" },
-            { label: "Data", value: ranking.length ? "Live" : "Missing", meta: "scanner_output" },
+            { label: "Data", value: ranking.length ? "Live" : "Missing", meta: "latest scan" },
           ]}
         />
 
-        <OverviewWorkspace ranking={ranking} topCandidates={topCandidates} />
+        <OverviewWorkspace alertRules={alertOverview.rules} ranking={ranking} topCandidates={topCandidates} />
       </div>
     </TerminalShell>
   );
