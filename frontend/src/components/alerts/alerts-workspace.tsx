@@ -262,13 +262,17 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
   }
 
   async function deleteRule(rule: AlertRule) {
+    if (!window.confirm(`Delete alert rule "${rule.id}" permanently?`)) {
+      return;
+    }
     setBusyId(rule.id);
     setMessage("");
     try {
-      await fetchJson(`/api/alerts/rules/${encodeURIComponent(rule.id)}`, { method: "DELETE" });
+      const result = await fetchJson<{ removedStateCount?: number }>(`/api/alerts/rules/${encodeURIComponent(rule.id)}`, { method: "DELETE" });
       await reload();
+      setMessage(`Alert rule deleted.${result.removedStateCount ? ` Removed ${result.removedStateCount} state entr${result.removedStateCount === 1 ? "y" : "ies"}.` : ""}`);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Failed to remove alert rule.");
+      setMessage(error instanceof Error ? error.message : "Failed to delete alert rule.");
     } finally {
       setBusyId("");
     }
@@ -643,7 +647,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
                         Test Send
                       </button>
                       <button className="rounded border border-rose-400/30 px-2 py-1 text-[11px] text-rose-200 hover:bg-rose-400/10" disabled={busyId === rule.id} onClick={() => deleteRule(rule)} type="button">
-                        Remove
+                        Delete
                       </button>
                     </div>
                   </td>

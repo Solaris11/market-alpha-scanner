@@ -292,6 +292,13 @@ export async function readAlertState(): Promise<AlertState> {
   return state;
 }
 
+export async function writeAlertState(state: AlertState) {
+  await writeJsonAtomic(alertStatePath(), {
+    ...state,
+    updated_at_utc: new Date().toISOString(),
+  });
+}
+
 export async function getAlertOverview() {
   const [rules, state] = await Promise.all([readAlertRules(), readAlertState()]);
   const sentTimes = Object.values(state.alerts)
