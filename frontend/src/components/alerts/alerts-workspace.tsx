@@ -366,19 +366,15 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
     setMessage("");
     try {
       await syncWatchlistForRule("watchlist");
-      let created = 0;
-      let updated = 0;
       for (const rule of RECOMMENDED_ALERT_PRESET) {
-        const result = await fetchJson<{ mode?: string }>("/api/alerts/rules", {
+        await fetchJson<{ mode?: string }>("/api/alerts/rules", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(rule),
         });
-        if (result.mode === "updated") updated += 1;
-        else created += 1;
       }
       await reload();
-      setMessage(`Recommended preset installed. ${created} created, ${updated} updated.`);
+      setMessage("Recommended alert preset installed");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to install recommended alert preset.");
     } finally {
@@ -525,6 +521,12 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
 
   return (
     <div className="space-y-3">
+      {message ? (
+        <div className="terminal-panel rounded-md border-emerald-400/20 bg-emerald-400/5 px-3 py-2 text-xs text-emerald-100" role="status">
+          {message}
+        </div>
+      ) : null}
+
       <section className="grid gap-2 md:grid-cols-4">
         {[
           { label: "Active Rules", value: overview.activeCount.toLocaleString(), meta: `${overview.rules.length.toLocaleString()} total` },
@@ -543,17 +545,22 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
       </section>
 
       <section className="terminal-panel rounded-md p-4">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Quick Global Alerts</div>
-        <div className="mt-3 flex flex-wrap gap-2 border-b border-slate-800 pb-3">
-          <button className="rounded border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-400/15" disabled={Boolean(busyId)} onClick={installRecommendedPreset} type="button">
-            {busyId === "install-preset" ? "Installing..." : "Install Recommended Alert Preset"}
-          </button>
-          <button className="rounded border border-amber-400/40 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:bg-amber-400/10" disabled={Boolean(busyId)} onClick={disableAllAlerts} type="button">
-            {busyId === "disable-all" ? "Disabling..." : "Disable All Alerts"}
-          </button>
-          <button className="rounded border border-rose-400/40 px-3 py-1.5 text-xs font-semibold text-rose-100 hover:bg-rose-400/10" disabled={Boolean(busyId)} onClick={deleteAllDisabledAlerts} type="button">
-            {busyId === "delete-disabled" ? "Deleting..." : "Delete All Disabled Alerts"}
-          </button>
+        <div className="flex flex-col gap-3 border-b border-slate-800 pb-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Quick Global Alerts</div>
+            <div className="mt-1 text-xs text-slate-500">Preset controls create, disable, or clean alert rules using the alert rules API.</div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button className="rounded border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-400/15" disabled={Boolean(busyId)} onClick={installRecommendedPreset} type="button">
+              {busyId === "install-preset" ? "Installing..." : "Install Recommended Alert Preset"}
+            </button>
+            <button className="rounded border border-amber-400/40 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:bg-amber-400/10" disabled={Boolean(busyId)} onClick={disableAllAlerts} type="button">
+              {busyId === "disable-all" ? "Disabling..." : "Disable All Alerts"}
+            </button>
+            <button className="rounded border border-rose-400/40 px-3 py-1.5 text-xs font-semibold text-rose-100 hover:bg-rose-400/10" disabled={Boolean(busyId)} onClick={deleteAllDisabledAlerts} type="button">
+              {busyId === "delete-disabled" ? "Deleting..." : "Delete All Disabled Alerts"}
+            </button>
+          </div>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {quickScopedRule("Alert me for all entry-ready opportunities", {
