@@ -71,6 +71,12 @@ const NAME_FIELDS = [
 ];
 
 const DEFAULT_SCANNER_OUTPUT_DIR = "/opt/apps/market-alpha-scanner/app/scanner_output";
+const CSV_PARSE_OPTIONS = {
+  relax_column_count: true,
+  relax_quotes: true,
+  skip_empty_lines: true,
+  trim: true,
+};
 
 export type ScanDataHealth = {
   status: "fresh" | "stale" | "missing" | "schema_mismatch";
@@ -174,22 +180,29 @@ function actionForRow(row: RankingRow) {
 async function readCsvPayload(filePath: string) {
   if (!(await fileExists(filePath))) return { rows: [] as Record<string, unknown>[], columns: [] as string[] };
   const text = await fs.readFile(filePath, "utf8");
+  const fileName = path.basename(filePath);
+  let columns: string[] = [];
   try {
     const headerRows = parse(text, {
-      skip_empty_lines: true,
+      ...CSV_PARSE_OPTIONS,
       to_line: 1,
-      trim: true,
     }) as string[][];
-    const columns = headerRows[0] ?? [];
+    columns = headerRows[0] ?? [];
     const rows = parse(text, {
+      ...CSV_PARSE_OPTIONS,
       columns: true,
-      skip_empty_lines: true,
-      trim: true,
+      on_record(record, context) {
+        const invalidFieldLength = (context as { error?: { code?: string } }).error?.code === "CSV_RECORD_INCONSISTENT_COLUMNS";
+        if (invalidFieldLength) {
+          console.warn(`[data] CSV row length mismatch in ${fileName} on line ${context.lines}; extra columns ignored where possible.`);
+        }
+        return record;
+      },
     }) as Record<string, unknown>[];
     return { rows, columns };
   } catch (error) {
-    console.error(`[data] failed to parse CSV ${path.basename(filePath)}:`, error);
-    return { rows: [], columns: [] };
+    console.warn(`[data] failed to parse CSV ${fileName}; returning schema mismatch state.`, error);
+    return { rows: [], columns };
   }
 }
 
@@ -220,11 +233,22 @@ async function readScannerCsvWithState(...parts: string[]): Promise<CsvFileData>
     return { rows: [], state: "header-only", columns, lineCount: lines.length };
   }
 
-  const rows = parse(text, {
-    columns: true,
-    skip_empty_lines: true,
-    trim: true,
-  }) as Record<string, unknown>[];
+  let rows: Record<string, unknown>[] = [];
+  try {
+    rows = parse(text, {
+      ...CSV_PARSE_OPTIONS,
+      columns: true,
+      on_record(record, context) {
+        const invalidFieldLength = (context as { error?: { code?: string } }).error?.code === "CSV_RECORD_INCONSISTENT_COLUMNS";
+        if (invalidFieldLength) {
+          console.warn(`[data] CSV row length mismatch in ${path.basename(filePath)} on line ${context.lines}; extra columns ignored where possible.`);
+        }
+        return record;
+      },
+    }) as Record<string, unknown>[];
+  } catch (error) {
+    console.warn(`[data] failed to parse CSV ${path.basename(filePath)}; returning empty data state.`, error);
+  }
 
   return {
     rows: rows.map(normalizeCsvRow),
