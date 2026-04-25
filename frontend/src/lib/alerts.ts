@@ -35,6 +35,10 @@ export type AlertRule = {
   type: AlertType;
   threshold?: number;
   min_score?: number;
+  min_rating?: string;
+  allowed_actions?: string[];
+  min_risk_reward?: number;
+  max_alerts_per_run?: number;
   channels: AlertChannel[];
   enabled: boolean;
   cooldown_minutes: number;
@@ -225,6 +229,14 @@ export function sanitizeAlertRule(input: Record<string, unknown>, existing?: Ale
   }
   const rawMinScore = input.min_score ?? existing?.min_score;
   const minScore = rawMinScore === undefined || rawMinScore === null || rawMinScore === "" ? undefined : Number(rawMinScore);
+  const rawMinRiskReward = input.min_risk_reward ?? existing?.min_risk_reward;
+  const minRiskReward = rawMinRiskReward === undefined || rawMinRiskReward === null || rawMinRiskReward === "" ? undefined : Number(rawMinRiskReward);
+  const rawMaxAlerts = input.max_alerts_per_run ?? existing?.max_alerts_per_run;
+  const maxAlertsPerRun = rawMaxAlerts === undefined || rawMaxAlerts === null || rawMaxAlerts === "" ? undefined : Number(rawMaxAlerts);
+  const normalizedMaxAlerts = Number.isFinite(maxAlertsPerRun) ? Math.max(1, Math.round(maxAlertsPerRun as number)) : undefined;
+  const minRating = String(input.min_rating ?? existing?.min_rating ?? "").trim().toUpperCase() || undefined;
+  const rawAllowedActions = Array.isArray(input.allowed_actions) ? input.allowed_actions : existing?.allowed_actions ?? [];
+  const allowedActions = Array.from(new Set(rawAllowedActions.map((action) => String(action).trim().toUpperCase()).filter(Boolean)));
 
   const fallbackId = normalizeId(`${scope}_${symbol || "all"}_${typeInput}_${Date.now()}`, `alert_${Date.now()}`);
   const cooldown = Number(input.cooldown_minutes ?? existing?.cooldown_minutes ?? 1440);
@@ -238,6 +250,10 @@ export function sanitizeAlertRule(input: Record<string, unknown>, existing?: Ale
     type: typeInput,
     threshold: Number.isFinite(threshold) ? threshold : undefined,
     min_score: Number.isFinite(minScore) ? minScore : undefined,
+    min_rating: minRating,
+    allowed_actions: allowedActions.length ? allowedActions : undefined,
+    min_risk_reward: Number.isFinite(minRiskReward) ? minRiskReward : undefined,
+    max_alerts_per_run: normalizedMaxAlerts,
     channels,
     enabled: Boolean(input.enabled ?? existing?.enabled ?? true),
     cooldown_minutes: Number.isFinite(cooldown) ? Math.max(0, Math.round(cooldown)) : 1440,

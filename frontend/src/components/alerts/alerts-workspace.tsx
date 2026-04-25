@@ -9,6 +9,10 @@ type AlertRule = {
   type: string;
   threshold?: number;
   min_score?: number;
+  min_rating?: string;
+  allowed_actions?: string[];
+  min_risk_reward?: number;
+  max_alerts_per_run?: number;
   channels: string[];
   enabled: boolean;
   cooldown_minutes: number;
@@ -120,6 +124,29 @@ function defaultMinScore(type: string, scope: string) {
   return "";
 }
 
+function thresholdDisplay(rule: AlertRule) {
+  return THRESHOLD_TYPES.has(rule.type) ? String(rule.threshold ?? "—") : "system level";
+}
+
+function minScoreDisplay(rule: AlertRule) {
+  return rule.min_score === undefined ? "—" : String(rule.min_score);
+}
+
+function targetDisplay(rule: AlertRule) {
+  if (rule.scope === "watchlist") return "Watchlist";
+  if (rule.scope === "global") return "All symbols";
+  return rule.symbol || "—";
+}
+
+function compactConfig(rule: AlertRule) {
+  const parts = [];
+  if (rule.min_rating) parts.push(`Rating ${rule.min_rating}+`);
+  if (rule.allowed_actions?.length) parts.push(`Actions ${rule.allowed_actions.join(", ")}`);
+  if (rule.min_risk_reward !== undefined) parts.push(`Min R/R ${rule.min_risk_reward}`);
+  if (rule.max_alerts_per_run !== undefined) parts.push(`Max/run ${rule.max_alerts_per_run}`);
+  return parts;
+}
+
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
   const payload = (await response.json()) as T & { error?: string };
@@ -190,7 +217,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
     setMessage("");
     try {
       await syncWatchlistForRule(payload?.scope ?? scope);
-      await fetchJson("/api/alerts/rules", {
+      const result = await fetchJson<{ mode?: string }>("/api/alerts/rules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(
@@ -208,7 +235,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
           },
         ),
       });
-      setMessage("Alert rule saved.");
+      setMessage(result.mode === "updated" ? "Alert rule updated." : "Alert rule saved.");
       await reload();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to save alert rule.");
@@ -360,6 +387,10 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             scope: "global",
             type: "entry_ready",
             min_score: 70,
+            min_rating: "ACTIONABLE",
+            allowed_actions: ["STRONG BUY", "BUY"],
+            min_risk_reward: 1.5,
+            max_alerts_per_run: 5,
             channels: ["telegram"],
             cooldown_minutes: 720,
             enabled: true,
@@ -370,7 +401,9 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             id: "global_top_signals",
             scope: "global",
             type: "score_above",
-            threshold: 80,
+            threshold: 70,
+            min_rating: "TOP",
+            max_alerts_per_run: 5,
             channels: ["telegram"],
             cooldown_minutes: 720,
             enabled: true,
@@ -378,7 +411,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             source: "system",
           })}
           {quickScopedRule("Alert me for all stop-loss breaks on watchlist", {
-            id: "watchlist_stop_loss_broken",
+            id: "watchlist_stop_loss",
             scope: "watchlist",
             type: "stop_loss_broken",
             channels: ["telegram"],
@@ -388,7 +421,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             source: "system",
           })}
           {quickScopedRule("Alert me for all take-profit hits on watchlist", {
-            id: "watchlist_take_profit_hit",
+            id: "watchlist_take_profit",
             scope: "watchlist",
             type: "take_profit_hit",
             channels: ["telegram"],
@@ -510,7 +543,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             {busyId === "test-send" ? "Running..." : "Run Alert Evaluation"}
           </button>
         </div>
-        <table className="w-full min-w-[1320px] table-fixed border-collapse text-xs">
+        <table className="w-full min-w-[1460px] table-fixed border-collapse text-xs">
           <colgroup>
             <col style={{ width: 85 }} />
             <col style={{ width: 130 }} />
@@ -519,6 +552,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             <col style={{ width: 90 }} />
             <col style={{ width: 95 }} />
             <col style={{ width: 150 }} />
+            <col style={{ width: 220 }} />
             <col style={{ width: 130 }} />
             <col style={{ width: 105 }} />
             <col style={{ width: 170 }} />
@@ -533,6 +567,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
               <th className="px-2 py-1.5">Threshold</th>
               <th className="px-2 py-1.5">Min Score</th>
               <th className="px-2 py-1.5">Entry Filter</th>
+              <th className="px-2 py-1.5">Conviction</th>
               <th className="px-2 py-1.5">Channels</th>
               <th className="px-2 py-1.5">Cooldown</th>
               <th className="px-2 py-1.5">Last Sent</th>
@@ -542,6 +577,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
           <tbody className="divide-y divide-slate-800/90">
             {sortedRules.map((rule) => {
               const ruleStates = statesForRule(rule);
+              const configParts = compactConfig(rule);
               const latestState = ruleStates
                 .map(([, state]) => state)
                 .sort((a, b) => String(a.last_sent_at ?? a.last_skipped_at ?? "").localeCompare(String(b.last_sent_at ?? b.last_skipped_at ?? "")))
@@ -557,10 +593,10 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
                     <div>{scopeLabel(rule.scope)}</div>
                     <div className="truncate font-mono text-[10px] text-slate-500">{rule.id}</div>
                   </td>
-                  <td className="px-2 py-1.5 font-mono text-sky-200">{rule.scope === "watchlist" ? "WATCHLIST" : rule.scope === "global" ? "GLOBAL" : rule.symbol ?? "N/A"}</td>
+                  <td className="px-2 py-1.5 font-mono text-sky-200">{targetDisplay(rule)}</td>
                   <td className="truncate px-2 py-1.5">{typeLabel(rule.type)}</td>
-                  <td className="px-2 py-1.5 font-mono">{rule.threshold ?? "N/A"}</td>
-                  <td className="px-2 py-1.5 font-mono">{rule.min_score ?? "N/A"}</td>
+                  <td className="px-2 py-1.5 font-mono">{thresholdDisplay(rule)}</td>
+                  <td className="px-2 py-1.5 font-mono">{minScoreDisplay(rule)}</td>
                   <td className="px-2 py-1.5">
                     <select
                       className="w-full rounded border border-slate-700/80 bg-slate-950/70 px-1.5 py-1 text-[11px] text-slate-100 outline-none focus:border-sky-400/60"
@@ -575,12 +611,28 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
                       ))}
                     </select>
                   </td>
+                  <td className="px-2 py-1.5">
+                    {configParts.length ? (
+                      <details>
+                        <summary className="cursor-pointer text-sky-200">{configParts.length} fields</summary>
+                        <div className="mt-1 space-y-0.5 text-[11px] text-slate-400">
+                          {configParts.map((part) => (
+                            <div className="truncate" key={part} title={part}>
+                              {part}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    ) : (
+                      "—"
+                    )}
+                  </td>
                   <td className="px-2 py-1.5">{rule.channels.join(", ")}</td>
                   <td className="px-2 py-1.5 font-mono">{rule.cooldown_minutes}</td>
                   <td className="truncate px-2 py-1.5" title={latestState?.last_skip_reason ?? latestState?.last_status ?? ""}>
                     {formatDate(latestSentForRule(rule))}
                     {latestState?.last_entry_status ? <div className="truncate text-[10px] text-slate-500">{latestState.last_entry_status}</div> : null}
-                    {ruleStates.length ? <div className="truncate text-[10px] text-slate-500">{ruleStates.length} symbol state{ruleStates.length === 1 ? "" : "s"}</div> : null}
+                    {ruleStates.length > 0 ? <div className="truncate text-[10px] text-slate-500">{ruleStates.length} symbol state{ruleStates.length === 1 ? "" : "s"}</div> : null}
                   </td>
                   <td className="px-2 py-1.5">
                     <div className="flex flex-wrap gap-1.5">

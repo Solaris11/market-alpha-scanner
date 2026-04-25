@@ -331,6 +331,30 @@ def _min_score(rule: dict[str, Any]) -> float | None:
     return None
 
 
+def _min_rating(rule: dict[str, Any]) -> str:
+    return _clean_text(rule.get("min_rating"), "").upper()
+
+
+def _allowed_actions(rule: dict[str, Any]) -> set[str]:
+    actions = rule.get("allowed_actions")
+    if isinstance(actions, str):
+        actions = [actions]
+    if not isinstance(actions, list):
+        return set()
+    return {re.sub(r"\s+", " ", _clean_text(action, "").upper()) for action in actions if _clean_text(action, "")}
+
+
+def _min_risk_reward(rule: dict[str, Any]) -> float | None:
+    return _numeric(rule.get("min_risk_reward"))
+
+
+def _max_alerts_per_run(rule: dict[str, Any]) -> int | None:
+    value = _numeric(rule.get("max_alerts_per_run"))
+    if value is None:
+        return None
+    return max(1, int(value))
+
+
 def _state_key(rule_id: str, symbol: str) -> str:
     return f"{rule_id}:{symbol.upper()}"
 
@@ -497,6 +521,35 @@ def _entry_status(row: dict[str, Any] | None) -> str:
     return "REVIEW"
 
 
+RATING_RANK = {"PASS": 0, "WATCH": 1, "ACTIONABLE": 2, "TOP": 3}
+
+
+def _rating_meets_min(row: dict[str, Any] | None, minimum: str) -> bool:
+    if not minimum:
+        return True
+    current = _clean_text((row or {}).get("rating"), "").upper()
+    if minimum == "TOP":
+        return current == "TOP"
+    current_rank = RATING_RANK.get(current)
+    min_rank = RATING_RANK.get(minimum)
+    if current_rank is None or min_rank is None:
+        return False
+    return current_rank >= min_rank
+
+
+def _row_risk_reward(row: dict[str, Any] | None) -> float | None:
+    if not row:
+        return None
+    candidates = [
+        _numeric(row.get("conservative_risk_reward")),
+        _numeric(row.get("risk_reward")),
+        _numeric(row.get("risk_reward_low")),
+        _numeric(row.get("balanced_risk_reward_low")),
+    ]
+    values = [value for value in candidates if value is not None]
+    return max(values) if values else None
+
+
 def _entry_filter_allows(rule: dict[str, Any], entry_status: str) -> bool:
     configured_filter = _entry_filter(rule)
     if configured_filter == "any":
@@ -636,6 +689,16 @@ def _evaluate_rule(
     min_score = _min_score(rule)
     if min_score is not None and (score is None or score < min_score):
         return AlertEvaluation(False, "", row, f"score below min_score {min_score:.2f}")
+    if not _rating_meets_min(row, _min_rating(rule)):
+        return AlertEvaluation(False, "", row, f"rating below min_rating {_min_rating(rule)}")
+    allowed_actions = _allowed_actions(rule)
+    if allowed_actions and _normalized_action(row) not in allowed_actions:
+        return AlertEvaluation(False, "", row, "action not allowed")
+    min_rr = _min_risk_reward(rule)
+    if min_rr is not None:
+        rr = _row_risk_reward(row)
+        if rr is None or rr < min_rr:
+            return AlertEvaluation(False, "", row, f"risk/reward below {min_rr:.2f}")
 
     if alert_type == "price_above":
         if price is None or threshold is None:
@@ -880,12 +943,16 @@ def evaluate_alert_rules(
             continue
 
         candidate_rows = _candidate_rows_for_rule(rule, rows_by_symbol, top_rows_by_symbol, watchlist_symbols)
+        max_alerts = _max_alerts_per_run(rule)
+        sent_or_suppressed_for_rule = 0
         if not candidate_rows:
             skipped_count += 1
             warnings.append(f"[{rule_id}] no symbols matched scope={_rule_scope(rule)}.")
             continue
 
         for candidate_row in candidate_rows:
+            if max_alerts is not None and sent_or_suppressed_for_rule >= max_alerts:
+                break
             symbol = _clean_text(candidate_row.get("symbol"), _rule_symbol(rule)).upper()
             if not symbol:
                 continue
@@ -908,6 +975,7 @@ def evaluate_alert_rules(
 
             state_alerts[state_key] = rule_state
             triggered_count += 1
+            sent_or_suppressed_for_rule += 1
             entry_status = _entry_status(evaluation.row)
             if not _entry_filter_allows(rule, entry_status):
                 skipped_count += 1

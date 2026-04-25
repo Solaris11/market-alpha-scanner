@@ -73,7 +73,17 @@ const DEFAULT_SCANNER_OUTPUT_DIR = "/opt/apps/market-alpha-scanner/app/scanner_o
 export function scannerOutputDir() {
   if (process.env.SCANNER_OUTPUT_DIR) return process.env.SCANNER_OUTPUT_DIR;
   if (fsSync.existsSync(DEFAULT_SCANNER_OUTPUT_DIR)) return DEFAULT_SCANNER_OUTPUT_DIR;
-  return path.resolve(/*turbopackIgnore: true*/ process.cwd(), "..", "scanner_output");
+  const localOutput = path.resolve(/*turbopackIgnore: true*/ process.cwd(), "..", "scanner_output");
+  try {
+    const stat = fsSync.lstatSync(localOutput);
+    if (stat.isSymbolicLink()) {
+      const target = fsSync.readlinkSync(localOutput);
+      return path.isAbsolute(target) ? target : path.resolve(path.dirname(localOutput), target);
+    }
+  } catch {
+    // Fall back to the local path when no scanner_output entry exists yet.
+  }
+  return localOutput;
 }
 
 function symbolSlug(symbol: string) {
