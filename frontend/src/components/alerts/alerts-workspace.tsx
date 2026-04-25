@@ -75,6 +75,89 @@ const SCOPES = [
   { value: "watchlist", label: "Watchlist" },
   { value: "global", label: "Global Scanner Universe" },
 ];
+const RECOMMENDED_ALERT_PRESET: Partial<AlertRule>[] = [
+  {
+    id: "global_entry_ready",
+    scope: "global",
+    type: "entry_ready",
+    min_score: 70,
+    min_rating: "ACTIONABLE",
+    allowed_actions: ["STRONG BUY", "BUY"],
+    entry_filter: "good_or_wait",
+    min_risk_reward: 1.5,
+    max_alerts_per_run: 5,
+    channels: ["telegram"],
+    cooldown_minutes: 720,
+    enabled: true,
+    source: "system",
+  },
+  {
+    id: "global_top_signals",
+    scope: "global",
+    type: "score_above",
+    threshold: 80,
+    min_rating: "TOP",
+    allowed_actions: ["STRONG BUY", "BUY"],
+    entry_filter: "avoid_overextended",
+    min_risk_reward: 1.5,
+    max_alerts_per_run: 5,
+    channels: ["telegram"],
+    cooldown_minutes: 720,
+    enabled: true,
+    source: "system",
+  },
+  {
+    id: "watchlist_buy_zone",
+    scope: "watchlist",
+    type: "buy_zone_hit",
+    entry_filter: "any",
+    channels: ["telegram"],
+    cooldown_minutes: 360,
+    enabled: true,
+    source: "system",
+  },
+  {
+    id: "watchlist_stop_loss",
+    scope: "watchlist",
+    type: "stop_loss_broken",
+    entry_filter: "any",
+    channels: ["telegram"],
+    cooldown_minutes: 1440,
+    enabled: true,
+    source: "system",
+  },
+  {
+    id: "watchlist_take_profit",
+    scope: "watchlist",
+    type: "take_profit_hit",
+    entry_filter: "any",
+    channels: ["telegram"],
+    cooldown_minutes: 720,
+    enabled: true,
+    source: "system",
+  },
+  {
+    id: "watchlist_action_changed",
+    scope: "watchlist",
+    type: "action_changed",
+    entry_filter: "any",
+    channels: ["telegram"],
+    cooldown_minutes: 720,
+    enabled: true,
+    source: "system",
+  },
+  {
+    id: "watchlist_score_spike",
+    scope: "watchlist",
+    type: "score_changed_by",
+    threshold: 2,
+    entry_filter: "good_or_wait",
+    channels: ["telegram"],
+    cooldown_minutes: 720,
+    enabled: true,
+    source: "system",
+  },
+];
 
 function normalizeSymbol(symbol: string) {
   return symbol.trim().toUpperCase().replace(/[^A-Z0-9._-]/g, "");
@@ -278,6 +361,82 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
     }
   }
 
+  async function installRecommendedPreset() {
+    setBusyId("install-preset");
+    setMessage("");
+    try {
+      await syncWatchlistForRule("watchlist");
+      let created = 0;
+      let updated = 0;
+      for (const rule of RECOMMENDED_ALERT_PRESET) {
+        const result = await fetchJson<{ mode?: string }>("/api/alerts/rules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(rule),
+        });
+        if (result.mode === "updated") updated += 1;
+        else created += 1;
+      }
+      await reload();
+      setMessage(`Recommended preset installed. ${created} created, ${updated} updated.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to install recommended alert preset.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function disableAllAlerts() {
+    const enabledRules = overview.rules.filter((rule) => rule.enabled);
+    if (!enabledRules.length) {
+      setMessage("All alert rules are already disabled.");
+      return;
+    }
+    setBusyId("disable-all");
+    setMessage("");
+    try {
+      for (const rule of enabledRules) {
+        await fetchJson(`/api/alerts/rules/${encodeURIComponent(rule.id)}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ enabled: false }),
+        });
+      }
+      await reload();
+      setMessage(`Disabled ${enabledRules.length} alert rule${enabledRules.length === 1 ? "" : "s"}.`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to disable alert rules.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
+  async function deleteAllDisabledAlerts() {
+    const disabledRules = overview.rules.filter((rule) => !rule.enabled);
+    if (!disabledRules.length) {
+      setMessage("No disabled alert rules to delete.");
+      return;
+    }
+    if (!window.confirm(`Delete ${disabledRules.length} disabled alert rule${disabledRules.length === 1 ? "" : "s"} permanently?`)) {
+      return;
+    }
+    setBusyId("delete-disabled");
+    setMessage("");
+    try {
+      let removedStateCount = 0;
+      for (const rule of disabledRules) {
+        const result = await fetchJson<{ removedStateCount?: number }>(`/api/alerts/rules/${encodeURIComponent(rule.id)}`, { method: "DELETE" });
+        removedStateCount += result.removedStateCount ?? 0;
+      }
+      await reload();
+      setMessage(`Deleted ${disabledRules.length} disabled alert rule${disabledRules.length === 1 ? "" : "s"}.${removedStateCount ? ` Removed ${removedStateCount} state entr${removedStateCount === 1 ? "y" : "ies"}.` : ""}`);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Failed to delete disabled alert rules.");
+    } finally {
+      setBusyId("");
+    }
+  }
+
   async function testSend() {
     setBusyId("test-send");
     setTestResult(null);
@@ -385,6 +544,17 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
 
       <section className="terminal-panel rounded-md p-4">
         <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Quick Global Alerts</div>
+        <div className="mt-3 flex flex-wrap gap-2 border-b border-slate-800 pb-3">
+          <button className="rounded border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-400/15" disabled={Boolean(busyId)} onClick={installRecommendedPreset} type="button">
+            {busyId === "install-preset" ? "Installing..." : "Install Recommended Alert Preset"}
+          </button>
+          <button className="rounded border border-amber-400/40 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:bg-amber-400/10" disabled={Boolean(busyId)} onClick={disableAllAlerts} type="button">
+            {busyId === "disable-all" ? "Disabling..." : "Disable All Alerts"}
+          </button>
+          <button className="rounded border border-rose-400/40 px-3 py-1.5 text-xs font-semibold text-rose-100 hover:bg-rose-400/10" disabled={Boolean(busyId)} onClick={deleteAllDisabledAlerts} type="button">
+            {busyId === "delete-disabled" ? "Deleting..." : "Delete All Disabled Alerts"}
+          </button>
+        </div>
         <div className="mt-3 flex flex-wrap gap-2">
           {quickScopedRule("Alert me for all entry-ready opportunities", {
             id: "global_entry_ready",
@@ -405,8 +575,10 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             id: "global_top_signals",
             scope: "global",
             type: "score_above",
-            threshold: 70,
+            threshold: 80,
             min_rating: "TOP",
+            allowed_actions: ["STRONG BUY", "BUY"],
+            min_risk_reward: 1.5,
             max_alerts_per_run: 5,
             channels: ["telegram"],
             cooldown_minutes: 720,
@@ -419,7 +591,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             scope: "watchlist",
             type: "stop_loss_broken",
             channels: ["telegram"],
-            cooldown_minutes: 720,
+            cooldown_minutes: 1440,
             enabled: true,
             entry_filter: "any",
             source: "system",

@@ -38,32 +38,48 @@ VALID_SCOPES = {"symbol", "watchlist", "global"}
 DEFAULT_DASHBOARD_URL = "http://192.168.0.125:3001"
 DEFAULT_RULES: list[dict[str, Any]] = [
     {
-        "id": "nvda_buy_zone",
-        "scope": "symbol",
-        "symbol": "NVDA",
-        "type": "buy_zone_hit",
+        "id": "global_entry_ready",
+        "scope": "global",
+        "type": "entry_ready",
+        "min_score": 70,
+        "min_rating": "ACTIONABLE",
+        "allowed_actions": ["STRONG BUY", "BUY"],
         "channels": ["telegram"],
         "enabled": True,
         "cooldown_minutes": 720,
+        "entry_filter": "good_or_wait",
+        "min_risk_reward": 1.5,
+        "max_alerts_per_run": 5,
         "source": "system",
-        "entry_filter": "any",
     },
     {
-        "id": "avgo_price_above_430",
-        "scope": "symbol",
-        "symbol": "AVGO",
-        "type": "price_above",
-        "threshold": 430,
-        "channels": ["telegram", "email"],
+        "id": "global_top_signals",
+        "scope": "global",
+        "type": "score_above",
+        "threshold": 80,
+        "min_rating": "TOP",
+        "allowed_actions": ["STRONG BUY", "BUY"],
+        "channels": ["telegram"],
         "enabled": True,
-        "cooldown_minutes": 1440,
-        "source": "user",
-        "entry_filter": "any",
+        "cooldown_minutes": 720,
+        "entry_filter": "avoid_overextended",
+        "min_risk_reward": 1.5,
+        "max_alerts_per_run": 5,
+        "source": "system",
     },
     {
-        "id": "stop_broken",
-        "scope": "symbol",
-        "symbol": "MSFT",
+        "id": "watchlist_buy_zone",
+        "scope": "watchlist",
+        "type": "buy_zone_hit",
+        "channels": ["telegram"],
+        "enabled": True,
+        "cooldown_minutes": 360,
+        "entry_filter": "any",
+        "source": "system",
+    },
+    {
+        "id": "watchlist_stop_loss",
+        "scope": "watchlist",
         "type": "stop_loss_broken",
         "channels": ["telegram"],
         "enabled": True,
@@ -72,16 +88,35 @@ DEFAULT_RULES: list[dict[str, Any]] = [
         "entry_filter": "any",
     },
     {
-        "id": "score_above_75",
-        "scope": "symbol",
-        "symbol": "TSM",
-        "type": "score_above",
-        "threshold": 75,
+        "id": "watchlist_take_profit",
+        "scope": "watchlist",
+        "type": "take_profit_hit",
         "channels": ["telegram"],
         "enabled": True,
-        "cooldown_minutes": 1440,
-        "source": "user",
-        "entry_filter": "avoid_overextended",
+        "cooldown_minutes": 720,
+        "entry_filter": "any",
+        "source": "system",
+    },
+    {
+        "id": "watchlist_action_changed",
+        "scope": "watchlist",
+        "type": "action_changed",
+        "channels": ["telegram"],
+        "enabled": True,
+        "cooldown_minutes": 720,
+        "entry_filter": "any",
+        "source": "system",
+    },
+    {
+        "id": "watchlist_score_spike",
+        "scope": "watchlist",
+        "type": "score_changed_by",
+        "threshold": 2,
+        "channels": ["telegram"],
+        "enabled": True,
+        "cooldown_minutes": 720,
+        "entry_filter": "good_or_wait",
+        "source": "system",
     },
 ]
 
@@ -118,7 +153,7 @@ def state_path(outdir: Path, override: str | None = None) -> Path:
 
 def _atomic_write_json(path: Path, payload: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(f"{path.suffix}.tmp")
+    tmp_path = path.with_name(f"{path.name}.{os.getpid()}.{datetime.now(timezone.utc).timestamp():.6f}.tmp")
     tmp_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
     tmp_path.replace(path)
 
@@ -550,6 +585,19 @@ def _row_risk_reward(row: dict[str, Any] | None) -> float | None:
     return max(values) if values else None
 
 
+def _balanced_risk_reward(row: dict[str, Any] | None) -> float:
+    if not row:
+        return float("-inf")
+    low = _numeric(row.get("balanced_risk_reward_low"))
+    high = _numeric(row.get("balanced_risk_reward_high"))
+    if low is not None and high is not None:
+        return (low + high) / 2.0
+    for fallback in (_numeric(row.get("risk_reward")), _numeric(row.get("risk_reward_low")), _row_risk_reward(row)):
+        if fallback is not None:
+            return fallback
+    return float("-inf")
+
+
 def _entry_filter_allows(rule: dict[str, Any], entry_status: str) -> bool:
     configured_filter = _entry_filter(rule)
     if configured_filter == "any":
@@ -584,6 +632,14 @@ def load_watchlist_symbols(outdir: Path) -> set[str]:
     return {_clean_text(symbol, "").upper() for symbol in raw_symbols if _clean_text(symbol, "")}
 
 
+def _global_candidate_sort_key(row: dict[str, Any]) -> tuple[int, float, float, str]:
+    rating = _clean_text(row.get("rating"), "").upper()
+    rating_rank = RATING_RANK.get(rating, -1)
+    score = _score(row)
+    symbol = _clean_text(row.get("symbol"), "").upper()
+    return (-rating_rank, -(score if score is not None else float("-inf")), -_balanced_risk_reward(row), symbol)
+
+
 def _candidate_rows_for_rule(
     rule: dict[str, Any],
     rows_by_symbol: dict[str, dict[str, Any]],
@@ -608,6 +664,8 @@ def _candidate_rows_for_rule(
         row = rows_by_symbol.get(candidate_symbol) or top_rows_by_symbol.get(candidate_symbol)
         if row is not None:
             rows.append(row)
+    if scope == "global":
+        rows.sort(key=_global_candidate_sort_key)
     return rows
 
 
@@ -798,6 +856,7 @@ def _build_message(rule: dict[str, Any], evaluation: AlertEvaluation) -> str:
     symbol_line = f"📊 Symbol: {symbol}" if company == "N/A" else f"📊 Symbol: {symbol} ({company})"
     note = _clean_text(row.get("trade_quality_note") or row.get("target_warning"), "")
     entry_status = _entry_status(row)
+    trade_quality = _clean_text(row.get("trade_quality"), "REVIEW").upper()
     lines = [
         "🚨 Market Alpha Alert",
         "",
@@ -805,6 +864,7 @@ def _build_message(rule: dict[str, Any], evaluation: AlertEvaluation) -> str:
         f"🌐 Scope: {_scope_label(rule)}",
         f"🔥 Trigger: {_trigger_text(rule)}",
         f"🎯 Entry Status: {entry_status}",
+        f"✅ Trade Quality: {trade_quality}",
         "",
         f"💰 Price: {_format_currency(row.get('price'))}",
         "",
@@ -944,14 +1004,14 @@ def evaluate_alert_rules(
 
         candidate_rows = _candidate_rows_for_rule(rule, rows_by_symbol, top_rows_by_symbol, watchlist_symbols)
         max_alerts = _max_alerts_per_run(rule)
-        sent_or_suppressed_for_rule = 0
+        delivered_for_rule = 0
         if not candidate_rows:
             skipped_count += 1
             warnings.append(f"[{rule_id}] no symbols matched scope={_rule_scope(rule)}.")
             continue
 
         for candidate_row in candidate_rows:
-            if max_alerts is not None and sent_or_suppressed_for_rule >= max_alerts:
+            if max_alerts is not None and delivered_for_rule >= max_alerts:
                 break
             symbol = _clean_text(candidate_row.get("symbol"), _rule_symbol(rule)).upper()
             if not symbol:
@@ -975,7 +1035,6 @@ def evaluate_alert_rules(
 
             state_alerts[state_key] = rule_state
             triggered_count += 1
-            sent_or_suppressed_for_rule += 1
             entry_status = _entry_status(evaluation.row)
             if not _entry_filter_allows(rule, entry_status):
                 skipped_count += 1
@@ -1028,6 +1087,7 @@ def evaluate_alert_rules(
                     print(f"[alerts] {detail}")
 
             if sent_any:
+                delivered_for_rule += 1
                 sent_count += 1
                 rule_state.update(
                     {
