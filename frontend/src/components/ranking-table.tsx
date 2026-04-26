@@ -187,7 +187,7 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
             return (
               <tr
                 className={`transition-colors hover:bg-sky-400/5 ${highlight && index < 3 ? "bg-sky-400/[0.035]" : "bg-transparent"}`}
-                key={`${row.symbol}-${index}`}
+                key={row.symbol || index}
               >
                 <td className="px-2 py-1.5 align-middle">
                   <Link className="font-semibold text-sky-200 hover:text-sky-100" href={`/symbol/${row.symbol}`}>

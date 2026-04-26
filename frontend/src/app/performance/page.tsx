@@ -3,7 +3,7 @@ import { PerformanceDrift } from "@/components/performance-drift";
 import { PerformanceValidation } from "@/components/performance-validation";
 import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/shell";
-import { buildIntradaySignalDrift, getHistorySummary, getPerformanceData, getSymbolHistoryData } from "@/lib/scanner-data";
+import { buildIntradaySignalDrift, getFullRanking, getHistorySummary, getPerformanceData, getSymbolHistoryData } from "@/lib/scanner-data";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +19,7 @@ function fileStateLabel(state: string) {
 }
 
 export default async function PerformancePage() {
-  const [performance, history, symbolHistory] = await Promise.all([getPerformanceData(), getHistorySummary(), getSymbolHistoryData()]);
+  const [performance, history, symbolHistory, ranking] = await Promise.all([getPerformanceData(), getHistorySummary(), getSymbolHistoryData(), getFullRanking()]);
   const driftRows = buildIntradaySignalDrift(symbolHistory);
   const forwardReturnsReady = performance.forwardReturns.rows.length > 0;
 
@@ -37,7 +37,7 @@ export default async function PerformancePage() {
           ]}
         />
 
-        <PerformanceValidation forwardRows={performance.forwardReturns.rows} history={history} summaryRows={performance.summary.rows} />
+        <PerformanceValidation forwardRows={performance.forwardReturns.rows} history={history} rankingRows={ranking} summaryRows={performance.summary.rows} />
 
         <section className="terminal-panel rounded-md p-4">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Analysis Runner</div>

@@ -1,17 +1,19 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
-import type { CsvRow, HistorySummary } from "@/lib/types";
+import type { CsvRow, HistorySummary, RankingRow } from "@/lib/types";
 
 type Props = {
   forwardRows: CsvRow[];
   history: HistorySummary;
+  rankingRows?: RankingRow[];
   summaryRows: CsvRow[];
 };
 
 type SortDirection = "asc" | "desc";
 type GroupedSortKey = "horizon" | "group_type" | "group_value" | "count" | "avg_return" | "median_return" | "hit_rate" | "avg_max_drawdown" | "avg_max_gain" | "worst_return" | "best_return" | "low_sample";
-type ForwardSortKey = "symbol" | "timestamp_utc" | "horizon" | "forward_return" | "max_drawdown_after_signal" | "max_gain_after_signal" | "rating" | "action" | "setup_type" | "entry_status";
+type ForwardSortKey = "symbol" | "company" | "timestamp_utc" | "horizon" | "forward_return" | "max_drawdown_after_signal" | "max_gain_after_signal" | "rating" | "action" | "setup_type" | "entry_status";
 
 const HORIZON_PRIORITY: Record<string, number> = {
   "1D": 1,
@@ -57,7 +59,7 @@ const GROUPED_COLUMNS: { key: GroupedSortKey; label: string; align?: "left" | "r
 
 const FORWARD_COLUMNS: { key: ForwardSortKey; label: string; align?: "left" | "right" }[] = [
   { key: "symbol", label: "Symbol" },
-  { key: "timestamp_utc", label: "Signal Time" },
+  { key: "company", label: "Company" },
   { key: "horizon", label: "Horizon" },
   { key: "forward_return", label: "Return", align: "right" },
   { key: "max_drawdown_after_signal", label: "Drawdown", align: "right" },
@@ -66,6 +68,7 @@ const FORWARD_COLUMNS: { key: ForwardSortKey; label: string; align?: "left" | "r
   { key: "action", label: "Action" },
   { key: "setup_type", label: "Setup" },
   { key: "entry_status", label: "Entry" },
+  { key: "timestamp_utc", label: "Signal Time" },
 ];
 
 function text(value: unknown, fallback = "—") {
@@ -101,6 +104,10 @@ function formatDate(value: unknown) {
   const raw = text(value, "");
   if (!raw) return "—";
   return raw.replace("T", " ").replace("Z", " UTC");
+}
+
+function symbolOf(row: CsvRow) {
+  return text(row.symbol, "").toUpperCase();
 }
 
 function uniqueValues(rows: CsvRow[], key: string) {
@@ -148,8 +155,59 @@ function horizonSortValue(row: CsvRow) {
   return HORIZON_PRIORITY[horizon] ?? null;
 }
 
+function companyForRow(row: CsvRow, companyBySymbol: Map<string, string>) {
+  const direct = text(row.company_name, "");
+  if (direct) return direct;
+  return companyBySymbol.get(symbolOf(row)) ?? "";
+}
+
+function forwardSortValue(row: CsvRow, key: ForwardSortKey, companyBySymbol: Map<string, string>) {
+  if (key === "company") return companyForRow(row, companyBySymbol);
+  if (key === "horizon") return horizonSortValue(row);
+  return row[key];
+}
+
+function defaultSortGroupedRows(rows: CsvRow[]) {
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((left, right) => {
+      const horizonResult = compareValues(horizonSortValue(left.row), horizonSortValue(right.row), "asc", true);
+      if (horizonResult) return horizonResult;
+      const avgResult = compareValues(left.row.avg_return, right.row.avg_return, "desc", true);
+      return avgResult || left.index - right.index;
+    })
+    .map((item) => item.row);
+}
+
+function defaultSortForwardRows(rows: CsvRow[]) {
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((left, right) => {
+      const horizonResult = compareValues(horizonSortValue(left.row), horizonSortValue(right.row), "asc", true);
+      if (horizonResult) return horizonResult;
+      const returnResult = compareValues(left.row.forward_return, right.row.forward_return, "desc", true);
+      return returnResult || left.index - right.index;
+    })
+    .map((item) => item.row);
+}
+
+function compactForwardRows(rows: CsvRow[]) {
+  const bySymbolHorizon = new Map<string, CsvRow>();
+  for (const row of rows) {
+    const symbol = symbolOf(row);
+    const horizon = text(row.horizon, "");
+    if (!symbol || !horizon) continue;
+    const key = `${symbol}:${horizon}`;
+    const current = bySymbolHorizon.get(key);
+    if (!current || String(row.timestamp_utc ?? "").localeCompare(String(current.timestamp_utc ?? "")) > 0) {
+      bySymbolHorizon.set(key, row);
+    }
+  }
+  return Array.from(bySymbolHorizon.values());
+}
+
 function stableSortGroupedRows(rows: CsvRow[], key: GroupedSortKey | null, direction: SortDirection) {
-  if (!key) return rows;
+  if (!key) return defaultSortGroupedRows(rows);
   return rows
     .map((row, index) => ({ row, index }))
     .sort((left, right) => {
@@ -165,16 +223,16 @@ function stableSortGroupedRows(rows: CsvRow[], key: GroupedSortKey | null, direc
           return result || left.index - right.index;
         }
       }
-      const leftValue = key === "horizon" ? horizonSortValue(left.row) : left.row[key];
-      const rightValue = key === "horizon" ? horizonSortValue(right.row) : right.row[key];
-      const result = compareValues(leftValue, rightValue, direction, key === "horizon" || GROUPED_NUMERIC_SORT_KEYS.has(key));
+      const leftValue = key === "horizon" ? horizonSortValue(left.row) : key === "low_sample" ? String(left.row.low_sample).toLowerCase() === "true" ? 1 : 0 : left.row[key];
+      const rightValue = key === "horizon" ? horizonSortValue(right.row) : key === "low_sample" ? String(right.row.low_sample).toLowerCase() === "true" ? 1 : 0 : right.row[key];
+      const result = compareValues(leftValue, rightValue, direction, key === "horizon" || key === "low_sample" || GROUPED_NUMERIC_SORT_KEYS.has(key));
       return result || left.index - right.index;
     })
     .map((item) => item.row);
 }
 
-function stableSortForwardRows(rows: CsvRow[], key: ForwardSortKey | null, direction: SortDirection) {
-  if (!key) return rows;
+function stableSortForwardRows(rows: CsvRow[], key: ForwardSortKey | null, direction: SortDirection, companyBySymbol: Map<string, string>) {
+  if (!key) return defaultSortForwardRows(rows);
   return rows
     .map((row, index) => ({ row, index }))
     .sort((left, right) => {
@@ -186,8 +244,8 @@ function stableSortForwardRows(rows: CsvRow[], key: ForwardSortKey | null, direc
         const result = comparePriority(ACTION_PRIORITY[normalizePriorityText(left.row.action)] ?? null, ACTION_PRIORITY[normalizePriorityText(right.row.action)] ?? null, direction);
         return result || left.index - right.index;
       }
-      const leftValue = key === "horizon" ? horizonSortValue(left.row) : left.row[key];
-      const rightValue = key === "horizon" ? horizonSortValue(right.row) : right.row[key];
+      const leftValue = forwardSortValue(left.row, key, companyBySymbol);
+      const rightValue = forwardSortValue(right.row, key, companyBySymbol);
       const result = compareValues(leftValue, rightValue, direction, key === "horizon" || FORWARD_NUMERIC_SORT_KEYS.has(key));
       return result || left.index - right.index;
     })
@@ -266,7 +324,7 @@ function BarChart({ rows, groupType, metric, title, horizon = "10D" }: { rows: C
   );
 }
 
-export function PerformanceValidation({ forwardRows, history, summaryRows }: Props) {
+export function PerformanceValidation({ forwardRows, history, rankingRows = [], summaryRows }: Props) {
   const [horizon, setHorizon] = useState("");
   const [groupType, setGroupType] = useState("");
   const [minCount, setMinCount] = useState("5");
@@ -274,10 +332,21 @@ export function PerformanceValidation({ forwardRows, history, summaryRows }: Pro
   const [groupedSortDirection, setGroupedSortDirection] = useState<SortDirection>("desc");
   const [forwardSortKey, setForwardSortKey] = useState<ForwardSortKey | null>(null);
   const [forwardSortDirection, setForwardSortDirection] = useState<SortDirection>("desc");
+  const [showRawObservations, setShowRawObservations] = useState(false);
 
   const horizons = useMemo(() => uniqueValues(summaryRows.length ? summaryRows : forwardRows, "horizon"), [forwardRows, summaryRows]);
   const groupTypes = useMemo(() => uniqueValues(summaryRows, "group_type"), [summaryRows]);
   const completedHorizons = useMemo(() => uniqueValues(forwardRows, "horizon"), [forwardRows]);
+  const companyBySymbol = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const row of rankingRows) {
+      const symbol = String(row.symbol ?? "").trim().toUpperCase();
+      const company = text(row.company_name, "");
+      if (symbol && company) map.set(symbol, company);
+    }
+    return map;
+  }, [rankingRows]);
+  const compactRows = useMemo(() => compactForwardRows(forwardRows), [forwardRows]);
 
   const filteredSummary = useMemo(() => {
     const minimum = Number(minCount);
@@ -293,9 +362,10 @@ export function PerformanceValidation({ forwardRows, history, summaryRows }: Pro
   }, [groupType, groupedSortDirection, groupedSortKey, horizon, minCount, summaryRows]);
 
   const visibleForwardRows = useMemo(() => {
-    const filtered = forwardRows.filter((row) => !horizon || text(row.horizon, "") === horizon);
-    return stableSortForwardRows(filtered, forwardSortKey, forwardSortDirection).slice(0, 300);
-  }, [forwardRows, forwardSortDirection, forwardSortKey, horizon]);
+    const sourceRows = showRawObservations ? forwardRows : compactRows;
+    const filtered = sourceRows.filter((row) => !horizon || text(row.horizon, "") === horizon);
+    return stableSortForwardRows(filtered, forwardSortKey, forwardSortDirection, companyBySymbol).slice(0, 300);
+  }, [compactRows, companyBySymbol, forwardRows, forwardSortDirection, forwardSortKey, horizon, showRawObservations]);
 
   const readiness = [
     { label: "Snapshots", value: history.count.toLocaleString(), meta: "saved scans" },
@@ -326,6 +396,7 @@ export function PerformanceValidation({ forwardRows, history, summaryRows }: Pro
     <section className="space-y-3">
       <section className="terminal-panel rounded-md p-4">
         <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Readiness</div>
+        <p className="mt-1 text-xs text-slate-400">Grouped results summarize signal buckets. Forward returns show symbol-level observations.</p>
         <div className="mt-3 grid gap-2 md:grid-cols-4">
           {readiness.map((metric) => (
             <div className="rounded border border-slate-800 bg-slate-950/50 p-2" key={metric.label}>
@@ -432,8 +503,34 @@ export function PerformanceValidation({ forwardRows, history, summaryRows }: Pro
       </section>
 
       <section className="terminal-panel overflow-x-auto rounded-md">
-        <div className="border-b border-slate-800 bg-slate-950/70 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Forward Returns Table</div>
-        <table className="w-full min-w-[1160px] table-fixed border-collapse text-xs">
+        <div className="border-b border-slate-800 bg-slate-950/70 px-3 py-2">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Forward Returns Table</div>
+              <p className="mt-1 text-xs normal-case tracking-normal text-slate-500">
+                {showRawObservations ? "Raw observations may include repeated intraday snapshots." : "Compact view shows the latest observation per symbol and horizon."}
+              </p>
+            </div>
+            <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-300">
+              <input checked={showRawObservations} className="accent-sky-400" onChange={(event) => setShowRawObservations(event.target.checked)} type="checkbox" />
+              Show raw observations
+            </label>
+          </div>
+        </div>
+        <table className="w-full min-w-[1320px] table-fixed border-collapse text-xs">
+          <colgroup>
+            <col style={{ width: 90 }} />
+            <col style={{ width: 220 }} />
+            <col style={{ width: 80 }} />
+            <col style={{ width: 90 }} />
+            <col style={{ width: 100 }} />
+            <col style={{ width: 90 }} />
+            <col style={{ width: 120 }} />
+            <col style={{ width: 140 }} />
+            <col style={{ width: 140 }} />
+            <col style={{ width: 140 }} />
+            <col style={{ width: 180 }} />
+          </colgroup>
           <thead className="border-b border-slate-800 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             <tr>
               {FORWARD_COLUMNS.map((column) => (
@@ -444,8 +541,12 @@ export function PerformanceValidation({ forwardRows, history, summaryRows }: Pro
           <tbody className="divide-y divide-slate-800/90">
             {visibleForwardRows.length ? visibleForwardRows.map((row, index) => (
               <tr key={`${row.symbol}-${row.timestamp_utc}-${row.horizon}-${index}`}>
-                <td className="px-2 py-1.5 font-mono font-semibold text-sky-200">{text(row.symbol)}</td>
-                <td className="truncate px-2 py-1.5 font-mono text-slate-400">{formatDate(row.timestamp_utc)}</td>
+                <td className="px-2 py-1.5 font-mono font-semibold">
+                  <Link className="text-sky-200 hover:text-sky-100" href={`/symbol/${symbolOf(row)}`}>
+                    {text(row.symbol)}
+                  </Link>
+                </td>
+                <td className="truncate px-2 py-1.5 text-slate-400" title={companyForRow(row, companyBySymbol)}>{companyForRow(row, companyBySymbol) || "—"}</td>
                 <td className="px-2 py-1.5 font-mono text-slate-300">{text(row.horizon)}</td>
                 <td className="px-2 py-1.5 font-mono text-slate-300">{percent(row.forward_return)}</td>
                 <td className="px-2 py-1.5 font-mono text-slate-300">{percent(row.max_drawdown_after_signal)}</td>
@@ -454,9 +555,10 @@ export function PerformanceValidation({ forwardRows, history, summaryRows }: Pro
                 <td className="truncate px-2 py-1.5 text-slate-300">{text(row.action)}</td>
                 <td className="truncate px-2 py-1.5 text-slate-400">{text(row.setup_type)}</td>
                 <td className="truncate px-2 py-1.5 text-slate-400">{text(row.entry_status)}</td>
+                <td className="truncate px-2 py-1.5 font-mono text-slate-400">{formatDate(row.timestamp_utc)}</td>
               </tr>
             )) : (
-              <tr><td className="px-2 py-6 text-center text-slate-500" colSpan={10}>No completed forward-return observations yet.</td></tr>
+              <tr><td className="px-2 py-6 text-center text-slate-500" colSpan={11}>No completed forward-return observations yet.</td></tr>
             )}
           </tbody>
         </table>

@@ -29,8 +29,24 @@ function uniqueOptions(rows: RankingRow[], key: keyof RankingRow) {
 
 function matchesText(value: unknown, query: string) {
   return String(value ?? "")
+    .trim()
     .toLowerCase()
     .includes(query);
+}
+
+function rowMatchesSearch(row: RankingRow, query: string) {
+  if (!query) return true;
+  return [
+    row.symbol,
+    row.company_name,
+    row.long_name,
+    row.longName,
+    row.short_name,
+    row.shortName,
+    row.display_name,
+    row.displayName,
+    row.name,
+  ].some((value) => matchesText(value, query));
 }
 
 const NUMERIC_SORT_KEYS = new Set<RankingSortKey>(["price", "score", "signals"]);
@@ -115,6 +131,21 @@ function sortRows(rows: RankingRow[], key: RankingSortKey | null, direction: Ran
     .map((item) => item.row);
 }
 
+function filterRows(rows: RankingRow[], filters: { assetType: string; minimumScore: string; rating: string; sector: string; symbolSearch: string }) {
+  const query = filters.symbolSearch.trim().toLowerCase();
+  const minScore = Number(filters.minimumScore);
+  const hasMinScore = filters.minimumScore.trim() !== "" && Number.isFinite(minScore);
+
+  return rows.filter((row) => {
+    if (!rowMatchesSearch(row, query)) return false;
+    if (filters.assetType && String(row.asset_type ?? "") !== filters.assetType) return false;
+    if (filters.sector && String(row.sector ?? "") !== filters.sector) return false;
+    if (filters.rating && String(row.rating ?? "") !== filters.rating) return false;
+    if (hasMinScore && (typeof row.final_score !== "number" || row.final_score < minScore)) return false;
+    return true;
+  });
+}
+
 function alertTypeLabel(value: string) {
   return value
     .split("_")
@@ -187,27 +218,23 @@ export function OverviewWorkspace({ alertRules, ranking, topCandidates }: Props)
     return uniqueOptions(source, "sector");
   }, [assetType, ranking]);
   const ratings = useMemo(() => uniqueOptions(ranking, "rating"), [ranking]);
+  const rankingBySymbol = useMemo(() => {
+    const map = new Map<string, RankingRow>();
+    for (const row of ranking) {
+      const symbol = String(row.symbol ?? "").trim().toUpperCase();
+      if (symbol) map.set(symbol, row);
+    }
+    return map;
+  }, [ranking]);
 
-  const filteredRows = useMemo(() => {
-    const query = symbolSearch.trim().toLowerCase();
-    const minScore = Number(minimumScore);
-    const hasMinScore = minimumScore.trim() !== "" && Number.isFinite(minScore);
-
-    return ranking.filter((row) => {
-      if (query) {
-        if (!matchesText(row.symbol, query) && !matchesText(row.company_name, query)) return false;
-      }
-      if (assetType && String(row.asset_type ?? "") !== assetType) return false;
-      if (sector && String(row.sector ?? "") !== sector) return false;
-      if (rating && String(row.rating ?? "") !== rating) return false;
-      if (hasMinScore && (typeof row.final_score !== "number" || row.final_score < minScore)) return false;
-      return true;
-    });
-  }, [assetType, minimumScore, ranking, rating, sector, symbolSearch]);
+  const activeFilters = useMemo(() => ({ assetType, minimumScore, rating, sector, symbolSearch }), [assetType, minimumScore, rating, sector, symbolSearch]);
+  const filteredRows = useMemo(() => filterRows(ranking, activeFilters), [activeFilters, ranking]);
   const filteredTopCandidates = useMemo(() => {
-    const visibleSymbols = new Set(filteredRows.map((row) => row.symbol));
-    return topCandidates.filter((row) => visibleSymbols.has(row.symbol));
-  }, [filteredRows, topCandidates]);
+    return topCandidates.filter((row) => {
+      const fallback = rankingBySymbol.get(String(row.symbol ?? "").trim().toUpperCase());
+      return filterRows([{ ...fallback, ...row } as RankingRow], activeFilters).length > 0;
+    });
+  }, [activeFilters, rankingBySymbol, topCandidates]);
   const sortedRows = useMemo(() => sortRows(filteredRows, sortKey, sortDirection), [filteredRows, sortDirection, sortKey]);
   const sortedTopCandidates = useMemo(() => sortRows(filteredTopCandidates, topSortKey, topSortDirection), [filteredTopCandidates, topSortDirection, topSortKey]);
 
