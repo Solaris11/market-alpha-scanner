@@ -6,11 +6,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from .safety import atomic_write_dataframe_csv, validate_ranking_schema
+from .safety import atomic_write_dataframe_csv
 from .utils import safe_float, safe_str
 
 
 HORIZONS = {"1D": 1, "2D": 2, "5D": 5, "10D": 10, "20D": 20, "60D": 60}
+SNAPSHOT_REQUIRED_COLUMNS = ("symbol", "price", "final_score", "rating")
+SNAPSHOT_ACTION_COLUMNS = ("action", "long_action", "mid_action", "short_action", "composite_action", "recommended_action")
+SNAPSHOT_ACTION_FALLBACK_COLUMNS = ("long_action", "mid_action", "short_action", "composite_action", "recommended_action")
 FORWARD_RETURN_COLUMNS = [
     "timestamp_utc",
     "symbol",
@@ -48,6 +51,33 @@ SUMMARY_COLUMNS = [
 SUMMARY_GROUPS = ["rating", "action", "setup_type", "score_bucket", "sector", "asset_type", "entry_status", "trade_quality"]
 
 
+def _first_non_empty_column_value(row: pd.Series, columns: tuple[str, ...]) -> str:
+    for column in columns:
+        value = safe_str(row.get(column), "")
+        if value:
+            return value
+    return ""
+
+
+def _prepare_snapshot_frame(df: pd.DataFrame, stats: dict[str, int]) -> pd.DataFrame | None:
+    missing_required = [column for column in SNAPSHOT_REQUIRED_COLUMNS if column not in df.columns]
+    if missing_required:
+        stats["critical_missing"] += 1
+        return None
+
+    has_action_column = "action" in df.columns
+    has_action_columns = any(column in df.columns for column in SNAPSHOT_ACTION_COLUMNS)
+    if not has_action_columns:
+        stats["critical_missing"] += 1
+        return None
+
+    working = df.copy()
+    if not has_action_column:
+        working["action"] = working.apply(lambda row: _first_non_empty_column_value(row, SNAPSHOT_ACTION_FALLBACK_COLUMNS), axis=1)
+        stats["legacy_missing_action"] += 1
+    return working
+
+
 def load_snapshot_history(history_dir: str) -> pd.DataFrame:
     history_path = Path(history_dir)
     files = sorted(history_path.glob("scan_*.csv"))
@@ -55,6 +85,7 @@ def load_snapshot_history(history_dir: str) -> pd.DataFrame:
         return pd.DataFrame()
 
     frames: list[pd.DataFrame] = []
+    schema_stats = {"legacy_missing_action": 0, "critical_missing": 0}
     for path in files:
         try:
             df = pd.read_csv(path)
@@ -62,7 +93,8 @@ def load_snapshot_history(history_dir: str) -> pd.DataFrame:
             continue
         if df.empty:
             continue
-        if not validate_ranking_schema(df, path.name):
+        df = _prepare_snapshot_frame(df, schema_stats)
+        if df is None:
             continue
         if "timestamp_utc" not in df.columns:
             inferred = path.stem.replace("scan_", "")
@@ -73,6 +105,11 @@ def load_snapshot_history(history_dir: str) -> pd.DataFrame:
                 continue
         df["source_file"] = path.name
         frames.append(df)
+
+    if schema_stats["legacy_missing_action"]:
+        print(f"[data] schema compatibility: {schema_stats['legacy_missing_action']} legacy snapshots missing action, using fallback")
+    if schema_stats["critical_missing"]:
+        print(f"[data] schema compatibility: {schema_stats['critical_missing']} snapshots skipped due to missing required columns")
 
     if not frames:
         return pd.DataFrame()
