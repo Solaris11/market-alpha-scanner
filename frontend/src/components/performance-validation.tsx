@@ -9,7 +9,64 @@ type Props = {
   summaryRows: CsvRow[];
 };
 
-type SortMetric = "avg_return" | "hit_rate" | "avg_max_drawdown";
+type SortDirection = "asc" | "desc";
+type GroupedSortKey = "horizon" | "group_type" | "group_value" | "count" | "avg_return" | "median_return" | "hit_rate" | "avg_max_drawdown" | "avg_max_gain" | "worst_return" | "best_return" | "low_sample";
+type ForwardSortKey = "symbol" | "timestamp_utc" | "horizon" | "forward_return" | "max_drawdown_after_signal" | "max_gain_after_signal" | "rating" | "action" | "setup_type" | "entry_status";
+
+const HORIZON_PRIORITY: Record<string, number> = {
+  "1D": 1,
+  "2D": 2,
+  "5D": 5,
+  "10D": 10,
+  "20D": 20,
+  "60D": 60,
+};
+const GROUPED_NUMERIC_SORT_KEYS = new Set<GroupedSortKey>(["count", "avg_return", "median_return", "hit_rate", "avg_max_drawdown", "avg_max_gain", "worst_return", "best_return"]);
+const FORWARD_NUMERIC_SORT_KEYS = new Set<ForwardSortKey>(["forward_return", "max_drawdown_after_signal", "max_gain_after_signal"]);
+const RATING_PRIORITY: Record<string, number> = {
+  TOP: 0,
+  ACTIONABLE: 1,
+  WATCH: 2,
+  PASS: 3,
+};
+const ACTION_PRIORITY: Record<string, number> = {
+  "STRONG BUY": 0,
+  BUY: 1,
+  "WAIT / HOLD": 2,
+  "WAIT/HOLD": 2,
+  WAIT: 2,
+  HOLD: 3,
+  SELL: 4,
+  "STRONG SELL": 5,
+};
+
+const GROUPED_COLUMNS: { key: GroupedSortKey; label: string; align?: "left" | "right" }[] = [
+  { key: "horizon", label: "Horizon" },
+  { key: "group_type", label: "Group" },
+  { key: "group_value", label: "Value" },
+  { key: "count", label: "Count", align: "right" },
+  { key: "avg_return", label: "Avg", align: "right" },
+  { key: "median_return", label: "Median", align: "right" },
+  { key: "hit_rate", label: "Hit", align: "right" },
+  { key: "avg_max_drawdown", label: "Drawdown", align: "right" },
+  { key: "avg_max_gain", label: "Gain", align: "right" },
+  { key: "worst_return", label: "Worst", align: "right" },
+  { key: "best_return", label: "Best", align: "right" },
+  { key: "low_sample", label: "Sample" },
+];
+
+const FORWARD_COLUMNS: { key: ForwardSortKey; label: string; align?: "left" | "right" }[] = [
+  { key: "symbol", label: "Symbol" },
+  { key: "timestamp_utc", label: "Signal Time" },
+  { key: "horizon", label: "Horizon" },
+  { key: "forward_return", label: "Return", align: "right" },
+  { key: "max_drawdown_after_signal", label: "Drawdown", align: "right" },
+  { key: "max_gain_after_signal", label: "Gain", align: "right" },
+  { key: "rating", label: "Rating" },
+  { key: "action", label: "Action" },
+  { key: "setup_type", label: "Setup" },
+  { key: "entry_status", label: "Entry" },
+];
 
 function text(value: unknown, fallback = "—") {
   const raw = String(value ?? "").trim();
@@ -48,6 +105,105 @@ function formatDate(value: unknown) {
 
 function uniqueValues(rows: CsvRow[], key: string) {
   return Array.from(new Set(rows.map((row) => text(row[key], "")).filter(Boolean))).sort((a, b) => a.localeCompare(b));
+}
+
+function sortIndicator(active: boolean, direction: SortDirection) {
+  return active ? (direction === "asc" ? "↑" : "↓") : "";
+}
+
+function compareValues(left: unknown, right: unknown, direction: SortDirection, numericSort: boolean) {
+  const leftMissing = left === null || left === undefined || left === "";
+  const rightMissing = right === null || right === undefined || right === "";
+  if (leftMissing && rightMissing) return 0;
+  if (leftMissing) return 1;
+  if (rightMissing) return -1;
+
+  if (numericSort) {
+    const leftValue = numeric(left);
+    const rightValue = numeric(right);
+    if (leftValue === null && rightValue === null) return 0;
+    if (leftValue === null) return 1;
+    if (rightValue === null) return -1;
+    return direction === "desc" ? rightValue - leftValue : leftValue - rightValue;
+  }
+
+  const leftText = text(left, "");
+  const rightText = text(right, "");
+  return direction === "desc" ? rightText.localeCompare(leftText) : leftText.localeCompare(rightText);
+}
+
+function normalizePriorityText(value: unknown) {
+  return text(value, "").toUpperCase().replace(/\s+/g, " ");
+}
+
+function comparePriority(left: number | null, right: number | null, direction: SortDirection) {
+  if (left === null && right === null) return 0;
+  if (left === null) return 1;
+  if (right === null) return -1;
+  return direction === "desc" ? left - right : right - left;
+}
+
+function horizonSortValue(row: CsvRow) {
+  const horizon = text(row.horizon, "");
+  return HORIZON_PRIORITY[horizon] ?? null;
+}
+
+function stableSortGroupedRows(rows: CsvRow[], key: GroupedSortKey | null, direction: SortDirection) {
+  if (!key) return rows;
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((left, right) => {
+      if (key === "group_value") {
+        const leftType = text(left.row.group_type, "");
+        const rightType = text(right.row.group_type, "");
+        if (leftType === "rating" && rightType === "rating") {
+          const result = comparePriority(RATING_PRIORITY[normalizePriorityText(left.row.group_value)] ?? null, RATING_PRIORITY[normalizePriorityText(right.row.group_value)] ?? null, direction);
+          return result || left.index - right.index;
+        }
+        if (leftType === "action" && rightType === "action") {
+          const result = comparePriority(ACTION_PRIORITY[normalizePriorityText(left.row.group_value)] ?? null, ACTION_PRIORITY[normalizePriorityText(right.row.group_value)] ?? null, direction);
+          return result || left.index - right.index;
+        }
+      }
+      const leftValue = key === "horizon" ? horizonSortValue(left.row) : left.row[key];
+      const rightValue = key === "horizon" ? horizonSortValue(right.row) : right.row[key];
+      const result = compareValues(leftValue, rightValue, direction, key === "horizon" || GROUPED_NUMERIC_SORT_KEYS.has(key));
+      return result || left.index - right.index;
+    })
+    .map((item) => item.row);
+}
+
+function stableSortForwardRows(rows: CsvRow[], key: ForwardSortKey | null, direction: SortDirection) {
+  if (!key) return rows;
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((left, right) => {
+      if (key === "rating") {
+        const result = comparePriority(RATING_PRIORITY[normalizePriorityText(left.row.rating)] ?? null, RATING_PRIORITY[normalizePriorityText(right.row.rating)] ?? null, direction);
+        return result || left.index - right.index;
+      }
+      if (key === "action") {
+        const result = comparePriority(ACTION_PRIORITY[normalizePriorityText(left.row.action)] ?? null, ACTION_PRIORITY[normalizePriorityText(right.row.action)] ?? null, direction);
+        return result || left.index - right.index;
+      }
+      const leftValue = key === "horizon" ? horizonSortValue(left.row) : left.row[key];
+      const rightValue = key === "horizon" ? horizonSortValue(right.row) : right.row[key];
+      const result = compareValues(leftValue, rightValue, direction, key === "horizon" || FORWARD_NUMERIC_SORT_KEYS.has(key));
+      return result || left.index - right.index;
+    })
+    .map((item) => item.row);
+}
+
+function SortHeader<T extends string>({ activeKey, align, direction, label, onSort, thisKey }: { activeKey: T | null; align?: "left" | "right"; direction: SortDirection; label: string; onSort: (key: T) => void; thisKey: T }) {
+  const active = activeKey === thisKey;
+  return (
+    <th className={`px-2 py-1.5 ${align === "right" ? "text-right" : "text-left"}`}>
+      <button className={`inline-flex items-center gap-1 hover:text-sky-200 ${align === "right" ? "justify-end" : "justify-start"}`} onClick={() => onSort(thisKey)} type="button">
+        <span>{label}</span>
+        {active ? <span className="text-sky-300">{sortIndicator(active, direction)}</span> : null}
+      </button>
+    </th>
+  );
 }
 
 function bestSummary(rows: CsvRow[], groupType: string, horizon = "10D") {
@@ -114,7 +270,10 @@ export function PerformanceValidation({ forwardRows, history, summaryRows }: Pro
   const [horizon, setHorizon] = useState("");
   const [groupType, setGroupType] = useState("");
   const [minCount, setMinCount] = useState("5");
-  const [sortMetric, setSortMetric] = useState<SortMetric>("avg_return");
+  const [groupedSortKey, setGroupedSortKey] = useState<GroupedSortKey | null>(null);
+  const [groupedSortDirection, setGroupedSortDirection] = useState<SortDirection>("desc");
+  const [forwardSortKey, setForwardSortKey] = useState<ForwardSortKey | null>(null);
+  const [forwardSortDirection, setForwardSortDirection] = useState<SortDirection>("desc");
 
   const horizons = useMemo(() => uniqueValues(summaryRows.length ? summaryRows : forwardRows, "horizon"), [forwardRows, summaryRows]);
   const groupTypes = useMemo(() => uniqueValues(summaryRows, "group_type"), [summaryRows]);
@@ -123,22 +282,20 @@ export function PerformanceValidation({ forwardRows, history, summaryRows }: Pro
   const filteredSummary = useMemo(() => {
     const minimum = Number(minCount);
     const hasMinimum = minCount.trim() !== "" && Number.isFinite(minimum);
-    return summaryRows
+    const filtered = summaryRows
       .filter((row) => {
         if (horizon && text(row.horizon, "") !== horizon) return false;
         if (groupType && text(row.group_type, "") !== groupType) return false;
         if (hasMinimum && integer(row.count) < minimum) return false;
         return true;
-      })
-      .sort((left, right) => (numeric(right[sortMetric]) ?? -Infinity) - (numeric(left[sortMetric]) ?? -Infinity));
-  }, [groupType, horizon, minCount, sortMetric, summaryRows]);
+      });
+    return stableSortGroupedRows(filtered, groupedSortKey, groupedSortDirection);
+  }, [groupType, groupedSortDirection, groupedSortKey, horizon, minCount, summaryRows]);
 
   const visibleForwardRows = useMemo(() => {
-    return forwardRows
-      .filter((row) => !horizon || text(row.horizon, "") === horizon)
-      .sort((left, right) => String(right.timestamp_utc ?? "").localeCompare(String(left.timestamp_utc ?? "")))
-      .slice(0, 300);
-  }, [forwardRows, horizon]);
+    const filtered = forwardRows.filter((row) => !horizon || text(row.horizon, "") === horizon);
+    return stableSortForwardRows(filtered, forwardSortKey, forwardSortDirection).slice(0, 300);
+  }, [forwardRows, forwardSortDirection, forwardSortKey, horizon]);
 
   const readiness = [
     { label: "Snapshots", value: history.count.toLocaleString(), meta: "saved scans" },
@@ -146,6 +303,24 @@ export function PerformanceValidation({ forwardRows, history, summaryRows }: Pro
     { label: "Completed Observations", value: forwardRows.length.toLocaleString(), meta: "forward windows" },
     { label: "Horizons Available", value: completedHorizons.length ? completedHorizons.join(", ") : "None", meta: "1D / 2D / 5D / 10D / 20D / 60D" },
   ];
+
+  function handleGroupedSort(key: GroupedSortKey) {
+    if (groupedSortKey === key) {
+      setGroupedSortDirection((current) => (current === "desc" ? "asc" : "desc"));
+      return;
+    }
+    setGroupedSortKey(key);
+    setGroupedSortDirection("desc");
+  }
+
+  function handleForwardSort(key: ForwardSortKey) {
+    if (forwardSortKey === key) {
+      setForwardSortDirection((current) => (current === "desc" ? "asc" : "desc"));
+      return;
+    }
+    setForwardSortKey(key);
+    setForwardSortDirection("desc");
+  }
 
   return (
     <section className="space-y-3">
@@ -193,7 +368,7 @@ export function PerformanceValidation({ forwardRows, history, summaryRows }: Pro
       </section>
 
       <section className="terminal-panel rounded-md p-3">
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[1fr_1fr_0.8fr_1fr]">
+        <div className="grid gap-2 md:grid-cols-3">
           <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             Horizon
             <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setHorizon(event.target.value)} value={horizon}>
@@ -220,14 +395,6 @@ export function PerformanceValidation({ forwardRows, history, summaryRows }: Pro
             Min Count
             <input className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setMinCount(event.target.value)} type="number" value={minCount} />
           </label>
-          <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Sort By
-            <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setSortMetric(event.target.value as SortMetric)} value={sortMetric}>
-              <option value="avg_return">Avg Return</option>
-              <option value="hit_rate">Hit Rate</option>
-              <option value="avg_max_drawdown">Drawdown</option>
-            </select>
-          </label>
         </div>
       </section>
 
@@ -236,8 +403,8 @@ export function PerformanceValidation({ forwardRows, history, summaryRows }: Pro
         <table className="w-full min-w-[1080px] table-fixed border-collapse text-xs">
           <thead className="border-b border-slate-800 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             <tr>
-              {["Horizon", "Group", "Value", "Count", "Avg", "Median", "Hit", "Drawdown", "Gain", "Worst", "Best", "Sample"].map((header) => (
-                <th className="px-2 py-1.5" key={header}>{header}</th>
+              {GROUPED_COLUMNS.map((column) => (
+                <SortHeader activeKey={groupedSortKey} align={column.align} direction={groupedSortDirection} key={column.key} label={column.label} onSort={handleGroupedSort} thisKey={column.key} />
               ))}
             </tr>
           </thead>
@@ -269,8 +436,8 @@ export function PerformanceValidation({ forwardRows, history, summaryRows }: Pro
         <table className="w-full min-w-[1160px] table-fixed border-collapse text-xs">
           <thead className="border-b border-slate-800 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             <tr>
-              {["Symbol", "Signal Time", "Horizon", "Return", "Drawdown", "Gain", "Rating", "Action", "Setup", "Entry"].map((header) => (
-                <th className="px-2 py-1.5" key={header}>{header}</th>
+              {FORWARD_COLUMNS.map((column) => (
+                <SortHeader activeKey={forwardSortKey} align={column.align} direction={forwardSortDirection} key={column.key} label={column.label} onSort={handleForwardSort} thisKey={column.key} />
               ))}
             </tr>
           </thead>

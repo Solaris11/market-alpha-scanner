@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { RankingTable } from "@/components/ranking-table";
+import { RankingTable, signalPriorityForRow } from "@/components/ranking-table";
 import type { RankingSortDirection, RankingSortKey } from "@/components/ranking-table";
 import { WatchlistPanel } from "@/components/watchlist-controls";
 import { actionFor } from "@/lib/format";
@@ -33,7 +33,7 @@ function matchesText(value: unknown, query: string) {
     .includes(query);
 }
 
-const NUMERIC_SORT_KEYS = new Set<RankingSortKey>(["price", "score"]);
+const NUMERIC_SORT_KEYS = new Set<RankingSortKey>(["price", "score", "signals"]);
 const RATING_PRIORITY: Record<string, number> = {
   TOP: 0,
   ACTIONABLE: 1,
@@ -74,35 +74,45 @@ function valueForSort(row: RankingRow, key: RankingSortKey) {
   if (key === "score") return row.final_score;
   if (key === "rating") return row.rating ?? "";
   if (key === "action") return actionFor(row);
+  if (key === "signals") return signalPriorityForRow(row);
   return "";
 }
 
 function sortRows(rows: RankingRow[], key: RankingSortKey | null, direction: RankingSortDirection) {
   if (!key) return rows;
 
-  return [...rows].sort((left, right) => {
-    if (key === "rating") {
-      return priorityCompare(RATING_PRIORITY[String(left.rating ?? "").toUpperCase()] ?? null, RATING_PRIORITY[String(right.rating ?? "").toUpperCase()] ?? null, direction);
-    }
-    if (key === "action") {
-      return priorityCompare(ACTION_PRIORITY[normalizeAction(actionFor(left))] ?? null, ACTION_PRIORITY[normalizeAction(actionFor(right))] ?? null, direction);
-    }
-    if (NUMERIC_SORT_KEYS.has(key)) {
-      const leftValue = typeof valueForSort(left, key) === "number" ? (valueForSort(left, key) as number) : null;
-      const rightValue = typeof valueForSort(right, key) === "number" ? (valueForSort(right, key) as number) : null;
-      if (leftValue === null && rightValue === null) return 0;
-      if (leftValue === null) return 1;
-      if (rightValue === null) return -1;
-      return direction === "desc" ? rightValue - leftValue : leftValue - rightValue;
-    }
+  return rows
+    .map((row, index) => ({ row, index }))
+    .sort((leftItem, rightItem) => {
+      const left = leftItem.row;
+      const right = rightItem.row;
+      let result = 0;
 
-    const leftText = String(valueForSort(left, key) ?? "");
-    const rightText = String(valueForSort(right, key) ?? "");
-    if (!leftText && !rightText) return 0;
-    if (!leftText) return 1;
-    if (!rightText) return -1;
-    return direction === "desc" ? rightText.localeCompare(leftText) : leftText.localeCompare(rightText);
-  });
+      if (key === "rating") {
+        result = priorityCompare(RATING_PRIORITY[String(left.rating ?? "").toUpperCase()] ?? null, RATING_PRIORITY[String(right.rating ?? "").toUpperCase()] ?? null, direction);
+      } else if (key === "action") {
+        result = priorityCompare(ACTION_PRIORITY[normalizeAction(actionFor(left))] ?? null, ACTION_PRIORITY[normalizeAction(actionFor(right))] ?? null, direction);
+      } else if (NUMERIC_SORT_KEYS.has(key)) {
+        const leftRaw = valueForSort(left, key);
+        const rightRaw = valueForSort(right, key);
+        const leftValue = typeof leftRaw === "number" && Number.isFinite(leftRaw) ? leftRaw : null;
+        const rightValue = typeof rightRaw === "number" && Number.isFinite(rightRaw) ? rightRaw : null;
+        if (leftValue === null && rightValue === null) result = 0;
+        else if (leftValue === null) result = 1;
+        else if (rightValue === null) result = -1;
+        else result = direction === "desc" ? rightValue - leftValue : leftValue - rightValue;
+      } else {
+        const leftText = String(valueForSort(left, key) ?? "");
+        const rightText = String(valueForSort(right, key) ?? "");
+        if (!leftText && !rightText) result = 0;
+        else if (!leftText) result = 1;
+        else if (!rightText) result = -1;
+        else result = direction === "desc" ? rightText.localeCompare(leftText) : leftText.localeCompare(rightText);
+      }
+
+      return result || leftItem.index - rightItem.index;
+    })
+    .map((item) => item.row);
 }
 
 function alertTypeLabel(value: string) {
@@ -167,7 +177,9 @@ export function OverviewWorkspace({ alertRules, ranking, topCandidates }: Props)
   const [rating, setRating] = useState("");
   const [minimumScore, setMinimumScore] = useState("");
   const [sortKey, setSortKey] = useState<RankingSortKey | null>(null);
-  const [sortDirection, setSortDirection] = useState<RankingSortDirection>("asc");
+  const [sortDirection, setSortDirection] = useState<RankingSortDirection>("desc");
+  const [topSortKey, setTopSortKey] = useState<RankingSortKey | null>(null);
+  const [topSortDirection, setTopSortDirection] = useState<RankingSortDirection>("desc");
 
   const assetTypes = useMemo(() => uniqueOptions(ranking, "asset_type"), [ranking]);
   const sectors = useMemo(() => {
@@ -197,6 +209,7 @@ export function OverviewWorkspace({ alertRules, ranking, topCandidates }: Props)
     return topCandidates.filter((row) => visibleSymbols.has(row.symbol));
   }, [filteredRows, topCandidates]);
   const sortedRows = useMemo(() => sortRows(filteredRows, sortKey, sortDirection), [filteredRows, sortDirection, sortKey]);
+  const sortedTopCandidates = useMemo(() => sortRows(filteredTopCandidates, topSortKey, topSortDirection), [filteredTopCandidates, topSortDirection, topSortKey]);
 
   function resetFilters() {
     setSymbolSearch("");
@@ -205,7 +218,9 @@ export function OverviewWorkspace({ alertRules, ranking, topCandidates }: Props)
     setRating("");
     setMinimumScore("");
     setSortKey(null);
-    setSortDirection("asc");
+    setSortDirection("desc");
+    setTopSortKey(null);
+    setTopSortDirection("desc");
   }
 
   function handleSort(key: RankingSortKey) {
@@ -214,7 +229,16 @@ export function OverviewWorkspace({ alertRules, ranking, topCandidates }: Props)
       return;
     }
     setSortKey(key);
-    setSortDirection(NUMERIC_SORT_KEYS.has(key) ? "desc" : "asc");
+    setSortDirection("desc");
+  }
+
+  function handleTopSort(key: RankingSortKey) {
+    if (topSortKey === key) {
+      setTopSortDirection((current) => (current === "desc" ? "asc" : "desc"));
+      return;
+    }
+    setTopSortKey(key);
+    setTopSortDirection("desc");
   }
 
   return (
@@ -326,7 +350,7 @@ export function OverviewWorkspace({ alertRules, ranking, topCandidates }: Props)
             <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Top Candidates</div>
             <h2 className="text-lg font-semibold text-slate-50">High Conviction</h2>
           </div>
-          <RankingTable rows={filteredTopCandidates} highlight limit={10} emptyMessage="No matching symbols" />
+          <RankingTable rows={sortedTopCandidates} highlight limit={10} emptyMessage="No matching symbols" sortDirection={topSortDirection} sortKey={topSortKey} onSort={handleTopSort} />
         </section>
 
         <WatchlistPanel />

@@ -5,7 +5,7 @@ import type { RankingRow } from "@/lib/types";
 import { actionFor, compact, formatNumber } from "@/lib/format";
 import { Badge } from "./badge";
 
-export type RankingSortKey = "symbol" | "company" | "asset" | "sector" | "price" | "score" | "rating" | "action";
+export type RankingSortKey = "symbol" | "company" | "asset" | "sector" | "price" | "score" | "rating" | "action" | "signals";
 export type RankingSortDirection = "asc" | "desc";
 
 type Props = {
@@ -27,6 +27,7 @@ const COLUMNS: { key: RankingSortKey; label: string; align?: "left" | "right" }[
   { key: "score", label: "Score", align: "right" },
   { key: "rating", label: "Rating" },
   { key: "action", label: "Action" },
+  { key: "signals", label: "Signals" },
 ];
 const SIGNAL_TONES: Record<string, string> = {
   positive: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
@@ -39,6 +40,19 @@ const SIGNAL_TONES: Record<string, string> = {
 type SignalBadge = {
   label: string;
   tone: keyof typeof SIGNAL_TONES;
+};
+
+const SIGNAL_PRIORITY: Record<string, number> = {
+  "STOP HIT": 100,
+  "STOP RISK": 90,
+  "TP HIT": 85,
+  "BUY ZONE": 80,
+  "NEAR ENTRY": 70,
+  "TP NEAR": 60,
+  EXTENDED: 50,
+  TOP: 40,
+  ACTIONABLE: 30,
+  WATCH: 20,
 };
 
 function numeric(value: unknown) {
@@ -113,6 +127,11 @@ function signalBadges(row: RankingRow): SignalBadge[] {
   return badges;
 }
 
+export function signalPriorityForRow(row: RankingRow) {
+  const priorities = signalBadges(row).map((badge) => SIGNAL_PRIORITY[badge.label] ?? 0);
+  return priorities.length ? Math.max(...priorities) : 0;
+}
+
 function SignalPill({ badge }: { badge: SignalBadge }) {
   return <span className={`inline-flex min-w-max items-center whitespace-nowrap rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] ${SIGNAL_TONES[badge.tone]}`}>{badge.label}</span>;
 }
@@ -126,9 +145,9 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
 
   return (
     <div className="terminal-panel overflow-x-auto rounded-md">
-      <table className="w-full min-w-[1120px] table-fixed border-collapse text-xs">
+      <table className="w-full min-w-[1240px] table-fixed border-collapse text-xs">
         <colgroup>
-          <col style={{ width: 190 }} />
+          <col style={{ width: 90 }} />
           <col style={{ width: 220 }} />
           <col style={{ width: 90 }} />
           <col style={{ width: 150 }} />
@@ -136,12 +155,13 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
           <col style={{ width: 90 }} />
           <col style={{ width: 130 }} />
           <col style={{ width: 150 }} />
+          <col style={{ width: 230 }} />
         </colgroup>
         <thead className="border-b border-slate-700/70 bg-slate-950/70 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
           <tr>
             {COLUMNS.map((column) => {
               const active = sortKey === column.key;
-              const indicator = active ? (sortDirection === "asc" ? "▲" : "▼") : "";
+              const indicator = active ? (sortDirection === "asc" ? "↑" : "↓") : "";
               return (
                 <th className={`px-2 py-1.5 ${column.align === "right" ? "text-right" : "text-left"}`} key={column.key}>
                   {onSort ? (
@@ -170,18 +190,9 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
                 key={`${row.symbol}-${index}`}
               >
                 <td className="px-2 py-1.5 align-middle">
-                  <div className="flex flex-col gap-1">
-                    <Link className="font-semibold text-sky-200 hover:text-sky-100" href={`/symbol/${row.symbol}`}>
-                      {row.symbol}
-                    </Link>
-                    {rowBadges.length ? (
-                      <div className="flex max-w-full flex-wrap gap-1">
-                        {rowBadges.map((badge) => (
-                          <SignalPill badge={badge} key={badge.label} />
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
+                  <Link className="font-semibold text-sky-200 hover:text-sky-100" href={`/symbol/${row.symbol}`}>
+                    {row.symbol}
+                  </Link>
                 </td>
                 <td className="px-2 py-1.5 align-middle">
                   <div className="truncate text-slate-400" title={row.company_name || ""}>
@@ -197,6 +208,17 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
                 </td>
                 <td className="px-2 py-1.5 align-middle">
                   <Badge value={actionFor(row)} />
+                </td>
+                <td className="px-2 py-1.5 align-middle">
+                  {rowBadges.length ? (
+                    <div className="flex max-w-full flex-wrap gap-1">
+                      {rowBadges.map((badge) => (
+                        <SignalPill badge={badge} key={badge.label} />
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-slate-600">—</span>
+                  )}
                 </td>
               </tr>
             );
