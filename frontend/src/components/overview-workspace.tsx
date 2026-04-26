@@ -46,6 +46,7 @@ function rowMatchesSearch(row: RankingRow, query: string) {
     row.display_name,
     row.displayName,
     row.name,
+    row.sector,
   ].some((value) => matchesText(value, query));
 }
 
@@ -118,8 +119,8 @@ function sortRows(rows: RankingRow[], key: RankingSortKey | null, direction: Ran
         else if (rightValue === null) result = -1;
         else result = direction === "desc" ? rightValue - leftValue : leftValue - rightValue;
       } else {
-        const leftText = String(valueForSort(left, key) ?? "");
-        const rightText = String(valueForSort(right, key) ?? "");
+        const leftText = String(valueForSort(left, key) ?? "").trim().toLowerCase();
+        const rightText = String(valueForSort(right, key) ?? "").trim().toLowerCase();
         if (!leftText && !rightText) result = 0;
         else if (!leftText) result = 1;
         else if (!rightText) result = -1;
@@ -144,6 +145,19 @@ function filterRows(rows: RankingRow[], filters: { assetType: string; minimumSco
     if (hasMinScore && (typeof row.final_score !== "number" || row.final_score < minScore)) return false;
     return true;
   });
+}
+
+function mergeRankingFallback(row: RankingRow, fallback?: RankingRow) {
+  if (!fallback) return row;
+  const merged: RankingRow = { ...fallback, ...row };
+  for (const key of ["company_name", "asset_type", "sector", "rating", "action"] as const) {
+    if (!String(merged[key] ?? "").trim() && fallback[key]) {
+      merged[key] = fallback[key];
+    }
+  }
+  if (typeof merged.price !== "number" && typeof fallback.price === "number") merged.price = fallback.price;
+  if (typeof merged.final_score !== "number" && typeof fallback.final_score === "number") merged.final_score = fallback.final_score;
+  return merged;
 }
 
 function alertTypeLabel(value: string) {
@@ -229,12 +243,12 @@ export function OverviewWorkspace({ alertRules, ranking, topCandidates }: Props)
 
   const activeFilters = useMemo(() => ({ assetType, minimumScore, rating, sector, symbolSearch }), [assetType, minimumScore, rating, sector, symbolSearch]);
   const filteredRows = useMemo(() => filterRows(ranking, activeFilters), [activeFilters, ranking]);
+  const enrichedTopCandidates = useMemo(() => {
+    return topCandidates.map((row) => mergeRankingFallback(row, rankingBySymbol.get(String(row.symbol ?? "").trim().toUpperCase())));
+  }, [rankingBySymbol, topCandidates]);
   const filteredTopCandidates = useMemo(() => {
-    return topCandidates.filter((row) => {
-      const fallback = rankingBySymbol.get(String(row.symbol ?? "").trim().toUpperCase());
-      return filterRows([{ ...fallback, ...row } as RankingRow], activeFilters).length > 0;
-    });
-  }, [activeFilters, rankingBySymbol, topCandidates]);
+    return filterRows(enrichedTopCandidates, activeFilters);
+  }, [activeFilters, enrichedTopCandidates]);
   const sortedRows = useMemo(() => sortRows(filteredRows, sortKey, sortDirection), [filteredRows, sortDirection, sortKey]);
   const sortedTopCandidates = useMemo(() => sortRows(filteredTopCandidates, topSortKey, topSortDirection), [filteredTopCandidates, topSortDirection, topSortKey]);
 

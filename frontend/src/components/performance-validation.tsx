@@ -47,10 +47,10 @@ const GROUPED_COLUMNS: { key: GroupedSortKey; label: string; align?: "left" | "r
   { key: "group_type", label: "Group" },
   { key: "group_value", label: "Value" },
   { key: "count", label: "Count", align: "right" },
-  { key: "avg_return", label: "Avg", align: "right" },
+  { key: "avg_return", label: "Avg Return", align: "right" },
   { key: "median_return", label: "Median", align: "right" },
-  { key: "hit_rate", label: "Hit", align: "right" },
-  { key: "avg_max_drawdown", label: "Drawdown", align: "right" },
+  { key: "hit_rate", label: "Hit Rate", align: "right" },
+  { key: "avg_max_drawdown", label: "Max Drawdown", align: "right" },
   { key: "avg_max_gain", label: "Gain", align: "right" },
   { key: "worst_return", label: "Worst", align: "right" },
   { key: "best_return", label: "Best", align: "right" },
@@ -171,10 +171,10 @@ function defaultSortGroupedRows(rows: CsvRow[]) {
   return rows
     .map((row, index) => ({ row, index }))
     .sort((left, right) => {
-      const horizonResult = compareValues(horizonSortValue(left.row), horizonSortValue(right.row), "asc", true);
-      if (horizonResult) return horizonResult;
       const avgResult = compareValues(left.row.avg_return, right.row.avg_return, "desc", true);
-      return avgResult || left.index - right.index;
+      if (avgResult) return avgResult;
+      const horizonResult = compareValues(horizonSortValue(left.row), horizonSortValue(right.row), "asc", true);
+      return horizonResult || left.index - right.index;
     })
     .map((item) => item.row);
 }
@@ -506,7 +506,7 @@ export function PerformanceValidation({ forwardRows, history, rankingRows = [], 
         <div className="border-b border-slate-800 bg-slate-950/70 px-3 py-2">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Forward Returns Table</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">{showRawObservations ? "Forward Returns (Raw Observations)" : "Forward Returns (Compact View)"}</div>
               <p className="mt-1 text-xs normal-case tracking-normal text-slate-500">
                 {showRawObservations ? "Raw observations may include repeated intraday snapshots." : "Compact view shows the latest observation per symbol and horizon."}
               </p>

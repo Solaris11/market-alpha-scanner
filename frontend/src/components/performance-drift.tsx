@@ -79,7 +79,7 @@ function priorityCompare(aRank: number | null, bRank: number | null, direction: 
   if (aRank === null) return 1;
   if (bRank === null) return -1;
   const comparison = aRank - bRank;
-  return direction === "asc" ? -comparison : comparison;
+  return direction === "desc" ? comparison : -comparison;
 }
 
 function sortValue(row: IntradayDriftRow, key: SortKey) {
@@ -122,10 +122,24 @@ function compareRows(a: IntradayDriftRow, b: IntradayDriftRow, key: SortKey, dir
     else if (bNumber === null) comparison = -1;
     else comparison = aNumber - bNumber;
   } else {
-    comparison = String(aValue ?? "").localeCompare(String(bValue ?? ""));
+    const aText = String(aValue ?? "").trim().toLowerCase();
+    const bText = String(bValue ?? "").trim().toLowerCase();
+    if (!aText && !bText) comparison = 0;
+    else if (!aText) comparison = 1;
+    else if (!bText) comparison = -1;
+    else comparison = aText.localeCompare(bText);
   }
 
   return direction === "desc" ? -comparison : comparison;
+}
+
+function sortRows(rows: IntradayDriftRow[], key: SortKey | null, direction: SortDirection) {
+  const sorted = rows.map((row, index) => ({ row, index }));
+  sorted.sort((left, right) => {
+    const result = key ? compareRows(left.row, right.row, key, direction) : Math.abs(right.row.score_change ?? 0) - Math.abs(left.row.score_change ?? 0);
+    return result || left.index - right.index;
+  });
+  return sorted.map((item) => item.row);
 }
 
 function timestampMs(row: SymbolHistoryRow) {
@@ -202,7 +216,7 @@ function SortHeader({
     <th className={`px-2 py-1.5 ${align === "right" ? "text-right" : "text-left"}`}>
       <button className="inline-flex items-center gap-1 hover:text-sky-300" onClick={() => onSort(thisKey)} type="button">
         {label}
-        {active ? <span>{sortDirection === "asc" ? "▲" : "▼"}</span> : null}
+        {active ? <span>{sortDirection === "asc" ? "↑" : "↓"}</span> : null}
       </button>
     </th>
   );
@@ -246,10 +260,7 @@ export function PerformanceDrift({ rows, forwardReturnsReady, symbolHistory }: P
         return true;
       });
 
-    if (sortKey) {
-      return [...filtered].sort((a, b) => compareRows(a, b, sortKey, sortDirection));
-    }
-    return [...filtered].sort((a, b) => Math.abs(b.score_change ?? 0) - Math.abs(a.score_change ?? 0));
+    return sortRows(filtered, sortKey, sortDirection);
   }, [minimumScoreChange, onlyScoreGainers, onlyUpgrades, rows, sortDirection, sortKey, symbolSearch]);
 
   const selectedRow = useMemo(() => rows.find((row) => row.symbol === selectedSymbol) ?? null, [rows, selectedSymbol]);
@@ -289,14 +300,15 @@ export function PerformanceDrift({ rows, forwardReturnsReady, symbolHistory }: P
       return;
     }
     setSortKey(nextKey);
-    setSortDirection(NUMERIC_SORT_KEYS.has(nextKey) ? "desc" : "asc");
+    setSortDirection("desc");
   }
 
   return (
     <section className="space-y-3">
       <div>
         <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Intraday Signal Drift</div>
-        <h2 className="text-lg font-semibold text-slate-50">Saved Snapshot Movers</h2>
+        <h2 className="text-lg font-semibold text-slate-50">Intraday Signal Drift</h2>
+        <p className="mt-1 text-sm text-slate-400">Shows largest changes in score and price between saved scan snapshots.</p>
         {!forwardReturnsReady ? (
           <p className="mt-1 text-sm text-slate-400">Forward-return analysis is not ready yet. Showing intraday signal drift from saved snapshots.</p>
         ) : null}
