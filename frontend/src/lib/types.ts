@@ -6,6 +6,7 @@ export type RankingRow = {
   asset_type?: string;
   sector?: string;
   price?: number;
+  return_1d?: number;
   final_score?: number;
   final_score_adjusted?: number;
   regime_adjustment?: number;

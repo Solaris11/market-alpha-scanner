@@ -3,7 +3,7 @@ import { OverviewWorkspace } from "@/components/overview-workspace";
 import { TerminalShell } from "@/components/shell";
 import { getAlertOverview } from "@/lib/alerts";
 import { formatNumber } from "@/lib/format";
-import { getFullRanking, getMarketRegime, getScanDataHealth, getTopCandidates, type ScanDataHealth } from "@/lib/scanner-data";
+import { getFullRanking, getMarketRegime, getMarketStructure, getScanDataHealth, getTopCandidates, type ScanDataHealth } from "@/lib/scanner-data";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +48,11 @@ function numberText(value: unknown, fallback = "N/A") {
   return Number.isFinite(parsed) ? Math.round(parsed).toString() : fallback;
 }
 
+function percentText(value: unknown, fallback = "N/A") {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? `${Math.round(parsed * 100)}%` : fallback;
+}
+
 function MarketRegimePanel({ regime }: { regime: Record<string, unknown> | null }) {
   const label = text(regime?.regime, "UNKNOWN").toUpperCase();
   const trend = text(regime?.trend, "UNKNOWN").toUpperCase();
@@ -69,13 +74,45 @@ function MarketRegimePanel({ regime }: { regime: Record<string, unknown> | null 
   );
 }
 
+function structureTone(structure: Record<string, unknown> | null) {
+  const breadth = text(structure?.breadth, "UNKNOWN").toUpperCase();
+  const leadership = text(structure?.leadership, "UNKNOWN").toUpperCase();
+  if (breadth === "STRONG" && leadership === "BALANCED") return "border-emerald-400/30 bg-emerald-400/10 text-emerald-100";
+  if (breadth === "WEAK" && leadership === "CONCENTRATED") return "border-rose-400/30 bg-rose-400/10 text-rose-100";
+  return "border-amber-400/30 bg-amber-400/10 text-amber-100";
+}
+
+function MarketStructurePanel({ structure }: { structure: Record<string, unknown> | null }) {
+  const breadth = text(structure?.breadth, "UNKNOWN").toUpperCase();
+  const leadership = text(structure?.leadership, "UNKNOWN").toUpperCase();
+  const topDrivers = Array.isArray(structure?.top_3_symbols) ? structure.top_3_symbols.map((item) => String(item)).join(", ") : "N/A";
+  const warning = text(structure?.warning, "Market structure is not available yet.");
+  return (
+    <section className={`rounded-md border px-3 py-2 ${structureTone(structure)}`}>
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-80">Market Structure</div>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <span className="text-sm">Breadth: <span className="font-semibold">{breadth}</span></span>
+            <span className="text-sm">Leadership: <span className="font-semibold">{leadership}</span></span>
+            <span className="text-sm">Breadth Ratio: <span className="font-mono font-semibold">{percentText(structure?.breadth_ratio)}</span></span>
+            <span className="text-sm">Top 3: <span className="font-mono font-semibold">{topDrivers}</span></span>
+          </div>
+        </div>
+        <div className="max-w-xl text-xs opacity-80">{warning}</div>
+      </div>
+    </section>
+  );
+}
+
 export default async function DashboardOverview() {
-  const [ranking, topCandidates, alertOverview, dataHealth, marketRegime] = await Promise.all([
+  const [ranking, topCandidates, alertOverview, dataHealth, marketRegime, marketStructure] = await Promise.all([
     getFullRanking(),
     getTopCandidates(),
     getAlertOverview({ stateLimit: 25 }).catch(() => ({ rules: [], state: { alerts: {} } })),
     getScanDataHealth(),
     getMarketRegime(),
+    getMarketStructure(),
   ]);
   const leader = ranking[0];
   const averageScore = ranking.length
@@ -101,6 +138,7 @@ export default async function DashboardOverview() {
         <DataHealthBanner health={dataHealth} />
 
         <MarketRegimePanel regime={marketRegime} />
+        <MarketStructurePanel structure={marketStructure} />
 
         <OverviewWorkspace alertRules={alertOverview.rules} alertState={alertOverview.state} ranking={ranking} topCandidates={topCandidates} />
       </div>

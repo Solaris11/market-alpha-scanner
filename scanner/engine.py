@@ -70,6 +70,7 @@ def scan_symbols(
     horizon_context_cache: dict[str, dict[str, float | bool]] = {}
     macd_cache: dict[str, tuple[float, float]] = {}
     news_cache: dict[str, list[dict[str, object]]] = {}
+    one_day_return_cache: dict[str, float] = {}
     scanned_count = 0
 
     print("[3/5] Scoring symbols...")
@@ -83,6 +84,8 @@ def scan_symbols(
             continue
 
         last_price = safe_float(close.iloc[-1], np.nan)
+        previous_close = safe_float(close.iloc[-2], np.nan) if len(close) >= 2 else np.nan
+        one_day_return = (last_price / previous_close - 1.0) if not np.isnan(last_price) and not np.isnan(previous_close) and previous_close != 0 else np.nan
         avg_dollar_volume = safe_float((df["Close"].iloc[-20:] * df["Volume"].iloc[-20:]).mean(), np.nan)
         if np.isnan(last_price) or last_price < min_price:
             continue
@@ -91,6 +94,7 @@ def scan_symbols(
 
         info = fetch_info(symbol)
         info_cache[symbol] = info
+        one_day_return_cache[symbol] = round(one_day_return, 6) if not np.isnan(one_day_return) else np.nan
         scanned_count += 1
         asset_type = infer_asset_type(symbol, info)
         sector = infer_sector(symbol, asset_type, info)
@@ -259,6 +263,7 @@ def scan_symbols(
     df_rank = pd.DataFrame([asdict(x) for x in ranked])
     if df_rank.empty:
         return df_rank
+    df_rank["return_1d"] = df_rank["symbol"].map(one_day_return_cache)
     df_rank = apply_regime_adjustments(df_rank, market_regime)
     df_rank = df_rank.sort_values(by=["final_score", "technical_score", "macro_score"], ascending=[False, False, False]).reset_index(drop=True)
     df_rank.attrs["ranked_assets"] = ranked

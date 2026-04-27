@@ -19,6 +19,7 @@ from scanner.engine import load_universe_from_csv, scan_symbols
 from scanner.outputs import print_top_table, save_snapshot
 from scanner.regime import write_market_regime
 from scanner.safety import atomic_write_dataframe_csv, check_data_freshness, ensure_action_column, scanner_run_lock, validate_ranking_schema
+from scanner.structure import write_market_structure
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -101,6 +102,7 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
 
     atomic_write_dataframe_csv(df_rank, full_path, index=False)
     atomic_write_dataframe_csv(df_rank.head(args.top), top_path, index=False)
+    write_market_structure(outdir, df_rank)
 
     if args.save_history:
         history_path = save_snapshot(df_rank, outdir)
@@ -148,6 +150,7 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
         history_dir = outdir / "history"
         print("[analysis] starting forward-return analysis")
         write_market_regime(outdir)
+        write_market_structure(outdir)
         forward_df = compute_forward_returns(str(history_dir), analysis_raw=args.analysis_raw)
         if forward_df.empty:
             print("\n[analysis] No completed forward-return observations yet.")

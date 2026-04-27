@@ -10,6 +10,7 @@ const NUMERIC_FIELDS = new Set([
   "price",
   "final_score",
   "final_score_adjusted",
+  "return_1d",
   "regime_adjustment",
   "technical_score",
   "fundamental_score",
@@ -636,6 +637,10 @@ export async function getCalibrationInsights() {
 
 export async function getMarketRegime() {
   return readJson(path.join(scannerOutputDir(), "analysis", "market_regime.json"));
+}
+
+export async function getMarketStructure() {
+  return readJson(path.join(scannerOutputDir(), "analysis", "market_structure.json"));
 }
 
 export async function getSymbolDetail(symbol: string): Promise<SymbolDetail> {

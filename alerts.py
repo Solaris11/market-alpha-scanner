@@ -16,6 +16,7 @@ import pandas as pd
 
 from scanner.regime import read_market_regime
 from scanner.safety import check_data_freshness, ensure_action_column, validate_ranking_schema
+from scanner.structure import read_market_structure
 
 
 ALERTS_DIRNAME = "alerts"
@@ -638,6 +639,26 @@ def _regime_suppression_reason(rule: dict[str, Any], row: dict[str, Any] | None,
     return None
 
 
+def _market_structure_suppression_reason(rule: dict[str, Any], row: dict[str, Any] | None, structure_payload: dict[str, Any] | None) -> str | None:
+    breadth = _clean_text((structure_payload or {}).get("breadth"), "").upper()
+    leadership = _clean_text((structure_payload or {}).get("leadership"), "").upper()
+    alert_type = _rule_type(rule)
+    if breadth != "WEAK" or leadership != "CONCENTRATED" or alert_type not in BUY_ALERT_TYPES:
+        return None
+
+    action = _normalized_action(row)
+    setup_type = _clean_text((row or {}).get("setup_type"), "").lower()
+    is_buy_signal = action in {"STRONG BUY", "BUY"} or alert_type in {"buy_zone_hit", "entry_ready", "score_above", "new_top_candidate"}
+    is_breakout_or_trend = "breakout" in setup_type or "trend" in setup_type
+    if not is_buy_signal and not is_breakout_or_trend:
+        return None
+
+    score = _score(row)
+    if score is None or score < 80:
+        return "market_structure:WEAK_CONCENTRATED requires score>=80 for buy/trend alerts"
+    return None
+
+
 def _watchlist_path(outdir: Path) -> Path:
     return outdir / "watchlist.json"
 
@@ -1004,6 +1025,7 @@ def evaluate_alert_rules(
     top_symbols = set(top_rows_by_symbol)
     watchlist_symbols = load_watchlist_symbols(outdir)
     market_regime = read_market_regime(outdir)
+    market_structure = read_market_structure(outdir)
     now = datetime.now(timezone.utc)
 
     triggered_count = 0
@@ -1095,6 +1117,23 @@ def evaluate_alert_rules(
                 )
                 state_changed = True
                 print(f"[alerts] suppressed by market_regime: {symbol} {rule_id} reason={regime_reason}")
+                continue
+
+            structure_reason = _market_structure_suppression_reason(rule, evaluation.row, market_structure)
+            if structure_reason:
+                skipped_count += 1
+                rule_state.update(
+                    {
+                        "alert_id": rule_id,
+                        "symbol": symbol,
+                        "last_skipped_at": now.isoformat(),
+                        "last_skip_reason": structure_reason,
+                        "last_entry_status": entry_status,
+                        "last_status": "suppressed",
+                    }
+                )
+                state_changed = True
+                print(f"[alerts] suppressed by market_structure: {symbol} {rule_id} reason={structure_reason}")
                 continue
 
             message = _build_message(rule, evaluation)
