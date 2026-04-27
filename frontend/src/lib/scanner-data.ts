@@ -58,6 +58,9 @@ const NUMERIC_FIELDS = new Set([
   "hit_rate",
   "avg_max_drawdown",
   "avg_max_gain",
+  "avg_drawdown",
+  "avg_gain",
+  "edge_score",
   "worst_return",
   "best_return",
   "avg_negative_return",
@@ -623,6 +626,10 @@ export async function getPerformanceData(options: { forwardTailRows?: number } =
     readScannerCsvWithStateParts(["analysis", "forward_returns.csv"], { tailRows: options.forwardTailRows }),
   ]);
   return { summary, forwardReturns };
+}
+
+export async function getCalibrationInsights() {
+  return readJson(path.join(scannerOutputDir(), "analysis", "calibration_insights.json"));
 }
 
 export async function getSymbolDetail(symbol: string): Promise<SymbolDetail> {

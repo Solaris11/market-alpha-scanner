@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -58,6 +60,18 @@ SUMMARY_COLUMNS = [
     "low_sample",
 ]
 SUMMARY_GROUPS = ["rating", "action", "setup_type", "score_bucket", "sector", "asset_type", "entry_status", "trade_quality"]
+CALIBRATION_COLUMNS = [
+    "group_type",
+    "group_value",
+    "horizon",
+    "count",
+    "avg_return",
+    "hit_rate",
+    "avg_drawdown",
+    "avg_gain",
+    "edge_score",
+    "low_sample",
+]
 
 
 def _first_non_empty_column_value(row: pd.Series, columns: tuple[str, ...]) -> str:
@@ -349,6 +363,237 @@ def summarize_group_performance(df: pd.DataFrame, group_col: str) -> pd.DataFram
     return pd.DataFrame(rows, columns=SUMMARY_COLUMNS)
 
 
+def _json_safe_value(value: object) -> object:
+    if isinstance(value, (np.bool_, bool)):
+        return bool(value)
+    if isinstance(value, (np.integer, int)):
+        return int(value)
+    if isinstance(value, (np.floating, float)):
+        return None if pd.isna(value) or not np.isfinite(value) else float(value)
+    if value is None or pd.isna(value):
+        return None
+    return value
+
+
+def _dataframe_records(df: pd.DataFrame) -> list[dict[str, object]]:
+    records: list[dict[str, object]] = []
+    for raw in df.to_dict(orient="records"):
+        records.append({key: _json_safe_value(value) for key, value in raw.items()})
+    return records
+
+
+def _format_percent(value: object) -> str:
+    parsed = safe_float(value, np.nan)
+    if np.isnan(parsed):
+        return "N/A"
+    sign = "+" if parsed > 0 else ""
+    return f"{sign}{parsed * 100:.2f}%"
+
+
+def _format_ratio(value: object) -> str:
+    parsed = safe_float(value, np.nan)
+    if np.isnan(parsed):
+        return "N/A"
+    return f"{parsed * 100:.1f}%"
+
+
+def _row_label(row: pd.Series) -> str:
+    return f"{safe_str(row.get('group_type'), 'group')}={safe_str(row.get('group_value'), 'unknown')} on {safe_str(row.get('horizon'), 'unknown')}"
+
+
+def _insight_record(row: pd.Series) -> dict[str, object]:
+    return {
+        "group_type": safe_str(row.get("group_type"), ""),
+        "group_value": safe_str(row.get("group_value"), ""),
+        "horizon": safe_str(row.get("horizon"), ""),
+        "count": int(safe_float(row.get("count"), 0)),
+        "avg_return": _json_safe_value(row.get("avg_return")),
+        "hit_rate": _json_safe_value(row.get("hit_rate")),
+        "avg_drawdown": _json_safe_value(row.get("avg_drawdown")),
+        "avg_gain": _json_safe_value(row.get("avg_gain")),
+        "edge_score": _json_safe_value(row.get("edge_score")),
+        "low_sample": bool(row.get("low_sample")),
+        "label": _row_label(row),
+    }
+
+
+def _best_row(df: pd.DataFrame, group_type: str, horizon: str | None = None) -> pd.Series | None:
+    subset = df[df["group_type"] == group_type].copy()
+    if horizon:
+        subset = subset[subset["horizon"] == horizon].copy()
+    subset = subset[~subset["low_sample"]].copy()
+    if subset.empty:
+        return None
+    return subset.sort_values(["edge_score", "avg_return"], ascending=[False, False]).iloc[0]
+
+
+def _calibration_note_for_score_buckets(df: pd.DataFrame) -> str:
+    score_rows = df[(df["group_type"] == "score_bucket") & ~df["low_sample"]].copy()
+    if score_rows.empty:
+        return "Score bucket samples are still too small; do not recalibrate score thresholds yet."
+
+    notes: list[str] = []
+    for horizon in HORIZONS:
+        horizon_rows = score_rows[score_rows["horizon"] == horizon]
+        high = horizon_rows[horizon_rows["group_value"] == "80+"]
+        mid = horizon_rows[horizon_rows["group_value"] == "70-79"]
+        if high.empty or mid.empty:
+            continue
+        high_row = high.iloc[0]
+        mid_row = mid.iloc[0]
+        if safe_float(high_row.get("edge_score"), -np.inf) <= safe_float(mid_row.get("edge_score"), -np.inf):
+            notes.append(f"80+ score bucket does not outperform 70-79 on {horizon}; investigate overextension.")
+    if notes:
+        return " ".join(notes)
+
+    best = _best_row(score_rows, "score_bucket")
+    if best is None:
+        return "Score bucket samples are still too small; do not recalibrate score thresholds yet."
+    return f"Best score bucket so far: {safe_str(best.get('group_value'), 'unknown')} on {safe_str(best.get('horizon'), 'unknown')} with {_format_percent(best.get('avg_return'))} average return and {_format_ratio(best.get('hit_rate'))} hit rate."
+
+
+def _calibration_note_for_rating_action(df: pd.DataFrame) -> str:
+    notes: list[str] = []
+    rating_rows = df[(df["group_type"] == "rating") & ~df["low_sample"]].copy()
+    action_rows = df[(df["group_type"] == "action") & ~df["low_sample"]].copy()
+
+    for horizon in HORIZONS:
+        horizon_rows = rating_rows[rating_rows["horizon"] == horizon]
+        top = horizon_rows[horizon_rows["group_value"] == "TOP"]
+        actionable = horizon_rows[horizon_rows["group_value"] == "ACTIONABLE"]
+        watch = horizon_rows[horizon_rows["group_value"] == "WATCH"]
+        if not top.empty and not actionable.empty and safe_float(top.iloc[0].get("edge_score"), -np.inf) < safe_float(actionable.iloc[0].get("edge_score"), -np.inf):
+            notes.append(f"TOP underperforms ACTIONABLE on {horizon}; rating thresholds may need review.")
+        if not watch.empty and not actionable.empty:
+            watch_edge = safe_float(watch.iloc[0].get("edge_score"), np.nan)
+            actionable_edge = safe_float(actionable.iloc[0].get("edge_score"), np.nan)
+            if not np.isnan(watch_edge) and not np.isnan(actionable_edge) and abs(watch_edge - actionable_edge) <= 1.0:
+                notes.append(f"WATCH performs close to ACTIONABLE on {horizon}; rating separation may be weak.")
+
+    for horizon in HORIZONS:
+        horizon_rows = action_rows[action_rows["horizon"] == horizon]
+        strong_buy = horizon_rows[horizon_rows["group_value"] == "STRONG BUY"]
+        buy = horizon_rows[horizon_rows["group_value"] == "BUY"]
+        if not strong_buy.empty and not buy.empty and safe_float(strong_buy.iloc[0].get("edge_score"), -np.inf) < safe_float(buy.iloc[0].get("edge_score"), -np.inf):
+            notes.append(f"STRONG BUY underperforms BUY on {horizon}; action calibration may need review.")
+
+    if notes:
+        return " ".join(notes[:4])
+    best_rating = _best_row(df, "rating")
+    best_action = _best_row(df, "action")
+    parts = []
+    if best_rating is not None:
+        parts.append(f"Best rating: {safe_str(best_rating.get('group_value'), 'unknown')} on {safe_str(best_rating.get('horizon'), 'unknown')}.")
+    if best_action is not None:
+        parts.append(f"Best action: {safe_str(best_action.get('group_value'), 'unknown')} on {safe_str(best_action.get('horizon'), 'unknown')}.")
+    return " ".join(parts) if parts else "Rating/action samples are still too small; do not recalibrate yet."
+
+
+def _calibration_note_for_setups(df: pd.DataFrame) -> str:
+    setup_rows = df[(df["group_type"] == "setup_type") & ~df["low_sample"]].copy()
+    if setup_rows.empty:
+        return "Setup samples are still too small; do not recalibrate setup weights yet."
+    best = setup_rows.sort_values(["edge_score", "avg_return"], ascending=[False, False]).iloc[0]
+    worst = setup_rows.sort_values(["edge_score", "avg_return"], ascending=[True, True]).iloc[0]
+    return (
+        f"{safe_str(best.get('group_value'), 'unknown')} is the strongest setup on {safe_str(best.get('horizon'), 'unknown')} "
+        f"({_format_percent(best.get('avg_return'))} avg return, {_format_ratio(best.get('hit_rate'))} hit rate). "
+        f"{safe_str(worst.get('group_value'), 'unknown')} is the weakest sampled setup on {safe_str(worst.get('horizon'), 'unknown')}."
+    )
+
+
+def generate_calibration_insights(summary_df: pd.DataFrame, forward_returns_df: pd.DataFrame, analysis_dir: Path) -> dict[str, object]:
+    analysis_dir.mkdir(parents=True, exist_ok=True)
+    calibration_path = analysis_dir / "calibration_insights.csv"
+    json_path = analysis_dir / "calibration_insights.json"
+
+    if summary_df.empty:
+        calibration_df = pd.DataFrame(columns=CALIBRATION_COLUMNS)
+        atomic_write_dataframe_csv(calibration_df, calibration_path, index=False)
+        payload = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "status": "not_ready",
+            "message": "Analysis complete, but no completed forward-return observations exist yet.",
+            "best_performers": [],
+            "worst_performers": [],
+            "low_sample_warnings": [],
+            "score_bucket_note": "No completed score-bucket observations yet.",
+            "setup_note": "No completed setup observations yet.",
+            "rating_action_note": "No completed rating/action observations yet.",
+            "warnings": ["No completed forward-return observations yet."],
+            "rows": [],
+        }
+        _atomic_write_json(payload, json_path)
+        print(f"[analysis] calibration insights written: 0 rows")
+        return payload
+
+    calibration_df = summary_df.copy()
+    calibration_df["avg_drawdown"] = pd.to_numeric(calibration_df["avg_max_drawdown"], errors="coerce")
+    calibration_df["avg_gain"] = pd.to_numeric(calibration_df["avg_max_gain"], errors="coerce")
+    calibration_df["edge_score"] = (
+        pd.to_numeric(calibration_df["avg_return"], errors="coerce").fillna(0.0) * 100
+        + pd.to_numeric(calibration_df["hit_rate"], errors="coerce").fillna(0.0) * 10
+        + calibration_df["avg_gain"].fillna(0.0) * 20
+        + calibration_df["avg_drawdown"].fillna(0.0) * 20
+    )
+    calibration_df = calibration_df.reindex(columns=CALIBRATION_COLUMNS)
+    calibration_df["edge_score"] = calibration_df["edge_score"].round(6)
+    atomic_write_dataframe_csv(calibration_df, calibration_path, index=False)
+
+    ranked = calibration_df.dropna(subset=["edge_score"]).copy()
+    sufficient = ranked[~ranked["low_sample"]].copy()
+    ranking_source = sufficient if not sufficient.empty else ranked
+    best_performers = _dataframe_records(ranking_source.sort_values(["edge_score", "avg_return"], ascending=[False, False]).head(10))
+    worst_performers = _dataframe_records(ranking_source.sort_values(["edge_score", "avg_return"], ascending=[True, True]).head(10))
+
+    low_sample_rows = calibration_df[calibration_df["low_sample"]].copy()
+    low_sample_warnings = [
+        f"{safe_str(row.get('group_value'), 'unknown')} ({safe_str(row.get('group_type'), 'group')}, {safe_str(row.get('horizon'), 'unknown')}) has low sample size ({int(safe_float(row.get('count'), 0))}); do not recalibrate yet."
+        for _, row in low_sample_rows.sort_values(["group_type", "group_value", "horizon"]).head(20).iterrows()
+    ]
+    warnings: list[str] = []
+    if ranked.empty:
+        warnings.append("No calibration rows available.")
+    elif sufficient.empty:
+        warnings.append("All calibration groups have low sample size; use insights directionally only.")
+    if low_sample_warnings:
+        warnings.append(f"{len(low_sample_rows)} group/horizon combinations have low sample size.")
+
+    best_group = _insight_record(ranking_source.sort_values(["edge_score", "avg_return"], ascending=[False, False]).iloc[0]) if not ranking_source.empty else None
+    worst_group = _insight_record(ranking_source.sort_values(["edge_score", "avg_return"], ascending=[True, True]).iloc[0]) if not ranking_source.empty else None
+
+    payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "status": "ready",
+        "forward_observations": int(len(forward_returns_df)),
+        "calibration_rows": int(len(calibration_df)),
+        "best_group": best_group,
+        "worst_group": worst_group,
+        "best_performers": best_performers,
+        "worst_performers": worst_performers,
+        "low_sample_warnings": low_sample_warnings,
+        "score_bucket_note": _calibration_note_for_score_buckets(calibration_df),
+        "setup_note": _calibration_note_for_setups(calibration_df),
+        "rating_action_note": _calibration_note_for_rating_action(calibration_df),
+        "warnings": warnings,
+        "rows": _dataframe_records(calibration_df),
+    }
+    _atomic_write_json(payload, json_path)
+    print(f"[analysis] calibration insights written: {len(calibration_df)} rows")
+    print(f"Saved calibration insights to: {json_path}")
+    return payload
+
+
+def _atomic_write_json(payload: dict[str, object], path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_name(f"{path.name}.{os.getpid()}.{datetime.now(timezone.utc).timestamp():.6f}.tmp")
+    try:
+        tmp_path.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+        tmp_path.replace(path)
+    finally:
+        tmp_path.unlink(missing_ok=True)
+
+
 def print_performance_section(summary_df: pd.DataFrame, group_type: str, title: str) -> None:
     section = summary_df[summary_df["group_type"] == group_type].copy()
     if section.empty:
@@ -388,6 +633,7 @@ def analyze_performance(forward_returns_df: pd.DataFrame) -> pd.DataFrame:
     summary_df = pd.concat([df for df in summary_frames if not df.empty], ignore_index=True) if any(not df.empty for df in summary_frames) else pd.DataFrame(columns=SUMMARY_COLUMNS)
     summary_path = analysis_dir / "performance_summary.csv"
     atomic_write_dataframe_csv(summary_df, summary_path, index=False)
+    generate_calibration_insights(summary_df, forward_returns_df, analysis_dir)
 
     print_performance_section(summary_df, "rating", "PERFORMANCE BY RATING")
     print_performance_section(summary_df, "setup_type", "PERFORMANCE BY SETUP")
