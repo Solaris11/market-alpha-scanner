@@ -31,6 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--news-limit", type=int, default=DEFAULT_NEWS_LIMIT, help="How many top names to enrich with recent headlines")
     parser.add_argument("--skip-news", action="store_true", help="Skip headline / event enrichment")
     parser.add_argument("--run-analysis", action="store_true", help="Compute forward returns and performance summaries from saved history")
+    parser.add_argument("--analysis-raw", action="store_true", help="Keep raw intraday observations instead of canonical daily sampling")
     parser.add_argument("--save-history", dest="save_history", action="store_true", help="Save a timestamped snapshot after each scan")
     parser.add_argument("--no-save-history", dest="save_history", action="store_false", help="Do not save a timestamped snapshot")
     parser.add_argument("--send-alerts", action="store_true", help="Evaluate enabled alert rules and send configured Telegram/email alerts")
@@ -145,7 +146,7 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
     if args.run_analysis:
         history_dir = outdir / "history"
         print("[analysis] starting forward-return analysis")
-        forward_df = compute_forward_returns(str(history_dir))
+        forward_df = compute_forward_returns(str(history_dir), raw=args.analysis_raw)
         if forward_df.empty:
             print("\n[analysis] No completed forward-return observations yet.")
         else:
