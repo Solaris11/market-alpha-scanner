@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CsvRow } from "@/lib/types";
 
 type SortDirection = "asc" | "desc";
@@ -24,12 +24,16 @@ type DetailSortKey =
   | "action"
   | "entry_status"
   | "final_score"
+  | "final_score_adjusted"
   | "buy_zone"
   | "stop_loss"
   | "conservative_target"
   | "status"
   | "return_pct"
-  | "days";
+  | "days_to_entry"
+  | "days_to_exit"
+  | "max_drawdown"
+  | "max_gain";
 type ColumnAlign = "left" | "right" | "center";
 
 type Props = {
@@ -48,7 +52,20 @@ const SUMMARY_NUMERIC_KEYS = new Set<SummarySortKey>([
   "avg_days_to_entry",
   "avg_days_to_exit",
 ]);
-const DETAIL_NUMERIC_KEYS = new Set<DetailSortKey>(["final_score", "return_pct", "days"]);
+const DETAIL_NUMERIC_KEYS = new Set<DetailSortKey>([
+  "final_score",
+  "final_score_adjusted",
+  "return_pct",
+  "days_to_entry",
+  "days_to_exit",
+  "max_drawdown",
+  "max_gain",
+]);
+const DETAIL_PAGE_SIZE = 200;
+const STATUS_FILTER_OPTIONS = ["OPEN", "ENTRY_REACHED", "TARGET_HIT", "STOP_HIT", "EXPIRED"];
+const RATING_FILTER_OPTIONS = ["TOP", "ACTIONABLE", "WATCH", "PASS"];
+const ACTION_FILTER_OPTIONS = ["BUY", "STRONG BUY", "SELL", "STRONG SELL"];
+const ENTRY_FILTER_OPTIONS = ["GOOD ENTRY", "NEAR ENTRY", "BUY ZONE", "OVEREXTENDED"];
 
 const SUMMARY_COLUMNS: { key: SummarySortKey; label: string; align?: ColumnAlign }[] = [
   { key: "group_type", label: "Group" },
@@ -71,12 +88,16 @@ const DETAIL_COLUMNS: { key: DetailSortKey; label: string; align?: ColumnAlign }
   { key: "action", label: "Action" },
   { key: "entry_status", label: "Entry" },
   { key: "final_score", label: "Score", align: "right" },
+  { key: "final_score_adjusted", label: "Adjusted", align: "right" },
   { key: "buy_zone", label: "Buy Zone" },
   { key: "stop_loss", label: "Stop" },
   { key: "conservative_target", label: "Target" },
   { key: "status", label: "Status" },
   { key: "return_pct", label: "Return %", align: "right" },
-  { key: "days", label: "Days", align: "right" },
+  { key: "days_to_entry", label: "Days to Entry", align: "right" },
+  { key: "days_to_exit", label: "Days to Exit", align: "right" },
+  { key: "max_drawdown", label: "Drawdown", align: "right" },
+  { key: "max_gain", label: "Gain", align: "right" },
 ];
 
 function text(value: unknown, fallback = "—") {
@@ -106,14 +127,24 @@ function symbolOf(row: CsvRow) {
   return text(row.symbol, "").toUpperCase();
 }
 
-function daysValue(row: CsvRow) {
-  const exitDays = numeric(row.days_to_exit);
-  if (exitDays !== null) return exitDays;
-  return numeric(row.days_to_entry);
+function normalizeText(value: unknown) {
+  return text(value, "").toUpperCase().replace(/\s+/g, " ");
+}
+
+function lifecycleStatus(value: unknown) {
+  const status = normalizeText(value);
+  return status === "CREATED" ? "OPEN" : status;
+}
+
+function parseSignalDate(value: unknown) {
+  const raw = text(value, "");
+  if (!raw) return null;
+  const timestamp = Date.parse(raw.length === 10 ? `${raw}T00:00:00Z` : raw);
+  return Number.isFinite(timestamp) ? timestamp : null;
 }
 
 function detailValue(row: CsvRow, key: DetailSortKey) {
-  if (key === "days") return daysValue(row);
+  if (key === "status") return lifecycleStatus(row.status);
   return row[key];
 }
 
@@ -171,25 +202,39 @@ function SortHeader<T extends string>({ activeKey, align, direction, label, onSo
   );
 }
 
-function statusTone(status: unknown) {
-  const value = text(status, "").toUpperCase();
-  if (value === "TARGET_HIT") return "text-emerald-300";
-  if (value === "STOP_HIT") return "text-rose-300";
-  if (value === "EXPIRED") return "text-amber-300";
-  if (value === "OPEN" || value === "ENTRY_REACHED") return "text-sky-300";
-  return "text-slate-400";
+function statusBadgeClass(status: unknown) {
+  const value = lifecycleStatus(status);
+  if (value === "TARGET_HIT") return "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
+  if (value === "STOP_HIT") return "border-rose-400/30 bg-rose-400/10 text-rose-200";
+  if (value === "EXPIRED") return "border-slate-600 bg-slate-800/70 text-slate-300";
+  if (value === "ENTRY_REACHED") return "border-amber-400/30 bg-amber-400/10 text-amber-100";
+  if (value === "OPEN") return "border-sky-400/30 bg-sky-400/10 text-sky-100";
+  return "border-slate-700 bg-slate-900 text-slate-400";
+}
+
+function rowMatchesSearch(row: CsvRow, query: string) {
+  if (!query) return true;
+  return [row.symbol, row.company_name].some((value) => text(value, "").toLowerCase().includes(query));
 }
 
 export function SignalLifecycle({ rows, summaryRows }: Props) {
   const [summarySortKey, setSummarySortKey] = useState<SummarySortKey | null>(null);
   const [summarySortDirection, setSummarySortDirection] = useState<SortDirection>("desc");
-  const [detailSortKey, setDetailSortKey] = useState<DetailSortKey | null>(null);
+  const [detailSortKey, setDetailSortKey] = useState<DetailSortKey | null>("signal_date");
   const [detailSortDirection, setDetailSortDirection] = useState<SortDirection>("desc");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [ratingFilter, setRatingFilter] = useState("");
+  const [actionFilter, setActionFilter] = useState("");
+  const [entryFilter, setEntryFilter] = useState("");
+  const [minimumScore, setMinimumScore] = useState("");
+  const [dateRange, setDateRange] = useState("all");
+  const [symbolSearch, setSymbolSearch] = useState("");
+  const [detailPage, setDetailPage] = useState(0);
 
   const metrics = useMemo(() => {
     const total = rows.length;
-    const statuses = rows.map((row) => text(row.status, "").toUpperCase());
-    const entryReached = rows.filter((row) => text(row.entry_date, "") || ["ENTRY_REACHED", "TARGET_HIT", "STOP_HIT"].includes(text(row.status, "").toUpperCase())).length;
+    const statuses = rows.map((row) => lifecycleStatus(row.status));
+    const entryReached = rows.filter((row) => text(row.entry_date, "") || ["ENTRY_REACHED", "TARGET_HIT", "STOP_HIT"].includes(lifecycleStatus(row.status))).length;
     const targetHit = statuses.filter((status) => status === "TARGET_HIT").length;
     const stopHit = statuses.filter((status) => status === "STOP_HIT").length;
     const expired = statuses.filter((status) => status === "EXPIRED").length;
@@ -201,10 +246,48 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
     return stableSort(summaryRows, summarySortKey, summarySortDirection, (row, key) => row[key], SUMMARY_NUMERIC_KEYS).slice(0, 200);
   }, [summaryRows, summarySortDirection, summarySortKey]);
 
+  const latestSignalDate = useMemo(() => {
+    const dates = rows.map((row) => parseSignalDate(row.signal_date)).filter((value): value is number => value !== null);
+    return dates.length ? Math.max(...dates) : null;
+  }, [rows]);
+
+  const filteredDetails = useMemo(() => {
+    const query = symbolSearch.trim().toLowerCase();
+    const minScore = Number(minimumScore);
+    const hasMinScore = minimumScore.trim() !== "" && Number.isFinite(minScore);
+    const dateDays = dateRange === "all" ? null : Number(dateRange);
+    const cutoff =
+      latestSignalDate !== null && dateDays !== null && Number.isFinite(dateDays)
+        ? latestSignalDate - (Math.max(1, dateDays) - 1) * 24 * 60 * 60 * 1000
+        : null;
+
+    return rows.filter((row) => {
+      if (!rowMatchesSearch(row, query)) return false;
+      if (statusFilter && lifecycleStatus(row.status) !== statusFilter) return false;
+      if (ratingFilter && normalizeText(row.rating) !== ratingFilter) return false;
+      if (actionFilter && normalizeText(row.action) !== actionFilter) return false;
+      if (entryFilter && normalizeText(row.entry_status) !== entryFilter) return false;
+      if (hasMinScore && (numeric(row.final_score) ?? -Infinity) < minScore) return false;
+      if (cutoff !== null) {
+        const rowDate = parseSignalDate(row.signal_date);
+        if (rowDate === null || rowDate < cutoff || rowDate > latestSignalDate!) return false;
+      }
+      return true;
+    });
+  }, [actionFilter, dateRange, entryFilter, latestSignalDate, minimumScore, ratingFilter, rows, statusFilter, symbolSearch]);
+
   const sortedDetails = useMemo(() => {
-    const defaultRows = [...rows].sort((left, right) => text(right.signal_date, "").localeCompare(text(left.signal_date, "")) || symbolOf(left).localeCompare(symbolOf(right)));
-    return stableSort(defaultRows, detailSortKey, detailSortDirection, detailValue, DETAIL_NUMERIC_KEYS).slice(0, 200);
-  }, [detailSortDirection, detailSortKey, rows]);
+    const defaultRows = [...filteredDetails].sort((left, right) => text(right.signal_date, "").localeCompare(text(left.signal_date, "")) || symbolOf(left).localeCompare(symbolOf(right)));
+    return stableSort(defaultRows, detailSortKey, detailSortDirection, detailValue, DETAIL_NUMERIC_KEYS);
+  }, [detailSortDirection, detailSortKey, filteredDetails]);
+
+  const totalDetailPages = Math.max(1, Math.ceil(sortedDetails.length / DETAIL_PAGE_SIZE));
+  const currentDetailPage = Math.min(detailPage, totalDetailPages - 1);
+  const visibleDetails = sortedDetails.slice(currentDetailPage * DETAIL_PAGE_SIZE, currentDetailPage * DETAIL_PAGE_SIZE + DETAIL_PAGE_SIZE);
+
+  useEffect(() => {
+    setDetailPage(0);
+  }, [actionFilter, dateRange, detailSortDirection, detailSortKey, entryFilter, minimumScore, ratingFilter, statusFilter, symbolSearch]);
 
   function handleSummarySort(key: SummarySortKey) {
     if (summarySortKey === key) {
@@ -222,6 +305,43 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
     }
     setDetailSortKey(key);
     setDetailSortDirection("desc");
+  }
+
+  function resetLifecycleFilters() {
+    setStatusFilter("");
+    setRatingFilter("");
+    setActionFilter("");
+    setEntryFilter("");
+    setMinimumScore("");
+    setDateRange("all");
+    setSymbolSearch("");
+    setDetailSortKey("signal_date");
+    setDetailSortDirection("desc");
+    setDetailPage(0);
+  }
+
+  function applyQuickView(view: "recent" | "active" | "targets" | "stops") {
+    setRatingFilter("");
+    setActionFilter("");
+    setEntryFilter("");
+    setMinimumScore("");
+    setSymbolSearch("");
+    setDetailSortKey("signal_date");
+    setDetailSortDirection("desc");
+    if (view === "recent") {
+      setStatusFilter("");
+      setDateRange("3");
+    } else if (view === "active") {
+      setStatusFilter("OPEN");
+      setDateRange("all");
+    } else if (view === "targets") {
+      setStatusFilter("TARGET_HIT");
+      setDateRange("all");
+    } else {
+      setStatusFilter("STOP_HIT");
+      setDateRange("all");
+    }
+    setDetailPage(0);
   }
 
   return (
@@ -299,8 +419,71 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
       </section>
 
       <section className="terminal-panel overflow-x-auto rounded-md">
-        <div className="border-b border-slate-800 bg-slate-950/70 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Recent Signal Lifecycles</div>
-        <table className="w-full min-w-[1560px] table-fixed border-collapse text-xs">
+        <div className="border-b border-slate-800 bg-slate-950/70 px-3 py-2">
+          <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Recent Signal Lifecycles</div>
+              <p className="mt-1 text-xs text-slate-500">Filters combine with AND logic before sorting.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button className="rounded border border-slate-700/80 px-2 py-1 text-xs font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200" onClick={() => applyQuickView("recent")} type="button">Recent Signals</button>
+              <button className="rounded border border-slate-700/80 px-2 py-1 text-xs font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200" onClick={() => applyQuickView("active")} type="button">Active Trades</button>
+              <button className="rounded border border-slate-700/80 px-2 py-1 text-xs font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200" onClick={() => applyQuickView("targets")} type="button">Hit Targets</button>
+              <button className="rounded border border-slate-700/80 px-2 py-1 text-xs font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200" onClick={() => applyQuickView("stops")} type="button">Stopped Out</button>
+            </div>
+          </div>
+          <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-[1.1fr_0.85fr_0.85fr_0.85fr_0.9fr_0.75fr_0.75fr_auto]">
+            <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Symbol
+              <input className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setSymbolSearch(event.target.value)} placeholder="Search symbol or company" value={symbolSearch} />
+            </label>
+            <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Status
+              <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}>
+                <option value="">All</option>
+                {STATUS_FILTER_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+            <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Rating
+              <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setRatingFilter(event.target.value)} value={ratingFilter}>
+                <option value="">All</option>
+                {RATING_FILTER_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+            <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Action
+              <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setActionFilter(event.target.value)} value={actionFilter}>
+                <option value="">All</option>
+                {ACTION_FILTER_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+            <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Entry
+              <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setEntryFilter(event.target.value)} value={entryFilter}>
+                <option value="">All</option>
+                {ENTRY_FILTER_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+            <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Min Score
+              <input className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" min="0" onChange={(event) => setMinimumScore(event.target.value)} placeholder="0" type="number" value={minimumScore} />
+            </label>
+            <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Date
+              <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setDateRange(event.target.value)} value={dateRange}>
+                <option value="all">All</option>
+                <option value="1">Last 1 day</option>
+                <option value="3">Last 3 days</option>
+                <option value="7">Last 7 days</option>
+              </select>
+            </label>
+            <button className="self-end rounded border border-slate-700/80 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200" onClick={resetLifecycleFilters} type="button">
+              Reset
+            </button>
+          </div>
+        </div>
+        <table className="w-full min-w-[2160px] table-fixed border-collapse text-xs">
           <colgroup>
             <col style={{ width: 100 }} />
             <col style={{ width: 130 }} />
@@ -308,12 +491,17 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
             <col style={{ width: 150 }} />
             <col style={{ width: 140 }} />
             <col style={{ width: 90 }} />
+            <col style={{ width: 105 }} />
             <col style={{ width: 150 }} />
             <col style={{ width: 110 }} />
             <col style={{ width: 120 }} />
             <col style={{ width: 130 }} />
             <col style={{ width: 110 }} />
-            <col style={{ width: 90 }} />
+            <col style={{ width: 120 }} />
+            <col style={{ width: 120 }} />
+            <col style={{ width: 120 }} />
+            <col style={{ width: 120 }} />
+            <col style={{ width: 120 }} />
           </colgroup>
           <thead className="border-b border-slate-800 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             <tr>
@@ -323,7 +511,7 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/90">
-            {sortedDetails.length ? sortedDetails.map((row, index) => (
+            {visibleDetails.length ? visibleDetails.map((row, index) => (
               <tr key={`${row.signal_id}-${index}`}>
                 <td className="whitespace-nowrap px-2 py-1.5 font-mono font-semibold">
                   <Link className="text-sky-200 hover:text-sky-100" href={`/symbol/${symbolOf(row)}`}>
@@ -335,18 +523,39 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
                 <td className="truncate px-2 py-1.5 text-slate-300">{text(row.action)}</td>
                 <td className="truncate px-2 py-1.5 text-slate-400">{text(row.entry_status)}</td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{numberText(row.final_score)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{numberText(row.final_score_adjusted)}</td>
                 <td className="truncate px-2 py-1.5 font-mono text-slate-400">{text(row.buy_zone)}</td>
                 <td className="truncate px-2 py-1.5 font-mono text-slate-400">{text(row.stop_loss)}</td>
                 <td className="truncate px-2 py-1.5 font-mono text-slate-400">{text(row.conservative_target)}</td>
-                <td className={`truncate px-2 py-1.5 font-semibold ${statusTone(row.status)}`}>{text(row.status)}</td>
+                <td className="px-2 py-1.5">
+                  <span className={`inline-flex whitespace-nowrap rounded border px-1.5 py-0.5 text-[10px] font-bold ${statusBadgeClass(row.status)}`}>{lifecycleStatus(row.status) || "—"}</span>
+                </td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.return_pct)}</td>
-                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{numberText(daysValue(row), 0)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{numberText(row.days_to_entry, 0)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{numberText(row.days_to_exit, 0)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.max_drawdown)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.max_gain)}</td>
               </tr>
             )) : (
-              <tr><td className="px-2 py-6 text-center text-slate-500" colSpan={12}>No tracked signal lifecycles yet.</td></tr>
+              <tr><td className="px-2 py-6 text-center text-slate-500" colSpan={16}>No tracked signal lifecycles match these filters.</td></tr>
             )}
           </tbody>
         </table>
+        <div className="flex flex-col gap-2 border-t border-slate-800 px-3 py-2 text-xs text-slate-500 md:flex-row md:items-center md:justify-between">
+          <span>
+            Showing {sortedDetails.length ? (currentDetailPage * DETAIL_PAGE_SIZE + 1).toLocaleString() : "0"}-
+            {Math.min((currentDetailPage + 1) * DETAIL_PAGE_SIZE, sortedDetails.length).toLocaleString()} of {sortedDetails.length.toLocaleString()} filtered rows ({rows.length.toLocaleString()} total)
+          </span>
+          <div className="flex items-center gap-2">
+            <button className="rounded border border-slate-700/80 px-2 py-1 font-semibold text-slate-300 disabled:cursor-not-allowed disabled:opacity-40 hover:not-disabled:border-sky-400/50 hover:not-disabled:text-sky-200" disabled={currentDetailPage <= 0} onClick={() => setDetailPage((page) => Math.max(0, page - 1))} type="button">
+              Previous
+            </button>
+            <span className="font-mono">Page {currentDetailPage + 1} / {totalDetailPages}</span>
+            <button className="rounded border border-slate-700/80 px-2 py-1 font-semibold text-slate-300 disabled:cursor-not-allowed disabled:opacity-40 hover:not-disabled:border-sky-400/50 hover:not-disabled:text-sky-200" disabled={currentDetailPage >= totalDetailPages - 1} onClick={() => setDetailPage((page) => Math.min(totalDetailPages - 1, page + 1))} type="button">
+              Next
+            </button>
+          </div>
+        </div>
       </section>
     </section>
   );
