@@ -84,12 +84,26 @@ const ACTION_PRIORITY: Record<string, number> = {
 const SIGNAL_FILTER_OPTIONS = ["BUY ZONE", "NEAR ENTRY", "EXTENDED", "TP NEAR", "STOP RISK", "STOP HIT", "TOP", "ACTIONABLE", "WATCH"];
 const RATING_FILTER_OPTIONS = ["TOP", "ACTIONABLE", "WATCH", "PASS"];
 const ACTION_FILTER_OPTIONS = ["STRONG BUY", "BUY", "WAIT / HOLD", "SELL", "STRONG SELL"];
+const QUALITY_FILTER_OPTIONS = ["TRADE_READY", "WAIT_PULLBACK", "LOW_EDGE", "AVOID"];
+const QUALITY_PRIORITY: Record<string, number> = {
+  TRADE_READY: 0,
+  WAIT_PULLBACK: 1,
+  LOW_EDGE: 2,
+  AVOID: 3,
+};
 
 function normalizeAction(value: unknown) {
   return String(value ?? "")
     .trim()
     .toUpperCase()
     .replace(/\s+/g, " ");
+}
+
+function normalizeQuality(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/\s+/g, "_");
 }
 
 function priorityCompare(left: number | null, right: number | null, direction: RankingSortDirection) {
@@ -108,6 +122,7 @@ function valueForSort(row: RankingRow, key: RankingSortKey) {
   if (key === "score") return row.final_score;
   if (key === "rating") return row.rating ?? "";
   if (key === "action") return actionFor(row);
+  if (key === "quality") return row.recommendation_quality ?? "";
   if (key === "signals") return signalPriorityForRow(row);
   return "";
 }
@@ -126,6 +141,8 @@ function sortRows(rows: RankingRow[], key: RankingSortKey | null, direction: Ran
         result = priorityCompare(RATING_PRIORITY[String(left.rating ?? "").toUpperCase()] ?? null, RATING_PRIORITY[String(right.rating ?? "").toUpperCase()] ?? null, direction);
       } else if (key === "action") {
         result = priorityCompare(ACTION_PRIORITY[normalizeAction(actionFor(left))] ?? null, ACTION_PRIORITY[normalizeAction(actionFor(right))] ?? null, direction);
+      } else if (key === "quality") {
+        result = priorityCompare(QUALITY_PRIORITY[normalizeQuality(left.recommendation_quality)] ?? null, QUALITY_PRIORITY[normalizeQuality(right.recommendation_quality)] ?? null, direction);
       } else if (NUMERIC_SORT_KEYS.has(key)) {
         const leftRaw = valueForSort(left, key);
         const rightRaw = valueForSort(right, key);
@@ -149,11 +166,12 @@ function sortRows(rows: RankingRow[], key: RankingSortKey | null, direction: Ran
     .map((item) => item.row);
 }
 
-function filterRows(rows: RankingRow[], filters: { action: string; assetType: string; minimumScore: string; rating: string; sector: string; signal: string; symbolSearch: string }) {
+function filterRows(rows: RankingRow[], filters: { action: string; assetType: string; minimumScore: string; qualities: string[]; rating: string; sector: string; signal: string; symbolSearch: string }) {
   const query = filters.symbolSearch.trim().toLowerCase();
   const minScore = Number(filters.minimumScore);
   const hasMinScore = filters.minimumScore.trim() !== "" && Number.isFinite(minScore);
   const selectedAction = normalizeAction(filters.action);
+  const selectedQualities = new Set(filters.qualities.map(normalizeQuality).filter(Boolean));
 
   return rows.filter((row) => {
     if (!rowMatchesSearch(row, query)) return false;
@@ -161,6 +179,7 @@ function filterRows(rows: RankingRow[], filters: { action: string; assetType: st
     if (filters.sector && String(row.sector ?? "") !== filters.sector) return false;
     if (filters.rating && String(row.rating ?? "") !== filters.rating) return false;
     if (selectedAction && normalizeAction(actionFor(row)) !== selectedAction) return false;
+    if (selectedQualities.size && !selectedQualities.has(normalizeQuality(row.recommendation_quality))) return false;
     if (filters.signal && !signalLabelsForRow(row).includes(filters.signal)) return false;
     if (hasMinScore && (typeof row.final_score !== "number" || row.final_score < minScore)) return false;
     return true;
@@ -317,6 +336,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
   const [rating, setRating] = useState("");
   const [action, setAction] = useState("");
   const [signal, setSignal] = useState("");
+  const [qualities, setQualities] = useState<string[]>([]);
   const [minimumScore, setMinimumScore] = useState("");
   const [sortKey, setSortKey] = useState<RankingSortKey | null>(null);
   const [sortDirection, setSortDirection] = useState<RankingSortDirection>("desc");
@@ -338,7 +358,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
     return map;
   }, [ranking]);
 
-  const activeFilters = useMemo(() => ({ action, assetType, minimumScore, rating, sector, signal, symbolSearch }), [action, assetType, minimumScore, rating, sector, signal, symbolSearch]);
+  const activeFilters = useMemo(() => ({ action, assetType, minimumScore, qualities, rating, sector, signal, symbolSearch }), [action, assetType, minimumScore, qualities, rating, sector, signal, symbolSearch]);
   const filteredRows = useMemo(() => filterRows(ranking, activeFilters), [activeFilters, ranking]);
   const enrichedTopCandidates = useMemo(() => {
     return topCandidates.map((row) => mergeRankingFallback(row, rankingBySymbol.get(String(row.symbol ?? "").trim().toUpperCase())));
@@ -356,6 +376,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
     setRating("");
     setAction("");
     setSignal("");
+    setQualities([]);
     setMinimumScore("");
     setSortKey(null);
     setSortDirection("desc");
@@ -396,7 +417,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
         </div>
 
         <div className="terminal-panel mb-3 rounded-md p-3">
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[1.2fr_0.9fr_0.9fr_0.85fr_0.9fr_0.95fr_0.7fr_auto]">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[1.2fr_0.85fr_0.85fr_0.8fr_0.85fr_0.9fr_1fr_0.65fr_auto]">
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Symbol
               <input
@@ -485,6 +506,22 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
                 {SIGNAL_FILTER_OPTIONS.map((option) => (
                   <option key={option} value={option}>
                     {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Quality
+              <select
+                className="mt-1 h-[30px] w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
+                multiple
+                onChange={(event) => setQualities(Array.from(event.target.selectedOptions).map((option) => option.value))}
+                value={qualities}
+              >
+                {QUALITY_FILTER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option.replace("_", " ")}
                   </option>
                 ))}
               </select>

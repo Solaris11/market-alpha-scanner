@@ -659,6 +659,26 @@ def _market_structure_suppression_reason(rule: dict[str, Any], row: dict[str, An
     return None
 
 
+def _recommendation_quality_suppression_reason(rule: dict[str, Any], row: dict[str, Any] | None) -> str | None:
+    alert_type = _rule_type(rule)
+    if alert_type not in BUY_ALERT_TYPES:
+        return None
+    quality = _clean_text((row or {}).get("recommendation_quality"), "").upper()
+    if not quality:
+        return None
+    action = _normalized_action(row)
+    is_buy_signal = action in {"STRONG BUY", "BUY"} or alert_type in {"buy_zone_hit", "entry_ready", "score_above", "new_top_candidate"}
+    if not is_buy_signal:
+        return None
+    if quality == "TRADE_READY":
+        return None
+    if quality == "WAIT_PULLBACK":
+        return "quality_gate:WAIT_PULLBACK watch only"
+    if quality in {"LOW_EDGE", "AVOID"}:
+        return f"quality_gate:{quality}"
+    return None
+
+
 def _watchlist_path(outdir: Path) -> Path:
     return outdir / "watchlist.json"
 
@@ -1100,6 +1120,23 @@ def evaluate_alert_rules(
                 )
                 state_changed = True
                 print(f"[alerts] suppressed by entry_filter: {symbol} {rule_id} entry_status={entry_status}")
+                continue
+
+            quality_reason = _recommendation_quality_suppression_reason(rule, evaluation.row)
+            if quality_reason:
+                skipped_count += 1
+                rule_state.update(
+                    {
+                        "alert_id": rule_id,
+                        "symbol": symbol,
+                        "last_skipped_at": now.isoformat(),
+                        "last_skip_reason": quality_reason,
+                        "last_entry_status": entry_status,
+                        "last_status": "suppressed",
+                    }
+                )
+                state_changed = True
+                print(f"[alerts] suppressed by recommendation_quality: {symbol} {rule_id} reason={quality_reason}")
                 continue
 
             regime_reason = _regime_suppression_reason(rule, evaluation.row, entry_status, market_regime)

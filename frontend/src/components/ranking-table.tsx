@@ -5,7 +5,7 @@ import type { RankingRow } from "@/lib/types";
 import { actionFor, compact, formatNumber } from "@/lib/format";
 import { Badge } from "./badge";
 
-export type RankingSortKey = "symbol" | "company" | "asset" | "sector" | "price" | "score" | "rating" | "action" | "signals";
+export type RankingSortKey = "symbol" | "company" | "asset" | "sector" | "price" | "score" | "rating" | "action" | "quality" | "signals";
 export type RankingSortDirection = "asc" | "desc";
 
 type Props = {
@@ -27,6 +27,7 @@ const COLUMNS: { key: RankingSortKey; label: string; align?: "left" | "right" }[
   { key: "score", label: "Score", align: "right" },
   { key: "rating", label: "Rating" },
   { key: "action", label: "Action" },
+  { key: "quality", label: "Quality" },
   { key: "signals", label: "Signals" },
 ];
 const SIGNAL_TONES: Record<string, string> = {
@@ -53,6 +54,12 @@ const SIGNAL_PRIORITY: Record<string, number> = {
   TOP: 40,
   ACTIONABLE: 30,
   WATCH: 20,
+};
+const QUALITY_TONES: Record<string, string> = {
+  TRADE_READY: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
+  WAIT_PULLBACK: "border-amber-400/35 bg-amber-400/10 text-amber-200",
+  LOW_EDGE: "border-slate-500/30 bg-slate-500/12 text-slate-200",
+  AVOID: "border-rose-400/35 bg-rose-400/10 text-rose-200",
 };
 
 function numeric(value: unknown) {
@@ -140,6 +147,16 @@ function SignalPill({ badge }: { badge: SignalBadge }) {
   return <span className={`inline-flex min-w-max items-center whitespace-nowrap rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] ${SIGNAL_TONES[badge.tone]}`}>{badge.label}</span>;
 }
 
+function QualityBadge({ row }: { row: RankingRow }) {
+  const quality = String(row.recommendation_quality ?? "").trim().toUpperCase();
+  if (!quality) return <span className="text-slate-600">—</span>;
+  return (
+    <span className={`inline-flex min-w-max whitespace-nowrap rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] ${QUALITY_TONES[quality] ?? SIGNAL_TONES.neutral}`} title={String(row.quality_reason ?? "")}>
+      {quality.replace("_", " ")}
+    </span>
+  );
+}
+
 export function RankingTable({ rows, highlight = false, limit, emptyMessage = "No scanner rows available.", sortKey = null, sortDirection = "asc", onSort }: Props) {
   const visibleRows = typeof limit === "number" ? rows.slice(0, limit) : rows;
 
@@ -149,7 +166,7 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
 
   return (
     <div className="terminal-panel overflow-x-auto rounded-md">
-      <table className="w-full min-w-[1240px] table-fixed border-collapse text-xs">
+      <table className="w-full min-w-[1360px] table-fixed border-collapse text-xs">
         <colgroup>
           <col style={{ width: 90 }} />
           <col style={{ width: 220 }} />
@@ -159,6 +176,7 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
           <col style={{ width: 90 }} />
           <col style={{ width: 130 }} />
           <col style={{ width: 150 }} />
+          <col style={{ width: 130 }} />
           <col style={{ width: 230 }} />
         </colgroup>
         <thead className="border-b border-slate-700/70 bg-slate-950/70 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -212,6 +230,9 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
                 </td>
                 <td className="px-2 py-1.5 align-middle">
                   <Badge value={actionFor(row)} />
+                </td>
+                <td className="px-2 py-1.5 align-middle">
+                  <QualityBadge row={row} />
                 </td>
                 <td className="px-2 py-1.5 align-middle">
                   {rowBadges.length ? (

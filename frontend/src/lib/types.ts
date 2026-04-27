@@ -9,6 +9,9 @@ export type RankingRow = {
   return_1d?: number;
   final_score?: number;
   final_score_adjusted?: number;
+  recommendation_quality?: string;
+  quality_score?: number;
+  quality_reason?: string;
   regime_adjustment?: number;
   market_regime?: string;
   rating?: string;

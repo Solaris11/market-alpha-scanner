@@ -13,6 +13,7 @@ from .artifacts import save_symbol_detail_outputs
 from .config import DEFAULT_NEWS_LIMIT, DOWNLOAD_PERIOD, MACRO_SYMBOLS, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE, TOP_N
 from .data_fetch import batch_download, fetch_info, fetch_recent_news_items, fetch_recent_news_score
 from .models import RankedAsset
+from .recommendation_quality import apply_recommendation_quality
 from .regime import REGIME_PROXIES, apply_regime_adjustments, detect_market_regime, write_market_regime
 from .scoring import (
     apply_horizon_recommendations,
@@ -32,6 +33,7 @@ from .scoring import (
     score_macro_alignment,
     technical_scorecard,
 )
+from .structure import compute_market_structure
 from .utils import ema, extract_company_name, macd_hist, parse_earnings_date, safe_float, safe_str, sma
 
 
@@ -265,6 +267,8 @@ def scan_symbols(
         return df_rank
     df_rank["return_1d"] = df_rank["symbol"].map(one_day_return_cache)
     df_rank = apply_regime_adjustments(df_rank, market_regime)
+    market_structure = compute_market_structure(df_rank)
+    df_rank = apply_recommendation_quality(df_rank, market_structure)
     df_rank = df_rank.sort_values(by=["final_score", "technical_score", "macro_score"], ascending=[False, False, False]).reset_index(drop=True)
     df_rank.attrs["ranked_assets"] = ranked
     df_rank.attrs["price_map"] = price_map

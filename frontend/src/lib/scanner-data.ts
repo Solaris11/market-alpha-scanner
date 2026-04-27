@@ -14,6 +14,8 @@ const NUMERIC_FIELDS = new Set([
   "regime_adjustment",
   "technical_score",
   "fundamental_score",
+  "fundamental_quality_score",
+  "quality_score",
   "macro_score",
   "news_score",
   "risk_penalty",
