@@ -17,6 +17,7 @@ from scanner.analysis import analyze_performance, compute_forward_returns
 from scanner.config import DEFAULT_NEWS_LIMIT, DEFAULT_UNIVERSE, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE
 from scanner.engine import load_universe_from_csv, scan_symbols
 from scanner.outputs import print_top_table, save_snapshot
+from scanner.regime import write_market_regime
 from scanner.safety import atomic_write_dataframe_csv, check_data_freshness, ensure_action_column, scanner_run_lock, validate_ranking_schema
 
 
@@ -146,6 +147,7 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
     if args.run_analysis:
         history_dir = outdir / "history"
         print("[analysis] starting forward-return analysis")
+        write_market_regime(outdir)
         forward_df = compute_forward_returns(str(history_dir), analysis_raw=args.analysis_raw)
         if forward_df.empty:
             print("\n[analysis] No completed forward-return observations yet.")

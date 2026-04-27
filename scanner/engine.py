@@ -13,6 +13,7 @@ from .artifacts import save_symbol_detail_outputs
 from .config import DEFAULT_NEWS_LIMIT, DOWNLOAD_PERIOD, MACRO_SYMBOLS, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE, TOP_N
 from .data_fetch import batch_download, fetch_info, fetch_recent_news_items, fetch_recent_news_score
 from .models import RankedAsset
+from .regime import REGIME_PROXIES, apply_regime_adjustments, detect_market_regime, write_market_regime
 from .scoring import (
     apply_horizon_recommendations,
     build_horizon_context,
@@ -55,7 +56,14 @@ def scan_symbols(
         df = macro_price_map.get(sym)
         if df is not None and not df.empty:
             macro_closes[name] = df["Close"]
-    regime = compute_macro_regime(macro_closes)
+    macro_regime = compute_macro_regime(macro_closes)
+    regime_price_map = dict(macro_price_map)
+    missing_regime_symbols = [symbol for symbol in REGIME_PROXIES.values() if symbol not in regime_price_map]
+    if missing_regime_symbols:
+        regime_price_map.update(batch_download(missing_regime_symbols, DOWNLOAD_PERIOD))
+    market_regime = detect_market_regime(regime_price_map)
+    if outdir is not None:
+        write_market_regime(outdir, market_regime)
 
     ranked: list[RankedAsset] = []
     info_cache: dict[str, dict[str, object]] = {}
@@ -94,7 +102,7 @@ def scan_symbols(
         technical = technical_scorecard(df)
         earnings_date = parse_earnings_date(info)
         fundamentals = fundamentals_scorecard(info, asset_type)
-        macro_score, macro_sensitivity, macro_note = score_macro_alignment(symbol, asset_type, sector, regime)
+        macro_score, macro_sensitivity, macro_note = score_macro_alignment(symbol, asset_type, sector, macro_regime)
 
         macd_series = macd_hist(close)
         current_macd = safe_float(macd_series.iloc[-1], np.nan)
@@ -251,6 +259,7 @@ def scan_symbols(
     df_rank = pd.DataFrame([asdict(x) for x in ranked])
     if df_rank.empty:
         return df_rank
+    df_rank = apply_regime_adjustments(df_rank, market_regime)
     df_rank = df_rank.sort_values(by=["final_score", "technical_score", "macro_score"], ascending=[False, False, False]).reset_index(drop=True)
     df_rank.attrs["ranked_assets"] = ranked
     df_rank.attrs["price_map"] = price_map

@@ -3,7 +3,7 @@ import { OverviewWorkspace } from "@/components/overview-workspace";
 import { TerminalShell } from "@/components/shell";
 import { getAlertOverview } from "@/lib/alerts";
 import { formatNumber } from "@/lib/format";
-import { getFullRanking, getScanDataHealth, getTopCandidates, type ScanDataHealth } from "@/lib/scanner-data";
+import { getFullRanking, getMarketRegime, getScanDataHealth, getTopCandidates, type ScanDataHealth } from "@/lib/scanner-data";
 
 export const dynamic = "force-dynamic";
 
@@ -30,12 +30,52 @@ function DataHealthBanner({ health }: { health: ScanDataHealth }) {
   );
 }
 
+function regimeTone(regime: string) {
+  if (regime === "RISK_ON") return "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
+  if (regime === "OVERHEATED") return "border-amber-400/30 bg-amber-400/10 text-amber-100";
+  if (regime === "PULLBACK") return "border-sky-400/30 bg-sky-400/10 text-sky-100";
+  if (regime === "RISK_OFF") return "border-rose-400/30 bg-rose-400/10 text-rose-100";
+  return "border-slate-800 bg-slate-950/50 text-slate-300";
+}
+
+function text(value: unknown, fallback = "N/A") {
+  const raw = String(value ?? "").trim();
+  return raw && !["nan", "none", "null"].includes(raw.toLowerCase()) ? raw : fallback;
+}
+
+function numberText(value: unknown, fallback = "N/A") {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? Math.round(parsed).toString() : fallback;
+}
+
+function MarketRegimePanel({ regime }: { regime: Record<string, unknown> | null }) {
+  const label = text(regime?.regime, "UNKNOWN").toUpperCase();
+  const trend = text(regime?.trend, "UNKNOWN").toUpperCase();
+  const confidence = numberText(regime?.confidence);
+  return (
+    <section className={`rounded-md border px-3 py-2 ${regimeTone(label)}`}>
+      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] opacity-80">Market Regime</div>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <span className="rounded border border-current/30 px-2 py-0.5 text-xs font-bold">{label}</span>
+            <span className="text-sm">Trend: <span className="font-semibold">{trend}</span></span>
+            <span className="text-sm">Confidence: <span className="font-mono font-semibold">{confidence}</span></span>
+          </div>
+        </div>
+        <div className="text-xs opacity-75">Soft modifier only. Base scanner score is unchanged.</div>
+      </div>
+    </section>
+  );
+}
+
 export default async function DashboardOverview() {
-  const [ranking, topCandidates, alertOverview, dataHealth] = await Promise.all([
+  const [ranking, topCandidates, alertOverview, dataHealth, marketRegime] = await Promise.all([
     getFullRanking(),
     getTopCandidates(),
     getAlertOverview({ stateLimit: 25 }).catch(() => ({ rules: [], state: { alerts: {} } })),
     getScanDataHealth(),
+    getMarketRegime(),
   ]);
   const leader = ranking[0];
   const averageScore = ranking.length
@@ -59,6 +99,8 @@ export default async function DashboardOverview() {
         />
 
         <DataHealthBanner health={dataHealth} />
+
+        <MarketRegimePanel regime={marketRegime} />
 
         <OverviewWorkspace alertRules={alertOverview.rules} alertState={alertOverview.state} ranking={ranking} topCandidates={topCandidates} />
       </div>

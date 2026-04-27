@@ -14,6 +14,7 @@ from urllib import error, parse, request
 
 import pandas as pd
 
+from scanner.regime import read_market_regime
 from scanner.safety import check_data_freshness, ensure_action_column, validate_ranking_schema
 
 
@@ -38,6 +39,7 @@ VALID_CHANNELS = {"telegram", "email"}
 VALID_ENTRY_FILTERS = {"any", "good_only", "good_or_wait", "avoid_overextended"}
 VALID_SCOPES = {"symbol", "watchlist", "global"}
 DEFAULT_DASHBOARD_URL = "http://192.168.0.125:3001"
+BUY_ALERT_TYPES = {"buy_zone_hit", "entry_ready", "score_above", "new_top_candidate", "rating_changed", "action_changed", "score_changed_by"}
 DEFAULT_RULES: list[dict[str, Any]] = [
     {
         "id": "global_entry_ready",
@@ -613,6 +615,29 @@ def _entry_filter_allows(rule: dict[str, Any], entry_status: str) -> bool:
     return True
 
 
+def _regime_suppression_reason(rule: dict[str, Any], row: dict[str, Any] | None, entry_status: str, regime_payload: dict[str, Any] | None) -> str | None:
+    regime = _clean_text((regime_payload or {}).get("regime"), "").upper()
+    alert_type = _rule_type(rule)
+    if regime not in {"RISK_OFF", "OVERHEATED"} or alert_type not in BUY_ALERT_TYPES:
+        return None
+
+    action = _normalized_action(row)
+    is_buy_signal = action in {"STRONG BUY", "BUY"} or alert_type in {"buy_zone_hit", "entry_ready", "score_above", "new_top_candidate"}
+    if not is_buy_signal:
+        return None
+
+    if regime == "OVERHEATED" and entry_status == "OVEREXTENDED":
+        return "market_regime:OVERHEATED overextended entry"
+
+    if regime == "RISK_OFF":
+        score = _score(row)
+        rr = _row_risk_reward(row)
+        if not (score is not None and score >= 80 and entry_status == "GOOD ENTRY" and rr is not None and rr >= 1.5):
+            return "market_regime:RISK_OFF requires score>=80, GOOD ENTRY, and risk/reward>=1.5"
+
+    return None
+
+
 def _watchlist_path(outdir: Path) -> Path:
     return outdir / "watchlist.json"
 
@@ -978,6 +1003,7 @@ def evaluate_alert_rules(
     top_rows_by_symbol = _row_map(top_candidates)
     top_symbols = set(top_rows_by_symbol)
     watchlist_symbols = load_watchlist_symbols(outdir)
+    market_regime = read_market_regime(outdir)
     now = datetime.now(timezone.utc)
 
     triggered_count = 0
@@ -1052,6 +1078,23 @@ def evaluate_alert_rules(
                 )
                 state_changed = True
                 print(f"[alerts] suppressed by entry_filter: {symbol} {rule_id} entry_status={entry_status}")
+                continue
+
+            regime_reason = _regime_suppression_reason(rule, evaluation.row, entry_status, market_regime)
+            if regime_reason:
+                skipped_count += 1
+                rule_state.update(
+                    {
+                        "alert_id": rule_id,
+                        "symbol": symbol,
+                        "last_skipped_at": now.isoformat(),
+                        "last_skip_reason": regime_reason,
+                        "last_entry_status": entry_status,
+                        "last_status": "suppressed",
+                    }
+                )
+                state_changed = True
+                print(f"[alerts] suppressed by market_regime: {symbol} {rule_id} reason={regime_reason}")
                 continue
 
             message = _build_message(rule, evaluation)

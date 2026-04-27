@@ -9,6 +9,8 @@ import type { CsvFileData, CsvRow, HistorySnapshot, HistorySummary, IntradayDrif
 const NUMERIC_FIELDS = new Set([
   "price",
   "final_score",
+  "final_score_adjusted",
+  "regime_adjustment",
   "technical_score",
   "fundamental_score",
   "macro_score",
@@ -630,6 +632,10 @@ export async function getPerformanceData(options: { forwardTailRows?: number } =
 
 export async function getCalibrationInsights() {
   return readJson(path.join(scannerOutputDir(), "analysis", "calibration_insights.json"));
+}
+
+export async function getMarketRegime() {
+  return readJson(path.join(scannerOutputDir(), "analysis", "market_regime.json"));
 }
 
 export async function getSymbolDetail(symbol: string): Promise<SymbolDetail> {
