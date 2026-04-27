@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { compact, formatNumber } from "@/lib/format";
+import { stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { IntradayDriftRow, SymbolHistoryRow } from "@/lib/types";
 
 type Props = {
@@ -10,7 +11,6 @@ type Props = {
 };
 
 type SortKey = "symbol" | "company" | "price_change_pct" | "score_change" | "latest_score" | "rating_change" | "action" | "snapshot_count";
-type SortDirection = "asc" | "desc";
 
 const RATING_RANK: Record<string, number> = {
   PASS: 0,
@@ -66,79 +66,26 @@ const RATING_PRIORITY: Record<string, number> = {
   PASS: 3,
 };
 
-function normalizeAction(value: unknown) {
-  return String(value ?? "")
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, " ");
-}
-
-function priorityCompare(aRank: number | null, bRank: number | null, direction: SortDirection) {
-  if (aRank === null && bRank === null) return 0;
-  if (aRank === null) return 1;
-  if (bRank === null) return -1;
-  const comparison = aRank - bRank;
-  return direction === "desc" ? comparison : -comparison;
-}
-
 function sortValue(row: IntradayDriftRow, key: SortKey) {
   if (key === "symbol") return row.symbol;
   if (key === "company") return row.company_name ?? "";
   if (key === "price_change_pct") return row.price_change_pct;
   if (key === "score_change") return row.score_change;
   if (key === "latest_score") return row.latest_score;
-  if (key === "rating_change") return `${row.first_rating ?? ""} → ${row.latest_rating ?? ""}`;
+  if (key === "rating_change") return row.latest_rating ?? "";
   if (key === "action") return row.latest_action ?? "";
   return row.snapshot_count;
 }
 
-function compareRows(a: IntradayDriftRow, b: IntradayDriftRow, key: SortKey, direction: SortDirection) {
-  if (key === "action") {
-    const aRank = ACTION_PRIORITY[normalizeAction(a.latest_action)] ?? null;
-    const bRank = ACTION_PRIORITY[normalizeAction(b.latest_action)] ?? null;
-    return priorityCompare(aRank, bRank, direction);
-  }
-
-  if (key === "rating_change") {
-    const aRank = RATING_PRIORITY[String(a.latest_rating ?? "").toUpperCase()] ?? null;
-    const bRank = RATING_PRIORITY[String(b.latest_rating ?? "").toUpperCase()] ?? null;
-    const primary = priorityCompare(aRank, bRank, direction);
-    if (primary !== 0) return primary;
-    const aFirstRank = RATING_PRIORITY[String(a.first_rating ?? "").toUpperCase()] ?? null;
-    const bFirstRank = RATING_PRIORITY[String(b.first_rating ?? "").toUpperCase()] ?? null;
-    return priorityCompare(aFirstRank, bFirstRank, direction);
-  }
-
-  const aValue = sortValue(a, key);
-  const bValue = sortValue(b, key);
-  let comparison = 0;
-
-  if (NUMERIC_SORT_KEYS.has(key)) {
-    const aNumber = typeof aValue === "number" && Number.isFinite(aValue) ? aValue : null;
-    const bNumber = typeof bValue === "number" && Number.isFinite(bValue) ? bValue : null;
-    if (aNumber === null && bNumber === null) comparison = 0;
-    else if (aNumber === null) comparison = 1;
-    else if (bNumber === null) comparison = -1;
-    else comparison = aNumber - bNumber;
-  } else {
-    const aText = String(aValue ?? "").trim().toLowerCase();
-    const bText = String(bValue ?? "").trim().toLowerCase();
-    if (!aText && !bText) comparison = 0;
-    else if (!aText) comparison = 1;
-    else if (!bText) comparison = -1;
-    else comparison = aText.localeCompare(bText);
-  }
-
-  return direction === "desc" ? -comparison : comparison;
+function sortConfig(key: SortKey): SortConfig {
+  if (key === "action") return { priority: ACTION_PRIORITY };
+  if (key === "rating_change") return { priority: RATING_PRIORITY };
+  if (NUMERIC_SORT_KEYS.has(key)) return { type: "number" };
+  return { type: "string" };
 }
 
 function sortRows(rows: IntradayDriftRow[], key: SortKey | null, direction: SortDirection) {
-  const sorted = rows.map((row, index) => ({ row, index }));
-  sorted.sort((left, right) => {
-    const result = key ? compareRows(left.row, right.row, key, direction) : Math.abs(right.row.score_change ?? 0) - Math.abs(left.row.score_change ?? 0);
-    return result || left.index - right.index;
-  });
-  return sorted.map((item) => item.row);
+  return stableSortRows(rows, key ?? "score_change", direction, sortValue, sortConfig);
 }
 
 function timestampMs(row: SymbolHistoryRow) {
@@ -226,7 +173,7 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
   const [onlyUpgrades, setOnlyUpgrades] = useState(false);
   const [onlyScoreGainers, setOnlyScoreGainers] = useState(false);
   const [minimumScoreChange, setMinimumScoreChange] = useState("");
-  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey | null>("score_change");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
   const [selectedHistoryRows, setSelectedHistoryRows] = useState<SymbolHistoryRow[]>([]);
@@ -266,6 +213,7 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
   }, [minimumScoreChange, onlyScoreGainers, onlyUpgrades, rows, sortDirection, sortKey, symbolSearch]);
 
   const selectedRow = useMemo(() => rows.find((row) => row.symbol === selectedSymbol) ?? null, [rows, selectedSymbol]);
+  const visibleRows = useMemo(() => filteredRows.slice(0, 200), [filteredRows]);
   const latestHistoryRow = selectedHistoryRows[selectedHistoryRows.length - 1];
   const selectedDisplay = selectedRow ?? (latestHistoryRow ? {
     symbol: latestHistoryRow.symbol,
@@ -376,7 +324,7 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
 
       <div className="terminal-panel overflow-x-auto rounded-md">
         <div className="border-b border-slate-700/70 bg-slate-950/70 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-          Intraday Movers · {filteredRows.length.toLocaleString()} of {rows.length.toLocaleString()}
+          Intraday Movers · showing {visibleRows.length.toLocaleString()} of {filteredRows.length.toLocaleString()} filtered ({rows.length.toLocaleString()} total)
         </div>
         <table className="w-full min-w-[1020px] table-fixed border-collapse text-xs">
           <colgroup>
@@ -402,8 +350,8 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/90">
-            {filteredRows.length ? (
-              filteredRows.map((row) => (
+            {visibleRows.length ? (
+              visibleRows.map((row) => (
                 <tr
                   className={`cursor-pointer hover:bg-sky-400/5 ${selectedSymbol === row.symbol ? "bg-sky-400/10" : ""}`}
                   key={row.symbol}

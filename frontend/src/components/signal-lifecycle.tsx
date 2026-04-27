@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { CsvRow } from "@/lib/types";
 
-type SortDirection = "asc" | "desc";
 type SummarySortKey =
   | "group_type"
   | "group_value"
@@ -66,6 +66,38 @@ const STATUS_FILTER_OPTIONS = ["OPEN", "ENTRY_REACHED", "TARGET_HIT", "STOP_HIT"
 const RATING_FILTER_OPTIONS = ["TOP", "ACTIONABLE", "WATCH", "PASS"];
 const ACTION_FILTER_OPTIONS = ["BUY", "STRONG BUY", "SELL", "STRONG SELL"];
 const ENTRY_FILTER_OPTIONS = ["GOOD ENTRY", "NEAR ENTRY", "BUY ZONE", "OVEREXTENDED"];
+const RATING_PRIORITY: Record<string, number> = {
+  TOP: 0,
+  ACTIONABLE: 1,
+  WATCH: 2,
+  PASS: 3,
+};
+const ACTION_PRIORITY: Record<string, number> = {
+  "STRONG BUY": 0,
+  BUY: 1,
+  "WAIT / HOLD": 2,
+  "WAIT/HOLD": 2,
+  WAIT: 2,
+  HOLD: 3,
+  SELL: 4,
+  "STRONG SELL": 5,
+};
+const ENTRY_PRIORITY: Record<string, number> = {
+  "GOOD ENTRY": 0,
+  "NEAR ENTRY": 1,
+  "BUY ZONE": 2,
+  REVIEW: 3,
+  OVEREXTENDED: 4,
+  "STOP RISK": 5,
+  "STOP HIT": 6,
+};
+const STATUS_PRIORITY: Record<string, number> = {
+  OPEN: 0,
+  ENTRY_REACHED: 1,
+  TARGET_HIT: 2,
+  STOP_HIT: 3,
+  EXPIRED: 4,
+};
 
 const SUMMARY_COLUMNS: { key: SummarySortKey; label: string; align?: ColumnAlign }[] = [
   { key: "group_type", label: "Group" },
@@ -148,34 +180,18 @@ function detailValue(row: CsvRow, key: DetailSortKey) {
   return row[key];
 }
 
-function compareValues(left: unknown, right: unknown, direction: SortDirection, numericSort: boolean) {
-  const leftMissing = left === null || left === undefined || left === "";
-  const rightMissing = right === null || right === undefined || right === "";
-  if (leftMissing && rightMissing) return 0;
-  if (leftMissing) return 1;
-  if (rightMissing) return -1;
-  if (numericSort) {
-    const leftValue = numeric(left);
-    const rightValue = numeric(right);
-    if (leftValue === null && rightValue === null) return 0;
-    if (leftValue === null) return 1;
-    if (rightValue === null) return -1;
-    return direction === "desc" ? rightValue - leftValue : leftValue - rightValue;
-  }
-  const leftText = text(left, "").toLowerCase();
-  const rightText = text(right, "").toLowerCase();
-  return direction === "desc" ? rightText.localeCompare(leftText) : leftText.localeCompare(rightText);
+function summarySortConfig(key: SummarySortKey): SortConfig {
+  return SUMMARY_NUMERIC_KEYS.has(key) ? { type: "number" } : { type: "string" };
 }
 
-function stableSort<T extends string>(rows: CsvRow[], key: T | null, direction: SortDirection, valueForKey: (row: CsvRow, key: T) => unknown, numericKeys: Set<T>) {
-  if (!key) return rows;
-  return rows
-    .map((row, index) => ({ row, index }))
-    .sort((left, right) => {
-      const result = compareValues(valueForKey(left.row, key), valueForKey(right.row, key), direction, numericKeys.has(key));
-      return result || left.index - right.index;
-    })
-    .map((item) => item.row);
+function detailSortConfig(key: DetailSortKey): SortConfig {
+  if (key === "signal_date") return { type: "date" };
+  if (key === "rating") return { priority: RATING_PRIORITY };
+  if (key === "action") return { priority: ACTION_PRIORITY };
+  if (key === "entry_status") return { priority: ENTRY_PRIORITY };
+  if (key === "status") return { priority: STATUS_PRIORITY };
+  if (DETAIL_NUMERIC_KEYS.has(key)) return { type: "number" };
+  return { type: "string" };
 }
 
 function alignmentClass(align: ColumnAlign | undefined) {
@@ -218,7 +234,7 @@ function rowMatchesSearch(row: CsvRow, query: string) {
 }
 
 export function SignalLifecycle({ rows, summaryRows }: Props) {
-  const [summarySortKey, setSummarySortKey] = useState<SummarySortKey | null>(null);
+  const [summarySortKey, setSummarySortKey] = useState<SummarySortKey | null>("count");
   const [summarySortDirection, setSummarySortDirection] = useState<SortDirection>("desc");
   const [detailSortKey, setDetailSortKey] = useState<DetailSortKey | null>("signal_date");
   const [detailSortDirection, setDetailSortDirection] = useState<SortDirection>("desc");
@@ -243,7 +259,7 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
   }, [rows]);
 
   const sortedSummary = useMemo(() => {
-    return stableSort(summaryRows, summarySortKey, summarySortDirection, (row, key) => row[key], SUMMARY_NUMERIC_KEYS).slice(0, 200);
+    return stableSortRows(summaryRows, summarySortKey, summarySortDirection, (row, key) => row[key], summarySortConfig).slice(0, 200);
   }, [summaryRows, summarySortDirection, summarySortKey]);
 
   const latestSignalDate = useMemo(() => {
@@ -277,8 +293,7 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
   }, [actionFilter, dateRange, entryFilter, latestSignalDate, minimumScore, ratingFilter, rows, statusFilter, symbolSearch]);
 
   const sortedDetails = useMemo(() => {
-    const defaultRows = [...filteredDetails].sort((left, right) => text(right.signal_date, "").localeCompare(text(left.signal_date, "")) || symbolOf(left).localeCompare(symbolOf(right)));
-    return stableSort(defaultRows, detailSortKey, detailSortDirection, detailValue, DETAIL_NUMERIC_KEYS);
+    return stableSortRows(filteredDetails, detailSortKey, detailSortDirection, detailValue, detailSortConfig);
   }, [detailSortDirection, detailSortKey, filteredDetails]);
 
   const totalDetailPages = Math.max(1, Math.ceil(sortedDetails.length / DETAIL_PAGE_SIZE));
@@ -483,7 +498,7 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
             </button>
           </div>
         </div>
-        <table className="w-full min-w-[2160px] table-fixed border-collapse text-xs">
+        <table className="w-full min-w-[1905px] table-fixed border-collapse text-xs">
           <colgroup>
             <col style={{ width: 100 }} />
             <col style={{ width: 130 }} />
@@ -497,7 +512,6 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
             <col style={{ width: 120 }} />
             <col style={{ width: 130 }} />
             <col style={{ width: 110 }} />
-            <col style={{ width: 120 }} />
             <col style={{ width: 120 }} />
             <col style={{ width: 120 }} />
             <col style={{ width: 120 }} />

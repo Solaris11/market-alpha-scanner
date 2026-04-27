@@ -151,8 +151,8 @@ function QualityBadge({ row }: { row: RankingRow }) {
   const quality = String(row.recommendation_quality ?? "").trim().toUpperCase();
   if (!quality) return <span className="text-slate-600">—</span>;
   return (
-    <span className={`inline-flex min-w-max whitespace-nowrap rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] ${QUALITY_TONES[quality] ?? SIGNAL_TONES.neutral}`} title={String(row.quality_reason ?? "")}>
-      {quality.replace("_", " ")}
+    <span className={`inline-flex max-w-[118px] whitespace-nowrap rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] ${QUALITY_TONES[quality] ?? SIGNAL_TONES.neutral}`} title={String(row.quality_reason ?? "")}>
+      <span className="truncate">{quality.replace("_", " ")}</span>
     </span>
   );
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { compareSortValues, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { CsvRow, HistorySummary, RankingRow } from "@/lib/types";
 
 type Props = {
@@ -12,7 +13,6 @@ type Props = {
   summaryRows: CsvRow[];
 };
 
-type SortDirection = "asc" | "desc";
 type GroupedSortKey = "horizon" | "group_type" | "group_value" | "count" | "avg_return" | "median_return" | "hit_rate" | "avg_max_drawdown" | "avg_max_gain" | "worst_return" | "best_return" | "low_sample";
 type ForwardSortKey = "symbol" | "company" | "timestamp_utc" | "horizon" | "forward_return" | "max_drawdown_after_signal" | "max_gain_after_signal" | "rating" | "action" | "setup_type" | "entry_status";
 type ColumnAlign = "left" | "right" | "center";
@@ -120,38 +120,6 @@ function sortIndicator(active: boolean, direction: SortDirection) {
   return active ? (direction === "asc" ? "↑" : "↓") : "";
 }
 
-function compareValues(left: unknown, right: unknown, direction: SortDirection, numericSort: boolean) {
-  const leftMissing = left === null || left === undefined || left === "";
-  const rightMissing = right === null || right === undefined || right === "";
-  if (leftMissing && rightMissing) return 0;
-  if (leftMissing) return 1;
-  if (rightMissing) return -1;
-
-  if (numericSort) {
-    const leftValue = numeric(left);
-    const rightValue = numeric(right);
-    if (leftValue === null && rightValue === null) return 0;
-    if (leftValue === null) return 1;
-    if (rightValue === null) return -1;
-    return direction === "desc" ? rightValue - leftValue : leftValue - rightValue;
-  }
-
-  const leftText = text(left, "");
-  const rightText = text(right, "");
-  return direction === "desc" ? rightText.localeCompare(leftText) : leftText.localeCompare(rightText);
-}
-
-function normalizePriorityText(value: unknown) {
-  return text(value, "").toUpperCase().replace(/\s+/g, " ");
-}
-
-function comparePriority(left: number | null, right: number | null, direction: SortDirection) {
-  if (left === null && right === null) return 0;
-  if (left === null) return 1;
-  if (right === null) return -1;
-  return direction === "desc" ? left - right : right - left;
-}
-
 function horizonSortValue(row: CsvRow) {
   const horizon = text(row.horizon, "");
   return HORIZON_PRIORITY[horizon] ?? null;
@@ -173,9 +141,9 @@ function defaultSortGroupedRows(rows: CsvRow[]) {
   return rows
     .map((row, index) => ({ row, index }))
     .sort((left, right) => {
-      const avgResult = compareValues(left.row.avg_return, right.row.avg_return, "desc", true);
+      const avgResult = compareSortValues(left.row.avg_return, right.row.avg_return, "desc", { type: "number" });
       if (avgResult) return avgResult;
-      const horizonResult = compareValues(horizonSortValue(left.row), horizonSortValue(right.row), "asc", true);
+      const horizonResult = compareSortValues(horizonSortValue(left.row), horizonSortValue(right.row), "asc", { type: "number" });
       return horizonResult || left.index - right.index;
     })
     .map((item) => item.row);
@@ -185,9 +153,9 @@ function defaultSortForwardRows(rows: CsvRow[]) {
   return rows
     .map((row, index) => ({ row, index }))
     .sort((left, right) => {
-      const horizonResult = compareValues(horizonSortValue(left.row), horizonSortValue(right.row), "asc", true);
+      const horizonResult = compareSortValues(horizonSortValue(left.row), horizonSortValue(right.row), "asc", { type: "number" });
       if (horizonResult) return horizonResult;
-      const returnResult = compareValues(left.row.forward_return, right.row.forward_return, "desc", true);
+      const returnResult = compareSortValues(left.row.forward_return, right.row.forward_return, "desc", { type: "number" });
       return returnResult || left.index - right.index;
     })
     .map((item) => item.row);
@@ -208,50 +176,33 @@ function compactForwardRows(rows: CsvRow[]) {
   return Array.from(bySymbolHorizon.values());
 }
 
+function groupedValueForSort(row: CsvRow, key: GroupedSortKey) {
+  if (key === "horizon") return horizonSortValue(row);
+  if (key === "low_sample") return String(row.low_sample).toLowerCase() === "true" ? 1 : 0;
+  return row[key];
+}
+
+function groupedSortConfig(key: GroupedSortKey): SortConfig {
+  if (key === "horizon" || key === "low_sample" || GROUPED_NUMERIC_SORT_KEYS.has(key)) return { type: "number" };
+  return { type: "string" };
+}
+
 function stableSortGroupedRows(rows: CsvRow[], key: GroupedSortKey | null, direction: SortDirection) {
   if (!key) return defaultSortGroupedRows(rows);
-  return rows
-    .map((row, index) => ({ row, index }))
-    .sort((left, right) => {
-      if (key === "group_value") {
-        const leftType = text(left.row.group_type, "");
-        const rightType = text(right.row.group_type, "");
-        if (leftType === "rating" && rightType === "rating") {
-          const result = comparePriority(RATING_PRIORITY[normalizePriorityText(left.row.group_value)] ?? null, RATING_PRIORITY[normalizePriorityText(right.row.group_value)] ?? null, direction);
-          return result || left.index - right.index;
-        }
-        if (leftType === "action" && rightType === "action") {
-          const result = comparePriority(ACTION_PRIORITY[normalizePriorityText(left.row.group_value)] ?? null, ACTION_PRIORITY[normalizePriorityText(right.row.group_value)] ?? null, direction);
-          return result || left.index - right.index;
-        }
-      }
-      const leftValue = key === "horizon" ? horizonSortValue(left.row) : key === "low_sample" ? String(left.row.low_sample).toLowerCase() === "true" ? 1 : 0 : left.row[key];
-      const rightValue = key === "horizon" ? horizonSortValue(right.row) : key === "low_sample" ? String(right.row.low_sample).toLowerCase() === "true" ? 1 : 0 : right.row[key];
-      const result = compareValues(leftValue, rightValue, direction, key === "horizon" || key === "low_sample" || GROUPED_NUMERIC_SORT_KEYS.has(key));
-      return result || left.index - right.index;
-    })
-    .map((item) => item.row);
+  return stableSortRows(rows, key, direction, groupedValueForSort, groupedSortConfig);
+}
+
+function forwardSortConfig(key: ForwardSortKey): SortConfig {
+  if (key === "rating") return { priority: RATING_PRIORITY };
+  if (key === "action") return { priority: ACTION_PRIORITY };
+  if (key === "timestamp_utc") return { type: "date" };
+  if (key === "horizon" || FORWARD_NUMERIC_SORT_KEYS.has(key)) return { type: "number" };
+  return { type: "string" };
 }
 
 function stableSortForwardRows(rows: CsvRow[], key: ForwardSortKey | null, direction: SortDirection, companyBySymbol: Map<string, string>) {
   if (!key) return defaultSortForwardRows(rows);
-  return rows
-    .map((row, index) => ({ row, index }))
-    .sort((left, right) => {
-      if (key === "rating") {
-        const result = comparePriority(RATING_PRIORITY[normalizePriorityText(left.row.rating)] ?? null, RATING_PRIORITY[normalizePriorityText(right.row.rating)] ?? null, direction);
-        return result || left.index - right.index;
-      }
-      if (key === "action") {
-        const result = comparePriority(ACTION_PRIORITY[normalizePriorityText(left.row.action)] ?? null, ACTION_PRIORITY[normalizePriorityText(right.row.action)] ?? null, direction);
-        return result || left.index - right.index;
-      }
-      const leftValue = forwardSortValue(left.row, key, companyBySymbol);
-      const rightValue = forwardSortValue(right.row, key, companyBySymbol);
-      const result = compareValues(leftValue, rightValue, direction, key === "horizon" || FORWARD_NUMERIC_SORT_KEYS.has(key));
-      return result || left.index - right.index;
-    })
-    .map((item) => item.row);
+  return stableSortRows(rows, key, direction, (row, sortKey) => forwardSortValue(row, sortKey, companyBySymbol), forwardSortConfig);
 }
 
 function alignmentClass(align: ColumnAlign | undefined) {
@@ -342,9 +293,9 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
   const [horizon, setHorizon] = useState("");
   const [groupType, setGroupType] = useState("");
   const [minCount, setMinCount] = useState("5");
-  const [groupedSortKey, setGroupedSortKey] = useState<GroupedSortKey | null>(null);
+  const [groupedSortKey, setGroupedSortKey] = useState<GroupedSortKey | null>("avg_return");
   const [groupedSortDirection, setGroupedSortDirection] = useState<SortDirection>("desc");
-  const [forwardSortKey, setForwardSortKey] = useState<ForwardSortKey | null>(null);
+  const [forwardSortKey, setForwardSortKey] = useState<ForwardSortKey | null>("forward_return");
   const [forwardSortDirection, setForwardSortDirection] = useState<SortDirection>("desc");
   const [showRawObservations, setShowRawObservations] = useState(false);
   const [rawForwardRows, setRawForwardRows] = useState<CsvRow[] | null>(null);
@@ -381,7 +332,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
   const visibleForwardRows = useMemo(() => {
     const sourceRows = showRawObservations ? rawForwardRows ?? [] : compactRows;
     const filtered = sourceRows.filter((row) => !horizon || text(row.horizon, "") === horizon);
-    return stableSortForwardRows(filtered, forwardSortKey, forwardSortDirection, companyBySymbol).slice(0, 300);
+    return stableSortForwardRows(filtered, forwardSortKey, forwardSortDirection, companyBySymbol).slice(0, 200);
   }, [compactRows, companyBySymbol, forwardSortDirection, forwardSortKey, horizon, rawForwardRows, showRawObservations]);
 
   useEffect(() => {
