@@ -171,14 +171,14 @@ def _action_for_row(row: pd.Series) -> str:
     return "N/A"
 
 
-def _empty_forward_df(analysis_dir: Path, raw: bool = False) -> pd.DataFrame:
+def _empty_forward_df(analysis_dir: Path, analysis_raw: bool = False) -> pd.DataFrame:
     forward_df = pd.DataFrame(columns=FORWARD_RETURN_COLUMNS)
     forward_df.attrs["analysis_dir"] = str(analysis_dir)
     forward_df.attrs["snapshots_loaded"] = 0
     forward_df.attrs["observations_created"] = 0
     forward_df.attrs["raw_rows"] = 0
     forward_df.attrs["canonical_rows"] = 0
-    forward_df.attrs["analysis_raw"] = raw
+    forward_df.attrs["analysis_raw"] = analysis_raw
     forward_df.attrs["horizons_completed"] = []
     return forward_df
 
@@ -207,26 +207,26 @@ def _apply_canonical_sampling(forward_df: pd.DataFrame) -> pd.DataFrame:
         return forward_df
 
     working = forward_df.copy()
-    working["_canonical_timestamp"] = pd.to_datetime(working["timestamp_utc"], utc=True, errors="coerce")
-    working = working.dropna(subset=["_canonical_timestamp"])
-    working["_trading_date"] = working["_canonical_timestamp"].dt.date.astype(str)
+    working["_trading_date"] = working["timestamp_utc"].astype(str).str[:10]
+    working = working[working["_trading_date"].str.match(r"^\d{4}-\d{2}-\d{2}$", na=False)].copy()
     canonical_rows = [
         selectCanonicalRow(group)
         for _, group in working.groupby(["symbol", "_trading_date", "horizon"], sort=False, dropna=False)
     ]
     if not canonical_rows:
         return pd.DataFrame(columns=FORWARD_RETURN_COLUMNS)
-    return pd.DataFrame(canonical_rows).reindex(columns=FORWARD_RETURN_COLUMNS).reset_index(drop=True)
+    canonical_df = pd.DataFrame(canonical_rows).reindex(columns=FORWARD_RETURN_COLUMNS).reset_index(drop=True)
+    return canonical_df.sort_values(["symbol", "timestamp_utc", "horizon"], kind="mergesort").reset_index(drop=True)
 
 
-def compute_forward_returns(history_dir: str, raw: bool = False) -> pd.DataFrame:
+def compute_forward_returns(history_dir: str, analysis_raw: bool = False) -> pd.DataFrame:
     history_df = load_snapshot_history(history_dir)
     analysis_dir = Path(history_dir).parent / "analysis"
     analysis_dir.mkdir(parents=True, exist_ok=True)
     forward_path = analysis_dir / "forward_returns.csv"
 
     if history_df.empty:
-        forward_df = _empty_forward_df(analysis_dir, raw=raw)
+        forward_df = _empty_forward_df(analysis_dir, analysis_raw=analysis_raw)
         atomic_write_dataframe_csv(forward_df, forward_path, index=False)
         print("[analysis] Analysis complete, but no completed forward-return windows yet.")
         return forward_df
@@ -295,21 +295,22 @@ def compute_forward_returns(history_dir: str, raw: bool = False) -> pd.DataFrame
 
     raw_forward_df = pd.DataFrame(rows, columns=FORWARD_RETURN_COLUMNS)
     raw_row_count = len(raw_forward_df)
-    if raw:
+    if analysis_raw:
         forward_df = raw_forward_df
         print("[analysis] raw analysis mode enabled")
+        print(f"[analysis] raw observations: {raw_row_count}")
     else:
         print("[analysis] canonical sampling enabled")
         forward_df = _apply_canonical_sampling(raw_forward_df)
-        print(f"[analysis] raw rows: {raw_row_count}")
-        print(f"[analysis] canonical rows: {len(forward_df)}")
+        print(f"[analysis] raw observations: {raw_row_count}")
+        print(f"[analysis] canonical observations: {len(forward_df)}")
 
     forward_df.attrs["analysis_dir"] = str(analysis_dir)
     forward_df.attrs["snapshots_loaded"] = snapshot_count
     forward_df.attrs["observations_created"] = len(forward_df)
     forward_df.attrs["raw_rows"] = raw_row_count
     forward_df.attrs["canonical_rows"] = len(forward_df)
-    forward_df.attrs["analysis_raw"] = raw
+    forward_df.attrs["analysis_raw"] = analysis_raw
     forward_df.attrs["horizons_completed"] = sorted(forward_df["horizon"].dropna().unique().tolist()) if not forward_df.empty else []
     atomic_write_dataframe_csv(forward_df, forward_path, index=False)
     if forward_df.empty:

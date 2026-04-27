@@ -146,7 +146,7 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
     if args.run_analysis:
         history_dir = outdir / "history"
         print("[analysis] starting forward-return analysis")
-        forward_df = compute_forward_returns(str(history_dir), raw=args.analysis_raw)
+        forward_df = compute_forward_returns(str(history_dir), analysis_raw=args.analysis_raw)
         if forward_df.empty:
             print("\n[analysis] No completed forward-return observations yet.")
         else:
