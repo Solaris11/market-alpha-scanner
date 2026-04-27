@@ -132,6 +132,10 @@ export function signalPriorityForRow(row: RankingRow) {
   return priorities.length ? Math.max(...priorities) : 0;
 }
 
+export function signalLabelsForRow(row: RankingRow) {
+  return signalBadges(row).map((badge) => badge.label);
+}
+
 function SignalPill({ badge }: { badge: SignalBadge }) {
   return <span className={`inline-flex min-w-max items-center whitespace-nowrap rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] ${SIGNAL_TONES[badge.tone]}`}>{badge.label}</span>;
 }

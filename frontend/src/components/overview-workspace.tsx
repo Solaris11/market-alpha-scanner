@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { RankingTable, signalPriorityForRow } from "@/components/ranking-table";
+import { RankingTable, signalLabelsForRow, signalPriorityForRow } from "@/components/ranking-table";
 import type { RankingSortDirection, RankingSortKey } from "@/components/ranking-table";
 import { WatchlistPanel } from "@/components/watchlist-controls";
 import { actionFor } from "@/lib/format";
@@ -67,6 +67,9 @@ const ACTION_PRIORITY: Record<string, number> = {
   SELL: 4,
   "STRONG SELL": 5,
 };
+const SIGNAL_FILTER_OPTIONS = ["BUY ZONE", "NEAR ENTRY", "EXTENDED", "TP NEAR", "STOP RISK", "STOP HIT", "TOP", "ACTIONABLE", "WATCH"];
+const RATING_FILTER_OPTIONS = ["TOP", "ACTIONABLE", "WATCH", "PASS"];
+const ACTION_FILTER_OPTIONS = ["STRONG BUY", "BUY", "WAIT / HOLD", "SELL", "STRONG SELL"];
 
 function normalizeAction(value: unknown) {
   return String(value ?? "")
@@ -132,16 +135,19 @@ function sortRows(rows: RankingRow[], key: RankingSortKey | null, direction: Ran
     .map((item) => item.row);
 }
 
-function filterRows(rows: RankingRow[], filters: { assetType: string; minimumScore: string; rating: string; sector: string; symbolSearch: string }) {
+function filterRows(rows: RankingRow[], filters: { action: string; assetType: string; minimumScore: string; rating: string; sector: string; signal: string; symbolSearch: string }) {
   const query = filters.symbolSearch.trim().toLowerCase();
   const minScore = Number(filters.minimumScore);
   const hasMinScore = filters.minimumScore.trim() !== "" && Number.isFinite(minScore);
+  const selectedAction = normalizeAction(filters.action);
 
   return rows.filter((row) => {
     if (!rowMatchesSearch(row, query)) return false;
     if (filters.assetType && String(row.asset_type ?? "") !== filters.assetType) return false;
     if (filters.sector && String(row.sector ?? "") !== filters.sector) return false;
     if (filters.rating && String(row.rating ?? "") !== filters.rating) return false;
+    if (selectedAction && normalizeAction(actionFor(row)) !== selectedAction) return false;
+    if (filters.signal && !signalLabelsForRow(row).includes(filters.signal)) return false;
     if (hasMinScore && (typeof row.final_score !== "number" || row.final_score < minScore)) return false;
     return true;
   });
@@ -220,6 +226,8 @@ export function OverviewWorkspace({ alertRules, ranking, topCandidates }: Props)
   const [assetType, setAssetType] = useState("");
   const [sector, setSector] = useState("");
   const [rating, setRating] = useState("");
+  const [action, setAction] = useState("");
+  const [signal, setSignal] = useState("");
   const [minimumScore, setMinimumScore] = useState("");
   const [sortKey, setSortKey] = useState<RankingSortKey | null>(null);
   const [sortDirection, setSortDirection] = useState<RankingSortDirection>("desc");
@@ -231,7 +239,6 @@ export function OverviewWorkspace({ alertRules, ranking, topCandidates }: Props)
     const source = assetType ? ranking.filter((row) => String(row.asset_type ?? "") === assetType) : ranking;
     return uniqueOptions(source, "sector");
   }, [assetType, ranking]);
-  const ratings = useMemo(() => uniqueOptions(ranking, "rating"), [ranking]);
   const rankingBySymbol = useMemo(() => {
     const map = new Map<string, RankingRow>();
     for (const row of ranking) {
@@ -241,7 +248,7 @@ export function OverviewWorkspace({ alertRules, ranking, topCandidates }: Props)
     return map;
   }, [ranking]);
 
-  const activeFilters = useMemo(() => ({ assetType, minimumScore, rating, sector, symbolSearch }), [assetType, minimumScore, rating, sector, symbolSearch]);
+  const activeFilters = useMemo(() => ({ action, assetType, minimumScore, rating, sector, signal, symbolSearch }), [action, assetType, minimumScore, rating, sector, signal, symbolSearch]);
   const filteredRows = useMemo(() => filterRows(ranking, activeFilters), [activeFilters, ranking]);
   const enrichedTopCandidates = useMemo(() => {
     return topCandidates.map((row) => mergeRankingFallback(row, rankingBySymbol.get(String(row.symbol ?? "").trim().toUpperCase())));
@@ -257,6 +264,8 @@ export function OverviewWorkspace({ alertRules, ranking, topCandidates }: Props)
     setAssetType("");
     setSector("");
     setRating("");
+    setAction("");
+    setSignal("");
     setMinimumScore("");
     setSortKey(null);
     setSortDirection("desc");
@@ -296,7 +305,7 @@ export function OverviewWorkspace({ alertRules, ranking, topCandidates }: Props)
         </div>
 
         <div className="terminal-panel mb-3 rounded-md p-3">
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[1.2fr_1fr_1fr_0.85fr_0.75fr_auto]">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[1.2fr_0.9fr_0.9fr_0.85fr_0.9fr_0.95fr_0.7fr_auto]">
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Symbol
               <input
@@ -350,7 +359,39 @@ export function OverviewWorkspace({ alertRules, ranking, topCandidates }: Props)
                 value={rating}
               >
                 <option value="">All ratings</option>
-                {ratings.map((option) => (
+                {RATING_FILTER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Action
+              <select
+                className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
+                onChange={(event) => setAction(event.target.value)}
+                value={action}
+              >
+                <option value="">All actions</option>
+                {ACTION_FILTER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Signal
+              <select
+                className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
+                onChange={(event) => setSignal(event.target.value)}
+                value={signal}
+              >
+                <option value="">All signals</option>
+                {SIGNAL_FILTER_OPTIONS.map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>
