@@ -89,6 +89,8 @@ export type HistorySummary = {
 export type PerformanceData = {
   summary: CsvFileData;
   forwardReturns: CsvFileData;
+  lifecycle: CsvFileData;
+  lifecycleSummary: CsvFileData;
 };
 
 export type SymbolHistoryRow = RankingRow & {

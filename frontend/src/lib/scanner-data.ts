@@ -18,9 +18,15 @@ const NUMERIC_FIELDS = new Set([
   "news_score",
   "risk_penalty",
   "price_at_signal",
+  "signal_price",
+  "entry_price",
+  "exit_price",
   "forward_return",
+  "return_pct",
   "max_drawdown_after_signal",
   "max_gain_after_signal",
+  "days_to_entry",
+  "days_to_exit",
   "risk_reward",
   "risk_reward_low",
   "risk_reward_high",
@@ -59,8 +65,16 @@ const NUMERIC_FIELDS = new Set([
   "avg_return",
   "median_return",
   "hit_rate",
+  "entry_reached_rate",
+  "target_hit_rate",
+  "stop_hit_rate",
+  "expired_rate",
+  "open_rate",
   "avg_max_drawdown",
   "avg_max_gain",
+  "avg_return_pct",
+  "avg_days_to_entry",
+  "avg_days_to_exit",
   "avg_drawdown",
   "avg_gain",
   "edge_score",
@@ -624,11 +638,13 @@ export async function getIntradaySignalDriftSummary(): Promise<IntradayDriftRow[
 }
 
 export async function getPerformanceData(options: { forwardTailRows?: number } = {}): Promise<PerformanceData> {
-  const [summary, forwardReturns] = await Promise.all([
+  const [summary, forwardReturns, lifecycle, lifecycleSummary] = await Promise.all([
     readScannerCsvWithState("analysis", "performance_summary.csv"),
     readScannerCsvWithStateParts(["analysis", "forward_returns.csv"], { tailRows: options.forwardTailRows }),
+    readScannerCsvWithState("analysis", "signal_lifecycle.csv"),
+    readScannerCsvWithState("analysis", "signal_lifecycle_summary.csv"),
   ]);
-  return { summary, forwardReturns };
+  return { summary, forwardReturns, lifecycle, lifecycleSummary };
 }
 
 export async function getCalibrationInsights() {

@@ -3,6 +3,7 @@ import { PerformanceDrift } from "@/components/performance-drift";
 import { PerformanceValidation } from "@/components/performance-validation";
 import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/shell";
+import { SignalLifecycle } from "@/components/signal-lifecycle";
 import { getCalibrationInsights, getFullRanking, getHistorySummary, getIntradaySignalDriftSummary, getPerformanceData } from "@/lib/scanner-data";
 
 export const dynamic = "force-dynamic";
@@ -151,6 +152,8 @@ export default async function PerformancePage() {
         <CalibrationInsightsPanel insights={calibrationInsights} />
 
         <PerformanceValidation forwardObservationCount={forwardObservationCount} forwardRows={performance.forwardReturns.rows} history={history} rankingRows={ranking} summaryRows={performance.summary.rows} />
+
+        <SignalLifecycle rows={performance.lifecycle.rows} summaryRows={performance.lifecycleSummary.rows} />
 
         <section className="terminal-panel rounded-md p-4">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Analysis Runner</div>

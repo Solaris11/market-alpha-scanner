@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -72,6 +73,52 @@ CALIBRATION_COLUMNS = [
     "edge_score",
     "low_sample",
 ]
+SIGNAL_LIFECYCLE_COLUMNS = [
+    "signal_id",
+    "symbol",
+    "company_name",
+    "signal_date",
+    "signal_price",
+    "rating",
+    "action",
+    "setup_type",
+    "entry_status",
+    "final_score",
+    "final_score_adjusted",
+    "market_regime",
+    "buy_zone",
+    "stop_loss",
+    "conservative_target",
+    "status",
+    "entry_date",
+    "entry_price",
+    "exit_date",
+    "exit_price",
+    "exit_reason",
+    "days_to_entry",
+    "days_to_exit",
+    "return_pct",
+    "max_drawdown",
+    "max_gain",
+]
+SIGNAL_LIFECYCLE_SUMMARY_COLUMNS = [
+    "group_type",
+    "group_value",
+    "count",
+    "entry_reached_rate",
+    "target_hit_rate",
+    "stop_hit_rate",
+    "expired_rate",
+    "open_rate",
+    "avg_return_pct",
+    "avg_days_to_entry",
+    "avg_days_to_exit",
+    "avg_max_drawdown",
+    "avg_max_gain",
+]
+SIGNAL_LIFECYCLE_GROUPS = ["rating", "action", "setup_type", "entry_status", "market_regime", "score_bucket"]
+TRACKED_ENTRY_STATUSES = {"GOOD ENTRY", "NEAR ENTRY", "BUY ZONE"}
+TRACKING_DAYS = 20
 
 
 def _first_non_empty_column_value(row: pd.Series, columns: tuple[str, ...]) -> str:
@@ -177,6 +224,104 @@ def _entry_status(row: pd.Series) -> str:
     return "REVIEW"
 
 
+def _extract_numbers(value: object) -> list[float]:
+    if value is None:
+        return []
+    normalized = str(value).replace(",", "").replace("–", "-").replace("—", "-")
+    return [float(match) for match in re.findall(r"(?<!\d)-?\d+(?:\.\d+)?", normalized)]
+
+
+def _range_from_fields(row: pd.Series, low_column: str, high_column: str, text_columns: tuple[str, ...]) -> tuple[float | None, float | None]:
+    low = safe_float(row.get(low_column), np.nan)
+    high = safe_float(row.get(high_column), np.nan)
+    if not np.isnan(low) and not np.isnan(high):
+        return (min(float(low), float(high)), max(float(low), float(high)))
+    for column in text_columns:
+        numbers = _extract_numbers(row.get(column))
+        if len(numbers) >= 2:
+            return (min(numbers[0], numbers[1]), max(numbers[0], numbers[1]))
+        if len(numbers) == 1:
+            return (numbers[0], numbers[0])
+    if not np.isnan(low) or not np.isnan(high):
+        value = float(low if not np.isnan(low) else high)
+        return (value, value)
+    return (None, None)
+
+
+def _buy_zone(row: pd.Series) -> tuple[float | None, float | None]:
+    return _range_from_fields(row, "buy_zone_low", "buy_zone_high", ("buy_zone", "entry_zone"))
+
+
+def _stop_loss(row: pd.Series) -> float | None:
+    stop = safe_float(row.get("stop_loss"), np.nan)
+    if np.isnan(stop):
+        stop = safe_float(row.get("invalidation_level"), np.nan)
+    return None if np.isnan(stop) else float(stop)
+
+
+def _conservative_target(row: pd.Series) -> float | None:
+    for column in ("conservative_target", "take_profit_low", "take_profit_zone", "take_profit", "target", "upside_target"):
+        direct = safe_float(row.get(column), np.nan)
+        if not np.isnan(direct):
+            return float(direct)
+        numbers = _extract_numbers(row.get(column))
+        if numbers:
+            return min(numbers)
+    low, high = _range_from_fields(row, "take_profit_low", "take_profit_high", ("take_profit_zone", "take_profit", "target", "upside_target"))
+    if low is not None:
+        return low
+    return high
+
+
+def _format_level(value: float | None) -> str:
+    if value is None or np.isnan(value):
+        return ""
+    if abs(value - round(value)) < 0.005:
+        return str(int(round(value)))
+    return f"{value:.2f}"
+
+
+def _format_range(low: float | None, high: float | None, collapse_equal: bool = False) -> str:
+    if low is None and high is None:
+        return ""
+    values = sorted(value for value in (low, high) if value is not None)
+    if len(values) == 1 or (collapse_equal and len(values) == 2 and abs(values[0] - values[1]) < 0.005):
+        return _format_level(values[0])
+    return f"{_format_level(values[0])}-{_format_level(values[-1])}"
+
+
+def _price_in_buy_zone(price: float | None, low: float | None, high: float | None) -> bool:
+    if price is None or low is None or high is None:
+        return False
+    return low <= price <= high
+
+
+def _price_near_buy_zone(price: float | None, low: float | None, high: float | None) -> bool:
+    if price is None or low is None or high is None:
+        return False
+    return high < price <= high * 1.02
+
+
+def _lifecycle_entry_status(row: pd.Series) -> str:
+    price = safe_float(row.get("price"), np.nan)
+    price_value = None if np.isnan(price) else float(price)
+    low, high = _buy_zone(row)
+    if _price_in_buy_zone(price_value, low, high):
+        return "BUY ZONE"
+    if _price_near_buy_zone(price_value, low, high):
+        return "NEAR ENTRY"
+    return _entry_status(row)
+
+
+def _company_name(row: pd.Series) -> str:
+    symbol = safe_str(row.get("symbol"), "").upper()
+    for column in ("company_name", "long_name", "short_name", "display_name", "security_name", "name"):
+        value = safe_str(row.get(column), "")
+        if value and value.upper() != symbol:
+            return value
+    return ""
+
+
 def _action_for_row(row: pd.Series) -> str:
     for column in ("action", "recommended_action", "composite_action", "mid_action", "short_action", "long_action"):
         value = safe_str(row.get(column), "")
@@ -185,9 +330,10 @@ def _action_for_row(row: pd.Series) -> str:
     return "N/A"
 
 
-def _empty_forward_df(analysis_dir: Path, analysis_raw: bool = False) -> pd.DataFrame:
+def _empty_forward_df(analysis_dir: Path, analysis_raw: bool = False, history_dir: str | None = None) -> pd.DataFrame:
     forward_df = pd.DataFrame(columns=FORWARD_RETURN_COLUMNS)
     forward_df.attrs["analysis_dir"] = str(analysis_dir)
+    forward_df.attrs["history_dir"] = history_dir
     forward_df.attrs["snapshots_loaded"] = 0
     forward_df.attrs["observations_created"] = 0
     forward_df.attrs["raw_rows"] = 0
@@ -204,6 +350,19 @@ def _canonical_entry_rank(value: object) -> int:
 
 def selectCanonicalRow(rows: pd.DataFrame) -> pd.Series:
     """Select one representative signal for a symbol/date/horizon group."""
+    ranked = rows.copy()
+    ranked["_canonical_score"] = pd.to_numeric(ranked["final_score"], errors="coerce").fillna(-np.inf)
+    ranked["_canonical_entry_rank"] = ranked["entry_status"].apply(_canonical_entry_rank)
+    ranked["_canonical_timestamp"] = pd.to_datetime(ranked["timestamp_utc"], utc=True, errors="coerce")
+    ranked = ranked.sort_values(
+        ["_canonical_score", "_canonical_entry_rank", "_canonical_timestamp"],
+        ascending=[False, True, True],
+        kind="mergesort",
+    )
+    return ranked.iloc[0].drop(labels=["_canonical_score", "_canonical_entry_rank", "_canonical_timestamp"], errors="ignore")
+
+
+def _select_lifecycle_canonical(rows: pd.DataFrame) -> pd.Series:
     ranked = rows.copy()
     ranked["_canonical_score"] = pd.to_numeric(ranked["final_score"], errors="coerce").fillna(-np.inf)
     ranked["_canonical_entry_rank"] = ranked["entry_status"].apply(_canonical_entry_rank)
@@ -240,7 +399,7 @@ def compute_forward_returns(history_dir: str, analysis_raw: bool = False) -> pd.
     forward_path = analysis_dir / "forward_returns.csv"
 
     if history_df.empty:
-        forward_df = _empty_forward_df(analysis_dir, analysis_raw=analysis_raw)
+        forward_df = _empty_forward_df(analysis_dir, analysis_raw=analysis_raw, history_dir=history_dir)
         atomic_write_dataframe_csv(forward_df, forward_path, index=False)
         print("[analysis] Analysis complete, but no completed forward-return windows yet.")
         return forward_df
@@ -320,6 +479,7 @@ def compute_forward_returns(history_dir: str, analysis_raw: bool = False) -> pd.
         print(f"[analysis] canonical observations: {len(forward_df)}")
 
     forward_df.attrs["analysis_dir"] = str(analysis_dir)
+    forward_df.attrs["history_dir"] = history_dir
     forward_df.attrs["snapshots_loaded"] = snapshot_count
     forward_df.attrs["observations_created"] = len(forward_df)
     forward_df.attrs["raw_rows"] = raw_row_count
@@ -330,6 +490,258 @@ def compute_forward_returns(history_dir: str, analysis_raw: bool = False) -> pd.
     if forward_df.empty:
         print("[analysis] Analysis complete, but no completed forward-return windows yet.")
     return forward_df
+
+
+def _empty_lifecycle_outputs(analysis_dir: Path) -> tuple[pd.DataFrame, pd.DataFrame]:
+    lifecycle_df = pd.DataFrame(columns=SIGNAL_LIFECYCLE_COLUMNS)
+    summary_df = pd.DataFrame(columns=SIGNAL_LIFECYCLE_SUMMARY_COLUMNS)
+    atomic_write_dataframe_csv(lifecycle_df, analysis_dir / "signal_lifecycle.csv", index=False)
+    atomic_write_dataframe_csv(summary_df, analysis_dir / "signal_lifecycle_summary.csv", index=False)
+    return lifecycle_df, summary_df
+
+
+def _prepare_lifecycle_history(history_df: pd.DataFrame) -> pd.DataFrame:
+    working = history_df.copy()
+    working["final_score"] = pd.to_numeric(working["final_score"], errors="coerce")
+    if "final_score_adjusted" in working.columns:
+        working["final_score_adjusted"] = pd.to_numeric(working["final_score_adjusted"], errors="coerce")
+    else:
+        working["final_score_adjusted"] = np.nan
+    working["score_bucket"] = working["final_score"].apply(score_bucket_label)
+    working["action"] = working.apply(_action_for_row, axis=1)
+    working["entry_status"] = working.apply(_lifecycle_entry_status, axis=1)
+    working["signal_date"] = working["timestamp_utc"].dt.strftime("%Y-%m-%d")
+    if "market_regime" not in working.columns:
+        working["market_regime"] = "UNKNOWN"
+    return working
+
+
+def _tracked_signal_rows(history_df: pd.DataFrame) -> pd.DataFrame:
+    if history_df.empty:
+        return pd.DataFrame(columns=history_df.columns)
+    rating = history_df["rating"].fillna("").astype(str).str.upper()
+    action = history_df["action"].fillna("").astype(str).str.upper().str.replace(r"\s+", " ", regex=True)
+    entry_status = history_df["entry_status"].fillna("").astype(str).str.upper()
+    mask = rating.isin({"TOP", "ACTIONABLE"}) | action.isin({"BUY", "STRONG BUY"}) | entry_status.isin(TRACKED_ENTRY_STATUSES)
+    candidates = history_df.loc[mask].copy()
+    if candidates.empty:
+        return candidates
+    canonical_rows = [
+        _select_lifecycle_canonical(group)
+        for _, group in candidates.groupby(["symbol", "signal_date"], sort=False, dropna=False)
+    ]
+    if not canonical_rows:
+        return pd.DataFrame(columns=history_df.columns)
+    return pd.DataFrame(canonical_rows).sort_values(["timestamp_utc", "symbol"], kind="mergesort").reset_index(drop=True)
+
+
+def _trading_day_distance(start_date: str, event_date: str | None, symbol_dates: list[str]) -> int | float:
+    if not event_date:
+        return np.nan
+    try:
+        return symbol_dates.index(event_date) - symbol_dates.index(start_date)
+    except ValueError:
+        try:
+            return (pd.Timestamp(event_date) - pd.Timestamp(start_date)).days
+        except Exception:
+            return np.nan
+
+
+def _lifecycle_for_signal(signal: pd.Series, symbol_df: pd.DataFrame) -> dict[str, object]:
+    symbol = safe_str(signal.get("symbol"), "").upper()
+    signal_time = signal.get("timestamp_utc")
+    signal_date = safe_str(signal.get("signal_date"), "")
+    signal_price = safe_float(signal.get("price"), np.nan)
+    signal_price_value = None if np.isnan(signal_price) else float(signal_price)
+    buy_low, buy_high = _buy_zone(signal)
+    stop = _stop_loss(signal)
+    target = _conservative_target(signal)
+    entry_reached = _price_in_buy_zone(signal_price_value, buy_low, buy_high)
+    entry_date = signal_date if entry_reached else ""
+    entry_price = signal_price_value if entry_reached else np.nan
+    status = "ENTRY_REACHED" if entry_reached else "CREATED"
+    exit_date = ""
+    exit_price = np.nan
+    exit_reason = ""
+    base_price = signal_price_value
+    max_drawdown = np.nan
+    max_gain = np.nan
+
+    future_rows = symbol_df[symbol_df["timestamp_utc"] > signal_time].sort_values("timestamp_utc").copy()
+    symbol_dates = sorted(symbol_df["signal_date"].dropna().astype(str).unique().tolist())
+    event_date: str | None = None
+    observed_dates = 0
+
+    for _, future in future_rows.iterrows():
+        future_date = safe_str(future.get("signal_date"), "")
+        if future_date:
+            observed_dates = max(observed_dates, _trading_day_distance(signal_date, future_date, symbol_dates))
+        if observed_dates > TRACKING_DAYS:
+            break
+
+        future_price = safe_float(future.get("price"), np.nan)
+        if np.isnan(future_price):
+            continue
+        price_value = float(future_price)
+        if signal_price_value and signal_price_value > 0:
+            path_return = price_value / signal_price_value - 1.0
+            max_drawdown = path_return if np.isnan(max_drawdown) else min(max_drawdown, path_return)
+            max_gain = path_return if np.isnan(max_gain) else max(max_gain, path_return)
+
+        if not entry_reached and _price_in_buy_zone(price_value, buy_low, buy_high):
+            entry_reached = True
+            entry_date = future_date
+            entry_price = price_value
+            status = "ENTRY_REACHED"
+            base_price = price_value
+
+        if target is not None and price_value >= target:
+            status = "TARGET_HIT"
+            exit_date = future_date
+            exit_price = price_value
+            exit_reason = "conservative_target"
+            event_date = future_date
+            break
+
+        if stop is not None and price_value <= stop:
+            status = "STOP_HIT"
+            exit_date = future_date
+            exit_price = price_value
+            exit_reason = "stop_loss"
+            event_date = future_date
+            break
+
+    if status not in {"TARGET_HIT", "STOP_HIT"}:
+        if observed_dates >= TRACKING_DAYS:
+            status = "EXPIRED"
+            exit_reason = "expired"
+            event_date = symbol_dates[min(symbol_dates.index(signal_date) + TRACKING_DAYS, len(symbol_dates) - 1)] if signal_date in symbol_dates else None
+        elif future_rows.empty and status == "CREATED":
+            status = "CREATED"
+        elif status == "ENTRY_REACHED":
+            event_date = entry_date
+        else:
+            status = "OPEN"
+
+    days_to_entry = _trading_day_distance(signal_date, entry_date, symbol_dates) if entry_date else np.nan
+    days_to_exit = _trading_day_distance(signal_date, event_date or exit_date, symbol_dates) if event_date or exit_date else np.nan
+    return_pct = np.nan
+    if not np.isnan(exit_price) and base_price and base_price > 0:
+        return_pct = exit_price / base_price - 1.0
+
+    signal_id = f"{symbol}:{signal_date}"
+    return {
+        "signal_id": signal_id,
+        "symbol": symbol,
+        "company_name": _company_name(signal),
+        "signal_date": signal_date,
+        "signal_price": round(signal_price, 6) if not np.isnan(signal_price) else np.nan,
+        "rating": safe_str(signal.get("rating"), ""),
+        "action": safe_str(signal.get("action"), ""),
+        "setup_type": safe_str(signal.get("setup_type"), ""),
+        "entry_status": safe_str(signal.get("entry_status"), "REVIEW"),
+        "final_score": safe_float(signal.get("final_score"), np.nan),
+        "final_score_adjusted": safe_float(signal.get("final_score_adjusted"), np.nan),
+        "market_regime": safe_str(signal.get("market_regime"), "UNKNOWN"),
+        "buy_zone": _format_range(buy_low, buy_high),
+        "stop_loss": _format_level(stop) if stop is not None else "",
+        "conservative_target": _format_level(target) if target is not None else "",
+        "status": status,
+        "entry_date": entry_date,
+        "entry_price": round(entry_price, 6) if not np.isnan(entry_price) else np.nan,
+        "exit_date": exit_date,
+        "exit_price": round(exit_price, 6) if not np.isnan(exit_price) else np.nan,
+        "exit_reason": exit_reason,
+        "days_to_entry": days_to_entry,
+        "days_to_exit": days_to_exit,
+        "return_pct": round(return_pct, 6) if not np.isnan(return_pct) else np.nan,
+        "max_drawdown": round(min(0.0, max_drawdown), 6) if not np.isnan(max_drawdown) else np.nan,
+        "max_gain": round(max(0.0, max_gain), 6) if not np.isnan(max_gain) else np.nan,
+        "score_bucket": safe_str(signal.get("score_bucket"), "unknown"),
+    }
+
+
+def summarize_signal_lifecycle(lifecycle_df: pd.DataFrame) -> pd.DataFrame:
+    if lifecycle_df.empty:
+        return pd.DataFrame(columns=SIGNAL_LIFECYCLE_SUMMARY_COLUMNS)
+    rows: list[dict[str, object]] = []
+    for group_col in SIGNAL_LIFECYCLE_GROUPS:
+        if group_col not in lifecycle_df.columns:
+            continue
+        for group_value, group_df in lifecycle_df.groupby(group_col, dropna=False):
+            count = int(len(group_df))
+            if count == 0:
+                continue
+            status = group_df["status"].fillna("").astype(str)
+            entry_reached = status.isin(["ENTRY_REACHED", "TARGET_HIT", "STOP_HIT", "EXPIRED"])
+            returns = pd.to_numeric(group_df["return_pct"], errors="coerce").dropna()
+            days_to_entry = pd.to_numeric(group_df["days_to_entry"], errors="coerce").dropna()
+            days_to_exit = pd.to_numeric(group_df["days_to_exit"], errors="coerce").dropna()
+            drawdown = pd.to_numeric(group_df["max_drawdown"], errors="coerce").dropna()
+            gain = pd.to_numeric(group_df["max_gain"], errors="coerce").dropna()
+            rows.append(
+                {
+                    "group_type": group_col,
+                    "group_value": safe_str(group_value, "unknown") or "unknown",
+                    "count": count,
+                    "entry_reached_rate": round(float(entry_reached.mean()), 6),
+                    "target_hit_rate": round(float((status == "TARGET_HIT").mean()), 6),
+                    "stop_hit_rate": round(float((status == "STOP_HIT").mean()), 6),
+                    "expired_rate": round(float((status == "EXPIRED").mean()), 6),
+                    "open_rate": round(float(status.isin(["OPEN", "CREATED", "ENTRY_REACHED"]).mean()), 6),
+                    "avg_return_pct": round(float(returns.mean()), 6) if not returns.empty else np.nan,
+                    "avg_days_to_entry": round(float(days_to_entry.mean()), 2) if not days_to_entry.empty else np.nan,
+                    "avg_days_to_exit": round(float(days_to_exit.mean()), 2) if not days_to_exit.empty else np.nan,
+                    "avg_max_drawdown": round(float(drawdown.mean()), 6) if not drawdown.empty else np.nan,
+                    "avg_max_gain": round(float(gain.mean()), 6) if not gain.empty else np.nan,
+                }
+            )
+    return pd.DataFrame(rows, columns=SIGNAL_LIFECYCLE_SUMMARY_COLUMNS)
+
+
+def compute_signal_lifecycle(history_dir: str) -> tuple[pd.DataFrame, pd.DataFrame]:
+    history_df = load_snapshot_history(history_dir)
+    analysis_dir = Path(history_dir).parent / "analysis"
+    analysis_dir.mkdir(parents=True, exist_ok=True)
+    lifecycle_path = analysis_dir / "signal_lifecycle.csv"
+    summary_path = analysis_dir / "signal_lifecycle_summary.csv"
+
+    if history_df.empty:
+        lifecycle_df, summary_df = _empty_lifecycle_outputs(analysis_dir)
+        print("[analysis] signal lifecycle rows: 0")
+        print("[analysis] signal lifecycle summary rows: 0")
+        return lifecycle_df, summary_df
+
+    history_df = _prepare_lifecycle_history(history_df)
+    signal_rows = _tracked_signal_rows(history_df)
+    if signal_rows.empty:
+        lifecycle_df, summary_df = _empty_lifecycle_outputs(analysis_dir)
+        print("[analysis] signal lifecycle rows: 0")
+        print("[analysis] signal lifecycle summary rows: 0")
+        return lifecycle_df, summary_df
+
+    records: list[dict[str, object]] = []
+    symbol_groups = {symbol: group.sort_values("timestamp_utc").reset_index(drop=True) for symbol, group in history_df.groupby("symbol")}
+    for _, signal in signal_rows.iterrows():
+        symbol = safe_str(signal.get("symbol"), "").upper()
+        symbol_df = symbol_groups.get(symbol)
+        if symbol_df is None or symbol_df.empty:
+            continue
+        records.append(_lifecycle_for_signal(signal, symbol_df))
+
+    lifecycle_df = pd.DataFrame(records)
+    if lifecycle_df.empty:
+        lifecycle_df = pd.DataFrame(columns=SIGNAL_LIFECYCLE_COLUMNS)
+    else:
+        lifecycle_df = lifecycle_df.reindex(columns=[*SIGNAL_LIFECYCLE_COLUMNS, "score_bucket"])
+        lifecycle_df = lifecycle_df.sort_values(["signal_date", "symbol"], ascending=[False, True], kind="mergesort").reset_index(drop=True)
+    summary_df = summarize_signal_lifecycle(lifecycle_df)
+
+    atomic_write_dataframe_csv(lifecycle_df.reindex(columns=SIGNAL_LIFECYCLE_COLUMNS), lifecycle_path, index=False)
+    atomic_write_dataframe_csv(summary_df, summary_path, index=False)
+    print(f"[analysis] signal lifecycle rows: {len(lifecycle_df)}")
+    print(f"[analysis] signal lifecycle summary rows: {len(summary_df)}")
+    return lifecycle_df.reindex(columns=SIGNAL_LIFECYCLE_COLUMNS), summary_df
 
 
 def summarize_group_performance(df: pd.DataFrame, group_col: str) -> pd.DataFrame:
@@ -634,6 +1046,9 @@ def analyze_performance(forward_returns_df: pd.DataFrame) -> pd.DataFrame:
     summary_path = analysis_dir / "performance_summary.csv"
     atomic_write_dataframe_csv(summary_df, summary_path, index=False)
     generate_calibration_insights(summary_df, forward_returns_df, analysis_dir)
+    history_dir = forward_returns_df.attrs.get("history_dir")
+    if history_dir:
+        compute_signal_lifecycle(str(history_dir))
 
     print_performance_section(summary_df, "rating", "PERFORMANCE BY RATING")
     print_performance_section(summary_df, "setup_type", "PERFORMANCE BY SETUP")
