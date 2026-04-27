@@ -14,6 +14,7 @@ type Props = {
 type SortDirection = "asc" | "desc";
 type GroupedSortKey = "horizon" | "group_type" | "group_value" | "count" | "avg_return" | "median_return" | "hit_rate" | "avg_max_drawdown" | "avg_max_gain" | "worst_return" | "best_return" | "low_sample";
 type ForwardSortKey = "symbol" | "company" | "timestamp_utc" | "horizon" | "forward_return" | "max_drawdown_after_signal" | "max_gain_after_signal" | "rating" | "action" | "setup_type" | "entry_status";
+type ColumnAlign = "left" | "right" | "center";
 
 const HORIZON_PRIORITY: Record<string, number> = {
   "1D": 1,
@@ -42,7 +43,7 @@ const ACTION_PRIORITY: Record<string, number> = {
   "STRONG SELL": 5,
 };
 
-const GROUPED_COLUMNS: { key: GroupedSortKey; label: string; align?: "left" | "right" }[] = [
+const GROUPED_COLUMNS: { key: GroupedSortKey; label: string; align?: ColumnAlign }[] = [
   { key: "horizon", label: "Horizon" },
   { key: "group_type", label: "Group" },
   { key: "group_value", label: "Value" },
@@ -54,13 +55,13 @@ const GROUPED_COLUMNS: { key: GroupedSortKey; label: string; align?: "left" | "r
   { key: "avg_max_gain", label: "Gain", align: "right" },
   { key: "worst_return", label: "Worst", align: "right" },
   { key: "best_return", label: "Best", align: "right" },
-  { key: "low_sample", label: "Sample" },
+  { key: "low_sample", label: "Sample", align: "center" },
 ];
 
-const FORWARD_COLUMNS: { key: ForwardSortKey; label: string; align?: "left" | "right" }[] = [
+const FORWARD_COLUMNS: { key: ForwardSortKey; label: string; align?: ColumnAlign }[] = [
   { key: "symbol", label: "Symbol" },
   { key: "company", label: "Company" },
-  { key: "horizon", label: "Horizon" },
+  { key: "horizon", label: "Horizon", align: "center" },
   { key: "forward_return", label: "Return", align: "right" },
   { key: "max_drawdown_after_signal", label: "Drawdown", align: "right" },
   { key: "max_gain_after_signal", label: "Gain", align: "right" },
@@ -252,11 +253,23 @@ function stableSortForwardRows(rows: CsvRow[], key: ForwardSortKey | null, direc
     .map((item) => item.row);
 }
 
-function SortHeader<T extends string>({ activeKey, align, direction, label, onSort, thisKey }: { activeKey: T | null; align?: "left" | "right"; direction: SortDirection; label: string; onSort: (key: T) => void; thisKey: T }) {
+function alignmentClass(align: ColumnAlign | undefined) {
+  if (align === "right") return "text-right";
+  if (align === "center") return "text-center";
+  return "text-left";
+}
+
+function justifyClass(align: ColumnAlign | undefined) {
+  if (align === "right") return "justify-end";
+  if (align === "center") return "justify-center";
+  return "justify-start";
+}
+
+function SortHeader<T extends string>({ activeKey, align, direction, label, onSort, thisKey }: { activeKey: T | null; align?: ColumnAlign; direction: SortDirection; label: string; onSort: (key: T) => void; thisKey: T }) {
   const active = activeKey === thisKey;
   return (
-    <th className={`px-2 py-1.5 ${align === "right" ? "text-right" : "text-left"}`}>
-      <button className={`inline-flex items-center gap-1 hover:text-sky-200 ${align === "right" ? "justify-end" : "justify-start"}`} onClick={() => onSort(thisKey)} type="button">
+    <th className={`whitespace-nowrap px-2 py-1.5 ${alignmentClass(align)}`}>
+      <button className={`inline-flex max-w-full items-center gap-1 whitespace-nowrap hover:text-sky-200 ${justifyClass(align)}`} onClick={() => onSort(thisKey)} type="button">
         <span>{label}</span>
         {active ? <span className="text-sky-300">{sortIndicator(active, direction)}</span> : null}
       </button>
@@ -471,7 +484,21 @@ export function PerformanceValidation({ forwardRows, history, rankingRows = [], 
 
       <section className="terminal-panel overflow-x-auto rounded-md">
         <div className="border-b border-slate-800 bg-slate-950/70 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Grouped Results Table</div>
-        <table className="w-full min-w-[1080px] table-fixed border-collapse text-xs">
+        <table className="w-full min-w-[1680px] table-fixed border-collapse text-xs">
+          <colgroup>
+            <col style={{ width: 80 }} />
+            <col style={{ width: 140 }} />
+            <col style={{ width: 220 }} />
+            <col style={{ width: 110 }} />
+            <col style={{ width: 130 }} />
+            <col style={{ width: 130 }} />
+            <col style={{ width: 130 }} />
+            <col style={{ width: 150 }} />
+            <col style={{ width: 130 }} />
+            <col style={{ width: 130 }} />
+            <col style={{ width: 130 }} />
+            <col style={{ width: 90 }} />
+          </colgroup>
           <thead className="border-b border-slate-800 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             <tr>
               {GROUPED_COLUMNS.map((column) => (
@@ -482,18 +509,18 @@ export function PerformanceValidation({ forwardRows, history, rankingRows = [], 
           <tbody className="divide-y divide-slate-800/90">
             {filteredSummary.length ? filteredSummary.slice(0, 300).map((row, index) => (
               <tr key={`${row.horizon}-${row.group_type}-${row.group_value}-${index}`}>
-                <td className="px-2 py-1.5 font-mono text-slate-300">{text(row.horizon)}</td>
-                <td className="px-2 py-1.5 text-slate-400">{text(row.group_type)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 font-mono text-slate-300">{text(row.horizon)}</td>
+                <td className="truncate px-2 py-1.5 text-slate-400">{text(row.group_type)}</td>
                 <td className="truncate px-2 py-1.5 text-slate-200">{text(row.group_value)}</td>
-                <td className="px-2 py-1.5 font-mono text-slate-300">{integer(row.count).toLocaleString()}</td>
-                <td className="px-2 py-1.5 font-mono text-slate-300">{percent(row.avg_return)}</td>
-                <td className="px-2 py-1.5 font-mono text-slate-300">{percent(row.median_return)}</td>
-                <td className="px-2 py-1.5 font-mono text-slate-300">{ratio(row.hit_rate)}</td>
-                <td className="px-2 py-1.5 font-mono text-slate-300">{percent(row.avg_max_drawdown)}</td>
-                <td className="px-2 py-1.5 font-mono text-slate-300">{percent(row.avg_max_gain)}</td>
-                <td className="px-2 py-1.5 font-mono text-slate-300">{percent(row.worst_return)}</td>
-                <td className="px-2 py-1.5 font-mono text-slate-300">{percent(row.best_return)}</td>
-                <td className={String(row.low_sample).toLowerCase() === "true" ? "px-2 py-1.5 text-amber-300" : "px-2 py-1.5 text-emerald-300"}>{String(row.low_sample).toLowerCase() === "true" ? "Low" : "OK"}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{integer(row.count).toLocaleString()}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.avg_return)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.median_return)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{ratio(row.hit_rate)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.avg_max_drawdown)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.avg_max_gain)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.worst_return)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.best_return)}</td>
+                <td className={String(row.low_sample).toLowerCase() === "true" ? "whitespace-nowrap px-2 py-1.5 text-center text-amber-300" : "whitespace-nowrap px-2 py-1.5 text-center text-emerald-300"}>{String(row.low_sample).toLowerCase() === "true" ? "Low" : "OK"}</td>
               </tr>
             )) : (
               <tr><td className="px-2 py-6 text-center text-slate-500" colSpan={12}>No grouped performance rows match these filters.</td></tr>
@@ -517,19 +544,19 @@ export function PerformanceValidation({ forwardRows, history, rankingRows = [], 
             </label>
           </div>
         </div>
-        <table className="w-full min-w-[1320px] table-fixed border-collapse text-xs">
+        <table className="w-full min-w-[1690px] table-fixed border-collapse text-xs">
           <colgroup>
-            <col style={{ width: 90 }} />
-            <col style={{ width: 220 }} />
-            <col style={{ width: 80 }} />
-            <col style={{ width: 90 }} />
             <col style={{ width: 100 }} />
+            <col style={{ width: 260 }} />
             <col style={{ width: 90 }} />
             <col style={{ width: 120 }} />
+            <col style={{ width: 130 }} />
+            <col style={{ width: 120 }} />
             <col style={{ width: 140 }} />
-            <col style={{ width: 140 }} />
-            <col style={{ width: 140 }} />
-            <col style={{ width: 180 }} />
+            <col style={{ width: 150 }} />
+            <col style={{ width: 190 }} />
+            <col style={{ width: 160 }} />
+            <col style={{ width: 230 }} />
           </colgroup>
           <thead className="border-b border-slate-800 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             <tr>
@@ -541,17 +568,17 @@ export function PerformanceValidation({ forwardRows, history, rankingRows = [], 
           <tbody className="divide-y divide-slate-800/90">
             {visibleForwardRows.length ? visibleForwardRows.map((row, index) => (
               <tr key={`${row.symbol}-${row.timestamp_utc}-${row.horizon}-${index}`}>
-                <td className="px-2 py-1.5 font-mono font-semibold">
+                <td className="whitespace-nowrap px-2 py-1.5 font-mono font-semibold">
                   <Link className="text-sky-200 hover:text-sky-100" href={`/symbol/${symbolOf(row)}`}>
                     {text(row.symbol)}
                   </Link>
                 </td>
                 <td className="truncate px-2 py-1.5 text-slate-400" title={companyForRow(row, companyBySymbol)}>{companyForRow(row, companyBySymbol) || "—"}</td>
-                <td className="px-2 py-1.5 font-mono text-slate-300">{text(row.horizon)}</td>
-                <td className="px-2 py-1.5 font-mono text-slate-300">{percent(row.forward_return)}</td>
-                <td className="px-2 py-1.5 font-mono text-slate-300">{percent(row.max_drawdown_after_signal)}</td>
-                <td className="px-2 py-1.5 font-mono text-slate-300">{percent(row.max_gain_after_signal)}</td>
-                <td className="px-2 py-1.5 text-slate-300">{text(row.rating)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-center font-mono text-slate-300">{text(row.horizon)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.forward_return)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.max_drawdown_after_signal)}</td>
+                <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.max_gain_after_signal)}</td>
+                <td className="truncate px-2 py-1.5 text-slate-300">{text(row.rating)}</td>
                 <td className="truncate px-2 py-1.5 text-slate-300">{text(row.action)}</td>
                 <td className="truncate px-2 py-1.5 text-slate-400">{text(row.setup_type)}</td>
                 <td className="truncate px-2 py-1.5 text-slate-400">{text(row.entry_status)}</td>
