@@ -8,9 +8,11 @@ import { getFullRanking, getScanDataHealth, getTopCandidates, scannerOutputDir }
 import type { RankingRow } from "./types";
 
 export type ActiveAlertMatch = {
-  rule_id: string;
+  rule_id: string | null;
   rule_type: string;
-  scope: "global" | "watchlist" | "symbol";
+  signal: string;
+  notification_status: "Covered" | "Radar only";
+  scope: "global" | "watchlist" | "symbol" | "radar";
   symbol: string;
   company_name: string;
   price: number | null;
@@ -27,7 +29,7 @@ export type ActiveAlertMatch = {
   take_profit: string;
   risk_reward: string;
   channels: string[];
-  cooldown_minutes: number;
+  cooldown_minutes: number | null;
   last_sent: string | null;
   cooldown_active: boolean;
 };
@@ -131,25 +133,9 @@ function tradeQualityEntryStatus(row: RankingRow) {
   return "REVIEW";
 }
 
-function displayEntryStatus(row: RankingRow) {
-  const price = numeric(row.price);
-  const [buyLow, buyHigh] = buyZone(row);
-  const stop = stopLoss(row);
-  if (price !== null && stop !== null) {
-    if (price <= stop) return "STOP HIT";
-    if ((price - stop) / price <= 0.03) return "STOP RISK";
-  }
-  if (price !== null && buyLow !== null && buyHigh !== null) {
-    if (price >= buyLow && price <= buyHigh) return "BUY ZONE";
-    if (price > buyHigh && price <= buyHigh * 1.02) return "NEAR ENTRY";
-  }
+function displayEntryStatus(row: RankingRow, signal?: string) {
+  if (signal === "STOP HIT" || signal === "STOP RISK" || signal === "BUY ZONE" || signal === "NEAR ENTRY") return signal;
   return tradeQualityEntryStatus(row);
-}
-
-function inOrNearBuyZone(row: RankingRow) {
-  const price = numeric(row.price);
-  const [buyLow, buyHigh] = buyZone(row);
-  return price !== null && buyLow !== null && buyHigh !== null && (price >= buyLow && price <= buyHigh || (price > buyHigh && price <= buyHigh * 1.02));
 }
 
 function ratingMeetsMin(row: RankingRow, minimum?: string) {
@@ -217,71 +203,45 @@ function passesRuleGuards(rule: AlertRule, row: RankingRow) {
   return true;
 }
 
-function evaluateRuleMatch(rule: AlertRule, row: RankingRow, topSymbols: Set<string>, state: AlertRuleState | undefined) {
-  if (!passesRuleGuards(rule, row)) return null;
+function matchesRuleType(rule: AlertRule, row: RankingRow, signal: string, topSymbols: Set<string>, state: AlertRuleState | undefined) {
+  if (!passesRuleGuards(rule, row)) return false;
   const price = numeric(row.price);
   const score = numeric(row.final_score);
   const threshold = numeric(rule.threshold);
   const type = rule.type;
 
-  let matched = false;
-  let reason = "";
-
-  if (type === "price_above" && price !== null && threshold !== null) {
-    matched = price >= threshold;
-    reason = `Price ${formatNumber(price)} is above ${formatNumber(threshold)}`;
-  } else if (type === "price_below" && price !== null && threshold !== null) {
-    matched = price <= threshold;
-    reason = `Price ${formatNumber(price)} is below ${formatNumber(threshold)}`;
-  } else if (type === "buy_zone_hit" && price !== null) {
-    const [low, high] = buyZone(row);
-    matched = low !== null && high !== null && price >= low && price <= high;
-    reason = `Price is inside buy zone ${formatRange(low, high)}`;
-  } else if (type === "stop_loss_broken" && price !== null) {
-    const stop = stopLoss(row);
-    matched = stop !== null && price <= stop;
-    reason = `Price ${formatNumber(price)} is at or below stop ${formatNumber(stop)}`;
-  } else if (type === "take_profit_hit" && price !== null) {
-    const [low, high] = takeProfitZone(row);
-    const target = low ?? high;
-    matched = target !== null && price >= target;
-    reason = `Price ${formatNumber(price)} is at or above take profit ${formatNumber(target)}`;
-  } else if (type === "score_above" && score !== null && threshold !== null) {
-    matched = score >= threshold;
-    reason = `Score ${formatNumber(score)} is above ${formatNumber(threshold)}`;
-  } else if (type === "score_below" && score !== null && threshold !== null) {
-    matched = score <= threshold;
-    reason = `Score ${formatNumber(score)} is below ${formatNumber(threshold)}`;
-  } else if (type === "score_changed_by" && score !== null) {
-    const previous = numeric(state?.last_observed_value ?? state?.last_trigger_value);
-    const minimum = threshold ?? 2;
-    const change = previous === null ? null : score - previous;
-    matched = change !== null && Math.abs(change) >= minimum;
-    reason = change === null ? "No score baseline recorded" : `Score changed ${change > 0 ? "+" : ""}${formatNumber(change)}`;
-  } else if (type === "rating_changed") {
-    const current = cleanText(row.rating);
-    const previous = cleanText(state?.last_observed_value ?? state?.last_trigger_value);
-    matched = Boolean(current && previous && current !== previous);
-    reason = previous ? `Rating changed ${previous} -> ${current}` : "No rating baseline recorded";
-  } else if (type === "action_changed") {
-    const current = actionFor(row);
-    const previous = cleanText(state?.last_observed_value ?? state?.last_trigger_value);
-    matched = Boolean(current && previous && current !== previous);
-    reason = previous ? `Action changed ${previous} -> ${current}` : "No action baseline recorded";
-  } else if (type === "new_top_candidate") {
-    const current = topSymbols.has(row.symbol) ? "present" : "absent";
-    const previous = cleanText(state?.last_observed_value ?? state?.last_trigger_value);
-    matched = previous !== "present" && current === "present";
-    reason = matched ? `${row.symbol} appeared in top candidates` : "No new top-candidate transition";
-  } else if (type === "entry_ready") {
+  if (type === "buy_zone_hit") return signal === "BUY ZONE";
+  if (type === "stop_loss_broken") return signal === "STOP HIT";
+  if (type === "take_profit_hit") return signal === "TP HIT";
+  if (type === "score_above") return score !== null && threshold !== null && score >= threshold;
+  if (type === "score_below") return score !== null && threshold !== null && score <= threshold;
+  if (type === "price_above") return price !== null && threshold !== null && price >= threshold;
+  if (type === "price_below") return price !== null && threshold !== null && price <= threshold;
+  if (type === "entry_ready") {
     const rating = cleanText(row.rating).toUpperCase();
     const action = normalizedAction(actionFor(row));
-    matched = (rating === "TOP" || rating === "ACTIONABLE") && (action === "STRONG BUY" || action === "BUY") && (tradeQualityEntryStatus(row) === "GOOD ENTRY" || tradeQualityEntryStatus(row) === "WAIT PULLBACK") && inOrNearBuyZone(row);
-    reason = "Entry-ready opportunity";
+    return (signal === "BUY ZONE" || signal === "NEAR ENTRY") && (rating === "TOP" || rating === "ACTIONABLE") && (action === "STRONG BUY" || action === "BUY");
   }
-
-  if (!matched || !entryFilterAllows(rule, row)) return null;
-  return reason || `${type} matched`;
+  if (type === "new_top_candidate") {
+    const previous = cleanText(state?.last_observed_value ?? state?.last_trigger_value);
+    return topSymbols.has(normalizeSymbol(row.symbol)) && previous !== "present";
+  }
+  if (type === "rating_changed") {
+    const current = cleanText(row.rating);
+    const previous = cleanText(state?.last_observed_value ?? state?.last_trigger_value);
+    return Boolean(current && previous && current !== previous);
+  }
+  if (type === "action_changed") {
+    const current = cleanText(actionFor(row));
+    const previous = cleanText(state?.last_observed_value ?? state?.last_trigger_value);
+    return Boolean(current && previous && current !== previous);
+  }
+  if (type === "score_changed_by") {
+    const previous = numeric(state?.last_observed_value ?? state?.last_trigger_value);
+    const minimum = threshold ?? 2;
+    return score !== null && previous !== null && Math.abs(score - previous) >= minimum;
+  }
+  return false;
 }
 
 async function readWatchlistSymbols() {
@@ -305,15 +265,57 @@ function cooldownActive(rule: AlertRule, state: AlertRuleState | undefined, nowM
   return nowMs - lastSentMs < rule.cooldown_minutes * 60_000;
 }
 
-function rowsForRule(rule: AlertRule, rowsBySymbol: Map<string, RankingRow>, watchlist: Set<string>) {
-  if (rule.scope === "symbol") {
-    const row = rowsBySymbol.get(normalizeSymbol(rule.symbol));
-    return row ? [row] : [];
+function ruleCoversSymbol(rule: AlertRule, row: RankingRow, watchlist: Set<string>) {
+  const symbol = normalizeSymbol(row.symbol);
+  if (rule.scope === "symbol") return normalizeSymbol(rule.symbol) === symbol;
+  if (rule.scope === "watchlist") return watchlist.has(symbol);
+  return true;
+}
+
+function coverageFor(row: RankingRow, signal: string, rules: AlertRule[], topSymbols: Set<string>, watchlist: Set<string>, state: Record<string, AlertRuleState>, nowMs: number) {
+  const symbol = normalizeSymbol(row.symbol);
+  for (const rule of rules) {
+    if (!ruleCoversSymbol(rule, row, watchlist)) continue;
+    const ruleState = stateFor(rule.id, symbol, state);
+    if (!matchesRuleType(rule, row, signal, topSymbols, ruleState)) continue;
+    if (!entryFilterAllows(rule, row)) continue;
+    return {
+      rule,
+      state: ruleState,
+      cooldownActive: cooldownActive(rule, ruleState, nowMs),
+    };
   }
-  if (rule.scope === "watchlist") {
-    return Array.from(watchlist).map((symbol) => rowsBySymbol.get(symbol)).filter((row): row is RankingRow => Boolean(row));
+  return null;
+}
+
+function radarSignals(row: RankingRow) {
+  const signals: { signal: string; reason: string }[] = [];
+  const price = numeric(row.price);
+  const [buyLow, buyHigh] = buyZone(row);
+  const stop = stopLoss(row);
+  const [takeLow, takeHigh] = takeProfitZone(row);
+  const target = takeLow ?? takeHigh;
+  const rating = cleanText(row.rating).toUpperCase();
+  const action = normalizedAction(actionFor(row));
+
+  if (price !== null && buyLow !== null && buyHigh !== null) {
+    if (price >= buyLow && price <= buyHigh) signals.push({ signal: "BUY ZONE", reason: `Price is inside buy zone ${formatRange(buyLow, buyHigh)}` });
+    else if (price > buyHigh && price <= buyHigh * 1.02) signals.push({ signal: "NEAR ENTRY", reason: `Price is within 2% above buy zone ${formatRange(buyLow, buyHigh)}` });
   }
-  return Array.from(rowsBySymbol.values());
+  if (price !== null && stop !== null) {
+    if (price <= stop) signals.push({ signal: "STOP HIT", reason: `Price ${formatNumber(price)} is at or below stop ${formatNumber(stop)}` });
+    else if ((price - stop) / price <= 0.03) signals.push({ signal: "STOP RISK", reason: `Price is within 3% of stop ${formatNumber(stop)}` });
+  }
+  if (price !== null && target !== null) {
+    if (price >= target) signals.push({ signal: "TP HIT", reason: `Price ${formatNumber(price)} is at or above take profit ${formatNumber(target)}` });
+    else if ((target - price) / target <= 0.03) signals.push({ signal: "TP NEAR", reason: `Price is within 3% of take profit ${formatNumber(target)}` });
+  }
+  if (rating === "TOP") signals.push({ signal: "TOP", reason: "Rating is TOP" });
+  if (rating === "ACTIONABLE") signals.push({ signal: "ACTIONABLE", reason: "Rating is ACTIONABLE" });
+  if (action === "STRONG BUY") signals.push({ signal: "STRONG BUY", reason: "Action is STRONG BUY" });
+  if (action === "BUY") signals.push({ signal: "BUY", reason: "Action is BUY" });
+
+  return signals;
 }
 
 export async function getActiveAlertMatches(): Promise<ActiveAlertMatchesResponse> {
@@ -331,45 +333,46 @@ export async function getActiveAlertMatches(): Promise<ActiveAlertMatchesRespons
     readWatchlistSymbols(),
   ]);
   const enabledRules = rules.filter((rule) => rule.enabled);
-  const rowsBySymbol = new Map(rows.map((row) => [row.symbol, row]));
-  const topSymbols = new Set(topCandidates.map((row) => row.symbol));
+  const topSymbols = new Set(topCandidates.map((row) => normalizeSymbol(row.symbol)));
   const nowMs = Date.now();
   const matches: ActiveAlertMatch[] = [];
 
-  for (const rule of enabledRules) {
-    for (const row of rowsForRule(rule, rowsBySymbol, watchlist)) {
-      const ruleState = stateFor(rule.id, row.symbol, alertState.alerts);
-      const reason = evaluateRuleMatch(rule, row, topSymbols, ruleState);
-      if (!reason) continue;
-      const [buyLow, buyHigh] = buyZone(row);
-      const [takeLow, takeHigh] = takeProfitZone(row);
+  for (const row of rows) {
+    const symbol = normalizeSymbol(row.symbol);
+    if (!symbol) continue;
+    const [buyLow, buyHigh] = buyZone(row);
+    const [takeLow, takeHigh] = takeProfitZone(row);
+    for (const radar of radarSignals(row)) {
+      const coverage = coverageFor(row, radar.signal, enabledRules, topSymbols, watchlist, alertState.alerts, nowMs);
       matches.push({
-        rule_id: rule.id,
-        rule_type: rule.type,
-        scope: rule.scope,
-        symbol: row.symbol,
+        rule_id: coverage?.rule.id ?? null,
+        rule_type: radar.signal,
+        signal: radar.signal,
+        notification_status: coverage ? "Covered" : "Radar only",
+        scope: coverage?.rule.scope ?? "radar",
+        symbol,
         company_name: companyFor(row),
         price: numeric(row.price),
         final_score: numeric(row.final_score),
         rating: cleanText(row.rating, "—"),
         action: actionFor(row),
-        entry_status: displayEntryStatus(row),
+        entry_status: displayEntryStatus(row, radar.signal),
         trade_quality: displayTradeQuality(row),
         setup_type: cleanText(row.setup_type, "—"),
-        match_reason: reason,
-        threshold: numeric(rule.threshold),
+        match_reason: radar.reason,
+        threshold: coverage ? numeric(coverage.rule.threshold) : null,
         buy_zone: formatRange(buyLow, buyHigh),
         stop_loss: stopLoss(row),
         take_profit: formatRange(takeLow, takeHigh, true),
         risk_reward: riskRewardLabel(row),
-        channels: rule.channels,
-        cooldown_minutes: rule.cooldown_minutes,
-        last_sent: ruleState?.last_sent_at ?? null,
-        cooldown_active: cooldownActive(rule, ruleState, nowMs),
+        channels: coverage?.rule.channels ?? [],
+        cooldown_minutes: coverage?.rule.cooldown_minutes ?? null,
+        last_sent: coverage?.state?.last_sent_at ?? null,
+        cooldown_active: coverage?.cooldownActive ?? false,
       });
     }
   }
 
-  matches.sort((left, right) => left.rule_type.localeCompare(right.rule_type) || left.symbol.localeCompare(right.symbol));
+  matches.sort((left, right) => left.signal.localeCompare(right.signal) || left.symbol.localeCompare(right.symbol));
   return { generated_at: generatedAt, data_status: health.status, matches };
 }
