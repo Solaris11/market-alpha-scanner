@@ -6,7 +6,7 @@ import { RankingTable, signalLabelsForRow, signalPriorityForRow } from "@/compon
 import type { RankingSortDirection, RankingSortKey } from "@/components/ranking-table";
 import { WatchlistPanel } from "@/components/watchlist-controls";
 import { actionFor } from "@/lib/format";
-import { stableSortRows, type SortConfig } from "@/lib/table-sort";
+import { nextSortDirection, stableSortRows, type SortConfig } from "@/lib/table-sort";
 import type { RankingRow } from "@/lib/types";
 
 type Props = {
@@ -61,7 +61,6 @@ function rowMatchesSearch(row: RankingRow, query: string) {
     row.display_name,
     row.displayName,
     row.name,
-    row.sector,
   ].some((value) => matchesText(value, query));
 }
 
@@ -133,12 +132,12 @@ function sortRows(rows: RankingRow[], key: RankingSortKey | null, direction: Ran
   return stableSortRows(rows, key, direction, valueForSort, sortConfigForKey);
 }
 
-function filterRows(rows: RankingRow[], filters: { action: string; assetType: string; minimumScore: string; qualities: string[]; rating: string; sector: string; signal: string; symbolSearch: string }) {
+function filterRows(rows: RankingRow[], filters: { action: string; assetType: string; minimumScore: string; quality: string; rating: string; sector: string; signal: string; symbolSearch: string }) {
   const query = filters.symbolSearch.trim().toLowerCase();
   const minScore = Number(filters.minimumScore);
   const hasMinScore = filters.minimumScore.trim() !== "" && Number.isFinite(minScore);
   const selectedAction = normalizeAction(filters.action);
-  const selectedQualities = new Set(filters.qualities.map(normalizeQuality).filter(Boolean));
+  const selectedQuality = normalizeQuality(filters.quality);
 
   return rows.filter((row) => {
     if (!rowMatchesSearch(row, query)) return false;
@@ -146,7 +145,7 @@ function filterRows(rows: RankingRow[], filters: { action: string; assetType: st
     if (filters.sector && String(row.sector ?? "") !== filters.sector) return false;
     if (filters.rating && String(row.rating ?? "") !== filters.rating) return false;
     if (selectedAction && normalizeAction(actionFor(row)) !== selectedAction) return false;
-    if (selectedQualities.size && !selectedQualities.has(normalizeQuality(row.recommendation_quality))) return false;
+    if (selectedQuality && normalizeQuality(row.recommendation_quality) !== selectedQuality) return false;
     if (filters.signal && !signalLabelsForRow(row).includes(filters.signal)) return false;
     if (hasMinScore && (typeof row.final_score !== "number" || row.final_score < minScore)) return false;
     return true;
@@ -303,7 +302,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
   const [rating, setRating] = useState("");
   const [action, setAction] = useState("");
   const [signal, setSignal] = useState("");
-  const [qualities, setQualities] = useState<string[]>([]);
+  const [quality, setQuality] = useState("");
   const [minimumScore, setMinimumScore] = useState("");
   const [sortKey, setSortKey] = useState<RankingSortKey | null>("score");
   const [sortDirection, setSortDirection] = useState<RankingSortDirection>("desc");
@@ -325,7 +324,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
     return map;
   }, [ranking]);
 
-  const activeFilters = useMemo(() => ({ action, assetType, minimumScore, qualities, rating, sector, signal, symbolSearch }), [action, assetType, minimumScore, qualities, rating, sector, signal, symbolSearch]);
+  const activeFilters = useMemo(() => ({ action, assetType, minimumScore, quality, rating, sector, signal, symbolSearch }), [action, assetType, minimumScore, quality, rating, sector, signal, symbolSearch]);
   const filteredRows = useMemo(() => filterRows(ranking, activeFilters), [activeFilters, ranking]);
   const enrichedTopCandidates = useMemo(() => {
     return topCandidates.map((row) => mergeRankingFallback(row, rankingBySymbol.get(String(row.symbol ?? "").trim().toUpperCase())));
@@ -335,6 +334,9 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
   }, [activeFilters, enrichedTopCandidates]);
   const sortedRows = useMemo(() => sortRows(filteredRows, sortKey, sortDirection), [filteredRows, sortDirection, sortKey]);
   const sortedTopCandidates = useMemo(() => sortRows(filteredTopCandidates, topSortKey, topSortDirection), [filteredTopCandidates, topSortDirection, topSortKey]);
+  const visibleRankingLimit = showAllRankingRows ? undefined : 200;
+  const visibleRankingCount = showAllRankingRows ? sortedRows.length : Math.min(sortedRows.length, 200);
+  const visibleTopCount = Math.min(sortedTopCandidates.length, 10);
 
   function resetFilters() {
     setSymbolSearch("");
@@ -343,7 +345,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
     setRating("");
     setAction("");
     setSignal("");
-    setQualities([]);
+    setQuality("");
     setMinimumScore("");
     setSortKey("score");
     setSortDirection("desc");
@@ -353,21 +355,13 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
   }
 
   function handleSort(key: RankingSortKey) {
-    if (sortKey === key) {
-      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
-      return;
-    }
+    setSortDirection((current) => nextSortDirection(sortKey, key, current, sortConfigForKey(key)));
     setSortKey(key);
-    setSortDirection("desc");
   }
 
   function handleTopSort(key: RankingSortKey) {
-    if (topSortKey === key) {
-      setTopSortDirection((current) => (current === "desc" ? "asc" : "desc"));
-      return;
-    }
+    setTopSortDirection((current) => nextSortDirection(topSortKey, key, current, sortConfigForKey(key)));
     setTopSortKey(key);
-    setTopSortDirection("desc");
   }
 
   return (
@@ -379,7 +373,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
             <h2 className="text-lg font-semibold text-slate-50">Scanner Table</h2>
           </div>
           <div className="whitespace-nowrap text-xs text-slate-500">
-            {filteredRows.length.toLocaleString()} of {ranking.length.toLocaleString()} rows
+            Showing {visibleRankingCount.toLocaleString()} of {filteredRows.length.toLocaleString()} filtered ({ranking.length.toLocaleString()} total)
           </div>
         </div>
 
@@ -481,14 +475,14 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Quality
               <select
-                className="mt-1 h-[30px] w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
-                multiple
-                onChange={(event) => setQualities(Array.from(event.target.selectedOptions).map((option) => option.value))}
-                value={qualities}
+                className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
+                onChange={(event) => setQuality(event.target.value)}
+                value={quality}
               >
+                <option value="">All qualities</option>
                 {QUALITY_FILTER_OPTIONS.map((option) => (
                   <option key={option} value={option}>
-                    {option.replace("_", " ")}
+                    {option.replaceAll("_", " ")}
                   </option>
                 ))}
               </select>
@@ -516,10 +510,10 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
           </div>
         </div>
 
-        <RankingTable rows={sortedRows} emptyMessage="No matching symbols" limit={showAllRankingRows ? undefined : 100} sortDirection={sortDirection} sortKey={sortKey} onSort={handleSort} />
-        {sortedRows.length > 100 ? (
+        <RankingTable rows={sortedRows} emptyMessage="No matching symbols" limit={visibleRankingLimit} sortDirection={sortDirection} sortKey={sortKey} onSort={handleSort} />
+        {sortedRows.length > 200 ? (
           <div className="mt-2 flex items-center justify-between gap-3 text-xs text-slate-500">
-            <span>Showing {showAllRankingRows ? sortedRows.length.toLocaleString() : "100"} of {sortedRows.length.toLocaleString()} rows</span>
+            <span>Showing {visibleRankingCount.toLocaleString()} of {sortedRows.length.toLocaleString()} filtered rows</span>
             <button className="rounded border border-slate-700/80 px-2 py-1 font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200" onClick={() => setShowAllRankingRows((current) => !current)} type="button">
               {showAllRankingRows ? "Show less" : "Show more"}
             </button>
@@ -532,9 +526,14 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
         <RecentAlertEventsPanel rules={alertRules} state={alertState} />
 
         <section>
-          <div className="mb-2">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Top Candidates</div>
-            <h2 className="text-lg font-semibold text-slate-50">High Conviction</h2>
+          <div className="mb-2 flex items-end justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Top Candidates</div>
+              <h2 className="text-lg font-semibold text-slate-50">High Conviction</h2>
+            </div>
+            <div className="whitespace-nowrap text-xs text-slate-500">
+              Showing {visibleTopCount.toLocaleString()} of {filteredTopCandidates.length.toLocaleString()} filtered ({topCandidates.length.toLocaleString()} total)
+            </div>
           </div>
           <RankingTable rows={sortedTopCandidates} highlight limit={10} emptyMessage="No matching symbols" sortDirection={topSortDirection} sortKey={topSortKey} onSort={handleTopSort} />
         </section>

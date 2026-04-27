@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
+import { nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { CsvRow } from "@/lib/types";
 
 type SummarySortKey =
@@ -258,9 +258,10 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
     return { entryReached, expired, open, stopHit, targetHit, total };
   }, [rows]);
 
-  const sortedSummary = useMemo(() => {
-    return stableSortRows(summaryRows, summarySortKey, summarySortDirection, (row, key) => row[key], summarySortConfig).slice(0, 200);
+  const sortedSummaryRows = useMemo(() => {
+    return stableSortRows(summaryRows, summarySortKey, summarySortDirection, (row, key) => row[key], summarySortConfig);
   }, [summaryRows, summarySortDirection, summarySortKey]);
+  const visibleSummaryRows = useMemo(() => sortedSummaryRows.slice(0, 200), [sortedSummaryRows]);
 
   const latestSignalDate = useMemo(() => {
     const dates = rows.map((row) => parseSignalDate(row.signal_date)).filter((value): value is number => value !== null);
@@ -305,21 +306,13 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
   }, [actionFilter, dateRange, detailSortDirection, detailSortKey, entryFilter, minimumScore, ratingFilter, statusFilter, symbolSearch]);
 
   function handleSummarySort(key: SummarySortKey) {
-    if (summarySortKey === key) {
-      setSummarySortDirection((current) => (current === "desc" ? "asc" : "desc"));
-      return;
-    }
+    setSummarySortDirection((current) => nextSortDirection(summarySortKey, key, current, summarySortConfig(key)));
     setSummarySortKey(key);
-    setSummarySortDirection("desc");
   }
 
   function handleDetailSort(key: DetailSortKey) {
-    if (detailSortKey === key) {
-      setDetailSortDirection((current) => (current === "desc" ? "asc" : "desc"));
-      return;
-    }
+    setDetailSortDirection((current) => nextSortDirection(detailSortKey, key, current, detailSortConfig(key)));
     setDetailSortKey(key);
-    setDetailSortDirection("desc");
   }
 
   function resetLifecycleFilters() {
@@ -389,7 +382,12 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
       </section>
 
       <section className="terminal-panel overflow-x-auto rounded-md">
-        <div className="border-b border-slate-800 bg-slate-950/70 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Lifecycle Summary</div>
+        <div className="border-b border-slate-800 bg-slate-950/70 px-3 py-2">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Lifecycle Summary</div>
+          <div className="mt-1 text-xs text-slate-500">
+            Showing {visibleSummaryRows.length.toLocaleString()} of {sortedSummaryRows.length.toLocaleString()} filtered ({summaryRows.length.toLocaleString()} total)
+          </div>
+        </div>
         <table className="w-full min-w-[1420px] table-fixed border-collapse text-xs">
           <colgroup>
             <col style={{ width: 150 }} />
@@ -412,7 +410,7 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/90">
-            {sortedSummary.length ? sortedSummary.map((row, index) => (
+            {visibleSummaryRows.length ? visibleSummaryRows.map((row, index) => (
               <tr key={`${row.group_type}-${row.group_value}-${index}`}>
                 <td className="truncate px-2 py-1.5 text-slate-400">{text(row.group_type)}</td>
                 <td className="truncate px-2 py-1.5 text-slate-200">{text(row.group_value)}</td>

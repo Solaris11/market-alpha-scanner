@@ -28,7 +28,7 @@ const COLUMNS: { key: RankingSortKey; label: string; align?: "left" | "right" }[
   { key: "rating", label: "Rating" },
   { key: "action", label: "Action" },
   { key: "quality", label: "Quality" },
-  { key: "signals", label: "Signals" },
+  { key: "signals", label: "Signal" },
 ];
 const SIGNAL_TONES: Record<string, string> = {
   positive: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
@@ -152,7 +152,7 @@ function QualityBadge({ row }: { row: RankingRow }) {
   if (!quality) return <span className="text-slate-600">—</span>;
   return (
     <span className={`inline-flex max-w-[118px] whitespace-nowrap rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] ${QUALITY_TONES[quality] ?? SIGNAL_TONES.neutral}`} title={String(row.quality_reason ?? "")}>
-      <span className="truncate">{quality.replace("_", " ")}</span>
+      <span className="truncate">{quality.replaceAll("_", " ")}</span>
     </span>
   );
 }

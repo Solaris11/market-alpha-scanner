@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { compact, formatNumber } from "@/lib/format";
-import { stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
+import { nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { IntradayDriftRow, SymbolHistoryRow } from "@/lib/types";
 
 type Props = {
@@ -254,12 +254,8 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
   }
 
   function handleSort(nextKey: SortKey) {
-    if (sortKey === nextKey) {
-      setSortDirection((current) => (current === "asc" ? "desc" : "asc"));
-      return;
-    }
+    setSortDirection((current) => nextSortDirection(sortKey, nextKey, current, sortConfig(nextKey)));
     setSortKey(nextKey);
-    setSortDirection("desc");
   }
 
   return (

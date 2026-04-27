@@ -17,7 +17,7 @@ export function normalizeSortText(value: unknown) {
 
 export function parseSortNumber(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
-  const parsed = Number(cleanSortText(value).replace(/[$,%]/g, "").replace(/,/g, ""));
+  const parsed = Number.parseFloat(cleanSortText(value).replace(/[$,%]/g, "").replace(/,/g, ""));
   return Number.isFinite(parsed) ? parsed : null;
 }
 
@@ -65,6 +65,21 @@ export function compareSortValues(left: unknown, right: unknown, direction: Sort
   const missing = compareMissing(!leftText, !rightText);
   if (missing !== null) return missing;
   return direction === "desc" ? rightText.localeCompare(leftText) : leftText.localeCompare(rightText);
+}
+
+export function defaultSortDirection(config: SortConfig = {}): SortDirection {
+  if (config.type === "string" && !config.priority) return "asc";
+  return "desc";
+}
+
+export function nextSortDirection<K extends string>(
+  currentKey: K | null,
+  nextKey: K,
+  currentDirection: SortDirection,
+  config: SortConfig = {},
+): SortDirection {
+  if (currentKey === nextKey) return currentDirection === "asc" ? "desc" : "asc";
+  return defaultSortDirection(config);
 }
 
 export function stableSortRows<T, K extends string>(

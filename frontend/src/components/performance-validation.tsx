@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { compareSortValues, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
+import { compareSortValues, nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { CsvRow, HistorySummary, RankingRow } from "@/lib/types";
 
 type Props = {
@@ -110,6 +110,10 @@ function formatDate(value: unknown) {
 
 function symbolOf(row: CsvRow) {
   return text(row.symbol, "").toUpperCase();
+}
+
+function isForwardHeaderRow(row: CsvRow) {
+  return text(row.symbol, "").toLowerCase() === "symbol" || text(row.horizon, "").toLowerCase() === "horizon";
 }
 
 function uniqueValues(rows: CsvRow[], key: string) {
@@ -295,16 +299,17 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
   const [minCount, setMinCount] = useState("5");
   const [groupedSortKey, setGroupedSortKey] = useState<GroupedSortKey | null>("avg_return");
   const [groupedSortDirection, setGroupedSortDirection] = useState<SortDirection>("desc");
-  const [forwardSortKey, setForwardSortKey] = useState<ForwardSortKey | null>("forward_return");
+  const [forwardSortKey, setForwardSortKey] = useState<ForwardSortKey | null>("timestamp_utc");
   const [forwardSortDirection, setForwardSortDirection] = useState<SortDirection>("desc");
   const [showRawObservations, setShowRawObservations] = useState(false);
   const [rawForwardRows, setRawForwardRows] = useState<CsvRow[] | null>(null);
   const [rawForwardLoading, setRawForwardLoading] = useState(false);
   const [rawForwardError, setRawForwardError] = useState("");
 
-  const horizons = useMemo(() => uniqueValues(summaryRows.length ? summaryRows : forwardRows, "horizon"), [forwardRows, summaryRows]);
+  const cleanForwardRows = useMemo(() => forwardRows.filter((row) => !isForwardHeaderRow(row)), [forwardRows]);
+  const horizons = useMemo(() => uniqueValues(summaryRows.length ? summaryRows : cleanForwardRows, "horizon"), [cleanForwardRows, summaryRows]);
   const groupTypes = useMemo(() => uniqueValues(summaryRows, "group_type"), [summaryRows]);
-  const completedHorizons = useMemo(() => uniqueValues(forwardRows, "horizon"), [forwardRows]);
+  const completedHorizons = useMemo(() => uniqueValues(cleanForwardRows, "horizon"), [cleanForwardRows]);
   const companyBySymbol = useMemo(() => {
     const map = new Map<string, string>();
     for (const row of rankingRows) {
@@ -314,7 +319,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
     }
     return map;
   }, [rankingRows]);
-  const compactRows = useMemo(() => compactForwardRows(forwardRows), [forwardRows]);
+  const compactRows = useMemo(() => compactForwardRows(cleanForwardRows), [cleanForwardRows]);
 
   const filteredSummary = useMemo(() => {
     const minimum = Number(minCount);
@@ -329,11 +334,20 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
     return stableSortGroupedRows(filtered, groupedSortKey, groupedSortDirection);
   }, [groupType, groupedSortDirection, groupedSortKey, horizon, minCount, summaryRows]);
 
-  const visibleForwardRows = useMemo(() => {
+  const forwardSourceRows = useMemo(() => {
     const sourceRows = showRawObservations ? rawForwardRows ?? [] : compactRows;
-    const filtered = sourceRows.filter((row) => !horizon || text(row.horizon, "") === horizon);
-    return stableSortForwardRows(filtered, forwardSortKey, forwardSortDirection, companyBySymbol).slice(0, 200);
-  }, [compactRows, companyBySymbol, forwardSortDirection, forwardSortKey, horizon, rawForwardRows, showRawObservations]);
+    return sourceRows.filter((row) => !isForwardHeaderRow(row));
+  }, [compactRows, rawForwardRows, showRawObservations]);
+
+  const filteredForwardRows = useMemo(() => {
+    return forwardSourceRows.filter((row) => !horizon || text(row.horizon, "") === horizon);
+  }, [forwardSourceRows, horizon]);
+
+  const sortedForwardRows = useMemo(() => {
+    return stableSortForwardRows(filteredForwardRows, forwardSortKey, forwardSortDirection, companyBySymbol);
+  }, [companyBySymbol, filteredForwardRows, forwardSortDirection, forwardSortKey]);
+
+  const visibleForwardRows = useMemo(() => sortedForwardRows.slice(0, 200), [sortedForwardRows]);
 
   useEffect(() => {
     if (!showRawObservations || rawForwardRows !== null || rawForwardLoading) return;
@@ -361,26 +375,18 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
   const readiness = [
     { label: "Snapshots", value: history.count.toLocaleString(), meta: "saved scans" },
     { label: "Unique Days", value: history.uniqueDates.length.toLocaleString(), meta: "trading days" },
-    { label: "Completed Observations", value: (forwardObservationCount ?? forwardRows.length).toLocaleString(), meta: "forward windows" },
+    { label: "Completed Observations", value: (forwardObservationCount ?? cleanForwardRows.length).toLocaleString(), meta: "forward windows" },
     { label: "Horizons Available", value: completedHorizons.length ? completedHorizons.join(", ") : "None", meta: "1D / 2D / 5D / 10D / 20D / 60D" },
   ];
 
   function handleGroupedSort(key: GroupedSortKey) {
-    if (groupedSortKey === key) {
-      setGroupedSortDirection((current) => (current === "desc" ? "asc" : "desc"));
-      return;
-    }
+    setGroupedSortDirection((current) => nextSortDirection(groupedSortKey, key, current, groupedSortConfig(key)));
     setGroupedSortKey(key);
-    setGroupedSortDirection("desc");
   }
 
   function handleForwardSort(key: ForwardSortKey) {
-    if (forwardSortKey === key) {
-      setForwardSortDirection((current) => (current === "desc" ? "asc" : "desc"));
-      return;
-    }
+    setForwardSortDirection((current) => nextSortDirection(forwardSortKey, key, current, forwardSortConfig(key)));
     setForwardSortKey(key);
-    setForwardSortDirection("desc");
   }
 
   return (
@@ -397,7 +403,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
             </div>
           ))}
         </div>
-        {!forwardRows.length ? (
+        {!cleanForwardRows.length ? (
           <div className="mt-3 rounded border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">Analysis complete, but no completed forward-return windows yet.</div>
         ) : null}
       </section>
@@ -461,7 +467,12 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
       </section>
 
       <section className="terminal-panel overflow-x-auto rounded-md">
-        <div className="border-b border-slate-800 bg-slate-950/70 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Grouped Results Table</div>
+        <div className="border-b border-slate-800 bg-slate-950/70 px-3 py-2">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Grouped Results Table</div>
+          <div className="mt-1 text-xs text-slate-500">
+            Showing {Math.min(filteredSummary.length, 200).toLocaleString()} of {filteredSummary.length.toLocaleString()} filtered ({summaryRows.length.toLocaleString()} total)
+          </div>
+        </div>
         <table className="w-full min-w-[1680px] table-fixed border-collapse text-xs">
           <colgroup>
             <col style={{ width: 80 }} />
@@ -514,6 +525,9 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
               <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">{showRawObservations ? "Forward Returns (Raw Observations)" : "Forward Returns (Compact View)"}</div>
               <p className="mt-1 text-xs normal-case tracking-normal text-slate-500">
                 {showRawObservations ? "Raw observations may include repeated intraday snapshots." : "Compact view shows the latest observation per symbol and horizon."}
+              </p>
+              <p className="mt-1 text-xs normal-case tracking-normal text-slate-500">
+                Showing {visibleForwardRows.length.toLocaleString()} of {filteredForwardRows.length.toLocaleString()} filtered ({forwardSourceRows.length.toLocaleString()} total)
               </p>
             </div>
             <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-300">
