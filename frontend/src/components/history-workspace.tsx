@@ -2,12 +2,60 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { actionFor, formatNumber } from "@/lib/format";
+import { stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { HistorySummary, SymbolHistoryRow } from "@/lib/types";
 
 type Props = {
+  defaultSymbol?: string;
   history: HistorySummary;
   symbols: string[];
 };
+
+type HistorySortKey = "timestamp_utc" | "price" | "final_score" | "final_score_adjusted" | "rating" | "action" | "recommendation_quality" | "entry_status" | "setup_type";
+
+const RATING_PRIORITY: Record<string, number> = {
+  TOP: 0,
+  ACTIONABLE: 1,
+  WATCH: 2,
+  PASS: 3,
+};
+const ACTION_PRIORITY: Record<string, number> = {
+  "STRONG BUY": 0,
+  BUY: 1,
+  "WAIT / HOLD": 2,
+  "WAIT/HOLD": 2,
+  WAIT: 2,
+  HOLD: 3,
+  SELL: 4,
+  "STRONG SELL": 5,
+};
+const QUALITY_PRIORITY: Record<string, number> = {
+  TRADE_READY: 0,
+  WAIT_PULLBACK: 1,
+  LOW_EDGE: 2,
+  AVOID: 3,
+};
+const ENTRY_PRIORITY: Record<string, number> = {
+  "GOOD ENTRY": 0,
+  "NEAR ENTRY": 1,
+  "BUY ZONE": 2,
+  REVIEW: 3,
+  OVEREXTENDED: 4,
+  "STOP RISK": 5,
+  "STOP HIT": 6,
+};
+
+const HISTORY_COLUMNS: { align?: "left" | "right"; key: HistorySortKey; label: string }[] = [
+  { key: "timestamp_utc", label: "Timestamp" },
+  { align: "right", key: "price", label: "Price" },
+  { align: "right", key: "final_score", label: "Score" },
+  { align: "right", key: "final_score_adjusted", label: "Adjusted" },
+  { key: "rating", label: "Rating" },
+  { key: "action", label: "Action" },
+  { key: "recommendation_quality", label: "Quality" },
+  { key: "entry_status", label: "Entry" },
+  { key: "setup_type", label: "Setup" },
+];
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "N/A";
@@ -17,6 +65,14 @@ function formatDate(value: string | null | undefined) {
 function timestampMs(row: { timestamp_utc: string }) {
   const ms = Date.parse(row.timestamp_utc);
   return Number.isFinite(ms) ? ms : null;
+}
+
+function normalizeSymbol(value: unknown) {
+  return String(value ?? "").trim().toUpperCase();
+}
+
+function normalizeSortText(value: unknown) {
+  return String(value ?? "").trim().toUpperCase().replace(/\s+/g, " ");
 }
 
 function formatDelta(value: number | null, suffix = "") {
@@ -76,6 +132,43 @@ function formatDuration(ms: number | null) {
   return `${(hours / 24).toFixed(1)}d`;
 }
 
+function sortValue(row: SymbolHistoryRow, key: HistorySortKey) {
+  if (key === "action") return actionFor(row);
+  if (key === "recommendation_quality") return normalizeSymbol(row.recommendation_quality);
+  if (key === "entry_status") return normalizeSortText(row.entry_status);
+  return row[key];
+}
+
+function sortConfig(key: HistorySortKey): SortConfig {
+  if (key === "timestamp_utc") return { type: "date" };
+  if (key === "price" || key === "final_score" || key === "final_score_adjusted") return { type: "number" };
+  if (key === "rating") return { priority: RATING_PRIORITY };
+  if (key === "action") return { priority: ACTION_PRIORITY };
+  if (key === "recommendation_quality") return { priority: QUALITY_PRIORITY };
+  if (key === "entry_status") return { priority: ENTRY_PRIORITY };
+  return { type: "string" };
+}
+
+function qualityBadgeClass(value: unknown) {
+  const quality = normalizeSymbol(value);
+  if (quality === "TRADE_READY") return "border-emerald-400/30 bg-emerald-400/10 text-emerald-200";
+  if (quality === "WAIT_PULLBACK") return "border-amber-400/35 bg-amber-400/10 text-amber-200";
+  if (quality === "AVOID") return "border-rose-400/35 bg-rose-400/10 text-rose-200";
+  return "border-slate-500/30 bg-slate-500/12 text-slate-200";
+}
+
+function SortHeader({ align, label, onSort, sortDirection, sortKey, thisKey }: { align?: "left" | "right"; label: string; onSort: (key: HistorySortKey) => void; sortDirection: SortDirection; sortKey: HistorySortKey; thisKey: HistorySortKey }) {
+  const active = sortKey === thisKey;
+  return (
+    <th className={`whitespace-nowrap px-2 py-1.5 ${align === "right" ? "text-right" : "text-left"}`}>
+      <button className={`inline-flex max-w-full items-center gap-1 whitespace-nowrap hover:text-sky-200 ${align === "right" ? "justify-end" : "justify-start"}`} onClick={() => onSort(thisKey)} type="button">
+        <span>{label}</span>
+        {active ? <span className="text-sky-300">{sortDirection === "asc" ? "↑" : "↓"}</span> : null}
+      </button>
+    </th>
+  );
+}
+
 function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: "final_score" | "price"; label: string }) {
   const points = rows
     .map((row) => ({ time: timestampMs(row), value: typeof row[field] === "number" ? row[field] : null }))
@@ -123,18 +216,20 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: "
   );
 }
 
-export function HistoryWorkspace({ history, symbols }: Props) {
-  const [symbolQuery, setSymbolQuery] = useState("");
+export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props) {
+  const [symbolQuery, setSymbolQuery] = useState(() => normalizeSymbol(defaultSymbol));
   const [symbolRows, setSymbolRows] = useState<SymbolHistoryRow[]>([]);
   const [loadingSymbol, setLoadingSymbol] = useState(false);
   const [symbolError, setSymbolError] = useState("");
-  const selectedSymbol = symbolQuery.trim().toUpperCase();
-  const exactSymbol = symbols.includes(selectedSymbol) ? selectedSymbol : "";
+  const [sortKey, setSortKey] = useState<HistorySortKey>("timestamp_utc");
+  const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const selectedSymbol = normalizeSymbol(symbolQuery);
+  const dropdownSymbol = symbols.includes(selectedSymbol) ? selectedSymbol : "";
 
   useEffect(() => {
     let active = true;
     async function loadSymbolHistory() {
-      if (!exactSymbol) {
+      if (!selectedSymbol) {
         setSymbolRows([]);
         setSymbolError("");
         return;
@@ -142,7 +237,7 @@ export function HistoryWorkspace({ history, symbols }: Props) {
       setLoadingSymbol(true);
       setSymbolError("");
       try {
-        const response = await fetch(`/api/history/symbol/${encodeURIComponent(exactSymbol)}`);
+        const response = await fetch(`/api/history/symbol/${encodeURIComponent(selectedSymbol)}`);
         const payload = (await response.json()) as { rows?: SymbolHistoryRow[]; error?: string };
         if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
         if (active) {
@@ -158,17 +253,26 @@ export function HistoryWorkspace({ history, symbols }: Props) {
     return () => {
       active = false;
     };
-  }, [exactSymbol]);
+  }, [selectedSymbol]);
 
   const first = symbolRows[0];
   const latest = symbolRows[symbolRows.length - 1];
   const scoreChange = first && latest && typeof first.final_score === "number" && typeof latest.final_score === "number" ? latest.final_score - first.final_score : null;
   const priceChange = first && latest && typeof first.price === "number" && typeof latest.price === "number" ? latest.price - first.price : null;
-  const rowsDescending = [...symbolRows].reverse();
+  const sortedRows = useMemo(() => stableSortRows(symbolRows, sortKey, sortDirection, sortValue, sortConfig), [sortDirection, sortKey, symbolRows]);
   const avgInterval = averageInterval(symbolRows);
   const matchingSymbols = symbolQuery
     ? symbols.filter((symbol) => symbol.includes(selectedSymbol)).slice(0, 8)
     : symbols.slice(0, 8);
+
+  function handleSort(key: HistorySortKey) {
+    if (sortKey === key) {
+      setSortDirection((current) => (current === "desc" ? "asc" : "desc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDirection("desc");
+  }
 
   return (
     <div className="space-y-3">
@@ -179,7 +283,7 @@ export function HistoryWorkspace({ history, symbols }: Props) {
             <input
               className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
               list="history-symbols"
-              onChange={(event) => setSymbolQuery(event.target.value.toUpperCase())}
+                onChange={(event) => setSymbolQuery(normalizeSymbol(event.target.value))}
               placeholder="Type symbol, e.g. AVGO"
               value={symbolQuery}
             />
@@ -194,7 +298,7 @@ export function HistoryWorkspace({ history, symbols }: Props) {
             <select
               className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
               onChange={(event) => setSymbolQuery(event.target.value)}
-              value={exactSymbol}
+              value={dropdownSymbol}
             >
               <option value="">Select symbol</option>
               {symbols.map((symbol) => (
@@ -205,12 +309,12 @@ export function HistoryWorkspace({ history, symbols }: Props) {
             </select>
           </label>
           <div className="text-xs text-slate-500">
-            {exactSymbol ? (
+            {selectedSymbol ? (
               <>
-                {loadingSymbol ? "Loading" : "Showing"} {symbolRows.length.toLocaleString()} snapshots for <span className="font-mono text-slate-200">{exactSymbol}</span>.
+                {loadingSymbol ? "Loading" : "Showing"} {symbolRows.length.toLocaleString()} snapshots for <span className="font-mono text-slate-200">{selectedSymbol}</span>.
               </>
             ) : (
-              <>No symbol history found for this query. Try one of: {matchingSymbols.join(", ") || "no symbols available"}.</>
+              <>Type or select a symbol. Try one of: {matchingSymbols.join(", ") || "no symbols available"}.</>
             )}
           </div>
         </div>
@@ -219,6 +323,10 @@ export function HistoryWorkspace({ history, symbols }: Props) {
       {symbolError ? <div className="terminal-panel rounded-md border-rose-400/25 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">{symbolError}</div> : null}
 
       {loadingSymbol ? <div className="terminal-panel rounded-md border-dashed border-slate-700/70 px-3 py-8 text-center text-xs text-slate-500">Loading symbol history...</div> : null}
+
+      {!loadingSymbol && selectedSymbol && !latest ? (
+        <div className="terminal-panel rounded-md border-dashed border-slate-700/70 px-3 py-8 text-center text-sm text-slate-400">No history found for <span className="font-mono text-slate-100">{selectedSymbol}</span> in scan snapshots.</div>
+      ) : null}
 
       {latest ? (
         <>
@@ -249,48 +357,50 @@ export function HistoryWorkspace({ history, symbols }: Props) {
           <section>
             <div className="mb-2">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Symbol Timeline</div>
-              <h2 className="text-lg font-semibold text-slate-50">{exactSymbol} Snapshot History</h2>
+              <h2 className="text-lg font-semibold text-slate-50">{selectedSymbol} Snapshot History</h2>
             </div>
             <div className="terminal-panel overflow-x-auto rounded-md">
-              <table className="w-full min-w-[1260px] table-fixed border-collapse text-xs">
+              <table className="w-full min-w-[1420px] table-fixed border-collapse text-xs">
                 <colgroup>
                   <col style={{ width: 220 }} />
                   <col style={{ width: 95 }} />
                   <col style={{ width: 110 }} />
                   <col style={{ width: 120 }} />
-                  <col style={{ width: 145 }} />
+                  <col style={{ width: 120 }} />
                   <col style={{ width: 140 }} />
                   <col style={{ width: 130 }} />
                   <col style={{ width: 130 }} />
-                  <col style={{ width: 150 }} />
+                  <col style={{ width: 170 }} />
                   <col style={{ width: 250 }} />
                 </colgroup>
                 <thead className="border-b border-slate-700/70 bg-slate-950/70 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                   <tr>
-                    <th className="px-2 py-1.5 text-left">Timestamp</th>
-                    <th className="px-2 py-1.5 text-right">Price</th>
-                    <th className="px-2 py-1.5 text-right">Final Score</th>
-                    <th className="px-2 py-1.5 text-left">Rating</th>
-                    <th className="px-2 py-1.5 text-left">Action</th>
-                    <th className="px-2 py-1.5 text-left">Setup</th>
-                    <th className="px-2 py-1.5 text-left">Buy Zone</th>
-                    <th className="px-2 py-1.5 text-left">Stop Loss</th>
-                    <th className="px-2 py-1.5 text-left">Take Profit Zone</th>
+                    {HISTORY_COLUMNS.map((column) => (
+                      <SortHeader align={column.align} key={column.key} label={column.label} onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey={column.key} />
+                    ))}
                     <th className="px-2 py-1.5 text-left">Source</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/90">
-              {rowsDescending.slice(0, 200).map((row) => (
-                    <tr className="hover:bg-sky-400/5" key={`${row.source_file}-${row.symbol}`}>
+                  {sortedRows.slice(0, 200).map((row) => (
+                    <tr className="hover:bg-sky-400/5" key={`${row.source_file}-${row.symbol}-${row.timestamp_utc}`}>
                       <td className="truncate px-2 py-1.5 text-slate-300">{formatDate(row.timestamp_utc)}</td>
                       <td className="px-2 py-1.5 text-right font-mono text-slate-200">{formatNumber(row.price)}</td>
                       <td className="px-2 py-1.5 text-right font-mono text-emerald-200">{formatNumber(row.final_score)}</td>
+                      <td className="px-2 py-1.5 text-right font-mono text-slate-300">{formatNumber(row.final_score_adjusted)}</td>
                       <td className="truncate px-2 py-1.5 text-slate-300">{row.rating ?? "N/A"}</td>
                       <td className="truncate px-2 py-1.5 text-slate-300">{actionFor(row)}</td>
+                      <td className="px-2 py-1.5">
+                        {row.recommendation_quality ? (
+                          <span className={`inline-flex max-w-[120px] rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] ${qualityBadgeClass(row.recommendation_quality)}`} title={String(row.quality_reason ?? "")}>
+                            <span className="truncate">{String(row.recommendation_quality).replace("_", " ")}</span>
+                          </span>
+                        ) : (
+                          <span className="text-slate-600">—</span>
+                        )}
+                      </td>
+                      <td className="truncate px-2 py-1.5 text-slate-400">{row.entry_status ?? "N/A"}</td>
                       <td className="truncate px-2 py-1.5 text-slate-400">{row.setup_type ?? "N/A"}</td>
-                      <td className="truncate px-2 py-1.5 text-slate-400">{String(valueFrom(row, ["buy_zone", "entry_zone"]) ?? "N/A")}</td>
-                      <td className="truncate px-2 py-1.5 text-slate-400">{String(valueFrom(row, ["stop_loss", "invalidation_level"]) ?? "N/A")}</td>
-                      <td className="truncate px-2 py-1.5 text-slate-400">{takeProfitDisplay(row)}</td>
                       <td className="truncate px-2 py-1.5 font-mono text-slate-500">{row.source_file}</td>
                     </tr>
                   ))}

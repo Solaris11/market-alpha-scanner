@@ -517,6 +517,40 @@ export async function getSymbolHistoryData(): Promise<SymbolHistoryData> {
   };
 }
 
+export async function getHistorySymbolsFromSnapshots(maxSnapshots = 5): Promise<string[]> {
+  const history = await getHistorySummary();
+  const symbols = new Set<string>();
+
+  for (const snapshot of history.snapshots.slice(0, Math.max(1, maxSnapshots))) {
+    const snapshotRows = await readCsv(path.join(scannerOutputDir(), "history", snapshot.name));
+    for (const raw of snapshotRows) {
+      const symbol = String(raw.symbol ?? raw.ticker ?? raw.Symbol ?? raw.Ticker ?? "").trim().toUpperCase();
+      if (symbol) symbols.add(symbol);
+    }
+  }
+
+  return Array.from(symbols).sort();
+}
+
+async function getPerSymbolHistoryForSymbol(symbol: string): Promise<SymbolHistoryRow[]> {
+  const cleaned = symbol.trim().toUpperCase();
+  if (!cleaned) return [];
+  const filePath = path.join(scannerOutputDir(), "symbols", symbolSlug(cleaned), "history.csv");
+  if (!(await fileExists(filePath))) return [];
+
+  const rows = await readCsv(filePath);
+  return rows
+    .map((raw) => {
+      const row = normalizeRankingRow(raw) as SymbolHistoryRow;
+      row.symbol = String(row.symbol || raw.ticker || raw.Symbol || raw.Ticker || cleaned).trim().toUpperCase();
+      row.timestamp_utc = String(raw.timestamp_utc ?? raw.datetime ?? raw.date ?? "");
+      row.source_file = `symbols/${symbolSlug(cleaned)}/history.csv`;
+      return row;
+    })
+    .filter((row) => row.symbol === cleaned && Boolean(row.timestamp_utc))
+    .sort((a, b) => String(a.timestamp_utc).localeCompare(String(b.timestamp_utc)));
+}
+
 export async function getSymbolHistoryForSymbol(symbol: string): Promise<SymbolHistoryRow[]> {
   const cleaned = symbol.trim().toUpperCase();
   if (!cleaned) return [];
@@ -528,9 +562,10 @@ export async function getSymbolHistoryForSymbol(symbol: string): Promise<SymbolH
     const fallbackTimestamp = snapshot.timestamp ?? snapshot.modifiedAt;
 
     for (const raw of snapshotRows) {
-      const rawSymbol = String(raw.symbol ?? "").trim().toUpperCase();
+      const rawSymbol = String(raw.symbol ?? raw.ticker ?? raw.Symbol ?? raw.Ticker ?? "").trim().toUpperCase();
       if (rawSymbol !== cleaned) continue;
       const row = normalizeRankingRow(raw) as SymbolHistoryRow;
+      row.symbol = rawSymbol;
       if (!row.symbol) continue;
       row.timestamp_utc = String(raw.timestamp_utc ?? fallbackTimestamp);
       row.source_file = snapshot.name;
@@ -538,7 +573,9 @@ export async function getSymbolHistoryForSymbol(symbol: string): Promise<SymbolH
     }
   }
 
-  return rows.sort((a, b) => String(a.timestamp_utc).localeCompare(String(b.timestamp_utc)));
+  const snapshotRows = rows.sort((a, b) => String(a.timestamp_utc).localeCompare(String(b.timestamp_utc)));
+  if (snapshotRows.length) return snapshotRows;
+  return getPerSymbolHistoryForSymbol(cleaned);
 }
 
 export function buildIntradaySignalDrift(history: SymbolHistoryData): IntradayDriftRow[] {

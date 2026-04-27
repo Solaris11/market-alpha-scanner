@@ -1,7 +1,7 @@
 import { HistoryWorkspace } from "@/components/history-workspace";
 import { MetricStrip } from "@/components/metric-strip";
 import { TerminalShell } from "@/components/shell";
-import { getFullRanking, getHistorySummary } from "@/lib/scanner-data";
+import { getFullRanking, getHistorySummary, getHistorySymbolsFromSnapshots } from "@/lib/scanner-data";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +11,9 @@ function formatDate(value: string | null) {
 }
 
 export default async function HistoryPage() {
-  const [history, ranking] = await Promise.all([getHistorySummary(), getFullRanking()]);
-  const symbols = ranking.map((row) => row.symbol).filter(Boolean).sort();
+  const [history, ranking, historySymbols] = await Promise.all([getHistorySummary(), getFullRanking(), getHistorySymbolsFromSnapshots()]);
+  const symbols = Array.from(new Set([...ranking.map((row) => row.symbol), ...historySymbols].filter(Boolean).map((symbol) => String(symbol).trim().toUpperCase()))).sort();
+  const defaultSymbol = String(ranking[0]?.symbol ?? symbols[0] ?? "").trim().toUpperCase();
 
   return (
     <TerminalShell>
@@ -36,7 +37,7 @@ export default async function HistoryPage() {
             </pre>
           </section>
         ) : (
-          <HistoryWorkspace history={history} symbols={symbols} />
+          <HistoryWorkspace defaultSymbol={defaultSymbol} history={history} symbols={symbols} />
         )}
       </div>
     </TerminalShell>
