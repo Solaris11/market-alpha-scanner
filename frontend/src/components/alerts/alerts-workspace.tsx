@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ActiveAlertMatches } from "./active-alert-matches";
 
 type AlertRule = {
   id: string;
@@ -665,6 +666,8 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
           ))}
         </div>
       </section>
+
+      <ActiveAlertMatches />
 
       {alertRulesTable}
 

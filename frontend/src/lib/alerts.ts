@@ -324,8 +324,10 @@ export function sanitizeAlertRule(input: Record<string, unknown>, existing?: Ale
   };
 }
 
-export async function readAlertRules() {
-  await ensureAlertRulesFile();
+export async function readAlertRules(options: { createDefault?: boolean } = {}) {
+  if (options.createDefault !== false) {
+    await ensureAlertRulesFile();
+  }
   const payload = await readJson<unknown>(alertRulesPath(), []);
   if (!Array.isArray(payload)) return [];
   const rules: AlertRule[] = [];
