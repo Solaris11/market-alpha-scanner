@@ -3,7 +3,7 @@ import { PerformanceDrift } from "@/components/performance-drift";
 import { PerformanceValidation } from "@/components/performance-validation";
 import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/shell";
-import { buildIntradaySignalDrift, getFullRanking, getHistorySummary, getPerformanceData, getSymbolHistoryData } from "@/lib/scanner-data";
+import { getFullRanking, getHistorySummary, getIntradaySignalDriftSummary, getPerformanceData } from "@/lib/scanner-data";
 
 export const dynamic = "force-dynamic";
 
@@ -19,9 +19,9 @@ function fileStateLabel(state: string) {
 }
 
 export default async function PerformancePage() {
-  const [performance, history, symbolHistory, ranking] = await Promise.all([getPerformanceData(), getHistorySummary(), getSymbolHistoryData(), getFullRanking()]);
-  const driftRows = buildIntradaySignalDrift(symbolHistory);
+  const [performance, history, driftRows, ranking] = await Promise.all([getPerformanceData({ forwardTailRows: 5000 }), getHistorySummary(), getIntradaySignalDriftSummary(), getFullRanking()]);
   const forwardReturnsReady = performance.forwardReturns.rows.length > 0;
+  const forwardObservationCount = Math.max(0, performance.forwardReturns.lineCount - 1);
 
   return (
     <TerminalShell>
@@ -29,7 +29,7 @@ export default async function PerformancePage() {
         <MetricStrip
           metrics={[
             { label: "Summary Rows", value: performance.summary.rows.length.toLocaleString(), meta: fileStateLabel(performance.summary.state) },
-            { label: "Forward Rows", value: performance.forwardReturns.rows.length.toLocaleString(), meta: fileStateLabel(performance.forwardReturns.state) },
+            { label: "Forward Rows", value: forwardObservationCount.toLocaleString(), meta: fileStateLabel(performance.forwardReturns.state) },
             { label: "Snapshots", value: history.count.toLocaleString(), meta: "history files" },
             { label: "Unique Dates", value: history.uniqueDates.length.toLocaleString(), meta: "needed for returns" },
             { label: "Earliest", value: formatDate(history.earliest), meta: "snapshot" },
@@ -37,7 +37,7 @@ export default async function PerformancePage() {
           ]}
         />
 
-        <PerformanceValidation forwardRows={performance.forwardReturns.rows} history={history} rankingRows={ranking} summaryRows={performance.summary.rows} />
+        <PerformanceValidation forwardObservationCount={forwardObservationCount} forwardRows={performance.forwardReturns.rows} history={history} rankingRows={ranking} summaryRows={performance.summary.rows} />
 
         <section className="terminal-panel rounded-md p-4">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Analysis Runner</div>
@@ -48,7 +48,7 @@ export default async function PerformancePage() {
           <RunCommandButton endpoint="/api/run-analysis" label="Run Analysis" />
         </section>
 
-        <PerformanceDrift forwardReturnsReady={forwardReturnsReady} rows={driftRows} symbolHistory={symbolHistory} />
+        <PerformanceDrift forwardReturnsReady={forwardReturnsReady} rows={driftRows} />
       </div>
     </TerminalShell>
   );

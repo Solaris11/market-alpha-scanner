@@ -7,7 +7,7 @@ import { getFullRanking, getHistorySummary, getTopCandidates } from "@/lib/scann
 export const dynamic = "force-dynamic";
 
 export default async function ScannerPage() {
-  const [ranking, topCandidates, history, alerts] = await Promise.all([getFullRanking(), getTopCandidates(), getHistorySummary(), getAlertOverview()]);
+  const [ranking, topCandidates, history, alerts] = await Promise.all([getFullRanking(), getTopCandidates(), getHistorySummary(), getAlertOverview({ stateLimit: 25 })]);
 
   return (
     <TerminalShell>

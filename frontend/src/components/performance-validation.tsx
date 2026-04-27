@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { CsvRow, HistorySummary, RankingRow } from "@/lib/types";
 
 type Props = {
   forwardRows: CsvRow[];
+  forwardObservationCount?: number;
   history: HistorySummary;
   rankingRows?: RankingRow[];
   summaryRows: CsvRow[];
@@ -337,7 +338,7 @@ function BarChart({ rows, groupType, metric, title, horizon = "10D" }: { rows: C
   );
 }
 
-export function PerformanceValidation({ forwardRows, history, rankingRows = [], summaryRows }: Props) {
+export function PerformanceValidation({ forwardRows, forwardObservationCount, history, rankingRows = [], summaryRows }: Props) {
   const [horizon, setHorizon] = useState("");
   const [groupType, setGroupType] = useState("");
   const [minCount, setMinCount] = useState("5");
@@ -346,6 +347,9 @@ export function PerformanceValidation({ forwardRows, history, rankingRows = [], 
   const [forwardSortKey, setForwardSortKey] = useState<ForwardSortKey | null>(null);
   const [forwardSortDirection, setForwardSortDirection] = useState<SortDirection>("desc");
   const [showRawObservations, setShowRawObservations] = useState(false);
+  const [rawForwardRows, setRawForwardRows] = useState<CsvRow[] | null>(null);
+  const [rawForwardLoading, setRawForwardLoading] = useState(false);
+  const [rawForwardError, setRawForwardError] = useState("");
 
   const horizons = useMemo(() => uniqueValues(summaryRows.length ? summaryRows : forwardRows, "horizon"), [forwardRows, summaryRows]);
   const groupTypes = useMemo(() => uniqueValues(summaryRows, "group_type"), [summaryRows]);
@@ -375,15 +379,38 @@ export function PerformanceValidation({ forwardRows, history, rankingRows = [], 
   }, [groupType, groupedSortDirection, groupedSortKey, horizon, minCount, summaryRows]);
 
   const visibleForwardRows = useMemo(() => {
-    const sourceRows = showRawObservations ? forwardRows : compactRows;
+    const sourceRows = showRawObservations ? rawForwardRows ?? [] : compactRows;
     const filtered = sourceRows.filter((row) => !horizon || text(row.horizon, "") === horizon);
     return stableSortForwardRows(filtered, forwardSortKey, forwardSortDirection, companyBySymbol).slice(0, 300);
-  }, [compactRows, companyBySymbol, forwardRows, forwardSortDirection, forwardSortKey, horizon, showRawObservations]);
+  }, [compactRows, companyBySymbol, forwardSortDirection, forwardSortKey, horizon, rawForwardRows, showRawObservations]);
+
+  useEffect(() => {
+    if (!showRawObservations || rawForwardRows !== null || rawForwardLoading) return;
+    let active = true;
+    async function loadRawForwardRows() {
+      setRawForwardLoading(true);
+      setRawForwardError("");
+      try {
+        const response = await fetch("/api/performance/forward-returns");
+        const payload = (await response.json()) as { rows?: CsvRow[]; error?: string };
+        if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
+        if (active) setRawForwardRows(payload.rows ?? []);
+      } catch (error) {
+        if (active) setRawForwardError(error instanceof Error ? error.message : "Failed to load raw forward-return observations.");
+      } finally {
+        if (active) setRawForwardLoading(false);
+      }
+    }
+    loadRawForwardRows();
+    return () => {
+      active = false;
+    };
+  }, [rawForwardLoading, rawForwardRows, showRawObservations]);
 
   const readiness = [
     { label: "Snapshots", value: history.count.toLocaleString(), meta: "saved scans" },
     { label: "Unique Days", value: history.uniqueDates.length.toLocaleString(), meta: "trading days" },
-    { label: "Completed Observations", value: forwardRows.length.toLocaleString(), meta: "forward windows" },
+    { label: "Completed Observations", value: (forwardObservationCount ?? forwardRows.length).toLocaleString(), meta: "forward windows" },
     { label: "Horizons Available", value: completedHorizons.length ? completedHorizons.join(", ") : "None", meta: "1D / 2D / 5D / 10D / 20D / 60D" },
   ];
 
@@ -507,7 +534,7 @@ export function PerformanceValidation({ forwardRows, history, rankingRows = [], 
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/90">
-            {filteredSummary.length ? filteredSummary.slice(0, 300).map((row, index) => (
+            {filteredSummary.length ? filteredSummary.slice(0, 200).map((row, index) => (
               <tr key={`${row.horizon}-${row.group_type}-${row.group_value}-${index}`}>
                 <td className="whitespace-nowrap px-2 py-1.5 font-mono text-slate-300">{text(row.horizon)}</td>
                 <td className="truncate px-2 py-1.5 text-slate-400">{text(row.group_type)}</td>
@@ -544,6 +571,8 @@ export function PerformanceValidation({ forwardRows, history, rankingRows = [], 
             </label>
           </div>
         </div>
+        {rawForwardLoading ? <div className="border-b border-slate-800 px-3 py-2 text-xs text-slate-500">Loading raw observations...</div> : null}
+        {rawForwardError ? <div className="border-b border-rose-400/25 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">{rawForwardError}</div> : null}
         <table className="w-full min-w-[1690px] table-fixed border-collapse text-xs">
           <colgroup>
             <col style={{ width: 100 }} />

@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { actionFor, formatNumber } from "@/lib/format";
-import type { HistorySummary, SymbolHistoryData, SymbolHistoryRow } from "@/lib/types";
+import type { HistorySummary, SymbolHistoryRow } from "@/lib/types";
 
 type Props = {
   history: HistorySummary;
-  symbolHistory: SymbolHistoryData;
+  symbols: string[];
 };
 
 function formatDate(value: string | null | undefined) {
@@ -123,16 +123,42 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: "
   );
 }
 
-export function HistoryWorkspace({ history, symbolHistory }: Props) {
-  const defaultSymbol = symbolHistory.symbols[0] ?? "";
-  const [symbolQuery, setSymbolQuery] = useState(defaultSymbol);
+export function HistoryWorkspace({ history, symbols }: Props) {
+  const [symbolQuery, setSymbolQuery] = useState("");
+  const [symbolRows, setSymbolRows] = useState<SymbolHistoryRow[]>([]);
+  const [loadingSymbol, setLoadingSymbol] = useState(false);
+  const [symbolError, setSymbolError] = useState("");
   const selectedSymbol = symbolQuery.trim().toUpperCase();
-  const exactSymbol = symbolHistory.symbols.includes(selectedSymbol) ? selectedSymbol : "";
+  const exactSymbol = symbols.includes(selectedSymbol) ? selectedSymbol : "";
 
-  const symbolRows = useMemo(() => {
-    if (!exactSymbol) return [];
-    return symbolHistory.rows.filter((row) => row.symbol === exactSymbol).sort((a, b) => String(a.timestamp_utc).localeCompare(String(b.timestamp_utc)));
-  }, [exactSymbol, symbolHistory.rows]);
+  useEffect(() => {
+    let active = true;
+    async function loadSymbolHistory() {
+      if (!exactSymbol) {
+        setSymbolRows([]);
+        setSymbolError("");
+        return;
+      }
+      setLoadingSymbol(true);
+      setSymbolError("");
+      try {
+        const response = await fetch(`/api/history/symbol/${encodeURIComponent(exactSymbol)}`);
+        const payload = (await response.json()) as { rows?: SymbolHistoryRow[]; error?: string };
+        if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
+        if (active) {
+          setSymbolRows((payload.rows ?? []).sort((a, b) => String(a.timestamp_utc).localeCompare(String(b.timestamp_utc))));
+        }
+      } catch (error) {
+        if (active) setSymbolError(error instanceof Error ? error.message : "Failed to load symbol history.");
+      } finally {
+        if (active) setLoadingSymbol(false);
+      }
+    }
+    loadSymbolHistory();
+    return () => {
+      active = false;
+    };
+  }, [exactSymbol]);
 
   const first = symbolRows[0];
   const latest = symbolRows[symbolRows.length - 1];
@@ -141,8 +167,8 @@ export function HistoryWorkspace({ history, symbolHistory }: Props) {
   const rowsDescending = [...symbolRows].reverse();
   const avgInterval = averageInterval(symbolRows);
   const matchingSymbols = symbolQuery
-    ? symbolHistory.symbols.filter((symbol) => symbol.includes(selectedSymbol)).slice(0, 8)
-    : symbolHistory.symbols.slice(0, 8);
+    ? symbols.filter((symbol) => symbol.includes(selectedSymbol)).slice(0, 8)
+    : symbols.slice(0, 8);
 
   return (
     <div className="space-y-3">
@@ -158,7 +184,7 @@ export function HistoryWorkspace({ history, symbolHistory }: Props) {
               value={symbolQuery}
             />
             <datalist id="history-symbols">
-              {symbolHistory.symbols.map((symbol) => (
+              {symbols.map((symbol) => (
                 <option key={symbol} value={symbol} />
               ))}
             </datalist>
@@ -171,7 +197,7 @@ export function HistoryWorkspace({ history, symbolHistory }: Props) {
               value={exactSymbol}
             >
               <option value="">Select symbol</option>
-              {symbolHistory.symbols.map((symbol) => (
+              {symbols.map((symbol) => (
                 <option key={symbol} value={symbol}>
                   {symbol}
                 </option>
@@ -181,7 +207,7 @@ export function HistoryWorkspace({ history, symbolHistory }: Props) {
           <div className="text-xs text-slate-500">
             {exactSymbol ? (
               <>
-                Showing {symbolRows.length.toLocaleString()} snapshots for <span className="font-mono text-slate-200">{exactSymbol}</span>.
+                {loadingSymbol ? "Loading" : "Showing"} {symbolRows.length.toLocaleString()} snapshots for <span className="font-mono text-slate-200">{exactSymbol}</span>.
               </>
             ) : (
               <>No symbol history found for this query. Try one of: {matchingSymbols.join(", ") || "no symbols available"}.</>
@@ -189,6 +215,10 @@ export function HistoryWorkspace({ history, symbolHistory }: Props) {
           </div>
         </div>
       </section>
+
+      {symbolError ? <div className="terminal-panel rounded-md border-rose-400/25 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">{symbolError}</div> : null}
+
+      {loadingSymbol ? <div className="terminal-panel rounded-md border-dashed border-slate-700/70 px-3 py-8 text-center text-xs text-slate-500">Loading symbol history...</div> : null}
 
       {latest ? (
         <>
@@ -250,7 +280,7 @@ export function HistoryWorkspace({ history, symbolHistory }: Props) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/90">
-                  {rowsDescending.map((row) => (
+              {rowsDescending.slice(0, 200).map((row) => (
                     <tr className="hover:bg-sky-400/5" key={`${row.source_file}-${row.symbol}`}>
                       <td className="truncate px-2 py-1.5 text-slate-300">{formatDate(row.timestamp_utc)}</td>
                       <td className="px-2 py-1.5 text-right font-mono text-slate-200">{formatNumber(row.price)}</td>
@@ -273,6 +303,7 @@ export function HistoryWorkspace({ history, symbolHistory }: Props) {
 
       <details className="terminal-panel rounded-md p-4 text-xs text-slate-400">
         <summary className="cursor-pointer font-semibold uppercase tracking-[0.12em] text-slate-500">Raw snapshot files</summary>
+        <div className="mt-2 text-xs text-slate-500">Showing {Math.min(history.snapshots.length, 200).toLocaleString()} of {history.snapshots.length.toLocaleString()} snapshot files.</div>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[760px] table-fixed border-collapse text-xs">
             <colgroup>
@@ -288,7 +319,7 @@ export function HistoryWorkspace({ history, symbolHistory }: Props) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/90">
-              {history.snapshots.map((snapshot) => (
+              {history.snapshots.slice(0, 200).map((snapshot) => (
                 <tr key={snapshot.name}>
                   <td className="truncate px-2 py-1.5 font-mono text-slate-300">{snapshot.name}</td>
                   <td className="truncate px-2 py-1.5 text-slate-400">{formatDate(snapshot.timestamp)}</td>

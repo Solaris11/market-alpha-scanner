@@ -34,7 +34,7 @@ export default async function DashboardOverview() {
   const [ranking, topCandidates, alertOverview, dataHealth] = await Promise.all([
     getFullRanking(),
     getTopCandidates(),
-    getAlertOverview().catch(() => ({ rules: [], state: { alerts: {} } })),
+    getAlertOverview({ stateLimit: 25 }).catch(() => ({ rules: [], state: { alerts: {} } })),
     getScanDataHealth(),
   ]);
   const leader = ranking[0];

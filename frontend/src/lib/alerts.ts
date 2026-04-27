@@ -52,6 +52,7 @@ export type AlertRuleState = {
   alert_id?: string;
   symbol?: string;
   last_sent_at?: string;
+  last_skipped_at?: string;
   last_trigger_value?: string;
   last_message_hash?: string;
   last_observed_value?: string;
@@ -65,6 +66,18 @@ export type AlertState = {
   alerts: Record<string, AlertRuleState>;
   updated_at_utc?: string;
 };
+
+type FileCacheEntry<T> = {
+  mtimeMs: number;
+  size: number;
+  value: T;
+};
+
+const cacheRoot = globalThis as typeof globalThis & {
+  __marketAlphaAlertJsonCache?: Map<string, FileCacheEntry<unknown>>;
+};
+const alertJsonCache = cacheRoot.__marketAlphaAlertJsonCache ?? new Map<string, FileCacheEntry<unknown>>();
+cacheRoot.__marketAlphaAlertJsonCache = alertJsonCache;
 
 const DEFAULT_RULES: AlertRule[] = [
   {
@@ -176,12 +189,20 @@ async function writeJsonAtomic(filePath: string, payload: unknown) {
   const tmpPath = `${filePath}.${process.pid}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`;
   await fs.writeFile(tmpPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
   await fs.rename(tmpPath, filePath);
+  alertJsonCache.delete(filePath);
 }
 
 async function readJson<T>(filePath: string, fallback: T): Promise<T> {
   if (!(await fileExists(filePath))) return fallback;
   try {
-    return JSON.parse(await fs.readFile(filePath, "utf8")) as T;
+    const stat = await fs.stat(filePath);
+    const cached = alertJsonCache.get(filePath);
+    if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
+      return cached.value as T;
+    }
+    const value = JSON.parse(await fs.readFile(filePath, "utf8")) as T;
+    alertJsonCache.set(filePath, { mtimeMs: stat.mtimeMs, size: stat.size, value });
+    return value;
   } catch {
     return fallback;
   }
@@ -189,8 +210,12 @@ async function readJson<T>(filePath: string, fallback: T): Promise<T> {
 
 export async function ensureAlertRulesFile() {
   const filePath = alertRulesPath();
-  if (!(await fileExists(filePath))) {
-    await writeJsonAtomic(filePath, DEFAULT_RULES);
+  try {
+    if (!(await fileExists(filePath))) {
+      await writeJsonAtomic(filePath, DEFAULT_RULES);
+    }
+  } catch (error) {
+    console.warn("[alerts] alert rules file is not writable; continuing with an empty rules response.", error);
   }
 }
 
@@ -334,15 +359,19 @@ export async function writeAlertState(state: AlertState) {
   });
 }
 
-export async function getAlertOverview() {
+export async function getAlertOverview(options: { stateLimit?: number } = {}) {
   const [rules, state] = await Promise.all([readAlertRules(), readAlertState()]);
   const sentTimes = Object.values(state.alerts)
     .map((entry) => entry.last_sent_at)
     .filter((value): value is string => Boolean(value))
     .sort();
+  const stateLimit = options.stateLimit ?? 300;
+  const compactStateEntries = Object.entries(state.alerts)
+    .sort(([, left], [, right]) => String(right.last_sent_at ?? right.last_skipped_at ?? "").localeCompare(String(left.last_sent_at ?? left.last_skipped_at ?? "")))
+    .slice(0, stateLimit);
   return {
     rules,
-    state,
+    state: { ...state, alerts: Object.fromEntries(compactStateEntries) },
     activeCount: rules.filter((rule) => rule.enabled).length,
     lastSentAt: sentTimes.length ? sentTimes[sentTimes.length - 1] : null,
     rulesPath: alertRulesPath(),

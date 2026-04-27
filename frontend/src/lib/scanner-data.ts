@@ -86,6 +86,27 @@ const CSV_PARSE_OPTIONS = {
   trim: true,
 };
 
+type CsvPayload = {
+  rows: Record<string, unknown>[];
+  columns: string[];
+  lineCount: number;
+};
+
+type FileCacheEntry<T> = {
+  mtimeMs: number;
+  size: number;
+  value: T;
+};
+
+const cacheRoot = globalThis as typeof globalThis & {
+  __marketAlphaCsvCache?: Map<string, FileCacheEntry<CsvPayload>>;
+  __marketAlphaJsonCache?: Map<string, FileCacheEntry<Record<string, unknown> | null>>;
+};
+const csvPayloadCache = cacheRoot.__marketAlphaCsvCache ?? new Map<string, FileCacheEntry<CsvPayload>>();
+const jsonPayloadCache = cacheRoot.__marketAlphaJsonCache ?? new Map<string, FileCacheEntry<Record<string, unknown> | null>>();
+cacheRoot.__marketAlphaCsvCache = csvPayloadCache;
+cacheRoot.__marketAlphaJsonCache = jsonPayloadCache;
+
 export type ScanDataHealth = {
   status: "fresh" | "stale" | "missing" | "schema_mismatch";
   lastUpdated: string | null;
@@ -126,6 +147,15 @@ async function fileExists(filePath: string) {
     return true;
   } catch {
     return false;
+  }
+}
+
+async function fileSignature(filePath: string) {
+  try {
+    const stat = await fs.stat(filePath);
+    return { mtimeMs: stat.mtimeMs, size: stat.size };
+  } catch {
+    return null;
   }
 }
 
@@ -185,11 +215,20 @@ function actionForRow(row: RankingRow) {
   return "REVIEW";
 }
 
-async function readCsvPayload(filePath: string) {
-  if (!(await fileExists(filePath))) return { rows: [] as Record<string, unknown>[], columns: [] as string[] };
+async function readCsvPayload(filePath: string): Promise<CsvPayload> {
+  const signature = await fileSignature(filePath);
+  if (!signature) return { rows: [], columns: [], lineCount: 0 };
+
+  const cached = csvPayloadCache.get(filePath);
+  if (cached && cached.mtimeMs === signature.mtimeMs && cached.size === signature.size) {
+    return cached.value;
+  }
+
   const text = await fs.readFile(filePath, "utf8");
   const fileName = path.basename(filePath);
+  const lineCount = text.split(/\r?\n/).filter((line) => line.trim().length > 0).length;
   let columns: string[] = [];
+  let mismatchCount = 0;
   try {
     const headerRows = parse(text, {
       ...CSV_PARSE_OPTIONS,
@@ -202,15 +241,22 @@ async function readCsvPayload(filePath: string) {
       on_record(record, context) {
         const invalidFieldLength = (context as { error?: { code?: string } }).error?.code === "CSV_RECORD_INCONSISTENT_COLUMNS";
         if (invalidFieldLength) {
-          console.warn(`[data] CSV row length mismatch in ${fileName} on line ${context.lines}; extra columns ignored where possible.`);
+          mismatchCount += 1;
         }
         return record;
       },
     }) as Record<string, unknown>[];
-    return { rows, columns };
+    if (mismatchCount) {
+      console.warn(`[data] CSV row length mismatch in ${fileName}: ${mismatchCount} row${mismatchCount === 1 ? "" : "s"} had extra/missing columns; continuing with relaxed parsing.`);
+    }
+    const value = { rows, columns, lineCount };
+    csvPayloadCache.set(filePath, { ...signature, value });
+    return value;
   } catch (error) {
     console.warn(`[data] failed to parse CSV ${fileName}; returning schema mismatch state.`, error);
-    return { rows: [], columns };
+    const value = { rows: [], columns, lineCount };
+    csvPayloadCache.set(filePath, { ...signature, value });
+    return value;
   }
 }
 
@@ -229,31 +275,53 @@ async function readScannerCsv(...parts: string[]) {
 }
 
 async function readScannerCsvWithState(...parts: string[]): Promise<CsvFileData> {
+  return readScannerCsvWithStateParts(parts);
+}
+
+async function readScannerCsvWithStateParts(parts: string[], options: { tailRows?: number } = {}): Promise<CsvFileData> {
   const filePath = path.join(scannerOutputDir(), ...parts);
   if (!(await fileExists(filePath))) {
     return { rows: [], state: "missing", columns: [], lineCount: 0 };
   }
 
+  if (!options.tailRows) {
+    const payload = await readCsvPayload(filePath);
+    if (payload.lineCount <= 1) {
+      return { rows: [], state: "header-only", columns: payload.columns, lineCount: payload.lineCount };
+    }
+    return {
+      rows: payload.rows.map(normalizeCsvRow),
+      state: payload.rows.length ? "data" : "header-only",
+      columns: payload.columns,
+      lineCount: payload.lineCount,
+    };
+  }
+
   const text = await fs.readFile(filePath, "utf8");
   const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
-  const columns = lines[0]?.split(",").map((column) => column.trim()) ?? [];
+  const header = lines[0] ?? "";
+  const columns = header ? (parse(header, { ...CSV_PARSE_OPTIONS }) as string[][])[0] ?? [] : [];
   if (lines.length <= 1) {
     return { rows: [], state: "header-only", columns, lineCount: lines.length };
   }
-
+  const tailText = [header, ...lines.slice(-Math.max(1, options.tailRows))].join("\n");
   let rows: Record<string, unknown>[] = [];
+  let mismatchCount = 0;
   try {
-    rows = parse(text, {
+    rows = parse(tailText, {
       ...CSV_PARSE_OPTIONS,
       columns: true,
       on_record(record, context) {
         const invalidFieldLength = (context as { error?: { code?: string } }).error?.code === "CSV_RECORD_INCONSISTENT_COLUMNS";
         if (invalidFieldLength) {
-          console.warn(`[data] CSV row length mismatch in ${path.basename(filePath)} on line ${context.lines}; extra columns ignored where possible.`);
+          mismatchCount += 1;
         }
         return record;
       },
     }) as Record<string, unknown>[];
+    if (mismatchCount) {
+      console.warn(`[data] CSV row length mismatch in ${path.basename(filePath)} tail read: ${mismatchCount} row${mismatchCount === 1 ? "" : "s"} had extra/missing columns; continuing with relaxed parsing.`);
+    }
   } catch (error) {
     console.warn(`[data] failed to parse CSV ${path.basename(filePath)}; returning empty data state.`, error);
   }
@@ -267,11 +335,20 @@ async function readScannerCsvWithState(...parts: string[]): Promise<CsvFileData>
 }
 
 export async function readJson(filePath: string) {
-  if (!(await fileExists(filePath))) return null;
+  const signature = await fileSignature(filePath);
+  if (!signature) return null;
+
+  const cached = jsonPayloadCache.get(filePath);
+  if (cached && cached.mtimeMs === signature.mtimeMs && cached.size === signature.size) {
+    return cached.value;
+  }
 
   try {
-    return JSON.parse(await fs.readFile(filePath, "utf8")) as Record<string, unknown>;
+    const value = JSON.parse(await fs.readFile(filePath, "utf8")) as Record<string, unknown>;
+    jsonPayloadCache.set(filePath, { ...signature, value });
+    return value;
   } catch {
+    jsonPayloadCache.set(filePath, { ...signature, value: null });
     return null;
   }
 }
@@ -360,20 +437,25 @@ export async function getHistorySummary(): Promise<HistorySummary> {
     entries = [];
   }
 
-  const snapshots: HistorySnapshot[] = [];
-  for (const name of entries.filter((entry) => /^scan_.*\.csv$/.test(entry))) {
-    const filePath = path.join(historyDir, name);
-    try {
-      const stat = await fs.stat(filePath);
-      snapshots.push({
-        name,
-        modifiedAt: stat.mtime.toISOString(),
-        timestamp: parseSnapshotTimestamp(name),
-      });
-    } catch {
-      // Ignore files that disappear between readdir and stat.
-    }
-  }
+  const snapshots = (
+    await Promise.all(
+      entries
+        .filter((entry) => /^scan_.*\.csv$/.test(entry))
+        .map(async (name): Promise<HistorySnapshot | null> => {
+          const filePath = path.join(historyDir, name);
+          try {
+            const stat = await fs.stat(filePath);
+            return {
+              name,
+              modifiedAt: stat.mtime.toISOString(),
+              timestamp: parseSnapshotTimestamp(name),
+            };
+          } catch {
+            return null;
+          }
+        }),
+    )
+  ).filter((snapshot): snapshot is HistorySnapshot => Boolean(snapshot));
 
   snapshots.sort((a, b) => String(b.timestamp ?? b.modifiedAt).localeCompare(String(a.timestamp ?? a.modifiedAt)));
   const dated = snapshots.map((snapshot) => snapshot.timestamp).filter((timestamp): timestamp is string => Boolean(timestamp));
@@ -411,6 +493,30 @@ export async function getSymbolHistoryData(): Promise<SymbolHistoryData> {
     symbols: Array.from(new Set(rows.map((row) => row.symbol))).sort(),
     rows,
   };
+}
+
+export async function getSymbolHistoryForSymbol(symbol: string): Promise<SymbolHistoryRow[]> {
+  const cleaned = symbol.trim().toUpperCase();
+  if (!cleaned) return [];
+  const history = await getHistorySummary();
+  const rows: SymbolHistoryRow[] = [];
+
+  for (const snapshot of history.snapshots) {
+    const snapshotRows = await readCsv(path.join(scannerOutputDir(), "history", snapshot.name));
+    const fallbackTimestamp = snapshot.timestamp ?? snapshot.modifiedAt;
+
+    for (const raw of snapshotRows) {
+      const rawSymbol = String(raw.symbol ?? "").trim().toUpperCase();
+      if (rawSymbol !== cleaned) continue;
+      const row = normalizeRankingRow(raw) as SymbolHistoryRow;
+      if (!row.symbol) continue;
+      row.timestamp_utc = String(raw.timestamp_utc ?? fallbackTimestamp);
+      row.source_file = snapshot.name;
+      rows.push(row);
+    }
+  }
+
+  return rows.sort((a, b) => String(a.timestamp_utc).localeCompare(String(b.timestamp_utc)));
 }
 
 export function buildIntradaySignalDrift(history: SymbolHistoryData): IntradayDriftRow[] {
@@ -461,10 +567,60 @@ export async function getIntradaySignalDrift(): Promise<IntradayDriftRow[]> {
   return buildIntradaySignalDrift(await getSymbolHistoryData());
 }
 
-export async function getPerformanceData(): Promise<PerformanceData> {
+export async function getIntradaySignalDriftSummary(): Promise<IntradayDriftRow[]> {
+  const history = await getHistorySummary();
+  const latestSnapshot = history.snapshots[0];
+  const earliestSnapshot = history.snapshots[history.snapshots.length - 1];
+  if (!latestSnapshot) return [];
+
+  const latestRows = (await readCsv(path.join(scannerOutputDir(), "history", latestSnapshot.name))).map(normalizeRankingRow).filter((row) => row.symbol);
+  const earliestRows =
+    earliestSnapshot && earliestSnapshot.name !== latestSnapshot.name
+      ? (await readCsv(path.join(scannerOutputDir(), "history", earliestSnapshot.name))).map(normalizeRankingRow).filter((row) => row.symbol)
+      : latestRows;
+  const firstBySymbol = new Map(earliestRows.map((row) => [row.symbol, row]));
+  const latestBySymbol = new Map(latestRows.map((row) => [row.symbol, row]));
+  const symbols = Array.from(new Set([...firstBySymbol.keys(), ...latestBySymbol.keys()])).sort();
+
+  const driftRows: IntradayDriftRow[] = [];
+  for (const symbol of symbols) {
+    const first = firstBySymbol.get(symbol) ?? latestBySymbol.get(symbol);
+    const latest = latestBySymbol.get(symbol) ?? firstBySymbol.get(symbol);
+    if (!first || !latest) continue;
+    const firstPrice = typeof first.price === "number" ? first.price : undefined;
+    const latestPrice = typeof latest.price === "number" ? latest.price : undefined;
+    const firstScore = typeof first.final_score === "number" ? first.final_score : undefined;
+    const latestScore = typeof latest.final_score === "number" ? latest.final_score : undefined;
+    const priceChange = typeof firstPrice === "number" && typeof latestPrice === "number" ? latestPrice - firstPrice : undefined;
+    const priceChangePct = typeof priceChange === "number" && typeof firstPrice === "number" && firstPrice !== 0 ? priceChange / firstPrice : undefined;
+    const scoreChange = typeof firstScore === "number" && typeof latestScore === "number" ? latestScore - firstScore : undefined;
+
+    driftRows.push({
+      symbol,
+      company_name: latest.company_name || first.company_name,
+      first_price: firstPrice,
+      latest_price: latestPrice,
+      price_change: priceChange,
+      price_change_pct: priceChangePct,
+      first_score: firstScore,
+      latest_score: latestScore,
+      score_change: scoreChange,
+      first_rating: first.rating,
+      latest_rating: latest.rating,
+      first_action: actionForRow(first),
+      latest_action: actionForRow(latest),
+      setup_type: latest.setup_type ?? first.setup_type,
+      snapshot_count: earliestSnapshot && earliestSnapshot.name !== latestSnapshot.name ? 2 : 1,
+    });
+  }
+
+  return driftRows.sort((a, b) => Math.abs(b.score_change ?? 0) - Math.abs(a.score_change ?? 0));
+}
+
+export async function getPerformanceData(options: { forwardTailRows?: number } = {}): Promise<PerformanceData> {
   const [summary, forwardReturns] = await Promise.all([
     readScannerCsvWithState("analysis", "performance_summary.csv"),
-    readScannerCsvWithState("analysis", "forward_returns.csv"),
+    readScannerCsvWithStateParts(["analysis", "forward_returns.csv"], { tailRows: options.forwardTailRows }),
   ]);
   return { summary, forwardReturns };
 }

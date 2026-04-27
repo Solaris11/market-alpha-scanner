@@ -2,12 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { compact, formatNumber } from "@/lib/format";
-import type { IntradayDriftRow, SymbolHistoryData, SymbolHistoryRow } from "@/lib/types";
+import type { IntradayDriftRow, SymbolHistoryRow } from "@/lib/types";
 
 type Props = {
   rows: IntradayDriftRow[];
   forwardReturnsReady: boolean;
-  symbolHistory: SymbolHistoryData;
 };
 
 type SortKey = "symbol" | "company" | "price_change_pct" | "score_change" | "latest_score" | "rating_change" | "action" | "snapshot_count";
@@ -222,7 +221,7 @@ function SortHeader({
   );
 }
 
-export function PerformanceDrift({ rows, forwardReturnsReady, symbolHistory }: Props) {
+export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
   const [symbolSearch, setSymbolSearch] = useState("");
   const [onlyUpgrades, setOnlyUpgrades] = useState(false);
   const [onlyScoreGainers, setOnlyScoreGainers] = useState(false);
@@ -230,6 +229,9 @@ export function PerformanceDrift({ rows, forwardReturnsReady, symbolHistory }: P
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null);
+  const [selectedHistoryRows, setSelectedHistoryRows] = useState<SymbolHistoryRow[]>([]);
+  const [selectedHistoryLoading, setSelectedHistoryLoading] = useState(false);
+  const [selectedHistoryError, setSelectedHistoryError] = useState("");
 
   const summary = useMemo(() => {
     const withScore = rows.filter((row) => typeof row.score_change === "number");
@@ -264,10 +266,6 @@ export function PerformanceDrift({ rows, forwardReturnsReady, symbolHistory }: P
   }, [minimumScoreChange, onlyScoreGainers, onlyUpgrades, rows, sortDirection, sortKey, symbolSearch]);
 
   const selectedRow = useMemo(() => rows.find((row) => row.symbol === selectedSymbol) ?? null, [rows, selectedSymbol]);
-  const selectedHistoryRows = useMemo(() => {
-    if (!selectedSymbol) return [];
-    return symbolHistory.rows.filter((row) => row.symbol === selectedSymbol).sort((a, b) => String(a.timestamp_utc).localeCompare(String(b.timestamp_utc)));
-  }, [selectedSymbol, symbolHistory.rows]);
   const latestHistoryRow = selectedHistoryRows[selectedHistoryRows.length - 1];
   const selectedDisplay = selectedRow ?? (latestHistoryRow ? {
     symbol: latestHistoryRow.symbol,
@@ -290,8 +288,21 @@ export function PerformanceDrift({ rows, forwardReturnsReady, symbolHistory }: P
     snapshot_count: selectedHistoryRows.length,
   } : null);
 
-  function selectSymbol(symbol: string) {
+  async function selectSymbol(symbol: string) {
     setSelectedSymbol(symbol);
+    setSelectedHistoryRows([]);
+    setSelectedHistoryError("");
+    setSelectedHistoryLoading(true);
+    try {
+      const response = await fetch(`/api/history/symbol/${encodeURIComponent(symbol)}`);
+      const payload = (await response.json()) as { rows?: SymbolHistoryRow[]; error?: string };
+      if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
+      setSelectedHistoryRows((payload.rows ?? []).sort((a, b) => String(a.timestamp_utc).localeCompare(String(b.timestamp_utc))));
+    } catch (error) {
+      setSelectedHistoryError(error instanceof Error ? error.message : "Failed to load symbol history.");
+    } finally {
+      setSelectedHistoryLoading(false);
+    }
   }
 
   function handleSort(nextKey: SortKey) {
@@ -486,7 +497,11 @@ export function PerformanceDrift({ rows, forwardReturnsReady, symbolHistory }: P
             ))}
           </div>
 
-          {selectedHistoryRows.length ? (
+          {selectedHistoryLoading ? (
+            <div className="mt-3 rounded border border-dashed border-slate-700/70 px-3 py-8 text-center text-xs text-slate-500">Loading symbol history...</div>
+          ) : selectedHistoryError ? (
+            <div className="mt-3 rounded border border-rose-400/25 bg-rose-400/10 px-3 py-3 text-xs text-rose-100">{selectedHistoryError}</div>
+          ) : selectedHistoryRows.length ? (
             <div className="mt-3 grid gap-3 xl:grid-cols-2">
               <DetailChart field="final_score" label="Final Score" rows={selectedHistoryRows} />
               <DetailChart field="price" label="Price" rows={selectedHistoryRows} />

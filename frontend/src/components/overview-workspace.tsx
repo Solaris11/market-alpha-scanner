@@ -322,6 +322,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
   const [sortDirection, setSortDirection] = useState<RankingSortDirection>("desc");
   const [topSortKey, setTopSortKey] = useState<RankingSortKey | null>(null);
   const [topSortDirection, setTopSortDirection] = useState<RankingSortDirection>("desc");
+  const [showAllRankingRows, setShowAllRankingRows] = useState(false);
 
   const assetTypes = useMemo(() => uniqueOptions(ranking, "asset_type"), [ranking]);
   const sectors = useMemo(() => {
@@ -360,6 +361,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
     setSortDirection("desc");
     setTopSortKey(null);
     setTopSortDirection("desc");
+    setShowAllRankingRows(false);
   }
 
   function handleSort(key: RankingSortKey) {
@@ -510,7 +512,15 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
           </div>
         </div>
 
-        <RankingTable rows={sortedRows} emptyMessage="No matching symbols" sortDirection={sortDirection} sortKey={sortKey} onSort={handleSort} />
+        <RankingTable rows={sortedRows} emptyMessage="No matching symbols" limit={showAllRankingRows ? undefined : 100} sortDirection={sortDirection} sortKey={sortKey} onSort={handleSort} />
+        {sortedRows.length > 100 ? (
+          <div className="mt-2 flex items-center justify-between gap-3 text-xs text-slate-500">
+            <span>Showing {showAllRankingRows ? sortedRows.length.toLocaleString() : "100"} of {sortedRows.length.toLocaleString()} rows</span>
+            <button className="rounded border border-slate-700/80 px-2 py-1 font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200" onClick={() => setShowAllRankingRows((current) => !current)} type="button">
+              {showAllRankingRows ? "Show less" : "Show more"}
+            </button>
+          </div>
+        ) : null}
       </section>
 
       <aside className="space-y-3">
