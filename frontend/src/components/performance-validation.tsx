@@ -321,18 +321,22 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
   }, [rankingRows]);
   const compactRows = useMemo(() => compactForwardRows(cleanForwardRows), [cleanForwardRows]);
 
-  const filteredSummary = useMemo(() => {
+  const filteredSummaryRows = useMemo(() => {
     const minimum = Number(minCount);
     const hasMinimum = minCount.trim() !== "" && Number.isFinite(minimum);
-    const filtered = summaryRows
-      .filter((row) => {
-        if (horizon && text(row.horizon, "") !== horizon) return false;
-        if (groupType && text(row.group_type, "") !== groupType) return false;
-        if (hasMinimum && integer(row.count) < minimum) return false;
-        return true;
-      });
-    return stableSortGroupedRows(filtered, groupedSortKey, groupedSortDirection);
-  }, [groupType, groupedSortDirection, groupedSortKey, horizon, minCount, summaryRows]);
+    return summaryRows.filter((row) => {
+      if (horizon && text(row.horizon, "") !== horizon) return false;
+      if (groupType && text(row.group_type, "") !== groupType) return false;
+      if (hasMinimum && integer(row.count) < minimum) return false;
+      return true;
+    });
+  }, [groupType, horizon, minCount, summaryRows]);
+
+  const sortedSummaryRows = useMemo(() => {
+    return stableSortGroupedRows(filteredSummaryRows, groupedSortKey, groupedSortDirection);
+  }, [filteredSummaryRows, groupedSortDirection, groupedSortKey]);
+
+  const visibleSummaryRows = useMemo(() => sortedSummaryRows.slice(0, 200), [sortedSummaryRows]);
 
   const forwardSourceRows = useMemo(() => {
     const sourceRows = showRawObservations ? rawForwardRows ?? [] : compactRows;
@@ -470,7 +474,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
         <div className="border-b border-slate-800 bg-slate-950/70 px-3 py-2">
           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Grouped Results Table</div>
           <div className="mt-1 text-xs text-slate-500">
-            Showing {Math.min(filteredSummary.length, 200).toLocaleString()} of {filteredSummary.length.toLocaleString()} filtered ({summaryRows.length.toLocaleString()} total)
+            Debug: raw={summaryRows.length.toLocaleString()} filtered={filteredSummaryRows.length.toLocaleString()} rendered={visibleSummaryRows.length.toLocaleString()} sort={groupedSortKey ?? "none"}/{groupedSortDirection}
           </div>
         </div>
         <table className="w-full min-w-[1680px] table-fixed border-collapse text-xs">
@@ -496,7 +500,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/90">
-            {filteredSummary.length ? filteredSummary.slice(0, 200).map((row, index) => (
+            {visibleSummaryRows.length ? visibleSummaryRows.map((row, index) => (
               <tr key={`${row.horizon}-${row.group_type}-${row.group_value}-${index}`}>
                 <td className="whitespace-nowrap px-2 py-1.5 font-mono text-slate-300">{text(row.horizon)}</td>
                 <td className="truncate px-2 py-1.5 text-slate-400">{text(row.group_type)}</td>
@@ -527,7 +531,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
                 {showRawObservations ? "Raw observations may include repeated intraday snapshots." : "Compact view shows the latest observation per symbol and horizon."}
               </p>
               <p className="mt-1 text-xs normal-case tracking-normal text-slate-500">
-                Showing {visibleForwardRows.length.toLocaleString()} of {filteredForwardRows.length.toLocaleString()} filtered ({forwardSourceRows.length.toLocaleString()} total)
+                Debug: raw={forwardSourceRows.length.toLocaleString()} filtered={filteredForwardRows.length.toLocaleString()} rendered={visibleForwardRows.length.toLocaleString()} sort={forwardSortKey ?? "none"}/{forwardSortDirection}
               </p>
             </div>
             <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-300">

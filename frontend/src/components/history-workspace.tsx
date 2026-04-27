@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { actionFor, formatNumber } from "@/lib/format";
-import { stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
+import { nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { HistorySummary, SymbolHistoryRow } from "@/lib/types";
 
 type Props = {
@@ -219,18 +219,19 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: "
 export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props) {
   const [symbolQuery, setSymbolQuery] = useState(() => normalizeSymbol(defaultSymbol));
   const [symbolRows, setSymbolRows] = useState<SymbolHistoryRow[]>([]);
+  const [lookupDebug, setLookupDebug] = useState({ matchingRows: 0, snapshotsScanned: 0, source: "none" });
   const [loadingSymbol, setLoadingSymbol] = useState(false);
   const [symbolError, setSymbolError] = useState("");
   const [sortKey, setSortKey] = useState<HistorySortKey>("timestamp_utc");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const selectedSymbol = normalizeSymbol(symbolQuery);
-  const dropdownSymbol = symbols.includes(selectedSymbol) ? selectedSymbol : "";
 
   useEffect(() => {
     let active = true;
     async function loadSymbolHistory() {
       if (!selectedSymbol) {
         setSymbolRows([]);
+        setLookupDebug({ matchingRows: 0, snapshotsScanned: 0, source: "none" });
         setSymbolError("");
         return;
       }
@@ -238,10 +239,15 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
       setSymbolError("");
       try {
         const response = await fetch(`/api/history/symbol/${encodeURIComponent(selectedSymbol)}`);
-        const payload = (await response.json()) as { rows?: SymbolHistoryRow[]; error?: string };
+        const payload = (await response.json()) as { matchingRows?: number; rows?: SymbolHistoryRow[]; snapshotsScanned?: number; source?: string; error?: string };
         if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
         if (active) {
           setSymbolRows((payload.rows ?? []).sort((a, b) => String(a.timestamp_utc).localeCompare(String(b.timestamp_utc))));
+          setLookupDebug({
+            matchingRows: payload.matchingRows ?? payload.rows?.length ?? 0,
+            snapshotsScanned: payload.snapshotsScanned ?? history.snapshots.length,
+            source: payload.source ?? "unknown",
+          });
         }
       } catch (error) {
         if (active) setSymbolError(error instanceof Error ? error.message : "Failed to load symbol history.");
@@ -260,30 +266,27 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
   const scoreChange = first && latest && typeof first.final_score === "number" && typeof latest.final_score === "number" ? latest.final_score - first.final_score : null;
   const priceChange = first && latest && typeof first.price === "number" && typeof latest.price === "number" ? latest.price - first.price : null;
   const sortedRows = useMemo(() => stableSortRows(symbolRows, sortKey, sortDirection, sortValue, sortConfig), [sortDirection, sortKey, symbolRows]);
+  const visibleRows = useMemo(() => sortedRows.slice(0, 200), [sortedRows]);
   const avgInterval = averageInterval(symbolRows);
   const matchingSymbols = symbolQuery
     ? symbols.filter((symbol) => symbol.includes(selectedSymbol)).slice(0, 8)
     : symbols.slice(0, 8);
 
   function handleSort(key: HistorySortKey) {
-    if (sortKey === key) {
-      setSortDirection((current) => (current === "desc" ? "asc" : "desc"));
-      return;
-    }
+    setSortDirection((current) => nextSortDirection(sortKey, key, current, sortConfig(key)));
     setSortKey(key);
-    setSortDirection("desc");
   }
 
   return (
     <div className="space-y-3">
       <section className="terminal-panel rounded-md p-4">
-        <div className="grid gap-3 lg:grid-cols-[260px_260px_1fr]">
+        <div className="grid gap-3 lg:grid-cols-[320px_1fr]">
           <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Type Symbol
+            Symbol
             <input
               className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
               list="history-symbols"
-                onChange={(event) => setSymbolQuery(normalizeSymbol(event.target.value))}
+              onChange={(event) => setSymbolQuery(normalizeSymbol(event.target.value))}
               placeholder="Type symbol, e.g. AVGO"
               value={symbolQuery}
             />
@@ -293,25 +296,13 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
               ))}
             </datalist>
           </label>
-          <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Select Symbol
-            <select
-              className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
-              onChange={(event) => setSymbolQuery(event.target.value)}
-              value={dropdownSymbol}
-            >
-              <option value="">Select symbol</option>
-              {symbols.map((symbol) => (
-                <option key={symbol} value={symbol}>
-                  {symbol}
-                </option>
-              ))}
-            </select>
-          </label>
           <div className="text-xs text-slate-500">
             {selectedSymbol ? (
               <>
                 {loadingSymbol ? "Loading" : "Showing"} {symbolRows.length.toLocaleString()} snapshots for <span className="font-mono text-slate-200">{selectedSymbol}</span>.
+                <div className="mt-1 font-mono text-[11px] text-slate-500">
+                  Debug: snapshots scanned={lookupDebug.snapshotsScanned.toLocaleString()} matching rows={lookupDebug.matchingRows.toLocaleString()} source={lookupDebug.source}
+                </div>
               </>
             ) : (
               <>Type or select a symbol. Try one of: {matchingSymbols.join(", ") || "no symbols available"}.</>
@@ -358,6 +349,9 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
             <div className="mb-2">
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Symbol Timeline</div>
               <h2 className="text-lg font-semibold text-slate-50">{selectedSymbol} Snapshot History</h2>
+              <p className="mt-1 text-xs text-slate-500">
+                Debug: raw={symbolRows.length.toLocaleString()} filtered={sortedRows.length.toLocaleString()} rendered={visibleRows.length.toLocaleString()} sort={sortKey}/{sortDirection}
+              </p>
             </div>
             <div className="terminal-panel overflow-x-auto rounded-md">
               <table className="w-full min-w-[1420px] table-fixed border-collapse text-xs">
@@ -382,7 +376,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/90">
-                  {sortedRows.slice(0, 200).map((row) => (
+                  {visibleRows.map((row) => (
                     <tr className="hover:bg-sky-400/5" key={`${row.source_file}-${row.symbol}-${row.timestamp_utc}`}>
                       <td className="truncate px-2 py-1.5 text-slate-300">{formatDate(row.timestamp_utc)}</td>
                       <td className="px-2 py-1.5 text-right font-mono text-slate-200">{formatNumber(row.price)}</td>

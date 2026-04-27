@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSymbolHistoryForSymbol } from "@/lib/scanner-data";
+import { getSymbolHistoryLookup } from "@/lib/scanner-data";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,6 +11,6 @@ type RouteContext = {
 export async function GET(_request: Request, context: RouteContext) {
   const { symbol } = await context.params;
   const cleaned = symbol.trim().toUpperCase();
-  const rows = await getSymbolHistoryForSymbol(cleaned);
-  return NextResponse.json({ symbol: cleaned, rows });
+  const result = await getSymbolHistoryLookup(cleaned);
+  return NextResponse.json({ symbol: cleaned, ...result });
 }

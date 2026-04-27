@@ -551,9 +551,9 @@ async function getPerSymbolHistoryForSymbol(symbol: string): Promise<SymbolHisto
     .sort((a, b) => String(a.timestamp_utc).localeCompare(String(b.timestamp_utc)));
 }
 
-export async function getSymbolHistoryForSymbol(symbol: string): Promise<SymbolHistoryRow[]> {
+export async function getSymbolHistoryLookup(symbol: string): Promise<{ matchingRows: number; rows: SymbolHistoryRow[]; snapshotsScanned: number; source: "none" | "per-symbol" | "snapshots" }> {
   const cleaned = symbol.trim().toUpperCase();
-  if (!cleaned) return [];
+  if (!cleaned) return { matchingRows: 0, rows: [], snapshotsScanned: 0, source: "none" };
   const history = await getHistorySummary();
   const rows: SymbolHistoryRow[] = [];
 
@@ -568,14 +568,33 @@ export async function getSymbolHistoryForSymbol(symbol: string): Promise<SymbolH
       row.symbol = rawSymbol;
       if (!row.symbol) continue;
       row.timestamp_utc = String(raw.timestamp_utc ?? fallbackTimestamp);
+      row.action = actionForRow(row);
       row.source_file = snapshot.name;
       rows.push(row);
     }
   }
 
   const snapshotRows = rows.sort((a, b) => String(a.timestamp_utc).localeCompare(String(b.timestamp_utc)));
-  if (snapshotRows.length) return snapshotRows;
-  return getPerSymbolHistoryForSymbol(cleaned);
+  if (snapshotRows.length) {
+    return {
+      matchingRows: snapshotRows.length,
+      rows: snapshotRows,
+      snapshotsScanned: history.snapshots.length,
+      source: "snapshots",
+    };
+  }
+
+  const perSymbolRows = await getPerSymbolHistoryForSymbol(cleaned);
+  return {
+    matchingRows: 0,
+    rows: perSymbolRows,
+    snapshotsScanned: history.snapshots.length,
+    source: perSymbolRows.length ? "per-symbol" : "none",
+  };
+}
+
+export async function getSymbolHistoryForSymbol(symbol: string): Promise<SymbolHistoryRow[]> {
+  return (await getSymbolHistoryLookup(symbol)).rows;
 }
 
 export function buildIntradaySignalDrift(history: SymbolHistoryData): IntradayDriftRow[] {

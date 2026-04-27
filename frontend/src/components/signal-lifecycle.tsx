@@ -385,7 +385,7 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
         <div className="border-b border-slate-800 bg-slate-950/70 px-3 py-2">
           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Lifecycle Summary</div>
           <div className="mt-1 text-xs text-slate-500">
-            Showing {visibleSummaryRows.length.toLocaleString()} of {sortedSummaryRows.length.toLocaleString()} filtered ({summaryRows.length.toLocaleString()} total)
+            Debug: raw={summaryRows.length.toLocaleString()} filtered={sortedSummaryRows.length.toLocaleString()} rendered={visibleSummaryRows.length.toLocaleString()} sort={summarySortKey ?? "none"}/{summarySortDirection}
           </div>
         </div>
         <table className="w-full min-w-[1420px] table-fixed border-collapse text-xs">
@@ -436,7 +436,9 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
           <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Recent Signal Lifecycles</div>
-              <p className="mt-1 text-xs text-slate-500">Filters combine with AND logic before sorting.</p>
+              <p className="mt-1 text-xs text-slate-500">
+                Debug: raw={rows.length.toLocaleString()} filtered={filteredDetails.length.toLocaleString()} rendered={visibleDetails.length.toLocaleString()} sort={detailSortKey ?? "none"}/{detailSortDirection}
+              </p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button className="rounded border border-slate-700/80 px-2 py-1 text-xs font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200" onClick={() => applyQuickView("recent")} type="button">Recent Signals</button>

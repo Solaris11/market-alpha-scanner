@@ -373,7 +373,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
             <h2 className="text-lg font-semibold text-slate-50">Scanner Table</h2>
           </div>
           <div className="whitespace-nowrap text-xs text-slate-500">
-            Showing {visibleRankingCount.toLocaleString()} of {filteredRows.length.toLocaleString()} filtered ({ranking.length.toLocaleString()} total)
+            Debug: raw={ranking.length.toLocaleString()} filtered={filteredRows.length.toLocaleString()} rendered={visibleRankingCount.toLocaleString()} sort={sortKey ?? "none"}/{sortDirection}
           </div>
         </div>
 
@@ -532,7 +532,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
               <h2 className="text-lg font-semibold text-slate-50">High Conviction</h2>
             </div>
             <div className="whitespace-nowrap text-xs text-slate-500">
-              Showing {visibleTopCount.toLocaleString()} of {filteredTopCandidates.length.toLocaleString()} filtered ({topCandidates.length.toLocaleString()} total)
+              Debug: raw={topCandidates.length.toLocaleString()} filtered={filteredTopCandidates.length.toLocaleString()} rendered={visibleTopCount.toLocaleString()} sort={topSortKey ?? "none"}/{topSortDirection}
             </div>
           </div>
           <RankingTable rows={sortedTopCandidates} highlight limit={10} emptyMessage="No matching symbols" sortDirection={topSortDirection} sortKey={topSortKey} onSort={handleTopSort} />

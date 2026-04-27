@@ -320,7 +320,7 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
 
       <div className="terminal-panel overflow-x-auto rounded-md">
         <div className="border-b border-slate-700/70 bg-slate-950/70 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-          Intraday Movers · showing {visibleRows.length.toLocaleString()} of {filteredRows.length.toLocaleString()} filtered ({rows.length.toLocaleString()} total)
+          Intraday Movers · Debug: raw={rows.length.toLocaleString()} filtered={filteredRows.length.toLocaleString()} rendered={visibleRows.length.toLocaleString()} sort={sortKey ?? "none"}/{sortDirection}
         </div>
         <table className="w-full min-w-[1020px] table-fixed border-collapse text-xs">
           <colgroup>
