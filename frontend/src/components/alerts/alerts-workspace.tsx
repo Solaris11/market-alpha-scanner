@@ -268,7 +268,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
     };
   }, []);
 
-  const sortedRules = useMemo(() => [...overview.rules].sort((a, b) => String(a.symbol ?? "").localeCompare(String(b.symbol ?? "")) || a.type.localeCompare(b.type)), [overview.rules]);
+  const sortedRules = useMemo(() => [...overview.rules].sort((a, b) => Number(b.enabled) - Number(a.enabled) || String(a.symbol ?? "").localeCompare(String(b.symbol ?? "")) || a.type.localeCompare(b.type)), [overview.rules]);
   const thresholdVisible = THRESHOLD_TYPES.has(type);
   const symbolVisible = scope === "symbol";
   const minScoreVisible = type === "entry_ready" || scope === "global" || type === "new_top_candidate";
@@ -519,6 +519,129 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
     }
   }
 
+  const alertRulesTable = (
+    <section className="terminal-panel overflow-x-auto rounded-md">
+      <div className="flex items-center justify-between gap-3 border-b border-slate-800 bg-slate-950/70 px-3 py-2">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Active Alert Rules</div>
+          <div className="mt-1 text-xs text-slate-500">Rules that exist or are enabled for evaluation. Triggered alert events are tracked separately in alert state.</div>
+        </div>
+        <button className="rounded border border-slate-700/80 px-2 py-1 text-[11px] text-slate-300 hover:border-sky-400/50 hover:text-sky-200" disabled={busyId === "test-send"} onClick={testSend} type="button">
+          {busyId === "test-send" ? "Running..." : "Run Alert Evaluation"}
+        </button>
+      </div>
+      <table className="w-full min-w-[1460px] table-fixed border-collapse text-xs">
+        <colgroup>
+          <col style={{ width: 85 }} />
+          <col style={{ width: 130 }} />
+          <col style={{ width: 150 }} />
+          <col style={{ width: 155 }} />
+          <col style={{ width: 90 }} />
+          <col style={{ width: 95 }} />
+          <col style={{ width: 150 }} />
+          <col style={{ width: 220 }} />
+          <col style={{ width: 130 }} />
+          <col style={{ width: 105 }} />
+          <col style={{ width: 170 }} />
+          <col style={{ width: 220 }} />
+        </colgroup>
+        <thead className="border-b border-slate-800 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+          <tr>
+            <th className="px-2 py-1.5">Enabled</th>
+            <th className="px-2 py-1.5">Scope</th>
+            <th className="px-2 py-1.5">Target</th>
+            <th className="px-2 py-1.5">Rule Type</th>
+            <th className="px-2 py-1.5">Threshold</th>
+            <th className="px-2 py-1.5">Min Score</th>
+            <th className="px-2 py-1.5">Entry Filter</th>
+            <th className="px-2 py-1.5">Conviction</th>
+            <th className="px-2 py-1.5">Channels</th>
+            <th className="px-2 py-1.5">Cooldown</th>
+            <th className="px-2 py-1.5">Last Sent</th>
+            <th className="px-2 py-1.5">Actions</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-800/90">
+          {sortedRules.map((rule) => {
+            const ruleStates = statesForRule(rule);
+            const configParts = compactConfig(rule);
+            const latestState = ruleStates
+              .map(([, state]) => state)
+              .sort((a, b) => String(a.last_sent_at ?? a.last_skipped_at ?? "").localeCompare(String(b.last_sent_at ?? b.last_skipped_at ?? "")))
+              .at(-1);
+            return (
+              <tr className={rule.enabled ? "text-slate-300" : "text-slate-600"} key={rule.id}>
+                <td className="px-2 py-1.5">
+                  <button className="rounded border border-slate-700/80 px-2 py-1 text-[11px] hover:border-sky-400/50 hover:text-sky-200" disabled={busyId === rule.id} onClick={() => patchRule(rule, { enabled: !rule.enabled })} type="button">
+                    {rule.enabled ? "On" : "Off"}
+                  </button>
+                </td>
+                <td className="truncate px-2 py-1.5" title={rule.id}>
+                  <div>{scopeLabel(rule.scope)}</div>
+                  <div className="truncate font-mono text-[10px] text-slate-500">{rule.id}</div>
+                </td>
+                <td className="px-2 py-1.5 font-mono text-sky-200">{targetDisplay(rule)}</td>
+                <td className="truncate px-2 py-1.5">{typeLabel(rule.type)}</td>
+                <td className="px-2 py-1.5 font-mono">{thresholdDisplay(rule)}</td>
+                <td className="px-2 py-1.5 font-mono">{minScoreDisplay(rule)}</td>
+                <td className="px-2 py-1.5">
+                  <select
+                    className="w-full rounded border border-slate-700/80 bg-slate-950/70 px-1.5 py-1 text-[11px] text-slate-100 outline-none focus:border-sky-400/60"
+                    disabled={busyId === rule.id}
+                    onChange={(event) => patchRule(rule, { entry_filter: event.target.value })}
+                    value={rule.entry_filter ?? "any"}
+                  >
+                    {ENTRY_FILTERS.map((item) => (
+                      <option key={item.value} value={item.value}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-2 py-1.5">
+                  {configParts.length ? (
+                    <details>
+                      <summary className="cursor-pointer text-sky-200">{configParts.length} fields</summary>
+                      <div className="mt-1 space-y-0.5 text-[11px] text-slate-400">
+                        {configParts.map((part) => (
+                          <div className="truncate" key={part} title={part}>
+                            {part}
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  ) : (
+                    "—"
+                  )}
+                </td>
+                <td className="px-2 py-1.5">{rule.channels.join(", ")}</td>
+                <td className="px-2 py-1.5 font-mono">{rule.cooldown_minutes}</td>
+                <td className="truncate px-2 py-1.5" title={latestState?.last_skip_reason ?? latestState?.last_status ?? ""}>
+                  {formatDate(latestSentForRule(rule))}
+                  {latestState?.last_entry_status ? <div className="truncate text-[10px] text-slate-500">{latestState.last_entry_status}</div> : null}
+                  {ruleStates.length > 0 ? <div className="truncate text-[10px] text-slate-500">{ruleStates.length} symbol state{ruleStates.length === 1 ? "" : "s"}</div> : null}
+                </td>
+                <td className="px-2 py-1.5">
+                  <div className="flex flex-wrap gap-1.5">
+                    <button className="rounded border border-slate-700/80 px-2 py-1 text-[11px] hover:border-sky-400/50 hover:text-sky-200" disabled={busyId === `test_${rule.id}`} onClick={() => testRule(rule, false)} type="button">
+                      Test
+                    </button>
+                    <button className="rounded border border-sky-400/30 px-2 py-1 text-[11px] text-sky-200 hover:bg-sky-400/10" disabled={busyId === `test_${rule.id}`} onClick={() => testRule(rule, true)} type="button">
+                      Test Send
+                    </button>
+                    <button className="rounded border border-rose-400/30 px-2 py-1 text-[11px] text-rose-200 hover:bg-rose-400/10" disabled={busyId === rule.id} onClick={() => deleteRule(rule)} type="button">
+                      Delete
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </section>
+  );
+
   return (
     <div className="space-y-3">
       {message ? (
@@ -542,6 +665,8 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
           ))}
         </div>
       </section>
+
+      {alertRulesTable}
 
       <section className="terminal-panel rounded-md p-4">
         <div className="flex flex-col gap-3 border-b border-slate-800 pb-3 lg:flex-row lg:items-center lg:justify-between">
@@ -716,124 +841,6 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             <div className="py-2 text-slate-500">No local watchlist symbols found. Add symbols from Symbol Detail pages to enable quick system alert buttons.</div>
           )}
         </div>
-      </section>
-
-      <section className="terminal-panel overflow-x-auto rounded-md">
-        <div className="flex items-center justify-between gap-3 border-b border-slate-800 bg-slate-950/70 px-3 py-2">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Active Alert Rules</div>
-          <button className="rounded border border-slate-700/80 px-2 py-1 text-[11px] text-slate-300 hover:border-sky-400/50 hover:text-sky-200" disabled={busyId === "test-send"} onClick={testSend} type="button">
-            {busyId === "test-send" ? "Running..." : "Run Alert Evaluation"}
-          </button>
-        </div>
-        <table className="w-full min-w-[1460px] table-fixed border-collapse text-xs">
-          <colgroup>
-            <col style={{ width: 85 }} />
-            <col style={{ width: 130 }} />
-            <col style={{ width: 150 }} />
-            <col style={{ width: 155 }} />
-            <col style={{ width: 90 }} />
-            <col style={{ width: 95 }} />
-            <col style={{ width: 150 }} />
-            <col style={{ width: 220 }} />
-            <col style={{ width: 130 }} />
-            <col style={{ width: 105 }} />
-            <col style={{ width: 170 }} />
-            <col style={{ width: 220 }} />
-          </colgroup>
-          <thead className="border-b border-slate-800 text-left text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-            <tr>
-              <th className="px-2 py-1.5">Enabled</th>
-              <th className="px-2 py-1.5">Scope</th>
-              <th className="px-2 py-1.5">Target</th>
-              <th className="px-2 py-1.5">Type</th>
-              <th className="px-2 py-1.5">Threshold</th>
-              <th className="px-2 py-1.5">Min Score</th>
-              <th className="px-2 py-1.5">Entry Filter</th>
-              <th className="px-2 py-1.5">Conviction</th>
-              <th className="px-2 py-1.5">Channels</th>
-              <th className="px-2 py-1.5">Cooldown</th>
-              <th className="px-2 py-1.5">Last Sent</th>
-              <th className="px-2 py-1.5">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-800/90">
-            {sortedRules.map((rule) => {
-              const ruleStates = statesForRule(rule);
-              const configParts = compactConfig(rule);
-              const latestState = ruleStates
-                .map(([, state]) => state)
-                .sort((a, b) => String(a.last_sent_at ?? a.last_skipped_at ?? "").localeCompare(String(b.last_sent_at ?? b.last_skipped_at ?? "")))
-                .at(-1);
-              return (
-                <tr className={rule.enabled ? "text-slate-300" : "text-slate-600"} key={rule.id}>
-                  <td className="px-2 py-1.5">
-                    <button className="rounded border border-slate-700/80 px-2 py-1 text-[11px] hover:border-sky-400/50 hover:text-sky-200" disabled={busyId === rule.id} onClick={() => patchRule(rule, { enabled: !rule.enabled })} type="button">
-                      {rule.enabled ? "On" : "Off"}
-                    </button>
-                  </td>
-                  <td className="truncate px-2 py-1.5" title={rule.id}>
-                    <div>{scopeLabel(rule.scope)}</div>
-                    <div className="truncate font-mono text-[10px] text-slate-500">{rule.id}</div>
-                  </td>
-                  <td className="px-2 py-1.5 font-mono text-sky-200">{targetDisplay(rule)}</td>
-                  <td className="truncate px-2 py-1.5">{typeLabel(rule.type)}</td>
-                  <td className="px-2 py-1.5 font-mono">{thresholdDisplay(rule)}</td>
-                  <td className="px-2 py-1.5 font-mono">{minScoreDisplay(rule)}</td>
-                  <td className="px-2 py-1.5">
-                    <select
-                      className="w-full rounded border border-slate-700/80 bg-slate-950/70 px-1.5 py-1 text-[11px] text-slate-100 outline-none focus:border-sky-400/60"
-                      disabled={busyId === rule.id}
-                      onChange={(event) => patchRule(rule, { entry_filter: event.target.value })}
-                      value={rule.entry_filter ?? "any"}
-                    >
-                      {ENTRY_FILTERS.map((item) => (
-                        <option key={item.value} value={item.value}>
-                          {item.label}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-2 py-1.5">
-                    {configParts.length ? (
-                      <details>
-                        <summary className="cursor-pointer text-sky-200">{configParts.length} fields</summary>
-                        <div className="mt-1 space-y-0.5 text-[11px] text-slate-400">
-                          {configParts.map((part) => (
-                            <div className="truncate" key={part} title={part}>
-                              {part}
-                            </div>
-                          ))}
-                        </div>
-                      </details>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="px-2 py-1.5">{rule.channels.join(", ")}</td>
-                  <td className="px-2 py-1.5 font-mono">{rule.cooldown_minutes}</td>
-                  <td className="truncate px-2 py-1.5" title={latestState?.last_skip_reason ?? latestState?.last_status ?? ""}>
-                    {formatDate(latestSentForRule(rule))}
-                    {latestState?.last_entry_status ? <div className="truncate text-[10px] text-slate-500">{latestState.last_entry_status}</div> : null}
-                    {ruleStates.length > 0 ? <div className="truncate text-[10px] text-slate-500">{ruleStates.length} symbol state{ruleStates.length === 1 ? "" : "s"}</div> : null}
-                  </td>
-                  <td className="px-2 py-1.5">
-                    <div className="flex flex-wrap gap-1.5">
-                      <button className="rounded border border-slate-700/80 px-2 py-1 text-[11px] hover:border-sky-400/50 hover:text-sky-200" disabled={busyId === `test_${rule.id}`} onClick={() => testRule(rule, false)} type="button">
-                        Test
-                      </button>
-                      <button className="rounded border border-sky-400/30 px-2 py-1 text-[11px] text-sky-200 hover:bg-sky-400/10" disabled={busyId === `test_${rule.id}`} onClick={() => testRule(rule, true)} type="button">
-                        Test Send
-                      </button>
-                      <button className="rounded border border-rose-400/30 px-2 py-1 text-[11px] text-rose-200 hover:bg-rose-400/10" disabled={busyId === rule.id} onClick={() => deleteRule(rule)} type="button">
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
       </section>
 
       {testResult ? (

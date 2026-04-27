@@ -34,7 +34,7 @@ export default async function DashboardOverview() {
   const [ranking, topCandidates, alertOverview, dataHealth] = await Promise.all([
     getFullRanking(),
     getTopCandidates(),
-    getAlertOverview().catch(() => ({ rules: [] })),
+    getAlertOverview().catch(() => ({ rules: [], state: { alerts: {} } })),
     getScanDataHealth(),
   ]);
   const leader = ranking[0];
@@ -60,7 +60,7 @@ export default async function DashboardOverview() {
 
         <DataHealthBanner health={dataHealth} />
 
-        <OverviewWorkspace alertRules={alertOverview.rules} ranking={ranking} topCandidates={topCandidates} />
+        <OverviewWorkspace alertRules={alertOverview.rules} alertState={alertOverview.state} ranking={ranking} topCandidates={topCandidates} />
       </div>
     </TerminalShell>
   );

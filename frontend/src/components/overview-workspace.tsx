@@ -10,6 +10,7 @@ import type { RankingRow } from "@/lib/types";
 
 type Props = {
   alertRules: AlertRule[];
+  alertState?: AlertState;
   ranking: RankingRow[];
   topCandidates: RankingRow[];
 };
@@ -21,6 +22,19 @@ type AlertRule = {
   type: string;
   channels: string[];
   enabled: boolean;
+};
+
+type AlertStateEntry = {
+  alert_id?: string;
+  symbol?: string;
+  last_sent_at?: string;
+  last_trigger_value?: string;
+  last_status?: string;
+  last_entry_status?: string;
+};
+
+type AlertState = {
+  alerts: Record<string, AlertStateEntry>;
 };
 
 function uniqueOptions(rows: RankingRow[], key: keyof RankingRow) {
@@ -185,15 +199,29 @@ function alertTarget(rule: AlertRule) {
   return rule.symbol || "—";
 }
 
-function ActiveAlertsPanel({ rules }: { rules: AlertRule[] }) {
-  const visibleRules = useMemo(() => [...rules].sort((left, right) => Number(right.enabled) - Number(left.enabled) || left.type.localeCompare(right.type)).slice(0, 8), [rules]);
+function stateRuleId(key: string, state: AlertStateEntry) {
+  return state.alert_id || key.split(":")[0];
+}
+
+function stateSymbol(key: string, state: AlertStateEntry) {
+  return state.symbol || key.split(":")[1] || "—";
+}
+
+function formatAlertTime(value?: string) {
+  if (!value) return "—";
+  return value.replace("T", " ").replace("Z", " UTC");
+}
+
+function ActiveAlertRulesPanel({ rules }: { rules: AlertRule[] }) {
+  const visibleRules = useMemo(() => [...rules].filter((rule) => rule.enabled).sort((left, right) => left.type.localeCompare(right.type)).slice(0, 8), [rules]);
 
   return (
     <section className="terminal-panel rounded-md p-3">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Active Alerts</div>
-          <h2 className="mt-1 text-lg font-semibold text-slate-50">Alert Coverage</h2>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Active Alert Rules</div>
+          <h2 className="mt-1 text-lg font-semibold text-slate-50">Rule Coverage</h2>
+          <p className="mt-1 text-xs text-slate-500">These are enabled rules, not currently triggered alerts.</p>
         </div>
         <Link className="whitespace-nowrap text-xs font-semibold text-sky-300 hover:text-sky-100" href="/alerts">
           Go to Alerts →
@@ -201,6 +229,13 @@ function ActiveAlertsPanel({ rules }: { rules: AlertRule[] }) {
       </div>
 
       <div className="mt-3 divide-y divide-slate-800/80 text-xs">
+        <div className="hidden grid-cols-[1.3fr_0.85fr_1fr_0.55fr_0.9fr] gap-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 md:grid">
+          <div>Rule Type</div>
+          <div>Scope</div>
+          <div>Target</div>
+          <div>Status</div>
+          <div>Channels</div>
+        </div>
         {visibleRules.length ? (
           visibleRules.map((rule) => (
             <div className="grid gap-2 py-2 md:grid-cols-[1.3fr_0.85fr_1fr_0.55fr_0.9fr]" key={rule.id}>
@@ -214,14 +249,68 @@ function ActiveAlertsPanel({ rules }: { rules: AlertRule[] }) {
             </div>
           ))
         ) : (
-          <div className="py-3 text-slate-500">No alert rules configured.</div>
+          <div className="py-3 text-slate-500">No enabled alert rules configured.</div>
         )}
       </div>
     </section>
   );
 }
 
-export function OverviewWorkspace({ alertRules, ranking, topCandidates }: Props) {
+function RecentAlertEventsPanel({ rules, state }: { rules: AlertRule[]; state: AlertState }) {
+  const ruleById = useMemo(() => {
+    const map = new Map<string, AlertRule>();
+    for (const rule of rules) map.set(rule.id, rule);
+    return map;
+  }, [rules]);
+  const events = useMemo(() => {
+    return Object.entries(state.alerts ?? {})
+      .filter(([, entry]) => Boolean(entry.last_sent_at))
+      .map(([key, entry]) => {
+        const ruleId = stateRuleId(key, entry);
+        return {
+          key,
+          rule: ruleById.get(ruleId),
+          ruleId,
+          symbol: stateSymbol(key, entry),
+          time: entry.last_sent_at ?? "",
+          triggerValue: entry.last_trigger_value,
+          status: entry.last_status,
+        };
+      })
+      .sort((left, right) => right.time.localeCompare(left.time))
+      .slice(0, 8);
+  }, [ruleById, state.alerts]);
+
+  return (
+    <section className="terminal-panel rounded-md p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Recent Alert Events</div>
+          <h2 className="mt-1 text-lg font-semibold text-slate-50">Triggered Alerts</h2>
+        </div>
+        <Link className="whitespace-nowrap text-xs font-semibold text-sky-300 hover:text-sky-100" href="/alerts">
+          Review →
+        </Link>
+      </div>
+      <div className="mt-3 divide-y divide-slate-800/80 text-xs">
+        {events.length ? (
+          events.map((event) => (
+            <div className="grid gap-2 py-2 md:grid-cols-[1.1fr_0.75fr_1.4fr_0.8fr]" key={event.key}>
+              <div className="truncate font-semibold text-slate-200">{alertTypeLabel(event.rule?.type ?? event.ruleId)}</div>
+              <div className="truncate font-mono text-sky-200">{event.symbol}</div>
+              <div className="truncate text-slate-400">{formatAlertTime(event.time)}</div>
+              <div className="truncate text-slate-500">{event.status || event.triggerValue || "sent"}</div>
+            </div>
+          ))
+        ) : (
+          <div className="py-3 text-slate-500">No recent triggered alerts.</div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ranking, topCandidates }: Props) {
   const [symbolSearch, setSymbolSearch] = useState("");
   const [assetType, setAssetType] = useState("");
   const [sector, setSector] = useState("");
@@ -425,7 +514,8 @@ export function OverviewWorkspace({ alertRules, ranking, topCandidates }: Props)
       </section>
 
       <aside className="space-y-3">
-        <ActiveAlertsPanel rules={alertRules} />
+        <ActiveAlertRulesPanel rules={alertRules} />
+        <RecentAlertEventsPanel rules={alertRules} state={alertState} />
 
         <section>
           <div className="mb-2">
