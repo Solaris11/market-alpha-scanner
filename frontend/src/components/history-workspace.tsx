@@ -219,7 +219,6 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: "
 export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props) {
   const [symbolQuery, setSymbolQuery] = useState(() => normalizeSymbol(defaultSymbol));
   const [symbolRows, setSymbolRows] = useState<SymbolHistoryRow[]>([]);
-  const [lookupDebug, setLookupDebug] = useState({ matchingRows: 0, snapshotsScanned: 0, source: "none" });
   const [loadingSymbol, setLoadingSymbol] = useState(false);
   const [symbolError, setSymbolError] = useState("");
   const [sortKey, setSortKey] = useState<HistorySortKey>("timestamp_utc");
@@ -231,7 +230,6 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
     async function loadSymbolHistory() {
       if (!selectedSymbol) {
         setSymbolRows([]);
-        setLookupDebug({ matchingRows: 0, snapshotsScanned: 0, source: "none" });
         setSymbolError("");
         return;
       }
@@ -239,15 +237,10 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
       setSymbolError("");
       try {
         const response = await fetch(`/api/history/symbol/${encodeURIComponent(selectedSymbol)}`, { cache: "no-store" });
-        const payload = (await response.json()) as { matchingRows?: number; rows?: SymbolHistoryRow[]; snapshotsScanned?: number; source?: string; error?: string };
+        const payload = (await response.json()) as { rows?: SymbolHistoryRow[]; error?: string };
         if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
         if (active) {
           setSymbolRows((payload.rows ?? []).sort((a, b) => String(a.timestamp_utc).localeCompare(String(b.timestamp_utc))));
-          setLookupDebug({
-            matchingRows: payload.matchingRows ?? payload.rows?.length ?? 0,
-            snapshotsScanned: payload.snapshotsScanned ?? history.snapshots.length,
-            source: payload.source ?? "unknown",
-          });
         }
       } catch (error) {
         if (active) setSymbolError(error instanceof Error ? error.message : "Failed to load symbol history.");
@@ -302,9 +295,6 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
             {selectedSymbol ? (
               <>
                 {loadingSymbol ? "Loading" : "Showing"} {symbolRows.length.toLocaleString()} snapshots for <span className="font-mono text-slate-200">{selectedSymbol}</span>.
-                <div className="mt-1 font-mono text-[11px] text-slate-500">
-                  Debug: selectedSymbol={selectedSymbol} snapshotsScanned={lookupDebug.snapshotsScanned.toLocaleString()} apiMatchingRows={lookupDebug.matchingRows.toLocaleString()} symbolRows={symbolRows.length.toLocaleString()} rendered={visibleRows.length.toLocaleString()} source={lookupDebug.source}
-                </div>
               </>
             ) : (
               <>Type or select a symbol. Try one of: {matchingSymbols.join(", ") || "no symbols available"}.</>
@@ -316,9 +306,6 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
       {symbolError ? (
         <div className="terminal-panel rounded-md border-rose-400/25 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">
           {symbolError}
-          <div className="mt-1 font-mono text-[11px] text-rose-100/80">
-            Debug: selectedSymbol={selectedSymbol || "NONE"} snapshotsScanned={lookupDebug.snapshotsScanned.toLocaleString()} apiMatchingRows={lookupDebug.matchingRows.toLocaleString()} symbolRows={symbolRows.length.toLocaleString()} rendered={visibleRows.length.toLocaleString()} source={lookupDebug.source}
-          </div>
         </div>
       ) : null}
 
@@ -359,7 +346,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Symbol Timeline</div>
               <h2 className="text-lg font-semibold text-slate-50">{selectedSymbol} Snapshot History</h2>
               <p className="mt-1 text-xs text-slate-500">
-                Debug: selectedSymbol={selectedSymbol} apiMatchingRows={lookupDebug.matchingRows.toLocaleString()} symbolRows={symbolRows.length.toLocaleString()} filtered={sortedRows.length.toLocaleString()} rendered={visibleRows.length.toLocaleString()} sort={sortKey}/{sortDirection}
+                Showing {visibleRows.length.toLocaleString()} of {sortedRows.length.toLocaleString()} snapshots
               </p>
             </div>
             <div className="terminal-panel overflow-x-auto rounded-md">

@@ -88,18 +88,6 @@ function sortRows(rows: IntradayDriftRow[], key: SortKey | null, direction: Sort
   return stableSortRows(rows, key ?? "score_change", direction, sortValue, sortConfig);
 }
 
-function debugValue(value: string) {
-  return value.trim() || "ALL";
-}
-
-function driftPreview(rows: IntradayDriftRow[]) {
-  return rows
-    .slice(0, 5)
-    .map((row) => String(row.symbol ?? "").trim().toUpperCase())
-    .filter(Boolean)
-    .join(", ") || "none";
-}
-
 function timestampMs(row: SymbolHistoryRow) {
   const ms = Date.parse(row.timestamp_utc);
   return Number.isFinite(ms) ? ms : null;
@@ -341,7 +329,7 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
 
       <div className="terminal-panel overflow-x-auto rounded-md">
         <div className="border-b border-slate-700/70 bg-slate-950/70 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-          Intraday Movers · Debug: raw={rows.length.toLocaleString()} filtered={filteredRows.length.toLocaleString()} rendered={visibleRows.length.toLocaleString()} searchTerm={debugValue(symbolSearch)} onlyUpgrades={String(onlyUpgrades)} onlyScoreGainers={String(onlyScoreGainers)} minScoreChange={debugValue(minimumScoreChange)} sortKey={sortKey ?? "none"} sortDirection={sortDirection} first5={driftPreview(visibleRows)}
+          Intraday Movers · Showing {visibleRows.length.toLocaleString()} of {filteredRows.length.toLocaleString()} rows
         </div>
         <table className="w-full min-w-[1020px] table-fixed border-collapse text-xs">
           <colgroup>

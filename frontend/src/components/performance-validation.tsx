@@ -250,24 +250,6 @@ function edgeLabel(row: CsvRow | undefined) {
   return `${text(row.group_value)} ${percent(row.avg_return)}`;
 }
 
-function debugValue(value: string) {
-  return value.trim() || "ALL";
-}
-
-function groupedPreview(rows: CsvRow[]) {
-  return rows
-    .slice(0, 3)
-    .map((row) => `${text(row.horizon, "?")}/${text(row.group_type, "?")}/${text(row.group_value, "?")}:${integer(row.count)}`)
-    .join(", ") || "none";
-}
-
-function forwardPreview(rows: CsvRow[]) {
-  return rows
-    .slice(0, 3)
-    .map((row) => `${symbolOf(row)}:${percent(row.forward_return)}`)
-    .join(", ") || "none";
-}
-
 function BarChart({ rows, groupType, metric, title, horizon = "10D" }: { rows: CsvRow[]; groupType: string; metric: "avg_return" | "hit_rate" | "avg_max_drawdown"; title: string; horizon?: string }) {
   const chartRows = rows
     .filter((row) => text(row.group_type, "") === groupType && text(row.horizon, "") === horizon)
@@ -494,7 +476,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
         <div className="border-b border-slate-800 bg-slate-950/70 px-3 py-2">
           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Grouped Results Table</div>
           <div className="mt-1 text-xs text-slate-500">
-            Debug: raw={summaryRows.length.toLocaleString()} filtered={filteredSummaryRows.length.toLocaleString()} rendered={visibleSummaryRows.length.toLocaleString()} horizonFilter={debugValue(horizon)} groupTypeFilter={debugValue(groupType)} minCount={debugValue(minCount)} sortKey={groupedSortKey ?? "none"} sortDirection={groupedSortDirection} first3={groupedPreview(visibleSummaryRows)}
+            Showing {visibleSummaryRows.length.toLocaleString()} of {filteredSummaryRows.length.toLocaleString()} grouped rows
           </div>
         </div>
         <table className="w-full min-w-[1680px] table-fixed border-collapse text-xs">
@@ -551,7 +533,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
                 {showRawObservations ? "Raw observations may include repeated intraday snapshots." : "Compact view shows the latest observation per symbol and horizon."}
               </p>
               <p className="mt-1 text-xs normal-case tracking-normal text-slate-500">
-                Debug: raw={forwardSourceRows.length.toLocaleString()} filtered={filteredForwardRows.length.toLocaleString()} rendered={visibleForwardRows.length.toLocaleString()} sortKey={forwardSortKey ?? "none"} sortDirection={forwardSortDirection} first3={forwardPreview(visibleForwardRows)}
+                Showing {visibleForwardRows.length.toLocaleString()} of {filteredForwardRows.length.toLocaleString()} forward return rows
               </p>
             </div>
             <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-300">

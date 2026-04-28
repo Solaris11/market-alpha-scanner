@@ -233,24 +233,6 @@ function rowMatchesSearch(row: CsvRow, query: string) {
   return [row.symbol, row.company_name].some((value) => text(value, "").toLowerCase().includes(query));
 }
 
-function debugValue(value: string) {
-  return value.trim() || "ALL";
-}
-
-function summaryPreview(rows: CsvRow[]) {
-  return rows
-    .slice(0, 3)
-    .map((row) => `${text(row.group_type, "?")}/${text(row.group_value, "?")}:${numberText(row.count, 0)}`)
-    .join(", ") || "none";
-}
-
-function detailPreview(rows: CsvRow[]) {
-  return rows
-    .slice(0, 3)
-    .map((row) => `${symbolOf(row)}:${text(row.status, "?")}/${percent(row.return_pct)}`)
-    .join(", ") || "none";
-}
-
 export function SignalLifecycle({ rows, summaryRows }: Props) {
   const [summarySortKey, setSummarySortKey] = useState<SummarySortKey | null>("count");
   const [summarySortDirection, setSummarySortDirection] = useState<SortDirection>("desc");
@@ -412,7 +394,7 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
         <div className="border-b border-slate-800 bg-slate-950/70 px-3 py-2">
           <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Lifecycle Summary</div>
           <div className="mt-1 text-xs text-slate-500">
-            Debug: raw={summaryRows.length.toLocaleString()} filtered={filteredSummaryRows.length.toLocaleString()} rendered={visibleSummaryRows.length.toLocaleString()} sortKey={summarySortKey ?? "none"} sortDirection={summarySortDirection} first3={summaryPreview(visibleSummaryRows)}
+            Showing {visibleSummaryRows.length.toLocaleString()} of {filteredSummaryRows.length.toLocaleString()} lifecycle groups
           </div>
         </div>
         <table className="w-full min-w-[1420px] table-fixed border-collapse text-xs">
@@ -464,7 +446,7 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">Recent Signal Lifecycles</div>
               <p className="mt-1 text-xs text-slate-500">
-                Debug: raw={rows.length.toLocaleString()} filtered={filteredDetails.length.toLocaleString()} rendered={visibleDetails.length.toLocaleString()} statusFilter={debugValue(statusFilter)} ratingFilter={debugValue(ratingFilter)} actionFilter={debugValue(actionFilter)} entryFilter={debugValue(entryFilter)} minScore={debugValue(minimumScore)} searchTerm={debugValue(symbolSearch)} dateRange={dateRange} sortKey={detailSortKey ?? "none"} sortDirection={detailSortDirection} first3={detailPreview(visibleDetails)}
+                Showing {visibleDetails.length.toLocaleString()} of {filteredDetails.length.toLocaleString()} signal lifecycle rows
               </p>
             </div>
             <div className="flex flex-wrap gap-2">

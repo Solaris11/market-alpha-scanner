@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { RankingTable, signalLabelsForRow, signalPriorityForRow } from "@/components/ranking-table";
 import type { RankingSortDirection, RankingSortKey } from "@/components/ranking-table";
 import { WatchlistPanel } from "@/components/watchlist-controls";
@@ -155,18 +155,6 @@ function filterRows(rows: RankingRow[], filters: { action: string; assetType: st
     if (hasMinScore && (typeof row.final_score !== "number" || row.final_score < minScore)) return false;
     return true;
   });
-}
-
-function debugValue(value: string) {
-  return value.trim() || "ALL";
-}
-
-function rankingPreview(rows: RankingRow[]) {
-  return rows
-    .slice(0, 5)
-    .map((row) => String(row.symbol ?? "").trim().toUpperCase())
-    .filter(Boolean)
-    .join(", ") || "none";
 }
 
 function mergeRankingFallback(row: RankingRow, fallback?: RankingRow) {
@@ -326,12 +314,6 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
   const [topSortKey, setTopSortKey] = useState<RankingSortKey | null>("score");
   const [topSortDirection, setTopSortDirection] = useState<RankingSortDirection>("desc");
   const [showAllRankingRows, setShowAllRankingRows] = useState(false);
-  const [clientHydrated, setClientHydrated] = useState(false);
-  const [clickTestCount, setClickTestCount] = useState(0);
-
-  useEffect(() => {
-    setClientHydrated(true);
-  }, []);
 
   const assetTypes = useMemo(() => uniqueOptions(ranking, "asset_type"), [ranking]);
   const sectors = useMemo(() => {
@@ -400,21 +382,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
             <h2 className="text-lg font-semibold text-slate-50">Scanner Table</h2>
           </div>
           <div className="whitespace-nowrap text-xs text-slate-500">
-            Debug: raw={ranking.length.toLocaleString()} filtered={filteredRows.length.toLocaleString()} rendered={visibleRankingCount.toLocaleString()} sort={sortKey ?? "none"}/{sortDirection} first5={rankingPreview(renderedRows)}
-          </div>
-        </div>
-        <div className="mb-2 rounded border border-slate-800 bg-slate-950/50 px-2 py-1 font-mono text-[11px] text-slate-500">
-          Filter state: searchTerm={debugValue(symbolSearch)} assetTypeFilter={debugValue(assetTypeFilter)} sectorFilter={debugValue(sectorFilter)} ratingFilter={debugValue(ratingFilter)} actionFilter={debugValue(actionFilter)} signalFilter={debugValue(signalFilter)} qualityFilter={debugValue(qualityFilter)} minScore={debugValue(minScoreFilter)} sortKey={sortKey ?? "none"} sortDirection={sortDirection}
-          <div className="mt-1 flex items-center gap-2">
-            <span>Client hydrated: {clientHydrated ? "YES" : "NO"}</span>
-            <span>Click count: {clickTestCount}</span>
-            <button
-              className="rounded border border-slate-700/80 px-2 py-0.5 text-[10px] font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200"
-              onClick={() => setClickTestCount((count) => count + 1)}
-              type="button"
-            >
-              Click Test
-            </button>
+            Showing {visibleRankingCount.toLocaleString()} of {filteredRows.length.toLocaleString()} rows
           </div>
         </div>
 
@@ -430,22 +398,6 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
                   value={symbolSearch}
                 />
               </label>
-              <div className="mt-1 flex gap-1">
-                <button
-                  className="rounded border border-slate-700/80 px-2 py-1 text-[10px] font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200"
-                  onClick={() => setSymbolSearch("AVGO")}
-                  type="button"
-                >
-                  Test AVGO
-                </button>
-                <button
-                  className="rounded border border-slate-700/80 px-2 py-1 text-[10px] font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200"
-                  onClick={() => setSymbolSearch("")}
-                  type="button"
-                >
-                  Clear Search
-                </button>
-              </div>
             </div>
 
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -592,7 +544,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
               <h2 className="text-lg font-semibold text-slate-50">High Conviction</h2>
             </div>
             <div className="whitespace-nowrap text-xs text-slate-500">
-              Debug: raw={topCandidates.length.toLocaleString()} filtered={filteredTopCandidates.length.toLocaleString()} rendered={visibleTopCount.toLocaleString()} sort={topSortKey ?? "none"}/{topSortDirection} first5={rankingPreview(renderedTopCandidates)}
+              Showing {visibleTopCount.toLocaleString()} of {filteredTopCandidates.length.toLocaleString()} rows
             </div>
           </div>
           <RankingTable rows={renderedTopCandidates} highlight emptyMessage="No matching symbols" sortDirection={topSortDirection} sortKey={topSortKey} onSort={handleTopSort} />
