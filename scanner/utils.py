@@ -132,7 +132,7 @@ def anchored_vwap(df: pd.DataFrame, start_pos: int) -> pd.Series:
     return avwap.reindex(df.index)
 
 
-def parse_datetime_like(value) -> Optional[pd.Timestamp]:
+def parse_datetime_like(value: object) -> Optional[pd.Timestamp]:
     if value in (None, "", [], {}):
         return None
     if isinstance(value, (int, float, np.integer, np.floating)):
@@ -149,7 +149,7 @@ def parse_datetime_like(value) -> Optional[pd.Timestamp]:
                 return parsed
         return None
     try:
-        ts = pd.to_datetime(value, utc=True, errors="coerce")
+        ts = pd.to_datetime(str(value), utc=True, errors="coerce")
         if pd.isna(ts):
             return None
         if isinstance(ts, pd.DatetimeIndex):

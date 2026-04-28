@@ -1,0 +1,27 @@
+{
+  "typeCheckingMode": "strict",
+  "pythonVersion": "3.12",
+  "venvPath": ".",
+  "venv": ".venv",
+  "include": [
+    "."
+  ],
+  "exclude": [
+    ".venv",
+    "**/__pycache__",
+    "frontend",
+    "scanner_output"
+  ],
+  "reportMissingTypeStubs": "none",
+  "reportUnknownArgumentType": "none",
+  "reportUnknownLambdaType": "none",
+  "reportUnknownMemberType": "none",
+  "reportUnknownVariableType": "none",
+  "reportUnusedFunction": "none",
+  "reportUnusedImport": "none",
+  "reportUnusedVariable": "none",
+  "reportUnnecessaryCast": "none",
+  "reportUnnecessaryComparison": "none",
+  "reportUnnecessaryIsInstance": "none",
+  "reportDeprecated": "none"
+}

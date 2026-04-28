@@ -228,7 +228,7 @@ def _int_or_none(value: object) -> int | None:
     return numeric
 
 
-def _insert_ignore_rows(session: Session, model, rows: Sequence[Mapping[str, object]], conflict_columns: Sequence[str]) -> None:
+def _insert_ignore_rows(session: Session, model: type[object], rows: Sequence[Mapping[str, object]], conflict_columns: Sequence[str]) -> None:
     if not rows:
         return
 

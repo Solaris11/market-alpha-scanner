@@ -4,13 +4,18 @@ import argparse
 import json
 import sys
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, TypedDict
 
 import pandas as pd
 import yfinance as yf
 
 
-PERIOD_CONFIG = {
+class PeriodConfig(TypedDict):
+    yf_period: str | None
+    yf_interval: str
+
+
+PERIOD_CONFIG: dict[str, PeriodConfig] = {
     "1d": {"yf_period": "1d", "yf_interval": "5m"},
     "1wk": {"yf_period": "7d", "yf_interval": "1h"},
     "1mo": {"yf_period": "1mo", "yf_interval": "1d"},

@@ -5,6 +5,7 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+from collections.abc import Mapping
 from typing import Any
 
 import numpy as np
@@ -935,7 +936,7 @@ def generate_calibration_insights(summary_df: pd.DataFrame, forward_returns_df: 
     if summary_df.empty:
         calibration_df = pd.DataFrame(columns=CALIBRATION_COLUMNS)
         atomic_write_dataframe_csv(calibration_df, calibration_path, index=False)
-        payload = {
+        payload: dict[str, object] = {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "status": "not_ready",
             "message": "Analysis complete, but no completed forward-return observations exist yet.",
@@ -987,7 +988,7 @@ def generate_calibration_insights(summary_df: pd.DataFrame, forward_returns_df: 
     best_group = _insight_record(ranking_source.sort_values(["edge_score", "avg_return"], ascending=[False, False]).iloc[0]) if not ranking_source.empty else None
     worst_group = _insight_record(ranking_source.sort_values(["edge_score", "avg_return"], ascending=[True, True]).iloc[0]) if not ranking_source.empty else None
 
-    payload = {
+    payload: dict[str, object] = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": "ready",
         "forward_observations": int(len(forward_returns_df)),
@@ -1009,7 +1010,7 @@ def generate_calibration_insights(summary_df: pd.DataFrame, forward_returns_df: 
     return payload
 
 
-def _atomic_write_json(payload: dict[str, object], path: Path) -> None:
+def _atomic_write_json(payload: Mapping[str, object], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_name(f"{path.name}.{os.getpid()}.{datetime.now(timezone.utc).timestamp():.6f}.tmp")
     try:
