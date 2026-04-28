@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RankingTable, signalLabelsForRow, signalPriorityForRow } from "@/components/ranking-table";
 import type { RankingSortDirection, RankingSortKey } from "@/components/ranking-table";
 import { WatchlistPanel } from "@/components/watchlist-controls";
@@ -326,6 +326,12 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
   const [topSortKey, setTopSortKey] = useState<RankingSortKey | null>("score");
   const [topSortDirection, setTopSortDirection] = useState<RankingSortDirection>("desc");
   const [showAllRankingRows, setShowAllRankingRows] = useState(false);
+  const [clientHydrated, setClientHydrated] = useState(false);
+  const [clickTestCount, setClickTestCount] = useState(0);
+
+  useEffect(() => {
+    setClientHydrated(true);
+  }, []);
 
   const assetTypes = useMemo(() => uniqueOptions(ranking, "asset_type"), [ranking]);
   const sectors = useMemo(() => {
@@ -399,6 +405,17 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
         </div>
         <div className="mb-2 rounded border border-slate-800 bg-slate-950/50 px-2 py-1 font-mono text-[11px] text-slate-500">
           Filter state: searchTerm={debugValue(symbolSearch)} assetTypeFilter={debugValue(assetTypeFilter)} sectorFilter={debugValue(sectorFilter)} ratingFilter={debugValue(ratingFilter)} actionFilter={debugValue(actionFilter)} signalFilter={debugValue(signalFilter)} qualityFilter={debugValue(qualityFilter)} minScore={debugValue(minScoreFilter)} sortKey={sortKey ?? "none"} sortDirection={sortDirection}
+          <div className="mt-1 flex items-center gap-2">
+            <span>Client hydrated: {clientHydrated ? "YES" : "NO"}</span>
+            <span>Click count: {clickTestCount}</span>
+            <button
+              className="rounded border border-slate-700/80 px-2 py-0.5 text-[10px] font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200"
+              onClick={() => setClickTestCount((count) => count + 1)}
+              type="button"
+            >
+              Click Test
+            </button>
+          </div>
         </div>
 
         <div className="terminal-panel mb-3 rounded-md p-3">
