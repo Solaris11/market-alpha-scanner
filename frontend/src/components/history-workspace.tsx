@@ -12,6 +12,7 @@ type Props = {
 };
 
 type HistorySortKey = "timestamp_utc" | "price" | "final_score" | "final_score_adjusted" | "rating" | "action" | "recommendation_quality" | "entry_status" | "setup_type";
+type QuickRange = "all" | "1d" | "3d" | "7d" | "14d";
 
 const RATING_PRIORITY: Record<string, number> = {
   TOP: 0,
@@ -56,6 +57,13 @@ const HISTORY_COLUMNS: { align?: "left" | "right"; key: HistorySortKey; label: s
   { key: "entry_status", label: "Entry" },
   { key: "setup_type", label: "Setup" },
 ];
+const QUICK_RANGES: { label: string; value: QuickRange; days?: number }[] = [
+  { label: "All time", value: "all" },
+  { days: 1, label: "Last 1 day", value: "1d" },
+  { days: 3, label: "Last 3 days", value: "3d" },
+  { days: 7, label: "Last 7 days", value: "7d" },
+  { days: 14, label: "Last 14 days", value: "14d" },
+];
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "N/A";
@@ -64,6 +72,12 @@ function formatDate(value: string | null | undefined) {
 
 function timestampMs(row: { timestamp_utc: string }) {
   const ms = Date.parse(row.timestamp_utc);
+  return Number.isFinite(ms) ? ms : null;
+}
+
+function datetimeLocalMs(value: string) {
+  if (!value) return null;
+  const ms = Date.parse(value);
   return Number.isFinite(ms) ? ms : null;
 }
 
@@ -223,6 +237,9 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
   const [symbolError, setSymbolError] = useState("");
   const [sortKey, setSortKey] = useState<HistorySortKey>("timestamp_utc");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
+  const [quickRange, setQuickRange] = useState<QuickRange>("all");
+  const [customFrom, setCustomFrom] = useState("");
+  const [customTo, setCustomTo] = useState("");
   const selectedSymbol = normalizeSymbol(symbolQuery);
 
   useEffect(() => {
@@ -254,16 +271,51 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
     };
   }, [selectedSymbol]);
 
-  const first = symbolRows[0];
-  const latest = symbolRows[symbolRows.length - 1];
+  const filteredByTime = useMemo(() => {
+    const fromMs = datetimeLocalMs(customFrom);
+    const toMs = datetimeLocalMs(customTo);
+    const hasCustomRange = Boolean(customFrom || customTo);
+    const selectedRange = QUICK_RANGES.find((option) => option.value === quickRange);
+    const quickCutoff = !hasCustomRange && selectedRange?.days ? Date.now() - selectedRange.days * 24 * 60 * 60 * 1000 : null;
+
+    return symbolRows.filter((row) => {
+      const rowMs = timestampMs(row);
+      if (rowMs === null) return false;
+      if (hasCustomRange) {
+        if (fromMs !== null && rowMs < fromMs) return false;
+        if (toMs !== null && rowMs > toMs) return false;
+        return true;
+      }
+      if (quickCutoff !== null && rowMs < quickCutoff) return false;
+      return true;
+    });
+  }, [customFrom, customTo, quickRange, symbolRows]);
+  const first = filteredByTime[0];
+  const latest = filteredByTime[filteredByTime.length - 1];
   const scoreChange = first && latest && typeof first.final_score === "number" && typeof latest.final_score === "number" ? latest.final_score - first.final_score : null;
   const priceChange = first && latest && typeof first.price === "number" && typeof latest.price === "number" ? latest.price - first.price : null;
-  const sortedRows = useMemo(() => stableSortRows(symbolRows, sortKey, sortDirection, sortValue, sortConfig), [sortDirection, sortKey, symbolRows]);
+  const sortedRows = useMemo(() => stableSortRows(filteredByTime, sortKey, sortDirection, sortValue, sortConfig), [filteredByTime, sortDirection, sortKey]);
   const visibleRows = useMemo(() => sortedRows.slice(0, 200), [sortedRows]);
-  const avgInterval = averageInterval(symbolRows);
+  const avgInterval = averageInterval(filteredByTime);
   const matchingSymbols = symbolQuery
     ? symbols.filter((symbol) => symbol.includes(selectedSymbol)).slice(0, 8)
     : symbols.slice(0, 8);
+
+  function handleQuickRangeChange(value: QuickRange) {
+    setQuickRange(value);
+    setCustomFrom("");
+    setCustomTo("");
+  }
+
+  function handleCustomFromChange(value: string) {
+    setCustomFrom(value);
+    setQuickRange("all");
+  }
+
+  function handleCustomToChange(value: string) {
+    setCustomTo(value);
+    setQuickRange("all");
+  }
 
   function handleSort(key: HistorySortKey) {
     const direction = nextSortDirection(sortKey, key, sortDirection, sortConfig(key));
@@ -311,93 +363,125 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
 
       {loadingSymbol ? <div className="terminal-panel rounded-md border-dashed border-slate-700/70 px-3 py-8 text-center text-xs text-slate-500">Loading symbol history...</div> : null}
 
-      {!loadingSymbol && selectedSymbol && !latest ? (
+      {!loadingSymbol && selectedSymbol && !symbolRows.length ? (
         <div className="terminal-panel rounded-md border-dashed border-slate-700/70 px-3 py-8 text-center text-sm text-slate-400">No history found for <span className="font-mono text-slate-100">{selectedSymbol}</span> in scan snapshots.</div>
       ) : null}
 
-      {latest ? (
+      {symbolRows.length ? (
         <>
-          <section className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8">
-            {[
-              { label: "First Score", value: formatNumber(first?.final_score), meta: formatDate(first?.timestamp_utc) },
-              { label: "Latest Score", value: formatNumber(latest.final_score), meta: formatDate(latest.timestamp_utc) },
-              { label: "Score Change", value: formatDelta(scoreChange), meta: "latest - first" },
-              { label: "Rating", value: latest.rating ?? "N/A", meta: "latest" },
-              { label: "Action", value: actionFor(latest), meta: "latest" },
-              { label: "Price", value: formatNumber(latest.price), meta: "latest" },
-              { label: "Price Change", value: formatDelta(priceChange), meta: "latest - first" },
-              { label: "Snapshots", value: symbolRows.length.toLocaleString(), meta: `avg ${formatDuration(avgInterval)}` },
-            ].map((metric) => (
-              <div className="terminal-panel min-w-0 rounded-md px-3 py-2" key={metric.label}>
-                <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{metric.label}</div>
-                <div className="mt-1 truncate font-mono text-sm font-semibold text-slate-100">{metric.value}</div>
-                <div className="mt-0.5 truncate text-[11px] text-slate-500">{metric.meta}</div>
-              </div>
-            ))}
-          </section>
-
-          <div className="grid gap-3 xl:grid-cols-2">
-            <TrendChart field="final_score" label="Final Score" rows={symbolRows} />
-            <TrendChart field="price" label="Price" rows={symbolRows} />
-          </div>
-
-          <section>
-            <div className="mb-2">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Symbol Timeline</div>
-              <h2 className="text-lg font-semibold text-slate-50">{selectedSymbol} Snapshot History</h2>
-              <p className="mt-1 text-xs text-slate-500">
-                Showing {visibleRows.length.toLocaleString()} of {sortedRows.length.toLocaleString()} snapshots
-              </p>
-            </div>
-            <div className="terminal-panel overflow-x-auto rounded-md">
-              <table className="w-full min-w-[1420px] table-fixed border-collapse text-xs">
-                <colgroup>
-                  <col style={{ width: 220 }} />
-                  <col style={{ width: 95 }} />
-                  <col style={{ width: 110 }} />
-                  <col style={{ width: 120 }} />
-                  <col style={{ width: 120 }} />
-                  <col style={{ width: 140 }} />
-                  <col style={{ width: 130 }} />
-                  <col style={{ width: 130 }} />
-                  <col style={{ width: 170 }} />
-                  <col style={{ width: 250 }} />
-                </colgroup>
-                <thead className="border-b border-slate-700/70 bg-slate-950/70 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                  <tr>
-                    {HISTORY_COLUMNS.map((column) => (
-                      <SortHeader align={column.align} key={column.key} label={column.label} onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey={column.key} />
-                    ))}
-                    <th className="px-2 py-1.5 text-left">Source</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/90">
-                  {visibleRows.map((row) => (
-                    <tr className="hover:bg-sky-400/5" key={`${row.source_file}-${row.symbol}-${row.timestamp_utc}`}>
-                      <td className="truncate px-2 py-1.5 text-slate-300">{formatDate(row.timestamp_utc)}</td>
-                      <td className="px-2 py-1.5 text-right font-mono text-slate-200">{formatNumber(row.price)}</td>
-                      <td className="px-2 py-1.5 text-right font-mono text-emerald-200">{formatNumber(row.final_score)}</td>
-                      <td className="px-2 py-1.5 text-right font-mono text-slate-300">{formatNumber(row.final_score_adjusted)}</td>
-                      <td className="truncate px-2 py-1.5 text-slate-300">{row.rating ?? "N/A"}</td>
-                      <td className="truncate px-2 py-1.5 text-slate-300">{actionFor(row)}</td>
-                      <td className="px-2 py-1.5">
-                        {row.recommendation_quality ? (
-                          <span className={`inline-flex max-w-[120px] rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] ${qualityBadgeClass(row.recommendation_quality)}`} title={String(row.quality_reason ?? "")}>
-                            <span className="truncate">{String(row.recommendation_quality).replace("_", " ")}</span>
-                          </span>
-                        ) : (
-                          <span className="text-slate-600">—</span>
-                        )}
-                      </td>
-                      <td className="truncate px-2 py-1.5 text-slate-400">{row.entry_status ?? "N/A"}</td>
-                      <td className="truncate px-2 py-1.5 text-slate-400">{row.setup_type ?? "N/A"}</td>
-                      <td className="truncate px-2 py-1.5 font-mono text-slate-500">{row.source_file}</td>
-                    </tr>
+          <section className="terminal-panel rounded-md p-3">
+            <div className="grid gap-3 md:grid-cols-4">
+              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Range
+                <select className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => handleQuickRangeChange(event.target.value as QuickRange)} value={quickRange}>
+                  {QUICK_RANGES.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
                   ))}
-                </tbody>
-              </table>
+                </select>
+              </label>
+              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                From
+                <input className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => handleCustomFromChange(event.target.value)} type="datetime-local" value={customFrom} />
+              </label>
+              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                To
+                <input className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => handleCustomToChange(event.target.value)} type="datetime-local" value={customTo} />
+              </label>
+              <div className="self-end text-xs text-slate-500">
+                Showing {filteredByTime.length.toLocaleString()} of {symbolRows.length.toLocaleString()} snapshots
+              </div>
             </div>
           </section>
+
+          {filteredByTime.length ? (
+            <>
+              <section className="grid grid-cols-2 gap-2 md:grid-cols-4 xl:grid-cols-8">
+                {[
+                  { label: "First Score", value: formatNumber(first?.final_score), meta: formatDate(first?.timestamp_utc) },
+                  { label: "Latest Score", value: formatNumber(latest?.final_score), meta: formatDate(latest?.timestamp_utc) },
+                  { label: "Score Change", value: formatDelta(scoreChange), meta: "latest - first" },
+                  { label: "Rating", value: latest?.rating ?? "N/A", meta: "latest" },
+                  { label: "Action", value: latest ? actionFor(latest) : "N/A", meta: "latest" },
+                  { label: "Price", value: formatNumber(latest?.price), meta: "latest" },
+                  { label: "Price Change", value: formatDelta(priceChange), meta: "latest - first" },
+                  { label: "Snapshots", value: filteredByTime.length.toLocaleString(), meta: `avg ${formatDuration(avgInterval)}` },
+                ].map((metric) => (
+                  <div className="terminal-panel min-w-0 rounded-md px-3 py-2" key={metric.label}>
+                    <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{metric.label}</div>
+                    <div className="mt-1 truncate font-mono text-sm font-semibold text-slate-100">{metric.value}</div>
+                    <div className="mt-0.5 truncate text-[11px] text-slate-500">{metric.meta}</div>
+                  </div>
+                ))}
+              </section>
+
+              <div className="grid gap-3 xl:grid-cols-2">
+                <TrendChart field="final_score" label="Final Score" rows={filteredByTime} />
+                <TrendChart field="price" label="Price" rows={filteredByTime} />
+              </div>
+
+              <section>
+                <div className="mb-2">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Symbol Timeline</div>
+                  <h2 className="text-lg font-semibold text-slate-50">{selectedSymbol} Snapshot History</h2>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Showing {visibleRows.length.toLocaleString()} of {sortedRows.length.toLocaleString()} snapshots
+                  </p>
+                </div>
+                <div className="terminal-panel overflow-x-auto rounded-md">
+                  <table className="w-full min-w-[1420px] table-fixed border-collapse text-xs">
+                    <colgroup>
+                      <col style={{ width: 220 }} />
+                      <col style={{ width: 95 }} />
+                      <col style={{ width: 110 }} />
+                      <col style={{ width: 120 }} />
+                      <col style={{ width: 120 }} />
+                      <col style={{ width: 140 }} />
+                      <col style={{ width: 130 }} />
+                      <col style={{ width: 130 }} />
+                      <col style={{ width: 170 }} />
+                      <col style={{ width: 250 }} />
+                    </colgroup>
+                    <thead className="border-b border-slate-700/70 bg-slate-950/70 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                      <tr>
+                        {HISTORY_COLUMNS.map((column) => (
+                          <SortHeader align={column.align} key={column.key} label={column.label} onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey={column.key} />
+                        ))}
+                        <th className="px-2 py-1.5 text-left">Source</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-800/90">
+                      {visibleRows.map((row) => (
+                        <tr className="hover:bg-sky-400/5" key={`${row.source_file}-${row.symbol}-${row.timestamp_utc}`}>
+                          <td className="truncate px-2 py-1.5 text-slate-300">{formatDate(row.timestamp_utc)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono text-slate-200">{formatNumber(row.price)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono text-emerald-200">{formatNumber(row.final_score)}</td>
+                          <td className="px-2 py-1.5 text-right font-mono text-slate-300">{formatNumber(row.final_score_adjusted)}</td>
+                          <td className="truncate px-2 py-1.5 text-slate-300">{row.rating ?? "N/A"}</td>
+                          <td className="truncate px-2 py-1.5 text-slate-300">{actionFor(row)}</td>
+                          <td className="px-2 py-1.5">
+                            {row.recommendation_quality ? (
+                              <span className={`inline-flex max-w-[120px] rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] ${qualityBadgeClass(row.recommendation_quality)}`} title={String(row.quality_reason ?? "")}>
+                                <span className="truncate">{String(row.recommendation_quality).replace("_", " ")}</span>
+                              </span>
+                            ) : (
+                              <span className="text-slate-600">—</span>
+                            )}
+                          </td>
+                          <td className="truncate px-2 py-1.5 text-slate-400">{row.entry_status ?? "N/A"}</td>
+                          <td className="truncate px-2 py-1.5 text-slate-400">{row.setup_type ?? "N/A"}</td>
+                          <td className="truncate px-2 py-1.5 font-mono text-slate-500">{row.source_file}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </>
+          ) : (
+            <div className="terminal-panel rounded-md border-dashed border-slate-700/70 px-3 py-8 text-center text-sm text-slate-400">No data in selected time range</div>
+          )}
         </>
       ) : null}
 

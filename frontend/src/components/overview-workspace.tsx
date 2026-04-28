@@ -387,12 +387,12 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
         </div>
 
         <div className="terminal-panel mb-3 rounded-md p-3">
-          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[1.2fr_0.85fr_0.85fr_0.8fr_0.85fr_0.9fr_1fr_0.65fr_auto]">
+          <div className="grid grid-cols-2 items-end gap-3 md:grid-cols-4 lg:grid-cols-8">
             <div className="min-w-0">
               <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Symbol
                 <input
-                  className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
+                  className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
                   onChange={(event) => setSymbolSearch(event.currentTarget.value)}
                   placeholder="Search symbol"
                   value={symbolSearch}
@@ -403,7 +403,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Asset Type
               <select
-                className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
+                className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
                 onChange={(event) => {
                   setAssetTypeFilter(event.target.value);
                   setSectorFilter("");
@@ -422,7 +422,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Sector
               <select
-                className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
+                className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
                 onChange={(event) => setSectorFilter(event.target.value)}
                 value={sectorFilter}
               >
@@ -438,7 +438,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Rating
               <select
-                className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
+                className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
                 onChange={(event) => setRatingFilter(event.target.value)}
                 value={ratingFilter}
               >
@@ -454,7 +454,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Action
               <select
-                className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
+                className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
                 onChange={(event) => setActionFilter(event.target.value)}
                 value={actionFilter}
               >
@@ -470,7 +470,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Signal
               <select
-                className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
+                className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
                 onChange={(event) => setSignalFilter(event.target.value)}
                 value={signalFilter}
               >
@@ -486,7 +486,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Quality
               <select
-                className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
+                className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
                 onChange={(event) => setQualityFilter(event.target.value)}
                 value={qualityFilter}
               >
@@ -502,7 +502,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Min Score
               <input
-                className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
+                className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
                 min="0"
                 onChange={(event) => setMinScoreFilter(event.target.value)}
                 onInput={(event) => setMinScoreFilter(event.currentTarget.value)}
@@ -513,7 +513,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
             </label>
 
             <button
-              className="self-end rounded border border-slate-700/80 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200"
+              className="col-start-2 h-9 self-end rounded border border-slate-700/80 px-3 text-xs font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200 md:col-start-4 lg:col-start-8"
               onClick={resetFilters}
               type="button"
             >
