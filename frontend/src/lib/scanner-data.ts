@@ -194,10 +194,28 @@ function coerceValue(key: string, value: unknown): ScannerScalar {
   return text;
 }
 
+function canonicalCsvKey(key: string) {
+  return key.replace(/^\uFEFF/, "").trim();
+}
+
+function rawValue(raw: Record<string, unknown>, ...keys: string[]) {
+  for (const key of keys) {
+    if (raw[key] !== undefined) return raw[key];
+  }
+
+  const targets = new Set(keys.map((key) => canonicalCsvKey(key).toLowerCase()));
+  for (const [key, value] of Object.entries(raw)) {
+    if (targets.has(canonicalCsvKey(key).toLowerCase())) return value;
+  }
+
+  return undefined;
+}
+
 function normalizeCsvRow(raw: Record<string, unknown>): CsvRow {
   const row: CsvRow = {};
   for (const [key, value] of Object.entries(raw)) {
-    row[key] = coerceValue(key, value) ?? null;
+    const normalizedKey = canonicalCsvKey(key);
+    row[normalizedKey] = coerceValue(normalizedKey, value) ?? null;
   }
   return row;
 }
@@ -219,10 +237,11 @@ function normalizeRankingRow(raw: Record<string, unknown>): RankingRow {
   const row: RankingRow = { symbol: "" };
 
   for (const [key, value] of Object.entries(raw)) {
-    row[key] = coerceValue(key, value);
+    const normalizedKey = canonicalCsvKey(key);
+    row[normalizedKey] = coerceValue(normalizedKey, value);
   }
 
-  row.symbol = String(row.symbol ?? raw.symbol ?? "").trim().toUpperCase();
+  row.symbol = String(row.symbol ?? rawValue(raw, "symbol", "ticker", "Symbol", "Ticker") ?? "").trim().toUpperCase();
   row.company_name = displayName(row);
   return row;
 }
@@ -256,7 +275,7 @@ async function readCsvPayload(filePath: string): Promise<CsvPayload> {
       ...CSV_PARSE_OPTIONS,
       to_line: 1,
     }) as string[][];
-    columns = headerRows[0] ?? [];
+    columns = (headerRows[0] ?? []).map(canonicalCsvKey);
     const rows = parse(text, {
       ...CSV_PARSE_OPTIONS,
       columns: true,
@@ -322,7 +341,7 @@ async function readScannerCsvWithStateParts(parts: string[], options: { tailRows
   const text = await fs.readFile(filePath, "utf8");
   const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
   const header = lines[0] ?? "";
-  const columns = header ? (parse(header, { ...CSV_PARSE_OPTIONS }) as string[][])[0] ?? [] : [];
+  const columns = header ? ((parse(header, { ...CSV_PARSE_OPTIONS }) as string[][])[0] ?? []).map(canonicalCsvKey) : [];
   if (lines.length <= 1) {
     return { rows: [], state: "header-only", columns, lineCount: lines.length };
   }
@@ -503,7 +522,7 @@ export async function getSymbolHistoryData(): Promise<SymbolHistoryData> {
     for (const raw of snapshotRows) {
       const row = normalizeRankingRow(raw) as SymbolHistoryRow;
       if (!row.symbol) continue;
-      row.timestamp_utc = String(raw.timestamp_utc ?? fallbackTimestamp);
+      row.timestamp_utc = String(rawValue(raw, "timestamp_utc", "datetime", "date", "timestamp") ?? fallbackTimestamp);
       row.source_file = snapshot.name;
       rows.push(row);
     }
@@ -524,7 +543,7 @@ export async function getHistorySymbolsFromSnapshots(maxSnapshots = 5): Promise<
   for (const snapshot of history.snapshots.slice(0, Math.max(1, maxSnapshots))) {
     const snapshotRows = await readCsv(path.join(scannerOutputDir(), "history", snapshot.name));
     for (const raw of snapshotRows) {
-      const symbol = String(raw.symbol ?? raw.ticker ?? raw.Symbol ?? raw.Ticker ?? "").trim().toUpperCase();
+      const symbol = String(rawValue(raw, "symbol", "ticker", "Symbol", "Ticker") ?? "").trim().toUpperCase();
       if (symbol) symbols.add(symbol);
     }
   }
@@ -542,8 +561,8 @@ async function getPerSymbolHistoryForSymbol(symbol: string): Promise<SymbolHisto
   return rows
     .map((raw) => {
       const row = normalizeRankingRow(raw) as SymbolHistoryRow;
-      row.symbol = String(row.symbol || raw.ticker || raw.Symbol || raw.Ticker || cleaned).trim().toUpperCase();
-      row.timestamp_utc = String(raw.timestamp_utc ?? raw.datetime ?? raw.date ?? "");
+      row.symbol = String(row.symbol || rawValue(raw, "ticker", "Symbol", "Ticker") || cleaned).trim().toUpperCase();
+      row.timestamp_utc = String(rawValue(raw, "timestamp_utc", "datetime", "date", "timestamp") ?? "");
       row.source_file = `symbols/${symbolSlug(cleaned)}/history.csv`;
       return row;
     })
@@ -562,12 +581,10 @@ export async function getSymbolHistoryLookup(symbol: string): Promise<{ matching
     const fallbackTimestamp = snapshot.timestamp ?? snapshot.modifiedAt;
 
     for (const raw of snapshotRows) {
-      const rawSymbol = String(raw.symbol ?? raw.ticker ?? raw.Symbol ?? raw.Ticker ?? "").trim().toUpperCase();
-      if (rawSymbol !== cleaned) continue;
       const row = normalizeRankingRow(raw) as SymbolHistoryRow;
-      row.symbol = rawSymbol;
+      if (row.symbol !== cleaned) continue;
       if (!row.symbol) continue;
-      row.timestamp_utc = String(raw.timestamp_utc ?? fallbackTimestamp);
+      row.timestamp_utc = String(rawValue(raw, "timestamp_utc", "datetime", "date", "timestamp") ?? fallbackTimestamp);
       row.action = actionForRow(row);
       row.source_file = snapshot.name;
       rows.push(row);
@@ -586,7 +603,7 @@ export async function getSymbolHistoryLookup(symbol: string): Promise<{ matching
 
   const perSymbolRows = await getPerSymbolHistoryForSymbol(cleaned);
   return {
-    matchingRows: 0,
+    matchingRows: perSymbolRows.length,
     rows: perSymbolRows,
     snapshotsScanned: history.snapshots.length,
     source: perSymbolRows.length ? "per-symbol" : "none",

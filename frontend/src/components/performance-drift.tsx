@@ -88,6 +88,18 @@ function sortRows(rows: IntradayDriftRow[], key: SortKey | null, direction: Sort
   return stableSortRows(rows, key ?? "score_change", direction, sortValue, sortConfig);
 }
 
+function debugValue(value: string) {
+  return value.trim() || "ALL";
+}
+
+function driftPreview(rows: IntradayDriftRow[]) {
+  return rows
+    .slice(0, 5)
+    .map((row) => String(row.symbol ?? "").trim().toUpperCase())
+    .filter(Boolean)
+    .join(", ") || "none";
+}
+
 function timestampMs(row: SymbolHistoryRow) {
   const ms = Date.parse(row.timestamp_utc);
   return Number.isFinite(ms) ? ms : null;
@@ -194,26 +206,32 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
   }, [rows]);
 
   const filteredRows = useMemo(() => {
-    const query = symbolSearch.trim().toLowerCase();
+    const rawQuery = symbolSearch.trim();
+    const query = rawQuery.toLowerCase();
+    const exactSymbolQuery = rawQuery.toUpperCase();
+    const hasExactSymbolMatch = Boolean(exactSymbolQuery) && rows.some((row) => String(row.symbol ?? "").trim().toUpperCase() === exactSymbolQuery);
     const minChange = Number(minimumScoreChange);
     const hasMinChange = minimumScoreChange.trim() !== "" && Number.isFinite(minChange);
 
-    const filtered = rows.filter((row) => {
+    return rows.filter((row) => {
         if (query) {
-          const haystack = `${row.symbol} ${row.company_name ?? ""}`.toLowerCase();
-          if (!haystack.includes(query)) return false;
+          if (hasExactSymbolMatch) {
+            if (String(row.symbol ?? "").trim().toUpperCase() !== exactSymbolQuery) return false;
+          } else {
+            const haystack = `${row.symbol} ${row.company_name ?? ""}`.toLowerCase();
+            if (!haystack.includes(query)) return false;
+          }
         }
         if (onlyUpgrades && ratingDirection(row) !== "upgrade") return false;
         if (onlyScoreGainers && !(typeof row.score_change === "number" && row.score_change > 0)) return false;
         if (hasMinChange && Math.abs(row.score_change ?? 0) < minChange) return false;
         return true;
       });
-
-    return sortRows(filtered, sortKey, sortDirection);
-  }, [minimumScoreChange, onlyScoreGainers, onlyUpgrades, rows, sortDirection, sortKey, symbolSearch]);
+  }, [minimumScoreChange, onlyScoreGainers, onlyUpgrades, rows, symbolSearch]);
 
   const selectedRow = useMemo(() => rows.find((row) => row.symbol === selectedSymbol) ?? null, [rows, selectedSymbol]);
-  const visibleRows = useMemo(() => filteredRows.slice(0, 200), [filteredRows]);
+  const sortedRows = useMemo(() => sortRows(filteredRows, sortKey, sortDirection), [filteredRows, sortDirection, sortKey]);
+  const visibleRows = useMemo(() => sortedRows.slice(0, 200), [sortedRows]);
   const latestHistoryRow = selectedHistoryRows[selectedHistoryRows.length - 1];
   const selectedDisplay = selectedRow ?? (latestHistoryRow ? {
     symbol: latestHistoryRow.symbol,
@@ -254,8 +272,9 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
   }
 
   function handleSort(nextKey: SortKey) {
-    setSortDirection((current) => nextSortDirection(sortKey, nextKey, current, sortConfig(nextKey)));
+    const direction = nextSortDirection(sortKey, nextKey, sortDirection, sortConfig(nextKey));
     setSortKey(nextKey);
+    setSortDirection(direction);
   }
 
   return (
@@ -320,7 +339,7 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
 
       <div className="terminal-panel overflow-x-auto rounded-md">
         <div className="border-b border-slate-700/70 bg-slate-950/70 px-2 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-          Intraday Movers · Debug: raw={rows.length.toLocaleString()} filtered={filteredRows.length.toLocaleString()} rendered={visibleRows.length.toLocaleString()} sort={sortKey ?? "none"}/{sortDirection}
+          Intraday Movers · Debug: raw={rows.length.toLocaleString()} filtered={filteredRows.length.toLocaleString()} rendered={visibleRows.length.toLocaleString()} searchTerm={debugValue(symbolSearch)} onlyUpgrades={String(onlyUpgrades)} onlyScoreGainers={String(onlyScoreGainers)} minScoreChange={debugValue(minimumScoreChange)} sortKey={sortKey ?? "none"} sortDirection={sortDirection} first5={driftPreview(visibleRows)}
         </div>
         <table className="w-full min-w-[1020px] table-fixed border-collapse text-xs">
           <colgroup>

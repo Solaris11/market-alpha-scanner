@@ -238,7 +238,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
       setLoadingSymbol(true);
       setSymbolError("");
       try {
-        const response = await fetch(`/api/history/symbol/${encodeURIComponent(selectedSymbol)}`);
+        const response = await fetch(`/api/history/symbol/${encodeURIComponent(selectedSymbol)}`, { cache: "no-store" });
         const payload = (await response.json()) as { matchingRows?: number; rows?: SymbolHistoryRow[]; snapshotsScanned?: number; source?: string; error?: string };
         if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
         if (active) {
@@ -273,8 +273,9 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
     : symbols.slice(0, 8);
 
   function handleSort(key: HistorySortKey) {
-    setSortDirection((current) => nextSortDirection(sortKey, key, current, sortConfig(key)));
+    const direction = nextSortDirection(sortKey, key, sortDirection, sortConfig(key));
     setSortKey(key);
+    setSortDirection(direction);
   }
 
   return (
@@ -301,7 +302,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
               <>
                 {loadingSymbol ? "Loading" : "Showing"} {symbolRows.length.toLocaleString()} snapshots for <span className="font-mono text-slate-200">{selectedSymbol}</span>.
                 <div className="mt-1 font-mono text-[11px] text-slate-500">
-                  Debug: snapshots scanned={lookupDebug.snapshotsScanned.toLocaleString()} matching rows={lookupDebug.matchingRows.toLocaleString()} source={lookupDebug.source}
+                  Debug: selectedSymbol={selectedSymbol} snapshotsScanned={lookupDebug.snapshotsScanned.toLocaleString()} matchingRows={lookupDebug.matchingRows.toLocaleString()} source={lookupDebug.source}
                 </div>
               </>
             ) : (
@@ -311,7 +312,14 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
         </div>
       </section>
 
-      {symbolError ? <div className="terminal-panel rounded-md border-rose-400/25 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">{symbolError}</div> : null}
+      {symbolError ? (
+        <div className="terminal-panel rounded-md border-rose-400/25 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">
+          {symbolError}
+          <div className="mt-1 font-mono text-[11px] text-rose-100/80">
+            Debug: selectedSymbol={selectedSymbol || "NONE"} snapshotsScanned={lookupDebug.snapshotsScanned.toLocaleString()} matchingRows={lookupDebug.matchingRows.toLocaleString()} source={lookupDebug.source}
+          </div>
+        </div>
+      ) : null}
 
       {loadingSymbol ? <div className="terminal-panel rounded-md border-dashed border-slate-700/70 px-3 py-8 text-center text-xs text-slate-500">Loading symbol history...</div> : null}
 

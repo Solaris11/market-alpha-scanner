@@ -12,5 +12,8 @@ export async function GET(_request: Request, context: RouteContext) {
   const { symbol } = await context.params;
   const cleaned = symbol.trim().toUpperCase();
   const result = await getSymbolHistoryLookup(cleaned);
-  return NextResponse.json({ symbol: cleaned, ...result });
+  return NextResponse.json(
+    { symbol: cleaned, ...result },
+    { headers: { "Cache-Control": "no-store" } },
+  );
 }
