@@ -103,6 +103,8 @@ AUTO_CALIBRATION_COLUMNS = [
     "reason",
     "suggested_action",
 ]
+AUTO_CALIBRATION_MISSING_VALUES = {"", "NAN", "NONE", "NULL", "UNKNOWN", "N/A", "-"}
+AUTO_CALIBRATION_LEGACY_GROUPS = {"market_regime", "recommendation_quality"}
 SIGNAL_LIFECYCLE_COLUMNS = [
     "signal_id",
     "symbol",
@@ -1002,6 +1004,10 @@ def _normalized_group_value(value: object) -> str:
     return re.sub(r"\s+", " ", safe_str(value, "").strip().upper())
 
 
+def _is_missing_auto_group_value(value: object) -> bool:
+    return _normalized_group_value(value) in AUTO_CALIBRATION_MISSING_VALUES
+
+
 def _auto_metric(row: pd.Series, column: str, default: float = 0.0) -> float:
     value = safe_float(row.get(column), np.nan)
     return default if np.isnan(value) else float(value)
@@ -1014,6 +1020,20 @@ def _auto_count(row: pd.Series) -> int:
 
 def _lifecycle_group_key(group_type: object, group_value: object) -> tuple[str, str]:
     return safe_str(group_type, "").strip(), _normalized_group_value(group_value)
+
+
+def _auto_group_subset(summary_df: pd.DataFrame, group_type: str) -> pd.DataFrame:
+    if summary_df.empty or "group_type" not in summary_df.columns:
+        return pd.DataFrame(columns=summary_df.columns)
+    mask = summary_df["group_type"].map(lambda value: safe_str(value, "").strip() == group_type)
+    return summary_df.loc[mask].copy()
+
+
+def _all_auto_group_values_missing(summary_df: pd.DataFrame, group_type: str) -> bool:
+    subset = _auto_group_subset(summary_df, group_type)
+    if subset.empty:
+        return False
+    return all(_is_missing_auto_group_value(row.get("group_value")) for _, row in subset.iterrows())
 
 
 def _lifecycle_rates_by_group(lifecycle_summary_df: pd.DataFrame) -> dict[tuple[str, str], tuple[float, float]]:
@@ -1029,6 +1049,62 @@ def _lifecycle_rates_by_group(lifecycle_summary_df: pd.DataFrame) -> dict[tuple[
         stop_hit_rate = _auto_metric(row, "stop_hit_rate")
         rates[(group_type, _normalized_group_value(group_value))] = (target_hit_rate, stop_hit_rate)
     return rates
+
+
+def _weighted_auto_metric(rows: pd.DataFrame, column: str) -> float:
+    if rows.empty or column not in rows.columns:
+        return 0.0
+    values = pd.to_numeric(rows[column], errors="coerce")
+    weights = pd.to_numeric(rows["count"], errors="coerce").fillna(0.0) if "count" in rows.columns else pd.Series(1.0, index=rows.index)
+    valid_mask = values.notna() & (weights > 0)
+    if bool(valid_mask.any()):
+        total_weight = float(weights[valid_mask].sum())
+        if total_weight > 0:
+            return round(float((values[valid_mask] * weights[valid_mask]).sum() / total_weight), 6)
+    valid_values = values.dropna()
+    return round(float(valid_values.mean()), 6) if not valid_values.empty else 0.0
+
+
+def _legacy_auto_group_value(group_type: str) -> str:
+    if group_type == "market_regime":
+        return "UNKNOWN"
+    return "LEGACY_MISSING"
+
+
+def _legacy_auto_reason(group_type: str) -> str:
+    if group_type == "market_regime":
+        return "legacy snapshots missing market regime; insufficient clean data"
+    return "legacy snapshots missing recommendation quality; insufficient clean data"
+
+
+def _legacy_watch_rows(summary_df: pd.DataFrame) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for group_type in AUTO_CALIBRATION_LEGACY_GROUPS:
+        subset = _auto_group_subset(summary_df, group_type)
+        if subset.empty or not _all_auto_group_values_missing(summary_df, group_type):
+            continue
+        for horizon, horizon_df in subset.groupby("horizon", dropna=False):
+            count = int(sum(_auto_count(row) for _, row in horizon_df.iterrows()))
+            group_value = _legacy_auto_group_value(group_type)
+            rows.append(
+                {
+                    "group_type": group_type,
+                    "group_value": group_value,
+                    "horizon": safe_str(horizon, "unknown") or "unknown",
+                    "count": count,
+                    "avg_return": _weighted_auto_metric(horizon_df, "avg_return"),
+                    "hit_rate": _weighted_auto_metric(horizon_df, "hit_rate"),
+                    "avg_max_drawdown": _weighted_auto_metric(horizon_df, "avg_max_drawdown"),
+                    "avg_max_gain": _weighted_auto_metric(horizon_df, "avg_max_gain"),
+                    "target_hit_rate": 0.0,
+                    "stop_hit_rate": 0.0,
+                    "recommendation": "WATCH",
+                    "confidence_score": 20,
+                    "reason": _legacy_auto_reason(group_type),
+                    "suggested_action": _suggested_auto_action("WATCH"),
+                }
+            )
+    return rows
 
 
 def _setup_return_benchmarks(summary_df: pd.DataFrame) -> dict[str, float]:
@@ -1198,7 +1274,7 @@ def generate_auto_calibration_recommendations(
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "status": "not_ready",
             "recommendation_rows": 0,
-            "summary": {"total": 0, "BOOST": 0, "DOWNGRADE": 0, "SUPPRESS": 0, "WATCH": 0},
+            "summary": {"total": 0, "clean_data_count": 0, "legacy_missing_count": 0, "BOOST": 0, "DOWNGRADE": 0, "SUPPRESS": 0, "WATCH": 0},
             "warnings": ["No performance summary rows available."],
             "rows": [],
         }
@@ -1209,9 +1285,16 @@ def generate_auto_calibration_recommendations(
     lifecycle_rates = _lifecycle_rates_by_group(lifecycle_summary_df)
     setup_benchmarks = _setup_return_benchmarks(summary_df)
     rows: list[dict[str, object]] = []
+    clean_data_count = 0
+    legacy_missing_count = 0
     for _, row in summary_df.iterrows():
         group_type = safe_str(row.get("group_type"), "").strip()
         group_value = safe_str(row.get("group_value"), "unknown") or "unknown"
+        if _is_missing_auto_group_value(group_value):
+            legacy_missing_count += 1
+            continue
+
+        clean_data_count += 1
         horizon = safe_str(row.get("horizon"), "unknown") or "unknown"
         count = _auto_count(row)
         avg_return = round(_auto_metric(row, "avg_return"), 6)
@@ -1256,6 +1339,7 @@ def generate_auto_calibration_recommendations(
                 "suggested_action": _suggested_auto_action(recommendation),
             }
         )
+    rows.extend(_legacy_watch_rows(summary_df))
 
     auto_df = pd.DataFrame(rows, columns=AUTO_CALIBRATION_COLUMNS).sort_values(
         ["confidence_score", "recommendation", "group_type", "group_value", "horizon"],
@@ -1272,7 +1356,12 @@ def generate_auto_calibration_recommendations(
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": "ready",
         "recommendation_rows": int(len(auto_df)),
-        "summary": {"total": int(len(auto_df)), **recommendation_counts},
+        "summary": {
+            "total": int(len(auto_df)),
+            "clean_data_count": clean_data_count,
+            "legacy_missing_count": legacy_missing_count,
+            **recommendation_counts,
+        },
         "warnings": warnings,
         "rows": _dataframe_records(auto_df),
     }
