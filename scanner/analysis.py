@@ -5,6 +5,7 @@ import os
 import re
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -558,14 +559,14 @@ def _lifecycle_for_signal(signal: pd.Series, symbol_df: pd.DataFrame) -> dict[st
     target = _conservative_target(signal)
     entry_reached = _price_in_buy_zone(signal_price_value, buy_low, buy_high)
     entry_date = signal_date if entry_reached else ""
-    entry_price = signal_price_value if entry_reached else np.nan
+    entry_price: float = signal_price_value if entry_reached and signal_price_value is not None else np.nan
     status = "ENTRY_REACHED" if entry_reached else "CREATED"
     exit_date = ""
-    exit_price = np.nan
+    exit_price: float = np.nan
     exit_reason = ""
     base_price = signal_price_value
-    max_drawdown = np.nan
-    max_gain = np.nan
+    max_drawdown: float = np.nan
+    max_gain: float = np.nan
 
     future_rows = symbol_df[symbol_df["timestamp_utc"] > signal_time].sort_values("timestamp_utc").copy()
     symbol_dates = sorted(symbol_df["signal_date"].dropna().astype(str).unique().tolist())
@@ -778,19 +779,31 @@ def summarize_group_performance(df: pd.DataFrame, group_col: str) -> pd.DataFram
 def _json_safe_value(value: object) -> object:
     if isinstance(value, (np.bool_, bool)):
         return bool(value)
-    if isinstance(value, (np.integer, int)):
+    if isinstance(value, int):
         return int(value)
-    if isinstance(value, (np.floating, float)):
-        return None if pd.isna(value) or not np.isfinite(value) else float(value)
-    if value is None or pd.isna(value):
+    if isinstance(value, np.integer):
+        return int(value.item())
+    if isinstance(value, float):
+        return None if np.isnan(value) or not np.isfinite(value) else float(value)
+    if isinstance(value, np.floating):
+        numeric_value = float(value.item())
+        return None if np.isnan(numeric_value) or not np.isfinite(numeric_value) else numeric_value
+    if value is None or _is_missing(value):
         return None
     return value
+
+
+def _is_missing(value: Any) -> bool:
+    try:
+        return bool(pd.isna(value))
+    except TypeError:
+        return False
 
 
 def _dataframe_records(df: pd.DataFrame) -> list[dict[str, object]]:
     records: list[dict[str, object]] = []
     for raw in df.to_dict(orient="records"):
-        records.append({key: _json_safe_value(value) for key, value in raw.items()})
+        records.append({str(key): _json_safe_value(value) for key, value in raw.items()})
     return records
 
 

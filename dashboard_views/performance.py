@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TypedDict
 
 import pandas as pd
 import streamlit as st
@@ -29,11 +30,19 @@ ANALYSIS_COMMAND_ARGS = ["/opt/apps/market-alpha-scanner/venv/bin/python", "inve
 ANALYSIS_COMMAND = " ".join(ANALYSIS_COMMAND_ARGS)
 
 
+class SnapshotStats(TypedDict):
+    count: int
+    parsed_count: int
+    earliest: pd.Timestamp | None
+    latest: pd.Timestamp | None
+    unique_dates: list[str]
+
+
 def _status_text(path_exists: bool) -> str:
     return "Available" if path_exists else "Missing"
 
 
-def _snapshot_stats(snapshot_files: list[Path]) -> dict[str, object]:
+def _snapshot_stats(snapshot_files: list[Path]) -> SnapshotStats:
     parsed_timestamps = sorted(
         timestamp
         for path in snapshot_files

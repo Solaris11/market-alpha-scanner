@@ -28,12 +28,16 @@ RETURN_COLUMNS = (
 def _normalized_text(value: object) -> str:
     if value is None:
         return ""
-    try:
-        if pd.isna(value):
-            return ""
-    except TypeError:
-        pass
+    if _is_missing(value):
+        return ""
     return str(value).strip().upper()
+
+
+def _is_missing(value: Any) -> bool:
+    try:
+        return bool(pd.isna(value))
+    except TypeError:
+        return False
 
 
 def _return_column(df: pd.DataFrame) -> str | None:

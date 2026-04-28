@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 from pathlib import Path
-from typing import Any
+from typing import Any, SupportsFloat
 from urllib import error, parse, request
 
 import pandas as pd
@@ -208,29 +208,34 @@ def save_alert_state(path: Path, state: dict[str, Any]) -> None:
 def _clean_text(value: object, default: str = "N/A") -> str:
     if value is None:
         return default
-    try:
-        if pd.isna(value):
-            return default
-    except TypeError:
-        pass
+    if _is_missing(value):
+        return default
     text = str(value).strip()
     if not text or text.lower() in {"nan", "none", "null", "n/a"}:
         return default
     return text
 
 
+def _is_missing(value: Any) -> bool:
+    try:
+        return bool(pd.isna(value))
+    except TypeError:
+        return False
+
+
 def _numeric(value: object) -> float | None:
     if value is None:
         return None
-    try:
-        if pd.isna(value):
-            return None
-    except TypeError:
-        pass
+    if _is_missing(value):
+        return None
     if isinstance(value, str):
-        value = value.replace("$", "").replace(",", "").strip()
+        numeric_candidate: str | SupportsFloat = value.replace("$", "").replace(",", "").strip()
+    elif isinstance(value, SupportsFloat):
+        numeric_candidate = value
+    else:
+        return None
     try:
-        parsed = float(value)
+        parsed = float(numeric_candidate)
     except (TypeError, ValueError):
         return None
     return parsed if pd.notna(parsed) else None
@@ -411,7 +416,8 @@ def _normalize_df(df: pd.DataFrame) -> pd.DataFrame:
 
 def _row_map(df: pd.DataFrame) -> dict[str, dict[str, Any]]:
     rows: dict[str, dict[str, Any]] = {}
-    for row in df.to_dict(orient="records"):
+    for raw in df.to_dict(orient="records"):
+        row = {str(key): value for key, value in raw.items()}
         symbol = _clean_text(row.get("symbol"), "").upper()
         if symbol:
             rows[symbol] = row

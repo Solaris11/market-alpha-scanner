@@ -15,12 +15,16 @@ QUALITY_ORDER = ("TRADE_READY", "WAIT_PULLBACK", "LOW_EDGE", "AVOID")
 def _normalized(value: object) -> str:
     if value is None:
         return ""
-    try:
-        if pd.isna(value):
-            return ""
-    except TypeError:
-        pass
+    if _is_missing(value):
+        return ""
     return re.sub(r"\s+", " ", safe_str(value, "").strip().upper())
+
+
+def _is_missing(value: Any) -> bool:
+    try:
+        return bool(pd.isna(value))
+    except TypeError:
+        return False
 
 
 def _extract_numbers(value: object) -> list[float]:

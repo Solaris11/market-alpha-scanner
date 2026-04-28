@@ -584,11 +584,8 @@ def normalize_symbol(symbol: object) -> str:
 def _clean_display_name(value: object, symbol: str = "") -> str:
     if value is None:
         return ""
-    try:
-        if pd.isna(value):
-            return ""
-    except (TypeError, ValueError):
-        pass
+    if _is_missing(value):
+        return ""
     text = str(value).strip()
     if not text or text.lower() in {"nan", "none", "n/a", "na", "unknown"}:
         return ""
@@ -597,11 +594,26 @@ def _clean_display_name(value: object, symbol: str = "") -> str:
     return text
 
 
+def _is_missing(value: Any) -> bool:
+    try:
+        return bool(pd.isna(value))
+    except (TypeError, ValueError):
+        return False
+
+
+def _get_field(source: object, field: str) -> object:
+    if isinstance(source, pd.Series):
+        return source.get(field)
+    if isinstance(source, Mapping):
+        return source.get(field)
+    return None
+
+
 def _lookup_display_name(source: object, symbol: str = "") -> str:
     if source is None:
         return ""
     for field in DISPLAY_NAME_FIELDS:
-        value = source.get(field) if hasattr(source, "get") else None
+        value = _get_field(source, field)
         cleaned = _clean_display_name(value, symbol)
         if cleaned:
             return cleaned
@@ -609,7 +621,7 @@ def _lookup_display_name(source: object, symbol: str = "") -> str:
 
 
 def get_symbol_display_name(row: object, summary_payload: Mapping[str, object] | None = None) -> str:
-    symbol_value = row.get("symbol") if hasattr(row, "get") else ""
+    symbol_value = _get_field(row, "symbol")
     symbol = normalize_symbol(symbol_value)
     row_name = _lookup_display_name(row, symbol)
     if row_name:
