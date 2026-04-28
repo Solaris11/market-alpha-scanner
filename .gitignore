@@ -210,3 +210,23 @@ __marimo__/
 
 # Project outputs
 scanner_output/
+
+# runtime outputs
+scanner_output/
+scanner_output/cache/
+logs/
+*.log
+
+# env
+.env
+.env.*
+
+# python
+__pycache__/
+*.pyc
+
+# mac
+.DS_Store
+
+# linux
+*.swp
