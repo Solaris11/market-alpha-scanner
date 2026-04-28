@@ -403,16 +403,33 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
 
         <div className="terminal-panel mb-3 rounded-md p-3">
           <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[1.2fr_0.85fr_0.85fr_0.8fr_0.85fr_0.9fr_1fr_0.65fr_auto]">
-            <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Symbol
-              <input
-                className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
-                onChange={(event) => setSymbolSearch(event.target.value)}
-                onInput={(event) => setSymbolSearch(event.currentTarget.value)}
-                placeholder="Search symbol or company"
-                value={symbolSearch}
-              />
-            </label>
+            <div className="min-w-0">
+              <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Symbol
+                <input
+                  className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
+                  onChange={(event) => setSymbolSearch(event.currentTarget.value)}
+                  placeholder="Search symbol"
+                  value={symbolSearch}
+                />
+              </label>
+              <div className="mt-1 flex gap-1">
+                <button
+                  className="rounded border border-slate-700/80 px-2 py-1 text-[10px] font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200"
+                  onClick={() => setSymbolSearch("AVGO")}
+                  type="button"
+                >
+                  Test AVGO
+                </button>
+                <button
+                  className="rounded border border-slate-700/80 px-2 py-1 text-[10px] font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200"
+                  onClick={() => setSymbolSearch("")}
+                  type="button"
+                >
+                  Clear Search
+                </button>
+              </div>
+            </div>
 
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Asset Type
