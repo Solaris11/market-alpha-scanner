@@ -94,6 +94,7 @@ export type PerformanceData = {
   forwardReturns: CsvFileData;
   lifecycle: CsvFileData;
   lifecycleSummary: CsvFileData;
+  autoCalibration: CsvFileData;
 };
 
 export type SymbolHistoryRow = RankingRow & {

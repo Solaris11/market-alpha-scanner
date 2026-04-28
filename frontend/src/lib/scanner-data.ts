@@ -84,6 +84,7 @@ const NUMERIC_FIELDS = new Set([
   "best_return",
   "avg_negative_return",
   "min_return",
+  "confidence_score",
 ]);
 const REQUIRED_RANKING_COLUMNS = ["symbol", "price", "final_score", "rating", "action"];
 const DATA_STALE_AFTER_MS = 60 * 60 * 1000;
@@ -713,13 +714,14 @@ export async function getIntradaySignalDriftSummary(): Promise<IntradayDriftRow[
 }
 
 export async function getPerformanceData(options: { forwardTailRows?: number } = {}): Promise<PerformanceData> {
-  const [summary, forwardReturns, lifecycle, lifecycleSummary] = await Promise.all([
+  const [summary, forwardReturns, lifecycle, lifecycleSummary, autoCalibration] = await Promise.all([
     readScannerCsvWithState("analysis", "performance_summary.csv"),
     readScannerCsvWithStateParts(["analysis", "forward_returns.csv"], { tailRows: options.forwardTailRows }),
     readScannerCsvWithState("analysis", "signal_lifecycle.csv"),
     readScannerCsvWithState("analysis", "signal_lifecycle_summary.csv"),
+    readScannerCsvWithState("analysis", "auto_calibration_recommendations.csv"),
   ]);
-  return { summary, forwardReturns, lifecycle, lifecycleSummary };
+  return { summary, forwardReturns, lifecycle, lifecycleSummary, autoCalibration };
 }
 
 export async function getCalibrationInsights() {

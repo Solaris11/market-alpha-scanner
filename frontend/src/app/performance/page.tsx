@@ -1,4 +1,5 @@
 import { MetricStrip } from "@/components/metric-strip";
+import { AutoCalibrationRecommendations } from "@/components/auto-calibration-recommendations";
 import { PerformanceDrift } from "@/components/performance-drift";
 import { PerformanceValidation } from "@/components/performance-validation";
 import { RunCommandButton } from "@/components/run-command-button";
@@ -150,6 +151,8 @@ export default async function PerformancePage() {
         />
 
         <CalibrationInsightsPanel insights={calibrationInsights} />
+
+        <AutoCalibrationRecommendations rows={performance.autoCalibration.rows} state={performance.autoCalibration.state} />
 
         <PerformanceValidation forwardObservationCount={forwardObservationCount} forwardRows={performance.forwardReturns.rows} history={history} rankingRows={ranking} summaryRows={performance.summary.rows} />
 

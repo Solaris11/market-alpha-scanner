@@ -39,6 +39,8 @@ FORWARD_RETURN_COLUMNS = [
     "final_score",
     "score_bucket",
     "entry_status",
+    "market_regime",
+    "recommendation_quality",
     "trade_quality",
     "price_at_signal",
     "future_timestamp",
@@ -62,7 +64,17 @@ SUMMARY_COLUMNS = [
     "best_return",
     "low_sample",
 ]
-SUMMARY_GROUPS = ["rating", "action", "setup_type", "score_bucket", "sector", "asset_type", "entry_status", "trade_quality"]
+SUMMARY_GROUPS = [
+    "rating",
+    "action",
+    "setup_type",
+    "entry_status",
+    "score_bucket",
+    "market_regime",
+    "recommendation_quality",
+    "sector",
+    "asset_type",
+]
 CALIBRATION_COLUMNS = [
     "group_type",
     "group_value",
@@ -74,6 +86,22 @@ CALIBRATION_COLUMNS = [
     "avg_gain",
     "edge_score",
     "low_sample",
+]
+AUTO_CALIBRATION_COLUMNS = [
+    "group_type",
+    "group_value",
+    "horizon",
+    "count",
+    "avg_return",
+    "hit_rate",
+    "avg_max_drawdown",
+    "avg_max_gain",
+    "target_hit_rate",
+    "stop_hit_rate",
+    "recommendation",
+    "confidence_score",
+    "reason",
+    "suggested_action",
 ]
 SIGNAL_LIFECYCLE_COLUMNS = [
     "signal_id",
@@ -88,6 +116,9 @@ SIGNAL_LIFECYCLE_COLUMNS = [
     "final_score",
     "final_score_adjusted",
     "market_regime",
+    "recommendation_quality",
+    "sector",
+    "asset_type",
     "buy_zone",
     "stop_loss",
     "conservative_target",
@@ -118,7 +149,17 @@ SIGNAL_LIFECYCLE_SUMMARY_COLUMNS = [
     "avg_max_drawdown",
     "avg_max_gain",
 ]
-SIGNAL_LIFECYCLE_GROUPS = ["rating", "action", "setup_type", "entry_status", "market_regime", "score_bucket"]
+SIGNAL_LIFECYCLE_GROUPS = [
+    "rating",
+    "action",
+    "setup_type",
+    "entry_status",
+    "score_bucket",
+    "market_regime",
+    "recommendation_quality",
+    "sector",
+    "asset_type",
+]
 TRACKED_ENTRY_STATUSES = {"GOOD ENTRY", "NEAR ENTRY", "BUY ZONE"}
 TRACKING_DAYS = 20
 
@@ -332,6 +373,14 @@ def _action_for_row(row: pd.Series) -> str:
     return "N/A"
 
 
+def _recommendation_quality(row: pd.Series) -> str:
+    for column in ("recommendation_quality", "trade_quality"):
+        value = safe_str(row.get(column), "")
+        if value:
+            return value
+    return "unknown"
+
+
 def _empty_forward_df(analysis_dir: Path, analysis_raw: bool = False, history_dir: str | None = None) -> pd.DataFrame:
     forward_df = pd.DataFrame(columns=FORWARD_RETURN_COLUMNS)
     forward_df.attrs["analysis_dir"] = str(analysis_dir)
@@ -412,10 +461,15 @@ def compute_forward_returns(history_dir: str, analysis_raw: bool = False) -> pd.
     history_df["score_bucket"] = history_df["final_score"].apply(score_bucket_label)
     history_df["action"] = history_df.apply(_action_for_row, axis=1)
     history_df["entry_status"] = history_df.apply(_entry_status, axis=1)
+    if "market_regime" in history_df.columns:
+        history_df["market_regime"] = history_df["market_regime"].fillna("UNKNOWN").astype(str)
+    else:
+        history_df["market_regime"] = "UNKNOWN"
+    history_df["recommendation_quality"] = history_df.apply(_recommendation_quality, axis=1)
     if "trade_quality" in history_df.columns:
         history_df["trade_quality"] = history_df["trade_quality"].fillna("unknown").astype(str)
     else:
-        history_df["trade_quality"] = "unknown"
+        history_df["trade_quality"] = history_df["recommendation_quality"]
 
     rows: list[dict[str, object]] = []
     for symbol, symbol_df in history_df.groupby("symbol"):
@@ -457,6 +511,8 @@ def compute_forward_returns(history_dir: str, analysis_raw: bool = False) -> pd.
                         "final_score": safe_float(signal.get("final_score"), np.nan),
                         "score_bucket": safe_str(signal.get("score_bucket"), "unknown"),
                         "entry_status": safe_str(signal.get("entry_status"), "REVIEW"),
+                        "market_regime": safe_str(signal.get("market_regime"), "UNKNOWN"),
+                        "recommendation_quality": safe_str(signal.get("recommendation_quality"), "unknown"),
                         "trade_quality": safe_str(signal.get("trade_quality"), "unknown"),
                         "price_at_signal": round(entry_price, 6),
                         "future_timestamp": pd.Timestamp(future_time).isoformat(),
@@ -515,6 +571,17 @@ def _prepare_lifecycle_history(history_df: pd.DataFrame) -> pd.DataFrame:
     working["signal_date"] = working["timestamp_utc"].dt.strftime("%Y-%m-%d")
     if "market_regime" not in working.columns:
         working["market_regime"] = "UNKNOWN"
+    else:
+        working["market_regime"] = working["market_regime"].fillna("UNKNOWN").astype(str)
+    working["recommendation_quality"] = working.apply(_recommendation_quality, axis=1)
+    if "sector" not in working.columns:
+        working["sector"] = ""
+    else:
+        working["sector"] = working["sector"].fillna("").astype(str)
+    if "asset_type" not in working.columns:
+        working["asset_type"] = ""
+    else:
+        working["asset_type"] = working["asset_type"].fillna("").astype(str)
     return working
 
 
@@ -645,6 +712,9 @@ def _lifecycle_for_signal(signal: pd.Series, symbol_df: pd.DataFrame) -> dict[st
         "final_score": safe_float(signal.get("final_score"), np.nan),
         "final_score_adjusted": safe_float(signal.get("final_score_adjusted"), np.nan),
         "market_regime": safe_str(signal.get("market_regime"), "UNKNOWN"),
+        "recommendation_quality": safe_str(signal.get("recommendation_quality"), "unknown"),
+        "sector": safe_str(signal.get("sector"), ""),
+        "asset_type": safe_str(signal.get("asset_type"), ""),
         "buy_zone": _format_range(buy_low, buy_high),
         "stop_loss": _format_level(stop) if stop is not None else "",
         "conservative_target": _format_level(target) if target is not None else "",
@@ -928,6 +998,290 @@ def _calibration_note_for_setups(df: pd.DataFrame) -> str:
     )
 
 
+def _normalized_group_value(value: object) -> str:
+    return re.sub(r"\s+", " ", safe_str(value, "").strip().upper())
+
+
+def _auto_metric(row: pd.Series, column: str, default: float = 0.0) -> float:
+    value = safe_float(row.get(column), np.nan)
+    return default if np.isnan(value) else float(value)
+
+
+def _auto_count(row: pd.Series) -> int:
+    value = safe_float(row.get("count"), 0.0)
+    return 0 if np.isnan(value) else int(value)
+
+
+def _lifecycle_group_key(group_type: object, group_value: object) -> tuple[str, str]:
+    return safe_str(group_type, "").strip(), _normalized_group_value(group_value)
+
+
+def _lifecycle_rates_by_group(lifecycle_summary_df: pd.DataFrame) -> dict[tuple[str, str], tuple[float, float]]:
+    rates: dict[tuple[str, str], tuple[float, float]] = {}
+    if lifecycle_summary_df.empty:
+        return rates
+    for _, row in lifecycle_summary_df.iterrows():
+        group_type = safe_str(row.get("group_type"), "").strip()
+        group_value = safe_str(row.get("group_value"), "unknown") or "unknown"
+        if not group_type:
+            continue
+        target_hit_rate = _auto_metric(row, "target_hit_rate")
+        stop_hit_rate = _auto_metric(row, "stop_hit_rate")
+        rates[(group_type, _normalized_group_value(group_value))] = (target_hit_rate, stop_hit_rate)
+    return rates
+
+
+def _setup_return_benchmarks(summary_df: pd.DataFrame) -> dict[str, float]:
+    benchmarks: dict[str, float] = {}
+    if summary_df.empty:
+        return benchmarks
+    setup_rows = summary_df[summary_df["group_type"] == "setup_type"].copy()
+    if setup_rows.empty:
+        return benchmarks
+    for horizon, horizon_df in setup_rows.groupby("horizon", dropna=False):
+        counts = pd.to_numeric(horizon_df["count"], errors="coerce").fillna(0)
+        source = horizon_df[counts >= 20].copy()
+        if source.empty:
+            source = horizon_df
+        returns = pd.to_numeric(source["avg_return"], errors="coerce").dropna()
+        if returns.empty:
+            continue
+        benchmarks[safe_str(horizon, "unknown")] = float(returns.mean())
+    return benchmarks
+
+
+def _auto_calibration_decision(
+    group_type: str,
+    group_value: str,
+    horizon: str,
+    count: int,
+    avg_return: float,
+    hit_rate: float,
+    avg_max_drawdown: float,
+    setup_benchmarks: dict[str, float],
+) -> tuple[str, str]:
+    if count < 20:
+        return "WATCH", "insufficient sample size"
+
+    normalized_value = _normalized_group_value(group_value)
+    if group_type == "entry_status" and normalized_value == "OVEREXTENDED" and avg_return < 0:
+        return "SUPPRESS", "OVEREXTENDED entries have negative average return"
+
+    if group_type == "setup_type" and "MIXED" in normalized_value and avg_return < 0:
+        return "DOWNGRADE", "mixed setup underperforms with negative average return"
+
+    if group_type == "setup_type" and "BREAKOUT" in normalized_value and "CONTINUATION" in normalized_value:
+        setup_benchmark = setup_benchmarks.get(horizon)
+        if avg_return > 0 and (setup_benchmark is None or avg_return > setup_benchmark):
+            return "BOOST", "breakout continuation outperforms setup benchmark"
+
+    if avg_return < 0 and avg_max_drawdown < -0.04:
+        return "SUPPRESS", "negative return with dangerous drawdown"
+
+    if avg_return > 0 and hit_rate >= 0.55 and avg_max_drawdown > -0.03:
+        return "BOOST", "positive edge with strong hit rate and controlled drawdown"
+
+    if -0.001 <= avg_return <= 0.001:
+        return "NO_CHANGE", "average return is near flat"
+
+    if avg_return < 0 and hit_rate < 0.45:
+        return "DOWNGRADE", "negative edge with weak hit rate"
+
+    return "NO_CHANGE", "edge is mixed; do not adjust scoring yet"
+
+
+def _clamped_int(value: float, lower: int = 0, upper: int = 100) -> int:
+    return max(lower, min(upper, int(round(value))))
+
+
+def _auto_confidence_score(
+    count: int,
+    avg_return: float,
+    hit_rate: float,
+    avg_max_drawdown: float,
+    target_hit_rate: float,
+    stop_hit_rate: float,
+    recommendation: str,
+) -> int:
+    if count < 20:
+        return 20
+
+    score = 45.0 + min(25.0, (count / 200.0) * 25.0)
+    if recommendation == "BOOST":
+        if avg_return > 0:
+            score += 10.0
+        if hit_rate >= 0.55:
+            score += 5.0
+    elif recommendation in {"DOWNGRADE", "SUPPRESS"}:
+        if avg_return < 0:
+            score += 10.0
+        if hit_rate < 0.45:
+            score += 5.0
+        if recommendation == "SUPPRESS" and avg_max_drawdown < -0.04:
+            score += 5.0
+    elif recommendation == "NO_CHANGE":
+        score -= 5.0
+
+    if abs(avg_return) > 0.005:
+        score += 5.0
+
+    if target_hit_rate > stop_hit_rate:
+        score += 10.0
+    elif stop_hit_rate > target_hit_rate:
+        score -= 10.0
+
+    return _clamped_int(score)
+
+
+def _suggested_auto_action(recommendation: str) -> str:
+    if recommendation == "BOOST":
+        return "Increase weight for this setup"
+    if recommendation == "DOWNGRADE":
+        return "Reduce scoring impact"
+    if recommendation == "SUPPRESS":
+        return "Suppress alerts for this group"
+    if recommendation == "WATCH":
+        return "Do not recalibrate yet"
+    return "No scoring change recommended"
+
+
+def _auto_calibration_warnings(auto_df: pd.DataFrame) -> list[str]:
+    warnings: list[str] = []
+    if auto_df.empty:
+        return warnings
+
+    score_rows = auto_df[auto_df["group_type"] == "score_bucket"].copy()
+    for horizon in HORIZONS:
+        horizon_rows = score_rows[score_rows["horizon"] == horizon]
+        high = horizon_rows[horizon_rows["group_value"].map(_normalized_group_value) == "80+"]
+        mid = horizon_rows[horizon_rows["group_value"].map(_normalized_group_value) == "70-79"]
+        if high.empty or mid.empty:
+            continue
+        high_row = high.iloc[0]
+        mid_row = mid.iloc[0]
+        high_count = _auto_count(high_row)
+        mid_count = _auto_count(mid_row)
+        if high_count >= 20 and mid_count >= 20 and _auto_metric(high_row, "avg_return") < _auto_metric(mid_row, "avg_return"):
+            warnings.append(f"80+ score bucket underperforms 70-79 on {horizon}; review score calibration before boosting high scores.")
+
+    setup_rows = auto_df[auto_df["group_type"] == "setup_type"].copy()
+    for _, row in setup_rows.iterrows():
+        normalized_value = _normalized_group_value(row.get("group_value"))
+        avg_return = _auto_metric(row, "avg_return")
+        horizon = safe_str(row.get("horizon"), "unknown")
+        if "BREAKOUT" in normalized_value and "CONTINUATION" in normalized_value and row.get("recommendation") == "BOOST":
+            warnings.append(f"Breakout continuation outperforms on {horizon}; candidate BOOST group.")
+        if "MIXED" in normalized_value and row.get("recommendation") == "DOWNGRADE":
+            warnings.append(f"Mixed setup underperforms on {horizon}; candidate DOWNGRADE group.")
+
+    overextended_rows = auto_df[(auto_df["group_type"] == "entry_status") & (auto_df["group_value"].map(_normalized_group_value) == "OVEREXTENDED")]
+    for _, row in overextended_rows.iterrows():
+        if _auto_metric(row, "avg_return") < 0 and row.get("recommendation") == "SUPPRESS":
+            warnings.append(f"OVEREXTENDED entries have negative average return on {safe_str(row.get('horizon'), 'unknown')}; candidate SUPPRESS group.")
+
+    return warnings[:20]
+
+
+def generate_auto_calibration_recommendations(
+    summary_df: pd.DataFrame,
+    lifecycle_summary_df: pd.DataFrame,
+    analysis_dir: Path,
+) -> dict[str, object]:
+    analysis_dir.mkdir(parents=True, exist_ok=True)
+    csv_path = analysis_dir / "auto_calibration_recommendations.csv"
+    json_path = analysis_dir / "auto_calibration_recommendations.json"
+
+    if summary_df.empty:
+        auto_df = pd.DataFrame(columns=AUTO_CALIBRATION_COLUMNS)
+        atomic_write_dataframe_csv(auto_df, csv_path, index=False)
+        payload: dict[str, object] = {
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+            "status": "not_ready",
+            "recommendation_rows": 0,
+            "summary": {"total": 0, "BOOST": 0, "DOWNGRADE": 0, "SUPPRESS": 0, "WATCH": 0},
+            "warnings": ["No performance summary rows available."],
+            "rows": [],
+        }
+        _atomic_write_json(payload, json_path)
+        print("[analysis] auto calibration recommendations written: 0 rows")
+        return payload
+
+    lifecycle_rates = _lifecycle_rates_by_group(lifecycle_summary_df)
+    setup_benchmarks = _setup_return_benchmarks(summary_df)
+    rows: list[dict[str, object]] = []
+    for _, row in summary_df.iterrows():
+        group_type = safe_str(row.get("group_type"), "").strip()
+        group_value = safe_str(row.get("group_value"), "unknown") or "unknown"
+        horizon = safe_str(row.get("horizon"), "unknown") or "unknown"
+        count = _auto_count(row)
+        avg_return = round(_auto_metric(row, "avg_return"), 6)
+        hit_rate = round(_auto_metric(row, "hit_rate"), 6)
+        avg_max_drawdown = round(_auto_metric(row, "avg_max_drawdown"), 6)
+        avg_max_gain = round(_auto_metric(row, "avg_max_gain"), 6)
+        target_hit_rate, stop_hit_rate = lifecycle_rates.get(_lifecycle_group_key(group_type, group_value), (0.0, 0.0))
+        recommendation, reason = _auto_calibration_decision(
+            group_type,
+            group_value,
+            horizon,
+            count,
+            avg_return,
+            hit_rate,
+            avg_max_drawdown,
+            setup_benchmarks,
+        )
+        confidence_score = _auto_confidence_score(
+            count,
+            avg_return,
+            hit_rate,
+            avg_max_drawdown,
+            target_hit_rate,
+            stop_hit_rate,
+            recommendation,
+        )
+        rows.append(
+            {
+                "group_type": group_type,
+                "group_value": group_value,
+                "horizon": horizon,
+                "count": count,
+                "avg_return": avg_return,
+                "hit_rate": hit_rate,
+                "avg_max_drawdown": avg_max_drawdown,
+                "avg_max_gain": avg_max_gain,
+                "target_hit_rate": round(target_hit_rate, 6),
+                "stop_hit_rate": round(stop_hit_rate, 6),
+                "recommendation": recommendation,
+                "confidence_score": confidence_score,
+                "reason": reason,
+                "suggested_action": _suggested_auto_action(recommendation),
+            }
+        )
+
+    auto_df = pd.DataFrame(rows, columns=AUTO_CALIBRATION_COLUMNS).sort_values(
+        ["confidence_score", "recommendation", "group_type", "group_value", "horizon"],
+        ascending=[False, True, True, True, True],
+        kind="mergesort",
+    )
+    atomic_write_dataframe_csv(auto_df, csv_path, index=False)
+    recommendation_counts = {
+        recommendation: int((auto_df["recommendation"] == recommendation).sum())
+        for recommendation in ["BOOST", "DOWNGRADE", "SUPPRESS", "WATCH", "NO_CHANGE"]
+    }
+    warnings = _auto_calibration_warnings(auto_df)
+    payload = {
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "status": "ready",
+        "recommendation_rows": int(len(auto_df)),
+        "summary": {"total": int(len(auto_df)), **recommendation_counts},
+        "warnings": warnings,
+        "rows": _dataframe_records(auto_df),
+    }
+    _atomic_write_json(payload, json_path)
+    print(f"[analysis] auto calibration recommendations written: {len(auto_df)} rows")
+    print(f"Saved auto calibration recommendations to: {json_path}")
+    return payload
+
+
 def generate_calibration_insights(summary_df: pd.DataFrame, forward_returns_df: pd.DataFrame, analysis_dir: Path) -> dict[str, object]:
     analysis_dir.mkdir(parents=True, exist_ok=True)
     calibration_path = analysis_dir / "calibration_insights.csv"
@@ -1059,10 +1413,12 @@ def analyze_performance(forward_returns_df: pd.DataFrame) -> pd.DataFrame:
     summary_df = pd.concat([df for df in summary_frames if not df.empty], ignore_index=True) if any(not df.empty for df in summary_frames) else pd.DataFrame(columns=SUMMARY_COLUMNS)
     summary_path = analysis_dir / "performance_summary.csv"
     atomic_write_dataframe_csv(summary_df, summary_path, index=False)
-    generate_calibration_insights(summary_df, forward_returns_df, analysis_dir)
     history_dir = forward_returns_df.attrs.get("history_dir")
+    lifecycle_summary_df = pd.DataFrame(columns=SIGNAL_LIFECYCLE_SUMMARY_COLUMNS)
     if history_dir:
-        compute_signal_lifecycle(str(history_dir))
+        _, lifecycle_summary_df = compute_signal_lifecycle(str(history_dir))
+    generate_calibration_insights(summary_df, forward_returns_df, analysis_dir)
+    generate_auto_calibration_recommendations(summary_df, lifecycle_summary_df, analysis_dir)
 
     print_performance_section(summary_df, "rating", "PERFORMANCE BY RATING")
     print_performance_section(summary_df, "setup_type", "PERFORMANCE BY SETUP")
