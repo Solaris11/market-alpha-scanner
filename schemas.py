@@ -1,86 +1,65 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import datetime
 from decimal import Decimal
+from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
 
-# Health
 class Health(BaseModel):
     status: str
 
 
-# Scans
 class ScanRunListItem(BaseModel):
-    id: int
+    id: UUID
+    started_at: datetime
     completed_at: datetime | None
-    universe_size: int | None
-    ranked_count: int | None
+    universe_count: int | None
+    symbols_scored: int | None
+    market_regime: str | None
+    breadth: str | None
+    leadership: str | None
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class ScanRunSummary(BaseModel):
-    id: int
-    completed_at: datetime | None
-    universe_size: int | None
-    scanned_count: int | None
-    ranked_count: int | None
-    scanner_version: str | None
-    notes: str | None
-
-    model_config = ConfigDict(from_attributes=True)
+class ScanRunSummary(ScanRunListItem):
+    created_at: datetime
 
 
-# Symbols
 class RankedSymbol(BaseModel):
     symbol: str
+    company_name: str | None
+    asset_type: str | None
+    sector: str | None
     price: Decimal | None
-    long_score: Decimal | None
-    long_action: str | None
-    composite_action: str | None
+    final_score: Decimal | None
+    final_score_adjusted: Decimal | None
+    rating: str | None
+    action: str | None
+    final_decision: str | None
+    recommendation_quality: str | None
 
     model_config = ConfigDict(from_attributes=True)
 
 
-class SymbolSnapshot(BaseModel):
-    id: int
-    scan_run_id: int
-    symbol: str
-    price: Decimal | None
-    trend_score: Decimal | None
-    momentum_score: Decimal | None
-    breakout_score: Decimal | None
-    rsi_macd_score: Decimal | None
-    volume_score: Decimal | None
-    fundamentals_score: Decimal | None
-    risk_penalty: Decimal | None
-    macro_score: Decimal | None
-    short_score: Decimal | None
-    mid_score: Decimal | None
-    long_score: Decimal | None
-    short_action: str | None
-    mid_action: str | None
-    long_action: str | None
-    composite_action: str | None
-
-    model_config = ConfigDict(from_attributes=True)
+class ScannerSignal(RankedSymbol):
+    id: UUID
+    scan_run_id: UUID
+    setup_type: str | None
+    entry_status: str | None
+    quality_score: Decimal | None
+    suggested_entry: str | None
+    entry_distance_pct: Decimal | None
+    buy_zone: str | None
+    stop_loss: Decimal | None
+    conservative_target: Decimal | None
+    risk_reward: Decimal | None
+    market_regime: str | None
+    created_at: datetime
 
 
-# History
-class PriceHistory(BaseModel):
-    date: date
-    open: Decimal | None
-    high: Decimal | None
-    low: Decimal | None
-    close: Decimal | None
-    volume: int | None
-
-    model_config = ConfigDict(from_attributes=True)
-
-
-# News
 class NewsItem(BaseModel):
     published_at: datetime | None
     source: str | None

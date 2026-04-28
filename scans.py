@@ -32,5 +32,11 @@ def read_latest_scan_symbols(db: Session = Depends(deps.get_db), limit: int = 50
     if not latest_scan:
         raise HTTPException(status_code=404, detail="No scan runs found.")
 
-    symbols = db.query(models.SymbolSnapshot).filter(models.SymbolSnapshot.scan_run_id == latest_scan.id).order_by(desc(models.SymbolSnapshot.long_score)).limit(limit).all()
+    symbols = (
+        db.query(models.ScannerSignal)
+        .filter(models.ScannerSignal.scan_run_id == latest_scan.id)
+        .order_by(desc(models.ScannerSignal.final_score_adjusted), desc(models.ScannerSignal.final_score))
+        .limit(limit)
+        .all()
+    )
     return symbols

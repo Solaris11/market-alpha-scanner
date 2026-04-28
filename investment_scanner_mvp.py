@@ -150,11 +150,7 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
             print(
                 "Wrote database rows:"
                 f" scan_runs={db_result['scan_runs']},"
-                f" symbol_snapshots={db_result['symbol_snapshots']},"
-                f" symbol_reasons={db_result['symbol_reasons']},"
-                f" price_history={db_result['price_history']},"
-                f" fundamental_snapshots={db_result['fundamental_snapshots']},"
-                f" news_items={db_result['news_items']}"
+                f" scanner_signals={db_result['scanner_signals']}"
             )
         else:
             print(f"Skipping database write: {db_result.get('reason', 'DATABASE_URL not configured')}")

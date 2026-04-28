@@ -9,13 +9,13 @@ from database import models
 router = APIRouter()
 
 
-@router.get("/symbols/{symbol}", response_model=schemas.SymbolSnapshot)
+@router.get("/symbols/{symbol}", response_model=schemas.ScannerSignal)
 def read_symbol(symbol: str, db: Session = Depends(deps.get_db)):
     """Retrieve the latest snapshot for a specific symbol."""
     db_symbol_snapshot = (
-        db.query(models.SymbolSnapshot)
-        .filter(models.SymbolSnapshot.symbol == symbol.upper())
-        .order_by(desc(models.SymbolSnapshot.scan_run_id))
+        db.query(models.ScannerSignal)
+        .filter(models.ScannerSignal.symbol == symbol.upper())
+        .order_by(desc(models.ScannerSignal.created_at))
         .first()
     )
     if db_symbol_snapshot is None:
@@ -23,17 +23,21 @@ def read_symbol(symbol: str, db: Session = Depends(deps.get_db)):
     return db_symbol_snapshot
 
 
-@router.get("/symbols/{symbol}/history", response_model=list[schemas.PriceHistory])
+@router.get("/symbols/{symbol}/history", response_model=list[schemas.ScannerSignal])
 def read_symbol_history(symbol: str, db: Session = Depends(deps.get_db), limit: int = 252):
-    """Retrieve price history for a symbol."""
-    history = db.query(models.PriceHistory).filter(models.PriceHistory.symbol == symbol.upper()).order_by(desc(models.PriceHistory.date)).limit(limit).all()
+    """Retrieve recent signal history for a symbol."""
+    history = (
+        db.query(models.ScannerSignal)
+        .filter(models.ScannerSignal.symbol == symbol.upper())
+        .order_by(desc(models.ScannerSignal.created_at))
+        .limit(limit)
+        .all()
+    )
     return history
 
 
 @router.get("/symbols/{symbol}/news", response_model=list[schemas.NewsItem])
-def read_symbol_news(symbol: str, db: Session = Depends(deps.get_db), limit: int = 10):
-    """Retrieve recent news for a symbol."""
-    news = (
-        db.query(models.NewsItem).filter(models.NewsItem.symbol == symbol.upper()).order_by(desc(models.NewsItem.published_at)).limit(limit).all()
-    )
-    return news
+def read_symbol_news(symbol: str, db: Session = Depends(deps.get_db), limit: int = 10) -> list[schemas.NewsItem]:
+    """News remains file-backed for now; the DB foundation stores scanner signals only."""
+    _ = (symbol, db, limit)
+    return []

@@ -158,13 +158,9 @@ The scanner writes:
 The scanner now also writes additive PostgreSQL records when `DATABASE_URL` is configured:
 
 - `scan_runs`
-- `symbol_snapshots`
-- `symbol_reasons`
-- `price_history`
-- `fundamental_snapshots`
-- `news_items`
+- `scanner_signals`
 
-This is a hybrid-write phase. Existing file outputs remain the primary dashboard feed, and the dashboard still reads those files directly from disk.
+This is a hybrid-write phase. Existing file outputs remain the raw backup/history feed, while the database is the query/state foundation.
 
 ## Rule-Based Alerts
 
@@ -422,16 +418,13 @@ The new `database/` package provides:
 
 - environment-based config loading
 - SQLAlchemy engine and session helpers
-- first-pass models for:
+- first-pass query/state models for:
   - `scan_runs`
-  - `symbol_snapshots`
-  - `symbol_reasons`
-  - `price_history`
-  - `fundamental_snapshots`
-  - `news_items`
-- lightweight repository helpers so the next task can write scanner output to PostgreSQL without another large refactor
+  - `scanner_signals`
+- lightweight repository helpers for writing the latest scanner decisions to PostgreSQL
 
-Current scanner and dashboard behavior remains file-based. The database layer is groundwork only; it does not yet replace the CSV / artifact outputs.
+CSV and artifact outputs remain in place. The database layer is intentionally narrow and does not replace the raw file history.
+Apply the foundation schema with `psql "$DATABASE_URL" -f db/migrations/0001_db_foundation.sql`.
 
 The CSV schema now includes practical decision-support fields such as:
 

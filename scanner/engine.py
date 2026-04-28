@@ -362,6 +362,8 @@ def scan_symbols(
     df_rank.attrs["scanned_count"] = scanned_count
     df_rank.attrs["scan_started_at"] = started_at
     df_rank.attrs["scan_completed_at"] = datetime.now(timezone.utc)
+    df_rank.attrs["market_regime"] = market_regime
+    df_rank.attrs["market_structure"] = market_structure
 
     if outdir is not None:
         save_symbol_detail_outputs(ranked, price_map, info_cache, outdir)
