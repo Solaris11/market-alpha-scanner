@@ -477,7 +477,7 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
           <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-[1.1fr_0.85fr_0.85fr_0.85fr_0.9fr_0.75fr_0.75fr_auto]">
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Symbol
-              <input className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setSymbolSearch(event.target.value)} placeholder="Search symbol or company" value={symbolSearch} />
+              <input className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setSymbolSearch(event.target.value)} onInput={(event) => setSymbolSearch(event.currentTarget.value)} placeholder="Search symbol or company" value={symbolSearch} />
             </label>
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Status
@@ -509,7 +509,7 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
             </label>
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Min Score
-              <input className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" min="0" onChange={(event) => setMinimumScore(event.target.value)} placeholder="0" type="number" value={minimumScore} />
+              <input className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" min="0" onChange={(event) => setMinimumScore(event.target.value)} onInput={(event) => setMinimumScore(event.currentTarget.value)} placeholder="0" type="number" value={minimumScore} />
             </label>
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Date

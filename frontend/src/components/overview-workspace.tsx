@@ -314,13 +314,13 @@ function RecentAlertEventsPanel({ rules, state }: { rules: AlertRule[]; state: A
 
 export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ranking, topCandidates }: Props) {
   const [symbolSearch, setSymbolSearch] = useState("");
-  const [assetType, setAssetType] = useState("");
-  const [sector, setSector] = useState("");
-  const [rating, setRating] = useState("");
-  const [action, setAction] = useState("");
-  const [signal, setSignal] = useState("");
-  const [quality, setQuality] = useState("");
-  const [minimumScore, setMinimumScore] = useState("");
+  const [assetTypeFilter, setAssetTypeFilter] = useState("");
+  const [sectorFilter, setSectorFilter] = useState("");
+  const [ratingFilter, setRatingFilter] = useState("");
+  const [actionFilter, setActionFilter] = useState("");
+  const [signalFilter, setSignalFilter] = useState("");
+  const [qualityFilter, setQualityFilter] = useState("");
+  const [minScoreFilter, setMinScoreFilter] = useState("");
   const [sortKey, setSortKey] = useState<RankingSortKey | null>("score");
   const [sortDirection, setSortDirection] = useState<RankingSortDirection>("desc");
   const [topSortKey, setTopSortKey] = useState<RankingSortKey | null>("score");
@@ -329,9 +329,9 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
 
   const assetTypes = useMemo(() => uniqueOptions(ranking, "asset_type"), [ranking]);
   const sectors = useMemo(() => {
-    const source = assetType ? ranking.filter((row) => String(row.asset_type ?? "") === assetType) : ranking;
+    const source = assetTypeFilter ? ranking.filter((row) => String(row.asset_type ?? "").trim() === assetTypeFilter) : ranking;
     return uniqueOptions(source, "sector");
-  }, [assetType, ranking]);
+  }, [assetTypeFilter, ranking]);
   const rankingBySymbol = useMemo(() => {
     const map = new Map<string, RankingRow>();
     for (const row of ranking) {
@@ -342,14 +342,14 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
   }, [ranking]);
 
   const filteredRows = useMemo(() => {
-    return filterRows(ranking, { action, assetType, minimumScore, quality, rating, sector, signal, symbolSearch });
-  }, [action, assetType, minimumScore, quality, ranking, rating, sector, signal, symbolSearch]);
+    return filterRows(ranking, { action: actionFilter, assetType: assetTypeFilter, minimumScore: minScoreFilter, quality: qualityFilter, rating: ratingFilter, sector: sectorFilter, signal: signalFilter, symbolSearch });
+  }, [actionFilter, assetTypeFilter, minScoreFilter, qualityFilter, ranking, ratingFilter, sectorFilter, signalFilter, symbolSearch]);
   const enrichedTopCandidates = useMemo(() => {
     return topCandidates.map((row) => mergeRankingFallback(row, rankingBySymbol.get(String(row.symbol ?? "").trim().toUpperCase())));
   }, [rankingBySymbol, topCandidates]);
   const filteredTopCandidates = useMemo(() => {
-    return filterRows(enrichedTopCandidates, { action, assetType, minimumScore, quality, rating, sector, signal, symbolSearch });
-  }, [action, assetType, enrichedTopCandidates, minimumScore, quality, rating, sector, signal, symbolSearch]);
+    return filterRows(enrichedTopCandidates, { action: actionFilter, assetType: assetTypeFilter, minimumScore: minScoreFilter, quality: qualityFilter, rating: ratingFilter, sector: sectorFilter, signal: signalFilter, symbolSearch });
+  }, [actionFilter, assetTypeFilter, enrichedTopCandidates, minScoreFilter, qualityFilter, ratingFilter, sectorFilter, signalFilter, symbolSearch]);
   const sortedRows = useMemo(() => sortRows(filteredRows, sortKey, sortDirection), [filteredRows, sortDirection, sortKey]);
   const sortedTopCandidates = useMemo(() => sortRows(filteredTopCandidates, topSortKey, topSortDirection), [filteredTopCandidates, topSortDirection, topSortKey]);
   const renderedRows = useMemo(() => (showAllRankingRows ? sortedRows : sortedRows.slice(0, 200)), [showAllRankingRows, sortedRows]);
@@ -359,13 +359,13 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
 
   function resetFilters() {
     setSymbolSearch("");
-    setAssetType("");
-    setSector("");
-    setRating("");
-    setAction("");
-    setSignal("");
-    setQuality("");
-    setMinimumScore("");
+    setAssetTypeFilter("");
+    setSectorFilter("");
+    setRatingFilter("");
+    setActionFilter("");
+    setSignalFilter("");
+    setQualityFilter("");
+    setMinScoreFilter("");
     setSortKey("score");
     setSortDirection("desc");
     setTopSortKey("score");
@@ -398,7 +398,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
           </div>
         </div>
         <div className="mb-2 rounded border border-slate-800 bg-slate-950/50 px-2 py-1 font-mono text-[11px] text-slate-500">
-          Filter state: searchTerm={debugValue(symbolSearch)} assetTypeFilter={debugValue(assetType)} sectorFilter={debugValue(sector)} ratingFilter={debugValue(rating)} actionFilter={debugValue(action)} signalFilter={debugValue(signal)} qualityFilter={debugValue(quality)} minScore={debugValue(minimumScore)} sortKey={sortKey ?? "none"} sortDirection={sortDirection}
+          Filter state: searchTerm={debugValue(symbolSearch)} assetTypeFilter={debugValue(assetTypeFilter)} sectorFilter={debugValue(sectorFilter)} ratingFilter={debugValue(ratingFilter)} actionFilter={debugValue(actionFilter)} signalFilter={debugValue(signalFilter)} qualityFilter={debugValue(qualityFilter)} minScore={debugValue(minScoreFilter)} sortKey={sortKey ?? "none"} sortDirection={sortDirection}
         </div>
 
         <div className="terminal-panel mb-3 rounded-md p-3">
@@ -408,6 +408,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
               <input
                 className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
                 onChange={(event) => setSymbolSearch(event.target.value)}
+                onInput={(event) => setSymbolSearch(event.currentTarget.value)}
                 placeholder="Search symbol or company"
                 value={symbolSearch}
               />
@@ -418,10 +419,10 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
               <select
                 className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
                 onChange={(event) => {
-                  setAssetType(event.target.value);
-                  setSector("");
+                  setAssetTypeFilter(event.target.value);
+                  setSectorFilter("");
                 }}
-                value={assetType}
+                value={assetTypeFilter}
               >
                 <option value="">All asset types</option>
                 {assetTypes.map((option) => (
@@ -436,8 +437,8 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
               Sector
               <select
                 className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
-                onChange={(event) => setSector(event.target.value)}
-                value={sector}
+                onChange={(event) => setSectorFilter(event.target.value)}
+                value={sectorFilter}
               >
                 <option value="">All sectors</option>
                 {sectors.map((option) => (
@@ -452,8 +453,8 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
               Rating
               <select
                 className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
-                onChange={(event) => setRating(event.target.value)}
-                value={rating}
+                onChange={(event) => setRatingFilter(event.target.value)}
+                value={ratingFilter}
               >
                 <option value="">All ratings</option>
                 {RATING_FILTER_OPTIONS.map((option) => (
@@ -468,8 +469,8 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
               Action
               <select
                 className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
-                onChange={(event) => setAction(event.target.value)}
-                value={action}
+                onChange={(event) => setActionFilter(event.target.value)}
+                value={actionFilter}
               >
                 <option value="">All actions</option>
                 {ACTION_FILTER_OPTIONS.map((option) => (
@@ -484,8 +485,8 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
               Signal
               <select
                 className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
-                onChange={(event) => setSignal(event.target.value)}
-                value={signal}
+                onChange={(event) => setSignalFilter(event.target.value)}
+                value={signalFilter}
               >
                 <option value="">All signals</option>
                 {SIGNAL_FILTER_OPTIONS.map((option) => (
@@ -500,8 +501,8 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
               Quality
               <select
                 className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
-                onChange={(event) => setQuality(event.target.value)}
-                value={quality}
+                onChange={(event) => setQualityFilter(event.target.value)}
+                value={qualityFilter}
               >
                 <option value="">All qualities</option>
                 {QUALITY_FILTER_OPTIONS.map((option) => (
@@ -517,10 +518,11 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
               <input
                 className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
                 min="0"
-                onChange={(event) => setMinimumScore(event.target.value)}
+                onChange={(event) => setMinScoreFilter(event.target.value)}
+                onInput={(event) => setMinScoreFilter(event.currentTarget.value)}
                 placeholder="0"
                 type="number"
-                value={minimumScore}
+                value={minScoreFilter}
               />
             </label>
 

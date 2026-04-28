@@ -311,6 +311,7 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
             <input
               className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
               onChange={(event) => setSymbolSearch(event.target.value)}
+              onInput={(event) => setSymbolSearch(event.currentTarget.value)}
               placeholder="Search symbol or company"
               value={symbolSearch}
             />
@@ -329,6 +330,7 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
               className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
               min="0"
               onChange={(event) => setMinimumScoreChange(event.target.value)}
+              onInput={(event) => setMinimumScoreChange(event.currentTarget.value)}
               placeholder="0"
               type="number"
               value={minimumScoreChange}

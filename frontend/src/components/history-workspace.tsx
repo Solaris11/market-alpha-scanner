@@ -288,6 +288,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
               className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
               list="history-symbols"
               onChange={(event) => setSymbolQuery(normalizeSymbol(event.target.value))}
+              onInput={(event) => setSymbolQuery(normalizeSymbol(event.currentTarget.value))}
               placeholder="Type symbol, e.g. AVGO"
               value={symbolQuery}
             />
@@ -302,7 +303,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
               <>
                 {loadingSymbol ? "Loading" : "Showing"} {symbolRows.length.toLocaleString()} snapshots for <span className="font-mono text-slate-200">{selectedSymbol}</span>.
                 <div className="mt-1 font-mono text-[11px] text-slate-500">
-                  Debug: selectedSymbol={selectedSymbol} snapshotsScanned={lookupDebug.snapshotsScanned.toLocaleString()} matchingRows={lookupDebug.matchingRows.toLocaleString()} source={lookupDebug.source}
+                  Debug: selectedSymbol={selectedSymbol} snapshotsScanned={lookupDebug.snapshotsScanned.toLocaleString()} apiMatchingRows={lookupDebug.matchingRows.toLocaleString()} symbolRows={symbolRows.length.toLocaleString()} rendered={visibleRows.length.toLocaleString()} source={lookupDebug.source}
                 </div>
               </>
             ) : (
@@ -316,7 +317,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
         <div className="terminal-panel rounded-md border-rose-400/25 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">
           {symbolError}
           <div className="mt-1 font-mono text-[11px] text-rose-100/80">
-            Debug: selectedSymbol={selectedSymbol || "NONE"} snapshotsScanned={lookupDebug.snapshotsScanned.toLocaleString()} matchingRows={lookupDebug.matchingRows.toLocaleString()} source={lookupDebug.source}
+            Debug: selectedSymbol={selectedSymbol || "NONE"} snapshotsScanned={lookupDebug.snapshotsScanned.toLocaleString()} apiMatchingRows={lookupDebug.matchingRows.toLocaleString()} symbolRows={symbolRows.length.toLocaleString()} rendered={visibleRows.length.toLocaleString()} source={lookupDebug.source}
           </div>
         </div>
       ) : null}
@@ -358,7 +359,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
               <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Symbol Timeline</div>
               <h2 className="text-lg font-semibold text-slate-50">{selectedSymbol} Snapshot History</h2>
               <p className="mt-1 text-xs text-slate-500">
-                Debug: raw={symbolRows.length.toLocaleString()} filtered={sortedRows.length.toLocaleString()} rendered={visibleRows.length.toLocaleString()} sort={sortKey}/{sortDirection}
+                Debug: selectedSymbol={selectedSymbol} apiMatchingRows={lookupDebug.matchingRows.toLocaleString()} symbolRows={symbolRows.length.toLocaleString()} filtered={sortedRows.length.toLocaleString()} rendered={visibleRows.length.toLocaleString()} sort={sortKey}/{sortDirection}
               </p>
             </div>
             <div className="terminal-panel overflow-x-auto rounded-md">

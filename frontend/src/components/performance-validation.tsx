@@ -485,7 +485,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
           </label>
           <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             Min Count
-            <input className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setMinCount(event.target.value)} type="number" value={minCount} />
+            <input className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setMinCount(event.target.value)} onInput={(event) => setMinCount(event.currentTarget.value)} type="number" value={minCount} />
           </label>
         </div>
       </section>
