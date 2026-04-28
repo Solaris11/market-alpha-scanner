@@ -10,10 +10,12 @@ import numpy as np
 import pandas as pd
 
 from .artifacts import save_symbol_detail_outputs
+from .cache import CacheStats, read_symbol_cache, write_symbol_cache
 from .config import DEFAULT_NEWS_LIMIT, DOWNLOAD_PERIOD, MACRO_SYMBOLS, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE, TOP_N
 from .data_fetch import batch_download, fetch_info, fetch_recent_news_items, fetch_recent_news_score
 from .models import RankedAsset
 from .final_decision import apply_final_trade_decision
+from .perf import log_timing, timer_start
 from .recommendation_quality import apply_recommendation_quality
 from .regime import REGIME_PROXIES, apply_regime_adjustments, detect_market_regime, write_market_regime
 from .scoring import (
@@ -38,6 +40,71 @@ from .structure import compute_market_structure
 from .utils import ema, extract_company_name, macd_hist, parse_earnings_date, safe_float, safe_str, sma
 
 
+def _object_dict(value: object) -> dict[str, object] | None:
+    if not isinstance(value, dict):
+        return None
+    return {str(key): item for key, item in value.items()}
+
+
+def _news_items_from_cache(value: object) -> list[dict[str, object]] | None:
+    if not isinstance(value, list):
+        return None
+    items: list[dict[str, object]] = []
+    for item in value:
+        item_dict = _object_dict(item)
+        if item_dict is not None:
+            items.append(item_dict)
+    return items
+
+
+def _fetch_info_with_cache(symbol: str, cache_dir: Path | None, stats: CacheStats) -> tuple[dict[str, object], str]:
+    cached = read_symbol_cache(cache_dir, "fundamentals", symbol)
+    if cached is not None:
+        info = _object_dict(cached.get("info"))
+        if info is not None:
+            stats.hits += 1
+            cached_earnings_date = safe_str(cached.get("earnings_date"), "")
+            return info, cached_earnings_date or parse_earnings_date(info)
+
+    stats.misses += 1
+    info = fetch_info(symbol)
+    earnings_date = parse_earnings_date(info)
+    write_symbol_cache(cache_dir, "fundamentals", symbol, {"info": info, "earnings_date": earnings_date})
+    return info, earnings_date
+
+
+def _fetch_news_with_cache(symbol: str, cache_dir: Path | None, stats: CacheStats) -> tuple[list[dict[str, object]], float, str, str, str]:
+    cached = read_symbol_cache(cache_dir, "news", symbol)
+    if cached is not None:
+        items = _news_items_from_cache(cached.get("items"))
+        if items is not None:
+            stats.hits += 1
+            return (
+                items,
+                safe_float(cached.get("news_score"), 50.0),
+                safe_str(cached.get("headline_bias"), "no recent headline signal"),
+                safe_str(cached.get("top_event"), ""),
+                safe_str(cached.get("headline_risk"), ""),
+            )
+
+    stats.misses += 1
+    items = fetch_recent_news_items(symbol)
+    news_score, headline_bias, top_event, headline_risk = fetch_recent_news_score(symbol, items=items)
+    write_symbol_cache(
+        cache_dir,
+        "news",
+        symbol,
+        {
+            "items": items,
+            "news_score": news_score,
+            "headline_bias": headline_bias,
+            "top_event": top_event,
+            "headline_risk": headline_risk,
+        },
+    )
+    return items, news_score, headline_bias, top_event, headline_risk
+
+
 def scan_symbols(
     symbols: list[str],
     top_n: int = TOP_N,
@@ -47,12 +114,21 @@ def scan_symbols(
     min_price: float = MIN_PRICE,
     min_avg_dollar_volume: float = MIN_AVG_DOLLAR_VOL,
     min_market_cap: float = MIN_MARKET_CAP,
+    timing: bool = False,
+    write_analysis_artifacts: bool = True,
 ) -> pd.DataFrame:
     started_at = datetime.now(timezone.utc)
+    cache_dir = outdir / "cache" if outdir is not None else None
+    fundamentals_cache_stats = CacheStats()
+    news_cache_stats = CacheStats()
+
     print(f"[1/5] Downloading price history for {len(symbols)} symbols...")
+    phase_started = timer_start()
     price_map = batch_download(symbols, DOWNLOAD_PERIOD)
+    log_timing(timing, "price_history_download", phase_started)
 
     print("[2/5] Downloading macro proxies...")
+    phase_started = timer_start()
     macro_price_map = batch_download(list(dict.fromkeys(MACRO_SYMBOLS.values())), DOWNLOAD_PERIOD)
     macro_closes: dict[str, pd.Series] = {}
     for name, sym in MACRO_SYMBOLS.items():
@@ -65,8 +141,9 @@ def scan_symbols(
     if missing_regime_symbols:
         regime_price_map.update(batch_download(missing_regime_symbols, DOWNLOAD_PERIOD))
     market_regime = detect_market_regime(regime_price_map)
-    if outdir is not None:
+    if outdir is not None and write_analysis_artifacts:
         write_market_regime(outdir, market_regime)
+    log_timing(timing, "macro_download", phase_started)
 
     ranked: list[RankedAsset] = []
     info_cache: dict[str, dict[str, object]] = {}
@@ -77,6 +154,7 @@ def scan_symbols(
     scanned_count = 0
 
     print("[3/5] Scoring symbols...")
+    phase_started = timer_start()
     for i, symbol in enumerate(symbols, start=1):
         df = price_map.get(symbol)
         if df is None or df.empty or len(df) < 220:
@@ -95,7 +173,7 @@ def scan_symbols(
         if np.isnan(avg_dollar_volume) or avg_dollar_volume < min_avg_dollar_volume:
             continue
 
-        info = fetch_info(symbol)
+        info, earnings_date = _fetch_info_with_cache(symbol, cache_dir, fundamentals_cache_stats)
         info_cache[symbol] = info
         one_day_return_cache[symbol] = round(one_day_return, 6) if not np.isnan(one_day_return) else np.nan
         scanned_count += 1
@@ -107,7 +185,6 @@ def scan_symbols(
             continue
 
         technical = technical_scorecard(df)
-        earnings_date = parse_earnings_date(info)
         fundamentals = fundamentals_scorecard(info, asset_type)
         macro_score, macro_sensitivity, macro_note = score_macro_alignment(symbol, asset_type, sector, macro_regime)
 
@@ -238,20 +315,22 @@ def scan_symbols(
         if i % 15 == 0:
             print(f"    scored {i}/{len(symbols)}...")
         time.sleep(0.03)
+    print(f"[cache] fundamentals hits={fundamentals_cache_stats.hits} misses={fundamentals_cache_stats.misses}")
+    log_timing(timing, "scoring", phase_started)
 
     if not ranked:
         return pd.DataFrame()
 
     print("[4/5] Enriching top names with headline / event context...")
+    phase_started = timer_start()
     ranked.sort(key=lambda asset: asset.final_score, reverse=True)
     if not skip_news and news_limit > 0:
         for asset in ranked[: min(news_limit, len(ranked))]:
             if asset.asset_type not in {"EQUITY", "CRYPTO", "CRYPTO_PROXY"}:
                 asset.headline_bias = "skipped for asset type"
                 continue
-            news_items = fetch_recent_news_items(asset.symbol)
+            news_items, news_score, headline_bias, top_event, headline_risk = _fetch_news_with_cache(asset.symbol, cache_dir, news_cache_stats)
             news_cache[asset.symbol] = news_items
-            news_score, headline_bias, top_event, headline_risk = fetch_recent_news_score(asset.symbol, items=news_items)
             current_macd, previous_macd = macd_cache.get(asset.symbol, (np.nan, np.nan))
             asset.news_score = round(news_score, 2)
             asset.headline_bias = headline_bias
@@ -261,8 +340,11 @@ def scan_symbols(
             asset.rating = rating_from_score(asset.final_score)
             asset.confidence_level = derive_confidence_level(asset.asset_type, asset.technical_score, asset.fundamental_score, asset.macro_score, asset.news_score, asset.risk_penalty)
             apply_horizon_recommendations(asset, horizon_context_cache.get(asset.symbol, {}))
+    print(f"[cache] news hits={news_cache_stats.hits} misses={news_cache_stats.misses}")
+    log_timing(timing, "headline_news_enrichment", phase_started)
 
     print("[5/5] Building ranking table...")
+    phase_started = timer_start()
     df_rank = pd.DataFrame([asdict(x) for x in ranked])
     if df_rank.empty:
         return df_rank
@@ -283,6 +365,7 @@ def scan_symbols(
 
     if outdir is not None:
         save_symbol_detail_outputs(ranked, price_map, info_cache, outdir)
+    log_timing(timing, "ranking_table_build", phase_started)
     return df_rank
 
 

@@ -17,6 +17,7 @@ from scanner.analysis import analyze_performance, compute_forward_returns
 from scanner.config import DEFAULT_NEWS_LIMIT, DEFAULT_UNIVERSE, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE
 from scanner.engine import load_universe_from_csv, scan_symbols
 from scanner.outputs import print_top_table, save_snapshot
+from scanner.perf import log_timing, timer_start
 from scanner.regime import write_market_regime
 from scanner.safety import atomic_write_dataframe_csv, check_data_freshness, ensure_action_column, scanner_run_lock, validate_ranking_schema
 from scanner.structure import write_market_structure
@@ -33,7 +34,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--news-limit", type=int, default=DEFAULT_NEWS_LIMIT, help="How many top names to enrich with recent headlines")
     parser.add_argument("--skip-news", action="store_true", help="Skip headline / event enrichment")
     parser.add_argument("--run-analysis", action="store_true", help="Compute forward returns and performance summaries from saved history")
+    parser.add_argument("--skip-analysis", action="store_true", help="Skip forward-return, lifecycle, calibration, and auto-calibration outputs")
     parser.add_argument("--analysis-raw", action="store_true", help="Keep raw intraday observations instead of canonical daily sampling")
+    parser.add_argument("--fast", action="store_true", help="Fast monitoring mode: skip news enrichment and analysis outputs")
+    parser.add_argument("--timing", action="store_true", help="Print phase timing logs")
     parser.add_argument("--save-history", dest="save_history", action="store_true", help="Save a timestamped snapshot after each scan")
     parser.add_argument("--no-save-history", dest="save_history", action="store_false", help="Do not save a timestamped snapshot")
     parser.add_argument("--send-alerts", action="store_true", help="Evaluate enabled alert rules and send configured Telegram/email alerts")
@@ -45,17 +49,33 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def configure_execution_mode(args: argparse.Namespace) -> None:
+    if args.fast:
+        args.skip_news = True
+        args.skip_analysis = True
+        print("[mode] FAST mode enabled")
+        print("[mode] skipping news enrichment")
+        print("[mode] skipping analysis outputs")
+        return
+    print("[mode] FULL mode enabled")
+
+
 def main() -> None:
     args = build_parser().parse_args()
-    universe = load_universe_from_csv(args.universe_csv) if args.universe_csv else DEFAULT_UNIVERSE
+    total_started = timer_start()
+    try:
+        configure_execution_mode(args)
+        universe = load_universe_from_csv(args.universe_csv) if args.universe_csv else DEFAULT_UNIVERSE
 
-    outdir = Path(args.outdir)
-    outdir.mkdir(parents=True, exist_ok=True)
+        outdir = Path(args.outdir)
+        outdir.mkdir(parents=True, exist_ok=True)
 
-    with scanner_run_lock(outdir) as lock_acquired:
-        if not lock_acquired:
-            return
-        run_with_lock(args, universe, outdir)
+        with scanner_run_lock(outdir) as lock_acquired:
+            if not lock_acquired:
+                return
+            run_with_lock(args, universe, outdir)
+    finally:
+        log_timing(args.timing, "total_runtime", total_started)
 
 
 def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -> None:
@@ -67,15 +87,19 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
         if full_ranking.empty:
             print(f"[alerts] No existing ranking rows found at: {outdir / 'full_ranking.csv'}")
             return
-        evaluate_alert_rules(
-            full_ranking,
-            top_candidates,
-            outdir,
-            alert_rules_path=args.alert_rules_path,
-            alert_state_path=args.alert_state_path,
-            only_rule_id=args.alert_rule_id,
-            send=args.send_alerts,
-        )
+        phase_started = timer_start()
+        try:
+            evaluate_alert_rules(
+                full_ranking,
+                top_candidates,
+                outdir,
+                alert_rules_path=args.alert_rules_path,
+                alert_state_path=args.alert_state_path,
+                only_rule_id=args.alert_rule_id,
+                send=args.send_alerts,
+            )
+        finally:
+            log_timing(args.timing, "alert_processing", phase_started)
         return
 
     df_rank = scan_symbols(
@@ -87,6 +111,8 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
         min_price=args.min_price,
         min_avg_dollar_volume=args.min_dollar_volume,
         min_market_cap=args.min_market_cap,
+        timing=args.timing,
+        write_analysis_artifacts=not args.skip_analysis,
     )
     if df_rank.empty:
         print("[scanner] No results. Try lowering filters or changing the universe.")
@@ -100,12 +126,15 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
     top_path = outdir / "top_candidates.csv"
     history_path = None
 
+    phase_started = timer_start()
     atomic_write_dataframe_csv(df_rank, full_path, index=False)
     atomic_write_dataframe_csv(df_rank.head(args.top), top_path, index=False)
-    write_market_structure(outdir, df_rank)
+    if not args.skip_analysis:
+        write_market_structure(outdir, df_rank)
 
     if args.save_history:
         history_path = save_snapshot(df_rank, outdir)
+    log_timing(args.timing, "csv_writes", phase_started)
 
     print_top_table(df_rank, args.top)
 
@@ -133,6 +162,7 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
         print(f"Warning: database write skipped due to error: {exc}")
 
     if args.send_alerts:
+        phase_started = timer_start()
         if check_data_freshness(outdir).status != "fresh":
             print("[alerts] skipped due to stale or missing data")
         else:
@@ -145,8 +175,10 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
                 only_rule_id=args.alert_rule_id,
                 send=True,
             )
+        log_timing(args.timing, "alert_processing", phase_started)
 
-    if args.run_analysis:
+    if args.run_analysis and not args.skip_analysis:
+        phase_started = timer_start()
         history_dir = outdir / "history"
         print("[analysis] starting forward-return analysis")
         write_market_regime(outdir)
@@ -157,6 +189,9 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
         else:
             print(f"\n[analysis] Computed forward returns for {len(forward_df)} snapshot rows.")
         analyze_performance(forward_df)
+        log_timing(args.timing, "analysis", phase_started)
+    elif args.run_analysis and args.skip_analysis:
+        print("[analysis] skipped by --skip-analysis")
 
     print("\nImportant:")
     print("- This is a ranking engine, not financial advice or a prediction guarantee.")
