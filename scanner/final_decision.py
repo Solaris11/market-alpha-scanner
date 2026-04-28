@@ -11,6 +11,7 @@ from .utils import safe_float, safe_str
 
 BUY_ACTIONS = {"BUY", "STRONG BUY"}
 SELL_ACTIONS = {"SELL", "STRONG SELL"}
+ENTER_ENTRY_STATUSES = {"GOOD ENTRY", "BUY ZONE", "NEAR ENTRY"}
 FINAL_DECISION_COLUMNS = ("final_decision", "decision_reason", "suggested_entry", "entry_distance_pct")
 
 
@@ -94,7 +95,8 @@ def _wait_entry_distance_pct(row: pd.Series) -> float | None:
     buy_high = _buy_zone_high(row)
     if price is None or buy_high is None:
         return None
-    return round((price - buy_high) / price, 6)
+    distance = round((price - buy_high) / price, 6)
+    return 0.0 if abs(distance) < 0.0001 else distance
 
 
 def _wait_suggested_entry(row: pd.Series) -> object:
@@ -139,6 +141,14 @@ def evaluate_final_trade_decision(row: pd.Series) -> dict[str, object]:
             "entry_distance_pct": np.nan,
         }
 
+    if quality == "WAIT_PULLBACK" and entry_status == "BUY ZONE":
+        return {
+            "final_decision": "WATCH",
+            "decision_reason": "Price is in entry zone, but quality gate still requires confirmation before entry",
+            "suggested_entry": _wait_suggested_entry(row),
+            "entry_distance_pct": 0.0,
+        }
+
     if quality == "WAIT_PULLBACK" or (quality == "TRADE_READY" and action in BUY_ACTIONS and entry_status == "OVEREXTENDED"):
         entry_distance_pct = _wait_entry_distance_pct(row)
         return {
@@ -148,7 +158,7 @@ def evaluate_final_trade_decision(row: pd.Series) -> dict[str, object]:
             "entry_distance_pct": entry_distance_pct if entry_distance_pct is not None else np.nan,
         }
 
-    if quality == "TRADE_READY" and action in BUY_ACTIONS and entry_status != "OVEREXTENDED":
+    if quality == "TRADE_READY" and action in BUY_ACTIONS and entry_status in ENTER_ENTRY_STATUSES:
         return {
             "final_decision": "ENTER",
             "decision_reason": "Good entry with strong trend and acceptable risk/reward",
