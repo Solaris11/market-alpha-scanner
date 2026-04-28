@@ -12,6 +12,10 @@ export type RankingRow = {
   recommendation_quality?: string;
   quality_score?: number;
   quality_reason?: string;
+  final_decision?: string;
+  decision_reason?: string;
+  suggested_entry?: string | number;
+  entry_distance_pct?: number;
   regime_adjustment?: number;
   market_regime?: string;
   rating?: string;

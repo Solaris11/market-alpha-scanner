@@ -46,6 +46,7 @@ const RATING_RANK: Record<string, number> = {
   ACTIONABLE: 2,
   TOP: 3,
 };
+const BUY_ALERT_TYPES = new Set(["buy_zone_hit", "entry_ready", "score_above", "new_top_candidate", "rating_changed", "action_changed", "score_changed_by"]);
 
 function normalizeSymbol(value: unknown) {
   return String(value ?? "")
@@ -67,6 +68,19 @@ function numeric(value: unknown) {
 
 function normalizedAction(value: unknown) {
   return cleanText(value).toUpperCase().replace(/\s+/g, " ");
+}
+
+function finalDecision(row: RankingRow) {
+  return cleanText(row.final_decision).toUpperCase().replace(/\s+/g, "_");
+}
+
+function buyAlertAllowed(rule: AlertRule, row: RankingRow) {
+  if (!BUY_ALERT_TYPES.has(rule.type)) return true;
+  const decision = finalDecision(row);
+  if (!decision) return true;
+  const action = normalizedAction(actionFor(row));
+  const isBuyCandidate = action === "STRONG BUY" || action === "BUY" || ["buy_zone_hit", "entry_ready", "score_above", "new_top_candidate"].includes(rule.type);
+  return !isBuyCandidate || decision === "ENTER";
 }
 
 function extractNumbers(value: unknown) {
@@ -205,6 +219,7 @@ function passesRuleGuards(rule: AlertRule, row: RankingRow) {
 
 function matchesRuleType(rule: AlertRule, row: RankingRow, signal: string, topSymbols: Set<string>, state: AlertRuleState | undefined) {
   if (!passesRuleGuards(rule, row)) return false;
+  if (!buyAlertAllowed(rule, row)) return false;
   const price = numeric(row.price);
   const score = numeric(row.final_score);
   const threshold = numeric(rule.threshold);

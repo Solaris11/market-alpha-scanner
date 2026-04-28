@@ -15,25 +15,25 @@ def print_top_table(df_rank: pd.DataFrame, top_n: int) -> None:
         return
 
     top = df_rank.head(top_n).copy()
-    display = top[
-        [
-            "symbol",
-            "asset_type",
-            "sector",
-            "price",
-            "technical_score",
-            "fundamental_score",
-            "news_score",
-            "macro_score",
-            "risk_penalty",
-            "final_score",
-            "short_action",
-            "mid_action",
-            "long_action",
-            "setup_type",
-            "rating",
-        ]
-    ].copy()
+    display_columns = [
+        "symbol",
+        "asset_type",
+        "sector",
+        "price",
+        "technical_score",
+        "fundamental_score",
+        "news_score",
+        "macro_score",
+        "risk_penalty",
+        "final_score",
+        "short_action",
+        "mid_action",
+        "long_action",
+        "final_decision",
+        "setup_type",
+        "rating",
+    ]
+    display = top[[column for column in display_columns if column in top.columns]].copy()
 
     print("\nTOP CANDIDATES")
     print(display.to_string(index=False))

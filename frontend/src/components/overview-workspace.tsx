@@ -91,6 +91,13 @@ const QUALITY_PRIORITY: Record<string, number> = {
   LOW_EDGE: 2,
   AVOID: 3,
 };
+const DECISION_PRIORITY: Record<string, number> = {
+  ENTER: 0,
+  WAIT_PULLBACK: 1,
+  WATCH: 2,
+  AVOID: 3,
+  EXIT: 4,
+};
 
 function normalizeAction(value: unknown) {
   return String(value ?? "")
@@ -115,6 +122,7 @@ function valueForSort(row: RankingRow, key: RankingSortKey) {
   if (key === "score") return row.final_score;
   if (key === "rating") return row.rating ?? "";
   if (key === "action") return actionFor(row);
+  if (key === "decision") return row.final_decision ?? "";
   if (key === "quality") return row.recommendation_quality ?? "";
   if (key === "signals") return signalPriorityForRow(row);
   return "";
@@ -123,6 +131,7 @@ function valueForSort(row: RankingRow, key: RankingSortKey) {
 function sortConfigForKey(key: RankingSortKey): SortConfig {
   if (key === "rating") return { priority: RATING_PRIORITY };
   if (key === "action") return { priority: ACTION_PRIORITY };
+  if (key === "decision") return { priority: DECISION_PRIORITY };
   if (key === "quality") return { priority: QUALITY_PRIORITY };
   if (NUMERIC_SORT_KEYS.has(key)) return { type: "number" };
   return { type: "string" };

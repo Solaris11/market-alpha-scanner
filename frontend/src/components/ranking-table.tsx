@@ -5,7 +5,7 @@ import type { RankingRow } from "@/lib/types";
 import { actionFor, compact, formatNumber } from "@/lib/format";
 import { Badge } from "./badge";
 
-export type RankingSortKey = "symbol" | "company" | "asset" | "sector" | "price" | "score" | "rating" | "action" | "quality" | "signals";
+export type RankingSortKey = "symbol" | "company" | "asset" | "sector" | "price" | "score" | "rating" | "action" | "decision" | "quality" | "signals";
 export type RankingSortDirection = "asc" | "desc";
 
 type Props = {
@@ -27,6 +27,7 @@ const COLUMNS: { key: RankingSortKey; label: string; align?: "left" | "right" }[
   { key: "score", label: "Score", align: "right" },
   { key: "rating", label: "Rating" },
   { key: "action", label: "Action" },
+  { key: "decision", label: "Decision" },
   { key: "quality", label: "Quality" },
   { key: "signals", label: "Signal" },
 ];
@@ -60,6 +61,13 @@ const QUALITY_TONES: Record<string, string> = {
   WAIT_PULLBACK: "border-amber-400/35 bg-amber-400/10 text-amber-200",
   LOW_EDGE: "border-slate-500/30 bg-slate-500/12 text-slate-200",
   AVOID: "border-rose-400/35 bg-rose-400/10 text-rose-200",
+};
+const DECISION_TONES: Record<string, string> = {
+  ENTER: "border-emerald-400/30 bg-emerald-400/10 text-emerald-200",
+  WAIT_PULLBACK: "border-amber-400/35 bg-amber-400/10 text-amber-200",
+  WATCH: "border-sky-400/25 bg-sky-400/10 text-sky-100",
+  AVOID: "border-rose-400/35 bg-rose-400/10 text-rose-200",
+  EXIT: "border-rose-400/35 bg-rose-400/10 text-rose-200",
 };
 
 function numeric(value: unknown) {
@@ -157,6 +165,28 @@ function QualityBadge({ row }: { row: RankingRow }) {
   );
 }
 
+function percent(value: unknown) {
+  if (typeof value !== "number" || !Number.isFinite(value)) return "";
+  const sign = value > 0 ? "+" : "";
+  return `${sign}${(value * 100).toFixed(1)}%`;
+}
+
+function DecisionBadge({ row }: { row: RankingRow }) {
+  const decision = String(row.final_decision ?? "").trim().toUpperCase();
+  if (!decision) return <span className="text-slate-600">—</span>;
+  const entry = String(row.suggested_entry ?? "").trim();
+  const distance = decision === "WAIT_PULLBACK" ? percent(row.entry_distance_pct) : "";
+  const meta = [entry && `Entry ${entry}`, distance && `${distance} away`].filter(Boolean).join(" · ");
+  return (
+    <div className="flex max-w-full flex-col gap-1">
+      <span className={`inline-flex max-w-[142px] whitespace-nowrap rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] ${DECISION_TONES[decision] ?? SIGNAL_TONES.neutral}`} title={String(row.decision_reason ?? "")}>
+        <span className="truncate">{decision.replaceAll("_", " ")}</span>
+      </span>
+      {meta ? <span className="truncate font-mono text-[10px] text-slate-500" title={meta}>{meta}</span> : null}
+    </div>
+  );
+}
+
 export function RankingTable({ rows, highlight = false, limit, emptyMessage = "No scanner rows available.", sortKey = null, sortDirection = "asc", onSort }: Props) {
   const visibleRows = typeof limit === "number" ? rows.slice(0, limit) : rows;
 
@@ -166,7 +196,7 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
 
   return (
     <div className="terminal-panel overflow-x-auto rounded-md">
-      <table className="w-full min-w-[1360px] table-fixed border-collapse text-xs">
+      <table className="w-full min-w-[1500px] table-fixed border-collapse text-xs">
         <colgroup>
           <col style={{ width: 90 }} />
           <col style={{ width: 220 }} />
@@ -176,6 +206,7 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
           <col style={{ width: 90 }} />
           <col style={{ width: 130 }} />
           <col style={{ width: 150 }} />
+          <col style={{ width: 160 }} />
           <col style={{ width: 130 }} />
           <col style={{ width: 230 }} />
         </colgroup>
@@ -230,6 +261,9 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
                 </td>
                 <td className="px-2 py-1.5 align-middle">
                   <Badge value={actionFor(row)} />
+                </td>
+                <td className="px-2 py-1.5 align-middle">
+                  <DecisionBadge row={row} />
                 </td>
                 <td className="px-2 py-1.5 align-middle">
                   <QualityBadge row={row} />

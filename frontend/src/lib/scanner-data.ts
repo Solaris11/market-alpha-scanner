@@ -85,6 +85,7 @@ const NUMERIC_FIELDS = new Set([
   "avg_negative_return",
   "min_return",
   "confidence_score",
+  "entry_distance_pct",
 ]);
 const REQUIRED_RANKING_COLUMNS = ["symbol", "price", "final_score", "rating", "action"];
 const DATA_STALE_AFTER_MS = 60 * 60 * 1000;

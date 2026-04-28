@@ -685,6 +685,25 @@ def _recommendation_quality_suppression_reason(rule: dict[str, Any], row: dict[s
     return None
 
 
+def _buy_alert_candidate(rule: dict[str, Any], row: dict[str, Any] | None) -> bool:
+    alert_type = _rule_type(rule)
+    if alert_type not in BUY_ALERT_TYPES:
+        return False
+    action = _normalized_action(row)
+    return action in {"STRONG BUY", "BUY"} or alert_type in {"buy_zone_hit", "entry_ready", "score_above", "new_top_candidate"}
+
+
+def _final_decision_suppression_reason(rule: dict[str, Any], row: dict[str, Any] | None) -> str | None:
+    if not _buy_alert_candidate(rule, row):
+        return None
+    decision = _clean_text((row or {}).get("final_decision"), "").upper()
+    if not decision or decision == "ENTER":
+        return None
+    if decision == "WAIT_PULLBACK":
+        return "final_decision:WAIT_PULLBACK soft watch only"
+    return f"final_decision:{decision}"
+
+
 def _watchlist_path(outdir: Path) -> Path:
     return outdir / "watchlist.json"
 
@@ -1126,6 +1145,24 @@ def evaluate_alert_rules(
                 )
                 state_changed = True
                 print(f"[alerts] suppressed by entry_filter: {symbol} {rule_id} entry_status={entry_status}")
+                continue
+
+            decision_reason = _final_decision_suppression_reason(rule, evaluation.row)
+            if decision_reason:
+                skipped_count += 1
+                rule_state.update(
+                    {
+                        "alert_id": rule_id,
+                        "symbol": symbol,
+                        "last_skipped_at": now.isoformat(),
+                        "last_skip_reason": decision_reason,
+                        "last_entry_status": entry_status,
+                        "last_final_decision": _clean_text((evaluation.row or {}).get("final_decision"), "").upper(),
+                        "last_status": "suppressed",
+                    }
+                )
+                state_changed = True
+                print(f"[alerts] suppressed by final_decision: {symbol} {rule_id} reason={decision_reason}")
                 continue
 
             quality_reason = _recommendation_quality_suppression_reason(rule, evaluation.row)
