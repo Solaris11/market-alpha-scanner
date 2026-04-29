@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { SignalHistoryPoint } from "@/lib/adapters/DataServiceAdapter";
 import type { PaperPositionRow, PaperTradeEventRow } from "@/lib/paper-data";
+import type { ConvictionTimelineModel } from "@/lib/trading/conviction-timeline-types";
 import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
 import type { RankingRow, ScannerScalar } from "@/lib/types";
@@ -25,6 +26,7 @@ export function SymbolTerminalWorkspace({
   edgeProof,
   row,
   history,
+  timeline,
   priceSeries,
   paperPositions,
   paperEvents,
@@ -32,6 +34,7 @@ export function SymbolTerminalWorkspace({
   edgeProof: HistoricalEdgeProof;
   row: RankingRow;
   history: SignalHistoryPoint[];
+  timeline: ConvictionTimelineModel;
   priceSeries: Record<string, ScannerScalar>[];
   paperPositions: PaperPositionRow[];
   paperEvents: PaperTradeEventRow[];
@@ -73,7 +76,7 @@ export function SymbolTerminalWorkspace({
       </div>
 
       <PaperContextCard events={symbolEvents} openPositions={openPaper} positions={symbolPositions} symbol={symbol} />
-      <ConvictionTimeline points={history} />
+      <ConvictionTimeline timeline={timeline} />
 
       <GlassPanel className="p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">

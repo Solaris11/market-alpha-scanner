@@ -5,6 +5,7 @@ import { EmptyState } from "@/components/terminal/ui/EmptyState";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPaperData } from "@/lib/paper-data";
 import { getPerformanceData } from "@/lib/scanner-data";
+import { buildConvictionTimelineModel } from "@/lib/trading/conviction-timeline-model";
 import { buildHistoricalEdgeProof } from "@/lib/trading/edge-proof";
 
 export const dynamic = "force-dynamic";
@@ -24,6 +25,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   ]);
   const row = detail.row;
   const edgeProof = row ? buildHistoricalEdgeProof(row, performance) : null;
+  const timeline = buildConvictionTimelineModel(history);
 
   return (
     <TerminalShell>
@@ -42,6 +44,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           paperPositions={paper.positions ?? []}
           priceSeries={detail.history}
           row={row}
+          timeline={timeline}
         />
       )}
     </TerminalShell>
