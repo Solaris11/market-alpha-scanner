@@ -90,6 +90,7 @@ const NUMERIC_FIELDS = new Set([
   "correction_price",
   "correction_zone_low",
   "correction_zone_high",
+  "correction_trigger_price",
   "correction_distance_pct",
   "entry_zone_low",
   "entry_zone_high",
@@ -103,9 +104,15 @@ const NUMERIC_FIELDS = new Set([
   "recent_support",
   "support_level",
   "support",
+  "recent_resistance",
+  "resistance",
+  "resistance_level",
+  "recent_swing_high",
+  "swing_high",
   "atr",
   "atr_value",
   "current_atr",
+  "target_price",
 ]);
 const REQUIRED_RANKING_COLUMNS = ["symbol", "price", "final_score", "rating", "action"];
 const DATA_STALE_AFTER_MS = 60 * 60 * 1000;

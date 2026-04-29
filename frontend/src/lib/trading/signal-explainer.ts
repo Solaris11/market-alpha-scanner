@@ -1,5 +1,5 @@
 import type { RankingRow } from "@/lib/types";
-import { cleanText, finiteNumber, firstNumber, formatPercent } from "@/lib/ui/formatters";
+import { cleanText, finiteNumber, firstNumber, formatMoney, formatPercent } from "@/lib/ui/formatters";
 import { buildCorrectionMap, correctionMidpoint, formatCorrectionZone } from "./correction-map";
 import { calculateTradeRisk } from "./risk-calculator";
 
@@ -42,7 +42,9 @@ export function buildCopilotRecommendation(input: CopilotInput): CopilotRecommen
     decision === "ENTER"
       ? `Enter around $${entry ? entry.toFixed(2) : "N/A"}. Risk is $${risk.maxLoss.toFixed(2)} to target $${target ? target.toFixed(2) : "N/A"} (${risk.riskRewardRatio.toFixed(2)}R). Position size: ${risk.quantity} shares.`
       : decision === "WAIT_PULLBACK"
-        ? `Wait for pullback near ${correctionPrice !== null ? formatCorrectionZone(correction) : `$${entry ? entry.toFixed(2) : "N/A"}`} before entering. Current price is extended.`
+        ? correctionPrice !== null
+          ? `Do not chase here. ${triggerDirective(correction.triggerPrice, correction.triggerAlreadyReached)} Better entry zone is ${formatCorrectionZone(correction)}.`
+          : `Wait for pullback near $${entry ? entry.toFixed(2) : "N/A"} before entering. Current price is extended.`
         : decision === "AVOID" || decision === "EXIT"
           ? "Do not enter. This setup lacks edge or has poor risk/reward."
           : `Monitor ${signal.symbol}. No immediate entry is cleared.`;
@@ -59,6 +61,11 @@ export function buildCopilotRecommendation(input: CopilotInput): CopilotRecommen
     riskRewardRatio: risk.riskRewardRatio,
     warnings,
   };
+}
+
+function triggerDirective(price: number | null, alreadyReached: boolean): string {
+  if (price === null) return "Correction trigger is not available yet.";
+  return alreadyReached ? `Correction trigger was already reached at ${formatMoney(price)}; correction risk is elevated.` : `If price extends above ${formatMoney(price)}, correction risk increases.`;
 }
 
 export function buildWhyThisTrade(row: RankingRow) {

@@ -19,6 +19,8 @@ export type RankingRow = {
   correction_price?: number;
   correction_zone_low?: number;
   correction_zone_high?: number;
+  correction_trigger_price?: number;
+  correction_trigger_reason?: string;
   correction_distance_pct?: number;
   correction_confidence?: string;
   regime_adjustment?: number;
@@ -67,6 +69,8 @@ export type RankingRow = {
   avwap?: number;
   recent_swing_low?: number;
   swing_low?: number;
+  recent_resistance?: number;
+  resistance?: number;
   atr?: number;
   fundamental_score?: number;
   macro_score?: number;

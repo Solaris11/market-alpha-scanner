@@ -8,6 +8,9 @@ export type CorrectionMap = {
   currentPrice: number | null;
   distancePct: number | null;
   isActionable: boolean;
+  triggerAlreadyReached: boolean;
+  triggerPrice: number | null;
+  triggerReason: string | null;
   zoneHigh: number | null;
   zoneLow: number | null;
 };
@@ -18,11 +21,15 @@ const ENTRY_TEXT_KEYS = ["entry_zone", "buy_zone", "suggested_entry"];
 const AVWAP_KEYS = ["avwap", "AVWAP", "anchored_vwap", "anchored_vwap_price"];
 const SWING_LOW_KEYS = ["recent_swing_low", "swing_low", "recent_support", "support_level", "support"];
 const ATR_KEYS = ["atr", "atr_value", "current_atr"];
+const RESISTANCE_KEYS = ["recent_resistance", "resistance", "resistance_level", "recent_swing_high", "swing_high"];
+const TAKE_PROFIT_LOW_KEYS = ["take_profit_low"];
+const TAKE_PROFIT_TEXT_KEYS = ["take_profit_zone", "take_profit", "target", "upside_target", "conservative_target", "target_price"];
 
 export function buildCorrectionMap(row: RankingRow): CorrectionMap {
   const currentPrice = numberFrom(row, ["price"]);
   const isActionable = isCorrectionCandidate(row);
   const zone = correctionZone(row, currentPrice);
+  const trigger = correctionTrigger(row, currentPrice);
   const distancePct = currentPrice !== null && zone.high !== null && currentPrice > 0 ? (zone.high - currentPrice) / currentPrice : null;
 
   return {
@@ -30,6 +37,9 @@ export function buildCorrectionMap(row: RankingRow): CorrectionMap {
     currentPrice,
     distancePct,
     isActionable,
+    triggerAlreadyReached: trigger.alreadyReached,
+    triggerPrice: trigger.price,
+    triggerReason: trigger.reason,
     zoneHigh: zone.high,
     zoneLow: zone.low,
   };
@@ -44,6 +54,8 @@ export function applyCorrectionMapFields(row: RankingRow): RankingRow {
   row.correction_zone_high = map.zoneHigh;
   row.correction_distance_pct = map.distancePct ?? undefined;
   row.correction_confidence = map.confidence;
+  row.correction_trigger_price = map.triggerPrice ?? undefined;
+  row.correction_trigger_reason = map.triggerReason ?? undefined;
   return row;
 }
 
@@ -61,7 +73,42 @@ export function correctionMidpoint(map: Pick<CorrectionMap, "zoneHigh" | "zoneLo
 function isCorrectionCandidate(row: RankingRow): boolean {
   const decision = cleanText(row.final_decision, "").toUpperCase();
   const entryStatus = cleanText(row.entry_status, "").toUpperCase();
-  return decision === "WAIT_PULLBACK" || entryStatus.includes("OVEREXTENDED");
+  const recommendationQuality = cleanText(row.recommendation_quality, "").toUpperCase();
+  const reason = cleanText(row.decision_reason ?? row.quality_reason ?? row.trade_quality_note, "").toUpperCase();
+  const avoidDueToExtension = recommendationQuality === "AVOID" && (entryStatus.includes("OVEREXTENDED") || reason.includes("EXTENDED") || reason.includes("CHASE"));
+  return decision === "WAIT_PULLBACK" || entryStatus.includes("OVEREXTENDED") || avoidDueToExtension;
+}
+
+function correctionTrigger(row: RankingRow, currentPrice: number | null): { alreadyReached: boolean; price: number | null; reason: string | null } {
+  if (currentPrice === null || currentPrice <= 0) return { alreadyReached: false, price: null, reason: null };
+
+  const atr = atrValue(row, currentPrice);
+  const takeProfitLow = numberFrom(row, TAKE_PROFIT_LOW_KEYS) ?? rangeFrom(row, [], [], TAKE_PROFIT_TEXT_KEYS).low;
+  const resistance = numberFrom(row, RESISTANCE_KEYS);
+
+  let price: number;
+  let source: string;
+  if (takeProfitLow !== null && atr > 0) {
+    price = Math.min(takeProfitLow, currentPrice + atr * 1.5);
+    source = "take-profit and ATR extension";
+  } else if (resistance !== null) {
+    price = resistance;
+    source = "recent resistance";
+  } else if (takeProfitLow !== null) {
+    price = takeProfitLow;
+    source = "take-profit level";
+  } else {
+    price = currentPrice * 1.05;
+    source = "5% extension fallback";
+  }
+
+  if (!Number.isFinite(price) || price <= 0) return { alreadyReached: false, price: null, reason: null };
+
+  const alreadyReached = price < currentPrice;
+  const reason = alreadyReached
+    ? `Correction trigger already reached at ${formatMoney(price)} from ${source}.`
+    : `If price pushes above ${formatMoney(price)}, correction risk increases from ${source}.`;
+  return { alreadyReached, price, reason };
 }
 
 function correctionZone(row: RankingRow, currentPrice: number | null): { confidence: CorrectionConfidence; high: number | null; low: number | null } {
