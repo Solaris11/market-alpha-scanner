@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
@@ -51,7 +52,16 @@ def run_paper_trading() -> PaperTradingResult:
 
             signals = _latest_signals(session, latest_run.id)
             signals_by_symbol = {signal.symbol.upper(): signal for signal in signals}
-            opened, closed, warnings = _apply_paper_trading(session, account, signals, signals_by_symbol)
+            forced_enter_symbol = _forced_enter_symbol()
+            if forced_enter_symbol is not None:
+                print(f"[paper] TEST-ONLY FORCE_ENTER_SYMBOL override active for {forced_enter_symbol}")
+            opened, closed, warnings = _apply_paper_trading(
+                session,
+                account,
+                signals,
+                signals_by_symbol,
+                forced_enter_symbol,
+            )
             print(f"[paper] opened positions={opened}")
             print(f"[paper] closed positions={closed}")
             print(f"[paper] warnings={warnings}")
@@ -100,6 +110,7 @@ def _apply_paper_trading(
     account: PaperAccount,
     signals: list[ScannerSignal],
     signals_by_symbol: dict[str, ScannerSignal],
+    forced_enter_symbol: str | None,
 ) -> tuple[int, int, int]:
     opened = 0
     closed = 0
@@ -110,16 +121,16 @@ def _apply_paper_trading(
     for position in open_positions:
         signal = signals_by_symbol.get(position.symbol.upper())
         current_price = _price_for_position(position, signal)
-        close_reason = _close_reason(position, signal, current_price)
+        close_reason = _close_reason(position, signal, current_price, forced_enter_symbol)
         if signal is not None:
-            _copy_signal_context(position, signal)
+            _copy_signal_context(position, signal, forced_enter_symbol)
 
         if close_reason is not None:
             _close_position(session, account, position, current_price, close_reason, now)
             closed += 1
             continue
 
-        if signal is not None and _normalized(signal.final_decision) == "AVOID":
+        if signal is not None and _effective_final_decision(signal, forced_enter_symbol) == "AVOID":
             _add_event(
                 session,
                 account=account,
@@ -138,7 +149,7 @@ def _apply_paper_trading(
     open_symbols = {position.symbol.upper() for position in _open_positions(session, account)}
 
     for signal in signals:
-        if _normalized(signal.final_decision) != "ENTER":
+        if _effective_final_decision(signal, forced_enter_symbol) != "ENTER":
             continue
         if signal.symbol.upper() in open_symbols:
             continue
@@ -170,7 +181,7 @@ def _apply_paper_trading(
             quantity=quantity,
             stop_loss=_valid_stop_loss(entry_price, _decimal_or_none(signal.stop_loss)),
             target_price=_valid_target_price(entry_price, _decimal_or_none(signal.conservative_target)),
-            final_decision=signal.final_decision,
+            final_decision=_effective_final_decision(signal, forced_enter_symbol),
             recommendation_quality=signal.recommendation_quality,
             entry_status=signal.entry_status,
             setup_type=signal.setup_type,
@@ -214,8 +225,8 @@ def _open_positions(session: Session, account: PaperAccount) -> list[PaperPositi
     )
 
 
-def _copy_signal_context(position: PaperPosition, signal: ScannerSignal) -> None:
-    position.final_decision = signal.final_decision
+def _copy_signal_context(position: PaperPosition, signal: ScannerSignal, forced_enter_symbol: str | None) -> None:
+    position.final_decision = _effective_final_decision(signal, forced_enter_symbol)
     position.recommendation_quality = signal.recommendation_quality
     position.entry_status = signal.entry_status
     position.setup_type = signal.setup_type
@@ -230,12 +241,17 @@ def _copy_signal_context(position: PaperPosition, signal: ScannerSignal) -> None
         position.target_price = target_price
 
 
-def _close_reason(position: PaperPosition, signal: ScannerSignal | None, current_price: Decimal) -> str | None:
+def _close_reason(
+    position: PaperPosition,
+    signal: ScannerSignal | None,
+    current_price: Decimal,
+    forced_enter_symbol: str | None,
+) -> str | None:
     if position.stop_loss is not None and current_price <= position.stop_loss:
         return "STOP_HIT"
     if position.target_price is not None and current_price >= position.target_price:
         return "TARGET_HIT"
-    if signal is not None and _normalized(signal.final_decision) == "EXIT":
+    if signal is not None and _effective_final_decision(signal, forced_enter_symbol) == "EXIT":
         return "EXIT_SIGNAL"
     return None
 
@@ -366,3 +382,15 @@ def _decimal_or_none(value: object) -> Decimal | None:
 
 def _normalized(value: object) -> str:
     return str(value or "").strip().upper()
+
+
+def _forced_enter_symbol() -> str | None:
+    # TEST-ONLY: lets the paper engine simulate an ENTER signal without changing scanner output.
+    symbol = os.environ.get("FORCE_ENTER_SYMBOL", "").strip().upper()
+    return symbol or None
+
+
+def _effective_final_decision(signal: ScannerSignal, forced_enter_symbol: str | None) -> str:
+    if forced_enter_symbol is not None and signal.symbol.upper() == forced_enter_symbol:
+        return "ENTER"
+    return _normalized(signal.final_decision)
