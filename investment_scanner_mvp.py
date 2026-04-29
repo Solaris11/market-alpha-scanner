@@ -17,7 +17,6 @@ from scanner.analysis import analyze_performance, compute_forward_returns
 from scanner.config import DEFAULT_NEWS_LIMIT, DEFAULT_UNIVERSE, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE
 from scanner.engine import load_universe_from_csv, scan_symbols
 from scanner.outputs import print_top_table, save_snapshot
-from scanner.paper_reset import reset_paper_account
 from scanner.paper_trading import run_paper_trading
 from scanner.perf import log_timing, timer_start
 from scanner.regime import write_market_regime
@@ -44,7 +43,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-save-history", dest="save_history", action="store_false", help="Do not save a timestamped snapshot")
     parser.add_argument("--send-alerts", action="store_true", help="Evaluate enabled alert rules and send configured Telegram/email alerts")
     parser.add_argument("--paper-trade", action="store_true", help="Run optional paper trading simulation after DB writeback")
-    parser.add_argument("--reset-paper-account", action="store_true", help="Reset paper trading positions, events, and default account only")
+    parser.add_argument(
+        "--reset-paper-account",
+        action="store_true",
+        help="Reset paper trading account",
+    )
     parser.add_argument("--alerts-only", action="store_true", help="Evaluate alerts from existing scanner_output CSVs without running a scan")
     parser.add_argument("--alert-rules-path", help="Optional path to alert_rules.json")
     parser.add_argument("--alert-state-path", help="Optional path to alert_state.json")
@@ -69,6 +72,8 @@ def main() -> None:
     total_started = timer_start()
     try:
         if args.reset_paper_account:
+            from scanner.paper_reset import reset_paper_account
+
             reset_paper_account()
             return
         configure_execution_mode(args)
