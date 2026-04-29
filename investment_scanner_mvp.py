@@ -9,6 +9,7 @@ CLI orchestration and output flow.
 from __future__ import annotations
 
 import argparse
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from alerts import evaluate_alert_rules, read_alert_input_files
@@ -22,6 +23,16 @@ from scanner.perf import log_timing, timer_start
 from scanner.regime import write_market_regime
 from scanner.safety import atomic_write_dataframe_csv, check_data_freshness, ensure_action_column, scanner_run_lock, validate_ranking_schema
 from scanner.structure import write_market_structure
+
+
+def positive_decimal(value: str) -> Decimal:
+    try:
+        parsed = Decimal(value)
+    except InvalidOperation as exc:
+        raise argparse.ArgumentTypeError("must be a valid decimal number") from exc
+    if parsed <= Decimal("0"):
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -47,6 +58,12 @@ def build_parser() -> argparse.ArgumentParser:
         "--reset-paper-account",
         action="store_true",
         help="Reset paper trading account",
+    )
+    parser.add_argument(
+        "--paper-starting-balance",
+        type=positive_decimal,
+        default=Decimal("10000"),
+        help="Starting cash balance to use when resetting the default paper account",
     )
     parser.add_argument("--alerts-only", action="store_true", help="Evaluate alerts from existing scanner_output CSVs without running a scan")
     parser.add_argument("--alert-rules-path", help="Optional path to alert_rules.json")
@@ -74,7 +91,7 @@ def main() -> None:
         if args.reset_paper_account:
             from scanner.paper_reset import reset_paper_account
 
-            reset_paper_account()
+            reset_paper_account(starting_balance=args.paper_starting_balance)
             return
         configure_execution_mode(args)
         universe = load_universe_from_csv(args.universe_csv) if args.universe_csv else DEFAULT_UNIVERSE
