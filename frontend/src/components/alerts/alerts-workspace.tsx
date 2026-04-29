@@ -851,7 +851,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
           <div className="text-sm font-semibold text-slate-100">{testResult.ok ? "Alert evaluation completed." : "Alert evaluation failed."}</div>
           {testResult.error ? <div className="mt-2 text-xs text-rose-200">{testResult.error}</div> : null}
           <details className="mt-3 text-xs text-slate-400">
-            <summary className="cursor-pointer uppercase tracking-[0.12em] text-slate-500">Logs</summary>
+            <summary className="cursor-pointer uppercase tracking-[0.12em] text-slate-500">Advanced diagnostics</summary>
             <pre className="mt-2 max-h-72 overflow-auto rounded border border-slate-800 bg-slate-950/80 p-3">{`${testResult.stdout ?? ""}\n${testResult.stderr ?? ""}`.trim() || "No logs returned."}</pre>
           </details>
         </section>

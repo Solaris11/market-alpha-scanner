@@ -270,9 +270,9 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
       <div>
         <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Intraday Signal Drift</div>
         <h2 className="text-lg font-semibold text-slate-50">Intraday Signal Drift</h2>
-        <p className="mt-1 text-sm text-slate-400">Shows largest changes in score and price between saved scan snapshots.</p>
+        <p className="mt-1 text-sm text-slate-400">Shows largest changes in score and price across saved signal observations.</p>
         {!forwardReturnsReady ? (
-          <p className="mt-1 text-sm text-slate-400">Forward-return analysis is not ready yet. Showing intraday signal drift from saved snapshots.</p>
+          <p className="mt-1 text-sm text-slate-400">Forward-return analysis is not ready yet. Showing intraday signal drift from saved observations.</p>
         ) : null}
       </div>
 
@@ -351,7 +351,7 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
               <SortHeader align="right" label="Latest Score" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="latest_score" />
               <SortHeader label="Rating" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="rating_change" />
               <SortHeader label="Action" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="action" />
-              <SortHeader align="right" label="Snapshots" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="snapshot_count" />
+              <SortHeader align="right" label="Observations" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="snapshot_count" />
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800/90">
@@ -440,7 +440,7 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
               { label: "First Price", value: formatNumber(selectedDisplay.first_price) },
               { label: "Latest Price", value: formatNumber(selectedDisplay.latest_price) },
               { label: "Price Change", value: percent(selectedDisplay.price_change_pct) },
-              { label: "Snapshots", value: selectedDisplay.snapshot_count.toLocaleString() },
+              { label: "Observations", value: selectedDisplay.snapshot_count.toLocaleString() },
               { label: "Rating", value: `${selectedDisplay.first_rating ?? "N/A"} → ${selectedDisplay.latest_rating ?? "N/A"}` },
             ].map((metric) => (
               <div className="rounded border border-slate-800 bg-slate-950/50 p-2" key={metric.label}>

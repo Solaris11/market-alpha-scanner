@@ -346,7 +346,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
           <div className="text-xs text-slate-500">
             {selectedSymbol ? (
               <>
-                {loadingSymbol ? "Loading" : "Showing"} {symbolRows.length.toLocaleString()} snapshots for <span className="font-mono text-slate-200">{selectedSymbol}</span>.
+                {loadingSymbol ? "Loading" : "Showing"} {symbolRows.length.toLocaleString()} observations for <span className="font-mono text-slate-200">{selectedSymbol}</span>.
               </>
             ) : (
               <>Type or select a symbol. Try one of: {matchingSymbols.join(", ") || "no symbols available"}.</>
@@ -364,7 +364,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
       {loadingSymbol ? <div className="terminal-panel rounded-md border-dashed border-slate-700/70 px-3 py-8 text-center text-xs text-slate-500">Loading symbol history...</div> : null}
 
       {!loadingSymbol && selectedSymbol && !symbolRows.length ? (
-        <div className="terminal-panel rounded-md border-dashed border-slate-700/70 px-3 py-8 text-center text-sm text-slate-400">No history found for <span className="font-mono text-slate-100">{selectedSymbol}</span> in scan snapshots.</div>
+        <div className="terminal-panel rounded-md border-dashed border-slate-700/70 px-3 py-8 text-center text-sm text-slate-400">No signal memory found for <span className="font-mono text-slate-100">{selectedSymbol}</span>.</div>
       ) : null}
 
       {symbolRows.length ? (
@@ -390,7 +390,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
                 <input className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => handleCustomToChange(event.target.value)} type="datetime-local" value={customTo} />
               </label>
               <div className="self-end text-xs text-slate-500">
-                Showing {filteredByTime.length.toLocaleString()} of {symbolRows.length.toLocaleString()} snapshots
+                Showing {filteredByTime.length.toLocaleString()} of {symbolRows.length.toLocaleString()} observations
               </div>
             </div>
           </section>
@@ -406,7 +406,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
                   { label: "Action", value: latest ? actionFor(latest) : "N/A", meta: "latest" },
                   { label: "Price", value: formatNumber(latest?.price), meta: "latest" },
                   { label: "Price Change", value: formatDelta(priceChange), meta: "latest - first" },
-                  { label: "Snapshots", value: filteredByTime.length.toLocaleString(), meta: `avg ${formatDuration(avgInterval)}` },
+                  { label: "Observations", value: filteredByTime.length.toLocaleString(), meta: `avg ${formatDuration(avgInterval)}` },
                 ].map((metric) => (
                   <div className="terminal-panel min-w-0 rounded-md px-3 py-2" key={metric.label}>
                     <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{metric.label}</div>
@@ -424,13 +424,13 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
               <section>
                 <div className="mb-2">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Symbol Timeline</div>
-                  <h2 className="text-lg font-semibold text-slate-50">{selectedSymbol} Snapshot History</h2>
+                  <h2 className="text-lg font-semibold text-slate-50">{selectedSymbol} Signal Memory</h2>
                   <p className="mt-1 text-xs text-slate-500">
-                    Showing {visibleRows.length.toLocaleString()} of {sortedRows.length.toLocaleString()} snapshots
+                    Showing {visibleRows.length.toLocaleString()} of {sortedRows.length.toLocaleString()} observations
                   </p>
                 </div>
-                <div className="terminal-panel overflow-x-auto rounded-md">
-                  <table className="w-full min-w-[1420px] table-fixed border-collapse text-xs">
+                <div className="terminal-panel overflow-x-auto rounded-2xl">
+                  <table className="w-full min-w-[1160px] table-fixed border-collapse text-xs">
                     <colgroup>
                       <col style={{ width: 220 }} />
                       <col style={{ width: 95 }} />
@@ -441,14 +441,12 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
                       <col style={{ width: 130 }} />
                       <col style={{ width: 130 }} />
                       <col style={{ width: 170 }} />
-                      <col style={{ width: 250 }} />
                     </colgroup>
                     <thead className="border-b border-slate-700/70 bg-slate-950/70 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                       <tr>
                         {HISTORY_COLUMNS.map((column) => (
                           <SortHeader align={column.align} key={column.key} label={column.label} onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey={column.key} />
                         ))}
-                        <th className="px-2 py-1.5 text-left">Source</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-800/90">
@@ -471,7 +469,6 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
                           </td>
                           <td className="truncate px-2 py-1.5 text-slate-400">{row.entry_status ?? "N/A"}</td>
                           <td className="truncate px-2 py-1.5 text-slate-400">{row.setup_type ?? "N/A"}</td>
-                          <td className="truncate px-2 py-1.5 font-mono text-slate-500">{row.source_file}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -485,9 +482,9 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
         </>
       ) : null}
 
-      <details className="terminal-panel rounded-md p-4 text-xs text-slate-400">
-        <summary className="cursor-pointer font-semibold uppercase tracking-[0.12em] text-slate-500">Raw snapshot files</summary>
-        <div className="mt-2 text-xs text-slate-500">Showing {Math.min(history.snapshots.length, 200).toLocaleString()} of {history.snapshots.length.toLocaleString()} snapshot files.</div>
+      <details className="terminal-panel rounded-2xl p-4 text-xs text-slate-400">
+        <summary className="cursor-pointer font-semibold uppercase tracking-[0.12em] text-slate-500">Advanced diagnostics</summary>
+        <div className="mt-2 text-xs text-slate-500">Raw file inventory for technical review only. Showing {Math.min(history.snapshots.length, 200).toLocaleString()} of {history.snapshots.length.toLocaleString()} files.</div>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[760px] table-fixed border-collapse text-xs">
             <colgroup>

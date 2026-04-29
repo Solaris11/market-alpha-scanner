@@ -20,7 +20,7 @@ export default async function HistoryPage() {
       <div className="space-y-3">
         <MetricStrip
           metrics={[
-            { label: "Snapshots", value: history.count.toLocaleString(), meta: "scan_*.csv" },
+            { label: "Saved Runs", value: history.count.toLocaleString(), meta: "signal memory" },
             { label: "Earliest", value: formatDate(history.earliest), meta: "history" },
             { label: "Latest", value: formatDate(history.latest), meta: "history" },
             { label: "Unique Dates", value: history.uniqueDates.length.toLocaleString(), meta: "trading days" },
@@ -28,13 +28,10 @@ export default async function HistoryPage() {
         />
 
         {!history.snapshots.length ? (
-          <section className="terminal-panel rounded-md p-4">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">History</div>
-            <h2 className="mt-1 text-lg font-semibold text-slate-50">No Historical Snapshots Found</h2>
-            <p className="mt-2 max-w-3xl text-sm text-slate-400">Save scanner snapshots to enable history and later performance analysis.</p>
-            <pre className="mt-3 overflow-x-auto rounded border border-slate-800 bg-slate-950/80 p-3 text-xs text-slate-300">
-              python investment_scanner_mvp.py --save-history
-            </pre>
+          <section className="terminal-panel rounded-2xl p-5">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">History</div>
+            <h2 className="mt-1 text-lg font-semibold text-slate-50">No Signal Memory Yet</h2>
+            <p className="mt-2 max-w-3xl text-sm text-slate-400">Run signal refreshes over time to build conviction timelines, performance context, and symbol history.</p>
           </section>
         ) : (
           <HistoryWorkspace defaultSymbol={defaultSymbol} history={history} symbols={symbols} />

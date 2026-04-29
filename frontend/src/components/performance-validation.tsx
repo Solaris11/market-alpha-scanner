@@ -365,7 +365,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
         if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
         if (active) setRawForwardRows(payload.rows ?? []);
       } catch (error) {
-        if (active) setRawForwardError(error instanceof Error ? error.message : "Failed to load raw forward-return observations.");
+        if (active) setRawForwardError(error instanceof Error ? error.message : "Failed to load detailed forward-return observations.");
       } finally {
         if (active) setRawForwardLoading(false);
       }
@@ -377,7 +377,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
   }, [rawForwardLoading, rawForwardRows, showRawObservations]);
 
   const readiness = [
-    { label: "Snapshots", value: history.count.toLocaleString(), meta: "saved scans" },
+    { label: "Saved Runs", value: history.count.toLocaleString(), meta: "signal memory" },
     { label: "Unique Days", value: history.uniqueDates.length.toLocaleString(), meta: "trading days" },
     { label: "Completed Observations", value: (forwardObservationCount ?? cleanForwardRows.length).toLocaleString(), meta: "forward windows" },
     { label: "Horizons Available", value: completedHorizons.length ? completedHorizons.join(", ") : "None", meta: "1D / 2D / 5D / 10D / 20D / 60D" },
@@ -528,9 +528,9 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
         <div className="border-b border-slate-800 bg-slate-950/70 px-3 py-2">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">{showRawObservations ? "Forward Returns (Raw Observations)" : "Forward Returns (Compact View)"}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">{showRawObservations ? "Forward Returns (Detailed View)" : "Forward Returns (Compact View)"}</div>
               <p className="mt-1 text-xs normal-case tracking-normal text-slate-500">
-                {showRawObservations ? "Raw observations may include repeated intraday snapshots." : "Compact view shows the latest observation per symbol and horizon."}
+                {showRawObservations ? "Detailed view may include repeated intraday observations." : "Compact view shows the latest observation per symbol and horizon."}
               </p>
               <p className="mt-1 text-xs normal-case tracking-normal text-slate-500">
                 Showing {visibleForwardRows.length.toLocaleString()} of {filteredForwardRows.length.toLocaleString()} forward return rows
@@ -538,11 +538,11 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
             </div>
             <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-300">
               <input checked={showRawObservations} className="accent-sky-400" onChange={(event) => setShowRawObservations(event.target.checked)} type="checkbox" />
-              Show raw observations
+              Show detailed observations
             </label>
           </div>
         </div>
-        {rawForwardLoading ? <div className="border-b border-slate-800 px-3 py-2 text-xs text-slate-500">Loading raw observations...</div> : null}
+        {rawForwardLoading ? <div className="border-b border-slate-800 px-3 py-2 text-xs text-slate-500">Loading detailed observations...</div> : null}
         {rawForwardError ? <div className="border-b border-rose-400/25 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">{rawForwardError}</div> : null}
         <table className="w-full min-w-[1690px] table-fixed border-collapse text-xs">
           <colgroup>

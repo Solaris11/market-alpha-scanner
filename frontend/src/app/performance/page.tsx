@@ -143,10 +143,10 @@ export default async function PerformancePage() {
           metrics={[
             { label: "Summary Rows", value: performance.summary.rows.length.toLocaleString(), meta: fileStateLabel(performance.summary.state) },
             { label: "Forward Rows", value: forwardObservationCount.toLocaleString(), meta: fileStateLabel(performance.forwardReturns.state) },
-            { label: "Snapshots", value: history.count.toLocaleString(), meta: "history files" },
+            { label: "Saved Runs", value: history.count.toLocaleString(), meta: "signal memory" },
             { label: "Unique Dates", value: history.uniqueDates.length.toLocaleString(), meta: "needed for returns" },
-            { label: "Earliest", value: formatDate(history.earliest), meta: "snapshot" },
-            { label: "Latest", value: formatDate(history.latest), meta: "snapshot" },
+            { label: "Earliest", value: formatDate(history.earliest), meta: "history" },
+            { label: "Latest", value: formatDate(history.latest), meta: "history" },
           ]}
         />
 
@@ -158,12 +158,10 @@ export default async function PerformancePage() {
 
         <SignalLifecycle rows={performance.lifecycle.rows} summaryRows={performance.lifecycleSummary.rows} />
 
-        <section className="terminal-panel rounded-md p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Analysis Runner</div>
+        <section className="terminal-panel rounded-2xl p-5">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Analysis Runner</div>
           <h2 className="mt-1 text-lg font-semibold text-slate-50">Refresh Performance Analysis</h2>
-          <pre className="mt-3 overflow-x-auto rounded border border-slate-800 bg-slate-950/80 p-3 text-xs text-slate-300">
-            python investment_scanner_mvp.py --run-analysis
-          </pre>
+          <p className="mt-2 max-w-3xl text-sm text-slate-400">Update validation, lifecycle, drift, and calibration views for the current signal history.</p>
           <RunCommandButton endpoint="/api/run-analysis" label="Run Analysis" />
         </section>
 

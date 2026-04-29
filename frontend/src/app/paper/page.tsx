@@ -74,6 +74,7 @@ function EmptyState({ message }: { message: string }) {
 }
 
 function PerformanceMetricGrid({ summary }: { summary: PaperAnalyticsSummary }) {
+  const winRatePct = Math.max(0, Math.min(100, summary.win_rate * 100));
   const metrics: Array<{ label: string; value: string; meta: string; toneValue?: number }> = [
     { label: "Total Trades", value: summary.total_trades.toLocaleString(), meta: `${summary.closed_trades} closed` },
     { label: "Win Rate", value: percentText(summary.win_rate), meta: "closed trades" },
@@ -84,16 +85,27 @@ function PerformanceMetricGrid({ summary }: { summary: PaperAnalyticsSummary }) 
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
-      {metrics.map((metric) => (
-        <div className="min-w-0 rounded border border-slate-800 bg-slate-950/40 px-3 py-2" key={metric.label}>
-          <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{metric.label}</div>
-          <div className={`mt-1 truncate font-mono text-sm font-semibold ${metric.toneValue === undefined ? "text-slate-100" : pnlTone(metric.toneValue)}`}>
-            {metric.value}
-          </div>
-          <div className="mt-0.5 truncate text-[11px] text-slate-500">{metric.meta}</div>
+    <div className="space-y-3">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="font-semibold uppercase tracking-[0.14em] text-slate-500">Win Rate Gauge</span>
+          <span className="font-mono text-slate-100">{percentText(summary.win_rate)}</span>
         </div>
-      ))}
+        <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-900/80">
+          <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 via-emerald-300 to-lime-300" style={{ width: `${winRatePct}%` }} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+        {metrics.map((metric) => (
+          <div className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/40 px-3 py-2" key={metric.label}>
+            <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{metric.label}</div>
+            <div className={`mt-1 truncate font-mono text-sm font-semibold ${metric.toneValue === undefined ? "text-slate-100" : pnlTone(metric.toneValue)}`}>
+              {metric.value}
+            </div>
+            <div className="mt-0.5 truncate text-[11px] text-slate-500">{metric.meta}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -149,27 +161,23 @@ function AnalyticsGroupsTable({ groups }: { groups: PaperAnalyticsGroupRow[] }) 
 function TimelineList({ timeline }: { timeline: PaperAnalyticsTimelinePoint[] }) {
   const rows = timeline.slice(-14).reverse();
   if (!rows.length) return <EmptyState message="No closed-trade timeline yet." />;
+  const maxAbs = Math.max(1, ...rows.map((point) => Math.abs(point.daily_pnl)));
 
   return (
-    <div className="overflow-x-auto rounded-md border border-slate-800">
-      <table className="w-full min-w-[460px] table-fixed border-collapse text-xs">
-        <thead className="border-b border-slate-700/70 bg-slate-950/70 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-          <tr>
-            <th className="w-36 px-2 py-2 text-left">Date</th>
-            <th className="w-28 px-2 py-2 text-right">Daily PnL</th>
-            <th className="w-32 px-2 py-2 text-right">Cumulative</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-slate-800/90">
-          {rows.map((point) => (
-            <tr className="hover:bg-sky-400/5" key={point.date}>
-              <td className="px-2 py-2 text-slate-300">{point.date}</td>
-              <td className={`px-2 py-2 text-right font-mono ${pnlTone(point.daily_pnl)}`}>{money(point.daily_pnl)}</td>
-              <td className={`px-2 py-2 text-right font-mono ${pnlTone(point.cumulative_pnl)}`}>{money(point.cumulative_pnl)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+      {rows.map((point) => {
+        const width = `${Math.max(4, (Math.abs(point.daily_pnl) / maxAbs) * 100)}%`;
+        const positive = point.daily_pnl >= 0;
+        return (
+          <div className="grid grid-cols-[92px_1fr_104px] items-center gap-3 text-xs" key={point.date}>
+            <div className="truncate text-slate-400">{point.date}</div>
+            <div className="h-2 overflow-hidden rounded-full bg-slate-900/80">
+              <div className={`h-full rounded-full ${positive ? "bg-emerald-300/80" : "bg-rose-300/80"}`} style={{ width }} />
+            </div>
+            <div className={`text-right font-mono ${pnlTone(point.daily_pnl)}`}>{money(point.daily_pnl)}</div>
+          </div>
+        );
+      })}
     </div>
   );
 }

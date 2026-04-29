@@ -16,9 +16,10 @@ type CommandResult = {
 type Props = {
   endpoint: string;
   label: string;
+  diagnostic?: boolean;
 };
 
-export function RunCommandButton({ endpoint, label }: Props) {
+export function RunCommandButton({ endpoint, label, diagnostic = false }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CommandResult | null>(null);
@@ -48,7 +49,7 @@ export function RunCommandButton({ endpoint, label }: Props) {
   return (
     <div className="mt-4 space-y-3">
       <button
-        className="rounded border border-sky-400/40 bg-sky-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-sky-100 hover:bg-sky-400/15 disabled:cursor-not-allowed disabled:opacity-60"
+        className="rounded-full border border-cyan-400/40 bg-cyan-400/10 px-4 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-cyan-100 transition-all duration-200 hover:bg-cyan-400/15 disabled:cursor-not-allowed disabled:opacity-60"
         disabled={loading}
         onClick={runCommand}
         type="button"
@@ -57,13 +58,13 @@ export function RunCommandButton({ endpoint, label }: Props) {
       </button>
 
       {result ? (
-          <div className={`rounded border p-3 text-xs ${result.ok ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100" : "border-rose-400/30 bg-rose-400/10 text-rose-100"}`}>
-            <div className="font-semibold">{result.ok ? "Success" : "Error"}</div>
-          <div className="mt-1 text-slate-300">{result.ok ? "Command completed." : result.error}</div>
-          {typeof result.exitCode === "number" ? <div className="mt-1 text-slate-400">Exit code: {result.exitCode}</div> : null}
-          {result.command ? <div className="mt-1 font-mono text-slate-400">{result.command}</div> : null}
-          {result.cwd ? <div className="mt-1 font-mono text-slate-500">cwd: {result.cwd}</div> : null}
-          {result.stdout || result.stderr ? (
+        <div className={`rounded border p-3 text-xs ${result.ok ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100" : "border-rose-400/30 bg-rose-400/10 text-rose-100"}`}>
+          <div className="font-semibold">{result.ok ? "Success" : "Error"}</div>
+          <div className="mt-1 text-slate-300">{result.ok ? "Refresh completed." : result.error}</div>
+          {diagnostic && typeof result.exitCode === "number" ? <div className="mt-1 text-slate-400">Exit code: {result.exitCode}</div> : null}
+          {diagnostic && result.command ? <div className="mt-1 font-mono text-slate-400">{result.command}</div> : null}
+          {diagnostic && result.cwd ? <div className="mt-1 font-mono text-slate-500">cwd: {result.cwd}</div> : null}
+          {diagnostic && (result.stdout || result.stderr) ? (
             <details className="mt-3 text-slate-300">
               <summary className="cursor-pointer text-slate-400">Logs</summary>
               {result.stdout ? <pre className="mt-2 max-h-72 overflow-auto rounded bg-slate-950/70 p-3 whitespace-pre-wrap">{result.stdout}</pre> : null}

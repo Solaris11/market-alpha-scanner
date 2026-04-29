@@ -52,7 +52,7 @@ export default async function TerminalPage() {
 
           <div className="grid gap-4 lg:grid-cols-2">
             <GlassPanel className="p-5">
-              <SectionTitle eyebrow="Paper Performance" title="Simulation Snapshot" />
+              <SectionTitle eyebrow="Paper Performance" title="Simulation Pulse" />
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <MetricCard label="Trades" value={snapshot.paperSummary.totalTrades} meta="paper only" />
                 <MetricCard label="Open" value={snapshot.paperSummary.openTrades} meta="positions" />
@@ -61,7 +61,7 @@ export default async function TerminalPage() {
               </div>
             </GlassPanel>
             <GlassPanel className="p-5">
-              <SectionTitle eyebrow="Watchlist Snapshot" title="High-Intent Names" />
+              <SectionTitle eyebrow="Watchlist Radar" title="High-Intent Names" />
               <div className="mt-4 flex flex-wrap gap-2">
                 {snapshot.topSignals.slice(0, 14).map((row) => <a className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 font-mono text-xs text-slate-200 hover:bg-white/10" href={`/symbol/${row.symbol}`} key={row.symbol}>{row.symbol}</a>)}
               </div>

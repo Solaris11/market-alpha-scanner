@@ -353,6 +353,14 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
   const renderedTopCandidates = useMemo(() => sortedTopCandidates.slice(0, 10), [sortedTopCandidates]);
   const visibleRankingCount = renderedRows.length;
   const visibleTopCount = renderedTopCandidates.length;
+  const decisionDistribution = useMemo(() => {
+    const decisions = ["ENTER", "WAIT_PULLBACK", "WATCH", "AVOID", "EXIT"] as const;
+    return decisions.map((decision) => ({
+      decision,
+      count: filteredRows.filter((row) => String(row.final_decision ?? "").trim().toUpperCase() === decision).length,
+    }));
+  }, [filteredRows]);
+  const distributionTotal = decisionDistribution.reduce((total, item) => total + item.count, 0) || 1;
 
   function resetFilters() {
     setSymbolSearch("");
@@ -387,16 +395,37 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
       <section className="min-w-0">
         <div className="mb-2 flex items-end justify-between gap-3">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Full Ranking</div>
-            <h2 className="text-lg font-semibold text-slate-50">Scanner Table</h2>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Opportunities</div>
+            <h2 className="text-lg font-semibold text-slate-50">Decision Board</h2>
           </div>
           <div className="whitespace-nowrap text-xs text-slate-500">
             Showing {visibleRankingCount.toLocaleString()} of {filteredRows.length.toLocaleString()} rows
           </div>
         </div>
 
-        <div className="terminal-panel mb-3 rounded-md p-3">
-          <div className="grid grid-cols-2 items-end gap-3 md:grid-cols-4 lg:grid-cols-8">
+        <div className="terminal-panel mb-3 rounded-2xl p-4">
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Decision Mix</div>
+            <div className="text-xs text-slate-500">{filteredRows.length.toLocaleString()} filtered symbols</div>
+          </div>
+          <div className="flex h-3 overflow-hidden rounded-full bg-slate-900/80">
+            {decisionDistribution.map((item) => {
+              const width = `${(item.count / distributionTotal) * 100}%`;
+              const color = item.decision === "ENTER" ? "bg-emerald-300" : item.decision === "WAIT_PULLBACK" ? "bg-amber-300" : item.decision === "WATCH" ? "bg-cyan-300" : item.decision === "AVOID" ? "bg-rose-300" : "bg-red-500";
+              return item.count ? <div className={color} key={item.decision} style={{ width }} /> : null;
+            })}
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">
+            {decisionDistribution.map((item) => (
+              <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1" key={item.decision}>
+                {item.decision.replaceAll("_", " ")} <span className="font-mono text-slate-100">{item.count}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div className="terminal-panel mb-3 rounded-2xl p-4">
+          <div className="grid grid-cols-2 items-end gap-3 md:grid-cols-4 lg:grid-cols-5">
             <div className="min-w-0">
               <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Symbol
@@ -445,70 +474,6 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
             </label>
 
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Rating
-              <select
-                className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
-                onChange={(event) => setRatingFilter(event.target.value)}
-                value={ratingFilter}
-              >
-                <option value="">All ratings</option>
-                {RATING_FILTER_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Action
-              <select
-                className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
-                onChange={(event) => setActionFilter(event.target.value)}
-                value={actionFilter}
-              >
-                <option value="">All actions</option>
-                {ACTION_FILTER_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Signal
-              <select
-                className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
-                onChange={(event) => setSignalFilter(event.target.value)}
-                value={signalFilter}
-              >
-                <option value="">All signals</option>
-                {SIGNAL_FILTER_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-              Quality
-              <select
-                className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
-                onChange={(event) => setQualityFilter(event.target.value)}
-                value={qualityFilter}
-              >
-                <option value="">All qualities</option>
-                {QUALITY_FILTER_OPTIONS.map((option) => (
-                  <option key={option} value={option}>
-                    {option.replaceAll("_", " ")}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Min Score
               <input
                 className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60"
@@ -522,13 +487,82 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
             </label>
 
             <button
-              className="col-start-2 h-9 self-end rounded border border-slate-700/80 px-3 text-xs font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200 md:col-start-4 lg:col-start-8"
+              className="h-9 self-end rounded-full border border-white/10 bg-white/[0.03] px-3 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-cyan-400/40 hover:bg-white/5 hover:text-cyan-100"
               onClick={resetFilters}
               type="button"
             >
               Reset
             </button>
           </div>
+
+          <details className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-slate-400">
+            <summary className="cursor-pointer font-semibold uppercase tracking-[0.14em] text-slate-500">Advanced filters</summary>
+            <div className="mt-3 grid grid-cols-2 items-end gap-3 md:grid-cols-4">
+              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Rating
+                <select
+                  className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-cyan-400/60"
+                  onChange={(event) => setRatingFilter(event.target.value)}
+                  value={ratingFilter}
+                >
+                  <option value="">All ratings</option>
+                  {RATING_FILTER_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Action
+                <select
+                  className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-cyan-400/60"
+                  onChange={(event) => setActionFilter(event.target.value)}
+                  value={actionFilter}
+                >
+                  <option value="">All actions</option>
+                  {ACTION_FILTER_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Signal
+                <select
+                  className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-cyan-400/60"
+                  onChange={(event) => setSignalFilter(event.target.value)}
+                  value={signalFilter}
+                >
+                  <option value="">All signals</option>
+                  {SIGNAL_FILTER_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                Quality
+                <select
+                  className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-cyan-400/60"
+                  onChange={(event) => setQualityFilter(event.target.value)}
+                  value={qualityFilter}
+                >
+                  <option value="">All qualities</option>
+                  {QUALITY_FILTER_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option.replaceAll("_", " ")}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </details>
         </div>
 
         <RankingTable rows={renderedRows} emptyMessage="No matching symbols" sortDirection={sortDirection} sortKey={sortKey} onSort={handleSort} />
@@ -549,7 +583,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
         <section>
           <div className="mb-2 flex items-end justify-between gap-3">
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Top Candidates</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Top Candidates</div>
               <h2 className="text-lg font-semibold text-slate-50">High Conviction</h2>
             </div>
             <div className="whitespace-nowrap text-xs text-slate-500">

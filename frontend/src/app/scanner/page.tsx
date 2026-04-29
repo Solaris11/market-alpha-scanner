@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { MetricStrip } from "@/components/metric-strip";
 import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/shell";
@@ -14,36 +15,35 @@ export default async function ScannerPage() {
       <div className="space-y-3">
         <MetricStrip
           metrics={[
-            { label: "Ranking Rows", value: ranking.length.toLocaleString(), meta: "full_ranking.csv" },
-            { label: "Top Candidates", value: topCandidates.length.toLocaleString(), meta: "top_candidates.csv" },
-            { label: "Snapshots", value: history.count.toLocaleString(), meta: "history" },
+            { label: "Signals", value: ranking.length.toLocaleString(), meta: "latest universe" },
+            { label: "Top Opportunities", value: topCandidates.length.toLocaleString(), meta: "decision-ready" },
+            { label: "Saved Runs", value: history.count.toLocaleString(), meta: "signal memory" },
             { label: "Alert Rules", value: alerts.activeCount.toLocaleString(), meta: "enabled" },
           ]}
         />
 
-        <section className="terminal-panel rounded-md p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Scanner</div>
-          <h2 className="mt-1 text-lg font-semibold text-slate-50">Run Scanner</h2>
+        <section className="terminal-panel rounded-2xl p-5">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Signal Refresh</div>
+          <h2 className="mt-1 text-xl font-semibold text-slate-50">Refresh Market Signals</h2>
           <p className="mt-2 max-w-3xl text-sm text-slate-400">
-            Launch the existing Python scanner from the Next.js frontend. This runs the same command you would run manually from the project root.
+            Update opportunities, market context, trade plans, and alert state for the terminal experience.
           </p>
-          <pre className="mt-3 overflow-x-auto rounded border border-slate-800 bg-slate-950/80 p-3 text-xs text-slate-300">
-            python investment_scanner_mvp.py --save-history
-          </pre>
-          <RunCommandButton endpoint="/api/run-scanner" label="Run Scanner" />
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <RunCommandButton endpoint="/api/run-scanner" label="Refresh Signals" />
+            <Link className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-semibold text-slate-300 transition-all duration-200 hover:border-cyan-400/40 hover:bg-white/5 hover:text-cyan-100" href="/advanced">
+              Advanced diagnostics
+            </Link>
+          </div>
         </section>
 
-        <section className="terminal-panel rounded-md p-4">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Alerts</div>
-          <h2 className="mt-1 text-lg font-semibold text-slate-50">Rule Engine</h2>
+        <section className="terminal-panel rounded-2xl p-5">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Alerts</div>
+          <h2 className="mt-1 text-xl font-semibold text-slate-50">Notification Readiness</h2>
           <div className="mt-2 grid gap-2 text-xs text-slate-400 md:grid-cols-3">
-            <div className="rounded border border-slate-800 bg-slate-950/50 p-2">Active rules: {alerts.activeCount.toLocaleString()}</div>
-            <div className="rounded border border-slate-800 bg-slate-950/50 p-2">Last sent: {alerts.lastSentAt ?? "Never"}</div>
-            <div className="rounded border border-slate-800 bg-slate-950/50 p-2">Status: {alerts.activeCount ? "Enabled" : "No active rules"}</div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">Active rules: {alerts.activeCount.toLocaleString()}</div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">Last sent: {alerts.lastSentAt ?? "Never"}</div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">Status: {alerts.activeCount ? "Enabled" : "No active rules"}</div>
           </div>
-          <pre className="mt-3 overflow-x-auto rounded border border-slate-800 bg-slate-950/80 p-3 text-xs text-slate-300">
-            python investment_scanner_mvp.py --save-history --send-alerts
-          </pre>
         </section>
       </div>
     </TerminalShell>

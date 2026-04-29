@@ -5,11 +5,12 @@ import { usePathname } from "next/navigation";
 
 const NAV = [
   { href: "/terminal", label: "Terminal" },
-  { href: "/", label: "Overview" },
+  { href: "/", label: "Opportunities" },
   { href: "/paper", label: "Paper" },
   { href: "/performance", label: "Performance" },
   { href: "/history", label: "History" },
   { href: "/alerts", label: "Alerts" },
+  { href: "/advanced", label: "Advanced" },
 ] as const;
 
 export function TerminalNav() {
