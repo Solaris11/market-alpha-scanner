@@ -1,4 +1,6 @@
 import type { RankingRow } from "@/lib/types";
+import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
+import { computeConviction } from "@/lib/trading/conviction";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { DecisionBadge } from "./DecisionBadge";
 import { GlassPanel } from "./ui/GlassPanel";
@@ -21,8 +23,9 @@ function glow(value: unknown) {
   return "shadow-[0_0_80px_rgba(34,211,238,0.14)]";
 }
 
-export function SymbolDecisionHero({ row }: { row: RankingRow }) {
+export function SymbolDecisionHero({ edge, row }: { edge?: HistoricalEdgeProof; row: RankingRow }) {
   const decision = row.final_decision ?? row.action ?? "WATCH";
+  const conviction = computeConviction(row, edge);
   return (
     <GlassPanel className={`overflow-hidden p-6 md:p-8 ${glow(decision)}`}>
       <div className="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-end">
@@ -34,6 +37,9 @@ export function SymbolDecisionHero({ row }: { row: RankingRow }) {
             <span className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-slate-200">
               {actionText(decision)}
             </span>
+            <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100">
+              Conviction <span className="font-mono">{conviction.score}</span> - {conviction.label}
+            </span>
           </div>
           <div className="mt-4 max-w-3xl text-lg leading-7 text-slate-200">
             {cleanText(row.decision_reason ?? row.quality_reason, "No decision reason available.")}
@@ -42,9 +48,9 @@ export function SymbolDecisionHero({ row }: { row: RankingRow }) {
 
         <div className="grid grid-cols-2 gap-3">
           <HeroMetric label="Score" value={formatNumber(row.final_score, 0)} />
+          <HeroMetric label="Conviction" value={`${conviction.score} ${conviction.label}`} />
           <HeroMetric label="Price" value={formatMoney(row.price)} />
           <HeroMetric label="Entry" value={formatMoney(row.suggested_entry ?? row.buy_zone ?? row.entry_zone)} />
-          <HeroMetric label="Risk / Reward" value={`${formatNumber(row.risk_reward, 2)}R`} />
         </div>
       </div>
     </GlassPanel>

@@ -50,7 +50,7 @@ export function SymbolTerminalWorkspace({
 
   return (
     <div className="space-y-5">
-      <SymbolDecisionHero row={row} />
+      <SymbolDecisionHero edge={edgeProof} row={row} />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
         <div className="space-y-5">

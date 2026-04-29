@@ -1,4 +1,5 @@
 import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
+import { edgeConfidenceLabel, edgeQualityLine } from "@/lib/trading/conviction";
 import { formatPercent } from "@/lib/ui/formatters";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
@@ -7,6 +8,9 @@ export function HistoricalEdgeCard({ edge }: { edge: HistoricalEdgeProof }) {
   return (
     <GlassPanel className="p-6">
       <SectionTitle eyebrow="Historical Edge" title="Does This Setup Work?" meta={edge.available ? edge.bestHorizon : "insufficient data"} />
+      <div className="mt-4 inline-flex rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] text-cyan-100">
+        {edgeConfidenceLabel(edge)}
+      </div>
       {edge.available ? (
         <>
           <div className="mt-5 grid gap-3 md:grid-cols-3">
@@ -15,12 +19,14 @@ export function HistoricalEdgeCard({ edge }: { edge: HistoricalEdgeProof }) {
             <Metric label="Sample Size" value={`${edge.sampleSize} trades`} />
           </div>
           <div className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4 text-sm leading-6 text-cyan-50">
-            Based on similar setups: <span className="font-semibold">{edge.groupLabel}</span>
+            <div>Based on similar setups: <span className="font-semibold">{edge.groupLabel}</span></div>
+            <div className="mt-2 text-cyan-100/90">{edgeQualityLine(edge)}</div>
           </div>
         </>
       ) : (
         <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-sm text-slate-400">
-          Not enough historical data. {edge.sampleSize ? `${edge.sampleSize} similar observations found; at least 20 are needed for a reliable read.` : "Performance history will populate this card over time."}
+          <div>{edgeQualityLine(edge)}</div>
+          <div className="mt-2">{edge.sampleSize ? `${edge.sampleSize} similar observations found; at least 20 are needed for a reliable read.` : "Performance history will populate this card over time."}</div>
         </div>
       )}
     </GlassPanel>

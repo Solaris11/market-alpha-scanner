@@ -1,6 +1,8 @@
 import Link from "next/link";
+import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
+import { computeConviction } from "@/lib/trading/conviction";
 import type { RankingRow } from "@/lib/types";
-import { cleanText, formatMoney, formatNumber, formatPercent } from "@/lib/ui/formatters";
+import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { DecisionBadge } from "./DecisionBadge";
 
 function boundedScore(value: unknown) {
@@ -13,9 +15,10 @@ function riskRewardLabel(row: RankingRow) {
   return value === null ? "R/R N/A" : `R/R ${value.toFixed(2)}x`;
 }
 
-export function SignalCard({ row }: { row: RankingRow }) {
+export function SignalCard({ edge, row }: { edge?: HistoricalEdgeProof; row: RankingRow }) {
   const score = boundedScore(row.final_score);
   const reward = typeof row.risk_reward === "number" && Number.isFinite(row.risk_reward) ? Math.max(0, Math.min(100, row.risk_reward * 22)) : score;
+  const conviction = computeConviction(row, edge);
 
   return (
     <Link className="group block rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-400/40 hover:bg-white/[0.07] hover:shadow-cyan-950/30" href={`/symbol/${row.symbol}`}>
@@ -36,8 +39,8 @@ export function SignalCard({ row }: { row: RankingRow }) {
           <div className="mt-1 font-mono text-slate-100">{formatMoney(row.price)}</div>
         </div>
         <div>
-          <div className="text-slate-500">Entry Dist.</div>
-          <div className="mt-1 font-mono text-slate-100">{formatPercent(row.entry_distance_pct)}</div>
+          <div className="text-slate-500">Conviction</div>
+          <div className="mt-1 font-mono text-slate-100">{conviction.score}</div>
         </div>
       </div>
       <div className="mt-4 space-y-2">

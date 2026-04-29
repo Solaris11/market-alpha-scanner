@@ -32,7 +32,7 @@ export function TradePlanCard({ row }: { row: RankingRow }) {
       <GlassPanel className="p-6">
         <SectionTitle eyebrow="Trade Plan" title="No Valid Long Plan" />
         <div className="mt-5 rounded-2xl border border-rose-300/20 bg-rose-400/10 p-5 text-sm leading-6 text-rose-100">
-          {decision === "AVOID" || decision === "EXIT" ? "No valid trade plan - risk/reward is not favorable." : "Entry, stop, or target data is incomplete. Scanner insights are still available."}
+          {decision === "AVOID" || decision === "EXIT" ? "No valid trade setup - risk/reward is not favorable." : "Entry, stop, or target data is incomplete. Scanner insights are still available."}
         </div>
       </GlassPanel>
     );

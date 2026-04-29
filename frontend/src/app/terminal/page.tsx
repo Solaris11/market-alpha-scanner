@@ -1,4 +1,5 @@
 import { AICopilotPanel } from "@/components/terminal/AICopilotPanel";
+import { BestTradeNowCard } from "@/components/terminal/BestTradeNowCard";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
 import { MetricCard } from "@/components/terminal/MetricCard";
@@ -7,14 +8,21 @@ import { SignalCard } from "@/components/terminal/SignalCard";
 import { SignalHeatmap } from "@/components/terminal/SignalHeatmap";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
+import { getPerformanceData } from "@/lib/scanner-data";
+import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { formatMoney, formatPercent } from "@/lib/ui/formatters";
 
 export const dynamic = "force-dynamic";
 
 export default async function TerminalPage() {
   const adapter = new ScannerDataAdapter();
-  const snapshot = await adapter.getTerminalSnapshot();
-  const leader = snapshot.topSignals[0] ?? snapshot.signals[0];
+  const [snapshot, performance] = await Promise.all([
+    adapter.getTerminalSnapshot(),
+    getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
+  ]);
+  const edges = buildEdgeLookup(snapshot.signals, performance);
+  const best = selectBestTradeNow(snapshot.signals, edges);
+  const leader = best?.row ?? snapshot.topSignals[0] ?? snapshot.signals[0];
   const enterCount = snapshot.signals.filter((row) => String(row.final_decision ?? "").toUpperCase() === "ENTER").length;
   const avoidCount = snapshot.signals.filter((row) => String(row.final_decision ?? "").toUpperCase() === "AVOID").length;
 
@@ -22,6 +30,8 @@ export default async function TerminalPage() {
     <TerminalShell>
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">
+          <BestTradeNowCard best={best} edges={edges} regime={snapshot.marketRegime} />
+
           <GlassPanel className="overflow-hidden p-5">
             <div className="grid gap-5">
               <div>
@@ -44,7 +54,7 @@ export default async function TerminalPage() {
           <GlassPanel className="p-5">
             <SectionTitle eyebrow="Top Opportunities" title="What Should I Buy?" meta="scanner-ranked" />
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {snapshot.topSignals.slice(0, 6).map((row) => <SignalCard key={row.symbol} row={row} />)}
+              {snapshot.topSignals.slice(0, 6).map((row) => <SignalCard edge={edges[row.symbol.toUpperCase()]} key={row.symbol} row={row} />)}
             </div>
           </GlassPanel>
 

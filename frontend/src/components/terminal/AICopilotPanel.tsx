@@ -22,10 +22,13 @@ export function AICopilotPanel({ signal }: { signal: RankingRow }) {
         </label>
       </div>
       <div className="mt-4 rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4 text-sm leading-6 text-cyan-50">{recommendation.recommendationText}</div>
-      <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
-        <div className="rounded-xl bg-white/[0.04] p-2"><div className="text-slate-500">Qty</div><div className="font-mono text-slate-100">{formatNumber(recommendation.suggestedQty, 0)}</div></div>
-        <div className="rounded-xl bg-white/[0.04] p-2"><div className="text-slate-500">Risk</div><div className="font-mono text-rose-200">{formatMoney(recommendation.maxRisk)}</div></div>
-        <div className="rounded-xl bg-white/[0.04] p-2"><div className="text-slate-500">Reward</div><div className="font-mono text-emerald-200">{formatMoney(recommendation.potentialReward)}</div></div>
+      <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+        <Metric label="Account Equity" value={formatMoney(recommendation.accountEquity)} />
+        <Metric label="Risk Percent" value={`${formatNumber(recommendation.riskPercent, 1)}%`} />
+        <Metric label="Position Size" value={formatNumber(recommendation.positionSize, 0)} />
+        <Metric label="Max Risk" value={formatMoney(recommendation.maxRiskAmount)} tone="risk" />
+        <Metric label="Potential Reward" value={formatMoney(recommendation.potentialReward)} tone="reward" />
+        <Metric label="Risk/Reward" value={`${formatNumber(recommendation.riskRewardRatio, 2)}R`} />
       </div>
       {recommendation.warnings.length ? (
         <div className="mt-4 space-y-2">
@@ -33,5 +36,15 @@ export function AICopilotPanel({ signal }: { signal: RankingRow }) {
         </div>
       ) : null}
     </GlassPanel>
+  );
+}
+
+function Metric({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "reward" | "risk" }) {
+  const color = tone === "risk" ? "text-rose-200" : tone === "reward" ? "text-emerald-200" : "text-slate-100";
+  return (
+    <div className="rounded-xl bg-white/[0.04] p-2">
+      <div className="text-slate-500">{label}</div>
+      <div className={`font-mono ${color}`}>{value}</div>
+    </div>
   );
 }
