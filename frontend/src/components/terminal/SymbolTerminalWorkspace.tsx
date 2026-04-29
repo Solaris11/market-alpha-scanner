@@ -1,16 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTradePlanEngine } from "@/hooks/useTradePlanEngine";
 import type { SignalHistoryPoint } from "@/lib/adapters/DataServiceAdapter";
 import type { PaperPositionRow, PaperTradeEventRow } from "@/lib/paper-data";
 import type { ConvictionTimelineModel } from "@/lib/trading/conviction-timeline-types";
 import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
 import type { RankingRow, ScannerScalar } from "@/lib/types";
-import { finiteNumber } from "@/lib/ui/formatters";
 import { AICopilotPanel } from "./AICopilotPanel";
 import { ConvictionTimeline } from "./ConvictionTimeline";
 import { CorrectionMapCard } from "./CorrectionMapCard";
+import { ExecutionTicket } from "./ExecutionTicket";
 import { HistoricalEdgeCard } from "./HistoricalEdgeCard";
 import { PaperContextCard } from "./PaperContextCard";
 import { SymbolChart, type ChartCandle, type ChartSignalMarker } from "./SymbolChart";
@@ -42,10 +43,8 @@ export function SymbolTerminalWorkspace({
 }) {
   const [showHistoricalMarkers, setShowHistoricalMarkers] = useState(false);
   const tradeLevels = useMemo(() => buildSignalTradeLevels(row), [row]);
+  const tradeEngine = useTradePlanEngine(row);
   const lifecycle = useMemo(() => computeSignalLifecycle(row, tradeLevels), [row, tradeLevels]);
-  const entry = tradeLevels.entry ?? finiteNumber(row.price) ?? 0;
-  const stop = tradeLevels.stop ?? Math.max(0, entry * 0.95);
-  const target = tradeLevels.target ?? entry * 1.08;
   const symbol = row.symbol.toUpperCase();
   const symbolPositions = paperPositions.filter((position) => position.symbol.toUpperCase() === symbol);
   const openPaper = symbolPositions.filter((position) => position.status === "OPEN");
@@ -64,7 +63,7 @@ export function SymbolTerminalWorkspace({
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
         <div className="space-y-5">
-          <TradePlanCard row={row} />
+          <TradePlanCard engine={tradeEngine} row={row} />
           <CorrectionMapCard row={row} />
           <HistoricalEdgeCard edge={edgeProof} />
           <WhyDecisionCard row={row} />
@@ -72,8 +71,9 @@ export function SymbolTerminalWorkspace({
         </div>
 
         <aside className="space-y-5 xl:sticky xl:top-5 xl:self-start">
-          <AICopilotPanel signal={row} />
-          <WhatIfSimulator defaults={{ accountSize: 10000, riskPct: 2, entry, stop, target }} />
+          <AICopilotPanel engine={tradeEngine} signal={row} />
+          <WhatIfSimulator engine={tradeEngine} />
+          <ExecutionTicket engine={tradeEngine} symbol={symbol} />
         </aside>
       </div>
 

@@ -1,66 +1,51 @@
-import { cleanText, finiteNumber, firstNumber, formatMoney, formatNumber, formatPercent } from "@/lib/ui/formatters";
+import type { TradePlanEngine } from "@/hooks/useTradePlanEngine";
+import { cleanText, formatMoney, formatNumber, formatPercent } from "@/lib/ui/formatters";
 import type { RankingRow } from "@/lib/types";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
-
-const DEFAULT_ACCOUNT = 10000;
-const DEFAULT_RISK_PCT = 2;
-
-function level(value: unknown) {
-  return firstNumber(value);
-}
-
-function quantityFor(entry: number, stop: number) {
-  const perShareRisk = entry - stop;
-  if (perShareRisk <= 0) return 0;
-  return Math.floor((DEFAULT_ACCOUNT * (DEFAULT_RISK_PCT / 100)) / perShareRisk);
-}
 
 function pct(value: number) {
   return formatPercent(value, 1);
 }
 
-export function TradePlanCard({ row }: { row: RankingRow }) {
+export function TradePlanCard({ engine, row }: { engine: TradePlanEngine; row: RankingRow }) {
   const decision = String(row.final_decision ?? "").toUpperCase();
-  const entry = level(row.suggested_entry ?? row.buy_zone ?? row.entry_zone ?? row.price);
-  const stop = level(row.stop_loss ?? row.invalidation_level);
-  const target = level(row.conservative_target ?? row.take_profit_zone ?? row.take_profit_high ?? row.target_price);
+  const entry = engine.state.entryPrice;
+  const stop = engine.state.stopLoss;
+  const target = engine.state.targetPrice;
   const valid = decision !== "AVOID" && decision !== "EXIT" && entry !== null && stop !== null && target !== null && entry > 0 && stop < entry && target > entry;
+  const { metrics, validity } = engine;
 
-  if (!valid) {
+  if (!valid || !validity.isCalculable || metrics.potentialReward === null || metrics.riskRewardRatio === null) {
     return (
       <GlassPanel className="p-6">
-        <SectionTitle eyebrow="Trade Plan" title="No Valid Long Plan" />
-        <div className="mt-5 rounded-2xl border border-rose-300/20 bg-rose-400/10 p-5 text-sm leading-6 text-rose-100">
-          {decision === "AVOID" || decision === "EXIT" ? "No valid trade setup - risk/reward is not favorable." : "Entry, stop, or target data is incomplete. Scanner insights are still available."}
+        <SectionTitle eyebrow="Trade Plan" title={validity.isOverextended ? "Correction Required" : "No Valid Long Plan"} />
+        <div className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-5 text-sm leading-6 text-amber-100">
+          {validity.message || (decision === "AVOID" || decision === "EXIT" ? "No valid trade setup." : "Entry, stop, or target data is incomplete.")}
         </div>
       </GlassPanel>
     );
   }
 
-  const qty = quantityFor(entry, stop);
   const riskPct = (entry - stop) / entry;
   const rewardPct = (target - entry) / entry;
-  const maxLoss = (entry - stop) * qty;
-  const potentialGain = (target - entry) * qty;
-  const riskReward = rewardPct / riskPct;
   const stopPosition = 8;
   const entryPosition = 45;
   const targetPosition = 92;
 
   return (
     <GlassPanel className="p-6">
-      <SectionTitle eyebrow="Trade Plan" title={decision === "WAIT_PULLBACK" ? "Pullback Plan" : "Execution Plan"} meta="default $10k / 2% risk" />
+      <SectionTitle eyebrow="Trade Plan" title={decision === "WAIT_PULLBACK" ? "Pullback Plan" : "Execution Plan"} meta="synced risk plan" />
       <div className="mt-5 grid gap-3 md:grid-cols-3">
         <PlanMetric label="Suggested Entry" value={formatMoney(entry)} />
         <PlanMetric label="Stop Loss" value={formatMoney(stop)} tone="risk" />
         <PlanMetric label="Target Price" value={formatMoney(target)} tone="reward" />
         <PlanMetric label="Risk %" value={pct(riskPct)} tone="risk" />
         <PlanMetric label="Reward %" value={pct(rewardPct)} tone="reward" />
-        <PlanMetric label="Risk/Reward" value={`${formatNumber(finiteNumber(row.risk_reward) ?? riskReward, 2)}R`} />
-        <PlanMetric label="Max Loss" value={formatMoney(maxLoss)} tone="risk" />
-        <PlanMetric label="Potential Gain" value={formatMoney(potentialGain)} tone="reward" />
-        <PlanMetric label="Suggested Qty" value={formatNumber(qty, 0)} />
+        <PlanMetric label="Risk/Reward" value={`${formatNumber(metrics.riskRewardRatio, 1)}R`} />
+        <PlanMetric label="Max Risk" value={formatMoney(metrics.maxRiskAmount)} tone="risk" />
+        <PlanMetric label="Potential Reward" value={formatMoney(metrics.potentialReward)} tone="reward" />
+        <PlanMetric label="Position Size" value={formatNumber(metrics.positionSize, 0)} />
       </div>
 
       <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
