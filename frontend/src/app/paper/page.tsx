@@ -1,5 +1,5 @@
 import { MetricStrip } from "@/components/metric-strip";
-import { TerminalShell } from "@/components/shell";
+import { TerminalShell } from "@/components/terminal/TerminalShell";
 import {
   getPaperAnalytics,
   getPaperData,
@@ -313,7 +313,7 @@ export default async function PaperPage() {
         />
 
         {!data.configured || data.error || !account ? (
-          <section className="terminal-panel rounded-md p-4">
+          <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5 shadow-xl shadow-black/20 ring-1 ring-white/5 backdrop-blur-xl">
             <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Paper Trading</div>
             <h2 className="mt-1 text-lg font-semibold text-slate-50">Paper Account Unavailable</h2>
             <p className="mt-2 max-w-3xl text-sm text-slate-400">
@@ -322,7 +322,7 @@ export default async function PaperPage() {
           </section>
         ) : null}
 
-        <section className="terminal-panel rounded-md p-4">
+        <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5 shadow-xl shadow-black/20 ring-1 ring-white/5 backdrop-blur-xl">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Paper Performance</div>
           <h2 className="mt-1 text-lg font-semibold text-slate-50">Performance Analytics</h2>
           {analytics.error ? <p className="mt-2 text-sm text-rose-300">{analytics.error}</p> : null}
@@ -341,7 +341,7 @@ export default async function PaperPage() {
           </div>
         </section>
 
-        <section className="terminal-panel rounded-md p-4">
+        <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5 shadow-xl shadow-black/20 ring-1 ring-white/5 backdrop-blur-xl">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Open Positions</div>
           <h2 className="mt-1 text-lg font-semibold text-slate-50">Simulated Positions</h2>
           <div className="mt-3">
@@ -349,7 +349,7 @@ export default async function PaperPage() {
           </div>
         </section>
 
-        <section className="terminal-panel rounded-md p-4">
+        <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5 shadow-xl shadow-black/20 ring-1 ring-white/5 backdrop-blur-xl">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Closed Positions</div>
           <h2 className="mt-1 text-lg font-semibold text-slate-50">Last 20 Closed Trades</h2>
           <div className="mt-3">
@@ -357,7 +357,7 @@ export default async function PaperPage() {
           </div>
         </section>
 
-        <section className="terminal-panel rounded-md p-4">
+        <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5 shadow-xl shadow-black/20 ring-1 ring-white/5 backdrop-blur-xl">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Recent Trade Events</div>
           <h2 className="mt-1 text-lg font-semibold text-slate-50">Paper Event Log</h2>
           <div className="mt-3">
