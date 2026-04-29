@@ -30,15 +30,18 @@ export function buildCopilotRecommendation(input: CopilotInput): CopilotRecommen
   if (risk.violatesRisk) warnings.push("Trade sizing violates the selected risk profile or has invalid risk.");
   if (decision === "AVOID" || decision === "EXIT") warnings.push("System decision blocks new aggressive entries.");
 
+  const reason = String(signal.decision_reason ?? signal.quality_reason ?? "").trim();
   const prefix =
     decision === "ENTER"
-      ? `For a $${input.accountBalance.toLocaleString()} account and ${input.riskPct}% risk profile, consider ${signal.symbol} near ${entry.toFixed(2)} with quantity ${risk.quantity}.`
+      ? `For a $${input.accountBalance.toLocaleString()} account at ${input.riskPct}% risk, ${signal.symbol} is cleared for a planned entry near ${entry.toFixed(2)} with quantity ${risk.quantity}.`
       : decision === "WAIT_PULLBACK"
-        ? `${signal.symbol} is not an immediate entry. Wait for the suggested entry area near ${entry ? entry.toFixed(2) : "the scanner zone"}.`
-        : `${signal.symbol} is currently ${decision || "not cleared"} by the system. Do not force an entry from this signal.`;
+        ? `${signal.symbol} is not an immediate entry. Wait for a pullback near ${entry ? entry.toFixed(2) : "the scanner entry zone"} before sizing the trade.`
+        : decision === "AVOID" || decision === "EXIT"
+          ? `Avoid entry on ${signal.symbol}. The current decision is ${decision}, so the risk plan should stay defensive.`
+          : `${signal.symbol} is currently ${decision || "not cleared"} by the system. Monitor only until the trade plan improves.`;
 
   return {
-    recommendationText: `${prefix} Stop ${stop ? stop.toFixed(2) : "N/A"}, target ${target ? target.toFixed(2) : "N/A"}. Max risk: $${risk.maxLoss.toFixed(2)}. Simulation only. Not financial advice.`,
+    recommendationText: `${prefix}${reason ? ` Reason: ${reason}.` : ""} Stop ${stop ? stop.toFixed(2) : "N/A"}, target ${target ? target.toFixed(2) : "N/A"}. Max risk: $${risk.maxLoss.toFixed(2)}, potential reward: $${risk.potentialProfit.toFixed(2)}. Simulation only. Not financial advice.`,
     suggestedQty: risk.quantity,
     maxRisk: risk.maxLoss,
     potentialReward: risk.potentialProfit,

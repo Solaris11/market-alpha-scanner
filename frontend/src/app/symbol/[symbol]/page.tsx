@@ -4,6 +4,8 @@ import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { EmptyState } from "@/components/terminal/ui/EmptyState";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPaperData } from "@/lib/paper-data";
+import { getPerformanceData } from "@/lib/scanner-data";
+import { buildHistoricalEdgeProof } from "@/lib/trading/edge-proof";
 
 export const dynamic = "force-dynamic";
 
@@ -14,12 +16,14 @@ type PageProps = {
 export default async function SymbolDetailPage({ params }: PageProps) {
   const { symbol } = await params;
   const adapter = new ScannerDataAdapter();
-  const [detail, history, paper] = await Promise.all([
+  const [detail, history, paper, performance] = await Promise.all([
     adapter.getSymbolDetail(symbol),
     adapter.getSignalHistory(symbol),
     getPaperData().catch(() => ({ positions: [], events: [] })),
+    getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
   ]);
   const row = detail.row;
+  const edgeProof = row ? buildHistoricalEdgeProof(row, performance) : null;
 
   return (
     <TerminalShell>
@@ -32,6 +36,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
         <EmptyState title="Symbol not found" message={`${symbol.toUpperCase()} is not available in the current scanner output.`} />
       ) : (
         <SymbolTerminalWorkspace
+          edgeProof={edgeProof ?? buildHistoricalEdgeProof(row, null)}
           history={history}
           paperEvents={paper.events ?? []}
           paperPositions={paper.positions ?? []}

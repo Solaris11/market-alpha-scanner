@@ -10,7 +10,7 @@ export function AICopilotPanel({ signal }: { signal: RankingRow }) {
   const { accountBalance, riskPct, setAccountBalance, setRiskPct, recommendation } = useCopilotExplanation(signal);
   return (
     <GlassPanel className="p-5">
-      <SectionTitle eyebrow="AI Copilot" title="Decision Assistant" meta="mock" />
+      <SectionTitle eyebrow="AI Copilot" title="Decision Assistant" />
       <div className="mt-4 grid grid-cols-2 gap-2">
         <label className="text-xs text-slate-400">
           Account
