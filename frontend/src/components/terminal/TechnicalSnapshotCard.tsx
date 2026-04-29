@@ -1,11 +1,11 @@
 import type { RankingRow } from "@/lib/types";
-import { finiteNumber, formatNumber, formatPercent } from "@/lib/ui/formatters";
+import { formatNumber, formatPercent, normalizeNumeric, normalizePercent } from "@/lib/ui/formatters";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
 function numericFrom(row: RankingRow, keys: string[]) {
   for (const key of keys) {
-    const value = finiteNumber(row[key]);
+    const value = normalizeNumeric(row[key]);
     if (value !== null) return value;
   }
   return null;
@@ -20,11 +20,10 @@ function rsiStatus(value: number | null) {
   return "Neutral";
 }
 
-function macdStatus(value: number | null, raw: unknown) {
-  const text = String(raw ?? "").toLowerCase();
-  if (value !== null) return value >= 0 ? "Positive" : "Negative";
-  if (text.includes("positive") || text.includes("bull")) return "Positive";
-  if (text.includes("negative") || text.includes("bear")) return "Negative";
+function macdStatus(value: number | null) {
+  if (value !== null && value > 0) return "Bullish momentum";
+  if (value !== null && value < 0) return "Bearish momentum";
+  if (value !== null) return "Neutral momentum";
   return "Unavailable";
 }
 
@@ -34,9 +33,8 @@ function barPercent(value: number | null, fallback = 50) {
 }
 
 function normalizeDrawdownPercent(value: number | null): number | null {
-  if (value === null || !Number.isFinite(value)) return null;
-  if (Math.abs(value) > 100) return null;
-  const percentValue = Math.abs(value) <= 1 ? value * 100 : value;
+  const percentValue = normalizePercent(value, { max: 100, min: -100 });
+  if (percentValue === null) return null;
   return Math.min(0, Math.max(-100, percentValue));
 }
 
@@ -45,10 +43,21 @@ function formatDrawdownPercent(value: number | null): string {
   return `${formatNumber(value, 1)}%`;
 }
 
+function formatMacd(value: number | null): string {
+  if (value === null) return "N/A";
+  const formatted = value.toFixed(4);
+  return value > 0 ? `+${formatted}` : formatted;
+}
+
+function formatNormalizedPercent(value: number | null): string {
+  if (value === null) return "N/A";
+  return `${value.toFixed(2)}%`;
+}
+
 export function TechnicalSnapshotCard({ row }: { row: RankingRow }) {
   const rsi = numericFrom(row, ["current_rsi", "rsi"]);
-  const macd = numericFrom(row, ["macd_histogram", "macd", "macd_score"]);
-  const atr = numericFrom(row, ["atr_pct"]);
+  const macd = normalizeNumeric(row.current_macd_hist);
+  const atr = normalizePercent(row.atr_pct, { max: 100, min: 0 });
   const volatility = numericFrom(row, ["annualized_volatility", "volatility"]);
   const drawdown = normalizeDrawdownPercent(numericFrom(row, ["max_drawdown"]));
   const trend = numericFrom(row, ["trend_score", "technical_score"]);
@@ -59,10 +68,10 @@ export function TechnicalSnapshotCard({ row }: { row: RankingRow }) {
       <SectionTitle eyebrow="Technicals" title="Technical Snapshot" />
       <div className="mt-5 grid gap-3 md:grid-cols-2">
         <TechBar label="RSI" status={rsiStatus(rsi)} value={rsi === null ? "N/A" : formatNumber(rsi, 0)} width={barPercent(rsi)} />
-        <TechBar label="MACD" status={macdStatus(macd, row.macd)} value={macd === null ? "N/A" : formatNumber(macd, 2)} width={macd === null ? 50 : macd >= 0 ? 72 : 28} />
-        <TechBar label="ATR" status="Volatility range" value={atr === null ? "N/A" : formatPercent(atr, 1)} width={barPercent(atr === null ? null : atr * 100, 35)} />
+        <TechBar label="MACD" status={macdStatus(macd)} value={formatMacd(macd)} width={macd === null ? 50 : macd > 0 ? 72 : macd < 0 ? 28 : 50} />
+        <TechBar label="ATR" status="Volatility range" value={formatNormalizedPercent(atr)} width={barPercent(atr, 0)} />
         <TechBar label="Volatility" status="Annualized" value={volatility === null ? "N/A" : formatPercent(volatility, 1)} width={barPercent(volatility === null ? null : volatility * 100, 40)} />
-        <TechBar label="Max Drawdown" value={formatDrawdownPercent(drawdown)} width={barPercent(drawdown === null ? null : Math.abs(drawdown), 25)} tone="risk" />
+        <TechBar label="Max Drawdown" value={formatDrawdownPercent(drawdown)} width={barPercent(drawdown === null ? null : Math.abs(drawdown), 0)} tone="risk" />
         <TechBar label="Trend" status={trend !== null && trend >= 70 ? "Strong" : trend !== null && trend >= 50 ? "Neutral" : "Weak"} value={trend === null ? "N/A" : formatNumber(trend, 0)} width={barPercent(trend)} />
         <TechBar label="Momentum" status={momentum !== null && momentum >= 70 ? "Strong" : momentum !== null && momentum >= 50 ? "Neutral" : "Weak"} value={momentum === null ? "N/A" : formatNumber(momentum, 0)} width={barPercent(momentum)} />
       </div>

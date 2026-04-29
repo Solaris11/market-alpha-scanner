@@ -1,7 +1,23 @@
-export function finiteNumber(value: unknown): number | null {
+const NULLISH_STRINGS = new Set(["", "$undefined", "undefined", "nan", "n/a", "na", "none", "null"]);
+
+export function normalizeNumeric(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
-  const parsed = typeof value === "number" ? value : Number(String(value).replace(/[$,%]/g, ""));
+  const text = typeof value === "number" ? "" : String(value).trim();
+  if (typeof value !== "number" && NULLISH_STRINGS.has(text.toLowerCase())) return null;
+  const parsed = typeof value === "number" ? value : Number(text.replace(/[$,%]/g, "").replace(/,/g, ""));
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+export function normalizePercent(value: unknown, { max = 100, min = 0, scaleDecimal = true }: { max?: number; min?: number; scaleDecimal?: boolean } = {}): number | null {
+  const parsed = normalizeNumeric(value);
+  if (parsed === null) return null;
+  const percent = scaleDecimal && Math.abs(parsed) <= 1 ? parsed * 100 : parsed;
+  if (!Number.isFinite(percent) || percent < min || percent > max) return null;
+  return percent;
+}
+
+export function finiteNumber(value: unknown): number | null {
+  return normalizeNumeric(value);
 }
 
 export function formatMoney(value: unknown, digits = 2) {
