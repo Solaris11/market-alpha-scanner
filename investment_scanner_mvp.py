@@ -17,6 +17,7 @@ from scanner.analysis import analyze_performance, compute_forward_returns
 from scanner.config import DEFAULT_NEWS_LIMIT, DEFAULT_UNIVERSE, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE
 from scanner.engine import load_universe_from_csv, scan_symbols
 from scanner.outputs import print_top_table, save_snapshot
+from scanner.paper_trading import run_paper_trading
 from scanner.perf import log_timing, timer_start
 from scanner.regime import write_market_regime
 from scanner.safety import atomic_write_dataframe_csv, check_data_freshness, ensure_action_column, scanner_run_lock, validate_ranking_schema
@@ -41,6 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--save-history", dest="save_history", action="store_true", help="Save a timestamped snapshot after each scan")
     parser.add_argument("--no-save-history", dest="save_history", action="store_false", help="Do not save a timestamped snapshot")
     parser.add_argument("--send-alerts", action="store_true", help="Evaluate enabled alert rules and send configured Telegram/email alerts")
+    parser.add_argument("--paper-trade", action="store_true", help="Run optional paper trading simulation after DB writeback")
     parser.add_argument("--alerts-only", action="store_true", help="Evaluate alerts from existing scanner_output CSVs without running a scan")
     parser.add_argument("--alert-rules-path", help="Optional path to alert_rules.json")
     parser.add_argument("--alert-state-path", help="Optional path to alert_state.json")
@@ -156,6 +158,9 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
             print(f"Skipping database write: {db_result.get('reason', 'DATABASE_URL not configured')}")
     except Exception as exc:
         print(f"Warning: database write skipped due to error: {exc}")
+
+    if args.paper_trade:
+        run_paper_trading()
 
     if args.send_alerts:
         phase_started = timer_start()

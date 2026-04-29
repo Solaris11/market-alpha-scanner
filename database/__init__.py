@@ -1,7 +1,7 @@
 """Lightweight database plumbing for PostgreSQL-backed scanner storage."""
 
 from .config import AppConfig, load_app_config
-from .models import ScanRun, ScannerSignal
+from .models import PaperAccount, PaperPosition, PaperTradeEvent, ScanRun, ScannerSignal
 from .repositories import (
     add_scanner_signal_rows,
     create_scan_run,
@@ -11,6 +11,9 @@ from .writeback import persist_scan_dataframe
 
 __all__ = [
     "AppConfig",
+    "PaperAccount",
+    "PaperPosition",
+    "PaperTradeEvent",
     "ScanRun",
     "ScannerSignal",
     "add_scanner_signal_rows",

@@ -8,6 +8,7 @@ const NAV_ITEMS = [
   { href: "/scanner", label: "Scanner" },
   { href: "/performance", label: "Performance" },
   { href: "/history", label: "History" },
+  { href: "/paper", label: "Paper" },
   { href: "/alerts", label: "Alerts" },
 ] as const;
 

@@ -68,3 +68,51 @@ class NewsItem(BaseModel):
     summary: str | None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PaperAccountSummary(BaseModel):
+    id: UUID
+    name: str
+    cash_balance: Decimal
+    equity_value: Decimal
+    realized_pnl: Decimal
+    open_positions_count: int
+    total_account_value: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PaperPositionItem(BaseModel):
+    id: UUID
+    symbol: str
+    status: str
+    opened_at: datetime
+    closed_at: datetime | None
+    entry_price: Decimal
+    current_price: Decimal | None
+    quantity: Decimal
+    stop_loss: Decimal | None
+    target_price: Decimal | None
+    unrealized_pnl: Decimal | None
+    final_decision: str | None
+    recommendation_quality: str | None
+    entry_status: str | None
+    setup_type: str | None
+    rating: str | None
+    realized_pnl: Decimal | None
+    return_pct: Decimal | None
+    close_reason: str | None
+
+
+class PaperTradeEventItem(BaseModel):
+    id: UUID
+    symbol: str
+    event_type: str
+    event_reason: str | None
+    price: Decimal | None
+    quantity: Decimal | None
+    cash_delta: Decimal | None
+    pnl_delta: Decimal | None
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
