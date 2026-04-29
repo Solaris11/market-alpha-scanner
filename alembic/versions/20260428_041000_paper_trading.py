@@ -37,7 +37,7 @@ def upgrade() -> None:
     op.create_table(
         "paper_positions",
         sa.Column("id", sa.Uuid(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("account_id", sa.Uuid(as_uuid=True), sa.ForeignKey("paper_accounts.id"), nullable=True),
+        sa.Column("account_id", sa.Uuid(as_uuid=True), sa.ForeignKey("paper_accounts.id", ondelete="CASCADE"), nullable=False),
         sa.Column("symbol", sa.Text(), nullable=False),
         sa.Column("status", sa.Text(), nullable=False, server_default=sa.text("'OPEN'")),
         sa.Column("opened_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
@@ -66,8 +66,8 @@ def upgrade() -> None:
     op.create_table(
         "paper_trade_events",
         sa.Column("id", sa.Uuid(as_uuid=True), primary_key=True, server_default=sa.text("gen_random_uuid()")),
-        sa.Column("account_id", sa.Uuid(as_uuid=True), sa.ForeignKey("paper_accounts.id"), nullable=True),
-        sa.Column("position_id", sa.Uuid(as_uuid=True), sa.ForeignKey("paper_positions.id"), nullable=True),
+        sa.Column("account_id", sa.Uuid(as_uuid=True), sa.ForeignKey("paper_accounts.id", ondelete="CASCADE"), nullable=False),
+        sa.Column("position_id", sa.Uuid(as_uuid=True), sa.ForeignKey("paper_positions.id", ondelete="SET NULL"), nullable=True),
         sa.Column("symbol", sa.Text(), nullable=False),
         sa.Column("event_type", sa.Text(), nullable=False),
         sa.Column("event_reason", sa.Text(), nullable=True),

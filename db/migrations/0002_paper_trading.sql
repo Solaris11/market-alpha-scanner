@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS paper_accounts (
 
 CREATE TABLE IF NOT EXISTS paper_positions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    account_id UUID REFERENCES paper_accounts(id),
+    account_id UUID NOT NULL REFERENCES paper_accounts(id) ON DELETE CASCADE,
     symbol TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'OPEN',
     opened_at TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -47,8 +47,8 @@ CREATE INDEX IF NOT EXISTS idx_paper_positions_opened_at ON paper_positions(open
 
 CREATE TABLE IF NOT EXISTS paper_trade_events (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    account_id UUID REFERENCES paper_accounts(id),
-    position_id UUID REFERENCES paper_positions(id),
+    account_id UUID NOT NULL REFERENCES paper_accounts(id) ON DELETE CASCADE,
+    position_id UUID REFERENCES paper_positions(id) ON DELETE SET NULL,
     symbol TEXT NOT NULL,
     event_type TEXT NOT NULL,
     event_reason TEXT,

@@ -36,7 +36,8 @@ CREATE TABLE IF NOT EXISTS scanner_signals (
     conservative_target NUMERIC,
     risk_reward NUMERIC,
     market_regime TEXT,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT uq_scanner_signals_scan_run_symbol UNIQUE (scan_run_id, symbol)
 );
 
 CREATE INDEX IF NOT EXISTS idx_scanner_signals_symbol ON scanner_signals(symbol);

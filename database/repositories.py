@@ -41,13 +41,18 @@ def add_scanner_signal_rows(
     rows: Sequence[Mapping[str, object]],
 ) -> list[ScannerSignal]:
     signals: list[ScannerSignal] = []
+    seen_symbols: set[str] = set()
     for row in rows:
         symbol = _string_or_none(row.get("symbol"))
         if symbol is None:
             continue
+        normalized_symbol = symbol.upper()
+        if normalized_symbol in seen_symbols:
+            continue
+        seen_symbols.add(normalized_symbol)
         signal = ScannerSignal(
             scan_run_id=scan_run_id,
-            symbol=symbol.upper(),
+            symbol=normalized_symbol,
             company_name=_string_or_none(row.get("company_name")),
             asset_type=_string_or_none(row.get("asset_type")),
             sector=_string_or_none(row.get("sector")),

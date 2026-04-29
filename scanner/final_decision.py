@@ -95,8 +95,17 @@ def _wait_entry_distance_pct(row: pd.Series) -> float | None:
     buy_high = _buy_zone_high(row)
     if price is None or buy_high is None:
         return None
-    distance = round((price - buy_high) / price, 6)
+    distance = max(0.0, round((price - buy_high) / price, 6))
     return 0.0 if abs(distance) < 0.0001 else distance
+
+
+def _has_suggested_entry(value: object) -> bool:
+    if value is None or _is_missing(value):
+        return False
+    if isinstance(value, (int, float)):
+        return bool(np.isfinite(float(value)))
+    text = safe_str(value, "").strip()
+    return bool(text) and text.lower() not in {"nan", "none", "null", "n/a"}
 
 
 def _wait_suggested_entry(row: pd.Series) -> object:
@@ -150,11 +159,19 @@ def evaluate_final_trade_decision(row: pd.Series) -> dict[str, object]:
         }
 
     if quality == "WAIT_PULLBACK" or (quality == "TRADE_READY" and action in BUY_ACTIONS and entry_status == "OVEREXTENDED"):
+        suggested_entry = _wait_suggested_entry(row)
+        if not _has_suggested_entry(suggested_entry):
+            return {
+                "final_decision": "WATCH",
+                "decision_reason": "Entry zone unavailable; monitor until a valid pullback level is available",
+                "suggested_entry": np.nan,
+                "entry_distance_pct": np.nan,
+            }
         entry_distance_pct = _wait_entry_distance_pct(row)
         return {
             "final_decision": "WAIT_PULLBACK",
             "decision_reason": "Strong setup but price extended; wait for pullback to entry zone",
-            "suggested_entry": _wait_suggested_entry(row),
+            "suggested_entry": suggested_entry,
             "entry_distance_pct": entry_distance_pct if entry_distance_pct is not None else np.nan,
         }
 

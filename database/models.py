@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, Text, Uuid, func, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, Text, UniqueConstraint, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -29,6 +29,7 @@ class ScanRun(Base):
 class ScannerSignal(Base):
     __tablename__ = "scanner_signals"
     __table_args__ = (
+        UniqueConstraint("scan_run_id", "symbol", name="uq_scanner_signals_scan_run_symbol"),
         Index("ix_scanner_signals_symbol", "symbol"),
         Index("ix_scanner_signals_created_at", "created_at"),
         Index("ix_scanner_signals_final_decision", "final_decision"),

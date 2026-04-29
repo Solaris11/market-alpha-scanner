@@ -58,6 +58,7 @@ def upgrade() -> None:
         sa.Column("risk_reward", sa.Numeric(), nullable=True),
         sa.Column("market_regime", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.UniqueConstraint("scan_run_id", "symbol", name="uq_scanner_signals_scan_run_symbol"),
     )
     op.create_index("ix_scanner_signals_symbol", "scanner_signals", ["symbol"])
     op.create_index("ix_scanner_signals_created_at", "scanner_signals", ["created_at"])
