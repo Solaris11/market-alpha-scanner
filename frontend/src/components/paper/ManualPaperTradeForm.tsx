@@ -14,13 +14,18 @@ type OpenPaperResponse = {
 
 function numberValue(value: string) {
   if (!value.trim()) return null;
-  const parsed = Number(value);
+  const parsed = Number(value.replace(/[$,]/g, "").trim());
   return Number.isFinite(parsed) ? parsed : null;
 }
 
 function money(value: number | null) {
   if (value === null || !Number.isFinite(value)) return "N/A";
-  return value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+  return value.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2, minimumFractionDigits: 0 });
+}
+
+function ratioText(value: number | null) {
+  if (value === null || !Number.isFinite(value)) return "N/A";
+  return `${value.toLocaleString("en-US", { maximumFractionDigits: 1, minimumFractionDigits: 1 })}R`;
 }
 
 export function ManualPaperTradeForm({ cashBalance = null }: Props) {
@@ -40,12 +45,14 @@ export function ManualPaperTradeForm({ cashBalance = null }: Props) {
     const qty = numberValue(quantity);
     const stop = numberValue(stopLoss);
     const target = numberValue(targetPrice);
-    const cost = entry !== null && qty !== null ? entry * qty : null;
-    const maxLoss = entry !== null && qty !== null && stop !== null ? Math.max(0, entry - stop) * qty : null;
-    const potentialGain = entry !== null && qty !== null && target !== null ? Math.max(0, target - entry) * qty : null;
-    const riskReward = maxLoss !== null && maxLoss > 0 && potentialGain !== null ? potentialGain / maxLoss : null;
-    return { cost, entry, maxLoss, potentialGain, qty, riskReward, stop, target };
-  }, [entryPrice, quantity, stopLoss, targetPrice]);
+    const hasPositionInputs = entry !== null && entry > 0 && qty !== null && qty > 0;
+    const validTradeMath = hasPositionInputs && stop !== null && target !== null && entry > stop && target > entry;
+    const estimatedCost = validTradeMath ? entry * qty : null;
+    const maxLoss = validTradeMath ? (entry - stop) * qty : null;
+    const potentialGain = validTradeMath ? (target - entry) * qty : null;
+    const riskRewardRatio = validTradeMath ? (target - entry) / (entry - stop) : null;
+    return { entry, estimatedCost, maxLoss, potentialGain, qty, riskRewardRatio, stop, target, validTradeMath };
+  }, [entryPrice, quantity, stopLoss, symbol, targetPrice]);
 
   const validationError = useMemo(() => {
     if (!symbol.trim()) return "Symbol is required.";
@@ -53,9 +60,11 @@ export function ManualPaperTradeForm({ cashBalance = null }: Props) {
     if (estimate.qty === null || estimate.qty <= 0) return "Quantity must be greater than zero.";
     if (stopLoss.trim() && (estimate.stop === null || estimate.stop <= 0)) return "Stop loss must be greater than zero.";
     if (targetPrice.trim() && (estimate.target === null || estimate.target <= 0)) return "Target price must be greater than zero.";
-    if (cashBalance !== null && estimate.cost !== null && estimate.cost > cashBalance) return "Estimated cost exceeds available paper cash.";
+    if (estimate.stop !== null && estimate.stop >= estimate.entry) return "Stop loss must be below entry price.";
+    if (estimate.target !== null && estimate.target <= estimate.entry) return "Target price must be above entry price.";
+    if (cashBalance !== null && estimate.estimatedCost !== null && estimate.estimatedCost > cashBalance) return "Estimated cost exceeds available paper cash.";
     return "";
-  }, [cashBalance, estimate.cost, estimate.entry, estimate.qty, estimate.stop, estimate.target, stopLoss, symbol, targetPrice]);
+  }, [cashBalance, estimate.entry, estimate.estimatedCost, estimate.qty, estimate.stop, estimate.target, stopLoss, symbol, targetPrice]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -125,10 +134,10 @@ export function ManualPaperTradeForm({ cashBalance = null }: Props) {
       </form>
 
       <div className="mt-4 grid gap-2 md:grid-cols-4">
-        <Estimate label="Estimated Cost" value={money(estimate.cost)} />
+        <Estimate label="Estimated Cost" value={money(estimate.estimatedCost)} />
         <Estimate label="Max Loss" tone="risk" value={money(estimate.maxLoss)} />
         <Estimate label="Potential Gain" tone="reward" value={money(estimate.potentialGain)} />
-        <Estimate label="Risk/Reward" value={estimate.riskReward === null ? "N/A" : `${estimate.riskReward.toFixed(2)}R`} />
+        <Estimate label="Risk/Reward" value={ratioText(estimate.riskRewardRatio)} />
       </div>
 
       {attemptedSubmit && validationError && !error ? <div className="mt-3 text-xs text-amber-200">{validationError}</div> : null}
