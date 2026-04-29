@@ -10,7 +10,7 @@ import { AICopilotPanel } from "./AICopilotPanel";
 import { ConvictionTimeline } from "./ConvictionTimeline";
 import { HistoricalEdgeCard } from "./HistoricalEdgeCard";
 import { PaperContextCard } from "./PaperContextCard";
-import { SymbolChart } from "./SymbolChart";
+import { SymbolChart, type ChartCandle, type ChartSignalMarker } from "./SymbolChart";
 import { SymbolDecisionHero } from "./SymbolDecisionHero";
 import { TechnicalSnapshotCard } from "./TechnicalSnapshotCard";
 import { TradePlanCard } from "./TradePlanCard";
@@ -41,10 +41,12 @@ export function SymbolTerminalWorkspace({
   const symbolPositions = paperPositions.filter((position) => position.symbol.toUpperCase() === symbol);
   const openPaper = symbolPositions.filter((position) => position.status === "OPEN");
   const symbolEvents = paperEvents.filter((event) => event.symbol.toUpperCase() === symbol).slice(0, 12);
-  const markers = useMemo(
-    () => history.map((point) => ({ time: point.timestamp, label: point.final_decision, tone: point.final_decision === "ENTER" ? "enter" as const : point.final_decision === "EXIT" ? "exit" as const : "wait" as const })),
-    [history],
-  );
+  const candles = useMemo(() => rowsToCandles(priceSeries), [priceSeries]);
+  const chartSignals = useMemo(() => {
+    if (!candles.length) return undefined;
+    const markers = history.map(historyPointToMarker).filter((marker): marker is ChartSignalMarker => Boolean(marker));
+    return markers.length ? markers : undefined;
+  }, [candles.length, history]);
 
   return (
     <div className="space-y-5">
@@ -70,9 +72,42 @@ export function SymbolTerminalWorkspace({
       <GlassPanel className="p-6">
         <SectionTitle eyebrow="Chart" title="Price and Signal Markers" />
         <div className="mt-5">
-          <SymbolChart priceSeries={priceSeries} markers={markers} />
+          <SymbolChart candles={candles.length ? candles : undefined} signals={chartSignals} symbol={symbol} />
         </div>
       </GlassPanel>
     </div>
   );
+}
+
+function rowsToCandles(rows: Record<string, ScannerScalar>[]): ChartCandle[] {
+  return rows
+    .map((row) => {
+      const time = textValue(row.date ?? row.datetime ?? row.timestamp_utc ?? row.time);
+      const open = numericValue(row.open ?? row.Open);
+      const high = numericValue(row.high ?? row.High);
+      const low = numericValue(row.low ?? row.Low);
+      const close = numericValue(row.close ?? row.Close);
+      if (!time || open === null || high === null || low === null || close === null) return null;
+      return { close, high, low, open, time };
+    })
+    .filter((candle): candle is ChartCandle => Boolean(candle));
+}
+
+function historyPointToMarker(point: SignalHistoryPoint): ChartSignalMarker | null {
+  const decision = point.final_decision.toUpperCase();
+  if (decision === "ENTER") return { time: point.timestamp, type: "ENTER", text: "ENTER" };
+  if (decision === "EXIT") return { time: point.timestamp, type: "EXIT", text: "EXIT" };
+  if (decision === "WAIT_PULLBACK" || decision === "WATCH") return { time: point.timestamp, type: "WAIT", text: decision === "WATCH" ? "WATCH" : "WAIT" };
+  return null;
+}
+
+function numericValue(value: ScannerScalar) {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(String(value).replace(/[$,%]/g, "").trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function textValue(value: ScannerScalar) {
+  const text = String(value ?? "").trim();
+  return text || null;
 }
