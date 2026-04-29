@@ -151,7 +151,11 @@ function TrustHeadlineCards({ metrics }: { metrics: TrustMetrics }) {
     { label: "Realized PnL", value: money(metrics.realizedPnl), meta: "closed trades", tone: metrics.realizedPnl },
     { label: "Unrealized PnL", value: money(metrics.unrealizedPnl), meta: "open positions", tone: metrics.unrealizedPnl },
     { label: "Win Rate", value: percentText(metrics.winRate), meta: "closed trades" },
-    { label: "Average R Multiple", value: metrics.avgRMultiple === null ? "N/A" : `${numberText(metrics.avgRMultiple, 2)}R`, meta: "risk-normalized" },
+    {
+      label: "Average R Multiple",
+      value: metrics.avgRMultiple === null ? "No closed trades yet" : `${numberText(metrics.avgRMultiple, 2)}R`,
+      meta: metrics.avgRMultiple === null ? "Run more paper trades to measure performance" : "risk-normalized",
+    },
     { label: "Open Risk", value: money(metrics.openRisk), meta: "active stop risk", tone: -metrics.openRisk },
     { label: "Best Setup", value: setupLabel(metrics.bestSetup), meta: setupMeta(metrics.bestSetup), tone: metrics.bestSetup?.total_pnl },
     { label: "Worst Setup", value: setupLabel(metrics.worstSetup), meta: setupMeta(metrics.worstSetup), tone: metrics.worstSetup?.total_pnl },
@@ -170,11 +174,11 @@ function TrustHeadlineCards({ metrics }: { metrics: TrustMetrics }) {
 }
 
 function setupLabel(group: PaperAnalyticsGroupRow | null) {
-  return group ? labelText(group.group_value) : "N/A";
+  return group ? labelText(group.group_value) : "Not enough data yet";
 }
 
 function setupMeta(group: PaperAnalyticsGroupRow | null) {
-  return group ? `${money(group.total_pnl)} / ${group.count} trades` : "needs closed trades";
+  return group ? `${money(group.total_pnl)} / ${group.count} trades` : "Requires closed trades";
 }
 
 function EquityCurve({ timeline }: { timeline: PaperAnalyticsTimelinePoint[] }) {
