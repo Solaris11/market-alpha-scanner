@@ -121,23 +121,23 @@ def _apply_paper_trading(
     open_positions = _open_positions(session, account)
     for position in open_positions:
         signal = signals_by_symbol.get(position.symbol.upper())
-        if signal is not None:
-            _copy_signal_context(position, signal, forced_enter_symbol)
-
         current_price = _current_price_from_signal(signal)
         if current_price is None:
             print(f"[paper] skipped lifecycle update for symbol={position.symbol}")
             continue
 
-        _mark_position_to_market(position, current_price, now)
-        close_reason = _close_reason(position, signal, current_price, forced_enter_symbol)
+        close_reason = _close_reason(position, signal, current_price)
         if close_reason is not None:
             _close_position(session, account, position, current_price, close_reason, now)
             closed_symbols.add(position.symbol.upper())
             closed += 1
             continue
 
-        if signal is not None and _effective_final_decision(signal, forced_enter_symbol) == "AVOID":
+        _mark_position_to_market(position, current_price, now)
+        if signal is not None:
+            _update_existing_position_context(position, signal)
+
+        if signal is not None and _current_final_decision(signal) == "AVOID":
             _add_event(
                 session,
                 account=account,
@@ -238,19 +238,13 @@ def _open_positions(session: Session, account: PaperAccount) -> list[PaperPositi
     )
 
 
-def _copy_signal_context(position: PaperPosition, signal: ScannerSignal, forced_enter_symbol: str | None) -> None:
-    position.final_decision = _effective_final_decision(signal, forced_enter_symbol)
-    position.recommendation_quality = signal.recommendation_quality
-    position.entry_status = signal.entry_status
-    position.setup_type = signal.setup_type
-    position.rating = signal.rating
-    position.source_scan_run_id = signal.scan_run_id
-    position.source_signal_id = signal.id
+def _update_existing_position_context(position: PaperPosition, signal: ScannerSignal) -> None:
+    position.final_decision = _current_final_decision(signal) or None
     stop_loss = _valid_stop_loss(position.entry_price, _decimal_or_none(signal.stop_loss))
     target_price = _valid_target_price(position.entry_price, _decimal_or_none(signal.conservative_target))
-    if stop_loss is not None:
+    if position.stop_loss is None and stop_loss is not None:
         position.stop_loss = stop_loss
-    if target_price is not None:
+    if position.target_price is None and target_price is not None:
         position.target_price = target_price
 
 
@@ -258,13 +252,12 @@ def _close_reason(
     position: PaperPosition,
     signal: ScannerSignal | None,
     current_price: Decimal,
-    forced_enter_symbol: str | None,
 ) -> str | None:
     if position.stop_loss is not None and current_price <= position.stop_loss:
         return "STOP_HIT"
     if position.target_price is not None and current_price >= position.target_price:
         return "TARGET_HIT"
-    if signal is not None and _effective_final_decision(signal, forced_enter_symbol) == "EXIT":
+    if signal is not None and _current_final_decision(signal) == "EXIT":
         return "EXIT_SIGNAL"
     return None
 
@@ -412,6 +405,10 @@ def _decimal_or_none(value: object) -> Decimal | None:
 
 def _normalized(value: object) -> str:
     return str(value or "").strip().upper()
+
+
+def _current_final_decision(signal: ScannerSignal) -> str:
+    return _normalized(signal.final_decision)
 
 
 def _forced_enter_symbol() -> str | None:
