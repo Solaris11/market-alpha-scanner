@@ -4,21 +4,27 @@ import { getPaperData, type PaperPositionRow, type PaperTradeEventRow } from "@/
 
 export const dynamic = "force-dynamic";
 
-function money(value: unknown) {
+function finiteNumber(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
   const parsed = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(parsed)) return "N/A";
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function money(value: unknown) {
+  const parsed = finiteNumber(value);
+  if (parsed === null) return "N/A";
   return parsed.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
 }
 
 function numberText(value: unknown, digits = 4) {
-  const parsed = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(parsed)) return "N/A";
+  const parsed = finiteNumber(value);
+  if (parsed === null) return "N/A";
   return parsed.toLocaleString("en-US", { maximumFractionDigits: digits });
 }
 
 function percentText(value: unknown) {
-  const parsed = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(parsed)) return "N/A";
+  const parsed = finiteNumber(value);
+  if (parsed === null) return "N/A";
   return `${(parsed * 100).toFixed(2)}%`;
 }
 
@@ -30,8 +36,8 @@ function timeText(value: string | null) {
 }
 
 function pnlTone(value: unknown) {
-  const parsed = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(parsed) || parsed === 0) return "text-slate-300";
+  const parsed = finiteNumber(value);
+  if (parsed === null || parsed === 0) return "text-slate-300";
   return parsed > 0 ? "text-emerald-300" : "text-rose-300";
 }
 
@@ -49,6 +55,12 @@ function closeRisk(position: PaperPositionRow) {
   return percentText((current - position.stop_loss) / current);
 }
 
+function rewardDistance(position: PaperPositionRow) {
+  const current = position.current_price ?? position.entry_price;
+  if (!position.target_price || current <= 0) return "N/A";
+  return percentText((position.target_price - current) / current);
+}
+
 function EmptyState({ message }: { message: string }) {
   return <div className="rounded border border-dashed border-slate-700/70 px-3 py-6 text-center text-xs text-slate-500">{message}</div>;
 }
@@ -59,7 +71,7 @@ function OpenPositionsTable({ positions }: { positions: PaperPositionRow[] }) {
 
   return (
     <div className="overflow-x-auto rounded-md border border-slate-800">
-      <table className="w-full min-w-[980px] table-fixed border-collapse text-xs">
+      <table className="w-full min-w-[1160px] table-fixed border-collapse text-xs">
         <thead className="border-b border-slate-700/70 bg-slate-950/70 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
           <tr>
             <th className="w-20 px-2 py-2 text-left">Symbol</th>
@@ -69,8 +81,10 @@ function OpenPositionsTable({ positions }: { positions: PaperPositionRow[] }) {
             <th className="w-24 px-2 py-2 text-right">Stop</th>
             <th className="w-24 px-2 py-2 text-right">Target</th>
             <th className="w-28 px-2 py-2 text-right">Unrealized</th>
+            <th className="w-24 px-2 py-2 text-right">Return</th>
             <th className="w-32 px-2 py-2 text-left">Decision</th>
-            <th className="w-24 px-2 py-2 text-right">Close Risk</th>
+            <th className="w-24 px-2 py-2 text-right">Risk</th>
+            <th className="w-24 px-2 py-2 text-right">Reward</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-800/90">
@@ -83,12 +97,50 @@ function OpenPositionsTable({ positions }: { positions: PaperPositionRow[] }) {
               <td className="px-2 py-2 text-right font-mono text-slate-300">{numberText(position.stop_loss, 2)}</td>
               <td className="px-2 py-2 text-right font-mono text-slate-300">{numberText(position.target_price, 2)}</td>
               <td className={`px-2 py-2 text-right font-mono ${pnlTone(position.unrealized_pnl)}`}>{money(position.unrealized_pnl)}</td>
+              <td className={`px-2 py-2 text-right font-mono ${pnlTone(position.return_pct)}`}>{percentText(position.return_pct)}</td>
               <td className="px-2 py-2">
                 <span className={`inline-flex max-w-full rounded border px-2 py-0.5 text-[11px] font-semibold ${decisionTone(position.final_decision)}`}>
                   {position.final_decision ?? "N/A"}
                 </span>
               </td>
               <td className="px-2 py-2 text-right font-mono text-slate-300">{closeRisk(position)}</td>
+              <td className="px-2 py-2 text-right font-mono text-slate-300">{rewardDistance(position)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function ClosedPositionsTable({ positions }: { positions: PaperPositionRow[] }) {
+  const closedPositions = positions.filter((position) => position.status === "CLOSED").slice(0, 20);
+  if (!closedPositions.length) return <EmptyState message="No closed paper trades yet." />;
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-slate-800">
+      <table className="w-full min-w-[760px] table-fixed border-collapse text-xs">
+        <thead className="border-b border-slate-700/70 bg-slate-950/70 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+          <tr>
+            <th className="w-20 px-2 py-2 text-left">Symbol</th>
+            <th className="w-24 px-2 py-2 text-right">Entry</th>
+            <th className="w-24 px-2 py-2 text-right">Exit</th>
+            <th className="w-28 px-2 py-2 text-right">PnL</th>
+            <th className="w-24 px-2 py-2 text-right">Return</th>
+            <th className="w-32 px-2 py-2 text-left">Reason</th>
+            <th className="w-36 px-2 py-2 text-left">Closed</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-800/90">
+          {closedPositions.map((position) => (
+            <tr className="hover:bg-sky-400/5" key={position.id}>
+              <td className="px-2 py-2 font-mono font-semibold text-slate-100">{position.symbol}</td>
+              <td className="px-2 py-2 text-right font-mono text-slate-300">{numberText(position.entry_price, 2)}</td>
+              <td className="px-2 py-2 text-right font-mono text-slate-300">{numberText(position.exit_price, 2)}</td>
+              <td className={`px-2 py-2 text-right font-mono ${pnlTone(position.realized_pnl)}`}>{money(position.realized_pnl)}</td>
+              <td className={`px-2 py-2 text-right font-mono ${pnlTone(position.return_pct)}`}>{percentText(position.return_pct)}</td>
+              <td className="px-2 py-2 text-slate-300">{position.close_reason ?? "N/A"}</td>
+              <td className="px-2 py-2 text-slate-400">{timeText(position.closed_at)}</td>
             </tr>
           ))}
         </tbody>
@@ -143,7 +195,9 @@ export default async function PaperPage() {
           metrics={[
             { label: "Cash", value: account ? money(account.cash_balance) : "N/A", meta: "paper" },
             { label: "Equity", value: account ? money(account.equity_value) : "N/A", meta: "open value" },
+            { label: "Unrealized PnL", value: account ? money(account.unrealized_pnl) : "N/A", meta: "open trades" },
             { label: "Realized PnL", value: account ? money(account.realized_pnl) : "N/A", meta: "closed trades" },
+            { label: "Total PnL", value: account ? money(account.total_pnl) : "N/A", meta: "realized + open" },
             { label: "Total Value", value: account ? money(account.total_account_value) : "N/A", meta: "cash + equity" },
             { label: "Open", value: account ? account.open_positions_count.toLocaleString() : "N/A", meta: "positions" },
           ]}
@@ -164,6 +218,14 @@ export default async function PaperPage() {
           <h2 className="mt-1 text-lg font-semibold text-slate-50">Simulated Positions</h2>
           <div className="mt-3">
             <OpenPositionsTable positions={data.positions} />
+          </div>
+        </section>
+
+        <section className="terminal-panel rounded-md p-4">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Closed Positions</div>
+          <h2 className="mt-1 text-lg font-semibold text-slate-50">Last 20 Closed Trades</h2>
+          <div className="mt-3">
+            <ClosedPositionsTable positions={data.positions} />
           </div>
         </section>
 

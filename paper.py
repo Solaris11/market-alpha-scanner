@@ -19,6 +19,7 @@ ZERO = Decimal("0")
 def read_paper_account(db: Session = Depends(deps.get_db)) -> dict[str, object]:
     account = _default_account(db)
     open_count = _open_positions_count(db, account)
+    unrealized_pnl = _open_unrealized_pnl(db, account)
     total_account_value = account.cash_balance + account.equity_value
     return {
         "id": account.id,
@@ -26,6 +27,8 @@ def read_paper_account(db: Session = Depends(deps.get_db)) -> dict[str, object]:
         "cash_balance": account.cash_balance,
         "equity_value": account.equity_value,
         "realized_pnl": account.realized_pnl,
+        "unrealized_pnl": unrealized_pnl,
+        "total_pnl": account.realized_pnl + unrealized_pnl,
         "open_positions_count": open_count,
         "total_account_value": total_account_value,
     }
@@ -46,7 +49,8 @@ def read_paper_positions(db: Session = Depends(deps.get_db), limit: int = 100) -
     rows: list[dict[str, object]] = []
     for position in positions:
         current_price = latest_prices.get(position.symbol.upper())
-        unrealized_pnl = None
+        display_price = current_price if position.status == "OPEN" else position.exit_price
+        unrealized_pnl = position.unrealized_pnl
         if position.status == "OPEN" and current_price is not None:
             unrealized_pnl = (current_price - position.entry_price) * position.quantity
         rows.append(
@@ -57,7 +61,8 @@ def read_paper_positions(db: Session = Depends(deps.get_db), limit: int = 100) -
                 "opened_at": position.opened_at,
                 "closed_at": position.closed_at,
                 "entry_price": position.entry_price,
-                "current_price": current_price,
+                "exit_price": position.exit_price,
+                "current_price": display_price,
                 "quantity": position.quantity,
                 "stop_loss": position.stop_loss,
                 "target_price": position.target_price,
@@ -106,6 +111,19 @@ def _open_positions_count(db: Session, account: models.PaperAccount) -> int:
             ).all()
         )
     )
+
+
+def _open_unrealized_pnl(db: Session, account: models.PaperAccount) -> Decimal:
+    positions = db.scalars(
+        select(models.PaperPosition).where(
+            models.PaperPosition.account_id == account.id,
+            models.PaperPosition.status == "OPEN",
+        )
+    ).all()
+    total = ZERO
+    for position in positions:
+        total += position.unrealized_pnl or ZERO
+    return total
 
 
 def _latest_prices(db: Session) -> dict[str, Decimal]:

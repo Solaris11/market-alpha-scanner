@@ -115,18 +115,25 @@ def _apply_paper_trading(
     opened = 0
     closed = 0
     warnings = 0
+    closed_symbols: set[str] = set()
     now = datetime.now(timezone.utc)
 
     open_positions = _open_positions(session, account)
     for position in open_positions:
         signal = signals_by_symbol.get(position.symbol.upper())
-        current_price = _price_for_position(position, signal)
-        close_reason = _close_reason(position, signal, current_price, forced_enter_symbol)
         if signal is not None:
             _copy_signal_context(position, signal, forced_enter_symbol)
 
+        current_price = _current_price_from_signal(signal)
+        if current_price is None:
+            print(f"[paper] skipped lifecycle update for symbol={position.symbol}")
+            continue
+
+        _mark_position_to_market(position, current_price, now)
+        close_reason = _close_reason(position, signal, current_price, forced_enter_symbol)
         if close_reason is not None:
             _close_position(session, account, position, current_price, close_reason, now)
+            closed_symbols.add(position.symbol.upper())
             closed += 1
             continue
 
@@ -145,11 +152,14 @@ def _apply_paper_trading(
             )
             warnings += 1
 
-    _update_equity_value(account, _open_positions(session, account), signals_by_symbol)
-    open_symbols = {position.symbol.upper() for position in _open_positions(session, account)}
+    active_positions = [position for position in open_positions if position.status == "OPEN"]
+    _update_equity_value(account, active_positions, signals_by_symbol)
+    open_symbols = {position.symbol.upper() for position in active_positions}
 
     for signal in signals:
         if _effective_final_decision(signal, forced_enter_symbol) != "ENTER":
+            continue
+        if signal.symbol.upper() in closed_symbols:
             continue
         if signal.symbol.upper() in open_symbols:
             continue
@@ -187,6 +197,8 @@ def _apply_paper_trading(
             setup_type=signal.setup_type,
             rating=signal.rating,
             realized_pnl=ZERO,
+            unrealized_pnl=ZERO,
+            return_pct=ZERO,
             source_scan_run_id=signal.scan_run_id,
             source_signal_id=signal.id,
         )
@@ -208,9 +220,10 @@ def _apply_paper_trading(
         )
         opened += 1
         open_symbols.add(position.symbol.upper())
-        _update_equity_value(account, _open_positions(session, account), signals_by_symbol)
+        active_positions.append(position)
+        _update_equity_value(account, active_positions, signals_by_symbol)
 
-    _update_equity_value(account, _open_positions(session, account), signals_by_symbol)
+    _update_equity_value(account, active_positions, signals_by_symbol)
     account.updated_at = now
     return opened, closed, warnings
 
@@ -256,6 +269,13 @@ def _close_reason(
     return None
 
 
+def _mark_position_to_market(position: PaperPosition, current_price: Decimal, updated_at: datetime) -> None:
+    pnl = (current_price - position.entry_price) * position.quantity
+    position.unrealized_pnl = pnl
+    position.return_pct = (current_price - position.entry_price) / position.entry_price if position.entry_price > ZERO else None
+    position.updated_at = updated_at
+
+
 def _close_position(
     session: Session,
     account: PaperAccount,
@@ -269,8 +289,10 @@ def _close_position(
     pnl = exit_value - entry_value
     position.status = "CLOSED"
     position.closed_at = closed_at
+    position.exit_price = current_price
     position.realized_pnl = pnl
-    position.return_pct = pnl / entry_value if entry_value > ZERO else None
+    position.unrealized_pnl = ZERO
+    position.return_pct = (current_price - position.entry_price) / position.entry_price if position.entry_price > ZERO else None
     position.close_reason = close_reason
     position.updated_at = closed_at
     account.cash_balance += exit_value
@@ -317,12 +339,20 @@ def _add_event(
     session.add(event)
 
 
-def _price_for_position(position: PaperPosition, signal: ScannerSignal | None) -> Decimal:
+def _current_price_from_signal(signal: ScannerSignal | None) -> Decimal | None:
     if signal is not None:
         price = _decimal_or_none(signal.price)
         if price is not None and price > ZERO:
             return price
-    return position.entry_price
+    return None
+
+
+def _market_value_for_position(position: PaperPosition, signal: ScannerSignal | None) -> Decimal:
+    current_price = _current_price_from_signal(signal)
+    if current_price is not None:
+        return current_price * position.quantity
+    entry_value = position.entry_price * position.quantity
+    return entry_value + (position.unrealized_pnl or ZERO)
 
 
 def _update_equity_value(
@@ -332,7 +362,7 @@ def _update_equity_value(
 ) -> None:
     equity = ZERO
     for position in open_positions:
-        equity += _price_for_position(position, signals_by_symbol.get(position.symbol.upper())) * position.quantity
+        equity += _market_value_for_position(position, signals_by_symbol.get(position.symbol.upper()))
     account.equity_value = equity
 
 

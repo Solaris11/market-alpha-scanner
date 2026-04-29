@@ -76,6 +76,8 @@ class PaperAccountSummary(BaseModel):
     cash_balance: Decimal
     equity_value: Decimal
     realized_pnl: Decimal
+    unrealized_pnl: Decimal
+    total_pnl: Decimal
     open_positions_count: int
     total_account_value: Decimal
 
@@ -89,6 +91,7 @@ class PaperPositionItem(BaseModel):
     opened_at: datetime
     closed_at: datetime | None
     entry_price: Decimal
+    exit_price: Decimal | None
     current_price: Decimal | None
     quantity: Decimal
     stop_loss: Decimal | None

@@ -12,6 +12,8 @@ export type PaperAccountSummary = {
   cash_balance: number;
   equity_value: number;
   realized_pnl: number;
+  unrealized_pnl: number;
+  total_pnl: number;
   open_positions_count: number;
   total_account_value: number;
 };
@@ -23,6 +25,7 @@ export type PaperPositionRow = {
   opened_at: string;
   closed_at: string | null;
   entry_price: number;
+  exit_price: number | null;
   current_price: number | null;
   quantity: number;
   stop_loss: number | null;
@@ -97,6 +100,8 @@ function accountFromRow(row: QueryResultRow): PaperAccountSummary {
     cash_balance: numberValue(row.cash_balance),
     equity_value: numberValue(row.equity_value),
     realized_pnl: numberValue(row.realized_pnl),
+    unrealized_pnl: numberValue(row.unrealized_pnl),
+    total_pnl: numberValue(row.total_pnl),
     open_positions_count: numberValue(row.open_positions_count),
     total_account_value: numberValue(row.total_account_value),
   };
@@ -110,6 +115,7 @@ function positionFromRow(row: QueryResultRow): PaperPositionRow {
     opened_at: textValue(row.opened_at),
     closed_at: nullableText(row.closed_at),
     entry_price: numberValue(row.entry_price),
+    exit_price: nullableNumber(row.exit_price),
     current_price: nullableNumber(row.current_price),
     quantity: numberValue(row.quantity),
     stop_loss: nullableNumber(row.stop_loss),
@@ -155,20 +161,27 @@ export async function getPaperData(): Promise<PaperData> {
   try {
     const [accountResult, positionsResult, eventsResult] = await Promise.all([
       clientPool.query(`
+        WITH position_summary AS (
+          SELECT
+            account_id,
+            count(*) FILTER (WHERE status = 'OPEN') AS open_positions_count,
+            COALESCE(sum(unrealized_pnl) FILTER (WHERE status = 'OPEN'), 0) AS unrealized_pnl
+          FROM paper_positions
+          GROUP BY account_id
+        )
         SELECT
-          id::text,
-          name,
-          cash_balance,
-          equity_value,
-          realized_pnl,
-          (
-            SELECT count(*)
-            FROM paper_positions
-            WHERE account_id = paper_accounts.id AND status = 'OPEN'
-          ) AS open_positions_count,
-          cash_balance + equity_value AS total_account_value
-        FROM paper_accounts
-        WHERE name = 'default'
+          a.id::text,
+          a.name,
+          a.cash_balance,
+          a.equity_value,
+          a.realized_pnl,
+          COALESCE(ps.unrealized_pnl, 0) AS unrealized_pnl,
+          a.realized_pnl + COALESCE(ps.unrealized_pnl, 0) AS total_pnl,
+          COALESCE(ps.open_positions_count, 0) AS open_positions_count,
+          a.cash_balance + a.equity_value AS total_account_value
+        FROM paper_accounts a
+        LEFT JOIN position_summary ps ON ps.account_id = a.id
+        WHERE a.name = 'default'
         LIMIT 1
       `),
       clientPool.query(`
@@ -196,14 +209,15 @@ export async function getPaperData(): Promise<PaperData> {
           p.opened_at::text,
           p.closed_at::text,
           p.entry_price,
-          lp.price AS current_price,
+          p.exit_price,
+          CASE
+            WHEN p.status = 'OPEN' THEN lp.price
+            ELSE p.exit_price
+          END AS current_price,
           p.quantity,
           p.stop_loss,
           p.target_price,
-          CASE
-            WHEN p.status = 'OPEN' AND lp.price IS NOT NULL THEN (lp.price - p.entry_price) * p.quantity
-            ELSE NULL
-          END AS unrealized_pnl,
+          p.unrealized_pnl,
           p.final_decision,
           p.recommendation_quality,
           p.entry_status,
@@ -215,7 +229,7 @@ export async function getPaperData(): Promise<PaperData> {
         FROM paper_positions p
         LEFT JOIN latest_prices lp ON lp.symbol = p.symbol
         WHERE p.account_id = (SELECT id FROM default_account)
-        ORDER BY CASE WHEN p.status = 'OPEN' THEN 0 ELSE 1 END, p.opened_at DESC
+        ORDER BY CASE WHEN p.status = 'OPEN' THEN 0 ELSE 1 END, COALESCE(p.closed_at, p.opened_at) DESC
         LIMIT 100
       `),
       clientPool.query(`
