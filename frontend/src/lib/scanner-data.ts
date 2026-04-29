@@ -4,6 +4,7 @@ import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parse } from "csv-parse/sync";
+import { applyCorrectionMapFields } from "./trading/correction-map";
 import type { CsvFileData, CsvRow, HistorySnapshot, HistorySummary, IntradayDriftRow, PerformanceData, RankingRow, ScannerScalar, SymbolDetail, SymbolHistoryData, SymbolHistoryRow } from "./types";
 
 const NUMERIC_FIELDS = new Set([
@@ -86,6 +87,25 @@ const NUMERIC_FIELDS = new Set([
   "min_return",
   "confidence_score",
   "entry_distance_pct",
+  "correction_price",
+  "correction_zone_low",
+  "correction_zone_high",
+  "correction_distance_pct",
+  "entry_zone_low",
+  "entry_zone_high",
+  "buy_zone_low",
+  "buy_zone_high",
+  "avwap",
+  "anchored_vwap",
+  "anchored_vwap_price",
+  "recent_swing_low",
+  "swing_low",
+  "recent_support",
+  "support_level",
+  "support",
+  "atr",
+  "atr_value",
+  "current_atr",
 ]);
 const REQUIRED_RANKING_COLUMNS = ["symbol", "price", "final_score", "rating", "action"];
 const DATA_STALE_AFTER_MS = 60 * 60 * 1000;
@@ -245,7 +265,7 @@ function normalizeRankingRow(raw: Record<string, unknown>): RankingRow {
 
   row.symbol = String(row.symbol ?? rawValue(raw, "symbol", "ticker", "Symbol", "Ticker") ?? "").trim().toUpperCase();
   row.company_name = displayName(row);
-  return row;
+  return applyCorrectionMapFields(row);
 }
 
 function actionForRow(row: RankingRow) {

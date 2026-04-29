@@ -1,5 +1,6 @@
 import type { RankingRow } from "@/lib/types";
 import { cleanText, finiteNumber, firstNumber, formatPercent } from "@/lib/ui/formatters";
+import { buildCorrectionMap, correctionMidpoint, formatCorrectionZone } from "./correction-map";
 import { calculateTradeRisk } from "./risk-calculator";
 
 export type CopilotInput = {
@@ -27,6 +28,8 @@ export function buildCopilotRecommendation(input: CopilotInput): CopilotRecommen
   const entry = firstNumber(signal.suggested_entry ?? signal.buy_zone ?? signal.entry_zone ?? signal.price) ?? 0;
   const stop = firstNumber(signal.stop_loss ?? signal.invalidation_level) ?? 0;
   const target = firstNumber(signal.conservative_target ?? signal.take_profit_zone ?? signal.take_profit_high) ?? 0;
+  const correction = buildCorrectionMap(signal);
+  const correctionPrice = correctionMidpoint(correction);
   const risk = calculateTradeRisk({ accountSize: input.accountBalance, riskPct: input.riskPct, entryPrice: entry, stopPrice: stop, targetPrice: target });
   const warnings: string[] = [];
 
@@ -39,7 +42,7 @@ export function buildCopilotRecommendation(input: CopilotInput): CopilotRecommen
     decision === "ENTER"
       ? `Enter around $${entry ? entry.toFixed(2) : "N/A"}. Risk is $${risk.maxLoss.toFixed(2)} to target $${target ? target.toFixed(2) : "N/A"} (${risk.riskRewardRatio.toFixed(2)}R). Position size: ${risk.quantity} shares.`
       : decision === "WAIT_PULLBACK"
-        ? `Wait for pullback near $${entry ? entry.toFixed(2) : "N/A"} before entering. Current price is extended.`
+        ? `Wait for pullback near ${correctionPrice !== null ? formatCorrectionZone(correction) : `$${entry ? entry.toFixed(2) : "N/A"}`} before entering. Current price is extended.`
         : decision === "AVOID" || decision === "EXIT"
           ? "Do not enter. This setup lacks edge or has poor risk/reward."
           : `Monitor ${signal.symbol}. No immediate entry is cleared.`;

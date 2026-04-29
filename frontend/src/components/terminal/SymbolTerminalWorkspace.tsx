@@ -10,6 +10,7 @@ import type { RankingRow, ScannerScalar } from "@/lib/types";
 import { finiteNumber } from "@/lib/ui/formatters";
 import { AICopilotPanel } from "./AICopilotPanel";
 import { ConvictionTimeline } from "./ConvictionTimeline";
+import { CorrectionMapCard } from "./CorrectionMapCard";
 import { HistoricalEdgeCard } from "./HistoricalEdgeCard";
 import { PaperContextCard } from "./PaperContextCard";
 import { SymbolChart, type ChartCandle, type ChartSignalMarker } from "./SymbolChart";
@@ -64,6 +65,7 @@ export function SymbolTerminalWorkspace({
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
         <div className="space-y-5">
           <TradePlanCard row={row} />
+          <CorrectionMapCard row={row} />
           <HistoricalEdgeCard edge={edgeProof} />
           <WhyDecisionCard row={row} />
           <TechnicalSnapshotCard row={row} />
