@@ -2,7 +2,7 @@ import { OpportunitiesWorkspace } from "@/components/opportunities/Opportunities
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
-import { buildEdgeLookup } from "@/lib/trading/conviction";
+import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 
 export const dynamic = "force-dynamic";
 
@@ -13,11 +13,11 @@ export default async function OpportunitiesPage() {
     adapter.getMarketRegime(),
     getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
   ]);
-  const edges = buildEdgeLookup(rows, performance);
+  const model = buildOpportunitiesPageModel(rows, performance);
 
   return (
     <TerminalShell>
-      <OpportunitiesWorkspace edges={edges} regime={regime} rows={rows} />
+      <OpportunitiesWorkspace best={model.best} marketCondition={regime.label} rows={model.rows} />
     </TerminalShell>
   );
 }
