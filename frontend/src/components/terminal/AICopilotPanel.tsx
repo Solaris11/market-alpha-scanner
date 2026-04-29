@@ -27,7 +27,8 @@ export function AICopilotPanel({ engine, signal }: { engine?: TradePlanEngine; s
           </>
         ) : null}
       </div>
-      {!validity.isCalculable ? <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">{validity.message}</div> : null}
+      {validity.isBlocked ? <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">This trade is not recommended based on current conditions.</div> : null}
+      {!validity.isBlocked && !validity.isCalculable ? <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">{validity.message}</div> : null}
     </GlassPanel>
   );
 }

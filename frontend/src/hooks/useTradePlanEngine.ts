@@ -85,18 +85,19 @@ export function useTradePlanEngine(row: RankingRow): TradePlanEngine {
   }, [state.accountEquity, state.currentPrice, state.entryPrice, state.riskPercent, state.stopLoss, state.targetPrice]);
 
   const validity = useMemo<TradePlanEngineValidity>(() => {
+    const isSystemBlocked = state.finalDecision === "AVOID" || state.finalDecision === "EXIT";
     const isOverextended = state.entryStatus.includes("OVEREXTENDED");
     const hasValidLevels = state.entryPrice !== null && state.stopLoss !== null && state.targetPrice !== null && state.stopLoss < state.entryPrice && state.targetPrice > state.entryPrice;
     const isTradeValid =
       state.finalDecision === "ENTER" ||
       (state.finalDecision === "WAIT_PULLBACK" && metrics.entryDistancePct !== null && metrics.entryDistancePct <= TRADE_READY_DISTANCE_THRESHOLD);
 
-    if (state.finalDecision === "AVOID") return { isBlocked: true, isCalculable: false, isOverextended, isTradeValid: false, message: "Avoid this trade. Risk/reward is unfavorable." };
-    if (state.finalDecision === "EXIT") return { isBlocked: true, isCalculable: false, isOverextended, isTradeValid: false, message: "Exit position. Trend invalidation triggered." };
+    if (!hasValidLevels) return { isBlocked: isSystemBlocked, isCalculable: false, isOverextended, isTradeValid: false, message: "No valid trade setup." };
+    if (metrics.positionSize <= 0) return { isBlocked: isSystemBlocked, isCalculable: false, isOverextended, isTradeValid, message: "No valid trade setup." };
+    if (state.finalDecision === "AVOID") return { isBlocked: true, isCalculable: true, isOverextended, isTradeValid: false, message: "This trade is not recommended based on current conditions." };
+    if (state.finalDecision === "EXIT") return { isBlocked: true, isCalculable: true, isOverextended, isTradeValid: false, message: "This trade is not recommended based on current conditions." };
     if (isOverextended) return { isBlocked: false, isCalculable: false, isOverextended: true, isTradeValid: false, message: "Wait for correction before entering." };
-    if (!hasValidLevels) return { isBlocked: false, isCalculable: false, isOverextended, isTradeValid: false, message: "No valid trade setup." };
     if (!isTradeValid) return { isBlocked: false, isCalculable: false, isOverextended, isTradeValid: false, message: "No valid trade setup." };
-    if (metrics.positionSize <= 0) return { isBlocked: false, isCalculable: false, isOverextended, isTradeValid, message: "No valid trade setup." };
     return { isBlocked: false, isCalculable: true, isOverextended, isTradeValid, message: "Trade setup valid." };
   }, [metrics.entryDistancePct, metrics.positionSize, state.entryPrice, state.entryStatus, state.finalDecision, state.stopLoss, state.targetPrice]);
 
@@ -133,9 +134,15 @@ function buildDirective(row: RankingRow, state: TradePlanEngineState, metrics: T
     return [`Do not enter now.`, `Wait for pullback near ${formatMoney(state.entryPrice)}.`, "Current price is extended."].join("\n");
   }
 
-  if (state.finalDecision === "AVOID") return "Avoid this trade.\nRisk/reward is unfavorable.";
-  if (state.finalDecision === "EXIT") return "Exit position.\nTrend invalidation triggered.";
+  if (state.finalDecision === "AVOID") return `Avoid this trade.\nRisk/reward is unfavorable.${hypotheticalLine(metrics)}`;
+  if (state.finalDecision === "EXIT") return `Exit position.\nTrend invalidation triggered.${hypotheticalLine(metrics)}`;
   return validity.message;
+}
+
+function hypotheticalLine(metrics: TradePlanEngineMetrics): string {
+  if (metrics.positionSize <= 0 || metrics.riskPerShare === null) return "";
+  const riskAmount = metrics.positionSize * metrics.riskPerShare;
+  return `\nIf you were to trade this, position size would be ${metrics.positionSize} shares, risking ${formatMoney(riskAmount)}.`;
 }
 
 function safeNonNegative(value: number): number {

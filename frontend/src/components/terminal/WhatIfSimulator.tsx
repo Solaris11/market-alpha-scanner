@@ -26,13 +26,18 @@ export function WhatIfSimulator({ engine }: { engine: TradePlanEngine }) {
 
   return (
     <GlassPanel className="p-5">
-      <SectionTitle eyebrow="What-If" title="Trade Simulator" meta={validity.isCalculable ? "synced live" : "blocked"} />
+      <SectionTitle eyebrow="What-If" title="Trade Simulator" meta={validity.isBlocked ? "read-only" : validity.isCalculable ? "synced live" : "blocked"} />
+      {validity.isBlocked ? (
+        <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-3 text-xs font-semibold text-amber-100">
+          This trade is not recommended based on current conditions.
+        </div>
+      ) : null}
       <div className="mt-4 grid grid-cols-2 gap-3">
         <Input label="Account Equity" value={state.accountEquity} onChange={engine.setters.setAccountEquity} />
         <Input label="Risk %" value={state.riskPercent} onChange={engine.setters.setRiskPercent} />
       </div>
       {validity.isCalculable && metrics.potentialReward !== null && metrics.riskRewardRatio !== null ? (
-        <div className={`mt-4 grid grid-cols-2 gap-2 text-xs transition-all duration-200 md:grid-cols-4 ${pulse ? "scale-[1.05] shadow-[0_0_30px_rgba(34,211,238,0.18)]" : "scale-100"}`}>
+        <div className={`mt-4 grid grid-cols-2 gap-2 text-xs transition-all duration-200 md:grid-cols-4 ${validity.isBlocked ? "opacity-60" : ""} ${pulse ? "scale-[1.05] shadow-[0_0_30px_rgba(34,211,238,0.18)]" : "scale-100"}`}>
           <SimulatorMetric label="Position Size" value={formatNumber(metrics.positionSize, 0)} />
           <SimulatorMetric label="Max Risk" value={`${formatMoney(metrics.maxRiskAmount)} risk`} tone="risk" />
           <SimulatorMetric label="Potential Reward" value={formatMoney(metrics.potentialReward)} tone="reward" />

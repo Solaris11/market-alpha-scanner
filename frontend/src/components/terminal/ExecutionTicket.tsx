@@ -9,17 +9,20 @@ import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
 export function ExecutionTicket({ engine, symbol }: { engine: TradePlanEngine; symbol: string }) {
-  const qty = engine.validity.isCalculable ? engine.metrics.positionSize : 0;
+  const executionAllowed = engine.validity.isCalculable && !engine.validity.isBlocked;
+  const qty = executionAllowed ? engine.metrics.positionSize : 0;
   const limitPrice = engine.state.entryPrice ?? undefined;
   const stopPrice = engine.state.stopLoss ?? undefined;
   const ticket = useExecutionTicket({ symbol, qty, limitPrice, stopPrice });
   const [confirming, setConfirming] = useState(false);
   const s = ticket.state;
-  if (!engine.validity.isCalculable) {
+  if (!executionAllowed) {
     return (
       <GlassPanel className="p-5">
         <SectionTitle eyebrow="Execution Ready" title="Mock Order Ticket" meta="blocked" />
-        <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">{engine.validity.message}</div>
+        <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
+          {engine.validity.isBlocked ? "Execution blocked by system decision" : engine.validity.message}
+        </div>
       </GlassPanel>
     );
   }
