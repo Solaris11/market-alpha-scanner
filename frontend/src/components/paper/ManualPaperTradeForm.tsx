@@ -114,16 +114,17 @@ export function ManualPaperTradeForm({ cashBalance = null }: Props) {
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Manual Paper Trade</div>
           <h2 className="mt-1 text-lg font-semibold text-slate-50">Test your own idea without real execution.</h2>
           <p className="mt-1 text-sm text-slate-400">Paper simulation only. No real order will be placed.</p>
+          <p className="mt-1 text-xs text-slate-500">Enter values to calculate cost, risk, reward, and R/R.</p>
         </div>
         {cashBalance !== null ? <div className="font-mono text-xs text-slate-400">Cash {money(cashBalance)}</div> : null}
       </div>
 
       <form className="mt-4 grid gap-3 lg:grid-cols-[1fr_1fr_1fr_1fr_1fr_auto]" onSubmit={submit}>
-        <TradeInput label="Symbol" onChange={setSymbol} placeholder="TSM" value={symbol} />
-        <TradeInput label="Entry price" numeric onChange={setEntryPrice} placeholder="392" value={entryPrice} />
-        <TradeInput label="Quantity" numeric onChange={setQuantity} placeholder="10" value={quantity} />
-        <TradeInput label="Stop loss" numeric onChange={setStopLoss} placeholder="380" value={stopLoss} />
-        <TradeInput label="Target price" numeric onChange={setTargetPrice} placeholder="420" value={targetPrice} />
+        <TradeInput label="Symbol" onChange={setSymbol} placeholder="e.g. TSM" value={symbol} />
+        <TradeInput label="Entry price" numeric onChange={setEntryPrice} placeholder="e.g. 392" value={entryPrice} />
+        <TradeInput label="Quantity" numeric onChange={setQuantity} placeholder="e.g. 10" value={quantity} />
+        <TradeInput label="Stop loss" numeric onChange={setStopLoss} placeholder="e.g. 380" value={stopLoss} />
+        <TradeInput label="Target price" numeric onChange={setTargetPrice} placeholder="e.g. 420" value={targetPrice} />
         <button
           className="h-10 self-end rounded-full bg-cyan-300 px-4 text-xs font-bold uppercase tracking-[0.12em] text-slate-950 transition-all hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
           disabled={busy}
