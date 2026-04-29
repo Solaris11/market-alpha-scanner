@@ -1,4 +1,5 @@
 import { MetricStrip } from "@/components/metric-strip";
+import { ManualPaperTradeForm } from "@/components/paper/ManualPaperTradeForm";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import {
   getPaperAnalytics,
@@ -329,6 +330,8 @@ export default async function PaperPage() {
             </p>
           </section>
         ) : null}
+
+        <ManualPaperTradeForm cashBalance={account?.cash_balance ?? null} />
 
         <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5 shadow-xl shadow-black/20 ring-1 ring-white/5 backdrop-blur-xl">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Paper Performance</div>

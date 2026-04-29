@@ -1,6 +1,5 @@
 import type { MarketRegime } from "@/lib/adapters/DataServiceAdapter";
 import type { RankingRow } from "@/lib/types";
-import { DecisionBadge } from "./DecisionBadge";
 import { SectionTitle } from "./ui/SectionTitle";
 
 function countDecision(rows: RankingRow[], value: string) {
@@ -11,47 +10,83 @@ export function MarketRegimeRadar({ regime, rows }: { regime: MarketRegime; rows
   const enter = countDecision(rows, "ENTER");
   const avoid = countDecision(rows, "AVOID");
   const watch = countDecision(rows, "WATCH");
+  const aggressiveValue = regime.aggressiveEntriesAllowed ? "ENTER" : "WAIT_PULLBACK";
   return (
     <section className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/45 p-5 ring-1 ring-white/5">
-      <SectionTitle eyebrow="Market Regime Radar" title={regime.label} meta={regime.source} />
-      <div className="mt-5 grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <div className="mx-auto flex size-44 max-w-full items-center justify-center rounded-full border border-cyan-300/20 bg-[radial-gradient(circle,rgba(34,211,238,0.18),rgba(15,23,42,0.24)_58%,rgba(2,6,23,0.2)_100%)] p-6 ring-1 ring-white/10">
-          <div className="flex size-full items-center justify-center rounded-full border border-emerald-300/20 bg-slate-950/40 text-center">
-            <div>
-              <div className="font-mono text-3xl font-black text-slate-50">{Math.round(regime.confidence)}</div>
-              <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Confidence</div>
-            </div>
-          </div>
-        </div>
-        <div className="grid min-w-0 gap-3 sm:grid-cols-2">
-          <div className="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <div className="text-xs text-slate-500">Aggressive Entries</div>
-            <div className="mt-2 max-w-full">
-              <DecisionBadge value={regime.aggressiveEntriesAllowed ? "ENTER" : "WAIT_PULLBACK"} />
-            </div>
-          </div>
-          <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <div className="text-xs text-slate-500">Breadth</div>
-            <div className="mt-1 break-words text-sm font-semibold text-slate-100">{regime.breadth}</div>
-            <div className="mt-3 text-xs text-slate-500">Leadership</div>
-            <div className="mt-1 break-words text-sm font-semibold text-slate-100">{regime.leadership}</div>
-          </div>
-          <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <div className="text-xs text-slate-500">Strongest</div>
-            <div className="mt-2 flex max-w-full flex-wrap gap-2 text-xs text-emerald-200">{regime.strongestSectors.map((item) => <span className="max-w-full break-words rounded-full bg-emerald-400/10 px-2 py-1" key={item}>{item}</span>)}</div>
-          </div>
-          <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-            <div className="text-xs text-slate-500">Weakest</div>
-            <div className="mt-2 flex max-w-full flex-wrap gap-2 text-xs text-rose-200">{regime.weakestSectors.map((item) => <span className="max-w-full break-words rounded-full bg-rose-400/10 px-2 py-1" key={item}>{item}</span>)}</div>
-          </div>
+      <SectionTitle eyebrow="Market Regime Radar" title={regime.label} />
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(260px,1fr)_minmax(360px,1.1fr)]">
+        <ConfidenceRing confidence={regime.confidence} />
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+          <RegimeInfoCard title="Aggressive Entries" value={aggressiveValue} tone={regime.aggressiveEntriesAllowed ? "green" : "amber"} />
+          <RegimeInfoCard title="Breadth" value={regime.breadth} tone={toneFor(regime.breadth)} />
+          <RegimeInfoCard title="Leadership" value={regime.leadership} tone="cyan" />
+          <RegimePillList items={regime.strongestSectors} title="Strongest" tone="green" />
+          <RegimePillList items={regime.weakestSectors} title="Weakest" tone="red" />
         </div>
       </div>
-      <div className="mt-4 grid grid-cols-4 gap-2 text-center text-xs text-slate-400">
+      <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs text-slate-400 sm:grid-cols-4">
         <div className="rounded-xl bg-white/[0.04] p-2">ENTER <span className="font-mono text-emerald-300">{enter}</span></div>
         <div className="rounded-xl bg-white/[0.04] p-2">WATCH <span className="font-mono text-cyan-300">{watch}</span></div>
         <div className="rounded-xl bg-white/[0.04] p-2">AVOID <span className="font-mono text-rose-300">{avoid}</span></div>
         <div className="rounded-xl bg-white/[0.04] p-2">Rows <span className="font-mono text-slate-100">{rows.length}</span></div>
       </div>
     </section>
+  );
+}
+
+function toneFor(value: unknown): "amber" | "cyan" | "green" | "red" {
+  const text = String(value ?? "").toUpperCase();
+  if (text.includes("WEAK") || text.includes("RISK")) return "red";
+  if (text.includes("STRONG")) return "green";
+  if (text.includes("BALANCED")) return "cyan";
+  return "amber";
+}
+
+function toneClass(tone: "amber" | "cyan" | "green" | "red") {
+  if (tone === "green") return "border-emerald-300/25 bg-emerald-400/10 text-emerald-100";
+  if (tone === "red") return "border-rose-300/25 bg-rose-400/10 text-rose-100";
+  if (tone === "amber") return "border-amber-300/25 bg-amber-400/10 text-amber-100";
+  return "border-cyan-300/25 bg-cyan-400/10 text-cyan-100";
+}
+
+function ConfidenceRing({ confidence }: { confidence: number }) {
+  return (
+    <div className="flex min-h-[260px] min-w-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-6">
+      <div className="flex size-48 max-w-full items-center justify-center rounded-full border border-cyan-300/20 bg-[radial-gradient(circle,rgba(34,211,238,0.18),rgba(15,23,42,0.24)_58%,rgba(2,6,23,0.2)_100%)] p-6 ring-1 ring-white/10">
+        <div className="flex size-full items-center justify-center rounded-full border border-emerald-300/20 bg-slate-950/40 text-center">
+          <div>
+            <div className="font-mono text-4xl font-black text-slate-50">{Math.round(confidence)}</div>
+            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Confidence</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RegimeInfoCard({ title, value, tone }: { title: string; value: unknown; tone: "amber" | "cyan" | "green" | "red" }) {
+  return (
+    <div className="min-h-[120px] min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <div className="text-xs text-slate-500">{title}</div>
+      <div className={`mt-4 inline-flex max-w-full rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] ${toneClass(tone)}`}>
+        <span className="min-w-0 break-words">{String(value ?? "N/A").replaceAll(" ", "_")}</span>
+      </div>
+    </div>
+  );
+}
+
+function RegimePillList({ items, title, tone }: { items: string[]; title: string; tone: "green" | "red" }) {
+  const color = tone === "green" ? "bg-emerald-400/10 text-emerald-200" : "bg-rose-400/10 text-rose-200";
+  return (
+    <div className="min-h-[120px] min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <div className="text-xs text-slate-500">{title}</div>
+      <div className="mt-4 flex max-w-full flex-wrap gap-2">
+        {items.length ? items.map((item) => (
+          <span className={`max-w-full break-words rounded-full px-2.5 py-1 text-xs ${color}`} key={item}>
+            {item}
+          </span>
+        )) : <span className="text-xs text-slate-500">No group data</span>}
+      </div>
+    </div>
   );
 }

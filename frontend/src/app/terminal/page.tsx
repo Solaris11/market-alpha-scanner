@@ -23,7 +23,7 @@ export default async function TerminalPage() {
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">
           <GlassPanel className="overflow-hidden p-5">
-            <div className="grid gap-5 lg:grid-cols-[1fr_420px]">
+            <div className="grid gap-5">
               <div>
                 <div className="text-[10px] font-black uppercase tracking-[0.32em] text-emerald-300">Command Center</div>
                 <h2 className="mt-2 text-4xl font-semibold tracking-tight text-slate-50">Decision-first market intelligence</h2>
