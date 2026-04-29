@@ -34,7 +34,7 @@ export function SymbolTerminalWorkspace({
   edgeProof: HistoricalEdgeProof;
   row: RankingRow;
   history: SignalHistoryPoint[];
-  timeline: ConvictionTimelineModel;
+  timeline?: ConvictionTimelineModel;
   priceSeries: Record<string, ScannerScalar>[];
   paperPositions: PaperPositionRow[];
   paperEvents: PaperTradeEventRow[];

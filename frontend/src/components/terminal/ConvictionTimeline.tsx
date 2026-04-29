@@ -4,7 +4,16 @@ import { EmptyState } from "./ui/EmptyState";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
-export function ConvictionTimeline({ timeline }: { timeline: ConvictionTimelineModel }) {
+const EMPTY_TIMELINE: ConvictionTimelineModel = {
+  dominantDecisionLabel: "N/A",
+  dominantEntryLabel: "N/A",
+  groups: [],
+  observationCount: 0,
+  sparklinePath: null,
+  trendLabel: "flat",
+};
+
+export function ConvictionTimeline({ timeline = EMPTY_TIMELINE }: { timeline?: ConvictionTimelineModel }) {
   if (!timeline.observationCount) {
     return (
       <GlassPanel className="p-5">
