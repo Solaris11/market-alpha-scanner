@@ -1,0 +1,65 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from decimal import Decimal
+
+from sqlalchemy import delete, select
+
+from database.config import get_database_url
+from database.models import PaperAccount, PaperPosition, PaperTradeEvent
+from database.session import session_scope
+
+
+DEFAULT_ACCOUNT_NAME = "default"
+DEFAULT_STARTING_BALANCE = Decimal("10000")
+ZERO = Decimal("0")
+
+
+@dataclass(frozen=True)
+class PaperResetResult:
+    skipped: bool
+    reason: str | None = None
+
+
+def reset_paper_account() -> PaperResetResult:
+    database_url = get_database_url(required=False)
+    if not database_url:
+        print("[paper] reset skipped: DATABASE_URL not configured")
+        return PaperResetResult(skipped=True, reason="DATABASE_URL not configured")
+
+    try:
+        with session_scope() as session:
+            session.execute(delete(PaperTradeEvent))
+            session.execute(delete(PaperPosition))
+            account = session.scalar(select(PaperAccount).where(PaperAccount.name == DEFAULT_ACCOUNT_NAME))
+            now = datetime.now(timezone.utc)
+            if account is None:
+                account = PaperAccount(
+                    name=DEFAULT_ACCOUNT_NAME,
+                    starting_balance=DEFAULT_STARTING_BALANCE,
+                    cash_balance=DEFAULT_STARTING_BALANCE,
+                    equity_value=ZERO,
+                    realized_pnl=ZERO,
+                    enabled=True,
+                    max_position_pct=Decimal("0.10"),
+                    risk_per_trade_pct=Decimal("0.01"),
+                    max_open_positions=5,
+                    updated_at=now,
+                )
+                session.add(account)
+            else:
+                account.starting_balance = DEFAULT_STARTING_BALANCE
+                account.cash_balance = DEFAULT_STARTING_BALANCE
+                account.equity_value = ZERO
+                account.realized_pnl = ZERO
+                account.enabled = True
+                account.max_position_pct = Decimal("0.10")
+                account.risk_per_trade_pct = Decimal("0.01")
+                account.max_open_positions = 5
+                account.updated_at = now
+        print("[paper] reset complete: account=default cash=10000")
+        return PaperResetResult(skipped=False)
+    except Exception as exc:
+        print(f"[paper] reset failed safely: {exc}")
+        return PaperResetResult(skipped=True, reason=str(exc))
