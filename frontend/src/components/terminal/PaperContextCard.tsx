@@ -1,14 +1,12 @@
 import type { PaperPositionRow, PaperTradeEventRow } from "@/lib/paper-data";
 import type { ReactNode } from "react";
+import { formatDateUtc } from "@/lib/ui/date-formatters";
 import { formatMoney, formatNumber, formatPercent } from "@/lib/ui/formatters";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
 function timeText(value: string | null) {
-  if (!value) return "N/A";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "N/A";
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return formatDateUtc(value);
 }
 
 function lastClosed(positions: PaperPositionRow[]) {

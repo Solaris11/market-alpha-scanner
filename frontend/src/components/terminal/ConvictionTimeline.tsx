@@ -1,4 +1,5 @@
 import type { SignalHistoryPoint } from "@/lib/adapters/DataServiceAdapter";
+import { formatDateUtc, utcTimestampMs } from "@/lib/ui/date-formatters";
 import { cleanText, formatNumber } from "@/lib/ui/formatters";
 import { DecisionBadge } from "./DecisionBadge";
 import { EmptyState } from "./ui/EmptyState";
@@ -27,7 +28,7 @@ function signature(point: SignalHistoryPoint) {
 
 function collapsePoints(points: SignalHistoryPoint[]) {
   const groups: TimelineGroup[] = [];
-  const chronological = [...points].sort((left, right) => new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime());
+  const chronological = [...points].sort((left, right) => utcTimestampMs(left.timestamp) - utcTimestampMs(right.timestamp));
 
   for (const point of chronological) {
     const last = groups.at(-1);
@@ -80,10 +81,7 @@ function arrow(delta: number) {
 }
 
 function dateRange(group: TimelineGroup) {
-  const first = new Date(group.firstTimestamp);
-  const last = new Date(group.lastTimestamp);
-  const format = (date: Date) => (Number.isNaN(date.getTime()) ? "N/A" : date.toLocaleDateString("en-US", { month: "short", day: "numeric" }));
-  return group.count > 1 ? `${format(first)} - ${format(last)}` : format(last);
+  return group.count > 1 ? `${formatDateUtc(group.firstTimestamp)} - ${formatDateUtc(group.lastTimestamp)}` : formatDateUtc(group.lastTimestamp);
 }
 
 function Sparkline({ points }: { points: SignalHistoryPoint[] }) {
