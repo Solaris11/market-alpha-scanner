@@ -119,3 +119,36 @@ class PaperTradeEventItem(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PaperAnalyticsSummary(BaseModel):
+    total_trades: int
+    open_trades: int
+    closed_trades: int
+    win_rate: Decimal
+    avg_return_pct: Decimal
+    total_realized_pnl: Decimal
+    total_unrealized_pnl: Decimal
+    total_pnl: Decimal
+    max_drawdown: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PaperAnalyticsGroup(BaseModel):
+    group_type: str
+    group_value: str
+    count: int
+    avg_return_pct: Decimal
+    win_rate: Decimal
+    total_pnl: Decimal
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PaperAnalyticsTimelinePoint(BaseModel):
+    date: str
+    daily_pnl: Decimal
+    cumulative_pnl: Decimal
+
+    model_config = ConfigDict(from_attributes=True)

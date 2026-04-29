@@ -9,6 +9,12 @@ from sqlalchemy.orm import Session
 import deps
 import schemas
 from database import models
+from scanner.paper_analytics import (
+    PaperAnalyticsGroup,
+    PaperAnalyticsSummary,
+    PaperAnalyticsTimelinePoint,
+    compute_paper_analytics,
+)
 
 
 router = APIRouter()
@@ -91,6 +97,21 @@ def read_paper_events(db: Session = Depends(deps.get_db), limit: int = 100) -> l
             .limit(limit)
         ).all()
     )
+
+
+@router.get("/paper/analytics/summary", response_model=schemas.PaperAnalyticsSummary)
+def read_paper_analytics_summary(db: Session = Depends(deps.get_db)) -> PaperAnalyticsSummary:
+    return compute_paper_analytics(db).summary
+
+
+@router.get("/paper/analytics/groups", response_model=list[schemas.PaperAnalyticsGroup])
+def read_paper_analytics_groups(db: Session = Depends(deps.get_db)) -> list[PaperAnalyticsGroup]:
+    return list(compute_paper_analytics(db).groups)
+
+
+@router.get("/paper/analytics/timeline", response_model=list[schemas.PaperAnalyticsTimelinePoint])
+def read_paper_analytics_timeline(db: Session = Depends(deps.get_db)) -> list[PaperAnalyticsTimelinePoint]:
+    return list(compute_paper_analytics(db).timeline)
 
 
 def _default_account(db: Session) -> models.PaperAccount:

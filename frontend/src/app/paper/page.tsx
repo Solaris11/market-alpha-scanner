@@ -1,6 +1,14 @@
 import { MetricStrip } from "@/components/metric-strip";
 import { TerminalShell } from "@/components/shell";
-import { getPaperData, type PaperPositionRow, type PaperTradeEventRow } from "@/lib/paper-data";
+import {
+  getPaperAnalytics,
+  getPaperData,
+  type PaperAnalyticsGroupRow,
+  type PaperAnalyticsSummary,
+  type PaperAnalyticsTimelinePoint,
+  type PaperPositionRow,
+  type PaperTradeEventRow,
+} from "@/lib/paper-data";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +71,107 @@ function rewardDistance(position: PaperPositionRow) {
 
 function EmptyState({ message }: { message: string }) {
   return <div className="rounded border border-dashed border-slate-700/70 px-3 py-6 text-center text-xs text-slate-500">{message}</div>;
+}
+
+function PerformanceMetricGrid({ summary }: { summary: PaperAnalyticsSummary }) {
+  const metrics: Array<{ label: string; value: string; meta: string; toneValue?: number }> = [
+    { label: "Total Trades", value: summary.total_trades.toLocaleString(), meta: `${summary.closed_trades} closed` },
+    { label: "Win Rate", value: percentText(summary.win_rate), meta: "closed trades" },
+    { label: "Avg Return", value: percentText(summary.avg_return_pct), meta: "per closed trade", toneValue: summary.avg_return_pct },
+    { label: "Total PnL", value: money(summary.total_pnl), meta: "realized + open", toneValue: summary.total_pnl },
+    { label: "Unrealized", value: money(summary.total_unrealized_pnl), meta: `${summary.open_trades} open`, toneValue: summary.total_unrealized_pnl },
+    { label: "Max Drawdown", value: money(summary.max_drawdown), meta: "cumulative pnl", toneValue: summary.max_drawdown },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
+      {metrics.map((metric) => (
+        <div className="min-w-0 rounded border border-slate-800 bg-slate-950/40 px-3 py-2" key={metric.label}>
+          <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{metric.label}</div>
+          <div className={`mt-1 truncate font-mono text-sm font-semibold ${metric.toneValue === undefined ? "text-slate-100" : pnlTone(metric.toneValue)}`}>
+            {metric.value}
+          </div>
+          <div className="mt-0.5 truncate text-[11px] text-slate-500">{metric.meta}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function topBottomGroups(groups: PaperAnalyticsGroupRow[]) {
+  const nonEmptyGroups = groups.filter((group) => group.count > 0);
+  const byPnlDesc = [...nonEmptyGroups].sort((a, b) => b.total_pnl - a.total_pnl);
+  const rows: PaperAnalyticsGroupRow[] = [];
+  const seen = new Set<string>();
+  for (const group of [...byPnlDesc.slice(0, 5), ...byPnlDesc.slice(-5).reverse()]) {
+    const key = `${group.group_type}:${group.group_value}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    rows.push(group);
+  }
+  return rows;
+}
+
+function AnalyticsGroupsTable({ groups }: { groups: PaperAnalyticsGroupRow[] }) {
+  const rows = topBottomGroups(groups);
+  if (!rows.length) return <EmptyState message="No closed trades available for grouped performance yet." />;
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-slate-800">
+      <table className="w-full min-w-[820px] table-fixed border-collapse text-xs">
+        <thead className="border-b border-slate-700/70 bg-slate-950/70 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+          <tr>
+            <th className="w-40 px-2 py-2 text-left">Group Type</th>
+            <th className="w-44 px-2 py-2 text-left">Value</th>
+            <th className="w-20 px-2 py-2 text-right">Trades</th>
+            <th className="w-28 px-2 py-2 text-right">Avg Return</th>
+            <th className="w-24 px-2 py-2 text-right">Win Rate</th>
+            <th className="w-28 px-2 py-2 text-right">Total PnL</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-800/90">
+          {rows.map((group) => (
+            <tr className="hover:bg-sky-400/5" key={`${group.group_type}:${group.group_value}`}>
+              <td className="px-2 py-2 text-slate-300">{group.group_type}</td>
+              <td className="px-2 py-2 font-mono font-semibold text-slate-100">{group.group_value}</td>
+              <td className="px-2 py-2 text-right font-mono text-slate-300">{group.count.toLocaleString()}</td>
+              <td className={`px-2 py-2 text-right font-mono ${pnlTone(group.avg_return_pct)}`}>{percentText(group.avg_return_pct)}</td>
+              <td className="px-2 py-2 text-right font-mono text-slate-300">{percentText(group.win_rate)}</td>
+              <td className={`px-2 py-2 text-right font-mono ${pnlTone(group.total_pnl)}`}>{money(group.total_pnl)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TimelineList({ timeline }: { timeline: PaperAnalyticsTimelinePoint[] }) {
+  const rows = timeline.slice(-14).reverse();
+  if (!rows.length) return <EmptyState message="No closed-trade timeline yet." />;
+
+  return (
+    <div className="overflow-x-auto rounded-md border border-slate-800">
+      <table className="w-full min-w-[460px] table-fixed border-collapse text-xs">
+        <thead className="border-b border-slate-700/70 bg-slate-950/70 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+          <tr>
+            <th className="w-36 px-2 py-2 text-left">Date</th>
+            <th className="w-28 px-2 py-2 text-right">Daily PnL</th>
+            <th className="w-32 px-2 py-2 text-right">Cumulative</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-800/90">
+          {rows.map((point) => (
+            <tr className="hover:bg-sky-400/5" key={point.date}>
+              <td className="px-2 py-2 text-slate-300">{point.date}</td>
+              <td className={`px-2 py-2 text-right font-mono ${pnlTone(point.daily_pnl)}`}>{money(point.daily_pnl)}</td>
+              <td className={`px-2 py-2 text-right font-mono ${pnlTone(point.cumulative_pnl)}`}>{money(point.cumulative_pnl)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 function OpenPositionsTable({ positions }: { positions: PaperPositionRow[] }) {
@@ -185,7 +294,7 @@ function RecentEventsTable({ events }: { events: PaperTradeEventRow[] }) {
 }
 
 export default async function PaperPage() {
-  const data = await getPaperData();
+  const [data, analytics] = await Promise.all([getPaperData(), getPaperAnalytics()]);
   const account = data.account;
 
   return (
@@ -212,6 +321,25 @@ export default async function PaperPage() {
             </p>
           </section>
         ) : null}
+
+        <section className="terminal-panel rounded-md p-4">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Paper Performance</div>
+          <h2 className="mt-1 text-lg font-semibold text-slate-50">Performance Analytics</h2>
+          {analytics.error ? <p className="mt-2 text-sm text-rose-300">{analytics.error}</p> : null}
+          <div className="mt-3">
+            <PerformanceMetricGrid summary={analytics.summary} />
+          </div>
+          <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_minmax(360px,0.8fr)]">
+            <div>
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Top / Bottom Groups</div>
+              <AnalyticsGroupsTable groups={analytics.groups} />
+            </div>
+            <div>
+              <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Daily PnL</div>
+              <TimelineList timeline={analytics.timeline} />
+            </div>
+          </div>
+        </section>
 
         <section className="terminal-panel rounded-md p-4">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Open Positions</div>
