@@ -1,17 +1,19 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { SignalHistoryPoint } from "@/lib/adapters/DataServiceAdapter";
 import type { PaperPositionRow, PaperTradeEventRow } from "@/lib/paper-data";
 import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
+import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
 import type { RankingRow, ScannerScalar } from "@/lib/types";
-import { firstNumber } from "@/lib/ui/formatters";
+import { finiteNumber } from "@/lib/ui/formatters";
 import { AICopilotPanel } from "./AICopilotPanel";
 import { ConvictionTimeline } from "./ConvictionTimeline";
 import { HistoricalEdgeCard } from "./HistoricalEdgeCard";
 import { PaperContextCard } from "./PaperContextCard";
 import { SymbolChart, type ChartCandle, type ChartSignalMarker } from "./SymbolChart";
 import { SymbolDecisionHero } from "./SymbolDecisionHero";
+import { SignalStatusCard } from "./SignalStatusCard";
 import { TechnicalSnapshotCard } from "./TechnicalSnapshotCard";
 import { TradePlanCard } from "./TradePlanCard";
 import { WhatIfSimulator } from "./WhatIfSimulator";
@@ -34,9 +36,12 @@ export function SymbolTerminalWorkspace({
   paperPositions: PaperPositionRow[];
   paperEvents: PaperTradeEventRow[];
 }) {
-  const entry = firstNumber(row.suggested_entry ?? row.buy_zone ?? row.entry_zone ?? row.price) ?? Number(row.price ?? 0);
-  const stop = firstNumber(row.stop_loss ?? row.invalidation_level) ?? Math.max(0, entry * 0.95);
-  const target = firstNumber(row.conservative_target ?? row.take_profit_zone ?? row.take_profit_high ?? row.target_price) ?? entry * 1.08;
+  const [showHistoricalMarkers, setShowHistoricalMarkers] = useState(false);
+  const tradeLevels = useMemo(() => buildSignalTradeLevels(row), [row]);
+  const lifecycle = useMemo(() => computeSignalLifecycle(row, tradeLevels), [row, tradeLevels]);
+  const entry = tradeLevels.entry ?? finiteNumber(row.price) ?? 0;
+  const stop = tradeLevels.stop ?? Math.max(0, entry * 0.95);
+  const target = tradeLevels.target ?? entry * 1.08;
   const symbol = row.symbol.toUpperCase();
   const symbolPositions = paperPositions.filter((position) => position.symbol.toUpperCase() === symbol);
   const openPaper = symbolPositions.filter((position) => position.status === "OPEN");
@@ -51,6 +56,7 @@ export function SymbolTerminalWorkspace({
   return (
     <div className="space-y-5">
       <SymbolDecisionHero edge={edgeProof} row={row} />
+      <SignalStatusCard lifecycle={lifecycle} />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
         <div className="space-y-5">
@@ -70,9 +76,24 @@ export function SymbolTerminalWorkspace({
       <ConvictionTimeline points={history} />
 
       <GlassPanel className="p-6">
-        <SectionTitle eyebrow="Chart" title="Price and Signal Markers" />
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <SectionTitle eyebrow="Chart" title="Current Signal Map" />
+          <button
+            className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all duration-200 hover:border-cyan-300/40 hover:bg-white/[0.07] hover:text-cyan-100"
+            onClick={() => setShowHistoricalMarkers((value) => !value)}
+            type="button"
+          >
+            {showHistoricalMarkers ? "Hide historical markers" : "Advanced: show historical markers"}
+          </button>
+        </div>
         <div className="mt-5">
-          <SymbolChart candles={candles.length ? candles : undefined} signals={chartSignals} symbol={symbol} />
+          <SymbolChart
+            candles={candles.length ? candles : undefined}
+            showHistoricalSignals={showHistoricalMarkers}
+            signals={chartSignals}
+            symbol={symbol}
+            tradeLevels={tradeLevels}
+          />
         </div>
       </GlassPanel>
     </div>

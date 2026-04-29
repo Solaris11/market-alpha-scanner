@@ -7,10 +7,16 @@ import {
   CrosshairMode,
   createChart,
   createSeriesMarkers,
-  type CandlestickData,
-  type SeriesMarker,
-  type Time,
 } from "lightweight-charts";
+import {
+  addTradeLevelLines,
+  generateFallbackCandles,
+  normalizeCandles,
+  normalizeSignals,
+  normalizeTradeLevels,
+  toChartData,
+  toSeriesMarkers,
+} from "./symbol-chart-utils";
 import { EmptyState } from "./ui/EmptyState";
 
 export type ChartCandle = {
@@ -27,18 +33,26 @@ export type ChartSignalMarker = {
   text?: string;
 };
 
+export type ChartTradeLevels = {
+  entry?: number | null;
+  entryLow?: number | null;
+  entryHigh?: number | null;
+  stop?: number | null;
+  target?: number | null;
+};
+
 export type SymbolChartProps = {
   symbol: string;
   candles?: ChartCandle[];
   signals?: ChartSignalMarker[];
+  showHistoricalSignals?: boolean;
+  tradeLevels?: ChartTradeLevels;
   height?: number;
 };
 
-const FALLBACK_DAYS = 30;
-const FALLBACK_END_DATE = "2026-04-29";
-
-export function SymbolChart({ symbol, candles, signals, height = 360 }: SymbolChartProps) {
+export function SymbolChart({ symbol, candles, signals, showHistoricalSignals = false, tradeLevels, height = 360 }: SymbolChartProps) {
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
+  const entryBandRef = useRef<HTMLDivElement | null>(null);
   const [failed, setFailed] = useState(false);
   const normalizedCandles = useMemo(() => normalizeCandles(candles), [candles]);
   const fallback = !candles?.length;
@@ -46,8 +60,9 @@ export function SymbolChart({ symbol, candles, signals, height = 360 }: SymbolCh
     fallback ? generateFallbackCandles(symbol) : normalizedCandles
   ), [fallback, normalizedCandles, symbol]);
   const chartSignals = useMemo(() => (
-    signals?.length ? normalizeSignals(signals) : fallbackSignalMarkers(chartCandles)
-  ), [chartCandles, signals]);
+    showHistoricalSignals && signals?.length ? normalizeSignals(signals) : []
+  ), [showHistoricalSignals, signals]);
+  const chartLevels = useMemo(() => normalizeTradeLevels(tradeLevels), [tradeLevels]);
 
   useEffect(() => {
     const container = chartContainerRef.current;
@@ -98,12 +113,29 @@ export function SymbolChart({ symbol, candles, signals, height = 360 }: SymbolCh
       });
       candleSeries.setData(toChartData(chartCandles));
       createSeriesMarkers(candleSeries, toSeriesMarkers(chartSignals), { zOrder: "top" });
+      addTradeLevelLines(candleSeries, chartLevels);
       chart.timeScale().fitContent();
+
+      const updateEntryBand = () => {
+        const band = entryBandRef.current;
+        if (!band || chartLevels.entryLow === null || chartLevels.entryHigh === null) return;
+        const top = candleSeries.priceToCoordinate(Math.max(chartLevels.entryLow, chartLevels.entryHigh));
+        const bottom = candleSeries.priceToCoordinate(Math.min(chartLevels.entryLow, chartLevels.entryHigh));
+        if (top === null || bottom === null) {
+          band.style.display = "none";
+          return;
+        }
+        band.style.display = "block";
+        band.style.top = `${Math.min(top, bottom)}px`;
+        band.style.height = `${Math.max(3, Math.abs(bottom - top))}px`;
+      };
+      updateEntryBand();
 
       const resizeObserver = new ResizeObserver((entries) => {
         const entry = entries[0];
         if (!entry || !chart) return;
         chart.resize(Math.max(1, Math.floor(entry.contentRect.width)), Math.max(1, Math.floor(entry.contentRect.height)));
+        updateEntryBand();
       });
       resizeObserver.observe(container);
 
@@ -116,7 +148,7 @@ export function SymbolChart({ symbol, candles, signals, height = 360 }: SymbolCh
       setFailed(true);
       return undefined;
     }
-  }, [chartCandles, chartSignals]);
+  }, [chartCandles, chartLevels, chartSignals]);
 
   if (failed || (!fallback && candles?.length && !normalizedCandles.length)) {
     return <EmptyState title="Price chart unavailable" message="Scanner insights are still active." />;
@@ -125,114 +157,17 @@ export function SymbolChart({ symbol, candles, signals, height = 360 }: SymbolCh
   return (
     <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/40 shadow-xl shadow-black/20" style={{ height }}>
       <div ref={chartContainerRef} className="absolute inset-0" />
+      <div ref={entryBandRef} className="pointer-events-none absolute left-0 right-0 hidden border-y border-amber-300/35 bg-amber-300/10" />
       <div className="pointer-events-none absolute left-4 top-4 z-10 rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 shadow-lg backdrop-blur-xl">
         <div className="font-mono text-sm font-bold text-slate-50">{symbol.toUpperCase()}</div>
         <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Price Action</div>
         <div className="mt-1 text-xs text-slate-400">{chartCandles.length.toLocaleString()} candles</div>
       </div>
+      <div className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 text-xs shadow-lg backdrop-blur-xl">
+        <div className="font-semibold text-amber-200">Entry zone</div>
+        <div className="mt-1 font-semibold text-rose-200">Stop line</div>
+        <div className="mt-1 font-semibold text-sky-200">Target line</div>
+      </div>
     </div>
   );
-}
-
-function toChartData(candles: ChartCandle[]): Array<CandlestickData<Time>> {
-  return candles.map((candle) => ({
-    close: candle.close,
-    high: candle.high,
-    low: candle.low,
-    open: candle.open,
-    time: candle.time as Time,
-  }));
-}
-
-function toSeriesMarkers(signals: ChartSignalMarker[]): Array<SeriesMarker<Time>> {
-  return signals.map((signal, index) => markerForSignal(signal, index));
-}
-
-function markerForSignal(signal: ChartSignalMarker, index: number): SeriesMarker<Time> {
-  const base = { id: `${signal.type}-${signal.time}-${index}`, time: signal.time as Time };
-  if (signal.type === "ENTER") return { ...base, color: "#22c55e", position: "belowBar", shape: "arrowUp", text: signal.text ?? "ENTER" };
-  if (signal.type === "EXIT") return { ...base, color: "#ef4444", position: "aboveBar", shape: "arrowDown", text: signal.text ?? "EXIT" };
-  if (signal.type === "STOP") return { ...base, color: "#dc2626", position: "aboveBar", shape: "arrowDown", text: signal.text ?? "STOP" };
-  if (signal.type === "TARGET") return { ...base, color: "#38bdf8", position: "aboveBar", shape: "arrowDown", text: signal.text ?? "TARGET" };
-  return { ...base, color: "#f59e0b", position: "belowBar", shape: "circle", text: signal.text ?? "WAIT" };
-}
-
-function normalizeCandles(candles?: ChartCandle[]): ChartCandle[] {
-  if (!candles?.length) return [];
-  const byTime = new Map<string, ChartCandle>();
-  for (const candle of candles) {
-    const time = normalizeDate(candle.time);
-    if (!time || !isValidCandle(candle)) continue;
-    byTime.set(time, { ...candle, time });
-  }
-  return Array.from(byTime.values()).sort((a, b) => a.time.localeCompare(b.time));
-}
-
-function normalizeSignals(signals: ChartSignalMarker[]): ChartSignalMarker[] {
-  return signals
-    .map((signal) => ({ ...signal, time: normalizeDate(signal.time) ?? "" }))
-    .filter((signal) => signal.time)
-    .sort((a, b) => a.time.localeCompare(b.time));
-}
-
-function fallbackSignalMarkers(candles: ChartCandle[]): ChartSignalMarker[] {
-  if (candles.length < 3) return [];
-  return [
-    { time: candles[Math.floor(candles.length * 0.28)].time, type: "ENTER" },
-    { time: candles[Math.floor(candles.length * 0.78)].time, type: "EXIT" },
-  ];
-}
-
-function generateFallbackCandles(symbol: string): ChartCandle[] {
-  const random = seededRandom(hashSymbol(symbol));
-  const end = new Date(`${FALLBACK_END_DATE}T00:00:00.000Z`);
-  let close = 60 + random() * 260;
-  const trend = (random() - 0.42) * 0.018;
-  const candles: ChartCandle[] = [];
-
-  for (let index = FALLBACK_DAYS - 1; index >= 0; index -= 1) {
-    const date = new Date(end);
-    date.setUTCDate(end.getUTCDate() - index);
-    const open = close * (1 + (random() - 0.5) * 0.018);
-    close = open * (1 + trend + (random() - 0.5) * 0.036);
-    const high = Math.max(open, close) * (1 + random() * 0.02);
-    const low = Math.min(open, close) * (1 - random() * 0.02);
-    candles.push({
-      close: roundPrice(close),
-      high: roundPrice(high),
-      low: roundPrice(low),
-      open: roundPrice(open),
-      time: date.toISOString().slice(0, 10),
-    });
-  }
-
-  return candles;
-}
-
-function isValidCandle(candle: ChartCandle) {
-  const values = [candle.open, candle.high, candle.low, candle.close];
-  if (!values.every(Number.isFinite)) return false;
-  return candle.high >= Math.max(candle.open, candle.close) && candle.low <= Math.min(candle.open, candle.close);
-}
-
-function normalizeDate(value: string) {
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
-}
-
-function hashSymbol(symbol: string) {
-  return Array.from(symbol.toUpperCase()).reduce((hash, char) => ((hash * 31) + char.charCodeAt(0)) >>> 0, 17);
-}
-
-function seededRandom(seed: number) {
-  let state = seed || 1;
-  return () => {
-    state = (state * 1664525 + 1013904223) >>> 0;
-    return state / 4294967296;
-  };
-}
-
-function roundPrice(value: number) {
-  return Math.round(value * 100) / 100;
 }
