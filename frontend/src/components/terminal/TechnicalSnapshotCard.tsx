@@ -33,12 +33,24 @@ function barPercent(value: number | null, fallback = 50) {
   return Math.max(0, Math.min(100, value));
 }
 
+function normalizeDrawdownPercent(value: number | null): number | null {
+  if (value === null || !Number.isFinite(value)) return null;
+  if (Math.abs(value) > 100) return null;
+  const percentValue = Math.abs(value) <= 1 ? value * 100 : value;
+  return Math.min(0, Math.max(-100, percentValue));
+}
+
+function formatDrawdownPercent(value: number | null): string {
+  if (value === null) return "N/A";
+  return `${formatNumber(value, 1)}%`;
+}
+
 export function TechnicalSnapshotCard({ row }: { row: RankingRow }) {
   const rsi = numericFrom(row, ["current_rsi", "rsi"]);
   const macd = numericFrom(row, ["macd_histogram", "macd", "macd_score"]);
   const atr = numericFrom(row, ["atr_pct"]);
   const volatility = numericFrom(row, ["annualized_volatility", "volatility"]);
-  const drawdown = numericFrom(row, ["max_drawdown"]);
+  const drawdown = normalizeDrawdownPercent(numericFrom(row, ["max_drawdown"]));
   const trend = numericFrom(row, ["trend_score", "technical_score"]);
   const momentum = numericFrom(row, ["momentum_score", "short_score"]);
 
@@ -50,7 +62,7 @@ export function TechnicalSnapshotCard({ row }: { row: RankingRow }) {
         <TechBar label="MACD" status={macdStatus(macd, row.macd)} value={macd === null ? "N/A" : formatNumber(macd, 2)} width={macd === null ? 50 : macd >= 0 ? 72 : 28} />
         <TechBar label="ATR" status="Volatility range" value={atr === null ? "N/A" : formatPercent(atr, 1)} width={barPercent(atr === null ? null : atr * 100, 35)} />
         <TechBar label="Volatility" status="Annualized" value={volatility === null ? "N/A" : formatPercent(volatility, 1)} width={barPercent(volatility === null ? null : volatility * 100, 40)} />
-        <TechBar label="Drawdown" status="Downside pressure" value={drawdown === null ? "N/A" : formatPercent(drawdown, 1)} width={barPercent(drawdown === null ? null : Math.abs(drawdown) * 100, 25)} tone="risk" />
+        <TechBar label="Max Drawdown" value={formatDrawdownPercent(drawdown)} width={barPercent(drawdown === null ? null : Math.abs(drawdown), 25)} tone="risk" />
         <TechBar label="Trend" status={trend !== null && trend >= 70 ? "Strong" : trend !== null && trend >= 50 ? "Neutral" : "Weak"} value={trend === null ? "N/A" : formatNumber(trend, 0)} width={barPercent(trend)} />
         <TechBar label="Momentum" status={momentum !== null && momentum >= 70 ? "Strong" : momentum !== null && momentum >= 50 ? "Neutral" : "Weak"} value={momentum === null ? "N/A" : formatNumber(momentum, 0)} width={barPercent(momentum)} />
       </div>
@@ -58,14 +70,14 @@ export function TechnicalSnapshotCard({ row }: { row: RankingRow }) {
   );
 }
 
-function TechBar({ label, status, value, width, tone = "normal" }: { label: string; status: string; value: string; width: number; tone?: "normal" | "risk" }) {
+function TechBar({ label, status, value, width, tone = "normal" }: { label: string; status?: string; value: string; width: number; tone?: "normal" | "risk" }) {
   const fill = tone === "risk" ? "bg-gradient-to-r from-rose-400 to-amber-300" : "bg-gradient-to-r from-cyan-400 to-emerald-300";
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</div>
-          <div className="mt-1 text-sm text-slate-300">{status}</div>
+          {status ? <div className="mt-1 text-sm text-slate-300">{status}</div> : null}
         </div>
         <div className="font-mono text-lg font-semibold text-slate-50">{value}</div>
       </div>

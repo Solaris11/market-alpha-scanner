@@ -6,7 +6,7 @@ const ITEMS: Array<[keyof RankingRow, string, string]> = [
   ["current_rsi", "RSI", "Momentum temperature; extreme values can indicate stretch."],
   ["atr_pct", "ATR %", "Average true range as a volatility proxy."],
   ["annualized_volatility", "Volatility", "How noisy this symbol has been recently."],
-  ["max_drawdown", "Max Drawdown", "Recent downside pressure from peak to trough."],
+  ["max_drawdown", "Max Drawdown", "Peak-to-trough loss from recent highs."],
   ["technical_score", "Trend", "Composite trend, momentum, and setup quality."],
   ["macro_score", "Macro", "Regime and market sensitivity context."],
 ];
