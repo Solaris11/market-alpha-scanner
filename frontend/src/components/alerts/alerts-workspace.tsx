@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { readWatchlistStorage, WATCHLIST_EVENT } from "@/lib/watchlist-storage";
 import { ActiveAlertMatches } from "./active-alert-matches";
 
 type AlertRule = {
@@ -50,7 +51,6 @@ type CommandResult = {
   error?: string;
 };
 
-const WATCHLIST_STORAGE_KEY = "market-alpha-scanner-watchlist";
 const FORM_TYPES = [
   "price_above",
   "price_below",
@@ -165,14 +165,7 @@ function normalizeSymbol(symbol: string) {
 }
 
 function readWatchlist() {
-  if (typeof window === "undefined") return [];
-  try {
-    const parsed = JSON.parse(window.localStorage.getItem(WATCHLIST_STORAGE_KEY) ?? "[]");
-    if (!Array.isArray(parsed)) return [];
-    return Array.from(new Set(parsed.map((item) => normalizeSymbol(String(item))).filter(Boolean))).sort();
-  } catch {
-    return [];
-  }
+  return readWatchlistStorage();
 }
 
 function formatDate(value?: string | null) {
@@ -262,10 +255,10 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
     }
     refreshWatchlist();
     window.addEventListener("storage", refreshWatchlist);
-    window.addEventListener("market-alpha-scanner-watchlist-change", refreshWatchlist);
+    window.addEventListener(WATCHLIST_EVENT, refreshWatchlist);
     return () => {
       window.removeEventListener("storage", refreshWatchlist);
-      window.removeEventListener("market-alpha-scanner-watchlist-change", refreshWatchlist);
+      window.removeEventListener(WATCHLIST_EVENT, refreshWatchlist);
     };
   }, []);
 

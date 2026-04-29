@@ -3,8 +3,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
+import { WatchlistButton } from "@/components/watchlist-controls";
 import { DecisionBadge } from "@/components/terminal/DecisionBadge";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
@@ -32,7 +34,9 @@ export function OpportunitiesWorkspace({ best, marketCondition, rows }: { best: 
   const [qualityFilter, setQualityFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [sectorFilter, setSectorFilter] = useState("ALL");
+  const [showWatchlistOnly, setShowWatchlistOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("SCORE_DESC");
+  const { watchlistSet } = useLocalWatchlist();
 
   const options = useMemo(() => {
     return {
@@ -46,15 +50,16 @@ export function OpportunitiesWorkspace({ best, marketCondition, rows }: { best: 
   const tabCounts = useMemo(() => {
     return {
       BEST: rows.filter(isBestSetup).length,
-      WATCHLIST: rows.filter(isWatchCandidate).length,
+      WATCHLIST: rows.filter((row) => watchlistSet.has(row.symbol)).length,
       FULL: rows.length,
     };
-  }, [rows]);
+  }, [rows, watchlistSet]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return rows
-      .filter((row) => tabMatches(row, activeTab))
+      .filter((row) => tabMatches(row, activeTab, watchlistSet))
+      .filter((row) => !showWatchlistOnly || watchlistSet.has(row.symbol))
       .filter((row) => {
         if (!query) return true;
         return row.symbol.toLowerCase().includes(query) || cleanText(row.company_name, "").toLowerCase().includes(query);
@@ -67,7 +72,7 @@ export function OpportunitiesWorkspace({ best, marketCondition, rows }: { best: 
       .filter((row) => (row.final_score ?? 0) >= minScore)
       .filter((row) => row.conviction >= minConviction)
       .sort((left, right) => compareRows(left, right, sortKey));
-  }, [activeTab, assetTypeFilter, decisionFilter, entryStatusFilter, minConviction, minScore, qualityFilter, rows, search, sectorFilter, sortKey]);
+  }, [activeTab, assetTypeFilter, decisionFilter, entryStatusFilter, minConviction, minScore, qualityFilter, rows, search, sectorFilter, showWatchlistOnly, sortKey, watchlistSet]);
 
   return (
     <div className="space-y-5">
@@ -115,11 +120,15 @@ export function OpportunitiesWorkspace({ best, marketCondition, rows }: { best: 
           <Select label="Sort" onChange={(value) => setSortKey(value as SortKey)} value={sortKey}>
             {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </Select>
+          <label className="flex h-10 items-center gap-3 self-end rounded-xl border border-white/10 bg-white/[0.04] px-3 text-xs font-semibold text-slate-300">
+            <input checked={showWatchlistOnly} className="h-4 w-4 accent-amber-300" onChange={(event) => setShowWatchlistOnly(event.currentTarget.checked)} type="checkbox" />
+            Show only Watchlist
+          </label>
         </div>
       </GlassPanel>
 
       <OpportunitySection
-        empty={activeTab === "FULL" ? "No symbols match the current search and filters." : "No setups match the current search and filters."}
+        empty={activeTab === "WATCHLIST" ? "No watchlist symbols match the current search and filters." : activeTab === "FULL" ? "No symbols match the current search and filters." : "No setups match the current search and filters."}
         rows={filtered}
         title={tabTitle(activeTab)}
       />
@@ -203,7 +212,10 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
           <div className="font-mono text-3xl font-black text-slate-50">{row.symbol}</div>
           <div className="mt-1 truncate text-xs text-slate-400">{cleanText(row.company_name || row.sector, "Signal")}</div>
         </div>
-        <DecisionBadge className="shrink-0 px-4 py-1.5" value={row.final_decision} />
+        <div className="flex shrink-0 items-center gap-2">
+          <WatchlistButton showLabel={false} symbol={row.symbol} />
+          <DecisionBadge className="px-4 py-1.5" value={row.final_decision} />
+        </div>
       </div>
       <div className="mt-4 text-sm leading-6 text-slate-300">{cleanText(row.decision_reason, "Decision reason is not available yet.")}</div>
       <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
@@ -287,20 +299,15 @@ function uniqueValues(values: Array<string | null>): string[] {
   return Array.from(new Set(values.map((value) => cleanText(value, "")).filter(Boolean))).sort((a, b) => a.localeCompare(b));
 }
 
-function tabMatches(row: OpportunityViewModel, tab: TabKey) {
+function tabMatches(row: OpportunityViewModel, tab: TabKey, watchlistSet: Set<string>) {
   if (tab === "FULL") return true;
-  if (tab === "WATCHLIST") return isWatchCandidate(row);
+  if (tab === "WATCHLIST") return watchlistSet.has(row.symbol);
   return isBestSetup(row);
 }
 
 function isBestSetup(row: OpportunityViewModel) {
   const value = decision(row);
   return value === "ENTER" || value === "WAIT_PULLBACK" || (value === "WATCH" && row.conviction >= 70);
-}
-
-function isWatchCandidate(row: OpportunityViewModel) {
-  const value = decision(row);
-  return value === "WAIT_PULLBACK" || value === "WATCH";
 }
 
 function tabTitle(tab: TabKey) {

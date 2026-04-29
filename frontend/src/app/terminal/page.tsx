@@ -3,6 +3,7 @@ import { BestTradeNowCard } from "@/components/terminal/BestTradeNowCard";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
 import { MetricCard } from "@/components/terminal/MetricCard";
+import { MyWatchlistWidget } from "@/components/terminal/MyWatchlistWidget";
 import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
 import { SignalCard } from "@/components/terminal/SignalCard";
 import { SignalHeatmap } from "@/components/terminal/SignalHeatmap";
@@ -10,6 +11,7 @@ import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
+import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 import { formatMoney, formatPercent } from "@/lib/ui/formatters";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +23,7 @@ export default async function TerminalPage() {
     getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
   ]);
   const edges = buildEdgeLookup(snapshot.signals, performance);
+  const opportunityModel = buildOpportunitiesPageModel(snapshot.signals, performance);
   const best = selectBestTradeNow(snapshot.signals, edges);
   const leader = best?.row ?? snapshot.topSignals[0] ?? snapshot.signals[0];
   const enterCount = snapshot.signals.filter((row) => String(row.final_decision ?? "").toUpperCase() === "ENTER").length;
@@ -70,12 +73,7 @@ export default async function TerminalPage() {
                 <MetricCard label="Total PnL" value={formatMoney(snapshot.paperSummary.totalPnl)} meta="realized + open" tone="pnl" />
               </div>
             </GlassPanel>
-            <GlassPanel className="p-5">
-              <SectionTitle eyebrow="Watchlist Radar" title="High-Intent Names" />
-              <div className="mt-4 flex flex-wrap gap-2">
-                {snapshot.topSignals.slice(0, 14).map((row) => <a className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 font-mono text-xs text-slate-200 hover:bg-white/10" href={`/symbol/${row.symbol}`} key={row.symbol}>{row.symbol}</a>)}
-              </div>
-            </GlassPanel>
+            <MyWatchlistWidget rows={opportunityModel.rows} />
           </div>
         </div>
 
