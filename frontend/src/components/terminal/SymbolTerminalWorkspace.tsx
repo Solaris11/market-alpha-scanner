@@ -6,6 +6,7 @@ import type { SignalHistoryPoint } from "@/lib/adapters/DataServiceAdapter";
 import type { PaperPositionRow, PaperTradeEventRow } from "@/lib/paper-data";
 import type { ConvictionTimelineModel } from "@/lib/trading/conviction-timeline-types";
 import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
+import type { RiskPortfolioPosition } from "@/lib/trading/risk-veto";
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
 import type { RankingRow, ScannerScalar } from "@/lib/types";
 import { AICopilotPanel } from "./AICopilotPanel";
@@ -43,9 +44,10 @@ export function SymbolTerminalWorkspace({
 }) {
   const [showHistoricalMarkers, setShowHistoricalMarkers] = useState(false);
   const tradeLevels = useMemo(() => buildSignalTradeLevels(row), [row]);
-  const tradeEngine = useTradePlanEngine(row);
   const lifecycle = useMemo(() => computeSignalLifecycle(row, tradeLevels), [row, tradeLevels]);
   const symbol = row.symbol.toUpperCase();
+  const riskPortfolio = useMemo(() => buildRiskPortfolio(paperPositions, row.sector, symbol), [paperPositions, row.sector, symbol]);
+  const tradeEngine = useTradePlanEngine(row, riskPortfolio);
   const symbolPositions = paperPositions.filter((position) => position.symbol.toUpperCase() === symbol);
   const openPaper = symbolPositions.filter((position) => position.status === "OPEN");
   const symbolEvents = paperEvents.filter((event) => event.symbol.toUpperCase() === symbol).slice(0, 12);
@@ -136,4 +138,25 @@ function numericValue(value: ScannerScalar) {
 function textValue(value: ScannerScalar) {
   const text = String(value ?? "").trim();
   return text || null;
+}
+
+function buildRiskPortfolio(positions: PaperPositionRow[], currentSector: string | undefined, currentSymbol: string): RiskPortfolioPosition[] {
+  return positions
+    .filter((position) => position.status.toUpperCase() === "OPEN")
+    .map((position) => {
+      const sector = (position as PaperPositionRow & { sector?: string | null }).sector;
+      const quantity = numericValue(position.quantity);
+      const entry = numericValue(position.entry_price);
+      const currentPrice = numericValue(position.current_price ?? position.entry_price);
+      const stop = numericValue(position.stop_loss);
+      const riskAmount = quantity !== null && entry !== null && stop !== null && entry > stop ? (entry - stop) * quantity : null;
+      const positionValue = quantity !== null && currentPrice !== null ? quantity * currentPrice : null;
+      return {
+        positionValue,
+        riskAmount,
+        sector: sector ?? (position.symbol.toUpperCase() === currentSymbol ? currentSector ?? null : null),
+        status: position.status,
+        symbol: position.symbol,
+      };
+    });
 }

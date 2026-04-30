@@ -1,12 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useRiskProfile, type RiskProfileActions } from "@/hooks/useRiskProfile";
 import { buildCorrectionMap, correctionMidpoint, formatCorrectionZone } from "@/lib/trading/correction-map";
+import { evaluateRisk, type RiskEvaluation, type RiskPortfolioPosition, type UserRiskProfile } from "@/lib/trading/risk-veto";
 import { buildSignalTradeLevels } from "@/lib/trading/signal-lifecycle";
 import type { RankingRow } from "@/lib/types";
 import { cleanText, formatMoney, normalizeNumeric } from "@/lib/ui/formatters";
 
 const TRADE_READY_DISTANCE_THRESHOLD = 0.02;
+const EMPTY_PORTFOLIO: RiskPortfolioPosition[] = [];
 
 export type TradePlanEngineState = {
   accountEquity: number;
@@ -39,6 +42,9 @@ export type TradePlanEngineValidity = {
 export type TradePlanEngine = {
   copilotText: string;
   metrics: TradePlanEngineMetrics;
+  riskEvaluation: RiskEvaluation;
+  riskProfile: UserRiskProfile;
+  riskProfileActions: RiskProfileActions;
   setters: {
     setAccountEquity: (value: number) => void;
     setRiskPercent: (value: number) => void;
@@ -47,9 +53,10 @@ export type TradePlanEngine = {
   validity: TradePlanEngineValidity;
 };
 
-export function useTradePlanEngine(row: RankingRow): TradePlanEngine {
+export function useTradePlanEngine(row: RankingRow, portfolio: RiskPortfolioPosition[] = EMPTY_PORTFOLIO): TradePlanEngine {
   const [accountEquity, setAccountEquityState] = useState(10000);
   const [riskPercent, setRiskPercentState] = useState(2);
+  const { actions: riskProfileActions, profile: riskProfile } = useRiskProfile();
 
   const levels = useMemo(() => buildSignalTradeLevels(row), [row]);
   const state = useMemo<TradePlanEngineState>(() => {
@@ -101,11 +108,41 @@ export function useTradePlanEngine(row: RankingRow): TradePlanEngine {
     return { isBlocked: false, isCalculable: true, isOverextended, isTradeValid, message: "Trade setup valid." };
   }, [metrics.entryDistancePct, metrics.positionSize, state.entryPrice, state.entryStatus, state.finalDecision, state.stopLoss, state.targetPrice]);
 
-  const copilotText = useMemo(() => buildDirective(row, state, metrics, validity), [metrics, row, state, validity]);
+  const riskEvaluation = useMemo<RiskEvaluation>(() => evaluateRisk({
+    accountEquity: state.accountEquity,
+    atrPct: row.atr_pct,
+    currentPrice: state.currentPrice,
+    entryPrice: state.entryPrice,
+    maxRiskAmount: metrics.maxRiskAmount,
+    positionSize: metrics.positionSize,
+    riskPercent: state.riskPercent,
+    sector: row.sector,
+    symbol: row.symbol,
+    volatilityPct: row.annualized_volatility ?? row.volatility,
+  }, portfolio, riskProfile), [
+    metrics.maxRiskAmount,
+    metrics.positionSize,
+    portfolio,
+    riskProfile,
+    row.annualized_volatility,
+    row.atr_pct,
+    row.sector,
+    row.symbol,
+    row.volatility,
+    state.accountEquity,
+    state.currentPrice,
+    state.entryPrice,
+    state.riskPercent,
+  ]);
+
+  const copilotText = useMemo(() => buildDirective(row, state, metrics, validity, riskEvaluation), [metrics, riskEvaluation, row, state, validity]);
 
   return {
     copilotText,
     metrics,
+    riskEvaluation,
+    riskProfile,
+    riskProfileActions,
     setters: {
       setAccountEquity: (value: number) => setAccountEquityState(safeNonNegative(value)),
       setRiskPercent: (value: number) => setRiskPercentState(safeNonNegative(value)),
@@ -115,7 +152,15 @@ export function useTradePlanEngine(row: RankingRow): TradePlanEngine {
   };
 }
 
-function buildDirective(row: RankingRow, state: TradePlanEngineState, metrics: TradePlanEngineMetrics, validity: TradePlanEngineValidity): string {
+function buildDirective(row: RankingRow, state: TradePlanEngineState, metrics: TradePlanEngineMetrics, validity: TradePlanEngineValidity, riskEvaluation: RiskEvaluation): string {
+  if (riskEvaluation.status === "VETO") {
+    return ["AI VETO:", "This trade violates your risk rules.", ...riskEvaluation.reasons.map((reason) => `- ${reason}`), "Execution locked."].join("\n");
+  }
+
+  if (riskEvaluation.status === "WARNING") {
+    return ["Warning:", "This trade increases portfolio risk.", ...riskEvaluation.reasons.map((reason) => `- ${reason}`)].join("\n");
+  }
+
   if (state.finalDecision === "ENTER" && validity.isCalculable && state.entryPrice !== null && state.targetPrice !== null && metrics.riskRewardRatio !== null && metrics.potentialReward !== null) {
     return [
       `Enter near ${formatMoney(state.entryPrice)}.`,

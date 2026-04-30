@@ -10,11 +10,16 @@ import { SectionTitle } from "./ui/SectionTitle";
 export function AICopilotPanel({ engine, signal }: { engine?: TradePlanEngine; signal: RankingRow }) {
   const fallbackEngine = useTradePlanEngine(signal);
   const activeEngine = engine ?? fallbackEngine;
-  const { metrics, state, validity } = activeEngine;
+  const { metrics, riskEvaluation, state, validity } = activeEngine;
+  const copilotClass = riskEvaluation.status === "VETO"
+    ? "border-rose-300/30 bg-rose-500/10 text-rose-50 shadow-[0_0_28px_rgba(244,63,94,0.18)]"
+    : riskEvaluation.status === "WARNING"
+      ? "border-amber-300/30 bg-amber-400/10 text-amber-50 shadow-[0_0_24px_rgba(251,191,36,0.14)]"
+      : "border-cyan-300/20 bg-cyan-400/10 text-cyan-50";
   return (
     <GlassPanel className="p-5">
-      <SectionTitle eyebrow="AI Copilot" title="Decision Assistant" />
-      <div className="mt-4 whitespace-pre-line rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4 text-sm font-semibold leading-6 text-cyan-50">{activeEngine.copilotText}</div>
+      <SectionTitle eyebrow="AI Copilot" title="Decision Assistant" meta={riskEvaluation.status === "OK" ? undefined : riskEvaluation.status.toLowerCase()} />
+      <div className={`mt-4 whitespace-pre-line rounded-2xl border p-4 text-sm font-semibold leading-6 transition-all duration-200 ${copilotClass}`}>{activeEngine.copilotText}</div>
       <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
         <Metric label="Account Equity" value={formatMoney(state.accountEquity)} />
         <Metric label="Risk Percent" value={`${formatNumber(state.riskPercent, 1)}%`} />
