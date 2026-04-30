@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Pool } from "pg";
+import { getCurrentUser } from "@/lib/server/auth";
+import { getDbPool } from "@/lib/server/db";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-
-type PoolGlobal = typeof globalThis & {
-  __marketAlphaManualPaperPool?: Pool;
-};
 
 type ManualPaperTradePayload = {
   entry_price?: unknown;
@@ -16,16 +13,6 @@ type ManualPaperTradePayload = {
   symbol?: unknown;
   target_price?: unknown;
 };
-
-function pool() {
-  const databaseUrl = process.env.DATABASE_URL?.trim();
-  if (!databaseUrl) return null;
-  const globalPool = globalThis as PoolGlobal;
-  if (!globalPool.__marketAlphaManualPaperPool) {
-    globalPool.__marketAlphaManualPaperPool = new Pool({ connectionString: databaseUrl });
-  }
-  return globalPool.__marketAlphaManualPaperPool;
-}
 
 function numberValue(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
@@ -53,7 +40,7 @@ function validatePayload(payload: ManualPaperTradePayload) {
 }
 
 export async function POST(request: NextRequest) {
-  const clientPool = pool();
+  const clientPool = getDbPool();
   if (!clientPool) {
     return NextResponse.json({ ok: false, error: "DATABASE_URL not configured" });
   }
@@ -71,6 +58,9 @@ export async function POST(request: NextRequest) {
   const entryPrice = validated.entryPrice!;
   const quantity = validated.quantity!;
   const positionValue = entryPrice * quantity;
+  const user = await getCurrentUser().catch(() => null);
+  const userId = user?.id ?? null;
+  const accountName = userId ? `default:${userId}` : "default";
   const client = await clientPool.connect();
 
   try {
@@ -78,6 +68,7 @@ export async function POST(request: NextRequest) {
     await client.query(`
       INSERT INTO paper_accounts (
         name,
+        user_id,
         starting_balance,
         cash_balance,
         equity_value,
@@ -87,17 +78,19 @@ export async function POST(request: NextRequest) {
         max_open_positions,
         enabled
       )
-      VALUES ('default', 10000, 10000, 0, 0, 0.10, 0.01, 5, true)
-      ON CONFLICT (name) DO NOTHING
-    `);
+      VALUES ($1, $2, 10000, 10000, 0, 0, 0.10, 0.01, 5, true)
+      ON CONFLICT (name) DO UPDATE
+      SET user_id = COALESCE(paper_accounts.user_id, EXCLUDED.user_id), updated_at = now()
+    `, [accountName, userId]);
 
     const accountResult = await client.query(
       `
         SELECT id::text, cash_balance
         FROM paper_accounts
-        WHERE name = 'default'
+        WHERE name = $1
         FOR UPDATE
       `,
+      [accountName],
     );
     const account = accountResult.rows[0] as { cash_balance: string; id: string } | undefined;
     if (!account) throw new Error("Default paper account is unavailable.");
@@ -112,6 +105,7 @@ export async function POST(request: NextRequest) {
       `
         INSERT INTO paper_positions (
           account_id,
+          user_id,
           symbol,
           status,
           opened_at,
@@ -130,7 +124,7 @@ export async function POST(request: NextRequest) {
           created_at,
           updated_at
         )
-        VALUES ($1, $2, 'OPEN', now(), $3, $4, $5, $6, 'MANUAL', 'MANUAL', 'MANUAL', 'manual', 'MANUAL', 0, 0, 0, now(), now())
+        VALUES ($1, $2, $3, 'OPEN', now(), $4, $5, $6, $7, 'MANUAL', 'MANUAL', 'MANUAL', 'manual', 'MANUAL', 0, 0, 0, now(), now())
         RETURNING
           id::text,
           symbol,
@@ -145,7 +139,7 @@ export async function POST(request: NextRequest) {
           setup_type,
           rating
       `,
-      [account.id, validated.symbol, entryPrice, quantity, validated.stopLoss, validated.targetPrice],
+      [account.id, userId, validated.symbol, entryPrice, quantity, validated.stopLoss, validated.targetPrice],
     );
     const position = positionResult.rows[0];
 
@@ -153,6 +147,7 @@ export async function POST(request: NextRequest) {
       `
         INSERT INTO paper_trade_events (
           account_id,
+          user_id,
           position_id,
           symbol,
           event_type,
@@ -163,7 +158,7 @@ export async function POST(request: NextRequest) {
           pnl_delta,
           created_at
         )
-        VALUES ($1, $2, $3, 'OPEN', 'MANUAL_ENTRY', $4, $5, $6, 0, now())
+        VALUES ($1, $2, $3, $4, 'OPEN', 'MANUAL_ENTRY', $5, $6, $7, 0, now())
         RETURNING
           id::text,
           symbol,
@@ -175,7 +170,7 @@ export async function POST(request: NextRequest) {
           pnl_delta,
           created_at::text
       `,
-      [account.id, position.id, validated.symbol, entryPrice, quantity, -positionValue],
+      [account.id, userId, position.id, validated.symbol, entryPrice, quantity, -positionValue],
     );
     const event = eventResult.rows[0];
 
@@ -199,7 +194,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, position, event });
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
-    return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "Failed to open manual paper trade" }, { status: 500 });
+    console.error("[paper] failed to open manual paper trade", error);
+    return NextResponse.json({ ok: false, error: "Failed to open manual paper trade" }, { status: 500 });
   } finally {
     client.release();
   }

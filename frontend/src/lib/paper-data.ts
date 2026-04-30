@@ -1,10 +1,8 @@
 import "server-only";
 
-import { Pool, type QueryResultRow } from "pg";
-
-type PoolGlobal = typeof globalThis & {
-  __marketAlphaPaperPool?: Pool;
-};
+import type { QueryResultRow } from "pg";
+import { getCurrentUser } from "@/lib/server/auth";
+import { getDbPool } from "@/lib/server/db";
 
 export type PaperAccountSummary = {
   id: string;
@@ -96,6 +94,10 @@ export type PaperAnalyticsData = {
   error?: string;
 };
 
+export type PaperDataScope = {
+  userId?: string | null;
+};
+
 const ZERO_ANALYTICS_SUMMARY: PaperAnalyticsSummary = {
   total_trades: 0,
   open_trades: 0,
@@ -107,17 +109,6 @@ const ZERO_ANALYTICS_SUMMARY: PaperAnalyticsSummary = {
   total_pnl: 0,
   max_drawdown: 0,
 };
-
-function pool() {
-  const databaseUrl = process.env.DATABASE_URL?.trim();
-  if (!databaseUrl) return null;
-
-  const globalPool = globalThis as PoolGlobal;
-  if (!globalPool.__marketAlphaPaperPool) {
-    globalPool.__marketAlphaPaperPool = new Pool({ connectionString: databaseUrl });
-  }
-  return globalPool.__marketAlphaPaperPool;
-}
 
 function numberValue(value: unknown): number {
   const parsed = typeof value === "number" ? value : Number(value);
@@ -227,6 +218,14 @@ function summaryFromRow(row: QueryResultRow | undefined, timeline: PaperAnalytic
   };
 }
 
+async function resolvePaperUserId(scope?: PaperDataScope): Promise<string | null> {
+  if (scope && Object.prototype.hasOwnProperty.call(scope, "userId")) {
+    return scope.userId ?? null;
+  }
+  const user = await getCurrentUser().catch(() => null);
+  return user?.id ?? null;
+}
+
 function analyticsGroupFromRow(row: QueryResultRow): PaperAnalyticsGroupRow {
   return {
     group_type: textValue(row.group_type),
@@ -238,8 +237,8 @@ function analyticsGroupFromRow(row: QueryResultRow): PaperAnalyticsGroupRow {
   };
 }
 
-export async function getPaperData(): Promise<PaperData> {
-  const clientPool = pool();
+export async function getPaperData(scope?: PaperDataScope): Promise<PaperData> {
+  const clientPool = getDbPool();
   if (!clientPool) {
     return {
       configured: false,
@@ -250,10 +249,19 @@ export async function getPaperData(): Promise<PaperData> {
     };
   }
 
+  const userId = await resolvePaperUserId(scope);
+
   try {
     const [accountResult, positionsResult, eventsResult] = await Promise.all([
       clientPool.query(`
-        WITH position_summary AS (
+        WITH scoped_account AS (
+          SELECT id
+          FROM paper_accounts
+          WHERE (($1::uuid IS NOT NULL AND user_id = $1::uuid) OR ($1::uuid IS NULL AND name = 'default'))
+          ORDER BY created_at DESC
+          LIMIT 1
+        ),
+        position_summary AS (
           SELECT
             account_id,
             count(*) FILTER (WHERE status = 'OPEN') AS open_positions_count,
@@ -272,10 +280,10 @@ export async function getPaperData(): Promise<PaperData> {
           COALESCE(ps.open_positions_count, 0) AS open_positions_count,
           a.cash_balance + a.equity_value AS total_account_value
         FROM paper_accounts a
+        JOIN scoped_account da ON da.id = a.id
         LEFT JOIN position_summary ps ON ps.account_id = a.id
-        WHERE a.name = 'default'
         LIMIT 1
-      `),
+      `, [userId]),
       clientPool.query(`
         WITH latest_run AS (
           SELECT id
@@ -288,10 +296,11 @@ export async function getPaperData(): Promise<PaperData> {
           FROM scanner_signals
           WHERE scan_run_id = (SELECT id FROM latest_run)
         ),
-        default_account AS (
+        scoped_account AS (
           SELECT id
           FROM paper_accounts
-          WHERE name = 'default'
+          WHERE (($1::uuid IS NOT NULL AND user_id = $1::uuid) OR ($1::uuid IS NULL AND name = 'default'))
+          ORDER BY created_at DESC
           LIMIT 1
         )
         SELECT
@@ -320,15 +329,16 @@ export async function getPaperData(): Promise<PaperData> {
           p.close_reason
         FROM paper_positions p
         LEFT JOIN latest_prices lp ON lp.symbol = p.symbol
-        WHERE p.account_id = (SELECT id FROM default_account)
+        WHERE p.account_id = (SELECT id FROM scoped_account)
         ORDER BY CASE WHEN p.status = 'OPEN' THEN 0 ELSE 1 END, COALESCE(p.closed_at, p.opened_at) DESC
         LIMIT 100
-      `),
+      `, [userId]),
       clientPool.query(`
-        WITH default_account AS (
+        WITH scoped_account AS (
           SELECT id
           FROM paper_accounts
-          WHERE name = 'default'
+          WHERE (($1::uuid IS NOT NULL AND user_id = $1::uuid) OR ($1::uuid IS NULL AND name = 'default'))
+          ORDER BY created_at DESC
           LIMIT 1
         )
         SELECT
@@ -342,10 +352,10 @@ export async function getPaperData(): Promise<PaperData> {
           pnl_delta,
           created_at::text
         FROM paper_trade_events
-        WHERE account_id = (SELECT id FROM default_account)
+        WHERE account_id = (SELECT id FROM scoped_account)
         ORDER BY created_at DESC
         LIMIT 100
-      `),
+      `, [userId]),
     ]);
 
     return {
@@ -365,8 +375,8 @@ export async function getPaperData(): Promise<PaperData> {
   }
 }
 
-export async function getPaperAnalytics(): Promise<PaperAnalyticsData> {
-  const clientPool = pool();
+export async function getPaperAnalytics(scope?: PaperDataScope): Promise<PaperAnalyticsData> {
+  const clientPool = getDbPool();
   if (!clientPool) {
     return {
       configured: false,
@@ -377,19 +387,22 @@ export async function getPaperAnalytics(): Promise<PaperAnalyticsData> {
     };
   }
 
+  const userId = await resolvePaperUserId(scope);
+
   try {
     const [summaryResult, groupsResult, timelineResult] = await Promise.all([
       clientPool.query(`
-        WITH default_account AS (
+        WITH scoped_account AS (
           SELECT id
           FROM paper_accounts
-          WHERE name = 'default'
+          WHERE (($1::uuid IS NOT NULL AND user_id = $1::uuid) OR ($1::uuid IS NULL AND name = 'default'))
+          ORDER BY created_at DESC
           LIMIT 1
         ),
         positions AS (
           SELECT *
           FROM paper_positions
-          WHERE account_id = (SELECT id FROM default_account)
+          WHERE account_id = (SELECT id FROM scoped_account)
         )
         SELECT
           count(*) AS total_trades,
@@ -406,18 +419,19 @@ export async function getPaperAnalytics(): Promise<PaperAnalyticsData> {
           COALESCE(sum(realized_pnl) FILTER (WHERE upper(status) = 'CLOSED'), 0)
             + COALESCE(sum(unrealized_pnl) FILTER (WHERE upper(status) = 'OPEN'), 0) AS total_pnl
         FROM positions
-      `),
+      `, [userId]),
       clientPool.query(`
-        WITH default_account AS (
+        WITH scoped_account AS (
           SELECT id
           FROM paper_accounts
-          WHERE name = 'default'
+          WHERE (($1::uuid IS NOT NULL AND user_id = $1::uuid) OR ($1::uuid IS NULL AND name = 'default'))
+          ORDER BY created_at DESC
           LIMIT 1
         ),
         closed_positions AS (
           SELECT *
           FROM paper_positions
-          WHERE account_id = (SELECT id FROM default_account)
+          WHERE account_id = (SELECT id FROM scoped_account)
             AND upper(status) = 'CLOSED'
         )
         SELECT * FROM (
@@ -452,18 +466,19 @@ export async function getPaperAnalytics(): Promise<PaperAnalyticsData> {
           FROM closed_positions GROUP BY COALESCE(NULLIF(final_decision, ''), 'UNKNOWN')
         ) grouped
         ORDER BY group_type, total_pnl DESC, group_value
-      `),
+      `, [userId]),
       clientPool.query(`
-        WITH default_account AS (
+        WITH scoped_account AS (
           SELECT id
           FROM paper_accounts
-          WHERE name = 'default'
+          WHERE (($1::uuid IS NOT NULL AND user_id = $1::uuid) OR ($1::uuid IS NULL AND name = 'default'))
+          ORDER BY created_at DESC
           LIMIT 1
         ),
         daily AS (
           SELECT closed_at::date AS trade_date, COALESCE(sum(realized_pnl), 0) AS daily_pnl
           FROM paper_positions
-          WHERE account_id = (SELECT id FROM default_account)
+          WHERE account_id = (SELECT id FROM scoped_account)
             AND upper(status) = 'CLOSED'
             AND closed_at IS NOT NULL
           GROUP BY closed_at::date
@@ -474,7 +489,7 @@ export async function getPaperAnalytics(): Promise<PaperAnalyticsData> {
           sum(daily_pnl) OVER (ORDER BY trade_date) AS cumulative_pnl
         FROM daily
         ORDER BY trade_date
-      `),
+      `, [userId]),
     ]);
 
     const timeline = timelineResult.rows.map(timelineFromRow);

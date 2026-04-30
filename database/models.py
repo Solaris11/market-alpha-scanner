@@ -65,10 +65,71 @@ class ScannerSignal(Base):
     scan_run: Mapped[ScanRun] = relationship(back_populates="signals")
 
 
-class PaperAccount(Base):
-    __tablename__ = "paper_accounts"
+class User(Base):
+    __tablename__ = "users"
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    email: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    display_name: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+    sessions: Mapped[list["UserSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    watchlist_items: Mapped[list["UserWatchlist"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    risk_profile: Mapped["UserRiskProfile | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
+
+
+class UserSession(Base):
+    __tablename__ = "user_sessions"
+    __table_args__ = (
+        Index("ix_user_sessions_user_id", "user_id"),
+        Index("ix_user_sessions_expires_at", "expires_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    session_token: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    user: Mapped[User] = relationship(back_populates="sessions")
+
+
+class UserWatchlist(Base):
+    __tablename__ = "user_watchlist"
+    __table_args__ = (
+        UniqueConstraint("user_id", "symbol", name="uq_user_watchlist_user_symbol"),
+        Index("ix_user_watchlist_user_id", "user_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    symbol: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    user: Mapped[User] = relationship(back_populates="watchlist_items")
+
+
+class UserRiskProfile(Base):
+    __tablename__ = "user_risk_profile"
+
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), primary_key=True)
+    max_risk_per_trade_percent: Mapped[Decimal] = mapped_column(Numeric, nullable=False, default=Decimal("2"), server_default=text("2"))
+    max_daily_loss: Mapped[Decimal | None] = mapped_column(Numeric)
+    max_sector_positions: Mapped[int] = mapped_column(Integer, nullable=False, default=2, server_default=text("2"))
+    allow_override: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=text("true"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+    user: Mapped[User] = relationship(back_populates="risk_profile")
+
+
+class PaperAccount(Base):
+    __tablename__ = "paper_accounts"
+    __table_args__ = (Index("ix_paper_accounts_user_id", "user_id"),)
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
     name: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     starting_balance: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
     cash_balance: Mapped[Decimal] = mapped_column(Numeric, nullable=False)
@@ -89,6 +150,7 @@ class PaperPosition(Base):
     __tablename__ = "paper_positions"
     __table_args__ = (
         Index("ix_paper_positions_account_id", "account_id"),
+        Index("ix_paper_positions_user_id", "user_id"),
         Index("ix_paper_positions_symbol", "symbol"),
         Index("ix_paper_positions_status", "status"),
         Index("ix_paper_positions_opened_at", "opened_at"),
@@ -96,6 +158,7 @@ class PaperPosition(Base):
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     account_id: Mapped[UUID] = mapped_column(ForeignKey("paper_accounts.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
     symbol: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(Text, nullable=False, default="OPEN", server_default=text("'OPEN'"))
     opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
@@ -127,12 +190,14 @@ class PaperTradeEvent(Base):
     __tablename__ = "paper_trade_events"
     __table_args__ = (
         Index("ix_paper_trade_events_account_id", "account_id"),
+        Index("ix_paper_trade_events_user_id", "user_id"),
         Index("ix_paper_trade_events_symbol", "symbol"),
         Index("ix_paper_trade_events_created_at", "created_at"),
     )
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     account_id: Mapped[UUID] = mapped_column(ForeignKey("paper_accounts.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
     position_id: Mapped[UUID | None] = mapped_column(ForeignKey("paper_positions.id", ondelete="SET NULL"))
     symbol: Mapped[str] = mapped_column(Text, nullable=False)
     event_type: Mapped[str] = mapped_column(Text, nullable=False)

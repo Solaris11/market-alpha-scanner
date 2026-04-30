@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import type { TradePlanEngine } from "@/hooks/useTradePlanEngine";
 import { formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { GlassPanel } from "./ui/GlassPanel";
@@ -17,6 +18,7 @@ function Input({ label, value, onChange }: { label: string; value: number; onCha
 
 export function WhatIfSimulator({ engine }: { engine: TradePlanEngine }) {
   const [pulse, setPulse] = useState(false);
+  const { authenticated } = useCurrentUser();
   const { metrics, riskEvaluation, riskProfile, riskProfileActions, state, validity } = engine;
   useEffect(() => {
     setPulse(true);
@@ -41,7 +43,7 @@ export function WhatIfSimulator({ engine }: { engine: TradePlanEngine }) {
         <div className="flex items-center justify-between gap-3">
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Risk Rules</div>
-            <div className="mt-1 text-xs text-slate-400">Saved locally for this terminal.</div>
+            <div className="mt-1 text-xs text-slate-400">{authenticated ? "Account saved" : "Saved only on this device."}</div>
           </div>
           <button className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-100" onClick={riskProfileActions.resetRiskProfile} type="button">Reset</button>
         </div>

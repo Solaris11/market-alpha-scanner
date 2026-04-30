@@ -1,3 +1,4 @@
+import { AccountPill } from "@/components/account/AccountPill";
 import { TerminalNav } from "./TerminalNav";
 
 export function TerminalHeader() {
@@ -7,7 +8,10 @@ export function TerminalHeader() {
         <div className="text-[10px] font-black uppercase tracking-[0.32em] text-cyan-300">Market Alpha</div>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-50">AI Trading Terminal</h1>
       </div>
-      <TerminalNav />
+      <div className="flex flex-col gap-3 lg:items-end">
+        <TerminalNav />
+        <AccountPill />
+      </div>
     </header>
   );
 }
