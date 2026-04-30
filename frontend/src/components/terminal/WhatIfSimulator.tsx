@@ -36,49 +36,51 @@ export function WhatIfSimulator({ engine }: { engine: TradePlanEngine }) {
   }, [metrics.maxRiskAmount, metrics.positionSize, metrics.potentialReward, metrics.riskRewardRatio]);
 
   return (
-    <GlassPanel className="p-5">
-      <SectionTitle eyebrow="What-If" title="Trade Simulator" meta={readOnly ? "read-only" : displayRiskStatus === "OK" ? (validity.isCalculable ? "synced live" : "blocked") : displayRiskStatus.toLowerCase()} />
-      {readOnly ? (
-        <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-3 text-xs font-semibold text-amber-100">
-          System decision is {state.finalDecision}. Simulator is read-only, with calculations kept visible.
-        </div>
-      ) : null}
-      {!readOnly && riskEvaluation.status !== "OK" ? <RiskBanner status={riskEvaluation.status} reasons={riskEvaluation.reasons} /> : null}
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <Input disabled={readOnly} label="Account Equity" value={state.accountEquity} onChange={engine.setters.setAccountEquity} />
-        <Input disabled={readOnly} label="Risk %" value={state.riskPercent} onChange={engine.setters.setRiskPercent} />
-      </div>
-      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Risk Rules</div>
-            <div className="mt-1 text-xs text-slate-400">{authenticated ? "Account saved" : "Saved only on this device."}</div>
+    <div data-onboarding-target="what-if-simulator">
+      <GlassPanel className="p-5">
+        <SectionTitle eyebrow="What-If" title="Trade Simulator" meta={readOnly ? "read-only" : displayRiskStatus === "OK" ? (validity.isCalculable ? "synced live" : "blocked") : displayRiskStatus.toLowerCase()} />
+        {readOnly ? (
+          <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-3 text-xs font-semibold text-amber-100">
+            System decision is {state.finalDecision}. Simulator is read-only, with calculations kept visible.
           </div>
-          <button className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-100" onClick={riskProfileActions.resetRiskProfile} type="button">Reset</button>
+        ) : null}
+        {!readOnly && riskEvaluation.status !== "OK" ? <RiskBanner status={riskEvaluation.status} reasons={riskEvaluation.reasons} /> : null}
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <Input disabled={readOnly} label="Account Equity" value={state.accountEquity} onChange={engine.setters.setAccountEquity} />
+          <Input disabled={readOnly} label="Risk %" value={state.riskPercent} onChange={engine.setters.setRiskPercent} />
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-          <Input label="Max Risk %" value={riskProfile.maxRiskPerTradePercent} onChange={(value) => riskProfileActions.updateRiskProfile({ maxRiskPerTradePercent: value })} />
-          <Input label="Sector Max" value={riskProfile.maxSectorExposure} onChange={(value) => riskProfileActions.updateRiskProfile({ maxSectorExposure: value })} />
-          <OptionalInput label="Max Daily Loss" value={riskProfile.maxDailyLoss} onChange={(value) => riskProfileActions.updateRiskProfile({ maxDailyLoss: value })} />
-          <OptionalInput label="Max Position %" value={riskProfile.maxPositionSizePercent} onChange={(value) => riskProfileActions.updateRiskProfile({ maxPositionSizePercent: value })} />
-          <label className="col-span-2 flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-xs text-slate-300">
-            <input checked={riskProfile.allowOverride} className="accent-cyan-300" onChange={(event) => riskProfileActions.updateRiskProfile({ allowOverride: event.target.checked })} type="checkbox" />
-            Allow risk-veto override with confirmation
-          </label>
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Risk Rules</div>
+              <div className="mt-1 text-xs text-slate-400">{authenticated ? "Account saved" : "Saved only on this device."}</div>
+            </div>
+            <button className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-100" onClick={riskProfileActions.resetRiskProfile} type="button">Reset</button>
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+            <Input label="Max Risk %" value={riskProfile.maxRiskPerTradePercent} onChange={(value) => riskProfileActions.updateRiskProfile({ maxRiskPerTradePercent: value })} />
+            <Input label="Sector Max" value={riskProfile.maxSectorExposure} onChange={(value) => riskProfileActions.updateRiskProfile({ maxSectorExposure: value })} />
+            <OptionalInput label="Max Daily Loss" value={riskProfile.maxDailyLoss} onChange={(value) => riskProfileActions.updateRiskProfile({ maxDailyLoss: value })} />
+            <OptionalInput label="Max Position %" value={riskProfile.maxPositionSizePercent} onChange={(value) => riskProfileActions.updateRiskProfile({ maxPositionSizePercent: value })} />
+            <label className="col-span-2 flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-xs text-slate-300">
+              <input checked={riskProfile.allowOverride} className="accent-cyan-300" onChange={(event) => riskProfileActions.updateRiskProfile({ allowOverride: event.target.checked })} type="checkbox" />
+              Allow risk-veto override with confirmation
+            </label>
+          </div>
         </div>
-      </div>
-      {validity.isCalculable && metrics.potentialReward !== null && metrics.riskRewardRatio !== null ? (
-        <div className={`mt-4 grid grid-cols-2 gap-2 text-xs transition-all duration-200 md:grid-cols-4 ${validity.isBlocked ? "opacity-60" : ""} ${pulse ? "scale-[1.05] shadow-[0_0_30px_rgba(34,211,238,0.18)]" : "scale-100"}`}>
-          <SimulatorMetric label="Position Size" value={formatNumber(metrics.positionSize, 0)} />
-          <SimulatorMetric label="Max Risk" value={`${formatMoney(metrics.maxRiskAmount)} risk`} tone="risk" />
-          <SimulatorMetric label="Potential Reward" value={formatMoney(metrics.potentialReward)} tone="reward" />
-          <SimulatorMetric label="Risk/Reward" value={`${formatNumber(metrics.riskRewardRatio, 1)}R`} />
-        </div>
-      ) : (
-        <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">{validity.message}</div>
-      )}
-      <ChaosEnginePanel engine={engine} />
-    </GlassPanel>
+        {validity.isCalculable && metrics.potentialReward !== null && metrics.riskRewardRatio !== null ? (
+          <div className={`mt-4 grid grid-cols-2 gap-2 text-xs transition-all duration-200 md:grid-cols-4 ${validity.isBlocked ? "opacity-60" : ""} ${pulse ? "scale-[1.05] shadow-[0_0_30px_rgba(34,211,238,0.18)]" : "scale-100"}`}>
+            <SimulatorMetric label="Position Size" value={formatNumber(metrics.positionSize, 0)} />
+            <SimulatorMetric label="Max Risk" value={`${formatMoney(metrics.maxRiskAmount)} risk`} tone="risk" />
+            <SimulatorMetric label="Potential Reward" value={formatMoney(metrics.potentialReward)} tone="reward" />
+            <SimulatorMetric label="Risk/Reward" value={`${formatNumber(metrics.riskRewardRatio, 1)}R`} />
+          </div>
+        ) : (
+          <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">{validity.message}</div>
+        )}
+        <ChaosEnginePanel engine={engine} />
+      </GlassPanel>
+    </div>
   );
 }
 

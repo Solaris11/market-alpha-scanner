@@ -1,4 +1,5 @@
 import { AccountPill } from "@/components/account/AccountPill";
+import { OnboardingHelpButton } from "@/components/onboarding/OnboardingHelpButton";
 import { TerminalNav } from "./TerminalNav";
 
 export function TerminalHeader() {
@@ -9,7 +10,10 @@ export function TerminalHeader() {
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-50">AI Trading Terminal</h1>
       </div>
       <div className="flex flex-col gap-3 lg:items-end">
-        <TerminalNav />
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <TerminalNav />
+          <OnboardingHelpButton />
+        </div>
         <AccountPill />
       </div>
     </header>

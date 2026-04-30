@@ -1,5 +1,6 @@
 import { AICopilotPanel } from "@/components/terminal/AICopilotPanel";
 import { BestTradeNowCard } from "@/components/terminal/BestTradeNowCard";
+import { MarketOnboarding } from "@/components/onboarding/MarketOnboarding";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
 import { MetricCard } from "@/components/terminal/MetricCard";
@@ -26,6 +27,7 @@ export default async function TerminalPage() {
   const opportunityModel = buildOpportunitiesPageModel(snapshot.signals, performance);
   const best = selectBestTradeNow(snapshot.signals, edges);
   const leader = best?.row ?? snapshot.topSignals[0] ?? snapshot.signals[0];
+  const tradePlanHref = leader?.symbol ? `/symbol/${leader.symbol}` : "/opportunities";
   const enterCount = snapshot.signals.filter((row) => String(row.final_decision ?? "").toUpperCase() === "ENTER").length;
   const avoidCount = snapshot.signals.filter((row) => String(row.final_decision ?? "").toUpperCase() === "AVOID").length;
 
@@ -81,6 +83,7 @@ export default async function TerminalPage() {
           {leader ? <AICopilotPanel signal={leader} /> : null}
         </div>
       </div>
+      <MarketOnboarding tradePlanHref={tradePlanHref} />
     </TerminalShell>
   );
 }
