@@ -84,15 +84,13 @@ export function AuthModal({
         </div>
 
         <div className="space-y-4 px-5 py-5">
-          {mode === "login" || mode === "register" ? (
+          {(mode === "login" || mode === "register") && googleEnabled ? (
             <>
               <button
-                className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] text-sm font-semibold text-slate-100 transition hover:border-cyan-300/40 hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-45"
-                disabled={!googleEnabled}
+                className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] text-sm font-semibold text-slate-100 transition hover:border-cyan-300/40 hover:bg-white/[0.07]"
                 onClick={() => {
                   window.location.href = "/api/auth/google/start";
                 }}
-                title={googleEnabled ? "Continue with Google" : "Google sign-in is not configured."}
                 type="button"
               >
                 Continue with Google
