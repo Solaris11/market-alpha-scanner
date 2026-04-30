@@ -168,17 +168,40 @@ function riskReward(position: PaperPositionRow): number | null {
 function closedPaperPositions(positions: PaperPositionRow[]): PaperPositionRow[] {
   return positions
     .filter((position) => position.status.toUpperCase() === "CLOSED")
-    .sort((left, right) => String(left.closed_at ?? "").localeCompare(String(right.closed_at ?? "")));
+    .sort((left, right) => closedTradeTime(left).localeCompare(closedTradeTime(right)));
 }
 
-function tradePnl(position: PaperPositionRow): number | null {
+function closedTradeTime(position: PaperPositionRow): string {
+  return position.closed_at || position.opened_at || position.id;
+}
+
+function tradePnl(position: PaperPositionRow): number {
   const entry = finiteNumber(position.entry_price);
   const exit = finiteNumber(position.exit_price);
   const quantity = finiteNumber(position.quantity);
   if (entry === null || exit === null || quantity === null || quantity <= 0) {
-    return finiteNumber(position.realized_pnl);
+    return finiteNumber(position.realized_pnl) ?? 0;
   }
   return (exit - entry) * quantity;
+}
+
+function tradeReturnFraction(position: PaperPositionRow): number | null {
+  const storedReturn = boundedReturnFraction(position.return_pct);
+  if (storedReturn !== null) return storedReturn;
+
+  const entry = finiteNumber(position.entry_price);
+  const exit = finiteNumber(position.exit_price);
+  if (entry !== null && exit !== null && entry > 0) {
+    return boundedReturnFraction((exit - entry) / entry);
+  }
+
+  const realizedPnl = finiteNumber(position.realized_pnl);
+  const quantity = finiteNumber(position.quantity);
+  if (entry !== null && realizedPnl !== null && quantity !== null && entry > 0 && quantity > 0) {
+    return boundedReturnFraction(realizedPnl / (entry * quantity));
+  }
+
+  return null;
 }
 
 function buildEquityPoints(closed: PaperPositionRow[]): EquityPoint[] {
@@ -186,9 +209,8 @@ function buildEquityPoints(closed: PaperPositionRow[]): EquityPoint[] {
   const points: EquityPoint[] = [];
   for (const position of closed) {
     const pnl = tradePnl(position);
-    if (pnl === null || !position.closed_at) continue;
     cumulativePnl += pnl;
-    points.push({ time: position.closed_at, value: cumulativePnl });
+    points.push({ time: closedTradeTime(position), value: cumulativePnl });
   }
   return points;
 }
@@ -199,7 +221,7 @@ function average(values: number[]): number | null {
 }
 
 function buildExpectancy(closed: PaperPositionRow[]): ExpectancyMetrics {
-  const returns = closed.map((position) => boundedReturnFraction(position.return_pct)).filter((value): value is number => value !== null);
+  const returns = closed.map(tradeReturnFraction).filter((value): value is number => value !== null);
   const wins = returns.filter((value) => value > 0);
   const losses = returns.filter((value) => value <= 0);
   const winRate = returns.length ? wins.length / returns.length : null;
@@ -378,15 +400,14 @@ function EquityCurve({ points }: { points: EquityPoint[] }) {
 }
 
 function SetupPerformance({ groups }: { groups: PaperAnalyticsGroupRow[] }) {
-  const rows = groups
-    .filter((group) => TRUST_GROUP_TYPES.has(group.group_type) && group.count > 0)
+  const rows = dedupeSetupGroups(groups)
     .sort((left, right) => groupRank(left.group_type) - groupRank(right.group_type) || right.total_pnl - left.total_pnl || left.group_value.localeCompare(right.group_value));
   if (!rows.length) return <EmptyState message="Not enough closed trades yet. Keep paper trading to build system confidence." />;
 
   return (
     <div className="grid gap-3 lg:grid-cols-2">
       {rows.map((group) => (
-        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={`${group.group_type}:${group.group_value}`}>
+        <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={setupGroupKey(group)}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{groupTypeLabel(group.group_type)}</div>
@@ -403,6 +424,42 @@ function SetupPerformance({ groups }: { groups: PaperAnalyticsGroupRow[] }) {
       ))}
     </div>
   );
+}
+
+function dedupeSetupGroups(groups: PaperAnalyticsGroupRow[]): PaperAnalyticsGroupRow[] {
+  const deduped = new Map<string, PaperAnalyticsGroupRow>();
+
+  for (const group of groups) {
+    if (!TRUST_GROUP_TYPES.has(group.group_type) || group.count <= 0) continue;
+
+    const key = setupGroupKey(group);
+    const existing = deduped.get(key);
+    if (!existing) {
+      deduped.set(key, group);
+      continue;
+    }
+
+    const count = existing.count + group.count;
+    deduped.set(key, {
+      ...existing,
+      count,
+      avg_return_pct: weightedAverage(existing.avg_return_pct, existing.count, group.avg_return_pct, group.count),
+      total_pnl: existing.total_pnl + group.total_pnl,
+      win_rate: weightedAverage(existing.win_rate, existing.count, group.win_rate, group.count),
+    });
+  }
+
+  return [...deduped.values()];
+}
+
+function setupGroupKey(group: PaperAnalyticsGroupRow): string {
+  return `${group.group_type.trim().toLowerCase()}:${cleanText(group.group_value, "unknown").trim().toLowerCase()}`;
+}
+
+function weightedAverage(leftValue: number, leftCount: number, rightValue: number, rightCount: number): number {
+  const totalCount = leftCount + rightCount;
+  if (totalCount <= 0) return 0;
+  return ((leftValue * leftCount) + (rightValue * rightCount)) / totalCount;
 }
 
 function groupRank(type: string): number {
@@ -444,7 +501,7 @@ function TradeAutopsy({ positions }: { positions: PaperPositionRow[] }) {
             <MiniMetric label="Entry" value={money(position.entry_price)} />
             <MiniMetric label="Exit" value={money(position.exit_price)} />
             <MiniMetric label="PnL" tone={position.realized_pnl} value={money(position.realized_pnl)} />
-            <MiniMetric label="Return" tone={position.return_pct} value={signedPercentText(position.return_pct)} />
+            <MiniMetric label="Return" tone={tradeReturnFraction(position)} value={signedPercentText(tradeReturnFraction(position))} />
           </div>
           <div className="mt-4 rounded-xl bg-slate-950/50 p-3">
             <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Reason Closed</div>
