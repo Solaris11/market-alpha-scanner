@@ -54,15 +54,15 @@ export function WhatIfSimulator({ engine }: { engine: TradePlanEngine }) {
             <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Risk Rules</div>
             <div className="mt-1 text-xs text-slate-400">{authenticated ? "Account saved" : "Saved only on this device."}</div>
           </div>
-          <button className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50" disabled={readOnly} onClick={riskProfileActions.resetRiskProfile} type="button">Reset</button>
+          <button className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-100" onClick={riskProfileActions.resetRiskProfile} type="button">Reset</button>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-          <Input disabled={readOnly} label="Max Risk %" value={riskProfile.maxRiskPerTradePercent} onChange={(value) => riskProfileActions.updateRiskProfile({ maxRiskPerTradePercent: value })} />
-          <Input disabled={readOnly} label="Sector Max" value={riskProfile.maxSectorExposure} onChange={(value) => riskProfileActions.updateRiskProfile({ maxSectorExposure: value })} />
-          <OptionalInput disabled={readOnly} label="Max Daily Loss" value={riskProfile.maxDailyLoss} onChange={(value) => riskProfileActions.updateRiskProfile({ maxDailyLoss: value })} />
-          <OptionalInput disabled={readOnly} label="Max Position %" value={riskProfile.maxPositionSizePercent} onChange={(value) => riskProfileActions.updateRiskProfile({ maxPositionSizePercent: value })} />
+          <Input label="Max Risk %" value={riskProfile.maxRiskPerTradePercent} onChange={(value) => riskProfileActions.updateRiskProfile({ maxRiskPerTradePercent: value })} />
+          <Input label="Sector Max" value={riskProfile.maxSectorExposure} onChange={(value) => riskProfileActions.updateRiskProfile({ maxSectorExposure: value })} />
+          <OptionalInput label="Max Daily Loss" value={riskProfile.maxDailyLoss} onChange={(value) => riskProfileActions.updateRiskProfile({ maxDailyLoss: value })} />
+          <OptionalInput label="Max Position %" value={riskProfile.maxPositionSizePercent} onChange={(value) => riskProfileActions.updateRiskProfile({ maxPositionSizePercent: value })} />
           <label className="col-span-2 flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-xs text-slate-300">
-            <input checked={riskProfile.allowOverride} className="accent-cyan-300 disabled:cursor-not-allowed disabled:opacity-60" disabled={readOnly} onChange={(event) => riskProfileActions.updateRiskProfile({ allowOverride: event.target.checked })} type="checkbox" />
+            <input checked={riskProfile.allowOverride} className="accent-cyan-300" onChange={(event) => riskProfileActions.updateRiskProfile({ allowOverride: event.target.checked })} type="checkbox" />
             Allow risk-veto override with confirmation
           </label>
         </div>
