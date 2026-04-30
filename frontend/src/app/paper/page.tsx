@@ -72,6 +72,12 @@ function labelText(value: unknown) {
     .join(" ");
 }
 
+function systemConfidenceStatus(closedTrades: number) {
+  if (closedTrades < 5) return "System confidence: Low (insufficient data)";
+  if (closedTrades <= 20) return "System confidence: Developing";
+  return "System confidence: Established";
+}
+
 function pnlTone(value: unknown) {
   const parsed = finiteNumber(value);
   if (parsed === null || parsed === 0) return "text-slate-300";
@@ -424,6 +430,7 @@ export default async function PaperPage() {
   const [data, analytics] = await Promise.all([getPaperData(), getPaperAnalytics()]);
   const account = data.account;
   const trustMetrics = buildTrustMetrics(analytics.summary, data.positions, analytics.groups, account?.total_account_value ?? null);
+  const confidenceStatus = systemConfidenceStatus(analytics.summary.closed_trades);
 
   return (
     <TerminalShell>
@@ -436,6 +443,9 @@ export default async function PaperPage() {
               <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
                 Closed trades, open risk, setup behavior, and paper PnL are summarized into a decision dashboard. No real broker execution is connected.
               </p>
+              <div className="mt-4 inline-flex rounded-full border border-cyan-300/25 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100">
+                {confidenceStatus}
+              </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-right">
               <div className="text-xs text-slate-500">Paper Account Value</div>
