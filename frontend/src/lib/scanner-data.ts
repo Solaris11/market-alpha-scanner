@@ -505,8 +505,11 @@ export async function getScanDataHealth(): Promise<ScanDataHealth> {
   );
 
   const lastUpdatedValues = files.map((file) => file.lastUpdated).filter((value): value is string => Boolean(value));
-  const lastUpdated = lastUpdatedValues.length ? lastUpdatedValues.sort().at(-1) ?? null : null;
-  const baseFreshness = freshnessFromTimestamp(lastUpdated, now);
+  const lastUpdated = lastUpdatedValues.length ? lastUpdatedValues.sort()[0] ?? null : null;
+  const limitingFile = files
+    .filter((file) => file.status !== "missing" && file.status !== "schema_mismatch")
+    .sort((left, right) => statusRank(right.status) - statusRank(left.status) || (right.ageMinutes ?? 0) - (left.ageMinutes ?? 0))[0];
+  const baseFreshness = freshnessFromTimestamp(limitingFile?.lastUpdated ?? lastUpdated, now);
   const combined = files.some((file) => file.status === "missing")
     ? unavailableFreshness("missing", "Scanner output is not available yet.")
     : files.some((file) => file.status === "schema_mismatch")
@@ -514,6 +517,12 @@ export async function getScanDataHealth(): Promise<ScanDataHealth> {
       : baseFreshness;
 
   return { ...combined, files, lastUpdated: combined.lastUpdated ?? lastUpdated };
+}
+
+function statusRank(status: DataFreshnessStatus) {
+  if (status === "stale") return 2;
+  if (status === "slightly_stale") return 1;
+  return 0;
 }
 
 function parseSnapshotTimestamp(name: string) {

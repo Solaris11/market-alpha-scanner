@@ -24,6 +24,7 @@ export function DataHealthBanner({ freshness }: { freshness: DataFreshness }) {
   if (freshness.status === "fresh" || freshness.status === "slightly_stale") return null;
 
   const styles = statusStyles(freshness.status);
+  const detail = freshness.status === "stale" ? `Scanner data is stale. ${freshness.humanAge}.` : freshness.message;
   return (
     <div className={`mb-5 rounded-2xl border px-4 py-3 text-sm shadow-xl shadow-black/20 ${styles.banner}`}>
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -31,7 +32,7 @@ export function DataHealthBanner({ freshness }: { freshness: DataFreshness }) {
           <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${styles.dot}`} />
           <div className="min-w-0">
             <div className="font-semibold text-slate-50">System data health: {freshness.label}</div>
-            <div className="mt-0.5 text-xs text-slate-300">{freshness.message}</div>
+            <div className="mt-0.5 text-xs text-slate-300">{detail}</div>
           </div>
         </div>
         {freshness.lastUpdated ? <div className="font-mono text-xs text-slate-400">{freshness.humanAge}</div> : null}

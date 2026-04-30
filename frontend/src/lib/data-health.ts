@@ -30,7 +30,7 @@ export function freshnessFromTimestamp(lastUpdated: string | null | undefined, n
   const ageMinutes = ageMs / 60000;
   const status = ageMs < FRESH_UNTIL_MS ? "fresh" : ageMs < STALE_AFTER_MS ? "slightly_stale" : "stale";
   const label = status === "fresh" ? "Fresh" : status === "slightly_stale" ? "Slightly stale" : "Stale";
-  const humanAge = `Updated ${formatAge(ageMs)} ago`;
+  const humanAge = formatHumanAge(ageMs);
 
   return {
     status,
@@ -70,4 +70,9 @@ function formatAge(ageMs: number): string {
   if (hours < 48) return `${hours} hr`;
   const days = Math.round(hours / 24);
   return `${days} day${days === 1 ? "" : "s"}`;
+}
+
+function formatHumanAge(ageMs: number): string {
+  const age = formatAge(ageMs);
+  return age === "just now" ? "Updated just now" : `Updated ${age} ago`;
 }
