@@ -9,6 +9,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "csv-parse": "latest",
     "lightweight-charts": "^5.2.0",
     "next": "latest",

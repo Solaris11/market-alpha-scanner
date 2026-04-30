@@ -6,7 +6,13 @@ export type CurrentUser = {
   createdAt: string;
   displayName: string | null;
   email: string;
+  emailVerified: boolean;
   id: string;
+  onboardingCompleted: boolean;
+  profileImageUrl: string | null;
+  riskExperienceLevel: string | null;
+  state: string;
+  timezone: string | null;
 };
 
 type AuthMeResponse = {
@@ -20,11 +26,19 @@ type AuthMutationResponse = {
   user?: CurrentUser;
 };
 
+type RegisterInput = {
+  displayName: string;
+  email: string;
+  password: string;
+};
+
 type CurrentUserContextValue = {
   authenticated: boolean;
   loading: boolean;
-  login: (email: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refresh: () => Promise<void>;
+  register: (input: RegisterInput) => Promise<void>;
   user: CurrentUser | null;
 };
 
@@ -51,18 +65,15 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
-  const login = useCallback(async (email: string) => {
-    const response = await fetch("/api/auth/dev-login", {
-      body: JSON.stringify({ email }),
-      cache: "no-store",
-      headers: { "Content-Type": "application/json" },
-      method: "POST",
-    });
-    const payload = (await response.json().catch(() => null)) as AuthMutationResponse | null;
-    if (!response.ok || !payload?.ok || !payload.user) {
-      throw new Error(payload?.error ?? "Unable to sign in.");
-    }
-    setUser(payload.user);
+  const login = useCallback(async (email: string, password: string) => {
+    const payload = await authRequest("/api/auth/login", { email, password });
+    setUser(payload.user ?? null);
+    setLoading(false);
+  }, []);
+
+  const register = useCallback(async (input: RegisterInput) => {
+    const payload = await authRequest("/api/auth/register", input);
+    setUser(payload.user ?? null);
     setLoading(false);
   }, []);
 
@@ -77,8 +88,10 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     loading,
     login,
     logout,
+    refresh,
+    register,
     user,
-  }), [loading, login, logout, user]);
+  }), [loading, login, logout, refresh, register, user]);
 
   return <CurrentUserContext.Provider value={value}>{children}</CurrentUserContext.Provider>;
 }
@@ -89,4 +102,18 @@ export function useCurrentUser(): CurrentUserContextValue {
     throw new Error("useCurrentUser must be used inside CurrentUserProvider.");
   }
   return context;
+}
+
+async function authRequest(url: string, body: unknown): Promise<AuthMutationResponse> {
+  const response = await fetch(url, {
+    body: JSON.stringify(body),
+    cache: "no-store",
+    headers: { "Content-Type": "application/json" },
+    method: "POST",
+  });
+  const payload = (await response.json().catch(() => null)) as AuthMutationResponse | null;
+  if (!response.ok || !payload?.ok || !payload.user) {
+    throw new Error(payload?.error ?? "Unable to authenticate.");
+  }
+  return payload;
 }

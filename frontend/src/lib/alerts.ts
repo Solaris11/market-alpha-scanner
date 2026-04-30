@@ -2,6 +2,7 @@ import "server-only";
 
 import fs from "node:fs/promises";
 import path from "node:path";
+import { getCurrentUser } from "./server/auth";
 import { scannerOutputDir } from "./scanner-data";
 
 export const ALERT_TYPES = [
@@ -71,6 +72,11 @@ type FileCacheEntry<T> = {
   mtimeMs: number;
   size: number;
   value: T;
+};
+
+type AlertStorageOptions = {
+  createDefault?: boolean;
+  userId?: string | null;
 };
 
 const cacheRoot = globalThis as typeof globalThis & {
@@ -163,16 +169,17 @@ const DEFAULT_RULES: AlertRule[] = [
   },
 ];
 
-function alertsDir() {
+function alertsDir(userId?: string | null) {
+  if (userId) return path.join(scannerOutputDir(), "alerts", "users", userId);
   return path.join(scannerOutputDir(), "alerts");
 }
 
-export function alertRulesPath() {
-  return path.join(alertsDir(), "alert_rules.json");
+export function alertRulesPath(userId?: string | null) {
+  return path.join(alertsDir(userId), "alert_rules.json");
 }
 
-export function alertStatePath() {
-  return path.join(alertsDir(), "alert_state.json");
+export function alertStatePath(userId?: string | null) {
+  return path.join(alertsDir(userId), "alert_state.json");
 }
 
 async function fileExists(filePath: string) {
@@ -208,8 +215,9 @@ async function readJson<T>(filePath: string, fallback: T): Promise<T> {
   }
 }
 
-export async function ensureAlertRulesFile() {
-  const filePath = alertRulesPath();
+export async function ensureAlertRulesFile(options: AlertStorageOptions = {}) {
+  const userId = await resolveAlertUserId(options);
+  const filePath = alertRulesPath(userId);
   try {
     if (!(await fileExists(filePath))) {
       await writeJsonAtomic(filePath, DEFAULT_RULES);
@@ -324,11 +332,12 @@ export function sanitizeAlertRule(input: Record<string, unknown>, existing?: Ale
   };
 }
 
-export async function readAlertRules(options: { createDefault?: boolean } = {}) {
+export async function readAlertRules(options: AlertStorageOptions = {}) {
+  const userId = await resolveAlertUserId(options);
   if (options.createDefault !== false) {
-    await ensureAlertRulesFile();
+    await ensureAlertRulesFile({ userId });
   }
-  const payload = await readJson<unknown>(alertRulesPath(), []);
+  const payload = await readJson<unknown>(alertRulesPath(userId), []);
   if (!Array.isArray(payload)) return [];
   const rules: AlertRule[] = [];
   for (const item of payload) {
@@ -342,27 +351,31 @@ export async function readAlertRules(options: { createDefault?: boolean } = {}) 
   return rules;
 }
 
-export async function writeAlertRules(rules: AlertRule[]) {
-  await writeJsonAtomic(alertRulesPath(), rules);
+export async function writeAlertRules(rules: AlertRule[], options: AlertStorageOptions = {}) {
+  const userId = await resolveAlertUserId(options);
+  await writeJsonAtomic(alertRulesPath(userId), rules);
 }
 
-export async function readAlertState(): Promise<AlertState> {
-  const state = await readJson<AlertState>(alertStatePath(), { alerts: {} });
+export async function readAlertState(options: AlertStorageOptions = {}): Promise<AlertState> {
+  const userId = await resolveAlertUserId(options);
+  const state = await readJson<AlertState>(alertStatePath(userId), { alerts: {} });
   if (!state || typeof state !== "object" || !state.alerts || typeof state.alerts !== "object") {
     return { alerts: {} };
   }
   return state;
 }
 
-export async function writeAlertState(state: AlertState) {
-  await writeJsonAtomic(alertStatePath(), {
+export async function writeAlertState(state: AlertState, options: AlertStorageOptions = {}) {
+  const userId = await resolveAlertUserId(options);
+  await writeJsonAtomic(alertStatePath(userId), {
     ...state,
     updated_at_utc: new Date().toISOString(),
   });
 }
 
-export async function getAlertOverview(options: { stateLimit?: number } = {}) {
-  const [rules, state] = await Promise.all([readAlertRules(), readAlertState()]);
+export async function getAlertOverview(options: AlertStorageOptions & { stateLimit?: number } = {}) {
+  const userId = await resolveAlertUserId(options);
+  const [rules, state] = await Promise.all([readAlertRules({ userId }), readAlertState({ userId })]);
   const sentTimes = Object.values(state.alerts)
     .map((entry) => entry.last_sent_at)
     .filter((value): value is string => Boolean(value))
@@ -376,7 +389,13 @@ export async function getAlertOverview(options: { stateLimit?: number } = {}) {
     state: { ...state, alerts: Object.fromEntries(compactStateEntries) },
     activeCount: rules.filter((rule) => rule.enabled).length,
     lastSentAt: sentTimes.length ? sentTimes[sentTimes.length - 1] : null,
-    rulesPath: alertRulesPath(),
-    statePath: alertStatePath(),
+    rulesPath: alertRulesPath(userId),
+    statePath: alertStatePath(userId),
   };
+}
+
+async function resolveAlertUserId(options: AlertStorageOptions): Promise<string | null> {
+  if (Object.prototype.hasOwnProperty.call(options, "userId")) return options.userId ?? null;
+  const user = await getCurrentUser().catch(() => null);
+  return user?.id ?? null;
 }

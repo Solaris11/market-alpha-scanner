@@ -1,0 +1,28 @@
+import { NextResponse } from "next/server";
+import { clientIp, registerWithPassword, SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+type RegisterPayload = {
+  displayName?: unknown;
+  email?: unknown;
+  password?: unknown;
+};
+
+export async function POST(request: Request) {
+  const payload = (await request.json().catch(() => null)) as RegisterPayload | null;
+  if (!payload) {
+    return NextResponse.json({ ok: false, error: "Unable to create account." }, { status: 400 });
+  }
+
+  try {
+    const session = await registerWithPassword({ ...payload, ip: clientIp(request) });
+    const response = NextResponse.json({ ok: true, user: session.user });
+    response.cookies.set(SESSION_COOKIE_NAME, session.token, sessionCookieOptions(session.expiresAt));
+    return response;
+  } catch (error) {
+    console.warn("[auth] registration failed", error instanceof Error ? error.message : error);
+    return NextResponse.json({ ok: false, error: "Unable to create account." }, { status: 400 });
+  }
+}
