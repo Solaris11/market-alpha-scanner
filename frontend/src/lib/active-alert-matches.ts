@@ -36,7 +36,7 @@ export type ActiveAlertMatch = {
 
 export type ActiveAlertMatchesResponse = {
   generated_at: string;
-  data_status: "fresh" | "stale" | "missing" | "schema_mismatch";
+  data_status: "fresh" | "slightly_stale" | "stale" | "missing" | "schema_mismatch";
   matches: ActiveAlertMatch[];
 };
 

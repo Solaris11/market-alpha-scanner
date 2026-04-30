@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { DataHealthIndicator } from "@/components/data-health-indicator";
+import { freshnessFromTimestamp } from "@/lib/data-health";
 import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
 import { computeConviction } from "@/lib/trading/conviction";
 import type { RankingRow } from "@/lib/types";
@@ -19,6 +21,7 @@ export function SignalCard({ edge, row }: { edge?: HistoricalEdgeProof; row: Ran
   const score = boundedScore(row.final_score);
   const reward = typeof row.risk_reward === "number" && Number.isFinite(row.risk_reward) ? Math.max(0, Math.min(100, row.risk_reward * 22)) : score;
   const conviction = computeConviction(row, edge);
+  const dataFreshness = freshnessFromTimestamp(typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null);
 
   return (
     <Link className="group block rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-400/40 hover:bg-white/[0.07] hover:shadow-cyan-950/30" href={`/symbol/${row.symbol}`}>
@@ -28,6 +31,9 @@ export function SignalCard({ edge, row }: { edge?: HistoricalEdgeProof; row: Ran
           <div className="mt-1 truncate text-xs text-slate-400">{cleanText(row.company_name, cleanText(row.sector, "Signal"))}</div>
         </div>
         <DecisionBadge value={row.final_decision ?? row.action} />
+      </div>
+      <div className="mt-3">
+        <DataHealthIndicator compact freshness={dataFreshness} />
       </div>
       <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
         <div>

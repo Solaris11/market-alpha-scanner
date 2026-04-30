@@ -1,8 +1,10 @@
 import type { RankingRow } from "@/lib/types";
+import type { DataFreshness } from "@/lib/data-health";
 import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
 import { computeConviction } from "@/lib/trading/conviction";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { WatchlistButton } from "@/components/watchlist-controls";
+import { DataHealthIndicator } from "@/components/data-health-indicator";
 import { DecisionBadge } from "./DecisionBadge";
 import { GlassPanel } from "./ui/GlassPanel";
 
@@ -24,7 +26,7 @@ function glow(value: unknown) {
   return "shadow-[0_0_80px_rgba(34,211,238,0.14)]";
 }
 
-export function SymbolDecisionHero({ edge, row }: { edge?: HistoricalEdgeProof; row: RankingRow }) {
+export function SymbolDecisionHero({ dataFreshness, edge, row }: { dataFreshness: DataFreshness; edge?: HistoricalEdgeProof; row: RankingRow }) {
   const decision = row.final_decision ?? row.action ?? "WATCH";
   const conviction = computeConviction(row, edge);
   return (
@@ -41,6 +43,7 @@ export function SymbolDecisionHero({ edge, row }: { edge?: HistoricalEdgeProof; 
             <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100">
               Conviction <span className="font-mono">{conviction.score}</span> - {conviction.label}
             </span>
+            <DataHealthIndicator freshness={dataFreshness} />
             <WatchlistButton symbol={row.symbol} />
           </div>
           <div className="mt-4 max-w-3xl text-lg leading-7 text-slate-200">

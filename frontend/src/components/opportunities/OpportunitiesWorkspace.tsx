@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
+import { DataHealthIndicator } from "@/components/data-health-indicator";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { WatchlistButton } from "@/components/watchlist-controls";
@@ -157,6 +158,7 @@ function BestTradeNowOpportunityCard({ best, marketCondition }: { best: Opportun
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <h2 className="font-mono text-5xl font-black tracking-tight text-slate-50 md:text-6xl">{best.symbol}</h2>
             <DecisionBadge className="px-5 py-2 text-base" value={best.final_decision} />
+            <DataHealthIndicator freshness={best.dataFreshness} />
           </div>
           <div className="mt-2 max-w-2xl text-base text-slate-400">{cleanText(best.company_name || best.sector, "Scanner signal")}</div>
           <p className="mt-5 max-w-3xl text-lg leading-7 text-slate-100">{cleanText(best.decision_reason, "Decision reason is not available yet.")}</p>
@@ -216,6 +218,9 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
           <WatchlistButton showLabel={false} symbol={row.symbol} />
           <DecisionBadge className="px-4 py-1.5" value={row.final_decision} />
         </div>
+      </div>
+      <div className="mt-3">
+        <DataHealthIndicator compact freshness={row.dataFreshness} />
       </div>
       <div className="mt-4 text-sm leading-6 text-slate-300">{cleanText(row.decision_reason, "Decision reason is not available yet.")}</div>
       <div className="mt-4 grid grid-cols-2 gap-2 text-xs">

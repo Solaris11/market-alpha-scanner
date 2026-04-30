@@ -7,6 +7,8 @@ export type RankingRow = {
   sector?: string;
   price?: number;
   return_1d?: number;
+  last_updated?: string;
+  last_updated_utc?: string;
   final_score?: number;
   final_score_adjusted?: number;
   recommendation_quality?: string;

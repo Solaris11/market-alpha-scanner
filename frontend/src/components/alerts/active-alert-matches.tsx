@@ -33,7 +33,7 @@ type ActiveAlertMatch = {
 
 type ActiveAlertMatchesResponse = {
   generated_at: string;
-  data_status: "fresh" | "stale" | "missing" | "schema_mismatch";
+  data_status: "fresh" | "slightly_stale" | "stale" | "missing" | "schema_mismatch";
   matches: ActiveAlertMatch[];
 };
 
@@ -318,7 +318,7 @@ export function ActiveAlertMatches() {
       </div>
 
       {error ? <div className="border-b border-rose-400/25 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">{error}</div> : null}
-      {payload && payload.data_status !== "fresh" ? <div className="border-b border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">Data status: {payload.data_status}</div> : null}
+      {payload && payload.data_status !== "fresh" ? <div className="border-b border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">Data status: {dataStatusLabel(payload.data_status)}</div> : null}
 
       <div className="overflow-x-auto">
         <table className="w-full min-w-[2610px] table-fixed border-collapse text-xs">
@@ -390,4 +390,10 @@ export function ActiveAlertMatches() {
       </div>
     </section>
   );
+}
+
+function dataStatusLabel(status: ActiveAlertMatchesResponse["data_status"]) {
+  if (status === "slightly_stale") return "Slightly stale";
+  if (status === "schema_mismatch") return "Schema issue";
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }

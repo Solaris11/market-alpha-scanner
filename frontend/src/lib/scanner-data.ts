@@ -4,7 +4,9 @@ import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parse } from "csv-parse/sync";
+import { freshnessFromTimestamp, normalizedTimestamp, unavailableFreshness } from "./data-health";
 import { applyCorrectionMapFields } from "./trading/correction-map";
+import type { DataFreshnessStatus } from "./data-health";
 import type { CsvFileData, CsvRow, HistorySnapshot, HistorySummary, IntradayDriftRow, PerformanceData, RankingRow, ScannerScalar, SymbolDetail, SymbolHistoryData, SymbolHistoryRow } from "./types";
 
 const NUMERIC_FIELDS = new Set([
@@ -115,7 +117,6 @@ const NUMERIC_FIELDS = new Set([
   "target_price",
 ]);
 const REQUIRED_RANKING_COLUMNS = ["symbol", "price", "final_score", "rating", "action"];
-const DATA_STALE_AFTER_MS = 60 * 60 * 1000;
 
 const NAME_FIELDS = [
   "company_name",
@@ -159,15 +160,19 @@ cacheRoot.__marketAlphaCsvCache = csvPayloadCache;
 cacheRoot.__marketAlphaJsonCache = jsonPayloadCache;
 
 export type ScanDataHealth = {
-  status: "fresh" | "stale" | "missing" | "schema_mismatch";
+  status: DataFreshnessStatus;
+  label: string;
   lastUpdated: string | null;
   ageMinutes: number | null;
+  humanAge: string;
   message: string;
   files: {
     name: string;
-    status: "fresh" | "stale" | "missing" | "schema_mismatch";
+    status: DataFreshnessStatus;
+    label: string;
     lastUpdated: string | null;
     ageMinutes: number | null;
+    humanAge: string;
     missingColumns: string[];
   }[];
 };
@@ -205,6 +210,15 @@ async function fileSignature(filePath: string) {
   try {
     const stat = await fs.stat(filePath);
     return { mtimeMs: stat.mtimeMs, size: stat.size };
+  } catch {
+    return null;
+  }
+}
+
+async function getFileLastUpdated(filePath: string): Promise<string | null> {
+  try {
+    const stat = await fs.stat(filePath);
+    return stat.mtime.toISOString();
   } catch {
     return null;
   }
@@ -262,7 +276,7 @@ export function displayName(row: Record<string, unknown>) {
   return "";
 }
 
-function normalizeRankingRow(raw: Record<string, unknown>): RankingRow {
+function normalizeRankingRow(raw: Record<string, unknown>, fallbackLastUpdated?: string | null): RankingRow {
   const row: RankingRow = { symbol: "" };
 
   for (const [key, value] of Object.entries(raw)) {
@@ -272,7 +286,28 @@ function normalizeRankingRow(raw: Record<string, unknown>): RankingRow {
 
   row.symbol = String(row.symbol ?? rawValue(raw, "symbol", "ticker", "Symbol", "Ticker") ?? "").trim().toUpperCase();
   row.company_name = displayName(row);
+  const lastUpdated = rowLastUpdated(raw, fallbackLastUpdated);
+  if (lastUpdated) {
+    row.last_updated = lastUpdated;
+    row.last_updated_utc = lastUpdated;
+  }
   return applyCorrectionMapFields(row);
+}
+
+function rowLastUpdated(raw: Record<string, unknown>, fallbackLastUpdated?: string | null) {
+  return normalizedTimestamp(
+    rawValue(
+      raw,
+      "last_updated",
+      "last_updated_utc",
+      "updated_at",
+      "updated_at_utc",
+      "timestamp_utc",
+      "scan_timestamp",
+      "scan_completed_at",
+      "completed_at",
+    ),
+  ) ?? fallbackLastUpdated ?? null;
 }
 
 function actionForRow(row: RankingRow) {
@@ -426,25 +461,25 @@ export async function readJson(filePath: string) {
 export async function getFullRanking(): Promise<RankingRow[]> {
   const filePath = path.join(scannerOutputDir(), "full_ranking.csv");
   if (!(await fileExists(filePath))) return [];
-  const { rows, columns } = await readCsvPayload(filePath);
+  const [{ rows, columns }, lastUpdated] = await Promise.all([readCsvPayload(filePath), getFileLastUpdated(filePath)]);
   const missing = missingRankingColumns(columns);
   if (missing.length) {
     console.error(`[data] schema mismatch in full_ranking.csv: missing columns ${missing.join(", ")}`);
     return [];
   }
-  return rows.map(normalizeRankingRow).filter((row) => row.symbol);
+  return rows.map((row) => normalizeRankingRow(row, lastUpdated)).filter((row) => row.symbol);
 }
 
 export async function getTopCandidates(): Promise<RankingRow[]> {
   const filePath = path.join(scannerOutputDir(), "top_candidates.csv");
   if (!(await fileExists(filePath))) return [];
-  const { rows, columns } = await readCsvPayload(filePath);
+  const [{ rows, columns }, lastUpdated] = await Promise.all([readCsvPayload(filePath), getFileLastUpdated(filePath)]);
   const missing = missingRankingColumns(columns);
   if (missing.length) {
     console.error(`[data] schema mismatch in top_candidates.csv: missing columns ${missing.join(", ")}`);
     return [];
   }
-  return rows.map(normalizeRankingRow).filter((row) => row.symbol);
+  return rows.map((row) => normalizeRankingRow(row, lastUpdated)).filter((row) => row.symbol);
 }
 
 export async function getScanDataHealth(): Promise<ScanDataHealth> {
@@ -453,41 +488,32 @@ export async function getScanDataHealth(): Promise<ScanDataHealth> {
     ["full_ranking.csv", "top_candidates.csv"].map(async (name) => {
       const filePath = path.join(scannerOutputDir(), name);
       if (!(await fileExists(filePath))) {
-        return { name, status: "missing" as const, lastUpdated: null, ageMinutes: null, missingColumns: [] };
+        const missing = unavailableFreshness("missing", `${name} is not available yet.`);
+        return { ...missing, name, missingColumns: [] };
       }
       const stat = await fs.stat(filePath);
       const lastUpdated = stat.mtime.toISOString();
-      const ageMinutes = (now - stat.mtime.getTime()) / 60000;
+      const freshness = freshnessFromTimestamp(lastUpdated, now);
       const { columns } = await readCsvPayload(filePath);
       const missingColumns = missingRankingColumns(columns);
       if (missingColumns.length) {
-        return { name, status: "schema_mismatch" as const, lastUpdated, ageMinutes, missingColumns };
+        const mismatch = unavailableFreshness("schema_mismatch", `${name} is missing required columns: ${missingColumns.join(", ")}.`);
+        return { ...mismatch, lastUpdated, name, ageMinutes: freshness.ageMinutes, humanAge: freshness.humanAge, missingColumns };
       }
-      return { name, status: ageMinutes > 60 ? "stale" as const : "fresh" as const, lastUpdated, ageMinutes, missingColumns };
+      return { ...freshness, name, missingColumns };
     }),
   );
 
   const lastUpdatedValues = files.map((file) => file.lastUpdated).filter((value): value is string => Boolean(value));
-  const lastUpdated = lastUpdatedValues.length ? lastUpdatedValues.sort()[0] : null;
-  const ageValues = files.map((file) => file.ageMinutes).filter((value): value is number => typeof value === "number");
-  const ageMinutes = ageValues.length ? Math.max(...ageValues) : null;
-  const status = files.some((file) => file.status === "missing")
-    ? "missing"
+  const lastUpdated = lastUpdatedValues.length ? lastUpdatedValues.sort().at(-1) ?? null : null;
+  const baseFreshness = freshnessFromTimestamp(lastUpdated, now);
+  const combined = files.some((file) => file.status === "missing")
+    ? unavailableFreshness("missing", "Scanner output is not available yet.")
     : files.some((file) => file.status === "schema_mismatch")
-      ? "schema_mismatch"
-      : files.some((file) => file.status === "stale")
-        ? "stale"
-        : "fresh";
-  const message =
-    status === "missing"
-      ? "No scan data available"
-      : status === "schema_mismatch"
-        ? "Data schema mismatch"
-        : status === "stale"
-          ? `Data is stale (last updated ${Math.round(ageMinutes ?? 0)} minutes ago)`
-          : "Data is fresh";
+      ? unavailableFreshness("schema_mismatch", "Scanner output is available but required columns are missing.")
+      : baseFreshness;
 
-  return { status, lastUpdated, ageMinutes, message, files };
+  return { ...combined, files, lastUpdated: combined.lastUpdated ?? lastUpdated };
 }
 
 function parseSnapshotTimestamp(name: string) {
@@ -697,10 +723,10 @@ export async function getIntradaySignalDriftSummary(): Promise<IntradayDriftRow[
   const earliestSnapshot = history.snapshots[history.snapshots.length - 1];
   if (!latestSnapshot) return [];
 
-  const latestRows = (await readCsv(path.join(scannerOutputDir(), "history", latestSnapshot.name))).map(normalizeRankingRow).filter((row) => row.symbol);
+  const latestRows = (await readCsv(path.join(scannerOutputDir(), "history", latestSnapshot.name))).map((row) => normalizeRankingRow(row, latestSnapshot.timestamp ?? latestSnapshot.modifiedAt)).filter((row) => row.symbol);
   const earliestRows =
     earliestSnapshot && earliestSnapshot.name !== latestSnapshot.name
-      ? (await readCsv(path.join(scannerOutputDir(), "history", earliestSnapshot.name))).map(normalizeRankingRow).filter((row) => row.symbol)
+      ? (await readCsv(path.join(scannerOutputDir(), "history", earliestSnapshot.name))).map((row) => normalizeRankingRow(row, earliestSnapshot.timestamp ?? earliestSnapshot.modifiedAt)).filter((row) => row.symbol)
       : latestRows;
   const firstBySymbol = new Map(earliestRows.map((row) => [row.symbol, row]));
   const latestBySymbol = new Map(latestRows.map((row) => [row.symbol, row]));
@@ -774,6 +800,11 @@ export async function getSymbolDetail(symbol: string): Promise<SymbolDetail> {
 
   if (row && summary) {
     row.company_name = displayName({ ...summary, ...row });
+    const summaryLastUpdated = normalizedTimestamp(rawValue(summary, "updated_at_utc", "updated_at", "last_updated"));
+    if (summaryLastUpdated) {
+      row.last_updated = summaryLastUpdated;
+      row.last_updated_utc = summaryLastUpdated;
+    }
   }
 
   return {

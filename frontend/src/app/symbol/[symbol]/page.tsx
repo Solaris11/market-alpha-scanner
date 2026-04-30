@@ -3,6 +3,7 @@ import { SymbolTerminalWorkspace } from "@/components/terminal/SymbolTerminalWor
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { EmptyState } from "@/components/terminal/ui/EmptyState";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
+import { freshnessFromTimestamp } from "@/lib/data-health";
 import { getPaperData } from "@/lib/paper-data";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { buildConvictionTimelineModel } from "@/lib/trading/conviction-timeline-model";
@@ -26,6 +27,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   const row = detail.row;
   const edgeProof = row ? buildHistoricalEdgeProof(row, performance) : null;
   const timeline = buildConvictionTimelineModel(history);
+  const dataFreshness = row ? freshnessFromTimestamp(typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null) : null;
 
   return (
     <TerminalShell>
@@ -38,6 +40,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
         <EmptyState title="Symbol not found" message={`${symbol.toUpperCase()} is not available in the current scanner output.`} />
       ) : (
         <SymbolTerminalWorkspace
+          dataFreshness={dataFreshness ?? freshnessFromTimestamp(null)}
           edgeProof={edgeProof ?? buildHistoricalEdgeProof(row, null)}
           history={history}
           paperEvents={paper.events ?? []}

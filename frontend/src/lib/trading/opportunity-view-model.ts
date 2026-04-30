@@ -1,3 +1,4 @@
+import { freshnessFromTimestamp, type DataFreshness } from "@/lib/data-health";
 import type { PerformanceData, RankingRow } from "@/lib/types";
 import { finiteNumber, firstNumber, formatMoney } from "@/lib/ui/formatters";
 import { buildEdgeLookup, computeConviction, selectBestTradeNow } from "./conviction";
@@ -20,6 +21,7 @@ export type OpportunityViewModel = {
   target: number | null;
   conviction: number;
   confidenceLabel: "High" | "Medium" | "Weak" | "Avoid";
+  dataFreshness: DataFreshness;
 };
 
 export type OpportunitiesPageModel = {
@@ -57,6 +59,7 @@ function toOpportunityViewModel(row: RankingRow, edge?: Parameters<typeof comput
     target: firstNumberOrNull(row.conservative_target ?? row.take_profit_zone ?? row.take_profit_high ?? row.target_price),
     conviction: conviction.score,
     confidenceLabel: conviction.label,
+    dataFreshness: freshnessFromTimestamp(stringOrNull(row.last_updated ?? row.last_updated_utc)),
   };
 }
 

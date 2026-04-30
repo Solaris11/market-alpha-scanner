@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useTradePlanEngine } from "@/hooks/useTradePlanEngine";
 import type { SignalHistoryPoint } from "@/lib/adapters/DataServiceAdapter";
+import type { DataFreshness } from "@/lib/data-health";
 import type { PaperPositionRow, PaperTradeEventRow } from "@/lib/paper-data";
 import type { ConvictionTimelineModel } from "@/lib/trading/conviction-timeline-types";
 import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
@@ -28,6 +29,7 @@ import { SectionTitle } from "./ui/SectionTitle";
 export function SymbolTerminalWorkspace({
   edgeProof,
   row,
+  dataFreshness,
   history,
   timeline,
   priceSeries,
@@ -36,6 +38,7 @@ export function SymbolTerminalWorkspace({
 }: {
   edgeProof: HistoricalEdgeProof;
   row: RankingRow;
+  dataFreshness: DataFreshness;
   history: SignalHistoryPoint[];
   timeline?: ConvictionTimelineModel;
   priceSeries: Record<string, ScannerScalar>[];
@@ -60,7 +63,7 @@ export function SymbolTerminalWorkspace({
 
   return (
     <div className="space-y-5">
-      <SymbolDecisionHero edge={edgeProof} row={row} />
+      <SymbolDecisionHero dataFreshness={dataFreshness} edge={edgeProof} row={row} />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
         <AICopilotPanel engine={tradeEngine} signal={row} />
