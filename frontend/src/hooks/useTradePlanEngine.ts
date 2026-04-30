@@ -101,8 +101,8 @@ export function useTradePlanEngine(row: RankingRow, portfolio: RiskPortfolioPosi
 
     if (!hasValidLevels) return { isBlocked: isSystemBlocked, isCalculable: false, isOverextended, isTradeValid: false, message: "No valid trade setup." };
     if (metrics.positionSize <= 0) return { isBlocked: isSystemBlocked, isCalculable: false, isOverextended, isTradeValid, message: "No valid trade setup." };
-    if (state.finalDecision === "AVOID") return { isBlocked: true, isCalculable: true, isOverextended, isTradeValid: false, message: "This trade is not recommended based on current conditions." };
-    if (state.finalDecision === "EXIT") return { isBlocked: true, isCalculable: true, isOverextended, isTradeValid: false, message: "This trade is not recommended based on current conditions." };
+    if (state.finalDecision === "AVOID") return { isBlocked: true, isCalculable: true, isOverextended, isTradeValid: false, message: "System decision blocks execution for this setup." };
+    if (state.finalDecision === "EXIT") return { isBlocked: true, isCalculable: true, isOverextended, isTradeValid: false, message: "System decision blocks execution for this setup." };
     if (isOverextended) return { isBlocked: false, isCalculable: false, isOverextended: true, isTradeValid: false, message: "Wait for correction before entering." };
     if (!isTradeValid) return { isBlocked: false, isCalculable: false, isOverextended, isTradeValid: false, message: "No valid trade setup." };
     return { isBlocked: false, isCalculable: true, isOverextended, isTradeValid, message: "Trade setup valid." };
@@ -171,17 +171,50 @@ function buildDirective(row: RankingRow, state: TradePlanEngineState, metrics: T
   }
 
   if (state.finalDecision === "WAIT_PULLBACK") {
-    const correction = buildCorrectionMap(row);
-    const correctionPrice = correctionMidpoint(correction);
-    if (validity.isOverextended && correctionPrice !== null) {
-      return [`Wait for pullback near ${formatCorrectionZone(correction)}.`, "Entering now increases risk."].join("\n");
-    }
-    return [`Do not enter now.`, `Wait for pullback near ${formatMoney(state.entryPrice)}.`, "Current price is extended."].join("\n");
+    return waitPullbackDirective(row, state, validity);
   }
 
-  if (state.finalDecision === "AVOID") return `Avoid this trade.\nRisk/reward is unfavorable.${hypotheticalLine(metrics)}`;
+  if (state.finalDecision === "AVOID") return avoidDirective(row, state, validity, metrics);
   if (state.finalDecision === "EXIT") return `Exit position.\nTrend invalidation triggered.${hypotheticalLine(metrics)}`;
   return validity.message;
+}
+
+function waitPullbackDirective(row: RankingRow, state: TradePlanEngineState, validity: TradePlanEngineValidity): string {
+  return [
+    "AI DECISION: WAIT_PULLBACK",
+    "",
+    setupRiskLine(row, validity),
+    "Entering now increases risk.",
+    "",
+    pullbackInstruction(row, state),
+  ].join("\n");
+}
+
+function avoidDirective(row: RankingRow, state: TradePlanEngineState, validity: TradePlanEngineValidity, metrics: TradePlanEngineMetrics): string {
+  return [
+    "AI DECISION: AVOID",
+    "",
+    setupRiskLine(row, validity),
+    "Entering now increases risk.",
+    "",
+    pullbackInstruction(row, state),
+    hypotheticalLine(metrics),
+  ].filter(Boolean).join("\n");
+}
+
+function setupRiskLine(row: RankingRow, validity: TradePlanEngineValidity): string {
+  const reason = cleanText(row.decision_reason ?? row.quality_reason ?? row.trade_quality_note, "");
+  if (validity.isOverextended || reason.toUpperCase().includes("EXTENDED")) return "This setup is overextended.";
+  if (reason) return reason.endsWith(".") ? reason : `${reason}.`;
+  return "This setup does not meet entry-quality rules.";
+}
+
+function pullbackInstruction(row: RankingRow, state: TradePlanEngineState): string {
+  const correction = buildCorrectionMap(row);
+  const correctionPrice = correctionMidpoint(correction);
+  if (correctionPrice !== null) return `Wait for pullback near ${formatCorrectionZone(correction)}.`;
+  if (state.entryPrice !== null) return `Wait for pullback near ${formatMoney(state.entryPrice)}.`;
+  return "Wait for a confirmed pullback before entering.";
 }
 
 function hypotheticalLine(metrics: TradePlanEngineMetrics): string {

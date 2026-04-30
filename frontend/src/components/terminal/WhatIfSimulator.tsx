@@ -29,7 +29,7 @@ export function WhatIfSimulator({ engine }: { engine: TradePlanEngine }) {
       <SectionTitle eyebrow="What-If" title="Trade Simulator" meta={riskEvaluation.status === "OK" ? (validity.isBlocked ? "read-only" : validity.isCalculable ? "synced live" : "blocked") : riskEvaluation.status.toLowerCase()} />
       {validity.isBlocked ? (
         <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-3 text-xs font-semibold text-amber-100">
-          This trade is not recommended based on current conditions.
+          System decision blocks execution for this setup.
         </div>
       ) : null}
       {riskEvaluation.status !== "OK" ? <RiskBanner status={riskEvaluation.status} reasons={riskEvaluation.reasons} /> : null}
