@@ -66,12 +66,16 @@ export default async function AccountPage() {
             <dl className="grid gap-3 sm:grid-cols-2">
               <InfoItem label="Display name" value={emptyText(user.displayName)} />
               <InfoItem label="Email" value={user.email} />
-              <InfoItem label="Timezone" value={emptyText(user.timezone)} />
-              <InfoItem label="Risk experience" value={formatTitle(user.riskExperienceLevel)} />
+              <InfoItem label="Timezone" value={pendingOnboardingText(user.timezone)} />
+              <InfoItem label="Risk experience" value={pendingOnboardingText(user.riskExperienceLevel)} />
               <InfoItem label="Registration date" value={formatDate(user.createdAt)} />
               <InfoItem label="Last login" value={formatDate(user.lastLoginAt)} />
               <InfoItem label="Account state" value={formatTitle(user.state) || "Active"} />
-              <InfoItem label="Email status" value={user.emailVerified ? "Verified" : "Not verified yet"} />
+              <InfoItem
+                label="Email status"
+                subtext={user.emailVerified ? undefined : "Email verification will be enabled before public launch."}
+                value={user.emailVerified ? "Verified" : "Private beta account"}
+              />
             </dl>
           </AccountSection>
 
@@ -89,7 +93,7 @@ export default async function AccountPage() {
         <div className="grid gap-5 xl:grid-cols-3">
           <AccountSection title="Security">
             <PlaceholderItem title="Change password" text="Password changes will be managed from this page." />
-            <PlaceholderItem title="Email verification" text={user.emailVerified ? "Your email address is verified." : "Email verification is not required for your current plan."} />
+            <PlaceholderItem title="Email verification" text={user.emailVerified ? "Your email address is verified." : "Email verification will be enabled before public launch."} />
             <PlaceholderItem title="Two-factor authentication" text="Two-factor authentication will be available before live broker integrations." />
           </AccountSection>
 
@@ -157,11 +161,12 @@ function AccountSection({ children, id, title }: { children: ReactNode; id?: str
   );
 }
 
-function InfoItem({ label, value }: { label: string; value: string }) {
+function InfoItem({ label, subtext, value }: { label: string; subtext?: string; value: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2">
       <dt className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</dt>
       <dd className="mt-1 break-words text-sm font-semibold text-slate-100">{value}</dd>
+      {subtext ? <p className="mt-1 text-xs leading-5 text-slate-500">{subtext}</p> : null}
     </div>
   );
 }
@@ -236,6 +241,11 @@ async function readEnabledAlertCount(userId: string): Promise<number | null> {
 function emptyText(value: string | null): string {
   const text = value?.trim();
   return text ? text : "Not set";
+}
+
+function pendingOnboardingText(value: string | null): string {
+  const text = value?.trim();
+  return text ? formatTitle(text) : "Will be configured during onboarding";
 }
 
 function formatTitle(value: string | null): string {
