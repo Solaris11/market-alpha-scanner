@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { readWatchlistStorage, WATCHLIST_EVENT } from "@/lib/watchlist-storage";
 import { ActiveAlertMatches } from "./active-alert-matches";
 
@@ -660,9 +661,20 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
         </div>
       </section>
 
-      <ActiveAlertMatches />
-
-      {alertRulesTable}
+      <SimpleAdvancedTabs
+        simple={(
+          <section className="terminal-panel rounded-md p-4">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Summary View</div>
+            <p className="mt-1 text-sm leading-6 text-slate-400">Alert status and quick actions are shown by default. Open Advanced for active matches and rule tables.</p>
+          </section>
+        )}
+        advanced={(
+          <>
+            <ActiveAlertMatches />
+            {alertRulesTable}
+          </>
+        )}
+      />
 
       <section className="terminal-panel rounded-md p-4">
         <div className="flex flex-col gap-3 border-b border-slate-800 pb-3 lg:flex-row lg:items-center lg:justify-between">

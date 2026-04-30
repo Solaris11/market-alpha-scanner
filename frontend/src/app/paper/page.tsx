@@ -1,5 +1,8 @@
+import Link from "next/link";
+import { GhostPortfolioCard } from "@/components/paper/GhostPortfolioCard";
 import { ManualPaperTradeForm } from "@/components/paper/ManualPaperTradeForm";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
+import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import {
   getPaperAnalytics,
   getPaperData,
@@ -128,8 +131,17 @@ function decisionTone(value: string | null): string {
   return "border-slate-700 bg-slate-900/70 text-slate-300";
 }
 
-function EmptyState({ message }: { message: string }) {
-  return <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-7 text-center text-sm text-slate-400">{message}</div>;
+function EmptyState({ ctaHref, ctaLabel, message }: { ctaHref?: string; ctaLabel?: string; message: string }) {
+  return (
+    <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-7 text-center text-sm text-slate-400">
+      <div>{message}</div>
+      {ctaHref && ctaLabel ? (
+        <Link className="mt-4 inline-flex rounded-full border border-cyan-300/35 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15" href={ctaHref}>
+          {ctaLabel}
+        </Link>
+      ) : null}
+    </div>
+  );
 }
 
 function isManualTrade(position: PaperPositionRow): boolean {
@@ -483,7 +495,7 @@ function TradeAutopsy({ positions }: { positions: PaperPositionRow[] }) {
     .filter((position) => position.status.toUpperCase() === "CLOSED")
     .sort((left, right) => String(right.closed_at ?? "").localeCompare(String(left.closed_at ?? "")))
     .slice(0, 10);
-  if (!closed.length) return <EmptyState message="Not enough closed trades yet. Keep paper trading to build system confidence." />;
+  if (!closed.length) return <EmptyState ctaHref="/symbol/TSM" ctaLabel="Open Simulator" message="Start your first What-If simulation to build trading confidence" />;
 
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -661,27 +673,34 @@ export default async function PaperPage() {
           </SectionShell>
         ) : null}
 
-        <TrustHeadlineCards metrics={trustMetrics} />
+        <SimpleAdvancedTabs
+          simple={(
+            <div className="space-y-5">
+              <TrustHeadlineCards metrics={trustMetrics} />
 
-        <SectionShell eyebrow="Trust Curve" title={equityPoints.length === 1 ? "Equity Curve (early data)" : "Equity Curve"}>
-          <EquityCurve points={equityPoints} />
-        </SectionShell>
+              <SectionShell eyebrow="Trust Curve" title={equityPoints.length === 1 ? "Equity Curve (early data)" : "Equity Curve"}>
+                <EquityCurve points={equityPoints} />
+              </SectionShell>
 
-        <SectionShell eyebrow="Setup Evidence" title="Setup Performance">
-          <SetupPerformance groups={analytics.groups} />
-        </SectionShell>
+              <SectionShell eyebrow="Setup Evidence" title="Setup Performance">
+                <SetupPerformance groups={analytics.groups} />
+              </SectionShell>
 
-        <SectionShell eyebrow="Trade Autopsy" title="Last 10 Closed Trades">
-          <TradeAutopsy positions={data.positions} />
-        </SectionShell>
+              <SectionShell eyebrow="Trade Autopsy" title="Last 10 Closed Trades">
+                <TradeAutopsy positions={data.positions} />
+              </SectionShell>
 
-        <SectionShell eyebrow="Open Risk" title="Active Paper Risk">
-          <OpenRiskSection positions={data.positions} />
-        </SectionShell>
+              <GhostPortfolioCard positions={data.positions} />
 
-        <ManualPaperTradeForm cashBalance={account?.cash_balance ?? null} />
+              <SectionShell eyebrow="Open Risk" title="Active Paper Risk">
+                <OpenRiskSection positions={data.positions} />
+              </SectionShell>
 
-        <RawActivity events={data.events} />
+              <ManualPaperTradeForm cashBalance={account?.cash_balance ?? null} />
+            </div>
+          )}
+          advanced={<RawActivity events={data.events} />}
+        />
 
         {analytics.error ? <div className="rounded-2xl border border-rose-300/20 bg-rose-400/10 p-4 text-sm text-rose-100">{analytics.error}</div> : null}
       </div>

@@ -61,6 +61,15 @@ export function SymbolTerminalWorkspace({
   return (
     <div className="space-y-5">
       <SymbolDecisionHero edge={edgeProof} row={row} />
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
+        <AICopilotPanel engine={tradeEngine} signal={row} />
+        <aside className="space-y-5 xl:sticky xl:top-5 xl:self-start">
+          <WhatIfSimulator engine={tradeEngine} />
+          <ExecutionTicket engine={tradeEngine} symbol={symbol} />
+        </aside>
+      </div>
+
       <SignalStatusCard lifecycle={lifecycle} />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
@@ -69,13 +78,10 @@ export function SymbolTerminalWorkspace({
           <CorrectionMapCard row={row} />
           <HistoricalEdgeCard edge={edgeProof} />
           <WhyDecisionCard row={row} />
-          <TechnicalSnapshotCard row={row} />
         </div>
 
         <aside className="space-y-5 xl:sticky xl:top-5 xl:self-start">
-          <AICopilotPanel engine={tradeEngine} signal={row} />
-          <WhatIfSimulator engine={tradeEngine} />
-          <ExecutionTicket engine={tradeEngine} symbol={symbol} />
+          <TechnicalSnapshotCard row={row} />
         </aside>
       </div>
 

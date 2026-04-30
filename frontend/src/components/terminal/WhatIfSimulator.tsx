@@ -4,14 +4,21 @@ import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import type { TradePlanEngine } from "@/hooks/useTradePlanEngine";
 import { formatMoney, formatNumber } from "@/lib/ui/formatters";
+import { ChaosEnginePanel } from "./ChaosEnginePanel";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
-function Input({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+function Input({ disabled = false, label, value, onChange }: { disabled?: boolean; label: string; value: number; onChange: (value: number) => void }) {
   return (
     <label className="text-xs text-slate-400">
       {label}
-      <input className="mt-1 h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 font-mono text-slate-100 outline-none focus:border-cyan-300/60" value={value} onChange={(event) => onChange(Number(event.target.value))} type="number" />
+      <input
+        className="mt-1 h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 font-mono text-slate-100 outline-none focus:border-cyan-300/60 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={disabled}
+        onChange={(event) => onChange(Number(event.target.value))}
+        type="number"
+        value={value}
+      />
     </label>
   );
 }
@@ -20,6 +27,8 @@ export function WhatIfSimulator({ engine }: { engine: TradePlanEngine }) {
   const [pulse, setPulse] = useState(false);
   const { authenticated } = useCurrentUser();
   const { metrics, riskEvaluation, riskProfile, riskProfileActions, state, validity } = engine;
+  const readOnly = state.finalDecision === "AVOID" || state.finalDecision === "EXIT";
+  const displayRiskStatus = readOnly ? "OK" : riskEvaluation.status;
   useEffect(() => {
     setPulse(true);
     const timeout = window.setTimeout(() => setPulse(false), 200);
@@ -28,16 +37,16 @@ export function WhatIfSimulator({ engine }: { engine: TradePlanEngine }) {
 
   return (
     <GlassPanel className="p-5">
-      <SectionTitle eyebrow="What-If" title="Trade Simulator" meta={riskEvaluation.status === "OK" ? (validity.isBlocked ? "read-only" : validity.isCalculable ? "synced live" : "blocked") : riskEvaluation.status.toLowerCase()} />
-      {validity.isBlocked ? (
+      <SectionTitle eyebrow="What-If" title="Trade Simulator" meta={readOnly ? "read-only" : displayRiskStatus === "OK" ? (validity.isCalculable ? "synced live" : "blocked") : displayRiskStatus.toLowerCase()} />
+      {readOnly ? (
         <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-3 text-xs font-semibold text-amber-100">
-          System decision blocks execution for this setup.
+          System decision is {state.finalDecision}. Simulator is read-only, with calculations kept visible.
         </div>
       ) : null}
-      {riskEvaluation.status !== "OK" ? <RiskBanner status={riskEvaluation.status} reasons={riskEvaluation.reasons} /> : null}
+      {!readOnly && riskEvaluation.status !== "OK" ? <RiskBanner status={riskEvaluation.status} reasons={riskEvaluation.reasons} /> : null}
       <div className="mt-4 grid grid-cols-2 gap-3">
-        <Input label="Account Equity" value={state.accountEquity} onChange={engine.setters.setAccountEquity} />
-        <Input label="Risk %" value={state.riskPercent} onChange={engine.setters.setRiskPercent} />
+        <Input disabled={readOnly} label="Account Equity" value={state.accountEquity} onChange={engine.setters.setAccountEquity} />
+        <Input disabled={readOnly} label="Risk %" value={state.riskPercent} onChange={engine.setters.setRiskPercent} />
       </div>
       <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
         <div className="flex items-center justify-between gap-3">
@@ -45,15 +54,15 @@ export function WhatIfSimulator({ engine }: { engine: TradePlanEngine }) {
             <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Risk Rules</div>
             <div className="mt-1 text-xs text-slate-400">{authenticated ? "Account saved" : "Saved only on this device."}</div>
           </div>
-          <button className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-100" onClick={riskProfileActions.resetRiskProfile} type="button">Reset</button>
+          <button className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-50" disabled={readOnly} onClick={riskProfileActions.resetRiskProfile} type="button">Reset</button>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-          <Input label="Max Risk %" value={riskProfile.maxRiskPerTradePercent} onChange={(value) => riskProfileActions.updateRiskProfile({ maxRiskPerTradePercent: value })} />
-          <Input label="Sector Max" value={riskProfile.maxSectorExposure} onChange={(value) => riskProfileActions.updateRiskProfile({ maxSectorExposure: value })} />
-          <OptionalInput label="Max Daily Loss" value={riskProfile.maxDailyLoss} onChange={(value) => riskProfileActions.updateRiskProfile({ maxDailyLoss: value })} />
-          <OptionalInput label="Max Position %" value={riskProfile.maxPositionSizePercent} onChange={(value) => riskProfileActions.updateRiskProfile({ maxPositionSizePercent: value })} />
+          <Input disabled={readOnly} label="Max Risk %" value={riskProfile.maxRiskPerTradePercent} onChange={(value) => riskProfileActions.updateRiskProfile({ maxRiskPerTradePercent: value })} />
+          <Input disabled={readOnly} label="Sector Max" value={riskProfile.maxSectorExposure} onChange={(value) => riskProfileActions.updateRiskProfile({ maxSectorExposure: value })} />
+          <OptionalInput disabled={readOnly} label="Max Daily Loss" value={riskProfile.maxDailyLoss} onChange={(value) => riskProfileActions.updateRiskProfile({ maxDailyLoss: value })} />
+          <OptionalInput disabled={readOnly} label="Max Position %" value={riskProfile.maxPositionSizePercent} onChange={(value) => riskProfileActions.updateRiskProfile({ maxPositionSizePercent: value })} />
           <label className="col-span-2 flex items-center gap-2 rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-xs text-slate-300">
-            <input checked={riskProfile.allowOverride} className="accent-cyan-300" onChange={(event) => riskProfileActions.updateRiskProfile({ allowOverride: event.target.checked })} type="checkbox" />
+            <input checked={riskProfile.allowOverride} className="accent-cyan-300 disabled:cursor-not-allowed disabled:opacity-60" disabled={readOnly} onChange={(event) => riskProfileActions.updateRiskProfile({ allowOverride: event.target.checked })} type="checkbox" />
             Allow risk-veto override with confirmation
           </label>
         </div>
@@ -68,6 +77,7 @@ export function WhatIfSimulator({ engine }: { engine: TradePlanEngine }) {
       ) : (
         <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">{validity.message}</div>
       )}
+      <ChaosEnginePanel engine={engine} />
     </GlassPanel>
   );
 }
@@ -82,12 +92,13 @@ function RiskBanner({ reasons, status }: { reasons: string[]; status: "WARNING" 
   );
 }
 
-function OptionalInput({ label, value, onChange }: { label: string; value: number | null; onChange: (value: number | null) => void }) {
+function OptionalInput({ disabled = false, label, value, onChange }: { disabled?: boolean; label: string; value: number | null; onChange: (value: number | null) => void }) {
   return (
     <label className="text-xs text-slate-400">
       {label}
       <input
-        className="mt-1 h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 font-mono text-slate-100 outline-none focus:border-cyan-300/60"
+        className="mt-1 h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 font-mono text-slate-100 outline-none focus:border-cyan-300/60 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={disabled}
         onChange={(event) => onChange(event.target.value === "" ? null : Number(event.target.value))}
         placeholder="optional"
         type="number"

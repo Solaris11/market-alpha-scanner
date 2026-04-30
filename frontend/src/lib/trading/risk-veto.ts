@@ -46,6 +46,7 @@ export const DEFAULT_USER_RISK_PROFILE: UserRiskProfile = {
 
 const DEFAULT_PORTFOLIO_RISK_LIMIT_PERCENT = 6;
 const HARD_RISK_MULTIPLE = 2;
+const HARD_SINGLE_TRADE_RISK_PERCENT = 3;
 const HIGH_ATR_PERCENT = 8;
 const HIGH_VOLATILITY_PERCENT = 60;
 
@@ -57,7 +58,10 @@ export function evaluateRisk(tradePlan: RiskTradePlan, portfolio: RiskPortfolioP
   const accountEquity = safeNumber(tradePlan.accountEquity);
   const maxRiskAmount = safeNumber(tradePlan.maxRiskAmount);
 
-  if (riskPercent > profile.maxRiskPerTradePercent) {
+  if (riskPercent > HARD_SINGLE_TRADE_RISK_PERCENT) {
+    status = escalate(status, "VETO");
+    reasons.push(`Risk of ${formatPercentValue(riskPercent)} exceeds safe limit.`);
+  } else if (riskPercent > profile.maxRiskPerTradePercent) {
     const reason = `Risk: ${formatPercentValue(riskPercent)} (max allowed: ${formatPercentValue(profile.maxRiskPerTradePercent)})`;
     if (riskPercent >= profile.maxRiskPerTradePercent * HARD_RISK_MULTIPLE) status = escalate(status, "VETO");
     else status = escalate(status, "WARNING");

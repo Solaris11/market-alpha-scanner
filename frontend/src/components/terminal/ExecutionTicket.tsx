@@ -39,7 +39,10 @@ export function ExecutionTicket({ engine, symbol }: { engine: TradePlanEngine; s
 
   return (
     <GlassPanel className={`p-5 transition-all duration-200 ${riskStatus === "VETO" ? "border-rose-300/30 shadow-[0_0_34px_rgba(244,63,94,0.16)]" : riskStatus === "WARNING" ? "border-amber-300/30 shadow-[0_0_28px_rgba(251,191,36,0.12)]" : ""}`}>
-      <SectionTitle eyebrow="Execution Ready" title="Mock Order Ticket" meta={riskStatus === "VETO" ? "locked" : "no real orders"} />
+      <SectionTitle eyebrow="Execution Ready" title="Mock Order Ticket" meta={riskOverrideUnlocked ? "Manual override" : riskStatus === "VETO" ? "locked" : "no real orders"} />
+      <div className="mt-3 inline-flex rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-100">
+        Protected by Risk Rules
+      </div>
       {riskStatus !== "OK" ? <ExecutionRiskBanner allowOverride={engine.riskProfile.allowOverride} checked={overrideAccepted} onChange={setOverrideAccepted} reasons={engine.riskEvaluation.reasons} status={riskStatus} /> : null}
       <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-400">
         <Select label="Side" value={s.side} onChange={(value) => ticket.setters.setSide(value as OrderSide)} options={["buy", "sell"]} />
@@ -71,7 +74,7 @@ export function ExecutionTicket({ engine, symbol }: { engine: TradePlanEngine; s
         onClick={() => setConfirming(true)}
       >
         {isRiskVeto && !riskOverrideUnlocked ? <LockIcon /> : null}
-        {isRiskVeto ? "Review Override Mock Order" : "Review Mock Order"}
+        {isRiskVeto ? (riskOverrideUnlocked ? "Review Manual Override" : "Locked by Risk Rules") : "Review Mock Order"}
       </button>
       {confirming ? <ConfirmModal onCancel={() => setConfirming(false)} onConfirm={async () => { await ticket.submit(); setConfirming(false); }} payload={ticket.payload} /> : null}
       {ticket.result ? <div className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-400/10 p-3 text-xs text-emerald-100">{ticket.result.message} ID: {ticket.result.orderId}</div> : null}
@@ -113,10 +116,13 @@ function ExecutionRiskBanner({
         </ul>
       ) : null}
       {isVeto && allowOverride ? (
-        <label className="mt-3 flex items-center gap-2 rounded-xl border border-rose-300/20 bg-rose-950/20 px-3 py-2 text-xs font-semibold">
-          <input checked={checked} className="accent-rose-300" onChange={(event) => onChange(event.target.checked)} type="checkbox" />
-          I understand the risk
-        </label>
+        <div className="mt-3 space-y-2">
+          <label className="flex items-center gap-2 rounded-xl border border-rose-300/20 bg-rose-950/20 px-3 py-2 text-xs font-semibold">
+            <input checked={checked} className="accent-rose-300" onChange={(event) => onChange(event.target.checked)} type="checkbox" />
+            I understand the risk
+          </label>
+          {checked ? <div className="inline-flex rounded-full border border-amber-300/30 bg-amber-400/10 px-3 py-1 text-[11px] font-semibold text-amber-100">Manual override</div> : null}
+        </div>
       ) : null}
       {isVeto && !allowOverride ? <div className="mt-3 text-xs font-semibold">Override is disabled in your risk profile.</div> : null}
     </div>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { compareSortValues, nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { CsvRow, HistorySummary, RankingRow } from "@/lib/types";
 
@@ -441,6 +442,15 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
         <BarChart groupType="entry_status" metric="avg_max_drawdown" rows={summaryRows} title="Avg Drawdown by Entry Status" />
       </section>
 
+      <SimpleAdvancedTabs
+        simple={(
+          <section className="terminal-panel rounded-md p-4">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Summary View</div>
+            <p className="mt-1 text-sm leading-6 text-slate-400">Performance cards and charts are shown by default. Open Advanced for sortable grouped results and forward-return observations.</p>
+          </section>
+        )}
+        advanced={(
+          <>
       <section className="terminal-panel rounded-md p-3">
         <div className="grid gap-2 md:grid-cols-3">
           <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -590,6 +600,9 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
           </tbody>
         </table>
       </section>
+          </>
+        )}
+      />
     </section>
   );
 }

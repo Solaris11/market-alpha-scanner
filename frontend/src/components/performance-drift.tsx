@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { compact, formatNumber } from "@/lib/format";
 import { nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { IntradayDriftRow, SymbolHistoryRow } from "@/lib/types";
@@ -292,6 +293,15 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
         ))}
       </div>
 
+      <SimpleAdvancedTabs
+        simple={(
+          <section className="terminal-panel rounded-md p-4">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Summary View</div>
+            <p className="mt-1 text-sm leading-6 text-slate-400">Drift cards summarize the largest changes. Open Advanced for filters, movers, and symbol detail charts.</p>
+          </section>
+        )}
+        advanced={(
+          <>
       <div className="terminal-panel rounded-md p-3">
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[1.3fr_auto_auto_0.8fr]">
           <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -464,6 +474,9 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
           )}
         </section>
       ) : null}
+          </>
+        )}
+      />
     </section>
   );
 }

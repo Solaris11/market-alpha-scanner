@@ -6,7 +6,7 @@ import { buildCorrectionMap, correctionMidpoint, formatCorrectionZone } from "@/
 import { evaluateRisk, type RiskEvaluation, type RiskPortfolioPosition, type UserRiskProfile } from "@/lib/trading/risk-veto";
 import { buildSignalTradeLevels } from "@/lib/trading/signal-lifecycle";
 import type { RankingRow } from "@/lib/types";
-import { cleanText, formatMoney, normalizeNumeric } from "@/lib/ui/formatters";
+import { cleanText, formatMoney, formatNumber, normalizeNumeric } from "@/lib/ui/formatters";
 
 const TRADE_READY_DISTANCE_THRESHOLD = 0.02;
 const EMPTY_PORTFOLIO: RiskPortfolioPosition[] = [];
@@ -153,8 +153,14 @@ export function useTradePlanEngine(row: RankingRow, portfolio: RiskPortfolioPosi
 }
 
 function buildDirective(row: RankingRow, state: TradePlanEngineState, metrics: TradePlanEngineMetrics, validity: TradePlanEngineValidity, riskEvaluation: RiskEvaluation): string {
+  if (state.finalDecision === "AVOID") return avoidDirective(row, state, validity, metrics);
+  if (state.finalDecision === "EXIT") return `Exit position.\nTrend invalidation triggered.${hypotheticalLine(metrics)}`;
+
   if (riskEvaluation.status === "VETO") {
-    return ["AI VETO:", "This trade violates your risk rules.", ...riskEvaluation.reasons.map((reason) => `- ${reason}`), "Execution locked."].join("\n");
+    const vetoReason = state.riskPercent > 3
+      ? `Risk of ${formatNumber(state.riskPercent, 1)}% exceeds safe limit.`
+      : riskEvaluation.reasons[0] ?? "This trade violates your risk rules.";
+    return ["AI VETO:", vetoReason, "Execution locked to prevent emotional trading."].join("\n");
   }
 
   if (riskEvaluation.status === "WARNING") {
@@ -174,8 +180,6 @@ function buildDirective(row: RankingRow, state: TradePlanEngineState, metrics: T
     return waitPullbackDirective(row, state, validity);
   }
 
-  if (state.finalDecision === "AVOID") return avoidDirective(row, state, validity, metrics);
-  if (state.finalDecision === "EXIT") return `Exit position.\nTrend invalidation triggered.${hypotheticalLine(metrics)}`;
   return validity.message;
 }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { actionFor, formatNumber } from "@/lib/format";
 import { nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { HistorySummary, SymbolHistoryRow } from "@/lib/types";
@@ -421,6 +422,14 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
                 <TrendChart field="price" label="Price" rows={filteredByTime} />
               </div>
 
+              <SimpleAdvancedTabs
+                simple={(
+                  <section className="terminal-panel rounded-md p-4">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Summary View</div>
+                    <p className="mt-1 text-sm leading-6 text-slate-400">Score, price, and latest signal cards are shown by default. Open Advanced for the sortable symbol timeline.</p>
+                  </section>
+                )}
+                advanced={(
               <section>
                 <div className="mb-2">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Symbol Timeline</div>
@@ -475,9 +484,11 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
                   </table>
                 </div>
               </section>
+                )}
+              />
             </>
           ) : (
-            <div className="terminal-panel rounded-md border-dashed border-slate-700/70 px-3 py-8 text-center text-sm text-slate-400">No data in selected time range</div>
+            <div className="terminal-panel rounded-md border-dashed border-slate-700/70 px-3 py-8 text-center text-sm text-slate-400">No signal observations in selected time range.</div>
           )}
         </>
       ) : null}
