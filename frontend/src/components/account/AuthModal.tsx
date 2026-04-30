@@ -8,6 +8,12 @@ import { ResetPasswordForm } from "./ResetPasswordForm";
 
 type AuthMode = "login" | "register" | "forgot" | "reset";
 
+type ProvidersResponse = {
+  google?: {
+    enabled?: boolean;
+  };
+};
+
 export function AuthModal({
   initialMode = "login",
   onClose,
@@ -18,6 +24,7 @@ export function AuthModal({
   resetToken?: string;
 }) {
   const [mode, setMode] = useState<AuthMode>(resetToken ? "reset" : initialMode);
+  const [googleEnabled, setGoogleEnabled] = useState(false);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
@@ -26,6 +33,15 @@ export function AuthModal({
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
+
+  useEffect(() => {
+    async function loadProviders() {
+      const response = await fetch("/api/auth/oauth-providers", { cache: "no-store" });
+      const payload = (await response.json().catch(() => null)) as ProvidersResponse | null;
+      setGoogleEnabled(Boolean(payload?.google?.enabled));
+    }
+    void loadProviders().catch(() => setGoogleEnabled(false));
+  }, []);
 
   const title = mode === "register" ? "Create your account" : mode === "forgot" ? "Reset your password" : mode === "reset" ? "Choose a new password" : "Sign in";
 
@@ -43,6 +59,27 @@ export function AuthModal({
         </div>
 
         <div className="space-y-4 px-5 py-5">
+          {mode === "login" || mode === "register" ? (
+            <>
+              <button
+                className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] text-sm font-semibold text-slate-100 transition hover:border-cyan-300/40 hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-45"
+                disabled={!googleEnabled}
+                onClick={() => {
+                  window.location.href = "/api/auth/google/start";
+                }}
+                title={googleEnabled ? "Continue with Google" : "Google sign-in is not configured."}
+                type="button"
+              >
+                Continue with Google
+              </button>
+              <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+                <span className="h-px flex-1 bg-white/10" />
+                or continue with email
+                <span className="h-px flex-1 bg-white/10" />
+              </div>
+            </>
+          ) : null}
+
           {mode === "login" ? <LoginForm onForgotPassword={() => setMode("forgot")} onSuccess={onClose} /> : null}
           {mode === "register" ? <RegisterForm onSuccess={onClose} /> : null}
           {mode === "forgot" ? <ForgotPasswordForm /> : null}

@@ -87,6 +87,7 @@ class User(Base):
     watchlist_items: Mapped[list["UserWatchlist"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     risk_profile: Mapped["UserRiskProfile | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
     password_reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    oauth_accounts: Mapped[list["UserOAuthAccount"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class UserSession(Base):
@@ -120,6 +121,23 @@ class PasswordResetToken(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     user: Mapped[User] = relationship(back_populates="password_reset_tokens")
+
+
+class UserOAuthAccount(Base):
+    __tablename__ = "user_oauth_accounts"
+    __table_args__ = (
+        UniqueConstraint("provider", "provider_account_id", name="uq_user_oauth_accounts_provider_account"),
+        Index("ix_user_oauth_accounts_user_id", "user_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    provider: Mapped[str] = mapped_column(Text, nullable=False)
+    provider_account_id: Mapped[str] = mapped_column(Text, nullable=False)
+    email: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
+
+    user: Mapped[User] = relationship(back_populates="oauth_accounts")
 
 
 class UserWatchlist(Base):
