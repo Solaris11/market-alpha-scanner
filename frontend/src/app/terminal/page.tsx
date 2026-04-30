@@ -1,6 +1,7 @@
 import { AICopilotPanel } from "@/components/terminal/AICopilotPanel";
 import { BestTradeNowCard } from "@/components/terminal/BestTradeNowCard";
 import { MarketOnboarding } from "@/components/onboarding/MarketOnboarding";
+import { DailyActionCard } from "@/components/terminal/DailyActionCard";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
 import { MetricCard } from "@/components/terminal/MetricCard";
@@ -12,6 +13,7 @@ import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
+import { getDailyAction } from "@/lib/trading/daily-action";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 import { formatMoney, formatPercent } from "@/lib/ui/formatters";
 
@@ -27,6 +29,7 @@ export default async function TerminalPage() {
   const opportunityModel = buildOpportunitiesPageModel(snapshot.signals, performance);
   const best = selectBestTradeNow(snapshot.signals, edges);
   const leader = best?.row ?? snapshot.topSignals[0] ?? snapshot.signals[0];
+  const dailyAction = getDailyAction({ best, fallbackRow: leader, marketRegime: snapshot.marketRegime });
   const tradePlanHref = leader?.symbol ? `/symbol/${leader.symbol}` : "/opportunities";
   const enterCount = snapshot.signals.filter((row) => String(row.final_decision ?? "").toUpperCase() === "ENTER").length;
   const avoidCount = snapshot.signals.filter((row) => String(row.final_decision ?? "").toUpperCase() === "AVOID").length;
@@ -35,6 +38,7 @@ export default async function TerminalPage() {
     <TerminalShell>
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">
+          <DailyActionCard action={dailyAction} />
           <BestTradeNowCard best={best} edges={edges} regime={snapshot.marketRegime} />
 
           <GlassPanel className="overflow-hidden p-5">
