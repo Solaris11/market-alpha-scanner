@@ -26,6 +26,7 @@ type ProfileRow = QueryResultRow & {
   risk_experience_level: string | null;
   onboarding_completed: boolean;
   created_at: string;
+  last_login_at: string | null;
 };
 
 export async function GET() {
@@ -69,7 +70,8 @@ export async function PUT(request: Request) {
           timezone,
           risk_experience_level,
           onboarding_completed,
-          created_at::text
+          created_at::text,
+          last_login_at::text
       `,
       [user.id, displayName, timezone, riskExperienceLevel, onboardingCompleted],
     );

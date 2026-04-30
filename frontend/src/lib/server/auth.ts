@@ -22,6 +22,7 @@ export type AuthUser = {
   riskExperienceLevel: string | null;
   onboardingCompleted: boolean;
   createdAt: string;
+  lastLoginAt: string | null;
 };
 
 export type AuthSession = {
@@ -41,6 +42,7 @@ type UserRow = QueryResultRow & {
   risk_experience_level: string | null;
   onboarding_completed: boolean;
   created_at: string;
+  last_login_at: string | null;
 };
 
 type UserWithPasswordRow = UserRow & {
@@ -57,7 +59,8 @@ const USER_SELECT = `
   timezone,
   risk_experience_level,
   onboarding_completed,
-  created_at::text
+  created_at::text,
+  last_login_at::text
 `;
 
 const USER_SELECT_U = `
@@ -70,7 +73,8 @@ const USER_SELECT_U = `
   u.timezone,
   u.risk_experience_level,
   u.onboarding_completed,
-  u.created_at::text
+  u.created_at::text,
+  u.last_login_at::text
 `;
 
 export function normalizeAuthEmail(value: unknown): string | null {
@@ -223,6 +227,7 @@ export function userFromRow(row: UserRow | undefined): AuthUser {
     riskExperienceLevel: row.risk_experience_level,
     onboardingCompleted: Boolean(row.onboarding_completed),
     createdAt: row.created_at,
+    lastLoginAt: row.last_login_at,
   };
 }
 

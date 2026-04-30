@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 const NAV_ITEMS = [
   { href: "/terminal", label: "Terminal" },
@@ -20,10 +21,12 @@ function isActive(pathname: string, href: string) {
 
 export function TopNav() {
   const pathname = usePathname();
+  const { authenticated } = useCurrentUser();
+  const items = authenticated ? [...NAV_ITEMS, { href: "/account", label: "Account" }] : NAV_ITEMS;
 
   return (
     <nav className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-      {NAV_ITEMS.map((item) => {
+      {items.map((item) => {
         const active = isActive(pathname, item.href);
         return (
           <Link

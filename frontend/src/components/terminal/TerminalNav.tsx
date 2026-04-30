@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 const NAV = [
   { href: "/terminal", label: "Terminal" },
@@ -15,9 +16,12 @@ const NAV = [
 
 export function TerminalNav() {
   const pathname = usePathname();
+  const { authenticated } = useCurrentUser();
+  const items = authenticated ? [...NAV, { href: "/account", label: "Account" }] : NAV;
+
   return (
     <nav className="flex flex-wrap items-center gap-2">
-      {NAV.map((item) => {
+      {items.map((item) => {
         const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (
           <Link

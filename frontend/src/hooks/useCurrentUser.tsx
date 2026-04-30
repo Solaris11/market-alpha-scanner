@@ -8,6 +8,7 @@ export type CurrentUser = {
   email: string;
   emailVerified: boolean;
   id: string;
+  lastLoginAt: string | null;
   onboardingCompleted: boolean;
   profileImageUrl: string | null;
   riskExperienceLevel: string | null;
