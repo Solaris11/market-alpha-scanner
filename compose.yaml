@@ -75,6 +75,34 @@ services:
     networks:
       - market-alpha-scanner-private
 
+  market-alpha-frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: market-alpha-frontend
+    restart: unless-stopped
+    depends_on:
+      market-alpha-postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: "1"
+      HOSTNAME: 0.0.0.0
+      PORT: "3001"
+      DATABASE_URL: ${FRONTEND_DATABASE_URL:-postgresql://${POSTGRES_USER:-market_alpha}:${POSTGRES_PASSWORD:-change_me_before_production}@market-alpha-postgres:5432/${POSTGRES_DB:-market_alpha}}
+      SCANNER_OUTPUT_DIR: /app/scanner_output
+      MARKET_ALPHA_ADMIN_EMAILS: ${MARKET_ALPHA_ADMIN_EMAILS:-}
+      MARKET_ALPHA_ENABLE_DEV_LOGIN: ${MARKET_ALPHA_ENABLE_DEV_LOGIN:-false}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
+      GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
+    ports:
+      - "3001:3001"
+    volumes:
+      - /opt/apps/market-alpha-scanner/runtime/scanner_output:/app/scanner_output
+    networks:
+      - market-alpha-scanner-private
+
 networks:
   market-alpha-scanner-private:
     name: market-alpha-scanner-private

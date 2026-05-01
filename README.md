@@ -343,10 +343,12 @@ Important variables:
 - `POSTGRES_USER`
 - `POSTGRES_PASSWORD`
 - `DATABASE_URL`
+- `FRONTEND_DATABASE_URL`
 - `SCANNER_OUTPUT_DIR`
 - `APP_LOG_DIR`
 
 Inside Docker, `DATABASE_URL` should point at `market-alpha-postgres` on the private stack network.
+The Next.js frontend receives `FRONTEND_DATABASE_URL` as its container `DATABASE_URL`; use the standard `postgresql://` format for this value.
 
 ### Start PostgreSQL
 
@@ -411,6 +413,30 @@ Run the dashboard via the container service:
 ```bash
 docker compose --env-file .env up -d market-alpha-app
 ```
+
+### Next.js Frontend Production Container
+
+The production frontend service is `market-alpha-frontend`. It builds `frontend/Dockerfile` with Node 22, runs `npm run build`, and starts the app with `npm start` on `0.0.0.0:3001`. It mounts the shared scanner artifacts at `/app/scanner_output` because the Next.js routes read scanner CSV and JSON outputs.
+
+Build and start only the frontend service:
+
+```bash
+docker compose up -d --build market-alpha-frontend
+```
+
+Follow the frontend logs:
+
+```bash
+docker logs -f market-alpha-frontend
+```
+
+Verify the route is reachable from the host:
+
+```bash
+curl -I http://localhost:3001/terminal
+```
+
+Do not use `npm run dev` for the public deployment.
 
 ### Database Layer Notes
 
