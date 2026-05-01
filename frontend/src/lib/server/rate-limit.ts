@@ -1,5 +1,7 @@
 import "server-only";
 
+import { NextResponse } from "next/server";
+
 type AttemptBucket = {
   count: number;
   resetAt: number;
@@ -22,4 +24,8 @@ export function tooManyAttempts(key: string, options: { limit: number; windowMs:
 
   current.count += 1;
   return current.count > options.limit;
+}
+
+export function rateLimitExceededResponse(): NextResponse<{ ok: false; message: string }> {
+  return NextResponse.json({ ok: false, message: "Too many requests. Please try again later." }, { status: 429 });
 }

@@ -3,6 +3,7 @@ import { execFile } from "node:child_process";
 import fsSync from "node:fs";
 import path from "node:path";
 import { requireAdmin } from "@/lib/server/access-control";
+import { rateLimitRequest } from "@/lib/server/request-security";
 
 type PriceHistoryPayload = {
   ok: boolean;
@@ -72,6 +73,9 @@ function fetchPriceHistory(symbol: string, period: string) {
 }
 
 export async function GET(request: Request, context: { params: Promise<{ symbol: string }> }) {
+  const rateLimited = rateLimitRequest(request, "admin:price-history", { limit: 30, windowMs: 60_000 });
+  if (rateLimited) return rateLimited;
+
   const access = await requireAdmin();
   if (!access.ok) return access.response;
 

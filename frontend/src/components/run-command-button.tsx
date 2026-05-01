@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { csrfFetch } from "@/lib/client/csrf-fetch";
 
 type CommandResult = {
   ok: boolean;
@@ -29,7 +30,7 @@ export function RunCommandButton({ endpoint, label, diagnostic = false }: Props)
     setResult(null);
 
     try {
-      const response = await fetch(endpoint, { method: "POST" });
+      const response = await csrfFetch(endpoint, { method: "POST" });
       const payload = (await response.json()) as CommandResult;
       setResult({ ...payload, ok: response.ok && payload.ok });
       if (response.ok && payload.ok) {

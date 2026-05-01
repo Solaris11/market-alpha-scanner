@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { clientIp, loginWithPassword, normalizeAuthEmail, SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
-import { tooManyAttempts } from "@/lib/server/rate-limit";
+import { loginWithPassword, normalizeAuthEmail, SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
+import { rateLimitRequest, requestIp, validateMutationRequest } from "@/lib/server/request-security";
+import { rateLimitExceededResponse, tooManyAttempts } from "@/lib/server/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,14 +12,20 @@ type LoginPayload = {
 };
 
 export async function POST(request: Request) {
+  const invalidOrigin = validateMutationRequest(request);
+  if (invalidOrigin) return invalidOrigin;
+
   const payload = (await request.json().catch(() => null)) as LoginPayload | null;
   const email = normalizeAuthEmail(payload?.email);
-  const ip = clientIp(request) ?? "unknown";
+  const ip = requestIp(request);
   const rateLimitKey = `login:${ip}:${email ?? "invalid"}`;
 
   if (tooManyAttempts(rateLimitKey, { limit: 8, windowMs: 15 * 60 * 1000 })) {
-    return NextResponse.json({ ok: false, error: "Too many attempts. Try again later." }, { status: 429 });
+    return rateLimitExceededResponse();
   }
+
+  const rateLimited = rateLimitRequest(request, "auth:login", { limit: 30, windowMs: 15 * 60 * 1000 });
+  if (rateLimited) return rateLimited;
 
   try {
     const session = await loginWithPassword({ email: payload?.email, ip, password: payload?.password });

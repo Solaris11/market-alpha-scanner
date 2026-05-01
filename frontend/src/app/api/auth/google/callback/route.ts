@@ -1,16 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clientIp, SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
+import { SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
 import { authenticateGoogleCode, GOOGLE_OAUTH_STATE_COOKIE, googleOAuthStateCookieOptions } from "@/lib/server/oauth";
+import { canonicalAppUrl, rateLimitRequest, requestIp } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
+  const rateLimited = rateLimitRequest(request, "auth:google-callback", { limit: 60, windowMs: 60_000 });
+  if (rateLimited) return rateLimited;
+
   const url = new URL(request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const cookieState = request.cookies.get(GOOGLE_OAUTH_STATE_COOKIE)?.value;
-  const redirectUrl = new URL("/terminal", request.url);
+  const redirectUrl = new URL("/terminal", canonicalAppUrl());
 
   if (!code || !state || !cookieState || state !== cookieState) {
     redirectUrl.searchParams.set("authError", "google_failed");
@@ -18,7 +22,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const session = await authenticateGoogleCode(code, clientIp(request));
+    const session = await authenticateGoogleCode(code, requestIp(request));
     const response = clearState(NextResponse.redirect(redirectUrl));
     response.cookies.set(SESSION_COOKIE_NAME, session.token, sessionCookieOptions(session.expiresAt));
     return response;

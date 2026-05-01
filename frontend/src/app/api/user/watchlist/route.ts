@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import { requireUser } from "@/lib/server/access-control";
 import { getCurrentUser } from "@/lib/server/auth";
+import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 import { addUserWatchlistSymbols, normalizeWatchlistSymbols, readUserWatchlist } from "@/lib/server/user-watchlist";
 
 export const dynamic = "force-dynamic";
@@ -24,16 +26,23 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const user = await getCurrentUser().catch(() => null);
-  if (!user) {
-    return NextResponse.json({ authenticated: false, error: "Sign in to save this watchlist." }, { status: 401 });
-  }
+  const rateLimited = rateLimitRequest(request, "user-watchlist:write", { limit: 60, windowMs: 60_000 });
+  if (rateLimited) return rateLimited;
+
+  const invalidOrigin = validateMutationRequest(request);
+  if (invalidOrigin) return invalidOrigin;
+
+  const access = await requireUser("Sign in to save this watchlist.");
+  if (!access.ok) return access.response;
+
+  const csrf = requireCsrf(request);
+  if (csrf) return csrf;
 
   const payload = (await request.json().catch(() => null)) as WatchlistPayload | null;
   const symbols = normalizeWatchlistSymbols(Array.isArray(payload?.symbols) ? payload.symbols : [payload?.symbol]);
 
   try {
-    return NextResponse.json({ authenticated: true, symbols: await addUserWatchlistSymbols(user.id, symbols) });
+    return NextResponse.json({ authenticated: true, symbols: await addUserWatchlistSymbols(access.user.id, symbols) });
   } catch {
     return NextResponse.json({ authenticated: true, error: "Failed to save watchlist.", symbols: [] }, { status: 500 });
   }

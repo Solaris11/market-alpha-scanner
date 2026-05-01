@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { DEFAULT_USER_RISK_PROFILE, normalizeRiskProfile, type UserRiskProfile } from "@/lib/trading/risk-veto";
 
 export const RISK_PROFILE_STORAGE_KEY = "market_alpha_risk_profile";
@@ -102,9 +103,8 @@ function writeRiskProfileStorage(profile: UserRiskProfile): void {
 }
 
 async function saveRiskProfile(profile: UserRiskProfile): Promise<UserRiskProfile> {
-  const response = await fetch("/api/user/risk-profile", {
+  const response = await csrfFetch("/api/user/risk-profile", {
     body: JSON.stringify(normalizeRiskProfile(profile)),
-    cache: "no-store",
     headers: { "Content-Type": "application/json" },
     method: "PUT",
   });

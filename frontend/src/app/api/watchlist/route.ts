@@ -4,6 +4,7 @@ import path from "node:path";
 import { scannerOutputDir } from "@/lib/scanner-data";
 import { getCurrentUser } from "@/lib/server/auth";
 import { requireUser } from "@/lib/server/access-control";
+import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 import { addUserWatchlistSymbols, readUserWatchlist } from "@/lib/server/user-watchlist";
 
 export const dynamic = "force-dynamic";
@@ -32,8 +33,17 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const rateLimited = rateLimitRequest(request, "watchlist:write", { limit: 60, windowMs: 60_000 });
+  if (rateLimited) return rateLimited;
+
+  const invalidOrigin = validateMutationRequest(request);
+  if (invalidOrigin) return invalidOrigin;
+
   const access = await requireUser("Sign in to save this watchlist.");
   if (!access.ok) return access.response;
+
+  const csrf = requireCsrf(request);
+  if (csrf) return csrf;
 
   const payload = (await request.json().catch(() => null)) as { symbols?: unknown[] } | null;
   const symbols = Array.from(new Set((payload?.symbols ?? []).map(normalizeSymbol).filter(Boolean))).sort();

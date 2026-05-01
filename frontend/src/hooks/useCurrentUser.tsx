@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { clearCsrfToken, csrfFetch } from "@/lib/client/csrf-fetch";
 
 export type CurrentUser = {
   createdAt: string;
@@ -68,18 +69,21 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (email: string, password: string) => {
     const payload = await authRequest("/api/auth/login", { email, password });
+    clearCsrfToken();
     setUser(payload.user ?? null);
     setLoading(false);
   }, []);
 
   const register = useCallback(async (input: RegisterInput) => {
     const payload = await authRequest("/api/auth/register", input);
+    clearCsrfToken();
     setUser(payload.user ?? null);
     setLoading(false);
   }, []);
 
   const logout = useCallback(async () => {
-    await fetch("/api/auth/logout", { cache: "no-store", method: "POST" }).catch(() => undefined);
+    await csrfFetch("/api/auth/logout", { method: "POST" }).catch(() => undefined);
+    clearCsrfToken();
     setUser(null);
     setLoading(false);
   }, []);

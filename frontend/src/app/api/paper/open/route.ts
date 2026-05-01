@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireUser } from "@/lib/server/access-control";
 import { getDbPool } from "@/lib/server/db";
+import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -40,8 +41,17 @@ function validatePayload(payload: ManualPaperTradePayload) {
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimited = rateLimitRequest(request, "paper:open", { limit: 30, windowMs: 60_000 });
+  if (rateLimited) return rateLimited;
+
+  const invalidOrigin = validateMutationRequest(request);
+  if (invalidOrigin) return invalidOrigin;
+
   const access = await requireUser("Sign in to open paper trades.");
   if (!access.ok) return access.response;
+
+  const csrf = requireCsrf(request);
+  if (csrf) return csrf;
 
   const clientPool = getDbPool();
   if (!clientPool) {

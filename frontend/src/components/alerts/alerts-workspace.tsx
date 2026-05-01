@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
+import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { readWatchlistStorage, WATCHLIST_EVENT } from "@/lib/watchlist-storage";
 import { ActiveAlertMatches } from "./active-alert-matches";
 
@@ -225,7 +226,8 @@ function compactConfig(rule: AlertRule) {
 }
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(url, init);
+  const method = String(init?.method ?? "GET").toUpperCase();
+  const response = ["POST", "PUT", "PATCH", "DELETE"].includes(method) ? await csrfFetch(url, init) : await fetch(url, init);
   const payload = (await response.json()) as T & { error?: string; message?: string };
   if (!response.ok) {
     throw new Error(payload.message || payload.error || `Request failed: ${response.status}`);

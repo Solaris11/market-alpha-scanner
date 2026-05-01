@@ -1,13 +1,23 @@
 import { NextResponse } from "next/server";
 import { readAlertRules, readAlertState, sanitizeAlertRule, writeAlertRules, writeAlertState } from "@/lib/alerts";
 import { requireUser } from "@/lib/server/access-control";
+import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
+  const rateLimited = rateLimitRequest(request, "alerts:rules:update", { limit: 60, windowMs: 60_000 });
+  if (rateLimited) return rateLimited;
+
+  const invalidOrigin = validateMutationRequest(request);
+  if (invalidOrigin) return invalidOrigin;
+
   const access = await requireUser("Sign in to update alert rules.");
   if (!access.ok) return access.response;
+
+  const csrf = requireCsrf(request);
+  if (csrf) return csrf;
 
   const { id } = await context.params;
   try {
@@ -28,9 +38,18 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
   }
 }
 
-export async function DELETE(_request: Request, context: { params: Promise<{ id: string }> }) {
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
+  const rateLimited = rateLimitRequest(request, "alerts:rules:delete", { limit: 60, windowMs: 60_000 });
+  if (rateLimited) return rateLimited;
+
+  const invalidOrigin = validateMutationRequest(request);
+  if (invalidOrigin) return invalidOrigin;
+
   const access = await requireUser("Sign in to delete alert rules.");
   if (!access.ok) return access.response;
+
+  const csrf = requireCsrf(request);
+  if (csrf) return csrf;
 
   const { id } = await context.params;
   try {

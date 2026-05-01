@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { clientIp, registerWithPassword, SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
+import { registerWithPassword, SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
+import { rateLimitRequest, requestIp, validateMutationRequest } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -11,13 +12,19 @@ type RegisterPayload = {
 };
 
 export async function POST(request: Request) {
+  const rateLimited = rateLimitRequest(request, "auth:register", { limit: 10, windowMs: 60 * 60 * 1000 });
+  if (rateLimited) return rateLimited;
+
+  const invalidOrigin = validateMutationRequest(request);
+  if (invalidOrigin) return invalidOrigin;
+
   const payload = (await request.json().catch(() => null)) as RegisterPayload | null;
   if (!payload) {
     return NextResponse.json({ ok: false, error: "Unable to create account." }, { status: 400 });
   }
 
   try {
-    const session = await registerWithPassword({ ...payload, ip: clientIp(request) });
+    const session = await registerWithPassword({ ...payload, ip: requestIp(request) });
     const response = NextResponse.json({ ok: true, user: session.user });
     response.cookies.set(SESSION_COOKIE_NAME, session.token, sessionCookieOptions(session.expiresAt));
     return response;

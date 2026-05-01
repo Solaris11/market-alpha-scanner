@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { csrfFetch } from "@/lib/client/csrf-fetch";
 
 type Props = {
   cashBalance?: number | null;
@@ -79,7 +80,7 @@ export function ManualPaperTradeForm({ cashBalance = null }: Props) {
 
     setBusy(true);
     try {
-      const response = await fetch("/api/paper/open", {
+      const response = await csrfFetch("/api/paper/open", {
         body: JSON.stringify({
           entry_price: estimate.entry,
           quantity: estimate.qty,

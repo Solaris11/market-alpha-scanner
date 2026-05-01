@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAlertOverview, readAlertRules, sanitizeAlertRule, writeAlertRules } from "@/lib/alerts";
 import { requireUser } from "@/lib/server/access-control";
+import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -10,8 +11,17 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const rateLimited = rateLimitRequest(request, "alerts:rules:write", { limit: 40, windowMs: 60_000 });
+  if (rateLimited) return rateLimited;
+
+  const invalidOrigin = validateMutationRequest(request);
+  if (invalidOrigin) return invalidOrigin;
+
   const access = await requireUser("Sign in to save alert rules.");
   if (!access.ok) return access.response;
+
+  const csrf = requireCsrf(request);
+  if (csrf) return csrf;
 
   try {
     const payload = (await request.json()) as Record<string, unknown>;

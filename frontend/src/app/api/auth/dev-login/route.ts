@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createDevLoginSession, devLoginEnabled, SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
+import { rateLimitRequest, validateMutationRequest } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -12,6 +13,12 @@ export async function POST(request: Request) {
   if (!devLoginEnabled()) {
     return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
   }
+
+  const rateLimited = rateLimitRequest(request, "auth:dev-login", { limit: 10, windowMs: 15 * 60 * 1000 });
+  if (rateLimited) return rateLimited;
+
+  const invalidOrigin = validateMutationRequest(request);
+  if (invalidOrigin) return invalidOrigin;
 
   const payload = (await request.json().catch(() => null)) as DevLoginPayload | null;
   if (!payload) {

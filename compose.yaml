@@ -89,6 +89,8 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       HOSTNAME: 0.0.0.0
       PORT: "3001"
+      APP_URL: ${APP_URL:-https://app.marketalpha.co}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://app.marketalpha.co}
       DATABASE_URL: ${FRONTEND_DATABASE_URL:-postgresql://${POSTGRES_USER:-market_alpha}:${POSTGRES_PASSWORD:-change_me_before_production}@market-alpha-postgres:5432/${POSTGRES_DB:-market_alpha}}
       SCANNER_OUTPUT_DIR: /app/scanner_output
       MARKET_ALPHA_ADMIN_EMAILS: ${MARKET_ALPHA_ADMIN_EMAILS:-}

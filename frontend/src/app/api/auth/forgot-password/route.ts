@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createPasswordReset } from "@/lib/server/password-reset";
+import { canonicalAppUrl, rateLimitRequest, validateMutationRequest } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -9,8 +10,14 @@ type ForgotPasswordPayload = {
 };
 
 export async function POST(request: Request) {
+  const rateLimited = rateLimitRequest(request, "auth:forgot-password", { limit: 8, windowMs: 60 * 60 * 1000 });
+  if (rateLimited) return rateLimited;
+
+  const invalidOrigin = validateMutationRequest(request);
+  if (invalidOrigin) return invalidOrigin;
+
   const payload = (await request.json().catch(() => null)) as ForgotPasswordPayload | null;
-  const origin = new URL(request.url).origin;
+  const origin = canonicalAppUrl().origin;
 
   try {
     const resetUrl = await createPasswordReset(payload?.email, origin);

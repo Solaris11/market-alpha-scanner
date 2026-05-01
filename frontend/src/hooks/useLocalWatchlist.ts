@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { normalizeWatchlistSymbol, readWatchlistStorage, WATCHLIST_EVENT, writeWatchlistStorage } from "@/lib/watchlist-storage";
 
 type WatchlistResponse = {
@@ -40,9 +41,8 @@ export function useLocalWatchlist() {
 
       const localSymbols = readWatchlistStorage();
       try {
-        const response = await fetch("/api/user/watchlist", {
+        const response = await csrfFetch("/api/user/watchlist", {
           body: JSON.stringify({ symbols: localSymbols }),
-          cache: "no-store",
           headers: { "Content-Type": "application/json" },
           method: "POST",
         });
@@ -102,9 +102,8 @@ export function useLocalWatchlist() {
 
   async function saveAuthenticatedSymbols(symbols: string[], fallback: string[]) {
     try {
-      const response = await fetch("/api/user/watchlist", {
+      const response = await csrfFetch("/api/user/watchlist", {
         body: JSON.stringify({ symbols }),
-        cache: "no-store",
         headers: { "Content-Type": "application/json" },
         method: "POST",
       });
@@ -118,8 +117,7 @@ export function useLocalWatchlist() {
 
   async function removeAuthenticatedSymbol(symbol: string, fallback: string[]) {
     try {
-      const response = await fetch(`/api/user/watchlist/${encodeURIComponent(symbol)}`, {
-        cache: "no-store",
+      const response = await csrfFetch(`/api/user/watchlist/${encodeURIComponent(symbol)}`, {
         method: "DELETE",
       });
       const payload = (await response.json().catch(() => null)) as WatchlistResponse | null;

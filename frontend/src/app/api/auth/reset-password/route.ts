@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { resetPassword } from "@/lib/server/password-reset";
+import { rateLimitRequest, validateMutationRequest } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -10,6 +11,12 @@ type ResetPasswordPayload = {
 };
 
 export async function POST(request: Request) {
+  const rateLimited = rateLimitRequest(request, "auth:reset-password", { limit: 10, windowMs: 60 * 60 * 1000 });
+  if (rateLimited) return rateLimited;
+
+  const invalidOrigin = validateMutationRequest(request);
+  if (invalidOrigin) return invalidOrigin;
+
   const payload = (await request.json().catch(() => null)) as ResetPasswordPayload | null;
   try {
     const ok = await resetPassword(payload?.token, payload?.newPassword);

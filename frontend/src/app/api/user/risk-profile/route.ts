@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import type { QueryResultRow } from "pg";
 import { getCurrentUser } from "@/lib/server/auth";
 import { dbQuery } from "@/lib/server/db";
+import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 import { DEFAULT_USER_RISK_PROFILE, normalizeRiskProfile, type UserRiskProfile } from "@/lib/trading/risk-veto";
 
 export const dynamic = "force-dynamic";
@@ -33,10 +34,19 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const rateLimited = rateLimitRequest(request, "risk-profile:write", { limit: 60, windowMs: 60_000 });
+  if (rateLimited) return rateLimited;
+
+  const invalidOrigin = validateMutationRequest(request);
+  if (invalidOrigin) return invalidOrigin;
+
   const user = await getCurrentUser().catch(() => null);
   if (!user) {
     return NextResponse.json({ authenticated: false, error: "Sign in to save risk rules." }, { status: 401 });
   }
+
+  const csrf = requireCsrf(request);
+  if (csrf) return csrf;
 
   const payload = (await request.json().catch(() => null)) as Partial<UserRiskProfile> | null;
   const profile = normalizeRiskProfile(payload);
