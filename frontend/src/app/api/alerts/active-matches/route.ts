@@ -8,9 +8,11 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const [entitlement, matches, scanSafety] = await Promise.all([getEntitlement(), getActiveAlertMatches(), getCurrentScanSafety()]);
+  const entitlement = await getEntitlement();
+  const scanSafety = await getCurrentScanSafety();
 
   if (!hasPremiumAccess(entitlement)) {
+    const matches = await getActiveAlertMatches();
     return NextResponse.json({
       ...previewAlertMatches(matches),
       scanSafety,
@@ -20,5 +22,6 @@ export async function GET() {
     });
   }
 
+  const matches = await getActiveAlertMatches();
   return NextResponse.json({ ...matches, scanSafety, limited: false, entitlement: entitlementSummary(entitlement) });
 }

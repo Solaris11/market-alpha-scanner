@@ -364,13 +364,13 @@ export async function getPaperData(scope?: PaperDataScope): Promise<PaperData> {
       positions: positionsResult.rows.map(positionFromRow),
       events: eventsResult.rows.map(eventFromRow),
     };
-  } catch (error) {
+  } catch {
     return {
       configured: true,
       account: null,
       positions: [],
       events: [],
-      error: error instanceof Error ? error.message : "Failed to load paper trading data.",
+      error: "Paper trading data is unavailable.",
     };
   }
 }
@@ -499,13 +499,13 @@ export async function getPaperAnalytics(scope?: PaperDataScope): Promise<PaperAn
       groups: groupsResult.rows.map(analyticsGroupFromRow),
       timeline,
     };
-  } catch (error) {
+  } catch {
     return {
       configured: true,
       summary: { ...ZERO_ANALYTICS_SUMMARY },
       groups: [],
       timeline: [],
-      error: error instanceof Error ? error.message : "Failed to load paper trading analytics.",
+      error: "Paper trading analytics are unavailable.",
     };
   }
 }

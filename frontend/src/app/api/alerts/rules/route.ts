@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAlertOverview, readAlertRules, sanitizeAlertRule, writeAlertRules } from "@/lib/alerts";
 import { accessDenied, requireUser } from "@/lib/server/access-control";
 import { entitlementForUser, entitlementSummary, getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
+import { previewAlertOverview } from "@/lib/server/premium-preview";
 import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
@@ -12,13 +13,9 @@ export async function GET() {
   const premium = hasPremiumAccess(entitlement);
   const overview = await getAlertOverview({ createDefault: premium ? undefined : false });
   if (!premium) {
-    const rules = overview.rules.slice(0, 2);
+    const preview = previewAlertOverview(overview);
     return NextResponse.json({
-      ...overview,
-      rules,
-      state: { alerts: {} },
-      activeCount: rules.filter((rule) => rule.enabled).length,
-      lastSentAt: null,
+      ...preview,
       limited: true,
       message: "Limited alert preview. Premium unlocks saved alert automation.",
       entitlement: entitlementSummary(entitlement),

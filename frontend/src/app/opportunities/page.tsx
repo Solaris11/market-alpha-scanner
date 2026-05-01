@@ -1,12 +1,25 @@
 import { OpportunitiesWorkspace } from "@/components/opportunities/OpportunitiesWorkspace";
+import { PublicSignalPreviewList } from "@/components/premium/PublicSignalPreview";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
+import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
+import { getPublicTopSignals } from "@/lib/server/public-signal-data";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 
 export const dynamic = "force-dynamic";
 
 export default async function OpportunitiesPage() {
+  const entitlement = await getEntitlement();
+  if (!hasPremiumAccess(entitlement)) {
+    const publicPreview = await getPublicTopSignals(9);
+    return (
+      <TerminalShell>
+        <PublicSignalPreviewList signals={publicPreview.signals} title="Opportunities Preview" />
+      </TerminalShell>
+    );
+  }
+
   const adapter = new ScannerDataAdapter();
   const [rows, regime, performance] = await Promise.all([
     adapter.getOverviewSignals(),

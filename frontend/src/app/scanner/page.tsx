@@ -1,15 +1,31 @@
 import Link from "next/link";
 import { MetricStrip } from "@/components/metric-strip";
+import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/shell";
 import { getAlertOverview } from "@/lib/alerts";
 import { getFullRanking, getHistorySummary, getTopCandidates } from "@/lib/scanner-data";
+import { getEntitlement } from "@/lib/server/entitlements";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
 
 export const dynamic = "force-dynamic";
 
 export default async function ScannerPage() {
+  const entitlement = await getEntitlement();
+  if (!entitlement.isAdmin) {
+    return (
+      <TerminalShell>
+        <PremiumLockedState
+          authenticated={entitlement.authenticated}
+          description="Scanner operations are restricted to administrators."
+          previewItems={["Signal refresh controls", "Scanner run status", "Alert operation state"]}
+          title="Scanner controls are restricted"
+        />
+      </TerminalShell>
+    );
+  }
+
   const [rawRanking, rawTopCandidates, history, alerts, scanSafety] = await Promise.all([getFullRanking(), getTopCandidates(), getHistorySummary(), getAlertOverview({ stateLimit: 25 }), getCurrentScanSafety()]);
   const ranking = applyStaleDataSafetyToRows(rawRanking, scanSafety);
   const topCandidates = applyStaleDataSafetyToRows(rawTopCandidates, scanSafety);

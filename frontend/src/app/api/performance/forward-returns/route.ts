@@ -1,22 +1,31 @@
 import { NextResponse } from "next/server";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { entitlementSummary, getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
-import { previewCsvRows } from "@/lib/server/premium-preview";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const [entitlement, performance] = await Promise.all([getEntitlement(), getPerformanceData()]);
+  const entitlement = await getEntitlement();
   const premium = hasPremiumAccess(entitlement);
-  const rows = premium ? performance.forwardReturns.rows : previewCsvRows(performance.forwardReturns.rows);
+  if (!premium) {
+    return NextResponse.json({
+      rows: [],
+      state: "locked",
+      lineCount: 0,
+      limited: true,
+      message: "Limited performance preview. Premium unlocks full validation data.",
+      entitlement: entitlementSummary(entitlement),
+    });
+  }
+
+  const performance = await getPerformanceData();
 
   return NextResponse.json({
-    rows,
+    rows: performance.forwardReturns.rows,
     state: performance.forwardReturns.state,
     lineCount: performance.forwardReturns.lineCount,
-    limited: !premium,
-    message: premium ? undefined : "Limited performance preview. Premium unlocks full validation data.",
+    limited: false,
     entitlement: entitlementSummary(entitlement),
   });
 }

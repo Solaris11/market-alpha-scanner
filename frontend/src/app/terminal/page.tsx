@@ -1,6 +1,7 @@
 import { AICopilotPanel } from "@/components/terminal/AICopilotPanel";
 import { BestTradeNowCard } from "@/components/terminal/BestTradeNowCard";
 import { MarketOnboarding } from "@/components/onboarding/MarketOnboarding";
+import { PublicSignalPreviewList } from "@/components/premium/PublicSignalPreview";
 import { DailyActionCard } from "@/components/terminal/DailyActionCard";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
@@ -12,6 +13,9 @@ import { SignalHeatmap } from "@/components/terminal/SignalHeatmap";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
+import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
+import { assertNoPremiumFields } from "@/lib/server/premium-preview";
+import { getPublicTopSignals } from "@/lib/server/public-signal-data";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { getDailyAction } from "@/lib/trading/daily-action";
@@ -21,6 +25,36 @@ import { formatMoney, formatPercent } from "@/lib/ui/formatters";
 export const dynamic = "force-dynamic";
 
 export default async function TerminalPage() {
+  const entitlement = await getEntitlement();
+  if (!hasPremiumAccess(entitlement)) {
+    const publicPreview = await getPublicTopSignals(6);
+    const publicAction = {
+      action: "WAIT" as const,
+      label: "WAIT",
+      reason: publicPreview.scanSafety.active ? publicPreview.scanSafety.reason : "Sign in with Premium to unlock today's trade plan.",
+      symbol: null,
+      tone: "wait" as const,
+    };
+    assertNoPremiumFields({ publicAction, signals: publicPreview.signals });
+
+    return (
+      <TerminalShell>
+        <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
+          <div className="space-y-4">
+            <DailyActionCard action={publicAction} />
+            <PublicSignalPreviewList signals={publicPreview.signals} title="Today's Market Preview" />
+          </div>
+          <GlassPanel className="p-5 xl:sticky xl:top-4 xl:self-start">
+            <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Premium</div>
+            <h2 className="mt-2 text-xl font-semibold text-slate-50">Trade plans are locked</h2>
+            <p className="mt-3 text-sm leading-6 text-slate-400">Premium unlocks ranked setups, trade levels, risk simulation, and execution controls.</p>
+          </GlassPanel>
+        </div>
+        <MarketOnboarding tradePlanHref="/opportunities" />
+      </TerminalShell>
+    );
+  }
+
   const adapter = new ScannerDataAdapter();
   const [snapshot, performance, scanSafety] = await Promise.all([
     adapter.getTerminalSnapshot(),
