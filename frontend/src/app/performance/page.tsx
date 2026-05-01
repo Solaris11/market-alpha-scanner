@@ -2,11 +2,13 @@ import { MetricStrip } from "@/components/metric-strip";
 import { AutoCalibrationRecommendations } from "@/components/auto-calibration-recommendations";
 import { PerformanceDrift } from "@/components/performance-drift";
 import { PerformanceValidation } from "@/components/performance-validation";
+import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/shell";
 import { SignalLifecycle } from "@/components/signal-lifecycle";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { getCalibrationInsights, getFullRanking, getHistorySummary, getIntradaySignalDriftSummary, getPerformanceData } from "@/lib/scanner-data";
+import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
 
 export const dynamic = "force-dynamic";
 
@@ -133,6 +135,20 @@ function CalibrationInsightsPanel({ insights }: { insights: Record<string, unkno
 }
 
 export default async function PerformancePage() {
+  const entitlement = await getEntitlement();
+  if (!hasPremiumAccess(entitlement)) {
+    return (
+      <TerminalShell>
+        <PremiumLockedState
+          authenticated={entitlement.authenticated}
+          description="Performance validation, calibration, lifecycle tables, and drift analysis are premium diagnostics. The main terminal remains available as a free market preview."
+          previewItems={["Forward-return validation and hit-rate summaries", "Signal lifecycle and calibration diagnostics", "Intraday drift and setup quality review"]}
+          title={entitlement.authenticated ? "Performance is available on Premium" : "Sign in to preview performance analytics"}
+        />
+      </TerminalShell>
+    );
+  }
+
   const [performance, history, driftRows, ranking, calibrationInsights] = await Promise.all([getPerformanceData({ forwardTailRows: 5000 }), getHistorySummary(), getIntradaySignalDriftSummary(), getFullRanking(), getCalibrationInsights()]);
   const forwardReturnsReady = performance.forwardReturns.rows.length > 0;
   const forwardObservationCount = Math.max(0, performance.forwardReturns.lineCount - 1);

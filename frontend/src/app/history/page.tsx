@@ -1,7 +1,9 @@
 import { HistoryWorkspace } from "@/components/history-workspace";
 import { MetricStrip } from "@/components/metric-strip";
+import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { TerminalShell } from "@/components/shell";
 import { getFullRanking, getHistorySummary, getHistorySymbolsFromSnapshots } from "@/lib/scanner-data";
+import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +13,20 @@ function formatDate(value: string | null) {
 }
 
 export default async function HistoryPage() {
+  const entitlement = await getEntitlement();
+  if (!hasPremiumAccess(entitlement)) {
+    return (
+      <TerminalShell>
+        <PremiumLockedState
+          authenticated={entitlement.authenticated}
+          description="Signal memory, historical symbol timelines, and CSV snapshot exports are premium research tools. Free users can still review the current terminal preview."
+          previewItems={["Saved scanner run timeline", "Symbol-by-symbol decision history", "Premium-only CSV history export"]}
+          title={entitlement.authenticated ? "History is available on Premium" : "Sign in to preview signal history"}
+        />
+      </TerminalShell>
+    );
+  }
+
   const [history, ranking, historySymbols] = await Promise.all([getHistorySummary(), getFullRanking(), getHistorySymbolsFromSnapshots()]);
   const symbols = Array.from(new Set([...ranking.map((row) => row.symbol), ...historySymbols].filter(Boolean).map((symbol) => String(symbol).trim().toUpperCase()))).sort();
   const defaultSymbol = String(ranking[0]?.symbol ?? symbols[0] ?? "").trim().toUpperCase();

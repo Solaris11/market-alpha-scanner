@@ -26,7 +26,7 @@ function glow(value: unknown) {
   return "shadow-[0_0_80px_rgba(34,211,238,0.14)]";
 }
 
-export function SymbolDecisionHero({ dataFreshness, edge, row }: { dataFreshness: DataFreshness; edge?: HistoricalEdgeProof; row: RankingRow }) {
+export function SymbolDecisionHero({ dataFreshness, edge, previewMode = false, row }: { dataFreshness: DataFreshness; edge?: HistoricalEdgeProof; previewMode?: boolean; row: RankingRow }) {
   const decision = row.final_decision ?? row.action ?? "WATCH";
   const conviction = computeConviction(row, edge);
   return (
@@ -55,7 +55,7 @@ export function SymbolDecisionHero({ dataFreshness, edge, row }: { dataFreshness
           <HeroMetric label="Score" value={formatNumber(row.final_score, 0)} />
           <HeroMetric label="Conviction" value={`${conviction.score} ${conviction.label}`} />
           <HeroMetric label="Price" value={formatMoney(row.price)} />
-          <HeroMetric label="Entry" value={formatMoney(row.suggested_entry ?? row.buy_zone ?? row.entry_zone)} />
+          <HeroMetric label={previewMode ? "Plan" : "Entry"} value={previewMode ? "Locked" : formatMoney(row.suggested_entry ?? row.buy_zone ?? row.entry_zone)} />
         </div>
       </div>
     </GlassPanel>

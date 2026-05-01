@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { MetricStrip } from "@/components/metric-strip";
+import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { getAlertOverview } from "@/lib/alerts";
 import { getFullRanking, getHistorySummary, getTopCandidates } from "@/lib/scanner-data";
+import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +15,20 @@ function formatDate(value: string | null) {
 }
 
 export default async function AdvancedPage() {
+  const entitlement = await getEntitlement();
+  if (!hasPremiumAccess(entitlement)) {
+    return (
+      <TerminalShell>
+        <PremiumLockedState
+          authenticated={entitlement.authenticated}
+          description="Raw scanner visibility, operational diagnostics, and snapshot inspection are premium/admin-oriented tools. The main terminal stays focused on the current market action."
+          previewItems={["Raw ranking and candidate diagnostics", "Scanner snapshot inventory", "Operational command visibility with server-side protections"]}
+          title={entitlement.authenticated ? "Advanced diagnostics are available on Premium" : "Sign in to preview advanced diagnostics"}
+        />
+      </TerminalShell>
+    );
+  }
+
   const [ranking, topCandidates, history, alerts] = await Promise.all([getFullRanking(), getTopCandidates(), getHistorySummary(), getAlertOverview({ stateLimit: 25 })]);
 
   return (

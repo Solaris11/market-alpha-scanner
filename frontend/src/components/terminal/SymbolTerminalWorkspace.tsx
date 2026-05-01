@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { useTradePlanEngine } from "@/hooks/useTradePlanEngine";
 import type { SignalHistoryPoint } from "@/lib/adapters/DataServiceAdapter";
 import type { DataFreshness } from "@/lib/data-health";
@@ -35,6 +36,8 @@ export function SymbolTerminalWorkspace({
   priceSeries,
   paperPositions,
   paperEvents,
+  premiumAccess = true,
+  viewerAuthenticated = false,
 }: {
   edgeProof: HistoricalEdgeProof;
   row: RankingRow;
@@ -44,6 +47,8 @@ export function SymbolTerminalWorkspace({
   priceSeries: Record<string, ScannerScalar>[];
   paperPositions: PaperPositionRow[];
   paperEvents: PaperTradeEventRow[];
+  premiumAccess?: boolean;
+  viewerAuthenticated?: boolean;
 }) {
   const [showHistoricalMarkers, setShowHistoricalMarkers] = useState(false);
   const tradeLevels = useMemo(() => buildSignalTradeLevels(row), [row]);
@@ -60,6 +65,20 @@ export function SymbolTerminalWorkspace({
     const markers = history.map(historyPointToMarker).filter((marker): marker is ChartSignalMarker => Boolean(marker));
     return markers.length ? markers : undefined;
   }, [candles.length, history]);
+
+  if (!premiumAccess) {
+    return (
+      <div className="space-y-5">
+        <SymbolDecisionHero dataFreshness={dataFreshness} edge={edgeProof} previewMode row={row} />
+        <PremiumLockedState
+          authenticated={viewerAuthenticated}
+          description="Full trade plans, AI decision details, What-If simulation, execution tickets, signal history, and advanced chart context are premium symbol tools."
+          previewItems={["AI Copilot and risk-rule veto context", "What-If simulator and execution planning", "Historical edge, conviction timeline, and signal map"]}
+          title="Full symbol trade plan is locked"
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">

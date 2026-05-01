@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { GhostPortfolioCard } from "@/components/paper/GhostPortfolioCard";
 import { ManualPaperTradeForm } from "@/components/paper/ManualPaperTradeForm";
+import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import {
@@ -11,6 +12,7 @@ import {
   type PaperPositionRow,
   type PaperTradeEventRow,
 } from "@/lib/paper-data";
+import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
 
 export const dynamic = "force-dynamic";
 
@@ -637,12 +639,14 @@ function SectionShell({ children, eyebrow, title }: { children: React.ReactNode;
 }
 
 export default async function PaperPage() {
-  const [data, analytics] = await Promise.all([getPaperData(), getPaperAnalytics()]);
+  const entitlement = await getEntitlement();
+  const premiumAccess = hasPremiumAccess(entitlement);
+  const [data, analytics] = await Promise.all([getPaperData(), premiumAccess ? getPaperAnalytics() : Promise.resolve(null)]);
   const account = data.account;
   const closedPositions = closedPaperPositions(data.positions);
   const equityPoints = buildEquityPoints(closedPositions);
   const expectancy = buildExpectancy(closedPositions);
-  const trustMetrics = buildTrustMetrics(analytics.summary, data.positions, analytics.groups, account?.total_account_value ?? null, expectancy);
+  const trustMetrics = analytics ? buildTrustMetrics(analytics.summary, data.positions, analytics.groups, account?.total_account_value ?? null, expectancy) : null;
   const confidenceStatus = systemConfidenceStatus(closedPositions.length);
 
   return (
@@ -676,21 +680,33 @@ export default async function PaperPage() {
         <SimpleAdvancedTabs
           simple={(
             <div className="space-y-5">
-              <TrustHeadlineCards metrics={trustMetrics} />
+              {premiumAccess && analytics && trustMetrics ? (
+                <>
+                  <TrustHeadlineCards metrics={trustMetrics} />
 
-              <SectionShell eyebrow="Trust Curve" title={equityPoints.length === 1 ? "Equity Curve (early data)" : "Equity Curve"}>
-                <EquityCurve points={equityPoints} />
-              </SectionShell>
+                  <SectionShell eyebrow="Trust Curve" title={equityPoints.length === 1 ? "Equity Curve (early data)" : "Equity Curve"}>
+                    <EquityCurve points={equityPoints} />
+                  </SectionShell>
 
-              <SectionShell eyebrow="Setup Evidence" title="Setup Performance">
-                <SetupPerformance groups={analytics.groups} />
-              </SectionShell>
+                  <SectionShell eyebrow="Setup Evidence" title="Setup Performance">
+                    <SetupPerformance groups={analytics.groups} />
+                  </SectionShell>
 
-              <SectionShell eyebrow="Trade Autopsy" title="Last 10 Closed Trades">
-                <TradeAutopsy positions={data.positions} />
-              </SectionShell>
+                  <SectionShell eyebrow="Trade Autopsy" title="Last 10 Closed Trades">
+                    <TradeAutopsy positions={data.positions} />
+                  </SectionShell>
 
-              <GhostPortfolioCard positions={data.positions} />
+                  <GhostPortfolioCard positions={data.positions} />
+                </>
+              ) : (
+                <PremiumLockedState
+                  authenticated={entitlement.authenticated}
+                  compact
+                  description="Paper analytics, trade autopsy, setup evidence, equity curve, and ghost portfolio are premium retention tools. Basic paper practice remains available."
+                  previewItems={["Trust metrics and expectancy", "Trade autopsy and setup breakdowns", "Ghost portfolio discipline review"]}
+                  title={entitlement.authenticated ? "Paper analytics are available on Premium" : "Sign in to preview paper analytics"}
+                />
+              )}
 
               <SectionShell eyebrow="Open Risk" title="Active Paper Risk">
                 <OpenRiskSection positions={data.positions} />
@@ -699,10 +715,20 @@ export default async function PaperPage() {
               <ManualPaperTradeForm cashBalance={account?.cash_balance ?? null} />
             </div>
           )}
-          advanced={<RawActivity events={data.events} />}
+          advanced={premiumAccess ? (
+            <RawActivity events={data.events} />
+          ) : (
+            <PremiumLockedState
+              authenticated={entitlement.authenticated}
+              compact
+              description="Advanced paper activity tables are premium. Keep practicing with the simulator and open risk tools, then upgrade when billing is available."
+              previewItems={["Raw trade event history", "Closed-trade diagnostics", "Advanced paper audit trail"]}
+              title="Advanced paper analytics are locked"
+            />
+          )}
         />
 
-        {analytics.error ? <div className="rounded-2xl border border-rose-300/20 bg-rose-400/10 p-4 text-sm text-rose-100">{analytics.error}</div> : null}
+        {analytics?.error ? <div className="rounded-2xl border border-rose-300/20 bg-rose-400/10 p-4 text-sm text-rose-100">{analytics.error}</div> : null}
       </div>
     </TerminalShell>
   );
