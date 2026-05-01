@@ -1,43 +1,40 @@
 import "server-only";
 
-type ResendEmailResponse = {
-  id?: string;
-};
+import nodemailer from "nodemailer";
 
 export type EmailDeliveryResult =
   | { ok: true; providerId: string | null }
   | { ok: false; reason: "not_configured" | "send_failed" };
 
 export async function sendPasswordResetEmail(input: { expiresAt: Date; resetUrl: string; to: string }): Promise<EmailDeliveryResult> {
-  const apiKey = process.env.RESEND_API_KEY?.trim();
-  const from = process.env.EMAIL_FROM?.trim();
-  if (!apiKey || !from) {
+  const config = smtpConfig();
+  if (!config) {
     console.warn("[auth] Password reset email provider is not configured.");
     return { ok: false, reason: "not_configured" };
   }
 
-  const response = await fetch("https://api.resend.com/emails", {
-    body: JSON.stringify({
-      from,
-      to: input.to,
-      subject: "Reset your Market Alpha Scanner password",
+  try {
+    const transporter = nodemailer.createTransport({
+      auth: {
+        pass: config.pass,
+        user: config.user,
+      },
+      host: config.host,
+      port: config.port,
+      secure: config.port === 465,
+    });
+    const result = await transporter.sendMail({
+      from: config.from,
       html: passwordResetHtml(input.resetUrl, input.expiresAt),
+      subject: "Reset your Market Alpha Scanner password",
       text: passwordResetText(input.resetUrl, input.expiresAt),
-    }),
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    method: "POST",
-  });
-
-  if (!response.ok) {
-    console.warn("[auth] Password reset email delivery failed.", { status: response.status });
+      to: input.to,
+    });
+    return { ok: true, providerId: result.messageId ?? null };
+  } catch {
+    console.warn("[auth] Password reset email delivery failed.");
     return { ok: false, reason: "send_failed" };
   }
-
-  const payload = (await response.json().catch(() => null)) as ResendEmailResponse | null;
-  return { ok: true, providerId: payload?.id ?? null };
 }
 
 function passwordResetText(resetUrl: string, expiresAt: Date): string {
@@ -72,4 +69,18 @@ function escapeHtml(value: string): string {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function smtpConfig(): { from: string; host: string; pass: string; port: number; user: string } | null {
+  const host = process.env.SMTP_HOST?.trim();
+  const port = Number(process.env.SMTP_PORT ?? 587);
+  const user = process.env.SMTP_USER?.trim();
+  const pass = process.env.SMTP_PASS?.trim() || process.env.SMTP_PASSWORD?.trim();
+  const from = process.env.EMAIL_FROM?.trim();
+
+  if (!host || !Number.isFinite(port) || port <= 0 || !user || !pass || !from) {
+    return null;
+  }
+
+  return { from, host, pass, port, user };
 }
