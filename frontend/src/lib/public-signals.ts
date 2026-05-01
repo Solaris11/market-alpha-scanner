@@ -176,13 +176,13 @@ export function previewAlertMatches(response: ActiveAlertMatchesResponse, limit 
 }
 
 export function previewAlertOverview(overview: { activeCount: number; lastSentAt: string | null; rules: Array<Record<string, unknown>> }): PublicAlertOverview {
-  const rules = overview.rules.slice(0, 2).map((rule) => ({
+  const rules = overview.rules.slice(0, 2).map((rule, index) => ({
     enabled: Boolean(rule.enabled),
-    id: cleanText(rule.id, "alert"),
+    id: `alert_${index + 1}`,
     limited: true as const,
     scope: cleanText(rule.scope, "global"),
     symbol: cleanOptional(rule.symbol),
-    type: cleanText(rule.type, "alert"),
+    type: "signal_alert",
   }));
   const preview = {
     activeCount: rules.filter((rule) => rule.enabled).length,
