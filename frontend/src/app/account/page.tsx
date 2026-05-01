@@ -4,8 +4,8 @@ import type { QueryResultRow } from "pg";
 import { AccountLogoutButton, AccountSignInCta } from "@/components/account/AccountPageActions";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { getAlertOverview } from "@/lib/alerts";
-import { getCurrentUser } from "@/lib/server/auth";
 import { dbQuery } from "@/lib/server/db";
+import { getEntitlement, type Entitlement } from "@/lib/server/entitlements";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { DEFAULT_USER_RISK_PROFILE, normalizeRiskProfile, type UserRiskProfile } from "@/lib/trading/risk-veto";
 
@@ -24,7 +24,8 @@ type RiskProfileResult = {
 };
 
 export default async function AccountPage() {
-  const user = await getCurrentUser().catch(() => null);
+  const entitlement = await getEntitlement();
+  const user = entitlement.user;
 
   if (!user) {
     return (
@@ -82,7 +83,10 @@ export default async function AccountPage() {
           <AccountSection title="Subscription">
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Current plan</div>
-              <div className="mt-2 text-2xl font-semibold text-slate-50">Private Beta / Free</div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="text-2xl font-semibold text-slate-50">{planLabel(entitlement)}</span>
+                <span className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${planBadgeClass(entitlement)}`}>{planBadgeText(entitlement)}</span>
+              </div>
               <button className="mt-4 cursor-not-allowed rounded-full border border-white/10 px-4 py-2 text-sm text-slate-500" disabled type="button">
                 Billing will be available in Phase 5.
               </button>
@@ -150,6 +154,24 @@ export default async function AccountPage() {
       </div>
     </TerminalShell>
   );
+}
+
+function planLabel(entitlement: Entitlement): string {
+  if (entitlement.isAdmin || entitlement.plan === "admin") return "Private Beta / Admin";
+  if (entitlement.isPremium || entitlement.plan === "premium") return "Private Beta / Premium";
+  return "Private Beta / Free";
+}
+
+function planBadgeText(entitlement: Entitlement): string {
+  if (entitlement.isAdmin || entitlement.plan === "admin") return "Admin";
+  if (entitlement.isPremium || entitlement.plan === "premium") return "Premium";
+  return "Free";
+}
+
+function planBadgeClass(entitlement: Entitlement): string {
+  if (entitlement.isAdmin || entitlement.plan === "admin") return "border-fuchsia-300/35 bg-fuchsia-400/10 text-fuchsia-100";
+  if (entitlement.isPremium || entitlement.plan === "premium") return "border-cyan-300/35 bg-cyan-400/10 text-cyan-100";
+  return "border-slate-500/35 bg-white/[0.04] text-slate-200";
 }
 
 function AccountSection({ children, id, title }: { children: ReactNode; id?: string; title: string }) {

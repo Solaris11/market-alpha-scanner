@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useCurrentUser, type CurrentUser, type CurrentUserEntitlement } from "@/hooks/useCurrentUser";
 
 export function AccountMenu() {
   const router = useRouter();
-  const { logout, user } = useCurrentUser();
+  const { entitlement, logout, user } = useCurrentUser();
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
@@ -72,6 +72,8 @@ export function AccountMenu() {
 
   if (!user) return null;
   const label = user.displayName || user.email;
+  const plan = planStatus(entitlement);
+  const profile = profileMeta(user);
 
   async function handleLogout() {
     setOpen(false);
@@ -93,7 +95,10 @@ export function AccountMenu() {
         <AccountAvatar label={label} imageUrl={user.profileImageUrl} />
         <span className="min-w-0">
           <span className="block truncate font-semibold">{label}</span>
-          <span className="block text-[11px] text-emerald-200/80">Account saved</span>
+          <span className="mt-1 flex flex-wrap items-center gap-1.5">
+            <PlanBadge compact entitlement={entitlement} />
+            <span className="text-[11px] text-emerald-200/80">{plan.shortLabel}</span>
+          </span>
         </span>
       </button>
       {open && mounted
@@ -104,8 +109,11 @@ export function AccountMenu() {
               style={menuStyle}
             >
               <div className="border-b border-white/10 px-3 py-2">
-                <div className="truncate font-semibold text-slate-100">{user.email}</div>
-                <div className="mt-1 text-[11px] text-slate-500">{profileMeta(user)}</div>
+                <div className="flex min-w-0 items-center justify-between gap-2">
+                  <div className="truncate font-semibold text-slate-100">{user.email}</div>
+                  <PlanBadge entitlement={entitlement} />
+                </div>
+                <div className="mt-1 text-[11px] text-slate-500">{profile}</div>
               </div>
               <MenuLink href="/account" label="Profile" onSelect={() => setOpen(false)} />
               <MenuLink href="/account#risk-profile" label="Risk Profile" onSelect={() => setOpen(false)} />
@@ -121,6 +129,15 @@ export function AccountMenu() {
           )
         : null}
     </div>
+  );
+}
+
+function PlanBadge({ compact = false, entitlement }: { compact?: boolean; entitlement: CurrentUserEntitlement }) {
+  const status = planStatus(entitlement);
+  return (
+    <span className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 font-semibold ${compact ? "text-[10px]" : "text-[11px]"} ${status.className}`}>
+      {status.label}
+    </span>
   );
 }
 
@@ -143,9 +160,33 @@ function MenuLink({ href, label, onSelect }: { href: string; label: string; onSe
   );
 }
 
-function profileMeta(user: { onboardingCompleted: boolean; riskExperienceLevel: string | null }) {
+function planStatus(entitlement: CurrentUserEntitlement): { className: string; label: string; shortLabel: string } {
+  if (entitlement.isAdmin || entitlement.plan === "admin") {
+    return {
+      className: "border-fuchsia-300/35 bg-fuchsia-400/10 text-fuchsia-100",
+      label: "Admin",
+      shortLabel: "Admin account",
+    };
+  }
+  if (entitlement.isPremium || entitlement.plan === "premium") {
+    return {
+      className: "border-cyan-300/35 bg-cyan-400/10 text-cyan-100",
+      label: "Premium",
+      shortLabel: "Premium account",
+    };
+  }
+  return {
+    className: "border-slate-500/35 bg-white/[0.04] text-slate-200",
+    label: "Free",
+    shortLabel: "Free account",
+  };
+}
+
+function profileMeta(user: CurrentUser) {
   if (user.riskExperienceLevel) return `${titleCase(user.riskExperienceLevel)} risk profile`;
-  return user.onboardingCompleted ? "Profile complete" : "Profile pending";
+  if (user.onboardingCompleted) return "Profile complete";
+  if (!user.displayName?.trim()) return "Profile setup available";
+  return "Account saved";
 }
 
 function titleCase(value: string) {
