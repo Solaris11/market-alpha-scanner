@@ -1,13 +1,31 @@
 import { NextResponse } from "next/server";
 import { getAlertOverview, readAlertRules, sanitizeAlertRule, writeAlertRules } from "@/lib/alerts";
-import { requireUser } from "@/lib/server/access-control";
+import { accessDenied, requireUser } from "@/lib/server/access-control";
+import { entitlementForUser, entitlementSummary, getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
 import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET() {
-  return NextResponse.json(await getAlertOverview());
+  const entitlement = await getEntitlement();
+  const premium = hasPremiumAccess(entitlement);
+  const overview = await getAlertOverview({ createDefault: premium ? undefined : false });
+  if (!premium) {
+    const rules = overview.rules.slice(0, 2);
+    return NextResponse.json({
+      ...overview,
+      rules,
+      state: { alerts: {} },
+      activeCount: rules.filter((rule) => rule.enabled).length,
+      lastSentAt: null,
+      limited: true,
+      message: "Limited alert preview. Premium unlocks saved alert automation.",
+      entitlement: entitlementSummary(entitlement),
+    });
+  }
+
+  return NextResponse.json({ ...overview, limited: false, entitlement: entitlementSummary(entitlement) });
 }
 
 export async function POST(request: Request) {
@@ -19,6 +37,9 @@ export async function POST(request: Request) {
 
   const access = await requireUser("Sign in to save alert rules.");
   if (!access.ok) return access.response;
+  if (!hasPremiumAccess(entitlementForUser(access.user))) {
+    return accessDenied("Premium plan required.", 403);
+  }
 
   const csrf = requireCsrf(request);
   if (csrf) return csrf;

@@ -3,6 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { isAdminUser } from "./admin";
 import { getCurrentUser, type AuthUser } from "./auth";
+import { entitlementForUser, hasPremiumAccess } from "./entitlements";
 
 type AccessGranted = {
   ok: true;
@@ -41,7 +42,9 @@ export async function requirePremium(): Promise<AccessResult> {
   const access = await requireUser("Sign in to access premium features.");
   if (!access.ok) return access;
 
-  // Placeholder for Phase 3 entitlements. Deny by default until Stripe-backed
-  // premium state exists so paid gates cannot accidentally fail open.
-  return { ok: false, response: accessDenied("Premium access required.", 403) };
+  if (!hasPremiumAccess(entitlementForUser(access.user))) {
+    return { ok: false, response: accessDenied("Premium plan required.", 403) };
+  }
+
+  return access;
 }
