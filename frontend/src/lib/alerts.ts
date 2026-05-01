@@ -375,7 +375,8 @@ export async function writeAlertState(state: AlertState, options: AlertStorageOp
 
 export async function getAlertOverview(options: AlertStorageOptions & { stateLimit?: number } = {}) {
   const userId = await resolveAlertUserId(options);
-  const [rules, state] = await Promise.all([readAlertRules({ userId }), readAlertState({ userId })]);
+  const createDefault = options.createDefault ?? Boolean(userId);
+  const [rules, state] = await Promise.all([readAlertRules({ userId, createDefault }), readAlertState({ userId })]);
   const sentTimes = Object.values(state.alerts)
     .map((entry) => entry.last_sent_at)
     .filter((value): value is string => Boolean(value))
@@ -389,8 +390,6 @@ export async function getAlertOverview(options: AlertStorageOptions & { stateLim
     state: { ...state, alerts: Object.fromEntries(compactStateEntries) },
     activeCount: rules.filter((rule) => rule.enabled).length,
     lastSentAt: sentTimes.length ? sentTimes[sentTimes.length - 1] : null,
-    rulesPath: alertRulesPath(userId),
-    statePath: alertStatePath(userId),
   };
 }
 

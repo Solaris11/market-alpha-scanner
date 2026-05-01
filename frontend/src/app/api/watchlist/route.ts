@@ -3,7 +3,8 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { scannerOutputDir } from "@/lib/scanner-data";
 import { getCurrentUser } from "@/lib/server/auth";
-import { readUserWatchlist } from "@/lib/server/user-watchlist";
+import { requireUser } from "@/lib/server/access-control";
+import { addUserWatchlistSymbols, readUserWatchlist } from "@/lib/server/user-watchlist";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -19,13 +20,6 @@ function watchlistPath() {
   return path.join(scannerOutputDir(), "watchlist.json");
 }
 
-async function writeAtomic(filePath: string, payload: unknown) {
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  const tmpPath = `${filePath}.tmp`;
-  await fs.writeFile(tmpPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-  await fs.rename(tmpPath, filePath);
-}
-
 export async function GET() {
   const user = await getCurrentUser().catch(() => null);
   if (user) {
@@ -38,13 +32,16 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const access = await requireUser("Sign in to save this watchlist.");
+  if (!access.ok) return access.response;
+
   const payload = (await request.json().catch(() => null)) as { symbols?: unknown[] } | null;
   const symbols = Array.from(new Set((payload?.symbols ?? []).map(normalizeSymbol).filter(Boolean))).sort();
   try {
-    await writeAtomic(watchlistPath(), symbols);
-    return NextResponse.json({ ok: true, symbols, path: watchlistPath() });
+    const saved = await addUserWatchlistSymbols(access.user.id, symbols);
+    return NextResponse.json({ ok: true, message: "Watchlist saved.", symbols: saved });
   } catch {
-    return NextResponse.json({ ok: false, error: "Watchlist sync is unavailable.", symbols });
+    return NextResponse.json({ ok: false, message: "Watchlist sync is unavailable.", symbols: [] }, { status: 500 });
   }
 }
 

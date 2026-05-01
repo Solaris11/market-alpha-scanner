@@ -4,12 +4,7 @@ import { execFile } from "node:child_process";
 
 type RunResult = {
   ok: boolean;
-  command: string;
-  cwd: string;
-  stdout: string;
-  stderr: string;
-  exitCode: number | null;
-  error?: string;
+  message: string;
 };
 
 const DEFAULT_SCANNER_ROOT = "/opt/apps/market-alpha-scanner/app";
@@ -23,12 +18,15 @@ function pythonBin() {
   return process.env.PYTHON_BIN ?? DEFAULT_PYTHON_BIN;
 }
 
-export async function runPythonCommand(args: string[]): Promise<RunResult> {
+export async function runPythonCommand(
+  args: string[],
+  messages: { failure?: string; success?: string } = {},
+): Promise<RunResult> {
   const python = pythonBin();
   const cwd = projectRoot();
-  const command = [python, ...args].join(" ");
-  console.log("[scanner-action] command:", command);
-  console.log("[scanner-action] cwd:", cwd);
+  const successMessage = messages.success ?? "Operation completed.";
+  const failureMessage = messages.failure ?? "Operation failed.";
+  console.log("[scanner-action] starting job:", args.join(" "));
 
   return new Promise((resolve) => {
     execFile(
@@ -43,16 +41,15 @@ export async function runPythonCommand(args: string[]): Promise<RunResult> {
         if (error) {
           const nodeError = error as NodeJS.ErrnoException & { code?: string | number | null };
           const exitCode = typeof nodeError.code === "number" ? nodeError.code : null;
-          const message = nodeError.code === "ENOENT" ? `Python executable was not found: ${python}` : error.message;
-          console.log("[scanner-action] exit code:", exitCode ?? nodeError.code ?? "unknown");
+          console.warn("[scanner-action] failed", {
+            code: nodeError.code ?? "unknown",
+            exitCode,
+            stderr: stderr ? stderr.slice(0, 500) : "",
+            stdout: stdout ? stdout.slice(0, 500) : "",
+          });
           resolve({
             ok: false,
-            command,
-            cwd,
-            stdout,
-            stderr,
-            exitCode,
-            error: message,
+            message: failureMessage,
           });
           return;
         }
@@ -60,11 +57,7 @@ export async function runPythonCommand(args: string[]): Promise<RunResult> {
         console.log("[scanner-action] exit code:", 0);
         resolve({
           ok: true,
-          command,
-          cwd,
-          stdout,
-          stderr,
-          exitCode: 0,
+          message: successMessage,
         });
       },
     );

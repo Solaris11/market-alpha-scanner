@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { execFile } from "node:child_process";
 import fsSync from "node:fs";
 import path from "node:path";
+import { requireAdmin } from "@/lib/server/access-control";
 
 type PriceHistoryPayload = {
   ok: boolean;
@@ -53,7 +54,7 @@ function fetchPriceHistory(symbol: string, period: string) {
           const parsed = JSON.parse(stdout || "{}") as PriceHistoryPayload;
           if (error && !parsed.error) {
             parsed.ok = false;
-            parsed.error = stderr || error.message;
+            parsed.error = "Price history is unavailable.";
           }
           resolve(parsed);
         } catch {
@@ -62,7 +63,7 @@ function fetchPriceHistory(symbol: string, period: string) {
             symbol: symbol.toUpperCase(),
             period,
             rows: [],
-            error: stderr || error?.message || "Price history helper did not return JSON.",
+            error: "Price history is unavailable.",
           });
         }
       },
@@ -71,6 +72,9 @@ function fetchPriceHistory(symbol: string, period: string) {
 }
 
 export async function GET(request: Request, context: { params: Promise<{ symbol: string }> }) {
+  const access = await requireAdmin();
+  if (!access.ok) return access.response;
+
   const { symbol } = await context.params;
   const { searchParams } = new URL(request.url);
   const period = (searchParams.get("period") ?? "1y").toLowerCase();

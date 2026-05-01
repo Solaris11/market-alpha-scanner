@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentUser } from "@/lib/server/auth";
+import { requireUser } from "@/lib/server/access-control";
 import { getDbPool } from "@/lib/server/db";
 
 export const dynamic = "force-dynamic";
@@ -40,9 +40,12 @@ function validatePayload(payload: ManualPaperTradePayload) {
 }
 
 export async function POST(request: NextRequest) {
+  const access = await requireUser("Sign in to open paper trades.");
+  if (!access.ok) return access.response;
+
   const clientPool = getDbPool();
   if (!clientPool) {
-    return NextResponse.json({ ok: false, error: "DATABASE_URL not configured" });
+    return NextResponse.json({ ok: false, message: "Paper trading is unavailable." }, { status: 503 });
   }
 
   const payload = (await request.json().catch(() => null)) as ManualPaperTradePayload | null;
@@ -58,9 +61,8 @@ export async function POST(request: NextRequest) {
   const entryPrice = validated.entryPrice!;
   const quantity = validated.quantity!;
   const positionValue = entryPrice * quantity;
-  const user = await getCurrentUser().catch(() => null);
-  const userId = user?.id ?? null;
-  const accountName = userId ? `default:${userId}` : "default";
+  const userId = access.user.id;
+  const accountName = `default:${userId}`;
   const client = await clientPool.connect();
 
   try {

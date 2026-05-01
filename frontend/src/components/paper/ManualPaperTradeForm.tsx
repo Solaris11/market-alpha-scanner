@@ -9,6 +9,7 @@ type Props = {
 
 type OpenPaperResponse = {
   error?: string;
+  message?: string;
   ok: boolean;
 };
 
@@ -91,7 +92,7 @@ export function ManualPaperTradeForm({ cashBalance = null }: Props) {
         method: "POST",
       });
       const payload = (await response.json()) as OpenPaperResponse;
-      if (!response.ok || !payload.ok) throw new Error(payload.error || "Failed to open paper trade.");
+      if (!response.ok || !payload.ok) throw new Error(payload.message || payload.error || "Failed to open paper trade.");
       setMessage(`Opened paper trade for ${symbol.trim().toUpperCase()}.`);
       setSymbol("");
       setEntryPrice("");

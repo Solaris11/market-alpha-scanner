@@ -1,10 +1,17 @@
 import { NextResponse } from "next/server";
 import { runPythonCommand } from "@/lib/run-command";
+import { requireAdmin } from "@/lib/server/access-control";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST() {
-  const result = await runPythonCommand(["investment_scanner_mvp.py", "--run-analysis"]);
+  const access = await requireAdmin();
+  if (!access.ok) return access.response;
+
+  const result = await runPythonCommand(["investment_scanner_mvp.py", "--run-analysis"], {
+    failure: "Analysis refresh failed.",
+    success: "Analysis refresh completed.",
+  });
   return NextResponse.json(result, { status: result.ok ? 200 : 500 });
 }

@@ -41,12 +41,11 @@ type AlertOverview = {
   state: { alerts: Record<string, AlertStateEntry> };
   activeCount: number;
   lastSentAt: string | null;
-  rulesPath: string;
-  statePath: string;
 };
 
 type CommandResult = {
   ok: boolean;
+  message?: string;
   stdout?: string;
   stderr?: string;
   error?: string;
@@ -227,9 +226,9 @@ function compactConfig(rule: AlertRule) {
 
 async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
-  const payload = (await response.json()) as T & { error?: string };
+  const payload = (await response.json()) as T & { error?: string; message?: string };
   if (!response.ok) {
-    throw new Error(payload.error || `Request failed: ${response.status}`);
+    throw new Error(payload.message || payload.error || `Request failed: ${response.status}`);
   }
   return payload;
 }
@@ -854,11 +853,14 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
       {testResult ? (
         <section className={`terminal-panel rounded-md p-4 ${testResult.ok ? "border-emerald-400/20" : "border-rose-400/25"}`}>
           <div className="text-sm font-semibold text-slate-100">{testResult.ok ? "Alert evaluation completed." : "Alert evaluation failed."}</div>
+          {testResult.message ? <div className="mt-2 text-xs text-slate-300">{testResult.message}</div> : null}
           {testResult.error ? <div className="mt-2 text-xs text-rose-200">{testResult.error}</div> : null}
-          <details className="mt-3 text-xs text-slate-400">
-            <summary className="cursor-pointer uppercase tracking-[0.12em] text-slate-500">Advanced diagnostics</summary>
-            <pre className="mt-2 max-h-72 overflow-auto rounded border border-slate-800 bg-slate-950/80 p-3">{`${testResult.stdout ?? ""}\n${testResult.stderr ?? ""}`.trim() || "No logs returned."}</pre>
-          </details>
+          {testResult.stdout || testResult.stderr ? (
+            <details className="mt-3 text-xs text-slate-400">
+              <summary className="cursor-pointer uppercase tracking-[0.12em] text-slate-500">Advanced diagnostics</summary>
+              <pre className="mt-2 max-h-72 overflow-auto rounded border border-slate-800 bg-slate-950/80 p-3">{`${testResult.stdout ?? ""}\n${testResult.stderr ?? ""}`.trim()}</pre>
+            </details>
+          ) : null}
         </section>
       ) : null}
     </div>

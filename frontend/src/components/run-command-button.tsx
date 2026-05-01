@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 type CommandResult = {
   ok: boolean;
-  command: string;
+  message?: string;
   cwd?: string;
   error?: string;
   stdout?: string;
@@ -38,8 +38,7 @@ export function RunCommandButton({ endpoint, label, diagnostic = false }: Props)
     } catch (error) {
       setResult({
         ok: false,
-        command: endpoint,
-        error: error instanceof Error ? error.message : "Request failed.",
+        message: error instanceof Error ? error.message : "Request failed.",
       });
     } finally {
       setLoading(false);
@@ -60,10 +59,7 @@ export function RunCommandButton({ endpoint, label, diagnostic = false }: Props)
       {result ? (
         <div className={`rounded border p-3 text-xs ${result.ok ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100" : "border-rose-400/30 bg-rose-400/10 text-rose-100"}`}>
           <div className="font-semibold">{result.ok ? "Success" : "Error"}</div>
-          <div className="mt-1 text-slate-300">{result.ok ? "Refresh completed." : result.error}</div>
-          {diagnostic && typeof result.exitCode === "number" ? <div className="mt-1 text-slate-400">Exit code: {result.exitCode}</div> : null}
-          {diagnostic && result.command ? <div className="mt-1 font-mono text-slate-400">{result.command}</div> : null}
-          {diagnostic && result.cwd ? <div className="mt-1 font-mono text-slate-500">cwd: {result.cwd}</div> : null}
+          <div className="mt-1 text-slate-300">{result.message ?? result.error ?? (result.ok ? "Refresh completed." : "Request failed.")}</div>
           {diagnostic && (result.stdout || result.stderr) ? (
             <details className="mt-3 text-slate-300">
               <summary className="cursor-pointer text-slate-400">Logs</summary>
