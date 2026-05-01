@@ -1,4 +1,5 @@
 import type { MarketRegime } from "@/lib/adapters/DataServiceAdapter";
+import { rowHasStaleDataSafety, STALE_DATA_ACTION_REASON, type ScanSafetyState } from "@/lib/stale-data-safety";
 import type { BestTradeResult } from "@/lib/trading/conviction";
 import type { RankingRow } from "@/lib/types";
 import { cleanText } from "@/lib/ui/formatters";
@@ -17,9 +18,21 @@ export type DailyActionInput = {
   best: BestTradeResult;
   fallbackRow?: RankingRow | null;
   marketRegime: MarketRegime | null;
+  scanSafety?: ScanSafetyState | null;
 };
 
-export function getDailyAction({ best, fallbackRow, marketRegime }: DailyActionInput): DailyAction {
+export function getDailyAction({ best, fallbackRow, marketRegime, scanSafety }: DailyActionInput): DailyAction {
+  const row = best?.row ?? fallbackRow ?? null;
+  if (scanSafety?.active || (row && rowHasStaleDataSafety(row))) {
+    return {
+      action: "WAIT",
+      label: "WAIT",
+      reason: scanSafety?.reason ?? STALE_DATA_ACTION_REASON,
+      symbol: null,
+      tone: "wait",
+    };
+  }
+
   const regime = normalizeToken(marketRegime?.label);
   if (regime === "OVERHEATED" || regime.includes("OVERHEATED")) {
     return {
@@ -31,7 +44,6 @@ export function getDailyAction({ best, fallbackRow, marketRegime }: DailyActionI
     };
   }
 
-  const row = best?.row ?? fallbackRow ?? null;
   if (!row) return stayOutAction();
 
   const symbol = cleanText(row.symbol, "").toUpperCase();

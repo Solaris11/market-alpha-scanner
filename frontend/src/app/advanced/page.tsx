@@ -6,6 +6,8 @@ import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { getAlertOverview } from "@/lib/alerts";
 import { getFullRanking, getHistorySummary, getTopCandidates } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
+import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
+import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +31,9 @@ export default async function AdvancedPage() {
     );
   }
 
-  const [ranking, topCandidates, history, alerts] = await Promise.all([getFullRanking(), getTopCandidates(), getHistorySummary(), getAlertOverview({ stateLimit: 25 })]);
+  const [rawRanking, rawTopCandidates, history, alerts, scanSafety] = await Promise.all([getFullRanking(), getTopCandidates(), getHistorySummary(), getAlertOverview({ stateLimit: 25 }), getCurrentScanSafety()]);
+  const ranking = applyStaleDataSafetyToRows(rawRanking, scanSafety);
+  const topCandidates = applyStaleDataSafetyToRows(rawTopCandidates, scanSafety);
 
   return (
     <TerminalShell>

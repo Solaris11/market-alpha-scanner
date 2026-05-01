@@ -12,6 +12,7 @@ import { SignalHeatmap } from "@/components/terminal/SignalHeatmap";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
+import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { getDailyAction } from "@/lib/trading/daily-action";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
@@ -21,15 +22,16 @@ export const dynamic = "force-dynamic";
 
 export default async function TerminalPage() {
   const adapter = new ScannerDataAdapter();
-  const [snapshot, performance] = await Promise.all([
+  const [snapshot, performance, scanSafety] = await Promise.all([
     adapter.getTerminalSnapshot(),
     getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
+    getCurrentScanSafety(),
   ]);
   const edges = buildEdgeLookup(snapshot.signals, performance);
   const opportunityModel = buildOpportunitiesPageModel(snapshot.signals, performance);
   const best = selectBestTradeNow(snapshot.signals, edges);
   const leader = best?.row ?? snapshot.topSignals[0] ?? snapshot.signals[0];
-  const dailyAction = getDailyAction({ best, fallbackRow: leader, marketRegime: snapshot.marketRegime });
+  const dailyAction = getDailyAction({ best, fallbackRow: leader, marketRegime: snapshot.marketRegime, scanSafety });
   const tradePlanHref = leader?.symbol ? `/symbol/${leader.symbol}` : "/opportunities";
   const enterCount = snapshot.signals.filter((row) => String(row.final_decision ?? "").toUpperCase() === "ENTER").length;
   const avoidCount = snapshot.signals.filter((row) => String(row.final_decision ?? "").toUpperCase() === "AVOID").length;

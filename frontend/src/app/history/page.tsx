@@ -4,6 +4,8 @@ import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { TerminalShell } from "@/components/shell";
 import { getFullRanking, getHistorySummary, getHistorySymbolsFromSnapshots } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
+import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
+import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +29,8 @@ export default async function HistoryPage() {
     );
   }
 
-  const [history, ranking, historySymbols] = await Promise.all([getHistorySummary(), getFullRanking(), getHistorySymbolsFromSnapshots()]);
+  const [history, rawRanking, historySymbols, scanSafety] = await Promise.all([getHistorySummary(), getFullRanking(), getHistorySymbolsFromSnapshots(), getCurrentScanSafety()]);
+  const ranking = applyStaleDataSafetyToRows(rawRanking, scanSafety);
   const symbols = Array.from(new Set([...ranking.map((row) => row.symbol), ...historySymbols].filter(Boolean).map((symbol) => String(symbol).trim().toUpperCase()))).sort();
   const defaultSymbol = String(ranking[0]?.symbol ?? symbols[0] ?? "").trim().toUpperCase();
 

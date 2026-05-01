@@ -9,6 +9,8 @@ import { SignalLifecycle } from "@/components/signal-lifecycle";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { getCalibrationInsights, getFullRanking, getHistorySummary, getIntradaySignalDriftSummary, getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
+import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
+import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
 
 export const dynamic = "force-dynamic";
 
@@ -149,7 +151,8 @@ export default async function PerformancePage() {
     );
   }
 
-  const [performance, history, driftRows, ranking, calibrationInsights] = await Promise.all([getPerformanceData({ forwardTailRows: 5000 }), getHistorySummary(), getIntradaySignalDriftSummary(), getFullRanking(), getCalibrationInsights()]);
+  const [performance, history, driftRows, rawRanking, calibrationInsights, scanSafety] = await Promise.all([getPerformanceData({ forwardTailRows: 5000 }), getHistorySummary(), getIntradaySignalDriftSummary(), getFullRanking(), getCalibrationInsights(), getCurrentScanSafety()]);
+  const ranking = applyStaleDataSafetyToRows(rawRanking, scanSafety);
   const forwardReturnsReady = performance.forwardReturns.rows.length > 0;
   const forwardObservationCount = Math.max(0, performance.forwardReturns.lineCount - 1);
 

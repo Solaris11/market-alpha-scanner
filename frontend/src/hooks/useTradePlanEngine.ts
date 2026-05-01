@@ -5,6 +5,7 @@ import { useRiskProfile, type RiskProfileActions } from "@/hooks/useRiskProfile"
 import { buildCorrectionMap, correctionMidpoint, formatCorrectionZone } from "@/lib/trading/correction-map";
 import { evaluateRisk, type RiskEvaluation, type RiskPortfolioPosition, type UserRiskProfile } from "@/lib/trading/risk-veto";
 import { buildSignalTradeLevels } from "@/lib/trading/signal-lifecycle";
+import { rowHasStaleDataSafety, STALE_DATA_ACTION_REASON } from "@/lib/stale-data-safety";
 import type { RankingRow } from "@/lib/types";
 import { cleanText, formatMoney, formatNumber, normalizeNumeric } from "@/lib/ui/formatters";
 
@@ -92,6 +93,7 @@ export function useTradePlanEngine(row: RankingRow, portfolio: RiskPortfolioPosi
   }, [state.accountEquity, state.currentPrice, state.entryPrice, state.riskPercent, state.stopLoss, state.targetPrice]);
 
   const validity = useMemo<TradePlanEngineValidity>(() => {
+    const isStaleBlocked = rowHasStaleDataSafety(row);
     const isSystemBlocked = state.finalDecision === "AVOID" || state.finalDecision === "EXIT";
     const isOverextended = state.entryStatus.includes("OVEREXTENDED");
     const hasValidLevels = state.entryPrice !== null && state.stopLoss !== null && state.targetPrice !== null && state.stopLoss < state.entryPrice && state.targetPrice > state.entryPrice;
@@ -99,6 +101,7 @@ export function useTradePlanEngine(row: RankingRow, portfolio: RiskPortfolioPosi
       state.finalDecision === "ENTER" ||
       (state.finalDecision === "WAIT_PULLBACK" && metrics.entryDistancePct !== null && metrics.entryDistancePct <= TRADE_READY_DISTANCE_THRESHOLD);
 
+    if (isStaleBlocked) return { isBlocked: true, isCalculable: false, isOverextended, isTradeValid: false, message: cleanText(row.stale_data_safety_reason, STALE_DATA_ACTION_REASON) };
     if (!hasValidLevels) return { isBlocked: isSystemBlocked, isCalculable: false, isOverextended, isTradeValid: false, message: "No valid trade setup." };
     if (metrics.positionSize <= 0) return { isBlocked: isSystemBlocked, isCalculable: false, isOverextended, isTradeValid, message: "No valid trade setup." };
     if (state.finalDecision === "AVOID") return { isBlocked: true, isCalculable: true, isOverextended, isTradeValid: false, message: "System decision blocks execution for this setup." };
@@ -106,7 +109,7 @@ export function useTradePlanEngine(row: RankingRow, portfolio: RiskPortfolioPosi
     if (isOverextended) return { isBlocked: false, isCalculable: false, isOverextended: true, isTradeValid: false, message: "Wait for correction before entering." };
     if (!isTradeValid) return { isBlocked: false, isCalculable: false, isOverextended, isTradeValid: false, message: "No valid trade setup." };
     return { isBlocked: false, isCalculable: true, isOverextended, isTradeValid, message: "Trade setup valid." };
-  }, [metrics.entryDistancePct, metrics.positionSize, state.entryPrice, state.entryStatus, state.finalDecision, state.stopLoss, state.targetPrice]);
+  }, [metrics.entryDistancePct, metrics.positionSize, row, state.entryPrice, state.entryStatus, state.finalDecision, state.stopLoss, state.targetPrice]);
 
   const riskEvaluation = useMemo<RiskEvaluation>(() => evaluateRisk({
     accountEquity: state.accountEquity,
@@ -153,6 +156,8 @@ export function useTradePlanEngine(row: RankingRow, portfolio: RiskPortfolioPosi
 }
 
 function buildDirective(row: RankingRow, state: TradePlanEngineState, metrics: TradePlanEngineMetrics, validity: TradePlanEngineValidity, riskEvaluation: RiskEvaluation): string {
+  if (rowHasStaleDataSafety(row)) return cleanText(row.stale_data_safety_reason, STALE_DATA_ACTION_REASON);
+
   if (state.finalDecision === "AVOID") return avoidDirective(row, state, validity, metrics);
   if (state.finalDecision === "EXIT") return `Exit position.\nTrend invalidation triggered.${hypotheticalLine(metrics)}`;
 

@@ -2,6 +2,8 @@ import "server-only";
 
 import { getFullRanking, getMarketRegime as getRegimeArtifact, getMarketStructure, getSymbolDetail, getSymbolHistoryForSymbol, getTopCandidates } from "@/lib/scanner-data";
 import { getPaperAnalytics } from "@/lib/paper-data";
+import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
+import { applyStaleDataSafetyToMarketRegime, applyStaleDataSafetyToRow, applyStaleDataSafetyToRows, applyStaleDataSafetyToSymbolDetail } from "@/lib/stale-data-safety";
 import type { RankingRow, SymbolDetail } from "@/lib/types";
 import type { DataServiceAdapter, MarketRegime, SignalHistoryPoint, TerminalSnapshot } from "./DataServiceAdapter";
 import { historyPointFromRow } from "./DataServiceAdapter";
@@ -57,37 +59,39 @@ function inferRegime(rows: RankingRow[], artifact: Record<string, unknown> | nul
 
 export class ScannerDataAdapter implements DataServiceAdapter {
   async getOverviewSignals(): Promise<RankingRow[]> {
-    const rows = await getFullRanking();
-    return rows.length ? rows : MOCK_SIGNALS;
+    const [rows, safety] = await Promise.all([getFullRanking(), getCurrentScanSafety()]);
+    return applyStaleDataSafetyToRows(rows.length ? rows : MOCK_SIGNALS, safety);
   }
 
   async getSymbolDetail(symbol: string): Promise<SymbolDetail> {
-    const detail = await getSymbolDetail(symbol);
-    if (detail.row) return detail;
+    const [detail, safety] = await Promise.all([getSymbolDetail(symbol), getCurrentScanSafety()]);
+    if (detail.row) return applyStaleDataSafetyToSymbolDetail(detail, safety);
     const mock = MOCK_SIGNALS.find((row) => row.symbol === symbol.trim().toUpperCase());
-    return mock ? { row: mock, summary: null, history: [] } : detail;
+    return mock ? { row: applyStaleDataSafetyToRow(mock, safety), summary: null, history: [] } : detail;
   }
 
   async getMarketRegime(): Promise<MarketRegime> {
-    const [rows, regime, structure] = await Promise.all([getFullRanking(), getRegimeArtifact(), getMarketStructure()]);
-    return inferRegime(rows, regime, structure);
+    const [rows, regime, structure, safety] = await Promise.all([getFullRanking(), getRegimeArtifact(), getMarketStructure(), getCurrentScanSafety()]);
+    return applyStaleDataSafetyToMarketRegime(inferRegime(rows, regime, structure), safety);
   }
 
   async getSignalHistory(symbol: string): Promise<SignalHistoryPoint[]> {
-    const rows = await getSymbolHistoryForSymbol(symbol);
-    return rows.map((row) => historyPointFromRow(row, new Date().toISOString())).slice(-40);
+    const [rows, safety] = await Promise.all([getSymbolHistoryForSymbol(symbol), getCurrentScanSafety()]);
+    return applyStaleDataSafetyToRows(rows, safety).map((row) => historyPointFromRow(row, new Date().toISOString())).slice(-40);
   }
 
   async getTerminalSnapshot(): Promise<TerminalSnapshot> {
-    const [signals, topSignals, marketRegime, analytics] = await Promise.all([
+    const [signals, topSignals, marketRegime, analytics, safety] = await Promise.all([
       this.getOverviewSignals(),
       getTopCandidates(),
       this.getMarketRegime(),
       getPaperAnalytics().catch(() => null),
+      getCurrentScanSafety(),
     ]);
+    const safeTopSignals = applyStaleDataSafetyToRows(topSignals.length ? topSignals : signals.slice(0, 12), safety);
     return {
       signals,
-      topSignals: topSignals.length ? topSignals : signals.slice(0, 12),
+      topSignals: safeTopSignals,
       marketRegime,
       historyPreview: [],
       paperSummary: {

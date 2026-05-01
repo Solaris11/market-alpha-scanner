@@ -2,21 +2,25 @@ import { NextResponse } from "next/server";
 import { getTopCandidates } from "@/lib/scanner-data";
 import { entitlementSummary, getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
 import { previewRankingRows } from "@/lib/server/premium-preview";
+import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
+import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const [entitlement, rows] = await Promise.all([getEntitlement(), getTopCandidates()]);
+  const [entitlement, rawRows, scanSafety] = await Promise.all([getEntitlement(), getTopCandidates(), getCurrentScanSafety()]);
+  const rows = applyStaleDataSafetyToRows(rawRows, scanSafety);
 
   if (!hasPremiumAccess(entitlement)) {
     return NextResponse.json({
       rows: previewRankingRows(rows),
+      scanSafety,
       limited: true,
       message: "Limited scanner preview. Premium unlocks all top candidates.",
       entitlement: entitlementSummary(entitlement),
     });
   }
 
-  return NextResponse.json({ rows, limited: false, entitlement: entitlementSummary(entitlement) });
+  return NextResponse.json({ rows, scanSafety, limited: false, entitlement: entitlementSummary(entitlement) });
 }

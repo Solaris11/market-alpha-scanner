@@ -5,6 +5,8 @@ import path from "node:path";
 import { actionFor } from "./format";
 import { readAlertRules, readAlertState, type AlertRule, type AlertRuleState } from "./alerts";
 import { getFullRanking, getScanDataHealth, getTopCandidates, scannerOutputDir } from "./scanner-data";
+import { scanSafetyFromFreshness } from "./server/stale-data-safety";
+import { applyStaleDataSafetyToRows } from "./stale-data-safety";
 import type { RankingRow } from "./types";
 
 export type ActiveAlertMatch = {
@@ -336,17 +338,23 @@ function radarSignals(row: RankingRow) {
 export async function getActiveAlertMatches(): Promise<ActiveAlertMatchesResponse> {
   const generatedAt = new Date().toISOString();
   const health = await getScanDataHealth();
+  const scanSafety = scanSafetyFromFreshness(health);
   if (health.status === "missing" || health.status === "schema_mismatch") {
     return { generated_at: generatedAt, data_status: health.status, matches: [] };
   }
+  if (scanSafety.active) {
+    return { generated_at: generatedAt, data_status: health.status, matches: [] };
+  }
 
-  const [rows, topCandidates, rules, alertState, watchlist] = await Promise.all([
+  const [rawRows, rawTopCandidates, rules, alertState, watchlist] = await Promise.all([
     getFullRanking(),
     getTopCandidates(),
     readAlertRules({ createDefault: false }),
     readAlertState(),
     readWatchlistSymbols(),
   ]);
+  const rows = applyStaleDataSafetyToRows(rawRows, scanSafety);
+  const topCandidates = applyStaleDataSafetyToRows(rawTopCandidates, scanSafety);
   const enabledRules = rules.filter((rule) => rule.enabled);
   const topSymbols = new Set(topCandidates.map((row) => normalizeSymbol(row.symbol)));
   const nowMs = Date.now();

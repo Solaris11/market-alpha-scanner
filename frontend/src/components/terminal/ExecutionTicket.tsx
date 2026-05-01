@@ -31,7 +31,7 @@ export function ExecutionTicket({ engine, symbol }: { engine: TradePlanEngine; s
       <GlassPanel className="p-5">
         <SectionTitle eyebrow="Execution Ready" title="Mock Order Ticket" meta="blocked" />
         <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
-          {engine.validity.isBlocked ? "Execution blocked by system decision" : engine.validity.message}
+          {engine.validity.message || (engine.validity.isBlocked ? "Execution blocked by system decision" : "No valid trade setup.")}
         </div>
       </GlassPanel>
     );
