@@ -25,9 +25,9 @@ export function ForgotPasswordForm() {
         method: "POST",
       });
       const payload = (await response.json().catch(() => null)) as ForgotPasswordResponse | null;
-      setMessage(payload?.message ?? "If an account exists for that email, a reset link will be available shortly.");
+      setMessage(payload?.message ?? "If that email exists, a reset link has been sent.");
     } catch {
-      setMessage("If an account exists for that email, a reset link will be available shortly.");
+      setMessage("If that email exists, a reset link has been sent.");
     } finally {
       setBusy(false);
     }

@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import type { QueryResultRow } from "pg";
 import { normalizeAuthEmail, validatePassword } from "./auth";
 import { dbQuery, getDbPool } from "./db";
+import { canonicalAppUrl } from "./request-security";
 
 const RESET_TTL_MS = 1000 * 60 * 60;
 const BCRYPT_ROUNDS = 12;
@@ -18,7 +19,13 @@ type ResetTokenRow = QueryResultRow & {
   user_id: string;
 };
 
-export async function createPasswordReset(rawEmail: unknown, origin: string): Promise<string | null> {
+export type PasswordResetRequest = {
+  email: string;
+  expiresAt: Date;
+  resetUrl: string;
+};
+
+export async function createPasswordReset(rawEmail: unknown): Promise<PasswordResetRequest | null> {
   const email = normalizeAuthEmail(rawEmail);
   if (!email) return null;
   const result = await dbQuery<UserResetRow>("SELECT id::text, state FROM users WHERE email = $1 LIMIT 1", [email]);
@@ -34,7 +41,11 @@ export async function createPasswordReset(rawEmail: unknown, origin: string): Pr
     `,
     [user.id, hashToken(token), expiresAt],
   );
-  return `${origin}/terminal?resetToken=${encodeURIComponent(token)}`;
+  return {
+    email,
+    expiresAt,
+    resetUrl: resetUrl(token),
+  };
 }
 
 export async function resetPassword(token: unknown, newPassword: unknown): Promise<boolean> {
@@ -76,4 +87,10 @@ export async function resetPassword(token: unknown, newPassword: unknown): Promi
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
+}
+
+function resetUrl(token: string): string {
+  const url = new URL("/reset-password", canonicalAppUrl());
+  url.searchParams.set("token", token);
+  return url.toString();
 }

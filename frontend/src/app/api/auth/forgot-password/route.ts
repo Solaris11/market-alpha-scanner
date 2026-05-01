@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { sendPasswordResetEmail } from "@/lib/server/email";
 import { createPasswordReset } from "@/lib/server/password-reset";
-import { canonicalAppUrl, rateLimitRequest, validateMutationRequest } from "@/lib/server/request-security";
+import { rateLimitRequest, validateMutationRequest } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,12 +18,15 @@ export async function POST(request: Request) {
   if (invalidOrigin) return invalidOrigin;
 
   const payload = (await request.json().catch(() => null)) as ForgotPasswordPayload | null;
-  const origin = canonicalAppUrl().origin;
 
   try {
-    const resetUrl = await createPasswordReset(payload?.email, origin);
-    if (resetUrl && resetLinkLoggingEnabled()) {
-      console.info("[auth] password reset link:", resetUrl);
+    const resetRequest = await createPasswordReset(payload?.email);
+    if (resetRequest) {
+      await sendPasswordResetEmail({
+        expiresAt: resetRequest.expiresAt,
+        resetUrl: resetRequest.resetUrl,
+        to: resetRequest.email,
+      });
     }
   } catch (error) {
     console.warn("[auth] password reset request failed", error instanceof Error ? error.message : error);
@@ -30,10 +34,6 @@ export async function POST(request: Request) {
 
   return NextResponse.json({
     ok: true,
-    message: "If an account exists for that email, a reset link will be available shortly.",
+    message: "If that email exists, a reset link has been sent.",
   });
-}
-
-function resetLinkLoggingEnabled(): boolean {
-  return process.env.NODE_ENV !== "production" || process.env.MARKET_ALPHA_LOG_RESET_LINKS === "true";
 }
