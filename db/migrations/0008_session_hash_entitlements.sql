@@ -3,9 +3,10 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;
 ALTER TABLE user_sessions
 ADD COLUMN IF NOT EXISTS session_token_hash TEXT;
 
--- Existing raw-token sessions are intentionally invalidated. Raw browser
+-- Existing raw-token sessions are intentionally invalidated once. Raw browser
 -- session tokens must never remain in durable storage.
-DELETE FROM user_sessions;
+DELETE FROM user_sessions
+WHERE session_token_hash IS NULL;
 
 ALTER TABLE user_sessions
 ALTER COLUMN session_token DROP NOT NULL;
