@@ -1,8 +1,11 @@
 import "server-only";
 
 import { NextResponse } from "next/server";
+import type { QueryResultRow } from "pg";
+import { devConfigPremiumEnabled, productionMockPremiumEnabled, subscriptionGrantsPremium } from "@/lib/security/entitlement-policy";
 import { isAdminUser } from "./admin";
 import { getCurrentUser, type AuthUser } from "./auth";
+import { dbQuery } from "./db";
 
 export type RouteAccess = "public" | "free" | "premium" | "admin";
 
@@ -13,7 +16,14 @@ export type Entitlement = {
   isAdmin: boolean;
   isPremium: boolean;
   plan: EntitlementPlan;
+  subscriptionStatus: string | null;
   user: AuthUser | null;
+};
+
+type SubscriptionRow = QueryResultRow & {
+  current_period_end: Date | string | null;
+  plan: string | null;
+  status: string | null;
 };
 
 export const ROUTE_CLASSIFICATION: Record<RouteAccess, string[]> = {
@@ -68,19 +78,48 @@ export const ROUTE_CLASSIFICATION: Record<RouteAccess, string[]> = {
 
 export async function getEntitlement(): Promise<Entitlement> {
   const user = await getCurrentUser().catch(() => null);
-  return entitlementForUser(user);
+  return getEntitlementForUser(user);
+}
+
+export async function getEntitlementForUser(user: AuthUser | null): Promise<Entitlement> {
+  if (!user) return entitlementForUser(null);
+
+  const subscription = await getUserSubscription(user.id);
+  const admin = isAdminUser(user);
+  const subscriptionPremium = subscriptionGrantsPremium(
+    subscription
+      ? {
+          currentPeriodEnd: subscription.current_period_end,
+          plan: subscription.plan,
+          status: subscription.status,
+        }
+      : null,
+  );
+  const devPremium = devConfigPremiumEnabled(user.email);
+  const premium = subscriptionPremium || devPremium;
+  const plan: EntitlementPlan = admin ? "admin" : premium ? "premium" : "free";
+
+  return {
+    authenticated: true,
+    isAdmin: admin,
+    isPremium: premium,
+    plan,
+    subscriptionStatus: subscription?.status ?? null,
+    user,
+  };
 }
 
 export function entitlementForUser(user: AuthUser | null): Entitlement {
   const admin = isAdminUser(user);
-  const premium = Boolean(user) && (admin || mockPremiumEnabled() || isPremiumEmail(user?.email ?? ""));
-  const plan: EntitlementPlan = admin ? "admin" : premium ? "premium" : user ? "free" : "anonymous";
+  const devPremium = Boolean(user) && devConfigPremiumEnabled(user?.email ?? "");
+  const plan: EntitlementPlan = admin ? "admin" : devPremium ? "premium" : user ? "free" : "anonymous";
 
   return {
     authenticated: Boolean(user),
     isAdmin: admin,
-    isPremium: premium,
+    isPremium: devPremium,
     plan,
+    subscriptionStatus: null,
     user,
   };
 }
@@ -95,6 +134,7 @@ export function entitlementSummary(entitlement: Entitlement): Omit<Entitlement, 
     isAdmin: entitlement.isAdmin,
     isPremium: entitlement.isPremium,
     plan: entitlement.plan,
+    subscriptionStatus: entitlement.subscriptionStatus,
   };
 }
 
@@ -125,23 +165,25 @@ export function classifyRoute(pathname: string): RouteAccess {
   return "public";
 }
 
-function mockPremiumEnabled(): boolean {
-  return process.env.MARKET_ALPHA_MOCK_PREMIUM === "true";
-}
-
-function isPremiumEmail(email: string): boolean {
-  const normalized = email.trim().toLowerCase();
-  if (!normalized) return false;
-  return premiumEmailSet().has(normalized);
-}
-
-function premiumEmailSet(): Set<string> {
-  return new Set(
-    `${process.env.MARKET_ALPHA_PREMIUM_EMAILS ?? ""},${process.env.MARKET_ALPHA_MOCK_PREMIUM_EMAILS ?? ""}`
-      .split(",")
-      .map((email) => email.trim().toLowerCase())
-      .filter(Boolean),
-  );
+async function getUserSubscription(userId: string): Promise<SubscriptionRow | null> {
+  try {
+    const result = await dbQuery<SubscriptionRow>(
+      `
+        SELECT status, plan, current_period_end
+        FROM user_subscriptions
+        WHERE user_id = $1
+        LIMIT 1
+      `,
+      [userId],
+    );
+    return result.rows[0] ?? null;
+  } catch {
+    if (productionMockPremiumEnabled()) {
+      console.warn("[entitlements] MARKET_ALPHA_MOCK_PREMIUM is ignored in production.");
+    }
+    console.warn("[entitlements] subscription lookup unavailable; defaulting to free access.");
+    return null;
+  }
 }
 
 function matchesRoute(pathname: string, patterns: string[]): boolean {

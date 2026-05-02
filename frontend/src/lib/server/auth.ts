@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import type { QueryResultRow } from "pg";
+import { hashSessionToken } from "@/lib/security/session-token";
 import { dbQuery } from "./db";
 
 export const SESSION_COOKIE_NAME = "market_alpha_session";
@@ -184,17 +185,18 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
 export async function getUserForSessionToken(token: string): Promise<AuthUser | null> {
   if (!token.trim()) return null;
+  const tokenHash = hashSessionToken(token);
   const result = await dbQuery<UserRow>(
     `
       SELECT ${USER_SELECT_U}
       FROM user_sessions s
       JOIN users u ON u.id = s.user_id
-      WHERE s.session_token = $1
+      WHERE s.session_token_hash = $1
         AND s.expires_at > now()
         AND u.state = 'active'
       LIMIT 1
     `,
-    [token],
+    [tokenHash],
   );
   const row = result.rows[0];
   return row ? userFromRow(row) : null;
@@ -204,14 +206,15 @@ export async function createSessionForUser(userId: string): Promise<AuthSession>
   const user = await getUserById(userId);
   if (!user) throw new Error("User is unavailable.");
   const token = randomBytes(32).toString("base64url");
+  const tokenHash = hashSessionToken(token);
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-  await dbQuery("INSERT INTO user_sessions (user_id, session_token, expires_at, created_at) VALUES ($1, $2, $3, now())", [user.id, token, expiresAt]);
+  await dbQuery("INSERT INTO user_sessions (user_id, session_token_hash, expires_at, created_at) VALUES ($1, $2, $3, now())", [user.id, tokenHash, expiresAt]);
   return { expiresAt, token, user };
 }
 
 export async function deleteSessionToken(token: string | undefined): Promise<void> {
   if (!token) return;
-  await dbQuery("DELETE FROM user_sessions WHERE session_token = $1", [token]);
+  await dbQuery("DELETE FROM user_sessions WHERE session_token_hash = $1", [hashSessionToken(token)]);
 }
 
 export function userFromRow(row: UserRow | undefined): AuthUser {

@@ -3,7 +3,7 @@ import "server-only";
 import { NextResponse } from "next/server";
 import { isAdminUser } from "./admin";
 import { getCurrentUser, type AuthUser } from "./auth";
-import { entitlementForUser, hasPremiumAccess } from "./entitlements";
+import { getEntitlementForUser, hasPremiumAccess } from "./entitlements";
 
 type AccessGranted = {
   ok: true;
@@ -42,7 +42,7 @@ export async function requirePremium(): Promise<AccessResult> {
   const access = await requireUser("Sign in to access premium features.");
   if (!access.ok) return access;
 
-  if (!hasPremiumAccess(entitlementForUser(access.user))) {
+  if (!hasPremiumAccess(await getEntitlementForUser(access.user))) {
     return { ok: false, response: accessDenied("Premium plan required.", 403) };
   }
 
