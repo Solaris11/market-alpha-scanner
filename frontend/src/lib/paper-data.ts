@@ -304,18 +304,7 @@ export async function getPaperData(scope?: PaperDataScope): Promise<PaperData> {
         LIMIT 1
       `, [userId]),
       clientPool.query(`
-        WITH latest_run AS (
-          SELECT id
-          FROM scan_runs
-          ORDER BY completed_at DESC NULLS LAST, started_at DESC
-          LIMIT 1
-        ),
-        latest_prices AS (
-          SELECT symbol, price
-          FROM scanner_signals
-          WHERE scan_run_id = (SELECT id FROM latest_run)
-        ),
-        scoped_account AS (
+        WITH scoped_account AS (
           SELECT id
           FROM paper_accounts
           WHERE user_id = $1::uuid
@@ -331,7 +320,7 @@ export async function getPaperData(scope?: PaperDataScope): Promise<PaperData> {
           p.entry_price,
           p.exit_price,
           CASE
-            WHEN p.status = 'OPEN' THEN lp.price
+            WHEN p.status = 'OPEN' THEN p.entry_price
             ELSE p.exit_price
           END AS current_price,
           p.quantity,
@@ -347,7 +336,6 @@ export async function getPaperData(scope?: PaperDataScope): Promise<PaperData> {
           p.return_pct,
           p.close_reason
         FROM paper_positions p
-        LEFT JOIN latest_prices lp ON lp.symbol = p.symbol
         WHERE p.account_id = (SELECT id FROM scoped_account)
         ORDER BY CASE WHEN p.status = 'OPEN' THEN 0 ELSE 1 END, COALESCE(p.closed_at, p.opened_at) DESC
         LIMIT 100
