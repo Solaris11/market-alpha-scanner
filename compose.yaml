@@ -1,9 +1,16 @@
 name: market-alpha-scanner
 
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "50m"
+    max-file: "5"
+
 services:
   market-alpha-postgres:
     image: postgres:16-alpine
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-market_alpha}
       POSTGRES_USER: ${POSTGRES_USER:-market_alpha}
@@ -29,6 +36,11 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *default-logging
     depends_on:
       market-alpha-postgres:
         condition: service_healthy
@@ -47,10 +59,10 @@ services:
         "--server.address=0.0.0.0",
         "--server.port=8501",
       ]
-    ports:
-      - "${STREAMLIT_HOST_PORT:-18501}:8501"
+    expose:
+      - "8501"
     volumes:
-      - /opt/apps/market-alpha-scanner/runtime/scanner_output:/app/scanner_output
+      - /opt/apps/market-alpha-scanner/runtime/scanner_output:/app/scanner_output:ro
       - /opt/apps/market-alpha-scanner/runtime/logs:/app/logs
     networks:
       - market-alpha-scanner-private
@@ -60,6 +72,11 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *default-logging
     depends_on:
       market-alpha-postgres:
         condition: service_healthy
@@ -70,8 +87,8 @@ services:
       - "api.main:app"
       - "--host=0.0.0.0"
       - "--port=8000"
-    ports:
-      - "${API_HOST_PORT:-18000}:8000"
+    expose:
+      - "8000"
     networks:
       - market-alpha-scanner-private
 
@@ -81,6 +98,21 @@ services:
       dockerfile: frontend/Dockerfile
     container_name: market-alpha-frontend
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *default-logging
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch(\'http://127.0.0.1:3001/api/health\').then(async (r)=>{if(!r.ok) process.exit(1); const body = await r.json(); process.exit(body && body.ok ? 0 : 1);}).catch(()=>process.exit(1))\"",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     depends_on:
       market-alpha-postgres:
         condition: service_healthy
@@ -109,14 +141,18 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
-    ports:
-      - "3001:3001"
+    expose:
+      - "3001"
     volumes:
-      - /opt/apps/market-alpha-scanner/runtime/scanner_output:/app/scanner_output
+      - /opt/apps/market-alpha-scanner/runtime/scanner_output:/app/scanner_output:ro
     networks:
       - market-alpha-scanner-private
+      - public-edge
 
 networks:
   market-alpha-scanner-private:
     name: market-alpha-scanner-private
     driver: bridge
+  public-edge:
+    external: true
+    name: public-edge
