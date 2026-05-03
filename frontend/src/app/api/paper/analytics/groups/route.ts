@@ -1,14 +1,16 @@
 import { NextResponse } from "next/server";
-import { getPaperAnalytics } from "@/lib/paper-data";
+import { emptyPaperAnalytics, getPaperAnalytics } from "@/lib/paper-data";
 import { entitlementSummary, getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET() {
-  const [entitlement, data] = await Promise.all([getEntitlement(), getPaperAnalytics()]);
+  const entitlement = await getEntitlement();
   const premium = hasPremiumAccess(entitlement);
+  const data = premium ? await getPaperAnalytics({ userId: entitlement.user?.id ?? null }) : emptyPaperAnalytics(true);
   return NextResponse.json({
+    ok: !data.error,
     configured: data.configured,
     rows: premium ? data.groups : data.groups.slice(0, 3),
     error: data.error ?? null,

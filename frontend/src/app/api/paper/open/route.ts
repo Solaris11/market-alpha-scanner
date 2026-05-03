@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { safePaperErrorCode } from "@/lib/paper-safety";
 import { requireUser } from "@/lib/server/access-control";
 import { getDbPool } from "@/lib/server/db";
 import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
 
   const clientPool = getDbPool();
   if (!clientPool) {
-    return NextResponse.json({ ok: false, message: "Paper trading is unavailable." }, { status: 503 });
+    return NextResponse.json({ ok: false, error: safePaperErrorCode("trade") }, { status: 503 });
   }
 
   const payload = (await request.json().catch(() => null)) as ManualPaperTradePayload | null;
@@ -207,7 +208,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
     console.error("[paper] failed to open manual paper trade", error);
-    return NextResponse.json({ ok: false, error: "Failed to open manual paper trade" }, { status: 500 });
+    return NextResponse.json({ ok: false, error: safePaperErrorCode("trade") }, { status: 500 });
   } finally {
     client.release();
   }

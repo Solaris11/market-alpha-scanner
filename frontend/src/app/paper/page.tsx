@@ -641,7 +641,8 @@ function SectionShell({ children, eyebrow, title }: { children: React.ReactNode;
 export default async function PaperPage() {
   const entitlement = await getEntitlement();
   const premiumAccess = hasPremiumAccess(entitlement);
-  const [data, analytics] = await Promise.all([getPaperData(), premiumAccess ? getPaperAnalytics() : Promise.resolve(null)]);
+  const paperScope = { userId: entitlement.user?.id ?? null };
+  const [data, analytics] = await Promise.all([getPaperData(paperScope), premiumAccess ? getPaperAnalytics(paperScope) : Promise.resolve(null)]);
   const account = data.account;
   const closedPositions = closedPaperPositions(data.positions);
   const equityPoints = buildEquityPoints(closedPositions);
@@ -673,7 +674,7 @@ export default async function PaperPage() {
 
         {!data.configured || data.error || !account ? (
           <SectionShell eyebrow="Paper Account" title="Paper Account Unavailable">
-            <p className="max-w-3xl text-sm text-slate-400">{data.error ?? "Run the scanner with paper trading enabled to create the default account."}</p>
+            <p className="max-w-3xl text-sm text-slate-400">{paperErrorMessage(data.error)}</p>
           </SectionShell>
         ) : null}
 
@@ -728,8 +729,14 @@ export default async function PaperPage() {
           )}
         />
 
-        {analytics?.error ? <div className="rounded-2xl border border-rose-300/20 bg-rose-400/10 p-4 text-sm text-rose-100">{analytics.error}</div> : null}
+        {analytics?.error ? <div className="rounded-2xl border border-rose-300/20 bg-rose-400/10 p-4 text-sm text-rose-100">{paperErrorMessage(analytics.error)}</div> : null}
       </div>
     </TerminalShell>
   );
+}
+
+function paperErrorMessage(error: string | undefined): string {
+  if (error === "paper_account_unavailable") return "Paper account data is temporarily unavailable.";
+  if (error === "paper_analytics_unavailable") return "Paper analytics are temporarily unavailable.";
+  return "Start your first What-If simulation to build trading confidence.";
 }

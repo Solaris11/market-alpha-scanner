@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { QueryResultRow } from "pg";
+import { paperAccessScope, safePaperErrorCode } from "@/lib/paper-safety";
 import { getCurrentUser } from "@/lib/server/auth";
 import { getDbPool } from "@/lib/server/db";
 
@@ -109,6 +110,26 @@ const ZERO_ANALYTICS_SUMMARY: PaperAnalyticsSummary = {
   total_pnl: 0,
   max_drawdown: 0,
 };
+
+export function emptyPaperData(configured = true, error?: string): PaperData {
+  return {
+    configured,
+    account: null,
+    positions: [],
+    events: [],
+    ...(error ? { error } : {}),
+  };
+}
+
+export function emptyPaperAnalytics(configured = true, error?: string): PaperAnalyticsData {
+  return {
+    configured,
+    summary: { ...ZERO_ANALYTICS_SUMMARY },
+    groups: [],
+    timeline: [],
+    ...(error ? { error } : {}),
+  };
+}
 
 function numberValue(value: unknown): number {
   const parsed = typeof value === "number" ? value : Number(value);
@@ -240,16 +261,14 @@ function analyticsGroupFromRow(row: QueryResultRow): PaperAnalyticsGroupRow {
 export async function getPaperData(scope?: PaperDataScope): Promise<PaperData> {
   const clientPool = getDbPool();
   if (!clientPool) {
-    return {
-      configured: false,
-      account: null,
-      positions: [],
-      events: [],
-      error: "DATABASE_URL is not configured.",
-    };
+    return emptyPaperData(false, safePaperErrorCode("account"));
   }
 
   const userId = await resolvePaperUserId(scope);
+  const access = paperAccessScope(userId);
+  if (!access.canReadServerData) {
+    return emptyPaperData(true);
+  }
 
   try {
     const [accountResult, positionsResult, eventsResult] = await Promise.all([
@@ -257,7 +276,7 @@ export async function getPaperData(scope?: PaperDataScope): Promise<PaperData> {
         WITH scoped_account AS (
           SELECT id
           FROM paper_accounts
-          WHERE (($1::uuid IS NOT NULL AND user_id = $1::uuid) OR ($1::uuid IS NULL AND name = 'default'))
+          WHERE user_id = $1::uuid
           ORDER BY created_at DESC
           LIMIT 1
         ),
@@ -299,7 +318,7 @@ export async function getPaperData(scope?: PaperDataScope): Promise<PaperData> {
         scoped_account AS (
           SELECT id
           FROM paper_accounts
-          WHERE (($1::uuid IS NOT NULL AND user_id = $1::uuid) OR ($1::uuid IS NULL AND name = 'default'))
+          WHERE user_id = $1::uuid
           ORDER BY created_at DESC
           LIMIT 1
         )
@@ -337,7 +356,7 @@ export async function getPaperData(scope?: PaperDataScope): Promise<PaperData> {
         WITH scoped_account AS (
           SELECT id
           FROM paper_accounts
-          WHERE (($1::uuid IS NOT NULL AND user_id = $1::uuid) OR ($1::uuid IS NULL AND name = 'default'))
+          WHERE user_id = $1::uuid
           ORDER BY created_at DESC
           LIMIT 1
         )
@@ -364,30 +383,23 @@ export async function getPaperData(scope?: PaperDataScope): Promise<PaperData> {
       positions: positionsResult.rows.map(positionFromRow),
       events: eventsResult.rows.map(eventFromRow),
     };
-  } catch {
-    return {
-      configured: true,
-      account: null,
-      positions: [],
-      events: [],
-      error: "Paper trading data is unavailable.",
-    };
+  } catch (error) {
+    console.warn("[paper] failed to read paper data", error instanceof Error ? error.message : error);
+    return emptyPaperData(true, safePaperErrorCode("account"));
   }
 }
 
 export async function getPaperAnalytics(scope?: PaperDataScope): Promise<PaperAnalyticsData> {
   const clientPool = getDbPool();
   if (!clientPool) {
-    return {
-      configured: false,
-      summary: { ...ZERO_ANALYTICS_SUMMARY },
-      groups: [],
-      timeline: [],
-      error: "DATABASE_URL is not configured.",
-    };
+    return emptyPaperAnalytics(false, safePaperErrorCode("analytics"));
   }
 
   const userId = await resolvePaperUserId(scope);
+  const access = paperAccessScope(userId);
+  if (!access.canReadServerData) {
+    return emptyPaperAnalytics(true);
+  }
 
   try {
     const [summaryResult, groupsResult, timelineResult] = await Promise.all([
@@ -395,7 +407,7 @@ export async function getPaperAnalytics(scope?: PaperDataScope): Promise<PaperAn
         WITH scoped_account AS (
           SELECT id
           FROM paper_accounts
-          WHERE (($1::uuid IS NOT NULL AND user_id = $1::uuid) OR ($1::uuid IS NULL AND name = 'default'))
+          WHERE user_id = $1::uuid
           ORDER BY created_at DESC
           LIMIT 1
         ),
@@ -424,7 +436,7 @@ export async function getPaperAnalytics(scope?: PaperDataScope): Promise<PaperAn
         WITH scoped_account AS (
           SELECT id
           FROM paper_accounts
-          WHERE (($1::uuid IS NOT NULL AND user_id = $1::uuid) OR ($1::uuid IS NULL AND name = 'default'))
+          WHERE user_id = $1::uuid
           ORDER BY created_at DESC
           LIMIT 1
         ),
@@ -471,7 +483,7 @@ export async function getPaperAnalytics(scope?: PaperDataScope): Promise<PaperAn
         WITH scoped_account AS (
           SELECT id
           FROM paper_accounts
-          WHERE (($1::uuid IS NOT NULL AND user_id = $1::uuid) OR ($1::uuid IS NULL AND name = 'default'))
+          WHERE user_id = $1::uuid
           ORDER BY created_at DESC
           LIMIT 1
         ),
@@ -499,14 +511,9 @@ export async function getPaperAnalytics(scope?: PaperDataScope): Promise<PaperAn
       groups: groupsResult.rows.map(analyticsGroupFromRow),
       timeline,
     };
-  } catch {
-    return {
-      configured: true,
-      summary: { ...ZERO_ANALYTICS_SUMMARY },
-      groups: [],
-      timeline: [],
-      error: "Paper trading analytics are unavailable.",
-    };
+  } catch (error) {
+    console.warn("[paper] failed to read paper analytics", error instanceof Error ? error.message : error);
+    return emptyPaperAnalytics(true, safePaperErrorCode("analytics"));
   }
 }
 
