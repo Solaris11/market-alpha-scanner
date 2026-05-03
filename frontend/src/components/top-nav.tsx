@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { NotificationBell } from "./notifications/NotificationBell";
 
 const NAV_ITEMS = [
   { href: "/terminal", label: "Terminal" },
@@ -42,6 +43,7 @@ export function TopNav() {
           </Link>
         );
       })}
+      {authenticated ? <NotificationBell /> : null}
     </nav>
   );
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { registerWithPassword, SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
+import { createLoginNotifications } from "@/lib/server/notifications";
 import { rateLimitRequest, requestIp, validateMutationRequest } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +26,9 @@ export async function POST(request: Request) {
 
   try {
     const session = await registerWithPassword({ ...payload, ip: requestIp(request) });
+    await createLoginNotifications(session.user.id).catch((notificationError) => {
+      console.warn("[notifications] register notification failed", notificationError instanceof Error ? notificationError.message : notificationError);
+    });
     const response = NextResponse.json({ ok: true, user: session.user });
     response.cookies.set(SESSION_COOKIE_NAME, session.token, sessionCookieOptions(session.expiresAt));
     return response;

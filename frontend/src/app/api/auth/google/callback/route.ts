@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
+import { createLoginNotifications } from "@/lib/server/notifications";
 import { authenticateGoogleCode, GOOGLE_OAUTH_STATE_COOKIE, googleOAuthStateCookieOptions } from "@/lib/server/oauth";
 import { canonicalAppUrl, rateLimitRequest, requestIp } from "@/lib/server/request-security";
 
@@ -23,6 +24,9 @@ export async function GET(request: NextRequest) {
 
   try {
     const session = await authenticateGoogleCode(code, requestIp(request));
+    await createLoginNotifications(session.user.id).catch((notificationError) => {
+      console.warn("[notifications] google login notification failed", notificationError instanceof Error ? notificationError.message : notificationError);
+    });
     const response = clearState(NextResponse.redirect(redirectUrl));
     response.cookies.set(SESSION_COOKIE_NAME, session.token, sessionCookieOptions(session.expiresAt));
     return response;

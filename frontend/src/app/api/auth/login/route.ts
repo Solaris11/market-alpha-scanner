@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { loginWithPassword, normalizeAuthEmail, SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
+import { createLoginNotifications } from "@/lib/server/notifications";
 import { rateLimitRequest, requestIp, validateMutationRequest } from "@/lib/server/request-security";
 import { rateLimitExceededResponse, tooManyAttempts } from "@/lib/server/rate-limit";
 
@@ -32,6 +33,9 @@ export async function POST(request: Request) {
     if (!session) {
       return NextResponse.json({ ok: false, error: "Invalid email or password" }, { status: 401 });
     }
+    await createLoginNotifications(session.user.id).catch((notificationError) => {
+      console.warn("[notifications] login notification failed", notificationError instanceof Error ? notificationError.message : notificationError);
+    });
     const response = NextResponse.json({ ok: true, user: session.user });
     response.cookies.set(SESSION_COOKIE_NAME, session.token, sessionCookieOptions(session.expiresAt));
     return response;

@@ -1,4 +1,5 @@
 import { AccountPill } from "@/components/account/AccountPill";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { OnboardingHelpButton } from "@/components/onboarding/OnboardingHelpButton";
 import { TerminalNav } from "./TerminalNav";
 
@@ -14,7 +15,10 @@ export function TerminalHeader() {
           <TerminalNav />
           <OnboardingHelpButton />
         </div>
-        <AccountPill />
+        <div className="flex items-start justify-end gap-2">
+          <NotificationBell />
+          <AccountPill />
+        </div>
       </div>
     </header>
   );
