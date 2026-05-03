@@ -24,12 +24,11 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   const { symbol } = await params;
   const entitlement = await getEntitlement();
   const premiumAccess = hasPremiumAccess(entitlement);
-  const adapter = new ScannerDataAdapter();
 
   if (!premiumAccess) {
     const cleaned = symbol.trim().toUpperCase();
-    const { signal } = await getPublicSymbolSignal(cleaned);
-    assertNoPremiumFields({ signal });
+    const { summary, signal } = await getPublicSymbolSignal(cleaned);
+    assertNoPremiumFields({ signal, summary });
 
     return (
       <TerminalShell>
@@ -38,23 +37,20 @@ export default async function SymbolDetailPage({ params }: PageProps) {
             Back to terminal
           </Link>
         </div>
-        {!signal ? (
-          <EmptyState title="Symbol not found" message={`${cleaned} is not available in the current scanner output.`} />
-        ) : (
-          <div className="space-y-4">
-            <PublicSymbolPreview signal={signal} />
-            <PremiumLockedState
-              authenticated={entitlement.authenticated}
-              description="Premium unlocks the full symbol trade plan, risk levels, simulator, and execution controls."
-              previewItems={["Full trade plan", "Risk simulation", "Decision assistant"]}
-              title={entitlement.authenticated ? "This trade plan is available on Premium" : "Sign in to unlock this trade plan"}
-            />
-          </div>
-        )}
+        <div className="space-y-4">
+          <PublicSymbolPreview summary={summary} />
+          <PremiumLockedState
+            authenticated={entitlement.authenticated}
+            description="Premium unlocks full symbol research, risk levels, simulator context, and decision-assistant details."
+            previewItems={["Full research plan", "Risk simulation", "Decision assistant"]}
+            title={entitlement.authenticated ? "This research plan is available on Premium" : "Sign in to unlock this research plan"}
+          />
+        </div>
       </TerminalShell>
     );
   }
 
+  const adapter = new ScannerDataAdapter();
   const [detail, history, paper, performance] = await Promise.all([adapter.getSymbolDetail(symbol), adapter.getSignalHistory(symbol), getPaperData().catch(() => ({ positions: [], events: [] })), getPerformanceData({ forwardTailRows: 5000 }).catch(() => null)]);
   const row = detail.row;
   const edgeProof = row ? buildHistoricalEdgeProof(row, performance) : null;

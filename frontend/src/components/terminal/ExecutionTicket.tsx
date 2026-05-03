@@ -43,6 +43,9 @@ export function ExecutionTicket({ engine, symbol }: { engine: TradePlanEngine; s
       <div className="mt-3 inline-flex rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-100">
         Protected by Risk Rules
       </div>
+      <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-400/10 p-3 text-xs leading-5 text-amber-100">
+        Paper simulation only. This is not financial advice and no live broker order will be placed.
+      </div>
       {riskStatus !== "OK" ? <ExecutionRiskBanner allowOverride={engine.riskProfile.allowOverride} checked={overrideAccepted} onChange={setOverrideAccepted} reasons={engine.riskEvaluation.reasons} status={riskStatus} /> : null}
       <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-400">
         <Select label="Side" value={s.side} onChange={(value) => ticket.setters.setSide(value as OrderSide)} options={["buy", "sell"]} />

@@ -53,8 +53,8 @@ export function getDailyAction({ best, fallbackRow, marketRegime, scanSafety }: 
   if (decision === "BUY") {
     return {
       action: "BUY",
-      label: `BUY ${symbol}`,
-      reason: "Strong setup with acceptable risk.",
+      label: `RESEARCH SIGNAL ${symbol}`,
+      reason: "Strong setup with acceptable risk for research.",
       symbol,
       tone: "buy",
     };

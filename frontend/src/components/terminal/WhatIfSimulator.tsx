@@ -39,6 +39,9 @@ export function WhatIfSimulator({ engine }: { engine: TradePlanEngine }) {
     <div data-onboarding-target="what-if-simulator">
       <GlassPanel className="p-5">
         <SectionTitle eyebrow="What-If" title="Trade Simulator" meta={readOnly ? "read-only" : displayRiskStatus === "OK" ? (validity.isCalculable ? "synced live" : "blocked") : displayRiskStatus.toLowerCase()} />
+        <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-400/10 p-3 text-xs leading-5 text-amber-100">
+          Research and paper simulation only. This is not financial advice.
+        </div>
         {readOnly ? (
           <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-3 text-xs font-semibold text-amber-100">
             System decision is {state.finalDecision}. Simulator is read-only, with calculations kept visible.

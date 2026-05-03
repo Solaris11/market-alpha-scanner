@@ -141,8 +141,8 @@ function BestTradeNowOpportunityCard({ best, marketCondition }: { best: Opportun
   if (!best) {
     return (
       <GlassPanel className="overflow-hidden p-6 md:p-8">
-        <div className="text-[10px] font-black uppercase tracking-[0.32em] text-cyan-300">Best Trade Now</div>
-        <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-50">No trade recommended right now</h2>
+        <div className="text-[10px] font-black uppercase tracking-[0.32em] text-cyan-300">Top Setup</div>
+        <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-50">No research setup right now</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
           Market conditions: {cleanText(marketCondition, "not favorable").toUpperCase()} - wait for pullbacks or stronger confirmation.
         </p>
@@ -154,7 +154,7 @@ function BestTradeNowOpportunityCard({ best, marketCondition }: { best: Opportun
     <GlassPanel className="overflow-hidden p-6 shadow-[0_0_90px_rgba(34,211,238,0.12)] md:p-8">
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
         <div className="min-w-0">
-          <div className="text-[10px] font-black uppercase tracking-[0.32em] text-emerald-300">Best Trade Now</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.32em] text-emerald-300">Top Setup</div>
           <div className="mt-4 flex flex-wrap items-center gap-3">
             <h2 className="font-mono text-5xl font-black tracking-tight text-slate-50 md:text-6xl">{best.symbol}</h2>
             <DecisionBadge className="px-5 py-2 text-base" value={best.final_decision} />
@@ -162,10 +162,10 @@ function BestTradeNowOpportunityCard({ best, marketCondition }: { best: Opportun
           </div>
           <div className="mt-2 max-w-2xl text-base text-slate-400">{cleanText(best.company_name || best.sector, "Scanner signal")}</div>
           <p className="mt-5 max-w-3xl text-lg leading-7 text-slate-100">{cleanText(best.decision_reason, "Decision reason is not available yet.")}</p>
-          <p className="mt-3 text-sm font-semibold text-cyan-200">This is the highest-conviction setup in the current market.</p>
+          <p className="mt-3 text-sm font-semibold text-cyan-200">This is the highest-conviction research setup in the current market.</p>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link className="rounded-full bg-cyan-300 px-5 py-2.5 text-sm font-bold text-slate-950 transition-all duration-200 hover:bg-cyan-200" href={`/symbol/${best.symbol}`}>
-              View Trade Plan
+              View Research Plan
             </Link>
             <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-slate-300">
               Conviction <span className="font-mono font-semibold text-slate-50">{best.conviction}</span>/100

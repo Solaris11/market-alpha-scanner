@@ -369,6 +369,25 @@ async function readCsv(filePath: string) {
   return (await readCsvPayload(filePath)).rows;
 }
 
+async function readCsvColumns(filePath: string): Promise<string[]> {
+  const handle = await fs.open(filePath, "r");
+  try {
+    const buffer = Buffer.alloc(64 * 1024);
+    const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
+    const firstLine = buffer.subarray(0, bytesRead).toString("utf8").split(/\r?\n/, 1)[0] ?? "";
+    if (!firstLine.trim()) return [];
+    const headerRows = parse(firstLine, {
+      ...CSV_PARSE_OPTIONS,
+      to_line: 1,
+    }) as string[][];
+    return (headerRows[0] ?? []).map(canonicalCsvKey);
+  } catch {
+    return [];
+  } finally {
+    await handle.close();
+  }
+}
+
 function missingRankingColumns(columns: string[]) {
   const available = new Set(columns);
   return REQUIRED_RANKING_COLUMNS.filter((column) => !available.has(column));
@@ -494,7 +513,7 @@ export async function getScanDataHealth(): Promise<ScanDataHealth> {
       const stat = await fs.stat(filePath);
       const lastUpdated = stat.mtime.toISOString();
       const freshness = freshnessFromTimestamp(lastUpdated, now);
-      const { columns } = await readCsvPayload(filePath);
+      const columns = await readCsvColumns(filePath);
       const missingColumns = missingRankingColumns(columns);
       if (missingColumns.length) {
         const mismatch = unavailableFreshness("schema_mismatch", `${name} is missing required columns: ${missingColumns.join(", ")}.`);

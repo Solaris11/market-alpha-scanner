@@ -4,7 +4,7 @@ import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
-import { getPublicTopSignals } from "@/lib/server/public-signal-data";
+import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 
 export const dynamic = "force-dynamic";
@@ -12,10 +12,10 @@ export const dynamic = "force-dynamic";
 export default async function OpportunitiesPage() {
   const entitlement = await getEntitlement();
   if (!hasPremiumAccess(entitlement)) {
-    const publicPreview = await getPublicTopSignals(9);
+    const publicPreview = await getPublicMarketSummary();
     return (
       <TerminalShell>
-        <PublicSignalPreviewList signals={publicPreview.signals} title="Opportunities Preview" />
+        <PublicSignalPreviewList summary={publicPreview.summary} title="Research Preview" />
       </TerminalShell>
     );
   }

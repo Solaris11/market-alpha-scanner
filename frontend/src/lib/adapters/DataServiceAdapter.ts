@@ -19,7 +19,7 @@ export type MarketRegime = {
   strongestSectors: string[];
   weakestSectors: string[];
   aggressiveEntriesAllowed: boolean;
-  source: "artifact" | "inferred" | "mock";
+  source: "artifact" | "inferred" | "unavailable";
 };
 
 export type TerminalSnapshot = {

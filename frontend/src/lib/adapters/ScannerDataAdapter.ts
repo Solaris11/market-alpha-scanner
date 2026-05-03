@@ -3,21 +3,10 @@ import "server-only";
 import { getFullRanking, getMarketRegime as getRegimeArtifact, getMarketStructure, getSymbolDetail, getSymbolHistoryForSymbol, getTopCandidates } from "@/lib/scanner-data";
 import { getPaperAnalytics } from "@/lib/paper-data";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
-import { applyStaleDataSafetyToMarketRegime, applyStaleDataSafetyToRow, applyStaleDataSafetyToRows, applyStaleDataSafetyToSymbolDetail } from "@/lib/stale-data-safety";
+import { applyStaleDataSafetyToMarketRegime, applyStaleDataSafetyToRows, applyStaleDataSafetyToSymbolDetail } from "@/lib/stale-data-safety";
 import type { RankingRow, SymbolDetail } from "@/lib/types";
 import type { DataServiceAdapter, MarketRegime, SignalHistoryPoint, TerminalSnapshot } from "./DataServiceAdapter";
 import { historyPointFromRow } from "./DataServiceAdapter";
-
-const MOCK_SIGNALS: RankingRow[] = [
-  { symbol: "TSM", company_name: "Taiwan Semiconductor", sector: "Semiconductors", asset_type: "Equity", price: 192.4, final_score: 91, final_decision: "ENTER", recommendation_quality: "TRADE_READY", rating: "TOP", action: "BUY", setup_type: "breakout continuation", entry_status: "GOOD ENTRY", suggested_entry: 192.4, stop_loss: 185, conservative_target: 210, risk_reward: 2.4, decision_reason: "Strong trend, clean entry, and acceptable risk/reward." },
-  { symbol: "AVGO", company_name: "Broadcom", sector: "Semiconductors", asset_type: "Equity", price: 429.31, final_score: 86, final_decision: "WAIT_PULLBACK", recommendation_quality: "WAIT_PULLBACK", rating: "ACTIONABLE", action: "BUY", setup_type: "trend pullback", entry_status: "OVEREXTENDED", suggested_entry: 410, stop_loss: 392, conservative_target: 455, risk_reward: 1.9, decision_reason: "High-quality setup but price is extended." },
-  { symbol: "MSFT", company_name: "Microsoft", sector: "Software", asset_type: "Equity", price: 421.8, final_score: 82, final_decision: "WATCH", recommendation_quality: "LOW_EDGE", rating: "WATCH", action: "WAIT", setup_type: "base build", entry_status: "NEAR ENTRY", suggested_entry: 416, stop_loss: 398, conservative_target: 445, risk_reward: 1.6, decision_reason: "Quality name, but current edge is moderate." },
-  { symbol: "NVDA", company_name: "Nvidia", sector: "Technology", asset_type: "Equity", price: 875.3, final_score: 79, final_decision: "WATCH", recommendation_quality: "LOW_EDGE", rating: "WATCH", action: "WAIT", setup_type: "trend consolidation", entry_status: "NEAR ENTRY", suggested_entry: 852, stop_loss: 812, conservative_target: 930, risk_reward: 1.9, decision_reason: "Technology leadership remains strong, but entry quality needs confirmation." },
-  { symbol: "HAL", company_name: "Halliburton", sector: "Energy", asset_type: "Equity", price: 37.42, final_score: 74, final_decision: "WATCH", recommendation_quality: "LOW_EDGE", rating: "WATCH", action: "WAIT", setup_type: "trend recovery", entry_status: "NEAR ENTRY", suggested_entry: 36.8, stop_loss: 34.9, conservative_target: 41.5, risk_reward: 2.1, decision_reason: "Energy setup is improving but still needs stronger confirmation." },
-  { symbol: "IBIT", company_name: "iShares Bitcoin Trust", sector: "Bitcoin", asset_type: "ETF", price: 58.2, final_score: 64, final_decision: "WATCH", recommendation_quality: "LOW_EDGE", rating: "WATCH", action: "WAIT", setup_type: "volatile base", entry_status: "NEAR ENTRY", suggested_entry: 56.5, stop_loss: 52.8, conservative_target: 64, risk_reward: 2.0, decision_reason: "Crypto proxy remains volatile; wait for cleaner confirmation." },
-  { symbol: "TSLA", company_name: "Tesla", sector: "Consumer Discretionary", asset_type: "Equity", price: 177.2, final_score: 39, final_decision: "AVOID", recommendation_quality: "AVOID", rating: "PASS", action: "WAIT", setup_type: "mixed setup", entry_status: "STOP RISK", suggested_entry: 168, stop_loss: 160, conservative_target: 188, risk_reward: 1.2, decision_reason: "Volatility and risk/reward do not clear the gate." },
-  { symbol: "BAC", company_name: "Bank of America", sector: "Financials", asset_type: "Equity", price: 38.7, final_score: 31, final_decision: "EXIT", recommendation_quality: "AVOID", rating: "EXIT", action: "SELL", setup_type: "trend invalidation", entry_status: "STOP RISK", suggested_entry: 40.5, stop_loss: 38.8, conservative_target: 44, risk_reward: 2.1, decision_reason: "Exit signal is active after trend invalidation." },
-];
 
 function countDecision(rows: RankingRow[], decision: string) {
   return rows.filter((row) => String(row.final_decision ?? "").toUpperCase() === decision).length;
@@ -53,21 +42,20 @@ function inferRegime(rows: RankingRow[], artifact: Record<string, unknown> | nul
     strongestSectors: sectorLeaders(rows, true),
     weakestSectors: sectorLeaders(rows, false),
     aggressiveEntriesAllowed: riskMode === "risk-on" && enter >= avoid,
-    source: artifact ? "artifact" : rows.length ? "inferred" : "mock",
+    source: artifact ? "artifact" : rows.length ? "inferred" : "unavailable",
   };
 }
 
 export class ScannerDataAdapter implements DataServiceAdapter {
   async getOverviewSignals(): Promise<RankingRow[]> {
     const [rows, safety] = await Promise.all([getFullRanking(), getCurrentScanSafety()]);
-    return applyStaleDataSafetyToRows(rows.length ? rows : MOCK_SIGNALS, safety);
+    return applyStaleDataSafetyToRows(rows, safety);
   }
 
   async getSymbolDetail(symbol: string): Promise<SymbolDetail> {
     const [detail, safety] = await Promise.all([getSymbolDetail(symbol), getCurrentScanSafety()]);
     if (detail.row) return applyStaleDataSafetyToSymbolDetail(detail, safety);
-    const mock = MOCK_SIGNALS.find((row) => row.symbol === symbol.trim().toUpperCase());
-    return mock ? { row: applyStaleDataSafetyToRow(mock, safety), summary: null, history: [] } : detail;
+    return detail;
   }
 
   async getMarketRegime(): Promise<MarketRegime> {

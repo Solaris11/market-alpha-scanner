@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSymbolHistoryLookup } from "@/lib/scanner-data";
 import { entitlementSummary, getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
-import { previewSymbolHistoryRows } from "@/lib/server/premium-preview";
+import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
 
@@ -15,26 +15,26 @@ type RouteContext = {
 export async function GET(_request: Request, context: RouteContext) {
   const { symbol } = await context.params;
   const cleaned = symbol.trim().toUpperCase();
-  const [entitlement, rawResult, scanSafety] = await Promise.all([getEntitlement(), getSymbolHistoryLookup(cleaned), getCurrentScanSafety()]);
-  const result = { ...rawResult, rows: applyStaleDataSafetyToRows(rawResult.rows, scanSafety) };
+  const entitlement = await getEntitlement();
 
   if (!hasPremiumAccess(entitlement)) {
-    const previewRows = previewSymbolHistoryRows(result.rows);
+    const publicPreview = await getPublicMarketSummary();
     return NextResponse.json(
       {
-        symbol: cleaned,
-        ...result,
-        rows: previewRows,
-        matchingRows: previewRows.length,
-        scanSafety,
+        rows: [],
+        matchingRows: 0,
+        scanSafety: publicPreview.scanSafety,
+        summary: publicPreview.summary,
         limited: true,
-        message: "Limited history preview. Premium unlocks full signal history.",
+        message: "Live symbol history is locked.",
         entitlement: entitlementSummary(entitlement),
       },
       { headers: { "Cache-Control": "no-store" } },
     );
   }
 
+  const [rawResult, scanSafety] = await Promise.all([getSymbolHistoryLookup(cleaned), getCurrentScanSafety()]);
+  const result = { ...rawResult, rows: applyStaleDataSafetyToRows(rawResult.rows, scanSafety) };
   return NextResponse.json(
     { symbol: cleaned, ...result, scanSafety, limited: false, entitlement: entitlementSummary(entitlement) },
     { headers: { "Cache-Control": "no-store" } },

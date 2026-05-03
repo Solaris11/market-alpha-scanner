@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSymbolDetail } from "@/lib/scanner-data";
 import { entitlementSummary, getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
-import { previewSymbolDetail } from "@/lib/server/premium-preview";
+import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { applyStaleDataSafetyToSymbolDetail } from "@/lib/stale-data-safety";
 
@@ -10,18 +10,22 @@ export const runtime = "nodejs";
 
 export async function GET(_request: Request, context: { params: Promise<{ symbol: string }> }) {
   const { symbol } = await context.params;
-  const [entitlement, rawDetail, scanSafety] = await Promise.all([getEntitlement(), getSymbolDetail(symbol), getCurrentScanSafety()]);
-  const detail = applyStaleDataSafetyToSymbolDetail(rawDetail, scanSafety);
+  const entitlement = await getEntitlement();
 
   if (!hasPremiumAccess(entitlement)) {
+    const publicPreview = await getPublicMarketSummary();
     return NextResponse.json({
-      ...previewSymbolDetail(detail),
-      scanSafety,
+      history: [],
+      row: null,
+      scanSafety: publicPreview.scanSafety,
+      summary: publicPreview.summary,
       limited: true,
-      message: "Limited symbol preview. Premium unlocks full trade plan details.",
+      message: "Live symbol research is locked.",
       entitlement: entitlementSummary(entitlement),
     });
   }
 
+  const [rawDetail, scanSafety] = await Promise.all([getSymbolDetail(symbol), getCurrentScanSafety()]);
+  const detail = applyStaleDataSafetyToSymbolDetail(rawDetail, scanSafety);
   return NextResponse.json({ ...detail, scanSafety, limited: false, entitlement: entitlementSummary(entitlement) });
 }

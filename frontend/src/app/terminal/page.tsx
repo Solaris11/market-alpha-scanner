@@ -15,7 +15,7 @@ import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
 import { assertNoPremiumFields } from "@/lib/server/premium-preview";
-import { getPublicTopSignals } from "@/lib/server/public-signal-data";
+import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { getDailyAction } from "@/lib/trading/daily-action";
@@ -27,7 +27,7 @@ export const dynamic = "force-dynamic";
 export default async function TerminalPage() {
   const entitlement = await getEntitlement();
   if (!hasPremiumAccess(entitlement)) {
-    const publicPreview = await getPublicTopSignals(6);
+    const publicPreview = await getPublicMarketSummary();
     const publicAction = {
       action: "WAIT" as const,
       label: "WAIT",
@@ -35,14 +35,14 @@ export default async function TerminalPage() {
       symbol: null,
       tone: "wait" as const,
     };
-    assertNoPremiumFields({ publicAction, signals: publicPreview.signals });
+    assertNoPremiumFields({ publicAction, summary: publicPreview.summary });
 
     return (
       <TerminalShell>
         <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
           <div className="space-y-4">
             <DailyActionCard action={publicAction} />
-            <PublicSignalPreviewList signals={publicPreview.signals} title="Today's Market Preview" />
+            <PublicSignalPreviewList summary={publicPreview.summary} title="Market Preview" />
           </div>
           <GlassPanel className="p-5 xl:sticky xl:top-4 xl:self-start">
             <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Premium</div>
@@ -69,13 +69,24 @@ export default async function TerminalPage() {
   const tradePlanHref = leader?.symbol ? `/symbol/${leader.symbol}` : "/opportunities";
   const enterCount = snapshot.signals.filter((row) => String(row.final_decision ?? "").toUpperCase() === "ENTER").length;
   const avoidCount = snapshot.signals.filter((row) => String(row.final_decision ?? "").toUpperCase() === "AVOID").length;
+  const actionBlocksTradeUi = dailyAction.action === "WAIT" || dailyAction.action === "STAY_OUT";
 
   return (
     <TerminalShell>
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">
           <DailyActionCard action={dailyAction} />
-          <BestTradeNowCard best={best} edges={edges} regime={snapshot.marketRegime} />
+          {actionBlocksTradeUi ? (
+            <GlassPanel className="border-amber-300/25 bg-amber-400/[0.08] p-6">
+              <div className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-200">Decision Lock</div>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-50">Do nothing today</h2>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+                The daily action is the source of truth. Trade setup cards, entry levels, execution planning, and simulator CTAs are hidden until the system returns to research-signal mode.
+              </p>
+            </GlassPanel>
+          ) : (
+            <BestTradeNowCard best={best} edges={edges} regime={snapshot.marketRegime} />
+          )}
 
           <GlassPanel className="overflow-hidden p-5">
             <div className="grid gap-5">
@@ -83,7 +94,7 @@ export default async function TerminalPage() {
                 <div className="text-[10px] font-black uppercase tracking-[0.32em] text-emerald-300">Command Center</div>
                 <h2 className="mt-2 text-4xl font-semibold tracking-tight text-slate-50">Decision-first market intelligence</h2>
                 <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                  Scanner signals, market regime, mock execution, and paper performance are unified into one premium trading workflow.
+                  Scanner signals, market regime, paper simulation, and risk controls are unified into one premium research workflow.
                 </p>
                 <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
                   <MetricCard label="Signals" value={snapshot.signals.length.toLocaleString()} meta="latest scan" />
@@ -96,14 +107,16 @@ export default async function TerminalPage() {
             </div>
           </GlassPanel>
 
-          <GlassPanel className="p-5">
-            <SectionTitle eyebrow="Top Opportunities" title="What Should I Buy?" meta="scanner-ranked" />
-            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {snapshot.topSignals.slice(0, 6).map((row) => <SignalCard edge={edges[row.symbol.toUpperCase()]} key={row.symbol} row={row} />)}
-            </div>
-          </GlassPanel>
+          {!actionBlocksTradeUi ? (
+            <GlassPanel className="p-5">
+              <SectionTitle eyebrow="Research Queue" title="Setups to Review" meta="scanner-ranked" />
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {snapshot.topSignals.slice(0, 6).map((row) => <SignalCard edge={edges[row.symbol.toUpperCase()]} key={row.symbol} row={row} />)}
+              </div>
+            </GlassPanel>
+          ) : null}
 
-          <SignalHeatmap rows={snapshot.signals} />
+          {!actionBlocksTradeUi ? <SignalHeatmap rows={snapshot.signals} /> : null}
 
           <div className="grid gap-4 lg:grid-cols-2">
             <GlassPanel className="p-5">
@@ -120,7 +133,7 @@ export default async function TerminalPage() {
         </div>
 
         <div className="space-y-4 xl:sticky xl:top-4 xl:self-start">
-          {leader ? <AICopilotPanel signal={leader} /> : null}
+          {!actionBlocksTradeUi && leader ? <AICopilotPanel signal={leader} /> : null}
         </div>
       </div>
       <MarketOnboarding tradePlanHref={tradePlanHref} />

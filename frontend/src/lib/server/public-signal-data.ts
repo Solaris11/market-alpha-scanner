@@ -1,31 +1,50 @@
 import "server-only";
 
-import { getFullRanking, getTopCandidates } from "@/lib/scanner-data";
-import { assertNoPremiumFields, toPublicSignal, type PublicSignal } from "@/lib/public-signals";
+import fs from "node:fs/promises";
+import path from "node:path";
+import { scannerOutputDir } from "@/lib/scanner-data";
+import { assertNoPremiumFields, type PublicMarketSummary } from "@/lib/public-signals";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
-import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
 import type { ScanSafetyState } from "@/lib/stale-data-safety";
 
 export type PublicSignalPreview = {
   scanSafety: ScanSafetyState;
-  signals: PublicSignal[];
+  summary: PublicMarketSummary;
 };
 
-export async function getPublicTopSignals(limit = 6): Promise<PublicSignalPreview> {
-  const [rawRows, scanSafety] = await Promise.all([getTopCandidates(), getCurrentScanSafety()]);
-  const safeRows = applyStaleDataSafetyToRows(rawRows, scanSafety);
-  const signals = safeRows.slice(0, Math.max(0, limit)).map(toPublicSignal);
-  const preview = { scanSafety, signals };
+export async function getPublicMarketSummary(): Promise<PublicSignalPreview> {
+  const [scanSafety, files] = await Promise.all([
+    getCurrentScanSafety(),
+    Promise.all([fileMetadata("full_ranking.csv"), fileMetadata("top_candidates.csv")]),
+  ]);
+  const lastUpdated = files
+    .map((file) => file.lastUpdated)
+    .filter((value): value is string => Boolean(value))
+    .sort()
+    .at(-1) ?? scanSafety.lastUpdated;
+  const summary: PublicMarketSummary = {
+    filesAvailable: files.filter((file) => file.available).length,
+    lastUpdated,
+    locked: true,
+    message: scanSafety.active ? scanSafety.reason : "Premium unlocks live scanner intelligence.",
+    premiumDataHidden: true,
+    scannerStatus: scanSafety.status,
+  };
+  const preview = { scanSafety, summary };
   assertNoPremiumFields(preview);
   return preview;
 }
 
-export async function getPublicSymbolSignal(symbol: string): Promise<{ scanSafety: ScanSafetyState; signal: PublicSignal | null }> {
-  const cleaned = symbol.trim().toUpperCase();
-  const [rawRows, scanSafety] = await Promise.all([getFullRanking(), getCurrentScanSafety()]);
-  const safeRows = applyStaleDataSafetyToRows(rawRows, scanSafety);
-  const row = safeRows.find((item) => item.symbol.toUpperCase() === cleaned) ?? null;
-  const preview = { scanSafety, signal: row ? toPublicSignal(row) : null };
-  assertNoPremiumFields(preview);
-  return preview;
+export async function getPublicSymbolSignal(_symbol: string): Promise<{ scanSafety: ScanSafetyState; signal: null; summary: PublicMarketSummary }> {
+  const preview = await getPublicMarketSummary();
+  return { ...preview, signal: null };
+}
+
+async function fileMetadata(name: string): Promise<{ available: boolean; lastUpdated: string | null }> {
+  try {
+    const stat = await fs.stat(path.join(scannerOutputDir(), name));
+    return { available: stat.isFile() && stat.size > 0, lastUpdated: stat.mtime.toISOString() };
+  } catch {
+    return { available: false, lastUpdated: null };
+  }
 }

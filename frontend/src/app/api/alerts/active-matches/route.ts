@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { getActiveAlertMatches } from "@/lib/active-alert-matches";
 import { entitlementSummary, getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
-import { previewAlertMatches } from "@/lib/server/premium-preview";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 
 export const dynamic = "force-dynamic";
@@ -12,12 +11,13 @@ export async function GET() {
   const scanSafety = await getCurrentScanSafety();
 
   if (!hasPremiumAccess(entitlement)) {
-    const matches = await getActiveAlertMatches();
     return NextResponse.json({
-      ...previewAlertMatches(matches),
+      data_status: scanSafety.status,
+      generated_at: new Date().toISOString(),
+      matches: [],
       scanSafety,
       limited: true,
-      message: "Limited alert preview. Premium unlocks full alert coverage.",
+      message: "Live alert matches are locked.",
       entitlement: entitlementSummary(entitlement),
     });
   }

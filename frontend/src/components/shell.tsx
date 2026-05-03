@@ -1,4 +1,7 @@
 import { DataHealthBanner } from "@/components/data-health-indicator";
+import { LegalFooter } from "@/components/legal/LegalFooter";
+import { RiskAcknowledgement } from "@/components/legal/RiskAcknowledgement";
+import { RiskDisclaimer } from "@/components/legal/RiskDisclaimer";
 import { getScanDataHealth } from "@/lib/scanner-data";
 import { TopNav } from "./top-nav";
 
@@ -16,7 +19,10 @@ export async function TerminalShell({ children }: { children: React.ReactNode })
           <TopNav />
         </header>
         {health ? <DataHealthBanner freshness={health} /> : null}
+        <RiskDisclaimer />
         {children}
+        <LegalFooter />
+        <RiskAcknowledgement />
       </div>
     </main>
   );

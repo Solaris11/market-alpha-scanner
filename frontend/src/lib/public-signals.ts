@@ -1,17 +1,13 @@
 import type { ActiveAlertMatchesResponse } from "@/lib/active-alert-matches";
 import type { CsvRow, RankingRow, SymbolDetail, SymbolHistoryRow } from "@/lib/types";
 
-export type PublicSignal = {
-  asset_type?: string;
-  company_name?: string;
-  data_status?: string;
-  last_updated?: string | null;
-  market_regime?: string;
-  price?: number | null;
-  rating: string;
-  score_bucket: string;
-  sector?: string;
-  symbol: string;
+export type PublicMarketSummary = {
+  filesAvailable: number;
+  lastUpdated: string | null;
+  locked: true;
+  message: string;
+  premiumDataHidden: true;
+  scannerStatus: string;
 };
 
 export type PremiumSignal = {
@@ -26,23 +22,16 @@ export type PremiumSignal = {
 
 export type PublicSymbolDetail = {
   history: PublicSignalHistoryRow[];
-  row: PublicSignal | null;
+  row: null;
   summary: null;
 };
 
 export type PublicSignalHistoryRow = {
-  company_name?: string;
-  data_status?: string;
-  rating: string;
-  score_bucket: string;
-  symbol: string;
-  timestamp_utc?: string;
+  limited: true;
 };
 
 export type PublicAlertMatch = {
   limited: true;
-  signal: string;
-  symbol: string;
 };
 
 export type PublicAlertMatchesResponse = {
@@ -56,7 +45,6 @@ export type PublicAlertRule = {
   id: string;
   limited: true;
   scope: string;
-  symbol?: string;
   type: string;
 };
 
@@ -102,18 +90,8 @@ const PREMIUM_FIELD_NAMES = new Set([
 ]);
 
 export function toPublicSignal(row: RankingRow): PublicSignal {
-  return {
-    asset_type: cleanOptional(row.asset_type),
-    company_name: cleanOptional(row.company_name),
-    data_status: cleanOptional(row.recommendation_quality),
-    last_updated: timestampValue(row.last_updated ?? row.last_updated_utc),
-    market_regime: cleanOptional(row.market_regime),
-    price: numberValue(row.price),
-    rating: cleanText(row.rating, "REVIEW"),
-    score_bucket: scoreBucket(row.final_score),
-    sector: cleanOptional(row.sector),
-    symbol: cleanText(row.symbol, "").toUpperCase(),
-  };
+  void row;
+  return lockedPublicSignal();
 }
 
 export function toPremiumSignal(row: RankingRow): PremiumSignal {
@@ -129,15 +107,17 @@ export function toPremiumSignal(row: RankingRow): PremiumSignal {
 }
 
 export function previewRankingRows(rows: RankingRow[], limit = 3): PublicSignal[] {
-  const preview = rows.slice(0, limit).map(toPublicSignal);
+  void rows;
+  const preview = Array.from({ length: Math.max(0, Math.min(limit, 3)) }, lockedPublicSignal);
   assertNoPremiumFields(preview);
   return preview;
 }
 
 export function previewSymbolDetail(detail: SymbolDetail): PublicSymbolDetail {
+  void detail;
   const preview = {
     history: [],
-    row: detail.row ? toPublicSignal(detail.row) : null,
+    row: null,
     summary: null,
   };
   assertNoPremiumFields(preview);
@@ -145,14 +125,8 @@ export function previewSymbolDetail(detail: SymbolDetail): PublicSymbolDetail {
 }
 
 export function previewSymbolHistoryRows(rows: SymbolHistoryRow[], limit = 5): PublicSignalHistoryRow[] {
-  const preview = rows.slice(-limit).map((row) => ({
-    company_name: cleanOptional(row.company_name),
-    data_status: cleanOptional(row.recommendation_quality),
-    rating: cleanText(row.rating, "REVIEW"),
-    score_bucket: scoreBucket(row.final_score),
-    symbol: cleanText(row.symbol, "").toUpperCase(),
-    timestamp_utc: cleanOptional(row.timestamp_utc),
-  }));
+  void rows;
+  const preview = Array.from({ length: Math.max(0, Math.min(limit, 3)) }, () => ({ limited: true as const }));
   assertNoPremiumFields(preview);
   return preview;
 }
@@ -162,14 +136,15 @@ export function previewCsvRows(_rows: CsvRow[], _limit = 25): CsvRow[] {
 }
 
 export function previewAlertMatches(response: ActiveAlertMatchesResponse, limit = 5): PublicAlertMatchesResponse {
+  void limit;
   const preview = {
     data_status: response.data_status,
     generated_at: response.generated_at,
-    matches: response.matches.slice(0, limit).map((match) => ({
+    matches: response.matches.length
+      ? [{
       limited: true as const,
-      signal: cleanText(match.signal, "REVIEW"),
-      symbol: cleanText(match.symbol, "").toUpperCase(),
-    })),
+    }]
+      : [],
   };
   assertNoPremiumFields(preview);
   return preview;
@@ -181,7 +156,6 @@ export function previewAlertOverview(overview: { activeCount: number; lastSentAt
     id: `alert_${index + 1}`,
     limited: true as const,
     scope: cleanText(rule.scope, "global"),
-    symbol: cleanOptional(rule.symbol),
     type: "signal_alert",
   }));
   const preview = {
@@ -257,6 +231,19 @@ function scoreBucket(value: unknown): string {
   if (score >= 60) return "watch";
   if (score >= 50) return "developing";
   return "low";
+}
+
+export type PublicSignal = PublicMarketSummary;
+
+export function lockedPublicSignal(): PublicMarketSummary {
+  return {
+    filesAvailable: 0,
+    lastUpdated: null,
+    locked: true,
+    message: "Premium unlocks live scanner intelligence.",
+    premiumDataHidden: true,
+    scannerStatus: "locked",
+  };
 }
 
 function timestampValue(value: unknown): string | null {

@@ -10,7 +10,7 @@ import { GlassPanel } from "./ui/GlassPanel";
 
 function actionText(value: unknown) {
   const decision = String(value ?? "").toUpperCase();
-  if (decision === "ENTER") return "Consider entry";
+  if (decision === "ENTER") return "Research signal";
   if (decision === "WAIT_PULLBACK") return "Wait for pullback";
   if (decision === "WATCH") return "Monitor only";
   if (decision === "AVOID") return "Do not enter";

@@ -12,8 +12,8 @@ export function BestTradeNowCard({ best, edges = {}, regime }: { best: BestTrade
     return (
       <div data-onboarding-target="best-trade">
         <GlassPanel className="overflow-hidden p-6 md:p-8">
-          <div className="text-[10px] font-black uppercase tracking-[0.32em] text-cyan-300">Best Trade Now</div>
-          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-50">No trade recommended right now</h2>
+          <div className="text-[10px] font-black uppercase tracking-[0.32em] text-cyan-300">Top Setup</div>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-50">No research signal right now</h2>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
             Market conditions: {cleanText(regime?.label, "not favorable").toUpperCase()} - wait for pullbacks or stronger confirmation.
           </p>
@@ -32,17 +32,17 @@ export function BestTradeNowCard({ best, edges = {}, regime }: { best: BestTrade
       <GlassPanel className="overflow-hidden p-6 shadow-[0_0_90px_rgba(34,211,238,0.12)] md:p-8">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
           <div className="min-w-0">
-            <div className="text-[10px] font-black uppercase tracking-[0.32em] text-emerald-300">Best Trade Now</div>
+            <div className="text-[10px] font-black uppercase tracking-[0.32em] text-emerald-300">Top Setup</div>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <h2 className="font-mono text-5xl font-black tracking-tight text-slate-50 md:text-6xl">{row.symbol}</h2>
               <DecisionBadge className="px-5 py-2 text-base" value={row.final_decision} />
             </div>
             <div className="mt-2 max-w-2xl text-base text-slate-400">{cleanText(row.company_name || row.sector, "Scanner signal")}</div>
             <p className="mt-5 max-w-3xl text-lg leading-7 text-slate-100">{shortReason(row)}</p>
-            <p className="mt-3 text-sm font-semibold text-cyan-200">This is the highest-conviction setup in the current market.</p>
+            <p className="mt-3 text-sm font-semibold text-cyan-200">This is the highest-conviction research setup in the current market.</p>
             <div className="mt-5 flex flex-wrap gap-3">
               <Link className="rounded-full bg-cyan-300 px-5 py-2.5 text-sm font-bold text-slate-950 transition-all duration-200 hover:bg-cyan-200" data-onboarding-target="trade-plan-entry" href={`/symbol/${row.symbol}`}>
-                View Trade Plan
+                View Research Plan
               </Link>
               <div className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-slate-300">
                 Confidence <span className="font-mono font-semibold text-slate-50">{best.confidence}</span>/100
