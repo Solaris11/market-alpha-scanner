@@ -1,5 +1,6 @@
 import { AICopilotPanel } from "@/components/terminal/AICopilotPanel";
 import { BestTradeNowCard } from "@/components/terminal/BestTradeNowCard";
+import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { MarketOnboarding } from "@/components/onboarding/MarketOnboarding";
 import { PublicSignalPreviewList } from "@/components/premium/PublicSignalPreview";
 import { DailyActionCard } from "@/components/terminal/DailyActionCard";
@@ -13,7 +14,7 @@ import { SignalHeatmap } from "@/components/terminal/SignalHeatmap";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
-import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
+import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { assertNoPremiumFields } from "@/lib/server/premium-preview";
 import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
@@ -26,6 +27,14 @@ export const dynamic = "force-dynamic";
 
 export default async function TerminalPage() {
   const entitlement = await getEntitlement();
+  if (requiresLegalAcceptance(entitlement)) {
+    return (
+      <TerminalShell>
+        <LegalAcceptanceRequiredState />
+      </TerminalShell>
+    );
+  }
+
   if (!hasPremiumAccess(entitlement)) {
     const publicPreview = await getPublicMarketSummary();
     const publicAction = {

@@ -6,6 +6,7 @@ import { devConfigPremiumEnabled, productionMockPremiumEnabled, subscriptionGran
 import { isAdminUser } from "./admin";
 import { getCurrentUser, type AuthUser } from "./auth";
 import { dbQuery } from "./db";
+import { emptyLegalStatus, getLegalStatus, type LegalStatus } from "./legal";
 
 export type RouteAccess = "public" | "free" | "premium" | "admin";
 
@@ -15,6 +16,7 @@ export type Entitlement = {
   authenticated: boolean;
   isAdmin: boolean;
   isPremium: boolean;
+  legalStatus: LegalStatus;
   plan: EntitlementPlan;
   subscriptionStatus: string | null;
   user: AuthUser | null;
@@ -34,6 +36,7 @@ export const ROUTE_CLASSIFICATION: Record<RouteAccess, string[]> = {
     "/symbol/[symbol]",
     "/api/health",
     "/api/auth/*",
+    "/api/legal/status",
   ],
   free: [
     "/account",
@@ -47,6 +50,7 @@ export const ROUTE_CLASSIFICATION: Record<RouteAccess, string[]> = {
     "/api/user/risk-profile",
     "/api/watchlist",
     "/api/risk-profile",
+    "/api/legal/accept",
     "/api/paper/account",
     "/api/paper/events",
     "/api/paper/positions",
@@ -84,7 +88,7 @@ export async function getEntitlement(): Promise<Entitlement> {
 export async function getEntitlementForUser(user: AuthUser | null): Promise<Entitlement> {
   if (!user) return entitlementForUser(null);
 
-  const subscription = await getUserSubscription(user.id);
+  const [subscription, legalStatus] = await Promise.all([getUserSubscription(user.id), getLegalStatusForEntitlement(user.id)]);
   const admin = isAdminUser(user);
   const subscriptionPremium = subscriptionGrantsPremium(
     subscription
@@ -103,6 +107,7 @@ export async function getEntitlementForUser(user: AuthUser | null): Promise<Enti
     authenticated: true,
     isAdmin: admin,
     isPremium: premium,
+    legalStatus,
     plan,
     subscriptionStatus: subscription?.status ?? null,
     user,
@@ -118,6 +123,7 @@ export function entitlementForUser(user: AuthUser | null): Entitlement {
     authenticated: Boolean(user),
     isAdmin: admin,
     isPremium: devPremium,
+    legalStatus: emptyLegalStatus(),
     plan,
     subscriptionStatus: null,
     user,
@@ -125,7 +131,11 @@ export function entitlementForUser(user: AuthUser | null): Entitlement {
 }
 
 export function hasPremiumAccess(entitlement: Entitlement): boolean {
-  return entitlement.isPremium || entitlement.isAdmin;
+  return !requiresLegalAcceptance(entitlement) && (entitlement.isPremium || entitlement.isAdmin);
+}
+
+export function requiresLegalAcceptance(entitlement: Entitlement): boolean {
+  return entitlement.authenticated && !entitlement.legalStatus.allAccepted;
 }
 
 export function entitlementSummary(entitlement: Entitlement): Omit<Entitlement, "user"> {
@@ -133,6 +143,7 @@ export function entitlementSummary(entitlement: Entitlement): Omit<Entitlement, 
     authenticated: entitlement.authenticated,
     isAdmin: entitlement.isAdmin,
     isPremium: entitlement.isPremium,
+    legalStatus: entitlement.legalStatus,
     plan: entitlement.plan,
     subscriptionStatus: entitlement.subscriptionStatus,
   };
@@ -143,10 +154,12 @@ export function premiumDeniedStatus(entitlement: Entitlement): 401 | 403 {
 }
 
 export function premiumDeniedMessage(entitlement: Entitlement): string {
+  if (requiresLegalAcceptance(entitlement)) return "Legal acceptance required.";
   return entitlement.authenticated ? "Premium plan required." : "Sign in to access premium features.";
 }
 
-export function premiumDeniedResponse(entitlement: Entitlement): NextResponse<{ ok: false; limited: true; message: string; entitlement: Omit<Entitlement, "user"> }> {
+export function premiumDeniedResponse(entitlement: Entitlement): NextResponse<{ ok: false; error?: string; limited: true; message: string; entitlement: Omit<Entitlement, "user"> }> {
+  if (requiresLegalAcceptance(entitlement)) return legalNotAcceptedResponse(entitlement);
   return NextResponse.json(
     {
       ok: false,
@@ -155,6 +168,19 @@ export function premiumDeniedResponse(entitlement: Entitlement): NextResponse<{ 
       entitlement: entitlementSummary(entitlement),
     },
     { status: premiumDeniedStatus(entitlement) },
+  );
+}
+
+export function legalNotAcceptedResponse(entitlement: Entitlement): NextResponse<{ ok: false; error: "legal_not_accepted"; limited: true; message: string; entitlement: Omit<Entitlement, "user"> }> {
+  return NextResponse.json(
+    {
+      ok: false,
+      error: "legal_not_accepted",
+      limited: true,
+      message: "Accept the Terms, Privacy Policy, and Risk Disclosure to continue.",
+      entitlement: entitlementSummary(entitlement),
+    },
+    { status: 403 },
   );
 }
 
@@ -183,6 +209,15 @@ async function getUserSubscription(userId: string): Promise<SubscriptionRow | nu
     }
     console.warn("[entitlements] subscription lookup unavailable; defaulting to free access.");
     return null;
+  }
+}
+
+async function getLegalStatusForEntitlement(userId: string): Promise<LegalStatus> {
+  try {
+    return await getLegalStatus(userId);
+  } catch {
+    console.warn("[entitlements] legal status lookup unavailable; blocking authenticated product access.");
+    return emptyLegalStatus();
   }
 }
 

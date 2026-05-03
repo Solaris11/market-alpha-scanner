@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { GhostPortfolioCard } from "@/components/paper/GhostPortfolioCard";
 import { ManualPaperTradeForm } from "@/components/paper/ManualPaperTradeForm";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
@@ -12,7 +13,7 @@ import {
   type PaperPositionRow,
   type PaperTradeEventRow,
 } from "@/lib/paper-data";
-import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
+import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 
 export const dynamic = "force-dynamic";
 
@@ -640,6 +641,14 @@ function SectionShell({ children, eyebrow, title }: { children: React.ReactNode;
 
 export default async function PaperPage() {
   const entitlement = await getEntitlement();
+  if (requiresLegalAcceptance(entitlement)) {
+    return (
+      <TerminalShell>
+        <LegalAcceptanceRequiredState />
+      </TerminalShell>
+    );
+  }
+
   const premiumAccess = hasPremiumAccess(entitlement);
   const paperScope = { userId: entitlement.user?.id ?? null };
   const [data, analytics] = await Promise.all([getPaperData(paperScope), premiumAccess ? getPaperAnalytics(paperScope) : Promise.resolve(null)]);

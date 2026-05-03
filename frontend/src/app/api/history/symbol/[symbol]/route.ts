@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSymbolHistoryLookup } from "@/lib/scanner-data";
-import { entitlementSummary, getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
+import { entitlementSummary, getEntitlement, hasPremiumAccess, legalNotAcceptedResponse, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
@@ -16,6 +16,7 @@ export async function GET(_request: Request, context: RouteContext) {
   const { symbol } = await context.params;
   const cleaned = symbol.trim().toUpperCase();
   const entitlement = await getEntitlement();
+  if (requiresLegalAcceptance(entitlement)) return legalNotAcceptedResponse(entitlement);
 
   if (!hasPremiumAccess(entitlement)) {
     const publicPreview = await getPublicMarketSummary();

@@ -1,9 +1,10 @@
 import { HistoryWorkspace } from "@/components/history-workspace";
+import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { MetricStrip } from "@/components/metric-strip";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { TerminalShell } from "@/components/shell";
 import { getFullRanking, getHistorySummary, getHistorySymbolsFromSnapshots } from "@/lib/scanner-data";
-import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
+import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
 
@@ -16,6 +17,14 @@ function formatDate(value: string | null) {
 
 export default async function HistoryPage() {
   const entitlement = await getEntitlement();
+  if (requiresLegalAcceptance(entitlement)) {
+    return (
+      <TerminalShell>
+        <LegalAcceptanceRequiredState />
+      </TerminalShell>
+    );
+  }
+
   if (!hasPremiumAccess(entitlement)) {
     return (
       <TerminalShell>

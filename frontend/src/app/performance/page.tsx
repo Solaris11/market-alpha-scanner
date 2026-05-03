@@ -1,5 +1,6 @@
 import { MetricStrip } from "@/components/metric-strip";
 import { AutoCalibrationRecommendations } from "@/components/auto-calibration-recommendations";
+import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { PerformanceDrift } from "@/components/performance-drift";
 import { PerformanceValidation } from "@/components/performance-validation";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
@@ -8,7 +9,7 @@ import { TerminalShell } from "@/components/shell";
 import { SignalLifecycle } from "@/components/signal-lifecycle";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { getCalibrationInsights, getFullRanking, getHistorySummary, getIntradaySignalDriftSummary, getPerformanceData } from "@/lib/scanner-data";
-import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
+import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
 
@@ -138,6 +139,14 @@ function CalibrationInsightsPanel({ insights }: { insights: Record<string, unkno
 
 export default async function PerformancePage() {
   const entitlement = await getEntitlement();
+  if (requiresLegalAcceptance(entitlement)) {
+    return (
+      <TerminalShell>
+        <LegalAcceptanceRequiredState />
+      </TerminalShell>
+    );
+  }
+
   if (!hasPremiumAccess(entitlement)) {
     return (
       <TerminalShell>

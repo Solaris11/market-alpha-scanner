@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { MetricStrip } from "@/components/metric-strip";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { getAlertOverview } from "@/lib/alerts";
 import { getFullRanking, getHistorySummary, getTopCandidates } from "@/lib/scanner-data";
-import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
+import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
 
@@ -18,6 +19,14 @@ function formatDate(value: string | null) {
 
 export default async function AdvancedPage() {
   const entitlement = await getEntitlement();
+  if (requiresLegalAcceptance(entitlement)) {
+    return (
+      <TerminalShell>
+        <LegalAcceptanceRequiredState />
+      </TerminalShell>
+    );
+  }
+
   if (!hasPremiumAccess(entitlement)) {
     return (
       <TerminalShell>

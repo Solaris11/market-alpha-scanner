@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { readAlertRules, readAlertState, sanitizeAlertRule, writeAlertRules, writeAlertState } from "@/lib/alerts";
 import { accessDenied, requireUser } from "@/lib/server/access-control";
-import { getEntitlementForUser, hasPremiumAccess } from "@/lib/server/entitlements";
+import { getEntitlementForUser, hasPremiumAccess, legalNotAcceptedResponse, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
@@ -16,7 +16,9 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 
   const access = await requireUser("Sign in to update alert rules.");
   if (!access.ok) return access.response;
-  if (!hasPremiumAccess(await getEntitlementForUser(access.user))) {
+  const entitlement = await getEntitlementForUser(access.user);
+  if (requiresLegalAcceptance(entitlement)) return legalNotAcceptedResponse(entitlement);
+  if (!hasPremiumAccess(entitlement)) {
     return accessDenied("Premium plan required.", 403);
   }
 
@@ -51,7 +53,9 @@ export async function DELETE(request: Request, context: { params: Promise<{ id: 
 
   const access = await requireUser("Sign in to delete alert rules.");
   if (!access.ok) return access.response;
-  if (!hasPremiumAccess(await getEntitlementForUser(access.user))) {
+  const entitlement = await getEntitlementForUser(access.user);
+  if (requiresLegalAcceptance(entitlement)) return legalNotAcceptedResponse(entitlement);
+  if (!hasPremiumAccess(entitlement)) {
     return accessDenied("Premium plan required.", 403);
   }
 

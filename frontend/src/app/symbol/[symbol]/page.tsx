@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { PublicSymbolPreview } from "@/components/premium/PublicSignalPreview";
 import { SymbolTerminalWorkspace } from "@/components/terminal/SymbolTerminalWorkspace";
@@ -8,7 +9,7 @@ import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { freshnessFromTimestamp } from "@/lib/data-health";
 import { getPaperData } from "@/lib/paper-data";
 import { getPerformanceData } from "@/lib/scanner-data";
-import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
+import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { assertNoPremiumFields } from "@/lib/server/premium-preview";
 import { getPublicSymbolSignal } from "@/lib/server/public-signal-data";
 import { buildConvictionTimelineModel } from "@/lib/trading/conviction-timeline-model";
@@ -23,6 +24,19 @@ type PageProps = {
 export default async function SymbolDetailPage({ params }: PageProps) {
   const { symbol } = await params;
   const entitlement = await getEntitlement();
+  if (requiresLegalAcceptance(entitlement)) {
+    return (
+      <TerminalShell>
+        <div className="mb-4">
+          <Link className="text-sm font-semibold text-cyan-300 hover:text-cyan-100" href="/terminal">
+            Back to terminal
+          </Link>
+        </div>
+        <LegalAcceptanceRequiredState />
+      </TerminalShell>
+    );
+  }
+
   const premiumAccess = hasPremiumAccess(entitlement);
 
   if (!premiumAccess) {

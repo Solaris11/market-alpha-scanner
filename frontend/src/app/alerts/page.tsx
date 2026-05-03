@@ -1,13 +1,22 @@
 import { AlertsWorkspace } from "@/components/alerts/alerts-workspace";
+import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { TerminalShell } from "@/components/shell";
 import { getAlertOverview } from "@/lib/alerts";
-import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
+import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 
 export const dynamic = "force-dynamic";
 
 export default async function AlertsPage() {
   const entitlement = await getEntitlement();
+  if (requiresLegalAcceptance(entitlement)) {
+    return (
+      <TerminalShell>
+        <LegalAcceptanceRequiredState />
+      </TerminalShell>
+    );
+  }
+
   if (!hasPremiumAccess(entitlement)) {
     return (
       <TerminalShell>

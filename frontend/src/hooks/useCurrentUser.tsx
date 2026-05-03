@@ -21,6 +21,12 @@ export type CurrentUserEntitlement = {
   authenticated: boolean;
   isAdmin: boolean;
   isPremium: boolean;
+  legalStatus?: {
+    allAccepted: boolean;
+    privacyAccepted: boolean;
+    riskAccepted: boolean;
+    termsAccepted: boolean;
+  };
   plan: "anonymous" | "free" | "premium" | "admin";
 };
 
