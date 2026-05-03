@@ -307,7 +307,7 @@ export async function getPaperData(scope?: PaperDataScope): Promise<PaperData> {
         WITH latest_run AS (
           SELECT id
           FROM scan_runs
-          ORDER BY completed_at DESC NULLS LAST, created_at DESC
+          ORDER BY completed_at DESC NULLS LAST, started_at DESC
           LIMIT 1
         ),
         latest_prices AS (
