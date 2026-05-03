@@ -63,6 +63,7 @@ export function SymbolChart({ symbol, candles, signals, showHistoricalSignals = 
     showHistoricalSignals && signals?.length ? normalizeSignals(signals) : []
   ), [showHistoricalSignals, signals]);
   const chartLevels = useMemo(() => normalizeTradeLevels(tradeLevels), [tradeLevels]);
+  const hasTradeLevels = chartLevels.entry !== null || chartLevels.entryLow !== null || chartLevels.entryHigh !== null || chartLevels.stop !== null || chartLevels.target !== null;
 
   useEffect(() => {
     const container = chartContainerRef.current;
@@ -163,11 +164,13 @@ export function SymbolChart({ symbol, candles, signals, showHistoricalSignals = 
         <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Price Action</div>
         <div className="mt-1 text-xs text-slate-400">{chartCandles.length.toLocaleString()} candles</div>
       </div>
-      <div className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 text-xs shadow-lg backdrop-blur-xl">
-        <div className="font-semibold text-amber-200">Entry zone</div>
-        <div className="mt-1 font-semibold text-rose-200">Stop line</div>
-        <div className="mt-1 font-semibold text-sky-200">Target line</div>
-      </div>
+      {hasTradeLevels ? (
+        <div className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 text-xs shadow-lg backdrop-blur-xl">
+          <div className="font-semibold text-amber-200">Entry zone</div>
+          <div className="mt-1 font-semibold text-rose-200">Stop line</div>
+          <div className="mt-1 font-semibold text-sky-200">Target line</div>
+        </div>
+      ) : null}
     </div>
   );
 }

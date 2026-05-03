@@ -12,7 +12,10 @@ import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { assertNoPremiumFields } from "@/lib/server/premium-preview";
 import { getPublicSymbolSignal } from "@/lib/server/public-signal-data";
+import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
+import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { buildConvictionTimelineModel } from "@/lib/trading/conviction-timeline-model";
+import { getDailyAction } from "@/lib/trading/daily-action";
 import { buildHistoricalEdgeProof } from "@/lib/trading/edge-proof";
 
 export const dynamic = "force-dynamic";
@@ -65,11 +68,26 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   }
 
   const adapter = new ScannerDataAdapter();
-  const [detail, history, paper, performance] = await Promise.all([adapter.getSymbolDetail(symbol), adapter.getSignalHistory(symbol), getPaperData().catch(() => ({ positions: [], events: [] })), getPerformanceData({ forwardTailRows: 5000 }).catch(() => null)]);
+  const [detail, history, paper, performance, snapshot, scanSafety] = await Promise.all([
+    adapter.getSymbolDetail(symbol),
+    adapter.getSignalHistory(symbol),
+    getPaperData().catch(() => ({ positions: [], events: [] })),
+    getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
+    adapter.getTerminalSnapshot(),
+    getCurrentScanSafety(),
+  ]);
   const row = detail.row;
   const edgeProof = row ? buildHistoricalEdgeProof(row, performance) : null;
   const timeline = buildConvictionTimelineModel(history);
   const dataFreshness = row ? freshnessFromTimestamp(typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null) : null;
+  const edges = buildEdgeLookup(snapshot.signals, performance);
+  const best = selectBestTradeNow(snapshot.signals, edges);
+  const globalDecision = getDailyAction({
+    best,
+    fallbackRow: row ?? snapshot.topSignals[0] ?? snapshot.signals[0],
+    marketRegime: snapshot.marketRegime,
+    scanSafety,
+  });
 
   return (
     <TerminalShell>
@@ -85,6 +103,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           dataFreshness={dataFreshness ?? freshnessFromTimestamp(null)}
           edgeProof={edgeProof ?? buildHistoricalEdgeProof(row, null)}
           history={history}
+          globalDecision={globalDecision}
           paperEvents={paper.events ?? []}
           paperPositions={paper.positions ?? []}
           premiumAccess

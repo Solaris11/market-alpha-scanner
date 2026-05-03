@@ -23,11 +23,11 @@ function Input({ disabled = false, label, value, onChange }: { disabled?: boolea
   );
 }
 
-export function WhatIfSimulator({ engine }: { engine: TradePlanEngine }) {
+export function WhatIfSimulator({ canTrade = true, engine, researchModeReason }: { canTrade?: boolean; engine: TradePlanEngine; researchModeReason?: string }) {
   const [pulse, setPulse] = useState(false);
   const { authenticated } = useCurrentUser();
   const { metrics, riskEvaluation, riskProfile, riskProfileActions, state, validity } = engine;
-  const readOnly = state.finalDecision === "AVOID" || state.finalDecision === "EXIT";
+  const readOnly = !canTrade || state.finalDecision === "AVOID" || state.finalDecision === "EXIT";
   const displayRiskStatus = readOnly ? "OK" : riskEvaluation.status;
   useEffect(() => {
     setPulse(true);
@@ -38,20 +38,27 @@ export function WhatIfSimulator({ engine }: { engine: TradePlanEngine }) {
   return (
     <div data-onboarding-target="what-if-simulator">
       <GlassPanel className="p-5">
-        <SectionTitle eyebrow="What-If" title="Trade Simulator" meta={readOnly ? "read-only" : displayRiskStatus === "OK" ? (validity.isCalculable ? "synced live" : "blocked") : displayRiskStatus.toLowerCase()} />
+        <SectionTitle eyebrow="What-If" title={canTrade ? "Trade Simulator" : "Research Mode"} meta={readOnly ? "read-only" : displayRiskStatus === "OK" ? (validity.isCalculable ? "synced live" : "blocked") : displayRiskStatus.toLowerCase()} />
         <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-400/10 p-3 text-xs leading-5 text-amber-100">
           Research and paper simulation only. This is not financial advice.
         </div>
+        {!canTrade ? (
+          <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm font-semibold leading-6 text-amber-100">
+            No active trade recommended. {researchModeReason ?? "Correct action: do nothing."} Trade sizing, entry, stop, target, and stress-test outputs are disabled.
+          </div>
+        ) : null}
         {readOnly ? (
           <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-3 text-xs font-semibold text-amber-100">
-            System decision is {state.finalDecision}. Simulator is read-only, with calculations kept visible.
+            {canTrade ? `System decision is ${state.finalDecision}. Simulator is read-only, with calculations kept visible.` : "Risk Rules remain editable while trade simulation is locked."}
           </div>
         ) : null}
         {!readOnly && riskEvaluation.status !== "OK" ? <RiskBanner status={riskEvaluation.status} reasons={riskEvaluation.reasons} /> : null}
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          <Input disabled={readOnly} label="Account Equity" value={state.accountEquity} onChange={engine.setters.setAccountEquity} />
-          <Input disabled={readOnly} label="Risk %" value={state.riskPercent} onChange={engine.setters.setRiskPercent} />
-        </div>
+        {canTrade ? (
+          <div className="mt-4 grid grid-cols-2 gap-3">
+            <Input disabled={readOnly} label="Account Equity" value={state.accountEquity} onChange={engine.setters.setAccountEquity} />
+            <Input disabled={readOnly} label="Risk %" value={state.riskPercent} onChange={engine.setters.setRiskPercent} />
+          </div>
+        ) : null}
         <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -71,7 +78,7 @@ export function WhatIfSimulator({ engine }: { engine: TradePlanEngine }) {
             </label>
           </div>
         </div>
-        {validity.isCalculable && metrics.potentialReward !== null && metrics.riskRewardRatio !== null ? (
+        {canTrade && validity.isCalculable && metrics.potentialReward !== null && metrics.riskRewardRatio !== null ? (
           <div className={`mt-4 grid grid-cols-2 gap-2 text-xs transition-all duration-200 md:grid-cols-4 ${validity.isBlocked ? "opacity-60" : ""} ${pulse ? "scale-[1.05] shadow-[0_0_30px_rgba(34,211,238,0.18)]" : "scale-100"}`}>
             <SimulatorMetric label="Position Size" value={formatNumber(metrics.positionSize, 0)} />
             <SimulatorMetric label="Max Risk" value={`${formatMoney(metrics.maxRiskAmount)} risk`} tone="risk" />
@@ -81,7 +88,7 @@ export function WhatIfSimulator({ engine }: { engine: TradePlanEngine }) {
         ) : (
           <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">{validity.message}</div>
         )}
-        <ChaosEnginePanel engine={engine} />
+        {canTrade ? <ChaosEnginePanel engine={engine} /> : null}
       </GlassPanel>
     </div>
   );

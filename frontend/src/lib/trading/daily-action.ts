@@ -7,7 +7,7 @@ import { cleanText } from "@/lib/ui/formatters";
 export type DailyActionTone = "buy" | "wait" | "stay-out";
 
 export type DailyAction = {
-  action: "BUY" | "WAIT" | "WAIT_PULLBACK" | "STAY_OUT";
+  action: "BUY" | "DATA_STALE" | "WAIT" | "WAIT_PULLBACK" | "STAY_OUT";
   label: string;
   reason: string;
   symbol: string | null;
@@ -25,9 +25,9 @@ export function getDailyAction({ best, fallbackRow, marketRegime, scanSafety }: 
   const row = best?.row ?? fallbackRow ?? null;
   if (scanSafety?.active || (row && rowHasStaleDataSafety(row))) {
     return {
-      action: "WAIT",
-      label: "WAIT",
-      reason: scanSafety?.reason ?? STALE_DATA_ACTION_REASON,
+      action: "DATA_STALE",
+      label: "NO TRADE TODAY",
+      reason: "Data is outdated. No action recommended.",
       symbol: null,
       tone: "wait",
     };
@@ -37,7 +37,7 @@ export function getDailyAction({ best, fallbackRow, marketRegime, scanSafety }: 
   if (regime === "OVERHEATED" || regime.includes("OVERHEATED")) {
     return {
       action: "WAIT",
-      label: "WAIT",
+      label: "NO TRADE TODAY",
       reason: "Market is overheated. Wait for pullback.",
       symbol: null,
       tone: "wait",
@@ -71,6 +71,39 @@ export function getDailyAction({ best, fallbackRow, marketRegime, scanSafety }: 
   }
 
   return stayOutAction(symbol);
+}
+
+export function dailyActionAllowsTrade(action: DailyAction): boolean {
+  return action.action === "BUY";
+}
+
+export function dailyActionBlocksTradeUi(action: DailyAction): boolean {
+  return !dailyActionAllowsTrade(action);
+}
+
+export function noTradeActionCopy(action: DailyAction): { reason: string; title: string } {
+  if (action.action === "DATA_STALE") {
+    return {
+      title: "No Trade Today",
+      reason: "Data is outdated. No action recommended.",
+    };
+  }
+  if (action.action === "WAIT_PULLBACK") {
+    return {
+      title: "No active trade recommended",
+      reason: action.reason || "Monitor for entry after a cleaner pullback.",
+    };
+  }
+  if (action.action === "STAY_OUT") {
+    return {
+      title: "No Trade Today",
+      reason: action.reason || "No high-quality setups right now.",
+    };
+  }
+  return {
+    title: "No Trade Today",
+    reason: action.reason || STALE_DATA_ACTION_REASON,
+  };
 }
 
 function stayOutAction(symbol: string | null = null): DailyAction {

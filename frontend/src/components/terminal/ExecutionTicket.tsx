@@ -8,7 +8,7 @@ import { formatMoney } from "@/lib/ui/formatters";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
-export function ExecutionTicket({ engine, symbol }: { engine: TradePlanEngine; symbol: string }) {
+export function ExecutionTicket({ canTrade = true, engine, researchModeReason, symbol }: { canTrade?: boolean; engine: TradePlanEngine; researchModeReason?: string; symbol: string }) {
   const baseExecutionAllowed = engine.validity.isCalculable && !engine.validity.isBlocked;
   const riskStatus = engine.riskEvaluation.status;
   const isRiskVeto = riskStatus === "VETO";
@@ -26,10 +26,21 @@ export function ExecutionTicket({ engine, symbol }: { engine: TradePlanEngine; s
     setOverrideAccepted(false);
   }, [engine.riskEvaluation.reasons, riskStatus]);
 
+  if (!canTrade) {
+    return (
+      <GlassPanel className="p-5">
+        <SectionTitle eyebrow="Execution" title="No Active Trade" meta="locked" />
+        <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
+          Execution is disabled because the daily action is the source of truth. {researchModeReason ?? "Correct action: do nothing."}
+        </div>
+      </GlassPanel>
+    );
+  }
+
   if (!baseExecutionAllowed) {
     return (
       <GlassPanel className="p-5">
-        <SectionTitle eyebrow="Execution Ready" title="Mock Order Ticket" meta="blocked" />
+        <SectionTitle eyebrow="Execution" title="Paper Order Ticket" meta="blocked" />
         <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
           {engine.validity.message || (engine.validity.isBlocked ? "Execution blocked by system decision" : "No valid trade setup.")}
         </div>
@@ -39,7 +50,7 @@ export function ExecutionTicket({ engine, symbol }: { engine: TradePlanEngine; s
 
   return (
     <GlassPanel className={`p-5 transition-all duration-200 ${riskStatus === "VETO" ? "border-rose-300/30 shadow-[0_0_34px_rgba(244,63,94,0.16)]" : riskStatus === "WARNING" ? "border-amber-300/30 shadow-[0_0_28px_rgba(251,191,36,0.12)]" : ""}`}>
-      <SectionTitle eyebrow="Execution Ready" title="Mock Order Ticket" meta={riskOverrideUnlocked ? "Manual override" : riskStatus === "VETO" ? "locked" : "no real orders"} />
+      <SectionTitle eyebrow="Execution" title="Paper Order Ticket" meta={riskOverrideUnlocked ? "Manual override" : riskStatus === "VETO" ? "locked" : "no real orders"} />
       <div className="mt-3 inline-flex rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-100">
         Protected by Risk Rules
       </div>
@@ -77,7 +88,7 @@ export function ExecutionTicket({ engine, symbol }: { engine: TradePlanEngine; s
         onClick={() => setConfirming(true)}
       >
         {isRiskVeto && !riskOverrideUnlocked ? <LockIcon /> : null}
-        {isRiskVeto ? (riskOverrideUnlocked ? "Review Manual Override" : "Locked by Risk Rules") : "Review Mock Order"}
+        {isRiskVeto ? (riskOverrideUnlocked ? "Review Manual Override" : "Locked by Risk Rules") : "Review Paper Simulation"}
       </button>
       {confirming ? <ConfirmModal onCancel={() => setConfirming(false)} onConfirm={async () => { await ticket.submit(); setConfirming(false); }} payload={ticket.payload} /> : null}
       {ticket.result ? <div className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-400/10 p-3 text-xs text-emerald-100">{ticket.result.message} ID: {ticket.result.orderId}</div> : null}
@@ -145,7 +156,7 @@ function ConfirmModal({ payload, onCancel, onConfirm }: { payload: unknown; onCa
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
       <div className="max-w-lg rounded-2xl border border-white/10 bg-slate-950 p-5 shadow-2xl">
-        <div className="text-lg font-semibold text-slate-50">Confirm Mock Execution</div>
+        <div className="text-lg font-semibold text-slate-50">Confirm Paper Simulation</div>
         <p className="mt-2 text-sm text-amber-100">Mock execution only. No real order will be placed.</p>
         <pre className="mt-4 max-h-64 overflow-auto rounded-xl bg-black/40 p-3 text-xs text-slate-300">{JSON.stringify(payload, null, 2)}</pre>
         <div className="mt-4 flex justify-end gap-2"><button className="rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300" onClick={onCancel}>Cancel</button><button className="rounded-xl bg-cyan-300 px-4 py-2 text-sm font-bold text-slate-950" onClick={onConfirm}>Submit Mock</button></div>

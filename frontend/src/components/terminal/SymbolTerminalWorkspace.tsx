@@ -6,6 +6,7 @@ import { useTradePlanEngine } from "@/hooks/useTradePlanEngine";
 import type { SignalHistoryPoint } from "@/lib/adapters/DataServiceAdapter";
 import type { DataFreshness } from "@/lib/data-health";
 import type { PaperPositionRow, PaperTradeEventRow } from "@/lib/paper-data";
+import { dailyActionAllowsTrade, noTradeActionCopy, type DailyAction } from "@/lib/trading/daily-action";
 import type { ConvictionTimelineModel } from "@/lib/trading/conviction-timeline-types";
 import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
 import type { RiskPortfolioPosition } from "@/lib/trading/risk-veto";
@@ -36,6 +37,7 @@ export function SymbolTerminalWorkspace({
   priceSeries,
   paperPositions,
   paperEvents,
+  globalDecision,
   premiumAccess = true,
   viewerAuthenticated = false,
 }: {
@@ -47,6 +49,7 @@ export function SymbolTerminalWorkspace({
   priceSeries: Record<string, ScannerScalar>[];
   paperPositions: PaperPositionRow[];
   paperEvents: PaperTradeEventRow[];
+  globalDecision?: DailyAction;
   premiumAccess?: boolean;
   viewerAuthenticated?: boolean;
 }) {
@@ -65,11 +68,14 @@ export function SymbolTerminalWorkspace({
     const markers = history.map(historyPointToMarker).filter((marker): marker is ChartSignalMarker => Boolean(marker));
     return markers.length ? markers : undefined;
   }, [candles.length, history]);
+  const canTrade = globalDecision ? dailyActionAllowsTrade(globalDecision) : true;
+  const noTradeCopy = globalDecision && !canTrade ? noTradeActionCopy(globalDecision) : null;
+  const researchModeReason = noTradeCopy?.reason ?? "No active trade is recommended by the global decision system.";
 
   if (!premiumAccess) {
     return (
       <div className="space-y-5">
-        <SymbolDecisionHero dataFreshness={dataFreshness} edge={edgeProof} previewMode row={row} />
+        <SymbolDecisionHero dataFreshness={dataFreshness} edge={edgeProof} previewMode row={row} tradeAllowed={false} />
         <PremiumLockedState
           authenticated={viewerAuthenticated}
           description="Full trade plans, AI decision details, What-If simulation, execution tickets, signal history, and advanced chart context are premium symbol tools."
@@ -82,22 +88,40 @@ export function SymbolTerminalWorkspace({
 
   return (
     <div className="space-y-5">
-      <SymbolDecisionHero dataFreshness={dataFreshness} edge={edgeProof} row={row} />
+      <SymbolDecisionHero dataFreshness={dataFreshness} edge={edgeProof} researchModeReason={researchModeReason} row={row} tradeAllowed={canTrade} />
+
+      {!canTrade ? (
+        <GlassPanel className="border-amber-300/25 bg-amber-400/[0.08] p-6">
+          <div className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-200">Global Decision</div>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-50">{noTradeCopy?.title ?? "No active trade recommended"}</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+            This is a research signal only. {researchModeReason} Entry, stop, target, and execution surfaces are hidden.
+          </p>
+          <div className="mt-4 inline-flex rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm font-black text-amber-100">Correct action: do nothing</div>
+        </GlassPanel>
+      ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
-        <AICopilotPanel engine={tradeEngine} signal={row} />
+        {canTrade ? (
+          <AICopilotPanel engine={tradeEngine} signal={row} />
+        ) : (
+          <GlassPanel className="p-6">
+            <SectionTitle eyebrow="Decision Assistant" title="Research Mode" />
+            <p className="mt-4 text-sm leading-6 text-slate-400">AI trade guidance is suppressed while the global decision says no active trade. Review the context without acting.</p>
+          </GlassPanel>
+        )}
         <aside className="space-y-5 xl:sticky xl:top-5 xl:self-start">
-          <WhatIfSimulator engine={tradeEngine} />
-          <ExecutionTicket engine={tradeEngine} symbol={symbol} />
+          <WhatIfSimulator canTrade={canTrade} engine={tradeEngine} researchModeReason={researchModeReason} />
+          {canTrade ? <ExecutionTicket canTrade={canTrade} engine={tradeEngine} researchModeReason={researchModeReason} symbol={symbol} /> : null}
         </aside>
       </div>
 
-      <SignalStatusCard lifecycle={lifecycle} />
+      {canTrade ? <SignalStatusCard lifecycle={lifecycle} /> : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
         <div className="space-y-5">
-          <TradePlanCard engine={tradeEngine} row={row} />
-          <CorrectionMapCard row={row} />
+          {canTrade ? <TradePlanCard engine={tradeEngine} row={row} /> : null}
+          {canTrade ? <CorrectionMapCard row={row} /> : null}
           <HistoricalEdgeCard edge={edgeProof} />
           <WhyDecisionCard row={row} />
         </div>
@@ -127,7 +151,7 @@ export function SymbolTerminalWorkspace({
             showHistoricalSignals={showHistoricalMarkers}
             signals={chartSignals}
             symbol={symbol}
-            tradeLevels={tradeLevels}
+            tradeLevels={canTrade ? tradeLevels : undefined}
           />
         </div>
       </GlassPanel>

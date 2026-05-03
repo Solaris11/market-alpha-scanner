@@ -26,9 +26,24 @@ function glow(value: unknown) {
   return "shadow-[0_0_80px_rgba(34,211,238,0.14)]";
 }
 
-export function SymbolDecisionHero({ dataFreshness, edge, previewMode = false, row }: { dataFreshness: DataFreshness; edge?: HistoricalEdgeProof; previewMode?: boolean; row: RankingRow }) {
+export function SymbolDecisionHero({
+  dataFreshness,
+  edge,
+  previewMode = false,
+  researchModeReason,
+  row,
+  tradeAllowed = true,
+}: {
+  dataFreshness: DataFreshness;
+  edge?: HistoricalEdgeProof;
+  previewMode?: boolean;
+  researchModeReason?: string;
+  row: RankingRow;
+  tradeAllowed?: boolean;
+}) {
   const decision = row.final_decision ?? row.action ?? "WATCH";
   const conviction = computeConviction(row, edge);
+  const showTradePlan = tradeAllowed && !previewMode;
   return (
     <GlassPanel className={`overflow-hidden p-6 md:p-8 ${glow(decision)}`}>
       <div className="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-end">
@@ -43,19 +58,29 @@ export function SymbolDecisionHero({ dataFreshness, edge, previewMode = false, r
             <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100">
               Conviction <span className="font-mono">{conviction.score}</span> - {conviction.label}
             </span>
+            {!showTradePlan ? (
+              <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-4 py-2 text-sm font-semibold text-amber-100">
+                No active trade recommended
+              </span>
+            ) : null}
             <DataHealthIndicator freshness={dataFreshness} />
             <WatchlistButton symbol={row.symbol} />
           </div>
           <div className="mt-4 max-w-3xl text-lg leading-7 text-slate-200">
             {cleanText(row.decision_reason ?? row.quality_reason, "No decision reason available.")}
           </div>
+          {!showTradePlan ? (
+            <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
+              This is a research signal only. {researchModeReason ?? "No active trade is recommended by the global decision system."}
+            </div>
+          ) : null}
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <HeroMetric label="Score" value={formatNumber(row.final_score, 0)} />
           <HeroMetric label="Conviction" value={`${conviction.score} ${conviction.label}`} />
           <HeroMetric label="Price" value={formatMoney(row.price)} />
-          <HeroMetric label={previewMode ? "Plan" : "Entry"} value={previewMode ? "Locked" : formatMoney(row.suggested_entry ?? row.buy_zone ?? row.entry_zone)} />
+          <HeroMetric label={showTradePlan ? "Entry" : "Mode"} value={showTradePlan ? formatMoney(row.suggested_entry ?? row.buy_zone ?? row.entry_zone) : "Research only"} />
         </div>
       </div>
     </GlassPanel>
