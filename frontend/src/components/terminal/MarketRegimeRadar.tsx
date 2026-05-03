@@ -6,30 +6,38 @@ function countDecision(rows: RankingRow[], value: string) {
   return rows.filter((row) => String(row.final_decision ?? "").toUpperCase() === value).length;
 }
 
-export function MarketRegimeRadar({ regime, rows }: { regime: MarketRegime; rows: RankingRow[] }) {
+export function MarketRegimeRadar({ regime, researchMode = false, rows }: { regime: MarketRegime; researchMode?: boolean; rows: RankingRow[] }) {
   const enter = countDecision(rows, "ENTER");
   const avoid = countDecision(rows, "AVOID");
   const watch = countDecision(rows, "WATCH");
-  const aggressiveValue = regime.aggressiveEntriesAllowed ? "ENTER" : "WAIT_PULLBACK";
+  const aggressiveValue = researchMode ? "DISABLED" : regime.aggressiveEntriesAllowed ? "RESEARCH_SIGNAL" : "MONITOR_ONLY";
   return (
     <section className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/45 p-5 ring-1 ring-white/5">
       <SectionTitle eyebrow="Market Regime Radar" title={regime.label} />
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(260px,1fr)_minmax(360px,1.1fr)]">
         <ConfidenceRing confidence={regime.confidence} />
         <div className="grid min-w-0 gap-4 sm:grid-cols-2">
-          <RegimeInfoCard title="Aggressive Entries" value={aggressiveValue} tone={regime.aggressiveEntriesAllowed ? "green" : "amber"} />
+          <RegimeInfoCard title="Active Trade Mode" value={aggressiveValue} tone={researchMode ? "amber" : regime.aggressiveEntriesAllowed ? "green" : "amber"} />
           <RegimeInfoCard title="Breadth" value={regime.breadth} tone={toneFor(regime.breadth)} />
           <RegimeInfoCard title="Leadership" value={regime.leadership} tone="cyan" />
           <RegimePillList items={regime.strongestSectors} title="Strongest" tone="green" />
           <RegimePillList items={regime.weakestSectors} title="Weakest" tone="red" />
         </div>
       </div>
-      <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs text-slate-400 sm:grid-cols-4">
-        <div className="rounded-xl bg-white/[0.04] p-2">ENTER <span className="font-mono text-emerald-300">{enter}</span></div>
-        <div className="rounded-xl bg-white/[0.04] p-2">WATCH <span className="font-mono text-cyan-300">{watch}</span></div>
-        <div className="rounded-xl bg-white/[0.04] p-2">AVOID <span className="font-mono text-rose-300">{avoid}</span></div>
-        <div className="rounded-xl bg-white/[0.04] p-2">Rows <span className="font-mono text-slate-100">{rows.length}</span></div>
-      </div>
+      {researchMode ? (
+        <div className="mt-4 grid grid-cols-1 gap-2 text-center text-xs text-slate-400 sm:grid-cols-3">
+          <div className="rounded-xl bg-white/[0.04] p-2">Mode <span className="font-mono text-amber-200">RESEARCH</span></div>
+          <div className="rounded-xl bg-white/[0.04] p-2">Action <span className="font-mono text-amber-200">NO_TRADE</span></div>
+          <div className="rounded-xl bg-white/[0.04] p-2">Rows <span className="font-mono text-slate-100">{rows.length}</span></div>
+        </div>
+      ) : (
+        <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs text-slate-400 sm:grid-cols-4">
+          <div className="rounded-xl bg-white/[0.04] p-2">Research <span className="font-mono text-emerald-300">{enter}</span></div>
+          <div className="rounded-xl bg-white/[0.04] p-2">Monitor <span className="font-mono text-cyan-300">{watch}</span></div>
+          <div className="rounded-xl bg-white/[0.04] p-2">Blocked <span className="font-mono text-rose-300">{avoid}</span></div>
+          <div className="rounded-xl bg-white/[0.04] p-2">Rows <span className="font-mono text-slate-100">{rows.length}</span></div>
+        </div>
+      )}
     </section>
   );
 }

@@ -123,7 +123,7 @@ export default async function TerminalPage() {
                   <MetricCard label="Paper PnL" value={formatMoney(snapshot.paperSummary.totalPnl)} meta={`${snapshot.paperSummary.totalTrades} trades`} tone="pnl" />
                 </div>
               </div>
-              <MarketRegimeRadar regime={snapshot.marketRegime} rows={snapshot.signals} />
+              <MarketRegimeRadar regime={snapshot.marketRegime} researchMode={actionBlocksTradeUi} rows={snapshot.signals} />
             </div>
           </GlassPanel>
 
