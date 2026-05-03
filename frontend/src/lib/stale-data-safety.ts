@@ -4,6 +4,7 @@ import type { RankingRow, SymbolDetail } from "@/lib/types";
 
 export const DEFAULT_MAX_SCAN_AGE_MINUTES = 240;
 export const STALE_DATA_ACTION_REASON = "Data is stale. Refresh scan before acting.";
+const SAFE_DATA_ACTION_REASON = "Data freshness is within safe limits.";
 
 export type ScanSafetyState = {
   active: boolean;
@@ -21,13 +22,15 @@ export function buildScanSafetyState(freshness: DataFreshness, maxAgeMinutes = D
   const tooOld = freshness.ageMinutes !== null && freshness.ageMinutes > safeMaxAge;
   const unknownAge = freshness.ageMinutes === null && freshness.status !== "fresh" && freshness.status !== "slightly_stale";
 
+  const active = unavailable || tooOld || unknownAge;
+
   return {
-    active: unavailable || tooOld || unknownAge,
+    active,
     ageMinutes: freshness.ageMinutes,
     humanAge: freshness.humanAge,
     lastUpdated: freshness.lastUpdated,
     maxAgeMinutes: safeMaxAge,
-    reason: STALE_DATA_ACTION_REASON,
+    reason: active ? STALE_DATA_ACTION_REASON : SAFE_DATA_ACTION_REASON,
     status: freshness.status,
   };
 }
