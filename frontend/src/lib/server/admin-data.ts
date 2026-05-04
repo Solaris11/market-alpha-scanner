@@ -334,7 +334,7 @@ export async function listAdminBilling(): Promise<{ events: BillingEventSummary[
           s.status,
           s.plan,
           s.current_period_end::text,
-          s.cancel_at::text,
+          s.canceled_at::text AS cancel_at,
           s.cancel_at_period_end,
           s.stripe_customer_id,
           s.stripe_subscription_id,
