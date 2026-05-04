@@ -5,6 +5,7 @@ import { useExecutionTicket } from "@/hooks/useExecutionTicket";
 import type { TradePlanEngine } from "@/hooks/useTradePlanEngine";
 import type { OrderSide, OrderType, TimeInForce } from "@/lib/trading/order-types";
 import { formatMoney } from "@/lib/ui/formatters";
+import { TradeLegalNotice } from "@/components/legal/TradeLegalNotice";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
@@ -54,9 +55,7 @@ export function ExecutionTicket({ canTrade = true, engine, researchModeReason, s
       <div className="mt-3 inline-flex rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-100">
         Protected by Risk Rules
       </div>
-      <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-400/10 p-3 text-xs leading-5 text-amber-100">
-        Paper simulation only. This is not financial advice and no live broker order will be placed.
-      </div>
+      <TradeLegalNotice className="mt-3" />
       {riskStatus !== "OK" ? <ExecutionRiskBanner allowOverride={engine.riskProfile.allowOverride} checked={overrideAccepted} onChange={setOverrideAccepted} reasons={engine.riskEvaluation.reasons} status={riskStatus} /> : null}
       <div className="mt-4 grid grid-cols-2 gap-3 text-xs text-slate-400">
         <Select label="Side" value={s.side} onChange={(value) => ticket.setters.setSide(value as OrderSide)} options={["buy", "sell"]} />

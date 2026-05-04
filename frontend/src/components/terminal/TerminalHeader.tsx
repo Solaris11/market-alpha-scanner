@@ -1,5 +1,6 @@
 import { AccountPill } from "@/components/account/AccountPill";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { CompactLegalNotice } from "@/components/legal/CompactLegalNotice";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { OnboardingHelpButton } from "@/components/onboarding/OnboardingHelpButton";
 import { TerminalNav } from "./TerminalNav";
@@ -13,7 +14,8 @@ export function TerminalHeader() {
           <TerminalNav />
           <OnboardingHelpButton />
         </div>
-        <div className="flex items-start justify-end gap-2">
+        <div className="flex flex-wrap items-start justify-end gap-2">
+          <CompactLegalNotice className="self-center" />
           <NotificationBell />
           <AccountPill />
         </div>

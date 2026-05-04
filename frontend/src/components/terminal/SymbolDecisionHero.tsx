@@ -5,6 +5,7 @@ import { computeConviction } from "@/lib/trading/conviction";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { WatchlistButton } from "@/components/watchlist-controls";
 import { DataHealthIndicator } from "@/components/data-health-indicator";
+import { TradeLegalNotice } from "@/components/legal/TradeLegalNotice";
 import { DecisionBadge } from "./DecisionBadge";
 import { GlassPanel } from "./ui/GlassPanel";
 
@@ -69,9 +70,10 @@ export function SymbolDecisionHero({
           <div className="mt-4 max-w-3xl text-lg leading-7 text-slate-200">
             {cleanText(row.decision_reason ?? row.quality_reason, "No decision reason available.")}
           </div>
+          <TradeLegalNotice className="mt-4 max-w-3xl" />
           {!showTradePlan ? (
             <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
-              This is a research signal only. {researchModeReason ?? "No active trade is recommended by the global decision system."}
+              Research signal only. {researchModeReason ?? "No active trade is recommended by the global decision system."}
             </div>
           ) : null}
         </div>

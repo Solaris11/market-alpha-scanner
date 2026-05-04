@@ -1,7 +1,6 @@
 import { DataHealthBanner } from "@/components/data-health-indicator";
 import { LegalFooter } from "@/components/legal/LegalFooter";
 import { RiskAcknowledgement } from "@/components/legal/RiskAcknowledgement";
-import { RiskDisclaimer } from "@/components/legal/RiskDisclaimer";
 import { getScanDataHealth } from "@/lib/scanner-data";
 import { TerminalHeader } from "./TerminalHeader";
 
@@ -13,7 +12,6 @@ export async function TerminalShell({ children }: { children: React.ReactNode })
       <div className="mx-auto max-w-[1780px]">
         <TerminalHeader />
         {health ? <DataHealthBanner freshness={health} /> : null}
-        <RiskDisclaimer />
         {children}
         <LegalFooter />
         <RiskAcknowledgement />

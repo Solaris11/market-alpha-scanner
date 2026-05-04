@@ -51,6 +51,7 @@ export function DailyActionCard({ action, dataStatus, marketState }: { action: D
           <div className="text-xl font-black tracking-tight text-slate-50">{noTradeCopy.title}</div>
           <div className="mt-1 text-sm font-semibold text-amber-100">Correct action: do nothing</div>
           <div className="mt-1 text-xs leading-5 text-slate-400">{noTradeCopy.reason}</div>
+          <div className="mt-3 text-[11px] font-semibold text-slate-500">Research only. Not financial advice.</div>
         </div>
       ) : null}
     </GlassPanel>

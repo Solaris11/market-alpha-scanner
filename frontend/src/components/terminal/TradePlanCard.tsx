@@ -1,4 +1,5 @@
 import type { TradePlanEngine } from "@/hooks/useTradePlanEngine";
+import { TradeLegalNotice } from "@/components/legal/TradeLegalNotice";
 import { cleanText, formatMoney, formatNumber, formatPercent } from "@/lib/ui/formatters";
 import type { RankingRow } from "@/lib/types";
 import { GlassPanel } from "./ui/GlassPanel";
@@ -36,6 +37,7 @@ export function TradePlanCard({ engine, row }: { engine: TradePlanEngine; row: R
   return (
     <GlassPanel className="p-6">
       <SectionTitle eyebrow="Trade Plan" title={decision === "WAIT_PULLBACK" ? "Pullback Plan" : "Execution Plan"} meta="synced risk plan" />
+      <TradeLegalNotice className="mt-4" />
       <div className="mt-5 grid gap-3 md:grid-cols-3">
         <PlanMetric label="Suggested Entry" value={formatMoney(entry)} />
         <PlanMetric label="Stop Loss" value={formatMoney(stop)} tone="risk" />

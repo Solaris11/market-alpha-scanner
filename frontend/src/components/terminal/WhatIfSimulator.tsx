@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import type { TradePlanEngine } from "@/hooks/useTradePlanEngine";
+import { TradeLegalNotice } from "@/components/legal/TradeLegalNotice";
 import { formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { ChaosEnginePanel } from "./ChaosEnginePanel";
 import { GlassPanel } from "./ui/GlassPanel";
@@ -39,9 +40,7 @@ export function WhatIfSimulator({ canTrade = true, engine, researchModeReason }:
     <div data-onboarding-target="what-if-simulator">
       <GlassPanel className="p-5">
         <SectionTitle eyebrow="What-If" title={canTrade ? "Trade Simulator" : "Research Mode"} meta={readOnly ? "read-only" : displayRiskStatus === "OK" ? (validity.isCalculable ? "synced live" : "blocked") : displayRiskStatus.toLowerCase()} />
-        <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-400/10 p-3 text-xs leading-5 text-amber-100">
-          Research and paper simulation only. This is not financial advice.
-        </div>
+        <TradeLegalNotice className="mt-3" />
         {!canTrade ? (
           <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm font-semibold leading-6 text-amber-100">
             No active trade recommended. {researchModeReason ?? "Correct action: do nothing."} Trade sizing, entry, stop, target, and stress-test outputs are disabled.
