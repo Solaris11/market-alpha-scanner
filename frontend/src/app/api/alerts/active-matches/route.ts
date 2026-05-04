@@ -23,6 +23,6 @@ export async function GET() {
     });
   }
 
-  const matches = await getActiveAlertMatches();
+  const matches = await getActiveAlertMatches(entitlement.user?.id ?? null);
   return NextResponse.json({ ...matches, scanSafety, limited: false, entitlement: entitlementSummary(entitlement) });
 }

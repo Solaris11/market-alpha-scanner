@@ -1,9 +1,9 @@
 import "server-only";
 
-import fs from "node:fs/promises";
-import path from "node:path";
+import type { PoolClient, QueryResultRow } from "pg";
+import { alertRulePayload } from "@/lib/security/alert-persistence";
 import { getCurrentUser } from "./server/auth";
-import { scannerOutputDir } from "./scanner-data";
+import { dbQuery, getDbPool } from "./server/db";
 
 export const ALERT_TYPES = [
   "price_above",
@@ -79,11 +79,33 @@ type AlertStorageOptions = {
   userId?: string | null;
 };
 
-const cacheRoot = globalThis as typeof globalThis & {
-  __marketAlphaAlertJsonCache?: Map<string, FileCacheEntry<unknown>>;
+type AlertRuleRow = QueryResultRow & {
+  alert_type: string;
+  client_rule_id: string;
+  created_at: string | Date;
+  is_active: boolean;
+  payload: unknown;
+  scope: string;
+  symbol: string | null;
+  threshold: string | number | null;
+  updated_at: string | Date;
 };
-const alertJsonCache = cacheRoot.__marketAlphaAlertJsonCache ?? new Map<string, FileCacheEntry<unknown>>();
-cacheRoot.__marketAlphaAlertJsonCache = alertJsonCache;
+
+type AlertStateRow = QueryResultRow & {
+  last_sent_at: string | Date | null;
+  last_skipped_at: string | Date | null;
+  payload: unknown;
+  rule_client_id: string | null;
+  state_key: string;
+  symbol: string | null;
+  updated_at: string | Date;
+};
+
+type DefaultSeedRow = QueryResultRow & {
+  defaults_seeded: boolean;
+};
+
+type QueryExecutor = Pick<PoolClient, "query">;
 
 const DEFAULT_RULES: AlertRule[] = [
   {
@@ -169,61 +191,36 @@ const DEFAULT_RULES: AlertRule[] = [
   },
 ];
 
-function alertsDir(userId?: string | null) {
-  if (userId) return path.join(scannerOutputDir(), "alerts", "users", userId);
-  return path.join(scannerOutputDir(), "alerts");
-}
-
-export function alertRulesPath(userId?: string | null) {
-  return path.join(alertsDir(userId), "alert_rules.json");
-}
-
-export function alertStatePath(userId?: string | null) {
-  return path.join(alertsDir(userId), "alert_state.json");
-}
-
-async function fileExists(filePath: string) {
-  try {
-    await fs.access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function writeJsonAtomic(filePath: string, payload: unknown) {
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  const tmpPath = `${filePath}.${process.pid}.${Date.now()}.${Math.random().toString(16).slice(2)}.tmp`;
-  await fs.writeFile(tmpPath, `${JSON.stringify(payload, null, 2)}\n`, "utf8");
-  await fs.rename(tmpPath, filePath);
-  alertJsonCache.delete(filePath);
-}
-
-async function readJson<T>(filePath: string, fallback: T): Promise<T> {
-  if (!(await fileExists(filePath))) return fallback;
-  try {
-    const stat = await fs.stat(filePath);
-    const cached = alertJsonCache.get(filePath);
-    if (cached && cached.mtimeMs === stat.mtimeMs && cached.size === stat.size) {
-      return cached.value as T;
-    }
-    const value = JSON.parse(await fs.readFile(filePath, "utf8")) as T;
-    alertJsonCache.set(filePath, { mtimeMs: stat.mtimeMs, size: stat.size, value });
-    return value;
-  } catch {
-    return fallback;
-  }
-}
-
-export async function ensureAlertRulesFile(options: AlertStorageOptions = {}) {
+export async function ensureDefaultAlertRules(options: AlertStorageOptions = {}) {
   const userId = await resolveAlertUserId(options);
-  const filePath = alertRulesPath(userId);
+  if (!userId) return;
+  const pool = getDbPool();
+  if (!pool) throw new Error("DATABASE_URL is not configured.");
+  const client = await pool.connect();
   try {
-    if (!(await fileExists(filePath))) {
-      await writeJsonAtomic(filePath, DEFAULT_RULES);
+    await client.query("BEGIN");
+    const settings = await client.query<DefaultSeedRow>(
+      `
+        INSERT INTO alert_user_settings (user_id, defaults_seeded, created_at, updated_at)
+        VALUES ($1, false, now(), now())
+        ON CONFLICT (user_id) DO NOTHING
+        RETURNING defaults_seeded
+      `,
+      [userId],
+    );
+    const row = settings.rows[0] ?? (await client.query<DefaultSeedRow>("SELECT defaults_seeded FROM alert_user_settings WHERE user_id = $1 FOR UPDATE", [userId])).rows[0];
+    if (!row?.defaults_seeded) {
+      for (const rule of DEFAULT_RULES) {
+        await upsertAlertRule(client, userId, sanitizeAlertRule(rule));
+      }
+      await client.query("UPDATE alert_user_settings SET defaults_seeded = true, updated_at = now() WHERE user_id = $1", [userId]);
     }
+    await client.query("COMMIT");
   } catch (error) {
-    console.warn("[alerts] alert rules file is not writable; continuing with an empty rules response.", error);
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
   }
 }
 
@@ -334,43 +331,84 @@ export function sanitizeAlertRule(input: Record<string, unknown>, existing?: Ale
 
 export async function readAlertRules(options: AlertStorageOptions = {}) {
   const userId = await resolveAlertUserId(options);
-  if (options.createDefault !== false) {
-    await ensureAlertRulesFile({ userId });
-  }
-  const payload = await readJson<unknown>(alertRulesPath(userId), []);
-  if (!Array.isArray(payload)) return [];
-  const rules: AlertRule[] = [];
-  for (const item of payload) {
-    if (!item || typeof item !== "object") continue;
-    try {
-      rules.push(sanitizeAlertRule(item as Record<string, unknown>));
-    } catch {
-      // Ignore malformed rules in the UI response rather than breaking the page.
-    }
-  }
-  return rules;
+  if (!userId) return [];
+  if (options.createDefault !== false) await ensureDefaultAlertRules({ userId });
+  const result = await dbQuery<AlertRuleRow>(
+    `
+      SELECT client_rule_id, scope, symbol, alert_type, threshold, payload, is_active, created_at::text, updated_at::text
+      FROM alert_rules
+      WHERE user_id = $1
+      ORDER BY created_at ASC, client_rule_id ASC
+    `,
+    [userId],
+  );
+  return result.rows.map(alertRuleFromRow).filter((rule): rule is AlertRule => Boolean(rule));
 }
 
 export async function writeAlertRules(rules: AlertRule[], options: AlertStorageOptions = {}) {
   const userId = await resolveAlertUserId(options);
-  await writeJsonAtomic(alertRulesPath(userId), rules);
+  if (!userId) throw new Error("Authenticated user is required for alert rules.");
+  const pool = getDbPool();
+  if (!pool) throw new Error("DATABASE_URL is not configured.");
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("DELETE FROM alert_rules WHERE user_id = $1", [userId]);
+    for (const rule of rules) {
+      await upsertAlertRule(client, userId, sanitizeAlertRule(rule));
+    }
+    await client.query(
+      `
+        INSERT INTO alert_user_settings (user_id, defaults_seeded, created_at, updated_at)
+        VALUES ($1, true, now(), now())
+        ON CONFLICT (user_id) DO UPDATE SET defaults_seeded = true, updated_at = now()
+      `,
+      [userId],
+    );
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function readAlertState(options: AlertStorageOptions = {}): Promise<AlertState> {
   const userId = await resolveAlertUserId(options);
-  const state = await readJson<AlertState>(alertStatePath(userId), { alerts: {} });
-  if (!state || typeof state !== "object" || !state.alerts || typeof state.alerts !== "object") {
-    return { alerts: {} };
-  }
-  return state;
+  if (!userId) return { alerts: {} };
+  const result = await dbQuery<AlertStateRow>(
+    `
+      SELECT state_key, rule_client_id, symbol, payload, last_sent_at::text, last_skipped_at::text, updated_at::text
+      FROM alert_rule_state
+      WHERE user_id = $1
+      ORDER BY updated_at DESC
+    `,
+    [userId],
+  );
+  const alerts = Object.fromEntries(result.rows.map((row) => [row.state_key, alertStateFromRow(row)]));
+  return { alerts, updated_at_utc: result.rows[0] ? isoText(result.rows[0].updated_at) : undefined };
 }
 
 export async function writeAlertState(state: AlertState, options: AlertStorageOptions = {}) {
   const userId = await resolveAlertUserId(options);
-  await writeJsonAtomic(alertStatePath(userId), {
-    ...state,
-    updated_at_utc: new Date().toISOString(),
-  });
+  if (!userId) throw new Error("Authenticated user is required for alert state.");
+  const pool = getDbPool();
+  if (!pool) throw new Error("DATABASE_URL is not configured.");
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+    await client.query("DELETE FROM alert_rule_state WHERE user_id = $1", [userId]);
+    for (const [stateKey, entry] of Object.entries(state.alerts)) {
+      await upsertAlertState(client, userId, stateKey, entry);
+    }
+    await client.query("COMMIT");
+  } catch (error) {
+    await client.query("ROLLBACK").catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
 }
 
 export async function getAlertOverview(options: AlertStorageOptions & { stateLimit?: number } = {}) {
@@ -397,4 +435,151 @@ async function resolveAlertUserId(options: AlertStorageOptions): Promise<string 
   if (Object.prototype.hasOwnProperty.call(options, "userId")) return options.userId ?? null;
   const user = await getCurrentUser().catch(() => null);
   return user?.id ?? null;
+}
+
+async function upsertAlertRule(executor: QueryExecutor, userId: string, rule: AlertRule): Promise<void> {
+  await executor.query(
+    `
+      INSERT INTO alert_rules (
+        user_id,
+        client_rule_id,
+        scope,
+        symbol,
+        alert_type,
+        condition_operator,
+        threshold,
+        payload,
+        is_active,
+        created_at,
+        updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5, NULL, $6, $7::jsonb, $8, COALESCE($9::timestamptz, now()), now())
+      ON CONFLICT (user_id, client_rule_id)
+      DO UPDATE SET
+        scope = EXCLUDED.scope,
+        symbol = EXCLUDED.symbol,
+        alert_type = EXCLUDED.alert_type,
+        condition_operator = EXCLUDED.condition_operator,
+        threshold = EXCLUDED.threshold,
+        payload = EXCLUDED.payload,
+        is_active = EXCLUDED.is_active,
+        updated_at = now()
+    `,
+    [
+      userId,
+      rule.id,
+      rule.scope,
+      rule.symbol ?? null,
+      rule.type,
+      rule.threshold ?? null,
+      JSON.stringify(alertRulePayload(rule)),
+      rule.enabled,
+      rule.created_at_utc ?? null,
+    ],
+  );
+}
+
+async function upsertAlertState(executor: QueryExecutor, userId: string, stateKey: string, entry: AlertRuleState): Promise<void> {
+  await executor.query(
+    `
+      INSERT INTO alert_rule_state (
+        user_id,
+        state_key,
+        rule_client_id,
+        symbol,
+        payload,
+        last_sent_at,
+        last_skipped_at,
+        created_at,
+        updated_at
+      )
+      VALUES ($1, $2, $3, $4, $5::jsonb, $6, $7, now(), now())
+      ON CONFLICT (user_id, state_key)
+      DO UPDATE SET
+        rule_client_id = EXCLUDED.rule_client_id,
+        symbol = EXCLUDED.symbol,
+        payload = EXCLUDED.payload,
+        last_sent_at = EXCLUDED.last_sent_at,
+        last_skipped_at = EXCLUDED.last_skipped_at,
+        updated_at = now()
+    `,
+    [
+      userId,
+      stateKey,
+      entry.alert_id ?? null,
+      entry.symbol ?? null,
+      JSON.stringify(entry),
+      dateOrNull(entry.last_sent_at),
+      dateOrNull(entry.last_skipped_at),
+    ],
+  );
+}
+
+function alertRuleFromRow(row: AlertRuleRow): AlertRule | null {
+  const payload = recordFromJson(row.payload);
+  try {
+    const rule = sanitizeAlertRule({
+      ...payload,
+      id: row.client_rule_id,
+      scope: row.scope,
+      symbol: row.symbol ?? undefined,
+      type: row.alert_type,
+      threshold: nullableNumber(row.threshold),
+      enabled: row.is_active,
+    });
+    return {
+      ...rule,
+      created_at_utc: isoText(row.created_at),
+      updated_at_utc: isoText(row.updated_at),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function alertStateFromRow(row: AlertStateRow): AlertRuleState {
+  const payload = recordFromJson(row.payload);
+  return {
+    ...payload,
+    alert_id: textOrUndefined(payload.alert_id) ?? row.rule_client_id ?? undefined,
+    last_sent_at: isoText(row.last_sent_at) ?? textOrUndefined(payload.last_sent_at),
+    last_skipped_at: isoText(row.last_skipped_at) ?? textOrUndefined(payload.last_skipped_at),
+    symbol: textOrUndefined(payload.symbol) ?? row.symbol ?? undefined,
+  };
+}
+
+function recordFromJson(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value as Record<string, unknown>;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  }
+  return {};
+}
+
+function nullableNumber(value: string | number | null): number | undefined {
+  if (value === null) return undefined;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function dateOrNull(value: string | undefined): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function isoText(value: string | Date | null): string | undefined {
+  if (!value) return undefined;
+  const date = value instanceof Date ? value : new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : undefined;
+}
+
+function textOrUndefined(value: unknown): string | undefined {
+  const text = String(value ?? "").trim();
+  return text || undefined;
 }

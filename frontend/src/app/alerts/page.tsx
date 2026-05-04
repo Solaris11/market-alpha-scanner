@@ -30,7 +30,7 @@ export default async function AlertsPage() {
     );
   }
 
-  const overview = await getAlertOverview();
+  const overview = await getAlertOverview({ userId: entitlement.user?.id ?? null });
 
   return (
     <TerminalShell>

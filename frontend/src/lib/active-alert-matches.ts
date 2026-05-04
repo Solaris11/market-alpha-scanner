@@ -1,11 +1,10 @@
 import "server-only";
 
-import fs from "node:fs/promises";
-import path from "node:path";
 import { actionFor } from "./format";
 import { readAlertRules, readAlertState, type AlertRule, type AlertRuleState } from "./alerts";
-import { getFullRanking, getScanDataHealth, getTopCandidates, scannerOutputDir } from "./scanner-data";
+import { getFullRanking, getScanDataHealth, getTopCandidates } from "./scanner-data";
 import { scanSafetyFromFreshness } from "./server/stale-data-safety";
+import { readUserWatchlist } from "./server/user-watchlist";
 import { applyStaleDataSafetyToRows } from "./stale-data-safety";
 import type { RankingRow } from "./types";
 
@@ -261,14 +260,10 @@ function matchesRuleType(rule: AlertRule, row: RankingRow, signal: string, topSy
   return false;
 }
 
-async function readWatchlistSymbols() {
-  try {
-    const payload = JSON.parse(await fs.readFile(path.join(scannerOutputDir(), "watchlist.json"), "utf8")) as unknown;
-    const rawSymbols = Array.isArray(payload) ? payload : payload && typeof payload === "object" && Array.isArray((payload as { symbols?: unknown[] }).symbols) ? (payload as { symbols: unknown[] }).symbols : [];
-    return new Set(rawSymbols.map(normalizeSymbol).filter(Boolean));
-  } catch {
-    return new Set<string>();
-  }
+async function readWatchlistSymbols(userId: string | null) {
+  if (!userId) return new Set<string>();
+  const symbols = await readUserWatchlist(userId).catch(() => []);
+  return new Set(symbols.map(normalizeSymbol).filter(Boolean));
 }
 
 function stateFor(ruleId: string, symbol: string, alerts: Record<string, AlertRuleState>) {
@@ -335,7 +330,7 @@ function radarSignals(row: RankingRow) {
   return signals;
 }
 
-export async function getActiveAlertMatches(): Promise<ActiveAlertMatchesResponse> {
+export async function getActiveAlertMatches(userId: string | null): Promise<ActiveAlertMatchesResponse> {
   const generatedAt = new Date().toISOString();
   const health = await getScanDataHealth();
   const scanSafety = scanSafetyFromFreshness(health);
@@ -349,9 +344,9 @@ export async function getActiveAlertMatches(): Promise<ActiveAlertMatchesRespons
   const [rawRows, rawTopCandidates, rules, alertState, watchlist] = await Promise.all([
     getFullRanking(),
     getTopCandidates(),
-    readAlertRules({ createDefault: false }),
-    readAlertState(),
-    readWatchlistSymbols(),
+    readAlertRules({ createDefault: false, userId }),
+    readAlertState({ userId }),
+    readWatchlistSymbols(userId),
   ]);
   const rows = applyStaleDataSafetyToRows(rawRows, scanSafety);
   const topCandidates = applyStaleDataSafetyToRows(rawTopCandidates, scanSafety);

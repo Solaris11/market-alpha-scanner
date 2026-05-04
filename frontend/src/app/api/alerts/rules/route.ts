@@ -12,7 +12,7 @@ export async function GET() {
   const entitlement = await getEntitlement();
   if (requiresLegalAcceptance(entitlement)) return legalNotAcceptedResponse(entitlement);
   const premium = hasPremiumAccess(entitlement);
-  const overview = await getAlertOverview({ createDefault: premium ? undefined : false });
+  const overview = await getAlertOverview({ createDefault: premium ? undefined : false, userId: entitlement.user?.id ?? null });
   if (!premium) {
     const preview = previewAlertOverview(overview);
     return NextResponse.json({

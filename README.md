@@ -150,8 +150,6 @@ The scanner writes:
 - `scanner_output/history/scan_YYYYMMDD_HHMMSS.csv`
 - `scanner_output/analysis/forward_returns.csv`
 - `scanner_output/analysis/performance_summary.csv`
-- `scanner_output/alerts/alert_rules.json`
-- `scanner_output/alerts/alert_state.json`
 - `scanner_output/symbols/<symbol>/history.csv`
 - `scanner_output/symbols/<symbol>/summary.json`
 
@@ -164,7 +162,7 @@ This is a hybrid-write phase. Existing file outputs remain the raw backup/histor
 
 ## Rule-Based Alerts
 
-The scanner supports file-backed alert rules for Telegram and email notifications.
+Market Alpha Scanner stores SaaS user alert rules in Postgres through the `/api/alerts` routes. Scanner artifacts remain read-only market data outputs; account-owned alert rules are not stored in scanner output directories.
 
 ### Required Environment Variables
 
@@ -186,12 +184,6 @@ export SMTP_USER="smtp_user"
 export SMTP_PASSWORD="smtp_password"
 ```
 
-### Rules
-
-Rules are stored in:
-
-- `scanner_output/alerts/alert_rules.json`
-
 Supported alert types:
 
 - `price_above`
@@ -208,11 +200,7 @@ Supported alert types:
 
 ### Dedup Behavior
 
-Alerts are deduplicated with cooldown state in:
-
-- `scanner_output/alerts/alert_state.json`
-
-Each rule tracks last sent time, last trigger value, and message hash. A rule will not resend until its configured `cooldown_minutes` has elapsed.
+Alerts are deduplicated with cooldown state stored per account in Postgres. Each rule tracks last sent time, last trigger value, and message hash. A rule will not resend until its configured `cooldown_minutes` has elapsed.
 
 ### Create a Telegram Bot
 
