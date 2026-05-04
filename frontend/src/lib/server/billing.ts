@@ -76,6 +76,25 @@ export async function getBillingSubscriptionForUser(userId: string): Promise<Bil
   return subscriptionFromRow(result.rows[0]);
 }
 
+export async function getFreshBillingSubscriptionForUser(userId: string): Promise<BillingSubscription | null> {
+  const subscription = await getBillingSubscriptionForUser(userId);
+  if (!subscription?.stripeSubscriptionId) return subscription;
+
+  try {
+    const result = await upsertSubscriptionFromStripe(await retrieveSubscription(subscription.stripeSubscriptionId), userId);
+    if (result.userId && statusGrantsPremium(result.status) && result.cancelAtPeriodEnd && result.previousCancelAtPeriodEnd !== true) {
+      await notifySubscriptionCanceled(result.userId, result.currentPeriodEnd);
+    }
+    if (result.userId && result.previousCancelAtPeriodEnd === true && !result.cancelAtPeriodEnd && statusGrantsPremium(result.status)) {
+      await notifyPremiumRenewalRestored(result.userId);
+    }
+    return getBillingSubscriptionForUser(userId);
+  } catch (error) {
+    console.warn("[stripe] account billing refresh failed", error instanceof Error ? error.message : error);
+    return subscription;
+  }
+}
+
 export async function getOrCreateStripeCustomerForUser(user: AuthUser): Promise<string> {
   const existing = await getBillingSubscriptionForUser(user.id);
   if (existing?.stripeCustomerId) return existing.stripeCustomerId;
@@ -306,6 +325,10 @@ async function currentCancelAtPeriodEnd(userId: string): Promise<boolean | null>
   const result = await dbQuery<PreviousCancelRow>("SELECT cancel_at_period_end FROM user_subscriptions WHERE user_id = $1 LIMIT 1", [userId]);
   const value = result.rows[0]?.cancel_at_period_end;
   return typeof value === "boolean" ? value : null;
+}
+
+function statusGrantsPremium(status: string): boolean {
+  return status === "active" || status === "trialing";
 }
 
 async function safeCreateNotification(intent: SubscriptionNotificationIntent, userId: string): Promise<void> {

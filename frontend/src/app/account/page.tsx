@@ -7,7 +7,7 @@ import { checkoutBlockMessage, checkoutBlockReason } from "@/lib/security/billin
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { getAlertOverview } from "@/lib/alerts";
 import { dbQuery } from "@/lib/server/db";
-import { getBillingSubscriptionForUser, type BillingSubscription } from "@/lib/server/billing";
+import { getFreshBillingSubscriptionForUser, type BillingSubscription } from "@/lib/server/billing";
 import { getEntitlement, type Entitlement } from "@/lib/server/entitlements";
 import { formatRiskExperienceLevel } from "@/lib/security/onboarding-profile";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
@@ -52,7 +52,7 @@ export default async function AccountPage() {
     readRiskProfile(user.id),
     readWatchlist(user.id),
     readEnabledAlertCount(user.id),
-    getBillingSubscriptionForUser(user.id).catch(() => null),
+    getFreshBillingSubscriptionForUser(user.id).catch(() => null),
   ]);
 
   return (

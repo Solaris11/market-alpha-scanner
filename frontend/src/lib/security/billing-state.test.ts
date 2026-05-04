@@ -20,6 +20,7 @@ test("account UI state for cancel scheduled shows active-until date", () => {
   assert.equal(state.currentPeriodEnd?.toISOString(), "2026-06-04T08:32:02.000Z");
   assert.equal(state.statusText, "Subscription canceled");
   assert.equal(state.accessText, "Premium access active until Jun 4, 2026");
+  assert.doesNotMatch(`${state.statusText} ${state.accessText} ${state.helper}`, /Renews on/);
   assert.equal(state.actionMode, "portal");
   assert.equal(state.actionLabel, "Renew Subscription");
   assert.equal(state.helper, "Your premium access will continue until Jun 4, 2026. Your subscription will not renew.");
@@ -91,6 +92,25 @@ test("active billing state exposes renewal date and renewal flag", () => {
   assert.equal(state.isCanceled, false);
   assert.equal(state.willRenew, true);
   assert.equal(state.accessText, "Renews on Jul 4, 2026");
+});
+
+test("canceled subscription does not render premium active renewal copy", () => {
+  const state = billingViewState({
+    isPremium: false,
+    subscription: {
+      cancelAtPeriodEnd: false,
+      currentPeriodEnd: "2026-06-04T08:32:02.000Z",
+      status: "canceled",
+      stripeCustomerId: "cus_test",
+      stripeSubscriptionId: "sub_test",
+    },
+  });
+
+  assert.equal(state.state, "free");
+  assert.equal(state.isPremium, false);
+  assert.equal(state.willRenew, false);
+  assert.equal(state.actionLabel, "Renew Subscription");
+  assert.doesNotMatch(`${state.statusText} ${state.accessText} ${state.helper}`, /Premium active|Renews on/);
 });
 
 test("account page state tolerates null subscription fields", () => {
