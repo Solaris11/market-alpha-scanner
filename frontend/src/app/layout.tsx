@@ -3,8 +3,18 @@ import { CurrentUserProvider } from "@/hooks/useCurrentUser";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Market Alpha Scanner",
-  description: "Premium trading terminal frontend for Market Alpha Scanner outputs.",
+  title: "Market Alpha",
+  description: "AI-powered trading research platform",
+  icons: {
+    apple: "/apple-touch-icon.png",
+    icon: "/favicon.ico",
+  },
+  appleWebApp: {
+    title: "Market Alpha",
+  },
+  other: {
+    "apple-mobile-web-app-title": "Market Alpha",
+  },
 };
 
 export default function RootLayout({
