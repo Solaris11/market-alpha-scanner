@@ -80,6 +80,10 @@ export const ROUTE_CLASSIFICATION: Record<RouteAccess, string[]> = {
     "/api/paper/analytics/*",
   ],
   admin: [
+    "/admin",
+    "/admin/*",
+    "/api/admin",
+    "/api/admin/*",
     "/api/run-scanner",
     "/api/run-analysis",
     "/api/alerts/test-send",

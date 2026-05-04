@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import type { QueryResultRow } from "pg";
 import { hashSessionToken } from "@/lib/security/session-token";
+import { normalizeUserRole, type UserRole } from "@/lib/security/admin-policy";
 import { dbQuery } from "./db";
 
 export const SESSION_COOKIE_NAME = "market_alpha_session";
@@ -15,6 +16,7 @@ const BCRYPT_ROUNDS = 12;
 export type AuthUser = {
   id: string;
   email: string;
+  role: UserRole;
   displayName: string | null;
   emailVerified: boolean;
   state: string;
@@ -35,6 +37,7 @@ export type AuthSession = {
 type UserRow = QueryResultRow & {
   id: string;
   email: string;
+  role: string;
   display_name: string | null;
   email_verified: boolean;
   state: string;
@@ -53,6 +56,7 @@ type UserWithPasswordRow = UserRow & {
 const USER_SELECT = `
   id::text,
   email,
+  role,
   display_name,
   email_verified,
   state,
@@ -67,6 +71,7 @@ const USER_SELECT = `
 const USER_SELECT_U = `
   u.id::text,
   u.email,
+  u.role,
   u.display_name,
   u.email_verified,
   u.state,
@@ -222,6 +227,7 @@ export function userFromRow(row: UserRow | undefined): AuthUser {
   return {
     id: row.id,
     email: row.email,
+    role: normalizeUserRole(row.role),
     displayName: row.display_name,
     emailVerified: Boolean(row.email_verified),
     state: row.state,

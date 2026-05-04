@@ -13,6 +13,7 @@ export type CurrentUser = {
   onboardingCompleted: boolean;
   profileImageUrl: string | null;
   riskExperienceLevel: string | null;
+  role: "user" | "admin";
   state: string;
   timezone: string | null;
 };

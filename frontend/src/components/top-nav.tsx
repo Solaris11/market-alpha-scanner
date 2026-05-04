@@ -22,8 +22,10 @@ function isActive(pathname: string, href: string) {
 
 export function TopNav() {
   const pathname = usePathname();
-  const { authenticated } = useCurrentUser();
-  const items = authenticated ? [...NAV_ITEMS, { href: "/account", label: "Account" }] : NAV_ITEMS;
+  const { authenticated, entitlement } = useCurrentUser();
+  const items = authenticated
+    ? [...NAV_ITEMS, ...(entitlement.isAdmin ? [{ href: "/admin", label: "Admin" }] : []), { href: "/account", label: "Account" }]
+    : NAV_ITEMS;
 
   return (
     <nav className="flex max-w-full flex-wrap items-center gap-2 text-xs text-slate-400">

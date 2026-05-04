@@ -7,6 +7,7 @@ const WWW_HOST = "www.marketalpha.co";
 const appPathPrefixes = [
   "/account",
   "/advanced",
+  "/admin",
   "/alerts",
   "/api",
   "/history",

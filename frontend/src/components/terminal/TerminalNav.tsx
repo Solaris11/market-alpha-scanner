@@ -16,8 +16,10 @@ const NAV = [
 
 export function TerminalNav() {
   const pathname = usePathname();
-  const { authenticated } = useCurrentUser();
-  const items = authenticated ? [...NAV, { href: "/account", label: "Account" }] : NAV;
+  const { authenticated, entitlement } = useCurrentUser();
+  const items = authenticated
+    ? [...NAV, ...(entitlement.isAdmin ? [{ href: "/admin", label: "Admin" }] : []), { href: "/account", label: "Account" }]
+    : NAV;
 
   return (
     <nav className="flex max-w-full flex-wrap items-center gap-2">

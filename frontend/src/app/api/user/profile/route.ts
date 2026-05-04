@@ -19,6 +19,7 @@ type ProfilePayload = {
 type ProfileRow = QueryResultRow & {
   id: string;
   email: string;
+  role: string;
   display_name: string | null;
   email_verified: boolean;
   state: string;
@@ -88,6 +89,7 @@ export async function PUT(request: Request) {
         RETURNING
           id::text,
           email,
+          role,
           display_name,
           email_verified,
           state,
