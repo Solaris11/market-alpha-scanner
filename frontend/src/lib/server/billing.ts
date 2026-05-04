@@ -9,6 +9,7 @@ import {
   subscriptionCanceledNotification,
   type SubscriptionNotificationIntent,
 } from "@/lib/security/subscription-notifications";
+import { stripeSubscriptionAccessEnd, stripeSubscriptionCancelScheduled } from "@/lib/security/stripe-subscription-state";
 import type { AuthUser } from "./auth";
 import { dbQuery } from "./db";
 import { createNotificationOnce, createNotificationWithAction } from "./notifications";
@@ -141,9 +142,9 @@ export async function upsertSubscriptionFromStripe(subscription: Stripe.Subscrip
   const stripeCustomerId = stripeObjectId(subscription.customer);
   const stripeSubscriptionId = subscription.id;
   const userId = userIdHint || metadataUserId(subscription.metadata) || (await findUserIdForStripeSubscription(stripeCustomerId, stripeSubscriptionId));
-  const currentPeriodEnd = periodEndDate(subscription);
+  const currentPeriodEnd = stripeSubscriptionAccessEnd(subscription);
   const canceledAt = timestampDate(subscription.canceled_at);
-  const cancelAtPeriodEnd = Boolean(subscription.cancel_at_period_end);
+  const cancelAtPeriodEnd = stripeSubscriptionCancelScheduled(subscription);
 
   if (!userId) {
     console.warn("[stripe] subscription event could not be mapped to a user.");
@@ -307,14 +308,6 @@ function subscriptionFromRow(row: BillingSubscriptionRow | undefined): BillingSu
 function metadataUserId(metadata: Stripe.Metadata | null | undefined): string | null {
   const userId = metadata?.user_id;
   return typeof userId === "string" && userId ? userId : null;
-}
-
-function periodEndDate(subscription: Stripe.Subscription): Date | null {
-  const itemPeriodEnds = subscription.items.data
-    .map((item) => item.current_period_end)
-    .filter((value): value is number => Number.isFinite(value));
-  const periodEnd = itemPeriodEnds.length ? Math.max(...itemPeriodEnds) : subscription.trial_end;
-  return typeof periodEnd === "number" && Number.isFinite(periodEnd) ? new Date(periodEnd * 1000) : null;
 }
 
 function timestampDate(value: number | null | undefined): Date | null {
