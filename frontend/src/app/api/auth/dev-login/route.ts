@@ -14,7 +14,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Not found." }, { status: 404 });
   }
 
-  const rateLimited = rateLimitRequest(request, "auth:dev-login", { limit: 10, windowMs: 15 * 60 * 1000 });
+  const rateLimited = await rateLimitRequest(request, "auth:dev-login", { limit: 10, windowMs: 15 * 60 * 1000 });
   if (rateLimited) return rateLimited;
 
   const invalidOrigin = validateMutationRequest(request);

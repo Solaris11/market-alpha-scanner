@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function DELETE(request: Request) {
-  const rateLimited = rateLimitRequest(request, "account:delete", { limit: 5, windowMs: 60 * 60 * 1000 });
+  const rateLimited = await rateLimitRequest(request, "account:delete", { limit: 5, windowMs: 60 * 60 * 1000 });
   if (rateLimited) return rateLimited;
 
   const invalidOrigin = validateMutationRequest(request);

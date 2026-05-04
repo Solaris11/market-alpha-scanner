@@ -73,7 +73,7 @@ function fetchPriceHistory(symbol: string, period: string) {
 }
 
 export async function GET(request: Request, context: { params: Promise<{ symbol: string }> }) {
-  const rateLimited = rateLimitRequest(request, "admin:price-history", { limit: 30, windowMs: 60_000 });
+  const rateLimited = await rateLimitRequest(request, "admin:price-history", { limit: 30, windowMs: 60_000 });
   if (rateLimited) return rateLimited;
 
   const access = await requireAdmin();

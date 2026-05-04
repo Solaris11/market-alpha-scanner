@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function DELETE(request: Request, context: { params: Promise<{ symbol: string }> }) {
-  const rateLimited = rateLimitRequest(request, "user-watchlist:delete", { limit: 60, windowMs: 60_000 });
+  const rateLimited = await rateLimitRequest(request, "user-watchlist:delete", { limit: 60, windowMs: 60_000 });
   if (rateLimited) return rateLimited;
 
   const invalidOrigin = validateMutationRequest(request);

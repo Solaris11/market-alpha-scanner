@@ -42,7 +42,7 @@ function validatePayload(payload: ManualPaperTradePayload) {
 }
 
 export async function POST(request: NextRequest) {
-  const rateLimited = rateLimitRequest(request, "paper:open", { limit: 30, windowMs: 60_000 });
+  const rateLimited = await rateLimitRequest(request, "paper:open", { limit: 30, windowMs: 60_000 });
   if (rateLimited) return rateLimited;
 
   const invalidOrigin = validateMutationRequest(request);

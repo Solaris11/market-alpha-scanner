@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const rateLimited = rateLimitRequest(request, "notifications:read", { limit: 120, windowMs: 60_000 });
+  const rateLimited = await rateLimitRequest(request, "notifications:read", { limit: 120, windowMs: 60_000 });
   if (rateLimited) return rateLimited;
 
   const access = await requireUser("Sign in to view notifications.");

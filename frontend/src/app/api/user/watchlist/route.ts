@@ -26,7 +26,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const rateLimited = rateLimitRequest(request, "user-watchlist:write", { limit: 60, windowMs: 60_000 });
+  const rateLimited = await rateLimitRequest(request, "user-watchlist:write", { limit: 60, windowMs: 60_000 });
   if (rateLimited) return rateLimited;
 
   const invalidOrigin = validateMutationRequest(request);

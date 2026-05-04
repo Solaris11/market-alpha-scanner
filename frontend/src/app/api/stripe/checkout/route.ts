@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const rateLimited = rateLimitRequest(request, "stripe:checkout", { limit: 10, windowMs: 60_000 });
+  const rateLimited = await rateLimitRequest(request, "stripe:checkout", { limit: 5, windowMs: 60_000 });
   if (rateLimited) return rateLimited;
 
   const invalidOrigin = validateMutationRequest(request);

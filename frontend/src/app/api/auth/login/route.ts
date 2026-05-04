@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { loginWithPassword, normalizeAuthEmail, SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
 import { createLoginNotifications } from "@/lib/server/notifications";
 import { rateLimitRequest, requestIp, validateMutationRequest } from "@/lib/server/request-security";
-import { rateLimitExceededResponse, tooManyAttempts } from "@/lib/server/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -17,15 +16,9 @@ export async function POST(request: Request) {
   if (invalidOrigin) return invalidOrigin;
 
   const payload = (await request.json().catch(() => null)) as LoginPayload | null;
-  const email = normalizeAuthEmail(payload?.email);
   const ip = requestIp(request);
-  const rateLimitKey = `login:${ip}:${email ?? "invalid"}`;
 
-  if (tooManyAttempts(rateLimitKey, { limit: 8, windowMs: 15 * 60 * 1000 })) {
-    return rateLimitExceededResponse();
-  }
-
-  const rateLimited = rateLimitRequest(request, "auth:login", { limit: 30, windowMs: 15 * 60 * 1000 });
+  const rateLimited = await rateLimitRequest(request, "auth:login", { limit: 5, windowMs: 60_000 });
   if (rateLimited) return rateLimited;
 
   try {

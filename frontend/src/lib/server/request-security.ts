@@ -2,8 +2,8 @@ import "server-only";
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import { SESSION_COOKIE_NAME, sessionCookieOptions } from "./auth";
-import { rateLimitExceededResponse, tooManyAttempts } from "./rate-limit";
+import { getUserForSessionToken, SESSION_COOKIE_NAME, sessionCookieOptions } from "./auth";
+import { rateLimit, rateLimitExceededResponse } from "./rate-limit";
 
 export const CSRF_COOKIE_NAME = "market_alpha_csrf";
 export const CSRF_HEADER_NAME = "x-csrf-token";
@@ -47,12 +47,35 @@ export function validateMutationRequest(request: Request): NextResponse<{ ok: fa
   return null;
 }
 
-export function rateLimitRequest(request: Request, scope: string, options: { limit: number; windowMs: number }): NextResponse<{ ok: false; message: string }> | null {
-  // TODO: Replace this process-local limiter with Redis or another shared store before horizontal scaling.
-  if (tooManyAttempts(`${scope}:${requestIp(request)}`, options)) {
-    return rateLimitExceededResponse();
+export async function rateLimitRequest(request: Request, scope: string, options: { limit: number; windowMs: number }): Promise<NextResponse<{ error: "rate_limited"; retryAfter: number }> | null> {
+  const ip = requestIp(request);
+  const userId = await userIdFromRequest(request);
+  try {
+    const result = await rateLimit({
+      key: `${scope}:ip=${ip}:user=${userId ?? "anonymous"}`,
+      limit: options.limit,
+      scope,
+      windowMs: options.windowMs,
+    });
+    if (!result.allowed) {
+      return rateLimitExceededResponse(result.retryAfter);
+    }
+  } catch (error) {
+    console.warn("[rate-limit] check failed closed", error instanceof Error ? error.message : error);
+    return rateLimitExceededResponse(60);
   }
   return null;
+}
+
+async function userIdFromRequest(request: Request): Promise<string | null> {
+  const sessionToken = sessionTokenFromRequest(request);
+  if (!sessionToken) return null;
+  try {
+    const user = await getUserForSessionToken(sessionToken);
+    return user?.id ?? null;
+  } catch {
+    return null;
+  }
 }
 
 export function issueCsrfToken(request: Request): NextResponse<{ csrfToken?: string; message?: string; ok: boolean }> {

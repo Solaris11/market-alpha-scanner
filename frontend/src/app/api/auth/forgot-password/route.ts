@@ -11,7 +11,7 @@ type ForgotPasswordPayload = {
 };
 
 export async function POST(request: Request) {
-  const rateLimited = rateLimitRequest(request, "auth:forgot-password", { limit: 8, windowMs: 60 * 60 * 1000 });
+  const rateLimited = await rateLimitRequest(request, "auth:forgot-password", { limit: 5, windowMs: 60_000 });
   if (rateLimited) return rateLimited;
 
   const invalidOrigin = validateMutationRequest(request);

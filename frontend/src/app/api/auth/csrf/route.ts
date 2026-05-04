@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const rateLimited = rateLimitRequest(request, "auth:csrf", { limit: 60, windowMs: 60_000 });
+  const rateLimited = await rateLimitRequest(request, "auth:csrf", { limit: 60, windowMs: 60_000 });
   if (rateLimited) return rateLimited;
 
   const invalidOrigin = validateMutationRequest(request);

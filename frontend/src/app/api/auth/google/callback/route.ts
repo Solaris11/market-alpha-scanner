@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
-  const rateLimited = rateLimitRequest(request, "auth:google-callback", { limit: 60, windowMs: 60_000 });
+  const rateLimited = await rateLimitRequest(request, "auth:google-callback", { limit: 60, windowMs: 60_000 });
   if (rateLimited) return rateLimited;
 
   const url = new URL(request.url);

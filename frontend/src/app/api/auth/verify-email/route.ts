@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const rateLimited = rateLimitRequest(request, "auth:verify-email", { limit: 30, windowMs: 60 * 60 * 1000 });
+  const rateLimited = await rateLimitRequest(request, "auth:verify-email", { limit: 30, windowMs: 60 * 60 * 1000 });
   if (rateLimited) return rateLimited;
 
   const token = new URL(request.url).searchParams.get("token");

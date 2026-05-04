@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
-  const rateLimited = rateLimitRequest(request, "alerts:rules:update", { limit: 60, windowMs: 60_000 });
+  const rateLimited = await rateLimitRequest(request, "alerts:rules:update", { limit: 10, windowMs: 60_000 });
   if (rateLimited) return rateLimited;
 
   const invalidOrigin = validateMutationRequest(request);
@@ -45,7 +45,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 }
 
 export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
-  const rateLimited = rateLimitRequest(request, "alerts:rules:delete", { limit: 60, windowMs: 60_000 });
+  const rateLimited = await rateLimitRequest(request, "alerts:rules:delete", { limit: 10, windowMs: 60_000 });
   if (rateLimited) return rateLimited;
 
   const invalidOrigin = validateMutationRequest(request);

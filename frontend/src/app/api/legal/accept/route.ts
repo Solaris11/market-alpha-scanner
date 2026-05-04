@@ -11,7 +11,7 @@ type LegalAcceptPayload = {
 };
 
 export async function POST(request: Request) {
-  const rateLimited = rateLimitRequest(request, "legal:accept", { limit: 30, windowMs: 60_000 });
+  const rateLimited = await rateLimitRequest(request, "legal:accept", { limit: 30, windowMs: 60_000 });
   if (rateLimited) return rateLimited;
 
   const invalidOrigin = validateMutationRequest(request);

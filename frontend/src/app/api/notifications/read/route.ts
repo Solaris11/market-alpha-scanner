@@ -12,7 +12,7 @@ type ReadPayload = {
 };
 
 export async function POST(request: Request) {
-  const rateLimited = rateLimitRequest(request, "notifications:read-write", { limit: 120, windowMs: 60_000 });
+  const rateLimited = await rateLimitRequest(request, "notifications:read-write", { limit: 120, windowMs: 60_000 });
   if (rateLimited) return rateLimited;
 
   const invalidOrigin = validateMutationRequest(request);
