@@ -4,7 +4,11 @@ import { CurrentUserProvider } from "@/hooks/useCurrentUser";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Market Alpha",
+  metadataBase: new URL("https://marketalpha.co"),
+  title: {
+    default: "Market Alpha",
+    template: "%s | Market Alpha",
+  },
   description: "AI-powered trading research platform",
   icons: {
     apple: [{ url: "/apple-touch-icon.png?v=2", sizes: "180x180", type: "image/png" }],
