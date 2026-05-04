@@ -1,0 +1,115 @@
+# Market Alpha Backup And Restore Runbook
+
+Production host paths:
+
+- App: `/opt/apps/market-alpha-scanner/app`
+- Backups: `/opt/backups/market-alpha`
+- Ops scripts: `/opt/ops`
+- Logs: `/var/log/market-alpha`
+
+## Scheduled Backups
+
+Cron runs the normal backup every 6 hours:
+
+```bash
+sudo cat /etc/cron.d/market-alpha-backup
+```
+
+The normal backup script is:
+
+```bash
+sudo /opt/ops/market-alpha-backup.sh
+```
+
+It creates:
+
+- `/opt/backups/market-alpha/postgres/YYYY-MM-DD_HH-MM.sql.gz`
+- `/opt/backups/market-alpha/scanner_output/YYYY-MM-DD_HH-MM.tar.gz`
+
+## Post-Deploy Backup
+
+Run an immediate verified backup after:
+
+- DB migrations
+- billing schema changes
+- monitoring schema changes
+- alert schema changes
+- major production deploys
+
+Command:
+
+```bash
+sudo /opt/ops/market-alpha-post-deploy-backup.sh
+```
+
+The post-deploy wrapper runs the normal backup, verifies the latest Postgres gzip, verifies the latest scanner tarball, checks the off-host rclone target when configured, and records a `monitoring_events` row when the monitoring table is available.
+
+Check logs:
+
+```bash
+sudo tail -80 /var/log/market-alpha/post-deploy-backup.log
+```
+
+## Verify Latest Backup
+
+```bash
+LATEST_PG="$(find /opt/backups/market-alpha/postgres -maxdepth 1 -type f -name '*.sql.gz' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)"
+LATEST_SCANNER="$(find /opt/backups/market-alpha/scanner_output -maxdepth 1 -type f -name '*.tar.gz' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)"
+
+gzip -t "$LATEST_PG"
+tar -tzf "$LATEST_SCANNER" >/dev/null
+ls -lh "$LATEST_PG" "$LATEST_SCANNER"
+```
+
+If off-host backups are configured:
+
+```bash
+sudo grep '^MARKET_ALPHA_BACKUP_RCLONE_REMOTE=' /etc/market-alpha-backup.env
+rclone lsf GDRIVE:market-alpha-backup/postgres/ | tail
+rclone lsf GDRIVE:market-alpha-backup/scanner_output/ | tail
+```
+
+Do not print backup secrets from `/etc/market-alpha-backup.env`.
+
+## Restore Drill Into A Temporary DB
+
+Never restore over production during a drill.
+
+```bash
+RESTORE_DB="market_alpha_restore_$(date +%s)"
+LATEST_PG="$(find /opt/backups/market-alpha/postgres -maxdepth 1 -type f -name '*.sql.gz' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)"
+
+docker exec -e RESTORE_DB="$RESTORE_DB" market-alpha-scanner-market-alpha-postgres-1 \
+  sh -lc 'createdb -U "$POSTGRES_USER" "$RESTORE_DB"'
+
+sudo /opt/ops/market-alpha-restore.sh --target-db "$RESTORE_DB" --yes "$LATEST_PG"
+
+docker exec -e RESTORE_DB="$RESTORE_DB" market-alpha-scanner-market-alpha-postgres-1 \
+  sh -lc 'psql -U "$POSTGRES_USER" -d "$RESTORE_DB" -tAc "select count(*) from information_schema.tables where table_schema = '\''public'\'';"'
+
+docker exec -e RESTORE_DB="$RESTORE_DB" market-alpha-scanner-market-alpha-postgres-1 \
+  sh -lc 'dropdb -U "$POSTGRES_USER" "$RESTORE_DB"'
+```
+
+Expected result: restore completes without SQL errors and the table count is greater than zero.
+
+## Scanner Artifact Restore
+
+Only restore scanner artifacts when intentionally rolling back runtime scanner files.
+
+```bash
+LATEST_SCANNER="$(find /opt/backups/market-alpha/scanner_output -maxdepth 1 -type f -name '*.tar.gz' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)"
+tar -tzf "$LATEST_SCANNER" | head
+sudo /opt/ops/market-alpha-restore.sh "$LATEST_SCANNER"
+```
+
+The script requires confirmation before overwriting `/opt/apps/market-alpha-scanner/runtime/scanner_output`.
+
+## Health After Backup
+
+```bash
+cd /opt/apps/market-alpha-scanner/app
+docker compose ps
+curl -s https://app.marketalpha.co/api/health | jq .
+curl -s https://app.marketalpha.co/api/health/deep | jq .
+```
