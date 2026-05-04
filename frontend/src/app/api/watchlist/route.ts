@@ -1,7 +1,4 @@
 import { NextResponse } from "next/server";
-import fs from "node:fs/promises";
-import path from "node:path";
-import { scannerOutputDir } from "@/lib/scanner-data";
 import { getCurrentUser } from "@/lib/server/auth";
 import { requireUser } from "@/lib/server/access-control";
 import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
@@ -17,10 +14,6 @@ function normalizeSymbol(value: unknown) {
     .replace(/[^A-Z0-9._-]/g, "");
 }
 
-function watchlistPath() {
-  return path.join(scannerOutputDir(), "watchlist.json");
-}
-
 export async function GET() {
   const user = await getCurrentUser().catch(() => null);
   if (user) {
@@ -28,8 +21,7 @@ export async function GET() {
     return NextResponse.json({ authenticated: true, symbols });
   }
 
-  const symbols = await readScannerWatchlist().catch(() => []);
-  return NextResponse.json({ authenticated: false, symbols });
+  return NextResponse.json({ authenticated: false, symbols: [] });
 }
 
 export async function POST(request: Request) {
@@ -53,10 +45,4 @@ export async function POST(request: Request) {
   } catch {
     return NextResponse.json({ ok: false, message: "Watchlist sync is unavailable.", symbols: [] }, { status: 500 });
   }
-}
-
-async function readScannerWatchlist(): Promise<string[]> {
-  const text = await fs.readFile(watchlistPath(), "utf8");
-  const parsed = JSON.parse(text) as unknown;
-  return Array.from(new Set((Array.isArray(parsed) ? parsed : []).map(normalizeSymbol).filter(Boolean))).sort();
 }
