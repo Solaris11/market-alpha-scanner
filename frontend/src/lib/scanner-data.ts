@@ -231,11 +231,14 @@ type FileCacheEntry<T> = {
 
 const cacheRoot = globalThis as typeof globalThis & {
   __marketAlphaCsvCache?: Map<string, FileCacheEntry<CsvPayload>>;
+  __marketAlphaCsvFallbackWarnings?: Set<string>;
   __marketAlphaJsonCache?: Map<string, FileCacheEntry<Record<string, unknown> | null>>;
 };
 const csvPayloadCache = cacheRoot.__marketAlphaCsvCache ?? new Map<string, FileCacheEntry<CsvPayload>>();
+const csvFallbackWarnings = cacheRoot.__marketAlphaCsvFallbackWarnings ?? new Set<string>();
 const jsonPayloadCache = cacheRoot.__marketAlphaJsonCache ?? new Map<string, FileCacheEntry<Record<string, unknown> | null>>();
 cacheRoot.__marketAlphaCsvCache = csvPayloadCache;
+cacheRoot.__marketAlphaCsvFallbackWarnings = csvFallbackWarnings;
 cacheRoot.__marketAlphaJsonCache = jsonPayloadCache;
 
 export type ScanDataHealth = {
@@ -270,6 +273,22 @@ export function scannerOutputDir() {
     // Fall back to the local path when no scanner_output entry exists yet.
   }
   return localOutput;
+}
+
+function scannerCsvFallbackEnabled(): boolean {
+  const value = String(process.env.SCANNER_CSV_FALLBACK ?? "").trim().toLowerCase();
+  return value === "1" || value === "true" || value === "yes";
+}
+
+function allowScannerCsvFallback(reason: string): boolean {
+  const enabled = scannerCsvFallbackEnabled();
+  const key = `${enabled ? "enabled" : "blocked"}:${reason}`;
+  if (!csvFallbackWarnings.has(key)) {
+    csvFallbackWarnings.add(key);
+    const state = enabled ? "using" : "blocked";
+    console.warn(`[data] scanner CSV fallback ${state}: ${reason}. Set SCANNER_CSV_FALLBACK=true only for explicit rollback/debug use.`);
+  }
+  return enabled;
 }
 
 async function latestDbScanRun(): Promise<LatestScanRunRow | null> {
@@ -799,6 +818,7 @@ export async function readJson(filePath: string) {
 export async function getFullRanking(): Promise<RankingRow[]> {
   const dbRows = await getDbRankingRows();
   if (dbRows) return dbRows;
+  if (!allowScannerCsvFallback("full ranking DB read unavailable")) return [];
 
   const filePath = path.join(scannerOutputDir(), "full_ranking.csv");
   if (!(await fileExists(filePath))) return [];
@@ -814,6 +834,7 @@ export async function getFullRanking(): Promise<RankingRow[]> {
 export async function getTopCandidates(): Promise<RankingRow[]> {
   const dbRows = await getDbRankingRows(20);
   if (dbRows) return dbRows;
+  if (!allowScannerCsvFallback("top candidates DB read unavailable")) return [];
 
   const filePath = path.join(scannerOutputDir(), "top_candidates.csv");
   if (!(await fileExists(filePath))) return [];
@@ -846,6 +867,18 @@ export async function getScanDataHealth(): Promise<ScanDataHealth> {
         },
       ],
       lastUpdated: freshness.lastUpdated ?? lastUpdated,
+    };
+  }
+
+  if (!allowScannerCsvFallback("scan data health DB read unavailable")) {
+    const unavailable = unavailableFreshness("missing", "Scanner database output is not available yet.");
+    return {
+      ...unavailable,
+      files: [
+        { ...unavailable, name: "postgres:scan_runs", missingColumns: [] },
+        { ...unavailable, name: "postgres:scanner_signals", missingColumns: [] },
+      ],
+      lastUpdated: unavailable.lastUpdated,
     };
   }
 
@@ -928,7 +961,11 @@ export async function getHistorySummary(): Promise<HistorySummary> {
       };
     }
   } catch {
-    // Fall back to CSV artifacts during transition.
+    // CSV fallback is explicit because Postgres is the production source of truth.
+  }
+
+  if (!allowScannerCsvFallback("history summary DB read unavailable")) {
+    return { snapshots: [], count: 0, earliest: null, latest: null, uniqueDates: [] };
   }
 
   const historyDir = path.join(scannerOutputDir(), "history");
@@ -981,6 +1018,7 @@ export async function getSymbolHistoryData(): Promise<SymbolHistoryData> {
       rows: dbRows,
     };
   }
+  if (!allowScannerCsvFallback("symbol history DB read unavailable")) return { symbols: [], rows: [] };
 
   const history = await getHistorySummary();
   const rows: SymbolHistoryRow[] = [];
@@ -1026,8 +1064,10 @@ export async function getHistorySymbolsFromSnapshots(maxSnapshots = 5): Promise<
     );
     if (result.rows.length) return result.rows.map((row) => row.symbol);
   } catch {
-    // Fall back to CSV snapshots during transition.
+    // CSV fallback is explicit because Postgres is the production source of truth.
   }
+
+  if (!allowScannerCsvFallback("history symbols DB read unavailable")) return [];
 
   const history = await getHistorySummary();
   const symbols = new Set<string>();
@@ -1046,6 +1086,7 @@ export async function getHistorySymbolsFromSnapshots(maxSnapshots = 5): Promise<
 async function getPerSymbolHistoryForSymbol(symbol: string): Promise<SymbolHistoryRow[]> {
   const cleaned = symbol.trim().toUpperCase();
   if (!cleaned) return [];
+  if (!allowScannerCsvFallback(`per-symbol history DB read unavailable for ${cleaned}`)) return [];
   const filePath = path.join(scannerOutputDir(), "symbols", symbolSlug(cleaned), "history.csv");
   if (!(await fileExists(filePath))) return [];
 
@@ -1073,6 +1114,10 @@ export async function getSymbolHistoryLookup(symbol: string): Promise<{ matching
       snapshotsScanned: new Set(dbRows.map((row) => row.source_file)).size,
       source: dbRows.length ? "snapshots" : "none",
     };
+  }
+
+  if (!allowScannerCsvFallback(`symbol history lookup DB read unavailable for ${cleaned}`)) {
+    return { matchingRows: 0, rows: [], snapshotsScanned: 0, source: "none" };
   }
 
   const history = await getHistorySummary();
@@ -1168,6 +1213,8 @@ export async function getIntradaySignalDriftSummary(): Promise<IntradayDriftRow[
   const dbHistory = await getDbHistoryRows();
   if (dbHistory) return buildIntradaySignalDrift({ symbols: Array.from(new Set(dbHistory.map((row) => row.symbol))).sort(), rows: dbHistory });
 
+  if (!allowScannerCsvFallback("intraday signal drift DB read unavailable")) return [];
+
   const history = await getHistorySummary();
   const latestSnapshot = history.snapshots[0];
   const earliestSnapshot = history.snapshots[history.snapshots.length - 1];
@@ -1228,6 +1275,17 @@ export async function getPerformanceData(options: { forwardTailRows?: number } =
     return { ...dbPerformance, lifecycle, lifecycleSummary, autoCalibration };
   }
 
+  if (!allowScannerCsvFallback("performance summary DB read unavailable")) {
+    const empty = rowsToCsvFileData([]);
+    return {
+      summary: empty,
+      forwardReturns: rowsToCsvFileData([]),
+      lifecycle: rowsToCsvFileData([]),
+      lifecycleSummary: rowsToCsvFileData([]),
+      autoCalibration: rowsToCsvFileData([]),
+    };
+  }
+
   const [summary, forwardReturns, lifecycle, lifecycleSummary, autoCalibration] = await Promise.all([
     readScannerCsvWithState("analysis", "performance_summary.csv"),
     readScannerCsvWithStateParts(["analysis", "forward_returns.csv"], { tailRows: options.forwardTailRows }),
@@ -1254,6 +1312,7 @@ export async function getMarketRegime() {
       updated_at: dbTimestamp(latestRun.completed_at) ?? dbTimestamp(latestRun.created_at),
     };
   }
+  if (!allowScannerCsvFallback("market regime DB read unavailable")) return null;
   return readJson(path.join(scannerOutputDir(), "analysis", "market_regime.json"));
 }
 
@@ -1270,6 +1329,7 @@ export async function getMarketStructure() {
       updated_at: dbTimestamp(latestRun.completed_at) ?? dbTimestamp(latestRun.created_at),
     };
   }
+  if (!allowScannerCsvFallback("market structure DB read unavailable")) return null;
   return readJson(path.join(scannerOutputDir(), "analysis", "market_structure.json"));
 }
 
@@ -1279,7 +1339,7 @@ export async function getSymbolDetail(symbol: string): Promise<SymbolDetail> {
   const row = ranking.find((item) => item.symbol === cleaned) ?? null;
   const dbSummary = await getDbSymbolSummary(cleaned);
   const symbolDir = path.join(scannerOutputDir(), "symbols", symbolSlug(cleaned));
-  const summary = dbSummary ?? (await readJson(path.join(symbolDir, "summary.json")));
+  const summary = dbSummary ?? (allowScannerCsvFallback(`symbol summary DB read unavailable for ${cleaned}`) ? await readJson(path.join(symbolDir, "summary.json")) : null);
   const history = await getSymbolPriceHistory(cleaned, "all");
 
   if (row && summary) {
@@ -1336,8 +1396,10 @@ export async function getSymbolPriceHistory(symbol: string, period = "1y"): Prom
       });
     }
   } catch {
-    // Fall back to CSV artifacts during transition.
+    // CSV fallback is explicit because Postgres is the production source of truth.
   }
+
+  if (!allowScannerCsvFallback(`price history DB read unavailable for ${cleaned}`)) return [];
 
   const symbolDir = path.join(scannerOutputDir(), "symbols", symbolSlug(cleaned));
   const history = await readCsv(path.join(symbolDir, "history.csv"));

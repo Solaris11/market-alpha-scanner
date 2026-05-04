@@ -153,16 +153,22 @@ The scanner writes:
 - `scanner_output/symbols/<symbol>/history.csv`
 - `scanner_output/symbols/<symbol>/summary.json`
 
-The scanner now also writes additive PostgreSQL records when `DATABASE_URL` is configured:
+The scanner now also writes PostgreSQL records when `DATABASE_URL` is configured:
 
 - `scan_runs`
 - `scanner_signals`
+- `symbol_snapshots`
+- `symbol_price_history`
+- `performance_summary`
+- `forward_returns`
 
-This is a hybrid-write phase. Existing file outputs remain the raw backup/history feed, while the database is the query/state foundation.
+Postgres is the production SaaS source of truth. Existing file outputs remain backup/export/debug artifacts. Runtime CSV fallback is disabled by default with `SCANNER_CSV_FALLBACK=false`; enable it only for explicit rollback/debug operations and expect a server warning when it is used.
 
 ## Rule-Based Alerts
 
 Market Alpha Scanner stores SaaS user alert rules in Postgres through the `/api/alerts` routes. Scanner artifacts remain read-only market data outputs; account-owned alert rules are not stored in scanner output directories.
+
+Legacy JSON alert files from the MVP should not exist in the active `scanner_output/alerts` path. If found during operations, archive them under `/opt/backups/market-alpha/legacy-alert-json/<timestamp>/` before removal.
 
 ### Required Environment Variables
 
@@ -220,6 +226,17 @@ https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getUpdates
 ```
 
 3. Find the `chat` object in the JSON response and copy the numeric `id`
+
+## Production Ops Notes
+
+Run Stripe subscription reconciliation through the Docker-network wrapper so the script can reach the private Postgres service:
+
+```bash
+sudo /opt/ops/market-alpha-stripe-reconcile.sh --dry-run
+sudo /opt/ops/market-alpha-stripe-reconcile.sh
+```
+
+Do not use raw host `npm run stripe:reconcile` on production; host DNS cannot resolve the private Docker service name.
 
 ### Manual Test
 
