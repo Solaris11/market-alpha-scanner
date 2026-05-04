@@ -32,6 +32,8 @@ services:
       - market-alpha-scanner-private
 
   market-alpha-app:
+    profiles:
+      - legacy-dashboard
     build:
       context: .
       dockerfile: Dockerfile
@@ -68,6 +70,8 @@ services:
       - market-alpha-scanner-private
 
   market-alpha-api:
+    profiles:
+      - legacy-python-api
     build:
       context: .
       dockerfile: Dockerfile

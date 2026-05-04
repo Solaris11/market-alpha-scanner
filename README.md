@@ -272,13 +272,13 @@ streamlit run dashboard.py
 
 ### Linux Server Run
 
-On an Ubuntu or other Linux server, run from the project root inside the same virtual environment used for the scanner:
+The Streamlit dashboard is legacy/internal tooling. Do not expose it publicly. On an Ubuntu or other Linux server, run it only on localhost or a private interface from the project root inside the same virtual environment used for the scanner:
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
 python -m pip install -r requirements.txt
-streamlit run dashboard.py --server.address 0.0.0.0 --server.port 8501
+streamlit run dashboard.py --server.address 127.0.0.1 --server.port 8501
 ```
 
 Notes:
@@ -346,13 +346,20 @@ Bring up the isolated stack:
 docker compose --env-file .env up -d market-alpha-postgres
 ```
 
-Or start the full stack, including the app container:
+Start the production frontend:
 
 ```bash
-docker compose --env-file .env up -d
+docker compose --env-file .env up -d market-alpha-frontend
 ```
 
-The dashboard container publishes Streamlit on `STREAMLIT_HOST_PORT` from `.env.example`, which defaults to `18501`. PostgreSQL remains internal to the Docker network.
+The legacy Streamlit dashboard and legacy Python API are opt-in Compose profiles and are not started by default:
+
+```bash
+docker compose --env-file .env --profile legacy-dashboard up -d market-alpha-app
+docker compose --env-file .env --profile legacy-python-api up -d market-alpha-api
+```
+
+These services use Docker `expose`, not host `ports`; PostgreSQL and internal app services remain private to Docker networks unless explicitly routed by the reverse proxy.
 
 ### Verify Database Health
 
