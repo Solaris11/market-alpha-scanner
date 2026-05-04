@@ -38,7 +38,7 @@ export function TradePlanCard({ engine, row }: { engine: TradePlanEngine; row: R
     <GlassPanel className="p-6">
       <SectionTitle eyebrow="Trade Plan" title={decision === "WAIT_PULLBACK" ? "Pullback Plan" : "Execution Plan"} meta="synced risk plan" />
       <TradeLegalNotice className="mt-4" />
-      <div className="mt-5 grid gap-3 md:grid-cols-3">
+      <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
         <PlanMetric label="Suggested Entry" value={formatMoney(entry)} />
         <PlanMetric label="Stop Loss" value={formatMoney(stop)} tone="risk" />
         <PlanMetric label="Target Price" value={formatMoney(target)} tone="reward" />
@@ -50,7 +50,7 @@ export function TradePlanCard({ engine, row }: { engine: TradePlanEngine; row: R
         <PlanMetric label="Position Size" value={formatNumber(metrics.positionSize, 0)} />
       </div>
 
-      <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4">
         <div className="relative h-14 rounded-full bg-gradient-to-r from-rose-400/70 via-slate-700 to-emerald-300/80">
           <Marker label="Stop" left={stopPosition} value={formatMoney(stop)} />
           <Marker label="Entry" left={entryPosition} value={formatMoney(entry)} />
@@ -65,7 +65,7 @@ export function TradePlanCard({ engine, row }: { engine: TradePlanEngine; row: R
 function PlanMetric({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "risk" | "reward" }) {
   const color = tone === "risk" ? "text-rose-200" : tone === "reward" ? "text-emerald-200" : "text-slate-100";
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
       <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</div>
       <div className={`mt-1 font-mono text-lg font-semibold ${color}`}>{value}</div>
     </div>

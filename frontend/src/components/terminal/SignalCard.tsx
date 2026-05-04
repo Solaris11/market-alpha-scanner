@@ -24,18 +24,18 @@ export function SignalCard({ edge, row }: { edge?: HistoricalEdgeProof; row: Ran
   const dataFreshness = freshnessFromTimestamp(typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null);
 
   return (
-    <Link className="group block rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-400/40 hover:bg-white/[0.07] hover:shadow-cyan-950/30" href={`/symbol/${row.symbol}`}>
-      <div className="flex items-start justify-between gap-3">
+    <Link className="group block w-full min-w-0 max-w-full rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-400/40 hover:bg-white/[0.07] hover:shadow-cyan-950/30" href={`/symbol/${row.symbol}`}>
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="font-mono text-2xl font-semibold text-slate-50">{row.symbol}</div>
-          <div className="mt-1 truncate text-xs text-slate-400">{cleanText(row.company_name, cleanText(row.sector, "Signal"))}</div>
+          <div className="mt-1 text-xs text-slate-400">{cleanText(row.company_name, cleanText(row.sector, "Signal"))}</div>
         </div>
         <DecisionBadge value={row.final_decision ?? row.action} />
       </div>
       <div className="mt-3">
         <DataHealthIndicator compact freshness={dataFreshness} />
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+      <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
         <div>
           <div className="text-slate-500">Score</div>
           <div className="mt-1 font-mono text-slate-100">{formatNumber(row.final_score)}</div>
@@ -53,7 +53,7 @@ export function SignalCard({ edge, row }: { edge?: HistoricalEdgeProof; row: Ran
         <div className="h-2 overflow-hidden rounded-full bg-slate-900/80">
           <div className="h-full rounded-full bg-gradient-to-r from-cyan-400 to-emerald-300" style={{ width: `${score}%` }} />
         </div>
-        <div className="grid grid-cols-[1fr_auto] items-center gap-3">
+        <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-[1fr_auto] sm:items-center sm:gap-3">
           <div className="h-1.5 overflow-hidden rounded-full bg-rose-500/20">
             <div className="h-full rounded-full bg-amber-300/80" style={{ width: `${reward}%` }} />
           </div>

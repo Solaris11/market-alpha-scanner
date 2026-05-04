@@ -423,14 +423,14 @@ function SetupPerformance({ groups }: { groups: PaperAnalyticsGroupRow[] }) {
     <div className="grid gap-3 lg:grid-cols-2">
       {rows.map((group) => (
         <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={setupGroupKey(group)}>
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{groupTypeLabel(group.group_type)}</div>
-              <div className="mt-1 truncate text-lg font-semibold text-slate-50">{labelText(group.group_value)}</div>
+              <div className="mt-1 text-lg font-semibold text-slate-50">{labelText(group.group_value)}</div>
             </div>
-            <div className={`shrink-0 font-mono text-sm font-bold ${pnlTone(group.total_pnl)}`}>{money(group.total_pnl)}</div>
+            <div className={`font-mono text-sm font-bold ${pnlTone(group.total_pnl)}`}>{money(group.total_pnl)}</div>
           </div>
-          <div className="mt-4 grid grid-cols-3 gap-2 text-xs">
+          <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
             <MiniMetric label="Trades" value={group.count.toLocaleString()} />
             <MiniMetric label="Win Rate" value={percentText(group.win_rate)} />
             <MiniMetric label="Avg Return" tone={group.avg_return_pct} value={percentText(group.avg_return_pct)} />
@@ -504,7 +504,7 @@ function TradeAutopsy({ positions }: { positions: PaperPositionRow[] }) {
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
       {closed.map((position) => (
         <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={position.id}>
-          <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="font-mono text-2xl font-black text-slate-50">{position.symbol}</div>
               <div className="mt-1 text-xs text-slate-500">{timeText(position.closed_at)}</div>
@@ -512,7 +512,7 @@ function TradeAutopsy({ positions }: { positions: PaperPositionRow[] }) {
             <div className={`rounded-full border px-3 py-1 text-xs font-bold ${decisionTone(position.final_decision)}`}>{labelText(position.final_decision)}</div>
           </div>
           {isManualTrade(position) ? <div className="mt-3 inline-flex rounded-full border border-sky-300/30 bg-sky-400/10 px-3 py-1 text-xs font-semibold text-sky-100">Manual trade</div> : null}
-          <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+          <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
             <MiniMetric label="Entry" value={money(position.entry_price)} />
             <MiniMetric label="Exit" value={money(position.exit_price)} />
             <MiniMetric label="PnL" tone={position.realized_pnl} value={money(position.realized_pnl)} />
@@ -553,15 +553,15 @@ function OpenRiskSection({ positions }: { positions: PaperPositionRow[] }) {
         const rr = riskReward(position);
         return (
           <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={position.id}>
-            <div className="flex items-start justify-between gap-3">
-              <div>
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
                 <div className="font-mono text-2xl font-black text-slate-50">{position.symbol}</div>
                 <div className="mt-1 text-xs text-slate-500">Opened {timeText(position.opened_at)}</div>
               </div>
               <div className={`rounded-full border px-3 py-1 text-xs font-bold ${decisionTone(position.final_decision)}`}>{labelText(position.final_decision)}</div>
             </div>
             {isManualTrade(position) ? <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">Manual trade; monitor separately from scanner edge.</div> : null}
-            <div className="mt-4 grid grid-cols-2 gap-2 text-xs md:grid-cols-4">
+            <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2 md:grid-cols-4">
               <MiniMetric label="Current / Entry" value={`${money(position.current_price ?? position.entry_price)} / ${money(position.entry_price)}`} />
               <MiniMetric label="Stop" value={money(position.stop_loss)} />
               <MiniMetric label="Max Risk" tone={risk === null ? undefined : -risk} value={money(risk)} />
@@ -624,7 +624,7 @@ function MiniMetric({ label, tone, value }: { label: string; tone?: number | nul
   return (
     <div className="min-w-0 rounded-xl bg-slate-950/50 p-3">
       <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</div>
-      <div className={`mt-1 truncate font-mono text-sm font-semibold ${tone === undefined || tone === null ? "text-slate-100" : pnlTone(tone)}`}>{value}</div>
+      <div className={`mt-1 font-mono text-sm font-semibold ${tone === undefined || tone === null ? "text-slate-100" : pnlTone(tone)}`}>{value}</div>
     </div>
   );
 }

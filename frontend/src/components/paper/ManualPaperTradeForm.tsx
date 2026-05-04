@@ -128,7 +128,7 @@ export function ManualPaperTradeForm({ cashBalance = null }: Props) {
         <TradeInput label="Stop loss" numeric onChange={setStopLoss} placeholder="e.g. 380" value={stopLoss} />
         <TradeInput label="Target price" numeric onChange={setTargetPrice} placeholder="e.g. 420" value={targetPrice} />
         <button
-          className="h-10 self-end rounded-full bg-cyan-300 px-4 text-xs font-bold uppercase tracking-[0.12em] text-slate-950 transition-all hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50"
+          className="h-10 w-full self-end rounded-full bg-cyan-300 px-4 text-xs font-bold uppercase tracking-[0.12em] text-slate-950 transition-all hover:bg-cyan-200 disabled:cursor-not-allowed disabled:opacity-50 lg:w-auto"
           disabled={busy}
           type="submit"
         >
@@ -136,7 +136,7 @@ export function ManualPaperTradeForm({ cashBalance = null }: Props) {
         </button>
       </form>
 
-      <div className="mt-4 grid gap-2 md:grid-cols-4">
+      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-4">
         <Estimate label="Estimated Cost" value={money(estimate.estimatedCost)} />
         <Estimate label="Max Loss" tone="risk" value={money(estimate.maxLoss)} />
         <Estimate label="Potential Gain" tone="reward" value={money(estimate.potentialGain)} />
@@ -155,7 +155,7 @@ function TradeInput({ label, numeric = false, onChange, placeholder, value }: { 
     <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
       {label}
       <input
-        className="mt-1 h-10 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-cyan-300/60"
+        className="mt-1 h-10 w-full min-w-0 rounded-xl border border-white/10 bg-slate-950/70 px-3 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-cyan-300/60"
         inputMode={numeric ? "decimal" : "text"}
         onChange={(event) => onChange(numeric ? event.currentTarget.value.replace(/[^0-9.]/g, "") : event.currentTarget.value.toUpperCase())}
         placeholder={placeholder}
@@ -168,7 +168,7 @@ function TradeInput({ label, numeric = false, onChange, placeholder, value }: { 
 function Estimate({ label, tone = "neutral", value }: { label: string; tone?: "neutral" | "reward" | "risk"; value: string }) {
   const color = tone === "risk" ? "text-rose-200" : tone === "reward" ? "text-emerald-200" : "text-slate-100";
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
       <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</div>
       <div className={`mt-1 font-mono text-sm font-semibold ${color}`}>{value}</div>
     </div>

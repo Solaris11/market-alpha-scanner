@@ -14,7 +14,7 @@ export function WatchlistButton({ className = "", showLabel = true, symbol }: { 
     <button
       aria-label={label}
       aria-pressed={saved}
-      className={`inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-bold transition-all duration-200 ${
+      className={`inline-flex max-w-full min-w-0 items-center justify-center gap-2 rounded-full border px-3 py-2 text-center text-xs font-bold transition-all duration-200 ${
         saved
           ? "border-amber-300/50 bg-amber-300/15 text-amber-100 hover:bg-amber-300/20"
           : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-amber-300/40 hover:bg-white/[0.07] hover:text-amber-100"
@@ -28,7 +28,7 @@ export function WatchlistButton({ className = "", showLabel = true, symbol }: { 
       type="button"
     >
       <span aria-hidden="true" className="text-sm leading-none">{saved ? "★" : "☆"}</span>
-      {showLabel ? <span>{saved ? "Watchlist" : "Add to Watchlist"}</span> : null}
+      {showLabel ? <span className="min-w-0">{saved ? "Watchlist" : "Add to Watchlist"}</span> : null}
     </button>
   );
 }

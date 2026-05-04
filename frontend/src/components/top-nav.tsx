@@ -26,12 +26,12 @@ export function TopNav() {
   const items = authenticated ? [...NAV_ITEMS, { href: "/account", label: "Account" }] : NAV_ITEMS;
 
   return (
-    <nav className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+    <nav className="flex max-w-full flex-wrap items-center gap-2 text-xs text-slate-400">
       {items.map((item) => {
         const active = isActive(pathname, item.href);
         return (
           <Link
-            className={`rounded-full border px-3 py-1.5 transition-all duration-200 ${
+            className={`max-w-full rounded-full border px-3 py-1.5 transition-all duration-200 ${
               active
                 ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.18)]"
                 : "border-white/10 bg-white/[0.03] hover:border-cyan-400/40 hover:bg-white/5 hover:text-cyan-100"

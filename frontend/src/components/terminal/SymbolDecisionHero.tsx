@@ -47,16 +47,16 @@ export function SymbolDecisionHero({
   const showTradePlan = tradeAllowed && !previewMode;
   return (
     <GlassPanel className={`overflow-hidden p-6 md:p-8 ${glow(decision)}`}>
-      <div className="grid gap-6 lg:grid-cols-[1fr_360px] lg:items-end">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
         <div className="min-w-0">
-          <div className="font-mono text-6xl font-black tracking-tight text-slate-50 md:text-7xl">{row.symbol}</div>
+          <div className="min-w-0 font-mono text-5xl font-black tracking-tight text-slate-50 sm:text-6xl md:text-7xl">{row.symbol}</div>
           <div className="mt-2 max-w-2xl text-base text-slate-400">{cleanText(row.company_name || row.sector, "Scanner signal")}</div>
-          <div className="mt-6 flex flex-wrap items-center gap-3">
-            <DecisionBadge className="px-5 py-2 text-base" value={decision} />
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-slate-200">
+          <div className="mt-6 flex min-w-0 flex-wrap items-center gap-3">
+            <DecisionBadge className="px-4 py-2 text-sm sm:px-5 sm:text-base" value={decision} />
+            <span className="min-w-0 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-slate-200">
               {actionText(decision)}
             </span>
-            <span className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100">
+            <span className="min-w-0 rounded-full border border-cyan-300/25 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100">
               Conviction <span className="font-mono">{conviction.score}</span> - {conviction.label}
             </span>
             {!showTradePlan ? (
@@ -78,7 +78,7 @@ export function SymbolDecisionHero({
           ) : null}
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
           <HeroMetric label="Score" value={formatNumber(row.final_score, 0)} />
           <HeroMetric label="Conviction" value={`${conviction.score} ${conviction.label}`} />
           <HeroMetric label="Price" value={formatMoney(row.price)} />
@@ -91,9 +91,9 @@ export function SymbolDecisionHero({
 
 function HeroMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
       <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</div>
-      <div className="mt-2 truncate font-mono text-xl font-bold text-slate-50">{value}</div>
+      <div className="mt-2 font-mono text-xl font-bold text-slate-50">{value}</div>
     </div>
   );
 }

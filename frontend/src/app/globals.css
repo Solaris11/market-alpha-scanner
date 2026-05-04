@@ -14,17 +14,37 @@
 html,
 body {
   min-height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   background: var(--terminal-bg);
 }
 
 body {
   margin: 0;
+  min-width: 0;
   color: #dbe7f5;
   background:
     radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.13), transparent 29rem),
     radial-gradient(circle at 88% 0%, rgba(34, 197, 94, 0.10), transparent 24rem),
     linear-gradient(180deg, #070a12 0%, #0b1020 48%, #111827 100%);
   font-family: Arial, Helvetica, sans-serif;
+}
+
+main {
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+:where(main, header, footer, nav, section, article, aside, div) {
+  min-width: 0;
+}
+
+:where(p, h1, h2, h3, h4, h5, h6, span, a, button, label, input, select, textarea) {
+  overflow-wrap: anywhere;
+}
+
+:where(img, svg, canvas, video) {
+  max-width: 100%;
 }
 
 a {

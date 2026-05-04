@@ -53,20 +53,20 @@ export function WhatIfSimulator({ canTrade = true, engine, researchModeReason }:
         ) : null}
         {!readOnly && riskEvaluation.status !== "OK" ? <RiskBanner status={riskEvaluation.status} reasons={riskEvaluation.reasons} /> : null}
         {canTrade ? (
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <Input disabled={readOnly} label="Account Equity" value={state.accountEquity} onChange={engine.setters.setAccountEquity} />
             <Input disabled={readOnly} label="Risk %" value={state.riskPercent} onChange={engine.setters.setRiskPercent} />
           </div>
         ) : null}
         <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Risk Rules</div>
               <div className="mt-1 text-xs text-slate-400">{authenticated ? "Account saved" : "Saved only on this device."}</div>
             </div>
             <button className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-100" onClick={riskProfileActions.resetRiskProfile} type="button">Reset</button>
           </div>
-          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+          <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
             <Input label="Max Risk %" value={riskProfile.maxRiskPerTradePercent} onChange={(value) => riskProfileActions.updateRiskProfile({ maxRiskPerTradePercent: value })} />
             <Input label="Sector Max" value={riskProfile.maxSectorExposure} onChange={(value) => riskProfileActions.updateRiskProfile({ maxSectorExposure: value })} />
             <OptionalInput label="Max Daily Loss" value={riskProfile.maxDailyLoss} onChange={(value) => riskProfileActions.updateRiskProfile({ maxDailyLoss: value })} />
@@ -78,7 +78,7 @@ export function WhatIfSimulator({ canTrade = true, engine, researchModeReason }:
           </div>
         </div>
         {canTrade && validity.isCalculable && metrics.potentialReward !== null && metrics.riskRewardRatio !== null ? (
-          <div className={`mt-4 grid grid-cols-2 gap-2 text-xs transition-all duration-200 md:grid-cols-4 ${validity.isBlocked ? "opacity-60" : ""} ${pulse ? "scale-[1.05] shadow-[0_0_30px_rgba(34,211,238,0.18)]" : "scale-100"}`}>
+          <div className={`mt-4 grid grid-cols-1 gap-2 text-xs transition-all duration-200 sm:grid-cols-2 md:grid-cols-4 ${validity.isBlocked ? "opacity-60" : ""} ${pulse ? "scale-[1.02] shadow-[0_0_30px_rgba(34,211,238,0.18)]" : "scale-100"}`}>
             <SimulatorMetric label="Position Size" value={formatNumber(metrics.positionSize, 0)} />
             <SimulatorMetric label="Max Risk" value={`${formatMoney(metrics.maxRiskAmount)} risk`} tone="risk" />
             <SimulatorMetric label="Potential Reward" value={formatMoney(metrics.potentialReward)} tone="reward" />
