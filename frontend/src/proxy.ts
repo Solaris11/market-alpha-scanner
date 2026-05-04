@@ -28,11 +28,10 @@ function isAppPath(pathname: string): boolean {
 export function proxy(request: NextRequest): NextResponse {
   const hostname = getHostname(request);
   const { pathname } = request.nextUrl;
+  const pathWithSearch = `${pathname}${request.nextUrl.search}`;
 
   if (hostname === WWW_HOST) {
-    const url = request.nextUrl.clone();
-    url.hostname = APEX_HOST;
-    return NextResponse.redirect(url, 308);
+    return NextResponse.redirect(new URL(pathWithSearch, `https://${APEX_HOST}`), 308);
   }
 
   if (hostname === APP_HOST && pathname === "/") {
@@ -40,9 +39,7 @@ export function proxy(request: NextRequest): NextResponse {
   }
 
   if (hostname === APEX_HOST && isAppPath(pathname)) {
-    const url = request.nextUrl.clone();
-    url.hostname = APP_HOST;
-    return NextResponse.redirect(url, 307);
+    return NextResponse.redirect(new URL(pathWithSearch, `https://${APP_HOST}`), 307);
   }
 
   return NextResponse.next();
