@@ -12,6 +12,7 @@ const NAV = [
   { href: "/history", label: "History" },
   { href: "/alerts", label: "Alerts" },
   { href: "/advanced", label: "Advanced" },
+  { href: "/support", label: "Support" },
 ] as const;
 
 export function TerminalNav() {

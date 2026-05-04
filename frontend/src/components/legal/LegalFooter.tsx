@@ -6,6 +6,7 @@ export function LegalFooter() {
       <Link className="hover:text-cyan-200" href="/terms">Terms</Link>
       <Link className="hover:text-cyan-200" href="/privacy">Privacy</Link>
       <Link className="hover:text-cyan-200" href="/risk-disclosure">Risk Disclosure</Link>
+      <Link className="hover:text-cyan-200" href="/support">Support</Link>
       <span>Not financial advice.</span>
     </footer>
   );

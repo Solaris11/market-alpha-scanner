@@ -15,6 +15,7 @@ const appPathPrefixes = [
   "/paper",
   "/performance",
   "/symbol",
+  "/support",
   "/terminal",
 ];
 
