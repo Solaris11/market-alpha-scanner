@@ -109,7 +109,9 @@ test("canceled subscription does not render premium active renewal copy", () => 
   assert.equal(state.state, "free");
   assert.equal(state.isPremium, false);
   assert.equal(state.willRenew, false);
-  assert.equal(state.actionLabel, "Renew Subscription");
+  assert.equal(state.actionLabel, "Upgrade to Premium");
+  assert.equal(state.actionMode, "checkout");
+  assert.equal(state.statusText, "No active subscription");
   assert.doesNotMatch(`${state.statusText} ${state.accessText} ${state.helper}`, /Premium active|Renews on/);
 });
 

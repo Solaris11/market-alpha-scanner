@@ -91,14 +91,14 @@ export function billingViewState(args: { isPremium: boolean; subscription: Billi
   if (hasStripeCustomer && status === "canceled") {
     return {
       accessText: null,
-      actionLabel: "Renew Subscription",
-      actionMode: "portal",
+      actionLabel: "Upgrade to Premium",
+      actionMode: "checkout",
       currentPeriodEnd,
-      helper: "Renew anytime to restore full Premium access.",
-      isCanceled: true,
+      helper: "Upgrade to Premium to restore full access.",
+      isCanceled: false,
       isPremium: false,
       state: "free",
-      statusText: currentPeriodEndText ? `Canceled - access ended ${currentPeriodEndText}` : "Canceled",
+      statusText: "No active subscription",
       willRenew: false,
     };
   }
