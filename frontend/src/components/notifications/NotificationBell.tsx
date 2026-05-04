@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import type { UserNotification } from "@/lib/notifications";
+import { notificationDisplayMessage, type UserNotification } from "@/lib/notifications";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 
@@ -192,7 +192,7 @@ export function NotificationBell() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="truncate font-semibold">{notification.title}</div>
-                        <div className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-400">{notification.message}</div>
+                        <div className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-400">{notificationDisplayMessage(notification)}</div>
                       </div>
                       {!notification.read ? <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan-300" /> : null}
                     </div>

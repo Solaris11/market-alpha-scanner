@@ -131,7 +131,7 @@ export function SendVerificationEmailButton({ disabled = false }: { disabled?: b
         setError(payload?.error === "email_not_configured" ? "Email verification is not configured. Contact support." : payload?.message ?? "Unable to send verification email.");
         return;
       }
-      setMessage(payload.message ?? "Verification email sent.");
+      setMessage(payload.message === "Email is already verified." ? payload.message : "Verification email sent. Check your inbox and spam/junk folder.");
     } catch {
       setError("Unable to send verification email.");
     } finally {
@@ -149,6 +149,7 @@ export function SendVerificationEmailButton({ disabled = false }: { disabled?: b
       >
         {busy ? "Sending..." : "Send verification email"}
       </button>
+      <p className="mt-2 text-xs leading-5 text-slate-400">Didn&apos;t receive the email? Check your spam/junk folder.</p>
       {message ? <p className="mt-2 text-xs leading-5 text-emerald-200">{message}</p> : null}
       {error ? <p className="mt-2 text-xs leading-5 text-rose-200">{error}</p> : null}
     </div>

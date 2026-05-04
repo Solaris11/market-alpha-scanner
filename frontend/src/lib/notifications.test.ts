@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { isNotificationType, normalizeNotificationId } from "./notifications";
+import { isNotificationType, normalizeNotificationId, notificationDisplayMessage } from "./notifications";
 
 test("notification type validation allows only supported account message types", () => {
   assert.equal(isNotificationType("system"), true);
@@ -17,4 +17,12 @@ test("notification id validation rejects non-uuid input", () => {
   assert.equal(normalizeNotificationId(id), id);
   assert.equal(normalizeNotificationId("018f4c6b-7725-4b6a-9123-a85751000abc OR true"), null);
   assert.equal(normalizeNotificationId("not-a-uuid"), null);
+});
+
+test("email verification notification display includes spam folder hint", () => {
+  assert.equal(
+    notificationDisplayMessage({ message: "Verify your email address to unlock premium upgrade.", type: "email_verification" }),
+    "Verify your email address. Check your inbox or spam/junk folder.",
+  );
+  assert.equal(notificationDisplayMessage({ message: "System message", type: "system" }), "System message");
 });

@@ -22,3 +22,10 @@ export function normalizeNotificationId(value: unknown): string | null {
   const text = String(value ?? "").trim();
   return UUID_RE.test(text) ? text : null;
 }
+
+export function notificationDisplayMessage(notification: Pick<UserNotification, "message" | "type">): string {
+  if (notification.type === "email_verification") {
+    return "Verify your email address. Check your inbox or spam/junk folder.";
+  }
+  return notification.message;
+}
