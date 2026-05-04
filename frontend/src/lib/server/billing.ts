@@ -11,7 +11,7 @@ import {
 } from "@/lib/security/subscription-notifications";
 import { stripeSubscriptionAccessEnd, stripeSubscriptionCancelScheduled } from "@/lib/security/stripe-subscription-state";
 import type { AuthUser } from "./auth";
-import { dbQuery } from "./db";
+import { dbQuery, type DbExecutor } from "./db";
 import { createNotificationOnce, createNotificationWithAction } from "./notifications";
 import { stripe } from "./stripe";
 
@@ -31,6 +31,7 @@ export type StripeSyncResult = {
   cancelAtPeriodEnd: boolean;
   currentPeriodEnd: string | null;
   previousCancelAtPeriodEnd: boolean | null;
+  staleEvent: boolean;
   status: string;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
@@ -56,12 +57,27 @@ type BillingEventExistsRow = QueryResultRow & {
   exists: boolean;
 };
 
-type PreviousCancelRow = QueryResultRow & {
+type StripeEventClaimRow = QueryResultRow & {
+  id: string;
+};
+
+type SubscriptionSyncStateRow = QueryResultRow & {
   cancel_at_period_end: boolean | null;
+  current_period_end: string | Date | null;
+  plan: string | null;
+  status: string | null;
+  stripe_customer_id: string | null;
+  stripe_last_event_created_at: string | Date | null;
+  stripe_subscription_id: string | null;
+};
+
+type NotificationRow = QueryResultRow & {
+  id: string;
 };
 
 const PREMIUM_PLAN = "premium";
 const INACTIVE_STATUS = "inactive";
+const defaultDb: DbExecutor = { query: dbQuery };
 
 export async function getBillingSubscriptionForUser(userId: string): Promise<BillingSubscription | null> {
   const result = await dbQuery<BillingSubscriptionRow>(
@@ -112,8 +128,8 @@ export async function getOrCreateStripeCustomerForUser(user: AuthUser): Promise<
   return customer.id;
 }
 
-export async function upsertCustomerReference(userId: string, stripeCustomerId: string, stripeSubscriptionId?: string | null): Promise<void> {
-  await dbQuery(
+export async function upsertCustomerReference(userId: string, stripeCustomerId: string, stripeSubscriptionId?: string | null, db: DbExecutor = defaultDb): Promise<void> {
+  await db.query(
     `
       INSERT INTO user_subscriptions (
         user_id,
@@ -138,10 +154,10 @@ export async function upsertCustomerReference(userId: string, stripeCustomerId: 
   );
 }
 
-export async function upsertSubscriptionFromStripe(subscription: Stripe.Subscription, userIdHint?: string | null): Promise<StripeSyncResult> {
+export async function upsertSubscriptionFromStripe(subscription: Stripe.Subscription, userIdHint?: string | null, db: DbExecutor = defaultDb, eventCreatedAt?: Date | null): Promise<StripeSyncResult> {
   const stripeCustomerId = stripeObjectId(subscription.customer);
   const stripeSubscriptionId = subscription.id;
-  const userId = userIdHint || metadataUserId(subscription.metadata) || (await findUserIdForStripeSubscription(stripeCustomerId, stripeSubscriptionId));
+  const userId = userIdHint || metadataUserId(subscription.metadata) || (await findUserIdForStripeSubscription(stripeCustomerId, stripeSubscriptionId, db));
   const currentPeriodEnd = stripeSubscriptionAccessEnd(subscription);
   const canceledAt = timestampDate(subscription.canceled_at);
   const cancelAtPeriodEnd = stripeSubscriptionCancelScheduled(subscription);
@@ -153,6 +169,7 @@ export async function upsertSubscriptionFromStripe(subscription: Stripe.Subscrip
       cancelAtPeriodEnd,
       currentPeriodEnd: currentPeriodEnd?.toISOString() ?? null,
       previousCancelAtPeriodEnd: null,
+      staleEvent: false,
       status: subscription.status,
       stripeCustomerId,
       stripeSubscriptionId,
@@ -160,8 +177,23 @@ export async function upsertSubscriptionFromStripe(subscription: Stripe.Subscrip
     };
   }
 
-  const previous = await currentCancelAtPeriodEnd(userId);
-  await dbQuery(
+  const previous = await currentSubscriptionSyncState(userId, db);
+  const previousEventCreatedAt = previous?.stripe_last_event_created_at ? new Date(previous.stripe_last_event_created_at) : null;
+  if (eventCreatedAt && previousEventCreatedAt && previousEventCreatedAt > eventCreatedAt) {
+    return {
+      canceledAt: null,
+      cancelAtPeriodEnd: Boolean(previous?.cancel_at_period_end),
+      currentPeriodEnd: previous?.current_period_end === null || previous?.current_period_end === undefined ? null : new Date(previous.current_period_end).toISOString(),
+      previousCancelAtPeriodEnd: typeof previous?.cancel_at_period_end === "boolean" ? previous.cancel_at_period_end : null,
+      staleEvent: true,
+      status: previous?.status ?? subscription.status,
+      stripeCustomerId: previous?.stripe_customer_id ?? stripeCustomerId,
+      stripeSubscriptionId: previous?.stripe_subscription_id ?? stripeSubscriptionId,
+      userId,
+    };
+  }
+
+  await db.query(
     `
       INSERT INTO user_subscriptions (
         user_id,
@@ -172,10 +204,11 @@ export async function upsertSubscriptionFromStripe(subscription: Stripe.Subscrip
         stripe_subscription_id,
         cancel_at_period_end,
         canceled_at,
+        stripe_last_event_created_at,
         created_at,
         updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, now(), now())
       ON CONFLICT (user_id)
       DO UPDATE SET
         status = EXCLUDED.status,
@@ -185,16 +218,18 @@ export async function upsertSubscriptionFromStripe(subscription: Stripe.Subscrip
         stripe_subscription_id = EXCLUDED.stripe_subscription_id,
         cancel_at_period_end = EXCLUDED.cancel_at_period_end,
         canceled_at = EXCLUDED.canceled_at,
+        stripe_last_event_created_at = COALESCE(EXCLUDED.stripe_last_event_created_at, user_subscriptions.stripe_last_event_created_at),
         updated_at = now()
     `,
-    [userId, subscription.status, PREMIUM_PLAN, currentPeriodEnd, stripeCustomerId, stripeSubscriptionId, cancelAtPeriodEnd, canceledAt],
+    [userId, subscription.status, PREMIUM_PLAN, currentPeriodEnd, stripeCustomerId, stripeSubscriptionId, cancelAtPeriodEnd, canceledAt, eventCreatedAt ?? null],
   );
 
   return {
     canceledAt: canceledAt?.toISOString() ?? null,
     cancelAtPeriodEnd,
     currentPeriodEnd: currentPeriodEnd?.toISOString() ?? null,
-    previousCancelAtPeriodEnd: previous,
+    previousCancelAtPeriodEnd: typeof previous?.cancel_at_period_end === "boolean" ? previous.cancel_at_period_end : null,
+    staleEvent: false,
     status: subscription.status,
     stripeCustomerId,
     stripeSubscriptionId,
@@ -202,34 +237,59 @@ export async function upsertSubscriptionFromStripe(subscription: Stripe.Subscrip
   };
 }
 
-export async function updateSubscriptionStatusByCustomer(stripeCustomerId: string, status: string): Promise<string | null> {
-  const result = await dbQuery<UserIdRow>(
+export async function updateSubscriptionStatusByCustomer(stripeCustomerId: string, status: string, db: DbExecutor = defaultDb, eventCreatedAt?: Date | null): Promise<string | null> {
+  const existing = await db.query<SubscriptionSyncStateRow>(
+    "SELECT stripe_last_event_created_at FROM user_subscriptions WHERE stripe_customer_id = $1 LIMIT 1",
+    [stripeCustomerId],
+  );
+  const previousEventCreatedAt = existing.rows[0]?.stripe_last_event_created_at ? new Date(existing.rows[0].stripe_last_event_created_at) : null;
+  if (eventCreatedAt && previousEventCreatedAt && previousEventCreatedAt > eventCreatedAt) {
+    return null;
+  }
+
+  const result = await db.query<UserIdRow>(
     `
       UPDATE user_subscriptions
       SET status = $2,
           plan = $3,
           cancel_at_period_end = false,
+          stripe_last_event_created_at = COALESCE($4, stripe_last_event_created_at),
           updated_at = now()
       WHERE stripe_customer_id = $1
       RETURNING user_id::text
     `,
-    [stripeCustomerId, status, PREMIUM_PLAN],
+    [stripeCustomerId, status, PREMIUM_PLAN, eventCreatedAt ?? null],
   );
   return result.rows[0]?.user_id ?? null;
 }
 
 export async function billingEventProcessed(stripeEventId: string): Promise<boolean> {
-  const result = await dbQuery<BillingEventExistsRow>("SELECT EXISTS (SELECT 1 FROM billing_events WHERE stripe_event_id = $1) AS exists", [stripeEventId]);
+  const result = await dbQuery<BillingEventExistsRow>("SELECT EXISTS (SELECT 1 FROM stripe_events WHERE id = $1) AS exists", [stripeEventId]);
   return Boolean(result.rows[0]?.exists);
 }
 
+export async function claimStripeEvent(stripeEventId: string, eventType: string, db: DbExecutor = defaultDb): Promise<boolean> {
+  const result = await db.query<StripeEventClaimRow>(
+    `
+      INSERT INTO stripe_events (id, type, created_at)
+      VALUES ($1, $2, now())
+      ON CONFLICT (id) DO NOTHING
+      RETURNING id
+    `,
+    [stripeEventId, eventType],
+  );
+  return Boolean(result.rows[0]?.id);
+}
+
 export async function recordBillingEvent(args: {
+  db?: DbExecutor;
   eventType: string;
   payloadSummary: Record<string, string | null>;
   stripeEventId: string;
   userId: string | null;
 }): Promise<void> {
-  await dbQuery(
+  const db = args.db ?? defaultDb;
+  await db.query(
     `
       INSERT INTO billing_events (user_id, event_type, stripe_event_id, payload_summary, created_at)
       VALUES ($1, $2, $3, $4::jsonb, now())
@@ -255,6 +315,48 @@ export async function notifyPremiumRenewalRestored(userId: string): Promise<void
   await safeCreateNotification(premiumRenewalRestoredNotification(), userId);
 }
 
+export async function createBillingNotificationForEvent(userId: string, intent: SubscriptionNotificationIntent, stripeEventId: string, db: DbExecutor = defaultDb): Promise<void> {
+  if (!stripeEventId.trim()) return;
+  const title = cleanText(intent.title, 140);
+  const message = cleanText(intent.message, 500);
+  const actionUrl = cleanActionUrl(intent.actionUrl);
+  if (intent.dedupe === "once") {
+    await db.query<NotificationRow>(
+      `
+        INSERT INTO notifications (user_id, type, title, message, read, action_url, stripe_event_id, created_at)
+        SELECT $1, $2, $3, $4, false, $5, $6, now()
+        WHERE NOT EXISTS (
+          SELECT 1
+          FROM notifications
+          WHERE stripe_event_id = $6
+        )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM notifications
+            WHERE user_id = $1 AND type = $2 AND title = $3
+          )
+        RETURNING id::text
+      `,
+      [userId, intent.type, title, message, actionUrl, stripeEventId],
+    );
+    return;
+  }
+
+  await db.query<NotificationRow>(
+    `
+      INSERT INTO notifications (user_id, type, title, message, read, action_url, stripe_event_id, created_at)
+      SELECT $1, $2, $3, $4, false, $5, $6, now()
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM notifications
+        WHERE stripe_event_id = $6
+      )
+      RETURNING id::text
+    `,
+    [userId, intent.type, title, message, actionUrl, stripeEventId],
+  );
+}
+
 export async function retrieveSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
   return stripe().subscriptions.retrieve(subscriptionId);
 }
@@ -277,8 +379,8 @@ export function customerIdFromInvoice(invoice: Stripe.Invoice): string | null {
   return stripeObjectId(invoice.customer);
 }
 
-async function findUserIdForStripeSubscription(stripeCustomerId: string | null, stripeSubscriptionId: string | null): Promise<string | null> {
-  const result = await dbQuery<UserIdRow>(
+async function findUserIdForStripeSubscription(stripeCustomerId: string | null, stripeSubscriptionId: string | null, db: DbExecutor = defaultDb): Promise<string | null> {
+  const result = await db.query<UserIdRow>(
     `
       SELECT user_id::text
       FROM user_subscriptions
@@ -314,10 +416,24 @@ function timestampDate(value: number | null | undefined): Date | null {
   return typeof value === "number" && Number.isFinite(value) ? new Date(value * 1000) : null;
 }
 
-async function currentCancelAtPeriodEnd(userId: string): Promise<boolean | null> {
-  const result = await dbQuery<PreviousCancelRow>("SELECT cancel_at_period_end FROM user_subscriptions WHERE user_id = $1 LIMIT 1", [userId]);
-  const value = result.rows[0]?.cancel_at_period_end;
-  return typeof value === "boolean" ? value : null;
+async function currentSubscriptionSyncState(userId: string, db: DbExecutor = defaultDb): Promise<SubscriptionSyncStateRow | null> {
+  const result = await db.query<SubscriptionSyncStateRow>(
+    `
+      SELECT
+        status,
+        plan,
+        current_period_end,
+        stripe_customer_id,
+        stripe_subscription_id,
+        cancel_at_period_end,
+        stripe_last_event_created_at
+      FROM user_subscriptions
+      WHERE user_id = $1
+      LIMIT 1
+    `,
+    [userId],
+  );
+  return result.rows[0] ?? null;
 }
 
 function statusGrantsPremium(status: string): boolean {
@@ -334,4 +450,15 @@ async function safeCreateNotification(intent: SubscriptionNotificationIntent, us
   } catch (error) {
     console.warn("[notifications] billing notification failed", error instanceof Error ? error.message : error);
   }
+}
+
+function cleanText(value: string, maxLength: number): string {
+  const text = value.trim().replace(/\s+/g, " ");
+  return text.slice(0, maxLength);
+}
+
+function cleanActionUrl(value: string | null): string | null {
+  const text = value?.trim();
+  if (!text || !text.startsWith("/") || text.startsWith("//") || text.length > 240) return null;
+  return text;
 }

@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
+import { notificationIntentForStripeWebhook } from "@/lib/security/stripe-webhook-policy";
 import {
   billingEventProcessed,
+  claimStripeEvent,
+  createBillingNotificationForEvent,
   customerIdFromInvoice,
-  notifyPaymentFailed,
-  notifyPremiumRenewalRestored,
-  notifySubscriptionActive,
-  notifySubscriptionCanceled,
   recordBillingEvent,
   retrieveSubscription,
   stripeObjectId,
@@ -16,10 +15,22 @@ import {
   upsertSubscriptionFromStripe,
   type StripeSyncResult,
 } from "@/lib/server/billing";
+import { dbTransaction, type DbExecutor } from "@/lib/server/db";
 import { stripe, stripeWebhookSecret } from "@/lib/server/stripe";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+
+type PreparedStripeEvent = {
+  invoice: Stripe.Invoice | null;
+  session: Stripe.Checkout.Session | null;
+  subscription: Stripe.Subscription | null;
+};
+
+type WebhookProcessResult = {
+  duplicate: boolean;
+  result: StripeSyncResult;
+};
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -37,74 +48,110 @@ export async function POST(request: Request) {
   }
 
   try {
-    if (await billingEventProcessed(event.id)) {
-      return NextResponse.json({ ok: true, received: true, duplicate: true });
-    }
-
-    const result = await handleStripeEvent(event);
-    await recordBillingEvent({
-      eventType: event.type,
-      payloadSummary: {
-        cancel_at_period_end: String(result.cancelAtPeriodEnd),
-        customer: result.stripeCustomerId,
-        current_period_end: result.currentPeriodEnd,
-        status: result.status,
-        subscription: result.stripeSubscriptionId,
-      },
-      stripeEventId: event.id,
-      userId: result.userId,
-    });
-
-    return NextResponse.json({ ok: true, received: true });
+    const processResult = await processStripeWebhook(event);
+    return NextResponse.json({ ok: true, received: true, duplicate: processResult.duplicate });
   } catch (error) {
     console.warn("[stripe] webhook processing failed", error instanceof Error ? error.message : error);
     return NextResponse.json({ ok: false, message: "Webhook processing failed." }, { status: 500 });
   }
 }
 
-async function handleStripeEvent(event: Stripe.Event): Promise<StripeSyncResult> {
+async function processStripeWebhook(event: Stripe.Event): Promise<WebhookProcessResult> {
+  if (await billingEventProcessed(event.id)) {
+    return { duplicate: true, result: ignoredResult() };
+  }
+
+  const prepared = await prepareStripeEvent(event);
+  return dbTransaction(async (db) => {
+    const claimed = await claimStripeEvent(event.id, event.type, db);
+    if (!claimed) {
+      return { duplicate: true, result: ignoredResult() };
+    }
+
+    const result = await applyPreparedStripeEvent(event, prepared, db);
+    await recordBillingEvent({
+      db,
+      eventType: event.type,
+      payloadSummary: {
+        cancel_at_period_end: String(result.cancelAtPeriodEnd),
+        customer: result.stripeCustomerId,
+        current_period_end: result.currentPeriodEnd,
+        stale_event: String(result.staleEvent),
+        status: result.status,
+        subscription: result.stripeSubscriptionId,
+      },
+      stripeEventId: event.id,
+      userId: result.userId,
+    });
+    await notifyForStripeEvent(event, result, db);
+    return { duplicate: false, result };
+  });
+}
+
+async function prepareStripeEvent(event: Stripe.Event): Promise<PreparedStripeEvent> {
   switch (event.type) {
-    case "checkout.session.completed":
-      return handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
+    case "checkout.session.completed": {
+      const session = event.data.object as Stripe.Checkout.Session;
+      const subscriptionId = stripeObjectId(session.subscription);
+      return {
+        invoice: null,
+        session,
+        subscription: subscriptionId ? await retrieveSubscription(subscriptionId) : null,
+      };
+    }
     case "customer.subscription.created":
     case "customer.subscription.updated":
-      return handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
     case "customer.subscription.deleted":
-      return handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
-    case "invoice.payment_failed":
-      return handleInvoicePaymentFailed(event.data.object as Stripe.Invoice);
-    case "invoice.payment_succeeded":
-      return handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice);
-    default:
       return {
-        canceledAt: null,
-        cancelAtPeriodEnd: false,
-        currentPeriodEnd: null,
-        previousCancelAtPeriodEnd: null,
-        status: "ignored",
-        stripeCustomerId: null,
-        stripeSubscriptionId: null,
-        userId: null,
+        invoice: null,
+        session: null,
+        subscription: event.data.object as Stripe.Subscription,
       };
+    case "invoice.payment_failed":
+    case "invoice.payment_succeeded": {
+      const invoice = event.data.object as Stripe.Invoice;
+      const subscriptionId = subscriptionIdFromInvoice(invoice);
+      return {
+        invoice,
+        session: null,
+        subscription: subscriptionId ? await retrieveSubscription(subscriptionId) : null,
+      };
+    }
+    default:
+      return { invoice: null, session: null, subscription: null };
   }
 }
 
-async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<StripeSyncResult> {
+async function applyPreparedStripeEvent(event: Stripe.Event, prepared: PreparedStripeEvent, db: DbExecutor): Promise<StripeSyncResult> {
+  const eventCreatedAt = stripeEventCreatedAt(event);
+  switch (event.type) {
+    case "checkout.session.completed":
+      return handleCheckoutCompleted(prepared.session, prepared.subscription, eventCreatedAt, db);
+    case "customer.subscription.created":
+    case "customer.subscription.updated":
+    case "customer.subscription.deleted":
+      return prepared.subscription ? upsertSubscriptionFromStripe(prepared.subscription, null, db, eventCreatedAt) : ignoredResult();
+    case "invoice.payment_failed":
+      return handleInvoicePaymentFailed(prepared.invoice, prepared.subscription, eventCreatedAt, db);
+    case "invoice.payment_succeeded":
+      return prepared.subscription ? upsertSubscriptionFromStripe(prepared.subscription, null, db, eventCreatedAt) : invoiceOnlyResult(prepared.invoice, "paid");
+    default:
+      return ignoredResult();
+  }
+}
+
+async function handleCheckoutCompleted(session: Stripe.Checkout.Session | null, subscription: Stripe.Subscription | null, eventCreatedAt: Date | null, db: DbExecutor): Promise<StripeSyncResult> {
+  if (!session) return ignoredResult();
   const userId = metadataUserId(session.metadata);
   const customerId = stripeObjectId(session.customer);
   const subscriptionId = stripeObjectId(session.subscription);
 
   if (userId && customerId) {
-    await upsertCustomerReference(userId, customerId, subscriptionId);
+    await upsertCustomerReference(userId, customerId, subscriptionId, db);
   }
 
-  if (subscriptionId) {
-    const subscription = await retrieveSubscription(subscriptionId);
-    const result = await upsertSubscriptionFromStripe(subscription, userId);
-    if (result.userId && statusGrantsPremium(result.status)) {
-      await notifySubscriptionActive(result.userId);
-    }
-    return result;
+  if (subscription) {
+    return upsertSubscriptionFromStripe(subscription, userId, db, eventCreatedAt);
   }
 
   return {
@@ -112,6 +159,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
     cancelAtPeriodEnd: false,
     currentPeriodEnd: null,
     previousCancelAtPeriodEnd: null,
+    staleEvent: false,
     status: session.status ?? "complete",
     stripeCustomerId: customerId,
     stripeSubscriptionId: subscriptionId,
@@ -119,90 +167,42 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   };
 }
 
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<StripeSyncResult> {
-  const result = await upsertSubscriptionFromStripe(subscription);
-  if (result.userId && statusGrantsPremium(result.status) && result.cancelAtPeriodEnd) {
-    await notifySubscriptionCanceled(result.userId, result.currentPeriodEnd);
-  } else if (result.userId && statusGrantsPremium(result.status)) {
-    await notifySubscriptionActive(result.userId);
-  }
-  if (result.userId && result.previousCancelAtPeriodEnd === true && !result.cancelAtPeriodEnd && statusGrantsPremium(result.status)) {
-    await notifyPremiumRenewalRestored(result.userId);
-  }
-  return result;
-}
+async function handleInvoicePaymentFailed(invoice: Stripe.Invoice | null, subscription: Stripe.Subscription | null, eventCreatedAt: Date | null, db: DbExecutor): Promise<StripeSyncResult> {
+  const customerId = invoice ? customerIdFromInvoice(invoice) : null;
 
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<StripeSyncResult> {
-  const result = await upsertSubscriptionFromStripe(subscription);
-  if (result.userId) {
-    await notifySubscriptionCanceled(result.userId, result.currentPeriodEnd);
-  }
-  return result;
-}
-
-async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<StripeSyncResult> {
-  const subscriptionId = subscriptionIdFromInvoice(invoice);
-  const customerId = customerIdFromInvoice(invoice);
-
-  if (subscriptionId) {
-    const subscription = await retrieveSubscription(subscriptionId);
-    const result = await upsertSubscriptionFromStripe(subscription);
-    const userId = customerId ? await updateSubscriptionStatusByCustomer(customerId, "past_due") : result.userId;
-    if (userId) await notifyPaymentFailed(userId);
+  if (subscription) {
+    const result = await upsertSubscriptionFromStripe(subscription, null, db, eventCreatedAt);
+    const userId = customerId ? await updateSubscriptionStatusByCustomer(customerId, "past_due", db, eventCreatedAt) : result.userId;
     return {
       ...result,
-      status: "past_due",
+      status: userId ? "past_due" : result.status,
       userId: userId ?? result.userId,
     };
   }
 
   if (customerId) {
-    const userId = await updateSubscriptionStatusByCustomer(customerId, "past_due");
-    if (userId) await notifyPaymentFailed(userId);
+    const userId = await updateSubscriptionStatusByCustomer(customerId, "past_due", db, eventCreatedAt);
     return {
       canceledAt: null,
       cancelAtPeriodEnd: false,
       currentPeriodEnd: null,
       previousCancelAtPeriodEnd: null,
-      status: "past_due",
+      staleEvent: false,
+      status: userId ? "past_due" : "ignored",
       stripeCustomerId: customerId,
       stripeSubscriptionId: null,
       userId,
     };
   }
 
-  return {
-    canceledAt: null,
-    cancelAtPeriodEnd: false,
-    currentPeriodEnd: null,
-    previousCancelAtPeriodEnd: null,
-    status: "past_due",
-    stripeCustomerId: null,
-    stripeSubscriptionId: null,
-    userId: null,
-  };
+  return invoiceOnlyResult(invoice, "past_due");
 }
 
-async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<StripeSyncResult> {
-  const subscriptionId = subscriptionIdFromInvoice(invoice);
-  if (!subscriptionId) {
-    return {
-      canceledAt: null,
-      cancelAtPeriodEnd: false,
-      currentPeriodEnd: null,
-      previousCancelAtPeriodEnd: null,
-      status: "paid",
-      stripeCustomerId: customerIdFromInvoice(invoice),
-      stripeSubscriptionId: null,
-      userId: null,
-    };
-  }
-
-  const result = await upsertSubscriptionFromStripe(await retrieveSubscription(subscriptionId));
-  if (result.userId && statusGrantsPremium(result.status)) {
-    await notifySubscriptionActive(result.userId);
-  }
-  return result;
+async function notifyForStripeEvent(event: Stripe.Event, result: StripeSyncResult, db: DbExecutor): Promise<void> {
+  if (!result.userId) return;
+  const intent = notificationIntentForStripeWebhook(event.type, result);
+  if (!intent) return;
+  await createBillingNotificationForEvent(result.userId, intent, event.id, db);
 }
 
 function metadataUserId(metadata: Stripe.Metadata | null | undefined): string | null {
@@ -210,6 +210,34 @@ function metadataUserId(metadata: Stripe.Metadata | null | undefined): string | 
   return typeof userId === "string" && userId ? userId : null;
 }
 
-function statusGrantsPremium(status: string): boolean {
-  return status === "active" || status === "trialing";
+function stripeEventCreatedAt(event: Stripe.Event): Date | null {
+  return typeof event.created === "number" && Number.isFinite(event.created) ? new Date(event.created * 1000) : null;
+}
+
+function invoiceOnlyResult(invoice: Stripe.Invoice | null, status: string): StripeSyncResult {
+  return {
+    canceledAt: null,
+    cancelAtPeriodEnd: false,
+    currentPeriodEnd: null,
+    previousCancelAtPeriodEnd: null,
+    staleEvent: false,
+    status,
+    stripeCustomerId: invoice ? customerIdFromInvoice(invoice) : null,
+    stripeSubscriptionId: invoice ? subscriptionIdFromInvoice(invoice) : null,
+    userId: null,
+  };
+}
+
+function ignoredResult(): StripeSyncResult {
+  return {
+    canceledAt: null,
+    cancelAtPeriodEnd: false,
+    currentPeriodEnd: null,
+    previousCancelAtPeriodEnd: null,
+    staleEvent: false,
+    status: "ignored",
+    stripeCustomerId: null,
+    stripeSubscriptionId: null,
+    userId: null,
+  };
 }
