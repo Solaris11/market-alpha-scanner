@@ -6,6 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "monitoring:cleanup": "tsx scripts/monitoring-cleanup.ts",
+    "monitoring:synthetics": "tsx scripts/monitoring-synthetics.ts",
+    "monitoring:system": "tsx scripts/monitoring-system.ts",
     "stripe:reconcile": "tsx scripts/stripe-reconcile.ts",
     "test": "node scripts/run-tests.mjs",
     "lint": "tsc --noEmit"

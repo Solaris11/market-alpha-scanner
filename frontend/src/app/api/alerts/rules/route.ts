@@ -2,31 +2,38 @@ import { NextResponse } from "next/server";
 import { getAlertOverview, readAlertRules, sanitizeAlertRule, writeAlertRules } from "@/lib/alerts";
 import { accessDenied, requireUser } from "@/lib/server/access-control";
 import { entitlementSummary, getEntitlement, getEntitlementForUser, hasPremiumAccess, legalNotAcceptedResponse, requiresLegalAcceptance } from "@/lib/server/entitlements";
+import { withRequestMetrics } from "@/lib/server/monitoring";
 import { previewAlertOverview } from "@/lib/server/premium-preview";
 import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET() {
-  const entitlement = await getEntitlement();
-  if (requiresLegalAcceptance(entitlement)) return legalNotAcceptedResponse(entitlement);
-  const premium = hasPremiumAccess(entitlement);
-  const overview = await getAlertOverview({ createDefault: premium ? undefined : false, userId: entitlement.user?.id ?? null });
-  if (!premium) {
-    const preview = previewAlertOverview(overview);
-    return NextResponse.json({
-      ...preview,
-      limited: true,
-      message: "Limited alert preview. Premium unlocks saved alert automation.",
-      entitlement: entitlementSummary(entitlement),
-    });
-  }
+export async function GET(request: Request) {
+  return withRequestMetrics(request, "/api/alerts/rules", async () => {
+    const entitlement = await getEntitlement();
+    if (requiresLegalAcceptance(entitlement)) return legalNotAcceptedResponse(entitlement);
+    const premium = hasPremiumAccess(entitlement);
+    const overview = await getAlertOverview({ createDefault: premium ? undefined : false, userId: entitlement.user?.id ?? null });
+    if (!premium) {
+      const preview = previewAlertOverview(overview);
+      return NextResponse.json({
+        ...preview,
+        limited: true,
+        message: "Limited alert preview. Premium unlocks saved alert automation.",
+        entitlement: entitlementSummary(entitlement),
+      });
+    }
 
-  return NextResponse.json({ ...overview, limited: false, entitlement: entitlementSummary(entitlement) });
+    return NextResponse.json({ ...overview, limited: false, entitlement: entitlementSummary(entitlement) });
+  });
 }
 
 export async function POST(request: Request) {
+  return withRequestMetrics(request, "/api/alerts/rules", () => saveAlertRule(request));
+}
+
+async function saveAlertRule(request: Request): Promise<Response> {
   const rateLimited = await rateLimitRequest(request, "alerts:rules:write", { limit: 10, windowMs: 60_000 });
   if (rateLimited) return rateLimited;
 

@@ -16,6 +16,7 @@ import {
   type StripeSyncResult,
 } from "@/lib/server/billing";
 import { dbTransaction, type DbExecutor } from "@/lib/server/db";
+import { withRequestMetrics } from "@/lib/server/monitoring";
 import { stripe, stripeWebhookSecret } from "@/lib/server/stripe";
 
 export const dynamic = "force-dynamic";
@@ -33,6 +34,10 @@ type WebhookProcessResult = {
 };
 
 export async function POST(request: Request) {
+  return withRequestMetrics(request, "/api/stripe/webhook", () => webhook(request));
+}
+
+async function webhook(request: Request): Promise<Response> {
   const rawBody = await request.text();
   const signature = request.headers.get("stripe-signature");
 

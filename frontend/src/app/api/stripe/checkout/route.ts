@@ -3,6 +3,7 @@ import { checkoutBlockReason } from "@/lib/security/billing-readiness";
 import { getBillingSubscriptionForUser, getOrCreateStripeCustomerForUser } from "@/lib/server/billing";
 import { requireUser } from "@/lib/server/access-control";
 import { getEntitlementForUser, hasPremiumAccess, legalNotAcceptedResponse, requiresLegalAcceptance } from "@/lib/server/entitlements";
+import { withRequestMetrics } from "@/lib/server/monitoring";
 import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 import { stripe, stripeAppBaseUrl, stripePriceId } from "@/lib/server/stripe";
 
@@ -10,6 +11,10 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  return withRequestMetrics(request, "/api/stripe/checkout", () => checkout(request));
+}
+
+async function checkout(request: Request): Promise<Response> {
   const rateLimited = await rateLimitRequest(request, "stripe:checkout", { limit: 5, windowMs: 60_000 });
   if (rateLimited) return rateLimited;
 
