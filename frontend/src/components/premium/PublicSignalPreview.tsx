@@ -1,24 +1,25 @@
-import Link from "next/link";
-import { BillingActionButton } from "@/components/account/AccountPageActions";
 import type { PublicMarketSummary } from "@/lib/public-signals";
+import { premiumAccessState, type PremiumAccessState } from "@/lib/security/premium-access-state";
+import { PremiumAccessCta } from "./PremiumAccessCta";
 
 export function PublicSignalPreviewList({
+  accessState,
   authenticated = false,
   ctaHref = "/account",
   ctaLabel = "Sign in",
+  refreshOnPremium = false,
   summary,
   title = "Market Preview",
 }: {
+  accessState?: PremiumAccessState;
   ctaHref?: string;
   ctaLabel?: string;
   authenticated?: boolean;
+  refreshOnPremium?: boolean;
   summary: PublicMarketSummary;
   title?: string;
 }) {
-  const helperText = authenticated
-    ? "Upgrade your account to unlock full trade plans, ranked setups, alerts, simulations, and premium scanner intelligence."
-    : "Sign in to view your account and upgrade.";
-  const displayLabel = authenticated ? "Upgrade to Premium" : ctaLabel;
+  const initialState = accessState ?? premiumAccessState({ authenticated });
 
   return (
     <section className="min-w-0 max-w-full rounded-2xl border border-cyan-300/20 bg-slate-950/70 p-5 shadow-2xl shadow-black/30 ring-1 ring-white/5 backdrop-blur-xl">
@@ -27,17 +28,10 @@ export function PublicSignalPreviewList({
           <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Preview</div>
           <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-50">{title}</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-            Live symbols, rankings, trade plans, risk levels, and scanner intelligence are available after sign-in and subscription.
+            Live symbols, rankings, trade plans, risk levels, and scanner intelligence are available when Premium access is confirmed.
           </p>
-          <p className="mt-2 max-w-3xl text-xs leading-5 text-cyan-100/75">{helperText}</p>
         </div>
-        {authenticated ? (
-          <BillingActionButton mode="checkout" />
-        ) : (
-          <Link className="w-full rounded-full border border-cyan-300/40 bg-cyan-400/15 px-4 py-2 text-center text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/20 sm:w-auto" href={ctaHref}>
-            {displayLabel}
-          </Link>
-        )}
+        <PremiumAccessCta ctaHref={ctaHref} ctaLabel={ctaLabel} initialState={initialState} refreshOnPremium={refreshOnPremium} />
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -50,7 +44,9 @@ export function PublicSignalPreviewList({
   );
 }
 
-export function PublicSymbolPreview({ authenticated = false, summary }: { authenticated?: boolean; summary: PublicMarketSummary }) {
+export function PublicSymbolPreview({ accessState, authenticated = false, summary }: { accessState?: PremiumAccessState; authenticated?: boolean; summary: PublicMarketSummary }) {
+  const initialState = accessState ?? premiumAccessState({ authenticated });
+
   return (
     <section className="min-w-0 max-w-full rounded-2xl border border-cyan-300/20 bg-slate-950/70 p-6 shadow-2xl shadow-black/30 ring-1 ring-white/5 backdrop-blur-xl">
       <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Symbol Research</div>
@@ -60,17 +56,8 @@ export function PublicSymbolPreview({ authenticated = false, summary }: { authen
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
             Live symbol identity, rankings, levels, simulator data, and execution planning are hidden until Premium access is confirmed.
           </p>
-          <p className="mt-2 max-w-3xl text-xs leading-5 text-cyan-100/75">
-            {authenticated ? "Upgrade your account to unlock full symbol trade plans and premium scanner intelligence." : "Sign in to view your account and upgrade."}
-          </p>
         </div>
-        {authenticated ? (
-          <BillingActionButton mode="checkout" />
-        ) : (
-          <Link className="w-full rounded-full border border-cyan-300/40 bg-cyan-400/15 px-4 py-2 text-center text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/20 sm:w-auto" href="/account">
-            Sign in
-          </Link>
-        )}
+        <PremiumAccessCta ctaHref="/account" ctaLabel="Sign in" initialState={initialState} refreshOnPremium />
       </div>
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <SummaryCard label="Scanner state" value={summary.scannerStatus.replace(/_/g, " ")} />

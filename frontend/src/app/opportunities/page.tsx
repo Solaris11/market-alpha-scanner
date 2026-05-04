@@ -6,6 +6,7 @@ import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
+import { premiumAccessState } from "@/lib/security/premium-access-state";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export default async function OpportunitiesPage() {
     const publicPreview = await getPublicMarketSummary();
     return (
       <TerminalShell>
-        <PublicSignalPreviewList authenticated={entitlement.authenticated} summary={publicPreview.summary} title="Research Preview" />
+        <PublicSignalPreviewList accessState={premiumAccessState(entitlement)} authenticated={entitlement.authenticated} refreshOnPremium summary={publicPreview.summary} title="Research Preview" />
       </TerminalShell>
     );
   }

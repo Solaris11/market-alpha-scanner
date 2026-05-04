@@ -14,10 +14,11 @@ test("account UI state for cancel scheduled shows active-until date", () => {
   });
 
   assert.equal(state.state, "cancel_scheduled");
-  assert.equal(state.statusText, "Canceled — Premium active until Jun 4, 2026");
+  assert.equal(state.statusText, "Subscription canceled");
+  assert.equal(state.accessText, "Premium access active until Jun 4, 2026");
   assert.equal(state.actionMode, "portal");
-  assert.equal(state.actionLabel, "Renew Premium");
-  assert.equal(state.helper, "Your subscription will not renew.");
+  assert.equal(state.actionLabel, "Renew Subscription");
+  assert.equal(state.helper, "Your premium access will continue until Jun 4, 2026. Your subscription will not renew.");
 });
 
 test("billing portal state works with customer id even when subscription is cancel scheduled", () => {

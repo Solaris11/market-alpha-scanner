@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { AccountMenu } from "./AccountMenu";
 import { AuthModal } from "./AuthModal";
 
 export function AccountPill() {
+  const router = useRouter();
   const { authenticated, loading } = useCurrentUser();
   const [authOpen, setAuthOpen] = useState(false);
   const [resetToken, setResetToken] = useState("");
@@ -52,6 +54,7 @@ export function AccountPill() {
           onClose={() => {
             setAuthOpen(false);
             setResetToken("");
+            router.refresh();
           }}
           resetToken={resetToken}
         />

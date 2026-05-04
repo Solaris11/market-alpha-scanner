@@ -207,6 +207,15 @@ function BillingControl({ billingSubscription, entitlement }: { billingSubscript
   }
 
   const billingState = billingViewState({ isPremium: entitlement.isPremium, subscription: billingSubscription });
+  if (billingState.state === "cancel_scheduled" && billingSubscription?.stripeCustomerId) {
+    return (
+      <div className="flex flex-wrap gap-2">
+        <BillingActionButton label="Manage Subscription" mode="portal" />
+        <BillingActionButton label="Renew Subscription" mode="portal" />
+      </div>
+    );
+  }
+
   if (billingState.actionMode === "portal") {
     return <BillingActionButton label={billingState.actionLabel ?? undefined} mode="portal" />;
   }
@@ -226,11 +235,12 @@ function BillingControl({ billingSubscription, entitlement }: { billingSubscript
 }
 
 function SubscriptionState({ subscription }: { subscription: BillingSubscription }) {
-  const state = billingViewState({ isPremium: subscription.plan === "premium" && subscription.status === "active", subscription });
+  const state = billingViewState({ isPremium: subscription.plan === "premium" && (subscription.status === "active" || subscription.status === "trialing"), subscription });
   if (state.statusText) {
     return (
       <div className="mt-3">
         <p className={`text-xs leading-5 ${state.state === "past_due" ? "text-rose-100" : state.state === "cancel_scheduled" ? "text-amber-100" : "text-slate-300"}`}>{state.statusText}</p>
+        {state.accessText ? <p className="mt-1 text-xs font-semibold leading-5 text-amber-100">{state.accessText}</p> : null}
         {state.helper ? <p className="mt-1 text-xs leading-5 text-slate-500">{state.helper}</p> : null}
       </div>
     );

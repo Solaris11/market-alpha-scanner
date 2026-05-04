@@ -13,6 +13,7 @@ import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib
 import { assertNoPremiumFields } from "@/lib/server/premium-preview";
 import { getPublicSymbolSignal } from "@/lib/server/public-signal-data";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
+import { premiumAccessState } from "@/lib/security/premium-access-state";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { buildConvictionTimelineModel } from "@/lib/trading/conviction-timeline-model";
 import { getDailyAction } from "@/lib/trading/daily-action";
@@ -46,6 +47,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
     const cleaned = symbol.trim().toUpperCase();
     const { summary, signal } = await getPublicSymbolSignal(cleaned);
     assertNoPremiumFields({ signal, summary });
+    const accessState = premiumAccessState(entitlement);
 
     return (
       <TerminalShell>
@@ -55,8 +57,9 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           </Link>
         </div>
         <div className="space-y-4">
-          <PublicSymbolPreview authenticated={entitlement.authenticated} summary={summary} />
+          <PublicSymbolPreview accessState={accessState} authenticated={entitlement.authenticated} summary={summary} />
           <PremiumLockedState
+            accessState={accessState}
             authenticated={entitlement.authenticated}
             description="Premium unlocks full symbol research, risk levels, simulator context, and decision-assistant details."
             previewItems={["Full research plan", "Risk simulation", "Decision assistant"]}

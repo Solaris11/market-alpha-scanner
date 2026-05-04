@@ -7,7 +7,8 @@ export type BillingViewSubscription = {
 };
 
 export type BillingViewState = {
-  actionLabel: "Manage Subscription" | "Renew Premium" | "Update billing" | "Upgrade to Premium" | null;
+  accessText: string | null;
+  actionLabel: "Manage Subscription" | "Renew Subscription" | "Update billing" | "Upgrade to Premium" | null;
   actionMode: "checkout" | "portal" | null;
   helper: string | null;
   state: "active" | "cancel_scheduled" | "free" | "manual_premium" | "past_due";
@@ -22,6 +23,7 @@ export function billingViewState(args: { isPremium: boolean; subscription: Billi
 
   if (status === "past_due") {
     return {
+      accessText: null,
       actionLabel: hasStripeCustomer ? "Update billing" : null,
       actionMode: hasStripeCustomer ? "portal" : null,
       helper: "Update your payment method to keep Premium access.",
@@ -32,17 +34,21 @@ export function billingViewState(args: { isPremium: boolean; subscription: Billi
 
   if (subscription?.cancelAtPeriodEnd && (status === "active" || status === "trialing")) {
     return {
-      actionLabel: hasStripeCustomer ? "Renew Premium" : null,
+      accessText: `Premium access active until ${currentPeriodEnd ?? "the end of the billing period"}`,
+      actionLabel: hasStripeCustomer ? "Renew Subscription" : null,
       actionMode: hasStripeCustomer ? "portal" : null,
-      helper: "Your subscription will not renew.",
+      helper: currentPeriodEnd
+        ? `Your premium access will continue until ${currentPeriodEnd}. Your subscription will not renew.`
+        : "Your subscription will not renew.",
       state: "cancel_scheduled",
-      statusText: `Canceled — Premium active until ${currentPeriodEnd ?? "the end of the billing period"}`,
+      statusText: "Subscription canceled",
     };
   }
 
   if (args.isPremium) {
     if (!hasStripeCustomer) {
       return {
+        accessText: null,
         actionLabel: null,
         actionMode: null,
         helper: "Premium access is active, but no Stripe billing profile is linked to this account.",
@@ -51,6 +57,7 @@ export function billingViewState(args: { isPremium: boolean; subscription: Billi
       };
     }
     return {
+      accessText: null,
       actionLabel: "Manage Subscription",
       actionMode: "portal",
       helper: "Cancel or update your subscription anytime. No hassle.",
@@ -61,7 +68,8 @@ export function billingViewState(args: { isPremium: boolean; subscription: Billi
 
   if (hasStripeCustomer && status === "canceled") {
     return {
-      actionLabel: "Renew Premium",
+      accessText: null,
+      actionLabel: "Renew Subscription",
       actionMode: "portal",
       helper: "Renew anytime to restore full Premium access.",
       state: "free",
@@ -70,6 +78,7 @@ export function billingViewState(args: { isPremium: boolean; subscription: Billi
   }
 
   return {
+    accessText: null,
     actionLabel: "Upgrade to Premium",
     actionMode: "checkout",
     helper: null,

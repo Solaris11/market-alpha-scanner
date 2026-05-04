@@ -3,7 +3,7 @@ import { BestTradeNowCard } from "@/components/terminal/BestTradeNowCard";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { MarketOnboarding } from "@/components/onboarding/MarketOnboarding";
 import { PublicSignalPreviewList } from "@/components/premium/PublicSignalPreview";
-import { BillingActionButton } from "@/components/account/AccountPageActions";
+import { PremiumAccessCta } from "@/components/premium/PremiumAccessCta";
 import { DailyActionCard } from "@/components/terminal/DailyActionCard";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
@@ -19,6 +19,7 @@ import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib
 import { assertNoPremiumFields } from "@/lib/server/premium-preview";
 import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
+import { premiumAccessState } from "@/lib/security/premium-access-state";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { dailyActionBlocksTradeUi, getDailyAction, noTradeActionCopy } from "@/lib/trading/daily-action";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
@@ -38,6 +39,7 @@ export default async function TerminalPage() {
 
   if (!hasPremiumAccess(entitlement)) {
     const publicPreview = await getPublicMarketSummary();
+    const accessState = premiumAccessState(entitlement);
     const publicAction = {
       action: "WAIT" as const,
       label: "WAIT",
@@ -52,24 +54,16 @@ export default async function TerminalPage() {
         <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
           <div className="space-y-4">
             <DailyActionCard action={publicAction} dataStatus={publicPreview.summary.scannerStatus} />
-            <PublicSignalPreviewList authenticated={entitlement.authenticated} summary={publicPreview.summary} title="Market Preview" />
+            <PublicSignalPreviewList accessState={accessState} authenticated={entitlement.authenticated} refreshOnPremium summary={publicPreview.summary} title="Market Preview" />
           </div>
           <GlassPanel className="p-5 xl:sticky xl:top-4 xl:self-start">
             <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Premium</div>
             <h2 className="mt-2 text-xl font-semibold text-slate-50">Trade plans are locked</h2>
             <p className="mt-3 text-sm leading-6 text-slate-400">
-              {entitlement.authenticated
-                ? "Upgrade your account to unlock full trade plans, ranked setups, alerts, simulations, and premium scanner intelligence."
-                : "Sign in to view your account and upgrade."}
+              Account access determines whether this preview unlocks checkout or the full Premium terminal. Trade plans stay hidden until entitlement is confirmed.
             </p>
             <div className="mt-4">
-              {entitlement.authenticated ? (
-                <BillingActionButton mode="checkout" />
-              ) : (
-                <a className="inline-flex rounded-full border border-cyan-300/40 bg-cyan-400/15 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/20" href="/account">
-                  Sign in
-                </a>
-              )}
+              <PremiumAccessCta initialState={accessState} refreshOnPremium />
             </div>
           </GlassPanel>
         </div>
