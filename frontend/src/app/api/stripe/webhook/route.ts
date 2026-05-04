@@ -4,6 +4,7 @@ import {
   billingEventProcessed,
   customerIdFromInvoice,
   notifyPaymentFailed,
+  notifyPremiumRenewalRestored,
   notifySubscriptionActive,
   notifySubscriptionCanceled,
   recordBillingEvent,
@@ -44,7 +45,9 @@ export async function POST(request: Request) {
     await recordBillingEvent({
       eventType: event.type,
       payloadSummary: {
+        cancel_at_period_end: String(result.cancelAtPeriodEnd),
         customer: result.stripeCustomerId,
+        current_period_end: result.currentPeriodEnd,
         status: result.status,
         subscription: result.stripeSubscriptionId,
       },
@@ -74,7 +77,10 @@ async function handleStripeEvent(event: Stripe.Event): Promise<StripeSyncResult>
       return handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice);
     default:
       return {
+        canceledAt: null,
+        cancelAtPeriodEnd: false,
         currentPeriodEnd: null,
+        previousCancelAtPeriodEnd: null,
         status: "ignored",
         stripeCustomerId: null,
         stripeSubscriptionId: null,
@@ -102,7 +108,10 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   }
 
   return {
+    canceledAt: null,
+    cancelAtPeriodEnd: false,
     currentPeriodEnd: null,
+    previousCancelAtPeriodEnd: null,
     status: session.status ?? "complete",
     stripeCustomerId: customerId,
     stripeSubscriptionId: subscriptionId,
@@ -112,8 +121,13 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
 
 async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<StripeSyncResult> {
   const result = await upsertSubscriptionFromStripe(subscription);
-  if (result.userId && statusGrantsPremium(result.status)) {
+  if (result.userId && statusGrantsPremium(result.status) && result.cancelAtPeriodEnd) {
+    await notifySubscriptionCanceled(result.userId, result.currentPeriodEnd);
+  } else if (result.userId && statusGrantsPremium(result.status)) {
     await notifySubscriptionActive(result.userId);
+  }
+  if (result.userId && result.previousCancelAtPeriodEnd === true && !result.cancelAtPeriodEnd && statusGrantsPremium(result.status)) {
+    await notifyPremiumRenewalRestored(result.userId);
   }
   return result;
 }
@@ -146,7 +160,10 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<Stri
     const userId = await updateSubscriptionStatusByCustomer(customerId, "past_due");
     if (userId) await notifyPaymentFailed(userId);
     return {
+      canceledAt: null,
+      cancelAtPeriodEnd: false,
       currentPeriodEnd: null,
+      previousCancelAtPeriodEnd: null,
       status: "past_due",
       stripeCustomerId: customerId,
       stripeSubscriptionId: null,
@@ -155,7 +172,10 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<Stri
   }
 
   return {
+    canceledAt: null,
+    cancelAtPeriodEnd: false,
     currentPeriodEnd: null,
+    previousCancelAtPeriodEnd: null,
     status: "past_due",
     stripeCustomerId: null,
     stripeSubscriptionId: null,
@@ -167,7 +187,10 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<S
   const subscriptionId = subscriptionIdFromInvoice(invoice);
   if (!subscriptionId) {
     return {
+      canceledAt: null,
+      cancelAtPeriodEnd: false,
       currentPeriodEnd: null,
+      previousCancelAtPeriodEnd: null,
       status: "paid",
       stripeCustomerId: customerIdFromInvoice(invoice),
       stripeSubscriptionId: null,

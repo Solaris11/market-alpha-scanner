@@ -5,6 +5,7 @@ import type { QueryResultRow } from "pg";
 import {
   paymentFailedNotification,
   premiumActivatedNotification,
+  premiumRenewalRestoredNotification,
   subscriptionCanceledNotification,
   type SubscriptionNotificationIntent,
 } from "@/lib/security/subscription-notifications";
@@ -14,6 +15,8 @@ import { createNotificationOnce, createNotificationWithAction } from "./notifica
 import { stripe } from "./stripe";
 
 export type BillingSubscription = {
+  canceledAt: string | null;
+  cancelAtPeriodEnd: boolean;
   currentPeriodEnd: string | null;
   plan: string | null;
   status: string | null;
@@ -23,7 +26,10 @@ export type BillingSubscription = {
 };
 
 export type StripeSyncResult = {
+  canceledAt: string | null;
+  cancelAtPeriodEnd: boolean;
   currentPeriodEnd: string | null;
+  previousCancelAtPeriodEnd: boolean | null;
   status: string;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
@@ -31,6 +37,8 @@ export type StripeSyncResult = {
 };
 
 type BillingSubscriptionRow = QueryResultRow & {
+  canceled_at: string | Date | null;
+  cancel_at_period_end: boolean | null;
   current_period_end: string | Date | null;
   plan: string | null;
   status: string | null;
@@ -47,6 +55,10 @@ type BillingEventExistsRow = QueryResultRow & {
   exists: boolean;
 };
 
+type PreviousCancelRow = QueryResultRow & {
+  cancel_at_period_end: boolean | null;
+};
+
 const PREMIUM_PLAN = "premium";
 const INACTIVE_STATUS = "inactive";
 
@@ -54,6 +66,7 @@ export async function getBillingSubscriptionForUser(userId: string): Promise<Bil
   const result = await dbQuery<BillingSubscriptionRow>(
     `
       SELECT user_id::text, status, plan, current_period_end::text, stripe_customer_id, stripe_subscription_id
+      , cancel_at_period_end, canceled_at::text
       FROM user_subscriptions
       WHERE user_id = $1
       LIMIT 1
@@ -89,10 +102,12 @@ export async function upsertCustomerReference(userId: string, stripeCustomerId: 
         current_period_end,
         stripe_customer_id,
         stripe_subscription_id,
+        cancel_at_period_end,
+        canceled_at,
         created_at,
         updated_at
       )
-      VALUES ($1, $2, 'free', NULL, $3, $4, now(), now())
+      VALUES ($1, $2, 'free', NULL, $3, $4, false, NULL, now(), now())
       ON CONFLICT (user_id)
       DO UPDATE SET
         stripe_customer_id = COALESCE(EXCLUDED.stripe_customer_id, user_subscriptions.stripe_customer_id),
@@ -107,11 +122,17 @@ export async function upsertSubscriptionFromStripe(subscription: Stripe.Subscrip
   const stripeCustomerId = stripeObjectId(subscription.customer);
   const stripeSubscriptionId = subscription.id;
   const userId = userIdHint || metadataUserId(subscription.metadata) || (await findUserIdForStripeSubscription(stripeCustomerId, stripeSubscriptionId));
+  const currentPeriodEnd = periodEndDate(subscription);
+  const canceledAt = timestampDate(subscription.canceled_at);
+  const cancelAtPeriodEnd = Boolean(subscription.cancel_at_period_end);
 
   if (!userId) {
     console.warn("[stripe] subscription event could not be mapped to a user.");
     return {
-      currentPeriodEnd: periodEndDate(subscription)?.toISOString() ?? null,
+      canceledAt: canceledAt?.toISOString() ?? null,
+      cancelAtPeriodEnd,
+      currentPeriodEnd: currentPeriodEnd?.toISOString() ?? null,
+      previousCancelAtPeriodEnd: null,
       status: subscription.status,
       stripeCustomerId,
       stripeSubscriptionId,
@@ -119,6 +140,7 @@ export async function upsertSubscriptionFromStripe(subscription: Stripe.Subscrip
     };
   }
 
+  const previous = await currentCancelAtPeriodEnd(userId);
   await dbQuery(
     `
       INSERT INTO user_subscriptions (
@@ -128,10 +150,12 @@ export async function upsertSubscriptionFromStripe(subscription: Stripe.Subscrip
         current_period_end,
         stripe_customer_id,
         stripe_subscription_id,
+        cancel_at_period_end,
+        canceled_at,
         created_at,
         updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, now(), now())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, now(), now())
       ON CONFLICT (user_id)
       DO UPDATE SET
         status = EXCLUDED.status,
@@ -139,13 +163,18 @@ export async function upsertSubscriptionFromStripe(subscription: Stripe.Subscrip
         current_period_end = EXCLUDED.current_period_end,
         stripe_customer_id = COALESCE(EXCLUDED.stripe_customer_id, user_subscriptions.stripe_customer_id),
         stripe_subscription_id = EXCLUDED.stripe_subscription_id,
+        cancel_at_period_end = EXCLUDED.cancel_at_period_end,
+        canceled_at = EXCLUDED.canceled_at,
         updated_at = now()
     `,
-    [userId, subscription.status, PREMIUM_PLAN, periodEndDate(subscription), stripeCustomerId, stripeSubscriptionId],
+    [userId, subscription.status, PREMIUM_PLAN, currentPeriodEnd, stripeCustomerId, stripeSubscriptionId, cancelAtPeriodEnd, canceledAt],
   );
 
   return {
-    currentPeriodEnd: periodEndDate(subscription)?.toISOString() ?? null,
+    canceledAt: canceledAt?.toISOString() ?? null,
+    cancelAtPeriodEnd,
+    currentPeriodEnd: currentPeriodEnd?.toISOString() ?? null,
+    previousCancelAtPeriodEnd: previous,
     status: subscription.status,
     stripeCustomerId,
     stripeSubscriptionId,
@@ -159,6 +188,7 @@ export async function updateSubscriptionStatusByCustomer(stripeCustomerId: strin
       UPDATE user_subscriptions
       SET status = $2,
           plan = $3,
+          cancel_at_period_end = false,
           updated_at = now()
       WHERE stripe_customer_id = $1
       RETURNING user_id::text
@@ -201,6 +231,10 @@ export async function notifySubscriptionCanceled(userId: string, currentPeriodEn
   await safeCreateNotification(subscriptionCanceledNotification(currentPeriodEnd), userId);
 }
 
+export async function notifyPremiumRenewalRestored(userId: string): Promise<void> {
+  await safeCreateNotification(premiumRenewalRestoredNotification(), userId);
+}
+
 export async function retrieveSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
   return stripe().subscriptions.retrieve(subscriptionId);
 }
@@ -240,6 +274,8 @@ async function findUserIdForStripeSubscription(stripeCustomerId: string | null, 
 function subscriptionFromRow(row: BillingSubscriptionRow | undefined): BillingSubscription | null {
   if (!row) return null;
   return {
+    canceledAt: row.canceled_at === null ? null : new Date(row.canceled_at).toISOString(),
+    cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
     currentPeriodEnd: row.current_period_end === null ? null : new Date(row.current_period_end).toISOString(),
     plan: row.plan,
     status: row.status,
@@ -260,6 +296,16 @@ function periodEndDate(subscription: Stripe.Subscription): Date | null {
     .filter((value): value is number => Number.isFinite(value));
   const periodEnd = itemPeriodEnds.length ? Math.max(...itemPeriodEnds) : subscription.trial_end;
   return typeof periodEnd === "number" && Number.isFinite(periodEnd) ? new Date(periodEnd * 1000) : null;
+}
+
+function timestampDate(value: number | null | undefined): Date | null {
+  return typeof value === "number" && Number.isFinite(value) ? new Date(value * 1000) : null;
+}
+
+async function currentCancelAtPeriodEnd(userId: string): Promise<boolean | null> {
+  const result = await dbQuery<PreviousCancelRow>("SELECT cancel_at_period_end FROM user_subscriptions WHERE user_id = $1 LIMIT 1", [userId]);
+  const value = result.rows[0]?.cancel_at_period_end;
+  return typeof value === "boolean" ? value : null;
 }
 
 async function safeCreateNotification(intent: SubscriptionNotificationIntent, userId: string): Promise<void> {

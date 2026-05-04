@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { paymentFailedNotification, premiumActivatedNotification, subscriptionCanceledNotification } from "./subscription-notifications";
+import { paymentFailedNotification, premiumActivatedNotification, premiumRenewalRestoredNotification, subscriptionCanceledNotification } from "./subscription-notifications";
 
 test("Stripe active webhook notification is deduped and points to account", () => {
   const notification = premiumActivatedNotification();
@@ -18,6 +18,7 @@ test("Stripe cancellation notification includes access end date when available",
   assert.equal(notification.type, "subscription");
   assert.equal(notification.title, "Subscription canceled");
   assert.match(notification.message, /Jun 15, 2026/);
+  assert.equal(notification.message, "Your Premium access will remain active until Jun 15, 2026.");
   assert.equal(notification.actionUrl, "/account");
   assert.equal(notification.dedupe, "once");
 });
@@ -37,4 +38,13 @@ test("Stripe payment failure notification prompts billing update", () => {
   assert.match(notification.message, /Update your billing details/);
   assert.equal(notification.actionUrl, "/account");
   assert.equal(notification.dedupe, "always");
+});
+
+test("Stripe renewal restored notification is available after cancel reversal", () => {
+  const notification = premiumRenewalRestoredNotification();
+
+  assert.equal(notification.type, "subscription");
+  assert.equal(notification.title, "Premium renewal restored");
+  assert.equal(notification.message, "Your subscription will continue renewing.");
+  assert.equal(notification.actionUrl, "/account");
 });

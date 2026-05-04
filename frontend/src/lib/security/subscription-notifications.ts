@@ -31,10 +31,18 @@ export function subscriptionCanceledNotification(currentPeriodEnd: string | null
   return {
     actionUrl: "/account",
     dedupe: "once",
-    message: endText
-      ? `Your Premium access will remain active until ${endText}. Renew anytime to keep full access.`
-      : "Your Premium subscription was canceled. Renew anytime to keep full access.",
+    message: endText ? `Your Premium access will remain active until ${endText}.` : "Your Premium subscription was canceled. Renew anytime to keep full access.",
     title: "Subscription canceled",
+    type: "subscription",
+  };
+}
+
+export function premiumRenewalRestoredNotification(): SubscriptionNotificationIntent {
+  return {
+    actionUrl: "/account",
+    dedupe: "always",
+    message: "Your subscription will continue renewing.",
+    title: "Premium renewal restored",
     type: "subscription",
   };
 }

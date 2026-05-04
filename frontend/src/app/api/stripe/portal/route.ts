@@ -23,12 +23,12 @@ export async function POST(request: Request) {
   try {
     const subscription = await getBillingSubscriptionForUser(access.user.id);
     if (!subscription?.stripeCustomerId) {
-      return NextResponse.json({ ok: false, message: "No Stripe billing profile is available for this account." }, { status: 404 });
+      return NextResponse.json({ ok: false, error: "billing_profile_not_found", message: "No Stripe billing profile is available for this account." }, { status: 404 });
     }
 
     const portal = await stripe().billingPortal.sessions.create({
       customer: subscription.stripeCustomerId,
-      return_url: `${stripeAppBaseUrl()}/account`,
+      return_url: `${stripeAppBaseUrl()}/account?billing=portal_return`,
     });
 
     return NextResponse.json({ ok: true, url: portal.url });

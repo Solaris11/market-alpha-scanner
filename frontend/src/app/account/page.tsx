@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { QueryResultRow } from "pg";
 import { AccountLogoutButton, AccountSignInCta, BillingActionButton, DeleteAccountButton, LegalReviewButton, SendVerificationEmailButton } from "@/components/account/AccountPageActions";
+import { billingViewState } from "@/lib/security/billing-state";
 import { checkoutBlockMessage, checkoutBlockReason } from "@/lib/security/billing-readiness";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { getAlertOverview } from "@/lib/alerts";
@@ -205,12 +206,13 @@ function BillingControl({ billingSubscription, entitlement }: { billingSubscript
     );
   }
 
-  if (entitlement.isPremium) {
-    return <BillingActionButton mode="portal" />;
+  const billingState = billingViewState({ isPremium: entitlement.isPremium, subscription: billingSubscription });
+  if (billingState.actionMode === "portal") {
+    return <BillingActionButton label={billingState.actionLabel ?? undefined} mode="portal" />;
   }
 
-  if (billingSubscription?.stripeCustomerId) {
-    return <BillingActionButton label={billingSubscription.status === "canceled" ? "Renew Premium" : "Manage Subscription"} mode="portal" />;
+  if (billingState.actionMode === null && billingState.helper) {
+    return <p className="text-xs leading-5 text-slate-400">{billingState.helper}</p>;
   }
 
   const user = entitlement.user;
@@ -224,11 +226,17 @@ function BillingControl({ billingSubscription, entitlement }: { billingSubscript
 }
 
 function SubscriptionState({ subscription }: { subscription: BillingSubscription }) {
-  if (subscription.status === "canceled" && subscription.currentPeriodEnd && new Date(subscription.currentPeriodEnd) > new Date()) {
-    return <p className="mt-3 text-xs leading-5 text-amber-100">Canceled — active until {formatDate(subscription.currentPeriodEnd)}</p>;
+  const state = billingViewState({ isPremium: subscription.plan === "premium" && subscription.status === "active", subscription });
+  if (state.statusText) {
+    return (
+      <div className="mt-3">
+        <p className={`text-xs leading-5 ${state.state === "past_due" ? "text-rose-100" : state.state === "cancel_scheduled" ? "text-amber-100" : "text-slate-300"}`}>{state.statusText}</p>
+        {state.helper ? <p className="mt-1 text-xs leading-5 text-slate-500">{state.helper}</p> : null}
+      </div>
+    );
   }
-  if (subscription.stripeCustomerId) {
-    return <p className="mt-3 text-xs leading-5 text-slate-500">Cancel or update your subscription anytime. No hassle.</p>;
+  if (state.helper) {
+    return <p className="mt-3 text-xs leading-5 text-slate-500">{state.helper}</p>;
   }
   return null;
 }
