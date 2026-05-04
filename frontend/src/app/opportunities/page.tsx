@@ -24,7 +24,7 @@ export default async function OpportunitiesPage() {
     const publicPreview = await getPublicMarketSummary();
     return (
       <TerminalShell>
-        <PublicSignalPreviewList summary={publicPreview.summary} title="Research Preview" />
+        <PublicSignalPreviewList authenticated={entitlement.authenticated} summary={publicPreview.summary} title="Research Preview" />
       </TerminalShell>
     );
   }

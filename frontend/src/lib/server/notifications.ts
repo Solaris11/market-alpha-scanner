@@ -5,6 +5,7 @@ import { isNotificationType, type NotificationType, type UserNotification } from
 import { dbQuery } from "./db";
 
 type NotificationRow = QueryResultRow & {
+  action_url: string | null;
   created_at: string;
   id: string;
   message: string;
@@ -26,7 +27,7 @@ export async function listNotifications(userId: string, limit = 20): Promise<{ n
   const [notificationsResult, unreadResult] = await Promise.all([
     dbQuery<NotificationRow>(
       `
-        SELECT id::text, type, title, message, read, created_at::text
+        SELECT id::text, type, title, message, read, action_url, created_at::text
         FROM notifications
         WHERE user_id = $1
         ORDER BY created_at DESC
@@ -61,14 +62,18 @@ export async function markAllNotificationsRead(userId: string): Promise<number> 
 }
 
 export async function createNotification(userId: string, type: NotificationType, title: string, message: string): Promise<UserNotification> {
+  return createNotificationWithAction(userId, type, title, message, null);
+}
+
+export async function createNotificationWithAction(userId: string, type: NotificationType, title: string, message: string, actionUrl: string | null): Promise<UserNotification> {
   if (!isNotificationType(type)) throw new Error("Unsupported notification type.");
   const result = await dbQuery<NotificationRow>(
     `
-      INSERT INTO notifications (user_id, type, title, message, read, created_at)
-      VALUES ($1, $2, $3, $4, false, now())
-      RETURNING id::text, type, title, message, read, created_at::text
+      INSERT INTO notifications (user_id, type, title, message, read, action_url, created_at)
+      VALUES ($1, $2, $3, $4, false, $5, now())
+      RETURNING id::text, type, title, message, read, action_url, created_at::text
     `,
-    [userId, type, cleanText(title, 140), cleanText(message, 500)],
+    [userId, type, cleanText(title, 140), cleanText(message, 500), cleanActionUrl(actionUrl)],
   );
   return notificationFromRow(result.rows[0]);
 }
@@ -81,29 +86,60 @@ export async function createLoginNotifications(userId: string): Promise<void> {
     "Signals are research-only. This is not financial advice.",
   );
 
+  if (!(await hasVerifiedEmail(userId))) {
+    await createUnreadNotificationIfMissing(
+      userId,
+      "email_verification",
+      "Verify your email",
+      "Verify your email address to unlock premium upgrade.",
+      "/account",
+    );
+  }
+
   if (await hasActivePremiumSubscription(userId)) {
     await createNotificationOnce(
       userId,
       "subscription",
       "Your premium subscription is active",
       "Premium research features are available on this account.",
+      "/account",
     );
   }
 }
 
-async function createNotificationOnce(userId: string, type: NotificationType, title: string, message: string): Promise<void> {
+export async function createNotificationOnce(userId: string, type: NotificationType, title: string, message: string, actionUrl: string | null = null): Promise<void> {
   await dbQuery(
     `
-      INSERT INTO notifications (user_id, type, title, message, read, created_at)
-      SELECT $1, $2, $3, $4, false, now()
+      INSERT INTO notifications (user_id, type, title, message, read, action_url, created_at)
+      SELECT $1, $2, $3, $4, false, $5, now()
       WHERE NOT EXISTS (
         SELECT 1
         FROM notifications
         WHERE user_id = $1 AND type = $2 AND title = $3
       )
     `,
-    [userId, type, cleanText(title, 140), cleanText(message, 500)],
+    [userId, type, cleanText(title, 140), cleanText(message, 500), cleanActionUrl(actionUrl)],
   );
+}
+
+export async function createUnreadNotificationIfMissing(userId: string, type: NotificationType, title: string, message: string, actionUrl: string | null = null): Promise<void> {
+  await dbQuery(
+    `
+      INSERT INTO notifications (user_id, type, title, message, read, action_url, created_at)
+      SELECT $1, $2, $3, $4, false, $5, now()
+      WHERE NOT EXISTS (
+        SELECT 1
+        FROM notifications
+        WHERE user_id = $1 AND type = $2 AND title = $3 AND read = false
+      )
+    `,
+    [userId, type, cleanText(title, 140), cleanText(message, 500), cleanActionUrl(actionUrl)],
+  );
+}
+
+export async function markNotificationsReadByType(userId: string, type: NotificationType): Promise<number> {
+  const result = await dbQuery("UPDATE notifications SET read = true WHERE user_id = $1 AND type = $2 AND read = false", [userId, type]);
+  return result.rowCount ?? 0;
 }
 
 async function hasActivePremiumSubscription(userId: string): Promise<boolean> {
@@ -123,9 +159,15 @@ async function hasActivePremiumSubscription(userId: string): Promise<boolean> {
   return Boolean(result.rows[0]?.active);
 }
 
+async function hasVerifiedEmail(userId: string): Promise<boolean> {
+  const result = await dbQuery<SubscriptionActiveRow>("SELECT email_verified AS active FROM users WHERE id = $1 LIMIT 1", [userId]);
+  return Boolean(result.rows[0]?.active);
+}
+
 function notificationFromRow(row: NotificationRow | undefined): UserNotification {
   if (!row) throw new Error("Notification record was not returned.");
   return {
+    actionUrl: cleanActionUrl(row.action_url),
     createdAt: row.created_at,
     id: row.id,
     message: row.message,
@@ -138,4 +180,10 @@ function notificationFromRow(row: NotificationRow | undefined): UserNotification
 function cleanText(value: string, maxLength: number): string {
   const text = value.trim().replace(/\s+/g, " ");
   return text.slice(0, maxLength);
+}
+
+function cleanActionUrl(value: string | null): string | null {
+  const text = value?.trim();
+  if (!text || !text.startsWith("/") || text.startsWith("//") || text.length > 240) return null;
+  return text;
 }

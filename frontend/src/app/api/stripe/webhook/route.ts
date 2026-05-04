@@ -74,6 +74,7 @@ async function handleStripeEvent(event: Stripe.Event): Promise<StripeSyncResult>
       return handleInvoicePaymentSucceeded(event.data.object as Stripe.Invoice);
     default:
       return {
+        currentPeriodEnd: null,
         status: "ignored",
         stripeCustomerId: null,
         stripeSubscriptionId: null,
@@ -101,6 +102,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
   }
 
   return {
+    currentPeriodEnd: null,
     status: session.status ?? "complete",
     stripeCustomerId: customerId,
     stripeSubscriptionId: subscriptionId,
@@ -119,7 +121,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
 async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<StripeSyncResult> {
   const result = await upsertSubscriptionFromStripe(subscription);
   if (result.userId) {
-    await notifySubscriptionCanceled(result.userId);
+    await notifySubscriptionCanceled(result.userId, result.currentPeriodEnd);
   }
   return result;
 }
@@ -144,6 +146,7 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<Stri
     const userId = await updateSubscriptionStatusByCustomer(customerId, "past_due");
     if (userId) await notifyPaymentFailed(userId);
     return {
+      currentPeriodEnd: null,
       status: "past_due",
       stripeCustomerId: customerId,
       stripeSubscriptionId: null,
@@ -152,6 +155,7 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice): Promise<Stri
   }
 
   return {
+    currentPeriodEnd: null,
     status: "past_due",
     stripeCustomerId: null,
     stripeSubscriptionId: null,
@@ -163,6 +167,7 @@ async function handleInvoicePaymentSucceeded(invoice: Stripe.Invoice): Promise<S
   const subscriptionId = subscriptionIdFromInvoice(invoice);
   if (!subscriptionId) {
     return {
+      currentPeriodEnd: null,
       status: "paid",
       stripeCustomerId: customerIdFromInvoice(invoice),
       stripeSubscriptionId: null,

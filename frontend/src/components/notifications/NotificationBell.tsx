@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import type { UserNotification } from "@/lib/notifications";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -13,6 +14,7 @@ type NotificationsResponse = {
 };
 
 export function NotificationBell() {
+  const router = useRouter();
   const { authenticated, loading } = useCurrentUser();
   const buttonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -104,18 +106,25 @@ export function NotificationBell() {
   if (!authenticated || loading) return null;
 
   async function markRead(notification: UserNotification) {
-    if (notification.read) return;
-    setNotifications((items) => items.map((item) => (item.id === notification.id ? { ...item, read: true } : item)));
-    setUnreadCount((count) => Math.max(0, count - 1));
-    try {
-      const response = await csrfFetch("/api/notifications/read", {
-        body: JSON.stringify({ id: notification.id }),
-        headers: { "Content-Type": "application/json" },
-        method: "POST",
-      });
-      if (!response.ok) throw new Error("Unable to mark notification read.");
-    } catch {
-      void loadNotifications();
+    if (!notification.read) {
+      setNotifications((items) => items.map((item) => (item.id === notification.id ? { ...item, read: true } : item)));
+      setUnreadCount((count) => Math.max(0, count - 1));
+      try {
+        const response = await csrfFetch("/api/notifications/read", {
+          body: JSON.stringify({ id: notification.id }),
+          headers: { "Content-Type": "application/json" },
+          method: "POST",
+        });
+        if (!response.ok) throw new Error("Unable to mark notification read.");
+      } catch {
+        void loadNotifications();
+        return;
+      }
+    }
+
+    if (notification.actionUrl) {
+      setOpen(false);
+      router.push(notification.actionUrl);
     }
   }
 

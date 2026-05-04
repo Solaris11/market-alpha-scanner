@@ -45,6 +45,7 @@ export const ROUTE_CLASSIFICATION: Record<RouteAccess, string[]> = {
     "/api/auth/me",
     "/api/auth/logout",
     "/api/session",
+    "/api/account",
     "/api/profile",
     "/api/notifications",
     "/api/notifications/read",

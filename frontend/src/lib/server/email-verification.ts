@@ -5,6 +5,7 @@ import type { QueryResultRow } from "pg";
 import { emailVerificationTokenIsUsable, hashEmailVerificationToken } from "@/lib/security/email-verification";
 import type { AuthUser } from "./auth";
 import { dbQuery, getDbPool } from "./db";
+import { markNotificationsReadByType } from "./notifications";
 import { canonicalAppUrl } from "./request-security";
 
 const EMAIL_VERIFICATION_TTL_MS = 1000 * 60 * 60 * 24;
@@ -81,6 +82,9 @@ export async function verifyEmailToken(token: unknown): Promise<boolean> {
       [tokenRow.user_id],
     );
     await client.query("COMMIT");
+    await markNotificationsReadByType(tokenRow.user_id, "email_verification").catch((error) => {
+      console.warn("[notifications] email verification resolve failed", error instanceof Error ? error.message : error);
+    });
     return true;
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);

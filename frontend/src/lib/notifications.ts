@@ -1,8 +1,9 @@
-export const NOTIFICATION_TYPES = ["system", "subscription", "signal"] as const;
+export const NOTIFICATION_TYPES = ["system", "subscription", "signal", "email_verification"] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
 export type UserNotification = {
+  actionUrl: string | null;
   createdAt: string;
   id: string;
   message: string;

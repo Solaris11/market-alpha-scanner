@@ -1,11 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { QueryResultRow } from "pg";
-import { AccountLogoutButton, AccountSignInCta, BillingActionButton, LegalReviewButton, SendVerificationEmailButton } from "@/components/account/AccountPageActions";
+import { AccountLogoutButton, AccountSignInCta, BillingActionButton, DeleteAccountButton, LegalReviewButton, SendVerificationEmailButton } from "@/components/account/AccountPageActions";
 import { checkoutBlockMessage, checkoutBlockReason } from "@/lib/security/billing-readiness";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { getAlertOverview } from "@/lib/alerts";
 import { dbQuery } from "@/lib/server/db";
+import { getBillingSubscriptionForUser, type BillingSubscription } from "@/lib/server/billing";
 import { getEntitlement, type Entitlement } from "@/lib/server/entitlements";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { DEFAULT_USER_RISK_PROFILE, normalizeRiskProfile, type UserRiskProfile } from "@/lib/trading/risk-veto";
@@ -45,10 +46,11 @@ export default async function AccountPage() {
     );
   }
 
-  const [riskProfile, watchlist, enabledAlertCount] = await Promise.all([
+  const [riskProfile, watchlist, enabledAlertCount, billingSubscription] = await Promise.all([
     readRiskProfile(user.id),
     readWatchlist(user.id),
     readEnabledAlertCount(user.id),
+    getBillingSubscriptionForUser(user.id).catch(() => null),
   ]);
 
   return (
@@ -94,8 +96,9 @@ export default async function AccountPage() {
                 <span className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${planBadgeClass(entitlement)}`}>{planBadgeText(entitlement)}</span>
               </div>
               <div className="mt-4">
-                <BillingControl entitlement={entitlement} />
+                <BillingControl billingSubscription={billingSubscription} entitlement={entitlement} />
               </div>
+              {billingSubscription ? <SubscriptionState subscription={billingSubscription} /> : null}
               <p className="mt-3 text-xs leading-5 text-slate-500">Payments are securely processed by Stripe.</p>
             </div>
           </AccountSection>
@@ -137,11 +140,12 @@ export default async function AccountPage() {
           <AccountSection title="Account Actions">
             <div className="flex flex-wrap items-center gap-3">
               <AccountLogoutButton />
-              <button className="cursor-not-allowed rounded-full border border-white/10 px-4 py-2 text-sm text-slate-500" disabled type="button">
-                Delete account
-              </button>
             </div>
-            <p className="mt-3 text-xs leading-5 text-slate-500">Account deletion controls will be available after self-service account management is enabled.</p>
+            <div className="mt-5 rounded-xl border border-rose-300/20 bg-rose-400/[0.05] p-4">
+              <div className="text-sm font-semibold text-rose-100">Danger zone</div>
+              <p className="mt-1 text-xs leading-5 text-rose-100/75">This permanently deletes your account data from Market Alpha. Active subscriptions must be canceled first.</p>
+              <div className="mt-3"><DeleteAccountButton /></div>
+            </div>
           </AccountSection>
         </div>
 
@@ -192,14 +196,7 @@ function planBadgeClass(entitlement: Entitlement): string {
   return "border-slate-500/35 bg-white/[0.04] text-slate-200";
 }
 
-function BillingControl({ entitlement }: { entitlement: Entitlement }) {
-  const user = entitlement.user;
-  const blockReason = checkoutBlockReason({ emailVerified: Boolean(user?.emailVerified), legalAccepted: entitlement.legalStatus.allAccepted });
-  const blockMessage = checkoutBlockMessage(blockReason);
-  if (blockMessage) {
-    return <BillingActionButton disabledReason={blockMessage} mode="checkout" />;
-  }
-
+function BillingControl({ billingSubscription, entitlement }: { billingSubscription: BillingSubscription | null; entitlement: Entitlement }) {
   if (entitlement.isAdmin) {
     return (
       <button className="cursor-not-allowed rounded-full border border-white/10 px-4 py-2 text-sm text-slate-500" disabled type="button">
@@ -212,7 +209,28 @@ function BillingControl({ entitlement }: { entitlement: Entitlement }) {
     return <BillingActionButton mode="portal" />;
   }
 
+  if (billingSubscription?.stripeCustomerId) {
+    return <BillingActionButton label={billingSubscription.status === "canceled" ? "Renew Premium" : "Manage Subscription"} mode="portal" />;
+  }
+
+  const user = entitlement.user;
+  const blockReason = checkoutBlockReason({ emailVerified: Boolean(user?.emailVerified), legalAccepted: entitlement.legalStatus.allAccepted });
+  const blockMessage = checkoutBlockMessage(blockReason);
+  if (blockMessage) {
+    return <BillingActionButton disabledReason={blockMessage} mode="checkout" />;
+  }
+
   return <BillingActionButton mode="checkout" />;
+}
+
+function SubscriptionState({ subscription }: { subscription: BillingSubscription }) {
+  if (subscription.status === "canceled" && subscription.currentPeriodEnd && new Date(subscription.currentPeriodEnd) > new Date()) {
+    return <p className="mt-3 text-xs leading-5 text-amber-100">Canceled — active until {formatDate(subscription.currentPeriodEnd)}</p>;
+  }
+  if (subscription.stripeCustomerId) {
+    return <p className="mt-3 text-xs leading-5 text-slate-500">Cancel or update your subscription anytime. No hassle.</p>;
+  }
+  return null;
 }
 
 function AccountSection({ children, id, title }: { children: ReactNode; id?: string; title: string }) {

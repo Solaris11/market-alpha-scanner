@@ -55,7 +55,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           </Link>
         </div>
         <div className="space-y-4">
-          <PublicSymbolPreview summary={summary} />
+          <PublicSymbolPreview authenticated={entitlement.authenticated} summary={summary} />
           <PremiumLockedState
             authenticated={entitlement.authenticated}
             description="Premium unlocks full symbol research, risk levels, simulator context, and decision-assistant details."

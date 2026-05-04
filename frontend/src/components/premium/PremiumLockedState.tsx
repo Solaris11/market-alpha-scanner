@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { BillingActionButton } from "@/components/account/AccountPageActions";
 
 type PremiumLockedStateProps = {
   authenticated: boolean;
@@ -11,7 +12,9 @@ type PremiumLockedStateProps = {
 
 export function PremiumLockedState({ authenticated, className = "", compact = false, description, previewItems = [], title }: PremiumLockedStateProps) {
   const eyebrow = authenticated ? "Limited Preview" : "Premium";
-  const primaryLabel = authenticated ? "Upgrade coming soon" : "Sign in";
+  const helperText = authenticated
+    ? "Upgrade your account to unlock full trade plans, ranked setups, alerts, simulations, and premium scanner intelligence."
+    : "Sign in to view your account and upgrade.";
 
   return (
     <section className={`min-w-0 max-w-full rounded-2xl border border-cyan-300/20 bg-slate-950/70 p-5 shadow-2xl shadow-black/30 ring-1 ring-white/5 backdrop-blur-xl ${className}`}>
@@ -20,20 +23,15 @@ export function PremiumLockedState({ authenticated, className = "", compact = fa
           <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">{eyebrow}</div>
           <h2 className={`${compact ? "mt-1 text-xl" : "mt-2 text-3xl"} font-semibold tracking-tight text-slate-50`}>{title}</h2>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">{description}</p>
+          <p className="mt-2 max-w-3xl text-xs leading-5 text-cyan-100/75">{helperText}</p>
         </div>
 
         <div className="flex min-w-0 flex-wrap gap-3">
           {authenticated ? (
-            <button
-              className="w-full cursor-not-allowed rounded-full border border-cyan-300/30 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 opacity-80 sm:w-auto"
-              disabled
-              type="button"
-            >
-              {primaryLabel}
-            </button>
+            <BillingActionButton mode="checkout" />
           ) : (
             <Link className="w-full rounded-full border border-cyan-300/40 bg-cyan-400/15 px-4 py-2 text-center text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/20 sm:w-auto" href="/account">
-              {primaryLabel}
+              Sign in
             </Link>
           )}
           <Link className="w-full rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-center text-sm font-semibold text-slate-300 transition hover:border-white/20 hover:bg-white/[0.07] hover:text-slate-100 sm:w-auto" href="/terminal">

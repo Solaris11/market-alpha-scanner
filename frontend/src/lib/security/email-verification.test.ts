@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { checkoutBlockReason } from "./billing-readiness";
+import { accountDeletionBlockedBySubscription } from "./account-lifecycle";
 import { emailVerificationTokenIsUsable, hashEmailVerificationToken } from "./email-verification";
 
 test("checkout requires latest legal acceptance", () => {
@@ -33,4 +34,15 @@ test("used email verification token is rejected", () => {
   const now = new Date("2026-05-04T12:00:00.000Z");
 
   assert.equal(emailVerificationTokenIsUsable({ expiresAt: "2026-05-04T13:00:00.000Z", usedAt: "2026-05-04T11:00:00.000Z" }, now), false);
+});
+
+test("account deletion is blocked for active premium subscriptions", () => {
+  assert.equal(accountDeletionBlockedBySubscription({ status: "active" }), true);
+  assert.equal(accountDeletionBlockedBySubscription({ status: "trialing" }), true);
+});
+
+test("account deletion is allowed for free or canceled accounts", () => {
+  assert.equal(accountDeletionBlockedBySubscription({ status: "free" }), false);
+  assert.equal(accountDeletionBlockedBySubscription({ status: "canceled" }), false);
+  assert.equal(accountDeletionBlockedBySubscription({ status: null }), false);
 });

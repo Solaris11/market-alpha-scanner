@@ -4,7 +4,7 @@ import type Stripe from "stripe";
 import type { QueryResultRow } from "pg";
 import type { AuthUser } from "./auth";
 import { dbQuery } from "./db";
-import { createNotification } from "./notifications";
+import { createNotificationOnce, createNotificationWithAction } from "./notifications";
 import { stripe } from "./stripe";
 
 export type BillingSubscription = {
@@ -17,6 +17,7 @@ export type BillingSubscription = {
 };
 
 export type StripeSyncResult = {
+  currentPeriodEnd: string | null;
   status: string;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
@@ -104,6 +105,7 @@ export async function upsertSubscriptionFromStripe(subscription: Stripe.Subscrip
   if (!userId) {
     console.warn("[stripe] subscription event could not be mapped to a user.");
     return {
+      currentPeriodEnd: periodEndDate(subscription)?.toISOString() ?? null,
       status: subscription.status,
       stripeCustomerId,
       stripeSubscriptionId,
@@ -137,6 +139,7 @@ export async function upsertSubscriptionFromStripe(subscription: Stripe.Subscrip
   );
 
   return {
+    currentPeriodEnd: periodEndDate(subscription)?.toISOString() ?? null,
     status: subscription.status,
     stripeCustomerId,
     stripeSubscriptionId,
@@ -181,10 +184,10 @@ export async function recordBillingEvent(args: {
 }
 
 export async function notifySubscriptionActive(userId: string): Promise<void> {
-  await safeCreateNotification(
+  await safeCreateNotificationOnce(
     userId,
-    "Your premium subscription is active",
-    "Premium research features are available on this account.",
+    "Premium activated",
+    "Your Market Alpha Premium subscription is now active.",
   );
 }
 
@@ -192,15 +195,18 @@ export async function notifyPaymentFailed(userId: string): Promise<void> {
   await safeCreateNotification(
     userId,
     "Payment failed",
-    "Update your billing details in the Stripe portal to keep premium access active.",
+    "We could not process your payment. Update your billing details to keep Premium access.",
   );
 }
 
-export async function notifySubscriptionCanceled(userId: string): Promise<void> {
-  await safeCreateNotification(
+export async function notifySubscriptionCanceled(userId: string, currentPeriodEnd: string | null): Promise<void> {
+  const endText = formatPeriodEnd(currentPeriodEnd);
+  await safeCreateNotificationOnce(
     userId,
     "Subscription canceled",
-    "Your premium access will end when the current billing period is no longer active.",
+    endText
+      ? `Your Premium access will remain active until ${endText}. Renew anytime to keep full access.`
+      : "Your Premium subscription was canceled. Renew anytime to keep full access.",
   );
 }
 
@@ -267,8 +273,27 @@ function periodEndDate(subscription: Stripe.Subscription): Date | null {
 
 async function safeCreateNotification(userId: string, title: string, message: string): Promise<void> {
   try {
-    await createNotification(userId, "subscription", title, message);
+    await createNotificationWithAction(userId, "subscription", title, message, "/account");
   } catch (error) {
     console.warn("[notifications] billing notification failed", error instanceof Error ? error.message : error);
   }
+}
+
+async function safeCreateNotificationOnce(userId: string, title: string, message: string): Promise<void> {
+  try {
+    await createNotificationOnce(userId, "subscription", title, message, "/account");
+  } catch (error) {
+    console.warn("[notifications] billing notification failed", error instanceof Error ? error.message : error);
+  }
+}
+
+function formatPeriodEnd(value: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return new Intl.DateTimeFormat("en-US", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
 }

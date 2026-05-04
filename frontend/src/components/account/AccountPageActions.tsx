@@ -55,6 +55,7 @@ export function AccountLogoutButton() {
 
 type BillingActionButtonProps = {
   disabledReason?: string;
+  label?: string;
   mode: "checkout" | "portal";
 };
 
@@ -64,10 +65,10 @@ type BillingResponse = {
   url?: string;
 };
 
-export function BillingActionButton({ disabledReason, mode }: BillingActionButtonProps) {
+export function BillingActionButton({ disabledReason, label, mode }: BillingActionButtonProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const label = mode === "checkout" ? "Upgrade to Premium" : "Manage Subscription";
+  const buttonLabel = label ?? (mode === "checkout" ? "Upgrade to Premium" : "Manage Subscription");
 
   async function handleBillingAction() {
     if (disabledReason) {
@@ -100,7 +101,7 @@ export function BillingActionButton({ disabledReason, mode }: BillingActionButto
         onClick={() => void handleBillingAction()}
         type="button"
       >
-        {busy ? "Opening Stripe..." : label}
+        {busy ? "Opening Stripe..." : buttonLabel}
       </button>
       {disabledReason ? <p className="mt-2 text-xs leading-5 text-amber-200">{disabledReason}</p> : null}
       {error ? <p className="mt-2 text-xs leading-5 text-rose-200">{error}</p> : null}
@@ -163,5 +164,77 @@ export function LegalReviewButton() {
     >
       Review and accept legal documents
     </button>
+  );
+}
+
+type DeleteAccountResponse = {
+  error?: string;
+  message?: string;
+  ok?: boolean;
+};
+
+export function DeleteAccountButton() {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [confirmation, setConfirmation] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleDelete() {
+    if (confirmation !== "DELETE") return;
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await csrfFetch("/api/account", { method: "DELETE" });
+      const payload = (await response.json().catch(() => null)) as DeleteAccountResponse | null;
+      if (!response.ok || !payload?.ok) {
+        setError(payload?.error === "subscription_active" ? "Cancel your active subscription before deleting your account." : payload?.message ?? "Unable to delete account.");
+        return;
+      }
+      router.push("/terminal");
+      router.refresh();
+    } catch {
+      setError("Unable to delete account.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        className="rounded-full border border-rose-300/35 bg-rose-400/10 px-4 py-2 text-sm font-semibold text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-400/15"
+        onClick={() => setOpen(true)}
+        type="button"
+      >
+        Delete account
+      </button>
+      {open ? (
+        <div className="mt-4 rounded-xl border border-rose-300/25 bg-rose-400/[0.08] p-4">
+          <div className="text-sm font-semibold text-rose-100">Confirm account deletion</div>
+          <p className="mt-2 text-xs leading-5 text-rose-100/75">Type DELETE to permanently delete your Market Alpha account data. Active subscriptions must be canceled first.</p>
+          <input
+            className="mt-3 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-rose-300/50"
+            onChange={(event) => setConfirmation(event.target.value)}
+            placeholder="DELETE"
+            value={confirmation}
+          />
+          {error ? <p className="mt-2 text-xs text-rose-100">{error}</p> : null}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              className="rounded-full border border-rose-300/35 bg-rose-400/15 px-4 py-2 text-sm font-semibold text-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={confirmation !== "DELETE" || busy}
+              onClick={() => void handleDelete()}
+              type="button"
+            >
+              {busy ? "Deleting..." : "Confirm deletion"}
+            </button>
+            <button className="rounded-full border border-white/10 px-4 py-2 text-sm text-slate-300" onClick={() => setOpen(false)} type="button">
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }

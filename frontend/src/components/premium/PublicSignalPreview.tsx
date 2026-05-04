@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { BillingActionButton } from "@/components/account/AccountPageActions";
 import type { PublicMarketSummary } from "@/lib/public-signals";
 
 export function PublicSignalPreviewList({
+  authenticated = false,
   ctaHref = "/account",
   ctaLabel = "Sign in",
   summary,
@@ -9,9 +11,15 @@ export function PublicSignalPreviewList({
 }: {
   ctaHref?: string;
   ctaLabel?: string;
+  authenticated?: boolean;
   summary: PublicMarketSummary;
   title?: string;
 }) {
+  const helperText = authenticated
+    ? "Upgrade your account to unlock full trade plans, ranked setups, alerts, simulations, and premium scanner intelligence."
+    : "Sign in to view your account and upgrade.";
+  const displayLabel = authenticated ? "Upgrade to Premium" : ctaLabel;
+
   return (
     <section className="min-w-0 max-w-full rounded-2xl border border-cyan-300/20 bg-slate-950/70 p-5 shadow-2xl shadow-black/30 ring-1 ring-white/5 backdrop-blur-xl">
       <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -21,10 +29,15 @@ export function PublicSignalPreviewList({
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
             Live symbols, rankings, trade plans, risk levels, and scanner intelligence are available after sign-in and subscription.
           </p>
+          <p className="mt-2 max-w-3xl text-xs leading-5 text-cyan-100/75">{helperText}</p>
         </div>
-        <Link className="w-full rounded-full border border-cyan-300/40 bg-cyan-400/15 px-4 py-2 text-center text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/20 sm:w-auto" href={ctaHref}>
-          {ctaLabel}
-        </Link>
+        {authenticated ? (
+          <BillingActionButton mode="checkout" />
+        ) : (
+          <Link className="w-full rounded-full border border-cyan-300/40 bg-cyan-400/15 px-4 py-2 text-center text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/20 sm:w-auto" href={ctaHref}>
+            {displayLabel}
+          </Link>
+        )}
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -37,7 +50,7 @@ export function PublicSignalPreviewList({
   );
 }
 
-export function PublicSymbolPreview({ summary }: { summary: PublicMarketSummary }) {
+export function PublicSymbolPreview({ authenticated = false, summary }: { authenticated?: boolean; summary: PublicMarketSummary }) {
   return (
     <section className="min-w-0 max-w-full rounded-2xl border border-cyan-300/20 bg-slate-950/70 p-6 shadow-2xl shadow-black/30 ring-1 ring-white/5 backdrop-blur-xl">
       <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Symbol Research</div>
@@ -47,10 +60,17 @@ export function PublicSymbolPreview({ summary }: { summary: PublicMarketSummary 
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
             Live symbol identity, rankings, levels, simulator data, and execution planning are hidden until Premium access is confirmed.
           </p>
+          <p className="mt-2 max-w-3xl text-xs leading-5 text-cyan-100/75">
+            {authenticated ? "Upgrade your account to unlock full symbol trade plans and premium scanner intelligence." : "Sign in to view your account and upgrade."}
+          </p>
         </div>
-        <Link className="w-full rounded-full border border-cyan-300/40 bg-cyan-400/15 px-4 py-2 text-center text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/20 sm:w-auto" href="/account">
-          Sign in
-        </Link>
+        {authenticated ? (
+          <BillingActionButton mode="checkout" />
+        ) : (
+          <Link className="w-full rounded-full border border-cyan-300/40 bg-cyan-400/15 px-4 py-2 text-center text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/20 sm:w-auto" href="/account">
+            Sign in
+          </Link>
+        )}
       </div>
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <SummaryCard label="Scanner state" value={summary.scannerStatus.replace(/_/g, " ")} />

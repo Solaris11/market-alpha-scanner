@@ -6,6 +6,7 @@ test("notification type validation allows only supported account message types",
   assert.equal(isNotificationType("system"), true);
   assert.equal(isNotificationType("subscription"), true);
   assert.equal(isNotificationType("signal"), true);
+  assert.equal(isNotificationType("email_verification"), true);
   assert.equal(isNotificationType("admin"), false);
   assert.equal(isNotificationType(""), false);
 });
