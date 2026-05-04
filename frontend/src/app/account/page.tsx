@@ -1,11 +1,11 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { QueryResultRow } from "pg";
-import { AccountLogoutButton, AccountSignInCta } from "@/components/account/AccountPageActions";
+import { AccountLogoutButton, AccountSignInCta, BillingActionButton } from "@/components/account/AccountPageActions";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { getAlertOverview } from "@/lib/alerts";
 import { dbQuery } from "@/lib/server/db";
-import { getEntitlement, type Entitlement } from "@/lib/server/entitlements";
+import { getEntitlement, requiresLegalAcceptance, type Entitlement } from "@/lib/server/entitlements";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { DEFAULT_USER_RISK_PROFILE, normalizeRiskProfile, type UserRiskProfile } from "@/lib/trading/risk-veto";
 
@@ -87,9 +87,10 @@ export default async function AccountPage() {
                 <span className="text-2xl font-semibold text-slate-50">{planLabel(entitlement)}</span>
                 <span className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${planBadgeClass(entitlement)}`}>{planBadgeText(entitlement)}</span>
               </div>
-              <button className="mt-4 cursor-not-allowed rounded-full border border-white/10 px-4 py-2 text-sm text-slate-500" disabled type="button">
-                Billing will be available in Phase 5.
-              </button>
+              <div className="mt-4">
+                <BillingControl entitlement={entitlement} />
+              </div>
+              <p className="mt-3 text-xs leading-5 text-slate-500">Payments are securely processed by Stripe.</p>
             </div>
           </AccountSection>
         </div>
@@ -172,6 +173,26 @@ function planBadgeClass(entitlement: Entitlement): string {
   if (entitlement.isAdmin || entitlement.plan === "admin") return "border-fuchsia-300/35 bg-fuchsia-400/10 text-fuchsia-100";
   if (entitlement.isPremium || entitlement.plan === "premium") return "border-cyan-300/35 bg-cyan-400/10 text-cyan-100";
   return "border-slate-500/35 bg-white/[0.04] text-slate-200";
+}
+
+function BillingControl({ entitlement }: { entitlement: Entitlement }) {
+  if (requiresLegalAcceptance(entitlement)) {
+    return <BillingActionButton disabledReason="Accept the Terms, Privacy Policy, and Risk Disclosure before upgrading." mode="checkout" />;
+  }
+
+  if (entitlement.isAdmin) {
+    return (
+      <button className="cursor-not-allowed rounded-full border border-white/10 px-4 py-2 text-sm text-slate-500" disabled type="button">
+        Admin access managed internally
+      </button>
+    );
+  }
+
+  if (entitlement.isPremium) {
+    return <BillingActionButton mode="portal" />;
+  }
+
+  return <BillingActionButton mode="checkout" />;
 }
 
 function AccountSection({ children, id, title }: { children: ReactNode; id?: string; title: string }) {

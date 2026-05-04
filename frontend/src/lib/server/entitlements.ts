@@ -37,6 +37,7 @@ export const ROUTE_CLASSIFICATION: Record<RouteAccess, string[]> = {
     "/api/health",
     "/api/auth/*",
     "/api/legal/status",
+    "/api/stripe/webhook",
   ],
   free: [
     "/account",
@@ -54,6 +55,8 @@ export const ROUTE_CLASSIFICATION: Record<RouteAccess, string[]> = {
     "/api/watchlist",
     "/api/risk-profile",
     "/api/legal/accept",
+    "/api/stripe/checkout",
+    "/api/stripe/portal",
     "/api/paper/account",
     "/api/paper/events",
     "/api/paper/positions",
