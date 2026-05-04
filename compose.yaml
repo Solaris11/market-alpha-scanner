@@ -107,6 +107,7 @@ services:
       - no-new-privileges:true
     cap_drop:
       - ALL
+    user: "${SCANNER_RUN_UID:-1000}:${SCANNER_RUN_GID:-1000}"
     logging: *default-logging
     depends_on:
       market-alpha-postgres:
