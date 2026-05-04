@@ -1,7 +1,5 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import { NextResponse } from "next/server";
-import { getHistorySummary, scannerOutputDir } from "@/lib/scanner-data";
+import { getFullRanking } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, premiumDeniedResponse } from "@/lib/server/entitlements";
 import { withRequestMetrics } from "@/lib/server/monitoring";
 
@@ -15,21 +13,34 @@ export async function GET(request: Request) {
       return premiumDeniedResponse(entitlement);
     }
 
-    const history = await getHistorySummary();
-    const latest = history.snapshots[0];
+    const rows = await getFullRanking();
 
-    if (!latest) {
+    if (!rows.length) {
       return NextResponse.json({ ok: false, message: "No snapshots available." }, { status: 404 });
     }
 
-    const filePath = path.join(scannerOutputDir(), "history", latest.name);
-    const body = await fs.readFile(filePath, "utf8");
+    const body = toCsv(rows);
+    const filename = `scanner_signals_${new Date().toISOString().slice(0, 10)}.csv`;
 
     return new Response(body, {
       headers: {
-        "Content-Disposition": `attachment; filename="${latest.name}"`,
+        "Content-Disposition": `attachment; filename="${filename}"`,
         "Content-Type": "text/csv; charset=utf-8",
       },
     });
   });
+}
+
+function toCsv(rows: Record<string, unknown>[]): string {
+  const columns = Array.from(new Set(rows.flatMap((row) => Object.keys(row)))).sort();
+  return [
+    columns.join(","),
+    ...rows.map((row) => columns.map((column) => csvCell(row[column])).join(",")),
+  ].join("\n");
+}
+
+function csvCell(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  const text = String(value);
+  return /[",\n\r]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }

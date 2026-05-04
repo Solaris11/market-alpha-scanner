@@ -5,8 +5,10 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { parse } from "csv-parse/sync";
 import { freshnessFromTimestamp, normalizedTimestamp, unavailableFreshness } from "./data-health";
+import { dbQuery } from "./server/db";
 import { applyCorrectionMapFields } from "./trading/correction-map";
 import type { DataFreshnessStatus } from "./data-health";
+import type { QueryResultRow } from "pg";
 import type { CsvFileData, CsvRow, HistorySnapshot, HistorySummary, IntradayDriftRow, PerformanceData, RankingRow, ScannerScalar, SymbolDetail, SymbolHistoryData, SymbolHistoryRow } from "./types";
 
 const NUMERIC_FIELDS = new Set([
@@ -42,6 +44,7 @@ const NUMERIC_FIELDS = new Set([
   "aggressive_risk_reward_high",
   "take_profit_low",
   "take_profit_high",
+  "take_profit",
   "open",
   "high",
   "low",
@@ -144,6 +147,82 @@ type CsvPayload = {
   lineCount: number;
 };
 
+type LatestScanRunRow = QueryResultRow & {
+  id: string;
+  completed_at: string | Date | null;
+  created_at: string | Date;
+  breadth: string | null;
+  leadership: string | null;
+  market_regime: string | null;
+  metadata: unknown;
+  status: string;
+  symbols_scored: number | null;
+};
+
+type DbSignalRow = QueryResultRow & {
+  action: string | null;
+  asset_type: string | null;
+  buy_zone: string | null;
+  company_name: string | null;
+  conservative_target: string | number | null;
+  completed_at: string | Date | null;
+  created_at: string | Date;
+  entry_distance_pct: string | number | null;
+  entry_status: string | null;
+  entry_zone_high: string | number | null;
+  entry_zone_low: string | number | null;
+  final_decision: string | null;
+  final_score: string | number | null;
+  final_score_adjusted: string | number | null;
+  market_regime: string | null;
+  payload: unknown;
+  price: string | number | null;
+  quality_score: string | number | null;
+  rank_position: number | null;
+  rating: string | null;
+  recommendation_quality: string | null;
+  risk_reward: string | number | null;
+  sector: string | null;
+  setup_type: string | null;
+  stop_loss: string | number | null;
+  suggested_entry: string | number | null;
+  symbol: string;
+  take_profit: string | number | null;
+};
+
+type DbHistoryRow = DbSignalRow & {
+  scan_run_id: string;
+};
+
+type DbPriceRow = QueryResultRow & {
+  close: string | number | null;
+  high: string | number | null;
+  low: string | number | null;
+  open: string | number | null;
+  ts: string | Date;
+  volume: string | number | null;
+};
+
+type DbJsonRow = QueryResultRow & {
+  payload?: unknown;
+  summary?: unknown;
+};
+
+type DbMetricRow = QueryResultRow & {
+  created_at?: string | Date;
+  metrics: unknown;
+};
+
+type DbHistorySummaryRow = QueryResultRow & {
+  id: string;
+  completed_at: string | Date | null;
+  created_at: string | Date;
+};
+
+type DbSymbolRow = QueryResultRow & {
+  symbol: string;
+};
+
 type FileCacheEntry<T> = {
   mtimeMs: number;
   size: number;
@@ -191,6 +270,246 @@ export function scannerOutputDir() {
     // Fall back to the local path when no scanner_output entry exists yet.
   }
   return localOutput;
+}
+
+async function latestDbScanRun(): Promise<LatestScanRunRow | null> {
+  try {
+    const result = await dbQuery<LatestScanRunRow>(
+      `
+        SELECT id::text, completed_at, created_at, breadth, leadership, market_regime, metadata, status, symbols_scored
+        FROM scan_runs
+        WHERE status = 'success'
+        ORDER BY completed_at DESC NULLS LAST, created_at DESC
+        LIMIT 1
+      `,
+    );
+    return result.rows[0] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
+function dbTimestamp(value: string | Date | null | undefined): string | null {
+  if (!value) return null;
+  return value instanceof Date ? value.toISOString() : normalizedTimestamp(value);
+}
+
+function dbSignalToRankingRow(row: DbSignalRow): RankingRow {
+  const completedAt = dbTimestamp(row.completed_at) ?? dbTimestamp(row.created_at);
+  const raw = {
+    ...asRecord(row.payload),
+    action: row.action,
+    asset_type: row.asset_type,
+    buy_zone: row.buy_zone,
+    company_name: row.company_name,
+    conservative_target: row.conservative_target,
+    entry_distance_pct: row.entry_distance_pct,
+    entry_status: row.entry_status,
+    entry_zone_high: row.entry_zone_high,
+    entry_zone_low: row.entry_zone_low,
+    final_decision: row.final_decision,
+    final_score: row.final_score,
+    final_score_adjusted: row.final_score_adjusted,
+    last_updated: completedAt,
+    last_updated_utc: completedAt,
+    market_regime: row.market_regime,
+    price: row.price,
+    quality_score: row.quality_score,
+    rank_position: row.rank_position,
+    rating: row.rating,
+    recommendation_quality: row.recommendation_quality,
+    risk_reward: row.risk_reward,
+    sector: row.sector,
+    setup_type: row.setup_type,
+    stop_loss: row.stop_loss,
+    suggested_entry: row.suggested_entry,
+    symbol: row.symbol,
+    take_profit: row.take_profit,
+  };
+  return normalizeRankingRow(raw, completedAt);
+}
+
+async function getDbRankingRows(limit?: number): Promise<RankingRow[] | null> {
+  try {
+    const result = await dbQuery<DbSignalRow>(
+      `
+        WITH latest_run AS (
+          SELECT id, completed_at
+          FROM scan_runs
+          WHERE status = 'success'
+          ORDER BY completed_at DESC NULLS LAST, created_at DESC
+          LIMIT 1
+        )
+        SELECT
+          ss.symbol,
+          ss.rank_position,
+          ss.company_name,
+          ss.asset_type,
+          ss.sector,
+          ss.price,
+          ss.rating,
+          ss.action,
+          ss.final_decision,
+          ss.final_score,
+          ss.final_score_adjusted,
+          ss.setup_type,
+          ss.entry_status,
+          ss.recommendation_quality,
+          ss.quality_score,
+          ss.suggested_entry,
+          ss.entry_distance_pct,
+          ss.entry_zone_low,
+          ss.entry_zone_high,
+          ss.buy_zone,
+          ss.stop_loss,
+          ss.take_profit,
+          ss.conservative_target,
+          ss.risk_reward,
+          ss.market_regime,
+          ss.payload,
+          ss.created_at,
+          latest_run.completed_at
+        FROM scanner_signals ss
+        JOIN latest_run ON latest_run.id = ss.scan_run_id
+        ORDER BY ss.rank_position ASC NULLS LAST, ss.final_score DESC NULLS LAST, ss.symbol ASC
+        ${limit ? "LIMIT $1" : ""}
+      `,
+      limit ? [limit] : [],
+    );
+    return result.rows.map(dbSignalToRankingRow).filter((row) => row.symbol);
+  } catch {
+    return null;
+  }
+}
+
+async function getDbHistoryRows(symbol?: string): Promise<SymbolHistoryRow[] | null> {
+  try {
+    const params = symbol ? [symbol.trim().toUpperCase()] : [];
+    const result = await dbQuery<DbHistoryRow>(
+      `
+        SELECT
+          ss.scan_run_id::text,
+          ss.symbol,
+          ss.rank_position,
+          ss.company_name,
+          ss.asset_type,
+          ss.sector,
+          ss.price,
+          ss.rating,
+          ss.action,
+          ss.final_decision,
+          ss.final_score,
+          ss.final_score_adjusted,
+          ss.setup_type,
+          ss.entry_status,
+          ss.recommendation_quality,
+          ss.quality_score,
+          ss.suggested_entry,
+          ss.entry_distance_pct,
+          ss.entry_zone_low,
+          ss.entry_zone_high,
+          ss.buy_zone,
+          ss.stop_loss,
+          ss.take_profit,
+          ss.conservative_target,
+          ss.risk_reward,
+          ss.market_regime,
+          ss.payload,
+          ss.created_at,
+          sr.completed_at
+        FROM scanner_signals ss
+        JOIN scan_runs sr ON sr.id = ss.scan_run_id
+        WHERE sr.status = 'success'
+          ${symbol ? "AND ss.symbol = $1" : ""}
+        ORDER BY sr.completed_at ASC NULLS LAST, sr.created_at ASC, ss.rank_position ASC NULLS LAST, ss.symbol ASC
+      `,
+      params,
+    );
+    return result.rows.map((row) => {
+      const ranking = dbSignalToRankingRow(row) as SymbolHistoryRow;
+      ranking.timestamp_utc = dbTimestamp(row.completed_at) ?? dbTimestamp(row.created_at) ?? "";
+      ranking.source_file = `db:${row.scan_run_id}`;
+      return ranking;
+    });
+  } catch {
+    return null;
+  }
+}
+
+function rowsToCsvFileData(rows: Record<string, unknown>[]): CsvFileData {
+  const columns = Array.from(new Set(rows.flatMap((row) => Object.keys(row).map(canonicalCsvKey))));
+  return {
+    rows: rows.map(normalizeCsvRow),
+    state: rows.length ? "data" : "header-only",
+    columns,
+    lineCount: rows.length + (columns.length ? 1 : 0),
+  };
+}
+
+function metricRowsToCsvFileData(rows: DbMetricRow[]): CsvFileData {
+  return rowsToCsvFileData(rows.map((row) => asRecord(row.metrics)));
+}
+
+async function getDbPerformanceData(options: { forwardTailRows?: number } = {}): Promise<Pick<PerformanceData, "summary" | "forwardReturns"> | null> {
+  const latestRun = await latestDbScanRun();
+  if (!latestRun) return null;
+
+  try {
+    const forwardLimit = options.forwardTailRows ? Math.max(1, options.forwardTailRows) : 100000;
+    const [summaryResult, forwardResult] = await Promise.all([
+      dbQuery<DbMetricRow>(
+        `
+          SELECT metrics, created_at
+          FROM performance_summary
+          WHERE scan_run_id = $1
+          ORDER BY created_at ASC
+        `,
+        [latestRun.id],
+      ),
+      dbQuery<DbMetricRow>(
+        `
+          SELECT metrics, created_at
+          FROM forward_returns
+          WHERE scan_run_id = $1
+          ORDER BY created_at DESC
+          LIMIT $2
+        `,
+        [latestRun.id, forwardLimit],
+      ),
+    ]);
+
+    return {
+      summary: metricRowsToCsvFileData(summaryResult.rows),
+      forwardReturns: metricRowsToCsvFileData([...forwardResult.rows].reverse()),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function getDbSymbolSummary(symbol: string): Promise<Record<string, unknown> | null> {
+  const latestRun = await latestDbScanRun();
+  if (!latestRun) return null;
+  try {
+    const result = await dbQuery<DbJsonRow>(
+      `
+        SELECT summary
+        FROM symbol_snapshots
+        WHERE scan_run_id = $1
+          AND symbol = $2
+        LIMIT 1
+      `,
+      [latestRun.id, symbol],
+    );
+    if (!result.rows[0]) return null;
+    return asRecord(result.rows[0].summary);
+  } catch {
+    return null;
+  }
 }
 
 function symbolSlug(symbol: string) {
@@ -478,6 +797,9 @@ export async function readJson(filePath: string) {
 }
 
 export async function getFullRanking(): Promise<RankingRow[]> {
+  const dbRows = await getDbRankingRows();
+  if (dbRows) return dbRows;
+
   const filePath = path.join(scannerOutputDir(), "full_ranking.csv");
   if (!(await fileExists(filePath))) return [];
   const [{ rows, columns }, lastUpdated] = await Promise.all([readCsvPayload(filePath), getFileLastUpdated(filePath)]);
@@ -490,6 +812,9 @@ export async function getFullRanking(): Promise<RankingRow[]> {
 }
 
 export async function getTopCandidates(): Promise<RankingRow[]> {
+  const dbRows = await getDbRankingRows(20);
+  if (dbRows) return dbRows;
+
   const filePath = path.join(scannerOutputDir(), "top_candidates.csv");
   if (!(await fileExists(filePath))) return [];
   const [{ rows, columns }, lastUpdated] = await Promise.all([readCsvPayload(filePath), getFileLastUpdated(filePath)]);
@@ -502,6 +827,28 @@ export async function getTopCandidates(): Promise<RankingRow[]> {
 }
 
 export async function getScanDataHealth(): Promise<ScanDataHealth> {
+  const latestRun = await latestDbScanRun();
+  if (latestRun) {
+    const lastUpdated = dbTimestamp(latestRun.completed_at) ?? dbTimestamp(latestRun.created_at);
+    const freshness = freshnessFromTimestamp(lastUpdated, Date.now());
+    return {
+      ...freshness,
+      files: [
+        {
+          ...freshness,
+          name: "postgres:scan_runs",
+          missingColumns: [],
+        },
+        {
+          ...freshness,
+          name: "postgres:scanner_signals",
+          missingColumns: [],
+        },
+      ],
+      lastUpdated: freshness.lastUpdated ?? lastUpdated,
+    };
+  }
+
   const now = Date.now();
   const files = await Promise.all(
     ["full_ranking.csv", "top_candidates.csv"].map(async (name) => {
@@ -552,6 +899,38 @@ function parseSnapshotTimestamp(name: string) {
 }
 
 export async function getHistorySummary(): Promise<HistorySummary> {
+  try {
+    const result = await dbQuery<DbHistorySummaryRow>(
+      `
+        SELECT id::text, completed_at, created_at
+        FROM scan_runs
+        WHERE status = 'success'
+        ORDER BY completed_at DESC NULLS LAST, created_at DESC
+      `,
+    );
+    if (result.rows.length) {
+      const snapshots = result.rows.map((row) => {
+        const timestamp = dbTimestamp(row.completed_at) ?? dbTimestamp(row.created_at);
+        return {
+          name: `db_${row.id}`,
+          modifiedAt: timestamp ?? new Date().toISOString(),
+          timestamp,
+        };
+      });
+      const dated = snapshots.map((snapshot) => snapshot.timestamp).filter((timestamp): timestamp is string => Boolean(timestamp));
+      const uniqueDates = Array.from(new Set(dated.map((timestamp) => timestamp.slice(0, 10)))).sort();
+      return {
+        snapshots,
+        count: snapshots.length,
+        earliest: dated.length ? dated[dated.length - 1] : null,
+        latest: dated.length ? dated[0] : null,
+        uniqueDates,
+      };
+    }
+  } catch {
+    // Fall back to CSV artifacts during transition.
+  }
+
   const historyDir = path.join(scannerOutputDir(), "history");
   let entries: string[] = [];
 
@@ -595,6 +974,14 @@ export async function getHistorySummary(): Promise<HistorySummary> {
 }
 
 export async function getSymbolHistoryData(): Promise<SymbolHistoryData> {
+  const dbRows = await getDbHistoryRows();
+  if (dbRows) {
+    return {
+      symbols: Array.from(new Set(dbRows.map((row) => row.symbol))).sort(),
+      rows: dbRows,
+    };
+  }
+
   const history = await getHistorySummary();
   const rows: SymbolHistoryRow[] = [];
 
@@ -620,6 +1007,28 @@ export async function getSymbolHistoryData(): Promise<SymbolHistoryData> {
 }
 
 export async function getHistorySymbolsFromSnapshots(maxSnapshots = 5): Promise<string[]> {
+  try {
+    const result = await dbQuery<DbSymbolRow>(
+      `
+        WITH latest_runs AS (
+          SELECT id
+          FROM scan_runs
+          WHERE status = 'success'
+          ORDER BY completed_at DESC NULLS LAST, created_at DESC
+          LIMIT $1
+        )
+        SELECT DISTINCT ss.symbol
+        FROM scanner_signals ss
+        JOIN latest_runs lr ON lr.id = ss.scan_run_id
+        ORDER BY ss.symbol ASC
+      `,
+      [Math.max(1, maxSnapshots)],
+    );
+    if (result.rows.length) return result.rows.map((row) => row.symbol);
+  } catch {
+    // Fall back to CSV snapshots during transition.
+  }
+
   const history = await getHistorySummary();
   const symbols = new Set<string>();
 
@@ -656,6 +1065,16 @@ async function getPerSymbolHistoryForSymbol(symbol: string): Promise<SymbolHisto
 export async function getSymbolHistoryLookup(symbol: string): Promise<{ matchingRows: number; rows: SymbolHistoryRow[]; snapshotsScanned: number; source: "none" | "per-symbol" | "snapshots" }> {
   const cleaned = symbol.trim().toUpperCase();
   if (!cleaned) return { matchingRows: 0, rows: [], snapshotsScanned: 0, source: "none" };
+  const dbRows = await getDbHistoryRows(cleaned);
+  if (dbRows) {
+    return {
+      matchingRows: dbRows.length,
+      rows: dbRows,
+      snapshotsScanned: new Set(dbRows.map((row) => row.source_file)).size,
+      source: dbRows.length ? "snapshots" : "none",
+    };
+  }
+
   const history = await getHistorySummary();
   const rows: SymbolHistoryRow[] = [];
 
@@ -746,6 +1165,9 @@ export async function getIntradaySignalDrift(): Promise<IntradayDriftRow[]> {
 }
 
 export async function getIntradaySignalDriftSummary(): Promise<IntradayDriftRow[]> {
+  const dbHistory = await getDbHistoryRows();
+  if (dbHistory) return buildIntradaySignalDrift({ symbols: Array.from(new Set(dbHistory.map((row) => row.symbol))).sort(), rows: dbHistory });
+
   const history = await getHistorySummary();
   const latestSnapshot = history.snapshots[0];
   const earliestSnapshot = history.snapshots[history.snapshots.length - 1];
@@ -796,6 +1218,16 @@ export async function getIntradaySignalDriftSummary(): Promise<IntradayDriftRow[
 }
 
 export async function getPerformanceData(options: { forwardTailRows?: number } = {}): Promise<PerformanceData> {
+  const dbPerformance = await getDbPerformanceData(options);
+  if (dbPerformance) {
+    const [lifecycle, lifecycleSummary, autoCalibration] = await Promise.all([
+      readScannerCsvWithState("analysis", "signal_lifecycle.csv"),
+      readScannerCsvWithState("analysis", "signal_lifecycle_summary.csv"),
+      readScannerCsvWithState("analysis", "auto_calibration_recommendations.csv"),
+    ]);
+    return { ...dbPerformance, lifecycle, lifecycleSummary, autoCalibration };
+  }
+
   const [summary, forwardReturns, lifecycle, lifecycleSummary, autoCalibration] = await Promise.all([
     readScannerCsvWithState("analysis", "performance_summary.csv"),
     readScannerCsvWithStateParts(["analysis", "forward_returns.csv"], { tailRows: options.forwardTailRows }),
@@ -811,10 +1243,33 @@ export async function getCalibrationInsights() {
 }
 
 export async function getMarketRegime() {
+  const latestRun = await latestDbScanRun();
+  if (latestRun) {
+    const metadata = asRecord(latestRun.metadata);
+    const nested = asRecord(metadata.market_regime);
+    return {
+      ...nested,
+      regime: nested.regime ?? latestRun.market_regime,
+      source: "postgres",
+      updated_at: dbTimestamp(latestRun.completed_at) ?? dbTimestamp(latestRun.created_at),
+    };
+  }
   return readJson(path.join(scannerOutputDir(), "analysis", "market_regime.json"));
 }
 
 export async function getMarketStructure() {
+  const latestRun = await latestDbScanRun();
+  if (latestRun) {
+    const metadata = asRecord(latestRun.metadata);
+    const nested = asRecord(metadata.market_structure);
+    return {
+      ...nested,
+      breadth: nested.breadth ?? latestRun.breadth,
+      leadership: nested.leadership ?? latestRun.leadership,
+      source: "postgres",
+      updated_at: dbTimestamp(latestRun.completed_at) ?? dbTimestamp(latestRun.created_at),
+    };
+  }
   return readJson(path.join(scannerOutputDir(), "analysis", "market_structure.json"));
 }
 
@@ -822,8 +1277,9 @@ export async function getSymbolDetail(symbol: string): Promise<SymbolDetail> {
   const cleaned = symbol.trim().toUpperCase();
   const ranking = await getFullRanking();
   const row = ranking.find((item) => item.symbol === cleaned) ?? null;
+  const dbSummary = await getDbSymbolSummary(cleaned);
   const symbolDir = path.join(scannerOutputDir(), "symbols", symbolSlug(cleaned));
-  const summary = await readJson(path.join(symbolDir, "summary.json"));
+  const summary = dbSummary ?? (await readJson(path.join(symbolDir, "summary.json")));
   const history = await getSymbolPriceHistory(cleaned, "all");
 
   if (row && summary) {
@@ -850,6 +1306,39 @@ function periodCutoff(latestMs: number, period: string) {
 
 export async function getSymbolPriceHistory(symbol: string, period = "1y"): Promise<Record<string, ScannerScalar>[]> {
   const cleaned = symbol.trim().toUpperCase();
+  try {
+    const result = await dbQuery<DbPriceRow>(
+      `
+        SELECT ts, open, high, low, close, volume
+        FROM symbol_price_history
+        WHERE symbol = $1
+        ORDER BY ts ASC
+      `,
+      [cleaned],
+    );
+    if (result.rows.length) {
+      const normalized = result.rows.map((row) => ({
+        date: dbTimestamp(row.ts),
+        datetime: dbTimestamp(row.ts),
+        open: coerceValue("open", row.open) ?? null,
+        high: coerceValue("high", row.high) ?? null,
+        low: coerceValue("low", row.low) ?? null,
+        close: coerceValue("close", row.close) ?? null,
+        volume: coerceValue("volume", row.volume) ?? null,
+      }));
+      if (period === "all") return normalized;
+      const latest = Math.max(...normalized.map((row) => Date.parse(String(row.date ?? row.datetime ?? ""))).filter(Number.isFinite));
+      const cutoff = periodCutoff(latest, period);
+      if (cutoff === null) return normalized;
+      return normalized.filter((row) => {
+        const time = Date.parse(String(row.date ?? row.datetime ?? ""));
+        return Number.isFinite(time) && time >= cutoff;
+      });
+    }
+  } catch {
+    // Fall back to CSV artifacts during transition.
+  }
+
   const symbolDir = path.join(scannerOutputDir(), "symbols", symbolSlug(cleaned));
   const history = await readCsv(path.join(symbolDir, "history.csv"));
   const normalized = history

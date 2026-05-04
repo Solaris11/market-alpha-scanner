@@ -13,7 +13,7 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 from alerts import evaluate_alert_rules, read_alert_input_files
-from database import persist_scan_dataframe
+from database import persist_analysis_data, persist_scan_dataframe
 from scanner.analysis import analyze_performance, compute_forward_returns
 from scanner.config import DEFAULT_NEWS_LIMIT, DEFAULT_UNIVERSE, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE
 from scanner.engine import load_universe_from_csv, scan_symbols
@@ -216,7 +216,19 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
             print("\n[analysis] No completed forward-return observations yet.")
         else:
             print(f"\n[analysis] Computed forward returns for {len(forward_df)} snapshot rows.")
-        analyze_performance(forward_df)
+        try:
+            summary_df = analyze_performance(forward_df)
+            db_result = persist_analysis_data(forward_df, summary_df)
+            if db_result.get("enabled"):
+                print(
+                    "Wrote analysis database rows:"
+                    f" performance_summary={db_result['performance_summary']},"
+                    f" forward_returns={db_result['forward_returns']}"
+                )
+            else:
+                print(f"Skipping analysis database write: {db_result.get('reason', 'DATABASE_URL not configured')}")
+        except Exception as exc:
+            print(f"Warning: analysis database write skipped due to error: {exc}")
         log_timing(args.timing, "analysis", phase_started)
     elif args.run_analysis and args.skip_analysis:
         print("[analysis] skipped by --skip-analysis")

@@ -96,6 +96,40 @@ services:
     networks:
       - market-alpha-scanner-private
 
+  market-alpha-scanner-job:
+    profiles:
+      - scanner-job
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging: *default-logging
+    depends_on:
+      market-alpha-postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${SCANNER_DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-market_alpha}:${POSTGRES_PASSWORD:-change_me_before_production}@market-alpha-postgres:5432/${POSTGRES_DB:-market_alpha}}
+      SCANNER_OUTPUT_DIR: /app/scanner_output
+      APP_LOG_DIR: /app/logs
+    command:
+      [
+        "python",
+        "investment_scanner_mvp.py",
+        "--fast",
+        "--timing",
+        "--outdir",
+        "/app/scanner_output",
+      ]
+    volumes:
+      - /opt/apps/market-alpha-scanner/runtime/scanner_output:/app/scanner_output
+      - /opt/apps/market-alpha-scanner/runtime/logs:/app/logs
+    networks:
+      - market-alpha-scanner-private
+
   market-alpha-frontend:
     build:
       context: .

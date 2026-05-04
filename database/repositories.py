@@ -14,20 +14,26 @@ def create_scan_run(
     *,
     started_at: datetime | None = None,
     completed_at: datetime | None = None,
+    run_type: str = "scan",
+    status: str = "success",
     universe_count: int | None = None,
     symbols_scored: int | None = None,
     market_regime: str | None = None,
     breadth: str | None = None,
     leadership: str | None = None,
+    metadata: Mapping[str, object] | None = None,
 ) -> ScanRun:
     scan_run = ScanRun(
         started_at=started_at or datetime.now(timezone.utc),
         completed_at=completed_at,
+        run_type=run_type,
+        status=status,
         universe_count=universe_count,
         symbols_scored=symbols_scored,
         market_regime=market_regime,
         breadth=breadth,
         leadership=leadership,
+        run_metadata={str(key): value for key, value in (metadata or {}).items()},
     )
     session.add(scan_run)
     session.flush()
@@ -52,6 +58,7 @@ def add_scanner_signal_rows(
         seen_symbols.add(normalized_symbol)
         signal = ScannerSignal(
             scan_run_id=scan_run_id,
+            rank_position=_int_or_none(row.get("rank_position")),
             symbol=normalized_symbol,
             company_name=_string_or_none(row.get("company_name")),
             asset_type=_string_or_none(row.get("asset_type")),
@@ -68,11 +75,15 @@ def add_scanner_signal_rows(
             final_decision=_string_or_none(row.get("final_decision")),
             suggested_entry=_string_or_none(row.get("suggested_entry")),
             entry_distance_pct=_number_or_none(row.get("entry_distance_pct")),
+            entry_zone_low=_number_or_none(_first_present(row, ("entry_zone_low", "buy_zone_low"))),
+            entry_zone_high=_number_or_none(_first_present(row, ("entry_zone_high", "buy_zone_high"))),
             buy_zone=_string_or_none(_first_present(row, ("buy_zone", "entry_zone"))),
             stop_loss=_number_or_none(row.get("stop_loss")),
+            take_profit=_number_or_none(_first_present(row, ("take_profit", "take_profit_high", "conservative_target"))),
             conservative_target=_number_or_none(row.get("conservative_target")),
             risk_reward=_number_or_none(row.get("risk_reward")),
             market_regime=_string_or_none(row.get("market_regime")),
+            payload={str(key): value for key, value in row.items()},
         )
         session.add(signal)
         signals.append(signal)
@@ -111,3 +122,13 @@ def _number_or_none(value: object) -> float | None:
     if numeric in (float("inf"), float("-inf")):
         return None
     return numeric
+
+
+def _int_or_none(value: object) -> int | None:
+    text = _string_or_none(value)
+    if text is None:
+        return None
+    try:
+        return int(float(text))
+    except ValueError:
+        return None

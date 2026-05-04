@@ -4,7 +4,7 @@ from datetime import datetime
 from decimal import Decimal
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, Numeric, Text, UniqueConstraint, Uuid, func, text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, JSON, Numeric, Text, UniqueConstraint, Uuid, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base
@@ -16,11 +16,14 @@ class ScanRun(Base):
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    run_type: Mapped[str] = mapped_column(Text, nullable=False, default="scan", server_default=text("'scan'"))
+    status: Mapped[str] = mapped_column(Text, nullable=False, default="success", server_default=text("'success'"))
     universe_count: Mapped[int | None] = mapped_column(Integer)
     symbols_scored: Mapped[int | None] = mapped_column(Integer)
     market_regime: Mapped[str | None] = mapped_column(Text)
     breadth: Mapped[str | None] = mapped_column(Text)
     leadership: Mapped[str | None] = mapped_column(Text)
+    run_metadata: Mapped[dict[str, object]] = mapped_column("metadata", JSON, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     signals: Mapped[list["ScannerSignal"]] = relationship(back_populates="scan_run", cascade="all, delete-orphan")
@@ -39,6 +42,7 @@ class ScannerSignal(Base):
 
     id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
     scan_run_id: Mapped[UUID] = mapped_column(ForeignKey("scan_runs.id", ondelete="CASCADE"), nullable=False)
+    rank_position: Mapped[int | None] = mapped_column(Integer)
     symbol: Mapped[str] = mapped_column(Text, nullable=False)
     company_name: Mapped[str | None] = mapped_column(Text)
     asset_type: Mapped[str | None] = mapped_column(Text)
@@ -55,11 +59,15 @@ class ScannerSignal(Base):
     final_decision: Mapped[str | None] = mapped_column(Text)
     suggested_entry: Mapped[str | None] = mapped_column(Text)
     entry_distance_pct: Mapped[Decimal | None] = mapped_column(Numeric)
+    entry_zone_low: Mapped[Decimal | None] = mapped_column(Numeric)
+    entry_zone_high: Mapped[Decimal | None] = mapped_column(Numeric)
     buy_zone: Mapped[str | None] = mapped_column(Text)
     stop_loss: Mapped[Decimal | None] = mapped_column(Numeric)
+    take_profit: Mapped[Decimal | None] = mapped_column(Numeric)
     conservative_target: Mapped[Decimal | None] = mapped_column(Numeric)
     risk_reward: Mapped[Decimal | None] = mapped_column(Numeric)
     market_regime: Mapped[str | None] = mapped_column(Text)
+    payload: Mapped[dict[str, object]] = mapped_column(JSON, nullable=False, default=dict, server_default=text("'{}'::jsonb"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     scan_run: Mapped[ScanRun] = relationship(back_populates="signals")
