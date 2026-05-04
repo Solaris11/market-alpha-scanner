@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "stripe:reconcile": "tsx scripts/stripe-reconcile.ts",
     "test": "node scripts/run-tests.mjs",
     "lint": "tsc --noEmit"
   },
