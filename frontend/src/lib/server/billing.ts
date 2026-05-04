@@ -2,6 +2,12 @@ import "server-only";
 
 import type Stripe from "stripe";
 import type { QueryResultRow } from "pg";
+import {
+  paymentFailedNotification,
+  premiumActivatedNotification,
+  subscriptionCanceledNotification,
+  type SubscriptionNotificationIntent,
+} from "@/lib/security/subscription-notifications";
 import type { AuthUser } from "./auth";
 import { dbQuery } from "./db";
 import { createNotificationOnce, createNotificationWithAction } from "./notifications";
@@ -184,30 +190,15 @@ export async function recordBillingEvent(args: {
 }
 
 export async function notifySubscriptionActive(userId: string): Promise<void> {
-  await safeCreateNotificationOnce(
-    userId,
-    "Premium activated",
-    "Your Market Alpha Premium subscription is now active.",
-  );
+  await safeCreateNotification(premiumActivatedNotification(), userId);
 }
 
 export async function notifyPaymentFailed(userId: string): Promise<void> {
-  await safeCreateNotification(
-    userId,
-    "Payment failed",
-    "We could not process your payment. Update your billing details to keep Premium access.",
-  );
+  await safeCreateNotification(paymentFailedNotification(), userId);
 }
 
 export async function notifySubscriptionCanceled(userId: string, currentPeriodEnd: string | null): Promise<void> {
-  const endText = formatPeriodEnd(currentPeriodEnd);
-  await safeCreateNotificationOnce(
-    userId,
-    "Subscription canceled",
-    endText
-      ? `Your Premium access will remain active until ${endText}. Renew anytime to keep full access.`
-      : "Your Premium subscription was canceled. Renew anytime to keep full access.",
-  );
+  await safeCreateNotification(subscriptionCanceledNotification(currentPeriodEnd), userId);
 }
 
 export async function retrieveSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
@@ -271,29 +262,14 @@ function periodEndDate(subscription: Stripe.Subscription): Date | null {
   return typeof periodEnd === "number" && Number.isFinite(periodEnd) ? new Date(periodEnd * 1000) : null;
 }
 
-async function safeCreateNotification(userId: string, title: string, message: string): Promise<void> {
+async function safeCreateNotification(intent: SubscriptionNotificationIntent, userId: string): Promise<void> {
   try {
-    await createNotificationWithAction(userId, "subscription", title, message, "/account");
+    if (intent.dedupe === "once") {
+      await createNotificationOnce(userId, intent.type, intent.title, intent.message, intent.actionUrl);
+      return;
+    }
+    await createNotificationWithAction(userId, intent.type, intent.title, intent.message, intent.actionUrl);
   } catch (error) {
     console.warn("[notifications] billing notification failed", error instanceof Error ? error.message : error);
   }
-}
-
-async function safeCreateNotificationOnce(userId: string, title: string, message: string): Promise<void> {
-  try {
-    await createNotificationOnce(userId, "subscription", title, message, "/account");
-  } catch (error) {
-    console.warn("[notifications] billing notification failed", error instanceof Error ? error.message : error);
-  }
-}
-
-function formatPeriodEnd(value: string | null): string | null {
-  if (!value) return null;
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return null;
-  return new Intl.DateTimeFormat("en-US", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(date);
 }
