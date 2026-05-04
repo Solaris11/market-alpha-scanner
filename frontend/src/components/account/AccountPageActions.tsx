@@ -107,3 +107,61 @@ export function BillingActionButton({ disabledReason, mode }: BillingActionButto
     </div>
   );
 }
+
+type VerificationResponse = {
+  error?: string;
+  message?: string;
+  ok?: boolean;
+};
+
+export function SendVerificationEmailButton({ disabled = false }: { disabled?: boolean }) {
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSend() {
+    setBusy(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const response = await csrfFetch("/api/auth/send-verification-email", { method: "POST" });
+      const payload = (await response.json().catch(() => null)) as VerificationResponse | null;
+      if (!response.ok || !payload?.ok) {
+        setError(payload?.error === "email_not_configured" ? "Email verification is not configured. Contact support." : payload?.message ?? "Unable to send verification email.");
+        return;
+      }
+      setMessage(payload.message ?? "Verification email sent.");
+    } catch {
+      setError("Unable to send verification email.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        className="rounded-full border border-cyan-300/35 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15 disabled:cursor-not-allowed disabled:opacity-60"
+        disabled={disabled || busy}
+        onClick={() => void handleSend()}
+        type="button"
+      >
+        {busy ? "Sending..." : "Send verification email"}
+      </button>
+      {message ? <p className="mt-2 text-xs leading-5 text-emerald-200">{message}</p> : null}
+      {error ? <p className="mt-2 text-xs leading-5 text-rose-200">{error}</p> : null}
+    </div>
+  );
+}
+
+export function LegalReviewButton() {
+  return (
+    <button
+      className="rounded-full border border-amber-300/35 bg-amber-400/10 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:border-amber-200/70 hover:bg-amber-400/15"
+      onClick={() => window.dispatchEvent(new Event("ma:open-legal-acknowledgement"))}
+      type="button"
+    >
+      Review and accept legal documents
+    </button>
+  );
+}

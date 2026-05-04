@@ -1,11 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { QueryResultRow } from "pg";
-import { AccountLogoutButton, AccountSignInCta, BillingActionButton } from "@/components/account/AccountPageActions";
+import { AccountLogoutButton, AccountSignInCta, BillingActionButton, LegalReviewButton, SendVerificationEmailButton } from "@/components/account/AccountPageActions";
+import { checkoutBlockMessage, checkoutBlockReason } from "@/lib/security/billing-readiness";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { getAlertOverview } from "@/lib/alerts";
 import { dbQuery } from "@/lib/server/db";
-import { getEntitlement, requiresLegalAcceptance, type Entitlement } from "@/lib/server/entitlements";
+import { getEntitlement, type Entitlement } from "@/lib/server/entitlements";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { DEFAULT_USER_RISK_PROFILE, normalizeRiskProfile, type UserRiskProfile } from "@/lib/trading/risk-veto";
 
@@ -73,9 +74,14 @@ export default async function AccountPage() {
               <InfoItem label="Last login" value={formatDate(user.lastLoginAt)} />
               <InfoItem label="Account state" value={formatTitle(user.state) || "Active"} />
               <InfoItem
+                label="Legal status"
+                subtext={entitlement.legalStatus.allAccepted ? undefined : "Terms, Privacy Policy, and Risk Disclosure must be accepted before upgrading."}
+                value={entitlement.legalStatus.allAccepted ? "Accepted" : "Required"}
+              />
+              <InfoItem
                 label="Email status"
-                subtext={user.emailVerified ? undefined : "Email verification will be enabled before public launch."}
-                value={user.emailVerified ? "Verified" : "Private beta account"}
+                subtext={user.emailVerified ? undefined : "Verify this email address before upgrading to Premium."}
+                value={user.emailVerified ? "Verified" : "Not verified"}
               />
             </dl>
           </AccountSection>
@@ -98,7 +104,18 @@ export default async function AccountPage() {
         <div className="grid gap-5 xl:grid-cols-3">
           <AccountSection title="Security">
             <PlaceholderItem title="Change password" text="Password changes will be managed from this page." />
-            <PlaceholderItem title="Email verification" text={user.emailVerified ? "Your email address is verified." : "Email verification will be enabled before public launch."} />
+            <div className="mt-3 first:mt-0 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
+              <div className="text-sm font-semibold text-slate-100">Email verification</div>
+              <p className="mt-1 text-xs leading-5 text-slate-500">{user.emailVerified ? "Your email address is verified." : "Send a verification link to unlock billing upgrades."}</p>
+              {!user.emailVerified ? <div className="mt-3"><SendVerificationEmailButton /></div> : null}
+            </div>
+            {!entitlement.legalStatus.allAccepted ? (
+              <div className="mt-3 rounded-xl border border-amber-300/20 bg-amber-400/[0.06] px-3 py-3">
+                <div className="text-sm font-semibold text-amber-100">Legal documents required</div>
+                <p className="mt-1 text-xs leading-5 text-amber-100/75">Accept the latest Terms, Privacy Policy, and Risk Disclosure before using paid features.</p>
+                <div className="mt-3"><LegalReviewButton /></div>
+              </div>
+            ) : null}
             <PlaceholderItem title="Two-factor authentication" text="Two-factor authentication will be available before live broker integrations." />
           </AccountSection>
 
@@ -176,8 +193,11 @@ function planBadgeClass(entitlement: Entitlement): string {
 }
 
 function BillingControl({ entitlement }: { entitlement: Entitlement }) {
-  if (requiresLegalAcceptance(entitlement)) {
-    return <BillingActionButton disabledReason="Accept the Terms, Privacy Policy, and Risk Disclosure before upgrading." mode="checkout" />;
+  const user = entitlement.user;
+  const blockReason = checkoutBlockReason({ emailVerified: Boolean(user?.emailVerified), legalAccepted: entitlement.legalStatus.allAccepted });
+  const blockMessage = checkoutBlockMessage(blockReason);
+  if (blockMessage) {
+    return <BillingActionButton disabledReason={blockMessage} mode="checkout" />;
   }
 
   if (entitlement.isAdmin) {

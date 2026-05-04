@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
@@ -27,6 +28,7 @@ const EMPTY_STATUS: LegalStatus = {
 };
 
 export function RiskAcknowledgement() {
+  const router = useRouter();
   const { authenticated, loading, refresh, user } = useCurrentUser();
   const [visible, setVisible] = useState(false);
   const [anonymousChecked, setAnonymousChecked] = useState(false);
@@ -67,6 +69,14 @@ export function RiskAcknowledgement() {
       cancelled = true;
     };
   }, [authenticated, loading, user]);
+
+  useEffect(() => {
+    function openLegalAcknowledgement() {
+      setVisible(true);
+    }
+    window.addEventListener("ma:open-legal-acknowledgement", openLegalAcknowledgement);
+    return () => window.removeEventListener("ma:open-legal-acknowledgement", openLegalAcknowledgement);
+  }, []);
 
   if (!visible) return null;
   const accountMode = authenticated && Boolean(user);
@@ -110,6 +120,7 @@ export function RiskAcknowledgement() {
               try {
                 await Promise.all((["terms", "privacy", "risk"] as const).map((type) => (documentAccepted(legalStatus, type) ? Promise.resolve() : acceptDocument(type))));
                 await refresh();
+                router.refresh();
                 setVisible(false);
               } catch {
                 setError("Unable to save legal acceptance. Please try again.");

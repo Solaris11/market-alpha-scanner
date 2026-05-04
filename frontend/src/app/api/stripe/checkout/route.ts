@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { checkoutBlockReason } from "@/lib/security/billing-readiness";
 import { getBillingSubscriptionForUser, getOrCreateStripeCustomerForUser } from "@/lib/server/billing";
 import { requireUser } from "@/lib/server/access-control";
 import { getEntitlementForUser, hasPremiumAccess, legalNotAcceptedResponse, requiresLegalAcceptance } from "@/lib/server/entitlements";
@@ -24,6 +25,10 @@ export async function POST(request: Request) {
   const entitlement = await getEntitlementForUser(access.user);
   if (requiresLegalAcceptance(entitlement)) {
     return legalNotAcceptedResponse(entitlement);
+  }
+
+  if (checkoutBlockReason({ emailVerified: access.user.emailVerified, legalAccepted: entitlement.legalStatus.allAccepted }) === "email_not_verified") {
+    return NextResponse.json({ ok: false, error: "email_not_verified", message: "Verify your email before upgrading." }, { status: 403 });
   }
 
   try {

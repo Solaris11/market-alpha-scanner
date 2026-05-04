@@ -139,12 +139,13 @@ async function upsertOAuthUser(input: {
               email,
               display_name,
               email_verified,
+              email_verified_at,
               profile_image_url,
               state,
               created_at,
               updated_at
             )
-            VALUES ($1, $2, $3, $4, 'active', now(), now())
+            VALUES ($1, $2, $3, CASE WHEN $3 THEN now() ELSE NULL END, $4, 'active', now(), now())
             RETURNING id::text
           `,
           [input.email, input.name, input.emailVerified, input.picture],
@@ -167,6 +168,7 @@ async function upsertOAuthUser(input: {
         UPDATE users
         SET
           email_verified = email_verified OR $2,
+          email_verified_at = CASE WHEN $2 AND email_verified_at IS NULL THEN now() ELSE email_verified_at END,
           profile_image_url = COALESCE(profile_image_url, $3),
           updated_at = now()
         WHERE id = $1
