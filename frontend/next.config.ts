@@ -2,6 +2,19 @@ import type { NextConfig } from "next";
 
 const isProduction = process.env.NODE_ENV === "production";
 
+const contentSecurityPolicy = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "connect-src 'self' https://api.stripe.com https://*.stripe.com",
+  "img-src 'self' data:",
+  "style-src 'self' 'unsafe-inline'",
+  "frame-src https://js.stripe.com https://hooks.stripe.com",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self' https://*.stripe.com",
+  "frame-ancestors 'none'",
+].join("; ");
+
 const securityHeaders = [
   {
     key: "X-DNS-Prefetch-Control",
@@ -33,13 +46,13 @@ const securityHeaders = [
   },
   {
     key: "Content-Security-Policy",
-    value: "base-uri 'self'; form-action 'self'; frame-ancestors 'none'; object-src 'none'",
+    value: contentSecurityPolicy,
   },
   ...(isProduction
     ? [
         {
           key: "Strict-Transport-Security",
-          value: "max-age=31536000; includeSubDomains; preload",
+          value: "max-age=63072000; includeSubDomains; preload",
         },
       ]
     : []),
