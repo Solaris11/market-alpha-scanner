@@ -9,6 +9,7 @@ import { getAlertOverview } from "@/lib/alerts";
 import { dbQuery } from "@/lib/server/db";
 import { getBillingSubscriptionForUser, type BillingSubscription } from "@/lib/server/billing";
 import { getEntitlement, type Entitlement } from "@/lib/server/entitlements";
+import { formatRiskExperienceLevel } from "@/lib/security/onboarding-profile";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { DEFAULT_USER_RISK_PROFILE, normalizeRiskProfile, type UserRiskProfile } from "@/lib/trading/risk-veto";
 
@@ -71,8 +72,8 @@ export default async function AccountPage() {
             <dl className="grid gap-3 sm:grid-cols-2">
               <InfoItem label="Display name" value={emptyText(user.displayName)} />
               <InfoItem label="Email" value={user.email} />
-              <InfoItem label="Timezone" value={pendingOnboardingText(user.timezone)} />
-              <InfoItem label="Risk experience" value={pendingOnboardingText(user.riskExperienceLevel)} />
+              <InfoItem label="Timezone" value={formatTimezone(user.timezone)} />
+              <InfoItem label="Risk experience" value={formatRiskExperienceLevel(user.riskExperienceLevel)} />
               <InfoItem label="Registration date" value={formatDate(user.createdAt)} />
               <InfoItem label="Last login" value={formatDate(user.lastLoginAt)} />
               <InfoItem label="Account state" value={formatTitle(user.state) || "Active"} />
@@ -342,9 +343,9 @@ function emptyText(value: string | null): string {
   return text ? text : "Not set";
 }
 
-function pendingOnboardingText(value: string | null): string {
+function formatTimezone(value: string | null): string {
   const text = value?.trim();
-  return text ? formatTitle(text) : "Will be configured during onboarding";
+  return text ? text : "Required";
 }
 
 function formatTitle(value: string | null): string {

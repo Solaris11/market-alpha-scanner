@@ -3,15 +3,15 @@ import type { QueryResultRow } from "pg";
 import { getCurrentUser, userFromRow } from "@/lib/server/auth";
 import { dbQuery } from "@/lib/server/db";
 import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
+import { hasRequiredOnboardingFields, normalizeRiskExperienceLevel, normalizeTimezone } from "@/lib/security/onboarding-profile";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-const RISK_LEVELS = new Set(["beginner", "intermediate", "advanced", "professional"]);
-
 type ProfilePayload = {
   displayName?: unknown;
   onboardingCompleted?: unknown;
+  riskExperience?: unknown;
   riskExperienceLevel?: unknown;
   timezone?: unknown;
 };
@@ -54,10 +54,25 @@ export async function PUT(request: Request) {
   if (csrf) return csrf;
 
   const payload = (await request.json().catch(() => null)) as ProfilePayload | null;
-  const displayName = cleanText(payload?.displayName, 120);
-  const timezone = cleanText(payload?.timezone, 80);
-  const riskExperienceLevel = normalizeRiskLevel(payload?.riskExperienceLevel);
-  const onboardingCompleted = typeof payload?.onboardingCompleted === "boolean" ? payload.onboardingCompleted : user.onboardingCompleted;
+  if (!payload || typeof payload !== "object") {
+    return NextResponse.json({ authenticated: true, error: "Invalid profile update." }, { status: 400 });
+  }
+
+  const displayName = hasField(payload, "displayName") ? cleanText(payload.displayName, 120) : user.displayName;
+  const timezone = hasField(payload, "timezone") ? normalizeTimezone(payload.timezone) : user.timezone;
+  if (hasField(payload, "timezone") && !timezone) {
+    return NextResponse.json({ authenticated: true, error: "Select a valid timezone." }, { status: 400 });
+  }
+
+  const hasRiskExperience = hasField(payload, "riskExperienceLevel") || hasField(payload, "riskExperience");
+  const riskValue = hasField(payload, "riskExperienceLevel") ? payload.riskExperienceLevel : payload.riskExperience;
+  const riskExperienceLevel = hasRiskExperience ? normalizeRiskExperienceLevel(riskValue) : user.riskExperienceLevel;
+  if (hasRiskExperience && !riskExperienceLevel) {
+    return NextResponse.json({ authenticated: true, error: "Select a valid risk experience level." }, { status: 400 });
+  }
+
+  const requestedOnboardingCompleted = typeof payload.onboardingCompleted === "boolean" ? payload.onboardingCompleted : user.onboardingCompleted;
+  const onboardingCompleted = requestedOnboardingCompleted && hasRequiredOnboardingFields({ riskExperienceLevel, timezone });
 
   try {
     const result = await dbQuery<ProfileRow>(
@@ -97,7 +112,6 @@ function cleanText(value: unknown, maxLength: number): string | null {
   return text ? text.slice(0, maxLength) : null;
 }
 
-function normalizeRiskLevel(value: unknown): string | null {
-  const text = String(value ?? "").trim().toLowerCase();
-  return RISK_LEVELS.has(text) ? text : null;
+function hasField<T extends object>(payload: T, key: keyof ProfilePayload): boolean {
+  return Object.prototype.hasOwnProperty.call(payload, key);
 }

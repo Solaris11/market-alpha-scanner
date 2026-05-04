@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { AccountOnboardingGate } from "@/components/account/AccountOnboardingGate";
 import { CurrentUserProvider } from "@/hooks/useCurrentUser";
 import "./globals.css";
 
@@ -29,7 +30,10 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <CurrentUserProvider>{children}</CurrentUserProvider>
+        <CurrentUserProvider>
+          {children}
+          <AccountOnboardingGate />
+        </CurrentUserProvider>
       </body>
     </html>
   );
