@@ -6,8 +6,12 @@ export const metadata: Metadata = {
   title: "Market Alpha",
   description: "AI-powered trading research platform",
   icons: {
-    apple: "/apple-touch-icon.png",
-    icon: "/favicon.ico",
+    apple: [{ url: "/apple-touch-icon.png?v=2", sizes: "180x180", type: "image/png" }],
+    icon: [
+      { url: "/favicon-ma.ico?v=2", sizes: "64x64", type: "image/x-icon" },
+      { url: "/icon.png?v=2", sizes: "64x64", type: "image/png" },
+    ],
+    shortcut: "/favicon-ma.ico?v=2",
   },
   appleWebApp: {
     title: "Market Alpha",
