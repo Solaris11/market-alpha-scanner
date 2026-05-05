@@ -1,8 +1,11 @@
 "use client";
 
 import type { RankingRow } from "@/lib/types";
+import { confidenceTone } from "@/lib/trading/confidence";
 import { formatNumber } from "@/lib/ui/formatters";
-import { SymbolChart, type ChartCandle } from "./SymbolChart";
+import { ConfidenceDonut } from "./ConfidenceDonut";
+import { MiniPriceContextChart } from "./MiniPriceContextChart";
+import type { ChartCandle } from "./SymbolChart";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
@@ -21,25 +24,26 @@ export function SymbolDecisionIntelligencePanel({ candles, row }: { candles: Cha
   const reasonCodes = reasonList(row.decision_reason_codes ?? row.decision_reason ?? row.quality_reason);
   const vetoes = reasonList(row.vetoes ?? row.veto_reason ?? row.decision_reason_codes);
   const confidence = numeric(row.confidence_score ?? row.final_score) ?? 0;
+  const confidenceStyle = confidenceTone(confidence);
 
   return (
     <GlassPanel className="p-5">
       <SectionTitle eyebrow="Setup Intelligence" title="Why This Decision Exists" meta="research context" />
-      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-4">
           <div>
             <div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Factor Scores</div>
-            <div className="space-y-2">
+            <div className="grid gap-2 md:grid-cols-2">
               {factors.map((factor) => (
-                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3" key={factor.label}>
-                  <div className="flex items-center justify-between gap-3 text-sm">
+                <div className="rounded-lg border border-white/10 bg-white/[0.03] p-2.5" key={factor.label}>
+                  <div className="flex items-center justify-between gap-3 text-xs">
                     <span className="font-semibold text-slate-100">{factor.label}</span>
                     <span className={factor.value >= 65 ? "text-emerald-200" : factor.value < 40 ? "text-rose-200" : "text-amber-100"}>{Math.round(factor.value)}</span>
                   </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.06]">
+                  <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
                     <div className={`h-full rounded-full ${factor.value >= 65 ? "bg-emerald-300" : factor.value < 40 ? "bg-rose-300" : "bg-amber-300"}`} style={{ width: `${Math.max(4, Math.min(100, factor.value))}%` }} />
                   </div>
-                  <div className="mt-2 text-xs text-slate-400">{factor.value >= 65 ? "Constructive input" : factor.value < 40 ? "Weak input" : "Mixed input"}</div>
+                  <div className="mt-1 text-[11px] text-slate-400">{factor.value >= 65 ? "Constructive" : factor.value < 40 ? "Weak" : "Mixed"}</div>
                 </div>
               ))}
             </div>
@@ -53,17 +57,22 @@ export function SymbolDecisionIntelligencePanel({ candles, row }: { candles: Cha
 
         <div className="space-y-4">
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-            <div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Mini Price Context</div>
-            <SymbolChart candles={candles.slice(-80)} height={220} symbol={row.symbol} />
+            <MiniPriceContextChart candles={candles} entryContext={entryContext(row)} symbol={row.symbol} />
             <p className="mt-2 text-xs leading-5 text-slate-500">Chart context is for research only. Trade levels remain governed by the daily decision system.</p>
           </div>
 
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-            <div className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Confidence</div>
-            <div className="text-3xl font-semibold text-slate-50">{Math.round(confidence)}</div>
-            <div className="mt-3 h-3 overflow-hidden rounded-full bg-white/[0.06]">
-              <div className="h-full rounded-full bg-cyan-300" style={{ width: `${Math.max(4, Math.min(100, confidence))}%` }} />
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Confidence</div>
+              <div className={`text-[10px] font-black uppercase tracking-[0.14em] ${confidenceStyle.textClass}`}>{confidenceStyle.label}</div>
             </div>
+            <div className="flex items-center justify-center">
+              <ConfidenceDonut compact score={confidence} />
+            </div>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.06]">
+              <div className={`h-full rounded-full ${confidenceStyle.barClass}`} style={{ width: `${Math.max(4, Math.min(100, confidence))}%` }} />
+            </div>
+            <div className="mt-2 text-[11px] leading-5 text-slate-500">Confidence reflects signal strength and data quality. Not a prediction.</div>
           </div>
 
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -145,6 +154,15 @@ function percentLike(value: unknown): string {
   if (parsed === null) return "N/A";
   const pct = Math.abs(parsed) <= 1 ? parsed * 100 : parsed;
   return `${pct.toFixed(1)}%`;
+}
+
+function entryContext(row: RankingRow): string {
+  const low = numeric(row.entry_zone_low ?? row.buy_zone_low);
+  const high = numeric(row.entry_zone_high ?? row.buy_zone_high);
+  const entry = numeric(row.suggested_entry ?? row.entry_price ?? row.entry);
+  if (low !== null && high !== null) return `${formatNumber(low)} - ${formatNumber(high)}`;
+  if (entry !== null) return formatNumber(entry);
+  return "No active entry context";
 }
 
 function numeric(value: unknown): number | null {

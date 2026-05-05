@@ -1,5 +1,6 @@
 import type { MarketRegime } from "@/lib/adapters/DataServiceAdapter";
 import type { RankingRow } from "@/lib/types";
+import { ConfidenceDonut } from "./ConfidenceDonut";
 import { SectionTitle } from "./ui/SectionTitle";
 
 function countDecision(rows: RankingRow[], value: string) {
@@ -59,15 +60,9 @@ function toneClass(tone: "amber" | "cyan" | "green" | "red") {
 
 function ConfidenceRing({ confidence }: { confidence: number }) {
   return (
-    <div className="flex min-h-[260px] min-w-0 items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-6">
-      <div className="flex size-48 max-w-full items-center justify-center rounded-full border border-cyan-300/20 bg-[radial-gradient(circle,rgba(34,211,238,0.18),rgba(15,23,42,0.24)_58%,rgba(2,6,23,0.2)_100%)] p-6 ring-1 ring-white/10">
-        <div className="flex size-full items-center justify-center rounded-full border border-emerald-300/20 bg-slate-950/40 text-center">
-          <div>
-            <div className="font-mono text-4xl font-black text-slate-50">{Math.round(confidence)}</div>
-            <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Confidence</div>
-          </div>
-        </div>
-      </div>
+    <div className="flex min-h-[220px] min-w-0 flex-col items-center justify-center overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+      <ConfidenceDonut score={confidence} />
+      <div className="mt-3 max-w-xs text-center text-[11px] leading-5 text-slate-500">Confidence reflects signal strength and data quality. Not a prediction.</div>
     </div>
   );
 }

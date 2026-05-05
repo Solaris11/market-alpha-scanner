@@ -5,12 +5,20 @@ import {
   type SeriesMarker,
   type Time,
 } from "lightweight-charts";
+import { buildResearchContextLevels as buildResearchLevels } from "@/lib/trading/research-levels";
 import type { ChartCandle, ChartSignalMarker, ChartTradeLevels } from "./SymbolChart";
 
 export const FALLBACK_DAYS = 30;
 export const FALLBACK_END_DATE = "2026-04-29";
 
 export type NormalizedTradeLevels = Required<ChartTradeLevels>;
+export type ChartResearchLevel = {
+  color: string;
+  label: "Support" | "Resistance" | "Entry zone" | "Stop" | "Target";
+  lineStyle: LineStyle;
+  price: number;
+  priority: number;
+};
 
 export function toChartData(candles: ChartCandle[]): Array<CandlestickData<Time>> {
   return candles.map((candle) => ({
@@ -87,6 +95,22 @@ export function addTradeLevelLines(candleSeries: ISeriesApi<"Candlestick">, leve
   addPriceLine(candleSeries, levels.entry, "#f59e0b", LineStyle.Dashed, "Entry zone");
   addPriceLine(candleSeries, levels.stop, "#ef4444", LineStyle.Solid, "Stop");
   addPriceLine(candleSeries, levels.target, "#38bdf8", LineStyle.Solid, "Target");
+}
+
+export function addResearchContextLines(candleSeries: ISeriesApi<"Candlestick">, levels: ChartResearchLevel[]) {
+  for (const level of levels) {
+    addPriceLine(candleSeries, level.price, level.color, level.lineStyle, level.label);
+  }
+}
+
+export function buildResearchContextLevels(candles: ChartCandle[], tradeLevels?: NormalizedTradeLevels, maxLevels = 7): ChartResearchLevel[] {
+  return buildResearchLevels(candles, tradeLevels, maxLevels).map((level) => ({
+    color: level.color,
+    label: level.label,
+    lineStyle: level.lineKind === "solid" ? LineStyle.Solid : LineStyle.Dashed,
+    price: level.price,
+    priority: level.priority,
+  }));
 }
 
 function addPriceLine(candleSeries: ISeriesApi<"Candlestick">, price: number | null, color: string, lineStyle: LineStyle, title: string) {

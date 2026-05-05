@@ -153,6 +153,7 @@ export function SymbolTerminalWorkspace({
           <SymbolChart
             candles={candles.length ? candles : undefined}
             showHistoricalSignals={showHistoricalMarkers}
+            showResearchLevelsToggle
             signals={chartSignals}
             symbol={symbol}
             tradeLevels={canTrade ? tradeLevels : undefined}

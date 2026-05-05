@@ -56,7 +56,16 @@ export default async function TerminalPage() {
       <TerminalShell>
         <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
           <div className="space-y-4">
-            <DailyActionCard action={publicAction} dataStatus={publicPreview.summary.scannerStatus} />
+            <DailyActionCard
+              action={publicAction}
+              dataStatus={publicPreview.summary.scannerStatus}
+              decisionDistribution={[
+                { label: "WATCH", value: 0 },
+                { label: "WAIT", value: 0 },
+                { label: "AVOID", value: 0 },
+              ]}
+              whyReasons={["Premium rows are hidden in public preview.", "Decision details unlock after entitlement checks.", "Research only. Not financial advice."]}
+            />
             <PublicSignalPreviewList accessState={accessState} authenticated={entitlement.authenticated} refreshOnPremium summary={publicPreview.summary} title="Market Preview" />
           </div>
           <GlassPanel className="p-5 xl:sticky xl:top-4 xl:self-start">
@@ -93,12 +102,14 @@ export default async function TerminalPage() {
   const avoidCount = snapshot.signals.filter((row) => String(row.final_decision ?? "").toUpperCase() === "AVOID").length;
   const actionBlocksTradeUi = dailyActionBlocksTradeUi(dailyAction);
   const noTradeCopy = noTradeActionCopy(dailyAction);
+  const decisionDistribution = buildDecisionDistribution(snapshot.signals);
+  const contextReasons = buildTodayActionReasons({ actionBlocksTradeUi, marketState: snapshot.marketRegime.label, scanSafetyStatus: scanSafety.status });
 
   return (
     <TerminalShell>
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">
-          <DailyActionCard action={dailyAction} dataStatus={scanSafety.status.replace("_", " ")} marketState={snapshot.marketRegime.label} />
+          <DailyActionCard action={dailyAction} dataStatus={scanSafety.status.replace("_", " ")} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
           {actionBlocksTradeUi ? (
             <GlassPanel className="border-amber-300/25 bg-amber-400/[0.08] p-6">
               <div className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-200">Decision Lock</div>
@@ -170,6 +181,12 @@ export default async function TerminalPage() {
               </GlassPanel>
             )}
           </div>
+
+          <TerminalMonitoringBrief
+            rows={snapshot.signals}
+            scanStatus={scanSafety.status.replace("_", " ")}
+            topWatchRows={opportunityModel.rows}
+          />
         </div>
 
         <div className="space-y-4 xl:sticky xl:top-4 xl:self-start">
@@ -186,4 +203,71 @@ export default async function TerminalPage() {
       <MarketOnboarding tradePlanHref={tradePlanHref} />
     </TerminalShell>
   );
+}
+
+function TerminalMonitoringBrief({
+  rows,
+  scanStatus,
+  topWatchRows,
+}: {
+  rows: Array<{ final_decision?: unknown; symbol: string; decision_reason_codes?: unknown; decision_reason?: unknown; confidence_score?: unknown; final_score?: unknown }>;
+  scanStatus: string;
+  topWatchRows: Array<{ confidenceLabel: string; conviction: number; final_decision: string | null; final_score: number | null; symbol: string }>;
+}) {
+  const watchRows = topWatchRows
+    .filter((row) => ["WATCH", "WAIT_PULLBACK", "AVOID"].includes(String(row.final_decision ?? "").toUpperCase()))
+    .slice(0, 4);
+  return (
+    <GlassPanel className="p-5">
+      <SectionTitle eyebrow="Next Monitor" title="Compact Market Context" meta={`Scanner ${scanStatus}`} />
+      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(240px,0.85fr)]">
+        <div className="grid gap-2 sm:grid-cols-2">
+          {watchRows.length ? watchRows.map((row) => (
+            <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3" key={row.symbol}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-mono text-lg font-black text-slate-50">{row.symbol}</div>
+                <div className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold text-slate-300">{row.final_decision}</div>
+              </div>
+              <div className="mt-2 text-xs text-slate-400">Score {formatPercentLike(row.final_score)} · readiness {row.conviction} {row.confidenceLabel}</div>
+            </div>
+          )) : (
+            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm text-slate-400">No watch candidates in the latest scan. Scanner remains in research context.</div>
+          )}
+        </div>
+        <div className="rounded-xl border border-white/10 bg-slate-950/35 p-3">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">What to monitor next</div>
+          <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-300">
+            <li>- Whether overheated symbols cool toward cleaner risk context.</li>
+            <li>- Whether WATCH rows improve confidence without new vetoes.</li>
+            <li>- Whether the next scanner run keeps data freshness OK.</li>
+          </ul>
+          <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px] text-slate-400">
+            {buildDecisionDistribution(rows).map((item) => (
+              <div className="rounded-lg bg-white/[0.04] p-2" key={item.label}>
+                <div className="font-mono text-base font-black text-slate-100">{item.value}</div>
+                <div className="truncate">{item.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </GlassPanel>
+  );
+}
+
+function buildDecisionDistribution(rows: Array<{ final_decision?: unknown }>): Array<{ label: string; value: number }> {
+  return ["WATCH", "WAIT_PULLBACK", "AVOID"].map((label) => ({
+    label,
+    value: rows.filter((row) => String(row.final_decision ?? "").toUpperCase() === label).length,
+  }));
+}
+
+function buildTodayActionReasons({ actionBlocksTradeUi, marketState, scanSafetyStatus }: { actionBlocksTradeUi: boolean; marketState: string; scanSafetyStatus: string }): string[] {
+  if (scanSafetyStatus !== "fresh") return ["Data freshness is not ideal.", "Scanner decisions are reduced until freshness returns.", "Research only. Not financial advice."];
+  if (actionBlocksTradeUi) return ["Market is overheated.", "Risk filters are blocking trade-ready context.", "No trade-ready setup passed every gate."];
+  return [`Market regime: ${marketState}.`, "Review only setups with clean risk context.", "Research only. Not financial advice."];
+}
+
+function formatPercentLike(value: number | null): string {
+  return value === null ? "N/A" : Math.round(value).toString();
 }

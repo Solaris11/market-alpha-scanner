@@ -6,11 +6,13 @@ import { useMemo, useState } from "react";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import { DataHealthIndicator } from "@/components/data-health-indicator";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
+import { confidenceTone } from "@/lib/trading/confidence";
 import type { ScannerScalar } from "@/lib/types";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { WatchlistButton } from "@/components/watchlist-controls";
 import { DecisionBadge } from "@/components/terminal/DecisionBadge";
-import { SymbolChart, type ChartCandle } from "@/components/terminal/SymbolChart";
+import { MiniPriceContextChart } from "@/components/terminal/MiniPriceContextChart";
+import type { ChartCandle } from "@/components/terminal/SymbolChart";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
 
@@ -79,7 +81,7 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
 
   return (
     <div className="min-w-0 max-w-full space-y-5">
-      <BestTradeNowOpportunityCard best={best} marketCondition={marketCondition} priceSeries={bestPriceSeries} />
+      <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} />
 
       <GlassPanel className="p-5">
         <SectionTitle eyebrow="Opportunities" title="Scanner Universe" meta={`Showing ${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} symbols`} />
@@ -139,21 +141,22 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
   );
 }
 
-function BestTradeNowOpportunityCard({ best, marketCondition, priceSeries }: { best: OpportunityViewModel | null; marketCondition: string | null; priceSeries: Record<string, ScannerScalar>[] }) {
+function BestTradeNowOpportunityCard({ best, highestScored, marketCondition, priceSeries }: { best: OpportunityViewModel | null; highestScored: OpportunityViewModel[]; marketCondition: string | null; priceSeries: Record<string, ScannerScalar>[] }) {
   if (!best) {
     return (
-      <GlassPanel className="overflow-hidden p-6 md:p-8">
+      <GlassPanel className="overflow-hidden p-5 md:p-6">
         <div className="text-[10px] font-black uppercase tracking-[0.32em] text-cyan-300">Top Setup</div>
         <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-50">No research setup right now</h2>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
           Market conditions: {cleanText(marketCondition, "not favorable").toUpperCase()} - wait for pullbacks or stronger confirmation.
         </p>
+        <HighestScoredSetups rows={highestScored} />
       </GlassPanel>
     );
   }
 
   return (
-    <GlassPanel className="overflow-hidden p-6 shadow-[0_0_90px_rgba(34,211,238,0.12)] md:p-8">
+    <GlassPanel className="overflow-hidden p-5 shadow-[0_0_90px_rgba(34,211,238,0.12)] md:p-6">
       <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_390px] xl:items-start">
         <div className="min-w-0">
           <div className="text-[10px] font-black uppercase tracking-[0.32em] text-emerald-300">Top Setup</div>
@@ -173,6 +176,7 @@ function BestTradeNowOpportunityCard({ best, marketCondition, priceSeries }: { b
               Conviction <span className="font-mono font-semibold text-slate-50">{best.conviction}</span>/100
             </div>
           </div>
+          <HighestScoredSetups rows={highestScored} />
         </div>
 
         <TopSetupIntelligencePanel best={best} candles={rowsToCandles(priceSeries)} />
@@ -217,11 +221,7 @@ function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewMod
       <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
         <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Mini price context</summary>
         <div className="mt-3">
-          <SymbolChart candles={candles.slice(-80)} height={220} symbol={best.symbol} />
-          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-            <HeroMetric label="Current" value={formatMoney(best.price)} />
-            <HeroMetric label="Entry context" value={best.entryZoneLabel ?? formatMoney(best.suggested_entry)} />
-          </div>
+          <MiniPriceContextChart candles={candles} entryContext={best.entryZoneLabel ?? formatMoney(best.suggested_entry)} height={260} symbol={best.symbol} />
         </div>
       </details>
 
@@ -246,6 +246,45 @@ function OpportunitySection({ empty, rows, title }: { empty: string; rows: Oppor
         <OpportunityGrid empty={empty} rows={rows} />
       </div>
     </GlassPanel>
+  );
+}
+
+function HighestScoredSetups({ rows }: { rows: OpportunityViewModel[] }) {
+  const displayRows = rows.slice(0, 5);
+  if (!displayRows.length) return null;
+  return (
+    <div className="mt-6 rounded-2xl border border-white/10 bg-slate-950/30 p-3">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Highest-Scored Setups</div>
+          <p className="mt-1 text-xs text-slate-500">Research setups, not recommendations.</p>
+        </div>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 2xl:grid-cols-5">
+        {displayRows.map((row) => <HighestScoredSetupCard key={row.symbol} row={row} />)}
+      </div>
+    </div>
+  );
+}
+
+function HighestScoredSetupCard({ row }: { row: OpportunityViewModel }) {
+  const tone = confidenceTone(row.conviction);
+  return (
+    <Link
+      className={`min-w-0 rounded-xl border bg-white/[0.04] p-3 transition-all duration-200 hover:border-cyan-300/40 hover:bg-white/[0.07] ${tone.borderClass}`}
+      href={`/symbol/${row.symbol}`}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="font-mono text-lg font-black text-slate-50">{row.symbol}</div>
+        <DecisionBadge className="px-2 py-1 text-[10px]" value={row.final_decision} />
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
+        <MiniCardMetric label="Score" value={formatNumber(row.final_score, 0)} />
+        <MiniCardMetric label="Ready" value={`${row.conviction}`} />
+      </div>
+      <div className={`mt-2 text-[10px] font-black uppercase tracking-[0.1em] ${tone.textClass}`}>{tone.label}</div>
+      <div className="mt-2 line-clamp-2 text-[11px] leading-4 text-slate-400">{firstReason(row.raw.decision_reason_codes ?? row.decision_reason)}</div>
+    </Link>
   );
 }
 
@@ -303,6 +342,15 @@ function HeroMetric({ label, value, tone = "neutral" }: { label: string; value: 
   );
 }
 
+function MiniCardMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-lg bg-slate-950/45 px-2 py-1">
+      <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">{label}</div>
+      <div className="truncate font-mono text-[12px] font-semibold text-slate-100">{value}</div>
+    </div>
+  );
+}
+
 function CardMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-xl border border-white/10 bg-slate-950/40 p-3">
@@ -327,11 +375,11 @@ function HealthBar({ label, value }: { label: string; value: number }) {
   const color = value >= 65 ? "bg-emerald-300" : value < 40 ? "bg-rose-300" : "bg-amber-300";
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between text-xs">
+      <div className="mb-1 flex items-center justify-between text-[11px]">
         <span className="text-slate-400">{label}</span>
         <span className="font-mono text-slate-100">{Math.round(value)}</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]">
+      <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.07]">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.max(4, Math.min(100, value))}%` }} />
       </div>
     </div>
@@ -361,6 +409,16 @@ function factorRows(row: OpportunityViewModel["raw"]): Array<{ label: string; va
     { label: "Macro", value: numeric(row.macro_score) ?? 50 },
     { label: "Data quality", value: numeric(row.data_quality_score) ?? (row.stale_data ? 35 : 75) },
   ];
+}
+
+function highestScoredSetups(rows: OpportunityViewModel[]): OpportunityViewModel[] {
+  return [...rows]
+    .sort((left, right) => (right.final_score ?? 0) - (left.final_score ?? 0) || right.conviction - left.conviction)
+    .slice(0, 5);
+}
+
+function firstReason(value: unknown): string {
+  return reasonList(value)[0] ?? "Scanner score, confidence, and risk filters define this research state.";
 }
 
 function topFactors(factors: Array<{ label: string; value: number }>, positive: boolean): string[] {
