@@ -116,6 +116,12 @@ services:
       DATABASE_URL: ${SCANNER_DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-market_alpha}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@market-alpha-postgres:5432/${POSTGRES_DB:-market_alpha}}
       SCANNER_OUTPUT_DIR: /app/scanner_output
       APP_LOG_DIR: /app/logs
+      MARKET_DATA_PROVIDER: ${MARKET_DATA_PROVIDER:-yfinance}
+      MARKET_DATA_FALLBACK: ${MARKET_DATA_FALLBACK:-yfinance}
+      ALPACA_API_KEY: ${ALPACA_API_KEY:-}
+      ALPACA_SECRET_KEY: ${ALPACA_SECRET_KEY:-}
+      ALPACA_DATA_BASE_URL: ${ALPACA_DATA_BASE_URL:-https://data.alpaca.markets}
+      ALPACA_DATA_FEED: ${ALPACA_DATA_FEED:-iex}
     command:
       [
         "python",
