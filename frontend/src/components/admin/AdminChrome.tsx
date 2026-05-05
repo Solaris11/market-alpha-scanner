@@ -9,6 +9,7 @@ const ADMIN_LINKS = [
   { href: "/admin/alerts", label: "Alerts" },
   { href: "/admin/support", label: "Support" },
   { href: "/admin/scanner", label: "Scanner" },
+  { href: "/admin/calibration", label: "Calibration" },
   { href: "/admin/monitoring", label: "Monitoring" },
   { href: "/admin/audit", label: "Audit" },
 ] as const;

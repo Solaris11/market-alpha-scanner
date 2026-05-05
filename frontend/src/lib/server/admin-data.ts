@@ -134,6 +134,36 @@ export type AdminAuditLogItem = {
   targetType: string;
 };
 
+export type CalibrationGroupType = "asset_type" | "decision" | "market_regime" | "score_bucket" | "setup_type";
+
+export type CalibrationMetricRow = {
+  avgReturnPct: number | null;
+  count: number;
+  groupType: CalibrationGroupType;
+  groupValue: string;
+  horizon: string;
+  lowConfidence: boolean;
+  medianReturnPct: number | null;
+  winRatePct: number | null;
+  worstReturnPct: number | null;
+};
+
+export type CalibrationDistributionRow = {
+  avgConfidence: number | null;
+  avgScore: number | null;
+  count: number;
+  decision: string;
+  tradePermittedCount: number;
+};
+
+export type AdminCalibrationSummary = {
+  distributions: CalibrationDistributionRow[];
+  generatedAt: string;
+  groups: Record<CalibrationGroupType, CalibrationMetricRow[]>;
+  latestRun: ScannerRunSummary | null;
+  observationCount: number;
+};
+
 type CountRow = QueryResultRow & { count: string | number };
 type DashboardCountsRow = QueryResultRow & {
   admin_users: string | number;
@@ -244,6 +274,23 @@ type AuditLogRow = QueryResultRow & {
   metadata: Record<string, unknown> | null;
   target_id: string | null;
   target_type: string;
+};
+type CalibrationMetricDbRow = QueryResultRow & {
+  avg_return: string | number | null;
+  count: string | number;
+  group_type: CalibrationGroupType;
+  group_value: string | null;
+  horizon: string | null;
+  median_return: string | number | null;
+  win_rate: string | number | null;
+  worst_return: string | number | null;
+};
+type CalibrationDistributionDbRow = QueryResultRow & {
+  avg_confidence: string | number | null;
+  avg_score: string | number | null;
+  count: string | number;
+  decision: string | null;
+  trade_permitted_count: string | number;
 };
 
 export async function getAdminDashboardSummary(): Promise<AdminDashboardSummary> {
@@ -533,6 +580,32 @@ export async function listAdminAuditLog(): Promise<AdminAuditLogItem[]> {
   }));
 }
 
+export async function getAdminCalibrationSummary(): Promise<AdminCalibrationSummary> {
+  const [latestRun, observationCount, scoreBucket, decision, setupType, assetType, marketRegime, distributions] = await Promise.all([
+    getLatestScannerRun(),
+    countQuery("SELECT count(*) AS count FROM forward_returns WHERE return_pct IS NOT NULL").catch(() => 0),
+    calibrationGroupQuery("score_bucket"),
+    calibrationGroupQuery("decision"),
+    calibrationGroupQuery("setup_type"),
+    calibrationGroupQuery("asset_type"),
+    calibrationGroupQuery("market_regime"),
+    latestDecisionDistribution(),
+  ]);
+  return {
+    distributions,
+    generatedAt: new Date().toISOString(),
+    groups: {
+      asset_type: assetType,
+      decision,
+      market_regime: marketRegime,
+      score_bucket: scoreBucket,
+      setup_type: setupType,
+    },
+    latestRun,
+    observationCount,
+  };
+}
+
 async function dashboardUserCounts(): Promise<AdminDashboardSummary["users"]> {
   const result = await dbQuery<DashboardCountsRow>(
     `
@@ -681,4 +754,117 @@ function toNullableNumber(value: string | number | null | undefined): number | n
   if (value === null || value === undefined) return null;
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
+}
+
+async function calibrationGroupQuery(groupType: CalibrationGroupType): Promise<CalibrationMetricRow[]> {
+  const groupExpression = calibrationGroupExpression(groupType);
+  const result = await dbQuery<CalibrationMetricDbRow>(
+    `
+      WITH base AS (
+        SELECT
+          ${groupExpression} AS group_value,
+          COALESCE(NULLIF(horizon, ''), 'UNKNOWN') AS horizon,
+          return_pct::numeric AS return_pct
+        FROM forward_returns
+        WHERE return_pct IS NOT NULL
+      )
+      SELECT
+        $1::text AS group_type,
+        COALESCE(NULLIF(group_value, ''), 'UNKNOWN') AS group_value,
+        horizon,
+        count(*) AS count,
+        avg(return_pct) AS avg_return,
+        percentile_cont(0.50) WITHIN GROUP (ORDER BY return_pct) AS median_return,
+        avg(CASE WHEN return_pct > 0 THEN 1.0 ELSE 0.0 END) AS win_rate,
+        min(return_pct) AS worst_return
+      FROM base
+      GROUP BY group_value, horizon
+      ORDER BY
+        CASE horizon
+          WHEN '1D' THEN 1
+          WHEN '2D' THEN 2
+          WHEN '3D' THEN 3
+          WHEN '5D' THEN 5
+          WHEN '10D' THEN 10
+          WHEN '20D' THEN 20
+          WHEN '60D' THEN 60
+          ELSE 999
+        END,
+        count(*) DESC,
+        group_value ASC
+      LIMIT 160
+    `,
+    [groupType],
+  ).catch(() => ({ rows: [] as CalibrationMetricDbRow[] }));
+  return result.rows.map((row) => ({
+    avgReturnPct: toPercent(row.avg_return),
+    count: toNumber(row.count),
+    groupType: row.group_type,
+    groupValue: row.group_value ?? "UNKNOWN",
+    horizon: row.horizon ?? "UNKNOWN",
+    lowConfidence: toNumber(row.count) < 30,
+    medianReturnPct: toPercent(row.median_return),
+    winRatePct: toPercent(row.win_rate),
+    worstReturnPct: toPercent(row.worst_return),
+  }));
+}
+
+function calibrationGroupExpression(groupType: CalibrationGroupType): string {
+  if (groupType === "score_bucket") {
+    return `
+      COALESCE(
+        NULLIF(metrics->>'score_bucket', ''),
+        CASE
+          WHEN NULLIF(metrics->>'final_score', '') IS NULL THEN 'UNKNOWN'
+          WHEN NULLIF(metrics->>'final_score', '')::numeric < 40 THEN '0-39'
+          WHEN NULLIF(metrics->>'final_score', '')::numeric < 50 THEN '40-49'
+          WHEN NULLIF(metrics->>'final_score', '')::numeric < 60 THEN '50-59'
+          WHEN NULLIF(metrics->>'final_score', '')::numeric < 70 THEN '60-69'
+          WHEN NULLIF(metrics->>'final_score', '')::numeric < 80 THEN '70-79'
+          WHEN NULLIF(metrics->>'final_score', '')::numeric < 90 THEN '80-89'
+          ELSE '90-100'
+        END
+      )
+    `;
+  }
+  if (groupType === "decision") return "COALESCE(NULLIF(metrics->>'final_decision', ''), NULLIF(metrics->>'action', ''), 'UNKNOWN')";
+  if (groupType === "setup_type") return "COALESCE(NULLIF(metrics->>'setup_type', ''), 'UNKNOWN')";
+  if (groupType === "asset_type") return "COALESCE(NULLIF(metrics->>'asset_type', ''), 'UNKNOWN')";
+  return "COALESCE(NULLIF(metrics->>'market_regime', ''), 'UNKNOWN')";
+}
+
+async function latestDecisionDistribution(): Promise<CalibrationDistributionRow[]> {
+  const result = await dbQuery<CalibrationDistributionDbRow>(
+    `
+      WITH latest AS (
+        SELECT id
+        FROM scan_runs
+        WHERE status = 'success'
+        ORDER BY completed_at DESC NULLS LAST, created_at DESC
+        LIMIT 1
+      )
+      SELECT
+        COALESCE(NULLIF(s.final_decision, ''), 'UNKNOWN') AS decision,
+        count(*) AS count,
+        avg(s.final_score) AS avg_score,
+        avg(NULLIF(s.payload->>'confidence_score', '')::numeric) AS avg_confidence,
+        count(*) FILTER (WHERE s.payload->>'trade_permitted' = 'true') AS trade_permitted_count
+      FROM scanner_signals s
+      INNER JOIN latest ON latest.id = s.scan_run_id
+      GROUP BY COALESCE(NULLIF(s.final_decision, ''), 'UNKNOWN')
+      ORDER BY count(*) DESC, decision ASC
+    `,
+  ).catch(() => ({ rows: [] as CalibrationDistributionDbRow[] }));
+  return result.rows.map((row) => ({
+    avgConfidence: toNullableNumber(row.avg_confidence),
+    avgScore: toNullableNumber(row.avg_score),
+    count: toNumber(row.count),
+    decision: row.decision ?? "UNKNOWN",
+    tradePermittedCount: toNumber(row.trade_permitted_count),
+  }));
+}
+
+function toPercent(value: string | number | null | undefined): number | null {
+  const numeric = toNullableNumber(value);
+  return numeric === null ? null : numeric * 100;
 }

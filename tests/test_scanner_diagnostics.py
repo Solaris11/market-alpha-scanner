@@ -13,6 +13,7 @@ from scanner.diagnostics import (
     factor_weights_for_asset,
     vetoes_for_row,
 )
+from scanner.engine import apply_decision_safety_gates
 
 
 def _base_row() -> dict[str, object]:
@@ -128,6 +129,31 @@ class ScannerDiagnosticsTests(unittest.TestCase):
         for phrase in blocked_phrases:
             self.assertNotIn(phrase, joined)
         self.assertIn("TREND_CONFIRMED", result["decision_reason_codes"])
+
+    def test_hard_veto_downgrades_enter_to_avoid(self) -> None:
+        row = _base_row()
+        row["risk_reward"] = 0.4
+        diagnostics = apply_scoring_diagnostics(pd.DataFrame([row]))
+        gated = apply_decision_safety_gates(diagnostics).iloc[0]
+        self.assertEqual(gated["final_decision"], "AVOID")
+        self.assertIn("Hard veto blocked entry", str(gated["decision_reason"]))
+
+    def test_recoverable_veto_downgrades_enter_to_wait(self) -> None:
+        row = _base_row()
+        row["market_regime"] = "OVERHEATED"
+        diagnostics = apply_scoring_diagnostics(pd.DataFrame([row]))
+        gated = apply_decision_safety_gates(diagnostics).iloc[0]
+        self.assertEqual(gated["final_decision"], "WAIT_PULLBACK")
+        self.assertIn("wait for confirmation", str(gated["decision_reason"]))
+
+    def test_low_confidence_downgrades_enter_to_watch(self) -> None:
+        row = _base_row()
+        diagnostics = apply_scoring_diagnostics(pd.DataFrame([row]))
+        diagnostics.at[0, "confidence_score"] = 45.0
+        diagnostics.at[0, "trade_permitted"] = True
+        gated = apply_decision_safety_gates(diagnostics).iloc[0]
+        self.assertEqual(gated["final_decision"], "WATCH")
+        self.assertIn("Confidence score below", str(gated["decision_reason"]))
 
 
 if __name__ == "__main__":

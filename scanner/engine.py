@@ -40,6 +40,18 @@ from .scoring import (
 from .structure import compute_market_structure
 from .utils import ema, extract_company_name, macd_hist, parse_earnings_date, safe_float, safe_str, sma
 
+BUY_FINAL_DECISIONS = {"ENTER", "BUY", "STRONG BUY", "STRONG_BUY"}
+MIN_BUY_CONFIDENCE_SCORE = 70.0
+SEVERE_VETO_CODES = {
+    "STALE_DATA",
+    "LOW_CONFIDENCE_DATA",
+    "PROVIDER_ERROR",
+    "EXTREME_VOLATILITY",
+    "POOR_RISK_REWARD",
+    "STOP_RISK",
+    "RISK_OFF_MARKET",
+}
+
 
 def _object_dict(value: object) -> dict[str, object] | None:
     if not isinstance(value, dict):
@@ -356,6 +368,8 @@ def scan_symbols(
     df_rank = apply_recommendation_quality(df_rank, market_structure)
     df_rank = apply_final_trade_decision(df_rank)
     df_rank = apply_scoring_diagnostics(df_rank)
+    df_rank = apply_decision_safety_gates(df_rank)
+    df_rank = apply_scoring_diagnostics(df_rank)
     df_rank = df_rank.sort_values(by=["final_score", "technical_score", "macro_score"], ascending=[False, False, False]).reset_index(drop=True)
     df_rank.attrs["ranked_assets"] = ranked
     df_rank.attrs["price_map"] = price_map
@@ -415,3 +429,60 @@ def _price_data_timestamp(price_map: dict[str, pd.DataFrame], symbol: str) -> st
     if frame is None or frame.empty:
         return ""
     return pd.Timestamp(frame.index[-1]).isoformat()
+
+
+def apply_decision_safety_gates(df_rank: pd.DataFrame) -> pd.DataFrame:
+    working = df_rank.copy()
+    for index, row in working.iterrows():
+        decision = safe_str(row.get("final_decision"), "").upper()
+        if decision not in BUY_FINAL_DECISIONS:
+            continue
+
+        vetoes = _veto_codes(row.get("vetoes"))
+        trade_permitted = _bool_value(row.get("trade_permitted"))
+        confidence_score = safe_float(row.get("confidence_score"), np.nan)
+
+        if not trade_permitted:
+            next_decision = "AVOID" if _has_severe_veto(vetoes) else "WAIT_PULLBACK"
+            working.at[index, "final_decision"] = next_decision
+            working.at[index, "decision_reason"] = _veto_decision_reason(vetoes, next_decision)
+            if next_decision == "AVOID":
+                working.at[index, "suggested_entry"] = np.nan
+                working.at[index, "entry_distance_pct"] = np.nan
+            continue
+
+        if not np.isnan(confidence_score) and confidence_score < MIN_BUY_CONFIDENCE_SCORE:
+            working.at[index, "final_decision"] = "WATCH"
+            working.at[index, "decision_reason"] = f"Confidence score below {MIN_BUY_CONFIDENCE_SCORE:.0f}; monitor until confirmation improves"
+            working.at[index, "suggested_entry"] = np.nan
+            working.at[index, "entry_distance_pct"] = np.nan
+    return working
+
+
+def _veto_codes(value: object) -> list[str]:
+    if isinstance(value, list):
+        return [safe_str(item, "").upper() for item in value if safe_str(item, "")]
+    if isinstance(value, tuple):
+        return [safe_str(item, "").upper() for item in value if safe_str(item, "")]
+    text = safe_str(value, "")
+    if not text:
+        return []
+    return [part.strip().upper() for part in text.strip("[]").replace('"', "").replace("'", "").split(",") if part.strip()]
+
+
+def _bool_value(value: object) -> bool:
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    normalized = safe_str(value, "").lower()
+    return normalized in {"true", "1", "yes", "y"}
+
+
+def _has_severe_veto(vetoes: list[str]) -> bool:
+    return any(code in SEVERE_VETO_CODES for code in vetoes)
+
+
+def _veto_decision_reason(vetoes: list[str], decision: str) -> str:
+    joined = ", ".join(vetoes) if vetoes else "risk gate"
+    if decision == "AVOID":
+        return f"Hard veto blocked entry: {joined}"
+    return f"Entry blocked by veto; wait for confirmation: {joined}"
