@@ -29,6 +29,10 @@ describe("support policy", () => {
     assert.equal(classifySupportMessage("What does WAIT mean?"), "allowed_product_support");
     assert.equal(classifySupportMessage("How do alerts work?"), "allowed_product_support");
     assert.equal(classifySupportMessage("How do I cancel?"), "allowed_product_support");
+    assert.equal(classifySupportMessage("Why did refresh failed show up?"), "allowed_product_support");
+    assert.equal(classifySupportMessage("What does scanner already running mean?"), "allowed_product_support");
+    assert.equal(classifySupportMessage("Why are there no BUY signals today?"), "allowed_product_support");
+    assert.equal(classifySupportMessage("What should I do with stale data?"), "allowed_product_support");
   });
 
   it("returns safe assistant responses without financial advice", () => {
@@ -38,5 +42,8 @@ describe("support policy", () => {
     const allowed = supportChatResponse("What does WAIT mean?");
     assert.equal(allowed.ok, true);
     assert.match(allowed.message, /research and education only/i);
+    const troubleshooting = supportChatResponse("Refresh failed because scanner is already running");
+    assert.equal(troubleshooting.ok, true);
+    assert.match(troubleshooting.message, /scanner job is already active/i);
   });
 });

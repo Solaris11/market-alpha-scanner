@@ -22,6 +22,7 @@ export type OpportunityViewModel = {
   conviction: number;
   confidenceLabel: "High" | "Medium" | "Weak" | "Avoid";
   dataFreshness: DataFreshness;
+  raw: RankingRow;
 };
 
 export type OpportunitiesPageModel = {
@@ -60,6 +61,7 @@ function toOpportunityViewModel(row: RankingRow, edge?: Parameters<typeof comput
     conviction: conviction.score,
     confidenceLabel: conviction.label,
     dataFreshness: freshnessFromTimestamp(stringOrNull(row.last_updated ?? row.last_updated_utc)),
+    raw: row,
   };
 }
 

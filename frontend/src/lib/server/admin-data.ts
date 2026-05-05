@@ -116,9 +116,11 @@ export type AdminMonitoringSummary = {
     recent4xx: number;
     recent5xx: number;
     requestsLastHour: number;
-    slowestRoutes: Array<{ latencyMs: number; method: string; route: string; statusCode: number }>;
+    series: Array<{ bucket: string; errors: number; p95LatencyMs: number | null; requests: number }>;
+    slowestRoutes: Array<{ count: number; errors: number; latencyMs: number; maxLatencyMs: number; method: string; p95LatencyMs: number | null; recentErrors: Array<{ createdAt: string | null; statusCode: number }>; route: string; statusCode: number }>;
   };
   syntheticChecks: Array<{ checkName: string; createdAt: string | null; latencyMs: number; message: string; status: string }>;
+  syntheticSeries: Array<{ bucket: string; failed: number; ok: number; warned: number }>;
   system: {
     backupDirBytes: number | null;
     scannerOutputBytes: number | null;
@@ -128,7 +130,11 @@ export type AdminMonitoringSummary = {
     memoryPercent: number | null;
     updatedAt: string | null;
   };
+  systemSeries: Array<{ bucket: string; cpuPercent: number | null; diskPercent: number | null; memoryPercent: number | null }>;
+  timeRange: MonitoringTimeRange;
 };
+
+export type MonitoringTimeRange = "15m" | "1h" | "6h" | "24h";
 
 export type AdminAuditLogItem = {
   action: string;
@@ -258,10 +264,27 @@ type RequestMetricsRow = QueryResultRow & {
   requests_last_hour: string | number;
 };
 type SlowRouteRow = QueryResultRow & {
+  count: string | number;
+  errors: string | number;
   latency_ms: string | number;
+  max_latency_ms: string | number;
   method: string;
+  p95_latency_ms: string | number | null;
+  recent_errors: Array<{ created_at?: string | null; status_code?: string | number | null }> | null;
   route: string;
   status_code: string | number;
+};
+type RequestSeriesRow = QueryResultRow & {
+  bucket: string;
+  errors: string | number;
+  p95_latency_ms: string | number | null;
+  requests: string | number;
+};
+type SyntheticSeriesRow = QueryResultRow & {
+  bucket: string;
+  failed: string | number;
+  ok: string | number;
+  warned: string | number;
 };
 type SystemMetricRow = QueryResultRow & {
   backup_dir_bytes: string | number | null;
@@ -271,6 +294,12 @@ type SystemMetricRow = QueryResultRow & {
   memory_percent: string | number | null;
   scanner_output_bytes: string | number | null;
   updated_at: string | null;
+};
+type SystemSeriesRow = QueryResultRow & {
+  bucket: string;
+  cpu_percent: string | number | null;
+  disk_percent: string | number | null;
+  memory_percent: string | number | null;
 };
 type AuditLogRow = QueryResultRow & {
   action: string;
@@ -487,8 +516,9 @@ export async function getAdminScannerSummary(): Promise<AdminScannerSummary> {
   };
 }
 
-export async function getAdminMonitoringSummary(): Promise<AdminMonitoringSummary> {
-  const [synthetics, requestMetrics, slowestRoutes, system, appEvents, latestBackup] = await Promise.all([
+export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange = "1h"): Promise<AdminMonitoringSummary> {
+  const window = monitoringWindow(timeRange);
+  const [synthetics, requestMetrics, requestSeries, slowestRoutes, system, systemSeries, syntheticSeries, appEvents, latestBackup] = await Promise.all([
     dbQuery<SyntheticRow>(
       `
         SELECT DISTINCT ON (check_name)
@@ -511,15 +541,77 @@ export async function getAdminMonitoringSummary(): Promise<AdminMonitoringSummar
           percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms,
           percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms) AS p99_latency_ms
         FROM request_metrics
-        WHERE created_at > now() - interval '1 hour'
+        WHERE created_at > now() - ${window.intervalSql}
       `,
     ).catch(() => ({ rows: [] as RequestMetricsRow[] })),
+    dbQuery<RequestSeriesRow>(
+      `
+        SELECT
+          date_bin(${window.bucketSql}, created_at, TIMESTAMPTZ '2000-01-01')::text AS bucket,
+          count(*) AS requests,
+          count(*) FILTER (WHERE status_code >= 500) AS errors,
+          percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms
+        FROM request_metrics
+        WHERE created_at > now() - ${window.intervalSql}
+        GROUP BY bucket
+        ORDER BY bucket ASC
+      `,
+    ).catch(() => ({ rows: [] as RequestSeriesRow[] })),
     dbQuery<SlowRouteRow>(
       `
-        SELECT route, method, status_code, latency_ms
-        FROM request_metrics
-        WHERE created_at > now() - interval '1 hour'
-        ORDER BY latency_ms DESC
+        WITH grouped AS (
+          SELECT
+            route,
+            method,
+            count(*) AS count,
+            count(*) FILTER (WHERE status_code >= 500) AS errors,
+            max(latency_ms) AS max_latency_ms,
+            percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms
+          FROM request_metrics
+          WHERE created_at > now() - ${window.intervalSql}
+          GROUP BY route, method
+        ),
+        slowest AS (
+          SELECT route, method, status_code, latency_ms
+          FROM request_metrics
+          WHERE created_at > now() - ${window.intervalSql}
+          ORDER BY latency_ms DESC
+          LIMIT 40
+        )
+        SELECT
+          g.route,
+          g.method,
+          COALESCE(s.status_code, 0) AS status_code,
+          COALESCE(s.latency_ms, g.max_latency_ms) AS latency_ms,
+          g.count,
+          g.errors,
+          g.max_latency_ms,
+          g.p95_latency_ms,
+          COALESCE(
+            (
+              SELECT jsonb_agg(jsonb_build_object('status_code', rm.status_code, 'created_at', rm.created_at::text) ORDER BY rm.created_at DESC)
+              FROM (
+                SELECT status_code, created_at
+                FROM request_metrics
+                WHERE route = g.route
+                  AND method = g.method
+                  AND status_code >= 400
+                  AND created_at > now() - ${window.intervalSql}
+                ORDER BY created_at DESC
+                LIMIT 5
+              ) rm
+            ),
+            '[]'::jsonb
+          ) AS recent_errors
+        FROM grouped g
+        LEFT JOIN LATERAL (
+          SELECT status_code, latency_ms
+          FROM slowest s
+          WHERE s.route = g.route AND s.method = g.method
+          ORDER BY s.latency_ms DESC
+          LIMIT 1
+        ) s ON true
+        ORDER BY g.max_latency_ms DESC
         LIMIT 10
       `,
     ).catch(() => ({ rows: [] as SlowRouteRow[] })),
@@ -538,6 +630,32 @@ export async function getAdminMonitoringSummary(): Promise<AdminMonitoringSummar
         LIMIT 1
       `,
     ).catch(() => ({ rows: [] as SystemMetricRow[] })),
+    dbQuery<SystemSeriesRow>(
+      `
+        SELECT
+          date_bin(${window.bucketSql}, created_at, TIMESTAMPTZ '2000-01-01')::text AS bucket,
+          avg(cpu_percent) AS cpu_percent,
+          avg(memory_percent) AS memory_percent,
+          avg(disk_percent) AS disk_percent
+        FROM system_metrics
+        WHERE created_at > now() - ${window.intervalSql}
+        GROUP BY bucket
+        ORDER BY bucket ASC
+      `,
+    ).catch(() => ({ rows: [] as SystemSeriesRow[] })),
+    dbQuery<SyntheticSeriesRow>(
+      `
+        SELECT
+          date_bin(${window.bucketSql}, created_at, TIMESTAMPTZ '2000-01-01')::text AS bucket,
+          count(*) FILTER (WHERE status = 'ok') AS ok,
+          count(*) FILTER (WHERE status = 'warn') AS warned,
+          count(*) FILTER (WHERE status = 'fail') AS failed
+        FROM synthetic_check_results
+        WHERE created_at > now() - ${window.intervalSql}
+        GROUP BY bucket
+        ORDER BY bucket ASC
+      `,
+    ).catch(() => ({ rows: [] as SyntheticSeriesRow[] })),
     recentMonitoringWarnings(20),
     recentMonitoringEventByType("backup"),
   ]);
@@ -553,9 +671,23 @@ export async function getAdminMonitoringSummary(): Promise<AdminMonitoringSummar
       recent4xx: toNumber(metrics?.recent_4xx),
       recent5xx: toNumber(metrics?.recent_5xx),
       requestsLastHour: toNumber(metrics?.requests_last_hour),
-      slowestRoutes: slowestRoutes.rows.map((row) => ({ latencyMs: toNumber(row.latency_ms), method: row.method, route: row.route, statusCode: toNumber(row.status_code) })),
+      series: requestSeries.rows.map((row) => ({ bucket: row.bucket, errors: toNumber(row.errors), p95LatencyMs: toNullableNumber(row.p95_latency_ms), requests: toNumber(row.requests) })),
+      slowestRoutes: slowestRoutes.rows.map((row) => ({
+        count: toNumber(row.count),
+        errors: toNumber(row.errors),
+        latencyMs: toNumber(row.latency_ms),
+        maxLatencyMs: toNumber(row.max_latency_ms),
+        method: row.method,
+        p95LatencyMs: toNullableNumber(row.p95_latency_ms),
+        recentErrors: Array.isArray(row.recent_errors)
+          ? row.recent_errors.map((item) => ({ createdAt: item.created_at ?? null, statusCode: toNumber(item.status_code) }))
+          : [],
+        route: row.route,
+        statusCode: toNumber(row.status_code),
+      })),
     },
     syntheticChecks: synthetics.rows.map((row) => ({ checkName: row.check_name, createdAt: row.created_at, latencyMs: toNumber(row.latency_ms), message: row.message, status: row.status })),
+    syntheticSeries: syntheticSeries.rows.map((row) => ({ bucket: row.bucket, failed: toNumber(row.failed), ok: toNumber(row.ok), warned: toNumber(row.warned) })),
     system: {
       backupDirBytes: toNullableNumber(latestSystem?.backup_dir_bytes),
       scannerOutputBytes: toNullableNumber(latestSystem?.scanner_output_bytes),
@@ -565,6 +697,8 @@ export async function getAdminMonitoringSummary(): Promise<AdminMonitoringSummar
       memoryPercent: toNullableNumber(latestSystem?.memory_percent),
       updatedAt: latestSystem?.updated_at ?? null,
     },
+    systemSeries: systemSeries.rows.map((row) => ({ bucket: row.bucket, cpuPercent: toNullableNumber(row.cpu_percent), diskPercent: toNullableNumber(row.disk_percent), memoryPercent: toNullableNumber(row.memory_percent) })),
+    timeRange,
   };
 }
 
@@ -594,6 +728,20 @@ export async function listAdminAuditLog(): Promise<AdminAuditLogItem[]> {
     targetId: row.target_id,
     targetType: row.target_type,
   }));
+}
+
+function monitoringWindow(range: MonitoringTimeRange): { bucketSql: string; intervalSql: string } {
+  switch (range) {
+    case "15m":
+      return { bucketSql: "INTERVAL '1 minute'", intervalSql: "INTERVAL '15 minutes'" };
+    case "6h":
+      return { bucketSql: "INTERVAL '15 minutes'", intervalSql: "INTERVAL '6 hours'" };
+    case "24h":
+      return { bucketSql: "INTERVAL '1 hour'", intervalSql: "INTERVAL '24 hours'" };
+    case "1h":
+    default:
+      return { bucketSql: "INTERVAL '5 minutes'", intervalSql: "INTERVAL '1 hour'" };
+  }
 }
 
 export async function getAdminCalibrationSummary(): Promise<AdminCalibrationSummary> {

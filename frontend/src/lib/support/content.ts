@@ -136,6 +136,18 @@ export const SUPPORT_GUIDES: SupportGuide[] = [
 
 export function findSupportAnswer(message: string): string {
   const normalized = message.toLowerCase();
+  if (normalized.includes("refresh failed") || normalized.includes("analysis refresh failed") || normalized.includes("signals failed")) {
+    return "If refresh shows a running state, another scanner job is already active. Wait for the current run to finish; the latest run time will update automatically. If it stays stale, open a technical support ticket with the page and timestamp.";
+  }
+  if (normalized.includes("scanner running") || normalized.includes("already running")) {
+    return "Only one scanner run can execute at a time. When the scanner is already running, refresh controls are disabled and data updates after that run completes.";
+  }
+  if (normalized.includes("no buy") || normalized.includes("no active trade") || normalized.includes("no trade")) {
+    return "No active BUY signals can be normal. Market Alpha is designed to reduce overtrading; WAIT, WATCH, and AVOID states mean the system is prioritizing discipline over forced activity.";
+  }
+  if (normalized.includes("stale data") || normalized.includes("outdated data")) {
+    return "Stale data disables active decisions. Wait for a fresh scanner run before using research views, and open a support ticket if stale status persists.";
+  }
   const match = SUPPORT_FAQ.find((item) => normalized.includes(item.slug.replaceAll("-", " ")) || normalized.includes(item.question.toLowerCase().replace("?", "")));
   if (match) return match.answer;
   if (normalized.includes("cancel") || normalized.includes("renew") || normalized.includes("billing")) return SUPPORT_FAQ.find((item) => item.slug === "cancel-renew")?.answer ?? defaultSupportAnswer();

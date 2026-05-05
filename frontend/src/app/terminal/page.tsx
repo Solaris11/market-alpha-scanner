@@ -13,12 +13,15 @@ import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
 import { SignalCard } from "@/components/terminal/SignalCard";
 import { SignalHeatmap } from "@/components/terminal/SignalHeatmap";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
+import { TerminalRightRail } from "@/components/terminal/TerminalRightRail";
+import { getActiveAlertMatches } from "@/lib/active-alert-matches";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { assertNoPremiumFields } from "@/lib/server/premium-preview";
 import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
+import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { dailyActionBlocksTradeUi, getDailyAction, noTradeActionCopy } from "@/lib/trading/daily-action";
@@ -73,10 +76,12 @@ export default async function TerminalPage() {
   }
 
   const adapter = new ScannerDataAdapter();
-  const [snapshot, performance, scanSafety] = await Promise.all([
+  const [snapshot, performance, scanSafety, watchlistSymbols, activeAlertMatches] = await Promise.all([
     adapter.getTerminalSnapshot(),
     getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
     getCurrentScanSafety(),
+    entitlement.user?.id ? readUserWatchlist(entitlement.user.id).catch(() => []) : Promise.resolve([]),
+    getActiveAlertMatches(entitlement.user?.id ?? null).then((result) => result.matches).catch(() => []),
   ]);
   const edges = buildEdgeLookup(snapshot.signals, performance);
   const opportunityModel = buildOpportunitiesPageModel(snapshot.signals, performance);
@@ -168,6 +173,13 @@ export default async function TerminalPage() {
         </div>
 
         <div className="space-y-4 xl:sticky xl:top-4 xl:self-start">
+          <TerminalRightRail
+            alertMatches={activeAlertMatches}
+            marketRegime={snapshot.marketRegime}
+            rows={snapshot.signals}
+            scanSafety={scanSafety}
+            watchlistSymbols={watchlistSymbols}
+          />
           {!actionBlocksTradeUi && leader ? <AICopilotPanel signal={leader} /> : null}
         </div>
       </div>

@@ -19,6 +19,7 @@ import { ExecutionTicket } from "./ExecutionTicket";
 import { HistoricalEdgeCard } from "./HistoricalEdgeCard";
 import { PaperContextCard } from "./PaperContextCard";
 import { SymbolChart, type ChartCandle, type ChartSignalMarker } from "./SymbolChart";
+import { SymbolDecisionIntelligencePanel } from "./SymbolDecisionIntelligencePanel";
 import { SymbolDecisionHero } from "./SymbolDecisionHero";
 import { SignalStatusCard } from "./SignalStatusCard";
 import { TechnicalSnapshotCard } from "./TechnicalSnapshotCard";
@@ -102,14 +103,17 @@ export function SymbolTerminalWorkspace({
       ) : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
-        {canTrade ? (
-          <AICopilotPanel engine={tradeEngine} signal={row} />
-        ) : (
-          <GlassPanel className="p-6">
-            <SectionTitle eyebrow="Decision Assistant" title="Research Mode" />
-            <p className="mt-4 text-sm leading-6 text-slate-400">AI trade guidance is suppressed while the global decision says no active trade. Review the context without acting.</p>
-          </GlassPanel>
-        )}
+        <div className="space-y-5">
+          {canTrade ? (
+            <AICopilotPanel engine={tradeEngine} signal={row} />
+          ) : (
+            <GlassPanel className="p-6">
+              <SectionTitle eyebrow="Decision Assistant" title="Research Mode" />
+              <p className="mt-4 text-sm leading-6 text-slate-400">AI trade guidance is suppressed while the global decision says no active trade. Review the context without acting.</p>
+            </GlassPanel>
+          )}
+          <SymbolDecisionIntelligencePanel candles={candles} row={row} />
+        </div>
         <aside className="space-y-5 xl:sticky xl:top-5 xl:self-start">
           <WhatIfSimulator canTrade={canTrade} engine={tradeEngine} researchModeReason={researchModeReason} />
           {canTrade ? <ExecutionTicket canTrade={canTrade} engine={tradeEngine} researchModeReason={researchModeReason} symbol={symbol} /> : null}

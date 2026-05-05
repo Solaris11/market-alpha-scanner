@@ -37,10 +37,11 @@ export default async function OpportunitiesPage() {
     getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
   ]);
   const model = buildOpportunitiesPageModel(rows, performance);
+  const bestDetail = model.best ? await adapter.getSymbolDetail(model.best.symbol).catch(() => null) : null;
 
   return (
     <TerminalShell>
-      <OpportunitiesWorkspace best={model.best} marketCondition={regime.label} rows={model.rows} />
+      <OpportunitiesWorkspace best={model.best} bestPriceSeries={bestDetail?.history ?? []} marketCondition={regime.label} rows={model.rows} />
     </TerminalShell>
   );
 }

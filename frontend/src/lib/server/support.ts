@@ -5,6 +5,7 @@ import { cleanSupportText, normalizeSupportCategory, normalizeSupportPriority, n
 import { normalizeAuthEmail, type AuthUser } from "./auth";
 import { dbQuery, dbTransaction } from "./db";
 import { sendSupportReplyEmail, sendSupportTicketCreatedEmail } from "./email";
+import { recordMonitoringEvent } from "./monitoring";
 import { requestIp } from "./request-security";
 
 export type SupportTicket = {
@@ -92,9 +93,7 @@ export async function createSupportTicket(input: {
     return id;
   });
   const created = await getSupportTicketForRequester(ticketId, input.user?.id ?? null, email);
-  void sendSupportTicketCreatedEmail({ subject: created.subject, ticketId: created.id, to: created.email }).catch((error: unknown) => {
-    console.warn("[support] ticket confirmation email failed", error instanceof Error ? error.message : error);
-  });
+  void sendSupportEmail("created", () => sendSupportTicketCreatedEmail({ subject: created.subject, ticketId: created.id, to: created.email }));
   return created;
 }
 
@@ -179,9 +178,7 @@ export async function adminReplyToSupportTicket(input: { admin: AuthUser; messag
   });
   const updated = await getAdminSupportTicket(input.ticketId);
   if (!updated) throw new Error("ticket_not_found");
-  void sendSupportReplyEmail({ message, subject: updated.subject, ticketId: updated.id, to: updated.email }).catch((error: unknown) => {
-    console.warn("[support] ticket reply email failed", error instanceof Error ? error.message : error);
-  });
+  void sendSupportEmail("reply", () => sendSupportReplyEmail({ message, subject: updated.subject, ticketId: updated.id, to: updated.email }));
   return updated;
 }
 
@@ -264,6 +261,32 @@ function ticketFromRow(row: TicketRow): SupportTicket {
     updatedAt: row.updated_at,
     userId: row.user_id,
   };
+}
+
+async function sendSupportEmail(kind: "created" | "reply", send: () => Promise<{ ok: boolean; reason?: string }>): Promise<void> {
+  try {
+    const result = await send();
+    if (!result.ok) {
+      await recordMonitoringEvent({
+        eventType: "email:support_delivery_failed",
+        message: `Support ${kind} email was not delivered.`,
+        metadata: { kind, reason: result.reason ?? "unknown" },
+        severity: "warning",
+        status: "fail",
+      });
+    }
+  } catch (error) {
+    await recordMonitoringEvent({
+      eventType: "email:support_delivery_failed",
+      message: `Support ${kind} email delivery failed.`,
+      metadata: { kind, error: error instanceof Error ? error.message.slice(0, 160) : "unknown" },
+      severity: "warning",
+      status: "fail",
+    }).catch((monitoringError: unknown) => {
+      console.warn("[support] support email failure monitoring write failed", monitoringError instanceof Error ? monitoringError.message : monitoringError);
+    });
+    console.warn("[support] support email delivery failed", error instanceof Error ? error.message : error);
+  }
 }
 
 function messageFromRow(row: MessageRow): SupportTicketMessage {

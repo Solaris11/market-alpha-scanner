@@ -6,9 +6,11 @@ import { useMemo, useState } from "react";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import { DataHealthIndicator } from "@/components/data-health-indicator";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
+import type { ScannerScalar } from "@/lib/types";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { WatchlistButton } from "@/components/watchlist-controls";
 import { DecisionBadge } from "@/components/terminal/DecisionBadge";
+import { SymbolChart, type ChartCandle } from "@/components/terminal/SymbolChart";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
 
@@ -25,7 +27,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "DECISION_PRIORITY", label: "Decision priority" },
 ];
 
-export function OpportunitiesWorkspace({ best, marketCondition, rows }: { best: OpportunityViewModel | null; marketCondition: string | null; rows: OpportunityViewModel[] }) {
+export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition, rows }: { best: OpportunityViewModel | null; bestPriceSeries: Record<string, ScannerScalar>[]; marketCondition: string | null; rows: OpportunityViewModel[] }) {
   const [activeTab, setActiveTab] = useState<TabKey>("BEST");
   const [assetTypeFilter, setAssetTypeFilter] = useState("ALL");
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("ALL");
@@ -77,7 +79,7 @@ export function OpportunitiesWorkspace({ best, marketCondition, rows }: { best: 
 
   return (
     <div className="min-w-0 max-w-full space-y-5">
-      <BestTradeNowOpportunityCard best={best} marketCondition={marketCondition} />
+      <BestTradeNowOpportunityCard best={best} marketCondition={marketCondition} priceSeries={bestPriceSeries} />
 
       <GlassPanel className="p-5">
         <SectionTitle eyebrow="Opportunities" title="Scanner Universe" meta={`Showing ${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} symbols`} />
@@ -137,7 +139,7 @@ export function OpportunitiesWorkspace({ best, marketCondition, rows }: { best: 
   );
 }
 
-function BestTradeNowOpportunityCard({ best, marketCondition }: { best: OpportunityViewModel | null; marketCondition: string | null }) {
+function BestTradeNowOpportunityCard({ best, marketCondition, priceSeries }: { best: OpportunityViewModel | null; marketCondition: string | null; priceSeries: Record<string, ScannerScalar>[] }) {
   if (!best) {
     return (
       <GlassPanel className="overflow-hidden p-6 md:p-8">
@@ -152,7 +154,7 @@ function BestTradeNowOpportunityCard({ best, marketCondition }: { best: Opportun
 
   return (
     <GlassPanel className="overflow-hidden p-6 shadow-[0_0_90px_rgba(34,211,238,0.12)] md:p-8">
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_390px] xl:items-start">
         <div className="min-w-0">
           <div className="text-[10px] font-black uppercase tracking-[0.32em] text-emerald-300">Top Setup</div>
           <div className="mt-4 flex min-w-0 flex-wrap items-center gap-3">
@@ -173,16 +175,66 @@ function BestTradeNowOpportunityCard({ best, marketCondition }: { best: Opportun
           </div>
         </div>
 
-        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
-          <HeroMetric label="Conviction" value={`${best.conviction} ${best.confidenceLabel}`} />
-          <HeroMetric label="Score" value={formatNumber(best.final_score, 0)} />
-          <HeroMetric label="Entry" value={best.entryZoneLabel ?? formatMoney(best.suggested_entry)} />
-          <HeroMetric label="Stop" value={formatMoney(best.stop_loss)} tone="risk" />
-          <HeroMetric label="Target" value={formatMoney(best.target)} tone="reward" />
-          <HeroMetric label="Price" value={formatMoney(best.price)} />
-        </div>
+        <TopSetupIntelligencePanel best={best} candles={rowsToCandles(priceSeries)} />
       </div>
     </GlassPanel>
+  );
+}
+
+function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewModel; candles: ChartCandle[] }) {
+  const row = best.raw;
+  const reasons = reasonList(row.decision_reason_codes ?? best.decision_reason);
+  const vetoes = reasonList(row.vetoes ?? row.veto_reason ?? row.decision_reason_codes);
+  const factors = factorRows(row);
+  return (
+    <aside className="space-y-3">
+      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
+        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Why this setup</summary>
+        <div className="mt-3 grid gap-3">
+          <InsightList title="Decision reasons" items={reasons.length ? reasons : [cleanText(best.decision_reason, "Scanner score, risk filters, and data quality define this research state.")]} />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+            <InsightList title="Positive factors" items={topFactors(factors, true)} />
+            <InsightList title="Negative factors" items={topFactors(factors, false)} />
+          </div>
+        </div>
+      </details>
+
+      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
+        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">What to watch</summary>
+        <InsightList className="mt-3" title="Improvement conditions" items={whatToWatch(vetoes)} />
+      </details>
+
+      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
+        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Setup health</summary>
+        <div className="mt-3 space-y-2">
+          {["Trend", "Momentum", "Volume", "Risk"].map((label) => {
+            const value = setupHealthValue(row, label);
+            return <HealthBar key={label} label={label} value={value} />;
+          })}
+        </div>
+      </details>
+
+      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Mini price context</summary>
+        <div className="mt-3">
+          <SymbolChart candles={candles.slice(-80)} height={220} symbol={best.symbol} />
+          <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+            <HeroMetric label="Current" value={formatMoney(best.price)} />
+            <HeroMetric label="Entry context" value={best.entryZoneLabel ?? formatMoney(best.suggested_entry)} />
+          </div>
+        </div>
+      </details>
+
+      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Risk snapshot</summary>
+        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+          <HeroMetric label="ATR" value={formatNumber(row.atr)} />
+          <HeroMetric label="Stop distance" value={stopDistance(best)} tone="risk" />
+          <HeroMetric label="Volatility" value={percentLike(row.volatility ?? row.volatility_pct)} />
+          <HeroMetric label="Risk state" value={cleanText(row.trade_quality ?? row.risk_reward_label, "Context only")} />
+        </div>
+      </details>
+    </aside>
   );
 }
 
@@ -234,7 +286,7 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
       <div className="mt-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="min-w-0 text-xs text-slate-500">{cleanText(row.assetType, "Asset")} {row.sector ? `- ${row.sector}` : ""}</div>
         <Link className="w-full rounded-full bg-cyan-300 px-4 py-2 text-center text-xs font-bold text-slate-950 transition-all duration-200 hover:bg-cyan-200 sm:w-auto" href={`/symbol/${row.symbol}`}>
-          View Trade Plan
+          View Research Plan
         </Link>
       </div>
     </article>
@@ -258,6 +310,122 @@ function CardMetric({ label, value }: { label: string; value: string }) {
       <div className="mt-1 font-mono text-sm font-semibold text-slate-100">{value}</div>
     </div>
   );
+}
+
+function InsightList({ className = "", items, title }: { className?: string; items: string[]; title: string }) {
+  return (
+    <div className={`rounded-xl border border-white/10 bg-slate-950/35 p-3 ${className}`}>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{title}</div>
+      <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-300">
+        {items.map((item) => <li key={item}>- {item}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+function HealthBar({ label, value }: { label: string; value: number }) {
+  const color = value >= 65 ? "bg-emerald-300" : value < 40 ? "bg-rose-300" : "bg-amber-300";
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between text-xs">
+        <span className="text-slate-400">{label}</span>
+        <span className="font-mono text-slate-100">{Math.round(value)}</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${Math.max(4, Math.min(100, value))}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function rowsToCandles(rows: Record<string, ScannerScalar>[]): ChartCandle[] {
+  return rows
+    .map((row) => {
+      const time = textValue(row.date ?? row.datetime ?? row.timestamp_utc ?? row.time);
+      const open = numeric(row.open ?? row.Open);
+      const high = numeric(row.high ?? row.High);
+      const low = numeric(row.low ?? row.Low);
+      const close = numeric(row.close ?? row.Close);
+      if (!time || open === null || high === null || low === null || close === null) return null;
+      return { close, high, low, open, time };
+    })
+    .filter((candle): candle is ChartCandle => Boolean(candle));
+}
+
+function factorRows(row: OpportunityViewModel["raw"]): Array<{ label: string; value: number }> {
+  return [
+    { label: "Trend", value: numeric(row.trend_score ?? row.technical_score) ?? 50 },
+    { label: "Momentum", value: numeric(row.momentum_score ?? row.technical_score) ?? 50 },
+    { label: "Volume", value: numeric(row.volume_score ?? row.relative_volume_score) ?? 50 },
+    { label: "Risk", value: Math.max(0, 100 - (numeric(row.risk_penalty) ?? 0) * 5) },
+    { label: "Macro", value: numeric(row.macro_score) ?? 50 },
+    { label: "Data quality", value: numeric(row.data_quality_score) ?? (row.stale_data ? 35 : 75) },
+  ];
+}
+
+function topFactors(factors: Array<{ label: string; value: number }>, positive: boolean): string[] {
+  const sorted = [...factors].sort((a, b) => positive ? b.value - a.value : a.value - b.value).slice(0, 3);
+  return sorted.map((factor) => `${factor.label}: ${Math.round(factor.value)} (${factor.value >= 65 ? "supportive" : factor.value < 40 ? "weak" : "mixed"})`);
+}
+
+function whatToWatch(vetoes: string[]): string[] {
+  const mapped: string[] = [];
+  for (const veto of vetoes) {
+    const key = veto.toUpperCase().replace(/\s+/g, "_");
+    if (key.includes("STALE")) mapped.push("Wait for scanner freshness to return to OK.");
+    else if (key.includes("VOLATILITY")) mapped.push("Watch for volatility to cool and ranges to stabilize.");
+    else if (key.includes("VOLUME")) mapped.push("Watch for stronger volume confirmation.");
+    else if (key.includes("RISK_REWARD")) mapped.push("Watch for a cleaner risk/reward structure.");
+    else if (key.includes("MACRO")) mapped.push("Watch for market regime alignment.");
+    else if (key.includes("CONFIDENCE")) mapped.push("Watch for confidence to improve on later scans.");
+  }
+  if (mapped.length) return mapped;
+  return [
+    "Watch confidence and score behavior on the next scan.",
+    "Watch whether current price moves closer to the entry context.",
+    "Use the daily action and risk filters as the source of truth.",
+  ];
+}
+
+function reasonList(value: unknown): string[] {
+  if (Array.isArray(value)) return value.map(String).map(cleanReason).filter(Boolean).slice(0, 6);
+  const text = String(value ?? "").trim();
+  if (!text || text === "[object Object]") return [];
+  return text.split(/[,|;]/).map(cleanReason).filter(Boolean).slice(0, 6);
+}
+
+function setupHealthValue(row: OpportunityViewModel["raw"], label: string): number {
+  if (label === "Trend") return numeric(row.trend_score ?? row.technical_score) ?? 50;
+  if (label === "Momentum") return numeric(row.momentum_score ?? row.technical_score) ?? 50;
+  if (label === "Volume") return numeric(row.volume_score ?? row.relative_volume_score) ?? 50;
+  return Math.max(0, 100 - (numeric(row.risk_penalty) ?? 0) * 5);
+}
+
+function stopDistance(best: OpportunityViewModel): string {
+  if (best.price === null || best.stop_loss === null || best.price <= 0) return "N/A";
+  return `${Math.abs(((best.price - best.stop_loss) / best.price) * 100).toFixed(1)}%`;
+}
+
+function percentLike(value: unknown): string {
+  const parsed = numeric(value);
+  if (parsed === null) return "N/A";
+  const percent = Math.abs(parsed) <= 1 ? parsed * 100 : parsed;
+  return `${percent.toFixed(1)}%`;
+}
+
+function cleanReason(value: string): string {
+  return value.replace(/_/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function textValue(value: ScannerScalar) {
+  const text = String(value ?? "").trim();
+  return text || null;
+}
+
+function numeric(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const parsed = Number(String(value ?? "").replace(/[$,%]/g, "").trim());
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function NumberInput({ label, max, onChange, value }: { label: string; max: number; onChange: (value: number) => void; value: number }) {

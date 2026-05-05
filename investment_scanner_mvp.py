@@ -38,6 +38,7 @@ def positive_decimal(value: str) -> Decimal:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Practical multi-asset ranking scanner")
     parser.add_argument("--universe-csv", help="Optional CSV with symbol/ticker column")
+    parser.add_argument("--symbols", help="Optional comma-separated symbols for a constrained scan")
     parser.add_argument("--top", type=int, default=20, help="Number of top results to show")
     parser.add_argument("--outdir", default="scanner_output", help="Output directory")
     parser.add_argument("--min-price", type=float, default=MIN_PRICE)
@@ -73,6 +74,18 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def load_universe_from_symbols(symbols_text: str) -> list[str]:
+    symbols: list[str] = []
+    seen: set[str] = set()
+    for raw_symbol in symbols_text.split(","):
+        symbol = raw_symbol.strip().upper()
+        if not symbol or symbol in seen:
+            continue
+        symbols.append(symbol)
+        seen.add(symbol)
+    return symbols
+
+
 def configure_execution_mode(args: argparse.Namespace) -> None:
     if args.fast:
         args.skip_news = True
@@ -94,7 +107,12 @@ def main() -> None:
             reset_paper_account(starting_balance=args.paper_starting_balance)
             return
         configure_execution_mode(args)
-        universe = load_universe_from_csv(args.universe_csv) if args.universe_csv else DEFAULT_UNIVERSE
+        if args.symbols:
+            universe = load_universe_from_symbols(str(args.symbols))
+        elif args.universe_csv:
+            universe = load_universe_from_csv(args.universe_csv)
+        else:
+            universe = DEFAULT_UNIVERSE
 
         outdir = Path(args.outdir)
         outdir.mkdir(parents=True, exist_ok=True)

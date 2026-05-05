@@ -13,6 +13,7 @@ type Props = {
 };
 
 type HistorySortKey = "timestamp_utc" | "price" | "final_score" | "final_score_adjusted" | "rating" | "action" | "recommendation_quality" | "entry_status" | "setup_type";
+type HistoryInsightTab = "performance" | "signals" | "news" | "financials" | "events";
 type QuickRange = "all" | "1d" | "3d" | "7d" | "14d";
 
 const RATING_PRIORITY: Record<string, number> = {
@@ -65,6 +66,13 @@ const QUICK_RANGES: { label: string; value: QuickRange; days?: number }[] = [
   { days: 7, label: "Last 7 days", value: "7d" },
   { days: 14, label: "Last 14 days", value: "14d" },
 ];
+const INSIGHT_TABS: { label: string; value: HistoryInsightTab }[] = [
+  { label: "Performance", value: "performance" },
+  { label: "Signals", value: "signals" },
+  { label: "News", value: "news" },
+  { label: "Financials", value: "financials" },
+  { label: "Events", value: "events" },
+];
 
 function formatDate(value: string | null | undefined) {
   if (!value) return "N/A";
@@ -94,6 +102,30 @@ function formatDelta(value: number | null, suffix = "") {
   if (value === null || !Number.isFinite(value)) return "N/A";
   const sign = value > 0 ? "+" : "";
   return `${sign}${formatNumber(value)}${suffix}`;
+}
+
+function numberOrNull(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const parsed = Number(String(value ?? "").replace(/[%,$]/g, "").trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatPercentValue(value: number | null) {
+  if (value === null) return "N/A";
+  const percent = Math.abs(value) <= 1 ? value * 100 : value;
+  return `${percent.toFixed(1)}%`;
+}
+
+function cleanInsight(value: unknown, fallback: string) {
+  const text = String(value ?? "").trim();
+  return text && !["nan", "none", "null", "n/a", "-"].includes(text.toLowerCase()) ? text : fallback;
+}
+
+function financialInterpretation(label: string, value: number | null) {
+  if (value === null) return `${label}: not available for this symbol in scanner context.`;
+  if (value > 0.08) return `${label}: growth input is constructive.`;
+  if (value < -0.02) return `${label}: growth input is a risk factor.`;
+  return `${label}: growth input is mixed or flat.`;
 }
 
 function valueFrom(row: SymbolHistoryRow, keys: string[]) {
@@ -184,6 +216,140 @@ function SortHeader({ align, label, onSort, sortDirection, sortKey, thisKey }: {
   );
 }
 
+function CompanyIntelligenceTabs({
+  activeTab,
+  latest,
+  onChange,
+  priceChange,
+  rows,
+  scoreChange,
+}: {
+  activeTab: HistoryInsightTab;
+  latest: SymbolHistoryRow | undefined;
+  onChange: (tab: HistoryInsightTab) => void;
+  priceChange: number | null;
+  rows: SymbolHistoryRow[];
+  scoreChange: number | null;
+}) {
+  return (
+    <section className="terminal-panel rounded-2xl p-4">
+      <div className="mb-4 flex flex-wrap gap-2">
+        {INSIGHT_TABS.map((tab) => (
+          <button
+            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${activeTab === tab.value ? "border-sky-300/50 bg-sky-400/10 text-sky-100" : "border-slate-700/70 bg-slate-950/50 text-slate-400 hover:border-sky-300/35 hover:text-sky-100"}`}
+            key={tab.value}
+            onClick={() => onChange(tab.value)}
+            type="button"
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+      {activeTab === "performance" ? <PerformanceInsight latest={latest} priceChange={priceChange} rows={rows} scoreChange={scoreChange} /> : null}
+      {activeTab === "signals" ? <SignalsInsight latest={latest} rows={rows} /> : null}
+      {activeTab === "news" ? <NewsInsight latest={latest} /> : null}
+      {activeTab === "financials" ? <FinancialsInsight latest={latest} /> : null}
+      {activeTab === "events" ? <EventsInsight latest={latest} /> : null}
+    </section>
+  );
+}
+
+function PerformanceInsight({ latest, priceChange, rows, scoreChange }: { latest: SymbolHistoryRow | undefined; priceChange: number | null; rows: SymbolHistoryRow[]; scoreChange: number | null }) {
+  const interpretation = scoreChange !== null && scoreChange > 5
+    ? "Score improved over the selected window, which means scanner inputs became more constructive."
+    : scoreChange !== null && scoreChange < -5
+      ? "Score weakened over the selected window, so the scanner is reducing conviction."
+      : "Score is mostly stable over the selected window.";
+  return (
+    <div className="grid gap-3 md:grid-cols-3">
+      <InsightMetric label="Score change" value={formatDelta(scoreChange)} />
+      <InsightMetric label="Price change" value={formatDelta(priceChange)} />
+      <InsightMetric label="Latest decision" value={latest?.final_decision ?? latest?.rating ?? "N/A"} />
+      <InterpretedPanel className="md:col-span-3" title="Performance interpretation" items={[interpretation, `Observed ${rows.length.toLocaleString()} signal snapshots in this range.`, "Use this as historical research context, not a prediction."]} />
+    </div>
+  );
+}
+
+function SignalsInsight({ latest, rows }: { latest: SymbolHistoryRow | undefined; rows: SymbolHistoryRow[] }) {
+  const decisions = new Map<string, number>();
+  for (const row of rows) {
+    const key = String(row.final_decision ?? row.rating ?? "UNKNOWN").toUpperCase();
+    decisions.set(key, (decisions.get(key) ?? 0) + 1);
+  }
+  const items = Array.from(decisions.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([decision, count]) => `${decision}: ${count} observations`);
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <InterpretedPanel title="Decision mix" items={items.length ? items : ["No signal mix available yet."]} />
+      <InterpretedPanel title="Current reasoning" items={[cleanInsight(latest?.decision_reason ?? latest?.quality_reason, "Latest decision reasoning is not available."), cleanInsight(latest?.entry_status, "Entry state is not available."), cleanInsight(latest?.setup_type, "Setup type is not available.")]} />
+    </div>
+  );
+}
+
+function NewsInsight({ latest }: { latest: SymbolHistoryRow | undefined }) {
+  const newsScore = numberOrNull(latest?.news_score);
+  const sentiment = newsScore === null ? "Neutral / unavailable" : newsScore >= 56 ? "Supportive" : newsScore <= 44 ? "Cautious" : "Neutral";
+  const impact = newsScore === null ? "No clear headline impact" : Math.abs(newsScore - 50) >= 12 ? "High impact" : Math.abs(newsScore - 50) >= 6 ? "Moderate impact" : "Low impact";
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <InterpretedPanel title="Headline context" items={[cleanInsight(latest?.headline_bias, "No recent headline signal."), cleanInsight(latest?.upside_driver, "No major event driver detected.")]} />
+      <div className="grid gap-2">
+        <InsightMetric label="Sentiment tag" value={sentiment} />
+        <InsightMetric label="Impact tag" value={impact} />
+        <InsightMetric label="Timestamp" value={formatDate(latest?.timestamp_utc)} />
+      </div>
+    </div>
+  );
+}
+
+function FinancialsInsight({ latest }: { latest: SymbolHistoryRow | undefined }) {
+  const revenueGrowth = numberOrNull(latest?.revenue_growth);
+  const earningsGrowth = numberOrNull(latest?.earnings_growth);
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <InsightMetric label="Revenue growth" value={formatPercentValue(revenueGrowth)} />
+        <InsightMetric label="EPS / earnings growth" value={formatPercentValue(earningsGrowth)} />
+        <InsightMetric label="Margins" value={formatPercentValue(numberOrNull(latest?.profit_margins ?? latest?.gross_margins))} />
+        <InsightMetric label="Fundamental score" value={formatNumber(latest?.fundamental_score)} />
+      </div>
+      <InterpretedPanel title="Financial interpretation" items={[financialInterpretation("Revenue", revenueGrowth), financialInterpretation("Earnings", earningsGrowth), "Financial inputs are one part of the decision model and can be unavailable for ETFs, crypto proxies, or sparse data."]} />
+    </div>
+  );
+}
+
+function EventsInsight({ latest }: { latest: SymbolHistoryRow | undefined }) {
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      <InterpretedPanel title="Scheduled / corporate events" items={[
+        latest?.earnings_date ? `Earnings: ${String(latest.earnings_date)}` : "Earnings: no near-term date in scanner context.",
+        latest?.dividend_yield ? `Dividend yield: ${formatPercentValue(numberOrNull(latest.dividend_yield))}` : "Dividend: no yield signal in scanner context.",
+        latest?.split_factor ? `Split factor: ${String(latest.split_factor)}` : "Splits: no split signal in scanner context.",
+      ]} />
+      <InterpretedPanel title="Decision connection" items={[cleanInsight(latest?.key_risk, "No event-specific key risk detected."), cleanInsight(latest?.upside_driver, "No event-specific upside driver detected."), "Corporate events can change risk quickly, so the scanner treats them as context rather than instructions."]} />
+    </div>
+  );
+}
+
+function InterpretedPanel({ className = "", items, title }: { className?: string; items: string[]; title: string }) {
+  return (
+    <div className={`rounded-xl border border-slate-700/70 bg-slate-950/45 p-3 ${className}`}>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{title}</div>
+      <ul className="mt-2 space-y-1 text-sm leading-6 text-slate-300">
+        {items.map((item) => <li key={item}>- {item}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+function InsightMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-slate-700/70 bg-slate-950/45 p-3">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</div>
+      <div className="mt-1 font-mono text-sm font-semibold text-slate-100">{value}</div>
+    </div>
+  );
+}
+
 function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: "final_score" | "price"; label: string }) {
   const points = rows
     .map((row) => ({ time: timestampMs(row), value: typeof row[field] === "number" ? row[field] : null }))
@@ -239,6 +405,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
   const [sortKey, setSortKey] = useState<HistorySortKey>("timestamp_utc");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [quickRange, setQuickRange] = useState<QuickRange>("all");
+  const [activeInsightTab, setActiveInsightTab] = useState<HistoryInsightTab>("performance");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
   const selectedSymbol = normalizeSymbol(symbolQuery);
@@ -421,6 +588,15 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
                 <TrendChart field="final_score" label="Final Score" rows={filteredByTime} />
                 <TrendChart field="price" label="Price" rows={filteredByTime} />
               </div>
+
+              <CompanyIntelligenceTabs
+                activeTab={activeInsightTab}
+                latest={latest}
+                onChange={setActiveInsightTab}
+                priceChange={priceChange}
+                rows={filteredByTime}
+                scoreChange={scoreChange}
+              />
 
               <SimpleAdvancedTabs
                 simple={(

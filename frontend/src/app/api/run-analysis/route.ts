@@ -23,5 +23,5 @@ export async function POST(request: Request) {
     failure: "Analysis refresh failed.",
     success: "Analysis refresh completed.",
   });
-  return NextResponse.json(result, { status: result.ok ? 200 : 500 });
+  return NextResponse.json(result, { status: result.status === "already_running" ? 202 : result.ok ? 200 : 500 });
 }
