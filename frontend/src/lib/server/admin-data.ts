@@ -108,6 +108,7 @@ export type MonitoringEventSummary = {
 
 export type AdminMonitoringSummary = {
   appEvents: MonitoringEventSummary[];
+  backupSeries: Array<{ bucket: string; failed: number; ok: number; warned: number }>;
   latestBackup: MonitoringEventSummary | null;
   requestMetrics: {
     p50LatencyMs: number | null;
@@ -116,10 +117,25 @@ export type AdminMonitoringSummary = {
     recent4xx: number;
     recent5xx: number;
     requestsLastHour: number;
-    series: Array<{ bucket: string; errors: number; p95LatencyMs: number | null; requests: number }>;
-    slowestRoutes: Array<{ count: number; errors: number; latencyMs: number; maxLatencyMs: number; method: string; p95LatencyMs: number | null; recentErrors: Array<{ createdAt: string | null; statusCode: number }>; route: string; statusCode: number }>;
+    series: Array<{ bucket: string; fiveXx: number; fourXx: number; p50LatencyMs: number | null; p95LatencyMs: number | null; requests: number }>;
+    slowestRoutes: Array<{
+      count: number;
+      errors: number;
+      fiveXx: number;
+      fourXx: number;
+      latencyMs: number;
+      maxLatencyMs: number;
+      method: string;
+      p95LatencyMs: number | null;
+      recentErrors: Array<{ createdAt: string | null; statusCode: number }>;
+      route: string;
+      series: Array<{ bucket: string; errors: number; p50LatencyMs: number | null; p95LatencyMs: number | null; requests: number }>;
+      statusCode: number;
+      statusCounts: Array<{ count: number; statusCode: number }>;
+    }>;
   };
   syntheticChecks: Array<{ checkName: string; createdAt: string | null; latencyMs: number; message: string; status: string }>;
+  syntheticCheckSeries: Array<{ bucket: string; checkName: string; failed: number; latencyMs: number | null; ok: number; warned: number }>;
   syntheticSeries: Array<{ bucket: string; failed: number; ok: number; warned: number }>;
   system: {
     backupDirBytes: number | null;
@@ -266,19 +282,33 @@ type RequestMetricsRow = QueryResultRow & {
 type SlowRouteRow = QueryResultRow & {
   count: string | number;
   errors: string | number;
+  five_xx: string | number;
+  four_xx: string | number;
   latency_ms: string | number;
   max_latency_ms: string | number;
   method: string;
   p95_latency_ms: string | number | null;
   recent_errors: Array<{ created_at?: string | null; status_code?: string | number | null }> | null;
   route: string;
+  route_series: Array<{ bucket?: string | null; errors?: string | number | null; p50_latency_ms?: string | number | null; p95_latency_ms?: string | number | null; requests?: string | number | null }> | null;
   status_code: string | number;
+  status_counts: Array<{ count?: string | number | null; status_code?: string | number | null }> | null;
 };
 type RequestSeriesRow = QueryResultRow & {
   bucket: string;
-  errors: string | number;
+  five_xx: string | number;
+  four_xx: string | number;
+  p50_latency_ms: string | number | null;
   p95_latency_ms: string | number | null;
   requests: string | number;
+};
+type SyntheticCheckSeriesRow = QueryResultRow & {
+  bucket: string;
+  check_name: string;
+  failed: string | number;
+  latency_ms: string | number | null;
+  ok: string | number;
+  warned: string | number;
 };
 type SyntheticSeriesRow = QueryResultRow & {
   bucket: string;
@@ -518,7 +548,7 @@ export async function getAdminScannerSummary(): Promise<AdminScannerSummary> {
 
 export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange = "1h"): Promise<AdminMonitoringSummary> {
   const window = monitoringWindow(timeRange);
-  const [synthetics, requestMetrics, requestSeries, slowestRoutes, system, systemSeries, syntheticSeries, appEvents, latestBackup] = await Promise.all([
+  const [synthetics, requestMetrics, requestSeries, slowestRoutes, system, systemSeries, syntheticSeries, syntheticCheckSeries, backupSeries, appEvents, latestBackup] = await Promise.all([
     dbQuery<SyntheticRow>(
       `
         SELECT DISTINCT ON (check_name)
@@ -549,7 +579,9 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
         SELECT
           date_bin(${window.bucketSql}, created_at, TIMESTAMPTZ '2000-01-01')::text AS bucket,
           count(*) AS requests,
-          count(*) FILTER (WHERE status_code >= 500) AS errors,
+          count(*) FILTER (WHERE status_code >= 400 AND status_code < 500) AS four_xx,
+          count(*) FILTER (WHERE status_code >= 500) AS five_xx,
+          percentile_cont(0.50) WITHIN GROUP (ORDER BY latency_ms) AS p50_latency_ms,
           percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms
         FROM request_metrics
         WHERE created_at > now() - ${window.intervalSql}
@@ -564,7 +596,9 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
             route,
             method,
             count(*) AS count,
-            count(*) FILTER (WHERE status_code >= 500) AS errors,
+            count(*) FILTER (WHERE status_code >= 400) AS errors,
+            count(*) FILTER (WHERE status_code >= 400 AND status_code < 500) AS four_xx,
+            count(*) FILTER (WHERE status_code >= 500) AS five_xx,
             max(latency_ms) AS max_latency_ms,
             percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms
           FROM request_metrics
@@ -585,8 +619,54 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
           COALESCE(s.latency_ms, g.max_latency_ms) AS latency_ms,
           g.count,
           g.errors,
+          g.four_xx,
+          g.five_xx,
           g.max_latency_ms,
           g.p95_latency_ms,
+          COALESCE(
+            (
+              SELECT jsonb_agg(
+                jsonb_build_object(
+                  'bucket', series.bucket,
+                  'requests', series.requests,
+                  'errors', series.errors,
+                  'p50_latency_ms', series.p50_latency_ms,
+                  'p95_latency_ms', series.p95_latency_ms
+                )
+                ORDER BY series.bucket
+              )
+              FROM (
+                SELECT
+                  date_bin(${window.bucketSql}, created_at, TIMESTAMPTZ '2000-01-01')::text AS bucket,
+                  count(*) AS requests,
+                  count(*) FILTER (WHERE status_code >= 400) AS errors,
+                  percentile_cont(0.50) WITHIN GROUP (ORDER BY latency_ms) AS p50_latency_ms,
+                  percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms
+                FROM request_metrics
+                WHERE route = g.route
+                  AND method = g.method
+                  AND created_at > now() - ${window.intervalSql}
+                GROUP BY bucket
+                ORDER BY bucket ASC
+              ) series
+            ),
+            '[]'::jsonb
+          ) AS route_series,
+          COALESCE(
+            (
+              SELECT jsonb_agg(jsonb_build_object('status_code', status_code, 'count', count) ORDER BY status_code)
+              FROM (
+                SELECT status_code, count(*) AS count
+                FROM request_metrics
+                WHERE route = g.route
+                  AND method = g.method
+                  AND created_at > now() - ${window.intervalSql}
+                GROUP BY status_code
+                ORDER BY status_code
+              ) statuses
+            ),
+            '[]'::jsonb
+          ) AS status_counts,
           COALESCE(
             (
               SELECT jsonb_agg(jsonb_build_object('status_code', rm.status_code, 'created_at', rm.created_at::text) ORDER BY rm.created_at DESC)
@@ -656,6 +736,35 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
         ORDER BY bucket ASC
       `,
     ).catch(() => ({ rows: [] as SyntheticSeriesRow[] })),
+    dbQuery<SyntheticCheckSeriesRow>(
+      `
+        SELECT
+          date_bin(${window.bucketSql}, created_at, TIMESTAMPTZ '2000-01-01')::text AS bucket,
+          check_name,
+          avg(latency_ms) AS latency_ms,
+          count(*) FILTER (WHERE status = 'ok') AS ok,
+          count(*) FILTER (WHERE status = 'warn') AS warned,
+          count(*) FILTER (WHERE status = 'fail') AS failed
+        FROM synthetic_check_results
+        WHERE created_at > now() - ${window.intervalSql}
+        GROUP BY bucket, check_name
+        ORDER BY bucket ASC, check_name ASC
+      `,
+    ).catch(() => ({ rows: [] as SyntheticCheckSeriesRow[] })),
+    dbQuery<SyntheticSeriesRow>(
+      `
+        SELECT
+          date_bin(${window.bucketSql}, created_at, TIMESTAMPTZ '2000-01-01')::text AS bucket,
+          count(*) FILTER (WHERE status = 'ok') AS ok,
+          count(*) FILTER (WHERE status = 'warn') AS warned,
+          count(*) FILTER (WHERE status = 'fail') AS failed
+        FROM monitoring_events
+        WHERE created_at > now() - ${window.intervalSql}
+          AND event_type = 'backup'
+        GROUP BY bucket
+        ORDER BY bucket ASC
+      `,
+    ).catch(() => ({ rows: [] as SyntheticSeriesRow[] })),
     recentMonitoringWarnings(20),
     recentMonitoringEventByType("backup"),
   ]);
@@ -663,6 +772,7 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
   const latestSystem = system.rows[0];
   return {
     appEvents,
+    backupSeries: backupSeries.rows.map((row) => ({ bucket: row.bucket, failed: toNumber(row.failed), ok: toNumber(row.ok), warned: toNumber(row.warned) })),
     latestBackup,
     requestMetrics: {
       p50LatencyMs: toNullableNumber(metrics?.p50_latency_ms),
@@ -671,10 +781,19 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
       recent4xx: toNumber(metrics?.recent_4xx),
       recent5xx: toNumber(metrics?.recent_5xx),
       requestsLastHour: toNumber(metrics?.requests_last_hour),
-      series: requestSeries.rows.map((row) => ({ bucket: row.bucket, errors: toNumber(row.errors), p95LatencyMs: toNullableNumber(row.p95_latency_ms), requests: toNumber(row.requests) })),
+      series: requestSeries.rows.map((row) => ({
+        bucket: row.bucket,
+        fiveXx: toNumber(row.five_xx),
+        fourXx: toNumber(row.four_xx),
+        p50LatencyMs: toNullableNumber(row.p50_latency_ms),
+        p95LatencyMs: toNullableNumber(row.p95_latency_ms),
+        requests: toNumber(row.requests),
+      })),
       slowestRoutes: slowestRoutes.rows.map((row) => ({
         count: toNumber(row.count),
         errors: toNumber(row.errors),
+        fiveXx: toNumber(row.five_xx),
+        fourXx: toNumber(row.four_xx),
         latencyMs: toNumber(row.latency_ms),
         maxLatencyMs: toNumber(row.max_latency_ms),
         method: row.method,
@@ -683,9 +802,22 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
           ? row.recent_errors.map((item) => ({ createdAt: item.created_at ?? null, statusCode: toNumber(item.status_code) }))
           : [],
         route: row.route,
+        series: Array.isArray(row.route_series)
+          ? row.route_series.map((item) => ({
+            bucket: String(item.bucket ?? ""),
+            errors: toNumber(item.errors),
+            p50LatencyMs: toNullableNumber(item.p50_latency_ms),
+            p95LatencyMs: toNullableNumber(item.p95_latency_ms),
+            requests: toNumber(item.requests),
+          })).filter((item) => item.bucket)
+          : [],
         statusCode: toNumber(row.status_code),
+        statusCounts: Array.isArray(row.status_counts)
+          ? row.status_counts.map((item) => ({ count: toNumber(item.count), statusCode: toNumber(item.status_code) }))
+          : [],
       })),
     },
+    syntheticCheckSeries: syntheticCheckSeries.rows.map((row) => ({ bucket: row.bucket, checkName: row.check_name, failed: toNumber(row.failed), latencyMs: toNullableNumber(row.latency_ms), ok: toNumber(row.ok), warned: toNumber(row.warned) })),
     syntheticChecks: synthetics.rows.map((row) => ({ checkName: row.check_name, createdAt: row.created_at, latencyMs: toNumber(row.latency_ms), message: row.message, status: row.status })),
     syntheticSeries: syntheticSeries.rows.map((row) => ({ bucket: row.bucket, failed: toNumber(row.failed), ok: toNumber(row.ok), warned: toNumber(row.warned) })),
     system: {
