@@ -3,7 +3,11 @@
 import type { TradePlanEngine } from "@/hooks/useTradePlanEngine";
 import { useTradePlanEngine } from "@/hooks/useTradePlanEngine";
 import type { RankingRow } from "@/lib/types";
+import { buildDecisionIntelligence } from "@/lib/trading/decision-intelligence";
+import { confidenceTone } from "@/lib/trading/confidence";
 import { formatMoney, formatNumber } from "@/lib/ui/formatters";
+import { ConfidenceDonut } from "./ConfidenceDonut";
+import { DecisionBadge } from "./DecisionBadge";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
@@ -11,7 +15,9 @@ export function AICopilotPanel({ engine, signal }: { engine?: TradePlanEngine; s
   const fallbackEngine = useTradePlanEngine(signal);
   const activeEngine = engine ?? fallbackEngine;
   const { metrics, riskEvaluation, state, validity } = activeEngine;
+  const intelligence = buildDecisionIntelligence(signal);
   const displayRiskStatus = validity.isBlocked ? "OK" : riskEvaluation.status;
+  const readinessTone = confidenceTone(intelligence.readiness_score);
   const copilotClass = displayRiskStatus === "VETO"
     ? "border-rose-300/30 bg-rose-500/10 text-rose-50 shadow-[0_0_28px_rgba(244,63,94,0.18)]"
     : displayRiskStatus === "WARNING"
@@ -20,7 +26,27 @@ export function AICopilotPanel({ engine, signal }: { engine?: TradePlanEngine; s
   return (
     <div data-onboarding-target="ai-decision">
       <GlassPanel className="p-5">
-        <SectionTitle eyebrow="AI Copilot" title="Decision Assistant" meta={displayRiskStatus === "OK" ? undefined : displayRiskStatus.toLowerCase()} />
+        <SectionTitle eyebrow="Decision Intelligence" title="Decision Assistant" meta="research only" />
+        <div className="mt-4 grid gap-3 md:grid-cols-[minmax(160px,0.45fr)_minmax(0,1fr)]">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Decision</div>
+            <div className="mt-3">
+              <DecisionBadge className="px-4 py-2 text-sm" value={intelligence.decision} />
+            </div>
+            <div className="mt-3 flex justify-center">
+              <ConfidenceDonut compact score={intelligence.confidence} />
+            </div>
+            <p className="mt-3 text-[11px] leading-5 text-slate-500">Research only. Not financial advice.</p>
+          </div>
+          <div className="space-y-3">
+            <ReadinessBar toneClass={readinessTone.barClass} value={intelligence.readiness_score} />
+            <div className="grid gap-3 sm:grid-cols-3">
+              <InsightList title="Why" items={intelligence.why.positives} />
+              <InsightList title="Constraints" items={intelligence.why.negatives} />
+              <InsightList title="Watch" items={intelligence.what_to_watch} />
+            </div>
+          </div>
+        </div>
         <div className="mt-3 inline-flex rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-[11px] font-semibold text-emerald-100">
           Protected by Risk Rules
         </div>
@@ -40,6 +66,32 @@ export function AICopilotPanel({ engine, signal }: { engine?: TradePlanEngine; s
         {validity.isBlocked ? <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">Execution remains blocked until the signal clears system rules.</div> : null}
         {!validity.isBlocked && !validity.isCalculable ? <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">{validity.message}</div> : null}
       </GlassPanel>
+    </div>
+  );
+}
+
+function ReadinessBar({ toneClass, value }: { toneClass: string; value: number }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Readiness</div>
+        <div className="font-mono text-lg font-black text-slate-50">{value}</div>
+      </div>
+      <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.07]">
+        <div className={`h-full rounded-full ${toneClass}`} style={{ width: `${Math.max(4, Math.min(100, value))}%` }} />
+      </div>
+      <div className="mt-2 text-[11px] leading-5 text-slate-500">Readiness reflects vetoes, confidence, and data quality.</div>
+    </div>
+  );
+}
+
+function InsightList({ items, title }: { items: string[]; title: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{title}</div>
+      <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-300">
+        {items.slice(0, 3).map((item) => <li key={item}>- {item}</li>)}
+      </ul>
     </div>
   );
 }

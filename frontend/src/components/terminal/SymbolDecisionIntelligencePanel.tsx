@@ -1,29 +1,20 @@
 "use client";
 
 import type { RankingRow } from "@/lib/types";
+import { buildDecisionFactors, buildDecisionIntelligence } from "@/lib/trading/decision-intelligence";
 import { confidenceTone } from "@/lib/trading/confidence";
 import { formatNumber } from "@/lib/ui/formatters";
 import { ConfidenceDonut } from "./ConfidenceDonut";
+import { DecisionBadge } from "./DecisionBadge";
 import { MiniPriceContextChart } from "./MiniPriceContextChart";
 import type { ChartCandle } from "./SymbolChart";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
-const VETO_WATCH_MAP: Record<string, string> = {
-  DATA_STALE: "Wait for a fresh scanner run before trusting the research context.",
-  HIGH_VOLATILITY: "Watch for volatility to cool and ranges to become more orderly.",
-  LOW_CONFIDENCE_DATA: "Wait for cleaner provider coverage and stronger confirmation.",
-  MISSING_PRICE_HISTORY: "Wait until enough price history is available for the scanner to score reliably.",
-  POOR_RISK_REWARD: "Watch for a cleaner structure where risk and potential reward are better balanced.",
-  WEAK_VOLUME_CONFIRMATION: "Watch for stronger volume confirmation before treating this as a serious setup.",
-  MACRO_MISMATCH: "Watch for market regime and symbol behavior to align.",
-};
-
 export function SymbolDecisionIntelligencePanel({ candles, row }: { candles: ChartCandle[]; row: RankingRow }) {
-  const factors = factorRows(row);
-  const reasonCodes = reasonList(row.decision_reason_codes ?? row.decision_reason ?? row.quality_reason);
-  const vetoes = reasonList(row.vetoes ?? row.veto_reason ?? row.decision_reason_codes);
-  const confidence = numeric(row.confidence_score ?? row.final_score) ?? 0;
+  const intelligence = buildDecisionIntelligence(row);
+  const factors = buildDecisionFactors(row);
+  const confidence = intelligence.confidence;
   const confidenceStyle = confidenceTone(confidence);
 
   return (
@@ -31,6 +22,17 @@ export function SymbolDecisionIntelligencePanel({ candles, row }: { candles: Cha
       <SectionTitle eyebrow="Setup Intelligence" title="Why This Decision Exists" meta="research context" />
       <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="space-y-4">
+          <div className="grid gap-3 md:grid-cols-[minmax(160px,0.55fr)_minmax(0,1fr)]">
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Decision</div>
+              <div className="mt-3">
+                <DecisionBadge className="px-4 py-2 text-sm" value={intelligence.decision} />
+              </div>
+              <p className="mt-3 text-xs leading-5 text-slate-500">Research only. Not financial advice.</p>
+            </div>
+            <ReadinessBar value={intelligence.readiness_score} />
+          </div>
+
           <div>
             <div className="mb-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Factor Scores</div>
             <div className="grid gap-2 md:grid-cols-2">
@@ -50,8 +52,10 @@ export function SymbolDecisionIntelligencePanel({ candles, row }: { candles: Cha
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
-            <InsightList title="Decision Reasons" items={reasonCodes.length ? reasonCodes : ["Decision is based on current scanner score, risk filters, and data quality."]} />
-            <InsightList title="What To Watch" items={whatToWatch(vetoes)} />
+            <InsightList title="Positive Context" items={intelligence.why.positives} />
+            <InsightList title="Negative Context" items={intelligence.why.negatives} />
+            <InsightList title="Risk Context" items={intelligence.risks} />
+            <InsightList title="What To Watch" items={intelligence.what_to_watch} />
           </div>
         </div>
 
@@ -90,6 +94,22 @@ export function SymbolDecisionIntelligencePanel({ candles, row }: { candles: Cha
   );
 }
 
+function ReadinessBar({ value }: { value: number }) {
+  const tone = confidenceTone(value);
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Readiness</div>
+        <div className={`font-mono text-lg font-black ${tone.textClass}`}>{value}</div>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.06]">
+        <div className={`h-full rounded-full ${tone.barClass}`} style={{ width: `${Math.max(4, Math.min(100, value))}%` }} />
+      </div>
+      <div className="mt-2 text-[11px] leading-5 text-slate-500">Readiness combines confidence, vetoes, and data quality.</div>
+    </div>
+  );
+}
+
 function InsightList({ items, title }: { items: string[]; title: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
@@ -108,38 +128,6 @@ function Metric({ label, value }: { label: string; value: string }) {
       <dd className="mt-1 font-mono text-slate-100">{value}</dd>
     </div>
   );
-}
-
-function factorRows(row: RankingRow): Array<{ label: string; value: number }> {
-  return [
-    { label: "Trend / Technical", value: numeric(row.technical_score) ?? numeric(row.trend_score) ?? 50 },
-    { label: "Momentum", value: numeric(row.momentum_score) ?? numeric(row.technical_score) ?? 50 },
-    { label: "Macro", value: numeric(row.macro_score) ?? 50 },
-    { label: "Fundamental", value: numeric(row.fundamental_score) ?? 50 },
-    { label: "Data Quality", value: numeric(row.data_quality_score) ?? (row.stale_data ? 35 : 75) },
-    { label: "Risk", value: Math.max(0, 100 - (numeric(row.risk_penalty) ?? 0) * 5) },
-  ];
-}
-
-function whatToWatch(vetoes: string[]): string[] {
-  const mapped = vetoes.map((veto) => VETO_WATCH_MAP[veto.toUpperCase()] ?? null).filter((item): item is string => Boolean(item));
-  if (mapped.length) return mapped;
-  return [
-    "Watch whether confidence improves on the next scan.",
-    "Watch whether the symbol remains constructive while risk filters stay quiet.",
-    "Use the daily action as the source of truth before considering any setup.",
-  ];
-}
-
-function reasonList(value: unknown): string[] {
-  if (Array.isArray(value)) return value.map(String).map(cleanReason).filter(Boolean).slice(0, 8);
-  const text = String(value ?? "").trim();
-  if (!text || text === "[object Object]") return [];
-  return text.split(/[,|;]/).map(cleanReason).filter(Boolean).slice(0, 8);
-}
-
-function cleanReason(value: string): string {
-  return value.replace(/_/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function stopDistance(row: RankingRow): string {

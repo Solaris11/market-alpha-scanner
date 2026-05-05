@@ -102,13 +102,13 @@ export function useTradePlanEngine(row: RankingRow, portfolio: RiskPortfolioPosi
       (state.finalDecision === "WAIT_PULLBACK" && metrics.entryDistancePct !== null && metrics.entryDistancePct <= TRADE_READY_DISTANCE_THRESHOLD);
 
     if (isStaleBlocked) return { isBlocked: true, isCalculable: false, isOverextended, isTradeValid: false, message: cleanText(row.stale_data_safety_reason, STALE_DATA_ACTION_REASON) };
-    if (!hasValidLevels) return { isBlocked: isSystemBlocked, isCalculable: false, isOverextended, isTradeValid: false, message: "No valid trade setup." };
-    if (metrics.positionSize <= 0) return { isBlocked: isSystemBlocked, isCalculable: false, isOverextended, isTradeValid, message: "No valid trade setup." };
+    if (!hasValidLevels) return { isBlocked: isSystemBlocked, isCalculable: false, isOverextended, isTradeValid: false, message: "No clear research setup." };
+    if (metrics.positionSize <= 0) return { isBlocked: isSystemBlocked, isCalculable: false, isOverextended, isTradeValid, message: "No clear research setup." };
     if (state.finalDecision === "AVOID") return { isBlocked: true, isCalculable: true, isOverextended, isTradeValid: false, message: "System decision blocks execution for this setup." };
     if (state.finalDecision === "EXIT") return { isBlocked: true, isCalculable: true, isOverextended, isTradeValid: false, message: "System decision blocks execution for this setup." };
-    if (isOverextended) return { isBlocked: false, isCalculable: false, isOverextended: true, isTradeValid: false, message: "Wait for correction before entering." };
-    if (!isTradeValid) return { isBlocked: false, isCalculable: false, isOverextended, isTradeValid: false, message: "No valid trade setup." };
-    return { isBlocked: false, isCalculable: true, isOverextended, isTradeValid, message: "Trade setup valid." };
+    if (isOverextended) return { isBlocked: false, isCalculable: false, isOverextended: true, isTradeValid: false, message: "Wait for correction before treating this setup as cleaner." };
+    if (!isTradeValid) return { isBlocked: false, isCalculable: false, isOverextended, isTradeValid: false, message: "No clear research setup." };
+    return { isBlocked: false, isCalculable: true, isOverextended, isTradeValid, message: "Research setup is clear." };
   }, [metrics.entryDistancePct, metrics.positionSize, row, state.entryPrice, state.entryStatus, state.finalDecision, state.stopLoss, state.targetPrice]);
 
   const riskEvaluation = useMemo<RiskEvaluation>(() => evaluateRisk({
@@ -159,25 +159,25 @@ function buildDirective(row: RankingRow, state: TradePlanEngineState, metrics: T
   if (rowHasStaleDataSafety(row)) return cleanText(row.stale_data_safety_reason, STALE_DATA_ACTION_REASON);
 
   if (state.finalDecision === "AVOID") return avoidDirective(row, state, validity, metrics);
-  if (state.finalDecision === "EXIT") return `Exit position.\nTrend invalidation triggered.${hypotheticalLine(metrics)}`;
+  if (state.finalDecision === "EXIT") return `Exit or invalidation state is active.\nTrend invalidation triggered.${hypotheticalLine(metrics)}`;
 
   if (riskEvaluation.status === "VETO") {
     const vetoReason = state.riskPercent > 3
       ? `Risk of ${formatNumber(state.riskPercent, 1)}% exceeds safe limit.`
-      : riskEvaluation.reasons[0] ?? "This trade violates your risk rules.";
-    return ["AI VETO:", vetoReason, "Execution locked to prevent emotional trading."].join("\n");
+      : riskEvaluation.reasons[0] ?? "This setup violates your risk rules.";
+    return ["Risk gate:", vetoReason, "Execution context remains locked to prevent emotional decisions."].join("\n");
   }
 
   if (riskEvaluation.status === "WARNING") {
-    return ["Warning:", "This trade increases portfolio risk.", ...riskEvaluation.reasons.map((reason) => `- ${reason}`)].join("\n");
+    return ["Warning:", "This setup increases portfolio risk.", ...riskEvaluation.reasons.map((reason) => `- ${reason}`)].join("\n");
   }
 
   if (state.finalDecision === "ENTER" && validity.isCalculable && state.entryPrice !== null && state.targetPrice !== null && metrics.riskRewardRatio !== null && metrics.potentialReward !== null) {
     return [
-      `Enter near ${formatMoney(state.entryPrice)}.`,
-      `Position size: ${metrics.positionSize} shares.`,
-      `Risk: ${formatMoney(metrics.maxRiskAmount)}.`,
-      `Target: ${formatMoney(state.targetPrice)} (${metrics.riskRewardRatio.toFixed(1)}R).`,
+      `Research entry context: ${formatMoney(state.entryPrice)}.`,
+      `Sizing simulation: ${metrics.positionSize} shares.`,
+      `Risk context: ${formatMoney(metrics.maxRiskAmount)}.`,
+      `Target context: ${formatMoney(state.targetPrice)} (${metrics.riskRewardRatio.toFixed(1)}R).`,
     ].join("\n");
   }
 
@@ -190,10 +190,10 @@ function buildDirective(row: RankingRow, state: TradePlanEngineState, metrics: T
 
 function waitPullbackDirective(row: RankingRow, state: TradePlanEngineState, validity: TradePlanEngineValidity): string {
   return [
-    "AI DECISION: WAIT_PULLBACK",
+    "Decision context: WAIT_PULLBACK",
     "",
     setupRiskLine(row, validity),
-    "Entering now increases risk.",
+    "Treating this as ready now increases risk.",
     "",
     pullbackInstruction(row, state),
   ].join("\n");
@@ -201,10 +201,10 @@ function waitPullbackDirective(row: RankingRow, state: TradePlanEngineState, val
 
 function avoidDirective(row: RankingRow, state: TradePlanEngineState, validity: TradePlanEngineValidity, metrics: TradePlanEngineMetrics): string {
   return [
-    "AI DECISION: AVOID",
+    "Decision context: AVOID",
     "",
     setupRiskLine(row, validity),
-    "Entering now increases risk.",
+    "Treating this as ready now increases risk.",
     "",
     pullbackInstruction(row, state),
     hypotheticalLine(metrics),
@@ -221,15 +221,15 @@ function setupRiskLine(row: RankingRow, validity: TradePlanEngineValidity): stri
 function pullbackInstruction(row: RankingRow, state: TradePlanEngineState): string {
   const correction = buildCorrectionMap(row);
   const correctionPrice = correctionMidpoint(correction);
-  if (correctionPrice !== null) return `Wait for pullback near ${formatCorrectionZone(correction)}.`;
-  if (state.entryPrice !== null) return `Wait for pullback near ${formatMoney(state.entryPrice)}.`;
-  return "Wait for a confirmed pullback before entering.";
+  if (correctionPrice !== null) return `Wait for pullback near ${formatCorrectionZone(correction)} before treating the setup as cleaner.`;
+  if (state.entryPrice !== null) return `Wait for pullback near ${formatMoney(state.entryPrice)} before treating the setup as cleaner.`;
+  return "Wait for a confirmed pullback before treating the setup as cleaner.";
 }
 
 function hypotheticalLine(metrics: TradePlanEngineMetrics): string {
   if (metrics.positionSize <= 0 || metrics.riskPerShare === null) return "";
   const riskAmount = metrics.positionSize * metrics.riskPerShare;
-  return `\nIf you were to trade this, position size would be ${metrics.positionSize} shares, risking ${formatMoney(riskAmount)}.`;
+  return `\nHypothetical sizing context: ${metrics.positionSize} shares, risk context ${formatMoney(riskAmount)}.`;
 }
 
 function safeNonNegative(value: number): number {

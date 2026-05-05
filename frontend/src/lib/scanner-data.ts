@@ -120,6 +120,7 @@ const NUMERIC_FIELDS = new Set([
   "target_price",
 ]);
 const REQUIRED_RANKING_COLUMNS = ["symbol", "price", "final_score", "rating", "action"];
+const STRUCTURED_RANKING_FIELDS = new Set(["decision_reason_codes", "factor_scores", "missing_fields", "vetoes"]);
 
 const NAME_FIELDS = [
   "company_name",
@@ -616,9 +617,14 @@ export function displayName(row: Record<string, unknown>) {
 
 function normalizeRankingRow(raw: Record<string, unknown>, fallbackLastUpdated?: string | null): RankingRow {
   const row: RankingRow = { symbol: "" };
+  const mutableRow = row as unknown as Record<string, unknown>;
 
   for (const [key, value] of Object.entries(raw)) {
     const normalizedKey = canonicalCsvKey(key);
+    if (STRUCTURED_RANKING_FIELDS.has(normalizedKey) && value && typeof value === "object") {
+      mutableRow[normalizedKey] = value;
+      continue;
+    }
     row[normalizedKey] = coerceValue(normalizedKey, value);
   }
 

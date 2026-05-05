@@ -7,6 +7,7 @@ import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import { DataHealthIndicator } from "@/components/data-health-indicator";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import { confidenceTone } from "@/lib/trading/confidence";
+import { buildDecisionFactors, buildDecisionIntelligence, type DecisionFactor } from "@/lib/trading/decision-intelligence";
 import type { ScannerScalar } from "@/lib/types";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { WatchlistButton } from "@/components/watchlist-controls";
@@ -187,34 +188,44 @@ function BestTradeNowOpportunityCard({ best, highestScored, marketCondition, pri
 
 function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewModel; candles: ChartCandle[] }) {
   const row = best.raw;
-  const reasons = reasonList(row.decision_reason_codes ?? best.decision_reason);
-  const vetoes = reasonList(row.vetoes ?? row.veto_reason ?? row.decision_reason_codes);
-  const factors = factorRows(row);
+  const intelligence = buildDecisionIntelligence(row);
+  const factors = buildDecisionFactors(row);
+  const readinessTone = confidenceTone(intelligence.readiness_score);
   return (
     <aside className="space-y-3">
       <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
         <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Why this setup</summary>
         <div className="mt-3 grid gap-3">
-          <InsightList title="Decision reasons" items={reasons.length ? reasons : [cleanText(best.decision_reason, "Scanner score, risk filters, and data quality define this research state.")]} />
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-            <InsightList title="Positive factors" items={topFactors(factors, true)} />
-            <InsightList title="Negative factors" items={topFactors(factors, false)} />
+            <InsightList title="Positive factors" items={intelligence.why.positives} />
+            <InsightList title="Negative factors" items={intelligence.why.negatives} />
           </div>
         </div>
       </details>
 
       <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
         <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">What to watch</summary>
-        <InsightList className="mt-3" title="Improvement conditions" items={whatToWatch(vetoes)} />
+        <InsightList className="mt-3" title="Improvement conditions" items={intelligence.what_to_watch} />
+      </details>
+
+      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
+        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Readiness</summary>
+        <div className="mt-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Research readiness</div>
+            <div className={`font-mono text-lg font-black ${readinessTone.textClass}`}>{intelligence.readiness_score}</div>
+          </div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.07]">
+            <div className={`h-full rounded-full ${readinessTone.barClass}`} style={{ width: `${Math.max(4, Math.min(100, intelligence.readiness_score))}%` }} />
+          </div>
+          <div className="mt-2 text-[11px] leading-5 text-slate-500">Research only. Not financial advice.</div>
+        </div>
       </details>
 
       <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
         <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Setup health</summary>
         <div className="mt-3 space-y-2">
-          {["Trend", "Momentum", "Volume", "Risk"].map((label) => {
-            const value = setupHealthValue(row, label);
-            return <HealthBar key={label} label={label} value={value} />;
-          })}
+          {setupHealthRows(factors).map((factor) => <HealthBar key={factor.key} label={factor.label} value={factor.value} />)}
         </div>
       </details>
 
@@ -283,7 +294,7 @@ function HighestScoredSetupCard({ row }: { row: OpportunityViewModel }) {
         <MiniCardMetric label="Ready" value={`${row.conviction}`} />
       </div>
       <div className={`mt-2 text-[10px] font-black uppercase tracking-[0.1em] ${tone.textClass}`}>{tone.label}</div>
-      <div className="mt-2 line-clamp-2 text-[11px] leading-4 text-slate-400">{firstReason(row.raw.decision_reason_codes ?? row.decision_reason)}</div>
+      <div className="mt-2 line-clamp-2 text-[11px] leading-4 text-slate-400">{firstReason(row)}</div>
     </Link>
   );
 }
@@ -400,63 +411,19 @@ function rowsToCandles(rows: Record<string, ScannerScalar>[]): ChartCandle[] {
     .filter((candle): candle is ChartCandle => Boolean(candle));
 }
 
-function factorRows(row: OpportunityViewModel["raw"]): Array<{ label: string; value: number }> {
-  return [
-    { label: "Trend", value: numeric(row.trend_score ?? row.technical_score) ?? 50 },
-    { label: "Momentum", value: numeric(row.momentum_score ?? row.technical_score) ?? 50 },
-    { label: "Volume", value: numeric(row.volume_score ?? row.relative_volume_score) ?? 50 },
-    { label: "Risk", value: Math.max(0, 100 - (numeric(row.risk_penalty) ?? 0) * 5) },
-    { label: "Macro", value: numeric(row.macro_score) ?? 50 },
-    { label: "Data quality", value: numeric(row.data_quality_score) ?? (row.stale_data ? 35 : 75) },
-  ];
-}
-
 function highestScoredSetups(rows: OpportunityViewModel[]): OpportunityViewModel[] {
   return [...rows]
     .sort((left, right) => (right.final_score ?? 0) - (left.final_score ?? 0) || right.conviction - left.conviction)
     .slice(0, 5);
 }
 
-function firstReason(value: unknown): string {
-  return reasonList(value)[0] ?? "Scanner score, confidence, and risk filters define this research state.";
+function firstReason(row: OpportunityViewModel): string {
+  return buildDecisionIntelligence(row.raw).why.positives[0] ?? "Scanner confidence and risk filters define this research state.";
 }
 
-function topFactors(factors: Array<{ label: string; value: number }>, positive: boolean): string[] {
-  const sorted = [...factors].sort((a, b) => positive ? b.value - a.value : a.value - b.value).slice(0, 3);
-  return sorted.map((factor) => `${factor.label}: ${Math.round(factor.value)} (${factor.value >= 65 ? "supportive" : factor.value < 40 ? "weak" : "mixed"})`);
-}
-
-function whatToWatch(vetoes: string[]): string[] {
-  const mapped: string[] = [];
-  for (const veto of vetoes) {
-    const key = veto.toUpperCase().replace(/\s+/g, "_");
-    if (key.includes("STALE")) mapped.push("Wait for scanner freshness to return to OK.");
-    else if (key.includes("VOLATILITY")) mapped.push("Watch for volatility to cool and ranges to stabilize.");
-    else if (key.includes("VOLUME")) mapped.push("Watch for stronger volume confirmation.");
-    else if (key.includes("RISK_REWARD")) mapped.push("Watch for a cleaner risk/reward structure.");
-    else if (key.includes("MACRO")) mapped.push("Watch for market regime alignment.");
-    else if (key.includes("CONFIDENCE")) mapped.push("Watch for confidence to improve on later scans.");
-  }
-  if (mapped.length) return mapped;
-  return [
-    "Watch confidence and score behavior on the next scan.",
-    "Watch whether current price moves closer to the entry context.",
-    "Use the daily action and risk filters as the source of truth.",
-  ];
-}
-
-function reasonList(value: unknown): string[] {
-  if (Array.isArray(value)) return value.map(String).map(cleanReason).filter(Boolean).slice(0, 6);
-  const text = String(value ?? "").trim();
-  if (!text || text === "[object Object]") return [];
-  return text.split(/[,|;]/).map(cleanReason).filter(Boolean).slice(0, 6);
-}
-
-function setupHealthValue(row: OpportunityViewModel["raw"], label: string): number {
-  if (label === "Trend") return numeric(row.trend_score ?? row.technical_score) ?? 50;
-  if (label === "Momentum") return numeric(row.momentum_score ?? row.technical_score) ?? 50;
-  if (label === "Volume") return numeric(row.volume_score ?? row.relative_volume_score) ?? 50;
-  return Math.max(0, 100 - (numeric(row.risk_penalty) ?? 0) * 5);
+function setupHealthRows(factors: DecisionFactor[]): DecisionFactor[] {
+  const wanted = new Set(["trend", "momentum", "volume", "risk"]);
+  return factors.filter((factor) => wanted.has(factor.key));
 }
 
 function stopDistance(best: OpportunityViewModel): string {
@@ -469,10 +436,6 @@ function percentLike(value: unknown): string {
   if (parsed === null) return "N/A";
   const percent = Math.abs(parsed) <= 1 ? parsed * 100 : parsed;
   return `${percent.toFixed(1)}%`;
-}
-
-function cleanReason(value: string): string {
-  return value.replace(/_/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function textValue(value: ScannerScalar) {
