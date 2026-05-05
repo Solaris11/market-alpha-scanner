@@ -51,11 +51,11 @@ export async function sendEmailVerificationEmail(input: { expiresAt: Date; to: s
   }
 }
 
-export async function sendSupportTicketCreatedEmail(input: { subject: string; ticketId: string; to: string }): Promise<EmailDeliveryResult> {
+export async function sendSupportTicketCreatedEmail(input: { category: string; message: string; status: string; subject: string; ticketId: string; to: string }): Promise<EmailDeliveryResult> {
   const config = smtpConfig();
   if (!config) return { ok: false, reason: "not_configured" };
   try {
-    return await sendRenderedEmail(config, input.to, renderSupportTicketCreatedEmail({ contacts: config, subject: input.subject, ticketId: input.ticketId }));
+    return await sendRenderedEmail(config, input.to, renderSupportTicketCreatedEmail({ category: input.category, contacts: config, message: input.message, status: input.status, subject: input.subject, ticketId: input.ticketId }));
   } catch {
     console.warn("[support] Ticket confirmation email delivery failed.");
     return { ok: false, reason: "send_failed" };
@@ -118,7 +118,7 @@ async function sendRenderedEmail(config: SmtpSettings, to: string, email: Render
     }
   }
 
-  await recordEmailFailure(email.category, to, config.host, attempt, lastError);
+  await recordEmailFailure(email.deliveryCategory ?? email.category, to, config.host, attempt, lastError);
   throw lastError instanceof Error ? lastError : new Error("SMTP email delivery failed.");
 }
 

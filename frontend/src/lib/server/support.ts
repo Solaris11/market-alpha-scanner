@@ -4,7 +4,7 @@ import type { QueryResultRow } from "pg";
 import { cleanSupportText, normalizeSupportCategory, normalizeSupportPriority, normalizeSupportStatus, userCanAccessTicket, type SupportTicketCategory, type SupportTicketPriority, type SupportTicketStatus } from "@/lib/security/support-policy";
 import { normalizeAuthEmail, type AuthUser } from "./auth";
 import { dbQuery, dbTransaction } from "./db";
-import { sendSupportReplyEmail, sendSupportTicketCreatedEmail } from "./email";
+import { sendSupportReplyEmail, sendSupportTicketCreatedEmail, type EmailDeliveryResult } from "./email";
 import { recordMonitoringEvent } from "./monitoring";
 import { requestIp } from "./request-security";
 
@@ -93,7 +93,6 @@ export async function createSupportTicket(input: {
     return id;
   });
   const created = await getSupportTicketForRequester(ticketId, input.user?.id ?? null, email);
-  void sendSupportEmail("created", () => sendSupportTicketCreatedEmail({ subject: created.subject, ticketId: created.id, to: created.email }));
   return created;
 }
 
@@ -178,8 +177,31 @@ export async function adminReplyToSupportTicket(input: { admin: AuthUser; messag
   });
   const updated = await getAdminSupportTicket(input.ticketId);
   if (!updated) throw new Error("ticket_not_found");
-  void sendSupportEmail("reply", () => sendSupportReplyEmail({ message, subject: updated.subject, ticketId: updated.id, to: updated.email }));
   return updated;
+}
+
+export async function sendSupportTicketCreatedNotification(ticket: SupportTicketDetail, message: unknown): Promise<void> {
+  await sendSupportEmail("support_ticket_created", () =>
+    sendSupportTicketCreatedEmail({
+      category: ticket.category,
+      message: cleanSupportText(message, 700),
+      status: ticket.status,
+      subject: ticket.subject,
+      ticketId: ticket.id,
+      to: ticket.email,
+    }),
+  );
+}
+
+export async function sendSupportTicketReplyNotification(ticket: SupportTicketDetail, message: unknown): Promise<void> {
+  await sendSupportEmail("support_ticket_reply", () =>
+    sendSupportReplyEmail({
+      message: cleanSupportText(message, 4000),
+      subject: ticket.subject,
+      ticketId: ticket.id,
+      to: ticket.email,
+    }),
+  );
 }
 
 export async function adminUpdateSupportTicketState(input: {
@@ -263,30 +285,35 @@ function ticketFromRow(row: TicketRow): SupportTicket {
   };
 }
 
-async function sendSupportEmail(kind: "created" | "reply", send: () => Promise<{ ok: boolean; reason?: string }>): Promise<void> {
+async function sendSupportEmail(kind: "support_ticket_created" | "support_ticket_reply", send: () => Promise<EmailDeliveryResult>): Promise<void> {
   try {
     const result = await send();
-    if (!result.ok) {
+    if (!result.ok && result.reason === "not_configured") {
       await recordMonitoringEvent({
-        eventType: "email:support_delivery_failed",
-        message: `Support ${kind} email was not delivered.`,
-        metadata: { kind, reason: result.reason ?? "unknown" },
+        eventType: "email:delivery_failed",
+        message: "Support email delivery is not configured.",
+        metadata: { category: kind, reason: result.reason },
         severity: "warning",
         status: "fail",
       });
     }
   } catch (error) {
     await recordMonitoringEvent({
-      eventType: "email:support_delivery_failed",
-      message: `Support ${kind} email delivery failed.`,
-      metadata: { kind, error: error instanceof Error ? error.message.slice(0, 160) : "unknown" },
+      eventType: "email:delivery_failed",
+      message: "Support email delivery failed.",
+      metadata: { category: kind, error: safeSupportEmailError(error) },
       severity: "warning",
       status: "fail",
     }).catch((monitoringError: unknown) => {
       console.warn("[support] support email failure monitoring write failed", monitoringError instanceof Error ? monitoringError.message : monitoringError);
     });
-    console.warn("[support] support email delivery failed", error instanceof Error ? error.message : error);
+    console.warn("[support] support email delivery failed", safeSupportEmailError(error));
   }
+}
+
+function safeSupportEmailError(error: unknown): string {
+  const message = error instanceof Error ? error.message : "unknown";
+  return message.replace(/(Bearer\s+[A-Za-z0-9._~+/-]+=*|sk_(?:live|test)_[A-Za-z0-9_]+|whsec_[A-Za-z0-9_]+|[A-Za-z0-9_-]{32,})/g, "[redacted]").slice(0, 160);
 }
 
 function messageFromRow(row: MessageRow): SupportTicketMessage {

@@ -8,6 +8,7 @@ export type EmailContacts = {
 
 export type RenderedEmail = {
   category: EmailCategory;
+  deliveryCategory?: string;
   from: string;
   html: string;
   replyTo: string;
@@ -102,19 +103,25 @@ export function renderPasswordResetEmail(input: { contacts: EmailContacts; expir
   });
 }
 
-export function renderSupportTicketCreatedEmail(input: { contacts: EmailContacts; subject: string; ticketId: string }): RenderedEmail {
+export function renderSupportTicketCreatedEmail(input: { category?: string; contacts: EmailContacts; message?: string; status?: string; subject: string; ticketId: string }): RenderedEmail {
   const title = "We received your support request";
   const safeSubject = cleanInline(input.subject, 180);
+  const category = cleanInline(input.category || "support", 80);
+  const status = cleanInline(input.status || "open", 40);
+  const message = cleanBlock(input.message || "", 700);
   return basicEmail({
     category: "support",
     contacts: input.contacts,
+    deliveryCategory: "support_ticket_created",
     paragraphs: [
-      `Ticket ${input.ticketId} is open.`,
+      `Ticket ${input.ticketId} is ${status}.`,
       `Subject: ${safeSubject}`,
+      `Category: ${category}`,
+      message ? `Message: ${message}` : "",
       "A Market Alpha support reply will come from this thread. Market Alpha Scanner is research software and does not provide financial advice.",
-    ],
+    ].filter(Boolean),
     replyTo: input.contacts.supportEmail,
-    subject: "We received your Market Alpha support request",
+    subject: "We received your support request",
     title,
   });
 }
@@ -124,6 +131,7 @@ export function renderSupportReplyEmail(input: { contacts: EmailContacts; messag
   return basicEmail({
     category: "support",
     contacts: input.contacts,
+    deliveryCategory: "support_ticket_reply",
     paragraphs: [
       `Ticket ${input.ticketId}: ${cleanInline(input.subject, 180)}`,
       cleanBlock(input.message, 4000),
@@ -218,7 +226,7 @@ function actionEmail(input: {
   return { category: input.category, from: senderForCategory(input.category, input.contacts), html, replyTo: input.replyTo, subject: input.subject, text };
 }
 
-function basicEmail(input: { category: EmailCategory; contacts: EmailContacts; paragraphs: string[]; replyTo: string; subject: string; title: string }): RenderedEmail {
+function basicEmail(input: { category: EmailCategory; contacts: EmailContacts; deliveryCategory?: string; paragraphs: string[]; replyTo: string; subject: string; title: string }): RenderedEmail {
   const paragraphs = input.paragraphs.map((paragraph) => cleanBlock(paragraph, 4000)).filter(Boolean);
   const text = [input.title, "", ...paragraphs, "", footerText(input.contacts)].join("\n\n");
   const html = shellHtml(
@@ -226,7 +234,7 @@ function basicEmail(input: { category: EmailCategory; contacts: EmailContacts; p
     paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph).replaceAll("\n", "<br />")}</p>`).join("\n"),
     input.contacts,
   );
-  return { category: input.category, from: senderForCategory(input.category, input.contacts), html, replyTo: input.replyTo, subject: input.subject, text };
+  return { category: input.category, deliveryCategory: input.deliveryCategory, from: senderForCategory(input.category, input.contacts), html, replyTo: input.replyTo, subject: input.subject, text };
 }
 
 export function senderForCategory(category: EmailCategory, contacts: EmailContacts): string {

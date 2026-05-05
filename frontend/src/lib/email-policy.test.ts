@@ -49,7 +49,7 @@ test("Gmail SMTP env uses standardized app password variable only", () => {
 test("transactional templates use correct Reply-To addresses", () => {
   const verification = renderEmailVerificationEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), verificationUrl: "https://app.marketalpha.co/api/auth/verify-email?token=test" });
   const passwordReset = renderPasswordResetEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), resetUrl: "https://app.marketalpha.co/reset-password?token=test" });
-  const supportCreated = renderSupportTicketCreatedEmail({ contacts, subject: "Help", ticketId: "ticket_1" });
+  const supportCreated = renderSupportTicketCreatedEmail({ category: "technical", contacts, message: "Refresh controls show unavailable.", status: "open", subject: "Help", ticketId: "ticket_1" });
   const supportReply = renderSupportReplyEmail({ contacts, message: "We can help explain the product.", subject: "Help", ticketId: "ticket_1" });
   const billing = renderBillingLifecycleEmail({ contacts, message: "Your Premium subscription is now active.", title: "Premium activated" });
   const alert = renderOperationalAlertEmail({ contacts, eventType: "health", message: "Deep health degraded.", metadata: {}, severity: "warning", status: "warn" });
@@ -62,9 +62,15 @@ test("transactional templates use correct Reply-To addresses", () => {
   assert.equal(passwordReset.from, contacts.from);
   assert.equal(supportCreated.replyTo, contacts.supportEmail);
   assert.equal(supportCreated.category, "support");
+  assert.equal(supportCreated.deliveryCategory, "support_ticket_created");
   assert.match(supportCreated.from, /support@marketalpha\.co/);
+  assert.equal(supportCreated.subject, "We received your support request");
+  assert.match(supportCreated.text, /Category: technical/);
+  assert.match(supportCreated.text, /Ticket ticket_1 is open/);
+  assert.match(supportCreated.text, /Refresh controls show unavailable/);
   assert.equal(supportReply.replyTo, contacts.supportEmail);
   assert.equal(supportReply.category, "support");
+  assert.equal(supportReply.deliveryCategory, "support_ticket_reply");
   assert.match(supportReply.from, /support@marketalpha\.co/);
   assert.equal(billing.replyTo, contacts.billingEmail);
   assert.equal(billing.category, "billing");
@@ -79,7 +85,7 @@ test("email templates do not include SMTP secrets or financial advice claims", (
   const emails = [
     renderEmailVerificationEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), verificationUrl: "https://app.marketalpha.co/api/auth/verify-email?token=public-link-token" }),
     renderPasswordResetEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), resetUrl: "https://app.marketalpha.co/reset-password?token=public-link-token" }),
-    renderSupportTicketCreatedEmail({ contacts, subject: "Question", ticketId: "018f4c6b-7725-4b6a-9123-a85751000abc" }),
+    renderSupportTicketCreatedEmail({ category: "scanner", contacts, message: "I need product support.", status: "open", subject: "Question", ticketId: "018f4c6b-7725-4b6a-9123-a85751000abc" }),
     renderSupportReplyEmail({ contacts, message: "I can explain what WAIT means, but I cannot provide buy or sell recommendations.", subject: "Question", ticketId: "018f4c6b-7725-4b6a-9123-a85751000abc" }),
     renderBillingLifecycleEmail({ contacts, message: "Your Premium subscription is now active.", title: "Premium activated" }),
   ];

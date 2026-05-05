@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { after } from "next/server";
 import { requireAdmin } from "@/lib/server/access-control";
-import { adminReplyToSupportTicket } from "@/lib/server/support";
+import { adminReplyToSupportTicket, sendSupportTicketReplyNotification } from "@/lib/server/support";
 import { withRequestMetrics } from "@/lib/server/monitoring";
 import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 
@@ -25,6 +26,9 @@ export async function POST(request: Request, context: RouteContext) {
     try {
       const payload = (await request.json().catch(() => null)) as { message?: unknown } | null;
       const ticket = await adminReplyToSupportTicket({ admin: access.user, message: payload?.message, request, ticketId });
+      after(async () => {
+        await sendSupportTicketReplyNotification(ticket, payload?.message);
+      });
       return NextResponse.json({ ok: true, ticket });
     } catch {
       return NextResponse.json({ ok: false, error: "admin_ticket_reply_unavailable" }, { status: 400 });

@@ -48,7 +48,10 @@ export async function GET(request: Request) {
           ticketId: "preview-ticket",
         }),
         support_created: renderSupportTicketCreatedEmail({
+          category: "scanner",
           contacts,
+          message: "The scanner refresh status is unclear.",
+          status: "open",
           subject: "How do I read WAIT?",
           ticketId: "preview-ticket",
         }),
