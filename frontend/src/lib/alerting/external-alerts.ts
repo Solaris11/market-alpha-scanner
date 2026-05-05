@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import nodemailer from "nodemailer";
 import { renderOperationalAlertEmail, smtpSettingsFromEnv, type SmtpSettings } from "@/lib/email-policy";
 import { EMAIL_MAX_ATTEMPTS, emailRetryDelayMs, shouldRetryEmailSend } from "@/lib/email-retry-policy";
@@ -111,6 +112,8 @@ async function sendTelegramAlert(envelope: AlertEnvelope, env: NodeJS.ProcessEnv
 async function sendEmailAlert(envelope: AlertEnvelope, env: NodeJS.ProcessEnv): Promise<void> {
   const config = smtpConfig(env);
   if (!config) return;
+  const dedupeKey = emailAlertDedupeKey(envelope);
+  if (await externalEmailRecentlySent(dedupeKey)) return;
   const email = renderOperationalAlertEmail({
     contacts: config,
     eventType: envelope.eventType,
@@ -132,7 +135,7 @@ async function sendEmailAlert(envelope: AlertEnvelope, env: NodeJS.ProcessEnv): 
           secure: config.secure,
         })
         .sendMail({
-          from: config.from,
+          from: email.from,
           html: email.html,
           replyTo: email.replyTo,
           subject: email.subject,
@@ -140,6 +143,9 @@ async function sendEmailAlert(envelope: AlertEnvelope, env: NodeJS.ProcessEnv): 
           to: config.to,
         });
       if (!result.messageId) throw new Error("email send did not return message id");
+      await recordExternalEmailSent(envelope, dedupeKey).catch((monitoringError: unknown) => {
+        console.warn("[alerting] email sent monitoring write failed", monitoringError instanceof Error ? monitoringError.message : monitoringError);
+      });
       return;
     } catch (error) {
       lastError = error;
@@ -195,6 +201,7 @@ async function recordExternalEmailFailure(envelope: AlertEnvelope, error: unknow
     message: "SMTP external alert delivery failed after retries.",
     metadata: {
       alertEventType: envelope.eventType,
+      category: "alert",
       error: safeErrorMessage(error),
       severity: envelope.severity,
       status: envelope.status,
@@ -202,6 +209,50 @@ async function recordExternalEmailFailure(envelope: AlertEnvelope, error: unknow
     severity: "warning",
     status: "fail",
   });
+}
+
+async function externalEmailRecentlySent(dedupeKey: string): Promise<boolean> {
+  try {
+    const { dbQuery } = await import("@/lib/server/db");
+    const result = await dbQuery<{ exists: boolean }>(
+      `
+        SELECT EXISTS (
+          SELECT 1
+          FROM monitoring_events
+          WHERE event_type = 'email:external_alert_sent'
+            AND metadata->>'dedupeKey' = $1
+            AND created_at > now() - interval '15 minutes'
+        ) AS exists
+      `,
+      [dedupeKey],
+    );
+    return Boolean(result.rows[0]?.exists);
+  } catch (error) {
+    console.warn("[alerting] email throttle check failed", error instanceof Error ? error.message : error);
+    return false;
+  }
+}
+
+async function recordExternalEmailSent(envelope: AlertEnvelope, dedupeKey: string): Promise<void> {
+  const { recordMonitoringEvent } = await import("@/lib/server/monitoring");
+  await recordMonitoringEvent({
+    eventType: "email:external_alert_sent",
+    message: "SMTP external alert email sent.",
+    metadata: {
+      alertEventType: envelope.eventType,
+      category: "alert",
+      dedupeKey,
+      throttleMinutes: 15,
+    },
+    severity: "info",
+    status: "ok",
+  });
+}
+
+function emailAlertDedupeKey(envelope: AlertEnvelope): string {
+  return createHash("sha256")
+    .update([envelope.eventType, envelope.severity, envelope.status, envelope.message].join("|"))
+    .digest("hex");
 }
 
 function sleep(ms: number): Promise<void> {

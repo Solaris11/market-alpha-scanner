@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import type Stripe from "stripe";
 import { sendExternalAlert } from "@/lib/alerting/external-alerts";
@@ -59,9 +59,12 @@ async function webhook(request: Request): Promise<Response> {
 
   try {
     const processResult = await processStripeWebhook(event);
-    if (processResult.emailIntent) {
-      await sendBillingLifecycleEmailToUser(processResult.emailIntent.userId, processResult.emailIntent.intent).catch((emailError: unknown) => {
-        console.warn("[billing] lifecycle email failed", emailError instanceof Error ? emailError.message : emailError);
+    const emailIntent = processResult.emailIntent;
+    if (emailIntent) {
+      after(() => {
+        void sendBillingLifecycleEmailToUser(emailIntent.userId, emailIntent.intent).catch((emailError: unknown) => {
+          console.warn("[billing] lifecycle email failed", emailError instanceof Error ? emailError.message : emailError);
+        });
       });
     }
     return NextResponse.json({ ok: true, received: true, duplicate: processResult.duplicate });

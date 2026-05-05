@@ -92,7 +92,7 @@ export async function createSupportTicket(input: {
     return id;
   });
   const created = await getSupportTicketForRequester(ticketId, input.user?.id ?? null, email);
-  await sendSupportTicketCreatedEmail({ subject: created.subject, ticketId: created.id, to: created.email }).catch((error: unknown) => {
+  void sendSupportTicketCreatedEmail({ subject: created.subject, ticketId: created.id, to: created.email }).catch((error: unknown) => {
     console.warn("[support] ticket confirmation email failed", error instanceof Error ? error.message : error);
   });
   return created;
@@ -179,7 +179,7 @@ export async function adminReplyToSupportTicket(input: { admin: AuthUser; messag
   });
   const updated = await getAdminSupportTicket(input.ticketId);
   if (!updated) throw new Error("ticket_not_found");
-  await sendSupportReplyEmail({ message, subject: updated.subject, ticketId: updated.id, to: updated.email }).catch((error: unknown) => {
+  void sendSupportReplyEmail({ message, subject: updated.subject, ticketId: updated.id, to: updated.email }).catch((error: unknown) => {
     console.warn("[support] ticket reply email failed", error instanceof Error ? error.message : error);
   });
   return updated;

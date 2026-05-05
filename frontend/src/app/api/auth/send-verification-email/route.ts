@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { requireUser } from "@/lib/server/access-control";
 import { createEmailVerification } from "@/lib/server/email-verification";
 import { emailProviderConfigured, sendEmailVerificationEmail } from "@/lib/server/email";
@@ -30,14 +30,13 @@ export async function POST(request: Request) {
 
   try {
     const verification = await createEmailVerification(access.user);
-    const delivery = await sendEmailVerificationEmail({
-      expiresAt: verification.expiresAt,
-      to: verification.email,
-      verificationUrl: verification.verificationUrl,
+    after(() => {
+      void sendEmailVerificationEmail({
+        expiresAt: verification.expiresAt,
+        to: verification.email,
+        verificationUrl: verification.verificationUrl,
+      });
     });
-    if (!delivery.ok) {
-      return NextResponse.json({ ok: false, error: delivery.reason === "not_configured" ? "email_not_configured" : "email_send_failed", message: "Email verification is temporarily unavailable." }, { status: 503 });
-    }
     return NextResponse.json({ ok: true, message: "Verification email sent." });
   } catch (error) {
     console.warn("[auth] email verification request failed", error instanceof Error ? error.message : error);

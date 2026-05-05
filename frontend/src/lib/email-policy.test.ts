@@ -47,12 +47,31 @@ test("Gmail SMTP env uses standardized app password variable only", () => {
 });
 
 test("transactional templates use correct Reply-To addresses", () => {
-  assert.equal(renderEmailVerificationEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), verificationUrl: "https://app.marketalpha.co/api/auth/verify-email?token=test" }).replyTo, contacts.supportEmail);
-  assert.equal(renderPasswordResetEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), resetUrl: "https://app.marketalpha.co/reset-password?token=test" }).replyTo, contacts.supportEmail);
-  assert.equal(renderSupportTicketCreatedEmail({ contacts, subject: "Help", ticketId: "ticket_1" }).replyTo, contacts.supportEmail);
-  assert.equal(renderSupportReplyEmail({ contacts, message: "We can help explain the product.", subject: "Help", ticketId: "ticket_1" }).replyTo, contacts.supportEmail);
-  assert.equal(renderBillingLifecycleEmail({ contacts, message: "Your Premium subscription is now active.", title: "Premium activated" }).replyTo, contacts.billingEmail);
-  assert.equal(renderOperationalAlertEmail({ contacts, eventType: "health", message: "Deep health degraded.", metadata: {}, severity: "warning", status: "warn" }).replyTo, contacts.supportEmail);
+  const verification = renderEmailVerificationEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), verificationUrl: "https://app.marketalpha.co/api/auth/verify-email?token=test" });
+  const passwordReset = renderPasswordResetEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), resetUrl: "https://app.marketalpha.co/reset-password?token=test" });
+  const supportCreated = renderSupportTicketCreatedEmail({ contacts, subject: "Help", ticketId: "ticket_1" });
+  const supportReply = renderSupportReplyEmail({ contacts, message: "We can help explain the product.", subject: "Help", ticketId: "ticket_1" });
+  const billing = renderBillingLifecycleEmail({ contacts, message: "Your Premium subscription is now active.", title: "Premium activated" });
+  const alert = renderOperationalAlertEmail({ contacts, eventType: "health", message: "Deep health degraded.", metadata: {}, severity: "warning", status: "warn" });
+
+  assert.equal(verification.replyTo, contacts.supportEmail);
+  assert.equal(verification.category, "verification");
+  assert.equal(verification.from, contacts.from);
+  assert.equal(passwordReset.replyTo, contacts.supportEmail);
+  assert.equal(passwordReset.category, "password_reset");
+  assert.equal(passwordReset.from, contacts.from);
+  assert.equal(supportCreated.replyTo, contacts.supportEmail);
+  assert.equal(supportCreated.category, "support");
+  assert.match(supportCreated.from, /support@marketalpha\.co/);
+  assert.equal(supportReply.replyTo, contacts.supportEmail);
+  assert.equal(supportReply.category, "support");
+  assert.match(supportReply.from, /support@marketalpha\.co/);
+  assert.equal(billing.replyTo, contacts.billingEmail);
+  assert.equal(billing.category, "billing");
+  assert.match(billing.from, /billing@marketalpha\.co/);
+  assert.equal(alert.replyTo, contacts.supportEmail);
+  assert.equal(alert.category, "alert");
+  assert.equal(alert.from, contacts.from);
 });
 
 test("email templates do not include SMTP secrets or financial advice claims", () => {
@@ -79,4 +98,21 @@ test("SMTP retry policy is bounded with exponential backoff", () => {
   assert.equal(shouldRetryEmailSend(1), true);
   assert.equal(shouldRetryEmailSend(2), true);
   assert.equal(shouldRetryEmailSend(3), false);
+});
+
+test("action email links contain only short-lived token URLs, not user data", () => {
+  const verification = renderEmailVerificationEmail({
+    contacts,
+    expiresAt: new Date("2026-05-05T12:00:00Z"),
+    verificationUrl: "https://app.marketalpha.co/api/auth/verify-email?token=sample-token",
+  });
+  const reset = renderPasswordResetEmail({
+    contacts,
+    expiresAt: new Date("2026-05-05T12:00:00Z"),
+    resetUrl: "https://app.marketalpha.co/reset-password?token=sample-token",
+  });
+
+  assert.match(verification.text, /token=sample-token/);
+  assert.match(reset.text, /token=sample-token/);
+  assert.doesNotMatch(verification.text + reset.text, /email=|user_id=|stripe|session=/i);
 });

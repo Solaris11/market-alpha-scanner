@@ -1,3 +1,5 @@
+export type EmailCategory = "alert" | "billing" | "password_reset" | "support" | "system" | "verification";
+
 export type EmailContacts = {
   billingEmail: string;
   from: string;
@@ -5,6 +7,8 @@ export type EmailContacts = {
 };
 
 export type RenderedEmail = {
+  category: EmailCategory;
+  from: string;
   html: string;
   replyTo: string;
   subject: string;
@@ -72,6 +76,7 @@ export function renderEmailVerificationEmail(input: { contacts: EmailContacts; e
   return actionEmail({
     actionLabel: "Verify email",
     actionUrl: input.verificationUrl,
+    category: "verification",
     contacts: input.contacts,
     detail: `This link expires at ${formatDateTime(input.expiresAt)}. If you did not request this, you can ignore this email.`,
     intro,
@@ -87,6 +92,7 @@ export function renderPasswordResetEmail(input: { contacts: EmailContacts; expir
   return actionEmail({
     actionLabel: "Reset password",
     actionUrl: input.resetUrl,
+    category: "password_reset",
     contacts: input.contacts,
     detail: `This link expires at ${formatDateTime(input.expiresAt)}. If you did not request this, you can ignore this email.`,
     intro,
@@ -100,6 +106,7 @@ export function renderSupportTicketCreatedEmail(input: { contacts: EmailContacts
   const title = "We received your support request";
   const safeSubject = cleanInline(input.subject, 180);
   return basicEmail({
+    category: "support",
     contacts: input.contacts,
     paragraphs: [
       `Ticket ${input.ticketId} is open.`,
@@ -115,6 +122,7 @@ export function renderSupportTicketCreatedEmail(input: { contacts: EmailContacts
 export function renderSupportReplyEmail(input: { contacts: EmailContacts; message: string; subject: string; ticketId: string }): RenderedEmail {
   const title = "Market Alpha support replied";
   return basicEmail({
+    category: "support",
     contacts: input.contacts,
     paragraphs: [
       `Ticket ${input.ticketId}: ${cleanInline(input.subject, 180)}`,
@@ -130,6 +138,7 @@ export function renderSupportReplyEmail(input: { contacts: EmailContacts; messag
 export function renderBillingLifecycleEmail(input: { contacts: EmailContacts; message: string; title: string }): RenderedEmail {
   const title = cleanInline(input.title, 140);
   return basicEmail({
+    category: "billing",
     contacts: input.contacts,
     paragraphs: [cleanBlock(input.message, 500), "Payments and subscription management are handled securely through Stripe."],
     replyTo: input.contacts.billingEmail,
@@ -151,6 +160,7 @@ export function renderOperationalAlertEmail(input: {
     .map(([key, value]) => `${cleanInline(key, 80)}: ${cleanInline(JSON.stringify(value), 240)}`)
     .join("\n");
   return basicEmail({
+    category: "alert",
     contacts: input.contacts,
     paragraphs: [
       `Event: ${cleanInline(input.eventType, 120)}`,
@@ -166,7 +176,7 @@ export function renderOperationalAlertEmail(input: {
 }
 
 export function emailContainsSensitiveValue(email: RenderedEmail, values: readonly string[]): boolean {
-  const body = `${email.subject}\n${email.replyTo}\n${email.text}\n${email.html}`;
+  const body = `${email.category}\n${email.from}\n${email.subject}\n${email.replyTo}\n${email.text}\n${email.html}`;
   return values.some((value) => {
     const trimmed = value.trim();
     return trimmed.length >= 8 && body.includes(trimmed);
@@ -176,6 +186,7 @@ export function emailContainsSensitiveValue(email: RenderedEmail, values: readon
 function actionEmail(input: {
   actionLabel: string;
   actionUrl: string;
+  category: EmailCategory;
   contacts: EmailContacts;
   detail: string;
   intro: string;
@@ -204,10 +215,10 @@ function actionEmail(input: {
     `,
     input.contacts,
   );
-  return { html, replyTo: input.replyTo, subject: input.subject, text };
+  return { category: input.category, from: senderForCategory(input.category, input.contacts), html, replyTo: input.replyTo, subject: input.subject, text };
 }
 
-function basicEmail(input: { contacts: EmailContacts; paragraphs: string[]; replyTo: string; subject: string; title: string }): RenderedEmail {
+function basicEmail(input: { category: EmailCategory; contacts: EmailContacts; paragraphs: string[]; replyTo: string; subject: string; title: string }): RenderedEmail {
   const paragraphs = input.paragraphs.map((paragraph) => cleanBlock(paragraph, 4000)).filter(Boolean);
   const text = [input.title, "", ...paragraphs, "", footerText(input.contacts)].join("\n\n");
   const html = shellHtml(
@@ -215,7 +226,13 @@ function basicEmail(input: { contacts: EmailContacts; paragraphs: string[]; repl
     paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph).replaceAll("\n", "<br />")}</p>`).join("\n"),
     input.contacts,
   );
-  return { html, replyTo: input.replyTo, subject: input.subject, text };
+  return { category: input.category, from: senderForCategory(input.category, input.contacts), html, replyTo: input.replyTo, subject: input.subject, text };
+}
+
+export function senderForCategory(category: EmailCategory, contacts: EmailContacts): string {
+  if (category === "support") return `Market Alpha Support <${contacts.supportEmail}>`;
+  if (category === "billing") return `Market Alpha Billing <${contacts.billingEmail}>`;
+  return contacts.from;
 }
 
 function shellHtml(title: string, body: string, contacts: EmailContacts): string {

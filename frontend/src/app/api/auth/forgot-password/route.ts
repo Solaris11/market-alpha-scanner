@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { sendPasswordResetEmail } from "@/lib/server/email";
 import { createPasswordReset } from "@/lib/server/password-reset";
 import { rateLimitRequest, validateMutationRequest } from "@/lib/server/request-security";
@@ -22,10 +22,12 @@ export async function POST(request: Request) {
   try {
     const resetRequest = await createPasswordReset(payload?.email);
     if (resetRequest) {
-      await sendPasswordResetEmail({
-        expiresAt: resetRequest.expiresAt,
-        resetUrl: resetRequest.resetUrl,
-        to: resetRequest.email,
+      after(() => {
+        void sendPasswordResetEmail({
+          expiresAt: resetRequest.expiresAt,
+          resetUrl: resetRequest.resetUrl,
+          to: resetRequest.email,
+        });
       });
     }
   } catch (error) {

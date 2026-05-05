@@ -29,7 +29,7 @@ export async function sendPasswordResetEmail(input: { expiresAt: Date; resetUrl:
   }
 
   try {
-    return await sendRenderedEmail(config, input.to, renderPasswordResetEmail({ contacts: config, expiresAt: input.expiresAt, resetUrl: input.resetUrl }), "password_reset");
+    return await sendRenderedEmail(config, input.to, renderPasswordResetEmail({ contacts: config, expiresAt: input.expiresAt, resetUrl: input.resetUrl }));
   } catch {
     console.warn("[auth] Password reset email delivery failed.");
     return { ok: false, reason: "send_failed" };
@@ -44,7 +44,7 @@ export async function sendEmailVerificationEmail(input: { expiresAt: Date; to: s
   }
 
   try {
-    return await sendRenderedEmail(config, input.to, renderEmailVerificationEmail({ contacts: config, expiresAt: input.expiresAt, verificationUrl: input.verificationUrl }), "email_verification");
+    return await sendRenderedEmail(config, input.to, renderEmailVerificationEmail({ contacts: config, expiresAt: input.expiresAt, verificationUrl: input.verificationUrl }));
   } catch {
     console.warn("[auth] Email verification delivery failed.");
     return { ok: false, reason: "send_failed" };
@@ -55,7 +55,7 @@ export async function sendSupportTicketCreatedEmail(input: { subject: string; ti
   const config = smtpConfig();
   if (!config) return { ok: false, reason: "not_configured" };
   try {
-    return await sendRenderedEmail(config, input.to, renderSupportTicketCreatedEmail({ contacts: config, subject: input.subject, ticketId: input.ticketId }), "support_ticket_created");
+    return await sendRenderedEmail(config, input.to, renderSupportTicketCreatedEmail({ contacts: config, subject: input.subject, ticketId: input.ticketId }));
   } catch {
     console.warn("[support] Ticket confirmation email delivery failed.");
     return { ok: false, reason: "send_failed" };
@@ -66,7 +66,7 @@ export async function sendSupportReplyEmail(input: { message: string; subject: s
   const config = smtpConfig();
   if (!config) return { ok: false, reason: "not_configured" };
   try {
-    return await sendRenderedEmail(config, input.to, renderSupportReplyEmail({ contacts: config, message: input.message, subject: input.subject, ticketId: input.ticketId }), "support_reply");
+    return await sendRenderedEmail(config, input.to, renderSupportReplyEmail({ contacts: config, message: input.message, subject: input.subject, ticketId: input.ticketId }));
   } catch {
     console.warn("[support] Ticket reply email delivery failed.");
     return { ok: false, reason: "send_failed" };
@@ -80,7 +80,7 @@ export async function sendBillingLifecycleEmailToUser(userId: string, intent: Su
   const email = result.rows[0]?.email;
   if (!email) return { ok: false, reason: "send_failed" };
   try {
-    return await sendRenderedEmail(config, email, renderBillingLifecycleEmail({ contacts: config, message: intent.message, title: intent.title }), "billing_lifecycle");
+    return await sendRenderedEmail(config, email, renderBillingLifecycleEmail({ contacts: config, message: intent.message, title: intent.title }));
   } catch {
     console.warn("[billing] Billing lifecycle email delivery failed.");
     return { ok: false, reason: "send_failed" };
@@ -95,7 +95,7 @@ function smtpConfig(): SmtpSettings | null {
   return smtpSettingsFromEnv(process.env);
 }
 
-async function sendRenderedEmail(config: SmtpSettings, to: string, email: RenderedEmail, emailType: string): Promise<EmailDeliveryResult> {
+async function sendRenderedEmail(config: SmtpSettings, to: string, email: RenderedEmail): Promise<EmailDeliveryResult> {
   let attempt = 0;
   let lastError: unknown = null;
 
@@ -103,7 +103,7 @@ async function sendRenderedEmail(config: SmtpSettings, to: string, email: Render
     attempt += 1;
     try {
       const result = await createSmtpTransport(config).sendMail({
-        from: config.from || emailContactsFromEnv(process.env).from,
+        from: email.from || config.from || emailContactsFromEnv(process.env).from,
         html: email.html,
         replyTo: email.replyTo,
         subject: email.subject,
@@ -118,7 +118,7 @@ async function sendRenderedEmail(config: SmtpSettings, to: string, email: Render
     }
   }
 
-  await recordEmailFailure(emailType, to, config.host, attempt, lastError);
+  await recordEmailFailure(email.category, to, config.host, attempt, lastError);
   throw lastError instanceof Error ? lastError : new Error("SMTP email delivery failed.");
 }
 
@@ -134,13 +134,13 @@ function createSmtpTransport(config: SmtpSettings) {
   });
 }
 
-async function recordEmailFailure(emailType: string, to: string, smtpHost: string, attempts: number, error: unknown): Promise<void> {
+async function recordEmailFailure(category: string, to: string, smtpHost: string, attempts: number, error: unknown): Promise<void> {
   await recordMonitoringEvent({
     eventType: "email:delivery_failed",
     message: "SMTP email delivery failed after retries.",
     metadata: {
       attempts,
-      emailType,
+      category,
       error: safeEmailError(error),
       recipientDomain: recipientDomain(to),
       smtpHost,

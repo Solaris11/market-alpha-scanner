@@ -21,12 +21,19 @@ Do not use `SMTP_PASSWORD` in the Next.js app. `SMTP_PASS` is the canonical secr
 
 ## Sender Policy
 
-- System email `From`: `Market Alpha Scanner <noreply@marketalpha.co>`
-- Verification/reset/support `Reply-To`: `support@marketalpha.co`
+- Verification, password reset, alert, and system email `From`: `Market Alpha Scanner <noreply@marketalpha.co>`
+- Support email `From`: `Market Alpha Support <support@marketalpha.co>`
+- Billing email `From`: `Market Alpha Billing <billing@marketalpha.co>`
+- Verification/reset/support/alert `Reply-To`: `support@marketalpha.co`
 - Billing lifecycle `Reply-To`: `billing@marketalpha.co`
-- Operational alert email `Reply-To`: `support@marketalpha.co`
 
 Email content must not include trading recommendations, personalized buy/sell language, SMTP credentials, Stripe secrets, or session tokens.
+
+Every email is tagged with one category: `verification`, `password_reset`, `support`, `billing`, `alert`, or `system`.
+
+SMTP delivery is asynchronous from API responses. Sends retry up to 3 attempts with bounded backoff; final failures write `monitoring_events`.
+
+External alert emails are throttled by alert fingerprint: the same alert is sent at most once every 15 minutes.
 
 ## Validation
 
@@ -38,9 +45,11 @@ set -a
 source ../.env
 set +a
 npm run email:test -- --to support@marketalpha.co
+npm run email:test -- --to support@marketalpha.co --category support
+npm run email:test -- --to billing@marketalpha.co --category billing
 ```
 
-The command prints only `{ "ok": true, "to": ... }` and never prints SMTP credentials.
+The command prints only `{ "category": ..., "ok": true, "to": ... }` and never prints SMTP credentials.
 
 ## Google Workspace Limits
 
