@@ -65,7 +65,7 @@ Manual provider rotation requires new values from each provider. Do not rotate b
 
 - Stripe secret key: create replacement key, update `.env`, rebuild, test checkout and portal, then revoke old key.
 - Stripe webhook secret: add a second webhook endpoint or rotate in Stripe dashboard, update `.env`, rebuild, test signed webhook, then remove old secret.
-- SMTP/Brevo: create replacement SMTP/API credential, update `.env`, test verification email, then revoke old credential.
+- Google Workspace SMTP: create a replacement Google app password or OAuth credential, update `SMTP_PASS` in `.env`, test verification email, then revoke the old credential.
 - Sentry DSN: create or replace client key if needed, update `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN`, rebuild, trigger controlled Sentry test, then disable old key.
 - Telegram: create replacement bot token, update env, run monitoring alert test, revoke old bot token.
 - UptimeRobot: create replacement API key, rerun monitor setup, revoke old key.

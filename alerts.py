@@ -1003,12 +1003,12 @@ def _send_telegram(message: str) -> tuple[bool, str]:
 
 def _send_email(message: str, subject: str) -> tuple[bool, str]:
     required = {
-        "ALERT_EMAIL_FROM": os.getenv("ALERT_EMAIL_FROM", "").strip(),
-        "ALERT_EMAIL_TO": os.getenv("ALERT_EMAIL_TO", "").strip(),
+        "EMAIL_FROM": os.getenv("EMAIL_FROM", "").strip(),
+        "MARKET_ALPHA_ALERT_EMAIL_TO": os.getenv("MARKET_ALPHA_ALERT_EMAIL_TO", "").strip(),
         "SMTP_HOST": os.getenv("SMTP_HOST", "").strip(),
         "SMTP_PORT": os.getenv("SMTP_PORT", "").strip(),
         "SMTP_USER": os.getenv("SMTP_USER", "").strip(),
-        "SMTP_PASSWORD": os.getenv("SMTP_PASSWORD", "").strip(),
+        "SMTP_PASS": os.getenv("SMTP_PASS", "").strip(),
     }
     missing = [key for key, value in required.items() if not value]
     if missing:
@@ -1016,20 +1016,21 @@ def _send_email(message: str, subject: str) -> tuple[bool, str]:
 
     port = int(required["SMTP_PORT"])
     email = EmailMessage()
-    email["From"] = required["ALERT_EMAIL_FROM"]
-    email["To"] = required["ALERT_EMAIL_TO"]
+    email["From"] = required["EMAIL_FROM"]
+    email["To"] = required["MARKET_ALPHA_ALERT_EMAIL_TO"]
+    email["Reply-To"] = os.getenv("SUPPORT_EMAIL", "support@marketalpha.co").strip()
     email["Subject"] = subject
     email.set_content(message)
 
     try:
         if port == 465:
             with smtplib.SMTP_SSL(required["SMTP_HOST"], port, timeout=15) as smtp:
-                smtp.login(required["SMTP_USER"], required["SMTP_PASSWORD"])
+                smtp.login(required["SMTP_USER"], required["SMTP_PASS"])
                 smtp.send_message(email)
         else:
             with smtplib.SMTP(required["SMTP_HOST"], port, timeout=15) as smtp:
                 smtp.starttls()
-                smtp.login(required["SMTP_USER"], required["SMTP_PASSWORD"])
+                smtp.login(required["SMTP_USER"], required["SMTP_PASS"])
                 smtp.send_message(email)
         return True, "sent"
     except Exception as exc:

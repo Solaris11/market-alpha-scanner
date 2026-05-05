@@ -1,4 +1,6 @@
 import nodemailer from "nodemailer";
+import { renderOperationalAlertEmail, smtpSettingsFromEnv, type SmtpSettings } from "@/lib/email-policy";
+import { EMAIL_MAX_ATTEMPTS, emailRetryDelayMs, shouldRetryEmailSend } from "@/lib/email-retry-policy";
 import { cleanMonitoringText, type MonitoringSeverity, type MonitoringStatus } from "@/lib/monitoring-policy";
 
 export type ExternalAlertInput = {
@@ -43,6 +45,11 @@ export async function sendExternalAlert(input: ExternalAlertInput, env: NodeJS.P
       result.sent = true;
     } catch (error) {
       result.errors.push(`${channel}:${safeErrorMessage(error)}`);
+      if (channel === "email") {
+        await recordExternalEmailFailure(envelope, error).catch((monitoringError: unknown) => {
+          console.warn("[alerting] email failure monitoring write failed", monitoringError instanceof Error ? monitoringError.message : monitoringError);
+        });
+      }
     }
   }
 
@@ -67,15 +74,11 @@ export function buildAlertEnvelope(input: ExternalAlertInput): AlertEnvelope {
   };
 }
 
-function smtpConfig(env: NodeJS.ProcessEnv): { from: string; host: string; pass: string; port: number; to: string; user: string } | null {
-  const host = env.SMTP_HOST?.trim();
-  const port = Number(env.SMTP_PORT ?? 587);
-  const user = env.SMTP_USER?.trim();
-  const pass = env.SMTP_PASS?.trim() || env.SMTP_PASSWORD?.trim();
-  const from = env.EMAIL_FROM?.trim();
-  const to = env.MARKET_ALPHA_ALERT_EMAIL_TO?.trim() || env.ALERT_EMAIL?.trim() || env.SUPPORT_EMAIL?.trim() || "support@marketalpha.co";
-  if (!host || !Number.isFinite(port) || port <= 0 || !user || !pass || !from || !to) return null;
-  return { from, host, pass, port, to, user };
+function smtpConfig(env: NodeJS.ProcessEnv): (SmtpSettings & { to: string }) | null {
+  const settings = smtpSettingsFromEnv(env);
+  const to = env.MARKET_ALPHA_ALERT_EMAIL_TO?.trim() || env.SUPPORT_EMAIL?.trim() || "support@marketalpha.co";
+  if (!settings || !to) return null;
+  return { ...settings, to };
 }
 
 async function sendSlackAlert(envelope: AlertEnvelope, env: NodeJS.ProcessEnv): Promise<void> {
@@ -108,20 +111,43 @@ async function sendTelegramAlert(envelope: AlertEnvelope, env: NodeJS.ProcessEnv
 async function sendEmailAlert(envelope: AlertEnvelope, env: NodeJS.ProcessEnv): Promise<void> {
   const config = smtpConfig(env);
   if (!config) return;
-  const result = await nodemailer
-    .createTransport({
-      auth: { pass: config.pass, user: config.user },
-      host: config.host,
-      port: config.port,
-      secure: config.port === 465,
-    })
-    .sendMail({
-      from: config.from,
-      subject: `[Market Alpha] ${envelope.severity.toUpperCase()} ${envelope.eventType}`,
-      text: alertText(envelope),
-      to: config.to,
-    });
-  if (!result.messageId) throw new Error("email send did not return message id");
+  const email = renderOperationalAlertEmail({
+    contacts: config,
+    eventType: envelope.eventType,
+    message: envelope.message,
+    metadata: envelope.metadata,
+    severity: envelope.severity,
+    status: envelope.status,
+  });
+  let attempt = 0;
+  let lastError: unknown = null;
+  while (attempt < EMAIL_MAX_ATTEMPTS) {
+    attempt += 1;
+    try {
+      const result = await nodemailer
+        .createTransport({
+          auth: { pass: config.pass, user: config.user },
+          host: config.host,
+          port: config.port,
+          secure: config.secure,
+        })
+        .sendMail({
+          from: config.from,
+          html: email.html,
+          replyTo: email.replyTo,
+          subject: email.subject,
+          text: email.text,
+          to: config.to,
+        });
+      if (!result.messageId) throw new Error("email send did not return message id");
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!shouldRetryEmailSend(attempt)) break;
+      await sleep(emailRetryDelayMs(attempt));
+    }
+  }
+  throw lastError instanceof Error ? lastError : new Error("email send failed");
 }
 
 function alertText(envelope: AlertEnvelope): string {
@@ -160,4 +186,24 @@ function cleanKey(value: string): string {
 
 function safeErrorMessage(error: unknown): string {
   return error instanceof Error ? sanitizeAlertText(error.message, 160) : "unknown error";
+}
+
+async function recordExternalEmailFailure(envelope: AlertEnvelope, error: unknown): Promise<void> {
+  const { recordMonitoringEvent } = await import("@/lib/server/monitoring");
+  await recordMonitoringEvent({
+    eventType: "email:external_alert_failed",
+    message: "SMTP external alert delivery failed after retries.",
+    metadata: {
+      alertEventType: envelope.eventType,
+      error: safeErrorMessage(error),
+      severity: envelope.severity,
+      status: envelope.status,
+    },
+    severity: "warning",
+    status: "fail",
+  });
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

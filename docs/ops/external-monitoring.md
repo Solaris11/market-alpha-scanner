@@ -29,7 +29,7 @@ The app-side synthetic checks send critical/degraded alerts through the first co
 
 - `SLACK_WEBHOOK_URL`
 - `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID` or `MARKET_ALPHA_ALERT_TELEGRAM_CHAT_ID`
-- SMTP email: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`, and optional `MARKET_ALPHA_ALERT_EMAIL_TO`
+- SMTP email: `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`, and optional `MARKET_ALPHA_ALERT_EMAIL_TO`
 
 If no destination is set, SMTP alerts default to `support@marketalpha.co`.
 

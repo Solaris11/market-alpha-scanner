@@ -315,13 +315,13 @@ export async function notifyPremiumRenewalRestored(userId: string): Promise<void
   await safeCreateNotification(premiumRenewalRestoredNotification(), userId);
 }
 
-export async function createBillingNotificationForEvent(userId: string, intent: SubscriptionNotificationIntent, stripeEventId: string, db: DbExecutor = defaultDb): Promise<void> {
-  if (!stripeEventId.trim()) return;
+export async function createBillingNotificationForEvent(userId: string, intent: SubscriptionNotificationIntent, stripeEventId: string, db: DbExecutor = defaultDb): Promise<boolean> {
+  if (!stripeEventId.trim()) return false;
   const title = cleanText(intent.title, 140);
   const message = cleanText(intent.message, 500);
   const actionUrl = cleanActionUrl(intent.actionUrl);
   if (intent.dedupe === "once") {
-    await db.query<NotificationRow>(
+    const result = await db.query<NotificationRow>(
       `
         INSERT INTO notifications (user_id, type, title, message, read, action_url, stripe_event_id, created_at)
         SELECT $1, $2, $3, $4, false, $5, $6, now()
@@ -339,10 +339,10 @@ export async function createBillingNotificationForEvent(userId: string, intent: 
       `,
       [userId, intent.type, title, message, actionUrl, stripeEventId],
     );
-    return;
+    return Boolean(result.rows[0]?.id);
   }
 
-  await db.query<NotificationRow>(
+  const result = await db.query<NotificationRow>(
     `
       INSERT INTO notifications (user_id, type, title, message, read, action_url, stripe_event_id, created_at)
       SELECT $1, $2, $3, $4, false, $5, $6, now()
@@ -355,6 +355,7 @@ export async function createBillingNotificationForEvent(userId: string, intent: 
     `,
     [userId, intent.type, title, message, actionUrl, stripeEventId],
   );
+  return Boolean(result.rows[0]?.id);
 }
 
 export async function retrieveSubscription(subscriptionId: string): Promise<Stripe.Subscription> {

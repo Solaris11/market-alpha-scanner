@@ -87,3 +87,20 @@ sudo /opt/ops/market-alpha-compose-config-redacted.sh
 ```
 
 See `docs/ops/secrets-hardening.md` for env archive handling, Docker secrets migration order, and provider-side rotation steps.
+
+## Transactional Email
+
+Market Alpha uses Google Workspace Gmail SMTP for early low-volume transactional and support mail:
+
+```bash
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=emrah@ondemandsre.com
+SMTP_PASS=...
+EMAIL_FROM="Market Alpha Scanner <noreply@marketalpha.co>"
+SUPPORT_EMAIL=support@marketalpha.co
+BILLING_EMAIL=billing@marketalpha.co
+```
+
+See `docs/ops/google-workspace-smtp.md` for limits, Reply-To policy, and the future migration path to a dedicated transactional provider.

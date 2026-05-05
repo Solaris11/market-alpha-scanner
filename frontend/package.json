@@ -10,6 +10,7 @@
     "monitoring:synthetics": "tsx scripts/monitoring-synthetics.ts",
     "monitoring:system": "tsx scripts/monitoring-system.ts",
     "stripe:reconcile": "tsx scripts/stripe-reconcile.ts",
+    "email:test": "node scripts/send-test-email.mjs",
     "test": "node scripts/run-tests.mjs",
     "lint": "tsc --noEmit"
   },

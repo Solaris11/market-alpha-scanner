@@ -18,8 +18,10 @@ import {
   type StripeSyncResult,
 } from "@/lib/server/billing";
 import { dbTransaction, type DbExecutor } from "@/lib/server/db";
+import { sendBillingLifecycleEmailToUser } from "@/lib/server/email";
 import { recordMonitoringEvent, withRequestMetrics } from "@/lib/server/monitoring";
 import { stripe, stripeWebhookSecret } from "@/lib/server/stripe";
+import type { SubscriptionNotificationIntent } from "@/lib/security/subscription-notifications";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -32,6 +34,7 @@ type PreparedStripeEvent = {
 
 type WebhookProcessResult = {
   duplicate: boolean;
+  emailIntent: { intent: SubscriptionNotificationIntent; userId: string } | null;
   result: StripeSyncResult;
 };
 
@@ -56,6 +59,11 @@ async function webhook(request: Request): Promise<Response> {
 
   try {
     const processResult = await processStripeWebhook(event);
+    if (processResult.emailIntent) {
+      await sendBillingLifecycleEmailToUser(processResult.emailIntent.userId, processResult.emailIntent.intent).catch((emailError: unknown) => {
+        console.warn("[billing] lifecycle email failed", emailError instanceof Error ? emailError.message : emailError);
+      });
+    }
     return NextResponse.json({ ok: true, received: true, duplicate: processResult.duplicate });
   } catch (error) {
     console.warn("[stripe] webhook processing failed", error instanceof Error ? error.message : error);
@@ -93,14 +101,14 @@ async function reportStripeWebhookFailure(event: Stripe.Event, error: unknown): 
 
 async function processStripeWebhook(event: Stripe.Event): Promise<WebhookProcessResult> {
   if (await billingEventProcessed(event.id)) {
-    return { duplicate: true, result: ignoredResult() };
+    return { duplicate: true, emailIntent: null, result: ignoredResult() };
   }
 
   const prepared = await prepareStripeEvent(event);
   return dbTransaction(async (db) => {
     const claimed = await claimStripeEvent(event.id, event.type, db);
     if (!claimed) {
-      return { duplicate: true, result: ignoredResult() };
+      return { duplicate: true, emailIntent: null, result: ignoredResult() };
     }
 
     const result = await applyPreparedStripeEvent(event, prepared, db);
@@ -118,8 +126,8 @@ async function processStripeWebhook(event: Stripe.Event): Promise<WebhookProcess
       stripeEventId: event.id,
       userId: result.userId,
     });
-    await notifyForStripeEvent(event, result, db);
-    return { duplicate: false, result };
+    const emailIntent = await notifyForStripeEvent(event, result, db);
+    return { duplicate: false, emailIntent, result };
   });
 }
 
@@ -233,11 +241,12 @@ async function handleInvoicePaymentFailed(invoice: Stripe.Invoice | null, subscr
   return invoiceOnlyResult(invoice, "past_due");
 }
 
-async function notifyForStripeEvent(event: Stripe.Event, result: StripeSyncResult, db: DbExecutor): Promise<void> {
-  if (!result.userId) return;
+async function notifyForStripeEvent(event: Stripe.Event, result: StripeSyncResult, db: DbExecutor): Promise<{ intent: SubscriptionNotificationIntent; userId: string } | null> {
+  if (!result.userId) return null;
   const intent = notificationIntentForStripeWebhook(event.type, result);
-  if (!intent) return;
-  await createBillingNotificationForEvent(result.userId, intent, event.id, db);
+  if (!intent) return null;
+  const inserted = await createBillingNotificationForEvent(result.userId, intent, event.id, db);
+  return inserted ? { intent, userId: result.userId } : null;
 }
 
 function metadataUserId(metadata: Stripe.Metadata | null | undefined): string | null {

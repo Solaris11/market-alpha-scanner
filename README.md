@@ -182,12 +182,15 @@ export TELEGRAM_CHAT_ID="your_chat_id"
 Set these before running email alerts:
 
 ```bash
-export ALERT_EMAIL_FROM="scanner@example.com"
-export ALERT_EMAIL_TO="operator@example.com"
-export SMTP_HOST="smtp.example.com"
+export EMAIL_FROM="Market Alpha Scanner <noreply@marketalpha.co>"
+export MARKET_ALPHA_ALERT_EMAIL_TO="support@marketalpha.co"
+export SMTP_HOST="smtp.gmail.com"
 export SMTP_PORT="587"
-export SMTP_USER="smtp_user"
-export SMTP_PASSWORD="smtp_password"
+export SMTP_SECURE="false"
+export SMTP_USER="emrah@ondemandsre.com"
+export SMTP_PASS="google_app_password"
+export SUPPORT_EMAIL="support@marketalpha.co"
+export BILLING_EMAIL="billing@marketalpha.co"
 ```
 
 Supported alert types:

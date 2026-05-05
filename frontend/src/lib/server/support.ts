@@ -4,6 +4,7 @@ import type { QueryResultRow } from "pg";
 import { cleanSupportText, normalizeSupportCategory, normalizeSupportPriority, normalizeSupportStatus, userCanAccessTicket, type SupportTicketCategory, type SupportTicketPriority, type SupportTicketStatus } from "@/lib/security/support-policy";
 import { normalizeAuthEmail, type AuthUser } from "./auth";
 import { dbQuery, dbTransaction } from "./db";
+import { sendSupportReplyEmail, sendSupportTicketCreatedEmail } from "./email";
 import { requestIp } from "./request-security";
 
 export type SupportTicket = {
@@ -90,7 +91,11 @@ export async function createSupportTicket(input: {
     );
     return id;
   });
-  return getSupportTicketForRequester(ticketId, input.user?.id ?? null, email);
+  const created = await getSupportTicketForRequester(ticketId, input.user?.id ?? null, email);
+  await sendSupportTicketCreatedEmail({ subject: created.subject, ticketId: created.id, to: created.email }).catch((error: unknown) => {
+    console.warn("[support] ticket confirmation email failed", error instanceof Error ? error.message : error);
+  });
+  return created;
 }
 
 export async function listSupportTicketsForUser(userId: string): Promise<SupportTicket[]> {
@@ -174,6 +179,9 @@ export async function adminReplyToSupportTicket(input: { admin: AuthUser; messag
   });
   const updated = await getAdminSupportTicket(input.ticketId);
   if (!updated) throw new Error("ticket_not_found");
+  await sendSupportReplyEmail({ message, subject: updated.subject, ticketId: updated.id, to: updated.email }).catch((error: unknown) => {
+    console.warn("[support] ticket reply email failed", error instanceof Error ? error.message : error);
+  });
   return updated;
 }
 
