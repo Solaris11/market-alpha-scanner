@@ -71,6 +71,10 @@ export function emailContactsFromEnv(env: SmtpEnvironment): EmailContacts {
   };
 }
 
+export function supportInternalNotificationRecipient(contacts: EmailContacts): string {
+  return contacts.supportEmail;
+}
+
 export function renderEmailVerificationEmail(input: { contacts: EmailContacts; expiresAt: Date; verificationUrl: string }): RenderedEmail {
   const title = "Verify your Market Alpha Scanner email";
   const intro = "Confirm this email address before upgrading your Market Alpha account.";
@@ -123,6 +127,45 @@ export function renderSupportTicketCreatedEmail(input: { category?: string; cont
     replyTo: input.contacts.supportEmail,
     subject: "We received your support request",
     title,
+  });
+}
+
+export function renderSupportInternalNotificationEmail(input: {
+  adminUrl?: string | null;
+  category?: string;
+  contacts: EmailContacts;
+  createdAt?: string | null;
+  message?: string;
+  replyTo?: string | null;
+  subject: string;
+  ticketId: string;
+  userEmail: string;
+  userName?: string | null;
+}): RenderedEmail {
+  const safeSubject = cleanInline(input.subject, 180);
+  const category = cleanInline(input.category || "support", 80);
+  const userEmail = cleanInline(input.userEmail, 320);
+  const userName = cleanInline(input.userName || "", 160);
+  const createdAt = cleanInline(input.createdAt || "", 80);
+  const message = cleanBlock(input.message || "", 4000);
+  const adminUrl = cleanInline(input.adminUrl || "", 300);
+  return basicEmail({
+    category: "support",
+    contacts: input.contacts,
+    deliveryCategory: "support_internal_notification",
+    paragraphs: [
+      `Ticket ID: ${cleanInline(input.ticketId, 80)}`,
+      `User email: ${userEmail}`,
+      userName ? `User name: ${userName}` : "",
+      `Category: ${category}`,
+      `Subject: ${safeSubject}`,
+      createdAt ? `Created: ${createdAt}` : "",
+      message ? `Message:\n${message}` : "",
+      adminUrl ? `Admin link: ${adminUrl}` : "",
+    ].filter(Boolean),
+    replyTo: normalizeEmail(input.replyTo ?? undefined) ?? input.contacts.supportEmail,
+    subject: `New support ticket: ${cleanInline(safeSubject, 120)}`,
+    title: "New support ticket",
   });
 }
 

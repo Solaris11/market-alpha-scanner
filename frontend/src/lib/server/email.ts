@@ -6,9 +6,11 @@ import {
   renderBillingLifecycleEmail,
   renderEmailVerificationEmail,
   renderPasswordResetEmail,
+  renderSupportInternalNotificationEmail,
   renderSupportReplyEmail,
   renderSupportTicketCreatedEmail,
   smtpSettingsFromEnv,
+  supportInternalNotificationRecipient,
   type RenderedEmail,
   type SmtpSettings,
 } from "@/lib/email-policy";
@@ -58,6 +60,28 @@ export async function sendSupportTicketCreatedEmail(input: { category: string; m
     return await sendRenderedEmail(config, input.to, renderSupportTicketCreatedEmail({ category: input.category, contacts: config, message: input.message, status: input.status, subject: input.subject, ticketId: input.ticketId }));
   } catch {
     console.warn("[support] Ticket confirmation email delivery failed.");
+    return { ok: false, reason: "send_failed" };
+  }
+}
+
+export async function sendSupportInternalNotificationEmail(input: { adminUrl?: string | null; category: string; createdAt?: string | null; message: string; replyTo?: string | null; subject: string; ticketId: string; userEmail: string; userName?: string | null }): Promise<EmailDeliveryResult> {
+  const config = smtpConfig();
+  if (!config) return { ok: false, reason: "not_configured" };
+  try {
+    return await sendRenderedEmail(config, supportInternalNotificationRecipient(config), renderSupportInternalNotificationEmail({
+      adminUrl: input.adminUrl,
+      category: input.category,
+      contacts: config,
+      createdAt: input.createdAt,
+      message: input.message,
+      replyTo: input.replyTo,
+      subject: input.subject,
+      ticketId: input.ticketId,
+      userEmail: input.userEmail,
+      userName: input.userName,
+    }));
+  } catch {
+    console.warn("[support] Internal support ticket notification delivery failed.");
     return { ok: false, reason: "send_failed" };
   }
 }

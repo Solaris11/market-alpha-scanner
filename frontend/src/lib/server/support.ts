@@ -4,7 +4,7 @@ import type { QueryResultRow } from "pg";
 import { cleanSupportText, normalizeSupportCategory, normalizeSupportPriority, normalizeSupportStatus, userCanAccessTicket, type SupportTicketCategory, type SupportTicketPriority, type SupportTicketStatus } from "@/lib/security/support-policy";
 import { normalizeAuthEmail, type AuthUser } from "./auth";
 import { dbQuery, dbTransaction } from "./db";
-import { sendSupportReplyEmail, sendSupportTicketCreatedEmail, type EmailDeliveryResult } from "./email";
+import { sendSupportInternalNotificationEmail, sendSupportReplyEmail, sendSupportTicketCreatedEmail, type EmailDeliveryResult } from "./email";
 import { recordMonitoringEvent } from "./monitoring";
 import { requestIp } from "./request-security";
 
@@ -193,6 +193,22 @@ export async function sendSupportTicketCreatedNotification(ticket: SupportTicket
   );
 }
 
+export async function sendSupportInternalTicketNotification(ticket: SupportTicketDetail, message: unknown, user: AuthUser | null): Promise<void> {
+  await sendSupportEmail("support_internal_notification", () =>
+    sendSupportInternalNotificationEmail({
+      adminUrl: supportTicketAdminUrl(ticket.id),
+      category: ticket.category,
+      createdAt: ticket.createdAt,
+      message: cleanSupportText(message || ticket.messages.find((item) => item.senderType === "user")?.message, 4000),
+      replyTo: normalizeSupportEmail(ticket.email),
+      subject: ticket.subject,
+      ticketId: ticket.id,
+      userEmail: ticket.email,
+      userName: user?.displayName ?? null,
+    }),
+  );
+}
+
 export async function sendSupportTicketReplyNotification(ticket: SupportTicketDetail, message: unknown): Promise<void> {
   await sendSupportEmail("support_ticket_reply", () =>
     sendSupportReplyEmail({
@@ -285,7 +301,7 @@ function ticketFromRow(row: TicketRow): SupportTicket {
   };
 }
 
-async function sendSupportEmail(kind: "support_ticket_created" | "support_ticket_reply", send: () => Promise<EmailDeliveryResult>): Promise<void> {
+async function sendSupportEmail(kind: "support_internal_notification" | "support_ticket_created" | "support_ticket_reply", send: () => Promise<EmailDeliveryResult>): Promise<void> {
   try {
     const result = await send();
     if (result.ok) {
@@ -320,6 +336,12 @@ async function sendSupportEmail(kind: "support_ticket_created" | "support_ticket
     });
     console.warn("[support] support email delivery failed", safeSupportEmailError(error));
   }
+}
+
+function supportTicketAdminUrl(ticketId: string): string | null {
+  const baseUrl = process.env.APP_BASE_URL?.trim().replace(/\/+$/, "");
+  if (!baseUrl || !/^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(baseUrl)) return null;
+  return `${baseUrl}/admin/support/${ticketId}`;
 }
 
 function safeSupportEmailError(error: unknown): string {

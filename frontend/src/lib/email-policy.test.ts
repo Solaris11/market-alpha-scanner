@@ -6,9 +6,11 @@ import {
   renderEmailVerificationEmail,
   renderOperationalAlertEmail,
   renderPasswordResetEmail,
+  renderSupportInternalNotificationEmail,
   renderSupportReplyEmail,
   renderSupportTicketCreatedEmail,
   smtpSettingsFromEnv,
+  supportInternalNotificationRecipient,
   type EmailContacts,
 } from "./email-policy";
 import { EMAIL_MAX_ATTEMPTS, emailRetryDelayMs, shouldRetryEmailSend } from "./email-retry-policy";
@@ -50,6 +52,18 @@ test("transactional templates use correct Reply-To addresses", () => {
   const verification = renderEmailVerificationEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), verificationUrl: "https://app.marketalpha.co/api/auth/verify-email?token=test" });
   const passwordReset = renderPasswordResetEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), resetUrl: "https://app.marketalpha.co/reset-password?token=test" });
   const supportCreated = renderSupportTicketCreatedEmail({ category: "technical", contacts, message: "Refresh controls show unavailable.", status: "open", subject: "Help", ticketId: "ticket_1" });
+  const supportInternal = renderSupportInternalNotificationEmail({
+    adminUrl: "https://app.marketalpha.co/admin/support/ticket_1",
+    category: "technical",
+    contacts,
+    createdAt: "2026-05-05T13:00:00Z",
+    message: "Refresh controls show unavailable.",
+    replyTo: "user@example.com",
+    subject: "Help",
+    ticketId: "ticket_1",
+    userEmail: "user@example.com",
+    userName: "Test User",
+  });
   const supportReply = renderSupportReplyEmail({ contacts, message: "We can help explain the product.", subject: "Help", ticketId: "ticket_1" });
   const billing = renderBillingLifecycleEmail({ contacts, message: "Your Premium subscription is now active.", title: "Premium activated" });
   const alert = renderOperationalAlertEmail({ contacts, eventType: "health", message: "Deep health degraded.", metadata: {}, severity: "warning", status: "warn" });
@@ -68,6 +82,15 @@ test("transactional templates use correct Reply-To addresses", () => {
   assert.match(supportCreated.text, /Category: technical/);
   assert.match(supportCreated.text, /Ticket ticket_1 is open/);
   assert.match(supportCreated.text, /Refresh controls show unavailable/);
+  assert.equal(supportInternal.replyTo, "user@example.com");
+  assert.equal(supportInternal.category, "support");
+  assert.equal(supportInternal.deliveryCategory, "support_internal_notification");
+  assert.match(supportInternal.from, /support@marketalpha\.co/);
+  assert.equal(supportInternal.subject, "New support ticket: Help");
+  assert.match(supportInternal.text, /User email: user@example\.com/);
+  assert.match(supportInternal.text, /User name: Test User/);
+  assert.match(supportInternal.text, /Admin link: https:\/\/app\.marketalpha\.co\/admin\/support\/ticket_1/);
+  assert.equal(supportInternalNotificationRecipient(contacts), contacts.supportEmail);
   assert.equal(supportReply.replyTo, contacts.supportEmail);
   assert.equal(supportReply.category, "support");
   assert.equal(supportReply.deliveryCategory, "support_ticket_reply");
@@ -86,6 +109,7 @@ test("email templates do not include SMTP secrets or financial advice claims", (
     renderEmailVerificationEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), verificationUrl: "https://app.marketalpha.co/api/auth/verify-email?token=public-link-token" }),
     renderPasswordResetEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), resetUrl: "https://app.marketalpha.co/reset-password?token=public-link-token" }),
     renderSupportTicketCreatedEmail({ category: "scanner", contacts, message: "I need product support.", status: "open", subject: "Question", ticketId: "018f4c6b-7725-4b6a-9123-a85751000abc" }),
+    renderSupportInternalNotificationEmail({ category: "scanner", contacts, message: "I need product support.", replyTo: "user@example.com", subject: "Question", ticketId: "018f4c6b-7725-4b6a-9123-a85751000abc", userEmail: "user@example.com" }),
     renderSupportReplyEmail({ contacts, message: "I can explain what WAIT means, but I cannot provide buy or sell recommendations.", subject: "Question", ticketId: "018f4c6b-7725-4b6a-9123-a85751000abc" }),
     renderBillingLifecycleEmail({ contacts, message: "Your Premium subscription is now active.", title: "Premium activated" }),
   ];

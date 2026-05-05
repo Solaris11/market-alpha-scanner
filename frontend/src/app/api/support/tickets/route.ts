@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { after } from "next/server";
 import { requireUser } from "@/lib/server/access-control";
-import { createSupportTicket, listSupportTicketsForUser, sendSupportTicketCreatedNotification } from "@/lib/server/support";
+import { createSupportTicket, listSupportTicketsForUser, sendSupportInternalTicketNotification, sendSupportTicketCreatedNotification } from "@/lib/server/support";
 import { withRequestMetrics } from "@/lib/server/monitoring";
 import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 
@@ -30,7 +30,10 @@ export async function POST(request: Request) {
       const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
       const ticket = await createSupportTicket({ ...(payload ?? {}), user: access.user });
       after(async () => {
-        await sendSupportTicketCreatedNotification(ticket, payload?.message);
+        await Promise.all([
+          sendSupportTicketCreatedNotification(ticket, payload?.message),
+          sendSupportInternalTicketNotification(ticket, payload?.message, access.user),
+        ]);
       });
       return NextResponse.json({ ok: true, ticket }, { status: 201 });
     } catch {
