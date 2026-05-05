@@ -1,8 +1,10 @@
 "use client";
 
+import type { PointerEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { actionFor, formatNumber } from "@/lib/format";
+import { formatHistoryChartTimestamp, historyChartTooltipLines, type HistoryChartField } from "@/lib/history-chart-tooltip";
 import { verifiedNewsItemFromRow } from "@/lib/news-source-policy";
 import { nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { HistorySummary, SymbolHistoryRow } from "@/lib/types";
@@ -361,10 +363,11 @@ function InsightMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: "final_score" | "price"; label: string }) {
+function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: HistoryChartField; label: string }) {
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const points = rows
-    .map((row) => ({ time: timestampMs(row), value: typeof row[field] === "number" ? row[field] : null }))
-    .filter((point): point is { time: number; value: number } => point.time !== null && point.value !== null);
+    .map((row) => ({ row, time: timestampMs(row), value: typeof row[field] === "number" ? row[field] : null }))
+    .filter((point): point is { row: SymbolHistoryRow; time: number; value: number } => point.time !== null && point.value !== null);
 
   if (!points.length) {
     return <div className="rounded border border-dashed border-slate-700/70 px-3 py-8 text-center text-xs text-slate-500">{label} data not available.</div>;
@@ -386,24 +389,89 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: "
     return { x, y, index };
   });
   const path = plotted.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
+  const activePoint = activeIndex !== null ? plotted[activeIndex] : null;
+  const activeData = activeIndex !== null ? points[activeIndex] : null;
+  const activeRows = activeData ? historyChartTooltipLines(activeData.row, field) : [];
+
+  function handlePointer(event: PointerEvent<SVGSVGElement>) {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const pointerX = ((event.clientX - rect.left) / Math.max(1, rect.width)) * width;
+    let nearestIndex = 0;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+    for (const point of plotted) {
+      const distance = Math.abs(point.x - pointerX);
+      if (distance < nearestDistance) {
+        nearestDistance = distance;
+        nearestIndex = point.index;
+      }
+    }
+    setActiveIndex(nearestIndex);
+  }
 
   return (
-    <div className="terminal-panel overflow-x-auto rounded-md p-3">
+    <div className="terminal-panel rounded-md p-3">
       <div className="mb-2 flex items-center justify-between text-xs">
         <div className="font-semibold uppercase tracking-[0.14em] text-sky-300">{label}</div>
         <div className="font-mono text-slate-400">
           {formatNumber(points[0].value)} → {formatNumber(points[points.length - 1].value)}
         </div>
       </div>
-      <svg className="min-w-[520px]" height={height} role="img" viewBox={`0 0 ${width} ${height}`} width="100%">
-        <title>{label} over time</title>
-        <line stroke="rgba(148,163,184,0.22)" x1={padding} x2={width - padding} y1={height - padding} y2={height - padding} />
-        <line stroke="rgba(148,163,184,0.22)" x1={padding} x2={padding} y1={padding} y2={height - padding} />
-        <path d={path} fill="none" stroke={field === "price" ? "rgb(52,211,153)" : "rgb(125,211,252)"} strokeWidth="2" />
-        {plotted.map((point) => (
-          <circle cx={point.x} cy={point.y} fill="rgb(226,232,240)" key={point.index} r="2.8" />
-        ))}
-      </svg>
+      <div className="relative overflow-hidden rounded border border-slate-800/80 bg-slate-950/35">
+        <svg
+          aria-label={`${label} interactive chart`}
+          className="block w-full cursor-crosshair select-none touch-pan-y"
+          height={height}
+          onPointerDown={handlePointer}
+          onPointerLeave={() => setActiveIndex(null)}
+          onPointerMove={handlePointer}
+          role="img"
+          viewBox={`0 0 ${width} ${height}`}
+          width="100%"
+        >
+          <title>{label} over time</title>
+          <line stroke="rgba(148,163,184,0.22)" x1={padding} x2={width - padding} y1={height - padding} y2={height - padding} />
+          <line stroke="rgba(148,163,184,0.22)" x1={padding} x2={padding} y1={padding} y2={height - padding} />
+          {activePoint ? (
+            <line stroke="rgba(226,232,240,0.28)" strokeDasharray="4 4" x1={activePoint.x} x2={activePoint.x} y1={padding} y2={height - padding} />
+          ) : null}
+          <path d={path} fill="none" stroke={field === "price" ? "rgb(52,211,153)" : "rgb(125,211,252)"} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+          {plotted.map((point) => {
+            const active = activeIndex === point.index;
+            return (
+              <circle
+                cx={point.x}
+                cy={point.y}
+                fill={active ? (field === "price" ? "rgb(110,231,183)" : "rgb(186,230,253)") : "rgb(226,232,240)"}
+                key={point.index}
+                r={active ? "4.6" : "2.8"}
+                stroke={active ? "rgba(15,23,42,0.95)" : "transparent"}
+                strokeWidth={active ? "2" : "0"}
+              />
+            );
+          })}
+        </svg>
+        {activePoint && activeData ? (
+          <div
+            className="pointer-events-none absolute z-10 min-w-[190px] max-w-[min(260px,calc(100%-16px))] rounded-xl border border-slate-600/70 bg-slate-950/95 px-3 py-2 text-xs shadow-2xl shadow-black/40"
+            style={{
+              left: `${(activePoint.x / width) * 100}%`,
+              top: `${Math.max(8, Math.min(height - 92, activePoint.y - 12))}px`,
+              transform: activePoint.x > width * 0.62 ? "translate(calc(-100% - 10px), -4px)" : "translate(10px, -4px)",
+            }}
+          >
+            <div className="font-mono text-sm font-bold text-slate-50">{activeData.row.symbol}</div>
+            <div className="mt-0.5 text-[11px] text-slate-400">{formatHistoryChartTimestamp(activeData.time)}</div>
+            <div className="mt-2 space-y-1">
+              {activeRows.map((line) => (
+                <div className="flex items-center justify-between gap-3" key={line.label}>
+                  <span className="text-slate-500">{line.label}</span>
+                  <span className="font-mono font-semibold text-slate-100">{line.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
