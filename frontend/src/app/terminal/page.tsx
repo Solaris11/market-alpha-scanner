@@ -197,7 +197,7 @@ export default async function TerminalPage() {
             scanSafety={scanSafety}
             watchlistSymbols={watchlistSymbols}
           />
-          {!actionBlocksTradeUi && leader ? <AICopilotPanel signal={leader} /> : null}
+          {leader ? <AICopilotPanel contextLocked={actionBlocksTradeUi} lockedReason={noTradeCopy.reason} signal={leader} /> : null}
         </div>
       </div>
       <MarketOnboarding tradePlanHref={tradePlanHref} />
