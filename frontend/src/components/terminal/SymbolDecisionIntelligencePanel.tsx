@@ -56,6 +56,7 @@ export function SymbolDecisionIntelligencePanel({ candles, row }: { candles: Cha
             <InsightList title="Negative Context" items={intelligence.why.negatives} />
             <InsightList title="Risk Context" items={intelligence.risks} />
             <InsightList title="What To Watch" items={intelligence.what_to_watch} />
+            <InsightList title="Regime Impact" items={[intelligence.regime_impact]} />
           </div>
         </div>
 

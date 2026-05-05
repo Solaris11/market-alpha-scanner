@@ -50,6 +50,10 @@ export function AICopilotPanel({
           </div>
           <div className="space-y-3">
             <ReadinessBar toneClass={readinessTone.barClass} value={intelligence.readiness_score} />
+            <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/10 p-3">
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Regime Impact</div>
+              <p className="mt-2 text-xs leading-5 text-slate-300">{intelligence.regime_impact}</p>
+            </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <InsightList title="Why" items={intelligence.why.positives} />
               <InsightList title="Constraints" items={intelligence.why.negatives} />

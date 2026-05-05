@@ -44,6 +44,16 @@ export function getDailyAction({ best, fallbackRow, marketRegime, scanSafety }: 
     };
   }
 
+  if (regime === "RISK_OFF" || regime === "BEAR" || regime.includes("RISK_OFF") || regime.includes("BEAR")) {
+    return {
+      action: "WAIT",
+      label: "NO TRADE TODAY",
+      reason: "Market regime is defensive. Wait for stronger confirmation.",
+      symbol: null,
+      tone: "wait",
+    };
+  }
+
   if (!row) return stayOutAction();
 
   const symbol = cleanText(row.symbol, "").toUpperCase();

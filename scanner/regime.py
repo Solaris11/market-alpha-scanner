@@ -4,7 +4,7 @@ import json
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal, TypedDict
 
 import numpy as np
 import pandas as pd
@@ -12,6 +12,17 @@ import pandas as pd
 from .data_fetch import batch_download
 from .safety import utc_now
 from .utils import safe_float
+
+StandardRegime = Literal["BULL", "NEUTRAL", "OVERHEATED", "RISK_OFF", "BEAR"]
+
+
+class RegimePolicy(TypedDict):
+    adjusted_thresholds: dict[str, float]
+    adjusted_weights: dict[str, float]
+    impact_text: str
+    reason_codes: list[str]
+    regime: StandardRegime
+    raw_regime: str
 
 
 REGIME_PROXIES = {
@@ -21,6 +32,20 @@ REGIME_PROXIES = {
     "vix": "^VIX",
     "tlt": "TLT",
     "uup": "UUP",
+}
+BASE_REGIME_THRESHOLDS: dict[str, float] = {
+    "buy_score": 80.0,
+    "watch_score": 50.0,
+    "confidence": 70.0,
+}
+BASE_REGIME_WEIGHTS: dict[str, float] = {
+    "trend": 1.0,
+    "momentum": 1.0,
+    "breakout": 1.0,
+    "risk": 1.0,
+    "volatility": 1.0,
+    "macro": 1.0,
+    "data_quality": 1.0,
 }
 
 
@@ -179,9 +204,10 @@ def detect_market_regime(price_map: dict[str, pd.DataFrame] | None = None) -> di
         confidence += 10
     confidence = int(max(0, min(100, confidence)))
 
-    return {
+    payload: dict[str, Any] = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "regime": regime,
+        "raw_regime": regime,
         "trend": trend,
         "confidence": confidence,
         "spy": spy,
@@ -191,23 +217,118 @@ def detect_market_regime(price_map: dict[str, pd.DataFrame] | None = None) -> di
         "tlt": tlt,
         "uup": uup,
     }
+    payload["regime"] = standardize_regime(payload)
+    return payload
+
+
+def standardize_regime(regime_payload: dict[str, Any] | None) -> StandardRegime:
+    payload = regime_payload or {}
+    raw_regime = str(payload.get("regime") or payload.get("raw_regime") or "").strip().upper()
+    trend = str(payload.get("trend") or "").strip().upper()
+    vix_payload = payload.get("vix")
+    vix_trend = ""
+    if isinstance(vix_payload, dict):
+        vix_trend = str(vix_payload.get("trend") or "").strip().lower()
+
+    if raw_regime in {"BULL", "RISK_ON"}:
+        return "BULL"
+    if raw_regime == "OVERHEATED":
+        return "OVERHEATED"
+    if raw_regime == "BEAR":
+        return "BEAR"
+    if raw_regime == "RISK_OFF":
+        return "BEAR" if trend == "DOWN" and vix_trend == "rising" else "RISK_OFF"
+    if raw_regime in {"PULLBACK", "NEUTRAL", "MIXED"}:
+        return "NEUTRAL"
+    return "NEUTRAL"
+
+
+def regime_policy(regime_payload: dict[str, Any] | None) -> RegimePolicy:
+    payload = regime_payload or {}
+    raw_regime = str(payload.get("raw_regime") or payload.get("regime") or "UNKNOWN").strip().upper() or "UNKNOWN"
+    regime = standardize_regime(regime_payload)
+    adjusted_weights = dict(BASE_REGIME_WEIGHTS)
+    adjusted_thresholds = dict(BASE_REGIME_THRESHOLDS)
+    reason_codes: list[str] = []
+
+    if regime == "BULL":
+        adjusted_weights.update({"momentum": 1.05, "breakout": 1.04, "risk": 0.98})
+        reason_codes.append("REGIME_BULL_MODE")
+        impact_text = "Bull regime: scanner allows constructive momentum and structure to count, while risk gates remain active."
+    elif regime == "OVERHEATED":
+        adjusted_weights.update({"breakout": 0.85, "risk": 1.25, "volatility": 1.25})
+        adjusted_thresholds.update({"buy_score": 85.0, "watch_score": 55.0, "confidence": 75.0})
+        reason_codes.extend(["REGIME_OVERHEATED_FILTER", "BREAKOUT_IMPACT_REDUCED", "RISK_FILTER_INCREASED"])
+        impact_text = "Overheated market: scanner is reducing breakout signals and increasing risk filters."
+    elif regime == "RISK_OFF":
+        adjusted_weights.update({"breakout": 0.8, "risk": 1.3, "data_quality": 1.2})
+        adjusted_thresholds.update({"buy_score": 90.0, "watch_score": 60.0, "confidence": 80.0})
+        reason_codes.extend(["REGIME_RISK_OFF_STRICT", "DATA_QUALITY_FILTER_INCREASED"])
+        impact_text = "Risk-off market: scanner requires stronger confirmation and is filtering weaker setups."
+    elif regime == "BEAR":
+        adjusted_weights.update({"breakout": 0.7, "risk": 1.35, "data_quality": 1.2})
+        adjusted_thresholds.update({"buy_score": 92.0, "watch_score": 60.0, "confidence": 82.0})
+        reason_codes.extend(["REGIME_BEAR_DEFENSIVE", "BREAKOUT_BUY_DISABLED"])
+        impact_text = "Bear regime: scanner is disabling breakout-style buy intent and emphasizing risk controls."
+    else:
+        reason_codes.append("REGIME_NEUTRAL_BALANCED")
+        impact_text = "Neutral regime: scanner is using balanced scoring and standard risk filters."
+
+    return {
+        "adjusted_thresholds": adjusted_thresholds,
+        "adjusted_weights": adjusted_weights,
+        "impact_text": impact_text,
+        "reason_codes": reason_codes,
+        "regime": regime,
+        "raw_regime": raw_regime,
+    }
 
 
 def regime_adjustment_for_row(row: dict[str, Any] | pd.Series, regime_payload: dict[str, Any] | None) -> float:
-    regime = str((regime_payload or {}).get("regime") or "").upper()
+    policy = regime_policy(regime_payload)
+    regime = policy["regime"]
     setup_type = str(row.get("setup_type", "") if hasattr(row, "get") else "").lower()
     entry_text = " ".join(
         str(row.get(column, "") if hasattr(row, "get") else "")
         for column in ("trade_quality", "trade_quality_note", "target_warning")
     ).upper()
-    if regime == "RISK_ON":
-        return 4.0
+    entry_status = str(row.get("entry_status", "") if hasattr(row, "get") else "").upper()
+    momentum_score = safe_float(row.get("momentum_score", np.nan) if hasattr(row, "get") else np.nan, np.nan)
+    breakout_score = safe_float(row.get("breakout_score", np.nan) if hasattr(row, "get") else np.nan, np.nan)
+    data_quality_score = safe_float(row.get("data_quality_score", 100.0) if hasattr(row, "get") else 100.0, 100.0)
+    risk_penalty = safe_float(row.get("risk_penalty", 0.0) if hasattr(row, "get") else 0.0, 0.0)
+    atr_pct = safe_float(row.get("atr_pct", np.nan) if hasattr(row, "get") else np.nan, np.nan)
+    annualized_volatility = safe_float(row.get("annualized_volatility", np.nan) if hasattr(row, "get") else np.nan, np.nan)
+
+    if regime == "BULL":
+        momentum_bonus = max(0.0, momentum_score - 65.0) * 0.03 if not np.isnan(momentum_score) else 0.0
+        breakout_bonus = max(0.0, breakout_score - 70.0) * 0.02 if not np.isnan(breakout_score) else 0.0
+        risk_drag = min(1.0, max(0.0, risk_penalty) * 0.04)
+        return round(_clamp(momentum_bonus + breakout_bonus - risk_drag, -2.0, 2.0), 2)
     if regime == "OVERHEATED":
-        return -6.0 if "EXTENDED" in entry_text or "LOW EDGE" in entry_text else -3.0
-    if regime == "PULLBACK":
-        return 2.0 if "pullback" in setup_type or "avwap" in setup_type else 0.0
+        adjustment = -3.0
+        adjustment -= max(0.0, breakout_score - 60.0) * 0.03 if not np.isnan(breakout_score) else 0.0
+        adjustment -= max(0.0, risk_penalty) * 0.12
+        if entry_status == "OVEREXTENDED" or "EXTENDED" in entry_text or "LOW EDGE" in entry_text:
+            adjustment -= 3.0
+        if _elevated_volatility(annualized_volatility, atr_pct):
+            adjustment -= 2.0
+        return round(_clamp(adjustment, -14.0, 0.0), 2)
     if regime == "RISK_OFF":
-        return -10.0 if "EXTENDED" in entry_text or "LOW EDGE" in entry_text else -6.0
+        adjustment = -6.0
+        adjustment -= max(0.0, breakout_score - 55.0) * 0.03 if not np.isnan(breakout_score) else 0.0
+        adjustment -= max(0.0, 75.0 - data_quality_score) * 0.08
+        adjustment -= max(0.0, risk_penalty) * 0.18
+        if entry_status == "OVEREXTENDED" or "EXTENDED" in entry_text or "LOW EDGE" in entry_text:
+            adjustment -= 2.0
+        return round(_clamp(adjustment, -18.0, 0.0), 2)
+    if regime == "BEAR":
+        adjustment = -8.0
+        adjustment -= max(0.0, risk_penalty) * 0.2
+        adjustment -= max(0.0, 75.0 - data_quality_score) * 0.1
+        if "breakout" in setup_type:
+            adjustment -= 4.0
+        return round(_clamp(adjustment, -22.0, 0.0), 2)
     return 0.0
 
 
@@ -215,11 +336,69 @@ def apply_regime_adjustments(df: pd.DataFrame, regime_payload: dict[str, Any] | 
     if df.empty:
         return df
     working = df.copy()
+    policy = regime_policy(regime_payload)
     adjustments = working.apply(lambda row: regime_adjustment_for_row(row, regime_payload), axis=1)
-    working["market_regime"] = str((regime_payload or {}).get("regime") or "UNKNOWN")
+    base_scores = pd.to_numeric(working["final_score"], errors="coerce")
+    adjusted_scores = (base_scores + adjustments).clip(lower=0, upper=100).round(2)
+    working["market_regime_raw"] = policy["raw_regime"]
+    working["market_regime"] = policy["regime"]
     working["regime_adjustment"] = adjustments.round(2)
-    working["final_score_adjusted"] = (pd.to_numeric(working["final_score"], errors="coerce") + adjustments).clip(lower=0, upper=100).round(2)
+    working["final_score_base"] = base_scores.round(2)
+    working["final_score_adjusted"] = adjusted_scores
+    working["final_score"] = adjusted_scores
+    working["rating"] = adjusted_scores.apply(_rating_from_score)
+    working["regime_adjustment_applied"] = policy["regime"] != "NEUTRAL"
+    working["adjusted_weights"] = pd.Series([policy["adjusted_weights"] for _ in range(len(working))], index=working.index, dtype="object")
+    working["adjusted_thresholds"] = pd.Series([policy["adjusted_thresholds"] for _ in range(len(working))], index=working.index, dtype="object")
+    working["regime_reason_codes"] = pd.Series([_regime_reason_codes_for_row(row, policy) for _, row in working.iterrows()], index=working.index, dtype="object")
+    working["regime_impact"] = policy["impact_text"]
     return working
+
+
+def _regime_reason_codes_for_row(row: pd.Series, policy: RegimePolicy) -> list[str]:
+    codes = list(policy["reason_codes"])
+    regime = policy["regime"]
+    entry_status = str(row.get("entry_status", "")).upper()
+    setup_type = str(row.get("setup_type", "")).lower()
+    data_quality_score = safe_float(row.get("data_quality_score"), 100.0)
+    if regime == "OVERHEATED" and entry_status == "OVEREXTENDED":
+        codes.append("OVERHEATED_OVEREXTENDED_HARD_VETO")
+    if regime == "BEAR" and "breakout" in setup_type:
+        codes.append("BEAR_BREAKOUT_BUY_DISABLED")
+    if regime in {"RISK_OFF", "BEAR"} and data_quality_score < 75.0:
+        codes.append("REGIME_DATA_QUALITY_PENALTY")
+    return _unique_codes(codes)
+
+
+def _rating_from_score(score: object) -> str:
+    value = safe_float(score, np.nan)
+    if np.isnan(value):
+        return "PASS"
+    if value >= 80.0:
+        return "TOP"
+    if value >= 65.0:
+        return "ACTIONABLE"
+    if value >= 50.0:
+        return "WATCH"
+    return "PASS"
+
+
+def _elevated_volatility(annualized_volatility: float, atr_pct: float) -> bool:
+    return (not np.isnan(annualized_volatility) and annualized_volatility >= 0.45) or (not np.isnan(atr_pct) and atr_pct >= 5.0)
+
+
+def _clamp(value: float, lower: float, upper: float) -> float:
+    return max(lower, min(upper, value))
+
+
+def _unique_codes(codes: list[str]) -> list[str]:
+    seen: set[str] = set()
+    unique: list[str] = []
+    for code in codes:
+        if code and code not in seen:
+            seen.add(code)
+            unique.append(code)
+    return unique
 
 
 def _json_safe(value: Any) -> Any:

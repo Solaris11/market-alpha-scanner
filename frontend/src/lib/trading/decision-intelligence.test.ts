@@ -80,6 +80,17 @@ describe("decision intelligence", () => {
     assert.equal(factors.find((factor) => factor.key === "data_quality")?.value, 92);
   });
 
+  it("surfaces regime impact from scanner diagnostics", () => {
+    const result = buildDecisionIntelligence({
+      ...baseRow,
+      market_regime: "OVERHEATED",
+      regime_impact: "Overheated market: scanner is reducing breakout signals and increasing risk filters.",
+    } as unknown as RankingRow);
+
+    assert.equal(result.regime, "OVERHEATED");
+    assert.ok(result.regime_impact.includes("risk filters"));
+  });
+
   it("does not generate financial advice language in explanation copy", () => {
     const result = buildDecisionIntelligence({
       ...baseRow,

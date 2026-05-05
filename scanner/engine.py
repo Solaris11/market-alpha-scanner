@@ -52,6 +52,7 @@ SEVERE_VETO_CODES = {
     "POOR_RISK_REWARD",
     "STOP_RISK",
     "RISK_OFF_MARKET",
+    "BEAR_MARKET",
 }
 
 
@@ -389,8 +390,9 @@ def scan_symbols(
     if df_rank.empty:
         return df_rank
     df_rank["return_1d"] = df_rank["symbol"].map(one_day_return_cache)
-    df_rank = apply_regime_adjustments(df_rank, market_regime)
     df_rank = attach_price_data_quality(df_rank, price_map)
+    df_rank = apply_scoring_diagnostics(df_rank)
+    df_rank = apply_regime_adjustments(df_rank, market_regime)
     market_structure = compute_market_structure(df_rank)
     df_rank = apply_recommendation_quality(df_rank, market_structure)
     df_rank = apply_final_trade_decision(df_rank)
@@ -559,9 +561,12 @@ def apply_decision_safety_gates(df_rank: pd.DataFrame) -> pd.DataFrame:
         vetoes = _veto_codes(row.get("vetoes"))
         trade_permitted = _bool_value(row.get("trade_permitted"))
         confidence_score = safe_float(row.get("confidence_score"), np.nan)
+        confidence_threshold = _threshold_value(row.get("adjusted_thresholds"), "confidence", MIN_BUY_CONFIDENCE_SCORE)
+        buy_score_threshold = _threshold_value(row.get("adjusted_thresholds"), "buy_score", 80.0)
+        score_value = safe_float(row.get("final_score"), np.nan)
 
         if not trade_permitted:
-            next_decision = "AVOID" if _has_severe_veto(vetoes) else "WAIT_PULLBACK"
+            next_decision = "AVOID" if _has_severe_veto(vetoes) or _has_regime_hard_veto(row, vetoes) else "WAIT_PULLBACK"
             working.at[index, "final_decision"] = next_decision
             working.at[index, "decision_reason"] = _veto_decision_reason(vetoes, next_decision)
             if next_decision == "AVOID":
@@ -569,9 +574,23 @@ def apply_decision_safety_gates(df_rank: pd.DataFrame) -> pd.DataFrame:
                 working.at[index, "entry_distance_pct"] = np.nan
             continue
 
-        if not np.isnan(confidence_score) and confidence_score < MIN_BUY_CONFIDENCE_SCORE:
+        if _has_regime_hard_veto(row, vetoes):
+            working.at[index, "final_decision"] = "AVOID"
+            working.at[index, "decision_reason"] = _veto_decision_reason(vetoes, "AVOID")
+            working.at[index, "suggested_entry"] = np.nan
+            working.at[index, "entry_distance_pct"] = np.nan
+            continue
+
+        if not np.isnan(score_value) and score_value < buy_score_threshold:
             working.at[index, "final_decision"] = "WATCH"
-            working.at[index, "decision_reason"] = f"Confidence score below {MIN_BUY_CONFIDENCE_SCORE:.0f}; monitor until confirmation improves"
+            working.at[index, "decision_reason"] = f"Regime-adjusted score below {buy_score_threshold:.0f}; monitor until conditions improve"
+            working.at[index, "suggested_entry"] = np.nan
+            working.at[index, "entry_distance_pct"] = np.nan
+            continue
+
+        if not np.isnan(confidence_score) and confidence_score < confidence_threshold:
+            working.at[index, "final_decision"] = "WATCH"
+            working.at[index, "decision_reason"] = f"Confidence score below {confidence_threshold:.0f}; monitor until confirmation improves"
             working.at[index, "suggested_entry"] = np.nan
             working.at[index, "entry_distance_pct"] = np.nan
     return working
@@ -597,6 +616,32 @@ def _bool_value(value: object) -> bool:
 
 def _has_severe_veto(vetoes: list[str]) -> bool:
     return any(code in SEVERE_VETO_CODES for code in vetoes)
+
+
+def _has_regime_hard_veto(row: pd.Series, vetoes: list[str]) -> bool:
+    market_regime = safe_str(row.get("market_regime"), "").upper()
+    setup_type = safe_str(row.get("setup_type"), "").lower()
+    if market_regime == "OVERHEATED" and "OVEREXTENDED_ENTRY" in vetoes:
+        return True
+    if market_regime == "BEAR" and "breakout" in setup_type:
+        return True
+    return False
+
+
+def _threshold_value(value: object, key: str, default: float) -> float:
+    if isinstance(value, dict):
+        return safe_float(value.get(key), default)
+    text = safe_str(value, "")
+    if not text:
+        return default
+    normalized = text.strip().strip("{}")
+    for part in normalized.split(","):
+        if ":" not in part:
+            continue
+        raw_key, raw_value = part.split(":", 1)
+        if raw_key.strip().strip("'\"") == key:
+            return safe_float(raw_value.strip().strip("'\""), default)
+    return default
 
 
 def _veto_decision_reason(vetoes: list[str], decision: str) -> str:

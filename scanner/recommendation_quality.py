@@ -189,18 +189,20 @@ def evaluate_recommendation_quality(row: pd.Series, market_structure: dict[str, 
         negatives.append("risk/reward unavailable")
 
     regime = _normalized(row.get("market_regime"))
-    if regime == "RISK_ON":
-        score += 10
-        positives.append("RISK_ON market")
-    elif regime == "PULLBACK":
-        score += 10
-        positives.append("pullback market regime")
+    if regime in {"RISK_ON", "BULL"}:
+        score += 5
+        positives.append("constructive market regime")
+    elif regime in {"PULLBACK", "NEUTRAL"}:
+        positives.append("balanced market regime")
     elif regime == "OVERHEATED":
         score -= 15
         negatives.append("overheated market")
     elif regime == "RISK_OFF":
         score -= 25
         negatives.append("RISK_OFF market")
+    elif regime == "BEAR":
+        score -= 35
+        negatives.append("bear market")
 
     breadth = _normalized((market_structure or {}).get("breadth"))
     leadership = _normalized((market_structure or {}).get("leadership"))

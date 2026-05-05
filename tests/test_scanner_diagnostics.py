@@ -14,6 +14,7 @@ from scanner.diagnostics import (
     vetoes_for_row,
 )
 from scanner.engine import apply_decision_safety_gates
+from scanner.regime import apply_regime_adjustments, regime_policy, standardize_regime
 
 
 def _base_row() -> dict[str, object]:
@@ -148,12 +149,54 @@ class ScannerDiagnosticsTests(unittest.TestCase):
 
     def test_low_confidence_downgrades_enter_to_watch(self) -> None:
         row = _base_row()
+        row["final_score"] = 85.0
         diagnostics = apply_scoring_diagnostics(pd.DataFrame([row]))
+        diagnostics.at[0, "final_score"] = 85.0
         diagnostics.at[0, "confidence_score"] = 45.0
         diagnostics.at[0, "trade_permitted"] = True
         gated = apply_decision_safety_gates(diagnostics).iloc[0]
         self.assertEqual(gated["final_decision"], "WATCH")
         self.assertIn("Confidence score below", str(gated["decision_reason"]))
+
+    def test_standardized_regime_mapping(self) -> None:
+        self.assertEqual(standardize_regime({"regime": "RISK_ON"}), "BULL")
+        self.assertEqual(standardize_regime({"regime": "PULLBACK"}), "NEUTRAL")
+        self.assertEqual(standardize_regime({"regime": "RISK_OFF", "trend": "DOWN", "vix": {"trend": "rising"}}), "BEAR")
+        self.assertEqual(standardize_regime({"regime": "RISK_OFF", "trend": "MIXED"}), "RISK_OFF")
+
+    def test_regime_adjustments_are_conservative_in_risk_regimes(self) -> None:
+        row = _base_row()
+        row["final_score"] = 82.0
+        row["breakout_score"] = 78.0
+        row["risk_penalty"] = 5.0
+        row["data_quality_score"] = 92.0
+        bull = apply_regime_adjustments(pd.DataFrame([row]), {"regime": "RISK_ON"}).iloc[0]
+        overheated = apply_regime_adjustments(pd.DataFrame([row]), {"regime": "OVERHEATED"}).iloc[0]
+        risk_off = apply_regime_adjustments(pd.DataFrame([row]), {"regime": "RISK_OFF"}).iloc[0]
+        self.assertGreaterEqual(float(bull["final_score"]), float(overheated["final_score"]))
+        self.assertGreater(float(overheated["final_score"]), float(risk_off["final_score"]))
+        self.assertEqual(overheated["market_regime"], "OVERHEATED")
+        self.assertIn("adjusted_thresholds", overheated.index)
+
+    def test_overheated_overextended_entry_is_hard_veto(self) -> None:
+        row = _base_row()
+        row["market_regime"] = "OVERHEATED"
+        row["entry_status"] = "OVEREXTENDED"
+        diagnostics = apply_scoring_diagnostics(pd.DataFrame([row]))
+        diagnostics.at[0, "trade_permitted"] = False
+        gated = apply_decision_safety_gates(diagnostics).iloc[0]
+        self.assertEqual(gated["final_decision"], "AVOID")
+        self.assertIn("Hard veto blocked entry", str(gated["decision_reason"]))
+
+    def test_risk_off_thresholds_require_stronger_confirmation(self) -> None:
+        row = _base_row()
+        row["final_score"] = 88.0
+        row["confidence_score"] = 75.0
+        row["adjusted_thresholds"] = regime_policy({"regime": "RISK_OFF"})["adjusted_thresholds"]
+        row["trade_permitted"] = True
+        gated = apply_decision_safety_gates(pd.DataFrame([row])).iloc[0]
+        self.assertEqual(gated["final_decision"], "WATCH")
+        self.assertIn("Regime-adjusted score below", str(gated["decision_reason"]))
 
 
 if __name__ == "__main__":

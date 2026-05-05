@@ -31,7 +31,7 @@ function inferRegime(rows: RankingRow[], artifact: Record<string, unknown> | nul
   const enter = countDecision(rows, "ENTER");
   const avoid = countDecision(rows, "AVOID");
   const label = String(artifact?.regime ?? (enter > avoid ? "RISK_ON" : avoid > enter ? "RISK_OFF" : "NEUTRAL")).toUpperCase();
-  const riskMode = label.includes("OFF") ? "risk-off" : label.includes("ON") ? "risk-on" : "neutral";
+  const riskMode = label.includes("OFF") || label.includes("BEAR") ? "risk-off" : label.includes("ON") || label.includes("BULL") ? "risk-on" : "neutral";
   const confidence = typeof artifact?.confidence === "number" ? artifact.confidence : Math.min(100, 45 + Math.abs(enter - avoid) * 3);
   return {
     label,

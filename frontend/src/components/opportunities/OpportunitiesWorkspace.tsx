@@ -208,6 +208,11 @@ function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewMod
         <InsightList className="mt-3" title="Improvement conditions" items={intelligence.what_to_watch} />
       </details>
 
+      <details className="rounded-2xl border border-cyan-300/15 bg-cyan-400/10 p-4" open>
+        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Regime impact</summary>
+        <p className="mt-3 text-xs leading-5 text-slate-300">{intelligence.regime_impact}</p>
+      </details>
+
       <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
         <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Readiness</summary>
         <div className="mt-3">

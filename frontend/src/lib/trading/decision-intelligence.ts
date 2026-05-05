@@ -3,6 +3,8 @@ import type { RankingRow } from "@/lib/types";
 export type DecisionIntelligence = {
   confidence: number;
   decision: string;
+  regime: string;
+  regime_impact: string;
   readiness_score: number;
   risks: string[];
   what_to_watch: string[];
@@ -75,6 +77,7 @@ const VETO_NEGATIVE_COPY: Record<string, string> = {
   OVERHEATED_MARKET: "Market conditions are overheated",
   POOR_RISK_REWARD: "Risk/reward context is not favorable",
   PROVIDER_ERROR: "Market data provider returned an error",
+  BEAR_MARKET: "Bear regime is active",
   RISK_OFF_MARKET: "Market regime is risk-off",
   STALE_DATA: "Scanner data is stale",
   STOP_RISK: "Price is too close to invalidation context",
@@ -93,6 +96,7 @@ const WATCH_COPY: Record<string, string> = {
   OVERHEATED_MARKET: "Wait for overheated market conditions to cool.",
   POOR_RISK_REWARD: "Monitor for a cleaner balance between risk and potential reward.",
   PROVIDER_ERROR: "Wait for provider coverage to recover or confirm with the next scan.",
+  BEAR_MARKET: "Wait for market structure to stabilize before elevating breakout-style setups.",
   RISK_OFF_MARKET: "Wait for the market regime to improve before elevating this setup.",
   STALE_DATA: "Wait for a fresh scanner run before relying on this context.",
   STOP_RISK: "Monitor for price to move away from invalidation context.",
@@ -100,7 +104,7 @@ const WATCH_COPY: Record<string, string> = {
   WEAK_VOLUME_CONFIRMATION: "Wait for volume expansion before treating confirmation as stronger.",
 };
 
-const SEVERE_VETOES = new Set(["EXTREME_VOLATILITY", "MISSING_PRICE_HISTORY", "PROVIDER_ERROR", "RISK_OFF_MARKET", "STALE_DATA", "DATA_STALE"]);
+const SEVERE_VETOES = new Set(["BEAR_MARKET", "EXTREME_VOLATILITY", "MISSING_PRICE_HISTORY", "PROVIDER_ERROR", "RISK_OFF_MARKET", "STALE_DATA", "DATA_STALE"]);
 
 export function buildDecisionIntelligence(row: RankingRow): DecisionIntelligence {
   const decision = normalizedDecision(row);
@@ -120,10 +124,14 @@ export function buildDecisionIntelligence(row: RankingRow): DecisionIntelligence
   const negatives = negativeReasons(factors, reasonCodesList, vetoes);
   const risks = riskReasons(vetoes, dataQuality);
   const what_to_watch = watchConditions({ factors, reasonCodesList, vetoes });
+  const regime = normalizedRegime(row);
+  const regime_impact = regimeImpact(row, regime);
 
   return {
     confidence,
     decision,
+    regime,
+    regime_impact,
     readiness_score,
     risks,
     what_to_watch,
@@ -132,6 +140,21 @@ export function buildDecisionIntelligence(row: RankingRow): DecisionIntelligence
       positives: ensureNonEmpty(positives, "Scanner diagnostics are available for this setup."),
     },
   };
+}
+
+function normalizedRegime(row: RankingRow): string {
+  const regime = normalizeCode(String(rawField(row, "market_regime") ?? ""));
+  return regime || "NEUTRAL";
+}
+
+function regimeImpact(row: RankingRow, regime: string): string {
+  const explicit = String(rawField(row, "regime_impact") ?? "").trim();
+  if (explicit) return explicit;
+  if (regime === "OVERHEATED") return "Overheated market: scanner is reducing breakout signals and increasing risk filters.";
+  if (regime === "RISK_OFF") return "Risk-off market: scanner requires stronger confirmation and is filtering weaker setups.";
+  if (regime === "BEAR") return "Bear regime: scanner is disabling breakout-style buy intent and emphasizing risk controls.";
+  if (regime === "BULL") return "Bull regime: scanner allows constructive momentum and structure to count, while risk gates remain active.";
+  return "Neutral regime: scanner is using balanced scoring and standard risk filters.";
 }
 
 export function buildDecisionFactors(row: RankingRow): DecisionFactor[] {

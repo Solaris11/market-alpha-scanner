@@ -187,6 +187,8 @@ def vetoes_for_row(row: Mapping[str, object], data_quality: Mapping[str, object]
     market_regime = safe_str(row.get("market_regime"), "").upper()
     if market_regime == "RISK_OFF":
         vetoes.append("RISK_OFF_MARKET")
+    elif market_regime == "BEAR":
+        vetoes.append("BEAR_MARKET")
     elif market_regime == "OVERHEATED":
         vetoes.append("OVERHEATED_MARKET")
 
@@ -227,6 +229,8 @@ def decision_reason_codes_for_row(row: Mapping[str, object], vetoes: list[str] |
 
     for veto in vetoes or vetoes_for_row(row):
         codes.append(veto)
+    for regime_code in _code_list(row.get("regime_reason_codes")):
+        codes.append(regime_code)
     return _unique_codes(codes)
 
 
@@ -252,6 +256,7 @@ def confidence_score_for_row(row: Mapping[str, object], factor_scores: Mapping[s
         "OVEREXTENDED_ENTRY": 10.0,
         "STOP_RISK": 18.0,
         "RISK_OFF_MARKET": 18.0,
+        "BEAR_MARKET": 22.0,
         "OVERHEATED_MARKET": 8.0,
     }
     for code in veto_codes:
@@ -333,3 +338,14 @@ def _unique_codes(codes: list[str]) -> list[str]:
             seen.add(code)
             unique.append(code)
     return unique
+
+
+def _code_list(value: object) -> list[str]:
+    if isinstance(value, list):
+        return [safe_str(item, "").upper() for item in value if safe_str(item, "")]
+    if isinstance(value, tuple):
+        return [safe_str(item, "").upper() for item in value if safe_str(item, "")]
+    text = safe_str(value, "")
+    if not text:
+        return []
+    return [part.strip().strip("'\"").upper() for part in text.strip("[]").split(",") if part.strip()]
