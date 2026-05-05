@@ -13,6 +13,7 @@ from .artifacts import save_symbol_detail_outputs
 from .cache import CacheStats, read_symbol_cache, write_symbol_cache
 from .config import DEFAULT_NEWS_LIMIT, DOWNLOAD_PERIOD, MACRO_SYMBOLS, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE, TOP_N
 from .data_fetch import batch_download, fetch_info, fetch_recent_news_items, fetch_recent_news_score
+from .diagnostics import apply_scoring_diagnostics
 from .models import RankedAsset
 from .final_decision import apply_final_trade_decision
 from .perf import log_timing, timer_start
@@ -350,9 +351,11 @@ def scan_symbols(
         return df_rank
     df_rank["return_1d"] = df_rank["symbol"].map(one_day_return_cache)
     df_rank = apply_regime_adjustments(df_rank, market_regime)
+    df_rank = _attach_price_data_quality(df_rank, price_map)
     market_structure = compute_market_structure(df_rank)
     df_rank = apply_recommendation_quality(df_rank, market_structure)
     df_rank = apply_final_trade_decision(df_rank)
+    df_rank = apply_scoring_diagnostics(df_rank)
     df_rank = df_rank.sort_values(by=["final_score", "technical_score", "macro_score"], ascending=[False, False, False]).reset_index(drop=True)
     df_rank.attrs["ranked_assets"] = ranked
     df_rank.attrs["price_map"] = price_map
@@ -378,3 +381,37 @@ def load_universe_from_csv(path: str) -> list[str]:
             values = [str(x).strip().upper() for x in df[col].dropna().tolist()]
             return list(dict.fromkeys(values))
     raise ValueError("CSV must include one of these columns: symbol, ticker, Symbol, Ticker")
+
+
+def _attach_price_data_quality(df_rank: pd.DataFrame, price_map: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    working = df_rank.copy()
+    symbols = [safe_str(symbol, "").upper() for symbol in working["symbol"].tolist()]
+    working["data_provider"] = "yfinance"
+    working["price_history_rows"] = [_price_history_rows(price_map, symbol) for symbol in symbols]
+    working["history_days"] = [_price_history_days(price_map, symbol) for symbol in symbols]
+    working["data_timestamp"] = [_price_data_timestamp(price_map, symbol) for symbol in symbols]
+    working["provider_error"] = ""
+    return working
+
+
+def _price_history_rows(price_map: dict[str, pd.DataFrame], symbol: str) -> int | None:
+    frame = price_map.get(symbol)
+    if frame is None or frame.empty:
+        return None
+    return int(len(frame))
+
+
+def _price_history_days(price_map: dict[str, pd.DataFrame], symbol: str) -> int | None:
+    frame = price_map.get(symbol)
+    if frame is None or frame.empty or len(frame.index) < 2:
+        return None
+    first = pd.Timestamp(frame.index[0])
+    last = pd.Timestamp(frame.index[-1])
+    return int(max(0, (last - first).days))
+
+
+def _price_data_timestamp(price_map: dict[str, pd.DataFrame], symbol: str) -> str:
+    frame = price_map.get(symbol)
+    if frame is None or frame.empty:
+        return ""
+    return pd.Timestamp(frame.index[-1]).isoformat()
