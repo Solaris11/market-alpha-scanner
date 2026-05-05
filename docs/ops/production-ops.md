@@ -6,6 +6,20 @@ Production host paths:
 - Ops scripts: `/opt/ops`
 - Logs: `/var/log/market-alpha`
 
+## Database Migrations
+
+Run the migration ledger runner before production deploys that include DB changes:
+
+```bash
+cd /opt/apps/market-alpha-scanner/app
+tools/db/run-migrations.sh
+tools/db/run-migrations.sh # idempotency check; should apply 0
+```
+
+The runner records migration filenames in `schema_migrations` and applies each pending migration exactly once.
+
+See `docs/ops/migration-ledger.md` for the Phase 5.4 filename normalization mapping and bootstrap behavior.
+
 ## Stripe Reconciliation
 
 Stripe reconciliation must run inside the Docker network because production Postgres is private and addressed by Docker service name.

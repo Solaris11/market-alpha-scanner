@@ -389,7 +389,17 @@ docker compose logs market-alpha-postgres
 
 The PostgreSQL service includes a `pg_isready` healthcheck in `compose.yaml`.
 
-### Run Alembic Migrations
+### Run SQL Migrations
+
+Production schema changes are applied through the migration ledger runner:
+
+```bash
+tools/db/run-migrations.sh
+```
+
+The runner records applied SQL files in `schema_migrations` and skips files already recorded.
+
+### Legacy Alembic Migrations
 
 If you are running migrations from the host shell:
 
@@ -462,7 +472,7 @@ The new `database/` package provides:
 - lightweight repository helpers for writing the latest scanner decisions to PostgreSQL
 
 CSV and artifact outputs remain in place. The database layer is intentionally narrow and does not replace the raw file history.
-Apply the foundation schema with `psql "$DATABASE_URL" -f db/migrations/0001_db_foundation.sql`.
+Apply schema changes with the migration ledger runner described above.
 
 The CSV schema now includes practical decision-support fields such as:
 
