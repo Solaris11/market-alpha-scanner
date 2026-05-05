@@ -24,5 +24,5 @@ export async function POST(request: Request) {
     failure: "Scanner refresh failed.",
     success: "Scanner refresh completed.",
   });
-  return NextResponse.json(result, { status: result.status === "already_running" ? 202 : result.ok ? 200 : 500 });
+  return NextResponse.json(result, { status: result.status === "already_running" ? 202 : result.status === "unavailable" ? 503 : result.ok ? 200 : 500 });
 }

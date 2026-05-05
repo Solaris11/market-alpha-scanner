@@ -9,7 +9,7 @@ type CommandResult = {
   ok: boolean;
   message?: string;
   startedAt?: string | null;
-  status?: "already_running" | "completed" | "failed";
+  status?: "already_running" | "completed" | "failed" | "unavailable";
   cwd?: string;
   error?: string;
   stdout?: string;
@@ -63,7 +63,7 @@ export function RunCommandButton({ endpoint, label, diagnostic = false }: Props)
 
       {result ? (
         <div className={`rounded border p-3 text-xs ${result.status === "already_running" ? "border-amber-300/30 bg-amber-400/10 text-amber-100" : result.ok ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-100" : "border-rose-400/30 bg-rose-400/10 text-rose-100"}`}>
-          <div className="font-semibold">{result.status === "already_running" ? "Already running" : result.ok ? "Success" : "Error"}</div>
+          <div className="font-semibold">{result.status === "already_running" ? "Already running" : result.status === "unavailable" ? "Runner unavailable" : result.ok ? "Success" : "Error"}</div>
           <div className="mt-1 text-slate-300">{result.message ?? result.error ?? (result.ok ? "Refresh completed." : "Request failed.")}</div>
           {result.startedAt ? <div className="mt-2 text-slate-400">Started: {new Date(result.startedAt).toLocaleString()}</div> : null}
           {result.lastRunAt ? <div className="mt-1 text-slate-400">Last completed run: {new Date(result.lastRunAt).toLocaleString()}</div> : null}

@@ -47,6 +47,21 @@ export async function runPythonCommand(
     };
   }
 
+  const runnerAvailable = await canAccessRunner(python, cwd);
+  if (!runnerAvailable) {
+    console.warn("[scanner-action] runner unavailable", {
+      cwd,
+      python,
+      requested: args[0] ?? "unknown",
+    });
+    return {
+      lastRunAt,
+      ok: false,
+      message: "Scanner runner is not available in this API runtime. Use the production scanner job; data will update after the next scheduled run.",
+      status: "unavailable",
+    };
+  }
+
   console.log("[scanner-action] starting job:", args.join(" "));
 
   return new Promise((resolve) => {
@@ -127,5 +142,15 @@ async function readActiveScannerLock(): Promise<{ active: boolean; startedAt: st
     return { active: Date.now() - parsed < LOCK_STALE_AFTER_MS, startedAt };
   } catch {
     return { active: false, startedAt: null };
+  }
+}
+
+async function canAccessRunner(python: string, cwd: string): Promise<boolean> {
+  try {
+    await fs.access(python);
+    await fs.access(cwd);
+    return true;
+  } catch {
+    return false;
   }
 }

@@ -33,5 +33,5 @@ export async function POST(request: Request) {
     failure: "Alert evaluation failed.",
     success: "Alert evaluation completed.",
   });
-  return NextResponse.json(result, { status: result.ok ? 200 : 500 });
+  return NextResponse.json(result, { status: result.status === "already_running" ? 202 : result.status === "unavailable" ? 503 : result.ok ? 200 : 500 });
 }
