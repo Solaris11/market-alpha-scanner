@@ -14,7 +14,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-market_alpha}
       POSTGRES_USER: ${POSTGRES_USER:-market_alpha}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_before_production}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - /opt/apps/market-alpha-scanner/runtime/postgres:/var/lib/postgresql/data
@@ -49,8 +49,8 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-market_alpha}
       POSTGRES_USER: ${POSTGRES_USER:-market_alpha}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me_before_production}
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://market_alpha:change_me_before_production@market-alpha-postgres:5432/market_alpha}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-market_alpha}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@market-alpha-postgres:5432/${POSTGRES_DB:-market_alpha}}
       SCANNER_OUTPUT_DIR: ${SCANNER_OUTPUT_DIR:-/app/scanner_output}
       APP_LOG_DIR: ${APP_LOG_DIR:-/app/logs}
     command:
@@ -85,7 +85,7 @@ services:
       market-alpha-postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://market_alpha:change_me_before_production@market-alpha-postgres:5432/market_alpha}
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-market_alpha}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@market-alpha-postgres:5432/${POSTGRES_DB:-market_alpha}}
     command:
       - "uvicorn"
       - "api.main:app"
@@ -113,7 +113,7 @@ services:
       market-alpha-postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: ${SCANNER_DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-market_alpha}:${POSTGRES_PASSWORD:-change_me_before_production}@market-alpha-postgres:5432/${POSTGRES_DB:-market_alpha}}
+      DATABASE_URL: ${SCANNER_DATABASE_URL:-postgresql+psycopg://${POSTGRES_USER:-market_alpha}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@market-alpha-postgres:5432/${POSTGRES_DB:-market_alpha}}
       SCANNER_OUTPUT_DIR: /app/scanner_output
       APP_LOG_DIR: /app/logs
     command:
@@ -162,7 +162,7 @@ services:
       PORT: "3001"
       APP_URL: ${APP_URL:-https://app.marketalpha.co}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://app.marketalpha.co}
-      DATABASE_URL: ${FRONTEND_DATABASE_URL:-postgresql://${POSTGRES_USER:-market_alpha}:${POSTGRES_PASSWORD:-change_me_before_production}@market-alpha-postgres:5432/${POSTGRES_DB:-market_alpha}}
+      DATABASE_URL: ${FRONTEND_DATABASE_URL:-postgresql://${POSTGRES_USER:-market_alpha}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@market-alpha-postgres:5432/${POSTGRES_DB:-market_alpha}}
       EMAIL_FROM: ${EMAIL_FROM:-}
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
