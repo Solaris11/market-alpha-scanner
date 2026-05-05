@@ -13,7 +13,8 @@ export default async function AdminScannerPage() {
         <AdminStatCard label="Freshness" meta={scanner.freshness.message} tone={statusTone(scanner.freshness.status)} value={scanner.freshness.status} />
         <AdminStatCard label="DB signal rows" value={scanner.dbSignalCount.toLocaleString()} />
         <AdminStatCard label="CSV fallback" tone={scanner.csvFallbackEnabled ? "warn" : "good"} value={scanner.csvFallbackEnabled ? "enabled" : "disabled"} />
-        <AdminStatCard label="Latest validation" tone={statusTone(scanner.latestValidation?.status)} value={scanner.latestValidation?.status ?? "unknown"} />
+        <AdminStatCard label="Alpaca rows" value={scanner.providerUsage.alpacaCount.toLocaleString()} />
+        <AdminStatCard label="Provider fallback" tone={scanner.providerUsage.fallbackCount > 0 ? "warn" : "good"} value={scanner.providerUsage.fallbackCount.toLocaleString()} />
       </section>
 
       <AdminSection title="Latest scanner run">
@@ -44,6 +45,41 @@ export default async function AdminScannerPage() {
         ) : (
           <AdminEmpty>No scanner validation event found.</AdminEmpty>
         )}
+      </AdminSection>
+
+      <AdminSection title="Market data provider usage" subtitle="Latest scanner run only. Fallback means Alpaca did not provide usable bars for that symbol and yfinance was used instead.">
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Providers</div>
+            <div className="mt-3 space-y-2">
+              {scanner.providerUsage.providers.length ? (
+                scanner.providerUsage.providers.map((row) => (
+                  <div className="flex items-center justify-between text-sm" key={row.provider}>
+                    <span className="font-semibold text-slate-100">{row.provider}</span>
+                    <span className="font-mono text-slate-400">{row.count.toLocaleString()}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-500">No provider metadata found.</p>
+              )}
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Fallback reasons</div>
+            <div className="mt-3 space-y-2">
+              {scanner.providerUsage.topFallbackReasons.length ? (
+                scanner.providerUsage.topFallbackReasons.map((row) => (
+                  <div className="flex items-center justify-between gap-4 text-sm" key={row.reason}>
+                    <span className="min-w-0 truncate font-semibold text-slate-100">{row.reason}</span>
+                    <span className="font-mono text-slate-400">{row.count.toLocaleString()}</span>
+                  </div>
+                ))
+              ) : (
+                <p className="text-sm text-slate-500">No fallback usage on latest run.</p>
+              )}
+            </div>
+          </div>
+        </div>
       </AdminSection>
     </div>
   );

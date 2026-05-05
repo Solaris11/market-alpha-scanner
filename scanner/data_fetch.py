@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import Any, Optional
+from typing import Optional
 
 import pandas as pd
 import yfinance as yf
 
 from .config import DOWNLOAD_PERIOD
+from .market_data import ProviderRouter, normalize_symbol_for_yfinance
 from .utils import headline_age_days, safe_str
 
 
@@ -57,7 +58,7 @@ NEGATIVE_NEWS_TERMS = {
 
 
 def normalize_symbol_for_download(symbol: str) -> str:
-    return symbol
+    return normalize_symbol_for_yfinance(symbol)
 
 
 def batch_download(
@@ -66,50 +67,7 @@ def batch_download(
     start: Optional[str] = None,
     end: Optional[str] = None,
 ) -> dict[str, pd.DataFrame]:
-    out: dict[str, pd.DataFrame] = {}
-    if not symbols:
-        return out
-
-    joined = " ".join(normalize_symbol_for_download(s) for s in symbols)
-    download_kwargs: dict[str, Any] = {
-        "tickers": joined,
-        "interval": "1d",
-        "auto_adjust": True,
-        "progress": False,
-        "group_by": "ticker",
-        "threads": True,
-    }
-
-    if start or end:
-        if start:
-            download_kwargs["start"] = start
-        if end:
-            download_kwargs["end"] = end
-    else:
-        download_kwargs["period"] = period
-
-    raw = yf.download(**download_kwargs)
-    if raw is None:
-        return out
-
-    raw_df = pd.DataFrame(raw)
-    if raw_df.empty:
-        return out
-
-    if isinstance(raw_df.columns, pd.MultiIndex):
-        for symbol in symbols:
-            try:
-                symbol_df = pd.DataFrame(raw_df[str(symbol)]).dropna(how="all").copy()
-                if not symbol_df.empty:
-                    out[str(symbol)] = symbol_df
-            except Exception:
-                continue
-    elif len(symbols) == 1:
-        single_df = raw_df.dropna(how="all").copy()
-        if not single_df.empty:
-            out[str(symbols[0])] = single_df
-
-    return out
+    return ProviderRouter.from_env().get_daily_bars_many(symbols, period=period, start=start, end=end)
 
 
 def fetch_info(symbol: str) -> dict[str, object]:

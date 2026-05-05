@@ -363,7 +363,7 @@ def scan_symbols(
         return df_rank
     df_rank["return_1d"] = df_rank["symbol"].map(one_day_return_cache)
     df_rank = apply_regime_adjustments(df_rank, market_regime)
-    df_rank = _attach_price_data_quality(df_rank, price_map)
+    df_rank = attach_price_data_quality(df_rank, price_map)
     market_structure = compute_market_structure(df_rank)
     df_rank = apply_recommendation_quality(df_rank, market_structure)
     df_rank = apply_final_trade_decision(df_rank)
@@ -397,14 +397,21 @@ def load_universe_from_csv(path: str) -> list[str]:
     raise ValueError("CSV must include one of these columns: symbol, ticker, Symbol, Ticker")
 
 
-def _attach_price_data_quality(df_rank: pd.DataFrame, price_map: dict[str, pd.DataFrame]) -> pd.DataFrame:
+def attach_price_data_quality(df_rank: pd.DataFrame, price_map: dict[str, pd.DataFrame]) -> pd.DataFrame:
     working = df_rank.copy()
     symbols = [safe_str(symbol, "").upper() for symbol in working["symbol"].tolist()]
-    working["data_provider"] = "yfinance"
+    metadata = [_price_provider_metadata(price_map, symbol) for symbol in symbols]
+    working["data_provider"] = [safe_str(item.get("data_provider"), "unknown") for item in metadata]
+    working["data_provider_primary"] = [safe_str(item.get("data_provider_primary"), "unknown") for item in metadata]
+    working["data_provider_fallback_used"] = [_bool_value(item.get("data_provider_fallback_used")) for item in metadata]
+    working["fallback_reason"] = [safe_str(item.get("fallback_reason"), "") for item in metadata]
+    working["alpaca_request_id"] = [safe_str(item.get("alpaca_request_id"), "") for item in metadata]
+    working["provider_latency_ms"] = [_optional_float(item.get("provider_latency_ms")) for item in metadata]
     working["price_history_rows"] = [_price_history_rows(price_map, symbol) for symbol in symbols]
     working["history_days"] = [_price_history_days(price_map, symbol) for symbol in symbols]
     working["data_timestamp"] = [_price_data_timestamp(price_map, symbol) for symbol in symbols]
-    working["provider_error"] = ""
+    working["data_age_minutes"] = [_price_data_age_minutes(price_map, symbol) for symbol in symbols]
+    working["provider_error"] = [safe_str(item.get("provider_error"), "") for item in metadata]
     return working
 
 
@@ -429,6 +436,49 @@ def _price_data_timestamp(price_map: dict[str, pd.DataFrame], symbol: str) -> st
     if frame is None or frame.empty:
         return ""
     return pd.Timestamp(frame.index[-1]).isoformat()
+
+
+def _price_data_age_minutes(price_map: dict[str, pd.DataFrame], symbol: str) -> float | None:
+    frame = price_map.get(symbol)
+    if frame is None or frame.empty:
+        return None
+    timestamp = pd.Timestamp(frame.index[-1])
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.tz_localize(timezone.utc)
+    timestamp = timestamp.tz_convert(timezone.utc)
+    age = datetime.now(timezone.utc) - timestamp.to_pydatetime()
+    return round(max(0.0, age.total_seconds() / 60.0), 2)
+
+
+def _price_provider_metadata(price_map: dict[str, pd.DataFrame], symbol: str) -> dict[str, object]:
+    frame = price_map.get(symbol)
+    if frame is None:
+        return {
+            "data_provider": "missing",
+            "data_provider_primary": "unknown",
+            "data_provider_fallback_used": False,
+            "fallback_reason": "",
+            "alpaca_request_id": "",
+            "provider_latency_ms": None,
+            "provider_error": "missing_price_history",
+        }
+    raw = frame.attrs.get("provider_metadata")
+    if isinstance(raw, dict):
+        return {str(key): value for key, value in raw.items()}
+    return {
+        "data_provider": "yfinance",
+        "data_provider_primary": "yfinance",
+        "data_provider_fallback_used": False,
+        "fallback_reason": "",
+        "alpaca_request_id": "",
+        "provider_latency_ms": None,
+        "provider_error": "",
+    }
+
+
+def _optional_float(value: object) -> float | None:
+    numeric = safe_float(value, np.nan)
+    return None if np.isnan(numeric) else float(numeric)
 
 
 def apply_decision_safety_gates(df_rank: pd.DataFrame) -> pd.DataFrame:

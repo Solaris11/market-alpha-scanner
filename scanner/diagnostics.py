@@ -122,6 +122,8 @@ def data_quality_flags(row: Mapping[str, object]) -> dict[str, object]:
     timestamp_text = _timestamp_text(row.get("data_timestamp"))
     stale_data = _is_stale_timestamp(row.get("data_timestamp"))
     provider_error = safe_str(row.get("provider_error"), "")
+    fallback_used = _boolish(row.get("data_provider_fallback_used"))
+    provider_latency_ms = safe_float(row.get("provider_latency_ms"), np.nan)
 
     score = 100.0
     score -= min(35.0, float(len(missing_fields)) * 4.0)
@@ -137,6 +139,10 @@ def data_quality_flags(row: Mapping[str, object]) -> dict[str, object]:
         score -= 30.0
     if provider_error:
         score -= 35.0
+    if fallback_used:
+        score -= 5.0
+    if not np.isnan(provider_latency_ms) and provider_latency_ms > 5000.0:
+        score -= 5.0
 
     low_confidence = score < 70.0
     return {
@@ -301,6 +307,12 @@ def _is_stale_timestamp(value: object) -> bool:
     now = datetime.now(timezone.utc)
     age_hours = (now - parsed.to_pydatetime()).total_seconds() / 3600.0
     return age_hours > STALE_DATA_HOURS
+
+
+def _boolish(value: object) -> bool:
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
+    return safe_str(value, "").lower() in {"true", "1", "yes", "y"}
 
 
 def _gte(value: float, threshold: float) -> bool:

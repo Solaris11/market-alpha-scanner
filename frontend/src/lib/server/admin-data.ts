@@ -90,6 +90,12 @@ export type AdminScannerSummary = {
   };
   latestRun: ScannerRunSummary | null;
   latestValidation: MonitoringEventSummary | null;
+  providerUsage: {
+    alpacaCount: number;
+    fallbackCount: number;
+    providers: Array<{ count: number; provider: string }>;
+    topFallbackReasons: Array<{ count: number; reason: string }>;
+  };
 };
 
 export type MonitoringEventSummary = {
@@ -292,6 +298,14 @@ type CalibrationDistributionDbRow = QueryResultRow & {
   decision: string | null;
   trade_permitted_count: string | number;
 };
+type ProviderUsageDbRow = QueryResultRow & {
+  count: string | number;
+  provider: string | null;
+};
+type FallbackReasonDbRow = QueryResultRow & {
+  count: string | number;
+  reason: string | null;
+};
 
 export async function getAdminDashboardSummary(): Promise<AdminDashboardSummary> {
   const [users, billing, latestScannerRun, scanHealth, deep, monitoringWarnings, latestBillingEvents] = await Promise.all([
@@ -452,11 +466,12 @@ export async function getAdminAlertSummary(): Promise<AdminAlertSummary> {
 }
 
 export async function getAdminScannerSummary(): Promise<AdminScannerSummary> {
-  const [latestRun, signalCount, health, latestValidation] = await Promise.all([
+  const [latestRun, signalCount, health, latestValidation, providerUsage] = await Promise.all([
     getLatestScannerRun(),
     countQuery("SELECT count(*) AS count FROM scanner_signals").catch(() => 0),
     getScanDataHealth().catch(() => ({ ageMinutes: null, message: "Scanner freshness unavailable.", status: "unknown" })),
     recentMonitoringEventByType("scanner_db_csv_validation"),
+    latestProviderUsage(),
   ]);
   return {
     csvFallbackEnabled: process.env.SCANNER_CSV_FALLBACK === "true",
@@ -468,6 +483,7 @@ export async function getAdminScannerSummary(): Promise<AdminScannerSummary> {
     },
     latestRun,
     latestValidation,
+    providerUsage,
   };
 }
 
@@ -867,4 +883,51 @@ async function latestDecisionDistribution(): Promise<CalibrationDistributionRow[
 function toPercent(value: string | number | null | undefined): number | null {
   const numeric = toNullableNumber(value);
   return numeric === null ? null : numeric * 100;
+}
+
+async function latestProviderUsage(): Promise<AdminScannerSummary["providerUsage"]> {
+  const [providers, fallbackReasons] = await Promise.all([
+    dbQuery<ProviderUsageDbRow>(
+      `
+        WITH latest AS (
+          SELECT id
+          FROM scan_runs
+          WHERE status = 'success'
+          ORDER BY completed_at DESC NULLS LAST, created_at DESC
+          LIMIT 1
+        )
+        SELECT COALESCE(NULLIF(payload->>'data_provider', ''), 'unknown') AS provider, count(*) AS count
+        FROM scanner_signals
+        WHERE scan_run_id = (SELECT id FROM latest)
+        GROUP BY COALESCE(NULLIF(payload->>'data_provider', ''), 'unknown')
+        ORDER BY count(*) DESC, provider ASC
+      `,
+    ).catch(() => ({ rows: [] as ProviderUsageDbRow[] })),
+    dbQuery<FallbackReasonDbRow>(
+      `
+        WITH latest AS (
+          SELECT id
+          FROM scan_runs
+          WHERE status = 'success'
+          ORDER BY completed_at DESC NULLS LAST, created_at DESC
+          LIMIT 1
+        )
+        SELECT COALESCE(NULLIF(payload->>'fallback_reason', ''), 'unknown') AS reason, count(*) AS count
+        FROM scanner_signals
+        WHERE scan_run_id = (SELECT id FROM latest)
+          AND payload->>'data_provider_fallback_used' = 'true'
+        GROUP BY COALESCE(NULLIF(payload->>'fallback_reason', ''), 'unknown')
+        ORDER BY count(*) DESC, reason ASC
+        LIMIT 8
+      `,
+    ).catch(() => ({ rows: [] as FallbackReasonDbRow[] })),
+  ]);
+  const providerRows = providers.rows.map((row) => ({ count: toNumber(row.count), provider: row.provider ?? "unknown" }));
+  const fallbackRows = fallbackReasons.rows.map((row) => ({ count: toNumber(row.count), reason: row.reason ?? "unknown" }));
+  return {
+    alpacaCount: providerRows.find((row) => row.provider === "alpaca")?.count ?? 0,
+    fallbackCount: fallbackRows.reduce((sum, row) => sum + row.count, 0),
+    providers: providerRows,
+    topFallbackReasons: fallbackRows,
+  };
 }
