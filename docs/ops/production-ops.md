@@ -61,3 +61,15 @@ sudo find "/opt/backups/market-alpha/legacy-alert-json/$TS" -type f -exec chmod 
 ```
 
 Production scanner systemd jobs should run only the Docker scanner job and should not invoke legacy JSON alert CLI paths.
+
+## Secrets Handling
+
+Do not run or paste raw `docker compose config` for production. It expands env values and can expose secrets.
+
+Use:
+
+```bash
+sudo /opt/ops/market-alpha-compose-config-redacted.sh
+```
+
+See `docs/ops/secrets-hardening.md` for env archive handling, Docker secrets migration order, and provider-side rotation steps.
