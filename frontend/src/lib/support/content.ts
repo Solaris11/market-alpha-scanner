@@ -26,7 +26,7 @@ export const SUPPORT_FAQ: SupportFaqItem[] = [
   {
     slug: "wait",
     question: "What does WAIT mean?",
-    answer: "WAIT means the system does not see conditions that justify an active trade plan. The correct action is to do nothing and wait for better conditions.",
+    answer: "WAIT means the system does not see conditions that justify an active research setup. The product is intentionally prioritizing patience until conditions improve.",
   },
   {
     slug: "watch",
@@ -35,8 +35,8 @@ export const SUPPORT_FAQ: SupportFaqItem[] = [
   },
   {
     slug: "buy",
-    question: "What does BUY mean?",
-    answer: "BUY is a research signal label used inside the product. It is not an instruction to buy and it is not personalized financial advice.",
+    question: "What does Research Setup mean?",
+    answer: "Research Setup is a scanner label for a complete research condition. It is not an instruction to buy and it is not personalized financial advice.",
   },
   {
     slug: "avoid",
@@ -142,8 +142,8 @@ export function findSupportAnswer(message: string): string {
   if (normalized.includes("scanner running") || normalized.includes("already running")) {
     return "Only one scanner run can execute at a time. When the scanner is already running, refresh controls are disabled and data updates after that run completes.";
   }
-  if (normalized.includes("no buy") || normalized.includes("no active trade") || normalized.includes("no trade")) {
-    return "No active BUY signals can be normal. Market Alpha is designed to reduce overtrading; WAIT, WATCH, and AVOID states mean the system is prioritizing discipline over forced activity.";
+  if (normalized.includes("no buy") || normalized.includes("no active trade") || normalized.includes("no trade") || normalized.includes("no research setup")) {
+    return "No active research setups can be normal. Market Alpha is designed to reduce overtrading; Wait, Watch, and Avoid states mean the system is prioritizing discipline over forced activity.";
   }
   if (normalized.includes("stale data") || normalized.includes("outdated data")) {
     return "Stale data disables active decisions. Wait for a fresh scanner run before using research views, and open a support ticket if stale status persists.";

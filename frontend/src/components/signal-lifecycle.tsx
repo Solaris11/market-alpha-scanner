@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { CsvRow } from "@/lib/types";
+import { humanizeLabel } from "@/lib/ui/labels";
 
 type SummarySortKey =
   | "group_type"
@@ -116,12 +117,12 @@ const SUMMARY_COLUMNS: { key: SummarySortKey; label: string; align?: ColumnAlign
 const DETAIL_COLUMNS: { key: DetailSortKey; label: string; align?: ColumnAlign }[] = [
   { key: "symbol", label: "Symbol" },
   { key: "signal_date", label: "Signal Date" },
-  { key: "rating", label: "Rating" },
-  { key: "action", label: "Action" },
+  { key: "rating", label: "Rating Context" },
+  { key: "action", label: "Action Context" },
   { key: "entry_status", label: "Entry" },
   { key: "final_score", label: "Score", align: "right" },
   { key: "final_score_adjusted", label: "Adjusted", align: "right" },
-  { key: "buy_zone", label: "Buy Zone" },
+  { key: "buy_zone", label: "Entry Zone" },
   { key: "stop_loss", label: "Stop" },
   { key: "conservative_target", label: "Target" },
   { key: "status", label: "Status" },
@@ -465,28 +466,28 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
               Status
               <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setStatusFilter(event.target.value)} value={statusFilter}>
                 <option value="">All</option>
-                {STATUS_FILTER_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                {STATUS_FILTER_OPTIONS.map((option) => <option key={option} value={option}>{humanizeLabel(option)}</option>)}
               </select>
             </label>
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Rating
               <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setRatingFilter(event.target.value)} value={ratingFilter}>
                 <option value="">All</option>
-                {RATING_FILTER_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                {RATING_FILTER_OPTIONS.map((option) => <option key={option} value={option}>{humanizeLabel(option)}</option>)}
               </select>
             </label>
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Action
               <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setActionFilter(event.target.value)} value={actionFilter}>
                 <option value="">All</option>
-                {ACTION_FILTER_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                {ACTION_FILTER_OPTIONS.map((option) => <option key={option} value={option}>{humanizeLabel(option)}</option>)}
               </select>
             </label>
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Entry
               <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setEntryFilter(event.target.value)} value={entryFilter}>
                 <option value="">All</option>
-                {ENTRY_FILTER_OPTIONS.map((option) => <option key={option} value={option}>{option}</option>)}
+                {ENTRY_FILTER_OPTIONS.map((option) => <option key={option} value={option}>{humanizeLabel(option)}</option>)}
               </select>
             </label>
             <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -542,9 +543,9 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
                   </Link>
                 </td>
                 <td className="whitespace-nowrap px-2 py-1.5 font-mono text-slate-400">{text(row.signal_date)}</td>
-                <td className="truncate px-2 py-1.5 text-slate-300">{text(row.rating)}</td>
-                <td className="truncate px-2 py-1.5 text-slate-300">{text(row.action)}</td>
-                <td className="truncate px-2 py-1.5 text-slate-400">{text(row.entry_status)}</td>
+                <td className="truncate px-2 py-1.5 text-slate-300">{humanizeLabel(row.rating, "—")}</td>
+                <td className="truncate px-2 py-1.5 text-slate-300">{humanizeLabel(row.action, "—")}</td>
+                <td className="truncate px-2 py-1.5 text-slate-400">{humanizeLabel(row.entry_status, "—")}</td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{numberText(row.final_score)}</td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{numberText(row.final_score_adjusted)}</td>
                 <td className="truncate px-2 py-1.5 font-mono text-slate-400">{text(row.buy_zone)}</td>

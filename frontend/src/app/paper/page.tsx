@@ -14,6 +14,7 @@ import {
   type PaperTradeEventRow,
 } from "@/lib/paper-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
+import { humanizeLabel } from "@/lib/ui/labels";
 
 export const dynamic = "force-dynamic";
 
@@ -104,13 +105,7 @@ function cleanText(value: unknown, fallback = "N/A"): string {
 }
 
 function labelText(value: unknown): string {
-  const text = cleanText(value, "Unknown");
-  return text
-    .toLowerCase()
-    .split(/[_\s-]+/)
-    .filter(Boolean)
-    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
-    .join(" ");
+  return humanizeLabel(value, "Unknown");
 }
 
 function systemConfidenceStatus(closedTrades: number): string {

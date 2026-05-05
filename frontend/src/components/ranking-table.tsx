@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { RankingRow } from "@/lib/types";
 import { actionFor, compact, formatNumber } from "@/lib/format";
 import { cleanText } from "@/lib/ui/formatters";
+import { decisionLabel, humanizeLabel, normalizedToken } from "@/lib/ui/labels";
 
 export type RankingSortKey = "symbol" | "company" | "asset" | "sector" | "price" | "score" | "rating" | "action" | "decision" | "quality" | "signals";
 export type RankingSortDirection = "asc" | "desc";
@@ -31,8 +32,6 @@ const SIGNAL_PRIORITY: Record<string, number> = {
   "NEAR ENTRY": 70,
   "TP NEAR": 60,
   EXTENDED: 50,
-  TOP: 40,
-  ACTIONABLE: 30,
   WATCH: 20,
 };
 
@@ -100,11 +99,6 @@ function signalBadges(row: RankingRow): SignalBadge[] {
     else if ((price - stop) / price <= 0.03) badges.push({ label: "STOP RISK", tone: "danger" });
   }
 
-  const rating = String(row.rating ?? "").trim().toUpperCase();
-  if (rating === "TOP") badges.push({ label: "TOP", tone: "positive" });
-  else if (rating === "ACTIONABLE") badges.push({ label: "ACTIONABLE", tone: "info" });
-  else if (rating === "WATCH") badges.push({ label: "WATCH", tone: "neutral" });
-
   return badges;
 }
 
@@ -132,11 +126,11 @@ function percent(value: unknown) {
 }
 
 function decisionText(row: RankingRow) {
-  return String(row.final_decision ?? row.action ?? "WATCH").trim().toUpperCase().replaceAll("_", " ");
+  return decisionLabel(row.final_decision ?? row.action ?? "WATCH");
 }
 
 function decisionClass(row: RankingRow) {
-  const key = String(row.final_decision ?? row.action ?? "").trim().toUpperCase();
+  const key = normalizedToken(row.final_decision ?? row.action);
   return DECISION_STYLES[key] ?? DECISION_STYLES.WATCH;
 }
 
@@ -256,12 +250,12 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
               <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <div><span className="text-slate-500">Asset</span><div className="mt-1 text-slate-200">{row.asset_type || "N/A"}</div></div>
                 <div><span className="text-slate-500">Sector</span><div className="mt-1 text-slate-200">{row.sector || "N/A"}</div></div>
-                <div><span className="text-slate-500">Rating</span><div className="mt-1 text-slate-200">{row.rating || "N/A"}</div></div>
-                <div><span className="text-slate-500">Action</span><div className="mt-1 text-slate-200">{actionFor(row)}</div></div>
-                <div><span className="text-slate-500">Quality</span><div className="mt-1 text-slate-200">{cleanText(row.recommendation_quality, "N/A").replaceAll("_", " ")}</div></div>
-                <div><span className="text-slate-500">Entry status</span><div className="mt-1 text-slate-200">{row.entry_status || "N/A"}</div></div>
-                <div><span className="text-slate-500">Setup</span><div className="mt-1 text-slate-200">{row.setup_type || "N/A"}</div></div>
-                <div><span className="text-slate-500">Signal tags</span><div className="mt-1 text-slate-200">{signals.length ? signals.join(", ") : "N/A"}</div></div>
+                <div><span className="text-slate-500">Decision</span><div className="mt-1 text-slate-200">{decisionText(row)}</div></div>
+                <div><span className="text-slate-500">Scanner action context</span><div className="mt-1 text-slate-200">{humanizeLabel(actionFor(row))}</div></div>
+                <div><span className="text-slate-500">Quality</span><div className="mt-1 text-slate-200">{humanizeLabel(row.recommendation_quality)}</div></div>
+                <div><span className="text-slate-500">Entry status</span><div className="mt-1 text-slate-200">{humanizeLabel(row.entry_status)}</div></div>
+                <div><span className="text-slate-500">Setup</span><div className="mt-1 text-slate-200">{humanizeLabel(row.setup_type)}</div></div>
+                <div><span className="text-slate-500">Signal tags</span><div className="mt-1 text-slate-200">{signals.length ? signals.map((signal) => humanizeLabel(signal)).join(", ") : "N/A"}</div></div>
               </div>
             </details>
           </article>

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
+import { humanizeLabel } from "@/lib/ui/labels";
 
 const categories = ["billing", "account", "scanner", "alerts", "technical", "feedback", "other"];
 
@@ -33,7 +34,7 @@ export function SupportTicketForm({ anonymous = false }: { anonymous?: boolean }
       {anonymous ? <input className="rounded-xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 outline-none" name="email" placeholder="Email" required type="email" /> : null}
       <input className="rounded-xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 outline-none" maxLength={180} name="subject" placeholder="Subject" required />
       <select className="rounded-xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 outline-none" name="category">
-        {categories.map((category) => <option key={category} value={category}>{category}</option>)}
+        {categories.map((category) => <option key={category} value={category}>{humanizeLabel(category)}</option>)}
       </select>
       <textarea className="min-h-36 rounded-xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-slate-100 outline-none" maxLength={4000} name="message" placeholder="How can we help?" required />
       <button className="w-fit rounded-full border border-cyan-300/35 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70" type="submit">Send support request</button>

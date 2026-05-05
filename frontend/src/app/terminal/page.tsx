@@ -27,6 +27,7 @@ import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { dailyActionBlocksTradeUi, getDailyAction, noTradeActionCopy } from "@/lib/trading/daily-action";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 import { formatMoney, formatPercent } from "@/lib/ui/formatters";
+import { decisionLabel, humanizeLabel } from "@/lib/ui/labels";
 
 export const dynamic = "force-dynamic";
 
@@ -109,7 +110,7 @@ export default async function TerminalPage() {
     <TerminalShell>
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">
-          <DailyActionCard action={dailyAction} dataStatus={scanSafety.status.replace("_", " ")} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
+          <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
           {actionBlocksTradeUi ? (
             <GlassPanel className="border-amber-300/25 bg-amber-400/[0.08] p-6">
               <div className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-200">Decision Lock</div>
@@ -184,7 +185,7 @@ export default async function TerminalPage() {
 
           <TerminalMonitoringBrief
             rows={snapshot.signals}
-            scanStatus={scanSafety.status.replace("_", " ")}
+            scanStatus={humanizeLabel(scanSafety.status)}
             topWatchRows={opportunityModel.rows}
           />
         </div>
@@ -226,7 +227,7 @@ function TerminalMonitoringBrief({
             <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3" key={row.symbol}>
               <div className="flex items-center justify-between gap-2">
                 <div className="font-mono text-lg font-black text-slate-50">{row.symbol}</div>
-                <div className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold text-slate-300">{row.final_decision}</div>
+                <div className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold text-slate-300">{decisionLabel(row.final_decision)}</div>
               </div>
               <div className="mt-2 text-xs text-slate-400">Score {formatPercentLike(row.final_score)} · readiness {row.conviction} {row.confidenceLabel}</div>
             </div>
@@ -257,7 +258,7 @@ function TerminalMonitoringBrief({
 
 function buildDecisionDistribution(rows: Array<{ final_decision?: unknown }>): Array<{ label: string; value: number }> {
   return ["WATCH", "WAIT_PULLBACK", "AVOID"].map((label) => ({
-    label,
+    label: decisionLabel(label),
     value: rows.filter((row) => String(row.final_decision ?? "").toUpperCase() === label).length,
   }));
 }

@@ -5,6 +5,7 @@ import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { compact, formatNumber } from "@/lib/format";
 import { nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { IntradayDriftRow, SymbolHistoryRow } from "@/lib/types";
+import { humanizeLabel } from "@/lib/ui/labels";
 
 type Props = {
   rows: IntradayDriftRow[];
@@ -359,8 +360,8 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
               <SortHeader align="right" label="Price %" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="price_change_pct" />
               <SortHeader align="right" label="Score Change" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="score_change" />
               <SortHeader align="right" label="Latest Score" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="latest_score" />
-              <SortHeader label="Rating" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="rating_change" />
-              <SortHeader label="Action" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="action" />
+              <SortHeader label="Rating Context" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="rating_change" />
+              <SortHeader label="Action Context" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="action" />
               <SortHeader align="right" label="Observations" onSort={handleSort} sortDirection={sortDirection} sortKey={sortKey} thisKey="snapshot_count" />
             </tr>
           </thead>
@@ -395,9 +396,9 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
                   <td className="px-2 py-1.5 text-right font-mono text-slate-200">{signedNumber(row.score_change)}</td>
                   <td className="px-2 py-1.5 text-right font-mono text-emerald-200">{formatNumber(row.latest_score)}</td>
                   <td className="truncate px-2 py-1.5 text-slate-300">
-                    {row.first_rating ?? "N/A"} → {row.latest_rating ?? "N/A"}
+                    {humanizeLabel(row.first_rating)} → {humanizeLabel(row.latest_rating)}
                   </td>
-                  <td className="truncate px-2 py-1.5 text-slate-300">{row.latest_action ?? "N/A"}</td>
+                  <td className="truncate px-2 py-1.5 text-slate-300">{humanizeLabel(row.latest_action)}</td>
                   <td className="px-2 py-1.5 text-right font-mono text-slate-400">{row.snapshot_count.toLocaleString()}</td>
                 </tr>
               ))

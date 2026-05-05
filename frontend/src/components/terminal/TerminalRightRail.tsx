@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ActiveAlertMatch } from "@/lib/active-alert-matches";
 import type { MarketRegime } from "@/lib/adapters/DataServiceAdapter";
 import type { RankingRow } from "@/lib/types";
+import { decisionLabel, humanizeLabel } from "@/lib/ui/labels";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
@@ -70,13 +71,13 @@ export function TerminalRightRail({
       </GlassPanel>
 
       <GlassPanel className="p-5">
-        <SectionTitle eyebrow="Market Context" title={marketRegime.label} meta={scanSafety.status ?? "scanner"} />
+        <SectionTitle eyebrow="Market Context" title={marketRegime.label} meta={humanizeLabel(scanSafety.status ?? "scanner")} />
         <p className="mt-4 text-sm leading-6 text-slate-300">{explanation}</p>
         <dl className="mt-4 grid grid-cols-2 gap-2 text-xs">
           <ContextMetric label="Breadth" value={marketRegime.breadth} />
           <ContextMetric label="Confidence" value={`${Math.round(marketRegime.confidence)}%`} />
-          <ContextMetric label="Scanner" value={scanSafety.status ?? "unknown"} />
-          <ContextMetric label="Mode" value={marketRegime.riskMode} />
+          <ContextMetric label="Scanner" value={humanizeLabel(scanSafety.status ?? "unknown")} />
+          <ContextMetric label="Mode" value={humanizeLabel(marketRegime.riskMode)} />
         </dl>
       </GlassPanel>
     </aside>
@@ -84,7 +85,7 @@ export function TerminalRightRail({
 }
 
 function RightRailSignalRow({ row, symbol }: { row: RankingRow | null; symbol: string }) {
-  const decision = String(row?.final_decision ?? "Not in latest scan").replaceAll("_", " ");
+  const decision = row ? decisionLabel(row.final_decision) : "Not in latest scan";
   const confidence = numeric(row?.confidence_score ?? row?.final_score);
   return (
     <Link className="block rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.06]" href={`/symbol/${symbol}`}>
@@ -93,7 +94,7 @@ function RightRailSignalRow({ row, symbol }: { row: RankingRow | null; symbol: s
         <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-semibold uppercase text-slate-300">{decision}</span>
       </div>
       <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
-        <span>{row?.setup_type ? String(row.setup_type) : "Research signal"}</span>
+        <span>{row?.setup_type ? humanizeLabel(row.setup_type) : "Research signal"}</span>
         <span>{confidence === null ? "confidence n/a" : `${Math.round(confidence)} confidence`}</span>
       </div>
     </Link>

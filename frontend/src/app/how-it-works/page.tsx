@@ -10,7 +10,7 @@ export const metadata: Metadata = marketingMetadata("/how-it-works", {
 const steps = [
   ["1", "Scan the market", "The scanner evaluates symbols across trend, momentum, volatility, macro alignment, and risk context."],
   ["2", "Score the setup", "The system ranks opportunities and suppresses action when market conditions or risk rules are unfavorable."],
-  ["3", "Show one decision", "Daily Action becomes the authority: WAIT, WATCH, BUY as a research signal, or AVOID."],
+  ["3", "Show one decision", "Daily Action becomes the authority: Wait, Watch, Research Setup, or Avoid."],
   ["4", "Simulate before action", "What-if and paper workflows help you test risk before making any real-world decision."],
 ] as const;
 

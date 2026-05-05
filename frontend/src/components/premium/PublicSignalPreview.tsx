@@ -1,5 +1,6 @@
 import type { PublicMarketSummary } from "@/lib/public-signals";
 import { premiumAccessState, type PremiumAccessState } from "@/lib/security/premium-access-state";
+import { dataStatusLabel } from "@/lib/ui/labels";
 import { PremiumAccessCta } from "./PremiumAccessCta";
 
 export function PublicSignalPreviewList({
@@ -28,16 +29,16 @@ export function PublicSignalPreviewList({
           <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Preview</div>
           <h2 className="mt-1 text-xl font-semibold tracking-tight text-slate-50">{title}</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-            Live symbols, rankings, trade plans, risk levels, and scanner intelligence are available when Premium access is confirmed.
+            Live symbols, rankings, research plans, risk levels, and scanner intelligence are available when Premium access is confirmed.
           </p>
         </div>
         <PremiumAccessCta ctaHref={ctaHref} ctaLabel={ctaLabel} initialState={initialState} refreshOnPremium={refreshOnPremium} />
       </div>
 
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <SummaryCard label="Scanner state" value={summary.scannerStatus.replace(/_/g, " ")} />
+        <SummaryCard label="Scanner state" value={dataStatusLabel(summary.scannerStatus)} />
         <SummaryCard label="Data files" value={`${summary.filesAvailable}/2 available`} />
-        <SummaryCard label="Trade plan" value={summary.premiumDataHidden ? "Locked" : "Unavailable"} />
+        <SummaryCard label="Research plan" value={summary.premiumDataHidden ? "Locked" : "Unavailable"} />
       </div>
       <p className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-6 text-slate-300">{summary.message}</p>
     </section>
@@ -52,15 +53,15 @@ export function PublicSymbolPreview({ accessState, authenticated = false, summar
       <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Symbol Research</div>
       <div className="mt-3 flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
         <div className="min-w-0">
-          <h1 className="text-3xl font-black tracking-tight text-slate-50 sm:text-4xl">Trade plan locked</h1>
+          <h1 className="text-3xl font-black tracking-tight text-slate-50 sm:text-4xl">Research plan locked</h1>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-            Live symbol identity, rankings, levels, simulator data, and execution planning are hidden until Premium access is confirmed.
+            Live symbol identity, rankings, levels, simulator data, and risk planning are hidden until Premium access is confirmed.
           </p>
         </div>
         <PremiumAccessCta ctaHref="/account" ctaLabel="Sign in" initialState={initialState} refreshOnPremium />
       </div>
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3">
-        <SummaryCard label="Scanner state" value={summary.scannerStatus.replace(/_/g, " ")} />
+        <SummaryCard label="Scanner state" value={dataStatusLabel(summary.scannerStatus)} />
         <SummaryCard label="Live details" value="Locked" />
         <SummaryCard label="Risk levels" value="Locked" />
       </div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { formatNumber } from "@/lib/format";
+import { decisionLabel, humanizeLabel, normalizedToken } from "@/lib/ui/labels";
 
 type ActiveAlertMatch = {
   rule_id: string | null;
@@ -14,6 +15,7 @@ type ActiveAlertMatch = {
   company_name: string;
   price: number | null;
   final_score: number | null;
+  final_decision: string;
   rating: string;
   action: string;
   entry_status: string;
@@ -47,6 +49,7 @@ type SortKey =
   | "scope"
   | "price"
   | "final_score"
+  | "final_decision"
   | "rating"
   | "action"
   | "entry_status"
@@ -66,6 +69,11 @@ const RATING_PRIORITY: Record<string, number> = {
   PASS: 3,
 };
 const ACTION_PRIORITY: Record<string, number> = {
+  ENTER: 0,
+  WAIT_PULLBACK: 1,
+  WATCH: 2,
+  AVOID: 3,
+  EXIT: 4,
   "STRONG BUY": 0,
   BUY: 1,
   "WAIT / HOLD": 2,
@@ -93,13 +101,12 @@ const COLUMNS: { key: SortKey; label: string; align?: "left" | "right" | "center
   { key: "match_reason", label: "Match Reason" },
   { key: "price", label: "Price", align: "right" },
   { key: "final_score", label: "Score", align: "right" },
-  { key: "rating", label: "Rating" },
-  { key: "action", label: "Action" },
+  { key: "final_decision", label: "Decision" },
   { key: "entry_status", label: "Entry" },
   { key: "setup_type", label: "Setup" },
-  { key: "buy_zone", label: "Buy Zone" },
-  { key: "stop_loss", label: "Stop Loss", align: "right" },
-  { key: "take_profit", label: "Take Profit" },
+  { key: "buy_zone", label: "Entry Zone" },
+  { key: "stop_loss", label: "Stop Context", align: "right" },
+  { key: "take_profit", label: "Target Context" },
   { key: "risk_reward", label: "Risk/Reward" },
   { key: "cooldown_active", label: "Cooldown", align: "center" },
   { key: "last_sent", label: "Last Sent" },
@@ -127,6 +134,7 @@ function sortPriority(priority: Record<string, number>, left: unknown, right: un
 function sortValue(row: ActiveAlertMatch, key: SortKey) {
   if (key === "channels") return row.channels.join(", ");
   if (key === "cooldown_active") return row.cooldown_active ? 1 : 0;
+  if (key === "final_decision") return normalizedToken(row.final_decision);
   return row[key];
 }
 
@@ -176,8 +184,6 @@ export function ActiveAlertMatches() {
   const [error, setError] = useState("");
   const [symbolSearch, setSymbolSearch] = useState("");
   const [signal, setSignal] = useState("");
-  const [rating, setRating] = useState("");
-  const [action, setAction] = useState("");
   const [entryStatus, setEntryStatus] = useState("");
   const [minScore, setMinScore] = useState("");
   const [sortKey, setSortKey] = useState<SortKey | null>("final_score");
@@ -208,8 +214,6 @@ export function ActiveAlertMatches() {
 
   const matches = payload?.matches ?? [];
   const signals = useMemo(() => uniqueOptions(matches, "signal"), [matches]);
-  const ratings = useMemo(() => uniqueOptions(matches, "rating"), [matches]);
-  const actions = useMemo(() => uniqueOptions(matches, "action"), [matches]);
   const entries = useMemo(() => uniqueOptions(matches, "entry_status"), [matches]);
 
   const filteredMatches = useMemo(() => {
@@ -219,13 +223,11 @@ export function ActiveAlertMatches() {
     return matches.filter((match) => {
       if (query && !`${match.symbol} ${match.company_name}`.toLowerCase().includes(query)) return false;
       if (signal && match.signal !== signal) return false;
-      if (rating && match.rating !== rating) return false;
-      if (action && match.action !== action) return false;
       if (entryStatus && match.entry_status !== entryStatus) return false;
       if (hasMinScore && (typeof match.final_score !== "number" || match.final_score < minimumScore)) return false;
       return true;
     });
-  }, [action, entryStatus, matches, minScore, rating, signal, symbolSearch]);
+  }, [entryStatus, matches, minScore, signal, symbolSearch]);
 
   const sortedMatches = useMemo(() => {
     if (!sortKey) return filteredMatches;
@@ -249,8 +251,6 @@ export function ActiveAlertMatches() {
   function resetFilters() {
     setSymbolSearch("");
     setSignal("");
-    setRating("");
-    setAction("");
     setEntryStatus("");
     setMinScore("");
     setSortKey("final_score");
@@ -274,7 +274,7 @@ export function ActiveAlertMatches() {
       </div>
 
       <div className="border-b border-slate-800 p-3">
-        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[1.35fr_1fr_0.85fr_0.9fr_0.9fr_0.8fr_auto]">
+        <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[1.35fr_1fr_0.9fr_0.9fr_0.8fr_auto]">
           <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             Symbol
             <input className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setSymbolSearch(event.target.value)} placeholder="Search symbol/company" value={symbolSearch} />
@@ -283,28 +283,14 @@ export function ActiveAlertMatches() {
             Signal
             <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setSignal(event.target.value)} value={signal}>
               <option value="">All signals</option>
-              {signals.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-          </label>
-          <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Rating
-            <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setRating(event.target.value)} value={rating}>
-              <option value="">All ratings</option>
-              {ratings.map((item) => <option key={item} value={item}>{item}</option>)}
-            </select>
-          </label>
-          <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-            Action
-            <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setAction(event.target.value)} value={action}>
-              <option value="">All actions</option>
-              {actions.map((item) => <option key={item} value={item}>{item}</option>)}
+              {signals.map((item) => <option key={item} value={item}>{humanizeLabel(item)}</option>)}
             </select>
           </label>
           <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             Entry Status
             <select className="mt-1 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 py-1.5 text-xs text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => setEntryStatus(event.target.value)} value={entryStatus}>
               <option value="">All entries</option>
-              {entries.map((item) => <option key={item} value={item}>{item}</option>)}
+              {entries.map((item) => <option key={item} value={item}>{humanizeLabel(item)}</option>)}
             </select>
           </label>
           <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -321,7 +307,7 @@ export function ActiveAlertMatches() {
       {payload && payload.data_status !== "fresh" ? <div className="border-b border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs text-amber-100">Data status: {dataStatusLabel(payload.data_status)}</div> : null}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[2610px] table-fixed border-collapse text-xs">
+        <table className="w-full min-w-[2440px] table-fixed border-collapse text-xs">
           <colgroup>
             <col style={{ width: 90 }} />
             <col style={{ width: 220 }} />
@@ -330,7 +316,6 @@ export function ActiveAlertMatches() {
             <col style={{ width: 260 }} />
             <col style={{ width: 90 }} />
             <col style={{ width: 90 }} />
-            <col style={{ width: 130 }} />
             <col style={{ width: 150 }} />
             <col style={{ width: 140 }} />
             <col style={{ width: 180 }} />
@@ -349,21 +334,20 @@ export function ActiveAlertMatches() {
           </thead>
           <tbody className="divide-y divide-slate-800/90">
             {loading ? (
-              <tr><td className="px-2 py-8 text-center text-slate-500" colSpan={18}>Loading market radar...</td></tr>
+              <tr><td className="px-2 py-8 text-center text-slate-500" colSpan={17}>Loading market radar...</td></tr>
             ) : visibleMatches.length ? (
               visibleMatches.map((match) => (
                 <tr className="hover:bg-sky-400/5" key={`${match.rule_id ?? "radar"}:${match.symbol}:${match.signal}`}>
                   <td className="px-2 py-1.5 font-mono font-semibold"><Link className="text-sky-200 hover:text-sky-100" href={`/symbol/${match.symbol}`}>{match.symbol}</Link></td>
                   <td className="truncate px-2 py-1.5 text-slate-400" title={match.company_name}>{match.company_name || "—"}</td>
-                  <td className="truncate px-2 py-1.5 text-slate-300" title={match.match_reason}>{match.signal}</td>
+                  <td className="truncate px-2 py-1.5 text-slate-300" title={match.match_reason}>{humanizeLabel(match.signal)}</td>
                   <td className={match.notification_status === "Covered" ? "truncate px-2 py-1.5 font-semibold text-emerald-300" : "truncate px-2 py-1.5 text-slate-500"} title={match.rule_id ?? "No enabled notification rule covers this radar match."}>{match.notification_status}</td>
                   <td className="truncate px-2 py-1.5 text-slate-400" title={match.match_reason}>{match.match_reason}</td>
                   <td className="px-2 py-1.5 text-right font-mono text-slate-200">{formatNumber(match.price)}</td>
                   <td className="px-2 py-1.5 text-right font-mono text-emerald-200">{formatNumber(match.final_score)}</td>
-                  <td className="truncate px-2 py-1.5 text-slate-300">{match.rating}</td>
-                  <td className="truncate px-2 py-1.5 text-slate-300">{match.action}</td>
-                  <td className="truncate px-2 py-1.5 text-slate-300">{match.entry_status}</td>
-                  <td className="truncate px-2 py-1.5 text-slate-400">{match.setup_type}</td>
+                  <td className="truncate px-2 py-1.5 text-slate-300">{decisionLabel(match.final_decision)}</td>
+                  <td className="truncate px-2 py-1.5 text-slate-300">{humanizeLabel(match.entry_status)}</td>
+                  <td className="truncate px-2 py-1.5 text-slate-400">{humanizeLabel(match.setup_type)}</td>
                   <td className="truncate px-2 py-1.5 font-mono text-slate-400">{match.buy_zone}</td>
                   <td className="px-2 py-1.5 text-right font-mono text-slate-400">{formatNumber(match.stop_loss)}</td>
                   <td className="truncate px-2 py-1.5 font-mono text-slate-400">{match.take_profit}</td>
@@ -374,7 +358,7 @@ export function ActiveAlertMatches() {
                 </tr>
               ))
             ) : (
-              <tr><td className="px-2 py-8 text-center text-slate-500" colSpan={18}>No market radar matches.</td></tr>
+              <tr><td className="px-2 py-8 text-center text-slate-500" colSpan={17}>No market radar matches.</td></tr>
             )}
           </tbody>
         </table>

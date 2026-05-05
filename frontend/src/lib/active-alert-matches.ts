@@ -18,6 +18,7 @@ export type ActiveAlertMatch = {
   company_name: string;
   price: number | null;
   final_score: number | null;
+  final_decision: string;
   rating: string;
   action: string;
   entry_status: string;
@@ -311,8 +312,8 @@ function radarSignals(row: RankingRow) {
   const action = normalizedAction(actionFor(row));
 
   if (price !== null && buyLow !== null && buyHigh !== null) {
-    if (price >= buyLow && price <= buyHigh) signals.push({ signal: "BUY ZONE", reason: `Price is inside buy zone ${formatRange(buyLow, buyHigh)}` });
-    else if (price > buyHigh && price <= buyHigh * 1.02) signals.push({ signal: "NEAR ENTRY", reason: `Price is within 2% above buy zone ${formatRange(buyLow, buyHigh)}` });
+    if (price >= buyLow && price <= buyHigh) signals.push({ signal: "BUY ZONE", reason: `Price is inside entry zone ${formatRange(buyLow, buyHigh)}` });
+    else if (price > buyHigh && price <= buyHigh * 1.02) signals.push({ signal: "NEAR ENTRY", reason: `Price is within 2% above entry zone ${formatRange(buyLow, buyHigh)}` });
   }
   if (price !== null && stop !== null) {
     if (price <= stop) signals.push({ signal: "STOP HIT", reason: `Price ${formatNumber(price)} is at or below stop ${formatNumber(stop)}` });
@@ -322,10 +323,10 @@ function radarSignals(row: RankingRow) {
     if (price >= target) signals.push({ signal: "TP HIT", reason: `Price ${formatNumber(price)} is at or above take profit ${formatNumber(target)}` });
     else if ((target - price) / target <= 0.03) signals.push({ signal: "TP NEAR", reason: `Price is within 3% of take profit ${formatNumber(target)}` });
   }
-  if (rating === "TOP") signals.push({ signal: "TOP", reason: "Rating is TOP" });
-  if (rating === "ACTIONABLE") signals.push({ signal: "ACTIONABLE", reason: "Rating is ACTIONABLE" });
-  if (action === "STRONG BUY") signals.push({ signal: "STRONG BUY", reason: "Action is STRONG BUY" });
-  if (action === "BUY") signals.push({ signal: "BUY", reason: "Action is BUY" });
+  if (rating === "TOP") signals.push({ signal: "TOP", reason: "Internal scanner context is top-ranked" });
+  if (rating === "ACTIONABLE") signals.push({ signal: "ACTIONABLE", reason: "Internal scanner context is elevated" });
+  if (action === "STRONG BUY") signals.push({ signal: "STRONG BUY", reason: "Internal action context is elevated" });
+  if (action === "BUY") signals.push({ signal: "BUY", reason: "Internal action context is elevated" });
 
   return signals;
 }
@@ -372,6 +373,7 @@ export async function getActiveAlertMatches(userId: string | null): Promise<Acti
         company_name: companyFor(row),
         price: numeric(row.price),
         final_score: numeric(row.final_score),
+        final_decision: finalDecision(row) || "WATCH",
         rating: cleanText(row.rating, "—"),
         action: actionFor(row),
         entry_status: displayEntryStatus(row, radar.signal),

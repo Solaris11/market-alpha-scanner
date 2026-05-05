@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
+import { humanizeLabel } from "@/lib/ui/labels";
 import { readWatchlistStorage, WATCHLIST_EVENT } from "@/lib/watchlist-storage";
 import { ActiveAlertMatches } from "./active-alert-matches";
 
@@ -175,10 +176,7 @@ function formatDate(value?: string | null) {
 }
 
 function typeLabel(value: string) {
-  return value
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+  return humanizeLabel(value);
 }
 
 function entryFilterLabel(value?: string) {
@@ -218,8 +216,8 @@ function targetDisplay(rule: AlertRule) {
 
 function compactConfig(rule: AlertRule) {
   const parts = [];
-  if (rule.min_rating) parts.push(`Rating ${rule.min_rating}+`);
-  if (rule.allowed_actions?.length) parts.push(`Actions ${rule.allowed_actions.join(", ")}`);
+  if (rule.min_rating) parts.push(`Rating ${humanizeLabel(rule.min_rating)}+`);
+  if (rule.allowed_actions?.length) parts.push(`Action context ${rule.allowed_actions.map((action) => humanizeLabel(action)).join(", ")}`);
   if (rule.min_risk_reward !== undefined) parts.push(`Min R/R ${rule.min_risk_reward}`);
   if (rule.max_alerts_per_run !== undefined) parts.push(`Max/run ${rule.max_alerts_per_run}`);
   return parts;
@@ -696,7 +694,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
           </div>
         </div>
         <div className="mt-3 flex flex-wrap gap-2">
-          {quickScopedRule("Alert me for all entry-ready opportunities", {
+          {quickScopedRule("Alert me for all entry-ready research contexts", {
             id: "global_entry_ready",
             scope: "global",
             type: "entry_ready",
@@ -711,7 +709,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             entry_filter: "good_or_wait",
             source: "system",
           })}
-          {quickScopedRule("Alert me for all TOP signals", {
+          {quickScopedRule("Alert me for all top-ranked contexts", {
             id: "global_top_signals",
             scope: "global",
             type: "score_above",
@@ -726,7 +724,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             entry_filter: "avoid_overextended",
             source: "system",
           })}
-          {quickScopedRule("Alert me for all stop-loss breaks on watchlist", {
+          {quickScopedRule("Alert me for all stop-context breaks on watchlist", {
             id: "watchlist_stop_loss",
             scope: "watchlist",
             type: "stop_loss_broken",

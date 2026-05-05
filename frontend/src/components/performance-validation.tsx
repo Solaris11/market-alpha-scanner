@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { compareSortValues, nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { CsvRow, HistorySummary, RankingRow } from "@/lib/types";
+import { humanizeLabel } from "@/lib/ui/labels";
 
 type Props = {
   forwardRows: CsvRow[];
@@ -67,8 +68,8 @@ const FORWARD_COLUMNS: { key: ForwardSortKey; label: string; align?: ColumnAlign
   { key: "forward_return", label: "Return", align: "right" },
   { key: "max_drawdown_after_signal", label: "Drawdown", align: "right" },
   { key: "max_gain_after_signal", label: "Gain", align: "right" },
-  { key: "rating", label: "Rating" },
-  { key: "action", label: "Action" },
+  { key: "rating", label: "Rating Context" },
+  { key: "action", label: "Action Context" },
   { key: "setup_type", label: "Setup" },
   { key: "entry_status", label: "Entry" },
   { key: "timestamp_utc", label: "Signal Time" },
@@ -515,8 +516,8 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
             {visibleSummaryRows.length ? visibleSummaryRows.map((row, index) => (
               <tr key={`${row.horizon}-${row.group_type}-${row.group_value}-${index}`}>
                 <td className="whitespace-nowrap px-2 py-1.5 font-mono text-slate-300">{text(row.horizon)}</td>
-                <td className="truncate px-2 py-1.5 text-slate-400">{text(row.group_type)}</td>
-                <td className="truncate px-2 py-1.5 text-slate-200">{text(row.group_value)}</td>
+                <td className="truncate px-2 py-1.5 text-slate-400">{humanizeLabel(row.group_type, "—")}</td>
+                <td className="truncate px-2 py-1.5 text-slate-200">{humanizeLabel(row.group_value, "—")}</td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{integer(row.count).toLocaleString()}</td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.avg_return)}</td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.median_return)}</td>
@@ -588,10 +589,10 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.forward_return)}</td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.max_drawdown_after_signal)}</td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.max_gain_after_signal)}</td>
-                <td className="truncate px-2 py-1.5 text-slate-300">{text(row.rating)}</td>
-                <td className="truncate px-2 py-1.5 text-slate-300">{text(row.action)}</td>
-                <td className="truncate px-2 py-1.5 text-slate-400">{text(row.setup_type)}</td>
-                <td className="truncate px-2 py-1.5 text-slate-400">{text(row.entry_status)}</td>
+                <td className="truncate px-2 py-1.5 text-slate-300">{humanizeLabel(row.rating, "—")}</td>
+                <td className="truncate px-2 py-1.5 text-slate-300">{humanizeLabel(row.action, "—")}</td>
+                <td className="truncate px-2 py-1.5 text-slate-400">{humanizeLabel(row.setup_type, "—")}</td>
+                <td className="truncate px-2 py-1.5 text-slate-400">{humanizeLabel(row.entry_status, "—")}</td>
                 <td className="truncate px-2 py-1.5 font-mono text-slate-400">{formatDate(row.timestamp_utc)}</td>
               </tr>
             )) : (

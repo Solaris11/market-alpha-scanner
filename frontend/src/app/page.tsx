@@ -10,7 +10,7 @@ export const metadata = marketingMetadata("/");
 const decisionBadges = [
   ["WAIT", "Market conditions do not justify action.", "border-amber-300/35 bg-amber-300/10 text-amber-100"],
   ["WATCH", "Setup is forming, but not ready.", "border-cyan-300/35 bg-cyan-300/10 text-cyan-100"],
-  ["BUY", "Research signal with acceptable risk.", "border-emerald-300/35 bg-emerald-300/10 text-emerald-100"],
+  ["RESEARCH", "Complete setup context with acceptable risk.", "border-emerald-300/35 bg-emerald-300/10 text-emerald-100"],
   ["AVOID", "Risk or quality is not acceptable.", "border-rose-300/35 bg-rose-300/10 text-rose-100"],
 ] as const;
 
@@ -56,7 +56,7 @@ export default async function HomePage() {
                 </div>
                 <div className="rounded-full border border-amber-300/30 bg-amber-300/10 px-3 py-1 text-xs font-bold text-amber-100">No Trade Today</div>
               </div>
-              <p className="mt-4 text-sm leading-6 text-slate-300">Market is overheated. Correct action: do nothing until the setup improves.</p>
+              <p className="mt-4 text-sm leading-6 text-slate-300">Market is overheated. The research system is waiting for conditions to improve.</p>
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 {decisionBadges.map(([label, copy, style]) => (
                   <div className={`landing-badge-loop rounded-2xl border p-4 ${style}`} key={label}>

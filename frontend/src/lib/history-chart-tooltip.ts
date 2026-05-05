@@ -1,5 +1,6 @@
 import { actionFor, formatNumber } from "./format";
 import type { SymbolHistoryRow } from "./types";
+import { decisionLabel } from "./ui/labels";
 
 export type HistoryChartField = "final_score" | "price";
 
@@ -35,7 +36,7 @@ export function formatHistoryChartPrice(value: unknown) {
 }
 
 export function historyChartDecision(row: SymbolHistoryRow) {
-  return cleanText(row.final_decision) || cleanText(actionFor(row)) || "";
+  return decisionLabel(cleanText(row.final_decision) || cleanText(actionFor(row)) || "");
 }
 
 export function historyChartTooltipLines(row: SymbolHistoryRow, field: HistoryChartField): HistoryChartTooltipLine[] {

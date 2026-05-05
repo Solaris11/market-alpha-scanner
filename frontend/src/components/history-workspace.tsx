@@ -8,6 +8,7 @@ import { formatHistoryChartTimestamp, historyChartTooltipLines, type HistoryChar
 import { verifiedNewsItemFromRow } from "@/lib/news-source-policy";
 import { nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { HistorySummary, SymbolHistoryRow } from "@/lib/types";
+import { decisionLabel, humanizeLabel, normalizedToken } from "@/lib/ui/labels";
 
 type Props = {
   defaultSymbol?: string;
@@ -15,17 +16,16 @@ type Props = {
   symbols: string[];
 };
 
-type HistorySortKey = "timestamp_utc" | "price" | "final_score" | "final_score_adjusted" | "rating" | "action" | "recommendation_quality" | "entry_status" | "setup_type";
+type HistorySortKey = "timestamp_utc" | "price" | "final_score" | "final_score_adjusted" | "final_decision" | "action" | "recommendation_quality" | "entry_status" | "setup_type";
 type HistoryInsightTab = "performance" | "signals" | "news" | "financials" | "events";
 type QuickRange = "all" | "1d" | "3d" | "7d" | "14d";
 
-const RATING_PRIORITY: Record<string, number> = {
-  TOP: 0,
-  ACTIONABLE: 1,
-  WATCH: 2,
-  PASS: 3,
-};
 const ACTION_PRIORITY: Record<string, number> = {
+  ENTER: 0,
+  WAIT_PULLBACK: 1,
+  WATCH: 2,
+  AVOID: 3,
+  EXIT: 4,
   "STRONG BUY": 0,
   BUY: 1,
   "WAIT / HOLD": 2,
@@ -56,8 +56,8 @@ const HISTORY_COLUMNS: { align?: "left" | "right"; key: HistorySortKey; label: s
   { align: "right", key: "price", label: "Price" },
   { align: "right", key: "final_score", label: "Score" },
   { align: "right", key: "final_score_adjusted", label: "Adjusted" },
-  { key: "rating", label: "Rating" },
-  { key: "action", label: "Action" },
+  { key: "final_decision", label: "Decision" },
+  { key: "action", label: "Scanner Context" },
   { key: "recommendation_quality", label: "Quality" },
   { key: "entry_status", label: "Entry" },
   { key: "setup_type", label: "Setup" },
@@ -184,6 +184,7 @@ function formatDuration(ms: number | null) {
 
 function sortValue(row: SymbolHistoryRow, key: HistorySortKey) {
   if (key === "action") return actionFor(row);
+  if (key === "final_decision") return normalizedToken(row.final_decision);
   if (key === "recommendation_quality") return normalizeSymbol(row.recommendation_quality);
   if (key === "entry_status") return normalizeSortText(row.entry_status);
   return row[key];
@@ -192,7 +193,7 @@ function sortValue(row: SymbolHistoryRow, key: HistorySortKey) {
 function sortConfig(key: HistorySortKey): SortConfig {
   if (key === "timestamp_utc") return { type: "date" };
   if (key === "price" || key === "final_score" || key === "final_score_adjusted") return { type: "number" };
-  if (key === "rating") return { priority: RATING_PRIORITY };
+  if (key === "final_decision") return { priority: ACTION_PRIORITY };
   if (key === "action") return { priority: ACTION_PRIORITY };
   if (key === "recommendation_quality") return { priority: QUALITY_PRIORITY };
   if (key === "entry_status") return { priority: ENTRY_PRIORITY };
@@ -267,7 +268,7 @@ function PerformanceInsight({ latest, priceChange, rows, scoreChange }: { latest
     <div className="grid gap-3 md:grid-cols-3">
       <InsightMetric label="Score change" value={formatDelta(scoreChange)} />
       <InsightMetric label="Price change" value={formatDelta(priceChange)} />
-      <InsightMetric label="Latest decision" value={latest?.final_decision ?? latest?.rating ?? "N/A"} />
+      <InsightMetric label="Latest decision" value={decisionLabel(latest?.final_decision ?? latest?.rating)} />
       <InterpretedPanel className="md:col-span-3" title="Performance interpretation" items={[interpretation, `Observed ${rows.length.toLocaleString()} signal snapshots in this range.`, "Use this as historical research context, not a prediction."]} />
     </div>
   );
@@ -276,14 +277,14 @@ function PerformanceInsight({ latest, priceChange, rows, scoreChange }: { latest
 function SignalsInsight({ latest, rows }: { latest: SymbolHistoryRow | undefined; rows: SymbolHistoryRow[] }) {
   const decisions = new Map<string, number>();
   for (const row of rows) {
-    const key = String(row.final_decision ?? row.rating ?? "UNKNOWN").toUpperCase();
+    const key = decisionLabel(row.final_decision ?? row.rating ?? "UNKNOWN");
     decisions.set(key, (decisions.get(key) ?? 0) + 1);
   }
   const items = Array.from(decisions.entries()).sort((a, b) => b[1] - a[1]).slice(0, 5).map(([decision, count]) => `${decision}: ${count} observations`);
   return (
     <div className="grid gap-3 md:grid-cols-2">
       <InterpretedPanel title="Decision mix" items={items.length ? items : ["No signal mix available yet."]} />
-      <InterpretedPanel title="Current reasoning" items={[cleanInsight(latest?.decision_reason ?? latest?.quality_reason, "Latest decision reasoning is not available."), cleanInsight(latest?.entry_status, "Entry state is not available."), cleanInsight(latest?.setup_type, "Setup type is not available.")]} />
+      <InterpretedPanel title="Current reasoning" items={[cleanInsight(latest?.decision_reason ?? latest?.quality_reason, "Latest decision reasoning is not available."), humanizeLabel(latest?.entry_status, "Entry state is not available."), humanizeLabel(latest?.setup_type, "Setup type is not available.")]} />
     </div>
   );
 }
@@ -649,8 +650,8 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
                   { label: "First Score", value: formatNumber(first?.final_score), meta: formatDate(first?.timestamp_utc) },
                   { label: "Latest Score", value: formatNumber(latest?.final_score), meta: formatDate(latest?.timestamp_utc) },
                   { label: "Score Change", value: formatDelta(scoreChange), meta: "latest - first" },
-                  { label: "Rating", value: latest?.rating ?? "N/A", meta: "latest" },
-                  { label: "Action", value: latest ? actionFor(latest) : "N/A", meta: "latest" },
+                  { label: "Decision", value: decisionLabel(latest?.final_decision ?? latest?.rating), meta: "latest" },
+                  { label: "Scanner Context", value: latest ? humanizeLabel(actionFor(latest)) : "N/A", meta: "latest" },
                   { label: "Price", value: formatNumber(latest?.price), meta: "latest" },
                   { label: "Price Change", value: formatDelta(priceChange), meta: "latest - first" },
                   { label: "Observations", value: filteredByTime.length.toLocaleString(), meta: `avg ${formatDuration(avgInterval)}` },
@@ -720,19 +721,19 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
                           <td className="px-2 py-1.5 text-right font-mono text-slate-200">{formatNumber(row.price)}</td>
                           <td className="px-2 py-1.5 text-right font-mono text-emerald-200">{formatNumber(row.final_score)}</td>
                           <td className="px-2 py-1.5 text-right font-mono text-slate-300">{formatNumber(row.final_score_adjusted)}</td>
-                          <td className="truncate px-2 py-1.5 text-slate-300">{row.rating ?? "N/A"}</td>
-                          <td className="truncate px-2 py-1.5 text-slate-300">{actionFor(row)}</td>
+                          <td className="truncate px-2 py-1.5 text-slate-300">{decisionLabel(row.final_decision ?? row.rating)}</td>
+                          <td className="truncate px-2 py-1.5 text-slate-300">{humanizeLabel(actionFor(row))}</td>
                           <td className="px-2 py-1.5">
                             {row.recommendation_quality ? (
                               <span className={`inline-flex max-w-[120px] rounded border px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-[0.06em] ${qualityBadgeClass(row.recommendation_quality)}`} title={String(row.quality_reason ?? "")}>
-                                <span className="truncate">{String(row.recommendation_quality).replace("_", " ")}</span>
+                                <span className="truncate">{humanizeLabel(row.recommendation_quality)}</span>
                               </span>
                             ) : (
                               <span className="text-slate-600">—</span>
                             )}
                           </td>
-                          <td className="truncate px-2 py-1.5 text-slate-400">{row.entry_status ?? "N/A"}</td>
-                          <td className="truncate px-2 py-1.5 text-slate-400">{row.setup_type ?? "N/A"}</td>
+                          <td className="truncate px-2 py-1.5 text-slate-400">{humanizeLabel(row.entry_status)}</td>
+                          <td className="truncate px-2 py-1.5 text-slate-400">{humanizeLabel(row.setup_type)}</td>
                         </tr>
                       ))}
                     </tbody>

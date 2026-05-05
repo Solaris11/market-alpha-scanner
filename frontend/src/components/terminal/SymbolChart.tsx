@@ -166,16 +166,19 @@ export function SymbolChart({ symbol, candles, signals, showHistoricalSignals = 
   }
 
   return (
+    <div className="min-w-0">
+      {showHeaderBadge ? (
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-slate-950/65 px-4 py-3">
+          <div>
+            <div className="font-mono text-sm font-bold text-slate-50">{symbol.toUpperCase()}</div>
+            <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Price Action</div>
+          </div>
+          <div className="text-xs text-slate-400">{chartCandles.length.toLocaleString()} candles</div>
+        </div>
+      ) : null}
     <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/40 shadow-xl shadow-black/20" style={{ height }}>
       <div ref={chartContainerRef} className="absolute inset-0" />
       <div ref={entryBandRef} className={`pointer-events-none absolute left-0 right-0 hidden border-y border-amber-300/35 bg-amber-300/10 ${showResearchLevelsToggle && !showResearchLevels ? "opacity-0" : ""}`} />
-      {showHeaderBadge ? (
-      <div className="pointer-events-none absolute left-4 top-4 z-10 rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 shadow-lg backdrop-blur-xl">
-        <div className="font-mono text-sm font-bold text-slate-50">{symbol.toUpperCase()}</div>
-        <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Price Action</div>
-        <div className="mt-1 text-xs text-slate-400">{chartCandles.length.toLocaleString()} candles</div>
-      </div>
-      ) : null}
       {showResearchLevelsToggle ? (
         <div className="absolute left-3 top-3 z-10 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-2">
           <button
@@ -196,6 +199,7 @@ export function SymbolChart({ symbol, candles, signals, showHistoricalSignals = 
           <div className="mt-1 font-semibold text-sky-200">Target context</div>
         </div>
       ) : null}
+    </div>
     </div>
   );
 }

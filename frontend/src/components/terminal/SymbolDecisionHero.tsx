@@ -6,6 +6,7 @@ import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { WatchlistButton } from "@/components/watchlist-controls";
 import { DataHealthIndicator } from "@/components/data-health-indicator";
 import { TradeLegalNotice } from "@/components/legal/TradeLegalNotice";
+import { normalizedToken } from "@/lib/ui/labels";
 import { DecisionBadge } from "./DecisionBadge";
 import { GlassPanel } from "./ui/GlassPanel";
 
@@ -14,8 +15,8 @@ function actionText(value: unknown) {
   if (decision === "ENTER") return "Research signal";
   if (decision === "WAIT_PULLBACK") return "Wait for pullback";
   if (decision === "WATCH") return "Monitor only";
-  if (decision === "AVOID") return "Do not enter";
-  if (decision === "EXIT") return "Exit position";
+  if (decision === "AVOID") return "Risk blocked";
+  if (decision === "EXIT") return "Exit risk flagged";
   return "Review setup";
 }
 
@@ -43,8 +44,9 @@ export function SymbolDecisionHero({
   tradeAllowed?: boolean;
 }) {
   const decision = row.final_decision ?? row.action ?? "WATCH";
+  const decisionKey = normalizedToken(decision);
   const conviction = computeConviction(row, edge);
-  const showTradePlan = tradeAllowed && !previewMode;
+  const showTradePlan = tradeAllowed && !previewMode && decisionKey === "ENTER";
   return (
     <GlassPanel className={`overflow-hidden p-6 md:p-8 ${glow(decision)}`}>
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
@@ -61,7 +63,7 @@ export function SymbolDecisionHero({
             </span>
             {!showTradePlan ? (
               <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-4 py-2 text-sm font-semibold text-amber-100">
-                No active trade recommended
+                No active research setup
               </span>
             ) : null}
             <DataHealthIndicator freshness={dataFreshness} />
@@ -73,7 +75,7 @@ export function SymbolDecisionHero({
           <TradeLegalNotice className="mt-4 max-w-3xl" />
           {!showTradePlan ? (
             <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
-              Research signal only. {researchModeReason ?? "No active trade is recommended by the global decision system."}
+              Research signal only. {researchModeReason ?? "No active setup is cleared by the decision system."}
             </div>
           ) : null}
         </div>

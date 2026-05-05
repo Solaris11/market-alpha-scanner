@@ -1,6 +1,7 @@
 import { AdminEmpty, AdminSection, AdminStatCard, StatusBadge } from "@/components/admin/AdminChrome";
 import { CalibrationTable } from "@/components/admin/CalibrationTable";
 import { getAdminCalibrationSummary } from "@/lib/server/admin-data";
+import { decisionLabel } from "@/lib/ui/labels";
 import { formatAdminDate, statusTone } from "../view-utils";
 
 export const dynamic = "force-dynamic";
@@ -25,7 +26,7 @@ export default async function AdminCalibrationPage() {
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <AdminStatCard label="Forward observations" value={calibration.observationCount.toLocaleString()} />
         <AdminStatCard label="Latest run" meta={formatAdminDate(calibration.latestRun?.completedAt)} tone={statusTone(calibration.latestRun?.status)} value={calibration.latestRun?.status ?? "unknown"} />
-        <AdminStatCard label="BUY/ENTER latest" tone={enterCount > 0 ? "warn" : "good"} value={`${enterCount}/${totalSignals || 0}`} />
+        <AdminStatCard label="Research setups latest" tone={enterCount > 0 ? "warn" : "good"} value={`${enterCount}/${totalSignals || 0}`} />
         <AdminStatCard label="Generated" value={formatAdminDate(calibration.generatedAt)} />
       </section>
 
@@ -47,13 +48,13 @@ export default async function AdminCalibrationPage() {
       <AdminSection title="Latest decision distribution" subtitle="Current scanner output distribution. Trade-permitted count is derived from the hard-veto diagnostics payload.">
         {calibration.distributions.length ? (
           <div className="grid gap-3 md:grid-cols-3">
-            <DistributionCard label="Buy / Enter" total={totalSignals} value={enterCount} />
+            <DistributionCard label="Research Setup" total={totalSignals} value={enterCount} />
             <DistributionCard label="Watch / Wait" total={totalSignals} value={watchCount} />
             <DistributionCard label="Avoid / Exit" total={totalSignals} value={avoidCount} />
             {calibration.distributions.map((row) => (
               <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4" key={row.decision}>
                 <div className="flex items-center justify-between gap-3">
-                  <StatusBadge tone={row.tradePermittedCount > 0 ? "warn" : statusTone(row.decision)}>{row.decision}</StatusBadge>
+                  <StatusBadge tone={row.tradePermittedCount > 0 ? "warn" : statusTone(row.decision)}>{decisionLabel(row.decision)}</StatusBadge>
                   <span className="font-mono text-sm text-slate-400">{row.count.toLocaleString()}</span>
                 </div>
                 <div className="mt-3 grid grid-cols-3 gap-2 text-xs">

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { CalibrationMetricRow } from "@/lib/server/admin-data";
+import { decisionLabel, humanizeLabel } from "@/lib/ui/labels";
 
 type SortKey = "avgDrawdownPct" | "avgReturnPct" | "count" | "expectancyPct" | "groupValue" | "horizon" | "medianReturnPct" | "sampleSize" | "winRatePct" | "worstReturnPct";
 
@@ -56,7 +57,7 @@ export function CalibrationTable({ rows }: { rows: CalibrationMetricRow[] }) {
           {sortedRows.map((row) => (
             <tr className="text-slate-300" key={`${row.groupType}-${row.horizon}-${row.groupValue}`}>
               <td className="px-3 py-3 font-mono text-xs text-slate-400">{row.horizon}</td>
-              <td className="px-3 py-3 font-semibold text-slate-100">{row.groupValue}</td>
+              <td className="px-3 py-3 font-semibold text-slate-100">{groupDisplay(row)}</td>
               <td className="px-3 py-3 text-right font-mono">{row.count.toLocaleString()}</td>
               <td className={`px-3 py-3 text-right font-mono ${returnTone(row.avgReturnPct)}`}>{formatPercent(row.avgReturnPct)}</td>
               <td className={`px-3 py-3 text-right font-mono ${returnTone(row.medianReturnPct)}`}>{formatPercent(row.medianReturnPct)}</td>
@@ -76,6 +77,12 @@ export function CalibrationTable({ rows }: { rows: CalibrationMetricRow[] }) {
       </table>
     </div>
   );
+}
+
+function groupDisplay(row: CalibrationMetricRow): string {
+  if (row.groupType === "decision") return decisionLabel(row.groupValue);
+  if (row.groupType === "setup_type" || row.groupType === "market_regime" || row.groupType === "asset_type") return humanizeLabel(row.groupValue);
+  return row.groupValue;
 }
 
 function sampleTone(value: "LOW" | "MEDIUM" | "HIGH"): string {

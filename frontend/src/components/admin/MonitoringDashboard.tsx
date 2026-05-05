@@ -4,6 +4,7 @@ import { useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { AdminMonitoringSummary, MonitoringTimeRange } from "@/lib/server/admin-data";
 import { aggregateStatusBuckets, formatMonitoringMs, formatMonitoringPercent, sanitizeMonitoringRouteLabel } from "@/lib/admin-monitoring-ui";
+import { humanizeLabel } from "@/lib/ui/labels";
 
 type Tone = "bad" | "default" | "good" | "warn";
 
@@ -147,7 +148,7 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
             footer={latestSelectedCheck ? `Latest: ${latestSelectedCheck.status} · ${latestSelectedCheck.latencyMs}ms · ${formatDate(latestSelectedCheck.createdAt)}` : undefined}
             series={[{
               color: COLORS.cyan,
-              label: selectedCheck || "Synthetic",
+              label: humanizeLabel(selectedCheck || "Synthetic"),
               valueFormatter: formatMonitoringMs,
               values: selectedCheckRows.map((point) => ({ bucket: point.bucket, value: point.latencyMs })),
             }]}
@@ -250,7 +251,7 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
                       <StatusBadge tone={statusTone(check.status)}>{check.status}</StatusBadge>
-                      <span className="text-sm font-semibold text-slate-100">{check.checkName}</span>
+                    <span className="text-sm font-semibold text-slate-100">{humanizeLabel(check.checkName)}</span>
                     </div>
                     <span className="text-xs text-slate-500">{check.latencyMs}ms</span>
                   </div>
@@ -494,7 +495,7 @@ function SyntheticSelector({ checks, selectedCheck, setSelectedCheck }: { checks
           onClick={() => setSelectedCheck(check.checkName)}
           type="button"
         >
-          {check.checkName}
+          {humanizeLabel(check.checkName)}
         </button>
       ))}
     </div>

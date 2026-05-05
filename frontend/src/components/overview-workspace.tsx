@@ -8,6 +8,7 @@ import { WatchlistPanel } from "@/components/watchlist-controls";
 import { actionFor } from "@/lib/format";
 import { nextSortDirection, stableSortRows, type SortConfig } from "@/lib/table-sort";
 import type { RankingRow } from "@/lib/types";
+import { decisionLabel, humanizeLabel } from "@/lib/ui/labels";
 
 type Props = {
   alertRules: AlertRule[];
@@ -418,7 +419,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
           <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">
             {decisionDistribution.map((item) => (
               <span className="rounded-full border border-white/10 bg-white/[0.03] px-2 py-1" key={item.decision}>
-                {item.decision.replaceAll("_", " ")} <span className="font-mono text-slate-100">{item.count}</span>
+                {decisionLabel(item.decision)} <span className="font-mono text-slate-100">{item.count}</span>
               </span>
             ))}
           </div>
@@ -451,7 +452,7 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
                 <option value="">All asset types</option>
                 {assetTypes.map((option) => (
                   <option key={option} value={option}>
-                    {option}
+                    {humanizeLabel(option)}
                   </option>
                 ))}
               </select>
@@ -506,9 +507,9 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
                   value={ratingFilter}
                 >
                   <option value="">All ratings</option>
-                  {RATING_FILTER_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+                {RATING_FILTER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                      {humanizeLabel(option)}
                     </option>
                   ))}
                 </select>
@@ -522,9 +523,9 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
                   value={actionFilter}
                 >
                   <option value="">All actions</option>
-                  {ACTION_FILTER_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+                {ACTION_FILTER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                      {humanizeLabel(option)}
                     </option>
                   ))}
                 </select>
@@ -538,9 +539,9 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
                   value={signalFilter}
                 >
                   <option value="">All signals</option>
-                  {SIGNAL_FILTER_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
+                {SIGNAL_FILTER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                      {humanizeLabel(option)}
                     </option>
                   ))}
                 </select>
@@ -554,9 +555,9 @@ export function OverviewWorkspace({ alertRules, alertState = { alerts: {} }, ran
                   value={qualityFilter}
                 >
                   <option value="">All qualities</option>
-                  {QUALITY_FILTER_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option.replaceAll("_", " ")}
+                {QUALITY_FILTER_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                      {humanizeLabel(option)}
                     </option>
                   ))}
                 </select>

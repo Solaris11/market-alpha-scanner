@@ -27,7 +27,7 @@ describe("history chart tooltip helpers", () => {
   it("builds final score tooltip lines with optional fields", () => {
     assert.deepEqual(historyChartTooltipLines(baseRow, "final_score"), [
       { label: "Score", value: "80.32" },
-      { label: "Decision", value: "WATCH" },
+      { label: "Decision", value: "Watch" },
       { label: "Confidence", value: "86" },
       { label: "Price", value: "$401.59" },
     ]);
@@ -38,7 +38,7 @@ describe("history chart tooltip helpers", () => {
     assert.deepEqual(historyChartTooltipLines(row, "price"), [
       { label: "Price", value: "$401.59" },
       { label: "Score", value: "80.32" },
-      { label: "Decision", value: "REVIEW" },
+      { label: "Decision", value: "Review" },
     ]);
   });
 });

@@ -4,6 +4,7 @@ import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { getCurrentUser } from "@/lib/server/auth";
 import { listSupportTicketsForUser } from "@/lib/server/support";
 import { SUPPORT_DISCLAIMER } from "@/lib/support/content";
+import { humanizeLabel, supportStatusLabel } from "@/lib/ui/labels";
 
 export const dynamic = "force-dynamic";
 
@@ -41,9 +42,9 @@ export default async function SupportTicketsPage() {
               <Link className="rounded-xl border border-white/10 bg-white/[0.03] p-4 transition hover:border-cyan-300/35" href={`/support/tickets/${ticket.id}`} key={ticket.id}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="font-semibold text-slate-50">{ticket.subject}</div>
-                  <span className="rounded-full border border-white/10 px-2 py-1 text-xs text-slate-300">{ticket.status}</span>
+                  <span className="rounded-full border border-white/10 px-2 py-1 text-xs text-slate-300">{supportStatusLabel(ticket.status)}</span>
                 </div>
-                <div className="mt-2 text-xs text-slate-500">{ticket.category} - {new Date(ticket.updatedAt).toLocaleString()}</div>
+                <div className="mt-2 text-xs text-slate-500">{humanizeLabel(ticket.category)} - {new Date(ticket.updatedAt).toLocaleString()}</div>
               </Link>
             )) : <p className="text-sm text-slate-400">No support tickets yet.</p>}
           </div>

@@ -10,6 +10,7 @@ import { confidenceTone } from "@/lib/trading/confidence";
 import { buildDecisionFactors, buildDecisionIntelligence, type DecisionFactor } from "@/lib/trading/decision-intelligence";
 import type { ScannerScalar } from "@/lib/types";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
+import { decisionLabel, humanizeLabel } from "@/lib/ui/labels";
 import { WatchlistButton } from "@/components/watchlist-controls";
 import { DecisionBadge } from "@/components/terminal/DecisionBadge";
 import { MiniPriceContextChart } from "@/components/terminal/MiniPriceContextChart";
@@ -107,7 +108,7 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
             />
           </label>
           <Select label="Decision" onChange={(value) => setDecisionFilter(value as DecisionFilter)} value={decisionFilter}>
-            {DECISION_OPTIONS.map((option) => <option key={option} value={option}>{option === "ALL" ? "All decisions" : option}</option>)}
+            {DECISION_OPTIONS.map((option) => <option key={option} value={option}>{option === "ALL" ? "All decisions" : decisionLabel(option)}</option>)}
           </Select>
           <Select label="Asset Type" onChange={setAssetTypeFilter} value={assetTypeFilter}>
             <option value="ALL">All asset types</option>
@@ -125,11 +126,11 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
           <NumberInput label="Min Conviction" max={100} onChange={setMinConviction} value={minConviction} />
           <Select label="Entry Status" onChange={setEntryStatusFilter} value={entryStatusFilter}>
             <option value="ALL">Any entry status</option>
-            {options.entryStatuses.map((item) => <option key={item} value={item}>{item}</option>)}
+            {options.entryStatuses.map((item) => <option key={item} value={item}>{humanizeLabel(item)}</option>)}
           </Select>
           <Select label="Quality" onChange={setQualityFilter} value={qualityFilter}>
             <option value="ALL">Any quality</option>
-            {options.qualities.map((item) => <option key={item} value={item}>{item}</option>)}
+            {options.qualities.map((item) => <option key={item} value={item}>{humanizeLabel(item)}</option>)}
           </Select>
           <Select label="Sort" onChange={(value) => setSortKey(value as SortKey)} value={sortKey}>
             {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
@@ -378,11 +379,11 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
       <div className="mt-4 text-sm leading-6 text-slate-300">{cleanText(row.decision_reason, "Decision reason is not available yet.")}</div>
       <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
         <CardMetric label="Price" value={formatMoney(row.price)} />
-        <CardMetric label="Decision" value={cleanText(row.final_decision, "WATCH")} />
+        <CardMetric label="Decision" value={decisionLabel(row.final_decision)} />
         <CardMetric label="Conviction" value={`${row.conviction} ${row.confidenceLabel}`} />
         <CardMetric label="Score" value={formatNumber(row.final_score, 0)} />
         <CardMetric label="Entry / Correction" value={row.entryZoneLabel ?? formatMoney(row.suggested_entry)} />
-        <CardMetric label="Quality" value={cleanText(row.recommendationQualityLabel, "N/A")} />
+        <CardMetric label="Quality" value={humanizeLabel(row.recommendationQualityLabel)} />
       </div>
       <div className="mt-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="min-w-0 text-xs text-slate-500">{cleanText(row.assetType, "Asset")} {row.sector ? `- ${row.sector}` : ""}</div>

@@ -1,5 +1,6 @@
 import type { RankingRow } from "@/lib/types";
 import { formatNumber } from "@/lib/ui/formatters";
+import { humanizeLabel } from "@/lib/ui/labels";
 import { DecisionBadge } from "./DecisionBadge";
 
 export function QualityBar({ row }: { row: RankingRow }) {
@@ -15,5 +16,5 @@ export function QualityBar({ row }: { row: RankingRow }) {
 }
 
 function Cell({ label, value }: { label: string; value: unknown }) {
-  return <div><div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">{label}</div><div className="mt-1 truncate text-sm font-semibold text-slate-100">{String(value ?? "N/A")}</div></div>;
+  return <div><div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">{label}</div><div className="mt-1 truncate text-sm font-semibold text-slate-100">{humanizeLabel(value)}</div></div>;
 }
