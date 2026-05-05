@@ -33,10 +33,11 @@ The wrapper redacts:
 
 Old env files are cold archives only. They must be stored under root-owned directories with `700` directory permissions and `600` file permissions.
 
-Current cold archive paths:
+Current cold archive path:
 
 - `/opt/ops/secure-env-archive/market-alpha`
-- `/opt/backups/market-alpha/obsolete-env`
+
+Do not keep env archives under `/opt/backups/market-alpha`; that tree is mounted into the app for backup freshness checks. If `/opt/backups/market-alpha/obsolete-env` appears, move it under `/opt/ops/secure-env-archive/market-alpha` and make it root-only.
 
 Do not delete active env files. Obsolete archive deletion is only safe after provider-side rotation and a verified post-deploy backup.
 
