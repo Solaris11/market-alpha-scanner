@@ -18,6 +18,9 @@ const baseRow: RankingRow = {
   final_decision: "WATCH",
   final_score: 81,
   risk_reward: 1.8,
+  setup_reason_codes: ["SETUP_PULLBACK", "TREND_INTACT", "NEAR_AVWAP_OR_MA"],
+  setup_strength: 72,
+  setup_type: "PULLBACK",
   symbol: "NVDA",
   vetoes: [],
 } as unknown as RankingRow;
@@ -89,6 +92,28 @@ describe("decision intelligence", () => {
 
     assert.equal(result.regime, "OVERHEATED");
     assert.ok(result.regime_impact.includes("risk filters"));
+  });
+
+  it("surfaces setup type, setup strength, and setup reasons", () => {
+    const result = buildDecisionIntelligence(baseRow);
+
+    assert.equal(result.setup_type, "PULLBACK");
+    assert.equal(result.setup_strength, 72);
+    assert.ok(result.setup_reasons.some((item) => item.includes("Pullback")));
+    assert.ok(result.what_to_watch.some((item) => item.includes("pullback")));
+  });
+
+  it("reduces readiness for invalid setup type", () => {
+    const clean = buildDecisionIntelligence(baseRow);
+    const blocked = buildDecisionIntelligence({
+      ...baseRow,
+      setup_reason_codes: ["SETUP_AVOID", "MIXED_SETUP_AVOIDED"],
+      setup_strength: 35,
+      setup_type: "AVOID",
+    } as unknown as RankingRow);
+
+    assert.ok(clean.readiness_score > blocked.readiness_score);
+    assert.ok(blocked.what_to_watch.length > 0);
   });
 
   it("does not generate financial advice language in explanation copy", () => {

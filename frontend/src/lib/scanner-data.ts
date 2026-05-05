@@ -120,7 +120,17 @@ const NUMERIC_FIELDS = new Set([
   "target_price",
 ]);
 const REQUIRED_RANKING_COLUMNS = ["symbol", "price", "final_score", "rating", "action"];
-const STRUCTURED_RANKING_FIELDS = new Set(["adjusted_thresholds", "adjusted_weights", "decision_reason_codes", "factor_scores", "missing_fields", "regime_reason_codes", "vetoes"]);
+const STRUCTURED_RANKING_FIELDS = new Set([
+  "adjusted_thresholds",
+  "adjusted_weights",
+  "decision_reason_codes",
+  "factor_scores",
+  "missing_fields",
+  "regime_reason_codes",
+  "setup_reason_codes",
+  "setup_thresholds",
+  "vetoes",
+]);
 
 const NAME_FIELDS = [
   "company_name",

@@ -7,6 +7,9 @@ export type DecisionIntelligence = {
   regime_impact: string;
   readiness_score: number;
   risks: string[];
+  setup_reasons: string[];
+  setup_strength: number;
+  setup_type: string;
   what_to_watch: string[];
   why: {
     negatives: string[];
@@ -58,12 +61,31 @@ const REASON_POSITIVE_COPY: Record<string, string> = {
   TREND_CONFIRMED: "Trend confirmation is present",
   TREND_CONTINUATION_SETUP: "Trend-continuation structure is present",
   VOLUME_CONFIRMED: "Volume confirmation is present",
+  NEAR_AVWAP_OR_MA: "Price is near a tracked pullback context",
+  SETUP_BREAKOUT: "Breakout setup rules are active",
+  SETUP_CONTINUATION: "Continuation setup rules are active",
+  SETUP_PULLBACK: "Pullback setup rules are active",
+  TREND_INTACT: "Trend remains intact",
 };
 
 const REASON_NEGATIVE_COPY: Record<string, string> = {
   LOW_SCORE: "Composite score is not strong enough",
   MACRO_MISMATCH: "Market context is not aligned",
   MIXED_SETUP: "Setup structure is mixed",
+  BREAKOUT_REJECTED_EXTENDED: "Breakout context is extended",
+  DATA_QUALITY_SETUP_RISK: "Setup quality is limited by data confidence",
+  HIGH_VOLATILITY_SETUP: "Setup risk is affected by volatility",
+  MIXED_SETUP_AVOIDED: "Setup structure is not clean enough",
+  POOR_RISK_REWARD_SETUP: "Setup risk/reward context is not favorable",
+  SETUP_ATR_ABOVE_THRESHOLD: "ATR is above the setup threshold",
+  SETUP_AVOID: "Setup rules are blocking this context",
+  SETUP_MOMENTUM_BELOW_THRESHOLD: "Momentum is below the setup threshold",
+  SETUP_REJECTED_EXTENDED: "Setup is extended in this scan",
+  SETUP_RISK_REWARD_BELOW_THRESHOLD: "Risk/reward is below the setup threshold",
+  SETUP_STRENGTH_BELOW_THRESHOLD: "Setup strength is below the threshold",
+  SETUP_TREND_BELOW_THRESHOLD: "Trend is below the setup threshold",
+  SETUP_VOLUME_BELOW_THRESHOLD: "Volume is below the setup threshold",
+  WEAK_VOLUME_FOR_BREAKOUT: "Breakout setup lacks volume confirmation",
 };
 
 const VETO_NEGATIVE_COPY: Record<string, string> = {
@@ -102,6 +124,20 @@ const WATCH_COPY: Record<string, string> = {
   STOP_RISK: "Monitor for price to move away from invalidation context.",
   WEAK_VOLUME: "Wait for volume expansion before treating confirmation as stronger.",
   WEAK_VOLUME_CONFIRMATION: "Wait for volume expansion before treating confirmation as stronger.",
+  BREAKOUT_REJECTED_EXTENDED: "Wait for breakout context to reset instead of chasing extension.",
+  DATA_QUALITY_SETUP_RISK: "Wait for cleaner scanner data before relying on this setup context.",
+  HIGH_VOLATILITY_SETUP: "Wait for ranges to stabilize before treating setup risk as cleaner.",
+  MIXED_SETUP_AVOIDED: "Wait for a clearer pullback, breakout, or continuation pattern.",
+  POOR_RISK_REWARD_SETUP: "Monitor for a cleaner balance between risk and potential reward.",
+  SETUP_ATR_ABOVE_THRESHOLD: "Wait for ATR to cool below the setup threshold.",
+  SETUP_AVOID: "Wait for setup structure to improve on a later scan.",
+  SETUP_MOMENTUM_BELOW_THRESHOLD: "Monitor for stronger momentum confirmation.",
+  SETUP_REJECTED_EXTENDED: "Wait for price to reset closer to support or AVWAP context.",
+  SETUP_RISK_REWARD_BELOW_THRESHOLD: "Monitor for better risk/reward context.",
+  SETUP_STRENGTH_BELOW_THRESHOLD: "Wait for setup strength to improve.",
+  SETUP_TREND_BELOW_THRESHOLD: "Monitor for trend structure to improve.",
+  SETUP_VOLUME_BELOW_THRESHOLD: "Wait for stronger volume confirmation.",
+  WEAK_VOLUME_FOR_BREAKOUT: "Wait for volume expansion before treating breakout structure as cleaner.",
 };
 
 const SEVERE_VETOES = new Set(["BEAR_MARKET", "EXTREME_VOLATILITY", "MISSING_PRICE_HISTORY", "PROVIDER_ERROR", "RISK_OFF_MARKET", "STALE_DATA", "DATA_STALE"]);
@@ -117,15 +153,19 @@ export function buildDecisionIntelligence(row: RankingRow): DecisionIntelligence
     ...reasonCodes(rawField(row, "decision_reason_codes")),
     ...vetoes,
   ]);
+  const setupCodes = reasonCodes(rawField(row, "setup_reason_codes"));
   const confidence = confidenceValue(row, factors, vetoes);
   const dataQuality = factorValue(factors, "data_quality") ?? numeric(rawField(row, "data_quality_score")) ?? 75;
-  const readiness_score = readinessScore({ confidence, dataQuality, decision, vetoes });
-  const positives = positiveReasons(factors, reasonCodesList);
-  const negatives = negativeReasons(factors, reasonCodesList, vetoes);
+  const setup_type = setupType(row);
+  const setup_strength = setupStrength(row, setup_type, factors);
+  const readiness_score = readinessScore({ confidence, dataQuality, decision, setupStrength: setup_strength, setupType: setup_type, vetoes });
+  const positives = positiveReasons(factors, uniqueCodes([...reasonCodesList, ...setupCodes]));
+  const negatives = negativeReasons(factors, uniqueCodes([...reasonCodesList, ...setupCodes]), vetoes);
   const risks = riskReasons(vetoes, dataQuality);
-  const what_to_watch = watchConditions({ factors, reasonCodesList, vetoes });
+  const what_to_watch = watchConditions({ factors, reasonCodesList: uniqueCodes([...reasonCodesList, ...setupCodes]), setupType: setup_type, vetoes });
   const regime = normalizedRegime(row);
   const regime_impact = regimeImpact(row, regime);
+  const setup_reasons = setupReasonCopy(setup_type, setupCodes);
 
   return {
     confidence,
@@ -134,6 +174,9 @@ export function buildDecisionIntelligence(row: RankingRow): DecisionIntelligence
     regime_impact,
     readiness_score,
     risks,
+    setup_reasons,
+    setup_strength,
+    setup_type,
     what_to_watch,
     why: {
       negatives: ensureNonEmpty(negatives, "No major negative diagnostic was flagged."),
@@ -220,10 +263,25 @@ function riskReasons(vetoes: string[], dataQuality: number): string[] {
   return ensureNonEmpty(uniqueText(risks).slice(0, 3), "No hard risk veto is active in the available diagnostics.");
 }
 
-function watchConditions({ factors, reasonCodesList, vetoes }: { factors: DecisionFactor[]; reasonCodesList: string[]; vetoes: string[] }): string[] {
+function setupReasonCopy(setupType: string, setupCodes: string[]): string[] {
+  const setupLabel = setupLabelForType(setupType);
+  const fromCodes = setupCodes
+    .map((code) => REASON_POSITIVE_COPY[code] ?? REASON_NEGATIVE_COPY[code])
+    .filter((item): item is string => Boolean(item));
+  return ensureNonEmpty(uniqueText([`Setup type: ${setupLabel}`, ...fromCodes]).slice(0, 4), `Setup type: ${setupLabel}`);
+}
+
+function watchConditions({ factors, reasonCodesList, setupType, vetoes }: { factors: DecisionFactor[]; reasonCodesList: string[]; setupType: string; vetoes: string[] }): string[] {
   const fromVetoes = uniqueCodes([...vetoes, ...reasonCodesList])
     .map((code) => WATCH_COPY[code])
     .filter((item): item is string => Boolean(item));
+  const fromSetup = setupType === "PULLBACK"
+    ? ["Monitor whether price stays near pullback support while trend remains intact."]
+    : setupType === "BREAKOUT"
+      ? ["Wait for clean volume confirmation and avoid extended breakout context."]
+      : setupType === "CONTINUATION"
+        ? ["Monitor for trend and momentum to remain aligned without volatility expanding."]
+        : ["Wait for a clearer setup classification before elevating this signal."];
   const weakFactors = [...factors].filter((item) => item.value < 60).sort((left, right) => left.value - right.value);
   const fromFactors = weakFactors.map((item) => {
     if (item.key === "trend") return "Monitor for stronger trend confirmation.";
@@ -236,21 +294,53 @@ function watchConditions({ factors, reasonCodesList, vetoes }: { factors: Decisi
     return `Monitor ${item.label.toLowerCase()} for cleaner confirmation.`;
   });
   return ensureNonEmpty(
-    uniqueText([...fromVetoes, ...fromFactors]).slice(0, 4),
+    uniqueText([...fromVetoes, ...fromSetup, ...fromFactors]).slice(0, 4),
     "Monitor fresh scanner data, confirmation quality, and risk context before treating this setup as cleaner.",
   );
 }
 
-function readinessScore({ confidence, dataQuality, decision, vetoes }: { confidence: number; dataQuality: number; decision: string; vetoes: string[] }): number {
+function readinessScore({ confidence, dataQuality, decision, setupStrength, setupType, vetoes }: { confidence: number; dataQuality: number; decision: string; setupStrength: number; setupType: string; vetoes: string[] }): number {
   let score = confidence;
   if (!vetoes.length && confidence >= 70 && dataQuality >= 70) score += 6;
+  score = (score * 0.72) + (setupStrength * 0.28);
   score -= Math.min(55, vetoes.length * 18);
   if (vetoes.some((code) => SEVERE_VETOES.has(code))) score -= 14;
+  if (setupType === "AVOID") score -= 22;
   if (dataQuality < 70) score -= (70 - dataQuality) * 0.45;
   if (confidence < 50) score -= 8;
   if (decision === "AVOID" || decision === "EXIT") score -= 10;
   if (decision === "WAIT_PULLBACK") score -= 4;
   return Math.round(clampScore(score));
+}
+
+function setupType(row: RankingRow): string {
+  const raw = normalizeCode(String(rawField(row, "setup_type") ?? ""));
+  if (raw === "PULLBACK" || raw === "BREAKOUT" || raw === "CONTINUATION" || raw === "AVOID") return raw;
+  if (raw.includes("PULLBACK") || raw.includes("AVWAP")) return "PULLBACK";
+  if (raw.includes("BREAKOUT")) return "BREAKOUT";
+  if (raw.includes("CONTINUATION") || raw.includes("TREND")) return "CONTINUATION";
+  return "AVOID";
+}
+
+function setupStrength(row: RankingRow, setupTypeValue: string, factors: DecisionFactor[]): number {
+  const explicit = numeric(rawField(row, "setup_strength"));
+  if (explicit !== null) return Math.round(clampScore(explicit));
+  const trend = factorValue(factors, "trend") ?? 50;
+  const momentum = factorValue(factors, "momentum") ?? 50;
+  const volume = factorValue(factors, "volume") ?? 50;
+  const risk = factorValue(factors, "risk") ?? 50;
+  const structure = factorValue(factors, "breakout") ?? 50;
+  if (setupTypeValue === "PULLBACK") return Math.round(clampScore(trend * 0.35 + risk * 0.30 + momentum * 0.20 + volume * 0.15));
+  if (setupTypeValue === "BREAKOUT") return Math.round(clampScore(structure * 0.32 + volume * 0.28 + momentum * 0.24 + risk * 0.16));
+  if (setupTypeValue === "CONTINUATION") return Math.round(clampScore(trend * 0.35 + momentum * 0.30 + risk * 0.20 + volume * 0.15));
+  return Math.round(clampScore(Math.min(trend, risk, momentum)));
+}
+
+function setupLabelForType(setupTypeValue: string): string {
+  if (setupTypeValue === "PULLBACK") return "Pullback";
+  if (setupTypeValue === "BREAKOUT") return "Breakout";
+  if (setupTypeValue === "CONTINUATION") return "Continuation";
+  return "Avoid";
 }
 
 function confidenceValue(row: RankingRow, factors: DecisionFactor[], vetoes: string[]): number {

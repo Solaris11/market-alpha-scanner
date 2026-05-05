@@ -217,15 +217,18 @@ def evaluate_recommendation_quality(row: pd.Series, market_structure: dict[str, 
         negatives.append("concentrated leadership")
 
     setup = safe_str(row.get("setup_type"), "").lower()
-    if "breakout continuation" in setup:
-        score += 10
-        positives.append("breakout continuation")
-    elif "trend continuation" in setup:
+    if setup == "avoid":
+        score -= 25
+        negatives.append("setup gate blocked")
+    elif setup == "breakout" or "breakout continuation" in setup:
+        score += 5
+        positives.append("breakout setup")
+    elif setup == "continuation" or "trend continuation" in setup:
         score += 5
         positives.append("trend continuation")
-    elif "pullback to avwap" in setup or "avwap" in setup:
+    elif setup == "pullback" or "pullback to avwap" in setup or "avwap" in setup:
         score += 5
-        positives.append("pullback to AVWAP")
+        positives.append("pullback setup")
     elif "mixed" in setup:
         score -= 5
         negatives.append("mixed setup")

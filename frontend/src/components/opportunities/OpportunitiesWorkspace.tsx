@@ -40,6 +40,7 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
   const [qualityFilter, setQualityFilter] = useState("ALL");
   const [search, setSearch] = useState("");
   const [sectorFilter, setSectorFilter] = useState("ALL");
+  const [setupFilter, setSetupFilter] = useState("ALL");
   const [showWatchlistOnly, setShowWatchlistOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("SCORE_DESC");
   const { watchlistSet } = useLocalWatchlist();
@@ -50,6 +51,7 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
       entryStatuses: uniqueValues(rows.map((row) => row.entryStatus)),
       qualities: uniqueValues(rows.map((row) => row.recommendationQualityLabel)),
       sectors: uniqueValues(rows.map((row) => row.sector)),
+      setups: uniqueValues(rows.map((row) => setupType(row))),
     };
   }, [rows]);
 
@@ -73,16 +75,18 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
       .filter((row) => decisionFilter === "ALL" || decision(row) === decisionFilter)
       .filter((row) => assetTypeFilter === "ALL" || cleanText(row.assetType, "") === assetTypeFilter)
       .filter((row) => sectorFilter === "ALL" || cleanText(row.sector, "") === sectorFilter)
+      .filter((row) => setupFilter === "ALL" || setupType(row) === setupFilter)
       .filter((row) => entryStatusFilter === "ALL" || cleanText(row.entryStatus, "") === entryStatusFilter)
       .filter((row) => qualityFilter === "ALL" || cleanText(row.recommendationQualityLabel, "") === qualityFilter)
       .filter((row) => (row.final_score ?? 0) >= minScore)
       .filter((row) => row.conviction >= minConviction)
       .sort((left, right) => compareRows(left, right, sortKey));
-  }, [activeTab, assetTypeFilter, decisionFilter, entryStatusFilter, minConviction, minScore, qualityFilter, rows, search, sectorFilter, showWatchlistOnly, sortKey, watchlistSet]);
+  }, [activeTab, assetTypeFilter, decisionFilter, entryStatusFilter, minConviction, minScore, qualityFilter, rows, search, sectorFilter, setupFilter, showWatchlistOnly, sortKey, watchlistSet]);
 
   return (
     <div className="min-w-0 max-w-full space-y-5">
       <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} />
+      <SetupDistribution rows={rows} />
 
       <GlassPanel className="p-5">
         <SectionTitle eyebrow="Opportunities" title="Scanner Universe" meta={`Showing ${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} symbols`} />
@@ -112,6 +116,10 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
           <Select label="Sector" onChange={setSectorFilter} value={sectorFilter}>
             <option value="ALL">All sectors</option>
             {options.sectors.map((sector) => <option key={sector} value={sector}>{sector}</option>)}
+          </Select>
+          <Select label="Setup" onChange={setSetupFilter} value={setupFilter}>
+            <option value="ALL">All setups</option>
+            {options.setups.map((setup) => <option key={setup} value={setup}>{setupLabel(setup)}</option>)}
           </Select>
           <NumberInput label="Min Score" max={100} onChange={setMinScore} value={minScore} />
           <NumberInput label="Min Conviction" max={100} onChange={setMinConviction} value={minConviction} />
@@ -214,6 +222,21 @@ function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewMod
       </details>
 
       <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
+        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Setup profile</summary>
+        <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-slate-950/35 p-3">
+          <div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Setup</div>
+            <div className="mt-1 text-sm font-bold text-slate-100">{setupLabel(intelligence.setup_type)}</div>
+          </div>
+          <div className="text-right">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Strength</div>
+            <div className={`mt-1 font-mono text-lg font-black ${readinessTone.textClass}`}>{intelligence.setup_strength}</div>
+          </div>
+        </div>
+        <InsightList className="mt-3" title="Setup reasons" items={intelligence.setup_reasons} />
+      </details>
+
+      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
         <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Readiness</summary>
         <div className="mt-3">
           <div className="flex items-center justify-between gap-3">
@@ -260,6 +283,29 @@ function OpportunitySection({ empty, rows, title }: { empty: string; rows: Oppor
       <SectionTitle eyebrow="Symbol Browser" title={title} meta={`${rows.length.toLocaleString()} symbols`} />
       <div className="mt-4">
         <OpportunityGrid empty={empty} rows={rows} />
+      </div>
+    </GlassPanel>
+  );
+}
+
+function SetupDistribution({ rows }: { rows: OpportunityViewModel[] }) {
+  const groups = setupGroups(rows);
+  return (
+    <GlassPanel className="p-4 sm:p-5">
+      <SectionTitle eyebrow="Setup Groups" title="Setup-Aware Scanner View" meta="Research grouping, not recommendations" />
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {groups.map((group) => (
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={group.setup}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{setupLabel(group.setup)}</div>
+                <div className="mt-2 font-mono text-2xl font-black text-slate-50">{group.count}</div>
+              </div>
+              <div className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-semibold text-cyan-100">{formatNumber(group.avgStrength, 0)} strength</div>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-slate-400">{group.reason}</p>
+          </div>
+        ))}
       </div>
     </GlassPanel>
   );
@@ -424,6 +470,43 @@ function highestScoredSetups(rows: OpportunityViewModel[]): OpportunityViewModel
 
 function firstReason(row: OpportunityViewModel): string {
   return buildDecisionIntelligence(row.raw).why.positives[0] ?? "Scanner confidence and risk filters define this research state.";
+}
+
+function setupGroups(rows: OpportunityViewModel[]): Array<{ avgStrength: number; count: number; reason: string; setup: string }> {
+  const order = ["PULLBACK", "BREAKOUT", "CONTINUATION", "AVOID"];
+  return order.map((setup) => {
+    const matching = rows.filter((row) => setupType(row) === setup);
+    const strengths = matching.map((row) => numeric(row.raw.setup_strength)).filter((value): value is number => value !== null);
+    const avgStrength = strengths.length ? strengths.reduce((total, value) => total + value, 0) / strengths.length : 0;
+    return {
+      avgStrength,
+      count: matching.length,
+      reason: setupGroupReason(setup),
+      setup,
+    };
+  });
+}
+
+function setupType(row: OpportunityViewModel): string {
+  const raw = cleanText(row.raw.setup_type, "AVOID").toUpperCase().replace(/[\s-]+/g, "_");
+  if (raw === "PULLBACK" || raw.includes("PULLBACK") || raw.includes("AVWAP")) return "PULLBACK";
+  if (raw === "BREAKOUT" || raw.includes("BREAKOUT")) return "BREAKOUT";
+  if (raw === "CONTINUATION" || raw.includes("CONTINUATION") || raw.includes("TREND")) return "CONTINUATION";
+  return "AVOID";
+}
+
+function setupLabel(value: string): string {
+  if (value === "PULLBACK") return "Pullback";
+  if (value === "BREAKOUT") return "Breakout";
+  if (value === "CONTINUATION") return "Continuation";
+  return "Avoid";
+}
+
+function setupGroupReason(value: string): string {
+  if (value === "PULLBACK") return "Trend is being monitored for cleaner pullback context.";
+  if (value === "BREAKOUT") return "Breakout candidates require volume and non-extended structure.";
+  if (value === "CONTINUATION") return "Continuation candidates require trend and momentum alignment.";
+  return "Avoid group is blocked by setup quality, risk, or data constraints.";
 }
 
 function setupHealthRows(factors: DecisionFactor[]): DecisionFactor[] {

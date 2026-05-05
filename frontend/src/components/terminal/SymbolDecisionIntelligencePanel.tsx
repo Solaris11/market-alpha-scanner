@@ -52,6 +52,7 @@ export function SymbolDecisionIntelligencePanel({ candles, row }: { candles: Cha
           </div>
 
           <div className="grid gap-3 md:grid-cols-2">
+            <InsightList title={`Setup Analysis: ${setupLabel(intelligence.setup_type)} (${intelligence.setup_strength})`} items={intelligence.setup_reasons} />
             <InsightList title="Positive Context" items={intelligence.why.positives} />
             <InsightList title="Negative Context" items={intelligence.why.negatives} />
             <InsightList title="Risk Context" items={intelligence.risks} />
@@ -152,6 +153,13 @@ function entryContext(row: RankingRow): string {
   if (low !== null && high !== null) return `${formatNumber(low)} - ${formatNumber(high)}`;
   if (entry !== null) return formatNumber(entry);
   return "No active entry context";
+}
+
+function setupLabel(value: string): string {
+  if (value === "PULLBACK") return "Pullback";
+  if (value === "BREAKOUT") return "Breakout";
+  if (value === "CONTINUATION") return "Continuation";
+  return "Avoid";
 }
 
 function numeric(value: unknown): number | null {

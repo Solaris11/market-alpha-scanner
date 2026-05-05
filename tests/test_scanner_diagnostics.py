@@ -15,6 +15,7 @@ from scanner.diagnostics import (
 )
 from scanner.engine import apply_decision_safety_gates
 from scanner.regime import apply_regime_adjustments, regime_policy, standardize_regime
+from scanner.setup_engine import apply_setup_decision_layer, classify_setup
 
 
 def _base_row() -> dict[str, object]:
@@ -197,6 +198,57 @@ class ScannerDiagnosticsTests(unittest.TestCase):
         gated = apply_decision_safety_gates(pd.DataFrame([row])).iloc[0]
         self.assertEqual(gated["final_decision"], "WATCH")
         self.assertIn("Regime-adjusted score below", str(gated["decision_reason"]))
+
+    def test_setup_classification_assigns_pullback(self) -> None:
+        row = _base_row()
+        row["setup_type"] = "pullback to AVWAP"
+        row["avwap_score"] = 76.0
+        row["trend_score"] = 84.0
+        evaluation = classify_setup(row)
+        self.assertEqual(evaluation["setup_type"], "PULLBACK")
+        self.assertGreaterEqual(evaluation["setup_strength"], 60.0)
+        self.assertIn("SETUP_PULLBACK", evaluation["setup_reason_codes"])
+
+    def test_setup_classification_assigns_breakout_only_with_volume(self) -> None:
+        row = _base_row()
+        row["setup_type"] = "breakout continuation"
+        row["breakout_score"] = 82.0
+        row["relative_volume_score"] = 72.0
+        row["momentum_score"] = 73.0
+        self.assertEqual(classify_setup(row)["setup_type"], "BREAKOUT")
+
+        weak_volume = dict(row)
+        weak_volume["relative_volume_score"] = 42.0
+        evaluation = classify_setup(weak_volume)
+        self.assertEqual(evaluation["setup_type"], "AVOID")
+        self.assertIn("WEAK_VOLUME_FOR_BREAKOUT", evaluation["setup_reason_codes"])
+
+    def test_setup_gate_blocks_invalid_enter(self) -> None:
+        row = _base_row()
+        row["setup_type"] = "mixed setup"
+        row["breakout_score"] = 25.0
+        row["trend_score"] = 45.0
+        row["momentum_score"] = 42.0
+        row["relative_volume_score"] = 35.0
+        setup = apply_setup_decision_layer(pd.DataFrame([row]))
+        diagnostics = apply_scoring_diagnostics(setup)
+        diagnostics.at[0, "final_decision"] = "ENTER"
+        diagnostics.at[0, "trade_permitted"] = True
+        gated = apply_decision_safety_gates(diagnostics).iloc[0]
+        self.assertEqual(gated["setup_type"], "AVOID")
+        self.assertEqual(gated["final_decision"], "AVOID")
+        self.assertIn("Setup gate blocked", str(gated["decision_reason"]))
+
+    def test_setup_threshold_downgrades_buy_without_veto(self) -> None:
+        row = _base_row()
+        row["setup_type"] = "trend continuation"
+        setup = apply_setup_decision_layer(pd.DataFrame([row]))
+        setup.at[0, "final_decision"] = "ENTER"
+        setup.at[0, "trade_permitted"] = True
+        setup.at[0, "setup_strength"] = 50.0
+        gated = apply_decision_safety_gates(setup).iloc[0]
+        self.assertEqual(gated["final_decision"], "WATCH")
+        self.assertIn("Setup strength below", str(gated["decision_reason"]))
 
 
 if __name__ == "__main__":

@@ -216,8 +216,10 @@ def decision_reason_codes_for_row(row: Mapping[str, object], vetoes: list[str] |
         codes.append("PULLBACK_SETUP")
     elif "breakout" in setup_type:
         codes.append("BREAKOUT_SETUP")
-    elif "trend continuation" in setup_type:
+    elif "continuation" in setup_type:
         codes.append("TREND_CONTINUATION_SETUP")
+    elif setup_type == "avoid":
+        codes.append("SETUP_AVOID")
     elif "mixed" in setup_type:
         codes.append("MIXED_SETUP")
 
@@ -231,6 +233,8 @@ def decision_reason_codes_for_row(row: Mapping[str, object], vetoes: list[str] |
         codes.append(veto)
     for regime_code in _code_list(row.get("regime_reason_codes")):
         codes.append(regime_code)
+    for setup_code in _code_list(row.get("setup_reason_codes")):
+        codes.append(setup_code)
     return _unique_codes(codes)
 
 

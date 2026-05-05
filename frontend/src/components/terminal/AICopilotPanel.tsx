@@ -54,6 +54,21 @@ export function AICopilotPanel({
               <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Regime Impact</div>
               <p className="mt-2 text-xs leading-5 text-slate-300">{intelligence.regime_impact}</p>
             </div>
+            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Setup</div>
+                  <div className="mt-1 text-sm font-semibold text-slate-100">{setupLabel(intelligence.setup_type)}</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Strength</div>
+                  <div className={`font-mono text-lg font-black ${readinessTone.textClass}`}>{intelligence.setup_strength}</div>
+                </div>
+              </div>
+              <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-400">
+                {intelligence.setup_reasons.slice(0, 2).map((item) => <li key={item}>- {item}</li>)}
+              </ul>
+            </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <InsightList title="Why" items={intelligence.why.positives} />
               <InsightList title="Constraints" items={intelligence.why.negatives} />
@@ -90,6 +105,13 @@ export function AICopilotPanel({
       </GlassPanel>
     </div>
   );
+}
+
+function setupLabel(value: string): string {
+  if (value === "PULLBACK") return "Pullback";
+  if (value === "BREAKOUT") return "Breakout";
+  if (value === "CONTINUATION") return "Continuation";
+  return "Avoid";
 }
 
 function ReadinessBar({ toneClass, value }: { toneClass: string; value: number }) {

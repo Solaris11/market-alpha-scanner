@@ -39,6 +39,7 @@ from .scoring import (
     score_macro_alignment,
     technical_scorecard,
 )
+from .setup_engine import apply_setup_decision_layer
 from .structure import compute_market_structure
 from .utils import ema, extract_company_name, macd_hist, parse_earnings_date, safe_float, safe_str, sma
 
@@ -393,6 +394,7 @@ def scan_symbols(
     df_rank = attach_price_data_quality(df_rank, price_map)
     df_rank = apply_scoring_diagnostics(df_rank)
     df_rank = apply_regime_adjustments(df_rank, market_regime)
+    df_rank = apply_setup_decision_layer(df_rank)
     market_structure = compute_market_structure(df_rank)
     df_rank = apply_recommendation_quality(df_rank, market_structure)
     df_rank = apply_final_trade_decision(df_rank)
@@ -563,7 +565,29 @@ def apply_decision_safety_gates(df_rank: pd.DataFrame) -> pd.DataFrame:
         confidence_score = safe_float(row.get("confidence_score"), np.nan)
         confidence_threshold = _threshold_value(row.get("adjusted_thresholds"), "confidence", MIN_BUY_CONFIDENCE_SCORE)
         buy_score_threshold = _threshold_value(row.get("adjusted_thresholds"), "buy_score", 80.0)
+        setup_thresholds = row.get("setup_thresholds")
+        setup_score_threshold = _threshold_value(setup_thresholds, "score", buy_score_threshold)
+        setup_confidence_threshold = _threshold_value(setup_thresholds, "confidence", confidence_threshold)
+        setup_strength_threshold = _threshold_value(setup_thresholds, "min_setup_strength", 0.0)
+        setup_type = safe_str(row.get("setup_type"), "").upper()
+        setup_strength = safe_float(row.get("setup_strength"), np.nan)
         score_value = safe_float(row.get("final_score"), np.nan)
+        buy_score_threshold = max(buy_score_threshold, setup_score_threshold)
+        confidence_threshold = max(confidence_threshold, setup_confidence_threshold)
+
+        if setup_type == "AVOID":
+            working.at[index, "final_decision"] = "AVOID"
+            working.at[index, "decision_reason"] = "Setup gate blocked entry; structure is not valid for this scan"
+            working.at[index, "suggested_entry"] = np.nan
+            working.at[index, "entry_distance_pct"] = np.nan
+            continue
+
+        if not np.isnan(setup_strength) and setup_strength < setup_strength_threshold:
+            working.at[index, "final_decision"] = "WATCH"
+            working.at[index, "decision_reason"] = f"Setup strength below {setup_strength_threshold:.0f}; monitor until setup quality improves"
+            working.at[index, "suggested_entry"] = np.nan
+            working.at[index, "entry_distance_pct"] = np.nan
+            continue
 
         if not trade_permitted:
             next_decision = "AVOID" if _has_severe_veto(vetoes) or _has_regime_hard_veto(row, vetoes) else "WAIT_PULLBACK"
@@ -620,10 +644,10 @@ def _has_severe_veto(vetoes: list[str]) -> bool:
 
 def _has_regime_hard_veto(row: pd.Series, vetoes: list[str]) -> bool:
     market_regime = safe_str(row.get("market_regime"), "").upper()
-    setup_type = safe_str(row.get("setup_type"), "").lower()
+    setup_type = safe_str(row.get("setup_type"), "").upper()
     if market_regime == "OVERHEATED" and "OVEREXTENDED_ENTRY" in vetoes:
         return True
-    if market_regime == "BEAR" and "breakout" in setup_type:
+    if market_regime == "BEAR" and ("BREAKOUT" in setup_type):
         return True
     return False
 
