@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { actionFor, formatNumber } from "@/lib/format";
+import { verifiedNewsItemFromRow } from "@/lib/news-source-policy";
 import { nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { HistorySummary, SymbolHistoryRow } from "@/lib/types";
 
@@ -286,16 +287,26 @@ function SignalsInsight({ latest, rows }: { latest: SymbolHistoryRow | undefined
 }
 
 function NewsInsight({ latest }: { latest: SymbolHistoryRow | undefined }) {
-  const newsScore = numberOrNull(latest?.news_score);
-  const sentiment = newsScore === null ? "Neutral / unavailable" : newsScore >= 56 ? "Supportive" : newsScore <= 44 ? "Cautious" : "Neutral";
-  const impact = newsScore === null ? "No clear headline impact" : Math.abs(newsScore - 50) >= 12 ? "High impact" : Math.abs(newsScore - 50) >= 6 ? "Moderate impact" : "Low impact";
+  const item = verifiedNewsItemFromRow(latest);
+  if (!item) {
+    return <div className="rounded-xl border border-dashed border-slate-700/70 bg-slate-950/35 p-5 text-sm text-slate-400">No verified recent news available.</div>;
+  }
   return (
     <div className="grid gap-3 md:grid-cols-2">
-      <InterpretedPanel title="Headline context" items={[cleanInsight(latest?.headline_bias, "No recent headline signal."), cleanInsight(latest?.upside_driver, "No major event driver detected.")]} />
+      <div className="rounded-xl border border-slate-700/70 bg-slate-950/45 p-3">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Verified headline</div>
+        <a className="mt-2 block text-sm font-semibold leading-6 text-slate-100 transition-colors hover:text-cyan-200" href={item.url} rel="noreferrer" target="_blank">
+          {item.headline}
+        </a>
+        <div className="mt-3 flex flex-wrap gap-2 text-[11px] text-slate-400">
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1">{item.source}</span>
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1">{formatDate(item.timestamp)}</span>
+        </div>
+      </div>
       <div className="grid gap-2">
-        <InsightMetric label="Sentiment tag" value={sentiment} />
-        <InsightMetric label="Impact tag" value={impact} />
-        <InsightMetric label="Timestamp" value={formatDate(latest?.timestamp_utc)} />
+        <InsightMetric label="Sentiment tag" value={item.sentimentTag} />
+        <InsightMetric label="Impact tag" value={item.impactTag} />
+        <InterpretedPanel title="Decision connection" items={["News tags are conservative context only.", "The scanner does not convert headlines into recommendations.", "Source, timestamp, headline, and URL are required before news is shown."]} />
       </div>
     </div>
   );
