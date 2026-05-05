@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import os
 import time
 from dataclasses import asdict
 from pathlib import Path
@@ -14,6 +15,7 @@ from .cache import CacheStats, read_symbol_cache, write_symbol_cache
 from .config import DEFAULT_NEWS_LIMIT, DOWNLOAD_PERIOD, MACRO_SYMBOLS, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE, TOP_N
 from .data_fetch import batch_download, fetch_info, fetch_recent_news_items, fetch_recent_news_score
 from .diagnostics import apply_scoring_diagnostics
+from .market_data import ProviderMetadata, YFinanceProvider
 from .models import RankedAsset
 from .final_decision import apply_final_trade_decision
 from .perf import log_timing, timer_start
@@ -171,6 +173,12 @@ def scan_symbols(
     for i, symbol in enumerate(symbols, start=1):
         df = price_map.get(symbol)
         if df is None or df.empty or len(df) < 220:
+            fallback_df = _fallback_yfinance_frame(symbol, df, "alpaca_insufficient_history")
+            if fallback_df is None or fallback_df.empty:
+                continue
+            df = fallback_df
+            price_map[symbol] = df
+        if df is None or df.empty or len(df) < 220:
             continue
 
         close = df["Close"].dropna()
@@ -184,7 +192,26 @@ def scan_symbols(
         if np.isnan(last_price) or last_price < min_price:
             continue
         if np.isnan(avg_dollar_volume) or avg_dollar_volume < min_avg_dollar_volume:
-            continue
+            fallback_df = _fallback_yfinance_frame(symbol, df, "alpaca_low_liquidity_proxy")
+            if fallback_df is None or fallback_df.empty or len(fallback_df) < 220:
+                continue
+            fallback_close = fallback_df["Close"].dropna()
+            if fallback_close.empty:
+                continue
+            fallback_last_price = safe_float(fallback_close.iloc[-1], np.nan)
+            fallback_previous_close = safe_float(fallback_close.iloc[-2], np.nan) if len(fallback_close) >= 2 else np.nan
+            fallback_avg_dollar_volume = safe_float((fallback_df["Close"].iloc[-20:] * fallback_df["Volume"].iloc[-20:]).mean(), np.nan)
+            if np.isnan(fallback_last_price) or fallback_last_price < min_price:
+                continue
+            if np.isnan(fallback_avg_dollar_volume) or fallback_avg_dollar_volume < min_avg_dollar_volume:
+                continue
+            df = fallback_df
+            price_map[symbol] = df
+            close = fallback_close
+            last_price = fallback_last_price
+            previous_close = fallback_previous_close
+            one_day_return = (last_price / previous_close - 1.0) if not np.isnan(last_price) and not np.isnan(previous_close) and previous_close != 0 else np.nan
+            avg_dollar_volume = fallback_avg_dollar_volume
 
         info, earnings_date = _fetch_info_with_cache(symbol, cache_dir, fundamentals_cache_stats)
         info_cache[symbol] = info
@@ -395,6 +422,47 @@ def load_universe_from_csv(path: str) -> list[str]:
             values = [str(x).strip().upper() for x in df[col].dropna().tolist()]
             return list(dict.fromkeys(values))
     raise ValueError("CSV must include one of these columns: symbol, ticker, Symbol, Ticker")
+
+
+def _fallback_yfinance_frame(symbol: str, current_frame: pd.DataFrame | None, reason: str) -> pd.DataFrame | None:
+    if os.getenv("MARKET_DATA_PROVIDER", "yfinance").strip().lower() != "alpaca":
+        return None
+    if os.getenv("MARKET_DATA_FALLBACK", "yfinance").strip().lower() != "yfinance":
+        return None
+    if current_frame is not None and _frame_provider(current_frame) != "alpaca":
+        return None
+
+    response = YFinanceProvider().get_daily_bars_many([symbol.upper()], period=DOWNLOAD_PERIOD)
+    fallback = response.frames.get(symbol.upper())
+    if fallback is None or fallback.empty:
+        return None
+    fallback_metadata = response.metadata.get(symbol.upper())
+    fallback.attrs["provider_metadata"] = ProviderMetadata(
+        data_provider="yfinance",
+        data_provider_primary="alpaca",
+        data_provider_fallback_used=True,
+        fallback_reason=reason,
+        alpaca_request_id=_frame_alpaca_request_id(current_frame),
+        provider_latency_ms=fallback_metadata.provider_latency_ms if fallback_metadata is not None else None,
+        provider_error="",
+    ).to_dict()
+    return fallback
+
+
+def _frame_provider(frame: pd.DataFrame) -> str:
+    raw = frame.attrs.get("provider_metadata")
+    if not isinstance(raw, dict):
+        return ""
+    return safe_str(raw.get("data_provider"), "").lower()
+
+
+def _frame_alpaca_request_id(frame: pd.DataFrame | None) -> str:
+    if frame is None:
+        return ""
+    raw = frame.attrs.get("provider_metadata")
+    if not isinstance(raw, dict):
+        return ""
+    return safe_str(raw.get("alpaca_request_id"), "")
 
 
 def attach_price_data_quality(df_rank: pd.DataFrame, price_map: dict[str, pd.DataFrame]) -> pd.DataFrame:
