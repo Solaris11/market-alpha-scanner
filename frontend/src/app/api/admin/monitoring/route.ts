@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { normalizeMonitoringRange } from "@/lib/admin-monitoring-ui";
 import { requireAdmin } from "@/lib/server/access-control";
-import { getAdminMonitoringSummary, type MonitoringTimeRange } from "@/lib/server/admin-data";
+import { getAdminMonitoringSummary } from "@/lib/server/admin-data";
 import { withRequestMetrics } from "@/lib/server/monitoring";
 
 export const dynamic = "force-dynamic";
@@ -11,10 +12,6 @@ export async function GET(request: Request) {
     const access = await requireAdmin();
     if (!access.ok) return access.response;
     const range = new URL(request.url).searchParams.get("range");
-    return NextResponse.json({ ok: true, monitoring: await getAdminMonitoringSummary(normalizeRange(range)) });
+    return NextResponse.json({ ok: true, monitoring: await getAdminMonitoringSummary(normalizeMonitoringRange(range ?? undefined)) });
   });
-}
-
-function normalizeRange(value: string | null): MonitoringTimeRange {
-  return value === "15m" || value === "6h" || value === "24h" ? value : "1h";
 }
