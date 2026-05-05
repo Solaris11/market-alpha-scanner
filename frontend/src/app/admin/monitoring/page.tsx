@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { MonitoringDashboard } from "@/components/admin/MonitoringDashboard";
 import { MONITORING_TIME_RANGES, normalizeMonitoringRange } from "@/lib/admin-monitoring-ui";
+import { requireAdminPageUser } from "@/lib/server/admin";
 import { getAdminMonitoringSummary } from "@/lib/server/admin-data";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminMonitoringPage({ searchParams }: { searchParams?: Promise<{ range?: string }> }) {
+  await requireAdminPageUser();
   const params = searchParams ? await searchParams : {};
   const range = normalizeMonitoringRange(params.range);
   const monitoring = await getAdminMonitoringSummary(range);
