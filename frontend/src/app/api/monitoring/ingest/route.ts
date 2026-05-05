@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
+import { sendExternalAlert } from "@/lib/alerting/external-alerts";
 import { monitoringTokenFromEnv } from "@/lib/monitoring-policy";
 import { cleanupMonitoringRetention, recordMonitoringEvent, recordRequestMetric, recordSyntheticCheck, recordSystemMetric } from "@/lib/server/monitoring";
 
@@ -81,6 +83,19 @@ export async function POST(request: Request) {
     }
   } catch (error) {
     console.warn("[monitoring] ingest failed", error instanceof Error ? error.message : error);
+    Sentry.captureException(error, { tags: { area: "monitoring_ingest" } });
+    await sendExternalAlert({
+      eventType: "monitoring:ingest_failure",
+      message: "Monitoring ingest failed.",
+      metadata: {
+        error: error instanceof Error ? error.message : "unknown error",
+        kind: stringValue(payload.kind),
+      },
+      severity: "critical",
+      status: "fail",
+    }).catch((alertError: unknown) => {
+      console.warn("[monitoring] external alert failed", alertError instanceof Error ? alertError.message : alertError);
+    });
     return NextResponse.json({ ok: false, message: "Monitoring ingest failed." }, { status: 500 });
   }
 

@@ -1,4 +1,5 @@
 import { loadEnvFiles, monitoringBaseUrl, postMonitoringPayload, safeErrorMessage, statusFromHttp, type MonitoringStatus } from "./monitoring-common";
+import { sendExternalAlert } from "../src/lib/alerting/external-alerts";
 
 type SyntheticCheck = {
   allowedStatuses: number[];
@@ -77,6 +78,16 @@ async function main(): Promise<void> {
         severity: result.status === "fail" ? "critical" : "warning",
         status: result.status,
       });
+      const delivery = await sendExternalAlert({
+        eventType: `synthetic:${result.name}`,
+        message: result.message,
+        metadata: result.metadata,
+        severity: result.status === "fail" ? "critical" : "warning",
+        status: result.status,
+      });
+      if (!delivery.sent) {
+        console.warn(`[monitoring:synthetics] no external alert channel delivered ${result.name}`);
+      }
     }
   }
   console.log(JSON.stringify(summary(results), null, 2));

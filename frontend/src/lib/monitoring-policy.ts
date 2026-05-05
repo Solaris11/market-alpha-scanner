@@ -57,7 +57,7 @@ export function syntheticStatusFromHttp(statusCode: number, allowedStatuses: num
 }
 
 export function monitoringTokenFromEnv(env: NodeJS.ProcessEnv = process.env): string | null {
-  return env.MARKET_ALPHA_MONITORING_TOKEN?.trim() || env.MARKET_ALPHA_SESSION_SECRET?.trim() || null;
+  return env.MARKET_ALPHA_MONITORING_TOKEN?.trim() || null;
 }
 
 function safePathname(value: string): string {

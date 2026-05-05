@@ -1,11 +1,12 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const isProduction = process.env.NODE_ENV === "production";
 
 const contentSecurityPolicy = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
-  "connect-src 'self' https://api.stripe.com https://*.stripe.com",
+  "connect-src 'self' https://api.stripe.com https://*.stripe.com https://*.ingest.sentry.io https://sentry.io https://*.sentry.io",
   "img-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
   "frame-src https://js.stripe.com https://hooks.stripe.com",
@@ -76,4 +77,15 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  silent: true,
+  sourcemaps: {
+    disable: !process.env.SENTRY_AUTH_TOKEN,
+  },
+  telemetry: false,
+  webpack: {
+    treeshake: {
+      removeDebugLogging: true,
+    },
+  },
+});

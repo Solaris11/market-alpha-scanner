@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { cpus, freemem, totalmem } from "node:os";
 import { promisify } from "node:util";
+import { sendExternalAlert } from "../src/lib/alerting/external-alerts";
 import { loadEnvFiles, postMonitoringPayload, safeErrorMessage } from "./monitoring-common";
 
 type DiskInfo = {
@@ -36,14 +37,23 @@ async function main(): Promise<void> {
 
   const status = disk.usedPercent !== null && disk.usedPercent > 90 ? "warn" : "ok";
   if (status === "warn") {
+    const message = `Disk usage is ${disk.usedPercent?.toFixed(1)}%.`;
     await postMonitoringPayload({
       eventType: "system:disk",
       kind: "monitoring_event",
-      message: `Disk usage is ${disk.usedPercent?.toFixed(1)}%.`,
+      message,
       metadata: { diskFreeBytes: disk.freeBytes, diskPercent: disk.usedPercent },
       severity: "warning",
       status: "warn",
     });
+    const delivery = await sendExternalAlert({
+      eventType: "system:disk",
+      message,
+      metadata: { diskFreeBytes: disk.freeBytes, diskPercent: disk.usedPercent },
+      severity: "warning",
+      status: "warn",
+    });
+    if (!delivery.sent) console.warn("[monitoring:system] no external alert channel delivered disk warning");
   }
 
   console.log(

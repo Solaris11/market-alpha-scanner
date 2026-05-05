@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import type Stripe from "stripe";
+import { sendExternalAlert } from "@/lib/alerting/external-alerts";
 import { notificationIntentForStripeWebhook } from "@/lib/security/stripe-webhook-policy";
 import {
   billingEventProcessed,
@@ -16,7 +18,7 @@ import {
   type StripeSyncResult,
 } from "@/lib/server/billing";
 import { dbTransaction, type DbExecutor } from "@/lib/server/db";
-import { withRequestMetrics } from "@/lib/server/monitoring";
+import { recordMonitoringEvent, withRequestMetrics } from "@/lib/server/monitoring";
 import { stripe, stripeWebhookSecret } from "@/lib/server/stripe";
 
 export const dynamic = "force-dynamic";
@@ -57,8 +59,36 @@ async function webhook(request: Request): Promise<Response> {
     return NextResponse.json({ ok: true, received: true, duplicate: processResult.duplicate });
   } catch (error) {
     console.warn("[stripe] webhook processing failed", error instanceof Error ? error.message : error);
+    Sentry.captureException(error, { tags: { area: "stripe_webhook", event_type: event.type } });
+    await reportStripeWebhookFailure(event, error);
     return NextResponse.json({ ok: false, message: "Webhook processing failed." }, { status: 500 });
   }
+}
+
+async function reportStripeWebhookFailure(event: Stripe.Event, error: unknown): Promise<void> {
+  const metadata = {
+    error: error instanceof Error ? error.message : "unknown error",
+    eventId: event.id,
+    eventType: event.type,
+  };
+  await recordMonitoringEvent({
+    eventType: "stripe:webhook_failure",
+    message: "Stripe webhook processing failed.",
+    metadata,
+    severity: "critical",
+    status: "fail",
+  }).catch((writeError: unknown) => {
+    console.warn("[stripe] webhook monitoring event failed", writeError instanceof Error ? writeError.message : writeError);
+  });
+  await sendExternalAlert({
+    eventType: "stripe:webhook_failure",
+    message: "Stripe webhook processing failed.",
+    metadata,
+    severity: "critical",
+    status: "fail",
+  }).catch((alertError: unknown) => {
+    console.warn("[stripe] webhook external alert failed", alertError instanceof Error ? alertError.message : alertError);
+  });
 }
 
 async function processStripeWebhook(event: Stripe.Event): Promise<WebhookProcessResult> {

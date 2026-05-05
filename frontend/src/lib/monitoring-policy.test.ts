@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { MONITORING_RETENTION_SQL, normalizeRequestMetric, sanitizeRouteForMetrics, syntheticStatusFromHttp } from "./monitoring-policy";
+import { MONITORING_RETENTION_SQL, monitoringTokenFromEnv, normalizeRequestMetric, sanitizeRouteForMetrics, syntheticStatusFromHttp } from "./monitoring-policy";
 
 test("request metrics route sanitizer removes query strings and token-like segments", () => {
   assert.equal(sanitizeRouteForMetrics("/api/auth/verify-email?token=secret"), "/api/auth/verify-email");
@@ -38,4 +38,9 @@ test("monitoring retention cleanup deletes 30 day old rows from all detail table
   for (const statement of Object.values(MONITORING_RETENTION_SQL)) {
     assert.match(statement, /interval '30 days'/);
   }
+});
+
+test("monitoring ingest token does not fall back to the session secret", () => {
+  assert.equal(monitoringTokenFromEnv({ MARKET_ALPHA_SESSION_SECRET: "session-secret" } as unknown as NodeJS.ProcessEnv), null);
+  assert.equal(monitoringTokenFromEnv({ MARKET_ALPHA_MONITORING_TOKEN: "monitoring-token", MARKET_ALPHA_SESSION_SECRET: "session-secret" } as unknown as NodeJS.ProcessEnv), "monitoring-token");
 });

@@ -18,8 +18,8 @@ export function monitoringBaseUrl(): string {
 }
 
 export function monitoringToken(): string {
-  const token = process.env.MARKET_ALPHA_MONITORING_TOKEN?.trim() || process.env.MARKET_ALPHA_SESSION_SECRET?.trim();
-  if (!token) throw new Error("MARKET_ALPHA_MONITORING_TOKEN or MARKET_ALPHA_SESSION_SECRET is required.");
+  const token = process.env.MARKET_ALPHA_MONITORING_TOKEN?.trim();
+  if (!token) throw new Error("MARKET_ALPHA_MONITORING_TOKEN is required.");
   return token;
 }
 
