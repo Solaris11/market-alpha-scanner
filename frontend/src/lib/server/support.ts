@@ -288,6 +288,17 @@ function ticketFromRow(row: TicketRow): SupportTicket {
 async function sendSupportEmail(kind: "support_ticket_created" | "support_ticket_reply", send: () => Promise<EmailDeliveryResult>): Promise<void> {
   try {
     const result = await send();
+    if (result.ok) {
+      await recordMonitoringEvent({
+        eventType: "email:delivered",
+        message: "Support email accepted by SMTP provider.",
+        metadata: { category: kind },
+        severity: "info",
+        status: "ok",
+      }).catch((monitoringError: unknown) => {
+        console.warn("[support] support email success monitoring write failed", monitoringError instanceof Error ? monitoringError.message : monitoringError);
+      });
+    }
     if (!result.ok && result.reason === "not_configured") {
       await recordMonitoringEvent({
         eventType: "email:delivery_failed",
