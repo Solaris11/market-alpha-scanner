@@ -29,6 +29,21 @@ export default async function AdminCalibrationPage() {
         <AdminStatCard label="Generated" value={formatAdminDate(calibration.generatedAt)} />
       </section>
 
+      <AdminSection title="Calibration evidence" subtitle="Forward validation is measurement only. These hints do not auto-tune scanner weights or thresholds.">
+        <div className="grid gap-3 lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="rounded-xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
+            Sample confidence: LOW &lt; 30, MEDIUM 30-100, HIGH &gt; 100 observations. Do not tune from low-sample groups.
+          </div>
+          {calibration.hints.length ? (
+            <ul className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-6 text-slate-300">
+              {calibration.hints.map((hint) => <li key={hint}>- {hint}</li>)}
+            </ul>
+          ) : (
+            <AdminEmpty>No calibration hints are strong enough yet. Keep collecting forward-return evidence.</AdminEmpty>
+          )}
+        </div>
+      </AdminSection>
+
       <AdminSection title="Latest decision distribution" subtitle="Current scanner output distribution. Trade-permitted count is derived from the hard-veto diagnostics payload.">
         {calibration.distributions.length ? (
           <div className="grid gap-3 md:grid-cols-3">

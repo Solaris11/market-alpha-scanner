@@ -165,13 +165,18 @@ export type AdminAuditLogItem = {
 export type CalibrationGroupType = "asset_type" | "decision" | "market_regime" | "score_bucket" | "setup_type";
 
 export type CalibrationMetricRow = {
+  avgDrawdownPct: number | null;
+  avgLossPct: number | null;
   avgReturnPct: number | null;
+  avgWinPct: number | null;
   count: number;
+  expectancyPct: number | null;
   groupType: CalibrationGroupType;
   groupValue: string;
   horizon: string;
   lowConfidence: boolean;
   medianReturnPct: number | null;
+  sampleSize: "LOW" | "MEDIUM" | "HIGH";
   winRatePct: number | null;
   worstReturnPct: number | null;
 };
@@ -188,6 +193,7 @@ export type AdminCalibrationSummary = {
   distributions: CalibrationDistributionRow[];
   generatedAt: string;
   groups: Record<CalibrationGroupType, CalibrationMetricRow[]>;
+  hints: string[];
   latestRun: ScannerRunSummary | null;
   observationCount: number;
 };
@@ -341,8 +347,12 @@ type AuditLogRow = QueryResultRow & {
   target_type: string;
 };
 type CalibrationMetricDbRow = QueryResultRow & {
+  avg_drawdown: string | number | null;
+  avg_loss: string | number | null;
   avg_return: string | number | null;
+  avg_win: string | number | null;
   count: string | number;
+  expectancy: string | number | null;
   group_type: CalibrationGroupType;
   group_value: string | null;
   horizon: string | null;
@@ -897,6 +907,7 @@ export async function getAdminCalibrationSummary(): Promise<AdminCalibrationSumm
       score_bucket: scoreBucket,
       setup_type: setupType,
     },
+    hints: calibrationHints({ asset_type: assetType, decision, market_regime: marketRegime, score_bucket: scoreBucket, setup_type: setupType }),
     latestRun,
     observationCount,
   };
@@ -1060,7 +1071,8 @@ async function calibrationGroupQuery(groupType: CalibrationGroupType): Promise<C
         SELECT
           ${groupExpression} AS group_value,
           COALESCE(NULLIF(horizon, ''), 'UNKNOWN') AS horizon,
-          return_pct::numeric AS return_pct
+          return_pct::numeric AS return_pct,
+          NULLIF(metrics->>'max_drawdown_after_signal', '')::numeric AS max_drawdown_after_signal
         FROM forward_returns
         WHERE return_pct IS NOT NULL
       )
@@ -1072,6 +1084,15 @@ async function calibrationGroupQuery(groupType: CalibrationGroupType): Promise<C
         avg(return_pct) AS avg_return,
         percentile_cont(0.50) WITHIN GROUP (ORDER BY return_pct) AS median_return,
         avg(CASE WHEN return_pct > 0 THEN 1.0 ELSE 0.0 END) AS win_rate,
+        avg(CASE WHEN return_pct > 0 THEN return_pct ELSE NULL END) AS avg_win,
+        abs(avg(CASE WHEN return_pct <= 0 THEN return_pct ELSE NULL END)) AS avg_loss,
+        avg(CASE WHEN return_pct <= 0 THEN 1.0 ELSE 0.0 END) AS loss_rate,
+        (
+          avg(CASE WHEN return_pct > 0 THEN 1.0 ELSE 0.0 END) * COALESCE(avg(CASE WHEN return_pct > 0 THEN return_pct ELSE NULL END), 0)
+          -
+          avg(CASE WHEN return_pct <= 0 THEN 1.0 ELSE 0.0 END) * COALESCE(abs(avg(CASE WHEN return_pct <= 0 THEN return_pct ELSE NULL END)), 0)
+        ) AS expectancy,
+        avg(max_drawdown_after_signal) AS avg_drawdown,
         min(return_pct) AS worst_return
       FROM base
       GROUP BY group_value, horizon
@@ -1093,16 +1114,56 @@ async function calibrationGroupQuery(groupType: CalibrationGroupType): Promise<C
     [groupType],
   ).catch(() => ({ rows: [] as CalibrationMetricDbRow[] }));
   return result.rows.map((row) => ({
+    avgDrawdownPct: toPercent(row.avg_drawdown),
+    avgLossPct: toPercent(row.avg_loss),
     avgReturnPct: toPercent(row.avg_return),
+    avgWinPct: toPercent(row.avg_win),
     count: toNumber(row.count),
+    expectancyPct: toPercent(row.expectancy),
     groupType: row.group_type,
     groupValue: row.group_value ?? "UNKNOWN",
     horizon: row.horizon ?? "UNKNOWN",
     lowConfidence: toNumber(row.count) < 30,
     medianReturnPct: toPercent(row.median_return),
+    sampleSize: sampleSizeLabel(toNumber(row.count)),
     winRatePct: toPercent(row.win_rate),
     worstReturnPct: toPercent(row.worst_return),
   }));
+}
+
+function sampleSizeLabel(count: number): "LOW" | "MEDIUM" | "HIGH" {
+  if (count < 30) return "LOW";
+  if (count <= 100) return "MEDIUM";
+  return "HIGH";
+}
+
+function calibrationHints(groups: Record<CalibrationGroupType, CalibrationMetricRow[]>): string[] {
+  const hints: string[] = [];
+  if (Object.values(groups).flat().every((row) => row.sampleSize === "LOW")) {
+    hints.push("All calibration groups are still low sample. Do not tune weights from this data yet.");
+  }
+  const setupRows = groups.setup_type.filter((row) => ["10D", "20D"].includes(row.horizon) && row.expectancyPct !== null);
+  if (setupRows.length >= 2) {
+    const sorted = [...setupRows].sort((left, right) => Number(right.expectancyPct ?? -Infinity) - Number(left.expectancyPct ?? -Infinity));
+    const best = sorted[0];
+    const worst = sorted[sorted.length - 1];
+    if (best && worst && Number(best.expectancyPct) > Number(worst.expectancyPct)) {
+      hints.push(`${best.groupValue} setups currently show stronger expectancy than ${worst.groupValue} setups on ${best.horizon}. Treat as directional until sample size improves.`);
+    }
+  }
+  const scoreRows = groups.score_bucket.filter((row) => ["10D", "20D"].includes(row.horizon) && row.expectancyPct !== null);
+  const highScoreAvg = average(scoreRows.filter((row) => /80|90/.test(row.groupValue)).map((row) => row.expectancyPct));
+  const midScoreAvg = average(scoreRows.filter((row) => /60|70/.test(row.groupValue)).map((row) => row.expectancyPct));
+  if (highScoreAvg !== null && midScoreAvg !== null && midScoreAvg > highScoreAvg) {
+    hints.push("Mid-score buckets are currently ahead of higher-score buckets. Wait for more observations before changing thresholds.");
+  }
+  return hints.slice(0, 4);
+}
+
+function average(values: Array<number | null>): number | null {
+  const valid = values.filter((value): value is number => value !== null && Number.isFinite(value));
+  if (!valid.length) return null;
+  return valid.reduce((sum, value) => sum + value, 0) / valid.length;
 }
 
 function calibrationGroupExpression(groupType: CalibrationGroupType): string {

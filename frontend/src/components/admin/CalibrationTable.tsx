@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { CalibrationMetricRow } from "@/lib/server/admin-data";
 
-type SortKey = "avgReturnPct" | "count" | "groupValue" | "horizon" | "medianReturnPct" | "winRatePct" | "worstReturnPct";
+type SortKey = "avgDrawdownPct" | "avgReturnPct" | "count" | "expectancyPct" | "groupValue" | "horizon" | "medianReturnPct" | "sampleSize" | "winRatePct" | "worstReturnPct";
 
 const HEADERS: Array<{ key: SortKey; label: string; numeric?: boolean }> = [
   { key: "horizon", label: "Horizon" },
@@ -12,7 +12,10 @@ const HEADERS: Array<{ key: SortKey; label: string; numeric?: boolean }> = [
   { key: "avgReturnPct", label: "Avg return", numeric: true },
   { key: "medianReturnPct", label: "Median", numeric: true },
   { key: "winRatePct", label: "Win rate", numeric: true },
+  { key: "expectancyPct", label: "Expectancy", numeric: true },
+  { key: "avgDrawdownPct", label: "Drawdown", numeric: true },
   { key: "worstReturnPct", label: "Worst", numeric: true },
+  { key: "sampleSize", label: "Sample" },
 ];
 
 export function CalibrationTable({ rows }: { rows: CalibrationMetricRow[] }) {
@@ -36,7 +39,7 @@ export function CalibrationTable({ rows }: { rows: CalibrationMetricRow[] }) {
 
   return (
     <div className="overflow-x-auto rounded-xl border border-white/10">
-      <table className="min-w-[860px] w-full text-left text-sm">
+      <table className="min-w-[1080px] w-full text-left text-sm">
         <thead className="bg-white/[0.04] text-[10px] uppercase tracking-[0.2em] text-slate-500">
           <tr>
             {HEADERS.map((header) => (
@@ -47,7 +50,6 @@ export function CalibrationTable({ rows }: { rows: CalibrationMetricRow[] }) {
                 </button>
               </th>
             ))}
-            <th className="px-3 py-3">Confidence</th>
           </tr>
         </thead>
         <tbody className="divide-y divide-white/10">
@@ -59,11 +61,14 @@ export function CalibrationTable({ rows }: { rows: CalibrationMetricRow[] }) {
               <td className={`px-3 py-3 text-right font-mono ${returnTone(row.avgReturnPct)}`}>{formatPercent(row.avgReturnPct)}</td>
               <td className={`px-3 py-3 text-right font-mono ${returnTone(row.medianReturnPct)}`}>{formatPercent(row.medianReturnPct)}</td>
               <td className="px-3 py-3 text-right font-mono">{formatPercent(row.winRatePct)}</td>
+              <td className={`px-3 py-3 text-right font-mono ${returnTone(row.expectancyPct)}`}>{formatPercent(row.expectancyPct)}</td>
+              <td className={`px-3 py-3 text-right font-mono ${returnTone(row.avgDrawdownPct)}`}>{formatPercent(row.avgDrawdownPct)}</td>
               <td className={`px-3 py-3 text-right font-mono ${returnTone(row.worstReturnPct)}`}>{formatPercent(row.worstReturnPct)}</td>
               <td className="px-3 py-3">
-                <span className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${row.lowConfidence ? "border-amber-300/25 bg-amber-400/10 text-amber-100" : "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"}`}>
-                  {row.lowConfidence ? "low sample" : "usable"}
+                <span className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${sampleTone(row.sampleSize)}`}>
+                  {row.sampleSize}
                 </span>
+                {row.lowConfidence ? <div className="mt-1 text-[10px] text-amber-100">Do not tune from this alone</div> : null}
               </td>
             </tr>
           ))}
@@ -71,6 +76,12 @@ export function CalibrationTable({ rows }: { rows: CalibrationMetricRow[] }) {
       </table>
     </div>
   );
+}
+
+function sampleTone(value: "LOW" | "MEDIUM" | "HIGH"): string {
+  if (value === "HIGH") return "border-emerald-300/25 bg-emerald-400/10 text-emerald-100";
+  if (value === "MEDIUM") return "border-cyan-300/25 bg-cyan-400/10 text-cyan-100";
+  return "border-amber-300/25 bg-amber-400/10 text-amber-100";
 }
 
 function compareValues(left: string | number | boolean | null, right: string | number | boolean | null): number {

@@ -15,7 +15,7 @@ from .safety import atomic_write_dataframe_csv
 from .utils import safe_float, safe_str
 
 
-HORIZONS = {"1D": 1, "2D": 2, "5D": 5, "10D": 10, "20D": 20, "60D": 60}
+HORIZONS = {"1D": 1, "2D": 2, "3D": 3, "5D": 5, "10D": 10, "20D": 20, "60D": 60}
 SNAPSHOT_REQUIRED_COLUMNS = ("symbol", "price", "final_score", "rating")
 SNAPSHOT_ACTION_COLUMNS = ("action", "long_action", "mid_action", "short_action", "composite_action", "recommended_action")
 SNAPSHOT_ACTION_FALLBACK_COLUMNS = ("long_action", "mid_action", "short_action", "composite_action", "recommended_action")
@@ -35,13 +35,17 @@ FORWARD_RETURN_COLUMNS = [
     "sector",
     "rating",
     "action",
+    "final_decision",
     "setup_type",
     "final_score",
+    "confidence_score",
     "score_bucket",
     "entry_status",
     "market_regime",
     "recommendation_quality",
     "trade_quality",
+    "data_quality_score",
+    "signal_created_at",
     "price_at_signal",
     "future_timestamp",
     "horizon",
@@ -55,9 +59,15 @@ SUMMARY_COLUMNS = [
     "group_value",
     "horizon",
     "count",
+    "sample_size",
+    "sample_confidence",
     "avg_return",
     "median_return",
     "hit_rate",
+    "loss_rate",
+    "avg_win",
+    "avg_loss",
+    "expectancy",
     "avg_max_drawdown",
     "avg_max_gain",
     "worst_return",
@@ -80,8 +90,14 @@ CALIBRATION_COLUMNS = [
     "group_value",
     "horizon",
     "count",
+    "sample_size",
+    "sample_confidence",
     "avg_return",
     "hit_rate",
+    "loss_rate",
+    "avg_win",
+    "avg_loss",
+    "expectancy",
     "avg_drawdown",
     "avg_gain",
     "edge_score",
@@ -250,6 +266,40 @@ def score_bucket_label(score: float) -> str:
     if score >= 50:
         return "50-59"
     return "<50"
+
+
+def sample_size_label(count: int) -> str:
+    if count < 30:
+        return "LOW"
+    if count <= 100:
+        return "MEDIUM"
+    return "HIGH"
+
+
+def expectancy_metrics(returns: pd.Series) -> dict[str, float]:
+    valid = pd.to_numeric(returns, errors="coerce").replace([np.inf, -np.inf], np.nan).dropna()
+    if valid.empty:
+        return {
+            "avg_win": np.nan,
+            "avg_loss": np.nan,
+            "expectancy": np.nan,
+            "hit_rate": np.nan,
+            "loss_rate": np.nan,
+        }
+    wins = valid[valid > 0]
+    losses = valid[valid <= 0]
+    hit_rate = float(len(wins) / len(valid))
+    loss_rate = float(len(losses) / len(valid))
+    avg_win = float(wins.mean()) if not wins.empty else 0.0
+    avg_loss = abs(float(losses.mean())) if not losses.empty else 0.0
+    expectancy = (hit_rate * avg_win) - (loss_rate * avg_loss)
+    return {
+        "avg_win": round(avg_win, 6),
+        "avg_loss": round(avg_loss, 6),
+        "expectancy": round(expectancy, 6),
+        "hit_rate": round(hit_rate, 6),
+        "loss_rate": round(loss_rate, 6),
+    }
 
 
 def _entry_status(row: pd.Series) -> str:
@@ -509,13 +559,17 @@ def compute_forward_returns(history_dir: str, analysis_raw: bool = False) -> pd.
                         "sector": safe_str(signal.get("sector"), ""),
                         "rating": safe_str(signal.get("rating"), ""),
                         "action": safe_str(signal.get("action"), ""),
+                        "final_decision": safe_str(signal.get("final_decision"), safe_str(signal.get("action"), "")),
                         "setup_type": safe_str(signal.get("setup_type"), ""),
                         "final_score": safe_float(signal.get("final_score"), np.nan),
+                        "confidence_score": safe_float(signal.get("confidence_score"), np.nan),
                         "score_bucket": safe_str(signal.get("score_bucket"), "unknown"),
                         "entry_status": safe_str(signal.get("entry_status"), "REVIEW"),
                         "market_regime": safe_str(signal.get("market_regime"), "UNKNOWN"),
                         "recommendation_quality": safe_str(signal.get("recommendation_quality"), "unknown"),
                         "trade_quality": safe_str(signal.get("trade_quality"), "unknown"),
+                        "data_quality_score": safe_float(signal.get("data_quality_score"), np.nan),
+                        "signal_created_at": pd.Timestamp(signal_time).isoformat(),
                         "price_at_signal": round(entry_price, 6),
                         "future_timestamp": pd.Timestamp(future_time).isoformat(),
                         "horizon": horizon,
@@ -830,20 +884,27 @@ def summarize_group_performance(df: pd.DataFrame, group_col: str) -> pd.DataFram
         drawdowns = pd.to_numeric(group_df["max_drawdown_after_signal"], errors="coerce").dropna()
         gains = pd.to_numeric(group_df["max_gain_after_signal"], errors="coerce").dropna()
         count = int(valid.count())
+        expectancy = expectancy_metrics(valid)
         rows.append(
             {
                 "group_type": group_col,
                 "group_value": label,
                 "horizon": horizon,
                 "count": count,
+                "sample_size": sample_size_label(count),
+                "sample_confidence": sample_size_label(count),
                 "avg_return": round(valid.mean(), 6),
                 "median_return": round(valid.median(), 6),
-                "hit_rate": round((valid > 0).mean(), 6),
+                "hit_rate": expectancy["hit_rate"],
+                "loss_rate": expectancy["loss_rate"],
+                "avg_win": expectancy["avg_win"],
+                "avg_loss": expectancy["avg_loss"],
+                "expectancy": expectancy["expectancy"],
                 "avg_max_drawdown": round(drawdowns.mean(), 6) if not drawdowns.empty else np.nan,
                 "avg_max_gain": round(gains.mean(), 6) if not gains.empty else np.nan,
                 "worst_return": round(valid.min(), 6),
                 "best_return": round(valid.max(), 6),
-                "low_sample": bool(count < 5),
+                "low_sample": bool(count < 30),
             }
         )
     return pd.DataFrame(rows, columns=SUMMARY_COLUMNS)
@@ -1389,6 +1450,7 @@ def generate_calibration_insights(summary_df: pd.DataFrame, forward_returns_df: 
             "score_bucket_note": "No completed score-bucket observations yet.",
             "setup_note": "No completed setup observations yet.",
             "rating_action_note": "No completed rating/action observations yet.",
+            "calibration_hints": ["Forward validation needs more completed observations before calibration suggestions are useful."],
             "warnings": ["No completed forward-return observations yet."],
             "rows": [],
         }
@@ -1402,6 +1464,7 @@ def generate_calibration_insights(summary_df: pd.DataFrame, forward_returns_df: 
     calibration_df["edge_score"] = (
         pd.to_numeric(calibration_df["avg_return"], errors="coerce").fillna(0.0) * 100
         + pd.to_numeric(calibration_df["hit_rate"], errors="coerce").fillna(0.0) * 10
+        + pd.to_numeric(calibration_df["expectancy"], errors="coerce").fillna(0.0) * 120
         + calibration_df["avg_gain"].fillna(0.0) * 20
         + calibration_df["avg_drawdown"].fillna(0.0) * 20
     )
@@ -1444,6 +1507,7 @@ def generate_calibration_insights(summary_df: pd.DataFrame, forward_returns_df: 
         "score_bucket_note": _calibration_note_for_score_buckets(calibration_df),
         "setup_note": _calibration_note_for_setups(calibration_df),
         "rating_action_note": _calibration_note_for_rating_action(calibration_df),
+        "calibration_hints": calibration_hints(calibration_df),
         "warnings": warnings,
         "rows": _dataframe_records(calibration_df),
     }
@@ -1451,6 +1515,44 @@ def generate_calibration_insights(summary_df: pd.DataFrame, forward_returns_df: 
     print(f"[analysis] calibration insights written: {len(calibration_df)} rows")
     print(f"Saved calibration insights to: {json_path}")
     return payload
+
+
+def calibration_hints(calibration_df: pd.DataFrame) -> list[str]:
+    hints: list[str] = []
+    if calibration_df.empty:
+        return ["Forward validation needs more completed observations before calibration suggestions are useful."]
+    usable = calibration_df[~calibration_df["low_sample"]].copy()
+    if usable.empty:
+        hints.append("All groups are still low sample; treat results as directional evidence only.")
+        usable = calibration_df.copy()
+
+    setup_rows = usable[(usable["group_type"] == "setup_type") & (usable["horizon"].isin(["10D", "20D"]))].copy()
+    if len(setup_rows) >= 2:
+        ranked = setup_rows.sort_values(["expectancy", "avg_return"], ascending=[False, False])
+        best = ranked.iloc[0]
+        worst = ranked.iloc[-1]
+        if safe_float(best.get("expectancy"), np.nan) > safe_float(worst.get("expectancy"), np.nan):
+            hints.append(
+                f"{safe_str(best.get('group_value'), 'Best setup')} setups currently show stronger expectancy than {safe_str(worst.get('group_value'), 'weaker setup')} setups on {safe_str(best.get('horizon'), 'longer')} validation."
+            )
+
+    score_rows = usable[(usable["group_type"] == "score_bucket") & (usable["horizon"].isin(["10D", "20D"]))].copy()
+    if not score_rows.empty:
+        high_score = score_rows[score_rows["group_value"].astype(str).str.contains("80|90", regex=True, na=False)]
+        mid_score = score_rows[score_rows["group_value"].astype(str).str.contains("60|70", regex=True, na=False)]
+        if not high_score.empty and not mid_score.empty:
+            high_expectancy = safe_float(pd.to_numeric(high_score["expectancy"], errors="coerce").mean(), np.nan)
+            mid_expectancy = safe_float(pd.to_numeric(mid_score["expectancy"], errors="coerce").mean(), np.nan)
+            if not np.isnan(high_expectancy) and not np.isnan(mid_expectancy) and mid_expectancy > high_expectancy:
+                hints.append("Mid-score buckets are currently outperforming higher-score buckets; wait for more samples before changing thresholds.")
+
+    regime_rows = usable[(usable["group_type"] == "market_regime") & (usable["horizon"].isin(["10D", "20D"]))].copy()
+    weak_regimes = regime_rows[pd.to_numeric(regime_rows["expectancy"], errors="coerce") < 0]
+    if not weak_regimes.empty:
+        regime = weak_regimes.sort_values("expectancy").iloc[0]
+        hints.append(f"{safe_str(regime.get('group_value'), 'One regime')} currently has negative expectancy; keep regime filters conservative.")
+
+    return hints[:5] or ["No calibration hint is strong enough yet; keep collecting forward-return evidence."]
 
 
 def _atomic_write_json(payload: Mapping[str, object], path: Path) -> None:

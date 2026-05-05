@@ -246,20 +246,27 @@ def _persist_forward_returns(session: Session, scan_run_id: UUID | None, forward
         return 0
     statement = text(
         """
-        INSERT INTO forward_returns (scan_run_id, symbol, signal_date, horizon, return_pct, metrics, created_at)
-        VALUES (:scan_run_id, :symbol, :signal_date, :horizon, :return_pct, CAST(:metrics AS jsonb), now())
+        INSERT INTO forward_returns (scan_run_id, scanner_signal_id, symbol, signal_date, horizon, return_pct, metrics, created_at)
+        VALUES (:scan_run_id, :scanner_signal_id, :symbol, :signal_date, :horizon, :return_pct, CAST(:metrics AS jsonb), now())
         """
     )
     params: list[dict[str, object]] = []
+    linkage_cache: dict[tuple[str, str | None], tuple[UUID | None, UUID | None]] = {}
     for row in _dataframe_rows(forward_returns_df):
         symbol = _string_or_none(row.get("symbol"))
         if symbol is None:
             continue
+        signal_date = _date_or_none(_first_present_mapping(row, ("signal_date", "date", "timestamp_utc", "scan_timestamp", "signal_created_at")))
+        linkage_key = (symbol.upper(), signal_date)
+        if linkage_key not in linkage_cache:
+            linkage_cache[linkage_key] = _resolve_forward_return_linkage(session, symbol=symbol.upper(), signal_date=signal_date, fallback_scan_run_id=scan_run_id)
+        linked_scan_run_id, scanner_signal_id = linkage_cache[linkage_key]
         params.append(
             {
-                "scan_run_id": scan_run_id,
+                "scan_run_id": linked_scan_run_id,
+                "scanner_signal_id": scanner_signal_id,
                 "symbol": symbol.upper(),
-                "signal_date": _date_or_none(_first_present_mapping(row, ("signal_date", "date", "timestamp_utc", "scan_timestamp"))),
+                "signal_date": signal_date,
                 "horizon": _string_or_none(row.get("horizon")),
                 "return_pct": _float_or_none(row.get("return_pct") or row.get("forward_return") or row.get("return")),
                 "metrics": json.dumps(row, separators=(",", ":")),
@@ -270,6 +277,39 @@ def _persist_forward_returns(session: Session, scan_run_id: UUID | None, forward
         if chunk:
             session.execute(statement, chunk)
     return len(params)
+
+
+def _resolve_forward_return_linkage(
+    session: Session,
+    *,
+    symbol: str,
+    signal_date: str | None,
+    fallback_scan_run_id: UUID | None,
+) -> tuple[UUID | None, UUID | None]:
+    if signal_date is None:
+        return (fallback_scan_run_id, None)
+    result = session.execute(
+        text(
+            """
+            SELECT ss.scan_run_id, ss.id AS scanner_signal_id
+            FROM scanner_signals ss
+            JOIN scan_runs sr ON sr.id = ss.scan_run_id
+            WHERE ss.symbol = :symbol
+              AND COALESCE(sr.completed_at, sr.created_at)::date = :signal_date
+            ORDER BY COALESCE(sr.completed_at, sr.created_at) DESC, ss.created_at DESC
+            LIMIT 1
+            """
+        ),
+        {"symbol": symbol.upper(), "signal_date": signal_date},
+    ).mappings().first()
+    if result is None:
+        return (fallback_scan_run_id, None)
+    scan_run = result.get("scan_run_id")
+    signal_id = result.get("scanner_signal_id")
+    return (
+        scan_run if isinstance(scan_run, UUID) else fallback_scan_run_id,
+        signal_id if isinstance(signal_id, UUID) else None,
+    )
 
 
 def _sequence_len(value: object) -> int | None:
