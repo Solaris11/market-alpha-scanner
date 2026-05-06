@@ -5,8 +5,8 @@ const isProduction = process.env.NODE_ENV === "production";
 
 const contentSecurityPolicy = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
-  "connect-src 'self' https://api.stripe.com https://*.stripe.com https://*.ingest.sentry.io https://sentry.io https://*.sentry.io",
+  "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
+  "connect-src 'self' https://api.stripe.com https://*.stripe.com https://*.ingest.sentry.io https://sentry.io https://*.sentry.io https://cloudflareinsights.com",
   "img-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
   "frame-src https://js.stripe.com https://hooks.stripe.com",

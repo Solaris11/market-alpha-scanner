@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
-import { aggregateStatusBuckets, hasNumericSeriesData, normalizeMonitoringRange, sanitizeMonitoringRouteLabel } from "./admin-monitoring-ui";
+import { aggregateStatusBuckets, formatMonitoringCompactTime, formatMonitoringDateTime, hasNumericSeriesData, normalizeMonitoringRange, sanitizeMonitoringRouteLabel } from "./admin-monitoring-ui";
 
 describe("admin monitoring UI helpers", () => {
   test("normalizes supported time ranges and defaults unknown input", () => {
@@ -44,5 +44,12 @@ describe("admin monitoring UI helpers", () => {
         { label: "5xx", count: 1 },
       ],
     );
+  });
+
+  test("formats chart timestamps in UTC to avoid hydration drift", () => {
+    assert.equal(formatMonitoringCompactTime("2026-05-06T09:05:00.000Z"), "09:05");
+    assert.match(formatMonitoringDateTime("2026-05-06T09:05:00.000Z"), /May 6, 2026/);
+    assert.match(formatMonitoringDateTime("2026-05-06T09:05:00.000Z"), /UTC/);
+    assert.equal(formatMonitoringDateTime(null), "Unknown");
   });
 });

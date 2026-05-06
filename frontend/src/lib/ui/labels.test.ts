@@ -9,6 +9,11 @@ describe("UI label formatting", () => {
     assert.equal(humanizeLabel("RISK_OFF"), "Risk Off");
     assert.equal(humanizeLabel("LOW_CONFIDENCE_DATA"), "Low Confidence Data");
     assert.equal(humanizeLabel("HIGH_CONFIDENCE"), "High Confidence");
+    assert.equal(humanizeLabel("NO_TRADE"), "No Trade");
+    assert.equal(humanizeLabel("BOND_PROXY"), "Bond Proxy");
+    assert.equal(humanizeLabel("COMMODITY_PROXY"), "Commodity Proxy");
+    assert.equal(humanizeLabel("CRYPTO_PROXY"), "Crypto Proxy");
+    assert.equal(humanizeLabel("FX_PROXY"), "FX Proxy");
     assert.equal(humanizeLabel("BUY_ZONE_HIT"), "Entry Zone Hit");
     assert.equal(humanizeLabel("TAKE_PROFIT_HIT"), "Target Context Hit");
   });

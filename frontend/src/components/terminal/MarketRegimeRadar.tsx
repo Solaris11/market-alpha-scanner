@@ -1,5 +1,6 @@
 import type { MarketRegime } from "@/lib/adapters/DataServiceAdapter";
 import type { RankingRow } from "@/lib/types";
+import { humanizeLabel } from "@/lib/ui/labels";
 import { ConfidenceDonut } from "./ConfidenceDonut";
 import { SectionTitle } from "./ui/SectionTitle";
 
@@ -11,7 +12,7 @@ export function MarketRegimeRadar({ regime, researchMode = false, rows }: { regi
   const enter = countDecision(rows, "ENTER");
   const avoid = countDecision(rows, "AVOID");
   const watch = countDecision(rows, "WATCH");
-  const aggressiveValue = researchMode ? "DISABLED" : regime.aggressiveEntriesAllowed ? "RESEARCH_SIGNAL" : "MONITOR_ONLY";
+  const aggressiveValue = researchMode ? "Disabled" : regime.aggressiveEntriesAllowed ? "Research Signal" : "Monitor Only";
   return (
     <section className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/45 p-5 ring-1 ring-white/5">
       <SectionTitle eyebrow="Market Regime Radar" title={regime.label} />
@@ -27,8 +28,8 @@ export function MarketRegimeRadar({ regime, researchMode = false, rows }: { regi
       </div>
       {researchMode ? (
         <div className="mt-4 grid grid-cols-1 gap-2 text-center text-xs text-slate-400 sm:grid-cols-3">
-          <div className="rounded-xl bg-white/[0.04] p-2">Mode <span className="font-mono text-amber-200">RESEARCH</span></div>
-          <div className="rounded-xl bg-white/[0.04] p-2">Action <span className="font-mono text-amber-200">NO_TRADE</span></div>
+          <div className="rounded-xl bg-white/[0.04] p-2">Mode <span className="font-mono text-amber-200">Research</span></div>
+          <div className="rounded-xl bg-white/[0.04] p-2">Action <span className="font-mono text-amber-200">No Trade</span></div>
           <div className="rounded-xl bg-white/[0.04] p-2">Rows <span className="font-mono text-slate-100">{rows.length}</span></div>
         </div>
       ) : (
@@ -72,7 +73,7 @@ function RegimeInfoCard({ title, value, tone }: { title: string; value: unknown;
     <div className="min-h-[120px] min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] p-4">
       <div className="text-xs text-slate-500">{title}</div>
       <div className={`mt-4 inline-flex max-w-full rounded-full border px-3 py-1.5 text-xs font-black uppercase tracking-[0.12em] ${toneClass(tone)}`}>
-        <span className="min-w-0 break-words">{String(value ?? "N/A").replaceAll(" ", "_")}</span>
+        <span className="min-w-0 break-words">{humanizeLabel(value)}</span>
       </div>
     </div>
   );

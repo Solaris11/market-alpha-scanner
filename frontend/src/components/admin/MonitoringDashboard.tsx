@@ -3,7 +3,7 @@
 import { useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type { AdminMonitoringSummary, MonitoringTimeRange } from "@/lib/server/admin-data";
-import { aggregateStatusBuckets, formatMonitoringMs, formatMonitoringPercent, sanitizeMonitoringRouteLabel } from "@/lib/admin-monitoring-ui";
+import { aggregateStatusBuckets, formatMonitoringCompactTime, formatMonitoringDateTime, formatMonitoringMs, formatMonitoringPercent, sanitizeMonitoringRouteLabel } from "@/lib/admin-monitoring-ui";
 import { humanizeLabel } from "@/lib/ui/labels";
 
 type Tone = "bad" | "default" | "good" | "warn";
@@ -641,22 +641,15 @@ function compactNumber(value: number): string {
 }
 
 function formatDate(value: string | null | undefined): string {
-  if (!value) return "Unknown";
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return "Unknown";
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(date);
+  return formatMonitoringDateTime(value);
 }
 
 function formatDateTime(value: string): string {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(date);
+  return formatMonitoringDateTime(value);
 }
 
 function formatCompactTime(value: string): string {
-  const date = new Date(value);
-  if (!Number.isFinite(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en", { hour: "2-digit", minute: "2-digit" }).format(date);
+  return formatMonitoringCompactTime(value);
 }
 
 function safeGradientId(value: string): string {

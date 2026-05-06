@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { PointerEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
@@ -568,7 +569,11 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
           <div className="text-xs text-slate-500">
             {selectedSymbol ? (
               <>
-                {loadingSymbol ? "Loading" : "Showing"} {symbolRows.length.toLocaleString()} observations for <span className="font-mono text-slate-200">{selectedSymbol}</span>.
+                {loadingSymbol ? "Loading" : "Showing"} {symbolRows.length.toLocaleString()} observations for{" "}
+                <Link className="font-mono text-cyan-100 underline-offset-4 transition hover:text-cyan-50 hover:underline" href={`/symbol/${selectedSymbol}`}>
+                  {selectedSymbol}
+                </Link>
+                .
               </>
             ) : (
               <>Type or select a symbol. Try one of: {matchingSymbols.join(", ") || "no symbols available"}.</>

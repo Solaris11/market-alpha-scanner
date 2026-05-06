@@ -113,7 +113,7 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
           </Select>
           <Select label="Asset Type" onChange={setAssetTypeFilter} value={assetTypeFilter}>
             <option value="ALL">All asset types</option>
-            {options.assetTypes.map((item) => <option key={item} value={item}>{item}</option>)}
+            {options.assetTypes.map((item) => <option key={item} value={item}>{humanizeLabel(item)}</option>)}
           </Select>
           <Select label="Sector" onChange={setSectorFilter} value={sectorFilter}>
             <option value="ALL">All sectors</option>
@@ -180,9 +180,9 @@ function BestTradeNowOpportunityCard({ best, highestScored, marketCondition, pri
           <p className="mt-5 max-w-3xl text-lg leading-7 text-slate-100">{readableText(best.decision_reason, "Decision reason is not available yet.")}</p>
           <p className="mt-3 text-sm font-semibold text-cyan-200">This is the highest-conviction research setup in the current market.</p>
           <div className="mt-5 flex min-w-0 flex-wrap gap-3">
-            <Link className="font-mono text-sm font-bold text-cyan-100 transition hover:text-cyan-50" href={`/symbol/${best.symbol}`}>
-              Open {best.symbol} detail
-            </Link>
+            <div className="font-mono text-sm font-bold text-cyan-100">
+              Tap or click {best.symbol} for symbol detail
+            </div>
             <div className="min-w-0 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-slate-300">
               Conviction <span className="font-mono font-semibold text-slate-50">{best.conviction}</span>/100
             </div>
@@ -259,14 +259,14 @@ function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewMod
         </div>
       </details>
 
-      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
         <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Mini price context</summary>
         <div className="mt-3">
           <MiniPriceContextChart candles={candles} entryContext={best.entryZoneLabel ?? formatMoney(best.suggested_entry)} height={260} symbol={best.symbol} />
         </div>
       </details>
 
-      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
         <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Risk snapshot</summary>
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
           <HeroMetric label="ATR" value={formatNumber(row.atr)} />
@@ -419,7 +419,7 @@ function CompactPulseCard({ detail, title, value }: { detail: string; title: str
   return (
     <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.035] p-3">
       <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{title}</div>
-      <div className="mt-1 truncate font-mono text-sm font-black text-slate-50">{value}</div>
+      <div className="mt-1 break-words font-mono text-sm font-black leading-5 text-slate-50">{value}</div>
       <div className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-400">{detail}</div>
     </div>
   );

@@ -17,6 +17,7 @@ const GENERAL_LABELS: Record<string, string> = {
   EDGE: "Historical Advantage",
   EDGE_SCORE: "Historical Advantage Score",
   EXPECTANCY: "Expected Historical Return",
+  FX_PROXY: "FX Proxy",
   BUY: "Research Setup",
   BUY_ZONE: "Entry Zone",
   BUY_ZONE_HIT: "Entry Zone Hit",

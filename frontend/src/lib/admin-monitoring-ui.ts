@@ -3,6 +3,21 @@ import type { MonitoringTimeRange } from "@/lib/server/admin-data";
 export const MONITORING_TIME_RANGES: MonitoringTimeRange[] = ["15m", "1h", "6h", "24h", "1w", "1m", "6m"];
 
 const SECRET_PARAM_PATTERN = /(token|secret|password|signature|authorization|cookie|csrf|key)=([^&]+)/gi;
+const UTC_DATE_TIME_FORMAT = new Intl.DateTimeFormat("en", {
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  month: "short",
+  timeZone: "UTC",
+  timeZoneName: "short",
+  year: "numeric",
+});
+const UTC_COMPACT_TIME_FORMAT = new Intl.DateTimeFormat("en", {
+  hour: "2-digit",
+  hour12: false,
+  minute: "2-digit",
+  timeZone: "UTC",
+});
 
 export function normalizeMonitoringRange(value: string | undefined): MonitoringTimeRange {
   return value === "15m" || value === "1h" || value === "6h" || value === "24h" || value === "1w" || value === "1m" || value === "6m" ? value : "1h";
@@ -25,6 +40,19 @@ export function formatMonitoringPercent(value: number | null): string {
 
 export function formatMonitoringMs(value: number | null): string {
   return value === null || !Number.isFinite(value) ? "n/a" : `${Math.round(value)}ms`;
+}
+
+export function formatMonitoringDateTime(value: string | null | undefined): string {
+  if (!value) return "Unknown";
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "Unknown";
+  return UTC_DATE_TIME_FORMAT.format(date);
+}
+
+export function formatMonitoringCompactTime(value: string): string {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return value;
+  return UTC_COMPACT_TIME_FORMAT.format(date);
 }
 
 export function statusBucket(statusCode: number): "2xx" | "3xx" | "4xx" | "5xx" | "other" {

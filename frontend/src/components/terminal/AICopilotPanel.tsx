@@ -69,7 +69,7 @@ export function AICopilotPanel({
                 {intelligence.setup_reasons.slice(0, 2).map((item) => <li key={item}>- {item}</li>)}
               </ul>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
+            <div className="grid gap-3">
               <InsightList title="Why" items={intelligence.why.positives} />
               <InsightList title="Constraints" items={intelligence.why.negatives} />
               <InsightList title="Watch" items={intelligence.what_to_watch} />
