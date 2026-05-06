@@ -13,6 +13,39 @@ LOG_FILE="/var/log/market-alpha/backup.log"
 BOUNDED_PIDS=()
 LAST_RETRY_ATTEMPTS_USED=0
 SCRIPT_STARTED_SECONDS=$SECONDS
+BACKUP_ENV_OVERRIDE_NAMES=(
+  MARKET_ALPHA_BACKUP_RCLONE_REMOTE
+  MARKET_ALPHA_BACKUP_REQUIRE_OFFSITE
+  MARKET_ALPHA_BACKUP_RCLONE_COPY_TIMEOUT_SECONDS
+  MARKET_ALPHA_BACKUP_RCLONE_OP_TIMEOUT
+  MARKET_ALPHA_BACKUP_RCLONE_CONNECT_TIMEOUT
+  MARKET_ALPHA_BACKUP_RCLONE_RETRIES
+  MARKET_ALPHA_BACKUP_RCLONE_LOW_LEVEL_RETRIES
+  MARKET_ALPHA_BACKUP_RCLONE_TRANSFERS
+  MARKET_ALPHA_BACKUP_RCLONE_CHECKERS
+  MARKET_ALPHA_BACKUP_RCLONE_STATS_INTERVAL
+  MARKET_ALPHA_BACKUP_RCLONE_COPY_ATTEMPTS
+  MARKET_ALPHA_BACKUP_RCLONE_COPY_BACKOFF_SECONDS
+)
+declare -A BACKUP_ENV_OVERRIDES=()
+
+capture_env_overrides() {
+  local name
+  for name in "${BACKUP_ENV_OVERRIDE_NAMES[@]}"; do
+    if [[ ${!name+x} ]]; then
+      BACKUP_ENV_OVERRIDES["$name"]="${!name}"
+    fi
+  done
+}
+
+restore_env_overrides() {
+  local name
+  for name in "${BACKUP_ENV_OVERRIDE_NAMES[@]}"; do
+    if [[ ${BACKUP_ENV_OVERRIDES[$name]+x} ]]; then
+      printf -v "$name" "%s" "${BACKUP_ENV_OVERRIDES[$name]}"
+    fi
+  done
+}
 
 install -d -o root -g sre -m 750 "$(dirname "$LOG_FILE")"
 touch "$LOG_FILE"
@@ -104,10 +137,12 @@ run_bounded_retry() {
   return "$status"
 }
 
+capture_env_overrides
 if [[ -f "$CONFIG_FILE" ]]; then
   # shellcheck disable=SC1090
   source "$CONFIG_FILE"
 fi
+restore_env_overrides
 
 : "${POSTGRES_USER:?POSTGRES_USER is required}"
 : "${POSTGRES_DB:?POSTGRES_DB is required}"
