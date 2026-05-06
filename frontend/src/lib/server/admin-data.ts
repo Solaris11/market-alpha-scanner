@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { QueryResultRow } from "pg";
+import type { BackupHealthDetails } from "@/lib/backup-health";
 import { getScanDataHealth } from "@/lib/scanner-data";
 import { deepHealth } from "./monitoring";
 import { dbQuery } from "./db";
@@ -108,6 +109,7 @@ export type MonitoringEventSummary = {
 
 export type AdminMonitoringSummary = {
   appEvents: MonitoringEventSummary[];
+  backupHealth: BackupHealthDetails | null;
   backupSeries: Array<{ bucket: string; failed: number; ok: number; warned: number }>;
   latestBackup: MonitoringEventSummary | null;
   requestMetrics: {
@@ -558,7 +560,7 @@ export async function getAdminScannerSummary(): Promise<AdminScannerSummary> {
 
 export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange = "1h"): Promise<AdminMonitoringSummary> {
   const window = monitoringWindow(timeRange);
-  const [synthetics, requestMetrics, requestSeries, slowestRoutes, system, systemSeries, syntheticSeries, syntheticCheckSeries, backupSeries, appEvents, latestBackup] = await Promise.all([
+  const [synthetics, requestMetrics, requestSeries, slowestRoutes, system, systemSeries, syntheticSeries, syntheticCheckSeries, backupSeries, appEvents, latestBackup, deep] = await Promise.all([
     dbQuery<SyntheticRow>(
       `
         SELECT DISTINCT ON (check_name)
@@ -765,9 +767,9 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
       `
         SELECT
           date_bin(${window.bucketSql}, created_at, TIMESTAMPTZ '2000-01-01')::text AS bucket,
-          count(*) FILTER (WHERE status = 'ok') AS ok,
-          count(*) FILTER (WHERE status = 'warn') AS warned,
-          count(*) FILTER (WHERE status = 'fail') AS failed
+          count(*) FILTER (WHERE severity = 'info' AND status IN ('backup_success', 'offsite_sync_ok', 'local_backup_ok', 'ok')) AS ok,
+          count(*) FILTER (WHERE severity IN ('warning', 'warn') OR status IN ('backup_partial')) AS warned,
+          count(*) FILTER (WHERE severity = 'error' OR status IN ('backup_failed', 'offsite_sync_failed', 'error', 'fail', 'failed')) AS failed
         FROM monitoring_events
         WHERE created_at > now() - ${window.intervalSql}
           AND event_type = 'backup'
@@ -777,11 +779,13 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
     ).catch(() => ({ rows: [] as SyntheticSeriesRow[] })),
     recentMonitoringWarnings(20),
     recentMonitoringEventByType("backup"),
+    deepHealth().catch(() => null),
   ]);
   const metrics = requestMetrics.rows[0];
   const latestSystem = system.rows[0];
   return {
     appEvents,
+    backupHealth: deep?.backup ?? null,
     backupSeries: backupSeries.rows.map((row) => ({ bucket: row.bucket, failed: toNumber(row.failed), ok: toNumber(row.ok), warned: toNumber(row.warned) })),
     latestBackup,
     requestMetrics: {

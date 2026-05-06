@@ -3,12 +3,13 @@ import "server-only";
 import { readdir, stat } from "node:fs/promises";
 import path from "node:path";
 import type { QueryResultRow } from "pg";
+import { classifyBackupHealth, type BackupEventSummary, type BackupHealthDetails } from "@/lib/backup-health";
 import { cleanMonitoringText, normalizeRequestMetric, type MonitoringSeverity, type MonitoringStatus, type RequestMetricInput } from "@/lib/monitoring-policy";
 import { getScanDataHealth } from "@/lib/scanner-data";
 import { dbQuery } from "./db";
 
 export type DeepHealthResult = {
-  backup: ComponentHealth;
+  backup: BackupHealthDetails;
   db: ComponentHealth;
   ok: boolean;
   scanner: ComponentHealth;
@@ -27,6 +28,14 @@ type LatestTimestampRow = QueryResultRow & {
   latest: string | Date | null;
 };
 
+type BackupEventRow = QueryResultRow & {
+  created_at: string | null;
+  message: string;
+  metadata: Record<string, unknown> | null;
+  severity: string;
+  status: string;
+};
+
 const DEFAULT_BACKUP_DIR = "/app/backups";
 const BACKUP_WARN_MINUTES = 8 * 60;
 const BACKUP_FAIL_MINUTES = 30 * 60;
@@ -36,7 +45,7 @@ export async function deepHealth(): Promise<DeepHealthResult> {
   return {
     backup,
     db,
-    ok: db.status === "ok" && scanner.status !== "fail" && backup.status !== "fail",
+    ok: db.status === "ok" && scanner.status !== "fail" && backup.status !== "failed",
     scanner,
     service: "market-alpha-frontend",
     timestamp: new Date().toISOString(),
@@ -159,21 +168,52 @@ async function scannerHealth(): Promise<ComponentHealth> {
   }
 }
 
-async function backupHealth(): Promise<ComponentHealth> {
+async function backupHealth(): Promise<BackupHealthDetails> {
   const backupDir = process.env.MARKET_ALPHA_BACKUP_DIR?.trim() || DEFAULT_BACKUP_DIR;
   try {
-    const latest = await latestFileMtime(backupDir);
+    const [latest, events] = await Promise.all([latestFileMtime(backupDir), recentBackupEvents()]);
+    let localBackup: ComponentHealth;
     if (!latest) {
-      return { message: "No backup files found.", status: "unknown" };
+      localBackup = { message: "No local backup files found.", status: "unknown" };
+    } else {
+      const ageMinutes = Math.max(0, (Date.now() - latest.getTime()) / 60000);
+      const base = { ageMinutes, lastUpdated: latest.toISOString(), message: `Latest local backup updated ${Math.round(ageMinutes)} minutes ago.` };
+      if (ageMinutes > BACKUP_FAIL_MINUTES) localBackup = { ...base, status: "fail" };
+      else if (ageMinutes > BACKUP_WARN_MINUTES) localBackup = { ...base, status: "warn" };
+      else localBackup = { ...base, status: "ok" };
     }
-    const ageMinutes = Math.max(0, (Date.now() - latest.getTime()) / 60000);
-    const base = { ageMinutes, lastUpdated: latest.toISOString(), message: `Latest backup updated ${Math.round(ageMinutes)} minutes ago.` };
-    if (ageMinutes > BACKUP_FAIL_MINUTES) return { ...base, status: "fail" };
-    if (ageMinutes > BACKUP_WARN_MINUTES) return { ...base, status: "warn" };
-    return { ...base, status: "ok" };
+    return classifyBackupHealth({
+      events,
+      localBackup: {
+        ...localBackup,
+        status: localBackup.status === "fail" ? "failed" : localBackup.status,
+      },
+    });
   } catch {
-    return { message: "Backup freshness unavailable.", status: "unknown" };
+    return classifyBackupHealth({
+      events: [],
+      localBackup: { message: "Local backup freshness unavailable.", status: "unknown" },
+    });
   }
+}
+
+async function recentBackupEvents(): Promise<BackupEventSummary[]> {
+  const result = await dbQuery<BackupEventRow>(
+    `
+      SELECT status, severity, message, metadata, created_at::text
+      FROM monitoring_events
+      WHERE event_type = 'backup'
+      ORDER BY created_at DESC
+      LIMIT 50
+    `,
+  ).catch(() => ({ rows: [] as BackupEventRow[] }));
+  return result.rows.map((row) => ({
+    createdAt: row.created_at,
+    message: row.message,
+    metadata: row.metadata,
+    severity: row.severity,
+    status: row.status,
+  }));
 }
 
 async function latestFileMtime(root: string): Promise<Date | null> {

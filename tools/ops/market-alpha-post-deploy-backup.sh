@@ -11,6 +11,8 @@ SCANNER_DIR="$BACKUP_ROOT/scanner_output"
 LOG_FILE="/var/log/market-alpha/post-deploy-backup.log"
 
 BOUNDED_PIDS=()
+SCRIPT_STARTED_SECONDS=$SECONDS
+LAST_RETRY_ATTEMPTS_USED=0
 
 install -d -o root -g sre -m 750 "$(dirname "$LOG_FILE")"
 touch "$LOG_FILE"
@@ -84,6 +86,7 @@ run_bounded_retry() {
   local status=0
 
   for attempt in $(seq 1 "$attempts"); do
+    LAST_RETRY_ATTEMPTS_USED="$attempt"
     if run_bounded "$limit_seconds" "$@"; then
       if [[ "$attempt" -gt 1 ]]; then
         log "Retry attempt ${attempt}/${attempts} succeeded"
@@ -125,13 +128,16 @@ metadata_json() {
   local pg_file="${3:-}"
   local scanner_file="${4:-}"
   local exit_code="${5:-0}"
-  python3 - "$classification" "$offsite_status" "$pg_file" "$scanner_file" "$exit_code" <<'PY'
+  local retry_count="${6:-0}"
+  local duration_seconds="${7:-0}"
+  local failure_type="${8:-}"
+  python3 - "$classification" "$offsite_status" "$pg_file" "$scanner_file" "$exit_code" "$retry_count" "$duration_seconds" "$failure_type" <<'PY'
 import json
 import os
 import sys
 from datetime import datetime, timezone
 
-classification, offsite_status, pg_file, scanner_file, exit_code = sys.argv[1:6]
+classification, offsite_status, pg_file, scanner_file, exit_code, retry_count, duration_seconds, failure_type = sys.argv[1:9]
 payload = {
     "script": "market-alpha-post-deploy-backup.sh",
     "classification": classification,
@@ -139,8 +145,12 @@ payload = {
     "postgres_backup": os.path.basename(pg_file) if pg_file else None,
     "scanner_backup": os.path.basename(scanner_file) if scanner_file else None,
     "exit_code": int(exit_code),
+    "retry_count": int(retry_count),
+    "duration_seconds": int(duration_seconds),
     "timestamp": datetime.now(timezone.utc).isoformat(),
 }
+if failure_type:
+    payload["failure_type"] = failure_type
 print(json.dumps(payload))
 PY
 }
@@ -148,8 +158,21 @@ PY
 on_error() {
   local line="$1"
   local metadata
-  metadata="$(metadata_json "backup_failed" "unknown" "" "" "$line")"
-  write_monitoring_event "error" "error" "post-deploy backup failed" "$metadata"
+  metadata="$(metadata_json "backup_failed" "unknown" "" "" "$line" "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "script_error")"
+  write_monitoring_event "error" "backup_failed" "post-deploy backup failed" "$metadata"
+}
+
+duration_seconds() {
+  printf "%s" "$((SECONDS - SCRIPT_STARTED_SECONDS))"
+}
+
+failure_type_for_status() {
+  local status="$1"
+  if [[ "$status" -eq 124 ]]; then
+    printf "timeout"
+  else
+    printf "rclone_error"
+  fi
 }
 
 trap 'on_error "$LINENO"' ERR
@@ -219,28 +242,45 @@ if [[ -n "$MARKET_ALPHA_BACKUP_RCLONE_REMOTE" && "$MARKET_ALPHA_BACKUP_VERIFY_OF
   SCANNER_NAME="$(basename "$LATEST_SCANNER")"
   PG_LIST="$(mktemp)"
   SCANNER_LIST="$(mktemp)"
+  RCLONE_STATUS=0
   trap 'rm -f "$PG_LIST" "$SCANNER_LIST"; on_error "$LINENO"' ERR
 
   log "Verifying offsite Postgres backup exists"
-  if ! run_bounded_retry "$RCLONE_VERIFY_ATTEMPTS" "$RCLONE_VERIFY_BACKOFF_SECONDS" "$RCLONE_LSF_TIMEOUT_SECONDS" rclone "${RCLONE_FLAGS[@]}" lsf "$MARKET_ALPHA_BACKUP_RCLONE_REMOTE/postgres/" > "$PG_LIST"; then
-    METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2)"
+  if run_bounded_retry "$RCLONE_VERIFY_ATTEMPTS" "$RCLONE_VERIFY_BACKOFF_SECONDS" "$RCLONE_LSF_TIMEOUT_SECONDS" rclone "${RCLONE_FLAGS[@]}" lsf "$MARKET_ALPHA_BACKUP_RCLONE_REMOTE/postgres/" > "$PG_LIST"; then
+    :
+  else
+    RCLONE_STATUS=$?
+    FAILURE_TYPE="$(failure_type_for_status "$RCLONE_STATUS")"
+    METADATA="$(metadata_json "offsite_sync_failed" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "$FAILURE_TYPE")"
+    write_monitoring_event "error" "offsite_sync_failed" "post-deploy backup partial: offsite Postgres verification failed" "$METADATA"
+    METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "$FAILURE_TYPE")"
     write_monitoring_event "error" "backup_partial" "post-deploy backup partial: offsite Postgres verification failed" "$METADATA"
     fail "offsite Postgres backup verification failed: $PG_NAME"
   fi
   grep -Fx "$PG_NAME" "$PG_LIST" >/dev/null || {
-    METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2)"
+    METADATA="$(metadata_json "offsite_sync_failed" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_missing")"
+    write_monitoring_event "error" "offsite_sync_failed" "post-deploy backup partial: offsite Postgres backup missing" "$METADATA"
+    METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_missing")"
     write_monitoring_event "error" "backup_partial" "post-deploy backup partial: offsite Postgres backup missing" "$METADATA"
     fail "offsite Postgres backup missing: $PG_NAME"
   }
 
   log "Verifying offsite scanner_output backup exists"
-  if ! run_bounded_retry "$RCLONE_VERIFY_ATTEMPTS" "$RCLONE_VERIFY_BACKOFF_SECONDS" "$RCLONE_LSF_TIMEOUT_SECONDS" rclone "${RCLONE_FLAGS[@]}" lsf "$MARKET_ALPHA_BACKUP_RCLONE_REMOTE/scanner_output/" > "$SCANNER_LIST"; then
-    METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2)"
+  if run_bounded_retry "$RCLONE_VERIFY_ATTEMPTS" "$RCLONE_VERIFY_BACKOFF_SECONDS" "$RCLONE_LSF_TIMEOUT_SECONDS" rclone "${RCLONE_FLAGS[@]}" lsf "$MARKET_ALPHA_BACKUP_RCLONE_REMOTE/scanner_output/" > "$SCANNER_LIST"; then
+    :
+  else
+    RCLONE_STATUS=$?
+    FAILURE_TYPE="$(failure_type_for_status "$RCLONE_STATUS")"
+    METADATA="$(metadata_json "offsite_sync_failed" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "$FAILURE_TYPE")"
+    write_monitoring_event "error" "offsite_sync_failed" "post-deploy backup partial: offsite scanner_output verification failed" "$METADATA"
+    METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "$FAILURE_TYPE")"
     write_monitoring_event "error" "backup_partial" "post-deploy backup partial: offsite scanner_output verification failed" "$METADATA"
     fail "offsite scanner_output backup verification failed: $SCANNER_NAME"
   fi
   grep -Fx "$SCANNER_NAME" "$SCANNER_LIST" >/dev/null || {
-    METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2)"
+    METADATA="$(metadata_json "offsite_sync_failed" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_missing")"
+    write_monitoring_event "error" "offsite_sync_failed" "post-deploy backup partial: offsite scanner_output backup missing" "$METADATA"
+    METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_missing")"
     write_monitoring_event "error" "backup_partial" "post-deploy backup partial: offsite scanner_output backup missing" "$METADATA"
     fail "offsite scanner_output backup missing: $SCANNER_NAME"
   }
@@ -254,13 +294,13 @@ else
 fi
 
 if [[ "$BACKUP_STATUS" -eq 2 ]]; then
-  METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2)"
+  METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_sync_failed")"
   write_monitoring_event "error" "backup_partial" "post-deploy backup partial: offsite sync failed" "$METADATA"
   fail "local backup verified but offsite sync failed"
 fi
 
-METADATA="$(metadata_json "backup_success" "$OFFSITE_STATUS" "$LATEST_PG" "$LATEST_SCANNER" 0)"
-write_monitoring_event "info" "ok" "post-deploy backup completed" "$METADATA"
+METADATA="$(metadata_json "backup_success" "$OFFSITE_STATUS" "$LATEST_PG" "$LATEST_SCANNER" 0 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)")"
+write_monitoring_event "info" "backup_success" "post-deploy backup completed" "$METADATA"
 
 trap - ERR
 log "Post-deploy backup SUCCESS"

@@ -52,7 +52,9 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
         <MetricCard label="CPU" value={formatMonitoringPercent(monitoring.system.cpuPercent)} />
         <MetricCard label="Memory" value={formatMonitoringPercent(monitoring.system.memoryPercent)} />
         <MetricCard label="Disk" tone={monitoring.system.diskPercent !== null && monitoring.system.diskPercent > 85 ? "warn" : "default"} value={formatMonitoringPercent(monitoring.system.diskPercent)} />
-        <MetricCard label="Backup" tone={statusTone(monitoring.latestBackup?.status)} value={monitoring.latestBackup?.status ?? "unknown"} />
+        <MetricCard label="Local Backup" tone={statusTone(monitoring.backupHealth?.localBackup.status)} value={monitoring.backupHealth?.localBackup.status ?? "unknown"} />
+        <MetricCard label="Offsite Backup" tone={statusTone(monitoring.backupHealth?.offsiteBackup.status)} value={monitoring.backupHealth?.offsiteBackup.status ?? "unknown"} />
+        <MetricCard label="Overall Backup" tone={statusTone(monitoring.backupHealth?.overallBackup)} value={monitoring.backupHealth?.overallBackup ?? "unknown"} />
       </section>
 
       <div className="grid gap-5 xl:grid-cols-2">
@@ -181,8 +183,9 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
         </ChartPanel>
 
         <ChartPanel subtitle="Backup monitoring events by bucket." title="Backup Freshness Events">
+          <BackupStatePanel backup={monitoring.backupHealth} />
           <TimeSeriesChart
-            footer={monitoring.latestBackup ? `${monitoring.latestBackup.status}: ${monitoring.latestBackup.message}` : "No latest backup event found."}
+            footer={monitoring.latestBackup ? `${humanizeLabel(monitoring.latestBackup.status)}: ${monitoring.latestBackup.message}` : "No latest backup event found."}
             series={[
               {
                 color: COLORS.emerald,
@@ -284,6 +287,47 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
           )}
         </ChartPanel>
       </div>
+    </div>
+  );
+}
+
+function BackupStatePanel({ backup }: { backup: AdminMonitoringSummary["backupHealth"] }) {
+  if (!backup) {
+    return <div className="mb-3"><EmptyState>Backup health details are unavailable.</EmptyState></div>;
+  }
+  return (
+    <div className="mb-3 grid gap-2 md:grid-cols-3">
+      <BackupStatusTile
+        detail={backup.localBackup.message}
+        label="Local"
+        status={backup.localBackup.status}
+        timestamp={backup.localBackup.lastUpdated}
+      />
+      <BackupStatusTile
+        detail={backup.offsiteBackup.message}
+        label="Offsite"
+        status={backup.offsiteBackup.status}
+        timestamp={backup.offsiteBackup.lastUpdated}
+      />
+      <BackupStatusTile
+        detail={backup.message}
+        label="Overall"
+        status={backup.overallBackup}
+        timestamp={backup.lastUpdated}
+      />
+    </div>
+  );
+}
+
+function BackupStatusTile({ detail, label, status, timestamp }: { detail: string; label: string; status: string; timestamp?: string | null }) {
+  return (
+    <div className={`rounded-xl border p-3 ${statusTileClass(status)}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">{label}</span>
+        <StatusBadge tone={statusTone(status)}>{humanizeLabel(status)}</StatusBadge>
+      </div>
+      <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-300">{detail}</p>
+      {timestamp ? <div className="mt-2 text-[11px] text-slate-500">{formatDate(timestamp)}</div> : null}
     </div>
   );
 }
@@ -554,10 +598,18 @@ function EmptyState({ children }: { children: ReactNode }) {
 
 function statusTone(status: string | null | undefined): Tone {
   const normalized = String(status ?? "").toLowerCase();
-  if (["ok", "success", "active", "trialing", "healthy"].includes(normalized)) return "good";
-  if (["warn", "warning", "pending", "past_due", "stale"].includes(normalized)) return "warn";
-  if (["error", "fail", "failed", "missing", "canceled", "unpaid", "inactive"].includes(normalized)) return "bad";
+  if (["backup_success", "local_backup_ok", "offsite_sync_ok", "ok", "success", "active", "trialing", "healthy"].includes(normalized)) return "good";
+  if (["backup_partial", "partial", "warn", "warning", "pending", "past_due", "stale", "unknown"].includes(normalized)) return "warn";
+  if (["backup_failed", "offsite_sync_failed", "error", "fail", "failed", "missing", "canceled", "unpaid", "inactive"].includes(normalized)) return "bad";
   return "default";
+}
+
+function statusTileClass(status: string): string {
+  const tone = statusTone(status);
+  if (tone === "good") return "border-emerald-300/20 bg-emerald-400/[0.06]";
+  if (tone === "warn") return "border-amber-300/20 bg-amber-400/[0.06]";
+  if (tone === "bad") return "border-rose-300/20 bg-rose-400/[0.06]";
+  return "border-white/10 bg-white/[0.03]";
 }
 
 function statusBucketClass(label: string): string {
