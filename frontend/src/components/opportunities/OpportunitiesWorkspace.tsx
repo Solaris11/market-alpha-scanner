@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
@@ -10,7 +11,7 @@ import { confidenceTone } from "@/lib/trading/confidence";
 import { buildDecisionFactors, buildDecisionIntelligence, type DecisionFactor } from "@/lib/trading/decision-intelligence";
 import type { ScannerScalar } from "@/lib/types";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
-import { decisionLabel, humanizeLabel } from "@/lib/ui/labels";
+import { decisionLabel, humanizeLabel, readableText } from "@/lib/ui/labels";
 import { WatchlistButton } from "@/components/watchlist-controls";
 import { DecisionBadge } from "@/components/terminal/DecisionBadge";
 import { MiniPriceContextChart } from "@/components/terminal/MiniPriceContextChart";
@@ -171,16 +172,16 @@ function BestTradeNowOpportunityCard({ best, highestScored, marketCondition, pri
         <div className="min-w-0">
           <div className="text-[10px] font-black uppercase tracking-[0.32em] text-emerald-300">Top Setup</div>
           <div className="mt-4 flex min-w-0 flex-wrap items-center gap-3">
-            <h2 className="min-w-0 font-mono text-4xl font-black tracking-tight text-slate-50 sm:text-5xl md:text-6xl">{best.symbol}</h2>
+            <Link className="min-w-0 font-mono text-4xl font-black tracking-tight text-slate-50 transition hover:text-cyan-100 sm:text-5xl md:text-6xl" href={`/symbol/${best.symbol}`}>{best.symbol}</Link>
             <DecisionBadge className="px-4 py-2 text-sm sm:px-5 sm:text-base" value={best.final_decision} />
             <DataHealthIndicator freshness={best.dataFreshness} />
           </div>
           <div className="mt-2 max-w-2xl text-base text-slate-400">{cleanText(best.company_name || best.sector, "Scanner signal")}</div>
-          <p className="mt-5 max-w-3xl text-lg leading-7 text-slate-100">{cleanText(best.decision_reason, "Decision reason is not available yet.")}</p>
+          <p className="mt-5 max-w-3xl text-lg leading-7 text-slate-100">{readableText(best.decision_reason, "Decision reason is not available yet.")}</p>
           <p className="mt-3 text-sm font-semibold text-cyan-200">This is the highest-conviction research setup in the current market.</p>
           <div className="mt-5 flex min-w-0 flex-wrap gap-3">
-            <Link className="w-full rounded-full bg-cyan-300 px-5 py-2.5 text-center text-sm font-bold text-slate-950 transition-all duration-200 hover:bg-cyan-200 sm:w-auto" href={`/symbol/${best.symbol}`}>
-              View Research Plan
+            <Link className="font-mono text-sm font-bold text-cyan-100 transition hover:text-cyan-50" href={`/symbol/${best.symbol}`}>
+              Open {best.symbol} detail
             </Link>
             <div className="min-w-0 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-slate-300">
               Conviction <span className="font-mono font-semibold text-slate-50">{best.conviction}</span>/100
@@ -315,6 +316,7 @@ function SetupDistribution({ rows }: { rows: OpportunityViewModel[] }) {
 function HighestScoredSetups({ rows }: { rows: OpportunityViewModel[] }) {
   const displayRows = rows.slice(0, 5);
   if (!displayRows.length) return null;
+  const pulse = setupPulse(rows);
   return (
     <div className="mt-6 rounded-2xl border border-white/10 bg-slate-950/30 p-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
@@ -325,6 +327,12 @@ function HighestScoredSetups({ rows }: { rows: OpportunityViewModel[] }) {
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-2 2xl:grid-cols-5">
         {displayRows.map((row) => <HighestScoredSetupCard key={row.symbol} row={row} />)}
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        <CompactPulseCard title="Setup Momentum" value={pulse.momentum} detail={pulse.momentumDetail} />
+        <CompactPulseCard title="Market Breadth Pulse" value={pulse.breadth} detail={pulse.breadthDetail} />
+        <CompactPulseCard title="Confidence Distribution" value={pulse.confidence} detail={pulse.confidenceDetail} />
+        <CompactPulseCard title="Scanner Pulse" value={pulse.scanner} detail={pulse.scannerDetail} />
       </div>
     </div>
   );
@@ -361,11 +369,25 @@ function OpportunityGrid({ empty, rows }: { empty: string; rows: OpportunityView
 }
 
 function OpportunityCard({ row }: { row: OpportunityViewModel }) {
+  const router = useRouter();
+  const href = `/symbol/${row.symbol}`;
+  const openDetail = () => router.push(href);
   return (
-    <article className="w-full min-w-0 max-w-full rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/10 transition-all duration-200 hover:border-cyan-400/40 hover:bg-white/[0.07]">
+    <article
+      className="w-full min-w-0 max-w-full cursor-pointer rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-400/40 hover:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-cyan-300/40"
+      onClick={openDetail}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          openDetail();
+        }
+      }}
+      role="link"
+      tabIndex={0}
+    >
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <div className="font-mono text-2xl font-black text-slate-50 sm:text-3xl">{row.symbol}</div>
+          <Link className="relative z-10 font-mono text-2xl font-black text-slate-50 transition hover:text-cyan-100 sm:text-3xl" href={href} onClick={(event) => event.stopPropagation()}>{row.symbol}</Link>
           <div className="mt-1 text-xs text-slate-400">{cleanText(row.company_name || row.sector, "Signal")}</div>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
@@ -376,7 +398,7 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
       <div className="mt-3">
         <DataHealthIndicator compact freshness={row.dataFreshness} />
       </div>
-      <div className="mt-4 text-sm leading-6 text-slate-300">{cleanText(row.decision_reason, "Decision reason is not available yet.")}</div>
+      <div className="mt-4 text-sm leading-6 text-slate-300">{readableText(row.decision_reason, "Decision reason is not available yet.")}</div>
       <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
         <CardMetric label="Price" value={formatMoney(row.price)} />
         <CardMetric label="Decision" value={decisionLabel(row.final_decision)} />
@@ -387,11 +409,19 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
       </div>
       <div className="mt-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="min-w-0 text-xs text-slate-500">{cleanText(row.assetType, "Asset")} {row.sector ? `- ${row.sector}` : ""}</div>
-        <Link className="w-full rounded-full bg-cyan-300 px-4 py-2 text-center text-xs font-bold text-slate-950 transition-all duration-200 hover:bg-cyan-200 sm:w-auto" href={`/symbol/${row.symbol}`}>
-          View Research Plan
-        </Link>
+        <div className="text-xs font-semibold text-cyan-200 opacity-90">Tap for symbol detail</div>
       </div>
     </article>
+  );
+}
+
+function CompactPulseCard({ detail, title, value }: { detail: string; title: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.035] p-3">
+      <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{title}</div>
+      <div className="mt-1 truncate font-mono text-sm font-black text-slate-50">{value}</div>
+      <div className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-400">{detail}</div>
+    </div>
   );
 }
 
@@ -486,6 +516,63 @@ function setupGroups(rows: OpportunityViewModel[]): Array<{ avgStrength: number;
       setup,
     };
   });
+}
+
+function setupPulse(rows: OpportunityViewModel[]): {
+  breadth: string;
+  breadthDetail: string;
+  confidence: string;
+  confidenceDetail: string;
+  momentum: string;
+  momentumDetail: string;
+  scanner: string;
+  scannerDetail: string;
+} {
+  const setupCounts = countBy(rows, (row) => setupLabel(setupType(row)));
+  const decisionCounts = countBy(rows, (row) => decisionLabel(row.final_decision));
+  const highestSetup = topCount(setupCounts) ?? "Mixed";
+  const highestDecision = topCount(decisionCounts) ?? "Watch";
+  const high = rows.filter((row) => row.conviction >= 70).length;
+  const medium = rows.filter((row) => row.conviction >= 50 && row.conviction < 70).length;
+  const low = Math.max(0, rows.length - high - medium);
+  const fallbackCount = rows.filter((row) => Boolean(row.raw.data_provider_fallback_used)).length;
+  const staleCount = rows.filter((row) => Boolean(row.raw.stale_data) || String(row.raw.data_freshness_status ?? "").toLowerCase().includes("stale")).length;
+  const topMomentum = [...rows]
+    .sort((left, right) => (numeric(right.raw.score_change) ?? 0) - (numeric(left.raw.score_change) ?? 0))
+    .find((row) => numeric(row.raw.score_change) !== null);
+  const currentRegime = humanizeLabel(rows[0]?.raw.market_regime ?? rows[0]?.raw.regime ?? "Neutral");
+
+  return {
+    breadth: `${highestSetup} / ${highestDecision}`,
+    breadthDetail: `${rows.length.toLocaleString()} symbols grouped by setup and final decision.`,
+    confidence: `${high} high · ${medium} medium · ${low} low`,
+    confidenceDetail: "Confidence reflects scanner strength and data quality, not a prediction.",
+    momentum: topMomentum ? `${topMomentum.symbol} improving` : "Stable scan",
+    momentumDetail: topMomentum ? `Largest available score change: ${formatNumber(numeric(topMomentum.raw.score_change), 1)}.` : "No score-change feed is available in this view yet.",
+    scanner: `${fallbackCount} fallback · ${staleCount} stale`,
+    scannerDetail: `Current regime: ${currentRegime}. CSV fallback remains disabled in production.`,
+  };
+}
+
+function countBy(rows: OpportunityViewModel[], keyFor: (row: OpportunityViewModel) => string): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const key = keyFor(row);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function topCount(counts: Map<string, number>): string | null {
+  let selected: string | null = null;
+  let selectedCount = -1;
+  for (const [key, count] of counts) {
+    if (count > selectedCount) {
+      selected = key;
+      selectedCount = count;
+    }
+  }
+  return selected;
 }
 
 function setupType(row: OpportunityViewModel): string {

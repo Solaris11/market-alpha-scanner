@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { RankingRow } from "@/lib/types";
 import { actionFor, compact, formatNumber } from "@/lib/format";
 import { cleanText } from "@/lib/ui/formatters";
-import { decisionLabel, humanizeLabel, normalizedToken } from "@/lib/ui/labels";
+import { decisionLabel, humanizeLabel, normalizedToken, readableText } from "@/lib/ui/labels";
 
 export type RankingSortKey = "symbol" | "company" | "asset" | "sector" | "price" | "score" | "rating" | "action" | "decision" | "quality" | "signals";
 export type RankingSortDirection = "asc" | "desc";
@@ -135,7 +136,7 @@ function decisionClass(row: RankingRow) {
 }
 
 function shortReason(row: RankingRow) {
-  return cleanText(row.decision_reason ?? row.quality_reason ?? row.setup_type ?? row.market_regime, "No decision reason available.");
+  return readableText(row.decision_reason ?? row.quality_reason ?? row.setup_type ?? row.market_regime, "No decision reason available.");
 }
 
 function suggestedEntry(row: RankingRow) {
@@ -172,6 +173,7 @@ function SortButton({ active, direction, label, onClick }: { active: boolean; di
 }
 
 export function RankingTable({ rows, highlight = false, limit, emptyMessage = "No scanner rows available.", sortKey = null, sortDirection = "asc", onSort }: Props) {
+  const router = useRouter();
   const visibleRows = typeof limit === "number" ? rows.slice(0, limit) : rows;
 
   if (!visibleRows.length) {
@@ -191,16 +193,36 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
 
       {visibleRows.map((row, index) => {
         const signals = signalLabelsForRow(row);
+        const symbol = String(row.symbol ?? "").trim().toUpperCase();
+        const symbolHref = symbol ? `/symbol/${encodeURIComponent(symbol)}` : "";
         return (
           <article
-            className={`group rounded-2xl border border-white/10 bg-slate-950/55 p-4 shadow-xl shadow-black/20 ring-1 ring-white/5 transition-all duration-200 hover:border-cyan-400/40 hover:bg-white/[0.05] ${
+            className={`group rounded-2xl border border-white/10 bg-slate-950/55 p-4 shadow-xl shadow-black/20 ring-1 ring-white/5 transition-all duration-200 ${
+              symbolHref ? "cursor-pointer hover:border-cyan-400/40 hover:bg-white/[0.05]" : ""
+            } ${
               highlight && index < 3 ? "shadow-cyan-950/20" : ""
             }`}
             key={row.symbol || index}
+            onClick={(event) => {
+              if (!symbolHref) return;
+              const target = event.target instanceof Element ? event.target : null;
+              if (target?.closest("a,button,summary,details,input,select,textarea")) return;
+              router.push(symbolHref);
+            }}
+            onKeyDown={(event) => {
+              if (!symbolHref) return;
+              if (event.key !== "Enter" && event.key !== " ") return;
+              const target = event.target instanceof Element ? event.target : null;
+              if (target?.closest("a,button,summary,details,input,select,textarea")) return;
+              event.preventDefault();
+              router.push(symbolHref);
+            }}
+            role={symbolHref ? "link" : undefined}
+            tabIndex={symbolHref ? 0 : undefined}
           >
             <div className="grid gap-4 lg:grid-cols-[minmax(180px,1fr)_150px_130px_190px_130px] lg:items-center">
               <div className="min-w-0">
-                <Link className="font-mono text-2xl font-semibold text-slate-50 transition-colors hover:text-cyan-100" href={`/symbol/${row.symbol}`}>
+                <Link className="font-mono text-2xl font-semibold text-slate-50 transition-colors hover:text-cyan-100" href={symbolHref || "#"}>
                   {row.symbol}
                 </Link>
                 <div className="mt-1 truncate text-sm text-slate-400" title={row.company_name || ""}>
@@ -239,9 +261,7 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
                     {suggestedEntry(row)}
                   </div>
                 </div>
-                <Link className="inline-flex w-fit rounded-full border border-cyan-300/30 bg-cyan-400/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition-all duration-200 hover:border-cyan-300/60 hover:bg-cyan-400/15" href={`/symbol/${row.symbol}`}>
-                  View Details
-                </Link>
+                <div className="text-[11px] font-semibold text-cyan-200 opacity-80 transition-opacity group-hover:opacity-100">Tap for symbol detail</div>
               </div>
             </div>
 

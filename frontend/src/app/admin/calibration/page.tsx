@@ -1,14 +1,14 @@
 import { AdminEmpty, AdminSection, AdminStatCard, StatusBadge } from "@/components/admin/AdminChrome";
 import { CalibrationTable } from "@/components/admin/CalibrationTable";
 import { getAdminCalibrationSummary } from "@/lib/server/admin-data";
-import { decisionLabel } from "@/lib/ui/labels";
+import { decisionLabel, humanizeQuantText } from "@/lib/ui/labels";
 import { formatAdminDate, statusTone } from "../view-utils";
 
 export const dynamic = "force-dynamic";
 
 const GROUP_SECTIONS = [
-  { key: "score_bucket", title: "Score bucket vs forward return" },
-  { key: "decision", title: "Decision/action vs forward return" },
+  { key: "score_bucket", title: "Score range vs forward return" },
+  { key: "decision", title: "Final decision vs forward return" },
   { key: "setup_type", title: "Setup type vs forward return" },
   { key: "asset_type", title: "Asset type vs forward return" },
   { key: "market_regime", title: "Market regime vs forward return" },
@@ -33,11 +33,11 @@ export default async function AdminCalibrationPage() {
       <AdminSection title="Calibration evidence" subtitle="Forward validation is measurement only. These hints do not auto-tune scanner weights or thresholds.">
         <div className="grid gap-3 lg:grid-cols-[0.8fr_1.2fr]">
           <div className="rounded-xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
-            Sample confidence: LOW &lt; 30, MEDIUM 30-100, HIGH &gt; 100 observations. Do not tune from low-sample groups.
+            Evidence confidence: Early/low &lt; 30, Medium 30-100, High &gt; 100 observations. Do not tune from early/low-evidence groups.
           </div>
           {calibration.hints.length ? (
             <ul className="space-y-2 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-6 text-slate-300">
-              {calibration.hints.map((hint) => <li key={hint}>- {hint}</li>)}
+              {calibration.hints.map((hint) => <li key={hint}>- {humanizeQuantText(hint)}</li>)}
             </ul>
           ) : (
             <AdminEmpty>No calibration hints are strong enough yet. Keep collecting forward-return evidence.</AdminEmpty>
@@ -71,7 +71,7 @@ export default async function AdminCalibrationPage() {
       </AdminSection>
 
       {GROUP_SECTIONS.map((section) => (
-        <AdminSection key={section.key} title={section.title} subtitle="Counts below 30 are marked low sample and should not be used for tuning by themselves.">
+        <AdminSection key={section.key} title={section.title} subtitle="Counts below 30 are marked early/low evidence and should not be used for tuning by themselves.">
           {calibration.groups[section.key].length ? <CalibrationTable rows={calibration.groups[section.key]} /> : <AdminEmpty>No calibration rows found for {section.title}.</AdminEmpty>}
         </AdminSection>
       ))}

@@ -6,7 +6,7 @@ import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { WatchlistButton } from "@/components/watchlist-controls";
 import { DataHealthIndicator } from "@/components/data-health-indicator";
 import { TradeLegalNotice } from "@/components/legal/TradeLegalNotice";
-import { normalizedToken } from "@/lib/ui/labels";
+import { normalizedToken, readableText } from "@/lib/ui/labels";
 import { DecisionBadge } from "./DecisionBadge";
 import { GlassPanel } from "./ui/GlassPanel";
 
@@ -70,7 +70,7 @@ export function SymbolDecisionHero({
             <WatchlistButton symbol={row.symbol} />
           </div>
           <div className="mt-4 max-w-3xl text-lg leading-7 text-slate-200">
-            {cleanText(row.decision_reason ?? row.quality_reason, "No decision reason available.")}
+            {readableText(row.decision_reason ?? row.quality_reason, "No decision reason available.")}
           </div>
           <TradeLegalNotice className="mt-4 max-w-3xl" />
           {!showTradePlan ? (

@@ -150,7 +150,7 @@ export type AdminMonitoringSummary = {
   timeRange: MonitoringTimeRange;
 };
 
-export type MonitoringTimeRange = "15m" | "1h" | "6h" | "24h";
+export type MonitoringTimeRange = "15m" | "1h" | "6h" | "24h" | "1w" | "1m" | "6m";
 
 export type AdminAuditLogItem = {
   action: string;
@@ -880,6 +880,12 @@ function monitoringWindow(range: MonitoringTimeRange): { bucketSql: string; inte
       return { bucketSql: "INTERVAL '15 minutes'", intervalSql: "INTERVAL '6 hours'" };
     case "24h":
       return { bucketSql: "INTERVAL '1 hour'", intervalSql: "INTERVAL '24 hours'" };
+    case "1w":
+      return { bucketSql: "INTERVAL '6 hours'", intervalSql: "INTERVAL '7 days'" };
+    case "1m":
+      return { bucketSql: "INTERVAL '1 day'", intervalSql: "INTERVAL '30 days'" };
+    case "6m":
+      return { bucketSql: "INTERVAL '7 days'", intervalSql: "INTERVAL '6 months'" };
     case "1h":
     default:
       return { bucketSql: "INTERVAL '5 minutes'", intervalSql: "INTERVAL '1 hour'" };
@@ -1140,7 +1146,7 @@ function sampleSizeLabel(count: number): "LOW" | "MEDIUM" | "HIGH" {
 function calibrationHints(groups: Record<CalibrationGroupType, CalibrationMetricRow[]>): string[] {
   const hints: string[] = [];
   if (Object.values(groups).flat().every((row) => row.sampleSize === "LOW")) {
-    hints.push("All calibration groups are still low sample. Do not tune weights from this data yet.");
+    hints.push("All calibration groups still have early/low evidence. Do not tune weights from this data yet.");
   }
   const setupRows = groups.setup_type.filter((row) => ["10D", "20D"].includes(row.horizon) && row.expectancyPct !== null);
   if (setupRows.length >= 2) {

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -20,22 +21,27 @@ def print_top_table(df_rank: pd.DataFrame, top_n: int) -> None:
         "asset_type",
         "sector",
         "price",
-        "technical_score",
-        "fundamental_score",
-        "news_score",
-        "macro_score",
-        "risk_penalty",
         "final_score",
-        "short_action",
-        "mid_action",
-        "long_action",
         "final_decision",
         "setup_type",
-        "rating",
+        "confidence_score",
+        "data_quality_score",
+        "decision_reason",
     ]
     display = top[[column for column in display_columns if column in top.columns]].copy()
+    display = display.rename(
+        columns={
+            "final_score": "score",
+            "final_decision": "decision",
+            "confidence_score": "confidence",
+            "data_quality_score": "data_quality",
+            "decision_reason": "reason",
+        },
+    )
+    if "reason" in display.columns:
+        display["reason"] = display["reason"].map(readable_operator_text)
 
-    print("\nTOP CANDIDATES")
+    print("\nTOP CANDIDATES (final_decision source of truth)")
     print(display.to_string(index=False))
 
 
@@ -51,3 +57,14 @@ def save_snapshot(df_rank: pd.DataFrame, outdir: Path, snapshot_time: Optional[d
     snapshot_df.insert(0, "timestamp_utc", snapshot_time.isoformat())
     atomic_write_dataframe_csv(snapshot_df, snapshot_path, index=False)
     return snapshot_path
+
+
+def readable_operator_text(value: object) -> str:
+    text = str(value or "").strip()
+    if not text or text.lower() in {"nan", "none", "null", "n/a"}:
+        return ""
+    return re.sub(r"\b[A-Z0-9]+(?:_[A-Z0-9]+)+\b", lambda match: humanize_code(match.group(0)), text)
+
+
+def humanize_code(value: str) -> str:
+    return " ".join(part.capitalize() for part in value.split("_") if part)

@@ -1,6 +1,7 @@
 import { buildHistoricalEdgeProof, type HistoricalEdgeProof } from "@/lib/trading/edge-proof";
 import type { PerformanceData, RankingRow } from "@/lib/types";
 import { clamp, cleanText, finiteNumber, firstNumber } from "@/lib/ui/formatters";
+import { readableText } from "@/lib/ui/labels";
 
 export type ConvictionResult = {
   label: "High" | "Medium" | "Weak" | "Avoid";
@@ -112,7 +113,7 @@ export function tradeLevels(row: RankingRow): TradeLevels {
 }
 
 export function shortReason(row: RankingRow) {
-  return cleanText(row.decision_reason ?? row.quality_reason ?? row.selection_reason, "Decision reason is not available yet.");
+  return readableText(row.decision_reason ?? row.quality_reason ?? row.selection_reason, "Decision reason is not available yet.");
 }
 
 export function edgeQualityLine(edge: HistoricalEdgeProof) {

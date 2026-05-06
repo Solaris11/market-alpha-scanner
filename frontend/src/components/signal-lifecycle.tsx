@@ -422,8 +422,8 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
           <tbody className="divide-y divide-slate-800/90">
             {visibleSummaryRows.length ? visibleSummaryRows.map((row, index) => (
               <tr key={`${row.group_type}-${row.group_value}-${index}`}>
-                <td className="truncate px-2 py-1.5 text-slate-400">{text(row.group_type)}</td>
-                <td className="truncate px-2 py-1.5 text-slate-200">{text(row.group_value)}</td>
+                <td className="truncate px-2 py-1.5 text-slate-400">{humanizeLabel(row.group_type, "—")}</td>
+                <td className="truncate px-2 py-1.5 text-slate-200">{humanizeLabel(row.group_value, "—")}</td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{numberText(row.count, 0)}</td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.entry_reached_rate)}</td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.target_hit_rate)}</td>
@@ -552,7 +552,7 @@ export function SignalLifecycle({ rows, summaryRows }: Props) {
                 <td className="truncate px-2 py-1.5 font-mono text-slate-400">{text(row.stop_loss)}</td>
                 <td className="truncate px-2 py-1.5 font-mono text-slate-400">{text(row.conservative_target)}</td>
                 <td className="px-2 py-1.5">
-                  <span className={`inline-flex whitespace-nowrap rounded border px-1.5 py-0.5 text-[10px] font-bold ${statusBadgeClass(row.status)}`}>{lifecycleStatus(row.status) || "—"}</span>
+                  <span className={`inline-flex whitespace-nowrap rounded border px-1.5 py-0.5 text-[10px] font-bold ${statusBadgeClass(row.status)}`}>{humanizeLabel(lifecycleStatus(row.status), "—")}</span>
                 </td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{percent(row.return_pct)}</td>
                 <td className="whitespace-nowrap px-2 py-1.5 text-right font-mono text-slate-300">{numberText(row.days_to_entry, 0)}</td>

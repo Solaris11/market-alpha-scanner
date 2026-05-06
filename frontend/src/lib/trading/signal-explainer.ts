@@ -1,5 +1,6 @@
 import type { RankingRow } from "@/lib/types";
 import { cleanText, finiteNumber, firstNumber, formatMoney, formatPercent } from "@/lib/ui/formatters";
+import { readableText } from "@/lib/ui/labels";
 import { buildCorrectionMap, correctionMidpoint, formatCorrectionZone } from "./correction-map";
 import { calculateTradeRisk } from "./risk-calculator";
 
@@ -37,7 +38,7 @@ export function buildCopilotRecommendation(input: CopilotInput): CopilotRecommen
   if (risk.violatesRisk) warnings.push("Trade sizing violates the selected risk profile or has invalid risk.");
   if (decision === "AVOID" || decision === "EXIT") warnings.push("System decision blocks new aggressive entries.");
 
-  const reason = cleanText(signal.decision_reason ?? signal.quality_reason, "");
+  const reason = readableText(signal.decision_reason ?? signal.quality_reason, "");
   const directive =
     decision === "ENTER"
       ? `Enter around $${entry ? entry.toFixed(2) : "N/A"}. Risk is $${risk.maxLoss.toFixed(2)} to target $${target ? target.toFixed(2) : "N/A"} (${risk.riskRewardRatio.toFixed(2)}R). Position size: ${risk.quantity} shares.`
@@ -74,7 +75,7 @@ export function buildWhyThisTrade(row: RankingRow) {
   if ((finiteNumber(row.technical_score) ?? finiteNumber(row.final_score) ?? 0) >= 70) reasons.push("Momentum and technical structure are constructive");
   if ((finiteNumber(row.macro_score) ?? 50) >= 65 || cleanText(row.market_regime, "")) reasons.push(`Macro alignment: ${cleanText(row.market_regime, "supportive enough to monitor")}`);
   if ((finiteNumber(row.risk_reward) ?? 0) >= 2) reasons.push("Risk/reward is favorable enough to consider");
-  if (cleanText(row.decision_reason, "")) reasons.push(cleanText(row.decision_reason));
+  if (cleanText(row.decision_reason, "")) reasons.push(readableText(row.decision_reason));
   return reasons.length ? reasons.slice(0, 4) : ["No strong positive setup drivers are available yet"];
 }
 

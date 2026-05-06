@@ -4,11 +4,20 @@ import type { PointerEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { actionFor, formatNumber } from "@/lib/format";
-import { formatHistoryChartTimestamp, historyChartTooltipLines, type HistoryChartField } from "@/lib/history-chart-tooltip";
+import {
+  filterHistoryObservations,
+  formatHistoryChartTimestamp,
+  historyChartPoints,
+  historyChartTooltipLines,
+  historyTimestampMs,
+  nearestHistoryChartPoint,
+  type HistoryChartField,
+  type HistoryQuickRange,
+} from "@/lib/history-chart-tooltip";
 import { verifiedNewsItemFromRow } from "@/lib/news-source-policy";
 import { nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { HistorySummary, SymbolHistoryRow } from "@/lib/types";
-import { decisionLabel, humanizeLabel, normalizedToken } from "@/lib/ui/labels";
+import { decisionLabel, humanizeLabel, normalizedToken, readableText } from "@/lib/ui/labels";
 
 type Props = {
   defaultSymbol?: string;
@@ -18,7 +27,7 @@ type Props = {
 
 type HistorySortKey = "timestamp_utc" | "price" | "final_score" | "final_score_adjusted" | "final_decision" | "action" | "recommendation_quality" | "entry_status" | "setup_type";
 type HistoryInsightTab = "performance" | "signals" | "news" | "financials" | "events";
-type QuickRange = "all" | "1d" | "3d" | "7d" | "14d";
+type QuickRange = HistoryQuickRange;
 
 const ACTION_PRIORITY: Record<string, number> = {
   ENTER: 0,
@@ -63,11 +72,12 @@ const HISTORY_COLUMNS: { align?: "left" | "right"; key: HistorySortKey; label: s
   { key: "setup_type", label: "Setup" },
 ];
 const QUICK_RANGES: { label: string; value: QuickRange; days?: number }[] = [
-  { label: "All time", value: "all" },
-  { days: 1, label: "Last 1 day", value: "1d" },
-  { days: 3, label: "Last 3 days", value: "3d" },
-  { days: 7, label: "Last 7 days", value: "7d" },
-  { days: 14, label: "Last 14 days", value: "14d" },
+  { days: 7, label: "7D", value: "7d" },
+  { days: 14, label: "14D", value: "14d" },
+  { days: 30, label: "1M", value: "1m" },
+  { days: 183, label: "6M", value: "6m" },
+  { days: 365, label: "1Y", value: "1y" },
+  { label: "All Time", value: "all" },
 ];
 const INSIGHT_TABS: { label: string; value: HistoryInsightTab }[] = [
   { label: "Performance", value: "performance" },
@@ -80,17 +90,6 @@ const INSIGHT_TABS: { label: string; value: HistoryInsightTab }[] = [
 function formatDate(value: string | null | undefined) {
   if (!value) return "N/A";
   return String(value).replace("T", " ").replace("Z", " UTC");
-}
-
-function timestampMs(row: { timestamp_utc: string }) {
-  const ms = Date.parse(row.timestamp_utc);
-  return Number.isFinite(ms) ? ms : null;
-}
-
-function datetimeLocalMs(value: string) {
-  if (!value) return null;
-  const ms = Date.parse(value);
-  return Number.isFinite(ms) ? ms : null;
 }
 
 function normalizeSymbol(value: unknown) {
@@ -121,7 +120,7 @@ function formatPercentValue(value: number | null) {
 
 function cleanInsight(value: unknown, fallback: string) {
   const text = String(value ?? "").trim();
-  return text && !["nan", "none", "null", "n/a", "-"].includes(text.toLowerCase()) ? text : fallback;
+  return text && !["nan", "none", "null", "n/a", "-"].includes(text.toLowerCase()) ? readableText(text) : fallback;
 }
 
 function financialInterpretation(label: string, value: number | null) {
@@ -165,7 +164,7 @@ function takeProfitDisplay(row: SymbolHistoryRow) {
 
 function averageInterval(rows: SymbolHistoryRow[]) {
   const ordered = rows
-    .map(timestampMs)
+    .map(historyTimestampMs)
     .filter((value): value is number => value !== null)
     .sort((a, b) => a - b);
   if (ordered.length < 2) return null;
@@ -366,9 +365,11 @@ function InsightMetric({ label, value }: { label: string; value: string }) {
 
 function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: HistoryChartField; label: string }) {
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const points = rows
-    .map((row) => ({ row, time: timestampMs(row), value: typeof row[field] === "number" ? row[field] : null }))
-    .filter((point): point is { row: SymbolHistoryRow; time: number; value: number } => point.time !== null && point.value !== null);
+  const points = useMemo(() => historyChartPoints(rows, field), [field, rows]);
+
+  useEffect(() => {
+    setActiveIndex(null);
+  }, [field, points.length, rows]);
 
   if (!points.length) {
     return <div className="rounded border border-dashed border-slate-700/70 px-3 py-8 text-center text-xs text-slate-500">{label} data not available.</div>;
@@ -383,11 +384,11 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: H
   const maxValue = Math.max(...points.map((point) => point.value));
   const timeSpan = Math.max(1, maxTime - minTime);
   const valueSpan = Math.max(1, maxValue - minValue);
-  const plotted = points.map((point, index) => {
+  const plotted = points.map((point) => {
     const x = padding + ((point.time - minTime) / timeSpan) * (width - padding * 2);
     const y = height - padding - ((point.value - minValue) / valueSpan) * (height - padding * 2);
-    if (points.length === 1) return { x: width / 2, y: height / 2, index };
-    return { x, y, index };
+    if (points.length === 1) return { x: width / 2, y: height / 2, index: point.index };
+    return { x, y, index: point.index };
   });
   const path = plotted.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
   const activePoint = activeIndex !== null ? plotted[activeIndex] : null;
@@ -397,16 +398,9 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: H
   function handlePointer(event: PointerEvent<SVGSVGElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     const pointerX = ((event.clientX - rect.left) / Math.max(1, rect.width)) * width;
-    let nearestIndex = 0;
-    let nearestDistance = Number.POSITIVE_INFINITY;
-    for (const point of plotted) {
-      const distance = Math.abs(point.x - pointerX);
-      if (distance < nearestDistance) {
-        nearestDistance = distance;
-        nearestIndex = point.index;
-      }
-    }
-    setActiveIndex(nearestIndex);
+    const pointerRatio = Math.max(0, Math.min(1, (pointerX - padding) / Math.max(1, width - padding * 2)));
+    const targetTime = minTime + pointerRatio * timeSpan;
+    setActiveIndex(nearestHistoryChartPoint(points, targetTime));
   }
 
   return (
@@ -505,7 +499,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
         const payload = (await response.json()) as { rows?: SymbolHistoryRow[]; error?: string };
         if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
         if (active) {
-          setSymbolRows((payload.rows ?? []).sort((a, b) => String(a.timestamp_utc).localeCompare(String(b.timestamp_utc))));
+          setSymbolRows(filterHistoryObservations(payload.rows ?? [], "all"));
         }
       } catch (error) {
         if (active) setSymbolError(error instanceof Error ? error.message : "Failed to load symbol history.");
@@ -520,23 +514,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
   }, [selectedSymbol]);
 
   const filteredByTime = useMemo(() => {
-    const fromMs = datetimeLocalMs(customFrom);
-    const toMs = datetimeLocalMs(customTo);
-    const hasCustomRange = Boolean(customFrom || customTo);
-    const selectedRange = QUICK_RANGES.find((option) => option.value === quickRange);
-    const quickCutoff = !hasCustomRange && selectedRange?.days ? Date.now() - selectedRange.days * 24 * 60 * 60 * 1000 : null;
-
-    return symbolRows.filter((row) => {
-      const rowMs = timestampMs(row);
-      if (rowMs === null) return false;
-      if (hasCustomRange) {
-        if (fromMs !== null && rowMs < fromMs) return false;
-        if (toMs !== null && rowMs > toMs) return false;
-        return true;
-      }
-      if (quickCutoff !== null && rowMs < quickCutoff) return false;
-      return true;
-    });
+    return filterHistoryObservations(symbolRows, quickRange, customFrom, customTo);
   }, [customFrom, customTo, quickRange, symbolRows]);
   const first = filteredByTime[0];
   const latest = filteredByTime[filteredByTime.length - 1];
@@ -551,18 +529,14 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
 
   function handleQuickRangeChange(value: QuickRange) {
     setQuickRange(value);
-    setCustomFrom("");
-    setCustomTo("");
   }
 
   function handleCustomFromChange(value: string) {
     setCustomFrom(value);
-    setQuickRange("all");
   }
 
   function handleCustomToChange(value: string) {
     setCustomTo(value);
-    setQuickRange("all");
   }
 
   function handleSort(key: HistorySortKey) {
@@ -618,7 +592,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
       {symbolRows.length ? (
         <>
           <section className="terminal-panel rounded-md p-3">
-            <div className="grid gap-3 md:grid-cols-4">
+            <div className="grid gap-3 md:grid-cols-5">
               <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Range
                 <select className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => handleQuickRangeChange(event.target.value as QuickRange)} value={quickRange}>
@@ -639,8 +613,20 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
               </label>
               <div className="self-end text-xs text-slate-500">
                 Showing {filteredByTime.length.toLocaleString()} of {symbolRows.length.toLocaleString()} observations
+                {customFrom || customTo ? <div className="mt-0.5 text-amber-200">Custom range active</div> : null}
               </div>
-            </div>
+              <button
+                className="h-9 self-end rounded border border-slate-700/80 px-3 text-xs font-semibold text-slate-300 transition hover:border-sky-400/50 hover:text-sky-200 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={!customFrom && !customTo}
+                onClick={() => {
+                  setCustomFrom("");
+                  setCustomTo("");
+                }}
+                type="button"
+              >
+                Clear Dates
+              </button>
+              </div>
           </section>
 
           {filteredByTime.length ? (
@@ -752,7 +738,18 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
       <details className="terminal-panel rounded-2xl p-4 text-xs text-slate-400">
         <summary className="cursor-pointer font-semibold uppercase tracking-[0.12em] text-slate-500">Advanced diagnostics</summary>
         <div className="mt-2 text-xs text-slate-500">Raw file inventory for technical review only. Showing {Math.min(history.snapshots.length, 200).toLocaleString()} of {history.snapshots.length.toLocaleString()} files.</div>
-        <div className="mt-3 overflow-x-auto">
+        <div className="mt-3 space-y-2 lg:hidden">
+          {history.snapshots.slice(0, 40).map((snapshot) => (
+            <div className="rounded-xl border border-slate-800/80 bg-slate-950/45 p-3" key={snapshot.name}>
+              <div className="truncate font-mono text-[11px] text-slate-300">{snapshot.name}</div>
+              <div className="mt-2 grid grid-cols-1 gap-1 text-[11px] text-slate-500">
+                <div>Timestamp: <span className="text-slate-400">{formatDate(snapshot.timestamp)}</span></div>
+                <div>Modified: <span className="text-slate-400">{formatDate(snapshot.modifiedAt)}</span></div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 hidden overflow-x-auto lg:block">
           <table className="w-full min-w-[760px] table-fixed border-collapse text-xs">
             <colgroup>
               <col style={{ width: 300 }} />

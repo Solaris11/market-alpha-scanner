@@ -67,7 +67,7 @@ export function CalibrationTable({ rows }: { rows: CalibrationMetricRow[] }) {
               <td className={`px-3 py-3 text-right font-mono ${returnTone(row.worstReturnPct)}`}>{formatPercent(row.worstReturnPct)}</td>
               <td className="px-3 py-3">
                 <span className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${sampleTone(row.sampleSize)}`}>
-                  {row.sampleSize}
+                  {sampleLabel(row.sampleSize)}
                 </span>
                 {row.lowConfidence ? <div className="mt-1 text-[10px] text-amber-100">Do not tune from this alone</div> : null}
               </td>
@@ -89,6 +89,12 @@ function sampleTone(value: "LOW" | "MEDIUM" | "HIGH"): string {
   if (value === "HIGH") return "border-emerald-300/25 bg-emerald-400/10 text-emerald-100";
   if (value === "MEDIUM") return "border-cyan-300/25 bg-cyan-400/10 text-cyan-100";
   return "border-amber-300/25 bg-amber-400/10 text-amber-100";
+}
+
+function sampleLabel(value: "LOW" | "MEDIUM" | "HIGH"): string {
+  if (value === "HIGH") return "High evidence";
+  if (value === "MEDIUM") return "Medium evidence";
+  return "Early/low evidence";
 }
 
 function compareValues(left: string | number | boolean | null, right: string | number | boolean | null): number {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { safePaperErrorCode } from "@/lib/paper-safety";
+import { isAdminRole } from "@/lib/security/admin-policy";
 import { requireUser } from "@/lib/server/access-control";
 import { getDbPool } from "@/lib/server/db";
 import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
@@ -73,6 +74,9 @@ export async function POST(request: NextRequest) {
   const quantity = validated.quantity!;
   const positionValue = entryPrice * quantity;
   const userId = access.user.id;
+  const isAdmin = isAdminRole(access.user.role);
+  const startingBalance = isAdmin ? 1_000_000_000 : 20_000;
+  const maxOpenPositions = isAdmin ? 999 : 5;
   const accountName = `default:${userId}`;
   const client = await clientPool.connect();
 
@@ -91,10 +95,21 @@ export async function POST(request: NextRequest) {
         max_open_positions,
         enabled
       )
-      VALUES ($1, $2, 10000, 10000, 0, 0, 0.10, 0.01, 5, true)
+      VALUES ($1, $2, $3, $3, 0, 0, 0.10, 0.01, $4, true)
       ON CONFLICT (name) DO UPDATE
-      SET user_id = COALESCE(paper_accounts.user_id, EXCLUDED.user_id), updated_at = now()
-    `, [accountName, userId]);
+      SET
+        user_id = COALESCE(paper_accounts.user_id, EXCLUDED.user_id),
+        starting_balance = CASE
+          WHEN EXCLUDED.starting_balance > paper_accounts.starting_balance THEN EXCLUDED.starting_balance
+          ELSE paper_accounts.starting_balance
+        END,
+        cash_balance = CASE
+          WHEN EXCLUDED.starting_balance > paper_accounts.starting_balance THEN paper_accounts.cash_balance + (EXCLUDED.starting_balance - paper_accounts.starting_balance)
+          ELSE paper_accounts.cash_balance
+        END,
+        max_open_positions = GREATEST(paper_accounts.max_open_positions, EXCLUDED.max_open_positions),
+        updated_at = now()
+    `, [accountName, userId, startingBalance, maxOpenPositions]);
 
     const accountResult = await client.query(
       `

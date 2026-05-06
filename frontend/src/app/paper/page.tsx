@@ -283,7 +283,7 @@ function TrustHeadlineCards({ metrics }: { metrics: TrustMetrics }) {
     { label: "Total Return", value: percentText(metrics.totalReturn), meta: "realized + open", tone: metrics.totalReturn },
     { label: "Realized PnL", value: money(metrics.realizedPnl), meta: "closed trades", tone: metrics.realizedPnl },
     { label: "Unrealized PnL", value: money(metrics.unrealizedPnl), meta: "open positions", tone: metrics.unrealizedPnl },
-    { label: "Win Rate", value: percentText(metrics.winRate), meta: "closed trades", warning: metrics.closedTrades < 3 ? "Low sample size" : null },
+    { label: "Win Rate", value: percentText(metrics.winRate), meta: "closed trades", warning: metrics.closedTrades < 3 ? "Early/low evidence" : null },
     {
       label: "Expected Return per Trade",
       value: metrics.expectancy.expectancy === null ? "Not enough data yet" : signedPercentText(metrics.expectancy.expectancy),
@@ -708,7 +708,7 @@ export default async function PaperPage() {
                   authenticated={entitlement.authenticated}
                   compact
                   description="Paper analytics, trade autopsy, setup evidence, equity curve, and ghost portfolio are premium retention tools. Basic paper practice remains available."
-                  previewItems={["Trust metrics and expectancy", "Trade autopsy and setup breakdowns", "Ghost portfolio discipline review"]}
+                  previewItems={["Trust metrics and expected-return context", "Trade autopsy and setup breakdowns", "Ghost portfolio discipline review"]}
                   title={entitlement.authenticated ? "Paper analytics are available on Premium" : "Sign in to preview paper analytics"}
                 />
               )}

@@ -1,6 +1,7 @@
 import { freshnessFromTimestamp, type DataFreshness } from "@/lib/data-health";
 import type { PerformanceData, RankingRow } from "@/lib/types";
 import { finiteNumber, firstNumber, formatMoney } from "@/lib/ui/formatters";
+import { humanizeLabel, readableText } from "@/lib/ui/labels";
 import { buildEdgeLookup, computeConviction, selectBestTradeNow } from "./conviction";
 
 export type OpportunityViewModel = {
@@ -50,7 +51,7 @@ function toOpportunityViewModel(row: RankingRow, edge?: Parameters<typeof comput
     price: numberOrNull(row.price),
     final_score: numberOrNull(row.final_score),
     final_decision: stringOrNull(row.final_decision ?? row.action),
-    decision_reason: stringOrNull(row.decision_reason ?? row.quality_reason ?? row.selection_reason),
+    decision_reason: readableText(row.decision_reason ?? row.quality_reason ?? row.selection_reason, ""),
     entryStatus: stringOrNull(row.entry_status),
     entryZoneLabel: entryZoneLabel(row),
     recommendationQuality: stringOrNull(row.recommendation_quality),
@@ -112,10 +113,5 @@ function rangeLabel(lowValue: unknown, highValue: unknown): string | null {
 function friendlyLabel(value: unknown): string | null {
   const text = stringOrNull(value);
   if (!text) return null;
-  return text
-    .toLowerCase()
-    .split(/[_\s-]+/)
-    .filter(Boolean)
-    .map((part) => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
-    .join(" ");
+  return humanizeLabel(text);
 }

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { compact, formatNumber } from "@/lib/format";
@@ -378,16 +379,15 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
                   tabIndex={0}
                 >
                   <td className="px-2 py-1.5 font-mono font-semibold text-sky-200">
-                    <button
+                    <Link
                       className="font-mono font-semibold text-sky-200 hover:text-sky-100"
+                      href={`/symbol/${row.symbol}`}
                       onClick={(event) => {
                         event.stopPropagation();
-                        selectSymbol(row.symbol);
                       }}
-                      type="button"
                     >
                       {row.symbol}
-                    </button>
+                    </Link>
                   </td>
                   <td className="truncate px-2 py-1.5 text-slate-400" title={row.company_name ?? ""}>
                     {compact(row.company_name || "—", 48)}
@@ -417,7 +417,7 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
         <section className="terminal-panel rounded-md p-4">
           <div className="flex flex-col gap-3 border-b border-slate-800 pb-3 md:flex-row md:items-start md:justify-between">
             <div className="min-w-0">
-              <div className="font-mono text-2xl font-semibold text-slate-50">{selectedDisplay.symbol}</div>
+                <Link className="font-mono text-2xl font-semibold text-slate-50 transition hover:text-cyan-100" href={`/symbol/${selectedDisplay.symbol}`}>{selectedDisplay.symbol}</Link>
               <div className="truncate text-sm text-slate-400">{selectedDisplay.company_name || "—"}</div>
             </div>
             <div className="grid grid-cols-2 gap-3 text-xs md:grid-cols-4">
@@ -427,11 +427,11 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
               </div>
               <div>
                 <div className="uppercase tracking-[0.12em] text-slate-500">Rating</div>
-                <div className="text-slate-100">{selectedDisplay.latest_rating ?? "N/A"}</div>
+                <div className="text-slate-100">{humanizeLabel(selectedDisplay.latest_rating, "N/A")}</div>
               </div>
               <div>
                 <div className="uppercase tracking-[0.12em] text-slate-500">Action</div>
-                <div className="text-slate-100">{selectedDisplay.latest_action ?? "N/A"}</div>
+                <div className="text-slate-100">{humanizeLabel(selectedDisplay.latest_action, "N/A")}</div>
               </div>
               <button
                 className="self-start rounded border border-slate-700/80 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:border-sky-400/50 hover:text-sky-200"
@@ -452,7 +452,7 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
               { label: "Latest Price", value: formatNumber(selectedDisplay.latest_price) },
               { label: "Price Change", value: percent(selectedDisplay.price_change_pct) },
               { label: "Observations", value: selectedDisplay.snapshot_count.toLocaleString() },
-              { label: "Rating", value: `${selectedDisplay.first_rating ?? "N/A"} → ${selectedDisplay.latest_rating ?? "N/A"}` },
+              { label: "Rating", value: `${humanizeLabel(selectedDisplay.first_rating, "N/A")} → ${humanizeLabel(selectedDisplay.latest_rating, "N/A")}` },
             ].map((metric) => (
               <div className="rounded border border-slate-800 bg-slate-950/50 p-2" key={metric.label}>
                 <div className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{metric.label}</div>

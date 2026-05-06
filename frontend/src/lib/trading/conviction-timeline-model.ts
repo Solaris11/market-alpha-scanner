@@ -4,6 +4,7 @@ import type { SignalHistoryPoint } from "@/lib/adapters/DataServiceAdapter";
 import type { ConvictionTimelineGroup, ConvictionTimelineModel } from "@/lib/trading/conviction-timeline-types";
 import { formatDateUtc, utcTimestampMs } from "@/lib/ui/date-formatters";
 import { cleanText, formatNumber } from "@/lib/ui/formatters";
+import { humanizeLabel } from "@/lib/ui/labels";
 
 type TimelineGroup = {
   count: number;
@@ -112,5 +113,5 @@ function clean(value: unknown): string {
 }
 
 function label(value: unknown): string {
-  return clean(value).replaceAll("_", " ");
+  return humanizeLabel(clean(value));
 }

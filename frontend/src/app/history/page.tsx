@@ -10,12 +10,21 @@ import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
 
 export const dynamic = "force-dynamic";
 
+type HistoryPageProps = {
+  searchParams?: Promise<{ symbol?: string | string[] }>;
+};
+
 function formatDate(value: string | null) {
   if (!value) return "N/A";
   return value.replace("T", " ").replace("Z", " UTC");
 }
 
-export default async function HistoryPage() {
+function requestedSymbolFromSearchParams(params: { symbol?: string | string[] } | undefined): string {
+  const raw = Array.isArray(params?.symbol) ? params?.symbol[0] : params?.symbol;
+  return String(raw ?? "").trim().toUpperCase().replace(/[^A-Z0-9._-]/g, "");
+}
+
+export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   const entitlement = await getEntitlement();
   if (requiresLegalAcceptance(entitlement)) {
     return (
@@ -41,7 +50,9 @@ export default async function HistoryPage() {
   const [history, rawRanking, historySymbols, scanSafety] = await Promise.all([getHistorySummary(), getFullRanking(), getHistorySymbolsFromSnapshots(), getCurrentScanSafety()]);
   const ranking = applyStaleDataSafetyToRows(rawRanking, scanSafety);
   const symbols = Array.from(new Set([...ranking.map((row) => row.symbol), ...historySymbols].filter(Boolean).map((symbol) => String(symbol).trim().toUpperCase()))).sort();
-  const defaultSymbol = String(ranking[0]?.symbol ?? symbols[0] ?? "").trim().toUpperCase();
+  const params = searchParams ? await searchParams : undefined;
+  const requestedSymbol = requestedSymbolFromSearchParams(params);
+  const defaultSymbol = requestedSymbol && symbols.includes(requestedSymbol) ? requestedSymbol : String(ranking[0]?.symbol ?? symbols[0] ?? "").trim().toUpperCase();
 
   return (
     <TerminalShell>

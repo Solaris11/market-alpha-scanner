@@ -249,7 +249,7 @@ function worstSummary(rows: CsvRow[], groupType: string, horizon = "10D") {
 
 function edgeLabel(row: CsvRow | undefined) {
   if (!row) return "—";
-  return `${text(row.group_value)} ${percent(row.avg_return)}`;
+  return `${humanizeLabel(row.group_value, text(row.group_value))} ${percent(row.avg_return)}`;
 }
 
 function BarChart({ rows, groupType, metric, title, horizon = "10D" }: { rows: CsvRow[]; groupType: string; metric: "avg_return" | "hit_rate" | "avg_max_drawdown"; title: string; horizon?: string }) {
@@ -280,8 +280,8 @@ function BarChart({ rows, groupType, metric, title, horizon = "10D" }: { rows: C
           const positive = value >= 0;
           return (
             <div className="grid grid-cols-[110px_minmax(0,1fr)_68px] items-center gap-2 text-xs" key={`${groupType}-${row.group_value}-${metric}`}>
-              <div className="truncate text-slate-400" title={text(row.group_value)}>
-                {text(row.group_value)}
+              <div className="truncate text-slate-400" title={humanizeLabel(row.group_value, text(row.group_value))}>
+                {humanizeLabel(row.group_value, text(row.group_value))}
               </div>
               <div className="h-2 overflow-hidden rounded bg-slate-800">
                 <div className={`h-full rounded ${positive ? "bg-emerald-400/70" : "bg-rose-400/70"}`} style={{ width: `${width}%` }} />
@@ -401,7 +401,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
     <section className="space-y-3">
       <section className="terminal-panel rounded-md p-4">
         <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Readiness</div>
-        <p className="mt-1 text-xs text-slate-400">Grouped results summarize signal buckets. Forward returns show symbol-level observations.</p>
+        <p className="mt-1 text-xs text-slate-400">Grouped results summarize scanner evidence ranges. Forward returns show symbol-level observations.</p>
         <div className="mt-3 grid gap-2 md:grid-cols-4">
           {readiness.map((metric) => (
             <div className="rounded border border-slate-800 bg-slate-950/50 p-2" key={metric.label}>
@@ -422,7 +422,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
           { label: "Best Rating 10D", value: edgeLabel(bestSummary(summaryRows, "rating", "10D")) },
           { label: "Best Rating 20D", value: edgeLabel(bestSummary(summaryRows, "rating", "20D")) },
           { label: "Best Setup 10D", value: edgeLabel(bestSummary(summaryRows, "setup_type", "10D")) },
-          { label: "Best Score Bucket", value: edgeLabel(bestSummary(summaryRows, "score_bucket", "10D")) },
+          { label: "Best Score Range", value: edgeLabel(bestSummary(summaryRows, "score_bucket", "10D")) },
           { label: "Worst Setup 10D", value: edgeLabel(worstSummary(summaryRows, "setup_type", "10D")) },
           { label: "Best Entry Status", value: edgeLabel(bestSummary(summaryRows, "entry_status", "10D")) },
           { label: "Summary Rows", value: summaryRows.length.toLocaleString() },
@@ -437,7 +437,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
       </section>
 
       <section className="grid gap-3 xl:grid-cols-2">
-        <BarChart groupType="score_bucket" metric="avg_return" rows={summaryRows} title="Avg Return by Score Bucket" />
+        <BarChart groupType="score_bucket" metric="avg_return" rows={summaryRows} title="Avg Return by Score Range" />
         <BarChart groupType="rating" metric="hit_rate" rows={summaryRows} title="Hit Rate by Rating" />
         <BarChart groupType="setup_type" metric="avg_return" rows={summaryRows} title="Avg Return by Setup" />
         <BarChart groupType="entry_status" metric="avg_max_drawdown" rows={summaryRows} title="Avg Drawdown by Entry Status" />

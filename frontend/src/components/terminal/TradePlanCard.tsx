@@ -1,6 +1,7 @@
 import type { TradePlanEngine } from "@/hooks/useTradePlanEngine";
 import { TradeLegalNotice } from "@/components/legal/TradeLegalNotice";
 import { cleanText, formatMoney, formatNumber, formatPercent } from "@/lib/ui/formatters";
+import { readableText } from "@/lib/ui/labels";
 import type { RankingRow } from "@/lib/types";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
@@ -56,7 +57,7 @@ export function TradePlanCard({ engine, row }: { engine: TradePlanEngine; row: R
           <Marker label="Entry" left={entryPosition} value={formatMoney(entry)} />
           <Marker label="Target" left={targetPosition} value={formatMoney(target)} />
         </div>
-        <div className="mt-3 text-xs text-slate-500">{cleanText(row.decision_reason, "Use this context only if price, risk, and decision remain valid.")}</div>
+        <div className="mt-3 text-xs text-slate-500">{readableText(row.decision_reason, "Use this context only if price, risk, and decision remain valid.")}</div>
       </div>
     </GlassPanel>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
@@ -212,6 +213,11 @@ function targetDisplay(rule: AlertRule) {
   if (rule.scope === "watchlist") return "Watchlist";
   if (rule.scope === "global") return "All symbols";
   return rule.symbol || "—";
+}
+
+function symbolHref(value: unknown) {
+  const symbol = String(value ?? "").trim().toUpperCase();
+  return /^[A-Z0-9._-]+$/.test(symbol) ? `/symbol/${encodeURIComponent(symbol)}` : "";
 }
 
 function compactConfig(rule: AlertRule) {
@@ -574,7 +580,15 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
                   <div>{scopeLabel(rule.scope)}</div>
                   <div className="truncate font-mono text-[10px] text-slate-500">{rule.id}</div>
                 </td>
-                <td className="px-2 py-1.5 font-mono text-sky-200">{targetDisplay(rule)}</td>
+                <td className="px-2 py-1.5 font-mono text-sky-200">
+                  {symbolHref(targetDisplay(rule)) ? (
+                    <Link className="hover:text-sky-100" href={symbolHref(targetDisplay(rule))}>
+                      {targetDisplay(rule)}
+                    </Link>
+                  ) : (
+                    targetDisplay(rule)
+                  )}
+                </td>
                 <td className="truncate px-2 py-1.5">{typeLabel(rule.type)}</td>
                 <td className="px-2 py-1.5 font-mono">{thresholdDisplay(rule)}</td>
                 <td className="px-2 py-1.5 font-mono">{minScoreDisplay(rule)}</td>
@@ -833,11 +847,13 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
           {watchlist.length ? (
             watchlist.map((item) => (
               <div className="flex flex-col gap-2 py-2 lg:flex-row lg:items-center lg:justify-between" key={item}>
-                <div className="font-mono font-semibold text-sky-200">{item}</div>
+                <Link className="font-mono font-semibold text-sky-200 hover:text-sky-100" href={`/symbol/${encodeURIComponent(item)}`}>
+                  {item}
+                </Link>
                 <div className="flex flex-wrap gap-1.5">
-                  {quickRule(item, "buy_zone_hit", "Buy Zone", { entry_filter: "any" })}
-                  {quickRule(item, "stop_loss_broken", "Stop Loss", { entry_filter: "any" })}
-                  {quickRule(item, "take_profit_hit", "Take Profit", { entry_filter: "any" })}
+                  {quickRule(item, "buy_zone_hit", "Entry Zone", { entry_filter: "any" })}
+                  {quickRule(item, "stop_loss_broken", "Stop Context", { entry_filter: "any" })}
+                  {quickRule(item, "take_profit_hit", "Target Context", { entry_filter: "any" })}
                   {quickRule(item, "score_changed_by", "Score +/-2", { threshold: 2, entry_filter: "avoid_overextended" })}
                   {quickRule(item, "rating_changed", "Rating Change", { entry_filter: "good_or_wait" })}
                   {quickRule(item, "action_changed", "Action Change", { entry_filter: "good_or_wait" })}

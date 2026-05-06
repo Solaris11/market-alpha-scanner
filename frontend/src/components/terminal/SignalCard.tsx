@@ -5,6 +5,7 @@ import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
 import { computeConviction } from "@/lib/trading/conviction";
 import type { RankingRow } from "@/lib/types";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
+import { readableText } from "@/lib/ui/labels";
 import { DecisionBadge } from "./DecisionBadge";
 
 function boundedScore(value: unknown) {
@@ -60,7 +61,7 @@ export function SignalCard({ edge, row }: { edge?: HistoricalEdgeProof; row: Ran
           <div className="font-mono text-[10px] text-slate-400">{riskRewardLabel(row)}</div>
         </div>
       </div>
-      <div className="mt-4 text-xs text-slate-400">{cleanText(row.decision_reason ?? row.quality_reason ?? row.setup_type, "No decision reason available.")}</div>
+      <div className="mt-4 text-xs text-slate-400">{readableText(row.decision_reason ?? row.quality_reason ?? row.setup_type, "No decision reason available.")}</div>
     </Link>
   );
 }

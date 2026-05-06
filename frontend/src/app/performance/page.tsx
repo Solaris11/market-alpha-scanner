@@ -12,6 +12,7 @@ import { getCalibrationInsights, getFullRanking, getHistorySummary, getIntradayS
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
+import { humanizeLabel, humanizeQuantText } from "@/lib/ui/labels";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +63,7 @@ function groupTitle(group: Record<string, unknown> | null) {
   if (!group) return "N/A";
   const label = text(group.label, "");
   if (label) return label;
-  return `${text(group.group_type, "group")}=${text(group.group_value, "unknown")} on ${text(group.horizon, "unknown")}`;
+  return `${humanizeLabel(group.group_type, "Group")} ${humanizeLabel(group.group_value, "unknown")} over ${text(group.horizon, "unknown")}`;
 }
 
 function stringList(value: unknown) {
@@ -75,14 +76,15 @@ function CalibrationInsightsPanel({ insights }: { insights: Record<string, unkno
   const warnings = stringList(insights?.warnings);
   const lowSampleWarnings = stringList(insights?.low_sample_warnings).slice(0, 4);
   const generatedAt = text(insights?.generated_at, "");
+  const cards = insights ? buildInsightCards(insights, bestGroup, worstGroup, warnings, lowSampleWarnings) : [];
 
   return (
     <section className="terminal-panel rounded-md p-4">
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Calibration Insights</div>
-          <h2 className="mt-1 text-lg font-semibold text-slate-50">Signal Calibration Readout</h2>
-          <p className="mt-1 text-sm text-slate-400">Uses completed forward-return observations to highlight which signal buckets are showing edge.</p>
+          <h2 className="mt-1 text-lg font-semibold text-slate-50">Scanner Learning Readout</h2>
+          <p className="mt-1 text-sm text-slate-400">Plain-English historical evidence from completed forward-return observations. It does not auto-tune the scanner.</p>
         </div>
         <div className="font-mono text-xs text-slate-500">{generatedAt ? `Generated ${formatDate(generatedAt)}` : "Not generated yet"}</div>
       </div>
@@ -93,41 +95,30 @@ function CalibrationInsightsPanel({ insights }: { insights: Record<string, unkno
         <>
           <div className="mt-3 grid gap-2 md:grid-cols-2">
             <div className="rounded border border-emerald-400/20 bg-emerald-400/10 p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300">Best Group</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-300">Currently Stronger Evidence</div>
               <div className="mt-1 truncate text-sm font-semibold text-slate-50" title={groupTitle(bestGroup)}>{groupTitle(bestGroup)}</div>
               <div className="mt-1 text-xs text-slate-300">
-                Avg {percent(bestGroup?.avg_return)} · Hit {ratio(bestGroup?.hit_rate)} · Edge {edge(bestGroup?.edge_score)}
+                Avg {percent(bestGroup?.avg_return)} · Win rate {ratio(bestGroup?.hit_rate)} · Historical advantage {edge(bestGroup?.edge_score)}
               </div>
             </div>
             <div className="rounded border border-rose-400/20 bg-rose-400/10 p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-rose-300">Worst Group</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-rose-300">Currently Weaker Evidence</div>
               <div className="mt-1 truncate text-sm font-semibold text-slate-50" title={groupTitle(worstGroup)}>{groupTitle(worstGroup)}</div>
               <div className="mt-1 text-xs text-slate-300">
-                Avg {percent(worstGroup?.avg_return)} · Hit {ratio(worstGroup?.hit_rate)} · Edge {edge(worstGroup?.edge_score)}
+                Avg {percent(worstGroup?.avg_return)} · Win rate {ratio(worstGroup?.hit_rate)} · Historical advantage {edge(worstGroup?.edge_score)}
               </div>
             </div>
           </div>
 
           <div className="mt-3 grid gap-2 lg:grid-cols-3">
-            <div className="rounded border border-slate-800 bg-slate-950/50 p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Score Bucket Note</div>
-              <p className="mt-1 text-sm text-slate-300">{text(insights.score_bucket_note)}</p>
-            </div>
-            <div className="rounded border border-slate-800 bg-slate-950/50 p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Setup Note</div>
-              <p className="mt-1 text-sm text-slate-300">{text(insights.setup_note)}</p>
-            </div>
-            <div className="rounded border border-slate-800 bg-slate-950/50 p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Rating / Action Note</div>
-              <p className="mt-1 text-sm text-slate-300">{text(insights.rating_action_note)}</p>
-            </div>
+            {cards.map((card) => <InsightCard card={card} key={card.title} />)}
           </div>
 
           {warnings.length || lowSampleWarnings.length ? (
             <div className="mt-3 rounded border border-amber-400/20 bg-amber-400/10 p-3">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-300">Warnings</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-300">Evidence Notes</div>
               <ul className="mt-2 space-y-1 text-sm text-amber-100">
-                {[...warnings, ...lowSampleWarnings].slice(0, 6).map((warning) => <li key={warning}>{warning}</li>)}
+                {[...warnings, ...lowSampleWarnings].slice(0, 6).map((warning) => <li key={warning}>{humanizeQuantText(warning)}</li>)}
               </ul>
             </div>
           ) : null}
@@ -135,6 +126,63 @@ function CalibrationInsightsPanel({ insights }: { insights: Record<string, unkno
       )}
     </section>
   );
+}
+
+type InsightCardModel = {
+  confidence: string;
+  detail: string;
+  interpretation: string;
+  title: string;
+  tone: "good" | "warn" | "bad";
+};
+
+function buildInsightCards(insights: Record<string, unknown>, bestGroup: Record<string, unknown> | null, worstGroup: Record<string, unknown> | null, warnings: string[], lowSampleWarnings: string[]): InsightCardModel[] {
+  return [
+    {
+      confidence: evidenceLabel(bestGroup),
+      detail: humanizeQuantText(insights.score_bucket_note, "Not enough historical evidence yet."),
+      interpretation: "Use score ranges as context until more forward-return observations accumulate.",
+      title: "What the scanner is learning",
+      tone: warnings.length ? "warn" : "good",
+    },
+    {
+      confidence: evidenceLabel(worstGroup),
+      detail: humanizeQuantText(insights.setup_note, "Setup evidence is still developing."),
+      interpretation: "Compare setup types in Advanced before changing any calibration assumptions.",
+      title: "Why it matters",
+      tone: "warn",
+    },
+    {
+      confidence: lowSampleWarnings.length ? "Early/low evidence" : "Medium evidence",
+      detail: humanizeQuantText(insights.rating_action_note, "Decision separation needs more observations."),
+      interpretation: "Preserve conservative thresholds; these observations are research evidence only.",
+      title: "Suggested interpretation",
+      tone: lowSampleWarnings.length ? "warn" : "good",
+    },
+  ];
+}
+
+function InsightCard({ card }: { card: InsightCardModel }) {
+  const tone = card.tone === "good" ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-100" : card.tone === "bad" ? "border-rose-400/20 bg-rose-400/10 text-rose-100" : "border-amber-400/20 bg-amber-400/10 text-amber-100";
+  return (
+    <div className={`rounded border p-3 ${tone}`}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.14em]">{card.title}</div>
+        <span className="rounded-full border border-white/10 bg-black/15 px-2 py-0.5 text-[10px] font-semibold">{card.confidence}</span>
+      </div>
+      <p className="mt-2 text-sm leading-6 text-slate-200">{card.detail}</p>
+      <p className="mt-2 text-xs leading-5 text-slate-400">{card.interpretation}</p>
+    </div>
+  );
+}
+
+function evidenceLabel(group: Record<string, unknown> | null): string {
+  const count = numberValue(group?.count);
+  if (count !== null) {
+    if (count > 100) return "High evidence";
+    if (count >= 30) return "Medium evidence";
+  }
+  return "Early/low evidence";
 }
 
 export default async function PerformancePage() {

@@ -199,6 +199,11 @@ function alertTarget(rule: AlertRule) {
   return rule.symbol || "—";
 }
 
+function symbolHref(value: unknown) {
+  const symbol = String(value ?? "").trim().toUpperCase();
+  return /^[A-Z0-9._-]+$/.test(symbol) ? `/symbol/${encodeURIComponent(symbol)}` : "";
+}
+
 function stateRuleId(key: string, state: AlertStateEntry) {
   return state.alert_id || key.split(":")[0];
 }
@@ -243,7 +248,15 @@ function ActiveAlertRulesPanel({ rules }: { rules: AlertRule[] }) {
                 {alertTypeLabel(rule.type)}
               </div>
               <div className="truncate text-slate-400">{alertScopeLabel(rule.scope)}</div>
-              <div className="truncate font-mono text-sky-200">{alertTarget(rule)}</div>
+              <div className="truncate font-mono text-sky-200">
+                {symbolHref(alertTarget(rule)) ? (
+                  <Link className="hover:text-sky-100" href={symbolHref(alertTarget(rule))}>
+                    {alertTarget(rule)}
+                  </Link>
+                ) : (
+                  alertTarget(rule)
+                )}
+              </div>
               <div className={rule.enabled ? "text-emerald-300" : "text-slate-500"}>{rule.enabled ? "On" : "Off"}</div>
               <div className="truncate text-slate-400">{rule.channels.join(", ") || "—"}</div>
             </div>
@@ -297,7 +310,15 @@ function RecentAlertEventsPanel({ rules, state }: { rules: AlertRule[]; state: A
           events.map((event) => (
             <div className="grid gap-2 py-2 md:grid-cols-[1.1fr_0.75fr_1.4fr_0.8fr]" key={event.key}>
               <div className="truncate font-semibold text-slate-200">{alertTypeLabel(event.rule?.type ?? event.ruleId)}</div>
-              <div className="truncate font-mono text-sky-200">{event.symbol}</div>
+              <div className="truncate font-mono text-sky-200">
+                {symbolHref(event.symbol) ? (
+                  <Link className="hover:text-sky-100" href={symbolHref(event.symbol)}>
+                    {event.symbol}
+                  </Link>
+                ) : (
+                  event.symbol
+                )}
+              </div>
               <div className="truncate text-slate-400">{formatAlertTime(event.time)}</div>
               <div className="truncate text-slate-500">{event.status || event.triggerValue || "sent"}</div>
             </div>

@@ -5,8 +5,12 @@ import { aggregateStatusBuckets, hasNumericSeriesData, normalizeMonitoringRange,
 describe("admin monitoring UI helpers", () => {
   test("normalizes supported time ranges and defaults unknown input", () => {
     assert.equal(normalizeMonitoringRange("15m"), "15m");
+    assert.equal(normalizeMonitoringRange("1h"), "1h");
     assert.equal(normalizeMonitoringRange("6h"), "6h");
     assert.equal(normalizeMonitoringRange("24h"), "24h");
+    assert.equal(normalizeMonitoringRange("1w"), "1w");
+    assert.equal(normalizeMonitoringRange("1m"), "1m");
+    assert.equal(normalizeMonitoringRange("6m"), "6m");
     assert.equal(normalizeMonitoringRange("unexpected"), "1h");
     assert.equal(normalizeMonitoringRange(undefined), "1h");
   });

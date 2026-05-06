@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { CsvFileState, CsvRow } from "@/lib/types";
+import { humanizeLabel, humanizeQuantText } from "@/lib/ui/labels";
 
 type Props = {
   rows: CsvRow[];
@@ -113,6 +114,23 @@ function recommendationBadgeClass(value: unknown) {
   return "border-sky-400/25 bg-sky-400/10 text-sky-100";
 }
 
+function recommendationLabel(value: unknown): string {
+  const recommendation = text(value, "").toUpperCase();
+  if (recommendation === "BOOST") return "Looks stronger";
+  if (recommendation === "DOWNGRADE") return "Looks weaker";
+  if (recommendation === "SUPPRESS") return "Keep filtered";
+  if (recommendation === "WATCH") return "Keep monitoring";
+  if (recommendation === "NO_CHANGE") return "No change";
+  return humanizeLabel(recommendation, "No change");
+}
+
+function evidenceLabel(value: unknown): string {
+  const confidence = integer(value);
+  if (confidence >= 75) return "High evidence";
+  if (confidence >= 45) return "Medium evidence";
+  return "Early/low evidence";
+}
+
 function SortHeader({ activeKey, align, direction, label, onSort, thisKey }: { activeKey: SortKey | null; align?: ColumnAlign; direction: SortDirection; label: string; onSort: (key: SortKey) => void; thisKey: SortKey }) {
   const active = activeKey === thisKey;
   return (
@@ -163,6 +181,7 @@ export function AutoCalibrationRecommendations({ rows, state }: Props) {
 
   const sortedRows = useMemo(() => sortRows(filteredRows, sortKey, sortDirection), [filteredRows, sortDirection, sortKey]);
   const visibleRows = useMemo(() => sortedRows.slice(0, 250), [sortedRows]);
+  const insightRows = useMemo(() => sortedRows.slice(0, 3), [sortedRows]);
 
   function handleSort(key: SortKey) {
     const direction = nextSortDirection(sortKey, key, sortDirection, sortConfig(key));
@@ -174,9 +193,9 @@ export function AutoCalibrationRecommendations({ rows, state }: Props) {
     <section className="terminal-panel rounded-md p-4">
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Auto Calibration</div>
-          <h2 className="mt-1 text-lg font-semibold text-slate-50">Auto Calibration Recommendations</h2>
-          <p className="mt-1 text-sm text-slate-400">Analysis-only recommendations from forward returns and signal lifecycle results.</p>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Scanner Learning</div>
+          <h2 className="mt-1 text-lg font-semibold text-slate-50">Human-Readable Calibration Review</h2>
+          <p className="mt-1 text-sm text-slate-400">Analysis-only evidence from forward returns and signal lifecycle results. Advanced metrics remain below.</p>
         </div>
         <div className="font-mono text-xs text-slate-500">{state === "data" ? `${filteredRows.length.toLocaleString()} of ${rows.length.toLocaleString()} rows` : "Not generated yet"}</div>
       </div>
@@ -188,25 +207,43 @@ export function AutoCalibrationRecommendations({ rows, state }: Props) {
         </div>
         {SUMMARY_RECOMMENDATIONS.map((recommendation) => (
           <div className="rounded border border-slate-800 bg-slate-950/50 p-2" key={recommendation}>
-            <div className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{recommendation}</div>
+            <div className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{recommendationLabel(recommendation)}</div>
             <div className="mt-1 font-mono text-sm font-semibold text-slate-100">{summaryCounts[recommendation].toLocaleString()}</div>
           </div>
         ))}
       </div>
+
+      {insightRows.length ? (
+        <div className="mt-3 grid gap-2 lg:grid-cols-3">
+          {insightRows.map((row, index) => (
+            <div className="rounded border border-white/10 bg-white/[0.035] p-3" key={`${text(row.group_type, "group")}-${text(row.group_value, "value")}-${index}`}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-300">{recommendationLabel(row.recommendation)}</div>
+                <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 text-[10px] font-semibold text-slate-300">{evidenceLabel(row.confidence_score)}</span>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-slate-200">
+                {humanizeLabel(row.group_value, text(row.group_value))} in {humanizeLabel(row.group_type, "this group")} is being watched over {text(row.horizon)}.
+              </p>
+              <p className="mt-2 text-xs leading-5 text-slate-400">{humanizeQuantText(row.reason, "Keep collecting evidence before changing scanner behavior.")}</p>
+              <p className="mt-2 text-xs leading-5 text-slate-500">Suggested interpretation: {humanizeQuantText(row.suggested_action, "Preserve current conservative settings.")}</p>
+            </div>
+          ))}
+        </div>
+      ) : null}
 
       <div className="mt-3 grid gap-3 md:grid-cols-4">
         <label className="text-xs text-slate-400">
           <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Recommendation</span>
           <select className="mt-1 h-9 w-full rounded border border-slate-700 bg-slate-950 px-2 text-sm text-slate-100" value={recommendationFilter} onChange={(event) => setRecommendationFilter(event.target.value)}>
             <option value="">All</option>
-            {recommendationOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+            {recommendationOptions.map((option) => <option key={option} value={option}>{recommendationLabel(option)}</option>)}
           </select>
         </label>
         <label className="text-xs text-slate-400">
           <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Group</span>
           <select className="mt-1 h-9 w-full rounded border border-slate-700 bg-slate-950 px-2 text-sm text-slate-100" value={groupTypeFilter} onChange={(event) => setGroupTypeFilter(event.target.value)}>
             <option value="">All</option>
-            {groupTypeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+            {groupTypeOptions.map((option) => <option key={option} value={option}>{humanizeLabel(option)}</option>)}
           </select>
         </label>
         <label className="text-xs text-slate-400">
@@ -240,10 +277,10 @@ export function AutoCalibrationRecommendations({ rows, state }: Props) {
               {visibleRows.map((row, index) => (
                 <tr className="hover:bg-slate-900/60" key={`${text(row.group_type, "group")}-${text(row.group_value, "value")}-${text(row.horizon, "horizon")}-${index}`}>
                   <td className="whitespace-nowrap px-2 py-2">
-                    <span className={`rounded border px-2 py-0.5 text-[11px] font-semibold ${recommendationBadgeClass(row.recommendation)}`}>{text(row.recommendation)}</span>
+                    <span className={`rounded border px-2 py-0.5 text-[11px] font-semibold ${recommendationBadgeClass(row.recommendation)}`}>{recommendationLabel(row.recommendation)}</span>
                   </td>
-                  <td className="whitespace-nowrap px-2 py-2 text-slate-300">{text(row.group_type)}</td>
-                  <td className="max-w-[220px] truncate whitespace-nowrap px-2 py-2 text-slate-100" title={text(row.group_value)}>{text(row.group_value)}</td>
+                  <td className="whitespace-nowrap px-2 py-2 text-slate-300">{humanizeLabel(row.group_type, text(row.group_type))}</td>
+                  <td className="max-w-[220px] truncate whitespace-nowrap px-2 py-2 text-slate-100" title={humanizeLabel(row.group_value, text(row.group_value))}>{humanizeLabel(row.group_value, text(row.group_value))}</td>
                   <td className="whitespace-nowrap px-2 py-2 font-mono text-slate-300">{text(row.horizon)}</td>
                   <td className="whitespace-nowrap px-2 py-2 text-right font-mono text-slate-300">{numberText(row.count)}</td>
                   <td className="whitespace-nowrap px-2 py-2 text-right font-mono text-slate-300">{percent(row.avg_return, 2)}</td>
@@ -252,8 +289,8 @@ export function AutoCalibrationRecommendations({ rows, state }: Props) {
                   <td className="whitespace-nowrap px-2 py-2 text-right font-mono text-slate-300">{percent(row.target_hit_rate)}</td>
                   <td className="whitespace-nowrap px-2 py-2 text-right font-mono text-slate-300">{percent(row.stop_hit_rate)}</td>
                   <td className="whitespace-nowrap px-2 py-2 text-right font-mono text-slate-100">{numberText(row.confidence_score)}</td>
-                  <td className="max-w-[260px] truncate whitespace-nowrap px-2 py-2 text-slate-300" title={text(row.suggested_action)}>{text(row.suggested_action)}</td>
-                  <td className="min-w-[260px] px-2 py-2 text-slate-400">{text(row.reason)}</td>
+                  <td className="max-w-[260px] truncate whitespace-nowrap px-2 py-2 text-slate-300" title={humanizeQuantText(row.suggested_action)}>{humanizeQuantText(row.suggested_action)}</td>
+                  <td className="min-w-[260px] px-2 py-2 text-slate-400">{humanizeQuantText(row.reason)}</td>
                 </tr>
               ))}
             </tbody>

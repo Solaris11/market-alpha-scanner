@@ -26,6 +26,29 @@ It creates:
 - `/opt/backups/market-alpha/postgres/YYYY-MM-DD_HH-MM.sql.gz`
 - `/opt/backups/market-alpha/scanner_output/YYYY-MM-DD_HH-MM.tar.gz`
 
+The script treats local backup creation as its first safety boundary. It verifies
+the local Postgres gzip and scanner tar before attempting off-host sync.
+
+Off-host rclone sync is bounded with connection, operation, retry, and total
+timeout controls so a stuck provider connection cannot leave orphaned rclone
+processes indefinitely. Result classifications written to `monitoring_events`
+include:
+
+- `local_backup_ok`
+- `offsite_sync_ok`
+- `backup_partial` when local backups are valid but offsite sync failed
+
+Relevant knobs in `/etc/market-alpha-backup.env`:
+
+```bash
+MARKET_ALPHA_BACKUP_RCLONE_COPY_TIMEOUT_SECONDS=900
+MARKET_ALPHA_BACKUP_RCLONE_LSF_TIMEOUT_SECONDS=90
+MARKET_ALPHA_BACKUP_RCLONE_OP_TIMEOUT=60s
+MARKET_ALPHA_BACKUP_RCLONE_CONNECT_TIMEOUT=20s
+MARKET_ALPHA_BACKUP_RCLONE_RETRIES=2
+MARKET_ALPHA_BACKUP_RCLONE_LOW_LEVEL_RETRIES=3
+```
+
 ## Post-Deploy Backup
 
 Run an immediate verified backup after:
@@ -42,7 +65,7 @@ Command:
 sudo /opt/ops/market-alpha-post-deploy-backup.sh
 ```
 
-The post-deploy wrapper runs the normal backup, verifies the latest Postgres gzip, verifies the latest scanner tarball, checks the off-host rclone target when configured, and records a `monitoring_events` row when the monitoring table is available.
+The post-deploy wrapper runs the normal backup, verifies the latest Postgres gzip, verifies the latest scanner tarball, checks the off-host rclone target when configured, and records a `monitoring_events` row when the monitoring table is available. If offsite sync fails, it still verifies the local backup artifacts and then exits with a clear partial-backup failure.
 
 Check logs:
 

@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { AICopilotPanel } from "@/components/terminal/AICopilotPanel";
 import { BestTradeNowCard } from "@/components/terminal/BestTradeNowCard";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
@@ -224,13 +225,13 @@ function TerminalMonitoringBrief({
       <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(240px,0.85fr)]">
         <div className="grid gap-2 sm:grid-cols-2">
           {watchRows.length ? watchRows.map((row) => (
-            <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3" key={row.symbol}>
+            <Link className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.07]" href={`/symbol/${row.symbol}`} key={row.symbol}>
               <div className="flex items-center justify-between gap-2">
                 <div className="font-mono text-lg font-black text-slate-50">{row.symbol}</div>
                 <div className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold text-slate-300">{decisionLabel(row.final_decision)}</div>
               </div>
               <div className="mt-2 text-xs text-slate-400">Score {formatPercentLike(row.final_score)} · readiness {row.conviction} {row.confidenceLabel}</div>
-            </div>
+            </Link>
           )) : (
             <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm text-slate-400">No watch candidates in the latest scan. Scanner remains in research context.</div>
           )}

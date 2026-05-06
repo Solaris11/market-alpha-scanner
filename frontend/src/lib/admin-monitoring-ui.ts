@@ -1,11 +1,11 @@
 import type { MonitoringTimeRange } from "@/lib/server/admin-data";
 
-export const MONITORING_TIME_RANGES: MonitoringTimeRange[] = ["15m", "1h", "6h", "24h"];
+export const MONITORING_TIME_RANGES: MonitoringTimeRange[] = ["15m", "1h", "6h", "24h", "1w", "1m", "6m"];
 
 const SECRET_PARAM_PATTERN = /(token|secret|password|signature|authorization|cookie|csrf|key)=([^&]+)/gi;
 
 export function normalizeMonitoringRange(value: string | undefined): MonitoringTimeRange {
-  return value === "15m" || value === "6h" || value === "24h" ? value : "1h";
+  return value === "15m" || value === "1h" || value === "6h" || value === "24h" || value === "1w" || value === "1m" || value === "6m" ? value : "1h";
 }
 
 export function hasNumericSeriesData(series: Array<{ value: number | null }>): boolean {

@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { formatHistoryChartPrice, formatHistoryChartTimestamp, historyChartTooltipLines } from "./history-chart-tooltip";
+import {
+  filterHistoryObservations,
+  formatHistoryChartPrice,
+  formatHistoryChartTimestamp,
+  historyChartPoints,
+  historyChartTooltipLines,
+  nearestHistoryChartPoint,
+  normalizeHistoryObservations,
+} from "./history-chart-tooltip";
 import type { SymbolHistoryRow } from "./types";
 
 const baseRow: SymbolHistoryRow = {
@@ -34,11 +42,78 @@ describe("history chart tooltip helpers", () => {
   });
 
   it("builds price tooltip lines and tolerates missing confidence or decision", () => {
+    assert.deepEqual(historyChartTooltipLines(baseRow, "price"), [
+      { label: "Price", value: "$401.59" },
+      { label: "Score", value: "80.32" },
+      { label: "Decision", value: "Watch" },
+      { label: "Confidence", value: "86" },
+    ]);
+
     const row = { ...baseRow, confidence_score: undefined, final_decision: undefined };
     assert.deepEqual(historyChartTooltipLines(row, "price"), [
       { label: "Price", value: "$401.59" },
       { label: "Score", value: "80.32" },
       { label: "Decision", value: "Review" },
     ]);
+  });
+
+  it("binds chart points to the exact active observation", () => {
+    const rows = [
+      { ...baseRow, final_score: 60, price: 300, timestamp_utc: "2026-05-01T12:00:00Z" },
+      { ...baseRow, final_score: 72.5, price: 350.25, timestamp_utc: "2026-05-03T12:00:00Z" },
+      { ...baseRow, final_score: 88.75, price: 410.5, timestamp_utc: "2026-05-05T12:00:00Z" },
+    ];
+    const scorePoints = historyChartPoints(rows, "final_score");
+    const pricePoints = historyChartPoints(rows, "price");
+
+    assert.equal(nearestHistoryChartPoint(scorePoints, Date.parse("2026-05-03T13:00:00Z")), 1);
+    assert.equal(scorePoints[1].row.final_score, 72.5);
+    assert.equal(pricePoints[1].row.price, 350.25);
+    assert.notEqual(scorePoints[0].row.final_score, scorePoints[2].row.final_score);
+  });
+
+  it("filters preset ranges relative to the latest observation timestamp", () => {
+    const rows = [
+      { ...baseRow, timestamp_utc: "2025-05-05T12:00:00Z" },
+      { ...baseRow, timestamp_utc: "2025-11-05T12:00:00Z" },
+      { ...baseRow, timestamp_utc: "2026-04-01T12:00:00Z" },
+      { ...baseRow, timestamp_utc: "2026-04-23T12:00:00Z" },
+      { ...baseRow, timestamp_utc: "2026-04-30T12:00:00Z" },
+      { ...baseRow, timestamp_utc: "2026-05-05T12:00:00Z" },
+    ];
+
+    assert.equal(filterHistoryObservations(rows, "7d").length, 2);
+    assert.equal(filterHistoryObservations(rows, "14d").length, 3);
+    assert.equal(filterHistoryObservations(rows, "1m").length, 3);
+    assert.equal(filterHistoryObservations(rows, "6m").length, 5);
+    assert.equal(filterHistoryObservations(rows, "1y").length, 6);
+    assert.equal(filterHistoryObservations(rows, "all").length, 6);
+  });
+
+  it("lets custom date ranges override selected presets", () => {
+    const rows = [
+      { ...baseRow, timestamp_utc: "2026-04-20T12:00:00Z" },
+      { ...baseRow, timestamp_utc: "2026-04-25T12:00:00Z" },
+      { ...baseRow, timestamp_utc: "2026-05-05T12:00:00Z" },
+    ];
+
+    const filtered = filterHistoryObservations(rows, "7d", "2026-04-24T00:00", "2026-04-26T00:00");
+    assert.deepEqual(filtered.map((row) => row.timestamp_utc), ["2026-04-25T12:00:00Z"]);
+  });
+
+  it("sorts observations ascending and dedupes duplicate timestamps", () => {
+    const rows = [
+      { ...baseRow, final_score: 70, timestamp_utc: "2026-05-05T12:00:00Z" },
+      { ...baseRow, final_score: 50, timestamp_utc: "2026-05-01T12:00:00Z" },
+      { ...baseRow, final_score: 75, timestamp_utc: "2026-05-05T12:00:00Z" },
+    ];
+
+    assert.deepEqual(
+      normalizeHistoryObservations(rows).map((row) => [row.timestamp_utc, row.final_score]),
+      [
+        ["2026-05-01T12:00:00Z", 50],
+        ["2026-05-05T12:00:00Z", 75],
+      ],
+    );
   });
 });
