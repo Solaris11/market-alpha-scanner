@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { mkdir, stat, writeFile } from "node:fs/promises";
+import path from "node:path";
 import nodemailer from "nodemailer";
 import { Pool, type QueryResultRow } from "pg";
 import { renderOperationalAlertEmail, smtpSettingsFromEnv, type SmtpSettings } from "@/lib/email-policy";
@@ -40,6 +42,7 @@ type AlertSentRow = QueryResultRow & {
 
 const SENSITIVE_KEY_PATTERN = /authorization|cookie|csrf|dsn|password|secret|session|set-cookie|stripe-signature|token|api[_-]?key/i;
 const SENSITIVE_TEXT_PATTERN = /(Bearer\s+[A-Za-z0-9._~+/-]+=*|sk_(?:live|test)_[A-Za-z0-9_]+|pk_(?:live|test)_[A-Za-z0-9_]+|whsec_[A-Za-z0-9_]+|sess_[A-Za-z0-9_-]+)/gi;
+const EMAIL_ALERT_THROTTLE_MINUTES = 15;
 
 export async function sendExternalAlert(input: ExternalAlertInput, env: NodeJS.ProcessEnv = process.env): Promise<ExternalAlertResult> {
   const envelope = buildAlertEnvelope(input);
@@ -152,9 +155,7 @@ async function sendEmailAlert(envelope: AlertEnvelope, env: NodeJS.ProcessEnv): 
           to: config.to,
         });
       if (!result.messageId) throw new Error("email send did not return message id");
-      await recordExternalEmailSent(envelope, dedupeKey).catch((monitoringError: unknown) => {
-        console.warn("[alerting] email sent monitoring write failed", monitoringError instanceof Error ? monitoringError.message : monitoringError);
-      });
+      await recordExternalEmailSent(envelope, dedupeKey);
       return;
     } catch (error) {
       lastError = error;
@@ -204,7 +205,7 @@ function safeErrorMessage(error: unknown): string {
 }
 
 async function recordExternalEmailFailure(envelope: AlertEnvelope, error: unknown): Promise<void> {
-  await recordAlertMonitoringEvent({
+  await tryRecordAlertMonitoringEvent({
     eventType: "email:external_alert_failed",
     message: "SMTP external alert delivery failed after retries.",
     metadata: {
@@ -237,13 +238,14 @@ async function externalEmailRecentlySent(dedupeKey: string): Promise<boolean> {
     );
     return Boolean(result.rows[0]?.exists);
   } catch (error) {
-    console.warn("[alerting] email throttle check failed", error instanceof Error ? error.message : error);
-    return false;
+    if (alertDebugEnabled()) console.warn("[alerting] email throttle DB check failed", error instanceof Error ? error.message : error);
+    return localExternalEmailRecentlySent(dedupeKey);
   }
 }
 
 async function recordExternalEmailSent(envelope: AlertEnvelope, dedupeKey: string): Promise<void> {
-  await recordAlertMonitoringEvent({
+  await markLocalExternalEmailSent(dedupeKey);
+  await tryRecordAlertMonitoringEvent({
     eventType: "email:external_alert_sent",
     message: "SMTP external alert email sent.",
     metadata: {
@@ -261,6 +263,28 @@ function emailAlertDedupeKey(envelope: AlertEnvelope): string {
   return createHash("sha256")
     .update([envelope.eventType, envelope.severity, envelope.status, envelope.message].join("|"))
     .digest("hex");
+}
+
+async function tryRecordAlertMonitoringEvent(input: {
+  eventType: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+  severity: MonitoringSeverity;
+  status: MonitoringStatus;
+}): Promise<void> {
+  try {
+    await recordAlertMonitoringEvent(input);
+  } catch (dbError) {
+    try {
+      await postAlertMonitoringEvent(input);
+    } catch (httpError) {
+      if (alertDebugEnabled()) {
+        const dbMessage = dbError instanceof Error ? dbError.message : "unknown db error";
+        const httpMessage = httpError instanceof Error ? httpError.message : "unknown ingest error";
+        console.warn("[alerting] monitoring write failed", `${dbMessage}; ${httpMessage}`);
+      }
+    }
+  }
 }
 
 async function recordAlertMonitoringEvent(input: {
@@ -281,6 +305,34 @@ async function recordAlertMonitoringEvent(input: {
   );
 }
 
+async function postAlertMonitoringEvent(input: {
+  eventType: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+  severity: MonitoringSeverity;
+  status: MonitoringStatus;
+}): Promise<void> {
+  const token = process.env.MARKET_ALPHA_MONITORING_TOKEN?.trim();
+  if (!token) throw new Error("MARKET_ALPHA_MONITORING_TOKEN is not configured.");
+  const baseUrl = (process.env.MONITORING_BASE_URL?.trim() || process.env.APP_BASE_URL?.trim() || process.env.APP_URL?.trim() || "https://app.marketalpha.co").replace(/\/$/, "");
+  const response = await fetch(`${baseUrl}/api/monitoring/ingest`, {
+    body: JSON.stringify({
+      eventType: cleanKey(input.eventType),
+      kind: "monitoring_event",
+      message: sanitizeAlertText(input.message, 500),
+      metadata: sanitizeMetadata(input.metadata ?? {}),
+      severity: input.severity,
+      status: input.status,
+    }),
+    headers: {
+      "Content-Type": "application/json",
+      "x-market-alpha-monitoring-token": token,
+    },
+    method: "POST",
+  });
+  if (!response.ok) throw new Error(`monitoring ingest HTTP ${response.status}`);
+}
+
 function getAlertDbPool(env: NodeJS.ProcessEnv = process.env): Pool | null {
   const databaseUrl = env.DATABASE_URL?.trim();
   if (!databaseUrl) return null;
@@ -289,6 +341,38 @@ function getAlertDbPool(env: NodeJS.ProcessEnv = process.env): Pool | null {
     globalPool.__marketAlphaAlertDbPool = new Pool({ connectionString: databaseUrl });
   }
   return globalPool.__marketAlphaAlertDbPool;
+}
+
+async function localExternalEmailRecentlySent(dedupeKey: string): Promise<boolean> {
+  try {
+    const throttlePath = localThrottlePath(dedupeKey);
+    const details = await stat(throttlePath);
+    return Date.now() - details.mtimeMs < EMAIL_ALERT_THROTTLE_MINUTES * 60 * 1000;
+  } catch {
+    return false;
+  }
+}
+
+async function markLocalExternalEmailSent(dedupeKey: string): Promise<void> {
+  try {
+    const directory = localThrottleDir();
+    await mkdir(directory, { recursive: true, mode: 0o700 });
+    await writeFile(localThrottlePath(dedupeKey), new Date().toISOString(), { mode: 0o600 });
+  } catch (error) {
+    if (alertDebugEnabled()) console.warn("[alerting] local throttle write failed", error instanceof Error ? error.message : error);
+  }
+}
+
+function localThrottlePath(dedupeKey: string): string {
+  return path.join(localThrottleDir(), `${dedupeKey}.sent`);
+}
+
+function localThrottleDir(): string {
+  return process.env.MARKET_ALPHA_ALERT_THROTTLE_DIR?.trim() || "/tmp/market-alpha-alert-throttle";
+}
+
+function alertDebugEnabled(): boolean {
+  return process.env.MARKET_ALPHA_ALERT_DEBUG === "1";
 }
 
 function sleep(ms: number): Promise<void> {
