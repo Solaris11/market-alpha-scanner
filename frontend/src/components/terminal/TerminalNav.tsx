@@ -75,10 +75,11 @@ export function MobileTerminalNav() {
           aria-controls="market-alpha-mobile-drawer"
           aria-expanded={open}
           aria-label={open ? "Close navigation menu" : "Open navigation menu"}
-          className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-100 transition hover:border-cyan-300/35 hover:bg-cyan-400/10"
+          className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 text-slate-100 transition hover:border-cyan-300/35 hover:bg-cyan-400/10"
           onClick={() => setOpen((value) => !value)}
           type="button"
         >
+          <span className="hidden text-xs font-semibold sm:inline">{open ? "Close" : "More"}</span>
           <span className="relative h-4 w-5">
             <span className={`absolute left-0 top-0 h-0.5 w-5 rounded-full bg-current transition ${open ? "translate-y-[7px] rotate-45" : ""}`} />
             <span className={`absolute left-0 top-[7px] h-0.5 w-5 rounded-full bg-current transition ${open ? "opacity-0" : ""}`} />

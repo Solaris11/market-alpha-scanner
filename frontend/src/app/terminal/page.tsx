@@ -212,17 +212,19 @@ function TerminalMonitoringBrief({
   scanStatus,
   topWatchRows,
 }: {
-  rows: Array<{ final_decision?: unknown; symbol: string; decision_reason_codes?: unknown; decision_reason?: unknown; confidence_score?: unknown; final_score?: unknown }>;
+  rows: Array<{ [key: string]: unknown; final_decision?: unknown; symbol: string; decision_reason_codes?: unknown; decision_reason?: unknown; confidence_score?: unknown; final_score?: unknown; setup_type?: unknown }>;
   scanStatus: string;
   topWatchRows: Array<{ confidenceLabel: string; conviction: number; final_decision: string | null; final_score: number | null; symbol: string }>;
 }) {
   const watchRows = topWatchRows
     .filter((row) => ["WATCH", "WAIT_PULLBACK", "AVOID"].includes(String(row.final_decision ?? "").toUpperCase()))
     .slice(0, 4);
+  const pulse = buildTerminalPulse(rows, topWatchRows);
+  const changedRows = biggestSignalChanges(rows);
   return (
     <GlassPanel className="p-5">
-      <SectionTitle eyebrow="Next Monitor" title="Compact Market Context" meta={`Scanner ${scanStatus}`} />
-      <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(240px,0.85fr)]">
+      <SectionTitle eyebrow="Market Intelligence Surface" title="What To Monitor Next" meta={`Scanner ${scanStatus}`} />
+      <div className="mt-4 grid gap-3 2xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="grid gap-2 sm:grid-cols-2">
           {watchRows.length ? watchRows.map((row) => (
             <Link className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.07]" href={`/symbol/${row.symbol}`} key={row.symbol}>
@@ -237,14 +239,38 @@ function TerminalMonitoringBrief({
           )}
         </div>
         <div className="rounded-xl border border-white/10 bg-slate-950/35 p-3">
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">What to monitor next</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">AI market narrative</div>
+          <p className="mt-2 text-xs leading-5 text-slate-300">{pulse.narrative}</p>
+          <div className="mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Operating checklist</div>
           <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-300">
-            <li>- Whether overheated symbols cool toward cleaner risk context.</li>
-            <li>- Whether WATCH rows improve confidence without new vetoes.</li>
-            <li>- Whether the next scanner run keeps data freshness OK.</li>
+            {pulse.checklist.map((item) => <li key={item}>- {item}</li>)}
           </ul>
-          <div className="mt-3 grid grid-cols-3 gap-2 text-center text-[11px] text-slate-400">
-            {buildDecisionDistribution(rows).map((item) => (
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-4">
+        <IntelligenceTile title="What changed" value={changedRows.value} detail={changedRows.detail} />
+        <IntelligenceTile title="Market breadth" value={pulse.breadth} detail={pulse.breadthDetail} />
+        <IntelligenceTile title="Scanner pulse" value={pulse.scannerPulse} detail={pulse.scannerDetail} />
+        <IntelligenceTile title="Signal quality" value={pulse.quality} detail={pulse.qualityDetail} />
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Signal movement</div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-3">
+            {pulse.movementRows.map((row) => (
+              <Link className="rounded-lg border border-white/10 bg-slate-950/35 p-2 transition hover:border-cyan-300/35" href={`/symbol/${row.symbol}`} key={row.symbol}>
+                <div className="font-mono text-sm font-black text-slate-50">{row.symbol}</div>
+                <div className="mt-1 text-[11px] text-slate-400">{row.detail}</div>
+              </Link>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Decision distribution</div>
+          <div className="mt-2 grid grid-cols-3 gap-2 text-center text-[11px] text-slate-400">
+            {pulse.decisionDistribution.map((item) => (
               <div className="rounded-lg bg-white/[0.04] p-2" key={item.label}>
                 <div className="font-mono text-base font-black text-slate-100">{item.value}</div>
                 <div className="truncate">{item.label}</div>
@@ -255,6 +281,116 @@ function TerminalMonitoringBrief({
       </div>
     </GlassPanel>
   );
+}
+
+function IntelligenceTile({ detail, title, value }: { detail: string; title: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.035] p-3">
+      <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{title}</div>
+      <div className="mt-1 truncate font-mono text-base font-black text-slate-50" title={value}>{value}</div>
+      <div className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-400">{detail}</div>
+    </div>
+  );
+}
+
+function buildTerminalPulse(
+  rows: Array<{ [key: string]: unknown; final_decision?: unknown; symbol: string; confidence_score?: unknown; final_score?: unknown; setup_type?: unknown }>,
+  topWatchRows: Array<{ confidenceLabel: string; conviction: number; final_decision: string | null; final_score: number | null; symbol: string }>,
+) {
+  const decisionDistribution = buildDecisionDistribution(rows);
+  const avoid = decisionDistribution.find((item) => item.label === "Avoid")?.value ?? 0;
+  const watch = decisionDistribution.find((item) => item.label === "Watch")?.value ?? 0;
+  const waitPullback = decisionDistribution.find((item) => item.label === "Wait Pullback")?.value ?? 0;
+  const fallbackCount = rows.filter((row) => Boolean(row.data_provider_fallback_used)).length;
+  const staleCount = rows.filter((row) => Boolean(row.stale_data) || String(row.data_freshness_status ?? "").toLowerCase().includes("stale")).length;
+  const vetoCount = rows.filter((row) => hasVetoes(row.vetoes)).length;
+  const confidenceValues = rows.map((row) => numeric(row.confidence_score ?? row.final_score)).filter((value): value is number => value !== null);
+  const averageConfidence = confidenceValues.length ? Math.round(confidenceValues.reduce((total, value) => total + value, 0) / confidenceValues.length) : null;
+  const highConfidence = topWatchRows.filter((row) => row.conviction >= 70).length;
+  const strongestSetup = topSetupLabel(rows);
+  const movementRows = buildMovementRows(rows, topWatchRows);
+  const narrative = avoid > rows.length * 0.45
+    ? "Risk filters are doing most of the work right now. The terminal is prioritizing patience, cleaner pullbacks, and data-quality confirmation over forced activity."
+    : watch + waitPullback > 0
+      ? "The scanner sees research setups worth monitoring, but readiness is still gated by confirmation, vetoes, and regime context."
+      : "The latest scan is quiet. That can be a healthy state when the evidence does not justify crowding the review queue.";
+
+  return {
+    breadth: `${watch + waitPullback} watch · ${avoid} avoid`,
+    breadthDetail: `${strongestSetup} is the largest setup group in the current scanner universe.`,
+    checklist: [
+      "Watch whether high-confidence rows keep improving without new vetoes.",
+      "Confirm data freshness before relying on historical context.",
+      "Use symbol detail for reasons and risk context before interpreting a setup.",
+    ],
+    decisionDistribution,
+    movementRows,
+    narrative,
+    quality: averageConfidence === null ? "Confidence N/A" : `${averageConfidence} avg confidence`,
+    qualityDetail: `${highConfidence} high-readiness candidates are visible in the current research queue.`,
+    scannerDetail: `${fallbackCount} provider fallbacks, ${staleCount} stale rows, ${vetoCount} vetoed rows.`,
+    scannerPulse: `${fallbackCount} fallback · ${vetoCount} vetoes`,
+  };
+}
+
+function biggestSignalChanges(rows: Array<{ [key: string]: unknown; symbol: string }>): { detail: string; value: string } {
+  const changed = rows
+    .map((row) => ({ change: numeric(row.score_change ?? row.readiness_change ?? row.confidence_change), symbol: row.symbol }))
+    .filter((item): item is { change: number; symbol: string } => item.change !== null)
+    .sort((left, right) => Math.abs(right.change) - Math.abs(left.change))[0];
+  if (changed) {
+    return {
+      detail: `${changed.change > 0 ? "Improved" : "Weakened"} since the previous comparable snapshot.`,
+      value: `${changed.symbol} ${changed.change > 0 ? "+" : ""}${changed.change.toFixed(1)}`,
+    };
+  }
+  return {
+    detail: "Change tracking will deepen as repeated scan snapshots accumulate.",
+    value: "Stable latest scan",
+  };
+}
+
+function buildMovementRows(
+  rows: Array<{ [key: string]: unknown; symbol: string; final_decision?: unknown; confidence_score?: unknown; final_score?: unknown }>,
+  topWatchRows: Array<{ confidenceLabel: string; conviction: number; final_decision: string | null; final_score: number | null; symbol: string }>,
+): Array<{ detail: string; symbol: string }> {
+  const changed = rows
+    .map((row) => ({ change: numeric(row.score_change ?? row.readiness_change ?? row.confidence_change), row }))
+    .filter((item): item is { change: number; row: { [key: string]: unknown; symbol: string; final_decision?: unknown; confidence_score?: unknown; final_score?: unknown } } => item.change !== null)
+    .sort((left, right) => Math.abs(right.change) - Math.abs(left.change))
+    .slice(0, 3)
+    .map((item) => ({
+      detail: `${item.change > 0 ? "Improved" : "Weakened"} ${Math.abs(item.change).toFixed(1)} · ${decisionLabel(item.row.final_decision)}`,
+      symbol: item.row.symbol,
+    }));
+  if (changed.length) return changed;
+  return topWatchRows.slice(0, 3).map((row) => ({
+    detail: `${decisionLabel(row.final_decision)} · ${row.conviction} readiness`,
+    symbol: row.symbol,
+  }));
+}
+
+function topSetupLabel(rows: Array<{ setup_type?: unknown }>): string {
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    const label = humanizeLabel(row.setup_type, "Unknown");
+    counts.set(label, (counts.get(label) ?? 0) + 1);
+  }
+  let selected = "Mixed setup";
+  let selectedCount = -1;
+  for (const [label, count] of counts) {
+    if (count > selectedCount) {
+      selected = label;
+      selectedCount = count;
+    }
+  }
+  return selected;
+}
+
+function hasVetoes(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length > 0;
+  const text = String(value ?? "").trim();
+  return Boolean(text && !["[]", "nan", "none", "null"].includes(text.toLowerCase()));
 }
 
 function buildDecisionDistribution(rows: Array<{ final_decision?: unknown }>): Array<{ label: string; value: number }> {
@@ -272,4 +408,10 @@ function buildTodayActionReasons({ actionBlocksTradeUi, marketState, scanSafetyS
 
 function formatPercentLike(value: number | null): string {
   return value === null ? "N/A" : Math.round(value).toString();
+}
+
+function numeric(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  const parsed = Number(String(value ?? "").replace(/[$,%]/g, "").trim());
+  return Number.isFinite(parsed) ? parsed : null;
 }

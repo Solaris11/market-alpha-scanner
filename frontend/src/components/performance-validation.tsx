@@ -295,6 +295,77 @@ function BarChart({ rows, groupType, metric, title, horizon = "10D" }: { rows: C
   );
 }
 
+function PerformanceSimpleView({
+  completedHorizons,
+  compactRows,
+  forwardObservationCount,
+  summaryRows,
+}: {
+  completedHorizons: string[];
+  compactRows: CsvRow[];
+  forwardObservationCount: number;
+  summaryRows: CsvRow[];
+}) {
+  const bestSetup = bestSummary(summaryRows, "setup_type", "10D") ?? bestSummary(summaryRows, "setup_type", "5D");
+  const weakestSetup = worstSummary(summaryRows, "setup_type", "10D") ?? worstSummary(summaryRows, "setup_type", "5D");
+  const bestScoreRange = bestSummary(summaryRows, "score_bucket", "10D") ?? bestSummary(summaryRows, "score_bucket", "5D");
+  const evidence = evidenceMaturity(forwardObservationCount);
+  const hasCompletedWindows = compactRows.length > 0;
+  const insightCards = [
+    {
+      detail: bestSetup ? `${humanizeLabel(bestSetup.group_value, "This group")} has the strongest completed setup evidence in the selected validation window.` : "Completed setup comparisons will appear after enough forward-return windows finish.",
+      label: "What currently works better",
+      value: bestSetup ? edgeLabel(bestSetup) : "Still collecting",
+    },
+    {
+      detail: weakestSetup ? `${humanizeLabel(weakestSetup.group_value, "This group")} is weaker in recent completed evidence and should be treated carefully.` : "Weakness comparisons need completed return windows before they are meaningful.",
+      label: "What looks weaker",
+      value: weakestSetup ? edgeLabel(weakestSetup) : "Not enough evidence",
+    },
+    {
+      detail: bestScoreRange ? "Score ranges are being compared against actual forward observations. This is evidence gathering, not automatic tuning." : "Score-range validation needs more saved history before it becomes useful.",
+      label: "Score range learning",
+      value: bestScoreRange ? edgeLabel(bestScoreRange) : "Pending",
+    },
+    {
+      detail: hasCompletedWindows ? `Completed horizons: ${completedHorizons.join(", ") || "none"}.` : "Signals exist, but the forward windows have not had enough time to mature.",
+      label: "Evidence maturity",
+      value: evidence,
+    },
+  ];
+
+  return (
+    <section className="terminal-panel rounded-md p-4">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Simple View</div>
+      <h3 className="mt-1 text-lg font-semibold text-slate-50">What the scanner is learning</h3>
+      <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">
+        Plain-English validation from completed forward-return observations. This view is intentionally conservative and does not auto-tune the scanner.
+      </p>
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {insightCards.map((card) => (
+          <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3" key={card.label}>
+            <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{card.label}</div>
+            <div className="mt-1 truncate font-mono text-sm font-black text-slate-50" title={card.value}>{card.value}</div>
+            <p className="mt-2 text-xs leading-5 text-slate-400">{card.detail}</p>
+          </div>
+        ))}
+      </div>
+      {!hasCompletedWindows ? (
+        <div className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-sm leading-6 text-amber-100">
+          No completed forward-return windows are available yet. This is expected when recent scans have not aged into their validation horizons.
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+function evidenceMaturity(count: number): string {
+  if (count > 100) return "High evidence";
+  if (count >= 30) return "Medium evidence";
+  if (count > 0) return "Early evidence";
+  return "No completed windows";
+}
+
 export function PerformanceValidation({ forwardRows, forwardObservationCount, history, rankingRows = [], summaryRows }: Props) {
   const [horizon, setHorizon] = useState("");
   const [groupType, setGroupType] = useState("");
@@ -412,7 +483,9 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
           ))}
         </div>
         {!cleanForwardRows.length ? (
-          <div className="mt-3 rounded border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">Analysis complete, but no completed forward-return windows yet.</div>
+          <div className="mt-3 rounded border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-sm leading-6 text-amber-100">
+            Performance analysis is ready, but no forward-return window has completed yet. This usually means the saved signals are too recent for the selected 1D, 5D, 10D, or 20D windows. The table will populate automatically as time passes and the next analysis run completes.
+          </div>
         ) : null}
       </section>
 
@@ -445,10 +518,12 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
 
       <SimpleAdvancedTabs
         simple={(
-          <section className="terminal-panel rounded-md p-4">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Summary View</div>
-            <p className="mt-1 text-sm leading-6 text-slate-400">Performance cards and charts are shown by default. Open Advanced for sortable grouped results and forward-return observations.</p>
-          </section>
+          <PerformanceSimpleView
+            completedHorizons={completedHorizons}
+            compactRows={compactRows}
+            forwardObservationCount={forwardObservationCount ?? cleanForwardRows.length}
+            summaryRows={summaryRows}
+          />
         )}
         advanced={(
           <>

@@ -58,7 +58,7 @@ export function RunCommandButton({ endpoint, label, diagnostic = false }: Props)
         onClick={runCommand}
         type="button"
       >
-        {loading || serverRunning ? "Scanner Running..." : label}
+        {loading || serverRunning ? "Job Running..." : label}
       </button>
 
       {result ? (

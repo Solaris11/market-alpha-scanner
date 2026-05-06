@@ -33,6 +33,9 @@ export function cleanSupportText(value: unknown, maxLength = 4000): string {
 export function classifySupportMessage(message: unknown): SupportChatClassification {
   const text = cleanSupportText(message, 1000).toLowerCase();
   if (!text) return "blocked_unsafe_or_irrelevant";
+  if (/\b(ignore|override|bypass)\b.*\b(rules|guardrails|instructions)\b.*\b(buy|sell|trade|entry|stop|target)\b/.test(text)) {
+    return "blocked_financial_advice";
+  }
   if (/\b(refresh failed|analysis refresh failed|scanner running|already running|stale data|outdated data|no buy signals|no active trade|no trade today)\b/.test(text)) {
     return "allowed_product_support";
   }
@@ -45,7 +48,7 @@ export function classifySupportMessage(message: unknown): SupportChatClassificat
   if (/\bis\s+[a-z]{1,8}\s+(a\s+)?(good|bad)\s+(buy|sell|trade|investment)\b/.test(text)) return "blocked_financial_advice";
   if (/\b(buy|sell|hold)\s+(nvda|tsla|aapl|ibit|spy|qqq|btc|eth)\b/.test(text)) return "blocked_financial_advice";
   if (/\bwhat does\s+(buy|wait|watch|avoid)\s+mean\b/.test(text)) return "allowed_product_support";
-  if (/\b(cancel|renew|billing|premium|alert|alerts|paper|terminal|scanner|support|ticket|tickets|wait|watch|avoid|feature|features|account|login|verify|stale|data|refresh|running|failed|failure|no trade|no buy)\b/.test(text)) {
+  if (/\b(cancel|renew|billing|premium|alert|alerts|paper|terminal|scanner|support|ticket|tickets|wait|watch|avoid|feature|features|account|login|verify|stale|data|refresh|running|failed|failure|no trade|no buy|veto|vetoes|readiness|confidence|regime|calibration|history|filters|range|tooltip|onboarding|how do i use)\b/.test(text)) {
     return "allowed_product_support";
   }
   return "blocked_unsafe_or_irrelevant";

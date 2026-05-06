@@ -365,11 +365,13 @@ function InsightMetric({ label, value }: { label: string; value: string }) {
 }
 
 function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: HistoryChartField; label: string }) {
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const points = useMemo(() => historyChartPoints(rows, field), [field, rows]);
 
   useEffect(() => {
-    setActiveIndex(null);
+    setHoverIndex(null);
+    setSelectedIndex(null);
   }, [field, points.length, rows]);
 
   if (!points.length) {
@@ -392,24 +394,36 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: H
     return { x, y, index: point.index };
   });
   const path = plotted.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(1)} ${point.y.toFixed(1)}`).join(" ");
-  const activePoint = activeIndex !== null ? plotted[activeIndex] : null;
-  const activeData = activeIndex !== null ? points[activeIndex] : null;
+  const displayIndex = hoverIndex ?? selectedIndex;
+  const activePoint = displayIndex !== null ? plotted[displayIndex] : null;
+  const activeData = displayIndex !== null ? points[displayIndex] : null;
   const activeRows = activeData ? historyChartTooltipLines(activeData.row, field) : [];
 
-  function handlePointer(event: PointerEvent<SVGSVGElement>) {
+  function indexFromPointer(event: PointerEvent<SVGSVGElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     const pointerX = ((event.clientX - rect.left) / Math.max(1, rect.width)) * width;
     const pointerRatio = Math.max(0, Math.min(1, (pointerX - padding) / Math.max(1, width - padding * 2)));
     const targetTime = minTime + pointerRatio * timeSpan;
-    setActiveIndex(nearestHistoryChartPoint(points, targetTime));
+    return nearestHistoryChartPoint(points, targetTime);
+  }
+
+  function handlePointer(event: PointerEvent<SVGSVGElement>) {
+    setHoverIndex(indexFromPointer(event));
+  }
+
+  function handlePointerSelect(event: PointerEvent<SVGSVGElement>) {
+    const index = indexFromPointer(event);
+    setSelectedIndex(index);
+    setHoverIndex(index);
   }
 
   return (
     <div className="terminal-panel rounded-md p-3">
       <div className="mb-2 flex items-center justify-between text-xs">
         <div className="font-semibold uppercase tracking-[0.14em] text-sky-300">{label}</div>
-        <div className="font-mono text-slate-400">
-          {formatNumber(points[0].value)} → {formatNumber(points[points.length - 1].value)}
+        <div className="flex items-center gap-3 font-mono text-slate-400">
+          <span>{formatNumber(points[0].value)} → {formatNumber(points[points.length - 1].value)}</span>
+          <span className="hidden text-[10px] text-slate-500 sm:inline">Tap or hover for details</span>
         </div>
       </div>
       <div className="relative overflow-hidden rounded border border-slate-800/80 bg-slate-950/35">
@@ -417,14 +431,16 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: H
           aria-label={`${label} interactive chart`}
           className="block w-full cursor-crosshair select-none touch-pan-y"
           height={height}
-          onPointerDown={handlePointer}
-          onPointerLeave={() => setActiveIndex(null)}
+          onPointerDown={handlePointerSelect}
+          onPointerLeave={() => setHoverIndex(null)}
           onPointerMove={handlePointer}
           role="img"
           viewBox={`0 0 ${width} ${height}`}
           width="100%"
         >
           <title>{label} over time</title>
+          <text fill="rgb(100,116,139)" fontSize="10" textAnchor="end" x={width - padding} y={padding - 6}>{formatNumber(maxValue)}</text>
+          <text fill="rgb(100,116,139)" fontSize="10" textAnchor="end" x={width - padding} y={height - padding + 15}>{formatNumber(minValue)}</text>
           <line stroke="rgba(148,163,184,0.22)" x1={padding} x2={width - padding} y1={height - padding} y2={height - padding} />
           <line stroke="rgba(148,163,184,0.22)" x1={padding} x2={padding} y1={padding} y2={height - padding} />
           {activePoint ? (
@@ -432,7 +448,7 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: H
           ) : null}
           <path d={path} fill="none" stroke={field === "price" ? "rgb(52,211,153)" : "rgb(125,211,252)"} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
           {plotted.map((point) => {
-            const active = activeIndex === point.index;
+            const active = displayIndex === point.index;
             return (
               <circle
                 cx={point.x}
@@ -468,6 +484,22 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: H
           </div>
         ) : null}
       </div>
+      {activeData ? (
+        <div className="mt-2 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="font-mono text-xs font-bold text-slate-100">{activeData.row.symbol} · {formatHistoryChartTimestamp(activeData.time)}</div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Selected observation</div>
+          </div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-4">
+            {activeRows.map((line) => (
+              <div className="rounded-lg bg-slate-950/45 px-2 py-1.5" key={line.label}>
+                <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">{line.label}</div>
+                <div className="truncate font-mono text-xs font-semibold text-slate-100">{line.value}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

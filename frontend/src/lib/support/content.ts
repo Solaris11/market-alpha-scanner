@@ -137,16 +137,81 @@ export const SUPPORT_GUIDES: SupportGuide[] = [
 export function findSupportAnswer(message: string): string {
   const normalized = message.toLowerCase();
   if (normalized.includes("refresh failed") || normalized.includes("analysis refresh failed") || normalized.includes("signals failed")) {
-    return "If refresh shows a running state, another scanner job is already active. Wait for the current run to finish; the latest run time will update automatically. If it stays stale, open a technical support ticket with the page and timestamp.";
+    return [
+      "Refresh controls are coordinated by a single scanner lock.",
+      "If you see a running state, another scanner or analysis job is already active. The correct behavior is to wait for that run to finish; the latest run time will update automatically.",
+      "If the page remains stale after the next scheduled run, open a technical ticket with the page, timestamp, and symbol if one was involved.",
+    ].join("\n");
   }
   if (normalized.includes("scanner running") || normalized.includes("already running")) {
-    return "Only one scanner run can execute at a time. When the scanner is already running, refresh controls are disabled and data updates after that run completes.";
+    return [
+      "Only one scanner run can execute at a time.",
+      "The app disables duplicate refreshes to prevent corrupted partial output. Data updates when the active run completes.",
+      "You can keep using the latest completed scan while the new run is in progress.",
+    ].join("\n");
   }
   if (normalized.includes("no buy") || normalized.includes("no active trade") || normalized.includes("no trade") || normalized.includes("no research setup")) {
-    return "No active research setups can be normal. Market Alpha is designed to reduce overtrading; Wait, Watch, and Avoid states mean the system is prioritizing discipline over forced activity.";
+    return [
+      "No active research setup can be a healthy result.",
+      "Market Alpha is built around the idea that the best trade is often no trade. Wait, Watch, and Avoid mean the scanner is prioritizing risk control, data quality, and setup confirmation over forced activity.",
+      "Review the Decision Reasons and What To Watch panels to see which conditions would need to improve.",
+    ].join("\n");
   }
   if (normalized.includes("stale data") || normalized.includes("outdated data")) {
-    return "Stale data disables active decisions. Wait for a fresh scanner run before using research views, and open a support ticket if stale status persists.";
+    return [
+      "Stale data reduces confidence and can disable active decision states.",
+      "Use the freshness indicators first. If freshness is degraded, treat the view as historical context until the next successful scanner run.",
+      "If stale status persists across scheduled runs, open a technical ticket with the symbol and page.",
+    ].join("\n");
+  }
+  if (normalized.includes("readiness")) {
+    return [
+      "Readiness is a product signal that combines confidence, data quality, setup strength, and veto status.",
+      "A high score can still have lower readiness if the setup is extended, data quality is weak, or a risk veto is active.",
+      "Use readiness to understand how close a setup is to cleaner research conditions. It is not a prediction.",
+    ].join("\n");
+  }
+  if (normalized.includes("confidence")) {
+    return [
+      "Confidence reflects signal strength and data quality inside the scanner.",
+      "Low confidence usually means the scanner needs stronger confirmation or cleaner data. Medium confidence is a monitoring state. High confidence means the evidence is stronger, but it still is not a forecast.",
+      "The confidence donut and readiness bar should be read together.",
+    ].join("\n");
+  }
+  if (normalized.includes("veto")) {
+    return [
+      "A veto is a hard risk or quality block.",
+      "Examples include stale data, weak data confidence, overextended entry context, poor risk/reward, or market-regime mismatch.",
+      "When a veto is active, the UI should not present the setup as trade-ready. Use What To Watch to see the conditions that would need to improve.",
+    ].join("\n");
+  }
+  if (normalized.includes("regime")) {
+    return [
+      "Market regime is the scanner's broad risk context.",
+      "In overheated, risk-off, or bear conditions, the scanner raises standards and reduces breakout-style urgency. In neutral or bull conditions, it can be less restrictive, but veto and confidence gates still apply.",
+      "Regime impact explains why the same symbol may receive a different decision under different market conditions.",
+    ].join("\n");
+  }
+  if (normalized.includes("calibration")) {
+    return [
+      "Calibration shows what the scanner is learning from completed forward-return observations.",
+      "Simple View translates this into plain English. Advanced View keeps the raw grouped metrics for deeper review.",
+      "Low evidence means the system needs more historical observations before the pattern should be trusted.",
+    ].join("\n");
+  }
+  if (normalized.includes("history") || normalized.includes("filter") || normalized.includes("range") || normalized.includes("tooltip")) {
+    return [
+      "History lets you investigate how a symbol's score, price, decision, and confidence changed over time.",
+      "Use range filters like 7D, 14D, 1M, 6M, 1Y, or custom From/To dates. Custom dates override the preset range until cleared.",
+      "Hover or tap chart points to inspect the exact observation under the cursor.",
+    ].join("\n");
+  }
+  if (normalized.includes("onboarding") || normalized.includes("how do i use") || normalized.includes("workflow")) {
+    return [
+      "Start with Terminal: read Today's Action, then Decision Reasons, then What To Watch.",
+      "Use Opportunities to compare research setups, History to inspect symbol changes, and Alerts to monitor conditions without constantly checking the app.",
+      "The intended workflow is slower and more selective than signal-chasing: wait first, then investigate.",
+    ].join("\n");
   }
   const match = SUPPORT_FAQ.find((item) => normalized.includes(item.slug.replaceAll("-", " ")) || normalized.includes(item.question.toLowerCase().replace("?", "")));
   if (match) return match.answer;

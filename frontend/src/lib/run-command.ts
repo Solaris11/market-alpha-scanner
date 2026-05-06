@@ -29,12 +29,13 @@ function pythonBin() {
 
 export async function runPythonCommand(
   args: string[],
-  messages: { failure?: string; success?: string } = {},
+  messages: { failure?: string; success?: string; unavailable?: string } = {},
 ): Promise<RunResult> {
   const python = pythonBin();
   const cwd = projectRoot();
   const successMessage = messages.success ?? "Operation completed.";
   const failureMessage = messages.failure ?? "Operation failed.";
+  const unavailableMessage = messages.unavailable ?? "Scanner runner is not available in this API runtime. Use the production scanner job; data will update after the next scheduled run.";
   const lastRunAt = await latestScannerRunCompletedAt();
   const activeLock = await readActiveScannerLock();
   if (activeLock.active) {
@@ -57,7 +58,7 @@ export async function runPythonCommand(
     return {
       lastRunAt,
       ok: false,
-      message: "Scanner runner is not available in this API runtime. Use the production scanner job; data will update after the next scheduled run.",
+      message: unavailableMessage,
       status: "unavailable",
     };
   }

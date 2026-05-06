@@ -88,6 +88,7 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
   return (
     <div className="min-w-0 max-w-full space-y-5">
       <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} />
+      <OpportunityIntelligenceDeck marketCondition={marketCondition} rows={rows} />
       <SetupDistribution rows={rows} />
 
       <GlassPanel className="p-5">
@@ -308,6 +309,47 @@ function SetupDistribution({ rows }: { rows: OpportunityViewModel[] }) {
             <p className="mt-3 text-xs leading-5 text-slate-400">{group.reason}</p>
           </div>
         ))}
+      </div>
+    </GlassPanel>
+  );
+}
+
+function OpportunityIntelligenceDeck({ marketCondition, rows }: { marketCondition: string | null; rows: OpportunityViewModel[] }) {
+  const pulse = setupPulse(rows);
+  const topImproving = [...rows]
+    .map((row) => ({ change: numeric(row.raw.score_change ?? row.raw.readiness_change ?? row.raw.confidence_change), row }))
+    .filter((item): item is { change: number; row: OpportunityViewModel } => item.change !== null)
+    .sort((left, right) => right.change - left.change)
+    .slice(0, 3);
+  const riskBlocked = rows.filter((row) => decision(row) === "AVOID" || hasVetoes(row.raw.vetoes)).length;
+  const highReadiness = rows.filter((row) => row.conviction >= 70).length;
+  const fallbackCount = rows.filter((row) => Boolean(row.raw.data_provider_fallback_used)).length;
+
+  return (
+    <GlassPanel className="p-4 sm:p-5">
+      <SectionTitle eyebrow="Opportunity Intelligence" title="Scanner Pulse" meta="Compact research context" />
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <CompactPulseCard title="Readiness Heatmap" value={`${highReadiness} high readiness`} detail={`${pulse.confidence}. Confidence is not a prediction.`} />
+        <CompactPulseCard title="Regime Alignment" value={cleanText(marketCondition, "Neutral")} detail={pulse.breadthDetail} />
+        <CompactPulseCard title="Risk Filters" value={`${riskBlocked} blocked`} detail="Blocked rows are preserved as context so the scanner does not force activity." />
+        <CompactPulseCard title="Data Quality" value={`${fallbackCount} fallbacks`} detail={pulse.scannerDetail} />
+        <CompactPulseCard title="Setup Focus" value={pulse.breadth} detail="Use setup groups to compare research context before opening symbol detail." />
+      </div>
+      <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Top improving symbols</div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-3">
+          {topImproving.length ? topImproving.map((item) => (
+            <Link className="rounded-xl border border-white/10 bg-slate-950/35 p-3 transition hover:border-cyan-300/35" href={`/symbol/${item.row.symbol}`} key={item.row.symbol}>
+              <div className="font-mono text-sm font-black text-slate-50">{item.row.symbol}</div>
+              <div className="mt-1 text-xs text-slate-400">{item.change > 0 ? "+" : ""}{item.change.toFixed(1)} change · {decisionLabel(item.row.final_decision)}</div>
+            </Link>
+          )) : rows.slice(0, 3).map((row) => (
+            <Link className="rounded-xl border border-white/10 bg-slate-950/35 p-3 transition hover:border-cyan-300/35" href={`/symbol/${row.symbol}`} key={row.symbol}>
+              <div className="font-mono text-sm font-black text-slate-50">{row.symbol}</div>
+              <div className="mt-1 text-xs text-slate-400">{decisionLabel(row.final_decision)} · {row.conviction} readiness</div>
+            </Link>
+          ))}
+        </div>
       </div>
     </GlassPanel>
   );
@@ -552,6 +594,12 @@ function setupPulse(rows: OpportunityViewModel[]): {
     scanner: `${fallbackCount} fallback · ${staleCount} stale`,
     scannerDetail: `Current regime: ${currentRegime}. CSV fallback remains disabled in production.`,
   };
+}
+
+function hasVetoes(value: unknown): boolean {
+  if (Array.isArray(value)) return value.length > 0;
+  const text = String(value ?? "").trim();
+  return Boolean(text && !["[]", "nan", "none", "null"].includes(text.toLowerCase()));
 }
 
 function countBy(rows: OpportunityViewModel[], keyFor: (row: OpportunityViewModel) => string): Map<string, number> {

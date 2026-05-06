@@ -249,8 +249,10 @@ export default async function PerformancePage() {
         <section className="terminal-panel rounded-2xl p-5">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Analysis Runner</div>
           <h2 className="mt-1 text-lg font-semibold text-slate-50">Refresh Performance Analysis</h2>
-          <p className="mt-2 max-w-3xl text-sm text-slate-400">Update validation, lifecycle, drift, and calibration views for the current signal history.</p>
-          <RunCommandButton endpoint="/api/run-analysis" label="Run Analysis" />
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+            Refresh validation, lifecycle, drift, and calibration views for the current signal history. If manual execution is unavailable from the web container, scheduled analysis jobs continue to update this page after new scanner data is available.
+          </p>
+          <RunCommandButton endpoint="/api/run-analysis" label="Refresh Analysis" />
         </section>
 
         <PerformanceDrift forwardReturnsReady={forwardReturnsReady} rows={driftRows} />

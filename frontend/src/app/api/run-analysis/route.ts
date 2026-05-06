@@ -22,6 +22,7 @@ export async function POST(request: Request) {
   const result = await runPythonCommand(["investment_scanner_mvp.py", "--run-analysis"], {
     failure: "Analysis refresh failed.",
     success: "Analysis refresh completed.",
+    unavailable: "Manual analysis execution is unavailable from the web container. Scheduled analysis jobs continue to update this page after new scanner data is available.",
   });
   return NextResponse.json(result, { status: result.status === "already_running" ? 202 : result.status === "unavailable" ? 503 : result.ok ? 200 : 500 });
 }
