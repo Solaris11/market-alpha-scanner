@@ -9,11 +9,14 @@ export type BackupComponent = {
 };
 
 export type BackupHealthDetails = BackupComponent & {
+  activeBackupProvider?: string | null;
   latestEvent?: BackupEventSummary | null;
+  latestSuccessfulOffsiteProvider?: string | null;
   local_backup: BackupStatus;
   localBackup: BackupComponent;
   offsite_backup: BackupStatus;
   offsiteBackup: BackupComponent;
+  offsiteProvider?: string | null;
   overall_backup: BackupOverallStatus;
   overallBackup: BackupOverallStatus;
 };
@@ -39,7 +42,10 @@ export function classifyBackupHealth(input: {
   const latestEvent = events[0] ?? null;
   const latestOffsiteOk = events.find(isOffsiteSuccessEvent) ?? null;
   const latestOffsiteFailure = events.find(isOffsiteFailureEvent) ?? null;
-  const offsiteBackup = classifyOffsiteBackup({ latestOffsiteFailure, latestOffsiteOk, nowMs });
+  const activeBackupProvider = providerFromEvent(latestEvent) ?? providerFromEvent(latestOffsiteOk) ?? providerFromEvent(latestOffsiteFailure);
+  const latestSuccessfulOffsiteProvider = providerFromEvent(latestOffsiteOk);
+  const offsiteProvider = latestSuccessfulOffsiteProvider ?? activeBackupProvider;
+  const offsiteBackup = classifyOffsiteBackup({ latestOffsiteFailure, latestOffsiteOk, nowMs, provider: offsiteProvider });
   const overallBackup = classifyOverallBackup(input.localBackup.status, offsiteBackup.status);
   const status = overallStatusToComponentStatus(overallBackup);
   const message = backupOverallMessage(overallBackup, input.localBackup, offsiteBackup);
@@ -47,14 +53,17 @@ export function classifyBackupHealth(input: {
   const ageMinutes = lastUpdated ? Math.max(0, (nowMs - new Date(lastUpdated).getTime()) / 60000) : null;
 
   return {
+    activeBackupProvider,
     ageMinutes,
     latestEvent,
+    latestSuccessfulOffsiteProvider,
     lastUpdated,
     local_backup: input.localBackup.status,
     localBackup: input.localBackup,
     message,
     offsite_backup: offsiteBackup.status,
     offsiteBackup,
+    offsiteProvider,
     overall_backup: overallBackup,
     overallBackup,
     status,
@@ -65,25 +74,27 @@ function classifyOffsiteBackup(input: {
   latestOffsiteFailure: BackupEventSummary | null;
   latestOffsiteOk: BackupEventSummary | null;
   nowMs: number;
+  provider?: string | null;
 }): BackupComponent {
+  const providerLabel = backupProviderLabel(input.provider);
   const okMs = eventTimeMs(input.latestOffsiteOk);
   const failureMs = eventTimeMs(input.latestOffsiteFailure);
   if (input.latestOffsiteFailure && failureMs > okMs) {
     return {
       ageMinutes: null,
       lastUpdated: input.latestOffsiteFailure.createdAt,
-      message: input.latestOffsiteFailure.message || "Offsite backup sync failed.",
+      message: input.latestOffsiteFailure.message || `${providerLabel} offsite backup sync failed.`,
       status: "failed",
     };
   }
   if (!input.latestOffsiteOk || !input.latestOffsiteOk.createdAt) {
-    return { ageMinutes: null, lastUpdated: null, message: "No successful offsite backup event found.", status: "unknown" };
+    return { ageMinutes: null, lastUpdated: null, message: `No successful ${providerLabel} offsite backup event found.`, status: "unknown" };
   }
   const ageMinutes = Math.max(0, (input.nowMs - okMs) / 60000);
   const base = {
     ageMinutes,
     lastUpdated: input.latestOffsiteOk.createdAt,
-    message: `Latest offsite backup synced ${Math.round(ageMinutes)} minutes ago.`,
+    message: `Latest ${providerLabel} offsite backup synced ${Math.round(ageMinutes)} minutes ago.`,
   };
   if (ageMinutes > OFFSITE_FAIL_MINUTES) return { ...base, status: "failed" };
   if (ageMinutes > OFFSITE_WARN_MINUTES) return { ...base, status: "warn" };
@@ -114,7 +125,13 @@ function backupOverallMessage(overall: BackupOverallStatus, local: BackupCompone
 function isOffsiteSuccessEvent(event: BackupEventSummary): boolean {
   const classification = metadataText(event.metadata, "classification");
   const offsiteStatus = metadataText(event.metadata, "offsite_status");
-  return event.status === "offsite_sync_ok" || classification === "offsite_sync_ok" || offsiteStatus === "ok";
+  return (
+    event.status === "backup_r2_success" ||
+    event.status === "offsite_sync_ok" ||
+    classification === "backup_r2_success" ||
+    classification === "offsite_sync_ok" ||
+    offsiteStatus === "ok"
+  );
 }
 
 function isOffsiteFailureEvent(event: BackupEventSummary): boolean {
@@ -122,13 +139,28 @@ function isOffsiteFailureEvent(event: BackupEventSummary): boolean {
   const offsiteStatus = metadataText(event.metadata, "offsite_status");
   return (
     event.status === "backup_partial" ||
+    event.status === "backup_r2_failure" ||
     event.status === "offsite_sync_failed" ||
     event.status === "backup_failed" ||
     event.status === "error" ||
     classification === "backup_partial" ||
+    classification === "backup_r2_failure" ||
     classification === "offsite_sync_failed" ||
     offsiteStatus === "offsite_sync_failed"
   );
+}
+
+function providerFromEvent(event: BackupEventSummary | null | undefined): string | null {
+  return metadataText(event?.metadata, "offsite_provider")
+    ?? metadataText(event?.metadata, "active_backup_provider")
+    ?? metadataText(event?.metadata, "provider");
+}
+
+function backupProviderLabel(provider: string | null | undefined): string {
+  const normalized = String(provider ?? "").toLowerCase();
+  if (normalized === "r2") return "R2";
+  if (normalized === "gdrive" || normalized === "google_drive") return "Google Drive";
+  return "offsite";
 }
 
 function metadataText(metadata: Record<string, unknown> | null | undefined, key: string): string | null {

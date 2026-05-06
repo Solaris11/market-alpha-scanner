@@ -103,6 +103,7 @@ export type MonitoringEventSummary = {
   createdAt: string | null;
   eventType: string;
   message: string;
+  metadata?: Record<string, unknown> | null;
   severity: string;
   status: string;
 };
@@ -269,6 +270,7 @@ type MonitoringEventRow = QueryResultRow & {
   created_at: string | null;
   event_type: string;
   message: string;
+  metadata: Record<string, unknown> | null;
   severity: string;
   status: string;
 };
@@ -767,9 +769,9 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
       `
         SELECT
           date_bin(${window.bucketSql}, created_at, TIMESTAMPTZ '2000-01-01')::text AS bucket,
-          count(*) FILTER (WHERE severity = 'info' AND status IN ('backup_success', 'offsite_sync_ok', 'local_backup_ok', 'ok')) AS ok,
+          count(*) FILTER (WHERE severity = 'info' AND status IN ('backup_success', 'backup_r2_success', 'offsite_sync_ok', 'local_backup_ok', 'ok')) AS ok,
           count(*) FILTER (WHERE severity IN ('warning', 'warn') OR status IN ('backup_partial')) AS warned,
-          count(*) FILTER (WHERE severity = 'error' OR status IN ('backup_failed', 'offsite_sync_failed', 'error', 'fail', 'failed')) AS failed
+          count(*) FILTER (WHERE severity = 'error' OR status IN ('backup_failed', 'backup_r2_failure', 'offsite_sync_failed', 'error', 'fail', 'failed')) AS failed
         FROM monitoring_events
         WHERE created_at > now() - ${window.intervalSql}
           AND event_type = 'backup'
@@ -1015,7 +1017,7 @@ async function recentBillingEvents(limit: number): Promise<BillingEventSummary[]
 async function recentMonitoringWarnings(limit: number): Promise<MonitoringEventSummary[]> {
   const result = await dbQuery<MonitoringEventRow>(
     `
-      SELECT event_type, severity, status, message, created_at::text
+      SELECT event_type, severity, status, message, metadata, created_at::text
       FROM monitoring_events
       WHERE severity IN ('warn', 'error')
       ORDER BY created_at DESC
@@ -1029,7 +1031,7 @@ async function recentMonitoringWarnings(limit: number): Promise<MonitoringEventS
 async function recentMonitoringEventByType(eventType: string): Promise<MonitoringEventSummary | null> {
   const result = await dbQuery<MonitoringEventRow>(
     `
-      SELECT event_type, severity, status, message, created_at::text
+      SELECT event_type, severity, status, message, metadata, created_at::text
       FROM monitoring_events
       WHERE event_type = $1
       ORDER BY created_at DESC
@@ -1051,6 +1053,7 @@ function monitoringEventFromRow(row: MonitoringEventRow): MonitoringEventSummary
     createdAt: row.created_at,
     eventType: row.event_type,
     message: row.message,
+    metadata: row.metadata ?? null,
     severity: row.severity,
     status: row.status,
   };

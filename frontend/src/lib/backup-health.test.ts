@@ -69,6 +69,52 @@ describe("backup health classification", () => {
     assert.equal(health.overallBackup, "partial");
   });
 
+  test("recognizes R2 backup success events and exposes provider metadata", () => {
+    const health = classifyBackupHealth({
+      events: [{
+        createdAt: "2026-05-06T03:31:00.000Z",
+        message: "R2 backup sync completed",
+        metadata: { classification: "backup_r2_success", offsite_provider: "r2", offsite_status: "ok", provider: "r2" },
+        severity: "info",
+        status: "backup_r2_success",
+      }],
+      localBackup: localOk,
+      nowMs: Date.parse("2026-05-06T03:32:00.000Z"),
+    });
+    assert.equal(health.status, "ok");
+    assert.equal(health.offsiteBackup.status, "ok");
+    assert.equal(health.offsiteProvider, "r2");
+    assert.equal(health.latestSuccessfulOffsiteProvider, "r2");
+    assert.match(health.offsiteBackup.message, /R2 offsite backup/);
+  });
+
+  test("reports partial when latest R2 backup event failed after an older success", () => {
+    const health = classifyBackupHealth({
+      events: [
+        {
+          createdAt: "2026-05-06T03:31:00.000Z",
+          message: "R2 backup sync failed; local backup remains available",
+          metadata: { classification: "backup_r2_failure", offsite_provider: "r2", offsite_status: "offsite_sync_failed" },
+          severity: "error",
+          status: "backup_r2_failure",
+        },
+        {
+          createdAt: "2026-05-06T03:00:00.000Z",
+          message: "R2 backup sync completed",
+          metadata: { classification: "backup_r2_success", offsite_provider: "r2", offsite_status: "ok" },
+          severity: "info",
+          status: "backup_r2_success",
+        },
+      ],
+      localBackup: localOk,
+      nowMs: Date.parse("2026-05-06T03:32:00.000Z"),
+    });
+    assert.equal(health.status, "warn");
+    assert.equal(health.offsiteBackup.status, "failed");
+    assert.equal(health.overallBackup, "partial");
+    assert.equal(health.activeBackupProvider, "r2");
+  });
+
   test("fails overall when local backup freshness fails", () => {
     const health = classifyBackupHealth({
       events: [{

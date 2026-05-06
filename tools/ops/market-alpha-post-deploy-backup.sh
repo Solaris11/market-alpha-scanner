@@ -18,6 +18,13 @@ BACKUP_ENV_OVERRIDE_NAMES=(
   MARKET_ALPHA_RCLONE_RETRIES
   MARKET_ALPHA_RCLONE_LOW_LEVEL_RETRIES
   MARKET_ALPHA_RCLONE_CONTIMEOUT
+  MARKET_ALPHA_BACKUP_R2_REMOTE
+  MARKET_ALPHA_BACKUP_PRIMARY_REMOTE
+  MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER
+  MARKET_ALPHA_BACKUP_GDRIVE_REMOTE
+  MARKET_ALPHA_BACKUP_SECONDARY_REMOTE
+  MARKET_ALPHA_BACKUP_SECONDARY_PROVIDER
+  MARKET_ALPHA_BACKUP_SECONDARY_ENABLED
   MARKET_ALPHA_BACKUP_RCLONE_REMOTE
   MARKET_ALPHA_BACKUP_VERIFY_OFFSITE
   MARKET_ALPHA_BACKUP_RCLONE_LSF_TIMEOUT_SECONDS
@@ -177,6 +184,15 @@ VALUES ('backup', '$severity', '$status', '$message', '$metadata'::jsonb, now())
 SQL
 }
 
+safe_remote_label() {
+  local remote="$1"
+  if [[ "$remote" == *"://"* ]]; then
+    printf "url-redacted"
+  else
+    printf "%s" "$remote"
+  fi
+}
+
 metadata_json() {
   local classification="$1"
   local offsite_status="$2"
@@ -186,24 +202,34 @@ metadata_json() {
   local retry_count="${6:-0}"
   local duration_seconds="${7:-0}"
   local failure_type="${8:-}"
-  python3 - "$classification" "$offsite_status" "$pg_file" "$scanner_file" "$exit_code" "$retry_count" "$duration_seconds" "$failure_type" <<'PY'
+  local provider="${9:-${MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER:-}}"
+  local backup_path="${10:-${MARKET_ALPHA_BACKUP_PRIMARY_REMOTE:-}}"
+  python3 - "$classification" "$offsite_status" "$pg_file" "$scanner_file" "$exit_code" "$retry_count" "$duration_seconds" "$failure_type" "$provider" "$(safe_remote_label "$backup_path")" <<'PY'
 import json
 import os
 import sys
 from datetime import datetime, timezone
 
-classification, offsite_status, pg_file, scanner_file, exit_code, retry_count, duration_seconds, failure_type = sys.argv[1:9]
+classification, offsite_status, pg_file, scanner_file, exit_code, retry_count, duration_seconds, failure_type, provider, backup_path = sys.argv[1:11]
 payload = {
     "script": "market-alpha-post-deploy-backup.sh",
     "classification": classification,
     "offsite_status": offsite_status,
     "postgres_backup": os.path.basename(pg_file) if pg_file else None,
     "scanner_backup": os.path.basename(scanner_file) if scanner_file else None,
+    "postgres_size_bytes": os.path.getsize(pg_file) if pg_file and os.path.exists(pg_file) else None,
+    "scanner_size_bytes": os.path.getsize(scanner_file) if scanner_file and os.path.exists(scanner_file) else None,
     "exit_code": int(exit_code),
     "retry_count": int(retry_count),
     "duration_seconds": int(duration_seconds),
     "timestamp": datetime.now(timezone.utc).isoformat(),
 }
+if provider:
+    payload["provider"] = provider
+    payload["offsite_provider"] = provider
+    payload["active_backup_provider"] = provider
+if backup_path:
+    payload["backup_path"] = backup_path
 if failure_type:
     payload["failure_type"] = failure_type
 print(json.dumps(payload))
@@ -239,6 +265,13 @@ if [[ -f "$CONFIG_FILE" ]]; then
 fi
 restore_env_overrides
 
+MARKET_ALPHA_BACKUP_R2_REMOTE="${MARKET_ALPHA_BACKUP_R2_REMOTE:-}"
+MARKET_ALPHA_BACKUP_GDRIVE_REMOTE="${MARKET_ALPHA_BACKUP_GDRIVE_REMOTE:-}"
+MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER="${MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER:-}"
+MARKET_ALPHA_BACKUP_PRIMARY_REMOTE="${MARKET_ALPHA_BACKUP_PRIMARY_REMOTE:-}"
+MARKET_ALPHA_BACKUP_SECONDARY_PROVIDER="${MARKET_ALPHA_BACKUP_SECONDARY_PROVIDER:-gdrive}"
+MARKET_ALPHA_BACKUP_SECONDARY_REMOTE="${MARKET_ALPHA_BACKUP_SECONDARY_REMOTE:-${MARKET_ALPHA_BACKUP_GDRIVE_REMOTE:-}}"
+MARKET_ALPHA_BACKUP_SECONDARY_ENABLED="${MARKET_ALPHA_BACKUP_SECONDARY_ENABLED:-0}"
 MARKET_ALPHA_BACKUP_RCLONE_REMOTE="${MARKET_ALPHA_BACKUP_RCLONE_REMOTE:-}"
 MARKET_ALPHA_BACKUP_VERIFY_OFFSITE="${MARKET_ALPHA_BACKUP_VERIFY_OFFSITE:-1}"
 RCLONE_LSF_TIMEOUT_SECONDS="${MARKET_ALPHA_BACKUP_RCLONE_LSF_TIMEOUT_SECONDS:-90}"
@@ -250,6 +283,36 @@ RCLONE_STATS_INTERVAL="${MARKET_ALPHA_BACKUP_RCLONE_STATS_INTERVAL:-30s}"
 RCLONE_VERIFY_ATTEMPTS="${MARKET_ALPHA_BACKUP_RCLONE_VERIFY_ATTEMPTS:-3}"
 RCLONE_VERIFY_BACKOFF_SECONDS="${MARKET_ALPHA_BACKUP_RCLONE_VERIFY_BACKOFF_SECONDS:-30}"
 apply_operator_override_aliases
+
+if [[ -z "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE" ]]; then
+  if [[ -n "$MARKET_ALPHA_BACKUP_R2_REMOTE" ]]; then
+    MARKET_ALPHA_BACKUP_PRIMARY_REMOTE="$MARKET_ALPHA_BACKUP_R2_REMOTE"
+    MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER="r2"
+  elif [[ -n "$MARKET_ALPHA_BACKUP_RCLONE_REMOTE" ]]; then
+    MARKET_ALPHA_BACKUP_PRIMARY_REMOTE="$MARKET_ALPHA_BACKUP_RCLONE_REMOTE"
+  fi
+fi
+
+if [[ -z "$MARKET_ALPHA_BACKUP_RCLONE_REMOTE" && -n "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE" ]]; then
+  MARKET_ALPHA_BACKUP_RCLONE_REMOTE="$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE"
+fi
+
+provider_for_remote() {
+  local remote="$1"
+  local configured="${2:-}"
+  if [[ -n "$configured" ]]; then
+    printf "%s" "$configured"
+  elif [[ "$remote" == r2:* ]]; then
+    printf "r2"
+  elif [[ "$remote" == GDRIVE:* || "$remote" == gdrive:* ]]; then
+    printf "gdrive"
+  else
+    printf "offsite"
+  fi
+}
+
+MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER="$(provider_for_remote "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER")"
+MARKET_ALPHA_BACKUP_SECONDARY_PROVIDER="$(provider_for_remote "$MARKET_ALPHA_BACKUP_SECONDARY_REMOTE" "$MARKET_ALPHA_BACKUP_SECONDARY_PROVIDER")"
 
 RCLONE_FLAGS=(
   --contimeout "$RCLONE_CONNECT_TIMEOUT"
@@ -294,7 +357,7 @@ log "Verified Postgres backup size=${PG_SIZE_BYTES} bytes"
 log "Verified scanner_output backup size=${SCANNER_SIZE_BYTES} bytes"
 
 OFFSITE_STATUS="skipped"
-if [[ -n "$MARKET_ALPHA_BACKUP_RCLONE_REMOTE" && "$MARKET_ALPHA_BACKUP_VERIFY_OFFSITE" != "0" ]]; then
+if [[ -n "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE" && "$MARKET_ALPHA_BACKUP_VERIFY_OFFSITE" != "0" ]]; then
   command -v rclone >/dev/null 2>&1 || fail "rclone is not installed"
   PG_NAME="$(basename "$LATEST_PG")"
   SCANNER_NAME="$(basename "$LATEST_SCANNER")"
@@ -303,61 +366,81 @@ if [[ -n "$MARKET_ALPHA_BACKUP_RCLONE_REMOTE" && "$MARKET_ALPHA_BACKUP_VERIFY_OF
   RCLONE_STATUS=0
   trap 'rm -f "$PG_LIST" "$SCANNER_LIST"; on_error "$LINENO"' ERR
 
-  log "Verifying offsite Postgres backup exists"
-  if run_bounded_retry "$RCLONE_VERIFY_ATTEMPTS" "$RCLONE_VERIFY_BACKOFF_SECONDS" "$RCLONE_LSF_TIMEOUT_SECONDS" rclone "${RCLONE_FLAGS[@]}" lsf "$MARKET_ALPHA_BACKUP_RCLONE_REMOTE/postgres/" > "$PG_LIST"; then
+  log "Verifying primary offsite Postgres backup exists provider=${MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER}"
+  if run_bounded_retry "$RCLONE_VERIFY_ATTEMPTS" "$RCLONE_VERIFY_BACKOFF_SECONDS" "$RCLONE_LSF_TIMEOUT_SECONDS" rclone "${RCLONE_FLAGS[@]}" lsf "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE/postgres/" > "$PG_LIST"; then
     :
   else
     RCLONE_STATUS=$?
     FAILURE_TYPE="$(failure_type_for_status "$RCLONE_STATUS")"
-    METADATA="$(metadata_json "offsite_sync_failed" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "$FAILURE_TYPE")"
+    METADATA="$(metadata_json "offsite_sync_failed" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "$FAILURE_TYPE" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE")"
     write_monitoring_event "error" "offsite_sync_failed" "post-deploy backup partial: offsite Postgres verification failed" "$METADATA"
-    METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "$FAILURE_TYPE")"
+    if [[ "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" == "r2" ]]; then
+      METADATA="$(metadata_json "backup_r2_failure" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "$FAILURE_TYPE" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE")"
+      write_monitoring_event "error" "backup_r2_failure" "post-deploy backup partial: R2 Postgres verification failed" "$METADATA"
+    fi
+    METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "$FAILURE_TYPE" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE")"
     write_monitoring_event "error" "backup_partial" "post-deploy backup partial: offsite Postgres verification failed" "$METADATA"
     fail "offsite Postgres backup verification failed: $PG_NAME"
   fi
   grep -Fx "$PG_NAME" "$PG_LIST" >/dev/null || {
-    METADATA="$(metadata_json "offsite_sync_failed" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_missing")"
+    METADATA="$(metadata_json "offsite_sync_failed" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_missing" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE")"
     write_monitoring_event "error" "offsite_sync_failed" "post-deploy backup partial: offsite Postgres backup missing" "$METADATA"
-    METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_missing")"
+    if [[ "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" == "r2" ]]; then
+      METADATA="$(metadata_json "backup_r2_failure" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_missing" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE")"
+      write_monitoring_event "error" "backup_r2_failure" "post-deploy backup partial: R2 Postgres backup missing" "$METADATA"
+    fi
+    METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_missing" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE")"
     write_monitoring_event "error" "backup_partial" "post-deploy backup partial: offsite Postgres backup missing" "$METADATA"
     fail "offsite Postgres backup missing: $PG_NAME"
   }
 
-  log "Verifying offsite scanner_output backup exists"
-  if run_bounded_retry "$RCLONE_VERIFY_ATTEMPTS" "$RCLONE_VERIFY_BACKOFF_SECONDS" "$RCLONE_LSF_TIMEOUT_SECONDS" rclone "${RCLONE_FLAGS[@]}" lsf "$MARKET_ALPHA_BACKUP_RCLONE_REMOTE/scanner_output/" > "$SCANNER_LIST"; then
+  log "Verifying primary offsite scanner_output backup exists provider=${MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER}"
+  if run_bounded_retry "$RCLONE_VERIFY_ATTEMPTS" "$RCLONE_VERIFY_BACKOFF_SECONDS" "$RCLONE_LSF_TIMEOUT_SECONDS" rclone "${RCLONE_FLAGS[@]}" lsf "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE/scanner_output/" > "$SCANNER_LIST"; then
     :
   else
     RCLONE_STATUS=$?
     FAILURE_TYPE="$(failure_type_for_status "$RCLONE_STATUS")"
-    METADATA="$(metadata_json "offsite_sync_failed" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "$FAILURE_TYPE")"
+    METADATA="$(metadata_json "offsite_sync_failed" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "$FAILURE_TYPE" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE")"
     write_monitoring_event "error" "offsite_sync_failed" "post-deploy backup partial: offsite scanner_output verification failed" "$METADATA"
-    METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "$FAILURE_TYPE")"
+    if [[ "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" == "r2" ]]; then
+      METADATA="$(metadata_json "backup_r2_failure" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "$FAILURE_TYPE" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE")"
+      write_monitoring_event "error" "backup_r2_failure" "post-deploy backup partial: R2 scanner_output verification failed" "$METADATA"
+    fi
+    METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "$FAILURE_TYPE" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE")"
     write_monitoring_event "error" "backup_partial" "post-deploy backup partial: offsite scanner_output verification failed" "$METADATA"
     fail "offsite scanner_output backup verification failed: $SCANNER_NAME"
   fi
   grep -Fx "$SCANNER_NAME" "$SCANNER_LIST" >/dev/null || {
-    METADATA="$(metadata_json "offsite_sync_failed" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_missing")"
+    METADATA="$(metadata_json "offsite_sync_failed" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_missing" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE")"
     write_monitoring_event "error" "offsite_sync_failed" "post-deploy backup partial: offsite scanner_output backup missing" "$METADATA"
-    METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_missing")"
+    if [[ "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" == "r2" ]]; then
+      METADATA="$(metadata_json "backup_r2_failure" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_missing" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE")"
+      write_monitoring_event "error" "backup_r2_failure" "post-deploy backup partial: R2 scanner_output backup missing" "$METADATA"
+    fi
+    METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_missing" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE")"
     write_monitoring_event "error" "backup_partial" "post-deploy backup partial: offsite scanner_output backup missing" "$METADATA"
     fail "offsite scanner_output backup missing: $SCANNER_NAME"
   }
   rm -f "$PG_LIST" "$SCANNER_LIST"
   trap 'on_error "$LINENO"' ERR
   OFFSITE_STATUS="ok"
-elif [[ -n "$MARKET_ALPHA_BACKUP_RCLONE_REMOTE" ]]; then
+  if [[ "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" == "r2" ]]; then
+    METADATA="$(metadata_json "backup_r2_success" "ok" "$LATEST_PG" "$LATEST_SCANNER" 0 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE")"
+    write_monitoring_event "info" "backup_r2_success" "post-deploy R2 backup verified" "$METADATA"
+  fi
+elif [[ -n "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE" ]]; then
   OFFSITE_STATUS="disabled"
 else
   log "WARNING: offsite verification skipped because backup remote is not configured"
 fi
 
 if [[ "$BACKUP_STATUS" -eq 2 ]]; then
-  METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_sync_failed")"
+  METADATA="$(metadata_json "backup_partial" "offsite_sync_failed" "$LATEST_PG" "$LATEST_SCANNER" 2 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "offsite_sync_failed" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE")"
   write_monitoring_event "error" "backup_partial" "post-deploy backup partial: offsite sync failed" "$METADATA"
   fail "local backup verified but offsite sync failed"
 fi
 
-METADATA="$(metadata_json "backup_success" "$OFFSITE_STATUS" "$LATEST_PG" "$LATEST_SCANNER" 0 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)")"
+METADATA="$(metadata_json "backup_success" "$OFFSITE_STATUS" "$LATEST_PG" "$LATEST_SCANNER" 0 "$LAST_RETRY_ATTEMPTS_USED" "$(duration_seconds)" "" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE")"
 write_monitoring_event "info" "backup_success" "post-deploy backup completed" "$METADATA"
 
 trap - ERR

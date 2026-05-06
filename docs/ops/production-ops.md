@@ -88,6 +88,35 @@ sudo /opt/ops/market-alpha-compose-config-redacted.sh
 
 See `docs/ops/secrets-hardening.md` for env archive handling, Docker secrets migration order, and provider-side rotation steps.
 
+## Backups
+
+Cloudflare R2 is the primary offsite backup target for closed beta operations.
+Google Drive is optional secondary/manual redundancy only because Drive API rate
+limits have caused partial offsite syncs.
+
+Run a verified post-deploy backup after migrations and major deploys:
+
+```bash
+sudo /opt/ops/market-alpha-post-deploy-backup.sh
+```
+
+The health contract must remain honest:
+
+- local backup OK + R2 OK = `overall_backup: ok`
+- local backup OK + R2 failed/stale = `overall_backup: partial`
+- local backup failed = `overall_backup: failed`
+
+Check R2 status without printing credentials:
+
+```bash
+sudo grep -E '^MARKET_ALPHA_BACKUP_(R2_REMOTE|PRIMARY_REMOTE|PRIMARY_PROVIDER)=' /etc/market-alpha-backup.env
+rclone lsf r2:market-alpha-backups/postgres/ | tail
+rclone lsf r2:market-alpha-backups/scanner_output/ | tail
+curl -s https://app.marketalpha.co/api/health/deep | jq .backup
+```
+
+See `docs/ops/backup-restore.md` for R2 validation and temporary-database restore drills.
+
 ## Transactional Email
 
 Market Alpha uses Google Workspace Gmail SMTP for early low-volume transactional and support mail:

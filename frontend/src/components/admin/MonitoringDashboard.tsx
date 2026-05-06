@@ -38,6 +38,10 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
 
   const requestSeries = monitoring.requestMetrics.series;
   const systemSeries = monitoring.systemSeries;
+  const latestBackupMetadata = monitoring.latestBackup?.metadata ?? null;
+  const backupProvider = monitoring.backupHealth?.offsiteProvider ?? metadataText(latestBackupMetadata, "offsite_provider") ?? metadataText(latestBackupMetadata, "provider") ?? "unknown";
+  const backupDurationSeconds = metadataNumber(latestBackupMetadata, "duration_seconds");
+  const backupRetryCount = metadataNumber(latestBackupMetadata, "retry_count");
 
   const routeKey = (route: SlowRoute, index: number) => `${route.method}:${route.route}:${index}`;
   const latestSelectedCheck = monitoring.syntheticChecks.find((check) => check.checkName === selectedCheck) ?? monitoring.syntheticChecks[0] ?? null;
@@ -54,7 +58,10 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
         <MetricCard label="Disk" tone={monitoring.system.diskPercent !== null && monitoring.system.diskPercent > 85 ? "warn" : "default"} value={formatMonitoringPercent(monitoring.system.diskPercent)} />
         <MetricCard label="Local Backup" tone={statusTone(monitoring.backupHealth?.localBackup.status)} value={monitoring.backupHealth?.localBackup.status ?? "unknown"} />
         <MetricCard label="Offsite Backup" tone={statusTone(monitoring.backupHealth?.offsiteBackup.status)} value={monitoring.backupHealth?.offsiteBackup.status ?? "unknown"} />
+        <MetricCard label="Offsite Provider" value={humanizeLabel(backupProvider)} />
+        <MetricCard label="Backup Duration" value={backupDurationSeconds === null ? "unknown" : `${backupDurationSeconds}s`} />
         <MetricCard label="Overall Backup" tone={statusTone(monitoring.backupHealth?.overallBackup)} value={monitoring.backupHealth?.overallBackup ?? "unknown"} />
+        <MetricCard label="Backup Retries" tone={backupRetryCount && backupRetryCount > 1 ? "warn" : "default"} value={backupRetryCount ?? "unknown"} />
       </section>
 
       <div className="grid gap-5 xl:grid-cols-2">
@@ -305,7 +312,7 @@ function BackupStatePanel({ backup }: { backup: AdminMonitoringSummary["backupHe
       />
       <BackupStatusTile
         detail={backup.offsiteBackup.message}
-        label="Offsite"
+        label={`Offsite ${backup.offsiteProvider ? `(${humanizeLabel(backup.offsiteProvider)})` : ""}`}
         status={backup.offsiteBackup.status}
         timestamp={backup.offsiteBackup.lastUpdated}
       />
@@ -598,10 +605,25 @@ function EmptyState({ children }: { children: ReactNode }) {
 
 function statusTone(status: string | null | undefined): Tone {
   const normalized = String(status ?? "").toLowerCase();
-  if (["backup_success", "local_backup_ok", "offsite_sync_ok", "ok", "success", "active", "trialing", "healthy"].includes(normalized)) return "good";
+  if (["backup_success", "backup_r2_success", "local_backup_ok", "offsite_sync_ok", "ok", "success", "active", "trialing", "healthy"].includes(normalized)) return "good";
   if (["backup_partial", "partial", "warn", "warning", "pending", "past_due", "stale", "unknown"].includes(normalized)) return "warn";
-  if (["backup_failed", "offsite_sync_failed", "error", "fail", "failed", "missing", "canceled", "unpaid", "inactive"].includes(normalized)) return "bad";
+  if (["backup_failed", "backup_r2_failure", "offsite_sync_failed", "error", "fail", "failed", "missing", "canceled", "unpaid", "inactive"].includes(normalized)) return "bad";
   return "default";
+}
+
+function metadataText(metadata: Record<string, unknown> | null | undefined, key: string): string | null {
+  const value = metadata?.[key];
+  return typeof value === "string" ? value : null;
+}
+
+function metadataNumber(metadata: Record<string, unknown> | null | undefined, key: string): number | null {
+  const value = metadata?.[key];
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
 }
 
 function statusTileClass(status: string): string {

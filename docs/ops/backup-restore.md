@@ -29,6 +29,8 @@ It creates:
 The script treats local backup creation as its first safety boundary. It verifies
 the local Postgres gzip and scanner tar before attempting off-host sync.
 
+Cloudflare R2 is the primary offsite target. Google Drive is optional secondary
+redundancy only and should not be treated as the source of operational truth.
 Off-host rclone sync is bounded with connection, operation, retry, and total
 timeout controls so a stuck provider connection cannot leave orphaned rclone
 processes indefinitely. Result classifications written to `monitoring_events`
@@ -36,11 +38,20 @@ include:
 
 - `local_backup_ok`
 - `offsite_sync_ok`
+- `backup_r2_started`
+- `backup_r2_success`
+- `backup_r2_failure`
 - `backup_partial` when local backups are valid but offsite sync failed
 
 Relevant knobs in `/etc/market-alpha-backup.env`:
 
 ```bash
+MARKET_ALPHA_BACKUP_R2_REMOTE=r2:market-alpha-backups
+MARKET_ALPHA_BACKUP_PRIMARY_REMOTE=r2:market-alpha-backups
+MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER=r2
+MARKET_ALPHA_BACKUP_REQUIRE_OFFSITE=1
+MARKET_ALPHA_BACKUP_SECONDARY_ENABLED=0
+MARKET_ALPHA_BACKUP_GDRIVE_REMOTE=GDRIVE:market-alpha-backup
 MARKET_ALPHA_BACKUP_RCLONE_COPY_TIMEOUT_SECONDS=900
 MARKET_ALPHA_BACKUP_RCLONE_LSF_TIMEOUT_SECONDS=90
 MARKET_ALPHA_BACKUP_RCLONE_OP_TIMEOUT=60s
@@ -87,20 +98,51 @@ ls -lh "$LATEST_PG" "$LATEST_SCANNER"
 If off-host backups are configured:
 
 ```bash
-sudo grep '^MARKET_ALPHA_BACKUP_RCLONE_REMOTE=' /etc/market-alpha-backup.env
-rclone lsf GDRIVE:market-alpha-backup/postgres/ | tail
-rclone lsf GDRIVE:market-alpha-backup/scanner_output/ | tail
+sudo grep -E '^MARKET_ALPHA_BACKUP_(R2_REMOTE|PRIMARY_REMOTE|PRIMARY_PROVIDER)=' /etc/market-alpha-backup.env
+rclone lsf r2:market-alpha-backups/postgres/ | tail
+rclone lsf r2:market-alpha-backups/scanner_output/ | tail
 ```
 
 Do not print backup secrets from `/etc/market-alpha-backup.env`.
+
+## R2 Operational Validation
+
+Use a disposable object path. Never test by deleting production backup prefixes.
+
+```bash
+TS="$(date -u +%Y%m%dT%H%M%SZ)"
+SRC_DIR="/tmp/market-alpha-r2-src-$TS"
+DST_DIR="/tmp/market-alpha-r2-dst-$TS"
+FILE="market-alpha-r2-validation-$TS.txt"
+REMOTE="r2:market-alpha-backups/ops-validation/$TS"
+mkdir -p "$SRC_DIR" "$DST_DIR"
+printf 'market-alpha-r2-validation %s\n' "$TS" > "$SRC_DIR/$FILE"
+
+rclone copy "$SRC_DIR/$FILE" "$REMOTE" --contimeout 10s --timeout 30s --retries 2 --low-level-retries 2 --stats-one-line
+rclone ls "$REMOTE" --contimeout 10s --timeout 30s --retries 2 --low-level-retries 2
+rclone copy "$REMOTE/$FILE" "$DST_DIR" --contimeout 10s --timeout 30s --retries 2 --low-level-retries 2 --stats-one-line
+cmp "$SRC_DIR/$FILE" "$DST_DIR/$FILE"
+rclone deletefile "$REMOTE/$FILE" --contimeout 10s --timeout 30s --retries 2 --low-level-retries 2
+rclone rmdir "$REMOTE" --contimeout 10s --timeout 30s --retries 2 --low-level-retries 2 || true
+rm -rf "$SRC_DIR" "$DST_DIR"
+```
+
+Expected result: upload, list, download, compare, and cleanup all complete
+without `AccessDenied` or hanging rclone processes.
 
 ## Restore Drill Into A Temporary DB
 
 Never restore over production during a drill.
 
+To restore from R2 first copy the chosen backup locally:
+
+```bash
+rclone copy r2:market-alpha-backups/postgres/YYYY-MM-DD_HH-MM.sql.gz /tmp/market-alpha-restore/
+```
+
 ```bash
 RESTORE_DB="market_alpha_restore_$(date +%s)"
-LATEST_PG="$(find /opt/backups/market-alpha/postgres -maxdepth 1 -type f -name '*.sql.gz' -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)"
+LATEST_PG="$(find /tmp/market-alpha-restore /opt/backups/market-alpha/postgres -maxdepth 1 -type f -name '*.sql.gz' -printf '%T@ %p\n' 2>/dev/null | sort -nr | head -1 | cut -d' ' -f2-)"
 
 docker exec -e RESTORE_DB="$RESTORE_DB" market-alpha-scanner-market-alpha-postgres-1 \
   sh -lc 'createdb -U "$POSTGRES_USER" "$RESTORE_DB"'
