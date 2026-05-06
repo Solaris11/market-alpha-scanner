@@ -8,6 +8,8 @@ import { actionFor, formatNumber } from "@/lib/format";
 import {
   filterHistoryObservations,
   formatHistoryChartTimestamp,
+  historyCoverageMessage,
+  historyDataCoverage,
   historyFilterResult,
   historyChartPoints,
   historyChartTooltipLines,
@@ -580,6 +582,8 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
     return historyFilterResult(symbolRows, quickRange, customFrom, customTo);
   }, [customFrom, customTo, quickRange, symbolRows]);
   const filteredByTime = filterState.rows;
+  const coverage = useMemo(() => historyDataCoverage(symbolRows), [symbolRows]);
+  const coverageMessage = useMemo(() => historyCoverageMessage(symbolRows, quickRange, filterState), [filterState, quickRange, symbolRows]);
   const first = filteredByTime[0];
   const latest = filteredByTime[filteredByTime.length - 1];
   const scoreChange = first && latest && typeof first.final_score === "number" && typeof latest.final_score === "number" ? latest.final_score - first.final_score : null;
@@ -713,6 +717,12 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
               <span className="font-semibold">Active filter:</span> {filterState.activeLabel}
               {filterState.error ? <div className="mt-1 text-rose-100">{filterState.error}</div> : null}
             </div>
+            {coverageMessage ? (
+              <div className="mt-2 rounded-xl border border-amber-300/20 bg-amber-300/[0.07] px-3 py-2 text-xs leading-5 text-amber-50" data-testid="history-coverage-summary">
+                {coverageMessage}
+                {coverage ? <div className="mt-1 text-amber-100/75">This page filters saved scanner signal observations. Daily price history can span farther back than signal memory.</div> : null}
+              </div>
+            ) : null}
           </section>
 
           {filteredByTime.length ? (

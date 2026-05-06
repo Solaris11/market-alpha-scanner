@@ -112,6 +112,7 @@ export default async function TerminalPage() {
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">
           <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
+          <MarketTapeStrip rows={snapshot.signals} />
           <TerminalMonitoringBrief
             rows={snapshot.signals}
             scanStatus={humanizeLabel(scanSafety.status)}
@@ -203,6 +204,57 @@ export default async function TerminalPage() {
       </div>
       <MarketOnboarding tradePlanHref={tradePlanHref} />
     </TerminalShell>
+  );
+}
+
+function MarketTapeStrip({
+  rows,
+}: {
+  rows: Array<{ final_decision?: unknown; final_score?: unknown; price?: unknown; return_1d?: unknown; symbol: string }>;
+}) {
+  const symbols = [
+    { label: "S&P Proxy", symbol: "SPY" },
+    { label: "Nasdaq Proxy", symbol: "QQQ" },
+    { label: "BTC/USD", symbol: "BTC-USD" },
+    { label: "Gold", symbol: "GLD" },
+    { label: "Oil Proxy", symbol: "USO", fallback: "OXY" },
+    { label: "Bitcoin ETF", symbol: "IBIT" },
+  ];
+  const bySymbol = new Map(rows.map((row) => [row.symbol.toUpperCase(), row]));
+  return (
+    <GlassPanel className="p-3">
+      <div className="flex flex-wrap items-end justify-between gap-2 px-1">
+        <SectionTitle eyebrow="Market Tape" title="Cross-Asset Context" meta="from latest scanner data" />
+        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Research context only</div>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6">
+        {symbols.map((item) => {
+          const row = bySymbol.get(item.symbol) ?? (item.fallback ? bySymbol.get(item.fallback) : undefined);
+          const renderedSymbol = row?.symbol ?? item.symbol;
+          return (
+            <Link className="min-w-0 rounded-xl border border-white/10 bg-white/[0.035] p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.06]" href={`/symbol/${renderedSymbol}`} key={item.symbol}>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="truncate text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{item.label}</div>
+                  <div className="mt-1 font-mono text-base font-black text-slate-50">{renderedSymbol}</div>
+                </div>
+                <div className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-semibold text-slate-300">{row ? decisionLabel(row.final_decision) : "Unavailable"}</div>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
+                <div>
+                  <div className="text-slate-500">Price</div>
+                  <div className="font-mono font-semibold text-slate-100">{row ? formatMoney(numeric(row.price)) : "Unavailable"}</div>
+                </div>
+                <div>
+                  <div className="text-slate-500">Score</div>
+                  <div className="font-mono font-semibold text-slate-100">{row ? formatPercentLike(numeric(row.final_score)) : "N/A"}</div>
+                </div>
+              </div>
+            </Link>
+          );
+        })}
+      </div>
+    </GlassPanel>
   );
 }
 

@@ -5,6 +5,8 @@ import {
   filterHistoryObservations,
   formatHistoryChartPrice,
   formatHistoryChartTimestamp,
+  historyCoverageMessage,
+  historyDataCoverage,
   historyFilterResult,
   historyChartPoints,
   historyChartTooltipLines,
@@ -151,6 +153,25 @@ describe("history chart tooltip helpers", () => {
     assert.equal(valid.totalCount, 2);
     assert.equal(valid.filteredCount, 2);
     assert.match(valid.activeLabel, /7D/);
+  });
+
+  it("explains when selected ranges exceed available signal history", () => {
+    const rows = [
+      { ...baseRow, timestamp_utc: "2026-05-04T13:27:00Z" },
+      { ...baseRow, timestamp_utc: "2026-05-05T12:00:00Z" },
+      { ...baseRow, timestamp_utc: "2026-05-06T22:01:00Z" },
+    ];
+    const result = historyFilterResult(rows, "1y");
+    const coverage = historyDataCoverage(rows);
+
+    assert.equal(coverage?.uniqueDays, 3);
+    assert.match(coverage?.availableRangeLabel ?? "", /May 4, 2026/);
+    assert.match(coverage?.availableRangeLabel ?? "", /May 6, 2026/);
+
+    const message = historyCoverageMessage(rows, "1y", result);
+    assert.match(message ?? "", /Available signal history: 3 UTC days/);
+    assert.match(message ?? "", /1Y is selected/);
+    assert.match(message ?? "", /can look identical to All Time/);
   });
 
   it("sorts observations ascending and dedupes duplicate timestamps", () => {

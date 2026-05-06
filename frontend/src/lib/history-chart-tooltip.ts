@@ -32,6 +32,14 @@ export type HistoryFilterResult = {
   totalCount: number;
 };
 
+export type HistoryDataCoverage = {
+  availableRangeLabel: string;
+  earliestMs: number;
+  latestMs: number;
+  spanDays: number;
+  uniqueDays: number;
+};
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -162,6 +170,42 @@ export function filterHistoryObservations(rows: SymbolHistoryRow[], range: Histo
   return historyFilterResult(rows, range, customFrom, customTo).rows;
 }
 
+export function historyDataCoverage(rows: SymbolHistoryRow[]): HistoryDataCoverage | null {
+  const timestamps = normalizeHistoryObservations(rows)
+    .map(historyTimestampMs)
+    .filter((value): value is number => value !== null);
+  if (!timestamps.length) return null;
+  const earliestMs = timestamps[0];
+  const latestMs = timestamps[timestamps.length - 1];
+  const uniqueDays = new Set(timestamps.map((value) => new Date(value).toISOString().slice(0, 10))).size;
+  const spanDays = Math.max(1, Math.ceil((latestMs - earliestMs) / DAY_MS) + 1);
+  return {
+    availableRangeLabel: `${formatHistoryChartTimestamp(earliestMs)} to ${formatHistoryChartTimestamp(latestMs)}`,
+    earliestMs,
+    latestMs,
+    spanDays,
+    uniqueDays,
+  };
+}
+
+export function historyCoverageMessage(rows: SymbolHistoryRow[], range: HistoryQuickRange, filterResult: HistoryFilterResult): string | null {
+  const coverage = historyDataCoverage(rows);
+  if (!coverage) return null;
+  const dayLabel = `${coverage.uniqueDays.toLocaleString()} UTC day${coverage.uniqueDays === 1 ? "" : "s"}`;
+  const base = `Available signal history: ${dayLabel} / ${coverage.availableRangeLabel}.`;
+  if (filterResult.status === "invalid") return base;
+  if (filterResult.hasCustomRange) {
+    if (filterResult.filteredCount === 0) {
+      return `${base} The manual range is outside the available saved signal observations.`;
+    }
+    return `${base} Manual dates override the preset range.`;
+  }
+  if (range !== "all" && filterResult.rangeStartMs !== null && filterResult.filteredCount === filterResult.totalCount && coverage.earliestMs > filterResult.rangeStartMs) {
+    return `${base} ${historyQuickRangeLabel(range)} is selected, but saved signal history does not reach that far back yet, so this range can look identical to All Time.`;
+  }
+  return base;
+}
+
 export function historyFilterResult(rows: SymbolHistoryRow[], range: HistoryQuickRange, customFrom = "", customTo = ""): HistoryFilterResult {
   const normalized = normalizeHistoryObservations(rows);
   const hasCustomRange = Boolean(customFrom.trim() || customTo.trim());
@@ -286,7 +330,7 @@ function historyFilterLabel(range: HistoryQuickRange, hasCustomRange: boolean, r
   return `${historyQuickRangeLabel(range)}: observations from ${rangeStartMs === null ? "available history" : formatHistoryChartTimestamp(rangeStartMs)} onward`;
 }
 
-function historyQuickRangeLabel(range: HistoryQuickRange): string {
+export function historyQuickRangeLabel(range: HistoryQuickRange): string {
   if (range === "7d") return "7D";
   if (range === "14d") return "14D";
   if (range === "1m") return "1M";

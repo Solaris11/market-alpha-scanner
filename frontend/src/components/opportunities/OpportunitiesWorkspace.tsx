@@ -116,6 +116,7 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
   return (
     <div className="min-w-0 max-w-full space-y-5">
       <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} rows={rows} />
+      <OpportunityDeskMap marketCondition={marketCondition} rows={rows} />
       <SetupDistribution rows={rows} />
 
       <GlassPanel className="p-5">
@@ -192,6 +193,54 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
         title={tabTitle(activeTab)}
       />
     </div>
+  );
+}
+
+function OpportunityDeskMap({ marketCondition, rows }: { marketCondition: string | null; rows: OpportunityViewModel[] }) {
+  const pulse = setupPulse(rows);
+  const setupCounts = countBy(rows, (row) => setupLabel(setupType(row)));
+  const assetCounts = countBy(rows, (row) => humanizeLabel(row.assetType, "Unknown"));
+  const riskBlocked = rows.filter((row) => decision(row) === "AVOID" || hasVetoes(row.raw.vetoes)).length;
+  const fallbackCount = rows.filter((row) => Boolean(row.raw.data_provider_fallback_used)).length;
+  const staleCount = rows.filter((row) => Boolean(row.raw.stale_data) || String(row.raw.data_freshness_status ?? "").toLowerCase().includes("stale")).length;
+  const improving = [...rows]
+    .map((row) => ({ change: numeric(row.raw.score_change ?? row.raw.readiness_change ?? row.raw.confidence_change), row }))
+    .filter((item): item is { change: number; row: OpportunityViewModel } => item.change !== null)
+    .sort((left, right) => right.change - left.change)
+    .slice(0, 4);
+  const topRows = improving.length ? improving : highestScoredSetups(rows).slice(0, 4).map((row) => ({ change: null, row }));
+
+  return (
+    <GlassPanel className="p-4 sm:p-5">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <SectionTitle eyebrow="Opportunity Map" title="Desktop Intelligence Board" meta="data-backed latest scan context" />
+        <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-300">{cleanText(marketCondition, "Neutral")}</div>
+      </div>
+      <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.3fr)_minmax(300px,0.7fr)]">
+        <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
+          <CompactPulseCard title="Setup Distribution" value={compactMapLabel(setupCounts)} detail={pulse.breadthDetail} />
+          <CompactPulseCard title="Asset Coverage" value={compactMapLabel(assetCounts)} detail="Shows where the latest scan has research context, not recommendations." />
+          <CompactPulseCard title="Risk Filter Summary" value={`${riskBlocked} blocked`} detail="Avoid and vetoed rows remain visible so risk context is not hidden." />
+          <CompactPulseCard title="Data Quality" value={`${fallbackCount} fallback · ${staleCount} stale`} detail="Provider fallback and stale flags reduce confidence in the scanner payload." />
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-3">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Top movement / highest score</div>
+          <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
+            {topRows.map((item) => (
+              <Link className="rounded-xl border border-white/10 bg-white/[0.04] p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.07]" href={`/symbol/${item.row.symbol}`} key={item.row.symbol}>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="font-mono text-base font-black text-slate-50">{item.row.symbol}</div>
+                  <div className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-semibold text-slate-300">{decisionLabel(item.row.final_decision)}</div>
+                </div>
+                <div className="mt-1 text-xs text-slate-400">
+                  {item.change === null ? `Score ${formatNumber(item.row.final_score, 0)}` : `${item.change > 0 ? "+" : ""}${item.change.toFixed(1)} change`} · {item.row.conviction} readiness
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </div>
+    </GlassPanel>
   );
 }
 
@@ -683,6 +732,15 @@ function topCount(counts: Map<string, number>): string | null {
     }
   }
   return selected;
+}
+
+function compactMapLabel(counts: Map<string, number>): string {
+  const pairs = Array.from(counts.entries())
+    .filter(([, count]) => count > 0)
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 2);
+  if (!pairs.length) return "No data";
+  return pairs.map(([label, count]) => `${label} ${count}`).join(" · ");
 }
 
 function setupType(row: OpportunityViewModel): string {
