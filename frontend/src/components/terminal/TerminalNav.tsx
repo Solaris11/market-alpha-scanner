@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import { AccountPill } from "@/components/account/AccountPill";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
@@ -30,6 +30,9 @@ export function MobileTerminalNav() {
   const pathname = usePathname();
   const router = useRouter();
   const drawerTitleId = useId();
+  const drawerRef = useRef<HTMLElement | null>(null);
+  const topMenuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const bottomMenuButtonRef = useRef<HTMLButtonElement | null>(null);
   const { authenticated, entitlement, logout, user } = useCurrentUser();
   const [open, setOpen] = useState(false);
   const title = activeSectionTitle(pathname, entitlement.isAdmin);
@@ -42,10 +45,20 @@ export function MobileTerminalNav() {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") setOpen(false);
     }
+    function onPointerDown(event: PointerEvent) {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (drawerRef.current?.contains(target)) return;
+      if (topMenuButtonRef.current?.contains(target)) return;
+      if (bottomMenuButtonRef.current?.contains(target)) return;
+      setOpen(false);
+    }
     window.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown, true);
     return () => {
       document.body.style.overflow = previous;
       window.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown, true);
     };
   }, [open]);
 
@@ -77,6 +90,7 @@ export function MobileTerminalNav() {
           aria-label={open ? "Close navigation menu" : "Open navigation menu"}
           className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 text-slate-100 transition hover:border-cyan-300/35 hover:bg-cyan-400/10"
           onClick={() => setOpen((value) => !value)}
+          ref={topMenuButtonRef}
           type="button"
         >
           <span className="hidden text-xs font-semibold sm:inline">{open ? "Close" : "More"}</span>
@@ -88,11 +102,17 @@ export function MobileTerminalNav() {
         </button>
       </div>
 
-      <div className={`fixed inset-0 z-[8990] bg-slate-950/70 backdrop-blur-sm transition-opacity duration-200 ${open ? "opacity-100" : "pointer-events-none opacity-0"}`} onClick={() => setOpen(false)} />
+      <div
+        aria-hidden="true"
+        className={`fixed left-1/2 top-1/2 z-[8990] h-[200dvh] w-[200dvw] -translate-x-1/2 -translate-y-1/2 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-200 ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
+        onClick={() => setOpen(false)}
+      />
       <aside
         aria-labelledby={drawerTitleId}
+        aria-hidden={!open}
         className={`fixed right-0 top-0 z-[9000] flex h-dvh w-[min(88vw,380px)] flex-col border-l border-white/10 bg-slate-950/95 shadow-2xl shadow-black/50 ring-1 ring-cyan-300/10 backdrop-blur-2xl transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`}
         id="market-alpha-mobile-drawer"
+        ref={drawerRef}
       >
         <div className="border-b border-white/10 p-4">
           <div className="flex items-center justify-between gap-3">
@@ -144,7 +164,7 @@ export function MobileTerminalNav() {
 
       <nav aria-label="Primary mobile navigation" className="fixed inset-x-3 bottom-3 z-[8500] grid grid-cols-5 gap-1 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl">
         {MOBILE_BOTTOM_NAV_ITEMS.map((item) => <BottomNavLink item={item} key={item.href} pathname={pathname} />)}
-        <BottomMenuButton onClick={() => setOpen(true)} open={open} />
+        <BottomMenuButton buttonRef={bottomMenuButtonRef} onClick={() => setOpen(true)} open={open} />
       </nav>
     </div>
   );
@@ -197,7 +217,7 @@ function BottomNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
   );
 }
 
-function BottomMenuButton({ onClick, open }: { onClick: () => void; open: boolean }) {
+function BottomMenuButton({ buttonRef, onClick, open }: { buttonRef: RefObject<HTMLButtonElement | null>; onClick: () => void; open: boolean }) {
   return (
     <button
       aria-controls="market-alpha-mobile-drawer"
@@ -207,6 +227,7 @@ function BottomMenuButton({ onClick, open }: { onClick: () => void; open: boolea
         open ? "border-cyan-300/35 bg-cyan-400/15 text-cyan-100" : "border-transparent text-slate-400 hover:bg-white/[0.05] hover:text-slate-100"
       }`}
       onClick={onClick}
+      ref={buttonRef}
       type="button"
     >
       <span className="relative h-3.5 w-4">
