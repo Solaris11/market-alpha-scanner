@@ -359,6 +359,46 @@ function PerformanceSimpleView({
   );
 }
 
+function PerformanceEvidenceEmptyState({ completedHorizons, forwardObservationCount }: { completedHorizons: string[]; forwardObservationCount: number }) {
+  const details = [
+    {
+      label: "Evidence status",
+      value: forwardObservationCount > 0 ? "Observations saved" : "Still maturing",
+      detail: forwardObservationCount > 0
+        ? `${forwardObservationCount.toLocaleString()} forward observations exist, but grouped comparisons are not ready for the selected horizon yet.`
+        : "Recent signals need time to age into 1D, 5D, 10D, and 20D validation windows.",
+    },
+    {
+      label: "Completed horizons",
+      value: completedHorizons.length ? completedHorizons.join(", ") : "None yet",
+      detail: "The scanner keeps collecting evidence without auto-tuning itself from small samples.",
+    },
+    {
+      label: "What happens next",
+      value: "Automatic fill-in",
+      detail: "As forward windows complete, grouped score, setup, and decision evidence will replace this compact state.",
+    },
+  ];
+  return (
+    <section className="terminal-panel rounded-md p-4">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Evidence Charts</div>
+      <h3 className="mt-1 text-base font-semibold text-slate-50">Forward-return comparisons are not ready yet</h3>
+      <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">
+        Empty chart frames are hidden until there is enough grouped evidence to make the visualization useful.
+      </p>
+      <div className="mt-3 grid gap-3 md:grid-cols-3">
+        {details.map((item) => (
+          <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3" key={item.label}>
+            <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{item.label}</div>
+            <div className="mt-1 font-mono text-sm font-black text-slate-50">{item.value}</div>
+            <p className="mt-2 text-xs leading-5 text-slate-400">{item.detail}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function evidenceMaturity(count: number): string {
   if (count > 100) return "High evidence";
   if (count >= 30) return "Medium evidence";
@@ -509,12 +549,16 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
         ))}
       </section>
 
-      <section className="grid gap-3 xl:grid-cols-2">
-        <BarChart groupType="score_bucket" metric="avg_return" rows={summaryRows} title="Avg Return by Score Range" />
-        <BarChart groupType="rating" metric="hit_rate" rows={summaryRows} title="Hit Rate by Rating" />
-        <BarChart groupType="setup_type" metric="avg_return" rows={summaryRows} title="Avg Return by Setup" />
-        <BarChart groupType="entry_status" metric="avg_max_drawdown" rows={summaryRows} title="Avg Drawdown by Entry Status" />
-      </section>
+      {summaryRows.length ? (
+        <section className="grid gap-3 xl:grid-cols-2">
+          <BarChart groupType="score_bucket" metric="avg_return" rows={summaryRows} title="Avg Return by Score Range" />
+          <BarChart groupType="rating" metric="hit_rate" rows={summaryRows} title="Hit Rate by Rating" />
+          <BarChart groupType="setup_type" metric="avg_return" rows={summaryRows} title="Avg Return by Setup" />
+          <BarChart groupType="entry_status" metric="avg_max_drawdown" rows={summaryRows} title="Avg Drawdown by Entry Status" />
+        </section>
+      ) : (
+        <PerformanceEvidenceEmptyState completedHorizons={completedHorizons} forwardObservationCount={forwardObservationCount ?? cleanForwardRows.length} />
+      )}
 
       <SimpleAdvancedTabs
         simple={(

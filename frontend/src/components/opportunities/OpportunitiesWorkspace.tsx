@@ -87,8 +87,7 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
 
   return (
     <div className="min-w-0 max-w-full space-y-5">
-      <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} />
-      <OpportunityIntelligenceDeck marketCondition={marketCondition} rows={rows} />
+      <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} rows={rows} />
       <SetupDistribution rows={rows} />
 
       <GlassPanel className="p-5">
@@ -153,7 +152,19 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
   );
 }
 
-function BestTradeNowOpportunityCard({ best, highestScored, marketCondition, priceSeries }: { best: OpportunityViewModel | null; highestScored: OpportunityViewModel[]; marketCondition: string | null; priceSeries: Record<string, ScannerScalar>[] }) {
+function BestTradeNowOpportunityCard({
+  best,
+  highestScored,
+  marketCondition,
+  priceSeries,
+  rows,
+}: {
+  best: OpportunityViewModel | null;
+  highestScored: OpportunityViewModel[];
+  marketCondition: string | null;
+  priceSeries: Record<string, ScannerScalar>[];
+  rows: OpportunityViewModel[];
+}) {
   if (!best) {
     return (
       <GlassPanel className="overflow-hidden p-5 md:p-6">
@@ -163,6 +174,7 @@ function BestTradeNowOpportunityCard({ best, highestScored, marketCondition, pri
           Market conditions: {cleanText(marketCondition, "not favorable").toUpperCase()} - wait for pullbacks or stronger confirmation.
         </p>
         <HighestScoredSetups rows={highestScored} />
+        <OpportunityHeroIntelligence marketCondition={marketCondition} rows={rows} />
       </GlassPanel>
     );
   }
@@ -189,6 +201,7 @@ function BestTradeNowOpportunityCard({ best, highestScored, marketCondition, pri
             </div>
           </div>
           <HighestScoredSetups rows={highestScored} />
+          <OpportunityHeroIntelligence marketCondition={marketCondition} rows={rows} />
         </div>
 
         <TopSetupIntelligencePanel best={best} candles={rowsToCandles(priceSeries)} />
@@ -314,7 +327,7 @@ function SetupDistribution({ rows }: { rows: OpportunityViewModel[] }) {
   );
 }
 
-function OpportunityIntelligenceDeck({ marketCondition, rows }: { marketCondition: string | null; rows: OpportunityViewModel[] }) {
+function OpportunityHeroIntelligence({ marketCondition, rows }: { marketCondition: string | null; rows: OpportunityViewModel[] }) {
   const pulse = setupPulse(rows);
   const topImproving = [...rows]
     .map((row) => ({ change: numeric(row.raw.score_change ?? row.raw.readiness_change ?? row.raw.confidence_change), row }))
@@ -326,16 +339,22 @@ function OpportunityIntelligenceDeck({ marketCondition, rows }: { marketConditio
   const fallbackCount = rows.filter((row) => Boolean(row.raw.data_provider_fallback_used)).length;
 
   return (
-    <GlassPanel className="p-4 sm:p-5">
-      <SectionTitle eyebrow="Opportunity Intelligence" title="Scanner Pulse" meta="Compact research context" />
-      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+    <div className="mt-3 rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.055] p-3">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Opportunity Pulse</div>
+          <p className="mt-1 text-xs text-slate-500">Compact context for the visible desktop setup area.</p>
+        </div>
+        <div className="rounded-full border border-white/10 bg-slate-950/40 px-2.5 py-1 text-[10px] font-semibold text-slate-300">{cleanText(marketCondition, "Neutral")}</div>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 2xl:grid-cols-5">
         <CompactPulseCard title="Readiness Heatmap" value={`${highReadiness} high readiness`} detail={`${pulse.confidence}. Confidence is not a prediction.`} />
         <CompactPulseCard title="Regime Alignment" value={cleanText(marketCondition, "Neutral")} detail={pulse.breadthDetail} />
         <CompactPulseCard title="Risk Filters" value={`${riskBlocked} blocked`} detail="Blocked rows are preserved as context so the scanner does not force activity." />
         <CompactPulseCard title="Data Quality" value={`${fallbackCount} fallbacks`} detail={pulse.scannerDetail} />
         <CompactPulseCard title="Setup Focus" value={pulse.breadth} detail="Use setup groups to compare research context before opening symbol detail." />
       </div>
-      <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+      <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950/35 p-3">
         <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Top improving symbols</div>
         <div className="mt-2 grid gap-2 sm:grid-cols-3">
           {topImproving.length ? topImproving.map((item) => (
@@ -351,7 +370,7 @@ function OpportunityIntelligenceDeck({ marketCondition, rows }: { marketConditio
           ))}
         </div>
       </div>
-    </GlassPanel>
+    </div>
   );
 }
 

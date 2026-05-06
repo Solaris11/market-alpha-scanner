@@ -78,10 +78,20 @@ export function historyTimestampMs(row: { timestamp_utc: string }): number | nul
 export function parseHistoryDateInput(value: string, endOfDay = false): number | null {
   const text = value.trim();
   if (!text) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-    const suffix = endOfDay ? "T23:59:59.999" : "T00:00:00";
-    const dateOnlyMs = Date.parse(`${text}${suffix}`);
-    return Number.isFinite(dateOnlyMs) ? dateOnlyMs : null;
+  const localDateTime = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?)?$/);
+  if (localDateTime) {
+    const [, year, month, day, hour, minute, second, millisecond] = localDateTime;
+    const hasExplicitTime = hour !== undefined && minute !== undefined;
+    const utcMs = Date.UTC(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      hasExplicitTime ? Number(hour) : endOfDay ? 23 : 0,
+      hasExplicitTime ? Number(minute) : endOfDay ? 59 : 0,
+      hasExplicitTime ? Number(second ?? "0") : endOfDay ? 59 : 0,
+      hasExplicitTime ? Number((millisecond ?? "0").padEnd(3, "0")) : endOfDay ? 999 : 0,
+    );
+    return Number.isFinite(utcMs) ? utcMs : null;
   }
   const parsed = Date.parse(text);
   return Number.isFinite(parsed) ? parsed : null;

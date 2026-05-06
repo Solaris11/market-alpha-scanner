@@ -9,6 +9,7 @@ import {
   historyChartTooltipLines,
   nearestHistoryChartPoint,
   normalizeHistoryObservations,
+  parseHistoryDateInput,
 } from "./history-chart-tooltip";
 import type { SymbolHistoryRow } from "./types";
 
@@ -99,6 +100,28 @@ describe("history chart tooltip helpers", () => {
 
     const filtered = filterHistoryObservations(rows, "7d", "2026-04-24T00:00", "2026-04-26T00:00");
     assert.deepEqual(filtered.map((row) => row.timestamp_utc), ["2026-04-25T12:00:00Z"]);
+  });
+
+  it("parses date and datetime-local filters in UTC instead of browser local time", () => {
+    assert.equal(parseHistoryDateInput("2026-05-05"), Date.parse("2026-05-05T00:00:00.000Z"));
+    assert.equal(parseHistoryDateInput("2026-05-05", true), Date.parse("2026-05-05T23:59:59.999Z"));
+    assert.equal(parseHistoryDateInput("2026-05-05T12:43"), Date.parse("2026-05-05T12:43:00.000Z"));
+  });
+
+  it("updates filtered observation counts when preset and manual ranges change", () => {
+    const rows = [
+      { ...baseRow, timestamp_utc: "2026-04-01T12:00:00Z" },
+      { ...baseRow, timestamp_utc: "2026-04-20T12:00:00Z" },
+      { ...baseRow, timestamp_utc: "2026-04-25T12:00:00Z" },
+      { ...baseRow, timestamp_utc: "2026-05-01T12:00:00Z" },
+      { ...baseRow, timestamp_utc: "2026-05-05T12:00:00Z" },
+    ];
+
+    assert.equal(filterHistoryObservations(rows, "7d").length, 2);
+    assert.equal(filterHistoryObservations(rows, "14d").length, 3);
+    assert.equal(filterHistoryObservations(rows, "1m").length, 4);
+    assert.equal(filterHistoryObservations(rows, "7d", "2026-04-20T00:00", "2026-04-30T23:59").length, 2);
+    assert.equal(filterHistoryObservations(rows, "7d", "", "").length, 2);
   });
 
   it("sorts observations ascending and dedupes duplicate timestamps", () => {

@@ -112,6 +112,11 @@ export default async function TerminalPage() {
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">
           <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
+          <TerminalMonitoringBrief
+            rows={snapshot.signals}
+            scanStatus={humanizeLabel(scanSafety.status)}
+            topWatchRows={opportunityModel.rows}
+          />
           {actionBlocksTradeUi ? (
             <GlassPanel className="border-amber-300/25 bg-amber-400/[0.08] p-6">
               <div className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-200">Decision Lock</div>
@@ -183,12 +188,6 @@ export default async function TerminalPage() {
               </GlassPanel>
             )}
           </div>
-
-          <TerminalMonitoringBrief
-            rows={snapshot.signals}
-            scanStatus={humanizeLabel(scanSafety.status)}
-            topWatchRows={opportunityModel.rows}
-          />
         </div>
 
         <div className="space-y-4 xl:sticky xl:top-4 xl:self-start">

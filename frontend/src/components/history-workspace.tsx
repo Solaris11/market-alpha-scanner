@@ -387,6 +387,11 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: H
   const maxValue = Math.max(...points.map((point) => point.value));
   const timeSpan = Math.max(1, maxTime - minTime);
   const valueSpan = Math.max(1, maxValue - minValue);
+  const lineColor = field === "price" ? "rgb(52,211,153)" : "rgb(125,211,252)";
+  const activeColor = field === "price" ? "rgb(110,231,183)" : "rgb(186,230,253)";
+  const axisLabel = field === "price" ? "Price" : "Final score";
+  const startLabel = compactAxisDate(minTime);
+  const endLabel = compactAxisDate(maxTime);
   const plotted = points.map((point) => {
     const x = padding + ((point.time - minTime) / timeSpan) * (width - padding * 2);
     const y = height - padding - ((point.value - minValue) / valueSpan) * (height - padding * 2);
@@ -426,6 +431,12 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: H
           <span className="hidden text-[10px] text-slate-500 sm:inline">Tap or hover for details</span>
         </div>
       </div>
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-400">
+        <LegendItem colorClass={field === "price" ? "bg-emerald-300" : "bg-sky-300"} label={`${axisLabel} line`} />
+        <LegendItem colorClass="bg-slate-100" label="Observation point" />
+        <LegendItem colorClass={field === "price" ? "bg-emerald-100" : "bg-sky-100"} label="Selected point" />
+        <LegendItem colorClass="border border-slate-400 bg-transparent" label="Min / max scale" />
+      </div>
       <div className="relative overflow-hidden rounded border border-slate-800/80 bg-slate-950/35">
         <svg
           aria-label={`${label} interactive chart`}
@@ -439,21 +450,24 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: H
           width="100%"
         >
           <title>{label} over time</title>
+          <text fill="rgb(100,116,139)" fontSize="10" textAnchor="start" transform={`rotate(-90 10 ${height / 2})`} x="10" y={height / 2}>{axisLabel}</text>
           <text fill="rgb(100,116,139)" fontSize="10" textAnchor="end" x={width - padding} y={padding - 6}>{formatNumber(maxValue)}</text>
           <text fill="rgb(100,116,139)" fontSize="10" textAnchor="end" x={width - padding} y={height - padding + 15}>{formatNumber(minValue)}</text>
+          <text fill="rgb(100,116,139)" fontSize="10" textAnchor="start" x={padding} y={height - 6}>{startLabel}</text>
+          <text fill="rgb(100,116,139)" fontSize="10" textAnchor="end" x={width - padding} y={height - 6}>{endLabel}</text>
           <line stroke="rgba(148,163,184,0.22)" x1={padding} x2={width - padding} y1={height - padding} y2={height - padding} />
           <line stroke="rgba(148,163,184,0.22)" x1={padding} x2={padding} y1={padding} y2={height - padding} />
           {activePoint ? (
             <line stroke="rgba(226,232,240,0.28)" strokeDasharray="4 4" x1={activePoint.x} x2={activePoint.x} y1={padding} y2={height - padding} />
           ) : null}
-          <path d={path} fill="none" stroke={field === "price" ? "rgb(52,211,153)" : "rgb(125,211,252)"} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
+          <path d={path} fill="none" stroke={lineColor} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" />
           {plotted.map((point) => {
             const active = displayIndex === point.index;
             return (
               <circle
                 cx={point.x}
                 cy={point.y}
-                fill={active ? (field === "price" ? "rgb(110,231,183)" : "rgb(186,230,253)") : "rgb(226,232,240)"}
+                fill={active ? activeColor : "rgb(226,232,240)"}
                 key={point.index}
                 r={active ? "4.6" : "2.8"}
                 stroke={active ? "rgba(15,23,42,0.95)" : "transparent"}
@@ -502,6 +516,21 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: H
       ) : null}
     </div>
   );
+}
+
+function LegendItem({ colorClass, label }: { colorClass: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.03] px-2 py-1">
+      <span className={`h-2 w-2 rounded-full ${colorClass}`} />
+      <span>{label}</span>
+    </span>
+  );
+}
+
+function compactAxisDate(ms: number): string {
+  const date = new Date(ms);
+  if (!Number.isFinite(date.getTime())) return "N/A";
+  return new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", timeZone: "UTC" }).format(date);
 }
 
 export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props) {
@@ -650,7 +679,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
               </label>
               <div className="self-end text-xs text-slate-500">
                 Showing {filteredByTime.length.toLocaleString()} of {symbolRows.length.toLocaleString()} observations
-                {customFrom || customTo ? <div className="mt-0.5 text-amber-200">Custom range active</div> : null}
+                {customFrom || customTo ? <div className="mt-0.5 text-amber-200">Manual dates override range</div> : null}
               </div>
               <button
                 className="h-9 self-end rounded border border-slate-700/80 px-3 text-xs font-semibold text-slate-300 transition hover:border-sky-400/50 hover:text-sky-200 disabled:cursor-not-allowed disabled:opacity-40"
