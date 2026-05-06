@@ -7,7 +7,7 @@ import { AccountPill } from "@/components/account/AccountPill";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ACCOUNT_NAV_ITEM, MOBILE_BOTTOM_NAV_ITEMS, PRIMARY_NAV_ITEMS, activeSectionTitle, drawerNavSections, isActivePath, visibleUtilityNavItems, type AppNavItem } from "@/lib/navigation";
+import { ACCOUNT_NAV_ITEM, MOBILE_BOTTOM_NAV_ITEMS, MOBILE_MORE_NAV_LABEL, PRIMARY_NAV_ITEMS, activeSectionTitle, drawerNavSections, isActivePath, visibleUtilityNavItems, type AppNavItem } from "@/lib/navigation";
 
 export function DesktopTerminalNav() {
   const pathname = usePathname();
@@ -98,7 +98,7 @@ export function MobileTerminalNav() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300/80">Market Alpha</div>
-              <h2 className="mt-1 text-lg font-semibold text-slate-50" id={drawerTitleId}>Navigation</h2>
+              <h2 className="mt-1 text-lg font-semibold text-slate-50" id={drawerTitleId}>All Navigation</h2>
             </div>
             <button className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300" onClick={() => setOpen(false)} type="button">
               <span aria-hidden="true">x</span>
@@ -128,6 +128,7 @@ export function MobileTerminalNav() {
         </nav>
 
         <div className="border-t border-white/10 p-4">
+          <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Account</div>
           <div className="grid grid-cols-2 gap-2">
             <DrawerNavLink item={ACCOUNT_NAV_ITEM} pathname={pathname} />
             {authenticated ? (
@@ -141,8 +142,9 @@ export function MobileTerminalNav() {
         </div>
       </aside>
 
-      <nav aria-label="Primary mobile navigation" className="fixed inset-x-3 bottom-3 z-[8500] grid grid-cols-4 gap-1 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl">
+      <nav aria-label="Primary mobile navigation" className="fixed inset-x-3 bottom-3 z-[8500] grid grid-cols-5 gap-1 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl">
         {MOBILE_BOTTOM_NAV_ITEMS.map((item) => <BottomNavLink item={item} key={item.href} pathname={pathname} />)}
+        <BottomMenuButton onClick={() => setOpen(true)} open={open} />
       </nav>
     </div>
   );
@@ -192,6 +194,28 @@ function BottomNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
       <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
       <span className="mt-1 truncate">{item.label}</span>
     </Link>
+  );
+}
+
+function BottomMenuButton({ onClick, open }: { onClick: () => void; open: boolean }) {
+  return (
+    <button
+      aria-controls="market-alpha-mobile-drawer"
+      aria-expanded={open}
+      aria-label={open ? "Close full navigation menu" : "Open full navigation menu"}
+      className={`flex min-h-12 flex-col items-center justify-center rounded-xl border px-1 text-center text-[11px] font-semibold transition ${
+        open ? "border-cyan-300/35 bg-cyan-400/15 text-cyan-100" : "border-transparent text-slate-400 hover:bg-white/[0.05] hover:text-slate-100"
+      }`}
+      onClick={onClick}
+      type="button"
+    >
+      <span className="relative h-3.5 w-4">
+        <span className="absolute left-0 top-0 h-0.5 w-4 rounded-full bg-current" />
+        <span className="absolute left-0 top-[6px] h-0.5 w-4 rounded-full bg-current" />
+        <span className="absolute left-0 top-[12px] h-0.5 w-4 rounded-full bg-current" />
+      </span>
+      <span className="mt-1 truncate">{MOBILE_MORE_NAV_LABEL}</span>
+    </button>
   );
 }
 

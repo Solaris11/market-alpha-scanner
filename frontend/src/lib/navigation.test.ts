@@ -3,6 +3,7 @@ import { describe, test } from "node:test";
 
 import {
   MOBILE_BOTTOM_NAV_ITEMS,
+  MOBILE_MORE_NAV_LABEL,
   PRIMARY_NAV_ITEMS,
   activeSectionTitle,
   allNavigationItems,
@@ -55,6 +56,21 @@ describe("application navigation hierarchy", () => {
       MOBILE_BOTTOM_NAV_ITEMS.map((item) => item.label),
       ["Terminal", "Opportunities", "Alerts", "Account"],
     );
+    assert.equal(MOBILE_MORE_NAV_LABEL, "More");
+  });
+
+  test("keeps all major product sections reachable through the mobile drawer", () => {
+    const sections = drawerNavSections(false);
+    const labels = sections.flatMap((section) => section.items.map((item) => item.label));
+    assert.deepEqual(labels, ["Terminal", "Opportunities", "Performance", "History", "Alerts", "Paper", "Support", "Advanced"]);
+    assert.equal(labels.includes("Admin"), false);
+  });
+
+  test("shows admin in the mobile drawer only for admin users", () => {
+    const nonAdminLabels = drawerNavSections(false).flatMap((section) => section.items.map((item) => item.label));
+    const adminLabels = drawerNavSections(true).flatMap((section) => section.items.map((item) => item.label));
+    assert.equal(nonAdminLabels.includes("Admin"), false);
+    assert.equal(adminLabels.includes("Admin"), true);
   });
 
   test("resolves active titles and nested paths consistently", () => {

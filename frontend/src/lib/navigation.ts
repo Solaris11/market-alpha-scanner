@@ -37,6 +37,7 @@ export const MOBILE_BOTTOM_NAV_ITEMS: AppNavItem[] = [
   { group: "execution", href: "/alerts", key: "alerts", label: "Alerts" },
   ACCOUNT_NAV_ITEM,
 ];
+export const MOBILE_MORE_NAV_LABEL = "More";
 
 export function visibleUtilityNavItems(isAdmin: boolean): AppNavItem[] {
   return isAdmin ? [...UTILITY_NAV_ITEMS, ADMIN_NAV_ITEM] : UTILITY_NAV_ITEMS;
