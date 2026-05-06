@@ -42,5 +42,6 @@ describe("UI label formatting", () => {
       "80+ score range is weaker than expected 70-79 with early/low evidence and weak historical advantage",
     );
     assert.equal(humanizeQuantText("expectancy is mixed for score_bucket"), "expected historical return is mixed for Score Range");
+    assert.equal(humanizeQuantText("sectorOn 5D has low sample size"), "Sector on 5D has early/low evidence");
   });
 });

@@ -7,7 +7,6 @@ import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/shell";
 import { SignalLifecycle } from "@/components/signal-lifecycle";
-import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { getCalibrationInsights, getFullRanking, getHistorySummary, getIntradaySignalDriftSummary, getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
@@ -62,8 +61,8 @@ function edge(value: unknown) {
 function groupTitle(group: Record<string, unknown> | null) {
   if (!group) return "N/A";
   const label = text(group.label, "");
-  if (label) return label;
-  return `${humanizeLabel(group.group_type, "Group")} ${humanizeLabel(group.group_value, "unknown")} over ${text(group.horizon, "unknown")}`;
+  if (label) return humanizeQuantText(label);
+  return `${humanizeLabel(group.group_type, "Group")}: ${humanizeLabel(group.group_value, "unknown")} over ${text(group.horizon, "unknown")}`;
 }
 
 function stringList(value: unknown) {
@@ -86,7 +85,7 @@ function CalibrationInsightsPanel({ insights }: { insights: Record<string, unkno
           <h2 className="mt-1 text-lg font-semibold text-slate-50">Scanner Learning Readout</h2>
           <p className="mt-1 text-sm text-slate-400">Plain-English historical evidence from completed forward-return observations. It does not auto-tune the scanner.</p>
         </div>
-        <div className="font-mono text-xs text-slate-500">{generatedAt ? `Generated ${formatDate(generatedAt)}` : "Not generated yet"}</div>
+        <div className="text-xs text-slate-500">{generatedAt ? `Last updated ${formatDate(generatedAt)}` : "Not generated yet"}</div>
       </div>
 
       {!insights ? (
@@ -229,20 +228,13 @@ export default async function PerformancePage() {
 
         <CalibrationInsightsPanel insights={calibrationInsights} />
 
-        <SimpleAdvancedTabs
-          simple={(
-            <section className="terminal-panel rounded-md p-4">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Summary View</div>
-              <p className="mt-1 text-sm leading-6 text-slate-400">Calibration summaries and validation cards are shown by default. Open Advanced for calibration recommendation and lifecycle tables.</p>
-            </section>
-          )}
-          advanced={(
-            <>
-              <AutoCalibrationRecommendations rows={performance.autoCalibration.rows} state={performance.autoCalibration.state} />
-              <SignalLifecycle rows={performance.lifecycle.rows} summaryRows={performance.lifecycleSummary.rows} />
-            </>
-          )}
-        />
+        <details className="terminal-panel rounded-2xl p-4">
+          <summary className="cursor-pointer text-sm font-semibold text-slate-100 marker:text-cyan-300">Advanced calibration diagnostics</summary>
+          <div className="mt-4 space-y-3">
+            <AutoCalibrationRecommendations rows={performance.autoCalibration.rows} state={performance.autoCalibration.state} />
+            <SignalLifecycle rows={performance.lifecycle.rows} summaryRows={performance.lifecycleSummary.rows} />
+          </div>
+        </details>
 
         <PerformanceValidation forwardObservationCount={forwardObservationCount} forwardRows={performance.forwardReturns.rows} history={history} rankingRows={ranking} summaryRows={performance.summary.rows} />
 

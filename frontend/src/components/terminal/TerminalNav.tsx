@@ -186,13 +186,13 @@ function BottomNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
   const active = isActivePath(pathname, item.href);
   return (
     <Link
-      className={`flex min-h-12 flex-col items-center justify-center rounded-xl border px-1 text-center text-[11px] font-semibold transition ${
+      className={`relative flex min-h-12 flex-col items-center justify-center rounded-xl border px-1 text-center text-[11px] font-semibold transition ${
         active ? "border-cyan-300/35 bg-cyan-400/15 text-cyan-100" : "border-transparent text-slate-400 hover:bg-white/[0.05] hover:text-slate-100"
       }`}
       href={item.href}
     >
-      <span className="h-1.5 w-1.5 rounded-full bg-current opacity-70" />
-      <span className="mt-1 truncate">{item.label}</span>
+      {active ? <span className="absolute left-1/2 top-1 h-0.5 w-7 -translate-x-1/2 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.45)]" /> : null}
+      <span className="truncate pt-1">{item.label}</span>
     </Link>
   );
 }

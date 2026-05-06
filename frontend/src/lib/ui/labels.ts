@@ -63,6 +63,7 @@ export function readableText(value: unknown, fallback = "N/A"): string {
 export function humanizeQuantText(value: unknown, fallback = "N/A"): string {
   const raw = readableText(value, fallback);
   return raw
+    .replace(/\b([a-z]+)On\b/g, (_match, group: string) => `${humanizeLabel(group)} on`)
     .replace(/\bscore_bucket\b/g, "Score Range")
     .replace(/\bscore bucket(s)?\b/gi, "score range$1")
     .replace(/\bbucket(s)?\b/gi, "range$1")
