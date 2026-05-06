@@ -45,7 +45,7 @@ export function CalibrationTable({ rows }: { rows: CalibrationMetricRow[] }) {
           <tr>
             {HEADERS.map((header) => (
               <th className={`px-3 py-3 ${header.numeric ? "text-right" : ""}`} key={header.key}>
-                <button className="transition hover:text-cyan-200" onClick={() => toggleSort(header.key)} type="button">
+                <button className="inline-flex min-h-9 items-center transition hover:text-cyan-200" onClick={() => toggleSort(header.key)} type="button">
                   {header.label}
                   {sortKey === header.key ? <span className="ml-1 text-cyan-300">{ascending ? "ASC" : "DESC"}</span> : null}
                 </button>

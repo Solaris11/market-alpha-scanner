@@ -45,9 +45,9 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
   return (
     <div className="space-y-5">
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard label={`Requests ${range}`} value={monitoring.requestMetrics.requestsLastHour.toLocaleString()} />
-        <MetricCard label={`4xx ${range}`} tone={monitoring.requestMetrics.recent4xx ? "warn" : "good"} value={monitoring.requestMetrics.recent4xx.toLocaleString()} />
-        <MetricCard label={`5xx ${range}`} tone={monitoring.requestMetrics.recent5xx ? "bad" : "good"} value={monitoring.requestMetrics.recent5xx.toLocaleString()} />
+        <MetricCard label={`Requests ${range}`} value={formatCount(monitoring.requestMetrics.requestsLastHour)} />
+        <MetricCard label={`4xx ${range}`} tone={monitoring.requestMetrics.recent4xx ? "warn" : "good"} value={formatCount(monitoring.requestMetrics.recent4xx)} />
+        <MetricCard label={`5xx ${range}`} tone={monitoring.requestMetrics.recent5xx ? "bad" : "good"} value={formatCount(monitoring.requestMetrics.recent5xx)} />
         <MetricCard label="P95 latency" value={formatMonitoringMs(monitoring.requestMetrics.p95LatencyMs)} />
         <MetricCard label="CPU" value={formatMonitoringPercent(monitoring.system.cpuPercent)} />
         <MetricCard label="Memory" value={formatMonitoringPercent(monitoring.system.memoryPercent)} />
@@ -63,7 +63,7 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
             series={[{
               color: COLORS.cyan,
               label: "Requests",
-              valueFormatter: (value) => value === null ? "n/a" : value.toLocaleString(),
+              valueFormatter: countFormatter,
               values: requestSeries.map((point) => ({ bucket: point.bucket, value: point.requests })),
             }]}
           />
@@ -94,13 +94,13 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
               {
                 color: COLORS.amber,
                 label: "4xx",
-                valueFormatter: (value) => value === null ? "n/a" : value.toLocaleString(),
+                valueFormatter: countFormatter,
                 values: requestSeries.map((point) => ({ bucket: point.bucket, value: point.fourXx })),
               },
               {
                 color: COLORS.rose,
                 label: "5xx",
-                valueFormatter: (value) => value === null ? "n/a" : value.toLocaleString(),
+                valueFormatter: countFormatter,
                 values: requestSeries.map((point) => ({ bucket: point.bucket, value: point.fiveXx })),
               },
             ]}
@@ -226,9 +226,9 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
                   >
                     <span className="min-w-0 truncate font-mono text-xs text-slate-100">{route.method} {safeRoute}</span>
                     <MetricPill label="p95" value={formatMonitoringMs(route.p95LatencyMs)} />
-                    <MetricPill label="count" value={route.count.toLocaleString()} />
-                    <MetricPill label="4xx" tone={route.fourXx ? "warn" : "default"} value={route.fourXx.toLocaleString()} />
-                    <MetricPill label="5xx" tone={route.fiveXx ? "bad" : "default"} value={route.fiveXx.toLocaleString()} />
+                    <MetricPill label="count" value={formatCount(route.count)} />
+                    <MetricPill label="4xx" tone={route.fourXx ? "warn" : "default"} value={formatCount(route.fourXx)} />
+                    <MetricPill label="5xx" tone={route.fiveXx ? "bad" : "default"} value={formatCount(route.fiveXx)} />
                   </button>
                   {expanded ? <RouteDetail route={route} safeRoute={safeRoute} /> : null}
                 </div>
@@ -534,7 +534,7 @@ function SyntheticSelector({ checks, selectedCheck, setSelectedCheck }: { checks
     <div className="mb-3 flex flex-wrap gap-2">
       {checks.map((check) => (
         <button
-          className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition ${check.checkName === selectedCheck ? "border-cyan-300/45 bg-cyan-400/10 text-cyan-100" : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-cyan-300/35"}`}
+          className={`inline-flex min-h-9 items-center rounded-full border px-3 py-2 text-xs font-semibold transition ${check.checkName === selectedCheck ? "border-cyan-300/45 bg-cyan-400/10 text-cyan-100" : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-cyan-300/35"}`}
           key={check.checkName}
           onClick={() => setSelectedCheck(check.checkName)}
           type="button"
@@ -632,7 +632,11 @@ function formatBytes(value: number | null | undefined): string {
 }
 
 function countFormatter(value: number | null): string {
-  return value === null || !Number.isFinite(value) ? "n/a" : value.toLocaleString();
+  return value === null || !Number.isFinite(value) ? "n/a" : formatCount(value);
+}
+
+function formatCount(value: number): string {
+  return String(Math.round(value)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
 function compactNumber(value: number): string {

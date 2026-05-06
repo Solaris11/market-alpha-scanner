@@ -23,7 +23,7 @@ export default async function AdminMonitoringPage({ searchParams }: { searchPara
           <nav className="flex flex-wrap gap-2">
             {MONITORING_TIME_RANGES.map((item) => (
               <Link
-                className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${item === range ? "border-cyan-300/40 bg-cyan-400/10 text-cyan-100" : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-cyan-300/35"}`}
+                className={`inline-flex min-h-9 items-center rounded-full border px-3 py-2 text-xs font-semibold transition ${item === range ? "border-cyan-300/40 bg-cyan-400/10 text-cyan-100" : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-cyan-300/35"}`}
                 href={`/admin/monitoring?range=${item}`}
                 key={item}
               >

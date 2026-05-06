@@ -34,7 +34,7 @@ export function TopNav() {
         const active = isActive(pathname, item.href);
         return (
           <Link
-            className={`max-w-full rounded-full border px-3 py-1.5 transition-all duration-200 ${
+            className={`inline-flex min-h-[38px] max-w-full items-center rounded-full border px-3 py-2 transition-all duration-200 ${
               active
                 ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.18)]"
                 : "border-white/10 bg-white/[0.03] hover:border-cyan-400/40 hover:bg-white/5 hover:text-cyan-100"

@@ -204,7 +204,7 @@ function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewMod
   return (
     <aside className="space-y-3">
       <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
-        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Why this setup</summary>
+        <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">Why this setup</summary>
         <div className="mt-3 grid gap-3">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
             <InsightList title="Positive factors" items={intelligence.why.positives} />
@@ -214,17 +214,17 @@ function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewMod
       </details>
 
       <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
-        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">What to watch</summary>
+        <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">What to watch</summary>
         <InsightList className="mt-3" title="Improvement conditions" items={intelligence.what_to_watch} />
       </details>
 
       <details className="rounded-2xl border border-cyan-300/15 bg-cyan-400/10 p-4" open>
-        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Regime impact</summary>
+        <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">Regime impact</summary>
         <p className="mt-3 text-xs leading-5 text-slate-300">{intelligence.regime_impact}</p>
       </details>
 
       <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
-        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Setup profile</summary>
+        <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">Setup profile</summary>
         <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-slate-950/35 p-3">
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Setup</div>
@@ -239,7 +239,7 @@ function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewMod
       </details>
 
       <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
-        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Readiness</summary>
+        <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">Readiness</summary>
         <div className="mt-3">
           <div className="flex items-center justify-between gap-3">
             <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Research readiness</div>
@@ -253,21 +253,21 @@ function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewMod
       </details>
 
       <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
-        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Setup health</summary>
+        <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">Setup health</summary>
         <div className="mt-3 space-y-2">
           {setupHealthRows(factors).map((factor) => <HealthBar key={factor.key} label={factor.label} value={factor.value} />)}
         </div>
       </details>
 
       <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
-        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Mini price context</summary>
+        <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">Mini price context</summary>
         <div className="mt-3">
           <MiniPriceContextChart candles={candles} entryContext={best.entryZoneLabel ?? formatMoney(best.suggested_entry)} height={260} symbol={best.symbol} />
         </div>
       </details>
 
       <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
-        <summary className="cursor-pointer list-none text-sm font-semibold text-slate-100">Risk snapshot</summary>
+        <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">Risk snapshot</summary>
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
           <HeroMetric label="ATR" value={formatNumber(row.atr)} />
           <HeroMetric label="Stop distance" value={stopDistance(best)} tone="risk" />
@@ -387,7 +387,7 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
     >
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <Link className="relative z-10 font-mono text-2xl font-black text-slate-50 transition hover:text-cyan-100 sm:text-3xl" href={href} onClick={(event) => event.stopPropagation()}>{row.symbol}</Link>
+          <Link className="relative z-10 inline-flex min-h-9 items-center font-mono text-2xl font-black text-slate-50 transition hover:text-cyan-100 sm:text-3xl" href={href} onClick={(event) => event.stopPropagation()}>{row.symbol}</Link>
           <div className="mt-1 text-xs text-slate-400">{cleanText(row.company_name || row.sector, "Signal")}</div>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">

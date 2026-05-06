@@ -42,7 +42,7 @@ export function MiniPriceContextChart({
         <div className="flex flex-wrap gap-1">
           {TIMEFRAMES.map((item) => (
             <button
-              className={`min-h-8 min-w-8 rounded-full border px-2 py-1 text-[10px] font-bold transition-colors ${
+              className={`min-h-9 min-w-9 rounded-full border px-2 py-1 text-[10px] font-bold transition-colors ${
                 item.label === timeframe ? "border-cyan-300/50 bg-cyan-300/10 text-cyan-100" : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-cyan-300/40 hover:text-cyan-100"
               }`}
               key={item.label}

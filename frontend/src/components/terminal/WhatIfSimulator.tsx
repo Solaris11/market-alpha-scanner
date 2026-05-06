@@ -64,7 +64,7 @@ export function WhatIfSimulator({ canTrade = true, engine, researchModeReason }:
               <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Risk Rules</div>
               <div className="mt-1 text-xs text-slate-400">{authenticated ? "Account saved" : "Saved only on this device."}</div>
             </div>
-            <button className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-100" onClick={riskProfileActions.resetRiskProfile} type="button">Reset</button>
+            <button className="inline-flex min-h-9 items-center rounded-full border border-white/10 px-3 py-2 text-xs text-slate-300 transition hover:border-cyan-300/50 hover:text-cyan-100" onClick={riskProfileActions.resetRiskProfile} type="button">Reset</button>
           </div>
           <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
             <Input label="Max Risk %" value={riskProfile.maxRiskPerTradePercent} onChange={(value) => riskProfileActions.updateRiskProfile({ maxRiskPerTradePercent: value })} />
