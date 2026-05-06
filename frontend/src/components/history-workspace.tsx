@@ -8,6 +8,7 @@ import { actionFor, formatNumber } from "@/lib/format";
 import {
   filterHistoryObservations,
   formatHistoryChartTimestamp,
+  historyFilterResult,
   historyChartPoints,
   historyChartTooltipLines,
   historyTimestampMs,
@@ -423,7 +424,7 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: H
   }
 
   return (
-    <div className="terminal-panel rounded-md p-3">
+    <div className="terminal-panel rounded-md p-3" data-point-count={points.length} data-testid={`history-chart-${field}`}>
       <div className="mb-2 flex items-center justify-between text-xs">
         <div className="font-semibold uppercase tracking-[0.14em] text-sky-300">{label}</div>
         <div className="flex items-center gap-3 font-mono text-slate-400">
@@ -575,9 +576,10 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
     };
   }, [selectedSymbol]);
 
-  const filteredByTime = useMemo(() => {
-    return filterHistoryObservations(symbolRows, quickRange, customFrom, customTo);
+  const filterState = useMemo(() => {
+    return historyFilterResult(symbolRows, quickRange, customFrom, customTo);
   }, [customFrom, customTo, quickRange, symbolRows]);
+  const filteredByTime = filterState.rows;
   const first = filteredByTime[0];
   const latest = filteredByTime[filteredByTime.length - 1];
   const scoreChange = first && latest && typeof first.final_score === "number" && typeof latest.final_score === "number" ? latest.final_score - first.final_score : null;
@@ -657,7 +659,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
 
       {symbolRows.length ? (
         <>
-          <section className="terminal-panel rounded-md p-3">
+          <section className="terminal-panel rounded-md p-3" data-testid="history-filter-controls">
             <div className="grid gap-3 md:grid-cols-5">
               <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
                 Range
@@ -670,29 +672,47 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
                 </select>
               </label>
               <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                From
+                From UTC
                 <input className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => handleCustomFromChange(event.target.value)} type="datetime-local" value={customFrom} />
               </label>
               <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
-                To
+                To UTC
                 <input className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs font-normal normal-case tracking-normal text-slate-100 outline-none focus:border-sky-400/60" onChange={(event) => handleCustomToChange(event.target.value)} type="datetime-local" value={customTo} />
               </label>
-              <div className="self-end text-xs text-slate-500">
-                Showing {filteredByTime.length.toLocaleString()} of {symbolRows.length.toLocaleString()} observations
-                {customFrom || customTo ? <div className="mt-0.5 text-amber-200">Manual dates override range</div> : null}
+              <div className="self-end text-xs text-slate-500" data-testid="history-filter-count">
+                Showing {filterState.filteredCount.toLocaleString()} of {filterState.totalCount.toLocaleString()} observations
+                {filterState.hasCustomRange ? <div className="mt-0.5 text-amber-200">Manual dates override range</div> : null}
               </div>
-              <button
-                className="h-9 self-end rounded border border-slate-700/80 px-3 text-xs font-semibold text-slate-300 transition hover:border-sky-400/50 hover:text-sky-200 disabled:cursor-not-allowed disabled:opacity-40"
-                disabled={!customFrom && !customTo}
-                onClick={() => {
-                  setCustomFrom("");
-                  setCustomTo("");
-                }}
-                type="button"
-              >
-                Clear Dates
-              </button>
+              <div className="grid gap-2 self-end sm:grid-cols-2 md:grid-cols-1 xl:grid-cols-2">
+                <button
+                  className="h-9 rounded border border-slate-700/80 px-3 text-xs font-semibold text-slate-300 transition hover:border-sky-400/50 hover:text-sky-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={!customFrom && !customTo}
+                  onClick={() => {
+                    setCustomFrom("");
+                    setCustomTo("");
+                  }}
+                  type="button"
+                >
+                  Clear Dates
+                </button>
+                <button
+                  className="h-9 rounded border border-slate-700/80 px-3 text-xs font-semibold text-slate-300 transition hover:border-sky-400/50 hover:text-sky-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  disabled={quickRange === "all" && !customFrom && !customTo}
+                  onClick={() => {
+                    setQuickRange("all");
+                    setCustomFrom("");
+                    setCustomTo("");
+                  }}
+                  type="button"
+                >
+                  Reset All
+                </button>
               </div>
+              </div>
+            <div className={`mt-3 rounded-xl border px-3 py-2 text-xs ${filterState.status === "invalid" ? "border-rose-400/30 bg-rose-400/10 text-rose-100" : "border-cyan-300/15 bg-cyan-400/5 text-cyan-100"}`} data-testid="history-filter-summary">
+              <span className="font-semibold">Active filter:</span> {filterState.activeLabel}
+              {filterState.error ? <div className="mt-1 text-rose-100">{filterState.error}</div> : null}
+            </div>
           </section>
 
           {filteredByTime.length ? (
@@ -796,7 +816,9 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
               />
             </>
           ) : (
-            <div className="terminal-panel rounded-md border-dashed border-slate-700/70 px-3 py-8 text-center text-sm text-slate-400">No signal observations in selected time range.</div>
+            <div className="terminal-panel rounded-md border-dashed border-slate-700/70 px-3 py-8 text-center text-sm text-slate-400" data-testid="history-filter-empty">
+              {filterState.error ?? "No signal observations in selected time range."}
+            </div>
           )}
         </>
       ) : null}

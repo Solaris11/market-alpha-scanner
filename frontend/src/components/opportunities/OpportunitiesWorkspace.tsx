@@ -84,6 +84,34 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
       .filter((row) => row.conviction >= minConviction)
       .sort((left, right) => compareRows(left, right, sortKey));
   }, [activeTab, assetTypeFilter, decisionFilter, entryStatusFilter, minConviction, minScore, qualityFilter, rows, search, sectorFilter, setupFilter, showWatchlistOnly, sortKey, watchlistSet]);
+  const activeFilterCount = [
+    activeTab !== "BEST",
+    assetTypeFilter !== "ALL",
+    decisionFilter !== "ALL",
+    entryStatusFilter !== "ALL",
+    minConviction > 0,
+    minScore > 0,
+    qualityFilter !== "ALL",
+    Boolean(search.trim()),
+    sectorFilter !== "ALL",
+    setupFilter !== "ALL",
+    showWatchlistOnly,
+  ].filter(Boolean).length;
+
+  function resetFilters() {
+    setActiveTab("BEST");
+    setAssetTypeFilter("ALL");
+    setDecisionFilter("ALL");
+    setEntryStatusFilter("ALL");
+    setMinConviction(0);
+    setMinScore(0);
+    setQualityFilter("ALL");
+    setSearch("");
+    setSectorFilter("ALL");
+    setSetupFilter("ALL");
+    setShowWatchlistOnly(false);
+    setSortKey("SCORE_DESC");
+  }
 
   return (
     <div className="min-w-0 max-w-full space-y-5">
@@ -91,7 +119,22 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
       <SetupDistribution rows={rows} />
 
       <GlassPanel className="p-5">
-        <SectionTitle eyebrow="Opportunities" title="Scanner Universe" meta={`Showing ${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} symbols`} />
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <SectionTitle eyebrow="Opportunities" title="Scanner Universe" meta={`Showing ${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} symbols`} />
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+            <span className="rounded-full border border-cyan-300/15 bg-cyan-400/5 px-3 py-1.5">
+              {activeFilterCount ? `${activeFilterCount} active filter${activeFilterCount === 1 ? "" : "s"}` : "No extra filters"}
+            </span>
+            <button
+              className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 font-semibold text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!activeFilterCount && sortKey === "SCORE_DESC"}
+              onClick={resetFilters}
+              type="button"
+            >
+              Reset Filters
+            </button>
+          </div>
+        </div>
         <div className="mt-5 grid min-w-0 gap-2 sm:grid-cols-3">
           <TabButton active={activeTab === "BEST"} count={tabCounts.BEST} label="Best Setups" onClick={() => setActiveTab("BEST")} />
           <TabButton active={activeTab === "WATCHLIST"} count={tabCounts.WATCHLIST} label="Watchlist" onClick={() => setActiveTab("WATCHLIST")} />

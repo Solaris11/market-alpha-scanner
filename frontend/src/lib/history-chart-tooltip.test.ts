@@ -5,6 +5,7 @@ import {
   filterHistoryObservations,
   formatHistoryChartPrice,
   formatHistoryChartTimestamp,
+  historyFilterResult,
   historyChartPoints,
   historyChartTooltipLines,
   nearestHistoryChartPoint,
@@ -106,6 +107,10 @@ describe("history chart tooltip helpers", () => {
     assert.equal(parseHistoryDateInput("2026-05-05"), Date.parse("2026-05-05T00:00:00.000Z"));
     assert.equal(parseHistoryDateInput("2026-05-05", true), Date.parse("2026-05-05T23:59:59.999Z"));
     assert.equal(parseHistoryDateInput("2026-05-05T12:43"), Date.parse("2026-05-05T12:43:00.000Z"));
+    assert.equal(parseHistoryDateInput("2026-05-05T12:43", true), Date.parse("2026-05-05T12:43:59.999Z"));
+    assert.equal(parseHistoryDateInput("2026-02-31"), null);
+    assert.equal(parseHistoryDateInput("2026-13-01"), null);
+    assert.equal(parseHistoryDateInput("May 5, 2026"), null);
   });
 
   it("updates filtered observation counts when preset and manual ranges change", () => {
@@ -122,6 +127,30 @@ describe("history chart tooltip helpers", () => {
     assert.equal(filterHistoryObservations(rows, "1m").length, 4);
     assert.equal(filterHistoryObservations(rows, "7d", "2026-04-20T00:00", "2026-04-30T23:59").length, 2);
     assert.equal(filterHistoryObservations(rows, "7d", "", "").length, 2);
+  });
+
+  it("returns deterministic filter diagnostics for invalid and inverted custom ranges", () => {
+    const rows = [
+      { ...baseRow, timestamp_utc: "2026-05-01T12:00:00Z" },
+      { ...baseRow, timestamp_utc: "2026-05-05T12:00:00Z" },
+    ];
+
+    const invalid = historyFilterResult(rows, "all", "2026-02-31", "");
+    assert.equal(invalid.status, "invalid");
+    assert.equal(invalid.rows.length, 0);
+    assert.equal(invalid.filteredCount, 0);
+    assert.match(invalid.error ?? "", /Invalid From date/);
+
+    const inverted = historyFilterResult(rows, "all", "2026-05-06T00:00", "2026-05-01T00:00");
+    assert.equal(inverted.status, "invalid");
+    assert.equal(inverted.rows.length, 0);
+    assert.match(inverted.error ?? "", /From date is after To date/);
+
+    const valid = historyFilterResult(rows, "7d", "", "");
+    assert.equal(valid.status, "ok");
+    assert.equal(valid.totalCount, 2);
+    assert.equal(valid.filteredCount, 2);
+    assert.match(valid.activeLabel, /7D/);
   });
 
   it("sorts observations ascending and dedupes duplicate timestamps", () => {

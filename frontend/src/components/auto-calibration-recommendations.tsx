@@ -182,11 +182,21 @@ export function AutoCalibrationRecommendations({ rows, state }: Props) {
   const sortedRows = useMemo(() => sortRows(filteredRows, sortKey, sortDirection), [filteredRows, sortDirection, sortKey]);
   const visibleRows = useMemo(() => sortedRows.slice(0, 250), [sortedRows]);
   const insightRows = useMemo(() => sortedRows.slice(0, 3), [sortedRows]);
+  const activeFilterCount = [recommendationFilter, groupTypeFilter, horizonFilter, minConfidence].filter((value) => value.trim()).length;
 
   function handleSort(key: SortKey) {
     const direction = nextSortDirection(sortKey, key, sortDirection, sortConfig(key));
     setSortKey(key);
     setSortDirection(direction);
+  }
+
+  function resetFilters() {
+    setRecommendationFilter("");
+    setGroupTypeFilter("");
+    setHorizonFilter("");
+    setMinConfidence("");
+    setSortKey("confidence_score");
+    setSortDirection("desc");
   }
 
   return (
@@ -230,6 +240,20 @@ export function AutoCalibrationRecommendations({ rows, state }: Props) {
           ))}
         </div>
       ) : null}
+
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+        <span className="rounded-full border border-cyan-300/15 bg-cyan-400/5 px-3 py-1.5">
+          {activeFilterCount ? `${activeFilterCount} active filter${activeFilterCount === 1 ? "" : "s"}` : "No active filters"}
+        </span>
+        <button
+          className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 font-semibold text-slate-300 transition hover:border-sky-400/50 hover:text-sky-200 disabled:cursor-not-allowed disabled:opacity-40"
+          disabled={!activeFilterCount && sortKey === "confidence_score" && sortDirection === "desc"}
+          onClick={resetFilters}
+          type="button"
+        >
+          Reset Filters
+        </button>
+      </div>
 
       <div className="mt-3 grid gap-3 md:grid-cols-4">
         <label className="text-xs text-slate-400">

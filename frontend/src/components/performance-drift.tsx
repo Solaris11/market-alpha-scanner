@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { compact, formatNumber } from "@/lib/format";
 import { nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
@@ -220,6 +220,14 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
       });
   }, [minimumScoreChange, onlyScoreGainers, onlyUpgrades, rows, symbolSearch]);
 
+  useEffect(() => {
+    if (!selectedSymbol) return;
+    if (filteredRows.some((row) => row.symbol === selectedSymbol)) return;
+    setSelectedSymbol(null);
+    setSelectedHistoryRows([]);
+    setSelectedHistoryError("");
+  }, [filteredRows, selectedSymbol]);
+
   const selectedRow = useMemo(() => rows.find((row) => row.symbol === selectedSymbol) ?? null, [rows, selectedSymbol]);
   const sortedRows = useMemo(() => sortRows(filteredRows, sortKey, sortDirection), [filteredRows, sortDirection, sortKey]);
   const visibleRows = useMemo(() => sortedRows.slice(0, 200), [sortedRows]);
@@ -268,6 +276,22 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
     setSortDirection(direction);
   }
 
+  const activeFilterCount = [
+    Boolean(symbolSearch.trim()),
+    onlyUpgrades,
+    onlyScoreGainers,
+    Boolean(minimumScoreChange.trim()),
+  ].filter(Boolean).length;
+
+  function resetFilters() {
+    setSymbolSearch("");
+    setOnlyUpgrades(false);
+    setOnlyScoreGainers(false);
+    setMinimumScoreChange("");
+    setSortKey("score_change");
+    setSortDirection("desc");
+  }
+
   return (
     <section className="space-y-3">
       <div>
@@ -305,6 +329,20 @@ export function PerformanceDrift({ rows, forwardReturnsReady }: Props) {
         advanced={(
           <>
       <div className="terminal-panel rounded-md p-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="text-slate-500">
+            Showing {filteredRows.length.toLocaleString()} of {rows.length.toLocaleString()} symbols
+            {activeFilterCount ? <span className="ml-2 text-cyan-200">{activeFilterCount} active filter{activeFilterCount === 1 ? "" : "s"}</span> : null}
+          </div>
+          <button
+            className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 font-semibold text-slate-300 transition hover:border-sky-400/50 hover:text-sky-200 disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={!activeFilterCount && sortKey === "score_change" && sortDirection === "desc"}
+            onClick={resetFilters}
+            type="button"
+          >
+            Reset Filters
+          </button>
+        </div>
         <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-[1.3fr_auto_auto_0.8fr]">
           <label className="min-w-0 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
             Symbol

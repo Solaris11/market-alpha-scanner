@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type MouseEvent } from "react";
+import { useEffect, useMemo, useState, type PointerEvent } from "react";
 import { formatNumber } from "@/lib/format";
 import type { ScannerScalar } from "@/lib/types";
 
@@ -74,34 +74,34 @@ function pointsFromRows(rows: HistoryRow[]) {
 
 function axisFormatter(period: PeriodKey) {
   if (period === "1d") {
-    return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
+    return new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
   }
   if (period === "1wk") {
-    return new Intl.DateTimeFormat(undefined, { weekday: "short" });
+    return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "short" });
   }
   if (period === "1mo") {
-    return new Intl.DateTimeFormat(undefined, { month: "2-digit", day: "2-digit" });
+    return new Intl.DateTimeFormat("en-US", { day: "2-digit", month: "2-digit", timeZone: "UTC" });
   }
   if (["6mo", "ytd", "1y"].includes(period)) {
-    return new Intl.DateTimeFormat(undefined, { month: "short" });
+    return new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
   }
-  return new Intl.DateTimeFormat(undefined, { year: "numeric" });
+  return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", year: "numeric" });
 }
 
 function hoverDateFormatter(period: PeriodKey) {
   if (period === "1d") {
-    return new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
+    return new Intl.DateTimeFormat("en-US", { hour: "2-digit", minute: "2-digit", timeZone: "UTC" });
   }
   if (period === "1wk") {
-    return new Intl.DateTimeFormat(undefined, { weekday: "short" });
+    return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", weekday: "short" });
   }
   if (period === "1mo") {
-    return new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+    return new Intl.DateTimeFormat("en-US", { day: "numeric", month: "short", timeZone: "UTC" });
   }
   if (["6mo", "ytd", "1y"].includes(period)) {
-    return new Intl.DateTimeFormat(undefined, { month: "short" });
+    return new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" });
   }
-  return new Intl.DateTimeFormat(undefined, { year: "numeric" });
+  return new Intl.DateTimeFormat("en-US", { timeZone: "UTC", year: "numeric" });
 }
 
 function tooltipPrice(value: number) {
@@ -223,7 +223,7 @@ export function PriceHistoryChart({ symbol, initialRows = [], defaultPeriod = "1
   const tooltipY = hoverPoint ? Math.min(Math.max(hoverPoint.y - tooltipHeight - 10, 8), chartHeight - tooltipHeight - 4) : 0;
   const pointCount = metadata?.point_count ?? points.length;
 
-  function handleChartMouseMove(event: MouseEvent<SVGSVGElement>) {
+  function handleChartPointer(event: PointerEvent<SVGSVGElement>) {
     const rect = event.currentTarget.getBoundingClientRect();
     const cursorX = ((event.clientX - rect.left) / rect.width) * width;
     let nearestIndex = 0;
@@ -267,8 +267,9 @@ export function PriceHistoryChart({ symbol, initialRows = [], defaultPeriod = "1
         <svg
           className="min-w-[680px]"
           height={height}
-          onMouseLeave={() => setHoverIndex(null)}
-          onMouseMove={handleChartMouseMove}
+          onPointerDown={handleChartPointer}
+          onPointerLeave={() => setHoverIndex(null)}
+          onPointerMove={handleChartPointer}
           role="img"
           viewBox={`0 0 ${width} ${height}`}
           width="100%"
