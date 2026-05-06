@@ -146,8 +146,9 @@ run_bounded_retry() {
         log "Retry attempt ${attempt}/${attempts} succeeded"
       fi
       return 0
+    else
+      status=$?
     fi
-    status=$?
     if [[ "$attempt" -lt "$attempts" ]]; then
       log "WARNING: command attempt ${attempt}/${attempts} failed with status ${status}; retrying in ${backoff_seconds}s"
       sleep "$backoff_seconds"
