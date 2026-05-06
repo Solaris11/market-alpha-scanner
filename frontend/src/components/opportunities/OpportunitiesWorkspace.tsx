@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
+import { PremiumEChart } from "@/components/charts/PremiumEChart";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import { DataHealthIndicator } from "@/components/data-health-indicator";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
@@ -18,6 +19,7 @@ import { MiniPriceContextChart } from "@/components/terminal/MiniPriceContextCha
 import type { ChartCandle } from "@/components/terminal/SymbolChart";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
+import { buildDistributionBarOption, buildDonutOption, hasDistributionData, type DistributionRow } from "@/lib/echarts-options";
 
 type DecisionFilter = "ALL" | "ENTER" | "WAIT_PULLBACK" | "WATCH" | "AVOID" | "EXIT";
 type SortKey = "SCORE_DESC" | "CONVICTION_DESC" | "SYMBOL_ASC" | "PRICE_DESC" | "DECISION_PRIORITY";
@@ -240,7 +242,73 @@ function OpportunityDeskMap({ marketCondition, rows }: { marketCondition: string
           </div>
         </div>
       </div>
+      <OpportunityInsightCharts rows={rows} />
     </GlassPanel>
+  );
+}
+
+function OpportunityInsightCharts({ rows }: { rows: OpportunityViewModel[] }) {
+  const setupRows = distributionRows(countBy(rows, (row) => setupLabel(setupType(row))), ["#67e8f9", "#a78bfa", "#34d399", "#fb7185"]);
+  const decisionRows = distributionRows(countBy(rows, (row) => decisionLabel(row.final_decision)), ["#34d399", "#67e8f9", "#fbbf24", "#fb7185"]);
+  const confidenceRows: DistributionRow[] = [
+    { color: "#34d399", label: "High", value: rows.filter((row) => row.conviction >= 70).length },
+    { color: "#fbbf24", label: "Medium", value: rows.filter((row) => row.conviction >= 50 && row.conviction < 70).length },
+    { color: "#fb7185", label: "Low", value: rows.filter((row) => row.conviction < 50).length },
+  ];
+
+  if (!hasDistributionData(setupRows) && !hasDistributionData(decisionRows) && !hasDistributionData(confidenceRows)) {
+    return (
+      <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-400">
+        Opportunity analytics will appear after scanner rows are available.
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_330px]">
+      <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-3">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Setup Intelligence</div>
+            <p className="mt-1 text-xs text-slate-500">Data-backed distribution from the latest scan.</p>
+          </div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-cyan-200">Research only</div>
+        </div>
+        {hasDistributionData(setupRows) ? (
+          <PremiumEChart
+            ariaLabel="Opportunity setup distribution chart"
+            height={230}
+            option={buildDistributionBarOption({ rows: setupRows, title: "Setup Distribution", vertical: true })}
+          />
+        ) : (
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-400">No setup distribution data in the current scan.</div>
+        )}
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+        <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-3">
+          {hasDistributionData(decisionRows) ? (
+            <PremiumEChart
+              ariaLabel="Opportunity decision mix donut chart"
+              height={220}
+              option={buildDonutOption({ centerLabel: `${rows.length} rows`, rows: decisionRows, title: "Decision Mix" })}
+            />
+          ) : (
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-400">No decision mix available.</div>
+          )}
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-3">
+          {hasDistributionData(confidenceRows) ? (
+            <PremiumEChart
+              ariaLabel="Opportunity confidence distribution chart"
+              height={220}
+              option={buildDistributionBarOption({ rows: confidenceRows, title: "Confidence Distribution" })}
+            />
+          ) : (
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-400">No confidence distribution available.</div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -741,6 +809,13 @@ function compactMapLabel(counts: Map<string, number>): string {
     .slice(0, 2);
   if (!pairs.length) return "No data";
   return pairs.map(([label, count]) => `${label} ${count}`).join(" · ");
+}
+
+function distributionRows(counts: Map<string, number>, colors: string[]): DistributionRow[] {
+  return Array.from(counts.entries())
+    .filter(([, count]) => count > 0)
+    .sort((left, right) => right[1] - left[1])
+    .map(([label, value], index) => ({ color: colors[index % colors.length], label, value }));
 }
 
 function setupType(row: OpportunityViewModel): string {

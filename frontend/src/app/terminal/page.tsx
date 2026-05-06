@@ -14,6 +14,7 @@ import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
 import { SignalCard } from "@/components/terminal/SignalCard";
 import { SignalHeatmap } from "@/components/terminal/SignalHeatmap";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
+import { TerminalPulseCharts } from "@/components/terminal/TerminalPulseCharts";
 import { TerminalRightRail } from "@/components/terminal/TerminalRightRail";
 import { getActiveAlertMatches } from "@/lib/active-alert-matches";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
@@ -272,6 +273,7 @@ function TerminalMonitoringBrief({
     .slice(0, 4);
   const pulse = buildTerminalPulse(rows, topWatchRows);
   const changedRows = biggestSignalChanges(rows);
+  const charts = buildTerminalPulseChartRows(rows, pulse.decisionDistribution);
   return (
     <GlassPanel className="p-5">
       <SectionTitle eyebrow="Market Intelligence Surface" title="What To Monitor Next" meta={`Scanner ${scanStatus}`} />
@@ -297,6 +299,10 @@ function TerminalMonitoringBrief({
             {pulse.checklist.map((item) => <li key={item}>- {item}</li>)}
           </ul>
         </div>
+      </div>
+
+      <div className="mt-3">
+        <TerminalPulseCharts confidenceRows={charts.confidenceRows} decisionRows={charts.decisionRows} setupRows={charts.setupRows} />
       </div>
 
       <div className="mt-3 grid gap-3 lg:grid-cols-4">
@@ -332,6 +338,39 @@ function TerminalMonitoringBrief({
       </div>
     </GlassPanel>
   );
+}
+
+function buildTerminalPulseChartRows(
+  rows: Array<{ [key: string]: unknown; final_decision?: unknown; confidence_score?: unknown; final_score?: unknown; setup_type?: unknown }>,
+  decisionDistribution: Array<{ label: string; value: number }>,
+): {
+  confidenceRows: Array<{ color: string; label: string; value: number }>;
+  decisionRows: Array<{ color: string; label: string; value: number }>;
+  setupRows: Array<{ color: string; label: string; value: number }>;
+} {
+  const setupCounts = new Map<string, number>();
+  for (const row of rows) {
+    const label = humanizeLabel(row.setup_type, "Unknown");
+    setupCounts.set(label, (setupCounts.get(label) ?? 0) + 1);
+  }
+  const setupColors = ["#67e8f9", "#a78bfa", "#34d399", "#fb7185", "#fbbf24"];
+  const decisionColors = ["#67e8f9", "#fbbf24", "#fb7185", "#34d399"];
+
+  return {
+    confidenceRows: [
+      { color: "#34d399", label: "High", value: rows.filter((row) => (numeric(row.confidence_score ?? row.final_score) ?? 0) >= 70).length },
+      { color: "#fbbf24", label: "Medium", value: rows.filter((row) => {
+        const value = numeric(row.confidence_score ?? row.final_score) ?? 0;
+        return value >= 50 && value < 70;
+      }).length },
+      { color: "#fb7185", label: "Low", value: rows.filter((row) => (numeric(row.confidence_score ?? row.final_score) ?? 0) < 50).length },
+    ],
+    decisionRows: decisionDistribution.map((row, index) => ({ color: decisionColors[index % decisionColors.length], label: row.label, value: row.value })),
+    setupRows: Array.from(setupCounts.entries())
+      .filter(([, count]) => count > 0)
+      .sort((left, right) => right[1] - left[1])
+      .map(([label, value], index) => ({ color: setupColors[index % setupColors.length], label, value })),
+  };
 }
 
 function IntelligenceTile({ detail, title, value }: { detail: string; title: string; value: string }) {

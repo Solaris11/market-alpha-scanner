@@ -1,9 +1,11 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { PremiumEChart } from "@/components/charts/PremiumEChart";
 import type { AdminMonitoringSummary, MonitoringTimeRange } from "@/lib/server/admin-data";
-import { aggregateStatusBuckets, formatMonitoringCompactTime, formatMonitoringDateTime, formatMonitoringMs, formatMonitoringPercent, sanitizeMonitoringRouteLabel } from "@/lib/admin-monitoring-ui";
+import { aggregateStatusBuckets, formatMonitoringDateTime, formatMonitoringMs, formatMonitoringPercent, sanitizeMonitoringRouteLabel } from "@/lib/admin-monitoring-ui";
+import { buildPremiumTimeSeriesOption, hasPremiumChartData } from "@/lib/echarts-options";
 import { humanizeLabel } from "@/lib/ui/labels";
 
 type Tone = "bad" | "default" | "good" | "warn";
@@ -405,17 +407,11 @@ function RouteDetail({ route, safeRoute }: { route: SlowRoute; safeRoute: string
 }
 
 function TimeSeriesChart({ footer, height = 230, maxY, series }: { footer?: string; height?: number; maxY?: number; series: ChartSeries[] }) {
-  const [activeIndex, setActiveIndex] = useState<number | null>(null);
-  const chartId = useId().replace(/[^a-zA-Z0-9_-]/g, "");
-  const chart = useMemo(() => buildChartModel(series, height, maxY), [height, maxY, series]);
+  const option = useMemo(() => buildPremiumTimeSeriesOption({ maxY, series }), [maxY, series]);
 
-  if (!chart.hasData) {
+  if (!hasPremiumChartData(series)) {
     return <EmptyState>No time-series data for this window.</EmptyState>;
   }
-
-  const active = activeIndex === null ? null : chart.pointsByIndex[activeIndex];
-  const tooltipX = active ? Math.min(Math.max(active.x + 10, 8), chart.width - 190) : 0;
-  const tooltipY = active ? Math.min(Math.max(active.minY - 18, 8), height - 92) : 0;
 
   return (
     <div>
@@ -427,112 +423,10 @@ function TimeSeriesChart({ footer, height = 230, maxY, series }: { footer?: stri
           </div>
         ))}
       </div>
-      <div className="relative overflow-hidden rounded-xl border border-white/10 bg-slate-950/75 p-2">
-        <svg className="block h-auto w-full" role="img" viewBox={`0 0 ${chart.width} ${height}`} xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            {series.map((item) => (
-              <linearGradient id={`${chartId}-area-${safeGradientId(item.label)}`} key={item.label} x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor={item.color} stopOpacity="0.28" />
-                <stop offset="100%" stopColor={item.color} stopOpacity="0.02" />
-              </linearGradient>
-            ))}
-          </defs>
-          {chart.yTicks.map((tick) => (
-            <g key={tick.y}>
-              <line stroke="rgba(148,163,184,0.14)" x1={chart.paddingLeft} x2={chart.width - chart.paddingRight} y1={tick.y} y2={tick.y} />
-              <text fill="rgb(100,116,139)" fontSize="11" textAnchor="end" x={chart.paddingLeft - 8} y={tick.y + 4}>{tick.label}</text>
-            </g>
-          ))}
-          {chart.xTicks.map((tick) => (
-            <g key={tick.bucket}>
-              <line stroke="rgba(148,163,184,0.10)" x1={tick.x} x2={tick.x} y1={chart.paddingTop} y2={height - chart.paddingBottom} />
-              <text fill="rgb(100,116,139)" fontSize="11" textAnchor="middle" x={tick.x} y={height - 8}>{formatCompactTime(tick.bucket)}</text>
-            </g>
-          ))}
-          {chart.seriesPaths.map((item) => (
-            <g key={item.label}>
-              {item.areaPath ? <path d={item.areaPath} fill={`url(#${chartId}-area-${safeGradientId(item.label)})`} /> : null}
-              {item.path ? <path d={item.path} fill="none" stroke={item.color} strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.2" style={{ filter: `drop-shadow(0 0 6px ${item.color}55)` }} /> : null}
-              {item.points.map((point) => <circle cx={point.x} cy={point.y} fill={item.color} key={`${item.label}-${point.bucket}`} r="2.3" />)}
-            </g>
-          ))}
-          {chart.buckets.map((bucket, index) => {
-            const segmentWidth = chart.plotWidth / Math.max(1, chart.buckets.length);
-            return (
-              <rect
-                fill="transparent"
-                height={height - chart.paddingTop - chart.paddingBottom}
-                key={bucket}
-                onPointerEnter={() => setActiveIndex(index)}
-                onPointerMove={() => setActiveIndex(index)}
-                onPointerLeave={() => setActiveIndex(null)}
-                width={segmentWidth}
-                x={chart.paddingLeft + Math.max(0, index - 0.5) * segmentWidth}
-                y={chart.paddingTop}
-              />
-            );
-          })}
-          {active ? (
-            <g>
-              <line stroke="rgba(125,211,252,0.45)" strokeDasharray="3 4" x1={active.x} x2={active.x} y1={chart.paddingTop} y2={height - chart.paddingBottom} />
-              {active.values.map((item) => <circle cx={active.x} cy={item.y} fill={item.color} key={item.label} r="4" stroke="rgb(2,6,23)" strokeWidth="2" />)}
-              <rect fill="rgba(2,6,23,0.94)" height={64 + active.values.length * 18} rx="10" stroke="rgba(255,255,255,0.12)" width="180" x={tooltipX} y={tooltipY} />
-              <text fill="rgb(226,232,240)" fontSize="12" fontWeight="700" x={tooltipX + 12} y={tooltipY + 21}>{formatDateTime(active.bucket)}</text>
-              {active.values.map((item, index) => (
-                <text fill={item.color} fontSize="12" key={item.label} x={tooltipX + 12} y={tooltipY + 44 + index * 18}>
-                  {item.label}: {item.formatted}
-                </text>
-              ))}
-            </g>
-          ) : null}
-        </svg>
-      </div>
+      <PremiumEChart ariaLabel={`${series.map((item) => item.label).join(", ")} monitoring time series`} height={height} option={option} />
       {footer ? <p className="mt-2 text-xs leading-5 text-slate-500">{footer}</p> : null}
     </div>
   );
-}
-
-function buildChartModel(series: ChartSeries[], height: number, requestedMaxY?: number) {
-  const width = 720;
-  const paddingLeft = 48;
-  const paddingRight = 16;
-  const paddingTop = 14;
-  const paddingBottom = 34;
-  const buckets = Array.from(new Set(series.flatMap((item) => item.values.map((point) => point.bucket)))).sort();
-  const plotWidth = width - paddingLeft - paddingRight;
-  const plotHeight = height - paddingTop - paddingBottom;
-  const values = series.flatMap((item) => item.values.map((point) => point.value)).filter((value): value is number => value !== null && Number.isFinite(value));
-  const hasData = values.length > 0;
-  const minValue = 0;
-  const maxValue = Math.max(requestedMaxY ?? 0, ...values, 1);
-  const yForValue = (value: number): number => height - paddingBottom - ((value - minValue) / Math.max(1, maxValue - minValue)) * plotHeight;
-  const xForIndex = (index: number): number => paddingLeft + (buckets.length <= 1 ? plotWidth / 2 : (index / (buckets.length - 1)) * plotWidth);
-  const seriesPaths = series.map((item, seriesIndex) => {
-    const points = buckets.flatMap((bucket, index) => {
-      const value = item.values.find((point) => point.bucket === bucket)?.value;
-      if (value === null || value === undefined || !Number.isFinite(value)) return [];
-      return [{ bucket, value, x: xForIndex(index), y: yForValue(value) }];
-    });
-    const path = points.map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${point.y.toFixed(2)}`).join(" ");
-    const baseline = height - paddingBottom;
-    const areaPath = seriesIndex === 0 && points.length >= 2 ? `${path} L ${points.at(-1)?.x.toFixed(2)} ${baseline} L ${points[0].x.toFixed(2)} ${baseline} Z` : "";
-    return { areaPath, color: item.color, label: item.label, path, points };
-  });
-  const pointsByIndex = buckets.map((bucket, index) => {
-    const x = xForIndex(index);
-    const activeValues = series.flatMap((item) => {
-      const value = item.values.find((point) => point.bucket === bucket)?.value;
-      if (value === null || value === undefined || !Number.isFinite(value)) return [];
-      return [{ color: item.color, formatted: item.valueFormatter(value), label: item.label, y: yForValue(value) }];
-    });
-    return { bucket, minY: Math.min(...activeValues.map((item) => item.y), height / 2), values: activeValues, x };
-  });
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((ratio) => {
-    const value = minValue + (maxValue - minValue) * (1 - ratio);
-    return { label: compactNumber(value), y: paddingTop + ratio * plotHeight };
-  });
-  const xTicks = buckets.filter((_, index) => buckets.length <= 6 || index % Math.ceil(buckets.length / 6) === 0 || index === buckets.length - 1).map((bucket, index) => ({ bucket, x: xForIndex(buckets.indexOf(bucket) || index) }));
-  return { buckets, hasData, paddingBottom, paddingLeft, paddingRight, paddingTop, plotWidth, pointsByIndex, seriesPaths, width, xTicks, yTicks };
 }
 
 function SyntheticSelector({ checks, selectedCheck, setSelectedCheck }: { checks: AdminMonitoringSummary["syntheticChecks"]; selectedCheck: string; setSelectedCheck: (value: string) => void }) {
@@ -661,23 +555,6 @@ function formatCount(value: number): string {
   return String(Math.round(value)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 }
 
-function compactNumber(value: number): string {
-  if (value >= 1000) return `${Math.round(value / 100) / 10}k`;
-  return `${Math.round(value)}`;
-}
-
 function formatDate(value: string | null | undefined): string {
   return formatMonitoringDateTime(value);
-}
-
-function formatDateTime(value: string): string {
-  return formatMonitoringDateTime(value);
-}
-
-function formatCompactTime(value: string): string {
-  return formatMonitoringCompactTime(value);
-}
-
-function safeGradientId(value: string): string {
-  return value.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 }
