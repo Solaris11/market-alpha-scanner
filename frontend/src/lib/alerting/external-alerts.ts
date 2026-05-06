@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import nodemailer from "nodemailer";
+import { Pool, type QueryResultRow } from "pg";
 import { renderOperationalAlertEmail, smtpSettingsFromEnv, type SmtpSettings } from "@/lib/email-policy";
 import { EMAIL_MAX_ATTEMPTS, emailRetryDelayMs, shouldRetryEmailSend } from "@/lib/email-retry-policy";
 import { cleanMonitoringText, type MonitoringSeverity, type MonitoringStatus } from "@/lib/monitoring-policy";
@@ -27,6 +28,14 @@ type AlertEnvelope = {
   metadata: Record<string, unknown>;
   severity: MonitoringSeverity;
   status: MonitoringStatus;
+};
+
+type AlertDbGlobal = typeof globalThis & {
+  __marketAlphaAlertDbPool?: Pool;
+};
+
+type AlertSentRow = QueryResultRow & {
+  exists: boolean;
 };
 
 const SENSITIVE_KEY_PATTERN = /authorization|cookie|csrf|dsn|password|secret|session|set-cookie|stripe-signature|token|api[_-]?key/i;
@@ -195,8 +204,7 @@ function safeErrorMessage(error: unknown): string {
 }
 
 async function recordExternalEmailFailure(envelope: AlertEnvelope, error: unknown): Promise<void> {
-  const { recordMonitoringEvent } = await import("@/lib/server/monitoring");
-  await recordMonitoringEvent({
+  await recordAlertMonitoringEvent({
     eventType: "email:external_alert_failed",
     message: "SMTP external alert delivery failed after retries.",
     metadata: {
@@ -213,8 +221,9 @@ async function recordExternalEmailFailure(envelope: AlertEnvelope, error: unknow
 
 async function externalEmailRecentlySent(dedupeKey: string): Promise<boolean> {
   try {
-    const { dbQuery } = await import("@/lib/server/db");
-    const result = await dbQuery<{ exists: boolean }>(
+    const pool = getAlertDbPool();
+    if (!pool) throw new Error("DATABASE_URL is not configured.");
+    const result = await pool.query<AlertSentRow>(
       `
         SELECT EXISTS (
           SELECT 1
@@ -234,8 +243,7 @@ async function externalEmailRecentlySent(dedupeKey: string): Promise<boolean> {
 }
 
 async function recordExternalEmailSent(envelope: AlertEnvelope, dedupeKey: string): Promise<void> {
-  const { recordMonitoringEvent } = await import("@/lib/server/monitoring");
-  await recordMonitoringEvent({
+  await recordAlertMonitoringEvent({
     eventType: "email:external_alert_sent",
     message: "SMTP external alert email sent.",
     metadata: {
@@ -253,6 +261,34 @@ function emailAlertDedupeKey(envelope: AlertEnvelope): string {
   return createHash("sha256")
     .update([envelope.eventType, envelope.severity, envelope.status, envelope.message].join("|"))
     .digest("hex");
+}
+
+async function recordAlertMonitoringEvent(input: {
+  eventType: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+  severity: MonitoringSeverity;
+  status: MonitoringStatus;
+}): Promise<void> {
+  const pool = getAlertDbPool();
+  if (!pool) throw new Error("DATABASE_URL is not configured.");
+  await pool.query(
+    `
+      INSERT INTO monitoring_events (event_type, severity, status, message, metadata, created_at)
+      VALUES ($1, $2, $3, $4, $5::jsonb, now())
+    `,
+    [cleanKey(input.eventType), input.severity, input.status, sanitizeAlertText(input.message, 500), JSON.stringify(sanitizeMetadata(input.metadata ?? {}))],
+  );
+}
+
+function getAlertDbPool(env: NodeJS.ProcessEnv = process.env): Pool | null {
+  const databaseUrl = env.DATABASE_URL?.trim();
+  if (!databaseUrl) return null;
+  const globalPool = globalThis as AlertDbGlobal;
+  if (!globalPool.__marketAlphaAlertDbPool) {
+    globalPool.__marketAlphaAlertDbPool = new Pool({ connectionString: databaseUrl });
+  }
+  return globalPool.__marketAlphaAlertDbPool;
 }
 
 function sleep(ms: number): Promise<void> {
