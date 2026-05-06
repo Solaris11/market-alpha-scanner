@@ -10,7 +10,7 @@ export function OnboardingHelpButton() {
   return (
     <button
       aria-label="Replay onboarding"
-      className="grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-sm font-black text-slate-300 transition hover:border-cyan-300/40 hover:bg-cyan-400/10 hover:text-cyan-100"
+      className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-sm font-black text-slate-300 transition hover:border-cyan-300/40 hover:bg-cyan-400/10 hover:text-cyan-100"
       onClick={() => {
         if (pathname !== "/terminal") {
           markOnboardingReplayPending();

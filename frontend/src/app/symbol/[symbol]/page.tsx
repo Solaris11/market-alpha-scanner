@@ -32,7 +32,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
     return (
       <TerminalShell>
         <div className="mb-4">
-          <Link className="text-sm font-semibold text-cyan-300 hover:text-cyan-100" href="/terminal">
+          <Link className="inline-flex min-h-9 items-center rounded-full border border-white/10 px-3 py-2 text-sm font-semibold text-cyan-300 transition hover:border-cyan-300/40 hover:text-cyan-100" href="/terminal">
             Back to terminal
           </Link>
         </div>
@@ -52,7 +52,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
     return (
       <TerminalShell>
         <div className="mb-4">
-          <Link className="text-sm font-semibold text-cyan-300 hover:text-cyan-100" href="/terminal">
+          <Link className="inline-flex min-h-9 items-center rounded-full border border-white/10 px-3 py-2 text-sm font-semibold text-cyan-300 transition hover:border-cyan-300/40 hover:text-cyan-100" href="/terminal">
             Back to terminal
           </Link>
         </div>
@@ -95,7 +95,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   return (
     <TerminalShell>
       <div className="mb-4">
-        <Link className="text-sm font-semibold text-cyan-300 hover:text-cyan-100" href="/terminal">
+        <Link className="inline-flex min-h-9 items-center rounded-full border border-white/10 px-3 py-2 text-sm font-semibold text-cyan-300 transition hover:border-cyan-300/40 hover:text-cyan-100" href="/terminal">
           Back to terminal
         </Link>
       </div>

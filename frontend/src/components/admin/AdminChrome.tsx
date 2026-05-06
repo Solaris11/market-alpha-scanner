@@ -31,7 +31,7 @@ export function AdminHeader({ user }: { user: AuthUser }) {
       </div>
       <nav className="mt-5 flex flex-wrap gap-2">
         {ADMIN_LINKS.map((item) => (
-          <Link className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-cyan-300/40 hover:bg-cyan-400/10 hover:text-cyan-100" href={item.href} key={item.href}>
+          <Link className="inline-flex min-h-[38px] items-center rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-cyan-300/40 hover:bg-cyan-400/10 hover:text-cyan-100" href={item.href} key={item.href}>
             {item.label}
           </Link>
         ))}
