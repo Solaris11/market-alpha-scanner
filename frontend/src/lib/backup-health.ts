@@ -77,24 +77,25 @@ function classifyOffsiteBackup(input: {
   provider?: string | null;
 }): BackupComponent {
   const providerLabel = backupProviderLabel(input.provider);
+  const providerPrefix = providerLabel ? `${providerLabel} ` : "";
   const okMs = eventTimeMs(input.latestOffsiteOk);
   const failureMs = eventTimeMs(input.latestOffsiteFailure);
   if (input.latestOffsiteFailure && failureMs > okMs) {
     return {
       ageMinutes: null,
       lastUpdated: input.latestOffsiteFailure.createdAt,
-      message: input.latestOffsiteFailure.message || `${providerLabel} offsite backup sync failed.`,
+      message: input.latestOffsiteFailure.message || `${providerPrefix}offsite backup sync failed.`,
       status: "failed",
     };
   }
   if (!input.latestOffsiteOk || !input.latestOffsiteOk.createdAt) {
-    return { ageMinutes: null, lastUpdated: null, message: `No successful ${providerLabel} offsite backup event found.`, status: "unknown" };
+    return { ageMinutes: null, lastUpdated: null, message: `No successful ${providerPrefix}offsite backup event found.`, status: "unknown" };
   }
   const ageMinutes = Math.max(0, (input.nowMs - okMs) / 60000);
   const base = {
     ageMinutes,
     lastUpdated: input.latestOffsiteOk.createdAt,
-    message: `Latest ${providerLabel} offsite backup synced ${Math.round(ageMinutes)} minutes ago.`,
+    message: `Latest ${providerPrefix}offsite backup synced ${Math.round(ageMinutes)} minutes ago.`,
   };
   if (ageMinutes > OFFSITE_FAIL_MINUTES) return { ...base, status: "failed" };
   if (ageMinutes > OFFSITE_WARN_MINUTES) return { ...base, status: "warn" };
@@ -160,7 +161,7 @@ function backupProviderLabel(provider: string | null | undefined): string {
   const normalized = String(provider ?? "").toLowerCase();
   if (normalized === "r2") return "R2";
   if (normalized === "gdrive" || normalized === "google_drive") return "Google Drive";
-  return "offsite";
+  return "";
 }
 
 function metadataText(metadata: Record<string, unknown> | null | undefined, key: string): string | null {
