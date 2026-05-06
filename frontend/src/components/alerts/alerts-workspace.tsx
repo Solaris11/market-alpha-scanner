@@ -478,7 +478,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
   function quickScopedRule(label: string, payload: Partial<AlertRule>) {
     return (
       <button
-        className="rounded border border-sky-400/40 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-100 hover:bg-sky-400/15"
+        className="inline-flex min-h-9 items-center rounded border border-sky-400/40 bg-sky-400/10 px-3 py-2 text-xs font-semibold text-sky-100 hover:bg-sky-400/15"
         disabled={busyId === "create"}
         onClick={() => createRule(payload)}
         type="button"
@@ -526,7 +526,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Active Alert Rules</div>
           <div className="mt-1 text-xs text-slate-500">Rules that exist or are enabled for evaluation. Triggered alert events are tracked separately in alert state.</div>
         </div>
-        <button className="rounded border border-slate-700/80 px-2 py-1 text-[11px] text-slate-300 hover:border-sky-400/50 hover:text-sky-200" disabled={busyId === "test-send"} onClick={testSend} type="button">
+        <button className="inline-flex min-h-9 items-center rounded border border-slate-700/80 px-3 py-2 text-[11px] text-slate-300 hover:border-sky-400/50 hover:text-sky-200" disabled={busyId === "test-send"} onClick={testSend} type="button">
           {busyId === "test-send" ? "Running..." : "Run Alert Evaluation"}
         </button>
       </div>
@@ -572,7 +572,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             return (
               <tr className={rule.enabled ? "text-slate-300" : "text-slate-600"} key={rule.id}>
                 <td className="px-2 py-1.5">
-                  <button className="rounded border border-slate-700/80 px-2 py-1 text-[11px] hover:border-sky-400/50 hover:text-sky-200" disabled={busyId === rule.id} onClick={() => patchRule(rule, { enabled: !rule.enabled })} type="button">
+                  <button className="inline-flex min-h-9 items-center rounded border border-slate-700/80 px-3 py-2 text-[11px] hover:border-sky-400/50 hover:text-sky-200" disabled={busyId === rule.id} onClick={() => patchRule(rule, { enabled: !rule.enabled })} type="button">
                     {rule.enabled ? "On" : "Off"}
                   </button>
                 </td>
@@ -631,13 +631,13 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
                 </td>
                 <td className="px-2 py-1.5">
                   <div className="flex flex-wrap gap-1.5">
-                    <button className="rounded border border-slate-700/80 px-2 py-1 text-[11px] hover:border-sky-400/50 hover:text-sky-200" disabled={busyId === `test_${rule.id}`} onClick={() => testRule(rule, false)} type="button">
+                    <button className="inline-flex min-h-9 items-center rounded border border-slate-700/80 px-3 py-2 text-[11px] hover:border-sky-400/50 hover:text-sky-200" disabled={busyId === `test_${rule.id}`} onClick={() => testRule(rule, false)} type="button">
                       Test
                     </button>
-                    <button className="rounded border border-sky-400/30 px-2 py-1 text-[11px] text-sky-200 hover:bg-sky-400/10" disabled={busyId === `test_${rule.id}`} onClick={() => testRule(rule, true)} type="button">
+                    <button className="inline-flex min-h-9 items-center rounded border border-sky-400/30 px-3 py-2 text-[11px] text-sky-200 hover:bg-sky-400/10" disabled={busyId === `test_${rule.id}`} onClick={() => testRule(rule, true)} type="button">
                       Test Send
                     </button>
-                    <button className="rounded border border-rose-400/30 px-2 py-1 text-[11px] text-rose-200 hover:bg-rose-400/10" disabled={busyId === rule.id} onClick={() => deleteRule(rule)} type="button">
+                    <button className="inline-flex min-h-9 items-center rounded border border-rose-400/30 px-3 py-2 text-[11px] text-rose-200 hover:bg-rose-400/10" disabled={busyId === rule.id} onClick={() => deleteRule(rule)} type="button">
                       Delete
                     </button>
                   </div>
@@ -696,13 +696,13 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             <div className="mt-1 text-xs text-slate-500">Preset controls create, disable, or clean alert rules using the alert rules API.</div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <button className="rounded border border-emerald-400/40 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-100 hover:bg-emerald-400/15" disabled={Boolean(busyId)} onClick={installRecommendedPreset} type="button">
+            <button className="inline-flex min-h-9 items-center rounded border border-emerald-400/40 bg-emerald-400/10 px-3 py-2 text-xs font-semibold text-emerald-100 hover:bg-emerald-400/15" disabled={Boolean(busyId)} onClick={installRecommendedPreset} type="button">
               {busyId === "install-preset" ? "Installing..." : "Install Recommended Alert Preset"}
             </button>
-            <button className="rounded border border-amber-400/40 px-3 py-1.5 text-xs font-semibold text-amber-100 hover:bg-amber-400/10" disabled={Boolean(busyId)} onClick={disableAllAlerts} type="button">
+            <button className="inline-flex min-h-9 items-center rounded border border-amber-400/40 px-3 py-2 text-xs font-semibold text-amber-100 hover:bg-amber-400/10" disabled={Boolean(busyId)} onClick={disableAllAlerts} type="button">
               {busyId === "disable-all" ? "Disabling..." : "Disable All Alerts"}
             </button>
-            <button className="rounded border border-rose-400/40 px-3 py-1.5 text-xs font-semibold text-rose-100 hover:bg-rose-400/10" disabled={Boolean(busyId)} onClick={deleteAllDisabledAlerts} type="button">
+            <button className="inline-flex min-h-9 items-center rounded border border-rose-400/40 px-3 py-2 text-xs font-semibold text-rose-100 hover:bg-rose-400/10" disabled={Boolean(busyId)} onClick={deleteAllDisabledAlerts} type="button">
               {busyId === "delete-disabled" ? "Deleting..." : "Delete All Disabled Alerts"}
             </button>
           </div>
@@ -828,7 +828,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
               {channel}
             </label>
           ))}
-          <button className="rounded border border-sky-400/50 bg-sky-400/10 px-3 py-1.5 text-xs font-semibold text-sky-100 hover:bg-sky-400/15" disabled={busyId === "create"} onClick={() => createRule()} type="button">
+          <button className="inline-flex min-h-9 items-center rounded border border-sky-400/50 bg-sky-400/10 px-3 py-2 text-xs font-semibold text-sky-100 hover:bg-sky-400/15" disabled={busyId === "create"} onClick={() => createRule()} type="button">
             Add Alert
           </button>
           {message ? <span className="text-slate-400">{message}</span> : null}

@@ -31,7 +31,7 @@ export function SimpleAdvancedTabs({
 function TabButton({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
   return (
     <button
-      className={`rounded-full px-4 py-1.5 transition ${
+      className={`inline-flex min-h-9 items-center rounded-full px-4 py-2 transition ${
         active ? "bg-cyan-300 text-slate-950 shadow-[0_0_18px_rgba(34,211,238,0.22)]" : "text-slate-400 hover:bg-white/[0.06] hover:text-slate-100"
       }`}
       onClick={onClick}
