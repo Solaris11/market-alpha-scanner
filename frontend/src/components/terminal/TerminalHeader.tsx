@@ -3,23 +3,22 @@ import { BrandMark } from "@/components/brand/BrandMark";
 import { CompactLegalNotice } from "@/components/legal/CompactLegalNotice";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { OnboardingHelpButton } from "@/components/onboarding/OnboardingHelpButton";
-import { TerminalNav } from "./TerminalNav";
+import { DesktopTerminalNav, MobileTerminalNav } from "./TerminalNav";
 
 export function TerminalHeader() {
   return (
-    <header className="mb-5 flex flex-col gap-4 rounded-2xl border border-white/10 bg-slate-950/50 px-5 py-4 shadow-xl shadow-black/20 backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between">
-      <BrandMark />
-      <div className="flex flex-col gap-3 lg:items-end">
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <TerminalNav />
-          <OnboardingHelpButton />
-        </div>
-        <div className="flex flex-wrap items-start justify-end gap-2">
+    <header className="sticky top-3 z-40 mb-4 rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-3 shadow-xl shadow-black/25 backdrop-blur-2xl lg:px-5 lg:py-4">
+      <div className="hidden items-center gap-4 xl:flex">
+        <BrandMark />
+        <DesktopTerminalNav />
+        <div className="flex shrink-0 items-center gap-2">
           <CompactLegalNotice className="self-center" />
+          <OnboardingHelpButton />
           <NotificationBell />
-          <AccountPill />
+          <AccountPill compact />
         </div>
       </div>
+      <MobileTerminalNav />
     </header>
   );
 }

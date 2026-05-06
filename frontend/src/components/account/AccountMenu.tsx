@@ -6,7 +6,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProp
 import { createPortal } from "react-dom";
 import { useCurrentUser, type CurrentUser, type CurrentUserEntitlement } from "@/hooks/useCurrentUser";
 
-export function AccountMenu() {
+export function AccountMenu({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const { entitlement, logout, user } = useCurrentUser();
   const buttonRef = useRef<HTMLButtonElement | null>(null);
@@ -85,7 +85,7 @@ export function AccountMenu() {
     <div>
       <button
         ref={buttonRef}
-        className="flex min-w-0 items-center gap-3 rounded-2xl border border-emerald-300/25 bg-emerald-400/10 px-3 py-2 text-left text-xs text-emerald-100 transition hover:border-emerald-200/50"
+        className="inline-flex h-10 min-w-0 items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-400/10 px-2.5 text-left text-xs text-emerald-100 transition hover:border-emerald-200/50 hover:bg-emerald-400/15"
         onClick={() => {
           updateMenuPosition();
           setOpen((value) => !value);
@@ -93,13 +93,14 @@ export function AccountMenu() {
         type="button"
       >
         <AccountAvatar label={label} imageUrl={user.profileImageUrl} />
-        <span className="min-w-0">
+        <span className={`min-w-0 ${compact ? "hidden" : "hidden xl:block"}`}>
           <span className="block truncate font-semibold">{label}</span>
           <span className="mt-1 flex flex-wrap items-center gap-1.5">
             <PlanBadge compact entitlement={entitlement} />
             <span className="text-[11px] text-emerald-200/80">{plan.shortLabel}</span>
           </span>
         </span>
+        {compact ? <PlanBadge compact entitlement={entitlement} /> : null}
       </button>
       {open && mounted
         ? createPortal(

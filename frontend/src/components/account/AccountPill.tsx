@@ -6,7 +6,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { AccountMenu } from "./AccountMenu";
 import { AuthModal } from "./AuthModal";
 
-export function AccountPill() {
+export function AccountPill({ compact = false }: { compact?: boolean }) {
   const router = useRouter();
   const { authenticated, loading } = useCurrentUser();
   const [authOpen, setAuthOpen] = useState(false);
@@ -26,14 +26,38 @@ export function AccountPill() {
 
   if (loading) {
     return (
-      <div className="max-w-full rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-slate-400">
-        Checking account...
+      <div className={`${compact ? "h-10 w-10 rounded-full" : "max-w-full rounded-2xl px-3 py-2"} border border-white/10 bg-white/[0.04] text-xs text-slate-400`}>
+        {compact ? <span className="sr-only">Checking account</span> : "Checking account..."}
       </div>
     );
   }
 
   if (authenticated) {
-    return <AccountMenu />;
+    return <AccountMenu compact={compact} />;
+  }
+
+  if (compact) {
+    return (
+      <>
+        <button
+          className="inline-flex h-10 items-center rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 text-xs font-semibold text-cyan-100 transition hover:border-cyan-200/50 hover:bg-cyan-400/15"
+          onClick={() => setAuthOpen(true)}
+          type="button"
+        >
+          Sign in
+        </button>
+        {authOpen ? (
+          <AuthModal
+            onClose={() => {
+              setAuthOpen(false);
+              setResetToken("");
+              router.refresh();
+            }}
+            resetToken={resetToken}
+          />
+        ) : null}
+      </>
+    );
   }
 
   return (
