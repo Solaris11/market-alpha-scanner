@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/server/access-control";
 import { getEntitlementForUser, hasPremiumAccess, legalNotAcceptedResponse, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { withRequestMetrics } from "@/lib/server/monitoring";
 import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
-import { stripe, stripeAppBaseUrl, stripePriceId } from "@/lib/server/stripe";
+import { stripe, stripeAppBaseUrl, stripeBetaTrialDays, stripePriceId, stripePromotionCodesEnabled } from "@/lib/server/stripe";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -52,7 +52,9 @@ async function checkout(request: Request): Promise<Response> {
     }
 
     const customerId = await getOrCreateStripeCustomerForUser(access.user);
+    const trialPeriodDays = stripeBetaTrialDays();
     const session = await stripe().checkout.sessions.create({
+      allow_promotion_codes: stripePromotionCodesEnabled() || undefined,
       cancel_url: `${appBaseUrl}/account?checkout=cancel`,
       customer: customerId,
       line_items: [{ price: stripePriceId(), quantity: 1 }],
@@ -66,6 +68,7 @@ async function checkout(request: Request): Promise<Response> {
           email: access.user.email,
           user_id: access.user.id,
         },
+        ...(trialPeriodDays ? { trial_period_days: trialPeriodDays } : {}),
       },
       success_url: `${appBaseUrl}/account?checkout=success`,
     });

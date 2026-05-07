@@ -74,6 +74,20 @@ export function billingViewState(args: { isPremium: boolean; subscription: Billi
         willRenew: false,
       };
     }
+    if (status === "trialing") {
+      return {
+        accessText: currentPeriodEndText ? `Trial ends on ${currentPeriodEndText}` : null,
+        actionLabel: "Manage Subscription",
+        actionMode: "portal",
+        currentPeriodEnd,
+        helper: "Stripe shows trial, renewal, discount, and cancellation details before billing begins.",
+        isCanceled: false,
+        isPremium: true,
+        state: "active",
+        statusText: "Premium trial active",
+        willRenew,
+      };
+    }
     return {
       accessText: currentPeriodEndText ? `Renews on ${currentPeriodEndText}` : null,
       actionLabel: "Manage Subscription",

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { registerWithPassword, SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
+import { betaSignupDecisionForRequest } from "@/lib/server/beta-access";
+import { normalizeAuthEmail, registerWithPassword, SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
 import { createLoginNotifications } from "@/lib/server/notifications";
 import { rateLimitRequest, requestIp, validateMutationRequest } from "@/lib/server/request-security";
 
@@ -9,6 +10,7 @@ export const runtime = "nodejs";
 type RegisterPayload = {
   displayName?: unknown;
   email?: unknown;
+  inviteCode?: unknown;
   password?: unknown;
 };
 
@@ -22,6 +24,11 @@ export async function POST(request: Request) {
   const payload = (await request.json().catch(() => null)) as RegisterPayload | null;
   if (!payload) {
     return NextResponse.json({ ok: false, error: "Unable to create account." }, { status: 400 });
+  }
+
+  const betaDecision = betaSignupDecisionForRequest({ email: normalizeAuthEmail(payload.email), inviteCode: payload.inviteCode });
+  if (!betaDecision.allowed) {
+    return NextResponse.json({ ok: false, error: "beta_access_required", message: betaDecision.message ?? "Closed beta signup requires access." }, { status: 403 });
   }
 
   try {

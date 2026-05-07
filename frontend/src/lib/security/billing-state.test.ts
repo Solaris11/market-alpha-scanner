@@ -94,6 +94,24 @@ test("active billing state exposes renewal date and renewal flag", () => {
   assert.equal(state.accessText, "Renews on Jul 4, 2026");
 });
 
+test("trialing billing state shows trial end instead of renewal copy", () => {
+  const state = billingViewState({
+    isPremium: true,
+    subscription: {
+      cancelAtPeriodEnd: false,
+      currentPeriodEnd: "2026-05-21T08:32:02.000Z",
+      status: "trialing",
+      stripeCustomerId: "cus_test",
+    },
+  });
+
+  assert.equal(state.state, "active");
+  assert.equal(state.statusText, "Premium trial active");
+  assert.equal(state.accessText, "Trial ends on May 21, 2026");
+  assert.equal(state.willRenew, true);
+  assert.doesNotMatch(`${state.statusText} ${state.accessText} ${state.helper}`, /Renews on/);
+});
+
 test("canceled subscription does not render premium active renewal copy", () => {
   const state = billingViewState({
     isPremium: false,

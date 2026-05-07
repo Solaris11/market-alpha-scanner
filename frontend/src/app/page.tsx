@@ -35,7 +35,10 @@ export default async function HomePage() {
       <section className="landing-hero-sweep px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
           <MarketingReveal>
-            <div className="inline-flex rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-cyan-200">AI market intelligence</div>
+            <div className="flex flex-wrap gap-2">
+              <div className="inline-flex rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-cyan-200">AI market intelligence</div>
+              <div className="inline-flex rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-emerald-200">Closed beta</div>
+            </div>
             <h1 className="mt-6 max-w-4xl text-5xl font-semibold tracking-tight text-white sm:text-6xl lg:text-7xl">{BRAND_TAGLINE}</h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
               {BRAND_NAME} helps traders filter weak setups, understand risk, and know when patience is the highest-conviction decision.
@@ -44,7 +47,7 @@ export default async function HomePage() {
               <PrimaryCta>Start Free</PrimaryCta>
               <SecondaryCta>Open App</SecondaryCta>
             </div>
-            <p className="mt-5 text-sm font-medium text-slate-400">Not financial advice. Not a trading bot. A decision-support system.</p>
+            <p className="mt-5 text-sm font-medium text-slate-400">Closed beta. Research and education only. Not financial advice. Not a trading bot.</p>
           </MarketingReveal>
 
           <MarketingReveal className="relative">
@@ -128,11 +131,11 @@ export default async function HomePage() {
           <MarketingCard>
             <div className="text-xs font-black uppercase tracking-[0.28em] text-cyan-300">Pricing preview</div>
             <div className="mt-4 text-5xl font-black text-white">$20<span className="text-lg font-semibold text-slate-400">/month</span></div>
-            <p className="mt-4 text-sm leading-6 text-slate-300">After beta. During beta, early users get limited free access, premium trial access, and prioritized feedback loops.</p>
+            <p className="mt-4 text-sm leading-6 text-slate-300">Early adopter Premium is planned at $20/month. Closed beta checkout can support trials and promo codes when enabled.</p>
           </MarketingCard>
           <MarketingCard>
             <div className="text-xs font-black uppercase tracking-[0.28em] text-slate-500">Beta access</div>
-            <h2 className="mt-3 text-3xl font-semibold text-white">Join the beta. Start building trading discipline.</h2>
+            <h2 className="mt-3 text-3xl font-semibold text-white">Join the closed beta. Help sharpen disciplined decision intelligence.</h2>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <PrimaryCta>Join Beta</PrimaryCta>
               <SecondaryCta>Open App</SecondaryCta>

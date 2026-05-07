@@ -39,6 +39,7 @@ type AuthMeResponse = {
 
 type AuthMutationResponse = {
   error?: string;
+  message?: string;
   ok?: boolean;
   user?: CurrentUser;
 };
@@ -46,6 +47,7 @@ type AuthMutationResponse = {
 type RegisterInput = {
   displayName: string;
   email: string;
+  inviteCode?: string;
   password: string;
 };
 
@@ -154,7 +156,7 @@ async function authRequest(url: string, body: unknown): Promise<AuthMutationResp
   });
   const payload = (await response.json().catch(() => null)) as AuthMutationResponse | null;
   if (!response.ok || !payload?.ok || !payload.user) {
-    throw new Error(payload?.error ?? "Unable to authenticate.");
+    throw new Error(payload?.message ?? payload?.error ?? "Unable to authenticate.");
   }
   return payload;
 }

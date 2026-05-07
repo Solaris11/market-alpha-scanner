@@ -1,6 +1,7 @@
 import "server-only";
 
 import Stripe from "stripe";
+import { parseBooleanFlag, parseTrialDays } from "@/lib/security/beta-billing";
 import { canonicalAppUrl } from "./request-security";
 
 let stripeClient: Stripe | null = null;
@@ -37,6 +38,14 @@ export function stripeAppBaseUrl(): string {
 
 export function stripeWebhookSecret(): string {
   return requiredEnv("STRIPE_WEBHOOK_SECRET");
+}
+
+export function stripeBetaTrialDays(): number | null {
+  return parseTrialDays(process.env.STRIPE_BETA_TRIAL_DAYS);
+}
+
+export function stripePromotionCodesEnabled(): boolean {
+  return parseBooleanFlag(process.env.STRIPE_ALLOW_PROMOTION_CODES);
 }
 
 function appBaseUrl(): string {

@@ -75,8 +75,9 @@ export function AuthModal({
       <div className="relative z-[10001] max-h-[calc(100vh-48px)] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/50 ring-1 ring-cyan-300/10" role="dialog" aria-modal="true">
         <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
           <div>
-            <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">TradeVeto</div>
+            <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">TradeVeto Closed Beta</div>
             <h2 className="mt-1 text-xl font-semibold text-slate-50">{title}</h2>
+            <p className="mt-1 text-xs leading-5 text-slate-500">Research-only decision intelligence. Existing users can sign in anytime.</p>
           </div>
           <button className="rounded-full border border-white/10 px-2 py-1 text-xs text-slate-400 transition hover:border-cyan-300/50 hover:text-cyan-100" onClick={onClose} type="button">
             Close

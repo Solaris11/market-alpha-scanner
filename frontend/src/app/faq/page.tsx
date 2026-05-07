@@ -12,8 +12,9 @@ const faqs = [
   ["Is this a trading bot?", "No. TradeVeto does not place trades. It helps you evaluate whether a setup is worth researching, watching, avoiding, or waiting on."],
   ["What does Daily Action do?", "Daily Action summarizes the current market state into one clear action so the app does not push conflicting trade messages."],
   ["Why does the product often say WAIT?", "The product is designed to reduce overtrading. If market conditions are poor, stale, overheated, or too risky, the correct action can be no trade."],
-  ["What happens after beta?", "The planned premium price is $20/month. Beta access is focused on early feedback and product quality before wider launch."],
-  ["Can I cancel?", "Yes. Subscription management is handled through Stripe Billing Portal when billing is enabled."],
+  ["What happens after beta?", "The planned premium price is $20/month. Closed beta access is focused on early feedback, product quality, retention learning, and operational confidence before wider launch."],
+  ["How do beta trials or promo codes work?", "If enabled for your invite cohort, Stripe will show the trial length, discount, renewal price, and billing date before checkout is confirmed."],
+  ["Can I cancel?", "Yes. Subscription management is handled through Stripe Billing Portal. If you cancel during a trial, Stripe shows when access will end and whether billing will begin."],
 ] as const;
 
 export default function FaqPage() {

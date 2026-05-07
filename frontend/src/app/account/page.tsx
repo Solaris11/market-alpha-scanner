@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { QueryResultRow } from "pg";
 import { AccountLogoutButton, AccountSignInCta, BillingActionButton, DeleteAccountButton, LegalReviewButton, SendVerificationEmailButton } from "@/components/account/AccountPageActions";
+import { betaBillingCopy, parseBooleanFlag, parseTrialDays } from "@/lib/security/beta-billing";
 import { billingViewState } from "@/lib/security/billing-state";
 import { checkoutBlockMessage, checkoutBlockReason } from "@/lib/security/billing-readiness";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
@@ -30,6 +31,10 @@ type RiskProfileResult = {
 export default async function AccountPage() {
   const entitlement = await getEntitlement();
   const user = entitlement.user;
+  const betaBilling = {
+    allowPromotionCodes: parseBooleanFlag(process.env.STRIPE_ALLOW_PROMOTION_CODES),
+    trialDays: parseTrialDays(process.env.STRIPE_BETA_TRIAL_DAYS),
+  };
 
   if (!user) {
     return (
@@ -99,6 +104,9 @@ export default async function AccountPage() {
               </div>
               <div className="mt-4">
                 <BillingControl billingSubscription={billingSubscription} entitlement={entitlement} />
+              </div>
+              <div className="mt-3 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.055] px-3 py-2 text-xs leading-5 text-cyan-50/85">
+                {betaBillingCopy(betaBilling)} You can cancel through Stripe before renewal.
               </div>
               {billingSubscription ? <SubscriptionState subscription={billingSubscription} /> : null}
               <p className="mt-3 text-xs leading-5 text-slate-500">Payments are securely processed by Stripe.</p>
