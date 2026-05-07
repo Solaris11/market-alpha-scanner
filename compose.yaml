@@ -168,6 +168,7 @@ services:
       PORT: "3001"
       APP_URL: ${APP_URL:-https://tradeveto.com}
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://tradeveto.com}
+      TRADEVETO_REDIRECT_ENABLED: ${TRADEVETO_REDIRECT_ENABLED:-false}
       DATABASE_URL: ${FRONTEND_DATABASE_URL:-postgresql://${POSTGRES_USER:-market_alpha}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@market-alpha-postgres:5432/${POSTGRES_DB:-market_alpha}}
       EMAIL_FROM: ${EMAIL_FROM:-}
       SMTP_HOST: ${SMTP_HOST:-}

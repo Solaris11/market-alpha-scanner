@@ -56,6 +56,7 @@ After DNS and Tunnel are verified, update production app env:
 APP_URL=https://tradeveto.com
 PUBLIC_APP_URL=https://tradeveto.com
 APP_BASE_URL=https://tradeveto.com
+TRADEVETO_REDIRECT_ENABLED=true
 EMAIL_FROM="TradeVeto <no-reply@tradeveto.com>"
 SUPPORT_EMAIL=support@tradeveto.com
 BILLING_EMAIL=billing@tradeveto.com
@@ -113,4 +114,3 @@ Rollback is intentionally simple:
 2. Restore `APP_URL`, `PUBLIC_APP_URL`, and `APP_BASE_URL` to the previous legacy app URL if needed.
 3. Keep Caddy/cloudflared routes for both domains while investigating.
 4. Do not delete legacy DNS until the final audit has passed.
-
