@@ -57,7 +57,7 @@ APP_URL=https://tradeveto.com
 PUBLIC_APP_URL=https://tradeveto.com
 APP_BASE_URL=https://tradeveto.com
 TRADEVETO_REDIRECT_ENABLED=true
-EMAIL_FROM="TradeVeto <no-reply@tradeveto.com>"
+EMAIL_FROM="TradeVeto <noreply@tradeveto.com>"
 SUPPORT_EMAIL=support@tradeveto.com
 BILLING_EMAIL=billing@tradeveto.com
 MARKET_ALPHA_ALERT_EMAIL_TO=support@tradeveto.com
@@ -72,7 +72,8 @@ Before sending production mail as TradeVeto, verify:
 - SPF authorizes Google Workspace for `tradeveto.com`.
 - DKIM is enabled and passing for TradeVeto aliases.
 - DMARC exists, starting with `p=none` until delivery is proven.
-- Gmail "Send mail as" aliases are verified for `support@tradeveto.com`, `billing@tradeveto.com`, and `no-reply@tradeveto.com`.
+- Gmail "Send mail as" aliases are verified for `support@tradeveto.com`, `billing@tradeveto.com`, and `noreply@tradeveto.com`.
+- Legacy Market Alpha sender addresses should remain aliases/forwards only during transition. TradeVeto sender addresses are primary once DNS, alias, and delivery tests pass.
 
 ## Stripe And Auth URLs
 

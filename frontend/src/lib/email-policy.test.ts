@@ -17,7 +17,7 @@ import { EMAIL_MAX_ATTEMPTS, emailRetryDelayMs, shouldRetryEmailSend } from "./e
 
 const contacts: EmailContacts = {
   billingEmail: "billing@tradeveto.com",
-  from: "TradeVeto <no-reply@tradeveto.com>",
+  from: "TradeVeto <noreply@tradeveto.com>",
   supportEmail: "support@tradeveto.com",
 };
 

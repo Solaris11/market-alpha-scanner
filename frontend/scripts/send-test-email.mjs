@@ -12,7 +12,7 @@ const to = args.get("to") || process.env.SUPPORT_EMAIL || "support@tradeveto.com
 const category = args.get("category") || "system";
 const supportEmail = process.env.SUPPORT_EMAIL || "support@tradeveto.com";
 const billingEmail = process.env.BILLING_EMAIL || "billing@tradeveto.com";
-const systemFrom = process.env.EMAIL_FROM || "TradeVeto <no-reply@tradeveto.com>";
+const systemFrom = process.env.EMAIL_FROM || "TradeVeto <noreply@tradeveto.com>";
 const from =
   category === "support"
     ? `TradeVeto Support <${supportEmail}>`

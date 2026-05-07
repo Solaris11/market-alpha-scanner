@@ -35,7 +35,7 @@ export type SmtpSettings = EmailContacts & {
   user: string;
 };
 
-const DEFAULT_FROM = "TradeVeto <no-reply@tradeveto.com>";
+const DEFAULT_FROM = "TradeVeto <noreply@tradeveto.com>";
 const DEFAULT_SUPPORT_EMAIL = "support@tradeveto.com";
 const DEFAULT_BILLING_EMAIL = "billing@tradeveto.com";
 const BRAND_COLOR = "#67e8f9";

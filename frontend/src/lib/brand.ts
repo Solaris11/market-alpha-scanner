@@ -11,9 +11,8 @@ export const APP_URL = CANONICAL_URL;
 
 export const SUPPORT_EMAIL = "support@tradeveto.com";
 export const BILLING_EMAIL = "billing@tradeveto.com";
-export const NO_REPLY_EMAIL = "no-reply@tradeveto.com";
+export const NO_REPLY_EMAIL = "noreply@tradeveto.com";
 
 export const LEGACY_APEX_DOMAIN = "marketalpha.co";
 export const LEGACY_APP_DOMAIN = "app.marketalpha.co";
 export const LEGACY_WWW_DOMAIN = "www.marketalpha.co";
-

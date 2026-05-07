@@ -12,7 +12,7 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=emrah@ondemandsre.com
 SMTP_PASS=<Google app password or OAuth credential>
-EMAIL_FROM="TradeVeto <no-reply@tradeveto.com>"
+EMAIL_FROM="TradeVeto <noreply@tradeveto.com>"
 SUPPORT_EMAIL=support@tradeveto.com
 BILLING_EMAIL=billing@tradeveto.com
 ```
@@ -21,7 +21,7 @@ Do not use `SMTP_PASSWORD` in the Next.js app. `SMTP_PASS` is the canonical secr
 
 ## Sender Policy
 
-- Verification, password reset, alert, and system email `From`: `TradeVeto <no-reply@tradeveto.com>`
+- Verification, password reset, alert, and system email `From`: `TradeVeto <noreply@tradeveto.com>`
 - Support email `From`: `TradeVeto Support <support@tradeveto.com>`
 - Billing email `From`: `TradeVeto Billing <billing@tradeveto.com>`
 - Verification/reset/support/alert `Reply-To`: `support@tradeveto.com`
@@ -36,6 +36,8 @@ SMTP delivery is asynchronous from API responses. Sends retry up to 3 attempts w
 External alert emails are throttled by alert fingerprint: the same alert is sent at most once every 15 minutes.
 
 ## Validation
+
+Legacy Market Alpha sender addresses are fallback aliases only after the TradeVeto cutover. Do not delete legacy aliases until old user replies and support history no longer depend on them.
 
 After changing SMTP envs:
 

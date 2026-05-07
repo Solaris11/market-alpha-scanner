@@ -127,7 +127,7 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=emrah@ondemandsre.com
 SMTP_PASS=...
-EMAIL_FROM="TradeVeto <no-reply@tradeveto.com>"
+EMAIL_FROM="TradeVeto <noreply@tradeveto.com>"
 SUPPORT_EMAIL=support@tradeveto.com
 BILLING_EMAIL=billing@tradeveto.com
 ```

@@ -182,7 +182,7 @@ export TELEGRAM_CHAT_ID="your_chat_id"
 Set these before running email alerts:
 
 ```bash
-export EMAIL_FROM="TradeVeto <no-reply@tradeveto.com>"
+export EMAIL_FROM="TradeVeto <noreply@tradeveto.com>"
 export MARKET_ALPHA_ALERT_EMAIL_TO="support@tradeveto.com"
 export SMTP_HOST="smtp.gmail.com"
 export SMTP_PORT="587"
