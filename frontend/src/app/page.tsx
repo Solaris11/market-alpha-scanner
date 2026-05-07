@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { MarketingCard, MarketingShell, PrimaryCta, SecondaryCta, SectionHeader } from "@/components/marketing/MarketingShell";
 import { MarketingReveal } from "@/components/marketing/MarketingReveal";
+import { BRAND_NAME, BRAND_TAGLINE } from "@/lib/brand";
 import { marketingMetadata, softwareApplicationJsonLd } from "@/lib/marketing-seo";
 
 export const dynamic = "force-dynamic";
@@ -14,7 +15,7 @@ const decisionBadges = [
   ["AVOID", "Risk or quality is not acceptable.", "border-rose-300/35 bg-rose-300/10 text-rose-100"],
 ] as const;
 
-const features = ["AI trading terminal", "Daily Action", "Opportunities scanner", "Symbol analysis", "Risk engine", "Paper trading", "Alerts", "Premium research view"];
+const features = ["AI market terminal", "Daily Action", "Opportunity filter", "Symbol analysis", "Risk engine", "Paper simulation", "Alerts", "Premium research view"];
 const analysisLayers = [
   ["Trend", "76%"],
   ["Momentum", "84%"],
@@ -34,10 +35,10 @@ export default async function HomePage() {
       <section className="landing-hero-sweep px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[1.05fr_0.95fr]">
           <MarketingReveal>
-            <div className="inline-flex rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-cyan-200">AI trading research platform</div>
-            <h1 className="mt-6 max-w-4xl text-5xl font-semibold tracking-tight text-white sm:text-6xl lg:text-7xl">Stop Overtrading. Start Making Better Decisions.</h1>
+            <div className="inline-flex rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-cyan-200">AI market intelligence</div>
+            <h1 className="mt-6 max-w-4xl text-5xl font-semibold tracking-tight text-white sm:text-6xl lg:text-7xl">{BRAND_TAGLINE}</h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-              Market Alpha Scanner is an AI-powered trading research platform that helps you know when to wait, when to avoid bad setups, and when a trade is worth watching.
+              {BRAND_NAME} helps traders filter weak setups, understand risk, and know when patience is the highest-conviction decision.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <PrimaryCta>Start Free</PrimaryCta>
@@ -77,7 +78,7 @@ export default async function HomePage() {
             {["They chase noise.", "They ignore risk.", "They enter weak setups."].map((item) => (
               <MarketingCard key={item}>
                 <div className="text-lg font-semibold text-white">{item}</div>
-                <p className="mt-3 text-sm leading-6 text-slate-400">Market Alpha Scanner is built to reduce bad decisions before they become trades.</p>
+                <p className="mt-3 text-sm leading-6 text-slate-400">TradeVeto is built to filter weak decisions before they become trades.</p>
               </MarketingCard>
             ))}
           </div>
@@ -86,7 +87,7 @@ export default async function HomePage() {
 
       <section className="px-4 py-14 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          <SectionHeader copy="The platform analyzes trend, momentum, volatility, risk/reward, macro alignment, and market regime, then compresses the result into one clear decision." eyebrow="Solution" title="Market → Decision → Discipline" />
+          <SectionHeader copy="The platform analyzes trend, momentum, volatility, risk/reward, macro alignment, and market regime, then compresses the result into one clear decision." eyebrow="Solution" title="Market -> Decision -> Discipline" />
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {analysisLayers.map(([item, width]) => (
               <MarketingCard key={item}>
@@ -118,7 +119,7 @@ export default async function HomePage() {
         <MarketingReveal className="mx-auto max-w-5xl rounded-3xl border border-emerald-300/20 bg-emerald-300/[0.055] p-8 text-center shadow-2xl shadow-emerald-950/20 backdrop-blur-xl">
           <div className="text-xs font-black uppercase tracking-[0.28em] text-emerald-200">Why different</div>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Most trading tools push more trades.</h2>
-          <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-slate-300">Market Alpha Scanner is designed to stop unnecessary trades. The goal is discipline, not hype. The best trade is often no trade.</p>
+          <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-slate-300">TradeVeto is designed to stop unnecessary trades. The goal is discipline, not hype. The best trade is often no trade.</p>
         </MarketingReveal>
       </section>
 

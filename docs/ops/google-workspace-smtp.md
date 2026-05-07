@@ -1,6 +1,6 @@
 # Google Workspace SMTP Runbook
 
-Market Alpha currently uses Google Workspace Gmail SMTP for low-volume transactional and support mail.
+TradeVeto currently uses Google Workspace Gmail SMTP for low-volume transactional and support mail.
 
 ## Production Env
 
@@ -12,20 +12,20 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=emrah@ondemandsre.com
 SMTP_PASS=<Google app password or OAuth credential>
-EMAIL_FROM="Market Alpha Scanner <noreply@marketalpha.co>"
-SUPPORT_EMAIL=support@marketalpha.co
-BILLING_EMAIL=billing@marketalpha.co
+EMAIL_FROM="TradeVeto <no-reply@tradeveto.com>"
+SUPPORT_EMAIL=support@tradeveto.com
+BILLING_EMAIL=billing@tradeveto.com
 ```
 
 Do not use `SMTP_PASSWORD` in the Next.js app. `SMTP_PASS` is the canonical secret name.
 
 ## Sender Policy
 
-- Verification, password reset, alert, and system email `From`: `Market Alpha Scanner <noreply@marketalpha.co>`
-- Support email `From`: `Market Alpha Support <support@marketalpha.co>`
-- Billing email `From`: `Market Alpha Billing <billing@marketalpha.co>`
-- Verification/reset/support/alert `Reply-To`: `support@marketalpha.co`
-- Billing lifecycle `Reply-To`: `billing@marketalpha.co`
+- Verification, password reset, alert, and system email `From`: `TradeVeto <no-reply@tradeveto.com>`
+- Support email `From`: `TradeVeto Support <support@tradeveto.com>`
+- Billing email `From`: `TradeVeto Billing <billing@tradeveto.com>`
+- Verification/reset/support/alert `Reply-To`: `support@tradeveto.com`
+- Billing lifecycle `Reply-To`: `billing@tradeveto.com`
 
 Email content must not include trading recommendations, personalized buy/sell language, SMTP credentials, Stripe secrets, or session tokens.
 
@@ -44,9 +44,9 @@ cd /opt/apps/market-alpha-scanner/app/frontend
 set -a
 source ../.env
 set +a
-npm run email:test -- --to support@marketalpha.co
-npm run email:test -- --to support@marketalpha.co --category support
-npm run email:test -- --to billing@marketalpha.co --category billing
+npm run email:test -- --to support@tradeveto.com
+npm run email:test -- --to support@tradeveto.com --category support
+npm run email:test -- --to billing@tradeveto.com --category billing
 ```
 
 The command prints only `{ "category": ..., "ok": true, "to": ... }` and never prints SMTP credentials.

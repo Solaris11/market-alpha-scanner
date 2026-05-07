@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-label="TradeVeto social preview">
+  <defs>
+    <radialGradient id="a" cx="28%" cy="10%" r="76%">
+      <stop stop-color="#0E7490" stop-opacity=".55"/>
+      <stop offset=".45" stop-color="#0F172A" stop-opacity=".1"/>
+      <stop offset="1" stop-color="#020617" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="g" x1="91" x2="242" y1="87" y2="285" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67E8F9"/>
+      <stop offset=".55" stop-color="#2DD4BF"/>
+      <stop offset="1" stop-color="#D6B35A"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="#030711"/>
+  <rect width="1200" height="630" fill="url(#a)"/>
+  <path d="M0 560c168-56 322-72 462-47 155 27 294 15 418-35 119-48 226-54 320-18v170H0Z" fill="#07111F" opacity=".78"/>
+  <g transform="translate(86 88)">
+    <path d="M122 0 244 50v96c0 86-50 139-122 174C50 285 0 232 0 146V50L122 0Z" fill="#07111F" stroke="url(#g)" stroke-width="9"/>
+    <path d="M58 78h128l-31 43h-50l-19 27h121l-31 43H54l31-43H36l22-70Z" fill="url(#g)"/>
+    <path d="M122 52v188" stroke="#F8FAFC" stroke-linecap="round" stroke-width="18"/>
+  </g>
+  <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <text x="382" y="218" fill="#F8FAFC" font-size="92" font-weight="850">TradeVeto</text>
+    <text x="388" y="286" fill="#67E8F9" font-size="28" font-weight="800" letter-spacing="5">NOT EVERY TRADE DESERVES RISK</text>
+    <text x="390" y="365" fill="#CBD5E1" font-size="34" font-weight="600">AI-powered market intelligence for risk-aware decision support.</text>
+    <text x="392" y="428" fill="#94A3B8" font-size="24" font-weight="500">Explainable readiness, vetoes, market regime, and disciplined trade filtering.</text>
+  </g>
+</svg>

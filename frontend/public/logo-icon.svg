@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-label="TradeVeto icon">
+  <defs>
+    <linearGradient id="g" x1="48" x2="210" y1="32" y2="226" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67E8F9"/>
+      <stop offset=".55" stop-color="#2DD4BF"/>
+      <stop offset="1" stop-color="#D6B35A"/>
+    </linearGradient>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="150%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="0" stdDeviation="7" flood-color="#22D3EE" flood-opacity=".32"/>
+      <feDropShadow dx="0" dy="14" stdDeviation="20" flood-color="#020617" flood-opacity=".45"/>
+    </filter>
+  </defs>
+  <rect width="256" height="256" rx="58" fill="#030711"/>
+  <path d="M128 30 205 61v62c0 54-31 88-77 111-46-23-77-57-77-111V61l77-31Z" fill="#07111F" stroke="url(#g)" stroke-width="8" filter="url(#shadow)"/>
+  <path d="M87 87h83l-20 28h-33l-12 17h78l-20 28H84l20-28H72l15-45Z" fill="url(#g)"/>
+  <path d="M128 66v119" stroke="#F8FAFC" stroke-linecap="round" stroke-width="13"/>
+</svg>

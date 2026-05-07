@@ -1,4 +1,4 @@
-# Market Alpha Production Ops Runbook
+# TradeVeto Production Ops Runbook
 
 Production host paths:
 
@@ -112,14 +112,14 @@ Check R2 status without printing credentials:
 sudo grep -E '^MARKET_ALPHA_BACKUP_(R2_REMOTE|PRIMARY_REMOTE|PRIMARY_PROVIDER)=' /etc/market-alpha-backup.env
 rclone lsf r2:market-alpha-backups/postgres/ | tail
 rclone lsf r2:market-alpha-backups/scanner_output/ | tail
-curl -s https://app.marketalpha.co/api/health/deep | jq .backup
+curl -s https://tradeveto.com/api/health/deep | jq .backup
 ```
 
 See `docs/ops/backup-restore.md` for R2 validation and temporary-database restore drills.
 
 ## Transactional Email
 
-Market Alpha uses Google Workspace Gmail SMTP for early low-volume transactional and support mail:
+TradeVeto uses Google Workspace Gmail SMTP for early low-volume transactional and support mail:
 
 ```bash
 SMTP_HOST=smtp.gmail.com
@@ -127,9 +127,9 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=emrah@ondemandsre.com
 SMTP_PASS=...
-EMAIL_FROM="Market Alpha Scanner <noreply@marketalpha.co>"
-SUPPORT_EMAIL=support@marketalpha.co
-BILLING_EMAIL=billing@marketalpha.co
+EMAIL_FROM="TradeVeto <no-reply@tradeveto.com>"
+SUPPORT_EMAIL=support@tradeveto.com
+BILLING_EMAIL=billing@tradeveto.com
 ```
 
 See `docs/ops/google-workspace-smtp.md` for limits, Reply-To policy, and the future migration path to a dedicated transactional provider.

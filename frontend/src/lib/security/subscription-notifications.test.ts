@@ -7,7 +7,7 @@ test("Stripe active webhook notification is deduped and points to account", () =
 
   assert.equal(notification.type, "subscription");
   assert.equal(notification.title, "Premium activated");
-  assert.equal(notification.message, "Your Market Alpha Premium subscription is now active.");
+  assert.equal(notification.message, "Your TradeVeto Premium subscription is now active.");
   assert.equal(notification.actionUrl, "/account");
   assert.equal(notification.dedupe, "once");
 });

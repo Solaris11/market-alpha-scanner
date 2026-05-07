@@ -13,7 +13,7 @@ export function loadEnvFiles(): void {
 }
 
 export function monitoringBaseUrl(): string {
-  const raw = process.env.MONITORING_BASE_URL?.trim() || process.env.APP_BASE_URL?.trim() || process.env.APP_URL?.trim() || "https://app.marketalpha.co";
+  const raw = process.env.MONITORING_BASE_URL?.trim() || process.env.APP_BASE_URL?.trim() || process.env.APP_URL?.trim() || "https://tradeveto.com";
   return raw.replace(/\/$/, "");
 }
 

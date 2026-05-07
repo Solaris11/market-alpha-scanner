@@ -35,9 +35,9 @@ export type SmtpSettings = EmailContacts & {
   user: string;
 };
 
-const DEFAULT_FROM = "Market Alpha Scanner <noreply@marketalpha.co>";
-const DEFAULT_SUPPORT_EMAIL = "support@marketalpha.co";
-const DEFAULT_BILLING_EMAIL = "billing@marketalpha.co";
+const DEFAULT_FROM = "TradeVeto <no-reply@tradeveto.com>";
+const DEFAULT_SUPPORT_EMAIL = "support@tradeveto.com";
+const DEFAULT_BILLING_EMAIL = "billing@tradeveto.com";
 const BRAND_COLOR = "#67e8f9";
 const TEXT_COLOR = "#0f172a";
 const MUTED_COLOR = "#475569";
@@ -76,8 +76,8 @@ export function supportInternalNotificationRecipient(contacts: EmailContacts): s
 }
 
 export function renderEmailVerificationEmail(input: { contacts: EmailContacts; expiresAt: Date; verificationUrl: string }): RenderedEmail {
-  const title = "Verify your Market Alpha Scanner email";
-  const intro = "Confirm this email address before upgrading your Market Alpha account.";
+  const title = "Verify your TradeVeto email";
+  const intro = "Confirm this email address before upgrading your TradeVeto account.";
   return actionEmail({
     actionLabel: "Verify email",
     actionUrl: input.verificationUrl,
@@ -92,8 +92,8 @@ export function renderEmailVerificationEmail(input: { contacts: EmailContacts; e
 }
 
 export function renderPasswordResetEmail(input: { contacts: EmailContacts; expiresAt: Date; resetUrl: string }): RenderedEmail {
-  const title = "Reset your Market Alpha Scanner password";
-  const intro = "We received a request to reset the password for your Market Alpha account.";
+  const title = "Reset your TradeVeto password";
+  const intro = "We received a request to reset the password for your TradeVeto account.";
   return actionEmail({
     actionLabel: "Reset password",
     actionUrl: input.resetUrl,
@@ -122,7 +122,7 @@ export function renderSupportTicketCreatedEmail(input: { category?: string; cont
       `Subject: ${safeSubject}`,
       `Category: ${category}`,
       message ? `Message: ${message}` : "",
-      "A Market Alpha support reply will come from this thread. Market Alpha Scanner is research software and does not provide financial advice.",
+      "A TradeVeto support reply will come from this thread. TradeVeto is research software and does not provide financial advice.",
     ].filter(Boolean),
     replyTo: input.contacts.supportEmail,
     subject: "We received your support request",
@@ -170,7 +170,7 @@ export function renderSupportInternalNotificationEmail(input: {
 }
 
 export function renderSupportReplyEmail(input: { contacts: EmailContacts; message: string; subject: string; ticketId: string }): RenderedEmail {
-  const title = "Market Alpha support replied";
+  const title = "TradeVeto support replied";
   return basicEmail({
     category: "support",
     contacts: input.contacts,
@@ -193,7 +193,7 @@ export function renderBillingLifecycleEmail(input: { contacts: EmailContacts; me
     contacts: input.contacts,
     paragraphs: [cleanBlock(input.message, 500), "Payments and subscription management are handled securely through Stripe."],
     replyTo: input.contacts.billingEmail,
-    subject: `Market Alpha billing: ${title}`,
+    subject: `TradeVeto billing: ${title}`,
     title,
   });
 }
@@ -221,8 +221,8 @@ export function renderOperationalAlertEmail(input: {
       metadata ? `Metadata:\n${metadata}` : "",
     ].filter(Boolean),
     replyTo: input.contacts.supportEmail,
-    subject: `[Market Alpha] ${cleanInline(input.severity.toUpperCase(), 40)} ${cleanInline(input.eventType, 120)}`,
-    title: "Market Alpha operational alert",
+    subject: `[TradeVeto] ${cleanInline(input.severity.toUpperCase(), 40)} ${cleanInline(input.eventType, 120)}`,
+    title: "TradeVeto operational alert",
   });
 }
 
@@ -281,15 +281,15 @@ function basicEmail(input: { category: EmailCategory; contacts: EmailContacts; d
 }
 
 export function senderForCategory(category: EmailCategory, contacts: EmailContacts): string {
-  if (category === "support") return `Market Alpha Support <${contacts.supportEmail}>`;
-  if (category === "billing") return `Market Alpha Billing <${contacts.billingEmail}>`;
+  if (category === "support") return `TradeVeto Support <${contacts.supportEmail}>`;
+  if (category === "billing") return `TradeVeto Billing <${contacts.billingEmail}>`;
   return contacts.from;
 }
 
 function shellHtml(title: string, body: string, contacts: EmailContacts): string {
   return `
     <div style="font-family:Arial,sans-serif;line-height:1.6;color:${TEXT_COLOR};max-width:640px">
-      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${MUTED_COLOR};font-weight:700">Market Alpha Scanner</div>
+      <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:${MUTED_COLOR};font-weight:700">TradeVeto</div>
       <h1 style="font-size:22px;line-height:1.25;margin:8px 0 16px">${escapeHtml(title)}</h1>
       ${body}
       <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0" />
@@ -299,7 +299,7 @@ function shellHtml(title: string, body: string, contacts: EmailContacts): string
 }
 
 function footerText(contacts: EmailContacts): string {
-  return `Market Alpha Scanner is research and education software, not financial advice. Support: ${contacts.supportEmail}`;
+  return `TradeVeto is research and education software, not financial advice. Support: ${contacts.supportEmail}`;
 }
 
 function smtpSecure(value: string | undefined, port: number): boolean {

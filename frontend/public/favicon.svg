@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="TradeVeto favicon">
+  <defs>
+    <linearGradient id="g" x1="10" x2="52" y1="8" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#67E8F9"/>
+      <stop offset=".58" stop-color="#2DD4BF"/>
+      <stop offset="1" stop-color="#D6B35A"/>
+    </linearGradient>
+  </defs>
+  <rect width="64" height="64" rx="15" fill="#030711"/>
+  <path d="M32 8 51 16v16c0 13-8 21-19 27-11-6-19-14-19-27V16l19-8Z" fill="#07111F" stroke="url(#g)" stroke-width="3"/>
+  <path d="M22 22h22l-5 8h-9l-3 4h20l-5 8H21l5-8h-8l4-12Z" fill="url(#g)"/>
+  <path d="M32 17v30" stroke="#F8FAFC" stroke-linecap="round" stroke-width="4"/>
+</svg>

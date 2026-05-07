@@ -62,7 +62,7 @@ export default async function AccountPage() {
           <div>
             <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Account</div>
             <h2 className="mt-2 text-2xl font-semibold text-slate-50">Profile and saved settings</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">Manage the account details and trading preferences used across Market Alpha Scanner.</p>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">Manage the account details and trading preferences used across TradeVeto.</p>
           </div>
           <span className="w-fit rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-100">Account saved</span>
         </header>
@@ -145,7 +145,7 @@ export default async function AccountPage() {
             </div>
             <div className="mt-5 rounded-xl border border-rose-300/20 bg-rose-400/[0.05] p-4">
               <div className="text-sm font-semibold text-rose-100">Danger zone</div>
-              <p className="mt-1 text-xs leading-5 text-rose-100/75">This permanently deletes your account data from Market Alpha. Active subscriptions must be canceled first.</p>
+              <p className="mt-1 text-xs leading-5 text-rose-100/75">This permanently deletes your TradeVeto account data. Active subscriptions must be canceled first.</p>
               <div className="mt-3"><DeleteAccountButton /></div>
             </div>
           </AccountSection>

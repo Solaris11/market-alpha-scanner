@@ -1,4 +1,4 @@
-# Market Alpha Scanner
+# TradeVeto
 
 Multi-asset market scanner that ranks equities, ETFs, crypto, and liquid proxy instruments using a practical composite model:
 
@@ -166,7 +166,7 @@ Postgres is the production SaaS source of truth. Existing file outputs remain ba
 
 ## Rule-Based Alerts
 
-Market Alpha Scanner stores SaaS user alert rules in Postgres through the `/api/alerts` routes. Scanner artifacts remain read-only market data outputs; account-owned alert rules are not stored in scanner output directories.
+TradeVeto stores SaaS user alert rules in Postgres through the `/api/alerts` routes. Scanner artifacts remain read-only market data outputs; account-owned alert rules are not stored in scanner output directories.
 
 Legacy JSON alert files from the MVP should not exist in the active `scanner_output/alerts` path. If found during operations, archive them under `/opt/backups/market-alpha/legacy-alert-json/<timestamp>/` before removal.
 
@@ -182,15 +182,15 @@ export TELEGRAM_CHAT_ID="your_chat_id"
 Set these before running email alerts:
 
 ```bash
-export EMAIL_FROM="Market Alpha Scanner <noreply@marketalpha.co>"
-export MARKET_ALPHA_ALERT_EMAIL_TO="support@marketalpha.co"
+export EMAIL_FROM="TradeVeto <no-reply@tradeveto.com>"
+export MARKET_ALPHA_ALERT_EMAIL_TO="support@tradeveto.com"
 export SMTP_HOST="smtp.gmail.com"
 export SMTP_PORT="587"
 export SMTP_SECURE="false"
 export SMTP_USER="emrah@ondemandsre.com"
 export SMTP_PASS="google_app_password"
-export SUPPORT_EMAIL="support@marketalpha.co"
-export BILLING_EMAIL="billing@marketalpha.co"
+export SUPPORT_EMAIL="support@tradeveto.com"
+export BILLING_EMAIL="billing@tradeveto.com"
 ```
 
 Supported alert types:

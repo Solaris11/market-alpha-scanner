@@ -166,8 +166,8 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       HOSTNAME: 0.0.0.0
       PORT: "3001"
-      APP_URL: ${APP_URL:-https://app.marketalpha.co}
-      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://app.marketalpha.co}
+      APP_URL: ${APP_URL:-https://tradeveto.com}
+      PUBLIC_APP_URL: ${PUBLIC_APP_URL:-https://tradeveto.com}
       DATABASE_URL: ${FRONTEND_DATABASE_URL:-postgresql://${POSTGRES_USER:-market_alpha}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@market-alpha-postgres:5432/${POSTGRES_DB:-market_alpha}}
       EMAIL_FROM: ${EMAIL_FROM:-}
       SMTP_HOST: ${SMTP_HOST:-}
@@ -175,8 +175,8 @@ services:
       SMTP_SECURE: ${SMTP_SECURE:-false}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
-      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-support@marketalpha.co}
-      BILLING_EMAIL: ${BILLING_EMAIL:-billing@marketalpha.co}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-support@tradeveto.com}
+      BILLING_EMAIL: ${BILLING_EMAIL:-billing@tradeveto.com}
       MARKET_ALPHA_ALERT_EMAIL_TO: ${MARKET_ALPHA_ALERT_EMAIL_TO:-}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
@@ -196,7 +196,7 @@ services:
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
-      APP_BASE_URL: ${APP_BASE_URL:-https://app.marketalpha.co}
+      APP_BASE_URL: ${APP_BASE_URL:-https://tradeveto.com}
       STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
       NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY:-}
       STRIPE_PRICE_ID: ${STRIPE_PRICE_ID:-}

@@ -8,16 +8,16 @@ for (let index = 2; index < process.argv.length; index += 1) {
   }
 }
 
-const to = args.get("to") || process.env.SUPPORT_EMAIL || "support@marketalpha.co";
+const to = args.get("to") || process.env.SUPPORT_EMAIL || "support@tradeveto.com";
 const category = args.get("category") || "system";
-const supportEmail = process.env.SUPPORT_EMAIL || "support@marketalpha.co";
-const billingEmail = process.env.BILLING_EMAIL || "billing@marketalpha.co";
-const systemFrom = process.env.EMAIL_FROM || "Market Alpha Scanner <noreply@marketalpha.co>";
+const supportEmail = process.env.SUPPORT_EMAIL || "support@tradeveto.com";
+const billingEmail = process.env.BILLING_EMAIL || "billing@tradeveto.com";
+const systemFrom = process.env.EMAIL_FROM || "TradeVeto <no-reply@tradeveto.com>";
 const from =
   category === "support"
-    ? `Market Alpha Support <${supportEmail}>`
+    ? `TradeVeto Support <${supportEmail}>`
     : category === "billing"
-      ? `Market Alpha Billing <${billingEmail}>`
+      ? `TradeVeto Billing <${billingEmail}>`
       : systemFrom;
 const replyTo = category === "billing" ? billingEmail : supportEmail;
 const config = {
@@ -50,18 +50,18 @@ const result = await nodemailer
     from: config.from,
     html: `
       <div style="font-family:Arial,sans-serif;line-height:1.6;color:#0f172a">
-        <h1 style="font-size:20px">Market Alpha email test</h1>
-        <p>This verifies Google Workspace SMTP delivery for Market Alpha Scanner.</p>
-        <p>Market Alpha Scanner is research and education software, not financial advice.</p>
+        <h1 style="font-size:20px">TradeVeto email test</h1>
+        <p>This verifies Google Workspace SMTP delivery for TradeVeto.</p>
+        <p>TradeVeto is research and education software, not financial advice.</p>
       </div>
     `,
     replyTo: config.replyTo,
-    subject: "Market Alpha SMTP test",
+    subject: "TradeVeto SMTP test",
     text: [
-      "Market Alpha email test",
+      "TradeVeto email test",
       "",
-      "This verifies Google Workspace SMTP delivery for Market Alpha Scanner.",
-      "Market Alpha Scanner is research and education software, not financial advice.",
+      "This verifies Google Workspace SMTP delivery for TradeVeto.",
+      "TradeVeto is research and education software, not financial advice.",
     ].join("\n"),
     to,
   });

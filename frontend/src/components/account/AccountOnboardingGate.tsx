@@ -86,7 +86,7 @@ export function AccountOnboardingGate() {
       <div className="w-full max-w-xl rounded-2xl border border-cyan-300/25 bg-slate-950 p-5 shadow-2xl shadow-black/60">
         <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Account setup</div>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Complete your trading profile</h2>
-        <p className="mt-3 text-sm leading-6 text-slate-400">Market Alpha uses these account settings for timestamps, risk language, and product safety checks.</p>
+        <p className="mt-3 text-sm leading-6 text-slate-400">TradeVeto uses these account settings for timestamps, risk language, and product safety checks.</p>
 
         <div className="mt-5 space-y-4">
           <label className="block">

@@ -16,9 +16,9 @@ import {
 import { EMAIL_MAX_ATTEMPTS, emailRetryDelayMs, shouldRetryEmailSend } from "./email-retry-policy";
 
 const contacts: EmailContacts = {
-  billingEmail: "billing@marketalpha.co",
-  from: "Market Alpha Scanner <noreply@marketalpha.co>",
-  supportEmail: "support@marketalpha.co",
+  billingEmail: "billing@tradeveto.com",
+  from: "TradeVeto <no-reply@tradeveto.com>",
+  supportEmail: "support@tradeveto.com",
 };
 
 test("Gmail SMTP env uses standardized app password variable only", () => {
@@ -49,11 +49,11 @@ test("Gmail SMTP env uses standardized app password variable only", () => {
 });
 
 test("transactional templates use correct Reply-To addresses", () => {
-  const verification = renderEmailVerificationEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), verificationUrl: "https://app.marketalpha.co/api/auth/verify-email?token=test" });
-  const passwordReset = renderPasswordResetEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), resetUrl: "https://app.marketalpha.co/reset-password?token=test" });
+  const verification = renderEmailVerificationEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), verificationUrl: "https://tradeveto.com/api/auth/verify-email?token=test" });
+  const passwordReset = renderPasswordResetEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), resetUrl: "https://tradeveto.com/reset-password?token=test" });
   const supportCreated = renderSupportTicketCreatedEmail({ category: "technical", contacts, message: "Refresh controls show unavailable.", status: "open", subject: "Help", ticketId: "ticket_1" });
   const supportInternal = renderSupportInternalNotificationEmail({
-    adminUrl: "https://app.marketalpha.co/admin/support/ticket_1",
+    adminUrl: "https://tradeveto.com/admin/support/ticket_1",
     category: "technical",
     contacts,
     createdAt: "2026-05-05T13:00:00Z",
@@ -77,7 +77,7 @@ test("transactional templates use correct Reply-To addresses", () => {
   assert.equal(supportCreated.replyTo, contacts.supportEmail);
   assert.equal(supportCreated.category, "support");
   assert.equal(supportCreated.deliveryCategory, "support_ticket_created");
-  assert.match(supportCreated.from, /support@marketalpha\.co/);
+  assert.match(supportCreated.from, /support@tradeveto\.com/);
   assert.equal(supportCreated.subject, "We received your support request");
   assert.match(supportCreated.text, /Category: technical/);
   assert.match(supportCreated.text, /Ticket ticket_1 is open/);
@@ -85,19 +85,19 @@ test("transactional templates use correct Reply-To addresses", () => {
   assert.equal(supportInternal.replyTo, "user@example.com");
   assert.equal(supportInternal.category, "support");
   assert.equal(supportInternal.deliveryCategory, "support_internal_notification");
-  assert.match(supportInternal.from, /support@marketalpha\.co/);
+  assert.match(supportInternal.from, /support@tradeveto\.com/);
   assert.equal(supportInternal.subject, "New support ticket: Help");
   assert.match(supportInternal.text, /User email: user@example\.com/);
   assert.match(supportInternal.text, /User name: Test User/);
-  assert.match(supportInternal.text, /Admin link: https:\/\/app\.marketalpha\.co\/admin\/support\/ticket_1/);
+  assert.match(supportInternal.text, /Admin link: https:\/\/tradeveto\.com\/admin\/support\/ticket_1/);
   assert.equal(supportInternalNotificationRecipient(contacts), contacts.supportEmail);
   assert.equal(supportReply.replyTo, contacts.supportEmail);
   assert.equal(supportReply.category, "support");
   assert.equal(supportReply.deliveryCategory, "support_ticket_reply");
-  assert.match(supportReply.from, /support@marketalpha\.co/);
+  assert.match(supportReply.from, /support@tradeveto\.com/);
   assert.equal(billing.replyTo, contacts.billingEmail);
   assert.equal(billing.category, "billing");
-  assert.match(billing.from, /billing@marketalpha\.co/);
+  assert.match(billing.from, /billing@tradeveto\.com/);
   assert.equal(alert.replyTo, contacts.supportEmail);
   assert.equal(alert.category, "alert");
   assert.equal(alert.from, contacts.from);
@@ -106,8 +106,8 @@ test("transactional templates use correct Reply-To addresses", () => {
 test("email templates do not include SMTP secrets or financial advice claims", () => {
   const secretValues = ["gmail-app-password", "SMTP_PASS_SECRET_123", "sk_live_secret"];
   const emails = [
-    renderEmailVerificationEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), verificationUrl: "https://app.marketalpha.co/api/auth/verify-email?token=public-link-token" }),
-    renderPasswordResetEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), resetUrl: "https://app.marketalpha.co/reset-password?token=public-link-token" }),
+    renderEmailVerificationEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), verificationUrl: "https://tradeveto.com/api/auth/verify-email?token=public-link-token" }),
+    renderPasswordResetEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), resetUrl: "https://tradeveto.com/reset-password?token=public-link-token" }),
     renderSupportTicketCreatedEmail({ category: "scanner", contacts, message: "I need product support.", status: "open", subject: "Question", ticketId: "018f4c6b-7725-4b6a-9123-a85751000abc" }),
     renderSupportInternalNotificationEmail({ category: "scanner", contacts, message: "I need product support.", replyTo: "user@example.com", subject: "Question", ticketId: "018f4c6b-7725-4b6a-9123-a85751000abc", userEmail: "user@example.com" }),
     renderSupportReplyEmail({ contacts, message: "I can explain what WAIT means, but I cannot provide buy or sell recommendations.", subject: "Question", ticketId: "018f4c6b-7725-4b6a-9123-a85751000abc" }),
@@ -134,12 +134,12 @@ test("action email links contain only short-lived token URLs, not user data", ()
   const verification = renderEmailVerificationEmail({
     contacts,
     expiresAt: new Date("2026-05-05T12:00:00Z"),
-    verificationUrl: "https://app.marketalpha.co/api/auth/verify-email?token=sample-token",
+    verificationUrl: "https://tradeveto.com/api/auth/verify-email?token=sample-token",
   });
   const reset = renderPasswordResetEmail({
     contacts,
     expiresAt: new Date("2026-05-05T12:00:00Z"),
-    resetUrl: "https://app.marketalpha.co/reset-password?token=sample-token",
+    resetUrl: "https://tradeveto.com/reset-password?token=sample-token",
   });
 
   assert.match(verification.text, /token=sample-token/);

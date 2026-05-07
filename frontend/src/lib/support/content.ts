@@ -1,4 +1,4 @@
-export const SUPPORT_DISCLAIMER = "Market Alpha Scanner is for research and education only. It does not provide financial advice.";
+export const SUPPORT_DISCLAIMER = "TradeVeto is for research and education only. It does not provide financial advice.";
 
 export type SupportFaqItem = {
   answer: string;
@@ -14,14 +14,14 @@ export type SupportGuide = {
 
 export const SUPPORT_FAQ: SupportFaqItem[] = [
   {
-    slug: "what-is-market-alpha",
-    question: "What is Market Alpha Scanner?",
-    answer: "Market Alpha Scanner is an AI-powered trading research platform that helps organize market conditions, scanner signals, risk context, and decision support into one workflow.",
+    slug: "what-is-tradeveto",
+    question: "What is TradeVeto?",
+    answer: "TradeVeto is an AI-powered market intelligence platform that helps organize market conditions, scanner signals, risk context, vetoes, and decision support into one workflow.",
   },
   {
     slug: "financial-advice",
     question: "Is this financial advice?",
-    answer: "No. Market Alpha Scanner is for research and education only. It does not provide financial advice, investment recommendations, or guaranteed outcomes.",
+    answer: "No. TradeVeto is for research and education only. It does not provide financial advice, investment recommendations, or guaranteed outcomes.",
   },
   {
     slug: "wait",
@@ -86,7 +86,7 @@ export const SUPPORT_FAQ: SupportFaqItem[] = [
   {
     slug: "data-provider",
     question: "What data provider is used?",
-    answer: "Market Alpha Scanner uses market data ingested by the scanner pipeline. Provider availability and freshness can vary, so the app displays data freshness indicators.",
+    answer: "TradeVeto uses market data ingested by the scanner pipeline. Provider availability and freshness can vary, so the app displays data freshness indicators.",
   },
   {
     slug: "wrong-stale-data",
@@ -153,7 +153,7 @@ export function findSupportAnswer(message: string): string {
   if (normalized.includes("no buy") || normalized.includes("no active trade") || normalized.includes("no trade") || normalized.includes("no research setup")) {
     return [
       "No active research setup can be a healthy result.",
-      "Market Alpha is built around the idea that the best trade is often no trade. Wait, Watch, and Avoid mean the scanner is prioritizing risk control, data quality, and setup confirmation over forced activity.",
+      "TradeVeto is built around the idea that the best trade is often no trade. Wait, Watch, and Avoid mean the scanner is prioritizing risk control, data quality, and setup confirmation over forced activity.",
       "Review the Decision Reasons and What To Watch panels to see which conditions would need to improve.",
     ].join("\n");
   }

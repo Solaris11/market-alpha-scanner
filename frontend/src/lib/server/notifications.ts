@@ -82,7 +82,7 @@ export async function createLoginNotifications(userId: string): Promise<void> {
   await createNotificationOnce(
     userId,
     "system",
-    "Welcome to Market Alpha",
+    "Welcome to TradeVeto",
     "Signals are research-only. This is not financial advice.",
   );
 

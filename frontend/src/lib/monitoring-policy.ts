@@ -62,7 +62,7 @@ export function monitoringTokenFromEnv(env: NodeJS.ProcessEnv = process.env): st
 
 function safePathname(value: string): string {
   try {
-    return new URL(value, "https://app.marketalpha.co").pathname;
+    return new URL(value, "https://tradeveto.com").pathname;
   } catch {
     return "/";
   }

@@ -70,7 +70,7 @@ export function SupportReplyForm({ ticketId }: { ticketId: string }) {
 
 export function SupportChatBox() {
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; text: string }>>([
-    { role: "assistant", text: "I can help explain Market Alpha workflows, WAIT decisions, alerts, paper simulation, billing, and troubleshooting. I cannot provide financial advice or personalized buy/sell recommendations." },
+    { role: "assistant", text: "I can help explain TradeVeto workflows, WAIT decisions, alerts, paper simulation, billing, and troubleshooting. I cannot provide financial advice or personalized buy/sell recommendations." },
   ]);
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState("");

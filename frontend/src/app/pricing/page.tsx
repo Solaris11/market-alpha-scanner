@@ -3,11 +3,11 @@ import { MarketingCard, MarketingShell, PrimaryCta, SecondaryCta, SectionHeader 
 import { marketingMetadata } from "@/lib/marketing-seo";
 
 export const metadata: Metadata = marketingMetadata("/pricing", {
-  title: "Pricing — Market Alpha Scanner",
-  description: "Market Alpha Scanner beta pricing preview. $20/month after beta for premium AI-powered trading research. Not financial advice.",
+  title: "Pricing — TradeVeto",
+  description: "TradeVeto beta pricing preview. $20/month after beta for premium AI-powered market intelligence. Not financial advice.",
 });
 
-const included = ["AI trading terminal", "Daily Action", "Ranked scanner previews", "Risk engine", "Paper trading", "Alerts", "Premium research view"];
+const included = ["AI market terminal", "Daily Action", "Ranked research previews", "Risk engine", "Paper simulation", "Alerts", "Premium research view"];
 
 export default function PricingPage() {
   return (
@@ -26,7 +26,7 @@ export default function PricingPage() {
           <MarketingCard className="border-emerald-300/25 bg-emerald-300/[0.055]">
             <div className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-emerald-100">Premium preview</div>
             <div className="mt-5 text-5xl font-black text-white">$20<span className="text-lg font-semibold text-slate-400">/month</span></div>
-            <p className="mt-4 text-sm leading-6 text-slate-300">Premium unlocks full trade plans, ranked setups, alerts, simulations, and scanner intelligence when public billing is enabled.</p>
+            <p className="mt-4 text-sm leading-6 text-slate-300">Premium unlocks full research context, ranked setups, alerts, simulations, and decision intelligence when public billing is enabled.</p>
             <ul className="mt-6 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
               {included.map((item) => (
                 <li className="rounded-xl border border-white/10 bg-black/15 px-3 py-2" key={item}>{item}</li>

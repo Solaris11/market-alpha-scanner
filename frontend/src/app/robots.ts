@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { CANONICAL_URL } from "@/lib/brand";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -7,6 +8,6 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: ["/api/", "/account", "/terminal", "/opportunities", "/paper", "/performance", "/history", "/alerts", "/advanced", "/symbol/"],
     },
-    sitemap: "https://marketalpha.co/sitemap.xml",
+    sitemap: `${CANONICAL_URL}/sitemap.xml`,
   };
 }

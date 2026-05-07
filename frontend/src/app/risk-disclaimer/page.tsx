@@ -3,7 +3,7 @@ import RiskDisclosurePage from "../risk-disclosure/page";
 import { marketingMetadata } from "@/lib/marketing-seo";
 
 export const metadata: Metadata = marketingMetadata("/risk-disclaimer", {
-  title: "Risk Disclaimer — Market Alpha Scanner",
+  title: "Risk Disclaimer — TradeVeto",
 });
 
 export default RiskDisclosurePage;

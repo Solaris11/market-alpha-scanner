@@ -10,7 +10,7 @@ export function premiumActivatedNotification(): SubscriptionNotificationIntent {
   return {
     actionUrl: "/account",
     dedupe: "once",
-    message: "Your Market Alpha Premium subscription is now active.",
+    message: "Your TradeVeto Premium subscription is now active.",
     title: "Premium activated",
     type: "subscription",
   };

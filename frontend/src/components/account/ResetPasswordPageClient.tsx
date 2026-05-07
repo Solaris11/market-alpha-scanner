@@ -22,9 +22,9 @@ export function ResetPasswordPageClient({ token }: { token: string }) {
 
   return (
     <section className="terminal-panel mx-auto max-w-md rounded-md p-5">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Market Alpha Scanner</div>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">TradeVeto</div>
       <h1 className="mt-2 text-xl font-semibold text-slate-50">Choose a new password</h1>
-      <p className="mt-2 text-sm text-slate-400">Enter a new password for your Market Alpha Scanner account.</p>
+      <p className="mt-2 text-sm text-slate-400">Enter a new password for your TradeVeto account.</p>
       <div className="mt-5">
         <ResetPasswordForm onSuccess={() => router.push("/terminal")} token={token} />
       </div>

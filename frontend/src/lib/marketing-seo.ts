@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
+import { BRAND_DESCRIPTION, BRAND_NAME, CANONICAL_URL } from "@/lib/brand";
 
-export const marketingBaseUrl = "https://marketalpha.co";
-export const appBaseUrl = "https://app.marketalpha.co";
+export const marketingBaseUrl = CANONICAL_URL;
+export const appBaseUrl = CANONICAL_URL;
 
-const title = "Market Alpha Scanner — AI Trading Research Platform";
+const title = `${BRAND_NAME} — AI Market Intelligence`;
 const description =
-  "AI-powered trading research platform that helps traders reduce overtrading, analyze market setups, and make clearer trading decisions. Not financial advice.";
+  "AI-powered market intelligence that helps traders filter weak setups, analyze risk, and make clearer research decisions. Not financial advice.";
 
 export function marketingMetadata(path = "/", overrides: Partial<Metadata> = {}): Metadata {
   const canonical = new URL(path, marketingBaseUrl).toString();
@@ -19,27 +20,27 @@ export function marketingMetadata(path = "/", overrides: Partial<Metadata> = {})
       canonical,
     },
     keywords: [
-      "AI trading scanner",
-      "stock market scanner",
+      "AI market intelligence",
+      "trade filtering",
       "trading research platform",
       "trading decision support",
       "reduce overtrading",
       "stock analysis AI",
-      "market scanner",
-      "trading signals research",
+      "risk-aware trading research",
+      "explainable market research",
     ],
     openGraph: {
       title: String(pageTitle),
       description: String(pageDescription),
       type: "website",
       url: canonical,
-      siteName: "Market Alpha Scanner",
+      siteName: BRAND_NAME,
       images: [
         {
-          url: `${marketingBaseUrl}/icon.png`,
-          width: 512,
-          height: 512,
-          alt: "Market Alpha",
+          url: `${marketingBaseUrl}/og-image.svg`,
+          width: 1200,
+          height: 630,
+          alt: `${BRAND_NAME} social preview`,
         },
       ],
     },
@@ -47,7 +48,7 @@ export function marketingMetadata(path = "/", overrides: Partial<Metadata> = {})
       card: "summary_large_image",
       title: String(pageTitle),
       description: String(pageDescription),
-      images: [`${marketingBaseUrl}/icon.png`],
+      images: [`${marketingBaseUrl}/og-image.svg`],
     },
     ...overrides,
   };
@@ -58,9 +59,9 @@ export function softwareApplicationJsonLd() {
     "@context": "https://schema.org",
     "@type": "SoftwareApplication",
     applicationCategory: "FinanceApplication",
-    name: "Market Alpha Scanner",
+    name: BRAND_NAME,
     operatingSystem: "Web",
-    description,
+    description: BRAND_DESCRIPTION,
     offers: {
       "@type": "Offer",
       price: "20",

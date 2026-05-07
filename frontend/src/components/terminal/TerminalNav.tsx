@@ -75,7 +75,7 @@ export function MobileTerminalNav() {
   return (
     <div className="xl:hidden">
       <div className="flex min-h-14 items-center gap-2">
-        <Link aria-label="Market Alpha Terminal" className="min-w-0 shrink-0" href="/terminal">
+        <Link aria-label="TradeVeto Terminal" className="min-w-0 shrink-0" href="/terminal">
           <BrandMark compact />
         </Link>
         <div className="min-w-0 flex-1">
@@ -85,7 +85,7 @@ export function MobileTerminalNav() {
         <NotificationBell />
         <AccountPill compact />
         <button
-          aria-controls="market-alpha-mobile-drawer"
+          aria-controls="tradeveto-mobile-drawer"
           aria-expanded={open}
           aria-label={open ? "Close navigation menu" : "Open navigation menu"}
           className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 text-slate-100 transition hover:border-cyan-300/35 hover:bg-cyan-400/10"
@@ -111,13 +111,13 @@ export function MobileTerminalNav() {
         aria-labelledby={drawerTitleId}
         aria-hidden={!open}
         className={`fixed right-0 top-0 z-[9000] flex h-dvh w-[min(88vw,380px)] flex-col border-l border-white/10 bg-slate-950/95 shadow-2xl shadow-black/50 ring-1 ring-cyan-300/10 backdrop-blur-2xl transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`}
-        id="market-alpha-mobile-drawer"
+        id="tradeveto-mobile-drawer"
         ref={drawerRef}
       >
         <div className="border-b border-white/10 p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300/80">Market Alpha</div>
+              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300/80">TradeVeto</div>
               <h2 className="mt-1 text-lg font-semibold text-slate-50" id={drawerTitleId}>All Navigation</h2>
             </div>
             <button className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300" onClick={() => setOpen(false)} type="button">
@@ -220,7 +220,7 @@ function BottomNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
 function BottomMenuButton({ buttonRef, onClick, open }: { buttonRef: RefObject<HTMLButtonElement | null>; onClick: () => void; open: boolean }) {
   return (
     <button
-      aria-controls="market-alpha-mobile-drawer"
+      aria-controls="tradeveto-mobile-drawer"
       aria-expanded={open}
       aria-label={open ? "Close full navigation menu" : "Open full navigation menu"}
       className={`flex min-h-12 flex-col items-center justify-center rounded-xl border px-1 text-center text-[11px] font-semibold transition ${

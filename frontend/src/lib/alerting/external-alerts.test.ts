@@ -7,7 +7,7 @@ test("external alert configuration detects safe channels without secret values",
   assert.deepEqual(configuredAlertChannels({ TELEGRAM_BOT_TOKEN: "token", TELEGRAM_CHAT_ID: "chat" } as unknown as NodeJS.ProcessEnv), ["telegram"]);
   assert.deepEqual(
     configuredAlertChannels({
-      EMAIL_FROM: "alerts@marketalpha.co",
+      EMAIL_FROM: "alerts@tradeveto.com",
       SMTP_HOST: "smtp.example.com",
       SMTP_PASS: "pass",
       SMTP_USER: "user",
@@ -24,7 +24,7 @@ test("external alert envelope redacts sensitive metadata and values", () => {
       Authorization: "Bearer secret-token",
       nested: { stripeSignature: "t=1,v1=secret", safe: "ok" },
       token: "secret",
-      url: "https://app.marketalpha.co/api/health",
+      url: "https://tradeveto.com/api/health",
       webhook: "whsec_1234567890abcdef",
     },
     severity: "critical",

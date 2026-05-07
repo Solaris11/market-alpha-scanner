@@ -213,7 +213,7 @@ export function DeleteAccountButton() {
       {open ? (
         <div className="mt-4 rounded-xl border border-rose-300/25 bg-rose-400/[0.08] p-4">
           <div className="text-sm font-semibold text-rose-100">Confirm account deletion</div>
-          <p className="mt-2 text-xs leading-5 text-rose-100/75">Type DELETE to permanently delete your Market Alpha account data. Active subscriptions must be canceled first.</p>
+          <p className="mt-2 text-xs leading-5 text-rose-100/75">Type DELETE to permanently delete your TradeVeto account data. Active subscriptions must be canceled first.</p>
           <input
             className="mt-3 w-full rounded-xl border border-white/10 bg-slate-950/70 px-3 py-2 text-sm text-slate-100 outline-none focus:border-rose-300/50"
             onChange={(event) => setConfirmation(event.target.value)}

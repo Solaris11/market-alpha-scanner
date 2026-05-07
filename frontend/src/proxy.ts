@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { CANONICAL_DOMAIN, CANONICAL_WWW_DOMAIN, LEGACY_APEX_DOMAIN, LEGACY_APP_DOMAIN, LEGACY_WWW_DOMAIN } from "@/lib/brand";
 
-const APP_HOST = "app.marketalpha.co";
-const APEX_HOST = "marketalpha.co";
-const WWW_HOST = "www.marketalpha.co";
+const LEGACY_REDIRECT_ENABLED = process.env.TRADEVETO_REDIRECT_ENABLED === "true";
 
 const appPathPrefixes = [
   "/account",
@@ -32,21 +31,29 @@ export function proxy(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
   const pathWithSearch = `${pathname}${request.nextUrl.search}`;
 
-  if (hostname === WWW_HOST) {
-    return NextResponse.redirect(new URL(pathWithSearch, `https://${APEX_HOST}`), 308);
+  if (hostname === CANONICAL_WWW_DOMAIN) {
+    return NextResponse.redirect(new URL(pathWithSearch, `https://${CANONICAL_DOMAIN}`), 308);
   }
 
-  if (hostname === APP_HOST && pathname === "/") {
+  if (LEGACY_REDIRECT_ENABLED && (hostname === LEGACY_APEX_DOMAIN || hostname === LEGACY_WWW_DOMAIN || hostname === LEGACY_APP_DOMAIN)) {
+    return NextResponse.redirect(new URL(pathWithSearch, `https://${CANONICAL_DOMAIN}`), 301);
+  }
+
+  if (hostname === LEGACY_WWW_DOMAIN) {
+    return NextResponse.redirect(new URL(pathWithSearch, `https://${LEGACY_APEX_DOMAIN}`), 308);
+  }
+
+  if (hostname === LEGACY_APP_DOMAIN && pathname === "/") {
     return NextResponse.redirect(new URL("/terminal", request.url), 307);
   }
 
-  if (hostname === APEX_HOST && isAppPath(pathname)) {
-    return NextResponse.redirect(new URL(pathWithSearch, `https://${APP_HOST}`), 307);
+  if (hostname === LEGACY_APEX_DOMAIN && isAppPath(pathname)) {
+    return NextResponse.redirect(new URL(pathWithSearch, `https://${LEGACY_APP_DOMAIN}`), 307);
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|favicon-ma.ico|icon.png|apple-touch-icon.png|logo.svg).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|favicon-ma.ico|favicon.svg|icon.png|apple-touch-icon.png|logo.svg|logo-icon.svg|og-image.svg).*)"],
 };

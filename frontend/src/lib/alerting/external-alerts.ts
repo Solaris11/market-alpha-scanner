@@ -89,7 +89,7 @@ export function buildAlertEnvelope(input: ExternalAlertInput): AlertEnvelope {
 
 function smtpConfig(env: NodeJS.ProcessEnv): (SmtpSettings & { to: string }) | null {
   const settings = smtpSettingsFromEnv(env);
-  const to = env.MARKET_ALPHA_ALERT_EMAIL_TO?.trim() || env.SUPPORT_EMAIL?.trim() || "support@marketalpha.co";
+  const to = env.MARKET_ALPHA_ALERT_EMAIL_TO?.trim() || env.SUPPORT_EMAIL?.trim() || "support@tradeveto.com";
   if (!settings || !to) return null;
   return { ...settings, to };
 }
@@ -170,7 +170,7 @@ function alertText(envelope: AlertEnvelope): string {
   const metadata = Object.entries(envelope.metadata)
     .map(([key, value]) => `${key}: ${JSON.stringify(value)}`)
     .join("\n");
-  return [`Market Alpha alert`, `event: ${envelope.eventType}`, `severity: ${envelope.severity}`, `status: ${envelope.status}`, `message: ${envelope.message}`, metadata ? `metadata:\n${metadata}` : ""]
+  return [`TradeVeto alert`, `event: ${envelope.eventType}`, `severity: ${envelope.severity}`, `status: ${envelope.status}`, `message: ${envelope.message}`, metadata ? `metadata:\n${metadata}` : ""]
     .filter(Boolean)
     .join("\n");
 }
@@ -314,7 +314,7 @@ async function postAlertMonitoringEvent(input: {
 }): Promise<void> {
   const token = process.env.MARKET_ALPHA_MONITORING_TOKEN?.trim();
   if (!token) throw new Error("MARKET_ALPHA_MONITORING_TOKEN is not configured.");
-  const baseUrl = (process.env.MONITORING_BASE_URL?.trim() || process.env.APP_BASE_URL?.trim() || process.env.APP_URL?.trim() || "https://app.marketalpha.co").replace(/\/$/, "");
+  const baseUrl = (process.env.MONITORING_BASE_URL?.trim() || process.env.APP_BASE_URL?.trim() || process.env.APP_URL?.trim() || "https://tradeveto.com").replace(/\/$/, "");
   const response = await fetch(`${baseUrl}/api/monitoring/ingest`, {
     body: JSON.stringify({
       eventType: cleanKey(input.eventType),

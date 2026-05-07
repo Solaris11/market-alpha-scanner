@@ -1,4 +1,4 @@
-# Market Alpha Backup And Restore Runbook
+# TradeVeto Backup And Restore Runbook
 
 Production host paths:
 
@@ -175,6 +175,6 @@ The script requires confirmation before overwriting `/opt/apps/market-alpha-scan
 ```bash
 cd /opt/apps/market-alpha-scanner/app
 docker compose ps
-curl -s https://app.marketalpha.co/api/health | jq .
-curl -s https://app.marketalpha.co/api/health/deep | jq .
+curl -s https://tradeveto.com/api/health | jq .
+curl -s https://tradeveto.com/api/health/deep | jq .
 ```

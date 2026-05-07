@@ -1,8 +1,8 @@
-# Market Alpha Scanner Calibration Report
+# TradeVeto Calibration Report
 
 Date: 2026-05-05
 
-Market Alpha Scanner is a research and decision-support system. This report does not claim predictive certainty and should not be read as financial advice. The calibration goal is to reduce weak entries and overtrading, not to maximize trade frequency.
+TradeVeto is a research and decision-support system. This report does not claim predictive certainty and should not be read as financial advice. The calibration goal is to reduce weak entries and overtrading, not to maximize trade frequency.
 
 ## 1. Current Algorithm Summary
 

@@ -1,8 +1,9 @@
 import Link from "next/link";
+import { APP_URL as CANONICAL_APP_URL, BRAND_NAME, SUPPORT_EMAIL } from "@/lib/brand";
 import { MarketingReveal } from "./MarketingReveal";
 
-export const APP_URL = "https://app.marketalpha.co";
-export const SITE_URL = "https://marketalpha.co";
+export const APP_URL = CANONICAL_APP_URL;
+export const SITE_URL = CANONICAL_APP_URL;
 
 const navItems = [
   { href: "/features", label: "Features" },
@@ -26,7 +27,7 @@ export function MarketingNav() {
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#030711]/78 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <Link className="flex min-w-0 items-center gap-3 transition-opacity duration-200 hover:opacity-90" href="/">
-          <img alt="Market Alpha" className="h-8 w-auto max-w-[176px]" src="/logo.svg" />
+          <img alt={BRAND_NAME} className="h-9 w-auto max-w-[196px]" src="/logo.svg" />
         </Link>
         <nav className="hidden items-center gap-1 md:flex">
           {navItems.map((item) => (
@@ -51,9 +52,9 @@ export function MarketingFooter() {
     <footer className="border-t border-white/10 bg-black/20">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1.3fr_1fr_1fr] lg:px-8">
         <div>
-          <img alt="Market Alpha" className="h-9 w-auto max-w-[190px]" src="/logo.svg" />
+          <img alt={BRAND_NAME} className="h-10 w-auto max-w-[210px]" src="/logo.svg" />
           <p className="mt-4 max-w-xl text-sm leading-6 text-slate-400">
-            Market Alpha Scanner is for research and education only. It does not provide financial advice, investment recommendations, or guaranteed outcomes.
+            TradeVeto is for research and education only. It does not provide financial advice, investment recommendations, or guaranteed outcomes.
           </p>
         </div>
         <FooterGroup
@@ -72,11 +73,11 @@ export function MarketingFooter() {
             ["Risk Disclaimer", "/risk-disclaimer"],
             ["Terms", "/terms"],
             ["Privacy", "/privacy"],
-            ["Support", "mailto:support@marketalpha.co"],
+            ["Support", `mailto:${SUPPORT_EMAIL}`],
           ]}
         />
       </div>
-      <div className="border-t border-white/10 px-4 py-5 text-center text-xs text-slate-500">© {new Date().getFullYear()} Market Alpha. Research only. Not financial advice.</div>
+      <div className="border-t border-white/10 px-4 py-5 text-center text-xs text-slate-500">© {new Date().getFullYear()} {BRAND_NAME}. Research only. Not financial advice.</div>
     </footer>
   );
 }

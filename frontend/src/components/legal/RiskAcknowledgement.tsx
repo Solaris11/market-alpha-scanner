@@ -88,7 +88,7 @@ export function RiskAcknowledgement() {
         <div className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-200">Risk Acknowledgement</div>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Research software only</h2>
         <p className="mt-3 text-sm leading-6 text-slate-300">
-          Market Alpha Scanner does not provide financial advice, broker execution, or guaranteed outcomes. You can lose money. Use it for research and paper simulation, and make your own decisions.
+          TradeVeto does not provide financial advice, broker execution, or guaranteed outcomes. You can lose money. Use it for research and paper simulation, and make your own decisions.
         </p>
         {accountMode ? (
           <div className="mt-4 space-y-2">

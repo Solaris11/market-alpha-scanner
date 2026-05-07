@@ -3,8 +3,8 @@ import { MarketingCard, MarketingShell, PrimaryCta, SectionHeader } from "@/comp
 import { marketingMetadata } from "@/lib/marketing-seo";
 
 export const metadata: Metadata = marketingMetadata("/how-it-works", {
-  title: "How It Works — Market Alpha Scanner",
-  description: "How Market Alpha Scanner analyzes trend, momentum, volatility, risk/reward, macro alignment, and market regime to support clearer trading research decisions.",
+  title: "How It Works — TradeVeto",
+  description: "How TradeVeto analyzes trend, momentum, volatility, risk/reward, macro alignment, and market regime to support clearer research decisions.",
 });
 
 const steps = [

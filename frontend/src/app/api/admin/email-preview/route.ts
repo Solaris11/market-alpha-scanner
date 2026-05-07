@@ -8,6 +8,7 @@ import {
   renderSupportReplyEmail,
   renderSupportTicketCreatedEmail,
 } from "@/lib/email-policy";
+import { APP_URL } from "@/lib/brand";
 import { requireAdmin } from "@/lib/server/access-control";
 import { withRequestMetrics } from "@/lib/server/monitoring";
 
@@ -33,17 +34,17 @@ export async function GET(request: Request) {
         }),
         billing: renderBillingLifecycleEmail({
           contacts,
-          message: "Your Market Alpha Premium subscription is now active.",
+          message: "Your TradeVeto Premium subscription is now active.",
           title: "Premium activated",
         }),
         password_reset: renderPasswordResetEmail({
           contacts,
           expiresAt,
-          resetUrl: "https://app.marketalpha.co/reset-password?token=REDACTED_SAMPLE_TOKEN",
+          resetUrl: `${APP_URL}/reset-password?token=REDACTED_SAMPLE_TOKEN`,
         }),
         support: renderSupportReplyEmail({
           contacts,
-          message: "We can help explain how Market Alpha Scanner works. We cannot provide personalized buy/sell recommendations.",
+          message: "We can help explain how TradeVeto works. We cannot provide personalized buy/sell recommendations.",
           subject: "How do I read WAIT?",
           ticketId: "preview-ticket",
         }),
@@ -58,7 +59,7 @@ export async function GET(request: Request) {
         verification: renderEmailVerificationEmail({
           contacts,
           expiresAt,
-          verificationUrl: "https://app.marketalpha.co/api/auth/verify-email?token=REDACTED_SAMPLE_TOKEN",
+          verificationUrl: `${APP_URL}/api/auth/verify-email?token=REDACTED_SAMPLE_TOKEN`,
         }),
       },
     });

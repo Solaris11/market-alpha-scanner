@@ -1,28 +1,29 @@
 import type { Metadata } from "next";
 import { AccountOnboardingGate } from "@/components/account/AccountOnboardingGate";
 import { CurrentUserProvider } from "@/hooks/useCurrentUser";
+import { BRAND_DESCRIPTION, BRAND_NAME, CANONICAL_URL } from "@/lib/brand";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://marketalpha.co"),
+  metadataBase: new URL(CANONICAL_URL),
   title: {
-    default: "Market Alpha",
-    template: "%s | Market Alpha",
+    default: BRAND_NAME,
+    template: `%s | ${BRAND_NAME}`,
   },
-  description: "AI-powered trading research platform",
+  description: BRAND_DESCRIPTION,
   icons: {
-    apple: [{ url: "/apple-touch-icon.png?v=2", sizes: "180x180", type: "image/png" }],
+    apple: [{ url: "/logo-icon.svg?v=1", sizes: "256x256", type: "image/svg+xml" }],
     icon: [
-      { url: "/favicon-ma.ico?v=2", sizes: "64x64", type: "image/x-icon" },
-      { url: "/icon.png?v=2", sizes: "64x64", type: "image/png" },
+      { url: "/favicon.svg?v=1", type: "image/svg+xml" },
+      { url: "/logo-icon.svg?v=1", sizes: "256x256", type: "image/svg+xml" },
     ],
-    shortcut: "/favicon-ma.ico?v=2",
+    shortcut: "/favicon.svg?v=1",
   },
   appleWebApp: {
-    title: "Market Alpha",
+    title: BRAND_NAME,
   },
   other: {
-    "apple-mobile-web-app-title": "Market Alpha",
+    "apple-mobile-web-app-title": BRAND_NAME,
   },
 };
 

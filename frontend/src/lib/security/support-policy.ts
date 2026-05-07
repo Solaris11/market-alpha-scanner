@@ -9,7 +9,7 @@ const CATEGORIES = new Set<SupportTicketCategory>(["billing", "account", "scanne
 const STATUSES = new Set<SupportTicketStatus>(["open", "pending", "resolved", "closed"]);
 const PRIORITIES = new Set<SupportTicketPriority>(["low", "normal", "high", "urgent"]);
 
-const BLOCKED_RESPONSE = "I can help explain how Market Alpha Scanner works, but I can't provide financial advice or personalized buy/sell recommendations.";
+const BLOCKED_RESPONSE = "I can help explain how TradeVeto works, but I can't provide financial advice or personalized buy/sell recommendations.";
 
 export function normalizeSupportCategory(value: unknown): SupportTicketCategory {
   const category = String(value ?? "").trim().toLowerCase();
@@ -65,7 +65,7 @@ export function supportChatResponse(message: unknown): { classification: Support
   }
   return {
     classification,
-    message: classification === "blocked_unsafe_or_irrelevant" ? `I can help with Market Alpha Scanner product support, billing navigation, and troubleshooting.\n\n${SUPPORT_DISCLAIMER}` : BLOCKED_RESPONSE,
+    message: classification === "blocked_unsafe_or_irrelevant" ? `I can help with TradeVeto product support, billing navigation, and troubleshooting.\n\n${SUPPORT_DISCLAIMER}` : BLOCKED_RESPONSE,
     ok: false,
   };
 }
