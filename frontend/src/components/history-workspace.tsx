@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { PointerEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
+import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { actionFor, formatNumber } from "@/lib/format";
 import {
   filterHistoryObservations,
@@ -423,6 +424,12 @@ function TrendChart({ rows, field, label }: { rows: SymbolHistoryRow[]; field: H
     const index = indexFromPointer(event);
     setSelectedIndex(index);
     setHoverIndex(index);
+    const active = index === null ? undefined : points[index];
+    trackAnalyticsEvent("chart_interaction", {
+      chart: field,
+      observationIndex: index,
+      timestamp: active ? formatHistoryChartTimestamp(active.time) : null,
+    }, { source: "history_chart", symbol: active?.row.symbol });
   }
 
   return (
@@ -597,14 +604,17 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
 
   function handleQuickRangeChange(value: QuickRange) {
     setQuickRange(value);
+    trackAnalyticsEvent("history_filter_used", { filterType: "preset", range: value }, { source: "history_filters", symbol: selectedSymbol });
   }
 
   function handleCustomFromChange(value: string) {
     setCustomFrom(value);
+    trackAnalyticsEvent("history_filter_used", { filterType: "from", hasValue: Boolean(value) }, { source: "history_filters", symbol: selectedSymbol });
   }
 
   function handleCustomToChange(value: string) {
     setCustomTo(value);
+    trackAnalyticsEvent("history_filter_used", { filterType: "to", hasValue: Boolean(value) }, { source: "history_filters", symbol: selectedSymbol });
   }
 
   function handleSort(key: HistorySortKey) {
@@ -694,6 +704,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
                   onClick={() => {
                     setCustomFrom("");
                     setCustomTo("");
+                    trackAnalyticsEvent("history_filter_used", { filterType: "clear_dates" }, { source: "history_filters", symbol: selectedSymbol });
                   }}
                   type="button"
                 >
@@ -706,6 +717,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
                     setQuickRange("all");
                     setCustomFrom("");
                     setCustomTo("");
+                    trackAnalyticsEvent("history_filter_used", { filterType: "reset_all" }, { source: "history_filters", symbol: selectedSymbol });
                   }}
                   type="button"
                 >

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { trackAnalyticsEvent } from "@/lib/client/analytics";
 
 const ONBOARDING_KEY = "ma_onboarding_completed";
 const REPLAY_EVENT = "ma:replay-onboarding";
@@ -60,6 +61,11 @@ export function MarketOnboarding({ tradePlanHref }: { tradePlanHref: string }) {
     window.localStorage.setItem(ONBOARDING_KEY, "true");
     setActive(false);
   }, []);
+
+  const skipTour = useCallback(() => {
+    trackAnalyticsEvent("onboarding_skip", { onboarding: "terminal_tour", step: stepIndex + 1 }, { source: "terminal_onboarding" });
+    completeTour();
+  }, [completeTour, stepIndex]);
 
   useEffect(() => {
     const pendingReplay = window.sessionStorage.getItem(REPLAY_PENDING_KEY) === "true";
@@ -153,7 +159,7 @@ export function MarketOnboarding({ tradePlanHref }: { tradePlanHref: string }) {
             <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Step {stepIndex + 1} of {STEPS.length}</div>
             <h2 className="mt-1 text-base font-semibold tracking-tight text-slate-50">{step.title}</h2>
           </div>
-          <button className="rounded-full border border-white/10 px-2 py-1 text-[11px] font-semibold text-slate-400 transition hover:border-rose-300/40 hover:text-rose-100" onClick={completeTour} type="button">
+          <button className="rounded-full border border-white/10 px-2 py-1 text-[11px] font-semibold text-slate-400 transition hover:border-rose-300/40 hover:text-rose-100" onClick={skipTour} type="button">
             Skip onboarding
           </button>
         </div>
@@ -176,6 +182,7 @@ export function MarketOnboarding({ tradePlanHref }: { tradePlanHref: string }) {
               <button
                 className="rounded-full bg-cyan-300 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-200"
                 onClick={() => {
+                  trackAnalyticsEvent("onboarding_complete", { onboarding: "terminal_tour" }, { source: "terminal_onboarding" });
                   completeTour();
                   router.push(tradePlanHref);
                 }}

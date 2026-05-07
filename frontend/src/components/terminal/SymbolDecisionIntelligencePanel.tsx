@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect } from "react";
 import type { RankingRow } from "@/lib/types";
+import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { buildDecisionFactors, buildDecisionIntelligence } from "@/lib/trading/decision-intelligence";
 import { confidenceTone } from "@/lib/trading/confidence";
 import { formatNumber } from "@/lib/ui/formatters";
@@ -16,6 +18,13 @@ export function SymbolDecisionIntelligencePanel({ candles, row }: { candles: Cha
   const factors = buildDecisionFactors(row);
   const confidence = intelligence.confidence;
   const confidenceStyle = confidenceTone(confidence);
+
+  useEffect(() => {
+    trackAnalyticsEvent("readiness_expand", { decision: intelligence.decision, readiness: intelligence.readiness_score }, { source: "symbol_decision_panel", symbol: row.symbol });
+    if (intelligence.risks.length || intelligence.why.negatives.length) {
+      trackAnalyticsEvent("veto_explanation_open", { decision: intelligence.decision, riskCount: intelligence.risks.length }, { source: "symbol_decision_panel", symbol: row.symbol });
+    }
+  }, [intelligence.decision, intelligence.readiness_score, intelligence.risks.length, intelligence.why.negatives.length, row.symbol]);
 
   return (
     <GlassPanel className="p-5">

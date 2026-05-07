@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { RISK_EXPERIENCE_LEVELS, formatRiskExperienceLevel, normalizeRiskExperienceLevel, normalizeTimezone, requiresAccountOnboarding } from "@/lib/security/onboarding-profile";
 
@@ -72,6 +73,7 @@ export function AccountOnboardingGate() {
         setError(payload?.error ?? "Unable to save onboarding.");
         return;
       }
+      trackAnalyticsEvent("onboarding_complete", { onboarding: "account_profile", riskExperienceLevel }, { source: "account_onboarding" });
       await refresh();
       router.refresh();
     } catch {

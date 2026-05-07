@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
+import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { normalizeWatchlistSymbol, readWatchlistStorage, WATCHLIST_EVENT, writeWatchlistStorage } from "@/lib/watchlist-storage";
 
 type WatchlistResponse = {
@@ -69,6 +70,7 @@ export function useLocalWatchlist() {
     if (!cleaned) return;
     const next = cleanSymbols([...watchlist, ...readWatchlistStorage(), cleaned]);
     applyLocalSymbols(next);
+    trackAnalyticsEvent("watchlist_add", { symbol: cleaned }, { source: "watchlist", symbol: cleaned });
     if (authenticated) {
       void saveAuthenticatedSymbols([cleaned], next);
     }
@@ -78,6 +80,7 @@ export function useLocalWatchlist() {
     const cleaned = normalizeWatchlistSymbol(symbol);
     const next = cleanSymbols([...watchlist, ...readWatchlistStorage()].filter((item) => item !== cleaned));
     applyLocalSymbols(next);
+    trackAnalyticsEvent("watchlist_remove", { symbol: cleaned }, { source: "watchlist", symbol: cleaned });
     if (authenticated) {
       void removeAuthenticatedSymbol(cleaned, next);
     }

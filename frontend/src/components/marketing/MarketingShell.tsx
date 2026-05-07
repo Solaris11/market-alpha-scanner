@@ -27,7 +27,7 @@ export function MarketingNav() {
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#030711]/78 backdrop-blur-xl">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <Link className="flex min-w-0 items-center gap-3 transition-opacity duration-200 hover:opacity-90" href="/">
-          <img alt={BRAND_NAME} className="h-10 w-auto max-w-[220px]" src="/logo.svg" />
+          <img alt={BRAND_NAME} className="h-11 w-auto max-w-[238px] sm:h-12 sm:max-w-[262px]" src="/logo.svg" />
         </Link>
         <nav className="hidden items-center gap-1 md:flex">
           {navItems.map((item) => (
@@ -52,7 +52,7 @@ export function MarketingFooter() {
     <footer className="border-t border-white/10 bg-black/20">
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1.3fr_1fr_1fr] lg:px-8">
         <div>
-          <img alt={BRAND_NAME} className="h-11 w-auto max-w-[236px]" src="/logo.svg" />
+          <img alt={BRAND_NAME} className="h-12 w-auto max-w-[264px]" src="/logo.svg" />
           <p className="mt-4 max-w-xl text-sm leading-6 text-slate-400">
             TradeVeto is for research and education only. It does not provide financial advice, investment recommendations, or guaranteed outcomes.
           </p>

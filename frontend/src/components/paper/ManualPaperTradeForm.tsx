@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 
 type Props = {
@@ -94,6 +95,7 @@ export function ManualPaperTradeForm({ cashBalance = null }: Props) {
       });
       const payload = (await response.json()) as OpenPaperResponse;
       if (!response.ok || !payload.ok) throw new Error(payload.message || payload.error || "Failed to open paper trade.");
+      trackAnalyticsEvent("paper_trade_create", { side: "buy" }, { source: "manual_paper_trade", symbol: symbol.trim().toUpperCase() });
       setMessage(`Opened paper trade for ${symbol.trim().toUpperCase()}.`);
       setSymbol("");
       setEntryPrice("");

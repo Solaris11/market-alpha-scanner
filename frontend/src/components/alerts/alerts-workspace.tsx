@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
+import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { humanizeLabel } from "@/lib/ui/labels";
 import { readWatchlistStorage, WATCHLIST_EVENT } from "@/lib/watchlist-storage";
@@ -319,6 +320,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
         ),
       });
       setMessage(result.mode === "updated" ? "Alert rule updated." : "Alert rule saved.");
+      trackAnalyticsEvent("alert_create", { mode: result.mode ?? "created", type: payload?.type ?? type }, { source: "alerts_workspace", symbol: payload?.symbol ?? (symbolVisible ? normalizeSymbol(symbol) : undefined) });
       await reload();
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to save alert rule.");
@@ -353,6 +355,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
     try {
       const result = await fetchJson<{ removedStateCount?: number }>(`/api/alerts/rules/${encodeURIComponent(rule.id)}`, { method: "DELETE" });
       await reload();
+      trackAnalyticsEvent("alert_delete", { removedStateCount: result.removedStateCount ?? 0, type: rule.type }, { source: "alerts_workspace", symbol: rule.symbol });
       setMessage(`Alert rule deleted.${result.removedStateCount ? ` Removed ${result.removedStateCount} state entr${result.removedStateCount === 1 ? "y" : "ies"}.` : ""}`);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Failed to delete alert rule.");

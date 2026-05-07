@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 
 type CommandResult = {
@@ -37,6 +38,12 @@ export function RunCommandButton({ endpoint, label, diagnostic = false }: Props)
       const response = await csrfFetch(endpoint, { method: "POST" });
       const payload = (await response.json()) as CommandResult;
       setResult({ ...payload, ok: response.ok && payload.ok });
+      if (response.ok && payload.ok) {
+        const eventName = endpoint.includes("run-analysis") ? "analysis_run" : endpoint.includes("run-scanner") ? "scanner_run" : null;
+        if (eventName) {
+          trackAnalyticsEvent(eventName, { status: payload.status ?? "completed" }, { source: "run_command" });
+        }
+      }
       if (response.ok && payload.ok && payload.status !== "already_running") {
         router.refresh();
       }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { humanizeLabel } from "@/lib/ui/labels";
 
@@ -72,12 +73,14 @@ export function SupportChatBox() {
   const [messages, setMessages] = useState<Array<{ role: "user" | "assistant"; text: string }>>([
     { role: "assistant", text: "I can help explain TradeVeto workflows, WAIT decisions, alerts, paper simulation, billing, and troubleshooting. I cannot provide financial advice or personalized buy/sell recommendations." },
   ]);
+  const [feedbackByMessage, setFeedbackByMessage] = useState<Record<number, "helpful" | "unhelpful">>({});
   const [busy, setBusy] = useState(false);
   const [draft, setDraft] = useState("");
 
   async function sendMessage(rawText: string) {
     const text = rawText.trim();
     if (!text) return;
+    trackAnalyticsEvent("support_message_submit", { messageLength: text.length }, { source: "support_chat" });
     setMessages((current) => [...current, { role: "user", text }]);
     setDraft("");
     setBusy(true);
@@ -119,7 +122,10 @@ export function SupportChatBox() {
               className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2 text-left text-xs font-semibold leading-5 text-slate-200 transition hover:border-cyan-300/35 hover:bg-cyan-400/10 hover:text-cyan-50"
               disabled={busy}
               key={prompt}
-              onClick={() => void sendMessage(prompt)}
+              onClick={() => {
+                trackAnalyticsEvent("support_prompt_click", { prompt }, { source: "support_chat" });
+                void sendMessage(prompt);
+              }}
               type="button"
             >
               {prompt}
@@ -133,6 +139,24 @@ export function SupportChatBox() {
           <div className={message.role === "assistant" ? "text-slate-300" : "text-cyan-100"} key={`${message.role}-${index}`}>
             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{message.role === "assistant" ? "Support assistant" : "You"}</div>
             <p className="mt-1 whitespace-pre-wrap text-sm leading-6">{message.text}</p>
+            {message.role === "assistant" && index > 0 ? (
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className="text-[11px] text-slate-500">Was this helpful?</span>
+                {(["helpful", "unhelpful"] as const).map((rating) => (
+                  <button
+                    className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold transition ${feedbackByMessage[index] === rating ? "border-cyan-300/45 bg-cyan-400/10 text-cyan-100" : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-cyan-300/25 hover:text-cyan-100"}`}
+                    key={rating}
+                    onClick={() => {
+                      setFeedbackByMessage((current) => ({ ...current, [index]: rating }));
+                      trackAnalyticsEvent(rating === "helpful" ? "support_helpful_feedback" : "support_unhelpful_feedback", { messageIndex: index }, { source: "support_chat" });
+                    }}
+                    type="button"
+                  >
+                    {rating === "helpful" ? "Helpful" : "Not helpful"}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         ))}
       </div>

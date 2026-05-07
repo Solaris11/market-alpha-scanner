@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { AccountOnboardingGate } from "@/components/account/AccountOnboardingGate";
+import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
+import { BetaFeedbackWidget } from "@/components/analytics/BetaFeedbackWidget";
 import { CurrentUserProvider } from "@/hooks/useCurrentUser";
 import { BRAND_DESCRIPTION, BRAND_NAME, CANONICAL_URL } from "@/lib/brand";
 import "./globals.css";
@@ -36,8 +38,11 @@ export default function RootLayout({
     <html lang="en">
       <body>
         <CurrentUserProvider>
-          {children}
-          <AccountOnboardingGate />
+          <AnalyticsProvider>
+            {children}
+            <AccountOnboardingGate />
+            <BetaFeedbackWidget />
+          </AnalyticsProvider>
         </CurrentUserProvider>
       </body>
     </html>
