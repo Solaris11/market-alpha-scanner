@@ -15,6 +15,8 @@ const SOCIAL_CRAWLER_USER_AGENTS = [
 
 const SOCIAL_PREVIEW_PATHS = ["/", "/pricing", "/features", "/how-it-works", "/faq", "/robots.txt", "/og-image.png"];
 
+export const dynamic = "force-dynamic";
+
 function ruleBlock(userAgents: string[], allows: string[], disallows: string[]): string {
   return [
     ...userAgents.map((userAgent) => `User-Agent: ${userAgent}`),
