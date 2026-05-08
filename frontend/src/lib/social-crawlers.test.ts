@@ -7,6 +7,8 @@ describe("social crawler allowlist", () => {
     for (const userAgent of [
       "facebookexternalhit/1.1",
       "Facebot",
+      "meta-externalagent/1.1",
+      "meta-externalfetcher/1.1",
       "Twitterbot/1.0",
       "LinkedInBot/1.0",
       "Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)",
@@ -36,6 +38,7 @@ describe("social crawler allowlist", () => {
   it("requires crawler UA, public path, and safe method together", () => {
     assert.equal(shouldAllowSocialCrawlerRequest({ method: "HEAD", pathname: "/", userAgent: "facebookexternalhit/1.1" }), true);
     assert.equal(shouldAllowSocialCrawlerRequest({ method: "GET", pathname: "/pricing", userAgent: "Facebot" }), true);
+    assert.equal(shouldAllowSocialCrawlerRequest({ method: "GET", pathname: "/", userAgent: "meta-externalagent/1.1" }), true);
     assert.equal(shouldAllowSocialCrawlerRequest({ method: "GET", pathname: "/terminal", userAgent: "Facebot" }), false);
     assert.equal(shouldAllowSocialCrawlerRequest({ method: "GET", pathname: "/", userAgent: "Mozilla/5.0" }), false);
     assert.equal(shouldAllowSocialCrawlerRequest({ method: "POST", pathname: "/", userAgent: "Twitterbot/1.0" }), false);

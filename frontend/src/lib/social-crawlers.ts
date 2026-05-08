@@ -1,4 +1,5 @@
-const SOCIAL_CRAWLER_USER_AGENT = /\b(facebookexternalhit|facebot|twitterbot|linkedinbot|slackbot|discordbot)\b/i;
+const SOCIAL_CRAWLER_USER_AGENT =
+  /\b(facebookexternalhit|facebot|meta-externalagent|meta-externalfetcher|twitterbot|linkedinbot|slackbot|discordbot)\b/i;
 
 const PUBLIC_SOCIAL_PREVIEW_PATHS = new Set(["/", "/pricing", "/features", "/how-it-works", "/faq", "/og-image.png", "/og-image.svg"]);
 

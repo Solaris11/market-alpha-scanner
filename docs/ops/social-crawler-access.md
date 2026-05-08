@@ -21,13 +21,15 @@ The Next.js proxy allows known social preview crawlers through only when all con
 
 - method is `GET` or `HEAD`
 - path is one of the public preview-safe paths
-- user-agent matches `facebookexternalhit`, `Facebot`, `Twitterbot`, `LinkedInBot`, `Slackbot`, or `Discordbot`
+- user-agent matches `facebookexternalhit`, `Facebot`, `meta-externalagent`, `meta-externalfetcher`, `Twitterbot`, `LinkedInBot`, `Slackbot`, or `Discordbot`
 
 This guardrail prevents app-level middleware changes from accidentally blocking public previews while keeping private surfaces closed.
 
 ## Cloudflare Guardrail
 
 If a social debugger reports `403` while direct crawler curl checks return `200`, the block is likely before the request reaches the app. Check Cloudflare Security Events for the request and add a scoped skip/allow rule for legitimate social crawlers only.
+
+Also check Cloudflare's managed `robots.txt` feature. If `https://tradeveto.com/robots.txt` contains a `# BEGIN Cloudflare Managed content` block with `User-agent: meta-externalagent` and `Disallow: /`, Facebook can still treat the URL as blocked even though the origin app returns `200`. In Cloudflare, set **Manage your robots.txt** to **Disable robots.txt configuration**, then purge `/robots.txt` from cache. The expected public `robots.txt` should not contain Cloudflare's managed block.
 
 Recommended custom rule shape:
 
@@ -37,6 +39,8 @@ Recommended custom rule shape:
  and (
    lower(http.user_agent) contains "facebookexternalhit"
    or lower(http.user_agent) contains "facebot"
+   or lower(http.user_agent) contains "meta-externalagent"
+   or lower(http.user_agent) contains "meta-externalfetcher"
    or lower(http.user_agent) contains "twitterbot"
    or lower(http.user_agent) contains "linkedinbot"
    or lower(http.user_agent) contains "slackbot"
@@ -51,6 +55,8 @@ Use the narrowest Cloudflare action that resolves the event, usually skipping ma
 ```bash
 curl -I -A "facebookexternalhit/1.1" https://tradeveto.com/
 curl -I -A "Facebot" https://tradeveto.com/
+curl -I -A "meta-externalagent/1.1" https://tradeveto.com/
+curl -I -A "meta-externalfetcher/1.1" https://tradeveto.com/
 curl -I -A "Twitterbot/1.0" https://tradeveto.com/
 curl -I -A "LinkedInBot/1.0" https://tradeveto.com/
 curl -I -A "Slackbot-LinkExpanding 1.0 (+https://api.slack.com/robots)" https://tradeveto.com/

@@ -17,6 +17,9 @@ describe("robots social crawler access", () => {
   it("explicitly allows social preview crawlers on public marketing pages", () => {
     const socialRule = rules().find((rule) => Array.isArray(rule.userAgent) && rule.userAgent.includes("facebookexternalhit"));
     assert.ok(socialRule);
+    assert.ok(Array.isArray(socialRule.userAgent));
+    assert.equal(socialRule.userAgent.includes("meta-externalagent"), true);
+    assert.equal(socialRule.userAgent.includes("meta-externalfetcher"), true);
     assert.deepEqual(socialRule.allow, ["/", "/pricing", "/features", "/how-it-works", "/faq", "/og-image.png"]);
     assert.ok(Array.isArray(socialRule.disallow));
     assert.equal(socialRule.disallow.includes("/api/"), true);
