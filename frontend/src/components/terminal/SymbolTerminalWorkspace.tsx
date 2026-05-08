@@ -9,6 +9,7 @@ import type { PaperPositionRow, PaperTradeEventRow } from "@/lib/paper-data";
 import { dailyActionAllowsTrade, noTradeActionCopy, type DailyAction } from "@/lib/trading/daily-action";
 import type { ConvictionTimelineModel } from "@/lib/trading/conviction-timeline-types";
 import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
+import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 import type { RiskPortfolioPosition } from "@/lib/trading/risk-veto";
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
 import type { RankingRow, ScannerScalar } from "@/lib/types";
@@ -17,6 +18,7 @@ import { ConvictionTimeline } from "./ConvictionTimeline";
 import { CorrectionMapCard } from "./CorrectionMapCard";
 import { ExecutionTicket } from "./ExecutionTicket";
 import { HistoricalEdgeCard } from "./HistoricalEdgeCard";
+import { MarketMemoryCard } from "./MarketMemoryCard";
 import { PaperContextCard } from "./PaperContextCard";
 import { SymbolChart, type ChartCandle, type ChartSignalMarker } from "./SymbolChart";
 import { SymbolDecisionIntelligencePanel } from "./SymbolDecisionIntelligencePanel";
@@ -34,6 +36,7 @@ export function SymbolTerminalWorkspace({
   row,
   dataFreshness,
   history,
+  marketMemory,
   timeline,
   priceSeries,
   paperPositions,
@@ -46,6 +49,7 @@ export function SymbolTerminalWorkspace({
   row: RankingRow;
   dataFreshness: DataFreshness;
   history: SignalHistoryPoint[];
+  marketMemory: MarketMemorySummary;
   timeline?: ConvictionTimelineModel;
   priceSeries: Record<string, ScannerScalar>[];
   paperPositions: PaperPositionRow[];
@@ -126,6 +130,7 @@ export function SymbolTerminalWorkspace({
         <div className="space-y-5">
           {canTrade ? <TradePlanCard engine={tradeEngine} row={row} /> : null}
           {canTrade ? <CorrectionMapCard row={row} /> : null}
+          <MarketMemoryCard memory={marketMemory} />
           <HistoricalEdgeCard edge={edgeProof} />
           <WhyDecisionCard row={row} />
         </div>

@@ -12,6 +12,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from .config import get_database_url
+from .market_memory import refresh_market_memory_snapshots
 from .repositories import add_scanner_signal_rows, create_scan_run
 from .session import session_scope
 
@@ -60,6 +61,7 @@ def persist_scan_dataframe(df_rank: pd.DataFrame, *, scanner_version: str | None
         counts["scanner_signals"] = len(add_scanner_signal_rows(session, scan_run_id=scan_run.id, rows=signal_rows))
         counts["symbol_snapshots"] = _persist_symbol_snapshots(session, scan_run.id, df_rank)
         counts["symbol_price_history"] = _persist_symbol_price_history(session, df_rank)
+        counts["market_memory_snapshots"] = refresh_market_memory_snapshots(session, scan_run.id)
 
     return counts
 
@@ -78,6 +80,7 @@ def persist_analysis_data(forward_returns_df: pd.DataFrame, summary_df: pd.DataF
         scan_run_id = _latest_scan_run_id(session)
         counts["performance_summary"] = _persist_performance_summary(session, scan_run_id, summary_df)
         counts["forward_returns"] = _persist_forward_returns(session, scan_run_id, forward_returns_df)
+        counts["market_memory_snapshots"] = refresh_market_memory_snapshots(session)
     return counts
 
 

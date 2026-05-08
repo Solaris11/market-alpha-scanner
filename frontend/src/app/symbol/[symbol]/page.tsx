@@ -10,6 +10,7 @@ import { freshnessFromTimestamp } from "@/lib/data-health";
 import { getPaperData } from "@/lib/paper-data";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
+import { getMarketMemoryForSignal } from "@/lib/server/market-memory";
 import { assertNoPremiumFields } from "@/lib/server/premium-preview";
 import { getPublicSymbolSignal } from "@/lib/server/public-signal-data";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
@@ -18,6 +19,7 @@ import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { buildConvictionTimelineModel } from "@/lib/trading/conviction-timeline-model";
 import { getDailyAction } from "@/lib/trading/daily-action";
 import { buildHistoricalEdgeProof } from "@/lib/trading/edge-proof";
+import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +93,19 @@ export default async function SymbolDetailPage({ params }: PageProps) {
     marketRegime: snapshot.marketRegime,
     scanSafety,
   });
+  const marketMemory = row ? await getMarketMemoryForSignal(row) : null;
+  const unavailableMarketMemory: MarketMemorySummary = {
+    analogs: [],
+    available: false,
+    evidence: {
+      explanation: "Market memory is unavailable for this symbol.",
+      label: "No comparable memory yet",
+      sampleSize: 0,
+      tier: "unavailable",
+    },
+    narrative: ["Market memory is unavailable for this symbol."],
+    outcome: null,
+  };
 
   return (
     <TerminalShell>
@@ -107,6 +122,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           edgeProof={edgeProof ?? buildHistoricalEdgeProof(row, null)}
           history={history}
           globalDecision={globalDecision}
+          marketMemory={marketMemory ?? unavailableMarketMemory}
           paperEvents={paper.events ?? []}
           paperPositions={paper.positions ?? []}
           premiumAccess
