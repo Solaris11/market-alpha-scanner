@@ -378,9 +378,12 @@ def _timestamp_or_none(value: object) -> datetime | None:
     if not isinstance(value, (str, int, float, date)):
         return None
     try:
-        parsed = pd.Timestamp(value).to_pydatetime()
+        converted = pd.Timestamp(value).to_pydatetime()
     except (TypeError, ValueError):
         return None
+    if not isinstance(converted, datetime):
+        return None
+    parsed = converted
     return parsed if parsed.tzinfo is not None else parsed.replace(tzinfo=timezone.utc)
 
 
