@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { MarketingCard, MarketingShell, PrimaryCta, SecondaryCta, SectionHeader } from "@/components/marketing/MarketingShell";
+import { MarketingCard, MarketingShell, SecondaryCta, SectionHeader } from "@/components/marketing/MarketingShell";
 import { PricingConversionCta } from "@/components/pricing/PricingConversionCta";
 import { marketingMetadata } from "@/lib/marketing-seo";
 
@@ -22,7 +22,7 @@ export default function PricingPage() {
     <MarketingShell>
       <section className="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <SectionHeader copy="Closed beta pricing is intentionally simple. Early users help shape the product while Stripe handles trials, promo codes, renewal visibility, and cancellation." eyebrow="Closed Beta Pricing" title="$20/month Premium after any beta trial." />
-        <div className="mx-auto mt-12 grid max-w-5xl gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="mx-auto mt-12 grid max-w-5xl items-start gap-5 lg:grid-cols-[0.9fr_1.1fr]">
           <MarketingCard>
             <div className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-cyan-100">Beta</div>
             <h2 className="mt-5 text-3xl font-semibold text-white">Research preview</h2>
@@ -46,9 +46,6 @@ export default function PricingPage() {
               ))}
             </div>
             <div className="mt-6">
-              <PrimaryCta>Join Beta</PrimaryCta>
-            </div>
-            <div className="mt-5">
               <PricingConversionCta />
             </div>
           </MarketingCard>

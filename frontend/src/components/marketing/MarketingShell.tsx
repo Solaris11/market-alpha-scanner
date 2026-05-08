@@ -1,15 +1,15 @@
 import Link from "next/link";
-import { APP_URL as CANONICAL_APP_URL, BRAND_NAME, SUPPORT_EMAIL } from "@/lib/brand";
+import { BRAND_NAME, SUPPORT_EMAIL } from "@/lib/brand";
 import { MarketingReveal } from "./MarketingReveal";
 
-export const APP_URL = CANONICAL_APP_URL;
-export const SITE_URL = CANONICAL_APP_URL;
+export const APP_URL = "/terminal";
+export const SITE_URL = "/";
 
 const navItems = [
-  { href: "/features", label: "Features" },
-  { href: "/how-it-works", label: "How It Works" },
-  { href: "/pricing", label: "Pricing" },
-  { href: "/faq", label: "FAQ" },
+  { href: "/#features", label: "Features" },
+  { href: "/#pricing", label: "Pricing" },
+  { href: "/#reviews", label: "Beta Feedback" },
+  { href: "/#faq", label: "FAQ" },
 ] as const;
 
 export function MarketingShell({ children }: { children: React.ReactNode }) {
@@ -25,6 +25,9 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
 export function MarketingNav() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#030711]/78 backdrop-blur-xl">
+      <Link className="block border-b border-cyan-300/10 bg-cyan-300/[0.08] px-4 py-2 text-center text-xs font-black uppercase tracking-[0.2em] text-cyan-100 transition-colors hover:bg-cyan-300/[0.12]" href="/#pricing">
+        Closed beta access · Early adopter premium preview · Research only
+      </Link>
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
         <Link className="flex min-w-0 items-center gap-3 transition-opacity duration-200 hover:opacity-90" href="/">
           <img alt={BRAND_NAME} className="h-11 w-auto max-w-[238px] sm:h-12 sm:max-w-[262px]" src="/logo.svg" />
