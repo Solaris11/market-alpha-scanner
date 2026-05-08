@@ -22,7 +22,7 @@
   <g font-family="Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
     <text x="382" y="218" fill="#F8FAFC" font-size="92" font-weight="850">TradeVeto</text>
     <text x="388" y="286" fill="#67E8F9" font-size="28" font-weight="800" letter-spacing="5">NOT EVERY TRADE DESERVES RISK</text>
-    <text x="390" y="365" fill="#CBD5E1" font-size="34" font-weight="600">AI-powered market intelligence for risk-aware decision support.</text>
-    <text x="392" y="428" fill="#94A3B8" font-size="24" font-weight="500">Explainable readiness, vetoes, market regime, and disciplined trade filtering.</text>
+    <text x="390" y="365" fill="#CBD5E1" font-size="34" font-weight="600">WAIT-first AI market intelligence.</text>
+    <text x="392" y="428" fill="#94A3B8" font-size="24" font-weight="500">Readiness, vetoes, macro context, disciplined filtering.</text>
   </g>
 </svg>

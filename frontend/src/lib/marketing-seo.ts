@@ -3,6 +3,7 @@ import { BRAND_DESCRIPTION, BRAND_NAME, CANONICAL_URL } from "@/lib/brand";
 
 export const marketingBaseUrl = CANONICAL_URL;
 export const appBaseUrl = CANONICAL_URL;
+export const openGraphImageUrl = `${marketingBaseUrl}/og-image.png`;
 
 const title = `${BRAND_NAME} — AI Market Intelligence`;
 const description =
@@ -37,9 +38,10 @@ export function marketingMetadata(path = "/", overrides: Partial<Metadata> = {})
       siteName: BRAND_NAME,
       images: [
         {
-          url: `${marketingBaseUrl}/og-image.svg`,
+          url: openGraphImageUrl,
           width: 1200,
           height: 630,
+          type: "image/png",
           alt: `${BRAND_NAME} social preview`,
         },
       ],
@@ -48,7 +50,7 @@ export function marketingMetadata(path = "/", overrides: Partial<Metadata> = {})
       card: "summary_large_image",
       title: String(pageTitle),
       description: String(pageDescription),
-      images: [`${marketingBaseUrl}/og-image.svg`],
+      images: [openGraphImageUrl],
     },
     ...overrides,
   };
