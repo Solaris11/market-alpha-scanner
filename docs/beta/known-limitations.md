@@ -31,5 +31,4 @@ This document is internal. Do not hide these from operators.
 ## Operations
 
 - R2 is the primary offsite backup. Google Drive is legacy/secondary only.
-- Turbopack build currently reports a known NFT tracing warning related to the price-history route.
 - Dependency audit currently reports moderate findings during container builds; review before public launch.

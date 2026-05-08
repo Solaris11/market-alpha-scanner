@@ -66,6 +66,9 @@ const nextConfig: NextConfig = {
     "192.168.0.125",
     "http://192.168.0.125:3001",
   ],
+  outputFileTracingExcludes: {
+    "/*": ["next.config.ts"],
+  },
   poweredByHeader: false,
   async headers() {
     return [

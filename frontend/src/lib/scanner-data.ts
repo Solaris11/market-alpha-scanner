@@ -1,6 +1,5 @@
 import "server-only";
 
-import fsSync from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parse } from "csv-parse/sync";
@@ -291,18 +290,7 @@ export type ScanDataHealth = {
 
 export function scannerOutputDir() {
   if (process.env.SCANNER_OUTPUT_DIR) return process.env.SCANNER_OUTPUT_DIR;
-  if (fsSync.existsSync(DEFAULT_SCANNER_OUTPUT_DIR)) return DEFAULT_SCANNER_OUTPUT_DIR;
-  const localOutput = path.resolve(/*turbopackIgnore: true*/ process.cwd(), "..", "scanner_output");
-  try {
-    const stat = fsSync.lstatSync(localOutput);
-    if (stat.isSymbolicLink()) {
-      const target = fsSync.readlinkSync(localOutput);
-      return path.isAbsolute(target) ? target : path.resolve(path.dirname(localOutput), target);
-    }
-  } catch {
-    // Fall back to the local path when no scanner_output entry exists yet.
-  }
-  return localOutput;
+  return DEFAULT_SCANNER_OUTPUT_DIR;
 }
 
 function scannerCsvFallbackEnabled(): boolean {
@@ -567,7 +555,7 @@ function symbolSlug(symbol: string) {
 
 async function fileExists(filePath: string) {
   try {
-    await fs.access(filePath);
+    await fs.access(/*turbopackIgnore: true*/ filePath);
     return true;
   } catch {
     return false;
@@ -576,7 +564,7 @@ async function fileExists(filePath: string) {
 
 async function fileSignature(filePath: string) {
   try {
-    const stat = await fs.stat(filePath);
+    const stat = await fs.stat(/*turbopackIgnore: true*/ filePath);
     return { mtimeMs: stat.mtimeMs, size: stat.size };
   } catch {
     return null;
@@ -585,7 +573,7 @@ async function fileSignature(filePath: string) {
 
 async function getFileLastUpdated(filePath: string): Promise<string | null> {
   try {
-    const stat = await fs.stat(filePath);
+    const stat = await fs.stat(/*turbopackIgnore: true*/ filePath);
     return stat.mtime.toISOString();
   } catch {
     return null;
@@ -702,7 +690,7 @@ async function readCsvPayload(filePath: string): Promise<CsvPayload> {
     return cached.value;
   }
 
-  const text = await fs.readFile(filePath, "utf8");
+  const text = await fs.readFile(/*turbopackIgnore: true*/ filePath, "utf8");
   const fileName = path.basename(filePath);
   const lineCount = text.split(/\r?\n/).filter((line) => line.trim().length > 0).length;
   let columns: string[] = [];
@@ -743,7 +731,7 @@ async function readCsv(filePath: string) {
 }
 
 async function readCsvColumns(filePath: string): Promise<string[]> {
-  const handle = await fs.open(filePath, "r");
+  const handle = await fs.open(/*turbopackIgnore: true*/ filePath, "r");
   try {
     const buffer = Buffer.alloc(64 * 1024);
     const { bytesRead } = await handle.read(buffer, 0, buffer.length, 0);
@@ -767,7 +755,7 @@ function missingRankingColumns(columns: string[]) {
 }
 
 async function readScannerCsv(...parts: string[]) {
-  const rows = await readCsv(path.join(scannerOutputDir(), ...parts));
+  const rows = await readCsv(path.join(/*turbopackIgnore: true*/ scannerOutputDir(), ...parts));
   return rows.map(normalizeCsvRow);
 }
 
@@ -776,7 +764,7 @@ async function readScannerCsvWithState(...parts: string[]): Promise<CsvFileData>
 }
 
 async function readScannerCsvWithStateParts(parts: string[], options: { tailRows?: number } = {}): Promise<CsvFileData> {
-  const filePath = path.join(scannerOutputDir(), ...parts);
+  const filePath = path.join(/*turbopackIgnore: true*/ scannerOutputDir(), ...parts);
   if (!(await fileExists(filePath))) {
     return { rows: [], state: "missing", columns: [], lineCount: 0 };
   }
@@ -794,7 +782,7 @@ async function readScannerCsvWithStateParts(parts: string[], options: { tailRows
     };
   }
 
-  const text = await fs.readFile(filePath, "utf8");
+  const text = await fs.readFile(/*turbopackIgnore: true*/ filePath, "utf8");
   const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
   const header = lines[0] ?? "";
   const columns = header ? ((parse(header, { ...CSV_PARSE_OPTIONS }) as string[][])[0] ?? []).map(canonicalCsvKey) : [];
@@ -841,7 +829,7 @@ export async function readJson(filePath: string) {
   }
 
   try {
-    const value = JSON.parse(await fs.readFile(filePath, "utf8")) as Record<string, unknown>;
+    const value = JSON.parse(await fs.readFile(/*turbopackIgnore: true*/ filePath, "utf8")) as Record<string, unknown>;
     jsonPayloadCache.set(filePath, { ...signature, value });
     return value;
   } catch {
@@ -855,7 +843,7 @@ export async function getFullRanking(): Promise<RankingRow[]> {
   if (dbRows) return dbRows;
   if (!allowScannerCsvFallback("full ranking DB read unavailable")) return [];
 
-  const filePath = path.join(scannerOutputDir(), "full_ranking.csv");
+  const filePath = path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "full_ranking.csv");
   if (!(await fileExists(filePath))) return [];
   const [{ rows, columns }, lastUpdated] = await Promise.all([readCsvPayload(filePath), getFileLastUpdated(filePath)]);
   const missing = missingRankingColumns(columns);
@@ -871,7 +859,7 @@ export async function getTopCandidates(): Promise<RankingRow[]> {
   if (dbRows) return dbRows;
   if (!allowScannerCsvFallback("top candidates DB read unavailable")) return [];
 
-  const filePath = path.join(scannerOutputDir(), "top_candidates.csv");
+  const filePath = path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "top_candidates.csv");
   if (!(await fileExists(filePath))) return [];
   const [{ rows, columns }, lastUpdated] = await Promise.all([readCsvPayload(filePath), getFileLastUpdated(filePath)]);
   const missing = missingRankingColumns(columns);
@@ -920,12 +908,12 @@ export async function getScanDataHealth(): Promise<ScanDataHealth> {
   const now = Date.now();
   const files = await Promise.all(
     ["full_ranking.csv", "top_candidates.csv"].map(async (name) => {
-      const filePath = path.join(scannerOutputDir(), name);
+      const filePath = path.join(/*turbopackIgnore: true*/ scannerOutputDir(), name);
       if (!(await fileExists(filePath))) {
         const missing = unavailableFreshness("missing", `${name} is not available yet.`);
         return { ...missing, name, missingColumns: [] };
       }
-      const stat = await fs.stat(filePath);
+      const stat = await fs.stat(/*turbopackIgnore: true*/ filePath);
       const lastUpdated = stat.mtime.toISOString();
       const freshness = freshnessFromTimestamp(lastUpdated, now);
       const columns = await readCsvColumns(filePath);
@@ -1003,11 +991,11 @@ export async function getHistorySummary(): Promise<HistorySummary> {
     return { snapshots: [], count: 0, earliest: null, latest: null, uniqueDates: [] };
   }
 
-  const historyDir = path.join(scannerOutputDir(), "history");
+  const historyDir = path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "history");
   let entries: string[] = [];
 
   try {
-    entries = await fs.readdir(historyDir);
+    entries = await fs.readdir(/*turbopackIgnore: true*/ historyDir);
   } catch {
     entries = [];
   }
@@ -1017,9 +1005,9 @@ export async function getHistorySummary(): Promise<HistorySummary> {
       entries
         .filter((entry) => /^scan_.*\.csv$/.test(entry))
         .map(async (name): Promise<HistorySnapshot | null> => {
-          const filePath = path.join(historyDir, name);
+          const filePath = path.join(/*turbopackIgnore: true*/ historyDir, name);
           try {
-            const stat = await fs.stat(filePath);
+            const stat = await fs.stat(/*turbopackIgnore: true*/ filePath);
             return {
               name,
               modifiedAt: stat.mtime.toISOString(),
@@ -1059,7 +1047,7 @@ export async function getSymbolHistoryData(): Promise<SymbolHistoryData> {
   const rows: SymbolHistoryRow[] = [];
 
   for (const snapshot of history.snapshots) {
-    const snapshotRows = await readCsv(path.join(scannerOutputDir(), "history", snapshot.name));
+    const snapshotRows = await readCsv(path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "history", snapshot.name));
     const fallbackTimestamp = snapshot.timestamp ?? snapshot.modifiedAt;
 
     for (const raw of snapshotRows) {
@@ -1108,7 +1096,7 @@ export async function getHistorySymbolsFromSnapshots(maxSnapshots = 5): Promise<
   const symbols = new Set<string>();
 
   for (const snapshot of history.snapshots.slice(0, Math.max(1, maxSnapshots))) {
-    const snapshotRows = await readCsv(path.join(scannerOutputDir(), "history", snapshot.name));
+    const snapshotRows = await readCsv(path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "history", snapshot.name));
     for (const raw of snapshotRows) {
       const symbol = String(rawValue(raw, "symbol", "ticker", "Symbol", "Ticker") ?? "").trim().toUpperCase();
       if (symbol) symbols.add(symbol);
@@ -1122,7 +1110,7 @@ async function getPerSymbolHistoryForSymbol(symbol: string): Promise<SymbolHisto
   const cleaned = symbol.trim().toUpperCase();
   if (!cleaned) return [];
   if (!allowScannerCsvFallback(`per-symbol history DB read unavailable for ${cleaned}`)) return [];
-  const filePath = path.join(scannerOutputDir(), "symbols", symbolSlug(cleaned), "history.csv");
+  const filePath = path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "symbols", symbolSlug(cleaned), "history.csv");
   if (!(await fileExists(filePath))) return [];
 
   const rows = await readCsv(filePath);
@@ -1159,7 +1147,7 @@ export async function getSymbolHistoryLookup(symbol: string): Promise<{ matching
   const rows: SymbolHistoryRow[] = [];
 
   for (const snapshot of history.snapshots) {
-    const snapshotRows = await readCsv(path.join(scannerOutputDir(), "history", snapshot.name));
+    const snapshotRows = await readCsv(path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "history", snapshot.name));
     const fallbackTimestamp = snapshot.timestamp ?? snapshot.modifiedAt;
 
     for (const raw of snapshotRows) {
@@ -1255,10 +1243,10 @@ export async function getIntradaySignalDriftSummary(): Promise<IntradayDriftRow[
   const earliestSnapshot = history.snapshots[history.snapshots.length - 1];
   if (!latestSnapshot) return [];
 
-  const latestRows = (await readCsv(path.join(scannerOutputDir(), "history", latestSnapshot.name))).map((row) => normalizeRankingRow(row, latestSnapshot.timestamp ?? latestSnapshot.modifiedAt)).filter((row) => row.symbol);
+  const latestRows = (await readCsv(path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "history", latestSnapshot.name))).map((row) => normalizeRankingRow(row, latestSnapshot.timestamp ?? latestSnapshot.modifiedAt)).filter((row) => row.symbol);
   const earliestRows =
     earliestSnapshot && earliestSnapshot.name !== latestSnapshot.name
-      ? (await readCsv(path.join(scannerOutputDir(), "history", earliestSnapshot.name))).map((row) => normalizeRankingRow(row, earliestSnapshot.timestamp ?? earliestSnapshot.modifiedAt)).filter((row) => row.symbol)
+      ? (await readCsv(path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "history", earliestSnapshot.name))).map((row) => normalizeRankingRow(row, earliestSnapshot.timestamp ?? earliestSnapshot.modifiedAt)).filter((row) => row.symbol)
       : latestRows;
   const firstBySymbol = new Map(earliestRows.map((row) => [row.symbol, row]));
   const latestBySymbol = new Map(latestRows.map((row) => [row.symbol, row]));
@@ -1332,7 +1320,7 @@ export async function getPerformanceData(options: { forwardTailRows?: number } =
 }
 
 export async function getCalibrationInsights() {
-  return readJson(path.join(scannerOutputDir(), "analysis", "calibration_insights.json"));
+  return readJson(path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "analysis", "calibration_insights.json"));
 }
 
 export async function getMarketRegime() {
@@ -1348,7 +1336,7 @@ export async function getMarketRegime() {
     };
   }
   if (!allowScannerCsvFallback("market regime DB read unavailable")) return null;
-  return readJson(path.join(scannerOutputDir(), "analysis", "market_regime.json"));
+  return readJson(path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "analysis", "market_regime.json"));
 }
 
 export async function getMarketStructure() {
@@ -1365,7 +1353,7 @@ export async function getMarketStructure() {
     };
   }
   if (!allowScannerCsvFallback("market structure DB read unavailable")) return null;
-  return readJson(path.join(scannerOutputDir(), "analysis", "market_structure.json"));
+  return readJson(path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "analysis", "market_structure.json"));
 }
 
 export async function getSymbolDetail(symbol: string): Promise<SymbolDetail> {
@@ -1373,8 +1361,8 @@ export async function getSymbolDetail(symbol: string): Promise<SymbolDetail> {
   const ranking = await getFullRanking();
   const row = ranking.find((item) => item.symbol === cleaned) ?? null;
   const dbSummary = await getDbSymbolSummary(cleaned);
-  const symbolDir = path.join(scannerOutputDir(), "symbols", symbolSlug(cleaned));
-  const summary = dbSummary ?? (allowScannerCsvFallback(`symbol summary DB read unavailable for ${cleaned}`) ? await readJson(path.join(symbolDir, "summary.json")) : null);
+  const symbolDir = path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "symbols", symbolSlug(cleaned));
+  const summary = dbSummary ?? (allowScannerCsvFallback(`symbol summary DB read unavailable for ${cleaned}`) ? await readJson(path.join(/*turbopackIgnore: true*/ symbolDir, "summary.json")) : null);
   const history = await getSymbolPriceHistory(cleaned, "all");
 
   if (row && summary) {
@@ -1436,8 +1424,8 @@ export async function getSymbolPriceHistory(symbol: string, period = "1y"): Prom
 
   if (!allowScannerCsvFallback(`price history DB read unavailable for ${cleaned}`)) return [];
 
-  const symbolDir = path.join(scannerOutputDir(), "symbols", symbolSlug(cleaned));
-  const history = await readCsv(path.join(symbolDir, "history.csv"));
+  const symbolDir = path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "symbols", symbolSlug(cleaned));
+  const history = await readCsv(path.join(/*turbopackIgnore: true*/ symbolDir, "history.csv"));
   const normalized = history
     .map((item) => {
       const row: Record<string, ScannerScalar> = {};

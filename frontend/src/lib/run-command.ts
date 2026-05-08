@@ -67,10 +67,10 @@ export async function runPythonCommand(
 
   return new Promise((resolve) => {
     execFile(
-      python,
+      /*turbopackIgnore: true*/ python,
       args,
       {
-        cwd,
+        cwd: /*turbopackIgnore: true*/ cwd,
         timeout: 600_000,
         maxBuffer: 20 * 1024 * 1024,
       },
@@ -132,9 +132,9 @@ async function latestScannerRunCompletedAt(): Promise<string | null> {
 }
 
 async function readActiveScannerLock(): Promise<{ active: boolean; startedAt: string | null }> {
-  const lockPath = path.join(process.env.SCANNER_OUTPUT_DIR ?? DEFAULT_SCANNER_OUTPUT_DIR, "run.lock");
+  const lockPath = path.join(/*turbopackIgnore: true*/ process.env.SCANNER_OUTPUT_DIR ?? DEFAULT_SCANNER_OUTPUT_DIR, "run.lock");
   try {
-    const raw = await fs.readFile(lockPath, "utf8");
+    const raw = await fs.readFile(/*turbopackIgnore: true*/ lockPath, "utf8");
     const payload = JSON.parse(raw) as { timestamp?: unknown };
     const startedAt = typeof payload.timestamp === "string" ? payload.timestamp : null;
     if (!startedAt) return { active: false, startedAt: null };
@@ -148,8 +148,8 @@ async function readActiveScannerLock(): Promise<{ active: boolean; startedAt: st
 
 async function canAccessRunner(python: string, cwd: string): Promise<boolean> {
   try {
-    await fs.access(python);
-    await fs.access(cwd);
+    await fs.access(/*turbopackIgnore: true*/ python);
+    await fs.access(/*turbopackIgnore: true*/ cwd);
     return true;
   } catch {
     return false;

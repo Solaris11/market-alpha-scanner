@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
-import { execFile } from "node:child_process";
-import fsSync from "node:fs";
-import path from "node:path";
+import { filterPriceHistoryRows, isPriceHistoryPeriod, priceHistoryBounds, type PriceHistoryPeriod } from "@/lib/price-history-range";
 import { requireAdmin } from "@/lib/server/access-control";
+import { dbQuery } from "@/lib/server/db";
 import { rateLimitRequest } from "@/lib/server/request-security";
+import type { QueryResultRow } from "pg";
 
 type PriceHistoryPayload = {
   ok: boolean;
   symbol: string;
-  period: string;
+  period: PriceHistoryPeriod;
   requested_period?: string;
   yf_period?: string;
   yf_interval?: string;
@@ -20,56 +20,76 @@ type PriceHistoryPayload = {
   error?: string;
 };
 
+type DbPriceRow = QueryResultRow & {
+  ts: Date | string;
+  open: number | string | null;
+  high: number | string | null;
+  low: number | string | null;
+  close: number | string | null;
+  volume: number | string | null;
+};
+
 export const dynamic = "force-dynamic";
 
-const VALID_PERIODS = new Set(["1d", "1wk", "1mo", "6mo", "ytd", "1y", "5y", "max"]);
-
-function projectRoot() {
-  return process.env.SCANNER_ROOT ?? path.resolve(/*turbopackIgnore: true*/ process.cwd(), "..");
-}
-
-function pythonBin() {
-  if (process.env.PYTHON_BIN) return process.env.PYTHON_BIN;
-  const localVenv = path.join(projectRoot(), ".venv", "bin", "python");
-  if (fsSync.existsSync(localVenv)) return localVenv;
-  const deploymentVenv = "/opt/apps/market-alpha-scanner/venv/bin/python";
-  if (fsSync.existsSync(deploymentVenv)) return deploymentVenv;
-  return "python3";
-}
-
-function fetchPriceHistory(symbol: string, period: string) {
-  const root = projectRoot();
-  const script = path.join(root, "tools", "get_price_history.py");
-
-  return new Promise<PriceHistoryPayload>((resolve) => {
-    execFile(
-      pythonBin(),
-      [script, symbol, "--period", period],
-      {
-        cwd: root,
-        timeout: 60_000,
-        maxBuffer: 10 * 1024 * 1024,
-      },
-      (error, stdout, stderr) => {
-        try {
-          const parsed = JSON.parse(stdout || "{}") as PriceHistoryPayload;
-          if (error && !parsed.error) {
-            parsed.ok = false;
-            parsed.error = "Price history is unavailable.";
-          }
-          resolve(parsed);
-        } catch {
-          resolve({
-            ok: false,
-            symbol: symbol.toUpperCase(),
-            period,
-            rows: [],
-            error: "Price history is unavailable.",
-          });
-        }
-      },
+async function fetchPriceHistory(symbol: string, period: PriceHistoryPeriod): Promise<PriceHistoryPayload> {
+  const cleaned = symbol.trim().toUpperCase();
+  try {
+    const result = await dbQuery<DbPriceRow>(
+      `
+        SELECT ts, open, high, low, close, volume
+        FROM symbol_price_history
+        WHERE symbol = $1
+        ORDER BY ts ASC
+      `,
+      [cleaned],
     );
-  });
+    const rows = result.rows.map(dbPriceRow);
+    const filtered = filterPriceHistoryRows(rows, period);
+    const bounds = priceHistoryBounds(filtered);
+    return {
+      ok: filtered.length > 0,
+      symbol: cleaned,
+      period,
+      requested_period: period,
+      yf_period: period,
+      yf_interval: "database",
+      interval: "database",
+      point_count: filtered.length,
+      start_date: bounds.startDate,
+      end_date: bounds.endDate,
+      rows: filtered,
+      error: filtered.length ? undefined : "No stored price history is available for this range.",
+    };
+  } catch {
+    return {
+      ok: false,
+      symbol: cleaned,
+      period,
+      requested_period: period,
+      rows: [],
+      error: "Price history is unavailable.",
+    };
+  }
+}
+
+function dbPriceRow(row: DbPriceRow): Record<string, unknown> {
+  const timestamp = row.ts instanceof Date ? row.ts.toISOString() : String(row.ts);
+  return {
+    date: timestamp,
+    datetime: timestamp,
+    open: numericOrNull(row.open),
+    high: numericOrNull(row.high),
+    low: numericOrNull(row.low),
+    close: numericOrNull(row.close),
+    volume: numericOrNull(row.volume),
+  };
+}
+
+function numericOrNull(value: number | string | null): number | null {
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (value === null) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export async function GET(request: Request, context: { params: Promise<{ symbol: string }> }) {
@@ -82,7 +102,7 @@ export async function GET(request: Request, context: { params: Promise<{ symbol:
   const { symbol } = await context.params;
   const { searchParams } = new URL(request.url);
   const period = (searchParams.get("period") ?? "1y").toLowerCase();
-  if (!VALID_PERIODS.has(period)) {
+  if (!isPriceHistoryPeriod(period)) {
     return NextResponse.json({ ok: false, symbol: symbol.toUpperCase(), period, rows: [], error: `Unsupported period: ${period}` }, { status: 400 });
   }
 
