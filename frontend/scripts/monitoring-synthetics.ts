@@ -3,6 +3,7 @@ import { sendExternalAlert } from "../src/lib/alerting/external-alerts";
 
 type SyntheticCheck = {
   allowedStatuses: number[];
+  headers?: Record<string, string>;
   name: string;
   path: string;
   validate?: (statusCode: number, body: unknown) => { message: string; status: MonitoringStatus };
@@ -20,6 +21,15 @@ const checks: SyntheticCheck[] = [
   {
     allowedStatuses: [200],
     name: "tradeveto_home",
+    path: "/",
+  },
+  {
+    allowedStatuses: [200],
+    headers: {
+      Accept: "text/html,*/*",
+      "User-Agent": "facebookexternalhit/1.1",
+    },
+    name: "social_crawler_facebook_home",
     path: "/",
   },
   {
@@ -148,7 +158,7 @@ async function runCheck(check: SyntheticCheck): Promise<CheckResult> {
   const startedAt = Date.now();
   const url = `${monitoringBaseUrl()}${check.path}`;
   try {
-    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    const response = await fetch(url, { headers: { Accept: "application/json", ...check.headers } });
     const latencyMs = Date.now() - startedAt;
     const body = await parseBody(response);
     const validated = check.validate?.(response.status, body);
@@ -157,7 +167,7 @@ async function runCheck(check: SyntheticCheck): Promise<CheckResult> {
     return {
       latencyMs,
       message,
-      metadata: { expectedStatuses: check.allowedStatuses, httpStatus: response.status, path: check.path },
+      metadata: { expectedStatuses: check.allowedStatuses, httpStatus: response.status, path: check.path, userAgent: check.headers?.["User-Agent"] },
       name: check.name,
       status,
     };

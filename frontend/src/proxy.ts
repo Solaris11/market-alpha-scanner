@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { CANONICAL_DOMAIN, CANONICAL_WWW_DOMAIN, LEGACY_APEX_DOMAIN, LEGACY_APP_DOMAIN, LEGACY_WWW_DOMAIN } from "@/lib/brand";
+import { shouldAllowSocialCrawlerRequest } from "@/lib/social-crawlers";
 
 const LEGACY_REDIRECT_ENABLED = process.env.TRADEVETO_REDIRECT_ENABLED !== "false";
 const PUBLIC_HOSTS = new Set([CANONICAL_DOMAIN, CANONICAL_WWW_DOMAIN, LEGACY_APEX_DOMAIN, LEGACY_WWW_DOMAIN, LEGACY_APP_DOMAIN]);
@@ -50,6 +51,19 @@ export function proxy(request: NextRequest): NextResponse {
 
   if (LEGACY_REDIRECT_ENABLED && (hostname === LEGACY_APEX_DOMAIN || hostname === LEGACY_WWW_DOMAIN || hostname === LEGACY_APP_DOMAIN)) {
     return NextResponse.redirect(new URL(pathWithSearch, `https://${CANONICAL_DOMAIN}`), 301);
+  }
+
+  if (
+    shouldAllowSocialCrawlerRequest({
+      method: request.method,
+      pathname,
+      userAgent: request.headers.get("user-agent"),
+    })
+  ) {
+    const response = NextResponse.next();
+    response.headers.set("X-TradeVeto-Social-Crawler", "allowed-public-preview");
+    response.headers.set("X-Robots-Tag", "all");
+    return response;
   }
 
   return NextResponse.next();
