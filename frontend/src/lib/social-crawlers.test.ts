@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { isPublicSocialPreviewPath, isSafeSocialCrawlerMethod, isSocialCrawlerUserAgent, shouldAllowSocialCrawlerRequest } from "./social-crawlers";
+import {
+  buildStaticSocialPreviewHtml,
+  isPublicSocialPreviewPath,
+  isSafeSocialCrawlerMethod,
+  isSocialCrawlerUserAgent,
+  shouldAllowSocialCrawlerRequest,
+  shouldServeStaticSocialPreview,
+} from "./social-crawlers";
 
 describe("social crawler allowlist", () => {
   it("recognizes legitimate social preview crawlers", () => {
@@ -42,5 +49,22 @@ describe("social crawler allowlist", () => {
     assert.equal(shouldAllowSocialCrawlerRequest({ method: "GET", pathname: "/terminal", userAgent: "Facebot" }), false);
     assert.equal(shouldAllowSocialCrawlerRequest({ method: "GET", pathname: "/", userAgent: "Mozilla/5.0" }), false);
     assert.equal(shouldAllowSocialCrawlerRequest({ method: "POST", pathname: "/", userAgent: "Twitterbot/1.0" }), false);
+  });
+
+  it("serves static social preview HTML only for crawler-safe marketing pages", () => {
+    assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/", userAgent: "facebookexternalhit/1.1" }), true);
+    assert.equal(shouldServeStaticSocialPreview({ method: "HEAD", pathname: "/pricing", userAgent: "meta-externalagent/1.1" }), true);
+    assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/og-image.png", userAgent: "facebookexternalhit/1.1" }), false);
+    assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/terminal", userAgent: "facebookexternalhit/1.1" }), false);
+    assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/", userAgent: "Mozilla/5.0" }), false);
+  });
+
+  it("builds a compact absolute-url social preview document", () => {
+    const html = buildStaticSocialPreviewHtml({ pathname: "/pricing?x=1" });
+    assert.match(html, /<meta property="og:title" content="TradeVeto - AI Market Intelligence for Disciplined Traders">/);
+    assert.match(html, /<meta property="og:description" content="TradeVeto helps traders avoid low-quality setups/);
+    assert.match(html, /<meta property="og:url" content="https:\/\/tradeveto\.com\/pricing">/);
+    assert.match(html, /<meta property="og:image" content="https:\/\/tradeveto\.com\/og-image\.png">/);
+    assert.match(html, /<meta name="twitter:card" content="summary_large_image">/);
   });
 });

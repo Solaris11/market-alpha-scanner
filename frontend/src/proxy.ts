@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { CANONICAL_DOMAIN, CANONICAL_WWW_DOMAIN, LEGACY_APEX_DOMAIN, LEGACY_APP_DOMAIN, LEGACY_WWW_DOMAIN } from "@/lib/brand";
-import { shouldAllowSocialCrawlerRequest } from "@/lib/social-crawlers";
+import { buildStaticSocialPreviewHtml, shouldAllowSocialCrawlerRequest, shouldServeStaticSocialPreview } from "@/lib/social-crawlers";
 
 const LEGACY_REDIRECT_ENABLED = process.env.TRADEVETO_REDIRECT_ENABLED !== "false";
 const PUBLIC_HOSTS = new Set([CANONICAL_DOMAIN, CANONICAL_WWW_DOMAIN, LEGACY_APEX_DOMAIN, LEGACY_WWW_DOMAIN, LEGACY_APP_DOMAIN]);
@@ -60,6 +60,25 @@ export function proxy(request: NextRequest): NextResponse {
       userAgent: request.headers.get("user-agent"),
     })
   ) {
+    if (
+      shouldServeStaticSocialPreview({
+        method: request.method,
+        pathname,
+        userAgent: request.headers.get("user-agent"),
+      })
+    ) {
+      const response = new NextResponse(request.method === "HEAD" ? null : buildStaticSocialPreviewHtml({ pathname }), {
+        status: 200,
+        headers: {
+          "Content-Type": "text/html; charset=utf-8",
+          "Cache-Control": "public, max-age=300, must-revalidate",
+        },
+      });
+      response.headers.set("X-TradeVeto-Social-Crawler", "static-public-preview");
+      response.headers.set("X-Robots-Tag", "all");
+      return response;
+    }
+
     const response = NextResponse.next();
     response.headers.set("X-TradeVeto-Social-Crawler", "allowed-public-preview");
     response.headers.set("X-Robots-Tag", "all");
