@@ -11,6 +11,7 @@ SCANNER_SOURCE="/opt/apps/market-alpha-scanner/runtime/scanner_output"
 LOG_FILE="/var/log/market-alpha/backup.log"
 
 BOUNDED_PIDS=()
+SCANNER_SNAPSHOT_PARENT=""
 LAST_RETRY_ATTEMPTS_USED=0
 SCRIPT_STARTED_SECONDS=$SECONDS
 BACKUP_ENV_OVERRIDE_NAMES=(
@@ -106,6 +107,9 @@ kill_process_group() {
 
 cleanup_bounded_processes() {
   local status=$?
+  if [[ -n "$SCANNER_SNAPSHOT_PARENT" && -d "$SCANNER_SNAPSHOT_PARENT" ]]; then
+    rm -rf "$SCANNER_SNAPSHOT_PARENT"
+  fi
   if [[ "$status" -ne 0 ]]; then
     for pid in "${BOUNDED_PIDS[@]}"; do
       if kill -0 "$pid" 2>/dev/null; then
@@ -350,6 +354,25 @@ finalize_file() {
   log "Created $(du -h "$final" | awk "{print \$1}") $final"
 }
 
+stage_scanner_output() {
+  local source="$1"
+  local snapshot_parent="$2"
+  local snapshot_dir="$snapshot_parent/scanner_output"
+  local rsync_status=0
+
+  mkdir -p "$snapshot_dir"
+  if command -v rsync >/dev/null 2>&1; then
+    rsync -a --delete --numeric-ids "${source%/}/" "$snapshot_dir/" || rsync_status=$?
+    if [[ "$rsync_status" -eq 24 ]]; then
+      log "WARNING: scanner_output files changed while staging; archiving stable staged copy"
+    elif [[ "$rsync_status" -ne 0 ]]; then
+      return "$rsync_status"
+    fi
+  else
+    cp -a "${source%/}/." "$snapshot_dir/"
+  fi
+}
+
 log "Backup started"
 
 docker inspect "$POSTGRES_CONTAINER" >/dev/null 2>&1 || fail "Postgres container is not available"
@@ -367,7 +390,11 @@ SCANNER_TMP="$SCANNER_FILE.tmp"
 rm -f "$SCANNER_TMP"
 log "Creating scanner_output backup"
 if [[ -d "$SCANNER_SOURCE" ]]; then
-  tar -C "$(dirname "$SCANNER_SOURCE")" -czf "$SCANNER_TMP" "$(basename "$SCANNER_SOURCE")"
+  SCANNER_SNAPSHOT_PARENT="$(mktemp -d "${TMPDIR:-/tmp}/market-alpha-scanner-output.XXXXXX")"
+  stage_scanner_output "$SCANNER_SOURCE" "$SCANNER_SNAPSHOT_PARENT" || fail "Scanner output staging failed"
+  tar -C "$SCANNER_SNAPSHOT_PARENT" -czf "$SCANNER_TMP" scanner_output
+  rm -rf "$SCANNER_SNAPSHOT_PARENT"
+  SCANNER_SNAPSHOT_PARENT=""
 else
   mkdir -p /tmp/market-alpha-empty-scanner-output
   tar -C /tmp -czf "$SCANNER_TMP" market-alpha-empty-scanner-output
