@@ -41,6 +41,11 @@ export function PublicSignalPreviewList({
         <SummaryCard label="Research plan" value={summary.premiumDataHidden ? "Locked" : "Unavailable"} />
       </div>
       <p className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-6 text-slate-300">{summary.message}</p>
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <TrustCard title="What unlocks" detail="Ranked setups, confidence/readiness, veto reasons, and symbol-level research context." />
+        <TrustCard title="Why WAIT matters" detail="The system is designed to preserve discipline when conditions are incomplete or risk is elevated." />
+        <TrustCard title="Beta expectation" detail="Historical evidence is still growing; TradeVeto is research software, not financial advice." />
+      </div>
     </section>
   );
 }
@@ -65,6 +70,11 @@ export function PublicSymbolPreview({ accessState, authenticated = false, summar
         <SummaryCard label="Live details" value="Locked" />
         <SummaryCard label="Risk levels" value="Locked" />
       </div>
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <TrustCard title="Symbol context" detail="Premium shows the decision, factor scores, vetoes, and what to monitor next." />
+        <TrustCard title="Research levels" detail="Charts use support, resistance, entry-zone, stop, and target context without saying where to trade." />
+        <TrustCard title="Evidence first" detail="Confidence reflects setup strength and data quality; it is not a prediction." />
+      </div>
     </section>
   );
 }
@@ -74,6 +84,15 @@ function SummaryCard({ label, value }: { label: string; value: string }) {
     <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-4">
       <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">{label}</div>
       <div className="mt-1 text-lg font-semibold capitalize text-slate-100">{value}</div>
+    </div>
+  );
+}
+
+function TrustCard({ detail, title }: { detail: string; title: string }) {
+  return (
+    <div className="rounded-xl border border-cyan-300/10 bg-cyan-400/[0.035] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">{title}</div>
+      <p className="mt-2 text-xs leading-5 text-slate-400">{detail}</p>
     </div>
   );
 }

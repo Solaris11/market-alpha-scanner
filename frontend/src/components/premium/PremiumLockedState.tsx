@@ -43,6 +43,21 @@ export function PremiumLockedState({ accessState, authenticated, className = "",
           ))}
         </div>
       ) : null}
+
+      <div className="mt-5 grid grid-cols-1 gap-3 lg:grid-cols-3">
+        <PreviewContext title="What you can inspect" detail="Premium opens the full research context behind the preview: signals, history, risk, and decision reasons." />
+        <PreviewContext title="Why it is gated" detail="TradeVeto hides high-detail research until account, legal, and entitlement checks are complete." />
+        <PreviewContext title="Research boundary" detail="The product helps structure market research and patience. It is not financial advice or broker execution." />
+      </div>
     </section>
+  );
+}
+
+function PreviewContext({ detail, title }: { detail: string; title: string }) {
+  return (
+    <div className="rounded-xl border border-cyan-300/10 bg-cyan-400/[0.035] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">{title}</div>
+      <p className="mt-2 text-xs leading-5 text-slate-400">{detail}</p>
+    </div>
   );
 }
