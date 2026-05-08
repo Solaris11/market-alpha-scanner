@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { MarketingCard, MarketingShell, SecondaryCta, SectionHeader } from "@/components/marketing/MarketingShell";
-import { PricingConversionCta } from "@/components/pricing/PricingConversionCta";
+import { PricingActionCard } from "@/components/pricing/PricingActionCard";
 import { marketingMetadata } from "@/lib/marketing-seo";
 
 export const metadata: Metadata = marketingMetadata("/pricing", {
@@ -31,7 +31,7 @@ export default function PricingPage() {
               <SecondaryCta>Open App</SecondaryCta>
             </div>
           </MarketingCard>
-          <MarketingCard className="border-emerald-300/25 bg-emerald-300/[0.055]">
+          <PricingActionCard>
             <div className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-emerald-100">Early adopter Premium</div>
             <div className="mt-5 text-5xl font-black text-white">$20<span className="text-lg font-semibold text-slate-400">/month</span></div>
             <p className="mt-4 text-sm leading-6 text-slate-300">Premium unlocks full research context, ranked setups, alerts, simulations, and decision intelligence. Stripe shows trial, discount, renewal, and cancellation details before confirmation.</p>
@@ -45,10 +45,7 @@ export default function PricingPage() {
                 <div className="rounded-xl border border-emerald-300/15 bg-emerald-300/[0.05] px-3 py-2" key={item}>{item}</div>
               ))}
             </div>
-            <div className="mt-6">
-              <PricingConversionCta />
-            </div>
-          </MarketingCard>
+          </PricingActionCard>
         </div>
         <div className="mx-auto mt-6 grid max-w-5xl gap-3 md:grid-cols-4">
           {billingTrust.map(([title, copy]) => (

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { LandingConversionCtas } from "@/components/marketing/LandingConversionCtas";
 import { MarketingCard, MarketingShell, SectionHeader } from "@/components/marketing/MarketingShell";
 import { MarketingReveal } from "@/components/marketing/MarketingReveal";
+import { PricingActionCard } from "@/components/pricing/PricingActionCard";
 import { PricingConversionCta } from "@/components/pricing/PricingConversionCta";
 import { BRAND_NAME, BRAND_PRODUCT_DESCRIPTION, BRAND_TAGLINE } from "@/lib/brand";
 import { marketingMetadata, softwareApplicationJsonLd } from "@/lib/marketing-seo";
@@ -251,7 +252,7 @@ export default async function HomePage() {
 
       <section className="px-4 py-14 sm:px-6 lg:px-8" id="pricing">
         <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-          <MarketingCard className="border-emerald-300/25 bg-emerald-300/[0.055]">
+          <PricingActionCard>
             <div className="text-xs font-black uppercase tracking-[0.28em] text-emerald-200">Early adopter Premium</div>
             <div className="mt-4 text-5xl font-black text-white">$20<span className="text-lg font-semibold text-slate-400">/month</span></div>
             <p className="mt-4 text-sm leading-6 text-slate-300">Closed beta pricing is intentionally simple. Stripe shows trial, promo, renewal, and cancellation details before confirmation.</p>
@@ -260,7 +261,7 @@ export default async function HomePage() {
                 <li className="rounded-xl border border-white/10 bg-black/15 px-3 py-2" key={item}>{item}</li>
               ))}
             </ul>
-          </MarketingCard>
+          </PricingActionCard>
           <MarketingCard>
             <div className="text-xs font-black uppercase tracking-[0.28em] text-cyan-300">Premium conversion</div>
             <h2 className="mt-3 text-3xl font-semibold text-white">Start with research access. Upgrade only when the value is clear.</h2>
