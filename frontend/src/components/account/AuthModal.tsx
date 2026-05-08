@@ -79,7 +79,7 @@ export function AuthModal({
             <h2 className="mt-1 text-xl font-semibold text-slate-50">{title}</h2>
             <p className="mt-1 text-xs leading-5 text-slate-500">Research-only decision intelligence. Existing users can sign in anytime.</p>
           </div>
-          <button className="rounded-full border border-white/10 px-2 py-1 text-xs text-slate-400 transition hover:border-cyan-300/50 hover:text-cyan-100" onClick={onClose} type="button">
+          <button className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-white/10 px-3 py-1 text-xs text-slate-400 transition hover:border-cyan-300/50 hover:text-cyan-100" onClick={onClose} type="button">
             Close
           </button>
         </div>

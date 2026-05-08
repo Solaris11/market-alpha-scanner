@@ -39,8 +39,13 @@ main {
   min-width: 0;
 }
 
-:where(p, h1, h2, h3, h4, h5, h6, span, a, button, label, input, select, textarea) {
-  overflow-wrap: anywhere;
+:where(p, h1, h2, h3, h4, h5, h6, label, textarea) {
+  overflow-wrap: break-word;
+}
+
+:where(a, button, input, select, span) {
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 :where(img, svg, canvas, video) {

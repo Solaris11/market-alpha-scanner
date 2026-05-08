@@ -60,7 +60,7 @@ export function BetaFeedbackWidget() {
               <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Beta Feedback</div>
               <h2 className="mt-1 text-base font-semibold text-slate-50">Help sharpen TradeVeto</h2>
             </div>
-            <button className="rounded-full border border-white/10 px-2 py-1 text-xs text-slate-400 hover:text-slate-100" onClick={() => setOpen(false)} type="button">Close</button>
+            <button className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-white/10 px-3 py-1 text-xs text-slate-400 hover:text-slate-100" onClick={() => setOpen(false)} type="button">Close</button>
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
             {FEEDBACK_TYPES.map((item) => (
