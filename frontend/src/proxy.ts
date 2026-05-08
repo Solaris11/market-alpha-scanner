@@ -28,9 +28,6 @@ function isAppPath(pathname: string): boolean {
 }
 
 function requestScheme(request: NextRequest): "http" | "https" | "unknown" {
-  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase();
-  if (forwardedProto === "http" || forwardedProto === "https") return forwardedProto;
-
   const cfVisitor = request.headers.get("cf-visitor");
   if (cfVisitor) {
     try {
@@ -40,6 +37,9 @@ function requestScheme(request: NextRequest): "http" | "https" | "unknown" {
       // Ignore malformed Cloudflare visitor metadata and fall back to the URL protocol.
     }
   }
+
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim().toLowerCase();
+  if (forwardedProto === "http" || forwardedProto === "https") return forwardedProto;
 
   if (request.nextUrl.protocol === "http:" || request.nextUrl.protocol === "https:") {
     return request.nextUrl.protocol.slice(0, -1) as "http" | "https";
