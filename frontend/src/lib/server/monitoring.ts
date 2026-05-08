@@ -13,7 +13,7 @@ export type DeepHealthResult = {
   db: ComponentHealth;
   ok: boolean;
   scanner: ComponentHealth;
-  service: "market-alpha-frontend";
+  service: "tradeveto-frontend";
   timestamp: string;
 };
 
@@ -47,7 +47,7 @@ export async function deepHealth(): Promise<DeepHealthResult> {
     db,
     ok: db.status === "ok" && scanner.status !== "fail" && backup.status !== "failed",
     scanner,
-    service: "market-alpha-frontend",
+    service: "tradeveto-frontend",
     timestamp: new Date().toISOString(),
   };
 }
@@ -169,7 +169,7 @@ async function scannerHealth(): Promise<ComponentHealth> {
 }
 
 async function backupHealth(): Promise<BackupHealthDetails> {
-  const backupDir = process.env.MARKET_ALPHA_BACKUP_DIR?.trim() || DEFAULT_BACKUP_DIR;
+  const backupDir = process.env.TRADEVETO_BACKUP_DIR?.trim() || process.env.MARKET_ALPHA_BACKUP_DIR?.trim() || DEFAULT_BACKUP_DIR;
   try {
     const [latest, events] = await Promise.all([latestFileMtime(backupDir), recentBackupEvents()]);
     let localBackup: ComponentHealth;

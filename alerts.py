@@ -951,7 +951,7 @@ def _build_message(rule: dict[str, Any], evaluation: AlertEvaluation) -> str:
     entry_status = _entry_status(row)
     trade_quality = _clean_text(row.get("trade_quality"), "REVIEW").upper()
     lines = [
-        "🚨 Market Alpha Alert",
+        "🚨 TradeVeto Alert",
         "",
         symbol_line,
         f"🌐 Scope: {_scope_label(rule)}",
@@ -1004,7 +1004,7 @@ def _send_telegram(message: str) -> tuple[bool, str]:
 def _send_email(message: str, subject: str) -> tuple[bool, str]:
     required = {
         "EMAIL_FROM": os.getenv("EMAIL_FROM", "").strip(),
-        "MARKET_ALPHA_ALERT_EMAIL_TO": os.getenv("MARKET_ALPHA_ALERT_EMAIL_TO", "").strip(),
+        "TRADEVETO_ALERT_EMAIL_TO": (os.getenv("TRADEVETO_ALERT_EMAIL_TO", "").strip() or os.getenv("MARKET_ALPHA_ALERT_EMAIL_TO", "").strip()),
         "SMTP_HOST": os.getenv("SMTP_HOST", "").strip(),
         "SMTP_PORT": os.getenv("SMTP_PORT", "").strip(),
         "SMTP_USER": os.getenv("SMTP_USER", "").strip(),
@@ -1017,8 +1017,8 @@ def _send_email(message: str, subject: str) -> tuple[bool, str]:
     port = int(required["SMTP_PORT"])
     email = EmailMessage()
     email["From"] = required["EMAIL_FROM"]
-    email["To"] = required["MARKET_ALPHA_ALERT_EMAIL_TO"]
-    email["Reply-To"] = os.getenv("SUPPORT_EMAIL", "support@marketalpha.co").strip()
+    email["To"] = required["TRADEVETO_ALERT_EMAIL_TO"]
+    email["Reply-To"] = os.getenv("SUPPORT_EMAIL", "support@tradeveto.com").strip()
     email["Subject"] = subject
     email.set_content(message)
 
@@ -1241,7 +1241,7 @@ def evaluate_alert_rules(
                 if channel == "telegram":
                     ok, detail = _send_telegram(message)
                 elif channel == "email":
-                    ok, detail = _send_email(message, f"Market Alpha Alert: {symbol}")
+                    ok, detail = _send_email(message, f"TradeVeto Alert: {symbol}")
                 else:
                     ok, detail = False, f"unsupported channel {channel}"
                 channel_results[channel] = detail

@@ -72,7 +72,7 @@ export async function sendExternalAlert(input: ExternalAlertInput, env: NodeJS.P
 export function configuredAlertChannels(env: NodeJS.ProcessEnv = process.env): AlertChannel[] {
   const channels: AlertChannel[] = [];
   if (env.SLACK_WEBHOOK_URL?.trim()) channels.push("slack");
-  if (env.TELEGRAM_BOT_TOKEN?.trim() && (env.TELEGRAM_CHAT_ID?.trim() || env.MARKET_ALPHA_ALERT_TELEGRAM_CHAT_ID?.trim())) channels.push("telegram");
+  if (env.TELEGRAM_BOT_TOKEN?.trim() && (env.TELEGRAM_CHAT_ID?.trim() || env.TRADEVETO_ALERT_TELEGRAM_CHAT_ID?.trim() || env.MARKET_ALPHA_ALERT_TELEGRAM_CHAT_ID?.trim())) channels.push("telegram");
   if (smtpConfig(env)) channels.push("email");
   return channels;
 }
@@ -89,7 +89,7 @@ export function buildAlertEnvelope(input: ExternalAlertInput): AlertEnvelope {
 
 function smtpConfig(env: NodeJS.ProcessEnv): (SmtpSettings & { to: string }) | null {
   const settings = smtpSettingsFromEnv(env);
-  const to = env.MARKET_ALPHA_ALERT_EMAIL_TO?.trim() || env.SUPPORT_EMAIL?.trim() || "support@tradeveto.com";
+  const to = env.TRADEVETO_ALERT_EMAIL_TO?.trim() || env.MARKET_ALPHA_ALERT_EMAIL_TO?.trim() || env.SUPPORT_EMAIL?.trim() || "support@tradeveto.com";
   if (!settings || !to) return null;
   return { ...settings, to };
 }
@@ -107,7 +107,7 @@ async function sendSlackAlert(envelope: AlertEnvelope, env: NodeJS.ProcessEnv): 
 
 async function sendTelegramAlert(envelope: AlertEnvelope, env: NodeJS.ProcessEnv): Promise<void> {
   const token = env.TELEGRAM_BOT_TOKEN?.trim();
-  const chatId = env.TELEGRAM_CHAT_ID?.trim() || env.MARKET_ALPHA_ALERT_TELEGRAM_CHAT_ID?.trim();
+  const chatId = env.TELEGRAM_CHAT_ID?.trim() || env.TRADEVETO_ALERT_TELEGRAM_CHAT_ID?.trim() || env.MARKET_ALPHA_ALERT_TELEGRAM_CHAT_ID?.trim();
   if (!token || !chatId) return;
   const response = await fetch(`https://api.telegram.org/bot${encodeURIComponent(token)}/sendMessage`, {
     body: JSON.stringify({
@@ -312,9 +312,17 @@ async function postAlertMonitoringEvent(input: {
   severity: MonitoringSeverity;
   status: MonitoringStatus;
 }): Promise<void> {
-  const token = process.env.MARKET_ALPHA_MONITORING_TOKEN?.trim();
-  if (!token) throw new Error("MARKET_ALPHA_MONITORING_TOKEN is not configured.");
-  const baseUrl = (process.env.MONITORING_BASE_URL?.trim() || process.env.APP_BASE_URL?.trim() || process.env.APP_URL?.trim() || "https://tradeveto.com").replace(/\/$/, "");
+  const token = process.env.TRADEVETO_MONITORING_TOKEN?.trim() || process.env.MARKET_ALPHA_MONITORING_TOKEN?.trim();
+  if (!token) throw new Error("TRADEVETO_MONITORING_TOKEN is not configured.");
+  const baseUrl = (
+    process.env.TRADEVETO_MONITORING_BASE_URL?.trim() ||
+    process.env.MONITORING_BASE_URL?.trim() ||
+    process.env.TRADEVETO_APP_BASE_URL?.trim() ||
+    process.env.TRADEVETO_APP_URL?.trim() ||
+    process.env.APP_BASE_URL?.trim() ||
+    process.env.APP_URL?.trim() ||
+    "https://tradeveto.com"
+  ).replace(/\/$/, "");
   const response = await fetch(`${baseUrl}/api/monitoring/ingest`, {
     body: JSON.stringify({
       eventType: cleanKey(input.eventType),
@@ -326,6 +334,7 @@ async function postAlertMonitoringEvent(input: {
     }),
     headers: {
       "Content-Type": "application/json",
+      "x-tradeveto-monitoring-token": token,
       "x-market-alpha-monitoring-token": token,
     },
     method: "POST",
@@ -368,11 +377,11 @@ function localThrottlePath(dedupeKey: string): string {
 }
 
 function localThrottleDir(): string {
-  return process.env.MARKET_ALPHA_ALERT_THROTTLE_DIR?.trim() || "/tmp/market-alpha-alert-throttle";
+  return process.env.TRADEVETO_ALERT_THROTTLE_DIR?.trim() || process.env.MARKET_ALPHA_ALERT_THROTTLE_DIR?.trim() || "/tmp/tradeveto-alert-throttle";
 }
 
 function alertDebugEnabled(): boolean {
-  return process.env.MARKET_ALPHA_ALERT_DEBUG === "1";
+  return process.env.TRADEVETO_ALERT_DEBUG === "1" || process.env.MARKET_ALPHA_ALERT_DEBUG === "1";
 }
 
 function sleep(ms: number): Promise<void> {

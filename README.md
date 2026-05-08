@@ -183,7 +183,7 @@ Set these before running email alerts:
 
 ```bash
 export EMAIL_FROM="TradeVeto <noreply@tradeveto.com>"
-export MARKET_ALPHA_ALERT_EMAIL_TO="support@tradeveto.com"
+export TRADEVETO_ALERT_EMAIL_TO="support@tradeveto.com"
 export SMTP_HOST="smtp.gmail.com"
 export SMTP_PORT="587"
 export SMTP_SECURE="false"

@@ -112,7 +112,7 @@ export function clientIp(request: Request): string | null {
 }
 
 export function devLoginEnabled(): boolean {
-  return process.env.NODE_ENV !== "production" && process.env.MARKET_ALPHA_ENABLE_DEV_LOGIN !== "false";
+  return process.env.NODE_ENV !== "production" && process.env.TRADEVETO_ENABLE_DEV_LOGIN !== "false" && process.env.MARKET_ALPHA_ENABLE_DEV_LOGIN !== "false";
 }
 
 export async function registerWithPassword(input: { displayName?: unknown; email?: unknown; ip?: string | null; password?: unknown }): Promise<AuthSession> {

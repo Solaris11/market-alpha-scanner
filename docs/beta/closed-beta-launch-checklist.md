@@ -6,7 +6,7 @@ Use this checklist before inviting each beta cohort.
 
 - [ ] `https://tradeveto.com` returns 200.
 - [ ] `https://www.tradeveto.com` redirects to apex.
-- [ ] Legacy Market Alpha domains 301 to TradeVeto without path/query loss.
+- [ ] Legacy Market Alpha redirect checks are optional/non-blocking and not required for TradeVeto uptime.
 - [ ] SSL certificate is valid.
 - [ ] Cloudflare tunnel is healthy.
 

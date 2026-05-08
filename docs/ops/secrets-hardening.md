@@ -25,8 +25,8 @@ The wrapper redacts:
 - `SMTP_PASS`
 - `SENTRY_DSN`
 - `NEXT_PUBLIC_SENTRY_DSN`
-- `MARKET_ALPHA_SESSION_SECRET`
-- `MARKET_ALPHA_MONITORING_TOKEN`
+- `TRADEVETO_SESSION_SECRET`
+- `TRADEVETO_MONITORING_TOKEN`
 - any `*_SECRET`, `*_TOKEN`, `*_KEY`, or `*_PASSWORD`
 
 ## Env Archives
@@ -48,8 +48,8 @@ Do not migrate all secrets to Docker secrets in one step. The current Compose st
 Recommended order:
 
 1. Add a small config helper that supports `FOO_FILE` for server-only secrets.
-2. Move `MARKET_ALPHA_MONITORING_TOKEN` first because it is internal and easy to rotate.
-3. Move `MARKET_ALPHA_SESSION_SECRET` next during a planned session logout window.
+2. Move `TRADEVETO_MONITORING_TOKEN` first because it is internal and easy to rotate.
+3. Move `TRADEVETO_SESSION_SECRET` next during a planned session logout window.
 4. Move SMTP and Stripe server secrets after code supports file reads and rollback has been tested.
 5. Keep public values such as publishable Stripe keys and public Sentry DSNs in env.
 

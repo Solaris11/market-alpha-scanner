@@ -49,7 +49,7 @@ export function stripePromotionCodesEnabled(): boolean {
 }
 
 function appBaseUrl(): string {
-  const raw = process.env.APP_BASE_URL?.trim() || canonicalAppUrl().toString();
+  const raw = process.env.TRADEVETO_APP_BASE_URL?.trim() || process.env.APP_BASE_URL?.trim() || canonicalAppUrl().toString();
   try {
     const parsed = new URL(raw);
     parsed.pathname = "";

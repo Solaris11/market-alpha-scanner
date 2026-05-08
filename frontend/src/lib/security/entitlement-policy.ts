@@ -15,14 +15,14 @@ export function subscriptionGrantsPremium(subscription: SubscriptionRecord | nul
 }
 
 export function productionMockPremiumEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.NODE_ENV === "production" && env.MARKET_ALPHA_MOCK_PREMIUM === "true";
+  return env.NODE_ENV === "production" && (env.TRADEVETO_MOCK_PREMIUM === "true" || env.MARKET_ALPHA_MOCK_PREMIUM === "true");
 }
 
 export function devConfigPremiumEnabled(email: string, env: NodeJS.ProcessEnv = process.env): boolean {
   if (env.NODE_ENV === "production") return false;
   const normalized = email.trim().toLowerCase();
   if (!normalized) return false;
-  if (env.MARKET_ALPHA_MOCK_PREMIUM === "true") return true;
+  if (env.TRADEVETO_MOCK_PREMIUM === "true" || env.MARKET_ALPHA_MOCK_PREMIUM === "true") return true;
   return premiumEmailSet(env).has(normalized);
 }
 
@@ -37,7 +37,7 @@ function isPremiumPlan(plan: string | null): boolean {
 
 function premiumEmailSet(env: NodeJS.ProcessEnv): Set<string> {
   return new Set(
-    `${env.MARKET_ALPHA_DEV_PREMIUM_EMAILS ?? ""},${env.MARKET_ALPHA_PREMIUM_EMAILS ?? ""},${env.MARKET_ALPHA_MOCK_PREMIUM_EMAILS ?? ""}`
+    `${env.TRADEVETO_DEV_PREMIUM_EMAILS ?? ""},${env.TRADEVETO_PREMIUM_EMAILS ?? ""},${env.TRADEVETO_MOCK_PREMIUM_EMAILS ?? ""},${env.MARKET_ALPHA_DEV_PREMIUM_EMAILS ?? ""},${env.MARKET_ALPHA_PREMIUM_EMAILS ?? ""},${env.MARKET_ALPHA_MOCK_PREMIUM_EMAILS ?? ""}`
       .split(",")
       .map((email) => email.trim().toLowerCase())
       .filter(Boolean),

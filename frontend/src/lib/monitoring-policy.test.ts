@@ -41,6 +41,7 @@ test("monitoring retention cleanup deletes 30 day old rows from all detail table
 });
 
 test("monitoring ingest token does not fall back to the session secret", () => {
-  assert.equal(monitoringTokenFromEnv({ MARKET_ALPHA_SESSION_SECRET: "session-secret" } as unknown as NodeJS.ProcessEnv), null);
-  assert.equal(monitoringTokenFromEnv({ MARKET_ALPHA_MONITORING_TOKEN: "monitoring-token", MARKET_ALPHA_SESSION_SECRET: "session-secret" } as unknown as NodeJS.ProcessEnv), "monitoring-token");
+  assert.equal(monitoringTokenFromEnv({ TRADEVETO_SESSION_SECRET: "session-secret" } as unknown as NodeJS.ProcessEnv), null);
+  assert.equal(monitoringTokenFromEnv({ TRADEVETO_MONITORING_TOKEN: "monitoring-token", MARKET_ALPHA_MONITORING_TOKEN: "legacy-token" } as unknown as NodeJS.ProcessEnv), "monitoring-token");
+  assert.equal(monitoringTokenFromEnv({ MARKET_ALPHA_MONITORING_TOKEN: "legacy-token" } as unknown as NodeJS.ProcessEnv), "legacy-token");
 });

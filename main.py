@@ -5,7 +5,7 @@ import paper
 import scans
 import symbols
 
-app = FastAPI(title="Market Alpha Scanner API")
+app = FastAPI(title="TradeVeto API")
 
 app.include_router(health.router)
 app.include_router(paper.router, prefix="/api", tags=["Paper"])

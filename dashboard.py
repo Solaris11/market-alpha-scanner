@@ -57,7 +57,7 @@ def _clear_symbol_detail_query_params() -> None:
 
 def main() -> None:
     st.set_page_config(
-        page_title="Market Alpha Scanner",
+        page_title="TradeVeto",
         page_icon="📈",
         layout="wide",
         initial_sidebar_state="expanded",
@@ -109,8 +109,8 @@ def main() -> None:
         (
             '<div class="scanner-shell">'
             '<div class="scanner-hero">'
-            '<div class="scanner-eyebrow">Market Alpha Scanner</div>'
-            "<h1>Trading Desk Dashboard</h1>"
+            '<div class="scanner-eyebrow">TradeVeto</div>'
+            "<h1>Decision Intelligence Dashboard</h1>"
             "<p>Scan leaders, inspect signal quality, and move from shortlist to decision view without leaving the dashboard.</p>"
             "</div>"
             "</div>"

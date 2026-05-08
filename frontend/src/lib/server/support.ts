@@ -339,7 +339,7 @@ async function sendSupportEmail(kind: "support_internal_notification" | "support
 }
 
 function supportTicketAdminUrl(ticketId: string): string | null {
-  const baseUrl = process.env.APP_BASE_URL?.trim().replace(/\/+$/, "");
+  const baseUrl = (process.env.TRADEVETO_APP_BASE_URL?.trim() || process.env.APP_BASE_URL?.trim() || "").replace(/\/+$/, "");
   if (!baseUrl || !/^https:\/\/[a-z0-9.-]+(?::\d+)?$/i.test(baseUrl)) return null;
   return `${baseUrl}/admin/support/${ticketId}`;
 }

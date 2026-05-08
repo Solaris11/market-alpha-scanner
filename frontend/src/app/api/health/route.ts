@@ -9,7 +9,7 @@ export async function GET(request: Request) {
     NextResponse.json(
       {
         ok: true,
-        service: "market-alpha-frontend",
+        service: "tradeveto-frontend",
         status: "ok",
         timestamp: new Date().toISOString(),
         uptimeSeconds: Math.floor(process.uptime()),

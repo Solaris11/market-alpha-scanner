@@ -13,13 +13,20 @@ export function loadEnvFiles(): void {
 }
 
 export function monitoringBaseUrl(): string {
-  const raw = process.env.MONITORING_BASE_URL?.trim() || process.env.APP_BASE_URL?.trim() || process.env.APP_URL?.trim() || "https://tradeveto.com";
+  const raw =
+    process.env.TRADEVETO_MONITORING_BASE_URL?.trim() ||
+    process.env.MONITORING_BASE_URL?.trim() ||
+    process.env.TRADEVETO_APP_BASE_URL?.trim() ||
+    process.env.TRADEVETO_APP_URL?.trim() ||
+    process.env.APP_BASE_URL?.trim() ||
+    process.env.APP_URL?.trim() ||
+    "https://tradeveto.com";
   return raw.replace(/\/$/, "");
 }
 
 export function monitoringToken(): string {
-  const token = process.env.MARKET_ALPHA_MONITORING_TOKEN?.trim();
-  if (!token) throw new Error("MARKET_ALPHA_MONITORING_TOKEN is required.");
+  const token = process.env.TRADEVETO_MONITORING_TOKEN?.trim() || process.env.MARKET_ALPHA_MONITORING_TOKEN?.trim();
+  if (!token) throw new Error("TRADEVETO_MONITORING_TOKEN is required.");
   return token;
 }
 
@@ -28,6 +35,7 @@ export async function postMonitoringPayload(payload: Record<string, unknown>): P
     body: JSON.stringify(payload),
     headers: {
       "Content-Type": "application/json",
+      "x-tradeveto-monitoring-token": monitoringToken(),
       "x-market-alpha-monitoring-token": monitoringToken(),
     },
     method: "POST",

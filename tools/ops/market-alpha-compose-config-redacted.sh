@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_DIR="${MARKET_ALPHA_APP_DIR:-/opt/apps/market-alpha-scanner/app}"
+APP_DIR="${TRADEVETO_APP_DIR:-${MARKET_ALPHA_APP_DIR:-/opt/apps/market-alpha-scanner/app}}"
 
 cd "${APP_DIR}"
 
@@ -9,7 +9,7 @@ docker compose config "$@" | python3 -c '
 import re
 import sys
 
-sensitive_key = re.compile(r"(^|[_-])(SECRET|TOKEN|KEY|PASSWORD)($|[_-])|DATABASE_URL|POSTGRES_PASSWORD|SMTP_PASS|SENTRY_DSN|STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|MARKET_ALPHA_SESSION_SECRET|MARKET_ALPHA_MONITORING_TOKEN", re.IGNORECASE)
+sensitive_key = re.compile(r"(^|[_-])(SECRET|TOKEN|KEY|PASSWORD)($|[_-])|DATABASE_URL|POSTGRES_PASSWORD|SMTP_PASS|SENTRY_DSN|STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|TRADEVETO_SESSION_SECRET|TRADEVETO_MONITORING_TOKEN|MARKET_ALPHA_SESSION_SECRET|MARKET_ALPHA_MONITORING_TOKEN", re.IGNORECASE)
 assignment = re.compile(r"^(\s*[-]?\s*([A-Za-z_][A-Za-z0-9_]*)\s*[:=]\s*)(.*)$")
 url_secret = re.compile(r"(postgres(?:ql)?(?:\\+psycopg)?://[^:\\s]+:)([^@\\s]+)(@)", re.IGNORECASE)
 

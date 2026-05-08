@@ -104,7 +104,7 @@ export async function POST(request: Request) {
 
 function authorized(request: Request): boolean {
   const expected = monitoringTokenFromEnv();
-  const actual = request.headers.get("x-market-alpha-monitoring-token")?.trim();
+  const actual = request.headers.get("x-tradeveto-monitoring-token")?.trim() || request.headers.get("x-market-alpha-monitoring-token")?.trim();
   return Boolean(expected && actual && actual === expected);
 }
 

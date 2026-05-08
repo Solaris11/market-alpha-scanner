@@ -10,10 +10,10 @@ INTERVAL="${UPTIMEROBOT_INTERVAL_SECONDS:-60}"
 ALERT_CONTACTS="${UPTIMEROBOT_ALERT_CONTACTS:-}"
 
 monitors=(
-  "Market Alpha Landing|https://marketalpha.co"
-  "Market Alpha Features|https://marketalpha.co/features"
-  "Market Alpha App Health|https://app.marketalpha.co/api/health"
-  "Market Alpha App Deep Health|https://app.marketalpha.co/api/health/deep"
+  "TradeVeto Landing|https://tradeveto.com"
+  "TradeVeto Pricing|https://tradeveto.com/pricing"
+  "TradeVeto App Health|https://tradeveto.com/api/health"
+  "TradeVeto App Deep Health|https://tradeveto.com/api/health/deep"
 )
 
 api_post() {

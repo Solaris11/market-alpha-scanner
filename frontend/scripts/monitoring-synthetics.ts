@@ -19,6 +19,56 @@ type CheckResult = {
 const checks: SyntheticCheck[] = [
   {
     allowedStatuses: [200],
+    name: "tradeveto_home",
+    path: "/",
+  },
+  {
+    allowedStatuses: [200],
+    name: "tradeveto_pricing",
+    path: "/pricing",
+  },
+  {
+    allowedStatuses: [200],
+    name: "tradeveto_features",
+    path: "/features",
+  },
+  {
+    allowedStatuses: [200],
+    name: "tradeveto_how_it_works",
+    path: "/how-it-works",
+  },
+  {
+    allowedStatuses: [200],
+    name: "tradeveto_faq",
+    path: "/faq",
+  },
+  {
+    allowedStatuses: [200],
+    name: "tradeveto_terminal",
+    path: "/terminal",
+  },
+  {
+    allowedStatuses: [200],
+    name: "tradeveto_opportunities",
+    path: "/opportunities",
+  },
+  {
+    allowedStatuses: [200],
+    name: "tradeveto_history_tsm",
+    path: "/history?symbol=TSM",
+  },
+  {
+    allowedStatuses: [200],
+    name: "tradeveto_account",
+    path: "/account",
+  },
+  {
+    allowedStatuses: [200],
+    name: "tradeveto_support",
+    path: "/support",
+  },
+  {
+    allowedStatuses: [200],
     name: "api_health",
     path: "/api/health",
   },

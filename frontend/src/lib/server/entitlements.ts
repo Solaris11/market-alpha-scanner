@@ -222,7 +222,7 @@ async function getUserSubscription(userId: string): Promise<SubscriptionRow | nu
     return result.rows[0] ?? null;
   } catch {
     if (productionMockPremiumEnabled()) {
-      console.warn("[entitlements] MARKET_ALPHA_MOCK_PREMIUM is ignored in production.");
+      console.warn("[entitlements] mock premium env is ignored in production.");
     }
     console.warn("[entitlements] subscription lookup unavailable; defaulting to free access.");
     return null;

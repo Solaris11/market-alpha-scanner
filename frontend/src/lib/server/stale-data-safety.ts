@@ -5,7 +5,7 @@ import { buildScanSafetyState, DEFAULT_MAX_SCAN_AGE_MINUTES, type ScanSafetyStat
 import type { DataFreshness } from "@/lib/data-health";
 
 export function configuredMaxScanAgeMinutes(): number {
-  const parsed = Number(process.env.MARKET_ALPHA_MAX_SCAN_AGE_MINUTES ?? DEFAULT_MAX_SCAN_AGE_MINUTES);
+  const parsed = Number(process.env.TRADEVETO_MAX_SCAN_AGE_MINUTES ?? process.env.MARKET_ALPHA_MAX_SCAN_AGE_MINUTES ?? DEFAULT_MAX_SCAN_AGE_MINUTES);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_MAX_SCAN_AGE_MINUTES;
 }
 

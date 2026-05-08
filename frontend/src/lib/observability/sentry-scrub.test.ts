@@ -16,9 +16,9 @@ test("Sentry scrubber removes sensitive headers and token-like values", () => {
       headers: {
         Authorization: "Bearer secret-token",
         "Stripe-Signature": "t=123,v1=secret",
-        "X-Market-Alpha-Monitoring-Token": "monitoring-secret",
+        "X-TradeVeto-Monitoring-Token": "monitoring-secret",
       },
-      url: "https://app.marketalpha.co/api/health?token=secret",
+      url: "https://tradeveto.com/api/health?token=secret",
     },
   } as unknown as Event;
 

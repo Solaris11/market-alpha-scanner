@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 
-const DEV_SESSION_SECRET = "market-alpha-development-session-secret-change-in-production";
+const DEV_SESSION_SECRET = "tradeveto-development-session-secret-change-in-production";
 
 export function hashSessionToken(token: string, secret = sessionHashSecret()): string {
   const cleaned = token.trim();
@@ -10,6 +10,7 @@ export function hashSessionToken(token: string, secret = sessionHashSecret()): s
 
 export function sessionHashSecret(env: NodeJS.ProcessEnv = process.env): string {
   const secret = [
+    env.TRADEVETO_SESSION_SECRET,
     env.MARKET_ALPHA_SESSION_SECRET,
     env.AUTH_SECRET,
     env.NEXTAUTH_SECRET,

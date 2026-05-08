@@ -2,7 +2,7 @@ import "server-only";
 
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
-import { CANONICAL_DOMAIN, CANONICAL_WWW_DOMAIN, LEGACY_APEX_DOMAIN, LEGACY_APP_DOMAIN, LEGACY_WWW_DOMAIN } from "@/lib/brand";
+import { CANONICAL_DOMAIN, CANONICAL_WWW_DOMAIN } from "@/lib/brand";
 import { getUserForSessionToken, SESSION_COOKIE_NAME, sessionCookieOptions } from "./auth";
 import { rateLimit, rateLimitExceededResponse } from "./rate-limit";
 
@@ -12,10 +12,15 @@ export const CSRF_HEADER_NAME = "x-csrf-token";
 const CSRF_TTL_MS = 1000 * 60 * 60 * 8;
 const DEFAULT_PUBLIC_APP_URL = `https://${CANONICAL_DOMAIN}`;
 const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "::1"]);
-const MIGRATION_ALLOWED_HOSTS = new Set([CANONICAL_DOMAIN, CANONICAL_WWW_DOMAIN, LEGACY_APEX_DOMAIN, LEGACY_WWW_DOMAIN, LEGACY_APP_DOMAIN]);
+const ALLOWED_PUBLIC_HOSTS = new Set([CANONICAL_DOMAIN, CANONICAL_WWW_DOMAIN]);
 
 export function canonicalAppUrl(): URL {
-  const raw = process.env.APP_URL?.trim() || process.env.PUBLIC_APP_URL?.trim() || (process.env.NODE_ENV === "production" ? DEFAULT_PUBLIC_APP_URL : "http://localhost:3001");
+  const raw =
+    process.env.TRADEVETO_APP_URL?.trim() ||
+    process.env.TRADEVETO_PUBLIC_APP_URL?.trim() ||
+    process.env.APP_URL?.trim() ||
+    process.env.PUBLIC_APP_URL?.trim() ||
+    (process.env.NODE_ENV === "production" ? DEFAULT_PUBLIC_APP_URL : "http://localhost:3001");
   try {
     return new URL(raw);
   } catch {
@@ -180,7 +185,7 @@ function isAllowedHost(value: string): boolean {
   const host = normalizeHost(value);
   if (!host) return false;
   if (LOCAL_HOSTS.has(host)) return true;
-  if (MIGRATION_ALLOWED_HOSTS.has(host)) return true;
+  if (ALLOWED_PUBLIC_HOSTS.has(host)) return true;
   return host === canonicalAppUrl().hostname.toLowerCase();
 }
 
