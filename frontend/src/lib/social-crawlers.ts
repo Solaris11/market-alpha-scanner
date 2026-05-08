@@ -1,7 +1,7 @@
 const SOCIAL_CRAWLER_USER_AGENT =
   /\b(facebookexternalhit|facebot|meta-externalagent|meta-externalfetcher|twitterbot|linkedinbot|slackbot|discordbot)\b/i;
 
-const PUBLIC_SOCIAL_PREVIEW_PATHS = new Set(["/", "/pricing", "/features", "/how-it-works", "/faq", "/og-image.png", "/og-image.svg"]);
+const PUBLIC_SOCIAL_PREVIEW_PATHS = new Set(["/", "/pricing", "/features", "/how-it-works", "/faq", "/robots.txt", "/og-image.png", "/og-image.svg"]);
 const STATIC_SOCIAL_PREVIEW_PATHS = new Set(["/", "/pricing", "/features", "/how-it-works", "/faq"]);
 
 export function isSocialCrawlerUserAgent(userAgent: string | null | undefined): boolean {

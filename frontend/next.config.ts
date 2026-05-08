@@ -73,6 +73,16 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       {
+        source: "/robots.txt",
+        headers: [
+          ...securityHeaders,
+          {
+            key: "Cache-Control",
+            value: "public, max-age=60, must-revalidate",
+          },
+        ],
+      },
+      {
         source: "/:path*",
         headers: securityHeaders,
       },

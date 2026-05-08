@@ -26,7 +26,7 @@ describe("social crawler allowlist", () => {
   });
 
   it("limits crawler pass-through to public preview-safe paths", () => {
-    for (const pathname of ["/", "/pricing", "/features", "/how-it-works", "/faq", "/og-image.png", "/pricing/"]) {
+    for (const pathname of ["/", "/pricing", "/features", "/how-it-works", "/faq", "/robots.txt", "/og-image.png", "/pricing/"]) {
       assert.equal(isPublicSocialPreviewPath(pathname), true, pathname);
     }
 
