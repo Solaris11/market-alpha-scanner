@@ -46,6 +46,22 @@ export function PublicSignalPreviewList({
         <TrustCard title="Why WAIT matters" detail="The system is designed to preserve discipline when conditions are incomplete or risk is elevated." />
         <TrustCard title="Beta expectation" detail="Historical evidence is still growing; TradeVeto is research software, not financial advice." />
       </div>
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-xl border border-white/10 bg-white/[0.035] p-4">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Premium unlock path</div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-3">
+            <StepCard index="01" title="Verify" detail="Confirm account, legal acknowledgement, and email status." />
+            <StepCard index="02" title="Review" detail="See final decisions, vetoes, readiness, and context levels." />
+            <StepCard index="03" title="Track" detail="Use watchlists, alerts, history, and paper simulation for follow-through." />
+          </div>
+        </div>
+        <div className="rounded-xl border border-emerald-300/15 bg-emerald-400/[0.05] p-4">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-200">Trust guardrails</div>
+          <p className="mt-2 text-xs leading-5 text-slate-300">
+            Premium access adds context, not instructions. The UI keeps final_decision as the source of truth and preserves research-only language.
+          </p>
+        </div>
+      </div>
     </section>
   );
 }
@@ -75,6 +91,14 @@ export function PublicSymbolPreview({ accessState, authenticated = false, summar
         <TrustCard title="Research levels" detail="Charts use support, resistance, entry-zone, stop, and target context without saying where to trade." />
         <TrustCard title="Evidence first" detail="Confidence reflects setup strength and data quality; it is not a prediction." />
       </div>
+      <div className="mt-4 rounded-xl border border-white/10 bg-white/[0.035] p-4">
+        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">When unlocked</div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+          <StepCard index="01" title="Why" detail="Positive and negative decision factors are shown together." />
+          <StepCard index="02" title="Watch" detail="Vetoes map to conditions to monitor, without buy/sell direction." />
+          <StepCard index="03" title="Risk" detail="Volatility, ATR, and research levels remain visible for context." />
+        </div>
+      </div>
     </section>
   );
 }
@@ -93,6 +117,16 @@ function TrustCard({ detail, title }: { detail: string; title: string }) {
     <div className="rounded-xl border border-cyan-300/10 bg-cyan-400/[0.035] p-4">
       <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">{title}</div>
       <p className="mt-2 text-xs leading-5 text-slate-400">{detail}</p>
+    </div>
+  );
+}
+
+function StepCard({ detail, index, title }: { detail: string; index: string; title: string }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-slate-950/35 p-3">
+      <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">{index}</div>
+      <div className="mt-1 text-sm font-semibold text-slate-100">{title}</div>
+      <p className="mt-1 text-[11px] leading-4 text-slate-500">{detail}</p>
     </div>
   );
 }

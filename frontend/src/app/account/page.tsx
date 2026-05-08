@@ -109,6 +109,7 @@ export default async function AccountPage() {
                 {betaBillingCopy(betaBilling)} You can cancel through Stripe before renewal.
               </div>
               {billingSubscription ? <SubscriptionState subscription={billingSubscription} /> : null}
+              <BillingTrustChecklist allowPromotionCodes={betaBilling.allowPromotionCodes} trialDays={betaBilling.trialDays} />
               <p className="mt-3 text-xs leading-5 text-slate-500">Payments are securely processed by Stripe.</p>
             </div>
           </AccountSection>
@@ -258,6 +259,22 @@ function SubscriptionState({ subscription }: { subscription: BillingSubscription
     return <p className="mt-3 text-xs leading-5 text-slate-500">{state.helper}</p>;
   }
   return null;
+}
+
+function BillingTrustChecklist({ allowPromotionCodes, trialDays }: { allowPromotionCodes: boolean; trialDays: number | null }) {
+  const items = [
+    trialDays ? `${trialDays}-day trial is shown before checkout confirmation.` : "No beta trial is active unless Stripe shows one before confirmation.",
+    allowPromotionCodes ? "Promo-code field is available in Stripe checkout." : "No promo code is active unless Stripe displays one.",
+    "Renewal price, billing cadence, and cancellation options stay visible in Stripe.",
+  ];
+  return (
+    <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Billing transparency</div>
+      <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-400">
+        {items.map((item) => <li key={item}>- {item}</li>)}
+      </ul>
+    </div>
+  );
 }
 
 function AccountSection({ children, id, title }: { children: ReactNode; id?: string; title: string }) {

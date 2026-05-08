@@ -9,6 +9,12 @@ export const metadata: Metadata = marketingMetadata("/pricing", {
 
 const included = ["AI market terminal", "Daily Action", "Ranked research previews", "Risk engine", "Paper simulation", "Alerts", "Premium research view"];
 const betaNotes = ["Optional Stripe trial support", "Promo-code compatible checkout", "Cancel through Stripe anytime", "No broker execution or financial advice"];
+const billingTrust = [
+  ["Trial visibility", "If a beta trial is enabled, Stripe shows the trial end date before confirmation."],
+  ["Promo transparency", "Promo-code discounts are applied in Stripe checkout and reflected before payment."],
+  ["Renewal clarity", "The renewal amount and billing cadence are visible before the subscription starts."],
+  ["Cancellation control", "Users can cancel or manage billing in Stripe without contacting support."],
+] as const;
 
 export default function PricingPage() {
   return (
@@ -42,6 +48,14 @@ export default function PricingPage() {
               <PrimaryCta>Join Beta</PrimaryCta>
             </div>
           </MarketingCard>
+        </div>
+        <div className="mx-auto mt-6 grid max-w-5xl gap-3 md:grid-cols-4">
+          {billingTrust.map(([title, copy]) => (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4" key={title}>
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">{title}</div>
+              <p className="mt-2 text-xs leading-5 text-slate-400">{copy}</p>
+            </div>
+          ))}
         </div>
       </section>
     </MarketingShell>

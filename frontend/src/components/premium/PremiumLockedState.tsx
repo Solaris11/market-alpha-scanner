@@ -49,6 +49,13 @@ export function PremiumLockedState({ accessState, authenticated, className = "",
         <PreviewContext title="Why it is gated" detail="TradeVeto hides high-detail research until account, legal, and entitlement checks are complete." />
         <PreviewContext title="Research boundary" detail="The product helps structure market research and patience. It is not financial advice or broker execution." />
       </div>
+
+      <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-4">
+        <ConfidenceItem label="Access" value="Account verified" />
+        <ConfidenceItem label="Billing" value="Stripe managed" />
+        <ConfidenceItem label="Data" value="Coverage disclosed" />
+        <ConfidenceItem label="Support" value="Ticket history saved" />
+      </div>
     </section>
   );
 }
@@ -58,6 +65,15 @@ function PreviewContext({ detail, title }: { detail: string; title: string }) {
     <div className="rounded-xl border border-cyan-300/10 bg-cyan-400/[0.035] p-4">
       <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">{title}</div>
       <p className="mt-2 text-xs leading-5 text-slate-400">{detail}</p>
+    </div>
+  );
+}
+
+function ConfidenceItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
+      <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</div>
+      <div className="mt-1 text-sm font-semibold text-slate-200">{value}</div>
     </div>
   );
 }

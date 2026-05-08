@@ -52,7 +52,7 @@ export function BetaFeedbackWidget() {
   }
 
   return (
-    <div className="fixed bottom-20 right-3 z-[8200] sm:bottom-5">
+    <div className="fixed bottom-[5.75rem] right-3 z-[8200] sm:bottom-5">
       {open ? (
         <section className="w-[min(92vw,360px)] rounded-2xl border border-cyan-300/20 bg-slate-950/95 p-4 shadow-2xl shadow-black/50 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
@@ -89,7 +89,8 @@ export function BetaFeedbackWidget() {
         </section>
       ) : (
         <button
-          className="rounded-full border border-cyan-300/25 bg-slate-950/90 px-4 py-2 text-xs font-bold text-cyan-100 shadow-xl shadow-black/35 backdrop-blur-xl transition hover:border-cyan-200/60 hover:bg-cyan-400/10"
+          aria-label="Open beta feedback"
+          className="rounded-full border border-cyan-300/25 bg-slate-950/90 px-3 py-1.5 text-[11px] font-bold text-cyan-100 shadow-xl shadow-black/35 backdrop-blur-xl transition hover:border-cyan-200/60 hover:bg-cyan-400/10 sm:px-4 sm:py-2 sm:text-xs"
           onClick={() => setOpen(true)}
           type="button"
         >
