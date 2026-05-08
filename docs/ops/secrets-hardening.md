@@ -13,7 +13,7 @@ Do not paste raw `docker compose config` output. Compose expands env values and 
 Use the redacted wrapper:
 
 ```bash
-sudo /opt/ops/market-alpha-compose-config-redacted.sh
+sudo /opt/ops/tradeveto-compose-config-redacted.sh
 ```
 
 The wrapper redacts:
@@ -56,7 +56,7 @@ Recommended order:
 Rollback:
 
 1. Put the secret value back in `.env`.
-2. Rebuild `market-alpha-frontend`.
+2. Rebuild the TradeVeto frontend container.
 3. Verify `/api/health`, `/api/health/deep`, login, Stripe portal, and monitoring synthetics.
 
 ## Provider-Side Rotation Checklist

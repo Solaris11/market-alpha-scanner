@@ -27,8 +27,8 @@ Stripe reconciliation must run inside the Docker network because production Post
 Use:
 
 ```bash
-sudo /opt/ops/market-alpha-stripe-reconcile.sh --dry-run
-sudo /opt/ops/market-alpha-stripe-reconcile.sh
+sudo /opt/ops/tradeveto-stripe-reconcile.sh --dry-run
+sudo /opt/ops/tradeveto-stripe-reconcile.sh
 ```
 
 Do not use raw host `npm run stripe:reconcile` on production. It cannot resolve the private Postgres hostname and will fail outside the Docker network.
@@ -83,7 +83,7 @@ Do not run or paste raw `docker compose config` for production. It expands env v
 Use:
 
 ```bash
-sudo /opt/ops/market-alpha-compose-config-redacted.sh
+sudo /opt/ops/tradeveto-compose-config-redacted.sh
 ```
 
 See `docs/ops/secrets-hardening.md` for env archive handling, Docker secrets migration order, and provider-side rotation steps.
@@ -97,7 +97,7 @@ limits have caused partial offsite syncs.
 Run a verified post-deploy backup after migrations and major deploys:
 
 ```bash
-sudo /opt/ops/market-alpha-post-deploy-backup.sh
+sudo /opt/ops/tradeveto-post-deploy-backup.sh
 ```
 
 The health contract must remain honest:

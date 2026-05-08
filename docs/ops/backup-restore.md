@@ -18,7 +18,7 @@ sudo cat /etc/cron.d/market-alpha-backup
 The normal backup script is:
 
 ```bash
-sudo /opt/ops/market-alpha-backup.sh
+sudo /opt/ops/tradeveto-backup.sh
 ```
 
 It creates:
@@ -73,7 +73,7 @@ Run an immediate verified backup after:
 Command:
 
 ```bash
-sudo /opt/ops/market-alpha-post-deploy-backup.sh
+sudo /opt/ops/tradeveto-post-deploy-backup.sh
 ```
 
 The post-deploy wrapper runs the normal backup, verifies the latest Postgres gzip, verifies the latest scanner tarball, checks the off-host rclone target when configured, and records a `monitoring_events` row when the monitoring table is available. If offsite sync fails, it still verifies the local backup artifacts and then exits with a clear partial-backup failure.

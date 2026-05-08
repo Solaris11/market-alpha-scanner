@@ -235,8 +235,8 @@ https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getUpdates
 Run Stripe subscription reconciliation through the Docker-network wrapper so the script can reach the private Postgres service:
 
 ```bash
-sudo /opt/ops/market-alpha-stripe-reconcile.sh --dry-run
-sudo /opt/ops/market-alpha-stripe-reconcile.sh
+sudo /opt/ops/tradeveto-stripe-reconcile.sh --dry-run
+sudo /opt/ops/tradeveto-stripe-reconcile.sh
 ```
 
 Do not use raw host `npm run stripe:reconcile` on production; host DNS cannot resolve the private Docker service name.
