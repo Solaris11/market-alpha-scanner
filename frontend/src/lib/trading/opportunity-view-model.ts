@@ -3,6 +3,7 @@ import type { PerformanceData, RankingRow } from "@/lib/types";
 import { finiteNumber, firstNumber, formatMoney } from "@/lib/ui/formatters";
 import { humanizeLabel, readableText } from "@/lib/ui/labels";
 import { buildEdgeLookup, computeConviction, selectBestTradeNow } from "./conviction";
+import { buildConvictionFragilityModel, compactStructuralLabel } from "./conviction-fragility";
 
 export type OpportunityViewModel = {
   symbol: string;
@@ -22,8 +23,12 @@ export type OpportunityViewModel = {
   target: number | null;
   conviction: number;
   confidenceLabel: "High" | "Medium" | "Weak" | "Avoid";
+  decayLabel: string;
   dataFreshness: DataFreshness;
+  fragility: number;
+  fragilityLabel: string;
   raw: RankingRow;
+  structuralLabel: string;
 };
 
 export type OpportunitiesPageModel = {
@@ -43,6 +48,7 @@ export function buildOpportunitiesPageModel(rows: RankingRow[], performance: Per
 
 function toOpportunityViewModel(row: RankingRow, edge?: Parameters<typeof computeConviction>[1]): OpportunityViewModel {
   const conviction = computeConviction(row, edge);
+  const structural = buildConvictionFragilityModel(row);
   return {
     symbol: stringOrNull(row.symbol)?.toUpperCase() ?? "N/A",
     company_name: stringOrNull(row.company_name),
@@ -61,8 +67,12 @@ function toOpportunityViewModel(row: RankingRow, edge?: Parameters<typeof comput
     target: firstNumberOrNull(row.conservative_target ?? row.take_profit_zone ?? row.take_profit_high ?? row.target_price),
     conviction: conviction.score,
     confidenceLabel: conviction.label,
+    decayLabel: structural.decay.label,
     dataFreshness: freshnessFromTimestamp(stringOrNull(row.last_updated ?? row.last_updated_utc)),
+    fragility: structural.fragility.score,
+    fragilityLabel: structural.fragility.label,
     raw: row,
+    structuralLabel: compactStructuralLabel(structural),
   };
 }
 

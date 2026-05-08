@@ -6,6 +6,7 @@ import { useTradePlanEngine } from "@/hooks/useTradePlanEngine";
 import type { SignalHistoryPoint } from "@/lib/adapters/DataServiceAdapter";
 import type { DataFreshness } from "@/lib/data-health";
 import type { PaperPositionRow, PaperTradeEventRow } from "@/lib/paper-data";
+import { buildConvictionFragilityModel } from "@/lib/trading/conviction-fragility";
 import { dailyActionAllowsTrade, noTradeActionCopy, type DailyAction } from "@/lib/trading/daily-action";
 import type { ConvictionTimelineModel } from "@/lib/trading/conviction-timeline-types";
 import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
@@ -14,6 +15,7 @@ import type { RiskPortfolioPosition } from "@/lib/trading/risk-veto";
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
 import type { RankingRow, ScannerScalar } from "@/lib/types";
 import { AICopilotPanel } from "./AICopilotPanel";
+import { ConvictionFragilityCard } from "./ConvictionFragilityCard";
 import { ConvictionTimeline } from "./ConvictionTimeline";
 import { CorrectionMapCard } from "./CorrectionMapCard";
 import { ExecutionTicket } from "./ExecutionTicket";
@@ -61,6 +63,7 @@ export function SymbolTerminalWorkspace({
   const [showHistoricalMarkers, setShowHistoricalMarkers] = useState(false);
   const tradeLevels = useMemo(() => buildSignalTradeLevels(row), [row]);
   const lifecycle = useMemo(() => computeSignalLifecycle(row, tradeLevels), [row, tradeLevels]);
+  const structuralQuality = useMemo(() => buildConvictionFragilityModel(row, { history, marketMemory }), [history, marketMemory, row]);
   const symbol = row.symbol.toUpperCase();
   const riskPortfolio = useMemo(() => buildRiskPortfolio(paperPositions, row.sector, symbol), [paperPositions, row.sector, symbol]);
   const tradeEngine = useTradePlanEngine(row, riskPortfolio);
@@ -117,6 +120,7 @@ export function SymbolTerminalWorkspace({
             </GlassPanel>
           )}
           <SymbolDecisionIntelligencePanel candles={candles} row={row} />
+          <ConvictionFragilityCard model={structuralQuality} />
         </div>
         <aside className="space-y-5 xl:sticky xl:top-5 xl:self-start">
           <WhatIfSimulator canTrade={canTrade} engine={tradeEngine} researchModeReason={researchModeReason} />

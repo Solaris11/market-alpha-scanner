@@ -266,7 +266,7 @@ function TerminalMonitoringBrief({
 }: {
   rows: Array<{ [key: string]: unknown; final_decision?: unknown; symbol: string; decision_reason_codes?: unknown; decision_reason?: unknown; confidence_score?: unknown; final_score?: unknown; setup_type?: unknown }>;
   scanStatus: string;
-  topWatchRows: Array<{ confidenceLabel: string; conviction: number; final_decision: string | null; final_score: number | null; symbol: string }>;
+  topWatchRows: Array<{ confidenceLabel: string; conviction: number; final_decision: string | null; final_score: number | null; fragility: number; structuralLabel: string; symbol: string }>;
 }) {
   const watchRows = topWatchRows
     .filter((row) => ["WATCH", "WAIT_PULLBACK", "AVOID"].includes(String(row.final_decision ?? "").toUpperCase()))
@@ -285,7 +285,8 @@ function TerminalMonitoringBrief({
                 <div className="font-mono text-lg font-black text-slate-50">{row.symbol}</div>
                 <div className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold text-slate-300">{decisionLabel(row.final_decision)}</div>
               </div>
-              <div className="mt-2 text-xs text-slate-400">Score {formatPercentLike(row.final_score)} · readiness {row.conviction} {row.confidenceLabel}</div>
+              <div className="mt-2 text-xs text-slate-400">Score {formatPercentLike(row.final_score)} · readiness {row.conviction} · fragility {row.fragility}</div>
+              <div className="mt-1 text-[11px] font-semibold text-cyan-200">{row.structuralLabel}</div>
             </Link>
           )) : (
             <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm text-slate-400">No watch candidates in the latest scan. Scanner remains in research context.</div>
@@ -385,7 +386,7 @@ function IntelligenceTile({ detail, title, value }: { detail: string; title: str
 
 function buildTerminalPulse(
   rows: Array<{ [key: string]: unknown; final_decision?: unknown; symbol: string; confidence_score?: unknown; final_score?: unknown; setup_type?: unknown }>,
-  topWatchRows: Array<{ confidenceLabel: string; conviction: number; final_decision: string | null; final_score: number | null; symbol: string }>,
+  topWatchRows: Array<{ confidenceLabel: string; conviction: number; final_decision: string | null; final_score: number | null; fragility: number; structuralLabel: string; symbol: string }>,
 ) {
   const decisionDistribution = buildDecisionDistribution(rows);
   const avoid = decisionDistribution.find((item) => item.label === "Avoid")?.value ?? 0;
@@ -397,6 +398,7 @@ function buildTerminalPulse(
   const confidenceValues = rows.map((row) => numeric(row.confidence_score ?? row.final_score)).filter((value): value is number => value !== null);
   const averageConfidence = confidenceValues.length ? Math.round(confidenceValues.reduce((total, value) => total + value, 0) / confidenceValues.length) : null;
   const highConfidence = topWatchRows.filter((row) => row.conviction >= 70).length;
+  const fragileSetups = topWatchRows.filter((row) => row.fragility >= 70).length;
   const strongestSetup = topSetupLabel(rows);
   const movementRows = buildMovementRows(rows, topWatchRows);
   const narrative = avoid > rows.length * 0.45
@@ -417,7 +419,7 @@ function buildTerminalPulse(
     movementRows,
     narrative,
     quality: averageConfidence === null ? "Confidence N/A" : `${averageConfidence} avg confidence`,
-    qualityDetail: `${highConfidence} high-readiness candidates are visible in the current research queue.`,
+    qualityDetail: `${highConfidence} high-readiness candidates and ${fragileSetups} elevated-fragility setups are visible in the current research queue.`,
     scannerDetail: `${fallbackCount} provider fallbacks, ${staleCount} stale rows, ${vetoCount} vetoed rows.`,
     scannerPulse: `${fallbackCount} fallback · ${vetoCount} vetoes`,
   };
@@ -442,7 +444,7 @@ function biggestSignalChanges(rows: Array<{ [key: string]: unknown; symbol: stri
 
 function buildMovementRows(
   rows: Array<{ [key: string]: unknown; symbol: string; final_decision?: unknown; confidence_score?: unknown; final_score?: unknown }>,
-  topWatchRows: Array<{ confidenceLabel: string; conviction: number; final_decision: string | null; final_score: number | null; symbol: string }>,
+  topWatchRows: Array<{ confidenceLabel: string; conviction: number; final_decision: string | null; final_score: number | null; fragility: number; structuralLabel: string; symbol: string }>,
 ): Array<{ detail: string; symbol: string }> {
   const changed = rows
     .map((row) => ({ change: numeric(row.score_change ?? row.readiness_change ?? row.confidence_change), row }))
@@ -455,7 +457,7 @@ function buildMovementRows(
     }));
   if (changed.length) return changed;
   return topWatchRows.slice(0, 3).map((row) => ({
-    detail: `${decisionLabel(row.final_decision)} · ${row.conviction} readiness`,
+    detail: `${row.structuralLabel} · ${row.conviction} readiness`,
     symbol: row.symbol,
   }));
 }

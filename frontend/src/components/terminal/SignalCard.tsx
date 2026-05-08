@@ -3,6 +3,7 @@ import { DataHealthIndicator } from "@/components/data-health-indicator";
 import { freshnessFromTimestamp } from "@/lib/data-health";
 import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
 import { computeConviction } from "@/lib/trading/conviction";
+import { buildConvictionFragilityModel, compactStructuralLabel } from "@/lib/trading/conviction-fragility";
 import type { RankingRow } from "@/lib/types";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { readableText } from "@/lib/ui/labels";
@@ -22,6 +23,7 @@ export function SignalCard({ edge, row }: { edge?: HistoricalEdgeProof; row: Ran
   const score = boundedScore(row.final_score);
   const reward = typeof row.risk_reward === "number" && Number.isFinite(row.risk_reward) ? Math.max(0, Math.min(100, row.risk_reward * 22)) : score;
   const conviction = computeConviction(row, edge);
+  const structural = buildConvictionFragilityModel(row);
   const dataFreshness = freshnessFromTimestamp(typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null);
 
   return (
@@ -48,6 +50,16 @@ export function SignalCard({ edge, row }: { edge?: HistoricalEdgeProof; row: Ran
         <div>
           <div className="text-slate-500">Conviction</div>
           <div className="mt-1 font-mono text-slate-100">{conviction.score}</div>
+        </div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+        <div className="rounded-xl border border-white/10 bg-slate-950/35 p-2">
+          <div className="text-slate-500">Structure</div>
+          <div className="mt-1 text-[11px] font-semibold text-cyan-100">{compactStructuralLabel(structural)}</div>
+        </div>
+        <div className="rounded-xl border border-white/10 bg-slate-950/35 p-2">
+          <div className="text-slate-500">Fragility</div>
+          <div className="mt-1 font-mono text-[11px] font-semibold text-slate-100">{structural.fragility.score}</div>
         </div>
       </div>
       <div className="mt-4 space-y-2">

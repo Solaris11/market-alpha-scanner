@@ -351,13 +351,16 @@ function BestTradeNowOpportunityCard({
           </div>
           <div className="mt-2 max-w-2xl text-base text-slate-400">{cleanText(best.company_name || best.sector, "Scanner signal")}</div>
           <p className="mt-5 max-w-3xl text-lg leading-7 text-slate-100">{readableText(best.decision_reason, "Decision reason is not available yet.")}</p>
-          <p className="mt-3 text-sm font-semibold text-cyan-200">This is the highest-conviction research setup in the current market.</p>
+          <p className="mt-3 text-sm font-semibold text-cyan-200">{best.structuralLabel}. This is a research setup, not a trade instruction.</p>
           <div className="mt-5 flex min-w-0 flex-wrap gap-3">
             <div className="font-mono text-sm font-bold text-cyan-100">
               Tap or click {best.symbol} for symbol detail
             </div>
             <div className="min-w-0 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-slate-300">
               Conviction <span className="font-mono font-semibold text-slate-50">{best.conviction}</span>/100
+            </div>
+            <div className="min-w-0 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-slate-300">
+              Fragility <span className="font-mono font-semibold text-slate-50">{best.fragility}</span>/100
             </div>
           </div>
           <HighestScoredSetups rows={highestScored} />
@@ -446,7 +449,7 @@ function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewMod
           <HeroMetric label="ATR" value={formatNumber(row.atr)} />
           <HeroMetric label="Stop distance" value={stopDistance(best)} tone="risk" />
           <HeroMetric label="Volatility" value={percentLike(row.volatility ?? row.volatility_pct)} />
-          <HeroMetric label="Risk state" value={cleanText(row.trade_quality ?? row.risk_reward_label, "Context only")} />
+          <HeroMetric label="Fragility" value={`${best.fragility} / ${best.fragilityLabel}`} tone={best.fragility >= 70 ? "risk" : "neutral"} />
         </div>
       </details>
     </aside>
@@ -573,6 +576,8 @@ function HighestScoredSetupCard({ row }: { row: OpportunityViewModel }) {
       <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
         <MiniCardMetric label="Score" value={formatNumber(row.final_score, 0)} />
         <MiniCardMetric label="Ready" value={`${row.conviction}`} />
+        <MiniCardMetric label="Fragility" value={`${row.fragility}`} />
+        <MiniCardMetric label="Structure" value={row.structuralLabel} />
       </div>
       <div className={`mt-2 text-[10px] font-black uppercase tracking-[0.1em] ${tone.textClass}`}>{tone.label}</div>
       <div className="mt-2 line-clamp-2 text-[11px] leading-4 text-slate-400">{firstReason(row)}</div>
@@ -624,9 +629,11 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
         <CardMetric label="Price" value={formatMoney(row.price)} />
         <CardMetric label="Decision" value={decisionLabel(row.final_decision)} />
         <CardMetric label="Conviction" value={`${row.conviction} ${row.confidenceLabel}`} />
+        <CardMetric label="Fragility" value={`${row.fragility} ${row.fragilityLabel}`} />
         <CardMetric label="Score" value={formatNumber(row.final_score, 0)} />
         <CardMetric label="Entry / Correction" value={row.entryZoneLabel ?? formatMoney(row.suggested_entry)} />
-        <CardMetric label="Quality" value={humanizeLabel(row.recommendationQualityLabel)} />
+        <CardMetric label="Structure" value={row.structuralLabel} />
+        <CardMetric label="Decay" value={row.decayLabel} />
       </div>
       <div className="mt-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="min-w-0 text-xs text-slate-500">{cleanText(row.assetType, "Asset")} {row.sector ? `- ${row.sector}` : ""}</div>
