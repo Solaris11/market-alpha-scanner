@@ -1,5 +1,6 @@
 import type { SignalHistoryPoint } from "@/lib/adapters/DataServiceAdapter";
 import { buildDecisionFactors, buildDecisionIntelligence, reasonCodes } from "@/lib/trading/decision-intelligence";
+import type { MacroExchangeContext } from "@/lib/trading/macro-regime";
 import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 import type { RankingRow } from "@/lib/types";
 import { cleanText, finiteNumber } from "@/lib/ui/formatters";
@@ -69,6 +70,7 @@ export type ConvictionFragilityModel = {
 
 export type ConvictionFragilityInput = {
   history?: SignalHistoryPoint[];
+  macroContext?: MacroExchangeContext;
   marketMemory?: MarketMemorySummary;
 };
 
@@ -98,10 +100,10 @@ export function buildConvictionFragilityModel(row: RankingRow, input: Conviction
   const drift = confidenceDrift(input.history ?? [], row);
   const historicalFragility = historicalContext(input.marketMemory);
   const invalidation = invalidationAssessment(row, factors, codes);
-  const pressure = pressureContributions(row, factors, input.marketMemory);
+  const pressure = pressureContributions(row, factors, input.marketMemory, input.macroContext);
   const netPressureScore = Math.round(average(pressure.map((item) => item.score), 50));
   const convictionScore = convictionScoreFor({ factors, historicalFragility, intelligence, drift, netPressureScore, row, codes });
-  const fragilityScore = fragilityScoreFor({ factors, historicalFragility, invalidation, intelligence, drift, row, codes });
+  const fragilityScore = fragilityScoreFor({ factors, historicalFragility, invalidation, intelligence, drift, row, codes, macroContext: input.macroContext });
   const decay = setupDecay(row, input.history ?? [], drift, codes, fragilityScore);
   const conviction = convictionLabel(convictionScore);
   const fragility = fragilityLabel(fragilityScore);
@@ -172,6 +174,7 @@ function fragilityScoreFor({
   historicalFragility,
   invalidation,
   intelligence,
+  macroContext,
   row,
 }: {
   codes: string[];
@@ -180,23 +183,26 @@ function fragilityScoreFor({
   historicalFragility: HistoricalFragilityContext;
   invalidation: InvalidationAssessment;
   intelligence: ReturnType<typeof buildDecisionIntelligence>;
+  macroContext?: MacroExchangeContext;
   row: RankingRow;
 }): number {
   const riskPressure = 100 - (factors.risk ?? 50);
-  const macroPressure = 100 - (factors.macro ?? 50);
+  const macroFactorPressure = 100 - (factors.macro ?? 50);
   const dataPressure = 100 - (factors.data_quality ?? 60);
   const volatilityPressure = volatilityRisk(row, factors);
   const vetoPressure = Math.min(34, codes.filter((code) => HIGH_RISK_CODES.has(code)).length * 8);
   const driftPressure = drift.direction === "weakening" ? 16 : drift.direction === "rising" ? -8 : 0;
   const setupPressure = intelligence.setup_type === "AVOID" ? 16 : intelligence.setup_strength < 45 ? 10 : 0;
   const memoryPressure = historicalFragility.riskScore * 0.55;
+  const macroContextPressure = macroContext ? macroContext.macroPressureScore * 0.10 + macroContext.volatilityPressure * 0.08 + macroContext.liquidityPressure * 0.07 : 0;
   const raw =
     riskPressure * 0.20 +
     volatilityPressure * 0.17 +
-    macroPressure * 0.14 +
+    macroFactorPressure * 0.14 +
     dataPressure * 0.10 +
     invalidation.riskScore * 0.18 +
     memoryPressure * 0.11 +
+    macroContextPressure +
     vetoPressure +
     driftPressure +
     setupPressure;
@@ -308,7 +314,17 @@ function invalidationAssessment(row: RankingRow, factors: FactorMap, codes: stri
   };
 }
 
-function pressureContributions(row: RankingRow, factors: FactorMap, memory?: MarketMemorySummary): PressureContribution[] {
+function pressureContributions(row: RankingRow, factors: FactorMap, memory?: MarketMemorySummary, macroContext?: MacroExchangeContext): PressureContribution[] {
+  if (macroContext) {
+    return [
+      contribution("macro", "Macro Alignment", macroContext.macroAlignmentScore, macroContext.regimeExplanation),
+      contribution("exchange", "Exchange Health", macroContext.exchangeHealthScore, `${macroContext.exchangeContextLabel}.`),
+      contribution("sector", "Sector / Theme", macroContext.sectorAlignmentScore, macroContext.themeContext),
+      contribution("liquidity", "Liquidity", 100 - macroContext.liquidityPressure, "Liquidity pressure lowers this contribution when the backdrop is tightening."),
+      contribution("volatility", "Volatility", 100 - macroContext.volatilityPressure, "Volatility pressure lowers this contribution when ranges are expanding."),
+      contribution("memory", "Market Memory", memoryContribution(memory), "Historical analogs contribute only probabilistic context, not certainty."),
+    ];
+  }
   return [
     contribution("macro", "Macro Pressure", factors.macro ?? 50, "Macro alignment is derived from scanner regime and macro factor context."),
     contribution("sector", "Sector Momentum", sectorScore(row, factors), "Sector context uses available scanner sector and setup strength data."),

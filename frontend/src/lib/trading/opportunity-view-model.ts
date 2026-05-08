@@ -4,6 +4,7 @@ import { finiteNumber, firstNumber, formatMoney } from "@/lib/ui/formatters";
 import { humanizeLabel, readableText } from "@/lib/ui/labels";
 import { buildEdgeLookup, computeConviction, selectBestTradeNow } from "./conviction";
 import { buildConvictionFragilityModel, compactStructuralLabel } from "./conviction-fragility";
+import { createMacroContextResolver, macroAlignmentLabel, type MacroExchangeContext } from "./macro-regime";
 
 export type OpportunityViewModel = {
   symbol: string;
@@ -27,6 +28,8 @@ export type OpportunityViewModel = {
   dataFreshness: DataFreshness;
   fragility: number;
   fragilityLabel: string;
+  macroAdjustment: number | null;
+  macroLabel: string;
   raw: RankingRow;
   structuralLabel: string;
 };
@@ -38,17 +41,18 @@ export type OpportunitiesPageModel = {
 
 export function buildOpportunitiesPageModel(rows: RankingRow[], performance: PerformanceData | null): OpportunitiesPageModel {
   const edges = buildEdgeLookup(rows, performance);
-  const viewModels = rows.map((row) => toOpportunityViewModel(row, edges[row.symbol.toUpperCase()]));
+  const macroResolver = createMacroContextResolver(rows);
+  const viewModels = rows.map((row) => toOpportunityViewModel(row, edges[row.symbol.toUpperCase()], macroResolver.forRow(row)));
   const bestRaw = selectBestTradeNow(rows, edges);
   return {
-    best: bestRaw ? toOpportunityViewModel(bestRaw.row, edges[bestRaw.row.symbol.toUpperCase()]) : null,
+    best: bestRaw ? toOpportunityViewModel(bestRaw.row, edges[bestRaw.row.symbol.toUpperCase()], macroResolver.forRow(bestRaw.row)) : null,
     rows: viewModels,
   };
 }
 
-function toOpportunityViewModel(row: RankingRow, edge?: Parameters<typeof computeConviction>[1]): OpportunityViewModel {
+function toOpportunityViewModel(row: RankingRow, edge?: Parameters<typeof computeConviction>[1], macroContext?: MacroExchangeContext): OpportunityViewModel {
   const conviction = computeConviction(row, edge);
-  const structural = buildConvictionFragilityModel(row);
+  const structural = buildConvictionFragilityModel(row, { macroContext });
   return {
     symbol: stringOrNull(row.symbol)?.toUpperCase() ?? "N/A",
     company_name: stringOrNull(row.company_name),
@@ -71,6 +75,8 @@ function toOpportunityViewModel(row: RankingRow, edge?: Parameters<typeof comput
     dataFreshness: freshnessFromTimestamp(stringOrNull(row.last_updated ?? row.last_updated_utc)),
     fragility: structural.fragility.score,
     fragilityLabel: structural.fragility.label,
+    macroAdjustment: numberOrNull(row.macro_context_adjustment_total ?? row.regime_adjustment),
+    macroLabel: macroContext ? macroAlignmentLabel(macroContext) : "Macro Mixed",
     raw: row,
     structuralLabel: compactStructuralLabel(structural),
   };

@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from .data_fetch import batch_download
+from .macro_context import build_macro_market_context, contextual_adjustment_for_row
 from .safety import utc_now
 from .utils import safe_float
 
@@ -337,22 +338,84 @@ def apply_regime_adjustments(df: pd.DataFrame, regime_payload: dict[str, Any] | 
         return df
     working = df.copy()
     policy = regime_policy(regime_payload)
-    adjustments = working.apply(lambda row: regime_adjustment_for_row(row, regime_payload), axis=1)
+    market_context = build_macro_market_context(working)
+    rows = _records_from_dataframe(working)
+    evaluations = [contextual_adjustment_for_row(row, market_context, policy["regime"]) for row in rows]
+    adjustments = pd.Series([item["macro_context_adjustment_total"] for item in evaluations], index=working.index)
     base_scores = pd.to_numeric(working["final_score"], errors="coerce")
     adjusted_scores = (base_scores + adjustments).clip(lower=0, upper=100).round(2)
     working["market_regime_raw"] = policy["raw_regime"]
     working["market_regime"] = policy["regime"]
     working["regime_adjustment"] = adjustments.round(2)
+    working["base_score"] = base_scores.round(2)
     working["final_score_base"] = base_scores.round(2)
     working["final_score_adjusted"] = adjusted_scores
+    working["macro_adjusted_score"] = adjusted_scores
     working["final_score"] = adjusted_scores
     working["rating"] = adjusted_scores.apply(_rating_from_score)
-    working["regime_adjustment_applied"] = policy["regime"] != "NEUTRAL"
+    working["regime_adjustment_applied"] = adjustments.round(2) != 0.0
+    working["macro_context_adjustment_applied"] = adjustments.round(2) != 0.0
     working["adjusted_weights"] = pd.Series([policy["adjusted_weights"] for _ in range(len(working))], index=working.index, dtype="object")
     working["adjusted_thresholds"] = pd.Series([policy["adjusted_thresholds"] for _ in range(len(working))], index=working.index, dtype="object")
-    working["regime_reason_codes"] = pd.Series([_regime_reason_codes_for_row(row, policy) for _, row in working.iterrows()], index=working.index, dtype="object")
+    for key in (
+        "exchange_context_adjustment",
+        "exchange_health_score",
+        "liquidity_pressure",
+        "liquidity_pressure_adjustment",
+        "macro_alignment_adjustment",
+        "macro_alignment_score",
+        "macro_conflict_penalty",
+        "macro_context_adjustment_total",
+        "macro_pressure_score",
+        "risk_on_score",
+        "sector_alignment_adjustment",
+        "sector_alignment_score",
+        "volatility_pressure",
+        "volatility_pressure_adjustment",
+    ):
+        working[key] = pd.Series([item[key] for item in evaluations], index=working.index)
+    for key in (
+        "exchange_context_label",
+        "macro_context_label",
+        "macro_context_reason_codes",
+        "macro_context_summary",
+        "sector_context_label",
+    ):
+        working[key] = pd.Series([item[key] for item in evaluations], index=working.index, dtype="object")
+    working["macro_proxy_coverage_used"] = pd.Series([market_context["proxy_coverage_used"] for _ in range(len(working))], index=working.index, dtype="object")
+    working["macro_proxy_coverage_missing"] = pd.Series([market_context["proxy_coverage_missing"] for _ in range(len(working))], index=working.index, dtype="object")
+    if "factor_scores" in working.columns:
+        working["factor_scores"] = pd.Series(
+            [_factor_scores_with_macro(row.get("factor_scores"), evaluations[position]["macro_alignment_score"]) for position, row in enumerate(rows)],
+            index=working.index,
+            dtype="object",
+        )
+    policy_codes = [_regime_reason_codes_for_row(row, policy) for _, row in working.iterrows()]
+    working["regime_reason_codes"] = pd.Series(
+        [_unique_codes(policy_codes[position] + evaluations[position]["macro_context_reason_codes"]) for position in range(len(evaluations))],
+        index=working.index,
+        dtype="object",
+    )
     working["regime_impact"] = policy["impact_text"]
     return working
+
+
+def _records_from_dataframe(df: pd.DataFrame) -> list[dict[str, object]]:
+    records: list[dict[str, object]] = []
+    for row in df.to_dict(orient="records"):
+        records.append({str(key): value for key, value in row.items()})
+    return records
+
+
+def _factor_scores_with_macro(value: object, macro_alignment_score: object) -> object:
+    if not isinstance(value, dict):
+        return value
+    parsed_macro = safe_float(macro_alignment_score, np.nan)
+    if np.isnan(parsed_macro):
+        return value
+    updated = {str(key): item for key, item in value.items()}
+    updated["macro"] = round(_clamp(parsed_macro, 0.0, 100.0), 2)
+    return updated
 
 
 def _regime_reason_codes_for_row(row: pd.Series, policy: RegimePolicy) -> list[str]:

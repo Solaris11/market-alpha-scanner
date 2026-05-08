@@ -230,7 +230,7 @@ def _factor_scores(row: Mapping[str, object]) -> dict[str, float]:
             "breakout": _score_from_mapping(structured, "breakout", row.get("breakout_score")),
             "volume": _score_from_mapping(structured, "volume", row.get("relative_volume_score")),
             "risk": _score_from_mapping(structured, "risk", None),
-            "macro": _score_from_mapping(structured, "macro", row.get("macro_score")),
+            "macro": _score_from_mapping(structured, "macro", _first_present(row, ("macro_alignment_score", "macro_score"))),
             "data_quality": _score_from_mapping(structured, "data_quality", row.get("data_quality_score")),
         }
     risk_penalty = safe_float(row.get("risk_penalty"), 0.0)
@@ -240,7 +240,7 @@ def _factor_scores(row: Mapping[str, object]) -> dict[str, float]:
         "breakout": _bounded(row.get("breakout_score")),
         "volume": _bounded(row.get("relative_volume_score")),
         "risk": _bounded(100.0 - risk_penalty * 3.0),
-        "macro": _bounded(row.get("macro_score")),
+        "macro": _bounded(_first_present(row, ("macro_alignment_score", "macro_score"))),
         "data_quality": _bounded(row.get("data_quality_score"), default=100.0),
     }
 
@@ -256,6 +256,15 @@ def _bounded(value: object, fallback: object = None, *, default: float = 50.0) -
     if np.isnan(numeric):
         numeric = default
     return round(clamp_score(numeric), 2)
+
+
+def _first_present(row: Mapping[str, object], keys: tuple[str, ...]) -> object:
+    for key in keys:
+        value = row.get(key)
+        numeric = safe_float(value, np.nan)
+        if not np.isnan(numeric):
+            return value
+    return None
 
 
 def _near_pullback_context(detail_key: str, avwap_score: float) -> bool:

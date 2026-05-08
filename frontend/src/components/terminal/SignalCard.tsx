@@ -21,6 +21,8 @@ function riskRewardLabel(row: RankingRow) {
 
 export function SignalCard({ edge, row }: { edge?: HistoricalEdgeProof; row: RankingRow }) {
   const score = boundedScore(row.final_score);
+  const baseScore = numericField(row, "base_score") ?? numericField(row, "final_score_base") ?? row.technical_score ?? null;
+  const macroAdjustment = numericField(row, "macro_context_adjustment_total") ?? row.regime_adjustment ?? null;
   const reward = typeof row.risk_reward === "number" && Number.isFinite(row.risk_reward) ? Math.max(0, Math.min(100, row.risk_reward * 22)) : score;
   const conviction = computeConviction(row, edge);
   const structural = buildConvictionFragilityModel(row);
@@ -38,10 +40,14 @@ export function SignalCard({ edge, row }: { edge?: HistoricalEdgeProof; row: Ran
       <div className="mt-3">
         <DataHealthIndicator compact freshness={dataFreshness} />
       </div>
-      <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-4">
         <div>
-          <div className="text-slate-500">Score</div>
+          <div className="text-slate-500">Context Score</div>
           <div className="mt-1 font-mono text-slate-100">{formatNumber(row.final_score)}</div>
+        </div>
+        <div>
+          <div className="text-slate-500">Base</div>
+          <div className="mt-1 font-mono text-slate-100">{formatNumber(baseScore)}</div>
         </div>
         <div>
           <div className="text-slate-500">Price</div>
@@ -52,6 +58,7 @@ export function SignalCard({ edge, row }: { edge?: HistoricalEdgeProof; row: Ran
           <div className="mt-1 font-mono text-slate-100">{conviction.score}</div>
         </div>
       </div>
+      <div className="mt-2 text-[11px] font-semibold text-cyan-200">Macro context {signedAdjustment(macroAdjustment)}</div>
       <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
         <div className="rounded-xl border border-white/10 bg-slate-950/35 p-2">
           <div className="text-slate-500">Structure</div>
@@ -76,4 +83,14 @@ export function SignalCard({ edge, row }: { edge?: HistoricalEdgeProof; row: Ran
       <div className="mt-4 text-xs text-slate-400">{readableText(row.decision_reason ?? row.quality_reason ?? row.setup_type, "No decision reason available.")}</div>
     </Link>
   );
+}
+
+function numericField(row: RankingRow, key: string): number | null {
+  const value = (row as unknown as Record<string, unknown>)[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function signedAdjustment(value: number | null): string {
+  if (value === null) return "N/A";
+  return `${value >= 0 ? "+" : ""}${formatNumber(value, 1)}`;
 }

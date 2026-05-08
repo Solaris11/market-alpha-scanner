@@ -10,6 +10,7 @@ import { buildConvictionFragilityModel } from "@/lib/trading/conviction-fragilit
 import { dailyActionAllowsTrade, noTradeActionCopy, type DailyAction } from "@/lib/trading/daily-action";
 import type { ConvictionTimelineModel } from "@/lib/trading/conviction-timeline-types";
 import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
+import type { MacroExchangeContext } from "@/lib/trading/macro-regime";
 import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 import type { RiskPortfolioPosition } from "@/lib/trading/risk-veto";
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
@@ -20,6 +21,7 @@ import { ConvictionTimeline } from "./ConvictionTimeline";
 import { CorrectionMapCard } from "./CorrectionMapCard";
 import { ExecutionTicket } from "./ExecutionTicket";
 import { HistoricalEdgeCard } from "./HistoricalEdgeCard";
+import { MacroExchangeContextCard } from "./MacroExchangeContextCard";
 import { MarketMemoryCard } from "./MarketMemoryCard";
 import { PaperContextCard } from "./PaperContextCard";
 import { SymbolChart, type ChartCandle, type ChartSignalMarker } from "./SymbolChart";
@@ -44,6 +46,7 @@ export function SymbolTerminalWorkspace({
   paperPositions,
   paperEvents,
   globalDecision,
+  macroContext,
   premiumAccess = true,
   viewerAuthenticated = false,
 }: {
@@ -57,13 +60,14 @@ export function SymbolTerminalWorkspace({
   paperPositions: PaperPositionRow[];
   paperEvents: PaperTradeEventRow[];
   globalDecision?: DailyAction;
+  macroContext: MacroExchangeContext | null;
   premiumAccess?: boolean;
   viewerAuthenticated?: boolean;
 }) {
   const [showHistoricalMarkers, setShowHistoricalMarkers] = useState(false);
   const tradeLevels = useMemo(() => buildSignalTradeLevels(row), [row]);
   const lifecycle = useMemo(() => computeSignalLifecycle(row, tradeLevels), [row, tradeLevels]);
-  const structuralQuality = useMemo(() => buildConvictionFragilityModel(row, { history, marketMemory }), [history, marketMemory, row]);
+  const structuralQuality = useMemo(() => buildConvictionFragilityModel(row, { history, macroContext: macroContext ?? undefined, marketMemory }), [history, macroContext, marketMemory, row]);
   const symbol = row.symbol.toUpperCase();
   const riskPortfolio = useMemo(() => buildRiskPortfolio(paperPositions, row.sector, symbol), [paperPositions, row.sector, symbol]);
   const tradeEngine = useTradePlanEngine(row, riskPortfolio);
@@ -120,6 +124,7 @@ export function SymbolTerminalWorkspace({
             </GlassPanel>
           )}
           <SymbolDecisionIntelligencePanel candles={candles} row={row} />
+          {macroContext ? <MacroExchangeContextCard context={macroContext} row={row} /> : null}
           <ConvictionFragilityCard model={structuralQuality} />
         </div>
         <aside className="space-y-5 xl:sticky xl:top-5 xl:self-start">

@@ -19,6 +19,7 @@ import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { buildConvictionTimelineModel } from "@/lib/trading/conviction-timeline-model";
 import { getDailyAction } from "@/lib/trading/daily-action";
 import { buildHistoricalEdgeProof } from "@/lib/trading/edge-proof";
+import { createMacroContextResolver } from "@/lib/trading/macro-regime";
 import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 
 export const dynamic = "force-dynamic";
@@ -94,6 +95,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
     scanSafety,
   });
   const marketMemory = row ? await getMarketMemoryForSignal(row) : null;
+  const macroContext = row ? createMacroContextResolver(snapshot.signals).forRow(row) : null;
   const unavailableMarketMemory: MarketMemorySummary = {
     analogs: [],
     available: false,
@@ -122,6 +124,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           edgeProof={edgeProof ?? buildHistoricalEdgeProof(row, null)}
           history={history}
           globalDecision={globalDecision}
+          macroContext={macroContext}
           marketMemory={marketMemory ?? unavailableMarketMemory}
           paperEvents={paper.events ?? []}
           paperPositions={paper.positions ?? []}

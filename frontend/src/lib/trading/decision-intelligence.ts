@@ -215,7 +215,7 @@ export function buildDecisionFactors(row: RankingRow): DecisionFactor[] {
     factor("risk", "Risk", structured.risk ?? fallbackRisk),
     factor("volatility", "Volatility", structured.volatility ?? 50),
     factor("breakout", "Structure", structured.breakout ?? numeric(rawField(row, "breakout_score")) ?? 50),
-    factor("macro", "Macro", structured.macro ?? numeric(rawField(row, "macro_score")) ?? 50),
+    factor("macro", "Macro", structured.macro ?? numeric(rawField(row, "macro_alignment_score")) ?? numeric(rawField(row, "macro_score")) ?? 50),
     factor("data_quality", "Data Quality", structured.data_quality ?? numeric(rawField(row, "data_quality_score")) ?? (stale ? 35 : 75)),
   ];
 }

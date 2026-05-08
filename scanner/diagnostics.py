@@ -20,6 +20,7 @@ CORE_NUMERIC_FIELDS: Final[tuple[str, ...]] = (
     "breakout_score",
     "relative_volume_score",
     "macro_score",
+    "macro_alignment_score",
     "risk_reward",
     "atr_pct",
     "annualized_volatility",
@@ -104,7 +105,7 @@ def factor_scores_for_row(row: Mapping[str, object], *, data_quality_score: floa
         "volatility": round(volatility_score, 2),
         "breakout": _bounded_score(row.get("breakout_score")),
         "volume": _bounded_score(row.get("relative_volume_score")),
-        "macro": _bounded_score(row.get("macro_score")),
+        "macro": _bounded_score(_first_present(row, ("macro_alignment_score", "macro_score"))),
         "fundamental": _bounded_score(row.get("fundamental_score")),
         "news": _bounded_score(row.get("news_score")),
         "data_quality": _bounded_score(data_quality_score if data_quality_score is not None else 100.0),
@@ -203,7 +204,7 @@ def decision_reason_codes_for_row(row: Mapping[str, object], vetoes: list[str] |
         codes.append("MOMENTUM_CONFIRMED")
     if safe_float(row.get("relative_volume_score"), np.nan) >= 60.0:
         codes.append("VOLUME_CONFIRMED")
-    if safe_float(row.get("macro_score"), np.nan) >= 60.0:
+    if safe_float(_first_present(row, ("macro_alignment_score", "macro_score")), np.nan) >= 60.0:
         codes.append("MACRO_ALIGNED")
     else:
         codes.append("MACRO_MISMATCH")
@@ -233,6 +234,8 @@ def decision_reason_codes_for_row(row: Mapping[str, object], vetoes: list[str] |
         codes.append(veto)
     for regime_code in _code_list(row.get("regime_reason_codes")):
         codes.append(regime_code)
+    for macro_code in _code_list(row.get("macro_context_reason_codes")):
+        codes.append(macro_code)
     for setup_code in _code_list(row.get("setup_reason_codes")):
         codes.append(setup_code)
     return _unique_codes(codes)
@@ -293,6 +296,15 @@ def _volatility_score(row: Mapping[str, object]) -> float:
 def _is_missing_number(value: object) -> bool:
     numeric = safe_float(value, np.nan)
     return bool(np.isnan(numeric))
+
+
+def _first_present(row: Mapping[str, object], keys: tuple[str, ...]) -> object:
+    for key in keys:
+        value = row.get(key)
+        numeric = safe_float(value, np.nan)
+        if not np.isnan(numeric):
+            return value
+    return None
 
 
 def _optional_int(value: object) -> int | None:

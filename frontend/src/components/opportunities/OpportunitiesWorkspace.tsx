@@ -362,6 +362,9 @@ function BestTradeNowOpportunityCard({
             <div className="min-w-0 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-slate-300">
               Fragility <span className="font-mono font-semibold text-slate-50">{best.fragility}</span>/100
             </div>
+            <div className="min-w-0 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2.5 text-sm text-slate-300">
+              {best.macroLabel} <span className="font-mono font-semibold text-slate-50">{signedAdjustment(best.macroAdjustment)}</span>
+            </div>
           </div>
           <HighestScoredSetups rows={highestScored} />
           <OpportunityHeroIntelligence marketCondition={marketCondition} rows={rows} />
@@ -447,6 +450,7 @@ function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewMod
         <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">Risk snapshot</summary>
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
           <HeroMetric label="ATR" value={formatNumber(row.atr)} />
+          <HeroMetric label="Macro adj." value={signedAdjustment(best.macroAdjustment)} tone={(best.macroAdjustment ?? 0) < -0.75 ? "risk" : "neutral"} />
           <HeroMetric label="Stop distance" value={stopDistance(best)} tone="risk" />
           <HeroMetric label="Volatility" value={percentLike(row.volatility ?? row.volatility_pct)} />
           <HeroMetric label="Fragility" value={`${best.fragility} / ${best.fragilityLabel}`} tone={best.fragility >= 70 ? "risk" : "neutral"} />
@@ -577,7 +581,7 @@ function HighestScoredSetupCard({ row }: { row: OpportunityViewModel }) {
         <MiniCardMetric label="Score" value={formatNumber(row.final_score, 0)} />
         <MiniCardMetric label="Ready" value={`${row.conviction}`} />
         <MiniCardMetric label="Fragility" value={`${row.fragility}`} />
-        <MiniCardMetric label="Structure" value={row.structuralLabel} />
+        <MiniCardMetric label="Macro" value={signedAdjustment(row.macroAdjustment)} />
       </div>
       <div className={`mt-2 text-[10px] font-black uppercase tracking-[0.1em] ${tone.textClass}`}>{tone.label}</div>
       <div className="mt-2 line-clamp-2 text-[11px] leading-4 text-slate-400">{firstReason(row)}</div>
@@ -631,6 +635,7 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
         <CardMetric label="Conviction" value={`${row.conviction} ${row.confidenceLabel}`} />
         <CardMetric label="Fragility" value={`${row.fragility} ${row.fragilityLabel}`} />
         <CardMetric label="Score" value={formatNumber(row.final_score, 0)} />
+        <CardMetric label="Macro Context" value={`${row.macroLabel} ${signedAdjustment(row.macroAdjustment)}`} />
         <CardMetric label="Entry / Correction" value={row.entryZoneLabel ?? formatMoney(row.suggested_entry)} />
         <CardMetric label="Structure" value={row.structuralLabel} />
         <CardMetric label="Decay" value={row.decayLabel} />
@@ -862,6 +867,11 @@ function percentLike(value: unknown): string {
   if (parsed === null) return "N/A";
   const percent = Math.abs(parsed) <= 1 ? parsed * 100 : parsed;
   return `${percent.toFixed(1)}%`;
+}
+
+function signedAdjustment(value: number | null): string {
+  if (value === null) return "N/A";
+  return `${value >= 0 ? "+" : ""}${formatNumber(value, 1)}`;
 }
 
 function textValue(value: ScannerScalar) {

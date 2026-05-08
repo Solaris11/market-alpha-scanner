@@ -16,6 +16,7 @@ from scanner.diagnostics import (
 from scanner.engine import apply_decision_safety_gates
 from scanner.regime import apply_regime_adjustments, regime_policy, standardize_regime
 from scanner.setup_engine import apply_setup_decision_layer, classify_setup
+from scanner.utils import safe_float
 
 
 def _base_row() -> dict[str, object]:
@@ -178,6 +179,28 @@ class ScannerDiagnosticsTests(unittest.TestCase):
         self.assertGreater(float(overheated["final_score"]), float(risk_off["final_score"]))
         self.assertEqual(overheated["market_regime"], "OVERHEATED")
         self.assertIn("adjusted_thresholds", overheated.index)
+
+    def test_macro_context_adjustments_preserve_base_score_and_reason_codes(self) -> None:
+        rows = [
+            {**_base_row(), "symbol": "SPY", "final_score": 30.0, "technical_score": 44.0, "sector": "ETF"},
+            {**_base_row(), "symbol": "QQQ", "final_score": 28.0, "technical_score": 42.0, "sector": "ETF"},
+            {**_base_row(), "symbol": "IWM", "final_score": 24.0, "technical_score": 40.0, "sector": "ETF"},
+            {**_base_row(), "symbol": "VXX", "final_score": 88.0, "technical_score": 70.0, "sector": "Volatility"},
+            {**_base_row(), "symbol": "UUP", "final_score": 76.0, "technical_score": 68.0, "sector": "Currency"},
+            {**_base_row(), "symbol": "NVDA", "final_score": 82.0, "technical_score": 86.0, "sector": "Technology", "macro_score": 62.0},
+        ]
+        adjusted = apply_regime_adjustments(pd.DataFrame(rows), {"regime": "RISK_OFF"}).set_index("symbol")
+        nvda = adjusted.loc["NVDA"]
+
+        self.assertEqual(safe_float(nvda.get("base_score"), 0.0), 82.0)
+        self.assertEqual(safe_float(nvda.get("final_score_base"), 0.0), 82.0)
+        self.assertLess(safe_float(nvda.get("final_score"), 0.0), 82.0)
+        self.assertGreaterEqual(safe_float(nvda.get("macro_context_adjustment_total"), 0.0), -18.0)
+        self.assertLessEqual(safe_float(nvda.get("macro_context_adjustment_total"), 0.0), 10.0)
+        self.assertIn("MACRO_CONFLICT", nvda["macro_context_reason_codes"])
+        self.assertIn("VOLATILITY_PRESSURE", nvda["macro_context_reason_codes"])
+        self.assertIn("LIQUIDITY_TIGHTENING", nvda["macro_context_reason_codes"])
+        self.assertIn("macro_context_summary", nvda.index)
 
     def test_overheated_overextended_entry_is_hard_veto(self) -> None:
         row = _base_row()
