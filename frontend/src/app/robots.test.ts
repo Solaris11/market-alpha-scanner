@@ -20,7 +20,7 @@ describe("robots social crawler access", () => {
     assert.ok(Array.isArray(socialRule.userAgent));
     assert.equal(socialRule.userAgent.includes("meta-externalagent"), true);
     assert.equal(socialRule.userAgent.includes("meta-externalfetcher"), true);
-    assert.deepEqual(socialRule.allow, ["/", "/pricing", "/features", "/how-it-works", "/faq", "/og-image.png"]);
+    assert.deepEqual(socialRule.allow, ["/", "/pricing", "/features", "/how-it-works", "/faq", "/robots.txt", "/og-image.png"]);
     assert.ok(Array.isArray(socialRule.disallow));
     assert.equal(socialRule.disallow.includes("/api/"), true);
     assert.equal(socialRule.disallow.includes("/terminal"), true);

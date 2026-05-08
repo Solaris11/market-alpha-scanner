@@ -80,6 +80,9 @@ export function proxy(request: NextRequest): NextResponse {
     }
 
     const response = NextResponse.next();
+    if (pathname === "/robots.txt") {
+      response.headers.set("Cache-Control", "public, max-age=60, must-revalidate");
+    }
     response.headers.set("X-TradeVeto-Social-Crawler", "allowed-public-preview");
     response.headers.set("X-Robots-Tag", "all");
     return response;

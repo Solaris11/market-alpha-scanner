@@ -14,7 +14,7 @@ const SOCIAL_CRAWLER_USER_AGENTS = [
   "Discordbot",
 ];
 
-const SOCIAL_PREVIEW_PATHS = ["/", "/pricing", "/features", "/how-it-works", "/faq", "/og-image.png"];
+const SOCIAL_PREVIEW_PATHS = ["/", "/pricing", "/features", "/how-it-works", "/faq", "/robots.txt", "/og-image.png"];
 
 export default function robots(): MetadataRoute.Robots {
   return {
