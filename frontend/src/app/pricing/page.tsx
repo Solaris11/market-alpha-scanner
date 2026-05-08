@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { MarketingCard, MarketingShell, PrimaryCta, SecondaryCta, SectionHeader } from "@/components/marketing/MarketingShell";
+import { PricingConversionCta } from "@/components/pricing/PricingConversionCta";
 import { marketingMetadata } from "@/lib/marketing-seo";
 
 export const metadata: Metadata = marketingMetadata("/pricing", {
@@ -46,6 +47,9 @@ export default function PricingPage() {
             </div>
             <div className="mt-6">
               <PrimaryCta>Join Beta</PrimaryCta>
+            </div>
+            <div className="mt-5">
+              <PricingConversionCta />
             </div>
           </MarketingCard>
         </div>
