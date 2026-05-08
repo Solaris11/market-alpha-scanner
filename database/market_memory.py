@@ -31,7 +31,7 @@ WITH source_signals AS (
         ss.payload
     FROM scanner_signals ss
     JOIN scan_runs sr ON sr.id = ss.scan_run_id
-    WHERE (:scan_run_id IS NULL OR ss.scan_run_id = CAST(:scan_run_id AS uuid))
+    WHERE (CAST(:scan_run_id AS uuid) IS NULL OR ss.scan_run_id = CAST(:scan_run_id AS uuid))
 ),
 normalized AS (
     SELECT
