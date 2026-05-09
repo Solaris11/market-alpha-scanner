@@ -234,8 +234,8 @@ export function DecisionJournalCard({
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
-      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{label}</div>
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+      <div className="min-w-0 truncate text-[10px] font-black uppercase leading-4 tracking-normal text-slate-500" title={label}>{label}</div>
       <div className="mt-1 text-2xl font-semibold text-slate-50">{value}</div>
     </div>
   );
@@ -244,7 +244,7 @@ function Metric({ label, value }: { label: string; value: string }) {
 function MemoryList({ items, title, warning = false }: { items: string[]; title: string; warning?: boolean }) {
   return (
     <div className={`rounded-2xl border p-3 ${warning ? "border-amber-300/20 bg-amber-400/[0.055]" : "border-white/10 bg-white/[0.035]"}`}>
-      <div className={`text-[10px] font-black uppercase tracking-[0.18em] ${warning ? "text-amber-200" : "text-slate-500"}`}>{title}</div>
+      <div className={`min-w-0 truncate text-[10px] font-black uppercase leading-4 tracking-normal ${warning ? "text-amber-200" : "text-slate-500"}`} title={title}>{title}</div>
       <ul className={`mt-2 space-y-1 text-xs leading-5 ${warning ? "text-amber-100" : "text-slate-300"}`}>
         {items.slice(0, 3).map((item) => <li key={item}>- {item}</li>)}
       </ul>

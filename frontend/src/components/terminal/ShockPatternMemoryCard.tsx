@@ -56,7 +56,7 @@ export function ShockPatternMemoryCard({ pattern }: { pattern: ShockMovePattern 
 function Metric({ label, tone = "neutral", value }: { label: string; tone?: "neutral" | "risk"; value: string }) {
   return (
     <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.035] p-3">
-      <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</div>
+      <div className="min-w-0 truncate text-[10px] font-black uppercase leading-4 tracking-normal text-slate-500" title={label}>{label}</div>
       <div className={`mt-1 truncate font-mono text-xl font-black ${tone === "risk" ? "text-rose-200" : "text-slate-50"}`} title={value}>{value}</div>
     </div>
   );
@@ -65,7 +65,7 @@ function Metric({ label, tone = "neutral", value }: { label: string; tone?: "neu
 function Zone({ label, tone = "neutral", value }: { label: string; tone?: "neutral" | "risk"; value: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-slate-950/35 p-3">
-      <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</div>
+      <div className="min-w-0 truncate text-[10px] font-black uppercase leading-4 tracking-normal text-slate-500" title={label}>{label}</div>
       <div className={`mt-1 text-sm font-semibold ${tone === "risk" ? "text-amber-100" : "text-slate-100"}`}>{value}</div>
     </div>
   );
@@ -74,7 +74,7 @@ function Zone({ label, tone = "neutral", value }: { label: string; tone?: "neutr
 function NarrativeList({ items, title }: { items: string[]; title: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
-      <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{title}</div>
+      <div className="min-w-0 truncate text-[10px] font-black uppercase leading-4 tracking-normal text-slate-500" title={title}>{title}</div>
       <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-300">
         {items.slice(0, 4).map((item) => <li key={item}>- {item}</li>)}
       </ul>

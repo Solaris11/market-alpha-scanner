@@ -78,8 +78,8 @@ export function MarketMemoryCard({ memory }: { memory: MarketMemorySummary }) {
 function Metric({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "positive" | "negative" }) {
   const color = tone === "positive" ? "text-emerald-200" : tone === "negative" ? "text-rose-200" : "text-slate-100";
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</div>
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <div className="min-w-0 truncate text-[10px] font-semibold uppercase leading-4 tracking-normal text-slate-500" title={label}>{label}</div>
       <div className={`mt-2 font-mono text-2xl font-bold ${color}`}>{value}</div>
     </div>
   );

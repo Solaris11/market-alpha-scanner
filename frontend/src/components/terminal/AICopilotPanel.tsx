@@ -132,7 +132,7 @@ function ReadinessBar({ toneClass, value }: { toneClass: string; value: number }
 function InsightList({ items, title }: { items: string[]; title: string }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{title}</div>
+      <div className="min-w-0 truncate text-[10px] font-black uppercase leading-4 tracking-normal text-slate-500" title={title}>{title}</div>
       <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-300">
         {items.slice(0, 3).map((item) => <li key={item}>- {item}</li>)}
       </ul>
@@ -143,8 +143,8 @@ function InsightList({ items, title }: { items: string[]; title: string }) {
 function Metric({ label, value, tone = "neutral" }: { label: string; value: string; tone?: "neutral" | "reward" | "risk" }) {
   const color = tone === "risk" ? "text-rose-200" : tone === "reward" ? "text-emerald-200" : "text-slate-100";
   return (
-    <div className="rounded-xl bg-white/[0.04] p-2">
-      <div className="text-slate-500">{label}</div>
+    <div className="min-w-0 rounded-xl bg-white/[0.04] p-2">
+      <div className="truncate text-slate-500" title={label}>{label}</div>
       <div className={`font-mono ${color}`}>{value}</div>
     </div>
   );

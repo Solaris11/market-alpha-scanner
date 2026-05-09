@@ -122,7 +122,7 @@ function CohortList({ rows }: { rows: AdaptiveLearningCohort[] }) {
 function MiniScore({ label, value }: { label: string; value: number }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{label}</div>
+      <div className="truncate text-[10px] font-black uppercase leading-4 tracking-normal text-slate-500" title={label}>{label}</div>
       <div className="mt-2 text-2xl font-semibold text-slate-50">{value}/100</div>
     </div>
   );
@@ -131,7 +131,7 @@ function MiniScore({ label, value }: { label: string; value: number }) {
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</div>
+      <div className="truncate text-[10px] uppercase leading-4 tracking-normal text-slate-500" title={label}>{label}</div>
       <div className="mt-1 font-mono text-slate-200">{value}</div>
     </div>
   );
@@ -140,4 +140,3 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
 function formatMaybePct(value: number | null): string {
   return value === null || !Number.isFinite(value) ? "n/a" : `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
 }
-

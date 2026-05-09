@@ -223,8 +223,8 @@ function ScorePill({ inverse = false, label, value }: { inverse?: boolean; label
   const risk = inverse ? value >= 70 : value < 45;
   const color = good ? "text-emerald-200" : risk ? "text-rose-200" : "text-amber-200";
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-      <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</div>
+    <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+      <div className="min-w-0 truncate text-[9px] font-black uppercase leading-3 tracking-normal text-slate-500" title={label}>{label}</div>
       <div className={`mt-1 font-mono text-lg font-black ${color}`}>{formatNumber(value, 0)}</div>
     </div>
   );
@@ -242,7 +242,7 @@ function ReasonBox({ text, title, value }: { text: string; title: string; value:
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
       <div className="flex items-start justify-between gap-3">
-        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{title}</div>
+        <div className="min-w-0 truncate text-[10px] font-black uppercase leading-4 tracking-normal text-slate-500" title={title}>{title}</div>
         <div className="font-mono text-sm font-black text-slate-100">{value}</div>
       </div>
       <p className="mt-2 text-xs leading-5 text-slate-400">{text}</p>

@@ -124,7 +124,7 @@ function ReadinessBar({ value }: { value: number }) {
 function InsightList({ items, title }: { items: string[]; title: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">{title}</div>
+      <div className="min-w-0 truncate text-xs font-semibold uppercase leading-4 tracking-normal text-slate-500" title={title}>{title}</div>
       <ul className="mt-3 space-y-2 text-sm leading-5 text-slate-300">
         {items.map((item) => <li key={item}>- {item}</li>)}
       </ul>
@@ -135,7 +135,7 @@ function InsightList({ items, title }: { items: string[]; title: string }) {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-lg bg-white/[0.04] p-2">
-      <dt className="text-slate-500">{label}</dt>
+      <dt className="truncate text-slate-500" title={label}>{label}</dt>
       <dd className="mt-1 font-mono text-slate-100">{value}</dd>
     </div>
   );

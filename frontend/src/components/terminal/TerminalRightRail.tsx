@@ -115,7 +115,7 @@ function EmptyRailState({ href, label }: { href: string; label: string }) {
 function ContextMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-      <dt className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{label}</dt>
+      <dt className="truncate text-[10px] font-black uppercase leading-4 tracking-normal text-slate-500" title={label}>{label}</dt>
       <dd className="mt-1 truncate text-slate-100">{value}</dd>
     </div>
   );

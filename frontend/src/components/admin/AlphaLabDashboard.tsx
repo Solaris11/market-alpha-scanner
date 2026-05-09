@@ -175,7 +175,7 @@ function MatrixGrid({ rows }: { rows: StrategyMatrixRow[] }) {
 function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-[0.16em] text-slate-500">{label}</div>
+      <div className="truncate text-[10px] uppercase leading-4 tracking-normal text-slate-500" title={label}>{label}</div>
       <div className="mt-1 font-mono text-slate-200">{value}</div>
     </div>
   );

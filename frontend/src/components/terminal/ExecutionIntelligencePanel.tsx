@@ -209,8 +209,8 @@ function ScorePill({ inverse = false, label, value }: { inverse?: boolean; label
   const risk = inverse ? value >= 70 : value < 45;
   const color = good ? "text-emerald-200" : risk ? "text-rose-200" : "text-amber-200";
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-      <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</div>
+    <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+      <div className="min-w-0 truncate text-[9px] font-black uppercase leading-3 tracking-normal text-slate-500" title={label}>{label}</div>
       <div className={`mt-1 font-mono text-lg font-black ${color}`}>{formatNumber(value, 0)}</div>
     </div>
   );
@@ -228,7 +228,7 @@ function ZoneBox({ label, tone = "neutral", value }: { label: string; tone?: "ne
   const labelClass = tone === "risk" ? "text-amber-200" : "text-slate-400";
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-      <div className={`text-[10px] font-black uppercase tracking-[0.16em] ${labelClass}`}>{label}</div>
+      <div className={`min-w-0 truncate text-[10px] font-black uppercase leading-4 tracking-normal ${labelClass}`} title={label}>{label}</div>
       <div className="mt-2 break-words font-mono text-sm font-bold leading-5 text-slate-50">{value}</div>
     </div>
   );

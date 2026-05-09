@@ -116,7 +116,7 @@ export function InstitutionalDashboardWorkspace({
 function HeaderMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{label}</div>
+      <div className="truncate text-[10px] font-black uppercase leading-4 tracking-normal text-slate-500" title={label}>{label}</div>
       <div className="mt-1 truncate font-mono text-lg font-black text-slate-50">{value}</div>
     </div>
   );
@@ -129,7 +129,7 @@ function MarketMetrics({ metrics }: { metrics: InstitutionalDashboardMetric[] })
         <GlassPanel className="p-4" key={metric.key}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{metric.label}</div>
+              <div className="truncate text-[10px] font-black uppercase leading-4 tracking-normal text-slate-500" title={metric.label}>{metric.label}</div>
               <div className={`mt-2 text-sm font-bold ${toneTextClass(metric.tone)}`}>{institutionalDashboardScoreLabel(metric.score, metric.inverse)}</div>
             </div>
             <div className="font-mono text-2xl font-black text-slate-50">{metric.score}</div>

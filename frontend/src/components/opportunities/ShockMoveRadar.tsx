@@ -77,7 +77,7 @@ export function ShockMoveRadar({ compact = false, rows }: { compact?: boolean; r
 function Metric({ label, tone = "neutral", value }: { label: string; tone?: "neutral" | "risk"; value: string }) {
   return (
     <div className="min-w-0 rounded-lg bg-slate-950/45 px-2 py-1.5">
-      <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">{label}</div>
+      <div className="min-w-0 truncate text-[9px] font-semibold uppercase leading-3 tracking-normal text-slate-500" title={label}>{label}</div>
       <div className={`mt-1 truncate font-mono text-[11px] font-semibold ${tone === "risk" ? "text-rose-200" : "text-slate-100"}`} title={value}>{value}</div>
     </div>
   );

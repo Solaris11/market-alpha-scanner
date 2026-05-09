@@ -101,8 +101,8 @@ export function ConvictionFragilityCard({ model }: { model: ConvictionFragilityM
 function ScoreMetric({ metric, title }: { metric: ScoreLabel; title: string }) {
   const tone = scoreMetricTone(metric.label.includes("Fragility") ? 100 - metric.score : metric.score);
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{title}</div>
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <div className="min-w-0 truncate text-[10px] font-semibold uppercase leading-4 tracking-normal text-slate-500" title={title}>{title}</div>
       <div className={`mt-2 font-mono text-3xl font-black ${tone.text}`}>{metric.score}</div>
       <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.07]">
         <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${Math.max(4, Math.min(100, metric.score))}%` }} />
@@ -115,8 +115,8 @@ function ScoreMetric({ metric, title }: { metric: ScoreLabel; title: string }) {
 function MetricCard({ label, tone, value }: { label: string; tone: "good" | "mixed" | "risk"; value: string }) {
   const color = tone === "good" ? "text-emerald-200" : tone === "risk" ? "text-rose-200" : "text-amber-100";
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</div>
+    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <div className="min-w-0 truncate text-[10px] font-semibold uppercase leading-4 tracking-normal text-slate-500" title={label}>{label}</div>
       <div className={`mt-2 font-mono text-2xl font-black ${color}`}>{value}</div>
     </div>
   );
