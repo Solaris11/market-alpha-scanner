@@ -20,10 +20,34 @@ Operators can add up to 8 additional trusted HTTPS feeds without code changes:
 ```json
 [
   {
-    "key": "trusted_macro_feed",
-    "name": "Trusted Macro Source",
-    "url": "https://example.com/feed.xml",
+    "key": "bea_economic_releases",
+    "name": "Bureau of Economic Analysis",
+    "url": "https://apps.bea.gov/rss/rss.xml",
     "category_hint": "macro"
+  },
+  {
+    "key": "census_economic_indicators",
+    "name": "U.S. Census Economic Indicators",
+    "url": "https://www.census.gov/economic-indicators/indicator.xml",
+    "category_hint": "macro"
+  },
+  {
+    "key": "eia_today_in_energy",
+    "name": "U.S. Energy Information Administration",
+    "url": "https://www.eia.gov/rss/todayinenergy.xml",
+    "category_hint": "commodity"
+  },
+  {
+    "key": "prnewswire_company_releases",
+    "name": "PR Newswire",
+    "url": "https://www.prnewswire.com/rss/news-releases-list.rss",
+    "category_hint": "company"
+  },
+  {
+    "key": "marketwatch_top_stories",
+    "name": "MarketWatch",
+    "url": "https://feeds.content.dowjones.io/public/rss/mw_topstories",
+    "category_hint": "market"
   }
 ]
 ```
