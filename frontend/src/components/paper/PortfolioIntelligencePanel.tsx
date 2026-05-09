@@ -25,6 +25,9 @@ export function PortfolioIntelligencePanel({ system }: { system: PortfolioIntell
   const themes = system.exposureBuckets.filter((bucket) => bucket.type === "theme").slice(0, 5);
   const macro = system.exposureBuckets.filter((bucket) => bucket.type === "macro").slice(0, 3);
   const volatility = system.exposureBuckets.filter((bucket) => bucket.type === "volatility").slice(0, 3);
+  const event = system.exposureBuckets.filter((bucket) => bucket.type === "event").slice(0, 3);
+  const liquidity = system.exposureBuckets.filter((bucket) => bucket.type === "liquidity").slice(0, 3);
+  const shock = system.exposureBuckets.filter((bucket) => bucket.type === "shock").slice(0, 3);
 
   return (
     <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-5 shadow-xl shadow-black/20 ring-1 ring-white/5 backdrop-blur-xl">
@@ -45,7 +48,13 @@ export function PortfolioIntelligencePanel({ system }: { system: PortfolioIntell
         <Metric label="Open Exposure" value={formatMoney(system.totalExposureValue, 0)} meta={`${system.openPositionCount} open positions`} />
         <Metric label="Open Risk" value={formatMoney(system.openRiskAmount, 0)} meta={system.accountValue ? `${formatNumber((system.openRiskAmount / system.accountValue) * 100, 1)}% of paper account` : "active stop risk"} tone={system.openRiskAmount > 0 ? "warn" : "neutral"} />
         <Metric label="Diversification" value={`${system.diversificationQualityScore}/100`} meta={system.portfolioQualityLabel} tone={qualityTone(system.diversificationQualityScore)} />
+        <Metric label="Scenario Vulnerability" value={`${system.scenarioVulnerabilityScore}/100`} meta="highest weighted stress" tone={riskTone(system.scenarioVulnerabilityScore)} />
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
         <Metric label="Macro Alignment" value={`${system.macroAlignmentScore}/100`} meta="weighted open exposure" tone={qualityTone(system.macroAlignmentScore)} />
+        <Metric label="Liquidity Risk" value={`${system.liquidityRiskScore}/100`} meta="tightening sensitivity" tone={riskTone(system.liquidityRiskScore)} />
+        <Metric label="Shock Exposure" value={`${system.shockExposureScore}/100`} meta="two-sided volatility stack" tone={riskTone(system.shockExposureScore)} />
       </div>
 
       <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.75fr)]">
@@ -56,11 +65,26 @@ export function PortfolioIntelligencePanel({ system }: { system: PortfolioIntell
             <ExposureGroup buckets={macro} title="Macro Exposure" />
             <ExposureGroup buckets={volatility} title="Volatility Exposure" />
           </div>
+          <div className="grid gap-4 lg:grid-cols-3">
+            <ExposureGroup buckets={event} title="Event Exposure" />
+            <ExposureGroup buckets={liquidity} title="Liquidity Exposure" />
+            <ExposureGroup buckets={shock} title="Shock Exposure" />
+          </div>
         </div>
 
         <div className="space-y-4">
           <ClusterList clusters={system.correlationClusters} />
           <ScenarioStressList scenarios={system.scenarioStress.slice(0, 4)} />
+          <HedgeOffsetList offsets={system.hedgeOffsetContexts} warning={system.hiddenCorrelationWarning} />
+        </div>
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">Stress Proof</div>
+        <div className="mt-3 grid gap-2 lg:grid-cols-2">
+          {system.stressProofSummary.map((line) => (
+            <div className="rounded-xl border border-white/10 bg-slate-950/35 px-3 py-2 text-xs leading-5 text-slate-300" key={line}>{line}</div>
+          ))}
         </div>
       </div>
 
@@ -75,6 +99,31 @@ export function PortfolioIntelligencePanel({ system }: { system: PortfolioIntell
         </ul>
       </div>
     </section>
+  );
+}
+
+function HedgeOffsetList({ offsets, warning }: { offsets: PortfolioIntelligenceSystem["hedgeOffsetContexts"]; warning: string | null }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">Hedge / Offset Context</div>
+      <div className="mt-3 space-y-3">
+        {warning ? (
+          <div className="rounded-xl border border-amber-300/25 bg-amber-400/[0.08] p-3 text-xs leading-5 text-amber-100">{warning}</div>
+        ) : null}
+        {offsets.length ? offsets.map((offset) => (
+          <div className="rounded-xl border border-white/10 bg-slate-950/35 p-3" key={offset.label}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-sm font-semibold text-slate-100">{offset.label}</div>
+              <div className={`text-xs font-black ${toneClass(offset.tone)}`}>{offset.score}/100</div>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-400">{offset.reason}</p>
+            <div className="mt-2 text-xs text-slate-500">{offset.symbols.join(", ")}</div>
+          </div>
+        )) : (
+          <div className="text-sm leading-6 text-slate-400">No meaningful hedge or offset context is detected yet.</div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -174,6 +223,8 @@ function Heatmap({ cells }: { cells: PortfolioHeatmapCell[] }) {
               <Mini label="Asymmetry" value={`${cell.asymmetryScore}/100`} />
               <Mini label="Macro" value={`${cell.macroAlignmentScore}/100`} />
               <Mini label="Scenario" value={`${cell.scenarioVulnerabilityScore}/100`} />
+              <Mini label="Liquidity" value={`${cell.liquidityRiskScore}/100`} />
+              <Mini label="Shock" value={`${cell.shockExposureScore}/100`} />
             </div>
           </div>
         )) : (

@@ -158,8 +158,12 @@ test("portfolio intelligence detects concentrated correlated fragility", () => {
 
   assert.ok(system.openPositionCount === 3);
   assert.ok(system.concentrationScore > 35);
+  assert.ok(system.liquidityRiskScore >= 35);
+  assert.ok(system.shockExposureScore >= 45);
   assert.ok(system.correlationClusters.some((cluster) => cluster.label.includes("Semiconductors") || cluster.label.includes("Growth")));
   assert.ok(system.scenarioStress.some((stress) => stress.scenarioKey === "qqq_down_3" && stress.weightedVulnerabilityScore >= 45));
+  assert.ok(system.scenarioStress.some((stress) => stress.scenarioKey === "liquidity_tightening"));
+  assert.ok(system.stressProofSummary.length >= 1);
 });
 
 test("portfolio intelligence rewards diversified lower-fragility exposure", () => {
@@ -183,6 +187,45 @@ test("portfolio intelligence rewards diversified lower-fragility exposure", () =
   assert.ok(system.diversificationQualityScore >= 55);
   assert.ok(system.portfolioQualityScore >= 50);
   assert.ok(system.exposureBuckets.some((bucket) => bucket.label === "Defensive / Hedge"));
+  assert.ok(system.hedgeOffsetContexts.some((offset) => /offset|ballast/i.test(offset.label)));
+});
+
+test("portfolio intelligence surfaces hidden factor correlation and event concentration", () => {
+  const opportunities = [
+    opportunity({
+      eventRisk: 76,
+      fragility: 72,
+      raw: { event_risk_score: 78, liquidity_pressure: 74, sector: "Software", symbol: "DDOG", volatility_pressure: 76 },
+      sector: "Software",
+      shockPattern: shock({ downsideRiskScore: 76, symbol: "DDOG", twoSidedVolatilityScore: 82, upsideShockScore: 84 }),
+      symbol: "DDOG",
+    }),
+    opportunity({
+      eventRisk: 73,
+      fragility: 70,
+      raw: { event_risk_score: 75, liquidity_pressure: 72, sector: "Software", symbol: "CRWD", volatility_pressure: 74 },
+      sector: "Software",
+      shockPattern: shock({ downsideRiskScore: 72, symbol: "CRWD", twoSidedVolatilityScore: 79, upsideShockScore: 81 }),
+      symbol: "CRWD",
+    }),
+  ];
+  const scenarioSystem = buildScenarioIntelligenceSystem({ rows: opportunities });
+  const system = buildPortfolioIntelligenceSystem({
+    accountValue: 10000,
+    opportunities,
+    positions: [
+      position({ current_price: 142, entry_price: 140, quantity: 20, stop_loss: 124, symbol: "DDOG" }),
+      position({ current_price: 360, entry_price: 350, quantity: 8, stop_loss: 312, symbol: "CRWD" }),
+    ],
+    scenarioSystem,
+  });
+
+  assert.ok(system.eventConcentrationScore >= 65);
+  assert.ok(system.hiddenCorrelationWarning);
+  assert.ok(system.correlationClusters.some((cluster) => cluster.type === "event" || cluster.type === "liquidity" || cluster.type === "shock"));
+  assert.ok(system.exposureBuckets.some((bucket) => bucket.type === "event" && bucket.label === "Elevated Event Pressure"));
+  assert.ok(system.exposureBuckets.some((bucket) => bucket.type === "liquidity" && bucket.label === "Liquidity Pressure Elevated"));
+  assert.ok(system.exposureBuckets.some((bucket) => bucket.type === "shock" && bucket.label === "High Shock Exposure"));
 });
 
 test("portfolio intelligence keeps language research-oriented", () => {

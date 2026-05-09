@@ -3,19 +3,21 @@ import { clamp, cleanText, finiteNumber } from "@/lib/ui/formatters";
 import type { OpportunityViewModel } from "./opportunity-view-model";
 import type { ScenarioImpact, ScenarioIntelligenceSystem } from "./scenario-intelligence";
 
-export type PortfolioExposureType = "macro" | "sector" | "theme" | "volatility";
+export type PortfolioExposureType = "event" | "liquidity" | "macro" | "sector" | "shock" | "theme" | "volatility";
 export type PortfolioRiskTone = "good" | "neutral" | "risk" | "warn";
 
 export type PortfolioPositionContext = {
   asymmetryScore: number;
   eventRiskScore: number;
   fragilityScore: number;
+  liquidityRiskScore: number;
   macroAlignmentScore: number;
   opportunity: OpportunityViewModel | null;
   position: PaperPositionRow;
   positionValue: number;
   riskAmount: number;
   sector: string;
+  shockExposureScore: number;
   symbol: string;
   theme: string;
   volatilityScore: number;
@@ -38,7 +40,7 @@ export type PortfolioCorrelationCluster = {
   score: number;
   symbols: string[];
   tone: PortfolioRiskTone;
-  type: "correlation" | "event" | "fragility" | "macro";
+  type: "correlation" | "event" | "fragility" | "liquidity" | "macro" | "shock";
 };
 
 export type PortfolioScenarioStress = {
@@ -54,13 +56,23 @@ export type PortfolioScenarioStress = {
 export type PortfolioHeatmapCell = {
   asymmetryScore: number;
   fragilityScore: number;
+  liquidityRiskScore: number;
   macroAlignmentScore: number;
   scenarioVulnerabilityScore: number;
   sector: string;
+  shockExposureScore: number;
   symbol: string;
   theme: string;
   tone: PortfolioRiskTone;
   weightPct: number;
+};
+
+export type PortfolioHedgeOffsetContext = {
+  label: string;
+  reason: string;
+  score: number;
+  symbols: string[];
+  tone: PortfolioRiskTone;
 };
 
 export type PortfolioIntelligenceSystem = {
@@ -69,18 +81,25 @@ export type PortfolioIntelligenceSystem = {
   concentrationScore: number;
   correlationClusters: PortfolioCorrelationCluster[];
   diversificationQualityScore: number;
+  eventConcentrationScore: number;
   exposureBuckets: PortfolioExposureBucket[];
   fragilityScore: number;
   generatedAt: string;
+  hedgeOffsetContexts: PortfolioHedgeOffsetContext[];
   heatmap: PortfolioHeatmapCell[];
+  hiddenCorrelationWarning: string | null;
   limitations: string[];
+  liquidityRiskScore: number;
   macroAlignmentScore: number;
   openPositionCount: number;
   openRiskAmount: number;
   portfolioQualityLabel: string;
   portfolioQualityScore: number;
   positionContexts: PortfolioPositionContext[];
+  scenarioVulnerabilityScore: number;
   scenarioStress: PortfolioScenarioStress[];
+  shockExposureScore: number;
+  stressProofSummary: string[];
   summary: string;
   totalExposureValue: number;
 };
@@ -111,22 +130,36 @@ export function buildPortfolioIntelligenceSystem(input: PortfolioIntelligenceInp
   const themeBuckets = exposureBuckets(positionContexts, "theme");
   const macroBuckets = macroExposureBuckets(positionContexts);
   const volatilityBuckets = volatilityExposureBuckets(positionContexts);
+  const eventBuckets = eventExposureBuckets(positionContexts);
+  const liquidityBuckets = liquidityExposureBuckets(positionContexts);
+  const shockBuckets = shockExposureBuckets(positionContexts);
   const concentrationScore = concentrationScoreFor(positionContexts, sectorBuckets);
   const diversificationQualityScore = Math.round(clamp(100 - concentrationScore));
   const fragilityScore = Math.round(weightedAverage(positionContexts, (context) => context.fragilityScore, 0) + Math.min(14, concentrationScore * 0.16));
   const asymmetryScore = Math.round(weightedAverage(positionContexts, (context) => context.asymmetryScore, 50));
   const macroAlignmentScore = Math.round(weightedAverage(positionContexts, (context) => context.macroAlignmentScore, 50));
+  const eventConcentrationScore = Math.round(eventConcentrationScoreFor(positionContexts, eventBuckets));
+  const liquidityRiskScore = Math.round(weightedAverage(positionContexts, (context) => context.liquidityRiskScore, 45));
+  const shockExposureScore = Math.round(weightedAverage(positionContexts, (context) => context.shockExposureScore, 45));
   const scenarioStress = scenarioStressFor(positionContexts, input.scenarioSystem ?? null);
-  const scenarioPenalty = scenarioStress.length ? Math.max(...scenarioStress.map((stress) => stress.weightedVulnerabilityScore)) * 0.14 : 7;
+  const scenarioVulnerabilityScore = scenarioStress.length
+    ? Math.round(Math.max(...scenarioStress.map((stress) => stress.weightedVulnerabilityScore)))
+    : Math.round(weightedAverage(positionContexts, (context) => highestScenarioVulnerability(context.symbol, input.scenarioSystem ?? null), 50));
   const portfolioQualityScore = Math.round(clamp(
-    diversificationQualityScore * 0.25
-    + (100 - fragilityScore) * 0.25
-    + asymmetryScore * 0.18
-    + macroAlignmentScore * 0.22
-    + (100 - scenarioPenalty) * 0.10,
+    diversificationQualityScore * 0.21
+    + (100 - fragilityScore) * 0.20
+    + asymmetryScore * 0.15
+    + macroAlignmentScore * 0.18
+    + (100 - scenarioVulnerabilityScore) * 0.10
+    + (100 - liquidityRiskScore) * 0.08
+    + (100 - eventConcentrationScore) * 0.04
+    + (100 - shockExposureScore) * 0.04,
   ));
   const heatmap = portfolioHeatmap(positionContexts, input.scenarioSystem ?? null);
   const correlationClusters = correlationClustersFor(positionContexts, sectorBuckets, themeBuckets, scenarioStress);
+  const hedgeOffsetContexts = hedgeOffsetContextsFor(positionContexts, scenarioStress);
+  const hiddenCorrelationWarning = hiddenCorrelationWarningFor(correlationClusters, positionContexts);
+  const stressProofSummary = stressProofSummaryFor(positionContexts, scenarioStress, hedgeOffsetContexts, liquidityRiskScore, shockExposureScore);
 
   return {
     accountValue,
@@ -134,23 +167,31 @@ export function buildPortfolioIntelligenceSystem(input: PortfolioIntelligenceInp
     concentrationScore: Math.round(concentrationScore),
     correlationClusters,
     diversificationQualityScore,
-    exposureBuckets: [...sectorBuckets, ...themeBuckets, ...macroBuckets, ...volatilityBuckets],
+    eventConcentrationScore,
+    exposureBuckets: [...sectorBuckets, ...themeBuckets, ...macroBuckets, ...volatilityBuckets, ...eventBuckets, ...liquidityBuckets, ...shockBuckets],
     fragilityScore: Math.round(clamp(fragilityScore)),
     generatedAt: input.generatedAt ?? new Date().toISOString(),
+    hedgeOffsetContexts,
     heatmap,
+    hiddenCorrelationWarning,
     limitations: [
       "Portfolio Intelligence evaluates paper/open exposure structure; it is not broker execution or financial advice.",
       "Correlation is approximated from sector, theme, macro, fragility, and scenario similarity rather than tick-level covariance.",
-      "Scenario stress uses Phase 7.13 deterministic stress outputs and should be read as pressure context, not a price forecast.",
+      "Scenario stress uses deterministic stress outputs and should be read as pressure context, not a price forecast.",
+      "Manual portfolio inputs, when used, are what-if research inputs and do not place broker or paper orders.",
     ],
+    liquidityRiskScore,
     macroAlignmentScore,
     openPositionCount: positionContexts.length,
     openRiskAmount,
     portfolioQualityLabel: portfolioQualityLabel(portfolioQualityScore, fragilityScore, concentrationScore),
     portfolioQualityScore,
     positionContexts,
+    scenarioVulnerabilityScore,
     scenarioStress,
-    summary: portfolioSummary(positionContexts, portfolioQualityScore, concentrationScore, fragilityScore, scenarioStress),
+    shockExposureScore,
+    stressProofSummary,
+    summary: portfolioSummary(positionContexts, portfolioQualityScore, concentrationScore, fragilityScore, scenarioStress, hiddenCorrelationWarning),
     totalExposureValue,
   };
 }
@@ -163,17 +204,25 @@ function buildPositionContext(position: PaperPositionRow, opportunity: Opportuni
   const asymmetryScore = score(opportunity?.shockPattern?.asymmetryScore ?? opportunity?.shockPattern?.opportunityScore ?? (opportunity ? opportunity.conviction - opportunity.fragility + 50 : null), 50);
   const macroAlignmentScore = macroScore(opportunity);
   const eventRiskScore = score(opportunity?.eventRisk, 35);
+  const liquidityRiskScore = score(opportunity?.raw.liquidity_pressure ?? opportunity?.raw.liquidity_pressure_score ?? opportunity?.raw.liquidity_stress, 45);
   const volatilityScore = score(opportunity?.raw.volatility_pressure ?? opportunity?.shockPattern?.twoSidedVolatilityScore ?? opportunity?.fragility, 45);
+  const shockExposureScore = score(maxKnown([
+    opportunity?.shockPattern?.downsideRiskScore,
+    opportunity?.shockPattern?.twoSidedVolatilityScore,
+    opportunity?.shockPattern?.upsideShockScore,
+  ]), 45);
   return {
     asymmetryScore,
     eventRiskScore,
     fragilityScore,
+    liquidityRiskScore,
     macroAlignmentScore,
     opportunity,
     position,
     positionValue: positionValueAmount,
     riskAmount,
     sector,
+    shockExposureScore,
     symbol: position.symbol.toUpperCase(),
     theme: themeFor(position.symbol, sector, opportunity?.assetType),
     volatilityScore,
@@ -223,6 +272,30 @@ function volatilityExposureBuckets(contexts: PortfolioPositionContext[]): Portfo
     if (context.volatilityScore <= 38 && context.fragilityScore <= 45) return "Lower Volatility";
     return "Moderate Volatility";
   }, (bucketContexts, percent) => clamp(percent * 0.58 + weightedAverage(bucketContexts, (context) => Math.max(context.volatilityScore, context.fragilityScore), 45) * 0.42));
+}
+
+function eventExposureBuckets(contexts: PortfolioPositionContext[]): PortfolioExposureBucket[] {
+  return exposureBucketsFromClassifier(contexts, "event", (context) => {
+    if (context.eventRiskScore >= 70) return "Elevated Event Pressure";
+    if (context.eventRiskScore <= 35) return "Event Risk Contained";
+    return "Event Risk Mixed";
+  }, (bucketContexts, percent) => clamp(percent * 0.55 + weightedAverage(bucketContexts, (context) => context.eventRiskScore, 40) * 0.45));
+}
+
+function liquidityExposureBuckets(contexts: PortfolioPositionContext[]): PortfolioExposureBucket[] {
+  return exposureBucketsFromClassifier(contexts, "liquidity", (context) => {
+    if (context.liquidityRiskScore >= 70) return "Liquidity Pressure Elevated";
+    if (context.liquidityRiskScore <= 36) return "Liquidity Supportive";
+    return "Liquidity Mixed";
+  }, (bucketContexts, percent) => clamp(percent * 0.48 + weightedAverage(bucketContexts, (context) => context.liquidityRiskScore, 45) * 0.52));
+}
+
+function shockExposureBuckets(contexts: PortfolioPositionContext[]): PortfolioExposureBucket[] {
+  return exposureBucketsFromClassifier(contexts, "shock", (context) => {
+    if (context.shockExposureScore >= 72) return "High Shock Exposure";
+    if (context.shockExposureScore <= 42) return "Low Shock Exposure";
+    return "Mixed Shock Exposure";
+  }, (bucketContexts, percent) => clamp(percent * 0.46 + weightedAverage(bucketContexts, (context) => context.shockExposureScore, 45) * 0.54));
 }
 
 function exposureBucketsFromClassifier(
@@ -288,13 +361,15 @@ function scenarioStressFor(contexts: PortfolioPositionContext[], scenarioSystem:
 function portfolioHeatmap(contexts: PortfolioPositionContext[], scenarioSystem: ScenarioIntelligenceSystem | null): PortfolioHeatmapCell[] {
   return contexts.map((context) => {
     const scenarioVulnerabilityScore = highestScenarioVulnerability(context.symbol, scenarioSystem);
-    const combinedRisk = context.fragilityScore * 0.36 + context.weightPct * 0.28 + scenarioVulnerabilityScore * 0.26 + (100 - context.macroAlignmentScore) * 0.10;
+    const combinedRisk = context.fragilityScore * 0.30 + context.weightPct * 0.22 + scenarioVulnerabilityScore * 0.22 + (100 - context.macroAlignmentScore) * 0.08 + context.liquidityRiskScore * 0.09 + context.shockExposureScore * 0.09;
     return {
       asymmetryScore: context.asymmetryScore,
       fragilityScore: context.fragilityScore,
+      liquidityRiskScore: context.liquidityRiskScore,
       macroAlignmentScore: context.macroAlignmentScore,
       scenarioVulnerabilityScore,
       sector: context.sector,
+      shockExposureScore: context.shockExposureScore,
       symbol: context.symbol,
       theme: context.theme,
       tone: riskTone(combinedRisk),
@@ -345,6 +420,30 @@ function correlationClustersFor(
       type: "event",
     });
   }
+  const liquiditySensitive = contexts.filter((context) => context.liquidityRiskScore >= 68);
+  const liquidityWeight = liquiditySensitive.reduce((sum, context) => sum + context.weightPct, 0);
+  if (liquiditySensitive.length >= 2 || liquidityWeight >= 40) {
+    clusters.push({
+      label: "Liquidity pressure stack",
+      reason: `${Math.round(liquidityWeight)}% of open exposure has elevated liquidity pressure, so market-wide tightening can amplify drawdown risk.`,
+      score: Math.round(clamp(liquidityWeight * 0.60 + weightedAverage(liquiditySensitive, (context) => context.liquidityRiskScore, 70) * 0.40)),
+      symbols: liquiditySensitive.map((context) => context.symbol),
+      tone: "warn",
+      type: "liquidity",
+    });
+  }
+  const shockSensitive = contexts.filter((context) => context.shockExposureScore >= 70);
+  const shockWeight = shockSensitive.reduce((sum, context) => sum + context.weightPct, 0);
+  if (shockSensitive.length >= 2 || shockWeight >= 42) {
+    clusters.push({
+      label: "Shock exposure stack",
+      reason: `${Math.round(shockWeight)}% of open exposure has elevated historical shock or two-sided volatility exposure.`,
+      score: Math.round(clamp(shockWeight * 0.58 + weightedAverage(shockSensitive, (context) => context.shockExposureScore, 70) * 0.42)),
+      symbols: shockSensitive.map((context) => context.symbol),
+      tone: "warn",
+      type: "shock",
+    });
+  }
   const highestStress = scenarioStress[0];
   if (highestStress && highestStress.weightedVulnerabilityScore >= 62 && highestStress.impactedSymbols.length) {
     clusters.push({
@@ -357,6 +456,83 @@ function correlationClustersFor(
     });
   }
   return clusters.sort((left, right) => right.score - left.score).slice(0, 6);
+}
+
+function hedgeOffsetContextsFor(contexts: PortfolioPositionContext[], scenarioStress: PortfolioScenarioStress[]): PortfolioHedgeOffsetContext[] {
+  const offsets: PortfolioHedgeOffsetContext[] = [];
+  const growth = contexts.filter((context) => context.theme === "Growth / AI");
+  const defensive = contexts.filter((context) => context.theme === "Defensive / Hedge" || context.theme === "Defensive / Quality");
+  const energy = contexts.filter((context) => context.theme === "Commodity / Energy");
+  const broadIndex = contexts.filter((context) => context.theme === "Broad Index");
+  const growthWeight = growth.reduce((sum, context) => sum + context.weightPct, 0);
+  const defensiveWeight = defensive.reduce((sum, context) => sum + context.weightPct, 0);
+  const energyWeight = energy.reduce((sum, context) => sum + context.weightPct, 0);
+  const broadIndexWeight = broadIndex.reduce((sum, context) => sum + context.weightPct, 0);
+
+  if (growthWeight >= 35 && defensiveWeight >= 10) {
+    offsets.push({
+      label: "Defensive offset",
+      reason: `${Math.round(defensiveWeight)}% defensive or hedge exposure partially offsets ${Math.round(growthWeight)}% growth/AI concentration under risk-off scenarios.`,
+      score: Math.round(clamp(defensiveWeight * 1.4 + 35)),
+      symbols: defensive.map((context) => context.symbol),
+      tone: "good",
+    });
+  }
+  if (energyWeight >= 12 && scenarioStress.some((stress) => stress.scenarioKey === "oil_breakout")) {
+    offsets.push({
+      label: "Commodity offset",
+      reason: `${Math.round(energyWeight)}% commodity/energy exposure may behave differently during oil shock scenarios, based on deterministic sector stress mapping.`,
+      score: Math.round(clamp(energyWeight * 1.2 + 38)),
+      symbols: energy.map((context) => context.symbol),
+      tone: "neutral",
+    });
+  }
+  if (broadIndexWeight >= 20 && contexts.length >= 3) {
+    offsets.push({
+      label: "Broad index ballast",
+      reason: `${Math.round(broadIndexWeight)}% broad-index exposure reduces single-name idiosyncratic concentration, but it does not hedge broad risk-off pressure.`,
+      score: Math.round(clamp(broadIndexWeight + 35)),
+      symbols: broadIndex.map((context) => context.symbol),
+      tone: "neutral",
+    });
+  }
+  return offsets.sort((left, right) => right.score - left.score).slice(0, 3);
+}
+
+function hiddenCorrelationWarningFor(clusters: PortfolioCorrelationCluster[], contexts: PortfolioPositionContext[]): string | null {
+  const severe = clusters.find((cluster) => cluster.score >= 72);
+  if (severe) return `${severe.label}: ${severe.symbols.join(", ")} may behave like one combined exposure under stress.`;
+  const growthWeight = contexts.filter((context) => context.theme === "Growth / AI").reduce((sum, context) => sum + context.weightPct, 0);
+  if (growthWeight >= 55) return `${Math.round(growthWeight)}% of exposure sits in Growth / AI, creating hidden factor correlation even when symbols differ.`;
+  return null;
+}
+
+function eventConcentrationScoreFor(contexts: PortfolioPositionContext[], eventBuckets: PortfolioExposureBucket[]): number {
+  if (!contexts.length) return 0;
+  const eventRisk = weightedAverage(contexts, (context) => context.eventRiskScore, 35);
+  const elevatedEventBucket = eventBuckets.find((bucket) => bucket.label === "Elevated Event Pressure");
+  const elevatedWeight = elevatedEventBucket?.percent ?? 0;
+  return clamp(eventRisk * 0.62 + elevatedWeight * 0.38);
+}
+
+function stressProofSummaryFor(
+  contexts: PortfolioPositionContext[],
+  scenarioStress: PortfolioScenarioStress[],
+  offsets: PortfolioHedgeOffsetContext[],
+  liquidityRiskScore: number,
+  shockExposureScore: number,
+): string[] {
+  if (!contexts.length) return ["Add manual or paper positions to generate portfolio stress proof."];
+  const lines: string[] = [];
+  const topStress = scenarioStress[0];
+  if (topStress) {
+    lines.push(`${topStress.scenarioLabel} is the highest modeled stress at ${topStress.weightedVulnerabilityScore}/100 weighted vulnerability.`);
+  }
+  if (liquidityRiskScore >= 62) lines.push(`Liquidity pressure is elevated at ${Math.round(liquidityRiskScore)}/100 across weighted exposure.`);
+  if (shockExposureScore >= 62) lines.push(`Shock exposure is elevated at ${Math.round(shockExposureScore)}/100, so sudden move risk is not isolated to one symbol.`);
+  if (offsets.length) lines.push(`${offsets[0].label}: ${offsets[0].reason}`);
+  if (!lines.length) lines.push("No severe scenario concentration is currently flagged; stress estimates remain bounded and evidence-based.");
+  return lines.slice(0, 4);
 }
 
 function concentrationScoreFor(contexts: PortfolioPositionContext[], sectorBuckets: PortfolioExposureBucket[]): number {
@@ -375,6 +551,7 @@ function portfolioSummary(
   concentrationScore: number,
   fragilityScore: number,
   scenarioStress: PortfolioScenarioStress[],
+  hiddenCorrelationWarning: string | null,
 ): string {
   if (!contexts.length) return "No open paper positions are available for portfolio intelligence yet.";
   const dominant = contexts[0];
@@ -382,7 +559,8 @@ function portfolioSummary(
   const concentrationText = concentrationScore >= 62 ? "concentration is elevated" : concentrationScore >= 38 ? "concentration is moderate" : "concentration is controlled";
   const fragilityText = fragilityScore >= 66 ? "fragility is stacked" : fragilityScore >= 48 ? "fragility is mixed" : "fragility is contained";
   const stressText = stress ? `${stress.scenarioLabel} is the highest modeled scenario pressure` : "scenario stress will improve as current scanner context expands";
-  return `Portfolio quality is ${qualityScore}/100; ${concentrationText}, ${fragilityText}, and ${dominant.symbol} is the largest open exposure. ${stressText}.`;
+  const hiddenText = hiddenCorrelationWarning ? ` Hidden correlation: ${hiddenCorrelationWarning}` : "";
+  return `Portfolio quality is ${qualityScore}/100; ${concentrationText}, ${fragilityText}, and ${dominant.symbol} is the largest open exposure. ${stressText}.${hiddenText}`;
 }
 
 function portfolioQualityLabel(qualityScore: number, fragilityScore: number, concentrationScore: number): string {
@@ -466,6 +644,13 @@ function positiveNumber(value: unknown): number | null {
   const parsed = finiteNumber(value);
   if (parsed === null || !Number.isFinite(parsed) || parsed <= 0) return null;
   return parsed;
+}
+
+function maxKnown(values: unknown[]): number | null {
+  const parsed = values
+    .map((value) => scoreOrNull(value))
+    .filter((value): value is number => value !== null);
+  return parsed.length ? Math.max(...parsed) : null;
 }
 
 function weightedAverage(contexts: PortfolioPositionContext[], metric: (context: PortfolioPositionContext) => number, fallback: number): number;

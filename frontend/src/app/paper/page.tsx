@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { GhostPortfolioCard } from "@/components/paper/GhostPortfolioCard";
+import { ManualPortfolioScenarioLab } from "@/components/paper/ManualPortfolioScenarioLab";
 import { ManualPaperTradeForm } from "@/components/paper/ManualPaperTradeForm";
 import { PortfolioIntelligencePanel } from "@/components/paper/PortfolioIntelligencePanel";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
@@ -718,6 +719,7 @@ export default async function PaperPage() {
                 <>
                   <TrustHeadlineCards metrics={trustMetrics} />
                   <PortfolioIntelligencePanel system={portfolioIntelligence} />
+                  <ManualPortfolioScenarioLab accountValue={account?.total_account_value ?? null} opportunities={opportunitiesModel.rows} scenarioSystem={scenarioIntelligence} />
 
                   <SectionShell eyebrow="Trust Curve" title={equityPoints.length === 1 ? "Equity Curve (early data)" : "Equity Curve"}>
                     <EquityCurve points={equityPoints} />

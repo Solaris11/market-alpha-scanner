@@ -25,6 +25,7 @@ export type ScenarioKey =
   | "defensive_rotation"
   | "earnings_miss"
   | "fed_hawkish_shift"
+  | "liquidity_tightening"
   | "oil_breakout"
   | "qqq_down_3"
   | "spy_risk_off"
@@ -193,6 +194,18 @@ const DEFAULT_SCENARIOS: ScenarioDefinition[] = [
     sectorTilt: "growth_negative",
     severity: "stress",
     volatilityDelta: 14,
+  },
+  {
+    category: "liquidity",
+    description: "Liquidity tightens across risk assets. Thin, extended, and high-fragility setups receive higher pressure.",
+    eventRiskDelta: 4,
+    key: "liquidity_tightening",
+    label: "Liquidity tightening",
+    liquidityDelta: 20,
+    macroDelta: -8,
+    sectorTilt: "broad_risk_off",
+    severity: "stress",
+    volatilityDelta: 13,
   },
   {
     category: "macro",

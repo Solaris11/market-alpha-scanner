@@ -128,6 +128,7 @@ test("scenario engine stresses high-beta growth under QQQ and VIX shocks", () =>
   assert.ok(amd);
   assert.ok(ddog.worstCaseVulnerabilityScore > amd.worstCaseVulnerabilityScore);
   assert.ok(ddog.impacts.some((impact) => impact.scenario.key === "vix_spike" && impact.downsideVulnerabilityScore >= 70));
+  assert.ok(ddog.impacts.some((impact) => impact.scenario.key === "liquidity_tightening" && impact.keyDrivers.includes("liquidity pressure")));
 });
 
 test("scenario engine treats energy names differently during oil breakout", () => {
@@ -160,7 +161,8 @@ test("scenario engine produces portfolio summaries without prediction language",
   });
   const text = JSON.stringify(system);
 
-  assert.ok(system.scenarioSummaries.length >= 8);
+  assert.ok(system.scenarioSummaries.length >= 11);
+  assert.ok(system.scenarioSummaries.some((summary) => summary.scenario.key === "liquidity_tightening"));
   assert.ok(system.terminalInsights.length > 0);
   assert.doesNotMatch(text, /guaranteed|predicts exact|buy now|sell now/i);
 });
