@@ -4,6 +4,7 @@ import { finiteNumber, firstNumber, formatMoney } from "@/lib/ui/formatters";
 import { humanizeLabel, readableText } from "@/lib/ui/labels";
 import { buildEdgeLookup, computeConviction, selectBestTradeNow } from "./conviction";
 import { buildConvictionFragilityModel, compactStructuralLabel } from "./conviction-fragility";
+import { buildEvidenceMaturityFromSignal, type EvidenceMaturityModel } from "./evidence-maturity";
 import { createMacroContextResolver, macroAlignmentLabel, type MacroExchangeContext } from "./macro-regime";
 import type { NarrativeIntelligence } from "./narrative-intelligence";
 import type { ShockMovePattern } from "./shock-move";
@@ -20,6 +21,7 @@ export type OpportunityViewModel = {
   decision_reason: string | null;
   entryStatus: string | null;
   entryZoneLabel: string | null;
+  evidence?: EvidenceMaturityModel;
   recommendationQuality: string | null;
   recommendationQualityLabel: string | null;
   suggested_entry: number | null;
@@ -72,6 +74,7 @@ function toOpportunityViewModel(
   const conviction = computeConviction(row, edge);
   const structural = buildConvictionFragilityModel(row, { macroContext });
   const eventContext = buildVerifiedEventContext(row);
+  const evidence = buildEvidenceMaturityFromSignal(row, { shockPattern });
   return {
     symbol: stringOrNull(row.symbol)?.toUpperCase() ?? "N/A",
     company_name: stringOrNull(row.company_name),
@@ -83,6 +86,7 @@ function toOpportunityViewModel(
     decision_reason: readableText(row.decision_reason ?? row.quality_reason ?? row.selection_reason, ""),
     entryStatus: stringOrNull(row.entry_status),
     entryZoneLabel: entryZoneLabel(row),
+    evidence,
     recommendationQuality: stringOrNull(row.recommendation_quality),
     recommendationQualityLabel: friendlyLabel(row.recommendation_quality),
     suggested_entry: firstNumberOrNull(row.suggested_entry ?? row.buy_zone ?? row.entry_zone ?? row.price),

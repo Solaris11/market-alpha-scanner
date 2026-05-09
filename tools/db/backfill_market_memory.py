@@ -79,6 +79,48 @@ SCAN_RUN_BY_TIMESTAMP_SQL = text(
     """
 )
 
+SNAPSHOT_EXISTS_SQL = text(
+    """
+    SELECT
+      EXISTS (
+        SELECT 1
+        FROM scan_runs sr
+        WHERE sr.run_type = 'history_backfill'
+          AND sr.metadata->>'source_file' = :source_file
+          AND EXISTS (
+            SELECT 1
+            FROM scanner_signals ss
+            WHERE ss.scan_run_id = sr.id
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM scanner_signals ss
+            LEFT JOIN market_memory_snapshots m ON m.scanner_signal_id = ss.id
+            WHERE ss.scan_run_id = sr.id
+              AND m.scanner_signal_id IS NULL
+          )
+      )
+      OR EXISTS (
+        SELECT 1
+        FROM scan_runs sr
+        WHERE sr.status = 'success'
+          AND date_trunc('second', COALESCE(sr.completed_at, sr.created_at)) = date_trunc('second', CAST(:completed_at AS timestamptz))
+          AND EXISTS (
+            SELECT 1
+            FROM scanner_signals ss
+            WHERE ss.scan_run_id = sr.id
+          )
+          AND NOT EXISTS (
+            SELECT 1
+            FROM scanner_signals ss
+            LEFT JOIN market_memory_snapshots m ON m.scanner_signal_id = ss.id
+            WHERE ss.scan_run_id = sr.id
+              AND m.scanner_signal_id IS NULL
+          )
+      ) AS already_complete
+    """
+)
+
 SCANNER_SIGNAL_UPSERT_SQL = text(
     """
     INSERT INTO scanner_signals (
@@ -190,10 +232,26 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--history-dir", default="scanner_output/history", help="Directory containing scan_YYYYMMDD_HHMMSS.csv snapshots.")
     parser.add_argument("--apply", action="store_true", help="Write rows to the database. Omit for a dry-run summary.")
     parser.add_argument("--max-files", type=int, default=250, help="Maximum files to process. Use 0 to process all matching files.")
+    parser.add_argument("--missing-only", action="store_true", help="Process only snapshots not already represented by source_file or timestamp.")
     parser.add_argument("--batch-size", type=int, default=500, help="Scanner signal rows per database batch.")
     parser.add_argument("--from-date", default="", help="Optional inclusive UTC date filter, YYYY-MM-DD.")
     parser.add_argument("--to-date", default="", help="Optional inclusive UTC date filter, YYYY-MM-DD.")
     return parser.parse_args()
+
+
+def selected_snapshots(args: argparse.Namespace) -> list[SnapshotFile]:
+    max_files = int(args.max_files)
+    snapshots = discover_snapshots(
+        Path(str(args.history_dir)).expanduser(),
+        from_date=str(args.from_date),
+        to_date=str(args.to_date),
+        max_files=0 if bool(args.missing_only) else max_files,
+    )
+    if bool(args.missing_only):
+        snapshots = missing_snapshots(snapshots)
+        if max_files > 0:
+            snapshots = snapshots[:max_files]
+    return snapshots
 
 
 def discover_snapshots(history_dir: Path, *, from_date: str, to_date: str, max_files: int) -> list[SnapshotFile]:
@@ -254,6 +312,28 @@ def summarize(snapshots: Sequence[SnapshotFile]) -> BackfillStats:
         rows=rows,
         unique_symbols=len(symbols),
     )
+
+
+def missing_snapshots(snapshots: Sequence[SnapshotFile]) -> list[SnapshotFile]:
+    if not snapshots:
+        return []
+    missing: list[SnapshotFile] = []
+    with session_scope() as session:
+        for snapshot in snapshots:
+            if not snapshot_exists(session, snapshot):
+                missing.append(snapshot)
+    return missing
+
+
+def snapshot_exists(session: Session, snapshot: SnapshotFile) -> bool:
+    value = session.execute(
+        SNAPSHOT_EXISTS_SQL,
+        {
+            "completed_at": snapshot.timestamp.isoformat(),
+            "source_file": snapshot.path.name,
+        },
+    ).scalar_one()
+    return bool(value)
 
 
 def apply_backfill(snapshots: Sequence[SnapshotFile], *, batch_size: int) -> BackfillStats:
@@ -417,8 +497,7 @@ def print_stats(prefix: str, stats: BackfillStats) -> None:
 
 def main() -> None:
     args = parse_args()
-    history_dir = Path(str(args.history_dir)).expanduser()
-    snapshots = discover_snapshots(history_dir, from_date=str(args.from_date), to_date=str(args.to_date), max_files=int(args.max_files))
+    snapshots = selected_snapshots(args)
     if not args.apply:
         print_stats("dry_run", summarize(snapshots))
         return

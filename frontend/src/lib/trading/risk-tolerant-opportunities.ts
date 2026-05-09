@@ -138,14 +138,20 @@ export type RiskTolerantOpportunityPacket = {
   rawEvidence: {
     baseScore: number | null;
     convictionScore: number;
+    analogQualityScore: number | null;
+    confidenceReliability: number | null;
+    evidenceMaturity: string;
+    evidenceSampleSize: number | null;
     exchangeHealthScore: number | null;
     eventContext: string;
     finalScore: number | null;
     fragilityScore: number;
+    historicalDepthDays: number | null;
     lastUpdated: string | null;
     liquidityPressure: number | null;
     macroContext: string;
     macroAlignmentScore: number | null;
+    outcomeCoverage: number | null;
     price: number | null;
     relativeVolume: number | null;
     riskReward: number | null;
@@ -436,15 +442,21 @@ export function buildRiskTolerantOpportunityPacket(
     },
     rawEvidence: {
       baseScore: numberField(candidate.row.raw.base_score),
+      analogQualityScore: candidate.row.evidence?.analogQualityScore ?? null,
       convictionScore: candidate.row.conviction,
+      confidenceReliability: candidate.row.evidence?.confidenceReliability ?? null,
+      evidenceMaturity: candidate.row.evidence?.label ?? "Evidence building",
+      evidenceSampleSize: candidate.row.evidence?.evidenceSampleSize ?? null,
       exchangeHealthScore: numberField(candidate.row.raw.exchange_health_score),
       eventContext: candidate.row.eventLabel,
       finalScore: candidate.row.final_score,
       fragilityScore: candidate.row.fragility,
+      historicalDepthDays: candidate.row.evidence?.historicalDepthDays ?? null,
       lastUpdated: candidate.row.dataFreshness.lastUpdated,
       liquidityPressure: numberField(candidate.row.raw.liquidity_pressure),
       macroContext: candidate.row.macroLabel,
       macroAlignmentScore: numberField(candidate.row.raw.macro_alignment_score),
+      outcomeCoverage: candidate.row.evidence?.outcomeCoverage ?? null,
       price: candidate.row.price,
       relativeVolume: numberField(candidate.row.raw.relative_volume ?? candidate.row.raw.rel_volume ?? candidate.row.raw.volume_spike_ratio),
       riskReward: numberField(candidate.row.raw.risk_reward),

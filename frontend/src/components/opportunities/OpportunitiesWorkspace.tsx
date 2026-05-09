@@ -717,6 +717,7 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
         <CardMetric label="Conviction" value={`${row.conviction} ${row.confidenceLabel}`} />
         <CardMetric label="Fragility" value={`${row.fragility} ${row.fragilityLabel}`} />
         <CardMetric label="Score" value={formatNumber(row.final_score, 0)} />
+        <CardMetric label="Evidence" value={evidenceSummary(row)} />
         <CardMetric label="Macro Context" value={`${row.macroLabel} ${signedAdjustment(row.macroAdjustment)}`} />
         <CardMetric label="Event Context" value={row.eventLabel} />
         <CardMetric label="Entry / Correction" value={row.entryZoneLabel ?? formatMoney(row.suggested_entry)} />
@@ -756,7 +757,7 @@ function HeroMetric({ label, value, tone = "neutral" }: { label: string; value: 
 function MiniCardMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-lg bg-slate-950/45 px-2 py-1">
-      <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">{label}</div>
+      <div className="truncate text-[9px] font-semibold uppercase leading-3 tracking-normal text-slate-500" title={label}>{label}</div>
       <div className="truncate font-mono text-[12px] font-semibold text-slate-100">{value}</div>
     </div>
   );
@@ -765,10 +766,16 @@ function MiniCardMetric({ label, value }: { label: string; value: string }) {
 function CardMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-xl border border-white/10 bg-slate-950/40 p-3">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{label}</div>
-      <div className="mt-1 font-mono text-sm font-semibold text-slate-100">{value}</div>
+      <div className="truncate text-[10px] font-semibold uppercase leading-4 tracking-normal text-slate-500" title={label}>{label}</div>
+      <div className="mt-1 truncate font-mono text-sm font-semibold text-slate-100" title={value}>{value}</div>
     </div>
   );
+}
+
+function evidenceSummary(row: OpportunityViewModel): string {
+  const evidence = row.evidence;
+  if (!evidence) return "Evidence building";
+  return `${evidence.label} · ${evidence.evidenceSampleSize.toLocaleString()} samples`;
 }
 
 function InsightList({ className = "", items, title }: { className?: string; items: string[]; title: string }) {

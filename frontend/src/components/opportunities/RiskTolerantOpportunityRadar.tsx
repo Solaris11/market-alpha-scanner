@@ -326,6 +326,7 @@ function RiskCandidateCard({
         <MiniMetric label="Upside" value={formatNumber(base.upsidePotentialScore, 0)} />
         <MiniMetric label="Downside" value={formatNumber(base.downsideRiskScore, 0)} tone={base.downsideRiskScore >= 70 ? "risk" : "neutral"} />
         <MiniMetric label="Reliability" value={formatNumber(base.reliabilityScore, 0)} />
+        <MiniMetric label="Evidence" value={base.row.evidence ? `${base.row.evidence.label} ${base.row.evidence.score}` : "Evidence building"} />
         <MiniMetric label="Entry Zone" value={base.researchEntryZone} />
         <MiniMetric label="Invalidation" value={base.invalidationZone} tone="risk" />
       </div>

@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ActiveAlertMatch } from "@/lib/active-alert-matches";
 import type { MarketRegime } from "@/lib/adapters/DataServiceAdapter";
 import type { RankingRow } from "@/lib/types";
+import { buildEvidenceMaturityFromSignal } from "@/lib/trading/evidence-maturity";
 import { decisionLabel, humanizeLabel } from "@/lib/ui/labels";
 import { ConversationalResearchCopilotPanel } from "./ConversationalResearchCopilotPanel";
 import { GlassPanel } from "./ui/GlassPanel";
@@ -90,6 +91,7 @@ export function TerminalRightRail({
 function RightRailSignalRow({ row, symbol }: { row: RankingRow | null; symbol: string }) {
   const decision = row ? decisionLabel(row.final_decision) : "Not in latest scan";
   const confidence = numeric(row?.confidence_score ?? row?.final_score);
+  const evidence = row ? buildEvidenceMaturityFromSignal(row) : null;
   return (
     <Link className="block rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.06]" href={`/symbol/${symbol}`}>
       <div className="flex items-center justify-between gap-3">
@@ -100,6 +102,7 @@ function RightRailSignalRow({ row, symbol }: { row: RankingRow | null; symbol: s
         <span>{row?.setup_type ? humanizeLabel(row.setup_type) : "Research signal"}</span>
         <span>{confidence === null ? "confidence n/a" : `${Math.round(confidence)} confidence`}</span>
       </div>
+      {evidence ? <div className="mt-1 text-[11px] text-slate-500">{evidence.label} · {evidence.evidenceSampleSize.toLocaleString()} samples</div> : null}
     </Link>
   );
 }

@@ -3,6 +3,7 @@ import "server-only";
 import type { QueryResultRow } from "pg";
 import type { BackupHealthDetails } from "@/lib/backup-health";
 import { getScanDataHealth } from "@/lib/scanner-data";
+import { buildEvidenceDepthSummary, type EvidenceDepthDuplicateCheck, type EvidenceDepthSummary, type EvidenceDepthSymbol, type EvidenceDepthTableCount, type EvidenceDepthWindow } from "@/lib/trading/evidence-depth";
 import { deepHealth } from "./monitoring";
 import { dbQuery } from "./db";
 
@@ -194,6 +195,7 @@ export type CalibrationDistributionRow = {
 
 export type AdminCalibrationSummary = {
   distributions: CalibrationDistributionRow[];
+  evidenceDepth: EvidenceDepthSummary;
   generatedAt: string;
   groups: Record<CalibrationGroupType, CalibrationMetricRow[]>;
   hints: string[];
@@ -370,6 +372,33 @@ type CalibrationDistributionDbRow = QueryResultRow & {
   count: string | number;
   decision: string | null;
   trade_permitted_count: string | number;
+};
+type EvidenceDepthCountDbRow = QueryResultRow & {
+  area: string;
+  count: string | number;
+};
+type EvidenceDepthDuplicateDbRow = QueryResultRow & {
+  duplicate_groups: string | number;
+  label: string;
+};
+type EvidenceDepthSymbolDbRow = QueryResultRow & {
+  forward_return_count: string | number;
+  historical_depth_days: string | number | null;
+  memory_snapshot_count: string | number;
+  outcome_coverage: string | number | null;
+  scanner_signal_count: string | number;
+  symbol: string;
+};
+type EvidenceDepthWindowDbRow = QueryResultRow & {
+  completed_forward_return_count: string | number;
+  forward_return_count: string | number;
+  historical_depth_days: string | number | null;
+  memory_snapshot_count: string | number;
+  scan_run_count: string | number;
+  signal_count: string | number;
+  unique_signal_days: string | number;
+  unique_symbol_count: string | number;
+  window_label: string;
 };
 type ProviderUsageDbRow = QueryResultRow & {
   count: string | number;
@@ -899,7 +928,7 @@ function monitoringWindow(range: MonitoringTimeRange): { bucketSql: string; inte
 }
 
 export async function getAdminCalibrationSummary(): Promise<AdminCalibrationSummary> {
-  const [latestRun, observationCount, scoreBucket, decision, setupType, assetType, marketRegime, distributions] = await Promise.all([
+  const [latestRun, observationCount, scoreBucket, decision, setupType, assetType, marketRegime, distributions, evidenceDepth] = await Promise.all([
     getLatestScannerRun(),
     countQuery("SELECT count(*) AS count FROM forward_returns WHERE return_pct IS NOT NULL").catch(() => 0),
     calibrationGroupQuery("score_bucket"),
@@ -908,9 +937,11 @@ export async function getAdminCalibrationSummary(): Promise<AdminCalibrationSumm
     calibrationGroupQuery("asset_type"),
     calibrationGroupQuery("market_regime"),
     latestDecisionDistribution(),
+    getEvidenceDepthSummary(),
   ]);
   return {
     distributions,
+    evidenceDepth,
     generatedAt: new Date().toISOString(),
     groups: {
       asset_type: assetType,
@@ -1201,6 +1232,150 @@ function calibrationGroupExpression(groupType: CalibrationGroupType): string {
   if (groupType === "setup_type") return "COALESCE(NULLIF(metrics->>'setup_type', ''), 'UNKNOWN')";
   if (groupType === "asset_type") return "COALESCE(NULLIF(metrics->>'asset_type', ''), 'UNKNOWN')";
   return "COALESCE(NULLIF(metrics->>'market_regime', ''), 'UNKNOWN')";
+}
+
+async function getEvidenceDepthSummary(): Promise<EvidenceDepthSummary> {
+  const [tableCounts, windows, duplicateChecks, representativeSymbols] = await Promise.all([
+    evidenceDepthTableCounts(),
+    evidenceDepthWindows(),
+    evidenceDuplicateChecks(),
+    evidenceRepresentativeSymbols(),
+  ]);
+  return buildEvidenceDepthSummary({
+    duplicateChecks,
+    representativeSymbols,
+    tableCounts,
+    windows,
+  });
+}
+
+async function evidenceDepthTableCounts(): Promise<EvidenceDepthTableCount[]> {
+  const result = await dbQuery<EvidenceDepthCountDbRow>(
+    `
+      SELECT 'scan_runs' AS area, count(*) AS count FROM scan_runs
+      UNION ALL SELECT 'scanner_signals', count(*) FROM scanner_signals
+      UNION ALL SELECT 'market_memory_snapshots', count(*) FROM market_memory_snapshots
+      UNION ALL SELECT 'shock_move_patterns', count(*) FROM shock_move_patterns
+      UNION ALL SELECT 'shock_move_events', count(*) FROM shock_move_events
+      UNION ALL SELECT 'forward_returns', count(*) FROM forward_returns
+      UNION ALL SELECT 'forward_returns_completed', count(*) FROM forward_returns WHERE return_pct IS NOT NULL
+    `,
+  ).catch(() => ({ rows: [] as EvidenceDepthCountDbRow[] }));
+  return result.rows.map((row) => ({ area: row.area, count: toNumber(row.count) }));
+}
+
+async function evidenceDepthWindows(): Promise<EvidenceDepthWindow[]> {
+  const result = await dbQuery<EvidenceDepthWindowDbRow>(
+    `
+      WITH windows(window_label, days) AS (
+        VALUES ('30D'::text, 30), ('60D'::text, 60), ('90D'::text, 90)
+      )
+      SELECT
+        w.window_label,
+        COALESCE((SELECT count(*) FROM scan_runs sr WHERE sr.status = 'success' AND COALESCE(sr.completed_at, sr.created_at) >= now() - make_interval(days => w.days)), 0) AS scan_run_count,
+        COALESCE((SELECT count(*) FROM scanner_signals ss JOIN scan_runs sr ON sr.id = ss.scan_run_id WHERE sr.status = 'success' AND COALESCE(sr.completed_at, sr.created_at) >= now() - make_interval(days => w.days)), 0) AS signal_count,
+        COALESCE((SELECT count(*) FROM market_memory_snapshots m WHERE m.signal_ts >= now() - make_interval(days => w.days)), 0) AS memory_snapshot_count,
+        COALESCE((SELECT count(DISTINCT ss.symbol) FROM scanner_signals ss JOIN scan_runs sr ON sr.id = ss.scan_run_id WHERE sr.status = 'success' AND COALESCE(sr.completed_at, sr.created_at) >= now() - make_interval(days => w.days)), 0) AS unique_symbol_count,
+        COALESCE((SELECT count(DISTINCT COALESCE(sr.completed_at, sr.created_at)::date) FROM scan_runs sr WHERE sr.status = 'success' AND COALESCE(sr.completed_at, sr.created_at) >= now() - make_interval(days => w.days)), 0) AS unique_signal_days,
+        COALESCE((SELECT count(*) FROM forward_returns fr WHERE fr.signal_date >= (current_date - w.days)), 0) AS forward_return_count,
+        COALESCE((SELECT count(*) FROM forward_returns fr WHERE fr.signal_date >= (current_date - w.days) AND fr.return_pct IS NOT NULL), 0) AS completed_forward_return_count,
+        COALESCE((SELECT (max(COALESCE(sr.completed_at, sr.created_at)::date) - min(COALESCE(sr.completed_at, sr.created_at)::date) + 1)::int FROM scan_runs sr WHERE sr.status = 'success' AND COALESCE(sr.completed_at, sr.created_at) >= now() - make_interval(days => w.days)), 0) AS historical_depth_days
+      FROM windows w
+      ORDER BY w.days
+    `,
+  ).catch(() => ({ rows: [] as EvidenceDepthWindowDbRow[] }));
+  return result.rows.map((row) => ({
+    completedForwardReturnCount: toNumber(row.completed_forward_return_count),
+    forwardReturnCount: toNumber(row.forward_return_count),
+    historicalDepthDays: toNumber(row.historical_depth_days),
+    memorySnapshotCount: toNumber(row.memory_snapshot_count),
+    scanRunCount: toNumber(row.scan_run_count),
+    signalCount: toNumber(row.signal_count),
+    uniqueSignalDays: toNumber(row.unique_signal_days),
+    uniqueSymbolCount: toNumber(row.unique_symbol_count),
+    windowLabel: row.window_label === "30D" || row.window_label === "60D" || row.window_label === "90D" ? row.window_label : "90D",
+  }));
+}
+
+async function evidenceDuplicateChecks(): Promise<EvidenceDepthDuplicateCheck[]> {
+  const result = await dbQuery<EvidenceDepthDuplicateDbRow>(
+    `
+      SELECT 'history backfill source files' AS label, count(*) AS duplicate_groups FROM (
+        SELECT metadata->>'source_file' FROM scan_runs WHERE run_type='history_backfill' AND metadata ? 'source_file' GROUP BY 1 HAVING count(*) > 1
+      ) d
+      UNION ALL SELECT 'scanner signal run/symbol pairs', count(*) FROM (
+        SELECT scan_run_id, symbol FROM scanner_signals GROUP BY 1,2 HAVING count(*) > 1
+      ) d
+      UNION ALL SELECT 'market memory scanner signal links', count(*) FROM (
+        SELECT scanner_signal_id FROM market_memory_snapshots GROUP BY 1 HAVING count(*) > 1
+      ) d
+      UNION ALL SELECT 'shock pattern symbol/windows', count(*) FROM (
+        SELECT symbol, lookback_window FROM shock_move_patterns GROUP BY 1,2 HAVING count(*) > 1
+      ) d
+      UNION ALL SELECT 'shock event symbol/date/types', count(*) FROM (
+        SELECT symbol, event_date, move_type FROM shock_move_events GROUP BY 1,2,3 HAVING count(*) > 1
+      ) d
+    `,
+  ).catch(() => ({ rows: [] as EvidenceDepthDuplicateDbRow[] }));
+  return result.rows.map((row) => ({ duplicateGroups: toNumber(row.duplicate_groups), label: row.label }));
+}
+
+async function evidenceRepresentativeSymbols(): Promise<Array<Omit<EvidenceDepthSymbol, "evidenceMaturity">>> {
+  const symbols = ["AMD", "MU", "DDOG", "NVDA", "AVGO", "ASML", "CRWD", "TSM", "OXY", "QQQ", "SPY"];
+  const result = await dbQuery<EvidenceDepthSymbolDbRow>(
+    `
+      WITH symbols(symbol) AS (
+        SELECT unnest($1::text[])
+      ),
+      signal_counts AS (
+        SELECT
+          ss.symbol,
+          count(*) AS scanner_signal_count,
+          COALESCE((max(COALESCE(sr.completed_at, sr.created_at)::date) - min(COALESCE(sr.completed_at, sr.created_at)::date) + 1)::int, 0) AS historical_depth_days
+        FROM scanner_signals ss
+        JOIN scan_runs sr ON sr.id = ss.scan_run_id
+        WHERE ss.symbol = ANY($1::text[])
+        GROUP BY ss.symbol
+      ),
+      memory_counts AS (
+        SELECT symbol, count(*) AS memory_snapshot_count
+        FROM market_memory_snapshots
+        WHERE symbol = ANY($1::text[])
+        GROUP BY symbol
+      ),
+      forward_counts AS (
+        SELECT symbol, count(*) AS forward_return_count
+        FROM forward_returns
+        WHERE symbol = ANY($1::text[])
+          AND return_pct IS NOT NULL
+        GROUP BY symbol
+      )
+      SELECT
+        symbols.symbol,
+        COALESCE(signal_counts.scanner_signal_count, 0) AS scanner_signal_count,
+        COALESCE(signal_counts.historical_depth_days, 0) AS historical_depth_days,
+        COALESCE(memory_counts.memory_snapshot_count, 0) AS memory_snapshot_count,
+        COALESCE(forward_counts.forward_return_count, 0) AS forward_return_count,
+        CASE
+          WHEN COALESCE(signal_counts.scanner_signal_count, 0) <= 0 THEN 0
+          ELSE LEAST(100, (COALESCE(forward_counts.forward_return_count, 0)::numeric / signal_counts.scanner_signal_count::numeric) * 100)
+        END AS outcome_coverage
+      FROM symbols
+      LEFT JOIN signal_counts ON signal_counts.symbol = symbols.symbol
+      LEFT JOIN memory_counts ON memory_counts.symbol = symbols.symbol
+      LEFT JOIN forward_counts ON forward_counts.symbol = symbols.symbol
+      ORDER BY symbols.symbol
+    `,
+    [symbols],
+  ).catch(() => ({ rows: [] as EvidenceDepthSymbolDbRow[] }));
+  return result.rows.map((row) => ({
+    forwardReturnCount: toNumber(row.forward_return_count),
+    historicalDepthDays: toNumber(row.historical_depth_days),
+    memorySnapshotCount: toNumber(row.memory_snapshot_count),
+    outcomeCoverage: toNullableNumber(row.outcome_coverage) ?? 0,
+    scannerSignalCount: toNumber(row.scanner_signal_count),
+    symbol: row.symbol,
+  }));
 }
 
 async function latestDecisionDistribution(): Promise<CalibrationDistributionRow[]> {

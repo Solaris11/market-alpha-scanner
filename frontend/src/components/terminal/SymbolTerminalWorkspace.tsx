@@ -32,6 +32,7 @@ import { CorrectionMapCard } from "./CorrectionMapCard";
 import { DecisionJournalCard } from "./DecisionJournalCard";
 import { ExecutionTicket } from "./ExecutionTicket";
 import { ExecutionIntelligencePanel } from "./ExecutionIntelligencePanel";
+import { EvidenceMaturityCard } from "./EvidenceMaturityCard";
 import { HistoricalEdgeCard } from "./HistoricalEdgeCard";
 import { InstitutionalIntelligencePanel } from "./InstitutionalIntelligencePanel";
 import { IntradayRegimeDriftPanel } from "./IntradayRegimeDriftPanel";
@@ -170,6 +171,7 @@ export function SymbolTerminalWorkspace({
             </GlassPanel>
           )}
           <SymbolDecisionIntelligencePanel candles={candles} row={row} />
+          <EvidenceMaturityCard marketMemory={marketMemory} row={row} shockPattern={shockPattern ?? null} />
           {institutionalOpportunity ? <MetaIntelligenceOperatingSystemPanel compact focusSymbol={symbol} personalizationProfile={personalizationProfile ?? null} rows={[institutionalOpportunity]} workflowEvolution={workflowEvolution ?? null} /> : null}
           {institutionalOpportunity ? <IntradayRegimeDriftPanel compact driftRows={intradayDriftRows} focusSymbol={symbol} rows={[institutionalOpportunity]} /> : null}
           <AdaptiveLearningInsightPanel compact focusSymbol={symbol} system={adaptiveLearning ?? null} />

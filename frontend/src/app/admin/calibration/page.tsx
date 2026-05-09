@@ -1,6 +1,7 @@
 import { AdminEmpty, AdminSection, AdminStatCard, StatusBadge } from "@/components/admin/AdminChrome";
 import { AdaptiveLearningDashboard } from "@/components/admin/AdaptiveLearningDashboard";
 import { CalibrationTable } from "@/components/admin/CalibrationTable";
+import { EvidenceDepthDashboard } from "@/components/admin/EvidenceDepthDashboard";
 import { getAdminCalibrationSummary } from "@/lib/server/admin-data";
 import { buildAdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
 import { decisionLabel, humanizeQuantText } from "@/lib/ui/labels";
@@ -50,6 +51,8 @@ export default async function AdminCalibrationPage() {
           )}
         </div>
       </AdminSection>
+
+      <EvidenceDepthDashboard summary={calibration.evidenceDepth} />
 
       <AdaptiveLearningDashboard system={adaptiveLearning} />
 
