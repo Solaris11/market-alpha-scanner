@@ -15,9 +15,9 @@ export function DesktopTerminalNav() {
   const utilities = visibleUtilityNavItems(entitlement.isAdmin);
 
   return (
-    <div className="hidden min-w-0 flex-1 items-center justify-center overflow-hidden xl:flex">
-      <div className="flex max-w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <nav aria-label="Primary navigation" className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.035] p-1 shadow-inner shadow-black/20">
+    <div className="hidden min-w-0 flex-1 items-center justify-start overflow-hidden xl:flex 2xl:justify-center">
+      <div className="flex max-w-full min-w-0 items-center gap-3 overflow-x-auto overscroll-x-contain px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <nav aria-label="Primary navigation" className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.035] p-1 shadow-inner shadow-black/20">
           {PRIMARY_NAV_ITEMS.map((item) => <DesktopNavLink item={item} key={item.href} pathname={pathname} primary />)}
         </nav>
         <nav aria-label="Utility navigation" className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-slate-950/45 p-1">
@@ -174,7 +174,7 @@ export function MobileTerminalNav() {
 
 function DesktopNavLink({ item, pathname, primary = false }: { item: AppNavItem; pathname: string; primary?: boolean }) {
   const active = isActivePath(pathname, item.href);
-  const base = primary ? "px-3 py-2 text-sm 2xl:px-3.5" : "px-2.5 py-2 text-xs 2xl:px-3";
+  const base = primary ? "px-2.5 py-2 text-[13px] 2xl:px-3.5 2xl:text-sm" : "px-2.5 py-2 text-xs 2xl:px-3";
   return (
     <Link
       className={`inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-full border font-semibold transition-all duration-200 ${base} ${

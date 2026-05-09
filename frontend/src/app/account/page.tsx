@@ -12,15 +12,26 @@ import { getFreshBillingSubscriptionForUser, type BillingSubscription } from "@/
 import { getEntitlement, type Entitlement } from "@/lib/server/entitlements";
 import { formatRiskExperienceLevel } from "@/lib/security/onboarding-profile";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
-import { DEFAULT_USER_RISK_PROFILE, normalizeRiskProfile, type UserRiskProfile } from "@/lib/trading/risk-veto";
+import { DEFAULT_USER_RISK_PROFILE, normalizePersonalityProfile, normalizePreferenceLevel, normalizeRiskProfile, type UserRiskProfile } from "@/lib/trading/risk-veto";
 
 export const dynamic = "force-dynamic";
 
 type RiskProfileRow = QueryResultRow & {
   allow_override: boolean;
+  asymmetry_preference: string | number | null;
+  continuation_preference: string | number | null;
+  drawdown_tolerance: string | number | null;
+  event_preference: string | number | null;
   max_daily_loss: string | number | null;
   max_risk_per_trade_percent: string | number;
   max_sector_positions: string | number;
+  momentum_preference: string | number | null;
+  personality_confidence: string | number | null;
+  personality_profile: string | null;
+  preferred_reward_level: string | null;
+  preferred_risk_level: string | null;
+  pullback_preference: string | number | null;
+  volatility_tolerance: string | number | null;
 };
 
 type RiskProfileResult = {
@@ -139,6 +150,8 @@ export default async function AccountPage() {
               <InfoItem label="Max daily loss" value={riskProfile.profile.maxDailyLoss === null ? "Not set" : formatMoney(riskProfile.profile.maxDailyLoss)} />
               <InfoItem label="Max sector positions" value={formatInteger(riskProfile.profile.maxSectorExposure)} />
               <InfoItem label="Allow override" value={riskProfile.profile.allowOverride ? "Allowed" : "Blocked"} />
+              <InfoItem label="Personality" value={formatTitle(riskProfile.profile.personalityProfile)} />
+              <InfoItem label="Preference" value={`${formatTitle(riskProfile.profile.preferredRiskLevel)} risk / ${formatTitle(riskProfile.profile.preferredRewardLevel)} reward`} />
             </dl>
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <Link className="rounded-full border border-cyan-300/35 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15" href="/terminal">
@@ -326,7 +339,22 @@ async function readRiskProfile(userId: string): Promise<RiskProfileResult> {
   try {
     const result = await dbQuery<RiskProfileRow>(
       `
-        SELECT max_risk_per_trade_percent, max_daily_loss, max_sector_positions, allow_override
+        SELECT
+          max_risk_per_trade_percent,
+          max_daily_loss,
+          max_sector_positions,
+          allow_override,
+          personality_profile,
+          preferred_risk_level,
+          preferred_reward_level,
+          volatility_tolerance,
+          drawdown_tolerance,
+          momentum_preference,
+          pullback_preference,
+          asymmetry_preference,
+          event_preference,
+          continuation_preference,
+          personality_confidence
         FROM user_risk_profile
         WHERE user_id = $1
         LIMIT 1
@@ -339,10 +367,21 @@ async function readRiskProfile(userId: string): Promise<RiskProfileResult> {
       exists: true,
       profile: normalizeRiskProfile({
         allowOverride: row.allow_override,
+        asymmetryPreference: nullableNumber(row.asymmetry_preference) ?? undefined,
+        continuationPreference: nullableNumber(row.continuation_preference) ?? undefined,
+        drawdownTolerance: nullableNumber(row.drawdown_tolerance) ?? undefined,
+        eventPreference: nullableNumber(row.event_preference) ?? undefined,
         maxDailyLoss: nullableNumber(row.max_daily_loss),
         maxPositionSizePercent: null,
         maxRiskPerTradePercent: numberValue(row.max_risk_per_trade_percent, DEFAULT_USER_RISK_PROFILE.maxRiskPerTradePercent),
         maxSectorExposure: numberValue(row.max_sector_positions, DEFAULT_USER_RISK_PROFILE.maxSectorExposure),
+        momentumPreference: nullableNumber(row.momentum_preference) ?? undefined,
+        personalityConfidence: nullableNumber(row.personality_confidence) ?? undefined,
+        personalityProfile: normalizePersonalityProfile(row.personality_profile),
+        preferredRewardLevel: normalizePreferenceLevel(row.preferred_reward_level),
+        preferredRiskLevel: normalizePreferenceLevel(row.preferred_risk_level),
+        pullbackPreference: nullableNumber(row.pullback_preference) ?? undefined,
+        volatilityTolerance: nullableNumber(row.volatility_tolerance) ?? undefined,
       }),
     };
   } catch {

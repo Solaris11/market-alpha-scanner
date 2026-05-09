@@ -6,6 +6,7 @@ import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getNarrativeMap } from "@/lib/server/narrative-intelligence";
+import { getPersonalizationProfileForUser } from "@/lib/server/personalized-intelligence";
 import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
@@ -33,10 +34,11 @@ export default async function OpportunitiesPage() {
   }
 
   const adapter = new ScannerDataAdapter();
-  const [rows, regime, performance] = await Promise.all([
+  const [rows, regime, performance, personalizationProfile] = await Promise.all([
     adapter.getOverviewSignals(),
     adapter.getMarketRegime(),
     getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
+    getPersonalizationProfileForUser(entitlement.user?.id ?? null).catch(() => null),
   ]);
   const symbols = rows.map((row) => row.symbol);
   const [shockPatterns, narratives] = await Promise.all([
@@ -48,7 +50,7 @@ export default async function OpportunitiesPage() {
 
   return (
     <TerminalShell>
-      <OpportunitiesWorkspace best={model.best} bestPriceSeries={bestDetail?.history ?? []} marketCondition={regime.label} rows={model.rows} />
+      <OpportunitiesWorkspace best={model.best} bestPriceSeries={bestDetail?.history ?? []} initialProfile={personalizationProfile ?? undefined} marketCondition={regime.label} rows={model.rows} />
     </TerminalShell>
   );
 }

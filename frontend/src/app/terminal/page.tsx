@@ -23,6 +23,7 @@ import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getNarrativeMap } from "@/lib/server/narrative-intelligence";
+import { getPersonalizationProfileForUser } from "@/lib/server/personalized-intelligence";
 import { assertNoPremiumFields } from "@/lib/server/premium-preview";
 import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
@@ -92,12 +93,13 @@ export default async function TerminalPage() {
   }
 
   const adapter = new ScannerDataAdapter();
-  const [snapshot, performance, scanSafety, watchlistSymbols, activeAlertMatches] = await Promise.all([
+  const [snapshot, performance, scanSafety, watchlistSymbols, activeAlertMatches, personalizationProfile] = await Promise.all([
     adapter.getTerminalSnapshot(),
     getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
     getCurrentScanSafety(),
     entitlement.user?.id ? readUserWatchlist(entitlement.user.id).catch(() => []) : Promise.resolve([]),
     getActiveAlertMatches(entitlement.user?.id ?? null).then((result) => result.matches).catch(() => []),
+    getPersonalizationProfileForUser(entitlement.user?.id ?? null).catch(() => null),
   ]);
   const edges = buildEdgeLookup(snapshot.signals, performance);
   const symbols = snapshot.signals.map((row) => row.symbol);
@@ -141,7 +143,7 @@ export default async function TerminalPage() {
             <BestTradeNowCard best={best} edges={edges} regime={snapshot.marketRegime} />
           )}
 
-          <RiskTolerantOpportunityRadar compact marketCondition={snapshot.marketRegime.label} rows={opportunityModel.rows} />
+          <RiskTolerantOpportunityRadar compact initialProfile={personalizationProfile ?? undefined} marketCondition={snapshot.marketRegime.label} rows={opportunityModel.rows} />
           <ShockMoveRadar compact rows={opportunityModel.rows} />
 
           <GlassPanel className="overflow-hidden p-5">

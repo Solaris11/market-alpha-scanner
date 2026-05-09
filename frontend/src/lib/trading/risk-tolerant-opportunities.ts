@@ -101,6 +101,20 @@ export type RiskTolerantOpportunityPacket = {
     narrative: string[];
     sampleSize: number;
   } | null;
+  personalization?: {
+    behaviorSummary: {
+      repeatedSymbolViews: number;
+      topSymbols: string[];
+      watchlistCount: number;
+    };
+    drawdownTolerance: number;
+    label: string;
+    personality: string;
+    personalityConfidence: number;
+    preferredRewardLevel: RewardLevel;
+    preferredRiskLevel: RiskLevel;
+    volatilityTolerance: number;
+  };
   preference: RiskRewardProfile;
   shockMetrics: {
     asymmetryScore: number | null;
@@ -356,6 +370,7 @@ export function buildRiskTolerantOpportunityPacket(
   candidate: RiskTolerantOpportunity,
   profile: RiskRewardProfile,
   memory: MarketMemorySummary | null = null,
+  personalization?: RiskTolerantOpportunityPacket["personalization"],
 ): RiskTolerantOpportunityPacket {
   return {
     candidate: {
@@ -398,6 +413,7 @@ export function buildRiskTolerantOpportunityPacket(
       narrative: memory.narrative.slice(0, 3),
       sampleSize: memory.evidence.sampleSize,
     } : null,
+    personalization,
     preference: profile,
     shockMetrics: {
       asymmetryScore: candidate.row.shockPattern?.asymmetryScore ?? null,

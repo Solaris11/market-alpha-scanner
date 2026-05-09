@@ -1,13 +1,36 @@
 import { normalizeNumeric, normalizePercent } from "@/lib/ui/formatters";
 
 export type RiskStatus = "OK" | "WARNING" | "VETO";
+export type RiskPersonalityProfile =
+  | "aggressive"
+  | "asymmetric_swing"
+  | "balanced"
+  | "conservative"
+  | "defensive"
+  | "event_driven"
+  | "momentum"
+  | "pullback_specialist"
+  | "trend_continuation"
+  | "volatility_hunter";
+export type RiskPreferenceLevel = "low" | "medium" | "high";
 
 export type UserRiskProfile = {
   allowOverride: boolean;
+  asymmetryPreference: number;
+  continuationPreference: number;
+  drawdownTolerance: number;
+  eventPreference: number;
   maxDailyLoss: number | null;
   maxPositionSizePercent: number | null;
   maxRiskPerTradePercent: number;
   maxSectorExposure: number;
+  momentumPreference: number;
+  personalityConfidence: number;
+  personalityProfile: RiskPersonalityProfile;
+  preferredRewardLevel: RiskPreferenceLevel;
+  preferredRiskLevel: RiskPreferenceLevel;
+  pullbackPreference: number;
+  volatilityTolerance: number;
 };
 
 export type RiskTradePlan = {
@@ -38,10 +61,21 @@ export type RiskEvaluation = {
 
 export const DEFAULT_USER_RISK_PROFILE: UserRiskProfile = {
   allowOverride: true,
+  asymmetryPreference: 55,
+  continuationPreference: 55,
+  drawdownTolerance: 50,
+  eventPreference: 45,
   maxDailyLoss: null,
   maxPositionSizePercent: null,
   maxRiskPerTradePercent: 2,
   maxSectorExposure: 2,
+  momentumPreference: 50,
+  personalityConfidence: 35,
+  personalityProfile: "balanced",
+  preferredRewardLevel: "medium",
+  preferredRiskLevel: "medium",
+  pullbackPreference: 55,
+  volatilityTolerance: 50,
 };
 
 const DEFAULT_PORTFOLIO_RISK_LIMIT_PERCENT = 6;
@@ -119,11 +153,46 @@ export function normalizeRiskProfile(value: Partial<UserRiskProfile> | null | un
   const maxSectorExposure = Math.max(1, Math.floor(positiveNumber(value?.maxSectorExposure) ?? DEFAULT_USER_RISK_PROFILE.maxSectorExposure));
   return {
     allowOverride: typeof value?.allowOverride === "boolean" ? value.allowOverride : DEFAULT_USER_RISK_PROFILE.allowOverride,
+    asymmetryPreference: boundedPreference(value?.asymmetryPreference, DEFAULT_USER_RISK_PROFILE.asymmetryPreference),
+    continuationPreference: boundedPreference(value?.continuationPreference, DEFAULT_USER_RISK_PROFILE.continuationPreference),
+    drawdownTolerance: boundedPreference(value?.drawdownTolerance, DEFAULT_USER_RISK_PROFILE.drawdownTolerance),
+    eventPreference: boundedPreference(value?.eventPreference, DEFAULT_USER_RISK_PROFILE.eventPreference),
     maxDailyLoss: positiveNumber(value?.maxDailyLoss),
     maxPositionSizePercent: positiveNumber(value?.maxPositionSizePercent),
     maxRiskPerTradePercent: maxRisk,
     maxSectorExposure,
+    momentumPreference: boundedPreference(value?.momentumPreference, DEFAULT_USER_RISK_PROFILE.momentumPreference),
+    personalityConfidence: boundedPreference(value?.personalityConfidence, DEFAULT_USER_RISK_PROFILE.personalityConfidence),
+    personalityProfile: normalizePersonalityProfile(value?.personalityProfile),
+    preferredRewardLevel: normalizePreferenceLevel(value?.preferredRewardLevel),
+    preferredRiskLevel: normalizePreferenceLevel(value?.preferredRiskLevel),
+    pullbackPreference: boundedPreference(value?.pullbackPreference, DEFAULT_USER_RISK_PROFILE.pullbackPreference),
+    volatilityTolerance: boundedPreference(value?.volatilityTolerance, DEFAULT_USER_RISK_PROFILE.volatilityTolerance),
   };
+}
+
+export function normalizePersonalityProfile(value: unknown): RiskPersonalityProfile {
+  const text = String(value ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  if (
+    text === "aggressive" ||
+    text === "asymmetric_swing" ||
+    text === "balanced" ||
+    text === "conservative" ||
+    text === "defensive" ||
+    text === "event_driven" ||
+    text === "momentum" ||
+    text === "pullback_specialist" ||
+    text === "trend_continuation" ||
+    text === "volatility_hunter"
+  ) {
+    return text;
+  }
+  return DEFAULT_USER_RISK_PROFILE.personalityProfile;
+}
+
+export function normalizePreferenceLevel(value: unknown): RiskPreferenceLevel {
+  const text = String(value ?? "").trim().toLowerCase();
+  return text === "low" || text === "medium" || text === "high" ? text : "medium";
 }
 
 function escalate(current: RiskStatus, next: RiskStatus): RiskStatus {
@@ -143,6 +212,12 @@ function safeNullableNumber(value: unknown): number | null {
 function positiveNumber(value: unknown): number | null {
   const parsed = normalizeNumeric(value);
   return parsed !== null && parsed > 0 ? parsed : null;
+}
+
+function boundedPreference(value: unknown, fallback: number): number {
+  const parsed = normalizeNumeric(value);
+  if (parsed === null) return fallback;
+  return Math.max(0, Math.min(100, parsed));
 }
 
 function normalizeRiskPercent(value: unknown): number | null {

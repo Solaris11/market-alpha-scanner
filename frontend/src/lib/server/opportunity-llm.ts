@@ -93,8 +93,10 @@ function requestPayload(model: string, packet: RiskTolerantOpportunityPacket): R
         content: [
           "You explain a risk-tolerant opportunity ranking for TradeVeto.",
           "Use only the supplied structured packet.",
+          "If personalization is present, explain how the candidate fits or conflicts with that user's selected style and behavioral summary.",
           "Do not invent prices, news, probabilities, targets, scores, or events.",
           "The deterministic engine owns all numeric claims and ranking decisions.",
+          "Do not manipulate the user or encourage reckless exposure.",
           "Do not use the words buy or sell. Use entry, exit, act, or avoid action instead.",
           "Do not say guaranteed, sure profit, or direct financial advice.",
           "Mention stale or limited data if the packet says data freshness or evidence is limited.",

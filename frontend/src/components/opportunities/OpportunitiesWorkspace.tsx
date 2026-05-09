@@ -10,6 +10,7 @@ import { DataHealthIndicator } from "@/components/data-health-indicator";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import { RiskTolerantOpportunityRadar } from "@/components/opportunities/RiskTolerantOpportunityRadar";
 import { ShockMoveRadar } from "@/components/opportunities/ShockMoveRadar";
+import { type UserPersonalizationProfile } from "@/lib/trading/personalized-intelligence";
 import { confidenceTone } from "@/lib/trading/confidence";
 import { buildDecisionFactors, buildDecisionIntelligence, type DecisionFactor } from "@/lib/trading/decision-intelligence";
 import { buildRiskTolerantOpportunities } from "@/lib/trading/risk-tolerant-opportunities";
@@ -37,7 +38,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "DECISION_PRIORITY", label: "Decision priority" },
 ];
 
-export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition, rows }: { best: OpportunityViewModel | null; bestPriceSeries: Record<string, ScannerScalar>[]; marketCondition: string | null; rows: OpportunityViewModel[] }) {
+export function OpportunitiesWorkspace({ best, bestPriceSeries, initialProfile, marketCondition, rows }: { best: OpportunityViewModel | null; bestPriceSeries: Record<string, ScannerScalar>[]; initialProfile?: UserPersonalizationProfile; marketCondition: string | null; rows: OpportunityViewModel[] }) {
   const [activeTab, setActiveTab] = useState<TabKey>("BEST");
   const [assetTypeFilter, setAssetTypeFilter] = useState("ALL");
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("ALL");
@@ -127,7 +128,7 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
   return (
     <div className="min-w-0 max-w-full space-y-5">
       <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} rows={rows} />
-      <RiskTolerantOpportunityRadar marketCondition={marketCondition} rows={rows} />
+      <RiskTolerantOpportunityRadar initialProfile={initialProfile} marketCondition={marketCondition} rows={rows} />
       <ShockMoveRadar rows={rows} />
       <OpportunityDeskMap marketCondition={marketCondition} rows={rows} />
       <SetupDistribution rows={rows} />

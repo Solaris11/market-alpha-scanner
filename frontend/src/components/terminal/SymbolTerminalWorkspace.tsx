@@ -13,6 +13,7 @@ import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
 import type { MacroExchangeContext } from "@/lib/trading/macro-regime";
 import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 import type { NarrativeIntelligence } from "@/lib/trading/narrative-intelligence";
+import type { UserPersonalizationProfile } from "@/lib/trading/personalized-intelligence";
 import type { RiskPortfolioPosition } from "@/lib/trading/risk-veto";
 import type { ShockMovePattern } from "@/lib/trading/shock-move";
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
@@ -27,6 +28,7 @@ import { MacroExchangeContextCard } from "./MacroExchangeContextCard";
 import { MarketMemoryCard } from "./MarketMemoryCard";
 import { NarrativeIntelligenceCard } from "./NarrativeIntelligenceCard";
 import { PaperContextCard } from "./PaperContextCard";
+import { PersonalizedIntelligenceCard } from "./PersonalizedIntelligenceCard";
 import { SymbolChart, type ChartCandle, type ChartSignalMarker } from "./SymbolChart";
 import { SymbolDecisionIntelligencePanel } from "./SymbolDecisionIntelligencePanel";
 import { SymbolDecisionHero } from "./SymbolDecisionHero";
@@ -53,6 +55,7 @@ export function SymbolTerminalWorkspace({
   globalDecision,
   macroContext,
   narrative,
+  personalizationProfile,
   shockPattern,
   premiumAccess = true,
   viewerAuthenticated = false,
@@ -69,6 +72,7 @@ export function SymbolTerminalWorkspace({
   globalDecision?: DailyAction;
   macroContext: MacroExchangeContext | null;
   narrative?: NarrativeIntelligence | null;
+  personalizationProfile?: UserPersonalizationProfile | null;
   shockPattern?: ShockMovePattern | null;
   premiumAccess?: boolean;
   viewerAuthenticated?: boolean;
@@ -134,6 +138,7 @@ export function SymbolTerminalWorkspace({
           )}
           <SymbolDecisionIntelligencePanel candles={candles} row={row} />
           <NarrativeIntelligenceCard narrative={narrative ?? null} />
+          <PersonalizedIntelligenceCard narrative={narrative ?? null} profile={personalizationProfile ?? null} row={row} />
           {macroContext ? <MacroExchangeContextCard context={macroContext} row={row} /> : null}
           <VerifiedEventContextCard row={row} />
           <ConvictionFragilityCard model={structuralQuality} />

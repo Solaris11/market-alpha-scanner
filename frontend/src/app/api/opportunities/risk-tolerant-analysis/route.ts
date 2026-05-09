@@ -5,11 +5,12 @@ import { analyzeRiskTolerantOpportunity } from "@/lib/server/opportunity-llm";
 import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
 import { getMarketMemoryForSignal } from "@/lib/server/market-memory";
 import { withRequestMetrics } from "@/lib/server/monitoring";
+import { getPersonalizationProfileForUser } from "@/lib/server/personalized-intelligence";
 import { rateLimitRequest } from "@/lib/server/request-security";
 import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
+import { buildPersonalizedOpportunities } from "@/lib/trading/personalized-intelligence";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 import {
-  buildRiskTolerantOpportunities,
   buildRiskTolerantOpportunityPacket,
   riskRewardProfile,
   type RewardLevel,
@@ -38,6 +39,12 @@ export async function GET(request: Request) {
     const requestedSymbol = cleanSymbol(url.searchParams.get("symbol"));
     const preference = { riskLevel, rewardLevel };
     const profile = riskRewardProfile(preference);
+    const userProfile = await getPersonalizationProfileForUser(entitlement.user?.id ?? null);
+    const activePersonalization = {
+      ...userProfile,
+      preferredRewardLevel: rewardLevel,
+      preferredRiskLevel: riskLevel,
+    };
 
     const adapter = new ScannerDataAdapter();
     const [rows, performance] = await Promise.all([
@@ -46,7 +53,8 @@ export async function GET(request: Request) {
     ]);
     const shockPatterns = await getShockMovePatternMap(rows.map((row) => row.symbol)).catch(() => new Map());
     const model = buildOpportunitiesPageModel(rows, performance, shockPatterns);
-    const candidates = buildRiskTolerantOpportunities(model.rows, preference, { includeProfileMismatches: true, limit: 25 });
+    const personalized = buildPersonalizedOpportunities(model.rows, activePersonalization, { includeProfileMismatches: true, limit: 25 });
+    const candidates = personalized.map((item) => item.candidate);
     const selected = requestedSymbol
       ? candidates.find((candidate) => candidate.symbol === requestedSymbol)
       : candidates.find((candidate) => candidate.profileMatched) ?? candidates[0];
@@ -59,7 +67,20 @@ export async function GET(request: Request) {
     }
 
     const memory = await getMarketMemoryForSignal(selected.row.raw).catch(() => null);
-    const packet = buildRiskTolerantOpportunityPacket(selected, profile, memory);
+    const packet = buildRiskTolerantOpportunityPacket(selected, profile, memory, {
+      behaviorSummary: {
+        repeatedSymbolViews: userProfile.behavior.repeatedSymbolViews,
+        topSymbols: userProfile.behavior.topSymbols,
+        watchlistCount: userProfile.behavior.watchlistCount,
+      },
+      drawdownTolerance: activePersonalization.drawdownTolerance,
+      label: activePersonalization.label,
+      personality: activePersonalization.personality,
+      personalityConfidence: activePersonalization.personalityConfidence,
+      preferredRewardLevel: activePersonalization.preferredRewardLevel,
+      preferredRiskLevel: activePersonalization.preferredRiskLevel,
+      volatilityTolerance: activePersonalization.volatilityTolerance,
+    });
     const analysis = await analyzeRiskTolerantOpportunity(packet);
     return NextResponse.json({
       ok: true,
