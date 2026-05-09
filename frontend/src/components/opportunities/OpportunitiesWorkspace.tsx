@@ -723,6 +723,8 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
         <CardMetric label="Entry / Correction" value={row.entryZoneLabel ?? formatMoney(row.suggested_entry)} />
         <CardMetric label="Entry Quality" value={`${execution.entryQuality.score} ${execution.executionStateLabel}`} />
         <CardMetric label="Chase Risk" value={`${execution.chaseRisk.score} ${execution.chaseRisk.tone === "risk" ? "Elevated" : "Context"}`} />
+        <CardMetric label="Historical Exit" value={execution.zones.historicalExitZone} />
+        <CardMetric label="Invalidation" value={execution.zones.invalidationZone} />
         <CardMetric label="Structure" value={row.structuralLabel} />
         <CardMetric label="Decay" value={row.decayLabel} />
       </div>

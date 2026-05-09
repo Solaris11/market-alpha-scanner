@@ -6,6 +6,7 @@ import {
   buildExecutionIntelligence,
   buildExecutionTimingSystem,
   type ExecutionIntelligence,
+  type ExecutionOutcomeMetric,
   type ExecutionTimingSystem,
 } from "@/lib/trading/execution-intelligence";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
@@ -46,6 +47,7 @@ export function ExecutionIntelligencePanel({
         <div>
           <SectionTitle eyebrow="Execution Intelligence" title="Timing Quality Engine" meta="good idea vs good execution" />
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{system.systemSummary}</p>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-500">{system.calibrationSummary}</p>
         </div>
         <div className="grid min-w-[260px] grid-cols-3 gap-2">
           <ScorePill label="Timing" value={system.averageTimingQuality} />
@@ -136,6 +138,8 @@ function FocusedExecutionPanel({ compact, model }: { compact: boolean; model: Ex
           ))}
         </div>
       </div>
+
+      <ExecutionCalibrationBlock model={model} />
     </GlassPanel>
   );
 }
@@ -214,6 +218,88 @@ function ScorePill({ inverse = false, label, value }: { inverse?: boolean; label
       <div className={`mt-1 font-mono text-lg font-black ${color}`}>{formatNumber(value, 0)}</div>
     </div>
   );
+}
+
+function ExecutionCalibrationBlock({ model }: { model: ExecutionIntelligence }) {
+  const current = model.calibration.currentEntryTypeMetrics;
+  const selected = [
+    current,
+    model.calibration.bestValidatedEntryType,
+    model.calibration.weakestEntryType,
+  ].filter((metric): metric is ExecutionOutcomeMetric => Boolean(metric));
+  const uniqueMetrics = Array.from(new Map(selected.map((metric) => [metric.entryType, metric])).values());
+  const visibleMetrics = uniqueMetrics.length ? uniqueMetrics : model.calibration.outcomeMetrics.filter((metric) => metric.sampleSize > 0).slice(0, 3);
+  return (
+    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Execution Outcome Calibration</div>
+          <h3 className="mt-1 text-base font-semibold text-slate-50">{model.calibration.currentEntryTypeLabel}</h3>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">{model.calibration.calibrationSummary}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 sm:min-w-[260px]">
+          <MiniProofMetric label="Evidence" value={model.calibration.evidenceMaturity} />
+          <MiniProofMetric label="Samples" value={formatNumber(model.calibration.validationSampleSize, 0)} />
+          <MiniProofMetric label="Score Adj." value={`${model.calibration.scoreAdjustment >= 0 ? "+" : ""}${model.calibration.scoreAdjustment}`} />
+          <MiniProofMetric label="Current" value={current ? `${current.score}/100` : "building"} />
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 xl:grid-cols-3">
+        {visibleMetrics.length ? visibleMetrics.map((metric) => <ExecutionOutcomeCard key={metric.entryType} metric={metric} />) : (
+          <div className="rounded-xl border border-white/10 bg-slate-950/35 p-3 text-xs leading-5 text-slate-400">Execution outcome proof is still building for this symbol.</div>
+        )}
+      </div>
+
+      <div className="mt-4 grid gap-2 md:grid-cols-2">
+        {model.calibration.timingProofReport.map((line) => (
+          <div className="rounded-xl border border-white/10 bg-slate-950/35 p-3 text-xs leading-5 text-slate-300" key={line}>{line}</div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ExecutionOutcomeCard({ metric }: { metric: ExecutionOutcomeMetric }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-slate-950/35 p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-xs font-semibold text-slate-100">{metric.label}</div>
+          <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{metric.reliabilityLabel}</div>
+        </div>
+        <div className="font-mono text-sm font-black text-cyan-100">{metric.score}/100</div>
+      </div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <MiniProofMetric label="Avg MFE" value={percentValue(metric.averageMfePct)} />
+        <MiniProofMetric label="Avg MAE" value={percentValue(metric.averageMaePct)} />
+        <MiniProofMetric label="Continue" value={rateValue(metric.continuationRate)} />
+        <MiniProofMetric label="Reversal" value={rateValue(metric.reversalRate)} />
+        <MiniProofMetric label="Failed" value={rateValue(metric.failedBreakoutRate)} />
+        <MiniProofMetric label="Invalid." value={rateValue(metric.invalidationHitRate)} />
+      </div>
+      <p className="mt-3 text-xs leading-5 text-slate-400">{metric.summary}</p>
+    </div>
+  );
+}
+
+function MiniProofMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0 rounded-lg border border-white/10 bg-white/[0.035] p-2">
+      <div className="truncate text-[9px] font-black uppercase leading-3 tracking-normal text-slate-500" title={label}>{label}</div>
+      <div className="mt-1 break-words font-mono text-xs font-bold leading-4 text-slate-100">{value}</div>
+    </div>
+  );
+}
+
+function percentValue(value: number | null): string {
+  if (value === null) return "building";
+  return `${value >= 0 ? "+" : ""}${formatNumber(value, 1)}%`;
+}
+
+function rateValue(value: number | null): string {
+  if (value === null) return "building";
+  return `${formatNumber(value * 100, 0)}%`;
 }
 
 function StatusChip({ label }: { label: string }) {

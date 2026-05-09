@@ -1,4 +1,5 @@
 import type { OpportunityViewModel } from "./opportunity-view-model";
+import type { ShockMoveEvent } from "./shock-move";
 import { buildSignalTradeLevels } from "./signal-lifecycle";
 import { cleanText, finiteNumber, firstNumber, formatMoney } from "@/lib/ui/formatters";
 import { humanizeLabel } from "@/lib/ui/labels";
@@ -20,6 +21,47 @@ export type ExecutionScore = {
   tone: ExecutionTone;
 };
 
+export type ExecutionEntryType =
+  | "breakout_confirmation"
+  | "early_momentum"
+  | "post_gap_chase"
+  | "pullback_entry"
+  | "retest_entry"
+  | "volatility_compression_breakout";
+
+export type ExecutionEvidenceMaturity = "Developing Evidence" | "High Confidence Evidence" | "Limited Evidence" | "Mature Evidence";
+
+export type ExecutionOutcomeMetric = {
+  averageMaePct: number | null;
+  averageMfePct: number | null;
+  continuationRate: number | null;
+  entryType: ExecutionEntryType;
+  failedBreakoutRate: number | null;
+  invalidationHitRate: number | null;
+  label: string;
+  reliabilityLabel: ExecutionEvidenceMaturity;
+  reversalRate: number | null;
+  rewardRiskEstimate: number | null;
+  sampleSize: number;
+  score: number;
+  summary: string;
+  upsideCapturePct: number | null;
+};
+
+export type ExecutionCalibrationReport = {
+  bestValidatedEntryType: ExecutionOutcomeMetric | null;
+  calibrationSummary: string;
+  currentEntryType: ExecutionEntryType;
+  currentEntryTypeLabel: string;
+  currentEntryTypeMetrics: ExecutionOutcomeMetric | null;
+  evidenceMaturity: ExecutionEvidenceMaturity;
+  outcomeMetrics: ExecutionOutcomeMetric[];
+  scoreAdjustment: number;
+  timingProofReport: string[];
+  validationSampleSize: number;
+  weakestEntryType: ExecutionOutcomeMetric | null;
+};
+
 export type ExecutionZoneContext = {
   doNotChaseZone: string;
   historicalEntryZone: string;
@@ -30,6 +72,7 @@ export type ExecutionZoneContext = {
 
 export type ExecutionIntelligence = {
   breakoutQuality: ExecutionScore;
+  calibration: ExecutionCalibrationReport;
   chaseRisk: ExecutionScore;
   compactLabels: string[];
   confirmationQuality: ExecutionScore;
@@ -52,6 +95,7 @@ export type ExecutionTimingSystem = {
   averageChaseRisk: number;
   averageEntryQuality: number;
   averageTimingQuality: number;
+  calibrationSummary: string;
   avoidChase: ExecutionIntelligence[];
   breakoutConfirmed: ExecutionIntelligence[];
   confirmationNeeded: ExecutionIntelligence[];
@@ -81,6 +125,7 @@ export function buildExecutionTimingSystem(rows: OpportunityViewModel[], generat
   const averageEntryQuality = Math.round(average(models.map((model) => model.entryQuality.score), 50));
   const averageChaseRisk = Math.round(average(models.map((model) => model.chaseRisk.score), 50));
   const averageTimingQuality = Math.round(average(models.map((model) => model.timingQualityScore), 50));
+  const calibratedModels = models.filter((model) => model.calibration.validationSampleSize > 0);
   const topTimingQuality = [...models].sort((left, right) => right.timingQualityScore - left.timingQualityScore).slice(0, 5);
   const avoidChase = models.filter((model) => model.executionState === "avoid_chase" || model.executionState === "extended_entry").sort((left, right) => right.chaseRisk.score - left.chaseRisk.score).slice(0, 5);
   const pullbackCandidates = models.filter((model) => model.executionState === "wait_for_pullback" || model.pullbackQuality.score >= 66).sort((left, right) => right.pullbackQuality.score - left.pullbackQuality.score).slice(0, 5);
@@ -91,6 +136,7 @@ export function buildExecutionTimingSystem(rows: OpportunityViewModel[], generat
     averageChaseRisk,
     averageEntryQuality,
     averageTimingQuality,
+    calibrationSummary: calibrationSummaryForSystem(calibratedModels, models.length),
     avoidChase,
     breakoutConfirmed,
     confirmationNeeded,
@@ -98,6 +144,7 @@ export function buildExecutionTimingSystem(rows: OpportunityViewModel[], generat
     limitations: [
       "Execution Intelligence separates timing quality from the core scanner decision; it does not place or recommend real orders.",
       "Entry, pullback, breakout, and chase labels are deterministic estimates from scanner, volatility, shock, and level context.",
+      "Execution outcome calibration uses completed historical shock/retest/continuation samples when available; limited samples are labelled instead of overstated.",
       "Historical execution context is probabilistic and sample-size dependent; it is not a guarantee of future behavior.",
     ],
     pullbackCandidates,
@@ -109,11 +156,12 @@ export function buildExecutionTimingSystem(rows: OpportunityViewModel[], generat
 
 export function buildExecutionIntelligence(row: OpportunityViewModel): ExecutionIntelligence {
   const input = executionInputs(row);
-  const entryQualityScore = entryQuality(row, input);
+  const calibration = buildExecutionCalibration(row, input);
+  const entryQualityScore = calibratedEntryQuality(entryQuality(row, input), calibration);
   const pullbackQualityScore = pullbackQuality(row, input);
   const breakoutQualityScore = breakoutQuality(row, input);
   const confirmationQualityScore = confirmationQuality(row, input);
-  const chaseRiskScore = chaseRisk(row, input);
+  const chaseRiskScore = calibratedChaseRisk(chaseRisk(row, input), calibration, input);
   const volatilityExecutionRiskScore = volatilityExecutionRisk(row, input);
   const timingQualityScore = Math.round(clamp(weightedAverage([
     [entryQualityScore, 0.28],
@@ -147,6 +195,7 @@ export function buildExecutionIntelligence(row: OpportunityViewModel): Execution
 
   return {
     breakoutQuality: scoreLabel(breakoutQualityScore, "Breakout quality", false),
+    calibration,
     chaseRisk: scoreLabel(chaseRiskScore, "Chase risk", true),
     compactLabels: compactLabelsFor({ chaseRiskScore, executionState, entryQualityScore, timingQualityScore, volatilityExecutionRiskScore }),
     confirmationQuality: scoreLabel(confirmationQualityScore, "Confirmation quality", false),
@@ -168,6 +217,225 @@ export function buildExecutionIntelligence(row: OpportunityViewModel): Execution
 
 export function compactExecutionLabels(row: OpportunityViewModel): string[] {
   return buildExecutionIntelligence(row).compactLabels;
+}
+
+function buildExecutionCalibration(row: OpportunityViewModel, input: ExecutionInputs): ExecutionCalibrationReport {
+  const events = (row.shockPattern?.shockEvents ?? []).filter((event) => event.return5d !== null || event.maxFavorableExcursion5d !== null || event.maxAdverseExcursion5d !== null);
+  const currentEntryType = currentEntryTypeFor(row, input);
+  const invalidationThresholdPct = invalidationThresholdFor(row);
+  const outcomeMetrics = ENTRY_TYPES.map((entryType) => outcomeMetricFor(entryType, events.filter((event) => entryTypeMatches(entryType, event)), invalidationThresholdPct));
+  const metricsWithSamples = outcomeMetrics.filter((metric) => metric.sampleSize > 0);
+  const bestValidatedEntryType = bestMetric(metricsWithSamples);
+  const weakestEntryType = weakestMetric(metricsWithSamples);
+  const currentEntryTypeMetrics = outcomeMetrics.find((metric) => metric.entryType === currentEntryType) ?? null;
+  const validationSampleSize = events.length;
+  const evidenceMaturity = evidenceMaturityFor(validationSampleSize);
+  const scoreAdjustment = currentEntryTypeMetrics && currentEntryTypeMetrics.sampleSize >= 3
+    ? Math.round(clamp((currentEntryTypeMetrics.score - 50) * 0.18, -8, 8))
+    : 0;
+  const timingProof = row.shockPattern?.timingValidation;
+  const timingProofReport = [
+    currentEntryTypeMetrics?.summary ?? "Current entry-type proof is still building.",
+    bestValidatedEntryType ? `${bestValidatedEntryType.label} has the strongest historical execution profile in the available sample.` : "No entry type has enough completed outcome evidence yet.",
+    weakestEntryType && weakestEntryType.entryType !== bestValidatedEntryType?.entryType ? `${weakestEntryType.label} has the weakest historical execution profile in the available sample.` : null,
+    timingProof?.summary ?? null,
+  ].filter((line): line is string => Boolean(line)).slice(0, 4);
+
+  return {
+    bestValidatedEntryType,
+    calibrationSummary: calibrationSummaryFor(currentEntryType, currentEntryTypeMetrics, validationSampleSize, scoreAdjustment),
+    currentEntryType,
+    currentEntryTypeLabel: entryTypeLabel(currentEntryType),
+    currentEntryTypeMetrics,
+    evidenceMaturity,
+    outcomeMetrics,
+    scoreAdjustment,
+    timingProofReport,
+    validationSampleSize,
+    weakestEntryType,
+  };
+}
+
+function calibratedEntryQuality(baseScore: number, calibration: ExecutionCalibrationReport): number {
+  return Math.round(clamp(baseScore + calibration.scoreAdjustment));
+}
+
+function calibratedChaseRisk(baseScore: number, calibration: ExecutionCalibrationReport, input: ExecutionInputs): number {
+  const postGap = calibration.outcomeMetrics.find((metric) => metric.entryType === "post_gap_chase");
+  if (!postGap || postGap.sampleSize < 3) return Math.round(clamp(baseScore));
+  const chaseLike = calibration.currentEntryType === "post_gap_chase" || input.entryStatus.includes("chase") || input.entryStatus.includes("extended");
+  if (!chaseLike) return Math.round(clamp(baseScore));
+  const continuation = postGap.continuationRate ?? 0.5;
+  const invalidation = postGap.invalidationHitRate ?? 0;
+  const failed = postGap.failedBreakoutRate ?? 0;
+  const adjustment = clamp((0.52 - continuation) * 22 + invalidation * 12 + failed * 10, -6, 10);
+  return Math.round(clamp(baseScore + adjustment));
+}
+
+const ENTRY_TYPES: ExecutionEntryType[] = [
+  "pullback_entry",
+  "breakout_confirmation",
+  "early_momentum",
+  "post_gap_chase",
+  "retest_entry",
+  "volatility_compression_breakout",
+];
+
+function outcomeMetricFor(entryType: ExecutionEntryType, events: ShockMoveEvent[], invalidationThresholdPct: number): ExecutionOutcomeMetric {
+  const completed = events.filter((event) => event.return5d !== null || event.maxFavorableExcursion5d !== null || event.maxAdverseExcursion5d !== null);
+  const mfe = completed.map((event) => event.maxFavorableExcursion5d).filter(isFiniteNumber);
+  const mae = completed.map((event) => event.maxAdverseExcursion5d).filter(isFiniteNumber);
+  const returns5d = completed.map((event) => event.return5d).filter(isFiniteNumber);
+  const continuationRate = rate(returns5d.map((value) => value > 0));
+  const reversalRate = rate(returns5d.map((value) => value < 0));
+  const failedBreakoutRate = rate(completed.map((event) => event.return1d > 0 && (event.return5d ?? 0) <= 0));
+  const invalidationHitRate = rate(completed.map((event) => {
+    const adverse = event.maxAdverseExcursion5d;
+    return adverse !== null && adverse <= -invalidationThresholdPct;
+  }));
+  const averageMfePct = meanOrNull(mfe);
+  const averageMaePct = meanOrNull(mae);
+  const rewardRiskEstimate = averageMfePct !== null && averageMaePct !== null && Math.abs(averageMaePct) > 0.1 ? round(averageMfePct / Math.abs(averageMaePct), 2) : null;
+  const score = outcomeScore({
+    averageMaePct,
+    averageMfePct,
+    continuationRate,
+    failedBreakoutRate,
+    invalidationHitRate,
+    rewardRiskEstimate,
+    sampleSize: completed.length,
+  });
+  return {
+    averageMaePct: roundOrNull(averageMaePct, 2),
+    averageMfePct: roundOrNull(averageMfePct, 2),
+    continuationRate: roundRatioOrNull(continuationRate),
+    entryType,
+    failedBreakoutRate: roundRatioOrNull(failedBreakoutRate),
+    invalidationHitRate: roundRatioOrNull(invalidationHitRate),
+    label: entryTypeLabel(entryType),
+    reliabilityLabel: evidenceMaturityFor(completed.length),
+    reversalRate: roundRatioOrNull(reversalRate),
+    rewardRiskEstimate,
+    sampleSize: completed.length,
+    score,
+    summary: metricSummary(entryType, completed.length, continuationRate, averageMfePct, averageMaePct, invalidationHitRate, score),
+    upsideCapturePct: roundOrNull(averageMfePct, 2),
+  };
+}
+
+function entryTypeMatches(entryType: ExecutionEntryType, event: ShockMoveEvent): boolean {
+  const pre = event.preconditions;
+  const gap = Math.abs(pre.gapPercent ?? event.gapPercent ?? 0);
+  const volume = pre.volumeSpikeRatio ?? event.volumeSpikeRatio ?? 1;
+  const closeVsMa20 = pre.closeVsMa20Pct ?? 0;
+  const closeVsMa50 = pre.closeVsMa50Pct ?? 0;
+  const priorFive = pre.priorFiveDayReturnPct ?? 0;
+  const compression = pre.compressionPercentile ?? 0;
+  const zScore = Math.abs(pre.returnZScore ?? event.returnZScore ?? 0);
+  if (entryType === "post_gap_chase") return gap >= 3 || event.return1d >= 8 || volume >= 2.2;
+  if (entryType === "volatility_compression_breakout") return compression >= 35 && closeVsMa20 >= -0.5 && event.return1d > 0;
+  if (entryType === "breakout_confirmation") return closeVsMa20 >= 0 && closeVsMa50 >= -1 && volume >= 1.15 && event.return1d > 0;
+  if (entryType === "early_momentum") return priorFive >= -1.5 && priorFive <= 8 && zScore <= 1.8 && event.return1d > 0;
+  if (entryType === "pullback_entry") return closeVsMa20 >= -4 && closeVsMa20 <= 1.5 && closeVsMa50 >= -3 && priorFive <= 3;
+  return Math.abs(closeVsMa20) <= 1.5 || Math.abs(closeVsMa50) <= 1.5;
+}
+
+function currentEntryTypeFor(row: OpportunityViewModel, input: ExecutionInputs): ExecutionEntryType {
+  const status = input.entryStatus;
+  if (status.includes("chase") || status.includes("extended") || status.includes("gap")) return "post_gap_chase";
+  if (/PULLBACK|CORRECTION|DIP/.test(input.setupType) || input.decision === "WAIT_PULLBACK") return "pullback_entry";
+  if (/RETEST|RECLAIM/.test(input.setupType)) return "retest_entry";
+  const compression = finiteNumber(row.raw.compression_percentile ?? row.raw.volatility_compression_percentile);
+  if ((compression ?? 0) >= 35 || /COMPRESSION|SQUEEZE/.test(input.setupType)) return "volatility_compression_breakout";
+  if (/BREAKOUT|CONTINUATION|EXPANSION/.test(input.setupType)) return "breakout_confirmation";
+  return "early_momentum";
+}
+
+function invalidationThresholdFor(row: OpportunityViewModel): number {
+  const price = row.price ?? firstNumber(row.raw.price);
+  const stop = row.stop_loss ?? firstNumber(row.raw.stop_loss ?? row.raw.invalidation_level);
+  if (price !== null && stop !== null && price > 0) return clamp(Math.abs((price - stop) / price) * 100, 3, 12);
+  return 6;
+}
+
+function outcomeScore(input: {
+  averageMaePct: number | null;
+  averageMfePct: number | null;
+  continuationRate: number | null;
+  failedBreakoutRate: number | null;
+  invalidationHitRate: number | null;
+  rewardRiskEstimate: number | null;
+  sampleSize: number;
+}): number {
+  const sample = sampleScore(input.sampleSize);
+  const continuation = (input.continuationRate ?? 0.5) * 100;
+  const failed = (input.failedBreakoutRate ?? 0.35) * 100;
+  const invalidation = (input.invalidationHitRate ?? 0.25) * 100;
+  const rewardRisk = input.rewardRiskEstimate === null ? 50 : clamp(input.rewardRiskEstimate * 32);
+  const mfe = input.averageMfePct === null ? 45 : clamp(input.averageMfePct * 8);
+  const maePenalty = input.averageMaePct === null ? 20 : clamp(Math.abs(input.averageMaePct) * 5);
+  return Math.round(clamp(continuation * 0.28 + rewardRisk * 0.22 + mfe * 0.14 + sample * 0.14 + (100 - failed) * 0.11 + (100 - invalidation) * 0.11 - maePenalty * 0.18));
+}
+
+function calibrationSummaryFor(entryType: ExecutionEntryType, metric: ExecutionOutcomeMetric | null, validationSampleSize: number, scoreAdjustment: number): string {
+  if (!metric || metric.sampleSize === 0) {
+    return `${entryTypeLabel(entryType)} calibration is still building. Execution scoring is using live scanner, volatility, and level context first.`;
+  }
+  const direction = scoreAdjustment > 0 ? "supports" : scoreAdjustment < 0 ? "penalizes" : "does not materially adjust";
+  return `${entryTypeLabel(entryType)} has ${metric.reliabilityLabel.toLowerCase()} from ${metric.sampleSize}/${validationSampleSize} comparable outcomes and ${direction} the entry-quality score within bounded guardrails.`;
+}
+
+function calibrationSummaryForSystem(models: ExecutionIntelligence[], totalCount: number): string {
+  if (!models.length) return `Execution calibration reviewed ${totalCount} symbols, but historical outcome proof is still building.`;
+  const sampleCount = models.reduce((total, model) => total + model.calibration.validationSampleSize, 0);
+  const avgAdjustment = average(models.map((model) => model.calibration.scoreAdjustment), 0);
+  const best = models.map((model) => model.calibration.bestValidatedEntryType).filter((metric): metric is ExecutionOutcomeMetric => metric !== null).sort((left, right) => right.score - left.score)[0] ?? null;
+  const bestText = best ? `${best.label} currently has the strongest execution evidence` : "No single entry type dominates yet";
+  return `Execution calibration reviewed ${sampleCount} historical outcomes across ${models.length}/${totalCount} symbols. ${bestText}; average score adjustment is ${avgAdjustment >= 0 ? "+" : ""}${avgAdjustment.toFixed(1)} points.`;
+}
+
+function metricSummary(entryType: ExecutionEntryType, sampleSize: number, continuationRate: number | null, averageMfePct: number | null, averageMaePct: number | null, invalidationHitRate: number | null, score: number): string {
+  if (!sampleSize) return `${entryTypeLabel(entryType)} has no completed comparable outcome sample yet.`;
+  const continuation = continuationRate === null ? "continuation unavailable" : `${Math.round(continuationRate * 100)}% continuation`;
+  const mfe = averageMfePct === null ? "MFE unavailable" : `${formatSignedPercent(averageMfePct)} avg MFE`;
+  const mae = averageMaePct === null ? "MAE unavailable" : `${formatSignedPercent(averageMaePct)} avg MAE`;
+  const invalidation = invalidationHitRate === null ? "invalidation hit unavailable" : `${Math.round(invalidationHitRate * 100)}% invalidation-hit context`;
+  return `${entryTypeLabel(entryType)} scored ${score}/100 from ${sampleSize} outcomes: ${continuation}, ${mfe}, ${mae}, ${invalidation}.`;
+}
+
+function entryTypeLabel(entryType: ExecutionEntryType): string {
+  const labels: Record<ExecutionEntryType, string> = {
+    breakout_confirmation: "Breakout Confirmation",
+    early_momentum: "Early Momentum",
+    post_gap_chase: "Post-Gap Chase",
+    pullback_entry: "Pullback Entry",
+    retest_entry: "Retest Entry",
+    volatility_compression_breakout: "Volatility Compression Breakout",
+  };
+  return labels[entryType];
+}
+
+function bestMetric(metrics: ExecutionOutcomeMetric[]): ExecutionOutcomeMetric | null {
+  return metrics.filter((metric) => metric.sampleSize >= 2).sort((left, right) => right.score - left.score)[0] ?? null;
+}
+
+function weakestMetric(metrics: ExecutionOutcomeMetric[]): ExecutionOutcomeMetric | null {
+  return metrics.filter((metric) => metric.sampleSize >= 2).sort((left, right) => left.score - right.score)[0] ?? null;
+}
+
+function evidenceMaturityFor(sampleSize: number): ExecutionEvidenceMaturity {
+  if (sampleSize >= 24) return "High Confidence Evidence";
+  if (sampleSize >= 12) return "Mature Evidence";
+  if (sampleSize >= 5) return "Developing Evidence";
+  return "Limited Evidence";
+}
+
+function sampleScore(count: number): number {
+  if (count >= 24) return 100;
+  if (count >= 12) return 82;
+  if (count >= 5) return 58;
+  if (count >= 2) return 34;
+  return 12;
 }
 
 function executionInputs(row: OpportunityViewModel): ExecutionInputs {
@@ -355,10 +623,11 @@ function historicalExecutionContextFor(row: OpportunityViewModel): string[] {
   const lines = [
     pattern.pullbackSuccessRate === null ? "Pullback success sample is still limited." : `Comparable shocks historically favored pullback entries ${Math.round(pattern.pullbackSuccessRate)}% of the time.`,
     pattern.chaseSuccessRate === null ? "Chase success sample is still limited." : `Chasing comparable shocks worked ${Math.round(pattern.chaseSuccessRate)}% of the time, so chase risk remains visible.`,
+    pattern.timingValidation?.summary ?? null,
     `Historical entry context: ${pattern.researchEntryZone}.`,
     `Historical exit context: ${pattern.historicalExitZone}.`,
-  ];
-  return lines.slice(0, 4);
+  ].filter((line): line is string => Boolean(line));
+  return lines.slice(0, 5);
 }
 
 function confirmationLines(row: OpportunityViewModel, input: ExecutionInputs, state: ExecutionState): string[] {
@@ -492,6 +761,39 @@ function weightedAverage(values: Array<[number | null | undefined, number]>, fal
     denominator += weight;
   }
   return denominator > 0 ? numerator / denominator : fallback;
+}
+
+function isFiniteNumber(value: number | null | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function meanOrNull(values: number[]): number | null {
+  const finite = values.filter((value) => Number.isFinite(value));
+  if (!finite.length) return null;
+  return finite.reduce((total, value) => total + value, 0) / finite.length;
+}
+
+function rate(values: boolean[]): number | null {
+  if (!values.length) return null;
+  return values.filter(Boolean).length / values.length;
+}
+
+function round(value: number, digits: number): number {
+  const factor = 10 ** digits;
+  return Math.round(value * factor) / factor;
+}
+
+function roundOrNull(value: number | null, digits: number): number | null {
+  return value === null || !Number.isFinite(value) ? null : round(value, digits);
+}
+
+function roundRatioOrNull(value: number | null): number | null {
+  return value === null || !Number.isFinite(value) ? null : round(value, 3);
+}
+
+function formatSignedPercent(value: number): string {
+  const rounded = Math.abs(value) >= 10 ? value.toFixed(1) : value.toFixed(2);
+  return `${value >= 0 ? "+" : ""}${rounded}%`;
 }
 
 function clamp(value: number, min = 0, max = 100): number {

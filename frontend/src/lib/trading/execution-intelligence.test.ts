@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { OpportunityViewModel } from "./opportunity-view-model";
-import type { ShockMovePattern } from "./shock-move";
+import type { ShockMoveEvent, ShockMovePattern } from "./shock-move";
 import {
   buildExecutionIntelligence,
   buildExecutionTimingSystem,
@@ -39,12 +39,65 @@ function shock(overrides: Partial<ShockMovePattern> = {}): ShockMovePattern {
     pullbackSuccessRate: 64,
     reliabilityScore: 70,
     researchEntryZone: "$100.00-$103.00",
-    shockEvents: [],
+    shockEvents: shockEvents(),
     symbol: "AMD",
     twoSidedVolatilityScore: 58,
     upsideShockCount: 16,
     upsideShockScore: 78,
     ...overrides,
+  };
+}
+
+function shockEvents(): ShockMoveEvent[] {
+  return [
+    event({ closeVsMa20Pct: -1.2, closeVsMa50Pct: 0.8, maxAdverseExcursion5d: -2.4, maxFavorableExcursion5d: 8.1, priorFiveDayReturnPct: -1.6, return1d: 6.2, return5d: 4.8 }),
+    event({ closeVsMa20Pct: 0.6, closeVsMa50Pct: 2.1, maxAdverseExcursion5d: -1.8, maxFavorableExcursion5d: 7.4, priorFiveDayReturnPct: 2.5, return1d: 5.7, return5d: 5.2, volumeSpikeRatio: 1.6 }),
+    event({ closeVsMa20Pct: 1.8, closeVsMa50Pct: 3.3, gapPercent: 4.8, maxAdverseExcursion5d: -7.4, maxFavorableExcursion5d: 3.2, priorFiveDayReturnPct: 9.4, return1d: 9.1, return5d: -2.6, volumeSpikeRatio: 2.9 }),
+    event({ closeVsMa20Pct: 0.2, closeVsMa50Pct: 1.5, compressionPercentile: 54, maxAdverseExcursion5d: -2.1, maxFavorableExcursion5d: 9.5, priorFiveDayReturnPct: 1.1, return1d: 7.3, return5d: 6.8, volumeSpikeRatio: 1.8 }),
+    event({ closeVsMa20Pct: -0.4, closeVsMa50Pct: 0.2, maxAdverseExcursion5d: -3.1, maxFavorableExcursion5d: 5.6, priorFiveDayReturnPct: -0.7, return1d: 5.2, return5d: 2.4, volumeSpikeRatio: 1.2 }),
+    event({ closeVsMa20Pct: 0.8, closeVsMa50Pct: 1.7, gapPercent: 3.7, maxAdverseExcursion5d: -6.3, maxFavorableExcursion5d: 2.9, priorFiveDayReturnPct: 8.8, return1d: 8.4, return5d: -1.4, volumeSpikeRatio: 2.5 }),
+  ];
+}
+
+function event(overrides: {
+  closeVsMa20Pct: number;
+  closeVsMa50Pct: number;
+  compressionPercentile?: number;
+  gapPercent?: number;
+  maxAdverseExcursion5d: number;
+  maxFavorableExcursion5d: number;
+  priorFiveDayReturnPct: number;
+  return1d: number;
+  return5d: number;
+  volumeSpikeRatio?: number;
+}): ShockMoveEvent {
+  return {
+    atrNormalizedMove: 2.1,
+    eventDate: "2026-04-01",
+    gapPercent: overrides.gapPercent ?? 0.8,
+    maxAdverseExcursion5d: overrides.maxAdverseExcursion5d,
+    maxFavorableExcursion5d: overrides.maxFavorableExcursion5d,
+    moveType: "upside",
+    outcomeStatus: "complete",
+    preconditions: {
+      atrPercent: 2.4,
+      closeVsMa20Pct: overrides.closeVsMa20Pct,
+      closeVsMa50Pct: overrides.closeVsMa50Pct,
+      compressionPercentile: overrides.compressionPercentile ?? 28,
+      gapPercent: overrides.gapPercent ?? 0.8,
+      ma20TrendPct: null,
+      priorFiveDayReturnPct: overrides.priorFiveDayReturnPct,
+      realizedVolatility10d: 1.8,
+      returnZScore: 0.9,
+      volumeSpikeRatio: overrides.volumeSpikeRatio ?? 1.25,
+    },
+    return1d: overrides.return1d,
+    return2d: null,
+    return3d: null,
+    return5d: overrides.return5d,
+    return10d: null,
+    returnZScore: 2.4,
+    volumeSpikeRatio: overrides.volumeSpikeRatio ?? 1.25,
   };
 }
 
@@ -125,6 +178,12 @@ test("execution intelligence rewards cleaner pullback timing", () => {
   assert.ok(model.entryQuality.score >= 55);
   assert.ok(model.pullbackQuality.score >= 60);
   assert.ok(model.chaseRisk.score < 70);
+  assert.equal(model.calibration.currentEntryType, "pullback_entry");
+  assert.ok(model.calibration.currentEntryTypeMetrics);
+  assert.ok(model.calibration.currentEntryTypeMetrics.averageMfePct !== null);
+  assert.ok(model.calibration.currentEntryTypeMetrics.averageMaePct !== null);
+  assert.ok(model.calibration.currentEntryTypeMetrics.continuationRate !== null);
+  assert.ok(model.calibration.timingProofReport.length > 0);
   assert.ok(model.compactLabels.length > 0);
   assert.doesNotMatch(model.summary, /buy now|guaranteed|sure profit/i);
 });
@@ -149,6 +208,8 @@ test("execution intelligence flags extended chase-prone entries", () => {
   assert.ok(model.chaseRisk.score >= 70);
   assert.ok(model.executionState === "avoid_chase" || model.executionState === "extended_entry");
   assert.ok(model.keyRisks.some((risk) => /chase|extended|volatility/i.test(risk)));
+  assert.equal(model.calibration.currentEntryType, "post_gap_chase");
+  assert.ok(model.calibration.currentEntryTypeMetrics?.failedBreakoutRate !== null);
 });
 
 test("execution timing system separates clean timing from confirmation risk", () => {
@@ -176,6 +237,7 @@ test("execution timing system separates clean timing from confirmation risk", ()
   assert.ok(system.topTimingQuality.some((model) => model.symbol === "AMD"));
   assert.ok(system.confirmationNeeded.some((model) => model.symbol === "TSM"));
   assert.ok(system.systemSummary.includes("setup quality from execution quality"));
+  assert.match(system.calibrationSummary, /Execution calibration reviewed/);
 });
 
 test("compact execution labels expose state without advisory language", () => {
@@ -183,4 +245,28 @@ test("compact execution labels expose state without advisory language", () => {
 
   assert.ok(labels.length > 0);
   assert.equal(labels.some((label) => /buy|sell/i.test(label)), false);
+});
+
+test("execution outcome calibration validates required entry types without advisory language", () => {
+  const model = buildExecutionIntelligence(row({
+    raw: {
+      compression_percentile: 48,
+      setup_type: "VOLATILITY_COMPRESSION_BREAKOUT",
+      symbol: "NVDA",
+    },
+    symbol: "NVDA",
+  }));
+
+  const entryTypes = model.calibration.outcomeMetrics.map((metric) => metric.entryType);
+  assert.deepEqual(entryTypes, [
+    "pullback_entry",
+    "breakout_confirmation",
+    "early_momentum",
+    "post_gap_chase",
+    "retest_entry",
+    "volatility_compression_breakout",
+  ]);
+  assert.ok(model.calibration.outcomeMetrics.some((metric) => metric.averageMfePct !== null && metric.averageMaePct !== null));
+  assert.ok(model.calibration.outcomeMetrics.some((metric) => metric.invalidationHitRate !== null));
+  assert.doesNotMatch(JSON.stringify(model.calibration), /buy now|sell now|guaranteed|sure profit/i);
 });
