@@ -52,11 +52,18 @@ export function ShockMoveRadar({ compact = false, rows }: { compact?: boolean; r
                   <Metric label="Downside Risk" value={formatNumber(pattern.downsideRiskScore, 0)} tone={pattern.downsideRiskScore >= 70 ? "risk" : "neutral"} />
                   <Metric label="Similarity" value={formatNumber(pattern.currentSimilarityScore, 0)} />
                   <Metric label="Reliability" value={formatNumber(pattern.reliabilityScore, 0)} />
+                  <Metric label="Timing" value={pattern.timingValidation ? formatNumber(pattern.timingValidation.timingQualityScore, 0) : "building"} />
+                  <Metric label="Entry" value={pattern.timingValidation ? formatNumber(pattern.timingValidation.entryQualityScore, 0) : "building"} />
                   <Metric label="Evidence" value={row.evidence ? `${row.evidence.label} (${row.evidence.score})` : "Evidence building"} />
                 </div>
                 <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/35 p-2 text-[11px] leading-4 text-slate-400">
                   <span className="font-semibold text-amber-100">{pattern.chaseRiskLabel}.</span> Entry context: {pattern.researchEntryZone}. Exit context: {pattern.historicalExitZone}.
                 </div>
+                {pattern.timingValidation ? (
+                  <div className="mt-2 rounded-xl border border-emerald-300/15 bg-emerald-400/[0.045] p-2 text-[11px] leading-4 text-slate-300">
+                    <span className="font-semibold text-emerald-100">Timing proof:</span> {pattern.timingValidation.summary}
+                  </div>
+                ) : null}
                 {row.narrative ? (
                   <div className="mt-2 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.055] p-2 text-[11px] leading-4 text-slate-300">
                     <span className="font-semibold text-cyan-100">Narrative:</span> {row.narrative.pressureStory}

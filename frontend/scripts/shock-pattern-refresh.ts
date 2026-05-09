@@ -174,7 +174,13 @@ async function upsertPattern(pool: Pool, pattern: ShockMovePattern, signal: Late
     averageFollowthrough1d: pattern.averageFollowthrough1d,
     averageFollowthrough5d: pattern.averageFollowthrough5d,
     chaseSuccessRate: pattern.chaseSuccessRate,
+    entryQualityScore: pattern.timingValidation?.entryQualityScore ?? null,
+    falsePositiveRate: pattern.timingValidation?.falsePositiveRate ?? null,
+    missedOpportunityRate: pattern.timingValidation?.missedOpportunityRate ?? null,
     pullbackSuccessRate: pattern.pullbackSuccessRate,
+    shockReliabilityScore: pattern.timingValidation?.shockReliabilityScore ?? null,
+    timingQualityScore: pattern.timingValidation?.timingQualityScore ?? null,
+    timingValidation: pattern.timingValidation ?? null,
     shockEventSampleSize: pattern.shockEvents.length,
   };
 
