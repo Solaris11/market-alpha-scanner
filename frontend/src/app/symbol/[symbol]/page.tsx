@@ -13,6 +13,7 @@ import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib
 import { getMarketMemoryForSignal } from "@/lib/server/market-memory";
 import { assertNoPremiumFields } from "@/lib/server/premium-preview";
 import { getPublicSymbolSignal } from "@/lib/server/public-signal-data";
+import { getShockMovePattern } from "@/lib/server/shock-move-patterns";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
@@ -74,13 +75,14 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   }
 
   const adapter = new ScannerDataAdapter();
-  const [detail, history, paper, performance, snapshot, scanSafety] = await Promise.all([
+  const [detail, history, paper, performance, snapshot, scanSafety, shockPattern] = await Promise.all([
     adapter.getSymbolDetail(symbol),
     adapter.getSignalHistory(symbol),
     getPaperData().catch(() => ({ positions: [], events: [] })),
     getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
     adapter.getTerminalSnapshot(),
     getCurrentScanSafety(),
+    getShockMovePattern(symbol).catch(() => null),
   ]);
   const row = detail.row;
   const edgeProof = row ? buildHistoricalEdgeProof(row, performance) : null;
@@ -132,6 +134,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           viewerAuthenticated={entitlement.authenticated}
           priceSeries={detail.history}
           row={row}
+          shockPattern={shockPattern}
           timeline={timeline}
         />
       )}

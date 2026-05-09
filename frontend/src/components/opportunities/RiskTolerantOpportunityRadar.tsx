@@ -221,9 +221,11 @@ function RiskCandidateCard({
       <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{candidate.keyReason}</p>
       <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
         <MiniMetric label="Opp Score" value={formatNumber(candidate.aggressiveOpportunityScore, 0)} />
+        <MiniMetric label="Asymmetry" value={formatNumber(candidate.asymmetryScore, 0)} />
         <MiniMetric label="Upside" value={formatNumber(candidate.upsidePotentialScore, 0)} />
         <MiniMetric label="Downside" value={formatNumber(candidate.downsideRiskScore, 0)} tone={candidate.downsideRiskScore >= 70 ? "risk" : "neutral"} />
         <MiniMetric label="Reliability" value={formatNumber(candidate.reliabilityScore, 0)} />
+        <MiniMetric label="Shock Memory" value={candidate.shockPatternAvailable ? "Available" : "Limited"} />
         <MiniMetric label="Entry Zone" value={candidate.researchEntryZone} />
         <MiniMetric label="Invalidation" value={candidate.invalidationZone} tone="risk" />
       </div>

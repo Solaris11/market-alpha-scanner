@@ -5,6 +5,7 @@ import { humanizeLabel, readableText } from "@/lib/ui/labels";
 import { buildEdgeLookup, computeConviction, selectBestTradeNow } from "./conviction";
 import { buildConvictionFragilityModel, compactStructuralLabel } from "./conviction-fragility";
 import { createMacroContextResolver, macroAlignmentLabel, type MacroExchangeContext } from "./macro-regime";
+import type { ShockMovePattern } from "./shock-move";
 import { buildVerifiedEventContext } from "./verified-event-intelligence";
 
 export type OpportunityViewModel = {
@@ -34,6 +35,7 @@ export type OpportunityViewModel = {
   macroAdjustment: number | null;
   macroLabel: string;
   raw: RankingRow;
+  shockPattern: ShockMovePattern | null;
   structuralLabel: string;
 };
 
@@ -42,18 +44,18 @@ export type OpportunitiesPageModel = {
   rows: OpportunityViewModel[];
 };
 
-export function buildOpportunitiesPageModel(rows: RankingRow[], performance: PerformanceData | null): OpportunitiesPageModel {
+export function buildOpportunitiesPageModel(rows: RankingRow[], performance: PerformanceData | null, shockPatterns: Map<string, ShockMovePattern> = new Map()): OpportunitiesPageModel {
   const edges = buildEdgeLookup(rows, performance);
   const macroResolver = createMacroContextResolver(rows);
-  const viewModels = rows.map((row) => toOpportunityViewModel(row, edges[row.symbol.toUpperCase()], macroResolver.forRow(row)));
+  const viewModels = rows.map((row) => toOpportunityViewModel(row, edges[row.symbol.toUpperCase()], macroResolver.forRow(row), shockPatterns.get(row.symbol.toUpperCase()) ?? null));
   const bestRaw = selectBestTradeNow(rows, edges);
   return {
-    best: bestRaw ? toOpportunityViewModel(bestRaw.row, edges[bestRaw.row.symbol.toUpperCase()], macroResolver.forRow(bestRaw.row)) : null,
+    best: bestRaw ? toOpportunityViewModel(bestRaw.row, edges[bestRaw.row.symbol.toUpperCase()], macroResolver.forRow(bestRaw.row), shockPatterns.get(bestRaw.row.symbol.toUpperCase()) ?? null) : null,
     rows: viewModels,
   };
 }
 
-function toOpportunityViewModel(row: RankingRow, edge?: Parameters<typeof computeConviction>[1], macroContext?: MacroExchangeContext): OpportunityViewModel {
+function toOpportunityViewModel(row: RankingRow, edge?: Parameters<typeof computeConviction>[1], macroContext?: MacroExchangeContext, shockPattern: ShockMovePattern | null = null): OpportunityViewModel {
   const conviction = computeConviction(row, edge);
   const structural = buildConvictionFragilityModel(row, { macroContext });
   const eventContext = buildVerifiedEventContext(row);
@@ -84,6 +86,7 @@ function toOpportunityViewModel(row: RankingRow, edge?: Parameters<typeof comput
     macroAdjustment: numberOrNull(row.macro_context_adjustment_total ?? row.regime_adjustment),
     macroLabel: macroContext ? macroAlignmentLabel(macroContext) : "Macro Mixed",
     raw: row,
+    shockPattern,
     structuralLabel: compactStructuralLabel(structural),
   };
 }

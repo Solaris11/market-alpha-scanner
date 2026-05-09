@@ -13,6 +13,7 @@ import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
 import type { MacroExchangeContext } from "@/lib/trading/macro-regime";
 import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 import type { RiskPortfolioPosition } from "@/lib/trading/risk-veto";
+import type { ShockMovePattern } from "@/lib/trading/shock-move";
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
 import type { RankingRow, ScannerScalar } from "@/lib/types";
 import { AICopilotPanel } from "./AICopilotPanel";
@@ -28,6 +29,7 @@ import { SymbolChart, type ChartCandle, type ChartSignalMarker } from "./SymbolC
 import { SymbolDecisionIntelligencePanel } from "./SymbolDecisionIntelligencePanel";
 import { SymbolDecisionHero } from "./SymbolDecisionHero";
 import { SignalStatusCard } from "./SignalStatusCard";
+import { ShockPatternMemoryCard } from "./ShockPatternMemoryCard";
 import { TechnicalSnapshotCard } from "./TechnicalSnapshotCard";
 import { TradePlanCard } from "./TradePlanCard";
 import { VerifiedEventContextCard } from "./VerifiedEventContextCard";
@@ -48,6 +50,7 @@ export function SymbolTerminalWorkspace({
   paperEvents,
   globalDecision,
   macroContext,
+  shockPattern,
   premiumAccess = true,
   viewerAuthenticated = false,
 }: {
@@ -62,6 +65,7 @@ export function SymbolTerminalWorkspace({
   paperEvents: PaperTradeEventRow[];
   globalDecision?: DailyAction;
   macroContext: MacroExchangeContext | null;
+  shockPattern?: ShockMovePattern | null;
   premiumAccess?: boolean;
   viewerAuthenticated?: boolean;
 }) {
@@ -141,6 +145,7 @@ export function SymbolTerminalWorkspace({
         <div className="space-y-5">
           {canTrade ? <TradePlanCard engine={tradeEngine} row={row} /> : null}
           {canTrade ? <CorrectionMapCard row={row} /> : null}
+          <ShockPatternMemoryCard pattern={shockPattern ?? null} />
           <MarketMemoryCard memory={marketMemory} />
           <HistoricalEdgeCard edge={edgeProof} />
           <WhyDecisionCard row={row} />

@@ -6,6 +6,7 @@ import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
 import { getMarketMemoryForSignal } from "@/lib/server/market-memory";
 import { withRequestMetrics } from "@/lib/server/monitoring";
 import { rateLimitRequest } from "@/lib/server/request-security";
+import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 import {
   buildRiskTolerantOpportunities,
@@ -43,7 +44,8 @@ export async function GET(request: Request) {
       adapter.getOverviewSignals(),
       getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
     ]);
-    const model = buildOpportunitiesPageModel(rows, performance);
+    const shockPatterns = await getShockMovePatternMap(rows.map((row) => row.symbol)).catch(() => new Map());
+    const model = buildOpportunitiesPageModel(rows, performance, shockPatterns);
     const candidates = buildRiskTolerantOpportunities(model.rows, preference, { includeProfileMismatches: true, limit: 25 });
     const selected = requestedSymbol
       ? candidates.find((candidate) => candidate.symbol === requestedSymbol)

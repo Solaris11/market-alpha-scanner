@@ -4,6 +4,7 @@ import { BestTradeNowCard } from "@/components/terminal/BestTradeNowCard";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { MarketOnboarding } from "@/components/onboarding/MarketOnboarding";
 import { RiskTolerantOpportunityRadar } from "@/components/opportunities/RiskTolerantOpportunityRadar";
+import { ShockMoveRadar } from "@/components/opportunities/ShockMoveRadar";
 import { PublicSignalPreviewList } from "@/components/premium/PublicSignalPreview";
 import { PremiumAccessCta } from "@/components/premium/PremiumAccessCta";
 import { DailyActionCard } from "@/components/terminal/DailyActionCard";
@@ -23,6 +24,7 @@ import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { assertNoPremiumFields } from "@/lib/server/premium-preview";
 import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
+import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
@@ -97,7 +99,8 @@ export default async function TerminalPage() {
     getActiveAlertMatches(entitlement.user?.id ?? null).then((result) => result.matches).catch(() => []),
   ]);
   const edges = buildEdgeLookup(snapshot.signals, performance);
-  const opportunityModel = buildOpportunitiesPageModel(snapshot.signals, performance);
+  const shockPatterns = await getShockMovePatternMap(snapshot.signals.map((row) => row.symbol)).catch(() => new Map());
+  const opportunityModel = buildOpportunitiesPageModel(snapshot.signals, performance, shockPatterns);
   const best = selectBestTradeNow(snapshot.signals, edges);
   const leader = best?.row ?? snapshot.topSignals[0] ?? snapshot.signals[0];
   const dailyAction = getDailyAction({ best, fallbackRow: leader, marketRegime: snapshot.marketRegime, scanSafety });
@@ -134,6 +137,7 @@ export default async function TerminalPage() {
           )}
 
           <RiskTolerantOpportunityRadar compact marketCondition={snapshot.marketRegime.label} rows={opportunityModel.rows} />
+          <ShockMoveRadar compact rows={opportunityModel.rows} />
 
           <GlassPanel className="overflow-hidden p-5">
             <div className="grid gap-5">

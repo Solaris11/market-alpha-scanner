@@ -29,6 +29,7 @@ export type RiskRewardProfile = RiskRewardPreference & {
 
 export type RiskTolerantOpportunity = {
   aggressiveOpportunityScore: number;
+  asymmetryScore: number;
   averageDrawdownRisk: string;
   averageUpsidePotential: string;
   chaseRiskLabel: string;
@@ -54,6 +55,7 @@ export type RiskTolerantOpportunity = {
   riskTolerantRank: number;
   row: OpportunityViewModel;
   setupType: string;
+  shockPatternAvailable: boolean;
   symbol: string;
   upsidePotentialScore: number;
 };
@@ -73,6 +75,7 @@ export type RiskTolerantOpportunityPacket = {
     reliabilityScore: number;
     rewardRiskScore: number;
     riskTolerantRank: number;
+    shockPatternAvailable: boolean;
     symbol: string;
     upsidePotentialScore: number;
   };
@@ -99,6 +102,25 @@ export type RiskTolerantOpportunityPacket = {
     sampleSize: number;
   } | null;
   preference: RiskRewardProfile;
+  shockMetrics: {
+    asymmetryScore: number | null;
+    averageDrawdownAfterEntry: string | null;
+    averageProfitPotential: string | null;
+    chaseRiskLabel: string | null;
+    currentSimilarityScore: number | null;
+    downsideRiskScore: number | null;
+    doNotChaseZone: string | null;
+    historicalExitZone: string | null;
+    invalidationZone: string | null;
+    latestEventDate: string | null;
+    opportunityScore: number | null;
+    opportunityState: string | null;
+    reliabilityScore: number | null;
+    researchEntryZone: string | null;
+    shockEventSampleSize: number | null;
+    twoSidedVolatilityScore: number | null;
+    upsideShockScore: number | null;
+  };
   rawEvidence: {
     baseScore: number | null;
     convictionScore: number;
@@ -276,7 +298,8 @@ export function buildRiskTolerantOpportunity(row: OpportunityViewModel, profile:
   const downside = downsideRiskScore(row, chase);
   const entryQuality = entryQualityScore(row, chase);
   const reliability = reliabilityScore(row, downside, chase);
-  const rewardRisk = clamp(upside * 0.42 + entryQuality * 0.18 + reliability * 0.18 + macroSector * 0.12 - downside * 0.18 - chase * 0.12 + (setupPreferenceBonus(setup, profile) * 0.08));
+  const asymmetry = asymmetryScore(row);
+  const rewardRisk = clamp(upside * 0.38 + asymmetry * 0.12 + entryQuality * 0.16 + reliability * 0.17 + macroSector * 0.1 - downside * 0.18 - chase * 0.12 + (setupPreferenceBonus(setup, profile) * 0.08));
   const aggressive = profileAdjustedScore({
     chase,
     downside,
@@ -288,6 +311,7 @@ export function buildRiskTolerantOpportunity(row: OpportunityViewModel, profile:
     rewardRisk,
     setup,
     shock,
+    asymmetry,
     upside,
   });
   const profileMatched = profileMatch({ chase, downside, profile, reliability, setup, upside });
@@ -296,6 +320,7 @@ export function buildRiskTolerantOpportunity(row: OpportunityViewModel, profile:
   const risks = keyRisks({ row, chase, downside, profile });
   return {
     aggressiveOpportunityScore: Math.round(aggressive),
+    asymmetryScore: Math.round(asymmetry),
     averageDrawdownRisk: averageDrawdownRisk(row, downside),
     averageUpsidePotential: averageUpsidePotential(row, upside),
     chaseRiskLabel: chaseRiskLabel(chase),
@@ -321,6 +346,7 @@ export function buildRiskTolerantOpportunity(row: OpportunityViewModel, profile:
     riskTolerantRank: 0,
     row,
     setupType: setup,
+    shockPatternAvailable: row.shockPattern !== null,
     symbol: row.symbol,
     upsidePotentialScore: Math.round(upside),
   };
@@ -346,6 +372,7 @@ export function buildRiskTolerantOpportunityPacket(
       reliabilityScore: candidate.reliabilityScore,
       rewardRiskScore: candidate.rewardRiskScore,
       riskTolerantRank: candidate.riskTolerantRank,
+      shockPatternAvailable: candidate.shockPatternAvailable,
       symbol: candidate.symbol,
       upsidePotentialScore: candidate.upsidePotentialScore,
     },
@@ -372,6 +399,25 @@ export function buildRiskTolerantOpportunityPacket(
       sampleSize: memory.evidence.sampleSize,
     } : null,
     preference: profile,
+    shockMetrics: {
+      asymmetryScore: candidate.row.shockPattern?.asymmetryScore ?? null,
+      averageDrawdownAfterEntry: candidate.row.shockPattern?.averageDrawdownAfterEntry ?? null,
+      averageProfitPotential: candidate.row.shockPattern?.averageProfitPotential ?? null,
+      chaseRiskLabel: candidate.row.shockPattern?.chaseRiskLabel ?? null,
+      currentSimilarityScore: candidate.row.shockPattern?.currentSimilarityScore ?? null,
+      downsideRiskScore: candidate.row.shockPattern?.downsideRiskScore ?? null,
+      doNotChaseZone: candidate.row.shockPattern?.doNotChaseZone ?? null,
+      historicalExitZone: candidate.row.shockPattern?.historicalExitZone ?? null,
+      invalidationZone: candidate.row.shockPattern?.invalidationZone ?? null,
+      latestEventDate: candidate.row.shockPattern?.latestEvent?.eventDate ?? null,
+      opportunityScore: candidate.row.shockPattern?.opportunityScore ?? null,
+      opportunityState: candidate.row.shockPattern?.opportunityState ?? null,
+      reliabilityScore: candidate.row.shockPattern?.reliabilityScore ?? null,
+      researchEntryZone: candidate.row.shockPattern?.researchEntryZone ?? null,
+      shockEventSampleSize: candidate.row.shockPattern?.shockEvents.length ?? null,
+      twoSidedVolatilityScore: candidate.row.shockPattern?.twoSidedVolatilityScore ?? null,
+      upsideShockScore: candidate.row.shockPattern?.upsideShockScore ?? null,
+    },
     rawEvidence: {
       baseScore: numberField(candidate.row.raw.base_score),
       convictionScore: candidate.row.conviction,
@@ -424,6 +470,7 @@ function profileAdjustedScore(input: {
   rewardRisk: number;
   setup: string;
   shock: number;
+  asymmetry: number;
   upside: number;
 }): number {
   const riskWeight = input.profile.riskLevel === "low" ? 0.28 : input.profile.riskLevel === "medium" ? 0.16 : 0.08;
@@ -431,6 +478,7 @@ function profileAdjustedScore(input: {
   const volatilityWeight = input.profile.allowsSpeculativeVolatility ? 0.16 : 0.04;
   let score =
     input.upside * rewardWeight +
+    input.asymmetry * (input.profile.rewardLevel === "high" ? 0.12 : 0.06) +
     input.momentum * 0.17 +
     input.shock * volatilityWeight +
     input.macroSector * 0.12 +
@@ -459,7 +507,7 @@ function setupPreferenceBonus(setup: string, profile: RiskRewardProfile): number
 
 function setupType(row: OpportunityViewModel): string {
   const raw = cleanText(row.raw.setup_type, "AVOID").toUpperCase().replace(/[\s-]+/g, "_");
-  if (eventShockScore(row) >= 72 || raw.includes("VOLATILITY") || raw.includes("SHOCK")) return "VOLATILITY";
+  if ((row.shockPattern?.upsideShockScore ?? 0) >= 70 || eventShockScore(row) >= 72 || raw.includes("VOLATILITY") || raw.includes("SHOCK")) return "VOLATILITY";
   if (raw.includes("PULLBACK") || raw.includes("AVWAP")) return "PULLBACK";
   if (raw.includes("BREAKOUT")) return "BREAKOUT";
   if (raw.includes("CONTINUATION") || raw.includes("TREND")) return "CONTINUATION";
@@ -475,7 +523,8 @@ function upsidePotentialScore(row: OpportunityViewModel, shock: number): number 
   const targetScore = targetGap === null ? 48 : clamp(targetGap * 8);
   const eventShock = eventShockScore(row);
   const returnScore = clamp(50 + (numberField(row.raw.return_1d) ?? 0) * 5);
-  return average([rrScore, targetScore, shock, eventShock, returnScore], 50);
+  const patternUpside = row.shockPattern ? average([row.shockPattern.upsideShockScore, row.shockPattern.asymmetryScore, row.shockPattern.opportunityScore], 50) : null;
+  return average([rrScore, targetScore, shock, eventShock, returnScore, patternUpside], 50);
 }
 
 function currentMomentumScore(row: OpportunityViewModel): number {
@@ -490,6 +539,9 @@ function currentMomentumScore(row: OpportunityViewModel): number {
 }
 
 function historicalShockSupport(row: OpportunityViewModel): number {
+  if (row.shockPattern) {
+    return average([row.shockPattern.upsideShockScore, row.shockPattern.twoSidedVolatilityScore, row.shockPattern.currentSimilarityScore, row.shockPattern.opportunityScore], 50);
+  }
   const eventShock = eventShockScore(row);
   const atr = normalizePercent(row.raw.atr_pct ?? row.raw.atr ?? row.raw.current_atr);
   const volatility = normalizePercent(row.raw.annualized_volatility ?? row.raw.volatility ?? row.raw.volatility_pct);
@@ -500,6 +552,14 @@ function historicalShockSupport(row: OpportunityViewModel): number {
   const volScore = volatility === null ? 50 : clamp(volatility * 1.4);
   const volumeScore = volumeSpike === null ? 50 : clamp(volumeSpike * 24);
   return average([eventShock, shockFromMove, atrScore, volScore, volumeScore], 50);
+}
+
+function asymmetryScore(row: OpportunityViewModel): number {
+  if (row.shockPattern) return row.shockPattern.asymmetryScore;
+  const rewardRisk = numberField(row.raw.risk_reward) ?? 1;
+  const upside = percentGap(row.price, numberField(row.raw.take_profit_high ?? row.raw.target_price ?? row.target)) ?? 0;
+  const downside = Math.abs(percentGap(row.price, row.stop_loss) ?? 6);
+  return clamp(rewardRisk * 20 + upside * 2 - downside * 1.6 + 45);
 }
 
 function macroSectorSupport(row: OpportunityViewModel): number {
@@ -531,7 +591,8 @@ function downsideRiskScore(row: OpportunityViewModel, chase: number): number {
   const macroPenalty = Math.max(0, -(row.macroAdjustment ?? 0)) * 8;
   const stopDistance = percentGap(row.price, row.stop_loss);
   const stopRisk = stopDistance === null ? 50 : clamp(Math.abs(stopDistance) * 7);
-  return clamp(average([row.fragility, riskPenalty * 12, eventRisk, volatilityPressure, stopRisk, chase], 50) + macroPenalty * 0.35);
+  const patternDownside = row.shockPattern?.downsideRiskScore ?? null;
+  return clamp(average([row.fragility, riskPenalty * 12, eventRisk, volatilityPressure, stopRisk, chase, patternDownside], 50) + macroPenalty * 0.35);
 }
 
 function entryQualityScore(row: OpportunityViewModel, chase: number): number {
@@ -545,7 +606,8 @@ function reliabilityScore(row: OpportunityViewModel, downside: number, chase: nu
   const dataQuality = numberField(row.raw.data_quality_score ?? row.raw.quality_score) ?? 58;
   const decisionPenalty = String(row.final_decision ?? "").toUpperCase() === "AVOID" ? 10 : 0;
   const freshnessPenalty = row.dataFreshness.status === "stale" ? 12 : row.dataFreshness.status === "slightly_stale" ? 4 : 0;
-  return clamp(average([row.conviction, row.final_score ?? 50, dataQuality, 100 - downside * 0.5, 100 - chase * 0.35], 50) - decisionPenalty - freshnessPenalty);
+  const shockReliability = row.shockPattern?.reliabilityScore ?? null;
+  return clamp(average([row.conviction, row.final_score ?? 50, dataQuality, shockReliability, 100 - downside * 0.5, 100 - chase * 0.35], 50) - decisionPenalty - freshnessPenalty);
 }
 
 function keyReasons(input: { macroSector: number; momentum: number; opportunityType: string; reliability: number; row: OpportunityViewModel; setup: string; shock: number; upside: number }): string[] {
@@ -555,6 +617,7 @@ function keyReasons(input: { macroSector: number; momentum: number; opportunityT
   if (input.upside >= 70) reasons.push("upside potential score is elevated from target/risk-reward context");
   if (input.momentum >= 68) reasons.push("current momentum and setup strength are above the universe baseline");
   if (input.shock >= 68) reasons.push("historical shock support is elevated from volatility, event, and move context");
+  if (input.row.shockPattern) reasons.push(`${input.row.shockPattern.opportunityState.toLowerCase()} pattern memory: ${input.row.shockPattern.upsideShockCount} upside shocks and ${input.row.shockPattern.downsideShockCount} downside shocks in the selected lookback`);
   if (input.macroSector >= 60) reasons.push("macro, exchange, or sector context is supportive");
   if (input.reliability >= 60) reasons.push("reliability remains acceptable despite the aggressive profile");
   if (input.row.eventLabel !== "Event Context Limited") reasons.push(`verified event context: ${input.row.eventLabel}`);
@@ -573,6 +636,7 @@ function keyRisks(input: { chase: number; downside: number; profile: RiskRewardP
 }
 
 function opportunityTypeFor(input: { downside: number; eventShock: number; macroSector: number; momentum: number; row: OpportunityViewModel; setup: string; shock: number }): string {
+  if (input.row.shockPattern?.opportunityState) return input.row.shockPattern.opportunityState;
   if (input.eventShock >= 72 && input.downside >= 68) return "Two-sided volatility watch";
   if (input.eventShock >= 70 || input.shock >= 72) return "Upside shock watch";
   if (input.setup === "PULLBACK") return "Pullback entry watch";
@@ -583,15 +647,18 @@ function opportunityTypeFor(input: { downside: number; eventShock: number; macro
 }
 
 function researchEntryZone(row: OpportunityViewModel): string {
+  if (row.shockPattern?.researchEntryZone) return row.shockPattern.researchEntryZone;
   return row.entryZoneLabel ?? formatMoney(row.suggested_entry ?? row.price);
 }
 
 function invalidationZone(row: OpportunityViewModel): string {
+  if (row.shockPattern?.invalidationZone) return row.shockPattern.invalidationZone;
   const stop = row.stop_loss ?? numberField(row.raw.invalidation_level);
   return stop === null ? "Invalidation area unavailable" : formatMoney(stop);
 }
 
 function historicalExitZone(row: OpportunityViewModel): string {
+  if (row.shockPattern?.historicalExitZone) return row.shockPattern.historicalExitZone;
   const high = numberField(row.raw.take_profit_high ?? row.raw.aggressive_target_high ?? row.raw.target_price);
   const low = numberField(row.raw.take_profit_low ?? row.raw.conservative_target ?? row.target);
   if (low !== null && high !== null && low !== high) return `${formatMoney(Math.min(low, high))}-${formatMoney(Math.max(low, high))}`;
@@ -599,6 +666,7 @@ function historicalExitZone(row: OpportunityViewModel): string {
 }
 
 function doNotChaseZone(row: OpportunityViewModel): string {
+  if (row.shockPattern?.doNotChaseZone) return row.shockPattern.doNotChaseZone;
   const price = row.price;
   if (price === null) return "Do-not-chase zone unavailable";
   const entryHigh = numberField(row.raw.entry_zone_high ?? row.raw.buy_zone_high ?? row.suggested_entry);
@@ -608,6 +676,7 @@ function doNotChaseZone(row: OpportunityViewModel): string {
 }
 
 function averageUpsidePotential(row: OpportunityViewModel, score: number): string {
+  if (row.shockPattern?.averageProfitPotential) return row.shockPattern.averageProfitPotential;
   const avgGain = numberField(row.raw.avg_max_gain ?? row.raw.avg_gain ?? row.raw.best_return);
   if (avgGain !== null) return `${formatPercentValue(avgGain)} historically observed upside context`;
   const target = numberField(row.raw.take_profit_high ?? row.raw.target_price ?? row.target);
@@ -617,6 +686,7 @@ function averageUpsidePotential(row: OpportunityViewModel, score: number): strin
 }
 
 function averageDrawdownRisk(row: OpportunityViewModel, score: number): string {
+  if (row.shockPattern?.averageDrawdownAfterEntry) return row.shockPattern.averageDrawdownAfterEntry;
   const avgDrawdown = numberField(row.raw.avg_max_drawdown ?? row.raw.avg_drawdown ?? row.raw.max_drawdown_after_signal);
   if (avgDrawdown !== null) return `${formatPercentValue(avgDrawdown)} historically observed drawdown context`;
   return score >= 70 ? "Elevated drawdown risk; historical sample limited" : "Drawdown evidence limited";

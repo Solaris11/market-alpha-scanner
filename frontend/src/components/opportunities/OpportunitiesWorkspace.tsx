@@ -9,6 +9,7 @@ import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import { DataHealthIndicator } from "@/components/data-health-indicator";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import { RiskTolerantOpportunityRadar } from "@/components/opportunities/RiskTolerantOpportunityRadar";
+import { ShockMoveRadar } from "@/components/opportunities/ShockMoveRadar";
 import { confidenceTone } from "@/lib/trading/confidence";
 import { buildDecisionFactors, buildDecisionIntelligence, type DecisionFactor } from "@/lib/trading/decision-intelligence";
 import { buildRiskTolerantOpportunities } from "@/lib/trading/risk-tolerant-opportunities";
@@ -127,6 +128,7 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
     <div className="min-w-0 max-w-full space-y-5">
       <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} rows={rows} />
       <RiskTolerantOpportunityRadar marketCondition={marketCondition} rows={rows} />
+      <ShockMoveRadar rows={rows} />
       <OpportunityDeskMap marketCondition={marketCondition} rows={rows} />
       <SetupDistribution rows={rows} />
 
@@ -989,6 +991,10 @@ function decision(row: OpportunityViewModel) {
 function compareRows(left: OpportunityViewModel, right: OpportunityViewModel, sortKey: SortKey, riskTolerantRows: ReturnType<typeof buildRiskTolerantOpportunities>, activeTab: TabKey) {
   const riskRank = riskTolerantRank(left, riskTolerantRows) - riskTolerantRank(right, riskTolerantRows);
   if (riskRank !== 0 && activeTab === "RISK_TOLERANT") return riskRank;
+  if (activeTab === "SHOCK") {
+    const shockRank = numericDesc(left.shockPattern?.opportunityScore ?? null, right.shockPattern?.opportunityScore ?? null);
+    if (shockRank !== 0) return shockRank;
+  }
   if (sortKey === "SYMBOL_ASC") return left.symbol.localeCompare(right.symbol);
   if (sortKey === "CONVICTION_DESC") return right.conviction - left.conviction || left.symbol.localeCompare(right.symbol);
   if (sortKey === "PRICE_DESC") return numericDesc(left.price, right.price) || left.symbol.localeCompare(right.symbol);
@@ -1001,6 +1007,7 @@ function riskTolerantRank(row: OpportunityViewModel, riskTolerantRows: ReturnTyp
 }
 
 function isShockPotential(row: OpportunityViewModel) {
+  if ((row.shockPattern?.opportunityScore ?? 0) >= 45 || (row.shockPattern?.upsideShockScore ?? 0) >= 55 || (row.shockPattern?.twoSidedVolatilityScore ?? 0) >= 55) return true;
   const eventShock = numeric(row.raw.event_shock_pressure_score ?? row.raw.verified_event_pressure_score) ?? 0;
   const return1d = Math.abs(numeric(row.raw.return_1d) ?? 0);
   const volatility = numeric(row.raw.annualized_volatility ?? row.raw.volatility ?? row.raw.volatility_pct) ?? 0;

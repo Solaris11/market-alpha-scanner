@@ -55,6 +55,7 @@ function row(overrides: Partial<OpportunityViewModel> = {}): OpportunityViewMode
     recommendationQuality: "watch",
     recommendationQualityLabel: "Watch",
     sector: "Semiconductors",
+    shockPattern: null,
     stop_loss: 96,
     structuralLabel: "Stable trend",
     suggested_entry: 101,

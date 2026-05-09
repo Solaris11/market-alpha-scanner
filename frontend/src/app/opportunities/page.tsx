@@ -6,6 +6,7 @@ import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
+import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 
@@ -36,7 +37,8 @@ export default async function OpportunitiesPage() {
     adapter.getMarketRegime(),
     getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
   ]);
-  const model = buildOpportunitiesPageModel(rows, performance);
+  const shockPatterns = await getShockMovePatternMap(rows.map((row) => row.symbol)).catch(() => new Map());
+  const model = buildOpportunitiesPageModel(rows, performance, shockPatterns);
   const bestDetail = model.best ? await adapter.getSymbolDetail(model.best.symbol).catch(() => null) : null;
 
   return (
