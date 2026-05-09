@@ -31,6 +31,7 @@ import { HistoricalEdgeCard } from "./HistoricalEdgeCard";
 import { InstitutionalIntelligencePanel } from "./InstitutionalIntelligencePanel";
 import { MacroExchangeContextCard } from "./MacroExchangeContextCard";
 import { MarketMemoryCard } from "./MarketMemoryCard";
+import { MetaIntelligenceOperatingSystemPanel } from "./MetaIntelligenceOperatingSystemPanel";
 import { NarrativeIntelligenceCard } from "./NarrativeIntelligenceCard";
 import { PaperContextCard } from "./PaperContextCard";
 import { PersonalizedIntelligenceCard } from "./PersonalizedIntelligenceCard";
@@ -153,6 +154,7 @@ export function SymbolTerminalWorkspace({
             </GlassPanel>
           )}
           <SymbolDecisionIntelligencePanel candles={candles} row={row} />
+          {institutionalOpportunity ? <MetaIntelligenceOperatingSystemPanel compact focusSymbol={symbol} personalizationProfile={personalizationProfile ?? null} rows={[institutionalOpportunity]} workflowEvolution={workflowEvolution ?? null} /> : null}
           <NarrativeIntelligenceCard narrative={narrative ?? null} />
           <PersonalizedIntelligenceCard narrative={narrative ?? null} profile={personalizationProfile ?? null} row={row} />
           {decisionMemory && decisionCoaching ? (

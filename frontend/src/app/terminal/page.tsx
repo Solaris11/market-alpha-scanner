@@ -11,6 +11,7 @@ import { DailyActionCard } from "@/components/terminal/DailyActionCard";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { InstitutionalIntelligencePanel } from "@/components/terminal/InstitutionalIntelligencePanel";
 import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
+import { MetaIntelligenceOperatingSystemPanel } from "@/components/terminal/MetaIntelligenceOperatingSystemPanel";
 import { MetricCard } from "@/components/terminal/MetricCard";
 import { MyWatchlistWidget } from "@/components/terminal/MyWatchlistWidget";
 import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
@@ -134,6 +135,7 @@ export default async function TerminalPage() {
             scanStatus={humanizeLabel(scanSafety.status)}
             topWatchRows={opportunityModel.rows}
           />
+          <MetaIntelligenceOperatingSystemPanel compact personalizationProfile={personalizationProfile} rows={opportunityModel.rows} workflowEvolution={workflowEvolution} />
           {workflowEvolution ? <WorkflowEvolutionPanel summary={workflowEvolution} surface="terminal" /> : null}
           <InstitutionalIntelligencePanel compact rows={opportunityModel.rows} />
           {actionBlocksTradeUi ? (
