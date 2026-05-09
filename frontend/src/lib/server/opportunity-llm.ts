@@ -1,5 +1,6 @@
 import "server-only";
 
+import { evaluateLlmGrounding, groundingPacketFromStructuredData } from "@/lib/trading/llm-grounding";
 import type { RiskTolerantOpportunityPacket } from "@/lib/trading/risk-tolerant-opportunities";
 import { deterministicOpportunityExplanation } from "@/lib/trading/risk-tolerant-opportunities";
 
@@ -239,6 +240,28 @@ function validateAnalysis(value: unknown, packet: RiskTolerantOpportunityPacket)
   if (!evidenceSupportingRanking.length || !monitorNext.length) return null;
   if (packet.dataFreshness.status === "stale" && !fields.dataFreshnessNote.toLowerCase().includes("stale")) return null;
   if (!fields.safetyLanguage.toLowerCase().includes("not financial advice") && !fields.safetyLanguage.toLowerCase().includes("research")) return null;
+  const grounding = evaluateLlmGrounding({
+    output: {
+      ...fields,
+      evidenceSupportingRanking,
+      monitorNext,
+      unsupportedClaimsDetected: record.unsupportedClaimsDetected,
+    },
+    packet: groundingPacketFromStructuredData(packet),
+    requiredFields: [
+      "chaseRiskAssessment",
+      "conciseExplanation",
+      "dataFreshnessNote",
+      "evidenceSupportingRanking",
+      "monitorNext",
+      "profileFitReason",
+      "safetyLanguage",
+      "uncertaintyNote",
+      "whyItMayFail",
+      "whyItMayWork",
+    ],
+  });
+  if (!grounding.safeForUse) return null;
   return {
     available: true,
     source: "llm",

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { evaluateLlmGrounding, groundingPacketFromStructuredData } from "@/lib/trading/llm-grounding";
 import {
   answerResearchCopilotDeterministically,
   type ResearchCopilotAnswer,
@@ -108,6 +109,19 @@ function validateCopilotAnswer(value: unknown, context: ResearchCopilotContext):
   if (!answer || !safetyLanguage || !keyPoints.length || !whatToWatch.length) return null;
   if ([answer, safetyLanguage, ...keyPoints, ...symbolComparisons, ...whatToWatch].some((text) => FORBIDDEN_LANGUAGE.test(text))) return null;
   if (!safetyLanguage.toLowerCase().includes("not financial advice") && !safetyLanguage.toLowerCase().includes("research")) return null;
+  const grounding = evaluateLlmGrounding({
+    output: {
+      answer,
+      keyPoints,
+      safetyLanguage,
+      symbolComparisons,
+      unsupportedClaimsDetected: record.unsupportedClaimsDetected,
+      whatToWatch,
+    },
+    packet: groundingPacketFromStructuredData(context),
+    requiredFields: ["answer", "keyPoints", "safetyLanguage", "whatToWatch"],
+  });
+  if (!grounding.safeForUse) return null;
   return {
     answer,
     intent: context.intent,

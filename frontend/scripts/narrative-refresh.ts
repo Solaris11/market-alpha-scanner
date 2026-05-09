@@ -450,7 +450,7 @@ async function llmNarrativeFor(base: NarrativeIntelligence, packet: NarrativeInp
     const text = extractOutputText(payload);
     if (!text) return null;
     const parsed = JSON.parse(text) as unknown;
-    return applyValidatedLlmNarrative(base, parsed);
+    return applyValidatedLlmNarrative(base, parsed, packet);
   } catch {
     return null;
   } finally {

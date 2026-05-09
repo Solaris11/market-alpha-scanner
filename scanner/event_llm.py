@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import urllib.error
 import urllib.request
 from datetime import datetime
@@ -58,6 +59,7 @@ ALLOWED_REASON_CODES: Final[frozenset[str]] = frozenset(
         "EVENT_INVESTMENT_POSITIVE",
         "EVENT_LIQUIDITY_SUPPORTIVE",
         "EVENT_LIQUIDITY_TIGHTENING",
+        "EVENT_MARKET_REGULATORY",
         "EVENT_MERGER_ACQUISITION",
         "EVENT_MNA_NEGATIVE",
         "EVENT_MNA_POSITIVE",
@@ -68,10 +70,15 @@ ALLOWED_REASON_CODES: Final[frozenset[str]] = frozenset(
         "EVENT_RECESSION_PRESSURE",
         "EVENT_REGULATORY_POSITIVE",
         "EVENT_REGULATORY_RISK",
+        "EVENT_SHAREHOLDER_LITIGATION",
         "EVENT_STRONG_LABOR_RATE_PRESSURE",
         "EVENT_UNEMPLOYMENT_SURPRISE",
         "EVENT_VOLATILITY_PRESSURE",
     }
+)
+FORBIDDEN_LANGUAGE_RE: Final[re.Pattern[str]] = re.compile(
+    r"\b(buy now|sell now|guaranteed|sure profit|can't lose|cannot lose|will definitely|must buy|must sell|risk-free|free money)\b",
+    re.IGNORECASE,
 )
 
 
@@ -179,6 +186,25 @@ def _request_payload(
     }
 
 
+def build_event_llm_request_payload(
+    *,
+    model: str,
+    source: str,
+    title: str,
+    summary: str,
+    source_url: str,
+    published_at: datetime,
+) -> dict[str, object]:
+    return _request_payload(
+        model=model,
+        source=source,
+        title=title,
+        summary=summary,
+        source_url=source_url,
+        published_at=published_at,
+    )
+
+
 def _assessment_schema() -> dict[str, object]:
     return {
         "type": "object",
@@ -229,6 +255,9 @@ def _validated_assessment(raw: dict[str, object], source_text: str) -> EventLlmA
     evidence = _string_list(raw.get("evidence_phrases"), limit=4)
     if not evidence or not _evidence_supported(evidence, source_text):
         return None
+    explanation = safe_str(raw.get("explanation"), "")[:260]
+    if _contains_forbidden_language([explanation, *evidence]):
+        return None
 
     reason_codes = [code for code in _string_list(raw.get("reason_codes"), limit=5) if code in ALLOWED_REASON_CODES]
     if not reason_codes:
@@ -246,7 +275,7 @@ def _validated_assessment(raw: dict[str, object], source_text: str) -> EventLlmA
         "direction": direction,
         "event_type": _event_type(raw.get("event_type")),
         "evidence_phrases": evidence,
-        "explanation": safe_str(raw.get("explanation"), "")[:260],
+        "explanation": explanation,
         "fragility_bias": round(clamp_score(safe_float(raw.get("fragility_bias"), 0.0), -1.5, 4.0), 2),
         "impact_tags": _string_list(raw.get("impact_tags"), limit=6),
         "pressure_score": round(clamp_score(safe_float(raw.get("pressure_score"), 50.0)), 2),
@@ -255,6 +284,10 @@ def _validated_assessment(raw: dict[str, object], source_text: str) -> EventLlmA
         "sectors": _string_list(raw.get("sectors"), limit=6),
         "shock_bias": round(clamp_score(safe_float(raw.get("shock_bias"), 0.0), 0.0, 4.0), 2),
     }
+
+
+def validate_event_llm_assessment(raw: dict[str, object], source_text: str) -> EventLlmAssessment | None:
+    return _validated_assessment(raw, source_text)
 
 
 def _extract_output_text(payload: object) -> str:
@@ -291,6 +324,10 @@ def _evidence_supported(evidence: list[str], source_text: str) -> bool:
     return any(phrase.lower().strip() in normalized for phrase in evidence if phrase.strip())
 
 
+def _contains_forbidden_language(values: list[str]) -> bool:
+    return any(FORBIDDEN_LANGUAGE_RE.search(value) is not None for value in values)
+
+
 def _event_type(value: object) -> str:
     normalized = safe_str(value, "verified_event_llm").strip().lower().replace(" ", "_").replace("-", "_")
     return normalized[:64] or "verified_event_llm"
@@ -323,3 +360,7 @@ def _timeout_seconds() -> float:
     except ValueError:
         value = 8.0
     return max(2.0, min(value, 20.0))
+
+
+def event_llm_timeout_seconds() -> float:
+    return _timeout_seconds()

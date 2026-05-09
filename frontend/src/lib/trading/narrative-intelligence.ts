@@ -1,4 +1,5 @@
 import type { MacroExchangeContext } from "@/lib/trading/macro-regime";
+import { evaluateLlmGrounding, groundingPacketFromStructuredData } from "@/lib/trading/llm-grounding";
 import { macroAlignmentLabel, macroPressureLabel } from "@/lib/trading/macro-regime";
 import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
@@ -292,7 +293,7 @@ export function narrativeJsonSchema(): Record<string, unknown> {
   };
 }
 
-export function applyValidatedLlmNarrative(base: NarrativeIntelligence, value: unknown): NarrativeIntelligence | null {
+export function applyValidatedLlmNarrative(base: NarrativeIntelligence, value: unknown, packet?: NarrativeInputPacket): NarrativeIntelligence | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const record = value as Record<string, unknown>;
   if (record.unsupportedClaimsDetected !== false) return null;
@@ -320,6 +321,21 @@ export function applyValidatedLlmNarrative(base: NarrativeIntelligence, value: u
   const whatToWatch = safeNarrativeArray(record.whatToWatch, 5);
   if (whatToWatch.length < 2) return null;
   if (!fields.riskLanguage.toLowerCase().includes("not financial advice") && !fields.riskLanguage.toLowerCase().includes("research")) return null;
+  const grounding = evaluateLlmGrounding({
+    output: { ...fields, whatToWatch, unsupportedClaimsDetected: record.unsupportedClaimsDetected },
+    packet: groundingPacketFromStructuredData(packet ?? base),
+    requiredFields: [
+      "narrativeSummary",
+      "bullishNarrative",
+      "bearishNarrative",
+      "moderatorSummary",
+      "riskNarrative",
+      "decisionReasoning",
+      "whatToWatch",
+      "riskLanguage",
+    ],
+  });
+  if (!grounding.safeForUse) return null;
   return {
     ...base,
     ...fields,
