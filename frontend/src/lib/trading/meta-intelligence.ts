@@ -35,6 +35,8 @@ export type AttentionPriority = "critical" | "high" | "low" | "medium";
 
 export type MetaOpportunityPriority = {
   attentionPriority: AttentionPriority;
+  attentionPriorityScore: number;
+  actionContext: string;
   category: MetaOpportunityCategory;
   decision: string;
   decisionQualityScore: number;
@@ -43,9 +45,11 @@ export type MetaOpportunityPriority = {
   metaOpportunityScore: number;
   metaRiskScore: number;
   opportunityQualityScore: number;
+  reasonForAttention: string;
   state: string;
   symbol: string;
   timingQualityScore: number;
+  urgencyLabel: string;
   urgencyScore: number;
 };
 
@@ -157,20 +161,27 @@ function buildMetaOpportunity(input: RowMetaInput): MetaOpportunityPriority {
   const metaOpportunityScore = Math.round(clamp(opportunityQualityScore * 0.36 + decisionQualityScore * 0.30 + urgencyScore * 0.16 + institutional.asymmetryScore * 0.10 - metaRiskScore * 0.08));
   const category = categoryFor(row, institutional, opportunityQualityScore);
   const attentionPriority = attentionPriorityFor(metaOpportunityScore, metaRiskScore, urgencyScore);
+  const attentionPriorityScore = attentionPriorityScoreFor({ decisionQualityScore, metaOpportunityScore, metaRiskScore, urgencyScore });
+  const reasons = keyReasons(row, institutional, category);
+  const risks = keyRisks(row, institutional, metaRiskScore);
 
   return {
     attentionPriority,
+    attentionPriorityScore,
+    actionContext: actionContextFor({ attentionPriority, metaRiskScore, row, timingQualityScore }),
     category,
     decision: decisionLabel(row.final_decision),
     decisionQualityScore,
-    keyReasons: keyReasons(row, institutional, category),
-    keyRisks: keyRisks(row, institutional, metaRiskScore),
+    keyReasons: reasons,
+    keyRisks: risks,
     metaOpportunityScore,
     metaRiskScore,
     opportunityQualityScore,
+    reasonForAttention: reasonForAttentionFor({ category, metaRiskScore, reason: reasons[0], risk: risks[0], urgencyScore }),
     state: stateFor({ category, institutional, metaOpportunityScore, metaRiskScore, row, timingQualityScore }),
     symbol: row.symbol,
     timingQualityScore,
+    urgencyLabel: urgencyLabelFor(attentionPriority, urgencyScore, metaRiskScore),
     urgencyScore,
   };
 }
@@ -266,6 +277,36 @@ function attentionPriorityFor(opportunity: number, risk: number, urgencyScore: n
   if (opportunity >= 70 || risk >= 70 || urgencyScore >= 68) return "high";
   if (opportunity >= 55 || urgencyScore >= 55) return "medium";
   return "low";
+}
+
+function attentionPriorityScoreFor(input: { decisionQualityScore: number; metaOpportunityScore: number; metaRiskScore: number; urgencyScore: number }): number {
+  return Math.round(clamp(
+    input.urgencyScore * 0.36 +
+    Math.max(input.metaOpportunityScore, input.metaRiskScore) * 0.30 +
+    input.decisionQualityScore * 0.22 +
+    Math.abs(input.metaOpportunityScore - input.metaRiskScore) * 0.12,
+  ));
+}
+
+function urgencyLabelFor(priority: AttentionPriority, urgencyScore: number, riskScore: number): string {
+  if (priority === "critical") return riskScore >= 76 ? "Critical risk attention" : "Critical opportunity attention";
+  if (priority === "high") return urgencyScore >= 68 ? "High urgency" : "High priority";
+  if (priority === "medium") return "Monitor closely";
+  return "Background watch";
+}
+
+function reasonForAttentionFor(input: { category: MetaOpportunityCategory; metaRiskScore: number; reason: string | undefined; risk: string | undefined; urgencyScore: number }): string {
+  if (input.metaRiskScore >= 74 && input.risk) return input.risk;
+  if (input.urgencyScore >= 70) return `${input.category} needs review because urgency is elevated across event, shock, regime, or workflow context.`;
+  return input.reason ?? `${input.category} is visible in the unified priority queue.`;
+}
+
+function actionContextFor(input: { attentionPriority: AttentionPriority; metaRiskScore: number; row: OpportunityViewModel; timingQualityScore: number }): string {
+  if (input.metaRiskScore >= 76) return "Review risk first; keep invalidation, fragility, and chase context explicit before escalating.";
+  if (input.timingQualityScore < 45) return "Wait for cleaner timing, pullback quality, or confirmation before treating this as actionable research.";
+  if (input.attentionPriority === "critical" || input.attentionPriority === "high") return "Open symbol detail and validate evidence, macro context, and failure conditions.";
+  if (input.row.final_decision?.toUpperCase() === "AVOID") return "Keep on research watch only unless risk context materially improves.";
+  return "Monitor for setup evolution and avoid forcing a trade from this briefing alone.";
 }
 
 function stateFor(input: {

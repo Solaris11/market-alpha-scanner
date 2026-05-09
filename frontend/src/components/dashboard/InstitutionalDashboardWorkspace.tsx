@@ -7,7 +7,6 @@ import {
   buildInstitutionalDashboard,
   institutionalDashboardMetricLine,
   institutionalDashboardScoreLabel,
-  type InstitutionalDashboard,
   type InstitutionalDashboardCluster,
   type InstitutionalDashboardMetric,
   type InstitutionalDashboardMode,
@@ -21,6 +20,7 @@ import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution"
 import { formatNumber } from "@/lib/ui/formatters";
 import { GlassPanel } from "../terminal/ui/GlassPanel";
 import { SectionTitle } from "../terminal/ui/SectionTitle";
+import { UnifiedIntelligenceConsole } from "../terminal/UnifiedIntelligenceConsole";
 
 const DASHBOARD_MODES: Array<{ key: InstitutionalDashboardMode; label: string; meta: string }> = [
   { key: "institutional", label: "Institutional", meta: "quality and pressure" },
@@ -90,8 +90,15 @@ export function InstitutionalDashboardWorkspace({
 
       <MarketMetrics metrics={dashboard.marketState.metrics} />
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.08fr)_minmax(330px,0.92fr)]">
-        <ExecutiveBriefing dashboard={dashboard} />
+      <UnifiedIntelligenceConsole
+        marketCondition={marketCondition ?? dashboard.marketState.label}
+        personalizationProfile={initialProfile ?? null}
+        rows={rows}
+        surface="dashboard"
+        workflowEvolution={workflowEvolution ?? null}
+      />
+
+      <div className="grid gap-5">
         <ClusterBoard clusters={dashboard.clusters} />
       </div>
 
@@ -147,26 +154,6 @@ function MetricBar({ metric }: { metric: InstitutionalDashboardMetric }) {
     <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.08]">
       <div className={`h-full rounded-full ${toneBarClass(metric.tone)}`} style={{ width: `${Math.max(5, Math.min(100, metric.score))}%` }} />
     </div>
-  );
-}
-
-function ExecutiveBriefing({ dashboard }: { dashboard: InstitutionalDashboard }) {
-  return (
-    <GlassPanel className="p-5">
-      <SectionTitle eyebrow="Executive Market Briefing" title="What Matters Now" meta={`${dashboard.mode} view`} />
-      <div className="mt-4 grid gap-3">
-        {dashboard.executiveBriefing.map((line, index) => (
-          <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4" key={line}>
-            <div className="flex gap-3">
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-cyan-300/20 bg-cyan-400/10 font-mono text-xs font-black text-cyan-100">
-                {index + 1}
-              </div>
-              <p className="text-sm leading-6 text-slate-300">{line}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </GlassPanel>
   );
 }
 

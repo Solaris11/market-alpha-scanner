@@ -14,7 +14,6 @@ import { ExecutionIntelligencePanel } from "@/components/terminal/ExecutionIntel
 import { InstitutionalIntelligencePanel } from "@/components/terminal/InstitutionalIntelligencePanel";
 import { IntradayRegimeDriftPanel } from "@/components/terminal/IntradayRegimeDriftPanel";
 import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
-import { MetaIntelligenceOperatingSystemPanel } from "@/components/terminal/MetaIntelligenceOperatingSystemPanel";
 import { MetricCard } from "@/components/terminal/MetricCard";
 import { MyWatchlistWidget } from "@/components/terminal/MyWatchlistWidget";
 import { RegimeShiftIntelligencePanel } from "@/components/terminal/RegimeShiftIntelligencePanel";
@@ -26,6 +25,7 @@ import { StrategyIntelligencePanel } from "@/components/terminal/StrategyIntelli
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { TerminalPulseCharts } from "@/components/terminal/TerminalPulseCharts";
 import { TerminalRightRail } from "@/components/terminal/TerminalRightRail";
+import { UnifiedIntelligenceConsole } from "@/components/terminal/UnifiedIntelligenceConsole";
 import { WorkflowEvolutionPanel } from "@/components/terminal/WorkflowEvolutionPanel";
 import { getActiveAlertMatches } from "@/lib/active-alert-matches";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
@@ -152,12 +152,17 @@ export default async function TerminalPage() {
         <div className="space-y-4">
           <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
           <MarketTapeStrip rows={snapshot.signals} />
+          <UnifiedIntelligenceConsole
+            marketCondition={snapshot.marketRegime.label}
+            personalizationProfile={personalizationProfile}
+            rows={opportunityModel.rows}
+            workflowEvolution={workflowEvolution}
+          />
           <TerminalMonitoringBrief
             rows={snapshot.signals}
             scanStatus={humanizeLabel(scanSafety.status)}
             topWatchRows={opportunityModel.rows}
           />
-          <MetaIntelligenceOperatingSystemPanel compact personalizationProfile={personalizationProfile} rows={opportunityModel.rows} workflowEvolution={workflowEvolution} />
           <IntradayRegimeDriftPanel compact driftRows={intradayDriftRows} rows={opportunityModel.rows} />
           <RegimeShiftIntelligencePanel compact rows={opportunityModel.rows} workflowEvolution={workflowEvolution} />
           <AdaptiveLearningInsightPanel compact system={adaptiveLearning} />
