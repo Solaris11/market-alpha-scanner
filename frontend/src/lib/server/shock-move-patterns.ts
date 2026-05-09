@@ -54,6 +54,7 @@ export async function getShockMovePatternMap(symbols: string[], lookbackWindow: 
           common_failure_conditions,
           latest_event,
           shock_events,
+          metrics,
           last_updated
         FROM shock_move_patterns
         WHERE lookback_window = $1

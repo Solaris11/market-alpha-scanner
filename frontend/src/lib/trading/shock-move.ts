@@ -44,6 +44,37 @@ export type ShockMoveEvent = {
   volumeSpikeRatio: number | null;
 };
 
+export type ShockMoveReplayStudy = {
+  beforeMoveEvidence: string[];
+  chaseOutcome: string;
+  daysBeforeSignal: number | null;
+  eventDate: string;
+  maxAdverseExcursion5d: number | null;
+  moveType: ShockDirection;
+  preMoveDetected: boolean;
+  preMoveScore: number;
+  pullbackOutcome: string;
+  return1d: number;
+  return5d: number | null;
+  verdict: string;
+};
+
+export type ShockTimingValidation = {
+  averageDrawdownAfterChasePct: number | null;
+  bestHistoricalEntryZone: string;
+  bestHistoricalExitZone: string;
+  earlyDetectionRate: number | null;
+  entryQualityScore: number;
+  falsePositiveRate: number | null;
+  missedOpportunityRate: number | null;
+  pullbackEntrySuccessRate: number | null;
+  replayStudies: ShockMoveReplayStudy[];
+  shockReliabilityScore: number;
+  summary: string;
+  timingQualityScore: number;
+  validationSampleSize: number;
+};
+
 export type ShockMovePattern = {
   asymmetryScore: number;
   averageDrawdownAfterEntry: string;
@@ -76,6 +107,7 @@ export type ShockMovePattern = {
   researchEntryZone: string;
   shockEvents: ShockMoveEvent[];
   symbol: string;
+  timingValidation?: ShockTimingValidation | null;
   twoSidedVolatilityScore: number;
   upsideShockCount: number;
   upsideShockScore: number;
@@ -161,9 +193,22 @@ export function buildShockMovePattern(input: BuildShockMovePatternInput): ShockM
   const chaseRisk = chaseRiskScore({ latest, upsideEvents });
   const opportunity = opportunityScore({ asymmetry, chaseRisk, downsideRisk, reliability, similarity, twoSided, upsideScore });
   const zones = buildResearchZones(latest, computed, events);
+  const timingValidation = buildShockTimingValidation({ bars: computed, events, symbol: input.symbol.trim().toUpperCase() });
+  const calibratedReliability = clamp(reliability * 0.62 + timingValidation.shockReliabilityScore * 0.38);
+  const calibratedSimilarity = clamp(similarity * 0.72 + timingValidation.entryQualityScore * 0.18 + timingValidation.timingQualityScore * 0.1);
+  const calibratedAsymmetry = clamp(asymmetry * 0.78 + timingValidation.entryQualityScore * 0.12 + (100 - chaseRisk) * 0.1);
+  const calibratedOpportunity = opportunityScore({
+    asymmetry: calibratedAsymmetry,
+    chaseRisk,
+    downsideRisk,
+    reliability: calibratedReliability,
+    similarity: calibratedSimilarity,
+    twoSided,
+    upsideScore,
+  });
 
   return {
-    asymmetryScore: Math.round(asymmetry),
+    asymmetryScore: Math.round(calibratedAsymmetry),
     averageDrawdownAfterEntry: maeValues.length ? `${formatSignedPercent(mean(maeValues))} average 5D adverse excursion after shocks` : "Drawdown sample still limited",
     averageFollowthrough1d: meanOrNull(followthrough1d),
     averageFollowthrough5d: meanOrNull(followthrough5d),
@@ -174,7 +219,7 @@ export function buildShockMovePattern(input: BuildShockMovePatternInput): ShockM
     chaseSuccessRate,
     commonFailureConditions: commonFailureConditions(events),
     commonPreconditions: commonPreconditions(events),
-    currentSimilarityScore: Math.round(similarity),
+    currentSimilarityScore: Math.round(calibratedSimilarity),
     downsideRiskScore: Math.round(downsideRisk),
     downsideShockCount: downsideEvents.length,
     doNotChaseZone: zones.doNotChaseZone,
@@ -187,13 +232,14 @@ export function buildShockMovePattern(input: BuildShockMovePatternInput): ShockM
     lookbackWindow: input.lookbackWindow,
     medianDownsideShock: medianOrNull(downsideReturns),
     medianUpsideShock: medianOrNull(upsideReturns),
-    opportunityScore: Math.round(opportunity),
-    opportunityState: opportunityState({ chaseRisk, downsideRisk, opportunity, twoSided, upsideScore }),
+    opportunityScore: Math.round(calibratedOpportunity),
+    opportunityState: opportunityState({ chaseRisk, downsideRisk, opportunity: calibratedOpportunity, twoSided, upsideScore }),
     pullbackSuccessRate,
-    reliabilityScore: Math.round(reliability),
+    reliabilityScore: Math.round(calibratedReliability),
     researchEntryZone: zones.researchEntryZone,
     shockEvents: events.slice(-80),
     symbol: input.symbol.trim().toUpperCase(),
+    timingValidation,
     twoSidedVolatilityScore: Math.round(twoSided),
     upsideShockCount: upsideEvents.length,
     upsideShockScore: Math.round(upsideScore),
@@ -236,6 +282,7 @@ export function shockPatternFromDbRow(row: Record<string, unknown>): ShockMovePa
     researchEntryZone: textValue(row.research_entry_zone) ?? "Research entry zone unavailable",
     shockEvents: parseEvents(row.shock_events),
     symbol: symbol.toUpperCase(),
+    timingValidation: parseTimingValidation(row.metrics),
     twoSidedVolatilityScore: numeric(row.two_sided_volatility_score, 0),
     upsideShockCount: numeric(row.upside_shock_count, 0),
     upsideShockScore: numeric(row.upside_shock_score, 0),
@@ -282,6 +329,7 @@ function detectShockEvents(bars: ComputedBar[]): ShockMoveEvent[] {
     const gap = Math.abs(bar.gapPercent ?? 0);
     const qualifies = Math.abs(ret) >= 5 || (Math.abs(ret) >= 2 && absZ >= 2.5) || (Math.abs(ret) >= 2 && atrNormalized !== null && atrNormalized >= 1.8) || (gap >= 4 && volumeSpike >= 1.6);
     if (!qualifies) continue;
+    const preShockBar = bars[index - 1] ?? bar;
     events.push({
       atrNormalizedMove: atrNormalized,
       eventDate: bar.date,
@@ -290,7 +338,7 @@ function detectShockEvents(bars: ComputedBar[]): ShockMoveEvent[] {
       maxFavorableExcursion5d: excursion(bars, index, 5, "favorable"),
       moveType: ret >= 5 ? "upside" : ret <= -5 ? "downside" : "two_sided",
       outcomeStatus: outcomeStatus(bars, index),
-      preconditions: preconditions(bar),
+      preconditions: preconditions(preShockBar),
       return1d: round(ret, 3),
       return2d: forwardReturn(bars, index, 2),
       return3d: forwardReturn(bars, index, 3),
@@ -340,6 +388,161 @@ function buildResearchZones(latest: ComputedBar, bars: ComputedBar[], events: Sh
     invalidationZone: `${formatMoney(invalidation)} area`,
     researchEntryZone: `${formatMoney(Math.min(entryLow, entryHigh))}-${formatMoney(Math.max(entryLow, entryHigh))}`,
   };
+}
+
+function buildShockTimingValidation(input: { bars: ComputedBar[]; events: ShockMoveEvent[]; symbol: string }): ShockTimingValidation {
+  const upsideEvents = input.events.filter((event) => event.return1d >= 5);
+  const dateToIndex = new Map(input.bars.map((bar, index) => [dayKey(bar.date), index]));
+  const candidateSignals = input.bars
+    .slice(40, Math.max(40, input.bars.length - 5))
+    .map((bar) => ({ bar, ...preShockReadiness(bar) }))
+    .filter((signal) => signal.score >= 58);
+  const detectedEvents = upsideEvents.filter((event) => {
+    const index = dateToIndex.get(dayKey(event.eventDate));
+    if (index === undefined) return false;
+    return bestPreMoveSignal(input.bars, index).score >= 58;
+  });
+  const falsePositiveCount = candidateSignals.filter((signal) => !hasUpcomingUpsideShock(input.events, dateToIndex.get(dayKey(signal.bar.date)) ?? -1, dateToIndex)).length;
+  const earlyDetectionRate = upsideEvents.length ? detectedEvents.length / upsideEvents.length : null;
+  const missedOpportunityRate = upsideEvents.length ? 1 - (earlyDetectionRate ?? 0) : null;
+  const falsePositiveRate = candidateSignals.length ? falsePositiveCount / candidateSignals.length : null;
+  const chaseSuccessRate = rate(input.events.map((event) => chaseWorked(event)));
+  const pullbackEntrySuccessRate = rate(input.events.map((event) => pullbackWorked(event)));
+  const chaseDrawdowns = input.events.map((event) => event.maxAdverseExcursion5d).filter(isFiniteNumber);
+  const favorableExcursions = input.events.map((event) => event.maxFavorableExcursion5d).filter(isFiniteNumber);
+  const pullbackDepths = input.events.map((event) => Math.abs(event.maxAdverseExcursion5d ?? 0)).filter((value) => value > 0);
+  const early = earlyDetectionRate === null ? 35 : earlyDetectionRate * 100;
+  const falsePositiveControl = falsePositiveRate === null ? 45 : 100 - falsePositiveRate * 100;
+  const pullback = pullbackEntrySuccessRate === null ? 40 : pullbackEntrySuccessRate * 100;
+  const chaseRiskControl = chaseSuccessRate === null ? 45 : 100 - Math.max(0, 55 - chaseSuccessRate * 100);
+  const drawdownPenalty = Math.min(34, Math.abs(mean(chaseDrawdowns)) * 3.5);
+  const timingQualityScore = Math.round(clamp(early * 0.34 + falsePositiveControl * 0.24 + pullback * 0.22 + chaseRiskControl * 0.14 - drawdownPenalty + 8));
+  const entryQualityScore = Math.round(clamp(pullback * 0.42 + falsePositiveControl * 0.22 + early * 0.2 + (100 - drawdownPenalty * 1.6) * 0.16));
+  const shockReliabilityScore = Math.round(clamp(sampleScore(input.events.length) * 0.34 + early * 0.28 + falsePositiveControl * 0.18 + pullback * 0.12 + Math.min(100, input.bars.length / 12) * 0.08));
+
+  return {
+    averageDrawdownAfterChasePct: meanOrNull(chaseDrawdowns),
+    bestHistoricalEntryZone: pullbackDepths.length ? `Historically cleaner entries appeared after ${formatSignedPercent(-quantile(pullbackDepths, 0.35))} to ${formatSignedPercent(-quantile(pullbackDepths, 0.70))} pullbacks from shock context.` : "Entry timing sample still limited.",
+    bestHistoricalExitZone: favorableExcursions.length ? `Historically observed 5D favorable excursions clustered around ${formatSignedPercent(quantile(favorableExcursions, 0.45))} to ${formatSignedPercent(quantile(favorableExcursions, 0.75))}.` : "Exit timing sample still limited.",
+    earlyDetectionRate: roundRatioOrNull(earlyDetectionRate),
+    entryQualityScore,
+    falsePositiveRate: roundRatioOrNull(falsePositiveRate),
+    missedOpportunityRate: roundRatioOrNull(missedOpportunityRate),
+    pullbackEntrySuccessRate: roundRatioOrNull(pullbackEntrySuccessRate),
+    replayStudies: replayStudies({ dateToIndex, events: upsideEvents, bars: input.bars, symbol: input.symbol }),
+    shockReliabilityScore,
+    summary: timingSummary({ earlyDetectionRate, falsePositiveRate, pullbackEntrySuccessRate, timingQualityScore, validationSampleSize: input.events.length }),
+    timingQualityScore,
+    validationSampleSize: input.events.length,
+  };
+}
+
+function replayStudies(input: { bars: ComputedBar[]; dateToIndex: Map<string, number>; events: ShockMoveEvent[]; symbol: string }): ShockMoveReplayStudy[] {
+  return [...input.events]
+    .sort((left, right) => Math.abs(right.return1d) - Math.abs(left.return1d))
+    .slice(0, 4)
+    .map((event) => {
+      const index = input.dateToIndex.get(dayKey(event.eventDate));
+      const signal = index === undefined ? { daysBeforeSignal: null, evidence: [] as string[], score: 0 } : bestPreMoveSignal(input.bars, index);
+      const preMoveDetected = signal.score >= 58;
+      const followThrough = event.return5d ?? null;
+      const chaseSucceeded = chaseWorked(event);
+      const pullbackSucceeded = pullbackWorked(event);
+      return {
+        beforeMoveEvidence: signal.evidence,
+        chaseOutcome: chaseSucceeded ? "Chasing showed follow-through in the historical window." : "Chasing was historically fragile or failed to add clean follow-through.",
+        daysBeforeSignal: signal.daysBeforeSignal,
+        eventDate: event.eventDate,
+        maxAdverseExcursion5d: event.maxAdverseExcursion5d,
+        moveType: event.moveType,
+        preMoveDetected,
+        preMoveScore: Math.round(signal.score),
+        pullbackOutcome: pullbackSucceeded ? "Pullback/retest behavior offered a cleaner historical entry window." : "Pullback evidence was limited or did not improve the historical outcome.",
+        return1d: event.return1d,
+        return5d: followThrough,
+        verdict: preMoveDetected ? `${input.symbol} showed detectable pre-move evidence before this shock.` : `${input.symbol} did not meet pre-move evidence threshold before this shock.`,
+      };
+    });
+}
+
+function bestPreMoveSignal(bars: ComputedBar[], eventIndex: number): { daysBeforeSignal: number | null; evidence: string[]; score: number } {
+  let best = { daysBeforeSignal: null as number | null, evidence: [] as string[], score: 0 };
+  for (let daysBefore = 1; daysBefore <= 3; daysBefore += 1) {
+    const bar = bars[eventIndex - daysBefore];
+    if (!bar) continue;
+    const readiness = preShockReadiness(bar);
+    if (readiness.score > best.score) {
+      best = {
+        daysBeforeSignal: daysBefore,
+        evidence: readiness.reasons,
+        score: readiness.score,
+      };
+    }
+  }
+  return best;
+}
+
+function preShockReadiness(bar: ComputedBar): { reasons: string[]; score: number } {
+  const conditions = preconditions(bar);
+  let score = 18;
+  const reasons: string[] = [];
+  if ((conditions.compressionPercentile ?? 0) >= 35) {
+    score += 18;
+    reasons.push("volatility compression was visible before the move");
+  }
+  if ((conditions.closeVsMa20Pct ?? -1) >= 0) {
+    score += 14;
+    reasons.push("price held above the 20-day trend before the move");
+  }
+  if ((conditions.closeVsMa50Pct ?? -1) >= 0) {
+    score += 10;
+    reasons.push("medium-term trend support was positive");
+  }
+  const priorFive = conditions.priorFiveDayReturnPct ?? 0;
+  if (priorFive >= -4 && priorFive <= 8) {
+    score += 10;
+    reasons.push("the setup was not already in an extreme five-day chase state");
+  }
+  if (Math.abs(conditions.returnZScore ?? 0) <= 1.5) {
+    score += 8;
+    reasons.push("one-day return pressure was not already extreme");
+  }
+  if ((conditions.volumeSpikeRatio ?? 1) >= 1.15) {
+    score += 8;
+    reasons.push("volume was beginning to expand before the shock");
+  }
+  if ((conditions.atrPercent ?? 0) >= 2.2) {
+    score += 7;
+    reasons.push("ATR profile supported larger-than-normal movement");
+  }
+  return {
+    reasons: reasons.length ? reasons.slice(0, 4) : ["no strong pre-move signal cluster was visible"],
+    score: clamp(score),
+  };
+}
+
+function hasUpcomingUpsideShock(events: ShockMoveEvent[], candidateIndex: number, dateToIndex: Map<string, number>): boolean {
+  if (candidateIndex < 0) return false;
+  return events.some((event) => {
+    if (event.return1d < 5) return false;
+    const eventIndex = dateToIndex.get(dayKey(event.eventDate));
+    return eventIndex !== undefined && eventIndex > candidateIndex && eventIndex <= candidateIndex + 5;
+  });
+}
+
+function timingSummary(input: { earlyDetectionRate: number | null; falsePositiveRate: number | null; pullbackEntrySuccessRate: number | null; timingQualityScore: number; validationSampleSize: number }): string {
+  const early = input.earlyDetectionRate === null ? "limited early-detection evidence" : `${Math.round(input.earlyDetectionRate * 100)}% early-detection rate`;
+  const falsePositive = input.falsePositiveRate === null ? "false-positive rate still unavailable" : `${Math.round(input.falsePositiveRate * 100)}% false-positive rate`;
+  const pullback = input.pullbackEntrySuccessRate === null ? "pullback-entry evidence still limited" : `${Math.round(input.pullbackEntrySuccessRate * 100)}% pullback-entry success`;
+  return `${input.timingQualityScore}/100 timing proof from ${input.validationSampleSize} shock events: ${early}, ${falsePositive}, ${pullback}.`;
+}
+
+function sampleScore(count: number): number {
+  if (count >= 30) return 100;
+  if (count >= 18) return 78;
+  if (count >= 10) return 58;
+  if (count >= 5) return 38;
+  return 18;
 }
 
 function commonPreconditions(events: ShockMoveEvent[]): string[] {
@@ -580,6 +783,13 @@ function medianOrNull(values: number[]): number | null {
   return round(sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid], 3);
 }
 
+function quantile(values: number[], percentile: number): number {
+  const sorted = values.filter(Number.isFinite).sort((left, right) => left - right);
+  if (!sorted.length) return 0;
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.floor((sorted.length - 1) * percentile)));
+  return sorted[index] ?? 0;
+}
+
 function standardDeviation(values: number[]): number {
   if (values.length < 2) return 0;
   const avg = mean(values);
@@ -604,6 +814,10 @@ function roundOrNull(value: number | null | undefined, digits: number): number |
   return isFiniteNumber(value) ? round(value, digits) : null;
 }
 
+function roundRatioOrNull(value: number | null): number | null {
+  return value === null || !Number.isFinite(value) ? null : round(value, 4);
+}
+
 function round(value: number, digits: number): number {
   const scale = 10 ** digits;
   return Math.round(value * scale) / scale;
@@ -617,6 +831,10 @@ function clamp(value: number, min = 0, max = 100): number {
 function formatSignedPercent(value: number): string {
   const sign = value > 0 ? "+" : "";
   return `${sign}${value.toFixed(1)}%`;
+}
+
+function dayKey(value: string): string {
+  return value.slice(0, 10);
 }
 
 function textValue(value: unknown): string | null {
@@ -649,6 +867,52 @@ function stringArray(value: unknown): string[] {
 function parseEvents(value: unknown): ShockMoveEvent[] {
   if (!Array.isArray(value)) return [];
   return value.map(parseEvent).filter((event): event is ShockMoveEvent => event !== null);
+}
+
+function parseTimingValidation(value: unknown): ShockTimingValidation | null {
+  const metrics = objectValue(value);
+  const raw = objectValue(metrics.timingValidation ?? metrics.timing_validation);
+  if (!Object.keys(raw).length) return null;
+  return {
+    averageDrawdownAfterChasePct: optionalNumeric(raw.averageDrawdownAfterChasePct ?? raw.average_drawdown_after_chase_pct),
+    bestHistoricalEntryZone: textValue(raw.bestHistoricalEntryZone ?? raw.best_historical_entry_zone) ?? "Entry timing sample still limited.",
+    bestHistoricalExitZone: textValue(raw.bestHistoricalExitZone ?? raw.best_historical_exit_zone) ?? "Exit timing sample still limited.",
+    earlyDetectionRate: optionalNumeric(raw.earlyDetectionRate ?? raw.early_detection_rate),
+    entryQualityScore: numeric(raw.entryQualityScore ?? raw.entry_quality_score, 0),
+    falsePositiveRate: optionalNumeric(raw.falsePositiveRate ?? raw.false_positive_rate),
+    missedOpportunityRate: optionalNumeric(raw.missedOpportunityRate ?? raw.missed_opportunity_rate),
+    pullbackEntrySuccessRate: optionalNumeric(raw.pullbackEntrySuccessRate ?? raw.pullback_entry_success_rate),
+    replayStudies: parseReplayStudies(raw.replayStudies ?? raw.replay_studies),
+    shockReliabilityScore: numeric(raw.shockReliabilityScore ?? raw.shock_reliability_score, 0),
+    summary: textValue(raw.summary) ?? "Shock timing proof is still building.",
+    timingQualityScore: numeric(raw.timingQualityScore ?? raw.timing_quality_score, 0),
+    validationSampleSize: numeric(raw.validationSampleSize ?? raw.validation_sample_size, 0),
+  };
+}
+
+function parseReplayStudies(value: unknown): ShockMoveReplayStudy[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => {
+    const record = objectValue(item);
+    const eventDate = textValue(record.eventDate ?? record.event_date);
+    const return1d = optionalNumeric(record.return1d ?? record.return_1d);
+    if (!eventDate || return1d === null) return null;
+    const moveType = textValue(record.moveType ?? record.move_type);
+    return {
+      beforeMoveEvidence: stringArray(record.beforeMoveEvidence ?? record.before_move_evidence),
+      chaseOutcome: textValue(record.chaseOutcome ?? record.chase_outcome) ?? "Chase outcome unavailable.",
+      daysBeforeSignal: optionalNumeric(record.daysBeforeSignal ?? record.days_before_signal),
+      eventDate,
+      maxAdverseExcursion5d: optionalNumeric(record.maxAdverseExcursion5d ?? record.max_adverse_excursion_5d),
+      moveType: moveType === "downside" || moveType === "two_sided" ? moveType : "upside",
+      preMoveDetected: Boolean(record.preMoveDetected ?? record.pre_move_detected),
+      preMoveScore: numeric(record.preMoveScore ?? record.pre_move_score, 0),
+      pullbackOutcome: textValue(record.pullbackOutcome ?? record.pullback_outcome) ?? "Pullback outcome unavailable.",
+      return1d,
+      return5d: optionalNumeric(record.return5d ?? record.return_5d),
+      verdict: textValue(record.verdict) ?? "Replay verdict unavailable.",
+    };
+  }).filter((study): study is ShockMoveReplayStudy => study !== null);
 }
 
 function parseEvent(value: unknown): ShockMoveEvent | null {
@@ -691,6 +955,10 @@ function parsePreconditions(value: unknown): ShockMovePreconditions {
     returnZScore: optionalNumeric(record.returnZScore ?? record.return_zscore),
     volumeSpikeRatio: optionalNumeric(record.volumeSpikeRatio ?? record.volume_spike_ratio),
   };
+}
+
+function objectValue(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
 function outcomeStatusText(value: unknown): ShockOutcomeStatus {

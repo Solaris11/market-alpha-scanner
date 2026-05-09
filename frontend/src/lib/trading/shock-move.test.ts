@@ -35,6 +35,30 @@ test("shock move engine detects upside shock memory and research zones", () => {
   assert.ok(pattern.commonPreconditions.length > 0);
 });
 
+test("shock move engine stores pre-move timing proof and replay studies", () => {
+  const pattern = buildShockMovePattern({ bars: barsWithShock("up"), lookbackWindow: "1y", symbol: "MU" });
+
+  assert.ok(pattern);
+  assert.ok(pattern.timingValidation);
+  assert.ok(pattern.timingValidation.validationSampleSize >= 2);
+  assert.ok(pattern.timingValidation.timingQualityScore >= 0);
+  assert.ok(pattern.timingValidation.entryQualityScore >= 0);
+  assert.ok(pattern.timingValidation.replayStudies.length > 0);
+  assert.match(pattern.timingValidation.summary, /timing proof/);
+  assert.doesNotMatch(pattern.timingValidation.summary.toLowerCase(), /buy now|guaranteed/);
+});
+
+test("shock move events use before-move preconditions instead of event-day spike data", () => {
+  const pattern = buildShockMovePattern({ bars: barsWithShock("up"), lookbackWindow: "1y", symbol: "DDOG" });
+
+  assert.ok(pattern);
+  const event = pattern.shockEvents.find((item) => item.return1d >= 5);
+  assert.ok(event);
+  assert.ok(event.volumeSpikeRatio !== null);
+  assert.ok(event.preconditions.volumeSpikeRatio !== null);
+  assert.ok(event.volumeSpikeRatio > event.preconditions.volumeSpikeRatio);
+});
+
 test("shock move engine distinguishes downside and two-sided volatility risk", () => {
   const pattern = buildShockMovePattern({ bars: barsWithShock("down"), lookbackWindow: "1y", symbol: "DDOG" });
 
