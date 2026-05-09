@@ -8,6 +8,7 @@ import { ShockMoveRadar } from "@/components/opportunities/ShockMoveRadar";
 import { PublicSignalPreviewList } from "@/components/premium/PublicSignalPreview";
 import { PremiumAccessCta } from "@/components/premium/PremiumAccessCta";
 import { DailyActionCard } from "@/components/terminal/DailyActionCard";
+import { AdaptiveLearningInsightPanel } from "@/components/terminal/AdaptiveLearningInsightPanel";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { InstitutionalIntelligencePanel } from "@/components/terminal/InstitutionalIntelligencePanel";
 import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
@@ -34,6 +35,7 @@ import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
+import { buildAdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { dailyActionBlocksTradeUi, getDailyAction, noTradeActionCopy } from "@/lib/trading/daily-action";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
@@ -113,6 +115,10 @@ export default async function TerminalPage() {
     getWorkflowEvolutionForUser(entitlement.user?.id ?? null, snapshot.signals, { surface: "terminal", watchlistSymbols }).catch(() => null),
   ]);
   const opportunityModel = buildOpportunitiesPageModel(snapshot.signals, performance, shockPatterns, narratives);
+  const adaptiveLearning = buildAdaptiveLearningSystem({
+    forwardRows: performance?.forwardReturns.rows ?? [],
+    observationCount: performance?.forwardReturns.rows.length ?? 0,
+  });
   const best = selectBestTradeNow(snapshot.signals, edges);
   const leader = best?.row ?? snapshot.topSignals[0] ?? snapshot.signals[0];
   const dailyAction = getDailyAction({ best, fallbackRow: leader, marketRegime: snapshot.marketRegime, scanSafety });
@@ -136,6 +142,7 @@ export default async function TerminalPage() {
             topWatchRows={opportunityModel.rows}
           />
           <MetaIntelligenceOperatingSystemPanel compact personalizationProfile={personalizationProfile} rows={opportunityModel.rows} workflowEvolution={workflowEvolution} />
+          <AdaptiveLearningInsightPanel compact system={adaptiveLearning} />
           {workflowEvolution ? <WorkflowEvolutionPanel summary={workflowEvolution} surface="terminal" /> : null}
           <InstitutionalIntelligencePanel compact rows={opportunityModel.rows} />
           {actionBlocksTradeUi ? (

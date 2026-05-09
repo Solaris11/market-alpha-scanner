@@ -1,6 +1,8 @@
 import { AdminEmpty, AdminSection, AdminStatCard, StatusBadge } from "@/components/admin/AdminChrome";
+import { AdaptiveLearningDashboard } from "@/components/admin/AdaptiveLearningDashboard";
 import { CalibrationTable } from "@/components/admin/CalibrationTable";
 import { getAdminCalibrationSummary } from "@/lib/server/admin-data";
+import { buildAdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
 import { decisionLabel, humanizeQuantText } from "@/lib/ui/labels";
 import { formatAdminDate, statusTone } from "../view-utils";
 
@@ -16,6 +18,10 @@ const GROUP_SECTIONS = [
 
 export default async function AdminCalibrationPage() {
   const calibration = await getAdminCalibrationSummary();
+  const adaptiveLearning = buildAdaptiveLearningSystem({
+    calibrationGroups: calibration.groups,
+    observationCount: calibration.observationCount,
+  });
   const totalSignals = calibration.distributions.reduce((sum, row) => sum + row.count, 0);
   const enterCount = calibration.distributions.filter((row) => row.decision === "ENTER" || row.decision === "BUY" || row.decision === "STRONG_BUY").reduce((sum, row) => sum + row.count, 0);
   const avoidCount = calibration.distributions.filter((row) => row.decision === "AVOID" || row.decision === "EXIT").reduce((sum, row) => sum + row.count, 0);
@@ -44,6 +50,8 @@ export default async function AdminCalibrationPage() {
           )}
         </div>
       </AdminSection>
+
+      <AdaptiveLearningDashboard system={adaptiveLearning} />
 
       <AdminSection title="Latest decision distribution" subtitle="Current scanner output distribution. Trade-permitted count is derived from the hard-veto diagnostics payload.">
         {calibration.distributions.length ? (

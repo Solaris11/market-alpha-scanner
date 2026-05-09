@@ -12,6 +12,7 @@ import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
+import { buildAdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 
 export const dynamic = "force-dynamic";
@@ -49,12 +50,16 @@ export default async function OpportunitiesPage() {
     getNarrativeMap(symbols).catch(() => new Map()),
   ]);
   const model = buildOpportunitiesPageModel(rows, performance, shockPatterns, narratives);
+  const adaptiveLearning = buildAdaptiveLearningSystem({
+    forwardRows: performance?.forwardReturns.rows ?? [],
+    observationCount: performance?.forwardReturns.rows.length ?? 0,
+  });
   const workflowEvolution = await getWorkflowEvolutionForUser(entitlement.user?.id ?? null, rows, { surface: "opportunities", watchlistSymbols }).catch(() => null);
   const bestDetail = model.best ? await adapter.getSymbolDetail(model.best.symbol).catch(() => null) : null;
 
   return (
     <TerminalShell>
-      <OpportunitiesWorkspace best={model.best} bestPriceSeries={bestDetail?.history ?? []} initialProfile={personalizationProfile ?? undefined} marketCondition={regime.label} rows={model.rows} workflowEvolution={workflowEvolution ?? undefined} />
+      <OpportunitiesWorkspace adaptiveLearning={adaptiveLearning} best={model.best} bestPriceSeries={bestDetail?.history ?? []} initialProfile={personalizationProfile ?? undefined} marketCondition={regime.label} rows={model.rows} workflowEvolution={workflowEvolution ?? undefined} />
     </TerminalShell>
   );
 }

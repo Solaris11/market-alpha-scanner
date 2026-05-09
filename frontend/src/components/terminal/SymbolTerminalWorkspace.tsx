@@ -6,6 +6,7 @@ import { useTradePlanEngine } from "@/hooks/useTradePlanEngine";
 import type { SignalHistoryPoint } from "@/lib/adapters/DataServiceAdapter";
 import type { DataFreshness } from "@/lib/data-health";
 import type { PaperPositionRow, PaperTradeEventRow } from "@/lib/paper-data";
+import type { AdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
 import type { DecisionJournalEntry, DecisionMemorySummary, PersonalizedDecisionCoaching } from "@/lib/trading/decision-journal";
 import { buildConvictionFragilityModel } from "@/lib/trading/conviction-fragility";
 import { dailyActionAllowsTrade, noTradeActionCopy, type DailyAction } from "@/lib/trading/daily-action";
@@ -22,6 +23,7 @@ import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution"
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
 import type { RankingRow, ScannerScalar } from "@/lib/types";
 import { AICopilotPanel } from "./AICopilotPanel";
+import { AdaptiveLearningInsightPanel } from "./AdaptiveLearningInsightPanel";
 import { ConvictionFragilityCard } from "./ConvictionFragilityCard";
 import { ConvictionTimeline } from "./ConvictionTimeline";
 import { CorrectionMapCard } from "./CorrectionMapCard";
@@ -65,6 +67,7 @@ export function SymbolTerminalWorkspace({
   decisionJournalEntries = [],
   decisionMemory,
   decisionCoaching,
+  adaptiveLearning,
   workflowEvolution,
   institutionalOpportunity,
   personalizationProfile,
@@ -87,6 +90,7 @@ export function SymbolTerminalWorkspace({
   decisionJournalEntries?: DecisionJournalEntry[];
   decisionMemory?: DecisionMemorySummary | null;
   decisionCoaching?: PersonalizedDecisionCoaching | null;
+  adaptiveLearning?: AdaptiveLearningSystem | null;
   workflowEvolution?: WorkflowEvolutionSummary | null;
   institutionalOpportunity?: OpportunityViewModel | null;
   personalizationProfile?: UserPersonalizationProfile | null;
@@ -155,6 +159,7 @@ export function SymbolTerminalWorkspace({
           )}
           <SymbolDecisionIntelligencePanel candles={candles} row={row} />
           {institutionalOpportunity ? <MetaIntelligenceOperatingSystemPanel compact focusSymbol={symbol} personalizationProfile={personalizationProfile ?? null} rows={[institutionalOpportunity]} workflowEvolution={workflowEvolution ?? null} /> : null}
+          <AdaptiveLearningInsightPanel compact focusSymbol={symbol} system={adaptiveLearning ?? null} />
           <NarrativeIntelligenceCard narrative={narrative ?? null} />
           <PersonalizedIntelligenceCard narrative={narrative ?? null} profile={personalizationProfile ?? null} row={row} />
           {decisionMemory && decisionCoaching ? (

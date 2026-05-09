@@ -20,6 +20,7 @@ import { getShockMovePattern } from "@/lib/server/shock-move-patterns";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
+import { buildAdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { buildConvictionTimelineModel } from "@/lib/trading/conviction-timeline-model";
 import { getDailyAction } from "@/lib/trading/daily-action";
@@ -94,6 +95,10 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   ]);
   const row = detail.row;
   const edgeProof = row ? buildHistoricalEdgeProof(row, performance) : null;
+  const adaptiveLearning = buildAdaptiveLearningSystem({
+    forwardRows: (performance?.forwardReturns.rows ?? []).filter((item) => String(item.symbol ?? "").toUpperCase() === symbol.trim().toUpperCase()),
+    observationCount: (performance?.forwardReturns.rows ?? []).filter((item) => String(item.symbol ?? "").toUpperCase() === symbol.trim().toUpperCase()).length,
+  });
   const timeline = buildConvictionTimelineModel(history);
   const dataFreshness = row ? freshnessFromTimestamp(typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null) : null;
   const edges = buildEdgeLookup(snapshot.signals, performance);
@@ -148,6 +153,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
       ) : (
         <SymbolTerminalWorkspace
           dataFreshness={dataFreshness ?? freshnessFromTimestamp(null)}
+          adaptiveLearning={adaptiveLearning}
           decisionCoaching={decisionCoaching}
           decisionJournalEntries={decisionJournalEntries}
           decisionMemory={decisionMemory}

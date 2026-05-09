@@ -10,9 +10,11 @@ import { DataHealthIndicator } from "@/components/data-health-indicator";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import { RiskTolerantOpportunityRadar } from "@/components/opportunities/RiskTolerantOpportunityRadar";
 import { ShockMoveRadar } from "@/components/opportunities/ShockMoveRadar";
+import { AdaptiveLearningInsightPanel } from "@/components/terminal/AdaptiveLearningInsightPanel";
 import { WorkflowEvolutionPanel } from "@/components/terminal/WorkflowEvolutionPanel";
 import { InstitutionalIntelligencePanel } from "@/components/terminal/InstitutionalIntelligencePanel";
 import { MetaIntelligenceOperatingSystemPanel } from "@/components/terminal/MetaIntelligenceOperatingSystemPanel";
+import type { AdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
 import { type UserPersonalizationProfile } from "@/lib/trading/personalized-intelligence";
 import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution";
 import { confidenceTone } from "@/lib/trading/confidence";
@@ -44,6 +46,7 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
 ];
 
 export function OpportunitiesWorkspace({
+  adaptiveLearning = null,
   best,
   bestPriceSeries,
   initialProfile,
@@ -51,6 +54,7 @@ export function OpportunitiesWorkspace({
   rows,
   workflowEvolution,
 }: {
+  adaptiveLearning?: AdaptiveLearningSystem | null;
   best: OpportunityViewModel | null;
   bestPriceSeries: Record<string, ScannerScalar>[];
   initialProfile?: UserPersonalizationProfile;
@@ -148,6 +152,7 @@ export function OpportunitiesWorkspace({
     <div className="min-w-0 max-w-full space-y-5">
       <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} rows={rows} />
       <MetaIntelligenceOperatingSystemPanel personalizationProfile={initialProfile} rows={rows} workflowEvolution={workflowEvolution ?? null} />
+      <AdaptiveLearningInsightPanel system={adaptiveLearning} />
       <RiskTolerantOpportunityRadar initialProfile={initialProfile} marketCondition={marketCondition} rows={rows} />
       <ShockMoveRadar rows={rows} />
       {workflowEvolution ? <WorkflowEvolutionPanel compact summary={workflowEvolution} surface="opportunities" /> : null}
