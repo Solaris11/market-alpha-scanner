@@ -15,13 +15,15 @@ export function DesktopTerminalNav() {
   const utilities = visibleUtilityNavItems(entitlement.isAdmin);
 
   return (
-    <div className="hidden min-w-0 flex-1 items-center justify-center gap-3 xl:flex">
-      <nav aria-label="Primary navigation" className="flex min-w-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.035] p-1 shadow-inner shadow-black/20">
-        {PRIMARY_NAV_ITEMS.map((item) => <DesktopNavLink item={item} key={item.href} pathname={pathname} primary />)}
-      </nav>
-      <nav aria-label="Utility navigation" className="flex items-center gap-1 rounded-full border border-white/10 bg-slate-950/45 p-1">
-        {utilities.map((item) => <DesktopNavLink item={item} key={item.href} pathname={pathname} />)}
-      </nav>
+    <div className="hidden min-w-0 flex-1 items-center justify-center overflow-hidden xl:flex">
+      <div className="flex max-w-full min-w-0 items-center gap-2 overflow-x-auto overscroll-x-contain px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <nav aria-label="Primary navigation" className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.035] p-1 shadow-inner shadow-black/20">
+          {PRIMARY_NAV_ITEMS.map((item) => <DesktopNavLink item={item} key={item.href} pathname={pathname} primary />)}
+        </nav>
+        <nav aria-label="Utility navigation" className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-slate-950/45 p-1">
+          {utilities.map((item) => <DesktopNavLink item={item} key={item.href} pathname={pathname} />)}
+        </nav>
+      </div>
     </div>
   );
 }
@@ -172,10 +174,10 @@ export function MobileTerminalNav() {
 
 function DesktopNavLink({ item, pathname, primary = false }: { item: AppNavItem; pathname: string; primary?: boolean }) {
   const active = isActivePath(pathname, item.href);
-  const base = primary ? "px-3.5 py-2 text-sm" : "px-3 py-2 text-xs";
+  const base = primary ? "px-3 py-2 text-sm 2xl:px-3.5" : "px-2.5 py-2 text-xs 2xl:px-3";
   return (
     <Link
-      className={`inline-flex min-h-9 max-w-full items-center rounded-full border font-semibold transition-all duration-200 ${base} ${
+      className={`inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-full border font-semibold transition-all duration-200 ${base} ${
         active
           ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.18)]"
           : "border-transparent text-slate-400 hover:border-cyan-300/25 hover:bg-white/[0.05] hover:text-slate-100"
