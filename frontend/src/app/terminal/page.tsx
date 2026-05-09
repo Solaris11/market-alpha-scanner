@@ -16,6 +16,7 @@ import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
 import { MetaIntelligenceOperatingSystemPanel } from "@/components/terminal/MetaIntelligenceOperatingSystemPanel";
 import { MetricCard } from "@/components/terminal/MetricCard";
 import { MyWatchlistWidget } from "@/components/terminal/MyWatchlistWidget";
+import { RegimeShiftIntelligencePanel } from "@/components/terminal/RegimeShiftIntelligencePanel";
 import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
 import { ScenarioIntelligencePanel } from "@/components/terminal/ScenarioIntelligencePanel";
 import { SignalCard } from "@/components/terminal/SignalCard";
@@ -155,6 +156,7 @@ export default async function TerminalPage() {
             topWatchRows={opportunityModel.rows}
           />
           <MetaIntelligenceOperatingSystemPanel compact personalizationProfile={personalizationProfile} rows={opportunityModel.rows} workflowEvolution={workflowEvolution} />
+          <RegimeShiftIntelligencePanel compact rows={opportunityModel.rows} workflowEvolution={workflowEvolution} />
           <AdaptiveLearningInsightPanel compact system={adaptiveLearning} />
           <StrategyIntelligencePanel compact system={strategyIntelligence} />
           <ScenarioIntelligencePanel compact system={scenarioIntelligence} />
