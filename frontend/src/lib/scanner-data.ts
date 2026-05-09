@@ -1296,6 +1296,86 @@ export async function getIntradaySignalDriftSummary(): Promise<IntradayDriftRow[
   return driftRows.sort((a, b) => Math.abs(b.score_change ?? 0) - Math.abs(a.score_change ?? 0));
 }
 
+export async function getRecentIntradaySignalDriftSummary(options: { hours?: number; maxRuns?: number; minRuns?: number } = {}): Promise<IntradayDriftRow[]> {
+  const hours = Math.max(1, Math.min(24, Math.trunc(options.hours ?? 8)));
+  const maxRuns = Math.max(2, Math.min(32, Math.trunc(options.maxRuns ?? 18)));
+  const minRuns = Math.max(1, Math.min(maxRuns, Math.trunc(options.minRuns ?? 2)));
+  const dbHistory = await getRecentDbHistoryRows({ hours, maxRuns, minRuns });
+  if (dbHistory) return buildIntradaySignalDrift({ symbols: Array.from(new Set(dbHistory.map((row) => row.symbol))).sort(), rows: dbHistory });
+  if (!allowScannerCsvFallback("recent intraday signal drift DB read unavailable")) return [];
+  return getIntradaySignalDriftSummary();
+}
+
+async function getRecentDbHistoryRows(options: { hours: number; maxRuns: number; minRuns: number }): Promise<SymbolHistoryRow[] | null> {
+  try {
+    const result = await dbQuery<DbHistoryRow>(
+      `
+        WITH ranked_runs AS (
+          SELECT
+            id,
+            completed_at,
+            created_at,
+            COALESCE(completed_at, created_at) AS scan_ts,
+            row_number() OVER (ORDER BY completed_at DESC NULLS LAST, created_at DESC) AS rn
+          FROM scan_runs
+          WHERE status = 'success'
+        ),
+        bounded_runs AS (
+          SELECT *
+          FROM ranked_runs
+          WHERE rn <= $1
+            AND (
+              scan_ts >= now() - ($2::int * interval '1 hour')
+              OR rn <= $3
+            )
+        )
+        SELECT
+          ss.scan_run_id::text,
+          ss.symbol,
+          ss.rank_position,
+          ss.company_name,
+          ss.asset_type,
+          ss.sector,
+          ss.price,
+          ss.rating,
+          ss.action,
+          ss.final_decision,
+          ss.final_score,
+          ss.final_score_adjusted,
+          ss.setup_type,
+          ss.entry_status,
+          ss.recommendation_quality,
+          ss.quality_score,
+          ss.suggested_entry,
+          ss.entry_distance_pct,
+          ss.entry_zone_low,
+          ss.entry_zone_high,
+          ss.buy_zone,
+          ss.stop_loss,
+          ss.take_profit,
+          ss.conservative_target,
+          ss.risk_reward,
+          ss.market_regime,
+          ss.payload,
+          ss.created_at,
+          br.completed_at
+        FROM scanner_signals ss
+        JOIN bounded_runs br ON br.id = ss.scan_run_id
+        ORDER BY br.scan_ts ASC, ss.rank_position ASC NULLS LAST, ss.symbol ASC
+      `,
+      [options.maxRuns, options.hours, options.minRuns],
+    );
+    return result.rows.map((row) => {
+      const ranking = dbSignalToRankingRow(row) as SymbolHistoryRow;
+      ranking.timestamp_utc = dbTimestamp(row.completed_at) ?? dbTimestamp(row.created_at) ?? "";
+      ranking.source_file = `db:${row.scan_run_id}`;
+      return ranking;
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function getPerformanceData(options: { forwardTailRows?: number } = {}): Promise<PerformanceData> {
   const dbPerformance = await getDbPerformanceData(options);
   if (dbPerformance) {

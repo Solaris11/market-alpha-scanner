@@ -12,6 +12,7 @@ import { AdaptiveLearningInsightPanel } from "@/components/terminal/AdaptiveLear
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { ExecutionIntelligencePanel } from "@/components/terminal/ExecutionIntelligencePanel";
 import { InstitutionalIntelligencePanel } from "@/components/terminal/InstitutionalIntelligencePanel";
+import { IntradayRegimeDriftPanel } from "@/components/terminal/IntradayRegimeDriftPanel";
 import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
 import { MetaIntelligenceOperatingSystemPanel } from "@/components/terminal/MetaIntelligenceOperatingSystemPanel";
 import { MetricCard } from "@/components/terminal/MetricCard";
@@ -28,7 +29,7 @@ import { TerminalRightRail } from "@/components/terminal/TerminalRightRail";
 import { WorkflowEvolutionPanel } from "@/components/terminal/WorkflowEvolutionPanel";
 import { getActiveAlertMatches } from "@/lib/active-alert-matches";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
-import { getPerformanceData } from "@/lib/scanner-data";
+import { getPerformanceData, getRecentIntradaySignalDriftSummary } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getNarrativeMap } from "@/lib/server/narrative-intelligence";
 import { getPersonalizationProfileForUser } from "@/lib/server/personalized-intelligence";
@@ -115,10 +116,11 @@ export default async function TerminalPage() {
   ]);
   const edges = buildEdgeLookup(snapshot.signals, performance);
   const symbols = snapshot.signals.map((row) => row.symbol);
-  const [shockPatterns, narratives, workflowEvolution] = await Promise.all([
+  const [shockPatterns, narratives, workflowEvolution, intradayDriftRows] = await Promise.all([
     getShockMovePatternMap(symbols).catch(() => new Map()),
     getNarrativeMap(symbols).catch(() => new Map()),
     getWorkflowEvolutionForUser(entitlement.user?.id ?? null, snapshot.signals, { surface: "terminal", watchlistSymbols }).catch(() => null),
+    getRecentIntradaySignalDriftSummary({ hours: 8, maxRuns: 18, minRuns: 2 }).catch(() => []),
   ]);
   const opportunityModel = buildOpportunitiesPageModel(snapshot.signals, performance, shockPatterns, narratives);
   const adaptiveLearning = buildAdaptiveLearningSystem({
@@ -156,6 +158,7 @@ export default async function TerminalPage() {
             topWatchRows={opportunityModel.rows}
           />
           <MetaIntelligenceOperatingSystemPanel compact personalizationProfile={personalizationProfile} rows={opportunityModel.rows} workflowEvolution={workflowEvolution} />
+          <IntradayRegimeDriftPanel compact driftRows={intradayDriftRows} rows={opportunityModel.rows} />
           <RegimeShiftIntelligencePanel compact rows={opportunityModel.rows} workflowEvolution={workflowEvolution} />
           <AdaptiveLearningInsightPanel compact system={adaptiveLearning} />
           <StrategyIntelligencePanel compact system={strategyIntelligence} />

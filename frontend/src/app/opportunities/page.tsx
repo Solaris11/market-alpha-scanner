@@ -3,7 +3,7 @@ import { OpportunitiesWorkspace } from "@/components/opportunities/Opportunities
 import { PublicSignalPreviewList } from "@/components/premium/PublicSignalPreview";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
-import { getPerformanceData } from "@/lib/scanner-data";
+import { getPerformanceData, getRecentIntradaySignalDriftSummary } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getNarrativeMap } from "@/lib/server/narrative-intelligence";
 import { getPersonalizationProfileForUser } from "@/lib/server/personalized-intelligence";
@@ -47,9 +47,10 @@ export default async function OpportunitiesPage() {
     entitlement.user?.id ? readUserWatchlist(entitlement.user.id).catch(() => []) : Promise.resolve([]),
   ]);
   const symbols = rows.map((row) => row.symbol);
-  const [shockPatterns, narratives] = await Promise.all([
+  const [shockPatterns, narratives, intradayDriftRows] = await Promise.all([
     getShockMovePatternMap(symbols).catch(() => new Map()),
     getNarrativeMap(symbols).catch(() => new Map()),
+    getRecentIntradaySignalDriftSummary({ hours: 8, maxRuns: 18, minRuns: 2 }).catch(() => []),
   ]);
   const model = buildOpportunitiesPageModel(rows, performance, shockPatterns, narratives);
   const adaptiveLearning = buildAdaptiveLearningSystem({
@@ -69,7 +70,7 @@ export default async function OpportunitiesPage() {
 
   return (
     <TerminalShell>
-      <OpportunitiesWorkspace adaptiveLearning={adaptiveLearning} best={model.best} bestPriceSeries={bestDetail?.history ?? []} initialProfile={personalizationProfile ?? undefined} marketCondition={regime.label} rows={model.rows} scenarioIntelligence={scenarioIntelligence} strategyIntelligence={strategyIntelligence} workflowEvolution={workflowEvolution ?? undefined} />
+      <OpportunitiesWorkspace adaptiveLearning={adaptiveLearning} best={model.best} bestPriceSeries={bestDetail?.history ?? []} initialProfile={personalizationProfile ?? undefined} intradayDriftRows={intradayDriftRows} marketCondition={regime.label} rows={model.rows} scenarioIntelligence={scenarioIntelligence} strategyIntelligence={strategyIntelligence} workflowEvolution={workflowEvolution ?? undefined} />
     </TerminalShell>
   );
 }

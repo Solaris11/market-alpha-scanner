@@ -11,7 +11,7 @@ import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { freshnessFromTimestamp } from "@/lib/data-health";
 import { marketingMetadata } from "@/lib/marketing-seo";
 import { getPaperData } from "@/lib/paper-data";
-import { getPerformanceData } from "@/lib/scanner-data";
+import { getPerformanceData, getRecentIntradaySignalDriftSummary } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getDecisionMemoryForUser } from "@/lib/server/decision-journal";
 import { getPublishedSymbolPage } from "@/lib/server/intelligence-publishing";
@@ -108,7 +108,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   }
 
   const adapter = new ScannerDataAdapter();
-  const [detail, history, paper, performance, snapshot, scanSafety, shockPattern, narrative, personalizationProfile] = await Promise.all([
+  const [detail, history, paper, performance, snapshot, scanSafety, shockPattern, narrative, personalizationProfile, intradayDriftRows] = await Promise.all([
     adapter.getSymbolDetail(symbol),
     adapter.getSignalHistory(symbol),
     getPaperData().catch(() => ({ positions: [], events: [] })),
@@ -118,6 +118,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
     getShockMovePattern(symbol).catch(() => null),
     getNarrativeForSymbol(symbol).catch(() => null),
     getPersonalizationProfileForUser(entitlement.user?.id ?? null).catch(() => null),
+    getRecentIntradaySignalDriftSummary({ hours: 8, maxRuns: 18, minRuns: 2 }).catch(() => []),
   ]);
   const row = detail.row;
   const edgeProof = row ? buildHistoricalEdgeProof(row, performance) : null;
@@ -197,6 +198,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           history={history}
           globalDecision={globalDecision}
           institutionalOpportunity={symbolOpportunity}
+          intradayDriftRows={intradayDriftRows}
           macroContext={macroContext}
           marketMemory={marketMemory ?? unavailableMarketMemory}
           narrative={narrative}

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
-import { getPerformanceData } from "@/lib/scanner-data";
+import { getPerformanceData, getRecentIntradaySignalDriftSummary } from "@/lib/scanner-data";
 import { requirePremium } from "@/lib/server/access-control";
 import { getDecisionMemoryForUser } from "@/lib/server/decision-journal";
 import { getMarketMemoryForSignal } from "@/lib/server/market-memory";
@@ -14,6 +14,7 @@ import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
 import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 import { buildTradeVetoOperatingSystem, type TradeVetoOperatingSystem } from "@/lib/trading/meta-intelligence";
+import { buildIntradayRegimeDriftSystem } from "@/lib/trading/intraday-regime-drift";
 import { buildOpportunitiesPageModel, type OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import { buildRegimeShiftSystem } from "@/lib/trading/regime-shift-intelligence";
 import { buildResearchCopilotContext, normalizeResearchQuestion } from "@/lib/trading/research-copilot";
@@ -64,6 +65,7 @@ export async function POST(request: Request) {
         surface: "terminal",
         watchlistSymbols,
       }).catch(() => null);
+      const intradayDriftRows = await getRecentIntradaySignalDriftSummary({ hours: 8, maxRuns: 18, minRuns: 2 }).catch(() => []);
 
       const opportunityModel = buildOpportunitiesPageModel(snapshot.signals, performance, shockPatterns, narratives);
       const metaSystem = buildTradeVetoOperatingSystem({
@@ -72,6 +74,7 @@ export async function POST(request: Request) {
         workflowEvolution,
       });
       const regimeSystem = buildRegimeShiftSystem({ rows: opportunityModel.rows, workflowEvolution });
+      const intradaySystem = buildIntradayRegimeDriftSystem({ driftRows: intradayDriftRows, rows: opportunityModel.rows });
       const marketMemoryBySymbol = await memoryMapForQuestion(question, opportunityModel.rows, metaSystem);
       const context = buildResearchCopilotContext({
         conversation,
@@ -81,6 +84,7 @@ export async function POST(request: Request) {
         personalizationProfile,
         question,
         regimeSystem,
+        intradaySystem,
         rows: opportunityModel.rows,
         workflowEvolution,
       });

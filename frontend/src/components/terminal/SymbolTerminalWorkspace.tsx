@@ -23,7 +23,7 @@ import type { ShockMovePattern } from "@/lib/trading/shock-move";
 import type { StrategyIntelligenceSystem } from "@/lib/trading/strategy-intelligence";
 import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution";
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
-import type { RankingRow, ScannerScalar } from "@/lib/types";
+import type { IntradayDriftRow, RankingRow, ScannerScalar } from "@/lib/types";
 import { AICopilotPanel } from "./AICopilotPanel";
 import { AdaptiveLearningInsightPanel } from "./AdaptiveLearningInsightPanel";
 import { ConvictionFragilityCard } from "./ConvictionFragilityCard";
@@ -34,6 +34,7 @@ import { ExecutionTicket } from "./ExecutionTicket";
 import { ExecutionIntelligencePanel } from "./ExecutionIntelligencePanel";
 import { HistoricalEdgeCard } from "./HistoricalEdgeCard";
 import { InstitutionalIntelligencePanel } from "./InstitutionalIntelligencePanel";
+import { IntradayRegimeDriftPanel } from "./IntradayRegimeDriftPanel";
 import { MacroExchangeContextCard } from "./MacroExchangeContextCard";
 import { MarketMemoryCard } from "./MarketMemoryCard";
 import { MetaIntelligenceOperatingSystemPanel } from "./MetaIntelligenceOperatingSystemPanel";
@@ -75,6 +76,7 @@ export function SymbolTerminalWorkspace({
   adaptiveLearning,
   workflowEvolution,
   institutionalOpportunity,
+  intradayDriftRows = [],
   strategyIntelligence,
   scenarioIntelligence,
   personalizationProfile,
@@ -100,6 +102,7 @@ export function SymbolTerminalWorkspace({
   adaptiveLearning?: AdaptiveLearningSystem | null;
   workflowEvolution?: WorkflowEvolutionSummary | null;
   institutionalOpportunity?: OpportunityViewModel | null;
+  intradayDriftRows?: IntradayDriftRow[];
   strategyIntelligence?: StrategyIntelligenceSystem | null;
   scenarioIntelligence?: ScenarioIntelligenceSystem | null;
   personalizationProfile?: UserPersonalizationProfile | null;
@@ -168,6 +171,7 @@ export function SymbolTerminalWorkspace({
           )}
           <SymbolDecisionIntelligencePanel candles={candles} row={row} />
           {institutionalOpportunity ? <MetaIntelligenceOperatingSystemPanel compact focusSymbol={symbol} personalizationProfile={personalizationProfile ?? null} rows={[institutionalOpportunity]} workflowEvolution={workflowEvolution ?? null} /> : null}
+          {institutionalOpportunity ? <IntradayRegimeDriftPanel compact driftRows={intradayDriftRows} focusSymbol={symbol} rows={[institutionalOpportunity]} /> : null}
           <AdaptiveLearningInsightPanel compact focusSymbol={symbol} system={adaptiveLearning ?? null} />
           <StrategyIntelligencePanel compact focusSymbol={symbol} system={strategyIntelligence ?? null} />
           <ScenarioIntelligencePanel compact focusSymbol={symbol} system={scenarioIntelligence ?? null} />

@@ -16,6 +16,7 @@ import { ScenarioIntelligencePanel } from "@/components/terminal/ScenarioIntelli
 import { StrategyIntelligencePanel } from "@/components/terminal/StrategyIntelligencePanel";
 import { WorkflowEvolutionPanel } from "@/components/terminal/WorkflowEvolutionPanel";
 import { InstitutionalIntelligencePanel } from "@/components/terminal/InstitutionalIntelligencePanel";
+import { IntradayRegimeDriftPanel } from "@/components/terminal/IntradayRegimeDriftPanel";
 import { MetaIntelligenceOperatingSystemPanel } from "@/components/terminal/MetaIntelligenceOperatingSystemPanel";
 import type { AdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
 import type { ScenarioIntelligenceSystem } from "@/lib/trading/scenario-intelligence";
@@ -27,7 +28,7 @@ import { buildDecisionFactors, buildDecisionIntelligence, type DecisionFactor } 
 import { buildExecutionIntelligence } from "@/lib/trading/execution-intelligence";
 import { compactInstitutionalLabels } from "@/lib/trading/institutional-intelligence";
 import { buildRiskTolerantOpportunities } from "@/lib/trading/risk-tolerant-opportunities";
-import type { ScannerScalar } from "@/lib/types";
+import type { IntradayDriftRow, ScannerScalar } from "@/lib/types";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { decisionLabel, humanizeLabel, readableText } from "@/lib/ui/labels";
 import { WatchlistButton } from "@/components/watchlist-controls";
@@ -56,6 +57,7 @@ export function OpportunitiesWorkspace({
   best,
   bestPriceSeries,
   initialProfile,
+  intradayDriftRows = [],
   marketCondition,
   rows,
   scenarioIntelligence = null,
@@ -66,6 +68,7 @@ export function OpportunitiesWorkspace({
   best: OpportunityViewModel | null;
   bestPriceSeries: Record<string, ScannerScalar>[];
   initialProfile?: UserPersonalizationProfile;
+  intradayDriftRows?: IntradayDriftRow[];
   marketCondition: string | null;
   rows: OpportunityViewModel[];
   scenarioIntelligence?: ScenarioIntelligenceSystem | null;
@@ -162,6 +165,7 @@ export function OpportunitiesWorkspace({
     <div className="min-w-0 max-w-full space-y-5">
       <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} rows={rows} />
       <MetaIntelligenceOperatingSystemPanel personalizationProfile={initialProfile} rows={rows} workflowEvolution={workflowEvolution ?? null} />
+      <IntradayRegimeDriftPanel driftRows={intradayDriftRows} rows={rows} />
       <AdaptiveLearningInsightPanel system={adaptiveLearning} />
       <StrategyIntelligencePanel system={strategyIntelligence} />
       <ScenarioIntelligencePanel system={scenarioIntelligence} />

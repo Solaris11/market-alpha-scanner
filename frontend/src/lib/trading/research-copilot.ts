@@ -1,4 +1,5 @@
 import type { DecisionMemorySummary } from "./decision-journal";
+import type { IntradayRegimeDriftSystem } from "./intraday-regime-drift";
 import type { MarketMemorySummary } from "./market-memory";
 import type { TradeVetoOperatingSystem } from "./meta-intelligence";
 import type { OpportunityViewModel } from "./opportunity-view-model";
@@ -41,6 +42,15 @@ export type ResearchCopilotContext = {
     role: "assistant" | "user";
   }>;
   generatedAt: string;
+  intraday: {
+    alerts: string[];
+    currentMarketState: string;
+    driftDirection: string;
+    shockActivityScore: number;
+    summary: string;
+    volatilityPressure: number;
+    whatChanged: string[];
+  } | null;
   intent: ResearchCopilotIntent;
   marketState: {
     alerts: string[];
@@ -101,6 +111,7 @@ export type ResearchCopilotBuildInput = {
   personalizationProfile?: UserPersonalizationProfile | null;
   question: string;
   regimeSystem: RegimeShiftSystem;
+  intradaySystem?: IntradayRegimeDriftSystem | null;
   rows: OpportunityViewModel[];
   workflowEvolution?: WorkflowEvolutionSummary | null;
 };
@@ -125,6 +136,15 @@ export function buildResearchCopilotContext(input: ResearchCopilotBuildInput): R
     availableSymbols,
     conversation: normalizeConversation(input.conversation),
     generatedAt: new Date().toISOString(),
+    intraday: input.intradaySystem ? {
+      alerts: input.intradaySystem.alerts.slice(0, 4).map((alert) => `${alert.title}: ${alert.detail}`),
+      currentMarketState: input.intradaySystem.currentMarketState,
+      driftDirection: input.intradaySystem.driftDirection,
+      shockActivityScore: input.intradaySystem.shockActivityScore,
+      summary: input.intradaySystem.terminalSummary,
+      volatilityPressure: input.intradaySystem.volatilityPressure,
+      whatChanged: input.intradaySystem.whatChangedIntraday.slice(0, 5),
+    } : null,
     intent,
     marketState: {
       alerts: input.regimeSystem.alerts.slice(0, 4).map((alert) => `${alert.title}: ${alert.detail}`),
@@ -216,10 +236,11 @@ function comparisonAnswer(context: ResearchCopilotContext): ResearchCopilotAnswe
 }
 
 function whatChangedAnswer(context: ResearchCopilotContext): ResearchCopilotAnswer {
-  const changes = [...context.workflow.whatChanged, ...context.workflow.improving, ...context.workflow.deteriorating].slice(0, 5);
+  const intradayChanges = context.intraday?.whatChanged ?? [];
+  const changes = [...intradayChanges, ...context.workflow.whatChanged, ...context.workflow.improving, ...context.workflow.deteriorating].slice(0, 6);
   return baseAnswer(context, {
     answer: changes.length
-      ? "The main changes are coming from workflow drift, setup quality changes, and pressure signals rather than a single isolated score."
+      ? "The main changes are coming from bounded intraday drift, workflow drift, setup quality changes, and pressure signals rather than a single isolated score."
       : "Workflow memory is still building, so the safest answer is to use the current market-state and priority queue as the baseline.",
     keyPoints: changes.length ? changes : [context.marketState.summary, context.meta.summary],
     symbolComparisons: [],
@@ -235,6 +256,7 @@ function marketStateAnswer(context: ResearchCopilotContext): ResearchCopilotAnsw
   return baseAnswer(context, {
     answer: `${context.marketState.currentMarketState} is the active market-state label. The system is cautious when transition risk, volatility pressure, liquidity pressure, or weak breadth reduces decision quality.`,
     keyPoints: [
+      ...(context.intraday ? [context.intraday.summary] : []),
       context.marketState.summary,
       ...context.marketState.alerts.slice(0, 3),
       `Top attention queue: ${context.meta.priorityQueue.slice(0, 4).map((item) => `${item.symbol} ${item.opportunity}/${item.risk}`).join(", ") || "not available"}.`,
