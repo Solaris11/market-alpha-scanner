@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { PointerEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
+import { DecisionReplayPanel } from "@/components/history/DecisionReplayPanel";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { actionFor, formatNumber } from "@/lib/format";
@@ -762,6 +763,8 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
                 <TrendChart field="final_score" label="Final Score" rows={filteredByTime} />
                 <TrendChart field="price" label="Price" rows={filteredByTime} />
               </div>
+
+              <DecisionReplayPanel rows={filteredByTime} selectedSymbol={selectedSymbol} />
 
               <CompanyIntelligenceTabs
                 activeTab={activeInsightTab}
