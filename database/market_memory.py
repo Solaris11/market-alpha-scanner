@@ -64,7 +64,11 @@ memory_rows AS (
             'final_decision', n.final_decision,
             'score_bucket', n.score_bucket,
             'confidence_score', n.confidence_score,
-            'readiness_score', n.readiness_score
+            'readiness_score', n.readiness_score,
+            'verified_event_signature', n.payload->>'verified_event_signature',
+            'macro_event_regime_signature', n.payload->>'macro_event_regime_signature',
+            'event_context_label', n.payload->>'event_context_label',
+            'event_risk_score', n.payload->>'event_risk_score'
         ) AS signature,
         COALESCE(outcomes.outcome, '{}'::jsonb) AS outcome
     FROM normalized n

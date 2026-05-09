@@ -26,6 +26,7 @@ export type DecisionFactor = {
 const POSITIVE_FACTOR_COPY: Record<string, string> = {
   breakout: "Structure is improving",
   data_quality: "Data quality is strong",
+  event: "Verified event context is not a blocker",
   fundamental: "Fundamental context is supportive",
   macro: "Market context is aligned",
   momentum: "Momentum is constructive",
@@ -40,6 +41,7 @@ const POSITIVE_FACTOR_COPY: Record<string, string> = {
 const NEGATIVE_FACTOR_COPY: Record<string, string> = {
   breakout: "Structure is not confirmed yet",
   data_quality: "Data quality is weaker",
+  event: "Verified event context is adding fragility",
   fundamental: "Fundamental context is mixed",
   macro: "Market context is not aligned",
   momentum: "Momentum is not confirmed",
@@ -66,6 +68,18 @@ const REASON_POSITIVE_COPY: Record<string, string> = {
   SETUP_CONTINUATION: "Continuation setup rules are active",
   SETUP_PULLBACK: "Pullback setup rules are active",
   TREND_INTACT: "Trend remains intact",
+  EVENT_CONTEXT_SUPPORTIVE: "Verified event context supports this setup",
+  EVENT_GEOPOLITICAL_DEESCALATION: "Geopolitical de-escalation is part of the verified context",
+  EVENT_LIQUIDITY_SUPPORTIVE: "Liquidity event context is supportive",
+  EVENT_EARNINGS_POSITIVE: "Positive earnings context is present",
+  EVENT_EARNINGS_POSITIVE_SURPRISE: "Positive earnings surprise is present",
+  EVENT_AI_SEMICONDUCTOR_THEME: "AI/semiconductor event context is supportive",
+  EVENT_INVESTMENT_CATALYST: "Investment catalyst context is present",
+  EVENT_INVESTMENT_POSITIVE: "Positive investment context is present",
+  EVENT_MERGER_ACQUISITION: "M&A catalyst context is present",
+  EVENT_MNA_POSITIVE: "Positive M&A context is present",
+  EVENT_PRODUCT_LAUNCH: "Product catalyst context is present",
+  EVENT_PRODUCT_CATALYST_POSITIVE: "Positive product catalyst context is present",
 };
 
 const REASON_NEGATIVE_COPY: Record<string, string> = {
@@ -86,6 +100,35 @@ const REASON_NEGATIVE_COPY: Record<string, string> = {
   SETUP_TREND_BELOW_THRESHOLD: "Trend is below the setup threshold",
   SETUP_VOLUME_BELOW_THRESHOLD: "Volume is below the setup threshold",
   WEAK_VOLUME_FOR_BREAKOUT: "Breakout setup lacks volume confirmation",
+  EVENT_EARNINGS_NEGATIVE: "Negative earnings context is adding fragility",
+  EVENT_EARNINGS_NEGATIVE_SURPRISE: "Negative earnings surprise is adding fragility",
+  EVENT_EARNINGS_SENSITIVITY: "Earnings sensitivity is elevated",
+  EVENT_DEFENSIVE_ROTATION: "Defensive rotation context is active",
+  EVENT_CRYPTO_CONTEXT: "Crypto event context is active",
+  EVENT_COOLING_INFLATION_SURPRISE: "Cooling inflation surprise context is supportive",
+  EVENT_DOVISH_RATE_SURPRISE: "Dovish rates surprise context is supportive",
+  EVENT_EMPLOYMENT_PRESSURE: "Employment event pressure is active",
+  EVENT_FED_RATES: "Fed/rates event context is active",
+  EVENT_FAILED_PEACE_TALKS: "Failed peace talks are increasing event risk",
+  EVENT_FRAGILITY_PRESSURE: "Verified event context is increasing fragility",
+  EVENT_GOLD_SAFE_HAVEN: "Safe-haven event context is active",
+  EVENT_GEOPOLITICAL_ESCALATION: "Geopolitical risk is part of the verified context",
+  EVENT_HAWKISH_RATE_SURPRISE: "Hawkish rates surprise is pressuring the setup",
+  EVENT_HOT_INFLATION_SURPRISE: "Hot inflation surprise is pressuring the setup",
+  EVENT_INVESTMENT_NEGATIVE: "Negative investment context is adding fragility",
+  EVENT_INFLATION_PRESSURE: "Inflation event pressure is active",
+  EVENT_LIQUIDITY_TIGHTENING: "Liquidity event pressure is active",
+  EVENT_OIL_SUPPLY_SHOCK: "Oil event pressure is active",
+  EVENT_MNA_NEGATIVE: "Negative M&A context is adding fragility",
+  EVENT_PRODUCT_CATALYST_NEGATIVE: "Negative product catalyst is adding fragility",
+  EVENT_RECESSION_PRESSURE: "Growth slowdown event pressure is active",
+  EVENT_REGULATORY_RISK: "Regulatory event risk is active",
+  EVENT_RISK_ELEVATED: "Verified event risk is elevated",
+  EVENT_SHOCK_PRESSURE: "Event context has elevated volatility shock pressure",
+  EVENT_LLM_VERIFIED_CONTEXT: "LLM evidence check confirmed event context",
+  EVENT_STRONG_LABOR_RATE_PRESSURE: "Strong labor data is adding rates pressure",
+  EVENT_UNEMPLOYMENT_SURPRISE: "Unemployment surprise is adding macro pressure",
+  EVENT_VOLATILITY_PRESSURE: "Verified volatility event pressure is active",
 };
 
 const VETO_NEGATIVE_COPY: Record<string, string> = {
@@ -138,6 +181,34 @@ const WATCH_COPY: Record<string, string> = {
   SETUP_TREND_BELOW_THRESHOLD: "Monitor for trend structure to improve.",
   SETUP_VOLUME_BELOW_THRESHOLD: "Wait for stronger volume confirmation.",
   WEAK_VOLUME_FOR_BREAKOUT: "Wait for volume expansion before treating breakout structure as cleaner.",
+  EVENT_EARNINGS_NEGATIVE: "Wait for earnings-related fragility to clear or be confirmed by later scans.",
+  EVENT_EARNINGS_NEGATIVE_SURPRISE: "Wait for negative earnings surprise pressure to settle or be confirmed by later scans.",
+  EVENT_EARNINGS_SENSITIVITY: "Monitor earnings-sensitive context before treating this setup as cleaner.",
+  EVENT_DEFENSIVE_ROTATION: "Watch whether defensive rotation keeps weakening risk appetite.",
+  EVENT_CRYPTO_CONTEXT: "Monitor crypto-specific event context and later scanner confirmation.",
+  EVENT_COOLING_INFLATION_SURPRISE: "Monitor whether cooling inflation context persists in later confirmed data.",
+  EVENT_DOVISH_RATE_SURPRISE: "Monitor whether dovish rates context remains supportive after the next scan.",
+  EVENT_EMPLOYMENT_PRESSURE: "Monitor labor-market event context because it can change rates and risk appetite.",
+  EVENT_FED_RATES: "Monitor Fed/rates context because it can change macro alignment quickly.",
+  EVENT_FAILED_PEACE_TALKS: "Watch whether geopolitical risk keeps elevating volatility pressure.",
+  EVENT_FRAGILITY_PRESSURE: "Watch whether verified event pressure fades or keeps increasing fragility.",
+  EVENT_GOLD_SAFE_HAVEN: "Watch whether safe-haven demand is signaling broader risk pressure.",
+  EVENT_GEOPOLITICAL_ESCALATION: "Monitor whether geopolitical risk continues to pressure market conditions.",
+  EVENT_HAWKISH_RATE_SURPRISE: "Wait for rates-sensitive pressure to settle before raising conviction.",
+  EVENT_HOT_INFLATION_SURPRISE: "Watch whether hot inflation pressure tightens liquidity context.",
+  EVENT_INVESTMENT_NEGATIVE: "Monitor whether negative investment context keeps weakening setup quality.",
+  EVENT_INFLATION_PRESSURE: "Watch inflation-sensitive macro context and liquidity pressure.",
+  EVENT_LIQUIDITY_TIGHTENING: "Wait for liquidity pressure to ease before raising conviction.",
+  EVENT_OIL_SUPPLY_SHOCK: "Monitor oil-driven volatility and sector spillover risk.",
+  EVENT_MNA_NEGATIVE: "Monitor whether M&A-related uncertainty keeps adding fragility.",
+  EVENT_PRODUCT_CATALYST_NEGATIVE: "Watch whether product-related issues keep pressuring the setup.",
+  EVENT_RECESSION_PRESSURE: "Watch whether growth-pressure signals keep weakening the broader setup context.",
+  EVENT_REGULATORY_RISK: "Monitor confirmed regulatory developments and later scanner reactions.",
+  EVENT_RISK_ELEVATED: "Wait for verified event risk to settle before treating the setup as cleaner.",
+  EVENT_SHOCK_PRESSURE: "Monitor two-sided volatility risk around the confirmed event context.",
+  EVENT_STRONG_LABOR_RATE_PRESSURE: "Monitor whether labor strength keeps rates pressure elevated.",
+  EVENT_UNEMPLOYMENT_SURPRISE: "Watch whether labor-market weakness keeps macro pressure elevated.",
+  EVENT_VOLATILITY_PRESSURE: "Wait for volatility pressure to stabilize.",
 };
 
 const SEVERE_VETOES = new Set(["BEAR_MARKET", "EXTREME_VOLATILITY", "MISSING_PRICE_HISTORY", "PROVIDER_ERROR", "RISK_OFF_MARKET", "STALE_DATA", "DATA_STALE"]);
@@ -207,8 +278,13 @@ export function buildDecisionFactors(row: RankingRow): DecisionFactor[] {
   const riskRewardComponent = riskReward === null ? 50 : clampScore(riskReward * 35);
   const fallbackRisk = clampScore(100 - riskPenalty * 5 + (riskRewardComponent - 50) * 0.25);
   const stale = booleanish(rawField(row, "stale_data")) || booleanish(rawField(row, "low_confidence_data"));
+  const eventAvailable = booleanish(rawField(row, "event_context_available"));
+  const eventRisk = numeric(rawField(row, "event_risk_score"));
+  const eventConviction = numeric(rawField(row, "event_conviction_adjustment")) ?? 0;
+  const eventFragility = numeric(rawField(row, "event_fragility_adjustment")) ?? 0;
+  const eventScore = eventAvailable && eventRisk !== null ? clampScore(100 - eventRisk + eventConviction * 4 - eventFragility * 2.5) : null;
 
-  return [
+  const factors = [
     factor("trend", "Trend", structured.trend ?? numeric(rawField(row, "trend_score")) ?? numeric(rawField(row, "technical_score")) ?? numeric(rawField(row, "final_score")) ?? 50),
     factor("momentum", "Momentum", structured.momentum ?? numeric(rawField(row, "momentum_score")) ?? numeric(rawField(row, "technical_score")) ?? 50),
     factor("volume", "Volume", structured.volume ?? numeric(rawField(row, "volume_score")) ?? numeric(rawField(row, "relative_volume_score")) ?? 50),
@@ -218,6 +294,8 @@ export function buildDecisionFactors(row: RankingRow): DecisionFactor[] {
     factor("macro", "Macro", structured.macro ?? numeric(rawField(row, "macro_alignment_score")) ?? numeric(rawField(row, "macro_score")) ?? 50),
     factor("data_quality", "Data Quality", structured.data_quality ?? numeric(rawField(row, "data_quality_score")) ?? (stale ? 35 : 75)),
   ];
+  if (eventScore !== null) factors.push(factor("event", "Verified Events", structured.event ?? eventScore));
+  return factors;
 }
 
 export function reasonCodes(value: unknown): string[] {

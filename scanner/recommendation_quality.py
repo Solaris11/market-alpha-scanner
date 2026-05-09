@@ -144,7 +144,8 @@ def _classification(score: float) -> str:
 
 def _reason(quality: str, positives: list[str], negatives: list[str]) -> str:
     if quality == "TRADE_READY":
-        return f"{positives[0] if positives else 'Strong signal'}; {positives[1] if len(positives) > 1 else 'quality gate passed'}."
+        suffix = f"; {negatives[0]} monitored" if negatives else ""
+        return f"{positives[0] if positives else 'Strong signal'}; {positives[1] if len(positives) > 1 else 'quality gate passed'}{suffix}."
     if quality == "WAIT_PULLBACK":
         return f"{positives[0] if positives else 'Constructive signal'}, but {negatives[0] if negatives else 'entry needs confirmation'}."
     if quality == "LOW_EDGE":
@@ -233,6 +234,13 @@ def evaluate_recommendation_quality(row: pd.Series, market_structure: dict[str, 
         score -= 5
         negatives.append("mixed setup")
 
+    event_adjustment, event_reason = _event_quality_adjustment(row)
+    score += event_adjustment
+    if event_adjustment > 0:
+        positives.append(event_reason)
+    elif event_adjustment < 0:
+        negatives.append(event_reason)
+
     bucket_adjustment, bucket_reason = _score_bucket_adjustment(safe_float(row.get("final_score"), np.nan))
     score += bucket_adjustment
     if bucket_adjustment > 0:
@@ -262,3 +270,35 @@ def apply_recommendation_quality(df: pd.DataFrame, market_structure: dict[str, A
     working["quality_score"] = evaluations.map(lambda item: item["quality_score"])
     working["quality_reason"] = evaluations.map(lambda item: item["quality_reason"])
     return working
+
+
+def _event_quality_adjustment(row: pd.Series) -> tuple[int, str]:
+    if not _boolish(row.get("event_context_available")):
+        return 0, ""
+
+    conviction = safe_float(row.get("event_conviction_adjustment"), 0.0)
+    fragility = safe_float(row.get("event_fragility_adjustment"), 0.0)
+    risk_score = safe_float(row.get("event_risk_score"), np.nan)
+    macro_adjustment = safe_float(row.get("event_macro_pressure_adjustment"), 0.0)
+    shock_score = safe_float(row.get("event_shock_pressure_score"), np.nan)
+
+    adjustment = int(round(max(-4.0, min(3.0, conviction)) * 1.2))
+    adjustment += int(round(max(-3.0, min(2.0, macro_adjustment))))
+    adjustment -= int(round(max(0.0, min(6.0, fragility)) * 0.75))
+    if not np.isnan(risk_score) and risk_score >= 70.0:
+        adjustment -= int(round(min(4.0, (risk_score - 70.0) * 0.14)))
+    if not np.isnan(shock_score) and shock_score >= 68.0:
+        adjustment -= 2
+
+    adjustment = max(-8, min(5, adjustment))
+    if adjustment > 0:
+        return adjustment, "verified event context supportive"
+    if adjustment < 0:
+        return adjustment, "verified event pressure"
+    return 0, ""
+
+
+def _boolish(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    return safe_str(value, "").strip().lower() in {"1", "true", "yes", "y"}

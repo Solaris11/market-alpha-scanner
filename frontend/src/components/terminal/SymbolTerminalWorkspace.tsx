@@ -30,6 +30,7 @@ import { SymbolDecisionHero } from "./SymbolDecisionHero";
 import { SignalStatusCard } from "./SignalStatusCard";
 import { TechnicalSnapshotCard } from "./TechnicalSnapshotCard";
 import { TradePlanCard } from "./TradePlanCard";
+import { VerifiedEventContextCard } from "./VerifiedEventContextCard";
 import { WhatIfSimulator } from "./WhatIfSimulator";
 import { WhyDecisionCard } from "./WhyDecisionCard";
 import { GlassPanel } from "./ui/GlassPanel";
@@ -125,6 +126,7 @@ export function SymbolTerminalWorkspace({
           )}
           <SymbolDecisionIntelligencePanel candles={candles} row={row} />
           {macroContext ? <MacroExchangeContextCard context={macroContext} row={row} /> : null}
+          <VerifiedEventContextCard row={row} />
           <ConvictionFragilityCard model={structuralQuality} />
         </div>
         <aside className="space-y-5 xl:sticky xl:top-5 xl:self-start">

@@ -98,6 +98,9 @@ def factor_scores_for_row(row: Mapping[str, object], *, data_quality_score: floa
     risk_reward_component = 50.0 if np.isnan(risk_reward) else clamp_score(risk_reward * 35.0)
     risk_score = clamp_score(100.0 - risk_penalty * 3.0 + (risk_reward_component - 50.0) * 0.35)
     quality_score = safe_float(row.get("quality_score"), np.nan)
+    event_macro_adjustment = safe_float(row.get("event_macro_pressure_adjustment"), 0.0)
+    macro_base = safe_float(_first_present(row, ("macro_alignment_score", "macro_score")), np.nan)
+    macro_score = _bounded_score(macro_base + event_macro_adjustment if not np.isnan(macro_base) else macro_base)
     factor_scores = {
         "trend": _bounded_score(row.get("trend_score")),
         "momentum": _bounded_score(row.get("momentum_score")),
@@ -105,11 +108,13 @@ def factor_scores_for_row(row: Mapping[str, object], *, data_quality_score: floa
         "volatility": round(volatility_score, 2),
         "breakout": _bounded_score(row.get("breakout_score")),
         "volume": _bounded_score(row.get("relative_volume_score")),
-        "macro": _bounded_score(_first_present(row, ("macro_alignment_score", "macro_score"))),
+        "macro": macro_score,
         "fundamental": _bounded_score(row.get("fundamental_score")),
         "news": _bounded_score(row.get("news_score")),
         "data_quality": _bounded_score(data_quality_score if data_quality_score is not None else 100.0),
     }
+    if _boolish(row.get("event_context_available")):
+        factor_scores["event"] = _event_factor_score(row)
     if not np.isnan(quality_score):
         factor_scores["recommendation_quality"] = _bounded_score(quality_score)
     return factor_scores
@@ -236,6 +241,8 @@ def decision_reason_codes_for_row(row: Mapping[str, object], vetoes: list[str] |
         codes.append(regime_code)
     for macro_code in _code_list(row.get("macro_context_reason_codes")):
         codes.append(macro_code)
+    for event_code in _code_list(row.get("event_context_reason_codes")):
+        codes.append(event_code)
     for setup_code in _code_list(row.get("setup_reason_codes")):
         codes.append(setup_code)
     return _unique_codes(codes)
@@ -252,6 +259,11 @@ def confidence_score_for_row(row: Mapping[str, object], factor_scores: Mapping[s
     confidence += _above(scores.get("risk"), 70.0, 8.0)
     confidence += _above(scores.get("data_quality"), 85.0, 10.0)
     confidence += _above(safe_float(row.get("risk_reward"), np.nan), 1.5, 5.0)
+    confidence += max(-4.0, min(3.0, safe_float(row.get("event_conviction_adjustment"), 0.0))) * 1.4
+    confidence -= max(0.0, min(6.0, safe_float(row.get("event_fragility_adjustment"), 0.0))) * 1.2
+    event_risk = safe_float(row.get("event_risk_score"), np.nan)
+    if not np.isnan(event_risk) and event_risk >= 70.0:
+        confidence -= min(6.0, (event_risk - 70.0) * 0.2)
 
     penalty_by_code = {
         "STALE_DATA": 25.0,
@@ -291,6 +303,15 @@ def _volatility_score(row: Mapping[str, object]) -> float:
     if not np.isnan(atr_pct):
         score -= max(0.0, atr_pct - 3.0) * 5.0
     return clamp_score(score)
+
+
+def _event_factor_score(row: Mapping[str, object]) -> float:
+    event_risk = safe_float(row.get("event_risk_score"), np.nan)
+    conviction = safe_float(row.get("event_conviction_adjustment"), 0.0)
+    fragility = safe_float(row.get("event_fragility_adjustment"), 0.0)
+    if np.isnan(event_risk):
+        return 50.0
+    return round(clamp_score(100.0 - event_risk + conviction * 4.0 - fragility * 2.5), 2)
 
 
 def _is_missing_number(value: object) -> bool:

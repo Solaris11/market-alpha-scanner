@@ -161,6 +161,7 @@ function convictionScoreFor({
   const memorySupport = 100 - historicalFragility.riskScore;
   const driftSupport = drift.direction === "rising" ? 72 : drift.direction === "weakening" ? 36 : drift.direction === "stable" ? 58 : 50;
   let score = evidenceStack * 0.58 + netPressureScore * 0.16 + memorySupport * 0.14 + driftSupport * 0.12;
+  score = score * 0.94 + eventContribution(row) * 0.06;
   score -= codes.filter((code) => HIGH_RISK_CODES.has(code)).length * 4;
   if (normalizedDecision(row) === "AVOID" || normalizedDecision(row) === "EXIT") score -= 12;
   if (normalizedDecision(row) === "ENTER" && intelligence.readiness_score >= 70) score += 4;
@@ -195,6 +196,7 @@ function fragilityScoreFor({
   const setupPressure = intelligence.setup_type === "AVOID" ? 16 : intelligence.setup_strength < 45 ? 10 : 0;
   const memoryPressure = historicalFragility.riskScore * 0.55;
   const macroContextPressure = macroContext ? macroContext.macroPressureScore * 0.10 + macroContext.volatilityPressure * 0.08 + macroContext.liquidityPressure * 0.07 : 0;
+  const eventPressure = eventRisk(row) * 0.09 + Math.max(0, finiteNumber(row.event_fragility_adjustment) ?? 0) * 2.2;
   const raw =
     riskPressure * 0.20 +
     volatilityPressure * 0.17 +
@@ -203,6 +205,7 @@ function fragilityScoreFor({
     invalidation.riskScore * 0.18 +
     memoryPressure * 0.11 +
     macroContextPressure +
+    eventPressure +
     vetoPressure +
     driftPressure +
     setupPressure;
@@ -322,6 +325,7 @@ function pressureContributions(row: RankingRow, factors: FactorMap, memory?: Mar
       contribution("sector", "Sector / Theme", macroContext.sectorAlignmentScore, macroContext.themeContext),
       contribution("liquidity", "Liquidity", 100 - macroContext.liquidityPressure, "Liquidity pressure lowers this contribution when the backdrop is tightening."),
       contribution("volatility", "Volatility", 100 - macroContext.volatilityPressure, "Volatility pressure lowers this contribution when ranges are expanding."),
+      contribution("event", "Verified Events", eventContribution(row), eventContributionExplanation(row)),
       contribution("memory", "Market Memory", memoryContribution(memory), "Historical analogs contribute only probabilistic context, not certainty."),
     ];
   }
@@ -330,6 +334,7 @@ function pressureContributions(row: RankingRow, factors: FactorMap, memory?: Mar
     contribution("sector", "Sector Momentum", sectorScore(row, factors), "Sector context uses available scanner sector and setup strength data."),
     contribution("risk", "Risk / Reward", factors.risk ?? 50, "Risk contribution reflects risk/reward, veto, and penalty context."),
     contribution("volatility", "Volatility Risk", 100 - volatilityRisk(row, factors), "Higher volatility pressure reduces this contribution score."),
+    contribution("event", "Verified Events", eventContribution(row), eventContributionExplanation(row)),
     contribution("data", "Data Quality", factors.data_quality ?? 60, "Data quality supports conviction when scanner freshness and provider context are clean."),
     contribution("memory", "Market Memory", memoryContribution(memory), "Historical analogs contribute only probabilistic context, not certainty."),
   ];
@@ -374,6 +379,25 @@ function memoryContribution(memory?: MarketMemorySummary): number {
   return clamp(48 + (winRate - 0.5) * 70 + median * 250 + Math.max(-18, downside * 120));
 }
 
+function eventRisk(row: RankingRow): number {
+  return finiteNumber(row.event_risk_score) ?? 50;
+}
+
+function eventContribution(row: RankingRow): number {
+  if (!booleanish(field(row, "event_context_available"))) return 50;
+  const risk = eventRisk(row);
+  const conviction = finiteNumber(row.event_conviction_adjustment) ?? 0;
+  const fragility = finiteNumber(row.event_fragility_adjustment) ?? 0;
+  return clamp(100 - risk + conviction * 4 - fragility * 2.5);
+}
+
+function eventContributionExplanation(row: RankingRow): string {
+  const summary = cleanText(row.event_context_summary, "");
+  if (summary) return summary;
+  if (!booleanish(field(row, "event_context_available"))) return "Verified event context is limited until trusted feed data is available.";
+  return "Verified event context contributes probabilistic pressure and catalyst context, not certainty.";
+}
+
 function volatilityRisk(row: RankingRow, factors: FactorMap): number {
   const factorPressure = 100 - (factors.volatility ?? 50);
   const atrPct = percentish(row.atr_pct ?? row.atr_percent ?? row.annualized_volatility ?? row.volatility ?? row.volatility_pct);
@@ -386,6 +410,7 @@ function diagnosticCodes(row: RankingRow): string[] {
     ...reasonCodes(field(row, "vetoes")),
     ...reasonCodes(field(row, "veto_reason")),
     ...reasonCodes(field(row, "decision_reason_codes")),
+    ...reasonCodes(field(row, "event_context_reason_codes")),
     ...reasonCodes(field(row, "setup_reason_codes")),
   ]);
 }
@@ -407,6 +432,7 @@ function invalidationConditions({
   if ((factors.macro ?? 60) < 50 || codes.includes("MACRO_MISMATCH")) conditions.push("Market context is not fully aligned with the setup.");
   if (codes.includes("OVEREXTENDED_ENTRY")) conditions.push("Entry context is extended; a reset toward support would reduce chase risk.");
   if (codes.includes("HIGH_VOLATILITY") || codes.includes("EXTREME_VOLATILITY")) conditions.push("Volatility needs to stabilize for structural integrity to improve.");
+  if (codes.includes("EVENT_RISK_ELEVATED") || codes.includes("EVENT_FRAGILITY_PRESSURE")) conditions.push("Verified event pressure should settle before the setup is treated as structurally cleaner.");
   if (conditions.length) return uniqueText(conditions).slice(0, 4);
   const stop = firstNumeric(row.stop_loss, row.invalidation_level);
   if (stop !== null) conditions.push(`Available invalidation context is near ${formatPrice(stop)}.`);
@@ -492,6 +518,11 @@ function clamp(value: number, min = 0, max = 100): number {
 
 function field(row: RankingRow, key: string): unknown {
   return (row as unknown as Record<string, unknown>)[key];
+}
+
+function booleanish(value: unknown): boolean {
+  if (typeof value === "boolean") return value;
+  return ["1", "true", "yes", "y"].includes(String(value ?? "").trim().toLowerCase());
 }
 
 function uniqueCodes(values: string[]): string[] {

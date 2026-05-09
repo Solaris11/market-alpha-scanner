@@ -204,6 +204,7 @@ function OpportunityDeskMap({ marketCondition, rows }: { marketCondition: string
   const assetCounts = countBy(rows, (row) => humanizeLabel(row.assetType, "Unknown"));
   const riskBlocked = rows.filter((row) => decision(row) === "AVOID" || hasVetoes(row.raw.vetoes)).length;
   const fallbackCount = rows.filter((row) => Boolean(row.raw.data_provider_fallback_used)).length;
+  const eventRiskCount = rows.filter((row) => row.eventRisk >= 68).length;
   const staleCount = rows.filter((row) => Boolean(row.raw.stale_data) || String(row.raw.data_freshness_status ?? "").toLowerCase().includes("stale")).length;
   const improving = [...rows]
     .map((row) => ({ change: numeric(row.raw.score_change ?? row.raw.readiness_change ?? row.raw.confidence_change), row }))
@@ -223,7 +224,7 @@ function OpportunityDeskMap({ marketCondition, rows }: { marketCondition: string
           <CompactPulseCard title="Setup Distribution" value={compactMapLabel(setupCounts)} detail={pulse.breadthDetail} />
           <CompactPulseCard title="Asset Coverage" value={compactMapLabel(assetCounts)} detail="Shows where the latest scan has research context, not recommendations." />
           <CompactPulseCard title="Risk Filter Summary" value={`${riskBlocked} blocked`} detail="Avoid and vetoed rows remain visible so risk context is not hidden." />
-          <CompactPulseCard title="Data Quality" value={`${fallbackCount} fallback · ${staleCount} stale`} detail="Provider fallback and stale flags reduce confidence in the scanner payload." />
+          <CompactPulseCard title="Event / Data Quality" value={`${eventRiskCount} event pressure · ${fallbackCount} fallback`} detail={`${staleCount} stale rows. Verified events and provider quality both affect confidence.`} />
         </div>
         <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-3">
           <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Top movement / highest score</div>
@@ -451,6 +452,7 @@ function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewMod
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
           <HeroMetric label="ATR" value={formatNumber(row.atr)} />
           <HeroMetric label="Macro adj." value={signedAdjustment(best.macroAdjustment)} tone={(best.macroAdjustment ?? 0) < -0.75 ? "risk" : "neutral"} />
+          <HeroMetric label="Event context" value={best.eventLabel} tone={best.eventRisk >= 68 ? "risk" : "neutral"} />
           <HeroMetric label="Stop distance" value={stopDistance(best)} tone="risk" />
           <HeroMetric label="Volatility" value={percentLike(row.volatility ?? row.volatility_pct)} />
           <HeroMetric label="Fragility" value={`${best.fragility} / ${best.fragilityLabel}`} tone={best.fragility >= 70 ? "risk" : "neutral"} />
@@ -504,6 +506,7 @@ function OpportunityHeroIntelligence({ marketCondition, rows }: { marketConditio
   const riskBlocked = rows.filter((row) => decision(row) === "AVOID" || hasVetoes(row.raw.vetoes)).length;
   const highReadiness = rows.filter((row) => row.conviction >= 70).length;
   const fallbackCount = rows.filter((row) => Boolean(row.raw.data_provider_fallback_used)).length;
+  const eventRiskCount = rows.filter((row) => row.eventRisk >= 68).length;
 
   return (
     <div className="mt-3 rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.055] p-3">
@@ -518,6 +521,7 @@ function OpportunityHeroIntelligence({ marketCondition, rows }: { marketConditio
         <CompactPulseCard title="Readiness Heatmap" value={`${highReadiness} high readiness`} detail={`${pulse.confidence}. Confidence is not a prediction.`} />
         <CompactPulseCard title="Regime Alignment" value={cleanText(marketCondition, "Neutral")} detail={pulse.breadthDetail} />
         <CompactPulseCard title="Risk Filters" value={`${riskBlocked} blocked`} detail="Blocked rows are preserved as context so the scanner does not force activity." />
+        <CompactPulseCard title="Event Pressure" value={`${eventRiskCount} elevated`} detail="Verified macro/company events add bounded context to conviction and fragility." />
         <CompactPulseCard title="Data Quality" value={`${fallbackCount} fallbacks`} detail={pulse.scannerDetail} />
         <CompactPulseCard title="Setup Focus" value={pulse.breadth} detail="Use setup groups to compare research context before opening symbol detail." />
       </div>
@@ -636,6 +640,7 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
         <CardMetric label="Fragility" value={`${row.fragility} ${row.fragilityLabel}`} />
         <CardMetric label="Score" value={formatNumber(row.final_score, 0)} />
         <CardMetric label="Macro Context" value={`${row.macroLabel} ${signedAdjustment(row.macroAdjustment)}`} />
+        <CardMetric label="Event Context" value={row.eventLabel} />
         <CardMetric label="Entry / Correction" value={row.entryZoneLabel ?? formatMoney(row.suggested_entry)} />
         <CardMetric label="Structure" value={row.structuralLabel} />
         <CardMetric label="Decay" value={row.decayLabel} />

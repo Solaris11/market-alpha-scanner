@@ -12,6 +12,7 @@ type MarketMemorySnapshotRow = QueryResultRow & {
   outcome: unknown;
   score_bucket: string | null;
   sector: string | null;
+  signature: unknown;
   setup_type: string | null;
   signal_ts: string | Date;
   symbol: string;
@@ -41,6 +42,7 @@ async function getMarketMemoryCandidates(row: RankingRow): Promise<MarketMemoryC
         final_decision AS decision,
         final_score,
         score_bucket,
+        signature,
         outcome
       FROM market_memory_snapshots
       WHERE signal_ts < COALESCE($6::timestamptz, now())
@@ -62,7 +64,9 @@ async function getMarketMemoryCandidates(row: RankingRow): Promise<MarketMemoryC
 function snapshotToCandidate(row: MarketMemorySnapshotRow): MarketMemoryCandidate {
   return {
     decision: textOrNull(row.decision),
+    eventSignature: textOrNull(signatureRecord(row.signature).verified_event_signature),
     finalScore: finiteDbNumber(row.final_score),
+    macroEventRegimeSignature: textOrNull(signatureRecord(row.signature).macro_event_regime_signature),
     marketRegime: textOrNull(row.market_regime),
     outcomes: outcomePoints(row.outcome),
     scoreBucket: textOrNull(row.score_bucket),
@@ -71,6 +75,10 @@ function snapshotToCandidate(row: MarketMemorySnapshotRow): MarketMemoryCandidat
     signalTimestamp: timestampText(row.signal_ts),
     symbol: row.symbol.toUpperCase(),
   };
+}
+
+function signatureRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
 }
 
 function outcomePoints(value: unknown): MarketMemoryOutcomePoint[] {

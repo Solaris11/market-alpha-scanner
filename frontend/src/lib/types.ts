@@ -1,4 +1,4 @@
-export type ScannerScalar = string | number | boolean | null | undefined;
+export type ScannerScalar = string | number | boolean | Record<string, unknown> | unknown[] | null | undefined;
 
 export type RankingRow = {
   symbol: string;
@@ -96,6 +96,18 @@ export type RankingRow = {
   macro_context_summary?: string;
   exchange_context_label?: string;
   sector_context_label?: string;
+  event_context_available?: boolean;
+  event_context_label?: string;
+  event_context_summary?: string;
+  event_conviction_adjustment?: number;
+  event_fragility_adjustment?: number;
+  event_impact_scope?: string;
+  event_macro_pressure_adjustment?: number;
+  event_risk_score?: number;
+  event_shock_pressure_score?: number;
+  macro_event_regime_signature?: string;
+  verified_event_pressure_score?: number;
+  verified_event_signature?: string;
   news_score?: number;
   risk_penalty?: number;
   [key: string]: ScannerScalar;

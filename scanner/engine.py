@@ -15,6 +15,7 @@ from .cache import CacheStats, read_symbol_cache, write_symbol_cache
 from .config import DEFAULT_NEWS_LIMIT, DOWNLOAD_PERIOD, MACRO_SYMBOLS, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE, TOP_N
 from .data_fetch import batch_download, fetch_info, fetch_recent_news_items, fetch_recent_news_score
 from .diagnostics import apply_scoring_diagnostics
+from .event_intelligence import apply_event_intelligence, load_verified_event_context, write_verified_event_context
 from .market_data import ProviderMetadata, YFinanceProvider
 from .models import RankedAsset
 from .final_decision import apply_final_trade_decision
@@ -138,6 +139,7 @@ def scan_symbols(
     cache_dir = outdir / "cache" if outdir is not None else None
     fundamentals_cache_stats = CacheStats()
     news_cache_stats = CacheStats()
+    verified_event_context = load_verified_event_context(cache_dir)
 
     print(f"[1/5] Downloading price history for {len(symbols)} symbols...")
     phase_started = timer_start()
@@ -160,6 +162,13 @@ def scan_symbols(
     market_regime = detect_market_regime(regime_price_map)
     if outdir is not None and write_analysis_artifacts:
         write_market_regime(outdir, market_regime)
+        write_verified_event_context(outdir, verified_event_context)
+    print(
+        "[event] verified context "
+        f"available={verified_event_context['available']} "
+        f"cache={verified_event_context['cache_status']} "
+        f"sources={','.join(verified_event_context['sources_used']) or 'none'}"
+    )
     log_timing(timing, "macro_download", phase_started)
 
     ranked: list[RankedAsset] = []
@@ -394,6 +403,7 @@ def scan_symbols(
     df_rank = attach_price_data_quality(df_rank, price_map)
     df_rank = apply_scoring_diagnostics(df_rank)
     df_rank = apply_regime_adjustments(df_rank, market_regime)
+    df_rank = apply_event_intelligence(df_rank, verified_event_context, symbol_news=news_cache)
     df_rank = apply_setup_decision_layer(df_rank)
     market_structure = compute_market_structure(df_rank)
     df_rank = apply_recommendation_quality(df_rank, market_structure)
@@ -406,6 +416,7 @@ def scan_symbols(
     df_rank.attrs["price_map"] = price_map
     df_rank.attrs["info_cache"] = info_cache
     df_rank.attrs["news_cache"] = news_cache
+    df_rank.attrs["verified_event_context"] = verified_event_context
     df_rank.attrs["requested_universe"] = symbols
     df_rank.attrs["scanned_count"] = scanned_count
     df_rank.attrs["scan_started_at"] = started_at

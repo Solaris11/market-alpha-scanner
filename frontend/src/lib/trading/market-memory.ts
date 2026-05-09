@@ -9,7 +9,9 @@ export type MarketMemoryOutcomePoint = {
 
 export type MarketMemoryCandidate = {
   decision: string | null;
+  eventSignature?: string | null;
   finalScore: number | null;
+  macroEventRegimeSignature?: string | null;
   marketRegime: string | null;
   outcomes: MarketMemoryOutcomePoint[];
   scoreBucket: string | null;
@@ -64,7 +66,9 @@ export function scoreBucket(value: unknown): string | null {
 export function buildCurrentMemoryCandidate(row: RankingRow): MarketMemoryCandidate {
   return {
     decision: textOrNull(row.final_decision ?? row.action),
+    eventSignature: textOrNull(rawField(row, "verified_event_signature")),
     finalScore: finiteNumber(row.final_score),
+    macroEventRegimeSignature: textOrNull(rawField(row, "macro_event_regime_signature")),
     marketRegime: textOrNull(row.market_regime),
     outcomes: [],
     scoreBucket: scoreBucket(row.final_score),
@@ -82,6 +86,8 @@ export function similarityReasons(current: MarketMemoryCandidate, candidate: Mar
   if (sameText(current.sector, candidate.sector)) reasons.push("same_sector");
   if (sameText(current.scoreBucket, candidate.scoreBucket)) reasons.push("similar_score_range");
   if (sameText(current.decision, candidate.decision)) reasons.push("same_decision_state");
+  if (sameText(current.eventSignature ?? null, candidate.eventSignature ?? null)) reasons.push("similar_event_context");
+  if (sameText(current.macroEventRegimeSignature ?? null, candidate.macroEventRegimeSignature ?? null)) reasons.push("similar_macro_event_regime");
   if (current.symbol === candidate.symbol) reasons.push("same_symbol_memory");
   return reasons;
 }
@@ -93,6 +99,8 @@ export function marketMemorySimilarity(current: MarketMemoryCandidate, candidate
   if (sameText(current.sector, candidate.sector)) score += 16;
   if (sameText(current.scoreBucket, candidate.scoreBucket)) score += 14;
   if (sameText(current.decision, candidate.decision)) score += 8;
+  if (sameText(current.eventSignature ?? null, candidate.eventSignature ?? null)) score += 7;
+  if (sameText(current.macroEventRegimeSignature ?? null, candidate.macroEventRegimeSignature ?? null)) score += 8;
   if (current.symbol === candidate.symbol) score += 8;
 
   if (current.finalScore !== null && candidate.finalScore !== null) {
@@ -207,6 +215,8 @@ export function memoryReasonLabel(code: string): string {
   if (code === "same_sector") return "same sector";
   if (code === "similar_score_range") return "similar score";
   if (code === "same_decision_state") return "same decision state";
+  if (code === "similar_event_context") return "similar event context";
+  if (code === "similar_macro_event_regime") return "similar macro/event regime";
   if (code === "same_symbol_memory") return "same symbol memory";
   return humanizeLabel(code);
 }
@@ -231,6 +241,10 @@ function textOrNull(value: unknown): string | null {
   const text = String(value ?? "").trim();
   if (!text || ["nan", "none", "null", "undefined", "n/a", "na"].includes(text.toLowerCase())) return null;
   return text;
+}
+
+function rawField(row: RankingRow, key: string): unknown {
+  return (row as unknown as Record<string, unknown>)[key];
 }
 
 function sameText(left: string | null, right: string | null): boolean {
