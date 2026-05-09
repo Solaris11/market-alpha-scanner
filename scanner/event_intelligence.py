@@ -433,7 +433,7 @@ CLASSIFICATION_RULES: Final[tuple[ClassificationRule, ...]] = (
     ClassificationRule(
         event_type="earnings_guidance",
         category="company",
-        keywords=("earnings", "guidance", "quarterly results", "revenue", "profit", "loss", "margin", "eps", "income"),
+        keywords=("earnings", "guidance", "quarterly results", "revenue", "profit", "net loss", "operating loss", "margin", "eps", "income"),
         impact_tags=("earnings_fragility", "company_catalyst"),
         sectors=(),
         asset_classes=("equity",),
@@ -517,7 +517,23 @@ CLASSIFICATION_RULES: Final[tuple[ClassificationRule, ...]] = (
     ClassificationRule(
         event_type="regulatory_issue",
         category="company",
-        keywords=("sec charges", "enforcement", "lawsuit", "investigation", "antitrust", "regulatory", "regulation", "penalty", "sanction", "rulemaking", "compliance"),
+        keywords=(
+            "antitrust",
+            "class action",
+            "compliance",
+            "enforcement",
+            "investigation",
+            "investor deadline",
+            "lawsuit",
+            "lead plaintiff",
+            "penalty",
+            "regulation",
+            "regulatory",
+            "rulemaking",
+            "sanction",
+            "sec charges",
+            "shareholder",
+        ),
         impact_tags=("regulatory_risk",),
         sectors=("financial services", "crypto", "technology"),
         asset_classes=("equity", "crypto"),
@@ -653,7 +669,27 @@ NEGATIVE_COMPANY_TERMS: Final[tuple[str, ...]] = (
 PRODUCT_CONTEXT_TERMS: Final[tuple[str, ...]] = ("launch", "launches", "new product", "rollout", "unveils", "introduces", "product line")
 INVESTMENT_CONTEXT_TERMS: Final[tuple[str, ...]] = ("investment", "invests", "capex", "capital expenditure", "factory", "plant", "data center", "expansion plan")
 MNA_CONTEXT_TERMS: Final[tuple[str, ...]] = ("acquisition", "acquires", "merger", "takeover", "buyout", "deal to buy", "strategic combination")
-EARNINGS_CONTEXT_TERMS: Final[tuple[str, ...]] = ("earnings", "guidance", "quarterly results", "revenue", "profit", "loss", "margin", "eps", "income")
+EARNINGS_CONTEXT_TERMS: Final[tuple[str, ...]] = (
+    "earnings",
+    "guidance",
+    "quarterly results",
+    "revenue",
+    "profit",
+    "net loss",
+    "operating loss",
+    "margin",
+    "eps",
+    "income",
+)
+SHAREHOLDER_LITIGATION_TERMS: Final[tuple[str, ...]] = (
+    "class action",
+    "investor deadline",
+    "investors with losses",
+    "lead plaintiff",
+    "securities fraud",
+    "shareholder alert",
+    "shareholder lawsuit",
+)
 
 
 def load_verified_event_context(cache_dir: Path | None, *, now: datetime | None = None) -> EventContext:
@@ -993,6 +1029,8 @@ def _apply_directional_overrides(matched_rules: list[ClassificationRule], direct
         filtered = [rule for rule in filtered if rule.event_type not in {"earnings_miss", "regulatory_issue"}]
     if directional_types.intersection({"earnings_negative_surprise", "negative_product_catalyst", "negative_investment_catalyst", "mna_negative"}):
         filtered = [rule for rule in filtered if rule.event_type != "earnings_beat"]
+    if "shareholder_litigation" in directional_types:
+        filtered = [rule for rule in filtered if rule.event_type not in {"earnings_guidance", "earnings_beat", "earnings_miss"}]
     return [*filtered, *directional_rules]
 
 
@@ -1140,6 +1178,22 @@ def _directional_classification_rules(text: str) -> list[ClassificationRule]:
                 fragility_bias=4.0,
                 shock_bias=3.4,
                 reason_code="EVENT_EARNINGS_NEGATIVE_SURPRISE",
+            )
+        )
+    if _has_any(text, SHAREHOLDER_LITIGATION_TERMS):
+        rules.append(
+            _synthetic_rule(
+                event_type="shareholder_litigation",
+                category="company",
+                impact_tags=("shareholder_litigation", "company_catalyst"),
+                sectors=(),
+                asset_classes=("equity",),
+                regime_tags=("event_sensitive", "fragility_pressure"),
+                pressure_score=70.0,
+                conviction_bias=-1.0,
+                fragility_bias=2.8,
+                shock_bias=2.0,
+                reason_code="EVENT_SHAREHOLDER_LITIGATION",
             )
         )
     if _has_any(text, PRODUCT_CONTEXT_TERMS) and _has_any(text, POSITIVE_COMPANY_TERMS):

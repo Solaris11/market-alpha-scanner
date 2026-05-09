@@ -106,6 +106,21 @@ class EventIntelligenceTests(unittest.TestCase):
         self.assertGreater(negative_earnings["fragility_bias"], positive_product["fragility_bias"])
         self.assertLess(negative_earnings["conviction_bias"], 0.0)
 
+    def test_shareholder_litigation_is_not_misclassified_as_earnings(self) -> None:
+        feed = TrustedEventFeed("prnewswire", "PR Newswire", "https://www.prnewswire.com/rss/news-releases-list.rss", "company", source_weight=0.78)
+        event = classify_verified_event(
+            feed,
+            "CWH Deadline: Investors with losses can seek lead plaintiff status",
+            "A securities class action lawsuit deadline was announced for shareholders.",
+            "https://www.prnewswire.com/news-releases/cwh-investor-deadline.html",
+            datetime(2026, 5, 8, tzinfo=timezone.utc),
+        )
+
+        self.assertIn("EVENT_SHAREHOLDER_LITIGATION", event["reason_codes"])
+        self.assertIn("EVENT_REGULATORY_RISK", event["reason_codes"])
+        self.assertNotIn("earnings_guidance", event["event_types"])
+        self.assertNotIn("earnings_negative_surprise", event["event_types"])
+
     def test_applies_bounded_event_fields_to_dataframe(self) -> None:
         feed = TrustedEventFeed("trusted", "Associated Press", "https://example.test/feed", "geopolitical")
         event = classify_verified_event(
