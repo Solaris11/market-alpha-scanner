@@ -22,6 +22,7 @@ import { getActiveAlertMatches } from "@/lib/active-alert-matches";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
+import { getNarrativeMap } from "@/lib/server/narrative-intelligence";
 import { assertNoPremiumFields } from "@/lib/server/premium-preview";
 import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
@@ -99,8 +100,12 @@ export default async function TerminalPage() {
     getActiveAlertMatches(entitlement.user?.id ?? null).then((result) => result.matches).catch(() => []),
   ]);
   const edges = buildEdgeLookup(snapshot.signals, performance);
-  const shockPatterns = await getShockMovePatternMap(snapshot.signals.map((row) => row.symbol)).catch(() => new Map());
-  const opportunityModel = buildOpportunitiesPageModel(snapshot.signals, performance, shockPatterns);
+  const symbols = snapshot.signals.map((row) => row.symbol);
+  const [shockPatterns, narratives] = await Promise.all([
+    getShockMovePatternMap(symbols).catch(() => new Map()),
+    getNarrativeMap(symbols).catch(() => new Map()),
+  ]);
+  const opportunityModel = buildOpportunitiesPageModel(snapshot.signals, performance, shockPatterns, narratives);
   const best = selectBestTradeNow(snapshot.signals, edges);
   const leader = best?.row ?? snapshot.topSignals[0] ?? snapshot.signals[0];
   const dailyAction = getDailyAction({ best, fallbackRow: leader, marketRegime: snapshot.marketRegime, scanSafety });

@@ -5,6 +5,7 @@ import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
+import { getNarrativeMap } from "@/lib/server/narrative-intelligence";
 import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
@@ -37,8 +38,12 @@ export default async function OpportunitiesPage() {
     adapter.getMarketRegime(),
     getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
   ]);
-  const shockPatterns = await getShockMovePatternMap(rows.map((row) => row.symbol)).catch(() => new Map());
-  const model = buildOpportunitiesPageModel(rows, performance, shockPatterns);
+  const symbols = rows.map((row) => row.symbol);
+  const [shockPatterns, narratives] = await Promise.all([
+    getShockMovePatternMap(symbols).catch(() => new Map()),
+    getNarrativeMap(symbols).catch(() => new Map()),
+  ]);
+  const model = buildOpportunitiesPageModel(rows, performance, shockPatterns, narratives);
   const bestDetail = model.best ? await adapter.getSymbolDetail(model.best.symbol).catch(() => null) : null;
 
   return (

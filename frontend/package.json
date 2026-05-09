@@ -9,6 +9,7 @@
     "monitoring:cleanup": "tsx scripts/monitoring-cleanup.ts",
     "monitoring:synthetics": "tsx scripts/monitoring-synthetics.ts",
     "monitoring:system": "tsx scripts/monitoring-system.ts",
+    "narrative:refresh": "tsx scripts/narrative-refresh.ts",
     "shock:refresh": "tsx scripts/shock-pattern-refresh.ts",
     "stripe:reconcile": "tsx scripts/stripe-reconcile.ts",
     "email:test": "node scripts/send-test-email.mjs",

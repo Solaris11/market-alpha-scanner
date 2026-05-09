@@ -30,6 +30,7 @@ function row(overrides: Partial<OpportunityViewModel> = {}): OpportunityViewMode
     fragilityLabel: "Moderate fragility",
     macroAdjustment: 1.2,
     macroLabel: "Macro Aligned",
+    narrative: null,
     price: 105,
     raw: {
       symbol,

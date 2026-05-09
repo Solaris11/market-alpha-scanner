@@ -56,6 +56,11 @@ export function ShockMoveRadar({ compact = false, rows }: { compact?: boolean; r
                 <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/35 p-2 text-[11px] leading-4 text-slate-400">
                   <span className="font-semibold text-amber-100">{pattern.chaseRiskLabel}.</span> Entry context: {pattern.researchEntryZone}. Exit context: {pattern.historicalExitZone}.
                 </div>
+                {row.narrative ? (
+                  <div className="mt-2 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.055] p-2 text-[11px] leading-4 text-slate-300">
+                    <span className="font-semibold text-cyan-100">Narrative:</span> {row.narrative.pressureStory}
+                  </div>
+                ) : null}
               </Link>
             );
           })}

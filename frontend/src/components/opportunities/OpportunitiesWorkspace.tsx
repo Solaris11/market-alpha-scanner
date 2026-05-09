@@ -648,6 +648,12 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
         <DataHealthIndicator compact freshness={row.dataFreshness} />
       </div>
       <div className="mt-4 text-sm leading-6 text-slate-300">{readableText(row.decision_reason, "Decision reason is not available yet.")}</div>
+      {row.narrative ? (
+        <div className="mt-3 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.055] p-3 text-xs leading-5 text-slate-300">
+          <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Narrative</div>
+          <p className="mt-1 line-clamp-3">{row.narrative.narrativeSummary}</p>
+        </div>
+      ) : null}
       <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
         <CardMetric label="Price" value={formatMoney(row.price)} />
         <CardMetric label="Decision" value={decisionLabel(row.final_decision)} />

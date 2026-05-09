@@ -232,6 +232,11 @@ function RiskCandidateCard({
       <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/35 p-2 text-[11px] leading-4 text-slate-400">
         <span className="font-semibold text-amber-100">{candidate.chaseRiskLabel}.</span> {candidate.keyRisk}
       </div>
+      {candidate.row.narrative ? (
+        <div className="mt-2 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.055] p-2 text-[11px] leading-4 text-slate-300">
+          <span className="font-semibold text-cyan-100">Narrative:</span> {candidate.row.narrative.moderatorSummary}
+        </div>
+      ) : null}
       {showAnalyze ? (
         <button
           className="mt-3 w-full rounded-xl border border-cyan-300/25 bg-cyan-400/10 px-3 py-2 text-xs font-bold text-cyan-100 transition hover:border-cyan-300/45 hover:bg-cyan-400/15 disabled:cursor-wait disabled:opacity-60"

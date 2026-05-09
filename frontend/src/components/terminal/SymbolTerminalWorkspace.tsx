@@ -12,6 +12,7 @@ import type { ConvictionTimelineModel } from "@/lib/trading/conviction-timeline-
 import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
 import type { MacroExchangeContext } from "@/lib/trading/macro-regime";
 import type { MarketMemorySummary } from "@/lib/trading/market-memory";
+import type { NarrativeIntelligence } from "@/lib/trading/narrative-intelligence";
 import type { RiskPortfolioPosition } from "@/lib/trading/risk-veto";
 import type { ShockMovePattern } from "@/lib/trading/shock-move";
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
@@ -24,6 +25,7 @@ import { ExecutionTicket } from "./ExecutionTicket";
 import { HistoricalEdgeCard } from "./HistoricalEdgeCard";
 import { MacroExchangeContextCard } from "./MacroExchangeContextCard";
 import { MarketMemoryCard } from "./MarketMemoryCard";
+import { NarrativeIntelligenceCard } from "./NarrativeIntelligenceCard";
 import { PaperContextCard } from "./PaperContextCard";
 import { SymbolChart, type ChartCandle, type ChartSignalMarker } from "./SymbolChart";
 import { SymbolDecisionIntelligencePanel } from "./SymbolDecisionIntelligencePanel";
@@ -50,6 +52,7 @@ export function SymbolTerminalWorkspace({
   paperEvents,
   globalDecision,
   macroContext,
+  narrative,
   shockPattern,
   premiumAccess = true,
   viewerAuthenticated = false,
@@ -65,6 +68,7 @@ export function SymbolTerminalWorkspace({
   paperEvents: PaperTradeEventRow[];
   globalDecision?: DailyAction;
   macroContext: MacroExchangeContext | null;
+  narrative?: NarrativeIntelligence | null;
   shockPattern?: ShockMovePattern | null;
   premiumAccess?: boolean;
   viewerAuthenticated?: boolean;
@@ -129,6 +133,7 @@ export function SymbolTerminalWorkspace({
             </GlassPanel>
           )}
           <SymbolDecisionIntelligencePanel candles={candles} row={row} />
+          <NarrativeIntelligenceCard narrative={narrative ?? null} />
           {macroContext ? <MacroExchangeContextCard context={macroContext} row={row} /> : null}
           <VerifiedEventContextCard row={row} />
           <ConvictionFragilityCard model={structuralQuality} />

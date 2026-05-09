@@ -11,6 +11,7 @@ import { getPaperData } from "@/lib/paper-data";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getMarketMemoryForSignal } from "@/lib/server/market-memory";
+import { getNarrativeForSymbol } from "@/lib/server/narrative-intelligence";
 import { assertNoPremiumFields } from "@/lib/server/premium-preview";
 import { getPublicSymbolSignal } from "@/lib/server/public-signal-data";
 import { getShockMovePattern } from "@/lib/server/shock-move-patterns";
@@ -75,7 +76,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   }
 
   const adapter = new ScannerDataAdapter();
-  const [detail, history, paper, performance, snapshot, scanSafety, shockPattern] = await Promise.all([
+  const [detail, history, paper, performance, snapshot, scanSafety, shockPattern, narrative] = await Promise.all([
     adapter.getSymbolDetail(symbol),
     adapter.getSignalHistory(symbol),
     getPaperData().catch(() => ({ positions: [], events: [] })),
@@ -83,6 +84,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
     adapter.getTerminalSnapshot(),
     getCurrentScanSafety(),
     getShockMovePattern(symbol).catch(() => null),
+    getNarrativeForSymbol(symbol).catch(() => null),
   ]);
   const row = detail.row;
   const edgeProof = row ? buildHistoricalEdgeProof(row, performance) : null;
@@ -128,6 +130,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           globalDecision={globalDecision}
           macroContext={macroContext}
           marketMemory={marketMemory ?? unavailableMarketMemory}
+          narrative={narrative}
           paperEvents={paper.events ?? []}
           paperPositions={paper.positions ?? []}
           premiumAccess
