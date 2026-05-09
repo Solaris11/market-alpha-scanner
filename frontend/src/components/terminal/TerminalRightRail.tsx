@@ -3,6 +3,7 @@ import type { ActiveAlertMatch } from "@/lib/active-alert-matches";
 import type { MarketRegime } from "@/lib/adapters/DataServiceAdapter";
 import type { RankingRow } from "@/lib/types";
 import { decisionLabel, humanizeLabel } from "@/lib/ui/labels";
+import { ConversationalResearchCopilotPanel } from "./ConversationalResearchCopilotPanel";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
@@ -32,6 +33,8 @@ export function TerminalRightRail({
 
   return (
     <aside className="space-y-4">
+      <ConversationalResearchCopilotPanel />
+
       <GlassPanel className="p-5">
         <SectionTitle eyebrow="Watchlist" title="Tracked Signals" meta={`${watchlistSymbols.length} saved`} />
         <div className="mt-4 space-y-2">
