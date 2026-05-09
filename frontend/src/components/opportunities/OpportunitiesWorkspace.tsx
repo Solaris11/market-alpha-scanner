@@ -11,6 +11,7 @@ import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model"
 import { RiskTolerantOpportunityRadar } from "@/components/opportunities/RiskTolerantOpportunityRadar";
 import { ShockMoveRadar } from "@/components/opportunities/ShockMoveRadar";
 import { AdaptiveLearningInsightPanel } from "@/components/terminal/AdaptiveLearningInsightPanel";
+import { ExecutionIntelligencePanel } from "@/components/terminal/ExecutionIntelligencePanel";
 import { ScenarioIntelligencePanel } from "@/components/terminal/ScenarioIntelligencePanel";
 import { StrategyIntelligencePanel } from "@/components/terminal/StrategyIntelligencePanel";
 import { WorkflowEvolutionPanel } from "@/components/terminal/WorkflowEvolutionPanel";
@@ -23,6 +24,7 @@ import { type UserPersonalizationProfile } from "@/lib/trading/personalized-inte
 import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution";
 import { confidenceTone } from "@/lib/trading/confidence";
 import { buildDecisionFactors, buildDecisionIntelligence, type DecisionFactor } from "@/lib/trading/decision-intelligence";
+import { buildExecutionIntelligence } from "@/lib/trading/execution-intelligence";
 import { compactInstitutionalLabels } from "@/lib/trading/institutional-intelligence";
 import { buildRiskTolerantOpportunities } from "@/lib/trading/risk-tolerant-opportunities";
 import type { ScannerScalar } from "@/lib/types";
@@ -163,6 +165,7 @@ export function OpportunitiesWorkspace({
       <AdaptiveLearningInsightPanel system={adaptiveLearning} />
       <StrategyIntelligencePanel system={strategyIntelligence} />
       <ScenarioIntelligencePanel system={scenarioIntelligence} />
+      <ExecutionIntelligencePanel rows={rows} />
       <RiskTolerantOpportunityRadar initialProfile={initialProfile} marketCondition={marketCondition} rows={rows} />
       <ShockMoveRadar rows={rows} />
       {workflowEvolution ? <WorkflowEvolutionPanel compact summary={workflowEvolution} surface="opportunities" /> : null}
@@ -660,6 +663,8 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
   const href = `/symbol/${row.symbol}`;
   const openDetail = () => router.push(href);
   const institutionalLabels = compactInstitutionalLabels(row);
+  const execution = buildExecutionIntelligence(row);
+  const intelligenceLabels = [...institutionalLabels, ...execution.compactLabels].slice(0, 6);
   return (
     <article
       className="w-full min-w-0 max-w-full cursor-pointer rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-400/40 hover:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-cyan-300/40"
@@ -693,9 +698,9 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
           <p className="mt-1 line-clamp-3">{row.narrative.narrativeSummary}</p>
         </div>
       ) : null}
-      {institutionalLabels.length ? (
+      {intelligenceLabels.length ? (
         <div className="mt-3 flex flex-wrap gap-2">
-          {institutionalLabels.map((label) => (
+          {intelligenceLabels.map((label) => (
             <span className="rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-300" key={label}>
               {label}
             </span>
@@ -711,6 +716,8 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
         <CardMetric label="Macro Context" value={`${row.macroLabel} ${signedAdjustment(row.macroAdjustment)}`} />
         <CardMetric label="Event Context" value={row.eventLabel} />
         <CardMetric label="Entry / Correction" value={row.entryZoneLabel ?? formatMoney(row.suggested_entry)} />
+        <CardMetric label="Entry Quality" value={`${execution.entryQuality.score} ${execution.executionStateLabel}`} />
+        <CardMetric label="Chase Risk" value={`${execution.chaseRisk.score} ${execution.chaseRisk.tone === "risk" ? "Elevated" : "Context"}`} />
         <CardMetric label="Structure" value={row.structuralLabel} />
         <CardMetric label="Decay" value={row.decayLabel} />
       </div>

@@ -10,6 +10,7 @@ import { PremiumAccessCta } from "@/components/premium/PremiumAccessCta";
 import { DailyActionCard } from "@/components/terminal/DailyActionCard";
 import { AdaptiveLearningInsightPanel } from "@/components/terminal/AdaptiveLearningInsightPanel";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
+import { ExecutionIntelligencePanel } from "@/components/terminal/ExecutionIntelligencePanel";
 import { InstitutionalIntelligencePanel } from "@/components/terminal/InstitutionalIntelligencePanel";
 import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
 import { MetaIntelligenceOperatingSystemPanel } from "@/components/terminal/MetaIntelligenceOperatingSystemPanel";
@@ -157,6 +158,7 @@ export default async function TerminalPage() {
           <AdaptiveLearningInsightPanel compact system={adaptiveLearning} />
           <StrategyIntelligencePanel compact system={strategyIntelligence} />
           <ScenarioIntelligencePanel compact system={scenarioIntelligence} />
+          <ExecutionIntelligencePanel compact rows={opportunityModel.rows} />
           {workflowEvolution ? <WorkflowEvolutionPanel summary={workflowEvolution} surface="terminal" /> : null}
           <InstitutionalIntelligencePanel compact rows={opportunityModel.rows} />
           {actionBlocksTradeUi ? (

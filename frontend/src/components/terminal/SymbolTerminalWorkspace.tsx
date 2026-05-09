@@ -31,6 +31,7 @@ import { ConvictionTimeline } from "./ConvictionTimeline";
 import { CorrectionMapCard } from "./CorrectionMapCard";
 import { DecisionJournalCard } from "./DecisionJournalCard";
 import { ExecutionTicket } from "./ExecutionTicket";
+import { ExecutionIntelligencePanel } from "./ExecutionIntelligencePanel";
 import { HistoricalEdgeCard } from "./HistoricalEdgeCard";
 import { InstitutionalIntelligencePanel } from "./InstitutionalIntelligencePanel";
 import { MacroExchangeContextCard } from "./MacroExchangeContextCard";
@@ -170,6 +171,7 @@ export function SymbolTerminalWorkspace({
           <AdaptiveLearningInsightPanel compact focusSymbol={symbol} system={adaptiveLearning ?? null} />
           <StrategyIntelligencePanel compact focusSymbol={symbol} system={strategyIntelligence ?? null} />
           <ScenarioIntelligencePanel compact focusSymbol={symbol} system={scenarioIntelligence ?? null} />
+          {institutionalOpportunity ? <ExecutionIntelligencePanel compact focusSymbol={symbol} rows={[institutionalOpportunity]} /> : null}
           <NarrativeIntelligenceCard narrative={narrative ?? null} />
           <PersonalizedIntelligenceCard narrative={narrative ?? null} profile={personalizationProfile ?? null} row={row} />
           {decisionMemory && decisionCoaching ? (
