@@ -489,8 +489,8 @@ function narrativeLlmLimit(): number {
 }
 
 function timeoutMs(): number {
-  const raw = Number(process.env.TRADEVETO_NARRATIVE_LLM_TIMEOUT_SECONDS || process.env.TRADEVETO_EVENT_LLM_TIMEOUT_SECONDS || 8);
-  const seconds = Number.isFinite(raw) ? Math.max(2, Math.min(20, raw)) : 8;
+  const raw = Number(process.env.TRADEVETO_NARRATIVE_LLM_TIMEOUT_SECONDS || 18);
+  const seconds = Number.isFinite(raw) ? Math.max(4, Math.min(30, raw)) : 18;
   return seconds * 1000;
 }
 
