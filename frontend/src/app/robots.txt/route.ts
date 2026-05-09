@@ -1,6 +1,6 @@
 import { CANONICAL_URL } from "@/lib/brand";
 
-const PRIVATE_ROUTES = ["/api/", "/account", "/terminal", "/opportunities", "/dashboard", "/paper", "/performance", "/history", "/alerts", "/advanced", "/symbol/"];
+const PRIVATE_ROUTES = ["/api/", "/account", "/terminal", "/opportunities", "/dashboard", "/paper", "/performance", "/history", "/alerts", "/advanced"];
 
 const SOCIAL_CRAWLER_USER_AGENTS = [
   "facebookexternalhit",
@@ -13,7 +13,20 @@ const SOCIAL_CRAWLER_USER_AGENTS = [
   "Discordbot",
 ];
 
-const SOCIAL_PREVIEW_PATHS = ["/", "/pricing", "/features", "/how-it-works", "/faq", "/robots.txt", "/og-image.png"];
+const SOCIAL_PREVIEW_PATHS = [
+  "/",
+  "/pricing",
+  "/features",
+  "/how-it-works",
+  "/faq",
+  "/intelligence",
+  "/intelligence/shock-opportunities",
+  "/intelligence/macro-regime",
+  "/intelligence/why-wait/",
+  "/symbol/",
+  "/robots.txt",
+  "/og-image.png",
+];
 
 export const dynamic = "force-dynamic";
 

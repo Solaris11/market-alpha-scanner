@@ -34,6 +34,8 @@ export const ROUTE_CLASSIFICATION: Record<RouteAccess, string[]> = {
     "/terminal",
     "/support",
     "/support/*",
+    "/intelligence",
+    "/intelligence/*",
     "/opportunities",
     "/symbol/[symbol]",
     "/api/health",

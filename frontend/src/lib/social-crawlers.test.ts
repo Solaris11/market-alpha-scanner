@@ -26,11 +26,25 @@ describe("social crawler allowlist", () => {
   });
 
   it("limits crawler pass-through to public preview-safe paths", () => {
-    for (const pathname of ["/", "/pricing", "/features", "/how-it-works", "/faq", "/robots.txt", "/og-image.png", "/pricing/"]) {
+    for (const pathname of [
+      "/",
+      "/pricing",
+      "/features",
+      "/how-it-works",
+      "/faq",
+      "/intelligence",
+      "/intelligence/shock-opportunities",
+      "/intelligence/macro-regime",
+      "/intelligence/why-wait/AMD",
+      "/symbol/TSM",
+      "/robots.txt",
+      "/og-image.png",
+      "/pricing/",
+    ]) {
       assert.equal(isPublicSocialPreviewPath(pathname), true, pathname);
     }
 
-    for (const pathname of ["/terminal", "/opportunities", "/history", "/account", "/api/health", "/symbol/TSM"]) {
+    for (const pathname of ["/terminal", "/opportunities", "/history", "/account", "/api/health"]) {
       assert.equal(isPublicSocialPreviewPath(pathname), false, pathname);
     }
   });
@@ -45,6 +59,8 @@ describe("social crawler allowlist", () => {
   it("requires crawler UA, public path, and safe method together", () => {
     assert.equal(shouldAllowSocialCrawlerRequest({ method: "HEAD", pathname: "/", userAgent: "facebookexternalhit/1.1" }), true);
     assert.equal(shouldAllowSocialCrawlerRequest({ method: "GET", pathname: "/pricing", userAgent: "Facebot" }), true);
+    assert.equal(shouldAllowSocialCrawlerRequest({ method: "GET", pathname: "/symbol/AMD", userAgent: "Facebot" }), true);
+    assert.equal(shouldAllowSocialCrawlerRequest({ method: "GET", pathname: "/intelligence/why-wait/AMD", userAgent: "Facebot" }), true);
     assert.equal(shouldAllowSocialCrawlerRequest({ method: "GET", pathname: "/", userAgent: "meta-externalagent/1.1" }), true);
     assert.equal(shouldAllowSocialCrawlerRequest({ method: "GET", pathname: "/terminal", userAgent: "Facebot" }), false);
     assert.equal(shouldAllowSocialCrawlerRequest({ method: "GET", pathname: "/", userAgent: "Mozilla/5.0" }), false);
@@ -54,6 +70,8 @@ describe("social crawler allowlist", () => {
   it("serves static social preview HTML only for crawler-safe marketing pages", () => {
     assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/", userAgent: "facebookexternalhit/1.1" }), true);
     assert.equal(shouldServeStaticSocialPreview({ method: "HEAD", pathname: "/pricing", userAgent: "meta-externalagent/1.1" }), true);
+    assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/intelligence", userAgent: "facebookexternalhit/1.1" }), true);
+    assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/symbol/AMD", userAgent: "facebookexternalhit/1.1" }), false);
     assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/og-image.png", userAgent: "facebookexternalhit/1.1" }), false);
     assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/terminal", userAgent: "facebookexternalhit/1.1" }), false);
     assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/", userAgent: "Mozilla/5.0" }), false);

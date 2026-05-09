@@ -13,6 +13,8 @@ describe("robots social crawler access", () => {
     assert.equal(socialLines.includes("User-Agent: meta-externalagent"), true);
     assert.equal(socialLines.includes("User-Agent: meta-externalfetcher"), true);
     assert.equal(socialLines.includes("Allow: /"), true);
+    assert.equal(socialLines.includes("Allow: /intelligence"), true);
+    assert.equal(socialLines.includes("Allow: /symbol/"), true);
     assert.equal(socialLines.includes("Allow: /robots.txt"), true);
     assert.equal(socialLines.includes("Allow: /og-image.png"), true);
     assert.equal(socialLines.includes("Disallow: /api/"), true);
@@ -23,7 +25,7 @@ describe("robots social crawler access", () => {
     const defaultLines = linesForUserAgent(buildRobotsTxt(), "*");
     assert.equal(defaultLines.includes("Allow: /"), true);
     assert.equal(defaultLines.includes("Disallow: /account"), true);
-    assert.equal(defaultLines.includes("Disallow: /symbol/"), true);
+    assert.equal(defaultLines.includes("Disallow: /symbol/"), false);
   });
 
   it("serves robots with a short cache horizon for social debugger recovery", () => {

@@ -1,8 +1,21 @@
 const SOCIAL_CRAWLER_USER_AGENT =
   /\b(facebookexternalhit|facebot|meta-externalagent|meta-externalfetcher|twitterbot|linkedinbot|slackbot|discordbot)\b/i;
 
-const PUBLIC_SOCIAL_PREVIEW_PATHS = new Set(["/", "/pricing", "/features", "/how-it-works", "/faq", "/robots.txt", "/og-image.png", "/og-image.svg"]);
-const STATIC_SOCIAL_PREVIEW_PATHS = new Set(["/", "/pricing", "/features", "/how-it-works", "/faq"]);
+const PUBLIC_SOCIAL_PREVIEW_PATHS = new Set([
+  "/",
+  "/pricing",
+  "/features",
+  "/how-it-works",
+  "/faq",
+  "/intelligence",
+  "/intelligence/shock-opportunities",
+  "/intelligence/macro-regime",
+  "/robots.txt",
+  "/og-image.png",
+  "/og-image.svg",
+]);
+const PUBLIC_SOCIAL_PREVIEW_PREFIXES = ["/symbol/", "/intelligence/why-wait/"] as const;
+const STATIC_SOCIAL_PREVIEW_PATHS = new Set(["/", "/pricing", "/features", "/how-it-works", "/faq", "/intelligence", "/intelligence/shock-opportunities", "/intelligence/macro-regime"]);
 
 export function isSocialCrawlerUserAgent(userAgent: string | null | undefined): boolean {
   return SOCIAL_CRAWLER_USER_AGENT.test(userAgent ?? "");
@@ -10,7 +23,7 @@ export function isSocialCrawlerUserAgent(userAgent: string | null | undefined): 
 
 export function isPublicSocialPreviewPath(pathname: string | null | undefined): boolean {
   const normalized = normalizePathname(pathname);
-  return PUBLIC_SOCIAL_PREVIEW_PATHS.has(normalized);
+  return PUBLIC_SOCIAL_PREVIEW_PATHS.has(normalized) || PUBLIC_SOCIAL_PREVIEW_PREFIXES.some((prefix) => normalized.startsWith(prefix));
 }
 
 export function isSafeSocialCrawlerMethod(method: string | null | undefined): boolean {

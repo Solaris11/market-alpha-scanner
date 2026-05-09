@@ -6,6 +6,7 @@ export const APP_URL = "/terminal";
 export const SITE_URL = "/";
 
 const navItems = [
+  { href: "/intelligence", label: "Intelligence" },
   { href: "/#features", label: "Features" },
   { href: "/#pricing", label: "Pricing" },
   { href: "/#reviews", label: "Beta Feedback" },
@@ -63,6 +64,9 @@ export function MarketingFooter() {
         <FooterGroup
           title="Product"
           links={[
+            ["Intelligence", "/intelligence"],
+            ["Shock Research", "/intelligence/shock-opportunities"],
+            ["Macro Regime", "/intelligence/macro-regime"],
             ["Features", "/features"],
             ["How It Works", "/how-it-works"],
             ["Pricing", "/pricing"],

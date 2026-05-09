@@ -1,14 +1,24 @@
 import type { MetadataRoute } from "next";
 import { CANONICAL_URL } from "@/lib/brand";
+import { PUBLISHED_SYMBOLS } from "@/lib/trading/intelligence-publishing";
 
-const routes = ["/", "/features", "/pricing", "/how-it-works", "/faq", "/risk-disclaimer", "/risk-disclosure", "/privacy", "/terms"] as const;
+const staticRoutes = ["/", "/features", "/pricing", "/how-it-works", "/faq", "/intelligence", "/intelligence/shock-opportunities", "/intelligence/macro-regime", "/risk-disclaimer", "/risk-disclosure", "/privacy", "/terms"] as const;
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();
-  return routes.map((route) => ({
+  const symbolRoutes = PUBLISHED_SYMBOLS.flatMap((symbol) => [`/symbol/${symbol}`, `/intelligence/why-wait/${symbol}`]);
+  return [...staticRoutes, ...symbolRoutes].map((route) => ({
     url: `${CANONICAL_URL}${route}`,
     lastModified: now,
-    changeFrequency: route === "/" ? "weekly" : "monthly",
-    priority: route === "/" ? 1 : 0.7,
+    changeFrequency: route === "/" || route.startsWith("/symbol/") || route.startsWith("/intelligence") ? "daily" : "monthly",
+    priority: priorityForRoute(route),
   }));
+}
+
+function priorityForRoute(route: string): number {
+  if (route === "/") return 1;
+  if (route === "/intelligence") return 0.92;
+  if (route.startsWith("/symbol/")) return 0.86;
+  if (route.startsWith("/intelligence/")) return 0.82;
+  return 0.7;
 }

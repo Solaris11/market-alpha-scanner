@@ -1,16 +1,20 @@
 import Link from "next/link";
+import type { Metadata } from "next";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { PublicSymbolPreview } from "@/components/premium/PublicSignalPreview";
+import { PublishedSymbolIntelligenceBlock } from "@/components/seo/IntelligencePublishingBlocks";
 import { SymbolTerminalWorkspace } from "@/components/terminal/SymbolTerminalWorkspace";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { EmptyState } from "@/components/terminal/ui/EmptyState";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { freshnessFromTimestamp } from "@/lib/data-health";
+import { marketingMetadata } from "@/lib/marketing-seo";
 import { getPaperData } from "@/lib/paper-data";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getDecisionMemoryForUser } from "@/lib/server/decision-journal";
+import { getPublishedSymbolPage } from "@/lib/server/intelligence-publishing";
 import { getMarketMemoryForSignal } from "@/lib/server/market-memory";
 import { getNarrativeForSymbol } from "@/lib/server/narrative-intelligence";
 import { getPersonalizationProfileForUser } from "@/lib/server/personalized-intelligence";
@@ -31,12 +35,26 @@ import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 import { buildScenarioIntelligenceSystem } from "@/lib/trading/scenario-intelligence";
 import { buildStrategyIntelligenceSystem } from "@/lib/trading/strategy-intelligence";
+import { publishingJsonLdForSymbol } from "@/lib/trading/intelligence-publishing";
 
 export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ symbol: string }>;
 };
+
+function cleanSymbol(value: string): string {
+  return value.trim().toUpperCase().replace(/[^A-Z0-9._-]/g, "").slice(0, 24);
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { symbol } = await params;
+  const cleaned = cleanSymbol(symbol) || "Symbol";
+  return marketingMetadata(`/symbol/${cleaned}`, {
+    title: `${cleaned} AI Market Intelligence — TradeVeto`,
+    description: `Public TradeVeto market intelligence for ${cleaned}: macro context, fragility, shock memory, narrative reasoning, and WAIT-first research framing. Research only.`,
+  });
+}
 
 export default async function SymbolDetailPage({ params }: PageProps) {
   const { symbol } = await params;
@@ -57,19 +75,25 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   const premiumAccess = hasPremiumAccess(entitlement);
 
   if (!premiumAccess) {
-    const cleaned = symbol.trim().toUpperCase();
-    const { summary, signal } = await getPublicSymbolSignal(cleaned);
+    const cleaned = cleanSymbol(symbol);
+    const [{ summary, signal }, published] = await Promise.all([
+      getPublicSymbolSignal(cleaned),
+      getPublishedSymbolPage(cleaned).catch(() => null),
+    ]);
     assertNoPremiumFields({ signal, summary });
     const accessState = premiumAccessState(entitlement);
+    const jsonLd = published ? publishingJsonLdForSymbol(published) : null;
 
     return (
       <TerminalShell>
+        {jsonLd ? <script type="application/ld+json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} /> : null}
         <div className="mb-4">
           <Link className="inline-flex min-h-9 items-center rounded-full border border-white/10 px-3 py-2 text-sm font-semibold text-cyan-300 transition hover:border-cyan-300/40 hover:text-cyan-100" href="/terminal">
             Back to terminal
           </Link>
         </div>
         <div className="space-y-4">
+          {published ? <PublishedSymbolIntelligenceBlock compact intelligence={published} /> : null}
           <PublicSymbolPreview accessState={accessState} authenticated={entitlement.authenticated} summary={summary} />
           <PremiumLockedState
             accessState={accessState}
