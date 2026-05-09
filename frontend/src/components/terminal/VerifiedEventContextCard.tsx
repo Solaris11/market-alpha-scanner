@@ -21,8 +21,8 @@ export function VerifiedEventContextCard({ row }: { row: RankingRow }) {
       <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Metric label="Event Risk" tone={scoreTone(context.riskScore, true)} value={`${Math.round(context.riskScore)}/100`} />
         <Metric label="Shock Pressure" tone={scoreTone(context.shockPressureScore, true)} value={`${Math.round(context.shockPressureScore)}/100`} />
-        <Metric label="Conviction Adj." tone={adjustmentTone(context.convictionAdjustment)} value={formatSignedAdjustment(context.convictionAdjustment)} />
-        <Metric label="Fragility Adj." tone={context.fragilityAdjustment >= 2.5 ? "risk" : context.fragilityAdjustment > 0 ? "mixed" : "good"} value={formatSignedAdjustment(context.fragilityAdjustment)} />
+        <Metric label="Source Confidence" tone={context.eventConfidence >= 82 ? "good" : context.eventConfidence >= 62 ? "mixed" : "risk"} value={`${Math.round(context.eventConfidence)}/100`} />
+        <Metric label="Event Decay" tone={context.eventDecay >= 0.62 ? "good" : context.eventDecay >= 0.32 ? "mixed" : "risk"} value={`${Math.round(context.eventDecay * 100)}%`} />
       </div>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -49,7 +49,11 @@ export function VerifiedEventContextCard({ row }: { row: RankingRow }) {
                       <span>{humanizeLabel(event.eventType)}</span>
                     </div>
                     <div className="mt-1 line-clamp-2 text-sm leading-5 text-slate-200">{event.title}</div>
-                    <div className="mt-2 text-[11px] text-slate-500">{event.publishedAt ? formatDate(event.publishedAt) : "recent"} · {humanizeLabel(event.scope)}</div>
+                    <div className="mt-2 text-[11px] text-slate-500">
+                      {event.publishedAt ? formatDate(event.publishedAt) : "recent"} · {humanizeLabel(event.scope)}
+                      {event.eventConfidence !== null ? ` · confidence ${Math.round(event.eventConfidence)}/100` : ""}
+                      {event.eventDecay !== null ? ` · decay ${Math.round(event.eventDecay * 100)}%` : ""}
+                    </div>
                   </a>
                 ))}
               </div>
@@ -79,7 +83,7 @@ function EventPanel({ context, tone }: { context: VerifiedEventContextSummary; t
       <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Event-Aware Risk Context</div>
       <div className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.14em] ${pill}`}>{context.label}</div>
       <p className="mt-3 text-sm leading-6 text-slate-400">
-        Macro pressure adjustment {formatSignedAdjustment(context.macroPressureAdjustment)}. Event pressure score {Math.round(context.eventPressureScore)}/100.
+        Macro pressure adjustment {formatSignedAdjustment(context.macroPressureAdjustment)}. Event pressure score {Math.round(context.eventPressureScore)}/100. Source weight {Math.round(context.sourceWeight * 100)}%.
       </p>
     </div>
   );

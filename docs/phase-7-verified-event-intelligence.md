@@ -9,9 +9,20 @@ The scanner fetches official RSS/XML feeds with a short timeout and cached fallb
 - Federal Reserve press releases: `https://www.federalreserve.gov/feeds/press_all.xml`
 - Bureau of Labor Statistics latest releases: `https://www.bls.gov/feed/bls_latest.rss`
 - SEC press releases: `https://www.sec.gov/news/pressreleases.rss`
+- SEC EDGAR 8-K current filings: `https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=8-K&company=&dateb=&owner=include&start=0&count=40&output=atom`
 - CFTC general press releases: `https://www.cftc.gov/RSS/RSSGP/rssgp.xml`
+- BEA news releases: `https://apps.bea.gov/rss/rss.xml`
+- Census economic indicators: `https://www.census.gov/economic-indicators/indicator.xml`
+- EIA Today in Energy: `https://www.eia.gov/rss/todayinenergy.xml`
+- EIA press releases: `https://www.eia.gov/rss/press_rss.xml`
+- PR Newswire releases: `https://www.prnewswire.com/rss/news-releases-list.rss`
+- MarketWatch top stories: `https://feeds.content.dowjones.io/public/rss/mw_topstories`
 
 Symbol-level news already collected through the scanner is accepted only when it has a source, URL, timestamp, and an allowlisted provider such as Reuters, Bloomberg, CNBC, MarketWatch, Yahoo Finance, SEC, Business Wire, GlobeNewswire, PR Newswire, MT Newswires, AP, or WSJ.
+
+Phase 8.4 adds source weighting, duplicate suppression, source URL allowlisting, stale-event suppression, and event decay. Official `.gov` feeds carry the highest weight; reputable market/newswire feeds are accepted at lower bounded weights. Non-HTTPS feeds, untrusted hosts, duplicate URLs, and stale low-decay events are ignored.
+
+Upcoming symbol earnings dates from the scanner fundamentals cache are converted into lower-weight `Yahoo Finance Earnings Calendar` events when they are near enough to matter. These are treated as event-risk context, not as confirmed earnings outcome claims.
 
 ## Optional Feed Expansion
 
@@ -105,11 +116,14 @@ Each scanner row can now include:
 - `event_context_label`
 - `event_context_reason_codes`
 - `event_context_summary`
+- `event_confidence`
 - `event_conviction_adjustment`
+- `event_decay`
 - `event_fragility_adjustment`
 - `event_macro_pressure_adjustment`
 - `event_risk_score`
 - `event_shock_pressure_score`
+- `event_source_weight`
 - `verified_event_pressure_score`
 - `verified_event_signature`
 - `macro_event_regime_signature`

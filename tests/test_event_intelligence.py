@@ -11,6 +11,7 @@ from scanner.event_intelligence import (
     build_event_context,
     classify_verified_event,
     event_impact_for_row,
+    fetch_verified_events,
 )
 from scanner.recommendation_quality import evaluate_recommendation_quality
 
@@ -132,6 +133,9 @@ class EventIntelligenceTests(unittest.TestCase):
 
         self.assertTrue(bool(result["event_context_available"]))
         self.assertGreaterEqual(float(result["event_fragility_adjustment"]), 0.0)
+        self.assertGreater(float(result["event_confidence"]), 0.0)
+        self.assertGreater(float(result["event_decay"]), 0.0)
+        self.assertGreater(float(result["event_source_weight"]), 0.0)
         self.assertLessEqual(float(result["event_fragility_adjustment"]), 6.0)
         self.assertGreaterEqual(float(result["event_macro_pressure_adjustment"]), -3.0)
         self.assertLessEqual(float(result["event_macro_pressure_adjustment"]), 2.0)
@@ -170,6 +174,56 @@ class EventIntelligenceTests(unittest.TestCase):
         self.assertGreater(base_score, event_score)
         self.assertGreaterEqual(event_score, base_score - 8)
         self.assertIn("verified event pressure", str(event_quality["quality_reason"]).lower())
+
+    def test_rejects_untrusted_configured_feed_url_without_fetching(self) -> None:
+        events = fetch_verified_events(
+            now=datetime(2026, 5, 8, tzinfo=timezone.utc),
+            feeds=(TrustedEventFeed("bad", "Random Feed", "https://example.com/feed.xml", "macro"),),
+        )
+
+        self.assertEqual(events, [])
+
+    def test_dedupes_source_urls_and_applies_event_decay(self) -> None:
+        feed = TrustedEventFeed("fed", "Federal Reserve", "https://www.federalreserve.gov/feeds/press_all.xml", "macro", source_weight=1.0)
+        event_one = classify_verified_event(
+            feed,
+            "Federal Reserve discusses inflation pressure",
+            "Officials noted inflation and interest rate policy remain important.",
+            "https://www.federalreserve.gov/newsevents/pressreleases/test.htm",
+            datetime(2026, 5, 2, tzinfo=timezone.utc),
+        )
+        event_two = classify_verified_event(
+            feed,
+            "Federal Reserve discusses inflation pressure",
+            "Officials noted inflation and interest rate policy remain important.",
+            "https://www.federalreserve.gov/newsevents/pressreleases/test.htm",
+            datetime(2026, 5, 2, tzinfo=timezone.utc),
+        )
+        context = build_event_context([event_one, event_two], now=datetime(2026, 5, 8, tzinfo=timezone.utc))
+
+        self.assertTrue(context["available"])
+        self.assertEqual(len(context["events"]), 1)
+        self.assertLess(context["events"][0]["event_decay"], 1.0)
+        self.assertGreater(context["events"][0]["source_weight"], 0.9)
+
+    def test_row_earnings_calendar_adds_source_backed_symbol_event(self) -> None:
+        context = build_event_context([], now=datetime(2026, 5, 8, tzinfo=timezone.utc))
+        impact = event_impact_for_row(
+            {
+                "asset_type": "EQUITY",
+                "earnings_date": datetime.now(timezone.utc).date().isoformat(),
+                "macro_context_label": "Macro Mixed",
+                "market_regime": "NEUTRAL",
+                "sector": "Technology",
+                "symbol": "DDOG",
+            },
+            context,
+        )
+
+        self.assertTrue(impact["event_context_available"])
+        self.assertIn("EVENT_EARNINGS_CALENDAR", impact["event_context_reason_codes"])
+        self.assertGreater(impact["event_fragility_adjustment"], 0.0)
+        self.assertEqual(impact["verified_event_recent_events"][0]["source"], "Yahoo Finance Earnings Calendar")
 
 
 if __name__ == "__main__":

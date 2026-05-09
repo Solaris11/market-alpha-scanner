@@ -99,12 +99,15 @@ export type RankingRow = {
   event_context_available?: boolean;
   event_context_label?: string;
   event_context_summary?: string;
+  event_confidence?: number;
   event_conviction_adjustment?: number;
+  event_decay?: number;
   event_fragility_adjustment?: number;
   event_impact_scope?: string;
   event_macro_pressure_adjustment?: number;
   event_risk_score?: number;
   event_shock_pressure_score?: number;
+  event_source_weight?: number;
   analog_quality_score?: number;
   confidence_reliability?: number;
   evidence_maturity?: string;

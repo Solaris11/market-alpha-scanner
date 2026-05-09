@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import re
 import urllib.request
@@ -11,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from pathlib import Path
 from typing import Final, Mapping, TypedDict
+from urllib.parse import urljoin, urlparse
 
 import numpy as np
 import pandas as pd
@@ -33,6 +35,7 @@ class TrustedEventFeed:
     name: str
     url: str
     category_hint: str
+    source_weight: float = 0.82
 
 
 @dataclass(frozen=True)
@@ -52,14 +55,21 @@ class ClassificationRule:
 
 
 class VerifiedEvent(TypedDict):
+    affected_sectors: list[str]
+    affected_symbols: list[str]
     asset_classes: list[str]
     category: str
     confidence: float
     conviction_bias: float
     direction: str
+    event_confidence: float
+    event_decay: float
+    event_direction: str
     event_id: str
+    event_type: str
     event_types: list[str]
     evidence_phrases: list[str]
+    feed_key: str
     fragility_bias: float
     impact_tags: list[str]
     pressure_score: float
@@ -69,7 +79,9 @@ class VerifiedEvent(TypedDict):
     sectors: list[str]
     shock_bias: float
     source: str
+    source_name: str
     source_url: str
+    source_weight: float
     summary: str
     title: str
 
@@ -92,11 +104,14 @@ class EventImpact(TypedDict):
     event_context_reason_codes: list[str]
     event_context_summary: str
     event_conviction_adjustment: float
+    event_decay: float
+    event_confidence: float
     event_fragility_adjustment: float
     event_impact_scope: str
     event_macro_pressure_adjustment: float
     event_risk_score: float
     event_shock_pressure_score: float
+    event_source_weight: float
     macro_event_regime_signature: str
     verified_event_pressure_score: float
     verified_event_recent_events: list[dict[str, object]]
@@ -110,24 +125,77 @@ DEFAULT_EVENT_FEEDS: Final[tuple[TrustedEventFeed, ...]] = (
         name="Federal Reserve",
         url="https://www.federalreserve.gov/feeds/press_all.xml",
         category_hint="macro",
+        source_weight=1.0,
     ),
     TrustedEventFeed(
         key="bls_latest",
         name="Bureau of Labor Statistics",
         url="https://www.bls.gov/feed/bls_latest.rss",
         category_hint="macro",
+        source_weight=1.0,
     ),
     TrustedEventFeed(
         key="sec_press",
         name="SEC",
         url="https://www.sec.gov/news/pressreleases.rss",
         category_hint="company_regulatory",
+        source_weight=1.0,
+    ),
+    TrustedEventFeed(
+        key="sec_current_8k",
+        name="SEC EDGAR 8-K Filings",
+        url="https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&type=8-K&company=&dateb=&owner=include&start=0&count=40&output=atom",
+        category_hint="company_regulatory",
+        source_weight=0.98,
     ),
     TrustedEventFeed(
         key="cftc_general_press",
         name="CFTC",
         url="https://www.cftc.gov/RSS/RSSGP/rssgp.xml",
         category_hint="market_regulatory",
+        source_weight=0.96,
+    ),
+    TrustedEventFeed(
+        key="bea_news_releases",
+        name="Bureau of Economic Analysis",
+        url="https://apps.bea.gov/rss/rss.xml",
+        category_hint="macro",
+        source_weight=1.0,
+    ),
+    TrustedEventFeed(
+        key="census_economic_indicators",
+        name="U.S. Census Economic Indicators",
+        url="https://www.census.gov/economic-indicators/indicator.xml",
+        category_hint="macro",
+        source_weight=0.98,
+    ),
+    TrustedEventFeed(
+        key="eia_today_in_energy",
+        name="U.S. Energy Information Administration",
+        url="https://www.eia.gov/rss/todayinenergy.xml",
+        category_hint="commodity",
+        source_weight=0.96,
+    ),
+    TrustedEventFeed(
+        key="eia_press",
+        name="U.S. Energy Information Administration",
+        url="https://www.eia.gov/rss/press_rss.xml",
+        category_hint="commodity",
+        source_weight=0.96,
+    ),
+    TrustedEventFeed(
+        key="prnewswire_releases",
+        name="PR Newswire",
+        url="https://www.prnewswire.com/rss/news-releases-list.rss",
+        category_hint="company",
+        source_weight=0.78,
+    ),
+    TrustedEventFeed(
+        key="marketwatch_top_stories",
+        name="MarketWatch",
+        url="https://feeds.content.dowjones.io/public/rss/mw_topstories",
+        category_hint="market",
+        source_weight=0.82,
     ),
 )
 DEFAULT_CACHE_TTL = timedelta(hours=6)
@@ -137,6 +205,28 @@ DEFAULT_FEED_LIMIT = 12
 MAX_CONTEXT_EVENTS = 40
 MAX_RECENT_EVENTS_PER_ROW = 4
 EVENT_CACHE_PATH = "event_intelligence/verified_events.json"
+MIN_EVENT_DECAY = 0.12
+TRUSTED_FEED_HOST_SUFFIXES: Final[frozenset[str]] = frozenset(
+    {
+        "federalreserve.gov",
+        "bls.gov",
+        "sec.gov",
+        "cftc.gov",
+        "bea.gov",
+        "apps.bea.gov",
+        "census.gov",
+        "eia.gov",
+        "prnewswire.com",
+        "globenewswire.com",
+        "businesswire.com",
+        "marketwatch.com",
+        "dowjones.io",
+        "reuters.com",
+        "apnews.com",
+        "yahoo.com",
+        "finance.yahoo.com",
+    }
+)
 TRUSTED_NEWS_PROVIDERS: Final[frozenset[str]] = frozenset(
     {
         "ap",
@@ -590,17 +680,18 @@ def fetch_verified_events(*, now: datetime | None = None, feeds: tuple[TrustedEv
     events: list[VerifiedEvent] = []
     for feed in feeds or _configured_event_feeds():
         events.extend(_fetch_feed_events(feed, current_time))
+    events = _dedupe_events(events)
     events.sort(key=lambda event: event["published_at"], reverse=True)
     return events[:MAX_CONTEXT_EVENTS]
 
 
 def build_event_context(events: list[VerifiedEvent], *, cache_status: str = "computed", now: datetime | None = None) -> EventContext:
     current_time = now or datetime.now(timezone.utc)
-    recent_events = _recent_events(events, current_time)
+    recent_events = _recent_events(_dedupe_events(events), current_time)
     if not recent_events:
         return _empty_context("empty" if cache_status != "hit" else cache_status, current_time, "No recent verified macro/event feed items were available.")
 
-    pressure = _average([event["pressure_score"] for event in recent_events], 50.0)
+    pressure = _weighted_average([(_event_pressure_with_decay(event), _event_quality_weight(event)) for event in recent_events], 50.0)
     event_types = _unique_strings([event_type for event in recent_events for event_type in event["event_types"]])
     sources = _unique_strings([event["source"] for event in recent_events])
     reason_codes = _unique_strings([code for event in recent_events for code in event["reason_codes"]])
@@ -631,11 +722,14 @@ def apply_event_intelligence(
     impacts = [event_impact_for_row(row, context, symbol_events=_symbol_news_events(row, symbol_news or {})) for row in rows]
 
     numeric_keys = (
+        "event_confidence",
         "event_conviction_adjustment",
+        "event_decay",
         "event_fragility_adjustment",
         "event_macro_pressure_adjustment",
         "event_risk_score",
         "event_shock_pressure_score",
+        "event_source_weight",
         "verified_event_pressure_score",
     )
     object_keys = (
@@ -664,7 +758,7 @@ def apply_event_intelligence(
 
 
 def event_impact_for_row(row: dict[str, object], context: EventContext, *, symbol_events: list[VerifiedEvent] | None = None) -> EventImpact:
-    available_events = [*context["events"], *(symbol_events or [])]
+    available_events = [*context["events"], *_row_earnings_events(row), *(symbol_events or [])]
     if not context["available"] and not available_events:
         return _empty_impact(context)
 
@@ -679,6 +773,9 @@ def event_impact_for_row(row: dict[str, object], context: EventContext, *, symbo
     shock = _clamp(50.0 + sum(event["shock_bias"] * weight for event, weight, _ in matched) / total_weight * 11.0, 0.0, 100.0)
     risk_score = _clamp(pressure * 0.62 + shock * 0.24 + fragility * 5.0)
     macro_adjustment = _clamp(conviction * 0.65 - fragility * 0.35, -3.0, 2.0)
+    event_confidence = _weighted_average([(event["event_confidence"], weight) for event, weight, _ in matched], 50.0)
+    event_decay = _weighted_average([(event["event_decay"], weight) for event, weight, _ in matched], 0.5)
+    source_weight = _weighted_average([(event["source_weight"], weight) for event, weight, _ in matched], 0.75)
     event_types = _unique_strings([event_type for event, _, _ in matched for event_type in event["event_types"]])
     scopes = _unique_strings([scope for _, _, scope in matched])
     reason_codes = _impact_reason_codes(matched, risk_score, conviction, fragility, shock)
@@ -691,12 +788,15 @@ def event_impact_for_row(row: dict[str, object], context: EventContext, *, symbo
         "event_context_label": label,
         "event_context_reason_codes": reason_codes,
         "event_context_summary": _impact_summary(label, matched, event_types, risk_score, conviction, fragility),
+        "event_confidence": round(event_confidence, 2),
         "event_conviction_adjustment": round(conviction, 2),
+        "event_decay": round(event_decay, 3),
         "event_fragility_adjustment": round(fragility, 2),
         "event_impact_scope": ", ".join(scopes) if scopes else "broad",
         "event_macro_pressure_adjustment": round(macro_adjustment, 2),
         "event_risk_score": round(risk_score, 2),
         "event_shock_pressure_score": round(shock, 2),
+        "event_source_weight": round(source_weight, 3),
         "macro_event_regime_signature": _macro_event_signature(row, signature),
         "verified_event_pressure_score": round(pressure, 2),
         "verified_event_recent_events": recent_events,
@@ -722,8 +822,12 @@ def _symbol_news_events(row: dict[str, object], symbol_news: dict[str, list[dict
         if provider_key not in TRUSTED_NEWS_PROVIDERS:
             continue
         published = _parse_datetime(item.get("published_at")) or datetime.now(timezone.utc)
-        feed = TrustedEventFeed(key=f"symbol_news_{symbol.lower()}", name=source, url=source_url, category_hint="company")
-        events.append(classify_verified_event(feed, title, summary, source_url, published))
+        if not _is_allowed_source_url(source_url):
+            continue
+        feed = TrustedEventFeed(key=f"symbol_news_{symbol.lower()}", name=source, url=source_url, category_hint="company", source_weight=_provider_source_weight(source))
+        event = classify_verified_event(feed, title, summary, source_url, published)
+        if _event_decay(event, datetime.now(timezone.utc)) >= MIN_EVENT_DECAY:
+            events.append(event)
     return events
 
 
@@ -741,6 +845,8 @@ def write_verified_event_context(outdir: Path, context: EventContext) -> Path:
 
 
 def _fetch_feed_events(feed: TrustedEventFeed, now: datetime) -> list[VerifiedEvent]:
+    if not _is_allowed_source_url(feed.url):
+        return []
     try:
         request = urllib.request.Request(
             feed.url,
@@ -763,13 +869,19 @@ def _fetch_feed_events(feed: TrustedEventFeed, now: datetime) -> list[VerifiedEv
     for item in _feed_items(root):
         title = _text_from_child(item, ("title",))
         summary = _clean_html(_text_from_child(item, ("description", "summary", "content", "encoded")))
-        source_url = _event_url(item)
+        source_url = _absolute_event_url(feed.url, _event_url(item))
         published_at = _published_at(item, now)
         if not title or not source_url or published_at is None:
             continue
+        if not _is_allowed_source_url(source_url):
+            continue
         if now - published_at > timedelta(days=DEFAULT_LOOKBACK_DAYS):
             continue
-        events.append(classify_verified_event(feed, title, summary, source_url, published_at))
+        event = classify_verified_event(feed, title, summary, source_url, published_at)
+        event["event_decay"] = _event_decay(event, now)
+        if event["event_decay"] < MIN_EVENT_DECAY:
+            continue
+        events.append(event)
         if len(events) >= DEFAULT_FEED_LIMIT:
             break
     return events
@@ -819,7 +931,7 @@ def classify_verified_event(feed: TrustedEventFeed, title: str, summary: str, so
     shock_bias = _average([rule.shock_bias for rule in matched_rules], 0.0)
     direction = _direction_from_scores(conviction_bias, fragility_bias, pressure)
     evidence_phrases: list[str] = []
-    confidence = 100.0 if source_url else 70.0
+    confidence = _base_event_confidence(feed, source_url)
     if llm_assessment is not None:
         event_types = _unique_strings([*event_types, llm_assessment["event_type"]])
         categories = _unique_strings([*categories, llm_assessment["category"]])
@@ -836,14 +948,21 @@ def classify_verified_event(feed: TrustedEventFeed, title: str, summary: str, so
         evidence_phrases = llm_assessment["evidence_phrases"]
         confidence = max(confidence, round(llm_assessment["confidence"] * 100.0, 2))
     return {
+        "affected_sectors": sectors,
+        "affected_symbols": _symbols_from_text(text),
         "asset_classes": asset_classes,
         "category": categories[0] if categories else feed.category_hint,
         "confidence": confidence,
         "conviction_bias": round(conviction_bias, 2),
         "direction": direction,
+        "event_confidence": confidence,
+        "event_decay": 1.0,
+        "event_direction": direction,
         "event_id": _event_id(feed.key, source_url, title, published_at),
+        "event_type": event_types[0] if event_types else "verified_update",
         "event_types": event_types,
         "evidence_phrases": evidence_phrases,
+        "feed_key": feed.key,
         "fragility_bias": round(fragility_bias, 2),
         "impact_tags": impact_tags,
         "pressure_score": round(pressure, 2),
@@ -853,7 +972,9 @@ def classify_verified_event(feed: TrustedEventFeed, title: str, summary: str, so
         "sectors": sectors,
         "shock_bias": round(shock_bias, 2),
         "source": feed.name,
+        "source_name": feed.name,
         "source_url": source_url,
+        "source_weight": round(_clamp(feed.source_weight, 0.2, 1.0), 3),
         "summary": summary[:420],
         "title": title[:220],
     }
@@ -1152,8 +1273,15 @@ def _synthetic_rule(
 
 def _matched_events(row: dict[str, object], events: list[VerifiedEvent]) -> list[tuple[VerifiedEvent, float, str]]:
     matches: list[tuple[VerifiedEvent, float, str]] = []
+    current_time = datetime.now(timezone.utc)
     for event in events:
         weight, scope = _event_row_weight(row, event)
+        if weight <= 0.0:
+            continue
+        event["event_decay"] = _event_decay(event, current_time)
+        if event["event_decay"] < MIN_EVENT_DECAY:
+            continue
+        weight *= _event_quality_weight(event)
         if weight <= 0.0:
             continue
         matches.append((event, weight, scope))
@@ -1168,21 +1296,71 @@ def _event_row_weight(row: dict[str, object], event: VerifiedEvent) -> tuple[flo
     group = _symbol_group(row)
     title_text = f"{event['title']} {event['summary']}".upper()
 
+    if symbol and symbol in event.get("affected_symbols", []):
+        return 1.0, "symbol"
     if symbol and re.search(rf"\b{re.escape(symbol)}\b", title_text):
         return 1.0, "symbol"
+    if _generic_verified_event(event):
+        return 0.0, ""
     if group and group in event["sectors"]:
         return 0.92, "sector"
     if sector and any(sector_key in sector for sector_key in event["sectors"]):
         return 0.86, "sector"
+    if event["category"] == "company":
+        return 0.0, ""
     if "crypto" in asset_type and "crypto" in event["asset_classes"]:
         return 0.86, "asset"
     if "equity" in asset_type and "equity" in event["asset_classes"]:
         return 0.58, "asset"
     if event["category"] in {"macro", "market", "geopolitical"}:
         return 0.48, "broad"
-    if event["category"] == "company" and "equity" in asset_type:
-        return 0.30, "broad"
     return 0.0, ""
+
+
+def _generic_verified_event(event: VerifiedEvent) -> bool:
+    meaningful_codes = [code for code in event["reason_codes"] if code != "VERIFIED_EVENT_SOURCE"]
+    return event["event_type"] == "verified_update" and not meaningful_codes
+
+
+def _row_earnings_events(row: dict[str, object]) -> list[VerifiedEvent]:
+    symbol = _normalize_symbol(row.get("symbol"))
+    earnings_date_text = safe_str(row.get("earnings_date"), "")
+    if not symbol or not earnings_date_text:
+        return []
+    try:
+        earnings_date = datetime.fromisoformat(earnings_date_text).replace(tzinfo=timezone.utc)
+    except ValueError:
+        try:
+            earnings_date = datetime.fromisoformat(f"{earnings_date_text}T00:00:00+00:00")
+        except ValueError:
+            return []
+    now = datetime.now(timezone.utc)
+    days_until_event = (earnings_date.date() - now.date()).days
+    if days_until_event < -2 or days_until_event > 21:
+        return []
+    source_url = f"https://finance.yahoo.com/quote/{symbol}"
+    feed = TrustedEventFeed(
+        key=f"earnings_calendar_{symbol.lower()}",
+        name="Yahoo Finance Earnings Calendar",
+        url=source_url,
+        category_hint="company",
+        source_weight=0.72,
+    )
+    title = f"{symbol} earnings calendar event"
+    summary = f"{symbol} has an earnings date within {days_until_event} calendar day{'' if abs(days_until_event) == 1 else 's'}."
+    event = classify_verified_event(feed, title, summary, source_url, now)
+    event["affected_symbols"] = [symbol]
+    event["event_type"] = "earnings_calendar"
+    event["event_types"] = _unique_strings(["earnings_calendar", *event["event_types"]])
+    event["reason_codes"] = _unique_strings(["EVENT_EARNINGS_CALENDAR", *event["reason_codes"]])
+    event["event_confidence"] = 72.0
+    event["confidence"] = 72.0
+    event["source_weight"] = 0.72
+    event["event_decay"] = _earnings_event_decay(days_until_event)
+    event["pressure_score"] = round(_clamp(54.0 + max(0, 7 - abs(days_until_event)) * 2.6), 2)
+    event["fragility_bias"] = round(_clamp(1.1 + max(0, 7 - abs(days_until_event)) * 0.32, 0.0, 4.0), 2)
+    event["shock_bias"] = round(_clamp(1.8 + max(0, 7 - abs(days_until_event)) * 0.22, 0.0, 4.0), 2)
+    return [event]
 
 
 def _symbol_group(row: dict[str, object]) -> str:
@@ -1238,12 +1416,15 @@ def _empty_impact(context: EventContext) -> EventImpact:
         "event_context_label": "Event Context Limited",
         "event_context_reason_codes": [],
         "event_context_summary": context["macro_event_summary"],
+        "event_confidence": 0.0,
         "event_conviction_adjustment": 0.0,
+        "event_decay": 0.0,
         "event_fragility_adjustment": 0.0,
         "event_impact_scope": "unavailable",
         "event_macro_pressure_adjustment": 0.0,
         "event_risk_score": 50.0,
         "event_shock_pressure_score": 50.0,
+        "event_source_weight": 0.0,
         "macro_event_regime_signature": "",
         "verified_event_pressure_score": 50.0,
         "verified_event_recent_events": [],
@@ -1260,12 +1441,15 @@ def _neutral_impact(row: dict[str, object], context: EventContext) -> EventImpac
         "event_context_label": "Event Context Mixed",
         "event_context_reason_codes": ["VERIFIED_EVENT_CONTEXT_AVAILABLE"],
         "event_context_summary": "Verified event context is available, but no recent trusted event strongly maps to this symbol or sector.",
+        "event_confidence": 0.0,
         "event_conviction_adjustment": 0.0,
+        "event_decay": 0.0,
         "event_fragility_adjustment": 0.0,
         "event_impact_scope": "broad",
         "event_macro_pressure_adjustment": 0.0,
         "event_risk_score": round(context["event_pressure_score"], 2),
         "event_shock_pressure_score": 50.0,
+        "event_source_weight": 0.0,
         "macro_event_regime_signature": _macro_event_signature(row, signature),
         "verified_event_pressure_score": round(context["event_pressure_score"], 2),
         "verified_event_recent_events": [],
@@ -1329,14 +1513,21 @@ def _impact_summary(
 
 def _event_summary(event: VerifiedEvent, scope: str, weight: float) -> dict[str, object]:
     return {
+        "affected_sectors": event.get("affected_sectors", []),
+        "affected_symbols": event.get("affected_symbols", []),
         "direction": event.get("direction", "mixed"),
+        "event_confidence": event.get("event_confidence", event.get("confidence", 0.0)),
+        "event_decay": event.get("event_decay", 1.0),
+        "event_direction": event.get("event_direction", event.get("direction", "mixed")),
         "event_type": event["event_types"][0] if event["event_types"] else "verified_update",
         "evidence_phrases": event.get("evidence_phrases", []),
         "published_at": event["published_at"],
         "reason_codes": event["reason_codes"],
         "scope": scope,
         "source": event["source"],
+        "source_name": event.get("source_name", event["source"]),
         "source_url": event["source_url"],
+        "source_weight": event.get("source_weight", 0.0),
         "title": event["title"],
         "weight": round(weight, 2),
     }
@@ -1433,6 +1624,9 @@ def _recent_events(events: list[VerifiedEvent], now: datetime) -> list[VerifiedE
     for event in events:
         published = _parse_datetime(event.get("published_at"))
         if published is not None and now - published <= timedelta(days=DEFAULT_LOOKBACK_DAYS):
+            event["event_decay"] = _event_decay(event, now)
+            if event["event_decay"] < MIN_EVENT_DECAY:
+                continue
             recent.append(event)
     return recent[:MAX_CONTEXT_EVENTS]
 
@@ -1493,25 +1687,39 @@ def _event_from_mapping(raw_event: Mapping[object, object]) -> VerifiedEvent | N
     published_at = safe_str(raw_event.get("published_at"), "")
     if not title or not source_url or not published_at:
         return None
+    direction = safe_str(raw_event.get("direction"), "neutral")
+    source = safe_str(raw_event.get("source"), "Verified source")
+    event_types = _string_list(raw_event.get("event_types"))
+    sectors = _string_list(raw_event.get("sectors"))
+    confidence = safe_float(raw_event.get("confidence"), 70.0)
     return {
+        "affected_sectors": _string_list(raw_event.get("affected_sectors")) or sectors,
+        "affected_symbols": _string_list(raw_event.get("affected_symbols")),
         "asset_classes": _string_list(raw_event.get("asset_classes")),
         "category": safe_str(raw_event.get("category"), "market"),
-        "confidence": safe_float(raw_event.get("confidence"), 70.0),
+        "confidence": confidence,
         "conviction_bias": safe_float(raw_event.get("conviction_bias"), 0.0),
-        "direction": safe_str(raw_event.get("direction"), "neutral"),
+        "direction": direction,
+        "event_confidence": safe_float(raw_event.get("event_confidence"), confidence),
+        "event_decay": safe_float(raw_event.get("event_decay"), 1.0),
+        "event_direction": safe_str(raw_event.get("event_direction"), direction),
         "event_id": safe_str(raw_event.get("event_id"), ""),
-        "event_types": _string_list(raw_event.get("event_types")),
+        "event_type": safe_str(raw_event.get("event_type"), event_types[0] if event_types else "verified_update"),
+        "event_types": event_types,
         "evidence_phrases": _string_list(raw_event.get("evidence_phrases")),
+        "feed_key": safe_str(raw_event.get("feed_key"), ""),
         "fragility_bias": safe_float(raw_event.get("fragility_bias"), 0.0),
         "impact_tags": _string_list(raw_event.get("impact_tags")),
         "pressure_score": safe_float(raw_event.get("pressure_score"), 50.0),
         "published_at": published_at,
         "reason_codes": _string_list(raw_event.get("reason_codes")),
         "regime_tags": _string_list(raw_event.get("regime_tags")),
-        "sectors": _string_list(raw_event.get("sectors")),
+        "sectors": sectors,
         "shock_bias": safe_float(raw_event.get("shock_bias"), 0.0),
-        "source": safe_str(raw_event.get("source"), "Verified source"),
+        "source": source,
+        "source_name": safe_str(raw_event.get("source_name"), source),
         "source_url": source_url,
+        "source_weight": safe_float(raw_event.get("source_weight"), 0.75),
         "summary": safe_str(raw_event.get("summary"), ""),
         "title": title,
     }
@@ -1522,6 +1730,125 @@ def _configured_event_feeds() -> tuple[TrustedEventFeed, ...]:
     if not configured:
         return DEFAULT_EVENT_FEEDS
     return (*DEFAULT_EVENT_FEEDS, *configured)
+
+
+def _dedupe_events(events: list[VerifiedEvent]) -> list[VerifiedEvent]:
+    selected: dict[str, VerifiedEvent] = {}
+    for event in events:
+        key = _dedupe_key(event)
+        existing = selected.get(key)
+        if existing is None or _event_quality_weight(event) > _event_quality_weight(existing):
+            selected[key] = event
+    return list(selected.values())
+
+
+def _dedupe_key(event: VerifiedEvent) -> str:
+    source_url = _normalize_url(event["source_url"])
+    if source_url:
+        return source_url
+    published = safe_str(event.get("published_at"), "")[:10]
+    title = re.sub(r"\W+", " ", event["title"].lower()).strip()
+    return f"{published}|{title[:120]}"
+
+
+def _normalize_url(url: str) -> str:
+    parsed = urlparse(url.strip())
+    if not parsed.scheme or not parsed.netloc:
+        return ""
+    path = parsed.path.rstrip("/")
+    return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}{path}"
+
+
+def _absolute_event_url(feed_url: str, event_url: str) -> str:
+    if not event_url:
+        return ""
+    return urljoin(feed_url, event_url.strip())
+
+
+def _is_allowed_source_url(url: str) -> bool:
+    parsed = urlparse(url.strip())
+    if parsed.scheme != "https" or not parsed.netloc:
+        return False
+    host = parsed.netloc.lower().split(":", 1)[0]
+    return any(host == suffix or host.endswith(f".{suffix}") for suffix in TRUSTED_FEED_HOST_SUFFIXES)
+
+
+def _provider_source_weight(source: str) -> float:
+    normalized = source.lower().strip()
+    if any(token in normalized for token in ("federal reserve", "bureau of labor", "sec", "cftc", "bea", "census", "eia")):
+        return 1.0
+    if any(token in normalized for token in ("reuters", "associated press", "ap", "wall street journal", "marketwatch")):
+        return 0.86
+    if any(token in normalized for token in ("pr newswire", "business wire", "globenewswire", "mt newswires")):
+        return 0.78
+    if "yahoo finance" in normalized or normalized == "yahoo":
+        return 0.72
+    return 0.70
+
+
+def _base_event_confidence(feed: TrustedEventFeed, source_url: str) -> float:
+    source_weight = _clamp(feed.source_weight, 0.2, 1.0)
+    url_bonus = 7.0 if _is_allowed_source_url(source_url) else -20.0
+    return round(_clamp(52.0 + source_weight * 42.0 + url_bonus, 35.0, 100.0), 2)
+
+
+def _event_quality_weight(event: VerifiedEvent) -> float:
+    source_weight = _clamp(event.get("source_weight", 0.75), 0.2, 1.0)
+    confidence_weight = _clamp(event.get("event_confidence", event.get("confidence", 60.0)) / 100.0, 0.25, 1.0)
+    decay_weight = _clamp(event.get("event_decay", 1.0), 0.0, 1.0)
+    return source_weight * confidence_weight * decay_weight
+
+
+def _event_pressure_with_decay(event: VerifiedEvent) -> float:
+    decay = _clamp(event.get("event_decay", 1.0), 0.0, 1.0)
+    return 50.0 + (event["pressure_score"] - 50.0) * decay
+
+
+def _event_decay(event: VerifiedEvent, now: datetime) -> float:
+    published = _parse_datetime(event.get("published_at"))
+    if published is None:
+        return 0.0
+    age_days = max(0.0, (now - published).total_seconds() / 86400.0)
+    category = event.get("category", "market")
+    if category == "company":
+        half_life_days = 5.0
+    elif category in {"geopolitical", "commodity"}:
+        half_life_days = 6.0
+    elif category in {"macro", "market"}:
+        half_life_days = 9.0
+    else:
+        half_life_days = 7.0
+    return round(_clamp(math.exp(-age_days / half_life_days), 0.0, 1.0), 3)
+
+
+def _earnings_event_decay(days_until_event: int) -> float:
+    distance = abs(days_until_event)
+    if distance <= 1:
+        return 1.0
+    if distance <= 3:
+        return 0.86
+    if distance <= 7:
+        return 0.68
+    if distance <= 14:
+        return 0.42
+    return 0.24
+
+
+def _symbols_from_text(text: str) -> list[str]:
+    symbols = sorted(
+        set(SEMICONDUCTOR_SYMBOLS)
+        | set(SOFTWARE_SYMBOLS)
+        | set(OIL_PROXIES)
+        | set(GOLD_PROXIES)
+        | set(CRYPTO_PROXIES)
+        | set(FINANCIAL_SYMBOLS)
+    )
+    found: list[str] = []
+    upper_text = text.upper()
+    for symbol in symbols:
+        if re.search(rf"\b{re.escape(symbol)}\b", upper_text):
+            found.append(symbol)
+    return found[:12]
 
 
 def _feeds_from_env() -> tuple[TrustedEventFeed, ...]:
@@ -1544,12 +1871,15 @@ def _feeds_from_env() -> tuple[TrustedEventFeed, ...]:
         name = safe_str(item.get("name"), "").strip()
         if not url.startswith("https://") or not name:
             continue
+        if not _is_allowed_source_url(url):
+            continue
         if url in seen_urls:
             continue
         seen_urls.add(url)
         key = safe_str(item.get("key"), "").strip() or f"configured_feed_{index + 1}"
         category_hint = safe_str(item.get("category_hint"), "").strip() or "configured_verified"
-        feeds.append(TrustedEventFeed(key=key, name=name, url=url, category_hint=category_hint))
+        source_weight = _clamp(safe_float(item.get("source_weight"), _provider_source_weight(name)), 0.2, 1.0)
+        feeds.append(TrustedEventFeed(key=key, name=name, url=url, category_hint=category_hint, source_weight=source_weight))
     return tuple(feeds[:8])
 
 

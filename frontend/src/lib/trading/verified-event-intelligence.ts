@@ -3,12 +3,15 @@ import { cleanText, finiteNumber } from "@/lib/ui/formatters";
 import { humanizeLabel } from "@/lib/ui/labels";
 
 export type VerifiedEventItem = {
+  eventConfidence: number | null;
+  eventDecay: number | null;
   eventType: string;
   publishedAt: string | null;
   reasonCodes: string[];
   scope: string;
   source: string;
   sourceUrl: string;
+  sourceWeight: number | null;
   title: string;
   weight: number | null;
 };
@@ -16,6 +19,8 @@ export type VerifiedEventItem = {
 export type VerifiedEventContextSummary = {
   available: boolean;
   compactLabel: string;
+  eventConfidence: number;
+  eventDecay: number;
   convictionAdjustment: number;
   eventPressureScore: number;
   fragilityAdjustment: number;
@@ -25,6 +30,7 @@ export type VerifiedEventContextSummary = {
   reasonCodes: string[];
   riskScore: number;
   shockPressureScore: number;
+  sourceWeight: number;
   sourcesUsed: string[];
   summary: string;
 };
@@ -40,6 +46,8 @@ export function buildVerifiedEventContext(row: RankingRow): VerifiedEventContext
   return {
     available,
     compactLabel: compactEventLabel({ label, reasonCodes, riskScore }),
+    eventConfidence: finiteNumber(rawField(row, "event_confidence")) ?? 0,
+    eventDecay: finiteNumber(rawField(row, "event_decay")) ?? 0,
     convictionAdjustment: finiteNumber(rawField(row, "event_conviction_adjustment")) ?? 0,
     eventPressureScore: finiteNumber(rawField(row, "verified_event_pressure_score")) ?? 50,
     fragilityAdjustment: finiteNumber(rawField(row, "event_fragility_adjustment")) ?? 0,
@@ -49,6 +57,7 @@ export function buildVerifiedEventContext(row: RankingRow): VerifiedEventContext
     reasonCodes,
     riskScore,
     shockPressureScore: finiteNumber(rawField(row, "event_shock_pressure_score")) ?? 50,
+    sourceWeight: finiteNumber(rawField(row, "event_source_weight")) ?? 0,
     sourcesUsed,
     summary,
   };
@@ -88,6 +97,7 @@ export function eventReasonLabel(code: string): string {
   if (normalized === "EVENT_EARNINGS_NEGATIVE") return "negative earnings context";
   if (normalized === "EVENT_EARNINGS_NEGATIVE_SURPRISE") return "negative earnings surprise";
   if (normalized === "EVENT_EARNINGS_SENSITIVITY") return "earnings sensitivity";
+  if (normalized === "EVENT_EARNINGS_CALENDAR") return "earnings calendar";
   if (normalized === "EVENT_MERGER_ACQUISITION") return "M&A catalyst";
   if (normalized === "EVENT_MNA_POSITIVE") return "positive M&A context";
   if (normalized === "EVENT_MNA_NEGATIVE") return "negative M&A context";
@@ -101,6 +111,10 @@ export function eventReasonLabel(code: string): string {
   if (normalized === "EVENT_REGULATORY_POSITIVE") return "regulatory relief";
   if (normalized === "EVENT_CRYPTO_CONTEXT") return "crypto context";
   if (normalized === "EVENT_LLM_VERIFIED_CONTEXT") return "LLM evidence check";
+  if (normalized === "VERIFIED_EVENT_SOURCE") return "verified source";
+  if (normalized === "VERIFIED_EVENT_CONTEXT_AVAILABLE") return "verified event context";
+  if (normalized === "EVENT_CONTEXT_SUPPORTIVE") return "event context supportive";
+  if (normalized === "EVENT_FRAGILITY_PRESSURE") return "event fragility pressure";
   if (normalized === "EVENT_RISK_ELEVATED") return "event risk elevated";
   if (normalized === "EVENT_SHOCK_PRESSURE") return "shock pressure";
   if (normalized === "EVENT_SYMBOL_MATCH") return "symbol-specific event";
@@ -131,12 +145,15 @@ function eventItems(value: unknown): VerifiedEventItem[] {
       const source = cleanText(record.source, "");
       if (!title || !source) return null;
       return {
+        eventConfidence: finiteNumber(record.event_confidence ?? record.eventConfidence),
+        eventDecay: finiteNumber(record.event_decay ?? record.eventDecay),
         eventType: cleanText(record.event_type ?? record.eventType, "verified_update"),
         publishedAt: cleanText(record.published_at ?? record.publishedAt, "") || null,
         reasonCodes: reasonCodesFrom(record.reason_codes ?? record.reasonCodes),
         scope: cleanText(record.scope, "broad"),
         source,
         sourceUrl: cleanText(record.source_url ?? record.sourceUrl, ""),
+        sourceWeight: finiteNumber(record.source_weight ?? record.sourceWeight),
         title,
         weight: finiteNumber(record.weight),
       };
