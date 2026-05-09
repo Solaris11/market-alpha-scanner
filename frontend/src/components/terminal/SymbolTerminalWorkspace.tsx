@@ -6,6 +6,7 @@ import { useTradePlanEngine } from "@/hooks/useTradePlanEngine";
 import type { SignalHistoryPoint } from "@/lib/adapters/DataServiceAdapter";
 import type { DataFreshness } from "@/lib/data-health";
 import type { PaperPositionRow, PaperTradeEventRow } from "@/lib/paper-data";
+import type { DecisionJournalEntry, DecisionMemorySummary, PersonalizedDecisionCoaching } from "@/lib/trading/decision-journal";
 import { buildConvictionFragilityModel } from "@/lib/trading/conviction-fragility";
 import { dailyActionAllowsTrade, noTradeActionCopy, type DailyAction } from "@/lib/trading/daily-action";
 import type { ConvictionTimelineModel } from "@/lib/trading/conviction-timeline-types";
@@ -22,6 +23,7 @@ import { AICopilotPanel } from "./AICopilotPanel";
 import { ConvictionFragilityCard } from "./ConvictionFragilityCard";
 import { ConvictionTimeline } from "./ConvictionTimeline";
 import { CorrectionMapCard } from "./CorrectionMapCard";
+import { DecisionJournalCard } from "./DecisionJournalCard";
 import { ExecutionTicket } from "./ExecutionTicket";
 import { HistoricalEdgeCard } from "./HistoricalEdgeCard";
 import { MacroExchangeContextCard } from "./MacroExchangeContextCard";
@@ -55,6 +57,9 @@ export function SymbolTerminalWorkspace({
   globalDecision,
   macroContext,
   narrative,
+  decisionJournalEntries = [],
+  decisionMemory,
+  decisionCoaching,
   personalizationProfile,
   shockPattern,
   premiumAccess = true,
@@ -72,6 +77,9 @@ export function SymbolTerminalWorkspace({
   globalDecision?: DailyAction;
   macroContext: MacroExchangeContext | null;
   narrative?: NarrativeIntelligence | null;
+  decisionJournalEntries?: DecisionJournalEntry[];
+  decisionMemory?: DecisionMemorySummary | null;
+  decisionCoaching?: PersonalizedDecisionCoaching | null;
   personalizationProfile?: UserPersonalizationProfile | null;
   shockPattern?: ShockMovePattern | null;
   premiumAccess?: boolean;
@@ -139,6 +147,9 @@ export function SymbolTerminalWorkspace({
           <SymbolDecisionIntelligencePanel candles={candles} row={row} />
           <NarrativeIntelligenceCard narrative={narrative ?? null} />
           <PersonalizedIntelligenceCard narrative={narrative ?? null} profile={personalizationProfile ?? null} row={row} />
+          {decisionMemory && decisionCoaching ? (
+            <DecisionJournalCard coaching={decisionCoaching} entries={decisionJournalEntries} memory={decisionMemory} profile={personalizationProfile ?? null} row={row} />
+          ) : null}
           {macroContext ? <MacroExchangeContextCard context={macroContext} row={row} /> : null}
           <VerifiedEventContextCard row={row} />
           <ConvictionFragilityCard model={structuralQuality} />

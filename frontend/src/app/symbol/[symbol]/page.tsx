@@ -10,6 +10,7 @@ import { freshnessFromTimestamp } from "@/lib/data-health";
 import { getPaperData } from "@/lib/paper-data";
 import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
+import { getDecisionMemoryForUser } from "@/lib/server/decision-journal";
 import { getMarketMemoryForSignal } from "@/lib/server/market-memory";
 import { getNarrativeForSymbol } from "@/lib/server/narrative-intelligence";
 import { getPersonalizationProfileForUser } from "@/lib/server/personalized-intelligence";
@@ -21,6 +22,7 @@ import { premiumAccessState } from "@/lib/security/premium-access-state";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { buildConvictionTimelineModel } from "@/lib/trading/conviction-timeline-model";
 import { getDailyAction } from "@/lib/trading/daily-action";
+import { buildDecisionMemorySummary, buildPersonalizedDecisionCoaching } from "@/lib/trading/decision-journal";
 import { buildHistoricalEdgeProof } from "@/lib/trading/edge-proof";
 import { createMacroContextResolver } from "@/lib/trading/macro-regime";
 import type { MarketMemorySummary } from "@/lib/trading/market-memory";
@@ -100,8 +102,16 @@ export default async function SymbolDetailPage({ params }: PageProps) {
     marketRegime: snapshot.marketRegime,
     scanSafety,
   });
-  const marketMemory = row ? await getMarketMemoryForSignal(row) : null;
+  const [marketMemory, decisionJournalContext] = row
+    ? await Promise.all([
+        getMarketMemoryForSignal(row),
+        entitlement.user?.id ? getDecisionMemoryForUser(entitlement.user.id, { symbol: row.symbol }).catch(() => null) : Promise.resolve(null),
+      ])
+    : [null, null];
   const macroContext = row ? createMacroContextResolver(snapshot.signals).forRow(row) : null;
+  const decisionJournalEntries = decisionJournalContext?.entries ?? [];
+  const decisionMemory = decisionJournalContext?.memory ?? buildDecisionMemorySummary([], { symbol });
+  const decisionCoaching = row ? buildPersonalizedDecisionCoaching({ entries: decisionJournalEntries, memory: decisionMemory, profile: personalizationProfile, row }) : null;
   const unavailableMarketMemory: MarketMemorySummary = {
     analogs: [],
     available: false,
@@ -127,6 +137,9 @@ export default async function SymbolDetailPage({ params }: PageProps) {
       ) : (
         <SymbolTerminalWorkspace
           dataFreshness={dataFreshness ?? freshnessFromTimestamp(null)}
+          decisionCoaching={decisionCoaching}
+          decisionJournalEntries={decisionJournalEntries}
+          decisionMemory={decisionMemory}
           edgeProof={edgeProof ?? buildHistoricalEdgeProof(row, null)}
           history={history}
           globalDecision={globalDecision}

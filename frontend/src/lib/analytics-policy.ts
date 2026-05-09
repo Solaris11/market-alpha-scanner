@@ -30,6 +30,8 @@ export const ANALYTICS_EVENT_NAMES = [
   "support_unhelpful_feedback",
   "beta_feedback_submit",
   "personalization_update",
+  "decision_journal_save",
+  "decision_memory_clear",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];
