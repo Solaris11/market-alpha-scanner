@@ -29,6 +29,7 @@ import { buildHistoricalEdgeProof } from "@/lib/trading/edge-proof";
 import { createMacroContextResolver } from "@/lib/trading/macro-regime";
 import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
+import { buildScenarioIntelligenceSystem } from "@/lib/trading/scenario-intelligence";
 import { buildStrategyIntelligenceSystem } from "@/lib/trading/strategy-intelligence";
 
 export const dynamic = "force-dynamic";
@@ -131,6 +132,9 @@ export default async function SymbolDetailPage({ params }: PageProps) {
     opportunities: symbolOpportunity ? [symbolOpportunity] : [],
     personalizationProfile,
   });
+  const scenarioIntelligence = buildScenarioIntelligenceSystem({
+    rows: symbolOpportunity ? [symbolOpportunity] : [],
+  });
   const decisionJournalEntries = decisionJournalContext?.entries ?? [];
   const decisionMemory = decisionJournalContext?.memory ?? buildDecisionMemorySummary([], { symbol });
   const decisionCoaching = row ? buildPersonalizedDecisionCoaching({ entries: decisionJournalEntries, memory: decisionMemory, profile: personalizationProfile, row }) : null;
@@ -180,6 +184,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           priceSeries={detail.history}
           row={row}
           shockPattern={shockPattern}
+          scenarioIntelligence={scenarioIntelligence}
           strategyIntelligence={strategyIntelligence}
           timeline={timeline}
         />

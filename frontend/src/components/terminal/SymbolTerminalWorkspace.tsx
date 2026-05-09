@@ -18,6 +18,7 @@ import type { NarrativeIntelligence } from "@/lib/trading/narrative-intelligence
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import type { UserPersonalizationProfile } from "@/lib/trading/personalized-intelligence";
 import type { RiskPortfolioPosition } from "@/lib/trading/risk-veto";
+import type { ScenarioIntelligenceSystem } from "@/lib/trading/scenario-intelligence";
 import type { ShockMovePattern } from "@/lib/trading/shock-move";
 import type { StrategyIntelligenceSystem } from "@/lib/trading/strategy-intelligence";
 import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution";
@@ -42,6 +43,7 @@ import { SymbolChart, type ChartCandle, type ChartSignalMarker } from "./SymbolC
 import { SymbolDecisionIntelligencePanel } from "./SymbolDecisionIntelligencePanel";
 import { SymbolDecisionHero } from "./SymbolDecisionHero";
 import { SignalStatusCard } from "./SignalStatusCard";
+import { ScenarioIntelligencePanel } from "./ScenarioIntelligencePanel";
 import { ShockPatternMemoryCard } from "./ShockPatternMemoryCard";
 import { StrategyIntelligencePanel } from "./StrategyIntelligencePanel";
 import { TechnicalSnapshotCard } from "./TechnicalSnapshotCard";
@@ -73,6 +75,7 @@ export function SymbolTerminalWorkspace({
   workflowEvolution,
   institutionalOpportunity,
   strategyIntelligence,
+  scenarioIntelligence,
   personalizationProfile,
   shockPattern,
   premiumAccess = true,
@@ -97,6 +100,7 @@ export function SymbolTerminalWorkspace({
   workflowEvolution?: WorkflowEvolutionSummary | null;
   institutionalOpportunity?: OpportunityViewModel | null;
   strategyIntelligence?: StrategyIntelligenceSystem | null;
+  scenarioIntelligence?: ScenarioIntelligenceSystem | null;
   personalizationProfile?: UserPersonalizationProfile | null;
   shockPattern?: ShockMovePattern | null;
   premiumAccess?: boolean;
@@ -165,6 +169,7 @@ export function SymbolTerminalWorkspace({
           {institutionalOpportunity ? <MetaIntelligenceOperatingSystemPanel compact focusSymbol={symbol} personalizationProfile={personalizationProfile ?? null} rows={[institutionalOpportunity]} workflowEvolution={workflowEvolution ?? null} /> : null}
           <AdaptiveLearningInsightPanel compact focusSymbol={symbol} system={adaptiveLearning ?? null} />
           <StrategyIntelligencePanel compact focusSymbol={symbol} system={strategyIntelligence ?? null} />
+          <ScenarioIntelligencePanel compact focusSymbol={symbol} system={scenarioIntelligence ?? null} />
           <NarrativeIntelligenceCard narrative={narrative ?? null} />
           <PersonalizedIntelligenceCard narrative={narrative ?? null} profile={personalizationProfile ?? null} row={row} />
           {decisionMemory && decisionCoaching ? (

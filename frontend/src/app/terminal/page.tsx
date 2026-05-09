@@ -16,6 +16,7 @@ import { MetaIntelligenceOperatingSystemPanel } from "@/components/terminal/Meta
 import { MetricCard } from "@/components/terminal/MetricCard";
 import { MyWatchlistWidget } from "@/components/terminal/MyWatchlistWidget";
 import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
+import { ScenarioIntelligencePanel } from "@/components/terminal/ScenarioIntelligencePanel";
 import { SignalCard } from "@/components/terminal/SignalCard";
 import { SignalHeatmap } from "@/components/terminal/SignalHeatmap";
 import { StrategyIntelligencePanel } from "@/components/terminal/StrategyIntelligencePanel";
@@ -40,6 +41,7 @@ import { buildAdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { dailyActionBlocksTradeUi, getDailyAction, noTradeActionCopy } from "@/lib/trading/daily-action";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
+import { buildScenarioIntelligenceSystem } from "@/lib/trading/scenario-intelligence";
 import { buildStrategyIntelligenceSystem } from "@/lib/trading/strategy-intelligence";
 import { formatMoney, formatPercent } from "@/lib/ui/formatters";
 import { decisionLabel, humanizeLabel } from "@/lib/ui/labels";
@@ -126,6 +128,9 @@ export default async function TerminalPage() {
     opportunities: opportunityModel.rows,
     personalizationProfile,
   });
+  const scenarioIntelligence = buildScenarioIntelligenceSystem({
+    rows: opportunityModel.rows,
+  });
   const best = selectBestTradeNow(snapshot.signals, edges);
   const leader = best?.row ?? snapshot.topSignals[0] ?? snapshot.signals[0];
   const dailyAction = getDailyAction({ best, fallbackRow: leader, marketRegime: snapshot.marketRegime, scanSafety });
@@ -151,6 +156,7 @@ export default async function TerminalPage() {
           <MetaIntelligenceOperatingSystemPanel compact personalizationProfile={personalizationProfile} rows={opportunityModel.rows} workflowEvolution={workflowEvolution} />
           <AdaptiveLearningInsightPanel compact system={adaptiveLearning} />
           <StrategyIntelligencePanel compact system={strategyIntelligence} />
+          <ScenarioIntelligencePanel compact system={scenarioIntelligence} />
           {workflowEvolution ? <WorkflowEvolutionPanel summary={workflowEvolution} surface="terminal" /> : null}
           <InstitutionalIntelligencePanel compact rows={opportunityModel.rows} />
           {actionBlocksTradeUi ? (

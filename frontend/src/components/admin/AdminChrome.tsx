@@ -11,6 +11,7 @@ const ADMIN_LINKS = [
   { href: "/admin/scanner", label: "Scanner" },
   { href: "/admin/calibration", label: "Calibration" },
   { href: "/admin/alpha-lab", label: "Alpha Lab" },
+  { href: "/admin/scenarios", label: "Scenarios" },
   { href: "/admin/monitoring", label: "Monitoring" },
   { href: "/admin/analytics", label: "Analytics" },
   { href: "/admin/audit", label: "Audit" },
