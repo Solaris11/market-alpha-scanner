@@ -9,6 +9,7 @@ import {
   type UserPersonalizationProfile,
 } from "@/lib/trading/personalized-intelligence";
 import { normalizePersonalityProfile, normalizePreferenceLevel, normalizeRiskProfile, type UserRiskProfile } from "@/lib/trading/risk-veto";
+import { readUserMemorySettings } from "./user-memory-settings";
 
 type RiskProfilePersonalizationRow = QueryResultRow & {
   allow_override: boolean;
@@ -39,14 +40,15 @@ type BehaviorRow = QueryResultRow & {
 
 export async function getPersonalizationProfileForUser(userId: string | null | undefined): Promise<UserPersonalizationProfile> {
   if (!userId) return defaultPersonalizationProfile();
-  const [profileRow, behavior] = await Promise.all([
+  const [profileRow, settings] = await Promise.all([
     readRiskProfile(userId).catch(() => null),
-    readBehaviorSummary(userId).catch(() => null),
+    readUserMemorySettings(userId).catch(() => null),
   ]);
+  const behavior = settings?.behavioralLearningEnabled === false ? null : await readBehaviorSummary(userId).catch(() => null);
   return buildUserPersonalizationProfile({
     behavior,
     profile: profileRow,
-    source: profileRow ? "hybrid" : behavior ? "behavioral" : "default",
+    source: profileRow && behavior ? "hybrid" : profileRow ? "explicit" : behavior ? "behavioral" : "default",
   });
 }
 

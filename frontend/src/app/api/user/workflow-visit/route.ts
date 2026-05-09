@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requirePremium } from "@/lib/server/access-control";
 import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
+import { readUserMemorySettings } from "@/lib/server/user-memory-settings";
 import { recordWorkflowVisit } from "@/lib/server/workflow-evolution";
 import type { WorkflowSignalSnapshot, WorkflowSurface } from "@/lib/trading/workflow-evolution";
 
@@ -24,6 +25,11 @@ export async function POST(request: Request) {
 
   const csrf = requireCsrf(request);
   if (csrf) return csrf;
+
+  const settings = await readUserMemorySettings(access.user.id).catch(() => null);
+  if (settings && !settings.behavioralLearningEnabled) {
+    return NextResponse.json({ ok: true, recorded: 0, skipped: "behavioral_learning_disabled" });
+  }
 
   const payload = (await request.json().catch(() => null)) as WorkflowVisitPayload | null;
   const surface = normalizeSurface(payload?.surface);

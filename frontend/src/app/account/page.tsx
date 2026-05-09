@@ -2,17 +2,24 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { QueryResultRow } from "pg";
 import { AccountLogoutButton, AccountSignInCta, BillingActionButton, DeleteAccountButton, LegalReviewButton, SendVerificationEmailButton } from "@/components/account/AccountPageActions";
+import { UserMemoryPrivacyControls } from "@/components/account/UserMemoryPrivacyControls";
 import { betaBillingCopy, parseBooleanFlag, parseTrialDays } from "@/lib/security/beta-billing";
 import { billingViewState } from "@/lib/security/billing-state";
 import { checkoutBlockMessage, checkoutBlockReason } from "@/lib/security/billing-readiness";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { getAlertOverview } from "@/lib/alerts";
+import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { dbQuery } from "@/lib/server/db";
 import { getFreshBillingSubscriptionForUser, type BillingSubscription } from "@/lib/server/billing";
 import { getDecisionMemoryForUser } from "@/lib/server/decision-journal";
-import { getEntitlement, type Entitlement } from "@/lib/server/entitlements";
+import { getEntitlement, hasPremiumAccess, type Entitlement } from "@/lib/server/entitlements";
+import { getPersonalizationProfileForUser } from "@/lib/server/personalized-intelligence";
 import { formatRiskExperienceLevel } from "@/lib/security/onboarding-profile";
+import { readUserMemorySettings } from "@/lib/server/user-memory-settings";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
+import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
+import { buildUserMemoryActivation } from "@/lib/trading/user-memory-activation";
+import { DEFAULT_USER_MEMORY_SETTINGS } from "@/lib/trading/user-memory-settings";
 import { DEFAULT_USER_RISK_PROFILE, normalizePersonalityProfile, normalizePreferenceLevel, normalizeRiskProfile, type UserRiskProfile } from "@/lib/trading/risk-veto";
 
 export const dynamic = "force-dynamic";
@@ -65,13 +72,29 @@ export default async function AccountPage() {
     );
   }
 
-  const [riskProfile, watchlist, enabledAlertCount, billingSubscription, decisionMemory] = await Promise.all([
+  const [riskProfile, watchlist, enabledAlertCount, billingSubscription, decisionMemory, memorySettings, personalizationProfile] = await Promise.all([
     readRiskProfile(user.id),
     readWatchlist(user.id),
     readEnabledAlertCount(user.id),
     getFreshBillingSubscriptionForUser(user.id).catch(() => null),
     getDecisionMemoryForUser(user.id).then((context) => context.memory).catch(() => null),
+    readUserMemorySettings(user.id).catch(() => DEFAULT_USER_MEMORY_SETTINGS),
+    getPersonalizationProfileForUser(user.id).catch(() => null),
   ]);
+  const workflowEvolution = hasPremiumAccess(entitlement)
+    ? await (async () => {
+        const adapter = new ScannerDataAdapter();
+        const rows = await adapter.getOverviewSignals();
+        return getWorkflowEvolutionForUser(user.id, rows, { surface: "opportunities", watchlistSymbols: watchlist });
+      })().catch(() => null)
+    : null;
+  const memoryActivation = buildUserMemoryActivation({
+    memory: decisionMemory,
+    profile: personalizationProfile,
+    settings: memorySettings,
+    watchlistSymbols: watchlist,
+    workflowEvolution,
+  });
 
   return (
     <TerminalShell>
@@ -202,24 +225,66 @@ export default async function AccountPage() {
 
         <AccountSection title="Decision Memory">
           {decisionMemory ? (
-            <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-              <div>
-                <div className="text-3xl font-semibold text-slate-50">{decisionMemory.journalCount.toLocaleString()}</div>
-                <div className="mt-1 text-sm text-slate-400">journaled decision{decisionMemory.journalCount === 1 ? "" : "s"}</div>
-                <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <InfoItem label="Patient decisions" value={decisionMemory.patientDecisionCount.toLocaleString()} />
-                  <InfoItem label="Chase-risk notes" value={decisionMemory.chaseCount.toLocaleString()} />
+            <div className="space-y-4">
+              <div className="grid gap-4 lg:grid-cols-[0.75fr_1.25fr]">
+                <div>
+                  <div className="text-3xl font-semibold text-slate-50">{decisionMemory.journalCount.toLocaleString()}</div>
+                  <div className="mt-1 text-sm text-slate-400">journaled decision{decisionMemory.journalCount === 1 ? "" : "s"}</div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                    <InfoItem label="Patient decisions" value={decisionMemory.patientDecisionCount.toLocaleString()} />
+                    <InfoItem label="Chase-risk notes" value={decisionMemory.chaseCount.toLocaleString()} />
+                    <InfoItem label="Learning" value={memorySettings.behavioralLearningEnabled ? "Enabled" : "Disabled"} />
+                    <InfoItem label="Coaching" value={memorySettings.journalCoachingEnabled ? "Enabled" : "Paused"} />
+                  </div>
+                </div>
+                <div className="rounded-xl border border-cyan-300/15 bg-cyan-400/[0.055] p-4">
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Personalized daily briefing</div>
+                  <h4 className="mt-2 text-lg font-semibold text-slate-50">{memoryActivation.dailyBriefing.headline}</h4>
+                  <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-300">
+                    {memoryActivation.dailyBriefing.bullets.map((note) => <li key={note}>- {note}</li>)}
+                  </ul>
+                  <p className="mt-3 text-xs leading-5 text-slate-500">{memoryActivation.dailyBriefing.privacyNote}</p>
+                  <Link className="mt-4 inline-flex rounded-full border border-cyan-300/35 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15" href="/terminal">
+                    Open decision workspace
+                  </Link>
                 </div>
               </div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Coaching baseline</div>
-                <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-300">
-                  {decisionMemory.coachingNotes.slice(0, 4).map((note) => <li key={note}>- {note}</li>)}
-                </ul>
-                <p className="mt-3 text-xs leading-5 text-slate-500">{decisionMemory.privacyNote}</p>
-                <Link className="mt-4 inline-flex rounded-full border border-cyan-300/35 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15" href="/terminal">
-                  Open decision workspace
-                </Link>
+
+              <div className="grid gap-4 xl:grid-cols-2">
+                <MemoryGrid title="What TradeVeto Remembers" items={memoryActivation.transparency.map((item) => ({ label: item.title, value: item.detail }))} />
+                <MemoryGrid title="Personalized Insights" items={memoryActivation.insights.map((item) => ({ label: `${item.title} · ${item.evidenceLabel}`, value: item.detail }))} />
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Watchlist revisit intelligence</div>
+                  {memoryActivation.watchlistRevisit.length ? (
+                    <div className="mt-3 grid gap-2">
+                      {memoryActivation.watchlistRevisit.map((item) => (
+                        <Link className="rounded-xl border border-white/10 bg-slate-950/35 p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.055]" href={`/symbol/${item.symbol}`} key={`${item.symbol}:${item.title}:${item.state}`}>
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="font-mono text-sm font-black text-slate-50">{item.symbol}</span>
+                            <span className={`rounded-full border px-2 py-1 text-[10px] font-semibold ${memoryPriorityClass(item.priority)}`}>{item.priority}</span>
+                          </div>
+                          <div className="mt-1 text-sm font-semibold text-slate-100">{item.title}</div>
+                          <div className="mt-1 text-[11px] text-cyan-100">{item.state}</div>
+                          <p className="mt-1 text-xs leading-5 text-slate-400">{item.detail}</p>
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-2 text-sm leading-6 text-slate-400">Add symbols to your watchlist to start revisit intelligence.</p>
+                  )}
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                  <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Privacy summary</div>
+                  <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-300">
+                    {memoryActivation.privacySummary.map((note) => <li key={note}>- {note}</li>)}
+                  </ul>
+                  <div className="mt-4">
+                    <UserMemoryPrivacyControls initialSettings={memorySettings} memoryAvailable={decisionMemory.journalCount > 0 || Boolean(workflowEvolution?.lastSeenAt)} />
+                  </div>
+                </div>
               </div>
             </div>
           ) : (
@@ -336,6 +401,28 @@ function InfoItem({ label, subtext, value }: { label: string; subtext?: string; 
       {subtext ? <p className="mt-1 text-xs leading-5 text-slate-500">{subtext}</p> : null}
     </div>
   );
+}
+
+function MemoryGrid({ items, title }: { items: Array<{ label: string; value: string }>; title: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{title}</div>
+      <div className="mt-3 grid gap-2">
+        {items.slice(0, 6).map((item) => (
+          <div className="rounded-xl border border-white/10 bg-slate-950/35 p-3" key={`${item.label}:${item.value}`}>
+            <div className="text-xs font-semibold text-slate-100">{item.label}</div>
+            <p className="mt-1 text-xs leading-5 text-slate-500">{item.value}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function memoryPriorityClass(priority: "high" | "medium" | "low"): string {
+  if (priority === "high") return "border-amber-300/30 bg-amber-400/10 text-amber-100";
+  if (priority === "medium") return "border-cyan-300/30 bg-cyan-400/10 text-cyan-100";
+  return "border-white/10 bg-white/[0.04] text-slate-300";
 }
 
 function PlaceholderItem({ text, title }: { text: string; title: string }) {

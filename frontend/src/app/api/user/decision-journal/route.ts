@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { requirePremium } from "@/lib/server/access-control";
+import { requirePremium, requireUser } from "@/lib/server/access-control";
 import { getCurrentUser } from "@/lib/server/auth";
 import { buildDecisionMemorySummary } from "@/lib/trading/decision-journal";
 import { clearDecisionJournal, createDecisionJournalEntry, listDecisionJournalEntries, type DecisionJournalInput } from "@/lib/server/decision-journal";
 import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
+import { clearUserMemoryData } from "@/lib/server/user-memory-settings";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -85,7 +86,7 @@ export async function DELETE(request: Request) {
   const invalidOrigin = validateMutationRequest(request);
   if (invalidOrigin) return invalidOrigin;
 
-  const access = await requirePremium();
+  const access = await requireUser("Sign in to clear decision memory.");
   if (!access.ok) return access.response;
 
   const csrf = requireCsrf(request);
@@ -96,7 +97,7 @@ export async function DELETE(request: Request) {
     return NextResponse.json({ ok: false, message: "Confirmation is required before clearing decision memory." }, { status: 400 });
   }
 
-  await clearDecisionJournal(access.user.id);
+  await clearUserMemoryData(access.user.id).catch(() => clearDecisionJournal(access.user.id));
   return NextResponse.json({
     authenticated: true,
     entries: [],

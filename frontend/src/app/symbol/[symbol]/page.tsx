@@ -22,6 +22,7 @@ import { assertNoPremiumFields } from "@/lib/server/premium-preview";
 import { getPublicSymbolSignal } from "@/lib/server/public-signal-data";
 import { getShockMovePattern } from "@/lib/server/shock-move-patterns";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
+import { readUserMemorySettings } from "@/lib/server/user-memory-settings";
 import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
 import { buildAdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
@@ -36,6 +37,7 @@ import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-mode
 import { buildScenarioIntelligenceSystem } from "@/lib/trading/scenario-intelligence";
 import { buildStrategyIntelligenceSystem } from "@/lib/trading/strategy-intelligence";
 import { publishingJsonLdForSymbol } from "@/lib/trading/intelligence-publishing";
+import { DEFAULT_USER_MEMORY_SETTINGS } from "@/lib/trading/user-memory-settings";
 
 export const dynamic = "force-dynamic";
 
@@ -137,12 +139,13 @@ export default async function SymbolDetailPage({ params }: PageProps) {
     marketRegime: snapshot.marketRegime,
     scanSafety,
   });
-  const [marketMemory, decisionJournalContext] = row
+  const [marketMemory, decisionJournalContext, memorySettings] = row
     ? await Promise.all([
         getMarketMemoryForSignal(row),
         entitlement.user?.id ? getDecisionMemoryForUser(entitlement.user.id, { symbol: row.symbol }).catch(() => null) : Promise.resolve(null),
+        entitlement.user?.id ? readUserMemorySettings(entitlement.user.id).catch(() => DEFAULT_USER_MEMORY_SETTINGS) : Promise.resolve(DEFAULT_USER_MEMORY_SETTINGS),
       ])
-    : [null, null];
+    : [null, null, DEFAULT_USER_MEMORY_SETTINGS];
   const macroContext = row ? createMacroContextResolver(snapshot.signals).forRow(row) : null;
   const symbolOpportunity = row
     ? buildOpportunitiesPageModel(
@@ -162,7 +165,16 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   });
   const decisionJournalEntries = decisionJournalContext?.entries ?? [];
   const decisionMemory = decisionJournalContext?.memory ?? buildDecisionMemorySummary([], { symbol });
-  const decisionCoaching = row ? buildPersonalizedDecisionCoaching({ entries: decisionJournalEntries, memory: decisionMemory, profile: personalizationProfile, row }) : null;
+  const decisionCoaching = row
+    ? memorySettings.journalCoachingEnabled
+      ? buildPersonalizedDecisionCoaching({ entries: decisionJournalEntries, memory: decisionMemory, profile: personalizationProfile, row })
+      : {
+          coachingNotes: ["Journal coaching is paused in Account settings. Saved entries remain private and exportable."],
+          fitLabel: "Memory still building" as const,
+          strengthReason: "Journal coaching is paused, so this panel is not using prior entries to personalize the setup.",
+          warningReason: "The deterministic scanner decision, fragility, and invalidation context remain the source of truth.",
+        }
+    : null;
   const workflowEvolution = row ? await getWorkflowEvolutionForUser(entitlement.user?.id ?? null, [row], { surface: "symbol" }).catch(() => null) : null;
   const unavailableMarketMemory: MarketMemorySummary = {
     analogs: [],
