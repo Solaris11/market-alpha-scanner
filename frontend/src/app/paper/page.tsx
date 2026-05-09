@@ -2,9 +2,11 @@ import Link from "next/link";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { GhostPortfolioCard } from "@/components/paper/GhostPortfolioCard";
 import { ManualPaperTradeForm } from "@/components/paper/ManualPaperTradeForm";
+import { PortfolioIntelligencePanel } from "@/components/paper/PortfolioIntelligencePanel";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
+import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import {
   getPaperAnalytics,
   getPaperData,
@@ -13,7 +15,13 @@ import {
   type PaperPositionRow,
   type PaperTradeEventRow,
 } from "@/lib/paper-data";
+import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
+import { getNarrativeMap } from "@/lib/server/narrative-intelligence";
+import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
+import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
+import { buildPortfolioIntelligenceSystem } from "@/lib/trading/portfolio-intelligence";
+import { buildScenarioIntelligenceSystem } from "@/lib/trading/scenario-intelligence";
 import { humanizeLabel } from "@/lib/ui/labels";
 
 export const dynamic = "force-dynamic";
@@ -646,7 +654,28 @@ export default async function PaperPage() {
 
   const premiumAccess = hasPremiumAccess(entitlement);
   const paperScope = { userId: entitlement.user?.id ?? null };
-  const [data, analytics] = await Promise.all([getPaperData(paperScope), premiumAccess ? getPaperAnalytics(paperScope) : Promise.resolve(null)]);
+  const adapter = new ScannerDataAdapter();
+  const [data, analytics, scannerRows, performance] = await Promise.all([
+    getPaperData(paperScope),
+    premiumAccess ? getPaperAnalytics(paperScope) : Promise.resolve(null),
+    premiumAccess ? adapter.getOverviewSignals().catch(() => []) : Promise.resolve([]),
+    premiumAccess ? getPerformanceData({ forwardTailRows: 5000 }).catch(() => null) : Promise.resolve(null),
+  ]);
+  const scannerSymbols = scannerRows.map((row) => row.symbol);
+  const [shockPatterns, narratives] = premiumAccess && scannerSymbols.length
+    ? await Promise.all([
+        getShockMovePatternMap(scannerSymbols).catch(() => new Map()),
+        getNarrativeMap(scannerSymbols).catch(() => new Map()),
+      ])
+    : [new Map(), new Map()];
+  const opportunitiesModel = buildOpportunitiesPageModel(scannerRows, performance, shockPatterns, narratives);
+  const scenarioIntelligence = buildScenarioIntelligenceSystem({ rows: opportunitiesModel.rows });
+  const portfolioIntelligence = buildPortfolioIntelligenceSystem({
+    accountValue: data.account?.total_account_value ?? null,
+    opportunities: opportunitiesModel.rows,
+    positions: data.positions,
+    scenarioSystem: scenarioIntelligence,
+  });
   const account = data.account;
   const closedPositions = closedPaperPositions(data.positions);
   const equityPoints = buildEquityPoints(closedPositions);
@@ -688,6 +717,7 @@ export default async function PaperPage() {
               {premiumAccess && analytics && trustMetrics ? (
                 <>
                   <TrustHeadlineCards metrics={trustMetrics} />
+                  <PortfolioIntelligencePanel system={portfolioIntelligence} />
 
                   <SectionShell eyebrow="Trust Curve" title={equityPoints.length === 1 ? "Equity Curve (early data)" : "Equity Curve"}>
                     <EquityCurve points={equityPoints} />
