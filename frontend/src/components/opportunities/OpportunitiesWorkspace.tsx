@@ -11,10 +11,12 @@ import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model"
 import { RiskTolerantOpportunityRadar } from "@/components/opportunities/RiskTolerantOpportunityRadar";
 import { ShockMoveRadar } from "@/components/opportunities/ShockMoveRadar";
 import { AdaptiveLearningInsightPanel } from "@/components/terminal/AdaptiveLearningInsightPanel";
+import { StrategyIntelligencePanel } from "@/components/terminal/StrategyIntelligencePanel";
 import { WorkflowEvolutionPanel } from "@/components/terminal/WorkflowEvolutionPanel";
 import { InstitutionalIntelligencePanel } from "@/components/terminal/InstitutionalIntelligencePanel";
 import { MetaIntelligenceOperatingSystemPanel } from "@/components/terminal/MetaIntelligenceOperatingSystemPanel";
 import type { AdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
+import type { StrategyIntelligenceSystem } from "@/lib/trading/strategy-intelligence";
 import { type UserPersonalizationProfile } from "@/lib/trading/personalized-intelligence";
 import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution";
 import { confidenceTone } from "@/lib/trading/confidence";
@@ -52,6 +54,7 @@ export function OpportunitiesWorkspace({
   initialProfile,
   marketCondition,
   rows,
+  strategyIntelligence = null,
   workflowEvolution,
 }: {
   adaptiveLearning?: AdaptiveLearningSystem | null;
@@ -60,6 +63,7 @@ export function OpportunitiesWorkspace({
   initialProfile?: UserPersonalizationProfile;
   marketCondition: string | null;
   rows: OpportunityViewModel[];
+  strategyIntelligence?: StrategyIntelligenceSystem | null;
   workflowEvolution?: WorkflowEvolutionSummary;
 }) {
   const [activeTab, setActiveTab] = useState<TabKey>("BEST");
@@ -153,6 +157,7 @@ export function OpportunitiesWorkspace({
       <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} rows={rows} />
       <MetaIntelligenceOperatingSystemPanel personalizationProfile={initialProfile} rows={rows} workflowEvolution={workflowEvolution ?? null} />
       <AdaptiveLearningInsightPanel system={adaptiveLearning} />
+      <StrategyIntelligencePanel system={strategyIntelligence} />
       <RiskTolerantOpportunityRadar initialProfile={initialProfile} marketCondition={marketCondition} rows={rows} />
       <ShockMoveRadar rows={rows} />
       {workflowEvolution ? <WorkflowEvolutionPanel compact summary={workflowEvolution} surface="opportunities" /> : null}

@@ -14,6 +14,7 @@ import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
 import { buildAdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
+import { buildStrategyIntelligenceSystem } from "@/lib/trading/strategy-intelligence";
 
 export const dynamic = "force-dynamic";
 
@@ -54,12 +55,17 @@ export default async function OpportunitiesPage() {
     forwardRows: performance?.forwardReturns.rows ?? [],
     observationCount: performance?.forwardReturns.rows.length ?? 0,
   });
+  const strategyIntelligence = buildStrategyIntelligenceSystem({
+    forwardRows: performance?.forwardReturns.rows ?? [],
+    opportunities: model.rows,
+    personalizationProfile,
+  });
   const workflowEvolution = await getWorkflowEvolutionForUser(entitlement.user?.id ?? null, rows, { surface: "opportunities", watchlistSymbols }).catch(() => null);
   const bestDetail = model.best ? await adapter.getSymbolDetail(model.best.symbol).catch(() => null) : null;
 
   return (
     <TerminalShell>
-      <OpportunitiesWorkspace adaptiveLearning={adaptiveLearning} best={model.best} bestPriceSeries={bestDetail?.history ?? []} initialProfile={personalizationProfile ?? undefined} marketCondition={regime.label} rows={model.rows} workflowEvolution={workflowEvolution ?? undefined} />
+      <OpportunitiesWorkspace adaptiveLearning={adaptiveLearning} best={model.best} bestPriceSeries={bestDetail?.history ?? []} initialProfile={personalizationProfile ?? undefined} marketCondition={regime.label} rows={model.rows} strategyIntelligence={strategyIntelligence} workflowEvolution={workflowEvolution ?? undefined} />
     </TerminalShell>
   );
 }

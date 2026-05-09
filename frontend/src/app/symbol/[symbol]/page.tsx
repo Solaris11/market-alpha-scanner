@@ -29,6 +29,7 @@ import { buildHistoricalEdgeProof } from "@/lib/trading/edge-proof";
 import { createMacroContextResolver } from "@/lib/trading/macro-regime";
 import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
+import { buildStrategyIntelligenceSystem } from "@/lib/trading/strategy-intelligence";
 
 export const dynamic = "force-dynamic";
 
@@ -95,9 +96,10 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   ]);
   const row = detail.row;
   const edgeProof = row ? buildHistoricalEdgeProof(row, performance) : null;
+  const symbolForwardRows = (performance?.forwardReturns.rows ?? []).filter((item) => String(item.symbol ?? "").toUpperCase() === symbol.trim().toUpperCase());
   const adaptiveLearning = buildAdaptiveLearningSystem({
-    forwardRows: (performance?.forwardReturns.rows ?? []).filter((item) => String(item.symbol ?? "").toUpperCase() === symbol.trim().toUpperCase()),
-    observationCount: (performance?.forwardReturns.rows ?? []).filter((item) => String(item.symbol ?? "").toUpperCase() === symbol.trim().toUpperCase()).length,
+    forwardRows: symbolForwardRows,
+    observationCount: symbolForwardRows.length,
   });
   const timeline = buildConvictionTimelineModel(history);
   const dataFreshness = row ? freshnessFromTimestamp(typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null) : null;
@@ -124,6 +126,11 @@ export default async function SymbolDetailPage({ params }: PageProps) {
         narrative ? new Map([[row.symbol.toUpperCase(), narrative]]) : new Map(),
       ).rows.find((item) => item.symbol === row.symbol.toUpperCase()) ?? null
     : null;
+  const strategyIntelligence = buildStrategyIntelligenceSystem({
+    forwardRows: symbolForwardRows,
+    opportunities: symbolOpportunity ? [symbolOpportunity] : [],
+    personalizationProfile,
+  });
   const decisionJournalEntries = decisionJournalContext?.entries ?? [];
   const decisionMemory = decisionJournalContext?.memory ?? buildDecisionMemorySummary([], { symbol });
   const decisionCoaching = row ? buildPersonalizedDecisionCoaching({ entries: decisionJournalEntries, memory: decisionMemory, profile: personalizationProfile, row }) : null;
@@ -173,6 +180,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           priceSeries={detail.history}
           row={row}
           shockPattern={shockPattern}
+          strategyIntelligence={strategyIntelligence}
           timeline={timeline}
         />
       )}
