@@ -44,7 +44,7 @@ export async function analyzeRiskTolerantOpportunity(packet: RiskTolerantOpportu
     const payload = await response.json() as unknown;
     const text = extractOutputText(payload);
     if (!text) return deterministicAnalysis(packet, false);
-    const parsed = JSON.parse(text) as unknown;
+    const parsed = parseAnalysisJson(text);
     const validated = validateAnalysis(parsed, packet);
     return validated ?? deterministicAnalysis(packet, false);
   } catch {
@@ -95,9 +95,11 @@ function requestPayload(model: string, packet: RiskTolerantOpportunityPacket): R
           "Use only the supplied structured packet.",
           "Do not invent prices, news, probabilities, targets, scores, or events.",
           "The deterministic engine owns all numeric claims and ranking decisions.",
-          "Do not say buy now, sell now, guaranteed, sure profit, or direct financial advice.",
+          "Do not use the words buy or sell. Use entry, exit, act, or avoid action instead.",
+          "Do not say guaranteed, sure profit, or direct financial advice.",
           "Mention stale or limited data if the packet says data freshness or evidence is limited.",
-          "Return strict JSON only.",
+          "Return strict ASCII JSON only. Do not use curly quotes. Do not put quotation marks inside string values.",
+          "The safetyLanguage field must include the exact phrase: not financial advice.",
         ].join(" "),
       },
       {
@@ -149,6 +151,70 @@ function analysisSchema(): Record<string, unknown> {
     ],
     type: "object",
   };
+}
+
+function parseAnalysisJson(text: string): unknown {
+  try {
+    return JSON.parse(text) as unknown;
+  } catch {
+    return parseLooseAnalysisJson(text);
+  }
+}
+
+function parseLooseAnalysisJson(text: string): Record<string, unknown> | null {
+  const unsupportedClaimsDetected = booleanField(text, "unsupportedClaimsDetected");
+  if (unsupportedClaimsDetected === null) return null;
+  return {
+    chaseRiskAssessment: looseStringField(text, "chaseRiskAssessment"),
+    conciseExplanation: looseStringField(text, "conciseExplanation"),
+    dataFreshnessNote: looseStringField(text, "dataFreshnessNote"),
+    evidenceSupportingRanking: looseStringArrayField(text, "evidenceSupportingRanking"),
+    monitorNext: looseStringArrayField(text, "monitorNext"),
+    profileFitReason: looseStringField(text, "profileFitReason"),
+    safetyLanguage: looseStringField(text, "safetyLanguage"),
+    uncertaintyNote: looseStringField(text, "uncertaintyNote"),
+    unsupportedClaimsDetected,
+    whyItMayFail: looseStringField(text, "whyItMayFail"),
+    whyItMayWork: looseStringField(text, "whyItMayWork"),
+  };
+}
+
+function looseStringField(text: string, field: string): string {
+  const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(`"${escaped}"\\s*:\\s*"([\\s\\S]*?)"\\s*(?:,|})`).exec(text);
+  return normalizeJsonishText(match?.[1] ?? "");
+}
+
+function looseStringArrayField(text: string, field: string): string[] {
+  const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(`"${escaped}"\\s*:\\s*\\[([\\s\\S]*?)\\]\\s*(?:,|})`).exec(text);
+  const body = match?.[1] ?? "";
+  const items: string[] = [];
+  const itemPattern = /"([^"]*)"/g;
+  let item: RegExpExecArray | null;
+  while ((item = itemPattern.exec(body)) !== null) {
+    const normalized = normalizeJsonishText(item[1]);
+    if (normalized) items.push(normalized);
+  }
+  return items;
+}
+
+function booleanField(text: string, field: string): boolean | null {
+  const escaped = field.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = new RegExp(`"${escaped}"\\s*:\\s*(true|false)`).exec(text);
+  if (!match) return null;
+  return match[1] === "true";
+}
+
+function normalizeJsonishText(text: string): string {
+  return text
+    .replace(/[“”]/g, "")
+    .replace(/[‘’]/g, "'")
+    .replace(/\\n/g, " ")
+    .replace(/\\"/g, "\"")
+    .replace(/\s+/g, " ")
+    .replace(/,+$/g, "")
+    .trim();
 }
 
 function validateAnalysis(value: unknown, packet: RiskTolerantOpportunityPacket): RiskTolerantLlmAnalysis | null {
