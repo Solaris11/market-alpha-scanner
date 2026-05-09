@@ -4,6 +4,7 @@ import type { QueryResultRow } from "pg";
 import type { BackupHealthDetails } from "@/lib/backup-health";
 import { getScanDataHealth } from "@/lib/scanner-data";
 import { buildEvidenceDepthSummary, type EvidenceDepthDuplicateCheck, type EvidenceDepthSummary, type EvidenceDepthSymbol, type EvidenceDepthTableCount, type EvidenceDepthWindow } from "@/lib/trading/evidence-depth";
+import { buildScoreCalibrationSystem, type CalibrationAxisDirection, type ScoreCalibrationAnomaly, type ScoreCalibrationAnomalyType, type ScoreCalibrationBucketInput, type ScoreCalibrationSystem } from "@/lib/trading/score-calibration";
 import { deepHealth } from "./monitoring";
 import { dbQuery } from "./db";
 
@@ -201,6 +202,7 @@ export type AdminCalibrationSummary = {
   hints: string[];
   latestRun: ScannerRunSummary | null;
   observationCount: number;
+  scoreCalibration: ScoreCalibrationSystem;
 };
 
 type CountRow = QueryResultRow & { count: string | number };
@@ -372,6 +374,36 @@ type CalibrationDistributionDbRow = QueryResultRow & {
   count: string | number;
   decision: string | null;
   trade_permitted_count: string | number;
+};
+type ScoreCalibrationBucketDbRow = QueryResultRow & {
+  adverse_rate: string | number | null;
+  avg_drawdown: string | number | null;
+  avg_return: string | number | null;
+  avg_signal: string | number | null;
+  axis_id: string;
+  axis_label: string;
+  bucket_label: string;
+  bucket_order: string | number;
+  count: string | number;
+  direction: CalibrationAxisDirection;
+  horizon: string;
+  large_gain_rate: string | number | null;
+  median_return: string | number | null;
+  outcome_stddev: string | number | null;
+  volatility_rate: string | number | null;
+  win_rate: string | number | null;
+  worst_return: string | number | null;
+};
+type ScoreCalibrationAnomalyDbRow = QueryResultRow & {
+  anomaly_type: string;
+  decision: string | null;
+  drawdown_pct: string | number | null;
+  final_score: string | number | null;
+  horizon: string | null;
+  reason: string;
+  return_pct: string | number;
+  signal_date: string | null;
+  symbol: string;
 };
 type EvidenceDepthCountDbRow = QueryResultRow & {
   area: string;
@@ -928,7 +960,7 @@ function monitoringWindow(range: MonitoringTimeRange): { bucketSql: string; inte
 }
 
 export async function getAdminCalibrationSummary(): Promise<AdminCalibrationSummary> {
-  const [latestRun, observationCount, scoreBucket, decision, setupType, assetType, marketRegime, distributions, evidenceDepth] = await Promise.all([
+  const [latestRun, observationCount, scoreBucket, decision, setupType, assetType, marketRegime, distributions, evidenceDepth, scoreCalibration] = await Promise.all([
     getLatestScannerRun(),
     countQuery("SELECT count(*) AS count FROM forward_returns WHERE return_pct IS NOT NULL").catch(() => 0),
     calibrationGroupQuery("score_bucket"),
@@ -938,6 +970,7 @@ export async function getAdminCalibrationSummary(): Promise<AdminCalibrationSumm
     calibrationGroupQuery("market_regime"),
     latestDecisionDistribution(),
     getEvidenceDepthSummary(),
+    getScoreCalibrationSystem(),
   ]);
   return {
     distributions,
@@ -953,6 +986,7 @@ export async function getAdminCalibrationSummary(): Promise<AdminCalibrationSumm
     hints: calibrationHints({ asset_type: assetType, decision, market_regime: marketRegime, score_bucket: scoreBucket, setup_type: setupType }),
     latestRun,
     observationCount,
+    scoreCalibration,
   };
 }
 
@@ -1173,6 +1207,308 @@ async function calibrationGroupQuery(groupType: CalibrationGroupType): Promise<C
     winRatePct: toPercent(row.win_rate),
     worstReturnPct: toPercent(row.worst_return),
   }));
+}
+
+async function getScoreCalibrationSystem(): Promise<ScoreCalibrationSystem> {
+  const [bucketRows, anomalies] = await Promise.all([
+    scoreCalibrationBuckets(),
+    scoreCalibrationAnomalies(),
+  ]);
+  return buildScoreCalibrationSystem({ anomalies, bucketRows });
+}
+
+async function scoreCalibrationBuckets(): Promise<ScoreCalibrationBucketInput[]> {
+  const result = await dbQuery<ScoreCalibrationBucketDbRow>(
+    `
+      ${scoreCalibrationBaseCte()}
+      , axis_values AS (
+        SELECT 'final_score' AS axis_id, 'Final score' AS axis_label, 'higher_better' AS direction, horizon, final_score AS axis_value, return_pct, drawdown_pct FROM base WHERE final_score IS NOT NULL
+        UNION ALL SELECT 'macro_adjusted_score', 'Macro-adjusted score', 'higher_better', horizon, macro_adjusted_score, return_pct, drawdown_pct FROM base WHERE macro_adjusted_score IS NOT NULL
+        UNION ALL SELECT 'conviction', 'Conviction', 'higher_better', horizon, conviction_score, return_pct, drawdown_pct FROM base WHERE conviction_score IS NOT NULL
+        UNION ALL SELECT 'fragility', 'Fragility', 'higher_risk', horizon, fragility_score, return_pct, drawdown_pct FROM base WHERE fragility_score IS NOT NULL
+        UNION ALL SELECT 'shock_score', 'Upside shock score', 'higher_better', horizon, shock_score, return_pct, drawdown_pct FROM base WHERE shock_score IS NOT NULL
+        UNION ALL SELECT 'downside_shock_score', 'Downside shock score', 'higher_risk', horizon, downside_shock_score, return_pct, drawdown_pct FROM base WHERE downside_shock_score IS NOT NULL
+        UNION ALL SELECT 'macro_alignment', 'Macro alignment', 'higher_better', horizon, macro_alignment_score, return_pct, drawdown_pct FROM base WHERE macro_alignment_score IS NOT NULL
+        UNION ALL SELECT 'risk_reward', 'Risk/reward score', 'higher_better', horizon, risk_reward_score, return_pct, drawdown_pct FROM base WHERE risk_reward_score IS NOT NULL
+        UNION ALL SELECT 'event_pressure', 'Event pressure', 'higher_risk', horizon, event_pressure_score, return_pct, drawdown_pct FROM base WHERE event_pressure_score IS NOT NULL
+      ),
+      bucketed AS (
+        SELECT
+          axis_id,
+          axis_label,
+          direction,
+          horizon,
+          axis_value,
+          return_pct,
+          drawdown_pct,
+          CASE
+            WHEN axis_id = 'risk_reward' AND axis_value < 1 THEN 1
+            WHEN axis_id = 'risk_reward' AND axis_value < 1.5 THEN 2
+            WHEN axis_id = 'risk_reward' AND axis_value < 2 THEN 3
+            WHEN axis_id = 'risk_reward' AND axis_value < 3 THEN 4
+            WHEN axis_id = 'risk_reward' THEN 5
+            WHEN axis_value < 40 THEN 1
+            WHEN axis_value < 50 THEN 2
+            WHEN axis_value < 60 THEN 3
+            WHEN axis_value < 70 THEN 4
+            WHEN axis_value < 80 THEN 5
+            WHEN axis_value < 90 THEN 6
+            ELSE 7
+          END AS bucket_order,
+          CASE
+            WHEN axis_id = 'risk_reward' AND axis_value < 1 THEN '<1.0'
+            WHEN axis_id = 'risk_reward' AND axis_value < 1.5 THEN '1.0-1.49'
+            WHEN axis_id = 'risk_reward' AND axis_value < 2 THEN '1.5-1.99'
+            WHEN axis_id = 'risk_reward' AND axis_value < 3 THEN '2.0-2.99'
+            WHEN axis_id = 'risk_reward' THEN '3.0+'
+            WHEN axis_value < 40 THEN '0-39'
+            WHEN axis_value < 50 THEN '40-49'
+            WHEN axis_value < 60 THEN '50-59'
+            WHEN axis_value < 70 THEN '60-69'
+            WHEN axis_value < 80 THEN '70-79'
+            WHEN axis_value < 90 THEN '80-89'
+            ELSE '90-100'
+          END AS bucket_label
+        FROM axis_values
+      )
+      SELECT
+        axis_id,
+        axis_label,
+        direction,
+        horizon,
+        bucket_order,
+        bucket_label,
+        count(*) AS count,
+        avg(axis_value) AS avg_signal,
+        avg(return_pct) AS avg_return,
+        percentile_cont(0.50) WITHIN GROUP (ORDER BY return_pct) AS median_return,
+        avg(CASE WHEN return_pct > 0 THEN 1.0 ELSE 0.0 END) AS win_rate,
+        avg(drawdown_pct) AS avg_drawdown,
+        min(return_pct) AS worst_return,
+        avg(CASE WHEN return_pct >= 0.05 THEN 1.0 ELSE 0.0 END) AS large_gain_rate,
+        avg(CASE WHEN return_pct <= -0.03 OR drawdown_pct <= -0.03 THEN 1.0 ELSE 0.0 END) AS adverse_rate,
+        avg(CASE WHEN abs(return_pct) >= 0.03 OR abs(drawdown_pct) >= 0.03 THEN 1.0 ELSE 0.0 END) AS volatility_rate,
+        stddev_pop(return_pct) AS outcome_stddev
+      FROM bucketed
+      GROUP BY axis_id, axis_label, direction, horizon, bucket_order, bucket_label
+      ORDER BY
+        CASE horizon
+          WHEN '1D' THEN 1
+          WHEN '2D' THEN 2
+          WHEN '3D' THEN 3
+          WHEN '5D' THEN 5
+          WHEN '10D' THEN 10
+          ELSE 999
+        END,
+        axis_id,
+        bucket_order
+      LIMIT 600
+    `,
+  ).catch(() => ({ rows: [] as ScoreCalibrationBucketDbRow[] }));
+
+  return result.rows.map((row) => ({
+    adverseRatePct: toPercent(row.adverse_rate),
+    avgDrawdownPct: toPercent(row.avg_drawdown),
+    avgReturnPct: toPercent(row.avg_return),
+    avgSignal: toNullableNumber(row.avg_signal),
+    axisId: row.axis_id,
+    axisLabel: row.axis_label,
+    bucketLabel: row.bucket_label,
+    bucketOrder: toNumber(row.bucket_order),
+    count: toNumber(row.count),
+    direction: calibrationDirection(row.direction),
+    horizon: row.horizon ?? "UNKNOWN",
+    largeGainRatePct: toPercent(row.large_gain_rate),
+    medianReturnPct: toPercent(row.median_return),
+    outcomeStdDevPct: toPercent(row.outcome_stddev),
+    volatilityRatePct: toPercent(row.volatility_rate),
+    winRatePct: toPercent(row.win_rate),
+    worstReturnPct: toPercent(row.worst_return),
+  }));
+}
+
+async function scoreCalibrationAnomalies(): Promise<ScoreCalibrationAnomaly[]> {
+  const result = await dbQuery<ScoreCalibrationAnomalyDbRow>(
+    `
+      ${scoreCalibrationBaseCte()}
+      , anomalies AS (
+        SELECT
+          'false_positive' AS anomaly_type,
+          symbol,
+          signal_date::text,
+          horizon,
+          decision,
+          final_score,
+          return_pct,
+          drawdown_pct,
+          'High final-score bucket failed to follow through or produced material drawdown.' AS reason,
+          abs(return_pct) + abs(drawdown_pct) AS severity_value
+        FROM base
+        WHERE final_score >= 70
+          AND (return_pct <= 0 OR drawdown_pct <= -0.03)
+        UNION ALL
+        SELECT
+          'false_negative',
+          symbol,
+          signal_date::text,
+          horizon,
+          decision,
+          final_score,
+          return_pct,
+          drawdown_pct,
+          'Lower score bucket later produced a large forward gain.',
+          abs(return_pct) + abs(drawdown_pct)
+        FROM base
+        WHERE final_score < 55
+          AND return_pct >= 0.05
+        UNION ALL
+        SELECT
+          'missed_winner',
+          symbol,
+          signal_date::text,
+          horizon,
+          decision,
+          final_score,
+          return_pct,
+          drawdown_pct,
+          'Potential missed winner: low/mid score later produced an outsized forward gain.',
+          abs(return_pct) + abs(drawdown_pct)
+        FROM base
+        WHERE final_score < 60
+          AND return_pct >= 0.08
+        UNION ALL
+        SELECT
+          'overly_conservative',
+          symbol,
+          signal_date::text,
+          horizon,
+          decision,
+          final_score,
+          return_pct,
+          drawdown_pct,
+          'WAIT/AVOID style decision later produced a strong positive outcome.',
+          abs(return_pct) + abs(drawdown_pct)
+        FROM base
+        WHERE decision ~* '(WAIT|AVOID|NO_TRADE|NO TRADE|EXIT)'
+          AND return_pct >= 0.05
+        UNION ALL
+        SELECT
+          'overly_aggressive',
+          symbol,
+          signal_date::text,
+          horizon,
+          decision,
+          final_score,
+          return_pct,
+          drawdown_pct,
+          'ENTER/BUY style decision later produced adverse outcome or drawdown.',
+          abs(return_pct) + abs(drawdown_pct)
+        FROM base
+        WHERE decision ~* '(ENTER|BUY|STRONG)'
+          AND (return_pct <= -0.03 OR drawdown_pct <= -0.05)
+        UNION ALL
+        SELECT
+          'avoided_loser',
+          symbol,
+          signal_date::text,
+          horizon,
+          decision,
+          final_score,
+          return_pct,
+          drawdown_pct,
+          'WAIT/AVOID style decision avoided a later adverse move or drawdown.',
+          abs(return_pct) + abs(drawdown_pct)
+        FROM base
+        WHERE decision ~* '(WAIT|AVOID|NO_TRADE|NO TRADE|EXIT)'
+          AND (return_pct <= -0.03 OR drawdown_pct <= -0.05)
+      )
+      SELECT
+        anomaly_type,
+        symbol,
+        signal_date,
+        horizon,
+        decision,
+        final_score,
+        return_pct,
+        drawdown_pct,
+        reason
+      FROM anomalies
+      ORDER BY severity_value DESC, signal_date DESC NULLS LAST
+      LIMIT 160
+    `,
+  ).catch(() => ({ rows: [] as ScoreCalibrationAnomalyDbRow[] }));
+
+  return result.rows.map((row) => ({
+    anomalyType: calibrationAnomalyType(row.anomaly_type),
+    decision: row.decision ?? "UNKNOWN",
+    drawdownPct: toPercent(row.drawdown_pct),
+    finalScore: toNullableNumber(row.final_score),
+    horizon: row.horizon ?? "UNKNOWN",
+    reason: row.reason,
+    returnPct: toPercent(row.return_pct) ?? 0,
+    signalDate: row.signal_date,
+    symbol: row.symbol,
+  }));
+}
+
+function scoreCalibrationBaseCte(): string {
+  return `
+    WITH latest_patterns AS (
+      SELECT DISTINCT ON (symbol)
+        symbol,
+        upside_shock_score,
+        downside_risk_score,
+        opportunity_score
+      FROM shock_move_patterns
+      ORDER BY
+        symbol,
+        CASE lookback_window
+          WHEN '3y' THEN 1
+          WHEN '5y' THEN 2
+          WHEN '1y' THEN 3
+          ELSE 4
+        END,
+        last_updated DESC NULLS LAST
+    ),
+    base AS (
+      SELECT
+        fr.symbol,
+        fr.signal_date,
+        COALESCE(NULLIF(fr.horizon, ''), 'UNKNOWN') AS horizon,
+        fr.return_pct::numeric AS return_pct,
+        COALESCE(${safeNumeric("fr.metrics->>'max_drawdown_after_signal'")}, LEAST(fr.return_pct::numeric, 0)) AS drawdown_pct,
+        COALESCE(NULLIF(fr.metrics->>'final_decision', ''), NULLIF(ss.final_decision, ''), NULLIF(fr.metrics->>'action', ''), NULLIF(ss.action, ''), 'UNKNOWN') AS decision,
+        COALESCE(${safeNumeric("fr.metrics->>'final_score'")}, ss.final_score) AS final_score,
+        COALESCE(${safeNumeric("ss.payload->>'macro_adjusted_score'")}, ss.final_score_adjusted, ${safeNumeric("fr.metrics->>'final_score'")}, ss.final_score) AS macro_adjusted_score,
+        COALESCE(${safeNumeric("fr.metrics->>'confidence_score'")}, ${safeNumeric("ss.payload->>'confidence_score'")}, ${safeNumeric("ss.payload->>'conviction_score'")}, ${safeNumeric("fr.metrics->>'final_score'")}, ss.final_score) AS conviction_score,
+        COALESCE(${safeNumeric("ss.payload->>'fragility_score'")}, ${safeNumeric("ss.payload->>'event_risk_score'")}, ${safeNumeric("ss.payload->>'volatility_pressure'")}, ${safeNumeric("ss.payload->>'risk_penalty'")}, 100 - COALESCE(${safeNumeric("fr.metrics->>'confidence_score'")}, ${safeNumeric("ss.payload->>'confidence_score'")}, ss.final_score, 50)) AS fragility_score,
+        COALESCE(${safeNumeric("ss.payload->>'macro_alignment_score'")}, ${safeNumeric("ss.payload->>'macro_score'")}, ${safeNumeric("fr.metrics->>'macro_score'")}, ${safeNumeric("ss.payload->>'macro_adjusted_score'")}) AS macro_alignment_score,
+        COALESCE(lp.upside_shock_score, ${safeNumeric("ss.payload->>'event_shock_pressure_score'")}, ${safeNumeric("ss.payload->>'upside_shock_score'")}) AS shock_score,
+        COALESCE(lp.downside_risk_score, ${safeNumeric("ss.payload->>'downside_shock_score'")}, ${safeNumeric("ss.payload->>'event_risk_score'")}, ${safeNumeric("ss.payload->>'volatility_pressure'")}) AS downside_shock_score,
+        COALESCE(ss.risk_reward, ${safeNumeric("ss.payload->>'risk_reward'")}, ${safeNumeric("fr.metrics->>'risk_reward'")}) AS risk_reward_score,
+        COALESCE(${safeNumeric("ss.payload->>'verified_event_pressure_score'")}, ${safeNumeric("ss.payload->>'event_risk_score'")}, ${safeNumeric("ss.payload->>'event_shock_pressure_score'")}) AS event_pressure_score
+      FROM forward_returns fr
+      LEFT JOIN scanner_signals ss ON ss.id = fr.scanner_signal_id
+      LEFT JOIN latest_patterns lp ON lp.symbol = fr.symbol
+      WHERE fr.return_pct IS NOT NULL
+        AND COALESCE(NULLIF(fr.horizon, ''), 'UNKNOWN') IN ('1D', '2D', '3D', '5D', '10D')
+    )
+  `;
+}
+
+function safeNumeric(expression: string): string {
+  return `CASE WHEN NULLIF(${expression}, '') ~ '^-?[0-9]+([.][0-9]+)?$' THEN NULLIF(${expression}, '')::numeric ELSE NULL END`;
+}
+
+function calibrationDirection(value: string): CalibrationAxisDirection {
+  return value === "higher_risk" ? "higher_risk" : "higher_better";
+}
+
+function calibrationAnomalyType(value: string): ScoreCalibrationAnomalyType {
+  if (value === "avoided_loser" || value === "false_negative" || value === "false_positive" || value === "missed_winner" || value === "overly_aggressive" || value === "overly_conservative") {
+    return value;
+  }
+  return "false_positive";
 }
 
 function sampleSizeLabel(count: number): "LOW" | "MEDIUM" | "HIGH" {

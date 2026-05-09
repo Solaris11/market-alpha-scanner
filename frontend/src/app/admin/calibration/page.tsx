@@ -2,6 +2,7 @@ import { AdminEmpty, AdminSection, AdminStatCard, StatusBadge } from "@/componen
 import { AdaptiveLearningDashboard } from "@/components/admin/AdaptiveLearningDashboard";
 import { CalibrationTable } from "@/components/admin/CalibrationTable";
 import { EvidenceDepthDashboard } from "@/components/admin/EvidenceDepthDashboard";
+import { ScoreCalibrationDashboard } from "@/components/admin/ScoreCalibrationDashboard";
 import { getAdminCalibrationSummary } from "@/lib/server/admin-data";
 import { buildAdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
 import { decisionLabel, humanizeQuantText } from "@/lib/ui/labels";
@@ -53,6 +54,8 @@ export default async function AdminCalibrationPage() {
       </AdminSection>
 
       <EvidenceDepthDashboard summary={calibration.evidenceDepth} />
+
+      <ScoreCalibrationDashboard system={calibration.scoreCalibration} />
 
       <AdaptiveLearningDashboard system={adaptiveLearning} />
 
