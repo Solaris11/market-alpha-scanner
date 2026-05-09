@@ -25,6 +25,7 @@ export const EXECUTION_NAV_ITEMS: AppNavItem[] = [
 
 export const UTILITY_NAV_ITEMS: AppNavItem[] = [
   { group: "system", href: "/support", key: "support", label: "Support" },
+  { group: "system", href: "/dashboard", key: "dashboard", label: "Dashboard" },
   { group: "system", href: "/advanced", key: "advanced", label: "Advanced" },
 ];
 

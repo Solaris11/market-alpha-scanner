@@ -23,11 +23,11 @@ describe("application navigation hierarchy", () => {
   test("keeps low-frequency admin and utility routes out of the primary nav", () => {
     assert.deepEqual(
       visibleUtilityNavItems(false).map((item) => item.label),
-      ["Support", "Advanced"],
+      ["Support", "Dashboard", "Advanced"],
     );
     assert.deepEqual(
       visibleUtilityNavItems(true).map((item) => item.label),
-      ["Support", "Advanced", "Admin"],
+      ["Support", "Dashboard", "Advanced", "Admin"],
     );
   });
 
@@ -47,7 +47,7 @@ describe("application navigation hierarchy", () => {
     );
     assert.deepEqual(
       sections[2]?.items.map((item) => item.label),
-      ["Support", "Advanced", "Admin"],
+      ["Support", "Dashboard", "Advanced", "Admin"],
     );
   });
 
@@ -62,7 +62,7 @@ describe("application navigation hierarchy", () => {
   test("keeps all major product sections reachable through the mobile drawer", () => {
     const sections = drawerNavSections(false);
     const labels = sections.flatMap((section) => section.items.map((item) => item.label));
-    assert.deepEqual(labels, ["Terminal", "Opportunities", "Performance", "History", "Alerts", "Paper", "Support", "Advanced"]);
+    assert.deepEqual(labels, ["Terminal", "Opportunities", "Performance", "History", "Alerts", "Paper", "Support", "Dashboard", "Advanced"]);
     assert.equal(labels.includes("Admin"), false);
   });
 
@@ -75,6 +75,7 @@ describe("application navigation hierarchy", () => {
 
   test("resolves active titles and nested paths consistently", () => {
     assert.equal(activeSectionTitle("/admin/monitoring", true), "Admin");
+    assert.equal(activeSectionTitle("/dashboard", false), "Dashboard");
     assert.equal(activeSectionTitle("/paper", false), "Paper");
     assert.equal(activeSectionTitle("/history/symbol/NVDA", false), "History");
     assert.equal(isActivePath("/history/symbol/NVDA", "/history"), true);

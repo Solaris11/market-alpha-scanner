@@ -3,6 +3,7 @@ import { describe, test } from "node:test";
 
 import {
   normalizeAnalyticsEventName,
+  pageOpenEventForPath,
   normalizeAnalyticsRange,
   sanitizeAnalyticsMetadata,
   sanitizeAnalyticsPath,
@@ -13,7 +14,13 @@ import {
 describe("analytics privacy policy", () => {
   test("allows only known analytics events", () => {
     assert.equal(normalizeAnalyticsEventName("page_view"), "page_view");
+    assert.equal(normalizeAnalyticsEventName("dashboard_open"), "dashboard_open");
     assert.equal(normalizeAnalyticsEventName("made_up_event"), null);
+  });
+
+  test("maps dashboard route views to a dedicated analytics event", () => {
+    assert.equal(pageOpenEventForPath("/dashboard"), "dashboard_open");
+    assert.equal(pageOpenEventForPath("/dashboard/heatmaps"), "dashboard_open");
   });
 
   test("sanitizes metadata without keeping sensitive keys or secret-like values", () => {

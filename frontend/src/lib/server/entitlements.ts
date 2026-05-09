@@ -70,6 +70,7 @@ export const ROUTE_CLASSIFICATION: Record<RouteAccess, string[]> = {
     "/api/paper/open",
   ],
   premium: [
+    "/dashboard",
     "/performance",
     "/history",
     "/alerts",

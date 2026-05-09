@@ -2,6 +2,7 @@ export const ANALYTICS_EVENT_NAMES = [
   "page_view",
   "terminal_open",
   "opportunities_open",
+  "dashboard_open",
   "performance_open",
   "history_open",
   "support_open",
@@ -141,6 +142,7 @@ export function sanitizeFeedbackMessage(value: unknown): string | null {
 export function pageOpenEventForPath(pathname: string): AnalyticsEventName | null {
   if (pathname === "/terminal" || pathname.startsWith("/terminal/")) return "terminal_open";
   if (pathname === "/opportunities" || pathname.startsWith("/opportunities/")) return "opportunities_open";
+  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) return "dashboard_open";
   if (pathname === "/performance" || pathname.startsWith("/performance/")) return "performance_open";
   if (pathname === "/history" || pathname.startsWith("/history/")) return "history_open";
   if (pathname === "/support" || pathname.startsWith("/support/")) return "support_open";
