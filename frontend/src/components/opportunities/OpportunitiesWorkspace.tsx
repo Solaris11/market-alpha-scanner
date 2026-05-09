@@ -10,7 +10,9 @@ import { DataHealthIndicator } from "@/components/data-health-indicator";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import { RiskTolerantOpportunityRadar } from "@/components/opportunities/RiskTolerantOpportunityRadar";
 import { ShockMoveRadar } from "@/components/opportunities/ShockMoveRadar";
+import { WorkflowEvolutionPanel } from "@/components/terminal/WorkflowEvolutionPanel";
 import { type UserPersonalizationProfile } from "@/lib/trading/personalized-intelligence";
+import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution";
 import { confidenceTone } from "@/lib/trading/confidence";
 import { buildDecisionFactors, buildDecisionIntelligence, type DecisionFactor } from "@/lib/trading/decision-intelligence";
 import { buildRiskTolerantOpportunities } from "@/lib/trading/risk-tolerant-opportunities";
@@ -38,7 +40,21 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "DECISION_PRIORITY", label: "Decision priority" },
 ];
 
-export function OpportunitiesWorkspace({ best, bestPriceSeries, initialProfile, marketCondition, rows }: { best: OpportunityViewModel | null; bestPriceSeries: Record<string, ScannerScalar>[]; initialProfile?: UserPersonalizationProfile; marketCondition: string | null; rows: OpportunityViewModel[] }) {
+export function OpportunitiesWorkspace({
+  best,
+  bestPriceSeries,
+  initialProfile,
+  marketCondition,
+  rows,
+  workflowEvolution,
+}: {
+  best: OpportunityViewModel | null;
+  bestPriceSeries: Record<string, ScannerScalar>[];
+  initialProfile?: UserPersonalizationProfile;
+  marketCondition: string | null;
+  rows: OpportunityViewModel[];
+  workflowEvolution?: WorkflowEvolutionSummary;
+}) {
   const [activeTab, setActiveTab] = useState<TabKey>("BEST");
   const [assetTypeFilter, setAssetTypeFilter] = useState("ALL");
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("ALL");
@@ -130,6 +146,7 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, initialProfile, 
       <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} rows={rows} />
       <RiskTolerantOpportunityRadar initialProfile={initialProfile} marketCondition={marketCondition} rows={rows} />
       <ShockMoveRadar rows={rows} />
+      {workflowEvolution ? <WorkflowEvolutionPanel compact summary={workflowEvolution} surface="opportunities" /> : null}
       <OpportunityDeskMap marketCondition={marketCondition} rows={rows} />
       <SetupDistribution rows={rows} />
 

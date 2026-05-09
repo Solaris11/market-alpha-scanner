@@ -18,6 +18,7 @@ import { assertNoPremiumFields } from "@/lib/server/premium-preview";
 import { getPublicSymbolSignal } from "@/lib/server/public-signal-data";
 import { getShockMovePattern } from "@/lib/server/shock-move-patterns";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
+import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { buildConvictionTimelineModel } from "@/lib/trading/conviction-timeline-model";
@@ -112,6 +113,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   const decisionJournalEntries = decisionJournalContext?.entries ?? [];
   const decisionMemory = decisionJournalContext?.memory ?? buildDecisionMemorySummary([], { symbol });
   const decisionCoaching = row ? buildPersonalizedDecisionCoaching({ entries: decisionJournalEntries, memory: decisionMemory, profile: personalizationProfile, row }) : null;
+  const workflowEvolution = row ? await getWorkflowEvolutionForUser(entitlement.user?.id ?? null, [row], { surface: "symbol" }).catch(() => null) : null;
   const unavailableMarketMemory: MarketMemorySummary = {
     analogs: [],
     available: false,
@@ -140,6 +142,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           decisionCoaching={decisionCoaching}
           decisionJournalEntries={decisionJournalEntries}
           decisionMemory={decisionMemory}
+          workflowEvolution={workflowEvolution}
           edgeProof={edgeProof ?? buildHistoricalEdgeProof(row, null)}
           history={history}
           globalDecision={globalDecision}

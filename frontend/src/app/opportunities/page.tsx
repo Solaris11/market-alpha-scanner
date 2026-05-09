@@ -9,6 +9,8 @@ import { getNarrativeMap } from "@/lib/server/narrative-intelligence";
 import { getPersonalizationProfileForUser } from "@/lib/server/personalized-intelligence";
 import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
+import { readUserWatchlist } from "@/lib/server/user-watchlist";
+import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 
@@ -34,11 +36,12 @@ export default async function OpportunitiesPage() {
   }
 
   const adapter = new ScannerDataAdapter();
-  const [rows, regime, performance, personalizationProfile] = await Promise.all([
+  const [rows, regime, performance, personalizationProfile, watchlistSymbols] = await Promise.all([
     adapter.getOverviewSignals(),
     adapter.getMarketRegime(),
     getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
     getPersonalizationProfileForUser(entitlement.user?.id ?? null).catch(() => null),
+    entitlement.user?.id ? readUserWatchlist(entitlement.user.id).catch(() => []) : Promise.resolve([]),
   ]);
   const symbols = rows.map((row) => row.symbol);
   const [shockPatterns, narratives] = await Promise.all([
@@ -46,11 +49,12 @@ export default async function OpportunitiesPage() {
     getNarrativeMap(symbols).catch(() => new Map()),
   ]);
   const model = buildOpportunitiesPageModel(rows, performance, shockPatterns, narratives);
+  const workflowEvolution = await getWorkflowEvolutionForUser(entitlement.user?.id ?? null, rows, { surface: "opportunities", watchlistSymbols }).catch(() => null);
   const bestDetail = model.best ? await adapter.getSymbolDetail(model.best.symbol).catch(() => null) : null;
 
   return (
     <TerminalShell>
-      <OpportunitiesWorkspace best={model.best} bestPriceSeries={bestDetail?.history ?? []} initialProfile={personalizationProfile ?? undefined} marketCondition={regime.label} rows={model.rows} />
+      <OpportunitiesWorkspace best={model.best} bestPriceSeries={bestDetail?.history ?? []} initialProfile={personalizationProfile ?? undefined} marketCondition={regime.label} rows={model.rows} workflowEvolution={workflowEvolution ?? undefined} />
     </TerminalShell>
   );
 }

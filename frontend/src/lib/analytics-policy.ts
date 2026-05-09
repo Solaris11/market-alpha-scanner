@@ -32,6 +32,7 @@ export const ANALYTICS_EVENT_NAMES = [
   "personalization_update",
   "decision_journal_save",
   "decision_memory_clear",
+  "workflow_visit_recorded",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];

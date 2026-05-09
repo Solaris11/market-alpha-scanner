@@ -18,6 +18,7 @@ import { SignalHeatmap } from "@/components/terminal/SignalHeatmap";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { TerminalPulseCharts } from "@/components/terminal/TerminalPulseCharts";
 import { TerminalRightRail } from "@/components/terminal/TerminalRightRail";
+import { WorkflowEvolutionPanel } from "@/components/terminal/WorkflowEvolutionPanel";
 import { getActiveAlertMatches } from "@/lib/active-alert-matches";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPerformanceData } from "@/lib/scanner-data";
@@ -29,6 +30,7 @@ import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
+import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { dailyActionBlocksTradeUi, getDailyAction, noTradeActionCopy } from "@/lib/trading/daily-action";
@@ -103,9 +105,10 @@ export default async function TerminalPage() {
   ]);
   const edges = buildEdgeLookup(snapshot.signals, performance);
   const symbols = snapshot.signals.map((row) => row.symbol);
-  const [shockPatterns, narratives] = await Promise.all([
+  const [shockPatterns, narratives, workflowEvolution] = await Promise.all([
     getShockMovePatternMap(symbols).catch(() => new Map()),
     getNarrativeMap(symbols).catch(() => new Map()),
+    getWorkflowEvolutionForUser(entitlement.user?.id ?? null, snapshot.signals, { surface: "terminal", watchlistSymbols }).catch(() => null),
   ]);
   const opportunityModel = buildOpportunitiesPageModel(snapshot.signals, performance, shockPatterns, narratives);
   const best = selectBestTradeNow(snapshot.signals, edges);
@@ -130,6 +133,7 @@ export default async function TerminalPage() {
             scanStatus={humanizeLabel(scanSafety.status)}
             topWatchRows={opportunityModel.rows}
           />
+          {workflowEvolution ? <WorkflowEvolutionPanel summary={workflowEvolution} surface="terminal" /> : null}
           {actionBlocksTradeUi ? (
             <GlassPanel className="border-amber-300/25 bg-amber-400/[0.08] p-6">
               <div className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-200">Decision Lock</div>
