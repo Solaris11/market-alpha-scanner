@@ -48,6 +48,8 @@ Optional:
 TRADEVETO_EVENT_LLM_TIMEOUT_SECONDS=8
 ```
 
+The OpenAI request intentionally does not send a `temperature` override so models such as `gpt-5.5` can run with their default sampling behavior.
+
 The LLM receives only trusted source title/summary/URL metadata. It must return strict JSON with event type, direction, affected sectors, reason codes, bounded pressure/conviction/fragility values, and evidence phrases copied from the source text. The validator rejects output when:
 
 - the source text does not contain the claimed evidence phrase

@@ -176,7 +176,6 @@ def _request_payload(
             }
         },
         "store": False,
-        "temperature": 0.1,
     }
 
 
