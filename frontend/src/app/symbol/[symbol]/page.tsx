@@ -27,6 +27,7 @@ import { buildDecisionMemorySummary, buildPersonalizedDecisionCoaching } from "@
 import { buildHistoricalEdgeProof } from "@/lib/trading/edge-proof";
 import { createMacroContextResolver } from "@/lib/trading/macro-regime";
 import type { MarketMemorySummary } from "@/lib/trading/market-memory";
+import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 
 export const dynamic = "force-dynamic";
 
@@ -110,6 +111,14 @@ export default async function SymbolDetailPage({ params }: PageProps) {
       ])
     : [null, null];
   const macroContext = row ? createMacroContextResolver(snapshot.signals).forRow(row) : null;
+  const symbolOpportunity = row
+    ? buildOpportunitiesPageModel(
+        snapshot.signals,
+        performance,
+        shockPattern ? new Map([[row.symbol.toUpperCase(), shockPattern]]) : new Map(),
+        narrative ? new Map([[row.symbol.toUpperCase(), narrative]]) : new Map(),
+      ).rows.find((item) => item.symbol === row.symbol.toUpperCase()) ?? null
+    : null;
   const decisionJournalEntries = decisionJournalContext?.entries ?? [];
   const decisionMemory = decisionJournalContext?.memory ?? buildDecisionMemorySummary([], { symbol });
   const decisionCoaching = row ? buildPersonalizedDecisionCoaching({ entries: decisionJournalEntries, memory: decisionMemory, profile: personalizationProfile, row }) : null;
@@ -146,6 +155,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           edgeProof={edgeProof ?? buildHistoricalEdgeProof(row, null)}
           history={history}
           globalDecision={globalDecision}
+          institutionalOpportunity={symbolOpportunity}
           macroContext={macroContext}
           marketMemory={marketMemory ?? unavailableMarketMemory}
           narrative={narrative}

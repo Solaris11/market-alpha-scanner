@@ -14,6 +14,7 @@ import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
 import type { MacroExchangeContext } from "@/lib/trading/macro-regime";
 import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 import type { NarrativeIntelligence } from "@/lib/trading/narrative-intelligence";
+import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import type { UserPersonalizationProfile } from "@/lib/trading/personalized-intelligence";
 import type { RiskPortfolioPosition } from "@/lib/trading/risk-veto";
 import type { ShockMovePattern } from "@/lib/trading/shock-move";
@@ -27,6 +28,7 @@ import { CorrectionMapCard } from "./CorrectionMapCard";
 import { DecisionJournalCard } from "./DecisionJournalCard";
 import { ExecutionTicket } from "./ExecutionTicket";
 import { HistoricalEdgeCard } from "./HistoricalEdgeCard";
+import { InstitutionalIntelligencePanel } from "./InstitutionalIntelligencePanel";
 import { MacroExchangeContextCard } from "./MacroExchangeContextCard";
 import { MarketMemoryCard } from "./MarketMemoryCard";
 import { NarrativeIntelligenceCard } from "./NarrativeIntelligenceCard";
@@ -63,6 +65,7 @@ export function SymbolTerminalWorkspace({
   decisionMemory,
   decisionCoaching,
   workflowEvolution,
+  institutionalOpportunity,
   personalizationProfile,
   shockPattern,
   premiumAccess = true,
@@ -84,6 +87,7 @@ export function SymbolTerminalWorkspace({
   decisionMemory?: DecisionMemorySummary | null;
   decisionCoaching?: PersonalizedDecisionCoaching | null;
   workflowEvolution?: WorkflowEvolutionSummary | null;
+  institutionalOpportunity?: OpportunityViewModel | null;
   personalizationProfile?: UserPersonalizationProfile | null;
   shockPattern?: ShockMovePattern | null;
   premiumAccess?: boolean;
@@ -155,6 +159,7 @@ export function SymbolTerminalWorkspace({
             <DecisionJournalCard coaching={decisionCoaching} entries={decisionJournalEntries} memory={decisionMemory} profile={personalizationProfile ?? null} row={row} />
           ) : null}
           {workflowEvolution ? <WorkflowEvolutionPanel compact summary={workflowEvolution} surface="symbol" /> : null}
+          {institutionalOpportunity ? <InstitutionalIntelligencePanel compact focusSymbol={symbol} rows={[institutionalOpportunity]} /> : null}
           {macroContext ? <MacroExchangeContextCard context={macroContext} row={row} /> : null}
           <VerifiedEventContextCard row={row} />
           <ConvictionFragilityCard model={structuralQuality} />

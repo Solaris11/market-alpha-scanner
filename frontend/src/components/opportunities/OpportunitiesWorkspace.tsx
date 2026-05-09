@@ -11,10 +11,12 @@ import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model"
 import { RiskTolerantOpportunityRadar } from "@/components/opportunities/RiskTolerantOpportunityRadar";
 import { ShockMoveRadar } from "@/components/opportunities/ShockMoveRadar";
 import { WorkflowEvolutionPanel } from "@/components/terminal/WorkflowEvolutionPanel";
+import { InstitutionalIntelligencePanel } from "@/components/terminal/InstitutionalIntelligencePanel";
 import { type UserPersonalizationProfile } from "@/lib/trading/personalized-intelligence";
 import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution";
 import { confidenceTone } from "@/lib/trading/confidence";
 import { buildDecisionFactors, buildDecisionIntelligence, type DecisionFactor } from "@/lib/trading/decision-intelligence";
+import { compactInstitutionalLabels } from "@/lib/trading/institutional-intelligence";
 import { buildRiskTolerantOpportunities } from "@/lib/trading/risk-tolerant-opportunities";
 import type { ScannerScalar } from "@/lib/types";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
@@ -147,6 +149,7 @@ export function OpportunitiesWorkspace({
       <RiskTolerantOpportunityRadar initialProfile={initialProfile} marketCondition={marketCondition} rows={rows} />
       <ShockMoveRadar rows={rows} />
       {workflowEvolution ? <WorkflowEvolutionPanel compact summary={workflowEvolution} surface="opportunities" /> : null}
+      <InstitutionalIntelligencePanel rows={rows} />
       <OpportunityDeskMap marketCondition={marketCondition} rows={rows} />
       <SetupDistribution rows={rows} />
 
@@ -639,6 +642,7 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
   const router = useRouter();
   const href = `/symbol/${row.symbol}`;
   const openDetail = () => router.push(href);
+  const institutionalLabels = compactInstitutionalLabels(row);
   return (
     <article
       className="w-full min-w-0 max-w-full cursor-pointer rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-400/40 hover:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-cyan-300/40"
@@ -670,6 +674,15 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
         <div className="mt-3 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.055] p-3 text-xs leading-5 text-slate-300">
           <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Narrative</div>
           <p className="mt-1 line-clamp-3">{row.narrative.narrativeSummary}</p>
+        </div>
+      ) : null}
+      {institutionalLabels.length ? (
+        <div className="mt-3 flex flex-wrap gap-2">
+          {institutionalLabels.map((label) => (
+            <span className="rounded-full border border-white/10 bg-white/[0.045] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-300" key={label}>
+              {label}
+            </span>
+          ))}
         </div>
       ) : null}
       <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">

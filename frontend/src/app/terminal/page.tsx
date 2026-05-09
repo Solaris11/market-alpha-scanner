@@ -9,6 +9,7 @@ import { PublicSignalPreviewList } from "@/components/premium/PublicSignalPrevie
 import { PremiumAccessCta } from "@/components/premium/PremiumAccessCta";
 import { DailyActionCard } from "@/components/terminal/DailyActionCard";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
+import { InstitutionalIntelligencePanel } from "@/components/terminal/InstitutionalIntelligencePanel";
 import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
 import { MetricCard } from "@/components/terminal/MetricCard";
 import { MyWatchlistWidget } from "@/components/terminal/MyWatchlistWidget";
@@ -134,6 +135,7 @@ export default async function TerminalPage() {
             topWatchRows={opportunityModel.rows}
           />
           {workflowEvolution ? <WorkflowEvolutionPanel summary={workflowEvolution} surface="terminal" /> : null}
+          <InstitutionalIntelligencePanel compact rows={opportunityModel.rows} />
           {actionBlocksTradeUi ? (
             <GlassPanel className="border-amber-300/25 bg-amber-400/[0.08] p-6">
               <div className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-200">Decision Lock</div>
