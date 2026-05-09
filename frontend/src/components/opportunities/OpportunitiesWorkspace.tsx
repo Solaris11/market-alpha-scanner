@@ -8,8 +8,10 @@ import { PremiumEChart } from "@/components/charts/PremiumEChart";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import { DataHealthIndicator } from "@/components/data-health-indicator";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
+import { RiskTolerantOpportunityRadar } from "@/components/opportunities/RiskTolerantOpportunityRadar";
 import { confidenceTone } from "@/lib/trading/confidence";
 import { buildDecisionFactors, buildDecisionIntelligence, type DecisionFactor } from "@/lib/trading/decision-intelligence";
+import { buildRiskTolerantOpportunities } from "@/lib/trading/risk-tolerant-opportunities";
 import type { ScannerScalar } from "@/lib/types";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { decisionLabel, humanizeLabel, readableText } from "@/lib/ui/labels";
@@ -23,7 +25,7 @@ import { buildDistributionBarOption, buildDonutOption, hasDistributionData, type
 
 type DecisionFilter = "ALL" | "ENTER" | "WAIT_PULLBACK" | "WATCH" | "AVOID" | "EXIT";
 type SortKey = "SCORE_DESC" | "CONVICTION_DESC" | "SYMBOL_ASC" | "PRICE_DESC" | "DECISION_PRIORITY";
-type TabKey = "BEST" | "WATCHLIST" | "FULL";
+type TabKey = "BEST" | "RISK_TOLERANT" | "SHOCK" | "PULLBACK" | "MOMENTUM" | "WATCHLIST" | "FULL";
 
 const DECISION_OPTIONS: DecisionFilter[] = ["ALL", "ENTER", "WAIT_PULLBACK", "WATCH", "AVOID", "EXIT"];
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -48,6 +50,8 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
   const [showWatchlistOnly, setShowWatchlistOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("SCORE_DESC");
   const { watchlistSet } = useLocalWatchlist();
+  const riskTolerantRows = useMemo(() => buildRiskTolerantOpportunities(rows, { riskLevel: "high", rewardLevel: "high" }, { includeProfileMismatches: true, limit: 25 }), [rows]);
+  const riskTolerantSymbols = useMemo(() => new Set(riskTolerantRows.map((candidate) => candidate.symbol)), [riskTolerantRows]);
 
   const options = useMemo(() => {
     return {
@@ -62,15 +66,19 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
   const tabCounts = useMemo(() => {
     return {
       BEST: rows.filter(isBestSetup).length,
+      MOMENTUM: rows.filter(isMomentumContinuation).length,
+      PULLBACK: rows.filter((row) => setupType(row) === "PULLBACK").length,
+      RISK_TOLERANT: riskTolerantSymbols.size,
+      SHOCK: rows.filter(isShockPotential).length,
       WATCHLIST: rows.filter((row) => watchlistSet.has(row.symbol)).length,
       FULL: rows.length,
     };
-  }, [rows, watchlistSet]);
+  }, [riskTolerantSymbols.size, rows, watchlistSet]);
 
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     return rows
-      .filter((row) => tabMatches(row, activeTab, watchlistSet))
+      .filter((row) => tabMatches(row, activeTab, watchlistSet, riskTolerantSymbols))
       .filter((row) => !showWatchlistOnly || watchlistSet.has(row.symbol))
       .filter((row) => {
         if (!query) return true;
@@ -84,8 +92,8 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
       .filter((row) => qualityFilter === "ALL" || cleanText(row.recommendationQualityLabel, "") === qualityFilter)
       .filter((row) => (row.final_score ?? 0) >= minScore)
       .filter((row) => row.conviction >= minConviction)
-      .sort((left, right) => compareRows(left, right, sortKey));
-  }, [activeTab, assetTypeFilter, decisionFilter, entryStatusFilter, minConviction, minScore, qualityFilter, rows, search, sectorFilter, setupFilter, showWatchlistOnly, sortKey, watchlistSet]);
+      .sort((left, right) => compareRows(left, right, sortKey, riskTolerantRows, activeTab));
+  }, [activeTab, assetTypeFilter, decisionFilter, entryStatusFilter, minConviction, minScore, qualityFilter, riskTolerantRows, rows, search, sectorFilter, setupFilter, showWatchlistOnly, sortKey, watchlistSet]);
   const activeFilterCount = [
     activeTab !== "BEST",
     assetTypeFilter !== "ALL",
@@ -118,6 +126,7 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
   return (
     <div className="min-w-0 max-w-full space-y-5">
       <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} rows={rows} />
+      <RiskTolerantOpportunityRadar marketCondition={marketCondition} rows={rows} />
       <OpportunityDeskMap marketCondition={marketCondition} rows={rows} />
       <SetupDistribution rows={rows} />
 
@@ -138,8 +147,12 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
             </button>
           </div>
         </div>
-        <div className="mt-5 grid min-w-0 gap-2 sm:grid-cols-3">
+        <div className="mt-5 grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
           <TabButton active={activeTab === "BEST"} count={tabCounts.BEST} label="Best Setups" onClick={() => setActiveTab("BEST")} />
+          <TabButton active={activeTab === "RISK_TOLERANT"} count={tabCounts.RISK_TOLERANT} label="Risk-Tolerant" onClick={() => setActiveTab("RISK_TOLERANT")} />
+          <TabButton active={activeTab === "SHOCK"} count={tabCounts.SHOCK} label="Shock Potential" onClick={() => setActiveTab("SHOCK")} />
+          <TabButton active={activeTab === "PULLBACK"} count={tabCounts.PULLBACK} label="Pullback Watch" onClick={() => setActiveTab("PULLBACK")} />
+          <TabButton active={activeTab === "MOMENTUM"} count={tabCounts.MOMENTUM} label="Momentum" onClick={() => setActiveTab("MOMENTUM")} />
           <TabButton active={activeTab === "WATCHLIST"} count={tabCounts.WATCHLIST} label="Watchlist" onClick={() => setActiveTab("WATCHLIST")} />
           <TabButton active={activeTab === "FULL"} count={tabCounts.FULL} label="Full Universe" onClick={() => setActiveTab("FULL")} />
         </div>
@@ -190,7 +203,7 @@ export function OpportunitiesWorkspace({ best, bestPriceSeries, marketCondition,
       </GlassPanel>
 
       <OpportunitySection
-        empty={activeTab === "WATCHLIST" ? "No watchlist symbols match the current search and filters." : activeTab === "FULL" ? "No symbols match the current search and filters." : "No setups match the current search and filters."}
+        empty={emptyMessage(activeTab)}
         rows={filtered}
         title={tabTitle(activeTab)}
       />
@@ -934,9 +947,13 @@ function uniqueValues(values: Array<string | null>): string[] {
   return Array.from(new Set(values.map((value) => cleanText(value, "")).filter(Boolean))).sort((a, b) => a.localeCompare(b));
 }
 
-function tabMatches(row: OpportunityViewModel, tab: TabKey, watchlistSet: Set<string>) {
+function tabMatches(row: OpportunityViewModel, tab: TabKey, watchlistSet: Set<string>, riskTolerantSymbols: Set<string>) {
   if (tab === "FULL") return true;
   if (tab === "WATCHLIST") return watchlistSet.has(row.symbol);
+  if (tab === "RISK_TOLERANT") return riskTolerantSymbols.has(row.symbol);
+  if (tab === "SHOCK") return isShockPotential(row);
+  if (tab === "PULLBACK") return setupType(row) === "PULLBACK";
+  if (tab === "MOMENTUM") return isMomentumContinuation(row);
   return isBestSetup(row);
 }
 
@@ -948,19 +965,53 @@ function isBestSetup(row: OpportunityViewModel) {
 function tabTitle(tab: TabKey) {
   if (tab === "FULL") return "Full Universe";
   if (tab === "WATCHLIST") return "Watchlist";
+  if (tab === "RISK_TOLERANT") return "Risk-Tolerant Opportunities";
+  if (tab === "SHOCK") return "Shock Potential";
+  if (tab === "PULLBACK") return "Pullback Watch";
+  if (tab === "MOMENTUM") return "Momentum Continuation";
   return "Best Setups";
+}
+
+function emptyMessage(tab: TabKey) {
+  if (tab === "WATCHLIST") return "No watchlist symbols match the current search and filters.";
+  if (tab === "FULL") return "No symbols match the current search and filters. Clear decision filters to inspect the full scanner universe.";
+  if (tab === "RISK_TOLERANT") return "No risk-tolerant candidates match the current filters. Clear filters or use the radar above for broader high-risk rankings.";
+  if (tab === "SHOCK") return "No shock-potential symbols match the current filters.";
+  if (tab === "PULLBACK") return "No pullback-watch symbols match the current filters.";
+  if (tab === "MOMENTUM") return "No momentum-continuation symbols match the current filters.";
+  return "No setups match the current search and filters.";
 }
 
 function decision(row: OpportunityViewModel) {
   return cleanText(row.final_decision, "WATCH").toUpperCase();
 }
 
-function compareRows(left: OpportunityViewModel, right: OpportunityViewModel, sortKey: SortKey) {
+function compareRows(left: OpportunityViewModel, right: OpportunityViewModel, sortKey: SortKey, riskTolerantRows: ReturnType<typeof buildRiskTolerantOpportunities>, activeTab: TabKey) {
+  const riskRank = riskTolerantRank(left, riskTolerantRows) - riskTolerantRank(right, riskTolerantRows);
+  if (riskRank !== 0 && activeTab === "RISK_TOLERANT") return riskRank;
   if (sortKey === "SYMBOL_ASC") return left.symbol.localeCompare(right.symbol);
   if (sortKey === "CONVICTION_DESC") return right.conviction - left.conviction || left.symbol.localeCompare(right.symbol);
   if (sortKey === "PRICE_DESC") return numericDesc(left.price, right.price) || left.symbol.localeCompare(right.symbol);
   if (sortKey === "DECISION_PRIORITY") return decisionPriority(left) - decisionPriority(right) || right.conviction - left.conviction || left.symbol.localeCompare(right.symbol);
   return numericDesc(left.final_score, right.final_score) || right.conviction - left.conviction || left.symbol.localeCompare(right.symbol);
+}
+
+function riskTolerantRank(row: OpportunityViewModel, riskTolerantRows: ReturnType<typeof buildRiskTolerantOpportunities>) {
+  return riskTolerantRows.find((candidate) => candidate.symbol === row.symbol)?.riskTolerantRank ?? Number.POSITIVE_INFINITY;
+}
+
+function isShockPotential(row: OpportunityViewModel) {
+  const eventShock = numeric(row.raw.event_shock_pressure_score ?? row.raw.verified_event_pressure_score) ?? 0;
+  const return1d = Math.abs(numeric(row.raw.return_1d) ?? 0);
+  const volatility = numeric(row.raw.annualized_volatility ?? row.raw.volatility ?? row.raw.volatility_pct) ?? 0;
+  return eventShock >= 68 || return1d >= 5 || volatility >= 55;
+}
+
+function isMomentumContinuation(row: OpportunityViewModel) {
+  const setup = setupType(row);
+  const technical = numeric(row.raw.technical_score) ?? row.final_score ?? 0;
+  const setupStrength = numeric(row.raw.setup_strength) ?? row.conviction;
+  return setup === "CONTINUATION" || technical >= 72 || setupStrength >= 72;
 }
 
 function decisionPriority(row: OpportunityViewModel) {

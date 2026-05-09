@@ -3,6 +3,7 @@ import { AICopilotPanel } from "@/components/terminal/AICopilotPanel";
 import { BestTradeNowCard } from "@/components/terminal/BestTradeNowCard";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { MarketOnboarding } from "@/components/onboarding/MarketOnboarding";
+import { RiskTolerantOpportunityRadar } from "@/components/opportunities/RiskTolerantOpportunityRadar";
 import { PublicSignalPreviewList } from "@/components/premium/PublicSignalPreview";
 import { PremiumAccessCta } from "@/components/premium/PremiumAccessCta";
 import { DailyActionCard } from "@/components/terminal/DailyActionCard";
@@ -131,6 +132,8 @@ export default async function TerminalPage() {
           ) : (
             <BestTradeNowCard best={best} edges={edges} regime={snapshot.marketRegime} />
           )}
+
+          <RiskTolerantOpportunityRadar compact marketCondition={snapshot.marketRegime.label} rows={opportunityModel.rows} />
 
           <GlassPanel className="overflow-hidden p-5">
             <div className="grid gap-5">
