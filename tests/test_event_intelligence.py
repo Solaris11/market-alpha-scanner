@@ -83,6 +83,34 @@ class EventIntelligenceTests(unittest.TestCase):
         self.assertIn("EVENT_HOT_INFLATION_SURPRISE", hot_fed["reason_codes"])
         self.assertLess(hot_fed["conviction_bias"], 0.0)
 
+    def test_generic_federal_reserve_release_is_not_fed_rates_context(self) -> None:
+        feed = TrustedEventFeed("fed", "Federal Reserve", "https://www.federalreserve.gov/feeds/press_all.xml", "macro", source_weight=1.0)
+        event = classify_verified_event(
+            feed,
+            "Federal Reserve Board announces approval of applications by regional bank",
+            "The release concerns bank holding company applications.",
+            "https://www.federalreserve.gov/newsevents/pressreleases/orders20260508a.htm",
+            datetime(2026, 5, 8, tzinfo=timezone.utc),
+        )
+        context = build_event_context([event], now=datetime(2026, 5, 8, tzinfo=timezone.utc))
+
+        self.assertNotIn("fed_rates", event["event_types"])
+        self.assertFalse(context["available"])
+
+    def test_cftc_interest_rate_swap_rule_is_market_regulatory_not_fed_rates(self) -> None:
+        feed = TrustedEventFeed("cftc_general_press", "CFTC", "https://www.cftc.gov/RSS/RSSGP/rssgp.xml", "market_regulatory", source_weight=0.96)
+        event = classify_verified_event(
+            feed,
+            "CFTC issues proposed rule to modify clearing requirement for interest rate swaps",
+            "The proposed rule concerns derivatives clearing and margin requirements.",
+            "https://www.cftc.gov/PressRoom/PressReleases/0000-26",
+            datetime(2026, 5, 8, tzinfo=timezone.utc),
+        )
+
+        self.assertIn("market_regulatory", event["event_types"])
+        self.assertIn("EVENT_MARKET_REGULATORY", event["reason_codes"])
+        self.assertNotIn("fed_rates", event["event_types"])
+
     def test_company_events_use_directional_context(self) -> None:
         feed = TrustedEventFeed("trusted", "Bloomberg", "https://example.test/feed", "company")
         positive_product = classify_verified_event(
@@ -120,6 +148,47 @@ class EventIntelligenceTests(unittest.TestCase):
         self.assertIn("EVENT_REGULATORY_RISK", event["reason_codes"])
         self.assertNotIn("earnings_guidance", event["event_types"])
         self.assertNotIn("earnings_negative_surprise", event["event_types"])
+        context = build_event_context([event], now=datetime(2026, 5, 8, tzinfo=timezone.utc))
+        self.assertFalse(context["available"])
+
+    def test_press_release_macro_noise_is_suppressed(self) -> None:
+        feed = TrustedEventFeed("prnewswire_releases", "PR Newswire", "https://www.prnewswire.com/rss/news-releases-list.rss", "company", source_weight=0.78)
+        event = classify_verified_event(
+            feed,
+            "Best accounting software for medium-sized business",
+            "The release describes tools for easing back-office workflows.",
+            "https://www.prnewswire.com/news-releases/accounting-software.html",
+            datetime(2026, 5, 8, tzinfo=timezone.utc),
+        )
+        context = build_event_context([event], now=datetime(2026, 5, 8, tzinfo=timezone.utc))
+
+        self.assertIn("liquidity_easing", event["event_types"])
+        self.assertFalse(context["available"])
+
+    def test_generic_ai_phrase_does_not_become_semiconductor_theme(self) -> None:
+        feed = TrustedEventFeed("prnewswire_releases", "PR Newswire", "https://www.prnewswire.com/rss/news-releases-list.rss", "company", source_weight=0.78)
+        event = classify_verified_event(
+            feed,
+            "Company unveils AI strategy for customer operations",
+            "The announcement focuses on customer service workflows.",
+            "https://www.prnewswire.com/news-releases/company-ai-strategy.html",
+            datetime(2026, 5, 8, tzinfo=timezone.utc),
+        )
+
+        self.assertNotIn("ai_semiconductor_momentum", event["event_types"])
+        self.assertNotIn("EVENT_AI_SEMICONDUCTOR_THEME", event["reason_codes"])
+
+    def test_ambiguous_plain_words_do_not_create_symbol_matches(self) -> None:
+        feed = TrustedEventFeed("marketwatch", "MarketWatch", "https://feeds.content.dowjones.io/public/rss/mw_topstories", "market", source_weight=0.82)
+        event = classify_verified_event(
+            feed,
+            "Lumentum stock rally earns it a spot in this hot index now",
+            "The word now is ordinary language, not the ServiceNow ticker.",
+            "https://feeds.content.dowjones.io/public/rss/mw_topstories/lumentum",
+            datetime(2026, 5, 8, tzinfo=timezone.utc),
+        )
+
+        self.assertNotIn("NOW", event["affected_symbols"])
 
     def test_applies_bounded_event_fields_to_dataframe(self) -> None:
         feed = TrustedEventFeed("trusted", "Associated Press", "https://example.test/feed", "geopolitical")
@@ -220,6 +289,20 @@ class EventIntelligenceTests(unittest.TestCase):
         self.assertEqual(len(context["events"]), 1)
         self.assertLess(context["events"][0]["event_decay"], 1.0)
         self.assertGreater(context["events"][0]["source_weight"], 0.9)
+
+    def test_generic_feed_items_without_symbol_context_are_suppressed(self) -> None:
+        feed = TrustedEventFeed("marketwatch", "MarketWatch", "https://feeds.content.dowjones.io/public/rss/mw_topstories", "market", source_weight=0.82)
+        event = classify_verified_event(
+            feed,
+            "Personal finance question about household insurance",
+            "This item does not include market, macro, company, or symbol context.",
+            "https://www.marketwatch.com/story/personal-finance-question",
+            datetime(2026, 5, 8, tzinfo=timezone.utc),
+        )
+        context = build_event_context([event], now=datetime(2026, 5, 8, tzinfo=timezone.utc))
+
+        self.assertFalse(context["available"])
+        self.assertEqual(context["events"], [])
 
     def test_row_earnings_calendar_adds_source_backed_symbol_event(self) -> None:
         context = build_event_context([], now=datetime(2026, 5, 8, tzinfo=timezone.utc))

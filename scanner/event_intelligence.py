@@ -206,6 +206,8 @@ MAX_CONTEXT_EVENTS = 40
 MAX_RECENT_EVENTS_PER_ROW = 4
 EVENT_CACHE_PATH = "event_intelligence/verified_events.json"
 MIN_EVENT_DECAY = 0.12
+PRESS_RELEASE_FEED_KEYS: Final[frozenset[str]] = frozenset({"prnewswire_releases"})
+AMBIGUOUS_TEXT_SYMBOLS: Final[frozenset[str]] = frozenset({"C", "MS", "NOW"})
 TRUSTED_FEED_HOST_SUFFIXES: Final[frozenset[str]] = frozenset(
     {
         "federalreserve.gov",
@@ -279,7 +281,7 @@ CLASSIFICATION_RULES: Final[tuple[ClassificationRule, ...]] = (
     ClassificationRule(
         event_type="fed_rates",
         category="macro",
-        keywords=("fomc", "federal reserve", "monetary policy", "interest rate", "fed funds", "powell", "balance sheet"),
+        keywords=("fomc", "monetary policy", "interest rate", "fed funds", "policy rate", "rate decision", "rate cut", "rate hike", "powell", "balance sheet"),
         impact_tags=("fed_policy", "rates_sensitive"),
         sectors=("technology", "software", "financial services", "real estate"),
         asset_classes=("equity", "crypto", "growth"),
@@ -363,7 +365,7 @@ CLASSIFICATION_RULES: Final[tuple[ClassificationRule, ...]] = (
     ClassificationRule(
         event_type="ai_semiconductor_momentum",
         category="market",
-        keywords=("artificial intelligence", "ai", "semiconductor", "chip", "data center", "accelerator", "gpu"),
+        keywords=("artificial intelligence", "ai chip", "ai infrastructure", "ai data center", "semiconductor", "chip", "data center", "accelerator", "gpu"),
         impact_tags=("theme_momentum", "ai_infrastructure"),
         sectors=("semiconductors", "technology"),
         asset_classes=("equity", "growth"),
@@ -723,7 +725,11 @@ def fetch_verified_events(*, now: datetime | None = None, feeds: tuple[TrustedEv
 
 def build_event_context(events: list[VerifiedEvent], *, cache_status: str = "computed", now: datetime | None = None) -> EventContext:
     current_time = now or datetime.now(timezone.utc)
-    recent_events = _recent_events(_dedupe_events(events), current_time)
+    recent_events = [
+        event
+        for event in _recent_events(_dedupe_events(events), current_time)
+        if _event_has_actionable_context(event)
+    ]
     if not recent_events:
         return _empty_context("empty" if cache_status != "hit" else cache_status, current_time, "No recent verified macro/event feed items were available.")
 
@@ -926,6 +932,7 @@ def _fetch_feed_events(feed: TrustedEventFeed, now: datetime) -> list[VerifiedEv
 def classify_verified_event(feed: TrustedEventFeed, title: str, summary: str, source_url: str, published_at: datetime) -> VerifiedEvent:
     text = f"{title} {summary}".lower()
     matched_rules = [rule for rule in CLASSIFICATION_RULES if _rule_matches(text, rule)]
+    matched_rules = _apply_source_specific_rule_filters(feed, text, matched_rules)
     directional_rules = _directional_classification_rules(text)
     if directional_rules:
         matched_rules = _apply_directional_overrides(matched_rules, directional_rules)
@@ -1032,6 +1039,34 @@ def _apply_directional_overrides(matched_rules: list[ClassificationRule], direct
     if "shareholder_litigation" in directional_types:
         filtered = [rule for rule in filtered if rule.event_type not in {"earnings_guidance", "earnings_beat", "earnings_miss"}]
     return [*filtered, *directional_rules]
+
+
+def _apply_source_specific_rule_filters(feed: TrustedEventFeed, text: str, matched_rules: list[ClassificationRule]) -> list[ClassificationRule]:
+    if feed.key.startswith("cftc"):
+        policy_rate_terms = ("fomc", "federal reserve", "fed funds", "monetary policy", "policy rate", "rate decision", "rate cut", "rate hike", "powell")
+        filtered = [
+            rule
+            for rule in matched_rules
+            if not (rule.event_type == "fed_rates" and not _has_any(text, policy_rate_terms))
+        ]
+        if len(filtered) != len(matched_rules) and _has_any(text, ("clearing requirement", "proposed rule", "swap", "derivative", "margin requirement")):
+            filtered.append(
+                _synthetic_rule(
+                    event_type="market_regulatory",
+                    category="market",
+                    impact_tags=("market_regulatory", "liquidity_context"),
+                    sectors=("financial services",),
+                    asset_classes=("equity",),
+                    regime_tags=("event_sensitive",),
+                    pressure_score=58.0,
+                    conviction_bias=-0.2,
+                    fragility_bias=1.2,
+                    shock_bias=1.2,
+                    reason_code="EVENT_MARKET_REGULATORY",
+                )
+            )
+        return filtered
+    return matched_rules
 
 
 def _directional_classification_rules(text: str) -> list[ClassificationRule]:
@@ -1356,12 +1391,12 @@ def _event_row_weight(row: dict[str, object], event: VerifiedEvent) -> tuple[flo
         return 1.0, "symbol"
     if _generic_verified_event(event):
         return 0.0, ""
+    if event["category"] == "company":
+        return 0.0, ""
     if group and group in event["sectors"]:
         return 0.92, "sector"
     if sector and any(sector_key in sector for sector_key in event["sectors"]):
         return 0.86, "sector"
-    if event["category"] == "company":
-        return 0.0, ""
     if "crypto" in asset_type and "crypto" in event["asset_classes"]:
         return 0.86, "asset"
     if "equity" in asset_type and "equity" in event["asset_classes"]:
@@ -1374,6 +1409,16 @@ def _event_row_weight(row: dict[str, object], event: VerifiedEvent) -> tuple[flo
 def _generic_verified_event(event: VerifiedEvent) -> bool:
     meaningful_codes = [code for code in event["reason_codes"] if code != "VERIFIED_EVENT_SOURCE"]
     return event["event_type"] == "verified_update" and not meaningful_codes
+
+
+def _event_has_actionable_context(event: VerifiedEvent) -> bool:
+    if event["feed_key"] in PRESS_RELEASE_FEED_KEYS and not event["affected_symbols"]:
+        return False
+    if _generic_verified_event(event) and not event["affected_symbols"]:
+        return False
+    if event["category"] == "company" and not event["affected_symbols"]:
+        return False
+    return True
 
 
 def _row_earnings_events(row: dict[str, object]) -> list[VerifiedEvent]:
@@ -1900,9 +1945,21 @@ def _symbols_from_text(text: str) -> list[str]:
     found: list[str] = []
     upper_text = text.upper()
     for symbol in symbols:
-        if re.search(rf"\b{re.escape(symbol)}\b", upper_text):
+        if _symbol_mentioned_in_text(symbol, upper_text):
             found.append(symbol)
     return found[:12]
+
+
+def _symbol_mentioned_in_text(symbol: str, upper_text: str) -> bool:
+    escaped = re.escape(symbol)
+    if symbol in AMBIGUOUS_TEXT_SYMBOLS:
+        return (
+            re.search(rf"\${escaped}\b", upper_text) is not None
+            or re.search(rf"\({escaped}\)", upper_text) is not None
+            or re.search(rf"\b(?:NASDAQ|NYSE|AMEX|NYSEARCA|NASDAQGS)\s*:\s*{escaped}\b", upper_text) is not None
+            or re.search(rf"\b{escaped}\s+(?:STOCK|SHARES|CORP|INC|PLC|LTD)\b", upper_text) is not None
+        )
+    return re.search(rf"\b{escaped}\b", upper_text) is not None
 
 
 def _feeds_from_env() -> tuple[TrustedEventFeed, ...]:
