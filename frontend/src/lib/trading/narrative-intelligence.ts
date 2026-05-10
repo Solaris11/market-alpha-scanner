@@ -7,7 +7,7 @@ import type { ShockMovePattern } from "@/lib/trading/shock-move";
 import { buildVerifiedEventContext, eventReasonLabel, eventTone, type VerifiedEventContextSummary } from "@/lib/trading/verified-event-intelligence";
 import type { RankingRow } from "@/lib/types";
 import { cleanText, finiteNumber, formatNumber } from "@/lib/ui/formatters";
-import { decisionLabel, humanizeLabel, readableText } from "@/lib/ui/labels";
+import { decisionLabel, humanizeInsightText, humanizeLabel } from "@/lib/ui/labels";
 
 export type NarrativeSource = "deterministic" | "llm";
 
@@ -120,12 +120,12 @@ export function buildNarrativeIntelligence(input: NarrativeBuildInput): Narrativ
   const decision = decisionLabel(row.final_decision);
   const macroLabel = macro ? macroAlignmentLabel(macro) : row.macroLabel;
   const evidenceLabel = memory?.evidence.label ?? "Historical evidence still building";
-  const shockContext = shock ? `${shock.opportunityState.toLowerCase()} with ${shock.chaseRiskLabel.toLowerCase()}` : "shock-pattern memory is still limited";
+  const shockContext = shock ? `${shock.opportunityState.toLowerCase()} with ${shock.chaseRiskLabel.toLowerCase()}` : "large-move history is still limited";
   const riskContext = riskContextLabel(row, event, macro);
   const eventPhrase = event.available ? event.compactLabel.toLowerCase() : "limited verified event context";
 
   const narrativeSummary = enforceSafeText(
-    `${row.symbol} is a ${setup.toLowerCase()} research setup. ${decision} remains the core decision because ${coreDecisionReason(row)} Macro context is ${macroLabel.toLowerCase()}, event context shows ${eventPhrase}, and ${shockContext}.`,
+    `${row.symbol} is a ${setup.toLowerCase()} setup to review. ${decision} remains the main decision because ${coreDecisionReason(row)} Broader market context is ${macroLabel.toLowerCase()}, event context shows ${eventPhrase}, and ${shockContext}.`,
   );
   const bullishNarrative = enforceSafeText(bullishNarrativeFor(row, macro, memory, shock, event));
   const bearishNarrative = enforceSafeText(bearishNarrativeFor(row, macro, shock, event));
@@ -142,11 +142,11 @@ export function buildNarrativeIntelligence(input: NarrativeBuildInput): Narrativ
   );
   const fragilityReasoning = enforceSafeText(fragilityReasoningFor(row, macro, event, shock));
   const decisionReasoning = enforceSafeText(
-    `${decision} reflects ${scoreText(row.final_score)} final score, ${row.conviction} conviction, ${row.fragility} fragility, ${evidenceLabel.toLowerCase()}, and ${macroLabel.toLowerCase()} context. The score is context, not prediction.`,
+    `${decision} reflects a ${scoreText(row.final_score)} final score, ${row.conviction} conviction, ${row.fragility} fragility, ${evidenceLabel.toLowerCase()}, and ${macroLabel.toLowerCase()} market context. The score is evidence, not a prediction.`,
   );
   const eventReasoning = enforceSafeText(eventReasoningFor(event));
   const whySetupMatters = enforceSafeText(
-    `${row.symbol} matters because it combines ${setup.toLowerCase()} structure with ${row.sector ? `${row.sector} context` : "current scanner context"} and visible risk controls. ${memory?.narrative[0] ?? "Market memory evidence is still building."}`,
+    `${row.symbol} matters because it combines ${setup.toLowerCase()} structure with ${row.sector ? `${row.sector} context` : "current scanner context"} and visible risk controls. ${memory?.narrative[0] ?? "Historical evidence is still building."}`,
   );
   const whatCouldBreak = enforceSafeText(whatCouldBreakFor(row, macro, event, shock));
   const conditionalOpportunity = enforceSafeText(conditionalOpportunityFor(row, macro, event, shock));
@@ -348,7 +348,7 @@ export function applyValidatedLlmNarrative(base: NarrativeIntelligence, value: u
 function bullishNarrativeFor(row: OpportunityViewModel, macro: MacroExchangeContext | null, memory: MarketMemorySummary | null, shock: ShockMovePattern | null, event: VerifiedEventContextSummary): string {
   const forces = macro?.supportingForces.filter(notMutedForce).slice(0, 2) ?? [];
   const support = forces.length ? forces.join(" ") : "Current setup evidence is the main support.";
-  const shockText = shock && shock.upsideShockScore >= 65 ? `Shock memory supports elevated upside-volatility context with ${shock.upsideShockCount} upside shock observations.` : "Shock memory is not the primary support yet.";
+  const shockText = shock && shock.upsideShockScore >= 65 ? `Large-move history points to higher upside volatility with ${shock.upsideShockCount} upside events.` : "Large-move history is not a main support yet.";
   const memoryText = memory?.available ? memory.narrative[0] : "Market memory is still limited.";
   const eventText = eventTone(event) === "support" ? `Verified event context is supportive: ${event.compactLabel}.` : "Verified events are not providing a clean standalone tailwind.";
   return `${support} ${shockText} ${memoryText} ${eventText} Conviction is ${row.conviction}.`;
@@ -359,7 +359,7 @@ function bearishNarrativeFor(row: OpportunityViewModel, macro: MacroExchangeCont
   const macroRisk = forces.length ? forces.join(" ") : "Macro headwinds are not dominant in the available proxy set.";
   const chase = shock?.chaseRiskLabel ?? (row.fragility >= 70 ? "Chase risk elevated" : "Chase risk contained");
   const eventRisk = eventTone(event) === "risk" ? `Verified event risk is elevated: ${event.compactLabel}.` : "Event pressure is not the leading risk.";
-  return `${macroRisk} ${eventRisk} ${chase}. Fragility is ${row.fragility}, so the setup can weaken if entry quality deteriorates.`;
+  return `${macroRisk} ${eventRisk} ${chase}. Fragility is ${row.fragility}, so the setup can weaken if entry quality gets worse.`;
 }
 
 function macroNarrativeFor(row: OpportunityViewModel, macro: MacroExchangeContext | null): string {
@@ -376,8 +376,8 @@ function sectorNarrativeFor(row: OpportunityViewModel, macro: MacroExchangeConte
 }
 
 function pressureNarrative(label: "Liquidity" | "Volatility", value: number | null): string {
-  if (value === null) return `${label} pressure is unavailable in the current structured packet.`;
-  return `${label} pressure is ${macroPressureLabel(value).toLowerCase()} at ${formatNumber(value, 0)}. This pressure changes fragility context, not certainty.`;
+  if (value === null) return `${label} pressure is unavailable in the latest TradeVeto data.`;
+  return `${label} pressure is ${macroPressureLabel(value).toLowerCase()} at ${formatNumber(value, 0)}. This changes risk context, not certainty.`;
 }
 
 function positioningNarrativeFor(row: OpportunityViewModel, shock: ShockMovePattern | null): string {
@@ -386,7 +386,7 @@ function positioningNarrativeFor(row: OpportunityViewModel, shock: ShockMovePatt
   }
   const distance = finiteNumber(row.raw.entry_distance_pct ?? row.raw.correction_distance_pct);
   if (distance !== null && distance >= 6) return `Position quality is chase-prone because price is extended from the preferred research area by ${distance.toFixed(1)} points of distance context.`;
-  return "Position quality is governed by entry distance, fragility, and whether price holds the current research zone.";
+  return "Position quality depends on entry distance, fragility, and whether price holds the current research zone.";
 }
 
 function fragilityReasoningFor(row: OpportunityViewModel, macro: MacroExchangeContext | null, event: VerifiedEventContextSummary, shock: ShockMovePattern | null): string {
@@ -394,13 +394,13 @@ function fragilityReasoningFor(row: OpportunityViewModel, macro: MacroExchangeCo
     row.fragility >= 70 ? "structural fragility is elevated" : "structural fragility is controlled but still visible",
     event.fragilityAdjustment > 0 ? "verified events add fragility" : "verified events do not add major fragility",
     macro && macro.volatilityPressure >= 65 ? "volatility pressure is elevated" : "volatility pressure is not extreme",
-    shock && shock.downsideRiskScore >= 70 ? "shock memory shows elevated downside behavior" : "shock downside memory is not dominant",
+    shock && shock.downsideRiskScore >= 70 ? "large-move history shows elevated downside behavior" : "large-move downside history is not dominant",
   ];
   return `${row.symbol} fragility comes from ${drivers.join(", ")}.`;
 }
 
 function eventReasoningFor(event: VerifiedEventContextSummary): string {
-  if (!event.available) return "No verified event catalyst is available in the structured packet, so event narrative remains muted.";
+  if (!event.available) return "No verified event catalyst is available in the latest TradeVeto data, so event context stays muted.";
   const reasons = event.reasonCodes.map(eventReasonLabel).slice(0, 3);
   const sourceText = event.sourcesUsed.length ? ` Sources used: ${event.sourcesUsed.slice(0, 3).join(", ")}.` : "";
   return `${event.summary} Reason context: ${reasons.length ? reasons.join(", ") : event.compactLabel}.${sourceText}`;
@@ -428,7 +428,7 @@ function conditionalOpportunityFor(row: OpportunityViewModel, macro: MacroExchan
 function pressureStoryFor(row: OpportunityViewModel, macro: MacroExchangeContext | null, event: VerifiedEventContextSummary): string {
   const macroPressure = macro?.macroPressureScore ?? finiteNumber(row.raw.macro_pressure_score);
   const sectorScore = macro?.sectorAlignmentScore ?? finiteNumber(row.raw.sector_alignment_score);
-  const macroText = macroPressure === null ? "macro pressure is unavailable" : `macro pressure is ${macroPressure >= 65 ? "elevated" : macroPressure < 45 ? "contained" : "mixed"}`;
+  const macroText = macroPressure === null ? "market pressure is unavailable" : `market pressure is ${macroPressure >= 65 ? "elevated" : macroPressure < 45 ? "contained" : "mixed"}`;
   const sectorText = sectorScore === null ? "sector pressure is unavailable" : `sector alignment is ${sectorScore >= 65 ? "supportive" : sectorScore < 45 ? "weak" : "mixed"}`;
   return `${row.symbol} pressure map: ${macroText}, ${sectorText}, event pressure is ${event.riskScore >= 68 ? "elevated" : "manageable"}, and fragility is ${row.fragility}.`;
 }
@@ -469,7 +469,7 @@ function riskContextLabel(row: OpportunityViewModel, event: VerifiedEventContext
 }
 
 function coreDecisionReason(row: OpportunityViewModel): string {
-  const reason = readableText(row.decision_reason, "");
+  const reason = humanizeInsightText(row.decision_reason, "");
   if (reason) return `${reason}.`;
   return `${row.conviction} conviction and ${row.fragility} fragility are balanced against the latest risk filters.`;
 }
@@ -493,7 +493,7 @@ function notMutedForce(value: string): boolean {
 }
 
 function safeNarrativeText(value: unknown): string {
-  const text = cleanText(value, "").replace(/\s+/g, " ").trim();
+  const text = humanizeInsightText(cleanText(value, ""), "").replace(/\s+/g, " ").trim();
   if (!text || NARRATIVE_FORBIDDEN_LANGUAGE.test(text)) return "";
   return text.length > 520 ? text.slice(0, 520).trim() : text;
 }
@@ -505,7 +505,7 @@ function safeNarrativeArray(value: unknown, limit: number): string[] {
 
 function enforceSafeText(value: string): string {
   const safe = safeNarrativeText(value);
-  return safe || "Narrative context is unavailable from the current structured packet.";
+  return safe || "Narrative context is unavailable from the latest TradeVeto data.";
 }
 
 function unique(values: string[]): string[] {

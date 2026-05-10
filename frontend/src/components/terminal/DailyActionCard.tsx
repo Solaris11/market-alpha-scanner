@@ -16,10 +16,10 @@ const TONE_STYLES: Record<DailyAction["tone"], { accent: string; glow: string; l
     panel: "border-amber-300/25 bg-amber-400/[0.08]",
   },
   "stay-out": {
-    accent: "bg-rose-300 text-rose-300",
-    glow: "shadow-[0_0_90px_rgba(244,63,94,0.14)]",
-    label: "text-rose-100",
-    panel: "border-rose-300/25 bg-rose-400/[0.07]",
+    accent: "bg-amber-300 text-amber-300",
+    glow: "shadow-[0_0_90px_rgba(245,158,11,0.12)]",
+    label: "text-amber-100",
+    panel: "border-amber-300/22 bg-amber-400/[0.06]",
   },
 };
 
@@ -64,7 +64,7 @@ export function DailyActionCard({
           {!canTrade && noTradeCopy ? (
             <div className="mt-4 rounded-2xl border border-white/10 bg-black/20 p-4">
               <div className="text-xl font-black tracking-tight text-slate-50">{noTradeCopy.title}</div>
-              <div className="mt-1 text-sm font-semibold text-amber-100">Correct action: do nothing</div>
+              <div className="mt-1 text-sm font-semibold text-amber-100">Best next step: monitor patiently</div>
               <div className="mt-1 text-xs leading-5 text-slate-400">{noTradeCopy.reason}</div>
               <div className="mt-3 text-[11px] font-semibold text-slate-500">Research only. Not financial advice.</div>
             </div>
@@ -88,7 +88,7 @@ export function DailyActionCard({
             </div>
           </div>
           <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3">
-            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{canTrade ? "Decision context" : "Why no trade today?"}</div>
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{canTrade ? "Decision context" : "Why patience now?"}</div>
             <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-300">
               {contextReasons.map((reason) => <li key={reason}>- {reason}</li>)}
             </ul>
@@ -112,5 +112,5 @@ function defaultWhyReasons(canTrade: boolean): string[] {
   if (canTrade) {
     return ["Risk filters are not blocking research mode.", "Use the setup panel for confirmation context.", "Research only. Not financial advice."];
   }
-  return ["Market is overheated.", "Breadth and risk filters are not aligned.", "No trade-ready setup passed the current gates."];
+  return ["The market is extended, so entry quality matters more than speed.", "Breadth and risk filters are asking for better confirmation.", "TradeVeto is preserving capital until a cleaner setup appears."];
 }

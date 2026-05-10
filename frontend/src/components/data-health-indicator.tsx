@@ -24,15 +24,15 @@ export function DataHealthBanner({ freshness }: { freshness: DataFreshness }) {
   if (freshness.status === "fresh" || freshness.status === "slightly_stale") return null;
 
   const styles = statusStyles(freshness.status);
-  const detail = freshness.status === "stale" ? `Scanner data is stale. ${freshness.humanAge}.` : freshness.message;
+  const detail = freshness.status === "stale" ? `Latest scanner data may need a refresh. ${freshness.humanAge}. Decisions stay cautious until fresh data returns.` : freshness.message;
   return (
     <div className={`mb-5 rounded-2xl border px-4 py-3 text-sm shadow-xl shadow-black/20 ${styles.banner}`}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 sm:items-center">
+        <div className="flex min-w-0 items-start gap-3 sm:items-center">
           <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${styles.dot}`} />
           <div className="min-w-0">
-            <div className="font-semibold text-slate-50">System data health: {freshness.label}</div>
-            <div className="mt-0.5 text-xs text-slate-300">{detail}</div>
+            <div className="break-words font-semibold text-slate-50">System data health: {freshness.label}</div>
+            <div className="mt-0.5 break-words text-xs leading-5 text-slate-300">{detail}</div>
           </div>
         </div>
         {freshness.lastUpdated ? <div className="font-mono text-xs text-slate-400">{freshness.humanAge}</div> : null}
@@ -60,10 +60,19 @@ function statusStyles(status: DataFreshnessStatus) {
     };
   }
 
+  if (status === "missing") {
+    return {
+      banner: "border-cyan-300/20 bg-cyan-400/[0.07]",
+      dot: "bg-cyan-200 shadow-[0_0_16px_rgba(103,232,249,0.45)]",
+      pill: "border-cyan-300/20 bg-cyan-400/[0.07] text-cyan-100",
+      subtle: "text-cyan-100/75",
+    };
+  }
+
   return {
-    banner: "border-rose-400/25 bg-rose-500/10",
-    dot: "bg-rose-300 shadow-[0_0_16px_rgba(253,164,175,0.65)]",
-    pill: "border-rose-400/25 bg-rose-500/10 text-rose-100",
-    subtle: "text-rose-200/80",
+    banner: "border-amber-400/25 bg-amber-400/10",
+    dot: "bg-amber-300 shadow-[0_0_16px_rgba(252,211,77,0.65)]",
+    pill: "border-amber-400/25 bg-amber-400/10 text-amber-100",
+    subtle: "text-amber-200/80",
   };
 }

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import type { RankingRow } from "@/lib/types";
 import { gaugePercent } from "@/lib/ui/gauge-utils";
 import { SectionTitle } from "./ui/SectionTitle";
@@ -12,11 +13,17 @@ function heatColor(score: number) {
 }
 
 export function SignalHeatmap({ rows }: { rows: RankingRow[] }) {
+  const visibleRows = rows.slice(0, 40);
+  const deferredPaintStyle: CSSProperties = {
+    containIntrinsicSize: "420px",
+    contentVisibility: "auto",
+  };
+
   return (
-    <GlassPanel className="p-4">
+    <GlassPanel className="p-4" style={deferredPaintStyle}>
       <SectionTitle eyebrow="Signal Heatmap" title="Scanner Conviction" meta={`${rows.length} names`} />
-      <div className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
-        {rows.slice(0, 40).map((row) => {
+      <div className="mt-4 grid min-h-[12rem] grid-cols-4 gap-2 sm:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
+        {visibleRows.map((row) => {
           const score = gaugePercent(row.final_score);
           return (
             <Link className={`rounded-xl p-2 text-center transition-all duration-200 hover:scale-[1.03] ${heatColor(score)}`} href={`/symbol/${row.symbol}`} key={row.symbol}>

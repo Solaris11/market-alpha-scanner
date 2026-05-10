@@ -7,7 +7,7 @@ export const openGraphImageUrl = `${marketingBaseUrl}/og-image.png`;
 
 const title = `${BRAND_NAME} — AI Market Intelligence`;
 const description =
-  "AI-powered market intelligence that helps traders filter weak setups, analyze risk, and make clearer research decisions. Not financial advice.";
+  "WAIT-first AI market intelligence for evidence-aware market research, risk filtering, replayable simulations, and clearer decisions. Not financial advice.";
 
 export function marketingMetadata(path = "/", overrides: Partial<Metadata> = {}): Metadata {
   const canonical = new URL(path, marketingBaseUrl).toString();
@@ -20,8 +20,12 @@ export function marketingMetadata(path = "/", overrides: Partial<Metadata> = {})
     alternates: {
       canonical,
     },
+    applicationName: BRAND_NAME,
+    authors: [{ name: BRAND_NAME, url: marketingBaseUrl }],
+    creator: BRAND_NAME,
     keywords: [
       "AI market intelligence",
+      "WAIT-first trading research",
       "trade filtering",
       "trading research platform",
       "trading decision support",
@@ -29,10 +33,13 @@ export function marketingMetadata(path = "/", overrides: Partial<Metadata> = {})
       "stock analysis AI",
       "risk-aware trading research",
       "explainable market research",
+      "market replay analysis",
+      "simulated strategy performance",
     ],
     openGraph: {
       title: String(pageTitle),
       description: String(pageDescription),
+      locale: "en_US",
       type: "website",
       url: canonical,
       siteName: BRAND_NAME,
@@ -48,9 +55,20 @@ export function marketingMetadata(path = "/", overrides: Partial<Metadata> = {})
     },
     twitter: {
       card: "summary_large_image",
+      creator: BRAND_NAME,
       title: String(pageTitle),
       description: String(pageDescription),
       images: [openGraphImageUrl],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+      },
     },
     ...overrides,
   };

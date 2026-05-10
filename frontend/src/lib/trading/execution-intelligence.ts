@@ -594,7 +594,7 @@ function reasonLines(row: OpportunityViewModel, input: ExecutionInputs, scores: 
   if (scores.pullbackQualityScore >= 68) lines.push("Pullback structure is the cleaner execution path in the current context.");
   if (scores.breakoutQualityScore >= 70) lines.push("Breakout evidence is supported by trend, volume, or shock-memory context.");
   if (scores.confirmationQualityScore >= 66) lines.push("Confirmation evidence is above the current universe baseline.");
-  if (row.shockPattern && row.shockPattern.pullbackSuccessRate !== null) lines.push(`Historical shock memory shows ${Math.round(row.shockPattern.pullbackSuccessRate)}% pullback-success context after comparable shocks.`);
+  if (row.shockPattern && row.shockPattern.pullbackSuccessRate !== null) lines.push(`Large-move history shows ${Math.round(row.shockPattern.pullbackSuccessRate)}% pullback-success context after comparable moves.`);
   if (input.macroAlignment >= 64) lines.push("Macro or sector context is not fighting the timing layer.");
   if (scores.timingQualityScore >= 70) lines.push("Timing quality is above the current execution threshold.");
   return lines.slice(0, 4);

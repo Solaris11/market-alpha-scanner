@@ -51,6 +51,6 @@ describe("support policy", () => {
     assert.match(troubleshooting.message, /single scanner lock/i);
     const readiness = supportChatResponse("What does readiness mean?");
     assert.equal(readiness.ok, true);
-    assert.match(readiness.message, /confidence, data quality, setup strength, and veto status/i);
+    assert.match(readiness.message, /confidence, data quality, setup strength, and risk status/i);
   });
 });

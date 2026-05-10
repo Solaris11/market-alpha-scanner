@@ -20,7 +20,7 @@ export function PublishedSymbolIntelligenceBlock({ compact = false, intelligence
           )}
           <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-400">{intelligence.description}</p>
         </div>
-        <div className="grid min-w-[260px] grid-cols-2 gap-2">
+        <div className="grid w-full grid-cols-2 gap-2 lg:w-auto lg:min-w-[260px]">
           <MiniStat label="Sector" value={intelligence.sector} />
           <MiniStat label="State" value={intelligence.currentOpportunityState} />
         </div>
@@ -41,6 +41,13 @@ export function PublishedSymbolIntelligenceBlock({ compact = false, intelligence
             {intelligence.whatToWatch.map((item) => <li key={item}>{item}</li>)}
           </ul>
         </div>
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-amber-300/18 bg-amber-400/[0.05] p-4">
+        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-200">Public Trust Boundary</div>
+        <p className="mt-2 text-sm leading-6 text-amber-50/85">
+          This public page summarizes source-bounded TradeVeto research context. It does not include premium trade-plan levels, real-money execution, personalized advice, or guaranteed outcomes.
+        </p>
       </div>
 
       <InternalLinks links={intelligence.internalLinks} />
@@ -70,6 +77,13 @@ export function ShockPublishingView({ page }: { page: PublishedShockPage }) {
   return (
     <div className="space-y-10">
       <HeroBlock eyebrow="Shock Intelligence" title={page.title} copy={page.narrative.join(" ")} />
+      <TrustBoundaryGrid
+        items={[
+          ["High volatility", "Shock research is speculative by nature and can include elevated downside risk."],
+          ["No chase signal", "Historical large-move behavior is not treated as a direct reason to enter late."],
+          ["Stats first", "Shock counts, follow-through, and chase risk are computed before AI text summarizes them."],
+        ]}
+      />
       <IntelligenceCollectionGrid items={page.items} />
     </div>
   );
@@ -79,11 +93,31 @@ export function MacroPublishingView({ page }: { page: PublishedMacroRegimePage }
   return (
     <div className="space-y-10">
       <HeroBlock eyebrow="Macro Regime" title={page.title} copy={page.narrative.join(" ")} />
+      <TrustBoundaryGrid
+        items={[
+          ["Observed structure", "Macro pages summarize current market pressure; they do not predict exact macro releases."],
+          ["Pressure, not certainty", "Volatility, liquidity, and breadth labels describe risk context, not guaranteed direction."],
+          ["Fallback honest", "When source coverage is limited, TradeVeto should disclose the limitation."],
+        ]}
+      />
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {page.metrics.map((metric) => <InsightCard card={metric} key={metric.label} />)}
       </div>
       <IntelligenceCollectionGrid items={page.sectorMap} />
     </div>
+  );
+}
+
+function TrustBoundaryGrid({ items }: { items: Array<[string, string]> }) {
+  return (
+    <section className="grid gap-4 md:grid-cols-3">
+      {items.map(([title, copy]) => (
+        <div className="rounded-2xl border border-amber-300/18 bg-amber-400/[0.045] p-4" key={title}>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-200">{title}</div>
+          <p className="mt-2 text-sm leading-6 text-slate-300">{copy}</p>
+        </div>
+      ))}
+    </section>
   );
 }
 
@@ -127,7 +161,7 @@ function MiniStat({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
       <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</div>
-      <div className="mt-1 truncate text-sm font-black text-slate-100">{value}</div>
+      <div className="mt-1 break-words text-sm font-black leading-5 text-slate-100">{value}</div>
     </div>
   );
 }

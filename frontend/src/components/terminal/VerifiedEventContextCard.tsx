@@ -6,7 +6,7 @@ import {
   type VerifiedEventContextSummary,
 } from "@/lib/trading/verified-event-intelligence";
 import type { RankingRow } from "@/lib/types";
-import { humanizeLabel } from "@/lib/ui/labels";
+import { humanizeInsightText, humanizeLabel } from "@/lib/ui/labels";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
@@ -15,14 +15,14 @@ export function VerifiedEventContextCard({ row }: { row: RankingRow }) {
   const tone = eventTone(context);
   return (
     <GlassPanel className="p-5">
-      <SectionTitle eyebrow="Verified Events" title="Event + Macro Intelligence" meta={context.compactLabel} />
-      <p className="mt-3 text-sm leading-6 text-slate-400">{context.summary}</p>
+      <SectionTitle eyebrow="Verified Events" title="Event Context" meta={humanizeInsightText(context.compactLabel)} />
+      <p className="mt-3 text-sm leading-6 text-slate-400">{humanizeInsightText(context.summary)}</p>
 
       <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Metric label="Event Risk" tone={scoreTone(context.riskScore, true)} value={`${Math.round(context.riskScore)}/100`} />
-        <Metric label="Shock Pressure" tone={scoreTone(context.shockPressureScore, true)} value={`${Math.round(context.shockPressureScore)}/100`} />
-        <Metric label="Source Confidence" tone={context.eventConfidence >= 82 ? "good" : context.eventConfidence >= 62 ? "mixed" : "risk"} value={`${Math.round(context.eventConfidence)}/100`} />
-        <Metric label="Event Decay" tone={context.eventDecay >= 0.62 ? "good" : context.eventDecay >= 0.32 ? "mixed" : "risk"} value={`${Math.round(context.eventDecay * 100)}%`} />
+        <Metric label="Large-Move Pressure" tone={scoreTone(context.shockPressureScore, true)} value={`${Math.round(context.shockPressureScore)}/100`} />
+        <Metric label="Source Strength" tone={context.eventConfidence >= 82 ? "good" : context.eventConfidence >= 62 ? "mixed" : "risk"} value={`${Math.round(context.eventConfidence)}/100`} />
+        <Metric label="Event Freshness" tone={context.eventDecay >= 0.62 ? "good" : context.eventDecay >= 0.32 ? "mixed" : "risk"} value={`${Math.round(context.eventDecay * 100)}%`} />
       </div>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
@@ -32,7 +32,7 @@ export function VerifiedEventContextCard({ row }: { row: RankingRow }) {
         </div>
         <aside className="space-y-3">
           <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Recent Confirmed Events</div>
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Recent Verified Events</div>
             {context.recentEvents.length ? (
               <div className="mt-3 space-y-3">
                 {context.recentEvents.map((event) => (
@@ -51,18 +51,19 @@ export function VerifiedEventContextCard({ row }: { row: RankingRow }) {
                     <div className="mt-1 line-clamp-2 text-sm leading-5 text-slate-200">{event.title}</div>
                     <div className="mt-2 text-[11px] text-slate-500">
                       {event.publishedAt ? formatDate(event.publishedAt) : "recent"} · {humanizeLabel(event.scope)}
-                      {event.eventConfidence !== null ? ` · confidence ${Math.round(event.eventConfidence)}/100` : ""}
-                      {event.eventDecay !== null ? ` · decay ${Math.round(event.eventDecay * 100)}%` : ""}
+                      {event.eventConfidence !== null ? ` · source strength ${Math.round(event.eventConfidence)}/100` : ""}
+                      {event.sourceConfidence ? ` · ${humanizeLabel(event.sourceConfidence)} source` : ""}
+                      {event.eventDecay !== null ? ` · freshness ${Math.round(event.eventDecay * 100)}%` : ""}
                     </div>
                   </a>
                 ))}
               </div>
             ) : (
-              <p className="mt-3 text-sm leading-6 text-slate-400">No symbol-specific verified event matched this setup yet. Broad macro context still contributes when available.</p>
+              <p className="mt-3 text-sm leading-6 text-slate-400">No verified event matched this symbol yet. Broader market context still counts when available.</p>
             )}
           </div>
           <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.08] p-4 text-sm leading-6 text-slate-300">
-            Verified event context uses trusted source metadata and bounded adjustments. It is not a macro forecast or financial advice.
+            Verified events use trusted sources and limited score changes. This is context, not a forecast or financial advice.
           </div>
         </aside>
       </div>
@@ -80,10 +81,10 @@ function EventPanel({ context, tone }: { context: VerifiedEventContextSummary; t
         : "border-white/10 bg-white/[0.04] text-slate-300";
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Event-Aware Risk Context</div>
-      <div className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.14em] ${pill}`}>{context.label}</div>
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">How Events Affect This Setup</div>
+      <div className={`mt-3 inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.14em] ${pill}`}>{humanizeInsightText(context.label)}</div>
       <p className="mt-3 text-sm leading-6 text-slate-400">
-        Macro pressure adjustment {formatSignedAdjustment(context.macroPressureAdjustment)}. Event pressure score {Math.round(context.eventPressureScore)}/100. Source weight {Math.round(context.sourceWeight * 100)}%.
+        Verified events add {formatSignedAdjustment(context.macroPressureAdjustment)} to market pressure. Current event pressure is {Math.round(context.eventPressureScore)}/100, with source strength at {Math.round(context.sourceWeight * 100)}%.
       </p>
     </div>
   );
@@ -93,7 +94,7 @@ function ReasonPanel({ context }: { context: VerifiedEventContextSummary }) {
   const reasons = context.reasonCodes.slice(0, 6);
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Reason Codes</div>
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Why It Changed</div>
       {reasons.length ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {reasons.map((code) => (
@@ -101,10 +102,10 @@ function ReasonPanel({ context }: { context: VerifiedEventContextSummary }) {
           ))}
         </div>
       ) : (
-        <p className="mt-3 text-sm leading-6 text-slate-400">No event reason code is active for this symbol yet.</p>
+        <p className="mt-3 text-sm leading-6 text-slate-400">No verified event reason is active for this symbol yet.</p>
       )}
       <div className="mt-3 text-xs leading-5 text-slate-500">
-        Sources: {context.sourcesUsed.length ? context.sourcesUsed.slice(0, 5).join(", ") : "verified feeds unavailable"}.
+        Sources checked: {context.sourcesUsed.length ? context.sourcesUsed.slice(0, 5).join(", ") : "verified feeds unavailable"}. Old or duplicate items are ignored before scoring.
       </div>
     </div>
   );

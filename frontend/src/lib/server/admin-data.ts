@@ -2,6 +2,7 @@ import "server-only";
 
 import type { QueryResultRow } from "pg";
 import type { BackupHealthDetails } from "@/lib/backup-health";
+import { llmBudgetCapsFromEnv } from "@/lib/llm-cost-policy";
 import { getScanDataHealth } from "@/lib/scanner-data";
 import { buildEvidenceDepthSummary, type EvidenceDepthDuplicateCheck, type EvidenceDepthSummary, type EvidenceDepthSymbol, type EvidenceDepthTableCount, type EvidenceDepthWindow } from "@/lib/trading/evidence-depth";
 import { buildScoreCalibrationSystem, type CalibrationAxisDirection, type ScoreCalibrationAnomaly, type ScoreCalibrationAnomalyType, type ScoreCalibrationBucketInput, type ScoreCalibrationSystem } from "@/lib/trading/score-calibration";
@@ -115,6 +116,25 @@ export type AdminMonitoringSummary = {
   backupHealth: BackupHealthDetails | null;
   backupSeries: Array<{ bucket: string; failed: number; ok: number; warned: number }>;
   latestBackup: MonitoringEventSummary | null;
+  llmUsage: {
+    budgetCaps: {
+      globalDailyUsd: number;
+      routeDailyUsd: number;
+      surfaceDailyUsd: number;
+      userDailyUsd: number;
+    };
+    byRoute: Array<{ blocked: number; cacheHits: number; costUsd: number; failed: number; requests: number; route: string }>;
+    bySurface: Array<{ blocked: number; cacheHits: number; costUsd: number; failed: number; requests: number; surface: string }>;
+    recentEvents: Array<{ cacheStatus: string; costUsd: number; createdAt: string | null; model: string; route: string; status: string; surface: string }>;
+    today: {
+      blocked: number;
+      cacheHits: number;
+      costUsd: number;
+      failed: number;
+      monthlyRunRateUsd: number;
+      requests: number;
+    };
+  };
   requestMetrics: {
     p50LatencyMs: number | null;
     p95LatencyMs: number | null;
@@ -338,6 +358,24 @@ type SystemMetricRow = QueryResultRow & {
   memory_percent: string | number | null;
   scanner_output_bytes: string | number | null;
   updated_at: string | null;
+};
+type LlmUsageDailyRow = QueryResultRow & {
+  blocked_count: string | number;
+  cache_hit_count: string | number;
+  estimated_cost_usd: string | number;
+  failed_count: string | number;
+  request_count: string | number;
+  scope: string;
+  subject: string;
+};
+type LlmUsageEventRow = QueryResultRow & {
+  cache_status: string;
+  created_at: string | null;
+  estimated_cost_usd: string | number;
+  model: string;
+  route: string;
+  status: string;
+  surface: string;
 };
 type SystemSeriesRow = QueryResultRow & {
   bucket: string;
@@ -623,7 +661,7 @@ export async function getAdminScannerSummary(): Promise<AdminScannerSummary> {
 
 export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange = "1h"): Promise<AdminMonitoringSummary> {
   const window = monitoringWindow(timeRange);
-  const [synthetics, requestMetrics, requestSeries, slowestRoutes, system, systemSeries, syntheticSeries, syntheticCheckSeries, backupSeries, appEvents, latestBackup, deep] = await Promise.all([
+  const [synthetics, requestMetrics, requestSeries, slowestRoutes, system, systemSeries, syntheticSeries, syntheticCheckSeries, backupSeries, appEvents, latestBackup, llmUsage, deep] = await Promise.all([
     dbQuery<SyntheticRow>(
       `
         SELECT DISTINCT ON (check_name)
@@ -842,6 +880,7 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
     ).catch(() => ({ rows: [] as SyntheticSeriesRow[] })),
     recentMonitoringWarnings(20),
     recentMonitoringEventByType("backup"),
+    getLlmUsageSummary(),
     deepHealth().catch(() => null),
   ]);
   const metrics = requestMetrics.rows[0];
@@ -851,6 +890,7 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
     backupHealth: deep?.backup ?? null,
     backupSeries: backupSeries.rows.map((row) => ({ bucket: row.bucket, failed: toNumber(row.failed), ok: toNumber(row.ok), warned: toNumber(row.warned) })),
     latestBackup,
+    llmUsage,
     requestMetrics: {
       p50LatencyMs: toNullableNumber(metrics?.p50_latency_ms),
       p95LatencyMs: toNullableNumber(metrics?.p95_latency_ms),
@@ -937,6 +977,103 @@ export async function listAdminAuditLog(): Promise<AdminAuditLogItem[]> {
     targetId: row.target_id,
     targetType: row.target_type,
   }));
+}
+
+async function getLlmUsageSummary(): Promise<AdminMonitoringSummary["llmUsage"]> {
+  const budgetCaps = llmBudgetCapsFromEnv();
+  const empty = {
+    budgetCaps,
+    byRoute: [],
+    bySurface: [],
+    recentEvents: [],
+    today: {
+      blocked: 0,
+      cacheHits: 0,
+      costUsd: 0,
+      failed: 0,
+      monthlyRunRateUsd: 0,
+      requests: 0,
+    },
+  };
+  try {
+    const [daily, recent] = await Promise.all([
+      dbQuery<LlmUsageDailyRow>(
+        `
+          SELECT
+            scope,
+            subject,
+            request_count,
+            cache_hit_count,
+            blocked_count,
+            failed_count,
+            estimated_cost_usd
+          FROM llm_usage_daily
+          WHERE day = current_date
+            AND scope IN ('global', 'surface', 'route')
+          ORDER BY estimated_cost_usd DESC
+          LIMIT 40
+        `,
+      ),
+      dbQuery<LlmUsageEventRow>(
+        `
+          SELECT
+            surface,
+            route,
+            model,
+            status,
+            cache_status,
+            estimated_cost_usd,
+            created_at::text
+          FROM llm_usage_events
+          ORDER BY created_at DESC
+          LIMIT 12
+        `,
+      ),
+    ]);
+    const global = daily.rows.find((row) => row.scope === "global" && row.subject === "all");
+    return {
+      budgetCaps,
+      byRoute: daily.rows
+        .filter((row) => row.scope === "route")
+        .map((row) => ({
+          blocked: toNumber(row.blocked_count),
+          cacheHits: toNumber(row.cache_hit_count),
+          costUsd: toNumber(row.estimated_cost_usd),
+          failed: toNumber(row.failed_count),
+          requests: toNumber(row.request_count),
+          route: row.subject,
+        })),
+      bySurface: daily.rows
+        .filter((row) => row.scope === "surface")
+        .map((row) => ({
+          blocked: toNumber(row.blocked_count),
+          cacheHits: toNumber(row.cache_hit_count),
+          costUsd: toNumber(row.estimated_cost_usd),
+          failed: toNumber(row.failed_count),
+          requests: toNumber(row.request_count),
+          surface: row.subject,
+        })),
+      recentEvents: recent.rows.map((row) => ({
+        cacheStatus: row.cache_status,
+        costUsd: toNumber(row.estimated_cost_usd),
+        createdAt: row.created_at,
+        model: row.model,
+        route: row.route,
+        status: row.status,
+        surface: row.surface,
+      })),
+      today: {
+        blocked: toNumber(global?.blocked_count),
+        cacheHits: toNumber(global?.cache_hit_count),
+        costUsd: toNumber(global?.estimated_cost_usd),
+        failed: toNumber(global?.failed_count),
+        monthlyRunRateUsd: Math.round(toNumber(global?.estimated_cost_usd) * 30 * 100) / 100,
+        requests: toNumber(global?.request_count),
+      },
+    };
+  } catch {
+    return empty;
+  }
 }
 
 function monitoringWindow(range: MonitoringTimeRange): { bucketSql: string; intervalSql: string } {

@@ -435,7 +435,7 @@ function invalidationConditions({
   if (codes.includes("EVENT_RISK_ELEVATED") || codes.includes("EVENT_FRAGILITY_PRESSURE")) conditions.push("Verified event pressure should settle before the setup is treated as structurally cleaner.");
   if (conditions.length) return uniqueText(conditions).slice(0, 4);
   const stop = firstNumeric(row.stop_loss, row.invalidation_level);
-  if (stop !== null) conditions.push(`Available invalidation context is near ${formatPrice(stop)}.`);
+  if (stop !== null) conditions.push(`The available break area is near ${formatPrice(stop)}.`);
   conditions.push("Watch for trend, momentum, and risk context to remain aligned on fresh scanner updates.");
   return conditions.slice(0, 4);
 }

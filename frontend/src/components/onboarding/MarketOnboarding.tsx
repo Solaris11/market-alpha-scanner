@@ -7,6 +7,8 @@ import { trackAnalyticsEvent } from "@/lib/client/analytics";
 const ONBOARDING_KEY = "ma_onboarding_completed";
 const REPLAY_EVENT = "ma:replay-onboarding";
 const REPLAY_PENDING_KEY = "ma_onboarding_replay_pending";
+const RISK_ACK_READY_EVENT = "ma:risk-acknowledgement-ready";
+const RISK_ACK_STORAGE_KEY = "ma_risk_acknowledged_v1";
 
 type TourStep = {
   title: string;
@@ -23,23 +25,28 @@ type HighlightRect = {
 
 const STEPS: TourStep[] = [
   {
-    title: "Terminal Overview",
-    message: "This is your AI-ranked best opportunity right now.",
-    selector: "[data-onboarding-target='best-trade']",
+    title: "Start With One Market Read",
+    message: "This is the daily shortcut. Read what matters now, the biggest risk, and the best place to look before you open any symbol.",
+    selector: "[data-onboarding-target='start-here'], [data-onboarding-target='what-matters-now'], [data-onboarding-target='best-trade']",
   },
   {
-    title: "AI Decision Panel",
-    message: "AI explains why a trade is good or risky, and can block bad trades.",
-    selector: "[data-onboarding-target='ai-decision']",
+    title: "WAIT Is Still A Decision",
+    message: "TradeVeto is WAIT-first. WAIT means the setup may be interesting, but timing, fragility, or market support is not clean enough yet.",
+    selector: "[data-onboarding-target='best-trade'], [data-onboarding-target='what-matters-now']",
   },
   {
-    title: "What-If Simulator",
-    message: "Simulate position size, risk, and reward before taking any trade.",
-    selector: "[data-onboarding-target='what-if-simulator'], [data-onboarding-target='trade-plan-entry']",
+    title: "Change Risk And Reward",
+    message: "Use risk/reward controls to move from safer research lists to more aggressive ideas. The core risk warning stays visible either way.",
+    selector: "[data-onboarding-target='ai-decision'], [data-onboarding-target='trade-plan-entry']",
   },
   {
-    title: "Next Step",
-    message: "Start by reviewing today's best setup and open its trade plan.",
+    title: "Review One Symbol",
+    message: "Open one symbol and look for four things: why it matters, what to wait for, what invalidates it, and whether chasing is risky.",
+    selector: "[data-onboarding-target='trade-plan-entry']",
+  },
+  {
+    title: "Save A Small Watchlist",
+    message: "Save 3-5 symbols you already care about. Future visits can then focus on what changed instead of making you rescan everything.",
     selector: "[data-onboarding-target='trade-plan-entry']",
   },
 ];
@@ -59,6 +66,11 @@ export function MarketOnboarding({ tradePlanHref }: { tradePlanHref: string }) {
 
   const completeTour = useCallback(() => {
     window.localStorage.setItem(ONBOARDING_KEY, "true");
+    if (window.location.search.includes("firstRun")) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("firstRun");
+      window.history.replaceState(null, "", url.toString());
+    }
     setActive(false);
   }, []);
 
@@ -68,6 +80,12 @@ export function MarketOnboarding({ tradePlanHref }: { tradePlanHref: string }) {
   }, [completeTour, stepIndex]);
 
   useEffect(() => {
+    const explicitFirstRun = new URLSearchParams(window.location.search).get("firstRun") === "1";
+    if (explicitFirstRun) {
+      openTour();
+      return;
+    }
+
     const pendingReplay = window.sessionStorage.getItem(REPLAY_PENDING_KEY) === "true";
     if (pendingReplay) {
       window.sessionStorage.removeItem(REPLAY_PENDING_KEY);
@@ -75,9 +93,15 @@ export function MarketOnboarding({ tradePlanHref }: { tradePlanHref: string }) {
       return;
     }
 
-    if (window.localStorage.getItem(ONBOARDING_KEY) !== "true") {
+    function openWhenReady() {
+      if (window.localStorage.getItem(ONBOARDING_KEY) === "true") return;
       openTour();
     }
+
+    if (window.localStorage.getItem(RISK_ACK_STORAGE_KEY) === "true") openWhenReady();
+
+    window.addEventListener(RISK_ACK_READY_EVENT, openWhenReady);
+    return () => window.removeEventListener(RISK_ACK_READY_EVENT, openWhenReady);
   }, [openTour]);
 
   useEffect(() => {
@@ -130,8 +154,15 @@ export function MarketOnboarding({ tradePlanHref }: { tradePlanHref: string }) {
     const width = Math.max(220, Math.min(340, window.innerWidth - margin * 2));
     const left = Math.min(Math.max(margin, rect.left), Math.max(margin, window.innerWidth - width - margin));
     const belowTop = rect.top + rect.height + 14;
-    const top = belowTop + 190 < window.innerHeight ? belowTop : Math.max(margin, rect.top - 206);
-    return { left, top, width };
+    const estimatedHeight = window.innerWidth < 640 ? 330 : 230;
+    const availableBelow = window.innerHeight - belowTop - margin;
+    const availableAbove = rect.top - margin;
+    const top = availableBelow >= estimatedHeight
+      ? belowTop
+      : availableAbove >= estimatedHeight
+        ? Math.max(margin, rect.top - estimatedHeight - 14)
+        : margin;
+    return { left, maxHeight: `calc(100vh - ${margin * 2}px)`, overflowY: "auto" as const, top, width };
   }, [rect]);
 
   if (!active) return null;
@@ -164,6 +195,9 @@ export function MarketOnboarding({ tradePlanHref }: { tradePlanHref: string }) {
           </button>
         </div>
         <p className="mt-3 leading-6 text-slate-300">{step.message}</p>
+        <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-xs leading-5 text-slate-400">
+          <span className="font-semibold text-slate-200">Goal:</span> know what TradeVeto does, where opportunities are, and what to inspect next without reading every panel.
+        </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
           <button
             className="rounded-full border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition disabled:cursor-not-allowed disabled:opacity-40 hover:border-cyan-300/40 hover:text-cyan-100"
@@ -188,7 +222,7 @@ export function MarketOnboarding({ tradePlanHref }: { tradePlanHref: string }) {
                 }}
                 type="button"
               >
-                Go to Trade Plan
+                Open Symbol Research
               </button>
             )}
           </div>
@@ -207,10 +241,12 @@ export function markOnboardingReplayPending() {
 }
 
 function centeredTooltip() {
-  if (typeof window === "undefined") return { left: 24, top: 120, width: 340 };
+  if (typeof window === "undefined") return { left: 24, maxHeight: "calc(100vh - 32px)", overflowY: "auto" as const, top: 120, width: 340 };
   const width = Math.max(220, Math.min(340, window.innerWidth - 32));
   return {
     left: Math.max(16, (window.innerWidth - width) / 2),
+    maxHeight: "calc(100vh - 32px)",
+    overflowY: "auto" as const,
     top: Math.max(80, window.innerHeight * 0.28),
     width,
   };

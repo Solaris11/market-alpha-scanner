@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
 import { withRequestMetrics } from "@/lib/server/monitoring";
-import { rateLimitRequest, validateMutationRequest } from "@/lib/server/request-security";
+import { REQUEST_BODY_LIMITS } from "@/lib/security/http-abuse-policy";
+import { rateLimitRequest, rejectOversizedRequest, validateMutationRequest } from "@/lib/server/request-security";
 import { supportChatResponse } from "@/lib/security/support-policy";
 
 export const dynamic = "force-dynamic";
@@ -13,6 +14,8 @@ export async function POST(request: Request) {
     if (rateLimited) return rateLimited;
     const invalidOrigin = validateMutationRequest(request);
     if (invalidOrigin) return invalidOrigin;
+    const oversized = rejectOversizedRequest(request, REQUEST_BODY_LIMITS.supportMessage);
+    if (oversized) return oversized;
     const payload = (await request.json().catch(() => null)) as { message?: unknown } | null;
     const response = supportChatResponse(payload?.message);
     const entitlement = await getEntitlement().catch(() => null);

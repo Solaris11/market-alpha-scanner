@@ -19,12 +19,19 @@ describe("robots social crawler access", () => {
     assert.equal(socialLines.includes("Allow: /og-image.png"), true);
     assert.equal(socialLines.includes("Disallow: /api/"), true);
     assert.equal(socialLines.includes("Disallow: /terminal"), true);
+    assert.equal(socialLines.includes("Disallow: /team"), true);
+    assert.equal(socialLines.includes("Disallow: /community"), true);
+    assert.equal(socialLines.includes("Disallow: /developers"), true);
   });
 
   it("keeps default crawler access open for public pages and closed for private surfaces", () => {
     const defaultLines = linesForUserAgent(buildRobotsTxt(), "*");
     assert.equal(defaultLines.includes("Allow: /"), true);
     assert.equal(defaultLines.includes("Disallow: /account"), true);
+    assert.equal(defaultLines.includes("Disallow: /strategy-labs"), true);
+    assert.equal(defaultLines.includes("Disallow: /team"), true);
+    assert.equal(defaultLines.includes("Disallow: /community"), true);
+    assert.equal(defaultLines.includes("Disallow: /developers"), true);
     assert.equal(defaultLines.includes("Disallow: /symbol/"), false);
   });
 

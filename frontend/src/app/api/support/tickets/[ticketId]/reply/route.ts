@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/server/access-control";
 import { replyToSupportTicket } from "@/lib/server/support";
 import { withRequestMetrics } from "@/lib/server/monitoring";
-import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
+import { REQUEST_BODY_LIMITS } from "@/lib/security/http-abuse-policy";
+import { rateLimitRequest, rejectOversizedRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -21,6 +22,8 @@ export async function POST(request: Request, context: RouteContext) {
     if (!access.ok) return access.response;
     const csrf = requireCsrf(request);
     if (csrf) return csrf;
+    const oversized = rejectOversizedRequest(request, REQUEST_BODY_LIMITS.supportMessage);
+    if (oversized) return oversized;
     const { ticketId } = await context.params;
     try {
       const payload = (await request.json().catch(() => null)) as { message?: unknown } | null;

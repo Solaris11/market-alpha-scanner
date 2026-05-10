@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import type { CSSProperties } from "react";
+import { useDeferredValue, useMemo, useState } from "react";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import {
   buildInstitutionalDashboard,
@@ -30,6 +31,10 @@ const DASHBOARD_MODES: Array<{ key: InstitutionalDashboardMode; label: string; m
   { key: "volatility", label: "Volatility", meta: "shock zones" },
   { key: "watchlist", label: "Watchlist", meta: "saved symbols" },
 ];
+const DEFERRED_PANEL_STYLE: CSSProperties = {
+  containIntrinsicSize: "680px",
+  contentVisibility: "auto",
+};
 
 export function InstitutionalDashboardWorkspace({
   initialProfile,
@@ -43,28 +48,31 @@ export function InstitutionalDashboardWorkspace({
   workflowEvolution?: WorkflowEvolutionSummary | null;
 }) {
   const [mode, setMode] = useState<InstitutionalDashboardMode>("institutional");
+  const deferredMode = useDeferredValue(mode);
   const { watchlist } = useLocalWatchlist();
   const dashboard = useMemo(
     () => buildInstitutionalDashboard({
-      mode,
+      mode: deferredMode,
       personalizationProfile: initialProfile ?? null,
       rows,
       watchlistSymbols: watchlist,
       workflowEvolution: workflowEvolution ?? null,
     }),
-    [initialProfile, mode, rows, watchlist, workflowEvolution],
+    [deferredMode, initialProfile, rows, watchlist, workflowEvolution],
   );
+  const modeUpdating = deferredMode !== mode;
 
   return (
     <div className="space-y-5">
-      <GlassPanel className="overflow-hidden p-5 sm:p-6">
+      <GlassPanel className="overflow-hidden border-cyan-300/15 bg-cyan-400/[0.02] p-5 sm:p-6">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="min-w-0">
             <div className="text-[10px] font-black uppercase tracking-[0.32em] text-cyan-300">Institutional Dashboard</div>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-50 sm:text-4xl">Market Intelligence Heatmaps</h1>
+            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-50 sm:text-4xl">Market Intelligence Console</h1>
             <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-400">
               {dashboard.marketState.summary || `${marketCondition ?? dashboard.marketState.label} across the latest scanner universe.`}
             </p>
+            {modeUpdating ? <p className="mt-2 text-xs font-semibold uppercase tracking-[0.14em] text-cyan-200">Updating dashboard view...</p> : null}
           </div>
           <div className="grid min-w-[280px] grid-cols-2 gap-2 sm:grid-cols-3">
             <HeaderMetric label="Universe" value={dashboard.universeCount.toLocaleString()} />
@@ -76,7 +84,7 @@ export function InstitutionalDashboardWorkspace({
         <div className="mt-5 grid gap-2 md:grid-cols-3 xl:grid-cols-6">
           {DASHBOARD_MODES.map((item) => (
             <button
-              className={`min-h-16 rounded-2xl border px-3 py-3 text-left transition ${mode === item.key ? "border-cyan-300/45 bg-cyan-400/10 text-cyan-50 shadow-lg shadow-cyan-950/20" : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-cyan-300/25 hover:bg-white/[0.055]"}`}
+              className={`min-h-14 rounded-xl border px-3 py-3 text-left transition ${mode === item.key ? "border-cyan-300/45 bg-cyan-400/10 text-cyan-50 shadow-lg shadow-cyan-950/20" : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-cyan-300/25 hover:bg-white/[0.055]"}`}
               key={item.key}
               onClick={() => setMode(item.key)}
               type="button"
@@ -88,8 +96,6 @@ export function InstitutionalDashboardWorkspace({
         </div>
       </GlassPanel>
 
-      <MarketMetrics metrics={dashboard.marketState.metrics} />
-
       <UnifiedIntelligenceConsole
         marketCondition={marketCondition ?? dashboard.marketState.label}
         personalizationProfile={initialProfile ?? null}
@@ -97,6 +103,8 @@ export function InstitutionalDashboardWorkspace({
         surface="dashboard"
         workflowEvolution={workflowEvolution ?? null}
       />
+
+      <MarketMetrics metrics={dashboard.marketState.metrics} />
 
       <div className="grid gap-5">
         <ClusterBoard clusters={dashboard.clusters} />
@@ -122,8 +130,8 @@ export function InstitutionalDashboardWorkspace({
 
 function HeaderMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-      <div className="truncate text-[10px] font-black uppercase leading-4 tracking-normal text-slate-500" title={label}>{label}</div>
+    <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+      <div className="break-words text-[10px] font-black uppercase leading-4 tracking-normal text-slate-500" title={label}>{label}</div>
       <div className="mt-1 truncate font-mono text-lg font-black text-slate-50">{value}</div>
     </div>
   );
@@ -136,7 +144,7 @@ function MarketMetrics({ metrics }: { metrics: InstitutionalDashboardMetric[] })
         <GlassPanel className="p-4" key={metric.key}>
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="truncate text-[10px] font-black uppercase leading-4 tracking-normal text-slate-500" title={metric.label}>{metric.label}</div>
+              <div className="min-h-8 break-words text-[10px] font-black uppercase leading-4 tracking-normal text-slate-500" title={metric.label}>{metric.label}</div>
               <div className={`mt-2 text-sm font-bold ${toneTextClass(metric.tone)}`}>{institutionalDashboardScoreLabel(metric.score, metric.inverse)}</div>
             </div>
             <div className="font-mono text-2xl font-black text-slate-50">{metric.score}</div>
@@ -159,7 +167,7 @@ function MetricBar({ metric }: { metric: InstitutionalDashboardMetric }) {
 
 function ClusterBoard({ clusters }: { clusters: InstitutionalDashboardCluster[] }) {
   return (
-    <GlassPanel className="p-5">
+    <GlassPanel className="p-5" style={DEFERRED_PANEL_STYLE}>
       <SectionTitle eyebrow="Opportunity Clusters" title="Market Structure" meta={`${clusters.length} active`} />
       <div className="mt-4 space-y-3">
         {clusters.length ? clusters.map((cluster) => (
@@ -189,27 +197,60 @@ function ClusterBoard({ clusters }: { clusters: InstitutionalDashboardCluster[] 
 }
 
 function HeatmapBoard({ heatmaps }: { heatmaps: InstitutionalHeatmap[] }) {
+  const [primaryHeatmap, ...secondaryHeatmaps] = heatmaps;
+  if (!primaryHeatmap) {
+    return (
+      <GlassPanel className="p-5" style={DEFERRED_PANEL_STYLE}>
+        <SectionTitle eyebrow="Market Heatmaps" title="Pressure Maps" meta="no visible maps" />
+        <p className="mt-4 rounded-xl border border-white/10 bg-white/[0.035] p-4 text-sm leading-6 text-slate-400">
+          No visible rows match this dashboard view yet.
+        </p>
+      </GlassPanel>
+    );
+  }
+
   return (
-    <div className="grid gap-5">
-      {heatmaps.map((heatmap) => (
-        <GlassPanel className="p-5" key={heatmap.kind}>
-          <SectionTitle eyebrow="Heatmap" title={heatmap.title} meta={heatmap.description} />
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            {heatmap.cells.length ? heatmap.cells.map((cell) => <HeatmapCell cell={cell} key={cell.key} />) : (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-sm leading-6 text-slate-400 md:col-span-2 xl:col-span-4">
-                No visible rows match this dashboard view yet.
-              </div>
-            )}
+    <GlassPanel className="p-5" style={DEFERRED_PANEL_STYLE}>
+      <SectionTitle eyebrow="Market Heatmaps" title="Pressure Maps" meta={`${heatmaps.length} views`} />
+      <div className="mt-4">
+        <HeatmapSection heatmap={primaryHeatmap} featured />
+      </div>
+      {secondaryHeatmaps.length ? (
+        <details className="mt-4 rounded-xl border border-white/10 bg-white/[0.025] p-4">
+          <summary className="cursor-pointer text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">More heatmaps</summary>
+          <div className="mt-4 space-y-5">
+            {secondaryHeatmaps.map((heatmap) => <HeatmapSection heatmap={heatmap} key={heatmap.kind} />)}
           </div>
-        </GlassPanel>
-      ))}
-    </div>
+        </details>
+      ) : null}
+    </GlassPanel>
+  );
+}
+
+function HeatmapSection({ featured = false, heatmap }: { featured?: boolean; heatmap: InstitutionalHeatmap }) {
+  return (
+    <section>
+      <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-sm font-black text-slate-50">{heatmap.title}</div>
+          <p className="mt-1 text-xs leading-5 text-slate-500">{heatmap.description}</p>
+        </div>
+        {featured ? <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Primary map</div> : null}
+      </div>
+      <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {heatmap.cells.length ? heatmap.cells.map((cell) => <HeatmapCell cell={cell} key={cell.key} />) : (
+          <div className="rounded-xl border border-white/10 bg-white/[0.035] p-4 text-sm leading-6 text-slate-400 md:col-span-2 xl:col-span-4">
+            No visible rows match this map layer.
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
 function HeatmapCell({ cell }: { cell: InstitutionalHeatmapCell }) {
   return (
-    <div className={`min-h-40 rounded-2xl border p-4 ${cellClass(cell.tone)}`}>
+    <div className={`min-h-40 rounded-xl border p-4 ${cellClass(cell.tone)}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-black text-slate-50">{cell.label}</div>
@@ -238,35 +279,49 @@ function OpportunityMapPanel({ opportunityMap }: { opportunityMap: Institutional
     { items: opportunityMap.highestFragility, key: "fragility", title: "Highest Fragility" },
     { items: opportunityMap.deteriorating, key: "deteriorating", title: "Deteriorating Opportunities" },
   ];
+  const priorityGroups = groups.slice(0, 4);
+  const secondaryGroups = groups.slice(4);
 
   return (
-    <GlassPanel className="p-5">
+    <GlassPanel className="p-5" style={DEFERRED_PANEL_STYLE}>
       <SectionTitle eyebrow="Live Opportunity Map" title="Where Attention Is Concentrated" meta="meta-ranked" />
-      <div className="mt-4 grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
-        {groups.map((group) => (
-          <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4" key={group.key}>
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">{group.title}</div>
-            <div className="mt-3 space-y-2">
-              {group.items.length ? group.items.slice(0, 5).map((item) => (
-                <Link className="block rounded-xl border border-white/10 bg-slate-950/35 p-3 transition hover:border-cyan-300/35" href={`/symbol/${item.symbol}`} key={`${group.key}-${item.symbol}-${item.category}`}>
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-mono text-base font-black text-slate-50">{item.symbol}</div>
-                      <div className="mt-1 truncate text-xs text-slate-400">{item.category}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-mono text-base font-black text-cyan-100">{formatNumber(item.metaOpportunityScore, 0)}</div>
-                      <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">score</div>
-                    </div>
-                  </div>
-                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{institutionalDashboardMetricLine(item)}</p>
-                </Link>
-              )) : <p className="text-sm leading-6 text-slate-400">No symbol currently qualifies for this map layer.</p>}
-            </div>
-          </div>
-        ))}
+      <div className="mt-4 grid gap-3 lg:grid-cols-2 xl:grid-cols-4">
+        {priorityGroups.map((group) => <OpportunityMapGroup group={group} key={group.key} />)}
       </div>
+      {secondaryGroups.length ? (
+        <details className="mt-4 rounded-xl border border-white/10 bg-white/[0.025] p-4">
+          <summary className="cursor-pointer text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Secondary map layers</summary>
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            {secondaryGroups.map((group) => <OpportunityMapGroup group={group} key={group.key} />)}
+          </div>
+        </details>
+      ) : null}
     </GlassPanel>
+  );
+}
+
+function OpportunityMapGroup({ group }: { group: { items: InstitutionalDashboardOpportunityMap["strongest"]; key: string; title: string } }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.035] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">{group.title}</div>
+      <div className="mt-3 space-y-2">
+        {group.items.length ? group.items.slice(0, 4).map((item) => (
+          <Link className="block rounded-lg border border-white/10 bg-slate-950/35 p-3 transition hover:border-cyan-300/35" href={`/symbol/${item.symbol}`} key={`${group.key}-${item.symbol}-${item.category}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="font-mono text-base font-black text-slate-50">{item.symbol}</div>
+                <div className="mt-1 truncate text-xs text-slate-400">{item.category}</div>
+              </div>
+              <div className="text-right">
+                <div className="font-mono text-base font-black text-cyan-100">{formatNumber(item.metaOpportunityScore, 0)}</div>
+                <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">score</div>
+              </div>
+            </div>
+            <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{institutionalDashboardMetricLine(item)}</p>
+          </Link>
+        )) : <p className="text-sm leading-6 text-slate-400">No symbol currently qualifies for this map layer.</p>}
+      </div>
+    </div>
   );
 }
 

@@ -6,7 +6,7 @@ import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { WatchlistButton } from "@/components/watchlist-controls";
 import { DataHealthIndicator } from "@/components/data-health-indicator";
 import { TradeLegalNotice } from "@/components/legal/TradeLegalNotice";
-import { normalizedToken, readableText } from "@/lib/ui/labels";
+import { humanizeInsightText, normalizedToken } from "@/lib/ui/labels";
 import { DecisionBadge } from "./DecisionBadge";
 import { GlassPanel } from "./ui/GlassPanel";
 
@@ -14,9 +14,9 @@ function actionText(value: unknown) {
   const decision = String(value ?? "").toUpperCase();
   if (decision === "ENTER") return "Research signal";
   if (decision === "WAIT_PULLBACK") return "Wait for pullback";
-  if (decision === "WATCH") return "Monitor only";
-  if (decision === "AVOID") return "Risk blocked";
-  if (decision === "EXIT") return "Exit risk flagged";
+  if (decision === "WATCH") return "Monitor calmly";
+  if (decision === "AVOID") return "Research only";
+  if (decision === "EXIT") return "Exit review";
   return "Review setup";
 }
 
@@ -24,7 +24,8 @@ function glow(value: unknown) {
   const decision = String(value ?? "").toUpperCase();
   if (decision === "ENTER") return "shadow-[0_0_80px_rgba(16,185,129,0.22)]";
   if (decision === "WAIT_PULLBACK") return "shadow-[0_0_80px_rgba(245,158,11,0.2)]";
-  if (decision === "AVOID" || decision === "EXIT") return "shadow-[0_0_80px_rgba(244,63,94,0.2)]";
+  if (decision === "AVOID") return "shadow-[0_0_80px_rgba(245,158,11,0.14)]";
+  if (decision === "EXIT") return "shadow-[0_0_80px_rgba(244,63,94,0.13)]";
   return "shadow-[0_0_80px_rgba(34,211,238,0.14)]";
 }
 
@@ -63,19 +64,19 @@ export function SymbolDecisionHero({
             </span>
             {!showTradePlan ? (
               <span className="rounded-full border border-amber-300/25 bg-amber-400/10 px-4 py-2 text-sm font-semibold text-amber-100">
-                No active research setup
+                Research mode only
               </span>
             ) : null}
             <DataHealthIndicator freshness={dataFreshness} />
             <WatchlistButton symbol={row.symbol} />
           </div>
           <div className="mt-4 max-w-3xl text-lg leading-7 text-slate-200">
-            {readableText(row.decision_reason ?? row.quality_reason, "No decision reason available.")}
+            {humanizeInsightText(row.decision_reason ?? row.quality_reason, "No decision reason available.")}
           </div>
           <TradeLegalNotice className="mt-4 max-w-3xl" />
           {!showTradePlan ? (
             <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
-              Research signal only. {researchModeReason ?? "No active setup is cleared by the decision system."}
+              Calm research mode. {researchModeReason ?? "Conditions are not clean enough for an active research plan yet."}
             </div>
           ) : null}
         </div>

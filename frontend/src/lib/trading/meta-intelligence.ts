@@ -297,14 +297,14 @@ function urgencyLabelFor(priority: AttentionPriority, urgencyScore: number, risk
 
 function reasonForAttentionFor(input: { category: MetaOpportunityCategory; metaRiskScore: number; reason: string | undefined; risk: string | undefined; urgencyScore: number }): string {
   if (input.metaRiskScore >= 74 && input.risk) return input.risk;
-  if (input.urgencyScore >= 70) return `${input.category} needs review because urgency is elevated across event, shock, regime, or workflow context.`;
-  return input.reason ?? `${input.category} is visible in the unified priority queue.`;
+  if (input.urgencyScore >= 70) return `${input.category} needs review because events, large-move history, market state, or workflow changes are moving quickly.`;
+  return input.reason ?? `${input.category} is worth reviewing now.`;
 }
 
 function actionContextFor(input: { attentionPriority: AttentionPriority; metaRiskScore: number; row: OpportunityViewModel; timingQualityScore: number }): string {
-  if (input.metaRiskScore >= 76) return "Review risk first; keep invalidation, fragility, and chase context explicit before escalating.";
+  if (input.metaRiskScore >= 76) return "Review risk first; keep invalidation, fragility, and chase risk clear before acting on it.";
   if (input.timingQualityScore < 45) return "Wait for cleaner timing, pullback quality, or confirmation before treating this as actionable research.";
-  if (input.attentionPriority === "critical" || input.attentionPriority === "high") return "Open symbol detail and validate evidence, macro context, and failure conditions.";
+  if (input.attentionPriority === "critical" || input.attentionPriority === "high") return "Open symbol detail and check evidence, broader market context, and failure conditions.";
   if (input.row.final_decision?.toUpperCase() === "AVOID") return "Keep on research watch only unless risk context materially improves.";
   return "Monitor for setup evolution and avoid forcing a trade from this briefing alone.";
 }
@@ -327,23 +327,23 @@ function stateFor(input: {
 
 function keyReasons(row: OpportunityViewModel, institutional: InstitutionalIntelligence, category: MetaOpportunityCategory): string[] {
   const reasons: string[] = [];
-  reasons.push(`${category} based on unified scanner, macro, shock, and pressure context.`);
+  reasons.push(`${category} based on scanner quality, broader market context, large-move history, and pressure signals.`);
   if (institutional.institutionalQualityScore >= 65) reasons.push("Institutional-quality characteristics are above the current universe baseline.");
   if (institutional.asymmetryScore >= 65) reasons.push("Asymmetry is favorable relative to measured downside context.");
-  if (row.shockPattern && row.shockPattern.opportunityScore >= 65) reasons.push("Shock pattern memory supports elevated high-volatility attention.");
-  if (row.narrative?.narrativeDrift.label === "strengthening") reasons.push("Narrative momentum is strengthening in the cached reasoning layer.");
+  if (row.shockPattern && row.shockPattern.opportunityScore >= 65) reasons.push("Large-move history supports elevated high-volatility attention.");
+  if (row.narrative?.narrativeDrift.label === "strengthening") reasons.push("The market story is strengthening in the cached reasoning layer.");
   if (row.conviction >= 70) reasons.push("Conviction is high enough to keep the setup in the review queue.");
   return reasons.slice(0, 4);
 }
 
 function keyRisks(row: OpportunityViewModel, institutional: InstitutionalIntelligence, riskScore: number): string[] {
   const risks: string[] = [];
-  if (riskScore >= 70) risks.push("Meta risk is elevated; this should be treated as research context, not an action instruction.");
+  if (riskScore >= 70) risks.push("Overall risk is elevated; treat this as research context, not trading advice.");
   if (institutional.crowdingRiskScore >= 68) risks.push("Crowding or chase risk can reduce position quality.");
   if (row.fragility >= 68) risks.push("Fragility is elevated enough to require clean invalidation awareness.");
   if (row.eventRisk >= 70) risks.push("Verified event pressure increases two-sided risk.");
   if (institutional.regimeTransitionRisk >= 70) risks.push("Regime transition risk can make continuation less durable.");
-  return risks.length ? risks.slice(0, 4) : ["No dominant risk is confirmed, but evidence remains probabilistic."];
+  return risks.length ? risks.slice(0, 4) : ["No dominant risk is confirmed, but evidence still has uncertainty."];
 }
 
 function classifyMarketState(rows: OpportunityViewModel[], institutionalSystem: InstitutionalPressureSystem): DynamicMarketState {
@@ -367,7 +367,7 @@ function classifyMarketState(rows: OpportunityViewModel[], institutionalSystem: 
 
 function marketStateReason(state: DynamicMarketState, institutionalSystem: InstitutionalPressureSystem, rows: OpportunityViewModel[]): string {
   const fragility = Math.round(average(rows.map((row) => row.fragility), 50));
-  return `${state}: pressure ${institutionalSystem.netMarketPressureScore}/100, average institutional quality ${institutionalSystem.averageInstitutionalQuality}/100, asymmetry ${institutionalSystem.averageAsymmetryScore}/100, crowding ${institutionalSystem.averageCrowdingRisk}/100, fragility ${fragility}/100.`;
+  return `${state}: market pressure ${institutionalSystem.netMarketPressureScore}/100, average institutional quality ${institutionalSystem.averageInstitutionalQuality}/100, asymmetry ${institutionalSystem.averageAsymmetryScore}/100, crowding ${institutionalSystem.averageCrowdingRisk}/100, fragility ${fragility}/100.`;
 }
 
 function opportunityHierarchy(priorities: MetaOpportunityPriority[]): MetaOpportunityGroup[] {
@@ -379,7 +379,7 @@ function opportunityHierarchy(priorities: MetaOpportunityPriority[]): MetaOpport
     "Momentum Continuation": "Continuation or breakout candidates with supporting evidence.",
     "Pullback Opportunity": "Candidates where timing quality is more dependent on entry discipline.",
     "Risk-Tolerant Opportunity": "Speculative candidates that still deserve bounded review.",
-    "Shock Opportunity": "High-volatility candidates supported by shock memory and current similarity.",
+    "Shock Opportunity": "High-volatility candidates supported by large-move history and current similarity.",
   };
   const categories: MetaOpportunityCategory[] = [
     "Core Opportunity",
@@ -412,7 +412,7 @@ function executiveBriefingFor(input: {
     `${input.marketState} is the current meta state; ${input.institutionalSystem.pressureSummary}`,
   ];
   if (top) brief.push(`${top.symbol} is the top attention candidate with ${top.metaOpportunityScore}/100 meta opportunity and ${top.metaRiskScore}/100 meta risk.`);
-  if (input.dangerQueue[0]) brief.push(`${input.dangerQueue[0].symbol} carries the highest immediate danger context; review crowding, fragility, or regime risk before treating it as attractive.`);
+  if (input.dangerQueue[0]) brief.push(`${input.dangerQueue[0].symbol} carries the highest immediate risk; review crowding, fragility, or market-state risk before treating it as attractive.`);
   if (input.institutionalSystem.highAsymmetry[0]) brief.push(`${input.institutionalSystem.highAsymmetry[0].symbol} currently leads asymmetry context among visible symbols.`);
   return brief.slice(0, 4);
 }

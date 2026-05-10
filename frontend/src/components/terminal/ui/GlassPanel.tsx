@@ -1,6 +1,10 @@
-export function GlassPanel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+import type { ComponentPropsWithoutRef } from "react";
+
+type GlassPanelProps = ComponentPropsWithoutRef<"section">;
+
+export function GlassPanel({ children, className = "", ...props }: GlassPanelProps) {
   return (
-    <section className={`min-w-0 max-w-full rounded-2xl border border-white/10 bg-slate-950/60 shadow-xl shadow-black/20 ring-1 ring-white/5 backdrop-blur-xl ${className}`}>
+    <section className={`min-w-0 max-w-full rounded-2xl border border-white/10 bg-slate-950/60 shadow-xl shadow-black/20 ring-1 ring-white/5 backdrop-blur-xl ${className}`} {...props}>
       {children}
     </section>
   );

@@ -10,7 +10,7 @@ export function OnboardingHelpButton() {
 
   return (
     <button
-      aria-label="Replay onboarding"
+      aria-label="Open Start Here guide"
       className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-sm font-black text-slate-300 transition hover:border-cyan-300/40 hover:bg-cyan-400/10 hover:text-cyan-100"
       onClick={() => {
         trackAnalyticsEvent("detail_expand", { detail: "replay_onboarding" }, { source: "onboarding_help" });
@@ -21,7 +21,7 @@ export function OnboardingHelpButton() {
         }
         replayMarketOnboarding();
       }}
-      title="Replay onboarding"
+      title="Start Here guide"
       type="button"
     >
       ?

@@ -7,7 +7,7 @@ import { DesktopTerminalNav, MobileTerminalNav } from "./TerminalNav";
 
 export function TerminalHeader() {
   return (
-    <header className="sticky top-3 z-40 mb-4 rounded-2xl border border-white/10 bg-slate-950/70 px-3 py-3 shadow-xl shadow-black/25 backdrop-blur-2xl lg:px-5 lg:py-4">
+    <header className="sticky top-3 z-40 mb-4 rounded-2xl border border-white/10 bg-slate-950/90 px-3 py-3 shadow-xl shadow-black/25 lg:px-5 lg:py-4">
       <div className="hidden items-center gap-4 xl:flex">
         <BrandMark />
         <DesktopTerminalNav />

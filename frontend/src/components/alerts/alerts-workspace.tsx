@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
+import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { humanizeLabel } from "@/lib/ui/labels";
@@ -764,7 +765,13 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
         </div>
       </section>
 
-      <section className="terminal-panel rounded-md p-4">
+      <ResponsiveAdvancedDetails
+        className="terminal-panel rounded-md"
+        eyebrow="Custom alerts"
+        summary="Most users can start with presets. Open this for manual rules."
+        title="Add custom alert"
+      >
+      <section>
         <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Add Custom Alert</div>
         <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-[1fr_1fr_1.2fr_0.8fr_0.8fr_1fr_1fr_0.7fr]">
           <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
@@ -837,6 +844,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
           {message ? <span className="text-slate-400">{message}</span> : null}
         </div>
       </section>
+      </ResponsiveAdvancedDetails>
 
       <section className="terminal-panel rounded-md p-4">
         <div className="flex items-center justify-between gap-3">

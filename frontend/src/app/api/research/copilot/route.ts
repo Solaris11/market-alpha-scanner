@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
+import { getPaperData } from "@/lib/paper-data";
 import { getPerformanceData, getRecentIntradaySignalDriftSummary } from "@/lib/scanner-data";
 import { requirePremium } from "@/lib/server/access-control";
 import { getDecisionMemoryForUser } from "@/lib/server/decision-journal";
@@ -7,23 +8,27 @@ import { getMarketMemoryForSignal } from "@/lib/server/market-memory";
 import { withRequestMetrics } from "@/lib/server/monitoring";
 import { getNarrativeMap } from "@/lib/server/narrative-intelligence";
 import { getPersonalizationProfileForUser } from "@/lib/server/personalized-intelligence";
-import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
+import { rateLimitRequest, rejectOversizedRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 import { answerResearchCopilot } from "@/lib/server/research-copilot-llm";
 import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
+import { REQUEST_BODY_LIMITS } from "@/lib/security/http-abuse-policy";
 import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 import { buildTradeVetoOperatingSystem, type TradeVetoOperatingSystem } from "@/lib/trading/meta-intelligence";
 import { buildIntradayRegimeDriftSystem } from "@/lib/trading/intraday-regime-drift";
 import { buildOpportunitiesPageModel, type OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
+import { buildPortfolioIntelligenceSystem } from "@/lib/trading/portfolio-intelligence";
 import { buildRegimeShiftSystem } from "@/lib/trading/regime-shift-intelligence";
-import { buildResearchCopilotContext, normalizeResearchQuestion } from "@/lib/trading/research-copilot";
+import { buildResearchCopilotContext, normalizeResearchCopilotMode, normalizeResearchQuestion } from "@/lib/trading/research-copilot";
+import { buildScenarioIntelligenceSystem } from "@/lib/trading/scenario-intelligence";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 type CopilotPayload = {
   history?: unknown;
+  mode?: unknown;
   question?: unknown;
 };
 
@@ -40,18 +45,22 @@ export async function POST(request: Request) {
 
     const csrf = requireCsrf(request);
     if (csrf) return csrf;
+    const oversized = rejectOversizedRequest(request, REQUEST_BODY_LIMITS.researchCopilot);
+    if (oversized) return oversized;
 
     const payload = (await request.json().catch(() => null)) as CopilotPayload | null;
     const question = normalizeResearchQuestion(payload?.question);
+    const mode = normalizeResearchCopilotMode(payload?.mode);
     const conversation = normalizeHistory(payload?.history);
 
     try {
       const adapter = new ScannerDataAdapter();
-      const [snapshot, performance, personalizationProfile, decisionMemory] = await Promise.all([
+      const [snapshot, performance, personalizationProfile, decisionMemory, paperData] = await Promise.all([
         adapter.getTerminalSnapshot(),
         getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
         getPersonalizationProfileForUser(access.user.id).catch(() => null),
         getDecisionMemoryForUser(access.user.id, { limit: 100 }).then((context) => context.memory).catch(() => null),
+        getPaperData({ userId: access.user.id }).catch(() => null),
       ]);
 
       const symbols = uniqueSymbols(snapshot.signals.map((row) => row.symbol));
@@ -75,20 +84,31 @@ export async function POST(request: Request) {
       });
       const regimeSystem = buildRegimeShiftSystem({ rows: opportunityModel.rows, workflowEvolution });
       const intradaySystem = buildIntradayRegimeDriftSystem({ driftRows: intradayDriftRows, rows: opportunityModel.rows });
+      const scenarioSystem = buildScenarioIntelligenceSystem({ rows: opportunityModel.rows });
+      const portfolioSystem = buildPortfolioIntelligenceSystem({
+        accountValue: paperData?.account?.total_account_value ?? null,
+        opportunities: opportunityModel.rows,
+        positions: paperData?.positions ?? [],
+        scenarioSystem,
+      });
       const marketMemoryBySymbol = await memoryMapForQuestion(question, opportunityModel.rows, metaSystem);
       const context = buildResearchCopilotContext({
         conversation,
         decisionMemory,
         marketMemoryBySymbol,
         metaSystem,
+        mode,
         personalizationProfile,
+        portfolioSystem,
         question,
         regimeSystem,
         intradaySystem,
         rows: opportunityModel.rows,
+        scenarioSystem,
+        watchlistSymbols,
         workflowEvolution,
       });
-      const answer = await answerResearchCopilot(context);
+      const answer = await answerResearchCopilot(context, { userId: access.user.id });
 
       return NextResponse.json({
         answer,

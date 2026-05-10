@@ -13,6 +13,7 @@ export const metadata: Metadata = {
     template: `%s | ${BRAND_NAME}`,
   },
   description: BRAND_DESCRIPTION,
+  manifest: "/manifest.webmanifest",
   icons: {
     apple: [{ url: "/logo-icon.svg?v=1", sizes: "256x256", type: "image/svg+xml" }],
     icon: [
@@ -22,10 +23,14 @@ export const metadata: Metadata = {
     shortcut: "/favicon.svg?v=1",
   },
   appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
     title: BRAND_NAME,
   },
   other: {
     "apple-mobile-web-app-title": BRAND_NAME,
+    "mobile-web-app-capable": "yes",
+    "theme-color": "#0b1020",
   },
 };
 

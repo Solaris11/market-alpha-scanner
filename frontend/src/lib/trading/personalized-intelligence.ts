@@ -260,7 +260,7 @@ function conflictReason(candidate: RiskTolerantOpportunity, profile: UserPersona
     return "The setup is too chase-prone for a pullback-first profile.";
   }
   if (profile.personality === "volatility_hunter" && candidate.historicalShockSupport < 55) {
-    return "Shock memory is limited for a volatility-first profile.";
+    return "Large-move history is limited for a volatility-first profile.";
   }
   if (profile.personality === "event_driven" && candidate.row.eventRisk < 55) {
     return "Verified event pressure is not central enough for this profile.";
@@ -283,23 +283,23 @@ function personalizedReason(candidate: RiskTolerantOpportunity, profile: UserPer
 }
 
 function personalizedWarning(candidate: RiskTolerantOpportunity, profile: UserPersonalizationProfile): string {
-  if (candidate.chaseRiskScore >= 70) return `${profile.label} mode still flags elevated chase risk. Wait for cleaner confirmation or entry quality.`;
-  if (candidate.downsideRiskScore >= 72) return `${profile.label} mode sees elevated downside risk. Size and invalidation discipline matter.`;
+  if (candidate.chaseRiskScore >= 70) return `${profile.label} mode still flags elevated late-entry risk. Wait for cleaner confirmation or entry timing.`;
+  if (candidate.downsideRiskScore >= 72) return `${profile.label} mode sees elevated downside risk. Size and break-area discipline matter.`;
   if (candidate.profileMatched) return `${profile.label} mode is aligned, but this remains research only and not financial advice.`;
   return `${profile.label} mode shows partial fit. The symbol remains visible for context, not as a core action.`;
 }
 
 function guardrailsFor(personality: RiskPersonalityProfile): string[] {
   if (personality === "aggressive" || personality === "volatility_hunter") {
-    return ["Show downside and chase risk before upside language.", "Never upgrade speculative watches into core buy signals.", "Require fresh data and explicit invalidation context."];
+    return ["Show downside and late-entry risk before upside language.", "Never upgrade speculative watches into main TradeVeto signals.", "Require fresh data and a clear break area."];
   }
   if (personality === "conservative" || personality === "defensive") {
-    return ["Prefer lower fragility and cleaner entry quality.", "Reject high downside risk even when momentum is strong.", "Preserve WAIT framing when evidence is incomplete."];
+    return ["Prefer lower fragility and cleaner entry timing.", "Reject high downside risk even when momentum is strong.", "Preserve WAIT framing when evidence is incomplete."];
   }
   if (personality === "pullback_specialist") {
-    return ["Penalize late entries and extended breakouts.", "Prefer pullback stabilization over momentum chasing.", "Highlight invalidation proximity."];
+    return ["Penalize late entries and extended breakouts.", "Prefer pullback stabilization over momentum chasing.", "Highlight proximity to the break area."];
   }
-  return ["Keep deterministic scanner decision visible.", "Show both fit and conflict evidence.", "Use probabilistic research language only."];
+  return ["Keep the scanner decision visible.", "Show both fit and conflict evidence.", "Use research language only."];
 }
 
 function clamp(value: number): number {

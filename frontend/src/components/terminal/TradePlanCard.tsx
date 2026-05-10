@@ -1,7 +1,7 @@
 import type { TradePlanEngine } from "@/hooks/useTradePlanEngine";
 import { TradeLegalNotice } from "@/components/legal/TradeLegalNotice";
 import { cleanText, formatMoney, formatNumber, formatPercent } from "@/lib/ui/formatters";
-import { readableText } from "@/lib/ui/labels";
+import { humanizeInsightText } from "@/lib/ui/labels";
 import type { RankingRow } from "@/lib/types";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
@@ -21,9 +21,9 @@ export function TradePlanCard({ engine, row }: { engine: TradePlanEngine; row: R
   if (!valid || !validity.isCalculable || metrics.potentialReward === null || metrics.riskRewardRatio === null) {
     return (
       <GlassPanel className="p-6">
-        <SectionTitle eyebrow="Research Plan" title={validity.isOverextended ? "Correction Required" : "No Valid Long Plan"} />
+        <SectionTitle eyebrow="Research Plan" title={validity.isOverextended ? "Pullback Needed" : "Plan Not Ready"} />
         <div className="mt-5 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-5 text-sm leading-6 text-amber-100">
-          {validity.message || (decision === "AVOID" || decision === "EXIT" ? "No active research setup." : "Entry, stop, or target context is incomplete.")}
+          {validity.message || (decision === "AVOID" || decision === "EXIT" ? "TradeVeto is keeping this in research mode until risk, timing, or evidence improves." : "Entry, stop, or target context is still incomplete.")}
         </div>
       </GlassPanel>
     );
@@ -37,7 +37,7 @@ export function TradePlanCard({ engine, row }: { engine: TradePlanEngine; row: R
 
   return (
     <GlassPanel className="p-6">
-      <SectionTitle eyebrow="Research Plan" title={decision === "WAIT_PULLBACK" ? "Pullback Context" : "Risk Context"} meta="synced risk plan" />
+      <SectionTitle eyebrow="Research Plan" title={decision === "WAIT_PULLBACK" ? "Pullback Plan" : "Research Context"} meta="timing and risk context" />
       <TradeLegalNotice className="mt-4" />
       <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
         <PlanMetric label="Research Entry" value={formatMoney(entry)} />
@@ -57,7 +57,7 @@ export function TradePlanCard({ engine, row }: { engine: TradePlanEngine; row: R
           <Marker label="Entry" left={entryPosition} value={formatMoney(entry)} />
           <Marker label="Target" left={targetPosition} value={formatMoney(target)} />
         </div>
-        <div className="mt-3 text-xs text-slate-500">{readableText(row.decision_reason, "Use this context only if price, risk, and decision remain valid.")}</div>
+        <div className="mt-3 text-xs text-slate-500">{humanizeInsightText(row.decision_reason, "Use this context only if price, risk, and decision remain valid.")}</div>
       </div>
     </GlassPanel>
   );

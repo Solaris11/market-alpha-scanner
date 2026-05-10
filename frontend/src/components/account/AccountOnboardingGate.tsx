@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
-import { RISK_EXPERIENCE_LEVELS, formatRiskExperienceLevel, normalizeRiskExperienceLevel, normalizeTimezone, requiresAccountOnboarding } from "@/lib/security/onboarding-profile";
+import { RISK_EXPERIENCE_LEVELS, formatRiskExperienceLevel, normalizeRiskExperienceLevel, normalizeTimezone, requiresAccountOnboarding, type RiskExperienceLevel } from "@/lib/security/onboarding-profile";
 
 const PUBLIC_PATHS = new Set(["/terms", "/privacy", "/risk-disclosure", "/reset-password"]);
 
@@ -19,6 +19,21 @@ const FALLBACK_TIMEZONES = [
   "Europe/Istanbul",
   "Asia/Tokyo",
 ];
+
+const RISK_EXPERIENCE_HELP: Record<RiskExperienceLevel, { detail: string; nextStep: string }> = {
+  advanced: {
+    detail: "Show deeper research controls, large-move context, higher-risk ideas, and evidence labels.",
+    nextStep: "Start with the full console, then compare opportunities and symbol detail.",
+  },
+  beginner: {
+    detail: "Explain WAIT, fragility, and opportunity timing in the simplest workflow first.",
+    nextStep: "Start with What Matters Most Now, then add one symbol to your watchlist.",
+  },
+  intermediate: {
+    detail: "Balance opportunity quality, risk controls, entry timing, and broader market context.",
+    nextStep: "Start with the console, then review the top opportunities by risk/reward.",
+  },
+};
 
 type ProfileResponse = {
   authenticated?: boolean;
@@ -52,7 +67,8 @@ export function AccountOnboardingGate() {
 
   if (!visible) return null;
 
-  const canSave = Boolean(normalizeTimezone(timezone) && normalizeRiskExperienceLevel(riskExperienceLevel));
+  const selectedRiskExperience = normalizeRiskExperienceLevel(riskExperienceLevel);
+  const canSave = Boolean(normalizeTimezone(timezone) && selectedRiskExperience);
 
   async function handleSave() {
     if (!canSave || busy) return;
@@ -75,7 +91,7 @@ export function AccountOnboardingGate() {
       }
       trackAnalyticsEvent("onboarding_complete", { onboarding: "account_profile", riskExperienceLevel }, { source: "account_onboarding" });
       await refresh();
-      router.refresh();
+      router.push("/terminal?firstRun=1");
     } catch {
       setError("Unable to save onboarding.");
     } finally {
@@ -85,10 +101,12 @@ export function AccountOnboardingGate() {
 
   return (
     <div className="fixed inset-0 z-[9990] flex items-end justify-center bg-black/75 p-4 backdrop-blur-md md:items-center">
-      <div className="w-full max-w-xl rounded-2xl border border-cyan-300/25 bg-slate-950 p-5 shadow-2xl shadow-black/60">
+      <div className="w-full max-w-2xl rounded-2xl border border-cyan-300/25 bg-slate-950 p-5 shadow-2xl shadow-black/60">
         <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Account setup</div>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Complete your trading profile</h2>
-        <p className="mt-3 text-sm leading-6 text-slate-400">TradeVeto uses these account settings for timestamps, risk language, and product safety checks.</p>
+        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Choose your starting path</h2>
+        <p className="mt-3 text-sm leading-6 text-slate-400">
+          TradeVeto adapts the first walkthrough to your experience level. You do not need to understand every score on day one; the first session focuses on one market read, one opportunity, and one watchlist.
+        </p>
 
         <div className="mt-5 space-y-4">
           <label className="block">
@@ -109,7 +127,9 @@ export function AccountOnboardingGate() {
           <fieldset>
             <legend className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">2. Risk experience</legend>
             <div className="mt-2 grid gap-2 sm:grid-cols-3">
-              {RISK_EXPERIENCE_LEVELS.map((level) => (
+              {RISK_EXPERIENCE_LEVELS.map((level) => {
+                const help = RISK_EXPERIENCE_HELP[level];
+                return (
                 <label
                   className={`cursor-pointer rounded-xl border px-3 py-3 text-sm font-semibold transition ${
                     riskExperienceLevel === level ? "border-cyan-300/60 bg-cyan-400/10 text-cyan-100" : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20"
@@ -117,11 +137,21 @@ export function AccountOnboardingGate() {
                   key={level}
                 >
                   <input checked={riskExperienceLevel === level} className="sr-only" name="riskExperienceLevel" onChange={() => setRiskExperienceLevel(level)} type="radio" />
-                  {formatRiskExperienceLevel(level)}
+                  <span className="block text-sm text-slate-50">{formatRiskExperienceLevel(level)}</span>
+                  <span className="mt-2 block text-xs font-normal leading-5 text-slate-400">{help.detail}</span>
                 </label>
-              ))}
+                );
+              })}
             </div>
           </fieldset>
+
+          {selectedRiskExperience ? (
+            <div className="rounded-xl border border-cyan-300/15 bg-cyan-400/[0.06] p-3 text-xs leading-5 text-cyan-50/90">
+              <div className="font-bold text-cyan-100">What happens next</div>
+              <p className="mt-1">{RISK_EXPERIENCE_HELP[selectedRiskExperience].nextStep}</p>
+              <p className="mt-1 text-cyan-100/70">The walkthrough explains WAIT-first, fragility, upside/downside balance, large-move opportunities, risk/reward controls, and where to look first in plain language.</p>
+            </div>
+          ) : null}
         </div>
 
         {error ? <div className="mt-4 rounded-xl border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">{error}</div> : null}
@@ -133,7 +163,7 @@ export function AccountOnboardingGate() {
             onClick={() => void handleSave()}
             type="button"
           >
-            {busy ? "Saving..." : "Save and continue"}
+            {busy ? "Saving..." : "Save and start"}
           </button>
         </div>
       </div>

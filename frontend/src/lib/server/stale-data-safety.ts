@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { getScanDataHealth } from "@/lib/scanner-data";
 import { buildScanSafetyState, DEFAULT_MAX_SCAN_AGE_MINUTES, type ScanSafetyState } from "@/lib/stale-data-safety";
 import type { DataFreshness } from "@/lib/data-health";
@@ -13,6 +14,6 @@ export function scanSafetyFromFreshness(freshness: DataFreshness): ScanSafetySta
   return buildScanSafetyState(freshness, configuredMaxScanAgeMinutes());
 }
 
-export async function getCurrentScanSafety(): Promise<ScanSafetyState> {
+export const getCurrentScanSafety = cache(async (): Promise<ScanSafetyState> => {
   return scanSafetyFromFreshness(await getScanDataHealth());
-}
+});

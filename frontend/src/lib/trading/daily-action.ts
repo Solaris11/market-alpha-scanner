@@ -24,10 +24,11 @@ export type DailyActionInput = {
 export function getDailyAction({ best, fallbackRow, marketRegime, scanSafety }: DailyActionInput): DailyAction {
   const row = best?.row ?? fallbackRow ?? null;
   if (scanSafety?.active || (row && rowHasStaleDataSafety(row))) {
+    const reason = scanSafety?.reason ?? cleanText(row?.stale_data_safety_reason, STALE_DATA_ACTION_REASON);
     return {
       action: "DATA_STALE",
-      label: "NO TRADE TODAY",
-      reason: "Data is outdated. No action recommended.",
+      label: "Decision Paused",
+      reason,
       symbol: null,
       tone: "wait",
     };
@@ -37,8 +38,8 @@ export function getDailyAction({ best, fallbackRow, marketRegime, scanSafety }: 
   if (regime === "OVERHEATED" || regime.includes("OVERHEATED")) {
     return {
       action: "WAIT",
-      label: "NO TRADE TODAY",
-      reason: "Market is overheated. Wait for pullback.",
+      label: "Wait for a Cleaner Setup",
+      reason: "Market is extended, so TradeVeto is protecting entry quality. Watch for a calmer pullback or stronger confirmation.",
       symbol: null,
       tone: "wait",
     };
@@ -47,8 +48,8 @@ export function getDailyAction({ best, fallbackRow, marketRegime, scanSafety }: 
   if (regime === "RISK_OFF" || regime === "BEAR" || regime.includes("RISK_OFF") || regime.includes("BEAR")) {
     return {
       action: "WAIT",
-      label: "NO TRADE TODAY",
-      reason: "Market regime is defensive. Wait for stronger confirmation.",
+      label: "Wait for Confirmation",
+      reason: "Market tone is defensive, so new exposure needs stronger confirmation before it becomes a clean research setup.",
       symbol: null,
       tone: "wait",
     };
@@ -63,8 +64,8 @@ export function getDailyAction({ best, fallbackRow, marketRegime, scanSafety }: 
   if (decision === "BUY") {
     return {
       action: "BUY",
-      label: `RESEARCH SIGNAL ${symbol}`,
-      reason: "Strong setup with acceptable risk for research.",
+      label: `Research Setup ${symbol}`,
+      reason: "The setup is strong enough to review, with risk still visible.",
       symbol,
       tone: "buy",
     };
@@ -73,8 +74,8 @@ export function getDailyAction({ best, fallbackRow, marketRegime, scanSafety }: 
   if (decision === "WAIT_PULLBACK") {
     return {
       action: "WAIT_PULLBACK",
-      label: `WAIT FOR PULLBACK ${symbol}`,
-      reason: "Strong setup but price is extended.",
+      label: `Wait for Pullback ${symbol}`,
+      reason: "The setup is interesting, but price needs a calmer pullback first.",
       symbol,
       tone: "wait",
     };
@@ -94,24 +95,24 @@ export function dailyActionBlocksTradeUi(action: DailyAction): boolean {
 export function noTradeActionCopy(action: DailyAction): { reason: string; title: string } {
   if (action.action === "DATA_STALE") {
     return {
-      title: "No Trade Today",
-      reason: "Data is outdated. No action recommended.",
+      title: "Decision Paused",
+      reason: action.reason || STALE_DATA_ACTION_REASON,
     };
   }
   if (action.action === "WAIT_PULLBACK") {
     return {
-      title: "No active trade recommended",
-      reason: action.reason || "Monitor for entry after a cleaner pullback.",
+      title: "Wait for Pullback",
+      reason: action.reason || "Monitor for a cleaner pullback and confirmation.",
     };
   }
   if (action.action === "STAY_OUT") {
     return {
-      title: "No Trade Today",
-      reason: action.reason || "No high-quality setups right now.",
+      title: "Stay Patient",
+      reason: action.reason || "No high-quality setup is ready yet.",
     };
   }
   return {
-    title: "No Trade Today",
+    title: "Stay Patient",
     reason: action.reason || STALE_DATA_ACTION_REASON,
   };
 }
@@ -119,8 +120,8 @@ export function noTradeActionCopy(action: DailyAction): { reason: string; title:
 function stayOutAction(symbol: string | null = null): DailyAction {
   return {
     action: "STAY_OUT",
-    label: "STAY OUT",
-    reason: "No high-quality setups right now.",
+    label: "Stay Patient",
+    reason: "No high-quality setup is ready yet. Keep monitoring for cleaner confirmation.",
     symbol,
     tone: "stay-out",
   };

@@ -80,6 +80,7 @@ FORBIDDEN_LANGUAGE_RE: Final[re.Pattern[str]] = re.compile(
     r"\b(buy now|sell now|guaranteed|sure profit|can't lose|cannot lose|will definitely|must buy|must sell|risk-free|free money)\b",
     re.IGNORECASE,
 )
+_llm_calls_this_refresh: int = 0
 
 
 def analyze_verified_event_with_llm(
@@ -93,8 +94,11 @@ def analyze_verified_event_with_llm(
     if not _llm_enabled():
         return None
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
-    model = os.getenv("TRADEVETO_EVENT_LLM_MODEL", "").strip()
+    model = os.getenv("TRADEVETO_EVENT_LLM_MODEL", "").strip() or os.getenv("TRADEVETO_LLM_FALLBACK_MODEL", "").strip()
     if not api_key or not model:
+        return None
+
+    if not _consume_refresh_call_budget():
         return None
 
     source_text = _source_text(title, summary)
@@ -364,3 +368,28 @@ def _timeout_seconds() -> float:
 
 def event_llm_timeout_seconds() -> float:
     return _timeout_seconds()
+
+
+def event_llm_max_calls_per_refresh() -> int:
+    raw = os.getenv("TRADEVETO_EVENT_LLM_MAX_CALLS_PER_REFRESH", "").strip()
+    try:
+        value = int(raw) if raw else 16
+    except ValueError:
+        value = 16
+    return max(0, min(value, 200))
+
+
+def reset_event_llm_refresh_budget_for_tests() -> None:
+    global _llm_calls_this_refresh
+    _llm_calls_this_refresh = 0
+
+
+def _consume_refresh_call_budget() -> bool:
+    global _llm_calls_this_refresh
+    limit = event_llm_max_calls_per_refresh()
+    if limit <= 0:
+        return False
+    if _llm_calls_this_refresh >= limit:
+        return False
+    _llm_calls_this_refresh += 1
+    return True

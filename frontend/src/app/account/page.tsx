@@ -144,7 +144,7 @@ export default async function AccountPage() {
               <div className="mt-3 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.055] px-3 py-2 text-xs leading-5 text-cyan-50/85">
                 {betaBillingCopy(betaBilling)} You can cancel through Stripe before renewal.
               </div>
-              {billingSubscription ? <SubscriptionState subscription={billingSubscription} /> : null}
+              {billingSubscription ? <SubscriptionState isPremium={entitlement.isPremium} subscription={billingSubscription} /> : null}
               <BillingTrustChecklist allowPromotionCodes={betaBilling.allowPromotionCodes} trialDays={betaBilling.trialDays} />
               <p className="mt-3 text-xs leading-5 text-slate-500">Payments are securely processed by Stripe.</p>
             </div>
@@ -288,7 +288,20 @@ export default async function AccountPage() {
               </div>
             </div>
           ) : (
-            <p className="text-sm leading-6 text-slate-400">Decision memory is not available yet. Journal entries can be saved from premium symbol pages.</p>
+            <div className="rounded-xl border border-cyan-300/15 bg-cyan-400/[0.055] p-4">
+              <div className="text-sm font-semibold text-slate-100">Start with one saved decision</div>
+              <p className="mt-2 text-sm leading-6 text-slate-400">
+                Decision memory appears after you journal a watch, wait, avoid, entry, exit, shock watch, or pullback watch from a symbol page. Start with one symbol you already follow.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Link className="rounded-full border border-cyan-300/35 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15" href="/opportunities">
+                  Find a symbol
+                </Link>
+                <Link className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100" href="/terminal">
+                  Open starter workflow
+                </Link>
+              </div>
+            </div>
           )}
         </AccountSection>
       </div>
@@ -351,8 +364,8 @@ function BillingControl({ billingSubscription, entitlement }: { billingSubscript
   return <BillingActionButton mode="checkout" />;
 }
 
-function SubscriptionState({ subscription }: { subscription: BillingSubscription }) {
-  const state = billingViewState({ isPremium: subscription.plan === "premium" && (subscription.status === "active" || subscription.status === "trialing"), subscription });
+function SubscriptionState({ isPremium, subscription }: { isPremium: boolean; subscription: BillingSubscription }) {
+  const state = billingViewState({ isPremium, subscription });
   if (state.statusText) {
     return (
       <div className="mt-3">
@@ -436,7 +449,20 @@ function PlaceholderItem({ text, title }: { text: string; title: string }) {
 
 function SymbolPreview({ symbols }: { symbols: string[] }) {
   if (!symbols.length) {
-    return <p className="mt-4 text-sm text-slate-500">No saved symbols yet.</p>;
+    return (
+      <div className="mt-4 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.055] p-3">
+        <div className="text-sm font-semibold text-slate-100">No saved symbols yet</div>
+        <p className="mt-1 text-xs leading-5 text-slate-400">Add 3-5 symbols you already care about. TradeVeto will then show what changed, where fragility moved, and which alerts matter.</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Link className="rounded-full border border-cyan-300/35 bg-cyan-400/10 px-3 py-1.5 text-xs font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15" href="/opportunities">
+            Browse opportunities
+          </Link>
+          <Link className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100" href="/symbol/AMD">
+            Try AMD
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   return (

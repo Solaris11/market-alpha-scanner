@@ -11,8 +11,14 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = marketingMetadata("/intelligence", {
   title: "Market Intelligence Library — TradeVeto",
   description:
-    "Public TradeVeto intelligence pages for symbol context, macro regime, shock opportunity research, WAIT reasoning, and market pressure analysis. Research only.",
+    "Public TradeVeto intelligence pages for symbol context, macro regime, shock research, WAIT reasoning, strategy proof, evidence depth, and market pressure analysis. Research only.",
 });
+
+const trustBoundaries = [
+  ["Public-safe", "These pages do not expose premium entry/exit levels, private user data, or direct action instructions."],
+  ["Evidence-labeled", "TradeVeto should distinguish limited evidence from stronger historical or calibration support."],
+  ["Source-aware", "Event context must be verified from trusted sources or disclosed as unavailable."],
+] as const;
 
 export default async function IntelligenceIndexPage() {
   const page = await getPublishedIntelligenceIndex();
@@ -26,7 +32,7 @@ export default async function IntelligenceIndexPage() {
           <HeroBlock
             eyebrow="Market Intelligence Library"
             title="Explainable market reasoning, published without the signal spam."
-            copy="TradeVeto publishes public-safe intelligence from its market memory, macro regime, shock behavior, fragility, and institutional pressure layers. These pages explain context and restraint; they are research only and not financial advice."
+            copy="TradeVeto publishes public-safe intelligence from market memory, macro regime, shock behavior, fragility, event context, evidence depth, and institutional pressure layers. These pages explain context and restraint; they are research only and not financial advice."
           />
 
           <div className="grid gap-4 lg:grid-cols-[1.15fr_0.85fr]">
@@ -44,6 +50,15 @@ export default async function IntelligenceIndexPage() {
               <div className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{page.universeCount} symbols in the latest public-safe intelligence universe</div>
             </section>
           </div>
+
+          <section className="grid gap-4 md:grid-cols-3">
+            {trustBoundaries.map(([title, copy]) => (
+              <div className="rounded-2xl border border-emerald-300/18 bg-emerald-400/[0.045] p-5" key={title}>
+                <div className="text-[10px] font-black uppercase tracking-[0.22em] text-emerald-200">{title}</div>
+                <p className="mt-3 text-sm leading-6 text-slate-300">{copy}</p>
+              </div>
+            ))}
+          </section>
 
           <section className="space-y-4">
             <div>

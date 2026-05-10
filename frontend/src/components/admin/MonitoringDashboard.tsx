@@ -64,6 +64,11 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
         <MetricCard label="Backup Duration" value={backupDurationSeconds === null ? "unknown" : `${backupDurationSeconds}s`} />
         <MetricCard label="Overall Backup" tone={statusTone(monitoring.backupHealth?.overallBackup)} value={monitoring.backupHealth?.overallBackup ?? "unknown"} />
         <MetricCard label="Backup Retries" tone={backupRetryCount && backupRetryCount > 1 ? "warn" : "default"} value={backupRetryCount ?? "unknown"} />
+        <MetricCard label="LLM Spend Today" tone={monitoring.llmUsage.today.costUsd > monitoring.llmUsage.budgetCaps.globalDailyUsd * 0.8 ? "warn" : "default"} value={formatUsd(monitoring.llmUsage.today.costUsd)} />
+        <MetricCard label="LLM Monthly Run Rate" value={formatUsd(monitoring.llmUsage.today.monthlyRunRateUsd)} />
+        <MetricCard label="LLM Calls Today" value={formatCount(monitoring.llmUsage.today.requests)} />
+        <MetricCard label="LLM Cache Hits" value={formatCount(monitoring.llmUsage.today.cacheHits)} />
+        <MetricCard label="LLM Blocks" tone={monitoring.llmUsage.today.blocked ? "warn" : "good"} value={formatCount(monitoring.llmUsage.today.blocked)} />
       </section>
 
       <div className="grid gap-5 xl:grid-cols-2">
@@ -250,6 +255,10 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
       </ChartPanel>
 
       <div className="grid gap-5 xl:grid-cols-2">
+        <ChartPanel subtitle="Estimated OpenAI spend and cache behavior by surface. Estimates use operator-configured token prices, not provider billing exports." title="LLM Cost Controls">
+          <LlmUsagePanel usage={monitoring.llmUsage} />
+        </ChartPanel>
+
         <ChartPanel title="Synthetic Check Details">
           {monitoring.syntheticChecks.length ? (
             <div className="grid gap-2">
@@ -296,6 +305,51 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
           )}
         </ChartPanel>
       </div>
+    </div>
+  );
+}
+
+function LlmUsagePanel({ usage }: { usage: AdminMonitoringSummary["llmUsage"] }) {
+  const maxCost = Math.max(...usage.bySurface.map((item) => item.costUsd), 0.01);
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-2 sm:grid-cols-2">
+        <MetricPill label="daily cap" value={formatUsd(usage.budgetCaps.globalDailyUsd)} />
+        <MetricPill label="user cap" value={formatUsd(usage.budgetCaps.userDailyUsd)} />
+        <MetricPill label="route cap" value={formatUsd(usage.budgetCaps.routeDailyUsd)} />
+        <MetricPill label="surface cap" value={formatUsd(usage.budgetCaps.surfaceDailyUsd)} />
+      </div>
+      {usage.bySurface.length ? (
+        <div className="space-y-2">
+          {usage.bySurface.slice(0, 6).map((item) => (
+            <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3" key={item.surface}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-sm font-semibold text-slate-100">{humanizeLabel(item.surface)}</span>
+                <span className="text-xs text-slate-400">{formatUsd(item.costUsd)} · {formatCount(item.requests)} calls · {formatCount(item.cacheHits)} cache</span>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.07]">
+                <div className="h-full rounded-full bg-cyan-300" style={{ width: `${Math.max(4, (item.costUsd / maxCost) * 100)}%` }} />
+              </div>
+              {item.blocked || item.failed ? (
+                <p className="mt-2 text-xs text-amber-100">{formatCount(item.blocked)} blocked · {formatCount(item.failed)} failed/invalid responses.</p>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <EmptyState>No LLM usage recorded for today.</EmptyState>
+      )}
+      {usage.recentEvents.length ? (
+        <div className="space-y-2">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Recent LLM Events</div>
+          {usage.recentEvents.slice(0, 5).map((event) => (
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-white/10 bg-slate-950/70 p-3 text-xs" key={`${event.surface}-${event.createdAt}-${event.status}`}>
+              <span className="text-slate-200">{humanizeLabel(event.surface)} · {event.status} · {event.cacheStatus}</span>
+              <span className="text-slate-500">{formatUsd(event.costUsd)} · {formatDate(event.createdAt)}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -553,6 +607,11 @@ function countFormatter(value: number | null): string {
 
 function formatCount(value: number): string {
   return String(Math.round(value)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function formatUsd(value: number): string {
+  if (!Number.isFinite(value)) return "$0.00";
+  return `$${value.toFixed(value < 1 ? 4 : 2)}`;
 }
 
 function formatDate(value: string | null | undefined): string {

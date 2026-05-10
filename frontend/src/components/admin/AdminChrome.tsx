@@ -14,6 +14,7 @@ const ADMIN_LINKS = [
   { href: "/admin/scenarios", label: "Scenarios" },
   { href: "/admin/monitoring", label: "Monitoring" },
   { href: "/admin/analytics", label: "Analytics" },
+  { href: "/admin/beta", label: "Beta Cohort" },
   { href: "/admin/audit", label: "Audit" },
 ] as const;
 

@@ -44,7 +44,7 @@ describe("social crawler allowlist", () => {
       assert.equal(isPublicSocialPreviewPath(pathname), true, pathname);
     }
 
-    for (const pathname of ["/terminal", "/opportunities", "/history", "/account", "/api/health"]) {
+    for (const pathname of ["/terminal", "/opportunities", "/strategy-labs", "/history", "/account", "/api/health", "/intelligence/strategy-performance"]) {
       assert.equal(isPublicSocialPreviewPath(pathname), false, pathname);
     }
   });
@@ -71,6 +71,7 @@ describe("social crawler allowlist", () => {
     assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/", userAgent: "facebookexternalhit/1.1" }), true);
     assert.equal(shouldServeStaticSocialPreview({ method: "HEAD", pathname: "/pricing", userAgent: "meta-externalagent/1.1" }), true);
     assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/intelligence", userAgent: "facebookexternalhit/1.1" }), true);
+    assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/intelligence/strategy-performance", userAgent: "facebookexternalhit/1.1" }), false);
     assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/symbol/AMD", userAgent: "facebookexternalhit/1.1" }), false);
     assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/og-image.png", userAgent: "facebookexternalhit/1.1" }), false);
     assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/terminal", userAgent: "facebookexternalhit/1.1" }), false);

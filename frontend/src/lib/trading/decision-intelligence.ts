@@ -127,7 +127,7 @@ const REASON_NEGATIVE_COPY: Record<string, string> = {
   EVENT_SHOCK_PRESSURE: "Event context has elevated volatility shock pressure",
   EVENT_LLM_VERIFIED_CONTEXT: "LLM evidence check confirmed event context",
   EVENT_STRONG_LABOR_RATE_PRESSURE: "Strong labor data is adding rates pressure",
-  EVENT_UNEMPLOYMENT_SURPRISE: "Unemployment surprise is adding macro pressure",
+  EVENT_UNEMPLOYMENT_SURPRISE: "Unemployment surprise is adding market pressure",
   EVENT_VOLATILITY_PRESSURE: "Verified volatility event pressure is active",
 };
 
@@ -145,7 +145,7 @@ const VETO_NEGATIVE_COPY: Record<string, string> = {
   BEAR_MARKET: "Bear regime is active",
   RISK_OFF_MARKET: "Market regime is risk-off",
   STALE_DATA: "Scanner data is stale",
-  STOP_RISK: "Price is too close to invalidation context",
+  STOP_RISK: "Price is too close to the break area",
   WEAK_VOLUME: "Volume confirmation is weak",
   WEAK_VOLUME_CONFIRMATION: "Volume confirmation is weak",
 };
@@ -164,7 +164,7 @@ const WATCH_COPY: Record<string, string> = {
   BEAR_MARKET: "Wait for market structure to stabilize before elevating breakout-style setups.",
   RISK_OFF_MARKET: "Wait for the market regime to improve before elevating this setup.",
   STALE_DATA: "Wait for a fresh scanner run before relying on this context.",
-  STOP_RISK: "Monitor for price to move away from invalidation context.",
+  STOP_RISK: "Monitor for price to move away from the break area.",
   WEAK_VOLUME: "Wait for volume expansion before treating confirmation as stronger.",
   WEAK_VOLUME_CONFIRMATION: "Wait for volume expansion before treating confirmation as stronger.",
   BREAKOUT_REJECTED_EXTENDED: "Wait for breakout context to reset instead of chasing extension.",
@@ -207,7 +207,7 @@ const WATCH_COPY: Record<string, string> = {
   EVENT_RISK_ELEVATED: "Wait for verified event risk to settle before treating the setup as cleaner.",
   EVENT_SHOCK_PRESSURE: "Monitor two-sided volatility risk around the confirmed event context.",
   EVENT_STRONG_LABOR_RATE_PRESSURE: "Monitor whether labor strength keeps rates pressure elevated.",
-  EVENT_UNEMPLOYMENT_SURPRISE: "Watch whether labor-market weakness keeps macro pressure elevated.",
+  EVENT_UNEMPLOYMENT_SURPRISE: "Watch whether labor-market weakness keeps market pressure elevated.",
   EVENT_VOLATILITY_PRESSURE: "Wait for volatility pressure to stabilize.",
 };
 

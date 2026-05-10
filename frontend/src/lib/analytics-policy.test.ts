@@ -5,6 +5,7 @@ import {
   normalizeAnalyticsEventName,
   pageOpenEventForPath,
   normalizeAnalyticsRange,
+  normalizeFeedbackType,
   sanitizeAnalyticsMetadata,
   sanitizeAnalyticsPath,
   sanitizeAnalyticsSymbol,
@@ -15,12 +16,22 @@ describe("analytics privacy policy", () => {
   test("allows only known analytics events", () => {
     assert.equal(normalizeAnalyticsEventName("page_view"), "page_view");
     assert.equal(normalizeAnalyticsEventName("dashboard_open"), "dashboard_open");
+    assert.equal(normalizeAnalyticsEventName("strategy_labs_open"), "strategy_labs_open");
+    assert.equal(normalizeAnalyticsEventName("first_useful_action"), "first_useful_action");
     assert.equal(normalizeAnalyticsEventName("made_up_event"), null);
   });
 
   test("maps dashboard route views to a dedicated analytics event", () => {
     assert.equal(pageOpenEventForPath("/dashboard"), "dashboard_open");
     assert.equal(pageOpenEventForPath("/dashboard/heatmaps"), "dashboard_open");
+    assert.equal(pageOpenEventForPath("/strategy-labs"), "strategy_labs_open");
+  });
+
+  test("normalizes beta feedback types for cohort learning", () => {
+    assert.equal(normalizeFeedbackType("bug_report"), "bug_report");
+    assert.equal(normalizeFeedbackType("onboarding_confusion"), "onboarding_confusion");
+    assert.equal(normalizeFeedbackType("performance_issue"), "performance_issue");
+    assert.equal(normalizeFeedbackType("private_note"), "general");
   });
 
   test("sanitizes metadata without keeping sensitive keys or secret-like values", () => {

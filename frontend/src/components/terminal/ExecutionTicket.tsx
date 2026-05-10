@@ -30,9 +30,9 @@ export function ExecutionTicket({ canTrade = true, engine, researchModeReason, s
   if (!canTrade) {
     return (
       <GlassPanel className="p-5">
-        <SectionTitle eyebrow="Execution" title="No Active Trade" meta="locked" />
+        <SectionTitle eyebrow="Execution" title="Research Mode" meta="locked" />
         <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
-          Execution is disabled because the daily action is the source of truth. {researchModeReason ?? "Correct action: do nothing."}
+          Execution stays locked because the daily action is the primary decision source. {researchModeReason ?? "Best next step is to monitor patiently."}
         </div>
       </GlassPanel>
     );

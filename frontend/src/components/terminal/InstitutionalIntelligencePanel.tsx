@@ -52,7 +52,7 @@ export function InstitutionalIntelligencePanel({
             {system.pressureSummary}
           </p>
         </div>
-        <div className="grid min-w-[260px] grid-cols-3 gap-2">
+        <div className="grid min-w-[280px] grid-cols-3 gap-2">
           <ScorePill label="Pressure" value={system.netMarketPressureScore} />
           <ScorePill label="Quality" value={system.averageInstitutionalQuality} />
           <ScorePill label="Crowding" value={system.averageCrowdingRisk} inverse />
@@ -224,7 +224,7 @@ function ScorePill({ inverse = false, label, value }: { inverse?: boolean; label
   const color = good ? "text-emerald-200" : risk ? "text-rose-200" : "text-amber-200";
   return (
     <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3">
-      <div className="min-w-0 truncate text-[9px] font-black uppercase leading-3 tracking-normal text-slate-500" title={label}>{label}</div>
+      <div className="min-h-7 min-w-0 break-words text-[9px] font-black uppercase leading-4 tracking-normal text-slate-500" title={label}>{label}</div>
       <div className={`mt-1 font-mono text-lg font-black ${color}`}>{formatNumber(value, 0)}</div>
     </div>
   );

@@ -93,7 +93,7 @@ function buildChaosResult(engine: TradePlanEngine): ChaosResult {
 
   return {
     reasons: [
-      "This is a probabilistic stress test against normal volatility ranges.",
+      "This stress test compares the stop with normal price movement.",
       riskLabel === "Safe" ? "The current stop has reasonable room for routine noise." : "The current stop may be inside routine price vibration.",
       "Position size should be recalculated if the stop changes.",
     ],

@@ -138,6 +138,20 @@ function opportunity(overrides: Partial<OpportunityViewModel> = {}): Opportunity
   };
 }
 
+function priceHistory(symbol: string, beta: number): Array<{ close: number; date: string }> {
+  const rows: Array<{ close: number; date: string }> = [];
+  let close = symbol === "AMD" ? 100 : 210;
+  for (let index = 0; index < 90; index += 1) {
+    const marketMove = Math.sin(index / 4) * 0.006 + (index % 9 === 0 ? 0.012 : 0.002);
+    close *= 1 + marketMove * beta;
+    rows.push({
+      close: Number(close.toFixed(2)),
+      date: new Date(Date.UTC(2026, 0, 1 + index)).toISOString(),
+    });
+  }
+  return rows;
+}
+
 test("portfolio intelligence detects concentrated correlated fragility", () => {
   const opportunities = [
     opportunity({ symbol: "AMD" }),
@@ -226,6 +240,34 @@ test("portfolio intelligence surfaces hidden factor correlation and event concen
   assert.ok(system.exposureBuckets.some((bucket) => bucket.type === "event" && bucket.label === "Elevated Event Pressure"));
   assert.ok(system.exposureBuckets.some((bucket) => bucket.type === "liquidity" && bucket.label === "Liquidity Pressure Elevated"));
   assert.ok(system.exposureBuckets.some((bucket) => bucket.type === "shock" && bucket.label === "High Shock Exposure"));
+});
+
+test("portfolio intelligence uses rolling correlation when price history is available", () => {
+  const opportunities = [
+    opportunity({ symbol: "AMD" }),
+    opportunity({ raw: { sector: "Semiconductors", symbol: "NVDA" }, sector: "Semiconductors", symbol: "NVDA" }),
+    opportunity({ raw: { sector: "Energy", symbol: "OXY" }, sector: "Energy", symbol: "OXY" }),
+  ];
+  const scenarioSystem = buildScenarioIntelligenceSystem({ rows: opportunities });
+  const system = buildPortfolioIntelligenceSystem({
+    opportunities,
+    positions: [
+      position({ current_price: 106, quantity: 10, symbol: "AMD" }),
+      position({ current_price: 900, entry_price: 880, quantity: 1, stop_loss: 790, symbol: "NVDA" }),
+      position({ current_price: 61, entry_price: 60, quantity: 4, stop_loss: 54, symbol: "OXY" }),
+    ],
+    priceHistories: {
+      AMD: priceHistory("AMD", 1.0),
+      NVDA: priceHistory("NVDA", 1.03),
+      OXY: priceHistory("OXY", -0.35),
+    },
+    scenarioSystem,
+  });
+
+  assert.ok(system.rollingCorrelationPairs.length >= 1);
+  assert.ok(system.rollingCorrelationConfidenceScore > 0);
+  assert.ok(system.correlationClusters.some((cluster) => /rolling correlation/i.test(cluster.label)));
+  assert.match(system.limitations.join(" "), /Rolling correlation uses available daily close history/);
 });
 
 test("portfolio intelligence keeps language research-oriented", () => {

@@ -21,6 +21,7 @@ New account creation can be controlled with environment variables:
 - `TRADEVETO_BETA_SIGNUP_MODE=open`: anyone can create an account.
 - `TRADEVETO_BETA_SIGNUP_MODE=invite`: new email/password signups require `TRADEVETO_BETA_INVITE_CODE`; Google OAuth signup requires an allowlisted email.
 - `TRADEVETO_BETA_SIGNUP_MODE=closed`: only emails in `TRADEVETO_BETA_ALLOWED_EMAILS` can create new accounts.
+- `TRADEVETO_BETA_USER_CAP=25`: blocks new non-allowlisted account creation once 25 active users exist. Use `0` only when intentionally disabling the cohort cap.
 
 Existing users can continue to sign in. Keep beta access changes staged and reversible.
 

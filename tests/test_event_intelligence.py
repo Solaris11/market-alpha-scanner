@@ -322,6 +322,42 @@ class EventIntelligenceTests(unittest.TestCase):
         self.assertIn("EVENT_EARNINGS_CALENDAR", impact["event_context_reason_codes"])
         self.assertGreater(impact["event_fragility_adjustment"], 0.0)
         self.assertEqual(impact["verified_event_recent_events"][0]["source"], "Yahoo Finance Earnings Calendar")
+        self.assertEqual(impact["verified_event_recent_events"][0]["source_confidence"], "calendar")
+
+    def test_trusted_public_company_feeds_include_source_confidence_and_age(self) -> None:
+        feed = TrustedEventFeed(
+            "globenewswire_public_companies",
+            "GlobeNewswire",
+            "https://www.globenewswire.com/RssFeed/orgclass/1/feedTitle/GlobeNewswire%20-%20News%20about%20Public%20Companies",
+            "company",
+            source_weight=0.78,
+        )
+        event = classify_verified_event(
+            feed,
+            "AMD launches new product as data center demand beats expectations",
+            "The company said demand remains strong and revenue rises.",
+            "https://www.globenewswire.com/news-release/2026/05/08/amd-product-launch.html",
+            datetime(2026, 5, 8, tzinfo=timezone.utc),
+        )
+        context = build_event_context([event], now=datetime(2026, 5, 8, 12, tzinfo=timezone.utc))
+        impact = event_impact_for_row(
+            {
+                "asset_type": "EQUITY",
+                "macro_context_label": "Macro Mixed",
+                "market_regime": "NEUTRAL",
+                "sector": "Technology",
+                "symbol": "AMD",
+            },
+            context,
+        )
+
+        recent = impact["verified_event_recent_events"][0]
+        self.assertIn("EVENT_PRODUCT_CATALYST_POSITIVE", impact["event_context_reason_codes"])
+        self.assertIn(recent["source_confidence"], {"trusted", "high"})
+        age_value = recent["event_age_days"]
+        self.assertIsInstance(age_value, (float, int))
+        assert isinstance(age_value, (float, int))
+        self.assertGreaterEqual(float(age_value), 0.0)
 
 
 if __name__ == "__main__":

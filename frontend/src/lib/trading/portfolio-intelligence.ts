@@ -43,6 +43,22 @@ export type PortfolioCorrelationCluster = {
   type: "correlation" | "event" | "fragility" | "liquidity" | "macro" | "shock";
 };
 
+export type PortfolioPriceHistoryPoint = {
+  close: number;
+  date: string;
+};
+
+export type PortfolioRollingCorrelationPair = {
+  combinedWeightPct: number;
+  confidenceScore: number;
+  correlation: number;
+  covariance: number;
+  left: string;
+  observationCount: number;
+  right: string;
+  windowDays: number;
+};
+
 export type PortfolioScenarioStress = {
   impactedSymbols: string[];
   scenarioKey: string;
@@ -96,6 +112,8 @@ export type PortfolioIntelligenceSystem = {
   portfolioQualityLabel: string;
   portfolioQualityScore: number;
   positionContexts: PortfolioPositionContext[];
+  rollingCorrelationConfidenceScore: number;
+  rollingCorrelationPairs: PortfolioRollingCorrelationPair[];
   scenarioVulnerabilityScore: number;
   scenarioStress: PortfolioScenarioStress[];
   shockExposureScore: number;
@@ -108,6 +126,7 @@ export type PortfolioIntelligenceInput = {
   accountValue?: number | null;
   generatedAt?: string;
   opportunities: OpportunityViewModel[];
+  priceHistories?: Record<string, PortfolioPriceHistoryPoint[]>;
   positions: PaperPositionRow[];
   scenarioSystem?: ScenarioIntelligenceSystem | null;
 };
@@ -142,6 +161,8 @@ export function buildPortfolioIntelligenceSystem(input: PortfolioIntelligenceInp
   const liquidityRiskScore = Math.round(weightedAverage(positionContexts, (context) => context.liquidityRiskScore, 45));
   const shockExposureScore = Math.round(weightedAverage(positionContexts, (context) => context.shockExposureScore, 45));
   const scenarioStress = scenarioStressFor(positionContexts, input.scenarioSystem ?? null);
+  const rollingCorrelationPairs = rollingCorrelationPairsFor(positionContexts, input.priceHistories ?? {});
+  const rollingCorrelationConfidenceScore = Math.round(correlationConfidenceFor(rollingCorrelationPairs, positionContexts.length));
   const scenarioVulnerabilityScore = scenarioStress.length
     ? Math.round(Math.max(...scenarioStress.map((stress) => stress.weightedVulnerabilityScore)))
     : Math.round(weightedAverage(positionContexts, (context) => highestScenarioVulnerability(context.symbol, input.scenarioSystem ?? null), 50));
@@ -156,7 +177,7 @@ export function buildPortfolioIntelligenceSystem(input: PortfolioIntelligenceInp
     + (100 - shockExposureScore) * 0.04,
   ));
   const heatmap = portfolioHeatmap(positionContexts, input.scenarioSystem ?? null);
-  const correlationClusters = correlationClustersFor(positionContexts, sectorBuckets, themeBuckets, scenarioStress);
+  const correlationClusters = correlationClustersFor(positionContexts, sectorBuckets, themeBuckets, scenarioStress, rollingCorrelationPairs);
   const hedgeOffsetContexts = hedgeOffsetContextsFor(positionContexts, scenarioStress);
   const hiddenCorrelationWarning = hiddenCorrelationWarningFor(correlationClusters, positionContexts);
   const stressProofSummary = stressProofSummaryFor(positionContexts, scenarioStress, hedgeOffsetContexts, liquidityRiskScore, shockExposureScore);
@@ -176,7 +197,9 @@ export function buildPortfolioIntelligenceSystem(input: PortfolioIntelligenceInp
     hiddenCorrelationWarning,
     limitations: [
       "Portfolio Intelligence evaluates paper/open exposure structure; it is not broker execution or financial advice.",
-      "Correlation is approximated from sector, theme, macro, fragility, and scenario similarity rather than tick-level covariance.",
+      rollingCorrelationPairs.length
+        ? "Rolling correlation uses available daily close history where supplied; missing symbols fall back to factor and scenario relationships."
+        : "Rolling price history was not supplied, so correlation falls back to sector, theme, macro, fragility, and scenario relationships.",
       "Scenario stress uses deterministic stress outputs and should be read as pressure context, not a price forecast.",
       "Manual portfolio inputs, when used, are what-if research inputs and do not place broker or paper orders.",
     ],
@@ -187,6 +210,8 @@ export function buildPortfolioIntelligenceSystem(input: PortfolioIntelligenceInp
     portfolioQualityLabel: portfolioQualityLabel(portfolioQualityScore, fragilityScore, concentrationScore),
     portfolioQualityScore,
     positionContexts,
+    rollingCorrelationConfidenceScore,
+    rollingCorrelationPairs,
     scenarioVulnerabilityScore,
     scenarioStress,
     shockExposureScore,
@@ -383,8 +408,20 @@ function correlationClustersFor(
   sectorBuckets: PortfolioExposureBucket[],
   themeBuckets: PortfolioExposureBucket[],
   scenarioStress: PortfolioScenarioStress[],
+  rollingCorrelationPairs: PortfolioRollingCorrelationPair[],
 ): PortfolioCorrelationCluster[] {
   const clusters: PortfolioCorrelationCluster[] = [];
+  for (const pair of rollingCorrelationPairs.filter((item) => item.correlation >= 0.72 && item.confidenceScore >= 55).slice(0, 4)) {
+    const score = clamp(pair.correlation * 70 + pair.combinedWeightPct * 0.34 + pair.confidenceScore * 0.12);
+    clusters.push({
+      label: `${pair.left}/${pair.right} rolling correlation`,
+      reason: `${pair.left} and ${pair.right} show ${pair.correlation.toFixed(2)} rolling correlation over ${pair.observationCount} return observations. This is statistical overlap, not just sector similarity.`,
+      score: Math.round(score),
+      symbols: [pair.left, pair.right],
+      tone: riskTone(score),
+      type: "correlation",
+    });
+  }
   for (const bucket of [...sectorBuckets, ...themeBuckets]) {
     if (bucket.percent >= 45 && bucket.symbols.length >= 2) {
       clusters.push({
@@ -456,6 +493,124 @@ function correlationClustersFor(
     });
   }
   return clusters.sort((left, right) => right.score - left.score).slice(0, 6);
+}
+
+function rollingCorrelationPairsFor(
+  contexts: PortfolioPositionContext[],
+  priceHistories: Record<string, PortfolioPriceHistoryPoint[]>,
+): PortfolioRollingCorrelationPair[] {
+  if (contexts.length < 2) return [];
+  const symbols = contexts.map((context) => context.symbol);
+  const returnsBySymbol = new Map<string, Map<string, number>>();
+  for (const symbol of symbols) {
+    const points = priceHistories[symbol] ?? priceHistories[symbol.toLowerCase()] ?? [];
+    const returns = returnSeries(points);
+    if (returns.size >= 20) returnsBySymbol.set(symbol, returns);
+  }
+  const pairs: PortfolioRollingCorrelationPair[] = [];
+  for (let leftIndex = 0; leftIndex < symbols.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < symbols.length; rightIndex += 1) {
+      const left = symbols[leftIndex];
+      const right = symbols[rightIndex];
+      if (!left || !right) continue;
+      const leftReturns = returnsBySymbol.get(left);
+      const rightReturns = returnsBySymbol.get(right);
+      if (!leftReturns || !rightReturns) continue;
+      const aligned = alignedReturnPairs(leftReturns, rightReturns, 90);
+      if (aligned.length < 20) continue;
+      const selected = aligned.slice(-60);
+      const leftValues = selected.map((pair) => pair[0]);
+      const rightValues = selected.map((pair) => pair[1]);
+      const correlation = pearson(leftValues, rightValues);
+      if (correlation === null) continue;
+      const leftContext = contexts.find((context) => context.symbol === left);
+      const rightContext = contexts.find((context) => context.symbol === right);
+      const combinedWeightPct = Math.round((leftContext?.weightPct ?? 0) + (rightContext?.weightPct ?? 0));
+      pairs.push({
+        combinedWeightPct,
+        confidenceScore: Math.round(correlationObservationConfidence(selected.length)),
+        correlation: round(correlation, 3),
+        covariance: round(covariance(leftValues, rightValues), 6),
+        left,
+        observationCount: selected.length,
+        right,
+        windowDays: 60,
+      });
+    }
+  }
+  return pairs.sort((left, right) => Math.abs(right.correlation) - Math.abs(left.correlation)).slice(0, 12);
+}
+
+function returnSeries(points: PortfolioPriceHistoryPoint[]): Map<string, number> {
+  const sorted = points
+    .map((point) => ({ close: positiveNumber(point.close), date: point.date }))
+    .filter((point): point is { close: number; date: string } => point.close !== null && Boolean(point.date))
+    .sort((left, right) => Date.parse(left.date) - Date.parse(right.date));
+  const returns = new Map<string, number>();
+  for (let index = 1; index < sorted.length; index += 1) {
+    const previous = sorted[index - 1];
+    const current = sorted[index];
+    if (!previous || !current || previous.close <= 0) continue;
+    returns.set(dayKey(current.date), (current.close - previous.close) / previous.close);
+  }
+  return returns;
+}
+
+function alignedReturnPairs(left: Map<string, number>, right: Map<string, number>, maxPoints: number): Array<[number, number]> {
+  const dates = [...left.keys()].filter((date) => right.has(date)).sort();
+  return dates.slice(-maxPoints).map((date) => [left.get(date) ?? 0, right.get(date) ?? 0]);
+}
+
+function pearson(left: number[], right: number[]): number | null {
+  if (left.length !== right.length || left.length < 2) return null;
+  const leftMean = arithmeticMean(left);
+  const rightMean = arithmeticMean(right);
+  let numerator = 0;
+  let leftDenominator = 0;
+  let rightDenominator = 0;
+  for (let index = 0; index < left.length; index += 1) {
+    const leftDelta = (left[index] ?? 0) - leftMean;
+    const rightDelta = (right[index] ?? 0) - rightMean;
+    numerator += leftDelta * rightDelta;
+    leftDenominator += leftDelta ** 2;
+    rightDenominator += rightDelta ** 2;
+  }
+  const denominator = Math.sqrt(leftDenominator * rightDenominator);
+  if (denominator <= 0) return null;
+  return numerator / denominator;
+}
+
+function covariance(left: number[], right: number[]): number {
+  if (left.length !== right.length || left.length < 2) return 0;
+  const leftMean = arithmeticMean(left);
+  const rightMean = arithmeticMean(right);
+  return left.reduce((sum, value, index) => sum + (value - leftMean) * ((right[index] ?? 0) - rightMean), 0) / (left.length - 1);
+}
+
+function arithmeticMean(values: number[]): number {
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+}
+
+function correlationObservationConfidence(count: number): number {
+  if (count >= 60) return 86;
+  if (count >= 45) return 72;
+  if (count >= 30) return 56;
+  if (count >= 20) return 38;
+  return 18;
+}
+
+function correlationConfidenceFor(pairs: PortfolioRollingCorrelationPair[], positionCount: number): number {
+  if (positionCount < 2) return 0;
+  const possiblePairs = (positionCount * (positionCount - 1)) / 2;
+  const coverage = Math.min(100, (pairs.length / Math.max(1, possiblePairs)) * 100);
+  const observationQuality = pairs.length ? pairs.reduce((sum, pair) => sum + pair.confidenceScore, 0) / pairs.length : 0;
+  return clamp(coverage * 0.45 + observationQuality * 0.55);
+}
+
+function dayKey(value: string): string {
+  const timestamp = Date.parse(value);
+  if (!Number.isFinite(timestamp)) return value.slice(0, 10);
+  return new Date(timestamp).toISOString().slice(0, 10);
 }
 
 function hedgeOffsetContextsFor(contexts: PortfolioPositionContext[], scenarioStress: PortfolioScenarioStress[]): PortfolioHedgeOffsetContext[] {
@@ -644,6 +799,11 @@ function positiveNumber(value: unknown): number | null {
   const parsed = finiteNumber(value);
   if (parsed === null || !Number.isFinite(parsed) || parsed <= 0) return null;
   return parsed;
+}
+
+function round(value: number, digits: number): number {
+  const scale = 10 ** digits;
+  return Math.round(value * scale) / scale;
 }
 
 function maxKnown(values: unknown[]): number | null {

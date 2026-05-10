@@ -313,7 +313,7 @@ function PerformanceSimpleView({
   const hasCompletedWindows = compactRows.length > 0;
   const insightCards = [
     {
-      detail: bestSetup ? `${humanizeLabel(bestSetup.group_value, "This group")} has the strongest completed setup evidence in the selected validation window.` : "Completed setup comparisons will appear after enough forward-return windows finish.",
+      detail: bestSetup ? `${humanizeLabel(bestSetup.group_value, "This group")} has the strongest completed setup evidence in the selected validation window.` : "Completed setup comparisons will appear after enough later-outcome windows finish.",
       label: "What currently works better",
       value: bestSetup ? edgeLabel(bestSetup) : "Still collecting",
     },
@@ -323,7 +323,7 @@ function PerformanceSimpleView({
       value: weakestSetup ? edgeLabel(weakestSetup) : "Not enough evidence",
     },
     {
-      detail: bestScoreRange ? "Score ranges are being compared against actual forward observations. This is evidence gathering, not automatic tuning." : "Score-range validation needs more saved history before it becomes useful.",
+      detail: bestScoreRange ? "Score ranges are being compared against actual later outcomes. This is evidence gathering, not automatic tuning." : "Score-range validation needs more saved history before it becomes useful.",
       label: "Score range learning",
       value: bestScoreRange ? edgeLabel(bestScoreRange) : "Pending",
     },
@@ -339,7 +339,7 @@ function PerformanceSimpleView({
       <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Simple View</div>
       <h3 className="mt-1 text-lg font-semibold text-slate-50">What the scanner is learning</h3>
       <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">
-        Plain-English validation from completed forward-return observations. This view is intentionally conservative and does not auto-tune the scanner.
+        Plain-English validation from completed later-outcome observations. This view is intentionally conservative and does not auto-tune the scanner.
       </p>
       <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {insightCards.map((card) => (
@@ -352,7 +352,7 @@ function PerformanceSimpleView({
       </div>
       {!hasCompletedWindows ? (
         <div className="mt-4 rounded-xl border border-amber-400/25 bg-amber-400/10 p-3 text-sm leading-6 text-amber-100">
-          No completed forward-return windows are available yet. This is expected when recent scans have not aged into their validation horizons.
+          No completed later-outcome windows are available yet. This is expected when recent scans have not aged into their validation horizons.
         </div>
       ) : null}
     </section>
@@ -478,7 +478,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
         if (!response.ok) throw new Error(payload.error || `Request failed: ${response.status}`);
         if (active) setRawForwardRows(payload.rows ?? []);
       } catch (error) {
-        if (active) setRawForwardError(error instanceof Error ? error.message : "Failed to load detailed forward-return observations.");
+        if (active) setRawForwardError(error instanceof Error ? error.message : "Failed to load detailed later-outcome observations.");
       } finally {
         if (active) setRawForwardLoading(false);
       }
@@ -524,7 +524,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
         </div>
         {!cleanForwardRows.length ? (
           <div className="mt-3 rounded border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-sm leading-6 text-amber-100">
-            Performance analysis is ready, but no forward-return window has completed yet. This usually means the saved signals are too recent for the selected 1D, 5D, 10D, or 20D windows. The table will populate automatically as time passes and the next analysis run completes.
+            Performance analysis is ready, but no later-outcome window has completed yet. This usually means the saved signals are too recent for the selected 1D, 5D, 10D, or 20D windows. The table will populate automatically as time passes and the next analysis run completes.
           </div>
         ) : null}
       </section>
@@ -715,7 +715,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
                 <td className="truncate px-2 py-1.5 font-mono text-slate-400">{formatDate(row.timestamp_utc)}</td>
               </tr>
             )) : (
-              <tr><td className="px-2 py-6 text-center text-slate-500" colSpan={11}>No completed forward-return observations yet.</td></tr>
+              <tr><td className="px-2 py-6 text-center text-slate-500" colSpan={11}>No completed later-outcome observations yet.</td></tr>
             )}
           </tbody>
         </table>

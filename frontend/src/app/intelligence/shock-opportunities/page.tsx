@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export const metadata: Metadata = marketingMetadata("/intelligence/shock-opportunities", {
   title: "Shock Opportunity Research — TradeVeto",
   description:
-    "TradeVeto's public high-volatility research layer for upside shock memory, two-sided volatility, chase risk, and historical shock context. Research only.",
+    "TradeVeto's public high-volatility research layer for upside shock memory, two-sided volatility, chase risk, historical follow-through, and no-chase context. Research only.",
 });
 
 export default async function ShockOpportunitiesPage() {

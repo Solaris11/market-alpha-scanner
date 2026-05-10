@@ -1,7 +1,7 @@
 import { freshnessFromTimestamp, type DataFreshness } from "@/lib/data-health";
 import type { PerformanceData, RankingRow } from "@/lib/types";
 import { finiteNumber, firstNumber, formatMoney } from "@/lib/ui/formatters";
-import { humanizeLabel, readableText } from "@/lib/ui/labels";
+import { humanizeInsightText, humanizeLabel } from "@/lib/ui/labels";
 import { buildEdgeLookup, computeConviction, selectBestTradeNow } from "./conviction";
 import { buildConvictionFragilityModel, compactStructuralLabel } from "./conviction-fragility";
 import { buildEvidenceMaturityFromSignal, type EvidenceMaturityModel } from "./evidence-maturity";
@@ -83,7 +83,7 @@ function toOpportunityViewModel(
     price: numberOrNull(row.price),
     final_score: numberOrNull(row.final_score),
     final_decision: stringOrNull(row.final_decision ?? row.action),
-    decision_reason: readableText(row.decision_reason ?? row.quality_reason ?? row.selection_reason, ""),
+    decision_reason: humanizeInsightText(row.decision_reason ?? row.quality_reason ?? row.selection_reason, ""),
     entryStatus: stringOrNull(row.entry_status),
     entryZoneLabel: entryZoneLabel(row),
     evidence,

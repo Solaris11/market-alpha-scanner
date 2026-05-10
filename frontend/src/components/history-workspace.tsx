@@ -23,7 +23,7 @@ import {
 import { verifiedNewsItemFromRow } from "@/lib/news-source-policy";
 import { nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { HistorySummary, SymbolHistoryRow } from "@/lib/types";
-import { decisionLabel, humanizeLabel, normalizedToken, readableText } from "@/lib/ui/labels";
+import { decisionLabel, humanizeInsightText, humanizeLabel, normalizedToken } from "@/lib/ui/labels";
 
 type Props = {
   defaultSymbol?: string;
@@ -126,7 +126,7 @@ function formatPercentValue(value: number | null) {
 
 function cleanInsight(value: unknown, fallback: string) {
   const text = String(value ?? "").trim();
-  return text && !["nan", "none", "null", "n/a", "-"].includes(text.toLowerCase()) ? readableText(text) : fallback;
+  return text && !["nan", "none", "null", "n/a", "-"].includes(text.toLowerCase()) ? humanizeInsightText(text) : fallback;
 }
 
 function financialInterpretation(label: string, value: number | null) {

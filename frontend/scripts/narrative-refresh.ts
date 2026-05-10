@@ -1,5 +1,13 @@
 import { Pool, type QueryResultRow } from "pg";
 import { loadEnvFiles, safeErrorMessage } from "./monitoring-common";
+import { configuredLlmFallbackModel, estimateLlmCallCost, extractOpenAiUsage } from "../src/lib/llm-cost-policy";
+import {
+  checkLlmBudget,
+  llmCacheIdentity,
+  readLlmResponseCache,
+  recordLlmUsage,
+  writeLlmResponseCache,
+} from "../src/lib/server/llm-cost-control";
 import { createMacroContextResolver } from "../src/lib/trading/macro-regime";
 import { buildMarketMemorySummary, scoreBucket, type MarketMemoryCandidate, type MarketMemoryOutcomePoint, type MarketMemorySummary } from "../src/lib/trading/market-memory";
 import {
@@ -60,6 +68,9 @@ type MemorySnapshotRow = QueryResultRow & {
 };
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
+const LLM_SURFACE = "narrative_refresh";
+const LLM_ROUTE = "script:narrative-refresh";
+const LLM_CACHE_VERSION = "narrative_refresh_v1";
 
 loadEnvFiles();
 
@@ -401,42 +412,80 @@ async function upsertNarrative(pool: Pool, signal: LatestSignalRow, narrative: N
 
 async function llmNarrativeFor(base: NarrativeIntelligence, packet: NarrativeInputPacket): Promise<NarrativeIntelligence | null> {
   const apiKey = process.env.OPENAI_API_KEY?.trim();
-  const model = (process.env.TRADEVETO_NARRATIVE_LLM_MODEL || process.env.TRADEVETO_EVENT_LLM_MODEL || "").trim();
+  const model = (process.env.TRADEVETO_NARRATIVE_LLM_MODEL || process.env.TRADEVETO_EVENT_LLM_MODEL || configuredLlmFallbackModel() || "").trim();
   if (!apiKey || !model) return null;
+  const requestBody = {
+    input: [
+      {
+        role: "system",
+        content: [
+          "You are TradeVeto's narrative reasoning layer.",
+          "Use only the supplied structured packet and deterministic narrative baseline.",
+          "Do not invent prices, scores, events, probabilities, forecasts, source names, or news facts.",
+          "Do not override deterministic decisions or rankings.",
+          "Do not use direct financial advice. Do not use buy now, sell now, guaranteed, or sure profit.",
+          "Return strict ASCII JSON only with the requested schema.",
+          "The riskLanguage field must include the exact phrase: not financial advice.",
+        ].join(" "),
+      },
+      {
+        role: "user",
+        content: JSON.stringify({ baseline: base, packet }),
+      },
+    ],
+    model,
+    store: false,
+    text: {
+      format: {
+        name: "tradeveto_narrative_intelligence",
+        schema: narrativeJsonSchema(),
+        strict: true,
+        type: "json_schema",
+      },
+    },
+  };
+  const { cacheKey, promptHash } = llmCacheIdentity({ model, payload: requestBody, surface: LLM_SURFACE, version: LLM_CACHE_VERSION });
+  const estimate = estimateLlmCallCost({ maxOutputTokens: 1200, payload: requestBody });
+  const cached = await readLlmResponseCache<unknown>({ cacheKey, surface: LLM_SURFACE });
+  if (cached) {
+    const validated = applyValidatedLlmNarrative(base, cached, packet);
+    if (validated) {
+      await recordLlmUsage({
+        cacheStatus: "hit",
+        estimatedInputTokens: estimate.estimatedInputTokens,
+        estimatedOutputTokens: estimate.estimatedOutputTokens,
+        model,
+        payload: requestBody,
+        promptHash,
+        route: LLM_ROUTE,
+        status: "cache_hit",
+        surface: LLM_SURFACE,
+      });
+      return validated;
+    }
+  }
+  const budget = await checkLlmBudget({ maxOutputTokens: 1200, payload: requestBody, route: LLM_ROUTE, surface: LLM_SURFACE });
+  if (!budget.allowed) {
+    await recordLlmUsage({
+      cacheStatus: "bypass",
+      estimatedInputTokens: budget.estimatedInputTokens,
+      estimatedOutputTokens: budget.estimatedOutputTokens,
+      model,
+      payload: requestBody,
+      promptHash,
+      route: LLM_ROUTE,
+      status: "blocked",
+      surface: LLM_SURFACE,
+      errorCode: budget.reason,
+    });
+    return null;
+  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs());
+  const startedAt = Date.now();
   try {
     const response = await fetch(OPENAI_RESPONSES_URL, {
-      body: JSON.stringify({
-        input: [
-          {
-            role: "system",
-            content: [
-              "You are TradeVeto's narrative reasoning layer.",
-              "Use only the supplied structured packet and deterministic narrative baseline.",
-              "Do not invent prices, scores, events, probabilities, forecasts, source names, or news facts.",
-              "Do not override deterministic decisions or rankings.",
-              "Do not use direct financial advice. Do not use buy now, sell now, guaranteed, or sure profit.",
-              "Return strict ASCII JSON only with the requested schema.",
-              "The riskLanguage field must include the exact phrase: not financial advice.",
-            ].join(" "),
-          },
-          {
-            role: "user",
-            content: JSON.stringify({ baseline: base, packet }),
-          },
-        ],
-        model,
-        store: false,
-        text: {
-          format: {
-            name: "tradeveto_narrative_intelligence",
-            schema: narrativeJsonSchema(),
-            strict: true,
-            type: "json_schema",
-          },
-        },
-      }),
+      body: JSON.stringify(requestBody),
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
@@ -445,13 +494,93 @@ async function llmNarrativeFor(base: NarrativeIntelligence, packet: NarrativeInp
       method: "POST",
       signal: controller.signal,
     });
-    if (!response.ok) return null;
+    if (!response.ok) {
+      await recordLlmUsage({
+        cacheStatus: "miss",
+        durationMs: Date.now() - startedAt,
+        estimatedInputTokens: budget.estimatedInputTokens,
+        estimatedOutputTokens: budget.estimatedOutputTokens,
+        model,
+        payload: requestBody,
+        promptHash,
+        route: LLM_ROUTE,
+        status: "failed",
+        surface: LLM_SURFACE,
+        errorCode: `http_${response.status}`,
+      });
+      return null;
+    }
     const payload = await response.json() as unknown;
+    const usage = extractOpenAiUsage(payload);
     const text = extractOutputText(payload);
-    if (!text) return null;
+    if (!text) {
+      await recordLlmUsage({
+        cacheStatus: "miss",
+        durationMs: Date.now() - startedAt,
+        estimatedInputTokens: budget.estimatedInputTokens,
+        estimatedOutputTokens: budget.estimatedOutputTokens,
+        model,
+        payload: requestBody,
+        promptHash,
+        route: LLM_ROUTE,
+        status: "validation_failed",
+        surface: LLM_SURFACE,
+        usageInputTokens: usage.inputTokens,
+        usageOutputTokens: usage.outputTokens,
+        errorCode: "empty_output",
+      });
+      return null;
+    }
     const parsed = JSON.parse(text) as unknown;
-    return applyValidatedLlmNarrative(base, parsed, packet);
+    const validated = applyValidatedLlmNarrative(base, parsed, packet);
+    if (!validated) {
+      await recordLlmUsage({
+        cacheStatus: "miss",
+        durationMs: Date.now() - startedAt,
+        estimatedInputTokens: budget.estimatedInputTokens,
+        estimatedOutputTokens: budget.estimatedOutputTokens,
+        model,
+        payload: requestBody,
+        promptHash,
+        route: LLM_ROUTE,
+        status: "validation_failed",
+        surface: LLM_SURFACE,
+        usageInputTokens: usage.inputTokens,
+        usageOutputTokens: usage.outputTokens,
+        errorCode: "schema_or_grounding",
+      });
+      return null;
+    }
+    const cacheStatus = await writeLlmResponseCache({ cacheKey, model, responseJson: parsed, surface: LLM_SURFACE });
+    await recordLlmUsage({
+      cacheStatus: cacheStatus === "ok" ? "miss" : "write_failed",
+      durationMs: Date.now() - startedAt,
+      estimatedInputTokens: budget.estimatedInputTokens,
+      estimatedOutputTokens: budget.estimatedOutputTokens,
+      model,
+      payload: requestBody,
+      promptHash,
+      route: LLM_ROUTE,
+      status: "success",
+      surface: LLM_SURFACE,
+      usageInputTokens: usage.inputTokens,
+      usageOutputTokens: usage.outputTokens,
+    });
+    return validated;
   } catch {
+    await recordLlmUsage({
+      cacheStatus: "miss",
+      durationMs: Date.now() - startedAt,
+      estimatedInputTokens: budget.estimatedInputTokens,
+      estimatedOutputTokens: budget.estimatedOutputTokens,
+      model,
+      payload: requestBody,
+      promptHash,
+      route: LLM_ROUTE,
+      status: "failed",
+      surface: LLM_SURFACE,
+      errorCode: "fetch_error",
+    });
     return null;
   } finally {
     clearTimeout(timeout);

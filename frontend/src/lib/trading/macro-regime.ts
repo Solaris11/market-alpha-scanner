@@ -287,7 +287,7 @@ function regimeExplanation({
   riskOnScore: number;
   volatilityPressure: number;
 }): string {
-  return `${macroRegime}: risk-on score ${Math.round(riskOnScore)}/100, macro pressure ${Math.round(macroPressureScore)}/100, volatility pressure ${Math.round(volatilityPressure)}/100, liquidity pressure ${Math.round(liquidityPressure)}/100.`;
+  return `${macroRegime}: risk-on score ${Math.round(riskOnScore)}/100, market pressure ${Math.round(macroPressureScore)}/100, unstable volatility ${Math.round(volatilityPressure)}/100, thin-market pressure ${Math.round(liquidityPressure)}/100.`;
 }
 
 function exchangeScore(row: RankingRow, profile: string, proxyMap: ProxyMap, summary: MacroRegimeSummary): { label: string; reasons: string[]; score: number } {

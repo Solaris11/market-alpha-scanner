@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export const metadata = marketingMetadata("/", {
   title: "TradeVeto — AI Market Intelligence for Disciplined Traders",
   description:
-    "TradeVeto helps traders avoid low-quality setups with AI veto logic, readiness scoring, confidence, and regime-aware research. Research only. Not financial advice.",
+    "TradeVeto is WAIT-first AI market intelligence for evidence-aware market research, shock analysis, replayable simulations, and disciplined opportunity review. Not financial advice.",
 });
 
 const heroSignals = [
@@ -47,9 +47,9 @@ const features = [
   ["AI Veto Engine", "Blocks weak setups when risk, confidence, data quality, or regime conditions are not aligned."],
   ["Readiness + Confidence", "Every symbol gets context for signal strength, data quality, and how close the setup is to being research-ready."],
   ["Regime-Aware Intelligence", "Market state matters. TradeVeto adjusts interpretation when conditions are overheated, neutral, or risk-off."],
-  ["Opportunity Intelligence", "Surface higher-quality research candidates without treating every price move as a reason to act."],
-  ["History + Calibration", "Signals are tracked over time so users can understand how evidence is growing and where confidence is still early."],
-  ["Alerts + Watchlist", "Monitor important symbols and conditions without staring at charts all day."],
+  ["Shock + Asymmetry Research", "Large-move history, chase risk, and two-sided volatility are separated from core buy/sell-style signals."],
+  ["Replay + Calibration", "Historical state, forward outcomes, and score reliability help users see what the system knew at the time."],
+  ["Verified Event Context", "Macro, earnings, filings, and trusted-source events are treated as evidence inputs, not invented narratives."],
 ] as const;
 
 const workflowSteps = [
@@ -73,7 +73,9 @@ const trustItems = [
   ["Research only", "TradeVeto does not provide financial advice, broker execution, or guaranteed outcomes."],
   ["Built to filter", "The product is intentionally comfortable saying WAIT, AVOID, or not enough evidence yet."],
   ["Transparent logic", "Decision reasons, vetoes, readiness, and confidence are shown as context, not hidden black-box claims."],
-  ["Operational readiness", "Monitoring, R2 backups, support workflows, and health checks are part of the beta operating model."],
+  ["Proof over hype", "Simulated strategy performance, replay studies, and evidence maturity are shown with limitations instead of promises."],
+  ["Source-backed context", "Verified event context must come from configured trusted sources or the app says it is unavailable."],
+  ["Operational readiness", "Monitoring, backups, support workflows, and health checks are part of the beta operating model."],
 ] as const;
 
 const edgeItems = [
@@ -81,8 +83,15 @@ const edgeItems = [
   ["WAIT clarity", "No-trade decisions are explained as part of the workflow."],
   ["Readiness score", "Confidence, data quality, risk, and vetoes are compressed into context users can understand."],
   ["Regime impact", "Market state is shown as part of setup interpretation."],
-  ["History filters", "Users can inspect what history is available and why ranges may look similar when data is new."],
-  ["Beta feedback loop", "Confusing signals and product friction are captured for support and prioritization."],
+  ["Evidence depth", "Users can see when evidence is limited, developing, mature, or high confidence."],
+  ["Replayable proof", "Strategy simulations and replay studies show both wins and uncomfortable drawdowns."],
+] as const;
+
+const proofItems = [
+  ["Evidence maturity", "TradeVeto labels when a setup has shallow history, limited outcomes, or stronger historical coverage."],
+  ["Decision replay", "Replay views are designed to show what the system knew before a move, not rewrite the story afterward."],
+  ["Simulated strategies", "Public strategy performance uses research-only simulated sleeves with benchmark and drawdown context."],
+  ["LLM boundaries", "AI summaries explain deterministic packets. They are not allowed to invent prices, events, or probabilities."],
 ] as const;
 
 const faqs = [
@@ -92,6 +101,9 @@ const faqs = [
   ["Why are there few BUY signals?", "TradeVeto is designed to prefer missing marginal setups over encouraging weak trades. Fewer signals can be a feature, not a bug."],
   ["What is readiness?", "Readiness summarizes how close a setup is to being research-ready after confidence, vetoes, data quality, and risk context are considered."],
   ["What is confidence?", "Confidence reflects signal strength and data quality. It is not a prediction."],
+  ["What is shock intelligence?", "It is a high-volatility research layer that studies historical large moves, follow-through, reversal, and chase risk. It is not a core buy signal."],
+  ["What is public strategy proof?", "It is simulated, replayable research evidence with benchmark and drawdown context. It is not real-money execution or a promise of future returns."],
+  ["How does TradeVeto use news or macro events?", "Only trusted, configured event sources can support public event context. If verified context is missing, TradeVeto should say that plainly."],
   ["Can I cancel anytime?", "Subscription management is handled through Stripe, including renewal visibility and cancellation controls."],
   ["Is this for day trading?", "TradeVeto is built for research workflows and discipline. It is not a high-frequency execution tool or trading bot."],
   ["What data does TradeVeto use?", "The scanner uses market data providers with fallback behavior and records data-quality context when available."],
@@ -113,7 +125,7 @@ export default async function HomePage() {
             </div>
             <h1 className="mt-6 max-w-4xl text-5xl font-semibold tracking-tight text-white sm:text-6xl lg:text-7xl">{BRAND_TAGLINE}</h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
-              {BRAND_NAME} combines AI market intelligence, readiness scoring, confidence, veto logic, and regime-aware analysis to help users avoid low-quality trades.
+              {BRAND_NAME} combines WAIT-first market intelligence, evidence maturity, verified event context, shock research, replay, and regime-aware analysis to help users review opportunities without turning every mover into a trade idea.
             </p>
             <div className="mt-8">
               <LandingConversionCtas />
@@ -142,7 +154,7 @@ export default async function HomePage() {
       <section className="px-4 py-14 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <SectionHeader
-            copy="Most trading tools create more alerts. TradeVeto is built around the opposite idea: filter weak setups, show why, and make patience visible."
+            copy="Most trading tools create more alerts. TradeVeto is built around the opposite idea: filter weak setups, show why, publish limitations, and make patience visible."
             eyebrow="Why TradeVeto"
             title="Trade less. Trade smarter. Know when to wait."
           />
@@ -212,6 +224,24 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <section className="px-4 py-14 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl">
+          <SectionHeader
+            copy="TradeVeto should earn trust by showing evidence quality, replayable history, and boundaries before asking users to believe a score."
+            eyebrow="Proof model"
+            title="Public trust starts with what the system can prove."
+          />
+          <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {proofItems.map(([title, copy]) => (
+              <MarketingCard key={title}>
+                <div className="text-base font-semibold text-white">{title}</div>
+                <p className="mt-3 text-sm leading-6 text-slate-400">{copy}</p>
+              </MarketingCard>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="px-4 py-14 sm:px-6 lg:px-8" id="features">
         <div className="mx-auto max-w-7xl">
           <SectionHeader eyebrow="Features" title="Built around disciplined decision quality." />
@@ -265,7 +295,7 @@ export default async function HomePage() {
           <MarketingCard>
             <div className="text-xs font-black uppercase tracking-[0.28em] text-cyan-300">Premium conversion</div>
             <h2 className="mt-3 text-3xl font-semibold text-white">Start with research access. Upgrade only when the value is clear.</h2>
-            <p className="mt-4 text-sm leading-6 text-slate-400">Anonymous visitors are routed through signup first. Free users go straight to Stripe checkout. Premium users manage access without duplicate checkout sessions.</p>
+            <p className="mt-4 text-sm leading-6 text-slate-400">Anonymous visitors are routed through signup first. Free users can preview the WAIT-first workflow before Stripe checkout. Premium users manage access without duplicate checkout sessions.</p>
             <div className="mt-6">
               <PricingConversionCta />
             </div>

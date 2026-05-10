@@ -24,8 +24,13 @@ export const EXECUTION_NAV_ITEMS: AppNavItem[] = [
 ];
 
 export const UTILITY_NAV_ITEMS: AppNavItem[] = [
+  { group: "system", href: "/mobile", key: "mobile", label: "Mobile" },
   { group: "system", href: "/support", key: "support", label: "Support" },
   { group: "system", href: "/dashboard", key: "dashboard", label: "Dashboard" },
+  { group: "system", href: "/team", key: "team", label: "Team" },
+  { group: "system", href: "/community", key: "community", label: "Community" },
+  { group: "system", href: "/developers", key: "developers", label: "Developers" },
+  { group: "system", href: "/strategy-labs", key: "strategy-labs", label: "Labs" },
   { group: "system", href: "/advanced", key: "advanced", label: "Advanced" },
 ];
 

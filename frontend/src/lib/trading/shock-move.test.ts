@@ -23,6 +23,13 @@ function barsWithShock(direction: "down" | "up"): ShockMovePriceBar[] {
   return bars;
 }
 
+function illiquidBarsWithShock(): ShockMovePriceBar[] {
+  return barsWithShock("up").map((bar, index) => ({
+    ...bar,
+    volume: index === 92 || index === 126 ? 18_000 : 8_000,
+  }));
+}
+
 test("shock move engine detects upside shock memory and research zones", () => {
   const pattern = buildShockMovePattern({ bars: barsWithShock("up"), lookbackWindow: "1y", symbol: "AMD" });
 
@@ -33,6 +40,7 @@ test("shock move engine detects upside shock memory and research zones", () => {
   assert.ok(pattern.researchEntryZone.includes("$"));
   assert.ok(pattern.doNotChaseZone.includes("Above"));
   assert.ok(pattern.commonPreconditions.length > 0);
+  assert.ok((pattern.liquidityQualityScore ?? 0) > 50);
 });
 
 test("shock move engine stores pre-move timing proof and replay studies", () => {
@@ -66,4 +74,15 @@ test("shock move engine distinguishes downside and two-sided volatility risk", (
   assert.ok(pattern.downsideShockCount >= 2);
   assert.ok(pattern.downsideRiskScore > 40);
   assert.ok(pattern.shockEvents.every((event) => event.return1d !== 0));
+});
+
+test("shock move engine penalizes low-liquidity noisy shock samples", () => {
+  const liquid = buildShockMovePattern({ bars: barsWithShock("up"), lookbackWindow: "1y", symbol: "AMD" });
+  const illiquid = buildShockMovePattern({ bars: illiquidBarsWithShock(), lookbackWindow: "1y", symbol: "MICRO" });
+
+  assert.ok(liquid);
+  assert.ok(illiquid);
+  assert.ok((illiquid.liquidityQualityScore ?? 100) < (liquid.liquidityQualityScore ?? 0));
+  assert.ok((illiquid.falsePositiveRiskScore ?? 0) >= (liquid.falsePositiveRiskScore ?? 0));
+  assert.ok(illiquid.commonFailureConditions.some((item) => /liquidity|noisy|failed/i.test(item)));
 });

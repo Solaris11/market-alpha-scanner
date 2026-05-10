@@ -81,7 +81,7 @@ export async function GET(request: Request) {
       preferredRiskLevel: activePersonalization.preferredRiskLevel,
       volatilityTolerance: activePersonalization.volatilityTolerance,
     });
-    const analysis = await analyzeRiskTolerantOpportunity(packet);
+    const analysis = await analyzeRiskTolerantOpportunity(packet, { userId: entitlement.user?.id ?? null });
     return NextResponse.json({
       ok: true,
       analysis,

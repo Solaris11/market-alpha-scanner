@@ -88,7 +88,7 @@ export function buildDecisionReplayReport(input: DecisionReplayBuildInput): Deci
     decisionQualityReview: decisionQualityReview(selectedRow, outcomes, metaSystem, regimeSystem),
     limitations: [
       "Replay uses the scanner snapshot and deterministic fields persisted at that time.",
-      "Forward outcomes are shown only when stored forward-return evidence is available.",
+      "Later outcomes are shown only when stored outcome evidence is available.",
       "Historical narrative, LLM, shock, and event layers may be limited for older snapshots; missing context is not backfilled with invented claims.",
       "Research context only. Not financial advice.",
     ],

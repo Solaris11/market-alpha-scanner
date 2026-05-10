@@ -26,12 +26,13 @@ export function MarketingShell({ children }: { children: React.ReactNode }) {
 export function MarketingNav() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#030711]/78 backdrop-blur-xl">
-      <Link className="block border-b border-cyan-300/10 bg-cyan-300/[0.08] px-4 py-2 text-center text-xs font-black uppercase tracking-[0.2em] text-cyan-100 transition-colors hover:bg-cyan-300/[0.12]" href="/#pricing">
-        Closed beta access · Early adopter premium preview · Research only
+      <Link className="block border-b border-cyan-300/10 bg-cyan-300/[0.08] px-3 py-2 text-center text-[11px] font-black uppercase leading-5 tracking-[0.12em] text-cyan-100 transition-colors hover:bg-cyan-300/[0.12] sm:text-xs sm:tracking-[0.2em]" href="/#pricing">
+        <span className="sm:hidden">Closed beta access · Research only</span>
+        <span className="hidden sm:inline">Closed beta access · Early adopter premium preview · Research only</span>
       </Link>
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-6 lg:px-8">
         <Link className="flex min-w-0 items-center gap-3 transition-opacity duration-200 hover:opacity-90" href="/">
-          <img alt={BRAND_NAME} className="h-11 w-auto max-w-[238px] sm:h-12 sm:max-w-[262px]" src="/logo.svg" />
+          <img alt={BRAND_NAME} className="h-10 w-auto max-w-[178px] sm:h-12 sm:max-w-[262px]" src="/logo.svg" />
         </Link>
         <nav className="hidden items-center gap-1 md:flex">
           {navItems.map((item) => (
@@ -41,7 +42,7 @@ export function MarketingNav() {
           ))}
         </nav>
         <a
-          className="rounded-full border border-cyan-300/50 bg-cyan-300/12 px-4 py-2 text-sm font-bold text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.16)] transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-200 hover:bg-cyan-300/20"
+          className="shrink-0 rounded-full border border-cyan-300/50 bg-cyan-300/12 px-3 py-2 text-xs font-bold text-cyan-100 shadow-[0_0_24px_rgba(34,211,238,0.16)] transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-200 hover:bg-cyan-300/20 sm:px-4 sm:text-sm"
           href={APP_URL}
         >
           Open App

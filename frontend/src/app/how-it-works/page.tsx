@@ -4,21 +4,28 @@ import { marketingMetadata } from "@/lib/marketing-seo";
 
 export const metadata: Metadata = marketingMetadata("/how-it-works", {
   title: "How It Works — TradeVeto",
-  description: "How TradeVeto analyzes trend, momentum, volatility, risk/reward, macro alignment, and market regime to support clearer research decisions.",
+  description: "How TradeVeto turns market data, verified context, evidence depth, scoring, replay, and AI explanations into WAIT-first research decisions.",
 });
 
 const steps = [
-  ["1", "Scan the market", "The scanner evaluates symbols across trend, momentum, volatility, macro alignment, and risk context."],
-  ["2", "Score the setup", "The system ranks opportunities and suppresses action when market conditions or risk rules are unfavorable."],
-  ["3", "Show one decision", "Daily Action becomes the authority: Wait, Watch, Research Setup, or Avoid."],
-  ["4", "Simulate before action", "What-if and paper workflows help you test risk before making any real-world decision."],
+  ["1", "Read the current market", "The scanner evaluates symbols across trend, momentum, volatility, macro alignment, data quality, and risk context."],
+  ["2", "Check the evidence", "Historical depth, forward outcomes, analog quality, shock memory, and verified event context determine how mature the claim is."],
+  ["3", "Apply vetoes", "Weak confirmation, stale data, poor timing, hostile regime pressure, or elevated fragility can force WAIT or AVOID."],
+  ["4", "Explain the decision", "AI summaries are allowed to explain structured TradeVeto packets, but not invent prices, news, or probabilities."],
+  ["5", "Replay and simulate", "Replay, paper, and strategy-proof workflows help evaluate process quality without real-money execution."],
+] as const;
+
+const proofBoundaries = [
+  ["Statistics own the numbers", "Scores, returns, drawdowns, shock counts, and evidence labels come from deterministic systems."],
+  ["LLM explains, not decides", "AI text summarizes structured inputs and falls back to deterministic copy when validation fails."],
+  ["Public pages are limited", "Public intelligence pages do not expose premium trade-plan fields or direct action instructions."],
 ] as const;
 
 export default function HowItWorksPage() {
   return (
     <MarketingShell>
       <section className="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
-        <SectionHeader copy="The product is intentionally structured as Market → Decision → UI, so research starts with whether action is justified at all." eyebrow="How it works" title="From noisy data to one disciplined decision." />
+        <SectionHeader copy="The product is intentionally structured as Market → Evidence → Decision → Explanation, so research starts with whether action is justified at all." eyebrow="How it works" title="From noisy data to one disciplined decision." />
         <div className="mx-auto mt-12 grid max-w-6xl gap-4 md:grid-cols-2">
           {steps.map(([step, title, copy]) => (
             <MarketingCard key={step}>
@@ -29,6 +36,14 @@ export default function HowItWorksPage() {
                   <p className="mt-3 text-sm leading-6 text-slate-400">{copy}</p>
                 </div>
               </div>
+            </MarketingCard>
+          ))}
+        </div>
+        <div className="mx-auto mt-8 grid max-w-6xl gap-4 md:grid-cols-3">
+          {proofBoundaries.map(([title, copy]) => (
+            <MarketingCard key={title}>
+              <div className="text-base font-semibold text-white">{title}</div>
+              <p className="mt-3 text-sm leading-6 text-slate-400">{copy}</p>
             </MarketingCard>
           ))}
         </div>

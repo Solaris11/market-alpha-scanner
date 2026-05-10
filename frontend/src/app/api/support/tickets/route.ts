@@ -3,7 +3,8 @@ import { after } from "next/server";
 import { requireUser } from "@/lib/server/access-control";
 import { createSupportTicket, listSupportTicketsForUser, sendSupportInternalTicketNotification, sendSupportTicketCreatedNotification } from "@/lib/server/support";
 import { withRequestMetrics } from "@/lib/server/monitoring";
-import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
+import { REQUEST_BODY_LIMITS } from "@/lib/security/http-abuse-policy";
+import { rateLimitRequest, rejectOversizedRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,6 +27,8 @@ export async function POST(request: Request) {
     if (!access.ok) return access.response;
     const csrf = requireCsrf(request);
     if (csrf) return csrf;
+    const oversized = rejectOversizedRequest(request, REQUEST_BODY_LIMITS.supportMessage);
+    if (oversized) return oversized;
     try {
       const payload = (await request.json().catch(() => null)) as Record<string, unknown> | null;
       const ticket = await createSupportTicket({ ...(payload ?? {}), user: access.user });

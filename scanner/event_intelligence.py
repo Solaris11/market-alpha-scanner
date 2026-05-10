@@ -66,6 +66,7 @@ class VerifiedEvent(TypedDict):
     event_decay: float
     event_direction: str
     event_id: str
+    event_age_days: float
     event_type: str
     event_types: list[str]
     evidence_phrases: list[str]
@@ -79,6 +80,7 @@ class VerifiedEvent(TypedDict):
     sectors: list[str]
     shock_bias: float
     source: str
+    source_confidence: str
     source_name: str
     source_url: str
     source_weight: float
@@ -191,6 +193,13 @@ DEFAULT_EVENT_FEEDS: Final[tuple[TrustedEventFeed, ...]] = (
         source_weight=0.78,
     ),
     TrustedEventFeed(
+        key="globenewswire_public_companies",
+        name="GlobeNewswire",
+        url="https://www.globenewswire.com/RssFeed/orgclass/1/feedTitle/GlobeNewswire%20-%20News%20about%20Public%20Companies",
+        category_hint="company",
+        source_weight=0.78,
+    ),
+    TrustedEventFeed(
         key="marketwatch_top_stories",
         name="MarketWatch",
         url="https://feeds.content.dowjones.io/public/rss/mw_topstories",
@@ -206,7 +215,7 @@ MAX_CONTEXT_EVENTS = 40
 MAX_RECENT_EVENTS_PER_ROW = 4
 EVENT_CACHE_PATH = "event_intelligence/verified_events.json"
 MIN_EVENT_DECAY = 0.12
-PRESS_RELEASE_FEED_KEYS: Final[frozenset[str]] = frozenset({"prnewswire_releases"})
+PRESS_RELEASE_FEED_KEYS: Final[frozenset[str]] = frozenset({"globenewswire_public_companies", "prnewswire_releases"})
 AMBIGUOUS_TEXT_SYMBOLS: Final[frozenset[str]] = frozenset({"C", "MS", "NOW"})
 TRUSTED_FEED_HOST_SUFFIXES: Final[frozenset[str]] = frozenset(
     {
@@ -921,6 +930,7 @@ def _fetch_feed_events(feed: TrustedEventFeed, now: datetime) -> list[VerifiedEv
             continue
         event = classify_verified_event(feed, title, summary, source_url, published_at)
         event["event_decay"] = _event_decay(event, now)
+        event["event_age_days"] = _event_age_days(event, now)
         if event["event_decay"] < MIN_EVENT_DECAY:
             continue
         events.append(event)
@@ -975,6 +985,7 @@ def classify_verified_event(feed: TrustedEventFeed, title: str, summary: str, so
     direction = _direction_from_scores(conviction_bias, fragility_bias, pressure)
     evidence_phrases: list[str] = []
     confidence = _base_event_confidence(feed, source_url)
+    source_confidence = _source_confidence_label(feed.source_weight, confidence)
     if llm_assessment is not None:
         event_types = _unique_strings([*event_types, llm_assessment["event_type"]])
         categories = _unique_strings([*categories, llm_assessment["category"]])
@@ -1002,6 +1013,7 @@ def classify_verified_event(feed: TrustedEventFeed, title: str, summary: str, so
         "event_decay": 1.0,
         "event_direction": direction,
         "event_id": _event_id(feed.key, source_url, title, published_at),
+        "event_age_days": 0.0,
         "event_type": event_types[0] if event_types else "verified_update",
         "event_types": event_types,
         "evidence_phrases": evidence_phrases,
@@ -1015,6 +1027,7 @@ def classify_verified_event(feed: TrustedEventFeed, title: str, summary: str, so
         "sectors": sectors,
         "shock_bias": round(shock_bias, 2),
         "source": feed.name,
+        "source_confidence": source_confidence,
         "source_name": feed.name,
         "source_url": source_url,
         "source_weight": round(_clamp(feed.source_weight, 0.2, 1.0), 3),
@@ -1368,6 +1381,7 @@ def _matched_events(row: dict[str, object], events: list[VerifiedEvent]) -> list
         if weight <= 0.0:
             continue
         event["event_decay"] = _event_decay(event, current_time)
+        event["event_age_days"] = _event_age_days(event, current_time)
         if event["event_decay"] < MIN_EVENT_DECAY:
             continue
         weight *= _event_quality_weight(event)
@@ -1454,8 +1468,10 @@ def _row_earnings_events(row: dict[str, object]) -> list[VerifiedEvent]:
     event["reason_codes"] = _unique_strings(["EVENT_EARNINGS_CALENDAR", *event["reason_codes"]])
     event["event_confidence"] = 72.0
     event["confidence"] = 72.0
+    event["source_confidence"] = "calendar"
     event["source_weight"] = 0.72
     event["event_decay"] = _earnings_event_decay(days_until_event)
+    event["event_age_days"] = 0.0
     event["pressure_score"] = round(_clamp(54.0 + max(0, 7 - abs(days_until_event)) * 2.6), 2)
     event["fragility_bias"] = round(_clamp(1.1 + max(0, 7 - abs(days_until_event)) * 0.32, 0.0, 4.0), 2)
     event["shock_bias"] = round(_clamp(1.8 + max(0, 7 - abs(days_until_event)) * 0.22, 0.0, 4.0), 2)
@@ -1617,6 +1633,7 @@ def _event_summary(event: VerifiedEvent, scope: str, weight: float) -> dict[str,
         "direction": event.get("direction", "mixed"),
         "event_confidence": event.get("event_confidence", event.get("confidence", 0.0)),
         "event_decay": event.get("event_decay", 1.0),
+        "event_age_days": event.get("event_age_days", 0.0),
         "event_direction": event.get("event_direction", event.get("direction", "mixed")),
         "event_type": event["event_types"][0] if event["event_types"] else "verified_update",
         "evidence_phrases": event.get("evidence_phrases", []),
@@ -1624,6 +1641,7 @@ def _event_summary(event: VerifiedEvent, scope: str, weight: float) -> dict[str,
         "reason_codes": event["reason_codes"],
         "scope": scope,
         "source": event["source"],
+        "source_confidence": event.get("source_confidence", "trusted"),
         "source_name": event.get("source_name", event["source"]),
         "source_url": event["source_url"],
         "source_weight": event.get("source_weight", 0.0),
@@ -1724,6 +1742,7 @@ def _recent_events(events: list[VerifiedEvent], now: datetime) -> list[VerifiedE
         published = _parse_datetime(event.get("published_at"))
         if published is not None and now - published <= timedelta(days=DEFAULT_LOOKBACK_DAYS):
             event["event_decay"] = _event_decay(event, now)
+            event["event_age_days"] = _event_age_days(event, now)
             if event["event_decay"] < MIN_EVENT_DECAY:
                 continue
             recent.append(event)
@@ -1803,6 +1822,7 @@ def _event_from_mapping(raw_event: Mapping[object, object]) -> VerifiedEvent | N
         "event_decay": safe_float(raw_event.get("event_decay"), 1.0),
         "event_direction": safe_str(raw_event.get("event_direction"), direction),
         "event_id": safe_str(raw_event.get("event_id"), ""),
+        "event_age_days": safe_float(raw_event.get("event_age_days"), 0.0),
         "event_type": safe_str(raw_event.get("event_type"), event_types[0] if event_types else "verified_update"),
         "event_types": event_types,
         "evidence_phrases": _string_list(raw_event.get("evidence_phrases")),
@@ -1816,6 +1836,7 @@ def _event_from_mapping(raw_event: Mapping[object, object]) -> VerifiedEvent | N
         "sectors": sectors,
         "shock_bias": safe_float(raw_event.get("shock_bias"), 0.0),
         "source": source,
+        "source_confidence": safe_str(raw_event.get("source_confidence"), "trusted"),
         "source_name": safe_str(raw_event.get("source_name"), source),
         "source_url": source_url,
         "source_weight": safe_float(raw_event.get("source_weight"), 0.75),
@@ -1891,6 +1912,17 @@ def _base_event_confidence(feed: TrustedEventFeed, source_url: str) -> float:
     return round(_clamp(52.0 + source_weight * 42.0 + url_bonus, 35.0, 100.0), 2)
 
 
+def _source_confidence_label(source_weight: float, event_confidence: float) -> str:
+    combined = _clamp(source_weight * 100.0 * 0.6 + event_confidence * 0.4, 0.0, 100.0)
+    if combined >= 92.0:
+        return "official"
+    if combined >= 82.0:
+        return "high"
+    if combined >= 70.0:
+        return "trusted"
+    return "limited"
+
+
 def _event_quality_weight(event: VerifiedEvent) -> float:
     source_weight = _clamp(event.get("source_weight", 0.75), 0.2, 1.0)
     confidence_weight = _clamp(event.get("event_confidence", event.get("confidence", 60.0)) / 100.0, 0.25, 1.0)
@@ -1907,7 +1939,7 @@ def _event_decay(event: VerifiedEvent, now: datetime) -> float:
     published = _parse_datetime(event.get("published_at"))
     if published is None:
         return 0.0
-    age_days = max(0.0, (now - published).total_seconds() / 86400.0)
+    age_days = _event_age_days(event, now)
     category = event.get("category", "market")
     if category == "company":
         half_life_days = 5.0
@@ -1918,6 +1950,13 @@ def _event_decay(event: VerifiedEvent, now: datetime) -> float:
     else:
         half_life_days = 7.0
     return round(_clamp(math.exp(-age_days / half_life_days), 0.0, 1.0), 3)
+
+
+def _event_age_days(event: VerifiedEvent, now: datetime) -> float:
+    published = _parse_datetime(event.get("published_at"))
+    if published is None:
+        return 999.0
+    return round(max(0.0, (now - published).total_seconds() / 86400.0), 3)
 
 
 def _earnings_event_decay(days_until_event: int) -> float:

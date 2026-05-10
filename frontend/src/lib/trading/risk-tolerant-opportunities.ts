@@ -3,7 +3,7 @@ import { buildDecisionIntelligence } from "@/lib/trading/decision-intelligence";
 import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 import type { RankingRow } from "@/lib/types";
 import { cleanText, finiteNumber, formatMoney } from "@/lib/ui/formatters";
-import { decisionLabel } from "@/lib/ui/labels";
+import { decisionLabel, humanizeInsightText } from "@/lib/ui/labels";
 
 export type RiskLevel = "low" | "medium" | "high";
 export type RewardLevel = "low" | "medium" | "high";
@@ -170,7 +170,7 @@ export function riskRewardProfile(preference: RiskRewardPreference): RiskRewardP
       acceptableFragility: 42,
       allowsSpeculativeVolatility: false,
       chaseRiskTolerance: 36,
-      explanation: "Strict quality mode: favors cleaner entry quality, lower fragility, and modest upside expectations.",
+      explanation: "Strict quality mode: prefers cleaner entries, lower failure risk, and modest upside.",
       inefficient: false,
       label: "Low Risk / Low Reward",
       maxDownsideRisk: 46,
@@ -222,7 +222,7 @@ export function riskRewardProfile(preference: RiskRewardPreference): RiskRewardP
       acceptableFragility: 62,
       allowsSpeculativeVolatility: false,
       chaseRiskTolerance: 58,
-      explanation: "Balanced mode: accepts some fragility when momentum, entry quality, and reliability are aligned.",
+      explanation: "Balanced mode: accepts some failure risk when momentum, entry quality, and reliability line up.",
       inefficient: false,
       label: "Medium Risk / Medium Reward",
       maxDownsideRisk: 66,
@@ -261,7 +261,7 @@ export function riskRewardProfile(preference: RiskRewardPreference): RiskRewardP
       acceptableFragility: 76,
       allowsSpeculativeVolatility: true,
       chaseRiskTolerance: 74,
-      explanation: "Aggressive balanced mode: ranks higher-beta names but still penalizes stale data, weak reliability, and obvious chase risk.",
+      explanation: "Aggressive balanced mode: can rank faster-moving names, but still penalizes stale data, weak reliability, and obvious chase risk.",
       inefficient: false,
       label: "High Risk / Medium Reward",
       maxDownsideRisk: 82,
@@ -274,7 +274,7 @@ export function riskRewardProfile(preference: RiskRewardPreference): RiskRewardP
       acceptableFragility: 86,
       allowsSpeculativeVolatility: true,
       chaseRiskTolerance: 84,
-      explanation: "Speculative high-upside mode: ranks shock, momentum, and relative-strength candidates without treating them as core buy signals.",
+      explanation: "Speculative high-upside mode: ranks large-move, momentum, and relative-strength candidates without treating them as main TradeVeto signals.",
       inefficient: false,
       label: "High Risk / High Reward",
       maxDownsideRisk: 88,
@@ -473,9 +473,9 @@ export function deterministicOpportunityExplanation(packet: RiskTolerantOpportun
   const freshness = packet.dataFreshness.status === "fresh" || packet.dataFreshness.status === "slightly_stale"
     ? `Data freshness is ${packet.dataFreshness.label.toLowerCase()}.`
     : `Data is ${packet.dataFreshness.label.toLowerCase()}, so confidence should be reduced.`;
-  const reason = packet.deterministicReasons.keyReasons[0] ?? "current scanner evidence";
-  const risk = packet.deterministicReasons.keyRisks[0] ?? "elevated downside risk";
-  return `${packet.candidate.symbol} ranks #${packet.candidate.riskTolerantRank} for ${packet.preference.label.toLowerCase()} because ${reason}. ${risk}. ${freshness} This is a risk-tolerant research watch, not a core buy signal or financial advice.`;
+  const reason = humanizeInsightText(packet.deterministicReasons.keyReasons[0] ?? "current scanner evidence");
+  const risk = humanizeInsightText(packet.deterministicReasons.keyRisks[0] ?? "elevated downside risk");
+  return `${packet.candidate.symbol} ranks #${packet.candidate.riskTolerantRank} for ${packet.preference.label.toLowerCase()} because ${reason}. ${risk}. ${freshness} This is a higher-risk watchlist idea, not a main TradeVeto signal or financial advice.`;
 }
 
 function qualityGuardrail(row: OpportunityViewModel): boolean {
@@ -640,12 +640,12 @@ function reliabilityScore(row: OpportunityViewModel, downside: number, chase: nu
 
 function keyReasons(input: { macroSector: number; momentum: number; opportunityType: string; reliability: number; row: OpportunityViewModel; setup: string; shock: number; upside: number }): string[] {
   const reasons = [
-    `${input.opportunityType.toLowerCase()} profile ranks above other available symbols`,
+    `${input.opportunityType.toLowerCase()} ranks better than most available symbols`,
   ];
-  if (input.upside >= 70) reasons.push("upside potential score is elevated from target/risk-reward context");
+  if (input.upside >= 70) reasons.push("upside potential is elevated based on target and risk/reward context");
   if (input.momentum >= 68) reasons.push("current momentum and setup strength are above the universe baseline");
-  if (input.shock >= 68) reasons.push("historical shock support is elevated from volatility, event, and move context");
-  if (input.row.shockPattern) reasons.push(`${input.row.shockPattern.opportunityState.toLowerCase()} pattern memory: ${input.row.shockPattern.upsideShockCount} upside shocks and ${input.row.shockPattern.downsideShockCount} downside shocks in the selected lookback`);
+  if (input.shock >= 68) reasons.push("large-move history is elevated based on volatility, events, and recent movement");
+  if (input.row.shockPattern) reasons.push(`${input.row.shockPattern.opportunityState.toLowerCase()} history: ${input.row.shockPattern.upsideShockCount} upside events and ${input.row.shockPattern.downsideShockCount} downside events in the selected lookback`);
   if (input.macroSector >= 60) reasons.push("macro, exchange, or sector context is supportive");
   if (input.reliability >= 60) reasons.push("reliability remains acceptable despite the aggressive profile");
   if (input.row.eventLabel !== "Event Context Limited") reasons.push(`verified event context: ${input.row.eventLabel}`);
@@ -655,9 +655,9 @@ function keyReasons(input: { macroSector: number; momentum: number; opportunityT
 function keyRisks(input: { chase: number; downside: number; profile: RiskRewardProfile; row: OpportunityViewModel }): string[] {
   const risks: string[] = [];
   if (input.profile.inefficient) risks.push("selected risk/reward profile is inefficient unless downside remains tightly controlled");
-  if (input.downside >= 70) risks.push("downside risk score is elevated; this is not a core conservative signal");
+  if (input.downside >= 70) risks.push("downside risk is elevated; this is not a conservative TradeVeto signal");
   if (input.chase >= 65) risks.push("chase risk is elevated; pullback or confirmation quality matters");
-  if (input.row.fragility >= 70) risks.push("fragility is high and setup quality can deteriorate quickly");
+  if (input.row.fragility >= 70) risks.push("setup fragility is high and quality can deteriorate quickly");
   if (input.row.eventRisk >= 68) risks.push("verified event risk is elevated");
   if (input.row.dataFreshness.status === "stale") risks.push("latest scan data is stale; rank should be treated cautiously");
   return risks.length ? risks.slice(0, 4) : ["risk-tolerant mode can rank candidates even when core decision remains WAIT or AVOID"];

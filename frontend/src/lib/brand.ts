@@ -1,8 +1,8 @@
 export const BRAND_NAME = "TradeVeto";
 export const BRAND_TAGLINE = "Not every trade deserves risk.";
-export const BRAND_DESCRIPTION = "AI-powered market intelligence for explainable, risk-aware decision support.";
+export const BRAND_DESCRIPTION = "WAIT-first AI market intelligence for explainable, evidence-aware market research.";
 export const BRAND_PRODUCT_DESCRIPTION =
-  "AI-powered market intelligence that helps traders filter weak setups, understand risk, and stay disciplined. Research only. Not financial advice.";
+  "WAIT-first AI market intelligence that helps traders filter weak setups, understand risk, inspect evidence, and stay disciplined. Research only. Not financial advice.";
 
 export const CANONICAL_DOMAIN = "tradeveto.com";
 export const CANONICAL_WWW_DOMAIN = "www.tradeveto.com";

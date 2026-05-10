@@ -2,6 +2,7 @@ import "server-only";
 
 import { createHash } from "node:crypto";
 import type { QueryResultRow } from "pg";
+import { BETA_COHORT_EVENT_NAMES } from "@/lib/beta-cohort";
 import {
   normalizeAnalyticsDevice,
   normalizeAnalyticsEventName,
@@ -46,6 +47,14 @@ export type BetaFeedbackPayload = {
 
 export type AnalyticsSummary = {
   activeUsersTrend: Array<{ activeUsers: number; bucket: string; events: number }>;
+  betaCohort: {
+    keyEvents: Array<{ count: number; eventName: string }>;
+    supportTickets: {
+      open: number;
+      opened: number;
+      urgent: number;
+    };
+  };
   feedback: {
     recent: Array<{ createdAt: string | null; feedbackType: string; message: string | null; pagePath: string | null; rating: string; symbol: string | null }>;
     total: number;
@@ -160,6 +169,11 @@ type FeedbackRow = QueryResultRow & {
 type FeedbackTypeRow = QueryResultRow & {
   count: string | number;
   feedback_type: string;
+};
+type SupportTicketCohortRow = QueryResultRow & {
+  open_count: string | number;
+  opened: string | number;
+  urgent_count: string | number;
 };
 type VisitorSummaryRow = QueryResultRow & {
   anonymous_visitors: string | number;
@@ -291,6 +305,8 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     onboardingEvents,
     waitFirst,
     supportUsage,
+    betaCohortEvents,
+    supportTickets,
     journey,
     feedbackTotal,
     feedbackTypes,
@@ -393,6 +409,26 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
           count(*) FILTER (WHERE event_name = 'support_unhelpful_feedback') AS unhelpful
         FROM analytics_events
         WHERE occurred_at >= now() - ${interval}
+      `,
+    ),
+    dbQuery<EventCountRow>(
+      `
+        SELECT event_name, count(*) AS count
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+          AND event_name = ANY($1::text[])
+        GROUP BY 1
+        ORDER BY count DESC, event_name ASC
+      `,
+      [BETA_COHORT_EVENT_NAMES],
+    ),
+    dbQuery<SupportTicketCohortRow>(
+      `
+        SELECT
+          count(*) FILTER (WHERE created_at >= now() - ${interval}) AS opened,
+          count(*) FILTER (WHERE status IN ('open', 'pending')) AS open_count,
+          count(*) FILTER (WHERE status IN ('open', 'pending') AND priority IN ('high', 'urgent')) AS urgent_count
+        FROM support_tickets
       `,
     ),
     dbQuery<JourneyRow>(
@@ -521,6 +557,14 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
 
   return {
     activeUsersTrend: trend.rows.map((row) => ({ activeUsers: numberFromRow(row.active_users), bucket: row.bucket, events: numberFromRow(row.events) })),
+    betaCohort: {
+      keyEvents: betaCohortEvents.rows.map((row) => ({ count: numberFromRow(row.count), eventName: row.event_name })),
+      supportTickets: {
+        open: numberFromRow(supportTickets.rows[0]?.open_count),
+        opened: numberFromRow(supportTickets.rows[0]?.opened),
+        urgent: numberFromRow(supportTickets.rows[0]?.urgent_count),
+      },
+    },
     feedback: {
       recent: feedbackRecent.rows.map((row) => ({
         createdAt: row.created_at,

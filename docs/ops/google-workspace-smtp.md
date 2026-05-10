@@ -53,6 +53,15 @@ npm run email:test -- --to billing@tradeveto.com --category billing
 
 The command prints only `{ "category": ..., "ok": true, "to": ... }` and never prints SMTP credentials.
 
+For the full launch QA check, run:
+
+```bash
+cd /opt/apps/market-alpha-scanner/app
+TRADEVETO_EMAIL_QA_SEND_TO=<qa-inbox@example.com> tools/ops/tradeveto-email-infrastructure-check.sh
+```
+
+Then inspect received Gmail/Outlook headers for SPF, DKIM, and DMARC pass results.
+
 ## Google Workspace Limits
 
 Google's current Workspace Gmail limits are rolling 24-hour limits and can change without notice. As of Google's 2026-05-01 documentation:

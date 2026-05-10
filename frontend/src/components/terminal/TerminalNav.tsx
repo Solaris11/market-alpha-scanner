@@ -80,7 +80,7 @@ export function MobileTerminalNav() {
         <Link aria-label="TradeVeto Terminal" className="min-w-0 shrink-0" href="/terminal">
           <BrandMark compact />
         </Link>
-        <div className="min-w-0 flex-1">
+        <div className="hidden min-w-0 flex-1 sm:block">
           <div className="truncate text-sm font-semibold text-slate-50">{title}</div>
           <div className="truncate text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300/80">Decision Intelligence</div>
         </div>
@@ -104,67 +104,70 @@ export function MobileTerminalNav() {
         </button>
       </div>
 
-      <div
-        aria-hidden="true"
-        className={`fixed left-1/2 top-1/2 z-[8990] h-[200dvh] w-[200dvw] -translate-x-1/2 -translate-y-1/2 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-200 ${open ? "opacity-100" : "pointer-events-none opacity-0"}`}
-        onClick={() => setOpen(false)}
-      />
-      <aside
-        aria-labelledby={drawerTitleId}
-        aria-hidden={!open}
-        className={`fixed right-0 top-0 z-[9000] flex h-dvh w-[min(88vw,380px)] flex-col border-l border-white/10 bg-slate-950/95 shadow-2xl shadow-black/50 ring-1 ring-cyan-300/10 backdrop-blur-2xl transition-transform duration-300 ${open ? "translate-x-0" : "translate-x-full"}`}
-        id="tradeveto-mobile-drawer"
-        ref={drawerRef}
-      >
-        <div className="border-b border-white/10 p-4">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300/80">TradeVeto</div>
-              <h2 className="mt-1 text-lg font-semibold text-slate-50" id={drawerTitleId}>All Navigation</h2>
-            </div>
-            <button className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300" onClick={() => setOpen(false)} type="button">
-              <span aria-hidden="true">x</span>
-              <span className="sr-only">Close navigation menu</span>
-            </button>
-          </div>
-          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-3">
-            <div className="flex min-w-0 items-center justify-between gap-3">
-              <div className="min-w-0">
-                <div className="truncate text-sm font-semibold text-slate-100">{user?.displayName || user?.email || "Guest workspace"}</div>
-                <div className="mt-1 text-xs text-slate-500">{accountStatusLabel(authenticated, entitlement.plan)}</div>
+      {open ? (
+        <>
+          <div
+            aria-hidden="true"
+            className="fixed left-0 top-0 z-[8990] h-dvh w-dvw bg-slate-950/70 backdrop-blur-sm"
+            onClick={() => setOpen(false)}
+          />
+          <aside
+            aria-labelledby={drawerTitleId}
+            className="fixed right-0 top-0 z-[9000] flex h-dvh w-[min(88vw,380px)] flex-col border-l border-white/10 bg-slate-950/95 shadow-2xl shadow-black/50 ring-1 ring-cyan-300/10 backdrop-blur-2xl"
+            id="tradeveto-mobile-drawer"
+            ref={drawerRef}
+          >
+            <div className="border-b border-white/10 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300/80">TradeVeto</div>
+                  <h2 className="mt-1 text-lg font-semibold text-slate-50" id={drawerTitleId}>All Navigation</h2>
+                </div>
+                <button className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300" onClick={() => setOpen(false)} type="button">
+                  <span aria-hidden="true">x</span>
+                  <span className="sr-only">Close navigation menu</span>
+                </button>
               </div>
-              <AccountPill compact />
-            </div>
-          </div>
-        </div>
-
-        <nav aria-label="Mobile drawer navigation" className="flex-1 space-y-5 overflow-y-auto p-4">
-          {sections.map((section) => (
-            <div key={section.label}>
-              <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{section.label}</div>
-              <div className="grid gap-1.5">
-                {section.items.map((item) => <DrawerNavLink item={item} key={item.href} pathname={pathname} />)}
+              <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-slate-100">{user?.displayName || user?.email || "Guest workspace"}</div>
+                    <div className="mt-1 text-xs text-slate-500">{accountStatusLabel(authenticated, entitlement.plan)}</div>
+                  </div>
+                  <AccountPill compact />
+                </div>
               </div>
             </div>
-          ))}
-        </nav>
 
-        <div className="border-t border-white/10 p-4">
-          <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Account</div>
-          <div className="grid grid-cols-2 gap-2">
-            <DrawerNavLink item={ACCOUNT_NAV_ITEM} pathname={pathname} />
-            {authenticated ? (
-              <button className="rounded-2xl border border-rose-300/20 bg-rose-400/10 px-3 py-3 text-left text-sm font-semibold text-rose-100" onClick={() => void handleLogout()} type="button">
-                Sign out
-              </button>
-            ) : (
-              <Link className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 px-3 py-3 text-sm font-semibold text-cyan-100" href="/account">Sign in</Link>
-            )}
-          </div>
-        </div>
-      </aside>
+            <nav aria-label="Mobile drawer navigation" className="flex-1 space-y-5 overflow-y-auto p-4">
+              {sections.map((section) => (
+                <div key={section.label}>
+                  <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{section.label}</div>
+                  <div className="grid gap-1.5">
+                    {section.items.map((item) => <DrawerNavLink item={item} key={item.href} pathname={pathname} />)}
+                  </div>
+                </div>
+              ))}
+            </nav>
 
-      <nav aria-label="Primary mobile navigation" className="fixed inset-x-3 bottom-3 z-[8500] grid grid-cols-5 gap-1 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl">
+            <div className="border-t border-white/10 p-4">
+              <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Account</div>
+              <div className="grid grid-cols-2 gap-2">
+                <DrawerNavLink item={ACCOUNT_NAV_ITEM} pathname={pathname} />
+                {authenticated ? (
+                  <button className="rounded-2xl border border-rose-300/20 bg-rose-400/10 px-3 py-3 text-left text-sm font-semibold text-rose-100" onClick={() => void handleLogout()} type="button">
+                    Sign out
+                  </button>
+                ) : (
+                  <Link className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 px-3 py-3 text-sm font-semibold text-cyan-100" href="/account">Sign in</Link>
+                )}
+              </div>
+            </div>
+          </aside>
+        </>
+      ) : null}
+
+      <nav aria-label="Primary mobile navigation" className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[8500] grid grid-cols-5 gap-1 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl sm:hidden">
         {MOBILE_BOTTOM_NAV_ITEMS.map((item) => <BottomNavLink item={item} key={item.href} pathname={pathname} />)}
         <BottomMenuButton buttonRef={bottomMenuButtonRef} onClick={() => setOpen(true)} open={open} />
       </nav>

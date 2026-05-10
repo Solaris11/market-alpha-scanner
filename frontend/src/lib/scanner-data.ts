@@ -2,6 +2,7 @@ import "server-only";
 
 import fs from "node:fs/promises";
 import path from "node:path";
+import { cache } from "react";
 import { parse } from "csv-parse/sync";
 import { freshnessFromTimestamp, normalizedTimestamp, unavailableFreshness } from "./data-health";
 import { dbQuery } from "./server/db";
@@ -318,7 +319,7 @@ function allowScannerCsvFallback(reason: string): boolean {
   return enabled;
 }
 
-async function latestDbScanRun(): Promise<LatestScanRunRow | null> {
+const latestDbScanRun = cache(async (): Promise<LatestScanRunRow | null> => {
   try {
     const result = await dbQuery<LatestScanRunRow>(
       `
@@ -333,7 +334,7 @@ async function latestDbScanRun(): Promise<LatestScanRunRow | null> {
   } catch {
     return null;
   }
-}
+});
 
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
@@ -379,7 +380,7 @@ function dbSignalToRankingRow(row: DbSignalRow): RankingRow {
   return normalizeRankingRow(raw, completedAt);
 }
 
-async function getDbRankingRows(limit?: number): Promise<RankingRow[] | null> {
+const getDbRankingRows = cache(async (limit?: number): Promise<RankingRow[] | null> => {
   try {
     const result = await dbQuery<DbSignalRow>(
       `
@@ -430,9 +431,9 @@ async function getDbRankingRows(limit?: number): Promise<RankingRow[] | null> {
   } catch {
     return null;
   }
-}
+});
 
-async function getDbHistoryRows(symbol?: string): Promise<SymbolHistoryRow[] | null> {
+const getDbHistoryRows = cache(async (symbol?: string): Promise<SymbolHistoryRow[] | null> => {
   try {
     const params = symbol ? [symbol.trim().toUpperCase()] : [];
     const result = await dbQuery<DbHistoryRow>(
@@ -484,7 +485,7 @@ async function getDbHistoryRows(symbol?: string): Promise<SymbolHistoryRow[] | n
   } catch {
     return null;
   }
-}
+});
 
 function rowsToCsvFileData(rows: Record<string, unknown>[]): CsvFileData {
   const columns = Array.from(new Set(rows.flatMap((row) => Object.keys(row).map(canonicalCsvKey))));
@@ -500,12 +501,12 @@ function metricRowsToCsvFileData(rows: DbMetricRow[]): CsvFileData {
   return rowsToCsvFileData(rows.map((row) => asRecord(row.metrics)));
 }
 
-async function getDbPerformanceData(options: { forwardTailRows?: number } = {}): Promise<Pick<PerformanceData, "summary" | "forwardReturns"> | null> {
+const getDbPerformanceData = cache(async (forwardTailRows?: number): Promise<Pick<PerformanceData, "summary" | "forwardReturns"> | null> => {
   const latestRun = await latestDbScanRun();
   if (!latestRun) return null;
 
   try {
-    const forwardLimit = options.forwardTailRows ? Math.max(1, options.forwardTailRows) : 100000;
+    const forwardLimit = forwardTailRows ? Math.max(1, forwardTailRows) : 100000;
     const [summaryResult, forwardResult] = await Promise.all([
       dbQuery<DbMetricRow>(
         `
@@ -535,9 +536,9 @@ async function getDbPerformanceData(options: { forwardTailRows?: number } = {}):
   } catch {
     return null;
   }
-}
+});
 
-async function getDbSymbolSummary(symbol: string): Promise<Record<string, unknown> | null> {
+const getDbSymbolSummary = cache(async (symbol: string): Promise<Record<string, unknown> | null> => {
   const latestRun = await latestDbScanRun();
   if (!latestRun) return null;
   try {
@@ -556,7 +557,7 @@ async function getDbSymbolSummary(symbol: string): Promise<Record<string, unknow
   } catch {
     return null;
   }
-}
+});
 
 function symbolSlug(symbol: string) {
   return symbol.trim().toUpperCase().replace(/[^A-Z0-9._-]/g, "_");
@@ -847,7 +848,7 @@ export async function readJson(filePath: string) {
   }
 }
 
-export async function getFullRanking(): Promise<RankingRow[]> {
+export const getFullRanking = cache(async (): Promise<RankingRow[]> => {
   const dbRows = await getDbRankingRows();
   if (dbRows) return dbRows;
   if (!allowScannerCsvFallback("full ranking DB read unavailable")) return [];
@@ -861,9 +862,9 @@ export async function getFullRanking(): Promise<RankingRow[]> {
     return [];
   }
   return rows.map((row) => normalizeRankingRow(row, lastUpdated)).filter((row) => row.symbol);
-}
+});
 
-export async function getTopCandidates(): Promise<RankingRow[]> {
+export const getTopCandidates = cache(async (): Promise<RankingRow[]> => {
   const dbRows = await getDbRankingRows(20);
   if (dbRows) return dbRows;
   if (!allowScannerCsvFallback("top candidates DB read unavailable")) return [];
@@ -877,9 +878,9 @@ export async function getTopCandidates(): Promise<RankingRow[]> {
     return [];
   }
   return rows.map((row) => normalizeRankingRow(row, lastUpdated)).filter((row) => row.symbol);
-}
+});
 
-export async function getScanDataHealth(): Promise<ScanDataHealth> {
+export const getScanDataHealth = cache(async (): Promise<ScanDataHealth> => {
   const latestRun = await latestDbScanRun();
   if (latestRun) {
     const lastUpdated = dbTimestamp(latestRun.completed_at) ?? dbTimestamp(latestRun.created_at);
@@ -948,7 +949,7 @@ export async function getScanDataHealth(): Promise<ScanDataHealth> {
       : baseFreshness;
 
   return { ...combined, files, lastUpdated: combined.lastUpdated ?? lastUpdated };
-}
+});
 
 function statusRank(status: DataFreshnessStatus) {
   if (status === "stale") return 2;
@@ -963,7 +964,7 @@ function parseSnapshotTimestamp(name: string) {
   return `${date.slice(0, 4)}-${date.slice(4, 6)}-${date.slice(6, 8)}T${time.slice(0, 2)}:${time.slice(2, 4)}:${time.slice(4, 6)}Z`;
 }
 
-export async function getHistorySummary(): Promise<HistorySummary> {
+export const getHistorySummary = cache(async (): Promise<HistorySummary> => {
   try {
     const result = await dbQuery<DbHistorySummaryRow>(
       `
@@ -1040,7 +1041,7 @@ export async function getHistorySummary(): Promise<HistorySummary> {
     latest: dated.length ? dated[0] : null,
     uniqueDates,
   };
-}
+});
 
 export async function getSymbolHistoryData(): Promise<SymbolHistoryData> {
   const dbRows = await getDbHistoryRows();
@@ -1300,13 +1301,13 @@ export async function getRecentIntradaySignalDriftSummary(options: { hours?: num
   const hours = Math.max(1, Math.min(24, Math.trunc(options.hours ?? 8)));
   const maxRuns = Math.max(2, Math.min(32, Math.trunc(options.maxRuns ?? 18)));
   const minRuns = Math.max(1, Math.min(maxRuns, Math.trunc(options.minRuns ?? 2)));
-  const dbHistory = await getRecentDbHistoryRows({ hours, maxRuns, minRuns });
+  const dbHistory = await getRecentDbHistoryRows(hours, maxRuns, minRuns);
   if (dbHistory) return buildIntradaySignalDrift({ symbols: Array.from(new Set(dbHistory.map((row) => row.symbol))).sort(), rows: dbHistory });
   if (!allowScannerCsvFallback("recent intraday signal drift DB read unavailable")) return [];
   return getIntradaySignalDriftSummary();
 }
 
-async function getRecentDbHistoryRows(options: { hours: number; maxRuns: number; minRuns: number }): Promise<SymbolHistoryRow[] | null> {
+const getRecentDbHistoryRows = cache(async (hours: number, maxRuns: number, minRuns: number): Promise<SymbolHistoryRow[] | null> => {
   try {
     const result = await dbQuery<DbHistoryRow>(
       `
@@ -1363,7 +1364,7 @@ async function getRecentDbHistoryRows(options: { hours: number; maxRuns: number;
         JOIN bounded_runs br ON br.id = ss.scan_run_id
         ORDER BY br.scan_ts ASC, ss.rank_position ASC NULLS LAST, ss.symbol ASC
       `,
-      [options.maxRuns, options.hours, options.minRuns],
+      [maxRuns, hours, minRuns],
     );
     return result.rows.map((row) => {
       const ranking = dbSignalToRankingRow(row) as SymbolHistoryRow;
@@ -1374,10 +1375,10 @@ async function getRecentDbHistoryRows(options: { hours: number; maxRuns: number;
   } catch {
     return null;
   }
-}
+});
 
 export async function getPerformanceData(options: { forwardTailRows?: number } = {}): Promise<PerformanceData> {
-  const dbPerformance = await getDbPerformanceData(options);
+  const dbPerformance = await getDbPerformanceData(options.forwardTailRows);
   if (dbPerformance) {
     const [lifecycle, lifecycleSummary, autoCalibration] = await Promise.all([
       readScannerCsvWithState("analysis", "signal_lifecycle.csv"),
@@ -1477,6 +1478,10 @@ function periodCutoff(latestMs: number, period: string) {
 }
 
 export async function getSymbolPriceHistory(symbol: string, period = "1y"): Promise<Record<string, ScannerScalar>[]> {
+  return getSymbolPriceHistoryCached(symbol, period);
+}
+
+const getSymbolPriceHistoryCached = cache(async (symbol: string, period: string): Promise<Record<string, ScannerScalar>[]> => {
   const cleaned = symbol.trim().toUpperCase();
   try {
     const result = await dbQuery<DbPriceRow>(
@@ -1537,4 +1542,4 @@ export async function getSymbolPriceHistory(symbol: string, period = "1y"): Prom
   const cutoff = periodCutoff(latest, period);
   if (cutoff === null) return normalized;
   return dated.filter((item) => item.time >= cutoff).map((item) => item.row);
-}
+});

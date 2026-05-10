@@ -26,12 +26,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, error: "Unable to create account." }, { status: 400 });
   }
 
-  const betaDecision = betaSignupDecisionForRequest({ email: normalizeAuthEmail(payload.email), inviteCode: payload.inviteCode });
-  if (!betaDecision.allowed) {
-    return NextResponse.json({ ok: false, error: "beta_access_required", message: betaDecision.message ?? "Closed beta signup requires access." }, { status: 403 });
-  }
-
   try {
+    const betaDecision = await betaSignupDecisionForRequest({ email: normalizeAuthEmail(payload.email), inviteCode: payload.inviteCode });
+    if (!betaDecision.allowed) {
+      return NextResponse.json({ ok: false, error: "beta_access_required", message: betaDecision.message ?? "Closed beta signup requires access." }, { status: 403 });
+    }
+
     const session = await registerWithPassword({ ...payload, ip: requestIp(request) });
     await createLoginNotifications(session.user.id).catch((notificationError) => {
       console.warn("[notifications] register notification failed", notificationError instanceof Error ? notificationError.message : notificationError);

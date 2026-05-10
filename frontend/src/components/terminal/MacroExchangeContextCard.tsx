@@ -6,6 +6,7 @@ import {
 } from "@/lib/trading/macro-regime";
 import type { RankingRow } from "@/lib/types";
 import { finiteNumber, formatNumber } from "@/lib/ui/formatters";
+import { humanizeInsightText } from "@/lib/ui/labels";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
@@ -15,27 +16,27 @@ export function MacroExchangeContextCard({ context, row }: { context: MacroExcha
   const totalAdjustment = scoreField(row, "macro_context_adjustment_total") ?? scoreField(row, "regime_adjustment");
   return (
     <GlassPanel className="p-5">
-      <SectionTitle eyebrow="Macro Regime" title="Macro + Exchange Context" meta={macroAlignmentLabel(context)} />
-      <p className="mt-3 text-sm leading-6 text-slate-400">{context.regimeExplanation}</p>
+      <SectionTitle eyebrow="Market State" title="Market + Listing Context" meta={humanizeInsightText(macroAlignmentLabel(context))} />
+      <p className="mt-3 text-sm leading-6 text-slate-400">{humanizeInsightText(context.regimeExplanation)}</p>
 
       <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <Metric label="Base Score" tone="mixed" value={baseScore === null ? "N/A" : formatNumber(baseScore)} />
-        <Metric label="Contextual Score" tone={scoreTone(adjustedScore ?? context.macroAlignmentScore)} value={adjustedScore === null ? "N/A" : formatNumber(adjustedScore)} />
-        <Metric label="Macro Alignment" tone={alignmentTone(context.alignmentState)} value={`${context.macroAlignmentScore}/100`} />
+        <Metric label="Market-Adjusted Score" tone={scoreTone(adjustedScore ?? context.macroAlignmentScore)} value={adjustedScore === null ? "N/A" : formatNumber(adjustedScore)} />
+        <Metric label="Market Support" tone={alignmentTone(context.alignmentState)} value={`${context.macroAlignmentScore}/100`} />
         <Metric label="Context Adjustment" tone={adjustmentTone(totalAdjustment)} value={totalAdjustment === null ? "N/A" : signedNumber(totalAdjustment)} />
       </div>
 
       <div className="mt-3 grid gap-3 md:grid-cols-3">
-        <Metric label="Exchange Health" tone={scoreTone(context.exchangeHealthScore)} value={`${context.exchangeHealthScore}/100`} />
+        <Metric label="Listing Health" tone={scoreTone(context.exchangeHealthScore)} value={`${context.exchangeHealthScore}/100`} />
         <Metric label="Sector / Theme" tone={scoreTone(context.sectorAlignmentScore)} value={`${context.sectorAlignmentScore}/100`} />
-        <Metric label="Macro Pressure" tone={pressureTone(context.macroPressureScore)} value={`${context.macroPressureScore}/100`} />
+        <Metric label="Market Pressure" tone={pressureTone(context.macroPressureScore)} value={`${context.macroPressureScore}/100`} />
       </div>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="grid gap-3 md:grid-cols-2">
-          <ForceList items={context.supportingForces} title="Supporting Forces" tone="support" />
-          <ForceList items={context.opposingForces} title="Opposing Forces" tone="pressure" />
-          <ForceList items={context.exchangeTailwind.length ? context.exchangeTailwind : [context.exchangeContextLabel]} title="Exchange Context" tone={context.exchangeHealthScore >= 55 ? "support" : "pressure"} />
+          <ForceList items={context.supportingForces} title="What Helps" tone="support" />
+          <ForceList items={context.opposingForces} title="What Hurts" tone="pressure" />
+          <ForceList items={context.exchangeTailwind.length ? context.exchangeTailwind : [context.exchangeContextLabel]} title="Listing Context" tone={context.exchangeHealthScore >= 55 ? "support" : "pressure"} />
           <ForceList items={context.sectorTailwind.length ? context.sectorTailwind : context.sectorPressure.length ? context.sectorPressure : [context.themeContext]} title="Sector / Theme Context" tone={context.sectorAlignmentScore >= 55 ? "support" : "pressure"} />
         </div>
 
@@ -58,7 +59,7 @@ export function MacroExchangeContextCard({ context, row }: { context: MacroExcha
             ) : null}
           </div>
           <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.08] p-4 text-sm leading-6 text-slate-300">
-            Macro context is a risk/quality adjustment layer. It is not a macro forecast or financial advice.
+            This shows whether the broader market is helping or hurting the setup. It is context, not a forecast or financial advice.
           </div>
         </aside>
       </div>
@@ -91,7 +92,7 @@ function ForceList({ items, title, tone }: { items: string[]; title: string; ton
     <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
       <div className={`text-[10px] font-black uppercase tracking-[0.2em] ${eyebrow}`}>{title}</div>
       <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
-        {items.map((item) => <li key={item}>- {item}</li>)}
+        {items.map((item) => <li key={item}>- {humanizeInsightText(item)}</li>)}
       </ul>
     </div>
   );

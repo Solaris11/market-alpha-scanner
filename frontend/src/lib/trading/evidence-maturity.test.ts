@@ -74,6 +74,8 @@ test("evidence maturity requires calendar depth and outcome coverage for high co
   assert.equal(mature.label, "High Confidence Evidence");
   assert.equal(mature.tier, "high");
   assert.ok(mature.score >= 86);
+  assert.ok(mature.evidenceConsistency >= 70);
+  assert.ok(mature.confidenceConfidence >= 70);
 
   const shallow = buildEvidenceMaturity({
     analogQualityScore: 92,
@@ -85,6 +87,22 @@ test("evidence maturity requires calendar depth and outcome coverage for high co
 
   assert.notEqual(shallow.label, "High Confidence Evidence");
   assert.ok(shallow.limitations.some((item) => item.includes("calendar depth")));
+});
+
+test("evidence maturity discounts elevated calibration drift", () => {
+  const evidence = buildEvidenceMaturity({
+    analogQualityScore: 82,
+    calibrationDrift: 82,
+    confidenceReliability: 78,
+    evidenceConsistency: 74,
+    evidenceSampleSize: 320,
+    historicalDepthDays: 110,
+    outcomeCoverage: 76,
+  });
+
+  assert.ok(evidence.calibrationDrift >= 80);
+  assert.ok(evidence.limitations.some((item) => item.includes("calibration drift")));
+  assert.ok(evidence.reasons.some((item) => item.includes("discounted")));
 });
 
 test("signal evidence falls back to shock samples and exposes limited outcomes honestly", () => {

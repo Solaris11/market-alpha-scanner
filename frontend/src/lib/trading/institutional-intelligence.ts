@@ -355,7 +355,7 @@ function dangerAlertsFor({
   if (regimeTransitionRisk >= 72) alerts.push({ explanation: "Market structure shows enough transition risk to reduce confidence in continuation.", label: "Regime Transition Risk", severity: regimeTransitionRisk >= 84 ? "critical" : "warning" });
   if (inputs.earningsFragility >= 72) alerts.push({ explanation: "Verified event or earnings sensitivity is elevated.", label: "Event Fragility", severity: inputs.earningsFragility >= 84 ? "critical" : "warning" });
   if (positionQualityScore < 42 && row.conviction >= 62) alerts.push({ explanation: "The signal is stronger than the position quality, so the setup may be late or poorly asymmetric.", label: "Signal Better Than Position", severity: "warning" });
-  if (institutionalFragility >= 78) alerts.push({ explanation: "Crowding, volatility, or macro pressure makes institutional-style durability fragile.", label: "Institutional Fragility", severity: institutionalFragility >= 88 ? "critical" : "warning" });
+  if (institutionalFragility >= 78) alerts.push({ explanation: "Crowding, volatility, or market pressure makes institutional-style durability fragile.", label: "Institutional Fragility", severity: institutionalFragility >= 88 ? "critical" : "warning" });
   return alerts.slice(0, 5);
 }
 

@@ -6,7 +6,14 @@ import unittest
 from datetime import datetime, timezone
 from typing import Any
 
-from scanner.event_llm import build_event_llm_request_payload, event_llm_timeout_seconds, validate_event_llm_assessment
+from scanner.event_llm import (
+    analyze_verified_event_with_llm,
+    build_event_llm_request_payload,
+    event_llm_max_calls_per_refresh,
+    event_llm_timeout_seconds,
+    reset_event_llm_refresh_budget_for_tests,
+    validate_event_llm_assessment,
+)
 
 
 class EventLlmGroundingTests(unittest.TestCase):
@@ -49,6 +56,35 @@ class EventLlmGroundingTests(unittest.TestCase):
                 os.environ.pop("TRADEVETO_EVENT_LLM_TIMEOUT_SECONDS", None)
             else:
                 os.environ["TRADEVETO_EVENT_LLM_TIMEOUT_SECONDS"] = previous
+
+    def test_event_llm_refresh_budget_can_disable_calls(self) -> None:
+        previous_enabled = os.environ.get("TRADEVETO_EVENT_LLM_ENABLED")
+        previous_key = os.environ.get("OPENAI_API_KEY")
+        previous_model = os.environ.get("TRADEVETO_EVENT_LLM_MODEL")
+        previous_budget = os.environ.get("TRADEVETO_EVENT_LLM_MAX_CALLS_PER_REFRESH")
+        try:
+            reset_event_llm_refresh_budget_for_tests()
+            os.environ["TRADEVETO_EVENT_LLM_ENABLED"] = "true"
+            os.environ["OPENAI_API_KEY"] = "test-key"
+            os.environ["TRADEVETO_EVENT_LLM_MODEL"] = "gpt-5.5"
+            os.environ["TRADEVETO_EVENT_LLM_MAX_CALLS_PER_REFRESH"] = "0"
+
+            self.assertEqual(event_llm_max_calls_per_refresh(), 0)
+            self.assertIsNone(
+                analyze_verified_event_with_llm(
+                    source="Bureau of Labor Statistics",
+                    title="BLS reports inflation pressure remains elevated",
+                    summary="The release discusses consumer price index pressure.",
+                    source_url="https://www.bls.gov/news.release/cpi.htm",
+                    published_at=datetime(2026, 5, 8, tzinfo=timezone.utc),
+                )
+            )
+        finally:
+            reset_event_llm_refresh_budget_for_tests()
+            self._restore_env("TRADEVETO_EVENT_LLM_ENABLED", previous_enabled)
+            self._restore_env("OPENAI_API_KEY", previous_key)
+            self._restore_env("TRADEVETO_EVENT_LLM_MODEL", previous_model)
+            self._restore_env("TRADEVETO_EVENT_LLM_MAX_CALLS_PER_REFRESH", previous_budget)
 
     def test_validated_assessment_accepts_grounded_event_output(self) -> None:
         raw: dict[str, Any] = {
@@ -97,6 +133,12 @@ class EventLlmGroundingTests(unittest.TestCase):
         }
 
         self.assertIsNone(validate_event_llm_assessment(raw, "BLS reports inflation pressure remains elevated"))
+
+    def _restore_env(self, name: str, value: str | None) -> None:
+        if value is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = value
 
 
 if __name__ == "__main__":

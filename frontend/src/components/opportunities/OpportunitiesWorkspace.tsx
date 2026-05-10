@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { PremiumEChart } from "@/components/charts/PremiumEChart";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import { DataHealthIndicator } from "@/components/data-health-indicator";
@@ -25,23 +25,39 @@ import { type UserPersonalizationProfile } from "@/lib/trading/personalized-inte
 import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution";
 import { confidenceTone } from "@/lib/trading/confidence";
 import { buildDecisionFactors, buildDecisionIntelligence, type DecisionFactor } from "@/lib/trading/decision-intelligence";
-import { buildExecutionIntelligence } from "@/lib/trading/execution-intelligence";
+import { buildExecutionIntelligence, type ExecutionIntelligence, type ExecutionTone } from "@/lib/trading/execution-intelligence";
 import { compactInstitutionalLabels } from "@/lib/trading/institutional-intelligence";
+import { buildOpportunityActionability, type OpportunityActionability } from "@/lib/trading/opportunity-actionability";
+import {
+  applyNonTabOpportunityFilters,
+  compareOpportunityRows,
+  opportunityDecision,
+  opportunityEmptyMessage,
+  opportunityIsBestSetup,
+  opportunityIsMomentumContinuation,
+  opportunityIsShockPotential,
+  opportunityRankingExplanation,
+  opportunitySetupLabel,
+  opportunitySetupType,
+  opportunityTabMatches,
+  opportunityVisibilityReason,
+  type OpportunityDecisionFilter as DecisionFilter,
+  type OpportunityFilterState,
+  type OpportunitySortKey as SortKey,
+  type OpportunityTabKey as TabKey,
+} from "@/lib/trading/opportunity-filtering";
 import { buildRiskTolerantOpportunities } from "@/lib/trading/risk-tolerant-opportunities";
 import type { IntradayDriftRow, ScannerScalar } from "@/lib/types";
-import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
-import { decisionLabel, humanizeLabel, readableText } from "@/lib/ui/labels";
+import { cleanText, finiteNumber, formatMoney, formatNumber } from "@/lib/ui/formatters";
+import { decisionLabel, humanizeInsightText, humanizeLabel } from "@/lib/ui/labels";
 import { WatchlistButton } from "@/components/watchlist-controls";
 import { DecisionBadge } from "@/components/terminal/DecisionBadge";
 import { MiniPriceContextChart } from "@/components/terminal/MiniPriceContextChart";
+import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
 import type { ChartCandle } from "@/components/terminal/SymbolChart";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
 import { buildDistributionBarOption, buildDonutOption, hasDistributionData, type DistributionRow } from "@/lib/echarts-options";
-
-type DecisionFilter = "ALL" | "ENTER" | "WAIT_PULLBACK" | "WATCH" | "AVOID" | "EXIT";
-type SortKey = "SCORE_DESC" | "CONVICTION_DESC" | "SYMBOL_ASC" | "PRICE_DESC" | "DECISION_PRIORITY";
-type TabKey = "BEST" | "RISK_TOLERANT" | "SHOCK" | "PULLBACK" | "MOMENTUM" | "WATCHLIST" | "FULL";
 
 const DECISION_OPTIONS: DecisionFilter[] = ["ALL", "ENTER", "WAIT_PULLBACK", "WATCH", "AVOID", "EXIT"];
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
@@ -51,6 +67,17 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "PRICE_DESC", label: "Price" },
   { value: "DECISION_PRIORITY", label: "Decision priority" },
 ];
+const FIRST_REVIEW_GUIDE_KEY = "tradeveto_first_opportunity_review_hidden_v1";
+const TAB_QUERY_MAP: Record<string, TabKey> = {
+  best: "BEST",
+  full: "FULL",
+  momentum: "MOMENTUM",
+  pullback: "PULLBACK",
+  risk: "RISK_TOLERANT",
+  risk_tolerant: "RISK_TOLERANT",
+  shock: "SHOCK",
+  watchlist: "WATCHLIST",
+};
 
 export function OpportunitiesWorkspace({
   adaptiveLearning = null,
@@ -75,6 +102,7 @@ export function OpportunitiesWorkspace({
   strategyIntelligence?: StrategyIntelligenceSystem | null;
   workflowEvolution?: WorkflowEvolutionSummary;
 }) {
+  const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState<TabKey>("BEST");
   const [assetTypeFilter, setAssetTypeFilter] = useState("ALL");
   const [decisionFilter, setDecisionFilter] = useState<DecisionFilter>("ALL");
@@ -85,11 +113,26 @@ export function OpportunitiesWorkspace({
   const [search, setSearch] = useState("");
   const [sectorFilter, setSectorFilter] = useState("ALL");
   const [setupFilter, setSetupFilter] = useState("ALL");
+  const [showFirstReviewGuide, setShowFirstReviewGuide] = useState(false);
   const [showWatchlistOnly, setShowWatchlistOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("SCORE_DESC");
   const { watchlistSet } = useLocalWatchlist();
   const riskTolerantRows = useMemo(() => buildRiskTolerantOpportunities(rows, { riskLevel: "high", rewardLevel: "high" }, { includeProfileMismatches: true, limit: 25 }), [rows]);
   const riskTolerantSymbols = useMemo(() => new Set(riskTolerantRows.map((candidate) => candidate.symbol)), [riskTolerantRows]);
+  const filterState: OpportunityFilterState = {
+    activeTab,
+    assetTypeFilter,
+    decisionFilter,
+    entryStatusFilter,
+    minConviction,
+    minScore,
+    qualityFilter,
+    search,
+    sectorFilter,
+    setupFilter,
+    showWatchlistOnly,
+    sortKey,
+  };
 
   const options = useMemo(() => {
     return {
@@ -97,43 +140,100 @@ export function OpportunitiesWorkspace({
       entryStatuses: uniqueValues(rows.map((row) => row.entryStatus)),
       qualities: uniqueValues(rows.map((row) => row.recommendationQualityLabel)),
       sectors: uniqueValues(rows.map((row) => row.sector)),
-      setups: uniqueValues(rows.map((row) => setupType(row))),
+      setups: uniqueValues(rows.map((row) => opportunitySetupType(row))),
     };
   }, [rows]);
 
+  useEffect(() => {
+    const requestedTab = TAB_QUERY_MAP[String(searchParams.get("tab") ?? "").toLowerCase()];
+    if (requestedTab) setActiveTab(requestedTab);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const explicitFirstRun = searchParams.get("firstRun") === "1";
+    const hidden = window.localStorage.getItem(FIRST_REVIEW_GUIDE_KEY) === "true";
+    setShowFirstReviewGuide(explicitFirstRun || (!hidden && rows.length > 0));
+  }, [rows.length, searchParams]);
+
+  useEffect(() => {
+    if (assetTypeFilter !== "ALL" && !options.assetTypes.includes(assetTypeFilter)) setAssetTypeFilter("ALL");
+    if (entryStatusFilter !== "ALL" && !options.entryStatuses.includes(entryStatusFilter)) setEntryStatusFilter("ALL");
+    if (qualityFilter !== "ALL" && !options.qualities.includes(qualityFilter)) setQualityFilter("ALL");
+    if (sectorFilter !== "ALL" && !options.sectors.includes(sectorFilter)) setSectorFilter("ALL");
+    if (setupFilter !== "ALL" && !options.setups.includes(setupFilter)) setSetupFilter("ALL");
+  }, [
+    assetTypeFilter,
+    entryStatusFilter,
+    options.assetTypes,
+    options.entryStatuses,
+    options.qualities,
+    options.sectors,
+    options.setups,
+    qualityFilter,
+    sectorFilter,
+    setupFilter,
+  ]);
+
   const tabCounts = useMemo(() => {
     return {
-      BEST: rows.filter(isBestSetup).length,
-      MOMENTUM: rows.filter(isMomentumContinuation).length,
-      PULLBACK: rows.filter((row) => setupType(row) === "PULLBACK").length,
+      BEST: rows.filter(opportunityIsBestSetup).length,
+      MOMENTUM: rows.filter(opportunityIsMomentumContinuation).length,
+      PULLBACK: rows.filter((row) => opportunitySetupType(row) === "PULLBACK").length,
       RISK_TOLERANT: riskTolerantSymbols.size,
-      SHOCK: rows.filter(isShockPotential).length,
+      SHOCK: rows.filter(opportunityIsShockPotential).length,
       WATCHLIST: rows.filter((row) => watchlistSet.has(row.symbol)).length,
       FULL: rows.length,
     };
   }, [riskTolerantSymbols.size, rows, watchlistSet]);
 
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    return rows
-      .filter((row) => tabMatches(row, activeTab, watchlistSet, riskTolerantSymbols))
-      .filter((row) => !showWatchlistOnly || watchlistSet.has(row.symbol))
-      .filter((row) => {
-        if (!query) return true;
-        return row.symbol.toLowerCase().includes(query) || cleanText(row.company_name, "").toLowerCase().includes(query);
-      })
-      .filter((row) => decisionFilter === "ALL" || decision(row) === decisionFilter)
-      .filter((row) => assetTypeFilter === "ALL" || cleanText(row.assetType, "") === assetTypeFilter)
-      .filter((row) => sectorFilter === "ALL" || cleanText(row.sector, "") === sectorFilter)
-      .filter((row) => setupFilter === "ALL" || setupType(row) === setupFilter)
-      .filter((row) => entryStatusFilter === "ALL" || cleanText(row.entryStatus, "") === entryStatusFilter)
-      .filter((row) => qualityFilter === "ALL" || cleanText(row.recommendationQualityLabel, "") === qualityFilter)
-      .filter((row) => (row.final_score ?? 0) >= minScore)
-      .filter((row) => row.conviction >= minConviction)
-      .sort((left, right) => compareRows(left, right, sortKey, riskTolerantRows, activeTab));
-  }, [activeTab, assetTypeFilter, decisionFilter, entryStatusFilter, minConviction, minScore, qualityFilter, riskTolerantRows, rows, search, sectorFilter, setupFilter, showWatchlistOnly, sortKey, watchlistSet]);
+  const filterResult = useMemo(() => {
+    const fullUniverseRows = applyNonTabOpportunityFilters(rows, filterState, watchlistSet);
+    const visibleRows = fullUniverseRows
+      .filter((row) => opportunityTabMatches(row, activeTab, watchlistSet, riskTolerantSymbols))
+      .sort((left, right) => compareOpportunityRows(left, right, sortKey, riskTolerantRows, activeTab));
+    const sortedFullUniverseRows = [...fullUniverseRows].sort((left, right) => compareOpportunityRows(left, right, sortKey, riskTolerantRows, "FULL"));
+    const matchingOutsideTab = activeTab === "FULL"
+      ? []
+      : sortedFullUniverseRows.filter((row) => !opportunityTabMatches(row, activeTab, watchlistSet, riskTolerantSymbols)).slice(0, 5);
+    return {
+      fullUniverseRows: sortedFullUniverseRows,
+      matchingOutsideTab,
+      tabRowCount: rows.filter((row) => opportunityTabMatches(row, activeTab, watchlistSet, riskTolerantSymbols)).length,
+      visibleRows,
+    };
+  }, [
+    activeTab,
+    assetTypeFilter,
+    decisionFilter,
+    entryStatusFilter,
+    minConviction,
+    minScore,
+    qualityFilter,
+    riskTolerantRows,
+    riskTolerantSymbols,
+    rows,
+    search,
+    sectorFilter,
+    setupFilter,
+    showWatchlistOnly,
+    sortKey,
+    watchlistSet,
+  ]);
+  const filtered = filterResult.visibleRows;
   const activeFilterCount = [
     activeTab !== "BEST",
+    assetTypeFilter !== "ALL",
+    decisionFilter !== "ALL",
+    entryStatusFilter !== "ALL",
+    minConviction > 0,
+    minScore > 0,
+    qualityFilter !== "ALL",
+    Boolean(search.trim()),
+    sectorFilter !== "ALL",
+    setupFilter !== "ALL",
+    showWatchlistOnly,
+  ].filter(Boolean).length;
+  const activeCriteriaCount = [
     assetTypeFilter !== "ALL",
     decisionFilter !== "ALL",
     entryStatusFilter !== "ALL",
@@ -161,21 +261,49 @@ export function OpportunitiesWorkspace({
     setSortKey("SCORE_DESC");
   }
 
+  function clearCriteria() {
+    setAssetTypeFilter("ALL");
+    setDecisionFilter("ALL");
+    setEntryStatusFilter("ALL");
+    setMinConviction(0);
+    setMinScore(0);
+    setQualityFilter("ALL");
+    setSearch("");
+    setSectorFilter("ALL");
+    setSetupFilter("ALL");
+    setShowWatchlistOnly(false);
+  }
+
   return (
     <div className="min-w-0 max-w-full space-y-5">
+      {showFirstReviewGuide ? (
+        <OpportunityFirstReviewGuide
+          candidate={best ?? rows[0] ?? null}
+          onDismiss={() => {
+            window.localStorage.setItem(FIRST_REVIEW_GUIDE_KEY, "true");
+            setShowFirstReviewGuide(false);
+          }}
+        />
+      ) : null}
       <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} rows={rows} />
-      <MetaIntelligenceOperatingSystemPanel personalizationProfile={initialProfile} rows={rows} workflowEvolution={workflowEvolution ?? null} />
-      <IntradayRegimeDriftPanel driftRows={intradayDriftRows} rows={rows} />
-      <AdaptiveLearningInsightPanel system={adaptiveLearning} />
-      <StrategyIntelligencePanel system={strategyIntelligence} />
-      <ScenarioIntelligencePanel system={scenarioIntelligence} />
-      <ExecutionIntelligencePanel rows={rows} />
-      <RiskTolerantOpportunityRadar initialProfile={initialProfile} marketCondition={marketCondition} rows={rows} />
-      <ShockMoveRadar rows={rows} />
-      {workflowEvolution ? <WorkflowEvolutionPanel compact summary={workflowEvolution} surface="opportunities" /> : null}
-      <InstitutionalIntelligencePanel rows={rows} />
-      <OpportunityDeskMap marketCondition={marketCondition} rows={rows} />
-      <SetupDistribution rows={rows} />
+      <ResponsiveAdvancedDetails
+        eyebrow="Advanced context"
+        summary="Secondary intelligence is collapsed on phones so the ranked cards stay close."
+        title="Market, shock, execution, and strategy layers"
+      >
+        <MetaIntelligenceOperatingSystemPanel personalizationProfile={initialProfile} rows={rows} workflowEvolution={workflowEvolution ?? null} />
+        <IntradayRegimeDriftPanel driftRows={intradayDriftRows} rows={rows} />
+        <AdaptiveLearningInsightPanel system={adaptiveLearning} />
+        <StrategyIntelligencePanel system={strategyIntelligence} />
+        <ScenarioIntelligencePanel system={scenarioIntelligence} />
+        <ExecutionIntelligencePanel rows={rows} />
+        <RiskTolerantOpportunityRadar initialProfile={initialProfile} marketCondition={marketCondition} rows={rows} />
+        <ShockMoveRadar rows={rows} />
+        {workflowEvolution ? <WorkflowEvolutionPanel compact summary={workflowEvolution} surface="opportunities" /> : null}
+        <InstitutionalIntelligencePanel rows={rows} />
+        <OpportunityDeskMap marketCondition={marketCondition} rows={rows} />
+        <SetupDistribution rows={rows} />
+      </ResponsiveAdvancedDetails>
 
       <GlassPanel className="p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -194,7 +322,7 @@ export function OpportunitiesWorkspace({
             </button>
           </div>
         </div>
-        <div className="mt-5 grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-7">
+        <div className="-mx-1 mt-5 flex min-w-0 snap-x gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4 2xl:grid-cols-7 [&::-webkit-scrollbar]:hidden">
           <TabButton active={activeTab === "BEST"} count={tabCounts.BEST} label="Best Setups" onClick={() => setActiveTab("BEST")} />
           <TabButton active={activeTab === "RISK_TOLERANT"} count={tabCounts.RISK_TOLERANT} label="Risk-Tolerant" onClick={() => setActiveTab("RISK_TOLERANT")} />
           <TabButton active={activeTab === "SHOCK"} count={tabCounts.SHOCK} label="Shock Potential" onClick={() => setActiveTab("SHOCK")} />
@@ -203,11 +331,11 @@ export function OpportunitiesWorkspace({
           <TabButton active={activeTab === "WATCHLIST"} count={tabCounts.WATCHLIST} label="Watchlist" onClick={() => setActiveTab("WATCHLIST")} />
           <TabButton active={activeTab === "FULL"} count={tabCounts.FULL} label="Full Universe" onClick={() => setActiveTab("FULL")} />
         </div>
-        <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.3fr)_repeat(3,minmax(150px,1fr))]">
+        <div className="mt-5 grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(220px,1.3fr)_repeat(2,minmax(150px,1fr))_minmax(180px,0.9fr)]">
           <label className="min-w-0 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
             Search
             <input
-              className="mt-1 h-10 w-full min-w-0 rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm normal-case tracking-normal text-slate-100 outline-none focus:border-cyan-300/50"
+              className="mt-1 h-11 w-full min-w-0 rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm normal-case tracking-normal text-slate-100 outline-none focus:border-cyan-300/50 sm:h-10"
               onChange={(event) => setSearch(event.currentTarget.value)}
               placeholder="Symbol or company"
               type="search"
@@ -217,6 +345,21 @@ export function OpportunitiesWorkspace({
           <Select label="Decision" onChange={(value) => setDecisionFilter(value as DecisionFilter)} value={decisionFilter}>
             {DECISION_OPTIONS.map((option) => <option key={option} value={option}>{option === "ALL" ? "All decisions" : decisionLabel(option)}</option>)}
           </Select>
+          <Select label="Sort" onChange={(value) => setSortKey(value as SortKey)} value={sortKey}>
+            {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </Select>
+          <label className="flex min-h-11 min-w-0 items-center gap-3 self-end rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-300 sm:h-10 sm:min-h-0">
+            <input checked={showWatchlistOnly} className="h-4 w-4 accent-amber-300" onChange={(event) => setShowWatchlistOnly(event.currentTarget.checked)} type="checkbox" />
+            Show only Watchlist
+          </label>
+        </div>
+        <ResponsiveAdvancedDetails
+          className="mt-3"
+          eyebrow="Filters"
+          summary="Use these when you need to narrow the universe. Leave them broad on mobile for more results."
+          title="More search filters"
+        >
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(4,minmax(150px,1fr))]">
           <Select label="Asset Type" onChange={setAssetTypeFilter} value={assetTypeFilter}>
             <option value="ALL">All asset types</option>
             {options.assetTypes.map((item) => <option key={item} value={item}>{humanizeLabel(item)}</option>)}
@@ -227,7 +370,7 @@ export function OpportunitiesWorkspace({
           </Select>
           <Select label="Setup" onChange={setSetupFilter} value={setupFilter}>
             <option value="ALL">All setups</option>
-            {options.setups.map((setup) => <option key={setup} value={setup}>{setupLabel(setup)}</option>)}
+            {options.setups.map((setup) => <option key={setup} value={setup}>{opportunitySetupLabel(setup)}</option>)}
           </Select>
           <NumberInput label="Min Score" max={100} onChange={setMinScore} value={minScore} />
           <NumberInput label="Min Conviction" max={100} onChange={setMinConviction} value={minConviction} />
@@ -239,30 +382,84 @@ export function OpportunitiesWorkspace({
             <option value="ALL">Any quality</option>
             {options.qualities.map((item) => <option key={item} value={item}>{humanizeLabel(item)}</option>)}
           </Select>
-          <Select label="Sort" onChange={(value) => setSortKey(value as SortKey)} value={sortKey}>
-            {SORT_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </Select>
-          <label className="flex min-w-0 items-center gap-3 self-end rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-slate-300 sm:h-10">
-            <input checked={showWatchlistOnly} className="h-4 w-4 accent-amber-300" onChange={(event) => setShowWatchlistOnly(event.currentTarget.checked)} type="checkbox" />
-            Show only Watchlist
-          </label>
-        </div>
+          </div>
+        </ResponsiveAdvancedDetails>
+        <FilterReliabilitySummary
+          activeTab={activeTab}
+          criteriaCount={activeCriteriaCount}
+          fullUniverseCount={filterResult.fullUniverseRows.length}
+          matchingOutsideTab={filterResult.matchingOutsideTab}
+          sortKey={sortKey}
+          tabRowCount={filterResult.tabRowCount}
+          visibleCount={filtered.length}
+        />
       </GlassPanel>
 
       <OpportunitySection
-        empty={emptyMessage(activeTab)}
+        activeFilterCount={activeFilterCount}
+        activeTab={activeTab}
+        criteriaCount={activeCriteriaCount}
+        empty={opportunityEmptyMessage(activeTab, activeFilterCount, filterResult.fullUniverseRows.length, watchlistSet.size)}
+        fullUniverseCount={filterResult.fullUniverseRows.length}
+        matchingOutsideTab={filterResult.matchingOutsideTab}
+        onClearCriteria={clearCriteria}
+        onResetFilters={resetFilters}
+        onShowFullUniverse={() => setActiveTab("FULL")}
         rows={filtered}
+        sortKey={sortKey}
         title={tabTitle(activeTab)}
+        totalRows={rows.length}
+        watchlistCount={watchlistSet.size}
       />
+    </div>
+  );
+}
+
+function OpportunityFirstReviewGuide({ candidate, onDismiss }: { candidate: OpportunityViewModel | null; onDismiss: () => void }) {
+  const symbolHref = candidate ? `/symbol/${candidate.symbol}?firstRun=1` : "/terminal?firstRun=1";
+  const symbolLabel = candidate?.symbol ?? "one symbol";
+  return (
+    <GlassPanel className="border-cyan-300/20 bg-cyan-400/[0.045] p-4 sm:p-5" data-onboarding-target="first-opportunity-review">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-3xl">
+          <div className="text-[10px] font-black uppercase tracking-[0.26em] text-cyan-300">Guided first opportunity review</div>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Do this before scanning every card</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            Pick one candidate, read why it appears, then check timing and risk. You should understand the opportunity without trusting a single score blindly.
+          </p>
+        </div>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          <Link className="rounded-full bg-cyan-300 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-200" href={symbolHref}>
+            Review {symbolLabel}
+          </Link>
+          <button className="rounded-full border border-white/10 px-4 py-2 text-xs font-bold text-slate-400 transition hover:border-white/20 hover:text-slate-100" onClick={onDismiss} type="button">
+            Hide guide
+          </button>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-2 md:grid-cols-3">
+        <GuideCheckpoint title="1. Why it appears" text="Look for the key reason and evidence maturity. Weak evidence means lower confidence." />
+        <GuideCheckpoint title="2. What to wait for" text="Check pullback, confirmation, entry quality, and whether the setup is early or late." />
+        <GuideCheckpoint title="3. What can break it" text="Read the invalidation area, chase warning, and downside risk before adding it to your watchlist." />
+      </div>
+    </GlassPanel>
+  );
+}
+
+function GuideCheckpoint({ text, title }: { text: string; title: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-slate-950/35 p-3">
+      <div className="text-sm font-semibold text-slate-100">{title}</div>
+      <p className="mt-2 text-xs leading-5 text-slate-400">{text}</p>
     </div>
   );
 }
 
 function OpportunityDeskMap({ marketCondition, rows }: { marketCondition: string | null; rows: OpportunityViewModel[] }) {
   const pulse = setupPulse(rows);
-  const setupCounts = countBy(rows, (row) => setupLabel(setupType(row)));
+  const setupCounts = countBy(rows, (row) => opportunitySetupLabel(opportunitySetupType(row)));
   const assetCounts = countBy(rows, (row) => humanizeLabel(row.assetType, "Unknown"));
-  const riskBlocked = rows.filter((row) => decision(row) === "AVOID" || hasVetoes(row.raw.vetoes)).length;
+  const riskBlocked = rows.filter((row) => opportunityDecision(row) === "AVOID" || hasVetoes(row.raw.vetoes)).length;
   const fallbackCount = rows.filter((row) => Boolean(row.raw.data_provider_fallback_used)).length;
   const eventRiskCount = rows.filter((row) => row.eventRisk >= 68).length;
   const staleCount = rows.filter((row) => Boolean(row.raw.stale_data) || String(row.raw.data_freshness_status ?? "").toLowerCase().includes("stale")).length;
@@ -281,9 +478,9 @@ function OpportunityDeskMap({ marketCondition, rows }: { marketCondition: string
       </div>
       <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.3fr)_minmax(300px,0.7fr)]">
         <div className="grid gap-3 sm:grid-cols-2 2xl:grid-cols-4">
-          <CompactPulseCard title="Setup Distribution" value={compactMapLabel(setupCounts)} detail={pulse.breadthDetail} />
+          <CompactPulseCard title="Setup Distribution" value={compactMapLabel(setupCounts)} detail={humanizeInsightText(pulse.breadthDetail)} />
           <CompactPulseCard title="Asset Coverage" value={compactMapLabel(assetCounts)} detail="Shows where the latest scan has research context, not recommendations." />
-          <CompactPulseCard title="Risk Filter Summary" value={`${riskBlocked} blocked`} detail="Avoid and vetoed rows remain visible so risk context is not hidden." />
+          <CompactPulseCard title="Risk Filter Summary" value={`${riskBlocked} blocked`} detail="Avoided and vetoed rows stay visible so the risk picture is not hidden." />
           <CompactPulseCard title="Event / Data Quality" value={`${eventRiskCount} event pressure · ${fallbackCount} fallback`} detail={`${staleCount} stale rows. Verified events and provider quality both affect confidence.`} />
         </div>
         <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-3">
@@ -309,7 +506,7 @@ function OpportunityDeskMap({ marketCondition, rows }: { marketCondition: string
 }
 
 function OpportunityInsightCharts({ rows }: { rows: OpportunityViewModel[] }) {
-  const setupRows = distributionRows(countBy(rows, (row) => setupLabel(setupType(row))), ["#67e8f9", "#a78bfa", "#34d399", "#fb7185"]);
+  const setupRows = distributionRows(countBy(rows, (row) => opportunitySetupLabel(opportunitySetupType(row))), ["#67e8f9", "#a78bfa", "#34d399", "#fb7185"]);
   const decisionRows = distributionRows(countBy(rows, (row) => decisionLabel(row.final_decision)), ["#34d399", "#67e8f9", "#fbbf24", "#fb7185"]);
   const confidenceRows: DistributionRow[] = [
     { color: "#34d399", label: "High", value: rows.filter((row) => row.conviction >= 70).length },
@@ -411,7 +608,7 @@ function BestTradeNowOpportunityCard({
             <DataHealthIndicator freshness={best.dataFreshness} />
           </div>
           <div className="mt-2 max-w-2xl text-base text-slate-400">{cleanText(best.company_name || best.sector, "Scanner signal")}</div>
-          <p className="mt-5 max-w-3xl text-lg leading-7 text-slate-100">{readableText(best.decision_reason, "Decision reason is not available yet.")}</p>
+          <p className="mt-5 max-w-3xl text-lg leading-7 text-slate-100">{humanizeInsightText(best.decision_reason, "Decision reason is not available yet.")}</p>
           <p className="mt-3 text-sm font-semibold text-cyan-200">{best.structuralLabel}. This is a research setup, not a trade instruction.</p>
           <div className="mt-5 flex min-w-0 flex-wrap gap-3">
             <div className="font-mono text-sm font-bold text-cyan-100">
@@ -441,6 +638,7 @@ function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewMod
   const row = best.raw;
   const intelligence = buildDecisionIntelligence(row);
   const factors = buildDecisionFactors(row);
+  const actionability = buildOpportunityActionability(best);
   const readinessTone = confidenceTone(intelligence.readiness_score);
   return (
     <aside className="space-y-3">
@@ -459,17 +657,30 @@ function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewMod
         <InsightList className="mt-3" title="Improvement conditions" items={intelligence.what_to_watch} />
       </details>
 
-      <details className="rounded-2xl border border-cyan-300/15 bg-cyan-400/10 p-4" open>
-        <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">Regime impact</summary>
-        <p className="mt-3 text-xs leading-5 text-slate-300">{intelligence.regime_impact}</p>
+      <details className="rounded-2xl border border-emerald-300/15 bg-emerald-400/[0.055] p-4" open>
+        <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">Action context</summary>
+        <p className="mt-3 text-xs leading-5 text-slate-300">{actionability.actionContext}</p>
+        <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 xl:grid-cols-1">
+          <ActionabilityMetric metric={actionability.timingQuality} />
+          <ActionabilityMetric metric={actionability.chaseRiskVisibility} />
+        </div>
+        <div className="mt-3 space-y-2 text-xs leading-5 text-slate-400">
+          <p><span className="font-semibold text-slate-200">Wait for:</span> {actionability.whatToWaitFor}</p>
+          <p><span className="font-semibold text-slate-200">Invalidates:</span> {actionability.invalidationExplanation}</p>
+        </div>
       </details>
 
-      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
+      <details className="rounded-2xl border border-cyan-300/15 bg-cyan-400/10 p-4">
+        <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">Regime impact</summary>
+        <p className="mt-3 text-xs leading-5 text-slate-300">{humanizeInsightText(intelligence.regime_impact)}</p>
+      </details>
+
+      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
         <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">Setup profile</summary>
         <div className="mt-3 flex items-center justify-between gap-3 rounded-xl bg-slate-950/35 p-3">
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Setup</div>
-            <div className="mt-1 text-sm font-bold text-slate-100">{setupLabel(intelligence.setup_type)}</div>
+            <div className="mt-1 text-sm font-bold text-slate-100">{opportunitySetupLabel(intelligence.setup_type)}</div>
           </div>
           <div className="text-right">
             <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Strength</div>
@@ -479,7 +690,7 @@ function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewMod
         <InsightList className="mt-3" title="Setup reasons" items={intelligence.setup_reasons} />
       </details>
 
-      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
+      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
         <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">Readiness</summary>
         <div className="mt-3">
           <div className="flex items-center justify-between gap-3">
@@ -493,21 +704,21 @@ function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewMod
         </div>
       </details>
 
-      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
+      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
         <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">Setup health</summary>
         <div className="mt-3 space-y-2">
           {setupHealthRows(factors).map((factor) => <HealthBar key={factor.key} label={factor.label} value={factor.value} />)}
         </div>
       </details>
 
-      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
+      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
         <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">Mini price context</summary>
         <div className="mt-3">
           <MiniPriceContextChart candles={candles} entryContext={best.entryZoneLabel ?? formatMoney(best.suggested_entry)} height={260} symbol={best.symbol} />
         </div>
       </details>
 
-      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" open>
+      <details className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
         <summary className="flex min-h-9 cursor-pointer list-none items-center text-sm font-semibold text-slate-100">Risk snapshot</summary>
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
           <HeroMetric label="ATR" value={formatNumber(row.atr)} />
@@ -522,12 +733,56 @@ function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewMod
   );
 }
 
-function OpportunitySection({ empty, rows, title }: { empty: string; rows: OpportunityViewModel[]; title: string }) {
+function OpportunitySection({
+  activeFilterCount,
+  activeTab,
+  criteriaCount,
+  empty,
+  fullUniverseCount,
+  matchingOutsideTab,
+  onClearCriteria,
+  onResetFilters,
+  onShowFullUniverse,
+  rows,
+  sortKey,
+  title,
+  totalRows,
+  watchlistCount,
+}: {
+  activeFilterCount: number;
+  activeTab: TabKey;
+  criteriaCount: number;
+  empty: string;
+  fullUniverseCount: number;
+  matchingOutsideTab: OpportunityViewModel[];
+  onClearCriteria: () => void;
+  onResetFilters: () => void;
+  onShowFullUniverse: () => void;
+  rows: OpportunityViewModel[];
+  sortKey: SortKey;
+  title: string;
+  totalRows: number;
+  watchlistCount: number;
+}) {
   return (
     <GlassPanel className="p-4 sm:p-5">
       <SectionTitle eyebrow="Symbol Browser" title={title} meta={`${rows.length.toLocaleString()} symbols`} />
       <div className="mt-4">
-        <OpportunityGrid empty={empty} rows={rows} />
+        <OpportunityGrid
+          activeFilterCount={activeFilterCount}
+          activeTab={activeTab}
+          criteriaCount={criteriaCount}
+          empty={empty}
+          fullUniverseCount={fullUniverseCount}
+          matchingOutsideTab={matchingOutsideTab}
+          onClearCriteria={onClearCriteria}
+          onResetFilters={onResetFilters}
+          onShowFullUniverse={onShowFullUniverse}
+          rows={rows}
+          sortKey={sortKey}
+          totalRows={totalRows}
+          watchlistCount={watchlistCount}
+        />
       </div>
     </GlassPanel>
   );
@@ -543,7 +798,7 @@ function SetupDistribution({ rows }: { rows: OpportunityViewModel[] }) {
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={group.setup}>
             <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{setupLabel(group.setup)}</div>
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{opportunitySetupLabel(group.setup)}</div>
                 <div className="mt-2 font-mono text-2xl font-black text-slate-50">{group.count}</div>
               </div>
               <div className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-2.5 py-1 text-[10px] font-semibold text-cyan-100">{formatNumber(group.avgStrength, 0)} strength</div>
@@ -556,6 +811,50 @@ function SetupDistribution({ rows }: { rows: OpportunityViewModel[] }) {
   );
 }
 
+function FilterReliabilitySummary({
+  activeTab,
+  criteriaCount,
+  fullUniverseCount,
+  matchingOutsideTab,
+  sortKey,
+  tabRowCount,
+  visibleCount,
+}: {
+  activeTab: TabKey;
+  criteriaCount: number;
+  fullUniverseCount: number;
+  matchingOutsideTab: OpportunityViewModel[];
+  sortKey: SortKey;
+  tabRowCount: number;
+  visibleCount: number;
+}) {
+  const hiddenByTab = activeTab !== "FULL" ? Math.max(0, fullUniverseCount - visibleCount) : 0;
+  return (
+    <div className="mt-4 grid gap-2 rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.045] p-3 text-xs leading-5 text-slate-300 md:grid-cols-[minmax(0,1.2fr)_minmax(220px,0.8fr)]">
+      <div className="min-w-0">
+        <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Filter Reliability</div>
+        <p className="mt-1">
+          {opportunityRankingExplanation(sortKey, activeTab)} {criteriaCount ? `${criteriaCount} search/filter rule${criteriaCount === 1 ? "" : "s"} applied.` : "No extra search/filter rules are applied."}
+        </p>
+      </div>
+      <div className="min-w-0 rounded-xl border border-white/10 bg-slate-950/35 p-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 font-semibold text-slate-200">{visibleCount.toLocaleString()} visible</span>
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 font-semibold text-slate-200">{fullUniverseCount.toLocaleString()} full-universe match{fullUniverseCount === 1 ? "" : "es"}</span>
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 font-semibold text-slate-200">{tabRowCount.toLocaleString()} in tab before extra filters</span>
+        </div>
+        {hiddenByTab > 0 ? (
+          <p className="mt-2 text-cyan-100">
+            {hiddenByTab.toLocaleString()} matching symbol{hiddenByTab === 1 ? " is" : "s are"} outside this tab{matchingOutsideTab.length ? `, including ${matchingOutsideTab.map((row) => row.symbol).join(", ")}.` : "."}
+          </p>
+        ) : (
+          <p className="mt-2 text-slate-400">No matching symbol is being hidden by the active tab.</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function OpportunityHeroIntelligence({ marketCondition, rows }: { marketCondition: string | null; rows: OpportunityViewModel[] }) {
   const pulse = setupPulse(rows);
   const topImproving = [...rows]
@@ -563,7 +862,7 @@ function OpportunityHeroIntelligence({ marketCondition, rows }: { marketConditio
     .filter((item): item is { change: number; row: OpportunityViewModel } => item.change !== null)
     .sort((left, right) => right.change - left.change)
     .slice(0, 3);
-  const riskBlocked = rows.filter((row) => decision(row) === "AVOID" || hasVetoes(row.raw.vetoes)).length;
+  const riskBlocked = rows.filter((row) => opportunityDecision(row) === "AVOID" || hasVetoes(row.raw.vetoes)).length;
   const highReadiness = rows.filter((row) => row.conviction >= 70).length;
   const fallbackCount = rows.filter((row) => Boolean(row.raw.data_provider_fallback_used)).length;
   const eventRiskCount = rows.filter((row) => row.eventRisk >= 68).length;
@@ -578,11 +877,11 @@ function OpportunityHeroIntelligence({ marketCondition, rows }: { marketConditio
         <div className="rounded-full border border-white/10 bg-slate-950/40 px-2.5 py-1 text-[10px] font-semibold text-slate-300">{cleanText(marketCondition, "Neutral")}</div>
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-2 2xl:grid-cols-5">
-        <CompactPulseCard title="Readiness Heatmap" value={`${highReadiness} high readiness`} detail={`${pulse.confidence}. Confidence is not a prediction.`} />
-        <CompactPulseCard title="Regime Alignment" value={cleanText(marketCondition, "Neutral")} detail={pulse.breadthDetail} />
-        <CompactPulseCard title="Risk Filters" value={`${riskBlocked} blocked`} detail="Blocked rows are preserved as context so the scanner does not force activity." />
-        <CompactPulseCard title="Event Pressure" value={`${eventRiskCount} elevated`} detail="Verified macro/company events add bounded context to conviction and fragility." />
-        <CompactPulseCard title="Data Quality" value={`${fallbackCount} fallbacks`} detail={pulse.scannerDetail} />
+        <CompactPulseCard title="Readiness Heatmap" value={`${highReadiness} high readiness`} detail={humanizeInsightText(`${pulse.confidence}. Confidence is not a prediction.`)} />
+        <CompactPulseCard title="Regime Alignment" value={cleanText(marketCondition, "Neutral")} detail={humanizeInsightText(pulse.breadthDetail)} />
+        <CompactPulseCard title="Risk Filters" value={`${riskBlocked} blocked`} detail="Blocked rows stay visible so TradeVeto can show caution without pretending there is a clean setup." />
+        <CompactPulseCard title="Event Pressure" value={`${eventRiskCount} elevated`} detail="Verified macro and company events can raise or lower conviction in a limited, explainable way." />
+        <CompactPulseCard title="Data Quality" value={`${fallbackCount} fallbacks`} detail={humanizeInsightText(pulse.scannerDetail)} />
         <CompactPulseCard title="Setup Focus" value={pulse.breadth} detail="Use setup groups to compare research context before opening symbol detail." />
       </div>
       <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950/35 p-3">
@@ -621,10 +920,10 @@ function HighestScoredSetups({ rows }: { rows: OpportunityViewModel[] }) {
         {displayRows.map((row) => <HighestScoredSetupCard key={row.symbol} row={row} />)}
       </div>
       <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        <CompactPulseCard title="Setup Momentum" value={pulse.momentum} detail={pulse.momentumDetail} />
-        <CompactPulseCard title="Market Breadth Pulse" value={pulse.breadth} detail={pulse.breadthDetail} />
-        <CompactPulseCard title="Confidence Distribution" value={pulse.confidence} detail={pulse.confidenceDetail} />
-        <CompactPulseCard title="Scanner Pulse" value={pulse.scanner} detail={pulse.scannerDetail} />
+        <CompactPulseCard title="Setup Momentum" value={pulse.momentum} detail={humanizeInsightText(pulse.momentumDetail)} />
+        <CompactPulseCard title="Market Breadth Pulse" value={pulse.breadth} detail={humanizeInsightText(pulse.breadthDetail)} />
+        <CompactPulseCard title="Confidence Distribution" value={pulse.confidence} detail={humanizeInsightText(pulse.confidenceDetail)} />
+        <CompactPulseCard title="Scanner Pulse" value={pulse.scanner} detail={humanizeInsightText(pulse.scannerDetail)} />
       </div>
     </div>
   );
@@ -648,30 +947,183 @@ function HighestScoredSetupCard({ row }: { row: OpportunityViewModel }) {
         <MiniCardMetric label="Macro" value={signedAdjustment(row.macroAdjustment)} />
       </div>
       <div className={`mt-2 text-[10px] font-black uppercase tracking-[0.1em] ${tone.textClass}`}>{tone.label}</div>
-      <div className="mt-2 line-clamp-2 text-[11px] leading-4 text-slate-400">{firstReason(row)}</div>
+      <div className="mt-2 line-clamp-2 text-[11px] leading-4 text-slate-400">{humanizeInsightText(firstReason(row))}</div>
     </Link>
   );
 }
 
-function OpportunityGrid({ empty, rows }: { empty: string; rows: OpportunityViewModel[] }) {
-  if (!rows.length) return <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-6 text-sm text-slate-400">{empty}</div>;
+function OpportunityGrid({
+  activeFilterCount,
+  activeTab,
+  criteriaCount,
+  empty,
+  fullUniverseCount,
+  matchingOutsideTab,
+  onClearCriteria,
+  onResetFilters,
+  onShowFullUniverse,
+  rows,
+  sortKey,
+  totalRows,
+  watchlistCount,
+}: {
+  activeFilterCount: number;
+  activeTab: TabKey;
+  criteriaCount: number;
+  empty: string;
+  fullUniverseCount: number;
+  matchingOutsideTab: OpportunityViewModel[];
+  onClearCriteria: () => void;
+  onResetFilters: () => void;
+  onShowFullUniverse: () => void;
+  rows: OpportunityViewModel[];
+  sortKey: SortKey;
+  totalRows: number;
+  watchlistCount: number;
+}) {
+  if (!rows.length) {
+    const tabHiddenMatches = activeTab !== "FULL" && fullUniverseCount > 0;
+    const watchlistEmpty = activeTab === "WATCHLIST" && watchlistCount === 0;
+    return (
+      <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-6 text-sm text-slate-400">
+        <div className="max-w-2xl">
+          <div className="font-semibold text-slate-200">No symbols match this view.</div>
+          <p className="mt-2 leading-6">{empty}</p>
+          {tabHiddenMatches ? (
+            <div className="mt-4 rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.06] p-3">
+              <div className="text-xs font-semibold text-cyan-100">
+                {fullUniverseCount.toLocaleString()} symbol{fullUniverseCount === 1 ? "" : "s"} still match your search and filters in Full Universe.
+              </div>
+              {matchingOutsideTab.length ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {matchingOutsideTab.map((row) => (
+                    <Link className="rounded-full border border-white/10 bg-slate-950/45 px-2.5 py-1 text-[11px] font-semibold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100" href={`/symbol/${row.symbol}`} key={row.symbol}>
+                      {row.symbol}
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+          {watchlistEmpty ? (
+            <div className="mt-4 rounded-2xl border border-amber-300/15 bg-amber-400/[0.06] p-3 text-xs leading-5 text-amber-100">
+              Your watchlist is empty on this device. Add symbols from any symbol card or detail page, then this tab will become useful.
+            </div>
+          ) : null}
+          <div className="mt-4 flex flex-wrap gap-2">
+            {tabHiddenMatches ? (
+              <button
+                className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-4 py-2 text-xs font-bold text-cyan-100 transition hover:border-cyan-300/50 hover:bg-cyan-400/15"
+                onClick={onShowFullUniverse}
+                type="button"
+              >
+                Show Full Universe matches
+              </button>
+            ) : null}
+            {criteriaCount ? (
+              <button
+                className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100"
+                onClick={onClearCriteria}
+                type="button"
+              >
+                Clear search and filters
+              </button>
+            ) : null}
+            {activeFilterCount || totalRows ? (
+            <button
+              className="rounded-full border border-white/10 bg-slate-950/35 px-4 py-2 text-xs font-bold text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100"
+              onClick={onResetFilters}
+              type="button"
+            >
+              Reset to Best Setups
+            </button>
+          ) : null}
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {rows.map((row) => <OpportunityCard key={row.symbol} row={row} />)}
+      {rows.map((row, index) => (
+        <OpportunityCard
+          key={row.symbol}
+          row={row}
+          visibilityReason={opportunityVisibilityReason(row, activeTab, sortKey, index)}
+        />
+      ))}
     </div>
   );
 }
 
-function OpportunityCard({ row }: { row: OpportunityViewModel }) {
+function OpportunityCard({ row, visibilityReason }: { row: OpportunityViewModel; visibilityReason: string }) {
   const router = useRouter();
   const href = `/symbol/${row.symbol}`;
   const openDetail = () => router.push(href);
   const institutionalLabels = compactInstitutionalLabels(row);
   const execution = buildExecutionIntelligence(row);
+  const actionability = buildOpportunityActionability(row);
+  const status = opportunityCardStatus(row, actionability, execution);
   const intelligenceLabels = [...institutionalLabels, ...execution.compactLabels].slice(0, 6);
+  const detailMetrics = [
+    { label: "Price", value: formatMoney(row.price) },
+    { label: "Core decision", value: decisionLabel(row.final_decision) },
+    { label: "Score", value: formatNumber(row.final_score, 0) },
+    { label: "Conviction", value: `${row.conviction} ${row.confidenceLabel}` },
+    { label: "Fragility", value: `${row.fragility} ${row.fragilityLabel}` },
+    { label: "Evidence", value: evidenceSummary(row) },
+    { label: "Macro", value: `${row.macroLabel} ${signedAdjustment(row.macroAdjustment)}` },
+    { label: "Event", value: row.eventLabel },
+    { label: "Entry quality", value: `${execution.entryQuality.score} ${execution.executionStateLabel}` },
+    { label: "Timing", value: `${actionability.timingQuality.score ?? "N/A"} ${actionability.earlyOrLate}` },
+    { label: "Confirmation", value: `${actionability.confirmationStatus.value} (${actionability.confirmationStatus.score ?? "N/A"})` },
+    { label: "Pullback", value: `${actionability.pullbackQuality.value} (${actionability.pullbackQuality.score ?? "N/A"})` },
+    { label: "Historical exit", value: execution.zones.historicalExitZone },
+    { label: "Invalidation", value: execution.zones.invalidationZone },
+    { label: "Structure", value: row.structuralLabel },
+    { label: "Decay", value: row.decayLabel },
+  ];
+  const insightTiles: OpportunityInsightTileModel[] = [
+    {
+      label: "Why this setup?",
+      value: actionability.whyInteresting,
+      detail: visibilityReason,
+      tone: "focus",
+    },
+    {
+      label: "Upside potential",
+      value: opportunityUpsidePotential(row),
+      detail: actionability.asymmetryClarity,
+      tone: "positive",
+    },
+    {
+      label: "Main risk",
+      value: actionability.whyRisky,
+      detail: actionability.invalidationExplanation,
+      tone: actionability.chaseRiskVisibility.tone === "risk" ? "risk" : "caution",
+    },
+    {
+      label: "Entry quality",
+      value: `${actionability.timingQuality.value} · ${actionability.earlyOrLate}`,
+      detail: actionability.entryZoneClarity,
+      tone: actionability.timingQuality.tone,
+    },
+    {
+      label: "Chase risk",
+      value: actionability.chaseRiskVisibility.value,
+      detail: actionability.pullbackGuidance,
+      tone: actionability.chaseRiskVisibility.tone,
+    },
+    {
+      label: "Watch next",
+      value: actionability.whatToWaitFor,
+      detail: `Confirmation: ${actionability.confirmationStatus.value}. ${actionability.riskRewardCommunication}`,
+      tone: "neutral",
+    },
+  ];
   return (
     <article
-      className="w-full min-w-0 max-w-full cursor-pointer rounded-2xl border border-white/10 bg-white/[0.04] p-4 shadow-xl shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:border-cyan-400/40 hover:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-cyan-300/40"
+      className={`w-full min-w-0 max-w-full cursor-pointer overflow-hidden rounded-2xl border bg-white/[0.04] p-4 shadow-xl shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-cyan-300/40 ${opportunityStatusBorderClass(status.tone)}`}
       onClick={openDetail}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -684,8 +1136,11 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
     >
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <Link className="relative z-10 inline-flex min-h-9 items-center font-mono text-2xl font-black text-slate-50 transition hover:text-cyan-100 sm:text-3xl" href={href} onClick={(event) => event.stopPropagation()}>{row.symbol}</Link>
-          <div className="mt-1 text-xs text-slate-400">{cleanText(row.company_name || row.sector, "Signal")}</div>
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <Link className="relative z-10 inline-flex min-h-9 items-center font-mono text-2xl font-black text-slate-50 transition hover:text-cyan-100 sm:text-3xl" href={href} onClick={(event) => event.stopPropagation()}>{row.symbol}</Link>
+            <OpportunityStatusPill status={status} />
+          </div>
+          <div className="mt-1 min-w-0 text-xs text-slate-400">{cleanText(row.company_name || row.sector, "Signal")}</div>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
           <WatchlistButton showLabel={false} symbol={row.symbol} />
@@ -695,11 +1150,31 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
       <div className="mt-3">
         <DataHealthIndicator compact freshness={row.dataFreshness} />
       </div>
-      <div className="mt-4 text-sm leading-6 text-slate-300">{readableText(row.decision_reason, "Decision reason is not available yet.")}</div>
+      <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/30 p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="min-w-0 break-words text-sm font-bold text-slate-50">{status.summary}</div>
+          <div className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] text-slate-300">
+            {opportunitySetupLabel(opportunitySetupType(row))}
+          </div>
+        </div>
+        <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-300">
+          {humanizeInsightText(row.decision_reason, "Decision reason is not available yet.")}
+        </p>
+      </div>
+      <div className="mt-3 grid gap-2">
+        <div className="grid gap-2 lg:grid-cols-2">
+          <OpportunityInsightTile tile={insightTiles[0]} />
+          <OpportunityInsightTile tile={insightTiles[5]} />
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {insightTiles.slice(1, 5).map((tile) => <OpportunityInsightTile key={tile.label} tile={tile} compact />)}
+        </div>
+      </div>
+      <OpportunityZoneStrip actionability={actionability} execution={execution} />
       {row.narrative ? (
-        <div className="mt-3 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.055] p-3 text-xs leading-5 text-slate-300">
-          <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Narrative</div>
-          <p className="mt-1 line-clamp-3">{row.narrative.narrativeSummary}</p>
+        <div className="mt-3 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.045] p-3 text-xs leading-5 text-slate-300">
+          <div className="text-[10px] font-black uppercase tracking-[0.12em] text-cyan-300">Market story</div>
+          <p className="mt-1 line-clamp-3">{humanizeInsightText(row.narrative.narrativeSummary)}</p>
         </div>
       ) : null}
       {intelligenceLabels.length ? (
@@ -711,29 +1186,198 @@ function OpportunityCard({ row }: { row: OpportunityViewModel }) {
           ))}
         </div>
       ) : null}
-      <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
-        <CardMetric label="Price" value={formatMoney(row.price)} />
-        <CardMetric label="Decision" value={decisionLabel(row.final_decision)} />
-        <CardMetric label="Conviction" value={`${row.conviction} ${row.confidenceLabel}`} />
-        <CardMetric label="Fragility" value={`${row.fragility} ${row.fragilityLabel}`} />
-        <CardMetric label="Score" value={formatNumber(row.final_score, 0)} />
-        <CardMetric label="Evidence" value={evidenceSummary(row)} />
-        <CardMetric label="Macro Context" value={`${row.macroLabel} ${signedAdjustment(row.macroAdjustment)}`} />
-        <CardMetric label="Event Context" value={row.eventLabel} />
-        <CardMetric label="Entry / Correction" value={row.entryZoneLabel ?? formatMoney(row.suggested_entry)} />
-        <CardMetric label="Entry Quality" value={`${execution.entryQuality.score} ${execution.executionStateLabel}`} />
-        <CardMetric label="Chase Risk" value={`${execution.chaseRisk.score} ${execution.chaseRisk.tone === "risk" ? "Elevated" : "Context"}`} />
-        <CardMetric label="Historical Exit" value={execution.zones.historicalExitZone} />
-        <CardMetric label="Invalidation" value={execution.zones.invalidationZone} />
-        <CardMetric label="Structure" value={row.structuralLabel} />
-        <CardMetric label="Decay" value={row.decayLabel} />
-      </div>
+      <details className="mt-3 min-w-0 overflow-hidden rounded-xl border border-white/10 bg-slate-950/35 px-3 py-2 text-xs text-slate-400" onClick={(event) => event.stopPropagation()}>
+        <summary className="min-h-8 cursor-pointer font-semibold text-slate-200">More context and scores</summary>
+        <div className="mt-2 grid gap-2">
+          {detailMetrics.map((metric) => <CardMetric key={metric.label} label={metric.label} value={metric.value} />)}
+        </div>
+      </details>
       <div className="mt-4 flex min-w-0 flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         <div className="min-w-0 text-xs text-slate-500">{cleanText(row.assetType, "Asset")} {row.sector ? `- ${row.sector}` : ""}</div>
         <div className="text-xs font-semibold text-cyan-200 opacity-90">Tap for symbol detail</div>
       </div>
     </article>
   );
+}
+
+type OpportunityStatusTone = "good" | "neutral" | "pullback" | "risk" | "speculative";
+
+type OpportunityCardStatus = {
+  label: string;
+  summary: string;
+  tone: OpportunityStatusTone;
+};
+
+type OpportunityTileTone = ExecutionTone | "focus";
+
+type OpportunityInsightTileModel = {
+  detail: string;
+  label: string;
+  tone: OpportunityTileTone;
+  value: string;
+};
+
+function opportunityCardStatus(row: OpportunityViewModel, actionability: OpportunityActionability, execution: ExecutionIntelligence): OpportunityCardStatus {
+  const shock = row.shockPattern;
+  if (execution.executionState === "avoid_chase" || actionability.chaseRiskVisibility.tone === "risk") {
+    return {
+      label: "Avoid chase",
+      summary: "Upside can still exist, but the current entry looks stretched.",
+      tone: "risk",
+    };
+  }
+  if (row.fragility >= 74 || (shock?.downsideRiskScore ?? 0) >= 76) {
+    return {
+      label: "Risk rising",
+      summary: "The setup has attention value, but downside pressure is building.",
+      tone: "risk",
+    };
+  }
+  if (shock && shock.opportunityScore >= 70 && shock.downsideRiskScore >= 62) {
+    return {
+      label: "High risk / high reward",
+      summary: "Large-move history is visible, but the risk side needs respect.",
+      tone: "speculative",
+    };
+  }
+  if (execution.executionState === "extended_entry" || execution.executionState === "wait_for_pullback") {
+    return {
+      label: "Wait for pullback",
+      summary: "The idea is interesting, but a cleaner entry would improve quality.",
+      tone: "pullback",
+    };
+  }
+  if (execution.executionState === "breakout_confirmed" && row.conviction >= 55 && (row.final_score ?? 0) >= 58) {
+    return {
+      label: "Good setup",
+      summary: "Setup quality is constructive while timing guardrails remain visible.",
+      tone: "good",
+    };
+  }
+  return {
+    label: "Watch only",
+    summary: "There is enough context to monitor, but confirmation still matters.",
+    tone: "neutral",
+  };
+}
+
+function opportunityUpsidePotential(row: OpportunityViewModel): string {
+  const shock = row.shockPattern;
+  if (shock) {
+    return `${formatNumber(shock.upsideShockScore, 0)}/100 · ${shock.averageProfitPotential}`;
+  }
+  const riskReward = finiteNumber(row.raw.risk_reward ?? row.raw.reward_risk_ratio ?? row.raw.conservative_risk_reward);
+  if (riskReward !== null) return `${formatNumber(riskReward, 1)}x model reward/risk`;
+  return `${formatNumber(row.final_score, 0)}/100 setup quality`;
+}
+
+function OpportunityStatusPill({ status }: { status: OpportunityCardStatus }) {
+  return (
+    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${opportunityStatusPillClass(status.tone)}`}>
+      {status.label}
+    </span>
+  );
+}
+
+function OpportunityInsightTile({ compact = false, tile }: { compact?: boolean; tile: OpportunityInsightTileModel }) {
+  return (
+    <div className={`min-w-0 max-w-full overflow-hidden rounded-xl border p-3 ${opportunityTileClass(tile.tone)}`}>
+      <div className="break-words text-[10px] font-black uppercase tracking-[0.1em] opacity-80">{tile.label}</div>
+      <div className={`mt-1 line-clamp-4 break-words font-semibold leading-5 text-slate-50 ${compact ? "text-xs" : "text-sm"}`}>
+        {tile.value}
+      </div>
+      <div className="mt-1 line-clamp-2 break-words text-[11px] leading-4 text-slate-300/85">{tile.detail}</div>
+    </div>
+  );
+}
+
+function OpportunityZoneStrip({ actionability, execution }: { actionability: OpportunityActionability; execution: ExecutionIntelligence }) {
+  return (
+    <div className="mt-3 min-w-0 overflow-hidden rounded-xl border border-emerald-300/15 bg-emerald-400/[0.045] p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.12em] text-emerald-300">Entry and exit context</div>
+          <div className="mt-1 text-xs font-semibold text-slate-100">{actionability.primaryActionLabel} · {actionability.earlyOrLate}</div>
+        </div>
+        <div className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.08em] ${actionabilityToneClass(actionability.chaseRiskVisibility.tone)}`}>
+          {actionability.chaseRiskVisibility.value}
+        </div>
+      </div>
+      <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-300">{actionability.actionContext}</p>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <ZonePill label="Research entry" value={execution.zones.researchEntryZone} />
+        <ZonePill label="Do-not-chase" value={execution.zones.doNotChaseZone} tone="caution" />
+        <ZonePill label="Invalidation" value={execution.zones.invalidationZone} tone="risk" />
+        <ZonePill label="Historical exit" value={execution.zones.historicalExitZone} tone="positive" />
+      </div>
+    </div>
+  );
+}
+
+function ZonePill({ label, tone = "neutral", value }: { label: string; tone?: ExecutionTone; value: string }) {
+  return (
+    <div className={`min-w-0 rounded-lg border bg-slate-950/35 p-2 ${zoneToneClass(tone)}`}>
+      <div className="text-[9px] font-black uppercase tracking-[0.1em] opacity-80">{label}</div>
+      <div className="mt-1 break-words font-mono text-xs font-black leading-4">{value}</div>
+    </div>
+  );
+}
+
+function ActionabilityMetric({ metric }: { metric: OpportunityActionability["timingQuality"] }) {
+  return (
+    <div className="min-w-0 rounded-lg border border-white/10 bg-slate-950/35 p-2">
+      <div className="break-words text-[9px] font-black uppercase tracking-[0.1em] text-slate-500">{metric.label}</div>
+      <div className={`mt-1 flex items-baseline justify-between gap-2 ${actionabilityTextClass(metric.tone)}`}>
+        <span className="break-words text-[11px] font-semibold">{metric.value}</span>
+        {metric.score !== null ? <span className="font-mono text-xs font-black">{formatNumber(metric.score, 0)}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+function actionabilityToneClass(tone: OpportunityActionability["timingQuality"]["tone"]): string {
+  if (tone === "positive") return "border-emerald-300/25 bg-emerald-400/10 text-emerald-100";
+  if (tone === "risk") return "border-rose-300/25 bg-rose-400/10 text-rose-100";
+  if (tone === "caution") return "border-amber-300/25 bg-amber-400/10 text-amber-100";
+  return "border-white/10 bg-white/[0.04] text-slate-200";
+}
+
+function actionabilityTextClass(tone: OpportunityActionability["timingQuality"]["tone"]): string {
+  if (tone === "positive") return "text-emerald-200";
+  if (tone === "risk") return "text-rose-200";
+  if (tone === "caution") return "text-amber-200";
+  return "text-slate-100";
+}
+
+function opportunityStatusBorderClass(tone: OpportunityStatusTone): string {
+  if (tone === "good") return "border-emerald-300/20 hover:border-emerald-300/45";
+  if (tone === "pullback") return "border-amber-300/20 hover:border-amber-300/45";
+  if (tone === "risk") return "border-rose-300/20 hover:border-rose-300/45";
+  if (tone === "speculative") return "border-fuchsia-300/20 hover:border-fuchsia-300/45";
+  return "border-white/10 hover:border-cyan-400/40";
+}
+
+function opportunityStatusPillClass(tone: OpportunityStatusTone): string {
+  if (tone === "good") return "border-emerald-300/25 bg-emerald-400/10 text-emerald-100";
+  if (tone === "pullback") return "border-amber-300/25 bg-amber-400/10 text-amber-100";
+  if (tone === "risk") return "border-rose-300/25 bg-rose-400/10 text-rose-100";
+  if (tone === "speculative") return "border-fuchsia-300/25 bg-fuchsia-400/10 text-fuchsia-100";
+  return "border-cyan-300/20 bg-cyan-400/10 text-cyan-100";
+}
+
+function opportunityTileClass(tone: OpportunityTileTone): string {
+  if (tone === "positive") return "border-emerald-300/15 bg-emerald-400/[0.055] text-emerald-100";
+  if (tone === "risk") return "border-rose-300/15 bg-rose-400/[0.055] text-rose-100";
+  if (tone === "caution") return "border-amber-300/15 bg-amber-400/[0.055] text-amber-100";
+  if (tone === "focus") return "border-cyan-300/15 bg-cyan-400/[0.055] text-cyan-100";
+  return "border-white/10 bg-slate-950/35 text-slate-200";
+}
+
+function zoneToneClass(tone: ExecutionTone): string {
+  if (tone === "positive") return "border-emerald-300/15 text-emerald-100";
+  if (tone === "risk") return "border-rose-300/15 text-rose-100";
+  if (tone === "caution") return "border-amber-300/15 text-amber-100";
+  return "border-white/10 text-slate-100";
 }
 
 function CompactPulseCard({ detail, title, value }: { detail: string; title: string; value: string }) {
@@ -750,8 +1394,8 @@ function HeroMetric({ label, value, tone = "neutral" }: { label: string; value: 
   const color = tone === "reward" ? "text-emerald-200" : tone === "risk" ? "text-rose-200" : "text-slate-50";
   return (
     <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">{label}</div>
-      <div className={`mt-2 font-mono text-lg font-bold ${color}`}>{value}</div>
+      <div className="break-words text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{label}</div>
+      <div className={`mt-2 break-words font-mono text-lg font-bold ${color}`}>{value}</div>
     </div>
   );
 }
@@ -759,8 +1403,8 @@ function HeroMetric({ label, value, tone = "neutral" }: { label: string; value: 
 function MiniCardMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-lg bg-slate-950/45 px-2 py-1">
-      <div className="truncate text-[9px] font-semibold uppercase leading-3 tracking-normal text-slate-500" title={label}>{label}</div>
-      <div className="truncate font-mono text-[12px] font-semibold text-slate-100">{value}</div>
+      <div className="break-words text-[9px] font-semibold uppercase leading-3 tracking-normal text-slate-500" title={label}>{label}</div>
+      <div className="break-words font-mono text-[12px] font-semibold text-slate-100">{value}</div>
     </div>
   );
 }
@@ -768,8 +1412,8 @@ function MiniCardMetric({ label, value }: { label: string; value: string }) {
 function CardMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 rounded-xl border border-white/10 bg-slate-950/40 p-3">
-      <div className="truncate text-[10px] font-semibold uppercase leading-4 tracking-normal text-slate-500" title={label}>{label}</div>
-      <div className="mt-1 truncate font-mono text-sm font-semibold text-slate-100" title={value}>{value}</div>
+      <div className="break-words text-[10px] font-semibold uppercase leading-4 tracking-normal text-slate-500" title={label}>{label}</div>
+      <div className="mt-1 break-words font-mono text-sm font-semibold text-slate-100" title={value}>{value}</div>
     </div>
   );
 }
@@ -833,7 +1477,7 @@ function firstReason(row: OpportunityViewModel): string {
 function setupGroups(rows: OpportunityViewModel[]): Array<{ avgStrength: number; count: number; reason: string; setup: string }> {
   const order = ["PULLBACK", "BREAKOUT", "CONTINUATION", "AVOID"];
   return order.map((setup) => {
-    const matching = rows.filter((row) => setupType(row) === setup);
+    const matching = rows.filter((row) => opportunitySetupType(row) === setup);
     const strengths = matching.map((row) => numeric(row.raw.setup_strength)).filter((value): value is number => value !== null);
     const avgStrength = strengths.length ? strengths.reduce((total, value) => total + value, 0) / strengths.length : 0;
     return {
@@ -855,7 +1499,7 @@ function setupPulse(rows: OpportunityViewModel[]): {
   scanner: string;
   scannerDetail: string;
 } {
-  const setupCounts = countBy(rows, (row) => setupLabel(setupType(row)));
+  const setupCounts = countBy(rows, (row) => opportunitySetupLabel(opportunitySetupType(row)));
   const decisionCounts = countBy(rows, (row) => decisionLabel(row.final_decision));
   const highestSetup = topCount(setupCounts) ?? "Mixed";
   const highestDecision = topCount(decisionCounts) ?? "Watch";
@@ -924,21 +1568,6 @@ function distributionRows(counts: Map<string, number>, colors: string[]): Distri
     .map(([label, value], index) => ({ color: colors[index % colors.length], label, value }));
 }
 
-function setupType(row: OpportunityViewModel): string {
-  const raw = cleanText(row.raw.setup_type, "AVOID").toUpperCase().replace(/[\s-]+/g, "_");
-  if (raw === "PULLBACK" || raw.includes("PULLBACK") || raw.includes("AVWAP")) return "PULLBACK";
-  if (raw === "BREAKOUT" || raw.includes("BREAKOUT")) return "BREAKOUT";
-  if (raw === "CONTINUATION" || raw.includes("CONTINUATION") || raw.includes("TREND")) return "CONTINUATION";
-  return "AVOID";
-}
-
-function setupLabel(value: string): string {
-  if (value === "PULLBACK") return "Pullback";
-  if (value === "BREAKOUT") return "Breakout";
-  if (value === "CONTINUATION") return "Continuation";
-  return "Avoid";
-}
-
 function setupGroupReason(value: string): string {
   if (value === "PULLBACK") return "Trend is being monitored for cleaner pullback context.";
   if (value === "BREAKOUT") return "Breakout candidates require volume and non-extended structure.";
@@ -984,7 +1613,7 @@ function NumberInput({ label, max, onChange, value }: { label: string; max: numb
     <label className="min-w-0 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
       {label}
       <input
-        className="mt-1 h-10 w-full min-w-0 rounded-xl border border-white/10 bg-slate-950/70 px-3 font-mono text-sm normal-case tracking-normal text-slate-100 outline-none focus:border-cyan-300/50"
+        className="mt-1 h-11 w-full min-w-0 rounded-xl border border-white/10 bg-slate-950/70 px-3 font-mono text-sm normal-case tracking-normal text-slate-100 outline-none focus:border-cyan-300/50 sm:h-10"
         max={max}
         min={0}
         onChange={(event) => onChange(clampNumber(Number(event.currentTarget.value), 0, max))}
@@ -999,7 +1628,7 @@ function Select({ children, label, onChange, value }: { children: ReactNode; lab
   return (
     <label className="min-w-0 text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
       {label}
-      <select className="mt-1 h-10 w-full min-w-0 rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm normal-case tracking-normal text-slate-100 outline-none focus:border-cyan-300/50" value={value} onChange={(event) => onChange(event.currentTarget.value)}>
+      <select className="mt-1 h-11 w-full min-w-0 rounded-xl border border-white/10 bg-slate-950/70 px-3 text-sm normal-case tracking-normal text-slate-100 outline-none focus:border-cyan-300/50 sm:h-10" value={value} onChange={(event) => onChange(event.currentTarget.value)}>
         {children}
       </select>
     </label>
@@ -1009,7 +1638,7 @@ function Select({ children, label, onChange, value }: { children: ReactNode; lab
 function TabButton({ active, count, label, onClick }: { active: boolean; count: number; label: string; onClick: () => void }) {
   return (
     <button
-      className={`min-w-0 rounded-xl border px-4 py-3 text-left transition-all duration-200 ${active ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-50" : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-cyan-300/30 hover:bg-white/[0.07]"}`}
+      className={`min-w-[min(74vw,220px)] shrink-0 snap-start rounded-xl border px-4 py-3 text-left transition-all duration-200 sm:min-w-0 sm:shrink ${active ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-50" : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-cyan-300/30 hover:bg-white/[0.07]"}`}
       onClick={onClick}
       type="button"
     >
@@ -1023,21 +1652,6 @@ function uniqueValues(values: Array<string | null>): string[] {
   return Array.from(new Set(values.map((value) => cleanText(value, "")).filter(Boolean))).sort((a, b) => a.localeCompare(b));
 }
 
-function tabMatches(row: OpportunityViewModel, tab: TabKey, watchlistSet: Set<string>, riskTolerantSymbols: Set<string>) {
-  if (tab === "FULL") return true;
-  if (tab === "WATCHLIST") return watchlistSet.has(row.symbol);
-  if (tab === "RISK_TOLERANT") return riskTolerantSymbols.has(row.symbol);
-  if (tab === "SHOCK") return isShockPotential(row);
-  if (tab === "PULLBACK") return setupType(row) === "PULLBACK";
-  if (tab === "MOMENTUM") return isMomentumContinuation(row);
-  return isBestSetup(row);
-}
-
-function isBestSetup(row: OpportunityViewModel) {
-  const value = decision(row);
-  return value === "ENTER" || value === "WAIT_PULLBACK" || (value === "WATCH" && row.conviction >= 70);
-}
-
 function tabTitle(tab: TabKey) {
   if (tab === "FULL") return "Full Universe";
   if (tab === "WATCHLIST") return "Watchlist";
@@ -1046,69 +1660,6 @@ function tabTitle(tab: TabKey) {
   if (tab === "PULLBACK") return "Pullback Watch";
   if (tab === "MOMENTUM") return "Momentum Continuation";
   return "Best Setups";
-}
-
-function emptyMessage(tab: TabKey) {
-  if (tab === "WATCHLIST") return "No watchlist symbols match the current search and filters.";
-  if (tab === "FULL") return "No symbols match the current search and filters. Clear decision filters to inspect the full scanner universe.";
-  if (tab === "RISK_TOLERANT") return "No risk-tolerant candidates match the current filters. Clear filters or use the radar above for broader high-risk rankings.";
-  if (tab === "SHOCK") return "No shock-potential symbols match the current filters.";
-  if (tab === "PULLBACK") return "No pullback-watch symbols match the current filters.";
-  if (tab === "MOMENTUM") return "No momentum-continuation symbols match the current filters.";
-  return "No setups match the current search and filters.";
-}
-
-function decision(row: OpportunityViewModel) {
-  return cleanText(row.final_decision, "WATCH").toUpperCase();
-}
-
-function compareRows(left: OpportunityViewModel, right: OpportunityViewModel, sortKey: SortKey, riskTolerantRows: ReturnType<typeof buildRiskTolerantOpportunities>, activeTab: TabKey) {
-  const riskRank = riskTolerantRank(left, riskTolerantRows) - riskTolerantRank(right, riskTolerantRows);
-  if (riskRank !== 0 && activeTab === "RISK_TOLERANT") return riskRank;
-  if (activeTab === "SHOCK") {
-    const shockRank = numericDesc(left.shockPattern?.opportunityScore ?? null, right.shockPattern?.opportunityScore ?? null);
-    if (shockRank !== 0) return shockRank;
-  }
-  if (sortKey === "SYMBOL_ASC") return left.symbol.localeCompare(right.symbol);
-  if (sortKey === "CONVICTION_DESC") return right.conviction - left.conviction || left.symbol.localeCompare(right.symbol);
-  if (sortKey === "PRICE_DESC") return numericDesc(left.price, right.price) || left.symbol.localeCompare(right.symbol);
-  if (sortKey === "DECISION_PRIORITY") return decisionPriority(left) - decisionPriority(right) || right.conviction - left.conviction || left.symbol.localeCompare(right.symbol);
-  return numericDesc(left.final_score, right.final_score) || right.conviction - left.conviction || left.symbol.localeCompare(right.symbol);
-}
-
-function riskTolerantRank(row: OpportunityViewModel, riskTolerantRows: ReturnType<typeof buildRiskTolerantOpportunities>) {
-  return riskTolerantRows.find((candidate) => candidate.symbol === row.symbol)?.riskTolerantRank ?? Number.POSITIVE_INFINITY;
-}
-
-function isShockPotential(row: OpportunityViewModel) {
-  if ((row.shockPattern?.opportunityScore ?? 0) >= 45 || (row.shockPattern?.upsideShockScore ?? 0) >= 55 || (row.shockPattern?.twoSidedVolatilityScore ?? 0) >= 55) return true;
-  const eventShock = numeric(row.raw.event_shock_pressure_score ?? row.raw.verified_event_pressure_score) ?? 0;
-  const return1d = Math.abs(numeric(row.raw.return_1d) ?? 0);
-  const volatility = numeric(row.raw.annualized_volatility ?? row.raw.volatility ?? row.raw.volatility_pct) ?? 0;
-  return eventShock >= 68 || return1d >= 5 || volatility >= 55;
-}
-
-function isMomentumContinuation(row: OpportunityViewModel) {
-  const setup = setupType(row);
-  const technical = numeric(row.raw.technical_score) ?? row.final_score ?? 0;
-  const setupStrength = numeric(row.raw.setup_strength) ?? row.conviction;
-  return setup === "CONTINUATION" || technical >= 72 || setupStrength >= 72;
-}
-
-function decisionPriority(row: OpportunityViewModel) {
-  const value = decision(row);
-  if (value === "ENTER") return 0;
-  if (value === "WAIT_PULLBACK") return 1;
-  if (value === "WATCH") return 2;
-  if (value === "EXIT") return 3;
-  if (value === "AVOID") return 4;
-  return 5;
-}
-
-function numericDesc(left: number | null, right: number | null) {
-  const leftValue = left ?? Number.NEGATIVE_INFINITY;
-  const rightValue = right ?? Number.NEGATIVE_INFINITY;
-  return rightValue - leftValue;
 }
 
 function clampNumber(value: number, min: number, max: number) {

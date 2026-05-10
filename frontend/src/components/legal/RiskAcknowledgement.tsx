@@ -7,6 +7,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 
 const STORAGE_KEY = "ma_risk_acknowledged_v1";
+const RISK_ACK_READY_EVENT = "ma:risk-acknowledgement-ready";
 
 type LegalStatus = {
   allAccepted: boolean;
@@ -33,6 +34,7 @@ export function RiskAcknowledgement() {
   const [visible, setVisible] = useState(false);
   const [anonymousChecked, setAnonymousChecked] = useState(false);
   const [checks, setChecks] = useState({ privacy: false, risk: false, terms: false });
+  const [gateChecked, setGateChecked] = useState(false);
   const [legalStatus, setLegalStatus] = useState<LegalStatus>(EMPTY_STATUS);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -40,6 +42,7 @@ export function RiskAcknowledgement() {
   useEffect(() => {
     if (loading || authenticated) return;
     setVisible(window.localStorage.getItem(STORAGE_KEY) !== "true");
+    setGateChecked(true);
   }, [authenticated, loading]);
 
   useEffect(() => {
@@ -58,11 +61,13 @@ export function RiskAcknowledgement() {
         terms: Boolean(nextStatus.termsAccepted),
       });
       setVisible(!nextStatus.allAccepted);
+      setGateChecked(true);
     }
     void loadLegalStatus().catch(() => {
       if (!cancelled) {
         setLegalStatus(EMPTY_STATUS);
         setVisible(true);
+        setGateChecked(true);
       }
     });
     return () => {
@@ -78,13 +83,18 @@ export function RiskAcknowledgement() {
     return () => window.removeEventListener("ma:open-legal-acknowledgement", openLegalAcknowledgement);
   }, []);
 
+  useEffect(() => {
+    if (!gateChecked || visible) return;
+    window.dispatchEvent(new Event(RISK_ACK_READY_EVENT));
+  }, [gateChecked, visible]);
+
   if (!visible) return null;
   const accountMode = authenticated && Boolean(user);
   const canContinue = accountMode ? checks.terms && checks.privacy && checks.risk : anonymousChecked;
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-end justify-center bg-black/70 p-4 backdrop-blur-sm md:items-center">
-      <div className="w-full max-w-xl rounded-2xl border border-amber-300/30 bg-slate-950 p-5 shadow-2xl shadow-black/60">
+    <div className="fixed inset-0 z-[10000] flex items-end justify-center overflow-y-auto bg-black/70 p-3 backdrop-blur-sm sm:p-4 md:items-center">
+      <div className="w-full min-w-0 max-w-xl rounded-2xl border border-amber-300/30 bg-slate-950 p-4 shadow-2xl shadow-black/60 sm:p-5">
         <div className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-200">Risk Acknowledgement</div>
         <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Research software only</h2>
         <p className="mt-3 text-sm leading-6 text-slate-300">
@@ -100,14 +110,14 @@ export function RiskAcknowledgement() {
           <LegalCheckbox checked={anonymousChecked} label="I understand this is not financial advice" onChange={setAnonymousChecked} />
         )}
         {error ? <div className="mt-3 rounded-xl border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">{error}</div> : null}
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mt-4 flex flex-wrap items-center justify-start gap-3 sm:justify-between">
           <div className="flex flex-wrap gap-3 text-xs text-slate-400">
             <Link className="hover:text-cyan-200" href="/terms">Terms</Link>
             <Link className="hover:text-cyan-200" href="/privacy">Privacy</Link>
             <Link className="hover:text-cyan-200" href="/risk-disclosure">Risk Disclosure</Link>
           </div>
           <button
-            className="rounded-full bg-amber-300 px-4 py-2 text-sm font-bold text-slate-950 transition disabled:cursor-not-allowed disabled:opacity-50"
+            className="shrink-0 rounded-full bg-amber-300 px-4 py-2 text-sm font-bold text-slate-950 transition disabled:cursor-not-allowed disabled:opacity-50"
             disabled={!canContinue || busy}
             onClick={async () => {
               if (!accountMode) {
@@ -155,9 +165,9 @@ function documentAccepted(status: LegalStatus, type: "terms" | "privacy" | "risk
 
 function LegalCheckbox({ checked, label, onChange }: { checked: boolean; label: string; onChange: (checked: boolean) => void }) {
   return (
-    <label className="flex items-start gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm font-semibold text-slate-100">
+    <label className="flex min-w-0 items-start gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm font-semibold text-slate-100">
       <input checked={checked} className="mt-1 accent-amber-300" onChange={(event) => onChange(event.target.checked)} type="checkbox" />
-      <span>{label}</span>
+      <span className="min-w-0 break-words">{label}</span>
     </label>
   );
 }

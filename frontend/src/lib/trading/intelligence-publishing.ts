@@ -3,7 +3,7 @@ import { buildTradeVetoOperatingSystem } from "./meta-intelligence";
 import type { OpportunityViewModel } from "./opportunity-view-model";
 import { buildRegimeShiftSystem } from "./regime-shift-intelligence";
 import { cleanText, finiteNumber } from "@/lib/ui/formatters";
-import { decisionLabel, humanizeLabel, readableText } from "@/lib/ui/labels";
+import { decisionLabel, humanizeInsightText, humanizeLabel } from "@/lib/ui/labels";
 
 export const PUBLISHED_SYMBOLS = ["AMD", "NVDA", "MU", "DDOG", "AVGO", "ASML", "CRWD", "TSM", "OXY", "SPY", "QQQ", "GLD", "USO", "IBIT"] as const;
 
@@ -92,7 +92,7 @@ export function buildPublishedSymbolIntelligence(rows: OpportunityViewModel[], s
     ? `${row.shockPattern.opportunityState}; ${row.shockPattern.chaseRiskLabel.toLowerCase()}; historical shock evidence is ${evidenceBand(row.shockPattern.reliabilityScore).toLowerCase()}.`
     : "Shock-pattern evidence is still building for this symbol.";
   const fragilityContext = `${row.fragilityLabel}. ${institutional.dangerAlerts.length ? institutional.dangerAlerts[0]?.explanation ?? "Danger pressure is elevated." : "No advanced danger alert dominates the public view."}`;
-  const eventContext = row.eventLabel || "Verified event context is limited in the latest structured packet.";
+  const eventContext = row.eventLabel || "Verified event context is limited in the latest TradeVeto data.";
   const narrativeSummary = row.narrative?.narrativeSummary ?? `${row.symbol} is tracked as a ${setup.toLowerCase()} research setup with ${decision.toLowerCase()} as the current core decision context.`;
   const whyWaitSummary = whyWaitSummaryFor(row, macroContext, fragilityContext);
   const whatToWatch = dedupe([
@@ -146,7 +146,7 @@ export function buildPublishedIntelligenceIndex(rows: OpportunityViewModel[], ge
   return {
     collections: [
       collection("Why WAIT Intelligence", "/intelligence/why-wait/AMD", "Explainable WAIT-state research for symbols where restraint, fragility, or macro conflict matters.", symbolPages.slice(0, 5).map((item) => item.symbol), "mixed"),
-      collection("Shock Opportunity Research", "/intelligence/shock-opportunities", "Public-safe view of high-volatility and two-sided shock memory without trade-plan levels.", topShockSymbols(rows), "risk"),
+      collection("Shock Opportunity Research", "/intelligence/shock-opportunities", "Public-safe view of high-volatility and two-sided large-move history without trade-plan levels.", topShockSymbols(rows), "risk"),
       collection("Macro Regime Intelligence", "/intelligence/macro-regime", "Current broad market state, volatility pressure, liquidity pressure, and sector leadership context.", topMacroSymbols(rows), "neutral"),
     ],
     generatedAt,
@@ -166,7 +166,7 @@ export function buildPublishedShockPage(rows: OpportunityViewModel[], generatedA
       return collection(
         `${row.symbol} ${shock?.opportunityState ?? "Shock Memory"}`,
         `/symbol/${row.symbol}`,
-        safeText(`${row.symbol} shows ${shock?.opportunityState.toLowerCase() ?? "developing shock memory"} with ${shock?.chaseRiskLabel.toLowerCase() ?? "bounded chase-risk context"}. This is high-volatility research, not a core action signal.`),
+        safeText(`${row.symbol} shows ${shock?.opportunityState.toLowerCase() ?? "developing large-move history"} with ${shock?.chaseRiskLabel.toLowerCase() ?? "bounded chase-risk context"}. This is high-volatility research, not a core action signal.`),
         relatedSymbolsFor(row, rows).slice(0, 4),
         toneFromScore(shock?.downsideRiskScore ?? row.fragility, true),
       );
@@ -201,11 +201,11 @@ export function buildPublishedMacroRegimePage(rows: OpportunityViewModel[], gene
       card("Volatility Pressure", scoreBand(regime.volatilityPressure, true), "Higher volatility pressure increases two-sided risk and weakens clean continuation.", toneFromScore(regime.volatilityPressure, true)),
       card("Liquidity Pressure", scoreBand(regime.liquidityPressure, true), "Elevated liquidity pressure can reduce follow-through quality.", toneFromScore(regime.liquidityPressure, true)),
     ],
-    narrative: [
+    narrative: dedupe([
       safeText(regime.terminalSummary),
       safeText(regime.stateExplanation),
       "Macro regime pages describe observed market structure. They do not forecast Fed decisions, inflation prints, or exact price outcomes.",
-    ],
+    ]),
     sectorMap: sectors,
     title: "Current Macro Regime and Market Pressure Intelligence",
   };
@@ -308,7 +308,7 @@ function isPublishedSymbol(symbol: string): symbol is (typeof PUBLISHED_SYMBOLS)
 function whyWaitSummaryFor(row: OpportunityViewModel, macroContext: string, fragilityContext: string): string {
   const decision = decisionLabel(row.final_decision);
   if (/wait|avoid|no trade/i.test(decision)) {
-    return `${row.symbol} is framed with restraint because ${readableText(row.decision_reason, "the setup needs stronger confirmation.")} ${macroContext} ${fragilityContext}`;
+    return `${row.symbol} is framed with restraint because ${humanizeInsightText(row.decision_reason, "the setup needs stronger confirmation.")} ${macroContext} ${fragilityContext}`;
   }
   return `${row.symbol} may still require patience if volatility expands, macro alignment weakens, or the setup becomes extended. TradeVeto keeps this as research context rather than an action instruction.`;
 }
@@ -445,7 +445,7 @@ function dedupe(values: string[]): string[] {
 }
 
 function safeText(value: unknown): string {
-  const cleaned = String(value ?? "").replace(/\s+/g, " ").trim();
+  const cleaned = humanizeInsightText(value, "").replace(/\s+/g, " ").trim();
   if (!cleaned) return "";
   return cleaned.replace(FORBIDDEN_PUBLISHING_LANGUAGE, "research context");
 }

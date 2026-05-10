@@ -120,6 +120,23 @@ test("email templates do not include SMTP secrets or financial advice claims", (
   }
 });
 
+test("email templates use TradeVeto branding and current domains only", () => {
+  const emails = [
+    renderEmailVerificationEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), verificationUrl: "https://tradeveto.com/api/auth/verify-email?token=public-link-token" }),
+    renderPasswordResetEmail({ contacts, expiresAt: new Date("2026-05-05T12:00:00Z"), resetUrl: "https://tradeveto.com/reset-password?token=public-link-token" }),
+    renderSupportTicketCreatedEmail({ contacts, subject: "Need help", ticketId: "ticket_123" }),
+    renderSupportReplyEmail({ contacts, message: "We can help with account settings.", subject: "Need help", ticketId: "ticket_123" }),
+    renderBillingLifecycleEmail({ contacts, message: "Your Premium subscription is now active.", title: "Premium activated" }),
+    renderOperationalAlertEmail({ contacts, eventType: "health", message: "OK", metadata: {}, severity: "info", status: "ok" }),
+  ];
+
+  for (const email of emails) {
+    const rendered = `${email.from}\n${email.replyTo}\n${email.subject}\n${email.text}\n${email.html}`;
+    assert.match(rendered, /TradeVeto/);
+    assert.doesNotMatch(rendered, /Market Alpha|marketalpha\.co|market-alpha/i);
+  }
+});
+
 test("SMTP retry policy is bounded with exponential backoff", () => {
   assert.equal(EMAIL_MAX_ATTEMPTS, 3);
   assert.equal(emailRetryDelayMs(1), 1000);

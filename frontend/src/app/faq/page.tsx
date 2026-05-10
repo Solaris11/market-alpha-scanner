@@ -4,7 +4,7 @@ import { marketingMetadata } from "@/lib/marketing-seo";
 
 export const metadata: Metadata = marketingMetadata("/faq", {
   title: "FAQ — TradeVeto",
-  description: "Frequently asked questions about TradeVeto, an AI-powered market intelligence and decision-support system.",
+  description: "Frequently asked questions about TradeVeto, WAIT-first market intelligence, evidence depth, shock research, replay, simulations, billing, and risk boundaries.",
 });
 
 const faqs = [
@@ -12,6 +12,12 @@ const faqs = [
   ["Is this a trading bot?", "No. TradeVeto does not place trades. It helps you evaluate whether a setup is worth researching, watching, avoiding, or waiting on."],
   ["What does Daily Action do?", "Daily Action summarizes the current market state into one clear action so the app does not push conflicting trade messages."],
   ["Why does the product often say WAIT?", "The product is designed to reduce overtrading. If market conditions are poor, stale, overheated, or too risky, the correct action can be no trade."],
+  ["What makes TradeVeto different from a screener?", "A screener usually lists symbols that match filters. TradeVeto tries to explain decision quality: what matters now, why a setup may fail, how much evidence exists, and when waiting is rational."],
+  ["What is evidence maturity?", "Evidence maturity summarizes whether a setup has enough historical depth, analogs, forward outcomes, and calibration coverage to support stronger confidence."],
+  ["What is shock intelligence?", "Shock intelligence studies historical large upside/downside moves, two-sided volatility, chase risk, and follow-through. It is speculative research context, not a core buy signal."],
+  ["How does TradeVeto handle news and events?", "Verified event context must come from trusted configured sources. If the system lacks verified source-backed context, it should say so instead of inventing a catalyst."],
+  ["What is public strategy performance?", "It is simulated, research-only strategy evidence with benchmark and drawdown visibility. It is not real-money trading and does not guarantee future returns."],
+  ["Can AI override the scores?", "No. The deterministic and statistical engines own scores, rankings, and metrics. AI is used to explain structured data, not to invent facts or make trade decisions."],
   ["What happens after beta?", "The planned premium price is $20/month. Closed beta access is focused on early feedback, product quality, retention learning, and operational confidence before wider launch."],
   ["How do beta trials or promo codes work?", "If enabled for your invite cohort, Stripe will show the trial length, discount, renewal price, and billing date before checkout is confirmed."],
   ["Can I cancel?", "Yes. Subscription management is handled through Stripe Billing Portal. If you cancel during a trial, Stripe shows when access will end and whether billing will begin."],

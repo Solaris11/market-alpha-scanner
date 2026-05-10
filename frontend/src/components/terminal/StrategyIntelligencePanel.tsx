@@ -29,7 +29,7 @@ export function StrategyIntelligencePanel({
           <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Alpha Lab</div>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">{focusSymbol ? `${focusSymbol.toUpperCase()} strategy fit` : "Strategy intelligence"}</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-            Completed outcomes are grouped into strategy families to identify historically repeatable edge, decay, and capital efficiency. Research only; core risk decisions remain authoritative.
+            Completed outcomes are grouped into strategy families to show which patterns have worked, weakened, or used risk efficiently. Research only; core risk decisions still lead.
           </p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-right text-xs md:min-w-[310px]">
@@ -42,7 +42,7 @@ export function StrategyIntelligencePanel({
       <div className="mt-4 grid gap-3 lg:grid-cols-3">
         {insights.length ? insights.map((insight) => <InsightCard insight={insight} key={`${insight.title}-${insight.strategyFamily}`} />) : (
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-6 text-slate-400 lg:col-span-3">
-            Strategy intelligence will sharpen after more completed forward-return windows mature.
+            Strategy intelligence will sharpen after more later-outcome windows mature.
           </div>
         )}
       </div>

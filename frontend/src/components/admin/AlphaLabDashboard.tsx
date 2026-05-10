@@ -26,7 +26,7 @@ export function AlphaLabDashboard({ system }: { system: StrategyIntelligenceSyst
         </ul>
       </AdminSection>
 
-      <AdminSection title="Strategy families" subtitle="Strategy quality combines excess return, durability, capital efficiency, downside risk, and evidence maturity.">
+      <AdminSection title="Strategy families" subtitle="Strategy quality combines excess return, durability, capital efficiency, downside risk, and evidence strength.">
         {system.bestStrategies.length ? (
           <div className="grid gap-3 xl:grid-cols-2">
             {system.bestStrategies.map((row) => <StrategyCard key={row.family} row={row} />)}

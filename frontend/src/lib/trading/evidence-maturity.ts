@@ -8,7 +8,10 @@ export type EvidenceMaturityTier = "developing" | "high" | "limited" | "mature";
 
 export type EvidenceMaturityModel = {
   analogQualityScore: number;
+  calibrationDrift: number;
+  confidenceConfidence: number;
   confidenceReliability: number;
+  evidenceConsistency: number;
   evidenceSampleSize: number;
   historicalDepthDays: number;
   label: EvidenceMaturityLabel;
@@ -16,17 +19,22 @@ export type EvidenceMaturityModel = {
   outcomeCoverage: number;
   reasons: string[];
   score: number;
+  setupReliabilityHistory: number;
   tier: EvidenceMaturityTier;
 };
 
 export type EvidenceMaturityInput = {
   analogQualityScore?: number | null;
+  calibrationDrift?: number | null;
+  confidenceConfidence?: number | null;
   confidenceReliability?: number | null;
+  evidenceConsistency?: number | null;
   evidenceSampleSize?: number | null;
   eventSimilarityScore?: number | null;
   historicalDepthDays?: number | null;
   outcomeCoverage?: number | null;
   regimeSimilarityScore?: number | null;
+  setupReliabilityHistory?: number | null;
 };
 
 export function buildEvidenceMaturity(input: EvidenceMaturityInput): EvidenceMaturityModel {
@@ -34,6 +42,9 @@ export function buildEvidenceMaturity(input: EvidenceMaturityInput): EvidenceMat
   const historicalDepthDays = Math.max(0, Math.round(input.historicalDepthDays ?? 0));
   const analogQualityScore = bounded(input.analogQualityScore ?? 0);
   const confidenceReliability = bounded(input.confidenceReliability ?? 0);
+  const evidenceConsistency = bounded(input.evidenceConsistency ?? confidenceReliability);
+  const calibrationDrift = bounded(input.calibrationDrift ?? Math.max(0, 100 - confidenceReliability));
+  const confidenceConfidence = bounded(input.confidenceConfidence ?? weightedAverage([[confidenceReliability, 0.55], [evidenceConsistency, 0.45]], 0));
   const outcomeCoverage = bounded(input.outcomeCoverage ?? 0);
   const regimeSimilarityScore = bounded(input.regimeSimilarityScore ?? 0);
   const eventSimilarityScore = bounded(input.eventSimilarityScore ?? 0);
@@ -49,22 +60,29 @@ export function buildEvidenceMaturity(input: EvidenceMaturityInput): EvidenceMat
     [calendarScore, 0.24],
     [outcomeCoverage, 0.20],
     [contextSimilarityScore, 0.16],
-    [confidenceReliability, 0.12],
+    [confidenceReliability, 0.08],
+    [evidenceConsistency, 0.04],
   ], 0)));
+  const driftPenalty = Math.round(Math.max(0, calibrationDrift - 55) * 0.16);
+  const adjustedScore = Math.round(bounded(score - driftPenalty));
 
-  const tier = tierFor(score, evidenceSampleSize, historicalDepthDays, outcomeCoverage);
+  const tier = tierFor(adjustedScore, evidenceSampleSize, historicalDepthDays, outcomeCoverage);
   const label = labelFor(tier);
 
   return {
     analogQualityScore: Math.round(analogQualityScore),
+    calibrationDrift: Math.round(calibrationDrift),
+    confidenceConfidence: Math.round(confidenceConfidence),
     confidenceReliability: Math.round(confidenceReliability),
+    evidenceConsistency: Math.round(evidenceConsistency),
     evidenceSampleSize,
     historicalDepthDays,
     label,
-    limitations: limitationsFor({ evidenceSampleSize, historicalDepthDays, outcomeCoverage, tier }),
+    limitations: limitationsFor({ calibrationDrift, evidenceSampleSize, historicalDepthDays, outcomeCoverage, tier }),
     outcomeCoverage: Math.round(outcomeCoverage),
-    reasons: reasonsFor({ analogQualityScore, confidenceReliability, evidenceSampleSize, historicalDepthDays, outcomeCoverage, score }),
-    score,
+    reasons: reasonsFor({ analogQualityScore, calibrationDrift, confidenceReliability, evidenceConsistency, evidenceSampleSize, historicalDepthDays, outcomeCoverage, score: adjustedScore }),
+    score: adjustedScore,
+    setupReliabilityHistory: Math.round(input.setupReliabilityHistory ?? confidenceReliability),
     tier,
   };
 }
@@ -98,6 +116,7 @@ export function buildEvidenceMaturityFromSignal(
   ]);
   const confidenceReliability = firstFinite([
     row.confidence_reliability,
+    row.confidence_confidence,
     row.calibration_reliability,
     row.score_reliability,
     row.reliability_score,
@@ -112,12 +131,16 @@ export function buildEvidenceMaturityFromSignal(
 
   return buildEvidenceMaturity({
     analogQualityScore,
+    calibrationDrift: firstFinite([row.calibration_drift, row.calibration_drift_score]),
+    confidenceConfidence: firstFinite([row.confidence_confidence, row.confidence_confidence_score]),
     confidenceReliability,
+    evidenceConsistency: firstFinite([row.evidence_consistency, row.outcome_consistency]),
     evidenceSampleSize,
     eventSimilarityScore: firstFinite([row.event_similarity_score, row.event_context_available ? 58 : null]),
     historicalDepthDays,
     outcomeCoverage,
     regimeSimilarityScore: firstFinite([row.regime_similarity_score, row.macro_alignment_score]),
+    setupReliabilityHistory: firstFinite([row.setup_reliability_history, row.setup_reliability_score, shock?.reliabilityScore]),
   });
 }
 
@@ -161,7 +184,9 @@ function labelFor(tier: EvidenceMaturityTier): EvidenceMaturityLabel {
 
 function reasonsFor(input: {
   analogQualityScore: number;
+  calibrationDrift: number;
   confidenceReliability: number;
+  evidenceConsistency: number;
   evidenceSampleSize: number;
   historicalDepthDays: number;
   outcomeCoverage: number;
@@ -173,17 +198,20 @@ function reasonsFor(input: {
   if (input.outcomeCoverage >= 70) reasons.push("forward outcome coverage is strong");
   else if (input.outcomeCoverage >= 40) reasons.push("forward outcome coverage is developing");
   else reasons.push("forward outcome coverage is still limited");
+  if (input.calibrationDrift >= 65) reasons.push("calibration drift is elevated, so confidence should be discounted");
   if (input.analogQualityScore >= 70) reasons.push("analog quality is strong enough to support contextual comparisons");
+  if (input.evidenceConsistency >= 70) reasons.push("evidence is consistent across completed outcomes");
   if (input.confidenceReliability >= 70) reasons.push("confidence reliability is supported by completed outcome evidence");
-  reasons.push(`evidence maturity score ${Math.round(input.score)}/100`);
+  reasons.push(`evidence strength score ${Math.round(input.score)}/100`);
   return reasons.slice(0, 5);
 }
 
-function limitationsFor(input: { evidenceSampleSize: number; historicalDepthDays: number; outcomeCoverage: number; tier: EvidenceMaturityTier }): string[] {
+function limitationsFor(input: { calibrationDrift: number; evidenceSampleSize: number; historicalDepthDays: number; outcomeCoverage: number; tier: EvidenceMaturityTier }): string[] {
   const limitations: string[] = [];
   if (input.historicalDepthDays < 30) limitations.push("calendar depth is still below a full 30-day evidence window");
   if (input.evidenceSampleSize < 100) limitations.push("sample size is not yet mature enough for strong calibration claims");
-  if (input.outcomeCoverage < 45) limitations.push("forward-return outcomes are incomplete for part of the evidence set");
+  if (input.outcomeCoverage < 45) limitations.push("later outcomes are incomplete for part of the evidence set");
+  if (input.calibrationDrift >= 65) limitations.push("recent calibration drift requires extra caution before trusting this score");
   if (input.tier === "limited") limitations.push("treat this as early context, not proof of edge");
   return limitations;
 }

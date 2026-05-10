@@ -7,7 +7,7 @@ export function EvidenceDepthDashboard({ summary }: { summary: EvidenceDepthSumm
   const duplicateCount = summary.duplicateChecks.reduce((sum, check) => sum + check.duplicateGroups, 0);
 
   return (
-    <AdminSection title="Phase 8.1 Evidence Depth" subtitle="Historical evidence maturity across scanner runs, market memory, shock intelligence, and completed forward outcomes.">
+    <AdminSection title="Phase 8.1 Evidence Depth" subtitle="Historical evidence strength across scanner runs, market memory, shock intelligence, and completed outcomes.">
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <AdminStatCard label="Evidence maturity" meta={summary.summary} tone={statusToneForEvidence(summary.label)} value={`${summary.maturityScore}/100`} />
         <AdminStatCard label="Calendar depth" meta="Unique signal days in 90-day view" tone={(primaryWindow?.uniqueSignalDays ?? 0) >= 30 ? "good" : "warn"} value={primaryWindow?.uniqueSignalDays.toLocaleString() ?? "0"} />

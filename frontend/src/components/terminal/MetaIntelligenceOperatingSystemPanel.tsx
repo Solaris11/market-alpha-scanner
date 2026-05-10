@@ -13,6 +13,7 @@ import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model"
 import type { UserPersonalizationProfile } from "@/lib/trading/personalized-intelligence";
 import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution";
 import { formatNumber } from "@/lib/ui/formatters";
+import { humanizeInsightText } from "@/lib/ui/labels";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
@@ -50,10 +51,10 @@ export function MetaIntelligenceOperatingSystemPanel({
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div>
           <SectionTitle eyebrow="TradeVeto Intelligence OS" title="What Matters Most" meta={system.marketState} />
-          <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">{system.summary}</p>
-          <p className="mt-1 max-w-4xl text-xs leading-5 text-slate-500">{system.marketStateReason}</p>
+          <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">{humanizeInsightText(system.summary)}</p>
+          <p className="mt-1 max-w-4xl text-xs leading-5 text-slate-500">{humanizeInsightText(system.marketStateReason)}</p>
         </div>
-        <div className="grid min-w-[290px] grid-cols-3 gap-2">
+        <div className="grid w-full grid-cols-1 gap-2 sm:max-w-md sm:grid-cols-3 xl:w-[380px]">
           <ScoreTile label="Opportunity" value={system.metaOpportunityAverage} />
           <ScoreTile label="Decision" value={system.decisionQualityAverage} />
           <ScoreTile inverse label="Risk" value={system.metaRiskAverage} />
@@ -80,7 +81,7 @@ export function MetaIntelligenceOperatingSystemPanel({
       <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Orchestration Boundary</div>
         <p className="mt-2 text-xs leading-5 text-slate-400">
-          The OS layer synthesizes deterministic engine outputs. It prioritizes attention and decision quality; it does not predict markets, invent events, or override core TradeVeto risk decisions.
+          The OS layer combines scored evidence from TradeVeto engines. It decides what deserves attention; it does not predict markets, invent events, or override TradeVeto's main risk decision.
         </p>
       </div>
     </GlassPanel>
@@ -96,9 +97,9 @@ function FocusedMetaPanel({ compact, item, system }: { compact: boolean; item: M
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
             {item.symbol} is categorized as {item.category.toLowerCase()} with {item.decisionQualityScore}/100 decision quality, {item.timingQualityScore}/100 timing quality, and {item.metaRiskScore}/100 meta risk.
           </p>
-          <p className="mt-1 text-xs leading-5 text-slate-500">{system.marketStateReason}</p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">{humanizeInsightText(system.marketStateReason)}</p>
         </div>
-        <div className="grid min-w-[280px] grid-cols-2 gap-2">
+        <div className="grid w-full grid-cols-2 gap-2 sm:max-w-xs xl:w-[300px]">
           <ScoreTile label="Meta Opp." value={item.metaOpportunityScore} />
           <ScoreTile label="Decision" value={item.decisionQualityScore} />
           <ScoreTile label="Timing" value={item.timingQualityScore} />
@@ -144,7 +145,7 @@ function PriorityQueue({ items, title }: { items: MetaOpportunityPriority[]; tit
                 <div className="text-[10px] uppercase tracking-[0.12em] text-slate-500">meta</div>
               </div>
             </div>
-            <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{item.keyReasons[0]}</p>
+            <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{humanizeInsightText(item.keyReasons[0])}</p>
           </Link>
         ))}
       </div>
@@ -163,7 +164,7 @@ function AttentionStack({ system }: { system: TradeVetoOperatingSystem }) {
           {system.conflicts.length ? system.conflicts.slice(0, 3).map((conflict) => (
             <div className="rounded-xl border border-white/10 bg-slate-950/35 p-3" key={`${conflict.symbol}-${conflict.title}`}>
               <div className="font-mono text-sm font-black text-slate-50">{conflict.symbol}</div>
-              <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{conflict.detail}</p>
+              <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{humanizeInsightText(conflict.detail)}</p>
             </div>
           )) : <p className="text-sm leading-6 text-slate-400">No major opportunity/risk conflict is dominant.</p>}
         </div>
@@ -180,7 +181,7 @@ function OpportunityHierarchy({ groups }: { groups: MetaOpportunityGroup[] }) {
         {groups.map((group) => (
           <div className="rounded-xl border border-white/10 bg-slate-950/35 p-3" key={group.category}>
             <div className="text-sm font-bold text-slate-100">{group.category}</div>
-            <p className="mt-1 text-xs leading-5 text-slate-500">{group.description}</p>
+            <p className="mt-1 text-xs leading-5 text-slate-500">{humanizeInsightText(group.description)}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {group.opportunities.slice(0, 4).map((item) => (
                 <Link className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-bold text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100" href={`/symbol/${item.symbol}`} key={item.symbol}>
@@ -206,7 +207,7 @@ function MetaTimeline({ system }: { system: TradeVetoOperatingSystem }) {
               <div className="font-mono text-sm font-black text-slate-50">{signal.symbol}</div>
               <div className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">{signal.signalType}</div>
             </div>
-            <p className="mt-1 text-xs leading-5 text-slate-400">{signal.detail}</p>
+            <p className="mt-1 text-xs leading-5 text-slate-400">{humanizeInsightText(signal.detail)}</p>
           </div>
         )) : <p className="text-sm leading-6 text-slate-400">Timeline signals will become richer after workflow snapshots accumulate.</p>}
       </div>
@@ -219,7 +220,7 @@ function BriefingBlock({ lines, title }: { lines: string[]; title: string }) {
     <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.055] p-4">
       <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">{title}</div>
       <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
-        {lines.map((line) => <li key={line}>- {line}</li>)}
+        {lines.map((line) => <li key={line}>- {humanizeInsightText(line)}</li>)}
       </ul>
     </div>
   );
@@ -248,7 +249,7 @@ function ReasonList({ items, title, tone = "neutral" }: { items: string[]; title
     <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
       <div className={`text-[10px] font-black uppercase tracking-[0.2em] ${titleClass}`}>{title}</div>
       <ul className="mt-3 space-y-2 text-xs leading-5 text-slate-300">
-        {items.map((item) => <li key={item}>- {item}</li>)}
+        {items.map((item) => <li key={item}>- {humanizeInsightText(item)}</li>)}
       </ul>
     </div>
   );
@@ -259,8 +260,8 @@ function ScoreTile({ inverse = false, label, value }: { inverse?: boolean; label
   const risk = inverse ? value >= 70 : value < 45;
   const color = good ? "text-emerald-200" : risk ? "text-rose-200" : "text-amber-200";
   return (
-    <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3">
-      <div className="min-w-0 truncate text-[9px] font-black uppercase leading-3 tracking-normal text-slate-500" title={label}>{label}</div>
+    <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-center">
+      <div className="min-h-7 min-w-0 break-words text-[8px] font-black uppercase leading-4 tracking-normal text-slate-500 sm:text-[9px]" title={label}>{label}</div>
       <div className={`mt-1 font-mono text-lg font-black ${color}`}>{formatNumber(value, 0)}</div>
     </div>
   );

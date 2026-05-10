@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import type { RankingRow } from "@/lib/types";
 import { actionFor, compact, formatNumber } from "@/lib/format";
 import { cleanText } from "@/lib/ui/formatters";
-import { decisionLabel, humanizeLabel, normalizedToken, readableText } from "@/lib/ui/labels";
+import { decisionLabel, humanizeInsightText, humanizeLabel, normalizedToken } from "@/lib/ui/labels";
 
 export type RankingSortKey = "symbol" | "company" | "asset" | "sector" | "price" | "score" | "rating" | "action" | "decision" | "quality" | "signals";
 export type RankingSortDirection = "asc" | "desc";
@@ -136,7 +136,7 @@ function decisionClass(row: RankingRow) {
 }
 
 function shortReason(row: RankingRow) {
-  return readableText(row.decision_reason ?? row.quality_reason ?? row.setup_type ?? row.market_regime, "No decision reason available.");
+  return humanizeInsightText(row.decision_reason ?? row.quality_reason ?? row.setup_type ?? row.market_regime, "No decision reason available.");
 }
 
 function suggestedEntry(row: RankingRow) {

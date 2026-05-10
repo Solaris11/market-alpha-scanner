@@ -134,7 +134,7 @@ async function upsertOAuthUser(input: {
       const existingUser = await client.query<ExistingUserRow>("SELECT id::text FROM users WHERE email = $1 AND state = 'active' LIMIT 1", [input.email]);
       userId = existingUser.rows[0]?.id ?? null;
       if (!userId) {
-        const betaDecision = betaSignupDecisionForRequest({ email: input.email });
+        const betaDecision = await betaSignupDecisionForRequest({ email: input.email });
         if (!betaDecision.allowed) throw new Error("Closed beta signup requires access.");
         const createdUser = await client.query<ExistingUserRow>(
           `

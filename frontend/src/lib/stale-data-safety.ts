@@ -3,7 +3,9 @@ import type { DataFreshness } from "@/lib/data-health";
 import type { RankingRow, SymbolDetail } from "@/lib/types";
 
 export const DEFAULT_MAX_SCAN_AGE_MINUTES = 240;
-export const STALE_DATA_ACTION_REASON = "Data is stale. Refresh scan before acting.";
+export const MISSING_DATA_ACTION_REASON = "Scanner output is unavailable. Waiting for the next successful scan.";
+export const SCHEMA_MISMATCH_ACTION_REASON = "Scanner output needs validation before decisions are shown.";
+export const STALE_DATA_ACTION_REASON = "Scanner data is stale. Fresh scan required before decisions are trusted.";
 const SAFE_DATA_ACTION_REASON = "Data freshness is within safe limits.";
 
 export type ScanSafetyState = {
@@ -30,7 +32,7 @@ export function buildScanSafetyState(freshness: DataFreshness, maxAgeMinutes = D
     humanAge: freshness.humanAge,
     lastUpdated: freshness.lastUpdated,
     maxAgeMinutes: safeMaxAge,
-    reason: active ? STALE_DATA_ACTION_REASON : SAFE_DATA_ACTION_REASON,
+    reason: active ? scanSafetyReason(freshness.status) : SAFE_DATA_ACTION_REASON,
     status: freshness.status,
   };
 }
@@ -80,4 +82,10 @@ export function rowHasStaleDataSafety(row: RankingRow): boolean {
 
 function normalizeMaxAgeMinutes(value: number): number {
   return Number.isFinite(value) && value >= 0 ? value : DEFAULT_MAX_SCAN_AGE_MINUTES;
+}
+
+function scanSafetyReason(status: DataFreshness["status"]): string {
+  if (status === "missing") return MISSING_DATA_ACTION_REASON;
+  if (status === "schema_mismatch") return SCHEMA_MISMATCH_ACTION_REASON;
+  return STALE_DATA_ACTION_REASON;
 }

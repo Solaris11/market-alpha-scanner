@@ -1,5 +1,13 @@
 import "server-only";
 
+import { configuredLlmFallbackModel, estimateLlmCallCost, extractOpenAiUsage } from "@/lib/llm-cost-policy";
+import {
+  checkLlmBudget,
+  llmCacheIdentity,
+  readLlmResponseCache,
+  recordLlmUsage,
+  writeLlmResponseCache,
+} from "@/lib/server/llm-cost-control";
 import { evaluateLlmGrounding, groundingPacketFromStructuredData } from "@/lib/trading/llm-grounding";
 import type { RiskTolerantOpportunityPacket } from "@/lib/trading/risk-tolerant-opportunities";
 import { deterministicOpportunityExplanation } from "@/lib/trading/risk-tolerant-opportunities";
@@ -21,18 +29,63 @@ export type RiskTolerantLlmAnalysis = {
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const FORBIDDEN_LANGUAGE = /\b(buy now|sell now|guaranteed|sure profit|can't lose|cannot lose|will definitely|must buy|must sell)\b/i;
+const LLM_SURFACE = "risk_tolerant_opportunity";
+const LLM_ROUTE = "/api/opportunities/risk-tolerant-analysis";
+const LLM_CACHE_VERSION = "risk_tolerant_opportunity_v1";
 
-export async function analyzeRiskTolerantOpportunity(packet: RiskTolerantOpportunityPacket): Promise<RiskTolerantLlmAnalysis> {
+export async function analyzeRiskTolerantOpportunity(packet: RiskTolerantOpportunityPacket, options: { userId?: string | null } = {}): Promise<RiskTolerantLlmAnalysis> {
   if (!llmEnabled()) return deterministicAnalysis(packet, false);
   const apiKey = process.env.OPENAI_API_KEY?.trim();
-  const model = (process.env.TRADEVETO_OPPORTUNITY_LLM_MODEL || process.env.TRADEVETO_EVENT_LLM_MODEL || "").trim();
+  const model = (process.env.TRADEVETO_OPPORTUNITY_LLM_MODEL || process.env.TRADEVETO_EVENT_LLM_MODEL || configuredLlmFallbackModel() || "").trim();
   if (!apiKey || !model) return deterministicAnalysis(packet, false);
+
+  const request = requestPayload(model, packet);
+  const { cacheKey, promptHash } = llmCacheIdentity({ model, payload: request, surface: LLM_SURFACE, version: LLM_CACHE_VERSION });
+  const estimate = estimateLlmCallCost({ maxOutputTokens: 900, payload: request });
+  const cached = await readLlmResponseCache<unknown>({ cacheKey, surface: LLM_SURFACE });
+  if (cached) {
+    const validated = validateAnalysis(cached, packet);
+    if (validated) {
+      await recordLlmUsage({
+        cacheStatus: "hit",
+        estimatedInputTokens: estimate.estimatedInputTokens,
+        estimatedOutputTokens: estimate.estimatedOutputTokens,
+        model,
+        payload: request,
+        promptHash,
+        route: LLM_ROUTE,
+        status: "cache_hit",
+        surface: LLM_SURFACE,
+        userId: options.userId,
+      });
+      return validated;
+    }
+  }
+
+  const budget = await checkLlmBudget({ maxOutputTokens: 900, payload: request, route: LLM_ROUTE, surface: LLM_SURFACE, userId: options.userId });
+  if (!budget.allowed) {
+    await recordLlmUsage({
+      cacheStatus: "bypass",
+      estimatedInputTokens: budget.estimatedInputTokens,
+      estimatedOutputTokens: budget.estimatedOutputTokens,
+      model,
+      payload: request,
+      promptHash,
+      route: LLM_ROUTE,
+      status: "blocked",
+      surface: LLM_SURFACE,
+      userId: options.userId,
+      errorCode: budget.reason,
+    });
+    return deterministicAnalysis(packet, false);
+  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs());
+  const startedAt = Date.now();
   try {
     const response = await fetch(OPENAI_RESPONSES_URL, {
-      body: JSON.stringify(requestPayload(model, packet)),
+      body: JSON.stringify(request),
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
@@ -41,14 +94,98 @@ export async function analyzeRiskTolerantOpportunity(packet: RiskTolerantOpportu
       method: "POST",
       signal: controller.signal,
     });
-    if (!response.ok) return deterministicAnalysis(packet, false);
+    if (!response.ok) {
+      await recordLlmUsage({
+        cacheStatus: "miss",
+        durationMs: Date.now() - startedAt,
+        estimatedInputTokens: budget.estimatedInputTokens,
+        estimatedOutputTokens: budget.estimatedOutputTokens,
+        model,
+        payload: request,
+        promptHash,
+        route: LLM_ROUTE,
+        status: "failed",
+        surface: LLM_SURFACE,
+        userId: options.userId,
+        errorCode: `http_${response.status}`,
+      });
+      return deterministicAnalysis(packet, false);
+    }
     const payload = await response.json() as unknown;
+    const usage = extractOpenAiUsage(payload);
     const text = extractOutputText(payload);
-    if (!text) return deterministicAnalysis(packet, false);
+    if (!text) {
+      await recordLlmUsage({
+        cacheStatus: "miss",
+        durationMs: Date.now() - startedAt,
+        estimatedInputTokens: budget.estimatedInputTokens,
+        estimatedOutputTokens: budget.estimatedOutputTokens,
+        model,
+        payload: request,
+        promptHash,
+        route: LLM_ROUTE,
+        status: "validation_failed",
+        surface: LLM_SURFACE,
+        usageInputTokens: usage.inputTokens,
+        usageOutputTokens: usage.outputTokens,
+        userId: options.userId,
+        errorCode: "empty_output",
+      });
+      return deterministicAnalysis(packet, false);
+    }
     const parsed = parseAnalysisJson(text);
     const validated = validateAnalysis(parsed, packet);
-    return validated ?? deterministicAnalysis(packet, false);
+    if (!validated) {
+      await recordLlmUsage({
+        cacheStatus: "miss",
+        durationMs: Date.now() - startedAt,
+        estimatedInputTokens: budget.estimatedInputTokens,
+        estimatedOutputTokens: budget.estimatedOutputTokens,
+        model,
+        payload: request,
+        promptHash,
+        route: LLM_ROUTE,
+        status: "validation_failed",
+        surface: LLM_SURFACE,
+        usageInputTokens: usage.inputTokens,
+        usageOutputTokens: usage.outputTokens,
+        userId: options.userId,
+        errorCode: "schema_or_grounding",
+      });
+      return deterministicAnalysis(packet, false);
+    }
+    const cacheStatus = await writeLlmResponseCache({ cacheKey, model, responseJson: parsed, surface: LLM_SURFACE });
+    await recordLlmUsage({
+      cacheStatus: cacheStatus === "ok" ? "miss" : "write_failed",
+      durationMs: Date.now() - startedAt,
+      estimatedInputTokens: budget.estimatedInputTokens,
+      estimatedOutputTokens: budget.estimatedOutputTokens,
+      model,
+      payload: request,
+      promptHash,
+      route: LLM_ROUTE,
+      status: "success",
+      surface: LLM_SURFACE,
+      usageInputTokens: usage.inputTokens,
+      usageOutputTokens: usage.outputTokens,
+      userId: options.userId,
+    });
+    return validated;
   } catch {
+    await recordLlmUsage({
+      cacheStatus: "miss",
+      durationMs: Date.now() - startedAt,
+      estimatedInputTokens: budget.estimatedInputTokens,
+      estimatedOutputTokens: budget.estimatedOutputTokens,
+      model,
+      payload: request,
+      promptHash,
+      route: LLM_ROUTE,
+      status: "failed",
+      surface: LLM_SURFACE,
+      userId: options.userId,
+      errorCode: "fetch_error",
+    });
     return deterministicAnalysis(packet, false);
   } finally {
     clearTimeout(timeout);
@@ -60,27 +197,27 @@ export function deterministicAnalysis(packet: RiskTolerantOpportunityPacket, llm
   return {
     available: llmWasAvailable,
     chaseRiskAssessment: packet.candidate.chaseRiskScore >= 70
-      ? "Chase risk is elevated; the setup should be treated as pullback or confirmation dependent."
-      : "Chase risk is not the dominant blocker, but entry quality still matters.",
+      ? "Late-entry risk is elevated; the setup needs a pullback or stronger confirmation."
+      : "Late-entry risk is not the dominant blocker, but entry timing still matters.",
     conciseExplanation: explanation,
     dataFreshnessNote: packet.dataFreshness.status === "fresh" || packet.dataFreshness.status === "slightly_stale"
       ? packet.dataFreshness.message
       : `${packet.dataFreshness.message}. Treat the analysis as limited until fresh data updates.`,
     evidenceSupportingRanking: packet.deterministicReasons.keyReasons.slice(0, 3),
     monitorNext: [
-      "Whether macro/event pressure improves or deteriorates.",
-      "Whether price returns toward the research entry zone instead of extending into the do-not-chase area.",
+      "Whether market or event pressure improves or deteriorates.",
+      "Whether price returns toward the research entry area instead of extending into the too-late area.",
       "Whether core decision quality improves from WAIT/AVOID toward cleaner confirmation.",
     ],
     profileFitReason: packet.candidate.riskTolerantRank
-      ? `${packet.candidate.symbol} is ranked within the selected ${packet.preference.label} profile by deterministic TradeVeto scores.`
+      ? `${packet.candidate.symbol} is ranked within the selected ${packet.preference.label} profile by TradeVeto scores.`
       : `${packet.candidate.symbol} did not fully fit the selected ${packet.preference.label} profile.`,
-    safetyLanguage: "Risk-tolerant opportunity mode is speculative research context only. It is not financial advice or a core buy signal.",
+    safetyLanguage: "Higher-risk opportunity mode is speculative research context only. It is not financial advice or a main TradeVeto signal.",
     source: "deterministic",
     uncertaintyNote: packet.marketMemory?.available
       ? `${packet.marketMemory.evidenceLabel}. Historical analogs are context, not prediction.`
       : "Historical analog evidence is limited for this specific setup.",
-    whyItMayFail: packet.deterministicReasons.keyRisks[0] ?? "The setup may fail if downside risk, chase risk, or macro pressure increases.",
+    whyItMayFail: packet.deterministicReasons.keyRisks[0] ?? "The setup may fail if downside risk, late-entry risk, or market pressure increases.",
     whyItMayWork: packet.deterministicReasons.keyReasons[0] ?? "The setup may work if current scanner evidence continues to improve.",
   };
 }
@@ -96,7 +233,7 @@ function requestPayload(model: string, packet: RiskTolerantOpportunityPacket): R
           "Use only the supplied structured packet.",
           "If personalization is present, explain how the candidate fits or conflicts with that user's selected style and behavioral summary.",
           "Do not invent prices, news, probabilities, targets, scores, or events.",
-          "The deterministic engine owns all numeric claims and ranking decisions.",
+          "The TradeVeto scoring engine owns all numeric claims and ranking decisions.",
           "Do not manipulate the user or encourage reckless exposure.",
           "Do not use the words buy or sell. Use entry, exit, act, or avoid action instead.",
           "Do not say guaranteed, sure profit, or direct financial advice.",

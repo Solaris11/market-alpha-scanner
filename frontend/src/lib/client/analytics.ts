@@ -25,6 +25,7 @@ type ClientAnalyticsEvent = {
 };
 
 const ANONYMOUS_ID_KEY = "tv_analytics_anonymous_id";
+const FIRST_USEFUL_ACTION_KEY = "tv_first_useful_action_recorded";
 const SESSION_KEY = "tv_analytics_session";
 const SESSION_TTL_MS = 30 * 60 * 1000;
 const MAX_QUEUE = 40;
@@ -54,6 +55,17 @@ export function trackAnalyticsEvent(eventName: AnalyticsEventName, metadata: Rec
     return;
   }
   scheduleFlush();
+}
+
+export function trackFirstUsefulAction(action: string, metadata: Record<string, unknown> = {}, options: { pagePath?: string; source?: string; symbol?: string } = {}): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (window.localStorage.getItem(FIRST_USEFUL_ACTION_KEY)) return;
+    window.localStorage.setItem(FIRST_USEFUL_ACTION_KEY, new Date().toISOString());
+  } catch {
+    // If local storage is unavailable, still emit the activation event once for the current call path.
+  }
+  trackAnalyticsEvent("first_useful_action", { ...metadata, action }, options);
 }
 
 export function trackRouteAnalytics(pathname: string): void {

@@ -33,6 +33,8 @@ export type ScoreCalibrationAxis = {
   bucketCount: number;
   buckets: ScoreCalibrationBucket[];
   calibrationConfidence: number;
+  calibrationDrift: number;
+  confidenceConfidence: number;
   direction: CalibrationAxisDirection;
   falseNegativeRate: number | null;
   falsePositiveRate: number | null;
@@ -42,6 +44,7 @@ export type ScoreCalibrationAxis = {
   observationCount: number;
   outcomeConsistency: number;
   reliabilityLabel: CalibrationReliabilityLabel;
+  setupReliabilityHistory: number;
 };
 
 export type ScoreCalibrationAnomalyType = "avoided_loser" | "false_negative" | "false_positive" | "missed_winner" | "overly_aggressive" | "overly_conservative";
@@ -76,6 +79,8 @@ export type ScoreCalibrationFinding = {
 export type ScoreCalibrationSystem = {
   axes: ScoreCalibrationAxis[];
   calibrationConfidence: number;
+  calibrationDrift: number;
+  confidenceConfidence: number;
   generatedAt: string;
   observationCount: number;
   operatorFindings: ScoreCalibrationFinding[];
@@ -95,6 +100,8 @@ export function buildScoreCalibrationSystem(input: {
   const axes = axisSummaries(input.bucketRows, primaryHorizon);
   const observationCount = uniqueObservationCount(axes);
   const calibrationConfidence = Math.round(weightedAverage(axes.map((axis) => [axis.calibrationConfidence, axis.observationCount]), 0));
+  const calibrationDrift = Math.round(weightedAverage(axes.map((axis) => [axis.calibrationDrift, axis.observationCount]), 0));
+  const confidenceConfidence = Math.round(weightedAverage(axes.map((axis) => [axis.confidenceConfidence, axis.observationCount]), 0));
   const outcomeConsistency = Math.round(weightedAverage(axes.map((axis) => [axis.outcomeConsistency, axis.observationCount]), 0));
   const anomalySummaries = summarizeAnomalies(input.anomalies ?? []);
   const reliabilityLabel = reliabilityFor(calibrationConfidence, observationCount);
@@ -103,12 +110,14 @@ export function buildScoreCalibrationSystem(input: {
   return {
     axes,
     calibrationConfidence,
+    calibrationDrift,
+    confidenceConfidence,
     generatedAt: input.generatedAt ?? new Date().toISOString(),
     observationCount,
     operatorFindings,
     outcomeConsistency,
     reliabilityLabel,
-    summary: `${reliabilityLabel}: ${calibrationConfidence}/100 calibration confidence from ${observationCount.toLocaleString()} ${primaryHorizon} outcome observations. Score calibration is measurement, not auto-tuning.`,
+    summary: `${reliabilityLabel}: ${calibrationConfidence}/100 calibration confidence from ${observationCount.toLocaleString()} ${primaryHorizon} outcome observations. Drift is ${calibrationDrift}/100, so calibration remains measurement, not auto-tuning.`,
     anomalySummaries,
   };
 }
@@ -142,6 +151,9 @@ function axisSummary(rows: ScoreCalibrationBucketInput[]): ScoreCalibrationAxis 
   const sampleScore = sampleScoreFor(observationCount);
   const bucketCoverage = Math.min(100, buckets.filter((bucket) => bucket.count >= 30).length * 18);
   const calibrationConfidence = Math.round(clamp(sampleScore * 0.42 + monotonicityScore * 0.30 + outcomeConsistency * 0.20 + bucketCoverage * 0.08));
+  const calibrationDrift = Math.round(calibrationDriftFor({ falseNegativeRate, falsePositiveRate, monotonicityScore, outcomeConsistency }));
+  const confidenceConfidence = Math.round(clamp(calibrationConfidence * 0.64 + bucketCoverage * 0.18 + sampleScore * 0.18 - Math.max(0, calibrationDrift - 60) * 0.18));
+  const setupReliabilityHistory = Math.round(clamp(monotonicityScore * 0.45 + outcomeConsistency * 0.35 + sampleScore * 0.20));
   const reliabilityLabel = reliabilityFor(calibrationConfidence, observationCount);
 
   return {
@@ -150,6 +162,8 @@ function axisSummary(rows: ScoreCalibrationBucketInput[]): ScoreCalibrationAxis 
     bucketCount: buckets.length,
     buckets,
     calibrationConfidence,
+    calibrationDrift,
+    confidenceConfidence,
     direction: first?.direction ?? "higher_better",
     falseNegativeRate,
     falsePositiveRate,
@@ -168,7 +182,21 @@ function axisSummary(rows: ScoreCalibrationBucketInput[]): ScoreCalibrationAxis 
     observationCount,
     outcomeConsistency,
     reliabilityLabel,
+    setupReliabilityHistory,
   };
+}
+
+function calibrationDriftFor(input: {
+  falseNegativeRate: number | null;
+  falsePositiveRate: number | null;
+  monotonicityScore: number;
+  outcomeConsistency: number;
+}): number {
+  const falsePositivePressure = input.falsePositiveRate ?? 50;
+  const falseNegativePressure = input.falseNegativeRate ?? 50;
+  const monotonicityBreak = 100 - input.monotonicityScore;
+  const consistencyBreak = 100 - input.outcomeConsistency;
+  return clamp(falsePositivePressure * 0.24 + falseNegativePressure * 0.18 + monotonicityBreak * 0.36 + consistencyBreak * 0.22);
 }
 
 function monotonicityFor(buckets: ScoreCalibrationBucket[], direction: CalibrationAxisDirection): number {
@@ -270,6 +298,15 @@ function findingsFor(input: {
       evidence: `${input.reliabilityLabel}, consistency ${input.outcomeConsistency}/100`,
       severity: "info",
       title: "Keep calibration in review-only mode",
+    });
+  }
+  const drifted = input.axes.find((axis) => axis.calibrationDrift >= 65);
+  if (drifted) {
+    findings.push({
+      detail: "Recent bucket behavior is noisy enough that score confidence should be discounted before any threshold change.",
+      evidence: `${drifted.axisLabel} drift ${drifted.calibrationDrift}/100`,
+      severity: "warning",
+      title: "Calibration drift needs monitoring",
     });
   }
   if (!findings.length) {

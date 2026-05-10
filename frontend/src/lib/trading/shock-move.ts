@@ -91,12 +91,15 @@ export type ShockMovePattern = {
   downsideRiskScore: number;
   downsideShockCount: number;
   doNotChaseZone: string;
+  evidenceQualityScore?: number;
+  falsePositiveRiskScore?: number;
   historicalExitZone: string;
   invalidationZone: string;
   largestDownside1d: number | null;
   largestUpside1d: number | null;
   lastUpdated: string;
   latestEvent: ShockMoveEvent | null;
+  liquidityQualityScore?: number;
   lookbackWindow: ShockMoveWindow;
   medianDownsideShock: number | null;
   medianUpsideShock: number | null;
@@ -192,49 +195,64 @@ export function buildShockMovePattern(input: BuildShockMovePatternInput): ShockM
   const upsideScore = upsideShockScore({ currentShockPressure, events, latest, upsideEvents, upsideFrequency });
   const similarity = currentSimilarityScore(latest, events);
   const chaseRisk = chaseRiskScore({ latest, upsideEvents });
+  const liquidityQuality = liquidityQualityScore(computed, events);
   const opportunity = opportunityScore({ asymmetry, chaseRisk, downsideRisk, reliability, similarity, twoSided, upsideScore });
   const zones = buildResearchZones(latest, computed, events);
   const timingValidation = buildShockTimingValidation({ bars: computed, events, symbol: input.symbol.trim().toUpperCase() });
-  const calibratedReliability = clamp(reliability * 0.62 + timingValidation.shockReliabilityScore * 0.38);
+  const falsePositiveRisk = falsePositiveRiskScore({ events, followthrough5d, liquidityQuality, timingValidation });
+  const evidenceQuality = evidenceQualityScore({ barCount: bars.length, events, liquidityQuality, timingValidation });
+  const guardedChaseRisk = clamp(chaseRisk + Math.max(0, 55 - liquidityQuality) * 0.22 + falsePositiveRisk * 0.14);
+  const guardedDownsideRisk = clamp(downsideRisk + Math.max(0, 52 - liquidityQuality) * 0.16 + falsePositiveRisk * 0.10);
+  const calibratedReliability = clamp(reliability * 0.58 + timingValidation.shockReliabilityScore * 0.34 + evidenceQuality * 0.08 - falsePositiveRisk * 0.16);
   const calibratedSimilarity = clamp(similarity * 0.72 + timingValidation.entryQualityScore * 0.18 + timingValidation.timingQualityScore * 0.1);
-  const calibratedAsymmetry = clamp(asymmetry * 0.78 + timingValidation.entryQualityScore * 0.12 + (100 - chaseRisk) * 0.1);
+  const calibratedAsymmetry = clamp(asymmetry * 0.74 + timingValidation.entryQualityScore * 0.12 + (100 - guardedChaseRisk) * 0.08 + evidenceQuality * 0.06);
   const calibratedOpportunity = opportunityScore({
     asymmetry: calibratedAsymmetry,
-    chaseRisk,
-    downsideRisk,
+    chaseRisk: guardedChaseRisk,
+    downsideRisk: guardedDownsideRisk,
     reliability: calibratedReliability,
     similarity: calibratedSimilarity,
     twoSided,
     upsideScore,
   });
+  const failureConditions = hardenedFailureConditions({
+    events,
+    falsePositiveRisk,
+    followthrough5d,
+    liquidityQuality,
+    timingValidation,
+  });
 
   return {
     asymmetryScore: Math.round(calibratedAsymmetry),
-    averageDrawdownAfterEntry: maeValues.length ? `${formatSignedPercent(mean(maeValues))} average 5D adverse excursion after shocks` : "Drawdown sample still limited",
+    averageDrawdownAfterEntry: maeValues.length ? `${formatSignedPercent(mean(maeValues))} average five-day drawdown after similar shocks` : "Not enough completed shocks to estimate drawdown yet",
     averageFollowthrough1d: meanOrNull(followthrough1d),
     averageFollowthrough5d: meanOrNull(followthrough5d),
-    averageProfitPotential: mfeValues.length ? `${formatSignedPercent(mean(mfeValues))} average 5D favorable excursion after shocks` : "Profit-potential sample still limited",
+    averageProfitPotential: mfeValues.length ? `${formatSignedPercent(mean(mfeValues))} average five-day upside after similar shocks` : "Not enough completed shocks to estimate upside yet",
     averageReversal5d: meanOrNull(reversals5d),
-    chaseRiskLabel: chaseRisk >= 72 ? "Avoid chase" : chaseRisk >= 52 ? "Chase risk elevated" : "Chase risk contained",
-    chaseRiskScore: Math.round(chaseRisk),
+    chaseRiskLabel: guardedChaseRisk >= 72 ? "Avoid chase" : guardedChaseRisk >= 52 ? "Chase risk elevated" : "Chase risk contained",
+    chaseRiskScore: Math.round(guardedChaseRisk),
     chaseSuccessRate,
-    commonFailureConditions: commonFailureConditions(events),
+    commonFailureConditions: failureConditions,
     commonPreconditions: commonPreconditions(events),
     currentSimilarityScore: Math.round(calibratedSimilarity),
-    downsideRiskScore: Math.round(downsideRisk),
+    downsideRiskScore: Math.round(guardedDownsideRisk),
     downsideShockCount: downsideEvents.length,
     doNotChaseZone: zones.doNotChaseZone,
+    evidenceQualityScore: Math.round(evidenceQuality),
+    falsePositiveRiskScore: Math.round(falsePositiveRisk),
     historicalExitZone: zones.historicalExitZone,
     invalidationZone: zones.invalidationZone,
     largestDownside1d: downsideReturns.length ? Math.min(...downsideReturns) : null,
     largestUpside1d: upsideReturns.length ? Math.max(...upsideReturns) : null,
     lastUpdated: new Date().toISOString(),
     latestEvent: latestEvent(events),
+    liquidityQualityScore: Math.round(liquidityQuality),
     lookbackWindow: input.lookbackWindow,
     medianDownsideShock: medianOrNull(downsideReturns),
     medianUpsideShock: medianOrNull(upsideReturns),
     opportunityScore: Math.round(calibratedOpportunity),
-    opportunityState: opportunityState({ chaseRisk, downsideRisk, opportunity: calibratedOpportunity, twoSided, upsideScore }),
+    opportunityState: opportunityState({ chaseRisk: guardedChaseRisk, downsideRisk: guardedDownsideRisk, opportunity: calibratedOpportunity, twoSided, upsideScore }),
     pullbackSuccessRate,
     reliabilityScore: Math.round(calibratedReliability),
     researchEntryZone: zones.researchEntryZone,
@@ -253,10 +271,10 @@ export function shockPatternFromDbRow(row: Record<string, unknown>): ShockMovePa
   if (!symbol || !lookbackWindow) return null;
   return {
     asymmetryScore: numeric(row.asymmetry_score, 0),
-    averageDrawdownAfterEntry: textValue(row.average_drawdown_after_entry) ?? "Drawdown sample still limited",
+    averageDrawdownAfterEntry: textValue(row.average_drawdown_after_entry) ?? "Not enough completed shocks to estimate drawdown yet",
     averageFollowthrough1d: optionalNumeric(row.average_followthrough_1d),
     averageFollowthrough5d: optionalNumeric(row.average_followthrough_5d),
-    averageProfitPotential: textValue(row.average_profit_potential) ?? "Profit-potential sample still limited",
+    averageProfitPotential: textValue(row.average_profit_potential) ?? "Not enough completed shocks to estimate upside yet",
     averageReversal5d: optionalNumeric(row.average_reversal_5d),
     chaseRiskLabel: textValue(row.chase_risk_label) ?? "Chase risk elevated",
     chaseRiskScore: numeric(row.chase_risk_score, 50),
@@ -267,12 +285,15 @@ export function shockPatternFromDbRow(row: Record<string, unknown>): ShockMovePa
     downsideRiskScore: numeric(row.downside_risk_score, 50),
     downsideShockCount: numeric(row.downside_shock_count, 0),
     doNotChaseZone: textValue(row.do_not_chase_zone) ?? "Do-not-chase zone unavailable",
+    evidenceQualityScore: numeric(row.evidence_quality_score, numeric(row.reliability_score, 0)),
+    falsePositiveRiskScore: numeric(row.false_positive_risk_score, 50),
     historicalExitZone: textValue(row.historical_exit_zone) ?? "Historical exit zone unavailable",
     invalidationZone: textValue(row.invalidation_zone) ?? "Invalidation area unavailable",
     largestDownside1d: optionalNumeric(row.largest_downside_1d),
     largestUpside1d: optionalNumeric(row.largest_upside_1d),
     lastUpdated: textValue(row.last_updated) ?? new Date(0).toISOString(),
     latestEvent: parseEvent(row.latest_event),
+    liquidityQualityScore: numeric(row.liquidity_quality_score, 58),
     lookbackWindow,
     medianDownsideShock: optionalNumeric(row.median_downside_shock),
     medianUpsideShock: optionalNumeric(row.median_upside_shock),
@@ -590,6 +611,22 @@ function commonFailureConditions(events: ShockMoveEvent[]): string[] {
   return conditions.length ? conditions.slice(0, 4) : ["Observed failures are mixed; downside must still be monitored because shock setups are high-volatility by design."];
 }
 
+function hardenedFailureConditions(input: {
+  events: ShockMoveEvent[];
+  falsePositiveRisk: number;
+  followthrough5d: number[];
+  liquidityQuality: number;
+  timingValidation: ShockTimingValidation;
+}): string[] {
+  const conditions = commonFailureConditions(input.events);
+  const extra: string[] = [];
+  if (input.liquidityQuality < 45) extra.push("thin or incomplete volume history reduces confidence in shock quality");
+  if (input.falsePositiveRisk >= 66) extra.push("pre-shock signals have produced too many noisy candidates");
+  if (input.timingValidation.falsePositiveRate !== null && input.timingValidation.falsePositiveRate >= 0.45) extra.push("similar early signals often failed to become large moves");
+  if (input.followthrough5d.length >= 3 && mean(input.followthrough5d) <= 0) extra.push("five-day follow-through after shocks has been weak");
+  return [...extra, ...conditions].slice(0, 4);
+}
+
 function opportunityState(input: { chaseRisk: number; downsideRisk: number; opportunity: number; twoSided: number; upsideScore: number }): string {
   if (input.chaseRisk >= 78) return "Avoid Chase";
   if (input.twoSided >= 72 && input.downsideRisk >= 65) return "Two-Sided Volatility";
@@ -601,6 +638,33 @@ function opportunityState(input: { chaseRisk: number; downsideRisk: number; oppo
 
 function opportunityScore(input: { asymmetry: number; chaseRisk: number; downsideRisk: number; reliability: number; similarity: number; twoSided: number; upsideScore: number }): number {
   return clamp(input.upsideScore * 0.28 + input.asymmetry * 0.2 + input.similarity * 0.16 + input.reliability * 0.2 + input.twoSided * 0.08 - input.downsideRisk * 0.13 - input.chaseRisk * 0.08 + 12);
+}
+
+function liquidityQualityScore(bars: ComputedBar[], events: ShockMoveEvent[]): number {
+  const volumes = bars.map((bar) => bar.volume).filter(isFiniteNumber);
+  if (!volumes.length) return 58;
+  const medianVolume = quantile(volumes, 0.5);
+  const volumeDepth = medianVolume >= 2_000_000 ? 100 : medianVolume >= 1_000_000 ? 86 : medianVolume >= 500_000 ? 70 : medianVolume >= 150_000 ? 48 : 24;
+  const volumeCoverage = (volumes.length / Math.max(1, bars.length)) * 100;
+  const eventVolumeCoverage = events.length ? (events.filter((event) => event.volumeSpikeRatio !== null).length / events.length) * 100 : 45;
+  const sample = sampleScore(events.length);
+  return clamp(volumeDepth * 0.42 + volumeCoverage * 0.22 + eventVolumeCoverage * 0.18 + sample * 0.18);
+}
+
+function evidenceQualityScore(input: { barCount: number; events: ShockMoveEvent[]; liquidityQuality: number; timingValidation: ShockTimingValidation }): number {
+  const completeRate = input.events.length ? (input.events.filter((event) => event.outcomeStatus === "complete").length / input.events.length) * 100 : 0;
+  const historyDepth = clamp((input.barCount / 252) * 38);
+  const timing = input.timingValidation.shockReliabilityScore;
+  return clamp(sampleScore(input.events.length) * 0.30 + completeRate * 0.24 + input.liquidityQuality * 0.20 + timing * 0.16 + historyDepth * 0.10);
+}
+
+function falsePositiveRiskScore(input: { events: ShockMoveEvent[]; followthrough5d: number[]; liquidityQuality: number; timingValidation: ShockTimingValidation }): number {
+  const falsePositive = input.timingValidation.falsePositiveRate === null ? 42 : input.timingValidation.falsePositiveRate * 100;
+  const lowEvidence = 100 - sampleScore(input.events.length);
+  const weakFollowThrough = input.followthrough5d.length >= 3 ? clamp(55 - mean(input.followthrough5d) * 8) : 38;
+  const pendingRate = input.events.length ? (input.events.filter((event) => event.outcomeStatus !== "complete").length / input.events.length) * 100 : 55;
+  const liquidityPenalty = 100 - input.liquidityQuality;
+  return clamp(falsePositive * 0.34 + lowEvidence * 0.20 + weakFollowThrough * 0.20 + pendingRate * 0.12 + liquidityPenalty * 0.14);
 }
 
 function upsideShockScore(input: { currentShockPressure: number; events: ShockMoveEvent[]; latest: ComputedBar; upsideEvents: ShockMoveEvent[]; upsideFrequency: number }): number {

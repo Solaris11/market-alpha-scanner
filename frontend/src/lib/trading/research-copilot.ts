@@ -4,24 +4,35 @@ import type { MarketMemorySummary } from "./market-memory";
 import type { TradeVetoOperatingSystem } from "./meta-intelligence";
 import type { OpportunityViewModel } from "./opportunity-view-model";
 import type { UserPersonalizationProfile } from "./personalized-intelligence";
+import type { PortfolioIntelligenceSystem } from "./portfolio-intelligence";
 import type { RegimeShiftSystem } from "./regime-shift-intelligence";
+import type { ScenarioIntelligenceSystem } from "./scenario-intelligence";
 import type { WorkflowEvolutionSummary } from "./workflow-evolution";
 import { cleanText } from "@/lib/ui/formatters";
 import { decisionLabel } from "@/lib/ui/labels";
 
 export type ResearchCopilotIntent =
   | "comparison"
+  | "event_synthesis"
   | "fragility"
   | "historical_analogs"
   | "market_state"
   | "opportunity_fit"
+  | "portfolio"
   | "ranking"
+  | "replay"
+  | "scenario"
+  | "shock"
   | "what_changed";
+
+export type ResearchCopilotMode = "concise" | "deep_dive";
 
 export type ResearchCopilotSymbolContext = {
   conviction: number;
   decision: string;
   eventContext: string;
+  eventReasoning: string | null;
+  eventSources: string[];
   evidenceLabel: string | null;
   finalScore: number | null;
   fragility: number;
@@ -35,12 +46,35 @@ export type ResearchCopilotSymbolContext = {
   symbol: string;
 };
 
+export type ResearchCopilotCitation = {
+  detail: string;
+  id: string;
+  label: string;
+  sourceType: "event" | "intraday" | "macro" | "market_memory" | "meta" | "portfolio" | "replay" | "scanner" | "scenario" | "user_memory" | "workflow";
+  symbol?: string | null;
+  url?: string | null;
+};
+
 export type ResearchCopilotContext = {
   availableSymbols: string[];
+  citations: ResearchCopilotCitation[];
   conversation: Array<{
     content: string;
     role: "assistant" | "user";
   }>;
+  conversationMemory: {
+    lastUserQuestion: string | null;
+    recentSymbols: string[];
+    summary: string | null;
+    topicTrail: string[];
+  };
+  eventSynthesis: {
+    riskEvents: string[];
+    sourceNames: string[];
+    summary: string;
+    supportiveEvents: string[];
+  };
+  followUpContext: string | null;
   generatedAt: string;
   intraday: {
     alerts: string[];
@@ -75,6 +109,19 @@ export type ResearchCopilotContext = {
     priorityQueue: Array<{ category: string; decision: string; opportunity: number; risk: number; symbol: string }>;
     summary: string;
   };
+  mode: ResearchCopilotMode;
+  portfolio: {
+    available: boolean;
+    fragilityScore: number | null;
+    hiddenCorrelationWarning: string | null;
+    limitations: string[];
+    openPositionCount: number;
+    portfolioQualityScore: number | null;
+    scenarioVulnerabilityScore: number | null;
+    stressSummary: string[];
+    summary: string;
+    topExposures: string[];
+  } | null;
   profile: {
     label: string;
     preferredRewardLevel: string;
@@ -83,6 +130,15 @@ export type ResearchCopilotContext = {
   } | null;
   question: string;
   referencedSymbols: string[];
+  scenario: {
+    generatedAt: string;
+    limitations: string[];
+    mostResilient: string[];
+    mostVulnerable: string[];
+    portfolioStressScore: number;
+    scenarioSummaries: string[];
+    terminalInsights: string[];
+  } | null;
   symbols: ResearchCopilotSymbolContext[];
   workflow: {
     deteriorating: string[];
@@ -93,8 +149,12 @@ export type ResearchCopilotContext = {
 
 export type ResearchCopilotAnswer = {
   answer: string;
+  citations: ResearchCopilotCitation[];
+  confidenceNote: string;
+  followUpQuestions: string[];
   intent: ResearchCopilotIntent;
   keyPoints: string[];
+  mode: ResearchCopilotMode;
   referencedSymbols: string[];
   safetyLanguage: string;
   source: "deterministic" | "llm";
@@ -108,11 +168,15 @@ export type ResearchCopilotBuildInput = {
   decisionMemory?: DecisionMemorySummary | null;
   marketMemoryBySymbol?: Map<string, MarketMemorySummary>;
   metaSystem: TradeVetoOperatingSystem;
+  mode?: unknown;
   personalizationProfile?: UserPersonalizationProfile | null;
+  portfolioSystem?: PortfolioIntelligenceSystem | null;
   question: string;
   regimeSystem: RegimeShiftSystem;
+  scenarioSystem?: ScenarioIntelligenceSystem | null;
   intradaySystem?: IntradayRegimeDriftSystem | null;
   rows: OpportunityViewModel[];
+  watchlistSymbols?: string[];
   workflowEvolution?: WorkflowEvolutionSummary | null;
 };
 
@@ -124,17 +188,45 @@ export function normalizeResearchQuestion(value: unknown): string {
   return text.slice(0, 700);
 }
 
+export function normalizeResearchCopilotMode(value: unknown): ResearchCopilotMode {
+  return value === "deep_dive" ? "deep_dive" : "concise";
+}
+
 export function buildResearchCopilotContext(input: ResearchCopilotBuildInput): ResearchCopilotContext {
   const question = normalizeResearchQuestion(input.question);
   const availableSymbols = input.rows.map((row) => row.symbol.toUpperCase());
-  const referencedSymbols = referencedSymbolsFor(question, availableSymbols);
+  const conversation = normalizeConversation(input.conversation);
+  const directSymbols = referencedSymbolsFor(question, availableSymbols);
+  const referencedSymbols = directSymbols.length ? directSymbols : referencedSymbolsFromConversation(conversation, availableSymbols);
   const intent = inferResearchIntent(question, referencedSymbols);
   const selectedSymbols = selectedSymbolsFor({ intent, referencedSymbols, rows: input.rows, system: input.metaSystem });
   const memoryMap = input.marketMemoryBySymbol ?? new Map<string, MarketMemorySummary>();
+  const symbolContexts = selectedSymbols.map((row) => symbolContextFor(row, memoryMap.get(row.symbol.toUpperCase()) ?? null));
+  const portfolio = slimPortfolioContext(input.portfolioSystem ?? null);
+  const scenario = slimScenarioContext(input.scenarioSystem ?? null);
+  const eventSynthesis = eventSynthesisFor(symbolContexts, input.rows);
+  const conversationMemory = conversationMemoryFor(conversation, question, [...availableSymbols, ...(input.watchlistSymbols ?? [])]);
+  const citations = citationsFor({
+    conversationMemory,
+    eventSynthesis,
+    hasDecisionMemory: Boolean(input.decisionMemory),
+    intradaySystem: input.intradaySystem ?? null,
+    memoryMap,
+    portfolio,
+    regimeSystem: input.regimeSystem,
+    scenario,
+    symbolContexts,
+    system: input.metaSystem,
+    workflowEvolution: input.workflowEvolution ?? null,
+  });
 
   return {
     availableSymbols,
-    conversation: normalizeConversation(input.conversation),
+    citations,
+    conversation,
+    conversationMemory,
+    eventSynthesis,
+    followUpContext: followUpContextFor(conversation, referencedSymbols),
     generatedAt: new Date().toISOString(),
     intraday: input.intradaySystem ? {
       alerts: input.intradaySystem.alerts.slice(0, 4).map((alert) => `${alert.title}: ${alert.detail}`),
@@ -175,6 +267,8 @@ export function buildResearchCopilotContext(input: ResearchCopilotBuildInput): R
       })),
       summary: input.metaSystem.summary,
     },
+    mode: normalizeResearchCopilotMode(input.mode),
+    portfolio,
     profile: input.personalizationProfile ? {
       label: input.personalizationProfile.label,
       preferredRewardLevel: input.personalizationProfile.preferredRewardLevel,
@@ -183,7 +277,8 @@ export function buildResearchCopilotContext(input: ResearchCopilotBuildInput): R
     } : null,
     question,
     referencedSymbols,
-    symbols: selectedSymbols.map((row) => symbolContextFor(row, memoryMap.get(row.symbol.toUpperCase()) ?? null)),
+    scenario,
+    symbols: symbolContexts,
     workflow: {
       deteriorating: (input.workflowEvolution?.deterioratingSetups ?? []).slice(0, 5).map((item) => `${item.symbol}: ${item.title}. ${item.detail}`),
       improving: (input.workflowEvolution?.improvingSetups ?? []).slice(0, 5).map((item) => `${item.symbol}: ${item.title}. ${item.detail}`),
@@ -194,7 +289,12 @@ export function buildResearchCopilotContext(input: ResearchCopilotBuildInput): R
 
 export function answerResearchCopilotDeterministically(context: ResearchCopilotContext): ResearchCopilotAnswer {
   if (context.intent === "comparison" && context.symbols.length >= 2) return comparisonAnswer(context);
+  if (context.intent === "portfolio") return portfolioAnswer(context);
+  if (context.intent === "scenario") return scenarioAnswer(context);
+  if (context.intent === "event_synthesis") return eventSynthesisAnswer(context);
+  if (context.intent === "replay") return replayAnswer(context);
   if (context.intent === "what_changed") return whatChangedAnswer(context);
+  if (context.intent === "shock") return shockAnswer(context);
   if (context.intent === "market_state") return marketStateAnswer(context);
   if (context.intent === "historical_analogs") return historicalAnswer(context);
   if (context.intent === "opportunity_fit") return profileAnswer(context);
@@ -204,12 +304,26 @@ export function answerResearchCopilotDeterministically(context: ResearchCopilotC
 
 export function inferResearchIntent(question: string, referencedSymbols: string[]): ResearchCopilotIntent {
   const text = question.toLowerCase();
-  if (referencedSymbols.length >= 2 || /\b(vs|versus|compare|ranked above|better than)\b/i.test(question)) return "comparison";
-  if (/\b(changed|since yesterday|what changed|improving|deteriorating|fastest)\b/i.test(question)) return "what_changed";
-  if (/\b(market|risk-on|risk off|fragile|cautious|sparse|sector|narrative weakening|regime)\b/i.test(question)) return "market_state";
-  if (/\b(historical|analog|resembles|similar|memory|burst|shock)\b/i.test(question)) return "historical_analogs";
-  if (/\b(profile|for me|my style|fit|personal|risk tolerance)\b/i.test(question)) return "opportunity_fit";
-  if (/\b(fragility|break|fail|weakening|risk increasing)\b/i.test(question)) return "fragility";
+  const asksComparison = /\b(vs|versus|compare|ranked above|better than)\b/i.test(text);
+  const asksFragility = /\b(fragility|break|fail|weakening|risk increasing)\b/i.test(text);
+  const asksReplay = /\b(replay|before the move|what did .*know|decision replay|historical playback)\b/i.test(text);
+  const asksChanged = /\b(changed|since yesterday|what changed|improving|deteriorating|fastest)\b/i.test(text);
+  const asksShock = /\b(shock|gap|large move|explosive|chase|volatility burst|upside move|downside move)\b/i.test(text);
+  const asksPortfolio = /\b(portfolio|holdings|positions|exposure|concentration|correlation|diversification|my book)\b/i.test(text);
+  const asksScenario = /\b(scenario|what if|stress|qqq -?3|spy risk|vix|rates surge|yields surge|oil shock|ai narrative|earnings miss)\b/i.test(text);
+  const asksEvent = /\b(event|events|news|earnings|guidance|fed|cpi|nfp|inflation|jobs|oil|regulation|filing|catalyst|press release)\b/i.test(text);
+  const asksMarket = /\b(market|risk-on|risk off|fragile|cautious|sparse|sector|narrative weakening|regime)\b/i.test(text);
+  if (asksComparison || (referencedSymbols.length >= 2 && !asksFragility && !asksReplay && !asksChanged && !asksShock && !asksPortfolio && !asksScenario && !asksEvent && !asksMarket)) return "comparison";
+  if (asksPortfolio) return "portfolio";
+  if (asksScenario) return "scenario";
+  if (asksEvent) return "event_synthesis";
+  if (asksReplay) return "replay";
+  if (asksChanged) return "what_changed";
+  if (asksShock) return "shock";
+  if (asksMarket) return "market_state";
+  if (/\b(historical|analog|resembles|similar|memory|burst|shock)\b/i.test(text)) return "historical_analogs";
+  if (/\b(profile|for me|my style|fit|personal|risk tolerance)\b/i.test(text)) return "opportunity_fit";
+  if (asksFragility) return "fragility";
   return "ranking";
 }
 
@@ -220,10 +334,10 @@ function comparisonAnswer(context: ResearchCopilotContext): ResearchCopilotAnswe
     .map((symbol) => ({ score: comparisonScore(symbol), symbol }))
     .sort((a, b) => b.score - a.score)[0]?.symbol.symbol ?? left.symbol;
   return baseAnswer(context, {
-    answer: `${winner} ranks stronger in this comparison because TradeVeto is weighting decision quality, conviction, fragility, macro context, shock evidence, and current opportunity priority together. This is a relative research ranking, not an action instruction.`,
+    answer: `${winner} has the stronger current packet because its score, conviction, fragility balance, and context read better on this snapshot.`,
     keyPoints: [
-      `${left.symbol}: ${left.decision}, score ${scoreText(left.finalScore)}, conviction ${left.conviction}, fragility ${left.fragility}.`,
-      `${right.symbol}: ${right.decision}, score ${scoreText(right.finalScore)}, conviction ${right.conviction}, fragility ${right.fragility}.`,
+      `${left.symbol}: ${left.decision}; score ${scoreText(left.finalScore)}, conviction ${left.conviction}, fragility ${left.fragility}.`,
+      `${right.symbol}: ${right.decision}; score ${scoreText(right.finalScore)}, conviction ${right.conviction}, fragility ${right.fragility}.`,
       context.marketState.summary,
     ],
     symbolComparisons: comparisons,
@@ -240,21 +354,21 @@ function whatChangedAnswer(context: ResearchCopilotContext): ResearchCopilotAnsw
   const changes = [...intradayChanges, ...context.workflow.whatChanged, ...context.workflow.improving, ...context.workflow.deteriorating].slice(0, 6);
   return baseAnswer(context, {
     answer: changes.length
-      ? "The main changes are coming from bounded intraday drift, workflow drift, setup quality changes, and pressure signals rather than a single isolated score."
-      : "Workflow memory is still building, so the safest answer is to use the current market-state and priority queue as the baseline.",
+      ? "The meaningful changes are coming from setup drift, pressure changes, and attention-priority movement."
+      : "Change memory is still building, so the current market state and priority queue are the best baseline.",
     keyPoints: changes.length ? changes : [context.marketState.summary, context.meta.summary],
     symbolComparisons: [],
     whatToWatch: [
-      "Symbols with rising fragility and falling macro alignment.",
+      "Symbols getting more fragile while market support weakens.",
       "Setups moving closer to trigger conditions without becoming extended.",
-      "Whether breadth improves or deterioration spreads across the universe.",
+      "Whether market breadth improves or weakness spreads across the universe.",
     ],
   });
 }
 
 function marketStateAnswer(context: ResearchCopilotContext): ResearchCopilotAnswer {
   return baseAnswer(context, {
-    answer: `${context.marketState.currentMarketState} is the active market-state label. The system is cautious when transition risk, volatility pressure, liquidity pressure, or weak breadth reduces decision quality.`,
+    answer: `${context.marketState.currentMarketState} is the active market state. Caution rises when breadth, volatility, liquidity, or transition risk weakens setup quality.`,
     keyPoints: [
       ...(context.intraday ? [context.intraday.summary] : []),
       context.marketState.summary,
@@ -265,25 +379,129 @@ function marketStateAnswer(context: ResearchCopilotContext): ResearchCopilotAnsw
     whatToWatch: [
       "Breadth health and risk appetite scores.",
       "Volatility and liquidity pressure alerts.",
-      "Sector leadership rotation and narrative weakening.",
+      "Sector leadership rotation and story changes.",
+    ],
+  });
+}
+
+function shockAnswer(context: ResearchCopilotContext): ResearchCopilotAnswer {
+  const shockLines = context.symbols.map((symbol) => {
+    const shock = symbol.shockContext ?? "no validated shock packet available";
+    return `${symbol.symbol}: ${shock}; fragility ${symbol.fragility}/100; key risk: ${symbol.keyRisk}.`;
+  });
+  return baseAnswer(context, {
+    answer: "Large-move history is useful only when similar past moves, current setup quality, entry timing, and late-entry risk line up.",
+    keyPoints: shockLines.length ? shockLines : ["No validated shock packet is available for this question.", context.marketState.summary],
+    symbolComparisons: [],
+    whatToWatch: [
+      "Whether the move is early or already extended.",
+      "Whether volume and breadth confirm instead of fading.",
+      "Whether pullback quality improves before late-entry risk rises.",
+    ],
+  });
+}
+
+function portfolioAnswer(context: ResearchCopilotContext): ResearchCopilotAnswer {
+  const portfolio = context.portfolio;
+  if (!portfolio || !portfolio.available) {
+    return baseAnswer(context, {
+      answer: "I do not have open paper or manual portfolio exposure in this packet, so I can explain watchlist and opportunity risk but not true holdings-level exposure.",
+      keyPoints: [
+        context.meta.summary,
+        "Portfolio analysis needs open positions or manual allocations to measure concentration, hidden correlation, and stress-test vulnerability.",
+        context.scenario ? `Scenario stress baseline is ${context.scenario.portfolioStressScore}/100 across the scan universe.` : "Scenario packet is not available in this answer.",
+      ],
+      symbolComparisons: [],
+      whatToWatch: [
+        "Add paper or manual positions before relying on portfolio exposure conclusions.",
+        "Use symbol-level fragility and broader market context until holdings-level weights are available.",
+        "Watch sector concentration and high-fragility names if positions are added.",
+      ],
+    });
+  }
+  return baseAnswer(context, {
+    answer: "Portfolio analysis combines open exposure, scanner context, fragility, concentration, correlation, and stress tests. It is exposure context, not trading advice.",
+    keyPoints: [
+      `${portfolio.summary} Quality ${scoreText(portfolio.portfolioQualityScore)}, fragility ${scoreText(portfolio.fragilityScore)}, scenario vulnerability ${scoreText(portfolio.scenarioVulnerabilityScore)}.`,
+      ...(portfolio.topExposures.length ? [`Largest exposure buckets: ${portfolio.topExposures.join("; ")}.`] : []),
+      ...(portfolio.hiddenCorrelationWarning ? [portfolio.hiddenCorrelationWarning] : []),
+      ...portfolio.stressSummary.slice(0, 2),
+    ],
+    symbolComparisons: [],
+    whatToWatch: [
+      "Whether concentrated exposure sits in one sector, theme, or market factor.",
+      "Whether scenario vulnerability rises faster than diversification quality.",
+      "Whether hidden correlation appears across symbols that look different on the surface.",
+    ],
+  });
+}
+
+function scenarioAnswer(context: ResearchCopilotContext): ResearchCopilotAnswer {
+  const scenario = context.scenario;
+  if (!scenario) {
+    return baseAnswer(context, {
+    answer: "Scenario analysis is unavailable in this packet, so I cannot stress the setup against QQQ, VIX, rates, oil, or earnings scenarios.",
+      keyPoints: [context.marketState.summary, context.meta.summary],
+      symbolComparisons: [],
+      whatToWatch: [
+        "Whether scenario packets are available for the latest scanner rows.",
+        "Whether market, volatility, or event pressure changes before acting on a setup.",
+        "Whether symbol fragility rises under broad risk-off stress.",
+      ],
+    });
+  }
+  return baseAnswer(context, {
+    answer: "Scenario analysis stress-tests current setups against defined market shocks. It does not predict exact prices; it shows where setup quality is most vulnerable.",
+    keyPoints: [
+      `Scan-universe stress score is ${scenario.portfolioStressScore}/100.`,
+      ...scenario.scenarioSummaries.slice(0, 3),
+      ...(scenario.mostVulnerable.length ? [`Most vulnerable: ${scenario.mostVulnerable.join(", ")}.`] : []),
+      ...(scenario.mostResilient.length ? [`Most resilient: ${scenario.mostResilient.join(", ")}.`] : []),
+    ],
+    symbolComparisons: [],
+    whatToWatch: [
+      "QQQ/SPY weakness if high-beta names dominate the candidate list.",
+      "Volatility and liquidity pressure if chase risk is already elevated.",
+      "Event-sensitive names ahead of earnings or guidance risk.",
+    ],
+  });
+}
+
+function eventSynthesisAnswer(context: ResearchCopilotContext): ResearchCopilotAnswer {
+  const symbolLines = context.symbols.map((symbol) => {
+    const reasoning = symbol.eventReasoning ? ` ${symbol.eventReasoning}` : "";
+    return `${symbol.symbol}: ${symbol.eventContext}.${reasoning}`;
+  }).slice(0, 5);
+  return baseAnswer(context, {
+    answer: "Event synthesis uses verified event labels, source-backed context when available, and scanner risk pressure. It does not invent catalysts when no verified event packet exists.",
+    keyPoints: symbolLines.length ? symbolLines : [
+      context.eventSynthesis.summary,
+      "No symbol-specific verified event packet is strong enough to dominate this answer.",
+      context.marketState.summary,
+    ],
+    symbolComparisons: [],
+    whatToWatch: [
+      "Whether verified event pressure increases or decays.",
+      "Whether earnings, guidance, macro data, or regulatory context maps directly to the symbol.",
+      "Whether event pressure is confirmed by price, volume, and sector behavior.",
     ],
   });
 }
 
 function historicalAnswer(context: ResearchCopilotContext): ResearchCopilotAnswer {
   const lines = context.symbols.flatMap((symbol) => [
-    `${symbol.symbol}: ${symbol.evidenceLabel ?? "evidence maturity unavailable"}.`,
+    `${symbol.symbol}: ${symbol.evidenceLabel ?? "evidence strength unavailable"}.`,
     ...symbol.memoryNarrative.slice(0, 2),
   ]).slice(0, 6);
   return baseAnswer(context, {
     answer: lines.length
-      ? "Historical memory is being used as probabilistic context. It can show similar setups and outcome tendencies, but it is not a prediction."
+      ? "Historical memory is being used as context. It can show similar setups and what happened next, but it is not a prediction."
       : "No strong historical analog packet is available for the referenced symbols yet.",
     keyPoints: lines.length ? lines : ["Market Memory evidence is limited for this query.", context.marketState.summary],
     symbolComparisons: [],
     whatToWatch: [
       "Whether comparable setup sample size improves.",
-      "Whether shock memory aligns with current macro and event context.",
+      "Whether large-move history aligns with the current market and event context.",
       "Whether historical chase behavior was favorable or fragile.",
     ],
   });
@@ -327,7 +545,7 @@ function fragilityAnswer(context: ResearchCopilotContext): ResearchCopilotAnswer
 
 function rankingAnswer(context: ResearchCopilotContext): ResearchCopilotAnswer {
   return baseAnswer(context, {
-    answer: "TradeVeto is ranking what deserves attention by combining scanner quality, decision quality, macro/regime pressure, shock evidence, fragility, user context, and workflow drift.",
+    answer: "TradeVeto ranks what deserves attention by combining setup quality, risk, macro pressure, shock evidence, user fit, and workflow drift.",
     keyPoints: [
       context.meta.summary,
       context.marketState.summary,
@@ -342,20 +560,45 @@ function rankingAnswer(context: ResearchCopilotContext): ResearchCopilotAnswer {
   });
 }
 
+function replayAnswer(context: ResearchCopilotContext): ResearchCopilotAnswer {
+  const memoryLines = context.symbols.flatMap((symbol) => [
+    `${symbol.symbol}: ${symbol.evidenceLabel ?? "evidence label unavailable"}.`,
+    ...symbol.memoryNarrative.slice(0, 2),
+  ]).slice(0, 6);
+  return baseAnswer(context, {
+    answer: "Replay answers should separate what was visible before the move from what happened afterward.",
+    keyPoints: memoryLines.length
+      ? memoryLines
+      : ["No saved replay packet is available for this query, so the answer uses current memory and priority context only.", context.meta.summary],
+    symbolComparisons: [],
+    whatToWatch: [
+      "Whether a saved snapshot exists from before the move.",
+      "Whether pre-move evidence showed improving conviction or rising fragility.",
+      "Whether the later outcome validates timing quality or only reflects hindsight.",
+    ],
+  });
+}
+
 function baseAnswer(
   context: ResearchCopilotContext,
-  body: { answer: string; keyPoints: string[]; symbolComparisons: string[]; whatToWatch: string[] },
+  body: { answer: string; citations?: ResearchCopilotCitation[]; confidenceNote?: string; followUpQuestions?: string[]; keyPoints: string[]; symbolComparisons: string[]; whatToWatch: string[] },
 ): ResearchCopilotAnswer {
+  const keyPointLimit = context.mode === "deep_dive" ? 6 : 3;
+  const watchLimit = context.mode === "deep_dive" ? 5 : 3;
   return {
     answer: safeOutputText(body.answer),
+    citations: (body.citations ?? context.citations).slice(0, 8),
+    confidenceNote: safeOutputText(body.confidenceNote ?? confidenceNoteFor(context)),
+    followUpQuestions: (body.followUpQuestions ?? followUpQuestionsFor(context)).map(safeOutputText).filter(Boolean).slice(0, 3),
     intent: context.intent,
-    keyPoints: body.keyPoints.map(safeOutputText).filter(Boolean).slice(0, 6),
+    keyPoints: body.keyPoints.map(safeOutputText).filter(Boolean).slice(0, keyPointLimit),
+    mode: context.mode,
     referencedSymbols: context.symbols.map((symbol) => symbol.symbol),
     safetyLanguage: "Research context only. Not financial advice. Deterministic TradeVeto scores remain the source of truth.",
     source: "deterministic",
     symbolComparisons: body.symbolComparisons.map(safeOutputText).filter(Boolean).slice(0, 4),
     unsupportedClaimsDetected: false,
-    whatToWatch: body.whatToWatch.map(safeOutputText).filter(Boolean).slice(0, 5),
+    whatToWatch: body.whatToWatch.map(safeOutputText).filter(Boolean).slice(0, watchLimit),
   };
 }
 
@@ -364,6 +607,8 @@ function symbolContextFor(row: OpportunityViewModel, memory: MarketMemorySummary
     conviction: row.conviction,
     decision: decisionLabel(row.final_decision),
     eventContext: row.eventLabel,
+    eventReasoning: row.narrative?.eventReasoning ?? null,
+    eventSources: eventSourcesFor(row),
     evidenceLabel: memory?.evidence.label ?? null,
     finalScore: row.final_score,
     fragility: row.fragility,
@@ -376,6 +621,194 @@ function symbolContextFor(row: OpportunityViewModel, memory: MarketMemorySummary
     shockContext: row.shockPattern ? `${row.shockPattern.opportunityState}, upside ${row.shockPattern.upsideShockScore}/100, downside ${row.shockPattern.downsideRiskScore}/100` : null,
     symbol: row.symbol,
   };
+}
+
+function slimPortfolioContext(system: PortfolioIntelligenceSystem | null): ResearchCopilotContext["portfolio"] {
+  if (!system) return null;
+  return {
+    available: system.openPositionCount > 0,
+    fragilityScore: system.openPositionCount > 0 ? system.fragilityScore : null,
+    hiddenCorrelationWarning: system.hiddenCorrelationWarning,
+    limitations: system.limitations.slice(0, 3),
+    openPositionCount: system.openPositionCount,
+    portfolioQualityScore: system.openPositionCount > 0 ? system.portfolioQualityScore : null,
+    scenarioVulnerabilityScore: system.openPositionCount > 0 ? system.scenarioVulnerabilityScore : null,
+    stressSummary: system.stressProofSummary.slice(0, 4),
+    summary: system.summary,
+    topExposures: system.exposureBuckets.slice(0, 4).map((bucket) => `${bucket.label} ${bucket.percent}% risk ${bucket.riskScore}/100`),
+  };
+}
+
+function slimScenarioContext(system: ScenarioIntelligenceSystem | null): ResearchCopilotContext["scenario"] {
+  if (!system) return null;
+  return {
+    generatedAt: system.generatedAt,
+    limitations: system.limitations.slice(0, 3),
+    mostResilient: system.mostResilient.slice(0, 5).map((profile) => `${profile.symbol} ${profile.averageResilienceScore}/100`),
+    mostVulnerable: system.mostVulnerable.slice(0, 5).map((profile) => `${profile.symbol} ${profile.worstCaseVulnerabilityScore}/100`),
+    portfolioStressScore: system.portfolioStressScore,
+    scenarioSummaries: system.scenarioSummaries.slice(0, 5).map((item) => `${item.scenario.label}: ${item.summary}`),
+    terminalInsights: system.terminalInsights.slice(0, 4).map((item) => `${item.title}: ${item.detail}`),
+  };
+}
+
+function eventSynthesisFor(symbols: ResearchCopilotSymbolContext[], rows: OpportunityViewModel[]): ResearchCopilotContext["eventSynthesis"] {
+  const selected = symbols.length ? symbols : rows.slice(0, 5).map((row) => symbolContextFor(row, null));
+  const riskEvents = selected
+    .filter((symbol) => /elevated|pressure|risk|earn|guidance|fed|cpi|inflation|oil|regulat/i.test(`${symbol.eventContext} ${symbol.eventReasoning ?? ""}`))
+    .map((symbol) => `${symbol.symbol}: ${symbol.eventContext}`)
+    .slice(0, 5);
+  const supportiveEvents = selected
+    .filter((symbol) => /contained|support|tailwind|improving|positive/i.test(`${symbol.eventContext} ${symbol.eventReasoning ?? ""}`))
+    .map((symbol) => `${symbol.symbol}: ${symbol.eventContext}`)
+    .slice(0, 5);
+  const sourceNames = [...new Set(selected.flatMap((symbol) => symbol.eventSources))].slice(0, 6);
+  return {
+    riskEvents,
+    sourceNames,
+    summary: riskEvents.length
+      ? `Verified event pressure is most visible in ${riskEvents.map((item) => item.split(":")[0]).join(", ")}.`
+      : "No dominant verified event pressure is visible in the selected packet.",
+    supportiveEvents,
+  };
+}
+
+function conversationMemoryFor(
+  conversation: ResearchCopilotContext["conversation"],
+  question: string,
+  availableSymbols: string[],
+): ResearchCopilotContext["conversationMemory"] {
+  const text = [...conversation.map((item) => item.content), question].join(" ");
+  const recentSymbols = referencedSymbolsFor(text, uniqueSymbols(availableSymbols)).slice(0, 8);
+  const topicTrail = conversation
+    .filter((item) => item.role === "user")
+    .slice(-4)
+    .map((item) => cleanText(item.content, "").slice(0, 120))
+    .filter(Boolean);
+  const lastUserQuestion = [...conversation].reverse().find((item) => item.role === "user")?.content ?? null;
+  return {
+    lastUserQuestion,
+    recentSymbols,
+    summary: topicTrail.length ? `Recent thread focused on ${recentSymbols.join(", ") || "market context"} and ${topicTrail[topicTrail.length - 1]}.` : null,
+    topicTrail,
+  };
+}
+
+function citationsFor(input: {
+  conversationMemory: ResearchCopilotContext["conversationMemory"];
+  eventSynthesis: ResearchCopilotContext["eventSynthesis"];
+  hasDecisionMemory: boolean;
+  intradaySystem: IntradayRegimeDriftSystem | null;
+  memoryMap: Map<string, MarketMemorySummary>;
+  portfolio: ResearchCopilotContext["portfolio"];
+  regimeSystem: RegimeShiftSystem;
+  scenario: ResearchCopilotContext["scenario"];
+  symbolContexts: ResearchCopilotSymbolContext[];
+  system: TradeVetoOperatingSystem;
+  workflowEvolution: WorkflowEvolutionSummary | null;
+}): ResearchCopilotCitation[] {
+  const citations: ResearchCopilotCitation[] = [
+    {
+      detail: `${input.symbolContexts.length} selected symbol packets from latest scanner view.`,
+      id: "scanner:selected-symbols",
+      label: "Latest scanner packet",
+      sourceType: "scanner",
+    },
+    {
+      detail: input.system.summary,
+      id: "meta:priority",
+      label: "Meta priority queue",
+      sourceType: "meta",
+    },
+    {
+      detail: input.regimeSystem.terminalSummary,
+      id: "macro:regime",
+      label: "Macro/regime packet",
+      sourceType: "macro",
+    },
+  ];
+  if (input.intradaySystem) {
+    citations.push({
+      detail: input.intradaySystem.terminalSummary,
+      id: "intraday:drift",
+      label: "Intraday drift packet",
+      sourceType: "intraday",
+    });
+  }
+  if (input.workflowEvolution) {
+    citations.push({
+      detail: input.workflowEvolution.dailyBrief[0] ?? "Workflow evolution packet available.",
+      id: "workflow:evolution",
+      label: "Workflow evolution",
+      sourceType: "workflow",
+    });
+  }
+  for (const [symbol, memory] of input.memoryMap.entries()) {
+    citations.push({
+      detail: memory.evidence.explanation,
+      id: `memory:${symbol}`,
+      label: `${symbol} market memory`,
+      sourceType: "market_memory",
+      symbol,
+    });
+  }
+  if (input.eventSynthesis.riskEvents.length || input.eventSynthesis.supportiveEvents.length) {
+    citations.push({
+      detail: input.eventSynthesis.summary,
+      id: "event:synthesis",
+      label: "Verified event context",
+      sourceType: "event",
+    });
+  }
+  if (input.scenario) {
+    citations.push({
+      detail: `Scenario stress ${input.scenario.portfolioStressScore}/100.`,
+      id: "scenario:stress",
+      label: "Scenario stress packet",
+      sourceType: "scenario",
+    });
+  }
+  if (input.portfolio) {
+    citations.push({
+      detail: input.portfolio.summary,
+      id: "portfolio:exposure",
+      label: "Portfolio exposure packet",
+      sourceType: "portfolio",
+    });
+  }
+  if (input.hasDecisionMemory) {
+    citations.push({
+      detail: "Private decision memory summary was included for personalization.",
+      id: "user-memory:decision",
+      label: "User decision memory",
+      sourceType: "user_memory",
+    });
+  }
+  if (input.conversationMemory.summary) {
+    citations.push({
+      detail: input.conversationMemory.summary,
+      id: "user-memory:conversation",
+      label: "Conversation memory",
+      sourceType: "user_memory",
+    });
+  }
+  return citations.slice(0, 12);
+}
+
+function eventSourcesFor(row: OpportunityViewModel): string[] {
+  const raw = row.raw as Record<string, unknown>;
+  const values = [
+    raw.verified_event_source_name,
+    raw.event_source_name,
+    raw.source_name,
+    raw.verified_event_source,
+    raw.event_sources,
+  ];
+  return values
+    .flatMap((value) => String(value ?? "").split(/[;,|]/))
+    .map((value) => cleanText(value, ""))
+    .filter(Boolean)
+    .slice(0, 4);
 }
 
 function selectedSymbolsFor(input: {
@@ -415,7 +848,8 @@ function compareSymbols(left: ResearchCopilotSymbolContext, right: ResearchCopil
   const rightScore = comparisonScore(right);
   const leader = leftScore >= rightScore ? left : right;
   const laggard = leftScore >= rightScore ? right : left;
-  return `${leader.symbol} is stronger than ${laggard.symbol} on this packet because its combined conviction, final score, macro context, and fragility balance is cleaner. ${left.symbol} conviction ${left.conviction}, fragility ${left.fragility}; ${right.symbol} conviction ${right.conviction}, fragility ${right.fragility}.`;
+  const reasons = comparisonReasons(leader, laggard);
+  return `${leader.symbol} leads ${laggard.symbol} in this data packet: ${reasons.join("; ")}. Watch whether ${laggard.symbol} improves fragility or broader market context.`;
 }
 
 function comparisonScore(symbol: ResearchCopilotSymbolContext): number {
@@ -426,6 +860,73 @@ function comparisonScore(symbol: ResearchCopilotSymbolContext): number {
 
 function uniqueSymbols(symbols: string[]): string[] {
   return [...new Set(symbols.map((symbol) => symbol.toUpperCase()))];
+}
+
+function referencedSymbolsFromConversation(conversation: ResearchCopilotContext["conversation"], availableSymbols: string[]): string[] {
+  const recentUserText = conversation
+    .filter((item) => item.role === "user")
+    .slice(-3)
+    .map((item) => item.content)
+    .join(" ");
+  return referencedSymbolsFor(recentUserText, availableSymbols);
+}
+
+function followUpContextFor(conversation: ResearchCopilotContext["conversation"], referencedSymbols: string[]): string | null {
+  const lastUser = [...conversation].reverse().find((item) => item.role === "user");
+  if (!lastUser && !referencedSymbols.length) return null;
+  const symbols = referencedSymbols.length ? ` Symbols carried forward: ${referencedSymbols.join(", ")}.` : "";
+  return `${lastUser ? `Continuing from: ${lastUser.content}` : "Continuing prior symbol context."}${symbols}`;
+}
+
+function comparisonReasons(leader: ResearchCopilotSymbolContext, laggard: ResearchCopilotSymbolContext): string[] {
+  const reasons: string[] = [];
+  const leaderScore = leader.finalScore ?? 0;
+  const laggardScore = laggard.finalScore ?? 0;
+  if (leaderScore > laggardScore) reasons.push(`higher score ${scoreText(leader.finalScore)} vs ${scoreText(laggard.finalScore)}`);
+  if (leader.conviction > laggard.conviction) reasons.push(`stronger conviction ${leader.conviction} vs ${laggard.conviction}`);
+  if (leader.fragility < laggard.fragility) reasons.push(`lower fragility ${leader.fragility} vs ${laggard.fragility}`);
+  if (/aligned|tailwind|support/i.test(leader.macroContext) && !/aligned|tailwind|support/i.test(laggard.macroContext)) reasons.push(`better market context: ${leader.macroContext}`);
+  if (!reasons.length) reasons.push("the combined score, risk, and context balance is slightly stronger");
+  return reasons.slice(0, 3);
+}
+
+function confidenceNoteFor(context: ResearchCopilotContext): string {
+  if (!context.symbols.length) return "Confidence is limited because no symbol packet matched the question.";
+  const evidence = context.symbols.map((symbol) => symbol.evidenceLabel ?? "").join(" ");
+  const limitedEvidence = /\b(limited|unavailable|missing|low)\b/i.test(evidence);
+  const followUp = context.followUpContext ? " Follow-up context was carried forward from the recent conversation." : "";
+  if (limitedEvidence) return `Confidence is moderate to limited because historical evidence is still building.${followUp}`;
+  return `Confidence comes from the latest scanner, market, event, workflow, and memory data.${followUp}`;
+}
+
+function followUpQuestionsFor(context: ResearchCopilotContext): string[] {
+  const [first, second] = context.symbols;
+  if (context.intent === "comparison" && first && second) {
+    return [
+      `What would make ${second.symbol} overtake ${first.symbol}?`,
+      `Which risk could break ${first.symbol}?`,
+      `What changed most for ${first.symbol}?`,
+    ];
+  }
+  if (context.intent === "shock" && first) {
+    return [
+      `Is ${first.symbol} early or extended?`,
+      `What would reduce chase risk for ${first.symbol}?`,
+      `Show the downside case for ${first.symbol}.`,
+    ];
+  }
+  if (context.intent === "replay" && first) {
+    return [
+      `What did TradeVeto know before ${first.symbol} moved?`,
+      `Was the later move chase-prone?`,
+      `Which signal mattered most before the move?`,
+    ];
+  }
+  return [
+    "What changed most since the last scan?",
+    "Which setup is improving fastest?",
+    "What risk should I watch next?",
+  ];
 }
 
 function scoreText(value: number | null): string {

@@ -6,7 +6,7 @@ import { useMemo } from "react";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
-import { readableText } from "@/lib/ui/labels";
+import { humanizeInsightText } from "@/lib/ui/labels";
 import { WatchlistButton } from "@/components/watchlist-controls";
 import { DecisionBadge } from "./DecisionBadge";
 import { GlassPanel } from "./ui/GlassPanel";
@@ -18,7 +18,7 @@ export function MyWatchlistWidget({ rows }: { rows: OpportunityViewModel[] }) {
   const watchedItems = useMemo(() => watchlist.slice(0, 8).map((symbol) => ({ row: rowLookup.get(symbol) ?? null, symbol })), [rowLookup, watchlist]);
 
   return (
-    <GlassPanel className="p-5">
+    <GlassPanel className="scroll-mt-24 p-4 sm:p-5" id="mobile-watchlist">
       <SectionTitle eyebrow="My Watchlist" title="Tracked Symbols" meta={`${watchlist.length.toLocaleString()} saved`} />
       <div className="mt-4 space-y-3">
         {watchedItems.length ? (
@@ -62,11 +62,11 @@ function WatchlistRow({ row }: { row: OpportunityViewModel }) {
           <DecisionBadge value={row.final_decision} />
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+      <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
         <MiniMetric label="Price" value={formatMoney(row.price)} />
         <MiniMetric label="Conviction" value={`${formatNumber(row.conviction, 0)} ${row.confidenceLabel}`} />
         <MiniMetric label="Entry / Correction" value={row.entryZoneLabel ?? formatMoney(row.suggested_entry)} />
-        <MiniMetric label="Reason" value={readableText(row.decision_reason, "N/A")} />
+        <MiniMetric label="Reason" value={humanizeInsightText(row.decision_reason, "N/A")} />
       </div>
     </div>
   );

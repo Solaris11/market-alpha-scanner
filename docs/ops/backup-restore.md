@@ -134,6 +134,48 @@ without `AccessDenied` or hanging rclone processes.
 
 Never restore over production during a drill.
 
+Preferred Phase 11 drill command:
+
+```bash
+sudo /opt/apps/market-alpha-scanner/app/tools/ops/tradeveto-restore-drill.sh
+```
+
+The drill is isolated and rollback-safe:
+
+- picks the latest local Postgres `.sql.gz` backup unless overridden
+- picks the latest local scanner_output `.tar.gz` backup unless overridden
+- verifies both archives before restore
+- creates a temporary restore database
+- restores the Postgres backup into that temporary database
+- verifies public table count and key intelligence table row counts
+- extracts scanner_output into a temporary directory and verifies readability
+- reports RTO and RPO estimates
+- drops the temporary database and removes the temporary extraction directory by default
+
+Manual inspection options:
+
+```bash
+sudo /opt/apps/market-alpha-scanner/app/tools/ops/tradeveto-restore-drill.sh \
+  --keep-db \
+  --keep-workdir
+```
+
+Specific backup options:
+
+```bash
+sudo /opt/apps/market-alpha-scanner/app/tools/ops/tradeveto-restore-drill.sh \
+  --postgres-backup /opt/backups/market-alpha/postgres/YYYY-MM-DD_HH-MM.sql.gz \
+  --scanner-backup /opt/backups/market-alpha/scanner_output/YYYY-MM-DD_HH-MM.tar.gz
+```
+
+Expected result:
+
+```text
+RESULT: BACKUP RESTORE DRILL PASSED
+```
+
+Any failure means disaster recovery remains unproven and blocks broad launch.
+
 To restore from R2 first copy the chosen backup locally:
 
 ```bash
@@ -157,6 +199,9 @@ docker exec -e RESTORE_DB="$RESTORE_DB" market-alpha-scanner-market-alpha-postgr
 ```
 
 Expected result: restore completes without SQL errors and the table count is greater than zero.
+
+The older manual commands below remain useful when debugging a restore failure
+step by step.
 
 ## Scanner Artifact Restore
 

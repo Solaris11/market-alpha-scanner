@@ -41,7 +41,7 @@ export function AdaptiveLearningInsightPanel({
       <div className="mt-4 grid gap-3 lg:grid-cols-3">
         {insights.length ? insights.map((insight) => <InsightCard insight={insight} key={adaptiveInsightLabel(insight)} />) : (
           <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm leading-6 text-slate-400 lg:col-span-3">
-            Learning insights will appear after enough completed forward-return windows mature.
+            Learning insights will appear after enough later-outcome windows mature.
           </div>
         )}
       </div>
@@ -79,4 +79,3 @@ function LearningMetric({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-

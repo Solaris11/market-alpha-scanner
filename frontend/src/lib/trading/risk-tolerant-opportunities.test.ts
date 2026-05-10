@@ -87,7 +87,7 @@ test("risk tolerant mode still ranks avoided symbols instead of hiding all expos
   const candidates = buildRiskTolerantOpportunities(rows, { riskLevel: "high", rewardLevel: "high" });
 
   assert.equal(candidates[0]?.symbol, "AMD");
-  assert.equal(candidates[0]?.currentDecision, "Avoid");
+  assert.equal(candidates[0]?.currentDecision, "Risk Review");
   assert.ok(candidates[0]?.aggressiveOpportunityScore);
   assert.ok(candidates[0]?.keyRisks.some((item) => item.toLowerCase().includes("core") || item.toLowerCase().includes("chase") || item.toLowerCase().includes("downside")));
 });

@@ -43,7 +43,7 @@ export function WhatIfSimulator({ canTrade = true, engine, researchModeReason }:
         <TradeLegalNotice className="mt-3" />
         {!canTrade ? (
           <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm font-semibold leading-6 text-amber-100">
-            No active trade recommended. {researchModeReason ?? "Correct action: do nothing."} Trade sizing, entry, stop, target, and stress-test outputs are disabled.
+            Research mode is active. {researchModeReason ?? "Best next step is to monitor patiently."} Trade sizing, entry, stop, target, and stress-test outputs stay locked until timing improves.
           </div>
         ) : null}
         {readOnly ? (
@@ -97,7 +97,7 @@ function RiskBanner({ reasons, status }: { reasons: string[]; status: "WARNING" 
   const isVeto = status === "VETO";
   return (
     <div className={`mt-4 rounded-2xl border p-3 text-xs font-semibold leading-5 transition-all duration-200 ${isVeto ? "border-rose-300/30 bg-rose-500/10 text-rose-100 shadow-[0_0_28px_rgba(244,63,94,0.16)]" : "border-amber-300/30 bg-amber-400/10 text-amber-100 shadow-[0_0_24px_rgba(251,191,36,0.12)]"}`}>
-      <div>{isVeto ? "AI risk veto active" : "Risk warning active"}</div>
+      <div>{isVeto ? "Risk rules are protecting this setup" : "Risk rules ask for extra care"}</div>
       {reasons.length ? <div className="mt-1 font-normal">{reasons.join(" ")}</div> : null}
     </div>
   );

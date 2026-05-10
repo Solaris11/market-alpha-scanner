@@ -109,7 +109,7 @@ export function buildUnifiedIntelligenceConsole(input: UnifiedIntelligenceConsol
     generatedAt: operatingSystem.generatedAt,
     llmSummaryPacket: {
       generatedAt: operatingSystem.generatedAt,
-      guardrail: "LLM may summarize this deterministic packet only; it must not invent events, prices, probabilities, or override scores.",
+      guardrail: "AI may summarize this scored TradeVeto data only; it must not invent events, prices, probabilities, or override scores.",
       marketState: operatingSystem.marketState,
       topAttentionSymbols,
       topRisks: topRisks.map((item) => `${item.symbol}: ${item.reasonForAttention}`),
@@ -120,12 +120,12 @@ export function buildUnifiedIntelligenceConsole(input: UnifiedIntelligenceConsol
       summary: regimeSystem.terminalSummary || operatingSystem.marketStateReason,
     },
     metrics: [
-      metric("attention", "Attention", average(attentionQueue.map((item) => item.attentionPriorityScore), 50), "Highest-priority opportunity, risk, shock, and workflow signals."),
-      metric("opportunity", "Opportunity", operatingSystem.metaOpportunityAverage, "Average meta opportunity across the visible universe."),
-      metric("decision", "Decision Quality", operatingSystem.decisionQualityAverage, "Decision quality combines timing, asymmetry, macro pressure, and position quality."),
-      metric("risk", "Meta Risk", operatingSystem.metaRiskAverage, "Higher values require more caution and clearer invalidation context.", true),
-      metric("fragility", "Fragility", average(rows.map((row) => row.fragility), 50), "Average setup vulnerability across the scanner universe.", true),
-      metric("asymmetry", "Asymmetry", institutionalSystem.averageAsymmetryScore, "Average measured upside/downside structure across institutional intelligence."),
+      metric("attention", "Attention", average(attentionQueue.map((item) => item.attentionPriorityScore), 50), "Highest-priority opportunities, risks, large-move signals, and workflow changes."),
+      metric("opportunity", "Opportunity", operatingSystem.metaOpportunityAverage, "Average opportunity quality across the visible universe."),
+      metric("decision", "Decision Quality", operatingSystem.decisionQualityAverage, "Decision quality combines timing, upside/downside balance, market pressure, and position quality."),
+      metric("risk", "Risk Pressure", operatingSystem.metaRiskAverage, "Higher values require more caution and a clearer break area.", true),
+      metric("fragility", "Fragility", average(rows.map((row) => row.fragility), 50), "Average setup failure risk across the scanner universe.", true),
+      metric("asymmetry", "Upside / Downside", institutionalSystem.averageAsymmetryScore, "Average measured upside/downside structure across the visible universe."),
     ],
     personalizedSummary: personalizedSummaryFor(input.personalizationProfile ?? null, topOpportunities),
     shockConditionsAligning,
@@ -158,7 +158,7 @@ function toConsoleItem(item: MetaOpportunityPriority): UnifiedConsoleItem {
     key: `${item.symbol}:${item.category}`,
     metricLabel: `${item.metaOpportunityScore} opp / ${item.metaRiskScore} risk`,
     reasonForAttention: item.reasonForAttention,
-    riskLabel: item.keyRisks[0] ?? "Risk context remains probabilistic.",
+    riskLabel: item.keyRisks[0] ?? "Risk still has uncertainty.",
     symbol: item.symbol,
     urgencyLabel: item.urgencyLabel,
   };
@@ -199,8 +199,8 @@ function shockBriefings(rows: OpportunityViewModel[]): UnifiedConsoleBriefing[] 
         shock?.twoSidedVolatilityScore ?? 0,
       ], 0));
       return {
-        actionContext: "Use shock context as speculative research only and check chase risk before escalating.",
-        label: `${row.symbol} shock conditions are aligning at ${score}/100 current shock context.`,
+        actionContext: "Use large-move history as speculative research only and check chase risk before acting on it.",
+        label: `${row.symbol} large-move conditions are aligning at ${score}/100 current large-move context.`,
         priority: score >= 72 ? "high" as const : score >= 58 ? "medium" as const : "low" as const,
         source: "shock" as const,
         symbol: row.symbol,
@@ -217,7 +217,7 @@ function eventBriefings(rows: OpportunityViewModel[]): UnifiedConsoleBriefing[] 
     .sort((left, right) => right.eventRisk - left.eventRisk)
     .slice(0, 5)
     .map((row) => ({
-      actionContext: "Review verified event source, timestamp, and decay before relying on the narrative.",
+      actionContext: "Check the verified event source, timestamp, and decay before relying on the story.",
       label: `${row.symbol} has elevated verified event pressure: ${row.eventLabel}.`,
       priority: row.eventRisk >= 75 ? "high" : "medium",
       source: "event",
@@ -243,8 +243,8 @@ function fragilityBriefings(rows: OpportunityViewModel[], workflow: WorkflowEvol
 
 function asymmetryBriefings(items: Array<{ asymmetryScore: number; symbol: string }>): UnifiedConsoleBriefing[] {
   return items.slice(0, 5).map((item) => ({
-    actionContext: "Validate entry quality, downside containment, and evidence maturity before treating asymmetry as useful.",
-    label: `${item.symbol} leads measured asymmetry at ${item.asymmetryScore}/100.`,
+    actionContext: "Check entry timing, downside containment, and evidence strength before treating this balance as useful.",
+    label: `${item.symbol} has the strongest upside/downside balance at ${item.asymmetryScore}/100.`,
     priority: item.asymmetryScore >= 72 ? "high" : "medium",
     source: "asymmetry",
     symbol: item.symbol,
@@ -268,7 +268,7 @@ function fallbackChangeBriefings(rows: OpportunityViewModel[]): UnifiedConsoleBr
     .sort((left, right) => Math.abs(right.change) - Math.abs(left.change))
     .slice(0, 5)
     .map((item) => ({
-      actionContext: "Change is based on latest persisted scanner fields and should be confirmed on symbol detail.",
+      actionContext: "Change is based on the latest saved scanner fields and should be confirmed on symbol detail.",
       label: `${item.row.symbol} ${item.change > 0 ? "improved" : "weakened"} ${Math.abs(item.change).toFixed(1)} points.`,
       priority: Math.abs(item.change) >= 6 ? "high" : "medium",
       source: "change",

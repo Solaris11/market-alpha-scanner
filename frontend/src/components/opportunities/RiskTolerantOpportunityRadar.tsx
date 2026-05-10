@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRiskProfile } from "@/hooks/useRiskProfile";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
+import { buildOpportunityActionability } from "@/lib/trading/opportunity-actionability";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import {
   buildPersonalizedOpportunities,
@@ -19,6 +20,7 @@ import {
 } from "@/lib/trading/risk-tolerant-opportunities";
 import { type RiskPersonalityProfile } from "@/lib/trading/risk-veto";
 import { cleanText, formatNumber } from "@/lib/ui/formatters";
+import { humanizeInsightText } from "@/lib/ui/labels";
 import { DecisionBadge } from "@/components/terminal/DecisionBadge";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
@@ -86,6 +88,7 @@ export function RiskTolerantOpportunityRadar({
   const candidates = useMemo(() => buildPersonalizedOpportunities(rows, personalizationProfile, { limit: 5 }), [personalizationProfile, rows]);
   const fallbackCandidates = useMemo(() => buildPersonalizedOpportunities(rows, personalizationProfile, { includeProfileMismatches: true, limit: 5 }), [personalizationProfile, rows]);
   const displayCandidates = candidates.length ? candidates : fallbackCandidates;
+  const showingNearestMatches = !candidates.length && fallbackCandidates.length > 0;
   const topCandidate = displayCandidates[0]?.candidate ?? null;
 
   function persistPersonalityPatch(patch: { personalityProfile?: RiskPersonalityProfile; preferredRewardLevel?: RewardLevel; preferredRiskLevel?: RiskLevel }) {
@@ -145,7 +148,7 @@ export function RiskTolerantOpportunityRadar({
             meta={cleanText(marketCondition, "Latest scan")}
           />
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-            Core TradeVeto decisions remain conservative. This parallel radar ranks speculative research candidates when you explicitly accept higher risk.
+            Core TradeVeto decisions stay conservative. This parallel radar ranks speculative research candidates when you explicitly accept higher risk.
           </p>
         </div>
         <PersonalizedControls
@@ -173,6 +176,11 @@ export function RiskTolerantOpportunityRadar({
           </div>
         </div>
         <p className="mt-3 text-xs leading-5 text-amber-100">{profile.warning}</p>
+        {showingNearestMatches ? (
+          <p className="mt-2 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.06] px-3 py-2 text-xs leading-5 text-cyan-100">
+            Strict matches are not available for this risk/reward profile, so the radar is showing the nearest scored candidates instead of hiding the universe. Conflicts are clearly marked on each card.
+          </p>
+        ) : null}
       </div>
 
       {displayCandidates.length ? (
@@ -196,23 +204,23 @@ export function RiskTolerantOpportunityRadar({
       {analysis || analysisError ? (
         <div className="mt-4 rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.06] p-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">AI Structured Analysis</div>
-            {analysis ? <div className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-semibold text-slate-300">{analysis.source === "llm" ? "LLM validated" : "Deterministic fallback"}</div> : null}
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">AI Explanation</div>
+            {analysis ? <div className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-semibold text-slate-300">{analysis.source === "llm" ? "AI checked" : "Score-based fallback"}</div> : null}
           </div>
           {analysis ? (
             <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(260px,0.8fr)]">
               <div className="space-y-2 text-sm leading-6 text-slate-300">
-                <p>{analysis.conciseExplanation}</p>
-                <p><span className="font-semibold text-emerald-200">May work:</span> {analysis.whyItMayWork}</p>
-                <p><span className="font-semibold text-rose-200">May fail:</span> {analysis.whyItMayFail}</p>
-                <p className="text-xs text-slate-500">{analysis.safetyLanguage}</p>
+                <p>{humanizeInsightText(analysis.conciseExplanation)}</p>
+                <p><span className="font-semibold text-emerald-200">Why it may work:</span> {humanizeInsightText(analysis.whyItMayWork)}</p>
+                <p><span className="font-semibold text-rose-200">Why it may fail:</span> {humanizeInsightText(analysis.whyItMayFail)}</p>
+                <p className="text-xs text-slate-500">{humanizeInsightText(analysis.safetyLanguage)}</p>
               </div>
               <div className="rounded-xl border border-white/10 bg-slate-950/35 p-3">
                 <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Monitor next</div>
                 <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-300">
-                  {analysis.monitorNext.map((item) => <li key={item}>- {item}</li>)}
+                  {analysis.monitorNext.map((item) => <li key={item}>- {humanizeInsightText(item)}</li>)}
                 </ul>
-                <div className="mt-3 text-[11px] leading-5 text-slate-500">{analysis.dataFreshnessNote}</div>
+                <div className="mt-3 text-[11px] leading-5 text-slate-500">{humanizeInsightText(analysis.dataFreshnessNote)}</div>
               </div>
             </div>
           ) : (
@@ -236,7 +244,7 @@ export function RiskRewardControls({
   setRiskLevel: (value: RiskLevel) => void;
 }) {
   return (
-    <div className="grid min-w-[min(100%,320px)] gap-2 sm:grid-cols-2">
+    <div className="grid w-full max-w-md gap-2 sm:grid-cols-2">
       <SegmentedControl label="Risk Level" options={RISK_LEVELS} value={riskLevel} onChange={setRiskLevel} />
       <SegmentedControl label="Reward Level" options={REWARD_LEVELS} value={rewardLevel} onChange={setRewardLevel} />
     </div>
@@ -259,7 +267,7 @@ function PersonalizedControls({
   setRiskLevel: (value: RiskLevel) => void;
 }) {
   return (
-    <div className="grid min-w-[min(100%,520px)] gap-2 lg:grid-cols-[minmax(180px,1fr)_minmax(150px,0.8fr)_minmax(150px,0.8fr)]">
+    <div className="grid w-full gap-2 lg:max-w-[520px] lg:grid-cols-[minmax(180px,1fr)_minmax(150px,0.8fr)_minmax(150px,0.8fr)]">
       <label className="min-w-0">
         <div className="mb-1 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Personality</div>
         <select
@@ -308,6 +316,7 @@ function RiskCandidateCard({
   showAnalyze: boolean;
 }) {
   const base = candidate.candidate;
+  const actionability = buildOpportunityActionability(base.row);
   return (
     <article className={`min-w-0 rounded-2xl border p-4 ${candidate.profileFit === "aligned" ? "border-white/10 bg-white/[0.04]" : "border-amber-300/20 bg-amber-400/[0.055]"}`}>
       <div className="flex items-start justify-between gap-2">
@@ -318,29 +327,34 @@ function RiskCandidateCard({
         <DecisionBadge className="px-2 py-1 text-[10px]" value={base.row.final_decision} />
       </div>
       <div className="mt-2 text-xs font-semibold text-cyan-200">{candidate.personalizedState}</div>
-      <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{candidate.personalizedReason}</p>
+      <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{humanizeInsightText(candidate.personalizedReason)}</p>
       <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
         <MiniMetric label="Personalized" value={formatNumber(candidate.personalizedScore, 0)} />
         <MiniMetric label="Base Opp" value={formatNumber(base.aggressiveOpportunityScore, 0)} />
-        <MiniMetric label="Asymmetry" value={formatNumber(base.asymmetryScore, 0)} />
+        <MiniMetric label="Upside / Downside" value={formatNumber(base.asymmetryScore, 0)} />
         <MiniMetric label="Upside" value={formatNumber(base.upsidePotentialScore, 0)} />
         <MiniMetric label="Downside" value={formatNumber(base.downsideRiskScore, 0)} tone={base.downsideRiskScore >= 70 ? "risk" : "neutral"} />
         <MiniMetric label="Reliability" value={formatNumber(base.reliabilityScore, 0)} />
         <MiniMetric label="Evidence" value={base.row.evidence ? `${base.row.evidence.label} ${base.row.evidence.score}` : "Evidence building"} />
-        <MiniMetric label="Entry Zone" value={base.researchEntryZone} />
-        <MiniMetric label="Invalidation" value={base.invalidationZone} tone="risk" />
+        <MiniMetric label="Entry Area" value={humanizeInsightText(base.researchEntryZone)} />
+        <MiniMetric label="Break Area" value={humanizeInsightText(base.invalidationZone)} tone="risk" />
       </div>
       <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/35 p-2 text-[11px] leading-4 text-slate-400">
-        <span className="font-semibold text-amber-100">{base.chaseRiskLabel}.</span> {candidate.personalizedWarning}
+        <span className="font-semibold text-amber-100">{humanizeInsightText(base.chaseRiskLabel)}.</span> {humanizeInsightText(candidate.personalizedWarning)}
+      </div>
+      <div className="mt-2 rounded-xl border border-emerald-300/15 bg-emerald-400/[0.055] p-2 text-[11px] leading-4 text-slate-300">
+        <div className="font-semibold text-emerald-100">{actionability.primaryActionLabel}: {actionability.earlyOrLate}</div>
+        <div className="mt-1">{humanizeInsightText(actionability.actionContext)}</div>
+        <div className="mt-1 text-slate-400"><span className="font-semibold text-slate-200">Breaks if:</span> {humanizeInsightText(actionability.invalidationExplanation)}</div>
       </div>
       {candidate.profileConflict ? (
         <div className="mt-2 rounded-xl border border-amber-300/20 bg-amber-400/[0.06] p-2 text-[11px] leading-4 text-amber-100">
-          {candidate.profileConflict}
+          {humanizeInsightText(candidate.profileConflict)}
         </div>
       ) : null}
       {base.row.narrative ? (
         <div className="mt-2 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.055] p-2 text-[11px] leading-4 text-slate-300">
-          <span className="font-semibold text-cyan-100">Narrative:</span> {base.row.narrative.moderatorSummary}
+          <span className="font-semibold text-cyan-100">Narrative:</span> {humanizeInsightText(base.row.narrative.moderatorSummary)}
         </div>
       ) : null}
       {showAnalyze ? (
@@ -360,8 +374,8 @@ function RiskCandidateCard({
 function MiniMetric({ label, tone = "neutral", value }: { label: string; tone?: "neutral" | "risk"; value: string }) {
   return (
     <div className="min-w-0 rounded-lg bg-slate-950/45 px-2 py-1.5">
-      <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">{label}</div>
-      <div className={`mt-1 truncate font-mono text-[11px] font-semibold ${tone === "risk" ? "text-rose-200" : "text-slate-100"}`} title={value}>{value}</div>
+      <div className="break-words text-[9px] font-semibold uppercase tracking-[0.08em] text-slate-500">{label}</div>
+      <div className={`mt-1 break-words font-mono text-[11px] font-semibold ${tone === "risk" ? "text-rose-200" : "text-slate-100"}`} title={value}>{value}</div>
     </div>
   );
 }

@@ -55,6 +55,7 @@ import { VerifiedEventContextCard } from "./VerifiedEventContextCard";
 import { WhatIfSimulator } from "./WhatIfSimulator";
 import { WorkflowEvolutionPanel } from "./WorkflowEvolutionPanel";
 import { WhyDecisionCard } from "./WhyDecisionCard";
+import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
@@ -129,7 +130,7 @@ export function SymbolTerminalWorkspace({
   }, [candles.length, history]);
   const canTrade = globalDecision ? dailyActionAllowsTrade(globalDecision) : true;
   const noTradeCopy = globalDecision && !canTrade ? noTradeActionCopy(globalDecision) : null;
-  const researchModeReason = noTradeCopy?.reason ?? "No active trade is recommended by the global decision system.";
+  const researchModeReason = noTradeCopy?.reason ?? "The global decision system is keeping this in research mode for now.";
 
   if (!premiumAccess) {
     return (
@@ -152,11 +153,11 @@ export function SymbolTerminalWorkspace({
       {!canTrade ? (
         <GlassPanel className="border-amber-300/25 bg-amber-400/[0.08] p-6">
           <div className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-200">Global Decision</div>
-          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-50">{noTradeCopy?.title ?? "No active trade recommended"}</h2>
+          <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-50">{noTradeCopy?.title ?? "Research Mode"}</h2>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-            This is a research signal only. {researchModeReason} Entry, stop, target, and execution surfaces are hidden.
+            This is a research signal only. {researchModeReason} Entry, stop, target, and execution surfaces stay hidden until timing improves.
           </p>
-          <div className="mt-4 inline-flex rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm font-black text-amber-100">Correct action: do nothing</div>
+          <div className="mt-4 inline-flex rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm font-black text-amber-100">Best next step: monitor patiently</div>
         </GlassPanel>
       ) : null}
 
@@ -167,27 +168,33 @@ export function SymbolTerminalWorkspace({
           ) : (
             <GlassPanel className="p-6">
               <SectionTitle eyebrow="Decision Assistant" title="Research Mode" />
-              <p className="mt-4 text-sm leading-6 text-slate-400">AI trade guidance is suppressed while the global decision says no active trade. Review the context without acting.</p>
+              <p className="mt-4 text-sm leading-6 text-slate-400">AI trade guidance stays in research mode while the global decision asks for patience. Review the context and wait for cleaner confirmation.</p>
             </GlassPanel>
           )}
           <SymbolDecisionIntelligencePanel candles={candles} row={row} />
           <EvidenceMaturityCard marketMemory={marketMemory} row={row} shockPattern={shockPattern ?? null} />
-          {institutionalOpportunity ? <MetaIntelligenceOperatingSystemPanel compact focusSymbol={symbol} personalizationProfile={personalizationProfile ?? null} rows={[institutionalOpportunity]} workflowEvolution={workflowEvolution ?? null} /> : null}
-          {institutionalOpportunity ? <IntradayRegimeDriftPanel compact driftRows={intradayDriftRows} focusSymbol={symbol} rows={[institutionalOpportunity]} /> : null}
-          <AdaptiveLearningInsightPanel compact focusSymbol={symbol} system={adaptiveLearning ?? null} />
-          <StrategyIntelligencePanel compact focusSymbol={symbol} system={strategyIntelligence ?? null} />
-          <ScenarioIntelligencePanel compact focusSymbol={symbol} system={scenarioIntelligence ?? null} />
-          {institutionalOpportunity ? <ExecutionIntelligencePanel compact focusSymbol={symbol} rows={[institutionalOpportunity]} /> : null}
           <NarrativeIntelligenceCard narrative={narrative ?? null} />
-          <PersonalizedIntelligenceCard narrative={narrative ?? null} profile={personalizationProfile ?? null} row={row} />
-          {decisionMemory && decisionCoaching ? (
-            <DecisionJournalCard coaching={decisionCoaching} entries={decisionJournalEntries} memory={decisionMemory} profile={personalizationProfile ?? null} row={row} />
-          ) : null}
-          {workflowEvolution ? <WorkflowEvolutionPanel compact summary={workflowEvolution} surface="symbol" /> : null}
-          {institutionalOpportunity ? <InstitutionalIntelligencePanel compact focusSymbol={symbol} rows={[institutionalOpportunity]} /> : null}
-          {macroContext ? <MacroExchangeContextCard context={macroContext} row={row} /> : null}
-          <VerifiedEventContextCard row={row} />
-          <ConvictionFragilityCard model={structuralQuality} />
+          <ResponsiveAdvancedDetails
+            eyebrow="Symbol detail"
+            summary="Secondary research stays available without pushing timing tools too far down the phone screen."
+            title={`More ${symbol} intelligence`}
+          >
+            {institutionalOpportunity ? <MetaIntelligenceOperatingSystemPanel compact focusSymbol={symbol} personalizationProfile={personalizationProfile ?? null} rows={[institutionalOpportunity]} workflowEvolution={workflowEvolution ?? null} /> : null}
+            {institutionalOpportunity ? <IntradayRegimeDriftPanel compact driftRows={intradayDriftRows} focusSymbol={symbol} rows={[institutionalOpportunity]} /> : null}
+            <AdaptiveLearningInsightPanel compact focusSymbol={symbol} system={adaptiveLearning ?? null} />
+            <StrategyIntelligencePanel compact focusSymbol={symbol} system={strategyIntelligence ?? null} />
+            <ScenarioIntelligencePanel compact focusSymbol={symbol} system={scenarioIntelligence ?? null} />
+            {institutionalOpportunity ? <ExecutionIntelligencePanel compact focusSymbol={symbol} rows={[institutionalOpportunity]} /> : null}
+            <PersonalizedIntelligenceCard narrative={narrative ?? null} profile={personalizationProfile ?? null} row={row} />
+            {decisionMemory && decisionCoaching ? (
+              <DecisionJournalCard coaching={decisionCoaching} entries={decisionJournalEntries} memory={decisionMemory} profile={personalizationProfile ?? null} row={row} />
+            ) : null}
+            {workflowEvolution ? <WorkflowEvolutionPanel compact summary={workflowEvolution} surface="symbol" /> : null}
+            {institutionalOpportunity ? <InstitutionalIntelligencePanel compact focusSymbol={symbol} rows={[institutionalOpportunity]} /> : null}
+            {macroContext ? <MacroExchangeContextCard context={macroContext} row={row} /> : null}
+            <VerifiedEventContextCard row={row} />
+            <ConvictionFragilityCard model={structuralQuality} />
+          </ResponsiveAdvancedDetails>
         </div>
         <aside className="space-y-5 xl:sticky xl:top-5 xl:self-start">
           <WhatIfSimulator canTrade={canTrade} engine={tradeEngine} researchModeReason={researchModeReason} />

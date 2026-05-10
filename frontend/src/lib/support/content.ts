@@ -16,7 +16,7 @@ export const SUPPORT_FAQ: SupportFaqItem[] = [
   {
     slug: "what-is-tradeveto",
     question: "What is TradeVeto?",
-    answer: "TradeVeto is an AI-powered market intelligence platform that helps organize market conditions, scanner signals, risk context, vetoes, and decision support into one workflow.",
+    answer: "TradeVeto is an AI-powered market intelligence platform that helps organize market conditions, scanner signals, risk context, and decision support into one calm research workflow.",
   },
   {
     slug: "financial-advice",
@@ -40,8 +40,8 @@ export const SUPPORT_FAQ: SupportFaqItem[] = [
   },
   {
     slug: "avoid",
-    question: "What does AVOID mean?",
-    answer: "AVOID means risk, setup quality, data freshness, or market context does not meet the product's research criteria.",
+    question: "What does Risk Review mean?",
+    answer: "Risk Review means the setup stays in research mode because risk, timing, data freshness, or market context is not clean enough yet.",
   },
   {
     slug: "scanner-work",
@@ -51,7 +51,7 @@ export const SUPPORT_FAQ: SupportFaqItem[] = [
   {
     slug: "data-updated",
     question: "How often is data updated?",
-    answer: "Scanner freshness is shown inside the app. If data is stale, action recommendations are suppressed until a fresh scan is available.",
+    answer: "Scanner freshness is shown inside the app. If data needs a refresh, active decisions pause and the latest completed scan remains available as context.",
   },
   {
     slug: "premium",
@@ -80,8 +80,8 @@ export const SUPPORT_FAQ: SupportFaqItem[] = [
   },
   {
     slug: "no-trade-today",
-    question: "Why can the scanner say No trade today?",
-    answer: "The product is designed to reduce overtrading. If conditions do not justify action, the system intentionally shows a no-trade decision.",
+    question: "Why can the scanner ask me to wait?",
+    answer: "The product is designed to reduce forced decisions. If conditions are not clean enough, the system keeps the workflow in patient research mode.",
   },
   {
     slug: "data-provider",
@@ -91,7 +91,7 @@ export const SUPPORT_FAQ: SupportFaqItem[] = [
   {
     slug: "wrong-stale-data",
     question: "What if I see wrong or stale data?",
-    answer: "Do not act on stale or suspicious data. Refresh later and open a support ticket with the symbol, page, and time you saw the issue.",
+    answer: "Treat stale or suspicious data as historical context only. Refresh later and open a support ticket with the symbol, page, and time you saw the issue.",
   },
 ];
 
@@ -101,7 +101,7 @@ export const SUPPORT_GUIDES: SupportGuide[] = [
     title: "How to read the terminal",
     body: [
       "Start with Market State and Daily Action. That is the decision hierarchy.",
-      "If the action is WAIT or stale, trade UI is intentionally disabled.",
+      "If the action is WAIT or data needs a refresh, trade UI stays in research mode.",
       "Use setup cards for research context only; they are not personalized recommendations.",
     ],
   },
@@ -153,21 +153,21 @@ export function findSupportAnswer(message: string): string {
   if (normalized.includes("no buy") || normalized.includes("no active trade") || normalized.includes("no trade") || normalized.includes("no research setup")) {
     return [
       "No active research setup can be a healthy result.",
-      "TradeVeto is built around the idea that the best trade is often no trade. Wait, Watch, and Avoid mean the scanner is prioritizing risk control, data quality, and setup confirmation over forced activity.",
+      "TradeVeto is built around the idea that patience is often the highest-quality decision. Wait, Watch, and Risk Review mean the scanner is prioritizing risk control, data quality, and setup confirmation over forced activity.",
       "Review the Decision Reasons and What To Watch panels to see which conditions would need to improve.",
     ].join("\n");
   }
   if (normalized.includes("stale data") || normalized.includes("outdated data")) {
     return [
-      "Stale data reduces confidence and can disable active decision states.",
+      "Stale data reduces confidence and can pause active decision states.",
       "Use the freshness indicators first. If freshness is degraded, treat the view as historical context until the next successful scanner run.",
       "If stale status persists across scheduled runs, open a technical ticket with the symbol and page.",
     ].join("\n");
   }
   if (normalized.includes("readiness")) {
     return [
-      "Readiness is a product signal that combines confidence, data quality, setup strength, and veto status.",
-      "A high score can still have lower readiness if the setup is extended, data quality is weak, or a risk veto is active.",
+      "Readiness is a product signal that combines confidence, data quality, setup strength, and risk status.",
+      "A high score can still have lower readiness if the setup is extended, data quality is weak, or risk rules ask for patience.",
       "Use readiness to understand how close a setup is to cleaner research conditions. It is not a prediction.",
     ].join("\n");
   }
@@ -180,15 +180,15 @@ export function findSupportAnswer(message: string): string {
   }
   if (normalized.includes("veto")) {
     return [
-      "A veto is a hard risk or quality block.",
+      "A risk review is a protective quality gate.",
       "Examples include stale data, weak data confidence, overextended entry context, poor risk/reward, or market-regime mismatch.",
-      "When a veto is active, the UI should not present the setup as trade-ready. Use What To Watch to see the conditions that would need to improve.",
+      "When a risk review is active, the UI should not present the setup as trade-ready. Use What To Watch to see the conditions that would need to improve.",
     ].join("\n");
   }
   if (normalized.includes("regime")) {
     return [
       "Market regime is the scanner's broad risk context.",
-      "In overheated, risk-off, or bear conditions, the scanner raises standards and reduces breakout-style urgency. In neutral or bull conditions, it can be less restrictive, but veto and confidence gates still apply.",
+      "In extended, risk-off, or bear conditions, the scanner raises standards and reduces breakout-style urgency. In neutral or bull conditions, it can be less restrictive, but risk and confidence gates still apply.",
       "Regime impact explains why the same symbol may receive a different decision under different market conditions.",
     ].join("\n");
   }

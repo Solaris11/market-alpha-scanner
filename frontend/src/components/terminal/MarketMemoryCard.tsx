@@ -30,7 +30,7 @@ export function MarketMemoryCard({ memory }: { memory: MarketMemorySummary }) {
             </div>
           ) : (
             <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-sm leading-6 text-slate-400">
-              Similar setup memory exists, but forward-return outcomes are still incomplete for this cluster.
+              Similar setup memory exists, but later outcomes are still incomplete for this group.
             </div>
           )}
 

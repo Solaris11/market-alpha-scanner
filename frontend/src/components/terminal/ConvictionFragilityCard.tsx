@@ -9,41 +9,42 @@ import {
   type PressureDirection,
   type ScoreLabel,
 } from "@/lib/trading/conviction-fragility";
+import { humanizeInsightText } from "@/lib/ui/labels";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
 export function ConvictionFragilityCard({ model }: { model: ConvictionFragilityModel }) {
   return (
     <GlassPanel className="p-5">
-      <SectionTitle eyebrow="Structural Quality" title="Conviction vs Fragility" meta={model.structuralLabel} />
-      <p className="mt-3 text-sm leading-6 text-slate-400">{model.summary}</p>
+      <SectionTitle eyebrow="Setup Strength" title="Conviction vs Fragility" meta={humanizeInsightText(model.structuralLabel)} />
+      <p className="mt-3 text-sm leading-6 text-slate-400">{humanizeInsightText(model.summary)}</p>
 
       <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <ScoreMetric metric={model.conviction} title="Conviction" />
         <ScoreMetric metric={model.fragility} title="Fragility" />
         <MetricCard label="Net Pressure" tone={scoreTone(model.netPressureScore)} value={`${model.netPressureScore}/100`} />
-        <MetricCard label="Setup Decay" tone={decayTone(model.decay.stage)} value={decayStageLabel(model.decay.stage)} />
+        <MetricCard label="Setup Age" tone={decayTone(model.decay.stage)} value={humanizeInsightText(decayStageLabel(model.decay.stage))} />
       </div>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2">
-            <InsightPanel title="Confidence Drift">
+            <InsightPanel title="Confidence Change">
               <div className={`inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.14em] ${driftPill(model.drift.direction)}`}>{model.drift.label}</div>
-              <p className="mt-3 text-sm leading-6 text-slate-400">{model.drift.explanation}</p>
+              <p className="mt-3 text-sm leading-6 text-slate-400">{humanizeInsightText(model.drift.explanation)}</p>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
                 <MiniMetric label="Observations" value={String(model.drift.observationCount)} />
                 <MiniMetric label="Delta" value={model.drift.delta === null ? "N/A" : `${model.drift.delta > 0 ? "+" : ""}${model.drift.delta.toFixed(1)}`} />
               </div>
             </InsightPanel>
 
-            <InsightPanel title="Setup Decay">
+            <InsightPanel title="Setup Age">
               <div className={`inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.14em] ${decayPill(model.decay.stage)}`}>{model.decay.label}</div>
-              <p className="mt-3 text-sm leading-6 text-slate-400">{model.decay.explanation}</p>
+              <p className="mt-3 text-sm leading-6 text-slate-400">{humanizeInsightText(model.decay.explanation)}</p>
             </InsightPanel>
           </div>
 
-          <InsightPanel title="Invalidation Conditions">
+          <InsightPanel title="What Could Break It">
             <div className="flex flex-wrap items-center gap-2">
               <div className={`rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.14em] ${fragilityPill(model.fragility.tier as FragilityTier)}`}>{model.invalidation.label}</div>
               <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 font-mono text-xs text-slate-300">
@@ -51,25 +52,25 @@ export function ConvictionFragilityCard({ model }: { model: ConvictionFragilityM
               </div>
               {model.invalidation.proximityPct !== null ? (
                 <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 font-mono text-xs text-slate-300">
-                  {model.invalidation.proximityPct.toFixed(1)}% from invalidation context
+                  {model.invalidation.proximityPct.toFixed(1)}% from the break area
                 </div>
               ) : null}
             </div>
             <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
-              {model.invalidation.conditions.map((condition) => <li key={condition}>- {condition}</li>)}
+              {model.invalidation.conditions.map((condition) => <li key={condition}>- {humanizeInsightText(condition)}</li>)}
             </ul>
           </InsightPanel>
 
-          <InsightPanel title="Historical Fragility Context">
+          <InsightPanel title="How Similar Setups Behaved">
             <ul className="space-y-2 text-sm leading-6 text-slate-300">
-              {model.historicalFragility.lines.map((line) => <li key={line}>- {line}</li>)}
+              {model.historicalFragility.lines.map((line) => <li key={line}>- {humanizeInsightText(line)}</li>)}
             </ul>
           </InsightPanel>
         </div>
 
         <aside className="space-y-3">
           <div className="rounded-2xl border border-white/10 bg-slate-950/35 p-4">
-            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Market Pressure Contributors</div>
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">What Is Helping Or Hurting</div>
             <div className="mt-3 space-y-3">
               {model.pressure.map((item) => (
                 <div key={item.key}>
@@ -89,7 +90,7 @@ export function ConvictionFragilityCard({ model }: { model: ConvictionFragilityM
           <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.08] p-4">
             <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Decision Quality Read</div>
             <p className="mt-2 text-sm leading-6 text-slate-300">
-              This layer evaluates structure, durability, and vulnerability. It is historical and probabilistic context, not a trade instruction.
+              This checks whether the setup looks sturdy enough to trust. It is historical context, not trading advice.
             </p>
           </div>
         </aside>

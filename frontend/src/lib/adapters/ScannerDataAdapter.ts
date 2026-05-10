@@ -69,14 +69,16 @@ export class ScannerDataAdapter implements DataServiceAdapter {
   }
 
   async getTerminalSnapshot(): Promise<TerminalSnapshot> {
-    const [signals, topSignals, marketRegime, analytics, safety] = await Promise.all([
+    const [signals, topSignals, regime, structure, analytics, safety] = await Promise.all([
       this.getOverviewSignals(),
       getTopCandidates(),
-      this.getMarketRegime(),
+      getRegimeArtifact(),
+      getMarketStructure(),
       getPaperAnalytics().catch(() => null),
       getCurrentScanSafety(),
     ]);
     const safeTopSignals = applyStaleDataSafetyToRows(topSignals.length ? topSignals : signals.slice(0, 12), safety);
+    const marketRegime = applyStaleDataSafetyToMarketRegime(inferRegime(signals, regime, structure), safety);
     return {
       signals,
       topSignals: safeTopSignals,

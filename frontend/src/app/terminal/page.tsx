@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AICopilotPanel } from "@/components/terminal/AICopilotPanel";
+import { AutomatedResearchAgentsPanel } from "@/components/terminal/AutomatedResearchAgentsPanel";
 import { BestTradeNowCard } from "@/components/terminal/BestTradeNowCard";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { MarketOnboarding } from "@/components/onboarding/MarketOnboarding";
@@ -13,6 +14,7 @@ import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { ExecutionIntelligencePanel } from "@/components/terminal/ExecutionIntelligencePanel";
 import { InstitutionalIntelligencePanel } from "@/components/terminal/InstitutionalIntelligencePanel";
 import { IntradayRegimeDriftPanel } from "@/components/terminal/IntradayRegimeDriftPanel";
+import { LiveIntelligencePanel } from "@/components/terminal/LiveIntelligencePanel";
 import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
 import { MetricCard } from "@/components/terminal/MetricCard";
 import { MyWatchlistWidget } from "@/components/terminal/MyWatchlistWidget";
@@ -23,12 +25,12 @@ import { SignalCard } from "@/components/terminal/SignalCard";
 import { SignalHeatmap } from "@/components/terminal/SignalHeatmap";
 import { StrategyIntelligencePanel } from "@/components/terminal/StrategyIntelligencePanel";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
-import { TerminalPulseCharts } from "@/components/terminal/TerminalPulseCharts";
 import { TerminalRightRail } from "@/components/terminal/TerminalRightRail";
 import { UnifiedIntelligenceConsole } from "@/components/terminal/UnifiedIntelligenceConsole";
 import { WorkflowEvolutionPanel } from "@/components/terminal/WorkflowEvolutionPanel";
 import { getActiveAlertMatches } from "@/lib/active-alert-matches";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
+import { getPaperData } from "@/lib/paper-data";
 import { getPerformanceData, getRecentIntradaySignalDriftSummary } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getNarrativeMap } from "@/lib/server/narrative-intelligence";
@@ -43,7 +45,11 @@ import { premiumAccessState } from "@/lib/security/premium-access-state";
 import { buildAdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { dailyActionBlocksTradeUi, getDailyAction, noTradeActionCopy } from "@/lib/trading/daily-action";
+import { buildLiveIntelligenceSystem } from "@/lib/trading/live-intelligence";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
+import { buildPortfolioIntelligenceSystem } from "@/lib/trading/portfolio-intelligence";
+import { buildAutomatedResearchAgentsSystem } from "@/lib/trading/research-agents";
+import { buildRegimeShiftSystem } from "@/lib/trading/regime-shift-intelligence";
 import { buildScenarioIntelligenceSystem } from "@/lib/trading/scenario-intelligence";
 import { buildStrategyIntelligenceSystem } from "@/lib/trading/strategy-intelligence";
 import { formatMoney, formatPercent } from "@/lib/ui/formatters";
@@ -106,13 +112,14 @@ export default async function TerminalPage() {
   }
 
   const adapter = new ScannerDataAdapter();
-  const [snapshot, performance, scanSafety, watchlistSymbols, activeAlertMatches, personalizationProfile] = await Promise.all([
+  const [snapshot, performance, scanSafety, watchlistSymbols, activeAlertMatches, personalizationProfile, paperData] = await Promise.all([
     adapter.getTerminalSnapshot(),
     getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
     getCurrentScanSafety(),
     entitlement.user?.id ? readUserWatchlist(entitlement.user.id).catch(() => []) : Promise.resolve([]),
     getActiveAlertMatches(entitlement.user?.id ?? null).then((result) => result.matches).catch(() => []),
     getPersonalizationProfileForUser(entitlement.user?.id ?? null).catch(() => null),
+    getPaperData({ userId: entitlement.user?.id ?? null }).catch(() => ({ account: null, configured: false, events: [], positions: [] })),
   ]);
   const edges = buildEdgeLookup(snapshot.signals, performance);
   const symbols = snapshot.signals.map((row) => row.symbol);
@@ -135,6 +142,28 @@ export default async function TerminalPage() {
   const scenarioIntelligence = buildScenarioIntelligenceSystem({
     rows: opportunityModel.rows,
   });
+  const regimeShiftSystem = buildRegimeShiftSystem({ rows: opportunityModel.rows, workflowEvolution });
+  const liveIntelligence = buildLiveIntelligenceSystem({
+    driftRows: intradayDriftRows,
+    refreshIntervalMs: 30_000,
+    rows: opportunityModel.rows,
+    streamMode: "snapshot",
+  });
+  const portfolioIntelligence = buildPortfolioIntelligenceSystem({
+    accountValue: paperData.account?.total_account_value ?? null,
+    opportunities: opportunityModel.rows,
+    positions: paperData.positions,
+    scenarioSystem: scenarioIntelligence,
+  });
+  const automatedResearchAgents = buildAutomatedResearchAgentsSystem({
+    liveSystem: liveIntelligence,
+    portfolioSystem: portfolioIntelligence,
+    regimeSystem: regimeShiftSystem,
+    rows: opportunityModel.rows,
+    scenarioSystem: scenarioIntelligence,
+    watchlistSymbols,
+    workflowEvolution,
+  });
   const best = selectBestTradeNow(snapshot.signals, edges);
   const leader = best?.row ?? snapshot.topSignals[0] ?? snapshot.signals[0];
   const dailyAction = getDailyAction({ best, fallbackRow: leader, marketRegime: snapshot.marketRegime, scanSafety });
@@ -151,69 +180,68 @@ export default async function TerminalPage() {
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">
           <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
-          <MarketTapeStrip rows={snapshot.signals} />
           <UnifiedIntelligenceConsole
             marketCondition={snapshot.marketRegime.label}
             personalizationProfile={personalizationProfile}
             rows={opportunityModel.rows}
             workflowEvolution={workflowEvolution}
           />
-          <TerminalMonitoringBrief
-            rows={snapshot.signals}
-            scanStatus={humanizeLabel(scanSafety.status)}
-            topWatchRows={opportunityModel.rows}
-          />
-          <IntradayRegimeDriftPanel compact driftRows={intradayDriftRows} rows={opportunityModel.rows} />
-          <RegimeShiftIntelligencePanel compact rows={opportunityModel.rows} workflowEvolution={workflowEvolution} />
-          <AdaptiveLearningInsightPanel compact system={adaptiveLearning} />
-          <StrategyIntelligencePanel compact system={strategyIntelligence} />
-          <ScenarioIntelligencePanel compact system={scenarioIntelligence} />
-          <ExecutionIntelligencePanel compact rows={opportunityModel.rows} />
-          {workflowEvolution ? <WorkflowEvolutionPanel summary={workflowEvolution} surface="terminal" /> : null}
-          <InstitutionalIntelligencePanel compact rows={opportunityModel.rows} />
-          {actionBlocksTradeUi ? (
-            <GlassPanel className="border-amber-300/25 bg-amber-400/[0.08] p-6">
-              <div className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-200">Decision Lock</div>
-              <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-50">{noTradeCopy.title}</h2>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-                {noTradeCopy.reason} The daily action is the source of truth. Entry levels, execution planning, and simulator CTAs are hidden until the system returns to research-signal mode.
-              </p>
-              <div className="mt-4 inline-flex rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm font-black text-amber-100">Correct action: do nothing</div>
-            </GlassPanel>
-          ) : (
-            <BestTradeNowCard best={best} edges={edges} regime={snapshot.marketRegime} />
-          )}
+          <details className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+            <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-100">
+              <span>Advanced intelligence layers</span>
+              <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">expand</span>
+            </summary>
+            <div className="mt-4 space-y-4">
+              <LiveIntelligencePanel compact initialSystem={liveIntelligence} />
+              <AutomatedResearchAgentsPanel compact system={automatedResearchAgents} />
+              <MarketTapeStrip rows={snapshot.signals} />
+              <TerminalMonitoringBrief
+                rows={snapshot.signals}
+                scanStatus={humanizeLabel(scanSafety.status)}
+                topWatchRows={opportunityModel.rows}
+              />
+              <IntradayRegimeDriftPanel compact driftRows={intradayDriftRows} rows={opportunityModel.rows} />
+              <RegimeShiftIntelligencePanel compact rows={opportunityModel.rows} workflowEvolution={workflowEvolution} />
+              <AdaptiveLearningInsightPanel compact system={adaptiveLearning} />
+              <StrategyIntelligencePanel compact system={strategyIntelligence} />
+              <ScenarioIntelligencePanel compact system={scenarioIntelligence} />
+              <ExecutionIntelligencePanel compact rows={opportunityModel.rows} />
+              {workflowEvolution ? <WorkflowEvolutionPanel summary={workflowEvolution} surface="terminal" /> : null}
+              <InstitutionalIntelligencePanel compact rows={opportunityModel.rows} />
+              <RiskTolerantOpportunityRadar compact initialProfile={personalizationProfile ?? undefined} marketCondition={snapshot.marketRegime.label} rows={opportunityModel.rows} />
+              <ShockMoveRadar compact rows={opportunityModel.rows} />
 
-          <RiskTolerantOpportunityRadar compact initialProfile={personalizationProfile ?? undefined} marketCondition={snapshot.marketRegime.label} rows={opportunityModel.rows} />
-          <ShockMoveRadar compact rows={opportunityModel.rows} />
-
-          <GlassPanel className="overflow-hidden p-5">
-            <div className="grid gap-5">
-              <div>
-                <div className="text-[10px] font-black uppercase tracking-[0.32em] text-emerald-300">Command Center</div>
-                <h2 className="mt-2 text-4xl font-semibold tracking-tight text-slate-50">Decision-first market intelligence</h2>
-                <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                  Scanner signals, market regime, paper simulation, and risk controls are unified into one premium research workflow.
-                </p>
-                <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-                  <MetricCard label="Signals" value={snapshot.signals.length.toLocaleString()} meta="latest scan" />
-                  {actionBlocksTradeUi ? (
-                    <>
-                      <MetricCard label="Mode" value="Research" meta="read-only" />
-                      <MetricCard label="Action" value="No trade" meta="daily decision" />
-                    </>
-                  ) : (
-                    <>
-                      <MetricCard label="Research Signals" value={enterCount} meta="candidate count" />
-                      <MetricCard label="Blocked" value={avoidCount} meta="risk filters" />
-                    </>
-                  )}
-                  <MetricCard label="Paper PnL" value={formatMoney(snapshot.paperSummary.totalPnl)} meta={`${snapshot.paperSummary.totalTrades} trades`} tone="pnl" />
+              <GlassPanel className="overflow-hidden p-5">
+                <div className="grid gap-5">
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-[0.32em] text-emerald-300">Command Center</div>
+                    <h2 className="mt-2 text-4xl font-semibold tracking-tight text-slate-50">Decision-first market intelligence</h2>
+                    <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+                      Scanner signals, market regime, paper simulation, and risk controls are unified into one premium research workflow.
+                    </p>
+                    <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+                      <MetricCard label="Signals" value={snapshot.signals.length.toLocaleString()} meta="latest scan" />
+                      {actionBlocksTradeUi ? (
+                        <>
+                          <MetricCard label="Mode" value="Research" meta="read-only" />
+                          <MetricCard label="Action" value="No trade" meta="daily decision" />
+                        </>
+                      ) : (
+                        <>
+                          <MetricCard label="Research Signals" value={enterCount} meta="candidate count" />
+                          <MetricCard label="Blocked" value={avoidCount} meta="risk filters" />
+                        </>
+                      )}
+                      <MetricCard label="Paper PnL" value={formatMoney(snapshot.paperSummary.totalPnl)} meta={`${snapshot.paperSummary.totalTrades} trades`} tone="pnl" />
+                    </div>
+                  </div>
+                  <MarketRegimeRadar regime={snapshot.marketRegime} researchMode={actionBlocksTradeUi} rows={snapshot.signals} />
                 </div>
-              </div>
-              <MarketRegimeRadar regime={snapshot.marketRegime} researchMode={actionBlocksTradeUi} rows={snapshot.signals} />
+              </GlassPanel>
             </div>
-          </GlassPanel>
+          </details>
+
+          {!actionBlocksTradeUi ? <BestTradeNowCard best={best} edges={edges} regime={snapshot.marketRegime} /> : null}
 
           {!actionBlocksTradeUi ? (
             <GlassPanel className="p-5">
@@ -328,14 +356,13 @@ function TerminalMonitoringBrief({
     .slice(0, 4);
   const pulse = buildTerminalPulse(rows, topWatchRows);
   const changedRows = biggestSignalChanges(rows);
-  const charts = buildTerminalPulseChartRows(rows, pulse.decisionDistribution);
   return (
     <GlassPanel className="p-5">
-      <SectionTitle eyebrow="Market Intelligence Surface" title="What To Monitor Next" meta={`Scanner ${scanStatus}`} />
-      <div className="mt-4 grid gap-3 2xl:grid-cols-[minmax(0,1fr)_380px]">
+      <SectionTitle eyebrow="Monitor Next" title="High-Signal Watchlist" meta={`Scanner ${scanStatus}`} />
+      <div className="mt-4 grid gap-3 2xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid gap-2 sm:grid-cols-2">
           {watchRows.length ? watchRows.map((row) => (
-            <Link className="min-w-0 rounded-xl border border-white/10 bg-white/[0.04] p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.07]" href={`/symbol/${row.symbol}`} key={row.symbol}>
+            <Link className="min-w-0 rounded-lg border border-white/10 bg-white/[0.035] p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.06]" href={`/symbol/${row.symbol}`} key={row.symbol}>
               <div className="flex items-center justify-between gap-2">
                 <div className="font-mono text-lg font-black text-slate-50">{row.symbol}</div>
                 <div className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-bold text-slate-300">{decisionLabel(row.final_decision)}</div>
@@ -344,89 +371,42 @@ function TerminalMonitoringBrief({
               <div className="mt-1 text-[11px] font-semibold text-cyan-200">{row.structuralLabel}</div>
             </Link>
           )) : (
-            <div className="rounded-xl border border-white/10 bg-white/[0.04] p-3 text-sm text-slate-400">No watch candidates in the latest scan. Scanner remains in research context.</div>
+            <div className="rounded-lg border border-white/10 bg-white/[0.04] p-3 text-sm text-slate-400">No watch candidates in the latest scan. Scanner remains in research context.</div>
           )}
         </div>
-        <div className="rounded-xl border border-white/10 bg-slate-950/35 p-3">
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">AI market narrative</div>
+        <div className="rounded-lg border border-white/10 bg-slate-950/35 p-3">
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Market read</div>
           <p className="mt-2 text-xs leading-5 text-slate-300">{pulse.narrative}</p>
-          <div className="mt-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Operating checklist</div>
+          <div className="mt-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Watch for</div>
           <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-300">
             {pulse.checklist.map((item) => <li key={item}>- {item}</li>)}
           </ul>
         </div>
       </div>
 
-      <div className="mt-3">
-        <TerminalPulseCharts confidenceRows={charts.confidenceRows} decisionRows={charts.decisionRows} setupRows={charts.setupRows} />
-      </div>
-
-      <div className="mt-3 grid gap-3 lg:grid-cols-4">
+      <div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         <IntelligenceTile title="What changed" value={changedRows.value} detail={changedRows.detail} />
         <IntelligenceTile title="Market breadth" value={pulse.breadth} detail={pulse.breadthDetail} />
         <IntelligenceTile title="Scanner pulse" value={pulse.scannerPulse} detail={pulse.scannerDetail} />
         <IntelligenceTile title="Signal quality" value={pulse.quality} detail={pulse.qualityDetail} />
       </div>
 
-      <div className="mt-3 grid gap-3 lg:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Signal movement</div>
-          <div className="mt-2 grid gap-2 sm:grid-cols-3">
-            {pulse.movementRows.map((row) => (
-              <Link className="rounded-lg border border-white/10 bg-slate-950/35 p-2 transition hover:border-cyan-300/35" href={`/symbol/${row.symbol}`} key={row.symbol}>
-                <div className="font-mono text-sm font-black text-slate-50">{row.symbol}</div>
-                <div className="mt-1 text-[11px] text-slate-400">{row.detail}</div>
-              </Link>
-            ))}
-          </div>
+      <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Latest focus shifts</div>
+          <div className="text-[11px] text-slate-500">top 3</div>
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Decision distribution</div>
-          <div className="mt-2 grid grid-cols-3 gap-2 text-center text-[11px] text-slate-400">
-            {pulse.decisionDistribution.map((item) => (
-              <div className="rounded-lg bg-white/[0.04] p-2" key={item.label}>
-                <div className="font-mono text-base font-black text-slate-100">{item.value}</div>
-                <div className="truncate">{item.label}</div>
-              </div>
-            ))}
-          </div>
+        <div className="mt-2 grid gap-2 sm:grid-cols-3">
+          {pulse.movementRows.map((row) => (
+            <Link className="rounded-lg border border-white/10 bg-slate-950/35 p-2 transition hover:border-cyan-300/35" href={`/symbol/${row.symbol}`} key={row.symbol}>
+              <div className="font-mono text-sm font-black text-slate-50">{row.symbol}</div>
+              <div className="mt-1 text-[11px] text-slate-400">{row.detail}</div>
+            </Link>
+          ))}
         </div>
       </div>
     </GlassPanel>
   );
-}
-
-function buildTerminalPulseChartRows(
-  rows: Array<{ [key: string]: unknown; final_decision?: unknown; confidence_score?: unknown; final_score?: unknown; setup_type?: unknown }>,
-  decisionDistribution: Array<{ label: string; value: number }>,
-): {
-  confidenceRows: Array<{ color: string; label: string; value: number }>;
-  decisionRows: Array<{ color: string; label: string; value: number }>;
-  setupRows: Array<{ color: string; label: string; value: number }>;
-} {
-  const setupCounts = new Map<string, number>();
-  for (const row of rows) {
-    const label = humanizeLabel(row.setup_type, "Unknown");
-    setupCounts.set(label, (setupCounts.get(label) ?? 0) + 1);
-  }
-  const setupColors = ["#67e8f9", "#a78bfa", "#34d399", "#fb7185", "#fbbf24"];
-  const decisionColors = ["#67e8f9", "#fbbf24", "#fb7185", "#34d399"];
-
-  return {
-    confidenceRows: [
-      { color: "#34d399", label: "High", value: rows.filter((row) => (numeric(row.confidence_score ?? row.final_score) ?? 0) >= 70).length },
-      { color: "#fbbf24", label: "Medium", value: rows.filter((row) => {
-        const value = numeric(row.confidence_score ?? row.final_score) ?? 0;
-        return value >= 50 && value < 70;
-      }).length },
-      { color: "#fb7185", label: "Low", value: rows.filter((row) => (numeric(row.confidence_score ?? row.final_score) ?? 0) < 50).length },
-    ],
-    decisionRows: decisionDistribution.map((row, index) => ({ color: decisionColors[index % decisionColors.length], label: row.label, value: row.value })),
-    setupRows: Array.from(setupCounts.entries())
-      .filter(([, count]) => count > 0)
-      .sort((left, right) => right[1] - left[1])
-      .map(([label, value], index) => ({ color: setupColors[index % setupColors.length], label, value })),
-  };
 }
 
 function IntelligenceTile({ detail, title, value }: { detail: string; title: string; value: string }) {
@@ -548,8 +528,10 @@ function buildDecisionDistribution(rows: Array<{ final_decision?: unknown }>): A
 }
 
 function buildTodayActionReasons({ actionBlocksTradeUi, marketState, scanSafetyStatus }: { actionBlocksTradeUi: boolean; marketState: string; scanSafetyStatus: string }): string[] {
-  if (scanSafetyStatus !== "fresh") return ["Data freshness is not ideal.", "Scanner decisions are reduced until freshness returns.", "Research only. Not financial advice."];
-  if (actionBlocksTradeUi) return ["Market is overheated.", "Risk filters are blocking trade-ready context.", "No trade-ready setup passed every gate."];
+  if (scanSafetyStatus === "missing") return ["Scanner output is unavailable.", "Waiting for the next successful scan before showing decisions.", "Research only. Not financial advice."];
+  if (scanSafetyStatus === "schema_mismatch") return ["Scanner output needs validation.", "Decisions are paused until the data shape is confirmed.", "Research only. Not financial advice."];
+  if (scanSafetyStatus !== "fresh") return ["Latest completed scan is outside the active freshness window.", "Fresh decisions resume after the next successful scan.", "Research only. Not financial advice."];
+  if (actionBlocksTradeUi) return ["The market is extended.", "Risk filters are asking for cleaner confirmation.", "No trade-ready setup passed every gate yet."];
   return [`Market regime: ${marketState}.`, "Review only setups with clean risk context.", "Research only. Not financial advice."];
 }
 

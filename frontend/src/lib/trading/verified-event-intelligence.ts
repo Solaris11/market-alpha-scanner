@@ -3,6 +3,7 @@ import { cleanText, finiteNumber } from "@/lib/ui/formatters";
 import { humanizeLabel } from "@/lib/ui/labels";
 
 export type VerifiedEventItem = {
+  eventAgeDays: number | null;
   eventConfidence: number | null;
   eventDecay: number | null;
   eventType: string;
@@ -10,6 +11,7 @@ export type VerifiedEventItem = {
   reasonCodes: string[];
   scope: string;
   source: string;
+  sourceConfidence: string;
   sourceUrl: string;
   sourceWeight: number | null;
   title: string;
@@ -146,12 +148,14 @@ function eventItems(value: unknown): VerifiedEventItem[] {
       if (!title || !source) return null;
       return {
         eventConfidence: finiteNumber(record.event_confidence ?? record.eventConfidence),
+        eventAgeDays: finiteNumber(record.event_age_days ?? record.eventAgeDays),
         eventDecay: finiteNumber(record.event_decay ?? record.eventDecay),
         eventType: cleanText(record.event_type ?? record.eventType, "verified_update"),
         publishedAt: cleanText(record.published_at ?? record.publishedAt, "") || null,
         reasonCodes: reasonCodesFrom(record.reason_codes ?? record.reasonCodes),
         scope: cleanText(record.scope, "broad"),
         source,
+        sourceConfidence: cleanText(record.source_confidence ?? record.sourceConfidence, "trusted"),
         sourceUrl: cleanText(record.source_url ?? record.sourceUrl, ""),
         sourceWeight: finiteNumber(record.source_weight ?? record.sourceWeight),
         title,

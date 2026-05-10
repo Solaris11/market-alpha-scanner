@@ -123,16 +123,16 @@ type ForwardObservation = {
 };
 
 const STRATEGY_LABELS: Record<StrategyFamily, string> = {
-  asymmetric_reversal: "Asymmetric Reversal",
+  asymmetric_reversal: "Skewed Reversal",
   defensive_rotation: "Defensive Rotation",
-  event_driven_continuation: "Event-Driven Continuation",
-  high_fragility_momentum: "High-Fragility Momentum",
-  macro_aligned_continuation: "Macro-Aligned Continuation",
+  event_driven_continuation: "Event-Backed Follow-Through",
+  high_fragility_momentum: "Risky Momentum",
+  macro_aligned_continuation: "Market-Supported Follow-Through",
   momentum_breakout: "Momentum Breakout",
-  post_earnings_continuation: "Post-Earnings Continuation",
-  pullback_continuation: "Pullback Continuation",
-  shock_continuation: "Shock Continuation",
-  volatility_compression_breakout: "Volatility Compression Breakout",
+  post_earnings_continuation: "Post-Earnings Follow-Through",
+  pullback_continuation: "Pullback Follow-Through",
+  shock_continuation: "Large-Move Follow-Through",
+  volatility_compression_breakout: "Quiet-to-Active Breakout",
 };
 
 const PRIMARY_HORIZONS = ["10D", "5D", "3D", "2D", "1D", "20D", "60D"];
@@ -386,21 +386,21 @@ function classifyOpportunityFamily(row: OpportunityViewModel): StrategyFamily {
 
 function alphaClustersFor(bestStrategies: StrategyPerformanceRow[], matrixRows: StrategyMatrixRow[]): AlphaCluster[] {
   const clusters: AlphaCluster[] = bestStrategies.slice(0, 4).map((row) => ({
-    detail: `${row.label} shows ${row.alphaPersistenceLabel.toLowerCase()} on ${row.primaryHorizon}. Evidence is historical and should be used as research context, not a prediction.`,
+    detail: `${row.label} shows ${row.alphaPersistenceLabel.toLowerCase()} on ${row.primaryHorizon}. Use it as historical research, not as a prediction.`,
     evidenceLabel: `${formatPct(row.averageReturnPct)} avg vs ${formatPct(row.baselineReturnPct)} baseline, ${row.sampleCount} samples`,
     score: row.alphaScore,
     strategyFamily: row.family,
-    title: `${row.label} alpha cluster`,
+    title: `${row.label} edge cluster`,
     tone: row.alphaScore >= 62 ? "positive" : row.edgeDecayScore >= 58 ? "warning" : "info",
   }));
   const matrixLeader = matrixRows.find((row) => row.axis === "market_regime" && row.strategyQualityScore >= 58);
   if (matrixLeader) {
     clusters.push({
-      detail: `${matrixLeader.label} is the strongest regime-sensitive cohort currently visible. Keep sample size and regime drift in view before drawing conclusions.`,
+      detail: `${matrixLeader.label} is the strongest market-state group currently visible. Keep sample size and market changes in view before drawing conclusions.`,
       evidenceLabel: `${matrixLeader.sampleCount} comparable observations`,
       score: matrixLeader.strategyQualityScore,
       strategyFamily: matrixLeader.family,
-      title: "Regime-specific strategy edge",
+      title: "Market-state strategy edge",
       tone: "info",
     });
   }
@@ -416,7 +416,7 @@ function terminalInsightsFor(
   const best = bestStrategies[0];
   if (best) {
     insights.push({
-      detail: `${best.label} is the highest-quality strategy family in the current completed evidence window. Use this to prioritize research, not to bypass risk controls.`,
+      detail: `${best.label} is the strongest strategy family in the latest completed evidence window. Use this to focus research, not to bypass risk controls.`,
       evidenceLabel: `${best.strategyQualityScore}/100 quality, ${best.sampleCount} samples`,
       score: best.strategyQualityScore,
       strategyFamily: best.family,
@@ -427,22 +427,22 @@ function terminalInsightsFor(
   const weak = deterioratingStrategies[0];
   if (weak) {
     insights.push({
-      detail: `${weak.label} shows elevated decay or below-baseline outcome behavior. TradeVeto should keep chase and fragility warnings visible for similar setups.`,
+      detail: `${weak.label} has been weakening or trailing the baseline. TradeVeto should keep late-entry and fragility warnings visible for similar setups.`,
       evidenceLabel: `${weak.edgeDecayScore}/100 decay pressure`,
       score: weak.edgeDecayScore,
       strategyFamily: weak.family,
-      title: "Strategy deterioration watch",
+      title: "Weakening strategy watch",
       tone: "warning",
     });
   }
   const current = currentOpportunities[0];
   if (current) {
     insights.push({
-      detail: `${current.symbol} is the strongest current strategy-fit candidate in Alpha Lab ranking. The output is research context and remains subject to core decision guardrails.`,
+      detail: `${current.symbol} is the strongest current strategy-fit candidate in Strategy Lab. It remains research context and still follows TradeVeto's main risk guardrails.`,
       evidenceLabel: `${current.strategyQualityScore}/100 current strategy quality`,
       score: current.strategyQualityScore,
       strategyFamily: current.family,
-      title: "Current alpha candidate",
+      title: "Current strategy candidate",
       tone: current.strategyQualityScore >= 65 ? "positive" : "info",
     });
   }
@@ -553,11 +553,11 @@ function eventSensitivityScore(rows: ForwardObservation[]): number {
 }
 
 function persistenceLabel(alphaScore: number, durabilityScore: number, decayScore: number, evidenceMaturity: StrategyEvidenceMaturity): string {
-  if (evidenceMaturity === "early") return "Early alpha evidence";
-  if (alphaScore >= 68 && durabilityScore >= 64 && decayScore < 45) return "Historically strong alpha persistence";
-  if (alphaScore >= 58 && decayScore < 58) return "Developing alpha persistence";
-  if (decayScore >= 65) return "Weakening continuation quality";
-  return "Mixed alpha persistence";
+  if (evidenceMaturity === "early") return "Early evidence";
+  if (alphaScore >= 68 && durabilityScore >= 64 && decayScore < 45) return "Historically strong follow-through";
+  if (alphaScore >= 58 && decayScore < 58) return "Developing follow-through";
+  if (decayScore >= 65) return "Follow-through is weakening";
+  return "Mixed follow-through";
 }
 
 function sensitivityLabel(score: number, high: string, medium: string, low: string): string {
@@ -575,12 +575,12 @@ function strategySummary(input: {
   family: StrategyFamily;
   sampleCount: number;
 }): string {
-  if (!input.sampleCount) return `${strategyFamilyLabel(input.family)} does not yet have completed forward-return evidence in the selected window.`;
+  if (!input.sampleCount) return `${strategyFamilyLabel(input.family)} does not yet have enough completed later-outcome evidence in the selected window.`;
   const delta = input.averageReturnPct !== null && input.baselineReturnPct !== null ? input.averageReturnPct - input.baselineReturnPct : null;
   if (input.edgeDecayScore >= 65) {
-    return `${strategyFamilyLabel(input.family)} shows deterioration risk. Historical outcomes are below the desired durability threshold, so chase and fragility warnings should remain visible.`;
+    return `${strategyFamilyLabel(input.family)} has been weakening. Past outcomes are below the desired durability threshold, so late-entry and fragility warnings should remain visible.`;
   }
-  return `${strategyFamilyLabel(input.family)} has ${strategyEvidenceLabel(input.evidenceMaturity).toLowerCase()} with ${formatPct(delta)} excess return versus baseline. This is probabilistic strategy context, not a direct trade instruction.`;
+  return `${strategyFamilyLabel(input.family)} has ${strategyEvidenceLabel(input.evidenceMaturity).toLowerCase()} with ${formatPct(delta)} return above baseline. This is historical strategy context, not trading advice.`;
 }
 
 function currentOpportunityReason(row: OpportunityViewModel, performance: StrategyPerformanceRow): string {
@@ -588,16 +588,16 @@ function currentOpportunityReason(row: OpportunityViewModel, performance: Strate
     `${strategyFamilyLabel(performance.family)} strategy fit`,
     `${performance.alphaPersistenceLabel.toLowerCase()}`,
   ];
-  if (row.shockPattern && row.shockPattern.opportunityScore >= 65) parts.push("shock-pattern support visible");
+  if (row.shockPattern && row.shockPattern.opportunityScore >= 65) parts.push("historically similar setups produced larger-than-normal moves");
   if ((row.final_score ?? 0) >= 70) parts.push("scanner quality is above average");
   return parts.join("; ");
 }
 
 function currentOpportunityRisk(row: OpportunityViewModel, performance: StrategyPerformanceRow): string {
-  if (row.fragility >= 70) return "Fragility is elevated; avoid treating strategy fit as a core buy signal.";
-  if (performance.edgeDecayScore >= 60) return "Strategy evidence shows decay pressure; wait for confirmation or better entry quality.";
-  if ((row.shockPattern?.chaseRiskScore ?? 0) >= 70) return "Shock-memory chase risk is elevated.";
-  return "Risk remains probabilistic; confirm entry quality and macro context before acting.";
+  if (row.fragility >= 70) return "The setup is fragile; do not treat strategy fit as a main TradeVeto signal.";
+  if (performance.edgeDecayScore >= 60) return "This strategy has been weakening; wait for confirmation or a cleaner entry.";
+  if ((row.shockPattern?.chaseRiskScore ?? 0) >= 70) return "Large-move history shows elevated late-entry risk.";
+  return "Risk still has uncertainty; check entry timing and broader market context before acting.";
 }
 
 function profileFitScore(row: OpportunityViewModel, profile: UserPersonalizationProfile | null): number {
@@ -627,17 +627,17 @@ function operatorBriefingFor(input: {
   const best = input.bestStrategies[0];
   const deteriorating = input.deterioratingStrategies[0];
   return [
-    `Alpha Lab is using ${input.observationCount.toLocaleString()} completed ${input.primaryHorizon} forward-return observations with ${formatPct(input.baselineReturnPct)} baseline return.`,
-    best ? `${best.label} is the current strongest strategy family at ${best.strategyQualityScore}/100 quality and ${best.alphaScore}/100 alpha score.` : "No strategy family has enough completed evidence to rank confidently yet.",
-    deteriorating ? `${deteriorating.label} is on deterioration watch with ${deteriorating.edgeDecayScore}/100 decay pressure.` : "No high-signal strategy deterioration cohort is visible in the current window.",
-    "The engine is research-only. It compares completed outcomes and does not allocate capital, promise alpha, or override core risk decisions.",
+    `Strategy Lab is using ${input.observationCount.toLocaleString()} completed ${input.primaryHorizon} later-outcome records with ${formatPct(input.baselineReturnPct)} baseline return.`,
+    best ? `${best.label} is the current strongest strategy family at ${best.strategyQualityScore}/100 quality and ${best.alphaScore}/100 edge score.` : "No strategy family has enough completed evidence to rank confidently yet.",
+    deteriorating ? `${deteriorating.label} is weakening with ${deteriorating.edgeDecayScore}/100 decay pressure.` : "No clear weakening strategy group is visible in the current window.",
+    "The engine is research-only. It compares completed outcomes and does not allocate capital, promise returns, or override core risk decisions.",
   ];
 }
 
 function limitationsFor(observationCount: number): string[] {
   const limitations = [
-    "Strategy metrics are derived from completed forward-return evidence and current scanner context; they are not a full brute-force backtest.",
-    "Capital efficiency and alpha persistence are bounded research scores, not expected-profit guarantees.",
+    "Strategy metrics come from completed later-outcome evidence and current scanner context; they are not a full brute-force backtest.",
+    "Capital efficiency and strategy persistence are bounded research scores, not profit guarantees.",
     "Current opportunity rankings remain subordinate to core WAIT / AVOID / NO TRADE guardrails.",
   ];
   if (observationCount < MIN_DEVELOPING_SAMPLE) limitations.unshift("Evidence is early; strategy conclusions should be treated as directional research context only.");

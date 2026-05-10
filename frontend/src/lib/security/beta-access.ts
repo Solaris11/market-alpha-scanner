@@ -9,7 +9,7 @@ export type BetaSignupConfig = {
 export type BetaSignupDecision = {
   allowed: boolean;
   message: string | null;
-  reason: "allowed_email" | "closed" | "invite_code" | "invite_required" | "open";
+  reason: "allowed_email" | "closed" | "cohort_full" | "existing_user" | "invite_code" | "invite_required" | "open";
 };
 
 export function betaSignupDecision(input: { email: string | null; inviteCode?: string | null }, config: BetaSignupConfig): BetaSignupDecision {
@@ -55,7 +55,27 @@ export function parseAllowedBetaEmails(value: unknown): string[] {
     .filter((item): item is string => Boolean(item));
 }
 
-function normalizeBetaEmail(value: unknown): string | null {
+export function parseBetaUserCap(value: unknown, fallback = 25): number {
+  const raw = String(value ?? "").trim();
+  if (!raw) return fallback;
+  const cap = Number.parseInt(raw, 10);
+  if (!Number.isFinite(cap) || cap < 0) return fallback;
+  return cap;
+}
+
+export function applyBetaUserCap(decision: BetaSignupDecision, input: { cap: number; currentUsers: number }): BetaSignupDecision {
+  if (!decision.allowed) return decision;
+  if (input.cap <= 0) return decision;
+  if (decision.reason === "allowed_email" || decision.reason === "existing_user") return decision;
+  if (input.currentUsers < input.cap) return decision;
+  return {
+    allowed: false,
+    message: `The ${input.cap}-user beta cohort is currently full. Existing users can still sign in.`,
+    reason: "cohort_full",
+  };
+}
+
+export function normalizeBetaEmail(value: unknown): string | null {
   const email = String(value ?? "").trim().toLowerCase();
   if (!email || email.length > 320) return null;
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return null;

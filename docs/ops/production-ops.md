@@ -117,6 +117,32 @@ curl -s https://tradeveto.com/api/health/deep | jq .backup
 
 See `docs/ops/backup-restore.md` for R2 validation and temporary-database restore drills.
 
+## Phase 11 Production Green Check
+
+Before expanding beyond controlled public beta, run the read-only operational
+green check from the production host:
+
+```bash
+sudo /opt/apps/market-alpha-scanner/app/tools/ops/tradeveto-ops-green-check.sh
+```
+
+The command ties together route checks, deep health, TLS, Docker health,
+Postgres readiness, cron presence, stale backup/scanner process detection, local
+backup verification, R2 listing, and recent log secret-pattern checks.
+
+Expected broad-launch result:
+
+```text
+RESULT: PRODUCTION OPS GREEN
+```
+
+Warnings are acceptable only during controlled beta with a written follow-up.
+Failures block broad launch.
+
+See `docs/ops/phase-11-production-ops-green-check.md` for deploy, rollback,
+backup, restore, scanner recovery, Stripe outage, Cloudflare outage, OpenAI
+fallback, and monitoring escalation procedures.
+
 ## Transactional Email
 
 TradeVeto uses Google Workspace Gmail SMTP for early low-volume transactional and support mail:

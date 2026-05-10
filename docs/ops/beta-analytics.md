@@ -8,12 +8,12 @@ Events are written to `analytics_events` through `/api/analytics/events`. Beta f
 
 Tracked event groups:
 
-- Navigation: `page_view`, `terminal_open`, `opportunities_open`, `performance_open`, `history_open`, `support_open`, `account_open`
+- Navigation: `page_view`, `terminal_open`, `opportunities_open`, `performance_open`, `history_open`, `strategy_labs_open`, `support_open`, `account_open`
 - Symbol research: `symbol_open`, `chart_interaction`, `history_filter_used`, `detail_expand`, `readiness_expand`, `veto_explanation_open`
-- Feature usage: `watchlist_add`, `watchlist_remove`, `alert_create`, `alert_delete`, `paper_trade_create`, `paper_trade_close`, `onboarding_complete`, `onboarding_skip`
+- Feature usage: `watchlist_add`, `watchlist_remove`, `alert_create`, `alert_delete`, `paper_trade_create`, `paper_trade_close`, `onboarding_complete`, `onboarding_skip`, `first_useful_action`, `replay_open`
 - Scanner workflows: `scanner_run`, `analysis_run`, `calibration_open`, `signal_drilldown`
 - Support AI: `support_prompt_click`, `support_message_submit`, `support_helpful_feedback`, `support_unhelpful_feedback`
-- Feedback: `beta_feedback_submit`
+- Feedback: `beta_feedback_open`, `beta_feedback_submit`
 
 ## Privacy Boundaries
 
@@ -27,6 +27,8 @@ Metadata is allowlisted and sanitized. Secret-like keys and values are dropped b
 
 The admin-only dashboard is available at `/admin/analytics`.
 
+The controlled 25-user cohort dashboard is available at `/admin/beta`.
+
 It reports:
 
 - Visitor Insights: page views, unique visitors, signed-in users, anonymous visitors, repeat visitors, session duration, top pages, entry pages, exit pages
@@ -36,6 +38,7 @@ It reports:
 - WAIT-first adoption: WAIT engagement, veto explanation opens, readiness/confidence expansion
 - Feature engagement: watchlist, alerts, paper, history filters, chart interactions, calibration opens
 - Support usage and beta feedback
+- Controlled-cohort activation: 25-user cap, onboarding completion, first useful action, watchlist creation, replay usage, Strategy Labs engagement, support pressure, and confusion points
 
 ## Operational Notes
 

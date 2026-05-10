@@ -5,6 +5,7 @@ import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 import type { ShockMovePattern } from "@/lib/trading/shock-move";
 import type { RankingRow } from "@/lib/types";
 import { formatNumber } from "@/lib/ui/formatters";
+import { humanizeInsightText } from "@/lib/ui/labels";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
@@ -33,13 +34,13 @@ export function EvidenceMaturityCard({
     <GlassPanel className={`${compact ? "p-4" : "p-5"}`}>
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <SectionTitle eyebrow="Evidence Maturity" title="Proof Depth" meta={model.label} />
+          <SectionTitle eyebrow="Evidence Maturity" title="Evidence Confidence" meta={model.label} />
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-            Evidence maturity combines sample size, calendar depth, outcome coverage, analog quality, and calibration reliability. It is a trust label, not a forecast.
+            This shows how much historical context supports the read: sample size, calendar depth, outcomes, analog quality, and score reliability. It is a confidence label, not a forecast.
           </p>
         </div>
         <div className={`w-fit rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-normal ${toneClass}`}>
-          {model.score}/100 proof
+          {model.score}/100 evidence
         </div>
       </div>
 
@@ -53,8 +54,8 @@ export function EvidenceMaturityCard({
 
       {!compact ? (
         <div className="mt-4 grid gap-3 lg:grid-cols-2">
-          <EvidenceList title="What Supports This" items={model.reasons} />
-          <EvidenceList title="Evidence Gaps" items={model.limitations.length ? model.limitations : ["No material evidence gap is dominant in this context."]} />
+          <EvidenceList title="What Gives Confidence" items={model.reasons} />
+          <EvidenceList title="Where Evidence Is Still Building" items={model.limitations.length ? model.limitations : ["No material evidence gap is dominant in this context."]} />
         </div>
       ) : null}
     </GlassPanel>
@@ -75,7 +76,7 @@ function EvidenceList({ items, title }: { items: string[]; title: string }) {
     <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
       <div className="truncate text-[10px] font-black uppercase leading-4 tracking-normal text-cyan-300" title={title}>{title}</div>
       <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
-        {items.map((item) => <li key={item}>- {item}</li>)}
+        {items.map((item) => <li key={item}>- {humanizeInsightText(item)}</li>)}
       </ul>
     </div>
   );

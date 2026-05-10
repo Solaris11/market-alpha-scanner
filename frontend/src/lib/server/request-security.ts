@@ -3,6 +3,7 @@ import "server-only";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { CANONICAL_DOMAIN, CANONICAL_WWW_DOMAIN } from "@/lib/brand";
+import { evaluateContentLength } from "@/lib/security/http-abuse-policy";
 import { getUserForSessionToken, SESSION_COOKIE_NAME, sessionCookieOptions } from "./auth";
 import { rateLimit, rateLimitExceededResponse } from "./rate-limit";
 
@@ -72,6 +73,18 @@ export async function rateLimitRequest(request: Request, scope: string, options:
     return rateLimitExceededResponse(60);
   }
   return null;
+}
+
+export function rejectOversizedRequest(request: Request, maxBytes: number): NextResponse<{ ok: false; message: string }> | null {
+  const result = evaluateContentLength(request.headers.get("content-length"), maxBytes);
+  if (result.ok) return null;
+  return NextResponse.json(
+    {
+      ok: false,
+      message: `Request body is too large. Limit is ${result.maxBytes} bytes.`,
+    },
+    { status: 413 },
+  );
 }
 
 async function userIdFromRequest(request: Request): Promise<string | null> {
