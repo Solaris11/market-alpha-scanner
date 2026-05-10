@@ -7,15 +7,22 @@ import { DesktopTerminalNav, MobileTerminalNav } from "./TerminalNav";
 
 export function TerminalHeader() {
   return (
-    <header className="sticky top-3 z-40 mb-4 rounded-2xl border border-white/10 bg-slate-950/90 px-3 py-3 shadow-xl shadow-black/25 lg:px-5 lg:py-4">
-      <div className="hidden items-center gap-4 xl:flex">
-        <BrandMark />
-        <DesktopTerminalNav />
-        <div className="flex shrink-0 items-center gap-2">
-          <CompactLegalNotice className="self-center" />
-          <OnboardingHelpButton />
-          <NotificationBell />
-          <AccountPill compact />
+    <header className="sticky top-3 z-40 mb-4 rounded-2xl border border-white/10 bg-slate-950/95 px-3 py-3 shadow-xl shadow-black/25 lg:px-5 lg:py-4">
+      <div className="hidden min-w-0 gap-3 xl:flex xl:flex-col">
+        <div className="flex min-w-0 items-center justify-between gap-4">
+          <BrandMark />
+          <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
+            <CompactLegalNotice className="hidden self-center 2xl:block" />
+            <OnboardingHelpButton />
+            <NotificationBell />
+            <AccountPill compact />
+          </div>
+        </div>
+        <div className="flex min-w-0 items-center justify-between gap-4">
+          <DesktopTerminalNav />
+          <div className="flex shrink-0 items-center gap-2 2xl:hidden">
+            <CompactLegalNotice className="self-center" />
+          </div>
         </div>
       </div>
       <MobileTerminalNav />

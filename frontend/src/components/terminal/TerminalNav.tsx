@@ -15,12 +15,12 @@ export function DesktopTerminalNav() {
   const utilities = visibleUtilityNavItems(entitlement.isAdmin);
 
   return (
-    <div className="hidden min-w-0 flex-1 items-center justify-start overflow-hidden xl:flex 2xl:justify-center">
-      <div className="flex max-w-full min-w-0 items-center gap-3 overflow-x-auto overscroll-x-contain px-1 py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <nav aria-label="Primary navigation" className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-white/[0.035] p-1 shadow-inner shadow-black/20">
+    <div className="hidden min-w-0 flex-1 items-center justify-start xl:flex">
+      <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2 py-1">
+        <nav aria-label="Primary navigation" className="flex max-w-full flex-wrap items-center gap-1 rounded-full border border-white/10 bg-white/[0.035] p-1 shadow-inner shadow-black/20">
           {PRIMARY_NAV_ITEMS.map((item) => <DesktopNavLink item={item} key={item.href} pathname={pathname} primary />)}
         </nav>
-        <nav aria-label="Utility navigation" className="flex shrink-0 items-center gap-1 rounded-full border border-white/10 bg-slate-950/45 p-1">
+        <nav aria-label="Utility navigation" className="flex max-w-full flex-wrap items-center gap-1 rounded-full border border-white/10 bg-slate-950/45 p-1">
           {utilities.map((item) => <DesktopNavLink item={item} key={item.href} pathname={pathname} />)}
         </nav>
       </div>
@@ -167,7 +167,7 @@ export function MobileTerminalNav() {
         </>
       ) : null}
 
-      <nav aria-label="Primary mobile navigation" className="fixed inset-x-3 bottom-[calc(0.75rem+env(safe-area-inset-bottom))] z-[8500] grid grid-cols-5 gap-1 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl sm:hidden">
+      <nav aria-label="Primary mobile navigation" className="fixed inset-x-3 z-[8500] grid grid-cols-5 gap-1 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl sm:hidden" style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
         {MOBILE_BOTTOM_NAV_ITEMS.map((item) => <BottomNavLink item={item} key={item.href} pathname={pathname} />)}
         <BottomMenuButton buttonRef={bottomMenuButtonRef} onClick={() => setOpen(true)} open={open} />
       </nav>
@@ -209,6 +209,7 @@ function DrawerNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
 
 function BottomNavLink({ item, pathname }: { item: AppNavItem; pathname: string }) {
   const active = isActivePath(pathname, item.href);
+  const label = item.key === "opportunities" ? "Ideas" : item.label;
   return (
     <Link
       className={`relative flex min-h-12 flex-col items-center justify-center rounded-xl border px-1 text-center text-[11px] font-semibold transition ${
@@ -217,7 +218,7 @@ function BottomNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
       href={item.href}
     >
       {active ? <span className="absolute left-1/2 top-1 h-0.5 w-7 -translate-x-1/2 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.45)]" /> : null}
-      <span className="truncate pt-1">{item.label}</span>
+      <span className="truncate pt-1">{label}</span>
     </Link>
   );
 }
