@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { STRIPE_LIVE_MODE } from "@/lib/security/stripe-mode";
 import { getBillingSubscriptionForUser } from "@/lib/server/billing";
 import { requireUser } from "@/lib/server/access-control";
 import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
@@ -21,12 +22,12 @@ export async function POST(request: Request) {
   if (csrf) return csrf;
 
   try {
-    const subscription = await getBillingSubscriptionForUser(access.user.id);
+    const subscription = await getBillingSubscriptionForUser(access.user.id, STRIPE_LIVE_MODE);
     if (!subscription?.stripeCustomerId) {
       return NextResponse.json({ ok: false, error: "billing_profile_not_found", message: "No Stripe billing profile is available for this account." }, { status: 404 });
     }
 
-    const portal = await stripe().billingPortal.sessions.create({
+    const portal = await stripe(STRIPE_LIVE_MODE).billingPortal.sessions.create({
       customer: subscription.stripeCustomerId,
       return_url: `${stripeAppBaseUrl()}/account?billing=portal_return`,
     });

@@ -6,6 +6,7 @@ import { UserMemoryPrivacyControls } from "@/components/account/UserMemoryPrivac
 import { betaBillingCopy, parseBooleanFlag, parseTrialDays } from "@/lib/security/beta-billing";
 import { billingViewState } from "@/lib/security/billing-state";
 import { checkoutBlockMessage, checkoutBlockReason } from "@/lib/security/billing-readiness";
+import { stripeModeLabel } from "@/lib/security/stripe-mode";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { getAlertOverview } from "@/lib/alerts";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
@@ -145,6 +146,11 @@ export default async function AccountPage() {
                 {betaBillingCopy(betaBilling)} You can cancel through Stripe before renewal.
               </div>
               {billingSubscription ? <SubscriptionState isPremium={entitlement.isPremium} subscription={billingSubscription} /> : null}
+              {billingSubscription?.stripeMode === "test" ? (
+                <p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-400/10 px-3 py-2 text-xs font-semibold leading-5 text-amber-100">
+                  QA billing profile: {stripeModeLabel(billingSubscription.stripeMode)}. This account is using disposable billing test isolation.
+                </p>
+              ) : null}
               <BillingTrustChecklist allowPromotionCodes={betaBilling.allowPromotionCodes} trialDays={betaBilling.trialDays} />
               <p className="mt-3 text-xs leading-5 text-slate-500">Payments are securely processed by Stripe.</p>
             </div>

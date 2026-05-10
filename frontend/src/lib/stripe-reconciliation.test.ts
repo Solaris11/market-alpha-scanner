@@ -129,6 +129,7 @@ function candidate(overrides: Partial<ReconciliationCandidate> = {}): Reconcilia
     plan: "free",
     status: "inactive",
     stripe_customer_id: "cus_test",
+    stripe_mode: "live",
     stripe_subscription_id: "sub_test",
     user_id: "user_test",
     ...overrides,

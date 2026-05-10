@@ -26,6 +26,12 @@ Behavior:
 
 For an already-live database with no ledger, the runner bootstraps by recording all current migration files without replaying old SQL. This avoids destructive reapplication of historical migrations that were already applied manually before the ledger existed.
 
+## Recent Phase 12 Migration
+
+| Filename | Purpose |
+| --- | --- |
+| `20260510_083000_stripe_test_mode_isolation.sql` | Adds `stripe_mode` to subscription, billing event, and Stripe event records so QA test-mode billing proof stays visibly separated from live billing. |
+
 ## Phase 5.4 Rename Mapping
 
 | Old filename | New filename |

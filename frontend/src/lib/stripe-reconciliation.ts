@@ -22,6 +22,7 @@ export type ReconciliationCandidate = QueryResultRow & {
   plan: string | null;
   status: string | null;
   stripe_customer_id: string | null;
+  stripe_mode: string | null;
   stripe_subscription_id: string | null;
   user_id: string;
 };
@@ -147,14 +148,18 @@ async function listReconciliationCandidates(db: RateLimitedDb): Promise<Reconcil
         plan,
         current_period_end,
         stripe_customer_id,
+        stripe_mode,
         stripe_subscription_id,
         cancel_at_period_end,
         canceled_at
       FROM user_subscriptions
-      WHERE stripe_customer_id IS NOT NULL
-         OR stripe_subscription_id IS NOT NULL
-         OR status IN ('active', 'trialing')
-         OR cancel_at_period_end = true
+      WHERE stripe_mode = 'live'
+        AND (
+          stripe_customer_id IS NOT NULL
+          OR stripe_subscription_id IS NOT NULL
+          OR status IN ('active', 'trialing')
+          OR cancel_at_period_end = true
+        )
       ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST
     `,
   );

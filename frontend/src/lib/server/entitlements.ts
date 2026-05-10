@@ -42,6 +42,7 @@ export const ROUTE_CLASSIFICATION: Record<RouteAccess, string[]> = {
     "/api/auth/*",
     "/api/legal/status",
     "/api/stripe/webhook",
+    "/api/stripe/test/webhook",
   ],
   free: [
     "/account",
@@ -70,6 +71,8 @@ export const ROUTE_CLASSIFICATION: Record<RouteAccess, string[]> = {
     "/api/support/chat",
     "/api/stripe/checkout",
     "/api/stripe/portal",
+    "/api/stripe/test/checkout",
+    "/api/stripe/test/portal",
     "/api/paper/account",
     "/api/paper/events",
     "/api/paper/positions",

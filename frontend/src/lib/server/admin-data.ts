@@ -53,6 +53,7 @@ export type AdminBillingItem = {
   plan: string | null;
   status: string | null;
   stripeCustomerId: string | null;
+  stripeMode: string | null;
   stripeSubscriptionId: string | null;
   updatedAt: string | null;
   userId: string;
@@ -63,6 +64,7 @@ export type BillingEventSummary = {
   eventType: string;
   id: string;
   stripeEventId: string | null;
+  stripeMode: string | null;
   userId: string | null;
 };
 
@@ -257,6 +259,7 @@ type BillingRow = QueryResultRow & {
   plan: string | null;
   status: string | null;
   stripe_customer_id: string | null;
+  stripe_mode: string | null;
   stripe_subscription_id: string | null;
   updated_at: string | null;
   user_id: string;
@@ -266,6 +269,7 @@ type BillingEventRow = QueryResultRow & {
   event_type: string;
   id: string;
   stripe_event_id: string | null;
+  stripe_mode: string | null;
   user_id: string | null;
 };
 type AlertByUserRow = QueryResultRow & {
@@ -570,6 +574,7 @@ export async function listAdminBilling(): Promise<{ events: BillingEventSummary[
           s.canceled_at::text AS cancel_at,
           s.cancel_at_period_end,
           s.stripe_customer_id,
+          s.stripe_mode,
           s.stripe_subscription_id,
           s.updated_at::text
         FROM user_subscriptions s
@@ -590,6 +595,7 @@ export async function listAdminBilling(): Promise<{ events: BillingEventSummary[
       plan: row.plan,
       status: row.status,
       stripeCustomerId: row.stripe_customer_id,
+      stripeMode: row.stripe_mode,
       stripeSubscriptionId: row.stripe_subscription_id,
       updatedAt: row.updated_at,
       userId: row.user_id,
@@ -1206,14 +1212,14 @@ async function getLatestScannerRun(): Promise<ScannerRunSummary | null> {
 async function recentBillingEvents(limit: number): Promise<BillingEventSummary[]> {
   const result = await dbQuery<BillingEventRow>(
     `
-      SELECT id::text, user_id::text, event_type, stripe_event_id, created_at::text
+      SELECT id::text, user_id::text, event_type, stripe_event_id, stripe_mode, created_at::text
       FROM billing_events
       ORDER BY created_at DESC
       LIMIT $1
     `,
     [limit],
   ).catch(() => ({ rows: [] as BillingEventRow[] }));
-  return result.rows.map((row) => ({ createdAt: row.created_at, eventType: row.event_type, id: row.id, stripeEventId: row.stripe_event_id, userId: row.user_id }));
+  return result.rows.map((row) => ({ createdAt: row.created_at, eventType: row.event_type, id: row.id, stripeEventId: row.stripe_event_id, stripeMode: row.stripe_mode, userId: row.user_id }));
 }
 
 async function recentMonitoringWarnings(limit: number): Promise<MonitoringEventSummary[]> {

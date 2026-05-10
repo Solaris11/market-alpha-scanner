@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { checkoutBlockReason } from "@/lib/security/billing-readiness";
+import { STRIPE_LIVE_MODE } from "@/lib/security/stripe-mode";
 import { getBillingSubscriptionForUser, getOrCreateStripeCustomerForUser } from "@/lib/server/billing";
 import { requireUser } from "@/lib/server/access-control";
 import { getEntitlementForUser, hasPremiumAccess, legalNotAcceptedResponse, requiresLegalAcceptance } from "@/lib/server/entitlements";
@@ -38,7 +39,7 @@ async function checkout(request: Request): Promise<Response> {
 
   try {
     const appBaseUrl = stripeAppBaseUrl();
-    const subscription = await getBillingSubscriptionForUser(access.user.id);
+    const subscription = await getBillingSubscriptionForUser(access.user.id, STRIPE_LIVE_MODE);
 
     if (hasPremiumAccess(entitlement)) {
       if (subscription?.stripeCustomerId) {
@@ -51,21 +52,23 @@ async function checkout(request: Request): Promise<Response> {
       return NextResponse.json({ ok: false, message: "Premium access is already active on this account." }, { status: 409 });
     }
 
-    const customerId = await getOrCreateStripeCustomerForUser(access.user);
-    const trialPeriodDays = stripeBetaTrialDays();
-    const session = await stripe().checkout.sessions.create({
-      allow_promotion_codes: stripePromotionCodesEnabled() || undefined,
+    const customerId = await getOrCreateStripeCustomerForUser(access.user, STRIPE_LIVE_MODE);
+    const trialPeriodDays = stripeBetaTrialDays(STRIPE_LIVE_MODE);
+    const session = await stripe(STRIPE_LIVE_MODE).checkout.sessions.create({
+      allow_promotion_codes: stripePromotionCodesEnabled(STRIPE_LIVE_MODE) || undefined,
       cancel_url: `${appBaseUrl}/account?checkout=cancel`,
       customer: customerId,
-      line_items: [{ price: stripePriceId(), quantity: 1 }],
+      line_items: [{ price: stripePriceId(STRIPE_LIVE_MODE), quantity: 1 }],
       metadata: {
         email: access.user.email,
+        stripe_mode: STRIPE_LIVE_MODE,
         user_id: access.user.id,
       },
       mode: "subscription",
       subscription_data: {
         metadata: {
           email: access.user.email,
+          stripe_mode: STRIPE_LIVE_MODE,
           user_id: access.user.id,
         },
         ...(trialPeriodDays ? { trial_period_days: trialPeriodDays } : {}),

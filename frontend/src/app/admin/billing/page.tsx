@@ -17,6 +17,7 @@ export default async function AdminBillingPage() {
                   <th className="px-3 py-3">User</th>
                   <th className="px-3 py-3">Status</th>
                   <th className="px-3 py-3">Plan</th>
+                  <th className="px-3 py-3">Mode</th>
                   <th className="px-3 py-3">Period end</th>
                   <th className="px-3 py-3">Cancel scheduled</th>
                   <th className="px-3 py-3">Stripe customer</th>
@@ -33,6 +34,7 @@ export default async function AdminBillingPage() {
                     </td>
                     <td className="px-3 py-3"><StatusBadge tone={statusTone(item.status)}>{item.status ?? "unknown"}</StatusBadge></td>
                     <td className="px-3 py-3">{item.plan ?? "unknown"}</td>
+                    <td className="px-3 py-3"><StatusBadge tone={item.stripeMode === "test" ? "warn" : "good"}>{item.stripeMode ?? "live"}</StatusBadge></td>
                     <td className="px-3 py-3">{formatAdminDate(item.currentPeriodEnd)}</td>
                     <td className="px-3 py-3">{item.cancelAtPeriodEnd ? <StatusBadge tone="warn">yes</StatusBadge> : "no"}</td>
                     <td className="px-3 py-3 font-mono text-xs">{item.stripeCustomerId ?? "not linked"}</td>
@@ -57,7 +59,7 @@ export default async function AdminBillingPage() {
                   <div className="text-sm font-semibold text-slate-100">{event.eventType}</div>
                   <div className="text-xs text-slate-500">{formatAdminDate(event.createdAt)}</div>
                 </div>
-                <div className="mt-1 font-mono text-xs text-slate-500">{event.stripeEventId ?? "No Stripe event id"}</div>
+                <div className="mt-1 font-mono text-xs text-slate-500">{event.stripeMode ?? "live"} / {event.stripeEventId ?? "No Stripe event id"}</div>
               </div>
             ))}
           </div>

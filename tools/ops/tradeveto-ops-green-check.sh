@@ -353,7 +353,7 @@ check_log_secret_leakage() {
   local matches
   matches="$(
     find "$LOG_DIR" -maxdepth 2 -type f -mtime -2 2>/dev/null \
-      | xargs grep -Eil 'sk_live_|OPENAI_API_KEY=|STRIPE_SECRET_KEY=|STRIPE_WEBHOOK_SECRET=|SMTP_PASS=|postgresql://[^[:space:]]+:[^@[:space:]]+@' 2>/dev/null \
+      | xargs grep -Eil 'sk_(live|test)_|OPENAI_API_KEY=|STRIPE_(TEST_)?SECRET_KEY=|STRIPE_(TEST_)?WEBHOOK_SECRET=|SMTP_PASS=|postgresql://[^[:space:]]+:[^@[:space:]]+@' 2>/dev/null \
       | wc -l | tr -d ' '
   )"
   if [[ "${matches:-0}" == "0" ]]; then

@@ -24,7 +24,7 @@ normalize_base_url() {
 
 contains_secret_pattern() {
   local file="$1"
-  grep -Eiq 'sk_(live|test)_[A-Za-z0-9]|whsec_[A-Za-z0-9]|STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET|postgres(ql)?://[^[:space:]]+:[^@[:space:]]+@|OPENAI_API_KEY=' "$file"
+  grep -Eiq 'sk_(live|test)_[A-Za-z0-9]|whsec_[A-Za-z0-9]|STRIPE_(TEST_)?SECRET_KEY|STRIPE_(TEST_)?WEBHOOK_SECRET|postgres(ql)?://[^[:space:]]+:[^@[:space:]]+@|OPENAI_API_KEY=' "$file"
 }
 
 http_status() {
@@ -72,6 +72,11 @@ expect_status() {
 
 log "TradeVeto billing launch QA route check"
 log "base_url=$(normalize_base_url)"
+if [[ "${TRADEVETO_ENABLE_STRIPE_TEST_MODE:-}" =~ ^(1|true|yes|on)$ ]]; then
+  log "stripe_test_mode=enabled"
+else
+  log "stripe_test_mode=disabled"
+fi
 
 expect_status "GET" "/pricing" "200 301 302"
 expect_status "GET" "/account" "200 301 302"
@@ -82,9 +87,19 @@ expect_status "GET" "/api/health/deep" "200"
 # CSRF/host handling, and safe failure copy without requiring a paid test user session.
 expect_status "POST" "/api/stripe/checkout" "401 403" "{}"
 expect_status "POST" "/api/stripe/portal" "401 403" "{}"
+expect_status "POST" "/api/stripe/test/checkout" "401 403" "{}"
+expect_status "POST" "/api/stripe/test/portal" "401 403" "{}"
 
 # Invalid webhook signatures must fail closed and must not leak webhook secrets.
 expect_status "POST" "/api/stripe/webhook" "400" '{"id":"evt_invalid_signature","type":"checkout.session.completed","data":{"object":{}}}'
+if [[ "${TRADEVETO_ENABLE_STRIPE_TEST_MODE:-}" =~ ^(1|true|yes|on)$ ]]; then
+  if [[ -z "${STRIPE_TEST_SECRET_KEY:-}" || -z "${STRIPE_TEST_WEBHOOK_SECRET:-}" || -z "${STRIPE_TEST_PRICE_ID:-}" || -z "${TRADEVETO_STRIPE_TEST_ALLOWED_EMAILS:-}" ]]; then
+    record_failure "Stripe test mode is enabled but one or more required test-mode env vars are missing"
+  fi
+  expect_status "POST" "/api/stripe/test/webhook" "400" '{"id":"evt_invalid_test_signature","type":"checkout.session.completed","data":{"object":{}}}'
+else
+  expect_status "POST" "/api/stripe/test/webhook" "404" '{"id":"evt_invalid_test_signature","type":"checkout.session.completed","data":{"object":{}}}'
+fi
 
 if [[ "$failures" -gt 0 ]]; then
   log "RESULT: BILLING STILL NEEDS HARDENING"
