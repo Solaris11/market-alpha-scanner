@@ -1,6 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import {
+  Activity,
+  BarChart3,
+  Bell,
+  BookOpenCheck,
+  Bot,
+  BriefcaseBusiness,
+  ChartCandlestick,
+  Code2,
+  Gauge,
+  HelpCircle,
+  LayoutDashboard,
+  LineChart,
+  Menu,
+  Smartphone,
+  UsersRound,
+  type LucideIcon,
+} from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import { AccountPill } from "@/components/account/AccountPill";
@@ -28,6 +46,23 @@ export function DesktopTerminalNav() {
     </div>
   );
 }
+
+const NAV_ICON_MAP: Record<string, { Icon: LucideIcon; tone: string }> = {
+  account: { Icon: UsersRound, tone: "text-cyan-200" },
+  advanced: { Icon: Gauge, tone: "text-violet-200" },
+  alerts: { Icon: Bell, tone: "text-amber-200" },
+  community: { Icon: UsersRound, tone: "text-emerald-200" },
+  dashboard: { Icon: LayoutDashboard, tone: "text-cyan-200" },
+  developers: { Icon: Code2, tone: "text-violet-200" },
+  history: { Icon: BookOpenCheck, tone: "text-violet-200" },
+  mobile: { Icon: Smartphone, tone: "text-emerald-200" },
+  opportunities: { Icon: ChartCandlestick, tone: "text-emerald-200" },
+  paper: { Icon: BriefcaseBusiness, tone: "text-emerald-200" },
+  performance: { Icon: LineChart, tone: "text-cyan-200" },
+  support: { Icon: HelpCircle, tone: "text-cyan-200" },
+  "strategy-labs": { Icon: Bot, tone: "text-violet-200" },
+  terminal: { Icon: Activity, tone: "text-cyan-200" },
+};
 
 export function MobileTerminalNav() {
   const pathname = usePathname();
@@ -104,11 +139,7 @@ export function MobileTerminalNav() {
           type="button"
         >
           <span className="hidden text-xs font-semibold sm:inline">{open ? "Close" : "More"}</span>
-          <span className="relative h-4 w-5">
-            <span className={`absolute left-0 top-0 h-0.5 w-5 rounded-full bg-current transition ${open ? "translate-y-[7px] rotate-45" : ""}`} />
-            <span className={`absolute left-0 top-[7px] h-0.5 w-5 rounded-full bg-current transition ${open ? "opacity-0" : ""}`} />
-            <span className={`absolute left-0 top-[14px] h-0.5 w-5 rounded-full bg-current transition ${open ? "-translate-y-[7px] -rotate-45" : ""}`} />
-          </span>
+          <Menu aria-hidden="true" className="h-4 w-4" />
         </button>
       </div>
 
@@ -190,13 +221,14 @@ function DesktopNavLink({ item, pathname, primary = false }: { item: AppNavItem;
   return (
     <Link
       aria-current={active ? "page" : undefined}
-      className={`inline-flex min-h-9 shrink-0 items-center whitespace-nowrap border-b-2 font-semibold transition-colors duration-200 ${base} ${active ? "border-cyan-300 text-cyan-100" : "border-transparent text-slate-400 hover:border-white/25 hover:text-slate-100"}`}
+      className={`inline-flex min-h-9 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 font-semibold transition-colors duration-200 ${base} ${active ? "border-cyan-300 text-cyan-100" : "border-transparent text-slate-400 hover:border-white/25 hover:text-slate-100"}`}
       href={item.href}
       onClick={navigationIntent.onClick}
       onFocus={navigationIntent.onFocus}
       onPointerEnter={navigationIntent.onPointerEnter}
       prefetch
     >
+      <NavGlyph item={item} active={active} />
       {item.label}
     </Link>
   );
@@ -215,7 +247,10 @@ function DrawerNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
       onPointerEnter={navigationIntent.onPointerEnter}
       prefetch
     >
-      <span>{item.label}</span>
+      <span className="flex min-w-0 items-center gap-3">
+        <NavGlyph item={item} active={active} />
+        <span className="truncate">{item.label}</span>
+      </span>
       <span className="text-xs text-slate-600">{active ? "Current" : ""}</span>
     </Link>
   );
@@ -237,7 +272,8 @@ function BottomNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
       prefetch
     >
       {active ? <span className="absolute left-1/2 top-1 h-0.5 w-7 -translate-x-1/2 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.45)]" /> : null}
-      <span className="truncate pt-1">{label}</span>
+      <NavGlyph item={item} active={active} compact />
+      <span className="mt-0.5 truncate">{label}</span>
     </Link>
   );
 }
@@ -255,13 +291,24 @@ function BottomMenuButton({ buttonRef, onClick, open }: { buttonRef: RefObject<H
       ref={buttonRef}
       type="button"
     >
-      <span className="relative h-3.5 w-4">
-        <span className="absolute left-0 top-0 h-0.5 w-4 rounded-full bg-current" />
-        <span className="absolute left-0 top-[6px] h-0.5 w-4 rounded-full bg-current" />
-        <span className="absolute left-0 top-[12px] h-0.5 w-4 rounded-full bg-current" />
-      </span>
+      <Menu aria-hidden="true" className="h-4 w-4" />
       <span className="mt-1 truncate">{MOBILE_MORE_NAV_LABEL}</span>
     </button>
+  );
+}
+
+function NavGlyph({ active, compact = false, item }: { active: boolean; compact?: boolean; item: AppNavItem }) {
+  const config = NAV_ICON_MAP[item.key] ?? { Icon: BarChart3, tone: "text-cyan-200" };
+  const Icon = config.Icon;
+  return (
+    <span
+      aria-hidden="true"
+      className={`grid shrink-0 place-items-center rounded-xl border transition ${
+        compact ? "h-5 w-5" : "h-7 w-7"
+      } ${active ? "border-cyan-300/30 bg-cyan-300/15 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.18)]" : `border-white/10 bg-white/[0.04] ${config.tone}`}`}
+    >
+      <Icon className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} strokeWidth={2.2} />
+    </span>
   );
 }
 

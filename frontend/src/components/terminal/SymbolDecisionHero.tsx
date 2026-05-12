@@ -7,6 +7,9 @@ import { WatchlistButton } from "@/components/watchlist-controls";
 import { DataHealthIndicator } from "@/components/data-health-indicator";
 import { TradeLegalNotice } from "@/components/legal/TradeLegalNotice";
 import { humanizeInsightText, normalizedToken } from "@/lib/ui/labels";
+import { getSymbolVisualIdentity } from "@/lib/visual-identity";
+import { MiniSparkline, VisualMetricRail } from "@/components/visual/MiniVisuals";
+import { SymbolIdentityLine, SymbolLogo } from "@/components/visual/SymbolLogo";
 import { DecisionBadge } from "./DecisionBadge";
 import { GlassPanel } from "./ui/GlassPanel";
 
@@ -48,12 +51,27 @@ export function SymbolDecisionHero({
   const decisionKey = normalizedToken(decision);
   const conviction = computeConviction(row, edge);
   const showTradePlan = tradeAllowed && !previewMode && decisionKey === "ENTER";
+  const visual = getSymbolVisualIdentity(row.symbol, row.sector, row.company_name);
+  const score = boundedMetric(row.final_score);
+  const fragility = boundedMetric(row.fragility_score ?? row.fragility);
+  const trend = [
+    boundedMetric(row.score_change, score * 0.76),
+    boundedMetric(row.macro_adjusted_score, score * 0.84),
+    boundedMetric(row.final_score, score),
+    conviction.score,
+  ];
   return (
-    <GlassPanel className={`overflow-hidden p-6 md:p-8 ${glow(decision)}`}>
+    <GlassPanel className={`visual-card-hero overflow-hidden p-6 md:p-8 ${glow(decision)}`} style={{ boxShadow: `0 0 90px ${visual.accentSoft}` }}>
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
         <div className="min-w-0">
-          <div className="min-w-0 font-mono text-5xl font-black tracking-tight text-slate-50 sm:text-6xl md:text-7xl">{row.symbol}</div>
-          <div className="mt-2 max-w-2xl text-base text-slate-400">{cleanText(row.company_name || row.sector, "Scanner signal")}</div>
+          <div className="flex min-w-0 items-start gap-4">
+            <SymbolLogo companyName={row.company_name} sector={row.sector} size="xl" symbol={row.symbol} />
+            <div className="min-w-0">
+              <div className="min-w-0 font-mono text-5xl font-black tracking-tight text-slate-50 sm:text-6xl md:text-7xl">{row.symbol}</div>
+              <div className="mt-2 max-w-2xl text-base text-slate-400">{cleanText(row.company_name || row.sector, "Scanner signal")}</div>
+              <div className="mt-2"><SymbolIdentityLine companyName={row.company_name} sector={row.sector} symbol={row.symbol} /></div>
+            </div>
+          </div>
           <div className="mt-6 flex min-w-0 flex-wrap items-center gap-3">
             <DecisionBadge className="px-4 py-2 text-sm sm:px-5 sm:text-base" value={decision} />
             <span className="min-w-0 rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-slate-200">
@@ -81,11 +99,19 @@ export function SymbolDecisionHero({
           ) : null}
         </div>
 
-        <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
-          <HeroMetric label="Score" value={formatNumber(row.final_score, 0)} />
-          <HeroMetric label="Conviction" value={`${conviction.score} ${conviction.label}`} />
-          <HeroMetric label="Price" value={formatMoney(row.price)} />
-          <HeroMetric label={showTradePlan ? "Entry" : "Mode"} value={showTradePlan ? formatMoney(row.suggested_entry ?? row.buy_zone ?? row.entry_zone) : "Research only"} />
+        <div className="grid min-w-0 grid-cols-1 gap-3">
+          <MiniSparkline label="Signal shape" tone={visual.tone === "rose" ? "rose" : visual.tone === "amber" ? "amber" : "cyan"} values={trend} />
+          <VisualMetricRail
+            metrics={[
+              { label: "Score", tone: "cyan", value: score },
+              { label: "Conviction", tone: "emerald", value: conviction.score },
+              { label: "Fragility", tone: fragility >= 68 ? "rose" : "amber", value: fragility },
+            ]}
+          />
+          <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+            <HeroMetric label="Price" value={formatMoney(row.price)} />
+            <HeroMetric label={showTradePlan ? "Entry" : "Mode"} value={showTradePlan ? formatMoney(row.suggested_entry ?? row.buy_zone ?? row.entry_zone) : "Research only"} />
+          </div>
         </div>
       </div>
     </GlassPanel>
@@ -99,4 +125,10 @@ function HeroMetric({ label, value }: { label: string; value: string }) {
       <div className="mt-2 font-mono text-xl font-bold text-slate-50">{value}</div>
     </div>
   );
+}
+
+function boundedMetric(value: unknown, fallback = 0): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return Math.max(0, Math.min(100, fallback));
+  return Math.max(0, Math.min(100, parsed));
 }

@@ -54,6 +54,9 @@ import { WatchlistButton } from "@/components/watchlist-controls";
 import { DecisionBadge } from "@/components/terminal/DecisionBadge";
 import { MiniPriceContextChart } from "@/components/terminal/MiniPriceContextChart";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
+import { HeatDots, MiniSparkline, VisualMetricRail } from "@/components/visual/MiniVisuals";
+import { SymbolIdentityLine, SymbolLogo } from "@/components/visual/SymbolLogo";
+import { getSymbolVisualIdentity } from "@/lib/visual-identity";
 import type { ChartCandle } from "@/components/terminal/SymbolChart";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
@@ -617,7 +620,11 @@ function BestTradeNowOpportunityCard({
         <div className="min-w-0">
           <div className="text-[10px] font-black uppercase tracking-[0.32em] text-emerald-300">Top Setup</div>
           <div className="mt-4 flex min-w-0 flex-wrap items-center gap-3">
-            <Link className="min-w-0 font-mono text-4xl font-black tracking-tight text-slate-50 transition hover:text-cyan-100 sm:text-5xl md:text-6xl" href={`/symbol/${best.symbol}`}>{best.symbol}</Link>
+            <SymbolLogo companyName={best.company_name} sector={best.sector} size="lg" symbol={best.symbol} />
+            <div className="min-w-0">
+              <Link className="min-w-0 font-mono text-4xl font-black tracking-tight text-slate-50 transition hover:text-cyan-100 sm:text-5xl md:text-6xl" href={`/symbol/${best.symbol}`}>{best.symbol}</Link>
+              <div className="mt-1"><SymbolIdentityLine companyName={best.company_name} sector={best.sector} symbol={best.symbol} /></div>
+            </div>
             <DecisionBadge className="px-4 py-2 text-sm sm:px-5 sm:text-base" value={best.final_decision} />
             <DataHealthIndicator freshness={best.dataFreshness} />
           </div>
@@ -1074,10 +1081,12 @@ function OpportunityCard({ row, visibilityReason }: { row: OpportunityViewModel;
   const router = useRouter();
   const href = `/symbol/${row.symbol}`;
   const openDetail = () => router.push(href);
+  const visual = getSymbolVisualIdentity(row.symbol, row.sector, row.company_name);
   const institutionalLabels = compactInstitutionalLabels(row);
   const execution = buildExecutionIntelligence(row);
   const actionability = buildOpportunityActionability(row);
   const status = opportunityCardStatus(row, actionability, execution);
+  const score = finiteNumber(row.final_score) ?? 0;
   const intelligenceLabels = [...institutionalLabels, ...execution.compactLabels].slice(0, 6);
   const detailMetrics = [
     { label: "Price", value: formatMoney(row.price) },
@@ -1137,7 +1146,7 @@ function OpportunityCard({ row, visibilityReason }: { row: OpportunityViewModel;
   ];
   return (
     <article
-      className={`w-full min-w-0 max-w-full cursor-pointer overflow-hidden rounded-2xl border bg-white/[0.04] p-4 shadow-xl shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-cyan-300/40 ${opportunityStatusBorderClass(status.tone)}`}
+      className={`visual-card w-full min-w-0 max-w-full cursor-pointer overflow-hidden rounded-2xl border bg-white/[0.04] p-4 shadow-xl shadow-black/10 transition-all duration-200 hover:-translate-y-0.5 hover:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-cyan-300/40 ${opportunityStatusBorderClass(status.tone)}`}
       onClick={openDetail}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -1146,15 +1155,20 @@ function OpportunityCard({ row, visibilityReason }: { row: OpportunityViewModel;
         }
       }}
       role="link"
+      style={{ boxShadow: `0 24px 52px rgba(0,0,0,0.18), 0 0 34px ${visual.accentSoft}` }}
       tabIndex={0}
     >
       <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
+        <div className="flex min-w-0 items-center gap-3">
+          <SymbolLogo companyName={row.company_name} sector={row.sector} size="md" symbol={row.symbol} />
+          <div className="min-w-0">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <Link className="relative z-10 inline-flex min-h-9 items-center font-mono text-2xl font-black text-slate-50 transition hover:text-cyan-100 sm:text-3xl" href={href} onClick={(event) => event.stopPropagation()}>{row.symbol}</Link>
             <OpportunityStatusPill status={status} />
           </div>
           <div className="mt-1 min-w-0 text-xs text-slate-400">{cleanText(row.company_name || row.sector, "Signal")}</div>
+          <div className="mt-1"><SymbolIdentityLine companyName={row.company_name} sector={row.sector} symbol={row.symbol} /></div>
+          </div>
         </div>
         <div className="flex min-w-0 flex-wrap items-center gap-2 sm:justify-end">
           <WatchlistButton showLabel={false} symbol={row.symbol} />
@@ -1163,6 +1177,22 @@ function OpportunityCard({ row, visibilityReason }: { row: OpportunityViewModel;
       </div>
       <div className="mt-3">
         <DataHealthIndicator compact freshness={row.dataFreshness} />
+      </div>
+      <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1fr)]">
+        <MiniSparkline
+          label="Quality curve"
+          tone={status.tone === "risk" ? "rose" : status.tone === "pullback" ? "amber" : status.tone === "good" ? "emerald" : "cyan"}
+          values={[score * 0.72, row.conviction, Math.max(0, 100 - row.fragility), score]}
+        />
+        <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-3">
+          <VisualMetricRail
+            metrics={[
+              { label: "Score", tone: "cyan", value: score },
+              { label: "Conviction", tone: "emerald", value: row.conviction },
+              { label: "Fragility", tone: row.fragility >= 68 ? "rose" : "amber", value: row.fragility },
+            ]}
+          />
+        </div>
       </div>
       <div className="mt-4 rounded-xl border border-white/10 bg-slate-950/30 p-3">
         <div className="flex flex-wrap items-center gap-2">
@@ -1185,6 +1215,13 @@ function OpportunityCard({ row, visibilityReason }: { row: OpportunityViewModel;
         </div>
       </div>
       <OpportunityZoneStrip actionability={actionability} execution={execution} />
+      <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.035] p-3">
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Market pressure</div>
+          <div className="text-[10px] font-semibold text-slate-400">{row.fragilityLabel}</div>
+        </div>
+        <HeatDots active={Math.round(Math.max(0, Math.min(12, row.fragility / 8.4)))} tone={row.fragility >= 68 ? "rose" : "cyan"} />
+      </div>
       {row.narrative ? (
         <div className="mt-3 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.045] p-3 text-xs leading-5 text-slate-300">
           <div className="text-[10px] font-black uppercase tracking-[0.12em] text-cyan-300">Market story</div>

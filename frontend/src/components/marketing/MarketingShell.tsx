@@ -118,7 +118,7 @@ export function SectionHeader({ eyebrow, title, copy }: { copy?: string; eyebrow
 export function MarketingCard({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
     <MarketingReveal
-      className={`rounded-2xl border border-white/10 bg-white/[0.045] p-5 shadow-2xl shadow-black/20 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300/35 hover:bg-white/[0.065] ${className}`}
+      className={`visual-card rounded-2xl border border-white/10 bg-white/[0.045] p-5 shadow-2xl shadow-black/20 backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-cyan-300/35 hover:bg-white/[0.065] ${className}`}
     >
       {children}
     </MarketingReveal>

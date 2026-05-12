@@ -1,5 +1,20 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
+import {
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  BookOpenCheck,
+  BrainCircuit,
+  CalendarClock,
+  Gauge,
+  LineChart,
+  Radar,
+  ShieldCheck,
+  Sparkles,
+  Target,
+  type LucideIcon,
+} from "lucide-react";
 import { LandingConversionCtas } from "@/components/marketing/LandingConversionCtas";
 import { MarketingCard, MarketingShell, SectionHeader } from "@/components/marketing/MarketingShell";
 import { MarketingReveal } from "@/components/marketing/MarketingReveal";
@@ -20,6 +35,58 @@ const heroSignals = [
   ["Veto-aware", "Risk, confidence, stale data, and regime conditions can block weak setups."],
   ["Research only", "No broker execution, no guaranteed outcomes, no financial advice."],
 ] as const;
+
+type MarketingTone = "amber" | "cyan" | "emerald" | "rose" | "violet";
+
+const toneClasses: Record<MarketingTone, { border: string; bg: string; glow: string; text: string }> = {
+  amber: { bg: "bg-amber-300/10", border: "border-amber-300/25", glow: "shadow-amber-950/20", text: "text-amber-100" },
+  cyan: { bg: "bg-cyan-300/10", border: "border-cyan-300/25", glow: "shadow-cyan-950/20", text: "text-cyan-100" },
+  emerald: { bg: "bg-emerald-300/10", border: "border-emerald-300/25", glow: "shadow-emerald-950/20", text: "text-emerald-100" },
+  rose: { bg: "bg-rose-300/10", border: "border-rose-300/25", glow: "shadow-rose-950/20", text: "text-rose-100" },
+  violet: { bg: "bg-violet-300/10", border: "border-violet-300/25", glow: "shadow-violet-950/20", text: "text-violet-100" },
+};
+
+const toneGradient: Record<MarketingTone, string> = {
+  amber: "from-amber-300 to-yellow-200",
+  cyan: "from-cyan-300 to-sky-300",
+  emerald: "from-emerald-300 to-teal-200",
+  rose: "from-rose-300 to-pink-300",
+  violet: "from-violet-300 to-fuchsia-300",
+};
+
+const focusTiles: Array<{ copy: string; Icon: LucideIcon; title: string; tone: MarketingTone }> = [
+  { copy: "Regime and freshness", Icon: Activity, title: "Market State", tone: "cyan" },
+  { copy: "Quality scores that matter", Icon: Target, title: "Decision Quality", tone: "emerald" },
+  { copy: "High-quality setups", Icon: Radar, title: "Best Opportunities", tone: "violet" },
+  { copy: "Elevated-risk alerts", Icon: AlertTriangle, title: "Dangerous Now", tone: "amber" },
+  { copy: "Key context shifts", Icon: CalendarClock, title: "What Changed", tone: "rose" },
+  { copy: "Monitoring with confidence", Icon: Gauge, title: "Watchlist Signals", tone: "cyan" },
+];
+
+const featureVisuals: Array<{ Icon: LucideIcon; tone: MarketingTone }> = [
+  { Icon: ShieldCheck, tone: "cyan" },
+  { Icon: Gauge, tone: "emerald" },
+  { Icon: Activity, tone: "violet" },
+  { Icon: Radar, tone: "amber" },
+  { Icon: BookOpenCheck, tone: "rose" },
+  { Icon: CalendarClock, tone: "cyan" },
+];
+
+const proofVisuals: Array<{ Icon: LucideIcon; tone: MarketingTone }> = [
+  { Icon: BarChart3, tone: "cyan" },
+  { Icon: BookOpenCheck, tone: "violet" },
+  { Icon: LineChart, tone: "emerald" },
+  { Icon: BrainCircuit, tone: "amber" },
+];
+
+const edgeVisuals: Array<{ Icon: LucideIcon; tone: MarketingTone }> = [
+  { Icon: ShieldCheck, tone: "rose" },
+  { Icon: CalendarClock, tone: "amber" },
+  { Icon: Gauge, tone: "cyan" },
+  { Icon: Activity, tone: "violet" },
+  { Icon: BarChart3, tone: "emerald" },
+  { Icon: BookOpenCheck, tone: "cyan" },
+];
 
 const primaryScreenshot = {
   caption: "Terminal view",
@@ -130,9 +197,14 @@ export default async function HomePage() {
             <div className="mt-8">
               <LandingConversionCtas />
             </div>
+            <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {focusTiles.map((tile) => (
+                <VisualFocusTile key={tile.title} tile={tile} />
+              ))}
+            </div>
             <div className="mt-8 grid gap-3 sm:grid-cols-3">
               {heroSignals.map(([title, copy]) => (
-                <div className="rounded-2xl border border-white/10 bg-black/20 p-4" key={title}>
+                <div className="rounded-2xl border border-white/10 bg-black/20 p-4 shadow-lg shadow-black/20" key={title}>
                   <div className="text-sm font-black text-white">{title}</div>
                   <p className="mt-2 text-xs leading-5 text-slate-400">{copy}</p>
                 </div>
@@ -159,12 +231,16 @@ export default async function HomePage() {
             title="Trade less. Trade smarter. Know when to wait."
           />
           <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {["Avoid low-quality setups.", "Understand the veto.", "Monitor without overreacting."].map((item) => (
-              <MarketingCard key={item}>
-                <div className="text-lg font-semibold text-white">{item}</div>
-                <p className="mt-3 text-sm leading-6 text-slate-400">Built for disciplined research workflows, not signal spam or trade hype.</p>
-              </MarketingCard>
-            ))}
+            {["Avoid low-quality setups.", "Understand the veto.", "Monitor without overreacting."].map((item, index) => {
+              const Icon = [ShieldCheck, BrainCircuit, Radar][index] ?? ShieldCheck;
+              return (
+                <MarketingCard key={item}>
+                  <MarketingIcon Icon={Icon} tone={index === 0 ? "rose" : index === 1 ? "cyan" : "emerald"} />
+                  <div className="mt-5 text-lg font-semibold text-white">{item}</div>
+                  <p className="mt-3 text-sm leading-6 text-slate-400">Built for disciplined research workflows, not signal spam or trade hype.</p>
+                </MarketingCard>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -232,12 +308,16 @@ export default async function HomePage() {
             title="Public trust starts with what the system can prove."
           />
           <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {proofItems.map(([title, copy]) => (
-              <MarketingCard key={title}>
-                <div className="text-base font-semibold text-white">{title}</div>
-                <p className="mt-3 text-sm leading-6 text-slate-400">{copy}</p>
-              </MarketingCard>
-            ))}
+            {proofItems.map(([title, copy], index) => {
+              const visual = proofVisuals[index % proofVisuals.length] ?? { Icon: BarChart3, tone: "cyan" as const };
+              return (
+                <MarketingCard key={title}>
+                  <MarketingIcon Icon={visual.Icon} tone={visual.tone} />
+                  <div className="mt-5 text-base font-semibold text-white">{title}</div>
+                  <p className="mt-3 text-sm leading-6 text-slate-400">{copy}</p>
+                </MarketingCard>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -246,12 +326,17 @@ export default async function HomePage() {
         <div className="mx-auto max-w-7xl">
           <SectionHeader eyebrow="Features" title="Built around disciplined decision quality." />
           <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {features.map(([title, copy]) => (
-              <MarketingCard key={title}>
-                <div className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">{title}</div>
-                <p className="mt-4 text-sm leading-6 text-slate-300">{copy}</p>
-              </MarketingCard>
-            ))}
+            {features.map(([title, copy], index) => {
+              const visual = featureVisuals[index % featureVisuals.length] ?? { Icon: ShieldCheck, tone: "cyan" as const };
+              return (
+                <MarketingCard key={title}>
+                  <MarketingIcon Icon={visual.Icon} tone={visual.tone} />
+                  <div className="mt-5 text-xs font-black uppercase tracking-[0.2em] text-cyan-300">{title}</div>
+                  <p className="mt-4 text-sm leading-6 text-slate-300">{copy}</p>
+                  <MetricStory tone={visual.tone} value={72 - index * 4} />
+                </MarketingCard>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -307,12 +392,17 @@ export default async function HomePage() {
         <div className="mx-auto max-w-7xl">
           <SectionHeader eyebrow="Trust model" title="Built to earn trust by being clear about limits." />
           <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {trustItems.map(([title, copy]) => (
-              <MarketingCard key={title}>
-                <div className="text-base font-semibold text-white">{title}</div>
-                <p className="mt-3 text-sm leading-6 text-slate-400">{copy}</p>
-              </MarketingCard>
-            ))}
+            {trustItems.map(([title, copy], index) => {
+              const Icon = [BookOpenCheck, ShieldCheck, BrainCircuit, BarChart3, CalendarClock, Gauge][index % 6] ?? BookOpenCheck;
+              const tone: MarketingTone = index % 3 === 0 ? "cyan" : index % 3 === 1 ? "emerald" : "violet";
+              return (
+                <MarketingCard key={title}>
+                  <MarketingIcon Icon={Icon} tone={tone} />
+                  <div className="mt-5 text-base font-semibold text-white">{title}</div>
+                  <p className="mt-3 text-sm leading-6 text-slate-400">{copy}</p>
+                </MarketingCard>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -333,12 +423,16 @@ export default async function HomePage() {
             title="Built to make lower-quality action harder."
           />
           <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {edgeItems.map(([title, copy]) => (
-              <MarketingCard key={title}>
-                <div className="text-base font-semibold text-white">{title}</div>
-                <p className="mt-3 text-sm leading-6 text-slate-400">{copy}</p>
-              </MarketingCard>
-            ))}
+            {edgeItems.map(([title, copy], index) => {
+              const visual = edgeVisuals[index % edgeVisuals.length] ?? { Icon: ShieldCheck, tone: "cyan" as const };
+              return (
+                <MarketingCard key={title}>
+                  <MarketingIcon Icon={visual.Icon} tone={visual.tone} />
+                  <div className="mt-5 text-base font-semibold text-white">{title}</div>
+                  <p className="mt-3 text-sm leading-6 text-slate-400">{copy}</p>
+                </MarketingCard>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -382,18 +476,69 @@ export default async function HomePage() {
       </section>
 
       <section className="px-4 py-16 sm:px-6 lg:px-8">
-        <MarketingReveal className="mx-auto max-w-6xl rounded-3xl border border-emerald-300/20 bg-gradient-to-br from-emerald-300/[0.12] to-cyan-300/[0.06] p-8 shadow-2xl shadow-emerald-950/20 backdrop-blur-xl md:flex md:items-center md:justify-between md:gap-8">
+        <MarketingReveal className="visual-card mx-auto max-w-6xl overflow-hidden rounded-3xl border border-emerald-300/20 bg-gradient-to-br from-emerald-300/[0.12] to-cyan-300/[0.06] p-8 shadow-2xl shadow-emerald-950/20 backdrop-blur-xl md:flex md:items-center md:justify-between md:gap-8">
           <div>
             <div className="text-xs font-black uppercase tracking-[0.28em] text-emerald-200">Beta access</div>
             <h2 className="mt-3 text-3xl font-semibold text-white">Ready to filter weak setups before they become decisions?</h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">{BRAND_PRODUCT_DESCRIPTION}</p>
+            <div className="mt-6">
+              <LandingConversionCtas />
+            </div>
           </div>
-          <div className="mt-6 md:mt-0">
-            <LandingConversionCtas />
+          <div className="mt-8 shrink-0 md:mt-0">
+            <div className="rounded-[2rem] border border-cyan-300/25 bg-slate-950/70 p-3 shadow-2xl shadow-cyan-950/25">
+              <img
+                alt="TradeVeto register QR code"
+                className="h-36 w-36 rounded-2xl bg-white object-contain sm:h-44 sm:w-44"
+                loading="lazy"
+                src="/marketing/qr/tradeveto-register-qr-dark.png"
+              />
+              <div className="mt-3 text-center text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Scan to join</div>
+            </div>
           </div>
         </MarketingReveal>
       </section>
     </MarketingShell>
+  );
+}
+
+function VisualFocusTile({ tile }: { tile: { copy: string; Icon: LucideIcon; title: string; tone: MarketingTone } }) {
+  const tone = toneClasses[tile.tone];
+  return (
+    <div className={`visual-card flex min-w-0 items-center gap-3 rounded-2xl border ${tone.border} ${tone.bg} p-3 shadow-lg ${tone.glow}`}>
+      <MarketingIcon Icon={tile.Icon} compact tone={tile.tone} />
+      <div className="min-w-0">
+        <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">{tile.title}</div>
+        <div className="mt-1 truncate text-xs font-semibold text-slate-100">{tile.copy}</div>
+      </div>
+    </div>
+  );
+}
+
+function MarketingIcon({ compact = false, Icon, tone }: { compact?: boolean; Icon: LucideIcon; tone: MarketingTone }) {
+  const classes = toneClasses[tone];
+  return (
+    <div
+      className={`visual-icon-tile relative ${compact ? "h-10 w-10" : "h-12 w-12"} ${classes.border} ${classes.bg} ${classes.text} shadow-lg ${classes.glow}`}
+    >
+      <Icon aria-hidden="true" className={compact ? "h-5 w-5" : "h-6 w-6"} strokeWidth={2.2} />
+      {!compact ? <Sparkles aria-hidden="true" className="absolute -right-1 -top-1 h-3.5 w-3.5 text-white/50" /> : null}
+    </div>
+  );
+}
+
+function MetricStory({ tone, value }: { tone: MarketingTone; value: number }) {
+  const bounded = Math.max(18, Math.min(92, value));
+  return (
+    <div className="mt-5 rounded-2xl border border-white/10 bg-slate-950/30 p-3">
+      <div className="mb-2 flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+        <span>Signal clarity</span>
+        <span className={toneClasses[tone].text}>{bounded}%</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]">
+        <div className={`h-full rounded-full bg-gradient-to-r ${toneGradient[tone]}`} style={{ width: `${bounded}%` }} />
+      </div>
+    </div>
   );
 }
 

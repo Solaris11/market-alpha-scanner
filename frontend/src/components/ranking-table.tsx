@@ -6,6 +6,7 @@ import type { RankingRow } from "@/lib/types";
 import { actionFor, compact, formatNumber } from "@/lib/format";
 import { cleanText } from "@/lib/ui/formatters";
 import { decisionLabel, humanizeInsightText, humanizeLabel, normalizedToken } from "@/lib/ui/labels";
+import { SymbolIdentityLine, SymbolLogo } from "@/components/visual/SymbolLogo";
 
 export type RankingSortKey = "symbol" | "company" | "asset" | "sector" | "price" | "score" | "rating" | "action" | "decision" | "quality" | "signals";
 export type RankingSortDirection = "asc" | "desc";
@@ -221,12 +222,18 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
             tabIndex={symbolHref ? 0 : undefined}
           >
             <div className="grid gap-4 lg:grid-cols-[minmax(180px,1fr)_150px_130px_190px_130px] lg:items-center">
-              <div className="min-w-0">
-                <Link className="font-mono text-2xl font-semibold text-slate-50 transition-colors hover:text-cyan-100" href={symbolHref || "#"}>
-                  {row.symbol}
-                </Link>
-                <div className="mt-1 truncate text-sm text-slate-400" title={row.company_name || ""}>
-                  {compact(row.company_name || row.sector || "Market signal", 72)}
+              <div className="flex min-w-0 items-center gap-3">
+                <SymbolLogo companyName={row.company_name} sector={row.sector} size="md" symbol={symbol || String(row.symbol ?? "")} />
+                <div className="min-w-0">
+                  <Link className="font-mono text-2xl font-semibold text-slate-50 transition-colors hover:text-cyan-100" href={symbolHref || "#"}>
+                    {row.symbol}
+                  </Link>
+                  <div className="mt-1 truncate text-sm text-slate-400" title={row.company_name || ""}>
+                    {compact(row.company_name || row.sector || "Market signal", 72)}
+                  </div>
+                  <div className="mt-1">
+                    <SymbolIdentityLine companyName={row.company_name} sector={row.sector} symbol={symbol || String(row.symbol ?? "")} />
+                  </div>
                 </div>
               </div>
 
