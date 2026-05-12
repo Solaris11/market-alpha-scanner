@@ -112,7 +112,34 @@ Local route validation:
 - Local route parity check - passed
 - Local performance budget check - passed
 
+Production validation after deploy:
+
+- Production host: `onsre-node-01`
+- Production commit: `984238a`
+- Frontend Docker service rebuilt: `market-alpha-frontend`
+- Frontend container health: healthy
+- Postgres container health: healthy
+- `/api/health` - passed
+- `/api/health/deep` - passed
+- `/register` - HTTP 200
+- `/login` - HTTP 200
+- `/register?invite=SMOKE` - HTTP 200
+- `/register` metadata - canonical and social preview present
+- `/login` metadata - canonical and social preview present
+- Production route parity check - passed
+- Production performance budget check - passed
+
+Production invite behavior smoke:
+
+- Missing invite code - rejected with HTTP 403
+- Invalid invite code - rejected with HTTP 403
+- Valid invite code - accepted with HTTP 200
+- `/api/auth/me` after valid invite signup - HTTP 200
+- Beta entitlement after valid invite signup - `betaAccess: true`
+- Premium entitlement after valid invite signup - `isPremium: true`
+- Disposable QA user cleanup - passed, final matching rows: 0
+
 ## Remaining Risks
 
-- Full valid-invite registration and existing-user login must be verified again in production with real production beta env values after deployment.
-- Facebook in-app browser behavior was covered by mobile viewport and social metadata checks, but should still be verified manually from the actual Facebook CTA surface after deploy.
+- Existing-user login was route-smoked but not credential-tested because no real user password was used during this pass.
+- Facebook in-app browser behavior was covered by mobile viewport and social metadata checks, but should still be verified manually from the actual Facebook CTA surface.
