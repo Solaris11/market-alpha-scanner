@@ -9,6 +9,17 @@ type GhostPortfolio = {
 
 export function GhostPortfolioCard({ positions }: { positions: PaperPositionRow[] }) {
   const ghost = buildGhostPortfolio(positions);
+  if (!ghost) {
+    return (
+      <article className="rounded-2xl border border-dashed border-white/10 bg-slate-950/50 p-5 shadow-xl shadow-black/20 ring-1 ring-white/5 backdrop-blur-xl">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-rose-300">Ghost Portfolio</div>
+        <h3 className="mt-1 text-lg font-semibold text-slate-50">Strategy-held path unavailable</h3>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+          This comparison is hidden until closed paper trades have enough real entry, exit, stop, or target context. TradeVeto will not draw a synthetic alternate portfolio.
+        </p>
+      </article>
+    );
+  }
   const betterOutcome = ghost.strategyPnl >= ghost.actualPnl;
 
   return (
@@ -38,19 +49,12 @@ export function GhostPortfolioCard({ positions }: { positions: PaperPositionRow[
   );
 }
 
-function buildGhostPortfolio(positions: PaperPositionRow[]): GhostPortfolio {
+function buildGhostPortfolio(positions: PaperPositionRow[]): GhostPortfolio | null {
   const closed = positions.filter((position) => position.status.toUpperCase() === "CLOSED");
-  if (!closed.length) {
-    return {
-      actualPnl: 105,
-      disciplineScore: 72,
-      missedUpside: 207,
-      strategyPnl: 312,
-    };
-  }
+  if (!closed.length) return null;
 
   const actualPnl = closed.reduce((total, position) => total + (finiteNumber(position.realized_pnl) ?? estimatedPnl(position)), 0);
-  const strategyPnl = closed.reduce((total, position, index) => total + strategyOutcome(position, index), 0);
+  const strategyPnl = closed.reduce((total, position) => total + strategyOutcome(position), 0);
   const missedUpside = Math.max(0, strategyPnl - actualPnl);
   const disciplineScore = clamp(Math.round(100 - Math.min(42, missedUpside / 12) + Math.min(12, closed.length)), 35, 96);
 
@@ -62,7 +66,7 @@ function buildGhostPortfolio(positions: PaperPositionRow[]): GhostPortfolio {
   };
 }
 
-function strategyOutcome(position: PaperPositionRow, index: number): number {
+function strategyOutcome(position: PaperPositionRow): number {
   const actual = finiteNumber(position.realized_pnl) ?? estimatedPnl(position);
   const reward = rewardDollars(position);
   const risk = riskDollars(position);
@@ -71,7 +75,7 @@ function strategyOutcome(position: PaperPositionRow, index: number): number {
   if (reward !== null && reason.includes("TARGET")) return Math.max(actual, reward);
   if (reward !== null && actual > 0) return Math.max(actual, reward * 0.72);
   if (risk !== null && actual < 0) return Math.max(actual, -risk * 0.8);
-  return actual + deterministicLift(position.symbol, index);
+  return actual;
 }
 
 function estimatedPnl(position: PaperPositionRow): number {
@@ -92,11 +96,6 @@ function rewardDollars(position: PaperPositionRow): number | null {
   if (position.target_price === null || position.entry_price <= 0 || position.quantity <= 0) return null;
   const reward = (position.target_price - position.entry_price) * position.quantity;
   return Number.isFinite(reward) && reward > 0 ? reward : null;
-}
-
-function deterministicLift(symbol: string, index: number): number {
-  const seed = symbol.split("").reduce((total, char) => total + char.charCodeAt(0), 0) + index * 17;
-  return 24 + (seed % 86);
 }
 
 function finiteNumber(value: unknown): number | null {

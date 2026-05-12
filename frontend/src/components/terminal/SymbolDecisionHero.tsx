@@ -6,9 +6,10 @@ import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { WatchlistButton } from "@/components/watchlist-controls";
 import { DataHealthIndicator } from "@/components/data-health-indicator";
 import { TradeLegalNotice } from "@/components/legal/TradeLegalNotice";
+import { buildEvidenceMaturityFromSignal } from "@/lib/trading/evidence-maturity";
 import { humanizeInsightText, normalizedToken } from "@/lib/ui/labels";
 import { getSymbolVisualIdentity } from "@/lib/visual-identity";
-import { MiniSparkline, VisualMetricRail } from "@/components/visual/MiniVisuals";
+import { ScoreFactorStrip, VisualMetricRail } from "@/components/visual/MiniVisuals";
 import { SymbolIdentityLine, SymbolLogo } from "@/components/visual/SymbolLogo";
 import { DecisionBadge } from "./DecisionBadge";
 import { GlassPanel } from "./ui/GlassPanel";
@@ -54,12 +55,9 @@ export function SymbolDecisionHero({
   const visual = getSymbolVisualIdentity(row.symbol, row.sector, row.company_name);
   const score = boundedMetric(row.final_score);
   const fragility = boundedMetric(row.fragility_score ?? row.fragility);
-  const trend = [
-    boundedMetric(row.score_change, score * 0.76),
-    boundedMetric(row.macro_adjusted_score, score * 0.84),
-    boundedMetric(row.final_score, score),
-    conviction.score,
-  ];
+  const evidence = buildEvidenceMaturityFromSignal(row);
+  const macroAdjusted = boundedOptional(row.macro_adjusted_score ?? row.final_score_adjusted);
+  const stability = 100 - fragility;
   return (
     <GlassPanel className={`visual-card-hero overflow-hidden p-6 md:p-8 ${glow(decision)}`} style={{ boxShadow: `0 0 90px ${visual.accentSoft}` }}>
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end">
@@ -100,7 +98,16 @@ export function SymbolDecisionHero({
         </div>
 
         <div className="grid min-w-0 grid-cols-1 gap-3">
-          <MiniSparkline label="Signal shape" tone={visual.tone === "rose" ? "rose" : visual.tone === "amber" ? "amber" : "cyan"} values={trend} />
+          <ScoreFactorStrip
+            factors={[
+              { label: "Score", tone: "cyan", value: score },
+              { label: "Macro Adj.", tone: "cyan", value: macroAdjusted },
+              { label: "Conviction", tone: "emerald", value: conviction.score },
+              { label: "Stability", tone: fragility >= 68 ? "rose" : "emerald", value: stability },
+              { label: "Evidence", tone: evidence.tier === "limited" ? "amber" : "emerald", value: evidence.score },
+            ]}
+            label="Data-backed signal factors"
+          />
           <VisualMetricRail
             metrics={[
               { label: "Score", tone: "cyan", value: score },
@@ -130,5 +137,11 @@ function HeroMetric({ label, value }: { label: string; value: string }) {
 function boundedMetric(value: unknown, fallback = 0): number {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return Math.max(0, Math.min(100, fallback));
+  return Math.max(0, Math.min(100, parsed));
+}
+
+function boundedOptional(value: unknown): number | null {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return null;
   return Math.max(0, Math.min(100, parsed));
 }

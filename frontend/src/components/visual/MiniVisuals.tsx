@@ -18,16 +18,17 @@ export function VisualMetricRail({
   return (
     <div className="grid gap-2">
       {metrics.map((metric) => {
-        const value = clamp(metric.value ?? 0);
+        const hasValue = metric.value !== null && Number.isFinite(metric.value);
+        const value = hasValue ? clamp(metric.value ?? 0) : 0;
         const tone = TONE[metric.tone ?? "cyan"];
         return (
           <div className="min-w-0" key={metric.label}>
             <div className="mb-1 flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
               <span className="truncate">{metric.label}</span>
-              <span className={tone.text}>{metric.value === null ? "N/A" : Math.round(value)}</span>
+              <span className={tone.text}>{hasValue ? Math.round(value) : "N/A"}</span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]">
-              <div className={`h-full rounded-full bg-gradient-to-r ${tone.fill} shadow-[0_0_18px_rgba(34,211,238,0.22)]`} style={{ width: `${Math.max(5, value)}%` }} />
+              <div className={`h-full rounded-full bg-gradient-to-r ${tone.fill} shadow-[0_0_18px_rgba(34,211,238,0.22)]`} style={{ width: hasValue ? `${Math.max(5, value)}%` : "0%" }} />
             </div>
           </div>
         );
@@ -39,15 +40,17 @@ export function VisualMetricRail({
 export function MiniSparkline({
   className = "",
   label,
+  emptyMessage = "No validated trend history yet.",
   tone = "cyan",
   values,
 }: {
   className?: string;
+  emptyMessage?: string;
   label: string;
   tone?: VisualTone;
-  values: number[];
+  values: Array<number | null | undefined>;
 }) {
-  const safeValues = values.filter(Number.isFinite);
+  const safeValues = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
   const points = sparklinePoints(safeValues);
   const toneClass = TONE[tone];
   return (
@@ -56,10 +59,15 @@ export function MiniSparkline({
         <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">{label}</div>
         <div className={`h-2 w-2 rounded-full ${toneClass.soft}`} />
       </div>
-      <svg aria-hidden="true" className="h-16 w-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 120 48">
-        <path d="M0 38 C18 34 18 20 36 25 S58 42 74 24 94 10 120 15" fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="10" strokeLinecap="round" />
-        {points ? <polyline fill="none" points={points} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" className={toneClass.text} /> : null}
-      </svg>
+      {points ? (
+        <svg aria-hidden="true" className="h-16 w-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 120 48">
+          <polyline fill="none" points={points} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" className={toneClass.text} />
+        </svg>
+      ) : (
+        <div className="grid h-16 place-items-center rounded-xl border border-dashed border-white/10 bg-slate-950/45 px-3 text-center text-[11px] leading-4 text-slate-500">
+          {emptyMessage}
+        </div>
+      )}
     </div>
   );
 }
@@ -120,18 +128,27 @@ export function PosterGauge({
 
 export function MiniCandleStrip({
   className = "",
+  emptyMessage = "No validated visual history yet.",
   tone = "cyan",
   values,
 }: {
   className?: string;
+  emptyMessage?: string;
   tone?: VisualTone;
-  values: number[];
+  values: Array<number | null | undefined>;
 }) {
-  const safe = values.length ? values.filter(Number.isFinite) : [34, 42, 38, 48, 57, 51, 64, 70];
+  const safe = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  const toneClass = TONE[tone];
+  if (safe.length < 2) {
+    return (
+      <div className={`poster-mini-chart grid h-24 place-items-center rounded-2xl border border-dashed ${toneClass.border} p-3 text-center text-[11px] leading-4 text-slate-500 ${className}`}>
+        {emptyMessage}
+      </div>
+    );
+  }
   const max = Math.max(...safe, 1);
   const min = Math.min(...safe, 0);
   const spread = max - min || 1;
-  const toneClass = TONE[tone];
   return (
     <div className={`poster-mini-chart flex h-24 items-end gap-1 rounded-2xl border ${toneClass.border} p-3 ${className}`}>
       {safe.slice(0, 14).map((value, index) => {
@@ -146,6 +163,57 @@ export function MiniCandleStrip({
           />
         );
       })}
+    </div>
+  );
+}
+
+export type ScoreFactor = {
+  detail?: string;
+  label: string;
+  tone?: VisualTone;
+  value: number | null | undefined;
+};
+
+export function ScoreFactorStrip({
+  className = "",
+  emptyMessage = "Insufficient scored evidence for a visual breakdown.",
+  factors,
+  label = "Data-backed factors",
+}: {
+  className?: string;
+  emptyMessage?: string;
+  factors: ScoreFactor[];
+  label?: string;
+}) {
+  const visible = factors.filter((factor) => typeof factor.value === "number" && Number.isFinite(factor.value));
+  if (!visible.length) {
+    return (
+      <div className={`rounded-2xl border border-dashed border-white/10 bg-slate-950/35 p-3 ${className}`}>
+        <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</div>
+        <div className="mt-2 rounded-xl border border-white/10 bg-white/[0.025] p-3 text-xs leading-5 text-slate-500">{emptyMessage}</div>
+      </div>
+    );
+  }
+  return (
+    <div className={`rounded-2xl border border-white/10 bg-slate-950/35 p-3 ${className}`}>
+      <div className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</div>
+      <div className="grid gap-2">
+        {visible.slice(0, 6).map((factor) => {
+          const value = clamp(factor.value ?? 0);
+          const tone = TONE[factor.tone ?? toneForValue(value)];
+          return (
+            <div className="min-w-0" key={factor.label} title={factor.detail ?? `${factor.label}: ${Math.round(value)}/100`}>
+              <div className="mb-1 flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
+                <span className="truncate">{factor.label}</span>
+                <span className={`font-mono ${tone.text}`}>{Math.round(value)}</span>
+              </div>
+              <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]">
+                <div className={`h-full rounded-full bg-gradient-to-r ${tone.fill}`} style={{ width: `${Math.max(4, value)}%` }} />
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -204,6 +272,13 @@ function toneHex(tone: VisualTone): string {
   if (tone === "rose") return "#fb7185";
   if (tone === "violet") return "#a78bfa";
   return "#22d3ee";
+}
+
+function toneForValue(value: number): VisualTone {
+  if (value >= 70) return "emerald";
+  if (value >= 50) return "amber";
+  if (value <= 35) return "rose";
+  return "cyan";
 }
 
 function sparklinePoints(values: number[]): string | null {

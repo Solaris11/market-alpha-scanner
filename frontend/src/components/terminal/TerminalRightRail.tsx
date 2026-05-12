@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ActiveAlertMatch } from "@/lib/active-alert-matches";
-import { MiniCandleStrip } from "@/components/visual/MiniVisuals";
+import { ScoreFactorStrip } from "@/components/visual/MiniVisuals";
 import { SymbolLogo } from "@/components/visual/SymbolLogo";
 import type { MarketRegime } from "@/lib/adapters/DataServiceAdapter";
 import type { RankingRow } from "@/lib/types";
@@ -94,6 +94,9 @@ function RightRailSignalRow({ row, symbol }: { row: RankingRow | null; symbol: s
   const decision = row ? decisionLabel(row.final_decision) : "Not in latest scan";
   const confidence = numeric(row?.confidence_score ?? row?.final_score);
   const evidence = row ? buildEvidenceMaturityFromSignal(row) : null;
+  const score = numeric(row?.final_score ?? row?.macro_adjusted_score);
+  const fragility = numeric(row?.fragility_score ?? row?.risk_score ?? row?.event_risk_score);
+  const stability = fragility === null ? null : Math.max(0, 100 - fragility);
   return (
     <Link className="block rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.06]" href={`/symbol/${symbol}`}>
       <div className="flex items-center justify-between gap-3">
@@ -107,7 +110,17 @@ function RightRailSignalRow({ row, symbol }: { row: RankingRow | null; symbol: s
         <span>{row?.setup_type ? humanizeLabel(row.setup_type) : "Research signal"}</span>
         <span>{confidence === null ? "confidence n/a" : `${Math.round(confidence)} confidence`}</span>
       </div>
-      <MiniCandleStrip className="mt-2 h-10 p-1.5" tone={confidence !== null && confidence >= 65 ? "emerald" : confidence !== null && confidence <= 40 ? "rose" : "cyan"} values={[24, 31, 29, 38, confidence ?? 42]} />
+      <ScoreFactorStrip
+        className="mt-2"
+        emptyMessage="No scored watchlist factors are available in the latest scan."
+        factors={[
+          { label: "Score", tone: "cyan", value: score },
+          { label: "Confidence", tone: confidence !== null && confidence >= 65 ? "emerald" : confidence !== null && confidence <= 40 ? "rose" : "cyan", value: confidence },
+          { label: "Stability", tone: stability !== null && stability >= 60 ? "emerald" : "amber", value: stability },
+          { label: "Evidence", tone: evidence?.tier === "limited" ? "amber" : "emerald", value: evidence?.score },
+        ]}
+        label="Latest scored factors"
+      />
       {evidence ? <div className="mt-1 text-[11px] text-slate-500">{evidence.label} · {evidence.evidenceSampleSize.toLocaleString()} samples</div> : null}
     </Link>
   );

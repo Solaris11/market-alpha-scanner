@@ -12,14 +12,19 @@ export type UnifiedConsoleItem = {
   attentionPriorityScore: number;
   category: string;
   decision: string;
+  decisionQualityScore: number;
   detail: string;
   href: string;
   key: string;
   metricLabel: string;
+  opportunityScore: number;
   reasonForAttention: string;
+  riskScore: number;
   riskLabel: string;
   symbol: string;
+  timingQualityScore: number;
   urgencyLabel: string;
+  urgencyScore: number;
 };
 
 export type UnifiedConsoleMetric = {
@@ -153,14 +158,19 @@ function toConsoleItem(item: MetaOpportunityPriority): UnifiedConsoleItem {
     attentionPriorityScore: item.attentionPriorityScore,
     category: item.category,
     decision: item.decision,
+    decisionQualityScore: item.decisionQualityScore,
     detail: item.keyReasons[0] ?? item.state,
     href: `/symbol/${item.symbol}`,
     key: `${item.symbol}:${item.category}`,
     metricLabel: `${item.metaOpportunityScore} opp / ${item.metaRiskScore} risk`,
+    opportunityScore: item.metaOpportunityScore,
     reasonForAttention: item.reasonForAttention,
+    riskScore: item.metaRiskScore,
     riskLabel: item.keyRisks[0] ?? "Risk still has uncertainty.",
     symbol: item.symbol,
+    timingQualityScore: item.timingQualityScore,
     urgencyLabel: item.urgencyLabel,
+    urgencyScore: item.urgencyScore,
   };
 }
 

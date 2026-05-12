@@ -13,7 +13,7 @@ import type {
 } from "@/lib/trading/simulated-ai-portfolio";
 import { strategyFamilyLabel } from "@/lib/trading/strategy-intelligence";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
-import { IconInsightRail, MiniCandleStrip, PosterGauge } from "@/components/visual/MiniVisuals";
+import { IconInsightRail, PosterGauge, ScoreFactorStrip } from "@/components/visual/MiniVisuals";
 import { SymbolLogo } from "@/components/visual/SymbolLogo";
 import { trackFirstUsefulAction } from "@/lib/client/analytics";
 
@@ -168,7 +168,18 @@ function SummaryPanel({ result }: { result: SimulatedPortfolioModeResult }) {
           <PosterGauge label="Quality" score={stats.strategyQualityScore} tone="violet" />
           <div className="rounded-2xl border border-white/10 bg-slate-950/65 p-3">
             <div className="text-xs font-semibold text-slate-300">{stats.closedTradeCount.toLocaleString()} closed simulated trades</div>
-            <MiniCandleStrip className="mt-3 h-20" tone="violet" values={[42, 49, 53, 47, 61, 68, 72, stats.strategyQualityScore]} />
+            <ScoreFactorStrip
+              className="mt-3 h-28"
+              emptyMessage="No completed simulation factors are available yet."
+              factors={[
+                { label: "Quality", tone: "violet", value: stats.strategyQualityScore },
+                { label: "Win rate", tone: "emerald", value: stats.winRatePct },
+                { label: "Return", tone: stats.simulatedReturnPct !== null && stats.simulatedReturnPct < 0 ? "rose" : "cyan", value: normalizeSignedPct(stats.simulatedReturnPct) },
+                { label: "Drawdown safety", tone: "amber", value: normalizeDrawdownSafety(stats.maxDrawdownPct) },
+                { label: "Volatility control", tone: "cyan", value: normalizeVolatilityControl(stats.volatilityPct) },
+              ]}
+              label="Simulation factors"
+            />
           </div>
         </div>
       </div>
@@ -369,6 +380,21 @@ function EmptyState({ message }: { message: string }) {
 function toneClass(value: number | null | undefined): string {
   if (value === null || value === undefined || value === 0) return "text-slate-100";
   return value > 0 ? "text-emerald-300" : "text-rose-300";
+}
+
+function normalizeSignedPct(value: number | null | undefined): number | null {
+  if (value === null || value === undefined || !Number.isFinite(value)) return null;
+  return Math.max(0, Math.min(100, 50 + value));
+}
+
+function normalizeDrawdownSafety(value: number | null | undefined): number | null {
+  if (value === null || value === undefined || !Number.isFinite(value)) return null;
+  return Math.max(0, Math.min(100, 100 - Math.abs(value)));
+}
+
+function normalizeVolatilityControl(value: number | null | undefined): number | null {
+  if (value === null || value === undefined || !Number.isFinite(value)) return null;
+  return Math.max(0, Math.min(100, 100 - Math.abs(value)));
 }
 
 function formatPct(value: number | null | undefined): string {

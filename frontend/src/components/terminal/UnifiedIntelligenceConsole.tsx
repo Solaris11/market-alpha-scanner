@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { AlertTriangle, Bell, Eye, Gauge, Target, Zap } from "lucide-react";
 import { useMemo } from "react";
-import { IconInsightRail, MiniCandleStrip, VisualMetricRail } from "@/components/visual/MiniVisuals";
+import { IconInsightRail, ScoreFactorStrip, VisualMetricRail } from "@/components/visual/MiniVisuals";
 import { SymbolLogo } from "@/components/visual/SymbolLogo";
 import {
   buildUnifiedIntelligenceConsole,
@@ -268,7 +268,16 @@ function SimpleOpportunityList({ empty, items, title }: { empty: string; items: 
               <div className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2 py-1 text-[10px] font-bold text-emerald-100">{item.attentionPriorityScore}</div>
             </div>
             <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-300">{humanizeInsightText(item.reasonForAttention)}</p>
-            <MiniCandleStrip className="mt-2 h-12 p-2" tone="emerald" values={[32, 38, 36, 44, 52, item.attentionPriorityScore]} />
+            <ScoreFactorStrip
+              className="mt-2"
+              factors={[
+                { label: "Attention", tone: "cyan", value: item.attentionPriorityScore },
+                { label: "Opportunity", tone: "emerald", value: item.opportunityScore },
+                { label: "Timing", tone: "amber", value: item.timingQualityScore },
+                { label: "Decision", tone: "cyan", value: item.decisionQualityScore },
+              ]}
+              label="Why it ranks"
+            />
             <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-500">{humanizeInsightText(item.actionContext)}</p>
           </Link>
         )) : <p className="text-sm leading-6 text-slate-500">{empty}</p>}
@@ -292,7 +301,16 @@ function SimpleRiskList({ empty, items, title }: { empty: string; items: Unified
               <div className={priorityClass(item.attentionPriority)}>{item.urgencyLabel}</div>
             </div>
             <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-300">{humanizeInsightText(item.riskLabel)}</p>
-            <MiniCandleStrip className="mt-2 h-12 p-2" tone="amber" values={[52, 48, 58, 62, 54, item.attentionPriorityScore]} />
+            <ScoreFactorStrip
+              className="mt-2"
+              factors={[
+                { label: "Risk", tone: "rose", value: item.riskScore },
+                { label: "Urgency", tone: "amber", value: item.urgencyScore },
+                { label: "Attention", tone: "cyan", value: item.attentionPriorityScore },
+                { label: "Timing", tone: "amber", value: item.timingQualityScore },
+              ]}
+              label="Why risk is visible"
+            />
             <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-500">{humanizeInsightText(item.actionContext)}</p>
           </Link>
         )) : <p className="text-sm leading-6 text-slate-500">{empty}</p>}

@@ -4,7 +4,7 @@ import { AlertTriangle, CheckCircle2, Eye, ShieldAlert } from "lucide-react";
 import type { ReactNode } from "react";
 import type { TradePlanEngine } from "@/hooks/useTradePlanEngine";
 import { useTradePlanEngine } from "@/hooks/useTradePlanEngine";
-import { MiniCandleStrip } from "@/components/visual/MiniVisuals";
+import { ScoreFactorStrip } from "@/components/visual/MiniVisuals";
 import type { RankingRow } from "@/lib/types";
 import { buildDecisionIntelligence } from "@/lib/trading/decision-intelligence";
 import { confidenceTone } from "@/lib/trading/confidence";
@@ -49,7 +49,15 @@ export function AICopilotPanel({
             <div className="mt-3 flex justify-center">
               <ConfidenceDonut compact score={intelligence.confidence} />
             </div>
-            <MiniCandleStrip className="mt-3 h-14 p-2" tone={intelligence.confidence >= 65 ? "emerald" : intelligence.confidence <= 45 ? "rose" : "amber"} values={[intelligence.confidence * 0.62, intelligence.readiness_score * 0.7, intelligence.setup_strength, intelligence.confidence]} />
+            <ScoreFactorStrip
+              className="mt-3"
+              factors={[
+                { label: "Confidence", tone: intelligence.confidence >= 65 ? "emerald" : intelligence.confidence <= 45 ? "rose" : "amber", value: intelligence.confidence },
+                { label: "Readiness", tone: intelligence.readiness_score >= 65 ? "emerald" : "amber", value: intelligence.readiness_score },
+                { label: "Setup", tone: intelligence.setup_strength >= 65 ? "emerald" : "cyan", value: intelligence.setup_strength },
+              ]}
+              label="Deterministic factors"
+            />
             <p className="mt-3 text-[11px] leading-5 text-slate-500">Research only. Not financial advice.</p>
           </div>
           <div className="space-y-3">

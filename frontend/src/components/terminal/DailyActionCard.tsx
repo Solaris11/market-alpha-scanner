@@ -1,7 +1,7 @@
 import { Activity, AlertTriangle, Eye, Gauge, Scale, ShieldCheck, TimerReset, Waves } from "lucide-react";
 import type { DailyAction } from "@/lib/trading/daily-action";
 import { dailyActionAllowsTrade, noTradeActionCopy } from "@/lib/trading/daily-action";
-import { IconInsightRail, MiniCandleStrip, PosterGauge } from "@/components/visual/MiniVisuals";
+import { IconInsightRail, PosterGauge, ScoreFactorStrip } from "@/components/visual/MiniVisuals";
 import { GlassPanel } from "./ui/GlassPanel";
 
 const TONE_STYLES: Record<DailyAction["tone"], { accent: string; glow: string; label: string; panel: string }> = {
@@ -44,6 +44,12 @@ export function DailyActionCard({
   const contextReasons = (whyReasons?.length ? whyReasons : defaultWhyReasons(canTrade)).slice(0, 3);
   const readinessScore = canTrade ? 74 : action.tone === "stay-out" ? 24 : 38;
   const posterTone = canTrade ? "poster-panel" : action.tone === "stay-out" ? "poster-panel-risk" : "poster-panel-wait";
+  const decisionTotal = decisionDistribution.reduce((total, item) => total + Math.max(0, item.value), 0);
+  const decisionFactors = decisionDistribution.map((item) => ({
+    label: item.label,
+    tone: decisionTone(item.label),
+    value: decisionTotal > 0 ? (Math.max(0, item.value) / decisionTotal) * 100 : null,
+  }));
 
   return (
     <GlassPanel className={`poster-scanline overflow-hidden border p-5 md:p-6 ${posterTone} ${tone.panel} ${tone.glow}`}>
@@ -116,11 +122,24 @@ export function DailyActionCard({
             <AlertTriangle className={`h-4 w-4 ${canTrade ? "text-emerald-300" : "text-amber-300"}`} />
             Signal path
           </div>
-          <MiniCandleStrip tone={canTrade ? "emerald" : action.tone === "stay-out" ? "rose" : "amber"} values={decisionDistribution.map((item) => item.value + 12)} />
+          <ScoreFactorStrip
+            emptyMessage="Decision distribution is hidden or empty in this view."
+            factors={decisionFactors}
+            label="Decision mix share"
+          />
         </div>
       </div>
     </GlassPanel>
   );
+}
+
+function decisionTone(label: string): "amber" | "cyan" | "emerald" | "rose" | "violet" {
+  const normalized = label.toUpperCase();
+  if (normalized.includes("ENTER") || normalized.includes("BUY")) return "emerald";
+  if (normalized.includes("AVOID") || normalized.includes("EXIT")) return "rose";
+  if (normalized.includes("WAIT")) return "amber";
+  if (normalized.includes("WATCH")) return "cyan";
+  return "violet";
 }
 
 function ContextTile({ label, value }: { label: string; value: string }) {

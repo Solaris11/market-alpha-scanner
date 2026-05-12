@@ -8,9 +8,6 @@ import {
 import { buildResearchContextLevels as buildResearchLevels } from "@/lib/trading/research-levels";
 import type { ChartCandle, ChartSignalMarker, ChartTradeLevels } from "./SymbolChart";
 
-export const FALLBACK_DAYS = 30;
-export const FALLBACK_END_DATE = "2026-04-29";
-
 export type NormalizedTradeLevels = Required<ChartTradeLevels>;
 export type ChartResearchLevel = {
   color: string;
@@ -50,32 +47,6 @@ export function normalizeSignals(signals: ChartSignalMarker[]): ChartSignalMarke
     .map((signal) => ({ ...signal, time: normalizeDate(signal.time) ?? "" }))
     .filter((signal) => signal.time)
     .sort((a, b) => a.time.localeCompare(b.time));
-}
-
-export function generateFallbackCandles(symbol: string): ChartCandle[] {
-  const random = seededRandom(hashSymbol(symbol));
-  const end = new Date(`${FALLBACK_END_DATE}T00:00:00.000Z`);
-  let close = 60 + random() * 260;
-  const trend = (random() - 0.42) * 0.018;
-  const candles: ChartCandle[] = [];
-
-  for (let index = FALLBACK_DAYS - 1; index >= 0; index -= 1) {
-    const date = new Date(end);
-    date.setUTCDate(end.getUTCDate() - index);
-    const open = close * (1 + (random() - 0.5) * 0.018);
-    close = open * (1 + trend + (random() - 0.5) * 0.036);
-    const high = Math.max(open, close) * (1 + random() * 0.02);
-    const low = Math.min(open, close) * (1 - random() * 0.02);
-    candles.push({
-      close: roundPrice(close),
-      high: roundPrice(high),
-      low: roundPrice(low),
-      open: roundPrice(open),
-      time: date.toISOString().slice(0, 10),
-    });
-  }
-
-  return candles;
 }
 
 export function normalizeTradeLevels(levels?: ChartTradeLevels): NormalizedTradeLevels {
@@ -144,22 +115,6 @@ function normalizeDate(value: string) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? null : date.toISOString().slice(0, 10);
-}
-
-function hashSymbol(symbol: string) {
-  return Array.from(symbol.toUpperCase()).reduce((hash, char) => ((hash * 31) + char.charCodeAt(0)) >>> 0, 17);
-}
-
-function seededRandom(seed: number) {
-  let state = seed || 1;
-  return () => {
-    state = (state * 1664525 + 1013904223) >>> 0;
-    return state / 4294967296;
-  };
-}
-
-function roundPrice(value: number) {
-  return Math.round(value * 100) / 100;
 }
 
 function validLevel(value: unknown) {

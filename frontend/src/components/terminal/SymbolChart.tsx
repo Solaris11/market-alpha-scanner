@@ -12,7 +12,6 @@ import {
   addResearchContextLines,
   addTradeLevelLines,
   buildResearchContextLevels,
-  generateFallbackCandles,
   normalizeCandles,
   normalizeSignals,
   normalizeTradeLevels,
@@ -60,10 +59,7 @@ export function SymbolChart({ symbol, candles, signals, showHistoricalSignals = 
   const [failed, setFailed] = useState(false);
   const [showResearchLevels, setShowResearchLevels] = useState(true);
   const normalizedCandles = useMemo(() => normalizeCandles(candles), [candles]);
-  const fallback = !candles?.length;
-  const chartCandles = useMemo(() => (
-    fallback ? generateFallbackCandles(symbol) : normalizedCandles
-  ), [fallback, normalizedCandles, symbol]);
+  const chartCandles = normalizedCandles;
   const chartSignals = useMemo(() => (
     showHistoricalSignals && signals?.length ? normalizeSignals(signals) : []
   ), [showHistoricalSignals, signals]);
@@ -161,8 +157,12 @@ export function SymbolChart({ symbol, candles, signals, showHistoricalSignals = 
     }
   }, [chartCandles, chartLevels, chartSignals, researchLevels, showResearchLevels, showResearchLevelsToggle]);
 
-  if (failed || (!fallback && candles?.length && !normalizedCandles.length)) {
-    return <EmptyState title="Price chart unavailable" message="Scanner insights are still active." />;
+  if (failed || (candles?.length && !normalizedCandles.length)) {
+    return <EmptyState title="Price chart unavailable" message="The latest price payload could not be validated for this symbol." />;
+  }
+
+  if (!chartCandles.length) {
+    return <EmptyState title="No validated price history" message="This chart is hidden until real OHLC history is available. Scanner insights can still appear without drawing synthetic prices." />;
   }
 
   return (

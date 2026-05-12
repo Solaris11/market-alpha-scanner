@@ -54,7 +54,7 @@ import { WatchlistButton } from "@/components/watchlist-controls";
 import { DecisionBadge } from "@/components/terminal/DecisionBadge";
 import { MiniPriceContextChart } from "@/components/terminal/MiniPriceContextChart";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
-import { HeatDots, MiniSparkline, VisualMetricRail } from "@/components/visual/MiniVisuals";
+import { HeatDots, ScoreFactorStrip, VisualMetricRail } from "@/components/visual/MiniVisuals";
 import { SymbolIdentityLine, SymbolLogo } from "@/components/visual/SymbolLogo";
 import { getSymbolVisualIdentity } from "@/lib/visual-identity";
 import type { ChartCandle } from "@/components/terminal/SymbolChart";
@@ -1179,10 +1179,16 @@ function OpportunityCard({ row, visibilityReason }: { row: OpportunityViewModel;
         <DataHealthIndicator compact freshness={row.dataFreshness} />
       </div>
       <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1fr)]">
-        <MiniSparkline
-          label="Quality curve"
-          tone={status.tone === "risk" ? "rose" : status.tone === "pullback" ? "amber" : status.tone === "good" ? "emerald" : "cyan"}
-          values={[score * 0.72, row.conviction, Math.max(0, 100 - row.fragility), score]}
+        <ScoreFactorStrip
+          emptyMessage="This row has not produced enough scored factors for a visual breakdown."
+          factors={[
+            { label: "Score", tone: "cyan", value: row.final_score },
+            { label: "Conviction", tone: "emerald", value: row.conviction },
+            { label: "Stability", tone: row.fragility >= 68 ? "rose" : "emerald", value: Math.max(0, 100 - row.fragility) },
+            { label: "Evidence", tone: row.evidence?.tier === "limited" ? "amber" : "emerald", value: row.evidence?.score },
+            { label: "Event", tone: row.eventRisk >= 68 ? "rose" : "cyan", value: row.eventRisk },
+          ]}
+          label="Real scored factors"
         />
         <div className="rounded-2xl border border-white/10 bg-slate-950/30 p-3">
           <VisualMetricRail

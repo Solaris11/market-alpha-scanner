@@ -31,7 +31,7 @@ import { MarketingCard, MarketingShell, SectionHeader } from "@/components/marke
 import { MarketingReveal } from "@/components/marketing/MarketingReveal";
 import { PricingActionCard } from "@/components/pricing/PricingActionCard";
 import { PricingConversionCta } from "@/components/pricing/PricingConversionCta";
-import { IconInsightRail, MiniCandleStrip, PosterGauge, VisualMetricRail, type VisualTone } from "@/components/visual/MiniVisuals";
+import { IconInsightRail, PosterGauge, ScoreFactorStrip, VisualMetricRail, type VisualTone } from "@/components/visual/MiniVisuals";
 import { BRAND_NAME, BRAND_PRODUCT_DESCRIPTION } from "@/lib/brand";
 import { marketingMetadata, softwareApplicationJsonLd } from "@/lib/marketing-seo";
 
@@ -741,7 +741,7 @@ function PosterVisual({ feature }: { feature: PosterFeature }) {
     return (
       <div className="grid gap-3">
         <PosterGauge label={feature.tone === "amber" ? "Elevated Risk" : feature.tone === "rose" ? "Shock Risk" : "Readiness"} score={feature.score} tone={feature.tone} />
-        <MiniCandleStrip tone={feature.tone} values={[44, 49, 46, 58, 51, 62, 68, 61, 73, feature.score]} />
+        <FeatureFactorPreview feature={feature} />
       </div>
     );
   }
@@ -749,7 +749,6 @@ function PosterVisual({ feature }: { feature: PosterFeature }) {
   if (feature.visual === "candles") {
     return (
       <div className="grid gap-3">
-        <MiniCandleStrip tone={feature.tone} values={[38, 35, 42, 47, 44, 52, 61, 57, 66, 73, 69, feature.score]} />
         <div className="grid grid-cols-3 gap-2 text-center">
           {[
             ["Before", "Risk Review", "text-amber-200"],
@@ -762,6 +761,7 @@ function PosterVisual({ feature }: { feature: PosterFeature }) {
             </div>
           ))}
         </div>
+        <FeaturePreviewNote />
       </div>
     );
   }
@@ -770,21 +770,35 @@ function PosterVisual({ feature }: { feature: PosterFeature }) {
     <div className="grid gap-3">
       <div className="poster-mini-chart rounded-2xl border border-white/10 p-4">
         <div className="mb-4 flex items-center justify-between">
-          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Signal distribution</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Product preview</div>
           <div className={posterWordClass(feature.tone)}>{feature.score}</div>
         </div>
-        <div className="grid grid-cols-6 items-end gap-2">
-          {[38, 54, 44, 68, 58, feature.score].map((value, index) => (
-            <span
-              aria-hidden="true"
-              className={`rounded-t-lg bg-gradient-to-t ${feature.tone === "rose" ? "from-rose-500 to-red-300" : feature.tone === "amber" ? "from-amber-400 to-yellow-200" : feature.tone === "violet" ? "from-violet-500 to-fuchsia-300" : "from-cyan-400 to-sky-200"}`}
-              key={`${value}-${index}`}
-              style={{ height: `${Math.max(24, value)}px` }}
-            />
-          ))}
-        </div>
+        <FeatureFactorPreview feature={feature} />
       </div>
-      <MiniCandleStrip tone={feature.tone} values={[22, 34, 29, 45, 52, 49, 63, 57, feature.score]} />
+      <FeaturePreviewNote />
+    </div>
+  );
+}
+
+function FeatureFactorPreview({ feature }: { feature: PosterFeature }) {
+  return (
+    <ScoreFactorStrip
+      emptyMessage="Feature preview unavailable."
+      factors={[
+        { detail: "Editorial feature rating for this product area.", label: "Feature", tone: feature.tone, value: feature.score },
+        { detail: "Whether this feature helps users understand why the system is cautious.", label: "Explain", tone: "cyan", value: feature.tone === "rose" ? 82 : 74 },
+        { detail: "Whether this feature helps users notice risk before acting.", label: "Risk", tone: feature.tone === "rose" || feature.tone === "amber" ? feature.tone : "amber", value: feature.tone === "rose" ? 91 : 78 },
+        { detail: "Whether this feature supports a repeatable research workflow.", label: "Workflow", tone: "emerald", value: feature.tone === "violet" ? 88 : 76 },
+      ]}
+      label="Product preview"
+    />
+  );
+}
+
+function FeaturePreviewNote() {
+  return (
+    <div className="rounded-xl border border-white/10 bg-slate-950/55 px-3 py-2 text-[11px] leading-4 text-slate-500">
+      Illustrative product preview. Live market charts appear only when validated data is available.
     </div>
   );
 }
