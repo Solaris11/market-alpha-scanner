@@ -47,6 +47,8 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
 
   useEffect(() => {
     if (!open) return;
+    const previousSuppressFeedback = document.documentElement.dataset.tradevetoSuppressFeedback;
+    document.documentElement.dataset.tradevetoSuppressFeedback = "true";
 
     function onPointerDown(event: PointerEvent) {
       const target = event.target as Node;
@@ -63,6 +65,11 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
     window.addEventListener("resize", updateMenuPosition);
     window.addEventListener("scroll", updateMenuPosition, true);
     return () => {
+      if (previousSuppressFeedback === undefined) {
+        delete document.documentElement.dataset.tradevetoSuppressFeedback;
+      } else {
+        document.documentElement.dataset.tradevetoSuppressFeedback = previousSuppressFeedback;
+      }
       window.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("resize", updateMenuPosition);

@@ -167,6 +167,10 @@ a {
   animation: tradeveto-route-progress 1.05s ease-in-out infinite;
 }
 
+html[data-tradeveto-suppress-feedback="true"] .tradeveto-beta-feedback-widget {
+  display: none !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-badge-loop,
   .landing-hero-sweep::before,

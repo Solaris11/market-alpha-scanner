@@ -44,7 +44,9 @@ export function MobileTerminalNav() {
   useEffect(() => {
     if (!open) return;
     const previous = document.body.style.overflow;
+    const previousSuppressFeedback = document.documentElement.dataset.tradevetoSuppressFeedback;
     document.body.style.overflow = "hidden";
+    document.documentElement.dataset.tradevetoSuppressFeedback = "true";
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") setOpen(false);
     }
@@ -60,6 +62,11 @@ export function MobileTerminalNav() {
     document.addEventListener("pointerdown", onPointerDown, true);
     return () => {
       document.body.style.overflow = previous;
+      if (previousSuppressFeedback === undefined) {
+        delete document.documentElement.dataset.tradevetoSuppressFeedback;
+      } else {
+        document.documentElement.dataset.tradevetoSuppressFeedback = previousSuppressFeedback;
+      }
       window.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("pointerdown", onPointerDown, true);
     };

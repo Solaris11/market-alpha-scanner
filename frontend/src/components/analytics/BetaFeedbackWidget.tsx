@@ -54,7 +54,7 @@ export function BetaFeedbackWidget() {
   }
 
   return (
-    <div className="fixed bottom-5 right-3 z-[8200] hidden sm:block">
+    <div className="tradeveto-beta-feedback-widget fixed bottom-5 right-3 z-[8200] hidden sm:block">
       {open ? (
         <section className="w-[min(92vw,360px)] rounded-2xl border border-cyan-300/20 bg-slate-950/95 p-4 shadow-2xl shadow-black/50 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
