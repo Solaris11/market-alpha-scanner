@@ -1,0 +1,79 @@
+{
+  "target_url": "https://tradeveto.com/join",
+  "redirect_routes": [
+    "/join",
+    "/beta",
+    "/invite"
+  ],
+  "production_asset_base_path": "/marketing/qr/",
+  "files": [
+    "tradeveto-register-qr.png",
+    "tradeveto-register-qr.svg",
+    "tradeveto-register-qr-transparent.png",
+    "tradeveto-register-qr-dark.png",
+    "tradeveto-register-qr-social-square.png",
+    "tradeveto-register-qr-story-overlay.png"
+  ],
+  "validation": [
+    {
+      "label": "standard PNG",
+      "width": 2048,
+      "height": 2048,
+      "decoded_url": "https://tradeveto.com/join"
+    },
+    {
+      "label": "SVG raster decode",
+      "width": 2048,
+      "height": 2048,
+      "decoded_url": "https://tradeveto.com/join"
+    },
+    {
+      "label": "transparent dark modules on light background",
+      "width": 2048,
+      "height": 2048,
+      "decoded_url": "https://tradeveto.com/join"
+    },
+    {
+      "label": "dark branded PNG",
+      "width": 2600,
+      "height": 2600,
+      "decoded_url": "https://tradeveto.com/join"
+    },
+    {
+      "label": "social square PNG",
+      "width": 1080,
+      "height": 1080,
+      "decoded_url": "https://tradeveto.com/join"
+    },
+    {
+      "label": "story overlay PNG",
+      "width": 1080,
+      "height": 1920,
+      "decoded_url": "https://tradeveto.com/join"
+    },
+    {
+      "label": "low brightness simulation",
+      "width": 2048,
+      "height": 2048,
+      "decoded_url": "https://tradeveto.com/join"
+    },
+    {
+      "label": "small compressed QR simulation",
+      "width": 360,
+      "height": 360,
+      "decoded_url": "https://tradeveto.com/join"
+    },
+    {
+      "label": "compressed social simulation",
+      "width": 540,
+      "height": 540,
+      "decoded_url": "https://tradeveto.com/join"
+    }
+  ],
+  "usage_notes": [
+    "Use tradeveto-register-qr.png or tradeveto-register-qr-dark.png for highest scan reliability.",
+    "Use tradeveto-register-qr-transparent.png only on light backgrounds.",
+    "Use tradeveto-register-qr-dark.png on dark posters instead of inverted transparent QR art.",
+    "Keep a clear quiet zone around the QR code when placing it into posters."
+  ]
+}
