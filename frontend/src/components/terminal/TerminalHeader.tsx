@@ -7,7 +7,7 @@ import { DesktopTerminalNav, MobileTerminalNav } from "./TerminalNav";
 
 export function TerminalHeader() {
   return (
-    <header className="visual-card sticky top-3 z-40 mb-4 rounded-2xl border border-cyan-300/15 bg-slate-950/88 px-3 py-3 shadow-2xl shadow-cyan-950/15 ring-1 ring-white/5 backdrop-blur-2xl lg:px-5 lg:py-4">
+    <header className="visual-card visual-card-overflow-visible sticky top-3 z-40 mb-4 rounded-2xl border border-cyan-300/15 bg-slate-950/88 px-3 py-3 shadow-2xl shadow-cyan-950/15 ring-1 ring-white/5 backdrop-blur-2xl lg:px-5 lg:py-4">
       <div className="hidden min-w-0 gap-3 xl:flex xl:flex-col">
         <div className="flex min-w-0 items-center justify-between gap-4">
           <BrandMark />

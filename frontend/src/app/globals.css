@@ -41,6 +41,10 @@ body {
   overflow: hidden;
 }
 
+.visual-card-overflow-visible {
+  overflow: visible;
+}
+
 .visual-card::before {
   background:
     linear-gradient(135deg, rgba(255, 255, 255, 0.09), transparent 28%),
