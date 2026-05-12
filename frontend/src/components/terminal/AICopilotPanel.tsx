@@ -1,7 +1,10 @@
 "use client";
 
+import { AlertTriangle, CheckCircle2, Eye, ShieldAlert } from "lucide-react";
+import type { ReactNode } from "react";
 import type { TradePlanEngine } from "@/hooks/useTradePlanEngine";
 import { useTradePlanEngine } from "@/hooks/useTradePlanEngine";
+import { MiniCandleStrip } from "@/components/visual/MiniVisuals";
 import type { RankingRow } from "@/lib/types";
 import { buildDecisionIntelligence } from "@/lib/trading/decision-intelligence";
 import { confidenceTone } from "@/lib/trading/confidence";
@@ -35,7 +38,7 @@ export function AICopilotPanel({
       : "border-cyan-300/20 bg-cyan-400/10 text-cyan-50";
   return (
     <div data-onboarding-target="ai-decision">
-      <GlassPanel className="p-5">
+      <GlassPanel className="poster-scanline p-5">
         <SectionTitle eyebrow="Decision Intelligence" title="Decision Assistant" meta="research only" />
         <div className="mt-4 grid gap-3 md:grid-cols-[minmax(160px,0.45fr)_minmax(0,1fr)]">
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
@@ -46,6 +49,7 @@ export function AICopilotPanel({
             <div className="mt-3 flex justify-center">
               <ConfidenceDonut compact score={intelligence.confidence} />
             </div>
+            <MiniCandleStrip className="mt-3 h-14 p-2" tone={intelligence.confidence >= 65 ? "emerald" : intelligence.confidence <= 45 ? "rose" : "amber"} values={[intelligence.confidence * 0.62, intelligence.readiness_score * 0.7, intelligence.setup_strength, intelligence.confidence]} />
             <p className="mt-3 text-[11px] leading-5 text-slate-500">Research only. Not financial advice.</p>
           </div>
           <div className="space-y-3">
@@ -70,15 +74,16 @@ export function AICopilotPanel({
               </ul>
             </div>
             <div className="grid gap-3">
-              <InsightList title="Why" items={intelligence.why.positives} />
-              <InsightList title="Constraints" items={intelligence.why.negatives} />
-              <InsightList title="Watch" items={intelligence.what_to_watch} />
+              <InsightList icon={<CheckCircle2 className="h-5 w-5" />} title="Why" tone="cyan" items={intelligence.why.positives} />
+              <InsightList icon={<ShieldAlert className="h-5 w-5" />} title="Constraints" tone="rose" items={intelligence.why.negatives} />
+              <InsightList icon={<Eye className="h-5 w-5" />} title="Watch" tone="amber" items={intelligence.what_to_watch} />
             </div>
           </div>
         </div>
         {contextLocked ? (
-          <div className="mt-4 rounded-2xl border border-amber-300/25 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
-            Daily action is blocking execution context. {lockedReason ?? "Review the research context only until the scanner clears a stronger setup."}
+          <div className="mt-4 flex gap-3 rounded-2xl border border-amber-300/25 bg-amber-400/10 p-4 text-sm leading-6 text-amber-100">
+            <AlertTriangle className="mt-0.5 h-7 w-7 shrink-0 text-amber-300" />
+            <div><strong>Daily action is blocking execution context.</strong> {lockedReason ?? "Review the research context only until the scanner clears a stronger setup."}</div>
           </div>
         ) : (
           <>
@@ -129,10 +134,14 @@ function ReadinessBar({ toneClass, value }: { toneClass: string; value: number }
   );
 }
 
-function InsightList({ items, title }: { items: string[]; title: string }) {
+function InsightList({ icon, items, title, tone }: { icon: ReactNode; items: string[]; title: string; tone: "amber" | "cyan" | "rose" }) {
+  const toneClass = tone === "rose" ? "text-rose-300 border-rose-300/20 bg-rose-400/10" : tone === "amber" ? "text-amber-300 border-amber-300/20 bg-amber-400/10" : "text-cyan-300 border-cyan-300/20 bg-cyan-400/10";
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
-      <div className="min-w-0 truncate text-[10px] font-black uppercase leading-4 tracking-normal text-slate-500" title={title}>{title}</div>
+      <div className="flex min-w-0 items-center gap-2">
+        <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border ${toneClass}`}>{icon}</div>
+        <div className="min-w-0 truncate text-[10px] font-black uppercase leading-4 tracking-normal text-slate-300" title={title}>{title}</div>
+      </div>
       <ul className="mt-2 space-y-1 text-xs leading-5 text-slate-300">
         {items.slice(0, 3).map((item) => <li key={item}>- {item}</li>)}
       </ul>

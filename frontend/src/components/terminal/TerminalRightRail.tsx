@@ -1,5 +1,7 @@
 import Link from "next/link";
 import type { ActiveAlertMatch } from "@/lib/active-alert-matches";
+import { MiniCandleStrip } from "@/components/visual/MiniVisuals";
+import { SymbolLogo } from "@/components/visual/SymbolLogo";
 import type { MarketRegime } from "@/lib/adapters/DataServiceAdapter";
 import type { RankingRow } from "@/lib/types";
 import { buildEvidenceMaturityFromSignal } from "@/lib/trading/evidence-maturity";
@@ -95,13 +97,17 @@ function RightRailSignalRow({ row, symbol }: { row: RankingRow | null; symbol: s
   return (
     <Link className="block rounded-xl border border-white/10 bg-white/[0.03] p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.06]" href={`/symbol/${symbol}`}>
       <div className="flex items-center justify-between gap-3">
-        <span className="font-mono text-sm font-semibold text-slate-100">{symbol}</span>
+        <span className="flex min-w-0 items-center gap-2">
+          <SymbolLogo companyName={row?.company_name} sector={row?.sector} size="sm" symbol={symbol} />
+          <span className="font-mono text-sm font-semibold text-slate-100">{symbol}</span>
+        </span>
         <span className="rounded-full border border-white/10 px-2 py-1 text-[10px] font-semibold uppercase text-slate-300">{decision}</span>
       </div>
       <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
         <span>{row?.setup_type ? humanizeLabel(row.setup_type) : "Research signal"}</span>
         <span>{confidence === null ? "confidence n/a" : `${Math.round(confidence)} confidence`}</span>
       </div>
+      <MiniCandleStrip className="mt-2 h-10 p-1.5" tone={confidence !== null && confidence >= 65 ? "emerald" : confidence !== null && confidence <= 40 ? "rose" : "cyan"} values={[24, 31, 29, 38, confidence ?? 42]} />
       {evidence ? <div className="mt-1 text-[11px] text-slate-500">{evidence.label} · {evidence.evidenceSampleSize.toLocaleString()} samples</div> : null}
     </Link>
   );

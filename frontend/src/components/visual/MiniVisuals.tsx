@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-type VisualTone = "amber" | "cyan" | "emerald" | "rose" | "violet";
+export type VisualTone = "amber" | "cyan" | "emerald" | "rose" | "violet";
 
 const TONE: Record<VisualTone, { bg: string; border: string; fill: string; soft: string; text: string }> = {
   amber: { bg: "bg-amber-400/10", border: "border-amber-300/25", fill: "from-amber-300 to-yellow-200", soft: "bg-amber-300/15", text: "text-amber-100" },
@@ -87,6 +87,90 @@ export function SignalFlowVisual({
   );
 }
 
+export function PosterGauge({
+  label,
+  score,
+  tone = "cyan",
+}: {
+  label: string;
+  score: number | null;
+  tone?: VisualTone;
+}) {
+  const value = clamp(score ?? 0);
+  const toneClass = TONE[tone];
+  const sweep = Math.max(0, Math.min(270, (value / 100) * 270));
+  return (
+    <div className={`rounded-2xl border ${toneClass.border} ${toneClass.bg} p-4 text-center`}>
+      <div className="relative mx-auto grid h-28 w-28 place-items-center rounded-full border border-white/10 bg-slate-950/60 shadow-[inset_0_0_28px_rgba(0,0,0,0.38)]">
+        <div
+          className="absolute inset-2 rounded-full"
+          style={{
+            background: `conic-gradient(from -135deg, ${toneHex(tone)} ${sweep}deg, rgba(148,163,184,0.18) 0 270deg, transparent 270deg)`,
+            mask: "radial-gradient(circle, transparent 52%, black 54%)",
+          }}
+        />
+        <div className="relative text-center">
+          <div className="font-mono text-3xl font-black text-slate-50">{score === null ? "N/A" : Math.round(value)}</div>
+          <div className={`text-[10px] font-black uppercase leading-4 ${toneClass.text}`}>{label}</div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function MiniCandleStrip({
+  className = "",
+  tone = "cyan",
+  values,
+}: {
+  className?: string;
+  tone?: VisualTone;
+  values: number[];
+}) {
+  const safe = values.length ? values.filter(Number.isFinite) : [34, 42, 38, 48, 57, 51, 64, 70];
+  const max = Math.max(...safe, 1);
+  const min = Math.min(...safe, 0);
+  const spread = max - min || 1;
+  const toneClass = TONE[tone];
+  return (
+    <div className={`poster-mini-chart flex h-24 items-end gap-1 rounded-2xl border ${toneClass.border} p-3 ${className}`}>
+      {safe.slice(0, 14).map((value, index) => {
+        const height = 24 + ((value - min) / spread) * 56;
+        const positive = index === 0 || value >= safe[index - 1];
+        return (
+          <span
+            aria-hidden="true"
+            className={`w-full min-w-1 rounded-t ${positive ? `bg-gradient-to-t ${toneClass.fill}` : "bg-gradient-to-t from-rose-500 to-red-300"}`}
+            key={`${value}-${index}`}
+            style={{ height }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
+export function IconInsightRail({
+  items,
+}: {
+  items: Array<{ copy?: string; icon: ReactNode; label: string; tone?: VisualTone }>;
+}) {
+  return (
+    <div className="poster-icon-row overflow-hidden rounded-2xl border border-cyan-300/16 bg-slate-950/45">
+      {items.map((item) => {
+        const tone = TONE[item.tone ?? "cyan"];
+        return (
+          <div className="poster-icon-cell" key={item.label}>
+            <div className={`poster-icon-orb ${tone.text}`}>{item.icon}</div>
+            <div className="text-xs font-black uppercase leading-4 tracking-[0.08em] text-slate-100">{item.label}</div>
+            {item.copy ? <p className="max-w-[12rem] text-[11px] leading-4 text-slate-400">{item.copy}</p> : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export function HeatDots({
   active,
   total = 12,
@@ -112,6 +196,14 @@ export function HeatDots({
 
 function clamp(value: number): number {
   return Math.max(0, Math.min(100, value));
+}
+
+function toneHex(tone: VisualTone): string {
+  if (tone === "emerald") return "#34d399";
+  if (tone === "amber") return "#fbbf24";
+  if (tone === "rose") return "#fb7185";
+  if (tone === "violet") return "#a78bfa";
+  return "#22d3ee";
 }
 
 function sparklinePoints(values: number[]): string | null {

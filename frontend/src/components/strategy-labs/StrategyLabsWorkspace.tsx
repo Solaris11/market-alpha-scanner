@@ -1,5 +1,6 @@
 "use client";
 
+import { FlaskConical, Gauge, LineChart, ShieldAlert, Target } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type {
@@ -12,6 +13,8 @@ import type {
 } from "@/lib/trading/simulated-ai-portfolio";
 import { strategyFamilyLabel } from "@/lib/trading/strategy-intelligence";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
+import { IconInsightRail, MiniCandleStrip, PosterGauge } from "@/components/visual/MiniVisuals";
+import { SymbolLogo } from "@/components/visual/SymbolLogo";
 import { trackFirstUsefulAction } from "@/lib/client/analytics";
 
 const MODE_ORDER: SimulatedPortfolioMode[] = ["conservative", "balanced", "aggressive"];
@@ -27,12 +30,12 @@ export function StrategyLabsWorkspace({ system }: { system: SimulatedAiPortfolio
 
   return (
     <div className="space-y-5 pb-24 sm:pb-8">
-      <section className="overflow-hidden rounded-3xl border border-cyan-300/18 bg-slate-950/75 shadow-2xl shadow-black/30 ring-1 ring-white/5">
-        <div className="border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.14),transparent_34%),linear-gradient(135deg,rgba(15,23,42,0.95),rgba(2,6,23,0.98))] p-5 sm:p-6">
+      <section className="poster-panel poster-panel-lab overflow-hidden rounded-3xl border border-violet-300/22 shadow-2xl shadow-black/30 ring-1 ring-white/5">
+        <div className="border-b border-white/10 p-5 sm:p-6">
           <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
               <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Strategy Labs</div>
-              <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">Simulated AI Portfolio Engine</h1>
+              <h1 className="poster-display-title mt-2 text-3xl sm:text-5xl">Strategy <span className="poster-word-violet">Labs</span></h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
                 Transparent model portfolios built from TradeVeto scanner, strategy, macro, event, shock, and risk/reward intelligence. Simulation only. No real-money execution.
               </p>
@@ -45,7 +48,19 @@ export function StrategyLabsWorkspace({ system }: { system: SimulatedAiPortfolio
           </div>
         </div>
 
-        <div className="grid gap-4 p-4 sm:p-5 xl:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="p-4 sm:p-5">
+          <IconInsightRail
+            items={[
+              { copy: "Replay-backed simulations", icon: <FlaskConical className="h-6 w-6" />, label: "Research Lab", tone: "violet" },
+              { copy: "Equity and drawdown curves", icon: <LineChart className="h-6 w-6" />, label: "Performance", tone: "cyan" },
+              { copy: "Mode score and risk policy", icon: <Gauge className="h-6 w-6" />, label: "Quality", tone: "emerald" },
+              { copy: "Scenario-aware outcomes", icon: <Target className="h-6 w-6" />, label: "Scenarios", tone: "amber" },
+              { copy: "Simulation, not advice", icon: <ShieldAlert className="h-6 w-6" />, label: "Risk Boundary", tone: "rose" },
+            ]}
+          />
+        </div>
+
+        <div className="grid gap-4 p-4 pt-0 sm:p-5 sm:pt-0 xl:grid-cols-[280px_minmax(0,1fr)]">
           <div className="space-y-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
               <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Simulation Mode</div>
@@ -143,14 +158,18 @@ function SummaryPanel({ result }: { result: SimulatedPortfolioModeResult }) {
     { label: "Strategy Quality", value: `${stats.strategyQualityScore}/100` },
   ];
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+    <div className="rounded-2xl border border-cyan-300/14 bg-white/[0.035] p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Performance Snapshot</div>
           <p className="mt-2 text-sm leading-6 text-slate-300">{result.summary}</p>
         </div>
-        <div className="shrink-0 rounded-full border border-white/10 bg-slate-950/70 px-3 py-1 text-xs font-semibold text-slate-300">
-          {stats.closedTradeCount.toLocaleString()} closed simulated trades
+        <div className="grid shrink-0 gap-2 sm:grid-cols-[132px_1fr] lg:w-[330px]">
+          <PosterGauge label="Quality" score={stats.strategyQualityScore} tone="violet" />
+          <div className="rounded-2xl border border-white/10 bg-slate-950/65 p-3">
+            <div className="text-xs font-semibold text-slate-300">{stats.closedTradeCount.toLocaleString()} closed simulated trades</div>
+            <MiniCandleStrip className="mt-3 h-20" tone="violet" values={[42, 49, 53, 47, 61, 68, 72, stats.strategyQualityScore]} />
+          </div>
         </div>
       </div>
       <div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
@@ -224,8 +243,13 @@ function CurrentPositions({ positions }: { positions: SimulatedPortfolioOpenPosi
         <article className="rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.045] p-4" key={`${position.symbol}:${position.strategyFamily}`}>
           <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
-              <div className="font-mono text-2xl font-black text-slate-50">{position.symbol}</div>
-              <div className="mt-1 text-xs font-semibold text-cyan-200">{strategyFamilyLabel(position.strategyFamily)}</div>
+              <div className="flex items-center gap-3">
+                <SymbolLogo size="sm" symbol={position.symbol} />
+                <div>
+                  <div className="font-mono text-2xl font-black text-slate-50">{position.symbol}</div>
+                  <div className="mt-1 text-xs font-semibold text-cyan-200">{strategyFamilyLabel(position.strategyFamily)}</div>
+                </div>
+              </div>
             </div>
             <div className="grid grid-cols-2 gap-2 text-right text-xs">
               <SmallMetric label="Allocation" value={`${position.allocationPct.toFixed(1)}%`} />

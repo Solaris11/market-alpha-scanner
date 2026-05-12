@@ -1,5 +1,7 @@
+import { Activity, AlertTriangle, Eye, Gauge, Scale, ShieldCheck, TimerReset, Waves } from "lucide-react";
 import type { DailyAction } from "@/lib/trading/daily-action";
 import { dailyActionAllowsTrade, noTradeActionCopy } from "@/lib/trading/daily-action";
+import { IconInsightRail, MiniCandleStrip, PosterGauge } from "@/components/visual/MiniVisuals";
 import { GlassPanel } from "./ui/GlassPanel";
 
 const TONE_STYLES: Record<DailyAction["tone"], { accent: string; glow: string; label: string; panel: string }> = {
@@ -40,9 +42,11 @@ export function DailyActionCard({
   const canTrade = dailyActionAllowsTrade(action);
   const noTradeCopy = canTrade ? null : noTradeActionCopy(action);
   const contextReasons = (whyReasons?.length ? whyReasons : defaultWhyReasons(canTrade)).slice(0, 3);
+  const readinessScore = canTrade ? 74 : action.tone === "stay-out" ? 24 : 38;
+  const posterTone = canTrade ? "poster-panel" : action.tone === "stay-out" ? "poster-panel-risk" : "poster-panel-wait";
 
   return (
-    <GlassPanel className={`overflow-hidden border p-5 md:p-6 ${tone.panel} ${tone.glow}`}>
+    <GlassPanel className={`poster-scanline overflow-hidden border p-5 md:p-6 ${posterTone} ${tone.panel} ${tone.glow}`}>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
         <div className="min-w-0">
           <div className="mb-4 flex flex-wrap gap-2 text-[11px] font-semibold text-slate-300">
@@ -54,7 +58,7 @@ export function DailyActionCard({
             <div className="text-[10px] font-black uppercase tracking-normal text-slate-400">Today&apos;s Action</div>
           </div>
           <div
-            className={`mt-3 break-words text-3xl font-black leading-tight tracking-normal ${tone.label}`}
+            className={`poster-display-title mt-3 break-words text-3xl leading-tight sm:text-4xl ${tone.label}`}
             style={{ WebkitBoxOrient: "vertical", WebkitLineClamp: 2, display: "-webkit-box", overflow: "hidden" }}
             title={action.label}
           >
@@ -72,6 +76,7 @@ export function DailyActionCard({
         </div>
 
         <aside className="rounded-2xl border border-white/10 bg-slate-950/35 p-3">
+          <PosterGauge label={canTrade ? "readiness" : "risk review"} score={readinessScore} tone={canTrade ? "emerald" : action.tone === "stay-out" ? "rose" : "amber"} />
           <div className="grid grid-cols-2 gap-2">
             <ContextTile label="Regime" value={marketState ?? "Unknown"} />
             <ContextTile label="Freshness" value={dataStatus ?? "Unknown"} />
@@ -94,6 +99,25 @@ export function DailyActionCard({
             </ul>
           </div>
         </aside>
+      </div>
+      <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1fr)_300px]">
+        <IconInsightRail
+          items={[
+            { copy: "Regime and breadth.", icon: <Activity className="h-6 w-6" />, label: "Market State", tone: "cyan" },
+            { copy: "Risk and volatility.", icon: <Waves className="h-6 w-6" />, label: "Volatility", tone: action.tone === "stay-out" ? "rose" : "amber" },
+            { copy: "Reward versus risk.", icon: <Scale className="h-6 w-6" />, label: "Risk / Reward", tone: "amber" },
+            { copy: "Patience rules.", icon: <ShieldCheck className="h-6 w-6" />, label: "Protect Capital", tone: canTrade ? "emerald" : "cyan" },
+            { copy: "What to monitor.", icon: <Eye className="h-6 w-6" />, label: "Watch", tone: "violet" },
+            { copy: "Setup timing.", icon: canTrade ? <Gauge className="h-6 w-6" /> : <TimerReset className="h-6 w-6" />, label: canTrade ? "Readiness" : "Wait", tone: canTrade ? "emerald" : "amber" },
+          ]}
+        />
+        <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-3">
+          <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+            <AlertTriangle className={`h-4 w-4 ${canTrade ? "text-emerald-300" : "text-amber-300"}`} />
+            Signal path
+          </div>
+          <MiniCandleStrip tone={canTrade ? "emerald" : action.tone === "stay-out" ? "rose" : "amber"} values={decisionDistribution.map((item) => item.value + 12)} />
+        </div>
       </div>
     </GlassPanel>
   );

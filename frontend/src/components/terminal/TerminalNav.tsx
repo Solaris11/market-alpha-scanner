@@ -35,11 +35,11 @@ export function DesktopTerminalNav() {
 
   return (
     <div className="hidden min-w-0 flex-1 items-center justify-start xl:flex">
-      <div className="flex max-w-full min-w-0 items-center gap-6 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <nav aria-label="Primary navigation" className="flex shrink-0 items-center gap-5 border-b border-white/10">
+      <div className="flex max-w-full min-w-0 items-center gap-3 overflow-x-auto rounded-[1.35rem] border border-cyan-300/12 bg-slate-950/35 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <nav aria-label="Primary navigation" className="flex shrink-0 items-center gap-1.5 rounded-[1.1rem] border border-cyan-300/12 bg-cyan-400/[0.035] p-1">
           {PRIMARY_NAV_ITEMS.map((item) => <DesktopNavLink item={item} key={item.href} pathname={pathname} primary />)}
         </nav>
-        <nav aria-label="Utility navigation" className="flex shrink-0 items-center gap-4 border-b border-white/10">
+        <nav aria-label="Utility navigation" className="flex shrink-0 items-center gap-1.5 rounded-[1.1rem] border border-white/10 bg-violet-400/[0.035] p-1">
           {utilities.map((item) => <DesktopNavLink item={item} key={item.href} pathname={pathname} />)}
         </nav>
       </div>
@@ -62,6 +62,64 @@ const NAV_ICON_MAP: Record<string, { Icon: LucideIcon; tone: string }> = {
   support: { Icon: HelpCircle, tone: "text-cyan-200" },
   "strategy-labs": { Icon: Bot, tone: "text-violet-200" },
   terminal: { Icon: Activity, tone: "text-cyan-200" },
+};
+
+const NAV_COLOR_MAP: Record<string, { active: string; hover: string; icon: string; rail: string }> = {
+  alerts: {
+    active: "border-amber-300/45 bg-amber-300/[0.14] text-amber-50 shadow-[0_0_26px_rgba(251,191,36,0.16)]",
+    hover: "hover:border-amber-300/30 hover:bg-amber-300/[0.08] hover:text-amber-100",
+    icon: "border-amber-300/30 bg-amber-300/15 text-amber-100 shadow-[0_0_18px_rgba(251,191,36,0.18)]",
+    rail: "bg-amber-300 shadow-[0_0_14px_rgba(251,191,36,0.55)]",
+  },
+  community: {
+    active: "border-emerald-300/45 bg-emerald-300/[0.13] text-emerald-50 shadow-[0_0_26px_rgba(52,211,153,0.16)]",
+    hover: "hover:border-emerald-300/30 hover:bg-emerald-300/[0.08] hover:text-emerald-100",
+    icon: "border-emerald-300/30 bg-emerald-300/15 text-emerald-100 shadow-[0_0_18px_rgba(52,211,153,0.18)]",
+    rail: "bg-emerald-300 shadow-[0_0_14px_rgba(52,211,153,0.55)]",
+  },
+  developers: {
+    active: "border-violet-300/45 bg-violet-300/[0.13] text-violet-50 shadow-[0_0_26px_rgba(167,139,250,0.16)]",
+    hover: "hover:border-violet-300/30 hover:bg-violet-300/[0.08] hover:text-violet-100",
+    icon: "border-violet-300/30 bg-violet-300/15 text-violet-100 shadow-[0_0_18px_rgba(167,139,250,0.18)]",
+    rail: "bg-violet-300 shadow-[0_0_14px_rgba(167,139,250,0.55)]",
+  },
+  history: {
+    active: "border-violet-300/45 bg-violet-300/[0.13] text-violet-50 shadow-[0_0_26px_rgba(167,139,250,0.16)]",
+    hover: "hover:border-violet-300/30 hover:bg-violet-300/[0.08] hover:text-violet-100",
+    icon: "border-violet-300/30 bg-violet-300/15 text-violet-100 shadow-[0_0_18px_rgba(167,139,250,0.18)]",
+    rail: "bg-violet-300 shadow-[0_0_14px_rgba(167,139,250,0.55)]",
+  },
+  mobile: {
+    active: "border-emerald-300/45 bg-emerald-300/[0.13] text-emerald-50 shadow-[0_0_26px_rgba(52,211,153,0.16)]",
+    hover: "hover:border-emerald-300/30 hover:bg-emerald-300/[0.08] hover:text-emerald-100",
+    icon: "border-emerald-300/30 bg-emerald-300/15 text-emerald-100 shadow-[0_0_18px_rgba(52,211,153,0.18)]",
+    rail: "bg-emerald-300 shadow-[0_0_14px_rgba(52,211,153,0.55)]",
+  },
+  opportunities: {
+    active: "border-emerald-300/45 bg-emerald-300/[0.13] text-emerald-50 shadow-[0_0_26px_rgba(52,211,153,0.16)]",
+    hover: "hover:border-emerald-300/30 hover:bg-emerald-300/[0.08] hover:text-emerald-100",
+    icon: "border-emerald-300/30 bg-emerald-300/15 text-emerald-100 shadow-[0_0_18px_rgba(52,211,153,0.18)]",
+    rail: "bg-emerald-300 shadow-[0_0_14px_rgba(52,211,153,0.55)]",
+  },
+  paper: {
+    active: "border-emerald-300/45 bg-emerald-300/[0.13] text-emerald-50 shadow-[0_0_26px_rgba(52,211,153,0.16)]",
+    hover: "hover:border-emerald-300/30 hover:bg-emerald-300/[0.08] hover:text-emerald-100",
+    icon: "border-emerald-300/30 bg-emerald-300/15 text-emerald-100 shadow-[0_0_18px_rgba(52,211,153,0.18)]",
+    rail: "bg-emerald-300 shadow-[0_0_14px_rgba(52,211,153,0.55)]",
+  },
+  "strategy-labs": {
+    active: "border-violet-300/45 bg-violet-300/[0.13] text-violet-50 shadow-[0_0_26px_rgba(167,139,250,0.16)]",
+    hover: "hover:border-violet-300/30 hover:bg-violet-300/[0.08] hover:text-violet-100",
+    icon: "border-violet-300/30 bg-violet-300/15 text-violet-100 shadow-[0_0_18px_rgba(167,139,250,0.18)]",
+    rail: "bg-violet-300 shadow-[0_0_14px_rgba(167,139,250,0.55)]",
+  },
+};
+
+const DEFAULT_NAV_COLOR = {
+  active: "border-cyan-300/45 bg-cyan-300/[0.13] text-cyan-50 shadow-[0_0_26px_rgba(34,211,238,0.16)]",
+  hover: "hover:border-cyan-300/30 hover:bg-cyan-300/[0.08] hover:text-cyan-100",
+  icon: "border-cyan-300/30 bg-cyan-300/15 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.18)]",
+  rail: "bg-cyan-300 shadow-[0_0_14px_rgba(34,211,238,0.55)]",
 };
 
 export function MobileTerminalNav() {
@@ -216,12 +274,13 @@ export function MobileTerminalNav() {
 
 function DesktopNavLink({ item, pathname, primary = false }: { item: AppNavItem; pathname: string; primary?: boolean }) {
   const active = isActivePath(pathname, item.href);
-  const base = primary ? "px-0.5 py-2 text-[13px] 2xl:text-sm" : "px-0.5 py-2 text-xs";
+  const base = primary ? "px-3 py-2 text-[13px] 2xl:text-sm" : "px-3 py-2 text-xs";
+  const color = NAV_COLOR_MAP[item.key] ?? DEFAULT_NAV_COLOR;
   const navigationIntent = useNavigationIntent(item.href, item.label);
   return (
     <Link
       aria-current={active ? "page" : undefined}
-      className={`inline-flex min-h-9 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 font-semibold transition-colors duration-200 ${base} ${active ? "border-cyan-300 text-cyan-100" : "border-transparent text-slate-400 hover:border-white/25 hover:text-slate-100"}`}
+      className={`inline-flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-2xl border font-semibold transition-all duration-200 hover:-translate-y-0.5 ${base} ${active ? color.active : `border-transparent text-slate-400 ${color.hover}`}`}
       href={item.href}
       onClick={navigationIntent.onClick}
       onFocus={navigationIntent.onFocus}
@@ -236,11 +295,12 @@ function DesktopNavLink({ item, pathname, primary = false }: { item: AppNavItem;
 
 function DrawerNavLink({ item, pathname }: { item: AppNavItem; pathname: string }) {
   const active = isActivePath(pathname, item.href);
+  const color = NAV_COLOR_MAP[item.key] ?? DEFAULT_NAV_COLOR;
   const navigationIntent = useNavigationIntent(item.href, item.label);
   return (
     <Link
       aria-current={active ? "page" : undefined}
-      className={`flex min-h-11 items-center justify-between rounded-lg border-l-2 px-3 py-2 text-sm font-semibold transition ${active ? "border-cyan-300 bg-cyan-400/[0.08] text-cyan-100" : "border-transparent bg-transparent text-slate-300 hover:border-white/20 hover:bg-white/[0.04] hover:text-slate-100"}`}
+      className={`flex min-h-12 items-center justify-between rounded-2xl border px-3 py-2 text-sm font-semibold transition ${active ? color.active : `border-white/8 bg-white/[0.025] text-slate-300 ${color.hover}`}`}
       href={item.href}
       onClick={navigationIntent.onClick}
       onFocus={navigationIntent.onFocus}
@@ -259,11 +319,12 @@ function DrawerNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
 function BottomNavLink({ item, pathname }: { item: AppNavItem; pathname: string }) {
   const active = isActivePath(pathname, item.href);
   const label = item.key === "opportunities" ? "Ideas" : item.label;
+  const color = NAV_COLOR_MAP[item.key] ?? DEFAULT_NAV_COLOR;
   const navigationIntent = useNavigationIntent(item.href, label);
   return (
     <Link
       className={`relative flex min-h-12 flex-col items-center justify-center rounded-xl border px-1 text-center text-[11px] font-semibold transition ${
-        active ? "border-cyan-300/35 bg-cyan-400/15 text-cyan-100" : "border-transparent text-slate-400 hover:bg-white/[0.05] hover:text-slate-100"
+        active ? color.active : `border-transparent text-slate-400 ${color.hover}`
       }`}
       href={item.href}
       onClick={navigationIntent.onClick}
@@ -271,7 +332,7 @@ function BottomNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
       onPointerEnter={navigationIntent.onPointerEnter}
       prefetch
     >
-      {active ? <span className="absolute left-1/2 top-1 h-0.5 w-7 -translate-x-1/2 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.45)]" /> : null}
+      {active ? <span className={`absolute left-1/2 top-1 h-0.5 w-7 -translate-x-1/2 rounded-full ${color.rail}`} /> : null}
       <NavGlyph item={item} active={active} compact />
       <span className="mt-0.5 truncate">{label}</span>
     </Link>
@@ -299,13 +360,14 @@ function BottomMenuButton({ buttonRef, onClick, open }: { buttonRef: RefObject<H
 
 function NavGlyph({ active, compact = false, item }: { active: boolean; compact?: boolean; item: AppNavItem }) {
   const config = NAV_ICON_MAP[item.key] ?? { Icon: BarChart3, tone: "text-cyan-200" };
+  const color = NAV_COLOR_MAP[item.key] ?? DEFAULT_NAV_COLOR;
   const Icon = config.Icon;
   return (
     <span
       aria-hidden="true"
       className={`grid shrink-0 place-items-center rounded-xl border transition ${
         compact ? "h-5 w-5" : "h-7 w-7"
-      } ${active ? "border-cyan-300/30 bg-cyan-300/15 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.18)]" : `border-white/10 bg-white/[0.04] ${config.tone}`}`}
+      } ${active ? color.icon : `border-white/10 bg-white/[0.04] ${config.tone}`}`}
     >
       <Icon className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} strokeWidth={2.2} />
     </span>

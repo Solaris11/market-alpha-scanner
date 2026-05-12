@@ -4,79 +4,83 @@ Date: 2026-05-12
 
 ## Summary
 
-TradeVeto’s visual system was upgraded from a mostly flat dark interface into a richer institutional fintech UI. The work preserved workflows and scoring logic while adding a shared visual language across the landing page, terminal shell, navigation, symbol identity, ranking rows, and opportunity cards.
+TradeVeto's visual layer was upgraded toward the reference poster system: stronger dark fintech contrast, larger editorial headings, richer cyan/amber/rose/violet accents, icon-led scanning, real symbol logo presentation, mini charts, gauges, and more differentiated card hierarchy.
+
+This pass preserves the existing product flows and scoring logic. The work is visual and presentation-focused.
 
 ## Design System Changes
 
-- Added global TradeVeto visual tokens for cyan, emerald, amber, rose, violet, card depth, aurora surfaces, shimmer, icon tiles, and hero card treatment.
-- Applied the new visual surface to terminal shells, glass panels, marketing cards, and the terminal header.
-- Added lucide iconography to app navigation and marketing feature surfaces.
-- Kept motion restrained: subtle hover transitions, shimmer, glow, and card depth only.
+- Added poster-style panel classes for default, WAIT, risk/shock, and strategy-lab surfaces.
+- Added large uppercase poster title styling with responsive mobile letter spacing.
+- Added reusable icon rails, scanline motion, mini chart backgrounds, gauges, candle strips, and metric rails.
+- Upgraded terminal cards through the shared `GlassPanel` surface.
+- Added richer gradient/grid backgrounds while keeping the institutional dark theme.
 
 ## Symbol / Logo System
 
-- Added `frontend/src/lib/visual-identity.ts` for symbol category, accent color, company domain, and fallback glyphs.
-- Added `SymbolLogo` and `SymbolIdentityLine` components.
-- Company logos are loaded through a first-party route: `/api/visual/symbol-logo?symbol=AMD`.
-- The proxy keeps CSP strict while allowing real company favicon/logo context where available.
-- Fallback monograms remain available for unsupported symbols or failed logo fetches.
+- Existing symbol visual identity remains active through `SymbolLogo`.
+- Known symbols use real logo proxy assets through `/api/visual/symbol-logo`.
+- Opportunity, terminal, right-rail, and strategy portfolio surfaces now show stronger symbol identity instead of text-only rows.
 
-## Visual Storytelling
+## App Surface Updates
 
-- Added lightweight SVG/CSS visual components:
-  - `MiniSparkline`
-  - `VisualMetricRail`
-  - `SignalFlowVisual`
-  - `HeatDots`
-- Opportunity cards now show quality curves, score/conviction/fragility rails, and market pressure dots.
-- Symbol hero cards now show logo identity, signal shape, and visual score rails.
-- Ranking rows now include symbol logos and category cues.
+- Landing page now includes a poster-inspired visual intelligence showcase covering:
+  - What Matters Now
+  - Decision Assistant
+  - Symbol Intelligence + Replay
+  - Shock Intelligence
+  - Research Copilot
+  - Strategy Labs
+  - Watchlists + Alerts
+  - Why Wait?
+- Terminal console now has richer What Matters Now visual hierarchy, icon rails, metric rails, and mini charts.
+- Daily action card now includes readiness gauge, icon evaluation rail, and signal path visual.
+- Research Copilot panel now uses clearer icon-led explanation groups and a compact signal strip.
+- Terminal right rail now shows logo-backed watchlist rows and signal strips.
+- Strategy Labs now has a poster-style hero, lab icon rail, quality gauge, and symbol-logo open-position cards.
+- Navigation was visually upgraded with calmer colorful active states across desktop, mobile drawer, and mobile bottom nav.
 
-## Landing Page
+## Performance Safety
 
-- Added colorful focus tiles for Market State, Decision Quality, Opportunities, Dangerous Now, What Changed, and Watchlist Signals.
-- Added icon-led feature, proof, trust, and edge cards.
-- Added real QR CTA using production QR assets, then corrected the landing QR presentation to use the scannable social-square QR asset and eager loading.
+- Visuals are CSS/SVG/lightweight React components.
+- No new heavy charting dependency was added.
+- Existing ECharts usage remains unchanged.
+- Animations are subtle and disabled under reduced-motion preferences.
 
-## Mobile / Navigation Fix
+## Local Validation
 
-The new `visual-card` class initially introduced `overflow: hidden`, which clipped fixed navigation drawers inside the terminal header on mobile.
+- `npm run lint`: passed
+- `npm run build`: passed
+- `npm test -- --runInBand`: passed, 371 tests
+- `npm audit --omit=dev`: passed, 0 vulnerabilities
+- `python3 -m py_compile $(git ls-files '*.py')`: passed
+- `npx pyright . --pythonpath .venv/bin/python --warnings`: passed
+- `git diff --check`: passed
 
-Fix:
-- Added `.visual-card-overflow-visible`.
-- Applied it to `TerminalHeader`.
-- Production mobile screenshot confirms the More drawer now opens without being clipped.
+## Local Screenshot Smoke
 
-## Production Validation
+Screenshots captured under:
 
-Local validation:
-- `npm run lint` passed.
-- `npm test -- --runInBand` passed: 371 tests.
-- `npm run build` passed.
-- `npm audit --omit=dev` passed with 0 vulnerabilities.
-- `python3 -m py_compile $(git ls-files '*.py')` passed.
-- `npx pyright . --pythonpath .venv/bin/python --warnings` passed.
-- `git diff --check` passed.
+- `/Users/hdtv/Desktop/tradeveto-visual-qa-local/home-desktop.png`
+- `/Users/hdtv/Desktop/tradeveto-visual-qa-local/home-mobile.png`
+- `/Users/hdtv/Desktop/tradeveto-visual-qa-local/strategy-desktop.png`
+- `/Users/hdtv/Desktop/tradeveto-visual-qa-local/strategy-mobile.png`
+- `/Users/hdtv/Desktop/tradeveto-visual-qa-local/terminal-mobile.png`
+- `/Users/hdtv/Desktop/tradeveto-visual-qa-local/performance-desktop.png`
 
-Production validation:
-- Production pulled and rebuilt from pushed commits.
-- Production frontend container healthy.
-- `/api/health` returned ok.
-- `/terminal` returned 200.
-- `/api/visual/symbol-logo?symbol=AMD` returned `image/png`.
-- QR assets returned `image/png`.
+Smoke status:
 
-Screenshots captured:
-- `/Users/hdtv/Desktop/tradeveto-visual-checks/tradeveto-home-desktop-final.png`
-- `/Users/hdtv/Desktop/tradeveto-visual-checks/tradeveto-home-mobile-final.png`
-- `/Users/hdtv/Desktop/tradeveto-visual-checks/tradeveto-terminal-desktop-final.png`
-- `/Users/hdtv/Desktop/tradeveto-visual-checks/tradeveto-terminal-mobile-final.png`
-- `/Users/hdtv/Desktop/tradeveto-visual-checks/terminal-mobile-more-open-fixed-skipped.png`
+- `/`: 200, no console errors
+- `/strategy-labs`: 200, no console errors
+- `/terminal`: 200, no console errors
+- `/performance`: 200, no console errors
 
 ## Remaining Visual Debt
 
-- More product surfaces can adopt symbol logos over time, especially replay, portfolio, and strategy labs.
-- Authenticated beta screenshots should be reviewed with a real beta account to tune premium-state visuals.
-- The first-run onboarding overlay is visually heavy on very small mobile screens and should be simplified in a follow-up UX pass.
+- Authenticated premium screenshots should be reviewed on production after deploy to inspect the full unlocked Strategy Labs and terminal state.
+- Some legacy panels still use denser text blocks; these can be gradually converted to the icon/metric/chart pattern.
+- Future visual polish can add more sector-specific heatmaps and real historical sparklines where data is already available.
 
-Final status: VISUAL UX TRANSFORMATION COMPLETE
+## Status
+
+VISUAL UX TRANSFORMATION COMPLETE

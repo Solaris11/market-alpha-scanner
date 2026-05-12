@@ -4,15 +4,26 @@ import {
   Activity,
   AlertTriangle,
   BarChart3,
+  BellRing,
   BookOpenCheck,
+  Bot,
   BrainCircuit,
   CalendarClock,
+  Eye,
+  FlaskConical,
   Gauge,
+  Hourglass,
   LineChart,
+  MessageCircle,
   Radar,
+  Scale,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
   Target,
+  TrendingUp,
+  Waves,
+  Zap,
   type LucideIcon,
 } from "lucide-react";
 import { LandingConversionCtas } from "@/components/marketing/LandingConversionCtas";
@@ -20,7 +31,8 @@ import { MarketingCard, MarketingShell, SectionHeader } from "@/components/marke
 import { MarketingReveal } from "@/components/marketing/MarketingReveal";
 import { PricingActionCard } from "@/components/pricing/PricingActionCard";
 import { PricingConversionCta } from "@/components/pricing/PricingConversionCta";
-import { BRAND_NAME, BRAND_PRODUCT_DESCRIPTION, BRAND_TAGLINE } from "@/lib/brand";
+import { IconInsightRail, MiniCandleStrip, PosterGauge, VisualMetricRail, type VisualTone } from "@/components/visual/MiniVisuals";
+import { BRAND_NAME, BRAND_PRODUCT_DESCRIPTION } from "@/lib/brand";
 import { marketingMetadata, softwareApplicationJsonLd } from "@/lib/marketing-seo";
 
 export const dynamic = "force-dynamic";
@@ -77,6 +89,149 @@ const proofVisuals: Array<{ Icon: LucideIcon; tone: MarketingTone }> = [
   { Icon: BookOpenCheck, tone: "violet" },
   { Icon: LineChart, tone: "emerald" },
   { Icon: BrainCircuit, tone: "amber" },
+];
+
+type PosterFeature = {
+  accentWord: string;
+  eyebrow: string;
+  iconItems: Array<{ copy: string; Icon: LucideIcon; label: string; tone: VisualTone }>;
+  narrative: string;
+  score: number;
+  subtitle: string;
+  title: string;
+  tone: VisualTone;
+  visual: "candles" | "gauge" | "bars";
+};
+
+const posterFeatures: PosterFeature[] = [
+  {
+    accentWord: "Now",
+    eyebrow: "Introducing TradeVeto Features - Part 1",
+    iconItems: [
+      { copy: "Regime & freshness", Icon: Activity, label: "Market State", tone: "cyan" },
+      { copy: "Quality scores", Icon: Target, label: "Decision Quality", tone: "emerald" },
+      { copy: "High-quality setups", Icon: Radar, label: "Best Opportunities", tone: "violet" },
+      { copy: "Elevated-risk alerts", Icon: AlertTriangle, label: "Dangerous Now", tone: "amber" },
+    ],
+    narrative: "A unified attention layer that helps users see what changed, what is risky, and what deserves patience.",
+    score: 58,
+    subtitle: "Focus on what actually matters. Not the noise.",
+    title: "What Matters",
+    tone: "cyan",
+    visual: "bars",
+  },
+  {
+    accentWord: "Assistant",
+    eyebrow: "Introducing TradeVeto Features - Part 2",
+    iconItems: [
+      { copy: "Current regime", Icon: Gauge, label: "Market Regime", tone: "cyan" },
+      { copy: "Reward vs risk", Icon: Scale, label: "Risk / Reward", tone: "rose" },
+      { copy: "Setup timing", Icon: ShieldCheck, label: "Entry Quality", tone: "emerald" },
+      { copy: "Replay context", Icon: BookOpenCheck, label: "Replay", tone: "violet" },
+    ],
+    narrative: "Explains why a setup is blocked, watched, or research-ready before the user acts.",
+    score: 44,
+    subtitle: "Understand why. Trade with clarity, not noise.",
+    title: "Decision",
+    tone: "cyan",
+    visual: "gauge",
+  },
+  {
+    accentWord: "Replay",
+    eyebrow: "Introducing TradeVeto Features - Part 3",
+    iconItems: [
+      { copy: "Real ticker context", Icon: Eye, label: "Symbol Context", tone: "cyan" },
+      { copy: "Large-move history", Icon: TrendingUp, label: "Replay Proof", tone: "emerald" },
+      { copy: "Volatility pressure", Icon: Waves, label: "Risk Pressure", tone: "rose" },
+      { copy: "Watch zones", Icon: Hourglass, label: "Why Wait", tone: "amber" },
+    ],
+    narrative: "Shows what the system saw before a move, then compares the outcome with the original context.",
+    score: 72,
+    subtitle: "Not just signals. Context.",
+    title: "Symbol Intelligence +",
+    tone: "violet",
+    visual: "candles",
+  },
+  {
+    accentWord: "Intelligence",
+    eyebrow: "Introducing TradeVeto Features - Part 4",
+    iconItems: [
+      { copy: "Large-move risk", Icon: Zap, label: "Volatility", tone: "rose" },
+      { copy: "Catalyst pressure", Icon: CalendarClock, label: "Event Risk", tone: "amber" },
+      { copy: "Fragile setups", Icon: ShieldAlert, label: "Shock Risk", tone: "rose" },
+      { copy: "Avoid chasing", Icon: AlertTriangle, label: "Dangerous", tone: "rose" },
+    ],
+    narrative: "Separates real asymmetry from noisy moves that only look attractive after the spike.",
+    score: 78,
+    subtitle: "Not every breakout deserves chasing.",
+    title: "Shock",
+    tone: "rose",
+    visual: "gauge",
+  },
+  {
+    accentWord: "Copilot",
+    eyebrow: "Introducing TradeVeto Features - Part 5",
+    iconItems: [
+      { copy: "Grounded Q&A", Icon: Bot, label: "Ask Why", tone: "violet" },
+      { copy: "Context packet", Icon: BrainCircuit, label: "Reasoning", tone: "cyan" },
+      { copy: "Follow-up flow", Icon: MessageCircle, label: "Conversation", tone: "emerald" },
+      { copy: "Guardrails", Icon: ShieldCheck, label: "Grounded", tone: "cyan" },
+    ],
+    narrative: "Turns deterministic TradeVeto packets into concise answers without inventing prices, events, or certainty.",
+    score: 72,
+    subtitle: "Ask why, not just what.",
+    title: "Research",
+    tone: "violet",
+    visual: "bars",
+  },
+  {
+    accentWord: "Labs",
+    eyebrow: "Introducing TradeVeto Features - Part 6",
+    iconItems: [
+      { copy: "Replay-backed", Icon: FlaskConical, label: "Simulations", tone: "violet" },
+      { copy: "Drawdown aware", Icon: ShieldAlert, label: "Risk", tone: "rose" },
+      { copy: "Scenario testing", Icon: Target, label: "Scenarios", tone: "cyan" },
+      { copy: "Performance curve", Icon: LineChart, label: "Strategy", tone: "emerald" },
+    ],
+    narrative: "Makes simulated strategy behavior visible through performance curves, drawdowns, and regime context.",
+    score: 88,
+    subtitle: "Study behavior. Not hype.",
+    title: "Strategy",
+    tone: "violet",
+    visual: "candles",
+  },
+  {
+    accentWord: "Alerts",
+    eyebrow: "Introducing TradeVeto Features - Part 7",
+    iconItems: [
+      { copy: "Setup improved", Icon: Eye, label: "Context Alerts", tone: "cyan" },
+      { copy: "Risk rising", Icon: AlertTriangle, label: "Risk Review", tone: "amber" },
+      { copy: "Large-move watch", Icon: Zap, label: "Shock Watch", tone: "violet" },
+      { copy: "Mobile-ready", Icon: BellRing, label: "Push", tone: "emerald" },
+    ],
+    narrative: "Tracks evolving setups and changing risk so users monitor conditions instead of reacting to every price move.",
+    score: 82,
+    subtitle: "Monitor the setup, not just the price.",
+    title: "Watchlists +",
+    tone: "cyan",
+    visual: "bars",
+  },
+  {
+    accentWord: "Wait?",
+    eyebrow: "Introducing TradeVeto Features - Part 8",
+    iconItems: [
+      { copy: "Protect capital", Icon: ShieldCheck, label: "Risk First", tone: "amber" },
+      { copy: "Be patient", Icon: Hourglass, label: "Patience", tone: "amber" },
+      { copy: "Avoid weak setups", Icon: Scale, label: "Balance", tone: "rose" },
+      { copy: "Better entries", Icon: Target, label: "Opportunity", tone: "emerald" },
+    ],
+    narrative: "Shows why patience can be a strategy when confirmation, reward/risk, or regime context is not aligned.",
+    score: 27,
+    subtitle: "Not every trade deserves risk.",
+    title: "Why",
+    tone: "amber",
+    visual: "gauge",
+  },
 ];
 
 const edgeVisuals: Array<{ Icon: LucideIcon; tone: MarketingTone }> = [
@@ -190,7 +345,9 @@ export default async function HomePage() {
               <div className="inline-flex rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-cyan-200">AI market intelligence</div>
               <div className="inline-flex rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-emerald-200">Closed beta</div>
             </div>
-            <h1 className="mt-6 max-w-4xl text-5xl font-semibold tracking-tight text-white sm:text-6xl lg:text-7xl">{BRAND_TAGLINE}</h1>
+            <h1 className="poster-display-title mt-6 max-w-4xl text-4xl sm:text-6xl lg:text-7xl">
+              AI Market Intelligence <span className="poster-word-cyan">That Says Wait</span>
+            </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
               {BRAND_NAME} combines WAIT-first market intelligence, evidence maturity, verified event context, shock research, replay, and regime-aware analysis to help users review opportunities without turning every mover into a trade idea.
             </p>
@@ -222,6 +379,8 @@ export default async function HomePage() {
           </MarketingReveal>
         </div>
       </section>
+
+      <FeaturePosterShowcase />
 
       <section className="px-4 py-14 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
@@ -500,6 +659,149 @@ export default async function HomePage() {
       </section>
     </MarketingShell>
   );
+}
+
+function FeaturePosterShowcase() {
+  return (
+    <section className="px-4 py-16 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <SectionHeader
+          copy="The product should feel like a high-signal intelligence system, not a wall of text. These visual modules bring the poster language into the live app: clearer icons, stronger state colors, gauges, bars, sparklines, and QR-ready beta calls to action."
+          eyebrow="Visual intelligence system"
+          title="Richer market storytelling without losing discipline."
+        />
+        <div className="mt-10 grid gap-5 lg:grid-cols-2">
+          {posterFeatures.map((feature) => (
+            <PosterFeatureCard feature={feature} key={`${feature.title}-${feature.accentWord}`} />
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PosterFeatureCard({ feature }: { feature: PosterFeature }) {
+  return (
+    <MarketingReveal className={`poster-panel ${posterPanelClass(feature.tone)} overflow-hidden rounded-[2rem] border p-5 shadow-2xl md:p-6`}>
+      <div className="flex flex-col gap-5">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.28em] text-slate-400">{feature.eyebrow}</div>
+          <h3 className="poster-display-title mt-3 text-3xl sm:text-4xl">
+            {feature.title} <span className={posterWordClass(feature.tone)}>{feature.accentWord}</span>
+          </h3>
+          <p className="mt-2 text-lg font-semibold text-slate-200">{feature.subtitle}</p>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">{feature.narrative}</p>
+        </div>
+
+        <IconInsightRail
+          items={feature.iconItems.map((item) => ({
+            copy: item.copy,
+            icon: <item.Icon className="h-6 w-6" strokeWidth={2.2} />,
+            label: item.label,
+            tone: item.tone,
+          }))}
+        />
+
+        <div className="grid gap-4 md:grid-cols-[0.78fr_1fr]">
+          <div className="rounded-3xl border border-white/10 bg-slate-950/45 p-4">
+            <PosterVisual feature={feature} />
+          </div>
+          <div className="grid gap-3">
+            <VisualMetricRail
+              metrics={[
+                { label: "Signal clarity", tone: feature.tone, value: feature.score },
+                { label: "Risk awareness", tone: feature.tone === "rose" ? "rose" : "amber", value: feature.tone === "amber" ? 84 : 68 },
+                { label: "Context depth", tone: "cyan", value: 76 },
+              ]}
+            />
+            <div className="rounded-2xl border border-cyan-300/16 bg-cyan-300/[0.055] p-4">
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Beta action</div>
+              <div className="mt-2 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                <div>
+                  <div className="text-base font-black text-white">Join the limited closed beta</div>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">Invite code required. Research-first intelligence, not financial advice.</p>
+                </div>
+                <img
+                  alt="TradeVeto register QR code"
+                  className="h-20 w-20 rounded-xl border border-white/15 bg-white object-cover p-1"
+                  loading="lazy"
+                  src="/marketing/qr/tradeveto-register-qr-dark.png"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </MarketingReveal>
+  );
+}
+
+function PosterVisual({ feature }: { feature: PosterFeature }) {
+  if (feature.visual === "gauge") {
+    return (
+      <div className="grid gap-3">
+        <PosterGauge label={feature.tone === "amber" ? "Elevated Risk" : feature.tone === "rose" ? "Shock Risk" : "Readiness"} score={feature.score} tone={feature.tone} />
+        <MiniCandleStrip tone={feature.tone} values={[44, 49, 46, 58, 51, 62, 68, 61, 73, feature.score]} />
+      </div>
+    );
+  }
+
+  if (feature.visual === "candles") {
+    return (
+      <div className="grid gap-3">
+        <MiniCandleStrip tone={feature.tone} values={[38, 35, 42, 47, 44, 52, 61, 57, 66, 73, 69, feature.score]} />
+        <div className="grid grid-cols-3 gap-2 text-center">
+          {[
+            ["Before", "Risk Review", "text-amber-200"],
+            ["After", "+8.8% Move", "text-emerald-200"],
+            ["Proof", "Replay-backed", "text-cyan-200"],
+          ].map(([label, value, className]) => (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3" key={label}>
+              <div className="text-[10px] font-black uppercase tracking-[0.15em] text-slate-500">{label}</div>
+              <div className={`mt-1 text-sm font-black ${className}`}>{value}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3">
+      <div className="poster-mini-chart rounded-2xl border border-white/10 p-4">
+        <div className="mb-4 flex items-center justify-between">
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Signal distribution</div>
+          <div className={posterWordClass(feature.tone)}>{feature.score}</div>
+        </div>
+        <div className="grid grid-cols-6 items-end gap-2">
+          {[38, 54, 44, 68, 58, feature.score].map((value, index) => (
+            <span
+              aria-hidden="true"
+              className={`rounded-t-lg bg-gradient-to-t ${feature.tone === "rose" ? "from-rose-500 to-red-300" : feature.tone === "amber" ? "from-amber-400 to-yellow-200" : feature.tone === "violet" ? "from-violet-500 to-fuchsia-300" : "from-cyan-400 to-sky-200"}`}
+              key={`${value}-${index}`}
+              style={{ height: `${Math.max(24, value)}px` }}
+            />
+          ))}
+        </div>
+      </div>
+      <MiniCandleStrip tone={feature.tone} values={[22, 34, 29, 45, 52, 49, 63, 57, feature.score]} />
+    </div>
+  );
+}
+
+function posterPanelClass(tone: VisualTone): string {
+  if (tone === "amber") return "poster-panel-wait border-amber-300/24";
+  if (tone === "rose") return "poster-panel-risk border-rose-300/24";
+  if (tone === "violet") return "poster-panel-lab border-violet-300/24";
+  if (tone === "emerald") return "border-emerald-300/24";
+  return "border-cyan-300/18";
+}
+
+function posterWordClass(tone: VisualTone): string {
+  if (tone === "amber") return "poster-word-amber";
+  if (tone === "rose") return "poster-word-rose";
+  if (tone === "violet") return "poster-word-violet";
+  return "poster-word-cyan";
 }
 
 function VisualFocusTile({ tile }: { tile: { copy: string; Icon: LucideIcon; title: string; tone: MarketingTone } }) {

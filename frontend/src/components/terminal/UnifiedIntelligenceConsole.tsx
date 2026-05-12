@@ -1,7 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { AlertTriangle, Bell, Eye, Gauge, Target, Zap } from "lucide-react";
 import { useMemo } from "react";
+import { IconInsightRail, MiniCandleStrip, VisualMetricRail } from "@/components/visual/MiniVisuals";
+import { SymbolLogo } from "@/components/visual/SymbolLogo";
 import {
   buildUnifiedIntelligenceConsole,
   type UnifiedConsoleBriefing,
@@ -129,11 +132,11 @@ function SimpleHomeConsole({ consoleModel }: { consoleModel: ReturnType<typeof b
   ].filter((item): item is string => Boolean(item));
 
   return (
-    <GlassPanel className="overflow-hidden border-cyan-300/20 bg-cyan-400/[0.035] p-4 sm:p-5" data-onboarding-target="what-matters-now">
+    <GlassPanel className="poster-scanline overflow-hidden border-cyan-300/20 bg-cyan-400/[0.035] p-4 sm:p-5" data-onboarding-target="what-matters-now">
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0">
           <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Unified Simple Console</div>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-50 sm:text-4xl">What Matters Now</h1>
+          <h1 className="poster-display-title mt-2 text-3xl tracking-tight text-slate-50 sm:text-5xl">What Matters <span className="poster-word-cyan">Now</span></h1>
           <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-300">{humanizeInsightText(headline)}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <SimpleStatusPill label="Market State" value={humanizeInsightText(consoleModel.macroRegime.label)} />
@@ -147,6 +150,19 @@ function SimpleHomeConsole({ consoleModel }: { consoleModel: ReturnType<typeof b
             <SimpleMetricRow key={metric.key} metric={metric} />
           ))}
         </div>
+      </div>
+
+      <div className="mt-5">
+        <IconInsightRail
+          items={[
+            { copy: "Regime and freshness.", icon: <Gauge className="h-6 w-6" />, label: "Market State", tone: "cyan" },
+            { copy: "Quality scores.", icon: <Target className="h-6 w-6" />, label: "Best Setups", tone: "emerald" },
+            { copy: "Large-move context.", icon: <Zap className="h-6 w-6" />, label: "Shock Watch", tone: "violet" },
+            { copy: "Elevated-risk alerts.", icon: <AlertTriangle className="h-6 w-6" />, label: "Dangerous", tone: "amber" },
+            { copy: "Tracked changes.", icon: <Bell className="h-6 w-6" />, label: "Watchlist", tone: "rose" },
+            { copy: "Monitor next.", icon: <Eye className="h-6 w-6" />, label: "What Changed", tone: "cyan" },
+          ]}
+        />
       </div>
 
       <div className="mt-5 grid gap-3 xl:grid-cols-3">
@@ -210,11 +226,17 @@ function SimpleMetricRow({ metric }: { metric: UnifiedConsoleMetric }) {
   const tone = metric.inverse
     ? metric.score >= 70 ? "text-rose-200" : metric.score <= 45 ? "text-emerald-200" : "text-amber-200"
     : metric.score >= 70 ? "text-emerald-200" : metric.score >= 50 ? "text-amber-200" : "text-slate-300";
+  const visualTone = metric.inverse
+    ? metric.score >= 70 ? "rose" : metric.score <= 45 ? "emerald" : "amber"
+    : metric.score >= 70 ? "emerald" : metric.score >= 50 ? "amber" : "cyan";
   return (
-    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_56px] items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_64px] items-center gap-3 rounded-xl border border-white/10 bg-white/[0.04] p-3">
       <div className="min-w-0">
         <div className="truncate text-[10px] font-black uppercase tracking-[0.14em] text-slate-500" title={metric.label}>{metric.label}</div>
         <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-400">{humanizeInsightText(metric.detail)}</p>
+        <div className="mt-2">
+          <VisualMetricRail metrics={[{ label: metric.label, tone: visualTone, value: metric.score }]} />
+        </div>
       </div>
       <div className={`text-right font-mono text-2xl font-black ${tone}`}>{formatNumber(metric.score, 0)}</div>
     </div>
@@ -239,10 +261,14 @@ function SimpleOpportunityList({ empty, items, title }: { empty: string; items: 
         {items.length ? items.map((item, index) => (
           <Link className="block rounded-lg border border-white/10 bg-slate-950/35 p-3 transition hover:border-emerald-300/35 hover:bg-white/[0.05]" href={item.href} key={item.key}>
             <div className="flex items-center justify-between gap-2">
-              <div className="font-mono text-base font-black text-slate-50">{index + 1}. {item.symbol}</div>
+              <div className="flex min-w-0 items-center gap-2">
+                <SymbolLogo size="sm" symbol={item.symbol} />
+                <div className="font-mono text-base font-black text-slate-50">{index + 1}. {item.symbol}</div>
+              </div>
               <div className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2 py-1 text-[10px] font-bold text-emerald-100">{item.attentionPriorityScore}</div>
             </div>
             <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-300">{humanizeInsightText(item.reasonForAttention)}</p>
+            <MiniCandleStrip className="mt-2 h-12 p-2" tone="emerald" values={[32, 38, 36, 44, 52, item.attentionPriorityScore]} />
             <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-500">{humanizeInsightText(item.actionContext)}</p>
           </Link>
         )) : <p className="text-sm leading-6 text-slate-500">{empty}</p>}
@@ -259,10 +285,14 @@ function SimpleRiskList({ empty, items, title }: { empty: string; items: Unified
         {items.length ? items.map((item, index) => (
           <Link className="block rounded-lg border border-white/10 bg-slate-950/35 p-3 transition hover:border-amber-300/35 hover:bg-white/[0.05]" href={item.href} key={item.key}>
             <div className="flex items-center justify-between gap-2">
-              <div className="font-mono text-base font-black text-slate-50">{index + 1}. {item.symbol}</div>
+              <div className="flex min-w-0 items-center gap-2">
+                <SymbolLogo size="sm" symbol={item.symbol} />
+                <div className="font-mono text-base font-black text-slate-50">{index + 1}. {item.symbol}</div>
+              </div>
               <div className={priorityClass(item.attentionPriority)}>{item.urgencyLabel}</div>
             </div>
             <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-300">{humanizeInsightText(item.riskLabel)}</p>
+            <MiniCandleStrip className="mt-2 h-12 p-2" tone="amber" values={[52, 48, 58, 62, 54, item.attentionPriorityScore]} />
             <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-500">{humanizeInsightText(item.actionContext)}</p>
           </Link>
         )) : <p className="text-sm leading-6 text-slate-500">{empty}</p>}
