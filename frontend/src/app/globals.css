@@ -151,9 +151,26 @@ a {
   }
 }
 
+@keyframes tradeveto-route-progress {
+  0% {
+    transform: translateX(-72%);
+  }
+  55% {
+    transform: translateX(24%);
+  }
+  100% {
+    transform: translateX(115%);
+  }
+}
+
+.tradeveto-route-progress {
+  animation: tradeveto-route-progress 1.05s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-badge-loop,
-  .landing-hero-sweep::before {
+  .landing-hero-sweep::before,
+  .tradeveto-route-progress {
     animation: none;
   }
 

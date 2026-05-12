@@ -8,6 +8,7 @@ import { BrandMark } from "@/components/brand/BrandMark";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { ACCOUNT_NAV_ITEM, MOBILE_BOTTOM_NAV_ITEMS, MOBILE_MORE_NAV_LABEL, PRIMARY_NAV_ITEMS, activeSectionTitle, drawerNavSections, isActivePath, visibleUtilityNavItems, type AppNavItem } from "@/lib/navigation";
+import { useNavigationIntent } from "./NavigationPerformance";
 
 export function DesktopTerminalNav() {
   const pathname = usePathname();
@@ -178,11 +179,16 @@ export function MobileTerminalNav() {
 function DesktopNavLink({ item, pathname, primary = false }: { item: AppNavItem; pathname: string; primary?: boolean }) {
   const active = isActivePath(pathname, item.href);
   const base = primary ? "px-0.5 py-2 text-[13px] 2xl:text-sm" : "px-0.5 py-2 text-xs";
+  const navigationIntent = useNavigationIntent(item.href, item.label);
   return (
     <Link
       aria-current={active ? "page" : undefined}
       className={`inline-flex min-h-9 shrink-0 items-center whitespace-nowrap border-b-2 font-semibold transition-colors duration-200 ${base} ${active ? "border-cyan-300 text-cyan-100" : "border-transparent text-slate-400 hover:border-white/25 hover:text-slate-100"}`}
       href={item.href}
+      onClick={navigationIntent.onClick}
+      onFocus={navigationIntent.onFocus}
+      onPointerEnter={navigationIntent.onPointerEnter}
+      prefetch
     >
       {item.label}
     </Link>
@@ -191,11 +197,16 @@ function DesktopNavLink({ item, pathname, primary = false }: { item: AppNavItem;
 
 function DrawerNavLink({ item, pathname }: { item: AppNavItem; pathname: string }) {
   const active = isActivePath(pathname, item.href);
+  const navigationIntent = useNavigationIntent(item.href, item.label);
   return (
     <Link
       aria-current={active ? "page" : undefined}
       className={`flex min-h-11 items-center justify-between rounded-lg border-l-2 px-3 py-2 text-sm font-semibold transition ${active ? "border-cyan-300 bg-cyan-400/[0.08] text-cyan-100" : "border-transparent bg-transparent text-slate-300 hover:border-white/20 hover:bg-white/[0.04] hover:text-slate-100"}`}
       href={item.href}
+      onClick={navigationIntent.onClick}
+      onFocus={navigationIntent.onFocus}
+      onPointerEnter={navigationIntent.onPointerEnter}
+      prefetch
     >
       <span>{item.label}</span>
       <span className="text-xs text-slate-600">{active ? "Current" : ""}</span>
@@ -206,12 +217,17 @@ function DrawerNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
 function BottomNavLink({ item, pathname }: { item: AppNavItem; pathname: string }) {
   const active = isActivePath(pathname, item.href);
   const label = item.key === "opportunities" ? "Ideas" : item.label;
+  const navigationIntent = useNavigationIntent(item.href, label);
   return (
     <Link
       className={`relative flex min-h-12 flex-col items-center justify-center rounded-xl border px-1 text-center text-[11px] font-semibold transition ${
         active ? "border-cyan-300/35 bg-cyan-400/15 text-cyan-100" : "border-transparent text-slate-400 hover:bg-white/[0.05] hover:text-slate-100"
       }`}
       href={item.href}
+      onClick={navigationIntent.onClick}
+      onFocus={navigationIntent.onFocus}
+      onPointerEnter={navigationIntent.onPointerEnter}
+      prefetch
     >
       {active ? <span className="absolute left-1/2 top-1 h-0.5 w-7 -translate-x-1/2 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(34,211,238,0.45)]" /> : null}
       <span className="truncate pt-1">{label}</span>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useNavigationIntent } from "@/components/terminal/NavigationPerformance";
 import { NotificationBell } from "./notifications/NotificationBell";
 
 const NAV_ITEMS = [
@@ -33,18 +34,26 @@ export function TopNav() {
     <nav className="flex max-w-full items-center gap-4 overflow-x-auto border-b border-white/10 pb-0 text-xs text-slate-400 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {items.map((item) => {
         const active = isActive(pathname, item.href);
-        return (
-          <Link
-            aria-current={active ? "page" : undefined}
-            className={`inline-flex min-h-[38px] shrink-0 items-center border-b-2 px-0.5 py-2 font-semibold transition-colors duration-200 ${active ? "border-cyan-300 text-cyan-100" : "border-transparent text-slate-400 hover:border-white/25 hover:text-slate-100"}`}
-            href={item.href}
-            key={item.href}
-          >
-            {item.label}
-          </Link>
-        );
+        return <TopNavLink active={active} href={item.href} key={item.href} label={item.label} />;
       })}
       {authenticated ? <NotificationBell /> : null}
     </nav>
+  );
+}
+
+function TopNavLink({ active, href, label }: { active: boolean; href: string; label: string }) {
+  const navigationIntent = useNavigationIntent(href, label);
+  return (
+    <Link
+      aria-current={active ? "page" : undefined}
+      className={`inline-flex min-h-[38px] shrink-0 items-center border-b-2 px-0.5 py-2 font-semibold transition-colors duration-200 ${active ? "border-cyan-300 text-cyan-100" : "border-transparent text-slate-400 hover:border-white/25 hover:text-slate-100"}`}
+      href={href}
+      onClick={navigationIntent.onClick}
+      onFocus={navigationIntent.onFocus}
+      onPointerEnter={navigationIntent.onPointerEnter}
+      prefetch
+    >
+      {label}
+    </Link>
   );
 }

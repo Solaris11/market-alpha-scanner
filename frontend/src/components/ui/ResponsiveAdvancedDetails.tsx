@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 export function ResponsiveAdvancedDetails({
   children,
   className = "",
+  deferMount = false,
   defaultDesktopOpen = true,
   eyebrow = "Advanced",
   summary,
@@ -12,12 +13,14 @@ export function ResponsiveAdvancedDetails({
 }: {
   children: ReactNode;
   className?: string;
+  deferMount?: boolean;
   defaultDesktopOpen?: boolean;
   eyebrow?: string;
   summary?: string;
   title: string;
 }) {
   const [open, setOpen] = useState(false);
+  const shouldRenderChildren = open || !deferMount;
 
   useEffect(() => {
     const query = window.matchMedia("(min-width: 1280px)");
@@ -46,7 +49,7 @@ export function ResponsiveAdvancedDetails({
           {open ? "hide" : "show"}
         </span>
       </summary>
-      <div className="mt-3 min-w-0 space-y-4">{children}</div>
+      {shouldRenderChildren ? <div className="mt-3 min-w-0 space-y-4">{children}</div> : null}
     </details>
   );
 }

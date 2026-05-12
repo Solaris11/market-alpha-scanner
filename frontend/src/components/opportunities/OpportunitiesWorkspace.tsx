@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { PremiumEChart } from "@/components/charts/PremiumEChart";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import { DataHealthIndicator } from "@/components/data-health-indicator";
@@ -119,20 +119,38 @@ export function OpportunitiesWorkspace({
   const { watchlistSet } = useLocalWatchlist();
   const riskTolerantRows = useMemo(() => buildRiskTolerantOpportunities(rows, { riskLevel: "high", rewardLevel: "high" }, { includeProfileMismatches: true, limit: 25 }), [rows]);
   const riskTolerantSymbols = useMemo(() => new Set(riskTolerantRows.map((candidate) => candidate.symbol)), [riskTolerantRows]);
-  const filterState: OpportunityFilterState = {
-    activeTab,
-    assetTypeFilter,
-    decisionFilter,
-    entryStatusFilter,
-    minConviction,
-    minScore,
-    qualityFilter,
-    search,
-    sectorFilter,
-    setupFilter,
-    showWatchlistOnly,
-    sortKey,
-  };
+  const filterState: OpportunityFilterState = useMemo(
+    () => ({
+      activeTab,
+      assetTypeFilter,
+      decisionFilter,
+      entryStatusFilter,
+      minConviction,
+      minScore,
+      qualityFilter,
+      search,
+      sectorFilter,
+      setupFilter,
+      showWatchlistOnly,
+      sortKey,
+    }),
+    [
+      activeTab,
+      assetTypeFilter,
+      decisionFilter,
+      entryStatusFilter,
+      minConviction,
+      minScore,
+      qualityFilter,
+      search,
+      sectorFilter,
+      setupFilter,
+      showWatchlistOnly,
+      sortKey,
+    ],
+  );
+  const deferredFilterState = useDeferredValue(filterState);
+  const filterUpdating = deferredFilterState !== filterState;
 
   const options = useMemo(() => {
     return {
@@ -187,36 +205,25 @@ export function OpportunitiesWorkspace({
   }, [riskTolerantSymbols.size, rows, watchlistSet]);
 
   const filterResult = useMemo(() => {
-    const fullUniverseRows = applyNonTabOpportunityFilters(rows, filterState, watchlistSet);
+    const fullUniverseRows = applyNonTabOpportunityFilters(rows, deferredFilterState, watchlistSet);
     const visibleRows = fullUniverseRows
-      .filter((row) => opportunityTabMatches(row, activeTab, watchlistSet, riskTolerantSymbols))
-      .sort((left, right) => compareOpportunityRows(left, right, sortKey, riskTolerantRows, activeTab));
-    const sortedFullUniverseRows = [...fullUniverseRows].sort((left, right) => compareOpportunityRows(left, right, sortKey, riskTolerantRows, "FULL"));
-    const matchingOutsideTab = activeTab === "FULL"
+      .filter((row) => opportunityTabMatches(row, deferredFilterState.activeTab, watchlistSet, riskTolerantSymbols))
+      .sort((left, right) => compareOpportunityRows(left, right, deferredFilterState.sortKey, riskTolerantRows, deferredFilterState.activeTab));
+    const sortedFullUniverseRows = [...fullUniverseRows].sort((left, right) => compareOpportunityRows(left, right, deferredFilterState.sortKey, riskTolerantRows, "FULL"));
+    const matchingOutsideTab = deferredFilterState.activeTab === "FULL"
       ? []
-      : sortedFullUniverseRows.filter((row) => !opportunityTabMatches(row, activeTab, watchlistSet, riskTolerantSymbols)).slice(0, 5);
+      : sortedFullUniverseRows.filter((row) => !opportunityTabMatches(row, deferredFilterState.activeTab, watchlistSet, riskTolerantSymbols)).slice(0, 5);
     return {
       fullUniverseRows: sortedFullUniverseRows,
       matchingOutsideTab,
-      tabRowCount: rows.filter((row) => opportunityTabMatches(row, activeTab, watchlistSet, riskTolerantSymbols)).length,
+      tabRowCount: rows.filter((row) => opportunityTabMatches(row, deferredFilterState.activeTab, watchlistSet, riskTolerantSymbols)).length,
       visibleRows,
     };
   }, [
-    activeTab,
-    assetTypeFilter,
-    decisionFilter,
-    entryStatusFilter,
-    minConviction,
-    minScore,
-    qualityFilter,
+    deferredFilterState,
     riskTolerantRows,
     riskTolerantSymbols,
     rows,
-    search,
-    sectorFilter,
-    setupFilter,
-    showWatchlistOnly,
-    sortKey,
     watchlistSet,
   ]);
   const filtered = filterResult.visibleRows;
@@ -286,29 +293,16 @@ export function OpportunitiesWorkspace({
         />
       ) : null}
       <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} rows={rows} />
-      <ResponsiveAdvancedDetails
-        eyebrow="Advanced context"
-        summary="Secondary intelligence is collapsed on phones so the ranked cards stay close."
-        title="Market, shock, execution, and strategy layers"
-      >
-        <MetaIntelligenceOperatingSystemPanel personalizationProfile={initialProfile} rows={rows} workflowEvolution={workflowEvolution ?? null} />
-        <IntradayRegimeDriftPanel driftRows={intradayDriftRows} rows={rows} />
-        <AdaptiveLearningInsightPanel system={adaptiveLearning} />
-        <StrategyIntelligencePanel system={strategyIntelligence} />
-        <ScenarioIntelligencePanel system={scenarioIntelligence} />
-        <ExecutionIntelligencePanel rows={rows} />
-        <RiskTolerantOpportunityRadar initialProfile={initialProfile} marketCondition={marketCondition} rows={rows} />
-        <ShockMoveRadar rows={rows} />
-        {workflowEvolution ? <WorkflowEvolutionPanel compact summary={workflowEvolution} surface="opportunities" /> : null}
-        <InstitutionalIntelligencePanel rows={rows} />
-        <OpportunityDeskMap marketCondition={marketCondition} rows={rows} />
-        <SetupDistribution rows={rows} />
-      </ResponsiveAdvancedDetails>
 
       <GlassPanel className="p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <SectionTitle eyebrow="Opportunities" title="Scanner Universe" meta={`Showing ${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} symbols`} />
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+            {filterUpdating ? (
+              <span className="rounded-full border border-cyan-300/20 bg-cyan-400/10 px-3 py-1.5 font-semibold text-cyan-100">
+                Updating view...
+              </span>
+            ) : null}
             <span className="rounded-full border border-cyan-300/15 bg-cyan-400/5 px-3 py-1.5">
               {activeFilterCount ? `${activeFilterCount} active filter${activeFilterCount === 1 ? "" : "s"}` : "No extra filters"}
             </span>
@@ -411,6 +405,26 @@ export function OpportunitiesWorkspace({
         totalRows={rows.length}
         watchlistCount={watchlistSet.size}
       />
+
+      <ResponsiveAdvancedDetails
+        deferMount
+        eyebrow="Advanced context"
+        summary="Secondary analytics load after the ranked opportunities so navigation stays responsive."
+        title="Market, shock, execution, and strategy layers"
+      >
+        <MetaIntelligenceOperatingSystemPanel personalizationProfile={initialProfile} rows={rows} workflowEvolution={workflowEvolution ?? null} />
+        <IntradayRegimeDriftPanel driftRows={intradayDriftRows} rows={rows} />
+        <AdaptiveLearningInsightPanel system={adaptiveLearning} />
+        <StrategyIntelligencePanel system={strategyIntelligence} />
+        <ScenarioIntelligencePanel system={scenarioIntelligence} />
+        <ExecutionIntelligencePanel rows={rows} />
+        <RiskTolerantOpportunityRadar initialProfile={initialProfile} marketCondition={marketCondition} rows={rows} />
+        <ShockMoveRadar rows={rows} />
+        {workflowEvolution ? <WorkflowEvolutionPanel compact summary={workflowEvolution} surface="opportunities" /> : null}
+        <InstitutionalIntelligencePanel rows={rows} />
+        <OpportunityDeskMap marketCondition={marketCondition} rows={rows} />
+        <SetupDistribution rows={rows} />
+      </ResponsiveAdvancedDetails>
     </div>
   );
 }
