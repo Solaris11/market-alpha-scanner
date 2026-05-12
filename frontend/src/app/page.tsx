@@ -489,9 +489,9 @@ export default async function HomePage() {
             <div className="rounded-[2rem] border border-cyan-300/25 bg-slate-950/70 p-3 shadow-2xl shadow-cyan-950/25">
               <img
                 alt="TradeVeto register QR code"
-                className="h-36 w-36 rounded-2xl bg-white object-contain sm:h-44 sm:w-44"
+                className="h-36 w-36 rounded-2xl object-cover sm:h-44 sm:w-44"
                 loading="lazy"
-                src="/marketing/qr/tradeveto-register-qr-dark.png"
+                src="/marketing/qr/tradeveto-register-qr-social-square.png"
               />
               <div className="mt-3 text-center text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Scan to join</div>
             </div>
