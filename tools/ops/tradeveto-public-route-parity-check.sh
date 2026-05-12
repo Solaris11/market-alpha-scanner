@@ -124,6 +124,8 @@ main() {
   for route in \
     / \
     /features \
+    /register \
+    /login \
     /pricing \
     /how-it-works \
     /faq \
@@ -151,7 +153,7 @@ main() {
   check_not_exposed /sitemap.xml 'intelligence/strategy-performance|strategy-labs|community|developers|/team'
   check_not_exposed /robots.txt 'Allow: /intelligence/strategy-performance'
 
-  for route in / /pricing /features /how-it-works /faq /intelligence /intelligence/shock-opportunities /intelligence/macro-regime /symbol/AMD /intelligence/why-wait/AMD; do
+  for route in / /register /login /pricing /features /how-it-works /faq /intelligence /intelligence/shock-opportunities /intelligence/macro-regime /symbol/AMD /intelligence/why-wait/AMD; do
     check_metadata "$route"
   done
 

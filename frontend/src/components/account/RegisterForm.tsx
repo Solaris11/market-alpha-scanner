@@ -4,11 +4,11 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { AuthInput } from "./LoginForm";
 
-export function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
+export function RegisterForm({ initialInviteCode = "", onSuccess }: { initialInviteCode?: string; onSuccess: () => void }) {
   const { register } = useCurrentUser();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
+  const [inviteCode, setInviteCode] = useState(initialInviteCode);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [busy, setBusy] = useState(false);
@@ -45,7 +45,7 @@ export function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
     <form className="space-y-3" onSubmit={submit}>
       <AuthInput autoComplete="name" label="Display name" onChange={setDisplayName} value={displayName} />
       <AuthInput autoComplete="email" label="Email" onChange={setEmail} type="email" value={email} />
-      <AuthInput autoComplete="one-time-code" label="Invite code" onChange={setInviteCode} placeholder="Optional during invite-only beta" value={inviteCode} />
+      <AuthInput autoComplete="one-time-code" label="Invite code" onChange={setInviteCode} placeholder="Required during invite-only beta" value={inviteCode} />
       <AuthInput autoComplete="new-password" label="Password" onChange={setPassword} type="password" value={password} />
       <AuthInput autoComplete="new-password" label="Confirm password" onChange={setConfirmPassword} type="password" value={confirmPassword} />
       {error ? <div className="rounded-xl border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">{error}</div> : null}

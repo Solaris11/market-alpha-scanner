@@ -16,10 +16,12 @@ type ProvidersResponse = {
 };
 
 export function AuthModal({
+  initialInviteCode = "",
   initialMode = "login",
   onClose,
   resetToken = "",
 }: {
+  initialInviteCode?: string;
   initialMode?: AuthMode;
   onClose: () => void;
   resetToken?: string;
@@ -66,13 +68,18 @@ export function AuthModal({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[10000] flex items-center justify-center overflow-y-auto bg-black/70 p-6 backdrop-blur-md"
+      className="fixed inset-0 z-[10000] flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-md sm:p-6"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget) onClose();
       }}
       role="presentation"
     >
-      <div className="relative z-[10001] max-h-[calc(100vh-48px)] w-full max-w-md overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/50 ring-1 ring-cyan-300/10" role="dialog" aria-modal="true">
+      <div
+        className="relative z-[10001] max-h-[calc(100vh-32px)] w-full min-w-0 overflow-y-auto rounded-2xl border border-white/10 bg-slate-950/95 shadow-2xl shadow-black/50 ring-1 ring-cyan-300/10 sm:max-h-[calc(100vh-48px)]"
+        role="dialog"
+        aria-modal="true"
+        style={{ maxWidth: "min(28rem, calc(100vw - 4rem))" }}
+      >
         <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
           <div>
             <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">TradeVeto Closed Beta</div>
@@ -105,7 +112,7 @@ export function AuthModal({
           ) : null}
 
           {mode === "login" ? <LoginForm onForgotPassword={() => setMode("forgot")} onSuccess={onClose} /> : null}
-          {mode === "register" ? <RegisterForm onSuccess={onClose} /> : null}
+          {mode === "register" ? <RegisterForm initialInviteCode={initialInviteCode} onSuccess={onClose} /> : null}
           {mode === "forgot" ? <ForgotPasswordForm /> : null}
           {mode === "reset" ? <ResetPasswordForm onSuccess={() => setMode("login")} token={resetToken} /> : null}
 

@@ -96,6 +96,8 @@ log "base_url=${BASE_URL}"
 
 request_route GET /api/health 750
 request_route GET /api/health/deep 1500
+request_route GET /register 2500
+request_route GET /login 2500
 request_route GET /terminal 3500
 request_route GET /dashboard 3500
 request_route GET /opportunities 3500
