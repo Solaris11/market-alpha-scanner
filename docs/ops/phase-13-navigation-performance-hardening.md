@@ -134,6 +134,20 @@ Still not fully solved:
 - The app does not yet split terminal primary summary data from secondary intelligence data at the API boundary.
 - No browser-level hydration profiling was run in this pass.
 
+## Urgent Production Bug Follow-Up
+
+After beta visual QA, `/performance` produced a browser-level "This page couldn't load" failure for a premium session. Production logs showed the Next.js process had previously restarted from a JavaScript heap out-of-memory event.
+
+Root cause:
+- `/performance` used `getIntradaySignalDriftSummary()`.
+- That summary path loaded the full historical `scanner_signals` table from Postgres when DB access was available.
+- Production had roughly 224k historical signal rows, including payload columns, so one premium performance route could push the Next process near the heap limit.
+
+Fix:
+- `getIntradaySignalDriftSummary()` now uses the bounded recent-history query already used by live route surfaces.
+- CSV fallback was split into `getCsvIntradaySignalDriftSummary()` so DB-backed summaries no longer fall back into an unbounded DB read.
+- The fix keeps the drift widget useful while preventing `/performance` from loading full historical signal payloads.
+
 ## Next Recommendations
 
 P1:

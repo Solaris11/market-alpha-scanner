@@ -1243,11 +1243,14 @@ export async function getIntradaySignalDrift(): Promise<IntradayDriftRow[]> {
 }
 
 export async function getIntradaySignalDriftSummary(): Promise<IntradayDriftRow[]> {
-  const dbHistory = await getDbHistoryRows();
+  const dbHistory = await getRecentDbHistoryRows(24, 18, 2);
   if (dbHistory) return buildIntradaySignalDrift({ symbols: Array.from(new Set(dbHistory.map((row) => row.symbol))).sort(), rows: dbHistory });
 
   if (!allowScannerCsvFallback("intraday signal drift DB read unavailable")) return [];
+  return getCsvIntradaySignalDriftSummary();
+}
 
+async function getCsvIntradaySignalDriftSummary(): Promise<IntradayDriftRow[]> {
   const history = await getHistorySummary();
   const latestSnapshot = history.snapshots[0];
   const earliestSnapshot = history.snapshots[history.snapshots.length - 1];
@@ -1304,7 +1307,7 @@ export async function getRecentIntradaySignalDriftSummary(options: { hours?: num
   const dbHistory = await getRecentDbHistoryRows(hours, maxRuns, minRuns);
   if (dbHistory) return buildIntradaySignalDrift({ symbols: Array.from(new Set(dbHistory.map((row) => row.symbol))).sort(), rows: dbHistory });
   if (!allowScannerCsvFallback("recent intraday signal drift DB read unavailable")) return [];
-  return getIntradaySignalDriftSummary();
+  return getCsvIntradaySignalDriftSummary();
 }
 
 const getRecentDbHistoryRows = cache(async (hours: number, maxRuns: number, minRuns: number): Promise<SymbolHistoryRow[] | null> => {
