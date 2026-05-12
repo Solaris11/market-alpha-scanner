@@ -56,7 +56,40 @@ Local validation completed:
 - `npx pyright . --pythonpath .venv/bin/python --warnings`: pass, 0 errors
 - `git diff --check`: pass
 
-Production validation must be completed after commit/push and production pull/rebuild.
+Production validation completed from the production host after commit/push:
+
+- Commit deployed: `3190009 Ground visual intelligence in real data`
+- Production host: `onsre-node-01`
+- Docker service rebuilt: `market-alpha-frontend`
+- Frontend container: healthy
+- `/api/health`: pass, HTTP 200, `ok: true`
+- `/api/health/deep`: pass, HTTP 200, DB/scanner/local backup/R2 backup ok
+- Route smoke from production host:
+  - `/`: HTTP 200
+  - `/terminal`: HTTP 200
+  - `/opportunities`: HTTP 200
+  - `/symbol/AMD`: HTTP 200
+  - `/performance`: HTTP 200
+  - `/history?symbol=AMD`: HTTP 200
+  - `/strategy-labs`: HTTP 200
+  - `/paper`: HTTP 200
+  - `/dashboard`: HTTP 200
+  - `/mobile`: HTTP 200
+- Protected API smoke:
+  - `/api/v1/opportunities`: HTTP 401, fail-closed
+  - `/api/v1/macro`: HTTP 401, fail-closed
+  - `/api/v1/shocks`: HTTP 401, fail-closed
+  - `/api/v1/replay?symbol=AMD`: HTTP 401, fail-closed
+  - `/api/v1/portfolio/scenario`: HTTP 405 for GET-only smoke, fail-closed for the wrong method
+
+Visual QA screenshots captured against production with the anonymous legal gate acknowledged:
+
+- `/tmp/tradeveto-visual-qa/opportunities-desktop-accepted.png`
+- `/tmp/tradeveto-visual-qa/opportunities-mobile-accepted.png`
+- `/tmp/tradeveto-visual-qa/performance-desktop-accepted.png`
+- `/tmp/tradeveto-visual-qa/symbol-amd-desktop-accepted.png`
+
+The production `/performance` route specifically no longer reproduces the browser "This page couldn't load" failure during smoke and screenshot QA.
 
 ## Remaining Visual Debt
 
