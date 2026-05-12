@@ -2,7 +2,7 @@ import "server-only";
 
 import { NextResponse } from "next/server";
 import type { QueryResultRow } from "pg";
-import { devConfigPremiumEnabled, productionMockPremiumEnabled, subscriptionGrantsPremium } from "@/lib/security/entitlement-policy";
+import { betaPremiumAccessForEmail, devConfigPremiumEnabled, productionMockPremiumEnabled, subscriptionGrantsPremium } from "@/lib/security/entitlement-policy";
 import { isAdminUser } from "./admin";
 import { getCurrentUser, type AuthUser } from "./auth";
 import { dbQuery } from "./db";
@@ -14,6 +14,8 @@ export type EntitlementPlan = "anonymous" | "free" | "premium" | "admin";
 
 export type Entitlement = {
   authenticated: boolean;
+  betaAccess: boolean;
+  betaAccessLabel: string | null;
   isAdmin: boolean;
   isPremium: boolean;
   legalStatus: LegalStatus;
@@ -131,6 +133,7 @@ export async function getEntitlementForUser(user: AuthUser | null): Promise<Enti
 
   const [subscription, legalStatus] = await Promise.all([getUserSubscription(user.id), getLegalStatusForEntitlement(user.id)]);
   const admin = isAdminUser(user);
+  const betaPremium = betaPremiumAccessForEmail(user.email);
   const subscriptionPremium = subscriptionGrantsPremium(
     subscription
       ? {
@@ -141,16 +144,18 @@ export async function getEntitlementForUser(user: AuthUser | null): Promise<Enti
       : null,
   );
   const devPremium = devConfigPremiumEnabled(user.email);
-  const premium = subscriptionPremium || devPremium;
+  const premium = subscriptionPremium || devPremium || betaPremium.active;
   const plan: EntitlementPlan = admin ? "admin" : premium ? "premium" : "free";
 
   return {
     authenticated: true,
+    betaAccess: betaPremium.active,
+    betaAccessLabel: betaPremium.label,
     isAdmin: admin,
     isPremium: premium,
     legalStatus,
     plan,
-    subscriptionStatus: subscription?.status ?? null,
+    subscriptionStatus: subscription?.status ?? (betaPremium.active ? "beta" : null),
     user,
   };
 }
@@ -158,15 +163,19 @@ export async function getEntitlementForUser(user: AuthUser | null): Promise<Enti
 export function entitlementForUser(user: AuthUser | null): Entitlement {
   const admin = isAdminUser(user);
   const devPremium = Boolean(user) && devConfigPremiumEnabled(user?.email ?? "");
-  const plan: EntitlementPlan = admin ? "admin" : devPremium ? "premium" : user ? "free" : "anonymous";
+  const betaPremium = user ? betaPremiumAccessForEmail(user.email) : { active: false, label: null };
+  const premium = devPremium || betaPremium.active;
+  const plan: EntitlementPlan = admin ? "admin" : premium ? "premium" : user ? "free" : "anonymous";
 
   return {
     authenticated: Boolean(user),
+    betaAccess: betaPremium.active,
+    betaAccessLabel: betaPremium.label,
     isAdmin: admin,
-    isPremium: devPremium,
+    isPremium: premium,
     legalStatus: emptyLegalStatus(),
     plan,
-    subscriptionStatus: null,
+    subscriptionStatus: betaPremium.active ? "beta" : null,
     user,
   };
 }
@@ -182,6 +191,8 @@ export function requiresLegalAcceptance(entitlement: Entitlement): boolean {
 export function entitlementSummary(entitlement: Entitlement): Omit<Entitlement, "user"> {
   return {
     authenticated: entitlement.authenticated,
+    betaAccess: entitlement.betaAccess,
+    betaAccessLabel: entitlement.betaAccessLabel,
     isAdmin: entitlement.isAdmin,
     isPremium: entitlement.isPremium,
     legalStatus: entitlement.legalStatus,

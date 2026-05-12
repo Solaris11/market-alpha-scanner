@@ -169,6 +169,13 @@ function planStatus(entitlement: CurrentUserEntitlement): { className: string; l
       shortLabel: "Admin account",
     };
   }
+  if (entitlement.betaAccess) {
+    return {
+      className: "border-emerald-300/35 bg-emerald-400/10 text-emerald-100",
+      label: "Beta",
+      shortLabel: entitlement.betaAccessLabel ?? "Beta Premium access",
+    };
+  }
   if (entitlement.isPremium || entitlement.plan === "premium") {
     return {
       className: "border-cyan-300/35 bg-cyan-400/10 text-cyan-100",

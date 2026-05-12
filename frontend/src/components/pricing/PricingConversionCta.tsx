@@ -13,6 +13,8 @@ export function PricingConversionCta() {
           <p className="mt-2 text-sm leading-6 text-slate-300">
           {checkout.isAdmin
             ? "Admin beta access is active. Billing is managed internally."
+            : checkout.betaAccessActive
+              ? "Closed beta premium access is active. No Stripe subscription is needed for this beta account."
             : checkout.premiumActive
               ? "Premium access is active. Manage billing in Stripe when you need to update renewal or cancellation settings."
               : "Create an account or sign in, then Stripe handles trial, promo, renewal, and cancellation details before confirmation."}

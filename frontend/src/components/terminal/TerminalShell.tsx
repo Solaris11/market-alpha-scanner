@@ -34,10 +34,10 @@ function MobileFocusStrip() {
   ];
 
   return (
-    <nav aria-label="Mobile focus shortcuts" className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1 xl:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <nav aria-label="Mobile focus shortcuts" className="-mx-1 mb-3 flex gap-5 overflow-x-auto border-b border-white/10 px-1 xl:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {links.map((link) => (
         <Link
-          className="inline-flex min-h-11 shrink-0 items-center rounded-full border border-white/10 bg-white/[0.04] px-3 text-xs font-bold text-slate-200 shadow-lg shadow-black/10 transition hover:border-cyan-300/35 hover:bg-cyan-400/10 hover:text-cyan-100"
+          className="inline-flex min-h-10 shrink-0 items-center border-b-2 border-transparent px-0.5 text-xs font-bold text-slate-300 transition-colors hover:border-white/25 hover:text-slate-100"
           href={link.href}
           key={link.href}
         >

@@ -242,12 +242,14 @@ function CompanyIntelligenceTabs({
 }) {
   return (
     <section className="terminal-panel rounded-2xl p-4">
-      <div className="mb-4 flex flex-wrap gap-2">
+      <div aria-label="Company intelligence views" className="mb-4 flex gap-5 overflow-x-auto border-b border-white/10 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist">
         {INSIGHT_TABS.map((tab) => (
           <button
-            className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${activeTab === tab.value ? "border-sky-300/50 bg-sky-400/10 text-sky-100" : "border-slate-700/70 bg-slate-950/50 text-slate-400 hover:border-sky-300/35 hover:text-sky-100"}`}
+            aria-selected={activeTab === tab.value}
+            className={`shrink-0 border-b-2 px-0.5 py-2 text-xs font-semibold transition-colors ${activeTab === tab.value ? "border-sky-300 text-sky-100" : "border-transparent text-slate-400 hover:border-white/25 hover:text-slate-100"}`}
             key={tab.value}
             onClick={() => onChange(tab.value)}
+            role="tab"
             type="button"
           >
             {tab.label}

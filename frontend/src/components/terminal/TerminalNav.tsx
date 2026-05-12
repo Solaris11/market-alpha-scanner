@@ -16,11 +16,11 @@ export function DesktopTerminalNav() {
 
   return (
     <div className="hidden min-w-0 flex-1 items-center justify-start xl:flex">
-      <div className="flex max-w-full min-w-0 flex-wrap items-center gap-2 py-1">
-        <nav aria-label="Primary navigation" className="flex max-w-full flex-wrap items-center gap-1 rounded-full border border-white/10 bg-white/[0.035] p-1 shadow-inner shadow-black/20">
+      <div className="flex max-w-full min-w-0 items-center gap-6 overflow-x-auto py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <nav aria-label="Primary navigation" className="flex shrink-0 items-center gap-5 border-b border-white/10">
           {PRIMARY_NAV_ITEMS.map((item) => <DesktopNavLink item={item} key={item.href} pathname={pathname} primary />)}
         </nav>
-        <nav aria-label="Utility navigation" className="flex max-w-full flex-wrap items-center gap-1 rounded-full border border-white/10 bg-slate-950/45 p-1">
+        <nav aria-label="Utility navigation" className="flex shrink-0 items-center gap-4 border-b border-white/10">
           {utilities.map((item) => <DesktopNavLink item={item} key={item.href} pathname={pathname} />)}
         </nav>
       </div>
@@ -132,7 +132,7 @@ export function MobileTerminalNav() {
                 <div className="flex min-w-0 items-center justify-between gap-3">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-semibold text-slate-100">{user?.displayName || user?.email || "Guest workspace"}</div>
-                    <div className="mt-1 text-xs text-slate-500">{accountStatusLabel(authenticated, entitlement.plan)}</div>
+                    <div className="mt-1 text-xs text-slate-500">{accountStatusLabel(authenticated, entitlement.plan, entitlement.betaAccess)}</div>
                   </div>
                   <AccountPill compact />
                 </div>
@@ -177,14 +177,11 @@ export function MobileTerminalNav() {
 
 function DesktopNavLink({ item, pathname, primary = false }: { item: AppNavItem; pathname: string; primary?: boolean }) {
   const active = isActivePath(pathname, item.href);
-  const base = primary ? "px-2.5 py-2 text-[13px] 2xl:px-3.5 2xl:text-sm" : "px-2.5 py-2 text-xs 2xl:px-3";
+  const base = primary ? "px-0.5 py-2 text-[13px] 2xl:text-sm" : "px-0.5 py-2 text-xs";
   return (
     <Link
-      className={`inline-flex min-h-9 shrink-0 items-center whitespace-nowrap rounded-full border font-semibold transition-all duration-200 ${base} ${
-        active
-          ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.18)]"
-          : "border-transparent text-slate-400 hover:border-cyan-300/25 hover:bg-white/[0.05] hover:text-slate-100"
-      }`}
+      aria-current={active ? "page" : undefined}
+      className={`inline-flex min-h-9 shrink-0 items-center whitespace-nowrap border-b-2 font-semibold transition-colors duration-200 ${base} ${active ? "border-cyan-300 text-cyan-100" : "border-transparent text-slate-400 hover:border-white/25 hover:text-slate-100"}`}
       href={item.href}
     >
       {item.label}
@@ -196,13 +193,12 @@ function DrawerNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
   const active = isActivePath(pathname, item.href);
   return (
     <Link
-      className={`flex min-h-11 items-center justify-between rounded-2xl border px-3 py-2 text-sm font-semibold transition ${
-        active ? "border-cyan-300/35 bg-cyan-400/12 text-cyan-100" : "border-white/10 bg-white/[0.025] text-slate-300 hover:border-cyan-300/25 hover:bg-white/[0.05] hover:text-slate-100"
-      }`}
+      aria-current={active ? "page" : undefined}
+      className={`flex min-h-11 items-center justify-between rounded-lg border-l-2 px-3 py-2 text-sm font-semibold transition ${active ? "border-cyan-300 bg-cyan-400/[0.08] text-cyan-100" : "border-transparent bg-transparent text-slate-300 hover:border-white/20 hover:bg-white/[0.04] hover:text-slate-100"}`}
       href={item.href}
     >
       <span>{item.label}</span>
-      <span className="text-xs text-slate-600">{active ? "Active" : "Open"}</span>
+      <span className="text-xs text-slate-600">{active ? "Current" : ""}</span>
     </Link>
   );
 }
@@ -246,9 +242,10 @@ function BottomMenuButton({ buttonRef, onClick, open }: { buttonRef: RefObject<H
   );
 }
 
-function accountStatusLabel(authenticated: boolean, plan: string): string {
+function accountStatusLabel(authenticated: boolean, plan: string, betaAccess = false): string {
   if (!authenticated) return "Sign in to save watchlists and alerts";
   if (plan === "admin") return "Admin workspace";
+  if (betaAccess) return "Closed beta workspace";
   if (plan === "premium") return "Premium workspace";
   return "Free workspace";
 }

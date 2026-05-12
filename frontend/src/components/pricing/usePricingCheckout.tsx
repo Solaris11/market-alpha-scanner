@@ -15,6 +15,7 @@ type BillingResponse = {
 
 export type PricingCheckoutController = {
   authModal: ReactNode;
+  betaAccessActive: boolean;
   busy: boolean;
   disabled: boolean;
   handlePrimaryClick: () => void;
@@ -74,6 +75,10 @@ export function usePricingCheckout(): PricingCheckoutController {
       setAuthOpen(true);
       return;
     }
+    if (entitlement.betaAccess) {
+      setMessage("Closed beta access is already active. No billing action is needed for this beta account.");
+      return;
+    }
     if (entitlement.isPremium || entitlement.isAdmin) {
       void startBilling("portal");
       return;
@@ -81,13 +86,15 @@ export function usePricingCheckout(): PricingCheckoutController {
     void startBilling("checkout");
   }
 
+  const betaAccessActive = entitlement.betaAccess;
   const premiumActive = entitlement.isPremium || entitlement.isAdmin;
-  const label = loading ? "Checking access..." : entitlement.isAdmin ? "Premium Active" : premiumActive ? "Manage Subscription" : authenticated ? "Unlock Premium Intelligence" : "Get Started";
+  const label = loading ? "Checking access..." : entitlement.isAdmin ? "Premium Active" : entitlement.betaAccess ? "Beta Premium Active" : premiumActive ? "Manage Subscription" : authenticated ? "Unlock Premium Intelligence" : "Get Started";
 
   return {
     authModal: authOpen ? <AuthModal initialMode="register" onClose={() => setAuthOpen(false)} /> : null,
+    betaAccessActive,
     busy,
-    disabled: busy || entitlement.isAdmin,
+    disabled: busy || entitlement.isAdmin || entitlement.betaAccess,
     handlePrimaryClick,
     isAdmin: entitlement.isAdmin,
     label,

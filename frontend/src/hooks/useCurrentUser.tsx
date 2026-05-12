@@ -20,6 +20,8 @@ export type CurrentUser = {
 
 export type CurrentUserEntitlement = {
   authenticated: boolean;
+  betaAccess: boolean;
+  betaAccessLabel: string | null;
   isAdmin: boolean;
   isPremium: boolean;
   legalStatus?: {
@@ -64,6 +66,8 @@ type CurrentUserContextValue = {
 
 const ANONYMOUS_ENTITLEMENT: CurrentUserEntitlement = {
   authenticated: false,
+  betaAccess: false,
+  betaAccessLabel: null,
   isAdmin: false,
   isPremium: false,
   plan: "anonymous",
@@ -133,6 +137,8 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
 function freeEntitlement(): CurrentUserEntitlement {
   return {
     authenticated: true,
+    betaAccess: false,
+    betaAccessLabel: null,
     isAdmin: false,
     isPremium: false,
     plan: "free",

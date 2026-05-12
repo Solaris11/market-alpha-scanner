@@ -30,16 +30,13 @@ export function TopNav() {
     : NAV_ITEMS;
 
   return (
-    <nav className="flex max-w-full flex-wrap items-center gap-2 text-xs text-slate-400">
+    <nav className="flex max-w-full items-center gap-4 overflow-x-auto border-b border-white/10 pb-0 text-xs text-slate-400 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
       {items.map((item) => {
         const active = isActive(pathname, item.href);
         return (
           <Link
-            className={`inline-flex min-h-[38px] max-w-full items-center rounded-full border px-3 py-2 transition-all duration-200 ${
-              active
-                ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.18)]"
-                : "border-white/10 bg-white/[0.03] hover:border-cyan-400/40 hover:bg-white/5 hover:text-cyan-100"
-            }`}
+            aria-current={active ? "page" : undefined}
+            className={`inline-flex min-h-[38px] shrink-0 items-center border-b-2 px-0.5 py-2 font-semibold transition-colors duration-200 ${active ? "border-cyan-300 text-cyan-100" : "border-transparent text-slate-400 hover:border-white/25 hover:text-slate-100"}`}
             href={item.href}
             key={item.href}
           >

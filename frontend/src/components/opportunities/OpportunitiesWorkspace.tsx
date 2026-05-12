@@ -322,7 +322,7 @@ export function OpportunitiesWorkspace({
             </button>
           </div>
         </div>
-        <div className="-mx-1 mt-5 flex min-w-0 snap-x gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4 2xl:grid-cols-7 [&::-webkit-scrollbar]:hidden">
+        <div aria-label="Opportunity views" className="-mx-1 mt-5 flex min-w-0 snap-x gap-5 overflow-x-auto border-b border-white/10 px-1 pb-0 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden" role="tablist">
           <TabButton active={activeTab === "BEST"} count={tabCounts.BEST} label="Best Setups" onClick={() => setActiveTab("BEST")} />
           <TabButton active={activeTab === "RISK_TOLERANT"} count={tabCounts.RISK_TOLERANT} label="Risk-Tolerant" onClick={() => setActiveTab("RISK_TOLERANT")} />
           <TabButton active={activeTab === "SHOCK"} count={tabCounts.SHOCK} label="Shock Potential" onClick={() => setActiveTab("SHOCK")} />
@@ -1638,12 +1638,14 @@ function Select({ children, label, onChange, value }: { children: ReactNode; lab
 function TabButton({ active, count, label, onClick }: { active: boolean; count: number; label: string; onClick: () => void }) {
   return (
     <button
-      className={`min-w-[min(74vw,220px)] shrink-0 snap-start rounded-xl border px-4 py-3 text-left transition-all duration-200 sm:min-w-0 sm:shrink ${active ? "border-cyan-300/50 bg-cyan-400/15 text-cyan-50" : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-cyan-300/30 hover:bg-white/[0.07]"}`}
+      aria-selected={active}
+      className={`min-w-[min(68vw,190px)] shrink-0 snap-start border-b-2 px-0.5 py-3 text-left transition-colors duration-200 sm:min-w-[138px] ${active ? "border-cyan-300 text-cyan-50" : "border-transparent text-slate-400 hover:border-white/25 hover:text-slate-100"}`}
       onClick={onClick}
+      role="tab"
       type="button"
     >
       <div className="text-sm font-bold">{label}</div>
-      <div className="mt-1 font-mono text-xs text-slate-400">{count.toLocaleString()} symbols</div>
+      <div className={`mt-1 font-mono text-xs ${active ? "text-cyan-200/75" : "text-slate-500"}`}>{count.toLocaleString()} symbols</div>
     </button>
   );
 }

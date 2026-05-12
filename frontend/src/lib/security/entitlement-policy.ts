@@ -1,7 +1,17 @@
+import { normalizeBetaEmail, parseAllowedBetaEmails, parseBetaSignupMode } from "./beta-access";
+
 export type SubscriptionRecord = {
   currentPeriodEnd: Date | string | null;
   plan: string | null;
   status: string | null;
+};
+
+export type BetaPremiumAccessSource = "allowlist" | "closed_beta" | "invite_beta";
+
+export type BetaPremiumAccess = {
+  active: boolean;
+  label: string | null;
+  source: BetaPremiumAccessSource | null;
 };
 
 export function subscriptionGrantsPremium(subscription: SubscriptionRecord | null | undefined, now = new Date()): boolean {
@@ -12,6 +22,30 @@ export function subscriptionGrantsPremium(subscription: SubscriptionRecord | nul
 
   const expiresAt = subscription.currentPeriodEnd instanceof Date ? subscription.currentPeriodEnd : new Date(subscription.currentPeriodEnd);
   return Number.isFinite(expiresAt.getTime()) && expiresAt.getTime() > now.getTime();
+}
+
+export function betaPremiumAccessForEmail(email: string, env: NodeJS.ProcessEnv = process.env): BetaPremiumAccess {
+  const normalized = normalizeBetaEmail(email);
+  if (!normalized || betaPremiumDisabled(env)) return inactiveBetaPremiumAccess();
+
+  const allowedEmails = parseAllowedBetaEmails(env.TRADEVETO_BETA_ALLOWED_EMAILS);
+  if (allowedEmails.includes(normalized)) return activeBetaPremiumAccess("allowlist");
+
+  const mode = parseBetaSignupMode(env.TRADEVETO_BETA_SIGNUP_MODE);
+  const explicitBetaPremium = betaPremiumExplicitlyEnabled(env);
+  if (mode === "invite" && (explicitBetaPremium || Boolean(env.TRADEVETO_BETA_INVITE_CODE?.trim()))) {
+    return activeBetaPremiumAccess("invite_beta");
+  }
+
+  if (mode === "closed" && explicitBetaPremium) {
+    return activeBetaPremiumAccess("closed_beta");
+  }
+
+  return inactiveBetaPremiumAccess();
+}
+
+export function betaPremiumAccessEnabled(email: string, env: NodeJS.ProcessEnv = process.env): boolean {
+  return betaPremiumAccessForEmail(email, env).active;
 }
 
 export function productionMockPremiumEnabled(env: NodeJS.ProcessEnv = process.env): boolean {
@@ -33,6 +67,32 @@ function isActiveSubscriptionStatus(status: string | null): boolean {
 
 function isPremiumPlan(plan: string | null): boolean {
   return String(plan ?? "").trim().toLowerCase() === "premium";
+}
+
+function activeBetaPremiumAccess(source: BetaPremiumAccessSource): BetaPremiumAccess {
+  return {
+    active: true,
+    label: source === "allowlist" ? "Founding Beta User" : "Beta Premium Access",
+    source,
+  };
+}
+
+function inactiveBetaPremiumAccess(): BetaPremiumAccess {
+  return {
+    active: false,
+    label: null,
+    source: null,
+  };
+}
+
+function betaPremiumDisabled(env: NodeJS.ProcessEnv): boolean {
+  const value = String(env.TRADEVETO_BETA_PREMIUM_ACCESS ?? "").trim().toLowerCase();
+  return value === "false" || value === "0" || value === "off" || value === "disabled";
+}
+
+function betaPremiumExplicitlyEnabled(env: NodeJS.ProcessEnv): boolean {
+  const value = String(env.TRADEVETO_BETA_PREMIUM_ACCESS ?? "").trim().toLowerCase();
+  return value === "true" || value === "1" || value === "on" || value === "enabled";
 }
 
 function premiumEmailSet(env: NodeJS.ProcessEnv): Set<string> {

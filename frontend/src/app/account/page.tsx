@@ -139,20 +139,25 @@ export default async function AccountPage() {
                 <span className="text-2xl font-semibold text-slate-50">{planLabel(entitlement)}</span>
                 <span className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${planBadgeClass(entitlement)}`}>{planBadgeText(entitlement)}</span>
               </div>
+              {entitlement.betaAccess ? <BetaAccessNotice entitlement={entitlement} /> : null}
               <div className="mt-4">
                 <BillingControl billingSubscription={billingSubscription} entitlement={entitlement} />
               </div>
-              <div className="mt-3 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.055] px-3 py-2 text-xs leading-5 text-cyan-50/85">
-                {betaBillingCopy(betaBilling)} You can cancel through Stripe before renewal.
-              </div>
+              {!entitlement.betaAccess || billingSubscription ? (
+                <div className="mt-3 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.055] px-3 py-2 text-xs leading-5 text-cyan-50/85">
+                  {betaBillingCopy(betaBilling)} You can cancel through Stripe before renewal.
+                </div>
+              ) : null}
               {billingSubscription ? <SubscriptionState isPremium={entitlement.isPremium} subscription={billingSubscription} /> : null}
               {billingSubscription?.stripeMode === "test" ? (
                 <p className="mt-3 rounded-xl border border-amber-300/25 bg-amber-400/10 px-3 py-2 text-xs font-semibold leading-5 text-amber-100">
                   QA billing profile: {stripeModeLabel(billingSubscription.stripeMode)}. This account is using disposable billing test isolation.
                 </p>
               ) : null}
-              <BillingTrustChecklist allowPromotionCodes={betaBilling.allowPromotionCodes} trialDays={betaBilling.trialDays} />
-              <p className="mt-3 text-xs leading-5 text-slate-500">Payments are securely processed by Stripe.</p>
+              {!entitlement.betaAccess || billingSubscription ? <BillingTrustChecklist allowPromotionCodes={betaBilling.allowPromotionCodes} trialDays={betaBilling.trialDays} /> : null}
+              <p className="mt-3 text-xs leading-5 text-slate-500">
+                {entitlement.betaAccess && !billingSubscription ? "No Stripe subscription is attached to this closed-beta entitlement." : "Payments are securely processed by Stripe."}
+              </p>
             </div>
           </AccountSection>
         </div>
@@ -317,18 +322,21 @@ export default async function AccountPage() {
 
 function planLabel(entitlement: Entitlement): string {
   if (entitlement.isAdmin || entitlement.plan === "admin") return "Private Beta / Admin";
+  if (entitlement.betaAccess) return entitlement.betaAccessLabel ?? "Beta Premium Access";
   if (entitlement.isPremium || entitlement.plan === "premium") return "Private Beta / Premium";
   return "Private Beta / Free";
 }
 
 function planBadgeText(entitlement: Entitlement): string {
   if (entitlement.isAdmin || entitlement.plan === "admin") return "Admin";
+  if (entitlement.betaAccess) return "Beta Premium";
   if (entitlement.isPremium || entitlement.plan === "premium") return "Premium";
   return "Free";
 }
 
 function planBadgeClass(entitlement: Entitlement): string {
   if (entitlement.isAdmin || entitlement.plan === "admin") return "border-fuchsia-300/35 bg-fuchsia-400/10 text-fuchsia-100";
+  if (entitlement.betaAccess) return "border-emerald-300/35 bg-emerald-400/10 text-emerald-100";
   if (entitlement.isPremium || entitlement.plan === "premium") return "border-cyan-300/35 bg-cyan-400/10 text-cyan-100";
   return "border-slate-500/35 bg-white/[0.04] text-slate-200";
 }
@@ -340,6 +348,10 @@ function BillingControl({ billingSubscription, entitlement }: { billingSubscript
         Admin access managed internally
       </button>
     );
+  }
+
+  if (entitlement.betaAccess && !billingSubscription) {
+    return <p className="text-xs leading-5 text-emerald-100/85">Full closed-beta access is active. No upgrade is needed for this beta account.</p>;
   }
 
   const billingState = billingViewState({ isPremium: entitlement.isPremium, subscription: billingSubscription });
@@ -368,6 +380,14 @@ function BillingControl({ billingSubscription, entitlement }: { billingSubscript
   }
 
   return <BillingActionButton mode="checkout" />;
+}
+
+function BetaAccessNotice({ entitlement }: { entitlement: Entitlement }) {
+  return (
+    <div className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-400/[0.07] px-3 py-2 text-xs leading-5 text-emerald-50/90">
+      {entitlement.betaAccessLabel ?? "Beta Premium Access"} is active for this account. Premium research panels, replay, Strategy Labs, and opportunities are unlocked during the closed beta without creating a live Stripe subscription.
+    </div>
+  );
 }
 
 function SubscriptionState({ isPremium, subscription }: { isPremium: boolean; subscription: BillingSubscription }) {

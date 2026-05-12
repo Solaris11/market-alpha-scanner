@@ -49,16 +49,18 @@ export function StrategyLabsWorkspace({ system }: { system: SimulatedAiPortfolio
           <div className="space-y-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
               <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Simulation Mode</div>
-              <div className="grid gap-2">
+              <div className="grid gap-1 border-l border-white/10" role="tablist" aria-label="Simulation mode">
                 {MODE_ORDER.map((item) => (
                   <button
-                    className={`rounded-2xl border px-3 py-3 text-left transition ${
+                    aria-selected={item === mode}
+                    className={`border-l-2 px-3 py-3 text-left transition ${
                       item === mode
-                        ? "border-cyan-300/45 bg-cyan-400/12 text-cyan-50 shadow-[0_0_24px_rgba(34,211,238,0.14)]"
-                        : "border-white/10 bg-slate-950/55 text-slate-300 hover:border-cyan-300/25 hover:bg-white/[0.05]"
+                        ? "border-cyan-300 bg-cyan-400/[0.08] text-cyan-50"
+                        : "border-transparent text-slate-300 hover:border-white/25 hover:bg-white/[0.04]"
                     }`}
                     key={item}
                     onClick={() => setMode(item)}
+                    role="tab"
                     type="button"
                   >
                     <div className="flex items-center justify-between gap-3">

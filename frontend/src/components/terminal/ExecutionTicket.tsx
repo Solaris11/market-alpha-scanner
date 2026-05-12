@@ -72,9 +72,9 @@ export function ExecutionTicket({ canTrade = true, engine, researchModeReason, s
       {engine.validity.isCalculable ? <div className="mt-2 text-xs text-slate-500">Entry {formatMoney(engine.state.entryPrice)} / Stop {formatMoney(engine.state.stopLoss)}</div> : null}
       <div className="mt-3 flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs">
         <span className="text-slate-400">Mode</span>
-        <div className="flex gap-2">
-          <button className="rounded-full bg-cyan-400/15 px-3 py-1 text-cyan-100" onClick={() => ticket.setters.setMode("paper")}>Paper</button>
-          <button className="cursor-not-allowed rounded-full bg-slate-800 px-3 py-1 text-slate-500" title="Live broker execution is not enabled yet." disabled>Live</button>
+        <div className="flex gap-4 border-b border-white/10" role="tablist" aria-label="Execution mode">
+          <button aria-selected className="border-b-2 border-cyan-300 px-0.5 py-1 text-cyan-100" onClick={() => ticket.setters.setMode("paper")} role="tab" type="button">Paper</button>
+          <button aria-selected={false} className="cursor-not-allowed border-b-2 border-transparent px-0.5 py-1 text-slate-500" title="Live broker execution is not enabled yet." disabled role="tab" type="button">Live</button>
         </div>
       </div>
       <pre className="mt-4 max-h-44 overflow-auto rounded-xl border border-white/10 bg-slate-950/80 p-3 text-xs text-slate-300">{JSON.stringify(ticket.payload, null, 2)}</pre>

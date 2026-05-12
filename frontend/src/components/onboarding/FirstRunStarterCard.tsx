@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { markOnboardingReplayPending, replayMarketOnboarding } from "./MarketOnboarding";
 
@@ -57,6 +58,7 @@ const CHECKPOINTS = ["Understand the market state", "Review one opportunity", "S
 export function FirstRunStarterCard() {
   const pathname = usePathname();
   const router = useRouter();
+  const { entitlement } = useCurrentUser();
   const [visible, setVisible] = useState(false);
   const [path, setPath] = useState<StarterPath>("beginner");
 
@@ -174,7 +176,9 @@ export function FirstRunStarterCard() {
         </button>
       </div>
       <p className="mt-3 text-[11px] leading-5 text-slate-500">
-        Free preview states may show limited data. Premium unlocks full-universe ranking, deeper evidence, replay, and personalized watchlist intelligence.
+        {entitlement.betaAccess
+          ? "Closed beta premium access is active. Full-universe ranking, deeper evidence, replay, and personalized watchlist intelligence are unlocked after legal acceptance."
+          : "Free preview states may show limited data. Premium unlocks full-universe ranking, deeper evidence, replay, and personalized watchlist intelligence."}
       </p>
     </section>
   );
