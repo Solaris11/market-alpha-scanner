@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { AlertTriangle, Bell, Eye, Gauge, Target, Zap } from "lucide-react";
 import { useMemo } from "react";
-import { IconInsightRail, ScoreFactorStrip, VisualMetricRail } from "@/components/visual/MiniVisuals";
+import { ScoreFactorStrip, type ScoreFactor, VisualMetricRail } from "@/components/visual/MiniVisuals";
+import { InteractiveInsightZoneGrid, type InteractiveInsightZoneItem } from "@/components/visual/InteractiveVisualIntelligence";
 import { SymbolLogo } from "@/components/visual/SymbolLogo";
 import {
   buildUnifiedIntelligenceConsole,
@@ -130,6 +131,7 @@ function SimpleHomeConsole({ consoleModel }: { consoleModel: ReturnType<typeof b
     risks[0]?.riskLabel,
     shocks[0]?.actionContext,
   ].filter((item): item is string => Boolean(item));
+  const zones = buildSimpleHomeZones(consoleModel);
 
   return (
     <GlassPanel className="poster-scanline overflow-hidden border-cyan-300/20 bg-cyan-400/[0.035] p-4 sm:p-5" data-onboarding-target="what-matters-now">
@@ -153,15 +155,11 @@ function SimpleHomeConsole({ consoleModel }: { consoleModel: ReturnType<typeof b
       </div>
 
       <div className="mt-5">
-        <IconInsightRail
-          items={[
-            { copy: "Regime and freshness.", icon: <Gauge className="h-6 w-6" />, label: "Market State", tone: "cyan" },
-            { copy: "Quality scores.", icon: <Target className="h-6 w-6" />, label: "Best Setups", tone: "emerald" },
-            { copy: "Large-move context.", icon: <Zap className="h-6 w-6" />, label: "Shock Watch", tone: "violet" },
-            { copy: "Elevated-risk alerts.", icon: <AlertTriangle className="h-6 w-6" />, label: "Dangerous", tone: "amber" },
-            { copy: "Tracked changes.", icon: <Bell className="h-6 w-6" />, label: "Watchlist", tone: "rose" },
-            { copy: "Monitor next.", icon: <Eye className="h-6 w-6" />, label: "What Changed", tone: "cyan" },
-          ]}
+        <InteractiveInsightZoneGrid
+          eyebrow="Clickable intelligence zones"
+          summary="Tap a zone to see the scored factors, source data, and the reason it appears here."
+          title="Explore What Matters"
+          zones={zones}
         />
       </div>
 
@@ -211,6 +209,163 @@ function SimpleHomeConsole({ consoleModel }: { consoleModel: ReturnType<typeof b
       </details>
     </GlassPanel>
   );
+}
+
+function buildSimpleHomeZones(consoleModel: ReturnType<typeof buildUnifiedIntelligenceConsole>): InteractiveInsightZoneItem[] {
+  const metricByKey = new Map(consoleModel.metrics.map((metric) => [metric.key, metric]));
+  const generatedAt = new Date(consoleModel.generatedAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" });
+  const best = consoleModel.topOpportunities[0] ?? null;
+  const risk = consoleModel.topRisks[0] ?? null;
+  const topShock = consoleModel.shockConditionsAligning[0] ?? null;
+  const topChange = consoleModel.biggestChanges[0] ?? null;
+  const topWatchlist = consoleModel.watchlistChanges[0] ?? null;
+
+  return [
+    {
+      bullets: [
+        consoleModel.macroRegime.summary,
+        `Attention is ${metricByKey.get("attention")?.score ?? "not scored"} across current opportunity, risk, and workflow inputs.`,
+        topChange ? topChange.label : "No material market-state change is available in this snapshot.",
+      ],
+      dataSource: "Unified console metrics, scanner rows, workflow evolution",
+      detailSummary: consoleModel.macroRegime.summary,
+      detailTitle: "Market State Detail",
+      eyebrow: "Regime",
+      factors: [
+        metricFactor(metricByKey.get("attention"), "cyan"),
+        metricFactor(metricByKey.get("decision"), "cyan"),
+        metricFactor(metricByKey.get("risk"), "rose"),
+        metricFactor(metricByKey.get("fragility"), "amber"),
+      ].filter((factor): factor is ScoreFactor => Boolean(factor)),
+      icon: <Gauge className="h-6 w-6" />,
+      id: "market-state",
+      label: "Market State",
+      metric: `${metricByKey.get("attention")?.score ?? "N/A"}`,
+      summary: consoleModel.macroRegime.label,
+      tone: "cyan",
+      updatedAt: generatedAt,
+    },
+    {
+      bullets: best ? [best.reasonForAttention, best.actionContext, best.detail] : ["No top setup is available in this snapshot."],
+      dataSource: "Meta opportunity priority queue",
+      detailSummary: best ? `${best.symbol} leads the current setup stack. ${best.reasonForAttention}` : "No setup has enough current quality to lead the queue.",
+      detailTitle: "Best Setups Detail",
+      emptyMessage: "No best-setup row has enough scored factors yet.",
+      eyebrow: "Opportunity",
+      factors: best ? itemFactors(best, "opportunity") : [],
+      href: best?.href ?? "/opportunities",
+      icon: <Target className="h-6 w-6" />,
+      id: "best-setups",
+      label: "Best Setups",
+      metric: `${consoleModel.topOpportunities.length}`,
+      summary: best ? `${best.symbol}: ${best.reasonForAttention}` : "No clear setup leader yet.",
+      tone: "emerald",
+      updatedAt: generatedAt,
+    },
+    {
+      bullets: topShock ? [topShock.label, topShock.actionContext] : ["No large-move setup is standing out yet."],
+      dataSource: "Shock pattern intelligence and current scanner rows",
+      detailSummary: topShock ? topShock.label : "TradeVeto is not showing a high-quality large-move watch item in this snapshot.",
+      detailTitle: "Shock Watch Detail",
+      emptyMessage: "Shock watch uses pattern-level evidence. No scored shock factor is available for this snapshot.",
+      factors: [
+        metricFactor(metricByKey.get("risk"), "rose"),
+        metricFactor(metricByKey.get("fragility"), "amber"),
+        metricFactor(metricByKey.get("attention"), "violet"),
+      ].filter((factor): factor is ScoreFactor => Boolean(factor)),
+      href: "/opportunities?tab=shock",
+      icon: <Zap className="h-6 w-6" />,
+      id: "shock-watch",
+      label: "Shock Watch",
+      metric: `${consoleModel.shockConditionsAligning.length}`,
+      summary: topShock ? topShock.label : "No elevated large-move context.",
+      tone: "violet",
+      updatedAt: generatedAt,
+    },
+    {
+      bullets: risk ? [risk.riskLabel, risk.actionContext, risk.reasonForAttention] : ["No dominant dangerous-now item is visible yet."],
+      dataSource: "Danger queue, fragility, risk pressure, and timing quality",
+      detailSummary: risk ? `${risk.symbol} is the top current risk item. ${risk.riskLabel}` : "No current item is dominating the risk queue.",
+      detailTitle: "Dangerous Now Detail",
+      emptyMessage: "No dangerous-now row has enough scored factors yet.",
+      factors: risk ? itemFactors(risk, "risk") : [],
+      href: risk?.href ?? "/opportunities",
+      icon: <AlertTriangle className="h-6 w-6" />,
+      id: "dangerous",
+      label: "Dangerous",
+      metric: `${consoleModel.topRisks.length}`,
+      summary: risk ? `${risk.symbol}: ${risk.riskLabel}` : "No dominant danger item.",
+      tone: "amber",
+      updatedAt: generatedAt,
+    },
+    {
+      bullets: topWatchlist ? [topWatchlist.label, topWatchlist.actionContext] : ["Add symbols to the watchlist to see tracked changes."],
+      dataSource: "Watchlist evolution and workflow memory",
+      detailSummary: topWatchlist ? topWatchlist.label : "No watchlist-specific change is available yet.",
+      detailTitle: "Watchlist Detail",
+      factors: [
+        metricFactor(metricByKey.get("attention"), "cyan"),
+        metricFactor(metricByKey.get("decision"), "cyan"),
+      ].filter((factor): factor is ScoreFactor => Boolean(factor)),
+      href: "/opportunities?tab=watchlist",
+      icon: <Bell className="h-6 w-6" />,
+      id: "watchlist",
+      label: "Watchlist",
+      metric: `${consoleModel.watchlistChanges.length}`,
+      summary: topWatchlist ? topWatchlist.label : "No tracked change yet.",
+      tone: "rose",
+      updatedAt: generatedAt,
+    },
+    {
+      bullets: consoleModel.biggestChanges.length
+        ? consoleModel.biggestChanges.slice(0, 5).map((item) => `${item.label} ${item.actionContext}`)
+        : ["No recent workflow change is available in this snapshot."],
+      dataSource: "Workflow evolution, scanner deltas, and fallback current rows",
+      detailSummary: topChange ? topChange.label : "No material changes are available yet.",
+      detailTitle: "What Changed Detail",
+      factors: [
+        metricFactor(metricByKey.get("attention"), "cyan"),
+        metricFactor(metricByKey.get("opportunity"), "emerald"),
+        metricFactor(metricByKey.get("risk"), "rose"),
+      ].filter((factor): factor is ScoreFactor => Boolean(factor)),
+      href: "/history",
+      icon: <Eye className="h-6 w-6" />,
+      id: "what-changed",
+      label: "What Changed",
+      metric: `${consoleModel.biggestChanges.length}`,
+      summary: topChange ? topChange.label : "No material change yet.",
+      tone: "cyan",
+      updatedAt: generatedAt,
+    },
+  ];
+}
+
+function metricFactor(metric: UnifiedConsoleMetric | undefined, tone: ScoreFactor["tone"]): ScoreFactor | null {
+  if (!metric) return null;
+  return {
+    detail: metric.detail,
+    label: metric.label,
+    tone,
+    value: metric.score,
+  };
+}
+
+function itemFactors(item: UnifiedConsoleItem, mode: "opportunity" | "risk"): ScoreFactor[] {
+  if (mode === "risk") {
+    return [
+      { detail: item.riskLabel, label: "Risk", tone: "rose", value: item.riskScore },
+      { detail: item.urgencyLabel, label: "Urgency", tone: "amber", value: item.urgencyScore },
+      { detail: item.reasonForAttention, label: "Attention", tone: "cyan", value: item.attentionPriorityScore },
+      { detail: item.actionContext, label: "Timing", tone: "amber", value: item.timingQualityScore },
+    ];
+  }
+
+  return [
+    { detail: item.reasonForAttention, label: "Opportunity", tone: "emerald", value: item.opportunityScore },
+    { detail: item.actionContext, label: "Timing", tone: "amber", value: item.timingQualityScore },
+    { detail: item.reasonForAttention, label: "Attention", tone: "cyan", value: item.attentionPriorityScore },
+    { detail: item.detail, label: "Decision", tone: "cyan", value: item.decisionQualityScore },
+  ];
 }
 
 function SimpleStatusPill({ label, value }: { label: string; value: string }) {

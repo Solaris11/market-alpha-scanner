@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { Activity, BarChart3, Eye, ShieldAlert, Target, Zap } from "lucide-react";
 import { PremiumEChart } from "@/components/charts/PremiumEChart";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import { DataHealthIndicator } from "@/components/data-health-indicator";
@@ -54,7 +55,8 @@ import { WatchlistButton } from "@/components/watchlist-controls";
 import { DecisionBadge } from "@/components/terminal/DecisionBadge";
 import { MiniPriceContextChart } from "@/components/terminal/MiniPriceContextChart";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
-import { HeatDots, ScoreFactorStrip, VisualMetricRail } from "@/components/visual/MiniVisuals";
+import { HeatDots, ScoreFactorStrip, type ScoreFactor, VisualMetricRail } from "@/components/visual/MiniVisuals";
+import { InteractiveInsightZoneGrid, type InteractiveInsightZoneItem } from "@/components/visual/InteractiveVisualIntelligence";
 import { SymbolIdentityLine, SymbolLogo } from "@/components/visual/SymbolLogo";
 import { getSymbolVisualIdentity } from "@/lib/visual-identity";
 import type { ChartCandle } from "@/components/terminal/SymbolChart";
@@ -296,6 +298,7 @@ export function OpportunitiesWorkspace({
         />
       ) : null}
       <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} rows={rows} />
+      <OpportunityVisualCommandCenter marketCondition={marketCondition} rows={rows} watchlistSet={watchlistSet} />
 
       <GlassPanel className="p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -470,6 +473,153 @@ function GuideCheckpoint({ text, title }: { text: string; title: string }) {
       <p className="mt-2 text-xs leading-5 text-slate-400">{text}</p>
     </div>
   );
+}
+
+function OpportunityVisualCommandCenter({
+  marketCondition,
+  rows,
+  watchlistSet,
+}: {
+  marketCondition: string | null;
+  rows: OpportunityViewModel[];
+  watchlistSet: Set<string>;
+}) {
+  const bestRows = rows.filter(opportunityIsBestSetup);
+  const shockRows = rows.filter(opportunityIsShockPotential);
+  const watchedRows = rows.filter((row) => watchlistSet.has(row.symbol));
+  const riskRows = rows.filter((row) => opportunityDecision(row) === "AVOID" || row.fragility >= 68);
+  const improvingRows = rows
+    .map((row) => ({ change: numeric(row.raw.score_change ?? row.raw.readiness_change ?? row.raw.confidence_change), row }))
+    .filter((item): item is { change: number; row: OpportunityViewModel } => item.change !== null)
+    .sort((left, right) => right.change - left.change);
+  const best = bestRows[0] ?? highestScoredSetups(rows)[0] ?? null;
+  const topShock = shockRows[0] ?? null;
+  const topRisk = riskRows[0] ?? null;
+  const topWatched = watchedRows[0] ?? null;
+  const averageScore = averageScoreValue(rows.map((row) => row.final_score));
+  const averageConviction = averageScoreValue(rows.map((row) => row.conviction));
+  const averageStability = averageScoreValue(rows.map((row) => 100 - row.fragility));
+
+  const zones: InteractiveInsightZoneItem[] = [
+    {
+      bullets: [
+        `${rows.length.toLocaleString()} symbols are in the latest scanner universe.`,
+        `Market condition is ${cleanText(marketCondition, "not labeled")}.`,
+        `Average score is ${averageScore === null ? "not available" : formatNumber(averageScore, 0)} and average conviction is ${averageConviction === null ? "not available" : formatNumber(averageConviction, 0)}.`,
+      ],
+      dataSource: "Latest scanner universe and opportunity view model",
+      detailSummary: "This is the current map of the research universe. It shows coverage and average conditions without hiding weak or blocked rows.",
+      detailTitle: "Universe Map",
+      factors: [
+        { label: "Avg Score", tone: "cyan", value: averageScore },
+        { label: "Avg Conviction", tone: "emerald", value: averageConviction },
+        { label: "Avg Stability", tone: "cyan", value: averageStability },
+      ],
+      href: "/opportunities?tab=full",
+      icon: <BarChart3 className="h-6 w-6" />,
+      id: "universe-map",
+      label: "Universe Map",
+      metric: rows.length.toLocaleString(),
+      summary: `${rows.length.toLocaleString()} scanned symbols with ${bestRows.length.toLocaleString()} best-setup candidates.`,
+      tone: "cyan",
+    },
+    {
+      bullets: best ? [opportunityVisibilityReason(best, "BEST", "SCORE_DESC", 0), firstReason(best), `Evidence: ${evidenceSummary(best)}`] : ["No candidate currently clears the best-setup filter."],
+      dataSource: "Opportunity score, conviction, evidence maturity, setup quality",
+      detailSummary: best ? `${best.symbol} is the leading setup context in this view.` : "No top setup is available yet.",
+      detailTitle: "Best Setup Stack",
+      factors: best ? opportunityRowFactors(best) : [],
+      href: best ? `/symbol/${best.symbol}` : "/opportunities?tab=best",
+      icon: <Target className="h-6 w-6" />,
+      id: "best-stack",
+      label: "Best Stack",
+      metric: bestRows.length.toLocaleString(),
+      summary: best ? `${best.symbol}: ${firstReason(best)}` : "No best setup leader yet.",
+      tone: "emerald",
+    },
+    {
+      bullets: topShock ? [firstReason(topShock), `Current shock similarity: ${topShock.shockPattern?.currentSimilarityScore ?? "not scored"}/100`, `Chase risk: ${topShock.shockPattern?.chaseRiskLabel ?? "not scored"}`] : ["No shock-potential row is currently elevated."],
+      dataSource: "Shock pattern map, large-move context, fragility, current setup quality",
+      detailSummary: topShock ? `${topShock.symbol} has visible large-move research context.` : "No shock-potential candidate is currently elevated enough to lead this view.",
+      detailTitle: "Shock Potential",
+      factors: topShock ? opportunityRowFactors(topShock) : [],
+      href: topShock ? `/symbol/${topShock.symbol}` : "/opportunities?tab=shock",
+      icon: <Zap className="h-6 w-6" />,
+      id: "shock-potential",
+      label: "Shock Potential",
+      metric: shockRows.length.toLocaleString(),
+      summary: topShock ? `${topShock.symbol}: large-move context visible.` : "No elevated shock stack.",
+      tone: "violet",
+    },
+    {
+      bullets: topRisk ? [firstReason(topRisk), `Fragility ${topRisk.fragility}/100 (${topRisk.fragilityLabel})`, `Decision: ${decisionLabel(topRisk.final_decision)}`] : ["No avoid/high-fragility row dominates the current risk queue."],
+      dataSource: "Risk vetoes, fragility, final decision, pressure fields",
+      detailSummary: topRisk ? `${topRisk.symbol} is visible because risk conditions are elevated.` : "Risk is not concentrated in a single top row in this filtered view.",
+      detailTitle: "Risk Watch",
+      factors: topRisk ? opportunityRowFactors(topRisk) : [],
+      href: topRisk ? `/symbol/${topRisk.symbol}` : "/opportunities?tab=full",
+      icon: <ShieldAlert className="h-6 w-6" />,
+      id: "risk-watch",
+      label: "Risk Watch",
+      metric: riskRows.length.toLocaleString(),
+      summary: topRisk ? `${topRisk.symbol}: ${topRisk.fragilityLabel}` : "No dominant risk leader.",
+      tone: "amber",
+    },
+    {
+      bullets: topWatched ? [firstReason(topWatched), `Evidence: ${evidenceSummary(topWatched)}`, `Decision: ${decisionLabel(topWatched.final_decision)}`] : ["No watchlist rows are visible. Add symbols from symbol detail pages to personalize this view."],
+      dataSource: "Local watchlist and current scanner rows",
+      detailSummary: topWatched ? `${topWatched.symbol} is the current watchlist item with scanner context.` : "Watchlist intelligence appears after tracked symbols overlap current scanner rows.",
+      detailTitle: "Watchlist Intelligence",
+      factors: topWatched ? opportunityRowFactors(topWatched) : [],
+      href: "/opportunities?tab=watchlist",
+      icon: <Eye className="h-6 w-6" />,
+      id: "watchlist-intel",
+      label: "Watchlist",
+      metric: watchedRows.length.toLocaleString(),
+      summary: watchedRows.length ? `${watchedRows.length} tracked symbols in scanner context.` : "No tracked scanner rows yet.",
+      tone: "cyan",
+    },
+    {
+      bullets: improvingRows.length
+        ? improvingRows.slice(0, 5).map((item) => `${item.row.symbol}: ${item.change > 0 ? "+" : ""}${formatNumber(item.change, 1)} score/readiness change`)
+        : ["No score-change field is available in this view yet."],
+      dataSource: "Score/readiness/confidence change fields when present",
+      detailSummary: improvingRows.length ? `${improvingRows[0].row.symbol} has the largest visible positive score/readiness change.` : "This scanner packet does not include enough change data for a movement chart.",
+      detailTitle: "What Moved",
+      factors: improvingRows[0] ? opportunityRowFactors(improvingRows[0].row) : [],
+      href: improvingRows[0] ? `/symbol/${improvingRows[0].row.symbol}` : "/history",
+      icon: <Activity className="h-6 w-6" />,
+      id: "what-moved",
+      label: "What Moved",
+      metric: improvingRows.length.toLocaleString(),
+      summary: improvingRows.length ? `${improvingRows[0].row.symbol} moved most in the available change fields.` : "No validated movement feed yet.",
+      tone: "rose",
+    },
+  ];
+
+  return (
+    <InteractiveInsightZoneGrid
+      eyebrow="Visual opportunity map"
+      summary="These zones are derived from the current scanner rows. Open one to inspect the scored factors and source context."
+      title="Tap Into the Opportunity Stack"
+      zones={zones}
+    />
+  );
+}
+
+function averageScoreValue(values: Array<number | null | undefined>): number | null {
+  const safe = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  if (!safe.length) return null;
+  return safe.reduce((total, value) => total + value, 0) / safe.length;
+}
+
+function opportunityRowFactors(row: OpportunityViewModel): ScoreFactor[] {
+  return [
+    { label: "Score", tone: "cyan", value: row.final_score },
+    { label: "Conviction", tone: "emerald", value: row.conviction },
+    { label: "Stability", tone: row.fragility >= 68 ? "rose" : "emerald", value: Math.max(0, 100 - row.fragility) },
+    { label: "Evidence", tone: row.evidence?.tier === "limited" ? "amber" : "emerald", value: row.evidence?.score },
+  ];
 }
 
 function OpportunityDeskMap({ marketCondition, rows }: { marketCondition: string | null; rows: OpportunityViewModel[] }) {

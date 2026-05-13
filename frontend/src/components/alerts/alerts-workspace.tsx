@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { BellRing, RadioTower, ShieldCheck, SlidersHorizontal } from "lucide-react";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
+import { InteractiveInsightZoneGrid, type InteractiveInsightZoneItem } from "@/components/visual/InteractiveVisualIntelligence";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { humanizeLabel } from "@/lib/ui/labels";
@@ -239,6 +241,109 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
     throw new Error(payload.message || payload.error || `Request failed: ${response.status}`);
   }
   return payload;
+}
+
+function AlertVisualCenter({ overview, watchlist }: { overview: AlertOverview; watchlist: string[] }) {
+  const totalRules = overview.rules.length;
+  const enabledRules = overview.rules.filter((rule) => rule.enabled).length;
+  const watchlistRules = overview.rules.filter((rule) => rule.scope === "watchlist").length;
+  const globalRules = overview.rules.filter((rule) => rule.scope === "global").length;
+  const enabledShare = totalRules ? (enabledRules / totalRules) * 100 : null;
+  const activeShare = totalRules ? (overview.activeCount / totalRules) * 100 : null;
+  const stateCount = Object.keys(overview.state.alerts).length;
+  const lastSent = formatDate(overview.lastSentAt);
+  const zones: InteractiveInsightZoneItem[] = [
+    {
+      bullets: [
+        `${enabledRules.toLocaleString()} of ${totalRules.toLocaleString()} alert rules are enabled.`,
+        `${overview.activeCount.toLocaleString()} rules are active in the alert engine.`,
+        `Last alert sent: ${lastSent}.`,
+      ],
+      dataSource: "Alert rules API and alert state store",
+      detailSummary: "Shows whether alert rules are configured and actively evaluated.",
+      detailTitle: "Alert Coverage",
+      factors: [
+        { label: "Enabled Rules", tone: "emerald", value: enabledShare },
+        { label: "Active Rules", tone: "cyan", value: activeShare },
+      ],
+      icon: <BellRing className="h-6 w-6" />,
+      id: "alert-coverage",
+      label: "Coverage",
+      metric: enabledRules.toLocaleString(),
+      summary: totalRules ? `${enabledRules} enabled out of ${totalRules} configured rules.` : "No alert rules configured yet.",
+      tone: "cyan",
+      updatedAt: lastSent,
+    },
+    {
+      bullets: [
+        `${watchlist.length.toLocaleString()} local watchlist symbols are available for quick alerts.`,
+        `${watchlistRules.toLocaleString()} watchlist-scoped rules are configured.`,
+        "Watchlist alerts fire from actual tracked symbols and alert rule state.",
+      ],
+      dataSource: "Local watchlist and alert rule scope",
+      detailSummary: "Shows how much of the alert system is tied to tracked symbols.",
+      detailTitle: "Watchlist Alert Readiness",
+      factors: [
+        { label: "Watchlist Rules", tone: "cyan", value: totalRules ? (watchlistRules / totalRules) * 100 : null },
+      ],
+      icon: <RadioTower className="h-6 w-6" />,
+      id: "watchlist-alerts",
+      label: "Watchlist",
+      metric: watchlist.length.toLocaleString(),
+      summary: watchlist.length ? `${watchlist.length} tracked symbols can be wired to system alerts.` : "No tracked symbols yet.",
+      tone: "emerald",
+    },
+    {
+      bullets: [
+        `${globalRules.toLocaleString()} global scanner rules are configured.`,
+        "Global alerts are useful for entry-ready or top-ranked contexts but should stay capped to avoid noise.",
+        "Rules include cooldown and max-per-run controls where configured.",
+      ],
+      dataSource: "Alert rule scope, cooldown, and max-per-run settings",
+      detailSummary: "Shows whether broader scanner-level alerts are present without exposing raw alert logs by default.",
+      detailTitle: "Global Alert Controls",
+      factors: [
+        { label: "Global Rules", tone: "violet", value: totalRules ? (globalRules / totalRules) * 100 : null },
+        { label: "Enabled Share", tone: "cyan", value: enabledShare },
+      ],
+      icon: <SlidersHorizontal className="h-6 w-6" />,
+      id: "global-alerts",
+      label: "Global Rules",
+      metric: globalRules.toLocaleString(),
+      summary: globalRules ? `${globalRules} global scanner alert rules are configured.` : "No global scanner rules configured yet.",
+      tone: "violet",
+    },
+    {
+      bullets: [
+        `${stateCount.toLocaleString()} alert state entries are stored for rule evaluation history.`,
+        `Last delivery checkpoint: ${lastSent}.`,
+        "Advanced diagnostics remain available behind the Advanced view.",
+      ],
+      dataSource: "Alert state store and last delivery timestamp",
+      detailSummary: "Shows whether alert evaluation has state history. It does not invent alert activity when no state exists.",
+      detailTitle: "Delivery State",
+      factors: [
+        { label: "State Coverage", tone: "amber", value: totalRules ? (stateCount / totalRules) * 100 : null },
+        { label: "Active Rules", tone: "cyan", value: activeShare },
+      ],
+      icon: <ShieldCheck className="h-6 w-6" />,
+      id: "delivery-state",
+      label: "Delivery State",
+      metric: stateCount.toLocaleString(),
+      summary: stateCount ? `${stateCount} alert state entries recorded.` : "No alert state history yet.",
+      tone: "amber",
+      updatedAt: lastSent,
+    },
+  ];
+
+  return (
+    <InteractiveInsightZoneGrid
+      eyebrow="Visual alert center"
+      summary="Alert visuals are based on configured rules, watchlist overlap, and stored alert state."
+      title="Tap Into Alert Readiness"
+      zones={zones}
+    />
+  );
 }
 
 export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOverview }) {
@@ -662,21 +767,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
         </div>
       ) : null}
 
-      <section className="terminal-panel rounded-md p-4">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Alert System Status</div>
-        <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          {[
-            { label: "Active Rules", value: overview.activeCount.toLocaleString(), meta: `${overview.rules.length.toLocaleString()} total configured` },
-            { label: "Last Alert Sent", value: formatDate(overview.lastSentAt), meta: "delivery status" },
-          ].map((metric) => (
-            <div className="min-w-0 rounded border border-slate-800 bg-slate-950/50 px-3 py-2" key={metric.label}>
-              <div className="truncate text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{metric.label}</div>
-              <div className="mt-1 truncate font-mono text-sm font-semibold text-slate-100">{metric.value}</div>
-              <div className="mt-0.5 truncate text-[11px] text-slate-500">{metric.meta}</div>
-            </div>
-          ))}
-        </div>
-      </section>
+      <AlertVisualCenter overview={overview} watchlist={watchlist} />
 
       <SimpleAdvancedTabs
         simple={(

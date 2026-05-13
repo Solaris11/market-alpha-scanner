@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { Activity, BarChart3, Clock, Gauge } from "lucide-react";
+import { InteractiveInsightZoneGrid, type InteractiveInsightZoneItem } from "@/components/visual/InteractiveVisualIntelligence";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { compareSortValues, nextSortDirection, stableSortRows, type SortConfig, type SortDirection } from "@/lib/table-sort";
 import type { CsvRow, HistorySummary, RankingRow } from "@/lib/types";
@@ -406,6 +408,13 @@ function evidenceMaturity(count: number): string {
   return "No completed windows";
 }
 
+function evidenceMaturityScore(count: number): number | null {
+  if (count > 100) return 92;
+  if (count >= 30) return 70;
+  if (count > 0) return 38;
+  return null;
+}
+
 export function PerformanceValidation({ forwardRows, forwardObservationCount, history, rankingRows = [], summaryRows }: Props) {
   const [horizon, setHorizon] = useState("");
   const [groupType, setGroupType] = useState("");
@@ -495,6 +504,89 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
     { label: "Completed Observations", value: (forwardObservationCount ?? cleanForwardRows.length).toLocaleString(), meta: "forward windows" },
     { label: "Horizons Available", value: completedHorizons.length ? completedHorizons.join(", ") : "None", meta: "1D / 2D / 5D / 10D / 20D / 60D" },
   ];
+  const evidenceCount = forwardObservationCount ?? cleanForwardRows.length;
+  const visualZones: InteractiveInsightZoneItem[] = [
+    {
+      bullets: [
+        `${history.count.toLocaleString()} saved scanner runs are available.`,
+        `${history.uniqueDates.length.toLocaleString()} unique signal dates are available for evidence building.`,
+        `Latest history timestamp: ${formatDate(history.latest)}.`,
+      ],
+      dataSource: "Saved scan history summary",
+      detailSummary: "Shows whether the scanner has enough stored runs and dates to support later-outcome analysis.",
+      detailTitle: "Evidence Depth",
+      factors: [
+        { label: "Evidence Maturity", tone: "cyan", value: evidenceMaturityScore(evidenceCount) },
+        { label: "Horizon Coverage", tone: "emerald", value: completedHorizons.length ? (completedHorizons.length / 6) * 100 : null },
+      ],
+      icon: <Clock className="h-6 w-6" />,
+      id: "evidence-depth",
+      label: "Evidence Depth",
+      metric: history.uniqueDates.length.toLocaleString(),
+      summary: `${history.uniqueDates.length.toLocaleString()} unique dates and ${evidenceCount.toLocaleString()} completed observations.`,
+      tone: "cyan",
+      updatedAt: formatDate(history.latest),
+    },
+    {
+      bullets: [
+        `${summaryRows.length.toLocaleString()} grouped performance rows are available.`,
+        summaryRows.length ? "Grouped score/setup comparisons are shown below with real completed forward windows." : "Grouped comparisons are hidden until enough forward windows complete.",
+        "The scanner does not auto-tune itself from small samples.",
+      ],
+      dataSource: "Grouped forward-return summary rows",
+      detailSummary: summaryRows.length ? "Grouped performance comparisons are ready for review." : "Grouped performance comparisons are still maturing.",
+      detailTitle: "Calibration Readiness",
+      factors: [
+        { label: "Evidence Maturity", tone: "cyan", value: evidenceMaturityScore(evidenceCount) },
+        { label: "Completed Horizons", tone: "emerald", value: completedHorizons.length ? (completedHorizons.length / 6) * 100 : null },
+      ],
+      icon: <Gauge className="h-6 w-6" />,
+      id: "calibration-readiness",
+      label: "Calibration",
+      metric: summaryRows.length.toLocaleString(),
+      summary: summaryRows.length ? `${summaryRows.length} grouped rows ready.` : "Grouped rows not ready yet.",
+      tone: summaryRows.length ? "emerald" : "amber",
+    },
+    {
+      bullets: [
+        `${compactRows.length.toLocaleString()} compact forward-return observations are available in the current view.`,
+        showRawObservations ? "Detailed raw observations are currently selected." : "Compact view shows latest symbol/horizon observations by default.",
+        "Advanced raw observations load only when requested.",
+      ],
+      dataSource: "Forward returns CSV/API",
+      detailSummary: "Forward returns compare historical signals against later outcomes once time windows complete.",
+      detailTitle: "Outcome Observations",
+      factors: [
+        { label: "Evidence Maturity", tone: "cyan", value: evidenceMaturityScore(evidenceCount) },
+        { label: "Compact Coverage", tone: "violet", value: cleanForwardRows.length ? (compactRows.length / cleanForwardRows.length) * 100 : null },
+      ],
+      icon: <Activity className="h-6 w-6" />,
+      id: "outcome-observations",
+      label: "Outcomes",
+      metric: compactRows.length.toLocaleString(),
+      summary: compactRows.length ? `${compactRows.length} compact later-outcome rows available.` : "No completed outcome rows yet.",
+      tone: "violet",
+    },
+    {
+      bullets: [
+        "Charts appear only when grouped evidence exists.",
+        "Empty chart frames are replaced by explicit limited-evidence states.",
+        "Advanced tables stay available for operator review.",
+      ],
+      dataSource: "Grouped performance rows and forward observations",
+      detailSummary: "Performance visuals are intentionally conservative and hide chart frames until real grouped evidence is present.",
+      detailTitle: "Chart Trust Boundary",
+      factors: [
+        { label: "Evidence Maturity", tone: "amber", value: evidenceMaturityScore(evidenceCount) },
+      ],
+      icon: <BarChart3 className="h-6 w-6" />,
+      id: "chart-boundary",
+      label: "Chart Trust",
+      metric: summaryRows.length ? "Ready" : "Limited",
+      summary: summaryRows.length ? "Real grouped evidence powers the charts below." : "Charts are hidden until evidence is ready.",
+      tone: summaryRows.length ? "emerald" : "amber",
+    },
+  ];
 
   function handleGroupedSort(key: GroupedSortKey) {
     const direction = nextSortDirection(groupedSortKey, key, groupedSortDirection, groupedSortConfig(key));
@@ -510,6 +602,13 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
 
   return (
     <section className="space-y-3">
+      <InteractiveInsightZoneGrid
+        eyebrow="Performance proof zones"
+        summary="Open each zone to inspect the evidence status, source rows, and chart boundary before reading calibration claims."
+        title="Tap Into Calibration Evidence"
+        zones={visualZones}
+      />
+
       <section className="terminal-panel rounded-md p-4">
         <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Readiness</div>
         <p className="mt-1 text-xs text-slate-400">Grouped results summarize scanner evidence ranges. Forward returns show symbol-level observations.</p>
