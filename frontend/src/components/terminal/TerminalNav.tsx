@@ -15,7 +15,9 @@ import {
   LayoutDashboard,
   LineChart,
   Menu,
+  Search,
   Smartphone,
+  Star,
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
@@ -54,6 +56,7 @@ const NAV_ICON_MAP: Record<string, { Icon: LucideIcon; tone: string }> = {
   community: { Icon: UsersRound, tone: "text-emerald-200" },
   dashboard: { Icon: LayoutDashboard, tone: "text-cyan-200" },
   developers: { Icon: Code2, tone: "text-violet-200" },
+  find: { Icon: Search, tone: "text-cyan-200" },
   history: { Icon: BookOpenCheck, tone: "text-violet-200" },
   mobile: { Icon: Smartphone, tone: "text-emerald-200" },
   opportunities: { Icon: ChartCandlestick, tone: "text-emerald-200" },
@@ -62,6 +65,7 @@ const NAV_ICON_MAP: Record<string, { Icon: LucideIcon; tone: string }> = {
   support: { Icon: HelpCircle, tone: "text-cyan-200" },
   "strategy-labs": { Icon: Bot, tone: "text-violet-200" },
   terminal: { Icon: Activity, tone: "text-cyan-200" },
+  watchlist: { Icon: Star, tone: "text-amber-200" },
 };
 
 const NAV_COLOR_MAP: Record<string, { active: string; hover: string; icon: string; rail: string }> = {
@@ -70,6 +74,12 @@ const NAV_COLOR_MAP: Record<string, { active: string; hover: string; icon: strin
     hover: "hover:border-amber-300/30 hover:bg-amber-300/[0.08] hover:text-amber-100",
     icon: "border-amber-300/30 bg-amber-300/15 text-amber-100 shadow-[0_0_18px_rgba(251,191,36,0.18)]",
     rail: "bg-amber-300 shadow-[0_0_14px_rgba(251,191,36,0.55)]",
+  },
+  find: {
+    active: "border-cyan-300/45 bg-cyan-300/[0.13] text-cyan-50 shadow-[0_0_26px_rgba(34,211,238,0.16)]",
+    hover: "hover:border-cyan-300/30 hover:bg-cyan-300/[0.08] hover:text-cyan-100",
+    icon: "border-cyan-300/30 bg-cyan-300/15 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.18)]",
+    rail: "bg-cyan-300 shadow-[0_0_14px_rgba(34,211,238,0.55)]",
   },
   community: {
     active: "border-emerald-300/45 bg-emerald-300/[0.13] text-emerald-50 shadow-[0_0_26px_rgba(52,211,153,0.16)]",
@@ -112,6 +122,12 @@ const NAV_COLOR_MAP: Record<string, { active: string; hover: string; icon: strin
     hover: "hover:border-violet-300/30 hover:bg-violet-300/[0.08] hover:text-violet-100",
     icon: "border-violet-300/30 bg-violet-300/15 text-violet-100 shadow-[0_0_18px_rgba(167,139,250,0.18)]",
     rail: "bg-violet-300 shadow-[0_0_14px_rgba(167,139,250,0.55)]",
+  },
+  watchlist: {
+    active: "border-amber-300/45 bg-amber-300/[0.14] text-amber-50 shadow-[0_0_26px_rgba(251,191,36,0.16)]",
+    hover: "hover:border-amber-300/30 hover:bg-amber-300/[0.08] hover:text-amber-100",
+    icon: "border-amber-300/30 bg-amber-300/15 text-amber-100 shadow-[0_0_18px_rgba(251,191,36,0.18)]",
+    rail: "bg-amber-300 shadow-[0_0_14px_rgba(251,191,36,0.55)]",
   },
 };
 
@@ -264,7 +280,7 @@ export function MobileTerminalNav() {
         </>
       ) : null}
 
-      <nav aria-label="Primary mobile navigation" className="fixed inset-x-3 z-[8500] grid grid-cols-5 gap-1 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl sm:hidden" style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
+      <nav aria-label="Primary mobile navigation" className="fixed inset-x-2 z-[8500] grid grid-cols-6 gap-0.5 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl sm:hidden" style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
         {MOBILE_BOTTOM_NAV_ITEMS.map((item) => <BottomNavLink item={item} key={item.href} pathname={pathname} />)}
         <BottomMenuButton buttonRef={bottomMenuButtonRef} onClick={() => setOpen(true)} open={open} />
       </nav>
@@ -323,7 +339,7 @@ function BottomNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
   const navigationIntent = useNavigationIntent(item.href, label);
   return (
     <Link
-      className={`relative flex min-h-12 flex-col items-center justify-center rounded-xl border px-1 text-center text-[11px] font-semibold transition ${
+      className={`relative flex min-h-12 flex-col items-center justify-center rounded-xl border px-0.5 text-center text-[10px] font-semibold transition ${
         active ? color.active : `border-transparent text-slate-400 ${color.hover}`
       }`}
       href={item.href}
@@ -345,7 +361,7 @@ function BottomMenuButton({ buttonRef, onClick, open }: { buttonRef: RefObject<H
       aria-controls="tradeveto-mobile-drawer"
       aria-expanded={open}
       aria-label={open ? "Close full navigation menu" : "Open full navigation menu"}
-      className={`flex min-h-12 flex-col items-center justify-center rounded-xl border px-1 text-center text-[11px] font-semibold transition ${
+      className={`flex min-h-12 flex-col items-center justify-center rounded-xl border px-0.5 text-center text-[10px] font-semibold transition ${
         open ? "border-cyan-300/35 bg-cyan-400/15 text-cyan-100" : "border-transparent text-slate-400 hover:bg-white/[0.05] hover:text-slate-100"
       }`}
       onClick={onClick}

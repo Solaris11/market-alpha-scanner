@@ -221,7 +221,7 @@ export function SymbolChart({
           <div className="flex flex-wrap gap-1.5">
             {INTERACTIVE_CHART_PERIODS.map((range) => (
               <button
-                className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] transition ${
+                className={`min-h-9 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] transition sm:min-h-0 sm:px-2.5 ${
                   range === period
                     ? "border-cyan-300/55 bg-cyan-300/12 text-cyan-100"
                     : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-white/20 hover:text-slate-200"
@@ -314,17 +314,23 @@ function SymbolChartModal({
   tradeLevels?: ChartTradeLevels;
 }) {
   useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") close();
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [close]);
 
   return (
-    <div className="fixed inset-0 z-[10050] flex items-center justify-center overflow-y-auto p-3 sm:p-6" role="dialog" aria-modal="true" aria-label={`${symbol.toUpperCase()} expanded chart`}>
+    <div className="fixed inset-0 z-[10050] flex items-end justify-center overflow-y-auto p-0 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={`${symbol.toUpperCase()} expanded chart`}>
       <button className="absolute inset-0 cursor-default bg-slate-950/75 backdrop-blur-md" onClick={close} type="button" aria-label="Close expanded chart" />
-      <section className="relative z-10 max-h-[min(90vh,900px)] w-full max-w-6xl overflow-auto overscroll-contain rounded-3xl border border-cyan-300/20 bg-slate-950 p-4 shadow-2xl shadow-black/75 ring-1 ring-cyan-300/10 sm:p-6">
+      <section className="relative z-10 h-[94dvh] max-h-[94dvh] w-full max-w-6xl overflow-auto overscroll-contain rounded-t-[2rem] border border-cyan-300/20 bg-slate-950 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl shadow-black/75 ring-1 ring-cyan-300/10 sm:h-auto sm:max-h-[min(90vh,900px)] sm:rounded-3xl sm:p-6">
+        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/20 sm:hidden" aria-hidden="true" />
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Symbol chart detail</div>

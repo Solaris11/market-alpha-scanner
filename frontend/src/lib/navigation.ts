@@ -40,8 +40,9 @@ export const ADMIN_NAV_ITEM: AppNavItem = { group: "system", href: "/admin", key
 export const MOBILE_BOTTOM_NAV_ITEMS: AppNavItem[] = [
   { group: "trading", href: "/terminal", key: "terminal", label: "Terminal" },
   { group: "trading", href: "/opportunities", key: "opportunities", label: "Opportunities" },
+  { group: "trading", href: "/terminal#mobile-watchlist", key: "watchlist", label: "Watch" },
   { group: "execution", href: "/alerts", key: "alerts", label: "Alerts" },
-  ACCOUNT_NAV_ITEM,
+  { group: "trading", href: "/opportunities?tab=full", key: "find", label: "Find" },
 ];
 export const MOBILE_MORE_NAV_LABEL = "More";
 

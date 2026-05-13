@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
-import { useEffect, useMemo, useState } from "react";
+import type { ReactNode, TouchEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, X } from "lucide-react";
 import { ScoreFactorStrip, type ScoreFactor, type VisualTone } from "@/components/visual/MiniVisuals";
 import { humanizeInsightText } from "@/lib/ui/labels";
@@ -134,11 +134,11 @@ export function InteractiveInsightZoneGrid({
           </div>
           {summary ? <p className="max-w-2xl text-xs leading-5 text-slate-400">{summary}</p> : null}
         </div>
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <div className="-mx-3 flex snap-x gap-3 overflow-x-auto px-3 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 sm:pb-0 xl:grid-cols-3 2xl:grid-cols-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {zones.map((zone) => (
             <button
               aria-label={`Open ${zone.label} details`}
-              className={`group min-w-0 rounded-2xl border bg-white/[0.035] p-3 text-left transition ${TONE_CLASS[zone.tone ?? "cyan"].border} ${TONE_CLASS[zone.tone ?? "cyan"].glow}`}
+              className={`group min-w-[78vw] snap-center rounded-2xl border bg-white/[0.035] p-3 text-left transition sm:min-w-0 ${TONE_CLASS[zone.tone ?? "cyan"].border} ${TONE_CLASS[zone.tone ?? "cyan"].glow}`}
               key={zone.id}
               onClick={() => setActiveId(zone.id)}
               type="button"
@@ -171,13 +171,21 @@ export function InteractiveInsightZoneGrid({
 }
 
 function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: InteractiveInsightZoneItem | null }) {
+  const [dragY, setDragY] = useState(0);
+  const touchStartY = useRef<number | null>(null);
+
   useEffect(() => {
     if (!zone) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [onClose, zone]);
 
   if (!zone) return null;
@@ -187,10 +195,34 @@ function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: Inte
   const monitorNext = zone.monitorNext?.filter(Boolean).slice(0, 6) ?? [];
   const relatedSymbols = zone.relatedSymbols?.filter(Boolean).slice(0, 12) ?? [];
 
+  function handleTouchStart(event: TouchEvent<HTMLElement>) {
+    touchStartY.current = event.touches[0]?.clientY ?? null;
+  }
+
+  function handleTouchMove(event: TouchEvent<HTMLElement>) {
+    if (touchStartY.current === null) return;
+    const currentY = event.touches[0]?.clientY;
+    if (currentY === undefined) return;
+    setDragY(Math.max(0, Math.min(160, currentY - touchStartY.current)));
+  }
+
+  function handleTouchEnd() {
+    if (dragY > 72) onClose();
+    setDragY(0);
+    touchStartY.current = null;
+  }
+
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center overflow-y-auto p-3 sm:p-6" role="dialog" aria-modal="true" aria-label={`${zone.label} detail`}>
+    <div className="fixed inset-0 z-[10000] flex items-end justify-center overflow-y-auto p-0 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={`${zone.label} detail`}>
       <button className="absolute inset-0 cursor-default bg-slate-950/75 backdrop-blur-md" onClick={onClose} type="button" aria-label="Close detail drawer" />
-      <aside className="relative z-10 max-h-[min(88vh,860px)] w-full max-w-3xl overflow-auto overscroll-contain rounded-3xl border border-cyan-300/18 bg-slate-950 p-4 shadow-2xl shadow-black/70 ring-1 ring-cyan-300/10 sm:p-6">
+      <aside
+        className="relative z-10 max-h-[88dvh] w-full max-w-3xl overflow-auto overscroll-contain rounded-t-[2rem] border border-cyan-300/18 bg-slate-950 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl shadow-black/70 ring-1 ring-cyan-300/10 transition-transform sm:max-h-[min(88vh,860px)] sm:rounded-3xl sm:p-6"
+        onTouchEnd={handleTouchEnd}
+        onTouchMove={handleTouchMove}
+        onTouchStart={handleTouchStart}
+        style={{ transform: dragY ? `translateY(${dragY}px)` : undefined }}
+      >
+        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/20 sm:hidden" aria-hidden="true" />
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className={`text-[10px] font-black uppercase tracking-[0.22em] ${tone.text}`}>{zone.eyebrow ?? "Intelligence detail"}</div>

@@ -54,7 +54,7 @@ describe("application navigation hierarchy", () => {
   test("keeps mobile bottom navigation thumb-friendly and limited", () => {
     assert.deepEqual(
       MOBILE_BOTTOM_NAV_ITEMS.map((item) => item.label),
-      ["Terminal", "Opportunities", "Alerts", "Account"],
+      ["Terminal", "Opportunities", "Watch", "Alerts", "Find"],
     );
     assert.equal(MOBILE_MORE_NAV_LABEL, "More");
   });

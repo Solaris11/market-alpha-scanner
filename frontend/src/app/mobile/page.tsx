@@ -72,7 +72,7 @@ export default async function MobilePage() {
               <div>
                 <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Decision Inbox</div>
                 <h2 className="mt-2 text-xl font-semibold text-slate-50">Fast mobile workflow</h2>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+                <p className="mt-2 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-400 sm:line-clamp-none">
                   {center?.summary ?? "Mobile intelligence is temporarily unavailable. Core terminal data remains available."}
                 </p>
               </div>
@@ -80,7 +80,7 @@ export default async function MobilePage() {
                 Open terminal
               </Link>
             </div>
-            <div className="mt-5 grid gap-3">
+            <div className="-mx-4 mt-5 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:overflow-visible sm:px-0 sm:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {(center?.packets.length ? center.packets : fallbackPackets()).map((packet) => (
                 <PacketCard key={packet.id} packet={packet} />
               ))}
@@ -144,10 +144,11 @@ function MobilePriorityActions() {
     { href: "/opportunities", label: "Opportunities", summary: "Ranked setup cards." },
     { href: "/terminal#mobile-watchlist", label: "Watchlist", summary: "Symbols to revisit." },
     { href: "/alerts", label: "Alerts", summary: "Notification rules." },
+    { href: "/opportunities?tab=full", label: "Symbol search", summary: "Find a ticker fast." },
   ];
 
   return (
-    <section className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+    <section className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
       {actions.map((action) => (
         <Link className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition hover:border-cyan-300/35 hover:bg-cyan-400/[0.06]" href={action.href} key={action.href}>
           <div className="text-sm font-semibold text-slate-100">{action.label}</div>
@@ -230,7 +231,7 @@ function HeroStat({ label, value }: { label: string; value: string }) {
 
 function PacketCard({ packet }: { packet: MobileIntelligencePacket }) {
   return (
-    <article className="rounded-xl border border-white/10 bg-white/[0.035] p-3 transition hover:border-cyan-300/25 hover:bg-cyan-400/[0.055] sm:p-4">
+    <article className="min-w-[84vw] snap-center rounded-xl border border-white/10 bg-white/[0.035] p-3 transition hover:border-cyan-300/25 hover:bg-cyan-400/[0.055] sm:min-w-0 sm:p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -239,7 +240,7 @@ function PacketCard({ packet }: { packet: MobileIntelligencePacket }) {
             {packet.pushEligible ? <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2 py-1 text-[11px] font-semibold text-emerald-100">Push eligible</span> : null}
           </div>
           <h3 className="mt-3 text-base font-semibold text-slate-50">{packet.title}</h3>
-          <p className="mt-2 text-sm leading-6 text-slate-400">{packet.body}</p>
+          <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-400 sm:line-clamp-none">{packet.body}</p>
           <div className="mt-2 text-xs font-medium text-slate-500">{packet.evidenceLabel}</div>
         </div>
         <Link className="w-full shrink-0 rounded-full border border-cyan-300/35 bg-cyan-400/10 px-3 py-2 text-center text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15 sm:w-auto" href={packet.actionUrl}>
@@ -281,7 +282,9 @@ function defaultQuickActions() {
   return [
     { href: "/terminal", label: "Open Terminal", summary: "See current market state and top risks." },
     { href: "/opportunities", label: "Review Opportunities", summary: "Find ranked setups by risk profile." },
+    { href: "/terminal#mobile-watchlist", label: "Open Watchlist", summary: "Review tracked symbols and changes." },
     { href: "/alerts", label: "Tune Alerts", summary: "Update notification rules." },
+    { href: "/opportunities?tab=full", label: "Find Symbol", summary: "Jump into a symbol or full universe search." },
   ];
 }
 

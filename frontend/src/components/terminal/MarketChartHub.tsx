@@ -42,7 +42,7 @@ export function MarketChartHub({ charts, marketCondition, updatedAt }: MarketCha
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Market Chart Hub</div>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Clickable Market Context</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+          <p className="mt-2 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-400 sm:line-clamp-none">
             Validated cross-asset charts for the current market-state read. Click any chart for timeframe controls, source details, and TradeVeto interpretation.
           </p>
         </div>
@@ -53,9 +53,9 @@ export function MarketChartHub({ charts, marketCondition, updatedAt }: MarketCha
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 md:grid-cols-2 2xl:grid-cols-4">
+      <div className="-mx-4 mt-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 md:pb-0 2xl:grid-cols-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {charts.map((item) => (
-          <div className="relative" key={item.symbol}>
+          <div className="relative min-w-[86vw] snap-center md:min-w-0" key={item.symbol}>
             <div className="pointer-events-none absolute left-4 top-4 z-10 grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-slate-950/75 text-cyan-100 shadow-lg backdrop-blur-xl">
               {ICONS[item.symbol] ?? <LineChart className="h-4 w-4" />}
             </div>
