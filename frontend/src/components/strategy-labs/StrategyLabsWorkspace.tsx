@@ -36,8 +36,8 @@ export function StrategyLabsWorkspace({ system }: { system: SimulatedAiPortfolio
             <div className="min-w-0">
               <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Strategy Labs</div>
               <h1 className="poster-display-title mt-2 text-3xl sm:text-5xl">Strategy <span className="poster-word-violet">Labs</span></h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                Transparent model portfolios built from TradeVeto scanner, strategy, macro, event, shock, and risk/reward intelligence. Simulation only. No real-money execution.
+              <p className="mt-3 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-400">
+                Transparent model portfolios built from TradeVeto intelligence. Simulation only. No real-money execution.
               </p>
             </div>
             <div className="grid min-w-0 grid-cols-2 gap-2 text-xs sm:grid-cols-3 lg:w-[420px]">
@@ -82,7 +82,7 @@ export function StrategyLabsWorkspace({ system }: { system: SimulatedAiPortfolio
                       <span className="text-sm font-semibold">{system.modes[item].config.label}</span>
                       <span className="rounded-full border border-white/10 px-2 py-0.5 font-mono text-xs">{system.modes[item].stats.strategyQualityScore}</span>
                     </div>
-                    <p className="mt-1 text-xs leading-5 text-slate-400">{system.modes[item].config.riskPolicy}</p>
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{system.modes[item].config.riskPolicy}</p>
                   </button>
                 ))}
               </div>
@@ -90,8 +90,8 @@ export function StrategyLabsWorkspace({ system }: { system: SimulatedAiPortfolio
 
             <div className="rounded-2xl border border-amber-300/20 bg-amber-400/[0.07] p-4">
               <div className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-100">Research Boundary</div>
-              <p className="mt-2 text-sm leading-6 text-slate-300">
-                These portfolios are simulated research sleeves. They do not place broker orders, do not promise returns, and do not replace the core WAIT / AVOID risk guardrails.
+              <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-300">
+                Simulation only. No broker orders, no promised returns, and WAIT / AVOID guardrails still apply.
               </p>
             </div>
           </div>
@@ -162,7 +162,7 @@ function SummaryPanel({ result }: { result: SimulatedPortfolioModeResult }) {
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Performance Snapshot</div>
-          <p className="mt-2 text-sm leading-6 text-slate-300">{result.summary}</p>
+          <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-300">{result.summary}</p>
         </div>
         <div className="grid shrink-0 gap-2 sm:grid-cols-[132px_1fr] lg:w-[330px]">
           <PosterGauge label="Quality" score={stats.strategyQualityScore} tone="violet" />
@@ -273,8 +273,13 @@ function CurrentPositions({ positions }: { positions: SimulatedPortfolioOpenPosi
             <SmallMetric label="Unrealized" value={formatMoney(position.unrealizedPnl)} />
             <SmallMetric label="Unrealized %" value={formatPct(position.unrealizedPnlPct)} />
           </div>
-          <ReasonBlock title="Why included" items={position.entryReasons} />
-          <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/55 p-3 text-sm leading-6 text-slate-300">{position.exitPlan}</div>
+          <details className="mt-3 rounded-xl border border-white/10 bg-slate-950/45 p-3">
+            <summary className="cursor-pointer text-xs font-black uppercase tracking-[0.14em] text-cyan-200">
+              Why included / exit plan
+            </summary>
+            <ReasonBlock title="Why included" items={position.entryReasons} />
+            <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/55 p-3 text-sm leading-6 text-slate-300">{position.exitPlan}</div>
+          </details>
         </article>
       ))}
     </div>

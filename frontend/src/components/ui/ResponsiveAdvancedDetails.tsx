@@ -6,7 +6,7 @@ export function ResponsiveAdvancedDetails({
   children,
   className = "",
   deferMount = false,
-  defaultDesktopOpen = true,
+  defaultDesktopOpen = false,
   eyebrow = "Advanced",
   summary,
   title,

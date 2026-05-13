@@ -7,6 +7,7 @@ import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/shell";
 import { SignalLifecycle } from "@/components/signal-lifecycle";
+import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
 import { getCalibrationInsights, getFullRanking, getHistorySummary, getIntradaySignalDriftSummary, getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
@@ -229,25 +230,32 @@ export default async function PerformancePage() {
         <CalibrationInsightsPanel insights={calibrationInsights} />
 
         <details className="terminal-panel rounded-2xl p-4">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-100 marker:text-cyan-300">Advanced calibration diagnostics</summary>
+          <summary className="cursor-pointer text-sm font-semibold text-slate-100 marker:text-cyan-300">Calibration tables and lifecycle proof</summary>
           <div className="mt-4 space-y-3">
             <AutoCalibrationRecommendations rows={performance.autoCalibration.rows} state={performance.autoCalibration.state} />
             <SignalLifecycle rows={performance.lifecycle.rows} summaryRows={performance.lifecycleSummary.rows} />
           </div>
         </details>
 
-        <PerformanceValidation forwardObservationCount={forwardObservationCount} forwardRows={performance.forwardReturns.rows} history={history} rankingRows={ranking} summaryRows={performance.summary.rows} />
+        <ResponsiveAdvancedDetails
+          deferMount
+          eyebrow="Deep validation"
+          summary="Open for grouped return tables, raw forward-return evidence, route-heavy drift analysis, and manual refresh controls."
+          title="Forward-return validation and scanner drift"
+        >
+          <PerformanceValidation forwardObservationCount={forwardObservationCount} forwardRows={performance.forwardReturns.rows} history={history} rankingRows={ranking} summaryRows={performance.summary.rows} />
 
-        <section className="terminal-panel rounded-2xl p-5">
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Analysis Runner</div>
-          <h2 className="mt-1 text-lg font-semibold text-slate-50">Refresh Performance Analysis</h2>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-            Refresh validation, lifecycle, drift, and calibration views for the current signal history. If manual execution is unavailable from the web container, scheduled analysis jobs continue to update this page after new scanner data is available.
-          </p>
-          <RunCommandButton endpoint="/api/run-analysis" label="Refresh Analysis" />
-        </section>
+          <section className="terminal-panel rounded-2xl p-5">
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Analysis Runner</div>
+            <h2 className="mt-1 text-lg font-semibold text-slate-50">Refresh Performance Analysis</h2>
+            <p className="mt-2 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-400">
+              Refresh validation, lifecycle, drift, and calibration views from the current signal history.
+            </p>
+            <RunCommandButton endpoint="/api/run-analysis" label="Refresh Analysis" />
+          </section>
 
-        <PerformanceDrift forwardReturnsReady={forwardReturnsReady} rows={driftRows} />
+          <PerformanceDrift forwardReturnsReady={forwardReturnsReady} rows={driftRows} />
+        </ResponsiveAdvancedDetails>
       </div>
     </TerminalShell>
   );

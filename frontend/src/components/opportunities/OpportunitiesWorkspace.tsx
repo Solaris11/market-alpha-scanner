@@ -443,9 +443,9 @@ function OpportunityFirstReviewGuide({ candidate, onDismiss }: { candidate: Oppo
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <div className="text-[10px] font-black uppercase tracking-[0.26em] text-cyan-300">Guided first opportunity review</div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Do this before scanning every card</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-300">
-            Pick one candidate, read why it appears, then check timing and risk. You should understand the opportunity without trusting a single score blindly.
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Start with one candidate</h2>
+          <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-300">
+            Review why it appears, what to wait for, and what can break it before scanning the full universe.
           </p>
         </div>
         <div className="flex shrink-0 flex-wrap gap-2">
@@ -458,9 +458,9 @@ function OpportunityFirstReviewGuide({ candidate, onDismiss }: { candidate: Oppo
         </div>
       </div>
       <div className="mt-4 grid gap-2 md:grid-cols-3">
-        <GuideCheckpoint title="1. Why it appears" text="Look for the key reason and evidence maturity. Weak evidence means lower confidence." />
-        <GuideCheckpoint title="2. What to wait for" text="Check pullback, confirmation, entry quality, and whether the setup is early or late." />
-        <GuideCheckpoint title="3. What can break it" text="Read the invalidation area, chase warning, and downside risk before adding it to your watchlist." />
+        <GuideCheckpoint title="1. Why it appears" text="Check the reason and evidence maturity." />
+        <GuideCheckpoint title="2. What to wait for" text="Confirm timing, pullback, and entry quality." />
+        <GuideCheckpoint title="3. What can break it" text="Review invalidation, chase risk, and downside." />
       </div>
     </GlassPanel>
   );

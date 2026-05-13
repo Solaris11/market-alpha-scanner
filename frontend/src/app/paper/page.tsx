@@ -6,6 +6,7 @@ import { ManualPaperTradeForm } from "@/components/paper/ManualPaperTradeForm";
 import { PortfolioIntelligencePanel } from "@/components/paper/PortfolioIntelligencePanel";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
+import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import {
@@ -692,8 +693,8 @@ export default async function PaperPage() {
           <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <h1 className="text-3xl font-semibold tracking-tight text-slate-50">System confidence from paper evidence</h1>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-                Closed trades, open risk, setup behavior, and paper PnL are summarized into a decision dashboard. No real broker execution is connected.
+              <p className="mt-2 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-400">
+                Paper PnL, open risk, and setup behavior are summarized first. Deeper proof stays available on demand.
               </p>
               <div className="mt-4 inline-flex rounded-full border border-cyan-300/25 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100">
                 {confidenceStatus}
@@ -718,22 +719,30 @@ export default async function PaperPage() {
               {premiumAccess && analytics && trustMetrics ? (
                 <>
                   <TrustHeadlineCards metrics={trustMetrics} />
-                  <PortfolioIntelligencePanel system={portfolioIntelligence} />
-                  <ManualPortfolioScenarioLab accountValue={account?.total_account_value ?? null} opportunities={opportunitiesModel.rows} scenarioSystem={scenarioIntelligence} />
 
                   <SectionShell eyebrow="Trust Curve" title={equityPoints.length === 1 ? "Equity Curve (early data)" : "Equity Curve"}>
                     <EquityCurve points={equityPoints} />
                   </SectionShell>
 
-                  <SectionShell eyebrow="Setup Evidence" title="Setup Performance">
-                    <SetupPerformance groups={analytics.groups} />
-                  </SectionShell>
+                  <ResponsiveAdvancedDetails
+                    deferMount
+                    eyebrow="Paper detail"
+                    summary="Open for portfolio concentration, scenarios, setup evidence, trade autopsy, and ghost portfolio review."
+                    title="Portfolio proof and trade review"
+                  >
+                    <PortfolioIntelligencePanel system={portfolioIntelligence} />
+                    <ManualPortfolioScenarioLab accountValue={account?.total_account_value ?? null} opportunities={opportunitiesModel.rows} scenarioSystem={scenarioIntelligence} />
 
-                  <SectionShell eyebrow="Trade Autopsy" title="Last 10 Closed Trades">
-                    <TradeAutopsy positions={data.positions} />
-                  </SectionShell>
+                    <SectionShell eyebrow="Setup Evidence" title="Setup Performance">
+                      <SetupPerformance groups={analytics.groups} />
+                    </SectionShell>
 
-                  <GhostPortfolioCard positions={data.positions} />
+                    <SectionShell eyebrow="Trade Autopsy" title="Last 10 Closed Trades">
+                      <TradeAutopsy positions={data.positions} />
+                    </SectionShell>
+
+                    <GhostPortfolioCard positions={data.positions} />
+                  </ResponsiveAdvancedDetails>
                 </>
               ) : (
                 <PremiumLockedState

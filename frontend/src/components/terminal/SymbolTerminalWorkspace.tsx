@@ -204,24 +204,6 @@ export function SymbolTerminalWorkspace({
 
       {canTrade ? <SignalStatusCard lifecycle={lifecycle} /> : null}
 
-      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
-        <div className="space-y-5">
-          {canTrade ? <TradePlanCard engine={tradeEngine} row={row} /> : null}
-          {canTrade ? <CorrectionMapCard row={row} /> : null}
-          <ShockPatternMemoryCard pattern={shockPattern ?? null} />
-          <MarketMemoryCard memory={marketMemory} />
-          <HistoricalEdgeCard edge={edgeProof} />
-          <WhyDecisionCard row={row} />
-        </div>
-
-        <aside className="space-y-5 xl:sticky xl:top-5 xl:self-start">
-          <TechnicalSnapshotCard row={row} />
-        </aside>
-      </div>
-
-      <PaperContextCard events={symbolEvents} openPositions={openPaper} positions={symbolPositions} symbol={symbol} />
-      <ConvictionTimeline timeline={timeline} />
-
       <GlassPanel className="p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <SectionTitle eyebrow="Chart" title="Current Signal Map" />
@@ -247,6 +229,31 @@ export function SymbolTerminalWorkspace({
           />
         </div>
       </GlassPanel>
+
+      <ResponsiveAdvancedDetails
+        deferMount
+        eyebrow="Deep symbol proof"
+        summary="Open for trade plan, market memory, historical edge, paper context, and conviction timeline."
+        title={`${symbol} research proof and risk detail`}
+      >
+        <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
+          <div className="space-y-5">
+            {canTrade ? <TradePlanCard engine={tradeEngine} row={row} /> : null}
+            {canTrade ? <CorrectionMapCard row={row} /> : null}
+            <ShockPatternMemoryCard pattern={shockPattern ?? null} />
+            <MarketMemoryCard memory={marketMemory} />
+            <HistoricalEdgeCard edge={edgeProof} />
+            <WhyDecisionCard row={row} />
+          </div>
+
+          <aside className="space-y-5 xl:sticky xl:top-5 xl:self-start">
+            <TechnicalSnapshotCard row={row} />
+          </aside>
+        </div>
+
+        <PaperContextCard events={symbolEvents} openPositions={openPaper} positions={symbolPositions} symbol={symbol} />
+        <ConvictionTimeline timeline={timeline} />
+      </ResponsiveAdvancedDetails>
     </div>
   );
 }
