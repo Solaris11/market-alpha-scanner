@@ -65,6 +65,47 @@ const TONE_CLASS: Record<VisualTone, { accent: string; border: string; glow: str
   },
 };
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizedSymbols(symbols: string[]): string[] {
+  return Array.from(new Set(symbols.map((symbol) => symbol.trim().toUpperCase()).filter(Boolean))).sort((left, right) => right.length - left.length);
+}
+
+function TextWithSymbolLinks({ symbols, text }: { symbols: string[]; text: string }) {
+  const linkableSymbols = normalizedSymbols(symbols);
+  if (!linkableSymbols.length) return <>{text}</>;
+
+  const pattern = new RegExp(`(^|[^A-Za-z0-9.])(${linkableSymbols.map(escapeRegExp).join("|")})(?=$|[^A-Za-z0-9.])`, "g");
+  const nodes: ReactNode[] = [];
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = pattern.exec(text)) !== null) {
+    const fullMatch = match[0] ?? "";
+    const prefix = match[1] ?? "";
+    const symbol = match[2] ?? "";
+    const symbolStart = match.index + prefix.length;
+
+    if (match.index > cursor) nodes.push(text.slice(cursor, match.index));
+    if (prefix) nodes.push(prefix);
+    nodes.push(
+      <Link
+        className="font-mono font-black text-cyan-100 underline decoration-cyan-300/40 underline-offset-4 transition hover:text-white hover:decoration-cyan-200"
+        href={`/symbol/${encodeURIComponent(symbol.toUpperCase())}`}
+        key={`${symbol}-${symbolStart}`}
+      >
+        {symbol}
+      </Link>,
+    );
+    cursor = symbolStart + symbol.length;
+  }
+
+  if (cursor < text.length) nodes.push(text.slice(cursor));
+  return <>{nodes}</>;
+}
+
 export function InteractiveInsightZoneGrid({
   className = "",
   eyebrow = "Tap to explore",
@@ -147,14 +188,16 @@ function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: Inte
   const relatedSymbols = zone.relatedSymbols?.filter(Boolean).slice(0, 12) ?? [];
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-end justify-center sm:items-stretch sm:justify-end" role="dialog" aria-modal="true" aria-label={`${zone.label} detail`}>
-      <button className="absolute inset-0 cursor-default bg-slate-950/70 backdrop-blur-sm" onClick={onClose} type="button" aria-label="Close detail drawer" />
-      <aside className="relative z-10 m-3 max-h-[88vh] w-[calc(100%-1.5rem)] overflow-auto rounded-3xl border border-white/10 bg-slate-950 p-4 shadow-2xl shadow-black/60 ring-1 ring-cyan-300/10 sm:m-4 sm:h-[calc(100vh-2rem)] sm:max-h-none sm:w-[30rem] sm:p-5">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center overflow-y-auto p-3 sm:p-6" role="dialog" aria-modal="true" aria-label={`${zone.label} detail`}>
+      <button className="absolute inset-0 cursor-default bg-slate-950/75 backdrop-blur-md" onClick={onClose} type="button" aria-label="Close detail drawer" />
+      <aside className="relative z-10 max-h-[min(88vh,860px)] w-full max-w-3xl overflow-auto overscroll-contain rounded-3xl border border-cyan-300/18 bg-slate-950 p-4 shadow-2xl shadow-black/70 ring-1 ring-cyan-300/10 sm:p-6">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className={`text-[10px] font-black uppercase tracking-[0.22em] ${tone.text}`}>{zone.eyebrow ?? "Intelligence detail"}</div>
             <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">{zone.detailTitle}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-300">{humanizeInsightText(zone.detailSummary)}</p>
+            <p className="mt-2 text-sm leading-6 text-slate-300">
+              <TextWithSymbolLinks symbols={relatedSymbols} text={humanizeInsightText(zone.detailSummary)} />
+            </p>
           </div>
           <button className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100" onClick={onClose} type="button" aria-label="Close detail drawer">
             <X className="h-4 w-4" />
@@ -168,9 +211,9 @@ function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: Inte
             <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Related symbols</div>
             <div className="mt-3 flex flex-wrap gap-2">
               {relatedSymbols.map((symbol) => (
-                <span className={`rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 font-mono text-xs font-black ${tone.text}`} key={symbol}>
+                <Link className={`rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 font-mono text-xs font-black transition hover:border-cyan-200/60 hover:bg-cyan-300/10 hover:text-white ${tone.text}`} href={`/symbol/${encodeURIComponent(symbol)}`} key={symbol}>
                   {symbol}
-                </span>
+                </Link>
               ))}
             </div>
           </div>
@@ -190,7 +233,7 @@ function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: Inte
               {bullets.map((bullet) => (
                 <li className="flex gap-2" key={bullet}>
                   <span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${tone.accent}`} />
-                  <span>{humanizeInsightText(bullet)}</span>
+                  <span><TextWithSymbolLinks symbols={relatedSymbols} text={humanizeInsightText(bullet)} /></span>
                 </li>
               ))}
             </ul>
@@ -206,7 +249,7 @@ function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: Inte
               {monitorNext.map((item) => (
                 <li className="flex gap-2" key={item}>
                   <span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${tone.accent}`} />
-                  <span>{humanizeInsightText(item)}</span>
+                  <span><TextWithSymbolLinks symbols={relatedSymbols} text={humanizeInsightText(item)} /></span>
                 </li>
               ))}
             </ul>

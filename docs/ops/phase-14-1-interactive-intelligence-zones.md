@@ -6,9 +6,9 @@ Phase 14.1 converts the main TradeVeto intelligence blocks from static dashboard
 
 The shared drawer system now supports:
 
-- desktop right-side detail drawers
-- mobile bottom-sheet style detail panels
+- centered detail modals on desktop and mobile
 - related-symbol chips
+- clickable symbol links from related chips and symbol mentions
 - "what to monitor next" guidance
 - scored factor strips
 - explicit data source and timestamp
@@ -20,9 +20,9 @@ Beta feedback found that clicking Market State could blur the page without showi
 
 Fix:
 
-- replaced the fragile absolute-positioned panel with a fixed flex layout
+- replaced the right-side drawer with a centered modal so details stay visible on desktop and mobile
 - raised the overlay layer to `z-[10000]`
-- made the panel explicitly visible as a bottom sheet on mobile and a right-side drawer on desktop
+- kept the blurred backdrop across unused screen space
 - added Escape-key close behavior
 - kept the existing click-outside close behavior
 
@@ -32,6 +32,16 @@ This fix applies to every shared `InteractiveInsightZoneGrid` usage:
 - Opportunities visual command center
 - Alerts visual center
 - Performance validation zones
+
+## P0 Symbol Link Fix
+
+Related symbols in detail panels are now real links to `/symbol/{ticker}`. The drawer also links matching symbol mentions inside detail summaries, "why this is shown" bullets, and "what to monitor next" text when those symbols are part of the zone's related-symbol set.
+
+This applies to:
+
+- Terminal zones such as Best Setups, Dangerous Now, Shock Watch, What Changed, Watchlist, Risk Review, and Macro Pressure
+- Opportunities zones such as Best Stack, Shock Potential, Risk Watch, Watchlist, and What Moved
+- Any future shared intelligence zone that supplies `relatedSymbols`
 
 ## New Intelligence Zones
 
@@ -78,10 +88,10 @@ If a zone lacks enough scored evidence, the drawer states that evidence is limit
 
 ## Mobile Behavior
 
-The shared drawer uses a bottom-sheet layout on small screens:
+The shared drawer uses the same centered modal layout on small screens and desktop:
 
 - large close button
-- full-width tap target
+- full-width panel with viewport-safe margins
 - no horizontal overflow
 - scrollable content within viewport
 - clear related-symbol and monitor-next sections

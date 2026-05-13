@@ -345,8 +345,11 @@ export default async function HomePage() {
               <div className="inline-flex rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-cyan-200">AI market intelligence</div>
               <div className="inline-flex rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-emerald-200">Closed beta</div>
             </div>
-            <h1 className="poster-display-title mt-6 max-w-4xl text-4xl sm:text-6xl lg:text-7xl">
-              AI Market Intelligence <span className="poster-word-cyan">That Says Wait</span>
+            <h1 className="poster-display-title no-bad-breaks mt-6 max-w-5xl text-4xl sm:text-6xl lg:text-6xl 2xl:text-7xl">
+              AI Market <span className="whitespace-nowrap">Intelligence</span>{" "}
+              <span className="poster-word-cyan">That</span>{" "}
+              <span className="poster-word-cyan">Says</span>{" "}
+              <span className="poster-word-cyan whitespace-nowrap">Wait</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
               {BRAND_NAME} combines WAIT-first market intelligence, evidence maturity, verified event context, shock research, replay, and regime-aware analysis to help users review opportunities without turning every mover into a trade idea.

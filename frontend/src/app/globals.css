@@ -129,9 +129,19 @@ body {
   font-weight: 950;
   letter-spacing: 0.045em;
   text-transform: uppercase;
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: manual;
+  text-wrap: balance;
   text-shadow:
     0 1px 0 rgba(255, 255, 255, 0.35),
     0 0 34px rgba(34, 211, 238, 0.18);
+}
+
+.no-bad-breaks {
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: manual;
 }
 
 @media (max-width: 640px) {
@@ -297,13 +307,20 @@ main {
   min-width: 0;
 }
 
-:where(p, h1, h2, h3, h4, h5, h6, label, textarea) {
+:where(p, label, textarea) {
   overflow-wrap: break-word;
+}
+
+:where(h1, h2, h3, h4, h5, h6) {
+  overflow-wrap: normal;
+  word-break: normal;
+  hyphens: manual;
 }
 
 :where(a, button, input, select, span) {
   overflow-wrap: normal;
   word-break: normal;
+  hyphens: manual;
 }
 
 :where(img, svg, canvas, video) {

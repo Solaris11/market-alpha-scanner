@@ -64,7 +64,7 @@ export function DailyActionCard({
             <div className="text-[10px] font-black uppercase tracking-normal text-slate-400">Today&apos;s Action</div>
           </div>
           <div
-            className={`poster-display-title mt-3 break-words text-3xl leading-tight sm:text-4xl ${tone.label}`}
+            className={`poster-display-title no-bad-breaks mt-3 text-3xl leading-tight sm:text-4xl ${tone.label}`}
             style={{ WebkitBoxOrient: "vertical", WebkitLineClamp: 2, display: "-webkit-box", overflow: "hidden" }}
             title={action.label}
           >
