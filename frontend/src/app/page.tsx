@@ -341,9 +341,9 @@ export default async function HomePage() {
       <section className="landing-hero-sweep px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
         <div className="mx-auto grid max-w-7xl items-center gap-10 lg:grid-cols-[0.92fr_1.08fr]">
           <MarketingReveal>
-            <div className="flex flex-wrap gap-2">
-              <div className="inline-flex rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-cyan-200">AI market intelligence</div>
-              <div className="inline-flex rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.22em] text-emerald-200">Closed beta</div>
+            <div className="flex max-w-full flex-wrap gap-2">
+              <div className="inline-flex max-w-full shrink-0 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-cyan-200 sm:tracking-[0.22em]">AI market intelligence</div>
+              <div className="inline-flex max-w-full shrink-0 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-emerald-200 sm:tracking-[0.22em]">Closed beta</div>
             </div>
             <h1 className="poster-display-title no-bad-breaks mt-6 max-w-5xl text-4xl sm:text-6xl lg:text-6xl 2xl:text-7xl">
               AI Market <span className="whitespace-nowrap">Intelligence</span>{" "}
