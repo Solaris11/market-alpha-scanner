@@ -4,7 +4,9 @@ import Link from "next/link";
 import type { ReactNode, TouchEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, X } from "lucide-react";
+import { IntelligenceGraphPanel } from "@/components/visual/IntelligenceGraphPanel";
 import { ScoreFactorStrip, type ScoreFactor, type VisualTone } from "@/components/visual/MiniVisuals";
+import type { IntelligenceGraphModel } from "@/lib/trading/intelligence-graph";
 import { humanizeInsightText } from "@/lib/ui/labels";
 
 export type InteractiveInsightZoneItem = {
@@ -21,6 +23,7 @@ export type InteractiveInsightZoneItem = {
   label: string;
   metric?: string;
   monitorNext?: string[];
+  relationshipGraph?: IntelligenceGraphModel;
   relatedSymbols?: string[];
   summary: string;
   tone?: VisualTone;
@@ -257,6 +260,8 @@ function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: Inte
           factors={zone.factors ?? []}
           label="Data-backed factor view"
         />
+
+        {zone.relationshipGraph ? <IntelligenceGraphPanel className="mt-4" compact graph={zone.relationshipGraph} /> : null}
 
         <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Why this is shown</div>

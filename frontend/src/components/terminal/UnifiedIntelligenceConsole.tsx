@@ -12,6 +12,7 @@ import {
   type UnifiedConsoleItem,
   type UnifiedConsoleMetric,
 } from "@/lib/trading/unified-intelligence-console";
+import { buildZoneIntelligenceGraph } from "@/lib/trading/intelligence-graph";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import type { UserPersonalizationProfile } from "@/lib/trading/personalized-intelligence";
 import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution";
@@ -239,7 +240,7 @@ function buildSimpleHomeZones(consoleModel: ReturnType<typeof buildUnifiedIntell
   const fragilityMetric = metricByKey.get("fragility");
   const asymmetryMetric = metricByKey.get("asymmetry");
 
-  return [
+  const zones: InteractiveInsightZoneItem[] = [
     {
       bullets: [
         consoleModel.macroRegime.summary,
@@ -500,6 +501,19 @@ function buildSimpleHomeZones(consoleModel: ReturnType<typeof buildUnifiedIntell
       updatedAt: generatedAt,
     },
   ];
+
+  return zones.map((zone) => ({
+    ...zone,
+    relationshipGraph: buildZoneIntelligenceGraph({
+      dataSource: zone.dataSource,
+      factors: zone.factors,
+      focus: zone.label,
+      lastUpdated: zone.updatedAt,
+      relatedSymbols: zone.relatedSymbols,
+      summary: zone.detailSummary,
+      title: zone.detailTitle,
+    }),
+  }));
 }
 
 function metricFactor(metric: UnifiedConsoleMetric | undefined, tone: ScoreFactor["tone"]): ScoreFactor | null {

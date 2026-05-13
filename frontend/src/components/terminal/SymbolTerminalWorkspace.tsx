@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
+import { IntelligenceGraphPanel } from "@/components/visual/IntelligenceGraphPanel";
 import { useTradePlanEngine } from "@/hooks/useTradePlanEngine";
 import type { SignalHistoryPoint } from "@/lib/adapters/DataServiceAdapter";
 import type { DataFreshness } from "@/lib/data-health";
@@ -12,6 +13,7 @@ import { buildConvictionFragilityModel } from "@/lib/trading/conviction-fragilit
 import { dailyActionAllowsTrade, noTradeActionCopy, type DailyAction } from "@/lib/trading/daily-action";
 import type { ConvictionTimelineModel } from "@/lib/trading/conviction-timeline-types";
 import type { HistoricalEdgeProof } from "@/lib/trading/edge-proof";
+import { buildSymbolIntelligenceGraph } from "@/lib/trading/intelligence-graph";
 import type { MacroExchangeContext } from "@/lib/trading/macro-regime";
 import type { MarketMemorySummary } from "@/lib/trading/market-memory";
 import type { NarrativeIntelligence } from "@/lib/trading/narrative-intelligence";
@@ -62,6 +64,7 @@ import { SectionTitle } from "./ui/SectionTitle";
 export function SymbolTerminalWorkspace({
   edgeProof,
   row,
+  contextRows = [],
   dataFreshness,
   history,
   marketMemory,
@@ -88,6 +91,7 @@ export function SymbolTerminalWorkspace({
 }: {
   edgeProof: HistoricalEdgeProof;
   row: RankingRow;
+  contextRows?: RankingRow[];
   dataFreshness: DataFreshness;
   history: SignalHistoryPoint[];
   marketMemory: MarketMemorySummary;
@@ -117,6 +121,10 @@ export function SymbolTerminalWorkspace({
   const lifecycle = useMemo(() => computeSignalLifecycle(row, tradeLevels), [row, tradeLevels]);
   const structuralQuality = useMemo(() => buildConvictionFragilityModel(row, { history, macroContext: macroContext ?? undefined, marketMemory }), [history, macroContext, marketMemory, row]);
   const symbol = row.symbol.toUpperCase();
+  const relationshipGraph = useMemo(
+    () => buildSymbolIntelligenceGraph({ contextRows, macroContext, marketMemory, row, shockPattern: shockPattern ?? null }),
+    [contextRows, macroContext, marketMemory, row, shockPattern],
+  );
   const riskPortfolio = useMemo(() => buildRiskPortfolio(paperPositions, row.sector, symbol), [paperPositions, row.sector, symbol]);
   const tradeEngine = useTradePlanEngine(row, riskPortfolio);
   const symbolPositions = paperPositions.filter((position) => position.symbol.toUpperCase() === symbol);
@@ -160,6 +168,8 @@ export function SymbolTerminalWorkspace({
           <div className="mt-4 inline-flex rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm font-black text-amber-100">Best next step: monitor patiently</div>
         </GlassPanel>
       ) : null}
+
+      <IntelligenceGraphPanel graph={relationshipGraph} />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
         <div className="space-y-5">

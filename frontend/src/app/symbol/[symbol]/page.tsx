@@ -202,6 +202,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
         <SymbolTerminalWorkspace
           dataFreshness={dataFreshness ?? freshnessFromTimestamp(null)}
           adaptiveLearning={adaptiveLearning}
+          contextRows={snapshot.signals}
           decisionCoaching={decisionCoaching}
           decisionJournalEntries={decisionJournalEntries}
           decisionMemory={decisionMemory}
