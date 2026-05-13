@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, Bell, Eye, Gauge, Target, Zap } from "lucide-react";
+import { Activity, AlertTriangle, BarChart3, Bell, Eye, Gauge, RotateCcw, ShieldAlert, Target, Zap } from "lucide-react";
 import { useMemo } from "react";
 import { ScoreFactorStrip, type ScoreFactor, VisualMetricRail } from "@/components/visual/MiniVisuals";
 import { InteractiveInsightZoneGrid, type InteractiveInsightZoneItem } from "@/components/visual/InteractiveVisualIntelligence";
@@ -52,6 +52,7 @@ export function UnifiedIntelligenceConsole({
   const primaryFocus = focusItems[0] ?? consoleModel.summary;
   const secondaryFocus = focusItems.slice(1);
   const metricsToShow = consoleModel.metrics.slice(0, compact ? 4 : 6);
+  const zones = buildSimpleHomeZones(consoleModel);
 
   if (compact) {
     return <SimpleHomeConsole consoleModel={consoleModel} />;
@@ -100,6 +101,15 @@ export function UnifiedIntelligenceConsole({
           macroLabel={consoleModel.macroRegime.label}
           macroSummary={consoleModel.macroRegime.summary}
           shockConditionsAligning={consoleModel.shockConditionsAligning}
+        />
+      </div>
+
+      <div className="mt-5">
+        <InteractiveInsightZoneGrid
+          eyebrow="Clickable intelligence zones"
+          summary="Open a zone to inspect the scored factors, related symbols, source data, and what to monitor next."
+          title="Explore Intelligence Zones"
+          zones={zones}
         />
       </div>
 
@@ -219,6 +229,15 @@ function buildSimpleHomeZones(consoleModel: ReturnType<typeof buildUnifiedIntell
   const topShock = consoleModel.shockConditionsAligning[0] ?? null;
   const topChange = consoleModel.biggestChanges[0] ?? null;
   const topWatchlist = consoleModel.watchlistChanges[0] ?? null;
+  const topEvent = consoleModel.eventPressure[0] ?? null;
+  const topFragility = consoleModel.fragilityRising[0] ?? null;
+  const topReplay = consoleModel.bestAsymmetry[0] ?? consoleModel.whatChangedSinceLastVisit[0] ?? null;
+  const attentionMetric = metricByKey.get("attention");
+  const opportunityMetric = metricByKey.get("opportunity");
+  const decisionMetric = metricByKey.get("decision");
+  const riskMetric = metricByKey.get("risk");
+  const fragilityMetric = metricByKey.get("fragility");
+  const asymmetryMetric = metricByKey.get("asymmetry");
 
   return [
     {
@@ -232,15 +251,24 @@ function buildSimpleHomeZones(consoleModel: ReturnType<typeof buildUnifiedIntell
       detailTitle: "Market State Detail",
       eyebrow: "Regime",
       factors: [
-        metricFactor(metricByKey.get("attention"), "cyan"),
-        metricFactor(metricByKey.get("decision"), "cyan"),
-        metricFactor(metricByKey.get("risk"), "rose"),
-        metricFactor(metricByKey.get("fragility"), "amber"),
+        metricFactor(attentionMetric, "cyan"),
+        metricFactor(decisionMetric, "cyan"),
+        metricFactor(riskMetric, "rose"),
+        metricFactor(fragilityMetric, "amber"),
       ].filter((factor): factor is ScoreFactor => Boolean(factor)),
       icon: <Gauge className="h-6 w-6" />,
       id: "market-state",
       label: "Market State",
-      metric: `${metricByKey.get("attention")?.score ?? "N/A"}`,
+      metric: `${attentionMetric?.score ?? "N/A"}`,
+      monitorNext: [
+        consoleModel.macroRegime.summary,
+        topChange?.actionContext,
+        risk?.actionContext,
+      ].filter((item): item is string => Boolean(item)),
+      relatedSymbols: uniqueSymbols([
+        ...itemSymbols(consoleModel.attentionQueue),
+        ...briefingSymbols(consoleModel.biggestChanges),
+      ]),
       summary: consoleModel.macroRegime.label,
       tone: "cyan",
       updatedAt: generatedAt,
@@ -258,6 +286,8 @@ function buildSimpleHomeZones(consoleModel: ReturnType<typeof buildUnifiedIntell
       id: "best-setups",
       label: "Best Setups",
       metric: `${consoleModel.topOpportunities.length}`,
+      monitorNext: best ? [best.actionContext, best.detail] : ["Wait for enough scanner evidence before treating a setup as a research candidate."],
+      relatedSymbols: itemSymbols(consoleModel.topOpportunities),
       summary: best ? `${best.symbol}: ${best.reasonForAttention}` : "No clear setup leader yet.",
       tone: "emerald",
       updatedAt: generatedAt,
@@ -278,6 +308,8 @@ function buildSimpleHomeZones(consoleModel: ReturnType<typeof buildUnifiedIntell
       id: "shock-watch",
       label: "Shock Watch",
       metric: `${consoleModel.shockConditionsAligning.length}`,
+      monitorNext: topShock ? [topShock.actionContext, "Check chase risk, event pressure, and fragility before treating large-move context as actionable research."] : ["No elevated large-move context is validated in this snapshot."],
+      relatedSymbols: briefingSymbols(consoleModel.shockConditionsAligning),
       summary: topShock ? topShock.label : "No elevated large-move context.",
       tone: "violet",
       updatedAt: generatedAt,
@@ -292,8 +324,10 @@ function buildSimpleHomeZones(consoleModel: ReturnType<typeof buildUnifiedIntell
       href: risk?.href ?? "/opportunities",
       icon: <AlertTriangle className="h-6 w-6" />,
       id: "dangerous",
-      label: "Dangerous",
+      label: "Dangerous Now",
       metric: `${consoleModel.topRisks.length}`,
+      monitorNext: risk ? [risk.actionContext, risk.detail, "Wait for risk pressure, timing, or invalidation context to improve before forcing a setup."] : ["No dominant risk item is active in the current queue."],
+      relatedSymbols: itemSymbols(consoleModel.topRisks),
       summary: risk ? `${risk.symbol}: ${risk.riskLabel}` : "No dominant danger item.",
       tone: "amber",
       updatedAt: generatedAt,
@@ -310,8 +344,10 @@ function buildSimpleHomeZones(consoleModel: ReturnType<typeof buildUnifiedIntell
       href: "/opportunities?tab=watchlist",
       icon: <Bell className="h-6 w-6" />,
       id: "watchlist",
-      label: "Watchlist",
+      label: "Watchlist Intelligence",
       metric: `${consoleModel.watchlistChanges.length}`,
+      monitorNext: topWatchlist ? [topWatchlist.actionContext] : ["Add or revisit watchlist symbols to see setup evolution and risk changes."],
+      relatedSymbols: briefingSymbols(consoleModel.watchlistChanges),
       summary: topWatchlist ? topWatchlist.label : "No tracked change yet.",
       tone: "rose",
       updatedAt: generatedAt,
@@ -333,7 +369,133 @@ function buildSimpleHomeZones(consoleModel: ReturnType<typeof buildUnifiedIntell
       id: "what-changed",
       label: "What Changed",
       metric: `${consoleModel.biggestChanges.length}`,
+      monitorNext: consoleModel.biggestChanges.length
+        ? consoleModel.biggestChanges.slice(0, 4).map((item) => item.actionContext)
+        : ["No scan-to-scan or workflow change has enough evidence to display yet."],
+      relatedSymbols: briefingSymbols(consoleModel.biggestChanges),
       summary: topChange ? topChange.label : "No material change yet.",
+      tone: "cyan",
+      updatedAt: generatedAt,
+    },
+    {
+      bullets: risk
+        ? [risk.riskLabel, risk.actionContext, risk.reasonForAttention, topFragility?.label ?? "No separate fragility escalation is visible."]
+        : ["No dominant risk review item is visible yet."],
+      dataSource: "Risk metric, fragility metric, top risk queue",
+      detailSummary: riskMetric ? riskMetric.detail : "Risk review needs enough scored rows to show a reliable pressure view.",
+      detailTitle: "Risk Review Detail",
+      emptyMessage: "Risk review does not have enough scored evidence yet.",
+      eyebrow: "Risk",
+      factors: [
+        metricFactor(riskMetric, "rose"),
+        metricFactor(fragilityMetric, "amber"),
+        risk ? { detail: risk.riskLabel, label: "Top Risk", tone: "rose", value: risk.riskScore } : null,
+        risk ? { detail: risk.urgencyLabel, label: "Urgency", tone: "amber", value: risk.urgencyScore } : null,
+      ].filter((factor): factor is ScoreFactor => Boolean(factor)),
+      href: risk?.href ?? "/opportunities",
+      icon: <ShieldAlert className="h-6 w-6" />,
+      id: "risk-review",
+      label: "Risk Review",
+      metric: `${riskMetric?.score ?? risk?.riskScore ?? "N/A"}`,
+      monitorNext: [
+        risk?.actionContext,
+        topFragility?.actionContext,
+        "Look for lower risk pressure, cleaner invalidation, or stronger confirmation before treating a setup as higher quality.",
+      ].filter((item): item is string => Boolean(item)),
+      relatedSymbols: uniqueSymbols([...itemSymbols(consoleModel.topRisks), ...briefingSymbols(consoleModel.fragilityRising)]),
+      summary: risk ? `${risk.symbol}: ${risk.riskLabel}` : riskMetric?.detail ?? "Risk context is still limited.",
+      tone: "rose",
+      updatedAt: generatedAt,
+    },
+    {
+      bullets: [
+        topShock ? topShock.label : "No elevated shock-watch item is currently validated.",
+        topFragility ? topFragility.label : "No separate fragility escalation is visible.",
+        riskMetric ? riskMetric.detail : "Risk pressure metric is not scored in this snapshot.",
+      ],
+      dataSource: "Shock watch, fragility, and risk-pressure metrics",
+      detailSummary: topShock
+        ? `Volatility pressure is elevated enough to surface ${topShock.label}.`
+        : "Volatility pressure is not showing a validated shock-watch leader in this snapshot.",
+      detailTitle: "Volatility Pressure Detail",
+      emptyMessage: "No validated volatility-pressure factor is available yet.",
+      eyebrow: "Pressure",
+      factors: [
+        metricFactor(riskMetric, "rose"),
+        metricFactor(fragilityMetric, "amber"),
+        metricFactor(attentionMetric, "violet"),
+      ].filter((factor): factor is ScoreFactor => Boolean(factor)),
+      href: "/opportunities?tab=shock",
+      icon: <Activity className="h-6 w-6" />,
+      id: "volatility-pressure",
+      label: "Volatility Pressure",
+      metric: `${consoleModel.shockConditionsAligning.length}`,
+      monitorNext: [
+        topShock?.actionContext,
+        topFragility?.actionContext,
+        "Treat large-move visuals as limited evidence unless supporting shock, fragility, and event context are present.",
+      ].filter((item): item is string => Boolean(item)),
+      relatedSymbols: uniqueSymbols([...briefingSymbols(consoleModel.shockConditionsAligning), ...briefingSymbols(consoleModel.fragilityRising)]),
+      summary: topShock ? topShock.label : "No validated volatility expansion leader.",
+      tone: "violet",
+      updatedAt: generatedAt,
+    },
+    {
+      bullets: [
+        consoleModel.macroRegime.summary,
+        topEvent ? topEvent.label : "No verified event-pressure briefing is dominant.",
+        topFragility ? topFragility.label : "No fragility briefing is dominant.",
+      ],
+      dataSource: "Macro regime summary, event pressure, fragility briefings",
+      detailSummary: consoleModel.macroRegime.summary,
+      detailTitle: "Macro Pressure Detail",
+      emptyMessage: "Macro pressure has no scored supporting factors in this snapshot.",
+      eyebrow: "Macro",
+      factors: [
+        metricFactor(attentionMetric, "cyan"),
+        metricFactor(riskMetric, "rose"),
+        metricFactor(fragilityMetric, "amber"),
+        metricFactor(asymmetryMetric, "emerald"),
+      ].filter((factor): factor is ScoreFactor => Boolean(factor)),
+      href: "/intelligence/macro-regime",
+      icon: <BarChart3 className="h-6 w-6" />,
+      id: "macro-pressure",
+      label: "Macro Pressure",
+      metric: `${riskMetric?.score ?? "N/A"}`,
+      monitorNext: [
+        topEvent?.actionContext,
+        topFragility?.actionContext,
+        "Compare opportunity quality against the current regime before assuming a setup can follow through.",
+      ].filter((item): item is string => Boolean(item)),
+      relatedSymbols: uniqueSymbols([...briefingSymbols(consoleModel.eventPressure), ...briefingSymbols(consoleModel.fragilityRising)]),
+      summary: topEvent ? topEvent.label : consoleModel.macroRegime.label,
+      tone: "amber",
+      updatedAt: generatedAt,
+    },
+    {
+      bullets: topReplay
+        ? [topReplay.label, topReplay.actionContext, "Replay context is shown only when the current console has recorded asymmetry or change evidence."]
+        : ["No replay-adjacent context is available in this console snapshot."],
+      dataSource: "Best asymmetry briefings and workflow change context",
+      detailSummary: topReplay
+        ? topReplay.label
+        : "Replay context is limited because no historical/asymmetry briefing is available in this snapshot.",
+      detailTitle: "Replay Context Detail",
+      emptyMessage: "No validated replay factor is exposed for this snapshot.",
+      eyebrow: "Replay",
+      factors: [
+        metricFactor(asymmetryMetric, "emerald"),
+        metricFactor(opportunityMetric, "emerald"),
+        metricFactor(decisionMetric, "cyan"),
+      ].filter((factor): factor is ScoreFactor => Boolean(factor)),
+      href: "/history",
+      icon: <RotateCcw className="h-6 w-6" />,
+      id: "replay-context",
+      label: "Replay Context",
+      metric: `${consoleModel.bestAsymmetry.length}`,
+      monitorNext: topReplay ? [topReplay.actionContext, "Open history or symbol detail when enough replay context is available."] : ["Wait for validated replay or asymmetry context before relying on historical comparison."],
+      relatedSymbols: uniqueSymbols([...briefingSymbols(consoleModel.bestAsymmetry), ...briefingSymbols(consoleModel.whatChangedSinceLastVisit)]),
+      summary: topReplay ? topReplay.label : "Insufficient replay context.",
       tone: "cyan",
       updatedAt: generatedAt,
     },
@@ -366,6 +528,21 @@ function itemFactors(item: UnifiedConsoleItem, mode: "opportunity" | "risk"): Sc
     { detail: item.reasonForAttention, label: "Attention", tone: "cyan", value: item.attentionPriorityScore },
     { detail: item.detail, label: "Decision", tone: "cyan", value: item.decisionQualityScore },
   ];
+}
+
+function itemSymbols(items: UnifiedConsoleItem[]): string[] {
+  return uniqueSymbols(items.map((item) => item.symbol));
+}
+
+function briefingSymbols(items: UnifiedConsoleBriefing[]): string[] {
+  return uniqueSymbols(items.map((item) => item.symbol).filter((symbol): symbol is string => Boolean(symbol)));
+}
+
+function uniqueSymbols(symbols: string[]): string[] {
+  const normalized = symbols
+    .map((symbol) => symbol.trim().toUpperCase())
+    .filter(Boolean);
+  return Array.from(new Set(normalized)).slice(0, 12);
 }
 
 function SimpleStatusPill({ label, value }: { label: string; value: string }) {

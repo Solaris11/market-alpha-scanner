@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowRight, X } from "lucide-react";
 import { ScoreFactorStrip, type ScoreFactor, type VisualTone } from "@/components/visual/MiniVisuals";
 import { humanizeInsightText } from "@/lib/ui/labels";
@@ -20,6 +20,8 @@ export type InteractiveInsightZoneItem = {
   id: string;
   label: string;
   metric?: string;
+  monitorNext?: string[];
+  relatedSymbols?: string[];
   summary: string;
   tone?: VisualTone;
   updatedAt?: string;
@@ -128,15 +130,26 @@ export function InteractiveInsightZoneGrid({
 }
 
 function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: InteractiveInsightZoneItem | null }) {
+  useEffect(() => {
+    if (!zone) return undefined;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose, zone]);
+
   if (!zone) return null;
 
   const tone = TONE_CLASS[zone.tone ?? "cyan"];
   const bullets = zone.bullets?.filter(Boolean).slice(0, 8) ?? [];
+  const monitorNext = zone.monitorNext?.filter(Boolean).slice(0, 6) ?? [];
+  const relatedSymbols = zone.relatedSymbols?.filter(Boolean).slice(0, 12) ?? [];
 
   return (
-    <div className="fixed inset-0 z-[9500]" role="dialog" aria-modal="true" aria-label={`${zone.label} detail`}>
+    <div className="fixed inset-0 z-[10000] flex items-end justify-center sm:items-stretch sm:justify-end" role="dialog" aria-modal="true" aria-label={`${zone.label} detail`}>
       <button className="absolute inset-0 cursor-default bg-slate-950/70 backdrop-blur-sm" onClick={onClose} type="button" aria-label="Close detail drawer" />
-      <aside className="absolute inset-x-3 bottom-3 max-h-[88vh] overflow-auto rounded-3xl border border-white/10 bg-slate-950 p-4 shadow-2xl shadow-black/60 ring-1 ring-cyan-300/10 sm:inset-x-auto sm:bottom-4 sm:right-4 sm:top-4 sm:w-[30rem] sm:p-5">
+      <aside className="relative z-10 m-3 max-h-[88vh] w-[calc(100%-1.5rem)] overflow-auto rounded-3xl border border-white/10 bg-slate-950 p-4 shadow-2xl shadow-black/60 ring-1 ring-cyan-300/10 sm:m-4 sm:h-[calc(100vh-2rem)] sm:max-h-none sm:w-[30rem] sm:p-5">
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0">
             <div className={`text-[10px] font-black uppercase tracking-[0.22em] ${tone.text}`}>{zone.eyebrow ?? "Intelligence detail"}</div>
@@ -149,6 +162,19 @@ function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: Inte
         </div>
 
         <div className={`mt-4 h-1 rounded-full ${tone.accent}`} />
+
+        {relatedSymbols.length ? (
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Related symbols</div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {relatedSymbols.map((symbol) => (
+                <span className={`rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 font-mono text-xs font-black ${tone.text}`} key={symbol}>
+                  {symbol}
+                </span>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         <ScoreFactorStrip
           className="mt-4"
@@ -172,6 +198,20 @@ function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: Inte
             <p className="mt-2 text-sm leading-6 text-slate-500">No extra drill-down items are available yet. TradeVeto will show more detail as evidence accumulates.</p>
           )}
         </div>
+
+        {monitorNext.length ? (
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">What to monitor next</div>
+            <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+              {monitorNext.map((item) => (
+                <li className="flex gap-2" key={item}>
+                  <span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${tone.accent}`} />
+                  <span>{humanizeInsightText(item)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <div className="mt-4 grid gap-2 text-xs text-slate-500">
           {zone.dataSource ? <div>Data source: <span className="text-slate-300">{zone.dataSource}</span></div> : null}
