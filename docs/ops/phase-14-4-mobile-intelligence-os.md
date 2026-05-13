@@ -49,6 +49,43 @@ TradeVeto's mobile surfaces now behave more like a native intelligence app inste
 - `python3 -m py_compile $(git ls-files '*.py')`: passed
 - `npx pyright . --pythonpath .venv/bin/python --warnings`: passed, 0 errors
 
+## Production Deployment And Smoke
+
+- Local commit `ad4b28871198cc5e295bfa3cbdbb1992f84e0f04` was pushed to `origin/main`.
+- Production host `onsre-node-01` pulled `origin/main` in `/opt/apps/market-alpha-scanner/app`.
+- Rebuilt and restarted `market-alpha-frontend` with `docker compose up -d --build market-alpha-frontend`.
+- `market-alpha-frontend` and `market-alpha-postgres` reported healthy.
+- `/api/health` returned `ok: true`.
+- `/api/health/deep` returned DB ok, scanner ok, local backup ok, and R2/offsite backup ok.
+
+Production route smoke after deploy:
+
+| Route | Status | Latency |
+| --- | ---: | ---: |
+| `/` | 200 | 286 ms |
+| `/terminal` | 200 | 141 ms |
+| `/opportunities` | 200 | 133 ms |
+| `/symbol/AMD` | 200 | 317 ms |
+| `/performance` | 200 | 171 ms |
+| `/history?symbol=AMD` | 200 | 163 ms |
+| `/alerts` | 200 | 140 ms |
+| `/paper` | 200 | 325 ms |
+| `/dashboard` | 200 | 119 ms |
+| `/mobile` | 200 | 194 ms |
+| `/manifest.webmanifest` | 200 | 93 ms |
+| `/tradeveto-sw.js` | 200 | 138 ms |
+| `/icon-192.png` | 200 | 146 ms |
+| `/icon-512.png` | 200 | 262 ms |
+| `/api/push/status` | 401 | 133 ms |
+
+The `401` on `/api/push/status` is expected for unauthenticated smoke testing; it confirms the route fails closed instead of 404ing.
+
+Local Chromium screenshots against production were captured for:
+
+- iPhone-sized `/mobile`
+- Android-sized `/terminal`
+- Landscape `/mobile`
+
 ## Remaining Mobile Debt
 
 - Real-device QA should still be done on iPhone Safari, Android Chrome, and Facebook in-app browser after production deploy.
