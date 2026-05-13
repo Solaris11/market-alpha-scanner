@@ -16,6 +16,7 @@ import { InstitutionalIntelligencePanel } from "@/components/terminal/Institutio
 import { IntradayRegimeDriftPanel } from "@/components/terminal/IntradayRegimeDriftPanel";
 import { LiveIntelligencePanel } from "@/components/terminal/LiveIntelligencePanel";
 import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
+import { MarketChartHub } from "@/components/terminal/MarketChartHub";
 import { MetricCard } from "@/components/terminal/MetricCard";
 import { MyWatchlistWidget } from "@/components/terminal/MyWatchlistWidget";
 import { RegimeShiftIntelligencePanel } from "@/components/terminal/RegimeShiftIntelligencePanel";
@@ -39,6 +40,7 @@ import { assertNoPremiumFields } from "@/lib/server/premium-preview";
 import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
+import { getMarketChartHubData } from "@/lib/server/validated-price-history";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
@@ -112,7 +114,7 @@ export default async function TerminalPage() {
   }
 
   const adapter = new ScannerDataAdapter();
-  const [snapshot, performance, scanSafety, watchlistSymbols, activeAlertMatches, personalizationProfile, paperData] = await Promise.all([
+  const [snapshot, performance, scanSafety, watchlistSymbols, activeAlertMatches, personalizationProfile, paperData, marketChartHubData] = await Promise.all([
     adapter.getTerminalSnapshot(),
     getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
     getCurrentScanSafety(),
@@ -120,6 +122,7 @@ export default async function TerminalPage() {
     getActiveAlertMatches(entitlement.user?.id ?? null).then((result) => result.matches).catch(() => []),
     getPersonalizationProfileForUser(entitlement.user?.id ?? null).catch(() => null),
     getPaperData({ userId: entitlement.user?.id ?? null }).catch(() => ({ account: null, configured: false, events: [], positions: [] })),
+    getMarketChartHubData().catch(() => []),
   ]);
   const edges = buildEdgeLookup(snapshot.signals, performance);
   const symbols = snapshot.signals.map((row) => row.symbol);
@@ -186,6 +189,7 @@ export default async function TerminalPage() {
             rows={opportunityModel.rows}
             workflowEvolution={workflowEvolution}
           />
+          <MarketChartHub charts={marketChartHubData} marketCondition={snapshot.marketRegime.label} updatedAt={scanSafety.lastUpdated} />
           <details className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
             <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-100">
               <span>Advanced intelligence layers</span>

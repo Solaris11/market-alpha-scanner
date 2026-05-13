@@ -236,6 +236,9 @@ export function SymbolTerminalWorkspace({
         <div className="mt-5">
           <SymbolChart
             candles={candles.length ? candles : undefined}
+            dataSource="scanner validated OHLC history"
+            interpretation={`${symbol} price history is shown with real stored candles. Use it with decision quality, risk pressure, replay context, and market regime before interpreting the setup.`}
+            lastUpdated={typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null}
             showHistoricalSignals={showHistoricalMarkers}
             showResearchLevelsToggle
             signals={chartSignals}
