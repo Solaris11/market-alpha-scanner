@@ -127,7 +127,31 @@ Local validation:
 
 Production validation:
 
-- Pending deploy from pushed Git commit.
+- Host: `onsre-node-01`
+- Production path: `/opt/apps/market-alpha-scanner/app`
+- Deployed commit: `231caca`
+- Docker rebuild: `market-alpha-frontend` rebuilt successfully from Git source.
+- Container health: frontend and Postgres healthy.
+- `/api/health`: passed.
+- `/api/health/deep`: passed; DB, scanner, local backup, and R2 backup healthy.
+- Route smoke passed:
+  - `/`: 200, 0.144s
+  - `/terminal`: 200, 0.119s
+  - `/opportunities`: 200, 0.153s
+  - `/symbol/AMD`: 200, 0.262s
+  - `/performance`: 200, 0.119s
+  - `/history?symbol=AMD`: 200, 0.117s
+  - `/alerts`: 200, 0.137s
+  - `/paper`: 200, 0.207s
+  - `/dashboard`: 200, 0.096s
+  - `/mobile`: 200, 0.113s
+- Production host validation:
+  - `npm run lint`: passed after `npm ci` refreshed the production source dependency install.
+  - `npm test -- --runInBand`: passed, 371 tests.
+  - `npm audit --omit=dev`: passed, 0 vulnerabilities.
+  - `python3 -m py_compile $(git ls-files '*.py')`: passed.
+  - `npx pyright . --pythonpath .venv/bin/python --warnings`: passed, 0 errors.
+  - `git diff --check`: passed.
 
 ## Remaining UX Debt
 
