@@ -113,7 +113,22 @@ Local validation completed:
 - `npx pyright . --pythonpath .venv/bin/python --warnings` - passed, 0 errors.
 - `git diff --check` - passed.
 
-Production validation will be recorded after the pushed commit is pulled and smoke-tested on the production host.
+Production validation completed from the production host:
+
+- Host: `onsre-node-01`
+- User: `sre`
+- Path: `/opt/apps/market-alpha-scanner/app`
+- Commit deployed: `a54a8e57035d95443a1a5e51262f798a8d04e8a3`
+- `git pull --ff-only origin main` - passed.
+- `docker compose up -d --build market-alpha-frontend` - passed.
+- `market-alpha-frontend` container health - healthy.
+- `https://tradeveto.com/api/health` - 200, `ok: true`.
+- `https://tradeveto.com/api/health/deep` - 200, DB ok, scanner ok, local backup ok, R2 backup ok.
+- `https://tradeveto.com/terminal` - 200.
+- `https://tradeveto.com/symbol/AMD` - 200.
+- `https://tradeveto.com/api/research/copilot` GET - 405, expected fail-closed behavior for a non-GET Copilot API route.
+
+Note: unauthenticated public HTML does not expose the full premium terminal cognition panel because `/terminal` renders the premium experience only after entitlement checks. Route and container validation passed; interactive premium-session visual QA should be repeated with an authenticated beta user during the next UI smoke pass.
 
 ## Remaining Risks
 
