@@ -1,9 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useMemo } from "react";
 import { Activity, Bitcoin, CircleDollarSign, Droplets, Landmark, LineChart, Mountain, Waves } from "lucide-react";
 import { InteractivePriceChart } from "@/components/charts/InteractivePriceChart";
-import type { MarketChartHubItem } from "@/lib/interactive-chart-data";
+import { filterInteractivePricePoints, summarizePriceMove, type MarketChartHubItem } from "@/lib/interactive-chart-data";
 
 type MarketChartHubProps = {
   charts: MarketChartHubItem[];
@@ -34,6 +35,7 @@ const TONES: Record<string, "cyan" | "emerald" | "rose" | "violet"> = {
 };
 
 export function MarketChartHub({ charts, marketCondition, updatedAt }: MarketChartHubProps) {
+  const comparisonRows = useMemo(() => buildComparisonRows(charts), [charts]);
   if (!charts.length) return null;
 
   return (
@@ -52,6 +54,8 @@ export function MarketChartHub({ charts, marketCondition, updatedAt }: MarketCha
           {updatedAt ? <div className="mt-1 text-[11px] text-slate-500">Updated {updatedAt}</div> : null}
         </div>
       </div>
+
+      <MarketComparisonStrip rows={comparisonRows} />
 
       <div className="-mx-4 mt-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 md:mx-0 md:grid md:grid-cols-2 md:overflow-visible md:px-0 md:pb-0 2xl:grid-cols-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {charts.map((item) => (
@@ -81,5 +85,63 @@ export function MarketChartHub({ charts, marketCondition, updatedAt }: MarketCha
         Charts are sourced from stored validated price history. If a timeframe has insufficient points, TradeVeto shows a limited-data state instead of drawing synthetic market action.
       </div>
     </section>
+  );
+}
+
+type MarketComparisonRow = {
+  label: string;
+  pointCount: number;
+  symbol: string;
+  tone: "down" | "flat" | "up";
+  value: number | null;
+};
+
+function buildComparisonRows(charts: MarketChartHubItem[]): MarketComparisonRow[] {
+  return charts.map((item) => {
+    const points = filterInteractivePricePoints(item.chart.rows, "1mo");
+    const summary = summarizePriceMove(points);
+    return {
+      label: item.label,
+      pointCount: points.length,
+      symbol: item.symbol,
+      tone: summary.tone,
+      value: summary.changePct,
+    };
+  });
+}
+
+function MarketComparisonStrip({ rows }: { rows: MarketComparisonRow[] }) {
+  if (!rows.length) return null;
+  const maxAbs = Math.max(...rows.map((row) => Math.abs(row.value ?? 0)), 1);
+  return (
+    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Validated comparison mode</div>
+          <p className="mt-1 text-xs leading-5 text-slate-500">One-month normalized move using stored close history. Limited rows stay visibly marked instead of inferred.</p>
+        </div>
+        <div className="text-[11px] text-slate-500">Cross-asset context, not a standalone signal.</div>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+        {rows.map((row) => {
+          const width = `${Math.min(100, Math.max(4, (Math.abs(row.value ?? 0) / maxAbs) * 100))}%`;
+          const toneClass = row.value === null ? "bg-slate-500" : row.tone === "up" ? "bg-emerald-300" : row.tone === "down" ? "bg-rose-300" : "bg-cyan-300";
+          return (
+            <div className="rounded-xl border border-white/10 bg-slate-950/55 p-3" key={row.symbol}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="font-mono text-xs font-black text-slate-100">{row.symbol}</span>
+                <span className={`text-xs font-black ${row.value === null ? "text-slate-500" : row.tone === "up" ? "text-emerald-200" : row.tone === "down" ? "text-rose-200" : "text-cyan-200"}`}>
+                  {row.value === null ? "Limited" : `${row.value >= 0 ? "+" : ""}${row.value.toFixed(1)}%`}
+                </span>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/[0.07]">
+                <div className={`h-full rounded-full ${toneClass}`} style={{ width }} />
+              </div>
+              <div className="mt-2 truncate text-[11px] text-slate-500">{row.pointCount >= 2 ? row.label : "Insufficient validated closes"}</div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
 }

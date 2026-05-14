@@ -7,6 +7,7 @@ import {
 } from "lightweight-charts";
 import { buildResearchContextLevels as buildResearchLevels } from "@/lib/trading/research-levels";
 import type { ChartCandle, ChartSignalMarker, ChartTradeLevels } from "./SymbolChart";
+import { markerVisualPolicy } from "./symbol-chart-marker-policy";
 
 export type NormalizedTradeLevels = Required<ChartTradeLevels>;
 export type ChartResearchLevel = {
@@ -98,11 +99,8 @@ function addPriceLine(candleSeries: ISeriesApi<"Candlestick">, price: number | n
 
 function markerForSignal(signal: ChartSignalMarker, index: number): SeriesMarker<Time> {
   const base = { id: `${signal.type}-${signal.time}-${index}`, time: signal.time as Time };
-  if (signal.type === "ENTER") return { ...base, color: "#22c55e", position: "belowBar", shape: "arrowUp", text: signal.text ?? "ENTER" };
-  if (signal.type === "EXIT") return { ...base, color: "#ef4444", position: "aboveBar", shape: "arrowDown", text: signal.text ?? "EXIT" };
-  if (signal.type === "STOP") return { ...base, color: "#dc2626", position: "aboveBar", shape: "arrowDown", text: signal.text ?? "STOP" };
-  if (signal.type === "TARGET") return { ...base, color: "#38bdf8", position: "aboveBar", shape: "arrowDown", text: signal.text ?? "TARGET" };
-  return { ...base, color: "#f59e0b", position: "belowBar", shape: "circle", text: signal.text ?? "WAIT" };
+  const policy = markerVisualPolicy(signal.type);
+  return { ...base, color: policy.color, position: policy.position, shape: policy.shape, text: signal.text ?? policy.fallbackText };
 }
 
 function isValidCandle(candle: ChartCandle) {

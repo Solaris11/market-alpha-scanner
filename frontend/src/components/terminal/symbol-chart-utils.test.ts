@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { markerVisualPolicy } from "@/components/terminal/symbol-chart-marker-policy";
 import { buildResearchContextLevels, type ResearchCandle, type ResearchContextLevel } from "@/lib/trading/research-levels";
 
 describe("research chart context levels", () => {
@@ -18,6 +19,13 @@ describe("research chart context levels", () => {
     const text = levels.map((level) => level.label).join(" ").toLowerCase();
     assert.equal(text.includes("buy here"), false);
     assert.equal(text.includes("recommend"), false);
+  });
+
+  it("maps intelligence overlay markers to explicit chart marker styles", () => {
+    assert.deepEqual(markerVisualPolicy("CONFIDENCE"), { color: "#22d3ee", fallbackText: "SCORE", position: "belowBar", shape: "circle" });
+    assert.deepEqual(markerVisualPolicy("REPLAY"), { color: "#c084fc", fallbackText: "REPLAY", position: "belowBar", shape: "square" });
+    assert.deepEqual(markerVisualPolicy("EVENT"), { color: "#f43f5e", fallbackText: "EVENT", position: "aboveBar", shape: "square" });
+    assert.deepEqual(markerVisualPolicy("STALE"), { color: "#fbbf24", fallbackText: "STALE", position: "aboveBar", shape: "circle" });
   });
 });
 

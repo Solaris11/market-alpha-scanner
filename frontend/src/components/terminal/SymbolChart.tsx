@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Expand, X } from "lucide-react";
+import { Expand, RotateCcw } from "lucide-react";
 import {
   CandlestickSeries,
   ColorType,
@@ -20,6 +20,7 @@ import {
   toSeriesMarkers,
 } from "./symbol-chart-utils";
 import { EmptyState } from "./ui/EmptyState";
+import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
 import { INTERACTIVE_CHART_PERIODS, type InteractiveChartPeriod } from "@/lib/interactive-chart-data";
 
 export type ChartCandle = {
@@ -30,10 +31,28 @@ export type ChartCandle = {
   close: number;
 };
 
+export type ChartSignalMarkerType =
+  | "ALERT"
+  | "CONFIDENCE"
+  | "CONTRADICTION"
+  | "ENTER"
+  | "EVENT"
+  | "EXIT"
+  | "FRESHNESS"
+  | "MACRO"
+  | "REPLAY"
+  | "RISK"
+  | "STALE"
+  | "STOP"
+  | "TARGET"
+  | "WAIT";
+
 export type ChartSignalMarker = {
   time: string;
-  type: "ENTER" | "EXIT" | "STOP" | "TARGET" | "WAIT";
+  type: ChartSignalMarkerType;
   text?: string;
+  source?: string;
+  uncertainty?: string;
 };
 
 export type ChartTradeLevels = {
@@ -82,6 +101,7 @@ export function SymbolChart({
   const [failed, setFailed] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [period, setPeriod] = useState<InteractiveChartPeriod>(defaultPeriod);
+  const [resetToken, setResetToken] = useState(0);
   const [showResearchLevels, setShowResearchLevels] = useState(true);
   const normalizedCandles = useMemo(() => normalizeCandles(candles), [candles]);
   const chartCandles = useMemo(() => filterCandlesByPeriod(normalizedCandles, period), [normalizedCandles, period]);
@@ -91,6 +111,7 @@ export function SymbolChart({
   const chartLevels = useMemo(() => normalizeTradeLevels(tradeLevels), [tradeLevels]);
   const researchLevels = useMemo(() => buildResearchContextLevels(chartCandles, chartLevels), [chartCandles, chartLevels]);
   const hasTradeLevels = chartLevels.entry !== null || chartLevels.entryLow !== null || chartLevels.entryHigh !== null || chartLevels.stop !== null || chartLevels.target !== null;
+  const overlayGroups = useMemo(() => markerGroupSummary(chartSignals), [chartSignals]);
   const move = useMemo(() => summarizeCandles(chartCandles), [chartCandles]);
   const canRenderChart = chartCandles.length >= 2;
 
@@ -182,7 +203,7 @@ export function SymbolChart({
       setFailed(true);
       return undefined;
     }
-  }, [canRenderChart, chartCandles, chartLevels, chartSignals, researchLevels, showResearchLevels, showResearchLevelsToggle]);
+  }, [canRenderChart, chartCandles, chartLevels, chartSignals, researchLevels, resetToken, showResearchLevels, showResearchLevelsToggle]);
 
   if (failed || (candles?.length && !normalizedCandles.length)) {
     return <EmptyState title="Price chart unavailable" message="The latest price payload could not be validated for this symbol." />;
@@ -234,9 +255,26 @@ export function SymbolChart({
               </button>
             ))}
           </div>
-          <div className="text-[11px] text-slate-500">{lastUpdated ? `Updated ${formatChartDate(lastUpdated)}` : dataSource}</div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <button
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500 transition hover:border-cyan-300/40 hover:text-cyan-100 sm:min-h-0"
+              onClick={() => setResetToken((value) => value + 1)}
+              title="Reset chart zoom and pan"
+              type="button"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Reset
+            </button>
+            <div className="text-[11px] text-slate-500">{lastUpdated ? `Updated ${formatChartDate(lastUpdated)}` : dataSource}</div>
+          </div>
         </div>
       ) : null}
+      <ChartOverlaySummary
+        dataSource={dataSource}
+        hasTradeLevels={hasTradeLevels}
+        markerGroups={overlayGroups}
+        showHistoricalSignals={showHistoricalSignals}
+      />
     <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/40 shadow-xl shadow-black/20" style={{ height }}>
       {canRenderChart ? <div ref={chartContainerRef} className="absolute inset-0" /> : (
         <div className="absolute inset-0 flex items-center justify-center p-5">
@@ -313,34 +351,19 @@ function SymbolChartModal({
   symbol: string;
   tradeLevels?: ChartTradeLevels;
 }) {
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [close]);
-
+  const markerSummary = markerGroupSummary(showHistoricalSignals ? signals ?? [] : []);
+  const markerEvidence = (showHistoricalSignals ? signals ?? [] : []).slice(-10).reverse();
+  const levelSummary = tradeLevelSummary(tradeLevels);
   return (
-    <div className="fixed inset-0 z-[10050] flex items-end justify-center overflow-y-auto p-0 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={`${symbol.toUpperCase()} expanded chart`}>
-      <button className="absolute inset-0 cursor-default bg-slate-950/75 backdrop-blur-md" onClick={close} type="button" aria-label="Close expanded chart" />
-      <section className="relative z-10 h-[94dvh] max-h-[94dvh] w-full max-w-6xl overflow-auto overscroll-contain rounded-t-[2rem] border border-cyan-300/20 bg-slate-950 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl shadow-black/75 ring-1 ring-cyan-300/10 sm:h-auto sm:max-h-[min(90vh,900px)] sm:rounded-3xl sm:p-6">
-        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/20 sm:hidden" aria-hidden="true" />
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Symbol chart detail</div>
-            <h2 className="mt-2 font-mono text-3xl font-black tracking-tight text-slate-50">{symbol.toUpperCase()} Price + Signal Context</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">{interpretation}</p>
-          </div>
-          <button className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100" onClick={close} type="button" aria-label="Close expanded chart">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
+    <StableDetailOverlay
+      closeLabel="Close expanded chart"
+      description={interpretation}
+      eyebrow="Symbol chart detail"
+      onClose={close}
+      open
+      size="xl"
+      title={`${symbol.toUpperCase()} Price + Intelligence Overlays`}
+    >
         <div className="mt-4">
           <SymbolChart
             candles={candles}
@@ -358,15 +381,88 @@ function SymbolChartModal({
             tradeLevels={tradeLevels}
           />
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
           <ChartDetailTile label="Data source" value={dataSource} detail="Stored validated OHLC history only. No seeded or synthetic candles are drawn." />
-          <ChartDetailTile label="Replay markers" value={showHistoricalSignals ? `${signals?.length ?? 0} visible` : "Hidden"} detail="Historical markers appear only when validated signal history is available and enabled." />
+          <ChartDetailTile label="Research levels" value={levelSummary.value} detail={levelSummary.detail} />
+          <ChartDetailTile label="Intelligence markers" value={showHistoricalSignals ? `${signals?.length ?? 0} available` : "Hidden"} detail={markerSummary.length ? markerSummary.join(" · ") : "Markers appear only when real scanner, freshness, replay, or risk context exists."} />
           <ChartDetailTile label="Last updated" value={lastUpdated ? formatChartDate(lastUpdated) : "Unavailable"} detail="Timestamp comes from the latest validated chart point or scanner payload." />
         </div>
+        <ChartMarkerEvidenceList markers={markerEvidence} />
         <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-xs leading-5 text-slate-500">
-          Research only. Chart context can support investigation, but TradeVeto decisions still depend on risk, evidence, and regime checks.
+          Research only. Entry, stop, target, confidence, risk, replay, and freshness overlays are context for investigation, not a recommendation to buy or sell.
         </div>
-      </section>
+    </StableDetailOverlay>
+  );
+}
+
+function ChartMarkerEvidenceList({ markers }: { markers: ChartSignalMarker[] }) {
+  if (!markers.length) {
+    return (
+      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Overlay evidence</div>
+        <p className="mt-2 text-xs leading-5 text-slate-400">No intelligence markers are visible for this chart range. TradeVeto does not draw replay, risk, macro, or confidence overlays without source data.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Overlay evidence</div>
+          <p className="mt-1 text-xs leading-5 text-slate-500">Latest real marker sources shown first. These explain why each overlay appears.</p>
+        </div>
+        <div className="text-[11px] text-slate-500">Max 10 recent markers</div>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-2">
+        {markers.map((marker, index) => (
+          <div className="rounded-xl border border-white/10 bg-slate-950/55 p-3" key={`${marker.time}-${marker.type}-${marker.text ?? index}`}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">
+                {marker.text ?? markerTypeLabel(marker.type)}
+              </span>
+              <span className="font-mono text-[11px] text-slate-500">{formatChartDate(marker.time)}</span>
+            </div>
+            <div className="mt-2 text-xs font-semibold text-slate-200">{marker.source ?? "validated chart context"}</div>
+            {marker.uncertainty ? <p className="mt-1 text-[11px] leading-5 text-slate-500">{marker.uncertainty}</p> : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ChartOverlaySummary({
+  dataSource,
+  hasTradeLevels,
+  markerGroups,
+  showHistoricalSignals,
+}: {
+  dataSource: string;
+  hasTradeLevels: boolean;
+  markerGroups: string[];
+  showHistoricalSignals: boolean;
+}) {
+  const chips = [
+    hasTradeLevels ? "Entry / stop / target context" : null,
+    showHistoricalSignals && markerGroups.length ? markerGroups.join(" · ") : null,
+    showHistoricalSignals && !markerGroups.length ? "No visible intelligence markers in this range" : null,
+  ].filter((chip): chip is string => Boolean(chip));
+
+  return (
+    <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-cyan-300/10 bg-cyan-300/[0.035] px-3 py-2">
+      <div className="flex flex-wrap gap-1.5">
+        {chips.length ? chips.map((chip) => (
+          <span className="rounded-full border border-white/10 bg-slate-950/55 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-cyan-100" key={chip}>
+            {chip}
+          </span>
+        )) : (
+          <span className="rounded-full border border-white/10 bg-slate-950/55 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-400">
+            Price history only
+          </span>
+        )}
+      </div>
+      <div className="text-[11px] text-slate-500">Source: {dataSource}</div>
     </div>
   );
 }
@@ -379,6 +475,52 @@ function ChartDetailTile({ detail, label, value }: { detail: string; label: stri
       <p className="mt-2 text-xs leading-5 text-slate-400">{detail}</p>
     </div>
   );
+}
+
+function markerGroupSummary(signals: ChartSignalMarker[]): string[] {
+  const counts = new Map<ChartSignalMarkerType, number>();
+  for (const signal of signals) {
+    counts.set(signal.type, (counts.get(signal.type) ?? 0) + 1);
+  }
+  return Array.from(counts.entries()).map(([type, count]) => `${markerTypeLabel(type)} ${count}`);
+}
+
+function markerTypeLabel(type: ChartSignalMarkerType): string {
+  if (type === "CONFIDENCE") return "score";
+  if (type === "CONTRADICTION") return "contradiction";
+  if (type === "ENTER") return "entry";
+  if (type === "EXIT") return "exit";
+  if (type === "EVENT") return "event";
+  if (type === "FRESHNESS") return "freshness";
+  if (type === "MACRO") return "macro";
+  if (type === "REPLAY") return "replay";
+  if (type === "RISK") return "risk";
+  if (type === "STALE") return "stale";
+  if (type === "STOP") return "stop";
+  if (type === "TARGET") return "target";
+  if (type === "WAIT") return "wait";
+  return "alert";
+}
+
+function tradeLevelSummary(levels?: ChartTradeLevels): { detail: string; value: string } {
+  if (!levels) {
+    return {
+      detail: "No validated entry, stop, or target context exists for this chart.",
+      value: "Unavailable",
+    };
+  }
+  const count = [levels.entry, levels.entryLow, levels.entryHigh, levels.stop, levels.target]
+    .filter((value) => typeof value === "number" && Number.isFinite(value)).length;
+  if (!count) {
+    return {
+      detail: "No validated entry, stop, or target context exists for this chart.",
+      value: "Unavailable",
+    };
+  }
+  return {
+    detail: "Research-only levels come from scanner trade context and are never generated when source values are missing.",
+    value: `${count} real level${count === 1 ? "" : "s"}`,
+  };
 }
 
 function filterCandlesByPeriod(candles: ChartCandle[], period: InteractiveChartPeriod): ChartCandle[] {

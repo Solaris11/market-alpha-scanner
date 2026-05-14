@@ -147,9 +147,9 @@ export function SymbolTerminalWorkspace({
   const candles = useMemo(() => rowsToCandles(priceSeries), [priceSeries]);
   const chartSignals = useMemo(() => {
     if (!candles.length) return undefined;
-    const markers = history.map(historyPointToMarker).filter((marker): marker is ChartSignalMarker => Boolean(marker));
+    const markers = buildChartSignalMarkers(history, row, dataFreshness, marketMemory, candles[candles.length - 1]?.time ?? null);
     return markers.length ? markers : undefined;
-  }, [candles.length, history]);
+  }, [candles, dataFreshness, history, marketMemory, row]);
   const canTrade = globalDecision ? dailyActionAllowsTrade(globalDecision) : true;
   const noTradeCopy = globalDecision && !canTrade ? noTradeActionCopy(globalDecision) : null;
   const researchModeReason = noTradeCopy?.reason ?? "The global decision system is keeping this in research mode for now.";
@@ -297,12 +297,134 @@ function rowsToCandles(rows: Record<string, ScannerScalar>[]): ChartCandle[] {
     .filter((candle): candle is ChartCandle => Boolean(candle));
 }
 
+function buildChartSignalMarkers(
+  history: SignalHistoryPoint[],
+  row: RankingRow,
+  dataFreshness: DataFreshness,
+  marketMemory: MarketMemorySummary,
+  fallbackTimestamp: string | null,
+): ChartSignalMarker[] {
+  const markers: ChartSignalMarker[] = [];
+  const sortedHistory = [...history].sort((left, right) => Date.parse(left.timestamp) - Date.parse(right.timestamp));
+
+  sortedHistory.forEach((point, index) => {
+    const decisionMarker = historyPointToMarker(point);
+    if (decisionMarker) markers.push(decisionMarker);
+
+    const previousScore = index > 0 ? sortedHistory[index - 1]?.final_score ?? null : null;
+    if (point.final_score !== null && previousScore !== null) {
+      const delta = point.final_score - previousScore;
+      if (Math.abs(delta) >= 8) {
+        markers.push({
+          source: "scanner signal history",
+          text: `${delta > 0 ? "+" : ""}${Math.round(delta)} score`,
+          time: point.timestamp,
+          type: "CONFIDENCE",
+          uncertainty: "Score-change markers require stored scanner history and do not predict future movement.",
+        });
+      }
+    }
+
+    const entryStatus = point.entry_status.toLowerCase();
+    if (entryStatus.includes("stale") || entryStatus.includes("extended")) {
+      markers.push({
+        source: "scanner entry-status history",
+        text: entryStatus.includes("stale") ? "STALE" : "EXTENDED",
+        time: point.timestamp,
+        type: entryStatus.includes("stale") ? "STALE" : "RISK",
+        uncertainty: "Freshness and entry-status markers are research context only.",
+      });
+    }
+  });
+
+  const currentTime = textValue(row.last_updated_utc ?? row.last_updated ?? fallbackTimestamp);
+  if (currentTime) {
+    if (dataFreshness.status === "fresh") {
+      markers.push({
+        source: "scanner freshness timestamp",
+        text: "FRESH",
+        time: currentTime,
+        type: "FRESHNESS",
+        uncertainty: dataFreshness.message,
+      });
+    }
+    if (dataFreshness.status === "stale" || dataFreshness.status === "slightly_stale" || dataFreshness.status === "missing") {
+      markers.push({
+        source: "scanner freshness timestamp",
+        text: dataFreshness.status === "slightly_stale" ? "AGING" : "STALE",
+        time: currentTime,
+        type: "STALE",
+        uncertainty: dataFreshness.message,
+      });
+    }
+
+    const eventRisk = numericValue(row.event_risk ?? row.event_risk_score ?? row.verified_event_risk_score ?? null);
+    if (eventRisk !== null && eventRisk >= 70) {
+      markers.push({
+        source: "verified event risk score",
+        text: "EVENT RISK",
+        time: currentTime,
+        type: "EVENT",
+        uncertainty: "Event-risk markers appear only when the current scanner payload contains elevated event risk.",
+      });
+    }
+
+    const fragility = numericValue(row.fragility_score ?? row.fragility ?? row.structural_fragility ?? null);
+    if (fragility !== null && fragility >= 70) {
+      markers.push({
+        source: "conviction and fragility model",
+        text: "FRAGILITY",
+        time: currentTime,
+        type: "RISK",
+        uncertainty: "Fragility markers indicate elevated structural risk, not a trade instruction.",
+      });
+    }
+
+    const macroAdjustment = numericValue(row.macro_context_adjustment_total ?? row.regime_adjustment ?? null);
+    if (macroAdjustment !== null && Math.abs(macroAdjustment) >= 5) {
+      markers.push({
+        source: "macro regime adjustment",
+        text: macroAdjustment > 0 ? "MACRO +" : "MACRO -",
+        time: currentTime,
+        type: "MACRO",
+        uncertainty: "Macro markers reflect current context adjustment only.",
+      });
+    }
+
+    const topAnalog = marketMemory.analogs[0];
+    if (marketMemory.available && topAnalog) {
+      markers.push({
+        source: "market memory similarity",
+        text: `${Math.round(topAnalog.similarityScore)}% REPLAY`,
+        time: currentTime,
+        type: "REPLAY",
+        uncertainty: `Closest analog: ${topAnalog.symbol}. Similarity is context, not a prediction.`,
+      });
+    }
+  }
+
+  return dedupeChartMarkers(markers);
+}
+
 function historyPointToMarker(point: SignalHistoryPoint): ChartSignalMarker | null {
   const decision = point.final_decision.toUpperCase();
-  if (decision === "ENTER") return { time: point.timestamp, type: "ENTER", text: "ENTER" };
-  if (decision === "EXIT") return { time: point.timestamp, type: "EXIT", text: "EXIT" };
-  if (decision === "WAIT_PULLBACK" || decision === "WATCH") return { time: point.timestamp, type: "WAIT", text: decision === "WATCH" ? "WATCH" : "WAIT" };
+  if (decision === "ENTER") return { source: "scanner decision history", time: point.timestamp, type: "ENTER", text: "ENTER" };
+  if (decision === "EXIT") return { source: "scanner decision history", time: point.timestamp, type: "EXIT", text: "EXIT" };
+  if (decision === "WAIT_PULLBACK" || decision === "WATCH") return { source: "scanner decision history", time: point.timestamp, type: "WAIT", text: decision === "WATCH" ? "WATCH" : "WAIT" };
+  if (decision.includes("RISK") || decision === "AVOID") return { source: "scanner decision history", time: point.timestamp, type: "RISK", text: "RISK" };
   return null;
+}
+
+function dedupeChartMarkers(markers: ChartSignalMarker[]): ChartSignalMarker[] {
+  const seen = new Set<string>();
+  const deduped: ChartSignalMarker[] = [];
+  for (const marker of markers) {
+    const key = `${marker.time}|${marker.type}|${marker.text ?? ""}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(marker);
+  }
+  return deduped.sort((left, right) => left.time.localeCompare(right.time));
 }
 
 function numericValue(value: ScannerScalar) {
