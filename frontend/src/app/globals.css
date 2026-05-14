@@ -15,6 +15,16 @@
   --tv-card-strong: rgba(8, 13, 27, 0.82);
   --tv-red: #ff4d4f;
   --tv-grid: rgba(103, 232, 249, 0.055);
+  --tv-motion-fast: 150ms;
+  --tv-motion-medium: 260ms;
+  --tv-motion-slow: 520ms;
+  --tv-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --tv-status-constructive: #34d399;
+  --tv-status-caution: #facc15;
+  --tv-status-elevated: #fb923c;
+  --tv-status-dangerous: #fb7185;
+  --tv-status-intelligence: #a78bfa;
+  --tv-status-neutral: #38bdf8;
 }
 
 * {
@@ -462,6 +472,189 @@ a {
   }
 }
 
+.tv-page-motion {
+  animation: tradeveto-page-enter var(--tv-motion-slow) var(--tv-ease-standard) both;
+}
+
+.tv-card-motion,
+.terminal-panel,
+.visual-card,
+.poster-panel {
+  transition:
+    border-color var(--tv-motion-medium) var(--tv-ease-standard),
+    box-shadow var(--tv-motion-medium) var(--tv-ease-standard),
+    background-color var(--tv-motion-medium) var(--tv-ease-standard),
+    transform var(--tv-motion-medium) var(--tv-ease-standard);
+}
+
+.tv-card-motion {
+  transform: translateZ(0);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tv-card-motion:hover {
+    border-color: rgba(103, 232, 249, 0.32);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.08),
+      0 24px 72px rgba(0, 0, 0, 0.34),
+      0 0 52px rgba(34, 211, 238, 0.08);
+    transform: translateY(-2px);
+  }
+}
+
+.tv-tap-motion {
+  transition:
+    border-color var(--tv-motion-fast) var(--tv-ease-standard),
+    background-color var(--tv-motion-fast) var(--tv-ease-standard),
+    box-shadow var(--tv-motion-fast) var(--tv-ease-standard),
+    color var(--tv-motion-fast) var(--tv-ease-standard),
+    transform var(--tv-motion-fast) var(--tv-ease-standard);
+}
+
+.tv-tap-motion:active {
+  transform: scale(0.985);
+}
+
+.tv-drawer-surface {
+  animation: tradeveto-drawer-enter var(--tv-motion-medium) var(--tv-ease-standard) both;
+}
+
+.tv-skeleton {
+  animation: tradeveto-skeleton-breathe 1.6s ease-in-out infinite;
+  overflow: hidden;
+  position: relative;
+}
+
+.tv-skeleton::after {
+  animation: tradeveto-shimmer 2.7s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.105), transparent);
+  content: "";
+  inset: 0;
+  position: absolute;
+  transform: translateX(-120%);
+}
+
+.tv-chart-reveal {
+  animation: tradeveto-chart-reveal 620ms var(--tv-ease-standard) both;
+  transform-origin: left center;
+}
+
+.tv-score-change {
+  animation: tradeveto-score-pop 480ms var(--tv-ease-standard) both;
+}
+
+.tv-alert-pulse {
+  animation: tradeveto-alert-pulse 2.4s ease-in-out infinite;
+}
+
+.tv-status-constructive {
+  border-color: color-mix(in srgb, var(--tv-status-constructive) 42%, transparent);
+  color: rgb(187 247 208);
+}
+
+.tv-status-caution {
+  border-color: color-mix(in srgb, var(--tv-status-caution) 42%, transparent);
+  color: rgb(254 240 138);
+}
+
+.tv-status-elevated {
+  border-color: color-mix(in srgb, var(--tv-status-elevated) 45%, transparent);
+  color: rgb(254 215 170);
+}
+
+.tv-status-dangerous {
+  border-color: color-mix(in srgb, var(--tv-status-dangerous) 48%, transparent);
+  color: rgb(254 205 211);
+}
+
+.tv-status-intelligence {
+  border-color: color-mix(in srgb, var(--tv-status-intelligence) 44%, transparent);
+  color: rgb(221 214 254);
+}
+
+.tv-status-neutral {
+  border-color: color-mix(in srgb, var(--tv-status-neutral) 40%, transparent);
+  color: rgb(186 230 253);
+}
+
+html[data-tradeveto-presentation="true"] [data-sensitive],
+html[data-tradeveto-presentation="true"] .tv-sensitive,
+html[data-tradeveto-presentation="true"] .tradeveto-beta-feedback-widget {
+  display: none !important;
+}
+
+html[data-tradeveto-presentation="true"] body {
+  background:
+    radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.16), transparent 30rem),
+    radial-gradient(circle at 88% 0%, rgba(167, 139, 250, 0.12), transparent 28rem),
+    linear-gradient(180deg, #050815 0%, #08111f 52%, #050815 100%);
+}
+
+@keyframes tradeveto-page-enter {
+  from {
+    opacity: 0.92;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tradeveto-drawer-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes tradeveto-skeleton-breathe {
+  0%,
+  100% {
+    opacity: 0.78;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes tradeveto-chart-reveal {
+  from {
+    opacity: 0;
+    transform: scaleX(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes tradeveto-score-pop {
+  0% {
+    transform: scale(0.98);
+  }
+  45% {
+    transform: scale(1.035);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes tradeveto-alert-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(251, 113, 133, 0.20);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(251, 113, 133, 0);
+  }
+}
+
 .tradeveto-route-progress {
   animation: tradeveto-route-progress 1.05s ease-in-out infinite;
 }
@@ -474,12 +667,24 @@ html[data-tradeveto-suppress-feedback="true"] .tradeveto-beta-feedback-widget {
   .landing-badge-loop,
   .landing-hero-sweep::before,
   .poster-scanline::after,
+  .tv-alert-pulse,
+  .tv-chart-reveal,
+  .tv-drawer-surface,
+  .tv-page-motion,
+  .tv-score-change,
+  .tv-skeleton,
+  .tv-skeleton::after,
   .tradeveto-route-progress,
   .visual-shimmer::after {
     animation: none;
   }
 
-  .landing-reveal {
+  .landing-reveal,
+  .tv-card-motion,
+  .tv-tap-motion,
+  .terminal-panel,
+  .visual-card,
+  .poster-panel {
     opacity: 1;
     transform: none;
     transition: none;

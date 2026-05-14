@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { AccountOnboardingGate } from "@/components/account/AccountOnboardingGate";
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { BetaFeedbackWidget } from "@/components/analytics/BetaFeedbackWidget";
+import { PresentationModeController } from "@/components/presentation/PresentationModeController";
 import { CurrentUserProvider } from "@/hooks/useCurrentUser";
 import { BRAND_DESCRIPTION, BRAND_NAME, CANONICAL_URL } from "@/lib/brand";
 import "./globals.css";
@@ -46,6 +48,9 @@ export default function RootLayout({
           <AnalyticsProvider>
             {children}
             <AccountOnboardingGate />
+            <Suspense fallback={null}>
+              <PresentationModeController />
+            </Suspense>
             <BetaFeedbackWidget />
           </AnalyticsProvider>
         </CurrentUserProvider>

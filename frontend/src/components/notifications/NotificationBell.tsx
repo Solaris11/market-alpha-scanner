@@ -140,11 +140,11 @@ export function NotificationBell() {
   }
 
   return (
-    <div>
+    <div data-sensitive>
       <button
         ref={buttonRef}
         aria-label={unreadCount ? `${unreadCount} unread notifications` : "Notifications"}
-        className="relative grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-sm text-slate-200 transition hover:border-cyan-300/40 hover:bg-cyan-400/10 hover:text-cyan-100"
+        className={`tv-tap-motion relative grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-sm text-slate-200 transition hover:border-cyan-300/40 hover:bg-cyan-400/10 hover:text-cyan-100 ${unreadCount ? "tv-alert-pulse" : ""}`}
         onClick={() => {
           updateMenuPosition();
           setOpen((value) => !value);
@@ -163,7 +163,7 @@ export function NotificationBell() {
         ? createPortal(
             <div
               ref={menuRef}
-              className="z-[9000] rounded-2xl border border-white/10 bg-slate-950/95 p-2 text-xs text-slate-300 shadow-2xl shadow-black/40 ring-1 ring-cyan-300/10 backdrop-blur-xl"
+              className="tv-drawer-surface z-[9000] rounded-2xl border border-white/10 bg-slate-950/95 p-2 text-xs text-slate-300 shadow-2xl shadow-black/40 ring-1 ring-cyan-300/10 backdrop-blur-xl"
               style={menuStyle}
             >
               <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2">
@@ -182,7 +182,7 @@ export function NotificationBell() {
                 {!fetching && !notifications.length ? <div className="px-3 py-6 text-center text-slate-500">No notifications yet.</div> : null}
                 {notifications.map((notification) => (
                   <button
-                    className={`mt-1 w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/[0.06] ${
+                    className={`tv-tap-motion mt-1 w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/[0.06] ${
                       notification.read ? "text-slate-400" : "border border-cyan-300/15 bg-cyan-400/[0.07] text-slate-100"
                     }`}
                     key={notification.id}

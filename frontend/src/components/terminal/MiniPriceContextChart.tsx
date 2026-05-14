@@ -42,7 +42,7 @@ export function MiniPriceContextChart({
         <div className="flex flex-wrap gap-1">
           {TIMEFRAMES.map((item) => (
             <button
-              className={`min-h-9 min-w-9 rounded-full border px-2 py-1 text-[10px] font-bold transition-colors ${
+              className={`tv-tap-motion min-h-9 min-w-9 rounded-full border px-2 py-1 text-[10px] font-bold transition-colors ${
                 item.label === timeframe ? "border-cyan-300/50 bg-cyan-300/10 text-cyan-100" : "border-white/10 bg-white/[0.03] text-slate-400 hover:border-cyan-300/40 hover:text-cyan-100"
               }`}
               key={item.label}
@@ -54,7 +54,9 @@ export function MiniPriceContextChart({
           ))}
         </div>
       </div>
-      <SymbolChart candles={chartCandles} height={height} showHeaderBadge={false} symbol={symbol} />
+      <div className="tv-chart-reveal">
+        <SymbolChart candles={chartCandles} height={height} showHeaderBadge={false} symbol={symbol} />
+      </div>
       <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
         <MiniMetric label="Latest" value={latest === null ? "N/A" : formatMoney(latest)} />
         <MiniMetric label="Entry context" value={cleanText(entryContext, "No active entry context")} />
@@ -66,7 +68,7 @@ export function MiniPriceContextChart({
 
 function MiniMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="min-w-0 rounded-lg border border-white/10 bg-slate-950/35 px-2 py-1.5">
+    <div className="tv-card-motion min-w-0 rounded-lg border border-white/10 bg-slate-950/35 px-2 py-1.5">
       <div className="text-[9px] font-semibold uppercase tracking-[0.12em] text-slate-500">{label}</div>
       <div className="mt-0.5 truncate font-mono text-[12px] font-semibold text-slate-100">{value}</div>
     </div>

@@ -201,8 +201,12 @@ export function MobileTerminalNav() {
           <div className="truncate text-sm font-semibold text-slate-50">{title}</div>
           <div className="truncate text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300/80">Decision Intelligence</div>
         </div>
-        <NotificationBell />
-        <AccountPill compact />
+        <span data-sensitive>
+          <NotificationBell />
+        </span>
+        <span data-sensitive>
+          <AccountPill compact />
+        </span>
         <button
           aria-controls="tradeveto-mobile-drawer"
           aria-expanded={open}
@@ -226,7 +230,7 @@ export function MobileTerminalNav() {
           />
           <aside
             aria-labelledby={drawerTitleId}
-            className="fixed right-0 top-0 z-[9000] flex h-dvh w-[min(88vw,380px)] flex-col border-l border-white/10 bg-slate-950/95 shadow-2xl shadow-black/50 ring-1 ring-cyan-300/10 backdrop-blur-2xl"
+            className="tv-drawer-surface fixed right-0 top-0 z-[9000] flex h-dvh w-[min(88vw,380px)] flex-col border-l border-white/10 bg-slate-950/95 shadow-2xl shadow-black/50 ring-1 ring-cyan-300/10 backdrop-blur-2xl"
             id="tradeveto-mobile-drawer"
             ref={drawerRef}
           >
@@ -244,10 +248,12 @@ export function MobileTerminalNav() {
               <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-3">
                 <div className="flex min-w-0 items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-slate-100">{user?.displayName || user?.email || "Guest workspace"}</div>
+                    <div className="truncate text-sm font-semibold text-slate-100" data-sensitive>{user?.displayName || user?.email || "Guest workspace"}</div>
                     <div className="mt-1 text-xs text-slate-500">{accountStatusLabel(authenticated, entitlement.plan, entitlement.betaAccess)}</div>
                   </div>
-                  <AccountPill compact />
+                  <span data-sensitive>
+                    <AccountPill compact />
+                  </span>
                 </div>
               </div>
             </div>
@@ -268,7 +274,7 @@ export function MobileTerminalNav() {
               <div className="grid grid-cols-2 gap-2">
                 <DrawerNavLink item={ACCOUNT_NAV_ITEM} pathname={pathname} />
                 {authenticated ? (
-                  <button className="rounded-2xl border border-rose-300/20 bg-rose-400/10 px-3 py-3 text-left text-sm font-semibold text-rose-100" onClick={() => void handleLogout()} type="button">
+                  <button className="tv-tap-motion rounded-2xl border border-rose-300/20 bg-rose-400/10 px-3 py-3 text-left text-sm font-semibold text-rose-100" data-sensitive onClick={() => void handleLogout()} type="button">
                     Sign out
                   </button>
                 ) : (
@@ -296,7 +302,7 @@ function DesktopNavLink({ item, pathname, primary = false }: { item: AppNavItem;
   return (
     <Link
       aria-current={active ? "page" : undefined}
-      className={`inline-flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-2xl border font-semibold transition-all duration-200 hover:-translate-y-0.5 ${base} ${active ? color.active : `border-transparent text-slate-400 ${color.hover}`}`}
+      className={`tv-tap-motion inline-flex min-h-10 shrink-0 items-center gap-2 whitespace-nowrap rounded-2xl border font-semibold transition-all duration-200 hover:-translate-y-0.5 ${base} ${active ? color.active : `border-transparent text-slate-400 ${color.hover}`}`}
       href={item.href}
       onClick={navigationIntent.onClick}
       onFocus={navigationIntent.onFocus}
@@ -316,7 +322,7 @@ function DrawerNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
   return (
     <Link
       aria-current={active ? "page" : undefined}
-      className={`flex min-h-12 items-center justify-between rounded-2xl border px-3 py-2 text-sm font-semibold transition ${active ? color.active : `border-white/8 bg-white/[0.025] text-slate-300 ${color.hover}`}`}
+      className={`tv-tap-motion flex min-h-12 items-center justify-between rounded-2xl border px-3 py-2 text-sm font-semibold transition ${active ? color.active : `border-white/8 bg-white/[0.025] text-slate-300 ${color.hover}`}`}
       href={item.href}
       onClick={navigationIntent.onClick}
       onFocus={navigationIntent.onFocus}
@@ -339,7 +345,7 @@ function BottomNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
   const navigationIntent = useNavigationIntent(item.href, label);
   return (
     <Link
-      className={`relative flex min-h-12 flex-col items-center justify-center rounded-xl border px-0.5 text-center text-[10px] font-semibold transition ${
+      className={`tv-tap-motion relative flex min-h-12 flex-col items-center justify-center rounded-xl border px-0.5 text-center text-[10px] font-semibold transition ${
         active ? color.active : `border-transparent text-slate-400 ${color.hover}`
       }`}
       href={item.href}
@@ -361,7 +367,7 @@ function BottomMenuButton({ buttonRef, onClick, open }: { buttonRef: RefObject<H
       aria-controls="tradeveto-mobile-drawer"
       aria-expanded={open}
       aria-label={open ? "Close full navigation menu" : "Open full navigation menu"}
-      className={`flex min-h-12 flex-col items-center justify-center rounded-xl border px-0.5 text-center text-[10px] font-semibold transition ${
+      className={`tv-tap-motion flex min-h-12 flex-col items-center justify-center rounded-xl border px-0.5 text-center text-[10px] font-semibold transition ${
         open ? "border-cyan-300/35 bg-cyan-400/15 text-cyan-100" : "border-transparent text-slate-400 hover:bg-white/[0.05] hover:text-slate-100"
       }`}
       onClick={onClick}

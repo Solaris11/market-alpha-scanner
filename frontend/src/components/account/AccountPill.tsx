@@ -40,7 +40,7 @@ export function AccountPill({ compact = false }: { compact?: boolean }) {
     return (
       <>
         <button
-          className="inline-flex h-10 items-center rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 text-xs font-semibold text-cyan-100 transition hover:border-cyan-200/50 hover:bg-cyan-400/15"
+          className="tv-tap-motion inline-flex h-10 items-center rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 text-xs font-semibold text-cyan-100 transition hover:border-cyan-200/50 hover:bg-cyan-400/15"
           onClick={() => setAuthOpen(true)}
           type="button"
         >

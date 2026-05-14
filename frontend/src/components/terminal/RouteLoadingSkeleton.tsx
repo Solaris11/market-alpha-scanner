@@ -14,7 +14,7 @@ export function RouteLoadingSkeleton({ metricCount = 4, title }: RouteLoadingSke
       <div className="mx-auto max-w-[1780px] space-y-4">
         <LoadingHeader />
 
-        <section className="terminal-panel animate-pulse rounded-3xl p-4 sm:p-5" aria-label={title} aria-busy="true">
+        <section className="terminal-panel tv-skeleton rounded-3xl p-4 sm:p-5" aria-label={title} aria-busy="true">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0 flex-1">
               <div className="h-3 w-44 rounded-full bg-cyan-300/20" />
@@ -24,7 +24,7 @@ export function RouteLoadingSkeleton({ metricCount = 4, title }: RouteLoadingSke
             </div>
             <div className="grid min-w-0 grid-cols-2 gap-2 sm:min-w-[320px]">
               {metrics.slice(0, 4).map((item) => (
-                <div className="min-h-20 rounded-2xl border border-white/10 bg-white/[0.035] p-3" key={item}>
+                <div className="tv-card-motion min-h-20 rounded-2xl border border-white/10 bg-white/[0.035] p-3" key={item}>
                   <div className="h-3 w-16 rounded-full bg-white/10" />
                   <div className="mt-4 h-6 w-20 rounded-lg bg-white/[0.12]" />
                 </div>
@@ -37,7 +37,7 @@ export function RouteLoadingSkeleton({ metricCount = 4, title }: RouteLoadingSke
           <section className="terminal-panel min-h-[28rem] rounded-3xl p-4 sm:p-5">
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {cards.map((item) => (
-                <div className="min-h-44 rounded-2xl border border-white/10 bg-slate-950/45 p-4" key={item}>
+                <div className="tv-card-motion min-h-44 rounded-2xl border border-white/10 bg-slate-950/45 p-4" key={item}>
                   <div className="h-3 w-24 rounded-full bg-cyan-300/15" />
                   <div className="mt-4 h-7 w-28 rounded-lg bg-white/10" />
                   <div className="mt-5 space-y-2">
@@ -55,7 +55,7 @@ export function RouteLoadingSkeleton({ metricCount = 4, title }: RouteLoadingSke
             <div className="mt-4 h-7 w-48 rounded-lg bg-white/10" />
             <div className="mt-5 space-y-3">
               {cards.slice(0, 4).map((item) => (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3" key={`rail-${item}`}>
+                <div className="tv-card-motion rounded-2xl border border-white/10 bg-white/[0.035] p-3" key={`rail-${item}`}>
                   <div className="h-4 w-28 rounded-full bg-white/10" />
                   <div className="mt-3 h-3 rounded-full bg-white/[0.06]" />
                   <div className="mt-2 h-3 w-9/12 rounded-full bg-white/[0.045]" />

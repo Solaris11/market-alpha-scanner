@@ -89,10 +89,10 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
   }
 
   return (
-    <div>
+    <div data-sensitive>
       <button
         ref={buttonRef}
-        className="inline-flex h-10 min-w-0 items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-400/10 px-2.5 text-left text-xs text-emerald-100 transition hover:border-emerald-200/50 hover:bg-emerald-400/15"
+        className="tv-tap-motion inline-flex h-10 min-w-0 items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-400/10 px-2.5 text-left text-xs text-emerald-100 transition hover:border-emerald-200/50 hover:bg-emerald-400/15"
         onClick={() => {
           updateMenuPosition();
           setOpen((value) => !value);
@@ -113,7 +113,7 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
         ? createPortal(
             <div
               ref={menuRef}
-              className="z-[9000] rounded-2xl border border-white/10 bg-slate-950/95 p-2 text-xs text-slate-300 shadow-2xl shadow-black/40 ring-1 ring-cyan-300/10 backdrop-blur-xl"
+              className="tv-drawer-surface z-[9000] rounded-2xl border border-white/10 bg-slate-950/95 p-2 text-xs text-slate-300 shadow-2xl shadow-black/40 ring-1 ring-cyan-300/10 backdrop-blur-xl"
               style={menuStyle}
             >
               <div className="border-b border-white/10 px-3 py-2">
