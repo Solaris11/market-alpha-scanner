@@ -123,13 +123,67 @@ Local route smoke:
 
 ## Production Validation
 
-Production validation must run from:
+Production-sensitive checks were run from the production host:
 
-`ssh sre@100.68.155.121`
+- host: `onsre-node-01`
+- user: `sre`
+- path: `/opt/apps/market-alpha-scanner/app`
+- deployed commit: `d743337cdd4e65217b0e2356658433169ccd3a04`
+- docker frontend service: `market-alpha-frontend`
 
-`cd /opt/apps/market-alpha-scanner/app`
+Production deploy:
 
-Production validation status: pending until pushed, pulled, rebuilt, and smoke-tested on the production host.
+- `git pull --ff-only origin main` - fast-forwarded from `b599ee2` to `d743337`
+- `docker compose up -d --build market-alpha-frontend` - passed
+- `market-alpha-frontend` - healthy
+- `market-alpha-scanner-market-alpha-postgres-1` - healthy
+
+Production health:
+
+- `/api/health` - 200, `ok: true`, service `tradeveto-frontend`
+- `/api/health/deep` - 200, DB ok, scanner ok, local backup ok, R2/offsite backup ok
+- scanner freshness at check time: about 3 minutes
+- R2 backup age at check time: about 53 minutes
+
+Production route smoke:
+
+| Route | Status | Time |
+| --- | ---: | ---: |
+| `/` | 200 | 0.190s |
+| `/terminal?presentation=1` | 200 | 0.114s |
+| `/opportunities?presentation=1` | 200 | 0.124s |
+| `/performance?presentation=1` | 200 | 0.157s |
+| `/dashboard?presentation=1` | 200 | 0.119s |
+| `/mobile?presentation=1` | 200 | 0.120s |
+| `/symbol/AMD?presentation=1` | 200 | 0.201s |
+| `/api/health` | 200 | 0.171s |
+| `/api/health/deep` | 200 | 0.234s |
+
+Production mobile user-agent smoke:
+
+| Route | Status | Time |
+| --- | ---: | ---: |
+| `/terminal?presentation=1` | 200 | 0.320s |
+| `/opportunities?presentation=1` | 200 | 0.255s |
+| `/performance?presentation=1` | 200 | 0.243s |
+| `/mobile?presentation=1` | 200 | 0.187s |
+| `/symbol/AMD?presentation=1` | 200 | 0.295s |
+
+Production validation commands:
+
+- `git diff --check` - passed
+- `npm run lint` - passed
+- `npm test -- --runInBand` - passed, 387 tests
+- `npm run build` - passed
+- `npm audit --omit=dev` - passed, 0 vulnerabilities
+- `python3 -m py_compile $(git ls-files '*.py')` - passed
+- `npx pyright . --pythonpath .venv/bin/python --warnings` - passed, 0 errors / 0 warnings
+
+Performance budget:
+
+- `tools/ops/tradeveto-performance-budget-check.sh` - passed
+- result: `PERFORMANCE BUDGET CHECK PASSED`
+- checked public routes, app routes, protected API routes, and portfolio scenario API fail-closed behavior
 
 ## Remaining Visual Risks
 
@@ -139,5 +193,6 @@ Production validation status: pending until pushed, pulled, rebuilt, and smoke-t
 
 ## Verdict
 
-Local implementation is complete. Production deploy and validation are required before final closure.
+Local and production validation passed. The motion/polish layer is deployed from Git source of truth and production route/performance checks remain within budget.
 
+Final status: `INSTITUTIONAL MOTION VISUAL POLISH COMPLETE`
