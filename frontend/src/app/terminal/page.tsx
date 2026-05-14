@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { AICopilotPanel } from "@/components/terminal/AICopilotPanel";
+import { AICognitionLayerPanel } from "@/components/terminal/AICognitionLayerPanel";
 import { AutomatedResearchAgentsPanel } from "@/components/terminal/AutomatedResearchAgentsPanel";
 import { BestTradeNowCard } from "@/components/terminal/BestTradeNowCard";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
@@ -49,6 +50,7 @@ import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
 import { buildAdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
+import { buildAICognitionLayer } from "@/lib/trading/ai-cognition-layer";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { dailyActionBlocksTradeUi, getDailyAction, noTradeActionCopy } from "@/lib/trading/daily-action";
 import { buildLiveIntelligenceSystem } from "@/lib/trading/live-intelligence";
@@ -146,6 +148,12 @@ export default async function TerminalPage() {
     watchlistSymbols,
     workflowEvolution,
   });
+  const cognitionLayer = buildAICognitionLayer({
+    marketCondition: snapshot.marketRegime.label,
+    rows: opportunityModel.rows,
+    scanUpdatedAt: scanSafety.lastUpdated,
+    workflowEvolution,
+  });
   const adaptiveLearning = buildAdaptiveLearningSystem({
     forwardRows: performance?.forwardReturns.rows ?? [],
     observationCount: performance?.forwardReturns.rows.length ?? 0,
@@ -208,6 +216,7 @@ export default async function TerminalPage() {
             workspacePreferences={workspacePreferences}
             workflowEvolution={workflowEvolution}
           />
+          <AICognitionLayerPanel model={cognitionLayer} />
           <IntelligenceFeedNotificationPanel
             brief={intelligenceFeed.brief}
             initialPreferences={intelligenceFeed.preferences}

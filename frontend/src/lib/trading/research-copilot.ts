@@ -8,11 +8,13 @@ import type { PortfolioIntelligenceSystem } from "./portfolio-intelligence";
 import type { RegimeShiftSystem } from "./regime-shift-intelligence";
 import type { ScenarioIntelligenceSystem } from "./scenario-intelligence";
 import type { WorkflowEvolutionSummary } from "./workflow-evolution";
+import { buildAICognitionLayer, type AICognitionLayerModel } from "./ai-cognition-layer";
 import { cleanText } from "@/lib/ui/formatters";
 import { decisionLabel } from "@/lib/ui/labels";
 
 export type ResearchCopilotIntent =
   | "comparison"
+  | "cognition"
   | "event_synthesis"
   | "fragility"
   | "historical_analogs"
@@ -58,6 +60,7 @@ export type ResearchCopilotCitation = {
 export type ResearchCopilotContext = {
   availableSymbols: string[];
   citations: ResearchCopilotCitation[];
+  cognition: Pick<AICognitionLayerModel, "confidenceDecay" | "contradictions" | "groundingPacket" | "narrativeEvolution" | "overview" | "posture" | "timeline">;
   conversation: Array<{
     content: string;
     role: "assistant" | "user";
@@ -202,6 +205,12 @@ export function buildResearchCopilotContext(input: ResearchCopilotBuildInput): R
   const selectedSymbols = selectedSymbolsFor({ intent, referencedSymbols, rows: input.rows, system: input.metaSystem });
   const memoryMap = input.marketMemoryBySymbol ?? new Map<string, MarketMemorySummary>();
   const symbolContexts = selectedSymbols.map((row) => symbolContextFor(row, memoryMap.get(row.symbol.toUpperCase()) ?? null));
+  const cognition = buildAICognitionLayer({
+    marketCondition: input.regimeSystem.currentMarketState,
+    rows: input.rows,
+    scanUpdatedAt: input.rows[0]?.dataFreshness.lastUpdated ?? null,
+    workflowEvolution: input.workflowEvolution ?? null,
+  });
   const portfolio = slimPortfolioContext(input.portfolioSystem ?? null);
   const scenario = slimScenarioContext(input.scenarioSystem ?? null);
   const eventSynthesis = eventSynthesisFor(symbolContexts, input.rows);
@@ -218,11 +227,21 @@ export function buildResearchCopilotContext(input: ResearchCopilotBuildInput): R
     symbolContexts,
     system: input.metaSystem,
     workflowEvolution: input.workflowEvolution ?? null,
+    cognition,
   });
 
   return {
     availableSymbols,
     citations,
+    cognition: {
+      confidenceDecay: cognition.confidenceDecay.slice(0, 6),
+      contradictions: cognition.contradictions.slice(0, 8),
+      groundingPacket: cognition.groundingPacket,
+      narrativeEvolution: cognition.narrativeEvolution.slice(0, 5),
+      overview: cognition.overview,
+      posture: cognition.posture,
+      timeline: cognition.timeline.slice(0, 8),
+    },
     conversation,
     conversationMemory,
     eventSynthesis,
@@ -289,6 +308,7 @@ export function buildResearchCopilotContext(input: ResearchCopilotBuildInput): R
 
 export function answerResearchCopilotDeterministically(context: ResearchCopilotContext): ResearchCopilotAnswer {
   if (context.intent === "comparison" && context.symbols.length >= 2) return comparisonAnswer(context);
+  if (context.intent === "cognition") return cognitionAnswer(context);
   if (context.intent === "portfolio") return portfolioAnswer(context);
   if (context.intent === "scenario") return scenarioAnswer(context);
   if (context.intent === "event_synthesis") return eventSynthesisAnswer(context);
@@ -308,6 +328,7 @@ export function inferResearchIntent(question: string, referencedSymbols: string[
   const asksFragility = /\b(fragility|break|fail|weakening|risk increasing)\b/i.test(text);
   const asksReplay = /\b(replay|before the move|what did .*know|decision replay|historical playback)\b/i.test(text);
   const asksChanged = /\b(changed|since yesterday|what changed|improving|deteriorating|fastest)\b/i.test(text);
+  const asksCognition = /\b(why did .*change|why.*changed|contradicting|contradict|contradiction|stale|fresh|decay|needs confirmation|need confirmation|what needs confirmation|thinking|reasoning timeline|confidence changed|became cautious|became more cautious|became aggressive|became constructive)\b/i.test(text);
   const asksShock = /\b(shock|gap|large move|explosive|chase|volatility burst|upside move|downside move)\b/i.test(text);
   const asksPortfolio = /\b(portfolio|holdings|positions|exposure|concentration|correlation|diversification|my book)\b/i.test(text);
   const asksScenario = /\b(scenario|what if|stress|qqq -?3|spy risk|vix|rates surge|yields surge|oil shock|ai narrative|earnings miss)\b/i.test(text);
@@ -318,6 +339,7 @@ export function inferResearchIntent(question: string, referencedSymbols: string[
   if (asksScenario) return "scenario";
   if (asksEvent) return "event_synthesis";
   if (asksReplay) return "replay";
+  if (asksCognition) return "cognition";
   if (asksChanged) return "what_changed";
   if (asksShock) return "shock";
   if (asksMarket) return "market_state";
@@ -362,6 +384,30 @@ function whatChangedAnswer(context: ResearchCopilotContext): ResearchCopilotAnsw
       "Symbols getting more fragile while market support weakens.",
       "Setups moving closer to trigger conditions without becoming extended.",
       "Whether market breadth improves or weakness spreads across the universe.",
+    ],
+  });
+}
+
+function cognitionAnswer(context: ResearchCopilotContext): ResearchCopilotAnswer {
+  const contradictionLines = context.cognition.contradictions
+    .slice(0, 4)
+    .map((item) => `${item.symbol}: ${item.title}. ${item.detail}`);
+  const staleLines = context.cognition.confidenceDecay
+    .filter((item) => item.status !== "fresh")
+    .slice(0, 3)
+    .map((item) => `${item.symbol}: ${item.freshnessLabel}. ${item.detail}`);
+  const timelineLines = context.cognition.timeline
+    .slice(0, 4)
+    .map((item) => `${item.title}: ${item.detail}`);
+  const points = [...contradictionLines, ...staleLines, ...timelineLines].slice(0, 6);
+  return baseAnswer(context, {
+    answer: context.cognition.overview,
+    keyPoints: points.length ? points : context.cognition.groundingPacket,
+    symbolComparisons: [],
+    whatToWatch: [
+      "Whether stale signals refresh with the same decision state.",
+      "Whether contradictions resolve through breadth, macro, volatility, or evidence improvements.",
+      "Whether the next workflow snapshot confirms the same story or invalidates it.",
     ],
   });
 }
@@ -695,6 +741,7 @@ function conversationMemoryFor(
 }
 
 function citationsFor(input: {
+  cognition: Pick<AICognitionLayerModel, "contradictions" | "overview" | "timeline">;
   conversationMemory: ResearchCopilotContext["conversationMemory"];
   eventSynthesis: ResearchCopilotContext["eventSynthesis"];
   hasDecisionMemory: boolean;
@@ -743,6 +790,12 @@ function citationsFor(input: {
       sourceType: "workflow",
     });
   }
+  citations.push({
+    detail: `${input.cognition.overview} Timeline steps: ${input.cognition.timeline.length}; contradictions: ${input.cognition.contradictions.length}.`,
+    id: "workflow:cognition",
+    label: "AI cognition packet",
+    sourceType: "workflow",
+  });
   for (const [symbol, memory] of input.memoryMap.entries()) {
     citations.push({
       detail: memory.evidence.explanation,
@@ -920,6 +973,13 @@ function followUpQuestionsFor(context: ResearchCopilotContext): string[] {
       `What did TradeVeto know before ${first.symbol} moved?`,
       `Was the later move chase-prone?`,
       `Which signal mattered most before the move?`,
+    ];
+  }
+  if (context.intent === "cognition") {
+    return [
+      "What is stale?",
+      "What is contradicting this setup?",
+      "What needs confirmation?",
     ];
   }
   return [

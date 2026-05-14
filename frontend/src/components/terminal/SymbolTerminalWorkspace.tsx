@@ -9,6 +9,7 @@ import type { DataFreshness } from "@/lib/data-health";
 import type { PaperPositionRow, PaperTradeEventRow } from "@/lib/paper-data";
 import type { AdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
 import type { DecisionJournalEntry, DecisionMemorySummary, PersonalizedDecisionCoaching } from "@/lib/trading/decision-journal";
+import { buildAICognitionLayer } from "@/lib/trading/ai-cognition-layer";
 import { buildConvictionFragilityModel } from "@/lib/trading/conviction-fragility";
 import { dailyActionAllowsTrade, noTradeActionCopy, type DailyAction } from "@/lib/trading/daily-action";
 import type { ConvictionTimelineModel } from "@/lib/trading/conviction-timeline-types";
@@ -27,6 +28,7 @@ import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution"
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
 import type { IntradayDriftRow, RankingRow, ScannerScalar } from "@/lib/types";
 import { AICopilotPanel } from "./AICopilotPanel";
+import { AICognitionLayerPanel } from "./AICognitionLayerPanel";
 import { AdaptiveLearningInsightPanel } from "./AdaptiveLearningInsightPanel";
 import { ConvictionFragilityCard } from "./ConvictionFragilityCard";
 import { ConvictionTimeline } from "./ConvictionTimeline";
@@ -125,6 +127,18 @@ export function SymbolTerminalWorkspace({
     () => buildSymbolIntelligenceGraph({ contextRows, macroContext, marketMemory, row, shockPattern: shockPattern ?? null }),
     [contextRows, macroContext, marketMemory, row, shockPattern],
   );
+  const cognitionLayer = useMemo(
+    () => institutionalOpportunity
+      ? buildAICognitionLayer({
+          marketCondition: String(row.market_regime ?? "Current market"),
+          rows: [institutionalOpportunity],
+          scanUpdatedAt: dataFreshness.lastUpdated,
+          workflowEvolution: workflowEvolution ?? null,
+          generatedAt: dataFreshness.lastUpdated ?? undefined,
+        })
+      : null,
+    [dataFreshness.lastUpdated, institutionalOpportunity, row.market_regime, workflowEvolution],
+  );
   const riskPortfolio = useMemo(() => buildRiskPortfolio(paperPositions, row.sector, symbol), [paperPositions, row.sector, symbol]);
   const tradeEngine = useTradePlanEngine(row, riskPortfolio);
   const symbolPositions = paperPositions.filter((position) => position.symbol.toUpperCase() === symbol);
@@ -170,6 +184,7 @@ export function SymbolTerminalWorkspace({
       ) : null}
 
       <IntelligenceGraphPanel graph={relationshipGraph} />
+      {cognitionLayer ? <AICognitionLayerPanel compact model={cognitionLayer} /> : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
         <div className="space-y-5">

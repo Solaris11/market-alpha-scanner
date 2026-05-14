@@ -259,6 +259,8 @@ test("research copilot infers replay and shock intents", () => {
   assert.equal(inferResearchIntent("What did TradeVeto know before the move?", ["AMD"]), "replay");
   assert.equal(inferResearchIntent("Where is shock risk rising?", ["AMD"]), "shock");
   assert.equal(inferResearchIntent("Did the macro regime shift today?", []), "market_state");
+  assert.equal(inferResearchIntent("What is contradicting this setup?", ["AMD"]), "cognition");
+  assert.equal(inferResearchIntent("What is stale?", []), "cognition");
 });
 
 test("research copilot infers portfolio, scenario, and event synthesis intents", () => {
@@ -304,6 +306,17 @@ test("research copilot answers what changed from workflow evolution", () => {
 
   assert.equal(answer.intent, "what_changed");
   assert.ok(answer.keyPoints.some((point) => /AMD|MU|workflow/i.test(point)));
+});
+
+test("research copilot answers cognition questions from grounded contradiction and freshness packets", () => {
+  const context = contextFor("What is contradicting this setup?");
+  const answer = answerResearchCopilotDeterministically(context);
+
+  assert.equal(answer.intent, "cognition");
+  assert.ok(context.cognition.groundingPacket.length > 0);
+  assert.ok(answer.keyPoints.some((point) => /contradict|macro|fragility|score|evidence|workflow|Market/i.test(point)));
+  assert.ok(answer.citations.some((citation) => citation.id === "workflow:cognition"));
+  assert.doesNotMatch(JSON.stringify(answer), /buy now|sell now|guaranteed|sure profit/i);
 });
 
 test("research copilot keeps concise answers short and deep-dive answers richer", () => {
