@@ -440,6 +440,20 @@ Phase 15 should not be feature explosion. It should focus on proof and refinemen
 6. Add chart overlays only when timestamp-aligned real score/risk/event data exists.
 7. Tune onboarding and mobile based on beta cohort behavior, not assumptions.
 
+## Competitor Source Notes
+
+Competitor scoring used production screenshots, TradeVeto implementation reports, and current public product positioning from official sources:
+
+- TradingView product/features page: `https://www.tradingview.com/features/`
+- Bloomberg Terminal product page: `https://professional.bloomberg.com/products/bloomberg-terminal/`
+- TrendSpider product/features pages: `https://trendspider.com/` and `https://trendspider.com/product/analyze-and-chart-any-market-asset/`
+- Trade Ideas features page: `https://www.trade-ideas.com/features/`
+- Robinhood public product page: `https://robinhood.com/us/en/`
+- Composer public product page: `https://www.composer.trade/`
+- Danelfin public product page: `https://danelfin.com/`
+- Finviz Elite product page: `https://finviz.com/elite`
+- StockTitan public product page: `https://www.stocktitan.net/`
+
 ## Final Status
 
 TRADEVETO STILL BELOW BEST-IN-CLASS UX
