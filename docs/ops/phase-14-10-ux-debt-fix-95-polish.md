@@ -6,7 +6,18 @@ Date: 2026-05-14
 
 Phase 14.10 focused on beta-reported UX debt rather than new intelligence features. The main fixes were shared detail placement, mobile/desktop navigation cleanup, clearer alert/watch actions, compact price context on opportunity and watchlist cards, and removal of internal engineering language from normal user surfaces.
 
-Final status: local validation passed; production smoke was rerun after deploy.
+Final status: local validation passed; production was redeployed from Git and production smoke/authenticated QA passed.
+
+Production deployment:
+
+- Host: `onsre-node-01`
+- User: `sre`
+- App path: `/opt/apps/market-alpha-scanner/app`
+- Commit deployed: `4617ab49307fcf7f59b8701db3e1f8d41eadd0be`
+- Docker service rebuilt: `market-alpha-frontend`
+- Container health: healthy
+- `/api/health`: 200, `ok: true`
+- `/api/health/deep`: 200, DB/scanner/local backup/R2 backup all `ok`
 
 ## Issues Fixed
 
@@ -56,6 +67,8 @@ Final status: local validation passed; production smoke was rerun after deploy.
 
 - Watchlist toggle now provides immediate user feedback for add/remove/duplicate-like interactions.
 - Quick alert presets now call the alert rules API and show saved/updated/error status.
+- Disposable invite-beta QA user was created through the production register flow, received beta premium entitlement, accepted legal docs, saved AMD to watchlist, created an alert rule, saved notification preferences, saved workspace preferences, and was then deleted.
+- Cleanup result: 1 user row deleted; 0 rows remained for the disposable QA email.
 - No billing code or entitlement logic was changed.
 
 ## Routes Tested
@@ -78,19 +91,19 @@ Local build route coverage included:
 
 Production smoke after deploy covered:
 
-- `/`
-- `/terminal`
-- `/dashboard`
-- `/opportunities`
-- `/symbol/AMD`
-- `/performance`
-- `/history?symbol=AMD`
-- `/paper`
-- `/strategy-labs`
-- `/alerts`
-- `/mobile`
-- `/api/health`
-- `/api/health/deep`
+- `/`: 200
+- `/terminal`: 200
+- `/dashboard`: 200
+- `/opportunities`: 200
+- `/symbol/AMD`: 200
+- `/performance`: 200
+- `/history?symbol=AMD`: 200
+- `/paper`: 200
+- `/strategy-labs`: 200
+- `/alerts`: 200
+- `/mobile`: 200
+- `/api/health`: 200
+- `/api/health/deep`: 200
 
 ## Validation Results
 
@@ -101,6 +114,7 @@ Production smoke after deploy covered:
 - `python3 -m py_compile $(git ls-files '*.py')`: passed
 - `npx pyright . --pythonpath .venv/bin/python --warnings`: passed, 0 errors
 - `git diff --check`: passed
+- Production authenticated QA: passed
 
 ## Remaining UX Debt
 
