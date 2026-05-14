@@ -6,6 +6,7 @@ import { useMemo } from "react";
 import { ScoreFactorStrip, type ScoreFactor, VisualMetricRail } from "@/components/visual/MiniVisuals";
 import { InteractiveInsightZoneGrid, type InteractiveInsightZoneItem } from "@/components/visual/InteractiveVisualIntelligence";
 import { SymbolLogo } from "@/components/visual/SymbolLogo";
+import { useWorkspacePreferences } from "@/hooks/useWorkspacePreferences";
 import {
   buildUnifiedIntelligenceConsole,
   type UnifiedConsoleBriefing,
@@ -15,6 +16,7 @@ import {
 import { buildZoneIntelligenceGraph } from "@/lib/trading/intelligence-graph";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import type { UserPersonalizationProfile } from "@/lib/trading/personalized-intelligence";
+import { moduleLabel, WORKSPACE_MODE_LABELS, type WorkspaceModuleId, type WorkspacePreferences } from "@/lib/trading/workspace-preferences";
 import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution";
 import { formatNumber } from "@/lib/ui/formatters";
 import { humanizeInsightText } from "@/lib/ui/labels";
@@ -26,14 +28,17 @@ export function UnifiedIntelligenceConsole({
   personalizationProfile,
   rows,
   surface = "terminal",
+  workspacePreferences,
   workflowEvolution,
 }: {
   marketCondition?: string | null;
   personalizationProfile?: UserPersonalizationProfile | null;
   rows: OpportunityViewModel[];
   surface?: "dashboard" | "terminal";
+  workspacePreferences?: WorkspacePreferences | null;
   workflowEvolution?: WorkflowEvolutionSummary | null;
 }) {
+  const { preferences } = useWorkspacePreferences(workspacePreferences);
   const consoleModel = useMemo(
     () => buildUnifiedIntelligenceConsole({ marketCondition, personalizationProfile, rows, workflowEvolution }),
     [marketCondition, personalizationProfile, rows, workflowEvolution],
@@ -53,10 +58,10 @@ export function UnifiedIntelligenceConsole({
   const primaryFocus = focusItems[0] ?? consoleModel.summary;
   const secondaryFocus = focusItems.slice(1);
   const metricsToShow = consoleModel.metrics.slice(0, compact ? 4 : 6);
-  const zones = buildSimpleHomeZones(consoleModel);
+  const zones = applyWorkspacePreferencesToZones(buildSimpleHomeZones(consoleModel), preferences);
 
   if (compact) {
-    return <SimpleHomeConsole consoleModel={consoleModel} />;
+    return <SimpleHomeConsole consoleModel={consoleModel} workspacePreferences={preferences} />;
   }
 
   return (
@@ -67,6 +72,7 @@ export function UnifiedIntelligenceConsole({
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-50 sm:text-4xl">What Matters Most Now</h1>
           <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-300">{humanizeInsightText(consoleModel.summary)}</p>
           <p className="mt-2 max-w-4xl text-xs leading-5 text-slate-500">{humanizeInsightText(consoleModel.personalizedSummary)}</p>
+          <PersonalFocusStrip preferences={preferences} />
 
           <div className="mt-5 rounded-xl border border-cyan-300/20 bg-slate-950/45 p-4 shadow-[0_0_0_1px_rgba(103,232,249,0.04)]">
             <div className="text-[10px] font-black uppercase leading-4 tracking-[0.22em] text-cyan-200">Primary focus</div>
@@ -130,7 +136,7 @@ export function UnifiedIntelligenceConsole({
   );
 }
 
-function SimpleHomeConsole({ consoleModel }: { consoleModel: ReturnType<typeof buildUnifiedIntelligenceConsole> }) {
+function SimpleHomeConsole({ consoleModel, workspacePreferences }: { consoleModel: ReturnType<typeof buildUnifiedIntelligenceConsole>; workspacePreferences: WorkspacePreferences }) {
   const opportunities = consoleModel.topOpportunities.slice(0, 3);
   const risks = consoleModel.topRisks.slice(0, 3);
   const changes = consoleModel.biggestChanges.slice(0, 3);
@@ -142,7 +148,7 @@ function SimpleHomeConsole({ consoleModel }: { consoleModel: ReturnType<typeof b
     risks[0]?.riskLabel,
     shocks[0]?.actionContext,
   ].filter((item): item is string => Boolean(item));
-  const zones = buildSimpleHomeZones(consoleModel);
+  const zones = applyWorkspacePreferencesToZones(buildSimpleHomeZones(consoleModel), workspacePreferences);
 
   return (
     <GlassPanel className="poster-scanline overflow-hidden border-cyan-300/20 bg-cyan-400/[0.035] p-4 sm:p-5" data-onboarding-target="what-matters-now">
@@ -153,9 +159,11 @@ function SimpleHomeConsole({ consoleModel }: { consoleModel: ReturnType<typeof b
           <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-300">{humanizeInsightText(headline)}</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <SimpleStatusPill label="Market State" value={humanizeInsightText(consoleModel.macroRegime.label)} />
-            <SimpleStatusPill label="Mode" value="Research only" />
+            <SimpleStatusPill label="Workspace" value={WORKSPACE_MODE_LABELS[workspacePreferences.workspaceMode]} />
+            <SimpleStatusPill label="Risk Style" value={humanizeInsightText(workspacePreferences.preferredRiskStyle)} />
             <SimpleStatusPill label="Updated" value={new Date(consoleModel.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} />
           </div>
+          <PersonalFocusStrip preferences={workspacePreferences} />
         </div>
 
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
@@ -219,6 +227,79 @@ function SimpleHomeConsole({ consoleModel }: { consoleModel: ReturnType<typeof b
         </div>
       </details>
     </GlassPanel>
+  );
+}
+
+const ZONE_MODULE_BY_ID: Record<string, WorkspaceModuleId> = {
+  "best-setups": "best_setups",
+  dangerous: "dangerous",
+  "macro-pressure": "macro",
+  "market-state": "what_matters_now",
+  "replay-context": "replay",
+  "risk-review": "dangerous",
+  "shock-watch": "shock_watch",
+  "volatility-pressure": "shock_watch",
+  watchlist: "watchlist",
+  "what-changed": "what_matters_now",
+};
+
+function applyWorkspacePreferencesToZones(zones: InteractiveInsightZoneItem[], preferences: WorkspacePreferences): InteractiveInsightZoneItem[] {
+  const hidden = new Set(preferences.hiddenModules);
+  const moduleRank = new Map(preferences.moduleOrder.map((moduleId, index) => [moduleId, index]));
+  return zones
+    .filter((zone) => {
+      const moduleId = ZONE_MODULE_BY_ID[zone.id];
+      return !moduleId || !hidden.has(moduleId);
+    })
+    .map((zone) => {
+      const moduleId = ZONE_MODULE_BY_ID[zone.id];
+      const favorite = moduleId ? preferences.favoriteModules.includes(moduleId) : false;
+      if (!favorite) return zone;
+      return {
+        ...zone,
+        eyebrow: zone.eyebrow ?? "Personal focus",
+        summary: `${zone.summary} · favorited in your workspace`,
+      };
+    })
+    .sort((left, right) => {
+      const leftModule = ZONE_MODULE_BY_ID[left.id];
+      const rightModule = ZONE_MODULE_BY_ID[right.id];
+      const leftRank = leftModule ? moduleRank.get(leftModule) ?? 99 : 99;
+      const rightRank = rightModule ? moduleRank.get(rightModule) ?? 99 : 99;
+      return leftRank - rightRank;
+    });
+}
+
+function PersonalFocusStrip({ preferences }: { preferences: WorkspacePreferences }) {
+  const favoriteModules = preferences.favoriteModules.slice(0, 4);
+  const favoriteSymbols = preferences.favoriteSymbols.slice(0, 5);
+  if (!favoriteModules.length && !favoriteSymbols.length && !preferences.mobileLastViewedSymbol) return null;
+
+  return (
+    <div className="mt-4 rounded-2xl border border-cyan-300/12 bg-slate-950/35 p-3">
+      <div className="flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">
+        <span className="text-cyan-300">Personal focus</span>
+        <span>{WORKSPACE_MODE_LABELS[preferences.workspaceMode]}</span>
+        {preferences.preferredTimeframes.length ? <span>{preferences.preferredTimeframes.join(" / ")}</span> : null}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {favoriteModules.map((moduleId) => (
+          <span className="rounded-full border border-cyan-300/18 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-black text-cyan-100" key={moduleId}>
+            {moduleLabel(moduleId)}
+          </span>
+        ))}
+        {favoriteSymbols.map((symbol) => (
+          <Link className="rounded-full border border-emerald-300/18 bg-emerald-300/10 px-3 py-1.5 font-mono text-[11px] font-black text-emerald-100 transition hover:border-emerald-200/60 hover:text-white" href={`/symbol/${symbol}`} key={symbol}>
+            {symbol}
+          </Link>
+        ))}
+        {preferences.mobileLastViewedSymbol ? (
+          <Link className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-[11px] font-black text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100" href={`/symbol/${preferences.mobileLastViewedSymbol}`}>
+            Last viewed: {preferences.mobileLastViewedSymbol}
+          </Link>
+        ) : null}
+      </div>
+    </div>
   );
 }
 

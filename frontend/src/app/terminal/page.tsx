@@ -28,6 +28,7 @@ import { StrategyIntelligencePanel } from "@/components/terminal/StrategyIntelli
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { TerminalRightRail } from "@/components/terminal/TerminalRightRail";
 import { UnifiedIntelligenceConsole } from "@/components/terminal/UnifiedIntelligenceConsole";
+import { WorkspacePersonalizationPanel } from "@/components/terminal/WorkspacePersonalizationPanel";
 import { WorkflowEvolutionPanel } from "@/components/terminal/WorkflowEvolutionPanel";
 import { getActiveAlertMatches } from "@/lib/active-alert-matches";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
@@ -41,6 +42,7 @@ import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { getMarketChartHubData } from "@/lib/server/validated-price-history";
+import { readUserWorkspacePreferences } from "@/lib/server/user-workspace-preferences";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
@@ -114,13 +116,14 @@ export default async function TerminalPage() {
   }
 
   const adapter = new ScannerDataAdapter();
-  const [snapshot, performance, scanSafety, watchlistSymbols, activeAlertMatches, personalizationProfile, paperData, marketChartHubData] = await Promise.all([
+  const [snapshot, performance, scanSafety, watchlistSymbols, activeAlertMatches, personalizationProfile, workspacePreferences, paperData, marketChartHubData] = await Promise.all([
     adapter.getTerminalSnapshot(),
     getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
     getCurrentScanSafety(),
     entitlement.user?.id ? readUserWatchlist(entitlement.user.id).catch(() => []) : Promise.resolve([]),
     getActiveAlertMatches(entitlement.user?.id ?? null).then((result) => result.matches).catch(() => []),
     getPersonalizationProfileForUser(entitlement.user?.id ?? null).catch(() => null),
+    entitlement.user?.id ? readUserWorkspacePreferences(entitlement.user.id).catch(() => null) : Promise.resolve(null),
     getPaperData({ userId: entitlement.user?.id ?? null }).catch(() => ({ account: null, configured: false, events: [], positions: [] })),
     getMarketChartHubData().catch(() => []),
   ]);
@@ -183,10 +186,16 @@ export default async function TerminalPage() {
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">
           <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
+          <WorkspacePersonalizationPanel
+            initialPreferences={workspacePreferences}
+            recentSymbols={uniqueTerminalSymbols([leader?.symbol, ...opportunityModel.rows.slice(0, 8).map((row) => row.symbol)])}
+            watchlistSymbols={watchlistSymbols}
+          />
           <UnifiedIntelligenceConsole
             marketCondition={snapshot.marketRegime.label}
             personalizationProfile={personalizationProfile}
             rows={opportunityModel.rows}
+            workspacePreferences={workspacePreferences}
             workflowEvolution={workflowEvolution}
           />
           <MarketChartHub charts={marketChartHubData} marketCondition={snapshot.marketRegime.label} updatedAt={scanSafety.lastUpdated} />
@@ -529,6 +538,10 @@ function buildDecisionDistribution(rows: Array<{ final_decision?: unknown }>): A
     label: decisionLabel(label),
     value: rows.filter((row) => String(row.final_decision ?? "").toUpperCase() === label).length,
   }));
+}
+
+function uniqueTerminalSymbols(symbols: Array<string | null | undefined>): string[] {
+  return Array.from(new Set(symbols.map((symbol) => String(symbol ?? "").trim().toUpperCase()).filter(Boolean))).slice(0, 12);
 }
 
 function buildTodayActionReasons({ actionBlocksTradeUi, marketState, scanSafetyStatus }: { actionBlocksTradeUi: boolean; marketState: string; scanSafetyStatus: string }): string[] {

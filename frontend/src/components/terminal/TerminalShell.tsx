@@ -4,6 +4,7 @@ import { RiskAcknowledgement } from "@/components/legal/RiskAcknowledgement";
 import { FirstRunStarterCard } from "@/components/onboarding/FirstRunStarterCard";
 import { getScanDataHealth } from "@/lib/scanner-data";
 import { FastNavigationLink, RoutePrefetcher, RouteTransitionFeedback } from "./NavigationPerformance";
+import { PersonalizedMobileQuickAccess } from "./PersonalizedMobileQuickAccess";
 import { TerminalHeader } from "./TerminalHeader";
 
 export async function TerminalShell({ children }: { children: React.ReactNode }) {
@@ -16,6 +17,7 @@ export async function TerminalShell({ children }: { children: React.ReactNode })
         <RoutePrefetcher />
         <RouteTransitionFeedback />
         <MobileFocusStrip />
+        <PersonalizedMobileQuickAccess />
         {health ? <DataHealthBanner freshness={health} /> : null}
         <FirstRunStarterCard />
         {children}

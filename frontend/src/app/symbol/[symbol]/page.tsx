@@ -5,6 +5,7 @@ import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { PublicSymbolPreview } from "@/components/premium/PublicSignalPreview";
 import { PublishedSymbolIntelligenceBlock } from "@/components/seo/IntelligencePublishingBlocks";
 import { SymbolTerminalWorkspace } from "@/components/terminal/SymbolTerminalWorkspace";
+import { SymbolWorkspaceTracker } from "@/components/terminal/SymbolWorkspaceTracker";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { EmptyState } from "@/components/terminal/ui/EmptyState";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
@@ -199,34 +200,37 @@ export default async function SymbolDetailPage({ params }: PageProps) {
       {!row ? (
         <EmptyState title="Symbol not found" message={`${symbol.toUpperCase()} is not available in the current scanner output.`} />
       ) : (
-        <SymbolTerminalWorkspace
-          dataFreshness={dataFreshness ?? freshnessFromTimestamp(null)}
-          adaptiveLearning={adaptiveLearning}
-          contextRows={snapshot.signals}
-          decisionCoaching={decisionCoaching}
-          decisionJournalEntries={decisionJournalEntries}
-          decisionMemory={decisionMemory}
-          workflowEvolution={workflowEvolution}
-          edgeProof={edgeProof ?? buildHistoricalEdgeProof(row, null)}
-          history={history}
-          globalDecision={globalDecision}
-          institutionalOpportunity={symbolOpportunity}
-          intradayDriftRows={intradayDriftRows}
-          macroContext={macroContext}
-          marketMemory={marketMemory ?? unavailableMarketMemory}
-          narrative={narrative}
-          paperEvents={paper.events ?? []}
-          paperPositions={paper.positions ?? []}
-          personalizationProfile={personalizationProfile}
-          premiumAccess
-          viewerAuthenticated={entitlement.authenticated}
-          priceSeries={detail.history}
-          row={row}
-          shockPattern={shockPattern}
-          scenarioIntelligence={scenarioIntelligence}
-          strategyIntelligence={strategyIntelligence}
-          timeline={timeline}
-        />
+        <>
+          <SymbolWorkspaceTracker symbol={row.symbol} />
+          <SymbolTerminalWorkspace
+            dataFreshness={dataFreshness ?? freshnessFromTimestamp(null)}
+            adaptiveLearning={adaptiveLearning}
+            contextRows={snapshot.signals}
+            decisionCoaching={decisionCoaching}
+            decisionJournalEntries={decisionJournalEntries}
+            decisionMemory={decisionMemory}
+            workflowEvolution={workflowEvolution}
+            edgeProof={edgeProof ?? buildHistoricalEdgeProof(row, null)}
+            history={history}
+            globalDecision={globalDecision}
+            institutionalOpportunity={symbolOpportunity}
+            intradayDriftRows={intradayDriftRows}
+            macroContext={macroContext}
+            marketMemory={marketMemory ?? unavailableMarketMemory}
+            narrative={narrative}
+            paperEvents={paper.events ?? []}
+            paperPositions={paper.positions ?? []}
+            personalizationProfile={personalizationProfile}
+            premiumAccess
+            viewerAuthenticated={entitlement.authenticated}
+            priceSeries={detail.history}
+            row={row}
+            shockPattern={shockPattern}
+            scenarioIntelligence={scenarioIntelligence}
+            strategyIntelligence={strategyIntelligence}
+            timeline={timeline}
+          />
+        </>
       )}
     </TerminalShell>
   );
