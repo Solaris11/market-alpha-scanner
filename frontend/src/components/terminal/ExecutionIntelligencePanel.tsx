@@ -233,7 +233,7 @@ function ExecutionCalibrationBlock({ model }: { model: ExecutionIntelligence }) 
     <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Execution Outcome Calibration</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Execution Outcome Evidence</div>
           <h3 className="mt-1 text-base font-semibold text-slate-50">{model.calibration.currentEntryTypeLabel}</h3>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">{model.calibration.calibrationSummary}</p>
         </div>

@@ -288,7 +288,7 @@ function CurrentPositions({ positions }: { positions: SimulatedPortfolioOpenPosi
 
 function ClosedTrades({ trades }: { trades: SimulatedPortfolioClosedTrade[] }) {
   if (!trades.length) {
-    return <EmptyState message="No closed simulated trades are available for this mode yet. The engine needs completed forward-return evidence." />;
+    return <EmptyState message="No closed simulated trades are available for this mode yet. Strategy history needs more completed outcomes before the chart is useful." />;
   }
   return (
     <div className="space-y-3">

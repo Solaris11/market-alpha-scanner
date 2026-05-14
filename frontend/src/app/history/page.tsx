@@ -24,6 +24,30 @@ function requestedSymbolFromSearchParams(params: { symbol?: string | string[] } 
   return String(raw ?? "").trim().toUpperCase().replace(/[^A-Z0-9._-]/g, "");
 }
 
+function HowToUseHistory() {
+  return (
+    <section className="terminal-panel rounded-2xl p-5">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">How to use this page</div>
+      <h2 className="mt-1 text-lg font-semibold text-slate-50">Review what changed over time</h2>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+        Use History to compare previous scanner snapshots, score changes, and decision context. It helps you understand signal behavior over time, not predict guaranteed future returns.
+      </p>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        {[
+          ["1. Pick a symbol", "Start with a ticker you follow or the current leading scanner row."],
+          ["2. Scan the timeline", "Look for score, decision, risk, and setup changes between saved runs."],
+          ["3. Open details", "Use replay and context panels to understand why a view changed."],
+        ].map(([title, copy]) => (
+          <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3" key={title}>
+            <div className="text-sm font-semibold text-slate-100">{title}</div>
+            <p className="mt-1 text-xs leading-5 text-slate-400">{copy}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   const entitlement = await getEntitlement();
   if (requiresLegalAcceptance(entitlement)) {
@@ -65,6 +89,8 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
             { label: "Unique Dates", value: history.uniqueDates.length.toLocaleString(), meta: "trading days" },
           ]}
         />
+
+        <HowToUseHistory />
 
         {!history.snapshots.length ? (
           <section className="terminal-panel rounded-2xl p-5">

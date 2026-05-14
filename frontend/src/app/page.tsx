@@ -177,7 +177,7 @@ const posterFeatures: PosterFeature[] = [
       { copy: "Follow-up flow", Icon: MessageCircle, label: "Conversation", tone: "emerald" },
       { copy: "Guardrails", Icon: ShieldCheck, label: "Grounded", tone: "cyan" },
     ],
-    narrative: "Turns deterministic TradeVeto packets into concise answers without inventing prices, events, or certainty.",
+    narrative: "Turns structured TradeVeto data into concise answers without inventing prices, events, or certainty.",
     score: 72,
     subtitle: "Ask why, not just what.",
     title: "Research",
@@ -270,7 +270,7 @@ const features = [
   ["Readiness + Confidence", "Every symbol gets context for signal strength, data quality, and how close the setup is to being research-ready."],
   ["Regime-Aware Intelligence", "Market state matters. TradeVeto adjusts interpretation when conditions are overheated, neutral, or risk-off."],
   ["Shock + Asymmetry Research", "Large-move history, chase risk, and two-sided volatility are separated from core buy/sell-style signals."],
-  ["Replay + Calibration", "Historical state, forward outcomes, and score reliability help users see what the system knew at the time."],
+  ["Replay + Evidence", "Historical state, later outcomes, and score reliability help users see what the system knew at the time."],
   ["Verified Event Context", "Macro, earnings, filings, and trusted-source events are treated as evidence inputs, not invented narratives."],
 ] as const;
 
@@ -313,7 +313,7 @@ const proofItems = [
   ["Evidence maturity", "TradeVeto labels when a setup has shallow history, limited outcomes, or stronger historical coverage."],
   ["Decision replay", "Replay views are designed to show what the system knew before a move, not rewrite the story afterward."],
   ["Simulated strategies", "Public strategy performance uses research-only simulated sleeves with benchmark and drawdown context."],
-  ["LLM boundaries", "AI summaries explain deterministic packets. They are not allowed to invent prices, events, or probabilities."],
+  ["AI boundaries", "AI summaries explain TradeVeto’s latest structured data. They are not allowed to invent prices, events, or probabilities."],
 ] as const;
 
 const faqs = [
@@ -345,11 +345,10 @@ export default async function HomePage() {
               <div className="inline-flex max-w-full shrink-0 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-cyan-200 sm:tracking-[0.22em]">AI market intelligence</div>
               <div className="inline-flex max-w-full shrink-0 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-emerald-200 sm:tracking-[0.22em]">Closed beta</div>
             </div>
-            <h1 className="poster-display-title no-bad-breaks mt-6 max-w-5xl text-4xl sm:text-6xl lg:text-6xl 2xl:text-7xl">
-              AI Market <span className="whitespace-nowrap">Intelligence</span>{" "}
-              <span className="poster-word-cyan">That</span>{" "}
-              <span className="poster-word-cyan">Says</span>{" "}
-              <span className="poster-word-cyan whitespace-nowrap">Wait</span>
+            <h1 className="poster-display-title no-bad-breaks mt-6 max-w-5xl text-[clamp(2.35rem,10.5vw,4rem)] leading-[0.95] sm:text-6xl lg:text-6xl 2xl:text-7xl">
+              <span className="block">AI Market</span>
+              <span className="block whitespace-nowrap">Intelligence</span>
+              <span className="poster-word-cyan block whitespace-nowrap">That Says Wait</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
               {BRAND_NAME} combines WAIT-first market intelligence, evidence maturity, verified event context, shock research, replay, and regime-aware analysis to help users review opportunities without turning every mover into a trade idea.
@@ -534,7 +533,7 @@ export default async function HomePage() {
             <div className="mt-4 text-5xl font-black text-white">$20<span className="text-lg font-semibold text-slate-400">/month</span></div>
             <p className="mt-4 text-sm leading-6 text-slate-300">Closed beta pricing is intentionally simple. Stripe shows trial, promo, renewal, and cancellation details before confirmation.</p>
             <ul className="mt-6 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
-              {["Full research context", "Ranked setups", "Alerts and watchlist", "Paper simulation", "Decision intelligence", "History and calibration"].map((item) => (
+              {["Full research context", "Ranked setups", "Alerts and watchlist", "Paper simulation", "Decision intelligence", "Signal history"].map((item) => (
                 <li className="rounded-xl border border-white/10 bg-black/15 px-3 py-2" key={item}>{item}</li>
               ))}
             </ul>

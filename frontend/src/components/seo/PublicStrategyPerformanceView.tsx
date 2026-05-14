@@ -125,7 +125,7 @@ function ReplayTradeList({ trades }: { trades: PublicStrategyReplayTrade[] }) {
   if (!trades.length) {
     return (
       <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.03] px-4 py-8 text-center text-sm leading-6 text-slate-400">
-        No public replay trades are available yet. The proof layer needs completed forward-return evidence before showing examples.
+        No public replay trades are available yet. The proof layer needs more completed outcome history before showing examples.
       </div>
     );
   }

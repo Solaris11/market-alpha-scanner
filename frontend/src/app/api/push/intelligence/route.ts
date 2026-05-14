@@ -20,7 +20,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       deliveryConfigured: false,
       ok: true,
-      message: "Mobile intelligence packets are ready, but VAPID delivery keys are not configured.",
+      message: "Mobile intelligence packets are ready, but notification delivery is not configured yet.",
       summary: { attempted: 0, delivered: 0, eligiblePackets: 0 },
     });
   }

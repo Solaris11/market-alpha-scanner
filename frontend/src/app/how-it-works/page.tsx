@@ -11,13 +11,13 @@ const steps = [
   ["1", "Read the current market", "The scanner evaluates symbols across trend, momentum, volatility, macro alignment, data quality, and risk context."],
   ["2", "Check the evidence", "Historical depth, forward outcomes, analog quality, shock memory, and verified event context determine how mature the claim is."],
   ["3", "Apply vetoes", "Weak confirmation, stale data, poor timing, hostile regime pressure, or elevated fragility can force WAIT or AVOID."],
-  ["4", "Explain the decision", "AI summaries are allowed to explain structured TradeVeto packets, but not invent prices, news, or probabilities."],
+  ["4", "Explain the decision", "AI summaries are allowed to explain structured TradeVeto data, but not invent prices, news, or probabilities."],
   ["5", "Replay and simulate", "Replay, paper, and strategy-proof workflows help evaluate process quality without real-money execution."],
 ] as const;
 
 const proofBoundaries = [
-  ["Statistics own the numbers", "Scores, returns, drawdowns, shock counts, and evidence labels come from deterministic systems."],
-  ["LLM explains, not decides", "AI text summarizes structured inputs and falls back to deterministic copy when validation fails."],
+  ["Statistics own the numbers", "Scores, returns, drawdowns, shock counts, and evidence labels come from rules-based systems."],
+  ["LLM explains, not decides", "AI text summarizes structured inputs and falls back to plain system copy when validation fails."],
   ["Public pages are limited", "Public intelligence pages do not expose premium trade-plan fields or direct action instructions."],
 ] as const;
 

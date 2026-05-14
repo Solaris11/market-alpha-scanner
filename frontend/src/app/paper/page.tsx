@@ -644,6 +644,30 @@ function SectionShell({ children, eyebrow, title }: { children: React.ReactNode;
   );
 }
 
+function PaperHowToUse() {
+  return (
+    <section className="rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.055] p-5 shadow-xl shadow-black/20 ring-1 ring-cyan-300/10 backdrop-blur-xl">
+      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200">How to use this page</div>
+      <h2 className="mt-2 text-xl font-semibold tracking-tight text-slate-50">Practice the process before real money</h2>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+        Use Paper Trading to test entry, stop, target, and position size ideas. The page tracks simulated behavior so you can review discipline, risk, and setup quality without treating it as advice.
+      </p>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        {[
+          ["1. Create a paper trade", "Choose a symbol, planned entry, stop, target, and size."],
+          ["2. Monitor open risk", "Watch exposure and invalidation before adding new simulated positions."],
+          ["3. Review closed trades", "Use the trade review to learn what worked, what failed, and why."],
+        ].map(([title, copy]) => (
+          <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3" key={title}>
+            <div className="text-sm font-semibold text-slate-100">{title}</div>
+            <p className="mt-1 text-xs leading-5 text-slate-400">{copy}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default async function PaperPage() {
   const entitlement = await getEntitlement();
   if (requiresLegalAcceptance(entitlement)) {
@@ -706,6 +730,8 @@ export default async function PaperPage() {
             </div>
           </div>
         </section>
+
+        <PaperHowToUse />
 
         {!data.configured || data.error || !account ? (
           <SectionShell eyebrow="Paper Account" title="Paper Account Unavailable">

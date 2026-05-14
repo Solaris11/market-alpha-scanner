@@ -13,24 +13,25 @@ export type AppNavSection = {
 export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
   { group: "trading", href: "/terminal", key: "terminal", label: "Terminal" },
   { group: "trading", href: "/opportunities", key: "opportunities", label: "Opportunities" },
-  { group: "trading", href: "/performance", key: "performance", label: "Performance" },
-  { group: "trading", href: "/history", key: "history", label: "History" },
+  { group: "trading", href: "/terminal#mobile-watchlist", key: "watchlist", label: "Watchlist" },
   { group: "execution", href: "/alerts", key: "alerts", label: "Alerts" },
+  { group: "system", href: "/dashboard", key: "dashboard", label: "Dashboard" },
 ];
 
 export const EXECUTION_NAV_ITEMS: AppNavItem[] = [
-  { group: "execution", href: "/alerts", key: "alerts", label: "Alerts" },
-  { group: "execution", href: "/paper", key: "paper", label: "Paper" },
+  { group: "trading", href: "/performance", key: "performance", label: "Performance" },
+  { group: "trading", href: "/history", key: "history", label: "History" },
+  { group: "execution", href: "/paper", key: "paper", label: "Paper Trading" },
+  { group: "system", href: "/strategy-labs", key: "strategy-labs", label: "Strategy Labs" },
 ];
 
 export const UTILITY_NAV_ITEMS: AppNavItem[] = [
-  { group: "system", href: "/mobile", key: "mobile", label: "Mobile" },
+  { group: "system", href: "/intelligence", key: "intelligence", label: "Intelligence" },
+  { group: "system", href: "/mobile", key: "mobile", label: "Mobile App Setup" },
   { group: "system", href: "/support", key: "support", label: "Support" },
-  { group: "system", href: "/dashboard", key: "dashboard", label: "Dashboard" },
   { group: "system", href: "/team", key: "team", label: "Team" },
   { group: "system", href: "/community", key: "community", label: "Community" },
   { group: "system", href: "/developers", key: "developers", label: "Developers" },
-  { group: "system", href: "/strategy-labs", key: "strategy-labs", label: "Labs" },
   { group: "system", href: "/advanced", key: "advanced", label: "Advanced" },
 ];
 
@@ -40,9 +41,9 @@ export const ADMIN_NAV_ITEM: AppNavItem = { group: "system", href: "/admin", key
 export const MOBILE_BOTTOM_NAV_ITEMS: AppNavItem[] = [
   { group: "trading", href: "/terminal", key: "terminal", label: "Terminal" },
   { group: "trading", href: "/opportunities", key: "opportunities", label: "Opportunities" },
-  { group: "trading", href: "/terminal#mobile-watchlist", key: "watchlist", label: "Watch" },
+  { group: "trading", href: "/terminal#mobile-watchlist", key: "watchlist", label: "Watchlist" },
   { group: "execution", href: "/alerts", key: "alerts", label: "Alerts" },
-  { group: "trading", href: "/opportunities?tab=full", key: "find", label: "Find" },
+  { group: "system", href: "/dashboard", key: "dashboard", label: "Dashboard" },
 ];
 export const MOBILE_MORE_NAV_LABEL = "More";
 
@@ -52,9 +53,9 @@ export function visibleUtilityNavItems(isAdmin: boolean): AppNavItem[] {
 
 export function drawerNavSections(isAdmin: boolean): AppNavSection[] {
   return [
-    { label: "Trading", items: PRIMARY_NAV_ITEMS.filter((item) => item.key !== "alerts") },
-    { label: "Execution", items: EXECUTION_NAV_ITEMS },
-    { label: "System", items: visibleUtilityNavItems(isAdmin) },
+    { label: "Primary", items: PRIMARY_NAV_ITEMS },
+    { label: "Research", items: EXECUTION_NAV_ITEMS },
+    { label: "More", items: visibleUtilityNavItems(isAdmin) },
   ];
 }
 

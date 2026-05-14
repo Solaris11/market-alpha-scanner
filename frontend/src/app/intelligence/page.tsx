@@ -16,7 +16,7 @@ export const metadata: Metadata = marketingMetadata("/intelligence", {
 
 const trustBoundaries = [
   ["Public-safe", "These pages do not expose premium entry/exit levels, private user data, or direct action instructions."],
-  ["Evidence-labeled", "TradeVeto should distinguish limited evidence from stronger historical or calibration support."],
+  ["Evidence-labeled", "TradeVeto should distinguish limited evidence from stronger historical support."],
   ["Source-aware", "Event context must be verified from trusted sources or disclosed as unavailable."],
 ] as const;
 
@@ -45,7 +45,7 @@ export default async function IntelligenceIndexPage() {
             <section className="rounded-3xl border border-white/10 bg-white/[0.04] p-6 shadow-2xl shadow-black/20">
               <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Publishing Guardrails</div>
               <p className="mt-4 text-sm leading-6 text-slate-300">
-                Public pages summarize deterministic TradeVeto intelligence without exposing premium trade-plan fields. They avoid direct instructions, deterministic predictions, and unsupported news claims.
+                Public pages summarize structured TradeVeto intelligence without exposing premium research-plan fields. They avoid direct instructions, predictions, and unsupported news claims.
               </p>
               <div className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{page.universeCount} symbols in the latest public-safe intelligence universe</div>
             </section>

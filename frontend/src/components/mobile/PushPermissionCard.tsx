@@ -225,11 +225,11 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 function copyForState(state: PushUiState, deliveryConfigured: boolean): string {
   if (state === "unsupported") return "This browser does not support web push. You can still use the mobile console from the browser.";
   if (state === "blocked") return "Notifications are blocked in the browser. Enable them in browser settings to receive TradeVeto push alerts.";
-  if (state === "missing_key") return "The mobile app surface is ready, but the public VAPID push key is not configured yet.";
+  if (state === "missing_key") return "Mobile notifications are not available yet. You can still install TradeVeto and use the mobile console.";
   if (state === "configured") {
     return deliveryConfigured
       ? "This device can receive watchlist, shock, macro, fragility, and what-changed alerts."
-      : "This device is subscribed. Server delivery keys still need to be configured before pushes can be sent.";
+      : "This device is subscribed. Mobile notification delivery still needs final operator setup before alerts can be sent.";
   }
   return "Connect this device to receive high-signal TradeVeto alerts. Alerts are research context, not trade instructions.";
 }

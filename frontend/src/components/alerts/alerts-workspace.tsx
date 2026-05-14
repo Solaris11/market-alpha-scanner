@@ -58,6 +58,17 @@ type CommandResult = {
   error?: string;
 };
 
+type RuleSaveResult = {
+  message: string;
+  mode?: string;
+  ok: boolean;
+};
+
+type QuickRuleStatus = {
+  message: string;
+  tone: "error" | "success";
+};
+
 const FORM_TYPES = [
   "price_above",
   "price_below",
@@ -361,6 +372,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
   const [message, setMessage] = useState("");
   const [busyId, setBusyId] = useState("");
   const [testResult, setTestResult] = useState<CommandResult | null>(null);
+  const [quickRuleStatus, setQuickRuleStatus] = useState<QuickRuleStatus | null>(null);
 
   useEffect(() => {
     function refreshWatchlist() {
@@ -402,7 +414,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
     });
   }
 
-  async function createRule(payload?: Partial<AlertRule>) {
+  async function createRule(payload?: Partial<AlertRule>): Promise<RuleSaveResult> {
     setBusyId("create");
     setMessage("");
     try {
@@ -425,11 +437,15 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
           },
         ),
       });
-      setMessage(result.mode === "updated" ? "Alert rule updated." : "Alert rule saved.");
+      const resultMessage = result.mode === "updated" ? "Alert rule updated." : "Alert rule saved.";
+      setMessage(resultMessage);
       trackAnalyticsEvent("alert_create", { mode: result.mode ?? "created", type: payload?.type ?? type }, { source: "alerts_workspace", symbol: payload?.symbol ?? (symbolVisible ? normalizeSymbol(symbol) : undefined) });
       await reload();
+      return { message: resultMessage, mode: result.mode, ok: true };
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Failed to save alert rule.");
+      const resultMessage = error instanceof Error ? error.message : "Failed to save alert rule.";
+      setMessage(resultMessage);
+      return { message: resultMessage, ok: false };
     } finally {
       setBusyId("");
     }
@@ -563,8 +579,12 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
         className="rounded border border-slate-700/80 px-2 py-1 text-[11px] text-slate-300 hover:border-sky-400/50 hover:text-sky-200"
         disabled={busyId === "create"}
         key={`${cleaned}_${nextType}_${label}`}
-        onClick={() =>
-          createRule({
+        onClick={() => {
+          if (!cleaned) {
+            setQuickRuleStatus({ message: "Symbol unavailable. Add a valid symbol before creating an alert.", tone: "error" });
+            return;
+          }
+          void createRule({
             id: `${cleaned.toLowerCase()}_${nextType}`,
             scope: "symbol",
             symbol: cleaned,
@@ -575,8 +595,13 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
             source: "system",
             entry_filter: defaultEntryFilter(nextType),
             ...extra,
-          })
-        }
+          }).then((result) => {
+            setQuickRuleStatus({
+              message: result.ok ? `${label} alert ${result.mode === "updated" ? "updated" : "saved"} for ${cleaned}.` : result.message,
+              tone: result.ok ? "success" : "error",
+            });
+          });
+        }}
         type="button"
       >
         {label}
@@ -589,7 +614,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
       <button
         className="inline-flex min-h-9 items-center rounded border border-sky-400/40 bg-sky-400/10 px-3 py-2 text-xs font-semibold text-sky-100 hover:bg-sky-400/15"
         disabled={busyId === "create"}
-        onClick={() => createRule(payload)}
+        onClick={() => void createRule(payload)}
         type="button"
       >
         {label}
@@ -929,7 +954,7 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
               {channel}
             </label>
           ))}
-          <button className="inline-flex min-h-9 items-center rounded border border-sky-400/50 bg-sky-400/10 px-3 py-2 text-xs font-semibold text-sky-100 hover:bg-sky-400/15" disabled={busyId === "create"} onClick={() => createRule()} type="button">
+          <button className="inline-flex min-h-9 items-center rounded border border-sky-400/50 bg-sky-400/10 px-3 py-2 text-xs font-semibold text-sky-100 hover:bg-sky-400/15" disabled={busyId === "create"} onClick={() => void createRule()} type="button">
             Add Alert
           </button>
           {message ? <span className="text-slate-400">{message}</span> : null}
@@ -942,9 +967,20 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Watched Symbols</div>
             <h2 className="mt-1 text-lg font-semibold text-slate-50">Quick System Alerts</h2>
+            <p className="mt-1 text-xs text-slate-500">Use these buttons to save symbol-specific alert rules. TradeVeto will confirm whether the rule was saved or updated.</p>
           </div>
           <div className="font-mono text-xs text-slate-500">{watchlist.length}</div>
         </div>
+        {quickRuleStatus ? (
+          <div
+            className={`mt-3 rounded-xl border px-3 py-2 text-xs ${
+              quickRuleStatus.tone === "success" ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100" : "border-rose-300/25 bg-rose-400/10 text-rose-100"
+            }`}
+            role="status"
+          >
+            {quickRuleStatus.message}
+          </div>
+        ) : null}
         <div className="mt-3 divide-y divide-slate-800 text-xs">
           {watchlist.length ? (
             watchlist.map((item) => (

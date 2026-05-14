@@ -194,7 +194,7 @@ export function findSupportAnswer(message: string): string {
   }
   if (normalized.includes("calibration")) {
     return [
-      "Calibration shows what the scanner is learning from completed forward-return observations.",
+      "Signal history shows what the scanner is learning from completed later outcomes.",
       "Simple View translates this into plain English. Advanced View keeps the raw grouped metrics for deeper review.",
       "Low evidence means the system needs more historical observations before the pattern should be trusted.",
     ].join("\n");

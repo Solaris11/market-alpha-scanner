@@ -173,7 +173,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           coachingNotes: ["Journal coaching is paused in Account settings. Saved entries remain private and exportable."],
           fitLabel: "Memory still building" as const,
           strengthReason: "Journal coaching is paused, so this panel is not using prior entries to personalize the setup.",
-          warningReason: "The deterministic scanner decision, fragility, and invalidation context remain the source of truth.",
+          warningReason: "The scanner decision, fragility, and invalidation context remain the source of truth.",
         }
     : null;
   const workflowEvolution = row ? await getWorkflowEvolutionForUser(entitlement.user?.id ?? null, [row], { surface: "symbol" }).catch(() => null) : null;

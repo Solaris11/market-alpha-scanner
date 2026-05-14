@@ -72,8 +72,8 @@ export function buildMobileIntelligenceCenter(input: MobileIntelligenceInput): M
     ],
     generatedAt,
     limitations: [
-      "This is a mobile web app and push layer. Native App Store and Play Store shells still require a separate wrapper and signing workflow.",
-      "Mobile push delivery requires browser permission and configured VAPID keys.",
+      "Install TradeVeto from your browser to use a phone-friendly app surface.",
+      "Mobile notifications require browser permission and final operator setup before alerts can be sent.",
       "iOS push support requires the app to be installed to the Home Screen in supported Safari versions.",
     ],
     packets,

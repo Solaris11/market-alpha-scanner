@@ -16,18 +16,18 @@ describe("application navigation hierarchy", () => {
   test("keeps the desktop primary nav focused on core workflows", () => {
     assert.deepEqual(
       PRIMARY_NAV_ITEMS.map((item) => item.label),
-      ["Terminal", "Opportunities", "Performance", "History", "Alerts"],
+      ["Terminal", "Opportunities", "Watchlist", "Alerts", "Dashboard"],
     );
   });
 
   test("keeps low-frequency admin and utility routes out of the primary nav", () => {
     assert.deepEqual(
       visibleUtilityNavItems(false).map((item) => item.label),
-      ["Mobile", "Support", "Dashboard", "Team", "Community", "Developers", "Labs", "Advanced"],
+      ["Intelligence", "Mobile App Setup", "Support", "Team", "Community", "Developers", "Advanced"],
     );
     assert.deepEqual(
       visibleUtilityNavItems(true).map((item) => item.label),
-      ["Mobile", "Support", "Dashboard", "Team", "Community", "Developers", "Labs", "Advanced", "Admin"],
+      ["Intelligence", "Mobile App Setup", "Support", "Team", "Community", "Developers", "Advanced", "Admin"],
     );
   });
 
@@ -35,26 +35,26 @@ describe("application navigation hierarchy", () => {
     const sections = drawerNavSections(true);
     assert.deepEqual(
       sections.map((section) => section.label),
-      ["Trading", "Execution", "System"],
+      ["Primary", "Research", "More"],
     );
     assert.deepEqual(
       sections[0]?.items.map((item) => item.label),
-      ["Terminal", "Opportunities", "Performance", "History"],
+      ["Terminal", "Opportunities", "Watchlist", "Alerts", "Dashboard"],
     );
     assert.deepEqual(
       sections[1]?.items.map((item) => item.label),
-      ["Alerts", "Paper"],
+      ["Performance", "History", "Paper Trading", "Strategy Labs"],
     );
     assert.deepEqual(
       sections[2]?.items.map((item) => item.label),
-      ["Mobile", "Support", "Dashboard", "Team", "Community", "Developers", "Labs", "Advanced", "Admin"],
+      ["Intelligence", "Mobile App Setup", "Support", "Team", "Community", "Developers", "Advanced", "Admin"],
     );
   });
 
   test("keeps mobile bottom navigation thumb-friendly and limited", () => {
     assert.deepEqual(
       MOBILE_BOTTOM_NAV_ITEMS.map((item) => item.label),
-      ["Terminal", "Opportunities", "Watch", "Alerts", "Find"],
+      ["Terminal", "Opportunities", "Watchlist", "Alerts", "Dashboard"],
     );
     assert.equal(MOBILE_MORE_NAV_LABEL, "More");
   });
@@ -62,7 +62,7 @@ describe("application navigation hierarchy", () => {
   test("keeps all major product sections reachable through the mobile drawer", () => {
     const sections = drawerNavSections(false);
     const labels = sections.flatMap((section) => section.items.map((item) => item.label));
-    assert.deepEqual(labels, ["Terminal", "Opportunities", "Performance", "History", "Alerts", "Paper", "Mobile", "Support", "Dashboard", "Team", "Community", "Developers", "Labs", "Advanced"]);
+    assert.deepEqual(labels, ["Terminal", "Opportunities", "Watchlist", "Alerts", "Dashboard", "Performance", "History", "Paper Trading", "Strategy Labs", "Intelligence", "Mobile App Setup", "Support", "Team", "Community", "Developers", "Advanced"]);
     assert.equal(labels.includes("Admin"), false);
   });
 
@@ -79,9 +79,9 @@ describe("application navigation hierarchy", () => {
     assert.equal(activeSectionTitle("/team", false), "Team");
     assert.equal(activeSectionTitle("/community", false), "Community");
     assert.equal(activeSectionTitle("/developers", false), "Developers");
-    assert.equal(activeSectionTitle("/mobile", false), "Mobile");
-    assert.equal(activeSectionTitle("/strategy-labs", false), "Labs");
-    assert.equal(activeSectionTitle("/paper", false), "Paper");
+    assert.equal(activeSectionTitle("/mobile", false), "Mobile App Setup");
+    assert.equal(activeSectionTitle("/strategy-labs", false), "Strategy Labs");
+    assert.equal(activeSectionTitle("/paper", false), "Paper Trading");
     assert.equal(activeSectionTitle("/history/symbol/NVDA", false), "History");
     assert.equal(isActivePath("/history/symbol/NVDA", "/history"), true);
     assert.equal(isActivePath("/opportunities", "/terminal"), false);

@@ -62,10 +62,12 @@ function WatchlistRow({ row }: { row: OpportunityViewModel }) {
           <DecisionBadge value={row.final_decision} />
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+      <div className="mt-3 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3">
         <MiniMetric label="Price" value={formatMoney(row.price)} />
+        <MiniMetric label="Entry zone" value={row.entryZoneLabel ?? formatMoney(row.suggested_entry)} />
+        <MiniMetric label="Invalidation" value={formatMoney(row.stop_loss)} />
+        <MiniMetric label="Target area" value={formatMoney(row.target)} />
         <MiniMetric label="Conviction" value={`${formatNumber(row.conviction, 0)} ${row.confidenceLabel}`} />
-        <MiniMetric label="Entry / Correction" value={row.entryZoneLabel ?? formatMoney(row.suggested_entry)} />
         <MiniMetric label="Reason" value={humanizeInsightText(row.decision_reason, "N/A")} />
       </div>
     </div>

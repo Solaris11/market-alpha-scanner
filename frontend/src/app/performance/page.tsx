@@ -82,15 +82,15 @@ function CalibrationInsightsPanel({ insights }: { insights: Record<string, unkno
     <section className="terminal-panel rounded-md p-4">
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div>
-          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Calibration Insights</div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Recent Signal History</div>
           <h2 className="mt-1 text-lg font-semibold text-slate-50">Scanner Learning Readout</h2>
-          <p className="mt-1 text-sm text-slate-400">Plain-English historical evidence from completed forward-return observations. It does not auto-tune the scanner.</p>
+          <p className="mt-1 text-sm text-slate-400">Simple review of how recent signals behaved after they had time to develop. Use this to understand scanner quality, not guaranteed future returns.</p>
         </div>
         <div className="text-xs text-slate-500">{generatedAt ? `Last updated ${formatDate(generatedAt)}` : "Not generated yet"}</div>
       </div>
 
       {!insights ? (
-        <div className="mt-3 rounded border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">No calibration insights file found. Run performance analysis to generate it.</div>
+        <div className="mt-3 rounded border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">No signal history summary found yet. Refresh performance analysis to generate it.</div>
       ) : (
         <>
           <div className="mt-3 grid gap-2 md:grid-cols-2">
@@ -141,14 +141,14 @@ function buildInsightCards(insights: Record<string, unknown>, bestGroup: Record<
     {
       confidence: evidenceLabel(bestGroup),
       detail: humanizeQuantText(insights.score_bucket_note, "Not enough historical evidence yet."),
-      interpretation: "Use score ranges as context until more forward-return observations accumulate.",
+      interpretation: "Use score ranges as context while more signal history accumulates.",
       title: "What the scanner is learning",
       tone: warnings.length ? "warn" : "good",
     },
     {
       confidence: evidenceLabel(worstGroup),
       detail: humanizeQuantText(insights.setup_note, "Setup evidence is still developing."),
-      interpretation: "Compare setup types in Advanced before changing any calibration assumptions.",
+      interpretation: "Compare setup types in the detailed view before changing how you read this evidence.",
       title: "Why it matters",
       tone: "warn",
     },
@@ -185,6 +185,30 @@ function evidenceLabel(group: Record<string, unknown> | null): string {
   return "Early/low evidence";
 }
 
+function PerformanceHowToUse() {
+  return (
+    <section className="terminal-panel rounded-2xl p-5">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">How to use this page</div>
+      <h2 className="mt-1 text-lg font-semibold text-slate-50">Understand recent scanner behavior</h2>
+      <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+        Use Performance to see where recent signals looked stronger or weaker after they had time to develop. Treat it as evidence quality and process review, not a promise of future returns.
+      </p>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        {[
+          ["1. Read the summary", "Start with what worked recently, what did not work, and how mature the evidence is."],
+          ["2. Check uncertainty", "Low sample counts mean the system is still collecting signal history."],
+          ["3. Open details only when needed", "Advanced tables stay collapsed so the default view remains scannable."],
+        ].map(([title, copy]) => (
+          <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3" key={title}>
+            <div className="text-sm font-semibold text-slate-100">{title}</div>
+            <p className="mt-1 text-xs leading-5 text-slate-400">{copy}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default async function PerformancePage() {
   const entitlement = await getEntitlement();
   if (requiresLegalAcceptance(entitlement)) {
@@ -200,8 +224,8 @@ export default async function PerformancePage() {
       <TerminalShell>
         <PremiumLockedState
           authenticated={entitlement.authenticated}
-          description="Performance validation, calibration, lifecycle tables, and drift analysis are premium diagnostics. The main terminal remains available as a free market preview."
-          previewItems={["Forward-return validation and hit-rate summaries", "Signal lifecycle and calibration diagnostics", "Intraday drift and setup quality review"]}
+          description="Performance analytics show recent signal history, scanner behavior, and setup reliability. The main terminal remains available as a free market preview."
+          previewItems={["Recent signal history and hit-rate summaries", "Signal freshness and behavior diagnostics", "Intraday drift and setup quality review"]}
           title={entitlement.authenticated ? "Performance is available on Premium" : "Sign in to preview performance analytics"}
         />
       </TerminalShell>
@@ -219,18 +243,20 @@ export default async function PerformancePage() {
         <MetricStrip
           metrics={[
             { label: "Summary Rows", value: performance.summary.rows.length.toLocaleString(), meta: fileStateLabel(performance.summary.state) },
-            { label: "Forward Rows", value: forwardObservationCount.toLocaleString(), meta: fileStateLabel(performance.forwardReturns.state) },
+            { label: "Signal Rows", value: forwardObservationCount.toLocaleString(), meta: fileStateLabel(performance.forwardReturns.state) },
             { label: "Saved Runs", value: history.count.toLocaleString(), meta: "signal memory" },
-            { label: "Unique Dates", value: history.uniqueDates.length.toLocaleString(), meta: "needed for returns" },
+            { label: "Unique Dates", value: history.uniqueDates.length.toLocaleString(), meta: "history depth" },
             { label: "Earliest", value: formatDate(history.earliest), meta: "history" },
             { label: "Latest", value: formatDate(history.latest), meta: "history" },
           ]}
         />
 
+        <PerformanceHowToUse />
+
         <CalibrationInsightsPanel insights={calibrationInsights} />
 
         <details className="terminal-panel rounded-2xl p-4">
-          <summary className="cursor-pointer text-sm font-semibold text-slate-100 marker:text-cyan-300">Calibration tables and lifecycle proof</summary>
+          <summary className="cursor-pointer text-sm font-semibold text-slate-100 marker:text-cyan-300">Signal history details</summary>
           <div className="mt-4 space-y-3">
             <AutoCalibrationRecommendations rows={performance.autoCalibration.rows} state={performance.autoCalibration.state} />
             <SignalLifecycle rows={performance.lifecycle.rows} summaryRows={performance.lifecycleSummary.rows} />
@@ -239,17 +265,17 @@ export default async function PerformancePage() {
 
         <ResponsiveAdvancedDetails
           deferMount
-          eyebrow="Deep validation"
-          summary="Open for grouped return tables, raw forward-return evidence, route-heavy drift analysis, and manual refresh controls."
-          title="Forward-return validation and scanner drift"
+          eyebrow="Detailed signal history"
+          summary="Open for grouped result tables, detailed signal evidence, drift checks, and manual refresh controls."
+          title="Signal history and scanner drift"
         >
           <PerformanceValidation forwardObservationCount={forwardObservationCount} forwardRows={performance.forwardReturns.rows} history={history} rankingRows={ranking} summaryRows={performance.summary.rows} />
 
           <section className="terminal-panel rounded-2xl p-5">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Analysis Runner</div>
+            <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Refresh Data</div>
             <h2 className="mt-1 text-lg font-semibold text-slate-50">Refresh Performance Analysis</h2>
             <p className="mt-2 line-clamp-2 max-w-3xl text-sm leading-6 text-slate-400">
-              Refresh validation, lifecycle, drift, and calibration views from the current signal history.
+              Refresh recent signal history, scanner behavior, drift, and setup-quality views from the current data.
             </p>
             <RunCommandButton endpoint="/api/run-analysis" label="Refresh Analysis" />
           </section>

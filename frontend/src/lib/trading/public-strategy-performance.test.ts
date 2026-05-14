@@ -78,7 +78,7 @@ test("public proof falls back honestly when evidence is unavailable", () => {
   const publicSystem = buildPublicStrategyPerformanceSystem({ portfolioSystem, strategySystem });
 
   assert.equal(publicSystem.status, "limited");
-  assert.match(publicSystem.summary, /waiting for more completed forward-return evidence/i);
+  assert.match(publicSystem.summary, /waiting for more completed outcome history/i);
   assert.equal(publicSystem.replayTrades.length, 0);
   assert.ok(publicSystem.limitations.some((line) => /not real-money execution/i.test(line)));
 });

@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode, TouchEvent } from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, X } from "lucide-react";
+import type { ReactNode } from "react";
+import { useMemo, useState } from "react";
+import { ArrowRight } from "lucide-react";
+import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
 import { IntelligenceGraphPanel } from "@/components/visual/IntelligenceGraphPanel";
 import { ScoreFactorStrip, type ScoreFactor, type VisualTone } from "@/components/visual/MiniVisuals";
 import type { IntelligenceGraphModel } from "@/lib/trading/intelligence-graph";
@@ -174,23 +175,6 @@ export function InteractiveInsightZoneGrid({
 }
 
 function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: InteractiveInsightZoneItem | null }) {
-  const [dragY, setDragY] = useState(0);
-  const touchStartY = useRef<number | null>(null);
-
-  useEffect(() => {
-    if (!zone) return undefined;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.body.style.overflow = previousOverflow;
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [onClose, zone]);
-
   if (!zone) return null;
 
   const tone = TONE_CLASS[zone.tone ?? "cyan"];
@@ -198,47 +182,16 @@ function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: Inte
   const monitorNext = zone.monitorNext?.filter(Boolean).slice(0, 6) ?? [];
   const relatedSymbols = zone.relatedSymbols?.filter(Boolean).slice(0, 12) ?? [];
 
-  function handleTouchStart(event: TouchEvent<HTMLElement>) {
-    touchStartY.current = event.touches[0]?.clientY ?? null;
-  }
-
-  function handleTouchMove(event: TouchEvent<HTMLElement>) {
-    if (touchStartY.current === null) return;
-    const currentY = event.touches[0]?.clientY;
-    if (currentY === undefined) return;
-    setDragY(Math.max(0, Math.min(160, currentY - touchStartY.current)));
-  }
-
-  function handleTouchEnd() {
-    if (dragY > 72) onClose();
-    setDragY(0);
-    touchStartY.current = null;
-  }
-
   return (
-    <div className="fixed inset-0 z-[10000] flex items-end justify-center overflow-y-auto p-0 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={`${zone.label} detail`}>
-      <button className="absolute inset-0 cursor-default bg-slate-950/75 backdrop-blur-md" onClick={onClose} type="button" aria-label="Close detail drawer" />
-      <aside
-        className="relative z-10 max-h-[88dvh] w-full max-w-3xl overflow-auto overscroll-contain rounded-t-[2rem] border border-cyan-300/18 bg-slate-950 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl shadow-black/70 ring-1 ring-cyan-300/10 transition-transform sm:max-h-[min(88vh,860px)] sm:rounded-3xl sm:p-6"
-        onTouchEnd={handleTouchEnd}
-        onTouchMove={handleTouchMove}
-        onTouchStart={handleTouchStart}
-        style={{ transform: dragY ? `translateY(${dragY}px)` : undefined }}
-      >
-        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/20 sm:hidden" aria-hidden="true" />
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className={`text-[10px] font-black uppercase tracking-[0.22em] ${tone.text}`}>{zone.eyebrow ?? "Intelligence detail"}</div>
-            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">{zone.detailTitle}</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              <TextWithSymbolLinks symbols={relatedSymbols} text={humanizeInsightText(zone.detailSummary)} />
-            </p>
-          </div>
-          <button className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100" onClick={onClose} type="button" aria-label="Close detail drawer">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
+    <StableDetailOverlay
+      closeLabel="Close detail"
+      description={<TextWithSymbolLinks symbols={relatedSymbols} text={humanizeInsightText(zone.detailSummary)} />}
+      eyebrow={<span className={tone.text}>{zone.eyebrow ?? "Intelligence detail"}</span>}
+      onClose={onClose}
+      open={Boolean(zone)}
+      size="lg"
+      title={zone.detailTitle}
+    >
         <div className={`mt-4 h-1 rounded-full ${tone.accent}`} />
 
         {relatedSymbols.length ? (
@@ -305,7 +258,6 @@ function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: Inte
             <ArrowRight className="h-4 w-4" />
           </Link>
         ) : null}
-      </aside>
-    </div>
+    </StableDetailOverlay>
   );
 }

@@ -1,35 +1,62 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useId, useState } from "react";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import { normalizeWatchlistSymbol } from "@/lib/watchlist-storage";
 
 export function WatchlistButton({ className = "", showLabel = true, symbol }: { className?: string; showLabel?: boolean; symbol: string }) {
   const cleaned = normalizeWatchlistSymbol(symbol);
   const { isWatched, toggle } = useLocalWatchlist();
+  const statusId = useId();
+  const [status, setStatus] = useState("");
   const saved = isWatched(cleaned);
   const label = saved ? "Remove from Watchlist" : "Add to Watchlist";
 
+  useEffect(() => {
+    if (!status) return undefined;
+    const timeout = window.setTimeout(() => setStatus(""), 2600);
+    return () => window.clearTimeout(timeout);
+  }, [status]);
+
   return (
-    <button
-      aria-label={label}
-      aria-pressed={saved}
-      className={`inline-flex min-h-9 min-w-9 max-w-full items-center justify-center gap-2 rounded-full border px-3 py-2 text-center text-xs font-bold transition-all duration-200 ${
-        saved
-          ? "border-amber-300/50 bg-amber-300/15 text-amber-100 hover:bg-amber-300/20"
-          : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-amber-300/40 hover:bg-white/[0.07] hover:text-amber-100"
-      } ${className}`}
-      onClick={(event) => {
-        event.preventDefault();
-        event.stopPropagation();
-        toggle(cleaned);
-      }}
-      title={label}
-      type="button"
-    >
-      <span aria-hidden="true" className="text-sm leading-none">{saved ? "★" : "☆"}</span>
-      {showLabel ? <span className="min-w-0">{saved ? "Watchlist" : "Add to Watchlist"}</span> : null}
-    </button>
+    <span className="relative inline-flex">
+      <button
+        aria-describedby={status ? statusId : undefined}
+        aria-label={label}
+        aria-pressed={saved}
+        className={`inline-flex min-h-9 min-w-9 max-w-full items-center justify-center gap-2 rounded-full border px-3 py-2 text-center text-xs font-bold transition-all duration-200 ${
+          saved
+            ? "border-amber-300/50 bg-amber-300/15 text-amber-100 hover:bg-amber-300/20"
+            : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-amber-300/40 hover:bg-white/[0.07] hover:text-amber-100"
+        } ${className}`}
+        disabled={!cleaned}
+        onClick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (!cleaned) {
+            setStatus("Symbol unavailable.");
+            return;
+          }
+          toggle(cleaned);
+          setStatus(saved ? `${cleaned} removed from watchlist.` : `${cleaned} added to watchlist.`);
+        }}
+        title={label}
+        type="button"
+      >
+        <span aria-hidden="true" className="text-sm leading-none">{saved ? "★" : "☆"}</span>
+        {showLabel ? <span className="min-w-0">{saved ? "Watchlist" : "Add to Watchlist"}</span> : null}
+      </button>
+      {status ? (
+        <span
+          className="absolute left-1/2 top-[calc(100%+0.35rem)] z-20 w-max max-w-[14rem] -translate-x-1/2 rounded-xl border border-cyan-300/20 bg-slate-950 px-3 py-2 text-center text-[11px] font-semibold text-cyan-100 shadow-xl shadow-black/40"
+          id={statusId}
+          role="status"
+        >
+          {status}
+        </span>
+      ) : null}
+    </span>
   );
 }
 

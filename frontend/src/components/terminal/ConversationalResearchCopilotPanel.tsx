@@ -141,7 +141,7 @@ export function ConversationalResearchCopilotPanel() {
           value={question}
         />
         <div className="flex items-center justify-between gap-3">
-          <p className="text-[11px] leading-5 text-slate-500">Research only. The copilot cannot override deterministic TradeVeto scores.</p>
+          <p className="text-[11px] leading-5 text-slate-500">Research only. The copilot cannot override TradeVeto scores.</p>
           <button
             className="rounded-full border border-cyan-300/25 bg-cyan-400/15 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-cyan-50 transition hover:border-cyan-200/55 hover:bg-cyan-300/20 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={submitting || !question.trim()}

@@ -28,13 +28,13 @@ export function AdaptiveLearningInsightPanel({
           <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Adaptive Learning</div>
           <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">{focusSymbol ? `${focusSymbol.toUpperCase()} learning context` : "What the market taught us"}</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
-            Completed outcomes are used to detect calibration drift and reliability changes. This layer is observational and does not self-modify scanner scoring.
+            Completed outcomes are used to detect reliability changes. This layer is observational and does not self-modify scanner scoring.
           </p>
         </div>
         <div className="grid grid-cols-3 gap-2 text-right text-xs md:min-w-[290px]">
           <LearningMetric label="Trend" value={adaptiveTrendLabel(system.learningTrend)} />
           <LearningMetric label="Reliability" value={`${system.confidenceReliabilityScore}/100`} />
-          <LearningMetric label="Drift" value={`${system.calibrationDriftScore}/100`} />
+          <LearningMetric label="Reliability Shift" value={`${system.calibrationDriftScore}/100`} />
         </div>
       </div>
 

@@ -207,7 +207,7 @@ export function buildSimulatedAiPortfolioSystem(input: SimulatedAiPortfolioInput
     generatedAt: input.generatedAt ?? new Date().toISOString(),
     limitations: [
       "Strategy Labs is simulation and research only. It does not place broker or paper orders.",
-      "Closed-trade performance is computed from completed forward-return evidence, not LLM-generated numbers.",
+      "Closed-trade performance is computed from completed outcome history, not LLM-generated numbers.",
       "Current model positions are a scanner snapshot; unrealized PnL starts at the current mark and updates only when the simulation is refreshed.",
       "Benchmark comparison uses the same completed evidence horizon as a simple baseline, not a full investable index backtest.",
     ],

@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       delivered: 0,
       deliveryConfigured: false,
       ok: true,
-      message: "Push is subscribed, but VAPID delivery keys are not configured on the server yet.",
+      message: "Push is subscribed, but notification delivery is not configured yet.",
     });
   }
 

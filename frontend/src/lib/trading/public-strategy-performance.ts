@@ -122,7 +122,7 @@ export function buildPublicStrategyPerformanceSystem(input: {
     },
     limitations: [
       "Public performance is simulated research only. It is not real-money execution and not financial advice.",
-      "Closed trades come from completed forward-return evidence. Future market behavior can differ.",
+      "Closed trades come from completed outcome history. Future market behavior can differ.",
       "Benchmark comparison uses the same completed evidence horizon as a simple baseline, not a full investable index backtest.",
       "Winning and losing examples are both shown so drawdowns, false positives, and failed trades stay visible.",
       "Current premium opportunities and open model positions are intentionally not published on this public page.",
@@ -250,7 +250,7 @@ function summaryFor(input: {
   status: "limited" | "ready";
 }): string {
   if (input.status === "limited" || !input.bestMode) {
-    return "Public strategy proof is waiting for more completed forward-return evidence. The page still shows the methodology and available replay samples without filling gaps with synthetic results.";
+    return "Public strategy proof is waiting for more completed outcome history. The page still shows the methodology and available replay samples without filling gaps with synthetic results.";
   }
   const benchmarkText = input.bestMode.benchmarkDeltaPct === null
     ? "benchmark comparison is limited"

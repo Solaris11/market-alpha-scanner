@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { ArrowUpRight, Expand, Info, X } from "lucide-react";
+import { useId, useMemo, useRef, useState } from "react";
+import { ArrowUpRight, Expand, Info } from "lucide-react";
+import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
 import {
   INTERACTIVE_CHART_PERIODS,
   filterInteractivePricePoints,
@@ -276,33 +277,19 @@ function ExpandedChartModal({
   setPeriod: (period: InteractiveChartPeriod) => void;
   tone: Tone;
 }) {
-  useEffect(() => {
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, []);
-
   const filtered = useMemo(() => filterInteractivePricePoints(packet.rows, period), [packet.rows, period]);
   const valid = useMemo(() => validClosePoints(filtered), [filtered]);
   const toneClass = TONE_CLASSES[tone];
   return (
-    <div className="fixed inset-0 z-[10050] flex items-end justify-center overflow-y-auto p-0 sm:items-center sm:p-6" role="dialog" aria-modal="true" aria-label={`${packet.symbol} chart detail`}>
-      <button className="absolute inset-0 cursor-default bg-slate-950/75 backdrop-blur-md" onClick={close} type="button" aria-label="Close chart detail" />
-      <section className="relative z-10 h-[94dvh] max-h-[94dvh] w-full max-w-5xl overflow-auto overscroll-contain rounded-t-[2rem] border border-cyan-300/20 bg-slate-950 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] shadow-2xl shadow-black/75 ring-1 ring-cyan-300/10 sm:h-auto sm:max-h-[min(90vh,900px)] sm:rounded-3xl sm:p-6">
-        <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/20 sm:hidden" aria-hidden="true" />
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className={`text-[10px] font-black uppercase tracking-[0.24em] ${toneClass.text}`}>Interactive chart</div>
-            <h2 className="mt-2 text-3xl font-semibold tracking-tight text-slate-50">{packet.symbol} · {chartTitle}</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">{interpretation}</p>
-          </div>
-          <button className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100" onClick={close} type="button" aria-label="Close chart detail">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
+    <StableDetailOverlay
+      closeLabel="Close chart detail"
+      description={interpretation}
+      eyebrow={<span className={toneClass.text}>Interactive chart</span>}
+      onClose={close}
+      open
+      size="xl"
+      title={`${packet.symbol} · ${chartTitle}`}
+    >
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
           <PeriodSwitcher active={period} onChange={setPeriod} />
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
@@ -338,8 +325,7 @@ function ExpandedChartModal({
             </ul>
           </div>
         ) : null}
-      </section>
-    </div>
+    </StableDetailOverlay>
   );
 }
 

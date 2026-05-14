@@ -204,8 +204,8 @@ export function AutoCalibrationRecommendations({ rows, state }: Props) {
       <div className="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Scanner Learning</div>
-          <h2 className="mt-1 text-lg font-semibold text-slate-50">Human-Readable Calibration Review</h2>
-          <p className="mt-1 text-sm text-slate-400">Analysis-only evidence from forward returns and signal lifecycle results. Advanced metrics remain below.</p>
+          <h2 className="mt-1 text-lg font-semibold text-slate-50">Recent Signal Review</h2>
+          <p className="mt-1 text-sm text-slate-400">Research-only evidence from later outcomes and signal history. Use it to understand scanner behavior, not to predict guaranteed returns.</p>
         </div>
         <div className="font-mono text-xs text-slate-500">{state === "data" ? `${filteredRows.length.toLocaleString()} of ${rows.length.toLocaleString()} rows` : "Not generated yet"}</div>
       </div>
@@ -284,7 +284,7 @@ export function AutoCalibrationRecommendations({ rows, state }: Props) {
       </div>
 
       {state !== "data" || !rows.length ? (
-        <div className="mt-3 rounded border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">No auto calibration recommendations found. Run performance analysis to generate them.</div>
+        <div className="mt-3 rounded border border-amber-400/20 bg-amber-400/10 px-3 py-2 text-sm text-amber-100">No recent signal review is ready yet. Run performance analysis to refresh it.</div>
       ) : !filteredRows.length ? (
         <div className="mt-3 rounded border border-dashed border-slate-700/70 px-3 py-8 text-center text-xs text-slate-500">No recommendations match the selected filters.</div>
       ) : (

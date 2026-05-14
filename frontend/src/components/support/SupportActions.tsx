@@ -113,7 +113,7 @@ export function SupportChatBox() {
           <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Product copilot</div>
           <h2 className="mt-1 text-lg font-semibold text-slate-50">Ask about using the platform</h2>
           <p className="mt-2 text-sm leading-6 text-slate-400">
-            The assistant is deterministic for beta: it explains product concepts, scanner states, billing steps, and support workflows without accessing private portfolio advice.
+            The assistant is bounded for beta: it explains product concepts, scanner states, billing steps, and support workflows without accessing private portfolio advice.
           </p>
         </div>
         <div className="grid gap-2">

@@ -787,6 +787,7 @@ function BestTradeNowOpportunityCard({
           <div className="mt-2 max-w-2xl text-base text-slate-400">{cleanText(best.company_name || best.sector, "Scanner signal")}</div>
           <p className="mt-5 max-w-3xl text-lg leading-7 text-slate-100">{humanizeInsightText(best.decision_reason, "Decision reason is not available yet.")}</p>
           <p className="mt-3 text-sm font-semibold text-cyan-200">{best.structuralLabel}. This is a research setup, not a trade instruction.</p>
+          <PriceContextStrip className="mt-4" row={best} />
           <div className="mt-5 flex min-w-0 flex-wrap gap-3">
             <div className="font-mono text-sm font-bold text-cyan-100">
               Tap or click {best.symbol} for symbol detail
@@ -809,6 +810,47 @@ function BestTradeNowOpportunityCard({
       </div>
     </GlassPanel>
   );
+}
+
+function PriceContextStrip({ className = "", row }: { className?: string; row: OpportunityViewModel }) {
+  const price = formatMoney(row.price);
+  const entry = row.entryZoneLabel ?? formatMoney(row.suggested_entry);
+  const stop = formatMoney(row.stop_loss);
+  const target = formatMoney(row.target);
+  const chips = [
+    { label: row.dataFreshness.status === "fresh" ? "Latest available" : "Last close", tone: "cyan", value: price },
+    { label: "Entry zone", tone: "emerald", value: entry },
+    { label: "Invalidation", tone: "rose", value: stop },
+    { label: "Target area", tone: "amber", value: target },
+  ];
+  const hasContext = chips.some((chip) => chip.value !== "N/A");
+
+  return (
+    <div className={`grid gap-2 rounded-2xl border border-white/10 bg-slate-950/35 p-3 sm:grid-cols-2 xl:grid-cols-4 ${className}`}>
+      {hasContext ? (
+        chips.map((chip) => (
+          <div className="min-w-0 rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2" key={chip.label}>
+            <div className={`text-[10px] font-black uppercase tracking-[0.14em] ${priceToneClass(chip.tone)}`}>{chip.label}</div>
+            <div className="mt-1 truncate font-mono text-sm font-black text-slate-50">{chip.value}</div>
+          </div>
+        ))
+      ) : (
+        <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.025] px-3 py-2 text-sm text-slate-400 sm:col-span-2 xl:col-span-4">
+          Price context unavailable. TradeVeto will show entry, invalidation, and target context only when scanner data provides it.
+        </div>
+      )}
+      <div className="text-[11px] leading-5 text-slate-500 sm:col-span-2 xl:col-span-4">
+        {row.dataFreshness.label}: {row.dataFreshness.humanAge}. Research context only, not a buy or sell recommendation.
+      </div>
+    </div>
+  );
+}
+
+function priceToneClass(tone: string): string {
+  if (tone === "emerald") return "text-emerald-300";
+  if (tone === "rose") return "text-rose-300";
+  if (tone === "amber") return "text-amber-300";
+  return "text-cyan-300";
 }
 
 function TopSetupIntelligencePanel({ best, candles }: { best: OpportunityViewModel; candles: ChartCandle[] }) {
@@ -1334,6 +1376,7 @@ function OpportunityCard({ row, visibilityReason }: { row: OpportunityViewModel;
       <div className="mt-3">
         <DataHealthIndicator compact freshness={row.dataFreshness} />
       </div>
+      <PriceContextStrip className="mt-3" row={row} />
       <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1fr)]">
         <ScoreFactorStrip
           emptyMessage="This row has not produced enough scored factors for a visual breakdown."

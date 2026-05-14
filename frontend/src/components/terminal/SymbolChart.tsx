@@ -364,7 +364,7 @@ function SymbolChartModal({
           <ChartDetailTile label="Last updated" value={lastUpdated ? formatChartDate(lastUpdated) : "Unavailable"} detail="Timestamp comes from the latest validated chart point or scanner payload." />
         </div>
         <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-xs leading-5 text-slate-500">
-          Research only. Chart context can support investigation, but TradeVeto decisions still depend on deterministic risk, evidence, and regime checks.
+          Research only. Chart context can support investigation, but TradeVeto decisions still depend on risk, evidence, and regime checks.
         </div>
       </section>
     </div>

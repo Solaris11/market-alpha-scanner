@@ -20,7 +20,7 @@ export function AICognitionLayerPanel({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <SectionTitle eyebrow="AI Cognition Layer" title="Thinking Timeline" meta={postureLabel(model.posture)} />
         <div className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-cyan-100">
-          grounded packet
+          grounded data
         </div>
       </div>
       <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-300">{model.overview}</p>
@@ -72,7 +72,7 @@ export function AICognitionLayerPanel({
 
           <details className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-black text-slate-100">
-              Grounding Packet
+              Grounding Data
               <span className="text-[10px] uppercase tracking-[0.14em] text-slate-500">open</span>
             </summary>
             <ul className="mt-3 space-y-2 text-xs leading-5 text-slate-400">
@@ -99,7 +99,7 @@ export function AICognitionLayerPanel({
                 <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{item.detail}</p>
               </Link>
             )) : (
-              <div className="rounded-xl border border-white/10 bg-slate-950/35 p-3 text-sm text-slate-400">No major contradictions surfaced in the current deterministic packet.</div>
+              <div className="rounded-xl border border-white/10 bg-slate-950/35 p-3 text-sm text-slate-400">No major contradictions surfaced in the latest TradeVeto data.</div>
             )}
           </div>
         </div>

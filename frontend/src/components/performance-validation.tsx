@@ -315,7 +315,7 @@ function PerformanceSimpleView({
   const hasCompletedWindows = compactRows.length > 0;
   const insightCards = [
     {
-      detail: bestSetup ? `${humanizeLabel(bestSetup.group_value, "This group")} has the strongest completed setup evidence in the selected validation window.` : "Completed setup comparisons will appear after enough later-outcome windows finish.",
+      detail: bestSetup ? `${humanizeLabel(bestSetup.group_value, "This group")} has the strongest completed setup evidence in the selected review window.` : "Setup comparisons will appear after enough later-outcome windows finish.",
       label: "What currently works better",
       value: bestSetup ? edgeLabel(bestSetup) : "Still collecting",
     },
@@ -325,12 +325,12 @@ function PerformanceSimpleView({
       value: weakestSetup ? edgeLabel(weakestSetup) : "Not enough evidence",
     },
     {
-      detail: bestScoreRange ? "Score ranges are being compared against actual later outcomes. This is evidence gathering, not automatic tuning." : "Score-range validation needs more saved history before it becomes useful.",
+      detail: bestScoreRange ? "Score ranges are being compared against actual later outcomes. This is evidence gathering, not a promise of future returns." : "Score-range review needs more saved history before it becomes useful.",
       label: "Score range learning",
       value: bestScoreRange ? edgeLabel(bestScoreRange) : "Pending",
     },
     {
-      detail: hasCompletedWindows ? `Completed horizons: ${completedHorizons.join(", ") || "none"}.` : "Signals exist, but the forward windows have not had enough time to mature.",
+      detail: hasCompletedWindows ? `Completed horizons: ${completedHorizons.join(", ") || "none"}.` : "Signals exist, but later-outcome windows have not had enough time to mature.",
       label: "Evidence maturity",
       value: evidence,
     },
@@ -341,7 +341,7 @@ function PerformanceSimpleView({
       <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Simple View</div>
       <h3 className="mt-1 text-lg font-semibold text-slate-50">What the scanner is learning</h3>
       <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">
-        Plain-English validation from completed later-outcome observations. This view is intentionally conservative and does not auto-tune the scanner.
+        Simple review of how recent signals behaved after they had time to develop. This view is intentionally conservative and does not promise future returns.
       </p>
       <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
         {insightCards.map((card) => (
@@ -367,24 +367,24 @@ function PerformanceEvidenceEmptyState({ completedHorizons, forwardObservationCo
       label: "Evidence status",
       value: forwardObservationCount > 0 ? "Observations saved" : "Still maturing",
       detail: forwardObservationCount > 0
-        ? `${forwardObservationCount.toLocaleString()} forward observations exist, but grouped comparisons are not ready for the selected horizon yet.`
-        : "Recent signals need time to age into 1D, 5D, 10D, and 20D validation windows.",
+        ? `${forwardObservationCount.toLocaleString()} signal-history observations exist, but grouped comparisons are not ready for the selected horizon yet.`
+        : "Recent signals need time to age into 1D, 5D, 10D, and 20D review windows.",
     },
     {
       label: "Completed horizons",
       value: completedHorizons.length ? completedHorizons.join(", ") : "None yet",
-      detail: "The scanner keeps collecting evidence without auto-tuning itself from small samples.",
+      detail: "TradeVeto keeps collecting signal history before drawing stronger conclusions.",
     },
     {
       label: "What happens next",
-      value: "Automatic fill-in",
-      detail: "As forward windows complete, grouped score, setup, and decision evidence will replace this compact state.",
+      value: "Fills in over time",
+      detail: "As later windows complete, grouped score, setup, and decision evidence will replace this compact state.",
     },
   ];
   return (
     <section className="terminal-panel rounded-md p-4">
       <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Evidence Charts</div>
-      <h3 className="mt-1 text-base font-semibold text-slate-50">Forward-return comparisons are not ready yet</h3>
+      <h3 className="mt-1 text-base font-semibold text-slate-50">Signal comparisons are not ready yet</h3>
       <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">
         Empty chart frames are hidden until there is enough grouped evidence to make the visualization useful.
       </p>
@@ -501,7 +501,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
   const readiness = [
     { label: "Saved Runs", value: history.count.toLocaleString(), meta: "signal memory" },
     { label: "Unique Days", value: history.uniqueDates.length.toLocaleString(), meta: "trading days" },
-    { label: "Completed Observations", value: (forwardObservationCount ?? cleanForwardRows.length).toLocaleString(), meta: "forward windows" },
+    { label: "Completed Observations", value: (forwardObservationCount ?? cleanForwardRows.length).toLocaleString(), meta: "later windows" },
     { label: "Horizons Available", value: completedHorizons.length ? completedHorizons.join(", ") : "None", meta: "1D / 2D / 5D / 10D / 20D / 60D" },
   ];
   const evidenceCount = forwardObservationCount ?? cleanForwardRows.length;
@@ -530,31 +530,31 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
     {
       bullets: [
         `${summaryRows.length.toLocaleString()} grouped performance rows are available.`,
-        summaryRows.length ? "Grouped score/setup comparisons are shown below with real completed forward windows." : "Grouped comparisons are hidden until enough forward windows complete.",
-        "The scanner does not auto-tune itself from small samples.",
+        summaryRows.length ? "Grouped score/setup comparisons are shown below with real completed later windows." : "Grouped comparisons are hidden until enough later windows complete.",
+        "TradeVeto waits for more signal history before drawing stronger conclusions.",
       ],
-      dataSource: "Grouped forward-return summary rows",
+      dataSource: "Grouped signal history rows",
       detailSummary: summaryRows.length ? "Grouped performance comparisons are ready for review." : "Grouped performance comparisons are still maturing.",
-      detailTitle: "Calibration Readiness",
+      detailTitle: "Signal Readiness",
       factors: [
         { label: "Evidence Maturity", tone: "cyan", value: evidenceMaturityScore(evidenceCount) },
         { label: "Completed Horizons", tone: "emerald", value: completedHorizons.length ? (completedHorizons.length / 6) * 100 : null },
       ],
       icon: <Gauge className="h-6 w-6" />,
-      id: "calibration-readiness",
-      label: "Calibration",
+      id: "signal-readiness",
+      label: "Evidence",
       metric: summaryRows.length.toLocaleString(),
       summary: summaryRows.length ? `${summaryRows.length} grouped rows ready.` : "Grouped rows not ready yet.",
       tone: summaryRows.length ? "emerald" : "amber",
     },
     {
       bullets: [
-        `${compactRows.length.toLocaleString()} compact forward-return observations are available in the current view.`,
+        `${compactRows.length.toLocaleString()} compact signal-history observations are available in the current view.`,
         showRawObservations ? "Detailed raw observations are currently selected." : "Compact view shows latest symbol/horizon observations by default.",
         "Advanced raw observations load only when requested.",
       ],
-      dataSource: "Forward returns CSV/API",
-      detailSummary: "Forward returns compare historical signals against later outcomes once time windows complete.",
+      dataSource: "Signal history CSV/API",
+      detailSummary: "Signal history compares historical signals against later outcomes once time windows complete.",
       detailTitle: "Outcome Observations",
       factors: [
         { label: "Evidence Maturity", tone: "cyan", value: evidenceMaturityScore(evidenceCount) },
@@ -573,7 +573,7 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
         "Empty chart frames are replaced by explicit limited-evidence states.",
         "Advanced tables stay available for operator review.",
       ],
-      dataSource: "Grouped performance rows and forward observations",
+      dataSource: "Grouped performance rows and signal-history observations",
       detailSummary: "Performance visuals are intentionally conservative and hide chart frames until real grouped evidence is present.",
       detailTitle: "Chart Trust Boundary",
       factors: [
@@ -604,14 +604,14 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
     <section className="space-y-3">
       <InteractiveInsightZoneGrid
         eyebrow="Performance proof zones"
-        summary="Open each zone to inspect the evidence status, source rows, and chart boundary before reading calibration claims."
-        title="Tap Into Calibration Evidence"
+        summary="Open each zone to inspect evidence status, source rows, and chart boundaries before reading signal-history claims."
+        title="Tap Into Signal Evidence"
         zones={visualZones}
       />
 
       <section className="terminal-panel rounded-md p-4">
         <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Readiness</div>
-        <p className="mt-1 text-xs text-slate-400">Grouped results summarize scanner evidence ranges. Forward returns show symbol-level observations.</p>
+        <p className="mt-1 text-xs text-slate-400">Grouped results summarize scanner evidence ranges. Signal history shows symbol-level observations.</p>
         <div className="mt-3 grid gap-2 md:grid-cols-4">
           {readiness.map((metric) => (
             <div className="rounded border border-slate-800 bg-slate-950/50 p-2" key={metric.label}>
@@ -757,12 +757,12 @@ export function PerformanceValidation({ forwardRows, forwardObservationCount, hi
         <div className="border-b border-slate-800 bg-slate-950/70 px-3 py-2">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">{showRawObservations ? "Forward Returns (Detailed View)" : "Forward Returns (Compact View)"}</div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-sky-300">{showRawObservations ? "Signal History (Detailed View)" : "Signal History (Compact View)"}</div>
               <p className="mt-1 text-xs normal-case tracking-normal text-slate-500">
                 {showRawObservations ? "Detailed view may include repeated intraday observations." : "Compact view shows the latest observation per symbol and horizon."}
               </p>
               <p className="mt-1 text-xs normal-case tracking-normal text-slate-500">
-                Showing {visibleForwardRows.length.toLocaleString()} of {filteredForwardRows.length.toLocaleString()} forward return rows
+                Showing {visibleForwardRows.length.toLocaleString()} of {filteredForwardRows.length.toLocaleString()} signal history rows
               </p>
             </div>
             <label className="inline-flex items-center gap-2 text-xs font-semibold text-slate-300">

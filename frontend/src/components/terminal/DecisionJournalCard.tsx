@@ -221,7 +221,7 @@ export function DecisionJournalCard({
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-slate-950/35 p-3">
         <div className="max-w-2xl">
           <p className="text-xs leading-5 text-slate-500">{decisionMemory.privacyNote}</p>
-          <p className="mt-1 text-xs leading-5 text-slate-600">Stored fields are bounded to journal action, optional notes, setup context, risk scores, and a compact deterministic snapshot. Export and broader memory controls are available from Account settings.</p>
+          <p className="mt-1 text-xs leading-5 text-slate-600">Stored fields are limited to journal action, optional notes, setup context, risk scores, and a compact signal snapshot. Export and broader memory controls are available from Account settings.</p>
         </div>
         <button
           className="rounded-full border border-rose-300/30 bg-rose-400/10 px-4 py-2 text-xs font-semibold text-rose-100 transition hover:border-rose-200/70 hover:bg-rose-400/15 disabled:cursor-not-allowed disabled:opacity-50"

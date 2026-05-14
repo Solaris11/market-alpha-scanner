@@ -13,7 +13,7 @@ const featureGroups = [
   ["Opportunity filter", "Ranked market setups with premium research details gated server-side."],
   ["Symbol analysis", "Trend, momentum, volatility, market regime, and risk context in one symbol view."],
   ["Shock research", "Historical large-move behavior, chase risk, and two-sided volatility context without direct trade instructions."],
-  ["Evidence maturity", "Labels show when history, outcomes, analogs, and calibration evidence are limited or stronger."],
+  ["Evidence maturity", "Labels show when history, outcomes, and analogs are limited or stronger."],
   ["Replay intelligence", "Historical state playback helps users see what the system knew before or after a move."],
   ["Verified event context", "Macro, earnings, filings, and company events are only summarized when trusted-source context exists."],
   ["Paper simulation", "Simulate decisions and track discipline without connecting a brokerage account."],

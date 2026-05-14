@@ -58,6 +58,7 @@ const NAV_ICON_MAP: Record<string, { Icon: LucideIcon; tone: string }> = {
   developers: { Icon: Code2, tone: "text-violet-200" },
   find: { Icon: Search, tone: "text-cyan-200" },
   history: { Icon: BookOpenCheck, tone: "text-violet-200" },
+  intelligence: { Icon: Bot, tone: "text-cyan-200" },
   mobile: { Icon: Smartphone, tone: "text-emerald-200" },
   opportunities: { Icon: ChartCandlestick, tone: "text-emerald-200" },
   paper: { Icon: BriefcaseBusiness, tone: "text-emerald-200" },
@@ -98,6 +99,12 @@ const NAV_COLOR_MAP: Record<string, { active: string; hover: string; icon: strin
     hover: "hover:border-violet-300/30 hover:bg-violet-300/[0.08] hover:text-violet-100",
     icon: "border-violet-300/30 bg-violet-300/15 text-violet-100 shadow-[0_0_18px_rgba(167,139,250,0.18)]",
     rail: "bg-violet-300 shadow-[0_0_14px_rgba(167,139,250,0.55)]",
+  },
+  intelligence: {
+    active: "border-cyan-300/45 bg-cyan-300/[0.13] text-cyan-50 shadow-[0_0_26px_rgba(34,211,238,0.16)]",
+    hover: "hover:border-cyan-300/30 hover:bg-cyan-300/[0.08] hover:text-cyan-100",
+    icon: "border-cyan-300/30 bg-cyan-300/15 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.18)]",
+    rail: "bg-cyan-300 shadow-[0_0_14px_rgba(34,211,238,0.55)]",
   },
   mobile: {
     active: "border-emerald-300/45 bg-emerald-300/[0.13] text-emerald-50 shadow-[0_0_26px_rgba(52,211,153,0.16)]",
@@ -340,7 +347,7 @@ function DrawerNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
 
 function BottomNavLink({ item, pathname }: { item: AppNavItem; pathname: string }) {
   const active = isActivePath(pathname, item.href);
-  const label = item.key === "opportunities" ? "Ideas" : item.label;
+  const label = item.key === "opportunities" ? "Ideas" : item.key === "watchlist" ? "Watch" : item.key === "dashboard" ? "Dash" : item.label;
   const color = NAV_COLOR_MAP[item.key] ?? DEFAULT_NAV_COLOR;
   const navigationIntent = useNavigationIntent(item.href, label);
   return (

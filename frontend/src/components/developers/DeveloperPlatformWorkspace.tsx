@@ -311,7 +311,7 @@ export function DeveloperPlatformWorkspace({
           {[
             "API outputs are scoped, authenticated, and rate-limit ready; they do not expose broker execution.",
             "Webhook payloads are signed with TradeVeto signatures so receivers can verify origin.",
-            "Feeds are market intelligence research context, not financial advice or deterministic predictions.",
+            "Feeds are market intelligence research context, not financial advice or prediction claims.",
           ].map((item) => <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-xs leading-5 text-slate-400" key={item}>{item}</div>)}
         </div>
       </GlassPanel>
