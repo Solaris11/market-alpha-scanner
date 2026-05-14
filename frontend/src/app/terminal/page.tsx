@@ -14,6 +14,7 @@ import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { ExecutionIntelligencePanel } from "@/components/terminal/ExecutionIntelligencePanel";
 import { InstitutionalIntelligencePanel } from "@/components/terminal/InstitutionalIntelligencePanel";
 import { IntradayRegimeDriftPanel } from "@/components/terminal/IntradayRegimeDriftPanel";
+import { IntelligenceFeedNotificationPanel } from "@/components/terminal/IntelligenceFeedNotificationPanel";
 import { LiveIntelligencePanel } from "@/components/terminal/LiveIntelligencePanel";
 import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
 import { MarketChartHub } from "@/components/terminal/MarketChartHub";
@@ -42,6 +43,7 @@ import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
 import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { getMarketChartHubData } from "@/lib/server/validated-price-history";
+import { loadIntelligenceFeedForUser } from "@/lib/server/intelligence-feed";
 import { readUserWorkspacePreferences } from "@/lib/server/user-workspace-preferences";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
@@ -136,6 +138,14 @@ export default async function TerminalPage() {
     getRecentIntradaySignalDriftSummary({ hours: 8, maxRuns: 18, minRuns: 2 }).catch(() => []),
   ]);
   const opportunityModel = buildOpportunitiesPageModel(snapshot.signals, performance, shockPatterns, narratives);
+  const intelligenceFeed = await loadIntelligenceFeedForUser(entitlement.user?.id ?? null, {
+    activeAlertMatches,
+    marketCondition: snapshot.marketRegime.label,
+    rows: opportunityModel.rows,
+    scanUpdatedAt: scanSafety.lastUpdated,
+    watchlistSymbols,
+    workflowEvolution,
+  });
   const adaptiveLearning = buildAdaptiveLearningSystem({
     forwardRows: performance?.forwardReturns.rows ?? [],
     observationCount: performance?.forwardReturns.rows.length ?? 0,
@@ -197,6 +207,12 @@ export default async function TerminalPage() {
             rows={opportunityModel.rows}
             workspacePreferences={workspacePreferences}
             workflowEvolution={workflowEvolution}
+          />
+          <IntelligenceFeedNotificationPanel
+            brief={intelligenceFeed.brief}
+            initialPreferences={intelligenceFeed.preferences}
+            items={intelligenceFeed.items}
+            watchlistSymbols={watchlistSymbols}
           />
           <MarketChartHub charts={marketChartHubData} marketCondition={snapshot.marketRegime.label} updatedAt={scanSafety.lastUpdated} />
           <details className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
