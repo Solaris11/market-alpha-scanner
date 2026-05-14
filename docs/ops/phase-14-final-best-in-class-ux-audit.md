@@ -68,6 +68,20 @@ Authenticated production QA proof:
 
 Validation limit: this is a disposable authenticated beta-premium QA session, not a long-lived real cohort account. It proves entitlement, legal acceptance, authenticated rendering, and premium route access for the audited pages, but not every possible saved-user state, historical preference, notification, or billing edge case.
 
+Production validation suite on commit `f18596c990e87d59183651e34655388e1a527d9d`:
+
+| Check | Result |
+| --- | --- |
+| `frontend npm run lint` | Passed |
+| `frontend npm test -- --runInBand` | Passed, 390 tests |
+| `frontend npm run build` | Passed |
+| `frontend npm audit --omit=dev` | Passed, 0 vulnerabilities |
+| `python3 -m py_compile $(git ls-files "*.py")` | Passed |
+| `npx pyright . --pythonpath .venv/bin/python --warnings` | Passed, 0 errors |
+| `git diff --check` | Passed |
+| `/api/health` | Passed, `ok: true` |
+| `/api/health/deep` | Passed, `ok: true` |
+
 ## Production Route And Speed Snapshot
 
 Desktop route checks from production:
