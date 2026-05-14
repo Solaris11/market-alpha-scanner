@@ -712,7 +712,7 @@ export default async function PaperPage() {
   return (
     <TerminalShell>
       <div className="space-y-5">
-        <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-6 shadow-xl shadow-black/20 ring-1 ring-white/5 backdrop-blur-xl">
+        <section className="rounded-2xl border border-white/10 bg-slate-950/60 p-6 shadow-xl shadow-black/20 ring-1 ring-white/5 backdrop-blur-xl" id="guide">
           <div className="text-[10px] font-black uppercase tracking-[0.32em] text-cyan-300">Paper Trust Layer</div>
           <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
@@ -750,6 +750,7 @@ export default async function PaperPage() {
                     <EquityCurve points={equityPoints} />
                   </SectionShell>
 
+                  <div id="simulator">
                   <ResponsiveAdvancedDetails
                     deferMount
                     eyebrow="Paper detail"
@@ -769,6 +770,7 @@ export default async function PaperPage() {
 
                     <GhostPortfolioCard positions={data.positions} />
                   </ResponsiveAdvancedDetails>
+                  </div>
                 </>
               ) : (
                 <PremiumLockedState
@@ -780,9 +782,11 @@ export default async function PaperPage() {
                 />
               )}
 
+              <div id="positions">
               <SectionShell eyebrow="Open Risk" title="Active Paper Risk">
                 <OpenRiskSection positions={data.positions} />
               </SectionShell>
+              </div>
 
               <ManualPaperTradeForm cashBalance={account?.cash_balance ?? null} />
             </div>

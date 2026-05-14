@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { createPortal } from "react-dom";
 import {
   Activity,
   BarChart3,
@@ -27,7 +28,7 @@ import { AccountPill } from "@/components/account/AccountPill";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { ACCOUNT_NAV_ITEM, MOBILE_BOTTOM_NAV_ITEMS, MOBILE_MORE_NAV_LABEL, PRIMARY_NAV_ITEMS, activeSectionTitle, drawerNavSections, isActivePath, visibleUtilityNavItems, type AppNavItem } from "@/lib/navigation";
+import { MOBILE_BOTTOM_NAV_ITEMS, MOBILE_MORE_NAV_LABEL, PRIMARY_NAV_ITEMS, activeSectionTitle, isActivePath, mobileMoreNavSections, visibleUtilityNavItems, type AppNavItem } from "@/lib/navigation";
 import { useNavigationIntent } from "./NavigationPerformance";
 
 export function DesktopTerminalNav() {
@@ -54,6 +55,7 @@ const NAV_ICON_MAP: Record<string, { Icon: LucideIcon; tone: string }> = {
   advanced: { Icon: Gauge, tone: "text-violet-200" },
   alerts: { Icon: Bell, tone: "text-amber-200" },
   community: { Icon: UsersRound, tone: "text-emerald-200" },
+  copilot: { Icon: Bot, tone: "text-cyan-200" },
   dashboard: { Icon: LayoutDashboard, tone: "text-cyan-200" },
   developers: { Icon: Code2, tone: "text-violet-200" },
   find: { Icon: Search, tone: "text-cyan-200" },
@@ -150,12 +152,16 @@ export function MobileTerminalNav() {
   const router = useRouter();
   const drawerTitleId = useId();
   const drawerRef = useRef<HTMLElement | null>(null);
-  const topMenuButtonRef = useRef<HTMLButtonElement | null>(null);
   const bottomMenuButtonRef = useRef<HTMLButtonElement | null>(null);
   const { authenticated, entitlement, logout, user } = useCurrentUser();
+  const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
   const title = activeSectionTitle(pathname, entitlement.isAdmin);
-  const sections = drawerNavSections(entitlement.isAdmin);
+  const sections = mobileMoreNavSections(entitlement.isAdmin);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -170,7 +176,6 @@ export function MobileTerminalNav() {
       const target = event.target;
       if (!(target instanceof Node)) return;
       if (drawerRef.current?.contains(target)) return;
-      if (topMenuButtonRef.current?.contains(target)) return;
       if (bottomMenuButtonRef.current?.contains(target)) return;
       setOpen(false);
     }
@@ -198,36 +203,8 @@ export function MobileTerminalNav() {
     router.refresh();
   }
 
-  return (
-    <div className="xl:hidden">
-      <div className="flex min-h-14 items-center gap-2">
-        <Link aria-label="TradeVeto Terminal" className="min-w-0 shrink-0" href="/terminal">
-          <BrandMark compact />
-        </Link>
-        <div className="hidden min-w-0 flex-1 sm:block">
-          <div className="truncate text-sm font-semibold text-slate-50">{title}</div>
-          <div className="truncate text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300/80">Decision Intelligence</div>
-        </div>
-        <span data-sensitive>
-          <NotificationBell />
-        </span>
-        <span data-sensitive>
-          <AccountPill compact />
-        </span>
-        <button
-          aria-controls="tradeveto-mobile-drawer"
-          aria-expanded={open}
-          aria-label={open ? "Close navigation menu" : "Open navigation menu"}
-          className="inline-flex h-10 shrink-0 items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 text-slate-100 transition hover:border-cyan-300/35 hover:bg-cyan-400/10"
-          onClick={() => setOpen((value) => !value)}
-          ref={topMenuButtonRef}
-          type="button"
-        >
-          <span className="hidden text-xs font-semibold sm:inline">{open ? "Close" : "More"}</span>
-          <Menu aria-hidden="true" className="h-4 w-4" />
-        </button>
-      </div>
-
+  const mobileSurfaces = (
+    <>
       {open ? (
         <>
           <div
@@ -245,9 +222,10 @@ export function MobileTerminalNav() {
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300/80">TradeVeto</div>
-                  <h2 className="mt-1 text-lg font-semibold text-slate-50" id={drawerTitleId}>All Navigation</h2>
+                  <h2 className="mt-1 text-lg font-semibold text-slate-50" id={drawerTitleId}>More</h2>
+                  <p className="mt-1 max-w-[15rem] text-xs leading-5 text-slate-500">Low-frequency tools stay here so the bottom nav remains thumb-friendly.</p>
                 </div>
-                <button className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300" onClick={() => setOpen(false)} type="button">
+                <button aria-label="Close navigation menu" className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300" onClick={() => setOpen(false)} type="button">
                   <span aria-hidden="true">x</span>
                   <span className="sr-only">Close navigation menu</span>
                 </button>
@@ -277,15 +255,14 @@ export function MobileTerminalNav() {
             </nav>
 
             <div className="border-t border-white/10 p-4">
-              <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Account</div>
-              <div className="grid grid-cols-2 gap-2">
-                <DrawerNavLink item={ACCOUNT_NAV_ITEM} pathname={pathname} />
+              <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">Session</div>
+              <div className="grid gap-2">
                 {authenticated ? (
-                  <button className="tv-tap-motion rounded-2xl border border-rose-300/20 bg-rose-400/10 px-3 py-3 text-left text-sm font-semibold text-rose-100" data-sensitive onClick={() => void handleLogout()} type="button">
+                  <button className="tv-tap-motion rounded-2xl border border-rose-300/20 bg-rose-400/10 px-3 py-3 text-center text-sm font-semibold text-rose-100" data-sensitive onClick={() => void handleLogout()} type="button">
                     Sign out
                   </button>
                 ) : (
-                  <Link className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 px-3 py-3 text-sm font-semibold text-cyan-100" href="/account">Sign in</Link>
+                  <Link className="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 px-3 py-3 text-center text-sm font-semibold text-cyan-100" href="/account">Sign in</Link>
                 )}
               </div>
             </div>
@@ -293,10 +270,31 @@ export function MobileTerminalNav() {
         </>
       ) : null}
 
-      <nav aria-label="Primary mobile navigation" className="fixed inset-x-2 z-[8500] grid grid-cols-6 gap-0.5 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl sm:hidden" style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
+      <nav aria-label="Primary mobile navigation" className="fixed inset-x-2 z-[8500] grid grid-cols-6 gap-0.5 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl xl:hidden" style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
         {MOBILE_BOTTOM_NAV_ITEMS.map((item) => <BottomNavLink item={item} key={item.href} pathname={pathname} />)}
         <BottomMenuButton buttonRef={bottomMenuButtonRef} onClick={() => setOpen(true)} open={open} />
       </nav>
+    </>
+  );
+
+  return (
+    <div className="xl:hidden">
+      <div className="flex min-h-14 items-center gap-2">
+        <Link aria-label="TradeVeto Terminal" className="min-w-0 shrink-0" href="/terminal">
+          <BrandMark compact />
+        </Link>
+        <div className="hidden min-w-0 flex-1 sm:block">
+          <div className="truncate text-sm font-semibold text-slate-50">{title}</div>
+          <div className="truncate text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300/80">Decision Intelligence</div>
+        </div>
+        <span data-sensitive>
+          <NotificationBell />
+        </span>
+        <span data-sensitive>
+          <AccountPill compact />
+        </span>
+      </div>
+      {mounted ? createPortal(mobileSurfaces, document.body) : null}
     </div>
   );
 }

@@ -240,20 +240,24 @@ export default async function PerformancePage() {
   return (
     <TerminalShell>
       <div className="space-y-3">
-        <MetricStrip
-          metrics={[
-            { label: "Summary Rows", value: performance.summary.rows.length.toLocaleString(), meta: fileStateLabel(performance.summary.state) },
-            { label: "Signal Rows", value: forwardObservationCount.toLocaleString(), meta: fileStateLabel(performance.forwardReturns.state) },
-            { label: "Saved Runs", value: history.count.toLocaleString(), meta: "signal memory" },
-            { label: "Unique Dates", value: history.uniqueDates.length.toLocaleString(), meta: "history depth" },
-            { label: "Earliest", value: formatDate(history.earliest), meta: "history" },
-            { label: "Latest", value: formatDate(history.latest), meta: "history" },
-          ]}
-        />
+        <div id="summary">
+          <MetricStrip
+            metrics={[
+              { label: "Summary Rows", value: performance.summary.rows.length.toLocaleString(), meta: fileStateLabel(performance.summary.state) },
+              { label: "Signal Rows", value: forwardObservationCount.toLocaleString(), meta: fileStateLabel(performance.forwardReturns.state) },
+              { label: "Saved Runs", value: history.count.toLocaleString(), meta: "signal memory" },
+              { label: "Unique Dates", value: history.uniqueDates.length.toLocaleString(), meta: "history depth" },
+              { label: "Earliest", value: formatDate(history.earliest), meta: "history" },
+              { label: "Latest", value: formatDate(history.latest), meta: "history" },
+            ]}
+          />
+        </div>
 
         <PerformanceHowToUse />
 
-        <CalibrationInsightsPanel insights={calibrationInsights} />
+        <div id="evidence">
+          <CalibrationInsightsPanel insights={calibrationInsights} />
+        </div>
 
         <details className="terminal-panel rounded-2xl p-4">
           <summary className="cursor-pointer text-sm font-semibold text-slate-100 marker:text-cyan-300">Signal history details</summary>
@@ -263,6 +267,7 @@ export default async function PerformancePage() {
           </div>
         </details>
 
+        <div id="history">
         <ResponsiveAdvancedDetails
           deferMount
           eyebrow="Detailed signal history"
@@ -282,6 +287,7 @@ export default async function PerformancePage() {
 
           <PerformanceDrift forwardReturnsReady={forwardReturnsReady} rows={driftRows} />
         </ResponsiveAdvancedDetails>
+        </div>
       </div>
     </TerminalShell>
   );

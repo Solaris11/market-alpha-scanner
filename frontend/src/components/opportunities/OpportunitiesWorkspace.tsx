@@ -297,10 +297,14 @@ export function OpportunitiesWorkspace({
           }}
         />
       ) : null}
-      <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} rows={rows} />
-      <OpportunityVisualCommandCenter marketCondition={marketCondition} rows={rows} watchlistSet={watchlistSet} />
+      <div id="cards">
+        <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} rows={rows} />
+      </div>
+      <div id="map">
+        <OpportunityVisualCommandCenter marketCondition={marketCondition} rows={rows} watchlistSet={watchlistSet} />
+      </div>
 
-      <GlassPanel className="p-5">
+      <GlassPanel className="p-5" id="watchlist">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <SectionTitle eyebrow="Opportunities" title="Scanner Universe" meta={`Showing ${filtered.length.toLocaleString()} of ${rows.length.toLocaleString()} symbols`} />
           <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
@@ -395,6 +399,7 @@ export function OpportunitiesWorkspace({
         />
       </GlassPanel>
 
+      <div id="details">
       <OpportunitySection
         activeFilterCount={activeFilterCount}
         activeTab={activeTab}
@@ -411,6 +416,7 @@ export function OpportunitiesWorkspace({
         totalRows={rows.length}
         watchlistCount={watchlistSet.size}
       />
+      </div>
 
       <ResponsiveAdvancedDetails
         deferMount

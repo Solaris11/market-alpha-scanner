@@ -64,7 +64,7 @@ export function InstitutionalDashboardWorkspace({
 
   return (
     <div className="space-y-5">
-      <GlassPanel className="overflow-hidden border-cyan-300/15 bg-cyan-400/[0.02] p-5 sm:p-6">
+      <GlassPanel className="overflow-hidden border-cyan-300/15 bg-cyan-400/[0.02] p-5 sm:p-6" id="overview">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="min-w-0">
             <div className="text-[10px] font-black uppercase tracking-[0.32em] text-cyan-300">Institutional Dashboard</div>
@@ -96,17 +96,19 @@ export function InstitutionalDashboardWorkspace({
         </div>
       </GlassPanel>
 
-      <UnifiedIntelligenceConsole
-        marketCondition={marketCondition ?? dashboard.marketState.label}
-        personalizationProfile={initialProfile ?? null}
-        rows={rows}
-        surface="dashboard"
-        workflowEvolution={workflowEvolution ?? null}
-      />
+      <div id="activity">
+        <UnifiedIntelligenceConsole
+          marketCondition={marketCondition ?? dashboard.marketState.label}
+          personalizationProfile={initialProfile ?? null}
+          rows={rows}
+          surface="dashboard"
+          workflowEvolution={workflowEvolution ?? null}
+        />
+      </div>
 
       <MarketMetrics metrics={dashboard.marketState.metrics} />
 
-      <div className="grid gap-5">
+      <div className="grid gap-5" id="workspace">
         <ClusterBoard clusters={dashboard.clusters} />
       </div>
 

@@ -148,7 +148,7 @@ function MobilePriorityActions() {
   ];
 
   return (
-    <section className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+    <section className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5" id="alerts">
       {actions.map((action) => (
         <Link className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition hover:border-cyan-300/35 hover:bg-cyan-400/[0.06]" href={action.href} key={action.href}>
           <div className="text-sm font-semibold text-slate-100">{action.label}</div>
@@ -161,7 +161,7 @@ function MobilePriorityActions() {
 
 function MobileHero({ children }: { children: React.ReactNode }) {
   return (
-    <header className="rounded-2xl border border-white/10 bg-slate-950/55 p-5 shadow-2xl shadow-black/25 backdrop-blur-xl sm:p-6">
+    <header className="rounded-2xl border border-white/10 bg-slate-950/55 p-5 shadow-2xl shadow-black/25 backdrop-blur-xl sm:p-6" id="install">
       <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr] xl:items-end">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Install TradeVeto</div>
@@ -199,7 +199,7 @@ function MobileReadinessChecklist() {
   ];
 
   return (
-    <section className="rounded-2xl border border-white/10 bg-slate-950/55 p-4 shadow-2xl shadow-black/25 backdrop-blur-xl sm:p-5">
+    <section className="rounded-2xl border border-white/10 bg-slate-950/55 p-4 shadow-2xl shadow-black/25 backdrop-blur-xl sm:p-5" id="setup">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300 sm:tracking-[0.24em]">Mobile Readiness</div>

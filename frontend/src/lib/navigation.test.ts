@@ -4,11 +4,14 @@ import { describe, test } from "node:test";
 import {
   MOBILE_BOTTOM_NAV_ITEMS,
   MOBILE_MORE_NAV_LABEL,
+  MOBILE_MORE_NAV_ITEMS,
   PRIMARY_NAV_ITEMS,
   activeSectionTitle,
   allNavigationItems,
   drawerNavSections,
   isActivePath,
+  mobileMoreNavSections,
+  mobileRouteModesForPath,
   visibleUtilityNavItems,
 } from "./navigation";
 
@@ -23,7 +26,7 @@ describe("application navigation hierarchy", () => {
   test("keeps low-frequency admin and utility routes out of the primary nav", () => {
     assert.deepEqual(
       visibleUtilityNavItems(false).map((item) => item.label),
-      ["Intelligence", "Mobile App Setup", "Support", "Team", "Community", "Developers", "Advanced"],
+      ["Intelligence", "Mobile App Setup", "Support"],
     );
     assert.deepEqual(
       visibleUtilityNavItems(true).map((item) => item.label),
@@ -56,21 +59,27 @@ describe("application navigation hierarchy", () => {
       MOBILE_BOTTOM_NAV_ITEMS.map((item) => item.label),
       ["Terminal", "Opportunities", "Watchlist", "Alerts", "Dashboard"],
     );
+    assert.deepEqual(
+      MOBILE_MORE_NAV_ITEMS.map((item) => item.label),
+      ["Performance", "History", "Paper Trading", "Strategy Labs", "Intelligence", "Copilot", "Install App", "Support", "Account"],
+    );
     assert.equal(MOBILE_MORE_NAV_LABEL, "More");
   });
 
   test("keeps all major product sections reachable through the mobile drawer", () => {
-    const sections = drawerNavSections(false);
+    const sections = mobileMoreNavSections(false);
     const labels = sections.flatMap((section) => section.items.map((item) => item.label));
-    assert.deepEqual(labels, ["Terminal", "Opportunities", "Watchlist", "Alerts", "Dashboard", "Performance", "History", "Paper Trading", "Strategy Labs", "Intelligence", "Mobile App Setup", "Support", "Team", "Community", "Developers", "Advanced"]);
+    assert.deepEqual(labels, ["Performance", "History", "Paper Trading", "Strategy Labs", "Intelligence", "Copilot", "Install App", "Support", "Account"]);
     assert.equal(labels.includes("Admin"), false);
   });
 
   test("shows admin in the mobile drawer only for admin users", () => {
-    const nonAdminLabels = drawerNavSections(false).flatMap((section) => section.items.map((item) => item.label));
-    const adminLabels = drawerNavSections(true).flatMap((section) => section.items.map((item) => item.label));
+    const nonAdminLabels = mobileMoreNavSections(false).flatMap((section) => section.items.map((item) => item.label));
+    const adminLabels = mobileMoreNavSections(true).flatMap((section) => section.items.map((item) => item.label));
     assert.equal(nonAdminLabels.includes("Admin"), false);
     assert.equal(adminLabels.includes("Admin"), true);
+    assert.equal(nonAdminLabels.includes("Developers"), false);
+    assert.equal(adminLabels.includes("Developers"), true);
   });
 
   test("resolves active titles and nested paths consistently", () => {
@@ -84,7 +93,20 @@ describe("application navigation hierarchy", () => {
     assert.equal(activeSectionTitle("/paper", false), "Paper Trading");
     assert.equal(activeSectionTitle("/history/symbol/NVDA", false), "History");
     assert.equal(isActivePath("/history/symbol/NVDA", "/history"), true);
+    assert.equal(isActivePath("/terminal", "/terminal#mobile-watchlist"), false);
     assert.equal(isActivePath("/opportunities", "/terminal"), false);
+  });
+
+  test("defines mobile view modes for dense workflows without replacing primary nav", () => {
+    assert.deepEqual(
+      mobileRouteModesForPath("/symbol/AMD").map((mode) => mode.label),
+      ["Overview", "Chart", "Intel", "Risk"],
+    );
+    assert.deepEqual(
+      mobileRouteModesForPath("/performance").map((mode) => mode.label),
+      ["Summary", "Evidence", "History"],
+    );
+    assert.deepEqual(mobileRouteModesForPath("/terminal"), []);
   });
 
   test("deduplicates repeated routes across drawer and primary nav sources", () => {

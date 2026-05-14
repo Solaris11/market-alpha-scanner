@@ -14,6 +14,7 @@
     "shock:refresh": "tsx scripts/shock-pattern-refresh.ts",
     "stripe:reconcile": "tsx scripts/stripe-reconcile.ts",
     "email:test": "node scripts/send-test-email.mjs",
+    "test:mobile-ux": "node scripts/mobile-ux-smoke.mjs",
     "test": "node scripts/run-tests.mjs",
     "lint": "tsc --noEmit"
   },

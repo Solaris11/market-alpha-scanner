@@ -170,7 +170,9 @@ export function SymbolTerminalWorkspace({
 
   return (
     <div className="space-y-5">
-      <SymbolDecisionHero dataFreshness={dataFreshness} edge={edgeProof} researchModeReason={researchModeReason} row={row} tradeAllowed={canTrade} />
+      <div id="overview">
+        <SymbolDecisionHero dataFreshness={dataFreshness} edge={edgeProof} researchModeReason={researchModeReason} row={row} tradeAllowed={canTrade} />
+      </div>
 
       {!canTrade ? (
         <GlassPanel className="border-amber-300/25 bg-amber-400/[0.08] p-6">
@@ -183,7 +185,9 @@ export function SymbolTerminalWorkspace({
         </GlassPanel>
       ) : null}
 
-      <IntelligenceGraphPanel graph={relationshipGraph} />
+      <div id="intelligence">
+        <IntelligenceGraphPanel graph={relationshipGraph} />
+      </div>
       {cognitionLayer ? <AICognitionLayerPanel compact model={cognitionLayer} /> : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
@@ -221,7 +225,7 @@ export function SymbolTerminalWorkspace({
             <ConvictionFragilityCard model={structuralQuality} />
           </ResponsiveAdvancedDetails>
         </div>
-        <aside className="space-y-5 xl:sticky xl:top-5 xl:self-start">
+        <aside className="space-y-5 xl:sticky xl:top-5 xl:self-start" id="risk">
           <WhatIfSimulator canTrade={canTrade} engine={tradeEngine} researchModeReason={researchModeReason} />
           {canTrade ? <ExecutionTicket canTrade={canTrade} engine={tradeEngine} researchModeReason={researchModeReason} symbol={symbol} /> : null}
         </aside>
@@ -229,7 +233,7 @@ export function SymbolTerminalWorkspace({
 
       {canTrade ? <SignalStatusCard lifecycle={lifecycle} /> : null}
 
-      <GlassPanel className="p-6">
+      <GlassPanel className="p-6" id="chart">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <SectionTitle eyebrow="Chart" title="Current Signal Map" />
           <button

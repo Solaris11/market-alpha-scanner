@@ -792,7 +792,9 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
         </div>
       ) : null}
 
-      <AlertVisualCenter overview={overview} watchlist={watchlist} />
+      <div id="alert-radar">
+        <AlertVisualCenter overview={overview} watchlist={watchlist} />
+      </div>
 
       <SimpleAdvancedTabs
         simple={(
@@ -803,13 +805,15 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
         )}
         advanced={(
           <>
-            <ActiveAlertMatches />
-            {alertRulesTable}
+            <div id="alert-history">
+              <ActiveAlertMatches />
+            </div>
+            <div id="alert-rule-table">{alertRulesTable}</div>
           </>
         )}
       />
 
-      <section className="terminal-panel rounded-md p-4">
+      <section className="terminal-panel rounded-md p-4" id="alert-rules">
         <div className="flex flex-col gap-3 border-b border-slate-800 pb-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Quick Global Alerts</div>

@@ -30,7 +30,7 @@ export function StrategyLabsWorkspace({ system }: { system: SimulatedAiPortfolio
 
   return (
     <div className="space-y-5 pb-24 sm:pb-8">
-      <section className="poster-panel poster-panel-lab overflow-hidden rounded-3xl border border-violet-300/22 shadow-2xl shadow-black/30 ring-1 ring-white/5">
+      <section className="poster-panel poster-panel-lab overflow-hidden rounded-3xl border border-violet-300/22 shadow-2xl shadow-black/30 ring-1 ring-white/5" id="guide">
         <div className="border-b border-white/10 p-5 sm:p-6">
           <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="min-w-0">
@@ -96,14 +96,14 @@ export function StrategyLabsWorkspace({ system }: { system: SimulatedAiPortfolio
             </div>
           </div>
 
-          <div className="min-w-0 space-y-4">
+          <div className="min-w-0 space-y-4" id="results">
             <SummaryPanel result={active} />
             <PortfolioCurve points={active.equityCurve} />
           </div>
         </div>
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]" id="strategies">
         <div className="min-w-0 space-y-5">
           <Panel eyebrow="Current Model Portfolio" title={`${active.config.label} Open Model Sleeve`}>
             <CurrentPositions positions={active.openPositions} />

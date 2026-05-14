@@ -761,12 +761,14 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
                 ))}
               </section>
 
-              <div className="grid gap-3 xl:grid-cols-2">
+              <div className="grid gap-3 xl:grid-cols-2" id="chart">
                 <TrendChart field="final_score" label="Final Score" rows={filteredByTime} />
                 <TrendChart field="price" label="Price" rows={filteredByTime} />
               </div>
 
-              <DecisionReplayPanel rows={filteredByTime} selectedSymbol={selectedSymbol} />
+              <div id="timeline">
+                <DecisionReplayPanel rows={filteredByTime} selectedSymbol={selectedSymbol} />
+              </div>
 
               <CompanyIntelligenceTabs
                 activeTab={activeInsightTab}
@@ -777,6 +779,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
                 scoreChange={scoreChange}
               />
 
+              <div id="table">
               <SimpleAdvancedTabs
                 simple={(
                   <section className="terminal-panel rounded-md p-4">
@@ -841,6 +844,7 @@ export function HistoryWorkspace({ defaultSymbol = "", history, symbols }: Props
               </section>
                 )}
               />
+              </div>
             </>
           ) : (
             <div className="terminal-panel rounded-md border-dashed border-slate-700/70 px-3 py-8 text-center text-sm text-slate-400" data-testid="history-filter-empty">

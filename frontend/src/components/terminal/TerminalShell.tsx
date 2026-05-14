@@ -1,5 +1,6 @@
 import { DataHealthBanner } from "@/components/data-health-indicator";
 import { LegalFooter } from "@/components/legal/LegalFooter";
+import { MobileModeRail } from "@/components/mobile/MobileModeRail";
 import { RiskAcknowledgement } from "@/components/legal/RiskAcknowledgement";
 import { FirstRunStarterCard } from "@/components/onboarding/FirstRunStarterCard";
 import { getScanDataHealth } from "@/lib/scanner-data";
@@ -17,6 +18,7 @@ export async function TerminalShell({ children }: { children: React.ReactNode })
         <RoutePrefetcher />
         <RouteTransitionFeedback />
         <PersonalizedMobileQuickAccess />
+        <MobileModeRail />
         {health ? <DataHealthBanner freshness={health} /> : null}
         <FirstRunStarterCard />
         {children}
