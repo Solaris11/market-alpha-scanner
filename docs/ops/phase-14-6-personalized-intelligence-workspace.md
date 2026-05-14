@@ -91,6 +91,13 @@ Production validation after push/deploy:
 - `/mobile` smoke: passed, HTTP 200
 - `/api/user/workspace-preferences` unauthenticated GET: passed, HTTP 200 with safe default workspace
 - `/api/user/workspace-preferences` unauthenticated PUT: passed, HTTP 401 fail-closed
+- authenticated disposable QA preference save/load: passed
+  - registered disposable invite-beta user
+  - saved `macro_first` workspace mode, `AMD/QQQ` favorite symbols, mobile last viewed `AMD`
+  - verified saved preference via authenticated GET
+  - verified logout/login refresh behavior using a fresh login cookie
+  - verified backing DB row
+  - cleaned up disposable user; final user count for QA email was `0`
 - `/api/health`: passed, HTTP 200 / `ok: true`
 - `/api/health/deep`: passed, HTTP 200 / DB, scanner, local backup, and R2 backup ok
 
@@ -102,6 +109,6 @@ Production validation after push/deploy:
 
 ## Validation Limits
 
-Authenticated account save/load is covered by the API path and production table migration, but a live beta-user browser session was not mutated during this sprint. The unauthenticated route behavior was verified in production to ensure preferences never leak and writes fail closed without a signed-in user.
+No real beta-user preference rows were mutated. Authenticated persistence was verified with a disposable production QA user and cleaned up afterward.
 
 Final status: PERSONALIZED INTELLIGENCE WORKSPACE COMPLETE
