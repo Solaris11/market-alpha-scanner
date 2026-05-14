@@ -103,7 +103,25 @@ Local validation completed on the development workstation:
 - `npx pyright . --pythonpath .venv/bin/python --warnings` - passed, 0 errors
 - `git diff --check` - passed
 
-Production validation will be appended after the pushed commit is pulled and rebuilt on the production host.
+Production validation completed from the production host:
+
+- Host/user/path: `onsre-node-01` / `sre` / `/opt/apps/market-alpha-scanner/app`
+- Production commit: `82155ecc123380155d360a4c511a8ce62fd864ea`
+- Production worktree: clean
+- Migration: `20260514_023500_intelligence_feed_notification_os.sql` applied
+- Frontend Docker rebuild: passed; `market-alpha-frontend` healthy
+- `/api/health`: HTTP 200, `ok: true`
+- `/api/health/deep`: HTTP 200, DB ok, scanner ok, local backup ok, R2/offsite backup ok
+- `/terminal`: HTTP 200
+- `/api/intelligence/feed`: unauthenticated HTTP 401, fail-closed
+- `/api/user/notification-preferences`: unauthenticated GET HTTP 200 with safe default preferences
+- `/api/user/notification-preferences`: unauthenticated PUT HTTP 401, fail-closed
+- Database proof: `user_notification_preferences`, `user_intelligence_feed_items`, and schema migration ledger entry all present
+- Production validation suite: `npm run lint`, `npm test -- --runInBand`, `npm run build`, `npm audit --omit=dev`, `py_compile`, `pyright`, and `git diff --check` passed
+- Ops green: `RESULT: PRODUCTION OPS GREEN`
+- Performance budget: `RESULT: PERFORMANCE BUDGET CHECK PASSED`
+- Monitoring synthetics: 16 checked, 16 ok, 0 failed
+- Monitoring system: frontend and Postgres containers healthy; CPU, memory, and disk usage normal
 
 ## Remaining Risks
 
