@@ -71,12 +71,28 @@ Local validation:
 
 Production validation after push/deploy:
 
-- migration applied: pending
-- production pull/rebuild: pending
-- `/terminal` smoke: pending
-- `/symbol/AMD` smoke: pending
-- `/api/health`: pending
-- `/api/health/deep`: pending
+- production host: `onsre-node-01`
+- production commit: `67727416aa2b2db32ad5394a76e5fd9caf9f273c`
+- migration applied: passed, `20260513_141500_user_workspace_preferences.sql`
+- `user_workspace_preferences` table exists: passed
+- production pull/rebuild: passed, `market-alpha-frontend` rebuilt and healthy
+- production validation suite: passed
+  - `npm run lint`
+  - `npm test -- --runInBand`, 380 tests
+  - `npm run build`
+  - `npm audit --omit=dev`, 0 vulnerabilities
+  - `python3 -m py_compile $(git ls-files '*.py')`
+  - `npx pyright . --pythonpath .venv/bin/python --warnings`, 0 errors
+  - `git diff --check`
+- `/terminal` smoke: passed, HTTP 200
+- `/dashboard` smoke: passed, HTTP 200
+- `/opportunities` smoke: passed, HTTP 200
+- `/symbol/AMD` smoke: passed, HTTP 200
+- `/mobile` smoke: passed, HTTP 200
+- `/api/user/workspace-preferences` unauthenticated GET: passed, HTTP 200 with safe default workspace
+- `/api/user/workspace-preferences` unauthenticated PUT: passed, HTTP 401 fail-closed
+- `/api/health`: passed, HTTP 200 / `ok: true`
+- `/api/health/deep`: passed, HTTP 200 / DB, scanner, local backup, and R2 backup ok
 
 ## Remaining Work
 
@@ -84,4 +100,8 @@ Production validation after push/deploy:
 - Add optional saved dashboard presets only if users request deeper customization.
 - Consider a true drag/drop layout only after current simple controls prove useful.
 
-Final status: pending production validation.
+## Validation Limits
+
+Authenticated account save/load is covered by the API path and production table migration, but a live beta-user browser session was not mutated during this sprint. The unauthenticated route behavior was verified in production to ensure preferences never leak and writes fail closed without a signed-in user.
+
+Final status: PERSONALIZED INTELLIGENCE WORKSPACE COMPLETE
