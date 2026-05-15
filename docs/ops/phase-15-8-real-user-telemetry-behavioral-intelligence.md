@@ -192,7 +192,8 @@ Local validation on `/Users/hdtv/dev/market-alpha-scanner`:
 Production validation on `onsre-node-01` as `sre` from `/opt/apps/market-alpha-scanner/app`:
 
 - Source-control parity before deploy: production worktree clean; production was behind `origin/main` by `4ec5dd7`.
-- Production commit after pull: `4ec5dd7e4874846db514903ce906c23925645ab7`.
+- Code deploy commit after pull/rebuild: `4ec5dd7e4874846db514903ce906c23925645ab7`.
+- Final production source/report sync commit: `b74729d62f9aba92a8e9c5d6fd5fb32df373c53f`.
 - Migration status: no schema migration added; Phase 15.8 reuses the existing `analytics_events` table.
 - Compose service discovery: `docker compose config --services` returned `market-alpha-postgres` and `market-alpha-frontend`.
 - Rebuild command: `docker compose up -d --build market-alpha-frontend`.
