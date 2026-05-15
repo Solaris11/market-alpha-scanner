@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { Activity, BarChart3, Eye, ShieldAlert, Target, Zap } from "lucide-react";
+import { Activity, Bell, BarChart3, Eye, Layers3, LineChart, Map as MapIcon, Radar, ShieldAlert, Target, TimerReset, TrendingUp, Zap } from "lucide-react";
 import { PremiumEChart } from "@/components/charts/PremiumEChart";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import { DataHealthIndicator } from "@/components/data-health-indicator";
@@ -34,14 +34,20 @@ import {
   compareOpportunityRows,
   opportunityDecision,
   opportunityEmptyMessage,
+  opportunityFreshnessScore,
   opportunityIsBestSetup,
   opportunityIsMomentumContinuation,
   opportunityIsShockPotential,
+  opportunityMacroSupportScore,
+  opportunityMatchesScannerLens,
   opportunityRankingExplanation,
+  opportunityReplaySimilarity,
+  opportunityRiskScore,
   opportunitySetupLabel,
   opportunitySetupType,
   opportunityTabMatches,
   opportunityVisibilityReason,
+  type OpportunityScannerLensKey,
   type OpportunityDecisionFilter as DecisionFilter,
   type OpportunityFilterState,
   type OpportunitySortKey as SortKey,
@@ -70,6 +76,10 @@ const SORT_OPTIONS: { value: SortKey; label: string }[] = [
   { value: "CONVICTION_DESC", label: "Conviction descending" },
   { value: "SYMBOL_ASC", label: "Symbol A-Z" },
   { value: "PRICE_DESC", label: "Price" },
+  { value: "FRESHNESS_DESC", label: "Fresh setups" },
+  { value: "MACRO_ALIGN_DESC", label: "Macro support" },
+  { value: "RISK_DESC", label: "Risk pressure" },
+  { value: "REPLAY_SIMILARITY_DESC", label: "Replay similarity" },
   { value: "DECISION_PRIORITY", label: "Decision priority" },
 ];
 const FIRST_REVIEW_GUIDE_KEY = "tradeveto_first_opportunity_review_hidden_v1";
@@ -83,6 +93,7 @@ const TAB_QUERY_MAP: Record<string, TabKey> = {
   shock: "SHOCK",
   watchlist: "WATCHLIST",
 };
+type ScannerPresetKey = OpportunityScannerLensKey;
 
 export function OpportunitiesWorkspace({
   adaptiveLearning = null,
@@ -118,6 +129,7 @@ export function OpportunitiesWorkspace({
   const [search, setSearch] = useState("");
   const [sectorFilter, setSectorFilter] = useState("ALL");
   const [setupFilter, setSetupFilter] = useState("ALL");
+  const [scannerLens, setScannerLens] = useState<ScannerPresetKey | null>(null);
   const [showFirstReviewGuide, setShowFirstReviewGuide] = useState(false);
   const [showWatchlistOnly, setShowWatchlistOnly] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("SCORE_DESC");
@@ -210,7 +222,10 @@ export function OpportunitiesWorkspace({
   }, [riskTolerantSymbols.size, rows, watchlistSet]);
 
   const filterResult = useMemo(() => {
-    const fullUniverseRows = applyNonTabOpportunityFilters(rows, deferredFilterState, watchlistSet);
+    const baseUniverseRows = applyNonTabOpportunityFilters(rows, deferredFilterState, watchlistSet);
+    const fullUniverseRows = scannerLens
+      ? baseUniverseRows.filter((row) => opportunityMatchesScannerLens(row, scannerLens, watchlistSet))
+      : baseUniverseRows;
     const visibleRows = fullUniverseRows
       .filter((row) => opportunityTabMatches(row, deferredFilterState.activeTab, watchlistSet, riskTolerantSymbols))
       .sort((left, right) => compareOpportunityRows(left, right, deferredFilterState.sortKey, riskTolerantRows, deferredFilterState.activeTab));
@@ -229,6 +244,7 @@ export function OpportunitiesWorkspace({
     riskTolerantRows,
     riskTolerantSymbols,
     rows,
+    scannerLens,
     watchlistSet,
   ]);
   const filtered = filterResult.visibleRows;
@@ -243,6 +259,7 @@ export function OpportunitiesWorkspace({
     Boolean(search.trim()),
     sectorFilter !== "ALL",
     setupFilter !== "ALL",
+    scannerLens !== null,
     showWatchlistOnly,
   ].filter(Boolean).length;
   const activeCriteriaCount = [
@@ -255,6 +272,7 @@ export function OpportunitiesWorkspace({
     Boolean(search.trim()),
     sectorFilter !== "ALL",
     setupFilter !== "ALL",
+    scannerLens !== null,
     showWatchlistOnly,
   ].filter(Boolean).length;
 
@@ -269,6 +287,7 @@ export function OpportunitiesWorkspace({
     setSearch("");
     setSectorFilter("ALL");
     setSetupFilter("ALL");
+    setScannerLens(null);
     setShowWatchlistOnly(false);
     setSortKey("SCORE_DESC");
   }
@@ -283,7 +302,42 @@ export function OpportunitiesWorkspace({
     setSearch("");
     setSectorFilter("ALL");
     setSetupFilter("ALL");
+    setScannerLens(null);
     setShowWatchlistOnly(false);
+  }
+
+  function applyScannerPreset(preset: ScannerPresetKey) {
+    clearCriteria();
+    setScannerLens(preset === "WATCHLIST" ? null : preset);
+    if (preset === "HIGH_CONFIDENCE") {
+      setActiveTab("FULL");
+      setMinConviction(70);
+      setMinScore(55);
+      setSortKey("CONVICTION_DESC");
+    } else if (preset === "FRESH") {
+      setActiveTab("FULL");
+      setSortKey("FRESHNESS_DESC");
+    } else if (preset === "RISK_WATCH") {
+      setActiveTab("FULL");
+      setSortKey("RISK_DESC");
+    } else if (preset === "MACRO_ALIGNED") {
+      setActiveTab("FULL");
+      setSortKey("MACRO_ALIGN_DESC");
+    } else if (preset === "REPLAY") {
+      setActiveTab("FULL");
+      setSortKey("REPLAY_SIMILARITY_DESC");
+    } else {
+      setActiveTab("WATCHLIST");
+      setShowWatchlistOnly(true);
+      setSortKey("FRESHNESS_DESC");
+    }
+  }
+
+  function selectSectorFromMap(sector: string) {
+    clearCriteria();
+    setActiveTab("FULL");
+    setSectorFilter(sector);
+    setSortKey("SCORE_DESC");
   }
 
   return (
@@ -303,6 +357,16 @@ export function OpportunitiesWorkspace({
       <div id="map">
         <OpportunityVisualCommandCenter marketCondition={marketCondition} rows={rows} watchlistSet={watchlistSet} />
       </div>
+      <ScannerCommandDeck
+        activeLens={scannerLens}
+        onPreset={applyScannerPreset}
+        rows={rows}
+        watchlistCount={tabCounts.WATCHLIST}
+      />
+      <ScannerMarketHeatmap
+        onSelectSector={selectSectorFromMap}
+        rows={rows}
+      />
 
       <GlassPanel className="p-5" id="watchlist">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
@@ -617,6 +681,264 @@ function OpportunityVisualCommandCenter({
       zones={zones}
     />
   );
+}
+
+function ScannerCommandDeck({
+  activeLens,
+  onPreset,
+  rows,
+  watchlistCount,
+}: {
+  activeLens: ScannerPresetKey | null;
+  onPreset: (preset: ScannerPresetKey) => void;
+  rows: OpportunityViewModel[];
+  watchlistCount: number;
+}) {
+  const highConfidence = rows.filter((row) => row.conviction >= 70 && (row.final_score ?? 0) >= 55).length;
+  const fresh = rows.filter((row) => (opportunityFreshnessScore(row) ?? 0) >= 70).length;
+  const riskWatch = rows.filter((row) => opportunityDecision(row) === "AVOID" || (opportunityRiskScore(row) ?? 0) >= 65).length;
+  const macroAligned = rows.filter((row) => (opportunityMacroSupportScore(row) ?? 0) >= 65).length;
+  const replaySimilarity = rows.filter((row) => (opportunityReplaySimilarity(row) ?? 0) >= 60).length;
+  const presets: Array<{
+    count: number;
+    description: string;
+    icon: ReactNode;
+    key: ScannerPresetKey;
+    label: string;
+    tone: "cyan" | "emerald" | "amber" | "rose" | "violet";
+  }> = [
+    {
+      count: highConfidence,
+      description: "Score and conviction clear the high-confidence scan gate.",
+      icon: <Target className="h-5 w-5" />,
+      key: "HIGH_CONFIDENCE",
+      label: "High Confidence",
+      tone: "emerald",
+    },
+    {
+      count: fresh,
+      description: "Latest scanner packet is fresh enough to inspect first.",
+      icon: <TimerReset className="h-5 w-5" />,
+      key: "FRESH",
+      label: "Fresh Setups",
+      tone: "cyan",
+    },
+    {
+      count: riskWatch,
+      description: "Elevated risk pressure or avoid-state rows for review.",
+      icon: <ShieldAlert className="h-5 w-5" />,
+      key: "RISK_WATCH",
+      label: "Risk Watch",
+      tone: "rose",
+    },
+    {
+      count: macroAligned,
+      description: "Macro support fields are constructive where available.",
+      icon: <Layers3 className="h-5 w-5" />,
+      key: "MACRO_ALIGNED",
+      label: "Macro Aligned",
+      tone: "amber",
+    },
+    {
+      count: replaySimilarity,
+      description: "Replay or analog similarity is validated in the row.",
+      icon: <Radar className="h-5 w-5" />,
+      key: "REPLAY",
+      label: "Replay Similarity",
+      tone: "violet",
+    },
+    {
+      count: watchlistCount,
+      description: "Restrict the scanner to symbols already tracked here.",
+      icon: <Eye className="h-5 w-5" />,
+      key: "WATCHLIST",
+      label: "Watchlist First",
+      tone: "cyan",
+    },
+  ];
+
+  return (
+    <GlassPanel className="p-4 sm:p-5">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+        <SectionTitle
+          eyebrow="Scanner command deck"
+          meta={`${rows.length.toLocaleString()} rows · presets use live scanner fields`}
+          title="Choose the Research Lens"
+        />
+        <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-semibold text-slate-300">
+          No fake filters. Empty modes stay honest.
+        </div>
+      </div>
+      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        {presets.map((preset) => (
+          <button
+            className={`group min-w-0 rounded-2xl border bg-slate-950/35 p-3 text-left transition hover:-translate-y-0.5 hover:bg-white/[0.06] ${presetCardClass(preset.tone, activeLens === preset.key)}`}
+            key={preset.key}
+            onClick={() => onPreset(preset.key)}
+            type="button"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl border ${presetIconClass(preset.tone)}`}>
+                {preset.icon}
+              </span>
+              <span className="font-mono text-2xl font-black text-slate-50">{preset.count.toLocaleString()}</span>
+            </div>
+            <div className="mt-3 text-sm font-black text-slate-50">{preset.label}</div>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{preset.description}</p>
+            <div className="mt-3 inline-flex min-h-8 items-center rounded-full border border-white/10 bg-white/[0.04] px-3 text-[10px] font-black uppercase tracking-[0.12em] text-slate-300 transition group-hover:border-cyan-300/35 group-hover:text-cyan-100">
+              {activeLens === preset.key ? "Lens active" : "Apply lens"}
+            </div>
+          </button>
+        ))}
+      </div>
+    </GlassPanel>
+  );
+}
+
+function ScannerMarketHeatmap({
+  onSelectSector,
+  rows,
+}: {
+  onSelectSector: (sector: string) => void;
+  rows: OpportunityViewModel[];
+}) {
+  const clusters = buildSectorClusters(rows).slice(0, 10);
+
+  return (
+    <GlassPanel className="p-4 sm:p-5">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+        <SectionTitle
+          eyebrow="Market map"
+          meta="sector strength · risk concentration · macro support"
+          title="Where the Scanner Is Concentrated"
+        />
+        <div className="flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">
+          <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2.5 py-1 text-emerald-100">Constructive</span>
+          <span className="rounded-full border border-amber-300/20 bg-amber-400/10 px-2.5 py-1 text-amber-100">Mixed</span>
+          <span className="rounded-full border border-rose-300/20 bg-rose-400/10 px-2.5 py-1 text-rose-100">Risk heavy</span>
+        </div>
+      </div>
+      {clusters.length ? (
+        <div className="mt-4 grid gap-3 lg:grid-cols-2 2xl:grid-cols-5">
+          {clusters.map((cluster) => (
+            <ScannerSectorTile cluster={cluster} key={cluster.sector} onSelect={onSelectSector} />
+          ))}
+        </div>
+      ) : (
+        <div className="mt-4 rounded-2xl border border-dashed border-white/10 bg-white/[0.03] p-5 text-sm leading-6 text-slate-400">
+          Sector map unavailable because the current scanner packet does not include enough sector-labeled rows.
+        </div>
+      )}
+    </GlassPanel>
+  );
+}
+
+type ScannerSectorCluster = {
+  avgConviction: number | null;
+  avgMacro: number | null;
+  avgRisk: number | null;
+  avgScore: number | null;
+  count: number;
+  freshCount: number;
+  sector: string;
+  symbols: string[];
+  topSymbol: string | null;
+};
+
+function ScannerSectorTile({ cluster, onSelect }: { cluster: ScannerSectorCluster; onSelect: (sector: string) => void }) {
+  const risk = cluster.avgRisk ?? 0;
+  const score = cluster.avgScore ?? 0;
+  const tone = risk >= 68 ? "rose" : score >= 58 ? "emerald" : "cyan";
+  const macroLabel = cluster.avgMacro === null ? "Macro unavailable" : `${formatNumber(cluster.avgMacro, 0)} macro`;
+  return (
+    <button
+      className={`min-w-0 rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 hover:bg-white/[0.065] ${sectorTileClass(tone)}`}
+      onClick={() => onSelect(cluster.sector)}
+      type="button"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Sector Cluster</div>
+          <div className="mt-1 line-clamp-2 text-base font-black text-slate-50">{cluster.sector}</div>
+        </div>
+        <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/10 bg-slate-950/45 text-cyan-200">
+          <MapIcon className="h-5 w-5" />
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 text-[10px] font-black uppercase tracking-[0.1em]">
+        <span className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-slate-200">{cluster.count} rows</span>
+        <span className="rounded-full border border-cyan-300/15 bg-cyan-400/10 px-2.5 py-1 text-cyan-100">{cluster.freshCount} fresh</span>
+      </div>
+      <ScoreFactorStrip
+        className="mt-3"
+        emptyMessage="Sector factors are unavailable for this scan cluster."
+        factors={[
+          { label: "Score", tone: "cyan", value: cluster.avgScore },
+          { label: "Conviction", tone: "emerald", value: cluster.avgConviction },
+          { label: "Risk", tone: risk >= 68 ? "rose" : "amber", value: cluster.avgRisk },
+          { label: "Macro", tone: "cyan", value: cluster.avgMacro },
+        ]}
+        label="Cluster factors"
+      />
+      <div className="mt-3 rounded-xl border border-white/10 bg-slate-950/35 p-2 text-xs leading-5 text-slate-400">
+        <span className="font-semibold text-slate-200">{cluster.topSymbol ?? "No leader"}</span> leads this group. {macroLabel}. Tap to filter the scanner to this sector.
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {cluster.symbols.slice(0, 5).map((symbol) => (
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 font-mono text-[10px] font-black text-slate-200" key={symbol}>{symbol}</span>
+        ))}
+      </div>
+    </button>
+  );
+}
+
+function buildSectorClusters(rows: OpportunityViewModel[]): ScannerSectorCluster[] {
+  const grouped = new Map<string, OpportunityViewModel[]>();
+  for (const row of rows) {
+    const sector = cleanText(row.sector, "Unclassified");
+    if (sector === "Unclassified") continue;
+    grouped.set(sector, [...(grouped.get(sector) ?? []), row]);
+  }
+
+  return Array.from(grouped.entries())
+    .map(([sector, sectorRows]) => {
+      const sorted = [...sectorRows].sort((left, right) => (right.final_score ?? 0) - (left.final_score ?? 0) || right.conviction - left.conviction);
+      return {
+        avgConviction: averageScoreValue(sectorRows.map((row) => row.conviction)),
+        avgMacro: averageScoreValue(sectorRows.map((row) => opportunityMacroSupportScore(row))),
+        avgRisk: averageScoreValue(sectorRows.map((row) => opportunityRiskScore(row))),
+        avgScore: averageScoreValue(sectorRows.map((row) => row.final_score)),
+        count: sectorRows.length,
+        freshCount: sectorRows.filter((row) => (opportunityFreshnessScore(row) ?? 0) >= 70).length,
+        sector,
+        symbols: sorted.map((row) => row.symbol),
+        topSymbol: sorted[0]?.symbol ?? null,
+      };
+    })
+    .sort((left, right) => right.count - left.count || (right.avgScore ?? 0) - (left.avgScore ?? 0));
+}
+
+function presetCardClass(tone: "cyan" | "emerald" | "amber" | "rose" | "violet", active: boolean): string {
+  const activeClass = active ? "ring-1 ring-cyan-200/60" : "";
+  if (tone === "emerald") return `border-emerald-300/18 hover:border-emerald-300/42 ${activeClass}`;
+  if (tone === "amber") return `border-amber-300/18 hover:border-amber-300/42 ${activeClass}`;
+  if (tone === "rose") return `border-rose-300/18 hover:border-rose-300/42 ${activeClass}`;
+  if (tone === "violet") return `border-violet-300/18 hover:border-violet-300/42 ${activeClass}`;
+  return `border-cyan-300/18 hover:border-cyan-300/42 ${activeClass}`;
+}
+
+function presetIconClass(tone: "cyan" | "emerald" | "amber" | "rose" | "violet"): string {
+  if (tone === "emerald") return "border-emerald-300/20 bg-emerald-400/10 text-emerald-200";
+  if (tone === "amber") return "border-amber-300/20 bg-amber-400/10 text-amber-200";
+  if (tone === "rose") return "border-rose-300/20 bg-rose-400/10 text-rose-200";
+  if (tone === "violet") return "border-violet-300/20 bg-violet-400/10 text-violet-200";
+  return "border-cyan-300/20 bg-cyan-400/10 text-cyan-200";
+}
+
+function sectorTileClass(tone: "cyan" | "emerald" | "rose"): string {
+  if (tone === "emerald") return "border-emerald-300/20 bg-emerald-400/[0.045]";
+  if (tone === "rose") return "border-rose-300/20 bg-rose-400/[0.045]";
+  return "border-cyan-300/16 bg-cyan-400/[0.04]";
 }
 
 function averageScoreValue(values: Array<number | null | undefined>): number | null {
@@ -1383,6 +1705,7 @@ function OpportunityCard({ row, visibilityReason }: { row: OpportunityViewModel;
         <DataHealthIndicator compact freshness={row.dataFreshness} />
       </div>
       <PriceContextStrip className="mt-3" row={row} />
+      <ScannerCardActionRail row={row} />
       <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1fr)]">
         <ScoreFactorStrip
           emptyMessage="This row has not produced enough scored factors for a visual breakdown."
@@ -1459,6 +1782,31 @@ function OpportunityCard({ row, visibilityReason }: { row: OpportunityViewModel;
         <div className="text-xs font-semibold text-cyan-200 opacity-90">Tap for symbol detail</div>
       </div>
     </article>
+  );
+}
+
+function ScannerCardActionRail({ row }: { row: OpportunityViewModel }) {
+  const alertHref = `/alerts?symbol=${encodeURIComponent(row.symbol)}&intent=create`;
+  const actions = [
+    { href: `/symbol/${row.symbol}#chart`, icon: <LineChart className="h-4 w-4" />, label: "Chart" },
+    { href: alertHref, icon: <Bell className="h-4 w-4" />, label: "Alert" },
+    { href: `/history?symbol=${encodeURIComponent(row.symbol)}`, icon: <TimerReset className="h-4 w-4" />, label: "Replay" },
+    { href: `/symbol/${row.symbol}#intelligence`, icon: <TrendingUp className="h-4 w-4" />, label: "Intel" },
+  ];
+  return (
+    <div className="mt-3 grid gap-2 sm:grid-cols-4" aria-label={`${row.symbol} scanner actions`}>
+      {actions.map((action) => (
+        <Link
+          className="relative z-10 inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.055] px-3 text-xs font-black text-cyan-100 transition hover:border-cyan-300/40 hover:bg-cyan-400/10"
+          href={action.href}
+          key={action.label}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {action.icon}
+          {action.label}
+        </Link>
+      ))}
+    </div>
   );
 }
 

@@ -4,7 +4,17 @@ import { cleanText, formatNumber } from "@/lib/ui/formatters";
 import { decisionLabel, humanizeInsightText } from "@/lib/ui/labels";
 
 export type OpportunityDecisionFilter = "ALL" | "ENTER" | "WAIT_PULLBACK" | "WATCH" | "AVOID" | "EXIT";
-export type OpportunitySortKey = "SCORE_DESC" | "CONVICTION_DESC" | "SYMBOL_ASC" | "PRICE_DESC" | "DECISION_PRIORITY";
+export type OpportunityScannerLensKey = "HIGH_CONFIDENCE" | "FRESH" | "RISK_WATCH" | "MACRO_ALIGNED" | "REPLAY" | "WATCHLIST";
+export type OpportunitySortKey =
+  | "SCORE_DESC"
+  | "CONVICTION_DESC"
+  | "SYMBOL_ASC"
+  | "PRICE_DESC"
+  | "DECISION_PRIORITY"
+  | "RISK_DESC"
+  | "FRESHNESS_DESC"
+  | "MACRO_ALIGN_DESC"
+  | "REPLAY_SIMILARITY_DESC";
 export type OpportunityTabKey = "BEST" | "RISK_TOLERANT" | "SHOCK" | "PULLBACK" | "MOMENTUM" | "WATCHLIST" | "FULL";
 
 export type OpportunityFilterState = {
@@ -40,6 +50,15 @@ export function applyNonTabOpportunityFilters(rows: OpportunityViewModel[], stat
     .filter((row) => row.conviction >= state.minConviction);
 }
 
+export function opportunityMatchesScannerLens(row: OpportunityViewModel, lens: OpportunityScannerLensKey, watchlistSet: Set<string>): boolean {
+  if (lens === "HIGH_CONFIDENCE") return row.conviction >= 70 && (row.final_score ?? 0) >= 55;
+  if (lens === "FRESH") return (opportunityFreshnessScore(row) ?? 0) >= 70;
+  if (lens === "RISK_WATCH") return opportunityDecision(row) === "AVOID" || (opportunityRiskScore(row) ?? 0) >= 65;
+  if (lens === "MACRO_ALIGNED") return (opportunityMacroSupportScore(row) ?? 0) >= 65;
+  if (lens === "REPLAY") return (opportunityReplaySimilarity(row) ?? 0) >= 60;
+  return watchlistSet.has(row.symbol);
+}
+
 export function opportunityTabMatches(row: OpportunityViewModel, tab: OpportunityTabKey, watchlistSet: Set<string>, riskTolerantSymbols: Set<string>): boolean {
   if (tab === "FULL") return true;
   if (tab === "WATCHLIST") return watchlistSet.has(row.symbol);
@@ -71,6 +90,10 @@ export function compareOpportunityRows(
   if (sortKey === "SYMBOL_ASC") return left.symbol.localeCompare(right.symbol);
   if (sortKey === "CONVICTION_DESC") return right.conviction - left.conviction || left.symbol.localeCompare(right.symbol);
   if (sortKey === "PRICE_DESC") return numericDesc(left.price, right.price) || left.symbol.localeCompare(right.symbol);
+  if (sortKey === "RISK_DESC") return numericDesc(opportunityRiskScore(left), opportunityRiskScore(right)) || right.conviction - left.conviction || left.symbol.localeCompare(right.symbol);
+  if (sortKey === "FRESHNESS_DESC") return numericDesc(opportunityFreshnessScore(left), opportunityFreshnessScore(right)) || numericDesc(left.final_score, right.final_score) || left.symbol.localeCompare(right.symbol);
+  if (sortKey === "MACRO_ALIGN_DESC") return numericDesc(opportunityMacroSupportScore(left), opportunityMacroSupportScore(right)) || numericDesc(left.final_score, right.final_score) || left.symbol.localeCompare(right.symbol);
+  if (sortKey === "REPLAY_SIMILARITY_DESC") return numericDesc(opportunityReplaySimilarity(left), opportunityReplaySimilarity(right)) || numericDesc(left.final_score, right.final_score) || left.symbol.localeCompare(right.symbol);
   if (sortKey === "DECISION_PRIORITY") return decisionPriority(left) - decisionPriority(right) || right.conviction - left.conviction || left.symbol.localeCompare(right.symbol);
   return numericDesc(left.final_score, right.final_score) || right.conviction - left.conviction || left.symbol.localeCompare(right.symbol);
 }
@@ -99,6 +122,10 @@ export function opportunityRankingExplanation(sortKey: OpportunitySortKey, activ
   if (sortKey === "CONVICTION_DESC") return "Sorted by conviction, then symbol for stable ordering.";
   if (sortKey === "SYMBOL_ASC") return "Sorted alphabetically so search and filter checks are easy to verify.";
   if (sortKey === "PRICE_DESC") return "Sorted by latest available price; missing prices fall to the bottom.";
+  if (sortKey === "RISK_DESC") return "Sorted by visible risk pressure so elevated-risk ideas are easy to inspect before acting.";
+  if (sortKey === "FRESHNESS_DESC") return "Sorted by data freshness and then scanner score; limited or stale rows fall behind fresher evidence.";
+  if (sortKey === "MACRO_ALIGN_DESC") return "Sorted by macro support fields, then score, so market-supported setups surface first.";
+  if (sortKey === "REPLAY_SIMILARITY_DESC") return "Sorted by available replay or analog similarity; rows without validated similarity fall behind.";
   return "Sorted by decision priority, then conviction and symbol for stable ordering.";
 }
 
@@ -142,7 +169,66 @@ function sortLabel(sortKey: OpportunitySortKey): string {
   if (sortKey === "CONVICTION_DESC") return "Conviction descending";
   if (sortKey === "SYMBOL_ASC") return "Symbol A-Z";
   if (sortKey === "PRICE_DESC") return "Price";
+  if (sortKey === "RISK_DESC") return "Risk pressure";
+  if (sortKey === "FRESHNESS_DESC") return "Freshness";
+  if (sortKey === "MACRO_ALIGN_DESC") return "Macro support";
+  if (sortKey === "REPLAY_SIMILARITY_DESC") return "Replay similarity";
   return "Decision priority";
+}
+
+export function opportunityFreshnessScore(row: OpportunityViewModel): number | null {
+  const status = String(row.dataFreshness.status ?? "").toLowerCase();
+  if (status === "fresh") return 100;
+  if (status.includes("stale")) return 15;
+  if (status.includes("warn") || status.includes("aging")) return 55;
+  const ageMinutes = numeric(row.dataFreshness.ageMinutes);
+  if (ageMinutes === null) return null;
+  return clampScore(100 - Math.min(95, ageMinutes / 2));
+}
+
+export function opportunityMacroSupportScore(row: OpportunityViewModel): number | null {
+  const score = firstNumeric(
+    row.raw.macro_alignment_score,
+    row.raw.macro_score,
+    row.raw.risk_on_score,
+    row.raw.macro_regime_score,
+    row.raw.market_regime_score,
+  );
+  if (score !== null) return clampScore(score);
+  if (row.macroAdjustment !== null) return clampScore(50 + row.macroAdjustment * 10);
+  return null;
+}
+
+export function opportunityReplaySimilarity(row: OpportunityViewModel): number | null {
+  return firstNumeric(
+    row.shockPattern?.currentSimilarityScore,
+    row.raw.replay_similarity_score,
+    row.raw.market_memory_similarity,
+    row.raw.regime_similarity_score,
+    row.raw.event_similarity_score,
+    row.raw.analog_similarity_score,
+    row.raw.historical_similarity_score,
+  );
+}
+
+export function opportunityRiskScore(row: OpportunityViewModel): number | null {
+  const values = [
+    row.fragility,
+    row.eventRisk,
+    row.shockPattern?.downsideRiskScore,
+    row.raw.risk_pressure_score,
+    row.raw.macro_pressure_score,
+    row.raw.volatility_pressure,
+    row.raw.liquidity_pressure,
+    row.raw.event_shock_pressure_score,
+    row.raw.verified_event_pressure_score,
+  ].map((value) => {
+    const parsed = numeric(value);
+    return parsed === null ? null : clampScore(parsed);
+  }).filter((value): value is number => value !== null);
+
+  if (!values.length) return null;
+  return values.reduce((total, value) => total + value, 0) / values.length;
 }
 
 function riskTolerantRank(row: OpportunityViewModel, riskTolerantRows: RiskTolerantOpportunity[]): number {
@@ -180,8 +266,24 @@ function numericDesc(left: number | null, right: number | null): number {
   return rightValue - leftValue;
 }
 
+function firstNumeric(...values: unknown[]): number | null {
+  for (const value of values) {
+    const parsed = numeric(value);
+    if (parsed !== null) return parsed;
+  }
+  return null;
+}
+
+function clampScore(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, value));
+}
+
 function numeric(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value)) return value;
-  const parsed = Number(String(value ?? "").replace(/[$,%]/g, "").trim());
+  if (value === null || value === undefined) return null;
+  const normalized = String(value).replace(/[$,%]/g, "").trim();
+  if (!normalized) return null;
+  const parsed = Number(normalized);
   return Number.isFinite(parsed) ? parsed : null;
 }

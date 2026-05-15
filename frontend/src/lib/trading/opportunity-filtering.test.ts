@@ -4,8 +4,13 @@ import {
   applyNonTabOpportunityFilters,
   compareOpportunityRows,
   opportunityEmptyMessage,
+  opportunityFreshnessScore,
   opportunityIsBestSetup,
+  opportunityMacroSupportScore,
+  opportunityMatchesScannerLens,
   opportunityRankingExplanation,
+  opportunityReplaySimilarity,
+  opportunityRiskScore,
   opportunityTabMatches,
   opportunityVisibilityReason,
   type OpportunityFilterState,
@@ -142,7 +147,7 @@ test("core tab, decision, and sort combinations stay stable without hiding full-
   ];
   const tabs = ["BEST", "RISK_TOLERANT", "SHOCK", "PULLBACK", "MOMENTUM", "WATCHLIST", "FULL"] as const;
   const decisions = ["ALL", "ENTER", "WAIT_PULLBACK", "WATCH", "AVOID", "EXIT"] as const;
-  const sorts = ["SCORE_DESC", "CONVICTION_DESC", "SYMBOL_ASC", "PRICE_DESC", "DECISION_PRIORITY"] as const;
+  const sorts = ["SCORE_DESC", "CONVICTION_DESC", "SYMBOL_ASC", "PRICE_DESC", "DECISION_PRIORITY", "RISK_DESC", "FRESHNESS_DESC", "MACRO_ALIGN_DESC", "REPLAY_SIMILARITY_DESC"] as const;
   const watchlist = new Set(["AMD", "DDOG"]);
   const riskTolerant = new Set(["MU", "DDOG"]);
 
@@ -160,4 +165,48 @@ test("core tab, decision, and sort combinations stay stable without hiding full-
       }
     }
   }
+});
+
+test("scanner-specific sort keys rank risk, freshness, macro, and replay context", () => {
+  const highRisk = row({
+    fragility: 88,
+    raw: { macro_alignment_score: 42, replay_similarity_score: 30, risk_pressure_score: 92 },
+    symbol: "RISK",
+  });
+  const macroAligned = row({
+    fragility: 35,
+    macroAdjustment: 3,
+    raw: { macro_alignment_score: 91, replay_similarity_score: 20, risk_pressure_score: 20 },
+    symbol: "MACR",
+  });
+  const replayMatch = row({
+    fragility: 48,
+    raw: { macro_alignment_score: 50, replay_similarity_score: 89, risk_pressure_score: 35 },
+    symbol: "RPLY",
+  });
+  const stale = row({
+    dataFreshness: {
+      ageMinutes: 980,
+      humanAge: "Updated 16 hours ago",
+      label: "Stale",
+      lastUpdated: "2026-05-08T04:00:00.000Z",
+      message: "Stale - updated 16 hours ago",
+      status: "stale",
+    },
+    symbol: "STAL",
+  });
+  const rows = [macroAligned, stale, replayMatch, highRisk];
+
+  assert.equal(opportunityRiskScore(highRisk)! > opportunityRiskScore(macroAligned)!, true);
+  assert.equal(opportunityFreshnessScore(stale)! < opportunityFreshnessScore(highRisk)!, true);
+  assert.equal(opportunityMacroSupportScore(macroAligned), 91);
+  assert.equal(opportunityReplaySimilarity(replayMatch), 89);
+  assert.equal([...rows].sort((left, right) => compareOpportunityRows(left, right, "RISK_DESC", [], "FULL"))[0]!.symbol, "RISK");
+  assert.equal([...rows].sort((left, right) => compareOpportunityRows(left, right, "MACRO_ALIGN_DESC", [], "FULL"))[0]!.symbol, "MACR");
+  assert.equal([...rows].sort((left, right) => compareOpportunityRows(left, right, "REPLAY_SIMILARITY_DESC", [], "FULL"))[0]!.symbol, "RPLY");
+  assert.equal(opportunityMatchesScannerLens(highRisk, "RISK_WATCH", new Set()), true);
+  assert.equal(opportunityMatchesScannerLens(macroAligned, "MACRO_ALIGNED", new Set()), true);
+  assert.equal(opportunityMatchesScannerLens(replayMatch, "REPLAY", new Set()), true);
+  assert.equal(opportunityMatchesScannerLens(stale, "FRESH", new Set()), false);
+  assert.match(opportunityRankingExplanation("RISK_DESC", "FULL"), /risk pressure/i);
 });
