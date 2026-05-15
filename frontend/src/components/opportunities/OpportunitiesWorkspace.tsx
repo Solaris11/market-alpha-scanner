@@ -66,8 +66,10 @@ import { InteractiveInsightZoneGrid, type InteractiveInsightZoneItem } from "@/c
 import { SymbolIdentityLine, SymbolLogo } from "@/components/visual/SymbolLogo";
 import { getSymbolVisualIdentity } from "@/lib/visual-identity";
 import { buildAIExplainabilityFromOpportunity, type ExplainabilityTone } from "@/lib/trading/ai-explainability";
+import { buildOpportunityTrustModel } from "@/lib/trading/institutional-trust";
 import type { ChartCandle } from "@/components/terminal/SymbolChart";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
+import { InstitutionalTrustStrip } from "@/components/terminal/InstitutionalTrustStrip";
 import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
 import { buildDistributionBarOption, buildDonutOption, hasDistributionData, type DistributionRow } from "@/lib/echarts-options";
 
@@ -1613,6 +1615,7 @@ function OpportunityCard({ row, visibilityReason }: { row: OpportunityViewModel;
   const execution = buildExecutionIntelligence(row);
   const actionability = buildOpportunityActionability(row);
   const explainability = buildAIExplainabilityFromOpportunity(row);
+  const trustModel = buildOpportunityTrustModel(row, { shownBecause: visibilityReason });
   const status = opportunityCardStatus(row, actionability, execution);
   const score = finiteNumber(row.final_score) ?? 0;
   const intelligenceLabels = [...institutionalLabels, ...execution.compactLabels].slice(0, 6);
@@ -1773,6 +1776,7 @@ function OpportunityCard({ row, visibilityReason }: { row: OpportunityViewModel;
           <p className="mt-1 line-clamp-3">{humanizeInsightText(row.narrative.narrativeSummary)}</p>
         </div>
       ) : null}
+      <InstitutionalTrustStrip className="mt-3" compact model={trustModel} />
       {intelligenceLabels.length ? (
         <div className="mt-3 flex flex-wrap gap-2">
           {intelligenceLabels.map((label) => (

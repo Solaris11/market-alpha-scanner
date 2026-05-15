@@ -4,11 +4,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
+import { buildOpportunityTrustModel } from "@/lib/trading/institutional-trust";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { humanizeInsightText } from "@/lib/ui/labels";
 import { WatchlistButton } from "@/components/watchlist-controls";
 import { DecisionBadge } from "./DecisionBadge";
+import { InstitutionalTrustStrip } from "./InstitutionalTrustStrip";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
@@ -37,6 +39,7 @@ function WatchlistRow({ row }: { row: OpportunityViewModel }) {
   const router = useRouter();
   const href = `/symbol/${row.symbol}`;
   const openDetail = () => router.push(href);
+  const trustModel = buildOpportunityTrustModel(row, { shownBecause: "Shown because this symbol is saved in your watchlist.", watchlisted: true });
   return (
     <div
       className="cursor-pointer rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-cyan-300/40"
@@ -70,6 +73,7 @@ function WatchlistRow({ row }: { row: OpportunityViewModel }) {
         <MiniMetric label="Conviction" value={`${formatNumber(row.conviction, 0)} ${row.confidenceLabel}`} />
         <MiniMetric label="Reason" value={humanizeInsightText(row.decision_reason, "N/A")} />
       </div>
+      <InstitutionalTrustStrip className="mt-3" compact model={trustModel} />
     </div>
   );
 }

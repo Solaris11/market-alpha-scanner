@@ -40,6 +40,8 @@ import {
   type NotificationChannel,
   type NotificationPreferences,
 } from "@/lib/trading/intelligence-feed";
+import { buildFeedItemTrustModel } from "@/lib/trading/institutional-trust";
+import { InstitutionalTrustStrip } from "./InstitutionalTrustStrip";
 import { GlassPanel } from "./ui/GlassPanel";
 
 export function IntelligenceFeedNotificationPanel({
@@ -124,7 +126,7 @@ export function IntelligenceFeedNotificationPanel({
             <div className="text-[11px] text-slate-500">{new Date(brief.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</div>
           </div>
           <div className="mt-3 grid gap-2">
-            {visibleItems.length ? visibleItems.map((item) => <FeedItemCard item={item} key={item.sourceKey} />) : (
+            {visibleItems.length ? visibleItems.map((item) => <FeedItemCard item={item} key={item.sourceKey} watchlistSymbols={watchlistSymbols} />) : (
               <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-sm text-slate-500">
                 No feed item is ready yet. TradeVeto will show updates after the scanner, watchlist, or workflow state changes.
               </div>
@@ -231,9 +233,10 @@ function BriefSectionCard({ section }: { section: DailyBriefSection }) {
   );
 }
 
-function FeedItemCard({ item }: { item: IntelligenceFeedItem }) {
+function FeedItemCard({ item, watchlistSymbols }: { item: IntelligenceFeedItem; watchlistSymbols: string[] }) {
   const Icon = itemIcon(item);
   const actions = feedActions(item);
+  const trustModel = buildFeedItemTrustModel(item, { watchlistSymbols });
   return (
     <article className={`rounded-2xl border p-3 transition hover:-translate-y-0.5 hover:bg-white/[0.045] ${itemClass(item)}`}>
       <div className="flex min-w-0 items-start gap-3">
@@ -261,6 +264,7 @@ function FeedItemCard({ item }: { item: IntelligenceFeedItem }) {
           <div className="mt-2 rounded-xl border border-white/10 bg-slate-950/35 p-2 text-xs leading-5 text-slate-300">
             <span className="font-black uppercase tracking-[0.12em] text-slate-500">Monitor </span>{item.monitorNext}
           </div>
+          <InstitutionalTrustStrip className="mt-3" compact model={trustModel} />
           <div className="mt-3 flex flex-wrap gap-2">
             {actions.map((action) => (
               <Link className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.1em] text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100" href={action.href} key={action.label}>

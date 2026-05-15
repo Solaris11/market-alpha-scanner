@@ -2,6 +2,8 @@
 
 import { AlertTriangle, Brain, Clock3, HelpCircle, ShieldCheck } from "lucide-react";
 import type { AIExplainabilityModel, ExplainabilityTone } from "@/lib/trading/ai-explainability";
+import { buildExplainabilityTrustModel } from "@/lib/trading/institutional-trust";
+import { InstitutionalTrustStrip } from "./InstitutionalTrustStrip";
 
 export function AIExplainabilityCard({
   compact = false,
@@ -12,6 +14,7 @@ export function AIExplainabilityCard({
 }) {
   const contradictions = compact ? model.contradictions.slice(0, 2) : model.contradictions;
   const monitors = compact ? model.whatToMonitor.slice(0, 2) : model.whatToMonitor.slice(0, 4);
+  const trustModel = buildExplainabilityTrustModel(model);
   return (
     <div className="rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.045] p-3 sm:p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -104,6 +107,8 @@ export function AIExplainabilityCard({
           </ul>
         </div>
       </div>
+
+      <InstitutionalTrustStrip className="mt-3" compact model={trustModel} />
     </div>
   );
 }
