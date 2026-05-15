@@ -7,8 +7,14 @@ import { normalizeWatchlistSymbol } from "@/lib/watchlist-storage";
 export const NOTIFICATION_CATEGORIES = [
   "watchlist_risk_escalation",
   "large_score_change",
+  "confidence_change",
+  "freshness_decay",
   "shock_risk",
   "macro_regime_shift",
+  "volatility_spike",
+  "breadth_deterioration",
+  "sector_pressure_change",
+  "contradiction_detected",
   "replay_relevant_event",
   "alert_threshold",
 ] as const;
@@ -26,14 +32,23 @@ export type NotificationSymbolScope = (typeof NOTIFICATION_SYMBOL_SCOPES)[number
 
 export const INTELLIGENCE_FEED_TYPES = [
   "market_regime_changed",
+  "score_improved",
+  "score_deteriorated",
+  "confidence_changed",
+  "freshness_decayed",
   "watchlist_score_improved",
   "risk_pressure_increased",
+  "volatility_spiked",
+  "breadth_deteriorated",
+  "sector_pressure_changed",
   "shock_risk_detected",
   "replay_similarity_found",
   "opportunity_attention_queue",
   "symbol_moved_to_risk_review",
   "macro_pressure_changed",
   "alert_triggered",
+  "stale_setup_detected",
+  "contradiction_detected",
 ] as const;
 
 export type IntelligenceFeedType = (typeof INTELLIGENCE_FEED_TYPES)[number];
@@ -71,14 +86,44 @@ export type IntelligenceFeedItem = {
   whyItMatters: string;
 };
 
+export type DailyBriefSectionKey =
+  | "market_state"
+  | "macro_pressure"
+  | "risk_environment"
+  | "watchlist_changes"
+  | "best_setups"
+  | "dangerous_names"
+  | "stale_setups"
+  | "replay_similarities"
+  | "shock_watch"
+  | "what_changed"
+  | "what_to_monitor";
+
+export type DailyBriefSection = {
+  actionHref: string;
+  details: string[];
+  key: DailyBriefSectionKey;
+  severity: IntelligenceFeedSeverity;
+  status: string;
+  summary: string;
+  symbols: string[];
+  title: string;
+};
+
 export type DailyBrief = {
   bullets: string[];
   dangerousSymbols: string[];
   generatedAt: string;
   headline: string;
+  macroPressure: string;
   marketState: string | null;
   monitorList: string[];
+  replaySimilaritySymbols: string[];
+  riskEnvironment: string;
+  sections: DailyBriefSection[];
   shockSymbols: string[];
+  sinceLastVisit: string[];
+  staleSymbols: string[];
   topWatchSymbols: string[];
   watchlistChanges: string[];
 };
@@ -138,30 +183,62 @@ export function normalizeNotificationPreferences(value: unknown): NotificationPr
 
 export function buildDailyBrief(input: BuildIntelligenceFeedInput): DailyBrief {
   const generatedAt = input.generatedAt ?? new Date().toISOString();
-  const topWatch = topOpportunityRows(input.rows, 4).map((row) => row.symbol);
-  const dangerous = dangerousRows(input.rows, 4).map((row) => row.symbol);
-  const shock = shockRows(input.rows, 4).map((row) => row.symbol);
+  const topWatchRowsForBrief = topOpportunityRows(input.rows, 4);
+  const dangerousRowsForBrief = dangerousRows(input.rows, 4);
+  const shockRowsForBrief = shockRows(input.rows, 4);
+  const staleRowsForBrief = staleRows(input.rows, 4);
+  const replayRowsForBrief = replaySimilarityRows(input.rows, 4);
+  const topWatch = topWatchRowsForBrief.map((row) => row.symbol);
+  const dangerous = dangerousRowsForBrief.map((row) => row.symbol);
+  const shock = shockRowsForBrief.map((row) => row.symbol);
+  const stale = staleRowsForBrief.map((row) => row.symbol);
+  const replay = replayRowsForBrief.map((row) => row.symbol);
   const watchlistChanges = (input.workflowEvolution?.watchlistEvolution ?? []).slice(0, 4).map((item) => `${item.symbol}: ${item.title}`);
   const marketState = stringOrNull(input.marketCondition);
+  const macroPressure = macroPressureSummary(input.rows, marketState);
+  const riskEnvironment = riskEnvironmentSummary(input.rows, marketState);
+  const sinceLastVisit = sinceLastVisitItems(input.workflowEvolution);
+  const monitorList = monitorListFor(input.rows, input.workflowEvolution);
   const headline = marketState
-    ? `Market state is ${humanizeLabel(marketState)}. Review what changed before forcing new risk.`
+    ? `Market state is ${humanizeLabel(marketState)}. ${riskEnvironment} Review what changed before forcing new risk.`
     : "Daily brief is using the latest scanner packet. Market state is limited in this snapshot.";
 
   const bullets = [
     topWatch.length ? `Top watch candidates: ${topWatch.join(", ")}.` : "No high-quality watch candidate is dominant yet.",
     dangerous.length ? `Risk review names: ${dangerous.join(", ")}.` : "No critical dangerous-now cluster is dominant.",
     shock.length ? `Shock watch: ${shock.join(", ")}.` : "No elevated shock cluster is leading this packet.",
-    watchlistChanges.length ? "Watchlist changes are available below." : "Watchlist change history is still building.",
+    stale.length ? `Stale or decaying setups: ${stale.join(", ")}.` : "No stale setup cluster is dominating the feed.",
+    sinceLastVisit.length ? "Since-last-visit changes are available below." : "Change history is still building from real workflow snapshots.",
   ];
+
+  const sections = buildDailyBriefSections({
+    dangerousRows: dangerousRowsForBrief,
+    macroPressure,
+    marketState,
+    monitorList,
+    replayRows: replayRowsForBrief,
+    riskEnvironment,
+    shockRows: shockRowsForBrief,
+    sinceLastVisit,
+    staleRows: staleRowsForBrief,
+    topWatchRows: topWatchRowsForBrief,
+    watchlistChanges,
+  });
 
   return {
     bullets,
     dangerousSymbols: dangerous,
     generatedAt,
     headline,
+    macroPressure,
     marketState,
-    monitorList: monitorListFor(input.rows, input.workflowEvolution),
+    monitorList,
+    replaySimilaritySymbols: replay,
+    riskEnvironment,
+    sections,
     shockSymbols: shock,
+    sinceLastVisit,
+    staleSymbols: stale,
     topWatchSymbols: topWatch,
     watchlistChanges,
   };
@@ -175,15 +252,23 @@ export function buildIntelligenceFeedItems(input: BuildIntelligenceFeedInput): I
     marketFeedItem(input.marketCondition, dataTimestamp),
     ...workflowItems(input.workflowEvolution, dataTimestamp),
     ...alertItems(input.activeAlertMatches ?? [], dataTimestamp),
+    ...scoreChangeItems(input.rows, dataTimestamp, watchlist),
+    ...confidenceChangeItems(input.rows, dataTimestamp, watchlist),
     ...topOpportunityRows(input.rows, 3).map((row) => opportunityItem(row, dataTimestamp)),
     ...dangerousRows(input.rows, 3).map((row) => riskItem(row, dataTimestamp, watchlist.has(row.symbol))),
+    breadthDeteriorationItem(input.rows, dataTimestamp),
+    ...sectorPressureItems(input.rows, dataTimestamp),
+    ...freshnessDecayItems(input.rows, dataTimestamp, watchlist),
+    ...contradictionItems(input.rows, dataTimestamp, watchlist),
+    ...volatilitySpikeItems(input.rows, dataTimestamp, watchlist),
     ...shockRows(input.rows, 3).map((row) => shockItem(row, dataTimestamp)),
+    ...replaySimilarityItems(input.rows, dataTimestamp, watchlist),
     replayItem(input.workflowEvolution, dataTimestamp),
   ].filter((item): item is IntelligenceFeedItem => Boolean(item));
 
   return dedupeFeedItems(items)
-    .sort((left, right) => severityRank(right.severity) - severityRank(left.severity) || timestampMs(right.dataTimestamp) - timestampMs(left.dataTimestamp) || left.title.localeCompare(right.title))
-    .slice(0, 18);
+    .sort((left, right) => feedRankScore(right, watchlist) - feedRankScore(left, watchlist) || timestampMs(right.dataTimestamp) - timestampMs(left.dataTimestamp) || left.title.localeCompare(right.title))
+    .slice(0, 24);
 }
 
 export function shouldNotifyForFeedItem(
@@ -210,10 +295,16 @@ export function shouldNotifyForFeedItem(
 export function notificationCategoryLabel(category: NotificationCategory): string {
   const labels: Record<NotificationCategory, string> = {
     alert_threshold: "Alert threshold",
+    breadth_deterioration: "Breadth deterioration",
+    confidence_change: "Confidence change",
+    contradiction_detected: "Contradiction detected",
+    freshness_decay: "Freshness decay",
     large_score_change: "Large score change",
     macro_regime_shift: "Macro regime shift",
     replay_relevant_event: "Replay-relevant event",
+    sector_pressure_change: "Sector pressure change",
     shock_risk: "Shock risk",
+    volatility_spike: "Volatility spike",
     watchlist_risk_escalation: "Watchlist risk escalation",
   };
   return labels[category];
@@ -376,6 +467,317 @@ function replayItem(workflow: WorkflowEvolutionSummary | null | undefined, dataT
   };
 }
 
+function scoreChangeItems(rows: OpportunityViewModel[], dataTimestamp: string, watchlist: Set<string>): IntelligenceFeedItem[] {
+  return rows
+    .map((row) => ({ delta: scoreChangeValue(row), row }))
+    .filter((item): item is { delta: number; row: OpportunityViewModel } => item.delta !== null && Math.abs(item.delta) >= 4)
+    .sort((left, right) => Math.abs(right.delta) - Math.abs(left.delta))
+    .slice(0, 4)
+    .map(({ delta, row }) => {
+      const improved = delta > 0;
+      const score = rounded(row.final_score ?? row.conviction);
+      return {
+        actionHref: `/symbol/${encodeURIComponent(row.symbol)}`,
+        category: improved ? "large_score_change" : "watchlist_risk_escalation",
+        dataTimestamp,
+        evidenceLabel: `Score ${signed(delta)} · now ${score}/100`,
+        itemType: improved ? "score_improved" : "score_deteriorated",
+        monitorNext: improved
+          ? "Check whether price, market context, and evidence quality confirm the improvement."
+          : "Review what weakened before trusting any stale watchlist view.",
+        notificationEligible: watchlist.has(row.symbol) || Math.abs(delta) >= 8,
+        relatedSymbol: row.symbol,
+        severity: improved ? "positive" : Math.abs(delta) >= 8 ? "warning" : "medium",
+        sourceKey: `score:${row.symbol}:${Math.round(delta)}:${dateBucket(dataTimestamp)}`,
+        summary: improved
+          ? `${row.symbol} improved versus the previous comparable scanner context.`
+          : `${row.symbol} weakened versus the previous comparable scanner context.`,
+        title: improved ? `${row.symbol} score improved` : `${row.symbol} score deteriorated`,
+        whyItMatters: "Large score movement is more useful than a static score because it highlights changing setup quality.",
+      };
+    });
+}
+
+function confidenceChangeItems(rows: OpportunityViewModel[], dataTimestamp: string, watchlist: Set<string>): IntelligenceFeedItem[] {
+  return rows
+    .map((row) => ({ delta: confidenceChangeValue(row), row }))
+    .filter((item): item is { delta: number; row: OpportunityViewModel } => item.delta !== null && Math.abs(item.delta) >= 5)
+    .sort((left, right) => Math.abs(right.delta) - Math.abs(left.delta))
+    .slice(0, 4)
+    .map(({ delta, row }) => {
+      const improved = delta > 0;
+      return {
+        actionHref: `/symbol/${encodeURIComponent(row.symbol)}`,
+        category: "confidence_change" as const,
+        dataTimestamp,
+        evidenceLabel: `Confidence ${signed(delta)} · ${row.confidenceLabel}`,
+        itemType: "confidence_changed" as const,
+        monitorNext: improved ? "Confirm that stronger confidence is supported by current market and risk context." : "Check whether lower confidence is from stale evidence, risk pressure, or weaker setup quality.",
+        notificationEligible: watchlist.has(row.symbol) || Math.abs(delta) >= 9,
+        relatedSymbol: row.symbol,
+        severity: improved ? "positive" as const : "warning" as const,
+        sourceKey: `confidence:${row.symbol}:${Math.round(delta)}:${dateBucket(dataTimestamp)}`,
+        summary: `${row.symbol} confidence ${improved ? "improved" : "weakened"} in the latest comparable scanner context.`,
+        title: `${row.symbol} confidence ${improved ? "improved" : "weakened"}`,
+        whyItMatters: "Confidence changes help separate improving research candidates from stale or weakening setups.",
+      };
+    });
+}
+
+function freshnessDecayItems(rows: OpportunityViewModel[], dataTimestamp: string, watchlist: Set<string>): IntelligenceFeedItem[] {
+  return staleRows(rows, 5).map((row) => ({
+    actionHref: `/symbol/${encodeURIComponent(row.symbol)}`,
+    category: "freshness_decay" as const,
+    dataTimestamp,
+    evidenceLabel: row.dataFreshness.message,
+    itemType: "freshness_decayed" as const,
+    monitorNext: "Wait for a fresher scan or updated evidence before treating the setup as current.",
+    notificationEligible: watchlist.has(row.symbol) && row.dataFreshness.status === "stale",
+    relatedSymbol: row.symbol,
+    severity: row.dataFreshness.status === "stale" ? "warning" as const : "info" as const,
+    sourceKey: `freshness:${row.symbol}:${row.dataFreshness.status}:${dateBucket(dataTimestamp)}`,
+    summary: `${row.symbol} evidence is ${row.dataFreshness.label.toLowerCase()}.`,
+    title: `${row.symbol} setup freshness decayed`,
+    whyItMatters: "Signals age. Freshness decay prevents older context from feeling more certain than it is.",
+  }));
+}
+
+function contradictionItems(rows: OpportunityViewModel[], dataTimestamp: string, watchlist: Set<string>): IntelligenceFeedItem[] {
+  return rows
+    .filter((row) => (row.final_score ?? row.conviction) >= 62 && Math.max(row.fragility, row.eventRisk, row.shockPattern?.twoSidedVolatilityScore ?? 0) >= 70)
+    .sort((left, right) => contradictionScore(right) - contradictionScore(left) || left.symbol.localeCompare(right.symbol))
+    .slice(0, 5)
+    .map((row) => ({
+      actionHref: `/symbol/${encodeURIComponent(row.symbol)}`,
+      category: "contradiction_detected" as const,
+      dataTimestamp,
+      evidenceLabel: `Score ${rounded(row.final_score ?? row.conviction)}/100 · Risk ${rounded(Math.max(row.fragility, row.eventRisk))}/100`,
+      itemType: "contradiction_detected" as const,
+      monitorNext: "Separate setup quality from risk pressure before escalating this symbol.",
+      notificationEligible: watchlist.has(row.symbol) || contradictionScore(row) >= 150,
+      relatedSymbol: row.symbol,
+      severity: "warning" as const,
+      sourceKey: `contradiction:${row.symbol}:${rounded(contradictionScore(row))}:${dateBucket(dataTimestamp)}`,
+      summary: `${row.symbol} has useful setup evidence, but risk pressure is also elevated.`,
+      title: `${row.symbol} has conflicting signals`,
+      whyItMatters: "Contradictions are where users most often over-trust a single score. TradeVeto surfaces the conflict explicitly.",
+    }));
+}
+
+function volatilitySpikeItems(rows: OpportunityViewModel[], dataTimestamp: string, watchlist: Set<string>): IntelligenceFeedItem[] {
+  return rows
+    .filter((row) => volatilityPressureScore(row) >= 72)
+    .sort((left, right) => volatilityPressureScore(right) - volatilityPressureScore(left) || left.symbol.localeCompare(right.symbol))
+    .slice(0, 4)
+    .map((row) => ({
+      actionHref: `/symbol/${encodeURIComponent(row.symbol)}`,
+      category: "volatility_spike" as const,
+      dataTimestamp,
+      evidenceLabel: `Volatility pressure ${rounded(volatilityPressureScore(row))}/100`,
+      itemType: "volatility_spiked" as const,
+      monitorNext: "Check whether volatility expansion is event-driven, late-cycle, or supported by real setup quality.",
+      notificationEligible: watchlist.has(row.symbol) || volatilityPressureScore(row) >= 82,
+      relatedSymbol: row.symbol,
+      severity: volatilityPressureScore(row) >= 82 ? "critical" as const : "warning" as const,
+      sourceKey: `volatility:${row.symbol}:${rounded(volatilityPressureScore(row))}:${dateBucket(dataTimestamp)}`,
+      summary: `${row.symbol} is showing elevated volatility or large-move pressure.`,
+      title: `${row.symbol} volatility pressure increased`,
+      whyItMatters: "Volatility expansion can make a setup more fragile even when the headline score looks attractive.",
+    }));
+}
+
+function replaySimilarityItems(rows: OpportunityViewModel[], dataTimestamp: string, watchlist: Set<string>): IntelligenceFeedItem[] {
+  return replaySimilarityRows(rows, 4).map((row) => ({
+    actionHref: `/symbol/${encodeURIComponent(row.symbol)}#replay`,
+    category: "replay_relevant_event" as const,
+    dataTimestamp,
+    evidenceLabel: `Replay similarity ${rounded(row.shockPattern?.currentSimilarityScore ?? 0)}/100`,
+    itemType: "replay_similarity_found" as const,
+    monitorNext: "Open replay context to compare prior similar environments before trusting the current setup.",
+    notificationEligible: watchlist.has(row.symbol) && (row.shockPattern?.currentSimilarityScore ?? 0) >= 76,
+    relatedSymbol: row.symbol,
+    severity: "info" as const,
+    sourceKey: `replay:${row.symbol}:${rounded(row.shockPattern?.currentSimilarityScore ?? 0)}:${dateBucket(dataTimestamp)}`,
+    summary: `${row.symbol} has historical pattern context available for research comparison.`,
+    title: `${row.symbol} replay similarity found`,
+    whyItMatters: "Replay context helps users see whether current conditions resemble past environments instead of relying on today’s score alone.",
+  }));
+}
+
+function breadthDeteriorationItem(rows: OpportunityViewModel[], dataTimestamp: string): IntelligenceFeedItem | null {
+  if (!rows.length) return null;
+  const avoidCount = rows.filter((row) => String(row.final_decision ?? "").toUpperCase() === "AVOID" || row.fragility >= 72).length;
+  const ratio = avoidCount / rows.length;
+  if (ratio < 0.42) return null;
+  return {
+    actionHref: "/terminal#market-state",
+    category: "breadth_deterioration",
+    dataTimestamp,
+    evidenceLabel: `${avoidCount}/${rows.length} symbols risk-filtered`,
+    itemType: "breadth_deteriorated",
+    monitorNext: "Watch whether risk-filtered names keep expanding or whether breadth improves in the next scan.",
+    notificationEligible: ratio >= 0.55,
+    relatedSymbol: null,
+    severity: ratio >= 0.55 ? "warning" : "medium",
+    sourceKey: `breadth:${avoidCount}:${rows.length}:${dateBucket(dataTimestamp)}`,
+    summary: "A large share of the scanner universe is risk-filtered or fragile.",
+    title: "Market breadth deteriorated",
+    whyItMatters: "Broad deterioration changes how much trust to put in individual opportunities, even strong-looking ones.",
+  };
+}
+
+function sectorPressureItems(rows: OpportunityViewModel[], dataTimestamp: string): IntelligenceFeedItem[] {
+  const groups = new Map<string, { count: number; pressure: number; symbols: string[] }>();
+  for (const row of rows) {
+    const sector = stringOrNull(row.sector) ?? "Unclassified";
+    const current = groups.get(sector) ?? { count: 0, pressure: 0, symbols: [] };
+    current.count += 1;
+    current.pressure += Math.max(row.fragility, row.eventRisk);
+    if (current.symbols.length < 4) current.symbols.push(row.symbol);
+    groups.set(sector, current);
+  }
+  return [...groups.entries()]
+    .map(([sector, item]) => ({ average: item.pressure / item.count, sector, symbols: item.symbols }))
+    .filter((item) => item.average >= 70 && item.symbols.length >= 2)
+    .sort((left, right) => right.average - left.average || left.sector.localeCompare(right.sector))
+    .slice(0, 3)
+    .map((item) => ({
+      actionHref: "/opportunities",
+      category: "sector_pressure_change" as const,
+      dataTimestamp,
+      evidenceLabel: `${item.sector} pressure ${rounded(item.average)}/100`,
+      itemType: "sector_pressure_changed" as const,
+      monitorNext: `Review whether ${item.symbols.join(", ")} share the same sector pressure or isolated symbol risk.`,
+      notificationEligible: item.average >= 78,
+      relatedSymbol: item.symbols[0] ?? null,
+      severity: item.average >= 78 ? "warning" as const : "medium" as const,
+      sourceKey: `sector:${stableKey(item.sector)}:${rounded(item.average)}:${dateBucket(dataTimestamp)}`,
+      summary: `${item.sector} has elevated average risk pressure across multiple scanner rows.`,
+      title: `${item.sector} pressure increased`,
+      whyItMatters: "Sector pressure helps users tell whether a symbol is moving alone or inside a broader risk cluster.",
+    }));
+}
+
+function buildDailyBriefSections(input: {
+  dangerousRows: OpportunityViewModel[];
+  macroPressure: string;
+  marketState: string | null;
+  monitorList: string[];
+  replayRows: OpportunityViewModel[];
+  riskEnvironment: string;
+  shockRows: OpportunityViewModel[];
+  sinceLastVisit: string[];
+  staleRows: OpportunityViewModel[];
+  topWatchRows: OpportunityViewModel[];
+  watchlistChanges: string[];
+}): DailyBriefSection[] {
+  return [
+    {
+      actionHref: "/terminal#market-state",
+      details: [
+        input.marketState ? `Market state is ${humanizeLabel(input.marketState)}.` : "Market state is limited in this snapshot.",
+        input.riskEnvironment,
+      ],
+      key: "market_state",
+      severity: /risk|overheated|transition|fragile|weak/i.test(input.marketState ?? "") ? "warning" : "info",
+      status: input.marketState ? humanizeLabel(input.marketState) : "Limited",
+      summary: input.marketState ? `Current environment: ${humanizeLabel(input.marketState)}.` : "Market state is not fully available yet.",
+      symbols: [],
+      title: "Market State",
+    },
+    {
+      actionHref: "/terminal#market-charts",
+      details: [input.macroPressure, "Macro pressure is inferred from real macro/exchange alignment fields when available."],
+      key: "macro_pressure",
+      severity: /elevated|weak|negative|deterior/i.test(input.macroPressure) ? "warning" : "info",
+      status: input.macroPressure,
+      summary: input.macroPressure,
+      symbols: [],
+      title: "Macro Pressure",
+    },
+    {
+      actionHref: "/opportunities",
+      details: input.topWatchRows.map((row) => `${row.symbol}: ${row.confidenceLabel} confidence, score ${rounded(row.final_score ?? row.conviction)}/100.`),
+      key: "best_setups",
+      severity: input.topWatchRows.length ? "positive" : "info",
+      status: input.topWatchRows.length ? `${input.topWatchRows.length} candidates` : "Limited",
+      summary: input.topWatchRows.length ? `${input.topWatchRows.map((row) => row.symbol).join(", ")} are the highest-priority research candidates.` : "No high-quality setup cluster is dominant yet.",
+      symbols: input.topWatchRows.map((row) => row.symbol),
+      title: "Best Setups",
+    },
+    {
+      actionHref: "/opportunities?mode=risk",
+      details: input.dangerousRows.map((row) => `${row.symbol}: fragility ${rounded(row.fragility)}/100, event risk ${rounded(row.eventRisk)}/100.`),
+      key: "dangerous_names",
+      severity: input.dangerousRows.length ? "warning" : "info",
+      status: input.dangerousRows.length ? `${input.dangerousRows.length} risk-review` : "Quiet",
+      summary: input.dangerousRows.length ? `${input.dangerousRows.map((row) => row.symbol).join(", ")} require risk review first.` : "No dominant dangerous-name cluster is present.",
+      symbols: input.dangerousRows.map((row) => row.symbol),
+      title: "Dangerous Names",
+    },
+    {
+      actionHref: "/terminal#intelligence-feed",
+      details: input.shockRows.map((row) => `${row.symbol}: volatility/shock pressure ${rounded(shockSortScore(row))}/100.`),
+      key: "shock_watch",
+      severity: input.shockRows.length ? "warning" : "info",
+      status: input.shockRows.length ? `${input.shockRows.length} elevated` : "No cluster",
+      summary: input.shockRows.length ? `${input.shockRows.map((row) => row.symbol).join(", ")} have elevated large-move or shock context.` : "No shock cluster is dominating this scan.",
+      symbols: input.shockRows.map((row) => row.symbol),
+      title: "Shock Watch",
+    },
+    {
+      actionHref: "/history",
+      details: input.sinceLastVisit,
+      key: "what_changed",
+      severity: input.sinceLastVisit.some((item) => /risk|weaken|deterior|fragility/i.test(item)) ? "warning" : "info",
+      status: input.sinceLastVisit.length ? `${input.sinceLastVisit.length} updates` : "Building",
+      summary: input.sinceLastVisit.length ? input.sinceLastVisit[0] ?? "Workflow changes are available." : "TradeVeto is building a baseline for since-last-visit changes.",
+      symbols: symbolsFromText(input.sinceLastVisit.join(" ")),
+      title: "What Changed",
+    },
+    {
+      actionHref: "/history",
+      details: input.replayRows.map((row) => `${row.symbol}: replay similarity ${rounded(row.shockPattern?.currentSimilarityScore ?? 0)}/100.`),
+      key: "replay_similarities",
+      severity: "info",
+      status: input.replayRows.length ? `${input.replayRows.length} available` : "Limited",
+      summary: input.replayRows.length ? `${input.replayRows.map((row) => row.symbol).join(", ")} have replay-style historical context.` : "No strong replay similarity is available yet.",
+      symbols: input.replayRows.map((row) => row.symbol),
+      title: "Replay Similarities",
+    },
+    {
+      actionHref: "/opportunities",
+      details: input.staleRows.map((row) => `${row.symbol}: ${row.dataFreshness.message}.`),
+      key: "stale_setups",
+      severity: input.staleRows.length ? "warning" : "info",
+      status: input.staleRows.length ? `${input.staleRows.length} stale` : "Fresh enough",
+      summary: input.staleRows.length ? `${input.staleRows.map((row) => row.symbol).join(", ")} need fresher evidence before confidence increases.` : "No stale setup cluster is dominating the feed.",
+      symbols: input.staleRows.map((row) => row.symbol),
+      title: "Stale Setups",
+    },
+    {
+      actionHref: "/terminal#intelligence-feed",
+      details: input.watchlistChanges.length ? input.watchlistChanges : ["Watchlist change history is still building from real user workflow snapshots."],
+      key: "watchlist_changes",
+      severity: input.watchlistChanges.some((item) => /risk|fragility|deterior/i.test(item)) ? "warning" : "info",
+      status: input.watchlistChanges.length ? `${input.watchlistChanges.length} changes` : "Building",
+      summary: input.watchlistChanges.length ? "Tracked symbols changed since the prior workflow snapshot." : "Add symbols to the watchlist to personalize future daily briefs.",
+      symbols: symbolsFromText(input.watchlistChanges.join(" ")),
+      title: "Watchlist Changes",
+    },
+    {
+      actionHref: "/terminal#intelligence-feed",
+      details: input.monitorList.length ? input.monitorList : ["No validated monitor list is available yet."],
+      key: "what_to_monitor",
+      severity: "info",
+      status: input.monitorList.length ? `${input.monitorList.length} checks` : "Limited",
+      summary: input.monitorList.length ? "These are the highest-signal items to monitor next." : "The monitor list will fill as scanner evidence and workflow memory mature.",
+      symbols: symbolsFromText(input.monitorList.join(" ")),
+      title: "What To Monitor",
+    },
+  ];
+}
+
 function topOpportunityRows(rows: OpportunityViewModel[], limit: number): OpportunityViewModel[] {
   return rows
     .filter((row) => (row.final_score ?? 0) >= 55 || row.conviction >= 55)
@@ -399,6 +801,20 @@ function shockRows(rows: OpportunityViewModel[], limit: number): OpportunityView
 
 function shockSortScore(row: OpportunityViewModel): number {
   return Math.max(row.shockPattern?.twoSidedVolatilityScore ?? 0, row.shockPattern?.currentSimilarityScore ?? 0, row.shockPattern?.opportunityScore ?? 0, row.eventRisk);
+}
+
+function staleRows(rows: OpportunityViewModel[], limit: number): OpportunityViewModel[] {
+  return rows
+    .filter((row) => row.dataFreshness.status === "stale" || row.dataFreshness.status === "missing" || /stale|decay|old/i.test(row.decayLabel))
+    .sort((left, right) => freshnessRank(right) - freshnessRank(left) || (right.dataFreshness.ageMinutes ?? 0) - (left.dataFreshness.ageMinutes ?? 0) || left.symbol.localeCompare(right.symbol))
+    .slice(0, limit);
+}
+
+function replaySimilarityRows(rows: OpportunityViewModel[], limit: number): OpportunityViewModel[] {
+  return rows
+    .filter((row) => (row.shockPattern?.currentSimilarityScore ?? 0) >= 62)
+    .sort((left, right) => (right.shockPattern?.currentSimilarityScore ?? 0) - (left.shockPattern?.currentSimilarityScore ?? 0) || left.symbol.localeCompare(right.symbol))
+    .slice(0, limit);
 }
 
 function monitorListFor(rows: OpportunityViewModel[], workflow: WorkflowEvolutionSummary | null | undefined): string[] {
@@ -507,6 +923,119 @@ function integerValue(value: unknown, fallback: number, min: number, max: number
   const parsed = typeof value === "number" ? value : finiteNumber(value);
   if (parsed === null) return fallback;
   return Math.min(max, Math.max(min, Math.trunc(parsed)));
+}
+
+function scoreChangeValue(row: OpportunityViewModel): number | null {
+  return firstAvailableNumber(row.raw.score_change, row.raw.final_score_change, row.raw.readiness_change, row.raw.score_delta, row.raw.final_score_delta);
+}
+
+function confidenceChangeValue(row: OpportunityViewModel): number | null {
+  return firstAvailableNumber(row.raw.confidence_change, row.raw.conviction_change, row.raw.confidence_delta, row.raw.conviction_delta);
+}
+
+function volatilityPressureScore(row: OpportunityViewModel): number {
+  return Math.max(
+    row.shockPattern?.twoSidedVolatilityScore ?? 0,
+    finiteNumber(row.raw.volatility_score) ?? 0,
+    finiteNumber(row.raw.volatility_pressure_score) ?? 0,
+    finiteNumber(row.raw.event_shock_pressure_score) ?? 0,
+    row.eventRisk,
+  );
+}
+
+function contradictionScore(row: OpportunityViewModel): number {
+  return rounded(row.final_score ?? row.conviction) + rounded(Math.max(row.fragility, row.eventRisk, row.shockPattern?.twoSidedVolatilityScore ?? 0));
+}
+
+function macroPressureSummary(rows: OpportunityViewModel[], marketState: string | null): string {
+  const macroScores = rows
+    .map((row) => firstAvailableNumber(row.raw.macro_alignment_score, row.raw.macro_score, row.macroAdjustment))
+    .filter((value): value is number => value !== null);
+  if (!macroScores.length) {
+    return marketState && /risk|transition|overheated/i.test(marketState) ? "Macro context is cautious from the current market state." : "Macro context is limited in this snapshot.";
+  }
+  const average = macroScores.reduce((total, value) => total + value, 0) / macroScores.length;
+  if (average >= 62) return `Macro alignment is supportive on average (${Math.round(average)}/100).`;
+  if (average <= 42) return `Macro pressure is elevated on average (${Math.round(average)}/100).`;
+  return `Macro alignment is mixed on average (${Math.round(average)}/100).`;
+}
+
+function riskEnvironmentSummary(rows: OpportunityViewModel[], marketState: string | null): string {
+  if (!rows.length) return "Risk environment is limited until scanner rows are available.";
+  const elevated = rows.filter((row) => Math.max(row.fragility, row.eventRisk, volatilityPressureScore(row)) >= 70).length;
+  const ratio = elevated / rows.length;
+  if (ratio >= 0.45) return `Risk is elevated across ${elevated}/${rows.length} scanner rows.`;
+  if (marketState && /overheated|risk|transition/i.test(marketState)) return "Risk is elevated by current market-state context.";
+  return `Risk pressure is contained across most scanner rows (${elevated}/${rows.length} elevated).`;
+}
+
+function sinceLastVisitItems(workflow: WorkflowEvolutionSummary | null | undefined): string[] {
+  const items = [...(workflow?.whatChanged ?? []), ...(workflow?.watchlistEvolution ?? [])]
+    .map((item) => `${item.symbol === "WORKFLOW" ? "Workflow" : item.symbol}: ${item.title} - ${item.metricLabel}`)
+    .slice(0, 6);
+  if (items.length) return items;
+  return workflow?.dailyBrief.slice(0, 4) ?? [];
+}
+
+function feedRankScore(item: IntelligenceFeedItem, watchlist: Set<string>): number {
+  const symbolBoost = item.relatedSymbol && watchlist.has(item.relatedSymbol) ? 18 : 0;
+  const notifyBoost = item.notificationEligible ? 8 : 0;
+  const categoryBoost: Partial<Record<NotificationCategory, number>> = {
+    alert_threshold: 15,
+    breadth_deterioration: 11,
+    contradiction_detected: 12,
+    freshness_decay: 7,
+    macro_regime_shift: 10,
+    shock_risk: 14,
+    volatility_spike: 13,
+    watchlist_risk_escalation: 16,
+  };
+  const itemBoost: Partial<Record<IntelligenceFeedType, number>> = {
+    alert_triggered: 18,
+    breadth_deteriorated: 11,
+    contradiction_detected: 13,
+    freshness_decayed: 8,
+    market_regime_changed: 10,
+    opportunity_attention_queue: 8,
+    replay_similarity_found: 7,
+    risk_pressure_increased: 14,
+    shock_risk_detected: 14,
+    volatility_spiked: 13,
+    watchlist_score_improved: 15,
+  };
+  return severityRank(item.severity) * 20 + symbolBoost + notifyBoost + (categoryBoost[item.category] ?? 0) + (itemBoost[item.itemType] ?? 0);
+}
+
+function firstAvailableNumber(...values: unknown[]): number | null {
+  for (const value of values) {
+    const parsed = finiteNumber(value);
+    if (parsed !== null) return parsed;
+  }
+  return null;
+}
+
+function freshnessRank(row: OpportunityViewModel): number {
+  if (row.dataFreshness.status === "missing") return 4;
+  if (row.dataFreshness.status === "schema_mismatch") return 3;
+  if (row.dataFreshness.status === "stale") return 2;
+  if (/stale|decay|old/i.test(row.decayLabel)) return 1;
+  return 0;
+}
+
+function signed(value: number): string {
+  const roundedValue = Math.round(value * 10) / 10;
+  return `${roundedValue > 0 ? "+" : ""}${roundedValue.toFixed(Math.abs(roundedValue) < 10 && !Number.isInteger(roundedValue) ? 1 : 0)}`;
+}
+
+function symbolsFromText(value: string): string[] {
+  const matches = value.match(/\b[A-Z][A-Z0-9._-]{1,5}\b/g) ?? [];
+  const output: string[] = [];
+  for (const item of matches) {
+    if (["THIS", "WHAT", "WATCH", "RISK", "WAIT", "HIGH", "LOW"].includes(item)) continue;
+    if (!output.includes(item)) output.push(item);
+    if (output.length >= 6) break;
+  }
+  return output;
 }
 
 function cleanSymbol(value: unknown): string | null {

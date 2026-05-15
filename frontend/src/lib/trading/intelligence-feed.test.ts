@@ -103,6 +103,53 @@ test("daily brief uses real candidate and risk symbols", () => {
   assert.equal(brief.topWatchSymbols[0], "TSM");
   assert.equal(brief.dangerousSymbols[0], "OXY");
   assert.match(brief.headline, /Risk Review/i);
+  assert.ok(brief.sections.some((section) => section.key === "best_setups" && section.symbols.includes("TSM")));
+  assert.ok(brief.sections.some((section) => section.key === "dangerous_names" && section.symbols.includes("OXY")));
+});
+
+test("feed builder surfaces market awareness event types without fake visuals", () => {
+  const items = buildIntelligenceFeedItems({
+    generatedAt: "2026-05-13T16:00:00.000Z",
+    marketCondition: "RISK TRANSITION",
+    rows: [
+      opportunity({
+        confidenceLabel: "Medium",
+        conviction: 62,
+        eventRisk: 76,
+        final_score: 67,
+        fragility: 74,
+        raw: {
+          confidence_change: -8,
+          final_score: 67,
+          score_change: -6,
+          symbol: "TSLA",
+          volatility_pressure_score: 78,
+        },
+        symbol: "TSLA",
+      }),
+      opportunity({
+        dataFreshness: {
+          ageMinutes: 85,
+          humanAge: "Updated 85 min ago",
+          label: "Stale",
+          lastUpdated: "2026-05-13T14:35:00.000Z",
+          message: "Stale - updated 85 min ago",
+          status: "stale",
+        },
+        decayLabel: "Stale setup",
+        raw: { final_score: 57, symbol: "AAPL" },
+        symbol: "AAPL",
+      }),
+    ],
+    scanUpdatedAt: "2026-05-13T16:00:00.000Z",
+    watchlistSymbols: ["TSLA", "AAPL"],
+  });
+
+  assert.ok(items.some((item) => item.itemType === "score_deteriorated" && item.relatedSymbol === "TSLA"));
+  assert.ok(items.some((item) => item.itemType === "confidence_changed" && item.relatedSymbol === "TSLA"));
+  assert.ok(items.some((item) => item.itemType === "volatility_spiked" && item.relatedSymbol === "TSLA"));
+  assert.ok(items.some((item) => item.itemType === "contradiction_detected" && item.relatedSymbol === "TSLA"));
+  assert.ok(items.some((item) => item.itemType === "freshness_decayed" && item.relatedSymbol === "AAPL"));
 });
 
 test("notification preferences normalize unsafe values", () => {

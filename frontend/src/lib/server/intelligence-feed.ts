@@ -7,6 +7,7 @@ import {
   buildDailyBrief,
   buildIntelligenceFeedItems,
   DEFAULT_NOTIFICATION_PREFERENCES,
+  INTELLIGENCE_FEED_TYPES,
   normalizeNotificationPreferences,
   shouldNotifyForFeedItem,
   type BuildIntelligenceFeedInput,
@@ -371,18 +372,7 @@ function categoryValue(value: string): NotificationCategory {
 }
 
 function itemTypeValue(value: string): IntelligenceFeedType {
-  const allowed: IntelligenceFeedType[] = [
-    "market_regime_changed",
-    "watchlist_score_improved",
-    "risk_pressure_increased",
-    "shock_risk_detected",
-    "replay_similarity_found",
-    "opportunity_attention_queue",
-    "symbol_moved_to_risk_review",
-    "macro_pressure_changed",
-    "alert_triggered",
-  ];
-  return allowed.includes(value as IntelligenceFeedType) ? value as IntelligenceFeedType : "opportunity_attention_queue";
+  return INTELLIGENCE_FEED_TYPES.includes(value as IntelligenceFeedType) ? value as IntelligenceFeedType : "opportunity_attention_queue";
 }
 
 function severityValue(value: string): IntelligenceFeedSeverity {

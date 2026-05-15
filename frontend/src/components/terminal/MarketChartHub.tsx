@@ -39,7 +39,7 @@ export function MarketChartHub({ charts, marketCondition, updatedAt }: MarketCha
   if (!charts.length) return null;
 
   return (
-    <section className="rounded-3xl border border-cyan-300/16 bg-slate-950/45 p-4 shadow-2xl shadow-black/20">
+    <section className="rounded-3xl border border-cyan-300/16 bg-slate-950/45 p-4 shadow-2xl shadow-black/20" id="market-charts">
       <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Market Chart Hub</div>
