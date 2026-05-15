@@ -262,4 +262,33 @@ Production validation:
 
 | Check | Result |
 | --- | --- |
-| Production deploy and smoke | Pending final run after commit/push |
+| Production host/user/path | `onsre-node-01` / `sre` / `/opt/apps/market-alpha-scanner/app` |
+| Production app code deploy commit | `300730c4542e04b5cd6075edf6ef4944335fa89d` |
+| Production worktree before deploy | Clean |
+| Production source drift | Behind `origin/main` by `300730c` only before pull |
+| Pull mode | PASS - fast-forward from `53fb9e6` to `300730c` |
+| Docker service rebuilt | PASS - `market-alpha-frontend` |
+| Container health | PASS - frontend and Postgres healthy |
+| `/` | PASS - 200 |
+| `/terminal` | PASS - 200 |
+| `/dashboard` | PASS - 200 |
+| `/opportunities` | PASS - 200 |
+| `/symbol/AMD` | PASS - 200 |
+| `/performance` | PASS - 200 |
+| `/history?symbol=AMD` | PASS - 200 |
+| `/paper` | PASS - 200 |
+| `/strategy-labs` | PASS - 200 |
+| `/alerts` | PASS - 200 |
+| `/mobile` | PASS - 200 |
+| `/api/intelligence/feed` | PASS - unauthenticated 401 fail-closed |
+| `/api/health` | PASS - 200, `ok: true` |
+| `/api/health/deep` | PASS - 200, DB/scanner/local backup/R2 healthy |
+
+Production notes:
+
+- Scanner freshness was acceptable at approximately 8 minutes.
+- Latest local backup was approximately 15 minutes old.
+- Latest R2 offsite backup was approximately 14 minutes old.
+- No production secrets were printed.
+
+PHASE 15.5 BLOOMBERG STOCKTITAN INTELLIGENCE FEED OS COMPLETE
