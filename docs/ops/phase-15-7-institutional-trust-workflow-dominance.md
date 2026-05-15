@@ -159,20 +159,21 @@ Local validation completed on 2026-05-15:
 
 Production smoke:
 
-- Host: PENDING
-- User: PENDING
+- Host: `onsre-node-01`
+- User: `sre`
 - Path: `/opt/apps/market-alpha-scanner/app`
-- Commit: PENDING
-- Worktree: PENDING
-- Docker frontend rebuild: PENDING
-- `/`: PENDING
-- `/terminal`: PENDING
-- `/opportunities`: PENDING
-- `/symbol/AMD`: PENDING
-- `/dashboard`: PENDING
-- `/alerts`: PENDING
-- `/api/health`: PENDING
-- `/api/health/deep`: PENDING
+- Code deploy commit: `b86d4643a9df272f8b198947655d107b468ddbf8`
+- Source-control parity before deploy: production was clean and behind `origin/main` by `b86d464`
+- Docker services: `market-alpha-postgres`, `market-alpha-frontend`
+- Docker frontend rebuild: PASSED, `market-alpha-frontend` healthy
+- `/api/health`: 200, `ok: true`
+- `/api/health/deep`: 200, database ok, scanner fresh, local/offsite backups ok
+- `/`: 200
+- `/terminal`: 200
+- `/opportunities`: 200
+- `/symbol/AMD`: 200
+- `/dashboard`: 200
+- `/alerts`: 200
 
 ## Remaining Trust Debt
 
