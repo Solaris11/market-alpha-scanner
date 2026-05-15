@@ -158,6 +158,21 @@ Local validation completed on 2026-05-14:
 - `npx pyright . --pythonpath .venv/bin/python --warnings`: PASSED, 0 errors
 - `git diff --check`: PASSED
 
+Production deployment and smoke completed from `onsre-node-01` as user `sre` on 2026-05-15 UTC:
+
+- Production path: `/opt/apps/market-alpha-scanner/app`
+- Production commit: `2caeb7e156b0b66f289d53efb0db4c98c5c06d97`
+- Production worktree: CLEAN
+- Docker service rebuilt: `market-alpha-frontend`
+- Frontend container: HEALTHY
+- `/`: 200
+- `/terminal`: 200
+- `/opportunities`: 200
+- `/symbol/AMD`: 200
+- `/dashboard`: 200
+- `/api/health`: 200
+- `/api/health/deep`: 200
+
 ## Benchmark Comparison
 
 | Area | Danelfin/Bloomberg Baseline | TradeVeto Phase 15.6 Result |
