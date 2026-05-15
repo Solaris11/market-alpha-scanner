@@ -130,7 +130,24 @@ Local validation completed before production deploy:
 | `git diff --check` | PASS |
 | `npm run test:mobile-ux` | PASS - local emulation, 11 routes, 2 devices |
 
-Local mobile emulation ran without production DB credentials, so premium Strategy Labs content was locked in local screenshots. Production smoke should verify the authenticated/premium state after deploy.
+Local mobile emulation ran without production DB credentials, so premium Strategy Labs content was locked in local screenshots.
+
+Production deploy and smoke:
+
+| Check | Result |
+| --- | --- |
+| Production host | `onsre-node-01` |
+| Production commit | `0ae360d54ed2930ef39750ab0b154f32dae7aed0` |
+| Frontend rebuild | PASS - `market-alpha-frontend` rebuilt and healthy |
+| `/api/health` | PASS - 200 |
+| `/api/health/deep` | PASS - 200, DB/scanner/local backup/R2 healthy |
+| `/strategy-labs` | PASS - 200 |
+| `/paper` | PASS - 200 |
+| `/performance` | PASS - 200 |
+| `/history?symbol=AMD` | PASS - 200 |
+| `/opportunities` | PASS - 200 |
+| `/symbol/AMD` | PASS - 200 |
+| `/mobile` | PASS - 200 |
 
 ## Final Strategy UX Score Estimate
 
