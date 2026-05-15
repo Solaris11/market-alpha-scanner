@@ -109,7 +109,8 @@ Limitations:
 Production host: `sre@100.68.155.121`
 Production path: `/opt/apps/market-alpha-scanner/app`
 Production branch: `main`
-Deployed commit: `bd5a9e8057738675bb6076fc151c97ff4275c434`
+Frontend rebuild commit: `bd5a9e8057738675bb6076fc151c97ff4275c434`
+Final production source commit after report update: `b8d941ae9318eab7ade82a287cacf54f84534fad`
 
 | Check | Result |
 |---|---:|
