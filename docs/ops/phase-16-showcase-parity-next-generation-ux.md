@@ -106,25 +106,39 @@ Limitations:
 
 ## Production Validation
 
-Pending until changes are pushed, pulled on the production host, rebuilt, and smoke-tested.
+Production host: `sre@100.68.155.121`
+Production path: `/opt/apps/market-alpha-scanner/app`
+Production branch: `main`
+Deployed commit: `bd5a9e8057738675bb6076fc151c97ff4275c434`
 
-Required production smoke after deploy:
+| Check | Result |
+|---|---:|
+| Production `git pull` | Pass, fast-forwarded from `0bed870` to `bd5a9e8` |
+| Production worktree | Clean after pull |
+| `docker compose config --services` | Pass, `market-alpha-postgres`, `market-alpha-frontend` |
+| Frontend rebuild | Pass, `docker compose up -d --build market-alpha-frontend` |
+| Frontend container | Healthy |
+| Frontend logs | Clean startup, Next.js ready on port `3001` |
+| `/api/health` | Pass, `ok: true` |
+| `/api/health/deep` | Pass, DB OK, scanner fresh, R2 backups OK |
 
-- `/`
-- `/terminal`
-- `/opportunities`
-- `/symbol/AMD`
-- `/performance`
-- `/history?symbol=AMD`
-- `/alerts`
-- `/paper`
-- `/strategy-labs`
-- `/dashboard`
-- `/mobile`
-- `/account`
-- `/settings`
-- `/api/health`
-- `/api/health/deep`
+Production route smoke:
+
+| Route | Status |
+|---|---:|
+| `/` | 200 |
+| `/terminal` | 200 |
+| `/opportunities` | 200 |
+| `/symbol/AMD` | 200 |
+| `/performance` | 200 |
+| `/history?symbol=AMD` | 200 |
+| `/alerts` | 200 |
+| `/paper` | 200 |
+| `/strategy-labs` | 200 |
+| `/dashboard` | 200 |
+| `/mobile` | 200 |
+| `/account` | 200 |
+| `/settings` | 307 redirect to `/account` |
 
 ## Scores
 
