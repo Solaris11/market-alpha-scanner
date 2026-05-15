@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Activity, AlertTriangle, BarChart3, Bell, Eye, Gauge, RotateCcw, ShieldAlert, Target, Zap } from "lucide-react";
 import { useMemo } from "react";
 import { ScoreFactorStrip, type ScoreFactor, VisualMetricRail } from "@/components/visual/MiniVisuals";
-import { InteractiveInsightZoneGrid, type InteractiveInsightZoneItem } from "@/components/visual/InteractiveVisualIntelligence";
+import { InteractiveInsightZoneGrid, ShowcaseIntelligenceOrbit, type InteractiveInsightZoneItem } from "@/components/visual/InteractiveVisualIntelligence";
 import { SymbolLogo } from "@/components/visual/SymbolLogo";
 import { useWorkspacePreferences } from "@/hooks/useWorkspacePreferences";
 import {
@@ -108,6 +108,18 @@ export function UnifiedIntelligenceConsole({
           macroLabel={consoleModel.macroRegime.label}
           macroSummary={consoleModel.macroRegime.summary}
           shockConditionsAligning={consoleModel.shockConditionsAligning}
+        />
+      </div>
+
+      <div className="mt-5">
+        <SimpleAttentionStatusMatrix consoleModel={consoleModel} />
+      </div>
+
+      <div className="mt-5">
+        <ShowcaseIntelligenceOrbit
+          summary="Market state, replay, risk pressure, setup quality, macro context, shock intelligence, watchlist changes, and decision reasoning stay connected in one live research surface."
+          title="One System. What Matters Now."
+          zones={zones}
         />
       </div>
 
@@ -227,6 +239,97 @@ function SimpleHomeConsole({ consoleModel, workspacePreferences }: { consoleMode
         </div>
       </details>
     </GlassPanel>
+  );
+}
+
+function SimpleAttentionStatusMatrix({ consoleModel }: { consoleModel: ReturnType<typeof buildUnifiedIntelligenceConsole> }) {
+  const metricByKey = new Map(consoleModel.metrics.map((metric) => [metric.key, metric]));
+  const attention = metricByKey.get("attention");
+  const decision = metricByKey.get("decision");
+  const risk = metricByKey.get("risk");
+  const fragility = metricByKey.get("fragility");
+  const opportunity = metricByKey.get("opportunity");
+  const dangerousCount = consoleModel.topRisks.length;
+  const watchCount = consoleModel.shockConditionsAligning.length + consoleModel.watchlistChanges.length;
+  const favorableCount = consoleModel.topOpportunities.length;
+  const neutralCount = Math.max(0, consoleModel.attentionQueue.length - dangerousCount - favorableCount);
+  const cards = [
+    {
+      border: "border-rose-300/25",
+      count: dangerousCount,
+      label: "Dangerous",
+      summary: consoleModel.topRisks[0]?.riskLabel ?? "No dominant risk item is visible yet.",
+      text: "text-rose-100",
+    },
+    {
+      border: "border-amber-300/25",
+      count: watchCount,
+      label: "Watch Closely",
+      summary: consoleModel.shockConditionsAligning[0]?.label ?? consoleModel.watchlistChanges[0]?.label ?? "No high-priority watch change yet.",
+      text: "text-amber-100",
+    },
+    {
+      border: "border-cyan-300/25",
+      count: neutralCount,
+      label: "Neutral",
+      summary: consoleModel.macroRegime.summary,
+      text: "text-cyan-100",
+    },
+    {
+      border: "border-emerald-300/25",
+      count: favorableCount,
+      label: "Favorable",
+      summary: consoleModel.topOpportunities[0]?.reasonForAttention ?? "No clear setup leader is available yet.",
+      text: "text-emerald-100",
+    },
+  ];
+
+  return (
+    <section className="rounded-3xl border border-cyan-300/16 bg-slate-950/45 p-4 shadow-2xl shadow-cyan-950/10">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">What Matters Now</div>
+          <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-50">Unified attention system</h2>
+        </div>
+        <div className="text-xs leading-5 text-slate-500">Counts and scores come from the current scanner, workflow, and watchlist context.</div>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {cards.map((card) => (
+          <div className={`min-w-0 rounded-2xl border ${card.border} bg-white/[0.035] p-4`} key={card.label}>
+            <div className={`text-[10px] font-black uppercase tracking-[0.16em] ${card.text}`}>{card.label}</div>
+            <div className="mt-3 font-mono text-4xl font-black text-slate-50">{card.count}</div>
+            <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-400">{humanizeInsightText(card.summary)}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <ScoreFactorStrip
+          factors={[
+            metricFactor(attention, "cyan"),
+            metricFactor(opportunity, "emerald"),
+            metricFactor(decision, "cyan"),
+            metricFactor(risk, "rose"),
+            metricFactor(fragility, "amber"),
+          ].filter((factor): factor is ScoreFactor => Boolean(factor))}
+          label="Attention score drivers"
+        />
+        <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Living status</div>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div>
+              <div className="text-sm font-semibold text-slate-100">{humanizeInsightText(consoleModel.macroRegime.label)}</div>
+              <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{humanizeInsightText(consoleModel.personalizedSummary)}</p>
+            </div>
+            <div className="relative h-14 w-14 shrink-0 rounded-full border border-cyan-300/25 bg-cyan-300/10 shadow-[0_0_28px_rgba(34,211,238,0.18)]">
+              <span className="absolute inset-3 rounded-full bg-cyan-300/25" />
+              <span className="absolute inset-5 rounded-full bg-cyan-100" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 

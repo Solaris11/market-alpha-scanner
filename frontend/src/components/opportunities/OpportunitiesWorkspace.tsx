@@ -357,6 +357,7 @@ export function OpportunitiesWorkspace({
       <div id="cards">
         <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} rows={rows} />
       </div>
+      <OpportunityShowcaseRadar rows={highestScoredSetups(rows)} />
       <div id="map">
         <OpportunityVisualCommandCenter marketCondition={marketCondition} rows={rows} watchlistSet={watchlistSet} />
       </div>
@@ -1475,6 +1476,115 @@ function HighestScoredSetups({ rows }: { rows: OpportunityViewModel[] }) {
         <CompactPulseCard title="Confidence Distribution" value={pulse.confidence} detail={humanizeInsightText(pulse.confidenceDetail)} />
         <CompactPulseCard title="Scanner Pulse" value={pulse.scanner} detail={humanizeInsightText(pulse.scannerDetail)} />
       </div>
+    </div>
+  );
+}
+
+function OpportunityShowcaseRadar({ rows }: { rows: OpportunityViewModel[] }) {
+  const displayRows = rows.slice(0, 5);
+  if (!displayRows.length) {
+    return (
+      <GlassPanel className="poster-scanline overflow-hidden border-emerald-300/16 bg-emerald-400/[0.025] p-5">
+        <div className="text-[10px] font-black uppercase tracking-[0.28em] text-emerald-300">Daily Opportunity Radar</div>
+        <h2 className="poster-display-title mt-2 text-3xl text-slate-50 sm:text-4xl">Waiting for validated setups</h2>
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">No current setup has enough scanner quality, price context, and evidence to receive a showcase-grade visual card yet.</p>
+      </GlassPanel>
+    );
+  }
+
+  return (
+    <GlassPanel className="poster-scanline overflow-hidden border-emerald-300/16 bg-emerald-400/[0.025] p-4 sm:p-5">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_330px]">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.28em] text-emerald-300">Daily Opportunity Radar</div>
+          <h2 className="poster-display-title mt-2 text-3xl leading-tight text-slate-50 sm:text-5xl">
+            Today's <span className="poster-word-cyan">Best Setups</span>
+          </h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
+            These research candidates lead the current scanner stack by score, conviction, evidence, market context, and risk filters. Cards use current stored data only.
+          </p>
+        </div>
+        <div className="rounded-3xl border border-white/10 bg-slate-950/50 p-4">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Market stance for scanning</div>
+          <div className="mt-3 grid gap-2">
+            <RadarContextLine label="Focus" value="Quality over quantity" />
+            <RadarContextLine label="Approach" value="Patient and disciplined" />
+            <RadarContextLine label="Rule" value="Research signal, not advice" />
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-2 2xl:grid-cols-5">
+        {displayRows.map((row, index) => <RadarSetupCard index={index} key={row.symbol} row={row} />)}
+      </div>
+
+      <div className="mt-5 rounded-3xl border border-cyan-300/14 bg-cyan-400/[0.035] p-4">
+        <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Why these appeared</div>
+        <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <RadarReason icon={<Target className="h-5 w-5" />} label="Setup quality" />
+          <RadarReason icon={<Activity className="h-5 w-5" />} label="Pressure signals" />
+          <RadarReason icon={<LineChart className="h-5 w-5" />} label="Trend structure" />
+          <RadarReason icon={<ShieldAlert className="h-5 w-5" />} label="Fragility check" />
+        </div>
+      </div>
+    </GlassPanel>
+  );
+}
+
+function RadarSetupCard({ index, row }: { index: number; row: OpportunityViewModel }) {
+  const tone = confidenceTone(row.conviction);
+  const macroAdjustment = finiteNumber(row.macroAdjustment);
+  const macroScore = macroAdjustment === null ? null : Math.max(0, Math.min(100, 50 + macroAdjustment));
+  return (
+    <Link
+      className={`group min-w-0 overflow-hidden rounded-3xl border bg-slate-950/54 p-4 shadow-2xl shadow-black/20 transition hover:-translate-y-1 hover:bg-white/[0.065] ${tone.borderClass}`}
+      href={`/symbol/${row.symbol}`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-cyan-300/25 bg-cyan-300/10 font-mono text-sm font-black text-cyan-100">{index + 1}</div>
+          <SymbolLogo companyName={row.company_name} sector={row.sector} size="lg" symbol={row.symbol} />
+        </div>
+        <div className="text-right">
+          <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Score</div>
+          <div className="font-mono text-3xl font-black text-slate-50">{formatNumber(row.final_score, 0)}</div>
+        </div>
+      </div>
+      <div className="mt-4">
+        <div className="font-mono text-4xl font-black leading-none text-slate-50">{row.symbol}</div>
+        <div className="mt-2 line-clamp-2 min-h-10 text-sm leading-5 text-slate-300">{cleanText(row.company_name || row.sector, "Research candidate")}</div>
+      </div>
+      <PriceContextStrip className="mt-4 sm:grid-cols-1 xl:grid-cols-1" row={row} />
+      <ScoreFactorStrip
+        className="mt-4"
+        factors={[
+          { label: "Conviction", tone: "emerald", value: row.conviction },
+          { label: "Risk", tone: row.fragility >= 68 ? "rose" : "amber", value: row.fragility },
+          { label: "Evidence", tone: row.evidence?.tier === "limited" ? "amber" : "emerald", value: row.evidence?.score },
+          { label: "Macro", tone: macroAdjustment === null ? "cyan" : macroAdjustment >= 0 ? "emerald" : "rose", value: macroScore },
+        ]}
+        label="Setup stack"
+      />
+      <p className="mt-3 line-clamp-3 text-xs leading-5 text-slate-400">{humanizeInsightText(firstReason(row))}</p>
+      <div className={`mt-3 text-[10px] font-black uppercase tracking-[0.14em] ${tone.textClass}`}>{tone.label}</div>
+    </Link>
+  );
+}
+
+function RadarReason({ icon, label }: { icon: ReactNode; label: string }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3 rounded-2xl border border-white/10 bg-slate-950/40 p-3">
+      <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/10 text-cyan-100">{icon}</div>
+      <div className="text-xs font-black uppercase tracking-[0.12em] text-slate-100">{label}</div>
+    </div>
+  );
+}
+
+function RadarContextLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-2">
+      <span className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</span>
+      <span className="text-right text-xs font-bold text-emerald-100">{value}</span>
     </div>
   );
 }

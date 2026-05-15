@@ -174,6 +174,100 @@ export function InteractiveInsightZoneGrid({
   );
 }
 
+export function ShowcaseIntelligenceOrbit({
+  centerLabel = "V",
+  className = "",
+  eyebrow = "Unified intelligence system",
+  summary = "One connected TradeVeto workflow. Tap any intelligence node to inspect the data, source, related symbols, and what to monitor next.",
+  title = "One System. One Focus.",
+  zones,
+}: {
+  centerLabel?: string;
+  className?: string;
+  eyebrow?: string;
+  summary?: string;
+  title?: string;
+  zones: InteractiveInsightZoneItem[];
+}) {
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const activeZone = useMemo(() => zones.find((zone) => zone.id === activeId) ?? null, [activeId, zones]);
+  const orbitZones = zones.slice(0, 10);
+
+  if (!orbitZones.length) return null;
+
+  return (
+    <>
+      <section className={`poster-scanline overflow-hidden rounded-3xl border border-cyan-300/16 bg-slate-950/55 p-4 shadow-2xl shadow-cyan-950/10 sm:p-5 ${className}`}>
+        <div className="grid gap-5 xl:grid-cols-[minmax(280px,0.88fr)_minmax(0,1.12fr)]">
+          <div className="flex min-w-0 flex-col justify-between">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">{eyebrow}</div>
+              <h2 className="poster-display-title mt-2 text-3xl leading-tight text-slate-50 sm:text-4xl">
+                {title.split(". ").map((part, index) => (
+                  <span className={index === 1 ? "poster-word-cyan block" : "block"} key={part}>
+                    {part}{index === 0 && title.includes(". ") ? "." : ""}
+                  </span>
+                ))}
+              </h2>
+              <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400">{summary}</p>
+            </div>
+            <div className="mt-5 rounded-2xl border border-cyan-300/14 bg-cyan-400/[0.045] p-4">
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Click behavior</div>
+              <p className="mt-2 text-xs leading-5 text-slate-400">
+                Nodes open centered, data-backed detail surfaces. Missing history stays marked as limited evidence instead of drawing fake intelligence.
+              </p>
+            </div>
+          </div>
+
+          <div className="relative min-h-[430px] overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.14),rgba(15,23,42,0.52)_42%,rgba(2,6,23,0.72)_72%)] p-4">
+            <div className="pointer-events-none absolute inset-4 rounded-full border border-cyan-300/10" />
+            <div className="pointer-events-none absolute inset-14 rounded-full border border-violet-300/10" />
+            <div className="pointer-events-none absolute inset-x-6 top-1/2 h-px bg-gradient-to-r from-transparent via-cyan-300/25 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-6 left-1/2 w-px bg-gradient-to-b from-transparent via-cyan-300/25 to-transparent" />
+
+            <button
+              aria-label="Open primary intelligence system summary"
+              className="absolute left-1/2 top-1/2 z-10 grid h-28 w-28 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-cyan-200/35 bg-slate-950/88 shadow-[0_0_55px_rgba(34,211,238,0.28)] transition hover:scale-[1.02] hover:border-cyan-100/70"
+              onClick={() => setActiveId(orbitZones[0]?.id ?? null)}
+              type="button"
+            >
+              <span className="poster-word-cyan font-mono text-5xl font-black">{centerLabel}</span>
+              <span className="sr-only">Open intelligence overview</span>
+            </button>
+
+            <div className="relative z-20 grid h-full min-h-[398px] grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+              {orbitZones.map((zone, index) => {
+                const tone = TONE_CLASS[zone.tone ?? "cyan"];
+                const offsetClass = index % 4 === 1 ? "lg:mt-12" : index % 4 === 2 ? "lg:mt-28" : index % 4 === 3 ? "lg:mt-16" : "";
+                return (
+                  <button
+                    aria-label={`Open ${zone.label} detail`}
+                    className={`group min-w-0 rounded-2xl border bg-slate-950/64 p-3 text-left backdrop-blur-xl transition duration-200 hover:-translate-y-0.5 hover:bg-white/[0.06] ${tone.border} ${tone.glow} ${offsetClass}`}
+                    key={zone.id}
+                    onClick={() => setActiveId(zone.id)}
+                    type="button"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 ${tone.icon}`}>
+                        {zone.icon}
+                      </div>
+                      {zone.metric ? <div className={`ml-auto font-mono text-sm font-black ${tone.text}`}>{zone.metric}</div> : null}
+                    </div>
+                    <div className="mt-3 text-[10px] font-black uppercase leading-4 tracking-[0.12em] text-slate-100">{zone.label}</div>
+                    <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-500">{humanizeInsightText(zone.summary)}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <VisualDetailDrawer onClose={() => setActiveId(null)} zone={activeZone} />
+    </>
+  );
+}
+
 function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: InteractiveInsightZoneItem | null }) {
   if (!zone) return null;
 
