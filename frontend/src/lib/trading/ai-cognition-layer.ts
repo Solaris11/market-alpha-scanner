@@ -85,10 +85,11 @@ export function buildAICognitionLayer(input: BuildAICognitionLayerInput): AICogn
     contradictions,
     copilotGroundingPrompts: [
       "Why did this change?",
+      "Why did confidence drop?",
+      "What increased risk?",
       "What is contradicting this setup?",
       "What is stale?",
       "What needs confirmation?",
-      "What changed since yesterday?",
     ],
     generatedAt: input.generatedAt ?? new Date().toISOString(),
     groundingPacket,

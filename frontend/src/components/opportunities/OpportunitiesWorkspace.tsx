@@ -65,6 +65,7 @@ import { HeatDots, ScoreFactorStrip, type ScoreFactor, VisualMetricRail } from "
 import { InteractiveInsightZoneGrid, type InteractiveInsightZoneItem } from "@/components/visual/InteractiveVisualIntelligence";
 import { SymbolIdentityLine, SymbolLogo } from "@/components/visual/SymbolLogo";
 import { getSymbolVisualIdentity } from "@/lib/visual-identity";
+import { buildAIExplainabilityFromOpportunity, type ExplainabilityTone } from "@/lib/trading/ai-explainability";
 import type { ChartCandle } from "@/components/terminal/SymbolChart";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
@@ -1611,6 +1612,7 @@ function OpportunityCard({ row, visibilityReason }: { row: OpportunityViewModel;
   const institutionalLabels = compactInstitutionalLabels(row);
   const execution = buildExecutionIntelligence(row);
   const actionability = buildOpportunityActionability(row);
+  const explainability = buildAIExplainabilityFromOpportunity(row);
   const status = opportunityCardStatus(row, actionability, execution);
   const score = finiteNumber(row.final_score) ?? 0;
   const intelligenceLabels = [...institutionalLabels, ...execution.compactLabels].slice(0, 6);
@@ -1621,6 +1623,9 @@ function OpportunityCard({ row, visibilityReason }: { row: OpportunityViewModel;
     { label: "Conviction", value: `${row.conviction} ${row.confidenceLabel}` },
     { label: "Fragility", value: `${row.fragility} ${row.fragilityLabel}` },
     { label: "Evidence", value: evidenceSummary(row) },
+    { label: "Confidence clarity", value: explainability.confidence.level },
+    { label: "Uncertainty", value: explainability.confidence.uncertainty },
+    { label: "Contradictions", value: `${explainability.contradictions.length}` },
     { label: "Macro", value: `${row.macroLabel} ${signedAdjustment(row.macroAdjustment)}` },
     { label: "Event", value: row.eventLabel },
     { label: "Entry quality", value: `${execution.entryQuality.score} ${execution.executionStateLabel}` },
@@ -1662,6 +1667,12 @@ function OpportunityCard({ row, visibilityReason }: { row: OpportunityViewModel;
       value: actionability.chaseRiskVisibility.value,
       detail: actionability.pullbackGuidance,
       tone: actionability.chaseRiskVisibility.tone,
+    },
+    {
+      label: "Confidence clarity",
+      value: explainability.confidence.summary,
+      detail: explainability.beginnerSummary,
+      tone: opportunityTileToneFromExplainability(explainability.confidence.tone),
     },
     {
       label: "Watch next",
@@ -1742,10 +1753,10 @@ function OpportunityCard({ row, visibilityReason }: { row: OpportunityViewModel;
       <div className="mt-3 grid gap-2">
         <div className="grid gap-2 lg:grid-cols-2">
           <OpportunityInsightTile tile={insightTiles[0]} />
-          <OpportunityInsightTile tile={insightTiles[5]} />
+          <OpportunityInsightTile tile={insightTiles[6]} />
         </div>
         <div className="grid gap-2 sm:grid-cols-2">
-          {insightTiles.slice(1, 5).map((tile) => <OpportunityInsightTile key={tile.label} tile={tile} compact />)}
+          {insightTiles.slice(1, 6).map((tile) => <OpportunityInsightTile key={tile.label} tile={tile} compact />)}
         </div>
       </div>
       <OpportunityZoneStrip actionability={actionability} execution={execution} />
@@ -1981,6 +1992,14 @@ function opportunityTileClass(tone: OpportunityTileTone): string {
   if (tone === "caution") return "border-amber-300/15 bg-amber-400/[0.055] text-amber-100";
   if (tone === "focus") return "border-cyan-300/15 bg-cyan-400/[0.055] text-cyan-100";
   return "border-white/10 bg-slate-950/35 text-slate-200";
+}
+
+function opportunityTileToneFromExplainability(tone: ExplainabilityTone): OpportunityTileTone {
+  if (tone === "constructive") return "positive";
+  if (tone === "risk") return "risk";
+  if (tone === "caution") return "caution";
+  if (tone === "intelligence") return "focus";
+  return "neutral";
 }
 
 function zoneToneClass(tone: ExecutionTone): string {

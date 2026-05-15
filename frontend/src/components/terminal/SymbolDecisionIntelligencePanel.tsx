@@ -3,11 +3,13 @@
 import { useEffect } from "react";
 import type { RankingRow } from "@/lib/types";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
+import { buildAIExplainabilityFromSignal } from "@/lib/trading/ai-explainability";
 import { buildDecisionFactors, buildDecisionIntelligence } from "@/lib/trading/decision-intelligence";
 import { confidenceTone } from "@/lib/trading/confidence";
 import { formatNumber } from "@/lib/ui/formatters";
 import { ConfidenceDonut } from "./ConfidenceDonut";
 import { DecisionBadge } from "./DecisionBadge";
+import { AIExplainabilityCard } from "./AIExplainabilityCard";
 import { MiniPriceContextChart } from "./MiniPriceContextChart";
 import type { ChartCandle } from "./SymbolChart";
 import { GlassPanel } from "./ui/GlassPanel";
@@ -15,6 +17,7 @@ import { SectionTitle } from "./ui/SectionTitle";
 
 export function SymbolDecisionIntelligencePanel({ candles, row }: { candles: ChartCandle[]; row: RankingRow }) {
   const intelligence = buildDecisionIntelligence(row);
+  const explainability = buildAIExplainabilityFromSignal(row);
   const factors = buildDecisionFactors(row);
   const confidence = intelligence.confidence;
   const confidenceStyle = confidenceTone(confidence);
@@ -68,6 +71,8 @@ export function SymbolDecisionIntelligencePanel({ candles, row }: { candles: Cha
             <InsightList title="What To Watch" items={intelligence.what_to_watch} />
             <InsightList title="Regime Impact" items={[intelligence.regime_impact]} />
           </div>
+
+          <AIExplainabilityCard model={explainability} />
         </div>
 
         <div className="space-y-4">

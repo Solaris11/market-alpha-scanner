@@ -6,9 +6,11 @@ import type { TradePlanEngine } from "@/hooks/useTradePlanEngine";
 import { useTradePlanEngine } from "@/hooks/useTradePlanEngine";
 import { ScoreFactorStrip } from "@/components/visual/MiniVisuals";
 import type { RankingRow } from "@/lib/types";
+import { buildAIExplainabilityFromSignal } from "@/lib/trading/ai-explainability";
 import { buildDecisionIntelligence } from "@/lib/trading/decision-intelligence";
 import { confidenceTone } from "@/lib/trading/confidence";
 import { formatMoney, formatNumber } from "@/lib/ui/formatters";
+import { AIExplainabilityCard } from "./AIExplainabilityCard";
 import { ConfidenceDonut } from "./ConfidenceDonut";
 import { DecisionBadge } from "./DecisionBadge";
 import { GlassPanel } from "./ui/GlassPanel";
@@ -29,6 +31,7 @@ export function AICopilotPanel({
   const activeEngine = engine ?? fallbackEngine;
   const { metrics, riskEvaluation, state, validity } = activeEngine;
   const intelligence = buildDecisionIntelligence(signal);
+  const explainability = buildAIExplainabilityFromSignal(signal);
   const displayRiskStatus = validity.isBlocked ? "OK" : riskEvaluation.status;
   const readinessTone = confidenceTone(intelligence.readiness_score);
   const copilotClass = displayRiskStatus === "VETO"
@@ -86,6 +89,7 @@ export function AICopilotPanel({
               <InsightList icon={<ShieldAlert className="h-5 w-5" />} title="Constraints" tone="rose" items={intelligence.why.negatives} />
               <InsightList icon={<Eye className="h-5 w-5" />} title="Watch" tone="amber" items={intelligence.what_to_watch} />
             </div>
+            <AIExplainabilityCard compact model={explainability} />
           </div>
         </div>
         {contextLocked ? (

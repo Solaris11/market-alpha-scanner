@@ -328,7 +328,7 @@ export function inferResearchIntent(question: string, referencedSymbols: string[
   const asksFragility = /\b(fragility|break|fail|weakening|risk increasing)\b/i.test(text);
   const asksReplay = /\b(replay|before the move|what did .*know|decision replay|historical playback)\b/i.test(text);
   const asksChanged = /\b(changed|since yesterday|what changed|improving|deteriorating|fastest)\b/i.test(text);
-  const asksCognition = /\b(why did .*change|why.*changed|contradicting|contradict|contradiction|stale|fresh|decay|needs confirmation|need confirmation|what needs confirmation|thinking|reasoning timeline|confidence changed|became cautious|became more cautious|became aggressive|became constructive)\b/i.test(text);
+  const asksCognition = /\b(why did .*change|why.*changed|why did .*appear|why.*appear|confidence drop|confidence fell|confidence changed|confidence weaken|risk increased|increased risk|what increased risk|contradicting|contradict|contradiction|stale|fresh|decay|requires confirmation|needs confirmation|need confirmation|what needs confirmation|is macro helping|macro helping|thinking|reasoning timeline|became cautious|became more cautious|became aggressive|became constructive)\b/i.test(text);
   const asksShock = /\b(shock|gap|large move|explosive|chase|volatility burst|upside move|downside move)\b/i.test(text);
   const asksPortfolio = /\b(portfolio|holdings|positions|exposure|concentration|correlation|diversification|my book)\b/i.test(text);
   const asksScenario = /\b(scenario|what if|stress|qqq -?3|spy risk|vix|rates surge|yields surge|oil shock|ai narrative|earnings miss)\b/i.test(text);
@@ -401,7 +401,7 @@ function cognitionAnswer(context: ResearchCopilotContext): ResearchCopilotAnswer
     .map((item) => `${item.title}: ${item.detail}`);
   const points = [...contradictionLines, ...staleLines, ...timelineLines].slice(0, 6);
   return baseAnswer(context, {
-    answer: context.cognition.overview,
+    answer: `TradeVeto is not predicting the future. ${context.cognition.overview} Confidence changes when freshness, contradictions, macro support, or risk pressure changes.`,
     keyPoints: points.length ? points : context.cognition.groundingPacket,
     symbolComparisons: [],
     whatToWatch: [
@@ -977,8 +977,9 @@ function followUpQuestionsFor(context: ResearchCopilotContext): string[] {
   }
   if (context.intent === "cognition") {
     return [
+      "Why did confidence drop?",
+      "What increased risk?",
       "What is stale?",
-      "What is contradicting this setup?",
       "What needs confirmation?",
     ];
   }

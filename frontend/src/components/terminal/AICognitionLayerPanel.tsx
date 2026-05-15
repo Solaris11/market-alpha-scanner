@@ -23,7 +23,35 @@ export function AICognitionLayerPanel({
           grounded data
         </div>
       </div>
-      <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-300">{model.overview}</p>
+      <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-300">
+        TradeVeto is not predicting the future. It is showing how the latest market packet changed, what weakened, what improved, and what needs confirmation.
+      </p>
+      <div className="mt-4 grid gap-2 md:grid-cols-4">
+        <CognitionPlainCard
+          detail={model.overview}
+          label="What changed"
+          tone={model.posture === "becoming_more_constructive" ? "constructive" : model.posture === "becoming_more_cautious" ? "risk" : "intelligence"}
+          value={postureLabel(model.posture)}
+        />
+        <CognitionPlainCard
+          detail="Confidence weakens when evidence ages, contradictions appear, or macro/risk pressure conflicts with the setup."
+          label="Confidence"
+          tone={model.confidenceDecay.some((item) => item.status === "stale") ? "caution" : "constructive"}
+          value={`${model.confidenceDecay.filter((item) => item.status !== "fresh").length} aging`}
+        />
+        <CognitionPlainCard
+          detail="Contradictions are useful warnings, not automatic rejection. They show what needs confirmation."
+          label="Contradictions"
+          tone={model.contradictions.length ? "caution" : "constructive"}
+          value={`${model.contradictions.length}`}
+        />
+        <CognitionPlainCard
+          detail="Every timeline item is grounded in scanner, market, workflow, or evidence data already present in the packet."
+          label="Grounding"
+          tone="intelligence"
+          value={`${model.groundingPacket.length} sources`}
+        />
+      </div>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.75fr)]">
         <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
@@ -139,6 +167,26 @@ export function AICognitionLayerPanel({
         </div>
       </div>
     </GlassPanel>
+  );
+}
+
+function CognitionPlainCard({
+  detail,
+  label,
+  tone,
+  value,
+}: {
+  detail: string;
+  label: string;
+  tone: CognitionTone;
+  value: string;
+}) {
+  return (
+    <div className={`rounded-2xl border p-3 ${toneClass(tone)}`}>
+      <div className="text-[10px] font-black uppercase tracking-[0.16em] opacity-80">{label}</div>
+      <div className="mt-1 text-sm font-black text-slate-50">{value}</div>
+      <p className="mt-1 line-clamp-3 text-[11px] leading-4 text-slate-300/90">{detail}</p>
+    </div>
   );
 }
 
