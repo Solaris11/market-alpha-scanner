@@ -62,6 +62,7 @@ export function MarketOnboarding({ tradePlanHref }: { tradePlanHref: string }) {
   const openTour = useCallback((startIndex = 0) => {
     setStepIndex(startIndex);
     setActive(true);
+    trackAnalyticsEvent("onboarding_step", { onboarding: "terminal_tour", step: startIndex + 1 }, { source: "terminal_onboarding" });
   }, []);
 
   const completeTour = useCallback(() => {
@@ -202,14 +203,22 @@ export function MarketOnboarding({ tradePlanHref }: { tradePlanHref: string }) {
           <button
             className="rounded-full border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition disabled:cursor-not-allowed disabled:opacity-40 hover:border-cyan-300/40 hover:text-cyan-100"
             disabled={stepIndex === 0}
-            onClick={() => setStepIndex((current) => Math.max(0, current - 1))}
+            onClick={() => setStepIndex((current) => {
+              const next = Math.max(0, current - 1);
+              trackAnalyticsEvent("onboarding_step", { direction: "back", onboarding: "terminal_tour", step: next + 1 }, { source: "terminal_onboarding" });
+              return next;
+            })}
             type="button"
           >
             Back
           </button>
           <div className="flex items-center gap-2">
             {!isFinal ? (
-              <button className="rounded-full bg-cyan-300 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-200" onClick={() => setStepIndex((current) => Math.min(STEPS.length - 1, current + 1))} type="button">
+              <button className="rounded-full bg-cyan-300 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-200" onClick={() => setStepIndex((current) => {
+                const next = Math.min(STEPS.length - 1, current + 1);
+                trackAnalyticsEvent("onboarding_step", { direction: "next", onboarding: "terminal_tour", step: next + 1 }, { source: "terminal_onboarding" });
+                return next;
+              })} type="button">
                 Next
               </button>
             ) : (

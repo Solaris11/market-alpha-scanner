@@ -70,6 +70,7 @@ export function useLocalWatchlist() {
     if (!cleaned) return;
     const next = cleanSymbols([...watchlist, ...readWatchlistStorage(), cleaned]);
     applyLocalSymbols(next);
+    trackAnalyticsEvent("watch_add", { symbol: cleaned }, { source: "watchlist", symbol: cleaned });
     trackAnalyticsEvent("watchlist_add", { symbol: cleaned }, { source: "watchlist", symbol: cleaned });
     trackFirstUsefulAction("watchlist_add", { symbol: cleaned }, { source: "watchlist", symbol: cleaned });
     if (authenticated) {

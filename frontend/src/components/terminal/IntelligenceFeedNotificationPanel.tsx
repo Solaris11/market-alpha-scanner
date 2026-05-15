@@ -26,6 +26,7 @@ import {
 import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { useNotificationPreferences } from "@/hooks/useNotificationPreferences";
+import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import {
   notificationCategoryLabel,
   notificationChannelLabel,
@@ -250,7 +251,11 @@ function FeedItemCard({ item, watchlistSymbols }: { item: IntelligenceFeedItem; 
                 <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.12em] ${severityPillClass(item.severity)}`}>{item.severity}</span>
                 <span className="text-[11px] text-slate-500">{item.evidenceLabel}</span>
               </div>
-              <Link className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-slate-100 transition hover:text-cyan-100" href={item.actionHref}>
+              <Link
+                className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-slate-100 transition hover:text-cyan-100"
+                href={item.actionHref}
+                onClick={() => trackAnalyticsEvent("feed_item_open", { itemType: item.itemType, severity: item.severity, sourceKey: item.sourceKey }, { source: "intelligence_feed", symbol: item.relatedSymbol ?? undefined })}
+              >
                 {item.title}
                 <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
               </Link>
@@ -267,7 +272,12 @@ function FeedItemCard({ item, watchlistSymbols }: { item: IntelligenceFeedItem; 
           <InstitutionalTrustStrip className="mt-3" compact model={trustModel} />
           <div className="mt-3 flex flex-wrap gap-2">
             {actions.map((action) => (
-              <Link className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.1em] text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100" href={action.href} key={action.label}>
+              <Link
+                className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.1em] text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100"
+                href={action.href}
+                key={action.label}
+                onClick={() => trackAnalyticsEvent("feed_item_open", { action: action.label, itemType: item.itemType, severity: item.severity, sourceKey: item.sourceKey }, { source: "intelligence_feed", symbol: item.relatedSymbol ?? undefined })}
+              >
                 {action.label}
               </Link>
             ))}

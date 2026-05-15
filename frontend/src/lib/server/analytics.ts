@@ -108,6 +108,25 @@ export type AnalyticsSummary = {
     vetoExplanationOpens: number;
     waitEngagement: number;
   };
+  uxInsights: {
+    experimentExposure: Array<{ count: number; experiment: string; variant: string }>;
+    firstUsefulAction: {
+      averageElapsedSeconds: number | null;
+      count: number;
+      topActions: Array<{ action: string; averageElapsedSeconds: number | null; count: number }>;
+    };
+    flowAbandonment: Array<{ count: number; eventName: string; pagePath: string }>;
+    frictionEvents: Array<{ count: number; eventName: string }>;
+    frictionHotspots: Array<{ component: string; count: number; eventName: string; pagePath: string }>;
+    interactionQuality: {
+      backNavigations: number;
+      duplicateClicks: number;
+      failedActions: number;
+      modalAbandons: number;
+      rageClicks: number;
+      scrollAbandons: number;
+    };
+  };
 };
 
 type CountRow = QueryResultRow & { count: string | number };
@@ -204,8 +223,43 @@ type DeviceRow = QueryResultRow & {
   count: string | number;
   label: string;
 };
+type FrictionHotspotRow = QueryResultRow & {
+  component: string;
+  count: string | number;
+  event_name: string;
+  page_path: string;
+};
+type FirstUsefulActionRow = QueryResultRow & {
+  avg_elapsed_ms: string | number | null;
+  count: string | number;
+};
+type FirstUsefulActionByActionRow = QueryResultRow & {
+  action: string;
+  avg_elapsed_ms: string | number | null;
+  count: string | number;
+};
+type FlowAbandonmentRow = QueryResultRow & {
+  count: string | number;
+  event_name: string;
+  page_path: string;
+};
+type ExperimentExposureRow = QueryResultRow & {
+  count: string | number;
+  experiment: string;
+  variant: string;
+};
 
 const MAX_EVENTS_PER_REQUEST = 24;
+const FRICTION_EVENT_NAMES = [
+  "back_navigation",
+  "bottom_sheet_close",
+  "duplicate_click",
+  "failed_action",
+  "modal_abandon",
+  "nav_confusion",
+  "rage_click",
+  "scroll_abandon",
+] as const;
 
 export async function recordAnalyticsEvents(input: { events: AnalyticsEventPayload[]; request: Request; user: AuthUser | null }): Promise<{ inserted: number }> {
   const events = input.events.map(sanitizeEventPayload).filter((event): event is SanitizedAnalyticsEvent => event !== null).slice(0, MAX_EVENTS_PER_REQUEST);
@@ -320,6 +374,12 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     deviceBreakdown,
     browserBreakdown,
     osBreakdown,
+    frictionEvents,
+    frictionHotspots,
+    firstUsefulAction,
+    firstUsefulActionsByAction,
+    flowAbandonment,
+    experimentExposure,
   ] = await Promise.all([
     dbQuery<RetentionRow>(
       `
@@ -544,6 +604,98 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     breakdownQuery("device_type", interval),
     breakdownQuery("browser_family", interval),
     breakdownQuery("os_family", interval),
+    dbQuery<EventCountRow>(
+      `
+        SELECT event_name, count(*) AS count
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+          AND event_name = ANY($1::text[])
+        GROUP BY 1
+        ORDER BY count DESC, event_name ASC
+      `,
+      [FRICTION_EVENT_NAMES],
+    ),
+    dbQuery<FrictionHotspotRow>(
+      `
+        SELECT
+          event_name,
+          COALESCE(page_path, 'unknown') AS page_path,
+          COALESCE(metadata->>'component', metadata->>'surface', source, 'unknown') AS component,
+          count(*) AS count
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+          AND event_name = ANY($1::text[])
+        GROUP BY 1, 2, 3
+        ORDER BY count DESC, event_name ASC, page_path ASC
+        LIMIT 12
+      `,
+      [FRICTION_EVENT_NAMES],
+    ),
+    dbQuery<FirstUsefulActionRow>(
+      `
+        SELECT
+          count(*) AS count,
+          avg(
+            CASE
+              WHEN metadata->>'sessionElapsedMs' ~ '^[0-9]+(\\.[0-9]+)?$'
+              THEN (metadata->>'sessionElapsedMs')::float
+              ELSE NULL
+            END
+          ) AS avg_elapsed_ms
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+          AND event_name = 'first_useful_action'
+      `,
+    ),
+    dbQuery<FirstUsefulActionByActionRow>(
+      `
+        SELECT
+          COALESCE(metadata->>'action', 'unknown') AS action,
+          count(*) AS count,
+          avg(
+            CASE
+              WHEN metadata->>'sessionElapsedMs' ~ '^[0-9]+(\\.[0-9]+)?$'
+              THEN (metadata->>'sessionElapsedMs')::float
+              ELSE NULL
+            END
+          ) AS avg_elapsed_ms
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+          AND event_name = 'first_useful_action'
+        GROUP BY 1
+        ORDER BY count DESC, action ASC
+        LIMIT 8
+      `,
+    ),
+    dbQuery<FlowAbandonmentRow>(
+      `
+        SELECT
+          event_name,
+          COALESCE(page_path, 'unknown') AS page_path,
+          count(*) AS count
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+          AND event_name = ANY($1::text[])
+        GROUP BY 1, 2
+        ORDER BY count DESC, event_name ASC
+        LIMIT 10
+      `,
+      [["modal_abandon", "scroll_abandon", "failed_action"]],
+    ),
+    dbQuery<ExperimentExposureRow>(
+      `
+        SELECT
+          COALESCE(metadata->>'experiment', 'unknown') AS experiment,
+          COALESCE(metadata->>'variant', 'unknown') AS variant,
+          count(*) AS count
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+          AND event_name IN ('experiment_assigned', 'experiment_exposed')
+        GROUP BY 1, 2
+        ORDER BY count DESC, experiment ASC, variant ASC
+        LIMIT 12
+      `,
+    ),
   ]);
 
   const retentionRow = retention.rows[0];
@@ -554,6 +706,8 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
   const supportRow = supportUsage.rows[0];
   const journeyRow = journey.rows[0];
   const visitorRow = visitorSummary.rows[0];
+  const firstUsefulRow = firstUsefulAction.rows[0];
+  const frictionCount = (eventName: string) => numberFromRow(frictionEvents.rows.find((row) => row.event_name === eventName)?.count);
 
   return {
     activeUsersTrend: trend.rows.map((row) => ({ activeUsers: numberFromRow(row.active_users), bucket: row.bucket, events: numberFromRow(row.events) })),
@@ -629,6 +783,34 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
       signalDrilldowns: numberFromRow(waitRow?.signal_drilldowns),
       vetoExplanationOpens: numberFromRow(waitRow?.veto_explanation_opens),
       waitEngagement: numberFromRow(waitRow?.wait_engagement),
+    },
+    uxInsights: {
+      experimentExposure: experimentExposure.rows.map((row) => ({ count: numberFromRow(row.count), experiment: row.experiment, variant: row.variant })),
+      firstUsefulAction: {
+        averageElapsedSeconds: nullableMillisecondsToSeconds(firstUsefulRow?.avg_elapsed_ms),
+        count: numberFromRow(firstUsefulRow?.count),
+        topActions: firstUsefulActionsByAction.rows.map((row) => ({
+          action: row.action,
+          averageElapsedSeconds: nullableMillisecondsToSeconds(row.avg_elapsed_ms),
+          count: numberFromRow(row.count),
+        })),
+      },
+      flowAbandonment: flowAbandonment.rows.map((row) => ({ count: numberFromRow(row.count), eventName: row.event_name, pagePath: row.page_path })),
+      frictionEvents: frictionEvents.rows.map((row) => ({ count: numberFromRow(row.count), eventName: row.event_name })),
+      frictionHotspots: frictionHotspots.rows.map((row) => ({
+        component: row.component,
+        count: numberFromRow(row.count),
+        eventName: row.event_name,
+        pagePath: row.page_path,
+      })),
+      interactionQuality: {
+        backNavigations: frictionCount("back_navigation"),
+        duplicateClicks: frictionCount("duplicate_click"),
+        failedActions: frictionCount("failed_action"),
+        modalAbandons: frictionCount("modal_abandon"),
+        rageClicks: frictionCount("rage_click"),
+        scrollAbandons: frictionCount("scroll_abandon"),
+      },
     },
   };
 }
@@ -799,4 +981,9 @@ function nullableNumberFromRow(value: string | number | null | undefined): numbe
   if (value === null || value === undefined) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function nullableMillisecondsToSeconds(value: string | number | null | undefined): number | null {
+  const parsed = nullableNumberFromRow(value);
+  return parsed === null ? null : parsed / 1000;
 }

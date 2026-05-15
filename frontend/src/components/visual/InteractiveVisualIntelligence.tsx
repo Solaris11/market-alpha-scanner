@@ -184,6 +184,7 @@ function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: Inte
 
   return (
     <StableDetailOverlay
+      analyticsSurface={`intelligence_zone_${zone.id}`}
       closeLabel="Close detail"
       description={<TextWithSymbolLinks symbols={relatedSymbols} text={humanizeInsightText(zone.detailSummary)} />}
       eyebrow={<span className={tone.text}>{zone.eyebrow ?? "Intelligence detail"}</span>}

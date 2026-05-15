@@ -18,6 +18,11 @@ describe("analytics privacy policy", () => {
     assert.equal(normalizeAnalyticsEventName("dashboard_open"), "dashboard_open");
     assert.equal(normalizeAnalyticsEventName("strategy_labs_open"), "strategy_labs_open");
     assert.equal(normalizeAnalyticsEventName("first_useful_action"), "first_useful_action");
+    assert.equal(normalizeAnalyticsEventName("modal_abandon"), "modal_abandon");
+    assert.equal(normalizeAnalyticsEventName("copilot_question"), "copilot_question");
+    assert.equal(normalizeAnalyticsEventName("rage_click"), "rage_click");
+    assert.equal(normalizeAnalyticsEventName("failed_action"), "failed_action");
+    assert.equal(normalizeAnalyticsEventName("experiment_exposed"), "experiment_exposed");
     assert.equal(normalizeAnalyticsEventName("made_up_event"), null);
   });
 
@@ -25,6 +30,7 @@ describe("analytics privacy policy", () => {
     assert.equal(pageOpenEventForPath("/dashboard"), "dashboard_open");
     assert.equal(pageOpenEventForPath("/dashboard/heatmaps"), "dashboard_open");
     assert.equal(pageOpenEventForPath("/strategy-labs"), "strategy_labs_open");
+    assert.equal(pageOpenEventForPath("/paper"), "paper_trade_open");
   });
 
   test("normalizes beta feedback types for cohort learning", () => {

@@ -11,19 +11,40 @@ export const ANALYTICS_EVENT_NAMES = [
   "account_open",
   "symbol_open",
   "chart_interaction",
+  "chart_expand",
+  "timeframe_change",
   "history_filter_used",
   "detail_expand",
+  "modal_open",
+  "modal_close",
+  "modal_abandon",
+  "card_click",
+  "feed_item_open",
   "readiness_expand",
   "veto_explanation_open",
+  "watch_add",
   "watchlist_add",
   "watchlist_remove",
   "alert_create",
   "alert_delete",
+  "strategy_open",
+  "paper_trade_open",
   "paper_trade_create",
   "paper_trade_close",
+  "onboarding_step",
   "onboarding_complete",
   "onboarding_skip",
   "first_useful_action",
+  "copilot_question",
+  "rage_click",
+  "duplicate_click",
+  "nav_confusion",
+  "scroll_abandon",
+  "bottom_sheet_close",
+  "back_navigation",
+  "failed_action",
+  "experiment_assigned",
+  "experiment_exposed",
   "scanner_run",
   "analysis_run",
   "calibration_open",
@@ -150,6 +171,7 @@ export function pageOpenEventForPath(pathname: string): AnalyticsEventName | nul
   if (pathname === "/performance" || pathname.startsWith("/performance/")) return "performance_open";
   if (pathname === "/history" || pathname.startsWith("/history/")) return "history_open";
   if (pathname === "/strategy-labs" || pathname.startsWith("/strategy-labs/")) return "strategy_labs_open";
+  if (pathname === "/paper" || pathname.startsWith("/paper/")) return "paper_trade_open";
   if (pathname === "/support" || pathname.startsWith("/support/")) return "support_open";
   if (pathname === "/account" || pathname.startsWith("/account/")) return "account_open";
   if (pathname.startsWith("/symbol/")) return "symbol_open";

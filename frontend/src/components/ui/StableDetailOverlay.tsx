@@ -1,12 +1,14 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { X } from "lucide-react";
+import { trackModalAbandon, trackModalClose, trackModalOpen } from "@/lib/client/analytics";
 
 type StableDetailOverlaySize = "md" | "lg" | "xl";
 
 type StableDetailOverlayProps = {
+  analyticsSurface?: string;
   backdropCloses?: boolean;
   children: ReactNode;
   className?: string;
@@ -26,6 +28,7 @@ const WIDTH_CLASS: Record<StableDetailOverlaySize, string> = {
 };
 
 export function StableDetailOverlay({
+  analyticsSurface,
   backdropCloses = true,
   children,
   className = "",
@@ -38,6 +41,28 @@ export function StableDetailOverlay({
   title,
 }: StableDetailOverlayProps) {
   const scrollYRef = useRef(0);
+  const closeReasonRef = useRef<string | null>(null);
+  const openedAtRef = useRef(0);
+  const telemetrySurface = analyticsSurface ?? (typeof title === "string" ? title : closeLabel);
+
+  const requestClose = useCallback((reason: string) => {
+    closeReasonRef.current = reason;
+    trackModalClose(telemetrySurface, { reason, size });
+    onClose();
+  }, [onClose, size, telemetrySurface]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    closeReasonRef.current = null;
+    openedAtRef.current = Date.now();
+    trackModalOpen(telemetrySurface, { size });
+
+    return () => {
+      if (!closeReasonRef.current && Date.now() - openedAtRef.current > 1000) {
+        trackModalAbandon(telemetrySurface, { size });
+      }
+    };
+  }, [open, size, telemetrySurface]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -48,7 +73,7 @@ export function StableDetailOverlay({
     document.body.style.overscrollBehavior = "contain";
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") requestClose("escape");
     }
 
     window.addEventListener("keydown", handleKeyDown);
@@ -58,7 +83,7 @@ export function StableDetailOverlay({
       window.removeEventListener("keydown", handleKeyDown);
       window.requestAnimationFrame(() => window.scrollTo({ left: 0, top: scrollYRef.current }));
     };
-  }, [onClose, open]);
+  }, [open, requestClose]);
 
   if (!open) return null;
 
@@ -72,7 +97,7 @@ export function StableDetailOverlay({
       <button
         aria-label={closeLabel}
         className="absolute inset-0 cursor-default bg-slate-950/78 backdrop-blur-md"
-        onClick={backdropCloses ? onClose : undefined}
+        onClick={backdropCloses ? () => requestClose("backdrop") : undefined}
         type="button"
       />
       <section
@@ -88,7 +113,7 @@ export function StableDetailOverlay({
             <button
               aria-label={closeLabel}
               className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100"
-              onClick={onClose}
+              onClick={() => requestClose("x")}
               type="button"
             >
               <X className="h-4 w-4" />

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
+import { trackAnalyticsEvent, trackFailedAction, trackFirstUsefulAction } from "@/lib/client/analytics";
 import type { ResearchCopilotAnswer, ResearchCopilotMode } from "@/lib/trading/research-copilot";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
@@ -47,9 +48,16 @@ export function ConversationalResearchCopilotPanel() {
     [messages],
   );
 
-  async function ask(nextQuestion: string): Promise<void> {
+  async function ask(nextQuestion: string, source: "follow_up" | "manual" | "suggested" = "manual"): Promise<void> {
     const trimmed = nextQuestion.replace(/\s+/g, " ").trim();
     if (!trimmed || submitting) return;
+    trackAnalyticsEvent("copilot_question", {
+      historyDepth: history.length,
+      mode,
+      questionLength: trimmed.length,
+      source,
+    }, { source: "research_copilot" });
+    trackFirstUsefulAction("copilot_question", { mode, source }, { source: "research_copilot" });
     const userMessage: CopilotMessage = { content: trimmed, id: messageId("user"), role: "user" };
     setMessages((current) => [...current, userMessage]);
     setQuestion("");
@@ -76,6 +84,7 @@ export function ConversationalResearchCopilotPanel() {
         },
       ]);
     } catch (error) {
+      trackFailedAction("research_copilot", "question_failed", { mode, source });
       setStatus(error instanceof Error ? error.message : "Research copilot is unavailable.");
     } finally {
       setSubmitting(false);
@@ -119,7 +128,7 @@ export function ConversationalResearchCopilotPanel() {
             className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-left text-[11px] font-semibold text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={submitting}
             key={item}
-            onClick={() => void ask(item)}
+            onClick={() => void ask(item, "suggested")}
             type="button"
           >
             {item}
@@ -134,7 +143,7 @@ export function ConversationalResearchCopilotPanel() {
           onKeyDown={(event) => {
             if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
               event.preventDefault();
-              void ask(question);
+              void ask(question, "manual");
             }
           }}
           placeholder="Ask why one symbol ranks above another, what changed, or what could break a setup."
@@ -145,7 +154,7 @@ export function ConversationalResearchCopilotPanel() {
           <button
             className="rounded-full border border-cyan-300/25 bg-cyan-400/15 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-cyan-50 transition hover:border-cyan-200/55 hover:bg-cyan-300/20 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={submitting || !question.trim()}
-            onClick={() => void ask(question)}
+            onClick={() => void ask(question, "manual")}
             type="button"
           >
             {submitting ? "Thinking" : "Ask"}
@@ -163,7 +172,7 @@ function MessageBubble({
   submitting,
 }: {
   message: CopilotMessage;
-  onAsk: (question: string) => Promise<void>;
+  onAsk: (question: string, source?: "follow_up" | "manual" | "suggested") => Promise<void>;
   submitting: boolean;
 }) {
   const isUser = message.role === "user";
@@ -185,7 +194,7 @@ function AnswerDetails({
   submitting,
 }: {
   answer: ResearchCopilotAnswer;
-  onAsk: (question: string) => Promise<void>;
+  onAsk: (question: string, source?: "follow_up" | "manual" | "suggested") => Promise<void>;
   submitting: boolean;
 }) {
   return (
@@ -204,7 +213,7 @@ function AnswerDetails({
                 className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-left text-[11px] font-semibold text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={submitting}
                 key={item}
-                onClick={() => void onAsk(item)}
+                onClick={() => void onAsk(item, "follow_up")}
                 type="button"
               >
                 {item}

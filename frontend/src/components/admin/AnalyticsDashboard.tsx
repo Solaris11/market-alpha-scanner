@@ -133,6 +133,77 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
         />
       </section>
 
+      <section className="grid gap-5 xl:grid-cols-3">
+        <MetricGroup
+          rows={[
+            ["Rage clicks", analytics.uxInsights.interactionQuality.rageClicks],
+            ["Duplicate clicks", analytics.uxInsights.interactionQuality.duplicateClicks],
+            ["Failed actions", analytics.uxInsights.interactionQuality.failedActions],
+            ["Back navigation", analytics.uxInsights.interactionQuality.backNavigations],
+          ]}
+          title="UX Friction Signals"
+        />
+        <MetricGroup
+          rows={[
+            ["First useful actions", analytics.uxInsights.firstUsefulAction.count],
+            ["Avg time to value", formatDuration(analytics.uxInsights.firstUsefulAction.averageElapsedSeconds)],
+            ["Modal abandons", analytics.uxInsights.interactionQuality.modalAbandons],
+            ["Scroll abandons", analytics.uxInsights.interactionQuality.scrollAbandons],
+          ]}
+          title="Activation Quality"
+        />
+        <ChartPanel subtitle="Behavior events are first-party, privacy-sanitized, and never include raw Copilot prompts." title="Telemetry Boundaries">
+          <div className="grid gap-2 text-sm leading-6 text-slate-300">
+            <div className="rounded-xl border border-emerald-300/15 bg-emerald-400/[0.06] p-3">Tracks product behavior, not brokerage credentials, payment data, or private financial data.</div>
+            <div className="rounded-xl border border-cyan-300/15 bg-cyan-400/[0.06] p-3">Copilot questions are counted by length, mode, and source only.</div>
+            <div className="rounded-xl border border-violet-300/15 bg-violet-400/[0.06] p-3">Feature flags and local opt-out can disable client telemetry without breaking the app.</div>
+          </div>
+        </ChartPanel>
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-2">
+        <ChartPanel title="Friction Hotspots">
+          {analytics.uxInsights.frictionHotspots.length ? (
+            <div className="space-y-2">
+              {analytics.uxInsights.frictionHotspots.map((row) => (
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3" key={`${row.eventName}-${row.pagePath}-${row.component}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate text-sm font-semibold text-slate-100">{humanizeLabel(row.component)}</span>
+                    <span className="font-mono text-xs text-cyan-100">{row.count.toLocaleString()}</span>
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500">
+                    <span>{humanizeLabel(row.eventName)}</span>
+                    <span>{row.pagePath}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState>No friction hotspots detected for this window.</EmptyState>
+          )}
+        </ChartPanel>
+        <ChartPanel title="First Useful Action">
+          {analytics.uxInsights.firstUsefulAction.topActions.length ? (
+            <div className="space-y-2">
+              {analytics.uxInsights.firstUsefulAction.topActions.map((row) => (
+                <div className="grid grid-cols-[1fr_auto_auto] items-center gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2" key={row.action}>
+                  <span className="min-w-0 truncate text-sm font-semibold text-slate-100">{humanizeLabel(row.action)}</span>
+                  <span className="font-mono text-xs text-cyan-100">{row.count.toLocaleString()}</span>
+                  <span className="font-mono text-xs text-slate-400">{formatDuration(row.averageElapsedSeconds)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <EmptyState>No first-useful-action events recorded yet.</EmptyState>
+          )}
+        </ChartPanel>
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-2">
+        <ListPanel rows={analytics.uxInsights.flowAbandonment.map((row) => [`${humanizeLabel(row.eventName)} · ${row.pagePath}`, row.count])} title="Flow Abandonment" />
+        <ListPanel rows={analytics.uxInsights.experimentExposure.map((row) => [`${humanizeLabel(row.experiment)} · ${row.variant}`, row.count])} title="Experiment Exposure" />
+      </section>
+
       <section className="grid gap-5 xl:grid-cols-2">
         <ListPanel rows={analytics.topEvents.map((row) => [humanizeLabel(row.eventName), row.count])} title="Feature Engagement" />
         <ListPanel rows={analytics.topSymbols.map((row) => [row.symbol, row.count])} title="Top Symbols" />

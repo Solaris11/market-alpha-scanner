@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
-import { flushAnalyticsEvents, trackRouteAnalytics } from "@/lib/client/analytics";
+import { flushAnalyticsEvents, installBehaviorTelemetry, trackRouteAnalytics } from "@/lib/client/analytics";
 
 export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -16,9 +16,11 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
     function flush() {
       void flushAnalyticsEvents();
     }
+    const stopBehaviorTelemetry = installBehaviorTelemetry();
     window.addEventListener("pagehide", flush);
     document.addEventListener("visibilitychange", flush);
     return () => {
+      stopBehaviorTelemetry();
       window.removeEventListener("pagehide", flush);
       document.removeEventListener("visibilitychange", flush);
     };

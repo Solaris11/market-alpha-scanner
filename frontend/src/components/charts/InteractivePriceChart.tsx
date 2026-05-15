@@ -3,6 +3,7 @@
 import { useId, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Expand, Info } from "lucide-react";
 import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
+import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import {
   INTERACTIVE_CHART_PERIODS,
   filterInteractivePricePoints,
@@ -86,6 +87,25 @@ export function InteractivePriceChart({
   const changeClass = summary.tone === "up" ? "text-emerald-200" : summary.tone === "down" ? "text-rose-200" : "text-slate-300";
   const changeText = summary.changePct === null ? "Limited data" : `${summary.changePct >= 0 ? "+" : ""}${summary.changePct.toFixed(2)}%`;
 
+  function openExpanded(source: "button" | "chart"): void {
+    trackAnalyticsEvent("chart_expand", {
+      period,
+      pointCount: valid.length,
+      source,
+      surface: "interactive_price_chart",
+    }, { source: "chart", symbol: packet.symbol });
+    setExpanded(true);
+  }
+
+  function handlePeriodChange(nextPeriod: InteractiveChartPeriod): void {
+    setPeriod(nextPeriod);
+    trackAnalyticsEvent("timeframe_change", {
+      from: period,
+      surface: "interactive_price_chart",
+      timeframe: nextPeriod,
+    }, { source: "chart", symbol: packet.symbol });
+  }
+
   return (
     <>
       <article
@@ -105,7 +125,7 @@ export function InteractivePriceChart({
           </div>
           <button
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/40 hover:text-cyan-100"
-            onClick={() => setExpanded(true)}
+            onClick={() => openExpanded("button")}
             type="button"
             aria-label={`Expand ${packet.symbol} chart`}
           >
@@ -114,12 +134,12 @@ export function InteractivePriceChart({
         </div>
 
         <div className="px-4">
-          <PeriodSwitcher active={period} onChange={setPeriod} />
+          <PeriodSwitcher active={period} onChange={handlePeriodChange} />
         </div>
 
         <button
           className="block w-full text-left"
-          onClick={() => setExpanded(true)}
+          onClick={() => openExpanded("chart")}
           type="button"
           aria-label={`Open ${packet.symbol} chart details`}
         >
@@ -153,7 +173,7 @@ export function InteractivePriceChart({
           packet={packet}
           period={period}
           relatedSignals={relatedSignals}
-          setPeriod={setPeriod}
+          setPeriod={handlePeriodChange}
           tone={tone}
         />
       ) : null}
@@ -282,6 +302,7 @@ function ExpandedChartModal({
   const toneClass = TONE_CLASSES[tone];
   return (
     <StableDetailOverlay
+      analyticsSurface="interactive_price_chart"
       closeLabel="Close chart detail"
       description={interpretation}
       eyebrow={<span className={toneClass.text}>Interactive chart</span>}

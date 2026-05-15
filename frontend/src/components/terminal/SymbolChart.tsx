@@ -21,6 +21,7 @@ import {
 } from "./symbol-chart-utils";
 import { EmptyState } from "./ui/EmptyState";
 import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
+import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { INTERACTIVE_CHART_PERIODS, type InteractiveChartPeriod } from "@/lib/interactive-chart-data";
 
 export type ChartCandle = {
@@ -114,6 +115,25 @@ export function SymbolChart({
   const overlayGroups = useMemo(() => markerGroupSummary(chartSignals), [chartSignals]);
   const move = useMemo(() => summarizeCandles(chartCandles), [chartCandles]);
   const canRenderChart = chartCandles.length >= 2;
+
+  function expandChart(): void {
+    trackAnalyticsEvent("chart_expand", {
+      candleCount: chartCandles.length,
+      markerCount: chartSignals.length,
+      period,
+      surface: "symbol_chart",
+    }, { source: "chart", symbol });
+    setExpanded(true);
+  }
+
+  function changePeriod(range: InteractiveChartPeriod): void {
+    setPeriod(range);
+    trackAnalyticsEvent("timeframe_change", {
+      from: period,
+      surface: "symbol_chart",
+      timeframe: range,
+    }, { source: "chart", symbol });
+  }
 
   useEffect(() => {
     const container = chartContainerRef.current;
@@ -227,7 +247,7 @@ export function SymbolChart({
             {expandable ? (
               <button
                 className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/40 hover:text-cyan-100"
-                onClick={() => setExpanded(true)}
+                onClick={expandChart}
                 type="button"
                 aria-label={`Expand ${symbol.toUpperCase()} chart`}
               >
@@ -248,7 +268,7 @@ export function SymbolChart({
                     : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-white/20 hover:text-slate-200"
                 }`}
                 key={range}
-                onClick={() => setPeriod(range)}
+                onClick={() => changePeriod(range)}
                 type="button"
               >
                 {range}
@@ -356,6 +376,7 @@ function SymbolChartModal({
   const levelSummary = tradeLevelSummary(tradeLevels);
   return (
     <StableDetailOverlay
+      analyticsSurface="symbol_chart"
       closeLabel="Close expanded chart"
       description={interpretation}
       eyebrow="Symbol chart detail"

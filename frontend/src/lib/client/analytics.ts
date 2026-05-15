@@ -27,21 +27,43 @@ type ClientAnalyticsEvent = {
 const ANONYMOUS_ID_KEY = "tv_analytics_anonymous_id";
 const FIRST_USEFUL_ACTION_KEY = "tv_first_useful_action_recorded";
 const SESSION_KEY = "tv_analytics_session";
+const SESSION_STARTED_AT_KEY = "tv_analytics_session_started_at";
+const TELEMETRY_OPT_OUT_KEY = "tv_analytics_opt_out";
 const SESSION_TTL_MS = 30 * 60 * 1000;
 const MAX_QUEUE = 40;
+const DUPLICATE_CLICK_MS = 900;
+const RAGE_CLICK_WINDOW_MS = 1600;
+const RAGE_CLICK_MIN_COUNT = 4;
+const SCROLL_ABANDON_DEPTH = 0.72;
+const SCROLL_ABANDON_IDLE_MS = 18_000;
+const CARD_CLICK_MIN_INTERVAL_MS = 350;
 
 let queue: ClientAnalyticsEvent[] = [];
 let flushTimer: number | null = null;
 let lastPageViewKey = "";
+let pageStartedAtMs = Date.now();
+let usefulInteractionSeen = false;
+let lastClick: { component: string; occurredAt: number } | null = null;
+let recentClicks: Array<{ component: string; occurredAt: number; x: number; y: number }> = [];
+let emittedScrollAbandonPath = "";
+let maxScrollDepth = 0;
+let lastInteractionAt = Date.now();
+let lastCardClickAt = 0;
 
 export function trackAnalyticsEvent(eventName: AnalyticsEventName, metadata: Record<string, unknown> = {}, options: { pagePath?: string; source?: string; symbol?: string } = {}): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !analyticsEnabled()) return;
   const pagePath = sanitizeAnalyticsPath(options.pagePath ?? `${window.location.pathname}${window.location.search}`);
   const event: ClientAnalyticsEvent = {
     anonymousId: browserId(ANONYMOUS_ID_KEY),
     deviceType: deviceType(),
     eventName,
-    metadata: sanitizeAnalyticsMetadata({ ...metadata, viewportHeight: window.innerHeight, viewportWidth: window.innerWidth }),
+    metadata: sanitizeAnalyticsMetadata({
+      ...metadata,
+      pageElapsedMs: Math.max(0, Math.round(Date.now() - pageStartedAtMs)),
+      sessionElapsedMs: sessionElapsedMs(),
+      viewportHeight: window.innerHeight,
+      viewportWidth: window.innerWidth,
+    }),
     occurredAt: new Date().toISOString(),
     pagePath,
     sessionId: currentSessionId(),
@@ -58,18 +80,24 @@ export function trackAnalyticsEvent(eventName: AnalyticsEventName, metadata: Rec
 }
 
 export function trackFirstUsefulAction(action: string, metadata: Record<string, unknown> = {}, options: { pagePath?: string; source?: string; symbol?: string } = {}): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !analyticsEnabled()) return;
   try {
     if (window.localStorage.getItem(FIRST_USEFUL_ACTION_KEY)) return;
     window.localStorage.setItem(FIRST_USEFUL_ACTION_KEY, new Date().toISOString());
   } catch {
     // If local storage is unavailable, still emit the activation event once for the current call path.
   }
+  usefulInteractionSeen = true;
+  lastInteractionAt = Date.now();
   trackAnalyticsEvent("first_useful_action", { ...metadata, action }, options);
 }
 
 export function trackRouteAnalytics(pathname: string): void {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined" || !analyticsEnabled()) return;
+  pageStartedAtMs = Date.now();
+  usefulInteractionSeen = false;
+  maxScrollDepth = 0;
+  emittedScrollAbandonPath = "";
   const pagePath = sanitizeAnalyticsPath(`${pathname}${window.location.search}`);
   const key = `${pagePath}:${Math.floor(Date.now() / 1000)}`;
   if (key === lastPageViewKey) return;
@@ -81,7 +109,7 @@ export function trackRouteAnalytics(pathname: string): void {
 }
 
 export async function flushAnalyticsEvents(): Promise<void> {
-  if (typeof window === "undefined" || !queue.length) return;
+  if (typeof window === "undefined" || !analyticsEnabled() || !queue.length) return;
   if (flushTimer !== null) {
     window.clearTimeout(flushTimer);
     flushTimer = null;
@@ -106,6 +134,39 @@ export async function flushAnalyticsEvents(): Promise<void> {
   }
 }
 
+export function installBehaviorTelemetry(): () => void {
+  if (typeof window === "undefined" || !analyticsEnabled()) return () => undefined;
+
+  const abort = new AbortController();
+  const signal = abort.signal;
+
+  document.addEventListener("click", handleDocumentClick, { capture: true, passive: true, signal });
+  window.addEventListener("scroll", handleScroll, { passive: true, signal });
+  window.addEventListener("pagehide", emitScrollAbandonIfNeeded, { signal });
+  window.addEventListener("popstate", () => {
+    trackAnalyticsEvent("back_navigation", { path: sanitizeAnalyticsPath(`${window.location.pathname}${window.location.search}`) }, { source: "browser_history" });
+  }, { signal });
+
+  return () => abort.abort();
+}
+
+export function trackModalOpen(component: string, metadata: Record<string, unknown> = {}): void {
+  trackAnalyticsEvent("modal_open", { ...metadata, component: compactComponent(component) }, { source: "modal" });
+}
+
+export function trackModalClose(component: string, metadata: Record<string, unknown> = {}): void {
+  const eventName: AnalyticsEventName = deviceType() === "mobile" ? "bottom_sheet_close" : "modal_close";
+  trackAnalyticsEvent(eventName, { ...metadata, component: compactComponent(component) }, { source: "modal" });
+}
+
+export function trackModalAbandon(component: string, metadata: Record<string, unknown> = {}): void {
+  trackAnalyticsEvent("modal_abandon", { ...metadata, component: compactComponent(component) }, { source: "modal" });
+}
+
+export function trackFailedAction(component: string, reason: string, metadata: Record<string, unknown> = {}): void {
+  trackAnalyticsEvent("failed_action", { ...metadata, component: compactComponent(component), reason: compactComponent(reason) }, { source: "action_error" });
+}
+
 export function analyticsIdentityPayload(): { anonymousId: string | null; deviceType: "desktop" | "mobile" | "tablet" | "unknown"; pagePath: string | null; sessionId: string | null; symbol: string | null } {
   if (typeof window === "undefined") {
     return { anonymousId: null, deviceType: "unknown", pagePath: null, sessionId: null, symbol: null };
@@ -117,6 +178,99 @@ export function analyticsIdentityPayload(): { anonymousId: string | null; device
     sessionId: currentSessionId(),
     symbol: symbolFromPath(window.location.pathname),
   };
+}
+
+export function analyticsOptOutStorageKey(): string {
+  return TELEMETRY_OPT_OUT_KEY;
+}
+
+export function setAnalyticsOptOut(optOut: boolean): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(TELEMETRY_OPT_OUT_KEY, optOut ? "true" : "false");
+  } catch {
+    // Telemetry remains non-blocking when storage is unavailable.
+  }
+  if (optOut) {
+    queue = [];
+    if (flushTimer !== null) {
+      window.clearTimeout(flushTimer);
+      flushTimer = null;
+    }
+  }
+}
+
+export function analyticsEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  if (process.env.NEXT_PUBLIC_TRADEVETO_DISABLE_TELEMETRY === "1") return false;
+  try {
+    return window.localStorage.getItem(TELEMETRY_OPT_OUT_KEY) !== "true";
+  } catch {
+    return true;
+  }
+}
+
+function handleDocumentClick(event: MouseEvent): void {
+  const target = event.target instanceof Element ? event.target : null;
+  const descriptor = target ? analyticsElementDescriptor(target) : null;
+  if (!descriptor) return;
+
+  const now = Date.now();
+  usefulInteractionSeen = true;
+  lastInteractionAt = now;
+
+  const component = descriptor.component;
+  if (now - lastCardClickAt >= CARD_CLICK_MIN_INTERVAL_MS) {
+    lastCardClickAt = now;
+    trackAnalyticsEvent("card_click", { component, kind: descriptor.kind }, { source: "behavior_detector", symbol: descriptor.symbol ?? undefined });
+  }
+
+  if (lastClick && lastClick.component === component && now - lastClick.occurredAt <= DUPLICATE_CLICK_MS) {
+    trackAnalyticsEvent("duplicate_click", { component, intervalMs: now - lastClick.occurredAt }, { source: "friction_detector", symbol: descriptor.symbol ?? undefined });
+  }
+  lastClick = { component, occurredAt: now };
+
+  recentClicks = [...recentClicks.filter((click) => now - click.occurredAt <= RAGE_CLICK_WINDOW_MS), { component, occurredAt: now, x: event.clientX, y: event.clientY }];
+  const cluster = recentClicks.filter((click) => click.component === component && Math.abs(click.x - event.clientX) <= 48 && Math.abs(click.y - event.clientY) <= 48);
+  if (cluster.length === RAGE_CLICK_MIN_COUNT) {
+    trackAnalyticsEvent("rage_click", { component, count: cluster.length }, { source: "friction_detector", symbol: descriptor.symbol ?? undefined });
+  }
+}
+
+function handleScroll(): void {
+  const scrollable = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+  maxScrollDepth = Math.max(maxScrollDepth, Math.min(1, window.scrollY / scrollable));
+}
+
+function emitScrollAbandonIfNeeded(): void {
+  const path = sanitizeAnalyticsPath(`${window.location.pathname}${window.location.search}`) ?? "unknown";
+  if (emittedScrollAbandonPath === path) return;
+  const idleMs = Date.now() - lastInteractionAt;
+  if (maxScrollDepth >= SCROLL_ABANDON_DEPTH && !usefulInteractionSeen && idleMs >= SCROLL_ABANDON_IDLE_MS) {
+    emittedScrollAbandonPath = path;
+    trackAnalyticsEvent("scroll_abandon", { maxScrollDepth: Number(maxScrollDepth.toFixed(2)), idleMs }, { pagePath: path, source: "friction_detector" });
+  }
+}
+
+function analyticsElementDescriptor(target: Element): { component: string; kind: string; symbol: string | null } | null {
+  const element = target.closest<HTMLElement>("[data-analytics-id], [data-analytics-component], [data-telemetry-id], [data-symbol], a, button, summary, [role='button']");
+  if (!element) return null;
+  const explicit = element.dataset.analyticsId || element.dataset.analyticsComponent || element.dataset.telemetryId;
+  const href = element instanceof HTMLAnchorElement ? sanitizeAnalyticsPath(element.getAttribute("href")) : null;
+  const label = explicit || element.getAttribute("aria-label") || element.getAttribute("title") || href || element.textContent || element.tagName.toLowerCase();
+  const kind = element instanceof HTMLAnchorElement ? "link" : element.tagName.toLowerCase() === "button" ? "button" : element.getAttribute("role") || element.tagName.toLowerCase();
+  return {
+    component: compactComponent(label),
+    kind: compactComponent(kind),
+    symbol: sanitizeAnalyticsSymbol(element.dataset.symbol),
+  };
+}
+
+function compactComponent(value: unknown): string {
+  return String(value ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 72) || "unknown";
 }
 
 function scheduleFlush(): void {
@@ -147,13 +301,32 @@ function currentSessionId(): string | null {
     const expiresAt = Number(existing?.expiresAt);
     if (id && Number.isFinite(expiresAt) && expiresAt > now) {
       window.sessionStorage.setItem(SESSION_KEY, JSON.stringify({ expiresAt: now + SESSION_TTL_MS, id }));
+      ensureSessionStartedAt(now);
       return id;
     }
     const next = crypto.randomUUID();
     window.sessionStorage.setItem(SESSION_KEY, JSON.stringify({ expiresAt: now + SESSION_TTL_MS, id: next }));
+    window.sessionStorage.setItem(SESSION_STARTED_AT_KEY, String(now));
     return next;
   } catch {
     return null;
+  }
+}
+
+function ensureSessionStartedAt(now: number): void {
+  const raw = window.sessionStorage.getItem(SESSION_STARTED_AT_KEY);
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) window.sessionStorage.setItem(SESSION_STARTED_AT_KEY, String(now));
+}
+
+function sessionElapsedMs(): number {
+  try {
+    const now = Date.now();
+    ensureSessionStartedAt(now);
+    const startedAt = Number(window.sessionStorage.getItem(SESSION_STARTED_AT_KEY));
+    return Number.isFinite(startedAt) ? Math.max(0, Math.round(now - startedAt)) : 0;
+  } catch {
+    return 0;
   }
 }
 
