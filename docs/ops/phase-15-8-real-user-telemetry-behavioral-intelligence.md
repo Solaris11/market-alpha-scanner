@@ -189,7 +189,26 @@ Local validation on `/Users/hdtv/dev/market-alpha-scanner`:
 - `npx pyright . --pythonpath .venv/bin/python --warnings`: PASS, 0 errors / 0 warnings
 - `git diff --check`: PASS
 
-Production validation will be appended after the pushed commit is pulled and rebuilt on the production host.
+Production validation on `onsre-node-01` as `sre` from `/opt/apps/market-alpha-scanner/app`:
+
+- Source-control parity before deploy: production worktree clean; production was behind `origin/main` by `4ec5dd7`.
+- Production commit after pull: `4ec5dd7e4874846db514903ce906c23925645ab7`.
+- Migration status: no schema migration added; Phase 15.8 reuses the existing `analytics_events` table.
+- Compose service discovery: `docker compose config --services` returned `market-alpha-postgres` and `market-alpha-frontend`.
+- Rebuild command: `docker compose up -d --build market-alpha-frontend`.
+- Container health: `market-alpha-frontend` healthy on port `3001/tcp`.
+- `/api/health`: PASS, 200, `ok: true`.
+- `/api/health/deep`: PASS, 200, database/scanner/backup statuses ok.
+- Route smoke:
+  - `/`: 200
+  - `/terminal`: 200
+  - `/opportunities`: 200
+  - `/dashboard`: 200
+  - `/api/admin/analytics`: 401 unauthenticated, expected fail-closed
+  - `/api/analytics/events`: 405 on GET, expected method protection
+  - `/api/health`: 200
+  - `/api/health/deep`: 200
+- Production worktree after deploy: clean.
 
 Final status:
 
