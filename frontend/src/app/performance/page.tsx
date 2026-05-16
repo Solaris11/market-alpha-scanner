@@ -8,6 +8,15 @@ import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/shell";
 import { SignalLifecycle } from "@/components/signal-lifecycle";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
+import {
+  CinematicClusterMosaic,
+  CinematicHeatMatrix,
+  CinematicTimeline,
+  type CinematicCluster,
+  type CinematicHeatCell,
+  type CinematicTimelineItem,
+} from "@/components/visual/CinematicIntelligencePanels";
+import type { ScoreFactor } from "@/components/visual/MiniVisuals";
 import { getCalibrationInsights, getFullRanking, getHistorySummary, getIntradaySignalDriftSummary, getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
@@ -209,6 +218,181 @@ function PerformanceHowToUse() {
   );
 }
 
+function PerformanceCinematicEvidenceSystem({
+  forwardObservationCount,
+  history,
+  insights,
+  performance,
+}: {
+  forwardObservationCount: number;
+  history: Awaited<ReturnType<typeof getHistorySummary>>;
+  insights: Record<string, unknown> | null;
+  performance: Awaited<ReturnType<typeof getPerformanceData>>;
+}) {
+  const bestGroup = record(insights?.best_group);
+  const worstGroup = record(insights?.worst_group);
+  const generatedAt = text(insights?.generated_at, "");
+  const returnValues = extractForwardReturnValues(performance.forwardReturns.rows);
+  const evidenceCoverage = coverageScore(forwardObservationCount, 500);
+  const historyCoverage = coverageScore(history.count, 50);
+  const bestAvg = numberValue(bestGroup?.avg_return);
+  const worstAvg = numberValue(worstGroup?.avg_return);
+  const bestHitRate = numberValue(bestGroup?.hit_rate);
+  const worstHitRate = numberValue(worstGroup?.hit_rate);
+  const clusters: CinematicCluster[] = [
+    {
+      emptyMessage: "Forward signal windows are still maturing. The curve appears after enough completed observations exist.",
+      eyebrow: "Evidence Cluster",
+      factors: [
+        scoreFactor("Signal Rows", evidenceCoverage, `${forwardObservationCount.toLocaleString()} completed signal rows`, "cyan"),
+        scoreFactor("Saved Runs", historyCoverage, `${history.count.toLocaleString()} saved scanner runs`, "violet"),
+        scoreFactor("Unique Dates", coverageScore(history.uniqueDates.length, 30), `${history.uniqueDates.length.toLocaleString()} unique history dates`, "emerald"),
+      ],
+      footer: "Evidence quality rises only as real scanner outcomes accumulate.",
+      items: [
+        { detail: fileStateLabel(performance.forwardReturns.state), label: "Signal rows", tone: "cyan", value: forwardObservationCount.toLocaleString() },
+        { detail: "Saved scanner runs", href: "/history", label: "Signal memory", tone: "violet", value: history.count.toLocaleString() },
+        { detail: "Trading days with saved scans", href: "/history", label: "Unique dates", tone: "emerald", value: history.uniqueDates.length.toLocaleString() },
+      ],
+      metricLabel: "coverage",
+      score: evidenceCoverage,
+      summary: "This surface shows how much real scanner evidence is available before interpreting any performance pattern.",
+      title: "Evidence Coverage",
+      tone: "cyan",
+      updatedAt: generatedAt ? formatDate(generatedAt) : formatDate(history.latest),
+      values: returnValues,
+    },
+    {
+      emptyMessage: "No stronger evidence group is available yet.",
+      eyebrow: "Strength Cluster",
+      factors: [
+        scoreFactor("Avg Return", returnScore(bestAvg), `Average observed return: ${percent(bestAvg)}`, "emerald"),
+        scoreFactor("Win Rate", percentScore(bestHitRate), `Observed hit rate: ${ratio(bestHitRate)}`, "emerald"),
+        scoreFactor("Edge", edgeScore(bestGroup?.edge_score), `Historical advantage: ${edge(bestGroup?.edge_score)}`, "cyan"),
+      ],
+      items: bestGroup ? [
+        { detail: `Avg ${percent(bestGroup.avg_return)} · Win rate ${ratio(bestGroup.hit_rate)}`, label: groupTitle(bestGroup), tone: "emerald", value: edge(bestGroup.edge_score) },
+      ] : [],
+      metric: bestGroup ? percent(bestGroup.avg_return) : "Limited",
+      metricLabel: "stronger evidence",
+      summary: bestGroup ? `${groupTitle(bestGroup)} currently has the strongest observed evidence.` : "The scanner is still collecting enough grouped evidence to identify a stronger segment.",
+      title: "What Worked Recently",
+      tone: "emerald",
+      updatedAt: generatedAt ? formatDate(generatedAt) : undefined,
+      values: [bestAvg, bestHitRate, numberValue(bestGroup?.edge_score)],
+    },
+    {
+      emptyMessage: "No weaker evidence group is available yet.",
+      eyebrow: "Risk Cluster",
+      factors: [
+        scoreFactor("Avg Return", returnScore(worstAvg), `Average observed return: ${percent(worstAvg)}`, "rose"),
+        scoreFactor("Win Rate", percentScore(worstHitRate), `Observed hit rate: ${ratio(worstHitRate)}`, "amber"),
+        scoreFactor("Edge", edgeScore(worstGroup?.edge_score), `Historical advantage: ${edge(worstGroup?.edge_score)}`, "rose"),
+      ],
+      items: worstGroup ? [
+        { detail: `Avg ${percent(worstGroup.avg_return)} · Win rate ${ratio(worstGroup.hit_rate)}`, label: groupTitle(worstGroup), tone: "rose", value: edge(worstGroup.edge_score) },
+      ] : [],
+      metric: worstGroup ? percent(worstGroup.avg_return) : "Limited",
+      metricLabel: "weaker evidence",
+      summary: worstGroup ? `${groupTitle(worstGroup)} currently has weaker observed evidence.` : "The scanner has not accumulated enough grouped evidence to isolate weaker behavior.",
+      title: "What Needs Caution",
+      tone: "rose",
+      updatedAt: generatedAt ? formatDate(generatedAt) : undefined,
+      values: [worstAvg, worstHitRate, numberValue(worstGroup?.edge_score)],
+    },
+    {
+      emptyMessage: "No lifecycle rows are available yet.",
+      eyebrow: "Lifecycle Cluster",
+      items: [
+        { detail: fileStateLabel(performance.lifecycle.state), label: "Signal lifecycle", tone: "violet", value: performance.lifecycle.rows.length.toLocaleString() },
+        { detail: fileStateLabel(performance.lifecycleSummary.state), label: "Lifecycle summary", tone: "cyan", value: performance.lifecycleSummary.rows.length.toLocaleString() },
+        { detail: fileStateLabel(performance.autoCalibration.state), label: "Guidance rows", tone: "amber", value: performance.autoCalibration.rows.length.toLocaleString() },
+      ],
+      metric: performance.lifecycle.rows.length.toLocaleString(),
+      metricLabel: "lifecycle rows",
+      summary: "Lifecycle evidence explains whether signals are still fresh, maturing, or old enough to review.",
+      title: "Freshness and Signal Aging",
+      tone: "violet",
+      updatedAt: formatDate(history.latest),
+      values: [performance.lifecycle.rows.length, performance.lifecycleSummary.rows.length, performance.autoCalibration.rows.length],
+    },
+  ];
+  const heatCells: CinematicHeatCell[] = [
+    { detail: `${forwardObservationCount.toLocaleString()} signal rows`, label: "Signal Coverage", tone: "cyan", value: evidenceCoverage },
+    { detail: `${history.count.toLocaleString()} saved runs`, href: "/history", label: "Memory Depth", tone: "violet", value: historyCoverage },
+    { detail: `${history.uniqueDates.length.toLocaleString()} unique dates`, href: "/history", label: "Date Coverage", tone: "emerald", value: coverageScore(history.uniqueDates.length, 30) },
+    { detail: bestGroup ? groupTitle(bestGroup) : "Not enough evidence", label: "Strong Group", tone: "emerald", value: edgeScore(bestGroup?.edge_score) },
+    { detail: worstGroup ? groupTitle(worstGroup) : "Not enough evidence", label: "Weak Group", tone: "rose", value: edgeScore(worstGroup?.edge_score) },
+    { detail: fileStateLabel(performance.forwardReturns.state), label: "Data State", tone: performance.forwardReturns.state === "data" ? "emerald" : "amber", value: performance.forwardReturns.state === "data" ? 100 : 35 },
+  ];
+  const timeline: CinematicTimelineItem[] = [
+    { detail: `${history.count.toLocaleString()} saved scanner runs available`, href: "/history", label: "Signal memory loaded", timestamp: formatDate(history.latest), tone: "violet" },
+    { detail: `${forwardObservationCount.toLocaleString()} signal rows can be reviewed`, label: "Signal evidence checked", timestamp: generatedAt ? formatDate(generatedAt) : "Current view", tone: "cyan" },
+  ];
+  if (bestGroup) {
+    timeline.push({ detail: `Avg ${percent(bestGroup.avg_return)} · win rate ${ratio(bestGroup.hit_rate)}`, label: `Stronger: ${groupTitle(bestGroup)}`, timestamp: "Current evidence", tone: "emerald" });
+  }
+  if (worstGroup) {
+    timeline.push({ detail: `Avg ${percent(worstGroup.avg_return)} · win rate ${ratio(worstGroup.hit_rate)}`, label: `Weaker: ${groupTitle(worstGroup)}`, timestamp: "Current evidence", tone: "rose" });
+  }
+
+  return (
+    <div className="grid gap-3">
+      <CinematicClusterMosaic
+        eyebrow="Performance intelligence system"
+        summary="Performance is shown as evidence coverage, recent scanner behavior, weak spots, and signal aging. No chart is rendered unless real observations exist."
+        title="Scanner Evidence Command Center"
+        clusters={clusters}
+      />
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_420px]">
+        <CinematicHeatMatrix cells={heatCells} title="Evidence Quality Heatmap" />
+        <CinematicTimeline items={timeline} title="Performance Evidence Timeline" />
+      </div>
+    </div>
+  );
+}
+
+function scoreFactor(label: string, value: number | null, detail: string, tone: ScoreFactor["tone"]): ScoreFactor {
+  return { detail, label, tone, value };
+}
+
+function coverageScore(count: number, target: number): number {
+  if (!Number.isFinite(count) || count <= 0) return 0;
+  return Math.max(0, Math.min(100, (count / target) * 100));
+}
+
+function percentScore(value: unknown): number | null {
+  const parsed = numberValue(value);
+  if (parsed === null) return null;
+  return Math.max(0, Math.min(100, parsed * 100));
+}
+
+function edgeScore(value: unknown): number | null {
+  const parsed = numberValue(value);
+  if (parsed === null) return null;
+  return Math.max(0, Math.min(100, 50 + parsed * 3));
+}
+
+function returnScore(value: unknown): number | null {
+  const parsed = numberValue(value);
+  if (parsed === null) return null;
+  return Math.max(0, Math.min(100, 50 + parsed * 100));
+}
+
+function extractForwardReturnValues(rows: Awaited<ReturnType<typeof getPerformanceData>>["forwardReturns"]["rows"]): number[] {
+  const keys = ["forward_return", "return", "return_pct", "ret", "avg_return", "future_return", "forward_return_pct"];
+  return rows
+    .slice(-24)
+    .map((row) => {
+      for (const key of keys) {
+        const parsed = numberValue(row[key]);
+        if (parsed !== null) return parsed;
+      }
+      return null;
+    })
+    .filter((value): value is number => value !== null);
+}
+
 export default async function PerformancePage() {
   const entitlement = await getEntitlement();
   if (requiresLegalAcceptance(entitlement)) {
@@ -254,6 +438,13 @@ export default async function PerformancePage() {
         </div>
 
         <PerformanceHowToUse />
+
+        <PerformanceCinematicEvidenceSystem
+          forwardObservationCount={forwardObservationCount}
+          history={history}
+          insights={calibrationInsights}
+          performance={performance}
+        />
 
         <div id="evidence">
           <CalibrationInsightsPanel insights={calibrationInsights} />

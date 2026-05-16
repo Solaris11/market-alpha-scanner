@@ -3,6 +3,15 @@
 import Link from "next/link";
 import { Activity, AlertTriangle, BarChart3, Bell, Eye, Gauge, RotateCcw, ShieldAlert, Target, Zap } from "lucide-react";
 import { useMemo } from "react";
+import {
+  CinematicClusterMosaic,
+  CinematicHeatMatrix,
+  CinematicTimeline,
+  type CinematicCluster,
+  type CinematicClusterItem,
+  type CinematicHeatCell,
+  type CinematicTimelineItem,
+} from "@/components/visual/CinematicIntelligencePanels";
 import { ScoreFactorStrip, type ScoreFactor, VisualMetricRail } from "@/components/visual/MiniVisuals";
 import { InteractiveInsightZoneGrid, ShowcaseIntelligenceOrbit, type InteractiveInsightZoneItem } from "@/components/visual/InteractiveVisualIntelligence";
 import { SymbolLogo } from "@/components/visual/SymbolLogo";
@@ -161,6 +170,9 @@ function SimpleHomeConsole({ consoleModel, workspacePreferences }: { consoleMode
     shocks[0]?.actionContext,
   ].filter((item): item is string => Boolean(item));
   const zones = applyWorkspacePreferencesToZones(buildSimpleHomeZones(consoleModel), workspacePreferences);
+  const cinematicClusters = buildCinematicTerminalClusters(consoleModel);
+  const heatCells = buildCinematicTerminalHeatCells(consoleModel);
+  const timelineItems = buildCinematicTerminalTimeline(consoleModel);
 
   return (
     <GlassPanel className="poster-scanline overflow-hidden border-cyan-300/20 bg-cyan-400/[0.035] p-4 sm:p-5" data-onboarding-target="what-matters-now">
@@ -182,6 +194,31 @@ function SimpleHomeConsole({ consoleModel, workspacePreferences }: { consoleMode
           {consoleModel.metrics.slice(0, 4).map((metric) => (
             <SimpleMetricRow key={metric.key} metric={metric} />
           ))}
+        </div>
+      </div>
+
+      <div className="mt-5">
+        <SimpleAttentionStatusMatrix consoleModel={consoleModel} />
+      </div>
+
+      <div className="mt-5">
+        <CinematicClusterMosaic
+          eyebrow="Multi-layer intelligence clusters"
+          summary="Market, risk, opportunity, macro, replay, memory, feed, and watchlist signals are shown as connected tactical systems. Each module uses current TradeVeto data or an explicit limited-evidence state."
+          title="Intelligence Command Surface"
+          clusters={cinematicClusters}
+        />
+      </div>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(340px,0.95fr)]">
+        <ShowcaseIntelligenceOrbit
+          summary="Every node opens a grounded detail surface with scored factors, related symbols, source context, and what to monitor next."
+          title="One System. Connected Intelligence."
+          zones={zones}
+        />
+        <div className="grid gap-4">
+          <CinematicHeatMatrix cells={heatCells} title="Pressure, Quality, and Attention Heat" />
+          <CinematicTimeline items={timelineItems} title="What Changed in This Snapshot" />
         </div>
       </div>
 
@@ -240,6 +277,251 @@ function SimpleHomeConsole({ consoleModel, workspacePreferences }: { consoleMode
       </details>
     </GlassPanel>
   );
+}
+
+function buildCinematicTerminalClusters(consoleModel: ReturnType<typeof buildUnifiedIntelligenceConsole>): CinematicCluster[] {
+  const metricByKey = new Map(consoleModel.metrics.map((metric) => [metric.key, metric]));
+  const attention = metricByKey.get("attention");
+  const opportunity = metricByKey.get("opportunity");
+  const decision = metricByKey.get("decision");
+  const risk = metricByKey.get("risk");
+  const fragility = metricByKey.get("fragility");
+  const asymmetry = metricByKey.get("asymmetry");
+  const best = consoleModel.topOpportunities[0] ?? null;
+  const danger = consoleModel.topRisks[0] ?? null;
+  const updatedAt = new Date(consoleModel.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const metricValues = consoleModel.metrics.map((metric) => metric.score);
+
+  return [
+    {
+      emptyMessage: "No validated market timeline exists for this snapshot yet.",
+      eyebrow: "Market Cluster",
+      factors: [
+        metricFactor(attention, "cyan"),
+        metricFactor(decision, "cyan"),
+        metricFactor(risk, "rose"),
+        metricFactor(fragility, "amber"),
+      ].filter((factor): factor is ScoreFactor => Boolean(factor)),
+      footer: "Regime, attention, risk, and freshness are grouped into one current market surface.",
+      icon: <Gauge className="h-6 w-6" />,
+      items: [
+        ...briefingsToClusterItems(consoleModel.biggestChanges, "cyan"),
+        ...briefingsToClusterItems(consoleModel.eventPressure, "amber"),
+      ].slice(0, 6),
+      metricLabel: "attention",
+      score: attention?.score ?? null,
+      summary: consoleModel.macroRegime.summary,
+      title: humanizeInsightText(consoleModel.macroRegime.label),
+      tone: "cyan",
+      updatedAt,
+      values: metricValues,
+    },
+    {
+      emptyMessage: "No setup has enough current evidence to lead the opportunity stack.",
+      eyebrow: "Opportunity Cluster",
+      factors: best ? itemFactors(best, "opportunity") : [],
+      href: best?.href ?? "/opportunities",
+      icon: <Target className="h-6 w-6" />,
+      items: consoleModel.topOpportunities.slice(0, 6).map((item) => itemToClusterItem(item, "emerald")),
+      metricLabel: "best setup",
+      score: best?.attentionPriorityScore ?? opportunity?.score ?? null,
+      summary: best ? `${best.symbol}: ${humanizeInsightText(best.reasonForAttention)}` : "No current opportunity leader has enough evidence.",
+      title: "Setup Stack",
+      tone: "emerald",
+      updatedAt,
+      values: consoleModel.topOpportunities.map((item) => item.attentionPriorityScore),
+    },
+    {
+      emptyMessage: "No dangerous-now symbol has enough scored evidence in this snapshot.",
+      eyebrow: "Risk Cluster",
+      factors: [
+        metricFactor(risk, "rose"),
+        metricFactor(fragility, "amber"),
+        danger ? { detail: danger.riskLabel, label: "Top Risk", tone: "rose", value: danger.riskScore } : null,
+        danger ? { detail: danger.urgencyLabel, label: "Urgency", tone: "amber", value: danger.urgencyScore } : null,
+      ].filter((factor): factor is ScoreFactor => Boolean(factor)),
+      href: danger?.href ?? "/opportunities",
+      icon: <ShieldAlert className="h-6 w-6" />,
+      items: [
+        ...consoleModel.topRisks.slice(0, 4).map((item) => itemToClusterItem(item, "rose")),
+        ...briefingsToClusterItems(consoleModel.fragilityRising, "amber"),
+      ].slice(0, 6),
+      metricLabel: "risk pressure",
+      score: risk?.score ?? danger?.riskScore ?? null,
+      summary: danger ? `${danger.symbol}: ${humanizeInsightText(danger.riskLabel)}` : "No dominant current risk item is visible.",
+      title: "Risk Pressure",
+      tone: "rose",
+      updatedAt,
+      values: [
+        risk?.score,
+        fragility?.score,
+        ...consoleModel.topRisks.map((item) => item.riskScore),
+      ],
+    },
+    {
+      emptyMessage: "Macro pressure has no scored supporting factors in this snapshot.",
+      eyebrow: "Macro Cluster",
+      factors: [
+        metricFactor(attention, "cyan"),
+        metricFactor(risk, "rose"),
+        metricFactor(fragility, "amber"),
+        metricFactor(asymmetry, "emerald"),
+      ].filter((factor): factor is ScoreFactor => Boolean(factor)),
+      href: "/intelligence/macro-regime",
+      icon: <BarChart3 className="h-6 w-6" />,
+      items: [
+        ...briefingsToClusterItems(consoleModel.eventPressure, "amber"),
+        ...briefingsToClusterItems(consoleModel.fragilityRising, "rose"),
+      ].slice(0, 4),
+      metric: risk?.score === undefined ? "Limited" : `${risk.score}`,
+      metricLabel: "macro pressure",
+      summary: consoleModel.macroRegime.summary,
+      title: "Macro and Event Pressure",
+      tone: "amber",
+      updatedAt,
+      values: [attention?.score, risk?.score, fragility?.score, asymmetry?.score],
+    },
+    {
+      emptyMessage: "No replay or asymmetry context is validated for this snapshot yet.",
+      eyebrow: "Replay Cluster",
+      factors: [
+        metricFactor(asymmetry, "emerald"),
+        metricFactor(opportunity, "emerald"),
+        metricFactor(decision, "cyan"),
+      ].filter((factor): factor is ScoreFactor => Boolean(factor)),
+      href: "/history",
+      icon: <RotateCcw className="h-6 w-6" />,
+      items: [
+        ...briefingsToClusterItems(consoleModel.bestAsymmetry, "violet"),
+        ...briefingsToClusterItems(consoleModel.whatChangedSinceLastVisit, "cyan"),
+      ].slice(0, 4),
+      metric: `${consoleModel.bestAsymmetry.length}`,
+      metricLabel: "validated context",
+      summary: consoleModel.bestAsymmetry[0]?.label ?? "Replay context is limited until historical/asymmetry evidence is available.",
+      title: "Replay and Memory Echo",
+      tone: "violet",
+      updatedAt,
+      values: [asymmetry?.score, opportunity?.score, decision?.score],
+    },
+    {
+      emptyMessage: "No watchlist changes are available. Add tracked symbols to build this cluster.",
+      eyebrow: "Watchlist Cluster",
+      factors: [
+        metricFactor(attention, "cyan"),
+        metricFactor(decision, "cyan"),
+      ].filter((factor): factor is ScoreFactor => Boolean(factor)),
+      href: "/opportunities?tab=watchlist",
+      icon: <Bell className="h-6 w-6" />,
+      items: briefingsToClusterItems(consoleModel.watchlistChanges, "emerald"),
+      metric: `${consoleModel.watchlistChanges.length}`,
+      metricLabel: "tracked changes",
+      summary: consoleModel.watchlistChanges[0]?.label ?? "No watchlist-specific change is available yet.",
+      title: "Watchlist Monitoring",
+      tone: "emerald",
+      updatedAt,
+      values: [],
+    },
+    {
+      emptyMessage: "No recent feed-worthy changes are available in this console snapshot.",
+      eyebrow: "Feed Cluster",
+      factors: [
+        metricFactor(attention, "cyan"),
+        metricFactor(opportunity, "emerald"),
+        metricFactor(risk, "rose"),
+      ].filter((factor): factor is ScoreFactor => Boolean(factor)),
+      href: "/history",
+      icon: <Eye className="h-6 w-6" />,
+      items: [
+        ...briefingsToClusterItems(consoleModel.biggestChanges, "cyan"),
+        ...briefingsToClusterItems(consoleModel.whatChangedSinceLastVisit, "violet"),
+      ].slice(0, 5),
+      metric: `${consoleModel.biggestChanges.length + consoleModel.whatChangedSinceLastVisit.length}`,
+      metricLabel: "change stream",
+      summary: consoleModel.biggestChanges[0]?.label ?? "No material change has enough evidence to surface yet.",
+      title: "What Changed Stream",
+      tone: "cyan",
+      updatedAt,
+      values: metricValues,
+    },
+    {
+      emptyMessage: "No validated market-memory analog is exposed for this snapshot yet.",
+      eyebrow: "Memory Cluster",
+      factors: [
+        metricFactor(asymmetry, "violet"),
+        metricFactor(fragility, "amber"),
+        metricFactor(decision, "cyan"),
+      ].filter((factor): factor is ScoreFactor => Boolean(factor)),
+      href: "/history",
+      icon: <Activity className="h-6 w-6" />,
+      items: briefingsToClusterItems(consoleModel.bestAsymmetry, "violet"),
+      metric: consoleModel.bestAsymmetry.length ? `${consoleModel.bestAsymmetry.length}` : "Limited",
+      metricLabel: "memory analogs",
+      summary: consoleModel.bestAsymmetry[0]?.label ?? "Historical comparison stays limited until validated analog evidence exists.",
+      title: "Market Memory",
+      tone: "violet",
+      updatedAt,
+      values: [asymmetry?.score, fragility?.score, decision?.score],
+    },
+  ];
+}
+
+function buildCinematicTerminalHeatCells(consoleModel: ReturnType<typeof buildUnifiedIntelligenceConsole>): CinematicHeatCell[] {
+  const metricCells = consoleModel.metrics.map((metric): CinematicHeatCell => ({
+    detail: humanizeInsightText(metric.detail),
+    label: metric.label,
+    tone: metric.inverse ? (metric.score >= 60 ? "rose" : "emerald") : undefined,
+    value: metric.score,
+  }));
+  const symbolCells = consoleModel.attentionQueue.slice(0, 6).map((item): CinematicHeatCell => ({
+    detail: humanizeInsightText(item.reasonForAttention),
+    href: item.href,
+    label: item.symbol,
+    tone: item.riskScore >= 70 ? "rose" : item.opportunityScore >= 60 ? "emerald" : "amber",
+    value: item.attentionPriorityScore,
+  }));
+  return [...metricCells, ...symbolCells].slice(0, 12);
+}
+
+function buildCinematicTerminalTimeline(consoleModel: ReturnType<typeof buildUnifiedIntelligenceConsole>): CinematicTimelineItem[] {
+  const generatedAt = new Date(consoleModel.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return [
+    ...briefingsToTimelineItems(consoleModel.biggestChanges, "cyan", generatedAt),
+    ...briefingsToTimelineItems(consoleModel.watchlistChanges, "emerald", generatedAt),
+    ...briefingsToTimelineItems(consoleModel.fragilityRising, "amber", generatedAt),
+    ...briefingsToTimelineItems(consoleModel.whatChangedSinceLastVisit, "violet", generatedAt),
+  ].slice(0, 8);
+}
+
+function itemToClusterItem(item: UnifiedConsoleItem, tone: CinematicClusterItem["tone"]): CinematicClusterItem {
+  return {
+    detail: humanizeInsightText(item.reasonForAttention),
+    href: item.href,
+    label: item.symbol,
+    symbol: item.symbol,
+    tone,
+    value: `${item.attentionPriorityScore}`,
+  };
+}
+
+function briefingsToClusterItems(items: UnifiedConsoleBriefing[], tone: CinematicClusterItem["tone"]): CinematicClusterItem[] {
+  return items.map((item) => ({
+    detail: humanizeInsightText(item.actionContext),
+    href: item.symbol ? `/symbol/${item.symbol}` : undefined,
+    label: item.symbol ? `${item.symbol}: ${humanizeInsightText(item.label)}` : humanizeInsightText(item.label),
+    symbol: item.symbol,
+    tone: item.priority === "high" ? "rose" : item.priority === "medium" ? "amber" : tone,
+    value: item.priority,
+  }));
+}
+
+function briefingsToTimelineItems(items: UnifiedConsoleBriefing[], tone: CinematicTimelineItem["tone"], timestamp: string): CinematicTimelineItem[] {
+  return items.map((item) => ({
+    detail: humanizeInsightText(item.actionContext),
+    href: item.symbol ? `/symbol/${item.symbol}` : undefined,
+    label: humanizeInsightText(item.label),
+    timestamp,
+    tone: item.priority === "high" ? "rose" : item.priority === "medium" ? "amber" : tone,
+  }));
 }
 
 function SimpleAttentionStatusMatrix({ consoleModel }: { consoleModel: ReturnType<typeof buildUnifiedIntelligenceConsole> }) {

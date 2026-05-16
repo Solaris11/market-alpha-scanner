@@ -2,10 +2,19 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { BellRing, RadioTower, ShieldCheck, SlidersHorizontal } from "lucide-react";
+import { Activity, BellRing, Eye, ListChecks, RadioTower, ShieldCheck, SlidersHorizontal, Zap } from "lucide-react";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
+import {
+  CinematicClusterMosaic,
+  CinematicHeatMatrix,
+  CinematicTimeline,
+  type CinematicCluster,
+  type CinematicHeatCell,
+  type CinematicTimelineItem,
+} from "@/components/visual/CinematicIntelligencePanels";
 import { InteractiveInsightZoneGrid, type InteractiveInsightZoneItem } from "@/components/visual/InteractiveVisualIntelligence";
+import type { ScoreFactor, VisualTone } from "@/components/visual/MiniVisuals";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { humanizeLabel } from "@/lib/ui/labels";
@@ -254,6 +263,32 @@ async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   return payload;
 }
 
+function alertPct(value: number, total: number): number | null {
+  if (total <= 0) return null;
+  return Math.max(0, Math.min(100, (value / total) * 100));
+}
+
+function alertFactor(label: string, value: number | null, tone: VisualTone): ScoreFactor {
+  return { label, tone, value };
+}
+
+function alertStateTime(state: AlertStateEntry): string | null {
+  return state.last_sent_at ?? state.last_skipped_at ?? null;
+}
+
+function alertStateTone(state: AlertStateEntry): VisualTone {
+  if (state.last_sent_at) return "emerald";
+  if (state.last_status === "skipped" || state.last_skip_reason) return "amber";
+  if (state.last_status === "error") return "rose";
+  return "cyan";
+}
+
+function latestAlertStates(overview: AlertOverview): AlertStateEntry[] {
+  return Object.values(overview.state.alerts)
+    .filter((state) => Boolean(alertStateTime(state) || state.symbol || state.alert_id))
+    .sort((left, right) => String(alertStateTime(right) ?? "").localeCompare(String(alertStateTime(left) ?? "")));
+}
+
 function AlertVisualCenter({ overview, watchlist }: { overview: AlertOverview; watchlist: string[] }) {
   const totalRules = overview.rules.length;
   const enabledRules = overview.rules.filter((rule) => rule.enabled).length;
@@ -354,6 +389,155 @@ function AlertVisualCenter({ overview, watchlist }: { overview: AlertOverview; w
       title="Tap Into Alert Readiness"
       zones={zones}
     />
+  );
+}
+
+function AlertCinematicEcosystem({ overview, watchlist }: { overview: AlertOverview; watchlist: string[] }) {
+  const totalRules = overview.rules.length;
+  const enabledRules = overview.rules.filter((rule) => rule.enabled).length;
+  const disabledRules = totalRules - enabledRules;
+  const watchlistRules = overview.rules.filter((rule) => rule.scope === "watchlist").length;
+  const globalRules = overview.rules.filter((rule) => rule.scope === "global").length;
+  const symbolRules = overview.rules.filter((rule) => rule.scope === "symbol").length;
+  const stateEntries = latestAlertStates(overview);
+  const lastSent = formatDate(overview.lastSentAt);
+  const activePct = alertPct(overview.activeCount, totalRules);
+  const enabledPct = alertPct(enabledRules, totalRules);
+  const statePct = alertPct(stateEntries.length, Math.max(totalRules, 1));
+  const watchlistPct = alertPct(watchlistRules, totalRules);
+  const deliveryValues = stateEntries
+    .slice(0, 12)
+    .map((state, index) => {
+      if (state.last_sent_at) return 82 - index * 3;
+      if (state.last_skip_reason) return 48 - index * 2;
+      return 58 - index * 2;
+    });
+  const clusters: CinematicCluster[] = [
+    {
+      emptyMessage: "Create alert rules to build alert coverage history.",
+      eyebrow: "Alert ecosystem",
+      factors: [
+        alertFactor("Enabled", enabledPct, "emerald"),
+        alertFactor("Active", activePct, "cyan"),
+        alertFactor("Disabled", alertPct(disabledRules, totalRules), "rose"),
+      ],
+      footer: "Configured rules only. No fabricated alert activity.",
+      icon: <BellRing className="h-6 w-6" />,
+      items: overview.rules.slice(0, 6).map((rule) => ({
+        detail: `${scopeLabel(rule.scope)} - ${typeLabel(rule.type)}`,
+        href: symbolHref(targetDisplay(rule)) ?? undefined,
+        label: targetDisplay(rule),
+        tone: rule.enabled ? "emerald" : "amber",
+        value: rule.enabled ? "On" : "Off",
+      })),
+      metric: enabledRules.toLocaleString(),
+      metricLabel: "enabled rules",
+      score: enabledPct,
+      summary: totalRules ? `${enabledRules} of ${totalRules} alert rules are enabled, with ${overview.activeCount} active in the alert engine.` : "No alert rules configured yet.",
+      title: "Alert Coverage Cluster",
+      tone: "cyan",
+      updatedAt: lastSent,
+      values: [enabledPct, activePct, statePct, watchlistPct],
+    },
+    {
+      emptyMessage: "Track symbols first to build watchlist alert intelligence.",
+      eyebrow: "Watchlist radar",
+      factors: [
+        alertFactor("Tracked Symbols", watchlist.length ? Math.min(100, watchlist.length * 12) : null, "emerald"),
+        alertFactor("Scoped Rules", watchlistPct, "cyan"),
+      ],
+      icon: <Eye className="h-6 w-6" />,
+      items: watchlist.slice(0, 6).map((symbol) => ({
+        detail: "Tracked locally for quick alert creation.",
+        href: `/symbol/${encodeURIComponent(symbol)}`,
+        label: symbol,
+        tone: "emerald",
+        value: "Watch",
+      })),
+      metric: watchlist.length.toLocaleString(),
+      metricLabel: "tracked symbols",
+      score: watchlist.length ? Math.min(100, watchlist.length * 12) : null,
+      summary: watchlist.length ? `${watchlist.length} tracked symbols can feed quick alert rules.` : "No tracked symbols yet.",
+      title: "Watchlist Monitoring Cluster",
+      tone: "emerald",
+      values: watchlistRules ? [watchlistPct, enabledPct, activePct] : [],
+    },
+    {
+      emptyMessage: "Alert delivery history appears after rules evaluate or send.",
+      eyebrow: "Delivery state",
+      factors: [
+        alertFactor("State Entries", statePct, "amber"),
+        alertFactor("Last Delivery", overview.lastSentAt ? 100 : null, "cyan"),
+      ],
+      icon: <RadioTower className="h-6 w-6" />,
+      items: stateEntries.slice(0, 6).map((state) => ({
+        detail: state.last_skip_reason ?? state.last_status ?? state.last_entry_status ?? "Alert state recorded.",
+        href: state.symbol ? `/symbol/${encodeURIComponent(state.symbol)}` : undefined,
+        label: state.symbol ?? state.alert_id ?? "Alert state",
+        tone: alertStateTone(state),
+        value: state.last_sent_at ? "Sent" : state.last_skip_reason ? "Skipped" : "State",
+      })),
+      metric: stateEntries.length.toLocaleString(),
+      metricLabel: "state entries",
+      score: statePct,
+      summary: stateEntries.length ? `${stateEntries.length} delivery/evaluation state entries are stored.` : "No alert delivery state yet.",
+      title: "Delivery Intelligence Cluster",
+      tone: "amber",
+      updatedAt: lastSent,
+      values: deliveryValues,
+    },
+    {
+      emptyMessage: "Install presets or create rules to build alert coverage.",
+      eyebrow: "Noise controls",
+      factors: [
+        alertFactor("Global", alertPct(globalRules, totalRules), "violet"),
+        alertFactor("Symbol", alertPct(symbolRules, totalRules), "cyan"),
+        alertFactor("Watchlist", watchlistPct, "emerald"),
+      ],
+      icon: <SlidersHorizontal className="h-6 w-6" />,
+      items: [
+        { detail: "Scanner-wide alert rule coverage.", label: "Global rules", tone: "violet", value: globalRules.toLocaleString() },
+        { detail: "Single-symbol alert rule coverage.", label: "Symbol rules", tone: "cyan", value: symbolRules.toLocaleString() },
+        { detail: "Tracked-symbol alert rule coverage.", label: "Watchlist rules", tone: "emerald", value: watchlistRules.toLocaleString() },
+      ],
+      metric: totalRules.toLocaleString(),
+      metricLabel: "configured",
+      score: totalRules ? Math.min(100, enabledRules * 9 + overview.activeCount * 6) : null,
+      summary: "Rule scope, cooldown, and preset controls keep alerts high-signal instead of noisy.",
+      title: "Alert Noise Control Cluster",
+      tone: "violet",
+      values: [globalRules, symbolRules, watchlistRules, enabledRules].map((value) => (totalRules ? (value / totalRules) * 100 : null)),
+    },
+  ];
+  const heatCells: CinematicHeatCell[] = [
+    { detail: "Enabled rules divided by configured rules.", label: "Enabled coverage", tone: "emerald", value: enabledPct },
+    { detail: "Active rules divided by configured rules.", label: "Active pressure", tone: "cyan", value: activePct },
+    { detail: "Stored alert state divided by configured rules.", label: "State memory", tone: "amber", value: statePct },
+    { detail: "Rules scoped to tracked watchlist symbols.", label: "Watchlist link", tone: "emerald", value: watchlistPct },
+    { detail: "Scanner-wide alert exposure.", label: "Global scope", tone: "violet", value: alertPct(globalRules, totalRules) },
+    { detail: "Single-symbol alert exposure.", label: "Symbol scope", tone: "cyan", value: alertPct(symbolRules, totalRules) },
+  ];
+  const timelineItems: CinematicTimelineItem[] = stateEntries.slice(0, 7).map((state) => ({
+    detail: state.last_skip_reason ?? state.last_status ?? state.last_entry_status ?? "Alert state recorded.",
+    href: state.symbol ? `/symbol/${encodeURIComponent(state.symbol)}` : undefined,
+    label: state.symbol ?? state.alert_id ?? "Alert evaluation",
+    timestamp: formatDate(alertStateTime(state)),
+    tone: alertStateTone(state),
+  }));
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
+      <CinematicClusterMosaic
+        clusters={clusters}
+        eyebrow="Watchlists + Alerts cinematic layer"
+        summary="A denser alert ecosystem view powered only by configured alert rules, watchlist symbols, and alert state history."
+        title="Alert Intelligence Ecosystem"
+      />
+      <div className="grid gap-4">
+        <CinematicHeatMatrix cells={heatCells} title="Alert System Heat" />
+        <CinematicTimeline emptyMessage="No alert delivery or evaluation state has been recorded yet." items={timelineItems} title="Alert State Timeline" />
+      </div>
+    </div>
   );
 }
 
@@ -795,6 +979,8 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
       <div id="alert-radar">
         <AlertVisualCenter overview={overview} watchlist={watchlist} />
       </div>
+
+      <AlertCinematicEcosystem overview={overview} watchlist={watchlist} />
 
       <SimpleAdvancedTabs
         simple={(

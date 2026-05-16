@@ -28,7 +28,15 @@ import type {
 } from "@/lib/trading/simulated-ai-portfolio";
 import { strategyFamilyLabel } from "@/lib/trading/strategy-intelligence";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
-import { IconInsightRail, PosterGauge, ScoreFactorStrip } from "@/components/visual/MiniVisuals";
+import {
+  CinematicClusterMosaic,
+  CinematicHeatMatrix,
+  CinematicTimeline,
+  type CinematicCluster,
+  type CinematicHeatCell,
+  type CinematicTimelineItem,
+} from "@/components/visual/CinematicIntelligencePanels";
+import { IconInsightRail, PosterGauge, ScoreFactorStrip, type ScoreFactor, type VisualTone } from "@/components/visual/MiniVisuals";
 import { SymbolLogo } from "@/components/visual/SymbolLogo";
 import { trackFirstUsefulAction } from "@/lib/client/analytics";
 
@@ -101,6 +109,10 @@ export function StrategyLabsWorkspace({ system }: { system: SimulatedAiPortfolio
               { copy: "Simulation, not advice", icon: <ShieldAlert className="h-6 w-6" />, label: "Risk Boundary", tone: "rose" },
             ]}
           />
+        </div>
+
+        <div className="border-t border-white/10 p-4 sm:p-5">
+          <StrategyCinematicSimulationSystem result={active} system={system} />
         </div>
 
         <div className="border-t border-white/10 p-4 pt-0 sm:p-5 sm:pt-0">
@@ -213,6 +225,150 @@ export function StrategyLabsWorkspace({ system }: { system: SimulatedAiPortfolio
           </Panel>
         </div>
       </section>
+    </div>
+  );
+}
+
+function strategyFactor(label: string, value: number | null, tone: VisualTone): ScoreFactor {
+  return { label, tone, value };
+}
+
+function StrategyCinematicSimulationSystem({
+  result,
+  system,
+}: {
+  result: SimulatedPortfolioModeResult;
+  system: SimulatedAiPortfolioSystem;
+}) {
+  const stats = result.stats;
+  const modeItems = MODE_ORDER.map((mode) => {
+    const modeResult = system.modes[mode];
+    return {
+      detail: `${modeResult.stats.closedTradeCount.toLocaleString()} closed samples - drawdown ${formatPct(modeResult.stats.maxDrawdownPct)}`,
+      label: modeResult.config.label,
+      tone: mode === result.mode ? "cyan" as const : mode === "conservative" ? "emerald" as const : mode === "aggressive" ? "rose" as const : "violet" as const,
+      value: `${modeResult.stats.strategyQualityScore}/100`,
+    };
+  });
+  const clusters: CinematicCluster[] = [
+    {
+      emptyMessage: "Simulation needs completed evidence before the strategy curve is meaningful.",
+      eyebrow: "Strategy ecosystem",
+      factors: [
+        strategyFactor("Quality", stats.strategyQualityScore, "violet"),
+        strategyFactor("Closed Evidence", stats.closedTradeCount ? Math.min(100, stats.closedTradeCount * 2) : null, "cyan"),
+        strategyFactor("Return", normalizeSignedPct(stats.simulatedReturnPct), stats.simulatedReturnPct !== null && stats.simulatedReturnPct < 0 ? "rose" : "emerald"),
+      ],
+      footer: "Simulation only. No broker orders or guaranteed outcomes.",
+      icon: <FlaskConical className="h-6 w-6" />,
+      items: result.openPositions.slice(0, 6).map((position) => ({
+        detail: `${strategyFamilyLabel(position.strategyFamily)} - ${position.exitPlan}`,
+        href: `/symbol/${encodeURIComponent(position.symbol)}`,
+        label: position.symbol,
+        tone: position.unrealizedPnlPct >= 0 ? "emerald" : "rose",
+        value: formatPct(position.unrealizedPnlPct),
+      })),
+      metric: `${stats.strategyQualityScore}/100`,
+      metricLabel: "strategy quality",
+      score: stats.strategyQualityScore,
+      summary: `${result.config.label} studies score gate ${result.config.minModeScore}, fragility cap ${result.config.maxFragilityScore}, and max simulated allocation ${result.config.maxAllocationPct}%.`,
+      title: `${result.config.label} Strategy Ecosystem`,
+      tone: "violet",
+      updatedAt: formatDateTime(system.generatedAt),
+      values: result.equityCurve.map((point) => point.value),
+    },
+    {
+      emptyMessage: "Closed trades are required for drawdown and volatility behavior.",
+      eyebrow: "Risk simulation",
+      factors: [
+        strategyFactor("Drawdown Safety", normalizeDrawdownSafety(stats.maxDrawdownPct), "amber"),
+        strategyFactor("Volatility Control", normalizeVolatilityControl(stats.volatilityPct), "cyan"),
+        strategyFactor("Cash Buffer", stats.cashPct, "emerald"),
+      ],
+      icon: <ShieldAlert className="h-6 w-6" />,
+      items: [
+        { detail: "Maximum observed simulated decline.", label: "Max drawdown", tone: "amber", value: formatPct(stats.maxDrawdownPct) },
+        { detail: "Observed simulated volatility for this sleeve.", label: "Volatility", tone: "cyan", value: formatPct(stats.volatilityPct) },
+        { detail: "Unallocated simulated portfolio buffer.", label: "Cash buffer", tone: "emerald", value: `${stats.cashPct.toFixed(1)}%` },
+      ],
+      metric: formatPct(stats.maxDrawdownPct),
+      metricLabel: "max drawdown",
+      score: normalizeDrawdownSafety(stats.maxDrawdownPct),
+      summary: "Risk controls stay visible before performance claims, matching TradeVeto's wait-first research posture.",
+      title: "Drawdown and Volatility Control",
+      tone: "amber",
+      values: [normalizeDrawdownSafety(stats.maxDrawdownPct), normalizeVolatilityControl(stats.volatilityPct), stats.cashPct],
+    },
+    {
+      emptyMessage: "Replay-linked closed trade evidence will populate after completed simulated outcomes exist.",
+      eyebrow: "Replay evidence",
+      factors: [
+        strategyFactor("Closed Trades", stats.closedTradeCount ? Math.min(100, stats.closedTradeCount * 2) : null, "cyan"),
+        strategyFactor("Win Rate", stats.winRatePct, "emerald"),
+      ],
+      icon: <PlayCircle className="h-6 w-6" />,
+      items: result.closedTrades.slice(0, 6).map((trade) => ({
+        detail: `${trade.entryDate} to ${trade.exitDate} - ${strategyFamilyLabel(trade.strategyFamily)}`,
+        href: `/symbol/${encodeURIComponent(trade.symbol)}`,
+        label: trade.symbol,
+        tone: trade.realizedReturnPct >= 0 ? "emerald" : "rose",
+        value: formatPct(trade.realizedReturnPct),
+      })),
+      metric: stats.closedTradeCount.toLocaleString(),
+      metricLabel: "closed evidence",
+      score: stats.closedTradeCount ? Math.min(100, stats.closedTradeCount * 2) : null,
+      summary: "Closed simulated trades anchor the replay layer. Empty states remain explicit when evidence is limited.",
+      title: "Replay-Backed Evidence Cluster",
+      tone: "cyan",
+      values: result.closedTrades.map((trade) => trade.realizedReturnPct),
+    },
+    {
+      emptyMessage: "Mode comparisons require simulation payloads.",
+      eyebrow: "Mode comparison",
+      factors: [
+        strategyFactor("Conservative", system.modes.conservative.stats.strategyQualityScore, "emerald"),
+        strategyFactor("Balanced", system.modes.balanced.stats.strategyQualityScore, "cyan"),
+        strategyFactor("Aggressive", system.modes.aggressive.stats.strategyQualityScore, "rose"),
+      ],
+      icon: <Scale className="h-6 w-6" />,
+      items: modeItems,
+      metric: result.config.label,
+      metricLabel: "active mode",
+      score: stats.strategyQualityScore,
+      summary: "Strategy sleeves are compared side by side so users can see how risk appetite changes simulated behavior.",
+      title: "Strategy Sleeve Comparison",
+      tone: "cyan",
+      values: MODE_ORDER.map((mode) => system.modes[mode].stats.strategyQualityScore),
+    },
+  ];
+  const heatCells: CinematicHeatCell[] = [
+    { detail: "Active strategy quality score.", label: "Quality", tone: "violet", value: stats.strategyQualityScore },
+    { detail: "Completed simulated trades in this sleeve.", label: "Evidence", tone: "cyan", value: stats.closedTradeCount ? Math.min(100, stats.closedTradeCount * 2) : null },
+    { detail: "Win rate from completed simulated trades.", label: "Win rate", tone: "emerald", value: stats.winRatePct },
+    { detail: "Safety score derived from max drawdown.", label: "Drawdown safety", tone: "amber", value: normalizeDrawdownSafety(stats.maxDrawdownPct) },
+    { detail: "Control score derived from observed volatility.", label: "Volatility control", tone: "cyan", value: normalizeVolatilityControl(stats.volatilityPct) },
+    { detail: "Simulated current allocation exposure.", label: "Allocation", tone: "rose", value: stats.totalCurrentAllocationPct },
+  ];
+  const timelineItems: CinematicTimelineItem[] = result.closedTrades.slice(0, 7).map((trade) => ({
+    detail: `${strategyFamilyLabel(trade.strategyFamily)} closed at ${formatPct(trade.realizedReturnPct)} with mode score ${trade.modeScore}/100.`,
+    href: `/symbol/${encodeURIComponent(trade.symbol)}`,
+    label: `${trade.symbol} simulation closed`,
+    timestamp: trade.exitDate,
+    tone: trade.realizedReturnPct >= 0 ? "emerald" : "rose",
+  }));
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
+      <CinematicClusterMosaic
+        clusters={clusters}
+        eyebrow="Quant lab intelligence"
+        summary="A denser strategy-lab layer showing simulation ecosystem, risk controls, replay evidence, and mode comparison from the validated simulation payload."
+        title="Strategy Simulation Operating System"
+      />
+      <div className="grid gap-4">
+        <CinematicHeatMatrix cells={heatCells} title="Strategy Evidence Heat" />
+        <CinematicTimeline emptyMessage="No replay-backed simulated trade timeline is available for this sleeve yet." items={timelineItems} title="Simulation Replay Timeline" />
+      </div>
     </div>
   );
 }

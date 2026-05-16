@@ -61,7 +61,15 @@ import { WatchlistButton } from "@/components/watchlist-controls";
 import { DecisionBadge } from "@/components/terminal/DecisionBadge";
 import { MiniPriceContextChart } from "@/components/terminal/MiniPriceContextChart";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
-import { HeatDots, ScoreFactorStrip, type ScoreFactor, VisualMetricRail } from "@/components/visual/MiniVisuals";
+import {
+  CinematicClusterMosaic,
+  CinematicHeatMatrix,
+  CinematicTimeline,
+  type CinematicCluster,
+  type CinematicHeatCell,
+  type CinematicTimelineItem,
+} from "@/components/visual/CinematicIntelligencePanels";
+import { HeatDots, ScoreFactorStrip, type ScoreFactor, type VisualTone, VisualMetricRail } from "@/components/visual/MiniVisuals";
 import { InteractiveInsightZoneGrid, type InteractiveInsightZoneItem } from "@/components/visual/InteractiveVisualIntelligence";
 import { SymbolIdentityLine, SymbolLogo } from "@/components/visual/SymbolLogo";
 import { getSymbolVisualIdentity } from "@/lib/visual-identity";
@@ -358,6 +366,7 @@ export function OpportunitiesWorkspace({
         <BestTradeNowOpportunityCard best={best} highestScored={highestScoredSetups(rows)} marketCondition={marketCondition} priceSeries={bestPriceSeries} rows={rows} />
       </div>
       <OpportunityShowcaseRadar rows={highestScoredSetups(rows)} />
+      <OpportunityCinematicScannerSystem marketCondition={marketCondition} rows={rows} watchlistSet={watchlistSet} />
       <div id="map">
         <OpportunityVisualCommandCenter marketCondition={marketCondition} rows={rows} watchlistSet={watchlistSet} />
       </div>
@@ -545,6 +554,194 @@ function GuideCheckpoint({ text, title }: { text: string; title: string }) {
     <div className="rounded-xl border border-white/10 bg-slate-950/35 p-3">
       <div className="text-sm font-semibold text-slate-100">{title}</div>
       <p className="mt-2 text-xs leading-5 text-slate-400">{text}</p>
+    </div>
+  );
+}
+
+function OpportunityCinematicScannerSystem({
+  marketCondition,
+  rows,
+  watchlistSet,
+}: {
+  marketCondition: string | null;
+  rows: OpportunityViewModel[];
+  watchlistSet: Set<string>;
+}) {
+  const topRows = highestScoredSetups(rows);
+  const riskRows = rows.filter((row) => opportunityDecision(row) === "AVOID" || row.fragility >= 68);
+  const freshRows = rows.filter((row) => (opportunityFreshnessScore(row) ?? 0) >= 70);
+  const macroRows = rows.filter((row) => (opportunityMacroSupportScore(row) ?? 0) >= 65);
+  const replayRows = rows.filter((row) => (opportunityReplaySimilarity(row) ?? 0) >= 60);
+  const watchRows = rows.filter((row) => watchlistSet.has(row.symbol));
+  const changedRows = rows
+    .map((row) => ({ change: numeric(row.raw.score_change ?? row.raw.readiness_change ?? row.raw.confidence_change), row }))
+    .filter((item): item is { change: number; row: OpportunityViewModel } => item.change !== null)
+    .sort((left, right) => Math.abs(right.change) - Math.abs(left.change));
+  const averageScore = averageScoreValue(rows.map((row) => row.final_score));
+  const averageConviction = averageScoreValue(rows.map((row) => row.conviction));
+  const averageRisk = averageScoreValue(rows.map((row) => opportunityRiskScore(row)));
+  const clusters: CinematicCluster[] = [
+    {
+      emptyMessage: "No best-setup candidates cleared the current scanner filters.",
+      eyebrow: "Opportunity cluster",
+      factors: [
+        scannerFactor("Average Score", averageScore, "cyan"),
+        scannerFactor("Average Conviction", averageConviction, "emerald"),
+        scannerFactor("Freshness", averageScoreValue(rows.map((row) => opportunityFreshnessScore(row))), "cyan"),
+      ],
+      icon: <Target className="h-6 w-6" />,
+      items: topRows.slice(0, 4).map((row) => ({
+        detail: firstReason(row),
+        href: `/symbol/${row.symbol}`,
+        label: row.symbol,
+        tone: row.conviction >= 70 ? "emerald" : "cyan",
+        value: formatNumber(row.final_score ?? row.conviction, 0),
+      })),
+      metric: topRows[0] ? topRows[0].symbol : "Limited",
+      metricLabel: topRows[0] ? "leading setup" : "setup stack",
+      score: topRows[0]?.final_score ?? topRows[0]?.conviction ?? null,
+      summary: topRows[0] ? `${topRows[0].symbol} leads on score, conviction, setup quality, and risk context.` : "The scanner is waiting for more evidence before highlighting a leader.",
+      title: "Best Setup Stack",
+      tone: "emerald",
+      values: topRows.map((row) => row.final_score ?? row.conviction),
+    },
+    {
+      emptyMessage: "No elevated risk cluster dominates this scanner packet.",
+      eyebrow: "Risk cluster",
+      factors: [
+        scannerFactor("Risk Pressure", averageRisk, "rose"),
+        scannerFactor("Fragility", averageScoreValue(rows.map((row) => row.fragility)), "amber"),
+        scannerFactor("Event Risk", averageScoreValue(rows.map((row) => row.eventRisk)), "rose"),
+      ],
+      icon: <ShieldAlert className="h-6 w-6" />,
+      items: riskRows.slice(0, 4).map((row) => ({
+        detail: `${row.fragilityLabel}. ${firstReason(row)}`,
+        href: `/symbol/${row.symbol}`,
+        label: row.symbol,
+        tone: "rose",
+        value: row.fragilityLabel,
+      })),
+      metric: riskRows.length.toLocaleString(),
+      metricLabel: "risk names",
+      score: averageRisk,
+      summary: riskRows.length ? "Risk-first scanner cluster keeps blocked or fragile setups visible instead of hiding them." : "No single risk pocket dominates the scanner universe.",
+      title: "Dangerous and Fragile Stack",
+      tone: "rose",
+      values: riskRows.map((row) => row.fragility),
+    },
+    {
+      emptyMessage: "Macro alignment is not validated for this scanner view yet.",
+      eyebrow: "Macro cluster",
+      factors: [
+        scannerFactor("Macro Aligned", percentOf(rows, (row) => (opportunityMacroSupportScore(row) ?? 0) >= 65), "emerald"),
+        scannerFactor("Sector Coverage", percentOf(rows, (row) => Boolean(row.sector)), "cyan"),
+        scannerFactor("Market State", averageScore, "amber"),
+      ],
+      icon: <Layers3 className="h-6 w-6" />,
+      items: macroRows.slice(0, 4).map((row) => ({
+        detail: row.macroLabel,
+        href: `/symbol/${row.symbol}`,
+        label: row.symbol,
+        tone: "amber",
+        value: row.macroLabel,
+      })),
+      metric: cleanText(marketCondition, "Unknown"),
+      metricLabel: "market condition",
+      score: averageScoreValue(macroRows.map((row) => opportunityMacroSupportScore(row))),
+      summary: "Market context is shown as a scanner constraint, not as a trade instruction.",
+      title: "Macro Support Layer",
+      tone: "amber",
+      values: macroRows.map((row) => opportunityMacroSupportScore(row)),
+    },
+    {
+      emptyMessage: "Replay or analog similarity is not strong enough in this scanner packet.",
+      eyebrow: "Replay cluster",
+      factors: [
+        scannerFactor("Replay Similarity", averageScoreValue(rows.map((row) => opportunityReplaySimilarity(row))), "violet"),
+        scannerFactor("Evidence Quality", averageScoreValue(rows.map((row) => row.evidence?.score)), "cyan"),
+        scannerFactor("Large-Move Context", percentOf(rows, (row) => Boolean(row.shockPattern)), "violet"),
+      ],
+      icon: <Radar className="h-6 w-6" />,
+      items: replayRows.slice(0, 4).map((row) => ({
+        detail: row.shockPattern ? `Similarity ${row.shockPattern.currentSimilarityScore}/100. ${row.shockPattern.chaseRiskLabel}` : evidenceSummary(row),
+        href: `/symbol/${row.symbol}`,
+        label: row.symbol,
+        tone: "violet",
+        value: formatNumber(opportunityReplaySimilarity(row) ?? row.evidence?.score ?? 0, 0),
+      })),
+      metric: replayRows.length.toLocaleString(),
+      metricLabel: "replay contexts",
+      score: averageScoreValue(replayRows.map((row) => opportunityReplaySimilarity(row))),
+      summary: "Replay context appears only where historical or shock evidence exists.",
+      title: "Replay and Memory Layer",
+      tone: "violet",
+      values: replayRows.map((row) => opportunityReplaySimilarity(row)),
+    },
+    {
+      emptyMessage: "Add symbols to the watchlist to activate a personalized scanner layer.",
+      eyebrow: "Watch cluster",
+      factors: [
+        scannerFactor("Tracked", percentOf(rows, (row) => watchlistSet.has(row.symbol)), "cyan"),
+        scannerFactor("Fresh Tracked", percentOf(watchRows, (row) => (opportunityFreshnessScore(row) ?? 0) >= 70), "emerald"),
+        scannerFactor("Risk Tracked", percentOf(watchRows, (row) => row.fragility >= 68), "rose"),
+      ],
+      icon: <Eye className="h-6 w-6" />,
+      items: watchRows.slice(0, 4).map((row) => ({
+        detail: `${decisionLabel(row.final_decision)}. ${firstReason(row)}`,
+        href: `/symbol/${row.symbol}`,
+        label: row.symbol,
+        tone: row.fragility >= 68 ? "rose" : "cyan",
+        value: row.confidenceLabel,
+      })),
+      metric: watchRows.length.toLocaleString(),
+      metricLabel: "tracked rows",
+      score: averageScoreValue(watchRows.map((row) => row.conviction)),
+      summary: watchRows.length ? "Tracked symbols are overlaid with the latest scanner state." : "No tracked symbol is active in this scanner view yet.",
+      title: "Watchlist Intelligence",
+      tone: "cyan",
+      values: watchRows.map((row) => row.conviction),
+    },
+  ];
+  const heatCells: CinematicHeatCell[] = [
+    { detail: "Rows clearing the best setup logic.", label: "Best stack", tone: "emerald", value: percentOf(rows, opportunityIsBestSetup) },
+    { detail: "Fresh rows by latest scanner freshness scoring.", label: "Fresh setups", tone: "cyan", value: percentOf(rows, (row) => freshRows.includes(row)) },
+    { detail: "Avoid or high-fragility rows.", label: "Risk pressure", tone: "rose", value: percentOf(rows, (row) => riskRows.includes(row)) },
+    { detail: "Rows with visible macro support.", label: "Macro aligned", tone: "amber", value: percentOf(rows, (row) => macroRows.includes(row)) },
+    { detail: "Rows with replay or shock similarity.", label: "Replay context", tone: "violet", value: percentOf(rows, (row) => replayRows.includes(row)) },
+    { detail: "Rows with evidence maturity score available.", label: "Evidence", tone: "cyan", value: percentOf(rows, (row) => row.evidence?.score !== null && row.evidence?.score !== undefined) },
+  ];
+  const timelineItems: CinematicTimelineItem[] = (changedRows.length ? changedRows : topRows.map((row) => ({ change: null, row }))).slice(0, 7).map((item) => ({
+    detail: item.change === null ? firstReason(item.row) : `${item.change > 0 ? "Improved" : "Weakened"} by ${formatNumber(Math.abs(item.change), 1)} in available change fields.`,
+    href: `/symbol/${item.row.symbol}`,
+    label: item.row.symbol,
+    metric: item.change === null ? formatNumber(item.row.final_score ?? item.row.conviction, 0) : `${item.change > 0 ? "+" : ""}${formatNumber(item.change, 1)}`,
+    tone: item.change === null ? "cyan" : item.change >= 0 ? "emerald" : "rose",
+  }));
+
+  return (
+    <div className="space-y-4">
+      <CinematicClusterMosaic
+        clusters={clusters}
+        eyebrow="Scanner intelligence density"
+        summary="A high-density view of setup discovery, risk, replay context, macro alignment, and tracked symbols from the current scanner packet."
+        title="Opportunity Cognition Surface"
+      />
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
+        <CinematicHeatMatrix
+          cells={heatCells}
+          emptyMessage="Scanner heat activates when the latest packet includes enough scored rows."
+          eyebrow="Scanner heatmap"
+          summary="Each cell maps to a real scanner filter or score field."
+          title="Signal Concentration Map"
+        />
+        <CinematicTimeline
+          emptyMessage="No score-change history is available in this scanner packet yet."
+          eyebrow="Setup movement"
+          items={timelineItems}
+          summary="Latest visible score/readiness/confidence changes, falling back to top-ranked rows when change fields are unavailable."
+          title="Opportunity Evolution"
+        />
+      </div>
     </div>
   );
 }
@@ -937,6 +1134,15 @@ function presetIconClass(tone: "cyan" | "emerald" | "amber" | "rose" | "violet")
   if (tone === "rose") return "border-rose-300/20 bg-rose-400/10 text-rose-200";
   if (tone === "violet") return "border-violet-300/20 bg-violet-400/10 text-violet-200";
   return "border-cyan-300/20 bg-cyan-400/10 text-cyan-200";
+}
+
+function scannerFactor(label: string, value: number | null | undefined, tone: VisualTone): ScoreFactor {
+  return { label, tone, value };
+}
+
+function percentOf(rows: OpportunityViewModel[], predicate: (row: OpportunityViewModel) => boolean): number | null {
+  if (!rows.length) return null;
+  return (rows.filter(predicate).length / rows.length) * 100;
 }
 
 function sectorTileClass(tone: "cyan" | "emerald" | "rose"): string {

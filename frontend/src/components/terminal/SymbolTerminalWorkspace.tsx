@@ -1,8 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Activity, Brain, LineChart, ShieldAlert, Target } from "lucide-react";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { IntelligenceGraphPanel } from "@/components/visual/IntelligenceGraphPanel";
+import {
+  CinematicClusterMosaic,
+  CinematicHeatMatrix,
+  CinematicTimeline,
+  type CinematicCluster,
+  type CinematicHeatCell,
+  type CinematicTimelineItem,
+} from "@/components/visual/CinematicIntelligencePanels";
+import type { ScoreFactor, VisualTone } from "@/components/visual/MiniVisuals";
 import { useTradePlanEngine } from "@/hooks/useTradePlanEngine";
 import type { SignalHistoryPoint } from "@/lib/adapters/DataServiceAdapter";
 import type { DataFreshness } from "@/lib/data-health";
@@ -185,6 +195,18 @@ export function SymbolTerminalWorkspace({
         </GlassPanel>
       ) : null}
 
+      <SymbolCinematicResearchCockpit
+        candles={candles}
+        canTrade={canTrade}
+        dataFreshness={dataFreshness}
+        history={history}
+        marketMemory={marketMemory}
+        row={row}
+        shockPattern={shockPattern ?? null}
+        symbol={symbol}
+        workflowEvolution={workflowEvolution ?? null}
+      />
+
       <div id="intelligence">
         <IntelligenceGraphPanel graph={relationshipGraph} />
       </div>
@@ -285,6 +307,230 @@ export function SymbolTerminalWorkspace({
       </ResponsiveAdvancedDetails>
     </div>
   );
+}
+
+function SymbolCinematicResearchCockpit({
+  candles,
+  canTrade,
+  dataFreshness,
+  history,
+  marketMemory,
+  row,
+  shockPattern,
+  symbol,
+  workflowEvolution,
+}: {
+  candles: ChartCandle[];
+  canTrade: boolean;
+  dataFreshness: DataFreshness;
+  history: SignalHistoryPoint[];
+  marketMemory: MarketMemorySummary;
+  row: RankingRow;
+  shockPattern: ShockMovePattern | null;
+  symbol: string;
+  workflowEvolution: WorkflowEvolutionSummary | null;
+}) {
+  const score = numericValue(row.final_score ?? row.score ?? row.quality_score);
+  const confidence = numericValue(row.confidence ?? row.confidence_score ?? row.readiness_score ?? row.final_score);
+  const riskPressure = numericValue(row.risk_pressure ?? row.risk_pressure_score ?? row.macro_pressure_score ?? row.event_risk_score);
+  const fragility = numericValue(row.fragility_score ?? row.fragility ?? row.structural_fragility);
+  const entry = numericValue(row.suggested_entry ?? row.entry_zone ?? row.buy_zone ?? row.price);
+  const stop = numericValue(row.stop_loss ?? row.invalidation_level);
+  const target = numericValue(row.conservative_target ?? row.take_profit_zone ?? row.take_profit_high ?? row.target_price);
+  const recentScores = history
+    .slice()
+    .sort((left, right) => left.timestamp.localeCompare(right.timestamp))
+    .map((point) => point.final_score)
+    .filter((value): value is number => typeof value === "number" && Number.isFinite(value));
+  const priceValues = candles.map((candle) => candle.close);
+  const latestClose = candles[candles.length - 1]?.close ?? numericValue(row.price);
+  const analogs = marketMemory.analogs ?? [];
+  const topAnalog = analogs[0];
+  const workflowChanges = workflowEvolution?.whatChanged ?? [];
+  const clusters: CinematicCluster[] = [
+    {
+      emptyMessage: "No validated score history exists for this symbol yet.",
+      eyebrow: "Decision cockpit",
+      factors: [
+        symbolFactor("Score", score, "cyan"),
+        symbolFactor("Confidence", confidence, "emerald"),
+        symbolFactor("Freshness", freshnessScore(dataFreshness), "cyan"),
+      ],
+      icon: <Target className="h-6 w-6" />,
+      items: [
+        { detail: "Latest stored scanner price context.", label: "Latest available", tone: "cyan", value: moneyText(latestClose) },
+        { detail: "Scanner-provided entry zone or current price fallback.", label: "Entry context", tone: "emerald", value: moneyText(entry) },
+        { detail: "Stored invalidation/stop context when available.", label: "Invalidation", tone: "rose", value: moneyText(stop) },
+        { detail: "Stored target or profit-taking context when available.", label: "Target context", tone: "amber", value: moneyText(target) },
+      ],
+      metric: String(row.final_decision ?? row.action ?? "Research"),
+      metricLabel: "decision state",
+      score,
+      summary: `${symbol} is shown as a research cockpit with decision, price context, evidence freshness, and risk state in one surface.`,
+      title: "Symbol Decision Stack",
+      tone: canTrade ? "emerald" : "amber",
+      updatedAt: dataFreshness.lastUpdated ?? undefined,
+      values: recentScores.length ? recentScores : [score, confidence],
+    },
+    {
+      emptyMessage: "Risk and fragility fields are not available in this scanner packet.",
+      eyebrow: "Risk cluster",
+      factors: [
+        symbolFactor("Risk Pressure", riskPressure, "rose"),
+        symbolFactor("Fragility", fragility, "amber"),
+        symbolFactor("Event Risk", numericValue(row.event_risk ?? row.event_risk_score), "rose"),
+      ],
+      icon: <ShieldAlert className="h-6 w-6" />,
+      items: [
+        { detail: "Higher values require more patience and cleaner confirmation.", label: "Risk pressure", tone: "rose", value: scoreText(riskPressure) },
+        { detail: "Structural fragility from current scanner context.", label: "Fragility", tone: "amber", value: scoreText(fragility) },
+        { detail: "Decision assistant keeps timing gated when broader risk is elevated.", label: "Research mode", tone: canTrade ? "emerald" : "amber", value: canTrade ? "Open" : "Wait" },
+      ],
+      metric: scoreText(riskPressure),
+      metricLabel: "risk pressure",
+      score: riskPressure,
+      summary: "Risk context is elevated visually before deeper trade mechanics so the user sees caution first.",
+      title: "Risk and Wait System",
+      tone: riskPressure !== null && riskPressure >= 65 ? "rose" : "amber",
+      values: [riskPressure, fragility, numericValue(row.event_risk ?? row.event_risk_score)],
+    },
+    {
+      emptyMessage: "No stored candles are available for a chart story yet.",
+      eyebrow: "Chart cluster",
+      factors: [
+        symbolFactor("Candles", Math.min(100, candles.length * 2), "cyan"),
+        symbolFactor("Score History", Math.min(100, recentScores.length * 6), "violet"),
+        symbolFactor("Replay Markers", marketMemory.available ? topAnalog?.similarityScore ?? null : null, "violet"),
+      ],
+      icon: <LineChart className="h-6 w-6" />,
+      items: [
+        { detail: "Stored OHLC candles powering the symbol chart.", label: "Price history", tone: "cyan", value: candles.length ? `${candles.length}` : "Limited" },
+        { detail: "Scanner history points powering score evolution.", label: "Signal history", tone: "violet", value: history.length ? `${history.length}` : "Limited" },
+        { detail: "Closest validated historical analog when available.", label: "Replay analog", tone: "violet", value: topAnalog ? `${Math.round(topAnalog.similarityScore)}%` : "Limited" },
+      ],
+      metric: candles.length ? `${candles.length}` : "Limited",
+      metricLabel: "stored candles",
+      score: candles.length ? Math.min(100, candles.length * 2) : null,
+      summary: "Chart and replay context use stored candles, scanner history, and market memory only.",
+      title: "Chart and Replay Timeline",
+      tone: "violet",
+      values: priceValues,
+    },
+    {
+      emptyMessage: "No validated market memory analogs are available for this symbol.",
+      eyebrow: "Memory cluster",
+      factors: [
+        symbolFactor("Memory Score", marketMemory.available ? topAnalog?.similarityScore ?? null : null, "violet"),
+        symbolFactor("Analog Count", Math.min(100, analogs.length * 20), "cyan"),
+        symbolFactor("Evidence", marketMemory.evidence.sampleSize ? Math.min(100, marketMemory.evidence.sampleSize * 10) : null, "emerald"),
+      ],
+      icon: <Brain className="h-6 w-6" />,
+      items: analogs.slice(0, 4).map((analog) => ({
+        detail: analog.reasonCodes.length
+          ? analog.reasonCodes.join(", ")
+          : analog.outcomes.length
+            ? analog.outcomes.join(", ")
+            : analog.setupType ?? "Historical analog context.",
+        href: `/symbol/${encodeURIComponent(analog.symbol)}`,
+        label: analog.symbol,
+        tone: "violet" as const,
+        value: `${Math.round(analog.similarityScore)}%`,
+      })),
+      metric: topAnalog ? `${Math.round(topAnalog.similarityScore)}%` : "Limited",
+      metricLabel: "closest analog",
+      score: topAnalog?.similarityScore ?? null,
+      summary: marketMemory.available ? "Market memory compares the current setup with validated historical analogs." : marketMemory.evidence.explanation,
+      title: "Market Memory Layer",
+      tone: "violet",
+      values: analogs.map((analog) => analog.similarityScore),
+    },
+    {
+      emptyMessage: "No shock or workflow movement has been validated for this symbol yet.",
+      eyebrow: "Evolution cluster",
+      factors: [
+        symbolFactor("Shock Similarity", shockPattern?.currentSimilarityScore ?? null, "rose"),
+        symbolFactor("Workflow Changes", workflowChanges.length ? Math.min(100, workflowChanges.length * 18) : null, "cyan"),
+        symbolFactor("Freshness", freshnessScore(dataFreshness), "cyan"),
+      ],
+      icon: <Activity className="h-6 w-6" />,
+      items: [
+        shockPattern ? { detail: shockPattern.chaseRiskLabel, label: "Shock context", tone: "rose" as const, value: `${shockPattern.currentSimilarityScore}/100` } : null,
+        workflowChanges[0] ? { detail: workflowChanges[0].detail, label: workflowChanges[0].title, tone: "cyan" as const, value: workflowChanges[0].metricLabel } : null,
+      ].filter((item): item is NonNullable<typeof item> => item !== null),
+      metric: shockPattern ? `${shockPattern.currentSimilarityScore}` : "Limited",
+      metricLabel: "shock score",
+      score: shockPattern?.currentSimilarityScore ?? null,
+      summary: "Evolution combines shock memory, workflow movement, freshness, and change state where available.",
+      title: "Shock and Workflow Evolution",
+      tone: shockPattern ? "rose" : "cyan",
+      values: [shockPattern?.currentSimilarityScore ?? null, freshnessScore(dataFreshness)],
+    },
+  ];
+  const heatCells: CinematicHeatCell[] = [
+    { detail: "Current score from the scanner packet.", label: "Score", tone: "cyan", value: score },
+    { detail: "Confidence/readiness context if present.", label: "Confidence", tone: "emerald", value: confidence },
+    { detail: "Risk pressure from risk/macro/event fields.", label: "Risk", tone: "rose", value: riskPressure },
+    { detail: "Signal freshness based on stored update timestamp.", label: "Freshness", tone: "cyan", value: freshnessScore(dataFreshness) },
+    { detail: "Replay or market memory similarity.", label: "Memory", tone: "violet", value: topAnalog?.similarityScore ?? null },
+    { detail: "Current shock move similarity where validated.", label: "Shock", tone: "rose", value: shockPattern?.currentSimilarityScore ?? null },
+  ];
+  const timelineItems: CinematicTimelineItem[] = history
+    .slice()
+    .sort((left, right) => right.timestamp.localeCompare(left.timestamp))
+    .slice(0, 7)
+    .map((point) => ({
+      detail: point.final_decision ? `Decision state: ${point.final_decision}` : "Stored scanner history point.",
+      label: `${symbol} score`,
+      metric: point.final_score === null ? "Limited" : `${Math.round(point.final_score)}`,
+      timestamp: point.timestamp,
+      tone: point.final_score !== null && point.final_score >= 60 ? "emerald" : point.final_score !== null && point.final_score < 40 ? "rose" : "cyan",
+    }));
+
+  return (
+    <div className="space-y-4">
+      <CinematicClusterMosaic
+        clusters={clusters}
+        eyebrow="Symbol cinematic cockpit"
+        summary="A dense symbol intelligence layer that connects decision, chart, replay, market memory, risk, shock, and freshness without inventing missing evidence."
+        title={`${symbol} Research Command Surface`}
+      />
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <CinematicHeatMatrix
+          cells={heatCells}
+          emptyMessage="This symbol needs more validated scanner fields before a heat map can be shown."
+          eyebrow="Factor heat"
+          summary="Each heat cell maps to the current scanner packet, freshness model, market memory, or shock model."
+          title="Signal Pressure Matrix"
+        />
+        <CinematicTimeline
+          emptyMessage="No stored scanner history exists for this symbol yet."
+          eyebrow="Signal evolution"
+          items={timelineItems}
+          summary="Chronological score and decision states from saved scanner history."
+          title="Cognition Timeline"
+        />
+      </div>
+    </div>
+  );
+}
+
+function symbolFactor(label: string, value: number | null | undefined, tone: VisualTone): ScoreFactor {
+  return { label, tone, value: value ?? null };
+}
+
+function freshnessScore(dataFreshness: DataFreshness): number | null {
+  if (dataFreshness.status === "fresh") return 100;
+  if (dataFreshness.status === "slightly_stale") return 72;
+  if (dataFreshness.status === "stale") return 38;
+  return null;
+}
+
+function moneyText(value: number | null): string {
+  return value === null ? "Limited" : `$${value.toFixed(2)}`;
+}
+
+function scoreText(value: number | null): string {
+  return value === null ? "Limited" : `${Math.round(value)}`;
 }
 
 function rowsToCandles(rows: Record<string, ScannerScalar>[]): ChartCandle[] {

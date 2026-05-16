@@ -8,6 +8,15 @@ import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
+import {
+  CinematicClusterMosaic,
+  CinematicHeatMatrix,
+  CinematicTimeline,
+  type CinematicCluster,
+  type CinematicHeatCell,
+  type CinematicTimelineItem,
+} from "@/components/visual/CinematicIntelligencePanels";
+import type { ScoreFactor, VisualTone } from "@/components/visual/MiniVisuals";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import {
   getPaperAnalytics,
@@ -668,6 +677,200 @@ function PaperHowToUse() {
   );
 }
 
+function paperClampScore(value: number | null): number | null {
+  if (value === null || !Number.isFinite(value)) return null;
+  return Math.max(0, Math.min(100, value));
+}
+
+function paperEvidenceScore(count: number): number | null {
+  if (count <= 0) return null;
+  return paperClampScore(Math.min(100, count * 12));
+}
+
+function paperReturnScore(value: number | null): number | null {
+  if (value === null) return null;
+  return paperClampScore(50 + value * 500);
+}
+
+function paperRiskPressure(openRisk: number | null, accountValue: number | null): number | null {
+  if (openRisk === null || accountValue === null || accountValue <= 0) return null;
+  return paperClampScore((openRisk / accountValue) * 1000);
+}
+
+function paperFactor(label: string, value: number | null, tone: VisualTone): ScoreFactor {
+  return { label, tone, value };
+}
+
+function PaperCinematicSimulationSystem({
+  accountValue,
+  closedPositions,
+  equityPoints,
+  events,
+  positions,
+  trustMetrics,
+}: {
+  accountValue: number | null;
+  closedPositions: PaperPositionRow[];
+  equityPoints: EquityPoint[];
+  events: PaperTradeEventRow[];
+  positions: PaperPositionRow[];
+  trustMetrics: TrustMetrics | null;
+}) {
+  const openPositions = positions.filter((position) => position.status.toUpperCase() === "OPEN");
+  const openRisk = trustMetrics?.openRisk ?? openPositions.reduce((total, position) => total + (riskDollars(position) ?? 0), 0);
+  const riskPressure = paperRiskPressure(openRisk, accountValue);
+  const expectancyScore = paperReturnScore(trustMetrics?.expectancy.expectancy ?? null);
+  const equityValues = equityPoints.map((point) => point.value);
+  const clusters: CinematicCluster[] = [
+    {
+      emptyMessage: "Close paper trades to build a validated equity path.",
+      eyebrow: "Simulation equity",
+      factors: [
+        paperFactor("Closed Evidence", paperEvidenceScore(closedPositions.length), "cyan"),
+        paperFactor("Total Return", paperReturnScore(trustMetrics?.totalReturn ?? null), "emerald"),
+        paperFactor("Win Rate", trustMetrics?.winRate === undefined ? null : (trustMetrics.winRate * 100), "emerald"),
+      ],
+      footer: "Paper trading only. Not live brokerage execution.",
+      icon: <span className="font-mono text-lg font-black">EQ</span>,
+      items: closedPositions.slice(-6).reverse().map((position) => ({
+        detail: `${timeText(position.closed_at)} - ${labelText(position.close_reason)}`,
+        href: `/symbol/${encodeURIComponent(position.symbol)}`,
+        label: position.symbol,
+        tone: tradePnl(position) >= 0 ? "emerald" : "rose",
+        value: money(tradePnl(position)),
+      })),
+      metric: money(equityValues.at(-1) ?? null),
+      metricLabel: "paper pnl",
+      score: paperEvidenceScore(closedPositions.length),
+      summary: closedPositions.length ? `${closedPositions.length} closed paper trades are shaping the simulated equity path.` : "No closed paper trades yet.",
+      title: "Paper Equity Evolution",
+      tone: "cyan",
+      values: equityValues,
+    },
+    {
+      emptyMessage: "Open simulated positions will appear here with stop-risk context.",
+      eyebrow: "Open risk",
+      factors: [
+        paperFactor("Open Risk", riskPressure, "rose"),
+        paperFactor("Open Positions", openPositions.length ? Math.min(100, openPositions.length * 18) : null, "amber"),
+      ],
+      icon: <span className="font-mono text-lg font-black">R</span>,
+      items: openPositions.slice(0, 6).map((position) => ({
+        detail: `Entry ${money(position.entry_price)} / stop ${money(position.stop_loss)} / target ${money(position.target_price)}`,
+        href: `/symbol/${encodeURIComponent(position.symbol)}`,
+        label: position.symbol,
+        tone: "amber",
+        value: money(riskDollars(position)),
+      })),
+      metric: money(openRisk),
+      metricLabel: "open stop risk",
+      score: riskPressure,
+      summary: openPositions.length ? `${openPositions.length} open paper positions carry simulated stop-risk context.` : "No open paper risk right now.",
+      title: "Open Risk Exposure",
+      tone: "amber",
+      values: openPositions.map((position) => riskDollars(position)),
+    },
+    {
+      emptyMessage: "At least three closed trades are needed before expectancy becomes useful.",
+      eyebrow: "Outcome behavior",
+      factors: [
+        paperFactor("Expectancy", expectancyScore, "violet"),
+        paperFactor("Wins", trustMetrics ? paperEvidenceScore(trustMetrics.expectancy.wins) : null, "emerald"),
+        paperFactor("Losses", trustMetrics ? paperEvidenceScore(trustMetrics.expectancy.losses) : null, "rose"),
+      ],
+      icon: <span className="font-mono text-lg font-black">EX</span>,
+      items: [
+        {
+          detail: "Average simulated return after win/loss mix.",
+          label: "Expected return/trade",
+          tone: expectancyScore !== null && expectancyScore >= 50 ? "emerald" : "amber",
+          value: trustMetrics?.expectancy.expectancy === null || trustMetrics === null ? "Limited" : signedPercentText(trustMetrics.expectancy.expectancy),
+        },
+        {
+          detail: "Risk-normalized paper outcome.",
+          label: "Average R multiple",
+          tone: (trustMetrics?.avgRMultiple ?? 0) >= 0 ? "emerald" : "rose",
+          value: trustMetrics?.avgRMultiple === null || trustMetrics === null ? "Limited" : rMultipleText(trustMetrics.avgRMultiple),
+        },
+      ],
+      metric: trustMetrics?.expectancy.expectancy === null || trustMetrics === null ? "Limited" : signedPercentText(trustMetrics.expectancy.expectancy),
+      metricLabel: "expectancy",
+      score: expectancyScore,
+      summary: "Expectancy stays hidden behind evidence quality; early samples are explicitly labeled as limited.",
+      title: "Expectancy and Discipline Cluster",
+      tone: "violet",
+      values: [trustMetrics?.expectancy.winRate ? trustMetrics.expectancy.winRate * 100 : null, expectancyScore, paperEvidenceScore(closedPositions.length)],
+    },
+    {
+      emptyMessage: "Setup behavior needs closed paper trade samples.",
+      eyebrow: "Behavior memory",
+      factors: [
+        paperFactor("Best Setup", trustMetrics?.bestSetup ? paperReturnScore(trustMetrics.bestSetup.avg_return_pct) : null, "emerald"),
+        paperFactor("Weakest Setup", trustMetrics?.worstSetup ? paperReturnScore(trustMetrics.worstSetup.avg_return_pct) : null, "rose"),
+      ],
+      icon: <span className="font-mono text-lg font-black">M</span>,
+      items: [
+        trustMetrics?.bestSetup ? {
+          detail: setupMeta(trustMetrics.bestSetup),
+          label: `Best: ${setupLabel(trustMetrics.bestSetup)}`,
+          tone: "emerald" as const,
+          value: money(trustMetrics.bestSetup.total_pnl),
+        } : null,
+        trustMetrics?.worstSetup ? {
+          detail: setupMeta(trustMetrics.worstSetup),
+          label: `Weak: ${setupLabel(trustMetrics.worstSetup)}`,
+          tone: "rose" as const,
+          value: money(trustMetrics.worstSetup.total_pnl),
+        } : null,
+      ].filter((item): item is NonNullable<typeof item> => item !== null),
+      metric: closedPositions.length.toLocaleString(),
+      metricLabel: "closed samples",
+      score: paperEvidenceScore(closedPositions.length),
+      summary: "Closed paper trades build a behavior memory for setups, decisions, and symbols.",
+      title: "Paper Behavior Memory",
+      tone: "emerald",
+      values: [
+        paperReturnScore(trustMetrics?.bestSetup?.avg_return_pct ?? null),
+        paperReturnScore(trustMetrics?.worstSetup?.avg_return_pct ?? null),
+      ],
+    },
+  ];
+  const heatCells: CinematicHeatCell[] = [
+    { detail: "Closed paper trades available for review.", label: "Closed evidence", tone: "cyan", value: paperEvidenceScore(closedPositions.length) },
+    { detail: "Current simulated stop-risk pressure.", label: "Open risk", tone: "rose", value: riskPressure },
+    { detail: "Win rate from closed paper trades.", label: "Win rate", tone: "emerald", value: trustMetrics ? trustMetrics.winRate * 100 : null },
+    { detail: "Expected return per paper trade after enough samples.", label: "Expectancy", tone: "violet", value: expectancyScore },
+    { detail: "Open simulated position count.", label: "Open positions", tone: "amber", value: openPositions.length ? Math.min(100, openPositions.length * 18) : null },
+    { detail: "Account value availability for risk context.", label: "Account context", tone: "cyan", value: accountValue === null ? null : 100 },
+  ];
+  const timelineItems: CinematicTimelineItem[] = events
+    .slice()
+    .sort((left, right) => String(right.created_at ?? "").localeCompare(String(left.created_at ?? "")))
+    .slice(0, 7)
+    .map((event) => ({
+      detail: `${labelText(event.event_type)} - ${labelText(event.event_reason)} at ${money(event.price)}`,
+      href: event.symbol ? `/symbol/${encodeURIComponent(event.symbol)}` : undefined,
+      label: event.symbol || "Paper event",
+      timestamp: timeText(event.created_at),
+      tone: (finiteNumber(event.pnl_delta) ?? 0) >= 0 ? "emerald" : "rose",
+    }));
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
+      <CinematicClusterMosaic
+        clusters={clusters}
+        eyebrow="Paper simulation command layer"
+        summary="A denser paper-trading view that combines equity path, open risk, expectancy, and behavior memory without inventing performance."
+        title="Simulation Command Center"
+      />
+      <div className="grid gap-4">
+        <CinematicHeatMatrix cells={heatCells} title="Paper Risk Heat" />
+        <CinematicTimeline emptyMessage="No paper trade events have been recorded yet." items={timelineItems} title="Paper Event Timeline" />
+      </div>
+    </div>
+  );
+}
+
 export default async function PaperPage() {
   const entitlement = await getEntitlement();
   if (requiresLegalAcceptance(entitlement)) {
@@ -732,6 +935,15 @@ export default async function PaperPage() {
         </section>
 
         <PaperHowToUse />
+
+        <PaperCinematicSimulationSystem
+          accountValue={account?.total_account_value ?? null}
+          closedPositions={closedPositions}
+          equityPoints={equityPoints}
+          events={data.events}
+          positions={data.positions}
+          trustMetrics={trustMetrics}
+        />
 
         {!data.configured || data.error || !account ? (
           <SectionShell eyebrow="Paper Account" title="Paper Account Unavailable">
