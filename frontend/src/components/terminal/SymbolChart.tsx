@@ -247,6 +247,7 @@ export function SymbolChart({
             {expandable ? (
               <button
                 className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/40 hover:text-cyan-100"
+                data-stable-overlay-trigger="true"
                 onClick={expandChart}
                 type="button"
                 aria-label={`Expand ${symbol.toUpperCase()} chart`}

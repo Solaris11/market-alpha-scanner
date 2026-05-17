@@ -138,6 +138,7 @@ async function inspectRoute(port, baseUrl, device, route) {
     assertRouteMetrics(device.label, route, metrics);
     await exerciseMoreMenu(cdp, device.label, route);
     if (route === "/symbol/AMD") await exerciseChartDetail(cdp, device.label, route);
+    await exerciseStableOverlay(cdp, device.label, route);
 
     const screenshot = await cdp.send("Page.captureScreenshot", { captureBeyondViewport: false, format: "png" });
     await writeFile(join(ARTIFACT_DIR, `${device.label}-${slugForRoute(route)}.png`), Buffer.from(screenshot.data, "base64"));
@@ -192,17 +193,20 @@ async function exerciseMoreMenu(cdp, device, route) {
 async function exerciseChartDetail(cdp, device, route) {
   const result = await evaluate(
     cdp,
-    `(() => {
+    `(async () => {
       const button = Array.from(document.querySelectorAll("button")).find((node) => /Expand .*chart|Open .*chart|Full chart/i.test(node.getAttribute("aria-label") || node.textContent || ""));
       if (!button) return { skipped: true };
       const beforeY = window.scrollY;
       button.click();
+      await new Promise((resolve) => setTimeout(resolve, 260));
       const dialog = document.querySelector("[role='dialog']");
+      const surface = document.querySelector("[data-stable-overlay-content='true']") || dialog;
       const close = dialog?.querySelector("button[aria-label*='Close']");
-      const rect = dialog?.getBoundingClientRect();
+      const rect = surface?.getBoundingClientRect();
       const clipped = rect ? rect.left < -2 || rect.right > window.innerWidth + 2 || rect.top < -2 || rect.bottom > window.innerHeight + 2 : true;
       close?.click();
-      return { clipped, opened: Boolean(dialog), scrollDelta: Math.abs(window.scrollY - beforeY) };
+      await new Promise((resolve) => setTimeout(resolve, 220));
+      return { clipped, opened: Boolean(dialog), scrollDelta: Math.abs(window.scrollY - beforeY), stillOpen: Boolean(document.querySelector("[role='dialog']")) };
     })()`,
   );
   if (result?.skipped) {
@@ -211,7 +215,57 @@ async function exerciseChartDetail(cdp, device, route) {
   }
   if (!result?.opened) failures.push(`${device} ${route}: chart detail did not open`);
   if (result?.clipped) failures.push(`${device} ${route}: chart detail was clipped`);
+  if (result?.stillOpen) failures.push(`${device} ${route}: chart detail did not close`);
   if ((result?.scrollDelta ?? 0) > 8) failures.push(`${device} ${route}: chart detail changed scroll by ${result.scrollDelta}px`);
+}
+
+async function exerciseStableOverlay(cdp, device, route) {
+  const result = await evaluate(
+    cdp,
+    `(async () => {
+      const triggers = Array.from(document.querySelectorAll("[data-stable-overlay-trigger='true']")).filter((node) => {
+        const rect = node.getBoundingClientRect();
+        const style = window.getComputedStyle(node);
+        return rect.width > 20 && rect.height > 20 && style.visibility !== "hidden" && style.display !== "none";
+      });
+      const trigger = triggers[0];
+      if (!trigger) return { skipped: true };
+      trigger.scrollIntoView({ block: "center", inline: "nearest" });
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      const beforeY = window.scrollY;
+      trigger.click();
+      await new Promise((resolve) => setTimeout(resolve, 260));
+      const overlay = document.querySelector("[data-stable-overlay='true']");
+      const surface = document.querySelector("[data-stable-overlay-content='true']");
+      const close = overlay?.querySelector("button[aria-label*='Close']");
+      const surfaceRect = surface?.getBoundingClientRect();
+      const closeRect = close?.getBoundingClientRect();
+      const clipped = surfaceRect ? surfaceRect.left < -2 || surfaceRect.right > window.innerWidth + 2 || surfaceRect.top < -2 || surfaceRect.bottom > window.innerHeight + 2 : true;
+      const closeVisible = closeRect ? closeRect.left >= -2 && closeRect.right <= window.innerWidth + 2 && closeRect.top >= -2 && closeRect.bottom <= window.innerHeight + 2 : false;
+      const opened = Boolean(overlay && surface);
+      const openScrollDelta = Math.abs(window.scrollY - beforeY);
+      close?.click();
+      await new Promise((resolve) => setTimeout(resolve, 220));
+      return {
+        closeVisible,
+        clipped,
+        opened,
+        openScrollDelta,
+        stillOpen: Boolean(document.querySelector("[data-stable-overlay='true']")),
+        closeScrollDelta: Math.abs(window.scrollY - beforeY),
+      };
+    })()`,
+  );
+  if (result?.skipped) {
+    notes.push(`${device} ${route}: no stable overlay trigger found for automated interaction QA.`);
+    return;
+  }
+  if (!result?.opened) failures.push(`${device} ${route}: stable overlay trigger did not open detail`);
+  if (result?.clipped) failures.push(`${device} ${route}: stable overlay content clipped offscreen`);
+  if (!result?.closeVisible) failures.push(`${device} ${route}: stable overlay close button not visible`);
+  if (result?.stillOpen) failures.push(`${device} ${route}: stable overlay did not close`);
+  if ((result?.openScrollDelta ?? 0) > 8) failures.push(`${device} ${route}: overlay open changed scroll by ${result.openScrollDelta}px`);
+  if ((result?.closeScrollDelta ?? 0) > 8) failures.push(`${device} ${route}: overlay close changed scroll by ${result.closeScrollDelta}px`);
 }
 
 async function acknowledgeRisk(cdp) {

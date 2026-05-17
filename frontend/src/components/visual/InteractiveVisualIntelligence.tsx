@@ -143,6 +143,7 @@ export function InteractiveInsightZoneGrid({
             <button
               aria-label={`Open ${zone.label} details`}
               className={`group min-w-[78vw] snap-center rounded-2xl border bg-white/[0.035] p-3 text-left transition sm:min-w-0 ${TONE_CLASS[zone.tone ?? "cyan"].border} ${TONE_CLASS[zone.tone ?? "cyan"].glow}`}
+              data-stable-overlay-trigger="true"
               key={zone.id}
               onClick={() => setActiveId(zone.id)}
               type="button"
@@ -228,6 +229,7 @@ export function ShowcaseIntelligenceOrbit({
             <button
               aria-label="Open primary intelligence system summary"
               className="absolute left-1/2 top-1/2 z-10 grid h-28 w-28 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-cyan-200/35 bg-slate-950/88 shadow-[0_0_55px_rgba(34,211,238,0.28)] transition hover:scale-[1.02] hover:border-cyan-100/70"
+              data-stable-overlay-trigger="true"
               onClick={() => setActiveId(orbitZones[0]?.id ?? null)}
               type="button"
             >
@@ -243,6 +245,7 @@ export function ShowcaseIntelligenceOrbit({
                   <button
                     aria-label={`Open ${zone.label} detail`}
                     className={`group min-w-0 rounded-2xl border bg-slate-950/64 p-3 text-left backdrop-blur-xl transition duration-200 hover:-translate-y-0.5 hover:bg-white/[0.06] ${tone.border} ${tone.glow} ${offsetClass}`}
+                    data-stable-overlay-trigger="true"
                     key={zone.id}
                     onClick={() => setActiveId(zone.id)}
                     type="button"

@@ -125,6 +125,7 @@ export function InteractivePriceChart({
           </div>
           <button
             className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/40 hover:text-cyan-100"
+            data-stable-overlay-trigger="true"
             onClick={() => openExpanded("button")}
             type="button"
             aria-label={`Expand ${packet.symbol} chart`}
@@ -139,6 +140,7 @@ export function InteractivePriceChart({
 
         <button
           className="block w-full text-left"
+          data-stable-overlay-trigger="true"
           onClick={() => openExpanded("chart")}
           type="button"
           aria-label={`Open ${packet.symbol} chart details`}

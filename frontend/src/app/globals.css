@@ -519,6 +519,23 @@ a {
   animation: tradeveto-drawer-enter var(--tv-motion-medium) var(--tv-ease-standard) both;
 }
 
+.tv-overlay-backdrop {
+  animation: tradeveto-overlay-fade var(--tv-motion-medium) var(--tv-ease-standard) both;
+}
+
+.tv-overlay-surface {
+  animation: tradeveto-overlay-sheet var(--tv-motion-medium) var(--tv-ease-standard) both;
+  transform-origin: bottom center;
+  will-change: opacity, transform;
+}
+
+@media (min-width: 640px) {
+  .tv-overlay-surface {
+    animation-name: tradeveto-overlay-scale;
+    transform-origin: center;
+  }
+}
+
 .tv-skeleton {
   animation: tradeveto-skeleton-breathe 1.6s ease-in-out infinite;
   overflow: hidden;
@@ -612,6 +629,37 @@ html[data-tradeveto-presentation="true"] body {
   }
 }
 
+@keyframes tradeveto-overlay-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tradeveto-overlay-scale {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes tradeveto-overlay-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 @keyframes tradeveto-skeleton-breathe {
   0%,
   100% {
@@ -670,6 +718,8 @@ html[data-tradeveto-suppress-feedback="true"] .tradeveto-beta-feedback-widget {
   .tv-alert-pulse,
   .tv-chart-reveal,
   .tv-drawer-surface,
+  .tv-overlay-backdrop,
+  .tv-overlay-surface,
   .tv-page-motion,
   .tv-score-change,
   .tv-skeleton,
@@ -681,6 +731,7 @@ html[data-tradeveto-suppress-feedback="true"] .tradeveto-beta-feedback-widget {
 
   .landing-reveal,
   .tv-card-motion,
+  .tv-overlay-surface,
   .tv-tap-motion,
   .terminal-panel,
   .visual-card,

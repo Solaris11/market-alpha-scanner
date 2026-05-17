@@ -1,5 +1,10 @@
+"use client";
+
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
+import { useState } from "react";
+import { ArrowRight } from "lucide-react";
+import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
 import {
   HeatDots,
   MiniCandleStrip,
@@ -101,6 +106,20 @@ export type CinematicTimelineItem = {
   timestamp?: string;
 };
 
+type ClusterSelection =
+  | { cluster: CinematicCluster; kind: "cluster" }
+  | { clusterTitle?: string; item: CinematicClusterItem; kind: "item" };
+
+function openWithKeyboard(event: KeyboardEvent<HTMLElement>, open: () => void): void {
+  if (event.key !== "Enter" && event.key !== " ") return;
+  event.preventDefault();
+  open();
+}
+
+function symbolHref(symbol: string): string {
+  return `/symbol/${encodeURIComponent(symbol.toUpperCase())}`;
+}
+
 export function CinematicClusterMosaic({
   clusters,
   eyebrow = "Intelligence clusters",
@@ -112,6 +131,8 @@ export function CinematicClusterMosaic({
   summary: string;
   title: string;
 }) {
+  const [selection, setSelection] = useState<ClusterSelection | null>(null);
+
   if (!clusters.length) {
     return (
       <section className="poster-panel rounded-3xl border-cyan-300/16 p-5">
@@ -125,36 +146,69 @@ export function CinematicClusterMosaic({
   const [hero, ...rest] = clusters;
 
   return (
-    <section className="poster-panel rounded-3xl border-cyan-300/16 bg-slate-950/50 p-4 sm:p-5">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0">
-          <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">{eyebrow}</div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">{title}</h2>
+    <>
+      <section className="poster-panel rounded-3xl border-cyan-300/16 bg-slate-950/50 p-4 sm:p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">{eyebrow}</div>
+            <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">{title}</h2>
+          </div>
+          <p className="max-w-2xl text-sm leading-6 text-slate-400">{summary}</p>
         </div>
-        <p className="max-w-2xl text-sm leading-6 text-slate-400">{summary}</p>
-      </div>
 
-      <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)]">
-        {hero ? <CinematicClusterCard cluster={hero} prominent /> : null}
-        <div className="grid gap-3 md:grid-cols-2">
-          {rest.map((cluster) => (
-            <CinematicClusterCard cluster={cluster} key={cluster.title} />
-          ))}
+        <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)]">
+          {hero ? (
+            <CinematicClusterCard
+              cluster={hero}
+              onOpen={(cluster) => setSelection({ cluster, kind: "cluster" })}
+              onOpenItem={(item, clusterTitle) => setSelection({ clusterTitle, item, kind: "item" })}
+              prominent
+            />
+          ) : null}
+          <div className="grid gap-3 md:grid-cols-2">
+            {rest.map((cluster) => (
+              <CinematicClusterCard
+                cluster={cluster}
+                key={cluster.title}
+                onOpen={(nextCluster) => setSelection({ cluster: nextCluster, kind: "cluster" })}
+                onOpenItem={(item, clusterTitle) => setSelection({ clusterTitle, item, kind: "item" })}
+              />
+            ))}
+          </div>
         </div>
-      </div>
-    </section>
+      </section>
+      <CinematicClusterDetailOverlay onClose={() => setSelection(null)} selection={selection} />
+    </>
   );
 }
 
-export function CinematicClusterCard({ cluster, prominent = false }: { cluster: CinematicCluster; prominent?: boolean }) {
+export function CinematicClusterCard({
+  cluster,
+  onOpen,
+  onOpenItem,
+  prominent = false,
+}: {
+  cluster: CinematicCluster;
+  onOpen?: (cluster: CinematicCluster) => void;
+  onOpenItem?: (item: CinematicClusterItem, clusterTitle: string) => void;
+  prominent?: boolean;
+}) {
   const tone = cluster.tone ?? "cyan";
   const style = TONE_STYLE[tone];
   const values = cluster.values ?? [];
   const items = cluster.items ?? [];
   const hasScore = typeof cluster.score === "number" && Number.isFinite(cluster.score);
   const metric = cluster.metric ?? (hasScore ? `${Math.round(cluster.score ?? 0)}` : "Limited");
+  const openCluster = () => onOpen?.(cluster);
   const content = (
-    <div className={`group relative h-full overflow-hidden rounded-3xl border ${style.border} bg-gradient-to-br ${style.panel} p-4 ${style.glow}`}>
+    <div
+      className={`group relative h-full cursor-pointer overflow-hidden rounded-3xl border ${style.border} bg-gradient-to-br ${style.panel} p-4 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200/70 ${style.glow}`}
+      data-stable-overlay-trigger="true"
+      onClick={openCluster}
+      onKeyDown={(event) => openWithKeyboard(event, openCluster)}
+      role="button"
+      tabIndex={0}
+    >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
@@ -191,7 +245,14 @@ export function CinematicClusterCard({ cluster, prominent = false }: { cluster: 
 
       <div className={`mt-3 grid gap-2 ${prominent ? "sm:grid-cols-2" : ""}`}>
         {items.length ? (
-          items.slice(0, prominent ? 6 : 4).map((item) => <CinematicClusterItemRow item={item} key={`${cluster.title}:${item.label}:${item.value ?? ""}`} />)
+          items.slice(0, prominent ? 6 : 4).map((item) => (
+            <CinematicClusterItemRow
+              clusterTitle={cluster.title}
+              item={item}
+              key={`${cluster.title}:${item.label}:${item.value ?? ""}`}
+              onOpen={onOpenItem}
+            />
+          ))
         ) : (
           <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/35 p-3 text-xs leading-5 text-slate-500">
             {cluster.emptyMessage ?? "Limited evidence. This cluster will fill in as validated scanner, replay, or watchlist data accumulates."}
@@ -208,8 +269,13 @@ export function CinematicClusterCard({ cluster, prominent = false }: { cluster: 
 
       {cluster.href ? (
         <div className="mt-3 border-t border-white/10 pt-3">
-          <Link className={`text-[11px] font-black uppercase tracking-[0.14em] ${style.text} transition hover:text-white`} href={cluster.href}>
+          <Link
+            className={`inline-flex items-center gap-1.5 text-[11px] font-black uppercase tracking-[0.14em] ${style.text} transition hover:text-white`}
+            href={cluster.href}
+            onClick={(event) => event.stopPropagation()}
+          >
             Open detail
+            <ArrowRight className="h-3.5 w-3.5" />
           </Link>
         </div>
       ) : null}
@@ -219,7 +285,15 @@ export function CinematicClusterCard({ cluster, prominent = false }: { cluster: 
   return content;
 }
 
-function CinematicClusterItemRow({ item }: { item: CinematicClusterItem }) {
+function CinematicClusterItemRow({
+  clusterTitle,
+  item,
+  onOpen,
+}: {
+  clusterTitle: string;
+  item: CinematicClusterItem;
+  onOpen?: (item: CinematicClusterItem, clusterTitle: string) => void;
+}) {
   const tone = item.tone ?? "cyan";
   const style = TONE_STYLE[tone];
   const content = (
@@ -235,10 +309,175 @@ function CinematicClusterItemRow({ item }: { item: CinematicClusterItem }) {
   );
 
   return item.href ? (
-    <Link className="block" href={item.href}>
+    <Link className="block" href={item.href} onClick={(event) => event.stopPropagation()}>
       {content}
     </Link>
-  ) : content;
+  ) : (
+    <button
+      className="block w-full text-left"
+      data-stable-overlay-trigger="true"
+      onClick={(event) => {
+        event.stopPropagation();
+        onOpen?.(item, clusterTitle);
+      }}
+      type="button"
+    >
+      {content}
+    </button>
+  );
+}
+
+function CinematicClusterDetailOverlay({ onClose, selection }: { onClose: () => void; selection: ClusterSelection | null }) {
+  if (!selection) return null;
+
+  if (selection.kind === "item") {
+    const tone = selection.item.tone ?? "cyan";
+    const style = TONE_STYLE[tone];
+    return (
+      <StableDetailOverlay
+        analyticsSurface={`cinematic_item_${selection.item.label}`}
+        closeLabel="Close intelligence detail"
+        description={selection.item.detail ?? "This intelligence item opens only from the validated cluster context shown on the page."}
+        eyebrow={<span className={style.text}>{selection.clusterTitle ?? "Intelligence item"}</span>}
+        onClose={onClose}
+        open
+        size="md"
+        title={selection.item.label}
+      >
+        <div className={`h-1 rounded-full ${toneAccentClass(tone)}`} />
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className={`rounded-2xl border ${style.border} bg-slate-950/45 p-4`}>
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Status</div>
+            <div className={`mt-2 font-mono text-2xl font-black ${style.text}`}>{selection.item.value ?? "Limited"}</div>
+            <p className="mt-2 text-xs leading-5 text-slate-400">
+              {selection.item.detail ?? "Limited evidence. TradeVeto is not drawing extra conclusions without validated context."}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Navigation</div>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {selection.item.symbol ? (
+                <Link className={`rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-xs font-black transition hover:border-cyan-200/60 hover:text-white ${style.text}`} href={symbolHref(selection.item.symbol)}>
+                  {selection.item.symbol.toUpperCase()}
+                </Link>
+              ) : null}
+              {selection.item.href ? (
+                <Link className="inline-flex items-center gap-2 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1.5 text-xs font-black text-cyan-100 transition hover:border-cyan-200/70 hover:text-white" href={selection.item.href} onClick={onClose}>
+                  Open linked view
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              ) : null}
+            </div>
+          </div>
+        </div>
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-xs leading-5 text-slate-500">
+          Research context only. This item is an explanation surface, not a recommendation to buy or sell.
+        </div>
+      </StableDetailOverlay>
+    );
+  }
+
+  const cluster = selection.cluster;
+  const tone = cluster.tone ?? "cyan";
+  const style = TONE_STYLE[tone];
+  const values = cluster.values ?? [];
+  const relatedSymbols = Array.from(new Set((cluster.items ?? []).map((item) => item.symbol?.toUpperCase()).filter((symbol): symbol is string => Boolean(symbol))));
+
+  return (
+    <StableDetailOverlay
+      analyticsSurface={`cinematic_cluster_${cluster.title}`}
+      closeLabel="Close intelligence cluster"
+      description={cluster.summary}
+      eyebrow={<span className={style.text}>{cluster.eyebrow ?? "Intelligence cluster"}</span>}
+      onClose={onClose}
+      open
+      size="xl"
+      title={cluster.title}
+    >
+      <div className={`h-1 rounded-full ${toneAccentClass(tone)}`} />
+      <div className="mt-4 grid gap-3 lg:grid-cols-[180px_minmax(0,1fr)]">
+        <div className={`rounded-2xl border ${style.border} bg-slate-950/45 p-4`}>
+          <PosterGauge label={cluster.metricLabel ?? "score"} score={cluster.score ?? null} tone={tone} />
+          <div className="mt-3 text-[11px] text-slate-500">{cluster.updatedAt ? `Updated ${cluster.updatedAt}` : "Latest validated context shown."}</div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <MiniSparkline
+            emptyMessage={cluster.emptyMessage ?? "No validated trend history is available for this cluster yet."}
+            label="cluster evolution"
+            tone={tone}
+            values={values}
+          />
+          <MiniCandleStrip emptyMessage={cluster.emptyMessage ?? "No validated movement history yet."} tone={tone} values={values} />
+        </div>
+      </div>
+
+      {cluster.factors?.length ? <ScoreFactorStrip className="mt-4" factors={cluster.factors} label="Data-backed drivers" /> : null}
+
+      {relatedSymbols.length ? (
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Related symbols</div>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {relatedSymbols.map((symbol) => (
+              <Link className={`rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-xs font-black transition hover:border-cyan-200/60 hover:text-white ${style.text}`} href={symbolHref(symbol)} key={symbol}>
+                {symbol}
+              </Link>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="mt-4 grid gap-2 md:grid-cols-2">
+        {(cluster.items ?? []).length ? (
+          (cluster.items ?? []).slice(0, 10).map((item) => (
+            <div className={`rounded-2xl border ${TONE_STYLE[item.tone ?? tone].border} bg-slate-950/45 p-3`} key={`${cluster.title}:${item.label}:${item.value ?? ""}`}>
+              <div className="flex flex-wrap items-start justify-between gap-2">
+                <div>
+                  <div className={`text-xs font-black ${TONE_STYLE[item.tone ?? tone].text}`}>{item.label}</div>
+                  {item.detail ? <p className="mt-1 text-[11px] leading-5 text-slate-500">{item.detail}</p> : null}
+                </div>
+                {item.value ? <div className="font-mono text-sm font-black text-slate-100">{item.value}</div> : null}
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {item.symbol ? (
+                  <Link className="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 font-mono text-[11px] font-black text-cyan-100 transition hover:border-cyan-200/60 hover:text-white" href={symbolHref(item.symbol)}>
+                    {item.symbol.toUpperCase()}
+                  </Link>
+                ) : null}
+                {item.href ? (
+                  <Link className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[11px] font-bold text-slate-300 transition hover:border-cyan-200/50 hover:text-cyan-100" href={item.href} onClick={onClose}>
+                    Open
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/35 p-4 text-sm leading-6 text-slate-500">
+            {cluster.emptyMessage ?? "Limited evidence. This cluster will fill in as validated scanner, replay, or watchlist data accumulates."}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-xs text-slate-500">
+        <span>{cluster.footer ?? "Research context only. Not financial advice."}</span>
+        {cluster.href ? (
+          <Link className="inline-flex items-center gap-2 font-black uppercase tracking-[0.12em] text-cyan-100 transition hover:text-white" href={cluster.href} onClick={onClose}>
+            Open full detail
+            <ArrowRight className="h-3.5 w-3.5" />
+          </Link>
+        ) : null}
+      </div>
+    </StableDetailOverlay>
+  );
+}
+
+function toneAccentClass(tone: VisualTone): string {
+  if (tone === "amber") return "bg-amber-300";
+  if (tone === "emerald") return "bg-emerald-300";
+  if (tone === "rose") return "bg-rose-300";
+  if (tone === "violet") return "bg-violet-300";
+  return "bg-cyan-300";
 }
 
 export function CinematicHeatMatrix({
@@ -254,26 +493,31 @@ export function CinematicHeatMatrix({
   summary?: string;
   title: string;
 }) {
+  const [activeCell, setActiveCell] = useState<CinematicHeatCell | null>(null);
+
   return (
-    <section className="poster-panel rounded-3xl border-cyan-300/16 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">{eyebrow}</div>
-          <h3 className="mt-1 text-xl font-semibold text-slate-50">{title}</h3>
-          {summary ? <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">{summary}</p> : null}
+    <>
+      <section className="poster-panel rounded-3xl border-cyan-300/16 p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">{eyebrow}</div>
+            <h3 className="mt-1 text-xl font-semibold text-slate-50">{title}</h3>
+            {summary ? <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">{summary}</p> : null}
+          </div>
+          <HeatDots active={Math.min(12, cells.filter((cell) => typeof cell.value === "number" && cell.value >= 50).length * 2)} tone="cyan" />
         </div>
-        <HeatDots active={Math.min(12, cells.filter((cell) => typeof cell.value === "number" && cell.value >= 50).length * 2)} tone="cyan" />
-      </div>
-      <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
-        {cells.length ? cells.slice(0, 12).map((cell) => <HeatMatrixCell cell={cell} key={cell.label} />) : (
-          <div className="col-span-full rounded-2xl border border-dashed border-white/10 bg-slate-950/35 p-4 text-sm text-slate-500">{emptyMessage}</div>
-        )}
-      </div>
-    </section>
+        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+          {cells.length ? cells.slice(0, 12).map((cell) => <HeatMatrixCell cell={cell} key={cell.label} onOpen={setActiveCell} />) : (
+            <div className="col-span-full rounded-2xl border border-dashed border-white/10 bg-slate-950/35 p-4 text-sm text-slate-500">{emptyMessage}</div>
+          )}
+        </div>
+      </section>
+      <HeatMatrixDetailOverlay cell={activeCell} onClose={() => setActiveCell(null)} title={title} />
+    </>
   );
 }
 
-function HeatMatrixCell({ cell }: { cell: CinematicHeatCell }) {
+function HeatMatrixCell({ cell, onOpen }: { cell: CinematicHeatCell; onOpen: (cell: CinematicHeatCell) => void }) {
   const tone = cell.tone ?? toneForScore(cell.value);
   const style = TONE_STYLE[tone];
   const value = typeof cell.value === "number" && Number.isFinite(cell.value) ? Math.round(cell.value) : null;
@@ -287,7 +531,46 @@ function HeatMatrixCell({ cell }: { cell: CinematicHeatCell }) {
       {cell.detail ? <p className="mt-2 line-clamp-2 text-[11px] leading-4 text-slate-500">{cell.detail}</p> : null}
     </div>
   );
-  return cell.href ? <Link href={cell.href}>{content}</Link> : content;
+  return (
+    <button className="block w-full text-left" data-stable-overlay-trigger="true" onClick={() => onOpen(cell)} type="button">
+      {content}
+    </button>
+  );
+}
+
+function HeatMatrixDetailOverlay({ cell, onClose, title }: { cell: CinematicHeatCell | null; onClose: () => void; title: string }) {
+  if (!cell) return null;
+  const tone = cell.tone ?? toneForScore(cell.value);
+  const style = TONE_STYLE[tone];
+  const value = typeof cell.value === "number" && Number.isFinite(cell.value) ? Math.round(cell.value) : null;
+  return (
+    <StableDetailOverlay
+      analyticsSurface={`heat_matrix_${cell.label}`}
+      closeLabel="Close heat-map detail"
+      description={cell.detail ?? "This heat-map cell is shown only when validated category data exists for this page."}
+      eyebrow={<span className={style.text}>{title}</span>}
+      onClose={onClose}
+      open
+      size="md"
+      title={cell.label}
+    >
+      <div className={`h-1 rounded-full ${toneAccentClass(tone)}`} />
+      <div className={`mt-4 rounded-2xl border ${style.border} bg-gradient-to-br ${style.panel} p-5`}>
+        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Validated value</div>
+        <div className={`mt-2 font-mono text-4xl font-black ${style.text}`}>{value === null ? "N/A" : value}</div>
+        <VisualMetricRail metrics={[{ label: cell.label, tone, value }]} />
+        <p className="mt-4 text-sm leading-6 text-slate-300">
+          {cell.detail ?? "Data is limited. TradeVeto keeps this cell visible as a measured category, but does not infer extra trend context without source history."}
+        </p>
+      </div>
+      {cell.href ? (
+        <Link className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-cyan-300/35 bg-cyan-400/10 px-4 py-3 text-sm font-black uppercase tracking-[0.14em] text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15" href={cell.href} onClick={onClose}>
+          Open linked detail
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      ) : null}
+    </StableDetailOverlay>
+  );
 }
 
 export function CinematicTimeline({
@@ -303,21 +586,28 @@ export function CinematicTimeline({
   summary?: string;
   title: string;
 }) {
+  const [activeItem, setActiveItem] = useState<CinematicTimelineItem | null>(null);
+
   return (
-    <section className="poster-panel rounded-3xl border-cyan-300/16 p-4">
-      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">{eyebrow}</div>
-      <h3 className="mt-1 text-xl font-semibold text-slate-50">{title}</h3>
-      {summary ? <p className="mt-2 text-xs leading-5 text-slate-500">{summary}</p> : null}
-      <div className="mt-4 grid gap-2">
-        {items.length ? items.slice(0, 7).map((item, index) => <TimelineRow index={index} item={item} key={`${item.label}:${item.timestamp ?? index}`} />) : (
-          <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/35 p-4 text-sm leading-6 text-slate-500">{emptyMessage}</div>
-        )}
-      </div>
-    </section>
+    <>
+      <section className="poster-panel rounded-3xl border-cyan-300/16 p-4">
+        <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">{eyebrow}</div>
+        <h3 className="mt-1 text-xl font-semibold text-slate-50">{title}</h3>
+        {summary ? <p className="mt-2 text-xs leading-5 text-slate-500">{summary}</p> : null}
+        <div className="mt-4 grid gap-2">
+          {items.length ? items.slice(0, 7).map((item, index) => (
+            <TimelineRow index={index} item={item} key={`${item.label}:${item.timestamp ?? index}`} onOpen={setActiveItem} />
+          )) : (
+            <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/35 p-4 text-sm leading-6 text-slate-500">{emptyMessage}</div>
+          )}
+        </div>
+      </section>
+      <TimelineDetailOverlay item={activeItem} onClose={() => setActiveItem(null)} title={title} />
+    </>
   );
 }
 
-function TimelineRow({ index, item }: { index: number; item: CinematicTimelineItem }) {
+function TimelineRow({ index, item, onOpen }: { index: number; item: CinematicTimelineItem; onOpen: (item: CinematicTimelineItem) => void }) {
   const tone = item.tone ?? "cyan";
   const style = TONE_STYLE[tone];
   const content = (
@@ -332,7 +622,48 @@ function TimelineRow({ index, item }: { index: number; item: CinematicTimelineIt
       </div>
     </div>
   );
-  return item.href ? <Link href={item.href}>{content}</Link> : content;
+  return (
+    <button className="block w-full text-left" data-stable-overlay-trigger="true" onClick={() => onOpen(item)} type="button">
+      {content}
+    </button>
+  );
+}
+
+function TimelineDetailOverlay({ item, onClose, title }: { item: CinematicTimelineItem | null; onClose: () => void; title: string }) {
+  if (!item) return null;
+  const tone = item.tone ?? "cyan";
+  const style = TONE_STYLE[tone];
+  return (
+    <StableDetailOverlay
+      analyticsSurface={`timeline_${item.label}`}
+      closeLabel="Close timeline detail"
+      description={item.detail ?? "This timeline event is shown from validated page context. Missing history remains marked as limited."}
+      eyebrow={<span className={style.text}>{title}</span>}
+      onClose={onClose}
+      open
+      size="md"
+      title={item.label}
+    >
+      <div className={`h-1 rounded-full ${toneAccentClass(tone)}`} />
+      <div className={`mt-4 rounded-2xl border ${style.border} bg-slate-950/45 p-5`}>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Event context</div>
+            <p className="mt-2 text-sm leading-6 text-slate-300">
+              {item.detail ?? "No additional timeline detail is available yet. TradeVeto will expand this event as source evidence accumulates."}
+            </p>
+          </div>
+          {item.metric || item.timestamp ? <div className={`font-mono text-sm font-black ${style.text}`}>{item.metric ?? item.timestamp}</div> : null}
+        </div>
+      </div>
+      {item.href ? (
+        <Link className="mt-4 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-cyan-300/35 bg-cyan-400/10 px-4 py-3 text-sm font-black uppercase tracking-[0.14em] text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15" href={item.href} onClick={onClose}>
+          Open linked detail
+          <ArrowRight className="h-4 w-4" />
+        </Link>
+      ) : null}
+    </StableDetailOverlay>
+  );
 }
 
 function toneForScore(value: number | null): VisualTone {

@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { trackModalAbandon, trackModalClose, trackModalOpen } from "@/lib/client/analytics";
 
@@ -27,6 +28,46 @@ const WIDTH_CLASS: Record<StableDetailOverlaySize, string> = {
   xl: "max-w-5xl",
 };
 
+type BodyScrollSnapshot = {
+  bodyOverflow: string;
+  bodyOverscroll: string;
+  bodyPaddingRight: string;
+  htmlOverflow: string;
+  htmlOverscroll: string;
+};
+
+function lockBodyScroll(): BodyScrollSnapshot {
+  const body = document.body;
+  const root = document.documentElement;
+  const scrollbarWidth = Math.max(0, window.innerWidth - root.clientWidth);
+  const snapshot: BodyScrollSnapshot = {
+    bodyOverflow: body.style.overflow,
+    bodyOverscroll: body.style.overscrollBehavior,
+    bodyPaddingRight: body.style.paddingRight,
+    htmlOverflow: root.style.overflow,
+    htmlOverscroll: root.style.overscrollBehavior,
+  };
+
+  body.style.overflow = "hidden";
+  body.style.overscrollBehavior = "contain";
+  if (scrollbarWidth > 0) body.style.paddingRight = `${scrollbarWidth}px`;
+  root.style.overflow = "hidden";
+  root.style.overscrollBehavior = "contain";
+
+  return snapshot;
+}
+
+function restoreBodyScroll(snapshot: BodyScrollSnapshot, scrollY: number): void {
+  const body = document.body;
+  const root = document.documentElement;
+  body.style.overflow = snapshot.bodyOverflow;
+  body.style.overscrollBehavior = snapshot.bodyOverscroll;
+  body.style.paddingRight = snapshot.bodyPaddingRight;
+  root.style.overflow = snapshot.htmlOverflow;
+  root.style.overscrollBehavior = snapshot.htmlOverscroll;
+  window.scrollTo(0, scrollY);
+}
+
 export function StableDetailOverlay({
   analyticsSurface,
   backdropCloses = true,
@@ -43,6 +84,7 @@ export function StableDetailOverlay({
   const scrollYRef = useRef(0);
   const closeReasonRef = useRef<string | null>(null);
   const openedAtRef = useRef(0);
+  const [mounted, setMounted] = useState(false);
   const telemetrySurface = analyticsSurface ?? (typeof title === "string" ? title : closeLabel);
 
   const requestClose = useCallback((reason: string) => {
@@ -50,6 +92,10 @@ export function StableDetailOverlay({
     trackModalClose(telemetrySurface, { reason, size });
     onClose();
   }, [onClose, size, telemetrySurface]);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -67,10 +113,7 @@ export function StableDetailOverlay({
   useEffect(() => {
     if (!open) return undefined;
     scrollYRef.current = window.scrollY;
-    const previousOverflow = document.body.style.overflow;
-    const previousOverscroll = document.body.style.overscrollBehavior;
-    document.body.style.overflow = "hidden";
-    document.body.style.overscrollBehavior = "contain";
+    const scrollSnapshot = lockBodyScroll();
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") requestClose("escape");
@@ -78,30 +121,30 @@ export function StableDetailOverlay({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.body.style.overflow = previousOverflow;
-      document.body.style.overscrollBehavior = previousOverscroll;
       window.removeEventListener("keydown", handleKeyDown);
-      window.requestAnimationFrame(() => window.scrollTo({ left: 0, top: scrollYRef.current }));
+      restoreBodyScroll(scrollSnapshot, scrollYRef.current);
     };
   }, [open, requestClose]);
 
-  if (!open) return null;
+  if (!mounted || !open) return null;
 
-  return (
+  return createPortal(
     <div
       aria-label={typeof title === "string" ? title : closeLabel}
       aria-modal="true"
-      className="fixed inset-0 z-[10050] flex items-center justify-center overflow-hidden p-3 sm:p-6"
+      className="fixed inset-0 z-[10050] flex items-end justify-center overflow-hidden p-0 sm:items-center sm:p-6"
+      data-stable-overlay="true"
       role="dialog"
     >
       <button
         aria-label={closeLabel}
-        className="absolute inset-0 cursor-default bg-slate-950/78 backdrop-blur-md"
+        className="tv-overlay-backdrop absolute inset-0 cursor-default bg-slate-950/78 backdrop-blur-md"
         onClick={backdropCloses ? () => requestClose("backdrop") : undefined}
         type="button"
       />
       <section
-        className={`relative z-10 flex max-h-[min(92dvh,900px)] w-full ${WIDTH_CLASS[size]} flex-col overflow-hidden rounded-[1.6rem] border border-cyan-300/20 bg-slate-950 shadow-2xl shadow-black/75 ring-1 ring-cyan-300/10 ${className}`}
+        className={`tv-overlay-surface relative z-10 flex max-h-[92dvh] w-full ${WIDTH_CLASS[size]} flex-col overflow-hidden rounded-t-[1.6rem] border border-cyan-300/20 bg-slate-950 shadow-2xl shadow-black/75 ring-1 ring-cyan-300/10 sm:max-h-[min(92dvh,900px)] sm:rounded-[1.6rem] ${className}`}
+        data-stable-overlay-content="true"
       >
         <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur-xl sm:px-6">
           <div className="flex items-start justify-between gap-4">
@@ -122,6 +165,7 @@ export function StableDetailOverlay({
         </header>
         <div className="min-h-0 overflow-y-auto overscroll-contain p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">{children}</div>
       </section>
-    </div>
+    </div>,
+    document.body,
   );
 }
