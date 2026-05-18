@@ -67,6 +67,8 @@ function restoreBodyScroll(snapshot: BodyScrollSnapshot, scrollY: number): void 
   root.style.overflow = snapshot.htmlOverflow;
   root.style.overscrollBehavior = snapshot.htmlOverscroll;
   window.scrollTo(0, scrollY);
+  window.requestAnimationFrame(() => window.scrollTo(0, scrollY));
+  window.setTimeout(() => window.scrollTo(0, scrollY), 80);
 }
 
 export function StableDetailOverlay({
@@ -93,6 +95,9 @@ export function StableDetailOverlay({
   const requestClose = useCallback((reason: string) => {
     closeReasonRef.current = reason;
     trackModalClose(telemetrySurface, { reason, size });
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     onClose();
   }, [onClose, size, telemetrySurface]);
 
