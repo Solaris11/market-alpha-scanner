@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { motion, useReducedMotion, type PanInfo, type Transition } from "motion/react";
 import { trackModalAbandon, trackModalClose, trackModalOpen } from "@/lib/client/analytics";
 
 type StableDetailOverlaySize = "md" | "lg" | "xl";
@@ -85,6 +86,8 @@ export function StableDetailOverlay({
   const closeReasonRef = useRef<string | null>(null);
   const openedAtRef = useRef(0);
   const [mounted, setMounted] = useState(false);
+  const [mobileSheet, setMobileSheet] = useState(false);
+  const reduceMotion = useReducedMotion();
   const telemetrySurface = analyticsSurface ?? (typeof title === "string" ? title : closeLabel);
 
   const requestClose = useCallback((reason: string) => {
@@ -96,6 +99,15 @@ export function StableDetailOverlay({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (!mounted) return undefined;
+    const mediaQuery = window.matchMedia("(max-width: 639px)");
+    const update = () => setMobileSheet(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener("change", update);
+    return () => mediaQuery.removeEventListener("change", update);
+  }, [mounted]);
 
   useEffect(() => {
     if (!open) return undefined;
@@ -128,6 +140,14 @@ export function StableDetailOverlay({
 
   if (!mounted || !open) return null;
 
+  const isMobileSheet = mobileSheet || (typeof window !== "undefined" && window.innerWidth < 640);
+  const backdropTransition: Transition = { duration: 0.18, ease: "easeOut" };
+  const surfaceTransition: Transition = { duration: 0.34, ease: [0.22, 1, 0.36, 1] };
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo): void => {
+    if (!isMobileSheet) return;
+    if (info.offset.y > 96 || info.velocity.y > 720) requestClose("drag");
+  };
+
   return createPortal(
     <div
       aria-label={typeof title === "string" ? title : closeLabel}
@@ -136,17 +156,28 @@ export function StableDetailOverlay({
       data-stable-overlay="true"
       role="dialog"
     >
-      <button
+      <motion.button
         aria-label={closeLabel}
         className="tv-overlay-backdrop absolute inset-0 cursor-default bg-slate-950/78 backdrop-blur-md"
+        animate={reduceMotion ? undefined : { opacity: 1 }}
+        initial={reduceMotion ? false : { opacity: 0 }}
         onClick={backdropCloses ? () => requestClose("backdrop") : undefined}
+        transition={reduceMotion ? undefined : backdropTransition}
         type="button"
       />
-      <section
+      <motion.section
         className={`tv-overlay-surface relative z-10 flex max-h-[92dvh] w-full ${WIDTH_CLASS[size]} flex-col overflow-hidden rounded-t-[1.6rem] border border-cyan-300/20 bg-slate-950 shadow-2xl shadow-black/75 ring-1 ring-cyan-300/10 sm:max-h-[min(92dvh,900px)] sm:rounded-[1.6rem] ${className}`}
+        animate={reduceMotion ? undefined : { opacity: 1, scale: 1, y: 0 }}
         data-stable-overlay-content="true"
+        drag={isMobileSheet ? "y" : false}
+        dragConstraints={{ bottom: 0, top: 0 }}
+        dragElastic={0.08}
+        initial={reduceMotion ? false : isMobileSheet ? { opacity: 0, scale: 1, y: 42 } : { opacity: 0, scale: 0.975, y: 18 }}
+        onDragEnd={handleDragEnd}
+        transition={reduceMotion ? undefined : surfaceTransition}
       >
         <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur-xl sm:px-6">
+          <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/20 sm:hidden" />
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               {eyebrow ? <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200">{eyebrow}</div> : null}
@@ -164,7 +195,7 @@ export function StableDetailOverlay({
           </div>
         </header>
         <div className="min-h-0 overflow-y-auto overscroll-contain p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">{children}</div>
-      </section>
+      </motion.section>
     </div>,
     document.body,
   );

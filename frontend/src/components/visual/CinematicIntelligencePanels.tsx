@@ -7,6 +7,12 @@ import { ArrowRight } from "lucide-react";
 import { motion } from "motion/react";
 import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
 import {
+  LivingIntelligenceStatusStrip,
+  NarrativeEvolutionPanel,
+  type LivingSignal,
+  type LivingStory,
+} from "@/components/visual/LivingIntelligence";
+import {
   MiniCandleStrip,
   MiniSparkline,
   PosterGauge,
@@ -121,6 +127,53 @@ function symbolHref(symbol: string): string {
   return `/symbol/${encodeURIComponent(symbol.toUpperCase())}`;
 }
 
+function finiteClusterValues(values: Array<number | null | undefined> | undefined): number[] {
+  if (!values) return [];
+  return values.filter((value): value is number => Number.isFinite(value));
+}
+
+function clusterDelta(cluster: CinematicCluster): number | null {
+  const values = finiteClusterValues(cluster.values);
+  if (values.length < 2) return null;
+  return Math.round((values[values.length - 1] ?? 0) - (values[0] ?? 0));
+}
+
+function clusterLivingSignals(clusters: CinematicCluster[]): LivingSignal[] {
+  return clusters.map((cluster) => ({
+    id: cluster.title,
+    label: cluster.title,
+    score: cluster.score,
+    summary: cluster.summary,
+    tone: cluster.tone ?? "cyan",
+    updatedAt: cluster.updatedAt,
+    values: cluster.values,
+  }));
+}
+
+function clusterLivingStories(clusters: CinematicCluster[]): LivingStory[] {
+  return clusters.slice(0, 6).map((cluster): LivingStory => {
+    const delta = clusterDelta(cluster);
+    const scoreText =
+      typeof cluster.score === "number" && Number.isFinite(cluster.score)
+        ? `${Math.round(cluster.score)}`
+        : cluster.metric ?? "Limited";
+    const direction =
+      delta === null ? "limited evidence" : Math.abs(delta) < 3 ? "stable" : delta > 0 ? "strengthening" : "weakening";
+
+    return {
+      id: `${cluster.title}:story`,
+      metric: scoreText,
+      summary:
+        delta === null
+          ? `${cluster.title} has limited validated evolution history. ${cluster.summary}`
+          : `${cluster.title} is ${direction} by ${Math.abs(delta)} points across the available evidence window. ${cluster.summary}`,
+      title: `${cluster.title} ${direction}`,
+      tone: cluster.tone ?? "cyan",
+      updatedAt: cluster.updatedAt,
+    };
+  });
+}
+
 export function CinematicClusterMosaic({
   clusters,
   eyebrow = "Intelligence clusters",
@@ -145,6 +198,9 @@ export function CinematicClusterMosaic({
   }
 
   const [hero, ...rest] = clusters;
+  const latestUpdatedAt = clusters.find((cluster) => cluster.updatedAt)?.updatedAt;
+  const livingSignals = clusterLivingSignals(clusters);
+  const livingStories = clusterLivingStories(clusters);
   const orbitNodes: PosterOrbitNode[] = clusters.map((cluster) => {
     const score = typeof cluster.score === "number" && Number.isFinite(cluster.score) ? cluster.score : null;
     return {
@@ -199,6 +255,16 @@ export function CinematicClusterMosaic({
             </div>
           </div>
         </div>
+
+        <div className="mt-3">
+          <LivingIntelligenceStatusStrip
+            generatedAt={latestUpdatedAt}
+            signals={livingSignals}
+            stories={livingStories}
+            summary="Data-backed cluster evolution highlights changing pressure, confidence, freshness, and attention without inventing live activity."
+            title="Living Attention Layer"
+          />
+        </div>
       </section>
       <CinematicClusterDetailOverlay onClose={() => setSelection(null)} selection={selection} />
     </>
@@ -223,9 +289,11 @@ export function CinematicClusterCard({
   const hasScore = typeof cluster.score === "number" && Number.isFinite(cluster.score);
   const metric = cluster.metric ?? (hasScore ? `${Math.round(cluster.score ?? 0)}` : "Limited");
   const openCluster = () => onOpen?.(cluster);
+  const delta = clusterDelta(cluster);
+  const materialShift = delta !== null && Math.abs(delta) >= 8;
   const content = (
     <motion.div
-      className={`group relative h-full cursor-pointer overflow-hidden rounded-3xl border ${style.border} bg-gradient-to-br ${style.panel} p-4 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200/70 ${style.glow}`}
+      className={`group tv-depth-surface relative h-full cursor-pointer overflow-hidden rounded-3xl border ${style.border} bg-gradient-to-br ${style.panel} p-4 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200/70 ${style.glow}`}
       data-stable-overlay-trigger="true"
       onClick={openCluster}
       onKeyDown={(event) => openWithKeyboard(event, openCluster)}
@@ -236,6 +304,7 @@ export function CinematicClusterCard({
       whileTap={{ scale: 0.992 }}
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+      {materialShift ? <div className="pointer-events-none absolute right-4 top-4 h-2.5 w-2.5 rounded-full bg-cyan-200 tv-attention-pulse" /> : null}
       <div className="flex min-w-0 items-start justify-between gap-3">
         <div className="min-w-0">
           <div className={`text-[10px] font-black uppercase tracking-[0.18em] ${style.text}`}>{cluster.eyebrow ?? "Intelligence cluster"}</div>
@@ -290,6 +359,12 @@ export function CinematicClusterCard({
         <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3 text-[11px] text-slate-500">
           <span>{cluster.footer ?? "Research context only. Not financial advice."}</span>
           {cluster.updatedAt ? <span>{cluster.updatedAt}</span> : null}
+          {delta !== null ? (
+            <span className={delta >= 0 ? "font-bold text-emerald-200" : "font-bold text-rose-200"}>
+              {delta >= 0 ? "+" : ""}
+              {delta} evolution
+            </span>
+          ) : null}
         </div>
       ) : null}
 
@@ -435,6 +510,10 @@ function CinematicClusterDetailOverlay({ onClose, selection }: { onClose: () => 
           />
           <MiniCandleStrip emptyMessage={cluster.emptyMessage ?? "No validated movement history yet."} tone={tone} values={values} />
         </div>
+      </div>
+
+      <div className="mt-4">
+        <NarrativeEvolutionPanel stories={clusterLivingStories([cluster])} compact />
       </div>
 
       {cluster.factors?.length ? <ScoreFactorStrip className="mt-4" factors={cluster.factors} label="Data-backed drivers" /> : null}
