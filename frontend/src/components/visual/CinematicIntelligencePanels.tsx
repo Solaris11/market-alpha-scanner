@@ -4,9 +4,9 @@ import Link from "next/link";
 import type { KeyboardEvent, ReactNode } from "react";
 import { useState } from "react";
 import { ArrowRight } from "lucide-react";
+import { motion } from "motion/react";
 import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
 import {
-  HeatDots,
   MiniCandleStrip,
   MiniSparkline,
   PosterGauge,
@@ -15,6 +15,7 @@ import {
   type ScoreFactor,
   type VisualTone,
 } from "@/components/visual/MiniVisuals";
+import { PosterHeatmapChart, PosterIntelligenceOrbit, type PosterOrbitNode } from "@/components/visual/PosterDataVisuals";
 
 type ToneStyle = {
   border: string;
@@ -144,6 +145,18 @@ export function CinematicClusterMosaic({
   }
 
   const [hero, ...rest] = clusters;
+  const orbitNodes: PosterOrbitNode[] = clusters.map((cluster) => {
+    const score = typeof cluster.score === "number" && Number.isFinite(cluster.score) ? cluster.score : null;
+    return {
+      detail: cluster.summary,
+      icon: cluster.icon,
+      id: cluster.title,
+      label: cluster.title,
+      metric: cluster.metric ?? (score === null ? "Limited" : `${Math.round(score)}`),
+      score,
+      tone: cluster.tone ?? "cyan",
+    };
+  });
 
   return (
     <>
@@ -156,24 +169,34 @@ export function CinematicClusterMosaic({
           <p className="max-w-2xl text-sm leading-6 text-slate-400">{summary}</p>
         </div>
 
-        <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)]">
-          {hero ? (
-            <CinematicClusterCard
-              cluster={hero}
-              onOpen={(cluster) => setSelection({ cluster, kind: "cluster" })}
-              onOpenItem={(item, clusterTitle) => setSelection({ clusterTitle, item, kind: "item" })}
-              prominent
-            />
-          ) : null}
-          <div className="grid gap-3 md:grid-cols-2">
-            {rest.map((cluster) => (
+        <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(310px,0.72fr)_minmax(0,1.28fr)]">
+          <PosterIntelligenceOrbit
+            centerLabel="TradeVeto"
+            nodes={orbitNodes}
+            onNodeClick={(_, index) => {
+              const cluster = clusters[index];
+              if (cluster) setSelection({ cluster, kind: "cluster" });
+            }}
+          />
+          <div className="grid gap-3 2xl:grid-cols-[minmax(0,1.08fr)_minmax(340px,0.92fr)]">
+            {hero ? (
               <CinematicClusterCard
-                cluster={cluster}
-                key={cluster.title}
-                onOpen={(nextCluster) => setSelection({ cluster: nextCluster, kind: "cluster" })}
+                cluster={hero}
+                onOpen={(cluster) => setSelection({ cluster, kind: "cluster" })}
                 onOpenItem={(item, clusterTitle) => setSelection({ clusterTitle, item, kind: "item" })}
+                prominent
               />
-            ))}
+            ) : null}
+            <div className="grid gap-3 md:grid-cols-2">
+              {rest.map((cluster) => (
+                <CinematicClusterCard
+                  cluster={cluster}
+                  key={cluster.title}
+                  onOpen={(nextCluster) => setSelection({ cluster: nextCluster, kind: "cluster" })}
+                  onOpenItem={(item, clusterTitle) => setSelection({ clusterTitle, item, kind: "item" })}
+                />
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -201,13 +224,16 @@ export function CinematicClusterCard({
   const metric = cluster.metric ?? (hasScore ? `${Math.round(cluster.score ?? 0)}` : "Limited");
   const openCluster = () => onOpen?.(cluster);
   const content = (
-    <div
+    <motion.div
       className={`group relative h-full cursor-pointer overflow-hidden rounded-3xl border ${style.border} bg-gradient-to-br ${style.panel} p-4 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200/70 ${style.glow}`}
       data-stable-overlay-trigger="true"
       onClick={openCluster}
       onKeyDown={(event) => openWithKeyboard(event, openCluster)}
       role="button"
       tabIndex={0}
+      transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+      whileHover={{ scale: 1.01, y: -2 }}
+      whileTap={{ scale: 0.992 }}
     >
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent" />
       <div className="flex min-w-0 items-start justify-between gap-3">
@@ -279,7 +305,7 @@ export function CinematicClusterCard({
           </Link>
         </div>
       ) : null}
-    </div>
+    </motion.div>
   );
 
   return content;
@@ -504,12 +530,17 @@ export function CinematicHeatMatrix({
             <h3 className="mt-1 text-xl font-semibold text-slate-50">{title}</h3>
             {summary ? <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">{summary}</p> : null}
           </div>
-          <HeatDots active={Math.min(12, cells.filter((cell) => typeof cell.value === "number" && cell.value >= 50).length * 2)} tone="cyan" />
+          <div className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 font-mono text-[11px] font-black text-cyan-100">
+            {cells.filter((cell) => typeof cell.value === "number" && Number.isFinite(cell.value)).length} live cells
+          </div>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
-          {cells.length ? cells.slice(0, 12).map((cell) => <HeatMatrixCell cell={cell} key={cell.label} onOpen={setActiveCell} />) : (
-            <div className="col-span-full rounded-2xl border border-dashed border-white/10 bg-slate-950/35 p-4 text-sm text-slate-500">{emptyMessage}</div>
-          )}
+        <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(300px,0.55fr)]">
+          <PosterHeatmapChart cells={cells} emptyMessage={emptyMessage} onCellSelect={setActiveCell} />
+          <div className="grid max-h-64 gap-2 overflow-y-auto pr-1">
+            {cells.length ? cells.slice(0, 8).map((cell) => <HeatMatrixCell cell={cell} key={cell.label} onOpen={setActiveCell} />) : (
+              <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/35 p-4 text-sm text-slate-500">{emptyMessage}</div>
+            )}
+          </div>
         </div>
       </section>
       <HeatMatrixDetailOverlay cell={activeCell} onClose={() => setActiveCell(null)} title={title} />

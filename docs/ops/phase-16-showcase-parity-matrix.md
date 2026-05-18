@@ -29,6 +29,8 @@ This matrix treats the TradeVeto showcase posters as production acceptance refer
 
 ## Implementation Ownership
 
+- `frontend/src/components/visual/PosterDataVisuals.tsx`: reusable real visualization layer using Recharts, Nivo, visx, and Motion for trend charts, movement bars, factor bars, metric charts, heatmaps, radial gauges, and intelligence orbits.
+- `frontend/src/components/visual/MiniVisuals.tsx`: compatibility layer that routes existing mini visual APIs into the real visualization system.
 - `frontend/src/components/visual/InteractiveVisualIntelligence.tsx`: shared clickable showcase orbit and stable detail behavior.
 - `frontend/src/components/terminal/UnifiedIntelligenceConsole.tsx`: Terminal attention matrix and intelligence orbit.
 - `frontend/src/components/terminal/MarketChartHub.tsx`: macro environment overview and validated chart cards.

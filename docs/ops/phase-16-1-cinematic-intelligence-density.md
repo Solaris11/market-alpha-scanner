@@ -28,6 +28,12 @@ Final status: **TRADEVETO CINEMATIC SHOWCASE PARITY ACHIEVED**
   - `CinematicClusterCard`
   - `CinematicHeatMatrix`
   - `CinematicTimeline`
+- `frontend/src/components/visual/PosterDataVisuals.tsx`
+  - `PosterIntelligenceOrbit` using visx/SVG
+  - `PosterRadialGauge` using visx radial geometry
+  - `PosterHeatmapChart` using Nivo heatmap
+  - `PosterTrendChart`, `PosterMovementBars`, `PosterFactorBars`, and `PosterMetricBars` using Recharts
+  - Motion-powered hover/tap/reveal behavior
 
 These primitives standardize:
 - semantic category color
@@ -36,6 +42,17 @@ These primitives standardize:
 - timeline presentation
 - premium limited-data states
 - symbol/detail links where applicable
+
+## Real Visualization Stack Update
+
+Follow-up implementation on 2026-05-17 replaced the remaining CSS-only mini visuals with reusable chart components:
+
+- Recharts now powers standard trend, movement, factor, and metric visuals.
+- Nivo now powers data-backed heatmap blocks.
+- visx now powers custom poster-style gauges and intelligence orbit systems.
+- Motion for React now powers calm card, orbit-node, and chart reveal interaction states.
+
+`MiniSparkline`, `MiniCandleStrip`, `PosterGauge`, `ScoreFactorStrip`, and `VisualMetricRail` keep their existing API but now delegate to the real visualization system. This means existing production surfaces get richer chart rendering without introducing fake data or broad page rewrites.
 
 ## Route And Surface Changes
 

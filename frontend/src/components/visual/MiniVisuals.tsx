@@ -1,4 +1,11 @@
 import type { ReactNode } from "react";
+import {
+  PosterFactorBars,
+  PosterMetricBars,
+  PosterMovementBars,
+  PosterRadialGauge,
+  PosterTrendChart,
+} from "@/components/visual/PosterDataVisuals";
 
 export type VisualTone = "amber" | "cyan" | "emerald" | "rose" | "violet";
 
@@ -15,26 +22,7 @@ export function VisualMetricRail({
 }: {
   metrics: Array<{ label: string; tone?: VisualTone; value: number | null }>;
 }) {
-  return (
-    <div className="grid gap-2">
-      {metrics.map((metric) => {
-        const hasValue = metric.value !== null && Number.isFinite(metric.value);
-        const value = hasValue ? clamp(metric.value ?? 0) : 0;
-        const tone = TONE[metric.tone ?? "cyan"];
-        return (
-          <div className="min-w-0" key={metric.label}>
-            <div className="mb-1 flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
-              <span className="truncate">{metric.label}</span>
-              <span className={tone.text}>{hasValue ? Math.round(value) : "N/A"}</span>
-            </div>
-            <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]">
-              <div className={`h-full rounded-full bg-gradient-to-r ${tone.fill} shadow-[0_0_18px_rgba(34,211,238,0.22)]`} style={{ width: hasValue ? `${Math.max(5, value)}%` : "0%" }} />
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
+  return <PosterMetricBars metrics={metrics} />;
 }
 
 export function MiniSparkline({
@@ -50,26 +38,7 @@ export function MiniSparkline({
   tone?: VisualTone;
   values: Array<number | null | undefined>;
 }) {
-  const safeValues = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
-  const points = sparklinePoints(safeValues);
-  const toneClass = TONE[tone];
-  return (
-    <div className={`rounded-2xl border ${toneClass.border} ${toneClass.bg} p-3 ${className}`}>
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">{label}</div>
-        <div className={`h-2 w-2 rounded-full ${toneClass.soft}`} />
-      </div>
-      {points ? (
-        <svg aria-hidden="true" className="h-16 w-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 120 48">
-          <polyline fill="none" points={points} stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" className={toneClass.text} />
-        </svg>
-      ) : (
-        <div className="grid h-16 place-items-center rounded-xl border border-dashed border-white/10 bg-slate-950/45 px-3 text-center text-[11px] leading-4 text-slate-500">
-          {emptyMessage}
-        </div>
-      )}
-    </div>
-  );
+  return <PosterTrendChart className={className} emptyMessage={emptyMessage} label={label} tone={tone} values={values} />;
 }
 
 export function SignalFlowVisual({
@@ -104,26 +73,7 @@ export function PosterGauge({
   score: number | null;
   tone?: VisualTone;
 }) {
-  const value = clamp(score ?? 0);
-  const toneClass = TONE[tone];
-  const sweep = Math.max(0, Math.min(270, (value / 100) * 270));
-  return (
-    <div className={`rounded-2xl border ${toneClass.border} ${toneClass.bg} p-4 text-center`}>
-      <div className="relative mx-auto grid h-28 w-28 place-items-center rounded-full border border-white/10 bg-slate-950/60 shadow-[inset_0_0_28px_rgba(0,0,0,0.38)]">
-        <div
-          className="absolute inset-2 rounded-full"
-          style={{
-            background: `conic-gradient(from -135deg, ${toneHex(tone)} ${sweep}deg, rgba(148,163,184,0.18) 0 270deg, transparent 270deg)`,
-            mask: "radial-gradient(circle, transparent 52%, black 54%)",
-          }}
-        />
-        <div className="relative text-center">
-          <div className="font-mono text-3xl font-black text-slate-50">{score === null ? "N/A" : Math.round(value)}</div>
-          <div className={`text-[10px] font-black uppercase leading-4 ${toneClass.text}`}>{label}</div>
-        </div>
-      </div>
-    </div>
-  );
+  return <PosterRadialGauge label={label} score={score} tone={tone} />;
 }
 
 export function MiniCandleStrip({
@@ -137,34 +87,7 @@ export function MiniCandleStrip({
   tone?: VisualTone;
   values: Array<number | null | undefined>;
 }) {
-  const safe = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
-  const toneClass = TONE[tone];
-  if (safe.length < 2) {
-    return (
-      <div className={`poster-mini-chart grid h-24 place-items-center rounded-2xl border border-dashed ${toneClass.border} p-3 text-center text-[11px] leading-4 text-slate-500 ${className}`}>
-        {emptyMessage}
-      </div>
-    );
-  }
-  const max = Math.max(...safe, 1);
-  const min = Math.min(...safe, 0);
-  const spread = max - min || 1;
-  return (
-    <div className={`poster-mini-chart flex h-24 items-end gap-1 rounded-2xl border ${toneClass.border} p-3 ${className}`}>
-      {safe.slice(0, 14).map((value, index) => {
-        const height = 24 + ((value - min) / spread) * 56;
-        const positive = index === 0 || value >= safe[index - 1];
-        return (
-          <span
-            aria-hidden="true"
-            className={`w-full min-w-1 rounded-t ${positive ? `bg-gradient-to-t ${toneClass.fill}` : "bg-gradient-to-t from-rose-500 to-red-300"}`}
-            key={`${value}-${index}`}
-            style={{ height }}
-          />
-        );
-      })}
-    </div>
-  );
+  return <PosterMovementBars className={className} emptyMessage={emptyMessage} tone={tone} values={values} />;
 }
 
 export type ScoreFactor = {
@@ -185,37 +108,7 @@ export function ScoreFactorStrip({
   factors: ScoreFactor[];
   label?: string;
 }) {
-  const visible = factors.filter((factor) => typeof factor.value === "number" && Number.isFinite(factor.value));
-  if (!visible.length) {
-    return (
-      <div className={`rounded-2xl border border-dashed border-white/10 bg-slate-950/35 p-3 ${className}`}>
-        <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</div>
-        <div className="mt-2 rounded-xl border border-white/10 bg-white/[0.025] p-3 text-xs leading-5 text-slate-500">{emptyMessage}</div>
-      </div>
-    );
-  }
-  return (
-    <div className={`rounded-2xl border border-white/10 bg-slate-950/35 p-3 ${className}`}>
-      <div className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</div>
-      <div className="grid gap-2">
-        {visible.slice(0, 6).map((factor) => {
-          const value = clamp(factor.value ?? 0);
-          const tone = TONE[factor.tone ?? toneForValue(value)];
-          return (
-            <div className="min-w-0" key={factor.label} title={factor.detail ?? `${factor.label}: ${Math.round(value)}/100`}>
-              <div className="mb-1 flex items-center justify-between gap-2 text-[10px] font-bold uppercase tracking-[0.08em] text-slate-500">
-                <span className="truncate">{factor.label}</span>
-                <span className={`font-mono ${tone.text}`}>{Math.round(value)}</span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]">
-                <div className={`h-full rounded-full bg-gradient-to-r ${tone.fill}`} style={{ width: `${Math.max(4, value)}%` }} />
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
+  return <PosterFactorBars className={className} emptyMessage={emptyMessage} factors={factors} label={label} />;
 }
 
 export function IconInsightRail({
@@ -260,37 +153,4 @@ export function HeatDots({
       ))}
     </div>
   );
-}
-
-function clamp(value: number): number {
-  return Math.max(0, Math.min(100, value));
-}
-
-function toneHex(tone: VisualTone): string {
-  if (tone === "emerald") return "#34d399";
-  if (tone === "amber") return "#fbbf24";
-  if (tone === "rose") return "#fb7185";
-  if (tone === "violet") return "#a78bfa";
-  return "#22d3ee";
-}
-
-function toneForValue(value: number): VisualTone {
-  if (value >= 70) return "emerald";
-  if (value >= 50) return "amber";
-  if (value <= 35) return "rose";
-  return "cyan";
-}
-
-function sparklinePoints(values: number[]): string | null {
-  if (values.length < 2) return null;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const spread = max - min || 1;
-  return values
-    .map((value, index) => {
-      const x = (index / Math.max(1, values.length - 1)) * 120;
-      const y = 42 - ((value - min) / spread) * 34;
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    })
-    .join(" ");
 }
