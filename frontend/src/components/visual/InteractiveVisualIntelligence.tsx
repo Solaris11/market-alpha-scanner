@@ -228,7 +228,7 @@ export function ShowcaseIntelligenceOrbit({
 
             <button
               aria-label="Open primary intelligence system summary"
-              className="absolute left-1/2 top-1/2 z-10 grid h-28 w-28 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-cyan-200/35 bg-slate-950/88 shadow-[0_0_55px_rgba(34,211,238,0.28)] transition hover:scale-[1.02] hover:border-cyan-100/70"
+              className="absolute left-1/2 top-1/2 z-30 grid h-28 w-28 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-cyan-200/35 bg-slate-950/88 shadow-[0_0_55px_rgba(34,211,238,0.28)] transition hover:scale-[1.02] hover:border-cyan-100/70"
               data-stable-overlay-trigger="true"
               onClick={() => setActiveId(orbitZones[0]?.id ?? null)}
               type="button"
