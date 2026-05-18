@@ -69,6 +69,8 @@ function restoreBodyScroll(snapshot: BodyScrollSnapshot, scrollY: number): void 
   window.scrollTo(0, scrollY);
   window.requestAnimationFrame(() => window.scrollTo(0, scrollY));
   window.setTimeout(() => window.scrollTo(0, scrollY), 80);
+  window.setTimeout(() => window.scrollTo(0, scrollY), 240);
+  window.setTimeout(() => window.scrollTo(0, scrollY), 640);
 }
 
 export function StableDetailOverlay({
@@ -130,6 +132,9 @@ export function StableDetailOverlay({
   useEffect(() => {
     if (!open) return undefined;
     scrollYRef.current = window.scrollY;
+    if (document.activeElement instanceof HTMLElement) {
+      document.activeElement.blur();
+    }
     const scrollSnapshot = lockBodyScroll();
 
     function handleKeyDown(event: KeyboardEvent) {
