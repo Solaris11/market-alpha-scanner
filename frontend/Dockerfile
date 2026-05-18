@@ -3,6 +3,7 @@
 FROM node:22-bookworm-slim AS deps
 
 WORKDIR /app
+ENV NPM_CONFIG_LEGACY_PEER_DEPS=true
 
 COPY frontend/package*.json ./
 RUN npm ci
@@ -10,7 +11,8 @@ RUN npm ci
 FROM node:22-bookworm-slim AS builder
 
 WORKDIR /app
-ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_TELEMETRY_DISABLED=1 \
+    NPM_CONFIG_LEGACY_PEER_DEPS=true
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY frontend/ ./
