@@ -30,21 +30,31 @@ const WIDTH_CLASS: Record<StableDetailOverlaySize, string> = {
 };
 
 type BodyScrollSnapshot = {
+  bodyLeft: string;
   bodyOverflow: string;
   bodyOverscroll: string;
   bodyPaddingRight: string;
+  bodyPosition: string;
+  bodyRight: string;
+  bodyTop: string;
+  bodyWidth: string;
   htmlOverflow: string;
   htmlOverscroll: string;
 };
 
-function lockBodyScroll(): BodyScrollSnapshot {
+function lockBodyScroll(scrollY: number): BodyScrollSnapshot {
   const body = document.body;
   const root = document.documentElement;
   const scrollbarWidth = Math.max(0, window.innerWidth - root.clientWidth);
   const snapshot: BodyScrollSnapshot = {
+    bodyLeft: body.style.left,
     bodyOverflow: body.style.overflow,
     bodyOverscroll: body.style.overscrollBehavior,
     bodyPaddingRight: body.style.paddingRight,
+    bodyPosition: body.style.position,
+    bodyRight: body.style.right,
+    bodyTop: body.style.top,
+    bodyWidth: body.style.width,
     htmlOverflow: root.style.overflow,
     htmlOverscroll: root.style.overscrollBehavior,
   };
@@ -52,6 +62,11 @@ function lockBodyScroll(): BodyScrollSnapshot {
   body.style.overflow = "hidden";
   body.style.overscrollBehavior = "contain";
   if (scrollbarWidth > 0) body.style.paddingRight = `${scrollbarWidth}px`;
+  body.style.position = "fixed";
+  body.style.top = `-${scrollY}px`;
+  body.style.left = "0";
+  body.style.right = "0";
+  body.style.width = "100%";
   root.style.overflow = "hidden";
   root.style.overscrollBehavior = "contain";
 
@@ -61,6 +76,11 @@ function lockBodyScroll(): BodyScrollSnapshot {
 function restoreBodyScroll(snapshot: BodyScrollSnapshot, scrollY: number): void {
   const body = document.body;
   const root = document.documentElement;
+  body.style.position = snapshot.bodyPosition;
+  body.style.top = snapshot.bodyTop;
+  body.style.left = snapshot.bodyLeft;
+  body.style.right = snapshot.bodyRight;
+  body.style.width = snapshot.bodyWidth;
   body.style.overflow = snapshot.bodyOverflow;
   body.style.overscrollBehavior = snapshot.bodyOverscroll;
   body.style.paddingRight = snapshot.bodyPaddingRight;
@@ -135,7 +155,7 @@ export function StableDetailOverlay({
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    const scrollSnapshot = lockBodyScroll();
+    const scrollSnapshot = lockBodyScroll(scrollYRef.current);
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") requestClose("escape");
