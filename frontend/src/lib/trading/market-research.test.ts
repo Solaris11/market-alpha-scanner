@@ -68,6 +68,7 @@ test("buildMarketCommandModel restores cross-asset market command context from v
   assert.equal(model.barItems[0]?.currentPrice, 102);
   assert.equal(model.macroNews.length, 1);
   assert.deepEqual(model.macroNews[0]?.relatedAssets.sort(), ["AMD", "QQQ"]);
+  assert.match(model.macroNews[0]?.whyItMatters ?? "", /AMD, QQQ|QQQ, AMD/);
 });
 
 test("buildSymbolResearchModel exposes real research fields and limited-data states", () => {

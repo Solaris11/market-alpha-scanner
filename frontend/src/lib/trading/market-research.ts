@@ -245,11 +245,16 @@ function buildMacroNews(rows: RankingRow[]): MarketNewsItem[] {
       if (!item) continue;
       const existing = byKey.get(item.id);
       if (existing) {
+        const affectedSectors = unique([...existing.affectedSectors, ...item.affectedSectors]);
+        const relatedAssets = unique([...existing.relatedAssets, ...item.relatedAssets]);
         byKey.set(item.id, {
           ...existing,
-          affectedSectors: unique([...existing.affectedSectors, ...item.affectedSectors]),
-          relatedAssets: unique([...existing.relatedAssets, ...item.relatedAssets]),
+          affectedSectors,
+          relatedAssets,
           relevance: Math.max(existing.relevance, item.relevance),
+          whyItMatters: relatedAssets.length > 1
+            ? groupedEventWhyItMatters(existing.eventType, existing.direction, relatedAssets, affectedSectors, existing.reasonCodes)
+            : existing.whyItMatters,
         });
       } else {
         byKey.set(item.id, item);
@@ -311,6 +316,15 @@ function eventWhyItMatters(eventType: string, direction: string, symbol: string,
   const directionText = direction === "negative" ? "adds risk pressure to" : direction === "positive" ? "may support" : "adds context for";
   const reason = reasonCodes[0]?.replace(/^EVENT_/, "").replace(/_/g, " ").toLowerCase();
   return `${capitalize(normalizedType)} ${directionText} ${scope}${reason ? ` through ${reason}` : ""}.`;
+}
+
+function groupedEventWhyItMatters(eventType: string, direction: string, relatedAssets: string[], affectedSectors: string[], reasonCodes: string[]): string {
+  const normalizedType = eventType.replace(/_/g, " ");
+  const directionText = direction === "negative" ? "adds risk pressure across" : direction === "positive" ? "may support" : "adds context across";
+  const assetText = relatedAssets.slice(0, 5).join(", ");
+  const sectorText = affectedSectors.length ? ` in ${affectedSectors.slice(0, 3).join(", ")}` : "";
+  const reason = reasonCodes[0]?.replace(/^EVENT_/, "").replace(/_/g, " ").toLowerCase();
+  return `${capitalize(normalizedType)} ${directionText} ${assetText}${sectorText}${reason ? ` through ${reason}` : ""}.`;
 }
 
 function earningsNarrative(row: RankingRow): string {
