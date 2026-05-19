@@ -20,14 +20,22 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type {
   SimulatedAiPortfolioSystem,
+  SimulatedPortfolioCapitalScenario,
   SimulatedPortfolioClosedTrade,
+  SimulatedPortfolioDecisionReview,
   SimulatedPortfolioEquityPoint,
+  SimulatedPortfolioExposureBucket,
+  SimulatedPortfolioLearningTimelinePoint,
   SimulatedPortfolioMode,
   SimulatedPortfolioModeResult,
   SimulatedPortfolioOpenPosition,
+  SimulatedPortfolioReviewItem,
+  SimulatedPortfolioRiskMapCell,
+  SimulatedPortfolioTone,
 } from "@/lib/trading/simulated-ai-portfolio";
 import { strategyFamilyLabel } from "@/lib/trading/strategy-intelligence";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
+import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
 import {
   CinematicClusterMosaic,
   CinematicHeatMatrix,
@@ -37,6 +45,16 @@ import {
   type CinematicTimelineItem,
 } from "@/components/visual/CinematicIntelligencePanels";
 import { IconInsightRail, PosterGauge, ScoreFactorStrip, type ScoreFactor, type VisualTone } from "@/components/visual/MiniVisuals";
+import {
+  PosterFactorBars,
+  PosterHeatmapChart,
+  PosterMovementBars,
+  PosterRadialGauge,
+  PosterTrendChart,
+  type PosterFactor,
+  type PosterHeatCell,
+  type PosterVisualTone,
+} from "@/components/visual/PosterDataVisuals";
 import { SymbolLogo } from "@/components/visual/SymbolLogo";
 import { trackFirstUsefulAction } from "@/lib/client/analytics";
 
@@ -113,6 +131,10 @@ export function StrategyLabsWorkspace({ system }: { system: SimulatedAiPortfolio
 
         <div className="border-t border-white/10 p-4 sm:p-5">
           <StrategyCinematicSimulationSystem result={active} system={system} />
+        </div>
+
+        <div className="border-t border-violet-300/14 p-4 sm:p-5">
+          <AdaptivePortfolioIntelligenceLab result={active} system={system} />
         </div>
 
         <div className="border-t border-white/10 p-4 pt-0 sm:p-5 sm:pt-0">
@@ -368,6 +390,299 @@ function StrategyCinematicSimulationSystem({
       <div className="grid gap-4">
         <CinematicHeatMatrix cells={heatCells} title="Strategy Evidence Heat" />
         <CinematicTimeline emptyMessage="No replay-backed simulated trade timeline is available for this sleeve yet." items={timelineItems} title="Simulation Replay Timeline" />
+      </div>
+    </div>
+  );
+}
+
+function AdaptivePortfolioIntelligenceLab({
+  result,
+  system,
+}: {
+  result: SimulatedPortfolioModeResult;
+  system: SimulatedAiPortfolioSystem;
+}) {
+  const learning = result.learning;
+  const stats = result.stats;
+  const latestEquity = result.equityCurve[result.equityCurve.length - 1]?.value ?? system.startingCapital;
+  const deployedCapital = result.openPositions.reduce((sum, position) => sum + position.investedAmount, 0);
+  const reviewItems = decisionReviewItems(learning.decisionReview);
+
+  return (
+    <section
+      className="tv-superplatform-panel relative overflow-hidden rounded-[2.15rem] border border-violet-300/22 bg-[radial-gradient(circle_at_7%_0%,rgba(167,139,250,0.2),transparent_30rem),radial-gradient(circle_at_84%_10%,rgba(34,211,238,0.16),transparent_28rem),linear-gradient(135deg,rgba(2,6,23,0.98),rgba(15,23,42,0.82))] p-4 shadow-2xl shadow-violet-950/20 sm:p-5"
+      id="portfolio-intelligence-lab"
+    >
+      <div className="pointer-events-none absolute inset-0 tv-superplatform-atmosphere" />
+      <div className="relative grid gap-4 xl:grid-cols-[minmax(0,1.24fr)_minmax(360px,0.76fr)]">
+        <div className="min-w-0 rounded-[1.75rem] border border-cyan-300/16 bg-slate-950/62 p-4 shadow-xl shadow-black/25">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-violet-200">Adaptive Portfolio Intelligence Lab</div>
+              <h2 className="mt-2 max-w-4xl text-2xl font-black tracking-tight text-white sm:text-4xl">
+                The {result.config.label} engine is learning from simulated capital behavior.
+              </h2>
+              <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-300">{learning.adjustmentSummary}</p>
+            </div>
+            <div className="grid shrink-0 grid-cols-2 gap-2 text-xs lg:w-[340px]">
+              <SmallMetric label="Start capital" value={formatMoney(system.startingCapital)} />
+              <SmallMetric label="Latest equity" tone={latestEquity - system.startingCapital} value={formatMoney(latestEquity)} />
+              <SmallMetric label="Deployed now" value={formatMoney(deployedCapital)} />
+              <SmallMetric label="Cash buffer" value={`${stats.cashPct.toFixed(1)}%`} />
+            </div>
+          </div>
+
+          <div className="mt-5 grid gap-3 lg:grid-cols-[0.72fr_1fr_1fr]">
+            <PosterRadialGauge label="Portfolio quality" score={stats.strategyQualityScore} tone="violet" />
+            <PosterTrendChart label="Confidence evolution" tone="cyan" values={learning.confidenceTrend} />
+            <PosterMovementBars tone="amber" values={learning.riskTrend} />
+          </div>
+
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {learning.portfolioStories.map((story) => (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4" key={story}>
+                <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-300">Portfolio story</div>
+                <p className="mt-2 line-clamp-4 text-sm leading-6 text-slate-300">{story}</p>
+              </div>
+            ))}
+          </div>
+          <CapitalScenarioStrip scenarios={result.capitalScenarios} />
+        </div>
+
+        <div className="grid min-w-0 gap-4">
+          <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/62 p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-200">Learning signal map</div>
+            <PosterHeatmapChart cells={riskMapCells(learning.heatmap)} className="mt-3" emptyMessage="No portfolio learning heatmap is available yet." />
+          </div>
+          <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/62 p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Strategy revision notes</div>
+            <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-300">
+              {learning.lessons.slice(0, 4).map((lesson) => <li key={lesson}>- {lesson}</li>)}
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div className="relative mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(340px,0.9fr)]">
+        <TradeLedgerPreview trades={result.closedTrades} />
+        <div className="grid gap-4">
+          <DecisionReviewGrid items={reviewItems} />
+          <AllocationExposureSystem buckets={learning.exposureBuckets} />
+        </div>
+      </div>
+
+      <div className="relative mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <LearningTimelineSystem points={learning.learningTimeline} />
+        <div className="rounded-[1.75rem] border border-violet-300/16 bg-violet-400/[0.055] p-4">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-100">Portfolio-aware rules</div>
+          <PosterFactorBars
+            className="mt-3"
+            factors={[
+              { label: "Cash buffer", tone: "emerald", value: stats.cashPct },
+              { label: "Allocation", tone: "violet", value: stats.totalCurrentAllocationPct },
+              { label: "Drawdown safety", tone: "amber", value: normalizeDrawdownSafety(stats.maxDrawdownPct) },
+              { label: "Volatility control", tone: "cyan", value: normalizeVolatilityControl(stats.volatilityPct) },
+              { label: "Win rate", tone: "emerald", value: stats.winRatePct },
+            ]}
+            label="Portfolio control stack"
+          />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function CapitalScenarioStrip({ scenarios }: { scenarios: SimulatedPortfolioCapitalScenario[] }) {
+  return (
+    <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/55 p-3">
+      <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Starting capital scenarios</div>
+      <div className="grid gap-2 sm:grid-cols-3">
+        {scenarios.map((scenario) => (
+          <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3" key={scenario.label}>
+            <div className="text-xs font-black text-slate-50">{scenario.label}</div>
+            <div className={`mt-1 font-mono text-lg font-black ${toneClass(scenario.realizedPnl)}`}>{formatMoney(scenario.latestEquity)}</div>
+            <div className="mt-2 grid grid-cols-2 gap-2 text-[10px]">
+              <SmallMetric label="Deployed" value={formatMoney(scenario.deployedAmount)} />
+              <SmallMetric label="Cash" value={formatMoney(scenario.cashAmount)} />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TradeLedgerPreview({ trades }: { trades: SimulatedPortfolioClosedTrade[] }) {
+  const [selectedTrade, setSelectedTrade] = useState<SimulatedPortfolioClosedTrade | null>(null);
+  if (!trades.length) {
+    return <EmptyState message="No completed simulated trades are available yet. The portfolio ledger will appear when validated outcomes exist." />;
+  }
+
+  return (
+    <div className="rounded-[1.75rem] border border-cyan-300/16 bg-slate-950/62 p-4" id="trade-review">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">What the system bought and sold</div>
+          <h3 className="mt-1 text-xl font-black text-white">Simulated trade ledger</h3>
+        </div>
+        <div className="text-xs text-slate-500">{trades.length.toLocaleString()} visible closed simulations</div>
+      </div>
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        {trades.slice(0, 6).map((trade) => (
+          <button
+            className="tv-tap-motion min-w-0 rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-cyan-400/[0.06]"
+            data-stable-overlay-trigger="true"
+            key={trade.id}
+            onClick={() => setSelectedTrade(trade)}
+            type="button"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <SymbolLogo size="sm" symbol={trade.symbol} />
+                <div className="min-w-0">
+                  <div className="truncate font-mono text-lg font-black text-slate-50">{trade.symbol}</div>
+                  <div className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{trade.entryDate} to {trade.exitDate}</div>
+                </div>
+              </div>
+              <span className={`shrink-0 font-mono text-sm font-black ${toneClass(trade.realizedPnl)}`}>{formatMoney(trade.realizedPnl)}</span>
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <SmallMetric label="Invested" value={formatMoney(trade.investedAmount)} />
+              <SmallMetric label="Return" tone={trade.realizedReturnPct} value={formatPct(trade.realizedReturnPct)} />
+              <SmallMetric label="Entry conf." value={`${trade.confidenceAtEntry}/100`} />
+              <SmallMetric label="Exit conf." value={`${trade.confidenceAtExit}/100`} />
+            </div>
+            <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-400">{trade.learning.lesson}</p>
+          </button>
+        ))}
+      </div>
+
+      {selectedTrade ? <TradeDetailOverlay onClose={() => setSelectedTrade(null)} trade={selectedTrade} /> : null}
+    </div>
+  );
+}
+
+function TradeDetailOverlay({ onClose, trade }: { onClose: () => void; trade: SimulatedPortfolioClosedTrade }) {
+  return (
+    <StableDetailOverlay analyticsSurface="strategy_trade_review" closeLabel="Close simulated trade review" eyebrow="Replay-backed simulated trade" onClose={onClose} open size="lg" title={`${trade.symbol} decision review`}>
+      <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+          <div className="flex items-center gap-3">
+            <SymbolLogo size="md" symbol={trade.symbol} />
+            <div>
+              <div className="font-mono text-2xl font-black text-slate-50">{trade.symbol}</div>
+              <div className="text-xs text-slate-500">{strategyFamilyLabel(trade.strategyFamily)}</div>
+            </div>
+          </div>
+          <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+            <SmallMetric label="Entry date" value={trade.entryDate} />
+            <SmallMetric label="Exit date" value={trade.exitDate} />
+            <SmallMetric label="Entry price" value={formatMoney(trade.entryPrice)} />
+            <SmallMetric label="Exit price" value={formatMoney(trade.exitPrice)} />
+            <SmallMetric label="Invested" value={formatMoney(trade.investedAmount)} />
+            <SmallMetric label="Units" value={trade.positionUnits === null ? "N/A" : trade.positionUnits.toFixed(2)} />
+            <SmallMetric label="PnL" tone={trade.realizedPnl} value={formatMoney(trade.realizedPnl)} />
+            <SmallMetric label="Return" tone={trade.realizedReturnPct} value={formatPct(trade.realizedReturnPct)} />
+          </div>
+        </div>
+        <div className="space-y-3">
+          <ReasonBlock items={trade.entryReasons} title="Why the system entered" />
+          <ReasonBlock items={trade.exitReasons} title="Why the system exited" />
+        </div>
+        <div className="rounded-2xl border border-violet-300/18 bg-violet-400/[0.06] p-4 lg:col-span-2">
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-100">What the strategy learned</div>
+          <p className="mt-2 text-sm leading-6 text-slate-300">{trade.learning.lesson}</p>
+          <p className="mt-2 text-sm leading-6 text-cyan-100">{trade.learning.adjustment}</p>
+          <div className="mt-4 grid gap-2 text-sm lg:grid-cols-3">
+            <ContextPill label="Macro context" value={trade.macroReason} />
+            <ContextPill label="Event context" value={trade.eventReason} />
+            <ContextPill label="Risk state" value={trade.riskState} />
+          </div>
+        </div>
+      </div>
+    </StableDetailOverlay>
+  );
+}
+
+function DecisionReviewGrid({ items }: { items: SimulatedPortfolioReviewItem[] }) {
+  return (
+    <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/62 p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-200">AI self-evaluation</div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {items.map((item) => (
+          <div className={`rounded-2xl border p-3 ${reviewToneClass(item.tone)}`} key={item.label}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{item.label}</div>
+                <div className="mt-1 truncate text-sm font-black text-slate-50">{item.symbol ?? "Limited evidence"}</div>
+              </div>
+              <div className="shrink-0 font-mono text-sm font-black text-slate-100">{item.value}</div>
+            </div>
+            <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-400">{item.detail}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AllocationExposureSystem({ buckets }: { buckets: SimulatedPortfolioExposureBucket[] }) {
+  if (!buckets.length) return <EmptyState message="No allocation or exposure buckets are available yet." />;
+  const factors: PosterFactor[] = buckets.slice(0, 7).map((bucket) => ({
+    detail: `${bucket.symbolCount} symbol(s), ${formatMoney(bucket.pnl)} realized PnL.`,
+    label: bucket.label,
+    tone: posterToneForPortfolio(bucket.tone),
+    value: bucket.allocationPct,
+  }));
+  return (
+    <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/62 p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Allocation and exposure intelligence</div>
+      <PosterFactorBars className="mt-3" factors={factors} label="Exposure buckets" />
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        {buckets.slice(0, 4).map((bucket) => (
+          <div className={`rounded-2xl border p-3 ${reviewToneClass(bucket.tone)}`} key={`${bucket.type}:${bucket.label}`}>
+            <div className="flex items-center justify-between gap-3">
+              <span className="truncate text-sm font-black text-slate-50">{bucket.label}</span>
+              <span className="font-mono text-xs font-black text-slate-100">{bucket.allocationPct.toFixed(1)}%</span>
+            </div>
+            <div className="mt-1 text-xs leading-5 text-slate-400">
+              {bucket.symbolCount} symbol(s), return {formatPct(bucket.returnPct)}, PnL {formatMoney(bucket.pnl)}.
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LearningTimelineSystem({ points }: { points: SimulatedPortfolioLearningTimelinePoint[] }) {
+  if (!points.length) return <EmptyState message="No strategy learning timeline is available until completed simulated trades exist." />;
+  return (
+    <div className="rounded-[1.75rem] border border-cyan-300/16 bg-slate-950/62 p-4" id="strategy-learning">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Strategy learning timeline</div>
+          <h3 className="mt-1 text-xl font-black text-white">How the engine revised its behavior</h3>
+        </div>
+        <div className="text-xs text-slate-500">{points.length} revision checkpoints</div>
+      </div>
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        {points.map((point) => (
+          <div className={`rounded-2xl border p-3 ${reviewToneClass(point.tone)}`} key={`${point.date}:${point.label}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{point.date}</div>
+                <div className="mt-1 text-sm font-black text-slate-50">{point.label}</div>
+              </div>
+              <div className="font-mono text-xs font-black text-cyan-100">{point.confidenceScore}/100</div>
+            </div>
+            <p className="mt-2 line-clamp-4 text-xs leading-5 text-slate-400">{point.summary}</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
+              <SmallMetric label="Risk" value={`${point.riskScore}/100`} />
+              <SmallMetric label="Allocation" value={`${point.allocationPct.toFixed(1)}%`} />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -787,7 +1102,11 @@ function CurrentPositions({ positions }: { positions: SimulatedPortfolioOpenPosi
           <div className="mt-4 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
             <SmallMetric label="Entry Mark" value={formatMoney(position.entryMarkPrice)} />
             <SmallMetric label="Current Mark" value={formatMoney(position.currentPrice)} />
-            <SmallMetric label="Unrealized" value={formatMoney(position.unrealizedPnl)} />
+            <SmallMetric label="Invested" value={formatMoney(position.investedAmount)} />
+            <SmallMetric label="Units" value={position.positionUnits === null ? "N/A" : position.positionUnits.toFixed(2)} />
+            <SmallMetric label="Entry Confidence" value={`${position.confidenceAtEntry}/100`} />
+            <SmallMetric label="Risk State" value={position.riskState} />
+            <SmallMetric label="Sector" value={position.sector.replace(/_/g, " ")} />
             <SmallMetric label="Unrealized %" value={formatPct(position.unrealizedPnlPct)} />
           </div>
           <details className="mt-3 rounded-xl border border-white/10 bg-slate-950/45 p-3">
@@ -824,9 +1143,15 @@ function ClosedTrades({ trades }: { trades: SimulatedPortfolioClosedTrade[] }) {
             <div className="grid grid-cols-2 gap-2 text-right text-xs sm:grid-cols-4 lg:min-w-[360px]">
               <SmallMetric label="Return" tone={trade.realizedReturnPct} value={formatPct(trade.realizedReturnPct)} />
               <SmallMetric label="PnL" tone={trade.realizedPnl} value={formatMoney(trade.realizedPnl)} />
-              <SmallMetric label="Allocation" value={`${trade.allocationPct.toFixed(1)}%`} />
-              <SmallMetric label="Score" value={`${trade.modeScore}/100`} />
+              <SmallMetric label="Invested" value={formatMoney(trade.investedAmount)} />
+              <SmallMetric label="Units" value={trade.positionUnits === null ? "N/A" : trade.positionUnits.toFixed(2)} />
             </div>
+          </div>
+          <div className="mt-3 grid gap-2 text-xs sm:grid-cols-4">
+            <SmallMetric label="Entry price" value={formatMoney(trade.entryPrice)} />
+            <SmallMetric label="Exit price" value={formatMoney(trade.exitPrice)} />
+            <SmallMetric label="Entry conf." value={`${trade.confidenceAtEntry}/100`} />
+            <SmallMetric label="Exit conf." value={`${trade.confidenceAtExit}/100`} />
           </div>
           <div className="mt-4 grid gap-3 lg:grid-cols-2">
             <ReasonBlock items={trade.entryReasons} title="Why entered" />
@@ -915,6 +1240,41 @@ function MetricBar({
       <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{caption}</p>
     </div>
   );
+}
+
+function decisionReviewItems(review: SimulatedPortfolioDecisionReview): SimulatedPortfolioReviewItem[] {
+  return [
+    review.bestDecision,
+    review.weakestDecision,
+    review.unnecessaryRisk,
+    review.strongestExit,
+    review.weakestExit,
+    review.patienceWin,
+    review.missedOpportunity,
+  ];
+}
+
+function riskMapCells(cells: SimulatedPortfolioRiskMapCell[]): PosterHeatCell[] {
+  return cells.map((cell) => ({
+    detail: cell.detail,
+    label: cell.label,
+    tone: posterToneForPortfolio(cell.tone),
+    value: cell.value,
+  }));
+}
+
+function posterToneForPortfolio(tone: SimulatedPortfolioTone): PosterVisualTone {
+  if (tone === "good") return "emerald";
+  if (tone === "risk") return "rose";
+  if (tone === "warn") return "amber";
+  return "cyan";
+}
+
+function reviewToneClass(tone: SimulatedPortfolioTone): string {
+  if (tone === "good") return "border-emerald-300/18 bg-emerald-400/[0.055]";
+  if (tone === "risk") return "border-rose-300/18 bg-rose-400/[0.055]";
+  if (tone === "warn") return "border-amber-300/18 bg-amber-400/[0.055]";
+  return "border-cyan-300/14 bg-cyan-400/[0.045]";
 }
 
 function Badge({ label, value }: { label: string; value: string }) {

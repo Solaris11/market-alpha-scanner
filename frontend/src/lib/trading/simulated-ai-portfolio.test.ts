@@ -166,6 +166,10 @@ test("simulated AI portfolios build three research-only modes with transparent m
   assert.ok(system.modes.balanced.stats.closedTradeCount > 0);
   assert.ok(system.modes.balanced.equityCurve.length > 1);
   assert.ok(system.modes.balanced.stats.strategyQualityScore >= 0);
+  assert.ok(system.modes.balanced.learning.learningTimeline.length > 0);
+  assert.ok(system.modes.balanced.learning.heatmap.length >= 4);
+  assert.ok(system.modes.balanced.learning.lessons.length > 0);
+  assert.deepEqual(system.modes.balanced.capitalScenarios.map((scenario) => scenario.startingCapital), [10_000, 50_000, 100_000]);
   assert.doesNotMatch(JSON.stringify(system), /buy now|sell now|guaranteed|sure profit|free money/i);
 });
 
@@ -200,4 +204,32 @@ test("closed trade history explains entries and exits without LLM-authored numbe
   assert.ok(trade.exitReasons.some((reason) => /completed 5D evidence window/i.test(reason)));
   assert.ok(Number.isFinite(trade.realizedPnl));
   assert.ok(Number.isFinite(trade.realizedReturnPct));
+  assert.ok(Number.isFinite(trade.investedAmount));
+  assert.ok(Number.isFinite(trade.capitalBefore));
+  assert.ok(Number.isFinite(trade.capitalAfter));
+  assert.ok(trade.confidenceAtEntry >= 0);
+  assert.ok(trade.confidenceAtExit >= 0);
+  assert.ok(trade.learning.lesson.length > 0);
+  assert.ok(trade.learning.adjustment.length > 0);
+});
+
+test("portfolio learning system exposes decision reviews and allocation exposure", () => {
+  const forward = [
+    ...forwardRows({ count: 26, drawdown: -2.0, returnPct: 3.2, symbol: "NVDA" }),
+    ...forwardRows({ count: 24, drawdown: -11.0, finalScore: 70, fragility: 82, macro: 38, returnPct: -4.1, setup: "momentum_breakout", symbol: "TSLA" }),
+  ];
+  const strategySystem = buildStrategyIntelligenceSystem({ forwardRows: forward });
+  const system = buildSimulatedAiPortfolioSystem({
+    forwardRows: forward,
+    opportunities: [opportunity({ symbol: "NVDA" }), opportunity({ fragility: 78, raw: { macro_alignment_score: 42, setup_type: "momentum_breakout", symbol: "TSLA", volatility_pressure: 82 }, symbol: "TSLA" })],
+    strategySystem,
+  });
+  const learning = system.modes.aggressive.learning;
+
+  assert.ok(learning.decisionReview.bestDecision.label.length > 0);
+  assert.ok(learning.decisionReview.weakestDecision.label.length > 0);
+  assert.ok(learning.exposureBuckets.some((bucket) => bucket.type === "strategy" || bucket.type === "sector"));
+  assert.ok(learning.confidenceTrend.every((value) => Number.isFinite(value)));
+  assert.ok(learning.riskTrend.every((value) => Number.isFinite(value)));
+  assert.ok(learning.adjustmentSummary.length > 0);
 });

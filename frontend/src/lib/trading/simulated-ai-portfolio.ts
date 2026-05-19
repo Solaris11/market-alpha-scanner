@@ -24,8 +24,23 @@ export type SimulatedPortfolioEquityPoint = {
   value: number;
 };
 
+export type SimulatedPortfolioTone = "good" | "neutral" | "risk" | "warn";
+
+export type SimulatedPortfolioTradeLearning = {
+  adjustment: string;
+  lesson: string;
+  outcomeLabel: string;
+  review: "contained" | "deteriorated" | "failed" | "improved";
+  tone: SimulatedPortfolioTone;
+};
+
 export type SimulatedPortfolioClosedTrade = {
   allocationPct: number;
+  capitalAfter: number;
+  capitalBefore: number;
+  confidenceAtEntry: number;
+  confidenceAtExit: number;
+  drawdownPct: number | null;
   entryDate: string;
   entryPrice: number | null;
   entryReasons: string[];
@@ -35,25 +50,35 @@ export type SimulatedPortfolioClosedTrade = {
   exitReasons: string[];
   horizonDays: number;
   id: string;
+  investedAmount: number;
+  learning: SimulatedPortfolioTradeLearning;
   macroReason: string;
   modeScore: number;
+  positionUnits: number | null;
   realizedPnl: number;
   realizedReturnPct: number;
   riskRewardReason: string;
+  riskState: string;
+  sector: string;
   strategyFamily: StrategyFamily;
   symbol: string;
 };
 
 export type SimulatedPortfolioOpenPosition = {
   allocationPct: number;
+  confidenceAtEntry: number;
   currentPrice: number | null;
   entryMarkPrice: number | null;
   entryReasons: string[];
   eventReason: string;
   exitPlan: string;
+  investedAmount: number;
   macroReason: string;
   modeScore: number;
+  positionUnits: number | null;
   riskRewardReason: string;
+  riskState: string;
+  sector: string;
   strategyFamily: StrategyFamily;
   symbol: string;
   unrealizedPnl: number;
@@ -76,10 +101,79 @@ export type SimulatedPortfolioStats = {
   winRatePct: number | null;
 };
 
+export type SimulatedPortfolioCapitalScenario = {
+  cashAmount: number;
+  deployedAmount: number;
+  label: string;
+  latestEquity: number;
+  realizedPnl: number;
+  startingCapital: number;
+};
+
+export type SimulatedPortfolioExposureBucket = {
+  allocationPct: number;
+  label: string;
+  pnl: number;
+  returnPct: number | null;
+  symbolCount: number;
+  tone: SimulatedPortfolioTone;
+  type: "sector" | "strategy" | "risk";
+};
+
+export type SimulatedPortfolioLearningTimelinePoint = {
+  allocationPct: number;
+  confidenceScore: number;
+  date: string;
+  label: string;
+  riskScore: number;
+  summary: string;
+  tone: SimulatedPortfolioTone;
+};
+
+export type SimulatedPortfolioReviewItem = {
+  detail: string;
+  label: string;
+  symbol: string | null;
+  tone: SimulatedPortfolioTone;
+  value: string;
+};
+
+export type SimulatedPortfolioDecisionReview = {
+  bestDecision: SimulatedPortfolioReviewItem;
+  missedOpportunity: SimulatedPortfolioReviewItem;
+  patienceWin: SimulatedPortfolioReviewItem;
+  strongestExit: SimulatedPortfolioReviewItem;
+  unnecessaryRisk: SimulatedPortfolioReviewItem;
+  weakestDecision: SimulatedPortfolioReviewItem;
+  weakestExit: SimulatedPortfolioReviewItem;
+};
+
+export type SimulatedPortfolioRiskMapCell = {
+  detail: string;
+  label: string;
+  tone: SimulatedPortfolioTone;
+  value: number | null;
+};
+
+export type SimulatedPortfolioLearningSystem = {
+  adjustmentSummary: string;
+  allocationTrend: number[];
+  confidenceTrend: number[];
+  decisionReview: SimulatedPortfolioDecisionReview;
+  exposureBuckets: SimulatedPortfolioExposureBucket[];
+  heatmap: SimulatedPortfolioRiskMapCell[];
+  learningTimeline: SimulatedPortfolioLearningTimelinePoint[];
+  lessons: string[];
+  portfolioStories: string[];
+  riskTrend: number[];
+};
+
 export type SimulatedPortfolioModeResult = {
+  capitalScenarios: SimulatedPortfolioCapitalScenario[];
   closedTrades: SimulatedPortfolioClosedTrade[];
   config: SimulatedPortfolioModeConfig;
   equityCurve: SimulatedPortfolioEquityPoint[];
+  learning: SimulatedPortfolioLearningSystem;
   mode: SimulatedPortfolioMode;
   openPositions: SimulatedPortfolioOpenPosition[];
   stats: SimulatedPortfolioStats;
@@ -238,7 +332,7 @@ function buildModeResult(input: {
     .slice(-MAX_HISTORICAL_TRADES_PER_MODE);
 
   const simulation = simulateClosedTrades(rankedObservations, input.config, input.benchmarkReturnPct, input.startingCapital);
-  const openPositions = currentOpenPositions(input.opportunities, input.config, input.performanceByFamily);
+  const openPositions = currentOpenPositions(input.opportunities, input.config, input.performanceByFamily, input.startingCapital);
   const stats = statsFor({
     benchmarkReturnPct: simulation.benchmarkReturnPct,
     closedTrades: simulation.closedTrades,
@@ -246,11 +340,19 @@ function buildModeResult(input: {
     openPositions,
     startingCapital: input.startingCapital,
   });
+  const learning = learningSystemFor({
+    closedTrades: simulation.closedTrades,
+    config: input.config,
+    openPositions,
+    stats,
+  });
 
   return {
+    capitalScenarios: capitalScenariosFor(stats),
     closedTrades: simulation.closedTrades.slice(-MAX_CLOSED_TRADES_IN_PAYLOAD).reverse(),
     config: publicConfig(input.config),
     equityCurve: simulation.equityCurve,
+    learning,
     mode: input.config.mode,
     openPositions,
     stats,
@@ -274,18 +376,28 @@ function simulateClosedTrades(
   const equityCurve: SimulatedPortfolioEquityPoint[] = [{ benchmarkValue: benchmarkCapital, label: "Start", tradeIndex: 0, value: capital }];
 
   ranked.forEach(({ row, score }, index) => {
+    const capitalBefore = capital;
     const allocationPct = allocationPctFor(score, row.fragilityScore, config);
-    const tradeNotional = capital * (allocationPct / 100);
-    const realizedPnl = tradeNotional * (row.returnPct / 100);
+    const investedAmount = capital * (allocationPct / 100);
+    const realizedPnl = investedAmount * (row.returnPct / 100);
     const entryPrice = row.entryPrice;
     const exitPrice = entryPrice === null ? null : entryPrice * (1 + row.returnPct / 100);
+    const positionUnits = entryPrice === null || entryPrice <= 0 ? null : investedAmount / entryPrice;
     capital += realizedPnl;
+    const capitalAfter = capital;
     if (benchmarkReturnPct !== null) {
       benchmarkCapital += benchmarkCapital * (allocationPct / 100) * (benchmarkReturnPct / 100);
     }
+    const confidenceAtEntry = confidenceAtEntryFor(score, row, config);
+    const confidenceAtExit = confidenceAtExitFor(confidenceAtEntry, row);
 
     closedTrades.push({
       allocationPct,
+      capitalAfter,
+      capitalBefore,
+      confidenceAtEntry,
+      confidenceAtExit,
+      drawdownPct: row.drawdownPct,
       entryDate: row.dateLabel,
       entryPrice,
       entryReasons: entryReasonsForObservation(row, score, config),
@@ -295,11 +407,16 @@ function simulateClosedTrades(
       exitReasons: exitReasonsForObservation(row),
       horizonDays: row.horizonDays,
       id: `${config.mode}:${row.symbol}:${row.dateLabel}:${index}`,
+      investedAmount,
+      learning: learningForTrade(row, score, config),
       macroReason: macroReasonFor(row),
       modeScore: Math.round(score),
+      positionUnits,
       realizedPnl,
       realizedReturnPct: row.returnPct,
       riskRewardReason: riskRewardReasonFor(row),
+      riskState: riskStateFor(row, config),
+      sector: row.sector,
       strategyFamily: row.family,
       symbol: row.symbol,
     });
@@ -323,6 +440,7 @@ function currentOpenPositions(
   opportunities: OpportunityViewModel[],
   config: ModeConfigInternal,
   performanceByFamily: Map<StrategyFamily, StrategyPerformanceRow>,
+  startingCapital: number,
 ): SimulatedPortfolioOpenPosition[] {
   return opportunities
     .map((row) => {
@@ -337,16 +455,23 @@ function currentOpenPositions(
       const allocationPct = allocationPctFor(score, row.fragility, config);
       const entryMarkPrice = positiveNumber(row.price);
       const currentPrice = positiveNumber(row.price);
+      const investedAmount = startingCapital * (allocationPct / 100);
+      const positionUnits = entryMarkPrice === null || entryMarkPrice <= 0 ? null : investedAmount / entryMarkPrice;
       return {
         allocationPct,
+        confidenceAtEntry: confidenceAtEntryForOpportunity(row, score, config),
         currentPrice,
         entryMarkPrice,
         entryReasons: entryReasonsForOpportunity(row, score, config, family),
         eventReason: row.eventLabel || "No verified event pressure is driving the model allocation.",
         exitPlan: exitPlanForOpportunity(row),
+        investedAmount,
         macroReason: row.macroLabel || "Macro context is mixed.",
         modeScore: Math.round(score),
+        positionUnits,
         riskRewardReason: opportunityRiskRewardReason(row),
+        riskState: riskStateForOpportunity(row, config),
+        sector: normalizedGroup(row.sector ?? row.assetType, "UNKNOWN"),
         strategyFamily: family,
         symbol: row.symbol,
         unrealizedPnl: 0,
@@ -396,6 +521,470 @@ function statsFor(input: {
     volatilityPct,
     winRatePct,
   };
+}
+
+function learningSystemFor(input: {
+  closedTrades: SimulatedPortfolioClosedTrade[];
+  config: ModeConfigInternal;
+  openPositions: SimulatedPortfolioOpenPosition[];
+  stats: SimulatedPortfolioStats;
+}): SimulatedPortfolioLearningSystem {
+  const exposureBuckets = exposureBucketsFor(input.closedTrades, input.openPositions);
+  const decisionReview = decisionReviewFor(input.closedTrades, input.openPositions, input.config);
+  const learningTimeline = learningTimelineFor(input.closedTrades);
+  const confidenceTrend = learningTimeline.map((point) => point.confidenceScore);
+  const riskTrend = learningTimeline.map((point) => point.riskScore);
+  const allocationTrend = learningTimeline.map((point) => point.allocationPct);
+  const heatmap = riskMapFor(input.closedTrades, input.openPositions, input.stats);
+  const lessons = lessonsFor(input.closedTrades, input.openPositions, input.stats, input.config);
+  const portfolioStories = portfolioStoriesFor(input.closedTrades, input.openPositions, input.stats, input.config);
+
+  return {
+    adjustmentSummary: adjustmentSummaryFor(input.closedTrades, input.openPositions, input.stats, input.config),
+    allocationTrend,
+    confidenceTrend,
+    decisionReview,
+    exposureBuckets,
+    heatmap,
+    learningTimeline,
+    lessons,
+    portfolioStories,
+    riskTrend,
+  };
+}
+
+function capitalScenariosFor(stats: SimulatedPortfolioStats): SimulatedPortfolioCapitalScenario[] {
+  return [10_000, 50_000, 100_000].map((startingCapital) => {
+    const realizedPnl = stats.simulatedReturnPct === null ? 0 : startingCapital * (stats.simulatedReturnPct / 100);
+    const deployedAmount = startingCapital * (stats.totalCurrentAllocationPct / 100);
+    return {
+      cashAmount: Math.max(0, startingCapital - deployedAmount),
+      deployedAmount,
+      label: `$${Math.round(startingCapital / 1000)}k model`,
+      latestEquity: startingCapital + realizedPnl,
+      realizedPnl,
+      startingCapital,
+    };
+  });
+}
+
+function confidenceAtEntryFor(score: number, row: SimulationObservation, config: ModeConfigInternal): number {
+  const fragilityControl = 100 - (row.fragilityScore ?? 50);
+  const macroScore = row.macroAlignmentScore ?? 50;
+  const evidenceBonus = config.mode === "conservative" ? 6 : config.mode === "balanced" ? 3 : 0;
+  return Math.round(clamp(score * 0.62 + fragilityControl * 0.18 + macroScore * 0.16 + evidenceBonus));
+}
+
+function confidenceAtEntryForOpportunity(row: OpportunityViewModel, score: number, config: ModeConfigInternal): number {
+  const fragilityControl = 100 - row.fragility;
+  const macroScore = scoreValue(row.raw.macro_alignment_score ?? row.raw.macro_score) ?? 50;
+  const evidenceScore = row.evidence?.confidenceReliability ?? row.evidence?.analogQualityScore ?? 50;
+  const evidenceBonus = config.mode === "conservative" ? 5 : config.mode === "balanced" ? 3 : 0;
+  return Math.round(clamp(score * 0.58 + fragilityControl * 0.17 + macroScore * 0.14 + evidenceScore * 0.08 + evidenceBonus));
+}
+
+function confidenceAtExitFor(entryConfidence: number, row: SimulationObservation): number {
+  const drawdownPenalty = row.drawdownPct === null ? 0 : Math.abs(row.drawdownPct) * 1.7;
+  const volatilityPenalty = Math.max(0, (row.volatilityPressure ?? 50) - 68) * 0.14;
+  const outcomeShift = row.returnPct * 2.8;
+  return Math.round(clamp(entryConfidence + outcomeShift - drawdownPenalty - volatilityPenalty));
+}
+
+function riskStateFor(row: SimulationObservation, config: ModeConfigInternal): string {
+  const fragility = row.fragilityScore ?? 50;
+  const volatility = row.volatilityPressure ?? 45;
+  const liquidity = row.liquidityPressure ?? 45;
+  if (fragility > config.maxFragilityScore + 10 || volatility >= 82 || liquidity >= 82) return "Elevated risk";
+  if (fragility > config.maxFragilityScore || volatility >= 68 || liquidity >= 68) return "Watch pressure";
+  return "Controlled risk";
+}
+
+function riskStateForOpportunity(row: OpportunityViewModel, config: ModeConfigInternal): string {
+  const volatility = scoreValue(row.raw.volatility_pressure) ?? row.fragility;
+  const liquidity = scoreValue(row.raw.liquidity_pressure) ?? 45;
+  if (row.fragility > config.maxFragilityScore + 10 || volatility >= 82 || liquidity >= 82) return "Elevated risk";
+  if (row.fragility > config.maxFragilityScore || volatility >= 68 || liquidity >= 68) return "Watch pressure";
+  return "Controlled risk";
+}
+
+function learningForTrade(row: SimulationObservation, score: number, config: ModeConfigInternal): SimulatedPortfolioTradeLearning {
+  const drawdown = Math.abs(row.drawdownPct ?? 0);
+  if (row.returnPct > 2 && drawdown <= 4 && (row.macroAlignmentScore ?? 50) >= 60) {
+    return {
+      adjustment: "Keep weighting clean macro-aligned entries when drawdown stays contained.",
+      lesson: `${strategyFamilyLabel(row.family)} worked because outcome strength appeared without meaningful adverse pressure.`,
+      outcomeLabel: "Clean follow-through",
+      review: "improved",
+      tone: "good",
+    };
+  }
+  if (row.returnPct > 0 && drawdown > 6) {
+    return {
+      adjustment: "Require better entry patience for similar setups before increasing allocation.",
+      lesson: "The sample ended positive, but adverse movement made the path fragile.",
+      outcomeLabel: "Reward with stress",
+      review: "contained",
+      tone: "warn",
+    };
+  }
+  if (row.returnPct <= 0 && (row.macroAlignmentScore ?? 50) <= 45) {
+    return {
+      adjustment: "Reduce future exposure when macro support is weak at entry.",
+      lesson: "The failed sample aligned with weak macro context and lower confirmation quality.",
+      outcomeLabel: "Macro conflict",
+      review: "failed",
+      tone: "risk",
+    };
+  }
+  if (row.returnPct <= 0 && (row.fragilityScore ?? 50) > config.maxFragilityScore) {
+    return {
+      adjustment: "Tighten the fragility cap for comparable momentum entries.",
+      lesson: "The trade entered with more fragility than this sleeve should normally tolerate.",
+      outcomeLabel: "Fragility too high",
+      review: "deteriorated",
+      tone: "risk",
+    };
+  }
+  if (score >= config.minModeScore + 12 && row.returnPct > 0) {
+    return {
+      adjustment: "Preserve the score gate; it captured useful completed evidence in this sample.",
+      lesson: "The entry met the mode threshold and produced positive follow-through.",
+      outcomeLabel: "Threshold worked",
+      review: "improved",
+      tone: "good",
+    };
+  }
+  return {
+    adjustment: "Keep this pattern in observation mode until evidence quality improves.",
+    lesson: "The result was mixed enough that the strategy should not become more aggressive.",
+    outcomeLabel: "Mixed evidence",
+    review: "contained",
+    tone: "neutral",
+  };
+}
+
+function exposureBucketsFor(
+  closedTrades: SimulatedPortfolioClosedTrade[],
+  openPositions: SimulatedPortfolioOpenPosition[],
+): SimulatedPortfolioExposureBucket[] {
+  const sectorBuckets = bucketClosedTrades(closedTrades, "sector", (trade) => humanLabel(trade.sector));
+  const strategyBuckets = bucketClosedTrades(closedTrades, "strategy", (trade) => strategyFamilyLabel(trade.strategyFamily));
+  const riskBuckets = bucketOpenPositions(openPositions);
+  return [...sectorBuckets.slice(0, 5), ...strategyBuckets.slice(0, 5), ...riskBuckets.slice(0, 4)];
+}
+
+function bucketClosedTrades(
+  trades: SimulatedPortfolioClosedTrade[],
+  type: "sector" | "strategy",
+  labelFor: (trade: SimulatedPortfolioClosedTrade) => string,
+): SimulatedPortfolioExposureBucket[] {
+  const buckets = new Map<string, { invested: number; pnl: number; symbols: Set<string> }>();
+  for (const trade of trades) {
+    const label = labelFor(trade);
+    const existing = buckets.get(label) ?? { invested: 0, pnl: 0, symbols: new Set<string>() };
+    existing.invested += trade.investedAmount;
+    existing.pnl += trade.realizedPnl;
+    existing.symbols.add(trade.symbol);
+    buckets.set(label, existing);
+  }
+  const totalInvested = Array.from(buckets.values()).reduce((sum, bucket) => sum + bucket.invested, 0);
+  return Array.from(buckets.entries())
+    .map(([label, bucket]) => {
+      const returnPct = bucket.invested > 0 ? (bucket.pnl / bucket.invested) * 100 : null;
+      const tone: SimulatedPortfolioTone = returnPct === null ? "neutral" : returnPct >= 1 ? "good" : returnPct < 0 ? "risk" : "warn";
+      return {
+        allocationPct: totalInvested > 0 ? (bucket.invested / totalInvested) * 100 : 0,
+        label,
+        pnl: bucket.pnl,
+        returnPct,
+        symbolCount: bucket.symbols.size,
+        tone,
+        type,
+      };
+    })
+    .sort((left, right) => Math.abs(right.pnl) - Math.abs(left.pnl) || right.allocationPct - left.allocationPct);
+}
+
+function bucketOpenPositions(openPositions: SimulatedPortfolioOpenPosition[]): SimulatedPortfolioExposureBucket[] {
+  const buckets = new Map<string, { allocationPct: number; symbols: Set<string> }>();
+  for (const position of openPositions) {
+    const existing = buckets.get(position.riskState) ?? { allocationPct: 0, symbols: new Set<string>() };
+    existing.allocationPct += position.allocationPct;
+    existing.symbols.add(position.symbol);
+    buckets.set(position.riskState, existing);
+  }
+  return Array.from(buckets.entries())
+    .map(([label, bucket]) => ({
+      allocationPct: bucket.allocationPct,
+      label,
+      pnl: 0,
+      returnPct: null,
+      symbolCount: bucket.symbols.size,
+      tone: label.includes("Elevated") ? "risk" as const : label.includes("Watch") ? "warn" as const : "good" as const,
+      type: "risk" as const,
+    }))
+    .sort((left, right) => right.allocationPct - left.allocationPct);
+}
+
+function decisionReviewFor(
+  closedTrades: SimulatedPortfolioClosedTrade[],
+  openPositions: SimulatedPortfolioOpenPosition[],
+  config: ModeConfigInternal,
+): SimulatedPortfolioDecisionReview {
+  const best = maxBy(closedTrades, (trade) => trade.realizedReturnPct);
+  const worst = minBy(closedTrades, (trade) => trade.realizedReturnPct);
+  const unnecessaryRisk = maxBy(closedTrades, (trade) => riskPenaltyForTrade(trade));
+  const strongestExit = maxBy(closedTrades, (trade) => trade.confidenceAtExit - trade.confidenceAtEntry);
+  const weakestExit = minBy(closedTrades, (trade) => trade.confidenceAtExit - trade.confidenceAtEntry);
+  const patience = closedTrades
+    .filter((trade) => trade.learning.tone === "good" && trade.allocationPct <= config.baseAllocationPct + 2)
+    .sort((left, right) => right.realizedReturnPct - left.realizedReturnPct)[0] ?? best;
+  const missed = openPositions
+    .slice()
+    .sort((left, right) => right.confidenceAtEntry - left.confidenceAtEntry || left.allocationPct - right.allocationPct)[0] ?? null;
+
+  return {
+    bestDecision: reviewItemFromTrade("Strongest decision", best, "Highest completed simulated return.", "good"),
+    missedOpportunity: missed
+      ? {
+          detail: `${missed.symbol} clears the current ${config.label} gate but remains bounded at ${missed.allocationPct.toFixed(1)}% allocation because risk controls still apply.`,
+          label: "Best current candidate",
+          symbol: missed.symbol,
+          tone: missed.riskState.includes("Elevated") ? "warn" : "good",
+          value: `${missed.confidenceAtEntry}/100`,
+        }
+      : limitedReviewItem("Best current candidate", "No current model position clears this sleeve's gate."),
+    patienceWin: reviewItemFromTrade("Patience win", patience, "Lower allocation still captured follow-through.", "good"),
+    strongestExit: reviewItemFromTrade("Best exit review", strongestExit, "Confidence improved across the completed window.", "good"),
+    unnecessaryRisk: reviewItemFromTrade("Unnecessary risk", unnecessaryRisk, "Largest adverse pressure relative to outcome.", "warn"),
+    weakestDecision: reviewItemFromTrade("Weakest decision", worst, "Lowest completed simulated return.", "risk"),
+    weakestExit: reviewItemFromTrade("Worst exit review", weakestExit, "Confidence deteriorated across the completed window.", "risk"),
+  };
+}
+
+function learningTimelineFor(closedTrades: SimulatedPortfolioClosedTrade[]): SimulatedPortfolioLearningTimelinePoint[] {
+  if (!closedTrades.length) return [];
+  const ordered = closedTrades.slice().sort((left, right) => Date.parse(left.exitDate) - Date.parse(right.exitDate));
+  const step = Math.max(1, Math.floor(ordered.length / 8));
+  return ordered
+    .filter((_, index) => index % step === 0 || index === ordered.length - 1)
+    .slice(-9)
+    .map((trade) => ({
+      allocationPct: trade.allocationPct,
+      confidenceScore: trade.confidenceAtExit,
+      date: trade.exitDate,
+      label: `${trade.symbol} ${trade.learning.outcomeLabel}`,
+      riskScore: riskScoreForTrade(trade),
+      summary: `${trade.learning.lesson} ${trade.learning.adjustment}`,
+      tone: trade.learning.tone,
+    }));
+}
+
+function riskMapFor(
+  closedTrades: SimulatedPortfolioClosedTrade[],
+  openPositions: SimulatedPortfolioOpenPosition[],
+  stats: SimulatedPortfolioStats,
+): SimulatedPortfolioRiskMapCell[] {
+  const avgEntryConfidence = meanOrNull(closedTrades.map((trade) => trade.confidenceAtEntry));
+  const avgExitConfidence = meanOrNull(closedTrades.map((trade) => trade.confidenceAtExit));
+  const elevatedOpenAllocation = openPositions
+    .filter((position) => position.riskState !== "Controlled risk")
+    .reduce((sum, position) => sum + position.allocationPct, 0);
+  const lossRate = closedTrades.length ? (closedTrades.filter((trade) => trade.realizedReturnPct < 0).length / closedTrades.length) * 100 : null;
+  const learningImprovement = avgEntryConfidence === null || avgExitConfidence === null ? null : clamp(50 + (avgExitConfidence - avgEntryConfidence));
+  return [
+    {
+      detail: "Average simulated confidence at entry.",
+      label: "Entry confidence",
+      tone: toneForScore(avgEntryConfidence),
+      value: avgEntryConfidence,
+    },
+    {
+      detail: "Average simulated confidence after completed evidence window.",
+      label: "Exit confidence",
+      tone: toneForScore(avgExitConfidence),
+      value: avgExitConfidence,
+    },
+    {
+      detail: "Quality score derived from return, drawdown, benchmark delta, and evidence count.",
+      label: "Strategy quality",
+      tone: toneForScore(stats.strategyQualityScore),
+      value: stats.strategyQualityScore,
+    },
+    {
+      detail: "Open model allocation in non-controlled risk states.",
+      label: "Open pressure",
+      tone: elevatedOpenAllocation >= 35 ? "risk" : elevatedOpenAllocation >= 15 ? "warn" : "good",
+      value: elevatedOpenAllocation,
+    },
+    {
+      detail: "Completed simulated trades with negative return.",
+      label: "Failure rate",
+      tone: lossRate === null ? "neutral" : lossRate >= 45 ? "risk" : lossRate >= 28 ? "warn" : "good",
+      value: lossRate,
+    },
+    {
+      detail: "Confidence change from entry to exit across completed evidence.",
+      label: "Learning drift",
+      tone: toneForScore(learningImprovement),
+      value: learningImprovement,
+    },
+  ];
+}
+
+function lessonsFor(
+  closedTrades: SimulatedPortfolioClosedTrade[],
+  openPositions: SimulatedPortfolioOpenPosition[],
+  stats: SimulatedPortfolioStats,
+  config: ModeConfigInternal,
+): string[] {
+  if (!closedTrades.length) {
+    return [
+      `${config.label} mode needs completed qualifying trades before the learning engine can revise behavior.`,
+      "Current model candidates remain bounded by scanner quality, fragility, and macro alignment.",
+      "No simulated real-money or broker activity is performed.",
+    ];
+  }
+  const worst = minBy(closedTrades, (trade) => trade.realizedReturnPct);
+  const best = maxBy(closedTrades, (trade) => trade.realizedReturnPct);
+  const elevatedOpen = openPositions.filter((position) => position.riskState !== "Controlled risk");
+  const benchmarkDelta = stats.simulatedReturnPct !== null && stats.benchmarkReturnPct !== null ? stats.simulatedReturnPct - stats.benchmarkReturnPct : null;
+  const lessons = [
+    best ? `${best.symbol} shows the strongest completed behavior: ${best.learning.adjustment}` : null,
+    worst ? `${worst.symbol} shows the weakest completed behavior: ${worst.learning.adjustment}` : null,
+    benchmarkDelta === null
+      ? "Benchmark comparison remains limited for this evidence window."
+      : benchmarkDelta >= 0
+        ? `The sleeve outpaced its completed-evidence benchmark by ${formatPct(benchmarkDelta)}, so the gate remains valid but still simulated.`
+        : `The sleeve trailed its completed-evidence benchmark by ${formatPct(benchmarkDelta)}, so future entries should demand cleaner confirmation.`,
+    (stats.maxDrawdownPct ?? 0) >= 8
+      ? "Drawdown pressure is high enough that future allocations should be reduced in similar volatility regimes."
+      : "Drawdown stayed contained enough that risk controls did not need to become more restrictive.",
+    elevatedOpen.length
+      ? `${elevatedOpen.length} current model position(s) carry watch/elevated pressure, so the lab keeps cash available.`
+      : "Current model positions are not concentrated in elevated risk states.",
+  ].filter((item): item is string => item !== null);
+  return lessons.slice(0, 6);
+}
+
+function portfolioStoriesFor(
+  closedTrades: SimulatedPortfolioClosedTrade[],
+  openPositions: SimulatedPortfolioOpenPosition[],
+  stats: SimulatedPortfolioStats,
+  config: ModeConfigInternal,
+): string[] {
+  const deployed = openPositions.reduce((sum, position) => sum + position.allocationPct, 0);
+  const dominantSector = dominantOpenSector(openPositions);
+  return [
+    `${config.label} mode reviewed ${closedTrades.length.toLocaleString()} completed simulated trade(s) and currently deploys ${deployed.toFixed(1)}% of model capital.`,
+    dominantSector === null
+      ? "No dominant current sector exposure is visible in this sleeve."
+      : `${dominantSector.label} is the largest current model exposure at ${dominantSector.allocationPct.toFixed(1)}% of simulated capital.`,
+    stats.simulatedReturnPct === null
+      ? "Return evidence is not yet mature enough for a meaningful portfolio story."
+      : `Capital evolved from ${formatMoney(stats.startingCapital)} to ${formatMoney(stats.startingCapital + stats.realizedPnl)} across the completed evidence window.`,
+  ];
+}
+
+function adjustmentSummaryFor(
+  closedTrades: SimulatedPortfolioClosedTrade[],
+  openPositions: SimulatedPortfolioOpenPosition[],
+  stats: SimulatedPortfolioStats,
+  config: ModeConfigInternal,
+): string {
+  if (!closedTrades.length) {
+    return `${config.label} mode is waiting for completed evidence before revising future behavior. Current candidates remain observation-only.`;
+  }
+  if ((stats.maxDrawdownPct ?? 0) >= 10) {
+    return `${config.label} mode is reducing future aggression in comparable volatility regimes because drawdown pressure exceeded the risk comfort zone.`;
+  }
+  if ((stats.winRatePct ?? 0) >= 58 && (stats.simulatedReturnPct ?? 0) > (stats.benchmarkReturnPct ?? -100)) {
+    return `${config.label} mode keeps its current gate because completed evidence shows useful follow-through with controlled risk.`;
+  }
+  if (openPositions.some((position) => position.riskState === "Elevated risk")) {
+    return `${config.label} mode is preserving a larger cash buffer because current candidates include elevated risk states.`;
+  }
+  return `${config.label} mode remains balanced: it preserves the score gate, keeps allocation bounded, and waits for stronger evidence before increasing exposure.`;
+}
+
+function reviewItemFromTrade(
+  label: string,
+  trade: SimulatedPortfolioClosedTrade | null,
+  fallbackDetail: string,
+  fallbackTone: SimulatedPortfolioTone,
+): SimulatedPortfolioReviewItem {
+  if (!trade) return limitedReviewItem(label, "No completed trade is available for this review slot.");
+  return {
+    detail: `${fallbackDetail} ${trade.learning.lesson} ${trade.learning.adjustment}`,
+    label,
+    symbol: trade.symbol,
+    tone: trade.learning.tone === "neutral" ? fallbackTone : trade.learning.tone,
+    value: formatPct(trade.realizedReturnPct),
+  };
+}
+
+function limitedReviewItem(label: string, detail: string): SimulatedPortfolioReviewItem {
+  return {
+    detail,
+    label,
+    symbol: null,
+    tone: "neutral",
+    value: "Limited",
+  };
+}
+
+function riskPenaltyForTrade(trade: SimulatedPortfolioClosedTrade): number {
+  const drawdown = Math.abs(trade.drawdownPct ?? 0);
+  const lossPenalty = trade.realizedReturnPct < 0 ? Math.abs(trade.realizedReturnPct) * 3 : 0;
+  return drawdown * 2 + lossPenalty + trade.allocationPct * 0.35;
+}
+
+function riskScoreForTrade(trade: SimulatedPortfolioClosedTrade): number {
+  const drawdown = Math.abs(trade.drawdownPct ?? 0);
+  const lossPenalty = trade.realizedReturnPct < 0 ? Math.abs(trade.realizedReturnPct) * 2 : 0;
+  return Math.round(clamp(35 + drawdown * 4 + lossPenalty + Math.max(0, trade.allocationPct - 12) * 1.2));
+}
+
+function toneForScore(score: number | null): SimulatedPortfolioTone {
+  if (score === null || !Number.isFinite(score)) return "neutral";
+  if (score >= 70) return "good";
+  if (score >= 52) return "warn";
+  return "risk";
+}
+
+function dominantOpenSector(openPositions: SimulatedPortfolioOpenPosition[]): { allocationPct: number; label: string } | null {
+  const sectors = new Map<string, number>();
+  for (const position of openPositions) {
+    const label = humanLabel(position.sector);
+    sectors.set(label, (sectors.get(label) ?? 0) + position.allocationPct);
+  }
+  return Array.from(sectors.entries())
+    .map(([label, allocationPct]) => ({ allocationPct, label }))
+    .sort((left, right) => right.allocationPct - left.allocationPct)[0] ?? null;
+}
+
+function maxBy<T>(values: T[], selector: (value: T) => number): T | null {
+  let best: T | null = null;
+  let bestScore = Number.NEGATIVE_INFINITY;
+  for (const value of values) {
+    const score = selector(value);
+    if (!Number.isFinite(score) || score <= bestScore) continue;
+    best = value;
+    bestScore = score;
+  }
+  return best;
+}
+
+function minBy<T>(values: T[], selector: (value: T) => number): T | null {
+  let best: T | null = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+  for (const value of values) {
+    const score = selector(value);
+    if (!Number.isFinite(score) || score >= bestScore) continue;
+    best = value;
+    bestScore = score;
+  }
+  return best;
 }
 
 function observationFromRow(row: CsvRow, index: number): SimulationObservation | null {
