@@ -48,9 +48,31 @@ let stableTriggerCaptureInstalled = false;
 let lastSettledScrollY = 0;
 let lastScrollEventAt = 0;
 let settleScrollTimer: number | null = null;
+let scrollSamples: Array<{ at: number; y: number }> = [];
+
+const SCROLL_LOOKBACK_MS = 90;
+const SCROLL_SAMPLE_LIMIT = 48;
+
+function rememberScrollSample(): void {
+  const sample = { at: Date.now(), y: window.scrollY };
+  scrollSamples = [...scrollSamples.slice(-(SCROLL_SAMPLE_LIMIT - 1)), sample];
+}
+
+function getLookbackScrollY(): number {
+  const cutoff = Date.now() - SCROLL_LOOKBACK_MS;
+  for (let index = scrollSamples.length - 1; index >= 0; index -= 1) {
+    const sample = scrollSamples[index];
+    if (sample && sample.at <= cutoff) return sample.y;
+  }
+  return scrollSamples[0]?.y ?? window.scrollY;
+}
 
 function getInteractionSafeScrollY(): number {
-  if (Date.now() - lastScrollEventAt < 100) return lastSettledScrollY;
+  if (Date.now() - lastScrollEventAt < 500) {
+    const lookbackScrollY = getLookbackScrollY();
+    if (Math.abs(window.scrollY - lookbackScrollY) > 2) return lookbackScrollY;
+    return lastSettledScrollY;
+  }
   return window.scrollY;
 }
 
@@ -66,6 +88,8 @@ function installStableTriggerCapture(): void {
   if (stableTriggerCaptureInstalled || typeof document === "undefined") return;
   stableTriggerCaptureInstalled = true;
   lastSettledScrollY = window.scrollY;
+  rememberScrollSample();
+  window.setInterval(rememberScrollSample, 32);
   window.addEventListener("scroll", () => {
     lastScrollEventAt = Date.now();
     if (settleScrollTimer !== null) window.clearTimeout(settleScrollTimer);
@@ -89,7 +113,7 @@ function getStableOverlayScrollY(): number {
   const capturedRecently = capturedScrollY !== null && Date.now() - stableTriggerCapturedAt < 500;
   stableTriggerScrollY = null;
   stableTriggerCapturedAt = 0;
-  return capturedRecently ? capturedScrollY : window.scrollY;
+  return capturedRecently ? capturedScrollY : getInteractionSafeScrollY();
 }
 
 installStableTriggerCapture();
