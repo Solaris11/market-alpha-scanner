@@ -29,6 +29,7 @@ describe("analytics privacy policy", () => {
   test("maps dashboard route views to a dedicated analytics event", () => {
     assert.equal(pageOpenEventForPath("/dashboard"), "dashboard_open");
     assert.equal(pageOpenEventForPath("/dashboard/heatmaps"), "dashboard_open");
+    assert.equal(pageOpenEventForPath("/discover"), "opportunities_open");
     assert.equal(pageOpenEventForPath("/strategy-labs"), "strategy_labs_open");
     assert.equal(pageOpenEventForPath("/paper"), "paper_trade_open");
   });

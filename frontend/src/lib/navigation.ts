@@ -19,6 +19,7 @@ export type MobileRouteMode = {
 
 export const PRIMARY_NAV_ITEMS: AppNavItem[] = [
   { group: "trading", href: "/terminal", key: "terminal", label: "Terminal" },
+  { group: "trading", href: "/discover", key: "discover", label: "Discover" },
   { group: "trading", href: "/opportunities", key: "opportunities", label: "Opportunities" },
   { group: "trading", href: "/terminal#mobile-watchlist", key: "watchlist", label: "Watchlist" },
   { group: "execution", href: "/alerts", key: "alerts", label: "Alerts" },
@@ -50,6 +51,7 @@ export const ADMIN_NAV_ITEM: AppNavItem = { group: "system", href: "/admin", key
 
 export const MOBILE_BOTTOM_NAV_ITEMS: AppNavItem[] = [
   { group: "trading", href: "/terminal", key: "terminal", label: "Terminal" },
+  { group: "trading", href: "/discover", key: "discover", label: "Discover" },
   { group: "trading", href: "/opportunities", key: "opportunities", label: "Opportunities" },
   { group: "trading", href: "/terminal#mobile-watchlist", key: "watchlist", label: "Watchlist" },
   { group: "execution", href: "/alerts", key: "alerts", label: "Alerts" },
@@ -134,6 +136,11 @@ export function mobileRouteModesForPath(pathname: string): MobileRouteMode[] {
       { href: "#overview", key: "overview", label: "Overview", summary: "Workspace status." },
       { href: "#activity", key: "activity", label: "Activity", summary: "Recent actions." },
       { href: "#workspace", key: "workspace", label: "Workspace", summary: "Personalized modules." },
+    ],
+    "/discover": [
+      { href: "#search", key: "search", label: "Search", summary: "Global scanner search." },
+      { href: "#filters", key: "filters", label: "Filters", summary: "Quick discovery presets." },
+      { href: "#compare", key: "compare", label: "Compare", summary: "Side-by-side intelligence." },
     ],
     "/history": [
       { href: "#timeline", key: "timeline", label: "Timeline", summary: "What changed over time." },

@@ -1,6 +1,6 @@
 import { CANONICAL_URL } from "@/lib/brand";
 
-const PRIVATE_ROUTES = ["/api/", "/account", "/terminal", "/opportunities", "/dashboard", "/team", "/community", "/developers", "/strategy-labs", "/paper", "/performance", "/history", "/alerts", "/advanced"];
+const PRIVATE_ROUTES = ["/api/", "/account", "/terminal", "/discover", "/opportunities", "/dashboard", "/team", "/community", "/developers", "/strategy-labs", "/paper", "/performance", "/history", "/alerts", "/advanced"];
 
 const SOCIAL_CRAWLER_USER_AGENTS = [
   "facebookexternalhit",

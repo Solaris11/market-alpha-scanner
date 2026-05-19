@@ -19,7 +19,7 @@ describe("application navigation hierarchy", () => {
   test("keeps the desktop primary nav focused on core workflows", () => {
     assert.deepEqual(
       PRIMARY_NAV_ITEMS.map((item) => item.label),
-      ["Terminal", "Opportunities", "Watchlist", "Alerts", "Dashboard"],
+      ["Terminal", "Discover", "Opportunities", "Watchlist", "Alerts", "Dashboard"],
     );
   });
 
@@ -42,7 +42,7 @@ describe("application navigation hierarchy", () => {
     );
     assert.deepEqual(
       sections[0]?.items.map((item) => item.label),
-      ["Terminal", "Opportunities", "Watchlist", "Alerts", "Dashboard"],
+      ["Terminal", "Discover", "Opportunities", "Watchlist", "Alerts", "Dashboard"],
     );
     assert.deepEqual(
       sections[1]?.items.map((item) => item.label),
@@ -57,7 +57,7 @@ describe("application navigation hierarchy", () => {
   test("keeps mobile bottom navigation thumb-friendly and limited", () => {
     assert.deepEqual(
       MOBILE_BOTTOM_NAV_ITEMS.map((item) => item.label),
-      ["Terminal", "Opportunities", "Watchlist", "Alerts", "Dashboard"],
+      ["Terminal", "Discover", "Opportunities", "Watchlist", "Alerts", "Dashboard"],
     );
     assert.deepEqual(
       MOBILE_MORE_NAV_ITEMS.map((item) => item.label),
@@ -88,6 +88,7 @@ describe("application navigation hierarchy", () => {
     assert.equal(activeSectionTitle("/team", false), "Team");
     assert.equal(activeSectionTitle("/community", false), "Community");
     assert.equal(activeSectionTitle("/developers", false), "Developers");
+    assert.equal(activeSectionTitle("/discover", false), "Discover");
     assert.equal(activeSectionTitle("/mobile", false), "Mobile App Setup");
     assert.equal(activeSectionTitle("/strategy-labs", false), "Strategy Labs");
     assert.equal(activeSectionTitle("/paper", false), "Paper Trading");
@@ -105,6 +106,10 @@ describe("application navigation hierarchy", () => {
     assert.deepEqual(
       mobileRouteModesForPath("/performance").map((mode) => mode.label),
       ["Summary", "Evidence", "History"],
+    );
+    assert.deepEqual(
+      mobileRouteModesForPath("/discover").map((mode) => mode.label),
+      ["Search", "Filters", "Compare"],
     );
     assert.deepEqual(mobileRouteModesForPath("/terminal"), []);
   });

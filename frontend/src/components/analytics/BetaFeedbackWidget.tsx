@@ -4,7 +4,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { analyticsIdentityPayload, trackAnalyticsEvent } from "@/lib/client/analytics";
 
-const PRODUCT_PATH_PREFIXES = ["/terminal", "/opportunities", "/dashboard", "/strategy-labs", "/performance", "/history", "/alerts", "/paper", "/support", "/account", "/admin", "/symbol", "/advanced"];
+const PRODUCT_PATH_PREFIXES = ["/terminal", "/discover", "/opportunities", "/dashboard", "/strategy-labs", "/performance", "/history", "/alerts", "/paper", "/support", "/account", "/admin", "/symbol", "/advanced"];
 const FEEDBACK_TYPES = [
   { label: "Helpful", rating: "positive", value: "helpful" },
   { label: "Confusing Signal", rating: "negative", value: "confusing_signal" },

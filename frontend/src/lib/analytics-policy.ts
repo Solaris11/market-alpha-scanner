@@ -166,6 +166,7 @@ export function sanitizeFeedbackMessage(value: unknown): string | null {
 
 export function pageOpenEventForPath(pathname: string): AnalyticsEventName | null {
   if (pathname === "/terminal" || pathname.startsWith("/terminal/")) return "terminal_open";
+  if (pathname === "/discover" || pathname.startsWith("/discover/")) return "opportunities_open";
   if (pathname === "/opportunities" || pathname.startsWith("/opportunities/")) return "opportunities_open";
   if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) return "dashboard_open";
   if (pathname === "/performance" || pathname.startsWith("/performance/")) return "performance_open";

@@ -16,6 +16,7 @@ import {
   LayoutDashboard,
   LineChart,
   Menu,
+  Radar,
   Search,
   Smartphone,
   Star,
@@ -26,6 +27,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
 import { AccountPill } from "@/components/account/AccountPill";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { DiscoveryCommandButton } from "@/components/discovery/DiscoveryCommandButton";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { MOBILE_BOTTOM_NAV_ITEMS, MOBILE_MORE_NAV_LABEL, PRIMARY_NAV_ITEMS, activeSectionTitle, isActivePath, mobileMoreNavSections, visibleUtilityNavItems, type AppNavItem } from "@/lib/navigation";
@@ -58,6 +60,7 @@ const NAV_ICON_MAP: Record<string, { Icon: LucideIcon; tone: string }> = {
   copilot: { Icon: Bot, tone: "text-cyan-200" },
   dashboard: { Icon: LayoutDashboard, tone: "text-cyan-200" },
   developers: { Icon: Code2, tone: "text-violet-200" },
+  discover: { Icon: Radar, tone: "text-cyan-200" },
   find: { Icon: Search, tone: "text-cyan-200" },
   history: { Icon: BookOpenCheck, tone: "text-violet-200" },
   intelligence: { Icon: Bot, tone: "text-cyan-200" },
@@ -107,6 +110,12 @@ const NAV_COLOR_MAP: Record<string, { active: string; hover: string; icon: strin
     hover: "hover:border-cyan-300/30 hover:bg-cyan-300/[0.08] hover:text-cyan-100",
     icon: "border-cyan-300/30 bg-cyan-300/15 text-cyan-100 shadow-[0_0_18px_rgba(34,211,238,0.18)]",
     rail: "bg-cyan-300 shadow-[0_0_14px_rgba(34,211,238,0.55)]",
+  },
+  discover: {
+    active: "border-cyan-300/50 bg-cyan-300/[0.16] text-cyan-50 shadow-[0_0_34px_rgba(34,211,238,0.22)]",
+    hover: "hover:border-cyan-300/40 hover:bg-cyan-300/[0.10] hover:text-cyan-100",
+    icon: "border-cyan-300/35 bg-cyan-300/18 text-cyan-100 shadow-[0_0_22px_rgba(34,211,238,0.24)]",
+    rail: "bg-cyan-300 shadow-[0_0_16px_rgba(34,211,238,0.65)]",
   },
   mobile: {
     active: "border-emerald-300/45 bg-emerald-300/[0.13] text-emerald-50 shadow-[0_0_26px_rgba(52,211,153,0.16)]",
@@ -270,7 +279,7 @@ export function MobileTerminalNav() {
         </>
       ) : null}
 
-      <nav aria-label="Primary mobile navigation" className="pointer-events-none fixed inset-x-2 z-[8500] grid grid-cols-6 gap-0.5 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl xl:hidden" style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
+      <nav aria-label="Primary mobile navigation" className="pointer-events-none fixed inset-x-2 z-[8500] grid grid-cols-7 gap-0.5 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl xl:hidden" style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
         {MOBILE_BOTTOM_NAV_ITEMS.map((item) => <BottomNavLink item={item} key={item.href} pathname={pathname} />)}
         <BottomMenuButton buttonRef={bottomMenuButtonRef} onClick={() => setOpen(true)} open={open} />
       </nav>
@@ -287,6 +296,7 @@ export function MobileTerminalNav() {
           <div className="truncate text-sm font-semibold text-slate-50">{title}</div>
           <div className="truncate text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300/80">Decision Intelligence</div>
         </div>
+        <DiscoveryCommandButton compact />
         <span data-sensitive>
           <NotificationBell />
         </span>
@@ -345,7 +355,7 @@ function DrawerNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
 
 function BottomNavLink({ item, pathname }: { item: AppNavItem; pathname: string }) {
   const active = isActivePath(pathname, item.href);
-  const label = item.key === "opportunities" ? "Ideas" : item.key === "watchlist" ? "Watch" : item.key === "dashboard" ? "Dash" : item.label;
+  const label = item.key === "opportunities" ? "Ideas" : item.key === "discover" ? "Scan" : item.key === "watchlist" ? "Watch" : item.key === "dashboard" ? "Dash" : item.label;
   const color = NAV_COLOR_MAP[item.key] ?? DEFAULT_NAV_COLOR;
   const navigationIntent = useNavigationIntent(item.href, label);
   return (

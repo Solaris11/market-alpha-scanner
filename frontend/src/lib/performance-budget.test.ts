@@ -4,7 +4,7 @@ import { PERFORMANCE_ROUTE_BUDGETS, evaluatePerformanceBudget, routesBySurface }
 
 test("performance budget catalog covers core launch surfaces", () => {
   const paths = new Set(PERFORMANCE_ROUTE_BUDGETS.map((route) => route.path));
-  for (const expected of ["/terminal", "/dashboard", "/opportunities", "/symbol/AMD", "/paper", "/strategy-labs", "/community", "/developers", "/api/history/replay?symbol=AMD", "/api/v1/portfolio/scenario"]) {
+  for (const expected of ["/terminal", "/dashboard", "/discover", "/opportunities", "/symbol/AMD", "/paper", "/strategy-labs", "/community", "/developers", "/api/history/replay?symbol=AMD", "/api/discovery", "/api/v1/portfolio/scenario"]) {
     assert.equal(paths.has(expected), true, `${expected} should have a route budget`);
   }
   assert.equal(PERFORMANCE_ROUTE_BUDGETS.every((route) => route.budgetMs > 0), true);

@@ -1,4 +1,5 @@
 import { DataHealthBanner } from "@/components/data-health-indicator";
+import { GlobalIntelligenceDiscovery } from "@/components/discovery/GlobalIntelligenceDiscovery";
 import { LegalFooter } from "@/components/legal/LegalFooter";
 import { MobileModeRail } from "@/components/mobile/MobileModeRail";
 import { RiskAcknowledgement } from "@/components/legal/RiskAcknowledgement";
@@ -17,6 +18,7 @@ export async function TerminalShell({ children }: { children: React.ReactNode })
       <CinematicAtmosphere />
       <div className="tv-cinematic-content mx-auto max-w-[1780px]">
         <TerminalHeader />
+        <GlobalIntelligenceDiscovery />
         <RoutePrefetcher />
         <RouteTransitionFeedback />
         <PersonalizedMobileQuickAccess />

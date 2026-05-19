@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState, type MouseEvent, type Pointer
 
 const HIGH_PRIORITY_ROUTES = [
   "/terminal",
+  "/discover",
   "/opportunities",
   "/performance",
   "/history",

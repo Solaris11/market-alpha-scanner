@@ -8,6 +8,7 @@ import { NotificationBell } from "./notifications/NotificationBell";
 
 const NAV_ITEMS = [
   { href: "/terminal", label: "Terminal" },
+  { href: "/discover", label: "Discover" },
   { href: "/opportunities", label: "Opportunities" },
   { href: "/paper", label: "Paper" },
   { href: "/strategy-labs", label: "Labs" },

@@ -1,5 +1,6 @@
 import { AccountPill } from "@/components/account/AccountPill";
 import { BrandMark } from "@/components/brand/BrandMark";
+import { DiscoveryCommandButton } from "@/components/discovery/DiscoveryCommandButton";
 import { CompactLegalNotice } from "@/components/legal/CompactLegalNotice";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { OnboardingHelpButton } from "@/components/onboarding/OnboardingHelpButton";
@@ -12,6 +13,7 @@ export function TerminalHeader() {
         <div className="flex min-w-0 items-center justify-between gap-4">
           <BrandMark />
           <div className="flex min-w-0 shrink-0 items-center justify-end gap-2">
+            <DiscoveryCommandButton />
             <CompactLegalNotice className="hidden self-center 2xl:block" />
             <OnboardingHelpButton />
             <span data-sensitive>
