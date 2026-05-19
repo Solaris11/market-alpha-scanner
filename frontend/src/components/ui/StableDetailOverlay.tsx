@@ -42,6 +42,35 @@ type BodyScrollSnapshot = {
   htmlOverscroll: string;
 };
 
+let stableTriggerScrollY: number | null = null;
+let stableTriggerCapturedAt = 0;
+let stableTriggerCaptureInstalled = false;
+
+function rememberStableTriggerPosition(target: EventTarget | null): void {
+  if (!(target instanceof Element)) return;
+  if (!target.closest('[data-stable-overlay-trigger="true"]')) return;
+  stableTriggerScrollY = window.scrollY;
+  stableTriggerCapturedAt = Date.now();
+}
+
+function installStableTriggerCapture(): void {
+  if (stableTriggerCaptureInstalled || typeof document === "undefined") return;
+  stableTriggerCaptureInstalled = true;
+  document.addEventListener("pointerdown", (event) => rememberStableTriggerPosition(event.target), { capture: true, passive: true });
+  document.addEventListener("mousedown", (event) => rememberStableTriggerPosition(event.target), { capture: true, passive: true });
+  document.addEventListener("touchstart", (event) => rememberStableTriggerPosition(event.target), { capture: true, passive: true });
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" && event.key !== " ") return;
+    rememberStableTriggerPosition(event.target);
+  }, { capture: true });
+}
+
+function getStableOverlayScrollY(): number {
+  const capturedScrollY = stableTriggerScrollY;
+  const capturedRecently = capturedScrollY !== null && Date.now() - stableTriggerCapturedAt < 1500;
+  return capturedRecently ? capturedScrollY : window.scrollY;
+}
+
 function lockBodyScroll(scrollY: number): BodyScrollSnapshot {
   const body = document.body;
   const root = document.documentElement;
@@ -122,6 +151,7 @@ export function StableDetailOverlay({
 
   useEffect(() => {
     setMounted(true);
+    installStableTriggerCapture();
   }, []);
 
   useEffect(() => {
@@ -148,7 +178,7 @@ export function StableDetailOverlay({
 
   useEffect(() => {
     if (!open) return undefined;
-    scrollYRef.current = window.scrollY;
+    scrollYRef.current = getStableOverlayScrollY();
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
