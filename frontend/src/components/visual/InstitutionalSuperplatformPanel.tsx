@@ -159,7 +159,7 @@ export function InstitutionalSuperplatformPanel({
             </span>
             <div>
               <div className="text-[10px] font-black uppercase tracking-[0.34em] text-cyan-200">Institutional superplatform</div>
-              <h2 className="mt-1 max-w-5xl text-2xl font-black tracking-tight text-white sm:text-4xl lg:text-5xl">{system.headline}</h2>
+              <h2 className="mt-1 max-w-4xl break-words text-2xl font-black leading-[0.98] tracking-tight text-white sm:text-4xl xl:text-[2.65rem] 2xl:text-5xl">{system.headline}</h2>
             </div>
           </div>
           <p className="mt-4 max-w-5xl text-sm leading-6 text-slate-300">{humanizeInsightText(system.summary)}</p>

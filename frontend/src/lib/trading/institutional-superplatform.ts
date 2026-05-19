@@ -642,7 +642,7 @@ function buildMemoryPersistence(input: BuildInstitutionalSuperplatformInput, met
 function operatingState(score: number, metrics: SuperplatformMetrics): { headline: string; label: string; summary: string; tone: SuperplatformTone } {
   if (metrics.averageFragility >= 68 || metrics.averageShock >= 72) {
     return {
-      headline: "TradeVeto is operating as a risk-first market command environment",
+      headline: "Risk controls the operating environment",
       label: "Risk-dominant operating state",
       summary: `The superplatform is linking macro, watchlist, risk, replay, and workspace context because fragility is ${Math.round(metrics.averageFragility)}/100 and shock pressure is ${Math.round(metrics.averageShock)}/100.`,
       tone: "rose",
@@ -650,14 +650,14 @@ function operatingState(score: number, metrics: SuperplatformMetrics): { headlin
   }
   if (score >= 68 && metrics.averageMacro >= 58) {
     return {
-      headline: "TradeVeto is coordinating multiple research workspaces",
+      headline: "Research workspaces are coordinated",
       label: "Connected operating state",
       summary: `The operating environment has enough confidence, macro support, evidence, and workspace context to coordinate daily research without hiding uncertainty.`,
       tone: "emerald",
     };
   }
   return {
-    headline: "TradeVeto is building a persistent institutional operating layer",
+    headline: "Persistent market operations are online",
     label: "Monitoring operating state",
     summary: `The platform is linking workspace, market context, intelligence map, timeline, and watchlist memory while keeping limited evidence clearly labelled.`,
     tone: "cyan",
