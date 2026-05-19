@@ -1,0 +1,199 @@
+{
+  "generatedAt": "2026-05-19T06:19:45.491Z",
+  "desktop": [
+    {
+      "kind": "desktop",
+      "name": "terminal",
+      "route": "/terminal",
+      "triggerCount": 66,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "desktop",
+      "name": "dashboard",
+      "route": "/dashboard",
+      "triggerCount": 21,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "desktop",
+      "name": "opportunities",
+      "route": "/opportunities",
+      "triggerCount": 29,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "desktop",
+      "name": "symbol-amd",
+      "route": "/symbol/AMD",
+      "triggerCount": 35,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "desktop",
+      "name": "alerts",
+      "route": "/alerts",
+      "triggerCount": 23,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "desktop",
+      "name": "performance",
+      "route": "/performance",
+      "triggerCount": 24,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "desktop",
+      "name": "history-amd",
+      "route": "/history?symbol=AMD",
+      "triggerCount": 31,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "desktop",
+      "name": "paper",
+      "route": "/paper",
+      "triggerCount": 16,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "desktop",
+      "name": "strategy-labs",
+      "route": "/strategy-labs",
+      "triggerCount": 20,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "desktop",
+      "name": "macro",
+      "route": "/intelligence/macro-regime",
+      "triggerCount": 26,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "desktop",
+      "name": "shock",
+      "route": "/intelligence/shock-opportunities",
+      "triggerCount": 10,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "desktop",
+      "name": "intelligence",
+      "route": "/intelligence",
+      "triggerCount": 0,
+      "checked": 0,
+      "failures": []
+    }
+  ],
+  "mobile": [
+    {
+      "kind": "mobile",
+      "name": "terminal",
+      "route": "/terminal",
+      "triggerCount": 66,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "mobile",
+      "name": "dashboard",
+      "route": "/dashboard",
+      "triggerCount": 21,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "mobile",
+      "name": "opportunities",
+      "route": "/opportunities",
+      "triggerCount": 29,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "mobile",
+      "name": "symbol-amd",
+      "route": "/symbol/AMD",
+      "triggerCount": 35,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "mobile",
+      "name": "alerts",
+      "route": "/alerts",
+      "triggerCount": 23,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "mobile",
+      "name": "performance",
+      "route": "/performance",
+      "triggerCount": 24,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "mobile",
+      "name": "history-amd",
+      "route": "/history?symbol=AMD",
+      "triggerCount": 31,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "mobile",
+      "name": "paper",
+      "route": "/paper",
+      "triggerCount": 16,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "mobile",
+      "name": "strategy-labs",
+      "route": "/strategy-labs",
+      "triggerCount": 20,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "mobile",
+      "name": "macro",
+      "route": "/intelligence/macro-regime",
+      "triggerCount": 26,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "mobile",
+      "name": "shock",
+      "route": "/intelligence/shock-opportunities",
+      "triggerCount": 10,
+      "checked": 5,
+      "failures": []
+    },
+    {
+      "kind": "mobile",
+      "name": "intelligence",
+      "route": "/intelligence",
+      "triggerCount": 0,
+      "checked": 0,
+      "failures": []
+    }
+  ]
+}
