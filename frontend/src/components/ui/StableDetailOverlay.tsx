@@ -59,6 +59,7 @@ function installStableTriggerCapture(): void {
   document.addEventListener("pointerdown", (event) => rememberStableTriggerPosition(event.target), { capture: true, passive: true });
   document.addEventListener("mousedown", (event) => rememberStableTriggerPosition(event.target), { capture: true, passive: true });
   document.addEventListener("touchstart", (event) => rememberStableTriggerPosition(event.target), { capture: true, passive: true });
+  document.addEventListener("click", (event) => rememberStableTriggerPosition(event.target), { capture: true, passive: true });
   document.addEventListener("keydown", (event) => {
     if (event.key !== "Enter" && event.key !== " ") return;
     rememberStableTriggerPosition(event.target);
@@ -67,7 +68,9 @@ function installStableTriggerCapture(): void {
 
 function getStableOverlayScrollY(): number {
   const capturedScrollY = stableTriggerScrollY;
-  const capturedRecently = capturedScrollY !== null && Date.now() - stableTriggerCapturedAt < 1500;
+  const capturedRecently = capturedScrollY !== null && Date.now() - stableTriggerCapturedAt < 500;
+  stableTriggerScrollY = null;
+  stableTriggerCapturedAt = 0;
   return capturedRecently ? capturedScrollY : window.scrollY;
 }
 
