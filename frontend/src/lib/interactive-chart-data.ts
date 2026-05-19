@@ -1,4 +1,4 @@
-export const INTERACTIVE_CHART_PERIODS = ["1d", "1wk", "1mo", "6mo", "1y", "5y"] as const;
+export const INTERACTIVE_CHART_PERIODS = ["1d", "1wk", "1mo", "3mo", "6mo", "1y", "5y"] as const;
 
 export type InteractiveChartPeriod = (typeof INTERACTIVE_CHART_PERIODS)[number];
 
@@ -42,6 +42,7 @@ const PERIOD_DAY_COUNTS: Record<InteractiveChartPeriod, number> = {
   "1d": 1,
   "1wk": 7,
   "1mo": 31,
+  "3mo": 93,
   "6mo": 186,
   "1y": 365,
   "5y": 365 * 5 + 2,

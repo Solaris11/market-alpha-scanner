@@ -23,6 +23,7 @@ test("filterInteractivePricePoints keeps only validated points inside the select
   ];
 
   assert.deepEqual(filterInteractivePricePoints(rows, "1wk").map((row) => row.date), ["2026-05-08", "2026-05-12"]);
+  assert.deepEqual(filterInteractivePricePoints(rows, "3mo").map((row) => row.date), ["2026-05-01", "2026-05-08", "2026-05-12"]);
   assert.deepEqual(filterInteractivePricePoints(rows, "6mo").map((row) => row.date), ["2026-01-01", "2026-05-01", "2026-05-08", "2026-05-12"]);
 });
 

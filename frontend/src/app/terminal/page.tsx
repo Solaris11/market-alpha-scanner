@@ -4,6 +4,7 @@ import { AICognitionLayerPanel } from "@/components/terminal/AICognitionLayerPan
 import { AutomatedResearchAgentsPanel } from "@/components/terminal/AutomatedResearchAgentsPanel";
 import { BestTradeNowCard } from "@/components/terminal/BestTradeNowCard";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
+import { GlobalMarketCommandCenter } from "@/components/market/GlobalMarketCommandCenter";
 import { MarketOnboarding } from "@/components/onboarding/MarketOnboarding";
 import { RiskTolerantOpportunityRadar } from "@/components/opportunities/RiskTolerantOpportunityRadar";
 import { ShockMoveRadar } from "@/components/opportunities/ShockMoveRadar";
@@ -60,6 +61,7 @@ import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-mode
 import { buildPortfolioIntelligenceSystem } from "@/lib/trading/portfolio-intelligence";
 import { buildIntelligenceEcosystemSystem } from "@/lib/trading/intelligence-ecosystem";
 import { buildInstitutionalSuperplatformSystem } from "@/lib/trading/institutional-superplatform";
+import { buildMarketCommandModel } from "@/lib/trading/market-research";
 import { buildAutomatedResearchAgentsSystem } from "@/lib/trading/research-agents";
 import { buildRegimeShiftSystem } from "@/lib/trading/regime-shift-intelligence";
 import { buildScenarioIntelligenceSystem } from "@/lib/trading/scenario-intelligence";
@@ -207,6 +209,11 @@ export default async function TerminalPage() {
     workflowEvolution,
     workspacePreferences,
   });
+  const marketCommandModel = buildMarketCommandModel({
+    charts: marketChartHubData,
+    generatedAt: scanSafety.lastUpdated,
+    rows: snapshot.signals,
+  });
   const automatedResearchAgents = buildAutomatedResearchAgentsSystem({
     liveSystem: liveIntelligence,
     portfolioSystem: portfolioIntelligence,
@@ -232,6 +239,7 @@ export default async function TerminalPage() {
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">
           <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
+          <GlobalMarketCommandCenter model={marketCommandModel} />
           <IntelligenceEcosystemPanel system={intelligenceEcosystem} />
           <InstitutionalSuperplatformPanel system={institutionalSuperplatform} />
           <WorkspacePersonalizationPanel

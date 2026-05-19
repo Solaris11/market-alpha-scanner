@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Activity, Brain, LineChart, ShieldAlert, Target } from "lucide-react";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
+import { SymbolDeepResearchCockpit } from "@/components/research/SymbolDeepResearchCockpit";
 import { IntelligenceGraphPanel } from "@/components/visual/IntelligenceGraphPanel";
 import {
   CinematicClusterMosaic,
@@ -35,6 +36,7 @@ import type { ScenarioIntelligenceSystem } from "@/lib/trading/scenario-intellig
 import type { ShockMovePattern } from "@/lib/trading/shock-move";
 import type { StrategyIntelligenceSystem } from "@/lib/trading/strategy-intelligence";
 import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution";
+import { buildSymbolResearchModel } from "@/lib/trading/market-research";
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
 import type { IntradayDriftRow, RankingRow, ScannerScalar } from "@/lib/types";
 import { AICopilotPanel } from "./AICopilotPanel";
@@ -150,6 +152,7 @@ export function SymbolTerminalWorkspace({
     [dataFreshness.lastUpdated, institutionalOpportunity, row.market_regime, workflowEvolution],
   );
   const riskPortfolio = useMemo(() => buildRiskPortfolio(paperPositions, row.sector, symbol), [paperPositions, row.sector, symbol]);
+  const symbolResearch = useMemo(() => buildSymbolResearchModel(row, contextRows), [contextRows, row]);
   const tradeEngine = useTradePlanEngine(row, riskPortfolio);
   const symbolPositions = paperPositions.filter((position) => position.symbol.toUpperCase() === symbol);
   const openPaper = symbolPositions.filter((position) => position.status === "OPEN");
@@ -194,6 +197,8 @@ export function SymbolTerminalWorkspace({
           <div className="mt-4 inline-flex rounded-full border border-amber-300/30 bg-amber-400/10 px-4 py-2 text-sm font-black text-amber-100">Best next step: monitor patiently</div>
         </GlassPanel>
       ) : null}
+
+      <SymbolDeepResearchCockpit model={symbolResearch} />
 
       <SymbolCinematicResearchCockpit
         candles={candles}
