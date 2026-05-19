@@ -45,18 +45,35 @@ type BodyScrollSnapshot = {
 let stableTriggerScrollY: number | null = null;
 let stableTriggerCapturedAt = 0;
 let stableTriggerCaptureInstalled = false;
+let lastSettledScrollY = 0;
+let lastScrollEventAt = 0;
+let settleScrollTimer: number | null = null;
+
+function getInteractionSafeScrollY(): number {
+  if (Date.now() - lastScrollEventAt < 100) return lastSettledScrollY;
+  return window.scrollY;
+}
 
 function rememberStableTriggerPosition(target: EventTarget | null): void {
   if (!(target instanceof Element)) return;
   if (!target.closest('[data-stable-overlay-trigger="true"]')) return;
   if (stableTriggerScrollY !== null && Date.now() - stableTriggerCapturedAt < 800) return;
-  stableTriggerScrollY = window.scrollY;
+  stableTriggerScrollY = getInteractionSafeScrollY();
   stableTriggerCapturedAt = Date.now();
 }
 
 function installStableTriggerCapture(): void {
   if (stableTriggerCaptureInstalled || typeof document === "undefined") return;
   stableTriggerCaptureInstalled = true;
+  lastSettledScrollY = window.scrollY;
+  window.addEventListener("scroll", () => {
+    lastScrollEventAt = Date.now();
+    if (settleScrollTimer !== null) window.clearTimeout(settleScrollTimer);
+    settleScrollTimer = window.setTimeout(() => {
+      lastSettledScrollY = window.scrollY;
+      settleScrollTimer = null;
+    }, 100);
+  }, { passive: true });
   document.addEventListener("pointerdown", (event) => rememberStableTriggerPosition(event.target), { capture: true, passive: true });
   document.addEventListener("mousedown", (event) => rememberStableTriggerPosition(event.target), { capture: true, passive: true });
   document.addEventListener("touchstart", (event) => rememberStableTriggerPosition(event.target), { capture: true, passive: true });
