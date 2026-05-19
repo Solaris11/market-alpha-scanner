@@ -270,7 +270,7 @@ export function MobileTerminalNav() {
         </>
       ) : null}
 
-      <nav aria-label="Primary mobile navigation" className="fixed inset-x-2 z-[8500] grid grid-cols-6 gap-0.5 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl xl:hidden" style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
+      <nav aria-label="Primary mobile navigation" className="pointer-events-none fixed inset-x-2 z-[8500] grid grid-cols-6 gap-0.5 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl xl:hidden" style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
         {MOBILE_BOTTOM_NAV_ITEMS.map((item) => <BottomNavLink item={item} key={item.href} pathname={pathname} />)}
         <BottomMenuButton buttonRef={bottomMenuButtonRef} onClick={() => setOpen(true)} open={open} />
       </nav>
@@ -350,7 +350,7 @@ function BottomNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
   const navigationIntent = useNavigationIntent(item.href, label);
   return (
     <Link
-      className={`tv-tap-motion relative flex min-h-12 flex-col items-center justify-center rounded-xl border px-0.5 text-center text-[10px] font-semibold transition ${
+      className={`tv-tap-motion pointer-events-auto relative flex min-h-12 flex-col items-center justify-center rounded-xl border px-0.5 text-center text-[10px] font-semibold transition ${
         active ? color.active : `border-transparent text-slate-400 ${color.hover}`
       }`}
       href={item.href}
@@ -372,7 +372,7 @@ function BottomMenuButton({ buttonRef, onClick, open }: { buttonRef: RefObject<H
       aria-controls="tradeveto-mobile-drawer"
       aria-expanded={open}
       aria-label={open ? "Close full navigation menu" : "Open full navigation menu"}
-      className={`tv-tap-motion flex min-h-12 flex-col items-center justify-center rounded-xl border px-0.5 text-center text-[10px] font-semibold transition ${
+      className={`tv-tap-motion pointer-events-auto flex min-h-12 flex-col items-center justify-center rounded-xl border px-0.5 text-center text-[10px] font-semibold transition ${
         open ? "border-cyan-300/35 bg-cyan-400/15 text-cyan-100" : "border-transparent text-slate-400 hover:bg-white/[0.05] hover:text-slate-100"
       }`}
       onClick={onClick}
