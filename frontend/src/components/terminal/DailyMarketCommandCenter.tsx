@@ -75,16 +75,21 @@ export function DailyMarketCommandCenter({ model }: Props) {
               <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Market first</span>
               {model.generatedAt ? <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Updated {formatDate(model.generatedAt)}</span> : null}
             </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 sm:hidden">
+              <MobileCommandChip label="Setup" tone="emerald" value={model.bestSetups[0]?.symbol ?? "Limited"} />
+              <MobileCommandChip label="Risk" tone="rose" value={model.crashRisk[0]?.symbol ?? "Limited"} />
+              <MobileCommandChip label="Flow" tone="amber" value={model.moneyFlow.sectors[0]?.sector ?? "Limited"} />
+            </div>
             <div className="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
               <div>
-                <h1 className="max-w-4xl text-4xl font-black tracking-tight text-white sm:text-5xl xl:text-6xl">
+                <h1 className="max-w-4xl text-3xl font-black tracking-tight text-white sm:text-5xl xl:text-6xl">
                   What deserves attention right now
                 </h1>
                 <p className="mt-4 max-w-4xl text-sm leading-6 text-slate-300 sm:text-base">
                   {model.hero.narrative}
                 </p>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-black/25 p-4">
+              <div className="hidden rounded-3xl border border-white/10 bg-black/25 p-4 sm:block">
                 <PosterGauge label="Attention" score={model.hero.attentionScore} tone={heroTone} />
               </div>
             </div>
@@ -426,6 +431,15 @@ function HeroBrief({ icon, label, tone, value }: { icon: ReactNode; label: strin
         <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{label}</div>
       </div>
       <p className="mt-2 line-clamp-3 text-sm leading-5 text-slate-200">{value}</p>
+    </div>
+  );
+}
+
+function MobileCommandChip({ label, tone, value }: { label: string; tone: DailyCommandTone; value: string }) {
+  return (
+    <div className={`min-w-0 rounded-2xl border p-2 ${TONE[tone].border} ${TONE[tone].bg}`}>
+      <div className="truncate text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</div>
+      <div className={`mt-1 truncate font-mono text-sm font-black ${TONE[tone].text}`}>{value}</div>
     </div>
   );
 }
