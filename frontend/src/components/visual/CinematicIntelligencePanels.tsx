@@ -174,6 +174,108 @@ function clusterLivingStories(clusters: CinematicCluster[]): LivingStory[] {
   });
 }
 
+function strongestNarrativeCluster(clusters: CinematicCluster[]): CinematicCluster | null {
+  const scored = clusters
+    .map((cluster) => ({
+      cluster,
+      delta: Math.abs(clusterDelta(cluster) ?? 0),
+      score: typeof cluster.score === "number" && Number.isFinite(cluster.score) ? cluster.score : 0,
+    }))
+    .sort((left, right) => right.delta - left.delta || right.score - left.score);
+
+  return scored[0]?.cluster ?? null;
+}
+
+function CinematicNarrativeThread({
+  clusters,
+  stories,
+  updatedAt,
+}: {
+  clusters: CinematicCluster[];
+  stories: LivingStory[];
+  updatedAt?: string;
+}) {
+  const focusCluster = strongestNarrativeCluster(clusters);
+  const riskCluster = clusters.find((cluster) => cluster.tone === "rose" || cluster.tone === "amber") ?? clusters[1] ?? focusCluster;
+  const setupCluster = clusters.find((cluster) => cluster.tone === "emerald" || cluster.tone === "cyan") ?? clusters[2] ?? focusCluster;
+  const focusDelta = focusCluster ? clusterDelta(focusCluster) : null;
+  const narrative = stories[0]?.summary ?? focusCluster?.summary ?? "Validated intelligence is available, but evolution history is still limited.";
+
+  return (
+    <div className="tv-narrative-thread mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.16fr)_minmax(280px,0.62fr)_minmax(280px,0.72fr)]">
+      <motion.article
+        className="tv-story-anchor relative overflow-hidden rounded-[2rem] border border-cyan-300/20 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.18),transparent_30rem),linear-gradient(135deg,rgba(2,8,23,0.94),rgba(15,23,42,0.72))] p-5"
+        initial={{ opacity: 0, y: 14 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+        viewport={{ once: true, amount: 0.4 }}
+      >
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-200/70 to-transparent" />
+        <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-200">Narrative command</div>
+        <h3 className="mt-2 max-w-3xl text-2xl font-black tracking-tight text-white sm:text-4xl">
+          {focusCluster ? focusCluster.title : "Intelligence environment"}
+        </h3>
+        <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-300">{humanizeNarrative(narrative)}</p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] text-cyan-100">
+            {updatedAt ? `Updated ${updatedAt}` : "Latest validated scan"}
+          </span>
+          <span className={`rounded-full border px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.14em] ${focusDelta !== null && focusDelta < 0 ? "border-rose-300/25 bg-rose-300/10 text-rose-100" : "border-emerald-300/25 bg-emerald-300/10 text-emerald-100"}`}>
+            {focusDelta === null ? "Limited evolution" : `${focusDelta >= 0 ? "+" : ""}${focusDelta} point shift`}
+          </span>
+        </div>
+      </motion.article>
+
+      <motion.article
+        className="tv-story-support relative overflow-hidden rounded-[2rem] border border-amber-300/20 bg-[radial-gradient(circle_at_20%_0%,rgba(251,191,36,0.13),transparent_20rem),linear-gradient(135deg,rgba(2,8,23,0.9),rgba(15,23,42,0.66))] p-4"
+        initial={{ opacity: 0, y: 14 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.04, duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+        viewport={{ once: true, amount: 0.4 }}
+      >
+        <div className="text-[10px] font-black uppercase tracking-[0.24em] text-amber-200">Pressure storyline</div>
+        <div className="mt-2 text-lg font-black text-white">{riskCluster?.title ?? "Risk context"}</div>
+        <p className="mt-2 line-clamp-4 text-xs leading-5 text-slate-400">
+          {riskCluster?.summary ?? "Risk state remains limited until validated pressure data is available."}
+        </p>
+        <div className="mt-4">
+          <VisualMetricRail metrics={[{ label: riskCluster?.title ?? "Risk", tone: riskCluster?.tone ?? "amber", value: riskCluster?.score ?? null }]} />
+        </div>
+      </motion.article>
+
+      <motion.article
+        className="tv-story-support relative overflow-hidden rounded-[2rem] border border-emerald-300/20 bg-[radial-gradient(circle_at_16%_0%,rgba(52,211,153,0.13),transparent_20rem),linear-gradient(135deg,rgba(2,8,23,0.9),rgba(15,23,42,0.66))] p-4"
+        initial={{ opacity: 0, y: 14 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.08, duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
+        viewport={{ once: true, amount: 0.4 }}
+      >
+        <div className="text-[10px] font-black uppercase tracking-[0.24em] text-emerald-200">Monitor next</div>
+        <div className="mt-2 text-lg font-black text-white">{setupCluster?.title ?? "Setup context"}</div>
+        <div className="mt-3 grid gap-2">
+          {(setupCluster?.items ?? []).slice(0, 3).map((item) => (
+            <div className="rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-2" key={`${setupCluster?.title}:${item.label}`}>
+              <div className="flex items-center justify-between gap-2">
+                <span className="truncate text-xs font-black text-emerald-100">{item.label}</span>
+                <span className="shrink-0 font-mono text-[11px] font-black text-slate-100">{item.value ?? "Watch"}</span>
+              </div>
+            </div>
+          ))}
+          {!(setupCluster?.items ?? []).length ? (
+            <p className="rounded-2xl border border-dashed border-white/10 bg-white/[0.025] p-3 text-xs leading-5 text-slate-500">
+              Limited evidence. Monitor items appear after validated scanner, watchlist, replay, or macro context is available.
+            </p>
+          ) : null}
+        </div>
+      </motion.article>
+    </div>
+  );
+}
+
+function humanizeNarrative(value: string): string {
+  return value.replace(/\s+/g, " ").trim();
+}
+
 export function CinematicClusterMosaic({
   clusters,
   eyebrow = "Intelligence clusters",
@@ -216,7 +318,7 @@ export function CinematicClusterMosaic({
 
   return (
     <>
-      <section className="poster-panel rounded-3xl border-cyan-300/16 bg-slate-950/50 p-4 sm:p-5">
+      <section className="poster-panel tv-cinematic-hero-panel rounded-3xl border-cyan-300/16 bg-slate-950/50 p-4 sm:p-5">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="min-w-0">
             <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">{eyebrow}</div>
@@ -224,6 +326,8 @@ export function CinematicClusterMosaic({
           </div>
           <p className="max-w-2xl text-sm leading-6 text-slate-400">{summary}</p>
         </div>
+
+        <CinematicNarrativeThread clusters={clusters} stories={livingStories} updatedAt={latestUpdatedAt} />
 
         <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(310px,0.72fr)_minmax(0,1.28fr)]">
           <PosterIntelligenceOrbit
@@ -293,7 +397,7 @@ export function CinematicClusterCard({
   const materialShift = delta !== null && Math.abs(delta) >= 8;
   const content = (
     <motion.div
-      className={`group tv-depth-surface relative h-full cursor-pointer overflow-hidden rounded-3xl border ${style.border} bg-gradient-to-br ${style.panel} p-4 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200/70 ${style.glow}`}
+      className={`group tv-depth-surface tv-cinematic-card relative h-full cursor-pointer overflow-hidden rounded-3xl border ${style.border} bg-gradient-to-br ${style.panel} p-4 outline-none transition focus-visible:ring-2 focus-visible:ring-cyan-200/70 ${style.glow} ${materialShift ? "tv-intelligence-breathing" : ""}`}
       data-stable-overlay-trigger="true"
       onClick={openCluster}
       onKeyDown={(event) => openWithKeyboard(event, openCluster)}
@@ -437,6 +541,7 @@ function CinematicClusterDetailOverlay({ onClose, selection }: { onClose: () => 
     return (
       <StableDetailOverlay
         analyticsSurface={`cinematic_item_${selection.item.label}`}
+        className="tv-intelligence-depth-overlay"
         closeLabel="Close intelligence detail"
         description={selection.item.detail ?? "This intelligence item opens only from the validated cluster context shown on the page."}
         eyebrow={<span className={style.text}>{selection.clusterTitle ?? "Intelligence item"}</span>}
@@ -487,6 +592,7 @@ function CinematicClusterDetailOverlay({ onClose, selection }: { onClose: () => 
   return (
     <StableDetailOverlay
       analyticsSurface={`cinematic_cluster_${cluster.title}`}
+      className="tv-intelligence-depth-overlay"
       closeLabel="Close intelligence cluster"
       description={cluster.summary}
       eyebrow={<span className={style.text}>{cluster.eyebrow ?? "Intelligence cluster"}</span>}
