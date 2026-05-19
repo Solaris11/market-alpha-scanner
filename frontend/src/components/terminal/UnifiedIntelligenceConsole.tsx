@@ -12,10 +12,12 @@ import {
   type CinematicHeatCell,
   type CinematicTimelineItem,
 } from "@/components/visual/CinematicIntelligencePanels";
+import { IntelligenceConsciousnessPanel } from "@/components/visual/IntelligenceConsciousnessPanel";
 import { ScoreFactorStrip, type ScoreFactor, VisualMetricRail } from "@/components/visual/MiniVisuals";
 import { InteractiveInsightZoneGrid, ShowcaseIntelligenceOrbit, type InteractiveInsightZoneItem } from "@/components/visual/InteractiveVisualIntelligence";
 import { SymbolLogo } from "@/components/visual/SymbolLogo";
 import { useWorkspacePreferences } from "@/hooks/useWorkspacePreferences";
+import { buildIntelligenceConsciousnessSystem } from "@/lib/trading/intelligence-consciousness";
 import {
   buildUnifiedIntelligenceConsole,
   type UnifiedConsoleBriefing,
@@ -52,6 +54,10 @@ export function UnifiedIntelligenceConsole({
     () => buildUnifiedIntelligenceConsole({ marketCondition, personalizationProfile, rows, workflowEvolution }),
     [marketCondition, personalizationProfile, rows, workflowEvolution],
   );
+  const consciousnessSystem = useMemo(
+    () => buildIntelligenceConsciousnessSystem({ generatedAt: consoleModel.generatedAt, marketCondition, personalizationProfile, rows, surface, workflowEvolution }),
+    [consoleModel.generatedAt, marketCondition, personalizationProfile, rows, surface, workflowEvolution],
+  );
   const compact = surface === "terminal";
 
   if (!rows.length) {
@@ -70,7 +76,7 @@ export function UnifiedIntelligenceConsole({
   const zones = applyWorkspacePreferencesToZones(buildSimpleHomeZones(consoleModel), preferences);
 
   if (compact) {
-    return <SimpleHomeConsole consoleModel={consoleModel} workspacePreferences={preferences} />;
+    return <SimpleHomeConsole consciousnessSystem={consciousnessSystem} consoleModel={consoleModel} workspacePreferences={preferences} />;
   }
 
   return (
@@ -121,6 +127,10 @@ export function UnifiedIntelligenceConsole({
       </div>
 
       <div className="mt-5">
+        <IntelligenceConsciousnessPanel system={consciousnessSystem} />
+      </div>
+
+      <div className="mt-5">
         <SimpleAttentionStatusMatrix consoleModel={consoleModel} />
       </div>
 
@@ -157,7 +167,15 @@ export function UnifiedIntelligenceConsole({
   );
 }
 
-function SimpleHomeConsole({ consoleModel, workspacePreferences }: { consoleModel: ReturnType<typeof buildUnifiedIntelligenceConsole>; workspacePreferences: WorkspacePreferences }) {
+function SimpleHomeConsole({
+  consciousnessSystem,
+  consoleModel,
+  workspacePreferences,
+}: {
+  consciousnessSystem: ReturnType<typeof buildIntelligenceConsciousnessSystem>;
+  consoleModel: ReturnType<typeof buildUnifiedIntelligenceConsole>;
+  workspacePreferences: WorkspacePreferences;
+}) {
   const opportunities = consoleModel.topOpportunities.slice(0, 3);
   const risks = consoleModel.topRisks.slice(0, 3);
   const changes = consoleModel.biggestChanges.slice(0, 3);
@@ -199,6 +217,10 @@ function SimpleHomeConsole({ consoleModel, workspacePreferences }: { consoleMode
 
       <div className="mt-5">
         <SimpleAttentionStatusMatrix consoleModel={consoleModel} />
+      </div>
+
+      <div className="mt-5">
+        <IntelligenceConsciousnessPanel compact system={consciousnessSystem} />
       </div>
 
       <div className="mt-5">

@@ -854,6 +854,55 @@ a {
     linear-gradient(180deg, rgba(2, 6, 23, 0.98), rgba(15, 23, 42, 0.94));
 }
 
+.tv-consciousness-panel {
+  isolation: isolate;
+}
+
+.tv-consciousness-field {
+  background:
+    linear-gradient(90deg, rgba(103, 232, 249, 0.035) 1px, transparent 1px),
+    linear-gradient(rgba(103, 232, 249, 0.03) 1px, transparent 1px),
+    radial-gradient(circle at 22% 18%, rgba(34, 211, 238, 0.16), transparent 20rem),
+    radial-gradient(circle at 78% 6%, rgba(167, 139, 250, 0.13), transparent 18rem);
+  background-size:
+    72px 72px,
+    72px 72px,
+    auto,
+    auto;
+  mask-image: radial-gradient(circle at 50% 28%, black, transparent 82%);
+  opacity: 0.68;
+  transform: perspective(1200px) rotateX(52deg) translateY(-9%);
+  transform-origin: top center;
+  z-index: -1;
+}
+
+.tv-consciousness-panel::before {
+  animation: tradeveto-consciousness-sweep 11s ease-in-out infinite;
+  background: linear-gradient(115deg, transparent 16%, rgba(125, 211, 252, 0.085), transparent 70%);
+  content: "";
+  height: 170%;
+  left: -55%;
+  pointer-events: none;
+  position: absolute;
+  top: -38%;
+  transform: translateX(-20%) rotate(7deg);
+  width: 70%;
+  z-index: 0;
+}
+
+.tv-consciousness-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.tv-consciousness-pulse {
+  animation: tradeveto-consciousness-pulse 4.8s ease-in-out infinite;
+  box-shadow:
+    0 0 0 1px rgba(103, 232, 249, 0.12),
+    0 0 28px rgba(34, 211, 238, 0.16);
+  opacity: 0.55;
+}
+
 .tv-status-constructive {
   border-color: color-mix(in srgb, var(--tv-status-constructive) 42%, transparent);
   color: rgb(187 247 208);
@@ -1084,6 +1133,33 @@ html[data-tradeveto-presentation="true"] body {
   }
 }
 
+@keyframes tradeveto-consciousness-pulse {
+  0%,
+  100% {
+    opacity: 0.44;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.88;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes tradeveto-consciousness-sweep {
+  0%,
+  48% {
+    opacity: 0;
+    transform: translateX(-24%) rotate(7deg);
+  }
+  62% {
+    opacity: 0.58;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(230%) rotate(7deg);
+  }
+}
+
 .tradeveto-route-progress {
   animation: tradeveto-route-progress 1.05s ease-in-out infinite;
 }
@@ -1118,6 +1194,8 @@ html[data-tradeveto-suppress-feedback="true"] .tradeveto-beta-feedback-widget {
   .tv-atmosphere-orbit,
   .tv-atmosphere-scanline,
   .tv-atmosphere-status__pulse,
+  .tv-consciousness-panel::before,
+  .tv-consciousness-pulse,
   .tv-cinematic-card::before,
   .tv-intelligence-breathing,
   .tv-story-anchor::after,

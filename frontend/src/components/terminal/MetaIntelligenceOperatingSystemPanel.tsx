@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
+import { IntelligenceConsciousnessPanel } from "@/components/visual/IntelligenceConsciousnessPanel";
+import { buildIntelligenceConsciousnessSystem } from "@/lib/trading/intelligence-consciousness";
 import {
   buildTradeVetoOperatingSystem,
   metaOpportunityLabel,
@@ -31,6 +33,10 @@ export function MetaIntelligenceOperatingSystemPanel({
   workflowEvolution?: WorkflowEvolutionSummary | null;
 }) {
   const system = useMemo(() => buildTradeVetoOperatingSystem({ personalizationProfile, rows, workflowEvolution }), [personalizationProfile, rows, workflowEvolution]);
+  const consciousnessSystem = useMemo(
+    () => buildIntelligenceConsciousnessSystem({ generatedAt: system.generatedAt, marketCondition: system.marketState, personalizationProfile, rows, surface: focusSymbol ? "symbol" : "opportunities", workflowEvolution }),
+    [focusSymbol, personalizationProfile, rows, system.generatedAt, system.marketState, workflowEvolution],
+  );
   const focus = focusSymbol ? system.priorityQueue.find((item) => item.symbol === focusSymbol.toUpperCase()) ?? null : null;
 
   if (!rows.length) {
@@ -43,48 +49,56 @@ export function MetaIntelligenceOperatingSystemPanel({
   }
 
   if (focus) {
-    return <FocusedMetaPanel compact={compact} item={focus} system={system} />;
+    return (
+      <div className="grid gap-4">
+        <IntelligenceConsciousnessPanel compact system={consciousnessSystem} />
+        <FocusedMetaPanel compact={compact} item={focus} system={system} />
+      </div>
+    );
   }
 
   return (
-    <GlassPanel className={`${compact ? "p-4" : "p-5"}`}>
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div>
-          <SectionTitle eyebrow="TradeVeto Intelligence OS" title="What Matters Most" meta={system.marketState} />
-          <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">{humanizeInsightText(system.summary)}</p>
-          <p className="mt-1 max-w-4xl text-xs leading-5 text-slate-500">{humanizeInsightText(system.marketStateReason)}</p>
+    <div className="grid gap-4">
+      <IntelligenceConsciousnessPanel compact={compact} system={consciousnessSystem} />
+      <GlassPanel className={`${compact ? "p-4" : "p-5"}`}>
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <SectionTitle eyebrow="TradeVeto Intelligence OS" title="What Matters Most" meta={system.marketState} />
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">{humanizeInsightText(system.summary)}</p>
+            <p className="mt-1 max-w-4xl text-xs leading-5 text-slate-500">{humanizeInsightText(system.marketStateReason)}</p>
+          </div>
+          <div className="grid w-full grid-cols-1 gap-2 sm:max-w-md sm:grid-cols-3 xl:w-[380px]">
+            <ScoreTile label="Opportunity" value={system.metaOpportunityAverage} />
+            <ScoreTile label="Decision" value={system.decisionQualityAverage} />
+            <ScoreTile inverse label="Risk" value={system.metaRiskAverage} />
+          </div>
         </div>
-        <div className="grid w-full grid-cols-1 gap-2 sm:max-w-md sm:grid-cols-3 xl:w-[380px]">
-          <ScoreTile label="Opportunity" value={system.metaOpportunityAverage} />
-          <ScoreTile label="Decision" value={system.decisionQualityAverage} />
-          <ScoreTile inverse label="Risk" value={system.metaRiskAverage} />
+
+        <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.08fr)_minmax(300px,0.92fr)]">
+          <BriefingBlock title="Executive Market Briefing" lines={system.executiveBriefing} />
+          <BriefingBlock title="Personalized Briefing" lines={system.personalizedBriefing} />
         </div>
-      </div>
 
-      <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.08fr)_minmax(300px,0.92fr)]">
-        <BriefingBlock title="Executive Market Briefing" lines={system.executiveBriefing} />
-        <BriefingBlock title="Personalized Briefing" lines={system.personalizedBriefing} />
-      </div>
-
-      <div className={`mt-4 grid gap-3 ${compact ? "xl:grid-cols-1" : "xl:grid-cols-[minmax(0,1fr)_360px]"}`}>
-        <PriorityQueue items={system.priorityQueue.slice(0, compact ? 5 : 8)} title="Unified Priority Queue" />
-        <AttentionStack system={system} />
-      </div>
-
-      {!compact ? (
-        <div className="mt-4 grid gap-3 xl:grid-cols-2">
-          <OpportunityHierarchy groups={system.opportunityHierarchy} />
-          <MetaTimeline system={system} />
+        <div className={`mt-4 grid gap-3 ${compact ? "xl:grid-cols-1" : "xl:grid-cols-[minmax(0,1fr)_360px]"}`}>
+          <PriorityQueue items={system.priorityQueue.slice(0, compact ? 5 : 8)} title="Unified Priority Queue" />
+          <AttentionStack system={system} />
         </div>
-      ) : null}
 
-      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Orchestration Boundary</div>
-        <p className="mt-2 text-xs leading-5 text-slate-400">
-          The OS layer combines scored evidence from TradeVeto engines. It decides what deserves attention; it does not predict markets, invent events, or override TradeVeto's main risk decision.
-        </p>
-      </div>
-    </GlassPanel>
+        {!compact ? (
+          <div className="mt-4 grid gap-3 xl:grid-cols-2">
+            <OpportunityHierarchy groups={system.opportunityHierarchy} />
+            <MetaTimeline system={system} />
+          </div>
+        ) : null}
+
+        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Orchestration Boundary</div>
+          <p className="mt-2 text-xs leading-5 text-slate-400">
+            The OS layer combines scored evidence from TradeVeto engines. It decides what deserves attention; it does not predict markets, invent events, or override TradeVeto's main risk decision.
+          </p>
+        </div>
+      </GlassPanel>
+    </div>
   );
 }
 
