@@ -11,6 +11,7 @@ import { ShockMoveRadar } from "@/components/opportunities/ShockMoveRadar";
 import { PublicSignalPreviewList } from "@/components/premium/PublicSignalPreview";
 import { PremiumAccessCta } from "@/components/premium/PremiumAccessCta";
 import { DailyActionCard } from "@/components/terminal/DailyActionCard";
+import { DailyMarketCommandCenter } from "@/components/terminal/DailyMarketCommandCenter";
 import { AdaptiveLearningInsightPanel } from "@/components/terminal/AdaptiveLearningInsightPanel";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { ExecutionIntelligencePanel } from "@/components/terminal/ExecutionIntelligencePanel";
@@ -61,11 +62,13 @@ import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-mode
 import { buildPortfolioIntelligenceSystem } from "@/lib/trading/portfolio-intelligence";
 import { buildIntelligenceEcosystemSystem } from "@/lib/trading/intelligence-ecosystem";
 import { buildInstitutionalSuperplatformSystem } from "@/lib/trading/institutional-superplatform";
+import { buildDailyMarketCommandModel } from "@/lib/trading/daily-market-command";
 import { buildMarketCommandModel } from "@/lib/trading/market-research";
 import { buildAutomatedResearchAgentsSystem } from "@/lib/trading/research-agents";
 import { buildRegimeShiftSystem } from "@/lib/trading/regime-shift-intelligence";
 import { buildScenarioIntelligenceSystem } from "@/lib/trading/scenario-intelligence";
 import { buildStrategyIntelligenceSystem } from "@/lib/trading/strategy-intelligence";
+import { buildUnifiedIntelligenceConsole } from "@/lib/trading/unified-intelligence-console";
 import { formatMoney, formatPercent } from "@/lib/ui/formatters";
 import { decisionLabel, humanizeLabel } from "@/lib/ui/labels";
 
@@ -214,6 +217,21 @@ export default async function TerminalPage() {
     generatedAt: scanSafety.lastUpdated,
     rows: snapshot.signals,
   });
+  const unifiedConsoleModel = buildUnifiedIntelligenceConsole({
+    marketCondition: snapshot.marketRegime.label,
+    personalizationProfile,
+    rows: opportunityModel.rows,
+    watchlistSymbols,
+    workflowEvolution,
+  });
+  const dailyMarketCommand = buildDailyMarketCommandModel({
+    marketCommand: marketCommandModel,
+    marketCondition: snapshot.marketRegime.label,
+    rankedZones: unifiedConsoleModel.rankedZones,
+    rows: opportunityModel.rows,
+    watchlistSymbols,
+    workflowEvolution,
+  });
   const automatedResearchAgents = buildAutomatedResearchAgentsSystem({
     liveSystem: liveIntelligence,
     portfolioSystem: portfolioIntelligence,
@@ -238,15 +256,9 @@ export default async function TerminalPage() {
     <TerminalShell>
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">
+          <DailyMarketCommandCenter model={dailyMarketCommand} />
           <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
           <GlobalMarketCommandCenter model={marketCommandModel} />
-          <IntelligenceEcosystemPanel system={intelligenceEcosystem} />
-          <InstitutionalSuperplatformPanel system={institutionalSuperplatform} />
-          <WorkspacePersonalizationPanel
-            initialPreferences={workspacePreferences}
-            recentSymbols={uniqueTerminalSymbols([leader?.symbol, ...opportunityModel.rows.slice(0, 8).map((row) => row.symbol)])}
-            watchlistSymbols={watchlistSymbols}
-          />
           <UnifiedIntelligenceConsole
             marketCondition={snapshot.marketRegime.label}
             personalizationProfile={personalizationProfile}
@@ -255,6 +267,8 @@ export default async function TerminalPage() {
             workspacePreferences={workspacePreferences}
             workflowEvolution={workflowEvolution}
           />
+          <IntelligenceEcosystemPanel system={intelligenceEcosystem} />
+          <InstitutionalSuperplatformPanel system={institutionalSuperplatform} />
           <AICognitionLayerPanel model={cognitionLayer} />
           <IntelligenceFeedNotificationPanel
             brief={intelligenceFeed.brief}
@@ -263,6 +277,11 @@ export default async function TerminalPage() {
             watchlistSymbols={watchlistSymbols}
           />
           <MarketChartHub charts={marketChartHubData} marketCondition={snapshot.marketRegime.label} updatedAt={scanSafety.lastUpdated} />
+          <WorkspacePersonalizationPanel
+            initialPreferences={workspacePreferences}
+            recentSymbols={uniqueTerminalSymbols([leader?.symbol, ...opportunityModel.rows.slice(0, 8).map((row) => row.symbol)])}
+            watchlistSymbols={watchlistSymbols}
+          />
           <details className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
             <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-100">
               <span>Advanced intelligence layers</span>
