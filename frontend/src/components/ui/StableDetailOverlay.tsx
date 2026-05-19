@@ -71,6 +71,8 @@ function getStableOverlayScrollY(): number {
   return capturedRecently ? capturedScrollY : window.scrollY;
 }
 
+installStableTriggerCapture();
+
 function lockBodyScroll(scrollY: number): BodyScrollSnapshot {
   const body = document.body;
   const root = document.documentElement;
