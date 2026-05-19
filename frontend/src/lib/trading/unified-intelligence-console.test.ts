@@ -178,6 +178,7 @@ test("unified console produces attention fields and consolidated sections", () =
         symbol: "MU",
       }),
     ],
+    watchlistSymbols: ["AMD", "MU"],
     workflowEvolution: workflow(),
   });
 
@@ -190,6 +191,12 @@ test("unified console produces attention fields and consolidated sections", () =
   assert.ok(consoleModel.shockConditionsAligning.some((item) => item.symbol === "AMD" || item.symbol === "MU"));
   assert.ok(consoleModel.eventPressure.some((item) => item.symbol === "MU"));
   assert.ok(consoleModel.watchlistChanges.some((item) => item.symbol === "AMD"));
+  assert.ok(consoleModel.rankedZones["best-setups"].topSymbols.length >= 2);
+  assert.ok(consoleModel.rankedZones.dangerous.topSymbols.some((item) => item.symbol === "MU"));
+  assert.ok(consoleModel.rankedZones["shock-watch"].topSymbols.every((item) => ["AMD", "MU"].includes(item.symbol)));
+  assert.ok(consoleModel.rankedZones.watchlist.topSymbols.some((item) => item.symbol === "AMD"));
+  assert.ok(consoleModel.rankedZones["risk-review"].rankingLogic.includes("risk/reward"));
+  assert.equal(consoleModel.rankedZones.dangerous.topSymbols[0]?.rank, 1);
   assert.equal(consoleModel.llmSummaryPacket.guardrail.includes("must not invent"), true);
 });
 

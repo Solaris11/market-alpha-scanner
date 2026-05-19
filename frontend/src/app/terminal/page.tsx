@@ -251,6 +251,7 @@ export default async function TerminalPage() {
             marketCondition={snapshot.marketRegime.label}
             personalizationProfile={personalizationProfile}
             rows={opportunityModel.rows}
+            watchlistSymbols={watchlistSymbols}
             workspacePreferences={workspacePreferences}
             workflowEvolution={workflowEvolution}
           />

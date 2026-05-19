@@ -7,8 +7,32 @@ import { ArrowRight } from "lucide-react";
 import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
 import { IntelligenceGraphPanel } from "@/components/visual/IntelligenceGraphPanel";
 import { ScoreFactorStrip, type ScoreFactor, type VisualTone } from "@/components/visual/MiniVisuals";
+import { SymbolLogo } from "@/components/visual/SymbolLogo";
 import type { IntelligenceGraphModel } from "@/lib/trading/intelligence-graph";
 import { humanizeInsightText } from "@/lib/ui/labels";
+
+export type InteractiveInsightZoneRankedSymbol = {
+  actionContext: string;
+  category: string;
+  companyName?: string | null;
+  decision: string;
+  detail: string;
+  entryContext?: string | null;
+  factors?: ScoreFactor[];
+  href: string;
+  metricLabel: string;
+  priceLabel: string;
+  rank: number;
+  reason: string;
+  riskRewardContext?: string | null;
+  score: number;
+  scoreLabel: string;
+  sector?: string | null;
+  setupContext: string;
+  symbol: string;
+  tone?: VisualTone;
+  trendLabel?: string | null;
+};
 
 export type InteractiveInsightZoneItem = {
   bullets?: string[];
@@ -24,8 +48,11 @@ export type InteractiveInsightZoneItem = {
   label: string;
   metric?: string;
   monitorNext?: string[];
+  rankedSymbols?: InteractiveInsightZoneRankedSymbol[];
+  rankingLogic?: string;
   relationshipGraph?: IntelligenceGraphModel;
   relatedSymbols?: string[];
+  limitedEvidence?: boolean;
   summary: string;
   tone?: VisualTone;
   updatedAt?: string;
@@ -161,6 +188,12 @@ export function InteractiveInsightZoneGrid({
                 <div className="mt-1 text-sm font-black uppercase leading-5 tracking-[0.08em] text-slate-100">{zone.label}</div>
                 <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{humanizeInsightText(zone.summary)}</p>
               </div>
+              {zone.rankedSymbols?.length ? <RankedZonePreview items={zone.rankedSymbols} tone={zone.tone ?? "cyan"} /> : null}
+              {zone.limitedEvidence ? (
+                <div className="mt-2 rounded-lg border border-white/10 bg-white/[0.035] px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-slate-500">
+                  Limited ranked evidence
+                </div>
+              ) : null}
               <div className="mt-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.12em] text-slate-500 transition group-hover:text-cyan-100">
                 Details
                 <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-0.5" />
@@ -278,6 +311,7 @@ function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: Inte
   const bullets = zone.bullets?.filter(Boolean).slice(0, 8) ?? [];
   const monitorNext = zone.monitorNext?.filter(Boolean).slice(0, 6) ?? [];
   const relatedSymbols = zone.relatedSymbols?.filter(Boolean).slice(0, 12) ?? [];
+  const rankedSymbols = zone.rankedSymbols?.slice(0, 10) ?? [];
 
   return (
     <StableDetailOverlay
@@ -311,6 +345,22 @@ function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: Inte
           factors={zone.factors ?? []}
           label="Data-backed factor view"
         />
+
+        {rankedSymbols.length ? (
+          <div className="mt-4 rounded-2xl border border-cyan-300/14 bg-slate-950/55 p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Ranked scanner view</div>
+                <h3 className="mt-1 text-lg font-semibold text-slate-50">Top {rankedSymbols.length} {zone.label}</h3>
+              </div>
+              {zone.limitedEvidence ? <div className="rounded-full border border-amber-300/20 bg-amber-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-amber-100">Limited ranked evidence available</div> : null}
+            </div>
+            {zone.rankingLogic ? <p className="mt-2 text-xs leading-5 text-slate-500">{humanizeInsightText(zone.rankingLogic)}</p> : null}
+            <div className="mt-4 grid gap-3">
+              {rankedSymbols.map((item) => <RankedZoneDetailRow item={item} key={`${zone.id}:${item.symbol}:${item.rank}`} />)}
+            </div>
+          </div>
+        ) : null}
 
         {zone.relationshipGraph ? <IntelligenceGraphPanel className="mt-4" compact graph={zone.relationshipGraph} /> : null}
 
@@ -357,5 +407,64 @@ function VisualDetailDrawer({ onClose, zone }: { onClose: () => void; zone: Inte
           </Link>
         ) : null}
     </StableDetailOverlay>
+  );
+}
+
+function RankedZonePreview({ items, tone }: { items: InteractiveInsightZoneRankedSymbol[]; tone: VisualTone }) {
+  const toneClass = TONE_CLASS[tone];
+  return (
+    <div className="mt-3 space-y-1.5">
+      {items.slice(0, 5).map((item, index) => (
+        <div className={`grid grid-cols-[22px_minmax(0,1fr)_44px] items-center gap-2 rounded-lg border border-white/10 bg-slate-950/42 px-2 py-1.5 ${index > 2 ? "hidden sm:grid" : ""}`} key={`${item.symbol}:${item.rank}`}>
+          <span className={`grid h-5 w-5 place-items-center rounded-full border border-white/10 bg-white/[0.04] font-mono text-[10px] font-black ${toneClass.text}`}>{item.rank}</span>
+          <span className="min-w-0">
+            <span className="block truncate font-mono text-xs font-black text-slate-100">{item.symbol}</span>
+            <span className="block truncate text-[10px] leading-3 text-slate-500">{humanizeInsightText(item.reason)}</span>
+          </span>
+          <span className={`text-right font-mono text-xs font-black ${TONE_CLASS[item.tone ?? tone].text}`}>{item.score}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function RankedZoneDetailRow({ item }: { item: InteractiveInsightZoneRankedSymbol }) {
+  const tone = TONE_CLASS[item.tone ?? "cyan"];
+  return (
+    <Link
+      className={`group block rounded-2xl border border-white/10 bg-white/[0.035] p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.055] ${tone.glow}`}
+      href={item.href}
+    >
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_160px] sm:items-start">
+        <div className="min-w-0">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <span className={`grid h-7 w-7 place-items-center rounded-full border border-white/10 bg-white/[0.05] font-mono text-xs font-black ${tone.text}`}>{item.rank}</span>
+            <SymbolLogo companyName={item.companyName} sector={item.sector} size="sm" symbol={item.symbol} />
+            <span className="font-mono text-base font-black text-slate-50">{item.symbol}</span>
+            <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-400">{humanizeInsightText(item.decision)}</span>
+            <span className={`rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] ${tone.text}`}>{item.scoreLabel}</span>
+          </div>
+          <p className="mt-2 text-sm leading-6 text-slate-200">{humanizeInsightText(item.reason)}</p>
+          <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{humanizeInsightText(item.actionContext)}</p>
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-slate-500">
+            <span className="rounded-full border border-white/10 bg-slate-950/45 px-2 py-1">{item.priceLabel}</span>
+            {item.trendLabel ? <span className="rounded-full border border-white/10 bg-slate-950/45 px-2 py-1">{item.trendLabel}</span> : null}
+            <span className="rounded-full border border-white/10 bg-slate-950/45 px-2 py-1">{humanizeInsightText(item.setupContext)}</span>
+            {item.entryContext ? <span className="rounded-full border border-white/10 bg-slate-950/45 px-2 py-1">{item.entryContext}</span> : null}
+            {item.riskRewardContext ? <span className="rounded-full border border-white/10 bg-slate-950/45 px-2 py-1">{item.riskRewardContext}</span> : null}
+          </div>
+          <ScoreFactorStrip className="mt-3" factors={item.factors ?? []} label="Score breakdown" />
+        </div>
+        <div className="rounded-xl border border-white/10 bg-slate-950/42 p-3">
+          <div className={`font-mono text-3xl font-black ${tone.text}`}>{item.score}</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{item.metricLabel}</div>
+          <p className="mt-2 line-clamp-4 text-[11px] leading-4 text-slate-400">{humanizeInsightText(item.detail)}</p>
+          <div className="mt-3 flex items-center gap-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-200">
+            Open symbol detail
+            <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
+          </div>
+        </div>
+      </div>
+    </Link>
   );
 }
