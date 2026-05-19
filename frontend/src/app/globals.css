@@ -972,6 +972,76 @@ a {
   opacity: 0.5;
 }
 
+.tv-superplatform-panel {
+  isolation: isolate;
+}
+
+.tv-superplatform-atmosphere {
+  background:
+    linear-gradient(90deg, rgba(96, 165, 250, 0.032) 1px, transparent 1px),
+    linear-gradient(rgba(45, 212, 191, 0.024) 1px, transparent 1px),
+    radial-gradient(circle at 15% 18%, rgba(59, 130, 246, 0.16), transparent 22rem),
+    radial-gradient(circle at 68% 12%, rgba(20, 184, 166, 0.12), transparent 18rem),
+    radial-gradient(circle at 88% 78%, rgba(168, 85, 247, 0.15), transparent 22rem);
+  background-size:
+    74px 74px,
+    74px 74px,
+    auto,
+    auto,
+    auto;
+  mask-image: radial-gradient(circle at 50% 30%, black, transparent 86%);
+  opacity: 0.76;
+  transform: perspective(1400px) rotateX(56deg) translateY(-12%);
+  transform-origin: top center;
+  z-index: -1;
+}
+
+.tv-superplatform-panel::before {
+  animation: tradeveto-ecosystem-sweep 13s ease-in-out infinite;
+  background: linear-gradient(115deg, transparent 13%, rgba(96, 165, 250, 0.08), rgba(20, 184, 166, 0.05), rgba(168, 85, 247, 0.055), transparent 74%);
+  content: "";
+  height: 180%;
+  left: -62%;
+  pointer-events: none;
+  position: absolute;
+  top: -44%;
+  transform: translateX(-20%) rotate(7deg);
+  width: 76%;
+  z-index: 0;
+}
+
+.tv-superplatform-panel::after {
+  animation: tradeveto-ecosystem-drift 10.5s ease-in-out infinite;
+  background:
+    radial-gradient(circle, rgba(59, 130, 246, 0.18), transparent 58%),
+    radial-gradient(circle at 58% 44%, rgba(20, 184, 166, 0.12), transparent 62%),
+    radial-gradient(circle at 44% 64%, rgba(168, 85, 247, 0.12), transparent 64%);
+  border-radius: 999px;
+  content: "";
+  height: 20rem;
+  opacity: 0.4;
+  pointer-events: none;
+  position: absolute;
+  right: 6%;
+  top: 7%;
+  width: 20rem;
+  z-index: 0;
+}
+
+.tv-superplatform-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.tv-superplatform-pulse {
+  animation: tradeveto-ecosystem-pulse 5.2s ease-in-out infinite;
+  box-shadow:
+    0 0 0 1px rgba(125, 211, 252, 0.13),
+    0 0 36px rgba(59, 130, 246, 0.18),
+    0 0 52px rgba(20, 184, 166, 0.09);
+  opacity: 0.52;
+}
+
 .tv-status-constructive {
   border-color: color-mix(in srgb, var(--tv-status-constructive) 42%, transparent);
   color: rgb(187 247 208);
@@ -1307,6 +1377,9 @@ html[data-tradeveto-suppress-feedback="true"] .tradeveto-beta-feedback-widget {
   .tv-ecosystem-panel::before,
   .tv-ecosystem-pulse,
   .tv-intelligence-breathing,
+  .tv-superplatform-panel::after,
+  .tv-superplatform-panel::before,
+  .tv-superplatform-pulse,
   .tv-story-anchor::after,
   .tv-story-support::after {
     animation: none;
