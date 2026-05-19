@@ -49,6 +49,7 @@ let stableTriggerCaptureInstalled = false;
 function rememberStableTriggerPosition(target: EventTarget | null): void {
   if (!(target instanceof Element)) return;
   if (!target.closest('[data-stable-overlay-trigger="true"]')) return;
+  if (stableTriggerScrollY !== null && Date.now() - stableTriggerCapturedAt < 800) return;
   stableTriggerScrollY = window.scrollY;
   stableTriggerCapturedAt = Date.now();
 }
