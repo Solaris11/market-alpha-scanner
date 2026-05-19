@@ -1,0 +1,182 @@
+{
+  "baseURL": "https://tradeveto.com",
+  "capturedAt": "2026-05-19T15:13:08.303Z",
+  "desktop": [
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/desktop/discover-search.jpg",
+      "name": "discover-search",
+      "href": "https://tradeveto.com/discover",
+      "innerWidth": 1512,
+      "scrollWidth": 1512,
+      "top": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/desktop/discover-filters.jpg",
+      "name": "discover-filters",
+      "href": "https://tradeveto.com/discover#filters",
+      "innerWidth": 1512,
+      "scrollWidth": 1512,
+      "top": 730,
+      "horizontalOverflow": false
+    },
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/desktop/discover-compare.jpg",
+      "name": "discover-compare",
+      "href": "https://tradeveto.com/discover#compare",
+      "innerWidth": 1512,
+      "scrollWidth": 1512,
+      "top": 4029,
+      "horizontalOverflow": false
+    },
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/desktop/discover-symbol-detail.jpg",
+      "name": "discover-symbol-detail",
+      "href": "https://tradeveto.com/discover",
+      "innerWidth": 1512,
+      "scrollWidth": 1512,
+      "top": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/desktop/discover-watchlist-filter.jpg",
+      "name": "discover-watchlist-filter",
+      "href": "https://tradeveto.com/discover",
+      "innerWidth": 1512,
+      "scrollWidth": 1512,
+      "top": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/desktop/opportunities-scanner.jpg",
+      "name": "opportunities-scanner",
+      "href": "https://tradeveto.com/opportunities",
+      "innerWidth": 1512,
+      "scrollWidth": 1512,
+      "top": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/desktop/performance-explorer.jpg",
+      "name": "performance-explorer",
+      "href": "https://tradeveto.com/performance",
+      "innerWidth": 1512,
+      "scrollWidth": 1512,
+      "top": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/desktop/terminal-nav-discover.jpg",
+      "name": "terminal-nav-discover",
+      "href": "https://tradeveto.com/terminal",
+      "innerWidth": 1512,
+      "scrollWidth": 1512,
+      "top": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/desktop/global-discovery-overlay.jpg",
+      "name": "global-discovery-overlay",
+      "href": "https://tradeveto.com/terminal",
+      "innerWidth": 1512,
+      "scrollWidth": 1512,
+      "top": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "apiStatus": 200,
+      "file": null,
+      "href": "https://tradeveto.com/api/discovery",
+      "name": "api-discovery-authenticated"
+    }
+  ],
+  "mobile": [
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/mobile/discover-search.jpg",
+      "name": "discover-search",
+      "href": "https://tradeveto.com/discover",
+      "innerWidth": 393,
+      "scrollWidth": 393,
+      "top": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/mobile/discover-filters.jpg",
+      "name": "discover-filters",
+      "href": "https://tradeveto.com/discover#filters",
+      "innerWidth": 393,
+      "scrollWidth": 393,
+      "top": 1412,
+      "horizontalOverflow": false
+    },
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/mobile/discover-compare.jpg",
+      "name": "discover-compare",
+      "href": "https://tradeveto.com/discover#compare",
+      "innerWidth": 393,
+      "scrollWidth": 393,
+      "top": 21258,
+      "horizontalOverflow": false
+    },
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/mobile/discover-symbol-detail.jpg",
+      "name": "discover-symbol-detail",
+      "href": "https://tradeveto.com/discover",
+      "innerWidth": 393,
+      "scrollWidth": 393,
+      "top": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/mobile/discover-watchlist-filter.jpg",
+      "name": "discover-watchlist-filter",
+      "href": "https://tradeveto.com/discover",
+      "innerWidth": 393,
+      "scrollWidth": 393,
+      "top": 1014,
+      "horizontalOverflow": false
+    },
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/mobile/opportunities-scanner.jpg",
+      "name": "opportunities-scanner",
+      "href": "https://tradeveto.com/opportunities",
+      "innerWidth": 393,
+      "scrollWidth": 393,
+      "top": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/mobile/performance-explorer.jpg",
+      "name": "performance-explorer",
+      "href": "https://tradeveto.com/performance",
+      "innerWidth": 393,
+      "scrollWidth": 393,
+      "top": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/mobile/terminal-nav-discover.jpg",
+      "name": "terminal-nav-discover",
+      "href": "https://tradeveto.com/terminal",
+      "innerWidth": 393,
+      "scrollWidth": 393,
+      "top": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-8-prod/mobile/global-discovery-overlay.jpg",
+      "name": "global-discovery-overlay",
+      "href": "https://tradeveto.com/terminal",
+      "innerWidth": 393,
+      "scrollWidth": 393,
+      "top": 0,
+      "horizontalOverflow": false
+    },
+    {
+      "apiStatus": 200,
+      "file": null,
+      "href": "https://tradeveto.com/api/discovery",
+      "name": "api-discovery-authenticated"
+    }
+  ]
+}
