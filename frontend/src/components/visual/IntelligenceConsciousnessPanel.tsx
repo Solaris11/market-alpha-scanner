@@ -79,7 +79,7 @@ export function IntelligenceConsciousnessPanel({
       <div className="pointer-events-none absolute inset-0 tv-consciousness-field" />
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/40 to-transparent" />
 
-      <div className="relative grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(290px,0.45fr)_minmax(320px,0.72fr)]">
+      <div className={`relative grid items-start gap-4 ${compact ? "" : "xl:grid-cols-[minmax(0,1.15fr)_minmax(290px,0.45fr)_minmax(320px,0.72fr)]"}`}>
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
