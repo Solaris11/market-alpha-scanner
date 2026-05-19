@@ -32,6 +32,7 @@ import { TerminalRightRail } from "@/components/terminal/TerminalRightRail";
 import { UnifiedIntelligenceConsole } from "@/components/terminal/UnifiedIntelligenceConsole";
 import { WorkspacePersonalizationPanel } from "@/components/terminal/WorkspacePersonalizationPanel";
 import { WorkflowEvolutionPanel } from "@/components/terminal/WorkflowEvolutionPanel";
+import { IntelligenceEcosystemPanel } from "@/components/visual/IntelligenceEcosystemPanel";
 import { getActiveAlertMatches } from "@/lib/active-alert-matches";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPaperData } from "@/lib/paper-data";
@@ -56,6 +57,7 @@ import { dailyActionBlocksTradeUi, getDailyAction, noTradeActionCopy } from "@/l
 import { buildLiveIntelligenceSystem } from "@/lib/trading/live-intelligence";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 import { buildPortfolioIntelligenceSystem } from "@/lib/trading/portfolio-intelligence";
+import { buildIntelligenceEcosystemSystem } from "@/lib/trading/intelligence-ecosystem";
 import { buildAutomatedResearchAgentsSystem } from "@/lib/trading/research-agents";
 import { buildRegimeShiftSystem } from "@/lib/trading/regime-shift-intelligence";
 import { buildScenarioIntelligenceSystem } from "@/lib/trading/scenario-intelligence";
@@ -179,6 +181,17 @@ export default async function TerminalPage() {
     positions: paperData.positions,
     scenarioSystem: scenarioIntelligence,
   });
+  const intelligenceEcosystem = buildIntelligenceEcosystemSystem({
+    feedItems: intelligenceFeed.items,
+    generatedAt: scanSafety.lastUpdated,
+    marketCondition: snapshot.marketRegime.label,
+    personalizationProfile,
+    portfolioSystem: portfolioIntelligence,
+    rows: opportunityModel.rows,
+    scanUpdatedAt: scanSafety.lastUpdated,
+    watchlistSymbols,
+    workflowEvolution,
+  });
   const automatedResearchAgents = buildAutomatedResearchAgentsSystem({
     liveSystem: liveIntelligence,
     portfolioSystem: portfolioIntelligence,
@@ -204,6 +217,7 @@ export default async function TerminalPage() {
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">
           <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
+          <IntelligenceEcosystemPanel system={intelligenceEcosystem} />
           <WorkspacePersonalizationPanel
             initialPreferences={workspacePreferences}
             recentSymbols={uniqueTerminalSymbols([leader?.symbol, ...opportunityModel.rows.slice(0, 8).map((row) => row.symbol)])}

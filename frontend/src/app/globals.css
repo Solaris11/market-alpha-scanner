@@ -903,6 +903,75 @@ a {
   opacity: 0.55;
 }
 
+.tv-ecosystem-panel {
+  isolation: isolate;
+}
+
+.tv-ecosystem-atmosphere {
+  background:
+    linear-gradient(90deg, rgba(103, 232, 249, 0.032) 1px, transparent 1px),
+    linear-gradient(rgba(103, 232, 249, 0.026) 1px, transparent 1px),
+    radial-gradient(circle at 18% 16%, rgba(34, 211, 238, 0.15), transparent 20rem),
+    radial-gradient(circle at 74% 14%, rgba(52, 211, 153, 0.10), transparent 17rem),
+    radial-gradient(circle at 88% 76%, rgba(167, 139, 250, 0.13), transparent 20rem);
+  background-size:
+    68px 68px,
+    68px 68px,
+    auto,
+    auto,
+    auto;
+  mask-image: radial-gradient(circle at 50% 28%, black, transparent 84%);
+  opacity: 0.72;
+  transform: perspective(1300px) rotateX(54deg) translateY(-10%);
+  transform-origin: top center;
+  z-index: -1;
+}
+
+.tv-ecosystem-panel::before {
+  animation: tradeveto-ecosystem-sweep 12s ease-in-out infinite;
+  background: linear-gradient(115deg, transparent 14%, rgba(103, 232, 249, 0.07), rgba(52, 211, 153, 0.055), transparent 72%);
+  content: "";
+  height: 175%;
+  left: -60%;
+  pointer-events: none;
+  position: absolute;
+  top: -40%;
+  transform: translateX(-20%) rotate(7deg);
+  width: 74%;
+  z-index: 0;
+}
+
+.tv-ecosystem-panel::after {
+  animation: tradeveto-ecosystem-drift 9.5s ease-in-out infinite;
+  background:
+    radial-gradient(circle, rgba(34, 211, 238, 0.18), transparent 58%),
+    radial-gradient(circle at 60% 44%, rgba(167, 139, 250, 0.12), transparent 62%);
+  border-radius: 999px;
+  content: "";
+  height: 18rem;
+  opacity: 0.38;
+  pointer-events: none;
+  position: absolute;
+  right: 7%;
+  top: 9%;
+  width: 18rem;
+  z-index: 0;
+}
+
+.tv-ecosystem-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.tv-ecosystem-pulse {
+  animation: tradeveto-ecosystem-pulse 5.6s ease-in-out infinite;
+  box-shadow:
+    0 0 0 1px rgba(103, 232, 249, 0.12),
+    0 0 34px rgba(34, 211, 238, 0.17),
+    0 0 48px rgba(52, 211, 153, 0.08);
+  opacity: 0.5;
+}
+
 .tv-status-constructive {
   border-color: color-mix(in srgb, var(--tv-status-constructive) 42%, transparent);
   color: rgb(187 247 208);
@@ -1160,6 +1229,43 @@ html[data-tradeveto-presentation="true"] body {
   }
 }
 
+@keyframes tradeveto-ecosystem-pulse {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.82;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes tradeveto-ecosystem-sweep {
+  0%,
+  50% {
+    opacity: 0;
+    transform: translateX(-24%) rotate(7deg);
+  }
+  64% {
+    opacity: 0.52;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(232%) rotate(7deg);
+  }
+}
+
+@keyframes tradeveto-ecosystem-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-1.2rem, 0.8rem, 0) scale(1.06);
+  }
+}
+
 .tradeveto-route-progress {
   animation: tradeveto-route-progress 1.05s ease-in-out infinite;
 }
@@ -1197,6 +1303,9 @@ html[data-tradeveto-suppress-feedback="true"] .tradeveto-beta-feedback-widget {
   .tv-consciousness-panel::before,
   .tv-consciousness-pulse,
   .tv-cinematic-card::before,
+  .tv-ecosystem-panel::after,
+  .tv-ecosystem-panel::before,
+  .tv-ecosystem-pulse,
   .tv-intelligence-breathing,
   .tv-story-anchor::after,
   .tv-story-support::after {
