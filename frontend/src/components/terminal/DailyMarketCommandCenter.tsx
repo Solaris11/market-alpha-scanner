@@ -300,7 +300,7 @@ function RankedCommandRow({ item }: { item: DailyCommandRankedItem }) {
           <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">{item.scoreLabel}</div>
         </div>
       </div>
-      <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
         <MiniStat label="Price" value={item.priceLabel} />
         <MiniStat label="1D" value={item.dailyMoveLabel} />
         <MiniStat label="Macro" value={item.macroLabel} />
