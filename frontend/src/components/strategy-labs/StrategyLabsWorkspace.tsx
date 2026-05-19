@@ -514,9 +514,6 @@ function CapitalScenarioStrip({ scenarios }: { scenarios: SimulatedPortfolioCapi
 
 function TradeLedgerPreview({ trades }: { trades: SimulatedPortfolioClosedTrade[] }) {
   const [selectedTrade, setSelectedTrade] = useState<SimulatedPortfolioClosedTrade | null>(null);
-  if (!trades.length) {
-    return <EmptyState message="No completed simulated trades are available yet. The portfolio ledger will appear when validated outcomes exist." />;
-  }
 
   return (
     <div className="rounded-[1.75rem] border border-cyan-300/16 bg-slate-950/62 p-4" id="trade-review">
@@ -525,37 +522,43 @@ function TradeLedgerPreview({ trades }: { trades: SimulatedPortfolioClosedTrade[
           <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">What the system bought and sold</div>
           <h3 className="mt-1 text-xl font-black text-white">Simulated trade ledger</h3>
         </div>
-        <div className="text-xs text-slate-500">{trades.length.toLocaleString()} visible closed simulations</div>
+        <div className="text-xs text-slate-500">{trades.length ? `${trades.length.toLocaleString()} visible closed simulations` : "Waiting for completed outcomes"}</div>
       </div>
-      <div className="mt-4 grid gap-3 lg:grid-cols-3">
-        {trades.slice(0, 6).map((trade) => (
-          <button
-            className="tv-tap-motion min-w-0 rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-cyan-400/[0.06]"
-            data-stable-overlay-trigger="true"
-            key={trade.id}
-            onClick={() => setSelectedTrade(trade)}
-            type="button"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-2">
-                <SymbolLogo size="sm" symbol={trade.symbol} />
-                <div className="min-w-0">
-                  <div className="truncate font-mono text-lg font-black text-slate-50">{trade.symbol}</div>
-                  <div className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{trade.entryDate} to {trade.exitDate}</div>
+      {trades.length ? (
+        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          {trades.slice(0, 6).map((trade) => (
+            <button
+              className="tv-tap-motion min-w-0 rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/35 hover:bg-cyan-400/[0.06]"
+              data-stable-overlay-trigger="true"
+              key={trade.id}
+              onClick={() => setSelectedTrade(trade)}
+              type="button"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <SymbolLogo size="sm" symbol={trade.symbol} />
+                  <div className="min-w-0">
+                    <div className="truncate font-mono text-lg font-black text-slate-50">{trade.symbol}</div>
+                    <div className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{trade.entryDate} to {trade.exitDate}</div>
+                  </div>
                 </div>
+                <span className={`shrink-0 font-mono text-sm font-black ${toneClass(trade.realizedPnl)}`}>{formatMoney(trade.realizedPnl)}</span>
               </div>
-              <span className={`shrink-0 font-mono text-sm font-black ${toneClass(trade.realizedPnl)}`}>{formatMoney(trade.realizedPnl)}</span>
-            </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-              <SmallMetric label="Invested" value={formatMoney(trade.investedAmount)} />
-              <SmallMetric label="Return" tone={trade.realizedReturnPct} value={formatPct(trade.realizedReturnPct)} />
-              <SmallMetric label="Entry conf." value={`${trade.confidenceAtEntry}/100`} />
-              <SmallMetric label="Exit conf." value={`${trade.confidenceAtExit}/100`} />
-            </div>
-            <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-400">{trade.learning.lesson}</p>
-          </button>
-        ))}
-      </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <SmallMetric label="Invested" value={formatMoney(trade.investedAmount)} />
+                <SmallMetric label="Return" tone={trade.realizedReturnPct} value={formatPct(trade.realizedReturnPct)} />
+                <SmallMetric label="Entry conf." value={`${trade.confidenceAtEntry}/100`} />
+                <SmallMetric label="Exit conf." value={`${trade.confidenceAtExit}/100`} />
+              </div>
+              <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-400">{trade.learning.lesson}</p>
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-4">
+          <EmptyState message="No completed simulated trades are available yet. The portfolio ledger will appear when validated outcomes exist. Open sleeves remain simulation-only research, not broker or paper orders." />
+        </div>
+      )}
 
       {selectedTrade ? <TradeDetailOverlay onClose={() => setSelectedTrade(null)} trade={selectedTrade} /> : null}
     </div>
@@ -656,7 +659,6 @@ function AllocationExposureSystem({ buckets }: { buckets: SimulatedPortfolioExpo
 }
 
 function LearningTimelineSystem({ points }: { points: SimulatedPortfolioLearningTimelinePoint[] }) {
-  if (!points.length) return <EmptyState message="No strategy learning timeline is available until completed simulated trades exist." />;
   return (
     <div className="rounded-[1.75rem] border border-cyan-300/16 bg-slate-950/62 p-4" id="strategy-learning">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -664,26 +666,32 @@ function LearningTimelineSystem({ points }: { points: SimulatedPortfolioLearning
           <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Strategy learning timeline</div>
           <h3 className="mt-1 text-xl font-black text-white">How the engine revised its behavior</h3>
         </div>
-        <div className="text-xs text-slate-500">{points.length} revision checkpoints</div>
+        <div className="text-xs text-slate-500">{points.length ? `${points.length} revision checkpoints` : "Waiting for closed evidence"}</div>
       </div>
-      <div className="mt-4 grid gap-3 lg:grid-cols-3">
-        {points.map((point) => (
-          <div className={`rounded-2xl border p-3 ${reviewToneClass(point.tone)}`} key={`${point.date}:${point.label}`}>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{point.date}</div>
-                <div className="mt-1 text-sm font-black text-slate-50">{point.label}</div>
+      {points.length ? (
+        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          {points.map((point) => (
+            <div className={`rounded-2xl border p-3 ${reviewToneClass(point.tone)}`} key={`${point.date}:${point.label}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{point.date}</div>
+                  <div className="mt-1 text-sm font-black text-slate-50">{point.label}</div>
+                </div>
+                <div className="font-mono text-xs font-black text-cyan-100">{point.confidenceScore}/100</div>
               </div>
-              <div className="font-mono text-xs font-black text-cyan-100">{point.confidenceScore}/100</div>
+              <p className="mt-2 line-clamp-4 text-xs leading-5 text-slate-400">{point.summary}</p>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
+                <SmallMetric label="Risk" value={`${point.riskScore}/100`} />
+                <SmallMetric label="Allocation" value={`${point.allocationPct.toFixed(1)}%`} />
+              </div>
             </div>
-            <p className="mt-2 line-clamp-4 text-xs leading-5 text-slate-400">{point.summary}</p>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-[10px]">
-              <SmallMetric label="Risk" value={`${point.riskScore}/100`} />
-              <SmallMetric label="Allocation" value={`${point.allocationPct.toFixed(1)}%`} />
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-4">
+          <EmptyState message="No strategy learning timeline is available until completed simulated trades exist. The lab is showing open-sleeve exposure and limited-evidence controls instead of inventing revisions." />
+        </div>
+      )}
     </div>
   );
 }
