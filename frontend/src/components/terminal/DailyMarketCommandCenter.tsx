@@ -283,8 +283,8 @@ function RankedListPanel({
 
 function RankedCommandRow({ item }: { item: DailyCommandRankedItem }) {
   return (
-    <Link className="group block rounded-2xl border border-white/10 bg-slate-950/48 p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.055]" href={item.href}>
-      <div className="flex items-start justify-between gap-3">
+    <Link className="group block overflow-hidden rounded-2xl border border-white/10 bg-slate-950/48 p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.055]" href={item.href}>
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex min-w-0 items-start gap-3">
           <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border ${TONE[item.tone].border} ${TONE[item.tone].bg} font-mono text-sm font-black ${TONE[item.tone].text}`}>{item.rank}</div>
           <div className="min-w-0">
@@ -295,9 +295,9 @@ function RankedCommandRow({ item }: { item: DailyCommandRankedItem }) {
             <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{item.whyItRanks}</p>
           </div>
         </div>
-        <div className="shrink-0 text-right">
+        <div className="flex max-w-full shrink-0 items-center gap-2 self-start rounded-full border border-white/10 bg-black/20 px-2 py-1 sm:block sm:border-0 sm:bg-transparent sm:px-0 sm:py-0 sm:text-right">
           <div className={`font-mono text-base font-black ${TONE[item.tone].text}`}>{item.score}</div>
-          <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">{item.scoreLabel}</div>
+          <div className="max-w-[9rem] truncate text-[10px] uppercase tracking-[0.14em] text-slate-500">{item.scoreLabel}</div>
         </div>
       </div>
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
