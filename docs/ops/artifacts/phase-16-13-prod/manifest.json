@@ -1,0 +1,1132 @@
+{
+  "generatedAt": "2026-05-20T04:43:03.875Z",
+  "base": "https://tradeveto.com",
+  "commit": "edcc7ae",
+  "desktop": [
+    {
+      "key": "landing",
+      "path": "/",
+      "auth": false,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/",
+      "loadMs": 2942,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/landing.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "CLOSED BETA ACCESS · EARLY ADOPTER PREMIUM PREVIEW · RESEARCH ONLY Intelligence Features Pricing Beta Feedback FAQ Open App AI MARKET INTELLIGENCE CLOSED BETA AI MARKET INTELLIGENCE THAT SAYS WAIT TradeVeto combines WAIT-first market intelligence, evidence maturity, verified event context, shock research, replay, and regime-aware analysis to help users review opportunities without turning every mover into a trade idea. Get Started View Pricing See How It Works MARKET STATE Regime and freshness D",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 27,
+        "title": "TradeVeto — AI Market Intelligence for Disciplined Traders",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "register",
+      "path": "/register",
+      "auth": false,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/register",
+      "loadMs": 5325,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/register.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "CLOSED BETA ACCESS · EARLY ADOPTER PREMIUM PREVIEW · RESEARCH ONLY Intelligence Features Pricing Beta Feedback FAQ Open App CLOSED BETA ACCESS Join the TradeVeto closed beta TradeVeto is invite-only while the beta cohort is controlled. Use your invite code to create an account, then continue into the research terminal. INVITE-ONLY Public signup is closed. Beta access requires a valid invite code. RESEARCH ONLY TradeVeto is market research software, not financial advice or broker execution. CONTR",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 25,
+        "title": "Join Closed Beta — TradeVeto | TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "login",
+      "path": "/login",
+      "auth": false,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/login",
+      "loadMs": 4810,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/login.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "CLOSED BETA ACCESS · EARLY ADOPTER PREMIUM PREVIEW · RESEARCH ONLY Intelligence Features Pricing Beta Feedback FAQ Open App EXISTING BETA USERS Sign in to TradeVeto Use the same email and password you created during closed beta access. If you are already signed in, TradeVeto will take you back to the terminal. INVITE-ONLY Public signup is closed. Beta access requires a valid invite code. RESEARCH ONLY TradeVeto is market research software, not financial advice or broker execution. CONTROLLED BET",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 26,
+        "title": "Sign In — TradeVeto | TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "terminal",
+      "path": "/terminal",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/terminal",
+      "loadMs": 5871,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/terminal.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. TODAY'S COMMAND CENTER MARKET FIRST UPDATED MAY 19, 9:39 PM What deserves attention right now OXY leads opportunity research; ARM leads risk review; ETH-USD has the strongest expansion context; cross-ass",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 637,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "dashboard",
+      "path": "/dashboard",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/dashboard",
+      "loadMs": 7737,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/dashboard.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. MARKET OS CROSS-ASSET Workspace Market Command Nasdaq, Dow, S&P 500, BTC, gold, oil, dollar, and bonds are visible again as first-class intelligence inputs. Every chart uses stored validated price histor",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 404,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "discover-search",
+      "path": "/discover",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/discover",
+      "loadMs": 6075,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/discover-search.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. DISCOVERY OS ⌘K / CTRL+K FULL UNIVERSE Intelligence discovery should never be buried. Momentum leadership is visible Discovery is scanning 111 validated symbols across sectors, performance, risk, replay,",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 169,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "scanner",
+      "path": "/scanner",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/scanner",
+      "loadMs": 6255,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/scanner.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. LIMITED PREVIEW Scanner controls are restricted Scanner operations are restricted to administrators. Premium access is active. Full trade plans and scanner intelligence are available on this account. Pre",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 18,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "opportunities",
+      "path": "/opportunities",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/opportunities",
+      "loadMs": 6823,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/opportunities.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "SCANNER ATMOSPHERE Setup discovery, watchlist shifts, and scanner freshness guide the composition. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. GUIDED FIRST OPPORTUNITY REVIEW Start with one candidate Review why it appears, what to wait for, and what can break it before scanning the full universe. Review UUP Hide guide 1. Why it appears Check the reason and e",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 108,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "symbol-amd",
+      "path": "/symbol/AMD",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/symbol/AMD",
+      "loadMs": 8202,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/symbol-amd.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. Back to terminal AMD Advanced Micro Devices, Inc. Technology RISK REVIEW Research only Conviction 45 - Weak Research mode only Fresh Updated 4 min ago ★ Watchlist Poor risk/reward or overextended in curr",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 118,
+        "title": "AMD AI Market Intelligence — TradeVeto | TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "alerts",
+      "path": "/alerts",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/alerts",
+      "loadMs": 6252,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/alerts.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "RISK ATMOSPHERE Elevated context receives warmer focus while evidence remains explicit. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. VISUAL ALERT CENTER Tap Into Alert Readiness Alert visuals are based on configured rules, watchlist overlap, and stored alert state. 7 EXPLORE COVERAGE 7 enabled out of 7 configured rules. DETAILS 10 EXPLORE WATCHLIST 10 tracked",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 125,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "intelligence-feed",
+      "path": "/intelligence",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/intelligence",
+      "loadMs": 1998,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/intelligence-feed.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "CLOSED BETA ACCESS · EARLY ADOPTER PREMIUM PREVIEW · RESEARCH ONLY Intelligence Features Pricing Beta Feedback FAQ Open App MARKET INTELLIGENCE LIBRARY Explainable market reasoning, published without the signal spam. TradeVeto publishes public-safe intelligence from market memory, macro regime, shock behavior, fragility, event context, evidence depth, and institutional pressure layers. These pages explain context and restraint; they are research only and not financial advice. WHAT MATTERS NOW Mi",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 60,
+        "title": "Market Intelligence Library — TradeVeto | TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "macro-intelligence",
+      "path": "/intelligence/macro-regime",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/intelligence/macro-regime",
+      "loadMs": 2607,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/macro-intelligence.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "CLOSED BETA ACCESS · EARLY ADOPTER PREMIUM PREVIEW · RESEARCH ONLY Intelligence Features Pricing Beta Feedback FAQ Open App MACRO REGIME Current Macro Regime and Market Pressure Intelligence Breadth Deterioration: risk appetite 55/100, breadth 23/100, unstable volatility 42/100, thin-market pressure 59/100, and transition risk 59/100. This is market-state context, not a trade instruction. Breadth Deterioration is selected from deterministic pressure scores: risk appetite 55/100, breadth 23/100, ",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 57,
+        "title": "Macro Regime Intelligence — TradeVeto | TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "shock-intelligence",
+      "path": "/intelligence/shock-opportunities",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/intelligence/shock-opportunities",
+      "loadMs": 2462,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/shock-intelligence.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "CLOSED BETA ACCESS · EARLY ADOPTER PREMIUM PREVIEW · RESEARCH ONLY Intelligence Features Pricing Beta Feedback FAQ Open App SHOCK INTELLIGENCE High Volatility and Shock Opportunity Intelligence Shock intelligence is a volatility research layer. It highlights historical large-move behavior without turning that behavior into a direct trade instruction. The statistical engine owns shock counts, follow-through, chase-risk, and similarity metrics; public pages only summarize bounded labels and resear",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 47,
+        "title": "Shock Opportunity Research — TradeVeto | TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "strategy-performance-public",
+      "path": "/intelligence/strategy-performance",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/intelligence/strategy-performance",
+      "loadMs": 2026,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/strategy-performance-public.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "CLOSED BETA ACCESS · EARLY ADOPTER PREMIUM PREVIEW · RESEARCH ONLY Intelligence Features Pricing Beta Feedback FAQ Open App PUBLIC PROOF LAYER Simulated strategy performance, with the uncomfortable parts left in. TradeVeto publishes public, replayable proof from completed simulated strategy evidence: benchmark comparison, drawdown, win/loss history, and why trades worked or failed. Research only. Not financial advice. Simulation only Benchmark comparison included Drawdown visible Failed trades i",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 21,
+        "title": "Public Strategy Performance Proof — TradeVeto | TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "history-replay",
+      "path": "/history?symbol=AMD",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/history?symbol=AMD",
+      "loadMs": 6608,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/history-replay.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "MEMORY ATMOSPHERE Historical context, replay evidence, and state transitions get layered emphasis. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. SAVED RUNS 2,760 signal memory EARLIEST 2026-04-24 07:53:58.000 UTC history LATEST 2026-05-20 04:39:33.657 UTC history UNIQUE DATES 27 trading days HOW TO USE THIS PAGE Review what changed over time Use History to com",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 66,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "performance",
+      "path": "/performance",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/performance",
+      "loadMs": 6946,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/performance.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "SIMULATION ATMOSPHERE Evidence, behavior, drawdown, and scenario context are visually grouped. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. SUMMARY ROWS 0 Header only SIGNAL ROWS 0 Header only SAVED RUNS 2,760 signal memory UNIQUE DATES 27 history depth EARLIEST 2026-04-24 07:53:58.000 UTC history LATEST 2026-05-20 04:39:33.657 UTC history HOW TO USE THIS PAG",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 288,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "paper-portfolio",
+      "path": "/paper",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/paper",
+      "loadMs": 6447,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/paper-portfolio.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "SIMULATION ATMOSPHERE Evidence, behavior, drawdown, and scenario context are visually grouped. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. PAPER TRUST LAYER System confidence from paper evidence Paper PnL, open risk, and setup behavior are summarized first. Deeper proof stays available on demand. System confidence: Low (insufficient data) Paper Account Value",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 33,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "strategy-labs",
+      "path": "/strategy-labs",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/strategy-labs",
+      "loadMs": 6525,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/strategy-labs.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "SIMULATION ATMOSPHERE Evidence, behavior, drawdown, and scenario context are visually grouped. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. STRATEGY LABS STRATEGY LABS Transparent model portfolios built from TradeVeto intelligence. Simulation only. No real-money execution. MODE Balanced EVIDENCE UNKNOWN UPDATED 5/19/26, 9:44 PM RESEARCH LAB Replay-backed simu",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 51,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "community-replay",
+      "path": "/community",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/community",
+      "loadMs": 5929,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/community-replay.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. COMMUNITY INTELLIGENCE Shared Research, Not Social Noise Opt-in shared watchlists, replay studies, and anonymous opportunity markers help surface what serious users are studying without turning TradeVeto",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 23,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "team-workspace",
+      "path": "/team",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/team",
+      "loadMs": 5741,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/team-workspace.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. ENTERPRISE INTELLIGENCE Team Workspace Shared watchlists, collaborative research notes, role-aware controls, and audit trails for team-level TradeVeto intelligence. ROLE Owner WORKSPACE SCORE 52 WORKSPAC",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 27,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "mobile-pwa",
+      "path": "/mobile",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/mobile",
+      "loadMs": 6088,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/mobile-pwa.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. INSTALL TRADEVETO A phone-friendly TradeVeto workspace You can install TradeVeto from your browser, keep the research workspace close, and enable high-signal alerts when notifications are available. PUSH",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 43,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "account",
+      "path": "/account",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/account",
+      "loadMs": 6505,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/account.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. ACCOUNT Profile and saved settings Manage the account details and trading preferences used across TradeVeto. Account saved PROFILE DISPLAY NAME Phase 16.13 QA EMAIL phase16-13-qa-20260519@tradeveto.test ",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 29,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "settings",
+      "path": "/settings",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/account",
+      "loadMs": 5880,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/settings.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. ACCOUNT Profile and saved settings Manage the account details and trading preferences used across TradeVeto. Account saved PROFILE DISPLAY NAME Phase 16.13 QA EMAIL phase16-13-qa-20260519@tradeveto.test ",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 29,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    },
+    {
+      "key": "support",
+      "path": "/support",
+      "auth": true,
+      "dir": "desktop",
+      "finalUrl": "https://tradeveto.com/support",
+      "loadMs": 6199,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/desktop/support.png",
+      "status": 200,
+      "viewportName": "desktop",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. AI MARKET INTELLIGENCE DISCOVER ⌘K ? 🔔 8 PH Beta Terminal Discover Opportunities Watchlist Alerts Dashboard Intelligence Mobile App Setup Support Research only. Not financial advice. SUPPORT CENTER How can we help? Find product help, read guides, open a ticket, or use the support assistant for safe product questions. TradeVeto is for research and education only. It does not provide f",
+        "bodyScrollWidth": 1512,
+        "clientWidth": 1512,
+        "horizontalOverflow": false,
+        "interactiveCount": 23,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 1512,
+          "height": 982
+        }
+      }
+    }
+  ],
+  "mobile": [
+    {
+      "key": "landing",
+      "path": "/",
+      "auth": false,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/",
+      "loadMs": 2782,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/landing.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "CLOSED BETA ACCESS · RESEARCH ONLY Open App AI MARKET INTELLIGENCE CLOSED BETA AI MARKET INTELLIGENCE THAT SAYS WAIT TradeVeto combines WAIT-first market intelligence, evidence maturity, verified event context, shock research, replay, and regime-aware analysis to help users review opportunities without turning every mover into a trade idea. Get Started View Pricing See How It Works MARKET STATE Regime and freshness DECISION QUALITY Quality scores that matter BEST OPPORTUNITIES High-quality setup",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 22,
+        "title": "TradeVeto — AI Market Intelligence for Disciplined Traders",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "register",
+      "path": "/register",
+      "auth": false,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/register",
+      "loadMs": 1966,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/register.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "CLOSED BETA ACCESS · RESEARCH ONLY Open App CLOSED BETA ACCESS Join the TradeVeto closed beta TradeVeto is invite-only while the beta cohort is controlled. Use your invite code to create an account, then continue into the research terminal. INVITE-ONLY Public signup is closed. Beta access requires a valid invite code. RESEARCH ONLY TradeVeto is market research software, not financial advice or broker execution. CONTROLLED BETA Access is intentionally limited while onboarding, support, and trust ",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 20,
+        "title": "Join Closed Beta — TradeVeto | TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "login",
+      "path": "/login",
+      "auth": false,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/login",
+      "loadMs": 1984,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/login.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "CLOSED BETA ACCESS · RESEARCH ONLY Open App EXISTING BETA USERS Sign in to TradeVeto Use the same email and password you created during closed beta access. If you are already signed in, TradeVeto will take you back to the terminal. INVITE-ONLY Public signup is closed. Beta access requires a valid invite code. RESEARCH ONLY TradeVeto is market research software, not financial advice or broker execution. CONTROLLED BETA Access is intentionally limited while onboarding, support, and trust loops are",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 21,
+        "title": "Sign In — TradeVeto | TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "terminal",
+      "path": "/terminal",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/terminal",
+      "loadMs": 4605,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/terminal.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now TODAY'S COMMAND CENTER MARKET FIRST UPDATED MAY 19, 9:39 PM SETUP OXY RISK ARM FLOW Energy What deserves attention right now OXY leads opportunity research; ARM leads risk review; ETH-USD has the strongest expansion context; cross-asset pressure contained. MARKET STATE OVERHEATED OPPORTUNITY OXY leads setup quality at 63/100",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 634,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "dashboard",
+      "path": "/dashboard",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/dashboard",
+      "loadMs": 7693,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/dashboard.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now VIEW MODE Overview first, detail on tap Overview Workspace status. Activity Recent actions. Workspace Personalized modules. MARKET OS CROSS-ASSET Workspace Market Command Nasdaq, Dow, S&P 500, BTC, gold, oil, dollar, and bonds are visible again as first-class intelligence inputs. Every chart uses stored validated price histo",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 409,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "discover-search",
+      "path": "/discover",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/discover",
+      "loadMs": 7607,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/discover-search.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now VIEW MODE Overview first, detail on tap Search Global scanner search. Filters Quick discovery presets. Compare Side-by-side intelligence. DISCOVERY OS ⌘K / CTRL+K FULL UNIVERSE Intelligence discovery should never be buried. Momentum leadership is visible Discovery is scanning 111 validated symbols across sectors, performance",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 174,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "scanner",
+      "path": "/scanner",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/scanner",
+      "loadMs": 6131,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/scanner.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now LIMITED PREVIEW Scanner controls are restricted Scanner operations are restricted to administrators. Premium access is active. Full trade plans and scanner intelligence are available on this account. Premium active Back to Terminal Signal refresh controls Scanner run status Alert operation state WHAT YOU CAN INSPECT Premium ",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 21,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "opportunities",
+      "path": "/opportunities",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/opportunities",
+      "loadMs": 7076,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/opportunities.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "SCANNER ATMOSPHERE Setup discovery, watchlist shifts, and scanner freshness guide the composition. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now VIEW MODE Overview first, detail on tap Cards Scan current setups. Map Visual opportunity view. Watch Tracked candidates. Details Deeper breakdowns. GUIDED FIRST OPPORTUNITY REVIEW Start with one candidate Review why it appears, what to wait for, and what can break it before scanning the full universe. Review UUP Hide guide 1. Why it appe",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 114,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "symbol-amd",
+      "path": "/symbol/AMD",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/symbol/AMD",
+      "loadMs": 8638,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/symbol-amd.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now VIEW MODE Overview first, detail on tap Overview Identity and current state. Chart Price context and overlays. Intel Why the setup matters. Risk Invalidation and pressure. Back to terminal AMD Advanced Micro Devices, Inc. Technology RISK REVIEW Research only Conviction 45 - Weak Research mode only Slightly stale Updated 7 mi",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 122,
+        "title": "AMD AI Market Intelligence — TradeVeto | TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "alerts",
+      "path": "/alerts",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/alerts",
+      "loadMs": 7558,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/alerts.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "RISK ATMOSPHERE Elevated context receives warmer focus while evidence remains explicit. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now VIEW MODE Overview first, detail on tap Radar Active alert pressure. Rules Saved monitoring rules. History Recent triggers. VISUAL ALERT CENTER Tap Into Alert Readiness Alert visuals are based on configured rules, watchlist overlap, and stored alert state. 7 EXPLORE COVERAGE 7 enabled out of 7 configured rules. DETAILS 10 EXPLORE WATCHLIST 10 tracke",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 130,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "intelligence-feed",
+      "path": "/intelligence",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/intelligence",
+      "loadMs": 2139,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/intelligence-feed.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "CLOSED BETA ACCESS · RESEARCH ONLY Open App MARKET INTELLIGENCE LIBRARY Explainable market reasoning, published without the signal spam. TradeVeto publishes public-safe intelligence from market memory, macro regime, shock behavior, fragility, event context, evidence depth, and institutional pressure layers. These pages explain context and restraint; they are research only and not financial advice. WHAT MATTERS NOW Mixed Decision Tape is the current meta state; Latest universe pressure is mixed p",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 55,
+        "title": "Market Intelligence Library — TradeVeto | TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "macro-intelligence",
+      "path": "/intelligence/macro-regime",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/intelligence/macro-regime",
+      "loadMs": 2353,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/macro-intelligence.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "CLOSED BETA ACCESS · RESEARCH ONLY Open App MACRO REGIME Current Macro Regime and Market Pressure Intelligence Breadth Deterioration: risk appetite 55/100, breadth 23/100, unstable volatility 42/100, thin-market pressure 59/100, and transition risk 59/100. This is market-state context, not a trade instruction. Breadth Deterioration is selected from deterministic pressure scores: risk appetite 55/100, breadth 23/100, volatility 42/100, liquidity 59/100, sector rotation 52/100, and transition risk",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 52,
+        "title": "Macro Regime Intelligence — TradeVeto | TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "shock-intelligence",
+      "path": "/intelligence/shock-opportunities",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/intelligence/shock-opportunities",
+      "loadMs": 2253,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/shock-intelligence.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "CLOSED BETA ACCESS · RESEARCH ONLY Open App SHOCK INTELLIGENCE High Volatility and Shock Opportunity Intelligence Shock intelligence is a volatility research layer. It highlights historical large-move behavior without turning that behavior into a direct trade instruction. The statistical engine owns shock counts, follow-through, chase-risk, and similarity metrics; public pages only summarize bounded labels and research context. If verified event context is unavailable, TradeVeto states that plai",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 42,
+        "title": "Shock Opportunity Research — TradeVeto | TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "strategy-performance-public",
+      "path": "/intelligence/strategy-performance",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/intelligence/strategy-performance",
+      "loadMs": 2352,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/strategy-performance-public.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "CLOSED BETA ACCESS · RESEARCH ONLY Open App PUBLIC PROOF LAYER Simulated strategy performance, with the uncomfortable parts left in. TradeVeto publishes public, replayable proof from completed simulated strategy evidence: benchmark comparison, drawdown, win/loss history, and why trades worked or failed. Research only. Not financial advice. Simulation only Benchmark comparison included Drawdown visible Failed trades included No current premium trade list BEST PROOF SLEEVE Conservative TRUST SCORE",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 16,
+        "title": "Public Strategy Performance Proof — TradeVeto | TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "history-replay",
+      "path": "/history?symbol=AMD",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/history?symbol=AMD",
+      "loadMs": 9185,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/history-replay.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "MEMORY ATMOSPHERE Historical context, replay evidence, and state transitions get layered emphasis. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now VIEW MODE Overview first, detail on tap Timeline What changed over time. Chart Score movement. Table Detailed saved scans. SAVED RUNS 2,760 signal memory EARLIEST 2026-04-24 07:53:58.000 UTC history LATEST 2026-05-20 04:39:33.657 UTC history UNIQUE DATES 27 trading days HOW TO USE THIS PAGE Review what changed over time Use History to com",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 71,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "performance",
+      "path": "/performance",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/performance",
+      "loadMs": 8956,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/performance.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "SIMULATION ATMOSPHERE Evidence, behavior, drawdown, and scenario context are visually grouped. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now VIEW MODE Overview first, detail on tap Summary Recent signal behavior. Evidence Reliability and coverage. History Past scanner outcomes. SUMMARY ROWS 0 Header only SIGNAL ROWS 0 Header only SAVED RUNS 2,760 signal memory UNIQUE DATES 27 history depth EARLIEST 2026-04-24 07:53:58.000 UTC history LATEST 2026-05-20 04:39:33.657 UTC history HOW ",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 293,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "paper-portfolio",
+      "path": "/paper",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/paper",
+      "loadMs": 13176,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/paper-portfolio.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "SIMULATION ATMOSPHERE Evidence, behavior, drawdown, and scenario context are visually grouped. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now VIEW MODE Overview first, detail on tap Guide How paper mode works. Positions Open and closed tests. Simulator Practice setup planning. PAPER TRUST LAYER System confidence from paper evidence Paper PnL, open risk, and setup behavior are summarized first. Deeper proof stays available on demand. System confidence: Low (insufficient data) Paper ",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 38,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "strategy-labs",
+      "path": "/strategy-labs",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/strategy-labs",
+      "loadMs": 6847,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/strategy-labs.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "SIMULATION ATMOSPHERE Evidence, behavior, drawdown, and scenario context are visually grouped. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now VIEW MODE Overview first, detail on tap Guide Simulation basics. Strategies Research families. Results Replay-backed outcomes. STRATEGY LABS STRATEGY LABS Transparent model portfolios built from TradeVeto intelligence. Simulation only. No real-money execution. MODE Balanced EVIDENCE UNKNOWN UPDATED 5/19/26, 9:47 PM RESEARCH LAB Replay-backed ",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 56,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "community-replay",
+      "path": "/community",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/community",
+      "loadMs": 6421,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/community-replay.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now COMMUNITY INTELLIGENCE Shared Research, Not Social Noise Opt-in shared watchlists, replay studies, and anonymous opportunity markers help surface what serious users are studying without turning TradeVeto into a hype feed. TRENDS 0 THEMES 0 SHARED WATCHLISTS 0 Opt-in shared watchlists only. Private user watchlists are not pub",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 26,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "team-workspace",
+      "path": "/team",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/team",
+      "loadMs": 6480,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/team-workspace.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now ENTERPRISE INTELLIGENCE Team Workspace Shared watchlists, collaborative research notes, role-aware controls, and audit trails for team-level TradeVeto intelligence. ROLE Owner WORKSPACE SCORE 52 WORKSPACE HEALTH 52 Blends shared watchlist coverage, current opportunity quality, and elevated risk concentration. SHARED WATCHLIS",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 30,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "mobile-pwa",
+      "path": "/mobile",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/mobile",
+      "loadMs": 6919,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/mobile-pwa.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now VIEW MODE Overview first, detail on tap Install Add TradeVeto to phone. Alerts Mobile notification setup. Setup iPhone and Android steps. INSTALL TRADEVETO A phone-friendly TradeVeto workspace You can install TradeVeto from your browser, keep the research workspace close, and enable high-signal alerts when notifications are ",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 49,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "account",
+      "path": "/account",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/account",
+      "loadMs": 8042,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/account.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now ACCOUNT Profile and saved settings Manage the account details and trading preferences used across TradeVeto. Account saved PROFILE DISPLAY NAME Phase 16.13 QA EMAIL phase16-13-qa-20260519@tradeveto.test TIMEZONE America/Los_Angeles RISK EXPERIENCE Advanced REGISTRATION DATE May 20, 2026, 4:40 AM LAST LOGIN May 20, 2026, 4:45",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 31,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "settings",
+      "path": "/settings",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/account",
+      "loadMs": 7360,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/settings.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now ACCOUNT Profile and saved settings Manage the account details and trading preferences used across TradeVeto. Account saved PROFILE DISPLAY NAME Phase 16.13 QA EMAIL phase16-13-qa-20260519@tradeveto.test TIMEZONE America/Los_Angeles RISK EXPERIENCE Advanced REGISTRATION DATE May 20, 2026, 4:40 AM LAST LOGIN May 20, 2026, 4:45",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 31,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    },
+    {
+      "key": "support",
+      "path": "/support",
+      "auth": true,
+      "dir": "mobile",
+      "finalUrl": "https://tradeveto.com/support",
+      "loadMs": 6771,
+      "screenshot": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-16-13-prod/mobile/support.png",
+      "status": 200,
+      "viewportName": "iPhone 15 Pro",
+      "metrics": {
+        "bodyTextSample": "INTELLIGENCE ATMOSPHERE TradeVeto keeps market context, risk, replay, and watchlist evidence visually connected. Discover 🔔 8 PH Beta Last: AMD AMD NVDA MU What Matters Now SUPPORT CENTER How can we help? Find product help, read guides, open a ticket, or use the support assistant for safe product questions. TradeVeto is for research and education only. It does not provide financial advice. FAQ Answers about product concepts, billing, alerts, paper trading, and data freshness. Guides Short how-t",
+        "bodyScrollWidth": 393,
+        "clientWidth": 393,
+        "horizontalOverflow": false,
+        "interactiveCount": 25,
+        "title": "TradeVeto",
+        "viewport": {
+          "width": 393,
+          "height": 659
+        }
+      }
+    }
+  ],
+  "interactions": [
+    {
+      "name": "terminal daily development overlay",
+      "passed": true
+    },
+    {
+      "name": "discover compare mode visible",
+      "passed": true
+    },
+    {
+      "name": "discover symbol detail overlay",
+      "passed": false,
+      "note": "No Open button visible in first viewport"
+    },
+    {
+      "name": "strategy adaptive portfolio lab visible",
+      "passed": true
+    }
+  ]
+}
