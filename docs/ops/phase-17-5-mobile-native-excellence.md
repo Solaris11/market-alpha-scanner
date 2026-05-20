@@ -78,10 +78,12 @@ Local validation status:
 
 Production validation status:
 
-- Production pull/rebuild - pending.
-- `/api/health` - pending.
-- `/api/health/deep` - pending.
-- Route smoke - pending.
+- Production pull/rebuild - passed. Production fast-forwarded to `7d91a97` and rebuilt `market-alpha-frontend`.
+- Container health - passed. `market-alpha-frontend` reported `healthy`.
+- `/api/health` - passed, HTTP 200.
+- `/api/health/deep` - passed, HTTP 200.
+- Production route smoke - passed for `/mobile`, `/terminal`, `/discover`, `/opportunities`, `/symbol/AMD`, and `/alerts`.
+- Public edge smoke - passed for `https://tradeveto.com/api/health` and `https://tradeveto.com/mobile`.
 
 ## Physical Device QA
 
