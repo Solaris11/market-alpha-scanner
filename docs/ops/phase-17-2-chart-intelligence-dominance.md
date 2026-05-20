@@ -164,10 +164,14 @@ Local validation performed:
 - `npx pyright . --pythonpath .venv/bin/python --warnings` - passed, 0 errors
 - `git diff --check` - passed
 - Local browser smoke on `/symbol/AMD` - route rendered without application crash; local scanner data was unavailable, so the authenticated populated chart state still requires production/data-backed QA
+- Production sync - `main` pulled on Linux host and frontend container rebuilt successfully
+- Production container health - `market-alpha-frontend` healthy
+- Production API health - `/api/health` 200, `/api/health/deep` 200
+- Production route smoke - `/terminal` 200, `/symbol/AMD` 200, `/history?symbol=AMD` 200, `/dashboard` 200
 
 Remaining validation recommended before release sign-off:
 
-- Production/data-backed browser smoke on `/symbol/AMD` and macro/chart surfaces
+- Production screenshot capture for populated authenticated chart states
 - Physical-device QA on iPhone Safari, Android Chrome, and Facebook in-app browser
 
 ## Remaining Chart Debt
