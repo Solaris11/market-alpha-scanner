@@ -42,7 +42,16 @@ Paper rows do not currently store full macro snapshots or replay analog packets 
 - `npx pyright . --pythonpath .venv/bin/python --warnings` passed with 0 errors.
 - `git diff --check` passed.
 
-Production pull/rebuild/health/smoke remains required after push.
+Production validation:
+
+- Pulled `main` on the Linux production host.
+- Rebuilt and restarted `market-alpha-frontend` with Docker Compose.
+- Container reported healthy.
+- `/api/health` returned 200.
+- `/api/health/deep` returned 200.
+- `/strategy-labs` returned 200.
+- `/paper` returned 200.
+- `/terminal` returned 200.
 
 ## Remaining Gaps
 
