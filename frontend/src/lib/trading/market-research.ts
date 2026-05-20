@@ -1,4 +1,5 @@
 import { filterInteractivePricePoints, summarizePriceMove, validClosePoints, type MarketChartHubItem } from "@/lib/interactive-chart-data";
+import { isVerifiedNewsSource, verifiedNewsItemFromRow } from "@/lib/news-source-policy";
 import type { RankingRow, ScannerScalar } from "@/lib/types";
 
 export type MarketCommandItem = {
@@ -21,12 +22,18 @@ export type MarketCommandItem = {
 
 export type MarketNewsItem = {
   affectedSectors: string[];
+  bearishImplication: string;
+  bullishImplication: string;
   direction: string;
+  eventTrackingLabel: string;
   eventType: string;
   id: string;
+  marketMovingLabel: string;
   publishedAt: string;
   reasonCodes: string[];
   relatedAssets: string[];
+  relatedMacroContext: string;
+  relatedReplayContext: string;
   relevance: number;
   scope: string;
   source: string;
@@ -88,14 +95,33 @@ export type SymbolResearchModel = {
 };
 
 type RawEvent = {
+  affected_sectors?: unknown;
+  affected_symbols?: unknown;
+  article_url?: unknown;
+  bearish_implication?: unknown;
+  bullish_implication?: unknown;
+  canonical_url?: unknown;
+  category?: unknown;
   direction?: unknown;
   event_type?: unknown;
+  event_tracking_label?: unknown;
+  headline?: unknown;
+  impact?: unknown;
+  macro_context?: unknown;
+  market_moving_label?: unknown;
+  news_url?: unknown;
   published_at?: unknown;
   reason_codes?: unknown;
+  related_assets?: unknown;
+  replay_context?: unknown;
   scope?: unknown;
+  sentiment?: unknown;
   source?: unknown;
+  source_name?: unknown;
   source_url?: unknown;
+  timestamp?: unknown;
   title?: unknown;
+  url?: unknown;
   weight?: unknown;
 };
 
@@ -250,8 +276,15 @@ function buildMacroNews(rows: RankingRow[]): MarketNewsItem[] {
         byKey.set(item.id, {
           ...existing,
           affectedSectors,
+          bearishImplication: groupedBearishImplication(existing, item),
+          bullishImplication: groupedBullishImplication(existing, item),
+          eventTrackingLabel: strongerTrackingLabel(existing.eventTrackingLabel, item.eventTrackingLabel),
+          marketMovingLabel: strongerTrackingLabel(existing.marketMovingLabel, item.marketMovingLabel),
           relatedAssets,
+          reasonCodes: unique([...existing.reasonCodes, ...item.reasonCodes]),
           relevance: Math.max(existing.relevance, item.relevance),
+          relatedMacroContext: groupedContext(existing.relatedMacroContext, item.relatedMacroContext, relatedAssets, "Macro"),
+          relatedReplayContext: groupedContext(existing.relatedReplayContext, item.relatedReplayContext, relatedAssets, "Replay"),
           whyItMatters: relatedAssets.length > 1
             ? groupedEventWhyItMatters(existing.eventType, existing.direction, relatedAssets, affectedSectors, existing.reasonCodes)
             : existing.whyItMatters,
@@ -267,39 +300,62 @@ function buildMacroNews(rows: RankingRow[]): MarketNewsItem[] {
 }
 
 function rawEvents(row: RankingRow): RawEvent[] {
+  const events: RawEvent[] = [];
   const raw = row.verified_event_recent_events;
-  if (Array.isArray(raw)) return raw.filter(isRecord).map((item) => item as RawEvent);
+  if (Array.isArray(raw)) events.push(...raw.filter(isRecord).map((item) => item as RawEvent));
   if (typeof raw === "string") {
     try {
       const parsed = JSON.parse(raw) as unknown;
-      return Array.isArray(parsed) ? parsed.filter(isRecord).map((item) => item as RawEvent) : [];
+      if (Array.isArray(parsed)) events.push(...parsed.filter(isRecord).map((item) => item as RawEvent));
     } catch {
-      return [];
+      // Keep direct source-linked row news below even if the event JSON is malformed.
     }
   }
-  return [];
+  const directNews = verifiedNewsItemFromRow(row);
+  if (directNews) {
+    events.push({
+      direction: directionFromSentiment(directNews.sentimentTag),
+      event_type: inferEventType(`${directNews.headline} ${text(row.event_context_summary) ?? ""} ${text(row.sector) ?? ""}`),
+      published_at: directNews.timestamp,
+      reason_codes: [directNews.impactTag === "High impact" ? "NEWS_HIGH_IMPACT" : "NEWS_SOURCE_LINKED"],
+      scope: "symbol",
+      source: directNews.source,
+      source_url: directNews.url,
+      title: directNews.headline,
+      weight: directNews.impactTag === "High impact" ? 0.95 : directNews.impactTag === "Moderate impact" ? 0.72 : 0.42,
+    });
+  }
+  return events;
 }
 
 function eventToNewsItem(event: RawEvent, row: RankingRow): MarketNewsItem | null {
-  const title = text(event.title);
-  const source = text(event.source);
-  const sourceUrl = text(event.source_url);
-  const publishedAt = text(event.published_at);
-  if (!title || !source || !sourceUrl || !publishedAt || !isHttpUrl(sourceUrl)) return null;
-  const eventType = text(event.event_type) ?? "market_event";
-  const direction = text(event.direction) ?? "neutral";
+  const title = text(event.title ?? event.headline);
+  const source = text(event.source ?? event.source_name);
+  const sourceUrl = text(event.source_url ?? event.url ?? event.article_url ?? event.news_url ?? event.canonical_url);
+  const publishedAt = text(event.published_at ?? event.timestamp);
+  if (!title || !source || !sourceUrl || !publishedAt || !isVerifiedNewsSource(source, sourceUrl)) return null;
+  const eventType = text(event.event_type ?? event.category) ?? inferEventType(title);
+  const direction = normalizedDirection(text(event.direction ?? event.sentiment ?? event.impact));
   const reasonCodes = stringArray(event.reason_codes);
   const risk = numeric(row.event_risk_score ?? row.verified_event_pressure_score ?? row.event_shock_pressure_score) ?? 50;
-  const weight = numeric(event.weight) ?? 0.5;
+  const weight = numeric(event.weight) ?? weightFromImpact(text(event.impact ?? event.market_moving_label));
   const relevance = Math.round(Math.max(0, Math.min(100, risk * 0.72 + weight * 28)));
+  const affectedSectors = unique([...stringArray(event.affected_sectors), text(row.sector)].filter((value): value is string => Boolean(value)));
+  const relatedAssets = unique([...stringArray(event.affected_symbols), ...stringArray(event.related_assets), row.symbol.toUpperCase()]);
   return {
-    affectedSectors: unique([text(row.sector)].filter((value): value is string => Boolean(value))),
+    affectedSectors,
+    bearishImplication: text(event.bearish_implication) ?? implicationFor("bearish", eventType, direction, row),
+    bullishImplication: text(event.bullish_implication) ?? implicationFor("bullish", eventType, direction, row),
     direction,
+    eventTrackingLabel: text(event.event_tracking_label) ?? eventTrackingLabel(eventType, source),
     eventType,
     id: `${sourceUrl}|${title}`.slice(0, 380),
+    marketMovingLabel: text(event.market_moving_label) ?? marketMovingLabel(relevance, eventType),
     publishedAt,
     reasonCodes,
-    relatedAssets: [row.symbol.toUpperCase()],
+    relatedAssets,
+    relatedMacroContext: text(event.macro_context) ?? macroContextFor(row, eventType, direction),
+    relatedReplayContext: text(event.replay_context) ?? replayContextFor(row),
     relevance,
     scope: text(event.scope) ?? "market",
     source,
@@ -308,6 +364,107 @@ function eventToNewsItem(event: RawEvent, row: RankingRow): MarketNewsItem | nul
     tone: eventTone(direction, risk),
     whyItMatters: eventWhyItMatters(eventType, direction, row.symbol, text(row.sector), reasonCodes),
   };
+}
+
+function directionFromSentiment(value: string): string {
+  if (/supportive|positive|bullish/i.test(value)) return "positive";
+  if (/cautious|negative|bearish/i.test(value)) return "negative";
+  return "neutral";
+}
+
+function normalizedDirection(value: string | null): string {
+  if (!value) return "neutral";
+  if (/positive|supportive|bullish|beat|upgrade|improving/i.test(value)) return "positive";
+  if (/negative|cautious|bearish|miss|downgrade|deteriorating|risk/i.test(value)) return "negative";
+  if (/mixed|neutral/i.test(value)) return "neutral";
+  return value.toLowerCase();
+}
+
+function inferEventType(value: string): string {
+  const normalized = value.toLowerCase();
+  if (/upgrade|downgrade|price target|initiated|analyst|rating/.test(normalized)) return "analyst_action";
+  if (/earnings|eps|revenue|guidance|margin/.test(normalized)) return "earnings";
+  if (/fed|rate|yield|treasury|bond/.test(normalized)) return "rates";
+  if (/cpi|ppi|inflation|jobs|payroll|gdp|recession/.test(normalized)) return "macro_data";
+  if (/war|peace|geopolitical|sanction|conflict/.test(normalized)) return "geopolitical";
+  if (/oil|energy|crude|opec|gas/.test(normalized)) return "energy";
+  if (/btc|bitcoin|crypto/.test(normalized)) return "crypto";
+  return "market_event";
+}
+
+function weightFromImpact(value: string | null): number {
+  if (!value) return 0.5;
+  if (/high|major|urgent|market moving/i.test(value)) return 0.95;
+  if (/moderate|medium/i.test(value)) return 0.72;
+  if (/low/i.test(value)) return 0.35;
+  return 0.5;
+}
+
+function implicationFor(kind: "bearish" | "bullish", eventType: string, direction: string, row: RankingRow): string {
+  const symbol = row.symbol.toUpperCase();
+  const sector = text(row.sector);
+  const subject = sector ? `${symbol} and the ${sector} group` : symbol;
+  const type = eventType.replace(/_/g, " ");
+  if (kind === "bullish") {
+    if (direction === "positive") return `Supportive ${type} context may improve risk appetite or confirmation quality for ${subject}.`;
+    if (direction === "negative") return `Bullish interpretation is limited unless price structure absorbs the ${type} pressure without confidence decay.`;
+    return `A constructive read would require the ${type} context to improve breadth, confidence, or macro alignment for ${subject}.`;
+  }
+  if (direction === "negative") return `${capitalize(type)} pressure can weaken confidence, raise volatility, or increase risk review needs for ${subject}.`;
+  if (direction === "positive") return `Bearish read is limited, but failed follow-through after supportive ${type} context would be a warning for ${subject}.`;
+  return `Risk remains uncertain until the ${type} context resolves into clearer price, macro, or replay evidence for ${subject}.`;
+}
+
+function macroContextFor(row: RankingRow, eventType: string, direction: string): string {
+  const explicit = text(row.macro_context_summary ?? row.market_regime_label ?? row.sector_context_label);
+  if (explicit) return explicit;
+  const macroScore = numeric(row.macro_alignment_score ?? row.macro_pressure_score);
+  if (macroScore !== null) {
+    const verb = macroScore >= 65 ? "supportive" : macroScore <= 35 ? "hostile" : "mixed";
+    return `Macro alignment is ${verb} at ${Math.round(macroScore)}/100 while this ${eventType.replace(/_/g, " ")} item is ${direction}.`;
+  }
+  return "Macro linkage is limited in the current scanner packet; treat this as source-linked context, not complete causality.";
+}
+
+function replayContextFor(row: RankingRow): string {
+  const explicit = text(row.replay_context_summary ?? row.large_move_history_summary ?? row.market_memory_summary);
+  if (explicit) return explicit;
+  const analogScore = numeric(row.analog_quality_score ?? row.regime_similarity_score ?? row.market_memory_similarity);
+  if (analogScore !== null) return `Replay/memory similarity is available at ${Math.round(analogScore)}/100; use it to compare this event against prior environments.`;
+  return "Replay and market-memory linkage is limited for this headline in the current packet.";
+}
+
+function marketMovingLabel(relevance: number, eventType: string): string {
+  if (relevance >= 75) return `High-impact ${eventType.replace(/_/g, " ")} event`;
+  if (relevance >= 55) return `Moderate-impact ${eventType.replace(/_/g, " ")} event`;
+  return `Tracked ${eventType.replace(/_/g, " ")} context`;
+}
+
+function eventTrackingLabel(eventType: string, source: string): string {
+  const label = eventType.replace(/_/g, " ");
+  return `${capitalize(label)} tracked from ${source}`;
+}
+
+function groupedBullishImplication(existing: MarketNewsItem, next: MarketNewsItem): string {
+  const assets = unique([...existing.relatedAssets, ...next.relatedAssets]);
+  if (existing.direction === "positive" || next.direction === "positive") return `Supportive interpretation applies across ${assets.slice(0, 5).join(", ")} if confirmation and macro alignment hold.`;
+  return existing.bullishImplication || next.bullishImplication;
+}
+
+function groupedBearishImplication(existing: MarketNewsItem, next: MarketNewsItem): string {
+  const assets = unique([...existing.relatedAssets, ...next.relatedAssets]);
+  if (existing.direction === "negative" || next.direction === "negative") return `Risk interpretation applies across ${assets.slice(0, 5).join(", ")} if volatility, breadth, or confidence deteriorates further.`;
+  return existing.bearishImplication || next.bearishImplication;
+}
+
+function groupedContext(left: string, right: string, assets: string[], label: "Macro" | "Replay"): string {
+  if (left === right) return left;
+  return `${label} context is linked across ${assets.slice(0, 5).join(", ")}. ${left}`;
+}
+
+function strongerTrackingLabel(left: string, right: string): string {
+  if (/high/i.test(right) && !/high/i.test(left)) return right;
+  return left || right;
 }
 
 function eventWhyItMatters(eventType: string, direction: string, symbol: string, sector: string | null, reasonCodes: string[]): string {
@@ -367,15 +524,6 @@ function stringArray(value: unknown): string[] {
 
 function isRecord(value: unknown): value is Record<string, ScannerScalar> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function isHttpUrl(value: string): boolean {
-  try {
-    const parsed = new URL(value);
-    return parsed.protocol === "https:" || parsed.protocol === "http:";
-  } catch {
-    return false;
-  }
 }
 
 function unique(values: string[]): string[] {

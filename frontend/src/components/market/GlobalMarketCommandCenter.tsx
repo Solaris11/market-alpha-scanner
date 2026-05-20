@@ -133,6 +133,10 @@ export function GlobalMarketCommandCenter({ compact = false, model, title = "Glo
                     <span className={`rounded-full border border-white/10 px-2 py-1 text-[10px] font-black ${TONE_CLASSES[item.tone].text}`}>{item.relevance}</span>
                   </div>
                   <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{item.whyItMatters}</p>
+                  <div className="mt-2 grid gap-1.5 sm:grid-cols-2">
+                    <NewsMicroContext label="Bullish" tone="emerald" value={item.bullishImplication} />
+                    <NewsMicroContext label="Bearish" tone="rose" value={item.bearishImplication} />
+                  </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {item.relatedAssets.slice(0, 5).map((symbol) => (
                       <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 font-mono text-[10px] text-slate-300" key={symbol}>{symbol}</span>
@@ -212,6 +216,7 @@ function MarketDetailOverlay({ item, news, onClose }: { item: MarketCommandItem 
                   <div className="text-[10px] uppercase tracking-[0.14em] text-slate-500">{item.source} · {formatDate(item.publishedAt)}</div>
                   <div className="mt-1 text-sm font-semibold leading-5 text-slate-100">{item.title}</div>
                   <p className="mt-1 text-xs leading-5 text-slate-400">{item.whyItMatters}</p>
+                  <p className="mt-1 text-xs leading-5 text-cyan-100/80">{item.relatedMacroContext}</p>
                 </a>
               )) : (
                 <div className="rounded-xl border border-dashed border-white/10 bg-slate-950/45 p-3 text-sm text-slate-500">No verified source-linked event is attached to this market proxy yet.</div>
@@ -246,6 +251,15 @@ function NewsDetailOverlay({ item, onClose }: { item: MarketNewsItem | null; onC
           <MarketMiniStat label="Relevance" value={`${item.relevance}/100`} />
           <MarketMiniStat label="Assets" value={item.relatedAssets.slice(0, 4).join(", ") || "Limited"} />
           <MarketMiniStat label="Sectors" value={item.affectedSectors.slice(0, 3).join(", ") || "Limited"} />
+          <MarketMiniStat label="Tracking" value={item.eventTrackingLabel} />
+          <MarketMiniStat label="Event read" value={item.marketMovingLabel} />
+          <MarketMiniStat label="Direction" value={item.direction} />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <NewsImplication label="Bullish implication" tone="emerald" value={item.bullishImplication} />
+          <NewsImplication label="Bearish implication" tone="rose" value={item.bearishImplication} />
+          <NewsImplication label="Related macro context" tone="cyan" value={item.relatedMacroContext} />
+          <NewsImplication label="Related replay / memory context" tone="violet" value={item.relatedReplayContext} />
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Reason codes</div>
@@ -257,6 +271,24 @@ function NewsDetailOverlay({ item, onClose }: { item: MarketNewsItem | null; onC
         </div>
       </div>
     </StableDetailOverlay>
+  );
+}
+
+function NewsMicroContext({ label, tone, value }: { label: string; tone: VisualTone; value: string }) {
+  return (
+    <div className={`rounded-xl border px-2 py-1.5 ${TONE_CLASSES[tone].border} bg-black/15`}>
+      <div className={`text-[9px] font-black uppercase tracking-[0.12em] ${TONE_CLASSES[tone].text}`}>{label}</div>
+      <div className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-400">{value}</div>
+    </div>
+  );
+}
+
+function NewsImplication({ label, tone, value }: { label: string; tone: VisualTone; value: string }) {
+  return (
+    <div className={`rounded-2xl border p-4 ${TONE_CLASSES[tone].border} ${TONE_CLASSES[tone].panel}`}>
+      <div className={`text-[10px] font-black uppercase tracking-[0.18em] ${TONE_CLASSES[tone].text}`}>{label}</div>
+      <p className="mt-2 text-sm leading-6 text-slate-300">{value}</p>
+    </div>
   );
 }
 

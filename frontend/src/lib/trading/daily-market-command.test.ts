@@ -121,16 +121,22 @@ function marketCommand(): MarketCommandModel {
     generatedAt: "2026-05-19T13:00:00.000Z",
     macroNews: [{
       affectedSectors: ["Semiconductors"],
+      bearishImplication: "Rates pressure can weaken growth multiples across AMD and MU.",
+      bullishImplication: "Bullish read requires growth shares to absorb rate pressure without confidence decay.",
       direction: "negative",
+      eventTrackingLabel: "Rates tracked from Reuters",
       eventType: "macro_policy",
-      id: "https://example.com/rates|Rates pressure growth",
+      id: "https://www.reuters.com/markets/rates-pressure-growth-shares|Rates pressure growth",
+      marketMovingLabel: "High-impact macro policy event",
       publishedAt: "2026-05-19T12:30:00.000Z",
       reasonCodes: ["EVENT_RATE_PRESSURE"],
       relatedAssets: ["AMD", "MU"],
+      relatedMacroContext: "Rates pressure is reducing growth confidence.",
+      relatedReplayContext: "Replay linkage is limited for this headline.",
       relevance: 82,
       scope: "market",
       source: "Reuters",
-      sourceUrl: "https://example.com/rates",
+      sourceUrl: "https://www.reuters.com/markets/rates-pressure-growth-shares",
       title: "Rates pressure growth shares",
       tone: "rose",
       whyItMatters: "Macro policy adds risk pressure across AMD, MU in Semiconductors.",
@@ -194,8 +200,12 @@ test("daily market command ranks opportunity, breakout, crash risk, money flow, 
   assert.equal(model.crashRisk[0]?.symbol, "MU");
   assert.ok(model.breakoutCandidates.some((item) => item.symbol === "AMD" || item.symbol === "MU"));
   assert.ok(model.moneyFlow.sectors.some((sector) => sector.sector === "Semiconductors"));
-  assert.equal(model.developments[0]?.sourceUrl, "https://example.com/rates");
+  assert.equal(model.developments[0]?.sourceUrl, "https://www.reuters.com/markets/rates-pressure-growth-shares");
   assert.equal(model.developments[0]?.watchlistImpact, true);
+  assert.match(model.developments[0]?.bearishImplication ?? "", /Rates pressure/);
+  assert.match(model.developments[0]?.relatedMacroContext ?? "", /growth confidence/);
+  assert.equal(model.newsEcosystem.watchlistImpactCount, 1);
+  assert.equal(model.newsEcosystem.highImpactCount, 1);
   assert.ok(model.calendar.some((item) => item.symbol === "AMD" && item.category === "earnings"));
   assert.match(model.hero.narrative, /leads/);
 });

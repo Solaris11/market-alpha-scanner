@@ -326,9 +326,27 @@ function NewsOverlay({ item, onClose }: { item: MarketNewsItem | null; onClose: 
           <DetailTile label="Relevance" value={`${item.relevance}/100`} />
           <DetailTile label="Related assets" value={item.relatedAssets.join(", ") || "Limited"} />
           <DetailTile label="Affected sectors" value={item.affectedSectors.join(", ") || "Limited"} />
+          <DetailTile label="Tracking" value={item.eventTrackingLabel} />
+          <DetailTile label="Event read" value={item.marketMovingLabel} />
+          <DetailTile label="Direction" value={item.direction} />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <NewsContextPanel label="Bullish implication" tone="emerald" value={item.bullishImplication} />
+          <NewsContextPanel label="Bearish implication" tone="rose" value={item.bearishImplication} />
+          <NewsContextPanel label="Macro context" tone="cyan" value={item.relatedMacroContext} />
+          <NewsContextPanel label="Replay / memory context" tone="violet" value={item.relatedReplayContext} />
         </div>
       </div>
     </StableDetailOverlay>
+  );
+}
+
+function NewsContextPanel({ label, tone, value }: { label: string; tone: MarketNewsItem["tone"]; value: string }) {
+  return (
+    <div className={`rounded-2xl border p-4 ${TONE_CLASSES[tone].border} ${TONE_CLASSES[tone].bg}`}>
+      <div className={`text-[10px] font-black uppercase tracking-[0.18em] ${TONE_CLASSES[tone].text}`}>{label}</div>
+      <p className="mt-2 text-sm leading-6 text-slate-300">{value}</p>
+    </div>
   );
 }
 

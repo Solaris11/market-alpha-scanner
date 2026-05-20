@@ -69,6 +69,8 @@ test("buildMarketCommandModel restores cross-asset market command context from v
   assert.equal(model.macroNews.length, 1);
   assert.deepEqual(model.macroNews[0]?.relatedAssets.sort(), ["AMD", "QQQ"]);
   assert.match(model.macroNews[0]?.whyItMatters ?? "", /AMD, QQQ|QQQ, AMD/);
+  assert.match(model.macroNews[0]?.bearishImplication ?? "", /pressure|Risk/i);
+  assert.match(model.macroNews[0]?.relatedMacroContext ?? "", /Macro|alignment|limited/i);
 });
 
 test("buildSymbolResearchModel exposes real research fields and limited-data states", () => {
@@ -104,6 +106,34 @@ test("buildSymbolResearchModel exposes real research fields and limited-data sta
   assert.equal(model.earnings.surpriseHistoryAvailable, false);
   assert.equal(model.dividend.yield, 0);
   assert.equal(model.news.length, 1);
+  assert.match(model.news[0]?.bullishImplication ?? "", /supportive|constructive|Bullish/i);
+  assert.match(model.news[0]?.relatedReplayContext ?? "", /Replay|memory/i);
   assert.ok(model.financialMetrics.some((metric) => metric.label === "Revenue growth" && metric.value === "12.0%"));
   assert.ok(model.researchCompleteness > 50);
+});
+
+test("buildMarketCommandModel ingests direct source-linked row news without fabricating headlines", () => {
+  const rows: RankingRow[] = [{
+    symbol: "NVDA",
+    event_risk_score: 58,
+    macro_alignment_score: 66,
+    news_headline: "Analyst raises Nvidia price target on AI demand",
+    news_score: 72,
+    news_source: "Yahoo Finance",
+    news_timestamp: "2026-05-12T14:00:00.000Z",
+    news_url: "https://finance.yahoo.com/news/nvidia-price-target-ai-demand",
+    sector: "Technology",
+  }];
+
+  const model = buildMarketCommandModel({
+    charts: [],
+    generatedAt: "2026-05-12T20:00:00.000Z",
+    rows,
+  });
+
+  assert.equal(model.macroNews.length, 1);
+  assert.equal(model.macroNews[0]?.source, "Yahoo Finance");
+  assert.equal(model.macroNews[0]?.eventType, "analyst_action");
+  assert.deepEqual(model.macroNews[0]?.relatedAssets, ["NVDA"]);
+  assert.match(model.macroNews[0]?.marketMovingLabel ?? "", /impact|Tracked/i);
 });

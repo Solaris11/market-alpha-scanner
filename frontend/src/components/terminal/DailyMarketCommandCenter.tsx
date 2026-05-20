@@ -33,13 +33,14 @@ import type {
   DailyMarketChange,
   DailyMoneyFlowSector,
   DailyMoneyFlowTheme,
+  DailyNewsEcosystemSummary,
 } from "@/lib/trading/daily-market-command";
 
 type Props = {
   model: DailyMarketCommandModel;
 };
 
-const FILTERS: DailyDevelopmentCategory[] = ["All", "My Watchlist", "Macro", "Earnings", "Rates", "Geopolitical", "Crypto", "Energy", "High Impact"];
+const FILTERS: DailyDevelopmentCategory[] = ["All", "My Watchlist", "Macro", "Earnings", "Analyst", "Rates", "Geopolitical", "Crypto", "Energy", "High Impact"];
 
 const TONE: Record<DailyCommandTone, { bg: string; border: string; glow: string; ring: string; text: string }> = {
   amber: { bg: "bg-amber-400/[0.075]", border: "border-amber-300/25", glow: "shadow-[0_0_32px_rgba(251,191,36,0.11)]", ring: "ring-amber-300/15", text: "text-amber-100" },
@@ -190,6 +191,7 @@ export function DailyMarketCommandCenter({ model }: Props) {
                 </button>
               ))}
             </div>
+            <NewsEcosystemStrip summary={model.newsEcosystem} />
             <div className="mt-4 grid gap-2">
               {filteredDevelopments.length ? filteredDevelopments.slice(0, 7).map((item) => (
                 <button
@@ -205,6 +207,7 @@ export function DailyMarketCommandCenter({ model }: Props) {
                         <span>{item.source}</span>
                         <span>{formatDate(item.timestamp)}</span>
                         <span className={TONE[item.tone].text}>{item.urgency} urgency</span>
+                        <span>{item.category}</span>
                         {item.watchlistImpact ? <span className="text-cyan-200">watchlist impact</span> : null}
                       </div>
                       <div className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-slate-100">{item.headline}</div>
@@ -212,8 +215,13 @@ export function DailyMarketCommandCenter({ model }: Props) {
                     <ArrowUpRight className="h-4 w-4 shrink-0 text-slate-500" />
                   </div>
                   <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{item.whyItMatters}</p>
+                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                    <DevelopmentMicroContext label="Bullish read" tone="emerald" value={item.bullishImplication} />
+                    <DevelopmentMicroContext label="Bearish read" tone="rose" value={item.bearishImplication} />
+                  </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {item.affectedSymbols.slice(0, 6).map((symbol) => <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 font-mono text-[10px] text-slate-300" key={symbol}>{symbol}</span>)}
+                    <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300">{item.marketMovingLabel}</span>
                   </div>
                 </button>
               )) : (
@@ -245,6 +253,36 @@ export function DailyMarketCommandCenter({ model }: Props) {
 
       <DevelopmentOverlay item={selectedDevelopment} onClose={() => setSelectedDevelopment(null)} />
     </section>
+  );
+}
+
+function NewsEcosystemStrip({ summary }: { summary: DailyNewsEcosystemSummary }) {
+  return (
+    <div className="mt-4 rounded-3xl border border-cyan-300/14 bg-cyan-300/[0.045] p-3">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+        <EcosystemMetric label="Source-linked" tone="cyan" value={`${summary.total}`} />
+        <EcosystemMetric label="Watchlist impact" tone="emerald" value={`${summary.watchlistImpactCount}`} />
+        <EcosystemMetric label="High impact" tone="rose" value={`${summary.highImpactCount}`} />
+        <EcosystemMetric label="Sources" tone="violet" value={`${summary.sourceCount}`} />
+      </div>
+      <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-400">{summary.topNarrative}</p>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {summary.sourceNames.slice(0, 5).map((source) => <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300" key={source}>{source}</span>)}
+        {summary.ratesInflationCount ? <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[10px] font-bold text-amber-100">Rates {summary.ratesInflationCount}</span> : null}
+        {summary.geopoliticalCount ? <span className="rounded-full border border-rose-300/20 bg-rose-300/10 px-2 py-0.5 text-[10px] font-bold text-rose-100">Geo {summary.geopoliticalCount}</span> : null}
+        {summary.analystCount ? <span className="rounded-full border border-violet-300/20 bg-violet-300/10 px-2 py-0.5 text-[10px] font-bold text-violet-100">Analyst {summary.analystCount}</span> : null}
+        {summary.earningsCount ? <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-bold text-cyan-100">Earnings {summary.earningsCount}</span> : null}
+      </div>
+    </div>
+  );
+}
+
+function EcosystemMetric({ label, tone, value }: { label: string; tone: DailyCommandTone; value: string }) {
+  return (
+    <div className={`rounded-2xl border p-2 ${TONE[tone].border} ${TONE[tone].bg}`}>
+      <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{label}</div>
+      <div className={`mt-1 font-mono text-lg font-black ${TONE[tone].text}`}>{value}</div>
+    </div>
   );
 }
 
@@ -406,6 +444,15 @@ function DevelopmentOverlay({ item, onClose }: { item: DailyMarketDevelopment | 
           <DetailMiniPanel label="Affected symbols" value={item.affectedSymbols.join(", ") || "Limited"} />
           <DetailMiniPanel label="Affected sectors" value={item.affectedSectors.join(", ") || "Limited"} />
           <DetailMiniPanel label="TradeVeto relevance" value={`${item.original.relevance}/100`} />
+          <DetailMiniPanel label="Event tracking" value={item.eventTrackingLabel} />
+          <DetailMiniPanel label="Market moving read" value={item.marketMovingLabel} />
+          <DetailMiniPanel label="Watchlist impact" value={item.watchlistImpactReason} />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <ImplicationPanel label="Bullish implication" tone="emerald" value={item.bullishImplication} />
+          <ImplicationPanel label="Bearish implication" tone="rose" value={item.bearishImplication} />
+          <ImplicationPanel label="Related macro context" tone="cyan" value={item.relatedMacroContext} />
+          <ImplicationPanel label="Related replay / memory context" tone="violet" value={item.relatedReplayContext} />
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Related TradeVeto context</div>
@@ -420,6 +467,24 @@ function DevelopmentOverlay({ item, onClose }: { item: DailyMarketDevelopment | 
         </div>
       </div>
     </StableDetailOverlay>
+  );
+}
+
+function DevelopmentMicroContext({ label, tone, value }: { label: string; tone: DailyCommandTone; value: string }) {
+  return (
+    <div className={`min-w-0 rounded-xl border px-2 py-1.5 ${TONE[tone].border} bg-black/15`}>
+      <div className={`text-[9px] font-black uppercase tracking-[0.12em] ${TONE[tone].text}`}>{label}</div>
+      <div className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-400">{value}</div>
+    </div>
+  );
+}
+
+function ImplicationPanel({ label, tone, value }: { label: string; tone: DailyCommandTone; value: string }) {
+  return (
+    <div className={`rounded-2xl border p-4 ${TONE[tone].border} ${TONE[tone].bg}`}>
+      <div className={`text-[10px] font-black uppercase tracking-[0.18em] ${TONE[tone].text}`}>{label}</div>
+      <p className="mt-2 text-sm leading-6 text-slate-300">{value}</p>
+    </div>
   );
 }
 
