@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { MobileIntelligenceDeck } from "@/components/mobile/MobileIntelligenceDeck";
 import { PushPermissionCard } from "@/components/mobile/PushPermissionCard";
 import { PwaInstallCard } from "@/components/mobile/PwaInstallCard";
 import { PremiumAccessCta } from "@/components/premium/PremiumAccessCta";
@@ -80,11 +81,7 @@ export default async function MobilePage() {
                 Open terminal
               </Link>
             </div>
-            <div className="-mx-4 mt-5 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:overflow-visible sm:px-0 sm:pb-0 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {(center?.packets.length ? center.packets : fallbackPackets()).map((packet) => (
-                <PacketCard key={packet.id} packet={packet} />
-              ))}
-            </div>
+            <MobileIntelligenceDeck packets={center?.packets.length ? center.packets : fallbackPackets()} />
           </div>
 
           <div className="space-y-4">
@@ -140,17 +137,21 @@ export default async function MobilePage() {
 
 function MobilePriorityActions() {
   const actions = [
+    { href: "/discover", label: "One-hand scanner", summary: "Open full-market discovery." },
     { href: "/terminal", label: "What matters now", summary: "Market state and top risks." },
     { href: "/opportunities", label: "Opportunities", summary: "Ranked setup cards." },
     { href: "/terminal#mobile-watchlist", label: "Watchlist", summary: "Symbols to revisit." },
     { href: "/alerts", label: "Alerts", summary: "Notification rules." },
-    { href: "/opportunities?tab=full", label: "Symbol search", summary: "Find a ticker fast." },
   ];
 
   return (
-    <section className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5" id="alerts">
+    <section
+      className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto px-1 pb-1 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 xl:grid-cols-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      data-mobile-gesture-ignore="true"
+      id="alerts"
+    >
       {actions.map((action) => (
-        <Link className="rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition hover:border-cyan-300/35 hover:bg-cyan-400/[0.06]" href={action.href} key={action.href}>
+        <Link className="tv-tap-motion min-h-20 min-w-[9.75rem] snap-start rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition hover:border-cyan-300/35 hover:bg-cyan-400/[0.06] sm:min-w-0" href={action.href} key={action.href}>
           <div className="text-sm font-semibold text-slate-100">{action.label}</div>
           <p className="mt-1 text-xs leading-5 text-slate-500">{action.summary}</p>
         </Link>
@@ -227,35 +228,6 @@ function HeroStat({ label, value }: { label: string; value: string }) {
       <div className="mt-1 text-lg font-semibold text-slate-50">{value}</div>
     </div>
   );
-}
-
-function PacketCard({ packet }: { packet: MobileIntelligencePacket }) {
-  return (
-    <article className="min-w-[84vw] snap-center rounded-xl border border-white/10 bg-white/[0.035] p-3 transition hover:border-cyan-300/25 hover:bg-cyan-400/[0.055] sm:min-w-0 sm:p-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${priorityClass(packet.priority)}`}>{packet.urgencyLabel}</span>
-            <span className="rounded-full border border-white/10 bg-slate-950/40 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-slate-400">{packet.category.replace("_", " ")}</span>
-            {packet.pushEligible ? <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-2 py-1 text-[11px] font-semibold text-emerald-100">Push eligible</span> : null}
-          </div>
-          <h3 className="mt-3 text-base font-semibold text-slate-50">{packet.title}</h3>
-          <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-400 sm:line-clamp-none">{packet.body}</p>
-          <div className="mt-2 text-xs font-medium text-slate-500">{packet.evidenceLabel}</div>
-        </div>
-        <Link className="w-full shrink-0 rounded-full border border-cyan-300/35 bg-cyan-400/10 px-3 py-2 text-center text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15 sm:w-auto" href={packet.actionUrl}>
-          {packet.actionLabel}
-        </Link>
-      </div>
-    </article>
-  );
-}
-
-function priorityClass(priority: MobileIntelligencePacket["priority"]): string {
-  if (priority === "critical") return "border-rose-300/25 bg-rose-400/10 text-rose-100";
-  if (priority === "high") return "border-amber-300/25 bg-amber-400/10 text-amber-100";
-  if (priority === "medium") return "border-cyan-300/25 bg-cyan-400/10 text-cyan-100";
-  return "border-white/10 bg-white/[0.03] text-slate-300";
 }
 
 function fallbackPackets(): MobileIntelligencePacket[] {

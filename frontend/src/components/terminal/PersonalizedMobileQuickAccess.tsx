@@ -24,7 +24,11 @@ export function PersonalizedMobileQuickAccess() {
   if (!modules.length && !preferences.mobileLastViewedSymbol && !preferences.favoriteSymbols.length) return null;
 
   return (
-    <section className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1 xl:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Personal mobile quick access">
+    <section
+      aria-label="Personal mobile quick access"
+      className="-mx-1 mb-3 flex gap-2 overflow-x-auto px-1 pb-1 xl:hidden [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      data-mobile-gesture-ignore="true"
+    >
       {preferences.mobileLastViewedSymbol ? (
         <Link
           className="inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 text-xs font-black text-emerald-50 shadow-[0_0_24px_rgba(52,211,153,0.08)]"

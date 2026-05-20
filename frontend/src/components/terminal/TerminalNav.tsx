@@ -24,7 +24,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState, type RefObject } from "react";
+import { useEffect, useId, useRef, useState, type RefObject, type TouchEvent } from "react";
 import { AccountPill } from "@/components/account/AccountPill";
 import { BrandMark } from "@/components/brand/BrandMark";
 import { DiscoveryCommandButton } from "@/components/discovery/DiscoveryCommandButton";
@@ -162,6 +162,7 @@ export function MobileTerminalNav() {
   const drawerTitleId = useId();
   const drawerRef = useRef<HTMLElement | null>(null);
   const bottomMenuButtonRef = useRef<HTMLButtonElement | null>(null);
+  const drawerTouchStartRef = useRef<{ x: number; y: number } | null>(null);
   const { authenticated, entitlement, logout, user } = useCurrentUser();
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
@@ -212,6 +213,21 @@ export function MobileTerminalNav() {
     router.refresh();
   }
 
+  function handleDrawerTouchStart(event: TouchEvent<HTMLElement>): void {
+    const touch = event.touches[0];
+    drawerTouchStartRef.current = touch ? { x: touch.clientX, y: touch.clientY } : null;
+  }
+
+  function handleDrawerTouchEnd(event: TouchEvent<HTMLElement>): void {
+    const start = drawerTouchStartRef.current;
+    drawerTouchStartRef.current = null;
+    const touch = event.changedTouches[0];
+    if (!start || !touch) return;
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (deltaX > 72 && Math.abs(deltaY) < 56) setOpen(false);
+  }
+
   const mobileSurfaces = (
     <>
       {open ? (
@@ -219,12 +235,16 @@ export function MobileTerminalNav() {
           <div
             aria-hidden="true"
             className="fixed left-0 top-0 z-[8990] h-dvh w-dvw bg-slate-950/70 backdrop-blur-sm"
+            data-mobile-gesture-ignore="true"
             onClick={() => setOpen(false)}
           />
           <aside
             aria-labelledby={drawerTitleId}
-            className="tv-drawer-surface fixed right-0 top-0 z-[9000] flex h-dvh w-[min(88vw,380px)] flex-col border-l border-white/10 bg-slate-950/95 shadow-2xl shadow-black/50 ring-1 ring-cyan-300/10 backdrop-blur-2xl"
+            className="tv-drawer-surface fixed right-0 top-0 z-[9000] flex h-dvh w-[min(88vw,380px)] flex-col border-l border-white/10 bg-slate-950/95 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] shadow-2xl shadow-black/50 ring-1 ring-cyan-300/10 backdrop-blur-2xl"
+            data-mobile-gesture-ignore="true"
             id="tradeveto-mobile-drawer"
+            onTouchEnd={handleDrawerTouchEnd}
+            onTouchStart={handleDrawerTouchStart}
             ref={drawerRef}
           >
             <div className="border-b border-white/10 p-4">
@@ -252,7 +272,7 @@ export function MobileTerminalNav() {
               </div>
             </div>
 
-            <nav aria-label="Mobile drawer navigation" className="flex-1 space-y-5 overflow-y-auto p-4">
+            <nav aria-label="Mobile drawer navigation" className="tv-native-scroll flex-1 space-y-5 overflow-y-auto overscroll-contain p-4">
               {sections.map((section) => (
                 <div key={section.label}>
                   <div className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">{section.label}</div>

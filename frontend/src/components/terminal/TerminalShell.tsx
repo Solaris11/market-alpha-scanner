@@ -2,6 +2,7 @@ import { DataHealthBanner } from "@/components/data-health-indicator";
 import { GlobalIntelligenceDiscovery } from "@/components/discovery/GlobalIntelligenceDiscovery";
 import { LegalFooter } from "@/components/legal/LegalFooter";
 import { MobileModeRail } from "@/components/mobile/MobileModeRail";
+import { MobileNativeGestureLayer } from "@/components/mobile/MobileNativeGestureLayer";
 import { RiskAcknowledgement } from "@/components/legal/RiskAcknowledgement";
 import { FirstRunStarterCard } from "@/components/onboarding/FirstRunStarterCard";
 import { CinematicAtmosphere } from "@/components/visual/CinematicAtmosphere";
@@ -19,6 +20,7 @@ export async function TerminalShell({ children }: { children: React.ReactNode })
       <div className="tv-cinematic-content mx-auto max-w-[1780px]">
         <TerminalHeader />
         <GlobalIntelligenceDiscovery />
+        <MobileNativeGestureLayer />
         <RoutePrefetcher />
         <RouteTransitionFeedback />
         <PersonalizedMobileQuickAccess />

@@ -529,6 +529,11 @@ a {
   will-change: opacity, transform;
 }
 
+.tv-native-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
 @media (min-width: 640px) {
   .tv-overlay-surface {
     animation-name: tradeveto-overlay-scale;

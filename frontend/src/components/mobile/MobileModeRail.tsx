@@ -17,7 +17,7 @@ export function MobileModeRail() {
           <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200">View Mode</div>
           <div className="text-[10px] font-semibold text-slate-500">Overview first, detail on tap</div>
         </div>
-        <div className="flex snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-mobile-gesture-ignore="true">
           {modes.map((mode) => (
             <ModeLink href={`${pathname}${mode.href}`} key={mode.key} label={mode.label} summary={mode.summary} />
           ))}

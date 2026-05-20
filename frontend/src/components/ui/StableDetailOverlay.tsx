@@ -245,12 +245,16 @@ export function StableDetailOverlay({
   if (!mounted || !open) return null;
 
   const isMobileSheet = mobileSheet || (typeof window !== "undefined" && window.innerWidth < 640);
+  const mobileFullscreen = isMobileSheet && size === "xl";
   const backdropTransition: Transition = { duration: 0.18, ease: "easeOut" };
   const surfaceTransition: Transition = { duration: 0.34, ease: [0.22, 1, 0.36, 1] };
   const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo): void => {
-    if (!isMobileSheet) return;
+    if (!isMobileSheet || mobileFullscreen) return;
     if (info.offset.y > 96 || info.velocity.y > 720) requestClose("drag");
   };
+  const mobileChromeClass = mobileFullscreen
+    ? "h-[100dvh] max-h-[100dvh] rounded-none border-x-0 border-b-0"
+    : "max-h-[min(88dvh,760px)] rounded-t-[1.6rem]";
 
   return createPortal(
     <div
@@ -270,18 +274,20 @@ export function StableDetailOverlay({
         type="button"
       />
       <motion.section
-        className={`tv-overlay-surface relative z-10 flex max-h-[92dvh] w-full ${WIDTH_CLASS[size]} flex-col overflow-hidden rounded-t-[1.6rem] border border-cyan-300/20 bg-slate-950 shadow-2xl shadow-black/75 ring-1 ring-cyan-300/10 sm:max-h-[min(92dvh,900px)] sm:rounded-[1.6rem] ${className}`}
+        className={`tv-overlay-surface relative z-10 flex w-full ${WIDTH_CLASS[size]} ${mobileChromeClass} flex-col overflow-hidden border border-cyan-300/20 bg-slate-950 shadow-2xl shadow-black/75 ring-1 ring-cyan-300/10 sm:max-h-[min(92dvh,900px)] sm:rounded-[1.6rem] ${className}`}
         animate={reduceMotion ? undefined : { opacity: 1, scale: 1, y: 0 }}
         data-stable-overlay-content="true"
-        drag={isMobileSheet ? "y" : false}
+        data-mobile-gesture-ignore="true"
+        drag={isMobileSheet && !mobileFullscreen ? "y" : false}
         dragConstraints={{ bottom: 0, top: 0 }}
         dragElastic={0.08}
-        initial={reduceMotion ? false : isMobileSheet ? { opacity: 0, scale: 1, y: 42 } : { opacity: 0, scale: 0.975, y: 18 }}
+        dragMomentum={false}
+        initial={reduceMotion ? false : isMobileSheet ? { opacity: 0, scale: mobileFullscreen ? 0.992 : 1, y: mobileFullscreen ? 14 : 42 } : { opacity: 0, scale: 0.975, y: 18 }}
         onDragEnd={handleDragEnd}
         transition={reduceMotion ? undefined : surfaceTransition}
       >
-        <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/95 px-4 py-4 backdrop-blur-xl sm:px-6">
-          <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/20 sm:hidden" />
+        <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/95 px-4 pb-4 pt-[calc(0.85rem+env(safe-area-inset-top))] backdrop-blur-xl sm:px-6 sm:pt-4">
+          {!mobileFullscreen ? <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/20 sm:hidden" /> : null}
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
               {eyebrow ? <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200">{eyebrow}</div> : null}
@@ -298,7 +304,7 @@ export function StableDetailOverlay({
             </button>
           </div>
         </header>
-        <div className="min-h-0 overflow-y-auto overscroll-contain p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">{children}</div>
+        <div className="tv-native-scroll min-h-0 overflow-y-auto overscroll-contain p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">{children}</div>
       </motion.section>
     </div>,
     document.body,
