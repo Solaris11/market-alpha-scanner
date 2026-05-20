@@ -20,6 +20,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import type {
   SimulatedAiPortfolioSystem,
+  SimulatedPortfolioAllocationPoint,
   SimulatedPortfolioCapitalScenario,
   SimulatedPortfolioClosedTrade,
   SimulatedPortfolioDecisionReview,
@@ -30,6 +31,7 @@ import type {
   SimulatedPortfolioModeResult,
   SimulatedPortfolioOpenPosition,
   SimulatedPortfolioReviewItem,
+  SimulatedPortfolioRiskConcentration,
   SimulatedPortfolioRiskMapCell,
   SimulatedPortfolioTone,
 } from "@/lib/trading/simulated-ai-portfolio";
@@ -447,6 +449,7 @@ function AdaptivePortfolioIntelligenceLab({
             ))}
           </div>
           <CapitalScenarioStrip scenarios={result.capitalScenarios} />
+          <AllocationHistorySystem points={result.allocationHistory} />
         </div>
 
         <div className="grid min-w-0 gap-4">
@@ -467,6 +470,7 @@ function AdaptivePortfolioIntelligenceLab({
         <TradeLedgerPreview trades={result.closedTrades} />
         <div className="grid gap-4">
           <DecisionReviewGrid items={reviewItems} />
+          <RiskConcentrationSystem concentrations={result.riskConcentration} />
           <AllocationExposureSystem buckets={learning.exposureBuckets} />
         </div>
       </div>
@@ -512,6 +516,43 @@ function CapitalScenarioStrip({ scenarios }: { scenarios: SimulatedPortfolioCapi
   );
 }
 
+function AllocationHistorySystem({ points }: { points: SimulatedPortfolioAllocationPoint[] }) {
+  if (!points.length) return <EmptyState message="No allocation history is available yet. Strategy Labs will show deployment changes when completed simulated trades exist." />;
+  const deployedValues = points.map((point) => point.deployedPct);
+  return (
+    <div className="mt-4 rounded-2xl border border-cyan-300/14 bg-cyan-400/[0.045] p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Allocation history</div>
+          <div className="mt-1 text-sm font-semibold text-slate-100">How model capital moved through completed evidence</div>
+        </div>
+        <div className="text-xs text-slate-500">{points.length} allocation checkpoint(s)</div>
+      </div>
+      <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_1.35fr]">
+        <PosterTrendChart label="Deployment path" tone="cyan" values={deployedValues} />
+        <div className="grid gap-2 sm:grid-cols-2">
+          {points.slice(-4).map((point) => (
+            <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3" key={`${point.date}:${point.label}:${point.topSymbol ?? "cash"}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-xs font-black text-slate-100">{point.label}</div>
+                  <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{point.date}</div>
+                </div>
+                <div className={`shrink-0 font-mono text-xs font-black ${toneClass(point.realizedPnl)}`}>{formatMoney(point.realizedPnl)}</div>
+              </div>
+              <div className="mt-2 grid grid-cols-2 gap-2 text-[10px]">
+                <SmallMetric label="Deployed" value={`${point.deployedPct.toFixed(1)}%`} />
+                <SmallMetric label="Cash" value={`${point.cashPct.toFixed(1)}%`} />
+              </div>
+              {point.topSymbol ? <div className="mt-2 text-xs text-slate-400">Primary symbol: <span className="font-mono text-cyan-100">{point.topSymbol}</span></div> : null}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TradeLedgerPreview({ trades }: { trades: SimulatedPortfolioClosedTrade[] }) {
   const [selectedTrade, setSelectedTrade] = useState<SimulatedPortfolioClosedTrade | null>(null);
 
@@ -550,7 +591,8 @@ function TradeLedgerPreview({ trades }: { trades: SimulatedPortfolioClosedTrade[
                 <SmallMetric label="Entry conf." value={`${trade.confidenceAtEntry}/100`} />
                 <SmallMetric label="Exit conf." value={`${trade.confidenceAtExit}/100`} />
               </div>
-              <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-400">{trade.learning.lesson}</p>
+              <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-400">{trade.autopsy.replayContext}</p>
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-cyan-100/85">{trade.learning.lesson}</p>
             </button>
           ))}
         </div>
@@ -583,14 +625,47 @@ function TradeDetailOverlay({ onClose, trade }: { onClose: () => void; trade: Si
             <SmallMetric label="Entry price" value={formatMoney(trade.entryPrice)} />
             <SmallMetric label="Exit price" value={formatMoney(trade.exitPrice)} />
             <SmallMetric label="Invested" value={formatMoney(trade.investedAmount)} />
+            <SmallMetric label="Allocation" value={`${trade.allocationPct.toFixed(1)}%`} />
             <SmallMetric label="Units" value={trade.positionUnits === null ? "N/A" : trade.positionUnits.toFixed(2)} />
+            <SmallMetric label="Mode score" value={`${trade.modeScore}/100`} />
             <SmallMetric label="PnL" tone={trade.realizedPnl} value={formatMoney(trade.realizedPnl)} />
             <SmallMetric label="Return" tone={trade.realizedReturnPct} value={formatPct(trade.realizedReturnPct)} />
+            <SmallMetric label="Capital before" value={formatMoney(trade.capitalBefore)} />
+            <SmallMetric label="Capital after" tone={trade.realizedPnl} value={formatMoney(trade.capitalAfter)} />
           </div>
         </div>
         <div className="space-y-3">
           <ReasonBlock items={trade.entryReasons} title="Why the system entered" />
           <ReasonBlock items={trade.exitReasons} title="Why the system exited" />
+        </div>
+        <div className="rounded-2xl border border-cyan-300/16 bg-cyan-400/[0.045] p-4 lg:col-span-2">
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-100">Buy / sell lifecycle</div>
+          <div className="mt-3 grid gap-3 md:grid-cols-4">
+            {trade.lifecycle.map((step) => (
+              <div className={`rounded-2xl border p-3 ${reviewToneClass(step.tone)}`} key={`${step.label}:${step.date}:${step.value}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{step.label}</div>
+                    <div className="mt-1 text-xs font-semibold text-slate-300">{step.date}</div>
+                  </div>
+                  <div className="font-mono text-xs font-black text-slate-100">{step.value}</div>
+                </div>
+                <p className="mt-2 line-clamp-4 text-xs leading-5 text-slate-400">{step.detail}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-slate-950/50 p-4 lg:col-span-2">
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-100">Trade autopsy</div>
+          <p className="mt-2 text-sm leading-6 text-slate-300">{trade.autopsy.replayContext}</p>
+          <div className="mt-4 grid gap-3 lg:grid-cols-3">
+            <ReasonBlock items={trade.autopsy.whatWorked} title="What worked" />
+            <ReasonBlock items={trade.autopsy.whatFailed} title="What failed or stayed fragile" />
+            <div className="mt-3 rounded-xl border border-violet-300/18 bg-violet-400/[0.06] p-3">
+              <div className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-100">System learned</div>
+              <p className="mt-2 text-sm leading-6 text-slate-300">{trade.autopsy.systemLearned}</p>
+            </div>
+          </div>
         </div>
         <div className="rounded-2xl border border-violet-300/18 bg-violet-400/[0.06] p-4 lg:col-span-2">
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-100">What the strategy learned</div>
@@ -622,6 +697,42 @@ function DecisionReviewGrid({ items }: { items: SimulatedPortfolioReviewItem[] }
               <div className="shrink-0 font-mono text-sm font-black text-slate-100">{item.value}</div>
             </div>
             <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-400">{item.detail}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RiskConcentrationSystem({ concentrations }: { concentrations: SimulatedPortfolioRiskConcentration[] }) {
+  if (!concentrations.length) return <EmptyState message="No risk concentration evidence is available yet." />;
+  const factors: PosterFactor[] = concentrations.map((item) => ({
+    detail: item.detail,
+    label: item.label,
+    tone: posterToneForPortfolio(item.tone),
+    value: item.score,
+  }));
+  return (
+    <div className="rounded-[1.75rem] border border-amber-300/16 bg-amber-400/[0.045] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-100">Risk concentration tracking</div>
+      <PosterFactorBars className="mt-3" factors={factors} label="Concentration pressure" />
+      <div className="mt-3 grid gap-2">
+        {concentrations.slice(0, 4).map((item) => (
+          <div className={`rounded-2xl border p-3 ${reviewToneClass(item.tone)}`} key={item.label}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate text-sm font-black text-slate-50">{item.label}</div>
+                <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{item.detail}</p>
+              </div>
+              <div className="shrink-0 font-mono text-xs font-black text-slate-100">{item.score === null ? "Limited" : `${Math.round(item.score)}`}</div>
+            </div>
+            {item.symbols.length ? (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {item.symbols.map((symbol) => (
+                  <span className="rounded-full border border-white/10 bg-slate-950/55 px-2 py-1 font-mono text-[10px] font-black text-cyan-100" key={symbol}>{symbol}</span>
+                ))}
+              </div>
+            ) : null}
           </div>
         ))}
       </div>

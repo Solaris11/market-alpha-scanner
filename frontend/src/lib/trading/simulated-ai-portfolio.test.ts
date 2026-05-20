@@ -169,6 +169,8 @@ test("simulated AI portfolios build three research-only modes with transparent m
   assert.ok(system.modes.balanced.learning.learningTimeline.length > 0);
   assert.ok(system.modes.balanced.learning.heatmap.length >= 4);
   assert.ok(system.modes.balanced.learning.lessons.length > 0);
+  assert.ok(system.modes.balanced.allocationHistory.length > 0);
+  assert.ok(system.modes.balanced.riskConcentration.length >= 4);
   assert.deepEqual(system.modes.balanced.capitalScenarios.map((scenario) => scenario.startingCapital), [10_000, 50_000, 100_000]);
   assert.doesNotMatch(JSON.stringify(system), /buy now|sell now|guaranteed|sure profit|free money/i);
 });
@@ -211,6 +213,11 @@ test("closed trade history explains entries and exits without LLM-authored numbe
   assert.ok(trade.confidenceAtExit >= 0);
   assert.ok(trade.learning.lesson.length > 0);
   assert.ok(trade.learning.adjustment.length > 0);
+  assert.ok(trade.lifecycle.length >= 4);
+  assert.ok(trade.autopsy.replayContext.length > 0);
+  assert.ok(trade.autopsy.whatWorked.length > 0);
+  assert.ok(trade.autopsy.whatFailed.length > 0);
+  assert.ok(trade.autopsy.systemLearned.length > 0);
 });
 
 test("portfolio learning system exposes decision reviews and allocation exposure", () => {

@@ -69,6 +69,33 @@ type ExpectancyMetrics = {
   wins: number;
 };
 
+type PaperTradeLifecycleStep = {
+  date: string;
+  detail: string;
+  label: string;
+  tone: "cyan" | "emerald" | "rose" | "amber" | "slate";
+  value: string;
+};
+
+type PaperTradeAutopsyModel = {
+  confidence: string;
+  lifecycle: PaperTradeLifecycleStep[];
+  macroContext: string;
+  positionSize: string;
+  replayContext: string;
+  systemLearned: string;
+  whatFailed: string[];
+  whatWorked: string[];
+};
+
+type PaperRiskConcentrationItem = {
+  detail: string;
+  label: string;
+  symbols: string[];
+  tone: "cyan" | "emerald" | "rose" | "amber" | "slate";
+  value: string;
+};
+
 function finiteNumber(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
   const parsed = typeof value === "number" ? value : Number(value);
@@ -509,6 +536,109 @@ function groupTypeLabel(type: string): string {
   return labelText(type);
 }
 
+function paperPositionNotional(position: PaperPositionRow): number | null {
+  const entry = finiteNumber(position.entry_price);
+  const quantity = finiteNumber(position.quantity);
+  if (entry === null || quantity === null || entry <= 0 || quantity <= 0) return null;
+  return entry * quantity;
+}
+
+function paperConfidenceContext(position: PaperPositionRow): string {
+  const rating = cleanText(position.rating, "");
+  if (rating) return labelText(rating);
+  const quality = cleanText(position.recommendation_quality, "");
+  if (quality) return labelText(quality);
+  const decision = cleanText(position.final_decision, "");
+  if (decision) return labelText(decision);
+  return "Limited confidence evidence";
+}
+
+function paperReplayContext(position: PaperPositionRow): string {
+  const setup = cleanText(position.setup_type, "");
+  if (!setup || isManualTrade(position)) return "No replay packet is attached to this paper row; review symbol replay separately before treating the sample as pattern evidence.";
+  return `${labelText(setup)} paper sample. Replay analog detail is not stored on the paper row, so this is setup-context evidence rather than validated replay proof.`;
+}
+
+function paperMacroContext(position: PaperPositionRow): string {
+  const decision = cleanText(position.final_decision, "");
+  const quality = cleanText(position.recommendation_quality, "");
+  if (!decision && !quality) return "No macro snapshot is stored on this paper trade row.";
+  return `Decision snapshot: ${decision ? labelText(decision) : "Limited"}. Recommendation quality: ${quality ? labelText(quality) : "Limited"}. Macro-specific attribution is not stored on this paper row.`;
+}
+
+function paperTradeAutopsy(position: PaperPositionRow): PaperTradeAutopsyModel {
+  const pnl = tradePnl(position);
+  const returnFraction = tradeReturnFraction(position);
+  const notional = paperPositionNotional(position);
+  const rr = riskReward(position);
+  const worked: string[] = [];
+  const failed: string[] = [];
+  const closeReason = String(position.close_reason ?? "").toUpperCase();
+  if (pnl > 0) worked.push(`Paper trade closed with positive P/L of ${money(pnl)}.`);
+  if (returnFraction !== null && returnFraction > 0) worked.push(`Return was ${signedPercentText(returnFraction)} on the planned entry.`);
+  if (closeReason.includes("TARGET")) worked.push("Exit reason indicates the target plan was reached.");
+  if (position.stop_loss !== null) worked.push("A stop level was recorded before review.");
+  if (position.target_price !== null) worked.push("A target level was recorded before review.");
+  if (rr !== null && rr >= 2) worked.push(`Planned reward/risk was favorable at ${rMultipleText(rr)}.`);
+
+  if (pnl < 0) failed.push(`Paper trade closed with negative P/L of ${money(pnl)}.`);
+  if (closeReason.includes("STOP")) failed.push("Exit reason indicates stop-loss pressure.");
+  if (position.stop_loss === null) failed.push("No stop level was stored, so risk discipline evidence is limited.");
+  if (position.target_price === null) failed.push("No target level was stored, so reward discipline evidence is limited.");
+  if (rr !== null && rr < 1.5) failed.push(`Planned reward/risk was thin at ${rMultipleText(rr)}.`);
+  if (isManualTrade(position)) failed.push("Manual trade; scanner and replay context were not the primary entry evidence.");
+
+  const systemLearned = isManualTrade(position)
+    ? "Keep manual trades separated from scanner-driven edge so strategy confidence is not overstated."
+    : pnl < 0
+      ? "Reduce repetition of similar paper entries until timing, stop placement, or evidence quality improves."
+      : "Preserve the entry discipline that produced a positive paper outcome, while still requiring more samples.";
+
+  return {
+    confidence: paperConfidenceContext(position),
+    lifecycle: paperLifecycleFor(position, systemLearned),
+    macroContext: paperMacroContext(position),
+    positionSize: `${numberText(position.quantity, 4)} shares / ${money(notional)} notional`,
+    replayContext: paperReplayContext(position),
+    systemLearned,
+    whatFailed: failed.length ? failed.slice(0, 5) : ["No major failure field was visible on this paper row; evidence remains sample-limited."],
+    whatWorked: worked.length ? worked.slice(0, 5) : ["Closed paper trade is recorded, but stored fields do not show a dominant strength yet."],
+  };
+}
+
+function paperLifecycleFor(position: PaperPositionRow, systemLearned: string): PaperTradeLifecycleStep[] {
+  return [
+    {
+      date: timeText(position.opened_at),
+      detail: `${numberText(position.quantity, 4)} shares were opened at ${money(position.entry_price)}.`,
+      label: "Entry",
+      tone: "cyan",
+      value: money(paperPositionNotional(position)),
+    },
+    {
+      date: timeText(position.opened_at),
+      detail: `Stop ${money(position.stop_loss)} / target ${money(position.target_price)} / reward-risk ${riskReward(position) === null ? "N/A" : rMultipleText(riskReward(position))}.`,
+      label: "Risk plan",
+      tone: riskDollars(position) === null ? "amber" : "emerald",
+      value: money(riskDollars(position)),
+    },
+    {
+      date: timeText(position.closed_at),
+      detail: `Closed at ${money(position.exit_price)} with reason ${labelText(position.close_reason)}.`,
+      label: "Exit",
+      tone: tradePnl(position) > 0 ? "emerald" : tradePnl(position) < 0 ? "rose" : "slate",
+      value: money(tradePnl(position)),
+    },
+    {
+      date: timeText(position.closed_at),
+      detail: systemLearned,
+      label: "Learning",
+      tone: tradePnl(position) >= 0 ? "emerald" : "amber",
+      value: paperConfidenceContext(position),
+    },
+  ];
+}
+
 function TradeAutopsy({ positions }: { positions: PaperPositionRow[] }) {
   const closed = positions
     .filter((position) => position.status.toUpperCase() === "CLOSED")
@@ -518,31 +648,75 @@ function TradeAutopsy({ positions }: { positions: PaperPositionRow[] }) {
 
   return (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-      {closed.map((position) => (
-        <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={position.id}>
-          <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="font-mono text-2xl font-black text-slate-50">{position.symbol}</div>
-              <div className="mt-1 text-xs text-slate-500">{timeText(position.closed_at)}</div>
+      {closed.map((position) => {
+        const autopsy = paperTradeAutopsy(position);
+        return (
+          <article className="rounded-2xl border border-white/10 bg-white/[0.04] p-4" key={position.id}>
+            <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="font-mono text-2xl font-black text-slate-50">{position.symbol}</div>
+                <div className="mt-1 text-xs text-slate-500">{timeText(position.closed_at)}</div>
+              </div>
+              <div className={`rounded-full border px-3 py-1 text-xs font-bold ${decisionTone(position.final_decision)}`}>{labelText(position.final_decision)}</div>
             </div>
-            <div className={`rounded-full border px-3 py-1 text-xs font-bold ${decisionTone(position.final_decision)}`}>{labelText(position.final_decision)}</div>
-          </div>
-          {isManualTrade(position) ? <div className="mt-3 inline-flex rounded-full border border-sky-300/30 bg-sky-400/10 px-3 py-1 text-xs font-semibold text-sky-100">Manual trade</div> : null}
-          <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
-            <MiniMetric label="Entry" value={money(position.entry_price)} />
-            <MiniMetric label="Exit" value={money(position.exit_price)} />
-            <MiniMetric label="PnL" tone={position.realized_pnl} value={money(position.realized_pnl)} />
-            <MiniMetric label="Return" tone={tradeReturnFraction(position)} value={signedPercentText(tradeReturnFraction(position))} />
-          </div>
-          <div className="mt-4 rounded-xl bg-slate-950/50 p-3">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">Reason Closed</div>
-            <div className="mt-1 text-sm text-slate-200">{labelText(position.close_reason)}</div>
-          </div>
-          <div className="mt-3 text-sm leading-6 text-slate-300">{tradeLesson(position)}</div>
-        </article>
-      ))}
+            {isManualTrade(position) ? <div className="mt-3 inline-flex rounded-full border border-sky-300/30 bg-sky-400/10 px-3 py-1 text-xs font-semibold text-sky-100">Manual trade</div> : null}
+            <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+              <MiniMetric label="Entry" value={money(position.entry_price)} />
+              <MiniMetric label="Exit" value={money(position.exit_price)} />
+              <MiniMetric label="Position Size" value={autopsy.positionSize} />
+              <MiniMetric label="Confidence" value={autopsy.confidence} />
+              <MiniMetric label="PnL" tone={tradePnl(position)} value={money(tradePnl(position))} />
+              <MiniMetric label="Return" tone={tradeReturnFraction(position)} value={signedPercentText(tradeReturnFraction(position))} />
+            </div>
+            <div className="mt-4 grid gap-2">
+              {autopsy.lifecycle.map((step) => (
+                <div className={`rounded-xl border p-3 ${paperToneClass(step.tone)}`} key={`${position.id}:${step.label}`}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{step.label}</div>
+                      <div className="mt-1 text-xs text-slate-400">{step.date}</div>
+                    </div>
+                    <div className="font-mono text-xs font-black text-slate-100">{step.value}</div>
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{step.detail}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-3">
+              <PaperAutopsyBlock items={autopsy.whatWorked} title="What worked" tone="emerald" />
+              <PaperAutopsyBlock items={autopsy.whatFailed} title="What failed / limited" tone="rose" />
+              <div className="rounded-xl border border-violet-300/18 bg-violet-400/[0.06] p-3">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-100">Replay context</div>
+                <p className="mt-1 text-xs leading-5 text-slate-300">{autopsy.replayContext}</p>
+                <div className="mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-100">Macro context</div>
+                <p className="mt-1 text-xs leading-5 text-slate-300">{autopsy.macroContext}</p>
+              </div>
+              <div className="rounded-xl border border-cyan-300/18 bg-cyan-400/[0.06] p-3 text-sm leading-6 text-slate-300">{autopsy.systemLearned}</div>
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
+}
+
+function PaperAutopsyBlock({ items, title, tone }: { items: string[]; title: string; tone: PaperTradeLifecycleStep["tone"] }) {
+  return (
+    <div className={`rounded-xl border p-3 ${paperToneClass(tone)}`}>
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">{title}</div>
+      <ul className="mt-2 space-y-1.5 text-xs leading-5 text-slate-300">
+        {items.map((item) => <li key={item}>- {item}</li>)}
+      </ul>
+    </div>
+  );
+}
+
+function paperToneClass(tone: PaperTradeLifecycleStep["tone"]): string {
+  if (tone === "emerald") return "border-emerald-300/18 bg-emerald-400/[0.055]";
+  if (tone === "rose") return "border-rose-300/18 bg-rose-400/[0.055]";
+  if (tone === "amber") return "border-amber-300/18 bg-amber-400/[0.055]";
+  if (tone === "cyan") return "border-cyan-300/18 bg-cyan-400/[0.055]";
+  return "border-white/10 bg-slate-950/50";
 }
 
 function tradeLesson(position: PaperPositionRow): string {
@@ -873,6 +1047,187 @@ function PaperCinematicSimulationSystem({
   );
 }
 
+function PaperPortfolioRealismPanel({
+  accountValue,
+  positions,
+}: {
+  accountValue: number | null;
+  positions: PaperPositionRow[];
+}) {
+  const open = positions.filter((position) => position.status.toUpperCase() === "OPEN");
+  const closed = closedPaperPositions(positions).slice(-6).reverse();
+  const openNotional = open.reduce((sum, position) => sum + (paperPositionNotional(position) ?? 0), 0);
+  const openRisk = open.reduce((sum, position) => sum + (riskDollars(position) ?? 0), 0);
+  const closedPnl = closed.reduce((sum, position) => sum + tradePnl(position), 0);
+  const concentrations = paperRiskConcentrations(positions, accountValue);
+
+  return (
+    <section className="poster-panel poster-panel-lab rounded-3xl border border-cyan-300/18 p-5 shadow-2xl shadow-black/25 ring-1 ring-white/5">
+      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200">Portfolio realism layer</div>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Paper capital, lifecycle, and concentration are tracked explicitly.</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+            This panel uses stored paper positions only: quantity, entry, stop, target, exit, realized P/L, and available TradeVeto decision labels.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4 lg:w-[620px]">
+          <MiniMetric label="Open Notional" value={money(openNotional)} />
+          <MiniMetric label="Open Stop Risk" tone={-openRisk} value={money(openRisk)} />
+          <MiniMetric label="Recent Closed PnL" tone={closedPnl} value={money(closedPnl)} />
+          <MiniMetric label="Account Coverage" value={accountValue === null || accountValue <= 0 ? "Limited" : `${((openNotional / accountValue) * 100).toFixed(1)}%`} />
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
+        <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Real allocation history</div>
+              <div className="mt-1 text-sm font-semibold text-slate-100">Current paper deployment by position</div>
+            </div>
+            <div className="text-xs text-slate-500">{open.length} open position(s)</div>
+          </div>
+          {open.length ? (
+            <div className="mt-4 space-y-2">
+              {open.slice(0, 8).map((position) => {
+                const notional = paperPositionNotional(position);
+                const stopRisk = riskDollars(position);
+                const accountPct = accountValue !== null && accountValue > 0 && notional !== null ? (notional / accountValue) * 100 : null;
+                return (
+                  <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3" key={position.id}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="font-mono text-sm font-black text-slate-50">{position.symbol}</div>
+                        <div className="mt-1 truncate text-xs text-slate-500">{labelText(position.setup_type)} / {labelText(position.final_decision)}</div>
+                      </div>
+                      <div className="text-right font-mono text-xs font-black text-cyan-100">{accountPct === null ? "Limited" : `${accountPct.toFixed(1)}%`}</div>
+                    </div>
+                    <div className="mt-2 h-2 rounded-full bg-slate-800">
+                      <div className="h-2 rounded-full bg-cyan-300" style={{ width: `${Math.min(100, Math.max(0, accountPct ?? 0))}%` }} />
+                    </div>
+                    <div className="mt-2 grid grid-cols-3 gap-2 text-[10px]">
+                      <MiniMetric label="Notional" value={money(notional)} />
+                      <MiniMetric label="Stop Risk" tone={stopRisk === null ? null : -stopRisk} value={money(stopRisk)} />
+                      <MiniMetric label="Confidence" value={paperConfidenceContext(position)} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-4">
+              <EmptyState message="No open paper allocation is available. Open positions will show notional, stop risk, confidence label, and account exposure here." />
+            </div>
+          )}
+        </div>
+
+        <div className="grid gap-4">
+          <div className="rounded-2xl border border-amber-300/16 bg-amber-400/[0.045] p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-100">Risk concentration tracking</div>
+            <div className="mt-3 grid gap-2">
+              {concentrations.map((item) => (
+                <div className={`rounded-xl border p-3 ${paperToneClass(item.tone)}`} key={item.label}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="truncate text-sm font-black text-slate-50">{item.label}</div>
+                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{item.detail}</p>
+                    </div>
+                    <div className="shrink-0 font-mono text-xs font-black text-slate-100">{item.value}</div>
+                  </div>
+                  {item.symbols.length ? (
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {item.symbols.map((symbol) => <span className="rounded-full border border-white/10 bg-slate-950/55 px-2 py-1 font-mono text-[10px] font-black text-cyan-100" key={symbol}>{symbol}</span>)}
+                    </div>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-violet-300/16 bg-violet-400/[0.045] p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-100">Recent lifecycle reviews</div>
+            <div className="mt-3 space-y-2">
+              {closed.length ? closed.slice(0, 3).map((position) => {
+                const autopsy = paperTradeAutopsy(position);
+                return (
+                  <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3" key={position.id}>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-mono text-sm font-black text-slate-50">{position.symbol}</div>
+                        <div className="mt-1 text-xs text-slate-500">{autopsy.confidence}</div>
+                      </div>
+                      <div className={`font-mono text-xs font-black ${pnlTone(tradePnl(position))}`}>{money(tradePnl(position))}</div>
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{autopsy.systemLearned}</p>
+                  </div>
+                );
+              }) : <EmptyState message="Closed paper trades will create lifecycle reviews here." />}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function paperRiskConcentrations(positions: PaperPositionRow[], accountValue: number | null): PaperRiskConcentrationItem[] {
+  const open = positions.filter((position) => position.status.toUpperCase() === "OPEN");
+  const totalNotional = open.reduce((sum, position) => sum + (paperPositionNotional(position) ?? 0), 0);
+  const totalRisk = open.reduce((sum, position) => sum + (riskDollars(position) ?? 0), 0);
+  const setup = largestPaperGroup(open, (position) => labelText(position.setup_type));
+  const decision = largestPaperGroup(open, (position) => labelText(position.final_decision));
+  const accountPct = accountValue !== null && accountValue > 0 ? (totalNotional / accountValue) * 100 : null;
+  return [
+    {
+      detail: accountPct === null ? "Account value is unavailable, so deployment concentration is limited." : `${accountPct.toFixed(1)}% of the paper account is deployed across open positions.`,
+      label: "Open deployment",
+      symbols: open.map((position) => position.symbol).slice(0, 6),
+      tone: accountPct === null ? "slate" : accountPct >= 65 ? "rose" : accountPct >= 35 ? "amber" : "emerald",
+      value: accountPct === null ? "Limited" : `${accountPct.toFixed(1)}%`,
+    },
+    {
+      detail: "Stored stop levels define the maximum planned risk for open paper positions.",
+      label: "Stop-risk concentration",
+      symbols: open.filter((position) => riskDollars(position) !== null).map((position) => position.symbol).slice(0, 6),
+      tone: totalRisk > 0 ? "amber" : "slate",
+      value: money(totalRisk),
+    },
+    {
+      detail: setup === null ? "Open positions do not yet share a dominant setup label." : `${setup.label} is the largest open setup cluster.`,
+      label: "Setup cluster",
+      symbols: setup?.symbols ?? [],
+      tone: setup === null ? "slate" : setup.count >= 3 ? "amber" : "cyan",
+      value: setup === null ? "Limited" : `${setup.count}`,
+    },
+    {
+      detail: decision === null ? "No dominant decision label is visible in open paper positions." : `${decision.label} is the most common open decision label.`,
+      label: "Decision cluster",
+      symbols: decision?.symbols ?? [],
+      tone: decision === null ? "slate" : decision.label.toUpperCase().includes("AVOID") || decision.label.toUpperCase().includes("EXIT") ? "rose" : "cyan",
+      value: decision === null ? "Limited" : `${decision.count}`,
+    },
+  ];
+}
+
+function largestPaperGroup(
+  positions: PaperPositionRow[],
+  labelFor: (position: PaperPositionRow) => string,
+): { count: number; label: string; symbols: string[] } | null {
+  const groups = new Map<string, { count: number; symbols: Set<string> }>();
+  for (const position of positions) {
+    const label = labelFor(position);
+    if (!label || label === "Unknown") continue;
+    const existing = groups.get(label) ?? { count: 0, symbols: new Set<string>() };
+    existing.count += 1;
+    existing.symbols.add(position.symbol);
+    groups.set(label, existing);
+  }
+  return Array.from(groups.entries())
+    .map(([label, value]) => ({ count: value.count, label, symbols: Array.from(value.symbols).slice(0, 6) }))
+    .sort((left, right) => right.count - left.count || left.label.localeCompare(right.label))[0] ?? null;
+}
+
 function SimulatedEvidencePortfolioBridge({ sampleCount, system }: { sampleCount: number; system: SimulatedAiPortfolioSystem | null }) {
   if (!system || sampleCount <= 0) {
     return (
@@ -1075,6 +1430,8 @@ export default async function PaperPage() {
           positions={data.positions}
           trustMetrics={trustMetrics}
         />
+
+        <PaperPortfolioRealismPanel accountValue={account?.total_account_value ?? null} positions={data.positions} />
 
         {premiumAccess ? <SimulatedEvidencePortfolioBridge sampleCount={completedEvidenceSamples} system={simulatedEvidencePortfolio} /> : null}
 

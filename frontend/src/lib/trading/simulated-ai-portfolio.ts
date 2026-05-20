@@ -34,8 +34,24 @@ export type SimulatedPortfolioTradeLearning = {
   tone: SimulatedPortfolioTone;
 };
 
+export type SimulatedPortfolioTradeLifecycleStep = {
+  date: string;
+  detail: string;
+  label: "Entry" | "Exit" | "Learning" | "Stress";
+  tone: SimulatedPortfolioTone;
+  value: string;
+};
+
+export type SimulatedPortfolioTradeAutopsy = {
+  replayContext: string;
+  systemLearned: string;
+  whatFailed: string[];
+  whatWorked: string[];
+};
+
 export type SimulatedPortfolioClosedTrade = {
   allocationPct: number;
+  autopsy: SimulatedPortfolioTradeAutopsy;
   capitalAfter: number;
   capitalBefore: number;
   confidenceAtEntry: number;
@@ -52,6 +68,7 @@ export type SimulatedPortfolioClosedTrade = {
   id: string;
   investedAmount: number;
   learning: SimulatedPortfolioTradeLearning;
+  lifecycle: SimulatedPortfolioTradeLifecycleStep[];
   macroReason: string;
   modeScore: number;
   positionUnits: number | null;
@@ -110,6 +127,15 @@ export type SimulatedPortfolioCapitalScenario = {
   startingCapital: number;
 };
 
+export type SimulatedPortfolioAllocationPoint = {
+  cashPct: number;
+  date: string;
+  deployedPct: number;
+  label: string;
+  realizedPnl: number;
+  topSymbol: string | null;
+};
+
 export type SimulatedPortfolioExposureBucket = {
   allocationPct: number;
   label: string;
@@ -118,6 +144,14 @@ export type SimulatedPortfolioExposureBucket = {
   symbolCount: number;
   tone: SimulatedPortfolioTone;
   type: "sector" | "strategy" | "risk";
+};
+
+export type SimulatedPortfolioRiskConcentration = {
+  detail: string;
+  label: string;
+  score: number | null;
+  symbols: string[];
+  tone: SimulatedPortfolioTone;
 };
 
 export type SimulatedPortfolioLearningTimelinePoint = {
@@ -169,6 +203,7 @@ export type SimulatedPortfolioLearningSystem = {
 };
 
 export type SimulatedPortfolioModeResult = {
+  allocationHistory: SimulatedPortfolioAllocationPoint[];
   capitalScenarios: SimulatedPortfolioCapitalScenario[];
   closedTrades: SimulatedPortfolioClosedTrade[];
   config: SimulatedPortfolioModeConfig;
@@ -176,6 +211,7 @@ export type SimulatedPortfolioModeResult = {
   learning: SimulatedPortfolioLearningSystem;
   mode: SimulatedPortfolioMode;
   openPositions: SimulatedPortfolioOpenPosition[];
+  riskConcentration: SimulatedPortfolioRiskConcentration[];
   stats: SimulatedPortfolioStats;
   summary: string;
 };
@@ -347,14 +383,18 @@ function buildModeResult(input: {
     stats,
   });
 
+  const visibleClosedTrades = simulation.closedTrades.slice(-MAX_CLOSED_TRADES_IN_PAYLOAD).reverse();
+
   return {
+    allocationHistory: allocationHistoryFor(simulation.closedTrades, openPositions),
     capitalScenarios: capitalScenariosFor(stats),
-    closedTrades: simulation.closedTrades.slice(-MAX_CLOSED_TRADES_IN_PAYLOAD).reverse(),
+    closedTrades: visibleClosedTrades,
     config: publicConfig(input.config),
     equityCurve: simulation.equityCurve,
     learning,
     mode: input.config.mode,
     openPositions,
+    riskConcentration: riskConcentrationFor(simulation.closedTrades, openPositions, stats),
     stats,
     summary: modeSummary(input.config, stats, input.observations.length),
   };
@@ -390,9 +430,11 @@ function simulateClosedTrades(
     }
     const confidenceAtEntry = confidenceAtEntryFor(score, row, config);
     const confidenceAtExit = confidenceAtExitFor(confidenceAtEntry, row);
+    const learning = learningForTrade(row, score, config);
 
     closedTrades.push({
       allocationPct,
+      autopsy: autopsyForTrade(row, score, config, learning),
       capitalAfter,
       capitalBefore,
       confidenceAtEntry,
@@ -408,7 +450,18 @@ function simulateClosedTrades(
       horizonDays: row.horizonDays,
       id: `${config.mode}:${row.symbol}:${row.dateLabel}:${index}`,
       investedAmount,
-      learning: learningForTrade(row, score, config),
+      learning,
+      lifecycle: lifecycleForTrade({
+        allocationPct,
+        capitalAfter,
+        capitalBefore,
+        confidenceAtEntry,
+        confidenceAtExit,
+        investedAmount,
+        learning,
+        realizedPnl,
+        row,
+      }),
       macroReason: macroReasonFor(row),
       modeScore: Math.round(score),
       positionUnits,
@@ -661,6 +714,210 @@ function learningForTrade(row: SimulationObservation, score: number, config: Mod
     review: "contained",
     tone: "neutral",
   };
+}
+
+function lifecycleForTrade(input: {
+  allocationPct: number;
+  capitalAfter: number;
+  capitalBefore: number;
+  confidenceAtEntry: number;
+  confidenceAtExit: number;
+  investedAmount: number;
+  learning: SimulatedPortfolioTradeLearning;
+  realizedPnl: number;
+  row: SimulationObservation;
+}): SimulatedPortfolioTradeLifecycleStep[] {
+  const drawdown = input.row.drawdownPct;
+  return [
+    {
+      date: input.row.dateLabel,
+      detail: `${strategyFamilyLabel(input.row.family)} entered with ${formatMoney(input.investedAmount)} deployed from simulated capital.`,
+      label: "Entry",
+      tone: input.confidenceAtEntry >= 65 ? "good" : input.confidenceAtEntry >= 50 ? "warn" : "risk",
+      value: `${input.confidenceAtEntry}/100 confidence`,
+    },
+    {
+      date: input.row.dateLabel,
+      detail: drawdown === null
+        ? "No validated adverse-move field was attached to this completed sample."
+        : `Maximum adverse movement during the evidence window was ${formatPct(drawdown)}.`,
+      label: "Stress",
+      tone: drawdown === null ? "neutral" : Math.abs(drawdown) >= 8 ? "risk" : Math.abs(drawdown) >= 4 ? "warn" : "good",
+      value: drawdown === null ? "Limited" : formatPct(drawdown),
+    },
+    {
+      date: exitDateFor(input.row),
+      detail: `The simulated ${input.row.horizon} window closed with ${formatPct(input.row.returnPct)} return and ${formatMoney(input.realizedPnl)} realized PnL.`,
+      label: "Exit",
+      tone: input.realizedPnl > 0 ? "good" : input.realizedPnl < 0 ? "risk" : "neutral",
+      value: `${input.confidenceAtExit}/100 confidence`,
+    },
+    {
+      date: exitDateFor(input.row),
+      detail: input.learning.adjustment,
+      label: "Learning",
+      tone: input.learning.tone,
+      value: input.learning.outcomeLabel,
+    },
+  ];
+}
+
+function autopsyForTrade(
+  row: SimulationObservation,
+  score: number,
+  config: ModeConfigInternal,
+  learning: SimulatedPortfolioTradeLearning,
+): SimulatedPortfolioTradeAutopsy {
+  const whatWorked: string[] = [];
+  const whatFailed: string[] = [];
+  if (score >= config.minModeScore) whatWorked.push(`${config.label} score gate cleared by ${Math.round(score - config.minModeScore)} point(s).`);
+  if (row.returnPct > 0) whatWorked.push(`Forward outcome closed positive at ${formatPct(row.returnPct)}.`);
+  if ((row.macroAlignmentScore ?? 50) >= 62) whatWorked.push("Macro alignment supported the simulated entry.");
+  if ((row.fragilityScore ?? 50) <= config.maxFragilityScore) whatWorked.push("Fragility stayed inside the mode risk cap.");
+  if ((row.shockScore ?? 0) >= 68) whatWorked.push("Replay/shock evidence improved the setup context.");
+
+  if (row.returnPct <= 0) whatFailed.push(`Completed window failed to produce positive follow-through (${formatPct(row.returnPct)}).`);
+  if ((row.macroAlignmentScore ?? 50) <= 45) whatFailed.push("Macro alignment was weak at entry.");
+  if ((row.fragilityScore ?? 50) > config.maxFragilityScore) whatFailed.push("Fragility exceeded the normal cap for this mode.");
+  if (row.drawdownPct !== null && Math.abs(row.drawdownPct) >= 5) whatFailed.push(`Adverse movement reached ${formatPct(row.drawdownPct)} before the window resolved.`);
+  if ((row.volatilityPressure ?? 0) >= 72) whatFailed.push("Volatility pressure was elevated enough to reduce future aggression.");
+  if ((row.liquidityPressure ?? 0) >= 72) whatFailed.push("Liquidity pressure increased execution fragility.");
+
+  return {
+    replayContext: replayContextForTrade(row),
+    systemLearned: learning.adjustment,
+    whatFailed: whatFailed.length ? whatFailed.slice(0, 5) : ["No major failure signal appeared in the completed evidence window; still simulation-only evidence."],
+    whatWorked: whatWorked.length ? whatWorked.slice(0, 5) : ["The trade qualified, but no single strength dominated the completed sample."],
+  };
+}
+
+function replayContextForTrade(row: SimulationObservation): string {
+  const drawdownText = row.drawdownPct === null ? "adverse-move evidence was limited" : `max drawdown was ${formatPct(row.drawdownPct)}`;
+  return `${row.horizon} replay sample: ${strategyFamilyLabel(row.family)} in ${humanLabel(row.marketRegime)} conditions; outcome ${formatPct(row.returnPct)} and ${drawdownText}.`;
+}
+
+function allocationHistoryFor(
+  closedTrades: SimulatedPortfolioClosedTrade[],
+  openPositions: SimulatedPortfolioOpenPosition[],
+): SimulatedPortfolioAllocationPoint[] {
+  if (!closedTrades.length && !openPositions.length) return [];
+  let runningPnl = 0;
+  const points: SimulatedPortfolioAllocationPoint[] = [];
+  for (const trade of closedTrades.slice().sort(compareTradeExitDate)) {
+    runningPnl += trade.realizedPnl;
+    points.push({
+      cashPct: Math.max(0, 100 - trade.allocationPct),
+      date: trade.exitDate,
+      deployedPct: trade.allocationPct,
+      label: `${trade.symbol} exit`,
+      realizedPnl: runningPnl,
+      topSymbol: trade.symbol,
+    });
+  }
+  if (openPositions.length) {
+    const deployedPct = openPositions.reduce((sum, position) => sum + position.allocationPct, 0);
+    const largest = openPositions.slice().sort((left, right) => right.allocationPct - left.allocationPct)[0] ?? null;
+    points.push({
+      cashPct: Math.max(0, 100 - deployedPct),
+      date: "Current",
+      deployedPct,
+      label: "Current model allocation",
+      realizedPnl: points.at(-1)?.realizedPnl ?? 0,
+      topSymbol: largest?.symbol ?? null,
+    });
+  }
+  if (!points.length) {
+    return [{
+      cashPct: 100,
+      date: "Current",
+      deployedPct: 0,
+      label: "No simulated allocation",
+      realizedPnl: 0,
+      topSymbol: null,
+    }];
+  }
+  return points
+    .map((point) => ({
+      ...point,
+      realizedPnl: Number.isFinite(point.realizedPnl) ? point.realizedPnl : 0,
+      deployedPct: clamp(point.deployedPct, 0, 100),
+      cashPct: clamp(point.cashPct, 0, 100),
+    }))
+    .slice(-12);
+}
+
+function compareTradeExitDate(left: SimulatedPortfolioClosedTrade, right: SimulatedPortfolioClosedTrade): number {
+  const leftTime = Date.parse(left.exitDate);
+  const rightTime = Date.parse(right.exitDate);
+  if (Number.isFinite(leftTime) && Number.isFinite(rightTime) && leftTime !== rightTime) return leftTime - rightTime;
+  return left.exitDate.localeCompare(right.exitDate);
+}
+
+function riskConcentrationFor(
+  closedTrades: SimulatedPortfolioClosedTrade[],
+  openPositions: SimulatedPortfolioOpenPosition[],
+  stats: SimulatedPortfolioStats,
+): SimulatedPortfolioRiskConcentration[] {
+  const elevatedOpen = openPositions.filter((position) => position.riskState !== "Controlled risk");
+  const elevatedAllocation = elevatedOpen.reduce((sum, position) => sum + position.allocationPct, 0);
+  const dominantSector = dominantOpenSector(openPositions);
+  const sectorBucket = bucketClosedTrades(closedTrades, "sector", (trade) => humanLabel(trade.sector))[0] ?? null;
+  const worstTrades = closedTrades
+    .filter((trade) => trade.realizedReturnPct < 0)
+    .sort((left, right) => left.realizedReturnPct - right.realizedReturnPct)
+    .slice(0, 5);
+  const drawdown = stats.maxDrawdownPct;
+  const rows: SimulatedPortfolioRiskConcentration[] = [
+    {
+      detail: elevatedOpen.length
+        ? `${elevatedOpen.length} current model position(s) are in watch/elevated risk states.`
+        : "Current model allocation is not concentrated in elevated risk states.",
+      label: "Open risk concentration",
+      score: elevatedAllocation,
+      symbols: elevatedOpen.map((position) => position.symbol).slice(0, 5),
+      tone: elevatedAllocation >= 35 ? "risk" : elevatedAllocation >= 15 ? "warn" : "good",
+    },
+    {
+      detail: dominantSector === null
+        ? "No current sector concentration is available from open model positions."
+        : `${dominantSector.label} is the largest current sector exposure.`,
+      label: "Current sector concentration",
+      score: dominantSector?.allocationPct ?? null,
+      symbols: openPositions
+        .filter((position) => dominantSector !== null && humanLabel(position.sector) === dominantSector.label)
+        .map((position) => position.symbol)
+        .slice(0, 5),
+      tone: dominantSector === null ? "neutral" : dominantSector.allocationPct >= 34 ? "warn" : "good",
+    },
+    {
+      detail: sectorBucket === null
+        ? "Closed trade sector history is not populated enough for a concentration read."
+        : `${sectorBucket.label} produced ${formatMoney(sectorBucket.pnl)} realized PnL across ${sectorBucket.symbolCount} symbol(s).`,
+      label: "Historical sector pressure",
+      score: sectorBucket?.allocationPct ?? null,
+      symbols: [],
+      tone: sectorBucket?.tone ?? "neutral",
+    },
+    {
+      detail: worstTrades.length
+        ? "These symbols contributed the weakest completed simulation outcomes."
+        : "No completed losing trades are available in this sleeve.",
+      label: "Loss cluster",
+      score: worstTrades.length ? Math.min(100, worstTrades.length * 18) : null,
+      symbols: worstTrades.map((trade) => trade.symbol),
+      tone: worstTrades.length >= 4 ? "risk" : worstTrades.length ? "warn" : "good",
+    },
+    {
+      detail: drawdown === null
+        ? "Drawdown evidence is limited for this sleeve."
+        : `Maximum simulated portfolio drawdown reached ${formatPct(drawdown)}.`,
+      label: "Portfolio drawdown pressure",
+      score: drawdown === null ? null : Math.min(100, Math.abs(drawdown) * 7),
+      symbols: [],
+      tone: drawdown === null ? "neutral" : Math.abs(drawdown) >= 10 ? "risk" : Math.abs(drawdown) >= 6 ? "warn" : "good",
+    },
+  ];
+  return rows;
 }
 
 function exposureBucketsFor(
