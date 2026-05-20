@@ -152,6 +152,27 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
           ]}
           title="Activation Quality"
         />
+        <MetricGroup
+          rows={[
+            ["Feed engagement", analytics.livingTelemetry.feedEngagement],
+            ["Watchlist usage", analytics.livingTelemetry.watchlistUsage],
+            ["Scanner usage", analytics.livingTelemetry.scannerUsage],
+            ["Notifications", analytics.livingTelemetry.notificationEngagement],
+          ]}
+          title="Living Intelligence Usage"
+        />
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-3">
+        <MetricGroup
+          rows={[
+            ["First useful action", analytics.livingTelemetry.firstUsefulAction],
+            ["Replay usage", analytics.livingTelemetry.replayUsage],
+            ["Strategy usage", analytics.livingTelemetry.strategyUsage],
+            ["Scanner usage", analytics.livingTelemetry.scannerUsage],
+          ]}
+          title="Core Workflow Telemetry"
+        />
         <ChartPanel subtitle="Behavior events are first-party, privacy-sanitized, and never include raw Copilot prompts." title="Telemetry Boundaries">
           <div className="grid gap-2 text-sm leading-6 text-slate-300">
             <div className="rounded-xl border border-emerald-300/15 bg-emerald-400/[0.06] p-3">Tracks product behavior, not brokerage credentials, payment data, or private financial data.</div>

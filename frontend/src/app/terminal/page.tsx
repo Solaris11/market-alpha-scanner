@@ -36,6 +36,7 @@ import { WorkspacePersonalizationPanel } from "@/components/terminal/WorkspacePe
 import { WorkflowEvolutionPanel } from "@/components/terminal/WorkflowEvolutionPanel";
 import { IntelligenceEcosystemPanel } from "@/components/visual/IntelligenceEcosystemPanel";
 import { InstitutionalSuperplatformPanel } from "@/components/visual/InstitutionalSuperplatformPanel";
+import { LivingIntelligenceProofPanel } from "@/components/visual/LivingIntelligenceProofPanel";
 import { getActiveAlertMatches } from "@/lib/active-alert-matches";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getPaperData } from "@/lib/paper-data";
@@ -61,6 +62,7 @@ import { buildLiveIntelligenceSystem } from "@/lib/trading/live-intelligence";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 import { buildPortfolioIntelligenceSystem } from "@/lib/trading/portfolio-intelligence";
 import { buildIntelligenceEcosystemSystem } from "@/lib/trading/intelligence-ecosystem";
+import { buildLivingIntelligenceProofSystem } from "@/lib/trading/living-intelligence-proof";
 import { buildInstitutionalSuperplatformSystem } from "@/lib/trading/institutional-superplatform";
 import { buildDailyMarketCommandModel } from "@/lib/trading/daily-market-command";
 import { buildMarketCommandModel } from "@/lib/trading/market-research";
@@ -199,6 +201,16 @@ export default async function TerminalPage() {
     watchlistSymbols,
     workflowEvolution,
   });
+  const livingIntelligenceProof = buildLivingIntelligenceProofSystem({
+    feedItems: intelligenceFeed.items,
+    generatedAt: scanSafety.lastUpdated,
+    liveSystem: liveIntelligence,
+    marketCondition: snapshot.marketRegime.label,
+    portfolioSystem: portfolioIntelligence,
+    rows: opportunityModel.rows,
+    watchlistSymbols,
+    workflowEvolution,
+  });
   const institutionalSuperplatform = buildInstitutionalSuperplatformSystem({
     ecosystem: intelligenceEcosystem,
     feedItems: intelligenceFeed.items,
@@ -257,6 +269,7 @@ export default async function TerminalPage() {
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">
           <DailyMarketCommandCenter model={dailyMarketCommand} />
+          <LivingIntelligenceProofPanel system={livingIntelligenceProof} />
           <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
           <GlobalMarketCommandCenter model={marketCommandModel} />
           <UnifiedIntelligenceConsole

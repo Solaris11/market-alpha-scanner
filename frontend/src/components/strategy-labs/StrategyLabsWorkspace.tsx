@@ -58,7 +58,7 @@ import {
   type PosterVisualTone,
 } from "@/components/visual/PosterDataVisuals";
 import { SymbolLogo } from "@/components/visual/SymbolLogo";
-import { trackFirstUsefulAction } from "@/lib/client/analytics";
+import { trackAnalyticsEvent, trackFirstUsefulAction } from "@/lib/client/analytics";
 
 const MODE_ORDER: SimulatedPortfolioMode[] = ["conservative", "balanced", "aggressive"];
 
@@ -96,8 +96,15 @@ export function StrategyLabsWorkspace({ system }: { system: SimulatedAiPortfolio
   const generatedAt = useMemo(() => formatDateTime(system.generatedAt), [system.generatedAt]);
 
   useEffect(() => {
+    trackAnalyticsEvent("strategy_usage", { action: "open", mode: "balanced" }, { source: "strategy_labs" });
     trackFirstUsefulAction("strategy_labs_review", { mode: "balanced" }, { source: "strategy_labs" });
   }, []);
+
+  function selectMode(nextMode: SimulatedPortfolioMode, source: string): void {
+    setMode(nextMode);
+    trackAnalyticsEvent("strategy_usage", { action: "select_mode", mode: nextMode }, { source });
+    trackFirstUsefulAction("strategy_labs_mode", { mode: nextMode }, { source });
+  }
 
   return (
     <div className="space-y-5 pb-24 sm:pb-8">
@@ -157,7 +164,7 @@ export function StrategyLabsWorkspace({ system }: { system: SimulatedAiPortfolio
                         : "border-transparent text-slate-300 hover:border-white/25 hover:bg-white/[0.04]"
                     }`}
                     key={item}
-                    onClick={() => setMode(item)}
+                    onClick={() => selectMode(item, "strategy_labs_tabs")}
                     role="tab"
                     type="button"
                   >
@@ -189,7 +196,7 @@ export function StrategyLabsWorkspace({ system }: { system: SimulatedAiPortfolio
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]" id="builder">
         <div className="min-w-0 space-y-5">
           <Panel eyebrow="Starter templates" title="Choose a Strategy Starting Point">
-            <StrategyTemplateGrid activeMode={mode} modes={system.modes} onSelectMode={setMode} />
+            <StrategyTemplateGrid activeMode={mode} modes={system.modes} onSelectMode={(nextMode) => selectMode(nextMode, "strategy_labs_templates")} />
           </Panel>
 
           <Panel eyebrow="Visual Strategy Builder" title={`${active.config.label} Flow`}>

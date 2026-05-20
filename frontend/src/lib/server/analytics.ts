@@ -61,6 +61,15 @@ export type AnalyticsSummary = {
     typeCounts: Array<{ count: number; feedbackType: string }>;
   };
   journey: Array<{ count: number; description: string; key: string }>;
+  livingTelemetry: {
+    feedEngagement: number;
+    firstUsefulAction: number;
+    notificationEngagement: number;
+    replayUsage: number;
+    scannerUsage: number;
+    strategyUsage: number;
+    watchlistUsage: number;
+  };
   onboarding: {
     completedUsers: number;
     completionRatePct: number | null;
@@ -248,6 +257,15 @@ type ExperimentExposureRow = QueryResultRow & {
   experiment: string;
   variant: string;
 };
+type LivingTelemetryRow = QueryResultRow & {
+  feed_engagement: string | number;
+  first_useful_action: string | number;
+  notification_engagement: string | number;
+  replay_usage: string | number;
+  scanner_usage: string | number;
+  strategy_usage: string | number;
+  watchlist_usage: string | number;
+};
 
 const MAX_EVENTS_PER_REQUEST = 24;
 const FRICTION_EVENT_NAMES = [
@@ -380,6 +398,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     firstUsefulActionsByAction,
     flowAbandonment,
     experimentExposure,
+    livingTelemetry,
   ] = await Promise.all([
     dbQuery<RetentionRow>(
       `
@@ -696,6 +715,20 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
         LIMIT 12
       `,
     ),
+    dbQuery<LivingTelemetryRow>(
+      `
+        SELECT
+          count(*) FILTER (WHERE event_name = 'first_useful_action') AS first_useful_action,
+          count(*) FILTER (WHERE event_name = 'feed_engagement') AS feed_engagement,
+          count(*) FILTER (WHERE event_name = 'watchlist_usage') AS watchlist_usage,
+          count(*) FILTER (WHERE event_name = 'scanner_usage') AS scanner_usage,
+          count(*) FILTER (WHERE event_name = 'strategy_usage') AS strategy_usage,
+          count(*) FILTER (WHERE event_name = 'replay_usage') AS replay_usage,
+          count(*) FILTER (WHERE event_name = 'notification_engagement') AS notification_engagement
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+      `,
+    ),
   ]);
 
   const retentionRow = retention.rows[0];
@@ -707,6 +740,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
   const journeyRow = journey.rows[0];
   const visitorRow = visitorSummary.rows[0];
   const firstUsefulRow = firstUsefulAction.rows[0];
+  const livingTelemetryRow = livingTelemetry.rows[0];
   const frictionCount = (eventName: string) => numberFromRow(frictionEvents.rows.find((row) => row.event_name === eventName)?.count);
 
   return {
@@ -737,6 +771,15 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
       { count: numberFromRow(journeyRow?.onboarding_symbol), description: "Onboarding completion to first symbol research", key: "onboarding_symbol" },
       { count: numberFromRow(journeyRow?.alerts_repeat), description: "Alert creation inside repeat sessions", key: "alerts_repeat" },
     ],
+    livingTelemetry: {
+      feedEngagement: numberFromRow(livingTelemetryRow?.feed_engagement),
+      firstUsefulAction: numberFromRow(livingTelemetryRow?.first_useful_action),
+      notificationEngagement: numberFromRow(livingTelemetryRow?.notification_engagement),
+      replayUsage: numberFromRow(livingTelemetryRow?.replay_usage),
+      scannerUsage: numberFromRow(livingTelemetryRow?.scanner_usage),
+      strategyUsage: numberFromRow(livingTelemetryRow?.strategy_usage),
+      watchlistUsage: numberFromRow(livingTelemetryRow?.watchlist_usage),
+    },
     onboarding: {
       completedUsers,
       completionRatePct: totalUsers > 0 ? (completedUsers / totalUsers) * 100 : null,

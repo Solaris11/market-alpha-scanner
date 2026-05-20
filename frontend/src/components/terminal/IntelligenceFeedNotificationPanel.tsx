@@ -238,6 +238,14 @@ function FeedItemCard({ item, watchlistSymbols }: { item: IntelligenceFeedItem; 
   const Icon = itemIcon(item);
   const actions = feedActions(item);
   const trustModel = buildFeedItemTrustModel(item, { watchlistSymbols });
+  function trackFeedEngagement(action: string): void {
+    const metadata = { action, itemType: item.itemType, notificationEligible: item.notificationEligible, severity: item.severity, sourceKey: item.sourceKey };
+    trackAnalyticsEvent("feed_item_open", metadata, { source: "intelligence_feed", symbol: item.relatedSymbol ?? undefined });
+    trackAnalyticsEvent("feed_engagement", metadata, { source: "intelligence_feed", symbol: item.relatedSymbol ?? undefined });
+    if (item.notificationEligible) {
+      trackAnalyticsEvent("notification_engagement", { action: "feed_notification_candidate", category: item.category, itemType: item.itemType, severity: item.severity }, { source: "intelligence_feed", symbol: item.relatedSymbol ?? undefined });
+    }
+  }
   return (
     <article className={`rounded-2xl border p-3 transition hover:-translate-y-0.5 hover:bg-white/[0.045] ${itemClass(item)}`}>
       <div className="flex min-w-0 items-start gap-3">
@@ -254,7 +262,7 @@ function FeedItemCard({ item, watchlistSymbols }: { item: IntelligenceFeedItem; 
               <Link
                 className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-slate-100 transition hover:text-cyan-100"
                 href={item.actionHref}
-                onClick={() => trackAnalyticsEvent("feed_item_open", { itemType: item.itemType, severity: item.severity, sourceKey: item.sourceKey }, { source: "intelligence_feed", symbol: item.relatedSymbol ?? undefined })}
+                onClick={() => trackFeedEngagement("open_title")}
               >
                 {item.title}
                 <ChevronRight className="h-3.5 w-3.5 text-slate-600" />
@@ -276,7 +284,7 @@ function FeedItemCard({ item, watchlistSymbols }: { item: IntelligenceFeedItem; 
                 className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.1em] text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100"
                 href={action.href}
                 key={action.label}
-                onClick={() => trackAnalyticsEvent("feed_item_open", { action: action.label, itemType: item.itemType, severity: item.severity, sourceKey: item.sourceKey }, { source: "intelligence_feed", symbol: item.relatedSymbol ?? undefined })}
+                onClick={() => trackFeedEngagement(action.label)}
               >
                 {action.label}
               </Link>

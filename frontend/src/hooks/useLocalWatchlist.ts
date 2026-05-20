@@ -72,6 +72,7 @@ export function useLocalWatchlist() {
     applyLocalSymbols(next);
     trackAnalyticsEvent("watch_add", { symbol: cleaned }, { source: "watchlist", symbol: cleaned });
     trackAnalyticsEvent("watchlist_add", { symbol: cleaned }, { source: "watchlist", symbol: cleaned });
+    trackAnalyticsEvent("watchlist_usage", { action: "add", symbol: cleaned, watchlistSize: next.length }, { source: "watchlist", symbol: cleaned });
     trackFirstUsefulAction("watchlist_add", { symbol: cleaned }, { source: "watchlist", symbol: cleaned });
     if (authenticated) {
       void saveAuthenticatedSymbols([cleaned], next);
@@ -83,6 +84,7 @@ export function useLocalWatchlist() {
     const next = cleanSymbols([...watchlist, ...readWatchlistStorage()].filter((item) => item !== cleaned));
     applyLocalSymbols(next);
     trackAnalyticsEvent("watchlist_remove", { symbol: cleaned }, { source: "watchlist", symbol: cleaned });
+    trackAnalyticsEvent("watchlist_usage", { action: "remove", symbol: cleaned, watchlistSize: next.length }, { source: "watchlist", symbol: cleaned });
     if (authenticated) {
       void removeAuthenticatedSymbol(cleaned, next);
     }

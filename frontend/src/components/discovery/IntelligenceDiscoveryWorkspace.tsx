@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   Brain,
@@ -40,6 +40,7 @@ import {
   type DiscoveryTone,
   type IntelligenceDiscoverySystem,
 } from "@/lib/trading/intelligence-discovery";
+import { trackAnalyticsEvent, trackFirstUsefulAction } from "@/lib/client/analytics";
 import { formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { humanizeInsightText, humanizeLabel } from "@/lib/ui/labels";
 
@@ -128,9 +129,15 @@ export function IntelligenceDiscoveryWorkspace({
   }));
   const selectedFilter = system.quickFilters.find((item) => item.key === filter);
 
+  useEffect(() => {
+    trackAnalyticsEvent("scanner_usage", { action: "open_discovery_workspace", universeCount: system.universeCount }, { source: "discovery_workspace" });
+  }, [system.universeCount]);
+
   function toggleCompare(symbol: string): void {
     setCompareSymbols((current) => {
       if (current.includes(symbol)) return current.filter((item) => item !== symbol);
+      trackAnalyticsEvent("scanner_usage", { action: "compare_add", symbol }, { source: "discovery_compare", symbol });
+      trackFirstUsefulAction("scanner_compare", { symbol }, { source: "discovery_compare", symbol });
       return [symbol, ...current].slice(0, 4);
     });
   }
@@ -142,6 +149,8 @@ export function IntelligenceDiscoveryWorkspace({
       setSort(behavior.sort);
       setTimeframe(behavior.timeframe);
     }
+    trackAnalyticsEvent("scanner_usage", { action: "quick_filter", filter: nextFilter, sort: behavior?.sort ?? sort, timeframe: behavior?.timeframe ?? timeframe }, { source: "discovery_filter" });
+    trackFirstUsefulAction("scanner_filter", { filter: nextFilter }, { source: "discovery_filter" });
   }
 
   function applyScannerPreset(preset: DiscoveryScannerPreset): void {
@@ -150,12 +159,15 @@ export function IntelligenceDiscoveryWorkspace({
     setTimeframe(preset.timeframe);
     setQuery("");
     setSector("ALL");
+    trackAnalyticsEvent("scanner_usage", { action: "preset", preset: preset.key, resultCount: preset.count, sort: preset.sort, timeframe: preset.timeframe }, { source: "discovery_preset" });
+    trackFirstUsefulAction("scanner_preset", { preset: preset.key }, { source: "discovery_preset" });
   }
 
   function applyScannerLane(nextFilter: DiscoveryQuickFilterKey): void {
     applyScannerFilter(nextFilter);
     setQuery("");
     setSector("ALL");
+    trackAnalyticsEvent("scanner_usage", { action: "lane", filter: nextFilter }, { source: "discovery_lane" });
   }
 
   return (

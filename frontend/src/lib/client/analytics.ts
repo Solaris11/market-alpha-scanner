@@ -106,6 +106,8 @@ export function trackRouteAnalytics(pathname: string): void {
   trackAnalyticsEvent("page_view", { path: pagePath }, { pagePath: routePagePath, source: "route" });
   const pageEvent = pageOpenEventForPath(pathname);
   if (pageEvent) trackAnalyticsEvent(pageEvent, { path: pagePath }, { pagePath: routePagePath, source: "route", symbol: symbolFromPath(pathname) ?? undefined });
+  const usageEvent = usageEventForPath(pathname);
+  if (usageEvent) trackAnalyticsEvent(usageEvent, { path: pagePath }, { pagePath: routePagePath, source: "route_usage", symbol: symbolFromPath(pathname) ?? undefined });
 }
 
 export async function flushAnalyticsEvents(): Promise<void> {
@@ -264,6 +266,12 @@ function analyticsElementDescriptor(target: Element): { component: string; kind:
     kind: compactComponent(kind),
     symbol: sanitizeAnalyticsSymbol(element.dataset.symbol),
   };
+}
+
+function usageEventForPath(pathname: string): AnalyticsEventName | null {
+  if (pathname === "/discover" || pathname.startsWith("/discover/") || pathname === "/scanner" || pathname.startsWith("/scanner/")) return "scanner_usage";
+  if (pathname === "/strategy-labs" || pathname.startsWith("/strategy-labs/")) return "strategy_usage";
+  return null;
 }
 
 function compactComponent(value: unknown): string {

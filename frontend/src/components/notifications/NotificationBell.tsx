@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { notificationDisplayMessage, type UserNotification } from "@/lib/notifications";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
+import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 
 type NotificationsResponse = {
@@ -122,6 +123,12 @@ export function NotificationBell() {
       }
     }
 
+    trackAnalyticsEvent("notification_engagement", {
+      action: notification.actionUrl ? "open_action" : "mark_read",
+      notificationType: notification.type,
+      wasUnread: !notification.read,
+    }, { source: "notification_bell" });
+
     if (notification.actionUrl) {
       setOpen(false);
       router.push(notification.actionUrl);
@@ -131,6 +138,7 @@ export function NotificationBell() {
   async function markAllRead() {
     setNotifications((items) => items.map((item) => ({ ...item, read: true })));
     setUnreadCount(0);
+    trackAnalyticsEvent("notification_engagement", { action: "mark_all_read", unreadCount }, { source: "notification_bell" });
     try {
       const response = await csrfFetch("/api/notifications/read-all", { method: "POST" });
       if (!response.ok) throw new Error("Unable to mark all notifications read.");
@@ -147,7 +155,11 @@ export function NotificationBell() {
         className={`tv-tap-motion relative grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-sm text-slate-200 transition hover:border-cyan-300/40 hover:bg-cyan-400/10 hover:text-cyan-100 ${unreadCount ? "tv-alert-pulse" : ""}`}
         onClick={() => {
           updateMenuPosition();
-          setOpen((value) => !value);
+          setOpen((value) => {
+            const next = !value;
+            trackAnalyticsEvent("notification_engagement", { action: next ? "open_menu" : "close_menu", unreadCount }, { source: "notification_bell" });
+            return next;
+          });
           void loadNotifications();
         }}
         type="button"

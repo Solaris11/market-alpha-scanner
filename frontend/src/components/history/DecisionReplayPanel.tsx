@@ -48,6 +48,7 @@ export function DecisionReplayPanel({ rows, selectedSymbol }: Props) {
         if (active) {
           setReplay(payload.replay);
           trackAnalyticsEvent("replay_open", { hasOutcomes: payload.replay.after.outcomes.length > 0, timestamp: selectedTimestamp }, { source: "decision_replay", symbol: selectedSymbol });
+          trackAnalyticsEvent("replay_usage", { action: "open_snapshot", hasOutcomes: payload.replay.after.outcomes.length > 0, timestamp: selectedTimestamp }, { source: "decision_replay", symbol: selectedSymbol });
           trackFirstUsefulAction("replay_open", { symbol: selectedSymbol }, { source: "decision_replay", symbol: selectedSymbol });
         }
       } catch (caught) {
