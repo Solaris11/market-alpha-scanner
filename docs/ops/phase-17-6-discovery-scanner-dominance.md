@@ -90,11 +90,12 @@ Local validation:
 
 Production validation:
 
-- Production pull/rebuild - pending.
-- Container health - pending.
-- `/api/health` - pending.
-- `/api/health/deep` - pending.
-- `/terminal`, `/discover`, `/opportunities`, `/symbol/AMD` smoke - pending.
+- Production pull/rebuild - passed on Linux production host from `main` commit `b346f5e`.
+- Container health - passed, `market-alpha-frontend` reported healthy.
+- `/api/health` - passed, HTTP 200 from container and public edge.
+- `/api/health/deep` - passed, HTTP 200 from container.
+- `/terminal`, `/discover`, `/opportunities`, `/symbol/AMD` smoke - passed, HTTP 200 from container.
+- Public edge `/discover` - passed, HTTP 200.
 
 ## Remaining Gaps
 
