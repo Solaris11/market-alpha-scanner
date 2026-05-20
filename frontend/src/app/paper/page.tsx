@@ -33,6 +33,8 @@ import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 import { buildPortfolioIntelligenceSystem } from "@/lib/trading/portfolio-intelligence";
 import { buildScenarioIntelligenceSystem } from "@/lib/trading/scenario-intelligence";
+import { buildSimulatedAiPortfolioSystem, type SimulatedAiPortfolioSystem, type SimulatedPortfolioModeResult } from "@/lib/trading/simulated-ai-portfolio";
+import { buildStrategyIntelligenceSystem } from "@/lib/trading/strategy-intelligence";
 import { humanizeLabel } from "@/lib/ui/labels";
 
 export const dynamic = "force-dynamic";
@@ -871,6 +873,124 @@ function PaperCinematicSimulationSystem({
   );
 }
 
+function SimulatedEvidencePortfolioBridge({ sampleCount, system }: { sampleCount: number; system: SimulatedAiPortfolioSystem | null }) {
+  if (!system || sampleCount <= 0) {
+    return (
+      <SectionShell eyebrow="Completed Evidence" title="Validated Simulation Evidence">
+        <EmptyState message="Completed forward-return evidence is not available yet. Paper account results remain separated from system simulations." />
+      </SectionShell>
+    );
+  }
+
+  const result = system.modes.balanced;
+  const equityValues = result.equityCurve.map((point) => point.value);
+  const latestEquity = equityValues.at(-1) ?? system.startingCapital;
+  const closed = result.closedTrades.slice(0, 6);
+
+  return (
+    <section className="poster-panel poster-panel-lab rounded-3xl border border-violet-300/20 p-5 shadow-2xl shadow-black/25 ring-1 ring-white/5">
+      <div className="flex min-w-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-violet-200">Completed Evidence Portfolio</div>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Practice portfolio from validated forward returns</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+            This is a research simulation built from completed TradeVeto observations. It is not your paper account and does not represent live execution.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-4 lg:w-[560px]">
+          <MiniMetric label="Completed Samples" value={sampleCount.toLocaleString()} />
+          <MiniMetric label="Closed Trades" value={result.stats.closedTradeCount.toLocaleString()} />
+          <MiniMetric label="Win Rate" value={result.stats.winRatePct === null ? "Limited" : `${result.stats.winRatePct.toFixed(1)}%`} />
+          <MiniMetric label="Return" tone={result.stats.simulatedReturnPct === null ? null : result.stats.simulatedReturnPct / 100} value={result.stats.simulatedReturnPct === null ? "Limited" : `${result.stats.simulatedReturnPct >= 0 ? "+" : ""}${result.stats.simulatedReturnPct.toFixed(1)}%`} />
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
+        <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Balanced evidence sleeve</div>
+              <div className="mt-1 font-mono text-2xl font-black text-slate-50">{money(latestEquity)}</div>
+            </div>
+            <div className="rounded-full border border-cyan-300/25 bg-cyan-400/10 px-3 py-1 text-xs font-semibold text-cyan-100">
+              {system.primaryHorizon} horizon
+            </div>
+          </div>
+          <SimulatedEvidenceCurve points={result.equityCurve} startingCapital={system.startingCapital} />
+        </div>
+
+        <div className="grid gap-3">
+          <SimulatedEvidenceRiskSummary result={result} />
+          <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Recent evidence trades</div>
+            <div className="mt-3 space-y-2">
+              {closed.length ? closed.map((trade) => (
+                <Link
+                  className="block rounded-xl border border-white/10 bg-white/[0.04] p-3 transition hover:border-cyan-300/35 hover:bg-cyan-400/[0.06]"
+                  href={`/symbol/${encodeURIComponent(trade.symbol)}`}
+                  key={trade.id}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="font-mono text-sm font-black text-slate-50">{trade.symbol}</div>
+                    <div className={`font-mono text-xs font-bold ${pnlTone(trade.realizedPnl)}`}>{money(trade.realizedPnl)}</div>
+                  </div>
+                  <div className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{trade.learning.lesson}</div>
+                </Link>
+              )) : <EmptyState message="The completed-evidence simulator needs more qualifying observations for this mode." />}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function SimulatedEvidenceRiskSummary({ result }: { result: SimulatedPortfolioModeResult }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-slate-950/55 p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Simulation risk memory</div>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <MiniMetric label="Max Drawdown" tone={result.stats.maxDrawdownPct === null ? null : -Math.abs(result.stats.maxDrawdownPct) / 100} value={result.stats.maxDrawdownPct === null ? "Limited" : `${result.stats.maxDrawdownPct.toFixed(1)}%`} />
+        <MiniMetric label="Volatility" value={result.stats.volatilityPct === null ? "Limited" : `${result.stats.volatilityPct.toFixed(1)}%`} />
+        <MiniMetric label="Cash" value={`${result.stats.cashPct.toFixed(1)}%`} />
+        <MiniMetric label="Quality" value={`${result.stats.strategyQualityScore}/100`} />
+      </div>
+      <p className="mt-3 line-clamp-3 text-sm leading-6 text-slate-400">{result.learning.portfolioStories[0] ?? result.summary}</p>
+    </div>
+  );
+}
+
+function SimulatedEvidenceCurve({ points, startingCapital }: { points: { label: string; value: number }[]; startingCapital: number }) {
+  const width = 720;
+  const height = 220;
+  const values = points.length ? points.map((point) => point.value) : [startingCapital];
+  const minValue = Math.min(...values, startingCapital);
+  const maxValue = Math.max(...values, startingCapital);
+  const range = Math.max(1, maxValue - minValue);
+  const coordinates = values.map((value, index) => {
+    const x = values.length === 1 ? width / 2 : (index / (values.length - 1)) * width;
+    const y = height - ((value - minValue) / range) * (height - 24) - 12;
+    return { x, y };
+  });
+  const path = coordinates.map(({ x, y }, index) => `${index === 0 ? "M" : "L"} ${x.toFixed(2)} ${y.toFixed(2)}`).join(" ");
+
+  return (
+    <svg aria-label="Completed evidence simulated portfolio equity curve" className="mt-4 h-56 w-full overflow-visible" preserveAspectRatio="none" role="img" viewBox={`0 0 ${width} ${height}`}>
+      <defs>
+        <linearGradient id="paper-evidence-equity-fill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stopColor="rgba(168,85,247,0.2)" />
+          <stop offset="100%" stopColor="rgba(34,211,238,0)" />
+        </linearGradient>
+      </defs>
+      <path d={`${path} L ${width} ${height} L 0 ${height} Z`} fill="url(#paper-evidence-equity-fill)" />
+      <path d={path} fill="none" stroke="rgb(34,211,238)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3.5" vectorEffect="non-scaling-stroke" />
+      {coordinates.slice(-8).map((point, index) => (
+        <circle cx={point.x} cy={point.y} fill="rgb(196,181,253)" key={`${point.x}:${point.y}:${index}`} r="3" vectorEffect="non-scaling-stroke" />
+      ))}
+    </svg>
+  );
+}
+
 export default async function PaperPage() {
   const entitlement = await getEntitlement();
   if (requiresLegalAcceptance(entitlement)) {
@@ -899,6 +1019,16 @@ export default async function PaperPage() {
     : [new Map(), new Map()];
   const opportunitiesModel = buildOpportunitiesPageModel(scannerRows, performance, shockPatterns, narratives);
   const scenarioIntelligence = buildScenarioIntelligenceSystem({ rows: opportunitiesModel.rows });
+  const strategySystem = premiumAccess ? buildStrategyIntelligenceSystem({
+    forwardRows: performance?.forwardReturns.rows ?? [],
+    opportunities: opportunitiesModel.rows,
+  }) : null;
+  const simulatedEvidencePortfolio = premiumAccess ? buildSimulatedAiPortfolioSystem({
+    forwardRows: performance?.forwardReturns.rows ?? [],
+    opportunities: opportunitiesModel.rows,
+    startingCapital: data.account?.total_account_value ?? 100000,
+    strategySystem,
+  }) : null;
   const portfolioIntelligence = buildPortfolioIntelligenceSystem({
     accountValue: data.account?.total_account_value ?? null,
     opportunities: opportunitiesModel.rows,
@@ -911,6 +1041,7 @@ export default async function PaperPage() {
   const expectancy = buildExpectancy(closedPositions);
   const trustMetrics = analytics ? buildTrustMetrics(analytics.summary, data.positions, analytics.groups, account?.total_account_value ?? null, expectancy) : null;
   const confidenceStatus = systemConfidenceStatus(closedPositions.length);
+  const completedEvidenceSamples = Math.max(0, (performance?.forwardReturns.lineCount ?? 0) - 1);
 
   return (
     <TerminalShell>
@@ -944,6 +1075,8 @@ export default async function PaperPage() {
           positions={data.positions}
           trustMetrics={trustMetrics}
         />
+
+        {premiumAccess ? <SimulatedEvidencePortfolioBridge sampleCount={completedEvidenceSamples} system={simulatedEvidencePortfolio} /> : null}
 
         {!data.configured || data.error || !account ? (
           <SectionShell eyebrow="Paper Account" title="Paper Account Unavailable">

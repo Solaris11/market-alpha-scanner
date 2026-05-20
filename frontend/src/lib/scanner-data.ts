@@ -250,6 +250,7 @@ type DbJsonRow = QueryResultRow & {
 type DbMetricRow = QueryResultRow & {
   created_at?: string | Date;
   metrics: unknown;
+  total_count?: string | number | null;
 };
 
 type DbHistorySummaryRow = QueryResultRow & {
@@ -497,41 +498,75 @@ function rowsToCsvFileData(rows: Record<string, unknown>[]): CsvFileData {
   };
 }
 
-function metricRowsToCsvFileData(rows: DbMetricRow[]): CsvFileData {
-  return rowsToCsvFileData(rows.map((row) => asRecord(row.metrics)));
+function metricRowsToCsvFileData(rows: DbMetricRow[], totalCount?: number | null): CsvFileData {
+  const data = rowsToCsvFileData(rows.map((row) => asRecord(row.metrics)));
+  if (totalCount !== undefined && totalCount !== null && Number.isFinite(totalCount) && totalCount >= data.rows.length) {
+    return { ...data, lineCount: Math.floor(totalCount) + (data.columns.length ? 1 : 0) };
+  }
+  return data;
+}
+
+function dbCount(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 const getDbPerformanceData = cache(async (forwardTailRows?: number): Promise<Pick<PerformanceData, "summary" | "forwardReturns"> | null> => {
-  const latestRun = await latestDbScanRun();
-  if (!latestRun) return null;
-
   try {
     const forwardLimit = forwardTailRows ? Math.max(1, forwardTailRows) : 100000;
     const [summaryResult, forwardResult] = await Promise.all([
       dbQuery<DbMetricRow>(
         `
-          SELECT metrics, created_at
-          FROM performance_summary
-          WHERE scan_run_id = $1
-          ORDER BY created_at ASC
+          WITH latest_batch AS (
+            SELECT scan_run_id, max(created_at) AS created_at
+            FROM performance_summary
+            GROUP BY scan_run_id
+            ORDER BY max(created_at) DESC
+            LIMIT 1
+          )
+          SELECT ps.metrics, ps.created_at
+          FROM performance_summary ps
+          JOIN latest_batch lb
+            ON lb.scan_run_id = ps.scan_run_id
+           AND lb.created_at = ps.created_at
+          ORDER BY
+            COALESCE((ps.metrics->>'rank_position')::numeric, 999999),
+            ps.metrics->>'group_type',
+            ps.metrics->>'group_value'
         `,
-        [latestRun.id],
       ),
       dbQuery<DbMetricRow>(
         `
-          SELECT metrics, created_at
+          SELECT
+            (
+              jsonb_build_object(
+                'scan_run_id', scan_run_id::text,
+                'scanner_signal_id', scanner_signal_id::text,
+                'symbol', symbol,
+                'signal_date', signal_date::text,
+                'horizon', horizon,
+                'return_pct', return_pct,
+                'forward_return', return_pct,
+                'created_at', created_at::text
+              ) || COALESCE(metrics::jsonb, '{}'::jsonb)
+            ) AS metrics,
+            created_at,
+            count(*) OVER () AS total_count
           FROM forward_returns
-          WHERE scan_run_id = $1
-          ORDER BY created_at DESC
-          LIMIT $2
+          WHERE return_pct IS NOT NULL
+          ORDER BY signal_date DESC NULLS LAST, created_at DESC, symbol ASC, horizon ASC
+          LIMIT $1
         `,
-        [latestRun.id, forwardLimit],
+        [forwardLimit],
       ),
     ]);
 
+    if (!summaryResult.rows.length && !forwardResult.rows.length) return null;
+    const totalForwardRows = dbCount(forwardResult.rows[0]?.total_count);
     return {
       summary: metricRowsToCsvFileData(summaryResult.rows),
-      forwardReturns: metricRowsToCsvFileData([...forwardResult.rows].reverse()),
+      forwardReturns: metricRowsToCsvFileData([...forwardResult.rows].reverse(), totalForwardRows),
     };
   } catch {
     return null;
@@ -1413,7 +1448,85 @@ export async function getPerformanceData(options: { forwardTailRows?: number } =
 }
 
 export async function getCalibrationInsights() {
-  return readJson(path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "analysis", "calibration_insights.json"));
+  const fileInsights = await readJson(path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "analysis", "calibration_insights.json"));
+  if (fileInsights) return fileInsights;
+
+  const dbPerformance = await getDbPerformanceData(5000).catch(() => null);
+  if (!dbPerformance?.summary.rows.length) return null;
+  return calibrationInsightsFromSummaryRows(dbPerformance.summary.rows);
+}
+
+type CalibrationCandidate = CsvRow & {
+  avg_return: number;
+  count: number;
+  edge_score: number;
+  group_type: string;
+  group_value: string;
+  hit_rate: number | null;
+  horizon: string;
+  label: string;
+  low_sample: boolean;
+};
+
+function calibrationInsightsFromSummaryRows(rows: CsvRow[]): Record<string, unknown> | null {
+  const candidates: CalibrationCandidate[] = [];
+  for (const row of rows) {
+    const count = finiteCsvNumber(row.count);
+    const avgReturn = finiteCsvNumber(row.avg_return);
+    const hitRate = finiteCsvNumber(row.hit_rate);
+    if (count === null || count < 3 || avgReturn === null) continue;
+    const groupType = String(row.group_type ?? "").trim();
+    const groupValue = String(row.group_value ?? "").trim();
+    const horizon = String(row.horizon ?? "").trim();
+    if (!groupType || !groupValue || !horizon) continue;
+    const edgeScore = finiteCsvNumber(row.edge_score) ?? ((avgReturn * 100) + (((hitRate ?? 0.5) - 0.5) * 10));
+    candidates.push({
+      ...row,
+      avg_return: avgReturn,
+      count,
+      edge_score: edgeScore,
+      group_type: groupType,
+      group_value: groupValue,
+      hit_rate: hitRate,
+      horizon,
+      label: `${groupType}: ${groupValue} over ${horizon}`,
+      low_sample: count < 30,
+    });
+  }
+
+  if (!candidates.length) return null;
+
+  const byStrength = [...candidates].sort((left, right) => {
+    const returnDiff = right.avg_return - left.avg_return;
+    if (returnDiff !== 0) return returnDiff;
+    return right.count - left.count;
+  });
+  const byWeakness = [...candidates].sort((left, right) => {
+    const returnDiff = left.avg_return - right.avg_return;
+    if (returnDiff !== 0) return returnDiff;
+    return right.count - left.count;
+  });
+  const best = byStrength[0] ?? null;
+  const worst = byWeakness[0] ?? null;
+  const lowSample = candidates.filter((row) => row.count < 30).slice(0, 5);
+
+  return {
+    best_group: best,
+    generated_at: new Date().toISOString(),
+    low_sample_warnings: lowSample.map((row) => `${row.group_type}:${row.group_value} has ${row.count} completed samples in ${row.horizon}.`),
+    rating_action_note: best ? `${best.label} is the strongest completed-evidence group in the latest stored performance summary.` : "Completed evidence is still developing.",
+    score_bucket_note: `${candidates.length.toLocaleString()} grouped performance rows were loaded from stored production evidence.`,
+    setup_note: worst ? `${worst.label} is the weakest completed-evidence group and should stay visible as caution context.` : "No weak completed-evidence group is available yet.",
+    source: "postgres:performance_summary",
+    warnings: lowSample.length ? ["Some groups remain early evidence and should not be over-interpreted."] : [],
+    worst_group: worst,
+  };
+}
+
+function finiteCsvNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(String(value).replace(/[$,%]/g, "").trim());
+  return Number.isFinite(parsed) ? parsed : null;
 }
 
 export async function getMarketRegime() {
