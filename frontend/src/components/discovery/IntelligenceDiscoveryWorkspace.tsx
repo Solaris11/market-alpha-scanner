@@ -33,6 +33,7 @@ import {
   type DiscoveryFilterState,
   type DiscoveryQuickFilter,
   type DiscoveryQuickFilterKey,
+  type DiscoveryScannerPreset,
   type DiscoverySortKey,
   type DiscoverySymbol,
   type DiscoveryTimeframe,
@@ -43,11 +44,24 @@ import { formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { humanizeInsightText, humanizeLabel } from "@/lib/ui/labels";
 
 type DiscoveryMode = "overlay" | "page";
+type ScannerLane = {
+  detail: string;
+  filter: DiscoveryQuickFilterKey;
+  key: string;
+  sort: DiscoverySortKey;
+  symbols: DiscoverySymbol[];
+  timeframe: DiscoveryTimeframe;
+  title: string;
+  tone: DiscoveryTone;
+};
 
 const TIMEFRAMES: DiscoveryTimeframe[] = ["1D", "1W", "1M", "3M", "6M", "1Y", "5Y"];
 const SORTS: Array<{ key: DiscoverySortKey; label: string }> = [
   { key: "attention", label: "Attention" },
   { key: "performance", label: "Performance" },
+  { key: "weakness", label: "Weakness" },
+  { key: "breakout", label: "Breakout" },
+  { key: "crash", label: "Crash risk" },
   { key: "risk", label: "Risk" },
   { key: "confidence", label: "Confidence" },
   { key: "macro", label: "Macro" },
@@ -55,6 +69,24 @@ const SORTS: Array<{ key: DiscoverySortKey; label: string }> = [
   { key: "freshness", label: "Freshness" },
   { key: "symbol", label: "A-Z" },
 ];
+
+const FILTER_BEHAVIOR: Partial<Record<DiscoveryQuickFilterKey, { sort: DiscoverySortKey; timeframe: DiscoveryTimeframe }>> = {
+  best_setups: { sort: "confidence", timeframe: "1M" },
+  breakout_candidates: { sort: "breakout", timeframe: "1W" },
+  crash_risk: { sort: "crash", timeframe: "1D" },
+  macro_supported: { sort: "macro", timeframe: "1M" },
+  momentum_deterioration: { sort: "weakness", timeframe: "1W" },
+  replay_supported: { sort: "replay", timeframe: "1M" },
+  risk_escalation: { sort: "risk", timeframe: "1D" },
+  top_gainers_1d: { sort: "performance", timeframe: "1D" },
+  top_gainers_1m: { sort: "performance", timeframe: "1M" },
+  top_gainers_1w: { sort: "performance", timeframe: "1W" },
+  top_losers_1d: { sort: "weakness", timeframe: "1D" },
+  top_losers_1m: { sort: "weakness", timeframe: "1M" },
+  top_losers_1w: { sort: "weakness", timeframe: "1W" },
+  volatility_expansion: { sort: "breakout", timeframe: "1W" },
+  weakest: { sort: "weakness", timeframe: "1M" },
+};
 
 const TONE_CLASS: Record<DiscoveryTone, { border: string; bg: string; text: string; glow: string; chip: string }> = {
   amber: { bg: "bg-amber-400/[0.08]", border: "border-amber-300/25", chip: "bg-amber-300/15 text-amber-100", glow: "shadow-amber-950/20", text: "text-amber-100" },
@@ -84,6 +116,7 @@ export function IntelligenceDiscoveryWorkspace({
   const filtered = useMemo(() => filterDiscoverySymbols(system.symbols, state), [filter, query, sector, sort, system.symbols, timeframe]);
   const sectors = useMemo(() => ["ALL", ...Array.from(new Set(system.symbols.map((symbol) => symbol.sector).filter((value): value is string => Boolean(value)))).sort()], [system.symbols]);
   const compareRows = useMemo(() => compareSymbols.map((symbol) => system.symbols.find((candidate) => candidate.symbol === symbol)).filter((value): value is DiscoverySymbol => Boolean(value)), [compareSymbols, system.symbols]);
+  const scannerLanes = useMemo(() => buildScannerLanes(system.symbols), [system.symbols]);
   const heatCells: PosterHeatCell[] = system.sectorHeatmap.map((cluster) => ({ detail: cluster.detail, label: cluster.label, tone: cluster.tone, value: cluster.averageScore }));
   const orbitNodes: PosterOrbitNode[] = system.orbitNodes.map((node) => ({
     detail: node.detail,
@@ -100,6 +133,29 @@ export function IntelligenceDiscoveryWorkspace({
       if (current.includes(symbol)) return current.filter((item) => item !== symbol);
       return [symbol, ...current].slice(0, 4);
     });
+  }
+
+  function applyScannerFilter(nextFilter: DiscoveryQuickFilterKey): void {
+    const behavior = FILTER_BEHAVIOR[nextFilter];
+    setFilter(nextFilter);
+    if (behavior) {
+      setSort(behavior.sort);
+      setTimeframe(behavior.timeframe);
+    }
+  }
+
+  function applyScannerPreset(preset: DiscoveryScannerPreset): void {
+    setFilter(preset.filter);
+    setSort(preset.sort);
+    setTimeframe(preset.timeframe);
+    setQuery("");
+    setSector("ALL");
+  }
+
+  function applyScannerLane(nextFilter: DiscoveryQuickFilterKey): void {
+    applyScannerFilter(nextFilter);
+    setQuery("");
+    setSector("ALL");
   }
 
   return (
@@ -145,7 +201,8 @@ export function IntelligenceDiscoveryWorkspace({
               </div>
 
               <div id="filters">
-                <QuickFilterRail active={filter} filters={system.quickFilters} onSelect={setFilter} />
+                <ScannerPresetRail onSelect={applyScannerPreset} presets={system.scannerPresets} />
+                <QuickFilterRail active={filter} filters={system.quickFilters} onSelect={applyScannerFilter} />
               </div>
             </div>
 
@@ -167,6 +224,8 @@ export function IntelligenceDiscoveryWorkspace({
               </div>
             </div>
           </div>
+
+          <ScannerLaneBoard lanes={scannerLanes} onSelect={applyScannerLane} />
 
           <div className="grid gap-4 2xl:grid-cols-[minmax(360px,0.8fr)_minmax(0,1.2fr)_minmax(360px,0.8fr)]">
             <div className="space-y-4">
@@ -265,7 +324,7 @@ function QuickFilterRail({
   onSelect: (key: DiscoveryQuickFilterKey) => void;
 }) {
   return (
-    <div className="-mx-2 mt-4 flex snap-x gap-2 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+    <div className="-mx-2 mt-4 flex snap-x gap-2 overflow-x-auto px-2 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-mobile-gesture-ignore="true">
       {filters.map((filter) => {
         const tone = TONE_CLASS[filter.tone];
         const selected = active === filter.key;
@@ -285,6 +344,87 @@ function QuickFilterRail({
         );
       })}
     </div>
+  );
+}
+
+function ScannerPresetRail({ onSelect, presets }: { onSelect: (preset: DiscoveryScannerPreset) => void; presets: DiscoveryScannerPreset[] }) {
+  if (!presets.length) return null;
+  return (
+    <div className="mt-4 rounded-[1.35rem] border border-white/10 bg-white/[0.025] p-3">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Saved scanner presets</div>
+          <div className="mt-1 text-xs text-slate-500">Fast Finviz/Trade Ideas-style discovery workflows with TradeVeto context.</div>
+        </div>
+        <Sparkles className="h-4 w-4 text-cyan-200" />
+      </div>
+      <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-mobile-gesture-ignore="true">
+        {presets.map((preset) => {
+          const tone = TONE_CLASS[preset.tone];
+          return (
+            <button
+              className={`tv-tap-motion min-h-[4.5rem] min-w-[12rem] snap-start rounded-2xl border p-3 text-left transition hover:-translate-y-0.5 ${tone.border} ${tone.bg}`}
+              key={preset.key}
+              onClick={() => onSelect(preset)}
+              type="button"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className={`text-sm font-black ${tone.text}`}>{preset.label}</div>
+                <span className="rounded-full bg-black/20 px-2 py-0.5 font-mono text-[10px] font-black text-slate-200">{preset.count}</span>
+              </div>
+              <div className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-400">{preset.summary}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ScannerLaneBoard({ lanes, onSelect }: { lanes: ScannerLane[]; onSelect: (filter: DiscoveryQuickFilterKey) => void }) {
+  return (
+    <section className="poster-panel rounded-3xl border border-cyan-300/16 bg-slate-950/50 p-4">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Scanner dominance lanes</div>
+          <h3 className="mt-1 text-2xl font-black text-white">Fast discovery for momentum, danger, replay, and macro support</h3>
+        </div>
+        <div className="text-xs text-slate-500">Tap a lane to load its scanner preset</div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+        {lanes.map((lane) => {
+          const tone = TONE_CLASS[lane.tone];
+          return (
+            <button
+              className={`tv-tap-motion rounded-3xl border p-3 text-left transition hover:-translate-y-0.5 ${tone.border} ${tone.bg} ${tone.glow}`}
+              key={lane.key}
+              onClick={() => onSelect(lane.filter)}
+              type="button"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className={`text-sm font-black ${tone.text}`}>{lane.title}</div>
+                  <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{lane.detail}</p>
+                </div>
+                <div className="rounded-full border border-white/10 bg-black/20 px-2 py-1 font-mono text-[10px] font-black text-slate-200">{lane.timeframe}</div>
+              </div>
+              <div className="mt-3 grid gap-2">
+                {lane.symbols.length ? lane.symbols.slice(0, 5).map((symbol, index) => (
+                  <div className="grid grid-cols-[1.5rem_4.25rem_1fr_auto] items-center gap-2 rounded-2xl border border-white/10 bg-slate-950/45 px-2 py-2" key={symbol.symbol}>
+                    <span className={`font-mono text-xs font-black ${tone.text}`}>{index + 1}</span>
+                    <span className="font-mono text-sm font-black text-white">{symbol.symbol}</span>
+                    <span className="truncate text-[11px] text-slate-500">{symbol.sector ?? symbol.setupType}</span>
+                    <span className={`font-mono text-xs font-black ${perfTone(symbol.performance[lane.timeframe]) === "rose" ? "text-rose-200" : "text-emerald-200"}`}>{formatSigned(symbol.performance[lane.timeframe])}</span>
+                  </div>
+                )) : (
+                  <div className="rounded-2xl border border-dashed border-white/10 bg-black/20 p-3 text-xs leading-5 text-slate-400">Limited ranked evidence available for this scanner lane.</div>
+                )}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -680,6 +820,76 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 function clusterForNode(system: IntelligenceDiscoverySystem, key: string): DiscoveryCluster | null {
   const all = [...system.sectorHeatmap, ...system.momentumClusters, ...system.riskClusters, ...system.macroClusters];
   return all.find((cluster) => cluster.key === key || cluster.label === key) ?? all[0] ?? null;
+}
+
+function buildScannerLanes(symbols: DiscoverySymbol[]): ScannerLane[] {
+  const definitions: Array<Omit<ScannerLane, "symbols">> = [
+    {
+      detail: "Strongest validated one-day performers.",
+      filter: "top_gainers_1d",
+      key: "top-gainers",
+      sort: "performance",
+      timeframe: "1D",
+      title: "Top gainers",
+      tone: "emerald",
+    },
+    {
+      detail: "Largest one-day downside movers for risk triage.",
+      filter: "top_losers_1d",
+      key: "top-losers",
+      sort: "weakness",
+      timeframe: "1D",
+      title: "Top losers",
+      tone: "rose",
+    },
+    {
+      detail: "Expansion pressure, volatility, replay, and trend context.",
+      filter: "breakout_candidates",
+      key: "breakout",
+      sort: "breakout",
+      timeframe: "1W",
+      title: "Breakout candidates",
+      tone: "violet",
+    },
+    {
+      detail: "Fragility, downside pressure, shock risk, and weak structure.",
+      filter: "crash_risk",
+      key: "crash-risk",
+      sort: "crash",
+      timeframe: "1D",
+      title: "Crash-risk candidates",
+      tone: "rose",
+    },
+    {
+      detail: "Historical similarity or replay support visible in the scanner packet.",
+      filter: "replay_supported",
+      key: "replay",
+      sort: "replay",
+      timeframe: "1M",
+      title: "Replay-supported setups",
+      tone: "violet",
+    },
+    {
+      detail: "Symbols with supportive macro and market-context alignment.",
+      filter: "macro_supported",
+      key: "macro",
+      sort: "macro",
+      timeframe: "1M",
+      title: "Macro-supported setups",
+      tone: "cyan",
+    },
+  ];
+
+  return definitions.map((definition) => ({
+    ...definition,
+    symbols: filterDiscoverySymbols(symbols, {
+      filter: definition.filter,
+      query: "",
+      sector: "ALL",
+      sort: definition.sort,
+      timeframe: definition.timeframe,
+    }).slice(0, 5),
+  }));
 }
 
 function average(values: Array<number | null | undefined>): number {

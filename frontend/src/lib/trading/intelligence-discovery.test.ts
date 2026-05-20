@@ -20,6 +20,8 @@ describe("intelligence discovery system", () => {
           macro_alignment_score: 68,
           return_1d: 2.4,
           return_1m: 11.5,
+          setup_type: "Momentum Breakout",
+          volatility_pressure: 70,
           risk_pressure_score: 48,
           market_memory_similarity: 64,
         }),
@@ -52,7 +54,11 @@ describe("intelligence discovery system", () => {
     assert.equal(system.watchlistCount, 1);
     assert.equal(system.sectorHeatmap.some((cluster) => cluster.label === "Technology" && cluster.count === 2), true);
     assert.equal(system.quickFilters.find((filter) => filter.key === "risk_escalation")?.count, 1);
+    assert.equal(system.quickFilters.find((filter) => filter.key === "breakout_candidates")?.count, 1);
+    assert.equal(system.quickFilters.find((filter) => filter.key === "crash_risk")?.count, 1);
+    assert.equal(system.quickFilters.find((filter) => filter.key === "top_losers_1d")?.count, 1);
     assert.equal(system.quickFilters.find((filter) => filter.key === "watchlist")?.count, 1);
+    assert.equal(system.scannerPresets.some((preset) => preset.key === "preset-breakout" && preset.count === 1), true);
     assert.equal(system.comparePresets.some((preset) => preset.symbols.includes("AMD") && preset.symbols.includes("NVDA")), true);
   });
 
@@ -78,10 +84,19 @@ describe("intelligence discovery system", () => {
       sort: "risk",
       timeframe: "1M",
     });
+    const weakest = filterDiscoverySymbols(system.symbols, {
+      filter: "top_losers_1m",
+      query: "",
+      sector: "ALL",
+      sort: "weakness",
+      timeframe: "1M",
+    });
 
     assert.deepEqual(technology.map((symbol) => symbol.symbol), ["AMD"]);
     assert.deepEqual(energyRisk.map((symbol) => symbol.symbol), ["XOM"]);
+    assert.deepEqual(weakest.map((symbol) => symbol.symbol), ["XOM"]);
     assert.equal(matchesDiscoveryQuickFilter(system.symbols.find((symbol) => symbol.symbol === "XOM")!, "top_gainers_1m"), false);
+    assert.equal(matchesDiscoveryQuickFilter(system.symbols.find((symbol) => symbol.symbol === "XOM")!, "top_losers_1m"), true);
   });
 
   test("returns an honest limited state when no validated scanner rows exist", () => {

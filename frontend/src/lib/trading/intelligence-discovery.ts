@@ -6,6 +6,9 @@ export type DiscoveryTimeframe = "1D" | "1W" | "1M" | "3M" | "6M" | "1Y" | "5Y";
 
 export type DiscoveryQuickFilterKey =
   | "all"
+  | "best_setups"
+  | "breakout_candidates"
+  | "crash_risk"
   | "top_gainers_1d"
   | "top_gainers_1w"
   | "top_gainers_1m"
@@ -13,6 +16,9 @@ export type DiscoveryQuickFilterKey =
   | "top_gainers_6m"
   | "top_gainers_1y"
   | "top_gainers_5y"
+  | "top_losers_1d"
+  | "top_losers_1w"
+  | "top_losers_1m"
   | "weakest"
   | "volatility_expansion"
   | "momentum_deterioration"
@@ -26,12 +32,15 @@ export type DiscoveryQuickFilterKey =
 
 export type DiscoverySortKey =
   | "attention"
+  | "breakout"
+  | "crash"
   | "performance"
   | "risk"
   | "confidence"
   | "macro"
   | "replay"
   | "freshness"
+  | "weakness"
   | "symbol";
 
 export type DiscoverySymbol = {
@@ -100,6 +109,17 @@ export type DiscoveryComparePreset = {
   tone: DiscoveryTone;
 };
 
+export type DiscoveryScannerPreset = {
+  count: number;
+  filter: DiscoveryQuickFilterKey;
+  key: string;
+  label: string;
+  sort: DiscoverySortKey;
+  summary: string;
+  timeframe: DiscoveryTimeframe;
+  tone: DiscoveryTone;
+};
+
 export type DiscoveryOrbitNode = {
   detail: string;
   key: string;
@@ -121,6 +141,7 @@ export type IntelligenceDiscoverySystem = {
   orbitNodes: DiscoveryOrbitNode[];
   quickFilters: DiscoveryQuickFilter[];
   riskClusters: DiscoveryCluster[];
+  scannerPresets: DiscoveryScannerPreset[];
   sectorHeatmap: DiscoveryCluster[];
   stories: DiscoveryStory[];
   summary: string;
@@ -158,6 +179,7 @@ export function buildLimitedIntelligenceDiscoverySystem(message = "Discovery is 
     orbitNodes: [],
     quickFilters: [],
     riskClusters: [],
+    scannerPresets: [],
     sectorHeatmap: [],
     stories: [{ detail: message, key: "limited", metric: "Limited", symbols: [], title: "Limited evidence", tone: "amber" }],
     summary: message,
@@ -182,6 +204,7 @@ export function buildIntelligenceDiscoverySystem(input: BuildIntelligenceDiscove
   const riskClusters = buildRiskClusters(symbols);
   const macroClusters = buildMacroClusters(symbols);
   const quickFilters = buildQuickFilters(symbols);
+  const scannerPresets = buildScannerPresets(symbols);
   const stories = buildDiscoveryStories(symbols);
   const comparePresets = buildComparePresets(symbols);
   const discoveryScore = roundedAverage([
@@ -206,6 +229,7 @@ export function buildIntelligenceDiscoverySystem(input: BuildIntelligenceDiscove
     orbitNodes: buildOrbitNodes({ macroClusters, momentumClusters, riskClusters, sectorHeatmap, stories, symbols }),
     quickFilters,
     riskClusters,
+    scannerPresets,
     sectorHeatmap,
     stories,
     summary: `Discovery is scanning ${universeCount.toLocaleString()} validated symbols across sectors, performance, risk, replay, macro, freshness, and watchlist context.`,
@@ -242,6 +266,9 @@ export function rankDiscoverySymbols(symbols: DiscoverySymbol[], sort: Discovery
   return [...symbols].sort((left, right) => {
     if (sort === "symbol") return left.symbol.localeCompare(right.symbol);
     if (sort === "performance") return numericDesc(left.performance[timeframe], right.performance[timeframe]) || attentionScore(right) - attentionScore(left);
+    if (sort === "weakness") return numericAsc(left.performance[timeframe], right.performance[timeframe]) || crashRiskScore(right) - crashRiskScore(left);
+    if (sort === "breakout") return breakoutScore(right) - breakoutScore(left) || numericDesc(left.confidence, right.confidence);
+    if (sort === "crash") return crashRiskScore(right) - crashRiskScore(left) || numericDesc(left.risk, right.risk);
     if (sort === "risk") return numericDesc(left.risk, right.risk) || numericDesc(left.shockRisk, right.shockRisk);
     if (sort === "confidence") return numericDesc(left.confidence, right.confidence) || right.conviction - left.conviction;
     if (sort === "macro") return numericDesc(left.macro, right.macro) || numericDesc(left.confidence, right.confidence);
@@ -253,6 +280,9 @@ export function rankDiscoverySymbols(symbols: DiscoverySymbol[], sort: Discovery
 
 export function matchesDiscoveryQuickFilter(symbol: DiscoverySymbol, filter: DiscoveryQuickFilterKey): boolean {
   if (filter === "all") return true;
+  if (filter === "best_setups") return bestSetupScore(symbol) >= 58;
+  if (filter === "breakout_candidates") return breakoutScore(symbol) >= 58;
+  if (filter === "crash_risk") return crashRiskScore(symbol) >= 65;
   if (filter === "top_gainers_1d") return (symbol.performance["1D"] ?? Number.NEGATIVE_INFINITY) > 0;
   if (filter === "top_gainers_1w") return (symbol.performance["1W"] ?? Number.NEGATIVE_INFINITY) > 0;
   if (filter === "top_gainers_1m") return (symbol.performance["1M"] ?? Number.NEGATIVE_INFINITY) > 0;
@@ -260,6 +290,9 @@ export function matchesDiscoveryQuickFilter(symbol: DiscoverySymbol, filter: Dis
   if (filter === "top_gainers_6m") return (symbol.performance["6M"] ?? Number.NEGATIVE_INFINITY) > 0;
   if (filter === "top_gainers_1y") return (symbol.performance["1Y"] ?? Number.NEGATIVE_INFINITY) > 0;
   if (filter === "top_gainers_5y") return (symbol.performance["5Y"] ?? Number.NEGATIVE_INFINITY) > 0;
+  if (filter === "top_losers_1d") return (symbol.performance["1D"] ?? Number.POSITIVE_INFINITY) < 0;
+  if (filter === "top_losers_1w") return (symbol.performance["1W"] ?? Number.POSITIVE_INFINITY) < 0;
+  if (filter === "top_losers_1m") return (symbol.performance["1M"] ?? Number.POSITIVE_INFINITY) < 0;
   if (filter === "weakest") return firstPerformance(symbol) !== null && (firstPerformance(symbol) ?? 0) < 0;
   if (filter === "volatility_expansion") return (symbol.volatility ?? 0) >= 65 || (symbol.shockRisk ?? 0) >= 65;
   if (filter === "momentum_deterioration") return (symbol.trend ?? 100) <= 42 || (symbol.performance["1D"] ?? 0) < -2 || (symbol.performance["1W"] ?? 0) < -4;
@@ -388,6 +421,9 @@ function buildMacroClusters(symbols: DiscoverySymbol[]): DiscoveryCluster[] {
 function buildQuickFilters(symbols: DiscoverySymbol[]): DiscoveryQuickFilter[] {
   const definitions: Array<{ key: DiscoveryQuickFilterKey; label: string; summary: string; tone: DiscoveryTone }> = [
     { key: "all", label: "Full universe", summary: "Search every validated scanner row.", tone: "cyan" },
+    { key: "best_setups", label: "Best setups", summary: "Highest blend of quality, evidence, and controlled risk.", tone: "emerald" },
+    { key: "breakout_candidates", label: "Breakout candidates", summary: "Expansion pressure with setup and replay context.", tone: "violet" },
+    { key: "crash_risk", label: "Crash-risk candidates", summary: "Downside, fragility, volatility, or shock pressure.", tone: "rose" },
     { key: "top_gainers_1d", label: "Top gainers 1D", summary: "Names with positive one-day performance.", tone: "emerald" },
     { key: "top_gainers_1w", label: "Strongest 1W", summary: "Short-term performance leaders.", tone: "emerald" },
     { key: "top_gainers_1m", label: "Strongest 1M", summary: "One-month leadership.", tone: "emerald" },
@@ -395,6 +431,9 @@ function buildQuickFilters(symbols: DiscoverySymbol[]): DiscoveryQuickFilter[] {
     { key: "top_gainers_6m", label: "Strongest 6M", summary: "Six-month leadership.", tone: "emerald" },
     { key: "top_gainers_1y", label: "Strongest 1Y", summary: "One-year leadership.", tone: "emerald" },
     { key: "top_gainers_5y", label: "Strongest 5Y", summary: "Long-horizon performance leadership.", tone: "cyan" },
+    { key: "top_losers_1d", label: "Top losers 1D", summary: "Largest one-day downside movers.", tone: "rose" },
+    { key: "top_losers_1w", label: "Weakest 1W", summary: "Short-term downside pressure.", tone: "rose" },
+    { key: "top_losers_1m", label: "Weakest 1M", summary: "One-month downside pressure.", tone: "rose" },
     { key: "weakest", label: "Weakest performers", summary: "Symbols with negative visible performance.", tone: "rose" },
     { key: "volatility_expansion", label: "Volatility expansion", summary: "Volatility or shock pressure is elevated.", tone: "amber" },
     { key: "momentum_deterioration", label: "Momentum deterioration", summary: "Momentum has weakened or recent returns are negative.", tone: "violet" },
@@ -410,6 +449,79 @@ function buildQuickFilters(symbols: DiscoverySymbol[]): DiscoveryQuickFilter[] {
   return definitions.map((definition) => ({
     ...definition,
     count: symbols.filter((symbol) => matchesDiscoveryQuickFilter(symbol, definition.key)).length,
+  }));
+}
+
+function buildScannerPresets(symbols: DiscoverySymbol[]): DiscoveryScannerPreset[] {
+  const definitions: Array<Omit<DiscoveryScannerPreset, "count">> = [
+    {
+      filter: "best_setups",
+      key: "preset-best-setups",
+      label: "Best setup scanner",
+      sort: "confidence",
+      summary: "Highest setup quality with evidence, macro, replay, and controlled risk.",
+      timeframe: "1M",
+      tone: "emerald",
+    },
+    {
+      filter: "breakout_candidates",
+      key: "preset-breakout",
+      label: "Breakout pressure",
+      sort: "breakout",
+      summary: "Quiet-to-active expansion candidates with trend, volatility, replay, and macro support.",
+      timeframe: "1W",
+      tone: "violet",
+    },
+    {
+      filter: "crash_risk",
+      key: "preset-crash-risk",
+      label: "Crash-risk scan",
+      sort: "crash",
+      summary: "Fragility, downside, shock, and volatility pressure before treating a symbol as opportunity.",
+      timeframe: "1D",
+      tone: "rose",
+    },
+    {
+      filter: "top_gainers_1d",
+      key: "preset-daily-gainers",
+      label: "Top gainers",
+      sort: "performance",
+      summary: "Strongest daily performers from the validated scanner universe.",
+      timeframe: "1D",
+      tone: "emerald",
+    },
+    {
+      filter: "top_losers_1d",
+      key: "preset-daily-losers",
+      label: "Top losers",
+      sort: "weakness",
+      summary: "Largest daily downside movers for fast risk review.",
+      timeframe: "1D",
+      tone: "rose",
+    },
+    {
+      filter: "replay_supported",
+      key: "preset-replay",
+      label: "Replay-supported",
+      sort: "replay",
+      summary: "Historical similarity and replay context visible in the current packet.",
+      timeframe: "1M",
+      tone: "violet",
+    },
+    {
+      filter: "macro_supported",
+      key: "preset-macro",
+      label: "Macro-supported",
+      sort: "macro",
+      summary: "Symbols with supportive macro alignment and market-context evidence.",
+      timeframe: "1M",
+      tone: "cyan",
+    },
+  ];
+
+  return definitions.map((definition) => ({
+    ...definition,
+    count: symbols.filter((symbol) => matchesDiscoveryQuickFilter(symbol, definition.filter)).length,
   }));
 }
 
@@ -515,6 +627,45 @@ function attentionScore(symbol: DiscoverySymbol): number {
   return clamp(constructive * 0.48 + risk * 0.22 + perf * 0.16 + (symbol.watchlisted ? 14 : 0));
 }
 
+function bestSetupScore(symbol: DiscoverySymbol): number {
+  const constructive = average([symbol.confidence, symbol.conviction, symbol.macro, symbol.replay, symbol.evidence, symbol.freshness, symbol.trend]);
+  const riskPenalty = average([symbol.risk, symbol.fragility, symbol.shockRisk]) * 0.18;
+  return clamp(constructive - riskPenalty + normalizeSigned(symbol.performance["1M"]) * 0.08);
+}
+
+function breakoutScore(symbol: DiscoverySymbol): number {
+  const setupBoost = /breakout|expansion|compression|continuation|momentum|squeeze/i.test(symbol.setupType) ? 10 : 0;
+  const shortTerm = average([normalizeSigned(symbol.performance["1D"]), normalizeSigned(symbol.performance["1W"])]);
+  return clamp(
+    average([symbol.trend, symbol.confidence, symbol.macro, symbol.replay, symbol.evidence]) * 0.50
+      + average([symbol.volatility, symbol.shockRisk]) * 0.22
+      + shortTerm * 0.16
+      + setupBoost,
+  );
+}
+
+function crashRiskScore(symbol: DiscoverySymbol): number {
+  const downsidePressure = average([
+    negativeMoveScore(symbol.performance["1D"]),
+    negativeMoveScore(symbol.performance["1W"]),
+    negativeMoveScore(symbol.performance["1M"]),
+  ]);
+  return clamp(average([
+    symbol.risk,
+    symbol.fragility,
+    symbol.shockRisk,
+    symbol.volatility,
+    symbol.trend === null ? null : 100 - symbol.trend,
+    downsidePressure,
+  ]));
+}
+
+function negativeMoveScore(value: number | null | undefined): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return 50;
+  if (value >= 0) return Math.max(0, 50 - value * 2);
+  return clamp(50 + Math.abs(value) * 6);
+}
+
 function firstPerformance(symbol: DiscoverySymbol): number | null {
   for (const timeframe of TIMEFRAMES) {
     const value = symbol.performance[timeframe];
@@ -572,6 +723,10 @@ function rounded(value: number | null | undefined): number | null {
 
 function numericDesc(left: number | null, right: number | null): number {
   return (right ?? Number.NEGATIVE_INFINITY) - (left ?? Number.NEGATIVE_INFINITY);
+}
+
+function numericAsc(left: number | null, right: number | null): number {
+  return (left ?? Number.POSITIVE_INFINITY) - (right ?? Number.POSITIVE_INFINITY);
 }
 
 function firstNumeric(...values: unknown[]): number | null {

@@ -89,6 +89,16 @@ export function DailyMarketCommandCenter({ model }: Props) {
                 <p className="mt-4 max-w-4xl text-sm leading-6 text-slate-300 sm:text-base">
                   {model.hero.narrative}
                 </p>
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <Link className="tv-tap-motion inline-flex min-h-11 items-center gap-2 rounded-full border border-cyan-300/35 bg-cyan-300/12 px-4 text-sm font-black text-cyan-50 shadow-[0_0_26px_rgba(34,211,238,0.12)] transition hover:border-cyan-200/70 hover:bg-cyan-300/18" href="/discover">
+                    Open full scanner
+                    <Search className="h-4 w-4" />
+                  </Link>
+                  <Link className="tv-tap-motion inline-flex min-h-11 items-center gap-2 rounded-full border border-violet-300/25 bg-violet-300/10 px-4 text-sm font-black text-violet-50 transition hover:border-violet-200/60 hover:bg-violet-300/15" href="/discover#compare">
+                    Compare candidates
+                    <ArrowUpRight className="h-4 w-4" />
+                  </Link>
+                </div>
               </div>
               <div className="hidden rounded-3xl border border-white/10 bg-black/25 p-4 sm:block">
                 <PosterGauge label="Attention" score={model.hero.attentionScore} tone={heroTone} />
