@@ -130,7 +130,7 @@ export function SymbolTerminalWorkspace({
   premiumAccess?: boolean;
   viewerAuthenticated?: boolean;
 }) {
-  const [showHistoricalMarkers, setShowHistoricalMarkers] = useState(false);
+  const [showHistoricalMarkers, setShowHistoricalMarkers] = useState(true);
   const tradeLevels = useMemo(() => buildSignalTradeLevels(row), [row]);
   const lifecycle = useMemo(() => computeSignalLifecycle(row, tradeLevels), [row, tradeLevels]);
   const structuralQuality = useMemo(() => buildConvictionFragilityModel(row, { history, macroContext: macroContext ?? undefined, marketMemory }), [history, macroContext, marketMemory, row]);
@@ -268,7 +268,7 @@ export function SymbolTerminalWorkspace({
             onClick={() => setShowHistoricalMarkers((value) => !value)}
             type="button"
           >
-            {showHistoricalMarkers ? "Hide historical markers" : "Advanced: show historical markers"}
+            {showHistoricalMarkers ? "Hide intelligence overlays" : "Show intelligence overlays"}
           </button>
         </div>
         <div className="mt-5">
@@ -624,6 +624,28 @@ function buildChartSignalMarkers(
       });
     }
 
+    const volatilityPressure = numericValue(row.volatility_pressure ?? row.volatility_pressure_score ?? row.volatility_pressure_adjustment ?? row.atr_pct ?? row.atr_percent ?? null);
+    if (volatilityPressure !== null && Math.abs(volatilityPressure) >= 65) {
+      markers.push({
+        source: "volatility pressure model",
+        text: "VOLATILITY",
+        time: currentTime,
+        type: "VOLATILITY",
+        uncertainty: "Volatility markers are synchronized from scanner risk context and visible price behavior.",
+      });
+    }
+
+    const shockPressure = numericValue(row.event_shock_pressure_score ?? row.verified_event_pressure_score ?? row.shock_risk_score ?? row.large_move_score ?? row.event_similarity_score ?? null);
+    if (shockPressure !== null && shockPressure >= 65) {
+      markers.push({
+        source: "shock and large-move pressure model",
+        text: "SHOCK",
+        time: currentTime,
+        type: "SHOCK",
+        uncertainty: "Shock markers appear only when event, volatility, or large-move pressure is elevated in source data.",
+      });
+    }
+
     const fragility = numericValue(row.fragility_score ?? row.fragility ?? row.structural_fragility ?? null);
     if (fragility !== null && fragility >= 70) {
       markers.push({
@@ -646,14 +668,73 @@ function buildChartSignalMarkers(
       });
     }
 
+    const finalScore = numericValue(row.final_score_adjusted ?? row.final_score ?? row.macro_adjusted_score ?? null);
+    const contradictionCount = numericValue(row.contradiction_count ?? row.contradictions ?? null);
+    const hasContradiction = (contradictionCount !== null && contradictionCount > 0)
+      || (finalScore !== null && finalScore >= 65 && fragility !== null && fragility >= 65)
+      || (finalScore !== null && finalScore >= 65 && macroAdjustment !== null && macroAdjustment <= -5)
+      || (finalScore !== null && finalScore >= 65 && (dataFreshness.status === "stale" || dataFreshness.status === "missing"));
+    if (hasContradiction) {
+      markers.push({
+        source: "cross-system contradiction checks",
+        text: "CONFLICT",
+        time: currentTime,
+        type: "CONTRADICTION",
+        uncertainty: "Contradiction markers highlight where score, macro, freshness, or fragility evidence does not agree.",
+      });
+    }
+
+    const replayQuality = numericValue(row.analog_quality_score ?? row.regime_similarity_score ?? row.event_similarity_score ?? null);
+    if (replayQuality !== null && replayQuality >= 60) {
+      markers.push({
+        source: "replay and analog quality model",
+        text: `${Math.round(replayQuality)}% REPLAY`,
+        time: currentTime,
+        type: "REPLAY",
+        uncertainty: "Replay similarity is historical context, not a prediction.",
+      });
+    }
+
     const topAnalog = marketMemory.analogs[0];
     if (marketMemory.available && topAnalog) {
       markers.push({
         source: "market memory similarity",
-        text: `${Math.round(topAnalog.similarityScore)}% REPLAY`,
+        text: `${Math.round(topAnalog.similarityScore)}% MEMORY`,
         time: currentTime,
-        type: "REPLAY",
+        type: "MEMORY",
         uncertainty: `Closest analog: ${topAnalog.symbol}. Similarity is context, not a prediction.`,
+      });
+    }
+
+    const price = numericValue(row.price ?? row.last_price ?? row.close ?? null);
+    const entryHigh = numericValue(row.entry_zone_high ?? row.buy_zone_high ?? row.correction_zone_high ?? row.suggested_entry ?? null);
+    const stop = numericValue(row.stop_loss ?? row.invalidation_level ?? row.recent_swing_low ?? row.swing_low ?? null);
+    const target = numericValue(row.conservative_target ?? row.take_profit_high ?? row.take_profit_zone ?? row.balanced_target ?? row.aggressive_target ?? null);
+    if (price !== null && entryHigh !== null && price >= entryHigh * 1.01) {
+      markers.push({
+        source: "scanner price and entry context",
+        text: "BREAKOUT",
+        time: currentTime,
+        type: "BREAKOUT",
+        uncertainty: "Breakout markers require validated price to be above scanner entry context. They are research context only.",
+      });
+    }
+    if (price !== null && stop !== null && price <= stop * 1.03) {
+      markers.push({
+        source: "scanner price and invalidation context",
+        text: "FAILURE",
+        time: currentTime,
+        type: "FAILURE",
+        uncertainty: "Failure markers require validated price to be near scanner invalidation context.",
+      });
+    }
+    if (price !== null && target !== null && price >= target * 0.98) {
+      markers.push({
+        source: "scanner price and target context",
+        text: "TARGET",
+        time: currentTime,
+        type: "TARGET",
+        uncertainty: "Target context is a research overlay, not a projected outcome.",
       });
     }
   }

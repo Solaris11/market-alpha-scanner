@@ -35,6 +35,16 @@ type ChartGeometry = {
   width: number;
 };
 
+type PriceIntelligenceZone = {
+  detail: string;
+  heightPct: number;
+  label: string;
+  leftPct: number;
+  tone: "cyan" | "emerald" | "rose" | "violet";
+  topPct: number;
+  widthPct: number;
+};
+
 const TONE_CLASSES: Record<Tone, { border: string; glow: string; line: string; text: string }> = {
   cyan: {
     border: "border-cyan-300/25 hover:border-cyan-200/55",
@@ -212,6 +222,7 @@ function PriceSvg({ points, tone }: { points: Array<InteractivePricePoint & { cl
   const svgRef = useRef<SVGSVGElement | null>(null);
   const chartId = useId().replace(/:/g, "");
   const geometry = useMemo(() => buildGeometry(points), [points]);
+  const intelligenceZones = useMemo(() => buildPriceIntelligenceZones(points), [points]);
   const hovered = hoverIndex === null ? null : geometry.circles[hoverIndex] ?? null;
   const lineColor = TONE_CLASSES[tone].line;
   const fillId = `chart-fill-${tone}-${chartId}`;
@@ -255,6 +266,29 @@ function PriceSvg({ points, tone }: { points: Array<InteractivePricePoint & { cl
         </defs>
         {[0.25, 0.5, 0.75].map((line) => (
           <line key={line} x1="0" x2={geometry.width} y1={geometry.height * line} y2={geometry.height * line} stroke="rgba(148,163,184,0.13)" strokeDasharray="4 6" />
+        ))}
+        {intelligenceZones.map((zone) => (
+          <g key={`${zone.label}-${zone.leftPct}`}>
+            <rect
+              fill={PRICE_ZONE_COLORS[zone.tone].fill}
+              height={(zone.heightPct / 100) * geometry.height}
+              rx="8"
+              stroke={PRICE_ZONE_COLORS[zone.tone].stroke}
+              width={(zone.widthPct / 100) * geometry.width}
+              x={(zone.leftPct / 100) * geometry.width}
+              y={(zone.topPct / 100) * geometry.height}
+            />
+            <text
+              fill={PRICE_ZONE_COLORS[zone.tone].text}
+              fontSize="9"
+              fontWeight="800"
+              letterSpacing="0.8"
+              x={(zone.leftPct / 100) * geometry.width + 8}
+              y={(zone.topPct / 100) * geometry.height + 15}
+            >
+              {zone.label.toUpperCase()}
+            </text>
+          </g>
         ))}
         <path d={`${geometry.path} L ${geometry.width} ${geometry.height} L 0 ${geometry.height} Z`} fill={`url(#${fillId})`} />
         <path d={geometry.path} fill="none" filter={`url(#${glowId})`} stroke={lineColor} strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" />
@@ -301,6 +335,7 @@ function ExpandedChartModal({
 }) {
   const filtered = useMemo(() => filterInteractivePricePoints(packet.rows, period), [packet.rows, period]);
   const valid = useMemo(() => validClosePoints(filtered), [filtered]);
+  const intelligenceZones = useMemo(() => buildPriceIntelligenceZones(valid), [valid]);
   const toneClass = TONE_CLASSES[tone];
   return (
     <StableDetailOverlay
@@ -329,8 +364,22 @@ function ExpandedChartModal({
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <DetailTile label="Data coverage" value={`${valid.length.toLocaleString()} usable points`} detail={packet.startDate && packet.endDate ? `${packet.startDate} to ${packet.endDate}` : "No validated range yet."} />
           <DetailTile label="Trend summary" value={changeText} detail="Calculated from the visible validated close prices in the selected timeframe." />
-          <DetailTile label="TradeVeto context" value="Research only" detail="This chart provides market context. It is not a trade instruction or financial advice." />
+          <DetailTile label="Intelligence zones" value={intelligenceZones.length ? `${intelligenceZones.length} active` : "Limited"} detail={intelligenceZones.length ? intelligenceZones.map((zone) => zone.label).join(" · ") : "No breakout, failure, or volatility zone can be validated from this range."} />
         </div>
+
+        {intelligenceZones.length ? (
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Chart intelligence narrative</div>
+            <div className="mt-3 grid gap-2 md:grid-cols-3">
+              {intelligenceZones.map((zone) => (
+                <div className={`rounded-2xl border p-3 ${PRICE_ZONE_PANEL_CLASSES[zone.tone]}`} key={`${zone.label}-${zone.detail}`}>
+                  <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{zone.label}</div>
+                  <p className="mt-2 text-xs leading-5 text-slate-400">{zone.detail}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
 
         {relatedSignals.length ? (
           <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -362,6 +411,20 @@ function DetailTile({ detail, label, value }: { detail: string; label: string; v
   );
 }
 
+const PRICE_ZONE_COLORS: Record<PriceIntelligenceZone["tone"], { fill: string; stroke: string; text: string }> = {
+  cyan: { fill: "rgba(34,211,238,0.08)", stroke: "rgba(34,211,238,0.24)", text: "#a5f3fc" },
+  emerald: { fill: "rgba(52,211,153,0.08)", stroke: "rgba(52,211,153,0.24)", text: "#bbf7d0" },
+  rose: { fill: "rgba(251,113,133,0.10)", stroke: "rgba(251,113,133,0.28)", text: "#fecdd3" },
+  violet: { fill: "rgba(167,139,250,0.09)", stroke: "rgba(167,139,250,0.25)", text: "#ddd6fe" },
+};
+
+const PRICE_ZONE_PANEL_CLASSES: Record<PriceIntelligenceZone["tone"], string> = {
+  cyan: "border-cyan-300/15 bg-cyan-300/[0.035]",
+  emerald: "border-emerald-300/15 bg-emerald-300/[0.035]",
+  rose: "border-rose-300/15 bg-rose-300/[0.04]",
+  violet: "border-violet-300/15 bg-violet-300/[0.035]",
+};
+
 function ChartLimitedState({ error, period }: { error?: string; period: InteractiveChartPeriod }) {
   return (
     <div className="flex h-full min-h-28 items-center justify-center rounded-xl border border-dashed border-white/10 bg-white/[0.025] p-4 text-center">
@@ -371,6 +434,70 @@ function ChartLimitedState({ error, period }: { error?: string; period: Interact
       </div>
     </div>
   );
+}
+
+function buildPriceIntelligenceZones(points: Array<InteractivePricePoint & { close: number }>): PriceIntelligenceZone[] {
+  if (points.length < 8) return [];
+  const zones: PriceIntelligenceZone[] = [];
+  const latest = points[points.length - 1];
+  const previous = points.slice(0, -1);
+  if (!latest || !previous.length) return zones;
+  const previousCloses = previous.map((point) => point.close);
+  const previousHigh = Math.max(...previousCloses);
+  const previousLow = Math.min(...previousCloses);
+  const widthPct = 18;
+  const leftPct = 100 - widthPct;
+
+  if (Number.isFinite(previousHigh) && latest.close >= previousHigh * 0.995) {
+    zones.push({
+      detail: "Latest validated close is pressing against or above the prior visible range high. Interpret as breakout pressure only with macro, liquidity, and risk context.",
+      heightPct: 100,
+      label: "Breakout pressure",
+      leftPct,
+      tone: "emerald",
+      topPct: 0,
+      widthPct,
+    });
+  }
+
+  if (Number.isFinite(previousLow) && latest.close <= previousLow * 1.005) {
+    zones.push({
+      detail: "Latest validated close is pressing against or below the prior visible range low. Treat the move as failure pressure until support context improves.",
+      heightPct: 100,
+      label: "Failure pressure",
+      leftPct,
+      tone: "rose",
+      topPct: 0,
+      widthPct,
+    });
+  }
+
+  if (isPriceVolatilityExpanding(points)) {
+    zones.push({
+      detail: "Recent validated high-low ranges expanded versus the trailing range baseline, increasing uncertainty around the same directional move.",
+      heightPct: 70,
+      label: "Volatility expansion",
+      leftPct: Math.max(0, leftPct - 10),
+      tone: "rose",
+      topPct: 0,
+      widthPct: Math.min(28, widthPct + 10),
+    });
+  }
+
+  const momentumShift = latest.close > points[Math.max(0, points.length - 5)]!.close * 1.04 || latest.close < points[Math.max(0, points.length - 5)]!.close * 0.96;
+  if (momentumShift) {
+    zones.push({
+      detail: "Recent validated closes shifted quickly versus the prior short window. This marks attention pressure, not a trade recommendation.",
+      heightPct: 48,
+      label: "Momentum shift",
+      leftPct: Math.max(0, leftPct - 18),
+      tone: latest.close >= points[Math.max(0, points.length - 5)]!.close ? "cyan" : "violet",
+      topPct: 28,
+      widthPct: 18,
+    });
+  }
+
+  return zones.slice(0, 3);
 }
 
 function buildGeometry(points: Array<InteractivePricePoint & { close: number }>): ChartGeometry {
@@ -391,6 +518,25 @@ function buildGeometry(points: Array<InteractivePricePoint & { close: number }>)
     path: circles.map((point, index) => `${index === 0 ? "M" : "L"} ${point.cx.toFixed(2)} ${point.cy.toFixed(2)}`).join(" "),
     width,
   };
+}
+
+function isPriceVolatilityExpanding(points: Array<InteractivePricePoint & { close: number }>): boolean {
+  if (points.length < 12) return false;
+  const ranges = points
+    .map((point) => {
+      if (typeof point.high !== "number" || typeof point.low !== "number" || !Number.isFinite(point.high) || !Number.isFinite(point.low)) return null;
+      return Math.max(0, point.high - point.low);
+    })
+    .filter((value): value is number => value !== null);
+  if (ranges.length < 12) return false;
+  const recent = average(ranges.slice(-3));
+  const baseline = average(ranges.slice(-12, -3));
+  return baseline > 0 && recent / baseline >= 1.45;
+}
+
+function average(values: number[]): number {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function defaultInterpretation(symbol: string, summary: ReturnType<typeof summarizePriceMove>): string {

@@ -26,6 +26,10 @@ describe("research chart context levels", () => {
     assert.deepEqual(markerVisualPolicy("REPLAY"), { color: "#c084fc", fallbackText: "REPLAY", position: "belowBar", shape: "square" });
     assert.deepEqual(markerVisualPolicy("EVENT"), { color: "#f43f5e", fallbackText: "EVENT", position: "aboveBar", shape: "square" });
     assert.deepEqual(markerVisualPolicy("STALE"), { color: "#fbbf24", fallbackText: "STALE", position: "aboveBar", shape: "circle" });
+    assert.deepEqual(markerVisualPolicy("BREAKOUT"), { color: "#22c55e", fallbackText: "BREAKOUT", position: "belowBar", shape: "arrowUp" });
+    assert.deepEqual(markerVisualPolicy("FAILURE"), { color: "#ef4444", fallbackText: "FAILURE", position: "aboveBar", shape: "arrowDown" });
+    assert.deepEqual(markerVisualPolicy("MEMORY"), { color: "#34d399", fallbackText: "MEMORY", position: "belowBar", shape: "square" });
+    assert.deepEqual(markerVisualPolicy("VOLATILITY"), { color: "#f97316", fallbackText: "VOL", position: "aboveBar", shape: "circle" });
   });
 });
 
