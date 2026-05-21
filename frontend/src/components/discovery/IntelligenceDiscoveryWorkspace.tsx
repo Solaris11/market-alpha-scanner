@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
   Brain,
+  ChevronDown,
   GitCompare,
   Globe2,
+  LayoutGrid,
+  ListFilter,
   Radar,
   Search,
   ShieldAlert,
@@ -30,9 +33,12 @@ import {
 import {
   filterDiscoverySymbols,
   type DiscoveryCluster,
+  type DiscoveryEvidenceFilter,
   type DiscoveryFilterState,
+  type DiscoveryMarketCapFilter,
   type DiscoveryQuickFilter,
   type DiscoveryQuickFilterKey,
+  type DiscoveryRiskBandFilter,
   type DiscoveryScannerPreset,
   type DiscoverySortKey,
   type DiscoverySymbol,
@@ -46,6 +52,7 @@ import { formatHydrationSafeInteger, formatHydrationSafeUtcTime } from "@/lib/ui
 import { humanizeInsightText, humanizeLabel } from "@/lib/ui/labels";
 
 type DiscoveryMode = "overlay" | "page";
+type ResultDensity = "cards" | "speed";
 type ScannerLane = {
   detail: string;
   filter: DiscoveryQuickFilterKey;
@@ -64,6 +71,7 @@ const SORTS: Array<{ key: DiscoverySortKey; label: string }> = [
   { key: "weakness", label: "Weakness" },
   { key: "breakout", label: "Breakout" },
   { key: "crash", label: "Crash risk" },
+  { key: "money_flow", label: "Money flow" },
   { key: "risk", label: "Risk" },
   { key: "confidence", label: "Confidence" },
   { key: "macro", label: "Macro" },
@@ -76,6 +84,7 @@ const FILTER_BEHAVIOR: Partial<Record<DiscoveryQuickFilterKey, { sort: Discovery
   best_setups: { sort: "confidence", timeframe: "1M" },
   breakout_candidates: { sort: "breakout", timeframe: "1W" },
   crash_risk: { sort: "crash", timeframe: "1D" },
+  money_flow: { sort: "money_flow", timeframe: "1D" },
   macro_supported: { sort: "macro", timeframe: "1M" },
   momentum_deterioration: { sort: "weakness", timeframe: "1W" },
   replay_supported: { sort: "replay", timeframe: "1M" },
@@ -107,18 +116,28 @@ export function IntelligenceDiscoveryWorkspace({
 }) {
   const [filter, setFilter] = useState<DiscoveryQuickFilterKey>("all");
   const [query, setQuery] = useState("");
+  const deferredQuery = useDeferredValue(query);
   const [sector, setSector] = useState("ALL");
+  const [assetType, setAssetType] = useState("ALL");
+  const [marketCap, setMarketCap] = useState<DiscoveryMarketCapFilter>("ALL");
+  const [riskBand, setRiskBand] = useState<DiscoveryRiskBandFilter>("ALL");
+  const [evidence, setEvidence] = useState<DiscoveryEvidenceFilter>("ALL");
+  const [watchlistOnly, setWatchlistOnly] = useState(false);
   const [sort, setSort] = useState<DiscoverySortKey>("attention");
   const [timeframe, setTimeframe] = useState<DiscoveryTimeframe>("1M");
+  const [density, setDensity] = useState<ResultDensity>("speed");
   const [selectedSymbol, setSelectedSymbol] = useState<DiscoverySymbol | null>(null);
   const [selectedCluster, setSelectedCluster] = useState<DiscoveryCluster | null>(null);
   const [compareSymbols, setCompareSymbols] = useState<string[]>(system.comparePresets[0]?.symbols.slice(0, 3) ?? []);
 
-  const state: DiscoveryFilterState = { filter, query, sector, sort, timeframe };
-  const filtered = useMemo(() => filterDiscoverySymbols(system.symbols, state), [filter, query, sector, sort, system.symbols, timeframe]);
+  const state: DiscoveryFilterState = { assetType, evidence, filter, marketCap, query: deferredQuery, riskBand, sector, sort, timeframe, watchlistOnly };
+  const filtered = useMemo(() => filterDiscoverySymbols(system.symbols, state), [assetType, deferredQuery, evidence, filter, marketCap, riskBand, sector, sort, system.symbols, timeframe, watchlistOnly]);
   const sectors = useMemo(() => ["ALL", ...Array.from(new Set(system.symbols.map((symbol) => symbol.sector).filter((value): value is string => Boolean(value)))).sort()], [system.symbols]);
+  const assetTypes = useMemo(() => ["ALL", ...Array.from(new Set(system.symbols.map((symbol) => symbol.assetType).filter((value): value is string => Boolean(value)))).sort()], [system.symbols]);
   const compareRows = useMemo(() => compareSymbols.map((symbol) => system.symbols.find((candidate) => candidate.symbol === symbol)).filter((value): value is DiscoverySymbol => Boolean(value)), [compareSymbols, system.symbols]);
   const scannerLanes = useMemo(() => buildScannerLanes(system.symbols), [system.symbols]);
+  const speedLanes = useMemo(() => buildSpeedLanes(system.symbols), [system.symbols]);
+  const activeAdvancedCount = [assetType !== "ALL", marketCap !== "ALL", riskBand !== "ALL", evidence !== "ALL", watchlistOnly].filter(Boolean).length;
   const heatCells: PosterHeatCell[] = system.sectorHeatmap.map((cluster) => ({ detail: cluster.detail, label: cluster.label, tone: cluster.tone, value: cluster.averageScore }));
   const orbitNodes: PosterOrbitNode[] = system.orbitNodes.map((node) => ({
     detail: node.detail,
@@ -160,6 +179,11 @@ export function IntelligenceDiscoveryWorkspace({
     setTimeframe(preset.timeframe);
     setQuery("");
     setSector("ALL");
+    setAssetType("ALL");
+    setMarketCap("ALL");
+    setRiskBand("ALL");
+    setEvidence("ALL");
+    setWatchlistOnly(false);
     trackAnalyticsEvent("scanner_usage", { action: "preset", preset: preset.key, resultCount: preset.count, sort: preset.sort, timeframe: preset.timeframe }, { source: "discovery_preset" });
     trackFirstUsefulAction("scanner_preset", { preset: preset.key }, { source: "discovery_preset" });
   }
@@ -169,6 +193,14 @@ export function IntelligenceDiscoveryWorkspace({
     setQuery("");
     setSector("ALL");
     trackAnalyticsEvent("scanner_usage", { action: "lane", filter: nextFilter }, { source: "discovery_lane" });
+  }
+
+  function clearAdvancedFilters(): void {
+    setAssetType("ALL");
+    setMarketCap("ALL");
+    setRiskBand("ALL");
+    setEvidence("ALL");
+    setWatchlistOnly(false);
   }
 
   return (
@@ -216,6 +248,21 @@ export function IntelligenceDiscoveryWorkspace({
               <div id="filters">
                 <ScannerPresetRail onSelect={applyScannerPreset} presets={system.scannerPresets} />
                 <QuickFilterRail active={filter} filters={system.quickFilters} onSelect={applyScannerFilter} />
+                <AdvancedFilterDeck
+                  activeCount={activeAdvancedCount}
+                  assetType={assetType}
+                  assetTypes={assetTypes}
+                  evidence={evidence}
+                  marketCap={marketCap}
+                  onAssetTypeChange={setAssetType}
+                  onClear={clearAdvancedFilters}
+                  onEvidenceChange={setEvidence}
+                  onMarketCapChange={setMarketCap}
+                  onRiskBandChange={setRiskBand}
+                  onWatchlistOnlyChange={setWatchlistOnly}
+                  riskBand={riskBand}
+                  watchlistOnly={watchlistOnly}
+                />
               </div>
             </div>
 
@@ -238,6 +285,7 @@ export function IntelligenceDiscoveryWorkspace({
             </div>
           </div>
 
+          <ScannerSpeedDeck lanes={speedLanes} onSelect={applyScannerLane} />
           <ScannerLaneBoard lanes={scannerLanes} onSelect={applyScannerLane} />
 
           <div className="grid gap-4 2xl:grid-cols-[minmax(360px,0.8fr)_minmax(0,1.2fr)_minmax(360px,0.8fr)]">
@@ -265,7 +313,16 @@ export function IntelligenceDiscoveryWorkspace({
           </div>
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.42fr)]">
-            <SymbolResultGrid compareSymbols={compareSymbols} onOpen={setSelectedSymbol} onToggleCompare={toggleCompare} symbols={filtered.slice(0, mode === "overlay" ? 18 : 36)} timeframe={timeframe} />
+            <SymbolResultGrid
+              compareSymbols={compareSymbols}
+              density={density}
+              onDensityChange={setDensity}
+              onOpen={setSelectedSymbol}
+              onToggleCompare={toggleCompare}
+              resultCount={filtered.length}
+              symbols={filtered.slice(0, mode === "overlay" ? 48 : 96)}
+              timeframe={timeframe}
+            />
             <CompareModePanel compareRows={compareRows} presets={system.comparePresets} setCompareSymbols={setCompareSymbols} />
           </div>
         </>
@@ -394,6 +451,144 @@ function ScannerPresetRail({ onSelect, presets }: { onSelect: (preset: Discovery
   );
 }
 
+function AdvancedFilterDeck({
+  activeCount,
+  assetType,
+  assetTypes,
+  evidence,
+  marketCap,
+  onAssetTypeChange,
+  onClear,
+  onEvidenceChange,
+  onMarketCapChange,
+  onRiskBandChange,
+  onWatchlistOnlyChange,
+  riskBand,
+  watchlistOnly,
+}: {
+  activeCount: number;
+  assetType: string;
+  assetTypes: string[];
+  evidence: DiscoveryEvidenceFilter;
+  marketCap: DiscoveryMarketCapFilter;
+  onAssetTypeChange: (value: string) => void;
+  onClear: () => void;
+  onEvidenceChange: (value: DiscoveryEvidenceFilter) => void;
+  onMarketCapChange: (value: DiscoveryMarketCapFilter) => void;
+  onRiskBandChange: (value: DiscoveryRiskBandFilter) => void;
+  onWatchlistOnlyChange: (value: boolean) => void;
+  riskBand: DiscoveryRiskBandFilter;
+  watchlistOnly: boolean;
+}) {
+  return (
+    <details className="group mt-3 rounded-[1.35rem] border border-white/10 bg-white/[0.025] p-3" open={activeCount > 0 ? true : undefined}>
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <ListFilter className="h-4 w-4 text-cyan-200" />
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Advanced scanner filters</div>
+            <div className="text-xs text-slate-500">Asset, market cap, evidence, risk, and watchlist constraints.</div>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {activeCount > 0 ? <span className="rounded-full bg-cyan-300/15 px-2 py-1 font-mono text-[10px] font-black text-cyan-100">{activeCount}</span> : null}
+          <ChevronDown className="h-4 w-4 text-slate-500 transition group-open:rotate-180" />
+        </div>
+      </summary>
+      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+        <DiscoverySelect label="Asset type" onChange={onAssetTypeChange} value={assetType} values={assetTypes.map((value) => ({ key: value, label: value === "ALL" ? "All assets" : value }))} />
+        <DiscoverySelect
+          label="Market cap"
+          onChange={(value) => onMarketCapChange(value as DiscoveryMarketCapFilter)}
+          value={marketCap}
+          values={[
+            { key: "ALL", label: "All caps" },
+            { key: "MEGA", label: "Mega cap" },
+            { key: "LARGE", label: "Large cap" },
+            { key: "MID", label: "Mid cap" },
+            { key: "SMALL", label: "Small cap" },
+            { key: "UNKNOWN", label: "Cap unknown" },
+          ]}
+        />
+        <DiscoverySelect
+          label="Risk band"
+          onChange={(value) => onRiskBandChange(value as DiscoveryRiskBandFilter)}
+          value={riskBand}
+          values={[
+            { key: "ALL", label: "All risk" },
+            { key: "LOW", label: "Low risk" },
+            { key: "ELEVATED", label: "Elevated risk" },
+            { key: "HIGH", label: "High risk" },
+          ]}
+        />
+        <DiscoverySelect
+          label="Evidence"
+          onChange={(value) => onEvidenceChange(value as DiscoveryEvidenceFilter)}
+          value={evidence}
+          values={[
+            { key: "ALL", label: "All evidence" },
+            { key: "STRONG", label: "Strong evidence" },
+            { key: "DEVELOPING", label: "Developing" },
+            { key: "LIMITED", label: "Limited evidence" },
+          ]}
+        />
+        <div className="flex gap-2">
+          <button
+            className={`h-12 flex-1 rounded-2xl border px-3 text-xs font-black uppercase tracking-[0.12em] transition ${watchlistOnly ? "border-amber-300/35 bg-amber-300/15 text-amber-100" : "border-white/10 bg-slate-950/70 text-slate-400 hover:border-amber-300/25 hover:text-amber-100"}`}
+            onClick={() => onWatchlistOnlyChange(!watchlistOnly)}
+            type="button"
+          >
+            Watchlist
+          </button>
+          <button className="h-12 rounded-2xl border border-white/10 bg-white/[0.035] px-3 text-xs font-black uppercase tracking-[0.12em] text-slate-400 hover:border-cyan-300/25 hover:text-cyan-100" onClick={onClear} type="button">
+            Clear
+          </button>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function ScannerSpeedDeck({ lanes, onSelect }: { lanes: ScannerLane[]; onSelect: (filter: DiscoveryQuickFilterKey) => void }) {
+  return (
+    <section className="poster-panel rounded-3xl border border-white/10 bg-slate-950/50 p-4">
+      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">One-click market exploration</div>
+          <h3 className="mt-1 text-2xl font-black text-white">Fast scan the tape before opening deeper research</h3>
+        </div>
+        <div className="text-xs text-slate-500">Built for speed: movers, crash risk, expansion, money flow, macro, replay.</div>
+      </div>
+      <div className="grid gap-2 md:grid-cols-3 2xl:grid-cols-6">
+        {lanes.map((lane) => {
+          const tone = TONE_CLASS[lane.tone];
+          const leader = lane.symbols[0];
+          return (
+            <button
+              className={`tv-tap-motion rounded-3xl border p-3 text-left transition hover:-translate-y-0.5 ${tone.border} ${tone.bg}`}
+              key={lane.key}
+              onClick={() => onSelect(lane.filter)}
+              type="button"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className={`text-sm font-black ${tone.text}`}>{lane.title}</div>
+                <span className="rounded-full bg-black/25 px-2 py-0.5 font-mono text-[10px] font-black text-slate-200">{lane.symbols.length}</span>
+              </div>
+              <div className="mt-2 font-mono text-2xl font-black text-white">{leader?.symbol ?? "N/A"}</div>
+              <div className="mt-1 truncate text-[11px] text-slate-500">{leader ? leader.sector ?? leader.setupType : "Limited evidence"}</div>
+              <div className="mt-3 flex flex-wrap gap-1">
+                {lane.symbols.slice(0, 4).map((symbol) => (
+                  <span className="rounded-full bg-slate-950/55 px-2 py-1 font-mono text-[10px] font-black text-slate-300" key={symbol.symbol}>{symbol.symbol}</span>
+                ))}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function ScannerLaneBoard({ lanes, onSelect }: { lanes: ScannerLane[]; onSelect: (filter: DiscoveryQuickFilterKey) => void }) {
   return (
     <section className="poster-panel rounded-3xl border border-cyan-300/16 bg-slate-950/50 p-4">
@@ -443,6 +638,71 @@ function ScannerLaneBoard({ lanes, onSelect }: { lanes: ScannerLane[]; onSelect:
 
 function SymbolResultGrid({
   compareSymbols,
+  density,
+  onOpen,
+  onDensityChange,
+  onToggleCompare,
+  resultCount,
+  symbols,
+  timeframe,
+}: {
+  compareSymbols: string[];
+  density: ResultDensity;
+  onOpen: (symbol: DiscoverySymbol) => void;
+  onDensityChange: (density: ResultDensity) => void;
+  onToggleCompare: (symbol: string) => void;
+  resultCount: number;
+  symbols: DiscoverySymbol[];
+  timeframe: DiscoveryTimeframe;
+}) {
+  return (
+    <section className="poster-panel rounded-3xl border border-cyan-300/16 bg-slate-950/48 p-4">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Full-universe results</div>
+          <h3 className="mt-1 text-xl font-black text-white">Searchable scanner command grid</h3>
+          <div className="mt-1 text-xs text-slate-500">{formatHydrationSafeInteger(resultCount)} matching rows. Showing {formatHydrationSafeInteger(symbols.length)} for fast rendering.</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            className={`grid h-10 w-10 place-items-center rounded-2xl border transition ${density === "speed" ? "border-cyan-300/35 bg-cyan-300/15 text-cyan-100" : "border-white/10 bg-white/[0.035] text-slate-500 hover:text-cyan-100"}`}
+            onClick={() => onDensityChange("speed")}
+            title="Speed table"
+            type="button"
+          >
+            <ListFilter className="h-4 w-4" />
+          </button>
+          <button
+            className={`grid h-10 w-10 place-items-center rounded-2xl border transition ${density === "cards" ? "border-cyan-300/35 bg-cyan-300/15 text-cyan-100" : "border-white/10 bg-white/[0.035] text-slate-500 hover:text-cyan-100"}`}
+            onClick={() => onDensityChange("cards")}
+            title="Card grid"
+            type="button"
+          >
+            <LayoutGrid className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+      {symbols.length ? (
+        density === "speed" ? (
+          <RapidScannerTable compareSymbols={compareSymbols} onOpen={onOpen} onToggleCompare={onToggleCompare} symbols={symbols} timeframe={timeframe} />
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
+            {symbols.map((symbol) => (
+              <DiscoverySymbolCard compareSelected={compareSymbols.includes(symbol.symbol)} key={symbol.symbol} onOpen={onOpen} onToggleCompare={onToggleCompare} symbol={symbol} timeframe={timeframe} />
+            ))}
+          </div>
+        )
+      ) : (
+        <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/45 p-6 text-sm leading-6 text-slate-400">
+          No symbols match this exact search. Clear filters or switch to Full universe to broaden the scanner.
+        </div>
+      )}
+    </section>
+  );
+}
+
+function RapidScannerTable({
+  compareSymbols,
   onOpen,
   onToggleCompare,
   symbols,
@@ -455,27 +715,60 @@ function SymbolResultGrid({
   timeframe: DiscoveryTimeframe;
 }) {
   return (
-    <section className="poster-panel rounded-3xl border border-cyan-300/16 bg-slate-950/48 p-4">
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Full-universe results</div>
-          <h3 className="mt-1 text-xl font-black text-white">Searchable scanner command grid</h3>
-        </div>
-        <div className="text-xs text-slate-500">Select up to 4 for compare</div>
+    <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/48">
+      <div className="grid grid-cols-[3rem_5.5rem_minmax(8rem,1fr)_5rem_5rem_5rem_5rem_5rem_6.5rem] gap-2 border-b border-white/10 bg-white/[0.035] px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 max-xl:hidden">
+        <span>Rank</span>
+        <span>Symbol</span>
+        <span>Context</span>
+        <span>{timeframe}</span>
+        <span>Conf</span>
+        <span>Risk</span>
+        <span>Macro</span>
+        <span>Replay</span>
+        <span>Action</span>
       </div>
-      {symbols.length ? (
-        <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-          {symbols.map((symbol) => (
-            <DiscoverySymbolCard compareSelected={compareSymbols.includes(symbol.symbol)} key={symbol.symbol} onOpen={onOpen} onToggleCompare={onToggleCompare} symbol={symbol} timeframe={timeframe} />
-          ))}
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/45 p-6 text-sm leading-6 text-slate-400">
-          No symbols match this exact search. Clear filters or switch to Full universe to broaden the scanner.
-        </div>
-      )}
-    </section>
+      <div className="max-h-[44rem] overflow-y-auto [scrollbar-width:thin]">
+        {symbols.map((symbol, index) => {
+          const riskTone: DiscoveryTone = (symbol.risk ?? 0) >= 70 ? "rose" : (symbol.risk ?? 0) >= 55 ? "amber" : "cyan";
+          const selected = compareSymbols.includes(symbol.symbol);
+          return (
+            <div
+              className="grid gap-2 border-b border-white/[0.06] px-3 py-3 transition hover:bg-cyan-300/[0.045] xl:grid-cols-[3rem_5.5rem_minmax(8rem,1fr)_5rem_5rem_5rem_5rem_5rem_6.5rem] xl:items-center"
+              key={symbol.symbol}
+            >
+              <div className="hidden font-mono text-xs font-black text-slate-500 xl:block">{index + 1}</div>
+              <button className="flex min-w-0 items-center gap-2 text-left xl:block" data-stable-overlay-trigger="true" onClick={() => onOpen(symbol)} type="button">
+                <span className="font-mono text-lg font-black text-white">{symbol.symbol}</span>
+                {symbol.watchlisted ? <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300 xl:hidden" /> : null}
+                <span className="ml-auto font-mono text-xs text-slate-500 xl:hidden">#{index + 1}</span>
+              </button>
+              <button className="min-w-0 text-left" data-stable-overlay-trigger="true" onClick={() => onOpen(symbol)} type="button">
+                <div className="truncate text-sm font-semibold text-slate-200">{symbol.companyName ?? symbol.sector ?? symbol.setupType}</div>
+                <div className="truncate text-[11px] text-slate-500">{humanizeInsightText(symbol.reason)}</div>
+              </button>
+              <ScannerCell tone={perfTone(symbol.performance[timeframe])} value={formatSigned(symbol.performance[timeframe])} />
+              <ScannerCell tone="emerald" value={scoreLabel(symbol.confidence ?? symbol.conviction)} />
+              <ScannerCell tone={riskTone} value={scoreLabel(symbol.risk)} />
+              <ScannerCell tone="cyan" value={scoreLabel(symbol.macro)} />
+              <ScannerCell tone="violet" value={scoreLabel(symbol.replay)} />
+              <div className="flex gap-2">
+                <button className={`h-9 flex-1 rounded-xl border px-2 text-[10px] font-black uppercase tracking-[0.1em] ${selected ? "border-cyan-300/40 bg-cyan-300/15 text-cyan-100" : "border-white/10 bg-white/[0.035] text-slate-400 hover:text-cyan-100"}`} onClick={() => onToggleCompare(symbol.symbol)} type="button">
+                  {selected ? "On" : "Cmp"}
+                </button>
+                <Link className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-slate-400 hover:border-cyan-300/30 hover:text-cyan-100" href={symbol.href}>
+                  <ArrowRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
   );
+}
+
+function ScannerCell({ tone, value }: { tone: DiscoveryTone; value: string }) {
+  return <div className={`rounded-xl border border-white/10 bg-white/[0.025] px-2 py-1.5 font-mono text-xs font-black ${TONE_CLASS[tone].text}`}>{value}</div>;
 }
 
 function DiscoverySymbolCard({
@@ -874,6 +1167,15 @@ function buildScannerLanes(symbols: DiscoverySymbol[]): ScannerLane[] {
       tone: "rose",
     },
     {
+      detail: "Sector leadership, performance, macro alignment, and liquidity context.",
+      filter: "money_flow",
+      key: "money-flow",
+      sort: "money_flow",
+      timeframe: "1D",
+      title: "Money-flow leaders",
+      tone: "cyan",
+    },
+    {
       detail: "Historical similarity or replay support visible in the scanner packet.",
       filter: "replay_supported",
       key: "replay",
@@ -902,6 +1204,27 @@ function buildScannerLanes(symbols: DiscoverySymbol[]): ScannerLane[] {
       sort: definition.sort,
       timeframe: definition.timeframe,
     }).slice(0, 5),
+  }));
+}
+
+function buildSpeedLanes(symbols: DiscoverySymbol[]): ScannerLane[] {
+  const definitions: Array<Omit<ScannerLane, "symbols">> = [
+    { detail: "Largest validated positive one-day moves.", filter: "top_gainers_1d", key: "speed-gainers", sort: "performance", timeframe: "1D", title: "Top movers", tone: "emerald" },
+    { detail: "Largest validated one-day downside movers.", filter: "top_losers_1d", key: "speed-losers", sort: "weakness", timeframe: "1D", title: "Downside movers", tone: "rose" },
+    { detail: "Breakout and expansion pressure candidates.", filter: "breakout_candidates", key: "speed-expansion", sort: "breakout", timeframe: "1W", title: "Expansion", tone: "violet" },
+    { detail: "Crash-risk, fragility, and shock pressure.", filter: "crash_risk", key: "speed-crash", sort: "crash", timeframe: "1D", title: "Crash risk", tone: "rose" },
+    { detail: "Money-flow alignment across sector, macro, performance, and volume.", filter: "money_flow", key: "speed-flow", sort: "money_flow", timeframe: "1D", title: "Money flow", tone: "cyan" },
+    { detail: "Macro-supported scanner rows.", filter: "macro_supported", key: "speed-macro", sort: "macro", timeframe: "1M", title: "Macro support", tone: "cyan" },
+  ];
+  return definitions.map((definition) => ({
+    ...definition,
+    symbols: filterDiscoverySymbols(symbols, {
+      filter: definition.filter,
+      query: "",
+      sector: "ALL",
+      sort: definition.sort,
+      timeframe: definition.timeframe,
+    }).slice(0, 6),
   }));
 }
 

@@ -17,10 +17,12 @@ describe("intelligence discovery system", () => {
         opportunity("AMD", "Advanced Micro Devices", "Technology", {
           confidence_score: 76,
           final_score: 72,
+          market_cap: 180_000_000_000,
           macro_alignment_score: 68,
           return_1d: 2.4,
           return_1m: 11.5,
           setup_type: "Momentum Breakout",
+          volume: 82_000_000,
           volatility_pressure: 70,
           risk_pressure_score: 48,
           market_memory_similarity: 64,
@@ -28,6 +30,7 @@ describe("intelligence discovery system", () => {
         opportunity("TSLA", "Tesla", "Consumer Cyclical", {
           confidence_score: 49,
           final_score: 58,
+          market_cap: 900_000_000_000,
           macro_alignment_score: 38,
           return_1d: -3.2,
           return_1m: -8.1,
@@ -39,9 +42,11 @@ describe("intelligence discovery system", () => {
         opportunity("NVDA", "NVIDIA", "Technology", {
           confidence_score: 82,
           final_score: 86,
+          market_cap: 3_000_000_000_000,
           macro_alignment_score: 74,
           return_1d: 1.1,
           return_1m: 14.8,
+          volume: 190_000_000,
           risk_pressure_score: 52,
           replay_similarity_score: 71,
         }),
@@ -56,9 +61,11 @@ describe("intelligence discovery system", () => {
     assert.equal(system.quickFilters.find((filter) => filter.key === "risk_escalation")?.count, 1);
     assert.equal(system.quickFilters.find((filter) => filter.key === "breakout_candidates")?.count, 1);
     assert.equal(system.quickFilters.find((filter) => filter.key === "crash_risk")?.count, 1);
+    assert.equal(system.quickFilters.find((filter) => filter.key === "money_flow")?.count, 2);
     assert.equal(system.quickFilters.find((filter) => filter.key === "top_losers_1d")?.count, 1);
     assert.equal(system.quickFilters.find((filter) => filter.key === "watchlist")?.count, 1);
     assert.equal(system.scannerPresets.some((preset) => preset.key === "preset-breakout" && preset.count === 1), true);
+    assert.equal(system.scannerPresets.some((preset) => preset.key === "preset-money-flow" && preset.count === 2), true);
     assert.equal(system.comparePresets.some((preset) => preset.symbols.includes("AMD") && preset.symbols.includes("NVDA")), true);
   });
 
@@ -97,6 +104,56 @@ describe("intelligence discovery system", () => {
     assert.deepEqual(weakest.map((symbol) => symbol.symbol), ["XOM"]);
     assert.equal(matchesDiscoveryQuickFilter(system.symbols.find((symbol) => symbol.symbol === "XOM")!, "top_gainers_1m"), false);
     assert.equal(matchesDiscoveryQuickFilter(system.symbols.find((symbol) => symbol.symbol === "XOM")!, "top_losers_1m"), true);
+  });
+
+  test("applies advanced scanner filters for market cap, risk, evidence, asset, and watchlist speed workflows", () => {
+    const system = buildIntelligenceDiscoverySystem({
+      rows: [
+        opportunity("AMD", "Advanced Micro Devices", "Technology", { confidence_score: 72, evidence_quality_score: 78, market_cap: 180_000_000_000, return_1d: 2.5, return_1m: 9.4, risk_pressure_score: 42 }),
+        opportunity("NVDA", "NVIDIA", "Technology", { confidence_score: 86, evidence_quality_score: 82, market_cap: 3_000_000_000_000, return_1d: 1.2, return_1m: 15.1, risk_pressure_score: 54, volume: 190_000_000 }),
+        opportunity("TSLA", "Tesla", "Consumer Cyclical", { confidence_score: 44, evidence_quality_score: 38, event_risk_score: 85, fragility_score: 78, market_cap: 900_000_000_000, return_1d: -4.8, return_1m: -12.2, risk_pressure_score: 82 }),
+        opportunity("XOM", "Exxon Mobil", "Energy", { confidence_score: 64, evidence_quality_score: 56, market_cap: 480_000_000_000, return_1d: 0.7, return_1m: 3.8, macro_alignment_score: 69 }),
+      ],
+      watchlistSymbols: ["TSLA", "NVDA"],
+    });
+
+    const megaWatchRisk = filterDiscoverySymbols(system.symbols, {
+      assetType: "Equity",
+      evidence: "ALL",
+      filter: "all",
+      marketCap: "MEGA",
+      query: "",
+      riskBand: "ALL",
+      sector: "ALL",
+      sort: "risk",
+      timeframe: "1D",
+      watchlistOnly: true,
+    });
+    const strongEvidenceLarge = filterDiscoverySymbols(system.symbols, {
+      assetType: "ALL",
+      evidence: "STRONG",
+      filter: "all",
+      marketCap: "LARGE",
+      query: "",
+      riskBand: "ALL",
+      sector: "ALL",
+      sort: "confidence",
+      timeframe: "1M",
+    });
+    const limitedEvidenceHighRisk = filterDiscoverySymbols(system.symbols, {
+      filter: "all",
+      query: "",
+      sector: "ALL",
+      sort: "risk",
+      timeframe: "1D",
+      evidence: "LIMITED",
+      riskBand: "HIGH",
+    });
+
+    assert.deepEqual(megaWatchRisk.map((symbol) => symbol.symbol), ["TSLA", "NVDA"]);
+    assert.deepEqual(strongEvidenceLarge.map((symbol) => symbol.symbol), ["AMD"]);
+    assert.deepEqual(limitedEvidenceHighRisk.map((symbol) => symbol.symbol), ["TSLA"]);
+    assert.equal(matchesDiscoveryQuickFilter(system.symbols.find((symbol) => symbol.symbol === "NVDA")!, "money_flow"), true);
   });
 
   test("returns an honest limited state when no validated scanner rows exist", () => {

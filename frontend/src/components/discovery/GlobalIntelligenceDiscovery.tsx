@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { DISCOVERY_OPEN_EVENT } from "@/components/discovery/DiscoveryCommandButton";
@@ -22,7 +22,42 @@ export function GlobalIntelligenceDiscovery() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const loadedRef = useRef(false);
+  const requestRef = useRef<Promise<void> | null>(null);
   const reduceMotion = useReducedMotion();
+
+  const loadDiscovery = useCallback((signal?: AbortSignal, showLoading = false): Promise<void> => {
+    if (loadedRef.current) return Promise.resolve();
+    if (requestRef.current) {
+      if (showLoading) setLoading(true);
+      return requestRef.current;
+    }
+    if (showLoading) setLoading(true);
+    setError(null);
+    const request = fetch("/api/discovery", { cache: "no-store", signal })
+      .then(async (response) => {
+        const payload = await response.json().catch(() => null) as DiscoveryApiResponse | null;
+        if (!payload?.system) {
+          const message = payload?.message ?? `Discovery failed with status ${response.status}.`;
+          setSystem(buildLimitedIntelligenceDiscoverySystem(message));
+          setError(message);
+          return;
+        }
+        setSystem(payload.system);
+        loadedRef.current = Boolean(payload.ok);
+      })
+      .catch((reason: unknown) => {
+        if (signal?.aborted) return;
+        const message = reason instanceof Error ? reason.message : "Discovery request failed.";
+        setSystem(buildLimitedIntelligenceDiscoverySystem(message));
+        setError(message);
+      })
+      .finally(() => {
+        requestRef.current = null;
+        if (!signal?.aborted) setLoading(false);
+      });
+    requestRef.current = request;
+    return request;
+  }, []);
 
   useEffect(() => {
     function openDiscovery() {
@@ -53,31 +88,21 @@ export function GlobalIntelligenceDiscovery() {
   useEffect(() => {
     if (!open || loadedRef.current) return;
     const controller = new AbortController();
-    setLoading(true);
-    setError(null);
-    fetch("/api/discovery", { cache: "no-store", signal: controller.signal })
-      .then(async (response) => {
-        const payload = await response.json().catch(() => null) as DiscoveryApiResponse | null;
-        if (!payload?.system) {
-          const message = payload?.message ?? `Discovery failed with status ${response.status}.`;
-          setSystem(buildLimitedIntelligenceDiscoverySystem(message));
-          setError(message);
-          return;
-        }
-        setSystem(payload.system);
-        loadedRef.current = Boolean(payload.ok);
-      })
-      .catch((reason: unknown) => {
-        if (controller.signal.aborted) return;
-        const message = reason instanceof Error ? reason.message : "Discovery request failed.";
-        setSystem(buildLimitedIntelligenceDiscoverySystem(message));
-        setError(message);
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
-      });
+    void loadDiscovery(controller.signal, true);
     return () => controller.abort();
-  }, [open]);
+  }, [loadDiscovery, open]);
+
+  useEffect(() => {
+    if (loadedRef.current || open) return undefined;
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      void loadDiscovery(controller.signal, false);
+    }, 1200);
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [loadDiscovery, open]);
 
   useEffect(() => {
     if (!open) return undefined;

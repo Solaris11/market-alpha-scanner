@@ -10,6 +10,7 @@ export type DiscoveryQuickFilterKey =
   | "best_setups"
   | "breakout_candidates"
   | "crash_risk"
+  | "money_flow"
   | "top_gainers_1d"
   | "top_gainers_1w"
   | "top_gainers_1m"
@@ -36,6 +37,7 @@ export type DiscoverySortKey =
   | "breakout"
   | "crash"
   | "performance"
+  | "money_flow"
   | "risk"
   | "confidence"
   | "macro"
@@ -151,12 +153,21 @@ export type IntelligenceDiscoverySystem = {
   watchlistCount: number;
 };
 
+export type DiscoveryMarketCapFilter = "ALL" | "MEGA" | "LARGE" | "MID" | "SMALL" | "UNKNOWN";
+export type DiscoveryRiskBandFilter = "ALL" | "LOW" | "ELEVATED" | "HIGH";
+export type DiscoveryEvidenceFilter = "ALL" | "STRONG" | "DEVELOPING" | "LIMITED";
+
 export type DiscoveryFilterState = {
+  assetType?: string;
+  evidence?: DiscoveryEvidenceFilter;
   filter: DiscoveryQuickFilterKey;
+  marketCap?: DiscoveryMarketCapFilter;
   query: string;
+  riskBand?: DiscoveryRiskBandFilter;
   sector: string;
   sort: DiscoverySortKey;
   timeframe: DiscoveryTimeframe;
+  watchlistOnly?: boolean;
 };
 
 export type BuildIntelligenceDiscoveryInput = {
@@ -242,9 +253,18 @@ export function buildIntelligenceDiscoverySystem(input: BuildIntelligenceDiscove
 
 export function filterDiscoverySymbols(symbols: DiscoverySymbol[], state: DiscoveryFilterState): DiscoverySymbol[] {
   const query = state.query.trim().toLowerCase();
+  const marketCap = state.marketCap ?? "ALL";
+  const riskBand = state.riskBand ?? "ALL";
+  const evidence = state.evidence ?? "ALL";
+  const assetType = state.assetType ?? "ALL";
   return rankDiscoverySymbols(
     symbols
       .filter((symbol) => state.sector === "ALL" || clean(symbol.sector) === state.sector)
+      .filter((symbol) => assetType === "ALL" || clean(symbol.assetType, "Unknown") === assetType)
+      .filter((symbol) => !state.watchlistOnly || symbol.watchlisted)
+      .filter((symbol) => matchesMarketCapFilter(symbol, marketCap))
+      .filter((symbol) => matchesRiskBandFilter(symbol, riskBand))
+      .filter((symbol) => matchesEvidenceFilter(symbol, evidence))
       .filter((symbol) => {
         if (!query) return true;
         return [
@@ -270,6 +290,7 @@ export function rankDiscoverySymbols(symbols: DiscoverySymbol[], sort: Discovery
     if (sort === "weakness") return numericAsc(left.performance[timeframe], right.performance[timeframe]) || crashRiskScore(right) - crashRiskScore(left);
     if (sort === "breakout") return breakoutScore(right) - breakoutScore(left) || numericDesc(left.confidence, right.confidence);
     if (sort === "crash") return crashRiskScore(right) - crashRiskScore(left) || numericDesc(left.risk, right.risk);
+    if (sort === "money_flow") return moneyFlowScore(right) - moneyFlowScore(left) || numericDesc(left.performance[timeframe], right.performance[timeframe]);
     if (sort === "risk") return numericDesc(left.risk, right.risk) || numericDesc(left.shockRisk, right.shockRisk);
     if (sort === "confidence") return numericDesc(left.confidence, right.confidence) || right.conviction - left.conviction;
     if (sort === "macro") return numericDesc(left.macro, right.macro) || numericDesc(left.confidence, right.confidence);
@@ -284,6 +305,7 @@ export function matchesDiscoveryQuickFilter(symbol: DiscoverySymbol, filter: Dis
   if (filter === "best_setups") return bestSetupScore(symbol) >= 58;
   if (filter === "breakout_candidates") return breakoutScore(symbol) >= 58;
   if (filter === "crash_risk") return crashRiskScore(symbol) >= 65;
+  if (filter === "money_flow") return moneyFlowScore(symbol) >= 58;
   if (filter === "top_gainers_1d") return (symbol.performance["1D"] ?? Number.NEGATIVE_INFINITY) > 0;
   if (filter === "top_gainers_1w") return (symbol.performance["1W"] ?? Number.NEGATIVE_INFINITY) > 0;
   if (filter === "top_gainers_1m") return (symbol.performance["1M"] ?? Number.NEGATIVE_INFINITY) > 0;
@@ -425,6 +447,7 @@ function buildQuickFilters(symbols: DiscoverySymbol[]): DiscoveryQuickFilter[] {
     { key: "best_setups", label: "Best setups", summary: "Highest blend of quality, evidence, and controlled risk.", tone: "emerald" },
     { key: "breakout_candidates", label: "Breakout candidates", summary: "Expansion pressure with setup and replay context.", tone: "violet" },
     { key: "crash_risk", label: "Crash-risk candidates", summary: "Downside, fragility, volatility, or shock pressure.", tone: "rose" },
+    { key: "money_flow", label: "Money-flow leaders", summary: "Sector support, performance, macro, and volume context.", tone: "cyan" },
     { key: "top_gainers_1d", label: "Top gainers 1D", summary: "Names with positive one-day performance.", tone: "emerald" },
     { key: "top_gainers_1w", label: "Strongest 1W", summary: "Short-term performance leaders.", tone: "emerald" },
     { key: "top_gainers_1m", label: "Strongest 1M", summary: "One-month leadership.", tone: "emerald" },
@@ -483,6 +506,15 @@ function buildScannerPresets(symbols: DiscoverySymbol[]): DiscoveryScannerPreset
       tone: "rose",
     },
     {
+      filter: "money_flow",
+      key: "preset-money-flow",
+      label: "Money-flow leaders",
+      sort: "money_flow",
+      summary: "Fast scan for symbols where sector leadership, macro context, performance, and liquidity are aligned.",
+      timeframe: "1D",
+      tone: "cyan",
+    },
+    {
       filter: "top_gainers_1d",
       key: "preset-daily-gainers",
       label: "Top gainers",
@@ -530,12 +562,14 @@ function buildDiscoveryStories(symbols: DiscoverySymbol[]): DiscoveryStory[] {
   const oneMonthLeaders = topSymbols(symbols, "performance", "1M", 5);
   const riskNames = topSymbols(symbols.filter((symbol) => (symbol.risk ?? 0) >= 60), "risk", "1D", 5);
   const macroSupported = topSymbols(symbols.filter((symbol) => (symbol.macro ?? 0) >= 60), "macro", "1M", 5);
+  const moneyFlow = topSymbols(symbols.filter((symbol) => moneyFlowScore(symbol) >= 58), "money_flow", "1D", 5);
   const replaySupported = topSymbols(symbols.filter((symbol) => (symbol.replay ?? 0) >= 60), "replay", "1M", 5);
   const watchlistRisk = topSymbols(symbols.filter((symbol) => symbol.watchlisted && ((symbol.risk ?? 0) >= 55 || symbol.fragility >= 60)), "risk", "1D", 5);
 
   return [
     storyFromSymbols("momentum", "Momentum leadership is visible", oneMonthLeaders, "1M", "Strongest visible one-month performers are leading discovery.", "emerald"),
     storyFromSymbols("risk", "Risk pressure is clustered", riskNames, "Risk", "Elevated risk names should be reviewed before treating discovery as opportunity.", "rose"),
+    storyFromSymbols("money-flow", "Money-flow leadership is emerging", moneyFlow, "Flow", "Sector support, performance, macro alignment, and volume context are concentrating in these names.", "cyan"),
     storyFromSymbols("macro", "Macro-supported names are discoverable", macroSupported, "Macro", "Macro alignment is supporting a visible subset of the scanner universe.", "cyan"),
     storyFromSymbols("replay", "Replay-supported setups are surfacing", replaySupported, "Replay", "Historical similarity evidence is present for a subset of names.", "violet"),
     storyFromSymbols("watchlist", "Watchlist discovery is active", watchlistRisk, "Watch", "Saved symbols with rising risk or fragility are visible.", "amber"),
@@ -547,9 +581,11 @@ function buildComparePresets(symbols: DiscoverySymbol[]): DiscoveryComparePreset
   const momentum = topSymbols(symbols, "performance", "1M", 3).map((symbol) => symbol.symbol);
   const risk = topSymbols(symbols, "risk", "1D", 3).map((symbol) => symbol.symbol);
   const macro = topSymbols(symbols.filter((symbol) => (symbol.macro ?? 0) >= 55), "macro", "1M", 3).map((symbol) => symbol.symbol);
+  const moneyFlow = topSymbols(symbols.filter((symbol) => moneyFlowScore(symbol) >= 55), "money_flow", "1D", 3).map((symbol) => symbol.symbol);
   const presets: DiscoveryComparePreset[] = [
     { key: "momentum", label: "Momentum leaders", summary: "Compare the strongest visible performers.", symbols: momentum, tone: "emerald" },
     { key: "risk", label: "Risk escalation", summary: "Compare elevated-risk candidates before deeper research.", symbols: risk, tone: "rose" },
+    { key: "money-flow", label: "Money-flow leaders", summary: "Compare symbols with aligned performance, macro, and liquidity context.", symbols: moneyFlow, tone: "cyan" },
     { key: "macro", label: "Macro-supported", summary: "Compare names with visible macro support.", symbols: macro, tone: "cyan" },
     ...sectors.map((sector) => ({ key: `sector-${sector.key}`, label: `${sector.label} cluster`, summary: sector.detail, symbols: sector.symbols.slice(0, 3), tone: sector.tone })),
   ];
@@ -569,6 +605,7 @@ function buildOrbitNodes(input: {
     node("universe", "Full Universe", formatHydrationSafeInteger(input.symbols.length), average(input.symbols.map(attentionScore)), "Search every validated scanner row.", "cyan"),
     node("sectors", "Sector Map", formatHydrationSafeInteger(input.sectorHeatmap.length), average(input.sectorHeatmap.map((cluster) => cluster.averageScore)), "Sector concentration and scanner density.", "emerald"),
     node("momentum", "Momentum", String(input.momentumClusters[2]?.count ?? 0), input.momentumClusters[2]?.averageScore ?? null, "Performance leadership across selected timeframes.", "emerald"),
+    node("money-flow", "Money Flow", String(input.symbols.filter((symbol) => moneyFlowScore(symbol) >= 58).length), average(input.symbols.map(moneyFlowScore)), "Sector support, performance, macro, and liquidity alignment.", "cyan"),
     node("risk", "Risk Pressure", String(input.riskClusters[0]?.count ?? 0), input.riskClusters[0]?.averageScore ?? null, "Fragility, shock, and deterioration clusters.", "rose"),
     node("macro", "Macro Alignment", String(input.macroClusters[0]?.count ?? 0), input.macroClusters[0]?.averageScore ?? null, "Market context support and conflict.", "cyan"),
     node("replay", "Replay Context", String(input.macroClusters[2]?.count ?? 0), input.macroClusters[2]?.averageScore ?? null, "Replay and historical similarity support.", "violet"),
@@ -645,6 +682,23 @@ function breakoutScore(symbol: DiscoverySymbol): number {
   );
 }
 
+function moneyFlowScore(symbol: DiscoverySymbol): number {
+  const performancePulse = average([
+    normalizeSigned(symbol.performance["1D"]),
+    normalizeSigned(symbol.performance["1W"]),
+    normalizeSigned(symbol.performance["1M"]),
+  ]);
+  const liquidityContext = symbol.volume === null ? null : normalizeVolume(symbol.volume);
+  return clamp(average([
+    performancePulse,
+    symbol.macro,
+    symbol.trend,
+    symbol.confidence ?? symbol.conviction,
+    liquidityContext,
+    symbol.sector ? 58 : null,
+  ]));
+}
+
 function crashRiskScore(symbol: DiscoverySymbol): number {
   const downsidePressure = average([
     negativeMoveScore(symbol.performance["1D"]),
@@ -659,6 +713,32 @@ function crashRiskScore(symbol: DiscoverySymbol): number {
     symbol.trend === null ? null : 100 - symbol.trend,
     downsidePressure,
   ]));
+}
+
+function matchesMarketCapFilter(symbol: DiscoverySymbol, filter: DiscoveryMarketCapFilter): boolean {
+  if (filter === "ALL") return true;
+  if (symbol.marketCap === null) return filter === "UNKNOWN";
+  const cap = symbol.marketCap;
+  if (filter === "MEGA") return cap >= 200_000_000_000;
+  if (filter === "LARGE") return cap >= 10_000_000_000 && cap < 200_000_000_000;
+  if (filter === "MID") return cap >= 2_000_000_000 && cap < 10_000_000_000;
+  return cap < 2_000_000_000;
+}
+
+function matchesRiskBandFilter(symbol: DiscoverySymbol, filter: DiscoveryRiskBandFilter): boolean {
+  if (filter === "ALL") return true;
+  const risk = symbol.risk ?? symbol.fragility;
+  if (filter === "LOW") return risk < 45;
+  if (filter === "ELEVATED") return risk >= 45 && risk < 70;
+  return risk >= 70;
+}
+
+function matchesEvidenceFilter(symbol: DiscoverySymbol, filter: DiscoveryEvidenceFilter): boolean {
+  if (filter === "ALL") return true;
+  const evidence = symbol.evidence ?? 0;
+  if (filter === "STRONG") return evidence >= 70;
+  if (filter === "DEVELOPING") return evidence >= 45 && evidence < 70;
+  return evidence < 45;
 }
 
 function negativeMoveScore(value: number | null | undefined): number {
@@ -748,6 +828,11 @@ function numeric(value: unknown): number | null {
 function normalizeSigned(value: number | null | undefined): number {
   if (typeof value !== "number" || !Number.isFinite(value)) return 50;
   return clamp(50 + value * 3);
+}
+
+function normalizeVolume(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 50;
+  return clamp(35 + Math.log10(value) * 8);
 }
 
 function clampNullable(value: number | null): number | null {
