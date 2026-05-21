@@ -70,6 +70,7 @@ Updated:
 
 - `frontend/src/components/terminal/SymbolChart.tsx`
 - `frontend/src/components/charts/InteractivePriceChart.tsx`
+- `frontend/src/components/ui/StableDetailOverlay.tsx`
 
 User-facing improvements:
 
@@ -81,6 +82,7 @@ User-facing improvements:
 - a ruler drawing supports quick visual measurement
 - chart controls remain synchronized between fullscreen panes
 - keyboard chart control is available when the chart is focused/active
+- production mobile overlay scroll capture now refreshes when the trigger scroll position materially changes, preventing stale lock positions during dense mobile routes
 
 ## Validation
 
@@ -103,6 +105,10 @@ Production validation was completed after deployment:
 - chart-relevant route smoke passed for `/terminal`, `/symbol/AMD`, `/dashboard`, `/macro`, `/market-memory`, `/discover`, `/scanner`, `/performance`, `/history?symbol=AMD`, `/mobile`
 - production mobile emulation smoke passed
 
+Production validation note:
+
+- The first production mobile smoke after the chart deployment caught `/paper` overlay scroll drift. The root cause was stale stable-overlay trigger scroll capture after a route-level scroll-to-trigger operation. `StableDetailOverlay` now refreshes the captured trigger position when the scroll delta materially changes while preserving duplicate-event protection for normal pointer/click sequences.
+
 ## Remaining Chart Debt
 
 TradeVeto is materially closer to professional chart workflow maturity, but it still should not be represented as a full TradingView replacement.
@@ -117,4 +123,3 @@ Remaining gaps:
 - chart-created alert rules are not implemented yet
 
 The gap closed in this sprint is the TradeVeto-specific workflow gap: persistent intelligence-native chart workspaces, saved annotations, synchronized fullscreen state, global market chart continuity, and keyboard-operable chart exploration.
-

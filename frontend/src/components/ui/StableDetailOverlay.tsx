@@ -69,8 +69,12 @@ function getInteractionSafeScrollY(): number {
 function rememberStableTriggerPosition(target: EventTarget | null): void {
   if (!(target instanceof Element)) return;
   if (!target.closest('[data-stable-overlay-trigger="true"]')) return;
-  if (stableTriggerScrollY !== null && Date.now() - stableTriggerCapturedAt < 800) return;
-  stableTriggerScrollY = getTriggerAwareScrollY(target);
+  const nextScrollY = getTriggerAwareScrollY(target);
+  const duplicateEvent = stableTriggerScrollY !== null
+    && Date.now() - stableTriggerCapturedAt < 800
+    && Math.abs(nextScrollY - stableTriggerScrollY) <= 8;
+  if (duplicateEvent) return;
+  stableTriggerScrollY = nextScrollY;
   stableTriggerCapturedAt = Date.now();
 }
 
