@@ -281,8 +281,17 @@ async function exerciseStableOverlay(cdp, device, route) {
       });
       const trigger = triggers[0];
       if (!trigger) return { skipped: true };
-      trigger.scrollIntoView({ block: "center", inline: "nearest" });
-      await new Promise((resolve) => setTimeout(resolve, 120));
+      trigger.scrollIntoView({ behavior: "instant", block: "center", inline: "nearest" });
+      const waitForScrollSettled = async () => {
+        let previous = window.scrollY;
+        for (let index = 0; index < 10; index += 1) {
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          const next = window.scrollY;
+          if (Math.abs(next - previous) <= 1) return;
+          previous = next;
+        }
+      };
+      await waitForScrollSettled();
       const beforeY = window.scrollY;
       trigger.click();
       await new Promise((resolve) => setTimeout(resolve, 260));
