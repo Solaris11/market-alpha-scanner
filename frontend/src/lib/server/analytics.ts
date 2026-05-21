@@ -976,7 +976,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
           GROUP BY 1, 2
         )
         SELECT
-          count(DISTINCT actor_key) FILTER (WHERE used_watchlist) AS watchlist_users,
+          count(DISTINCT actor_key) FILTER (WHERE used_watchlist OR retained_watchlist) AS watchlist_users,
           count(DISTINCT actor_key) FILTER (WHERE retained_watchlist) AS returning_watchlist_users,
           count(*) FILTER (WHERE retained_watchlist) AS retained_sessions,
           COALESCE(sum(watchlist_actions), 0) AS watchlist_actions

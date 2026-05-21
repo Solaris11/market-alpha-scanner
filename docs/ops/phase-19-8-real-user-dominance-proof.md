@@ -119,7 +119,38 @@ Local validation completed:
 - `npx pyright . --pythonpath .venv/bin/python --warnings` passed with 0 errors.
 - `git diff --check` passed.
 
-Production validation is pending in this sprint run.
+Production validation completed:
+
+- Pulled `main` on the Linux production host.
+- Rebuilt and restarted `market-alpha-frontend`.
+- Container reported `healthy`.
+- `/api/health`: 200.
+- `/api/health/deep`: 200.
+- `/terminal`: 200.
+- `/dashboard`: 200.
+- `/discover`: 200.
+- unauthenticated `/api/admin/analytics?range=30d`: 401, expected for admin-protected analytics.
+- unauthenticated `/admin/analytics`: 404, expected route hiding for unauthenticated admin access.
+
+Production telemetry sample observed for the last 30 days:
+
+- total events: 13,757
+- active actors: 751
+- sessions: 1,663
+- DAU / WAU: 106 / 393
+- first useful actions: 103
+- scanner usage: 89
+- replay usage: 7
+- strategy usage: 66
+- feed engagement: 0
+- watchlist actions: 5
+- notification engagement: 2
+- friction events: 14
+- sticky sessions: 121
+- mobile events: 7,817
+- mobile friction: 7
+
+The production sample has meaningful event depth, but it does not prove real-user dominance yet. Feed engagement, notification usefulness, replay depth, watchlist retention, and workflow stickiness remain below the proof bar.
 
 ## Final Verdict
 
