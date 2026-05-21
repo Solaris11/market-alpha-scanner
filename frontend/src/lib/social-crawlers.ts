@@ -10,12 +10,15 @@ const PUBLIC_SOCIAL_PREVIEW_PATHS = new Set([
   "/intelligence",
   "/intelligence/shock-opportunities",
   "/intelligence/macro-regime",
+  "/feed",
+  "/macro",
+  "/market-memory",
   "/robots.txt",
   "/og-image.png",
   "/og-image.svg",
 ]);
 const PUBLIC_SOCIAL_PREVIEW_PREFIXES = ["/symbol/", "/intelligence/why-wait/"] as const;
-const STATIC_SOCIAL_PREVIEW_PATHS = new Set(["/", "/pricing", "/features", "/how-it-works", "/faq", "/intelligence", "/intelligence/shock-opportunities", "/intelligence/macro-regime"]);
+const STATIC_SOCIAL_PREVIEW_PATHS = new Set(["/", "/pricing", "/features", "/how-it-works", "/faq", "/intelligence", "/intelligence/shock-opportunities", "/intelligence/macro-regime", "/feed", "/macro", "/market-memory"]);
 
 export function isSocialCrawlerUserAgent(userAgent: string | null | undefined): boolean {
   return SOCIAL_CRAWLER_USER_AGENT.test(userAgent ?? "");

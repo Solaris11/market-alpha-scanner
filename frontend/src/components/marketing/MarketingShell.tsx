@@ -6,11 +6,11 @@ export const APP_URL = "/terminal";
 export const SITE_URL = "/";
 
 const navItems = [
-  { href: "/intelligence", label: "Intelligence" },
+  { href: "/feed", label: "Feed" },
+  { href: "/macro", label: "Macro" },
+  { href: "/market-memory", label: "Memory" },
   { href: "/#features", label: "Features" },
   { href: "/#pricing", label: "Pricing" },
-  { href: "/#reviews", label: "Beta Feedback" },
-  { href: "/#faq", label: "FAQ" },
 ] as const;
 
 export function MarketingShell({ children }: { children: React.ReactNode }) {
@@ -65,9 +65,10 @@ export function MarketingFooter() {
         <FooterGroup
           title="Product"
           links={[
-            ["Intelligence", "/intelligence"],
+            ["Intelligence Feed", "/feed"],
+            ["Market Memory", "/market-memory"],
             ["Shock Research", "/intelligence/shock-opportunities"],
-            ["Macro Regime", "/intelligence/macro-regime"],
+            ["Macro Regime", "/macro"],
             ["Features", "/features"],
             ["How It Works", "/how-it-works"],
             ["Pricing", "/pricing"],

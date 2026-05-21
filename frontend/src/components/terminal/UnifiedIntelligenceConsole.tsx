@@ -393,7 +393,7 @@ function buildCinematicTerminalClusters(consoleModel: ReturnType<typeof buildUni
         metricFactor(fragility, "amber"),
         metricFactor(asymmetry, "emerald"),
       ].filter((factor): factor is ScoreFactor => Boolean(factor)),
-      href: "/intelligence/macro-regime",
+      href: "/macro",
       icon: <BarChart3 className="h-6 w-6" />,
       items: [
         ...briefingsToClusterItems(consoleModel.eventPressure, "amber"),
@@ -976,7 +976,7 @@ function buildSimpleHomeZones(consoleModel: ReturnType<typeof buildUnifiedIntell
         metricFactor(fragilityMetric, "amber"),
         metricFactor(asymmetryMetric, "emerald"),
       ].filter((factor): factor is ScoreFactor => Boolean(factor)),
-      href: "/intelligence/macro-regime",
+      href: "/macro",
       icon: <BarChart3 className="h-6 w-6" />,
       id: "macro-pressure",
       label: "Macro Pressure",

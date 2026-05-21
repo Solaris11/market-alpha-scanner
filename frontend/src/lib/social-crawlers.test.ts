@@ -35,6 +35,9 @@ describe("social crawler allowlist", () => {
       "/intelligence",
       "/intelligence/shock-opportunities",
       "/intelligence/macro-regime",
+      "/feed",
+      "/macro",
+      "/market-memory",
       "/intelligence/why-wait/AMD",
       "/symbol/TSM",
       "/robots.txt",
@@ -71,6 +74,9 @@ describe("social crawler allowlist", () => {
     assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/", userAgent: "facebookexternalhit/1.1" }), true);
     assert.equal(shouldServeStaticSocialPreview({ method: "HEAD", pathname: "/pricing", userAgent: "meta-externalagent/1.1" }), true);
     assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/intelligence", userAgent: "facebookexternalhit/1.1" }), true);
+    assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/feed", userAgent: "facebookexternalhit/1.1" }), true);
+    assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/macro", userAgent: "facebookexternalhit/1.1" }), true);
+    assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/market-memory", userAgent: "facebookexternalhit/1.1" }), true);
     assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/intelligence/strategy-performance", userAgent: "facebookexternalhit/1.1" }), false);
     assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/symbol/AMD", userAgent: "facebookexternalhit/1.1" }), false);
     assert.equal(shouldServeStaticSocialPreview({ method: "GET", pathname: "/og-image.png", userAgent: "facebookexternalhit/1.1" }), false);

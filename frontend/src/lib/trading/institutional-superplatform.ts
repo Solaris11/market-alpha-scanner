@@ -676,7 +676,7 @@ function preferredWorkspaceId(preferences: WorkspacePreferences | null | undefin
 }
 
 function workspaceHref(id: InstitutionalWorkspaceId, symbol?: string): string {
-  if (id === "macro") return "/intelligence/macro-regime";
+  if (id === "macro") return "/macro";
   if (id === "risk_monitoring") return "/alerts";
   if (id === "watchlist_operations") return "/alerts";
   if (id === "earnings") return "/intelligence/shock-opportunities";

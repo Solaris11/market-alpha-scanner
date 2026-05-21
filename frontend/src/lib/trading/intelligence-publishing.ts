@@ -147,7 +147,7 @@ export function buildPublishedIntelligenceIndex(rows: OpportunityViewModel[], ge
     collections: [
       collection("Why WAIT Intelligence", "/intelligence/why-wait/AMD", "Explainable WAIT-state research for symbols where restraint, fragility, or macro conflict matters.", symbolPages.slice(0, 5).map((item) => item.symbol), "mixed"),
       collection("Shock Opportunity Research", "/intelligence/shock-opportunities", "Public-safe view of high-volatility and two-sided large-move history without trade-plan levels.", topShockSymbols(rows), "risk"),
-      collection("Macro Regime Intelligence", "/intelligence/macro-regime", "Current broad market state, volatility pressure, liquidity pressure, and sector leadership context.", topMacroSymbols(rows), "neutral"),
+      collection("Macro Regime Intelligence", "/macro", "Current broad market state, volatility pressure, liquidity pressure, and sector leadership context.", topMacroSymbols(rows), "neutral"),
     ],
     generatedAt,
     marketBriefing: meta.executiveBriefing.slice(0, 5).map(safeText),
@@ -263,7 +263,7 @@ function internalLinksFor(symbol: string, related: string[]): PublishedInternalL
     { description: "Symbol-level public intelligence overview.", href: `/symbol/${symbol}`, label: `${symbol} intelligence` },
     { description: "Why the system may prefer patience or confirmation.", href: `/intelligence/why-wait/${symbol}`, label: `Why WAIT on ${symbol}` },
     { description: "Market-wide high-volatility research layer.", href: "/intelligence/shock-opportunities", label: "Shock opportunity research" },
-    { description: "Broad market pressure and regime context.", href: "/intelligence/macro-regime", label: "Macro regime intelligence" },
+    { description: "Broad market pressure and regime context.", href: "/macro", label: "Macro regime intelligence" },
     ...related.slice(0, 3).map((relatedSymbol) => ({
       description: "Related symbol intelligence page.",
       href: `/symbol/${relatedSymbol}`,

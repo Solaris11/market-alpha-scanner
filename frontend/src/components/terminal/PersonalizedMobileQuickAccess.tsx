@@ -10,7 +10,7 @@ const MODULE_HREFS: Record<WorkspaceModuleId, string> = {
   best_setups: "/opportunities",
   copilot: "/terminal#copilot",
   dangerous: "/opportunities?tab=dangerous",
-  macro: "/intelligence/macro-regime",
+  macro: "/macro",
   replay: "/history",
   shock_watch: "/opportunities?tab=shock",
   watchlist: "/terminal#mobile-watchlist",
