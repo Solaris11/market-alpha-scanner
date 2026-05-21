@@ -199,14 +199,19 @@ async function exerciseChartDetail(cdp, device, route) {
       const beforeY = window.scrollY;
       button.click();
       await new Promise((resolve) => setTimeout(resolve, 260));
+      const visualScrollY = () => {
+        const lockedTop = Number.parseFloat(document.body.style.top || "0");
+        return document.body.style.position === "fixed" && Number.isFinite(lockedTop) ? Math.abs(lockedTop) : window.scrollY;
+      };
       const dialog = document.querySelector("[role='dialog']");
       const surface = document.querySelector("[data-stable-overlay-content='true']") || dialog;
       const close = dialog?.querySelector("button[aria-label*='Close']");
       const rect = surface?.getBoundingClientRect();
       const clipped = rect ? rect.left < -2 || rect.right > window.innerWidth + 2 || rect.top < -2 || rect.bottom > window.innerHeight + 2 : true;
+      const openScrollDelta = Math.abs(visualScrollY() - beforeY);
       close?.click();
       await new Promise((resolve) => setTimeout(resolve, 220));
-      return { clipped, opened: Boolean(dialog), scrollDelta: Math.abs(window.scrollY - beforeY), stillOpen: Boolean(document.querySelector("[role='dialog']")) };
+      return { clipped, opened: Boolean(dialog), scrollDelta: openScrollDelta, stillOpen: Boolean(document.querySelector("[role='dialog']")) };
     })()`,
   );
   if (result?.skipped) {
@@ -235,6 +240,10 @@ async function exerciseStableOverlay(cdp, device, route) {
       const beforeY = window.scrollY;
       trigger.click();
       await new Promise((resolve) => setTimeout(resolve, 260));
+      const visualScrollY = () => {
+        const lockedTop = Number.parseFloat(document.body.style.top || "0");
+        return document.body.style.position === "fixed" && Number.isFinite(lockedTop) ? Math.abs(lockedTop) : window.scrollY;
+      };
       const overlay = document.querySelector("[data-stable-overlay='true']");
       const surface = document.querySelector("[data-stable-overlay-content='true']");
       const close = overlay?.querySelector("button[aria-label*='Close']");
@@ -243,7 +252,7 @@ async function exerciseStableOverlay(cdp, device, route) {
       const clipped = surfaceRect ? surfaceRect.left < -2 || surfaceRect.right > window.innerWidth + 2 || surfaceRect.top < -2 || surfaceRect.bottom > window.innerHeight + 2 : true;
       const closeVisible = closeRect ? closeRect.left >= -2 && closeRect.right <= window.innerWidth + 2 && closeRect.top >= -2 && closeRect.bottom <= window.innerHeight + 2 : false;
       const opened = Boolean(overlay && surface);
-      const openScrollDelta = Math.abs(window.scrollY - beforeY);
+      const openScrollDelta = Math.abs(visualScrollY() - beforeY);
       close?.click();
       await new Promise((resolve) => setTimeout(resolve, 220));
       return {

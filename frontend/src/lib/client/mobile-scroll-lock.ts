@@ -69,6 +69,7 @@ function restoreMobileBodyScroll(snapshot: BodyScrollLockSnapshot): void {
   root.style.touchAction = snapshot.htmlTouchAction;
   window.scrollTo(0, snapshot.scrollY);
   window.requestAnimationFrame(() => window.scrollTo(0, snapshot.scrollY));
+  window.setTimeout(() => window.scrollTo(0, snapshot.scrollY), 80);
 }
 
 function getCurrentScrollY(): number {
