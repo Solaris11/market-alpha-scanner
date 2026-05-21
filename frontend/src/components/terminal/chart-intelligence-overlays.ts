@@ -540,7 +540,8 @@ function buildRangePressureSeries(candles: ChartCandle[]): ChartIndicatorPoint[]
       if (index < baselineWindow) return null;
       const baseline = average(ranges.slice(Math.max(0, index - baselineWindow), index));
       if (baseline <= 0) return null;
-      const pressure = (ranges[index]! / baseline) * candle.close;
+      const pressureRatio = ranges[index]! / baseline;
+      const pressure = candle.close + (pressureRatio - 1) * candle.close * 0.03;
       return {
         time: candle.time,
         value: Number(pressure.toFixed(4)),
