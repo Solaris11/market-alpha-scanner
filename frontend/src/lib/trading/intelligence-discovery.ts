@@ -1,4 +1,5 @@
 import type { OpportunityViewModel } from "./opportunity-view-model";
+import { formatHydrationSafeInteger } from "@/lib/ui/hydration-safe-formatters";
 
 export type DiscoveryTone = "amber" | "cyan" | "emerald" | "rose" | "violet";
 
@@ -232,7 +233,7 @@ export function buildIntelligenceDiscoverySystem(input: BuildIntelligenceDiscove
     scannerPresets,
     sectorHeatmap,
     stories,
-    summary: `Discovery is scanning ${universeCount.toLocaleString()} validated symbols across sectors, performance, risk, replay, macro, freshness, and watchlist context.`,
+    summary: `Discovery is scanning ${formatHydrationSafeInteger(universeCount)} validated symbols across sectors, performance, risk, replay, macro, freshness, and watchlist context.`,
     symbols,
     universeCount,
     watchlistCount: symbols.filter((symbol) => symbol.watchlisted).length,
@@ -565,14 +566,14 @@ function buildOrbitNodes(input: {
 }): DiscoveryOrbitNode[] {
   const watchlist = input.symbols.filter((symbol) => symbol.watchlisted);
   return [
-    node("universe", "Full Universe", input.symbols.length.toLocaleString(), average(input.symbols.map(attentionScore)), "Search every validated scanner row.", "cyan"),
-    node("sectors", "Sector Map", input.sectorHeatmap.length.toLocaleString(), average(input.sectorHeatmap.map((cluster) => cluster.averageScore)), "Sector concentration and scanner density.", "emerald"),
+    node("universe", "Full Universe", formatHydrationSafeInteger(input.symbols.length), average(input.symbols.map(attentionScore)), "Search every validated scanner row.", "cyan"),
+    node("sectors", "Sector Map", formatHydrationSafeInteger(input.sectorHeatmap.length), average(input.sectorHeatmap.map((cluster) => cluster.averageScore)), "Sector concentration and scanner density.", "emerald"),
     node("momentum", "Momentum", String(input.momentumClusters[2]?.count ?? 0), input.momentumClusters[2]?.averageScore ?? null, "Performance leadership across selected timeframes.", "emerald"),
     node("risk", "Risk Pressure", String(input.riskClusters[0]?.count ?? 0), input.riskClusters[0]?.averageScore ?? null, "Fragility, shock, and deterioration clusters.", "rose"),
     node("macro", "Macro Alignment", String(input.macroClusters[0]?.count ?? 0), input.macroClusters[0]?.averageScore ?? null, "Market context support and conflict.", "cyan"),
     node("replay", "Replay Context", String(input.macroClusters[2]?.count ?? 0), input.macroClusters[2]?.averageScore ?? null, "Replay and historical similarity support.", "violet"),
-    node("watchlist", "Watchlist", watchlist.length.toLocaleString(), average(watchlist.map(attentionScore)), "Saved symbols connected to discovery.", "amber"),
-    node("stories", "Market Stories", input.stories.length.toLocaleString(), average(input.stories.map((story) => Number.parseFloat(story.metric) || 50)), "Narrative discovery themes currently visible.", "violet"),
+    node("watchlist", "Watchlist", formatHydrationSafeInteger(watchlist.length), average(watchlist.map(attentionScore)), "Saved symbols connected to discovery.", "amber"),
+    node("stories", "Market Stories", formatHydrationSafeInteger(input.stories.length), average(input.stories.map((story) => Number.parseFloat(story.metric) || 50)), "Narrative discovery themes currently visible.", "violet"),
   ];
 }
 

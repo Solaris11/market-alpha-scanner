@@ -108,6 +108,57 @@ describe("intelligence discovery system", () => {
     assert.equal(empty.limited, true);
     assert.equal(empty.stories[0]?.title, "Limited evidence");
   });
+
+  test("keeps scanner, compare, and overlay render contracts deterministic", () => {
+    const input = {
+      generatedAt: "2026-05-19T12:00:00.000Z",
+      rows: [
+        opportunity("AMD", "Advanced Micro Devices", "Technology", { confidence_score: 72, final_score: 72, return_1d: 2.5, return_1m: 9.4, risk_pressure_score: 62, replay_similarity_score: 68 }),
+        opportunity("NVDA", "NVIDIA", "Technology", { confidence_score: 86, final_score: 86, return_1d: 1.2, return_1m: 15.1, risk_pressure_score: 54, macro_alignment_score: 74 }),
+        opportunity("TSLA", "Tesla", "Consumer Cyclical", { confidence_score: 44, final_score: 52, return_1d: -4.8, return_1m: -12.2, risk_pressure_score: 82, shock_risk_score: 78 }),
+        opportunity("XOM", "Exxon Mobil", "Energy", { confidence_score: 64, final_score: 64, return_1d: 0.7, return_1m: 3.8, macro_alignment_score: 69 }),
+      ],
+      watchlistSymbols: ["AMD", "TSLA"],
+    };
+    const first = buildIntelligenceDiscoverySystem(input);
+    const second = buildIntelligenceDiscoverySystem(input);
+
+    assert.deepEqual(first.quickFilters, second.quickFilters);
+    assert.deepEqual(first.scannerPresets, second.scannerPresets);
+    assert.deepEqual(first.comparePresets, second.comparePresets);
+    assert.deepEqual(first.orbitNodes, second.orbitNodes);
+    assert.deepEqual(first.riskClusters, second.riskClusters);
+    assert.deepEqual(first.momentumClusters, second.momentumClusters);
+    assert.equal(new Set(first.orbitNodes.map((node) => node.key)).size, first.orbitNodes.length);
+    assert.equal(new Set(first.riskClusters.map((cluster) => cluster.key)).size, first.riskClusters.length);
+  });
+
+  test("keeps responsive scanner filters and compare mode order stable", () => {
+    const system = buildIntelligenceDiscoverySystem({
+      generatedAt: "2026-05-19T12:00:00.000Z",
+      rows: [
+        opportunity("AMD", "Advanced Micro Devices", "Technology", { confidence_score: 72, return_1d: 2.5, return_1m: 9.4, risk_pressure_score: 62 }),
+        opportunity("NVDA", "NVIDIA", "Technology", { confidence_score: 86, return_1d: 1.2, return_1m: 15.1, risk_pressure_score: 54 }),
+        opportunity("TSLA", "Tesla", "Consumer Cyclical", { confidence_score: 44, fragility_score: 78, return_1d: -4.8, return_1m: -12.2, risk_pressure_score: 82 }),
+        opportunity("XOM", "Exxon Mobil", "Energy", { confidence_score: 64, return_1d: 0.7, return_1m: 3.8, macro_alignment_score: 69 }),
+      ],
+    });
+    const state = {
+      filter: "all" as const,
+      query: "",
+      sector: "ALL",
+      sort: "attention" as const,
+      timeframe: "1M" as const,
+    };
+    const first = filterDiscoverySymbols(system.symbols, state).map((symbol) => symbol.symbol);
+    const second = filterDiscoverySymbols(system.symbols, state).map((symbol) => symbol.symbol);
+    const risk = filterDiscoverySymbols(system.symbols, { ...state, filter: "risk_escalation", sort: "risk", timeframe: "1D" }).map((symbol) => symbol.symbol);
+
+    assert.deepEqual(first, second);
+    assert.deepEqual(risk, ["TSLA"]);
+    assert.ok(system.comparePresets.every((preset) => preset.symbols.length >= 2));
+    assert.ok(system.comparePresets.every((preset) => new Set(preset.symbols).size === preset.symbols.length));
+  });
 });
 
 function opportunity(symbol: string, companyName: string, sector: string, rawOverrides: Record<string, string | number | boolean | null>): OpportunityViewModel {

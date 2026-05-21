@@ -42,6 +42,7 @@ import {
 } from "@/lib/trading/intelligence-discovery";
 import { trackAnalyticsEvent, trackFirstUsefulAction } from "@/lib/client/analytics";
 import { formatMoney, formatNumber } from "@/lib/ui/formatters";
+import { formatHydrationSafeInteger, formatHydrationSafeUtcTime } from "@/lib/ui/hydration-safe-formatters";
 import { humanizeInsightText, humanizeLabel } from "@/lib/ui/labels";
 
 type DiscoveryMode = "overlay" | "page";
@@ -192,7 +193,7 @@ export function IntelligenceDiscoveryWorkspace({
                   <h2 className="mt-1 text-2xl font-black tracking-tight text-white">Explore every validated scanner row</h2>
                 </div>
                 <div className="rounded-full border border-cyan-300/20 bg-cyan-300/[0.08] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.16em] text-cyan-100">
-                  {filtered.length.toLocaleString()} / {system.universeCount.toLocaleString()} visible
+                  {formatHydrationSafeInteger(filtered.length)} / {formatHydrationSafeInteger(system.universeCount)} visible
                 </div>
               </div>
 
@@ -230,9 +231,9 @@ export function IntelligenceDiscoveryWorkspace({
               </div>
               <p className="mt-3 text-sm leading-6 text-slate-300">{humanizeInsightText(system.stories[0]?.detail ?? system.summary)}</p>
               <div className="mt-4 grid grid-cols-3 gap-2">
-                <MiniStat label="Universe" value={system.universeCount.toLocaleString()} />
-                <MiniStat label="Watch" value={system.watchlistCount.toLocaleString()} />
-                <MiniStat label="Updated" value={formatTime(system.dataTimestamp ?? system.generatedAt)} />
+                <MiniStat label="Universe" value={formatHydrationSafeInteger(system.universeCount)} />
+                <MiniStat label="Watch" value={formatHydrationSafeInteger(system.watchlistCount)} />
+                <MiniStat label="Updated" value={formatHydrationSafeUtcTime(system.dataTimestamp ?? system.generatedAt)} />
               </div>
             </div>
           </div>
@@ -317,9 +318,9 @@ function DiscoveryHero({
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-          <HeroMetric Icon={Radar} label="Universe" tone="cyan" value={system.universeCount.toLocaleString()} />
+          <HeroMetric Icon={Radar} label="Universe" tone="cyan" value={formatHydrationSafeInteger(system.universeCount)} />
           <HeroMetric Icon={Sparkles} label="Discovery score" tone="emerald" value={`${system.discoveryScore}/100`} />
-          <HeroMetric Icon={Star} label="Watchlist linked" tone="amber" value={system.watchlistCount.toLocaleString()} />
+          <HeroMetric Icon={Star} label="Watchlist linked" tone="amber" value={formatHydrationSafeInteger(system.watchlistCount)} />
         </div>
       </div>
     </div>
@@ -750,7 +751,7 @@ function ClusterDetailOverlay({ cluster, onClose }: { cluster: DiscoveryCluster 
         <div className="space-y-4">
           <PosterTrendChart label="Cluster value history" tone={cluster.tone as PosterVisualTone} values={cluster.values} />
           <div className="grid gap-2 sm:grid-cols-2">
-            <MiniStat label="Symbols" value={cluster.count.toLocaleString()} />
+            <MiniStat label="Symbols" value={formatHydrationSafeInteger(cluster.count)} />
             <MiniStat label="Avg score" value={scoreLabel(cluster.averageScore)} />
           </div>
           <div className="flex flex-wrap gap-2">
@@ -925,10 +926,4 @@ function perfTone(value: number | null): DiscoveryTone {
   if (value >= 3) return "emerald";
   if (value <= -3) return "rose";
   return "cyan";
-}
-
-function formatTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Latest";
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
