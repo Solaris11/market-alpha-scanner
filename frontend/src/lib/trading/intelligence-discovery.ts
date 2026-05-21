@@ -117,6 +117,8 @@ export type DiscoveryScannerPreset = {
   filter: DiscoveryQuickFilterKey;
   key: string;
   label: string;
+  serverSaved: boolean;
+  shortcut: string;
   sort: DiscoverySortKey;
   summary: string;
   timeframe: DiscoveryTimeframe;
@@ -485,6 +487,8 @@ function buildScannerPresets(symbols: DiscoverySymbol[]): DiscoveryScannerPreset
       filter: "best_setups",
       key: "preset-best-setups",
       label: "Best setup scanner",
+      serverSaved: true,
+      shortcut: "1",
       sort: "confidence",
       summary: "Highest setup quality with evidence, macro, replay, and controlled risk.",
       timeframe: "1M",
@@ -494,6 +498,8 @@ function buildScannerPresets(symbols: DiscoverySymbol[]): DiscoveryScannerPreset
       filter: "breakout_candidates",
       key: "preset-breakout",
       label: "Breakout pressure",
+      serverSaved: true,
+      shortcut: "2",
       sort: "breakout",
       summary: "Quiet-to-active expansion candidates with trend, volatility, replay, and macro support.",
       timeframe: "1W",
@@ -503,6 +509,8 @@ function buildScannerPresets(symbols: DiscoverySymbol[]): DiscoveryScannerPreset
       filter: "crash_risk",
       key: "preset-crash-risk",
       label: "Crash-risk scan",
+      serverSaved: true,
+      shortcut: "3",
       sort: "crash",
       summary: "Fragility, downside, shock, and volatility pressure before treating a symbol as opportunity.",
       timeframe: "1D",
@@ -512,6 +520,8 @@ function buildScannerPresets(symbols: DiscoverySymbol[]): DiscoveryScannerPreset
       filter: "money_flow",
       key: "preset-money-flow",
       label: "Money-flow leaders",
+      serverSaved: true,
+      shortcut: "4",
       sort: "money_flow",
       summary: "Fast scan for symbols where sector leadership, macro context, performance, and liquidity are aligned.",
       timeframe: "1D",
@@ -521,6 +531,8 @@ function buildScannerPresets(symbols: DiscoverySymbol[]): DiscoveryScannerPreset
       filter: "top_gainers_1d",
       key: "preset-daily-gainers",
       label: "Top gainers",
+      serverSaved: true,
+      shortcut: "5",
       sort: "performance",
       summary: "Strongest daily performers from the validated scanner universe.",
       timeframe: "1D",
@@ -530,6 +542,8 @@ function buildScannerPresets(symbols: DiscoverySymbol[]): DiscoveryScannerPreset
       filter: "top_losers_1d",
       key: "preset-daily-losers",
       label: "Top losers",
+      serverSaved: true,
+      shortcut: "6",
       sort: "weakness",
       summary: "Largest daily downside movers for fast risk review.",
       timeframe: "1D",
@@ -539,6 +553,8 @@ function buildScannerPresets(symbols: DiscoverySymbol[]): DiscoveryScannerPreset
       filter: "replay_supported",
       key: "preset-replay",
       label: "Replay-supported",
+      serverSaved: true,
+      shortcut: "7",
       sort: "replay",
       summary: "Historical similarity and replay context visible in the current packet.",
       timeframe: "1M",
@@ -548,10 +564,34 @@ function buildScannerPresets(symbols: DiscoverySymbol[]): DiscoveryScannerPreset
       filter: "macro_supported",
       key: "preset-macro",
       label: "Macro-supported",
+      serverSaved: true,
+      shortcut: "8",
       sort: "macro",
       summary: "Symbols with supportive macro alignment and market-context evidence.",
       timeframe: "1M",
       tone: "cyan",
+    },
+    {
+      filter: "volatility_expansion",
+      key: "preset-volatility",
+      label: "Volatility expansion",
+      serverSaved: true,
+      shortcut: "9",
+      sort: "breakout",
+      summary: "Fast scan for symbols where volatility or shock pressure is expanding.",
+      timeframe: "1W",
+      tone: "amber",
+    },
+    {
+      filter: "high_confidence",
+      key: "preset-high-confidence",
+      label: "High confidence",
+      serverSaved: true,
+      shortcut: "0",
+      sort: "confidence",
+      summary: "Highest confidence or conviction rows with visible evidence.",
+      timeframe: "1M",
+      tone: "emerald",
     },
   ];
 

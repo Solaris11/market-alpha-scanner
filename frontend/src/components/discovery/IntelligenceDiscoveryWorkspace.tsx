@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowRight,
   Brain,
@@ -50,9 +50,10 @@ import { trackAnalyticsEvent, trackFirstUsefulAction } from "@/lib/client/analyt
 import { formatMoney, formatNumber } from "@/lib/ui/formatters";
 import { formatHydrationSafeInteger, formatHydrationSafeUtcTime } from "@/lib/ui/hydration-safe-formatters";
 import { humanizeInsightText, humanizeLabel } from "@/lib/ui/labels";
+import { loadDiscoveryWorkflowState, saveDiscoveryWorkflowState, type DiscoveryResultDensity } from "./discovery-workflow-storage";
 
 type DiscoveryMode = "overlay" | "page";
-type ResultDensity = "cards" | "speed";
+type ResultDensity = DiscoveryResultDensity;
 type ScannerLane = {
   detail: string;
   filter: DiscoveryQuickFilterKey;
@@ -91,11 +92,19 @@ const FILTER_BEHAVIOR: Partial<Record<DiscoveryQuickFilterKey, { sort: Discovery
   risk_escalation: { sort: "risk", timeframe: "1D" },
   top_gainers_1d: { sort: "performance", timeframe: "1D" },
   top_gainers_1m: { sort: "performance", timeframe: "1M" },
+  top_gainers_1y: { sort: "performance", timeframe: "1Y" },
+  top_gainers_3m: { sort: "performance", timeframe: "3M" },
+  top_gainers_5y: { sort: "performance", timeframe: "5Y" },
+  top_gainers_6m: { sort: "performance", timeframe: "6M" },
   top_gainers_1w: { sort: "performance", timeframe: "1W" },
   top_losers_1d: { sort: "weakness", timeframe: "1D" },
   top_losers_1m: { sort: "weakness", timeframe: "1M" },
   top_losers_1w: { sort: "weakness", timeframe: "1W" },
+  high_confidence: { sort: "confidence", timeframe: "1M" },
+  fresh_setups: { sort: "freshness", timeframe: "1D" },
+  improving_conviction: { sort: "confidence", timeframe: "1W" },
   volatility_expansion: { sort: "breakout", timeframe: "1W" },
+  watchlist: { sort: "attention", timeframe: "1M" },
   weakest: { sort: "weakness", timeframe: "1M" },
 };
 
@@ -114,6 +123,7 @@ export function IntelligenceDiscoveryWorkspace({
   mode?: DiscoveryMode;
   system: IntelligenceDiscoverySystem;
 }) {
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const [filter, setFilter] = useState<DiscoveryQuickFilterKey>("all");
   const [query, setQuery] = useState("");
   const deferredQuery = useDeferredValue(query);
@@ -129,12 +139,22 @@ export function IntelligenceDiscoveryWorkspace({
   const [selectedSymbol, setSelectedSymbol] = useState<DiscoverySymbol | null>(null);
   const [selectedCluster, setSelectedCluster] = useState<DiscoveryCluster | null>(null);
   const [compareSymbols, setCompareSymbols] = useState<string[]>(system.comparePresets[0]?.symbols.slice(0, 3) ?? []);
+  const [shortlistSymbols, setShortlistSymbols] = useState<string[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [workflowLoaded, setWorkflowLoaded] = useState(false);
 
   const state: DiscoveryFilterState = { assetType, evidence, filter, marketCap, query: deferredQuery, riskBand, sector, sort, timeframe, watchlistOnly };
   const filtered = useMemo(() => filterDiscoverySymbols(system.symbols, state), [assetType, deferredQuery, evidence, filter, marketCap, riskBand, sector, sort, system.symbols, timeframe, watchlistOnly]);
+  const visibleLimit = useMemo(() => {
+    if (density === "dense") return mode === "overlay" ? 140 : 240;
+    if (density === "speed") return mode === "overlay" ? 72 : 144;
+    return mode === "overlay" ? 36 : 84;
+  }, [density, mode]);
+  const visibleSymbols = useMemo(() => filtered.slice(0, visibleLimit), [filtered, visibleLimit]);
   const sectors = useMemo(() => ["ALL", ...Array.from(new Set(system.symbols.map((symbol) => symbol.sector).filter((value): value is string => Boolean(value)))).sort()], [system.symbols]);
   const assetTypes = useMemo(() => ["ALL", ...Array.from(new Set(system.symbols.map((symbol) => symbol.assetType).filter((value): value is string => Boolean(value)))).sort()], [system.symbols]);
   const compareRows = useMemo(() => compareSymbols.map((symbol) => system.symbols.find((candidate) => candidate.symbol === symbol)).filter((value): value is DiscoverySymbol => Boolean(value)), [compareSymbols, system.symbols]);
+  const shortlistRows = useMemo(() => shortlistSymbols.map((symbol) => system.symbols.find((candidate) => candidate.symbol === symbol)).filter((value): value is DiscoverySymbol => Boolean(value)), [shortlistSymbols, system.symbols]);
   const scannerLanes = useMemo(() => buildScannerLanes(system.symbols), [system.symbols]);
   const speedLanes = useMemo(() => buildSpeedLanes(system.symbols), [system.symbols]);
   const activeAdvancedCount = [assetType !== "ALL", marketCap !== "ALL", riskBand !== "ALL", evidence !== "ALL", watchlistOnly].filter(Boolean).length;
@@ -148,10 +168,33 @@ export function IntelligenceDiscoveryWorkspace({
     tone: node.tone,
   }));
   const selectedFilter = system.quickFilters.find((item) => item.key === filter);
+  const activeSymbol = visibleSymbols[Math.min(activeIndex, Math.max(visibleSymbols.length - 1, 0))] ?? null;
 
   useEffect(() => {
     trackAnalyticsEvent("scanner_usage", { action: "open_discovery_workspace", universeCount: system.universeCount }, { source: "discovery_workspace" });
   }, [system.universeCount]);
+
+  useEffect(() => {
+    const saved = loadDiscoveryWorkflowState(typeof window === "undefined" ? null : window.localStorage, system.symbols);
+    setDensity(saved.density);
+    if (saved.compareSymbols.length) setCompareSymbols(saved.compareSymbols);
+    setShortlistSymbols(saved.shortlistSymbols);
+    setWorkflowLoaded(true);
+  }, [system.symbols]);
+
+  useEffect(() => {
+    if (!workflowLoaded) return;
+    saveDiscoveryWorkflowState(typeof window === "undefined" ? null : window.localStorage, {
+      compareSymbols,
+      density,
+      shortlistSymbols,
+      updatedAt: null,
+    });
+  }, [compareSymbols, density, shortlistSymbols, workflowLoaded]);
+
+  useEffect(() => {
+    setActiveIndex((current) => Math.min(current, Math.max(visibleSymbols.length - 1, 0)));
+  }, [visibleSymbols.length]);
 
   function toggleCompare(symbol: string): void {
     setCompareSymbols((current) => {
@@ -160,6 +203,37 @@ export function IntelligenceDiscoveryWorkspace({
       trackFirstUsefulAction("scanner_compare", { symbol }, { source: "discovery_compare", symbol });
       return [symbol, ...current].slice(0, 4);
     });
+  }
+
+  function toggleShortlist(symbol: string): void {
+    setShortlistSymbols((current) => {
+      if (current.includes(symbol)) return current.filter((item) => item !== symbol);
+      trackAnalyticsEvent("scanner_usage", { action: "shortlist_add", symbol }, { source: "discovery_shortlist", symbol });
+      trackFirstUsefulAction("scanner_shortlist", { symbol }, { source: "discovery_shortlist", symbol });
+      return [symbol, ...current].slice(0, 20);
+    });
+  }
+
+  function compareVisible(): void {
+    const symbols = visibleSymbols.slice(0, 4).map((symbol) => symbol.symbol);
+    if (!symbols.length) return;
+    setCompareSymbols(symbols);
+    trackAnalyticsEvent("scanner_usage", { action: "compare_visible", count: symbols.length }, { source: "discovery_compare" });
+  }
+
+  function shortlistVisible(): void {
+    const symbols = visibleSymbols.slice(0, 8).map((symbol) => symbol.symbol);
+    if (!symbols.length) return;
+    setShortlistSymbols((current) => uniqueSymbols([...symbols, ...current]).slice(0, 20));
+    trackAnalyticsEvent("scanner_usage", { action: "shortlist_visible", count: symbols.length }, { source: "discovery_shortlist" });
+    trackFirstUsefulAction("scanner_shortlist_visible", { count: symbols.length }, { source: "discovery_shortlist" });
+  }
+
+  function compareShortlist(): void {
+    const symbols = shortlistRows.slice(0, 4).map((symbol) => symbol.symbol);
+    if (!symbols.length) return;
+    setCompareSymbols(symbols);
+    trackAnalyticsEvent("scanner_usage", { action: "compare_shortlist", count: symbols.length }, { source: "discovery_compare" });
   }
 
   function applyScannerFilter(nextFilter: DiscoveryQuickFilterKey): void {
@@ -203,6 +277,96 @@ export function IntelligenceDiscoveryWorkspace({
     setWatchlistOnly(false);
   }
 
+  const focusSearch = useCallback(() => {
+    searchInputRef.current?.focus();
+    searchInputRef.current?.select();
+  }, []);
+
+  function cycleDensity(): void {
+    setDensity((current) => current === "dense" ? "speed" : current === "speed" ? "cards" : "dense");
+  }
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent): void {
+      const target = event.target as HTMLElement | null;
+      const tag = target?.tagName;
+      const isEditing = tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || target?.isContentEditable === true;
+      const key = event.key.toLowerCase();
+
+      if ((event.metaKey || event.ctrlKey) && key === "k") {
+        event.preventDefault();
+        focusSearch();
+        return;
+      }
+
+      if (isEditing) {
+        if (key === "escape") target?.blur();
+        return;
+      }
+
+      if (selectedSymbol || selectedCluster) return;
+
+      if (event.key === "/") {
+        event.preventDefault();
+        focusSearch();
+        return;
+      }
+
+      if (/^[0-9]$/.test(event.key)) {
+        const preset = system.scannerPresets.find((item) => item.shortcut === event.key);
+        if (preset) {
+          event.preventDefault();
+          applyScannerPreset(preset);
+        }
+        return;
+      }
+
+      if (key === "d") {
+        event.preventDefault();
+        cycleDensity();
+        return;
+      }
+
+      if (key === "c") {
+        event.preventDefault();
+        compareVisible();
+        return;
+      }
+
+      if (key === "s" && activeSymbol) {
+        event.preventDefault();
+        toggleShortlist(activeSymbol.symbol);
+        return;
+      }
+
+      if (key === "x" && activeSymbol) {
+        event.preventDefault();
+        toggleCompare(activeSymbol.symbol);
+        return;
+      }
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        setActiveIndex((current) => Math.min(current + 1, Math.max(visibleSymbols.length - 1, 0)));
+        return;
+      }
+
+      if (event.key === "ArrowUp") {
+        event.preventDefault();
+        setActiveIndex((current) => Math.max(current - 1, 0));
+        return;
+      }
+
+      if (event.key === "Enter" && activeSymbol) {
+        event.preventDefault();
+        setSelectedSymbol(activeSymbol);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeSymbol, focusSearch, selectedCluster, selectedSymbol, system.scannerPresets, visibleSymbols.length]);
+
   return (
     <section className={`tv-discovery-system ${mode === "overlay" ? "space-y-4" : "space-y-6"}`} data-discovery-workspace="true">
       <DiscoveryHero
@@ -217,6 +381,20 @@ export function IntelligenceDiscoveryWorkspace({
         <LimitedDiscoveryState system={system} />
       ) : (
         <>
+          <ScannerWorkflowCommandBar
+            activeSymbol={activeSymbol}
+            compareCount={compareRows.length}
+            density={density}
+            filteredCount={filtered.length}
+            onCompareVisible={compareVisible}
+            onCycleDensity={cycleDensity}
+            onFocusSearch={focusSearch}
+            onShortlistVisible={shortlistVisible}
+            presets={system.scannerPresets}
+            shortlistCount={shortlistRows.length}
+            visibleCount={visibleSymbols.length}
+          />
+
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
             <div className="poster-panel overflow-hidden rounded-3xl border border-cyan-300/16 bg-slate-950/52 p-4 shadow-2xl shadow-cyan-950/10">
               <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -237,6 +415,7 @@ export function IntelligenceDiscoveryWorkspace({
                     className="h-12 w-full rounded-2xl border border-cyan-300/20 bg-slate-950/70 pl-10 pr-3 text-sm font-semibold text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-200/60 focus:ring-2 focus:ring-cyan-300/15"
                     onChange={(event) => setQuery(event.currentTarget.value)}
                     placeholder="Search symbol, company, sector, setup, risk context..."
+                    ref={searchInputRef}
                     value={query}
                   />
                 </label>
@@ -314,16 +493,22 @@ export function IntelligenceDiscoveryWorkspace({
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.42fr)]">
             <SymbolResultGrid
+              activeSymbol={activeSymbol?.symbol ?? null}
               compareSymbols={compareSymbols}
               density={density}
               onDensityChange={setDensity}
               onOpen={setSelectedSymbol}
+              onToggleShortlist={toggleShortlist}
               onToggleCompare={toggleCompare}
               resultCount={filtered.length}
-              symbols={filtered.slice(0, mode === "overlay" ? 48 : 96)}
+              shortlistedSymbols={shortlistSymbols}
+              symbols={visibleSymbols}
               timeframe={timeframe}
             />
-            <CompareModePanel compareRows={compareRows} presets={system.comparePresets} setCompareSymbols={setCompareSymbols} />
+            <div className="space-y-4">
+              <ShortlistDock compareShortlist={compareShortlist} onClear={() => setShortlistSymbols([])} onOpen={setSelectedSymbol} onToggleShortlist={toggleShortlist} symbols={shortlistRows} />
+              <CompareModePanel compareRows={compareRows} onCompareShortlist={compareShortlist} onCompareVisible={compareVisible} presets={system.comparePresets} setCompareSymbols={setCompareSymbols} />
+            </div>
           </div>
         </>
       )}
@@ -384,6 +569,72 @@ function DiscoveryHero({
   );
 }
 
+function ScannerWorkflowCommandBar({
+  activeSymbol,
+  compareCount,
+  density,
+  filteredCount,
+  onCompareVisible,
+  onCycleDensity,
+  onFocusSearch,
+  onShortlistVisible,
+  presets,
+  shortlistCount,
+  visibleCount,
+}: {
+  activeSymbol: DiscoverySymbol | null;
+  compareCount: number;
+  density: ResultDensity;
+  filteredCount: number;
+  onCompareVisible: () => void;
+  onCycleDensity: () => void;
+  onFocusSearch: () => void;
+  onShortlistVisible: () => void;
+  presets: DiscoveryScannerPreset[];
+  shortlistCount: number;
+  visibleCount: number;
+}) {
+  return (
+    <section className="poster-panel rounded-3xl border border-cyan-300/16 bg-slate-950/55 p-3 shadow-2xl shadow-cyan-950/10">
+      <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-100">Scanner command layer</span>
+          <CommandChip label="Mode" value={density === "dense" ? "Dense table" : density === "speed" ? "Speed table" : "Visual cards"} />
+          <CommandChip label="Visible" value={`${formatHydrationSafeInteger(visibleCount)} / ${formatHydrationSafeInteger(filteredCount)}`} />
+          <CommandChip label="Active" value={activeSymbol?.symbol ?? "Top row"} />
+          <CommandChip label="Compare" value={formatHydrationSafeInteger(compareCount)} />
+          <CommandChip label="Shortlist" value={formatHydrationSafeInteger(shortlistCount)} />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button className="rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-300 hover:border-cyan-300/30 hover:text-cyan-100" onClick={onFocusSearch} type="button">⌘K Search</button>
+          <button className="rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-300 hover:border-cyan-300/30 hover:text-cyan-100" onClick={onCycleDensity} type="button">D Density</button>
+          <button className="rounded-2xl border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 hover:border-cyan-200/60" onClick={onCompareVisible} type="button">C Compare top</button>
+          <button className="rounded-2xl border border-amber-300/25 bg-amber-300/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-amber-100 hover:border-amber-200/60" onClick={onShortlistVisible} type="button">Shortlist top</button>
+        </div>
+      </div>
+      <div className="mt-3 flex snap-x gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-mobile-gesture-ignore="true">
+        {presets.slice(0, 10).map((preset) => (
+          <span className={`shrink-0 snap-start rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${TONE_CLASS[preset.tone].border} ${TONE_CLASS[preset.tone].bg} ${TONE_CLASS[preset.tone].text}`} key={preset.key}>
+            {preset.shortcut}: {preset.label}
+          </span>
+        ))}
+        <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">↑↓ select</span>
+        <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">Enter detail</span>
+        <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">X compare</span>
+        <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">S shortlist</span>
+      </div>
+    </section>
+  );
+}
+
+function CommandChip({ label, value }: { label: string; value: string }) {
+  return (
+    <span className="rounded-full border border-white/10 bg-white/[0.035] px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-400">
+      {label}: <span className="font-mono text-slate-100">{value}</span>
+    </span>
+  );
+}
+
 function QuickFilterRail({
   active,
   filters,
@@ -423,8 +674,8 @@ function ScannerPresetRail({ onSelect, presets }: { onSelect: (preset: Discovery
     <div className="mt-4 rounded-[1.35rem] border border-white/10 bg-white/[0.025] p-3">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
-          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Saved scanner presets</div>
-          <div className="mt-1 text-xs text-slate-500">Fast Finviz/Trade Ideas-style discovery workflows with TradeVeto context.</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Server-side saved scan packs</div>
+          <div className="mt-1 text-xs text-slate-500">Generated on the server from validated scanner rows, then applied instantly with keyboard shortcuts.</div>
         </div>
         <Sparkles className="h-4 w-4 text-cyan-200" />
       </div>
@@ -440,9 +691,10 @@ function ScannerPresetRail({ onSelect, presets }: { onSelect: (preset: Discovery
             >
               <div className="flex items-start justify-between gap-3">
                 <div className={`text-sm font-black ${tone.text}`}>{preset.label}</div>
-                <span className="rounded-full bg-black/20 px-2 py-0.5 font-mono text-[10px] font-black text-slate-200">{preset.count}</span>
+                <span className="rounded-full bg-black/20 px-2 py-0.5 font-mono text-[10px] font-black text-slate-200">{preset.shortcut}</span>
               </div>
               <div className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-400">{preset.summary}</div>
+              <div className="mt-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{preset.count} matches · {preset.timeframe}</div>
             </button>
           );
         })}
@@ -637,21 +889,27 @@ function ScannerLaneBoard({ lanes, onSelect }: { lanes: ScannerLane[]; onSelect:
 }
 
 function SymbolResultGrid({
+  activeSymbol,
   compareSymbols,
   density,
   onOpen,
   onDensityChange,
   onToggleCompare,
+  onToggleShortlist,
   resultCount,
+  shortlistedSymbols,
   symbols,
   timeframe,
 }: {
+  activeSymbol: string | null;
   compareSymbols: string[];
   density: ResultDensity;
   onOpen: (symbol: DiscoverySymbol) => void;
   onDensityChange: (density: ResultDensity) => void;
   onToggleCompare: (symbol: string) => void;
+  onToggleShortlist: (symbol: string) => void;
   resultCount: number;
+  shortlistedSymbols: string[];
   symbols: DiscoverySymbol[];
   timeframe: DiscoveryTimeframe;
 }) {
@@ -664,6 +922,14 @@ function SymbolResultGrid({
           <div className="mt-1 text-xs text-slate-500">{formatHydrationSafeInteger(resultCount)} matching rows. Showing {formatHydrationSafeInteger(symbols.length)} for fast rendering.</div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            className={`grid h-10 w-10 place-items-center rounded-2xl border transition ${density === "dense" ? "border-cyan-300/35 bg-cyan-300/15 text-cyan-100" : "border-white/10 bg-white/[0.035] text-slate-500 hover:text-cyan-100"}`}
+            onClick={() => onDensityChange("dense")}
+            title="Dense scanner"
+            type="button"
+          >
+            <span className="font-mono text-[10px] font-black">24</span>
+          </button>
           <button
             className={`grid h-10 w-10 place-items-center rounded-2xl border transition ${density === "speed" ? "border-cyan-300/35 bg-cyan-300/15 text-cyan-100" : "border-white/10 bg-white/[0.035] text-slate-500 hover:text-cyan-100"}`}
             onClick={() => onDensityChange("speed")}
@@ -683,12 +949,12 @@ function SymbolResultGrid({
         </div>
       </div>
       {symbols.length ? (
-        density === "speed" ? (
-          <RapidScannerTable compareSymbols={compareSymbols} onOpen={onOpen} onToggleCompare={onToggleCompare} symbols={symbols} timeframe={timeframe} />
+        density === "speed" || density === "dense" ? (
+          <RapidScannerTable activeSymbol={activeSymbol} compact={density === "dense"} compareSymbols={compareSymbols} onOpen={onOpen} onToggleCompare={onToggleCompare} onToggleShortlist={onToggleShortlist} shortlistedSymbols={shortlistedSymbols} symbols={symbols} timeframe={timeframe} />
         ) : (
           <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
             {symbols.map((symbol) => (
-              <DiscoverySymbolCard compareSelected={compareSymbols.includes(symbol.symbol)} key={symbol.symbol} onOpen={onOpen} onToggleCompare={onToggleCompare} symbol={symbol} timeframe={timeframe} />
+              <DiscoverySymbolCard compareSelected={compareSymbols.includes(symbol.symbol)} key={symbol.symbol} onOpen={onOpen} onToggleCompare={onToggleCompare} onToggleShortlist={onToggleShortlist} shortlisted={shortlistedSymbols.includes(symbol.symbol)} symbol={symbol} timeframe={timeframe} />
             ))}
           </div>
         )
@@ -702,21 +968,32 @@ function SymbolResultGrid({
 }
 
 function RapidScannerTable({
+  activeSymbol,
+  compact,
   compareSymbols,
   onOpen,
   onToggleCompare,
+  onToggleShortlist,
+  shortlistedSymbols,
   symbols,
   timeframe,
 }: {
+  activeSymbol: string | null;
+  compact: boolean;
   compareSymbols: string[];
   onOpen: (symbol: DiscoverySymbol) => void;
   onToggleCompare: (symbol: string) => void;
+  onToggleShortlist: (symbol: string) => void;
+  shortlistedSymbols: string[];
   symbols: DiscoverySymbol[];
   timeframe: DiscoveryTimeframe;
 }) {
+  const columns = compact
+    ? "xl:grid-cols-[2.5rem_5rem_minmax(9rem,1fr)_4.5rem_4.5rem_4.5rem_4.5rem_4.5rem_4.5rem_7rem]"
+    : "xl:grid-cols-[3rem_5.5rem_minmax(8rem,1fr)_5rem_5rem_5rem_5rem_5rem_6.5rem]";
   return (
     <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/48">
-      <div className="grid grid-cols-[3rem_5.5rem_minmax(8rem,1fr)_5rem_5rem_5rem_5rem_5rem_6.5rem] gap-2 border-b border-white/10 bg-white/[0.035] px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 max-xl:hidden">
+      <div className={`grid gap-2 border-b border-white/10 bg-white/[0.035] px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 max-xl:hidden ${columns}`}>
         <span>Rank</span>
         <span>Symbol</span>
         <span>Context</span>
@@ -725,15 +1002,18 @@ function RapidScannerTable({
         <span>Risk</span>
         <span>Macro</span>
         <span>Replay</span>
+        {compact ? <span>Fresh</span> : null}
         <span>Action</span>
       </div>
-      <div className="max-h-[44rem] overflow-y-auto [scrollbar-width:thin]">
+      <div className={`${compact ? "max-h-[56rem]" : "max-h-[44rem]"} overflow-y-auto [scrollbar-width:thin]`}>
         {symbols.map((symbol, index) => {
           const riskTone: DiscoveryTone = (symbol.risk ?? 0) >= 70 ? "rose" : (symbol.risk ?? 0) >= 55 ? "amber" : "cyan";
           const selected = compareSymbols.includes(symbol.symbol);
+          const shortlisted = shortlistedSymbols.includes(symbol.symbol);
+          const active = activeSymbol === symbol.symbol;
           return (
             <div
-              className="grid gap-2 border-b border-white/[0.06] px-3 py-3 transition hover:bg-cyan-300/[0.045] xl:grid-cols-[3rem_5.5rem_minmax(8rem,1fr)_5rem_5rem_5rem_5rem_5rem_6.5rem] xl:items-center"
+              className={`grid gap-2 border-b border-white/[0.06] px-3 transition hover:bg-cyan-300/[0.045] xl:items-center ${compact ? "py-1.5" : "py-3"} ${columns} ${active ? "bg-cyan-300/[0.07] ring-1 ring-inset ring-cyan-300/25" : ""}`}
               key={symbol.symbol}
             >
               <div className="hidden font-mono text-xs font-black text-slate-500 xl:block">{index + 1}</div>
@@ -751,7 +1031,11 @@ function RapidScannerTable({
               <ScannerCell tone={riskTone} value={scoreLabel(symbol.risk)} />
               <ScannerCell tone="cyan" value={scoreLabel(symbol.macro)} />
               <ScannerCell tone="violet" value={scoreLabel(symbol.replay)} />
+              {compact ? <ScannerCell tone="amber" value={scoreLabel(symbol.freshness)} /> : null}
               <div className="flex gap-2">
+                <button className={`h-9 rounded-xl border px-2 text-[10px] font-black uppercase tracking-[0.1em] ${shortlisted ? "border-amber-300/40 bg-amber-300/15 text-amber-100" : "border-white/10 bg-white/[0.035] text-slate-400 hover:text-amber-100"}`} onClick={() => onToggleShortlist(symbol.symbol)} type="button">
+                  ★
+                </button>
                 <button className={`h-9 flex-1 rounded-xl border px-2 text-[10px] font-black uppercase tracking-[0.1em] ${selected ? "border-cyan-300/40 bg-cyan-300/15 text-cyan-100" : "border-white/10 bg-white/[0.035] text-slate-400 hover:text-cyan-100"}`} onClick={() => onToggleCompare(symbol.symbol)} type="button">
                   {selected ? "On" : "Cmp"}
                 </button>
@@ -775,12 +1059,16 @@ function DiscoverySymbolCard({
   compareSelected,
   onOpen,
   onToggleCompare,
+  onToggleShortlist,
+  shortlisted,
   symbol,
   timeframe,
 }: {
   compareSelected: boolean;
   onOpen: (symbol: DiscoverySymbol) => void;
   onToggleCompare: (symbol: string) => void;
+  onToggleShortlist: (symbol: string) => void;
+  shortlisted: boolean;
   symbol: DiscoverySymbol;
   timeframe: DiscoveryTimeframe;
 }) {
@@ -813,6 +1101,9 @@ function DiscoverySymbolCard({
         <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-400">{humanizeInsightText(symbol.reason)}</p>
       </button>
       <div className="mt-3 flex items-center justify-between gap-2">
+        <button className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] ${shortlisted ? "border-amber-300/40 bg-amber-300/15 text-amber-100" : "border-white/10 bg-white/[0.035] text-slate-400 hover:text-amber-100"}`} onClick={() => onToggleShortlist(symbol.symbol)} type="button">
+          {shortlisted ? "Shortlisted" : "Shortlist"}
+        </button>
         <button className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] ${compareSelected ? "border-cyan-300/40 bg-cyan-300/15 text-cyan-100" : "border-white/10 bg-white/[0.035] text-slate-400 hover:text-cyan-100"}`} onClick={() => onToggleCompare(symbol.symbol)} type="button">
           {compareSelected ? "Comparing" : "Compare"}
         </button>
@@ -824,12 +1115,64 @@ function DiscoverySymbolCard({
   );
 }
 
+function ShortlistDock({
+  compareShortlist,
+  onClear,
+  onOpen,
+  onToggleShortlist,
+  symbols,
+}: {
+  compareShortlist: () => void;
+  onClear: () => void;
+  onOpen: (symbol: DiscoverySymbol) => void;
+  onToggleShortlist: (symbol: string) => void;
+  symbols: DiscoverySymbol[];
+}) {
+  return (
+    <section className="poster-panel rounded-3xl border border-amber-300/16 bg-slate-950/50 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-200">Rapid shortlist</div>
+          <h3 className="text-lg font-black text-white">Research queue</h3>
+        </div>
+        <div className="font-mono text-lg font-black text-amber-100">{symbols.length}</div>
+      </div>
+      {symbols.length ? (
+        <>
+          <div className="mt-3 grid gap-2">
+            {symbols.slice(0, 8).map((symbol) => (
+              <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.035] p-2" key={symbol.symbol}>
+                <button className="min-w-0 text-left" data-stable-overlay-trigger="true" onClick={() => onOpen(symbol)} type="button">
+                  <div className="font-mono text-sm font-black text-white">{symbol.symbol}</div>
+                  <div className="truncate text-[10px] text-slate-500">{symbol.sector ?? symbol.setupType}</div>
+                </button>
+                <span className={`font-mono text-xs font-black ${TONE_CLASS[perfTone(symbol.performance["1D"])].text}`}>{formatSigned(symbol.performance["1D"])}</span>
+                <button className="grid h-8 w-8 place-items-center rounded-xl border border-amber-300/25 bg-amber-300/10 text-amber-100" onClick={() => onToggleShortlist(symbol.symbol)} type="button">×</button>
+              </div>
+            ))}
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <button className="rounded-2xl border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100" onClick={compareShortlist} type="button">Compare shortlist</button>
+            <button className="rounded-2xl border border-white/10 bg-white/[0.035] px-3 py-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 hover:text-slate-100" onClick={onClear} type="button">Clear</button>
+          </div>
+        </>
+      ) : (
+        <div className="mt-3 rounded-2xl border border-dashed border-white/10 bg-slate-950/45 p-4 text-xs leading-5 text-slate-400">Use `S`, the star button, or Shortlist top to build a fast research queue without leaving the scanner.</div>
+      )}
+    </section>
+  );
+}
+
 function CompareModePanel({
   compareRows,
+  onCompareShortlist,
+  onCompareVisible,
   presets,
   setCompareSymbols,
 }: {
   compareRows: DiscoverySymbol[];
+  onCompareShortlist: () => void;
+  onCompareVisible: () => void;
   presets: IntelligenceDiscoverySystem["comparePresets"];
   setCompareSymbols: (symbols: string[]) => void;
 }) {
@@ -845,12 +1188,19 @@ function CompareModePanel({
         </div>
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
+        <button className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100" onClick={onCompareVisible} type="button">
+          Compare visible
+        </button>
+        <button className="rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-amber-100" onClick={onCompareShortlist} type="button">
+          Compare shortlist
+        </button>
         {presets.map((preset) => (
           <button className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] ${TONE_CLASS[preset.tone].border} ${TONE_CLASS[preset.tone].bg} ${TONE_CLASS[preset.tone].text}`} key={preset.key} onClick={() => setCompareSymbols(preset.symbols.slice(0, 4))} type="button">
             {preset.label}
           </button>
         ))}
       </div>
+      {compareRows.length >= 2 ? <CompareMatrix rows={compareRows} /> : null}
       <div className="mt-4 grid gap-3">
         {compareRows.length ? compareRows.map((symbol) => (
           <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3" key={symbol.symbol}>
@@ -877,6 +1227,40 @@ function CompareModePanel({
         )}
       </div>
     </section>
+  );
+}
+
+function CompareMatrix({ rows }: { rows: DiscoverySymbol[] }) {
+  const metrics: Array<{ key: string; label: string; tone: DiscoveryTone; value: (symbol: DiscoverySymbol) => number | null }> = [
+    { key: "confidence", label: "Confidence", tone: "emerald", value: (symbol) => symbol.confidence ?? symbol.conviction },
+    { key: "risk", label: "Risk", tone: "rose", value: (symbol) => symbol.risk },
+    { key: "macro", label: "Macro", tone: "cyan", value: (symbol) => symbol.macro },
+    { key: "replay", label: "Replay", tone: "violet", value: (symbol) => symbol.replay },
+    { key: "1d", label: "1D", tone: "emerald", value: (symbol) => symbol.performance["1D"] },
+    { key: "1m", label: "1M", tone: "cyan", value: (symbol) => symbol.performance["1M"] },
+  ];
+
+  return (
+    <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45">
+      <div className="grid border-b border-white/10 bg-white/[0.035] text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" style={{ gridTemplateColumns: `8rem repeat(${rows.length}, minmax(4.25rem, 1fr))` }}>
+        <div className="px-3 py-2">Metric</div>
+        {rows.map((symbol) => <div className="px-3 py-2 font-mono text-slate-300" key={symbol.symbol}>{symbol.symbol}</div>)}
+      </div>
+      {metrics.map((metric) => {
+        const values = rows.map(metric.value);
+        const leader = leaderIndex(values, metric.key === "risk");
+        return (
+          <div className="grid border-b border-white/[0.06] text-xs last:border-b-0" key={metric.key} style={{ gridTemplateColumns: `8rem repeat(${rows.length}, minmax(4.25rem, 1fr))` }}>
+            <div className="px-3 py-2 font-semibold text-slate-400">{metric.label}</div>
+            {values.map((value, index) => (
+              <div className={`px-3 py-2 font-mono font-black ${index === leader ? TONE_CLASS[metric.tone].text : "text-slate-500"}`} key={`${metric.key}-${rows[index]?.symbol ?? index}`}>
+                {metric.key === "1d" || metric.key === "1m" ? formatSigned(value) : scoreLabel(value)}
+              </div>
+            ))}
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -1232,6 +1616,31 @@ function average(values: Array<number | null | undefined>): number {
   const finite = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
   if (!finite.length) return 0;
   return finite.reduce((total, value) => total + value, 0) / finite.length;
+}
+
+function uniqueSymbols(symbols: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of symbols) {
+    const symbol = value.trim().toUpperCase();
+    if (!symbol || seen.has(symbol)) continue;
+    seen.add(symbol);
+    result.push(symbol);
+  }
+  return result;
+}
+
+function leaderIndex(values: Array<number | null>, lowerIsBetter: boolean): number {
+  let bestIndex = -1;
+  let bestValue = lowerIsBetter ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY;
+  values.forEach((value, index) => {
+    if (value === null || !Number.isFinite(value)) return;
+    if (lowerIsBetter ? value < bestValue : value > bestValue) {
+      bestValue = value;
+      bestIndex = index;
+    }
+  });
+  return bestIndex;
 }
 
 function scoreLabel(value: number | null | undefined): string {

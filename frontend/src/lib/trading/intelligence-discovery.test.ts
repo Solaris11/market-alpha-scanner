@@ -66,6 +66,7 @@ describe("intelligence discovery system", () => {
     assert.equal(system.quickFilters.find((filter) => filter.key === "watchlist")?.count, 1);
     assert.equal(system.scannerPresets.some((preset) => preset.key === "preset-breakout" && preset.count === 1), true);
     assert.equal(system.scannerPresets.some((preset) => preset.key === "preset-money-flow" && preset.count === 2), true);
+    assert.equal(system.scannerPresets.every((preset) => preset.serverSaved && preset.shortcut.length > 0), true);
     assert.equal(system.comparePresets.some((preset) => preset.symbols.includes("AMD") && preset.symbols.includes("NVDA")), true);
   });
 
