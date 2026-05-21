@@ -3,6 +3,7 @@ import { filterPriceHistoryRows, isPriceHistoryPeriod, priceHistoryBounds, type 
 import { requireAdmin } from "@/lib/server/access-control";
 import { dbQuery } from "@/lib/server/db";
 import { rateLimitRequest } from "@/lib/server/request-security";
+import { getScannerSignalPriceHistoryPoints } from "@/lib/server/scanner-signal-price-history";
 import type { QueryResultRow } from "pg";
 
 type PriceHistoryPayload = {
@@ -44,23 +45,43 @@ async function fetchPriceHistory(symbol: string, period: PriceHistoryPeriod): Pr
       [cleaned],
     );
     const rows = result.rows.map(dbPriceRow);
-    const filtered = filterPriceHistoryRows(rows, period);
+    const sourceRows = rows.length ? rows : (await getScannerSignalPriceHistoryPoints(cleaned, 2400)).map(pricePointRow);
+    const filtered = filterPriceHistoryRows(sourceRows, period);
     const bounds = priceHistoryBounds(filtered);
+    const dataSource = rows.length ? "symbol_price_history" : "scanner_signal_price_history";
     return {
       ok: filtered.length > 0,
       symbol: cleaned,
       period,
       requested_period: period,
       yf_period: period,
-      yf_interval: "database",
-      interval: "database",
+      yf_interval: dataSource,
+      interval: dataSource,
       point_count: filtered.length,
       start_date: bounds.startDate,
       end_date: bounds.endDate,
       rows: filtered,
-      error: filtered.length ? undefined : "No stored price history is available for this range.",
+      error: filtered.length ? undefined : "No stored OHLC or scanner signal price history is available for this range.",
     };
   } catch {
+    const scannerTrail = await getScannerSignalPriceHistoryPoints(cleaned, 2400).catch(() => []);
+    const filtered = filterPriceHistoryRows(scannerTrail.map(pricePointRow), period);
+    if (filtered.length) {
+      const bounds = priceHistoryBounds(filtered);
+      return {
+        ok: true,
+        symbol: cleaned,
+        period,
+        requested_period: period,
+        yf_period: period,
+        yf_interval: "scanner_signal_price_history",
+        interval: "scanner_signal_price_history",
+        point_count: filtered.length,
+        start_date: bounds.startDate,
+        end_date: bounds.endDate,
+        rows: filtered,
+      };
+    }
     return {
       ok: false,
       symbol: cleaned,
@@ -82,6 +103,25 @@ function dbPriceRow(row: DbPriceRow): Record<string, unknown> {
     low: numericOrNull(row.low),
     close: numericOrNull(row.close),
     volume: numericOrNull(row.volume),
+  };
+}
+
+function pricePointRow(point: {
+  close: number | null;
+  datetime: string;
+  high: number | null;
+  low: number | null;
+  open: number | null;
+  volume: number | null;
+}): Record<string, unknown> {
+  return {
+    close: point.close,
+    date: point.datetime,
+    datetime: point.datetime,
+    high: point.high,
+    low: point.low,
+    open: point.open,
+    volume: point.volume,
   };
 }
 

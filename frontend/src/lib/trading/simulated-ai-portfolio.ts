@@ -264,8 +264,8 @@ type SimulationObservation = {
 };
 
 const STARTING_CAPITAL = 100_000;
-const MAX_HISTORICAL_TRADES_PER_MODE = 220;
-const MAX_CLOSED_TRADES_IN_PAYLOAD = 36;
+const MAX_HISTORICAL_TRADES_PER_MODE = 520;
+const MAX_CLOSED_TRADES_IN_PAYLOAD = 80;
 
 const MODE_CONFIGS: Record<SimulatedPortfolioMode, ModeConfigInternal> = {
   conservative: {
@@ -843,7 +843,7 @@ function allocationHistoryFor(
       deployedPct: clamp(point.deployedPct, 0, 100),
       cashPct: clamp(point.cashPct, 0, 100),
     }))
-    .slice(-12);
+    .slice(-24);
 }
 
 function compareTradeExitDate(left: SimulatedPortfolioClosedTrade, right: SimulatedPortfolioClosedTrade): number {
@@ -1022,10 +1022,10 @@ function decisionReviewFor(
 function learningTimelineFor(closedTrades: SimulatedPortfolioClosedTrade[]): SimulatedPortfolioLearningTimelinePoint[] {
   if (!closedTrades.length) return [];
   const ordered = closedTrades.slice().sort((left, right) => Date.parse(left.exitDate) - Date.parse(right.exitDate));
-  const step = Math.max(1, Math.floor(ordered.length / 8));
+  const step = Math.max(1, Math.floor(ordered.length / 15));
   return ordered
     .filter((_, index) => index % step === 0 || index === ordered.length - 1)
-    .slice(-9)
+    .slice(-16)
     .map((trade) => ({
       allocationPct: trade.allocationPct,
       confidenceScore: trade.confidenceAtExit,

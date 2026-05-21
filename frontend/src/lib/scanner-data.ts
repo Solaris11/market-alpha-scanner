@@ -6,6 +6,7 @@ import { cache } from "react";
 import { parse } from "csv-parse/sync";
 import { freshnessFromTimestamp, normalizedTimestamp, unavailableFreshness } from "./data-health";
 import { dbQuery } from "./server/db";
+import { getScannerSignalPriceHistoryPoints } from "./server/scanner-signal-price-history";
 import { applyCorrectionMapFields } from "./trading/correction-map";
 import type { DataFreshnessStatus } from "./data-health";
 import type { QueryResultRow } from "pg";
@@ -1112,7 +1113,7 @@ export async function getSymbolHistoryData(): Promise<SymbolHistoryData> {
   };
 }
 
-export async function getHistorySymbolsFromSnapshots(maxSnapshots = 5): Promise<string[]> {
+export async function getHistorySymbolsFromSnapshots(maxSnapshots = 20): Promise<string[]> {
   try {
     const result = await dbQuery<DbSymbolRow>(
       `
@@ -1423,7 +1424,10 @@ export async function getPerformanceData(options: { forwardTailRows?: number } =
       readScannerCsvWithState("analysis", "signal_lifecycle_summary.csv"),
       readScannerCsvWithState("analysis", "auto_calibration_recommendations.csv"),
     ]);
-    return { ...dbPerformance, lifecycle, lifecycleSummary, autoCalibration };
+    const lifecycleFallback = lifecycleRowsFromForwardReturns(dbPerformance.forwardReturns.rows);
+    const lifecycleData = lifecycle.rows.length ? lifecycle : rowsToCsvFileData(lifecycleFallback);
+    const lifecycleSummaryData = lifecycleSummary.rows.length ? lifecycleSummary : rowsToCsvFileData(lifecycleSummaryRows(lifecycleFallback));
+    return { ...dbPerformance, lifecycle: lifecycleData, lifecycleSummary: lifecycleSummaryData, autoCalibration };
   }
 
   if (!allowScannerCsvFallback("performance summary DB read unavailable")) {
@@ -1445,6 +1449,96 @@ export async function getPerformanceData(options: { forwardTailRows?: number } =
     readScannerCsvWithState("analysis", "auto_calibration_recommendations.csv"),
   ]);
   return { summary, forwardReturns, lifecycle, lifecycleSummary, autoCalibration };
+}
+
+function lifecycleRowsFromForwardReturns(rows: CsvRow[]): CsvRow[] {
+  const lifecycleRows: CsvRow[] = [];
+  for (const row of rows) {
+    const returnPct = finiteCsvNumber(row.return_pct ?? row.forward_return);
+    const symbol = cleanCsvText(row.symbol);
+    const signalDate = cleanCsvText(row.signal_date ?? row.timestamp_utc ?? row.created_at ?? row.date);
+    if (returnPct === null || !symbol || !signalDate) continue;
+    const status = lifecycleStatusFromReturn(returnPct);
+    lifecycleRows.push({
+      ...row,
+      action: row.action ?? row.final_decision ?? row.rating ?? "COMPLETED_EVIDENCE",
+      avg_return_pct: returnPct,
+      days_to_entry: finiteCsvNumber(row.days_to_entry) ?? 0,
+      days_to_exit: finiteCsvNumber(row.days_to_exit) ?? horizonDays(row.horizon),
+      entry_date: row.entry_date ?? signalDate,
+      max_drawdown: finiteCsvNumber(row.max_drawdown ?? row.max_drawdown_after_signal),
+      max_gain: finiteCsvNumber(row.max_gain ?? row.max_gain_after_signal),
+      return_pct: returnPct,
+      signal_date: signalDate,
+      status,
+      symbol,
+    });
+  }
+  return lifecycleRows;
+}
+
+function lifecycleSummaryRows(rows: CsvRow[]): CsvRow[] {
+  const groups = new Map<string, CsvRow[]>();
+  for (const row of rows) {
+    addLifecycleGroup(groups, "horizon", cleanCsvText(row.horizon, "unknown"), row);
+    addLifecycleGroup(groups, "decision", cleanCsvText(row.final_decision ?? row.action, "unknown"), row);
+    addLifecycleGroup(groups, "setup", cleanCsvText(row.setup_type, "unknown"), row);
+  }
+
+  return Array.from(groups.entries())
+    .map(([key, groupRows]) => {
+      const [groupType = "group", groupValue = "unknown"] = key.split(":", 2);
+      const count = groupRows.length;
+      const returns = groupRows.map((row) => finiteCsvNumber(row.return_pct)).filter((value): value is number => value !== null);
+      const daysToExit = groupRows.map((row) => finiteCsvNumber(row.days_to_exit)).filter((value): value is number => value !== null);
+      const statusCount = (status: string) => groupRows.filter((row) => cleanCsvText(row.status).toUpperCase() === status).length;
+      return {
+        avg_days_to_entry: 0,
+        avg_days_to_exit: meanNumber(daysToExit),
+        avg_return_pct: meanNumber(returns),
+        count,
+        entry_reached_rate: 1,
+        expired_rate: count ? statusCount("EXPIRED") / count : 0,
+        group_type: groupType,
+        group_value: groupValue,
+        open_rate: 0,
+        stop_hit_rate: count ? statusCount("STOP_HIT") / count : 0,
+        target_hit_rate: count ? statusCount("TARGET_HIT") / count : 0,
+      };
+    })
+    .sort((left, right) => Number(right.count ?? 0) - Number(left.count ?? 0))
+    .slice(0, 120);
+}
+
+function addLifecycleGroup(groups: Map<string, CsvRow[]>, type: string, value: string, row: CsvRow): void {
+  const key = `${type}:${value || "unknown"}`;
+  const group = groups.get(key) ?? [];
+  group.push(row);
+  groups.set(key, group);
+}
+
+function lifecycleStatusFromReturn(returnPct: number): string {
+  if (returnPct >= 0.03) return "TARGET_HIT";
+  if (returnPct <= -0.03) return "STOP_HIT";
+  return "EXPIRED";
+}
+
+function horizonDays(value: unknown): number | null {
+  const text = cleanCsvText(value).toUpperCase();
+  const match = text.match(/(\d+)/);
+  if (!match) return null;
+  const parsed = Number(match[1]);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function cleanCsvText(value: unknown, fallback = ""): string {
+  const text = String(value ?? "").trim();
+  return text && !["nan", "none", "null", "undefined", "n/a", "na"].includes(text.toLowerCase()) ? text : fallback;
+}
+
+function meanNumber(values: number[]): number | null {
+  if (!values.length) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 export async function getCalibrationInsights() {
@@ -1619,17 +1713,27 @@ const getSymbolPriceHistoryCached = cache(async (symbol: string, period: string)
         close: coerceValue("close", row.close) ?? null,
         volume: coerceValue("volume", row.volume) ?? null,
       }));
-      if (period === "all") return normalized;
-      const latest = Math.max(...normalized.map((row) => Date.parse(String(row.date ?? row.datetime ?? ""))).filter(Number.isFinite));
-      const cutoff = periodCutoff(latest, period);
-      if (cutoff === null) return normalized;
-      return normalized.filter((row) => {
-        const time = Date.parse(String(row.date ?? row.datetime ?? ""));
-        return Number.isFinite(time) && time >= cutoff;
-      });
+      return filterSymbolPriceRowsByPeriod(normalized, period);
     }
   } catch {
     // CSV fallback is explicit because Postgres is the production source of truth.
+  }
+
+  const scannerTrail = await getScannerSignalPriceHistoryPoints(cleaned).catch(() => []);
+  if (scannerTrail.length) {
+    return filterSymbolPriceRowsByPeriod(
+      scannerTrail.map((point) => ({
+        close: point.close,
+        date: point.datetime,
+        datetime: point.datetime,
+        high: point.high,
+        low: point.low,
+        open: point.open,
+        source: "scanner_signal_price_history",
+        volume: point.volume,
+      })),
+      period,
+    );
   }
 
   if (!allowScannerCsvFallback(`price history DB read unavailable for ${cleaned}`)) return [];
@@ -1647,15 +1751,18 @@ const getSymbolPriceHistoryCached = cache(async (symbol: string, period: string)
     })
     .sort((a, b) => String(a.date ?? a.datetime ?? "").localeCompare(String(b.date ?? b.datetime ?? "")));
 
-  if (!normalized.length || period === "all") return normalized;
+  return filterSymbolPriceRowsByPeriod(normalized, period);
+});
 
-  const dated = normalized
+function filterSymbolPriceRowsByPeriod(rows: Record<string, ScannerScalar>[], period: string): Record<string, ScannerScalar>[] {
+  if (!rows.length || period === "all") return rows;
+  const dated = rows
     .map((row) => ({ row, time: Date.parse(String(row.date ?? row.datetime ?? "")) }))
-    .filter((item) => Number.isFinite(item.time));
-  if (!dated.length) return normalized;
+    .filter((item): item is { row: Record<string, ScannerScalar>; time: number } => Number.isFinite(item.time));
+  if (!dated.length) return rows;
 
   const latest = Math.max(...dated.map((item) => item.time));
   const cutoff = periodCutoff(latest, period);
-  if (cutoff === null) return normalized;
+  if (cutoff === null) return rows;
   return dated.filter((item) => item.time >= cutoff).map((item) => item.row);
-});
+}

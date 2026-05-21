@@ -65,7 +65,7 @@ export class ScannerDataAdapter implements DataServiceAdapter {
 
   async getSignalHistory(symbol: string): Promise<SignalHistoryPoint[]> {
     const [rows, safety] = await Promise.all([getSymbolHistoryForSymbol(symbol), getCurrentScanSafety()]);
-    return applyStaleDataSafetyToRows(rows, safety).map((row) => historyPointFromRow(row, new Date().toISOString())).slice(-40);
+    return applyStaleDataSafetyToRows(rows, safety).map((row) => historyPointFromRow(row, new Date().toISOString())).slice(-120);
   }
 
   async getTerminalSnapshot(): Promise<TerminalSnapshot> {

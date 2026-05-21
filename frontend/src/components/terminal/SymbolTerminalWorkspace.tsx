@@ -158,6 +158,10 @@ export function SymbolTerminalWorkspace({
   const openPaper = symbolPositions.filter((position) => position.status === "OPEN");
   const symbolEvents = paperEvents.filter((event) => event.symbol.toUpperCase() === symbol).slice(0, 12);
   const candles = useMemo(() => rowsToCandles(priceSeries), [priceSeries]);
+  const usesScannerSignalPriceTrail = useMemo(
+    () => priceSeries.some((point) => String(point.source ?? "") === "scanner_signal_price_history"),
+    [priceSeries],
+  );
   const chartSignals = useMemo(() => {
     if (!candles.length) return undefined;
     const markers = buildChartSignalMarkers(history, row, dataFreshness, marketMemory, candles[candles.length - 1]?.time ?? null);
@@ -274,8 +278,10 @@ export function SymbolTerminalWorkspace({
         <div className="mt-5">
           <SymbolChart
             candles={candles.length ? candles : undefined}
-            dataSource="scanner validated OHLC history"
-            interpretation={`${symbol} price history is shown with real stored candles. Use it with decision quality, risk pressure, replay context, and market regime before interpreting the setup.`}
+            dataSource={usesScannerSignalPriceTrail ? "scanner signal price trail" : "scanner validated OHLC history"}
+            interpretation={usesScannerSignalPriceTrail
+              ? `${symbol} chart is using real stored scanner price observations because full OHLC history is not populated yet. Use it as sparse signal-evolution context, not a complete tape.`
+              : `${symbol} price history is shown with real stored candles. Use it with decision quality, risk pressure, replay context, and market regime before interpreting the setup.`}
             lastUpdated={typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null}
             showHistoricalSignals={showHistoricalMarkers}
             showResearchLevelsToggle

@@ -2,6 +2,7 @@ import "server-only";
 
 import type { QueryResultRow } from "pg";
 import { dbQuery } from "@/lib/server/db";
+import { getScannerSignalPriceHistoryPoints } from "@/lib/server/scanner-signal-price-history";
 import type { InteractiveChartPacket, InteractivePricePoint, MarketChartHubItem } from "@/lib/interactive-chart-data";
 
 type DbPriceRow = QueryResultRow & {
@@ -42,6 +43,10 @@ export async function getValidatedPriceHistory(symbol: string, maxRows = 1600): 
       [cleaned, maxRows],
     );
     const rows = result.rows.map(dbPriceRow).reverse();
+    if (!rows.length) {
+      const scannerTrail = await getScannerSignalPriceHistoryPoints(cleaned, maxRows).catch(() => []);
+      if (scannerTrail.length) return packetFromRows(cleaned, "scanner_signal_price_history", scannerTrail);
+    }
     const first = rows[0] ?? null;
     const last = rows[rows.length - 1] ?? null;
     return {
@@ -55,6 +60,8 @@ export async function getValidatedPriceHistory(symbol: string, maxRows = 1600): 
       symbol: cleaned,
     };
   } catch {
+    const scannerTrail = await getScannerSignalPriceHistoryPoints(cleaned, maxRows).catch(() => []);
+    if (scannerTrail.length) return packetFromRows(cleaned, "scanner_signal_price_history", scannerTrail);
     return emptyPacket(cleaned, "Price history is unavailable.");
   }
 }
@@ -80,6 +87,20 @@ function emptyPacket(symbol: string, error: string): InteractiveChartPacket {
     pointCount: 0,
     rows: [],
     startDate: null,
+    symbol,
+  };
+}
+
+function packetFromRows(symbol: string, dataSource: string, rows: InteractivePricePoint[]): InteractiveChartPacket {
+  const first = rows[0] ?? null;
+  const last = rows[rows.length - 1] ?? null;
+  return {
+    dataSource,
+    endDate: last?.date ?? null,
+    lastUpdated: last?.datetime ?? null,
+    pointCount: rows.length,
+    rows,
+    startDate: first?.date ?? null,
     symbol,
   };
 }
