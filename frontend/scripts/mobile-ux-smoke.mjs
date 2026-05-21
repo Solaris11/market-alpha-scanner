@@ -13,6 +13,7 @@ const ROUTES = [
   "/",
   "/terminal",
   "/dashboard",
+  "/discover",
   "/opportunities",
   "/symbol/AMD",
   "/alerts",
@@ -22,6 +23,7 @@ const ROUTES = [
   "/strategy-labs",
   "/mobile",
 ];
+const IN_APP_BROWSER_ROUTES = ["/", "/terminal", "/discover", "/symbol/AMD", "/paper", "/mobile"];
 const DEVICES = [
   {
     height: 844,
@@ -39,6 +41,24 @@ const DEVICES = [
       "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
     width: 412,
   },
+  {
+    height: 844,
+    label: "facebook-ios",
+    routes: IN_APP_BROWSER_ROUTES,
+    scale: 3,
+    userAgent:
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/465.0.0.0.92;FBBV/0;FBDV/iPhone15,3;FBMD/iPhone;FBSN/iOS;FBSV/17.5;FBSS/3;FBID/phone;FBLC/en_US]",
+    width: 390,
+  },
+  {
+    height: 844,
+    label: "instagram-ios",
+    routes: IN_APP_BROWSER_ROUTES,
+    scale: 3,
+    userAgent:
+      "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 333.0.0.0.101",
+    width: 390,
+  },
 ];
 
 const failures = [];
@@ -55,7 +75,7 @@ async function main() {
   const chrome = await startChrome(chromePath);
   try {
     for (const device of DEVICES) {
-      for (const route of ROUTES) {
+      for (const route of device.routes ?? ROUTES) {
         await inspectRoute(chrome.port, base.url, device, route);
       }
     }
@@ -70,7 +90,8 @@ async function main() {
     process.exit(1);
   }
   for (const note of notes) console.log(`NOTE: ${note}`);
-  console.log(`MOBILE_UX_SMOKE_PASSED routes=${ROUTES.length} devices=${DEVICES.length} screenshots=${ARTIFACT_DIR}`);
+  const routeCount = DEVICES.reduce((total, device) => total + (device.routes ?? ROUTES).length, 0);
+  console.log(`MOBILE_UX_SMOKE_PASSED routeChecks=${routeCount} devices=${DEVICES.length} screenshots=${ARTIFACT_DIR}`);
 }
 
 async function resolveBaseUrl() {
@@ -107,10 +128,19 @@ async function inspectRoute(port, baseUrl, device, route) {
   const cdp = new CdpClient(page.webSocketDebuggerUrl);
   await cdp.ready;
   const url = `${baseUrl}${route}`;
+  const hydrationErrors = [];
   try {
     await cdp.send("Page.enable");
     await cdp.send("Runtime.enable");
     await cdp.send("Network.enable");
+    cdp.on("Runtime.consoleAPICalled", (params) => {
+      const message = consoleMessageText(params);
+      if (isHydrationMessage(message)) hydrationErrors.push(message);
+    });
+    cdp.on("Runtime.exceptionThrown", (params) => {
+      const message = String(params?.exceptionDetails?.text ?? params?.exceptionDetails?.exception?.description ?? "");
+      if (isHydrationMessage(message)) hydrationErrors.push(message);
+    });
     await cdp.send("Network.setUserAgentOverride", { userAgent: device.userAgent });
     await cdp.send("Page.addScriptToEvaluateOnNewDocument", {
       source: `(() => {
@@ -139,6 +169,9 @@ async function inspectRoute(port, baseUrl, device, route) {
     await exerciseMoreMenu(cdp, device.label, route);
     if (route === "/symbol/AMD") await exerciseChartDetail(cdp, device.label, route);
     await exerciseStableOverlay(cdp, device.label, route);
+    if (hydrationErrors.length) {
+      failures.push(`${device.label} ${route}: hydration/runtime mismatch detected: ${hydrationErrors[0].slice(0, 240)}`);
+    }
 
     const screenshot = await cdp.send("Page.captureScreenshot", { captureBeyondViewport: false, format: "png" });
     await writeFile(join(ARTIFACT_DIR, `${device.label}-${slugForRoute(route)}.png`), Buffer.from(screenshot.data, "base64"));
@@ -147,6 +180,18 @@ async function inspectRoute(port, baseUrl, device, route) {
   } finally {
     cdp.close();
   }
+}
+
+function consoleMessageText(params) {
+  const args = Array.isArray(params?.args) ? params.args : [];
+  return args
+    .map((arg) => String(arg.value ?? arg.description ?? arg.preview?.description ?? ""))
+    .filter(Boolean)
+    .join(" ");
+}
+
+function isHydrationMessage(message) {
+  return /hydration|hydrate|server rendered|client properties|text content does not match|minified react error #418/i.test(message);
 }
 
 function assertRouteMetrics(device, route, metrics) {
@@ -160,6 +205,7 @@ function assertRouteMetrics(device, route, metrics) {
   if (metrics.smallTapTargets > 0) failures.push(`${device} ${route}: ${metrics.smallTapTargets} bottom-nav tap targets below 44px`);
   if (metrics.modalOffscreen === true) failures.push(`${device} ${route}: visible dialog/sheet is clipped offscreen`);
   if (metrics.tinyChartLabels > 0) notes.push(`${device} ${route}: ${metrics.tinyChartLabels} chart labels are under 9px; verify on physical devices.`);
+  if (typeof metrics.routeLoadMs === "number" && metrics.routeLoadMs > 6_500) notes.push(`${device} ${route}: route load reported ${metrics.routeLoadMs}ms; inspect production performance trace.`);
 }
 
 async function exerciseMoreMenu(cdp, device, route) {
@@ -301,6 +347,7 @@ function mobileMetricsExpression() {
   return `(() => {
     const root = document.documentElement;
     const body = document.body;
+    const navigation = performance.getEntriesByType("navigation")[0];
     const scrollWidth = Math.max(root.scrollWidth, body?.scrollWidth || 0);
     const bottomNav = document.querySelector("nav[aria-label='Primary mobile navigation']");
     const bottomNavRect = bottomNav?.getBoundingClientRect();
@@ -322,6 +369,7 @@ function mobileMetricsExpression() {
       bottomNavVisible: !bottomNavRect || (bottomNavRect.top < window.innerHeight - 8 && bottomNavRect.bottom > 8),
       horizontalOverflow: scrollWidth - window.innerWidth,
       modalOffscreen,
+      routeLoadMs: navigation ? Math.round(navigation.duration) : null,
       smallTapTargets,
       tinyChartLabels,
     };
@@ -402,6 +450,16 @@ class CdpClient {
       listeners.push(onEvent);
       this.listeners.set(method, listeners);
     });
+  }
+
+  on(method, listener) {
+    const listeners = this.listeners.get(method) ?? [];
+    listeners.push(listener);
+    this.listeners.set(method, listeners);
+    return () => {
+      const current = this.listeners.get(method) ?? [];
+      this.listeners.set(method, current.filter((item) => item !== listener));
+    };
   }
 
   close() {

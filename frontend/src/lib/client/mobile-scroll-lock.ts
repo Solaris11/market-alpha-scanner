@@ -16,12 +16,30 @@ type BodyScrollLockSnapshot = {
   scrollY: number;
 };
 
+export type MobileBodyScrollLockStyles = {
+  body: {
+    left: string;
+    overflow: string;
+    overscrollBehavior: string;
+    paddingRight: string | null;
+    position: string;
+    right: string;
+    top: string;
+    width: string;
+  };
+  root: {
+    overflow: string;
+    overscrollBehavior: string;
+  };
+};
+
 export function lockMobileBodyScroll(scrollY = getCurrentScrollY()): () => void {
   if (typeof window === "undefined" || typeof document === "undefined") return () => undefined;
 
   const body = document.body;
   const root = document.documentElement;
   const scrollbarWidth = Math.max(0, window.innerWidth - root.clientWidth);
+  const lockStyles = deriveMobileBodyScrollLockStyles(scrollY, scrollbarWidth);
   const snapshot: BodyScrollLockSnapshot = {
     bodyLeft: body.style.left,
     bodyOverflow: body.style.overflow,
@@ -38,18 +56,39 @@ export function lockMobileBodyScroll(scrollY = getCurrentScrollY()): () => void 
     scrollY,
   };
 
-  body.style.overflow = "hidden";
-  body.style.overscrollBehavior = "contain";
-  body.style.position = "fixed";
-  body.style.top = `-${scrollY}px`;
-  body.style.left = "0";
-  body.style.right = "0";
-  body.style.width = "100%";
-  if (scrollbarWidth > 0) body.style.paddingRight = `${scrollbarWidth}px`;
-  root.style.overflow = "hidden";
-  root.style.overscrollBehavior = "contain";
+  body.style.overflow = lockStyles.body.overflow;
+  body.style.overscrollBehavior = lockStyles.body.overscrollBehavior;
+  body.style.position = lockStyles.body.position;
+  body.style.top = lockStyles.body.top;
+  body.style.left = lockStyles.body.left;
+  body.style.right = lockStyles.body.right;
+  body.style.width = lockStyles.body.width;
+  if (lockStyles.body.paddingRight !== null) body.style.paddingRight = lockStyles.body.paddingRight;
+  root.style.overflow = lockStyles.root.overflow;
+  root.style.overscrollBehavior = lockStyles.root.overscrollBehavior;
 
   return () => restoreMobileBodyScroll(snapshot);
+}
+
+export function deriveMobileBodyScrollLockStyles(scrollY: number, scrollbarWidth: number): MobileBodyScrollLockStyles {
+  const safeScrollY = Number.isFinite(scrollY) ? Math.max(0, scrollY) : 0;
+  const safeScrollbarWidth = Number.isFinite(scrollbarWidth) ? Math.max(0, scrollbarWidth) : 0;
+  return {
+    body: {
+      left: "0",
+      overflow: "hidden",
+      overscrollBehavior: "contain",
+      paddingRight: safeScrollbarWidth > 0 ? `${safeScrollbarWidth}px` : null,
+      position: "fixed",
+      right: "0",
+      top: `-${safeScrollY}px`,
+      width: "100%",
+    },
+    root: {
+      overflow: "hidden",
+      overscrollBehavior: "contain",
+    },
+  };
 }
 
 function restoreMobileBodyScroll(snapshot: BodyScrollLockSnapshot): void {

@@ -257,30 +257,33 @@ export function filterDiscoverySymbols(symbols: DiscoverySymbol[], state: Discov
   const riskBand = state.riskBand ?? "ALL";
   const evidence = state.evidence ?? "ALL";
   const assetType = state.assetType ?? "ALL";
-  return rankDiscoverySymbols(
-    symbols
-      .filter((symbol) => state.sector === "ALL" || clean(symbol.sector) === state.sector)
-      .filter((symbol) => assetType === "ALL" || clean(symbol.assetType, "Unknown") === assetType)
-      .filter((symbol) => !state.watchlistOnly || symbol.watchlisted)
-      .filter((symbol) => matchesMarketCapFilter(symbol, marketCap))
-      .filter((symbol) => matchesRiskBandFilter(symbol, riskBand))
-      .filter((symbol) => matchesEvidenceFilter(symbol, evidence))
-      .filter((symbol) => {
-        if (!query) return true;
-        return [
-          symbol.symbol,
-          symbol.companyName,
-          symbol.sector,
-          symbol.assetType,
-          symbol.setupType,
-          symbol.decision,
-          symbol.reason,
-        ].some((value) => clean(value).toLowerCase().includes(query));
-      })
-      .filter((symbol) => matchesDiscoveryQuickFilter(symbol, state.filter)),
-    state.sort,
-    state.timeframe,
-  );
+  const filtered: DiscoverySymbol[] = [];
+
+  for (const symbol of symbols) {
+    if (state.sector !== "ALL" && clean(symbol.sector) !== state.sector) continue;
+    if (assetType !== "ALL" && clean(symbol.assetType, "Unknown") !== assetType) continue;
+    if (state.watchlistOnly && !symbol.watchlisted) continue;
+    if (!matchesMarketCapFilter(symbol, marketCap)) continue;
+    if (!matchesRiskBandFilter(symbol, riskBand)) continue;
+    if (!matchesEvidenceFilter(symbol, evidence)) continue;
+    if (query && !matchesDiscoveryQuery(symbol, query)) continue;
+    if (!matchesDiscoveryQuickFilter(symbol, state.filter)) continue;
+    filtered.push(symbol);
+  }
+
+  return rankDiscoverySymbols(filtered, state.sort, state.timeframe);
+}
+
+function matchesDiscoveryQuery(symbol: DiscoverySymbol, query: string): boolean {
+  return [
+    symbol.symbol,
+    symbol.companyName,
+    symbol.sector,
+    symbol.assetType,
+    symbol.setupType,
+    symbol.decision,
+    symbol.reason,
+  ].some((value) => clean(value).toLowerCase().includes(query));
 }
 
 export function rankDiscoverySymbols(symbols: DiscoverySymbol[], sort: DiscoverySortKey, timeframe: DiscoveryTimeframe): DiscoverySymbol[] {

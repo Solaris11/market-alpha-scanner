@@ -1,10 +1,10 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { DISCOVERY_OPEN_EVENT } from "@/components/discovery/DiscoveryCommandButton";
-import { IntelligenceDiscoveryWorkspace } from "@/components/discovery/IntelligenceDiscoveryWorkspace";
 import { lockMobileBodyScroll } from "@/lib/client/mobile-scroll-lock";
 import { installMobileViewportCssVars } from "@/lib/client/mobile-viewport";
 import { buildLimitedIntelligenceDiscoverySystem, type IntelligenceDiscoverySystem } from "@/lib/trading/intelligence-discovery";
@@ -15,6 +15,14 @@ type DiscoveryApiResponse = {
   ok?: boolean;
   system?: IntelligenceDiscoverySystem;
 };
+
+const LazyIntelligenceDiscoveryWorkspace = dynamic(
+  () => import("@/components/discovery/IntelligenceDiscoveryWorkspace").then((module) => module.IntelligenceDiscoveryWorkspace),
+  {
+    loading: () => <DiscoveryLoadingState />,
+    ssr: false,
+  },
+);
 
 export function GlobalIntelligenceDiscovery() {
   const [open, setOpen] = useState(false);
@@ -95,11 +103,19 @@ export function GlobalIntelligenceDiscovery() {
   useEffect(() => {
     if (loadedRef.current || open) return undefined;
     const controller = new AbortController();
-    const timeout = window.setTimeout(() => {
-      void loadDiscovery(controller.signal, false);
-    }, 1200);
+    const idleCallback = "requestIdleCallback" in window
+      ? window.requestIdleCallback(() => {
+        void loadDiscovery(controller.signal, false);
+      }, { timeout: 4_000 })
+      : null;
+    const timeout = idleCallback === null
+      ? window.setTimeout(() => {
+        void loadDiscovery(controller.signal, false);
+      }, 2_500)
+      : null;
     return () => {
-      window.clearTimeout(timeout);
+      if (idleCallback !== null && "cancelIdleCallback" in window) window.cancelIdleCallback(idleCallback);
+      if (timeout !== null) window.clearTimeout(timeout);
       controller.abort();
     };
   }, [loadDiscovery, open]);
@@ -153,20 +169,26 @@ export function GlobalIntelligenceDiscovery() {
             </header>
             <div className="tv-native-scroll tv-mobile-safe-bottom min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
               {loading && !system ? (
-                <div className="grid min-h-[55dvh] place-items-center rounded-3xl border border-cyan-300/16 bg-cyan-300/[0.05] text-center">
-                  <div>
-                    <div className="mx-auto h-12 w-12 animate-pulse rounded-full border border-cyan-300/35 bg-cyan-300/10 shadow-[0_0_48px_rgba(34,211,238,0.22)]" />
-                    <div className="mt-4 text-sm font-black uppercase tracking-[0.2em] text-cyan-100">Loading discovery universe</div>
-                    <p className="mt-2 text-xs text-slate-500">Fetching validated scanner context.</p>
-                  </div>
-                </div>
+                <DiscoveryLoadingState />
               ) : (
-                <IntelligenceDiscoveryWorkspace mode="overlay" system={system ?? buildLimitedIntelligenceDiscoverySystem(error ?? "Discovery is unavailable.")} />
+                <LazyIntelligenceDiscoveryWorkspace mode="overlay" system={system ?? buildLimitedIntelligenceDiscoverySystem(error ?? "Discovery is unavailable.")} />
               )}
             </div>
           </motion.section>
         </div>
       ) : null}
     </AnimatePresence>
+  );
+}
+
+function DiscoveryLoadingState() {
+  return (
+    <div className="grid min-h-[55dvh] place-items-center rounded-3xl border border-cyan-300/16 bg-cyan-300/[0.05] text-center">
+      <div>
+        <div className="mx-auto h-12 w-12 animate-pulse rounded-full border border-cyan-300/35 bg-cyan-300/10 shadow-[0_0_48px_rgba(34,211,238,0.22)]" />
+        <div className="mt-4 text-sm font-black uppercase tracking-[0.2em] text-cyan-100">Loading discovery universe</div>
+        <p className="mt-2 text-xs text-slate-500">Fetching validated scanner context.</p>
+      </div>
+    </div>
   );
 }

@@ -197,14 +197,14 @@ export function StableDetailOverlay({
   const isMobileSheet = mobileSheet || (typeof window !== "undefined" && window.innerWidth < 640);
   const mobileFullscreen = isMobileSheet && size === "xl";
   const backdropTransition: Transition = { duration: 0.18, ease: "easeOut" };
-  const surfaceTransition: Transition = { duration: 0.34, ease: [0.22, 1, 0.36, 1] };
+  const surfaceTransition: Transition = { duration: isMobileSheet ? 0.22 : 0.3, ease: [0.22, 1, 0.36, 1] };
   const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo): void => {
     if (!isMobileSheet || mobileFullscreen) return;
     if (info.offset.y > 96 || info.velocity.y > 720) requestClose("drag");
   };
   const mobileChromeClass = mobileFullscreen
     ? "rounded-none border-x-0 border-b-0"
-    : "rounded-t-[1.6rem]";
+    : "mx-2 mb-[max(0.5rem,env(safe-area-inset-bottom))] max-w-[calc(100vw-1rem)] rounded-[1.6rem] sm:mx-0 sm:mb-0 sm:max-w-none";
 
   return createPortal(
     <div
@@ -233,7 +233,7 @@ export function StableDetailOverlay({
         dragConstraints={{ bottom: 0, top: 0 }}
         dragElastic={0.08}
         dragMomentum={false}
-        initial={reduceMotion ? false : isMobileSheet ? { opacity: 0, scale: mobileFullscreen ? 0.992 : 1, y: mobileFullscreen ? 14 : 42 } : { opacity: 0, scale: 0.975, y: 18 }}
+        initial={reduceMotion ? false : isMobileSheet ? { opacity: 0, scale: mobileFullscreen ? 0.996 : 1, y: mobileFullscreen ? 6 : 24 } : { opacity: 0, scale: 0.975, y: 18 }}
         onDragEnd={handleDragEnd}
         transition={reduceMotion ? undefined : surfaceTransition}
       >
