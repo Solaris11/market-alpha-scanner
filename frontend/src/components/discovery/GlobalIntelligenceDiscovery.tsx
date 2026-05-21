@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { DISCOVERY_OPEN_EVENT } from "@/components/discovery/DiscoveryCommandButton";
+import { ResilienceStatusBanner } from "@/components/resilience/ResilienceStatusBanner";
 import { lockMobileBodyScroll } from "@/lib/client/mobile-scroll-lock";
 import { installMobileViewportCssVars } from "@/lib/client/mobile-viewport";
 import { buildLimitedIntelligenceDiscoverySystem, type IntelligenceDiscoverySystem } from "@/lib/trading/intelligence-discovery";
@@ -15,6 +16,9 @@ type DiscoveryApiResponse = {
   ok?: boolean;
   system?: IntelligenceDiscoverySystem;
 };
+
+const DISCOVERY_REQUEST_TIMEOUT_MS = 12_000;
+const DISCOVERY_SLOW_RESPONSE_MS = 10_000;
 
 const LazyIntelligenceDiscoveryWorkspace = dynamic(
   () => import("@/components/discovery/IntelligenceDiscoveryWorkspace").then((module) => module.IntelligenceDiscoveryWorkspace),
@@ -28,9 +32,13 @@ export function GlobalIntelligenceDiscovery() {
   const [open, setOpen] = useState(false);
   const [system, setSystem] = useState<IntelligenceDiscoverySystem | null>(null);
   const [loading, setLoading] = useState(false);
+  const [elapsedLoadingMs, setElapsedLoadingMs] = useState(0);
+  const [loadingStartedAt, setLoadingStartedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [retryAttempt, setRetryAttempt] = useState(0);
   const loadedRef = useRef(false);
   const requestRef = useRef<Promise<void> | null>(null);
+  const timeoutAbortRef = useRef(false);
   const reduceMotion = useReducedMotion();
 
   const loadDiscovery = useCallback((signal?: AbortSignal, showLoading = false): Promise<void> => {
@@ -39,7 +47,11 @@ export function GlobalIntelligenceDiscovery() {
       if (showLoading) setLoading(true);
       return requestRef.current;
     }
-    if (showLoading) setLoading(true);
+    if (showLoading) {
+      setLoading(true);
+      setElapsedLoadingMs(0);
+      setLoadingStartedAt(Date.now());
+    }
     setError(null);
     const request = fetch("/api/discovery", { cache: "no-store", signal })
       .then(async (response) => {
@@ -54,14 +66,19 @@ export function GlobalIntelligenceDiscovery() {
         loadedRef.current = Boolean(payload.ok);
       })
       .catch((reason: unknown) => {
-        if (signal?.aborted) return;
-        const message = reason instanceof Error ? reason.message : "Discovery request failed.";
+        const timedOut = timeoutAbortRef.current;
+        if (signal?.aborted && !timedOut) return;
+        const message = timedOut
+          ? "Discovery request timed out. Showing a protected scanner snapshot until the next retry succeeds."
+          : reason instanceof Error ? reason.message : "Discovery request failed.";
         setSystem(buildLimitedIntelligenceDiscoverySystem(message));
         setError(message);
       })
       .finally(() => {
         requestRef.current = null;
-        if (!signal?.aborted) setLoading(false);
+        if (!signal?.aborted || timeoutAbortRef.current) setLoading(false);
+        setLoadingStartedAt(null);
+        timeoutAbortRef.current = false;
       });
     requestRef.current = request;
     return request;
@@ -96,8 +113,15 @@ export function GlobalIntelligenceDiscovery() {
   useEffect(() => {
     if (!open || loadedRef.current) return;
     const controller = new AbortController();
-    void loadDiscovery(controller.signal, true);
-    return () => controller.abort();
+    const timeout = window.setTimeout(() => {
+      timeoutAbortRef.current = true;
+      controller.abort();
+    }, DISCOVERY_REQUEST_TIMEOUT_MS);
+    void loadDiscovery(controller.signal, true).finally(() => window.clearTimeout(timeout));
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
   }, [loadDiscovery, open]);
 
   useEffect(() => {
@@ -135,6 +159,31 @@ export function GlobalIntelligenceDiscovery() {
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!loading || loadingStartedAt === null) return undefined;
+    const updateElapsed = (): void => setElapsedLoadingMs(Date.now() - loadingStartedAt);
+    updateElapsed();
+    const interval = window.setInterval(updateElapsed, 1_000);
+    return () => window.clearInterval(interval);
+  }, [loading, loadingStartedAt]);
+
+  const retryDiscovery = useCallback(() => {
+    loadedRef.current = false;
+    requestRef.current = null;
+    timeoutAbortRef.current = false;
+    setSystem(null);
+    setError(null);
+    setRetryAttempt((attempt) => attempt + 1);
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => {
+      timeoutAbortRef.current = true;
+      controller.abort();
+    }, DISCOVERY_REQUEST_TIMEOUT_MS);
+    void loadDiscovery(controller.signal, true).finally(() => window.clearTimeout(timeout));
+  }, [loadDiscovery]);
+
+  const slowLoadingMs = loading && elapsedLoadingMs >= DISCOVERY_SLOW_RESPONSE_MS ? elapsedLoadingMs : null;
+
   return (
     <AnimatePresence>
       {open ? (
@@ -168,6 +217,15 @@ export function GlobalIntelligenceDiscovery() {
               </div>
             </header>
             <div className="tv-native-scroll tv-mobile-safe-bottom min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
+              <ResilienceStatusBanner
+                className="mb-3"
+                errorMessage={error}
+                loadingMs={slowLoadingMs}
+                onRetry={retryDiscovery}
+                partialData={Boolean(system?.limited)}
+                retryAttempt={retryAttempt}
+                surface="discovery"
+              />
               {loading && !system ? (
                 <DiscoveryLoadingState />
               ) : (

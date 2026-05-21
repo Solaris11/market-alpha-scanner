@@ -9,6 +9,7 @@ import type {
   LiveIntelligenceSystem,
   LiveOpportunityEscalation,
 } from "@/lib/trading/live-intelligence";
+import { ResilienceStatusBanner } from "@/components/resilience/ResilienceStatusBanner";
 import { formatNumber } from "@/lib/ui/formatters";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
@@ -97,6 +98,17 @@ export function LiveIntelligencePanel({
           {metrics.map((metric) => <ScoreTile inverse={metric.inverse} key={metric.label} label={metric.label} value={metric.value} />)}
         </div>
       </div>
+
+      {streamState !== "connected" || system.status === "degraded" ? (
+        <ResilienceStatusBanner
+          className="mt-4"
+          compact
+          errorMessage={streamState === "unavailable" ? (lastError ?? "Live intelligence stream is unavailable.") : null}
+          partialData={system.status === "degraded"}
+          websocketState={streamState === "connected" ? null : streamState}
+          surface="live"
+        />
+      ) : null}
 
       <div className={`mt-4 grid gap-3 ${compact ? "xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)_340px]" : "xl:grid-cols-3"}`}>
         <LiveAlertStack alerts={system.alerts} />

@@ -2,6 +2,7 @@
 
 import type { EChartsOption, EChartsType } from "echarts";
 import { useEffect, useRef, useState } from "react";
+import { ResilienceStatusBanner } from "@/components/resilience/ResilienceStatusBanner";
 
 export function PremiumEChart({
   ariaLabel,
@@ -24,6 +25,7 @@ export function PremiumEChart({
   const chartRef = useRef<EChartsType | null>(null);
   const optionRef = useRef<EChartsOption>(option);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [rendererReady, setRendererReady] = useState(false);
   const [shouldLoad, setShouldLoad] = useState(!deferUntilVisible);
 
@@ -84,7 +86,7 @@ export function PremiumEChart({
       chartRef.current?.dispose();
       chartRef.current = null;
     };
-  }, [shouldLoad]);
+  }, [loadAttempt, shouldLoad]);
 
   useEffect(() => {
     chartRef.current?.setOption(option, true);
@@ -92,8 +94,19 @@ export function PremiumEChart({
 
   if (loadError) {
     return (
-      <div className={`rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-400 ${className}`}>
-        {emptyMessage ?? loadError}
+      <div className={`rounded-xl border border-rose-300/20 bg-rose-500/[0.05] p-3 text-sm text-slate-300 ${className}`}>
+        <ResilienceStatusBanner
+          compact
+          errorMessage={emptyMessage ?? loadError}
+          onRetry={() => {
+            setLoadError(null);
+            setRendererReady(false);
+            setShouldLoad(true);
+            setLoadAttempt((attempt) => attempt + 1);
+          }}
+          retryAttempt={loadAttempt}
+          surface="chart"
+        />
       </div>
     );
   }
