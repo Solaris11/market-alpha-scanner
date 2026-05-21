@@ -29,24 +29,34 @@ Phase 19.11 adds governed failure-mode behavior for high-risk intelligence surfa
 ## QA Plan
 
 - Unit coverage for stale confidence downgrade, offline recovery, bounded retry behavior, low-bandwidth mode, and session continuity keys.
-- Local validation:
-  - `npm --prefix frontend run lint`
-  - `npm --prefix frontend test -- --runInBand`
-  - `npm --prefix frontend run build`
-  - `npm --prefix frontend audit --omit=dev`
-  - `python3 -m py_compile $(git ls-files '*.py')`
-  - `npx pyright . --pythonpath .venv/bin/python --warnings`
-  - `git diff --check`
-- Production validation:
-  - deploy latest `main`
-  - `/api/health`
-  - `/api/health/deep`
-  - route smoke for `/terminal`, `/discover`, `/scanner`, `/dashboard`, `/opportunities`, `/symbol/AMD`
+- Local validation completed:
+  - `npm --prefix frontend run lint` passed.
+  - `npm --prefix frontend test -- --runInBand` passed: 453 tests.
+  - `npm --prefix frontend run build` passed.
+  - `npm --prefix frontend audit --omit=dev` passed: 0 vulnerabilities.
+  - `python3 -m py_compile $(git ls-files '*.py')` passed.
+  - `npx pyright . --pythonpath .venv/bin/python --warnings` passed: 0 errors, 0 warnings.
+  - `git diff --check` passed.
+- Production validation completed on commit `c30b2ee`:
+  - Container health: `healthy`.
+  - `/api/health`: 200.
+  - `/api/health/deep`: 200.
+  - Route smoke: `/terminal`, `/dashboard`, `/discover`, `/scanner`, `/opportunities`, `/symbol/AMD`, `/feed`, `/history`, `/macro`, `/market-memory`, `/strategy-labs`, `/paper` all returned 200.
+  - Chrome production hydration audit: `/discover` and `/terminal` had 0 hydration / React #418 issues. One expected unauthenticated 401 resource log was observed on each route.
+  - Production API-outage simulation: `/terminal` discovery overlay showed `Recovery mode active`, confidence downgrade, retry, and preserved limited discovery snapshot.
+
+## Production Artifacts
+
+- `docs/ops/artifacts/phase-19-11-prod/terminal-desktop.png`
+- `docs/ops/artifacts/phase-19-11-prod/terminal-mobile.png`
+- `docs/ops/artifacts/phase-19-11-prod/discover-desktop.png`
+- `docs/ops/artifacts/phase-19-11-prod/discover-mobile.png`
+- `docs/ops/artifacts/phase-19-11-prod/api-outage-discovery-recovery.png`
 
 ## Remaining Risks
 
 - Physical mobile interruption testing still requires hands-on device verification for iPhone Safari, Android Chrome, Facebook in-app browser, and Instagram in-app browser.
-- API outage and slow-response chaos testing is now represented in deterministic code paths, but full production chaos testing should be repeated with controlled infrastructure throttling.
+- Full websocket-drop chaos testing should be repeated with controlled infrastructure throttling; current production QA validated the governed live degraded state code path and API-outage discovery recovery.
 
 ## Final Status
 
