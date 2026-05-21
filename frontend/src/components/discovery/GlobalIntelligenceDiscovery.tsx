@@ -138,11 +138,11 @@ export function GlobalIntelligenceDiscovery() {
   return (
     <AnimatePresence>
       {open ? (
-        <div aria-modal="true" className="fixed inset-0 z-[10040] overflow-hidden" role="dialog">
+        <div aria-modal="true" className="tv-overlay-root fixed inset-0 overflow-hidden" role="dialog">
           <motion.button
             aria-label="Close discovery"
             animate={reduceMotion ? undefined : { opacity: 1 }}
-            className="absolute inset-0 bg-slate-950/82 backdrop-blur-lg"
+            className="tv-governed-backdrop absolute inset-0"
             initial={reduceMotion ? false : { opacity: 0 }}
             onClick={() => setOpen(false)}
             transition={{ duration: 0.18 }}
@@ -150,19 +150,19 @@ export function GlobalIntelligenceDiscovery() {
           />
           <motion.section
             animate={reduceMotion ? undefined : { opacity: 1, scale: 1, y: 0 }}
-            className="tv-global-discovery-surface absolute inset-x-0 bottom-0 top-0 mx-auto flex w-full max-w-[1700px] flex-col overflow-hidden rounded-none border-cyan-300/18 bg-slate-950 shadow-2xl shadow-black/80 ring-1 ring-cyan-300/10 sm:inset-x-4 sm:bottom-4 sm:top-4 sm:rounded-[2rem] sm:border"
+            className="tv-global-discovery-surface tv-governed-overlay-surface tv-governed-discovery-surface absolute inset-x-0 bottom-0 top-0 mx-auto flex w-full max-w-[1700px] flex-col overflow-hidden rounded-none border-cyan-300/18 bg-slate-950 ring-1 ring-cyan-300/10 sm:inset-x-4 sm:bottom-4 sm:top-4 sm:rounded-[2rem] sm:border"
             data-mobile-gesture-ignore="true"
             initial={reduceMotion ? false : { opacity: 0, scale: 0.985, y: 20 }}
             transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
           >
-            <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/94 px-4 pb-3 pt-[calc(0.85rem+env(safe-area-inset-top))] backdrop-blur-xl sm:px-6 sm:pt-3">
+            <header className="tv-governed-overlay-header sticky top-0 z-10 border-b px-4 pb-3 pt-[calc(0.85rem+env(safe-area-inset-top))] backdrop-blur-xl sm:px-6 sm:pt-3">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-[10px] font-black uppercase tracking-[0.26em] text-cyan-300">Global command search</div>
                   <h2 className="mt-1 text-xl font-black tracking-tight text-white sm:text-2xl">Discover market intelligence</h2>
                   <p className="mt-1 text-xs text-slate-500">Search, scan, filter, compare, and open symbol research without leaving your current workflow.</p>
                 </div>
-                <button className="tv-mobile-touch-target grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 hover:border-cyan-300/35 hover:text-cyan-100" onClick={() => setOpen(false)} type="button">
+                <button className="tv-governed-icon-button tv-mobile-touch-target grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 hover:text-cyan-100" onClick={() => setOpen(false)} type="button">
                   <X className="h-4 w-4" />
                 </button>
               </div>

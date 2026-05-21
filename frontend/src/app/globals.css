@@ -15,10 +15,37 @@
   --tv-card-strong: rgba(8, 13, 27, 0.82);
   --tv-red: #ff4d4f;
   --tv-grid: rgba(103, 232, 249, 0.055);
+  --tv-space-1: 0.25rem;
+  --tv-space-2: 0.5rem;
+  --tv-space-3: 0.75rem;
+  --tv-space-4: 1rem;
+  --tv-space-5: 1.25rem;
+  --tv-space-6: 1.5rem;
+  --tv-radius-control: 0.9rem;
+  --tv-radius-panel: 1.25rem;
+  --tv-radius-shell: 1.75rem;
+  --tv-radius-orb: 999px;
+  --tv-border-subtle: rgba(255, 255, 255, 0.10);
+  --tv-border-emphasis: rgba(103, 232, 249, 0.22);
+  --tv-border-strong: rgba(103, 232, 249, 0.32);
+  --tv-glass-soft: rgba(255, 255, 255, 0.035);
+  --tv-glass-panel: rgba(2, 6, 23, 0.62);
+  --tv-glass-strong: rgba(2, 6, 23, 0.88);
+  --tv-shadow-panel: 0 24px 70px rgba(0, 0, 0, 0.26);
+  --tv-shadow-overlay: 0 30px 100px rgba(0, 0, 0, 0.72);
+  --tv-shadow-cinematic: 0 0 70px rgba(34, 211, 238, 0.08);
+  --tv-z-navigation: 7000;
+  --tv-z-feedback: 8200;
+  --tv-z-overlay: 10500;
+  --tv-z-critical-overlay: 11000;
+  --tv-motion-instant: 90ms;
   --tv-motion-fast: 150ms;
   --tv-motion-medium: 260ms;
   --tv-motion-slow: 520ms;
   --tv-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --tv-ease-emphasis: cubic-bezier(0.22, 1, 0.36, 1);
+  --tv-focus-ring: 0 0 0 3px rgba(34, 211, 238, 0.22);
+  --tv-focus-outline: rgba(103, 232, 249, 0.72);
   --tv-keyboard-offset: 0px;
   --tv-visual-viewport-height: 100dvh;
   --tv-visual-viewport-width: 100vw;
@@ -347,6 +374,132 @@ a {
 
 ::selection {
   background: rgba(56, 189, 248, 0.35);
+}
+
+:where(a, button, input, select, textarea, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid var(--tv-focus-outline);
+  outline-offset: 3px;
+  box-shadow: var(--tv-focus-ring);
+}
+
+:where(button, [role="button"], a, input, select, textarea) {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tv-governed-panel {
+  border-color: var(--tv-border-subtle);
+  border-radius: var(--tv-radius-panel);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.065),
+    var(--tv-shadow-panel),
+    var(--tv-shadow-cinematic);
+}
+
+.tv-governed-action,
+.tv-governed-icon-button,
+.tv-governed-scanner-row {
+  transition:
+    border-color var(--tv-motion-fast) var(--tv-ease-standard),
+    background-color var(--tv-motion-fast) var(--tv-ease-standard),
+    box-shadow var(--tv-motion-fast) var(--tv-ease-standard),
+    color var(--tv-motion-fast) var(--tv-ease-standard),
+    transform var(--tv-motion-fast) var(--tv-ease-standard);
+  touch-action: manipulation;
+}
+
+.tv-governed-action,
+.tv-governed-scanner-row {
+  min-height: 44px;
+}
+
+.tv-governed-icon-button {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+.tv-governed-action:active,
+.tv-governed-icon-button:active,
+.tv-governed-scanner-row:active {
+  transform: scale(0.985);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tv-governed-action:hover,
+  .tv-governed-icon-button:hover,
+  .tv-governed-scanner-row:hover {
+    border-color: var(--tv-border-strong);
+    background-color: rgba(34, 211, 238, 0.08);
+  }
+}
+
+.tv-governed-chart {
+  border-color: var(--tv-border-subtle);
+  border-radius: var(--tv-radius-panel);
+  background:
+    linear-gradient(rgba(103, 232, 249, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(103, 232, 249, 0.022) 1px, transparent 1px),
+    var(--tv-glass-strong);
+  background-size: 36px 36px, 36px 36px, auto;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    0 18px 54px rgba(0, 0, 0, 0.24);
+}
+
+.tv-overlay-root {
+  z-index: var(--tv-z-overlay);
+}
+
+.tv-governed-backdrop {
+  background: rgba(2, 6, 23, 0.82);
+  backdrop-filter: blur(18px);
+}
+
+.tv-governed-overlay-surface {
+  border-color: var(--tv-border-emphasis);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(34, 211, 238, 0.12), transparent 24rem),
+    radial-gradient(circle at 92% 0%, rgba(167, 139, 250, 0.10), transparent 20rem),
+    var(--tv-glass-strong);
+  box-shadow:
+    var(--tv-shadow-overlay),
+    0 0 80px rgba(34, 211, 238, 0.09);
+}
+
+.tv-governed-overlay-header {
+  background: color-mix(in srgb, var(--tv-glass-strong) 94%, black);
+  border-color: var(--tv-border-subtle);
+}
+
+.tv-governed-bottom-sheet {
+  border-top-left-radius: var(--tv-radius-shell);
+  border-top-right-radius: var(--tv-radius-shell);
+  max-height: min(calc(var(--tv-visual-viewport-height, 100dvh) - env(safe-area-inset-top) - 0.75rem), 760px);
+}
+
+.tv-governed-discovery-surface {
+  box-shadow:
+    var(--tv-shadow-overlay),
+    0 0 110px rgba(34, 211, 238, 0.10);
+}
+
+.tv-governance-tone-neutral {
+  border-color: color-mix(in srgb, var(--tv-status-neutral) 38%, transparent);
+}
+
+.tv-governance-tone-constructive {
+  border-color: color-mix(in srgb, var(--tv-status-constructive) 42%, transparent);
+}
+
+.tv-governance-tone-caution {
+  border-color: color-mix(in srgb, var(--tv-status-caution) 45%, transparent);
+}
+
+.tv-governance-tone-dangerous {
+  border-color: color-mix(in srgb, var(--tv-status-dangerous) 48%, transparent);
+}
+
+.tv-governance-tone-intelligence {
+  border-color: color-mix(in srgb, var(--tv-status-intelligence) 44%, transparent);
 }
 
 .marketing-surface {
@@ -1436,6 +1589,9 @@ html[data-tradeveto-suppress-feedback="true"] .tradeveto-beta-feedback-widget {
   }
 
   .landing-reveal,
+  .tv-governed-action,
+  .tv-governed-icon-button,
+  .tv-governed-scanner-row,
   .tv-card-motion,
   .tv-overlay-surface,
   .tv-tap-motion,

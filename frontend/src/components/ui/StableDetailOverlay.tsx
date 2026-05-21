@@ -216,13 +216,13 @@ export function StableDetailOverlay({
     <div
       aria-label={typeof title === "string" ? title : closeLabel}
       aria-modal="true"
-      className="fixed inset-0 z-[10050] flex items-end justify-center overflow-hidden p-0 sm:items-center sm:p-6"
+      className="tv-overlay-root fixed inset-0 flex items-end justify-center overflow-hidden p-0 sm:items-center sm:p-6"
       data-stable-overlay="true"
       role="dialog"
     >
       <motion.button
         aria-label={closeLabel}
-        className="tv-overlay-backdrop absolute inset-0 cursor-default bg-slate-950/78 backdrop-blur-md"
+        className="tv-overlay-backdrop tv-governed-backdrop absolute inset-0 cursor-default"
         animate={reduceMotion ? undefined : { opacity: 1 }}
         initial={reduceMotion ? false : { opacity: 0 }}
         onClick={backdropCloses ? () => requestClose("backdrop") : undefined}
@@ -230,7 +230,7 @@ export function StableDetailOverlay({
         type="button"
       />
       <motion.section
-        className={`tv-overlay-surface tv-stable-overlay-surface relative z-10 flex w-full ${WIDTH_CLASS[size]} ${mobileChromeClass} flex-col overflow-hidden border border-cyan-300/20 bg-slate-950 shadow-2xl shadow-black/75 ring-1 ring-cyan-300/10 sm:max-h-[min(92dvh,900px)] sm:rounded-[1.6rem] ${className}`}
+        className={`tv-overlay-surface tv-stable-overlay-surface tv-governed-overlay-surface ${isMobileSheet ? "tv-governed-bottom-sheet" : ""} relative z-10 flex w-full ${WIDTH_CLASS[size]} ${mobileChromeClass} flex-col overflow-hidden border bg-slate-950 ring-1 ring-cyan-300/10 sm:max-h-[min(92dvh,900px)] sm:rounded-[1.6rem] ${className}`}
         animate={reduceMotion ? undefined : { opacity: 1, scale: 1, y: 0 }}
         data-mobile-fullscreen={mobileFullscreen ? "true" : "false"}
         data-stable-overlay-content="true"
@@ -243,7 +243,7 @@ export function StableDetailOverlay({
         onDragEnd={handleDragEnd}
         transition={reduceMotion ? undefined : surfaceTransition}
       >
-        <header className="sticky top-0 z-10 border-b border-white/10 bg-slate-950/95 px-4 pb-4 pt-[calc(0.85rem+env(safe-area-inset-top))] backdrop-blur-xl sm:px-6 sm:pt-4">
+        <header className="tv-governed-overlay-header sticky top-0 z-10 border-b px-4 pb-4 pt-[calc(0.85rem+env(safe-area-inset-top))] backdrop-blur-xl sm:px-6 sm:pt-4">
           {!mobileFullscreen ? <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/20 sm:hidden" /> : null}
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -253,7 +253,7 @@ export function StableDetailOverlay({
             </div>
             <button
               aria-label={closeLabel}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100"
+              className="tv-governed-icon-button grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 hover:text-cyan-100"
               onClick={() => requestClose("x")}
               type="button"
             >

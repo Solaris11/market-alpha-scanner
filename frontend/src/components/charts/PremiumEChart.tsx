@@ -101,7 +101,7 @@ export function PremiumEChart({
   return (
     <div
       aria-label={ariaLabel}
-      className={`relative min-w-0 overflow-hidden rounded-xl border border-white/10 bg-slate-950/75 p-2 ${className}`}
+      className={`tv-governed-chart relative min-w-0 overflow-hidden rounded-xl border border-white/10 bg-slate-950/75 p-2 ${className}`}
       role="img"
     >
       <div ref={containerRef} style={{ height: `${height}px`, width: "100%" }} />
