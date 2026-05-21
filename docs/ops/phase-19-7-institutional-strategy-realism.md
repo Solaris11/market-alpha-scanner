@@ -51,6 +51,20 @@ No fake fills, fake trades, fabricated broker activity, or invented returns were
 - `npx pyright . --pythonpath .venv/bin/python --warnings` passed with 0 errors.
 - `git diff --check` passed.
 
+Production validation:
+
+- Pulled `main` on the Linux production host.
+- Rebuilt and restarted `market-alpha-frontend`.
+- Container reported `healthy`.
+- Production HEAD: `453fb42`.
+- `/api/health` returned 200.
+- `/api/health/deep` returned 200.
+- `/strategy-labs` returned 200.
+- `/paper` returned 200.
+- `/performance` returned 200.
+- `/terminal` returned 200.
+- `/dashboard` returned 200.
+
 ## Final Verdict
 
 TRADEVETO INSTITUTIONAL STRATEGY REALISM ACCOMPLISHED
