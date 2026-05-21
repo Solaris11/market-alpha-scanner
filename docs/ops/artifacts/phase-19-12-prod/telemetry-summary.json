@@ -1,0 +1,266 @@
+{
+  "generatedAt": "2026-05-21T22:41:00.910Z",
+  "summary": {
+    "events_30d": "14371",
+    "actors_30d": "811",
+    "sessions_30d": "1861",
+    "active_days": "15"
+  },
+  "topEvents": [
+    {
+      "event": "page_view",
+      "count": "3783"
+    },
+    {
+      "event": "card_click",
+      "count": "2558"
+    },
+    {
+      "event": "modal_open",
+      "count": "1663"
+    },
+    {
+      "event": "bottom_sheet_close",
+      "count": "831"
+    },
+    {
+      "event": "modal_close",
+      "count": "765"
+    },
+    {
+      "event": "workflow_visit_recorded",
+      "count": "633"
+    },
+    {
+      "event": "terminal_open",
+      "count": "607"
+    },
+    {
+      "event": "mobile_engagement",
+      "count": "552"
+    },
+    {
+      "event": "opportunities_open",
+      "count": "395"
+    },
+    {
+      "event": "symbol_open",
+      "count": "348"
+    },
+    {
+      "event": "veto_explanation_open",
+      "count": "230"
+    },
+    {
+      "event": "readiness_expand",
+      "count": "230"
+    },
+    {
+      "event": "dashboard_open",
+      "count": "211"
+    },
+    {
+      "event": "history_open",
+      "count": "196"
+    },
+    {
+      "event": "paper_trade_open",
+      "count": "190"
+    },
+    {
+      "event": "performance_open",
+      "count": "188"
+    },
+    {
+      "event": "strategy_labs_open",
+      "count": "182"
+    },
+    {
+      "event": "account_open",
+      "count": "122"
+    },
+    {
+      "event": "scanner_usage",
+      "count": "119"
+    },
+    {
+      "event": "replay_open",
+      "count": "117"
+    },
+    {
+      "event": "first_useful_action",
+      "count": "103"
+    },
+    {
+      "event": "strategy_usage",
+      "count": "75"
+    },
+    {
+      "event": "onboarding_step",
+      "count": "70"
+    },
+    {
+      "event": "workflow_continuity",
+      "count": "51"
+    },
+    {
+      "event": "back_navigation",
+      "count": "32"
+    }
+  ],
+  "dau": [
+    {
+      "date": "2026-05-07",
+      "actors": "34",
+      "events": "50"
+    },
+    {
+      "date": "2026-05-08",
+      "actors": "88",
+      "events": "260"
+    },
+    {
+      "date": "2026-05-09",
+      "actors": "42",
+      "events": "186"
+    },
+    {
+      "date": "2026-05-10",
+      "actors": "22",
+      "events": "166"
+    },
+    {
+      "date": "2026-05-11",
+      "actors": "33",
+      "events": "96"
+    },
+    {
+      "date": "2026-05-12",
+      "actors": "45",
+      "events": "268"
+    },
+    {
+      "date": "2026-05-13",
+      "actors": "68",
+      "events": "379"
+    },
+    {
+      "date": "2026-05-14",
+      "actors": "53",
+      "events": "423"
+    },
+    {
+      "date": "2026-05-15",
+      "actors": "50",
+      "events": "280"
+    },
+    {
+      "date": "2026-05-16",
+      "actors": "18",
+      "events": "131"
+    },
+    {
+      "date": "2026-05-17",
+      "actors": "5",
+      "events": "221"
+    },
+    {
+      "date": "2026-05-18",
+      "actors": "86",
+      "events": "2310"
+    },
+    {
+      "date": "2026-05-19",
+      "actors": "108",
+      "events": "5728"
+    },
+    {
+      "date": "2026-05-20",
+      "actors": "45",
+      "events": "675"
+    },
+    {
+      "date": "2026-05-21",
+      "actors": "136",
+      "events": "3198"
+    }
+  ],
+  "retention": {
+    "actors": "811",
+    "retained_2plus": "8",
+    "retained_2plus_pct": "1.0",
+    "retained_4plus": "1"
+  },
+  "proofEvents": {
+    "rage_clicks": "0",
+    "first_useful_actions": "103",
+    "workflow_continuity": "51",
+    "watchlist_retention": "26",
+    "scanner_usage": "119"
+  },
+  "requestMetrics": [
+    {
+      "route": "/api/health",
+      "requests": "6042",
+      "p50_ms": "0",
+      "p95_ms": "1",
+      "max_ms": "2"
+    },
+    {
+      "route": "/api/analytics/events",
+      "requests": "1015",
+      "p50_ms": "19",
+      "p95_ms": "36",
+      "max_ms": "1192"
+    },
+    {
+      "route": "/api/discovery",
+      "requests": "636",
+      "p50_ms": "0",
+      "p95_ms": "1415",
+      "max_ms": "2325"
+    },
+    {
+      "route": "/api/health/deep",
+      "requests": "327",
+      "p50_ms": "16",
+      "p95_ms": "27",
+      "max_ms": "1842"
+    },
+    {
+      "route": "/api/session",
+      "requests": "287",
+      "p50_ms": "0",
+      "p95_ms": "1",
+      "max_ms": "1"
+    },
+    {
+      "route": "/api/history/latest",
+      "requests": "287",
+      "p50_ms": "0",
+      "p95_ms": "1",
+      "max_ms": "1"
+    },
+    {
+      "route": "/api/ranking",
+      "requests": "287",
+      "p50_ms": "3",
+      "p95_ms": "4",
+      "max_ms": "5"
+    },
+    {
+      "route": "/api/history/replay",
+      "requests": "3",
+      "p50_ms": "77",
+      "p95_ms": "153",
+      "max_ms": "161"
+    },
+    {
+      "route": "/api/admin/analytics",
+      "requests": "2",
+      "p50_ms": "0",
+      "p95_ms": "1",
+      "max_ms": "1"
+    }
+  ]
+}

@@ -1,0 +1,809 @@
+{
+  "generatedAt": "2026-05-21T22:32:33.428Z",
+  "base": "https://tradeveto.com",
+  "routes": 21,
+  "viewports": [
+    "desktop",
+    "mobile"
+  ],
+  "results": [
+    {
+      "viewport": "desktop",
+      "path": "/",
+      "status": "captured",
+      "ms": 2548,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 631,
+        "domNodes": 2312,
+        "heap": 36360247,
+        "horizontalOverflow": -15,
+        "dialogs": 0,
+        "text": "CLOSED BETA ACCESS · EARLY ADOPTER PREMIUM PREVIEW · RESEARCH ONLY\nFeed\nMacro\nMemory\nFeatu"
+      },
+      "taskDuration": 0.793471
+    },
+    {
+      "viewport": "desktop",
+      "path": "/login",
+      "status": "captured",
+      "ms": 1995,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 287,
+        "domNodes": 377,
+        "heap": 9945836,
+        "horizontalOverflow": 0,
+        "dialogs": 1,
+        "text": "CLOSED BETA ACCESS · EARLY ADOPTER PREMIUM PREVIEW · RESEARCH ONLY\nFeed\nMacro\nMemory\nFeatu"
+      },
+      "taskDuration": 0.399532
+    },
+    {
+      "viewport": "desktop",
+      "path": "/register",
+      "status": "captured",
+      "ms": 1942,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 336,
+        "domNodes": 382,
+        "heap": 6285944,
+        "horizontalOverflow": 0,
+        "dialogs": 1,
+        "text": "CLOSED BETA ACCESS · EARLY ADOPTER PREMIUM PREVIEW · RESEARCH ONLY\nFeed\nMacro\nMemory\nFeatu"
+      },
+      "taskDuration": 0.313585
+    },
+    {
+      "viewport": "desktop",
+      "path": "/terminal",
+      "status": "captured",
+      "ms": 2405,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 509,
+        "domNodes": 574,
+        "heap": 13128673,
+        "horizontalOverflow": -15,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.594801
+    },
+    {
+      "viewport": "desktop",
+      "path": "/dashboard",
+      "status": "captured",
+      "ms": 2983,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 399,
+        "domNodes": 412,
+        "heap": 8629655,
+        "horizontalOverflow": -15,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.417634
+    },
+    {
+      "viewport": "desktop",
+      "path": "/discover",
+      "status": "captured",
+      "ms": 2027,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 287,
+        "domNodes": 445,
+        "heap": 11969251,
+        "horizontalOverflow": -15,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.304184
+    },
+    {
+      "viewport": "desktop",
+      "path": "/scanner",
+      "status": "captured",
+      "ms": 1951,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 309,
+        "domNodes": 421,
+        "heap": 11983821,
+        "horizontalOverflow": -15,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.373425
+    },
+    {
+      "viewport": "desktop",
+      "path": "/opportunities",
+      "status": "captured",
+      "ms": 1930,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 302,
+        "domNodes": 456,
+        "heap": 12062648,
+        "horizontalOverflow": -15,
+        "dialogs": 0,
+        "text": "SCANNER ATMOSPHERE\nSetup discovery, watchlist shifts, and scanner freshness guide the comp"
+      },
+      "taskDuration": 0.350394
+    },
+    {
+      "viewport": "desktop",
+      "path": "/symbol/AMD",
+      "status": "captured",
+      "ms": 2025,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 262,
+        "domNodes": 614,
+        "heap": 12833653,
+        "horizontalOverflow": -15,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.435329
+    },
+    {
+      "viewport": "desktop",
+      "path": "/alerts",
+      "status": "captured",
+      "ms": 2040,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 289,
+        "domNodes": 404,
+        "heap": 7975936,
+        "horizontalOverflow": -15,
+        "dialogs": 0,
+        "text": "RISK ATMOSPHERE\nElevated context receives warmer focus while evidence remains explicit.\nAI"
+      },
+      "taskDuration": 0.305841
+    },
+    {
+      "viewport": "desktop",
+      "path": "/history",
+      "status": "captured",
+      "ms": 1989,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 234,
+        "domNodes": 445,
+        "heap": 11876178,
+        "horizontalOverflow": -15,
+        "dialogs": 0,
+        "text": "MEMORY ATMOSPHERE\nHistorical context, replay evidence, and state transitions get layered e"
+      },
+      "taskDuration": 0.387099
+    },
+    {
+      "viewport": "desktop",
+      "path": "/performance",
+      "status": "captured",
+      "ms": 1917,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 216,
+        "domNodes": 447,
+        "heap": 12134976,
+        "horizontalOverflow": -15,
+        "dialogs": 0,
+        "text": "SIMULATION ATMOSPHERE\nEvidence, behavior, drawdown, and scenario context are visually grou"
+      },
+      "taskDuration": 0.368688
+    },
+    {
+      "viewport": "desktop",
+      "path": "/paper",
+      "status": "captured",
+      "ms": 2341,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 685,
+        "domNodes": 982,
+        "heap": 14212790,
+        "horizontalOverflow": -15,
+        "dialogs": 0,
+        "text": "SIMULATION ATMOSPHERE\nEvidence, behavior, drawdown, and scenario context are visually grou"
+      },
+      "taskDuration": 0.756697
+    },
+    {
+      "viewport": "desktop",
+      "path": "/strategy-labs",
+      "status": "captured",
+      "ms": 2300,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 234,
+        "domNodes": 408,
+        "heap": 8412854,
+        "horizontalOverflow": -15,
+        "dialogs": 0,
+        "text": "SIMULATION ATMOSPHERE\nEvidence, behavior, drawdown, and scenario context are visually grou"
+      },
+      "taskDuration": 0.357098
+    },
+    {
+      "viewport": "desktop",
+      "path": "/macro",
+      "status": "captured",
+      "ms": 2503,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 784,
+        "domNodes": 1134,
+        "heap": 15415264,
+        "horizontalOverflow": -15,
+        "dialogs": 0,
+        "text": "CLOSED BETA ACCESS · EARLY ADOPTER PREMIUM PREVIEW · RESEARCH ONLY\nFeed\nMacro\nMemory\nFeatu"
+      },
+      "taskDuration": 0.955207
+    },
+    {
+      "viewport": "desktop",
+      "path": "/market-memory",
+      "status": "captured",
+      "ms": 3612,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 1783,
+        "domNodes": 2517,
+        "heap": 34672507,
+        "horizontalOverflow": -15,
+        "dialogs": 0,
+        "text": "CLOSED BETA ACCESS · EARLY ADOPTER PREMIUM PREVIEW · RESEARCH ONLY\nFeed\nMacro\nMemory\nFeatu"
+      },
+      "taskDuration": 0.710707
+    },
+    {
+      "viewport": "desktop",
+      "path": "/feed",
+      "status": "captured",
+      "ms": 1917,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 364,
+        "domNodes": 734,
+        "heap": 7374410,
+        "horizontalOverflow": -15,
+        "dialogs": 0,
+        "text": "CLOSED BETA ACCESS · EARLY ADOPTER PREMIUM PREVIEW · RESEARCH ONLY\nFeed\nMacro\nMemory\nFeatu"
+      },
+      "taskDuration": 0.137509
+    },
+    {
+      "viewport": "desktop",
+      "path": "/mobile",
+      "status": "captured",
+      "ms": 2065,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 331,
+        "domNodes": 412,
+        "heap": 7206793,
+        "horizontalOverflow": -15,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.329666
+    },
+    {
+      "viewport": "desktop",
+      "path": "/account",
+      "status": "captured",
+      "ms": 1919,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 281,
+        "domNodes": 368,
+        "heap": 11688991,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.344325
+    },
+    {
+      "viewport": "desktop",
+      "path": "/settings",
+      "status": "captured",
+      "ms": 1979,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 297,
+        "domNodes": 360,
+        "heap": 11729048,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.386367
+    },
+    {
+      "viewport": "desktop",
+      "path": "/support",
+      "status": "captured",
+      "ms": 2255,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 315,
+        "domNodes": 421,
+        "heap": 7006989,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.460459
+    },
+    {
+      "viewport": "mobile",
+      "path": "/",
+      "status": "captured",
+      "ms": 2970,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 296,
+        "domNodes": 2321,
+        "heap": 17635676,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "CLOSED BETA ACCESS · RESEARCH ONLY\nOpen App\nAI MARKET INTELLIGENCE\nCLOSED BETA\nAI MARKET\nI"
+      },
+      "taskDuration": 0.525032
+    },
+    {
+      "viewport": "mobile",
+      "path": "/login",
+      "status": "captured",
+      "ms": 3512,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 864,
+        "domNodes": 376,
+        "heap": 5510386,
+        "horizontalOverflow": 0,
+        "dialogs": 1,
+        "text": "CLOSED BETA ACCESS · RESEARCH ONLY\nOpen App\nEXISTING BETA USERS\nSIGN IN TO TRADEVETO\n\nUse "
+      },
+      "taskDuration": 0.176395
+    },
+    {
+      "viewport": "mobile",
+      "path": "/register",
+      "status": "captured",
+      "ms": 2902,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 285,
+        "domNodes": 381,
+        "heap": 5562052,
+        "horizontalOverflow": 0,
+        "dialogs": 1,
+        "text": "CLOSED BETA ACCESS · RESEARCH ONLY\nOpen App\nCLOSED BETA ACCESS\nJOIN THE TRADEVETO CLOSED B"
+      },
+      "taskDuration": 0.138729
+    },
+    {
+      "viewport": "mobile",
+      "path": "/terminal",
+      "status": "captured",
+      "ms": 3593,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 243,
+        "domNodes": 566,
+        "heap": 12085366,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.34146
+    },
+    {
+      "viewport": "mobile",
+      "path": "/dashboard",
+      "status": "captured",
+      "ms": 3404,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 350,
+        "domNodes": 436,
+        "heap": 11299751,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.212907
+    },
+    {
+      "viewport": "mobile",
+      "path": "/discover",
+      "status": "captured",
+      "ms": 3912,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 551,
+        "domNodes": 437,
+        "heap": 10663020,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.201096
+    },
+    {
+      "viewport": "mobile",
+      "path": "/scanner",
+      "status": "captured",
+      "ms": 4676,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 396,
+        "domNodes": 414,
+        "heap": 11025087,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.222267
+    },
+    {
+      "viewport": "mobile",
+      "path": "/opportunities",
+      "status": "captured",
+      "ms": 3837,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 332,
+        "domNodes": 448,
+        "heap": 11229524,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "SCANNER ATMOSPHERE\nSetup discovery, watchlist shifts, and scanner freshness guide the comp"
+      },
+      "taskDuration": 0.237564
+    },
+    {
+      "viewport": "mobile",
+      "path": "/symbol/AMD",
+      "status": "captured",
+      "ms": 3549,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 337,
+        "domNodes": 607,
+        "heap": 12204844,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.253771
+    },
+    {
+      "viewport": "mobile",
+      "path": "/alerts",
+      "status": "captured",
+      "ms": 3607,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 362,
+        "domNodes": 429,
+        "heap": 10660359,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "RISK ATMOSPHERE\nElevated context receives warmer focus while evidence remains explicit.\nDi"
+      },
+      "taskDuration": 0.220848
+    },
+    {
+      "viewport": "mobile",
+      "path": "/history",
+      "status": "captured",
+      "ms": 3498,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 210,
+        "domNodes": 438,
+        "heap": 11814752,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "MEMORY ATMOSPHERE\nHistorical context, replay evidence, and state transitions get layered e"
+      },
+      "taskDuration": 0.203184
+    },
+    {
+      "viewport": "mobile",
+      "path": "/performance",
+      "status": "captured",
+      "ms": 4038,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 338,
+        "domNodes": 439,
+        "heap": 11052072,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "SIMULATION ATMOSPHERE\nEvidence, behavior, drawdown, and scenario context are visually grou"
+      },
+      "taskDuration": 0.281265
+    },
+    {
+      "viewport": "mobile",
+      "path": "/paper",
+      "status": "captured",
+      "ms": 4083,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 526,
+        "domNodes": 956,
+        "heap": 10050272,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "SIMULATION ATMOSPHERE\nEvidence, behavior, drawdown, and scenario context are visually grou"
+      },
+      "taskDuration": 1.079964
+    },
+    {
+      "viewport": "mobile",
+      "path": "/strategy-labs",
+      "status": "captured",
+      "ms": 3513,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 225,
+        "domNodes": 439,
+        "heap": 11923378,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "SIMULATION ATMOSPHERE\nEvidence, behavior, drawdown, and scenario context are visually grou"
+      },
+      "taskDuration": 0.212083
+    },
+    {
+      "viewport": "mobile",
+      "path": "/macro",
+      "status": "captured",
+      "ms": 3060,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 816,
+        "domNodes": 1134,
+        "heap": 17673430,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "CLOSED BETA ACCESS · RESEARCH ONLY\nOpen App\nMACRO REGIME\nCurrent Macro Regime and Market P"
+      },
+      "taskDuration": 0.856722
+    },
+    {
+      "viewport": "mobile",
+      "path": "/market-memory",
+      "status": "captured",
+      "ms": 4565,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 2123,
+        "domNodes": 2517,
+        "heap": 31670240,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "CLOSED BETA ACCESS · RESEARCH ONLY\nOpen App\nMARKET MEMORY\nHISTORICAL CONTEXT FOR TODAY’S M"
+      },
+      "taskDuration": 0.943629
+    },
+    {
+      "viewport": "mobile",
+      "path": "/feed",
+      "status": "captured",
+      "ms": 2701,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 439,
+        "domNodes": 734,
+        "heap": 7037248,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "CLOSED BETA ACCESS · RESEARCH ONLY\nOpen App\nINTELLIGENCE FEED\nToday’s public-safe market i"
+      },
+      "taskDuration": 0.112279
+    },
+    {
+      "viewport": "mobile",
+      "path": "/mobile",
+      "status": "captured",
+      "ms": 3929,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 477,
+        "domNodes": 444,
+        "heap": 10891492,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.281558
+    },
+    {
+      "viewport": "mobile",
+      "path": "/account",
+      "status": "captured",
+      "ms": 3560,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 298,
+        "domNodes": 361,
+        "heap": 10808616,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.202868
+    },
+    {
+      "viewport": "mobile",
+      "path": "/settings",
+      "status": "captured",
+      "ms": 3935,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 300,
+        "domNodes": 354,
+        "heap": 11158967,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.277
+    },
+    {
+      "viewport": "mobile",
+      "path": "/support",
+      "status": "captured",
+      "ms": 4161,
+      "hydrationIssues": 0,
+      "firstHydration": null,
+      "consoleErrors": [],
+      "metrics": {
+        "readyState": "complete",
+        "loadMs": 341,
+        "domNodes": 453,
+        "heap": 10922137,
+        "horizontalOverflow": 0,
+        "dialogs": 0,
+        "text": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist eviden"
+      },
+      "taskDuration": 0.24147
+    }
+  ]
+}

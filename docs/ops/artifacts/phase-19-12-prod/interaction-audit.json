@@ -1,0 +1,40 @@
+{
+  "generatedAt": "2026-05-21T22:34:23.584Z",
+  "results": [
+    {
+      "surface": "terminal-discovery-overlay",
+      "openMs": 52,
+      "hasDialog": true,
+      "title": "Global command searchDiscover market intelligenceSearch, scan, filter, compare, and open symbol research without leaving",
+      "hydrationErrors": 0
+    },
+    {
+      "surface": "discover-search-filter",
+      "searchInput": false,
+      "responseMs": null,
+      "preview": "INTELLIGENCE ATMOSPHERE\nTradeVeto keeps market context, risk, replay, and watchlist evidence visually connected.\nDiscove",
+      "hydrationErrors": 0
+    },
+    {
+      "surface": "paper-mobile-overlay",
+      "trigger": true,
+      "triggerCount": 16,
+      "before": 2622,
+      "after": 0,
+      "scrollDelta": -2622,
+      "beforeVisual": 2622,
+      "afterVisual": 2622,
+      "visualScrollDelta": 0,
+      "offscreen": false,
+      "rect": {
+        "top": 0,
+        "bottom": 844,
+        "left": 0,
+        "right": 390
+      },
+      "dialog": true,
+      "closeRestoredDelta": 0,
+      "hydrationErrors": 0
+    }
+  ]
+}
