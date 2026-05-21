@@ -429,9 +429,12 @@ async function startChrome(chromePath) {
     port,
     stop: async () => {
       child.kill("SIGTERM");
-      await sleep(300);
-      if (!child.killed) child.kill("SIGKILL");
-      await rm(userDataDir, { force: true, recursive: true });
+      await waitForProcessExit(child, 1_500);
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill("SIGKILL");
+        await waitForProcessExit(child, 1_000);
+      }
+      await rm(userDataDir, { force: true, maxRetries: 3, recursive: true, retryDelay: 150 });
     },
   };
 }
@@ -489,6 +492,17 @@ function slugForRoute(route) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function waitForProcessExit(child, timeoutMs) {
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, timeoutMs);
+    child.once("exit", () => {
+      clearTimeout(timer);
+      resolve();
+    });
+  });
 }
 
 main().catch((error) => {
