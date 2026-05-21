@@ -170,6 +170,8 @@ test("simulated AI portfolios build three research-only modes with transparent m
   assert.ok(system.modes.balanced.learning.heatmap.length >= 4);
   assert.ok(system.modes.balanced.learning.lessons.length > 0);
   assert.ok(system.modes.balanced.allocationHistory.length > 0);
+  assert.ok(system.modes.balanced.institutionalRealism.lifecycle.length > 0);
+  assert.ok(system.modes.balanced.institutionalRealism.strategyMemory.length > 0);
   assert.ok(system.modes.balanced.riskConcentration.length >= 4);
   assert.deepEqual(system.modes.balanced.capitalScenarios.map((scenario) => scenario.startingCapital), [10_000, 50_000, 100_000]);
   assert.doesNotMatch(JSON.stringify(system), /buy now|sell now|guaranteed|sure profit|free money/i);
@@ -239,4 +241,11 @@ test("portfolio learning system exposes decision reviews and allocation exposure
   assert.ok(learning.confidenceTrend.every((value) => Number.isFinite(value)));
   assert.ok(learning.riskTrend.every((value) => Number.isFinite(value)));
   assert.ok(learning.adjustmentSummary.length > 0);
+
+  const realism = system.modes.aggressive.institutionalRealism;
+  assert.ok(realism.lifecycle.some((phase) => phase.type === "entry"));
+  assert.ok(realism.lifecycle.some((phase) => phase.type === "exit" || phase.type === "stress"));
+  assert.ok(realism.modelRevisions.length > 0);
+  assert.ok(realism.drawdownEpisodes.length > 0);
+  assert.ok(realism.strategyMemory.some((memory) => memory.sampleCount > 0));
 });

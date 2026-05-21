@@ -189,6 +189,60 @@ export type SimulatedPortfolioRiskMapCell = {
   value: number | null;
 };
 
+export type SimulatedPortfolioLifecyclePhase = {
+  allocationPct: number;
+  capital: number;
+  cashPct: number;
+  date: string;
+  detail: string;
+  drawdownPct: number | null;
+  label: string;
+  realizedPnl: number;
+  symbol: string | null;
+  tone: SimulatedPortfolioTone;
+  type: "current" | "entry" | "exit" | "stress";
+};
+
+export type SimulatedPortfolioDrawdownEpisode = {
+  depthPct: number;
+  detail: string;
+  durationTrades: number;
+  lesson: string;
+  peakDate: string;
+  recoveryDate: string | null;
+  tone: SimulatedPortfolioTone;
+  troughDate: string;
+};
+
+export type SimulatedPortfolioModelRevision = {
+  date: string;
+  evidence: string;
+  fromPolicy: string;
+  label: string;
+  symbols: string[];
+  toPolicy: string;
+  tone: SimulatedPortfolioTone;
+};
+
+export type SimulatedPortfolioStrategyMemory = {
+  averageReturnPct: number | null;
+  label: string;
+  latestLesson: string;
+  lossRatePct: number | null;
+  sampleCount: number;
+  symbolCount: number;
+  tone: SimulatedPortfolioTone;
+  totalPnl: number;
+  worstDrawdownPct: number | null;
+};
+
+export type SimulatedPortfolioInstitutionalRealism = {
+  drawdownEpisodes: SimulatedPortfolioDrawdownEpisode[];
+  lifecycle: SimulatedPortfolioLifecyclePhase[];
+  modelRevisions: SimulatedPortfolioModelRevision[];
+  strategyMemory: SimulatedPortfolioStrategyMemory[];
+};
+
 export type SimulatedPortfolioLearningSystem = {
   adjustmentSummary: string;
   allocationTrend: number[];
@@ -208,6 +262,7 @@ export type SimulatedPortfolioModeResult = {
   closedTrades: SimulatedPortfolioClosedTrade[];
   config: SimulatedPortfolioModeConfig;
   equityCurve: SimulatedPortfolioEquityPoint[];
+  institutionalRealism: SimulatedPortfolioInstitutionalRealism;
   learning: SimulatedPortfolioLearningSystem;
   mode: SimulatedPortfolioMode;
   openPositions: SimulatedPortfolioOpenPosition[];
@@ -391,6 +446,12 @@ function buildModeResult(input: {
     closedTrades: visibleClosedTrades,
     config: publicConfig(input.config),
     equityCurve: simulation.equityCurve,
+    institutionalRealism: institutionalRealismFor({
+      closedTrades: simulation.closedTrades,
+      config: input.config,
+      equityCurve: simulation.equityCurve,
+      openPositions,
+    }),
     learning,
     mode: input.config.mode,
     openPositions,
@@ -603,6 +664,20 @@ function learningSystemFor(input: {
     lessons,
     portfolioStories,
     riskTrend,
+  };
+}
+
+function institutionalRealismFor(input: {
+  closedTrades: SimulatedPortfolioClosedTrade[];
+  config: ModeConfigInternal;
+  equityCurve: SimulatedPortfolioEquityPoint[];
+  openPositions: SimulatedPortfolioOpenPosition[];
+}): SimulatedPortfolioInstitutionalRealism {
+  return {
+    drawdownEpisodes: drawdownEpisodesFor(input.equityCurve, input.closedTrades),
+    lifecycle: portfolioLifecycleFor(input.closedTrades, input.openPositions),
+    modelRevisions: modelRevisionsFor(input.closedTrades, input.config),
+    strategyMemory: strategyMemoryFor(input.closedTrades),
   };
 }
 
@@ -844,6 +919,215 @@ function allocationHistoryFor(
       cashPct: clamp(point.cashPct, 0, 100),
     }))
     .slice(-24);
+}
+
+function portfolioLifecycleFor(
+  closedTrades: SimulatedPortfolioClosedTrade[],
+  openPositions: SimulatedPortfolioOpenPosition[],
+): SimulatedPortfolioLifecyclePhase[] {
+  const closedPhases = closedTrades
+    .slice()
+    .sort(compareTradeExitDate)
+    .slice(-7)
+    .flatMap((trade): SimulatedPortfolioLifecyclePhase[] => [
+      {
+        allocationPct: trade.allocationPct,
+        capital: trade.capitalBefore,
+        cashPct: Math.max(0, 100 - trade.allocationPct),
+        date: trade.entryDate,
+        detail: `${strategyFamilyLabel(trade.strategyFamily)} opened with ${formatMoney(trade.investedAmount)} deployed at ${trade.confidenceAtEntry}/100 confidence.`,
+        drawdownPct: null,
+        label: `${trade.symbol} entry`,
+        realizedPnl: 0,
+        symbol: trade.symbol,
+        tone: trade.confidenceAtEntry >= 65 ? "good" : trade.confidenceAtEntry >= 50 ? "warn" : "risk",
+        type: "entry",
+      },
+      {
+        allocationPct: trade.allocationPct,
+        capital: trade.capitalAfter,
+        cashPct: Math.max(0, 100 - trade.allocationPct),
+        date: trade.exitDate,
+        detail: `${trade.symbol} closed after ${trade.horizonDays} day(s): ${formatPct(trade.realizedReturnPct)} return, ${formatMoney(trade.realizedPnl)} realized P/L. ${trade.learning.adjustment}`,
+        drawdownPct: trade.drawdownPct,
+        label: `${trade.symbol} exit`,
+        realizedPnl: trade.realizedPnl,
+        symbol: trade.symbol,
+        tone: trade.realizedPnl > 0 ? "good" : trade.realizedPnl < 0 ? "risk" : "neutral",
+        type: Math.abs(trade.drawdownPct ?? 0) >= 7 ? "stress" : "exit",
+      },
+    ]);
+
+  const currentPhases = openPositions.slice(0, 4).map((position): SimulatedPortfolioLifecyclePhase => ({
+    allocationPct: position.allocationPct,
+    capital: position.investedAmount,
+    cashPct: Math.max(0, 100 - position.allocationPct),
+    date: "Current",
+    detail: `${position.symbol} remains an open model sleeve with ${formatMoney(position.investedAmount)} deployed at ${position.confidenceAtEntry}/100 confidence. Exit plan: ${position.exitPlan}`,
+    drawdownPct: null,
+    label: `${position.symbol} open sleeve`,
+    realizedPnl: position.unrealizedPnl,
+    symbol: position.symbol,
+    tone: position.riskState === "Elevated risk" ? "risk" : position.riskState === "Watch pressure" ? "warn" : "good",
+    type: "current",
+  }));
+
+  return [...closedPhases, ...currentPhases].slice(-18);
+}
+
+function drawdownEpisodesFor(
+  equityCurve: SimulatedPortfolioEquityPoint[],
+  closedTrades: SimulatedPortfolioClosedTrade[],
+): SimulatedPortfolioDrawdownEpisode[] {
+  if (equityCurve.length < 3) return tradeStressEpisodesFor(closedTrades);
+  const episodes: SimulatedPortfolioDrawdownEpisode[] = [];
+  let peakPoint = equityCurve[0] ?? null;
+  let troughPoint = equityCurve[0] ?? null;
+  let maxDepth = 0;
+
+  for (let index = 1; index < equityCurve.length; index += 1) {
+    const point = equityCurve[index];
+    if (!point || !peakPoint) continue;
+    if (point.value >= peakPoint.value) {
+      if (maxDepth >= 0.75 && troughPoint) {
+        episodes.push(drawdownEpisodeFromPoints(peakPoint, troughPoint, point, closedTrades, maxDepth));
+      }
+      peakPoint = point;
+      troughPoint = point;
+      maxDepth = 0;
+      continue;
+    }
+
+    const depth = peakPoint.value > 0 ? ((peakPoint.value - point.value) / peakPoint.value) * 100 : 0;
+    if (depth > maxDepth) {
+      maxDepth = depth;
+      troughPoint = point;
+    }
+  }
+
+  if (maxDepth >= 0.75 && peakPoint && troughPoint) {
+    episodes.push(drawdownEpisodeFromPoints(peakPoint, troughPoint, null, closedTrades, maxDepth));
+  }
+
+  return [...episodes, ...tradeStressEpisodesFor(closedTrades)]
+    .sort((left, right) => right.depthPct - left.depthPct)
+    .slice(0, 5);
+}
+
+function drawdownEpisodeFromPoints(
+  peakPoint: SimulatedPortfolioEquityPoint,
+  troughPoint: SimulatedPortfolioEquityPoint,
+  recoveryPoint: SimulatedPortfolioEquityPoint | null,
+  closedTrades: SimulatedPortfolioClosedTrade[],
+  depthPct: number,
+): SimulatedPortfolioDrawdownEpisode {
+  const troughTrade = closedTrades[Math.max(0, troughPoint.tradeIndex - 1)] ?? null;
+  const durationTrades = Math.max(1, troughPoint.tradeIndex - peakPoint.tradeIndex);
+  const tone: SimulatedPortfolioTone = depthPct >= 10 ? "risk" : depthPct >= 5 ? "warn" : "neutral";
+  return {
+    depthPct,
+    detail: troughTrade === null
+      ? `Portfolio equity moved from ${formatMoney(peakPoint.value)} to ${formatMoney(troughPoint.value)} before recovery evidence was available.`
+      : `${troughTrade.symbol} was the trough checkpoint; return ${formatPct(troughTrade.realizedReturnPct)}, drawdown ${formatPct(troughTrade.drawdownPct)}.`,
+    durationTrades,
+    lesson: troughTrade?.learning.adjustment ?? "Drawdown episode is tracked, but no completed trade autopsy is attached to the trough checkpoint.",
+    peakDate: peakPoint.label,
+    recoveryDate: recoveryPoint?.label ?? null,
+    tone,
+    troughDate: troughPoint.label,
+  };
+}
+
+function tradeStressEpisodesFor(closedTrades: SimulatedPortfolioClosedTrade[]): SimulatedPortfolioDrawdownEpisode[] {
+  return closedTrades
+    .filter((trade) => Math.abs(trade.drawdownPct ?? 0) >= 0.75)
+    .sort((left, right) => Math.abs(right.drawdownPct ?? 0) - Math.abs(left.drawdownPct ?? 0))
+    .slice(0, 4)
+    .map((trade): SimulatedPortfolioDrawdownEpisode => {
+      const depthPct = Math.abs(trade.drawdownPct ?? 0);
+      return {
+        depthPct,
+        detail: `${trade.symbol} produced ${formatPct(trade.realizedReturnPct)} over the completed window while adverse movement reached ${formatPct(trade.drawdownPct)}.`,
+        durationTrades: 1,
+        lesson: trade.learning.adjustment,
+        peakDate: trade.entryDate,
+        recoveryDate: trade.exitDate,
+        tone: depthPct >= 10 ? "risk" : depthPct >= 5 ? "warn" : "neutral",
+        troughDate: `${trade.symbol} stress`,
+      };
+    });
+}
+
+function modelRevisionsFor(
+  closedTrades: SimulatedPortfolioClosedTrade[],
+  config: ModeConfigInternal,
+): SimulatedPortfolioModelRevision[] {
+  return closedTrades
+    .filter((trade) => trade.learning.review !== "contained" || Math.abs(trade.drawdownPct ?? 0) >= 6 || trade.confidenceAtExit - trade.confidenceAtEntry <= -8)
+    .sort(compareTradeExitDate)
+    .slice(-8)
+    .map((trade): SimulatedPortfolioModelRevision => {
+      const drawdown = Math.abs(trade.drawdownPct ?? 0);
+      const confidenceShift = trade.confidenceAtExit - trade.confidenceAtEntry;
+      const fromPolicy = `${config.label} gate: score >= ${config.minModeScore}, max fragility ${config.maxFragilityScore}, allocation cap ${config.maxAllocationPct}%`;
+      let label = "Preserve current gate";
+      let toPolicy = "Keep score gate stable while continuing to monitor completed evidence.";
+      let tone: SimulatedPortfolioTone = "neutral";
+      if (trade.learning.review === "failed" || trade.realizedReturnPct < 0) {
+        label = "Reduce similar exposure";
+        toPolicy = "Require stronger macro/replay confirmation before allocating to comparable failed setups.";
+        tone = "risk";
+      } else if (trade.learning.review === "deteriorated" || drawdown >= 7) {
+        label = "Tighten fragility behavior";
+        toPolicy = "Reduce allocation or demand lower volatility when comparable drawdown stress appears.";
+        tone = "warn";
+      } else if (trade.learning.review === "improved" && confidenceShift >= 0) {
+        label = "Keep validated pattern";
+        toPolicy = "Preserve weighting for comparable evidence while keeping portfolio allocation capped.";
+        tone = "good";
+      }
+      return {
+        date: trade.exitDate,
+        evidence: `${trade.symbol} ${formatPct(trade.realizedReturnPct)} return, ${formatPct(trade.drawdownPct)} adverse movement, confidence ${trade.confidenceAtEntry}->${trade.confidenceAtExit}.`,
+        fromPolicy,
+        label,
+        symbols: [trade.symbol],
+        toPolicy,
+        tone,
+      };
+    })
+    .reverse();
+}
+
+function strategyMemoryFor(closedTrades: SimulatedPortfolioClosedTrade[]): SimulatedPortfolioStrategyMemory[] {
+  const buckets = new Map<StrategyFamily, SimulatedPortfolioClosedTrade[]>();
+  for (const trade of closedTrades) {
+    buckets.set(trade.strategyFamily, [...(buckets.get(trade.strategyFamily) ?? []), trade]);
+  }
+  return Array.from(buckets.entries())
+    .map(([family, trades]): SimulatedPortfolioStrategyMemory => {
+      const returns = trades.map((trade) => trade.realizedReturnPct);
+      const totalPnl = trades.reduce((sum, trade) => sum + trade.realizedPnl, 0);
+      const losses = trades.filter((trade) => trade.realizedReturnPct < 0);
+      const worstDrawdownPct = maxOrNull(trades.map((trade) => Math.abs(trade.drawdownPct ?? 0)));
+      const averageReturnPct = meanOrNull(returns);
+      const latestTrade = trades.slice().sort(compareTradeExitDate).at(-1) ?? null;
+      const lossRatePct = trades.length ? (losses.length / trades.length) * 100 : null;
+      const tone: SimulatedPortfolioTone = averageReturnPct === null ? "neutral" : averageReturnPct >= 1 ? "good" : averageReturnPct < 0 ? "risk" : "warn";
+      return {
+        averageReturnPct,
+        label: strategyFamilyLabel(family),
+        latestLesson: latestTrade?.learning.adjustment ?? "No latest lesson is attached to this strategy family yet.",
+        lossRatePct,
+        sampleCount: trades.length,
+        symbolCount: new Set(trades.map((trade) => trade.symbol)).size,
+        tone,
+        totalPnl,
+        worstDrawdownPct,
+      };
+    })
+    .sort((left, right) => right.sampleCount - left.sampleCount || Math.abs(right.totalPnl) - Math.abs(left.totalPnl))
+    .slice(0, 8);
 }
 
 function compareTradeExitDate(left: SimulatedPortfolioClosedTrade, right: SimulatedPortfolioClosedTrade): number {
@@ -1530,6 +1814,11 @@ function maxDrawdownPctFor(points: SimulatedPortfolioEquityPoint[]): number | nu
 
 function meanOrNull(values: number[]): number | null {
   return values.length ? values.reduce((total, value) => total + value, 0) / values.length : null;
+}
+
+function maxOrNull(values: number[]): number | null {
+  const finiteValues = values.filter((value) => Number.isFinite(value));
+  return finiteValues.length ? Math.max(...finiteValues) : null;
 }
 
 function standardDeviationOrNull(values: number[]): number | null {

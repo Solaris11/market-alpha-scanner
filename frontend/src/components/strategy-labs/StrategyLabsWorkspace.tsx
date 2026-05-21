@@ -26,13 +26,17 @@ import type {
   SimulatedPortfolioDecisionReview,
   SimulatedPortfolioEquityPoint,
   SimulatedPortfolioExposureBucket,
+  SimulatedPortfolioInstitutionalRealism,
+  SimulatedPortfolioLifecyclePhase,
   SimulatedPortfolioLearningTimelinePoint,
   SimulatedPortfolioMode,
   SimulatedPortfolioModeResult,
+  SimulatedPortfolioModelRevision,
   SimulatedPortfolioOpenPosition,
   SimulatedPortfolioReviewItem,
   SimulatedPortfolioRiskConcentration,
   SimulatedPortfolioRiskMapCell,
+  SimulatedPortfolioStrategyMemory,
   SimulatedPortfolioTone,
 } from "@/lib/trading/simulated-ai-portfolio";
 import { strategyFamilyLabel } from "@/lib/trading/strategy-intelligence";
@@ -144,6 +148,10 @@ export function StrategyLabsWorkspace({ system }: { system: SimulatedAiPortfolio
 
         <div className="border-t border-violet-300/14 p-4 sm:p-5">
           <AdaptivePortfolioIntelligenceLab result={active} system={system} />
+        </div>
+
+        <div className="border-t border-cyan-300/14 p-4 sm:p-5">
+          <InstitutionalStrategyRealismSystem realism={active.institutionalRealism} result={active} />
         </div>
 
         <div className="border-t border-white/10 p-4 pt-0 sm:p-5 sm:pt-0">
@@ -500,6 +508,205 @@ function AdaptivePortfolioIntelligenceLab({
         </div>
       </div>
     </section>
+  );
+}
+
+function InstitutionalStrategyRealismSystem({
+  realism,
+  result,
+}: {
+  realism: SimulatedPortfolioInstitutionalRealism;
+  result: SimulatedPortfolioModeResult;
+}) {
+  const latestRevision = realism.modelRevisions[0] ?? null;
+  const latestLifecycle = realism.lifecycle.at(-1) ?? null;
+  const latestMemory = realism.strategyMemory[0] ?? null;
+  return (
+    <section className="relative overflow-hidden rounded-[2rem] border border-cyan-300/18 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.16),transparent_26rem),radial-gradient(circle_at_85%_5%,rgba(251,191,36,0.12),transparent_22rem),linear-gradient(135deg,rgba(2,6,23,0.96),rgba(15,23,42,0.8))] p-4 shadow-2xl shadow-black/25 sm:p-5">
+      <div className="pointer-events-none absolute inset-0 tv-cinematic-noise opacity-40" />
+      <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-200">Institutional strategy realism</div>
+          <h2 className="mt-2 max-w-4xl text-2xl font-black tracking-tight text-white sm:text-4xl">
+            Realistic lifecycle, allocation memory, drawdown pressure, and model revision evidence.
+          </h2>
+          <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-300">
+            This layer is derived from completed simulated trades, portfolio equity checkpoints, open model sleeves, and strategy-family history. It does not invent fills or broker activity.
+          </p>
+        </div>
+        <div className="grid shrink-0 grid-cols-2 gap-2 text-xs lg:w-[430px]">
+          <SmallMetric label="Lifecycle events" value={realism.lifecycle.length.toLocaleString()} />
+          <SmallMetric label="Model revisions" value={realism.modelRevisions.length.toLocaleString()} />
+          <SmallMetric label="Strategy memories" value={realism.strategyMemory.length.toLocaleString()} />
+          <SmallMetric label="Drawdown episodes" value={realism.drawdownEpisodes.length.toLocaleString()} />
+        </div>
+      </div>
+
+      <div className="relative mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
+        <PortfolioLifecyclePanel lifecycle={realism.lifecycle} />
+        <div className="grid gap-4">
+          <DrawdownStoryPanel episodes={realism.drawdownEpisodes} />
+          <ModelRevisionPanel revisions={realism.modelRevisions} />
+        </div>
+      </div>
+
+      <div className="relative mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
+        <StrategyMemoryPanel memories={realism.strategyMemory} />
+        <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/60 p-4">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-100">Credibility checkpoint</div>
+          <div className="mt-3 space-y-3">
+            <ContextPill label="Latest lifecycle checkpoint" value={latestLifecycle ? `${latestLifecycle.label}: ${latestLifecycle.detail}` : "No lifecycle checkpoint is available yet."} />
+            <ContextPill label="Latest model revision" value={latestRevision ? `${latestRevision.label}: ${latestRevision.toPolicy}` : "No model revision has been triggered by completed evidence yet."} />
+            <ContextPill label="Largest memory bucket" value={latestMemory ? `${latestMemory.label}: ${latestMemory.sampleCount} sample(s), ${formatPct(latestMemory.averageReturnPct)} average return.` : "No strategy-family memory bucket is populated yet."} />
+            <ContextPill label="Simulation boundary" value={`${result.config.label} remains simulation-only. It models portfolio behavior from completed evidence and never places orders.`} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PortfolioLifecyclePanel({ lifecycle }: { lifecycle: SimulatedPortfolioLifecyclePhase[] }) {
+  if (!lifecycle.length) return <EmptyState message="No institutional lifecycle checkpoints are available yet. Completed simulated trades are required before allocation, P/L, and revision history can be shown." />;
+  const pnlValues = lifecycle.map((phase) => phase.realizedPnl);
+  return (
+    <div className="rounded-[1.75rem] border border-cyan-300/16 bg-slate-950/62 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Portfolio lifecycle</div>
+          <h3 className="mt-1 text-xl font-black text-white">What the model opened, closed, and revised</h3>
+        </div>
+        <div className="text-xs text-slate-500">{lifecycle.length} lifecycle checkpoint(s)</div>
+      </div>
+      <div className="mt-4 grid gap-3 lg:grid-cols-[0.82fr_1fr]">
+        <PosterTrendChart label="Lifecycle P/L path" tone="cyan" values={pnlValues} />
+        <div className="grid gap-2">
+          {lifecycle.slice(-8).map((phase) => (
+            <div className={`rounded-2xl border p-3 ${reviewToneClass(phase.tone)}`} key={`${phase.type}:${phase.date}:${phase.label}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-black text-slate-50">{phase.label}</div>
+                  <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">{phase.date} - {phase.type}</div>
+                </div>
+                <div className={`shrink-0 font-mono text-xs font-black ${toneClass(phase.realizedPnl)}`}>{formatMoney(phase.realizedPnl)}</div>
+              </div>
+              <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-400">{phase.detail}</p>
+              <div className="mt-3 grid grid-cols-3 gap-2 text-[10px]">
+                <SmallMetric label="Allocation" value={`${phase.allocationPct.toFixed(1)}%`} />
+                <SmallMetric label="Cash" value={`${phase.cashPct.toFixed(1)}%`} />
+                <SmallMetric label="Capital" value={formatMoney(phase.capital)} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DrawdownStoryPanel({ episodes }: { episodes: SimulatedPortfolioInstitutionalRealism["drawdownEpisodes"] }) {
+  return (
+    <div className="rounded-[1.75rem] border border-amber-300/16 bg-amber-400/[0.045] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-100">Drawdown storytelling</div>
+      {episodes.length ? (
+        <div className="mt-3 grid gap-2">
+          {episodes.map((episode) => (
+            <div className={`rounded-2xl border p-3 ${reviewToneClass(episode.tone)}`} key={`${episode.peakDate}:${episode.troughDate}:${episode.depthPct}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-black text-slate-50">{episode.peakDate} {"->"} {episode.troughDate}</div>
+                  <div className="mt-1 text-xs text-slate-500">{episode.recoveryDate ? `Recovered: ${episode.recoveryDate}` : "Recovery still open in evidence window"}</div>
+                </div>
+                <div className="font-mono text-sm font-black text-amber-100">{formatPct(episode.depthPct)}</div>
+              </div>
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{episode.detail}</p>
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-cyan-100/85">{episode.lesson}</p>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-3">
+          <EmptyState message="No meaningful portfolio drawdown episode was detected from the current simulated equity curve." />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ModelRevisionPanel({ revisions }: { revisions: SimulatedPortfolioModelRevision[] }) {
+  return (
+    <div className="rounded-[1.75rem] border border-violet-300/16 bg-violet-400/[0.055] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-100">Model evolution and revisions</div>
+      {revisions.length ? (
+        <div className="mt-3 grid gap-2">
+          {revisions.slice(0, 5).map((revision) => (
+            <div className={`rounded-2xl border p-3 ${reviewToneClass(revision.tone)}`} key={`${revision.date}:${revision.label}:${revision.evidence}`}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-black text-slate-50">{revision.label}</div>
+                  <div className="mt-1 text-xs text-slate-500">{revision.date}</div>
+                </div>
+                <div className="flex shrink-0 gap-1">
+                  {revision.symbols.map((symbol) => (
+                    <span className="rounded-full border border-white/10 bg-slate-950/55 px-2 py-1 font-mono text-[10px] text-cyan-100" key={symbol}>{symbol}</span>
+                  ))}
+                </div>
+              </div>
+              <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{revision.evidence}</p>
+              <div className="mt-3 grid gap-2 lg:grid-cols-2">
+                <ContextPill label="Prior rule" value={revision.fromPolicy} />
+                <ContextPill label="Revised behavior" value={revision.toPolicy} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-3">
+          <EmptyState message="No completed evidence has forced a strategy revision yet. The model keeps its published rules visible instead of fabricating learning." />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StrategyMemoryPanel({ memories }: { memories: SimulatedPortfolioStrategyMemory[] }) {
+  if (!memories.length) return <EmptyState message="No historical strategy-family memory is available yet." />;
+  const heatCells: PosterHeatCell[] = memories.slice(0, 8).map((memory) => ({
+    detail: `${memory.sampleCount} sample(s), ${memory.symbolCount} symbol(s), ${formatMoney(memory.totalPnl)} P/L.`,
+    label: memory.label,
+    tone: posterToneForPortfolio(memory.tone),
+    value: memory.averageReturnPct === null ? null : Math.max(0, Math.min(100, 50 + memory.averageReturnPct * 8)),
+  }));
+  return (
+    <div className="rounded-[1.75rem] border border-white/10 bg-slate-950/62 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Historical strategy memory</div>
+          <h3 className="mt-1 text-xl font-black text-white">What the lab remembers by strategy family</h3>
+        </div>
+        <div className="text-xs text-slate-500">{memories.length} strategy memory bucket(s)</div>
+      </div>
+      <PosterHeatmapChart cells={heatCells} className="mt-3" emptyMessage="No strategy memory heatmap is available yet." />
+      <div className="mt-3 grid gap-2 lg:grid-cols-2">
+        {memories.slice(0, 6).map((memory) => (
+          <div className={`rounded-2xl border p-3 ${reviewToneClass(memory.tone)}`} key={memory.label}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="truncate text-sm font-black text-slate-50">{memory.label}</div>
+                <div className="mt-1 text-xs text-slate-500">{memory.sampleCount} sample(s), {memory.symbolCount} symbol(s)</div>
+              </div>
+              <div className={`shrink-0 font-mono text-sm font-black ${toneClass(memory.totalPnl)}`}>{formatMoney(memory.totalPnl)}</div>
+            </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-[10px]">
+              <SmallMetric label="Avg return" value={formatPct(memory.averageReturnPct)} />
+              <SmallMetric label="Loss rate" value={formatPct(memory.lossRatePct)} />
+              <SmallMetric label="Worst DD" value={formatPct(memory.worstDrawdownPct)} />
+            </div>
+            <p className="mt-3 line-clamp-3 text-xs leading-5 text-slate-400">{memory.latestLesson}</p>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
