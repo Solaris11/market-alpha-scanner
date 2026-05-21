@@ -44,6 +44,7 @@ Phase 19.11 adds governed failure-mode behavior for high-risk intelligence surfa
   - Route smoke: `/terminal`, `/dashboard`, `/discover`, `/scanner`, `/opportunities`, `/symbol/AMD`, `/feed`, `/history`, `/macro`, `/market-memory`, `/strategy-labs`, `/paper` all returned 200.
   - Chrome production hydration audit: `/discover` and `/terminal` had 0 hydration / React #418 issues. One expected unauthenticated 401 resource log was observed on each route.
   - Production API-outage simulation: `/terminal` discovery overlay showed `Recovery mode active`, confidence downgrade, retry, and preserved limited discovery snapshot.
+  - Production offline simulation: `/terminal` discovery overlay showed `Offline snapshot mode`, confidence downgrade, retry, and preserved limited discovery snapshot.
 
 ## Production Artifacts
 
@@ -52,6 +53,7 @@ Phase 19.11 adds governed failure-mode behavior for high-risk intelligence surfa
 - `docs/ops/artifacts/phase-19-11-prod/discover-desktop.png`
 - `docs/ops/artifacts/phase-19-11-prod/discover-mobile.png`
 - `docs/ops/artifacts/phase-19-11-prod/api-outage-discovery-recovery.png`
+- `docs/ops/artifacts/phase-19-11-prod/offline-discovery-recovery.png`
 
 ## Remaining Risks
 
