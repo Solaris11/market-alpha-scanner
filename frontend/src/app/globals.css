@@ -19,6 +19,9 @@
   --tv-motion-medium: 260ms;
   --tv-motion-slow: 520ms;
   --tv-ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --tv-keyboard-offset: 0px;
+  --tv-visual-viewport-height: 100dvh;
+  --tv-visual-viewport-width: 100vw;
   --tv-status-constructive: #34d399;
   --tv-status-caution: #facc15;
   --tv-status-elevated: #fb923c;
@@ -531,7 +534,45 @@ a {
 
 .tv-native-scroll {
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   scrollbar-gutter: stable;
+  touch-action: pan-y;
+}
+
+.tv-mobile-fixed-viewport {
+  height: var(--tv-visual-viewport-height, 100dvh);
+  max-height: var(--tv-visual-viewport-height, 100dvh);
+  width: var(--tv-visual-viewport-width, 100vw);
+}
+
+.tv-mobile-touch-target {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tv-mobile-safe-bottom {
+  padding-bottom: calc(0.9rem + env(safe-area-inset-bottom) + var(--tv-keyboard-offset, 0px));
+}
+
+@media (max-width: 639px) {
+  .tv-global-discovery-surface {
+    height: var(--tv-visual-viewport-height, 100dvh);
+    max-height: var(--tv-visual-viewport-height, 100dvh);
+  }
+
+  .tv-stable-overlay-surface {
+    max-height: min(calc(var(--tv-visual-viewport-height, 100dvh) - max(0.75rem, env(safe-area-inset-top))), 760px);
+  }
+
+  .tv-stable-overlay-surface[data-mobile-fullscreen="true"] {
+    height: var(--tv-visual-viewport-height, 100dvh);
+    max-height: var(--tv-visual-viewport-height, 100dvh);
+  }
+
+  .tv-expanded-chart-canvas {
+    height: min(52dvh, calc(var(--tv-visual-viewport-height, 100dvh) - 18rem));
+    min-height: 260px;
+  }
 }
 
 @media (min-width: 640px) {

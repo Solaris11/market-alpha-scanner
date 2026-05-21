@@ -30,6 +30,8 @@ import { BrandMark } from "@/components/brand/BrandMark";
 import { DiscoveryCommandButton } from "@/components/discovery/DiscoveryCommandButton";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { lockMobileBodyScroll } from "@/lib/client/mobile-scroll-lock";
+import { installMobileViewportCssVars } from "@/lib/client/mobile-viewport";
 import { MOBILE_BOTTOM_NAV_ITEMS, MOBILE_MORE_NAV_LABEL, PRIMARY_NAV_ITEMS, activeSectionTitle, isActivePath, mobileMoreNavSections, visibleUtilityNavItems, type AppNavItem } from "@/lib/navigation";
 import { useNavigationIntent } from "./NavigationPerformance";
 
@@ -175,9 +177,9 @@ export function MobileTerminalNav() {
 
   useEffect(() => {
     if (!open) return;
-    const previous = document.body.style.overflow;
     const previousSuppressFeedback = document.documentElement.dataset.tradevetoSuppressFeedback;
-    document.body.style.overflow = "hidden";
+    const cleanupViewport = installMobileViewportCssVars();
+    const unlockBodyScroll = lockMobileBodyScroll();
     document.documentElement.dataset.tradevetoSuppressFeedback = "true";
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") setOpen(false);
@@ -192,7 +194,6 @@ export function MobileTerminalNav() {
     window.addEventListener("keydown", onKeyDown);
     document.addEventListener("pointerdown", onPointerDown, true);
     return () => {
-      document.body.style.overflow = previous;
       if (previousSuppressFeedback === undefined) {
         delete document.documentElement.dataset.tradevetoSuppressFeedback;
       } else {
@@ -200,6 +201,8 @@ export function MobileTerminalNav() {
       }
       window.removeEventListener("keydown", onKeyDown);
       document.removeEventListener("pointerdown", onPointerDown, true);
+      unlockBodyScroll();
+      cleanupViewport();
     };
   }, [open]);
 
@@ -234,13 +237,13 @@ export function MobileTerminalNav() {
         <>
           <div
             aria-hidden="true"
-            className="fixed left-0 top-0 z-[8990] h-dvh w-dvw bg-slate-950/70 backdrop-blur-sm"
+            className="tv-mobile-fixed-viewport fixed left-0 top-0 z-[8990] bg-slate-950/70 backdrop-blur-sm"
             data-mobile-gesture-ignore="true"
             onClick={() => setOpen(false)}
           />
           <aside
             aria-labelledby={drawerTitleId}
-            className="tv-drawer-surface fixed right-0 top-0 z-[9000] flex h-dvh w-[min(88vw,380px)] flex-col border-l border-white/10 bg-slate-950/95 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] shadow-2xl shadow-black/50 ring-1 ring-cyan-300/10 backdrop-blur-2xl"
+            className="tv-drawer-surface fixed right-0 top-0 z-[9000] flex h-[var(--tv-visual-viewport-height,100dvh)] w-[min(88vw,380px)] max-w-[var(--tv-visual-viewport-width,100vw)] flex-col border-l border-white/10 bg-slate-950/95 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] shadow-2xl shadow-black/50 ring-1 ring-cyan-300/10 backdrop-blur-2xl"
             data-mobile-gesture-ignore="true"
             id="tradeveto-mobile-drawer"
             onTouchEnd={handleDrawerTouchEnd}
@@ -254,7 +257,7 @@ export function MobileTerminalNav() {
                   <h2 className="mt-1 text-lg font-semibold text-slate-50" id={drawerTitleId}>More</h2>
                   <p className="mt-1 max-w-[15rem] text-xs leading-5 text-slate-500">Low-frequency tools stay here so the bottom nav remains thumb-friendly.</p>
                 </div>
-                <button aria-label="Close navigation menu" className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300" onClick={() => setOpen(false)} type="button">
+                <button aria-label="Close navigation menu" className="tv-mobile-touch-target grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300" onClick={() => setOpen(false)} type="button">
                   <span aria-hidden="true">x</span>
                   <span className="sr-only">Close navigation menu</span>
                 </button>
@@ -380,7 +383,7 @@ function BottomNavLink({ item, pathname }: { item: AppNavItem; pathname: string 
   const navigationIntent = useNavigationIntent(item.href, label);
   return (
     <Link
-      className={`tv-tap-motion pointer-events-auto relative flex min-h-12 flex-col items-center justify-center rounded-xl border px-0.5 text-center text-[10px] font-semibold transition ${
+      className={`tv-tap-motion tv-mobile-touch-target pointer-events-auto relative flex min-h-12 flex-col items-center justify-center rounded-xl border px-0.5 text-center text-[10px] font-semibold transition ${
         active ? color.active : `border-transparent text-slate-400 ${color.hover}`
       }`}
       href={item.href}
@@ -402,7 +405,7 @@ function BottomMenuButton({ buttonRef, onClick, open }: { buttonRef: RefObject<H
       aria-controls="tradeveto-mobile-drawer"
       aria-expanded={open}
       aria-label={open ? "Close full navigation menu" : "Open full navigation menu"}
-      className={`tv-tap-motion pointer-events-auto flex min-h-12 flex-col items-center justify-center rounded-xl border px-0.5 text-center text-[10px] font-semibold transition ${
+      className={`tv-tap-motion tv-mobile-touch-target pointer-events-auto flex min-h-12 flex-col items-center justify-center rounded-xl border px-0.5 text-center text-[10px] font-semibold transition ${
         open ? "border-cyan-300/35 bg-cyan-400/15 text-cyan-100" : "border-transparent text-slate-400 hover:bg-white/[0.05] hover:text-slate-100"
       }`}
       onClick={onClick}

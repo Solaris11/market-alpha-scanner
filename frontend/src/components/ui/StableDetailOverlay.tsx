@@ -6,6 +6,8 @@ import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { motion, useReducedMotion, type PanInfo, type Transition } from "motion/react";
 import { trackModalAbandon, trackModalClose, trackModalOpen } from "@/lib/client/analytics";
+import { lockMobileBodyScroll } from "@/lib/client/mobile-scroll-lock";
+import { installMobileViewportCssVars } from "@/lib/client/mobile-viewport";
 
 type StableDetailOverlaySize = "md" | "lg" | "xl";
 
@@ -27,19 +29,6 @@ const WIDTH_CLASS: Record<StableDetailOverlaySize, string> = {
   md: "max-w-2xl",
   lg: "max-w-3xl",
   xl: "max-w-5xl",
-};
-
-type BodyScrollSnapshot = {
-  bodyLeft: string;
-  bodyOverflow: string;
-  bodyOverscroll: string;
-  bodyPaddingRight: string;
-  bodyPosition: string;
-  bodyRight: string;
-  bodyTop: string;
-  bodyWidth: string;
-  htmlOverflow: string;
-  htmlOverscroll: string;
 };
 
 let stableTriggerScrollY: number | null = null;
@@ -118,54 +107,6 @@ function getStableOverlayScrollY(): number {
 
 installStableTriggerCapture();
 
-function lockBodyScroll(scrollY: number): BodyScrollSnapshot {
-  const body = document.body;
-  const root = document.documentElement;
-  const scrollbarWidth = Math.max(0, window.innerWidth - root.clientWidth);
-  const snapshot: BodyScrollSnapshot = {
-    bodyLeft: body.style.left,
-    bodyOverflow: body.style.overflow,
-    bodyOverscroll: body.style.overscrollBehavior,
-    bodyPaddingRight: body.style.paddingRight,
-    bodyPosition: body.style.position,
-    bodyRight: body.style.right,
-    bodyTop: body.style.top,
-    bodyWidth: body.style.width,
-    htmlOverflow: root.style.overflow,
-    htmlOverscroll: root.style.overscrollBehavior,
-  };
-
-  body.style.overflow = "hidden";
-  body.style.overscrollBehavior = "contain";
-  if (scrollbarWidth > 0) body.style.paddingRight = `${scrollbarWidth}px`;
-  body.style.position = "fixed";
-  body.style.top = `-${scrollY}px`;
-  body.style.left = "0";
-  body.style.right = "0";
-  body.style.width = "100%";
-  root.style.overflow = "hidden";
-  root.style.overscrollBehavior = "contain";
-
-  return snapshot;
-}
-
-function restoreBodyScroll(snapshot: BodyScrollSnapshot, scrollY: number): void {
-  const body = document.body;
-  const root = document.documentElement;
-  body.style.position = snapshot.bodyPosition;
-  body.style.top = snapshot.bodyTop;
-  body.style.left = snapshot.bodyLeft;
-  body.style.right = snapshot.bodyRight;
-  body.style.width = snapshot.bodyWidth;
-  body.style.overflow = snapshot.bodyOverflow;
-  body.style.overscrollBehavior = snapshot.bodyOverscroll;
-  body.style.paddingRight = snapshot.bodyPaddingRight;
-  root.style.overflow = snapshot.htmlOverflow;
-  root.style.overscrollBehavior = snapshot.htmlOverscroll;
-  window.scrollTo(0, scrollY);
-  window.requestAnimationFrame(() => window.scrollTo(0, scrollY));
-}
-
 export function StableDetailOverlay({
   analyticsSurface,
   backdropCloses = true,
@@ -229,7 +170,8 @@ export function StableDetailOverlay({
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    const scrollSnapshot = lockBodyScroll(scrollYRef.current);
+    const cleanupViewport = installMobileViewportCssVars();
+    const unlockBodyScroll = lockMobileBodyScroll(scrollYRef.current);
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") requestClose("escape");
@@ -238,7 +180,8 @@ export function StableDetailOverlay({
     window.addEventListener("keydown", handleKeyDown);
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      restoreBodyScroll(scrollSnapshot, scrollYRef.current);
+      unlockBodyScroll();
+      cleanupViewport();
     };
   }, [open, requestClose]);
 
@@ -253,8 +196,8 @@ export function StableDetailOverlay({
     if (info.offset.y > 96 || info.velocity.y > 720) requestClose("drag");
   };
   const mobileChromeClass = mobileFullscreen
-    ? "h-[100dvh] max-h-[100dvh] rounded-none border-x-0 border-b-0"
-    : "max-h-[min(88dvh,760px)] rounded-t-[1.6rem]";
+    ? "rounded-none border-x-0 border-b-0"
+    : "rounded-t-[1.6rem]";
 
   return createPortal(
     <div
@@ -274,8 +217,9 @@ export function StableDetailOverlay({
         type="button"
       />
       <motion.section
-        className={`tv-overlay-surface relative z-10 flex w-full ${WIDTH_CLASS[size]} ${mobileChromeClass} flex-col overflow-hidden border border-cyan-300/20 bg-slate-950 shadow-2xl shadow-black/75 ring-1 ring-cyan-300/10 sm:max-h-[min(92dvh,900px)] sm:rounded-[1.6rem] ${className}`}
+        className={`tv-overlay-surface tv-stable-overlay-surface relative z-10 flex w-full ${WIDTH_CLASS[size]} ${mobileChromeClass} flex-col overflow-hidden border border-cyan-300/20 bg-slate-950 shadow-2xl shadow-black/75 ring-1 ring-cyan-300/10 sm:max-h-[min(92dvh,900px)] sm:rounded-[1.6rem] ${className}`}
         animate={reduceMotion ? undefined : { opacity: 1, scale: 1, y: 0 }}
+        data-mobile-fullscreen={mobileFullscreen ? "true" : "false"}
         data-stable-overlay-content="true"
         data-mobile-gesture-ignore="true"
         drag={isMobileSheet && !mobileFullscreen ? "y" : false}

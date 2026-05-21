@@ -357,7 +357,7 @@ function ExpandedChartModal({
           </div>
         </div>
 
-        <div className="mt-4 h-[52dvh] min-h-[300px] rounded-2xl border border-white/10 bg-slate-950/70 p-3 sm:h-[360px]">
+        <div className="tv-expanded-chart-canvas mt-4 h-[52dvh] min-h-[300px] rounded-2xl border border-white/10 bg-slate-950/70 p-3 sm:h-[360px]">
           {valid.length >= 2 ? <PriceSvg points={valid} tone={tone} /> : <ChartLimitedState error={packet.error} period={period} />}
         </div>
 
