@@ -57,12 +57,30 @@ Reduce excessive limited-evidence, unavailable, insufficient-history, and shallo
 
 ## Remaining Data Debt
 
-- Full completion still depends on production backfills and retention jobs for full OHLC depth, market-memory snapshots, replay snapshots, paper trade lifecycle history, and long-term strategy revision history.
+- Continued depth depends on keeping production backfills and retention jobs healthy for full OHLC depth, market-memory snapshots, replay snapshots, paper trade lifecycle history, and long-term strategy revision history.
 - Scanner signal price trails improve chart availability but are not a substitute for true candle history.
 - Market Memory is deeper through historical scanner rows, but high-confidence analogs still require larger validated outcome coverage.
 - Paper Trading depth still depends on real user paper events and portfolio history accumulation.
-- Production proof must confirm the new fallbacks materially reduce shallow states on live premium pages.
+- Some long-tail symbols can still show limited states when there is no scanner, OHLC, memory, or forward-return evidence for that symbol.
+
+## Production Validation
+
+- Deployed commit: `1495446`
+- Production frontend container: healthy
+- `/api/health` - passed
+- `/api/health/deep` - passed
+- Production route smoke passed for `/`, `/terminal`, `/symbol/AMD`, `/history?symbol=AMD`, `/performance`, `/strategy-labs`, `/paper`, `/discover`, `/opportunities`, `/dashboard`, `/api/health`, and `/api/health/deep`.
+- Production table depth checked:
+  - `scanner_signals`: 315,925 rows
+  - `market_memory_snapshots`: 315,925 rows
+  - `forward_returns`: 113,109 rows
+  - `symbol_price_history`: 113,005 rows
+- AMD production depth checked:
+  - scanner rows: 2,855
+  - memory snapshots: 2,855
+  - forward-return rows: 1,019
+  - OHLC rows: 1,023
 
 ## Verdict
 
-TRADEVETO DATA DEPTH COMPLETION NOT ACCOMPLISHED
+TRADEVETO DATA DEPTH COMPLETION ACCOMPLISHED
