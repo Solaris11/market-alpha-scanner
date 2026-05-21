@@ -40,6 +40,7 @@ let settleScrollTimer: number | null = null;
 let scrollSamples: Array<{ at: number; y: number }> = [];
 
 const SCROLL_LOOKBACK_MS = 90;
+const SCROLL_CAPTURE_GRACE_MS = 110;
 const SCROLL_SAMPLE_LIMIT = 48;
 
 function rememberScrollSample(): void {
@@ -57,7 +58,7 @@ function getLookbackScrollY(): number {
 }
 
 function getInteractionSafeScrollY(): number {
-  if (Date.now() - lastScrollEventAt < 500) {
+  if (Date.now() - lastScrollEventAt < SCROLL_CAPTURE_GRACE_MS) {
     const lookbackScrollY = getLookbackScrollY();
     if (Math.abs(window.scrollY - lookbackScrollY) > 2) return lookbackScrollY;
     return lastSettledScrollY;
