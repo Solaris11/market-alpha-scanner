@@ -236,6 +236,18 @@ TRUSTED_FEED_HOST_SUFFIXES: Final[frozenset[str]] = frozenset(
         "apnews.com",
         "yahoo.com",
         "finance.yahoo.com",
+        "benzinga.com",
+        "financialmodelingprep.com",
+        "finnhub.io",
+        "polygon.io",
+        "alphavantage.co",
+        "iexcloud.io",
+        "imf.org",
+        "worldbank.org",
+        "ecb.europa.eu",
+        "bankofengland.co.uk",
+        "state.gov",
+        "whitehouse.gov",
     }
 )
 TRUSTED_NEWS_PROVIDERS: Final[frozenset[str]] = frozenset(
@@ -255,6 +267,19 @@ TRUSTED_NEWS_PROVIDERS: Final[frozenset[str]] = frozenset(
         "the wall street journal",
         "wall street journal",
         "yahoo finance",
+        "alpha vantage",
+        "bank of england",
+        "benzinga",
+        "european central bank",
+        "financial modeling prep",
+        "finnhub",
+        "imf",
+        "iex cloud",
+        "polygon",
+        "state department",
+        "u.s. department of state",
+        "white house",
+        "world bank",
     }
 )
 
@@ -1895,9 +1920,9 @@ def _is_allowed_source_url(url: str) -> bool:
 
 def _provider_source_weight(source: str) -> float:
     normalized = source.lower().strip()
-    if any(token in normalized for token in ("federal reserve", "bureau of labor", "sec", "cftc", "bea", "census", "eia")):
+    if any(token in normalized for token in ("federal reserve", "bureau of labor", "sec", "cftc", "bea", "census", "eia", "imf", "world bank", "european central bank", "bank of england", "state department", "white house")):
         return 1.0
-    if any(token in normalized for token in ("reuters", "associated press", "ap", "wall street journal", "marketwatch")):
+    if any(token in normalized for token in ("reuters", "associated press", "ap", "wall street journal", "marketwatch", "benzinga", "finnhub", "financial modeling prep", "polygon", "alpha vantage", "iex cloud")):
         return 0.86
     if any(token in normalized for token in ("pr newswire", "business wire", "globenewswire", "mt newswires")):
         return 0.78

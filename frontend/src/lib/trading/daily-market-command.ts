@@ -156,11 +156,60 @@ export type DailyNewsEcosystemSummary = {
   watchlistImpactCount: number;
 };
 
+export type DailyInformationProviderCoverage = {
+  category: "company" | "market" | "official";
+  itemCount: number;
+  latestTimestamp: string | null;
+  qualityLabel: string;
+  source: string;
+  tone: DailyCommandTone;
+};
+
+export type DailyInformationEvolutionPoint = {
+  categories: string[];
+  date: string;
+  highImpactCount: number;
+  itemCount: number;
+  latestHeadline: string;
+  sources: string[];
+  tone: DailyCommandTone;
+  watchlistImpactCount: number;
+};
+
+export type DailyCrossAssetEventRelationship = {
+  affectedSectors: string[];
+  affectedSymbols: string[];
+  category: DailyMarketDevelopment["category"];
+  headline: string;
+  id: string;
+  linkedMarketProxies: string[];
+  narrative: string;
+  source: string;
+  tone: DailyCommandTone;
+  urgency: DailyMarketDevelopment["urgency"];
+};
+
+export type DailyCompanyEventTimeline = {
+  nextEvent: DailyEventCalendarItem | null;
+  sourceCount: number;
+  symbol: string;
+  timeline: Array<{
+    category: string;
+    detail: string;
+    source: string;
+    timestamp: string;
+    tone: DailyCommandTone;
+  }>;
+  tone: DailyCommandTone;
+};
+
 export type DailyMarketCommandModel = {
   bestSetups: DailyCommandRankedItem[];
   breakoutCandidates: DailyCommandRankedItem[];
   calendar: DailyEventCalendarItem[];
+  companyTimelines: DailyCompanyEventTimeline[];
   crashRisk: DailyCommandRankedItem[];
+  crossAssetRelationships: DailyCrossAssetEventRelationship[];
   developments: DailyMarketDevelopment[];
   generatedAt: string | null;
   hero: {
@@ -182,6 +231,8 @@ export type DailyMarketCommandModel = {
     integrationNeeded: string;
     message: string;
   };
+  newsEvolution: DailyInformationEvolutionPoint[];
+  providerCoverage: DailyInformationProviderCoverage[];
   sectorNews: DailySectorNewsCluster[];
   watchlistSymbols: string[];
   whatChangedToday: DailyMarketChange[];
@@ -220,6 +271,10 @@ export function buildDailyMarketCommandModel(input: {
   const newsEcosystem = buildNewsEcosystem(developments, calendar);
   const macroStorylines = buildMacroStorylines(developments, moneyFlow, calendar);
   const sectorNews = buildSectorNewsClusters(developments);
+  const providerCoverage = buildProviderCoverage(developments);
+  const newsEvolution = buildInformationEvolution(developments);
+  const crossAssetRelationships = buildCrossAssetRelationships(developments, input.marketCommand.barItems.map((item) => item.symbol));
+  const companyTimelines = buildCompanyTimelines(developments, calendar);
   const attentionScore = averageNumber([
     bestSetups[0]?.score ?? null,
     breakoutCandidates[0]?.score ?? null,
@@ -241,7 +296,9 @@ export function buildDailyMarketCommandModel(input: {
     bestSetups,
     breakoutCandidates,
     calendar,
+    companyTimelines,
     crashRisk,
+    crossAssetRelationships,
     developments,
     generatedAt: input.marketCommand.generatedAt,
     hero: {
@@ -264,6 +321,8 @@ export function buildDailyMarketCommandModel(input: {
       integrationNeeded: "Required integration: verified headline, source, source URL, timestamp, affected ticker/sector, and impact fields from a configured market-news provider.",
       message: "News source not configured yet",
     },
+    newsEvolution,
+    providerCoverage,
     sectorNews,
     watchlistSymbols: (input.watchlistSymbols ?? []).map((symbol) => symbol.toUpperCase()),
     whatChangedToday,
@@ -586,6 +645,136 @@ function buildSectorNewsClusters(developments: DailyMarketDevelopment[]): DailyS
       };
     })
     .sort((left, right) => right.highImpactCount - left.highImpactCount || right.watchlistImpactCount - left.watchlistImpactCount || right.itemCount - left.itemCount)
+    .slice(0, 6);
+}
+
+function buildProviderCoverage(developments: DailyMarketDevelopment[]): DailyInformationProviderCoverage[] {
+  const bySource = new Map<string, DailyMarketDevelopment[]>();
+  for (const item of developments) {
+    const current = bySource.get(item.source) ?? [];
+    current.push(item);
+    bySource.set(item.source, current);
+  }
+  return Array.from(bySource.entries())
+    .map(([source, items]) => {
+      const latest = items.slice().sort((left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp))[0] ?? null;
+      const qualityLabel = latest?.sourceQualityLabel ?? "Verified source-linked item";
+      const category = providerCategory(qualityLabel, source);
+      const highImpact = items.some((item) => item.urgency === "high");
+      const tone: DailyCommandTone = highImpact ? "rose" : category === "official" ? "cyan" : category === "company" ? "violet" : "emerald";
+      return {
+        category,
+        itemCount: items.length,
+        latestTimestamp: latest?.timestamp ?? null,
+        qualityLabel,
+        source,
+        tone,
+      };
+    })
+    .sort((left, right) => providerRank(left.category) - providerRank(right.category) || right.itemCount - left.itemCount)
+    .slice(0, 8);
+}
+
+function buildInformationEvolution(developments: DailyMarketDevelopment[]): DailyInformationEvolutionPoint[] {
+  const byDate = new Map<string, DailyMarketDevelopment[]>();
+  for (const item of developments) {
+    const date = dayKey(item.timestamp);
+    if (!date) continue;
+    const current = byDate.get(date) ?? [];
+    current.push(item);
+    byDate.set(date, current);
+  }
+  return Array.from(byDate.entries())
+    .map(([date, items]) => {
+      const sorted = items.slice().sort((left, right) => developmentPriority(right) - developmentPriority(left));
+      const highImpactCount = items.filter((item) => item.urgency === "high").length;
+      const watchlistImpactCount = items.filter((item) => item.watchlistImpact).length;
+      const tone: DailyCommandTone = highImpactCount ? "rose" : watchlistImpactCount ? "cyan" : items.some((item) => item.impact === "positive") ? "emerald" : "amber";
+      return {
+        categories: uniqueStrings(items.map((item) => item.category)),
+        date,
+        highImpactCount,
+        itemCount: items.length,
+        latestHeadline: sorted[0]?.headline ?? "Limited headline detail",
+        sources: uniqueStrings(items.map((item) => item.source)),
+        tone,
+        watchlistImpactCount,
+      };
+    })
+    .sort((left, right) => Date.parse(right.date) - Date.parse(left.date))
+    .slice(0, 7);
+}
+
+function buildCrossAssetRelationships(developments: DailyMarketDevelopment[], marketProxySymbols: string[]): DailyCrossAssetEventRelationship[] {
+  const availableProxies = new Set(marketProxySymbols.map((symbol) => symbol.toUpperCase()));
+  return developments
+    .map((item) => {
+      const linkedMarketProxies = linkedProxiesForDevelopment(item).filter((symbol) => availableProxies.has(symbol));
+      const affectedSymbols = uniqueStrings(item.affectedSymbols);
+      const affectedSectors = uniqueStrings(item.affectedSectors);
+      if (!linkedMarketProxies.length && affectedSymbols.length < 2 && affectedSectors.length === 0) return null;
+      return {
+        affectedSectors,
+        affectedSymbols,
+        category: item.category,
+        headline: item.headline,
+        id: item.id,
+        linkedMarketProxies,
+        narrative: relationshipNarrative(item, linkedMarketProxies),
+        source: item.source,
+        tone: item.tone,
+        urgency: item.urgency,
+      };
+    })
+    .filter((item): item is DailyCrossAssetEventRelationship => item !== null)
+    .sort((left, right) => {
+      const priority = urgencyRank(right.urgency) - urgencyRank(left.urgency);
+      if (priority !== 0) return priority;
+      return (right.linkedMarketProxies.length + right.affectedSymbols.length) - (left.linkedMarketProxies.length + left.affectedSymbols.length);
+    })
+    .slice(0, 6);
+}
+
+function buildCompanyTimelines(developments: DailyMarketDevelopment[], calendar: DailyEventCalendarItem[]): DailyCompanyEventTimeline[] {
+  const symbols = uniqueStrings([
+    ...developments.flatMap((item) => item.affectedSymbols),
+    ...calendar.map((item) => item.symbol),
+  ]);
+  return symbols
+    .map((symbol) => {
+      const newsItems = developments.filter((item) => item.affectedSymbols.includes(symbol));
+      const calendarItems = calendar.filter((item) => item.symbol === symbol);
+      const timeline = [
+        ...newsItems.map((item) => ({
+          category: item.category,
+          detail: item.headline,
+          source: item.source,
+          timestamp: item.timestamp,
+          tone: item.tone,
+        })),
+        ...calendarItems.map((item) => ({
+          category: item.category,
+          detail: item.label,
+          source: "Stored event calendar",
+          timestamp: item.date,
+          tone: item.tone,
+        })),
+      ]
+        .sort((left, right) => Date.parse(left.timestamp) - Date.parse(right.timestamp))
+        .slice(0, 5);
+      const nextEvent = calendarItems.slice().sort((left, right) => Date.parse(left.date) - Date.parse(right.date))[0] ?? null;
+      const highRisk = newsItems.some((item) => item.urgency === "high" || item.tone === "rose");
+      const tone: DailyCommandTone = highRisk ? "rose" : nextEvent ? "amber" : newsItems.some((item) => item.tone === "emerald") ? "emerald" : "cyan";
+      return {
+        nextEvent,
+        sourceCount: uniqueStrings(newsItems.map((item) => item.source)).length,
+        symbol,
+        timeline,
+        tone,
+      };
+    })
+    .filter((item) => item.timeline.length > 0)
+    .sort((left, right) => right.timeline.length - left.timeline.length || Number(Boolean(right.nextEvent)) - Number(Boolean(left.nextEvent)))
     .slice(0, 6);
 }
 
@@ -918,6 +1107,51 @@ function dedupeCalendar(items: DailyEventCalendarItem[]): DailyEventCalendarItem
     deduped.push(item);
   }
   return deduped;
+}
+
+function providerCategory(qualityLabel: string, source: string): DailyInformationProviderCoverage["category"] {
+  const text = `${qualityLabel} ${source}`.toLowerCase();
+  if (/official|federal|bureau|sec|treasury|cftc|census|eia|fred|central bank|imf|world bank|ecb|bank of england/.test(text)) return "official";
+  if (/company|release|investor|pr newswire|globenewswire|business wire|earnings/.test(text)) return "company";
+  return "market";
+}
+
+function providerRank(category: DailyInformationProviderCoverage["category"]): number {
+  if (category === "official") return 0;
+  if (category === "market") return 1;
+  return 2;
+}
+
+function dayKey(value: string): string | null {
+  const parsed = new Date(value);
+  if (!Number.isFinite(parsed.getTime())) return null;
+  parsed.setUTCHours(0, 0, 0, 0);
+  return parsed.toISOString();
+}
+
+function linkedProxiesForDevelopment(item: DailyMarketDevelopment): string[] {
+  const text = `${item.category} ${item.headline} ${item.affectedSectors.join(" ")} ${item.affectedSymbols.join(" ")}`.toLowerCase();
+  const proxies: string[] = [];
+  if (/rate|yield|bond|fed|inflation|cpi|ppi|jobs|gdp|recession/.test(text)) proxies.push("TLT", "UUP", "SPY", "QQQ");
+  if (/oil|energy|crude|opec/.test(text)) proxies.push("USO", "GLD", "SPY");
+  if (/crypto|btc|bitcoin|coin/.test(text)) proxies.push("BTC", "BTC-USD", "IBIT", "QQQ");
+  if (/geopolitical|war|peace|sanction|conflict|defense/.test(text)) proxies.push("USO", "GLD", "UUP", "SPY");
+  if (/earnings|analyst|semiconductor|technology|software|growth/.test(text)) proxies.push("QQQ", "SPY");
+  if (/dollar|currency/.test(text)) proxies.push("UUP", "GLD", "TLT");
+  return uniqueStrings(proxies);
+}
+
+function relationshipNarrative(item: DailyMarketDevelopment, linkedProxies: string[]): string {
+  const proxyText = linkedProxies.length ? ` Cross-asset proxies in view: ${linkedProxies.join(", ")}.` : "";
+  const sectorText = item.affectedSectors.length ? ` Affected sectors: ${item.affectedSectors.slice(0, 3).join(", ")}.` : "";
+  const symbolText = item.affectedSymbols.length ? ` Affected symbols: ${item.affectedSymbols.slice(0, 5).join(", ")}.` : "";
+  return `${item.category} context from ${item.source} is connected to current TradeVeto risk/opportunity routing.${proxyText}${sectorText}${symbolText}`;
+}
+
+function urgencyRank(value: DailyMarketDevelopment["urgency"]): number {
+  if (value === "high") return 3;
+  if (value === "medium") return 2;
+  return 1;
 }
 
 function uniqueStrings(values: string[]): string[] {

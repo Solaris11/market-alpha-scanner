@@ -62,6 +62,15 @@ export type ResearchMetric = {
   value: string;
 };
 
+export type SymbolResearchTimelineItem = {
+  category: "analyst" | "dividend" | "earnings" | "macro" | "news";
+  date: string;
+  label: string;
+  source: string;
+  sourceUrl: string | null;
+  tone: "amber" | "cyan" | "emerald" | "rose" | "violet";
+};
+
 export type SymbolResearchModel = {
   bearishFactors: string[];
   bullishFactors: string[];
@@ -88,6 +97,7 @@ export type SymbolResearchModel = {
     riskScore: number | null;
     surpriseHistoryAvailable: boolean;
   };
+  eventTimeline: SymbolResearchTimelineItem[];
   financialMetrics: ResearchMetric[];
   macroConnections: ResearchMetric[];
   news: MarketNewsItem[];
@@ -204,6 +214,7 @@ export function buildSymbolResearchModel(row: RankingRow, contextRows: RankingRo
     row.forward_pe,
     row.verified_event_recent_events,
   ].filter((value) => value !== null && value !== undefined && String(value).trim() !== "").length;
+  const eventTimeline = buildSymbolResearchTimeline(row, news);
   return {
     bearishFactors: bearishFactors.length ? bearishFactors : ["No validated bearish company-specific factor is available yet."],
     bullishFactors: bullishFactors.length ? bullishFactors : ["No validated bullish company-specific factor is available yet."],
@@ -230,11 +241,59 @@ export function buildSymbolResearchModel(row: RankingRow, contextRows: RankingRo
       riskScore: numeric(row.event_risk_score),
       surpriseHistoryAvailable: Boolean(row.earnings_surprise_history ?? row.earnings_surprise),
     },
+    eventTimeline,
     financialMetrics,
     macroConnections,
     news,
     researchCompleteness: Math.round((knownInputs / 11) * 100),
   };
+}
+
+function buildSymbolResearchTimeline(row: RankingRow, news: MarketNewsItem[]): SymbolResearchTimelineItem[] {
+  const items: SymbolResearchTimelineItem[] = news.map((item) => ({
+    category: item.eventType === "analyst_action" ? "analyst" : item.eventType.includes("earnings") ? "earnings" : item.eventType.includes("macro") || item.eventType.includes("rates") ? "macro" : "news",
+    date: item.publishedAt,
+    label: item.title,
+    source: item.source,
+    sourceUrl: item.sourceUrl,
+    tone: item.tone,
+  }));
+  const earningsDate = text(row.earnings_date);
+  if (earningsDate) {
+    items.push({
+      category: "earnings",
+      date: earningsDate,
+      label: `${row.symbol.toUpperCase()} earnings date`,
+      source: "Stored earnings calendar",
+      sourceUrl: null,
+      tone: riskTone(numeric(row.event_risk_score)),
+    });
+  }
+  const exDividendDate = text(row.ex_dividend_date ?? row.dividend_ex_date);
+  if (exDividendDate) {
+    items.push({
+      category: "dividend",
+      date: exDividendDate,
+      label: `${row.symbol.toUpperCase()} ex-dividend date`,
+      source: "Stored dividend calendar",
+      sourceUrl: null,
+      tone: "cyan",
+    });
+  }
+  const analystDate = text(row.analyst_action_date ?? row.rating_action_date ?? row.upgrade_date ?? row.downgrade_date);
+  if (analystDate) {
+    items.push({
+      category: "analyst",
+      date: analystDate,
+      label: text(row.analyst_action_summary ?? row.rating_action_summary ?? row.news_headline) ?? `${row.symbol.toUpperCase()} analyst action`,
+      source: "Stored analyst action",
+      sourceUrl: null,
+      tone: row.downgrade_date ? "rose" : "violet",
+    });
+  }
+  return dedupeTimeline(items)
+    .sort((left, right) => Date.parse(left.date) - Date.parse(right.date))
+    .slice(0, 10);
 }
 
 function buildMarketCommandItem(chart: MarketChartHubItem, row: RankingRow | null): MarketCommandItem {
@@ -532,6 +591,18 @@ function unique(values: string[]): string[] {
 
 function compactText(values: Array<string | null | undefined>): string[] {
   return unique(values.filter((value): value is string => Boolean(value)).map((value) => value.replace(/\s+/g, " ").trim()));
+}
+
+function dedupeTimeline(items: SymbolResearchTimelineItem[]): SymbolResearchTimelineItem[] {
+  const seen = new Set<string>();
+  const deduped: SymbolResearchTimelineItem[] = [];
+  for (const item of items) {
+    const key = `${item.category}:${item.date}:${item.label}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+  return deduped;
 }
 
 function formatRatioPercent(value: number | null): string {

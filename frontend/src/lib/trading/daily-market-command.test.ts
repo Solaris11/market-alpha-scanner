@@ -212,6 +212,10 @@ test("daily market command ranks opportunity, breakout, crash risk, money flow, 
   assert.equal(model.newsEcosystem.providerCoverage, "Single-source coverage");
   assert.equal(model.newsEcosystem.calendarCount, 3);
   assert.ok(model.newsEcosystem.completenessScore > 0);
+  assert.equal(model.providerCoverage[0]?.source, "Reuters");
+  assert.equal(model.newsEvolution[0]?.itemCount, 1);
+  assert.ok(model.crossAssetRelationships.some((relationship) => relationship.affectedSymbols.includes("AMD") && relationship.affectedSymbols.includes("MU")));
+  assert.ok(model.companyTimelines.some((timeline) => timeline.symbol === "AMD" && timeline.timeline.length > 0));
   assert.ok(model.macroStorylines.some((story) => story.label === "Rates and inflation pressure"));
   assert.ok(model.sectorNews.some((cluster) => cluster.sector === "Semiconductors"));
   assert.ok(model.calendar.some((item) => item.symbol === "AMD" && item.category === "earnings"));

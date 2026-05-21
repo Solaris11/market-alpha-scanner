@@ -35,6 +35,18 @@ const ALLOWED_SOURCE_PATTERNS = [
   /(^|\b)pr\s*newswire\b/i,
   /(^|\b)globenewswire\b/i,
   /(^|\b)business\s*wire\b/i,
+  /(^|\b)benzinga\b/i,
+  /(^|\b)financial\s*modeling\s*prep\b|\bfmp\b/i,
+  /(^|\b)finnhub\b/i,
+  /(^|\b)polygon\.?io\b/i,
+  /(^|\b)alpha\s*vantage\b/i,
+  /(^|\b)iex\s*cloud\b/i,
+  /(^|\b)imf\b|international\s*monetary\s*fund/i,
+  /(^|\b)world\s*bank\b/i,
+  /(^|\b)ecb\b|european\s*central\s*bank/i,
+  /(^|\b)bank\s*of\s*england\b/i,
+  /(^|\b)u\.?s\.?\s*department\s*of\s*state\b|(^|\b)state\s*department\b/i,
+  /(^|\b)white\s*house\b/i,
 ];
 
 const BLOCKED_SOURCE_PATTERNS = [
@@ -70,6 +82,18 @@ const ALLOWED_HOST_PATTERNS = [
   /(^|\.)prnewswire\.com$/i,
   /(^|\.)globenewswire\.com$/i,
   /(^|\.)businesswire\.com$/i,
+  /(^|\.)benzinga\.com$/i,
+  /(^|\.)financialmodelingprep\.com$/i,
+  /(^|\.)finnhub\.io$/i,
+  /(^|\.)polygon\.io$/i,
+  /(^|\.)alphavantage\.co$/i,
+  /(^|\.)iexcloud\.io$/i,
+  /(^|\.)imf\.org$/i,
+  /(^|\.)worldbank\.org$/i,
+  /(^|\.)ecb\.europa\.eu$/i,
+  /(^|\.)bankofengland\.co\.uk$/i,
+  /(^|\.)state\.gov$/i,
+  /(^|\.)whitehouse\.gov$/i,
 ];
 
 const BLOCKED_HOST_PATTERNS = [

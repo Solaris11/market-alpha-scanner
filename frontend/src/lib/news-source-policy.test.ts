@@ -11,6 +11,10 @@ describe("news source policy", () => {
     assert.equal(isVerifiedNewsSource("CFTC", "https://www.cftc.gov/PressRoom/PressReleases/example"), true);
     assert.equal(isVerifiedNewsSource("PR Newswire", "https://www.prnewswire.com/news-releases/company-example.html"), true);
     assert.equal(isVerifiedNewsSource("StockTitan", "https://www.stocktitan.net/news/NVDA/example.html"), true);
+    assert.equal(isVerifiedNewsSource("Benzinga", "https://www.benzinga.com/markets/equities/example"), true);
+    assert.equal(isVerifiedNewsSource("Financial Modeling Prep", "https://financialmodelingprep.com/market-news/example"), true);
+    assert.equal(isVerifiedNewsSource("IMF", "https://www.imf.org/en/News/Articles/example"), true);
+    assert.equal(isVerifiedNewsSource("European Central Bank", "https://www.ecb.europa.eu/press/example"), true);
   });
 
   it("blocks unverified social and missing urls", () => {

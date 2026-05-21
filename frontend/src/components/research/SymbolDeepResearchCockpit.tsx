@@ -147,16 +147,19 @@ export function SymbolDeepResearchCockpit({ model }: Props) {
               )}
             </div>
           </div>
-          <div className="rounded-3xl border border-cyan-300/16 bg-cyan-400/[0.035] p-4">
-            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Research gaps</div>
-            <h3 className="mt-1 text-xl font-bold text-slate-50">What is not yet validated</h3>
-            <div className="mt-4 grid gap-2">
-              <LimitedItem available={Boolean(model.company.description)} label="Company description" />
-              <LimitedItem available={Boolean(model.company.headquarters)} label="Headquarters / CEO profile" />
-              <LimitedItem available={model.earnings.surpriseHistoryAvailable} label="Earnings surprise history" />
-              <LimitedItem available={model.earnings.reactionHistoryAvailable} label="Post-earnings reaction history" />
-              <LimitedItem available={model.dividend.historyAvailable} label="Dividend payout history" />
-              <LimitedItem available={model.news.length > 0} label="Source-linked news context" />
+          <div className="space-y-4">
+            <SymbolEventTimeline items={model.eventTimeline} />
+            <div className="rounded-3xl border border-cyan-300/16 bg-cyan-400/[0.035] p-4">
+              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Research gaps</div>
+              <h3 className="mt-1 text-xl font-bold text-slate-50">What is not yet validated</h3>
+              <div className="mt-4 grid gap-2">
+                <LimitedItem available={Boolean(model.company.description)} label="Company description" />
+                <LimitedItem available={Boolean(model.company.headquarters)} label="Headquarters / CEO profile" />
+                <LimitedItem available={model.earnings.surpriseHistoryAvailable} label="Earnings surprise history" />
+                <LimitedItem available={model.earnings.reactionHistoryAvailable} label="Post-earnings reaction history" />
+                <LimitedItem available={model.dividend.historyAvailable} label="Dividend payout history" />
+                <LimitedItem available={model.news.length > 0} label="Source-linked news context" />
+              </div>
             </div>
           </div>
         </div>
@@ -164,6 +167,37 @@ export function SymbolDeepResearchCockpit({ model }: Props) {
 
       <NewsOverlay item={selectedNews} onClose={() => setSelectedNews(null)} />
     </section>
+  );
+}
+
+function SymbolEventTimeline({ items }: { items: SymbolResearchModel["eventTimeline"] }) {
+  return (
+    <div className="rounded-3xl border border-violet-300/16 bg-violet-400/[0.04] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-violet-300">Company event timeline</div>
+      <h3 className="mt-1 text-xl font-bold text-slate-50">News, earnings, analyst, and dividend context</h3>
+      <div className="mt-4 grid gap-2">
+        {items.length ? items.slice(0, 6).map((item) => (
+          <div className={`rounded-2xl border p-3 ${TONE_CLASSES[item.tone].border} ${TONE_CLASSES[item.tone].bg}`} key={`${item.category}:${item.date}:${item.label}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className={`text-[10px] font-black uppercase tracking-[0.16em] ${TONE_CLASSES[item.tone].text}`}>{formatDate(item.date)} · {item.category}</div>
+                <div className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-slate-100">{item.label}</div>
+              </div>
+              {item.sourceUrl ? (
+                <a className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[10px] font-black text-cyan-100 transition hover:border-cyan-300/35" href={item.sourceUrl} rel="noreferrer" target="_blank">
+                  Source
+                </a>
+              ) : null}
+            </div>
+            <div className="mt-2 text-[10px] font-semibold uppercase tracking-[0.13em] text-slate-500">{item.source}</div>
+          </div>
+        )) : (
+          <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.025] p-4 text-sm leading-6 text-slate-400">
+            No source-linked company event timeline is available for this symbol yet.
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

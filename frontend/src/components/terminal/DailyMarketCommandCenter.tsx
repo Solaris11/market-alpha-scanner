@@ -26,8 +26,12 @@ import { PosterGauge, ScoreFactorStrip, VisualMetricRail, type VisualTone } from
 import type {
   DailyCommandRankedItem,
   DailyCommandTone,
+  DailyCompanyEventTimeline,
+  DailyCrossAssetEventRelationship,
   DailyDevelopmentCategory,
   DailyEventCalendarItem,
+  DailyInformationEvolutionPoint,
+  DailyInformationProviderCoverage,
   DailyMacroEventStory,
   DailyMarketCommandModel,
   DailyMarketDevelopment,
@@ -204,8 +208,12 @@ export function DailyMarketCommandCenter({ model }: Props) {
               ))}
             </div>
             <NewsEcosystemStrip summary={model.newsEcosystem} />
+            <ProviderCoverageGrid providers={model.providerCoverage} />
             <MacroStorylineDeck stories={model.macroStorylines} />
             <SectorNewsClusterDeck clusters={model.sectorNews} />
+            <InformationEvolutionRail points={model.newsEvolution} />
+            <CrossAssetRelationshipDeck relationships={model.crossAssetRelationships} />
+            <CompanyEventTimelineDeck timelines={model.companyTimelines} />
             <div className="mt-4 grid gap-2">
               {filteredDevelopments.length ? filteredDevelopments.slice(0, 7).map((item) => (
                 <button
@@ -301,6 +309,27 @@ function NewsEcosystemStrip({ summary }: { summary: DailyNewsEcosystemSummary })
   );
 }
 
+function ProviderCoverageGrid({ providers }: { providers: DailyInformationProviderCoverage[] }) {
+  if (!providers.length) return null;
+  return (
+    <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+      {providers.slice(0, 8).map((provider) => (
+        <div className={`rounded-2xl border p-3 ${TONE[provider.tone].border} ${TONE[provider.tone].bg}`} key={provider.source}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="truncate text-sm font-black text-slate-50">{provider.source}</div>
+              <div className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{provider.category} provider</div>
+            </div>
+            <div className={`font-mono text-lg font-black ${TONE[provider.tone].text}`}>{provider.itemCount}</div>
+          </div>
+          <div className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{provider.qualityLabel}</div>
+          {provider.latestTimestamp ? <div className="mt-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">Latest {formatDate(provider.latestTimestamp)}</div> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function MacroStorylineDeck({ stories }: { stories: DailyMacroEventStory[] }) {
   if (!stories.length) return null;
   return (
@@ -349,6 +378,100 @@ function SectorNewsClusterDeck({ clusters }: { clusters: DailySectorNewsCluster[
               {cluster.watchlistImpactCount ? <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-bold text-cyan-100">Watch {cluster.watchlistImpactCount}</span> : null}
             </div>
           </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function InformationEvolutionRail({ points }: { points: DailyInformationEvolutionPoint[] }) {
+  if (!points.length) return null;
+  return (
+    <div className="mt-3 rounded-3xl border border-white/10 bg-black/18 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-300">Macro/news evolution</div>
+        <span className="rounded-full border border-white/10 bg-white/[0.035] px-2 py-1 text-[10px] font-bold text-slate-400">{points.length} sessions</span>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        {points.slice(0, 6).map((point) => (
+          <div className={`rounded-2xl border p-3 ${TONE[point.tone].border} ${TONE[point.tone].bg}`} key={point.date}>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className={`text-[10px] font-black uppercase tracking-[0.14em] ${TONE[point.tone].text}`}>{formatDate(point.date)}</div>
+                <div className="mt-1 text-sm font-black text-slate-50">{point.itemCount} source-linked items</div>
+              </div>
+              <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 font-mono text-[10px] font-black text-slate-300">{point.highImpactCount} high</span>
+            </div>
+            <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{point.latestHeadline}</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {point.categories.slice(0, 4).map((category) => <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] text-slate-300" key={category}>{category}</span>)}
+              {point.watchlistImpactCount ? <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-bold text-cyan-100">Watch {point.watchlistImpactCount}</span> : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CrossAssetRelationshipDeck({ relationships }: { relationships: DailyCrossAssetEventRelationship[] }) {
+  if (!relationships.length) return null;
+  return (
+    <div className="mt-3 rounded-3xl border border-white/10 bg-black/18 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Cross-asset event relationships</div>
+        <span className="rounded-full border border-white/10 bg-white/[0.035] px-2 py-1 text-[10px] font-bold text-slate-400">{relationships.length} links</span>
+      </div>
+      <div className="mt-3 grid gap-2 lg:grid-cols-2">
+        {relationships.slice(0, 4).map((relationship) => (
+          <div className={`rounded-2xl border p-3 ${TONE[relationship.tone].border} ${TONE[relationship.tone].bg}`} key={relationship.id}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className={`text-[10px] font-black uppercase tracking-[0.16em] ${TONE[relationship.tone].text}`}>{relationship.urgency} {relationship.category}</div>
+                <div className="mt-1 line-clamp-2 text-sm font-black text-slate-50">{relationship.headline}</div>
+              </div>
+              <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[10px] font-black text-slate-300">{relationship.source}</span>
+            </div>
+            <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-400">{relationship.narrative}</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {relationship.linkedMarketProxies.map((symbol) => <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-0.5 font-mono text-[10px] font-bold text-cyan-100" key={symbol}>{symbol}</span>)}
+              {relationship.affectedSymbols.slice(0, 5).map((symbol) => <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 font-mono text-[10px] text-slate-300" key={symbol}>{symbol}</span>)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CompanyEventTimelineDeck({ timelines }: { timelines: DailyCompanyEventTimeline[] }) {
+  if (!timelines.length) return null;
+  return (
+    <div className="mt-3 rounded-3xl border border-white/10 bg-black/18 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">Company event timelines</div>
+        <span className="rounded-full border border-white/10 bg-white/[0.035] px-2 py-1 text-[10px] font-bold text-slate-400">{timelines.length} symbols</span>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        {timelines.slice(0, 6).map((timeline) => (
+          <Link className={`block rounded-2xl border p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.055] ${TONE[timeline.tone].border} ${TONE[timeline.tone].bg}`} href={`/symbol/${timeline.symbol}`} key={timeline.symbol}>
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <div className="font-mono text-lg font-black text-white">{timeline.symbol}</div>
+                <div className="mt-1 text-[10px] uppercase tracking-[0.14em] text-slate-500">{timeline.sourceCount} linked sources</div>
+              </div>
+              <span className={`rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[10px] font-black ${TONE[timeline.tone].text}`}>{timeline.timeline.length} events</span>
+            </div>
+            <div className="mt-2 space-y-2">
+              {timeline.timeline.slice(0, 3).map((item) => (
+                <div className="border-l border-white/10 pl-2" key={`${timeline.symbol}:${item.timestamp}:${item.detail}`}>
+                  <div className={`text-[10px] font-black uppercase tracking-[0.12em] ${TONE[item.tone].text}`}>{formatDate(item.timestamp)} · {item.category}</div>
+                  <div className="mt-0.5 line-clamp-2 text-xs leading-5 text-slate-400">{item.detail}</div>
+                </div>
+              ))}
+            </div>
+            {timeline.nextEvent ? <div className="mt-2 rounded-xl border border-white/10 bg-black/20 px-2 py-1.5 text-[11px] text-slate-300">Next: {timeline.nextEvent.label}</div> : null}
+          </Link>
         ))}
       </div>
     </div>

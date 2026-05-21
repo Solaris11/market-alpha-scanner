@@ -105,6 +105,8 @@ test("buildSymbolResearchModel exposes real research fields and limited-data sta
   assert.equal(model.earnings.date, "2026-07-28");
   assert.equal(model.earnings.surpriseHistoryAvailable, false);
   assert.equal(model.dividend.yield, 0);
+  assert.ok(model.eventTimeline.some((item) => item.category === "earnings" && item.label.includes("AMD")));
+  assert.ok(model.eventTimeline.some((item) => item.source === "Reuters"));
   assert.equal(model.news.length, 1);
   assert.match(model.news[0]?.bullishImplication ?? "", /supportive|constructive|Bullish/i);
   assert.match(model.news[0]?.relatedReplayContext ?? "", /Replay|memory/i);
