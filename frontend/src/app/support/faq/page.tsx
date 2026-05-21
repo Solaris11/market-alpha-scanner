@@ -1,4 +1,6 @@
+import { CircleHelp, ShieldCheck } from "lucide-react";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
+import { UtilityCard, UtilityHero, UtilityPageStack } from "@/components/utility/CinematicUtilitySurface";
 import { SUPPORT_DISCLAIMER, SUPPORT_FAQ } from "@/lib/support/content";
 
 export const dynamic = "force-dynamic";
@@ -6,19 +8,26 @@ export const dynamic = "force-dynamic";
 export default function SupportFaqPage() {
   return (
     <TerminalShell>
-      <section className="rounded-2xl border border-white/10 bg-slate-950/55 p-6 shadow-2xl shadow-black/25 backdrop-blur-xl">
-        <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">FAQ</div>
-        <h1 className="mt-2 text-3xl font-semibold text-slate-50">Frequently asked questions</h1>
-        <p className="mt-3 text-xs text-amber-100">{SUPPORT_DISCLAIMER}</p>
-        <div className="mt-6 grid gap-3">
+      <UtilityPageStack>
+        <UtilityHero
+          eyebrow="FAQ"
+          metrics={[
+            { detail: "Questions cover decision labels, alerts, billing, data, and paper trading.", label: "Answers", tone: "cyan", value: SUPPORT_FAQ.length.toLocaleString() },
+            { detail: SUPPORT_DISCLAIMER, label: "Boundary", tone: "amber", value: "Research" },
+          ]}
+          right={<UtilityCard icon={<ShieldCheck className="h-5 w-5" />} title="Support guardrail" tone="emerald"><p className="text-sm leading-6 text-slate-400">{SUPPORT_DISCLAIMER}</p></UtilityCard>}
+          subtitle="Use FAQ as a fast product decoder for scanner labels, account flow, data freshness, alerts, and risk-first terminology."
+          title="Frequently asked questions"
+          tone="cyan"
+        />
+        <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {SUPPORT_FAQ.map((item) => (
-            <article className="rounded-xl border border-white/10 bg-white/[0.03] p-4" key={item.slug}>
-              <h2 className="text-base font-semibold text-slate-50">{item.question}</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-400">{item.answer}</p>
-            </article>
+            <UtilityCard eyebrow={item.slug.replaceAll("-", " ")} icon={<CircleHelp className="h-5 w-5" />} key={item.slug} title={item.question} tone="cyan">
+              <p className="text-sm leading-6 text-slate-400">{item.answer}</p>
+            </UtilityCard>
           ))}
-        </div>
-      </section>
+        </section>
+      </UtilityPageStack>
     </TerminalShell>
   );
 }

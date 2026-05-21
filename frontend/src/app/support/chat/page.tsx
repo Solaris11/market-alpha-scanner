@@ -1,5 +1,7 @@
+import { Bot, ShieldCheck } from "lucide-react";
 import { SupportChatBox } from "@/components/support/SupportActions";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
+import { UtilityCard, UtilityHero, UtilityPageStack, UtilityStatusRows } from "@/components/utility/CinematicUtilitySurface";
 import { SUPPORT_DISCLAIMER } from "@/lib/support/content";
 
 export const dynamic = "force-dynamic";
@@ -7,15 +9,33 @@ export const dynamic = "force-dynamic";
 export default function SupportChatPage() {
   return (
     <TerminalShell>
-      <section className="rounded-2xl border border-white/10 bg-slate-950/55 p-6 shadow-2xl shadow-black/25 backdrop-blur-xl">
-        <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">AI Support Chat</div>
-        <h1 className="mt-2 text-3xl font-semibold text-slate-50">Product support assistant</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">Ask about using the product, billing navigation, alerts, paper trading, or troubleshooting. Financial advice requests are blocked.</p>
-        <p className="mt-3 text-xs text-amber-100">{SUPPORT_DISCLAIMER}</p>
-        <div className="mt-6">
+      <UtilityPageStack>
+        <UtilityHero
+          eyebrow="AI Support Chat"
+          metrics={[
+            { detail: "Support chat answers product workflow questions.", label: "Scope", tone: "cyan", value: "Product" },
+            { detail: "Financial advice requests are blocked by policy.", label: "Guardrail", tone: "emerald", value: "Active" },
+            { detail: "Escalate account-specific issues to tickets.", label: "Escalation", tone: "amber", value: "Tickets" },
+          ]}
+          right={
+            <UtilityCard icon={<ShieldCheck className="h-5 w-5" />} title="Bounded support intelligence" tone="emerald">
+              <UtilityStatusRows
+                items={[
+                  { detail: "Scanner states, alerts, billing navigation, paper trading, and troubleshooting.", label: "Can answer", tone: "cyan", value: "Product" },
+                  { detail: "Personalized buy/sell advice, position sizing advice, and live execution guidance.", label: "Will block", tone: "amber", value: "Advice" },
+                ]}
+              />
+            </UtilityCard>
+          }
+          subtitle="Ask about using the product, billing navigation, alerts, paper trading, or troubleshooting. The assistant stays inside the research-only support boundary."
+          title="Product support assistant"
+          tone="cyan"
+        />
+        <UtilityCard icon={<Bot className="h-5 w-5" />} title="Ask TradeVeto Support" tone="cyan">
           <SupportChatBox />
-        </div>
-      </section>
+        </UtilityCard>
+        <div className="rounded-3xl border border-amber-300/18 bg-amber-400/[0.055] p-4 text-xs leading-5 text-amber-100">{SUPPORT_DISCLAIMER}</div>
+      </UtilityPageStack>
     </TerminalShell>
   );
 }

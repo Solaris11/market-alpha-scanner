@@ -42,7 +42,7 @@ export function WorkspacePersonalizationPanel({
   }
 
   return (
-    <GlassPanel className="poster-scanline overflow-hidden border-cyan-300/16 bg-cyan-400/[0.025] p-4 sm:p-5" data-onboarding-target="workspace-personalization">
+    <GlassPanel className="poster-scanline overflow-hidden border-cyan-300/16 bg-cyan-400/[0.025] p-4 sm:p-5" data-onboarding-target="workspace-personalization" id="workspace-personalization">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">

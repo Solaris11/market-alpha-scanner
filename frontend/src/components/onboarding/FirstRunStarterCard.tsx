@@ -10,6 +10,7 @@ import { markOnboardingReplayPending, replayMarketOnboarding } from "./MarketOnb
 const HIDE_KEY = "tradeveto_first_run_starter_hidden_v1";
 const TOUR_COMPLETE_KEY = "ma_onboarding_completed";
 const PATH_KEY = "tradeveto_first_run_path_v1";
+const UTILITY_SURFACE_PREFIXES = ["/account", "/settings", "/support", "/login", "/register", "/reset-password"];
 
 type StarterPath = "advanced" | "beginner";
 
@@ -68,8 +69,12 @@ export function FirstRunStarterCard() {
     const completed = window.localStorage.getItem(TOUR_COMPLETE_KEY) === "true";
     const storedPath = window.localStorage.getItem(PATH_KEY);
     if (storedPath === "advanced" || storedPath === "beginner") setPath(storedPath);
+    if (!explicitFirstRun && UTILITY_SURFACE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+      setVisible(false);
+      return;
+    }
     setVisible(explicitFirstRun || (!hidden && !completed));
-  }, []);
+  }, [pathname]);
 
   if (!visible) return null;
 

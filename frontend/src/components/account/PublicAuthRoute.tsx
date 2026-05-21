@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { BrainCircuit, Clock3, KeyRound, LockKeyhole, RadioTower, Route, ShieldCheck, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { UtilityCard, UtilityHero, UtilityMetricGrid, UtilityStatusRows, UtilityTimeline } from "@/components/utility/CinematicUtilitySurface";
 import { AuthModal } from "./AuthModal";
 
 type PublicAuthMode = "login" | "register";
@@ -16,6 +18,7 @@ const modeCopy = {
     modalMode: "login" as const,
     openLabel: "Open sign-in",
     supporting: "Use the same email and password you created during closed beta access. If you are already signed in, TradeVeto will take you back to the terminal.",
+    tactical: "Resume your market intelligence workflow without losing watchlists, alerts, paper context, or decision memory.",
     title: "Sign in to TradeVeto",
   },
   register: {
@@ -24,6 +27,7 @@ const modeCopy = {
     modalMode: "register" as const,
     openLabel: "Open beta signup",
     supporting: "TradeVeto is invite-only while the beta cohort is controlled. Use your invite code to create an account, then continue into the research terminal.",
+    tactical: "Create an account that starts with a guided workflow, risk-first defaults, and controlled-beta access rules.",
     title: "Join the TradeVeto closed beta",
   },
 } as const;
@@ -38,27 +42,24 @@ export function PublicAuthRoute({ initialInviteCode = "", mode }: { initialInvit
   }, [authenticated, loading]);
 
   return (
-    <section className="px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
-      <div className="mx-auto grid max-w-6xl items-center gap-8 lg:grid-cols-[0.92fr_1.08fr]">
-        <div>
-          <div className="inline-flex rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-cyan-100">{copy.eyebrow}</div>
-          <h1 className="mt-5 max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl">{copy.title}</h1>
-          <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300">{copy.supporting}</p>
-          <div className="mt-6 grid gap-3 text-sm leading-6 text-slate-300 sm:grid-cols-3">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
-              <div className="text-xs font-black uppercase tracking-[0.18em] text-cyan-200">Invite-only</div>
-              <p className="mt-2 text-slate-400">Public signup is closed. Beta access requires a valid invite code.</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
-              <div className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">Research only</div>
-              <p className="mt-2 text-slate-400">TradeVeto is market research software, not financial advice or broker execution.</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
-              <div className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">Controlled beta</div>
-              <p className="mt-2 text-slate-400">Access is intentionally limited while onboarding, support, and trust loops are measured.</p>
-            </div>
-          </div>
-          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+    <section className="relative overflow-hidden px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_16%_0%,rgba(34,211,238,0.12),transparent_30rem),radial-gradient(circle_at_84%_12%,rgba(167,139,250,0.12),transparent_28rem)]" />
+      <div className="relative mx-auto max-w-7xl space-y-5">
+        <UtilityHero
+          eyebrow={copy.eyebrow}
+          metrics={[
+            { detail: "Public signup remains gated by invite code.", label: "Access", tone: "cyan", value: "Invite-only" },
+            { detail: "No broker execution or personalized advice.", label: "Mode", tone: "emerald", value: "Research" },
+            { detail: "Account, support, and onboarding loops stay measured.", label: "Beta", tone: "violet", value: "Controlled" },
+            { detail: loading ? "Checking session state now." : "Ready for secure entry.", label: "Session", tone: loading ? "amber" : "emerald", value: loading ? "Checking" : "Stable" },
+          ]}
+          right={<AuthAccessConsole cta={copy.cta} mode={mode} />}
+          subtitle={copy.supporting}
+          title={copy.title}
+          tone={mode === "register" ? "violet" : "cyan"}
+        >
+          <p className="max-w-3xl text-sm leading-6 text-slate-300">{copy.tactical}</p>
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
             <button
               className="inline-flex min-h-12 items-center justify-center rounded-full bg-cyan-300 px-6 py-3 text-sm font-black text-slate-950 shadow-[0_0_32px_rgba(34,211,238,0.22)] transition hover:bg-cyan-200 disabled:cursor-wait disabled:opacity-60"
               disabled={loading}
@@ -71,27 +72,86 @@ export function PublicAuthRoute({ initialInviteCode = "", mode }: { initialInvit
               {mode === "register" ? "Already have access?" : "Need to create an account?"}
             </Link>
           </div>
-        </div>
+        </UtilityHero>
 
-        <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-5 shadow-2xl shadow-black/25">
-          <div className="rounded-2xl border border-cyan-300/15 bg-slate-950/80 p-5">
-            <div className="text-xs font-black uppercase tracking-[0.24em] text-cyan-300">Start here</div>
-            <h2 className="mt-3 text-2xl font-semibold text-white">{copy.cta}</h2>
-            <p className="mt-3 text-sm leading-6 text-slate-400">
-              {mode === "register"
-                ? "Enter your beta invite code during signup. After account creation, accepted users continue into the TradeVeto terminal."
-                : "Sign in to continue your closed-beta research workflow, watchlist, replay, and Strategy Labs access."}
-            </p>
-            <div className="mt-5 grid gap-2 text-xs text-slate-300">
-              <div className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2">No open public signup.</div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2">No trade execution or financial advice.</div>
-              <div className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2">Invite flow supports shared beta links.</div>
-            </div>
-          </div>
+        <div className="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+          <UtilityCard eyebrow="Trust gate" icon={<ShieldCheck className="h-5 w-5" />} title="Research access without execution pressure" tone="emerald">
+            <UtilityStatusRows
+              items={[
+                { detail: "TradeVeto opens into market awareness, not a brokerage execution path.", label: "Financial advice boundary", tone: "emerald", value: "Explicit" },
+                { detail: "Signup stays gated so onboarding, support quality, and trust loops can be monitored.", label: "Closed beta control", tone: "violet", value: "Active" },
+                { detail: "Risk-first wording carries through login, onboarding, and account surfaces.", label: "Emotional state", tone: "cyan", value: "Calm" },
+              ]}
+            />
+          </UtilityCard>
+          <UtilityCard eyebrow="Workflow continuity" icon={<Route className="h-5 w-5" />} title="The utility layer now belongs to the intelligence system" tone="cyan">
+            <UtilityTimeline
+              items={[
+                { detail: "Sign in or create a beta account through a stable overlay with no route reset.", label: "Secure entry", tone: "cyan" },
+                { detail: "Continue into Terminal with watchlists, alerts, decision memory, and Strategy Labs context intact.", label: "Context restored", tone: "emerald" },
+                { detail: "Use support, account, and settings as operational surfaces inside the same cinematic world.", label: "Operational control", tone: "violet" },
+              ]}
+            />
+          </UtilityCard>
         </div>
       </div>
 
       {authOpen ? <AuthModal initialInviteCode={initialInviteCode} initialMode={copy.modalMode} onClose={() => setAuthOpen(false)} /> : null}
     </section>
+  );
+}
+
+function AuthAccessConsole({ cta, mode }: { cta: string; mode: PublicAuthMode }) {
+  const nodes = [
+    { Icon: KeyRound, label: mode === "register" ? "Invite Code" : "Credentials", tone: "text-cyan-200" },
+    { Icon: LockKeyhole, label: "Secure Session", tone: "text-emerald-200" },
+    { Icon: BrainCircuit, label: "Decision Memory", tone: "text-violet-200" },
+    { Icon: RadioTower, label: "Alerts", tone: "text-amber-200" },
+    { Icon: Clock3, label: "Freshness", tone: "text-cyan-200" },
+    { Icon: Sparkles, label: "Onboarding", tone: "text-violet-200" },
+  ];
+  return (
+    <div className="visual-card poster-panel relative overflow-hidden rounded-3xl border border-cyan-300/16 bg-slate-950/58 p-4 shadow-2xl shadow-black/25">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Start here</div>
+          <h2 className="mt-2 text-2xl font-black text-white">{cta}</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-400">
+            {mode === "register"
+              ? "Invite validation, profile creation, beta guardrails, and Terminal entry are part of one controlled workflow."
+              : "Authentication restores your operational context: watchlist, alerts, account state, and research memory."}
+          </p>
+        </div>
+        <div className="grid h-16 w-16 shrink-0 place-items-center rounded-full border border-cyan-300/25 bg-cyan-300/10 shadow-[0_0_40px_rgba(34,211,238,0.18)]">
+          <ShieldCheck className="h-7 w-7 text-cyan-100" />
+        </div>
+      </div>
+      <div className="relative mt-5 min-h-64 overflow-hidden rounded-3xl border border-white/10 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.14),transparent_45%),linear-gradient(135deg,rgba(2,6,23,0.92),rgba(15,23,42,0.6))] p-4">
+        <div aria-hidden="true" className="absolute left-1/2 top-1/2 h-36 w-36 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/20" />
+        <div aria-hidden="true" className="absolute left-1/2 top-1/2 h-52 w-52 -translate-x-1/2 -translate-y-1/2 rounded-full border border-violet-300/10" />
+        <div className="absolute left-1/2 top-1/2 grid h-24 w-24 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-cyan-300/30 bg-slate-950/90 shadow-[0_0_48px_rgba(34,211,238,0.22)]">
+          <img alt="" className="h-10 w-10" src="/icon.svg" />
+        </div>
+        {nodes.map((node, index) => {
+          const angle = (Math.PI * 2 * index) / nodes.length - Math.PI / 2;
+          const x = Math.cos(angle) * 42 + 50;
+          const y = Math.sin(angle) * 38 + 50;
+          return (
+            <div className="absolute -translate-x-1/2 -translate-y-1/2 text-center" key={node.label} style={{ left: `${x}%`, top: `${y}%` }}>
+              <div className="mx-auto grid h-11 w-11 place-items-center rounded-full border border-white/10 bg-slate-950/82">
+                <node.Icon className={`h-5 w-5 ${node.tone}`} />
+              </div>
+              <div className="mt-1 max-w-24 text-[9px] font-black uppercase leading-3 tracking-[0.12em] text-slate-300">{node.label}</div>
+            </div>
+          );
+        })}
+      </div>
+      <UtilityMetricGrid
+        metrics={[
+          { detail: "No open signup", label: "Gate", tone: "violet", value: "Invite" },
+          { detail: "Not financial advice", label: "Boundary", tone: "emerald", value: "Research" },
+        ]}
+      />
+    </div>
   );
 }

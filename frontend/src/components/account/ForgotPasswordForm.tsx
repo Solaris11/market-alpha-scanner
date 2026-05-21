@@ -37,7 +37,7 @@ export function ForgotPasswordForm() {
     <form className="space-y-3" onSubmit={submit}>
       <AuthInput autoComplete="email" label="Email" onChange={setEmail} type="email" value={email} />
       {message ? <div className="rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-100">{message}</div> : null}
-      <button className="h-11 w-full rounded-xl bg-cyan-300 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 disabled:opacity-50" disabled={busy} type="submit">
+      <button className="h-12 w-full rounded-2xl bg-cyan-300 text-sm font-black text-slate-950 shadow-[0_0_30px_rgba(34,211,238,0.18)] transition hover:bg-cyan-200 disabled:opacity-50" disabled={busy} type="submit">
         {busy ? "Submitting..." : "Send reset link"}
       </button>
     </form>

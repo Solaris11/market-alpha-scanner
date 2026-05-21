@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { QueryResultRow } from "pg";
+import { LockKeyhole, Settings2 } from "lucide-react";
 import { AccountLogoutButton, AccountSignInCta, BillingActionButton, DeleteAccountButton, LegalReviewButton, SendVerificationEmailButton } from "@/components/account/AccountPageActions";
 import { UserMemoryPrivacyControls } from "@/components/account/UserMemoryPrivacyControls";
 import { betaBillingCopy, parseBooleanFlag, parseTrialDays } from "@/lib/security/beta-billing";
@@ -8,6 +9,7 @@ import { billingViewState } from "@/lib/security/billing-state";
 import { checkoutBlockMessage, checkoutBlockReason } from "@/lib/security/billing-readiness";
 import { stripeModeLabel } from "@/lib/security/stripe-mode";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
+import { UtilityCard, UtilityHero, UtilityPageStack, UtilityStatusRows, UtilityTimeline } from "@/components/utility/CinematicUtilitySurface";
 import { getAlertOverview } from "@/lib/alerts";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { dbQuery } from "@/lib/server/db";
@@ -59,16 +61,27 @@ export default async function AccountPage() {
   if (!user) {
     return (
       <TerminalShell>
-        <section className="rounded-2xl border border-white/10 bg-slate-950/55 p-6 shadow-2xl shadow-black/25 backdrop-blur-xl">
-          <div className="max-w-2xl">
-            <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Account</div>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-50">Sign in to manage your account</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-400">Your saved watchlist, risk rules, alert settings, and account details appear here once you are signed in.</p>
-            <div className="mt-5">
-              <AccountSignInCta />
-            </div>
-          </div>
-        </section>
+        <UtilityPageStack>
+          <UtilityHero
+            eyebrow="Account Intelligence"
+            metrics={[
+              { detail: "Watchlists, alerts, and memory require a session.", label: "Context", tone: "amber", value: "Locked" },
+              { detail: "No brokerage credentials are stored here.", label: "Boundary", tone: "emerald", value: "Research" },
+              { detail: "Billing and privacy controls unlock after sign-in.", label: "Control", tone: "cyan", value: "Protected" },
+            ]}
+            right={
+              <UtilityCard eyebrow="Secure account gate" icon={<LockKeyhole className="h-5 w-5" />} title="Sign in to manage your operating context" tone="cyan">
+                <p className="text-sm leading-6 text-slate-400">Your saved watchlist, risk rules, alert settings, support history, and account details appear here once you are signed in.</p>
+                <div className="mt-5">
+                  <AccountSignInCta />
+                </div>
+              </UtilityCard>
+            }
+            subtitle="Account is now treated as an operating surface: privacy, billing, watchlists, alerts, decision memory, and support context stay visible without lowering the cinematic standard."
+            title="Account control center"
+            tone="cyan"
+          />
+        </UtilityPageStack>
       </TerminalShell>
     );
   }
@@ -99,15 +112,25 @@ export default async function AccountPage() {
 
   return (
     <TerminalShell>
-      <div className="space-y-5">
-        <header className="flex flex-col gap-4 rounded-2xl border border-white/10 bg-slate-950/55 p-6 shadow-2xl shadow-black/25 backdrop-blur-xl lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Account</div>
-            <h2 className="mt-2 text-2xl font-semibold text-slate-50">Profile and saved settings</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">Manage the account details and trading preferences used across TradeVeto.</p>
+      <UtilityPageStack>
+        <UtilityHero
+          eyebrow="Account Operating Context"
+          metrics={[
+            { detail: user.emailVerified ? "Email verification is complete." : "Verify email before paid upgrades.", label: "Email", tone: user.emailVerified ? "emerald" : "amber", value: user.emailVerified ? "Verified" : "Pending" },
+            { detail: entitlement.legalStatus.allAccepted ? "Terms, Privacy, and Risk Disclosure accepted." : "Legal documents still need review.", label: "Legal", tone: entitlement.legalStatus.allAccepted ? "emerald" : "amber", value: entitlement.legalStatus.allAccepted ? "Accepted" : "Required" },
+            { detail: `${watchlist.length.toLocaleString()} saved symbol${watchlist.length === 1 ? "" : "s"} for revisit intelligence.`, label: "Watchlist", tone: watchlist.length ? "cyan" : "amber", value: watchlist.length.toLocaleString() },
+            { detail: enabledAlertCount === null ? "Alert count unavailable right now." : "Enabled rules monitoring scanner conditions.", label: "Alerts", tone: enabledAlertCount ? "violet" : "amber", value: enabledAlertCount === null ? "N/A" : enabledAlertCount.toLocaleString() },
+          ]}
+          right={<AccountOperatingMap entitlement={entitlement} riskProfile={riskProfile} watchlistCount={watchlist.length} enabledAlertCount={enabledAlertCount} />}
+          subtitle="Manage identity, billing, risk posture, privacy, watchlists, alerts, and decision memory as one coherent operating layer."
+          title="Profile and saved settings"
+          tone={entitlement.legalStatus.allAccepted && user.emailVerified ? "emerald" : "cyan"}
+        >
+          <div className="flex flex-wrap gap-2">
+            <Link className="rounded-full border border-cyan-300/35 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15" href="/settings">Open adaptive settings</Link>
+            <Link className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100" href="/support">Get support</Link>
           </div>
-          <span className="w-fit rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1.5 text-xs font-semibold text-emerald-100">Account saved</span>
-        </header>
+        </UtilityHero>
 
         <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
           <AccountSection title="Profile">
@@ -234,7 +257,7 @@ export default async function AccountPage() {
           </AccountSection>
         </div>
 
-        <AccountSection title="Decision Memory">
+        <AccountSection id="decision-memory" title="Decision Memory">
           {decisionMemory ? (
             <div className="space-y-4">
               <div className="grid gap-4 lg:grid-cols-[0.75fr_1.25fr]">
@@ -315,8 +338,62 @@ export default async function AccountPage() {
             </div>
           )}
         </AccountSection>
-      </div>
+      </UtilityPageStack>
     </TerminalShell>
+  );
+}
+
+function AccountOperatingMap({
+  enabledAlertCount,
+  entitlement,
+  riskProfile,
+  watchlistCount,
+}: {
+  enabledAlertCount: number | null;
+  entitlement: Entitlement;
+  riskProfile: RiskProfileResult;
+  watchlistCount: number;
+}) {
+  return (
+    <UtilityCard eyebrow="Account intelligence map" icon={<Settings2 className="h-5 w-5" />} title="Operational readiness" tone="emerald">
+      <UtilityStatusRows
+        items={[
+          {
+            detail: entitlement.user?.emailVerified ? "Email is verified and can support billing/security notifications." : "Verify email before depending on paid account operations.",
+            label: "Identity",
+            tone: entitlement.user?.emailVerified ? "emerald" : "amber",
+            value: entitlement.user?.emailVerified ? "Verified" : "Needs review",
+          },
+          {
+            detail: riskProfile.exists ? "Risk profile is stored and can shape decision defaults." : "Default risk rules are active until you personalize them.",
+            label: "Risk rules",
+            tone: riskProfile.exists ? "cyan" : "amber",
+            value: riskProfile.exists ? "Saved" : "Default",
+          },
+          {
+            detail: watchlistCount ? "Watchlist context can drive revisit intelligence and alerts." : "Add symbols to activate personalized monitoring.",
+            label: "Watchlist memory",
+            tone: watchlistCount ? "violet" : "amber",
+            value: watchlistCount ? `${watchlistCount}` : "Empty",
+          },
+          {
+            detail: enabledAlertCount === null ? "Alert availability is unknown in this request." : "Enabled alert rules can monitor scanner state changes.",
+            label: "Monitoring",
+            tone: enabledAlertCount ? "emerald" : "amber",
+            value: enabledAlertCount === null ? "N/A" : `${enabledAlertCount}`,
+          },
+        ]}
+      />
+      <div className="mt-4">
+        <UtilityTimeline
+          items={[
+            { detail: "Profile and legal state determine whether paid beta operations are available.", label: "Account gate", tone: "cyan" },
+            { detail: "Risk profile, watchlist, and decision memory shape what the terminal prioritizes.", label: "Intelligence personalization", tone: "violet" },
+            { detail: "Support and privacy controls keep the operating context auditable.", label: "Trust loop", tone: "emerald" },
+          ]}
+        />
+      </div>
+    </UtilityCard>
   );
 }
 
@@ -425,8 +502,8 @@ function BillingTrustChecklist({ allowPromotionCodes, trialDays }: { allowPromot
 
 function AccountSection({ children, id, title }: { children: ReactNode; id?: string; title: string }) {
   return (
-    <section className="scroll-mt-6 rounded-2xl border border-white/10 bg-slate-950/55 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl" id={id}>
-      <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-400">{title}</h3>
+    <section className="visual-card poster-panel tv-card-motion scroll-mt-6 rounded-3xl border border-cyan-300/14 bg-slate-950/54 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl" id={id}>
+      <h3 className="text-sm font-black uppercase tracking-[0.18em] text-cyan-200">{title}</h3>
       <div className="mt-4">{children}</div>
     </section>
   );

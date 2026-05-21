@@ -55,7 +55,7 @@ export function ResetPasswordForm({ onSuccess, token }: { onSuccess: () => void;
       <AuthInput autoComplete="new-password" label="Confirm password" onChange={setConfirmPassword} type="password" value={confirmPassword} />
       {error ? <div className="rounded-xl border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">{error}</div> : null}
       {message ? <div className="rounded-xl border border-emerald-300/20 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-100">{message}</div> : null}
-      <button className="h-11 w-full rounded-xl bg-cyan-300 text-sm font-bold text-slate-950 transition hover:bg-cyan-200 disabled:opacity-50" disabled={busy} type="submit">
+      <button className="h-12 w-full rounded-2xl bg-cyan-300 text-sm font-black text-slate-950 shadow-[0_0_30px_rgba(34,211,238,0.18)] transition hover:bg-cyan-200 disabled:opacity-50" disabled={busy} type="submit">
         {busy ? "Updating..." : "Update password"}
       </button>
     </form>

@@ -1,5 +1,7 @@
+import { LifeBuoy, ShieldCheck } from "lucide-react";
 import { SupportTicketForm } from "@/components/support/SupportActions";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
+import { UtilityCard, UtilityHero, UtilityPageStack, UtilityStatusRows } from "@/components/utility/CinematicUtilitySurface";
 import { SUPPORT_DISCLAIMER } from "@/lib/support/content";
 
 export const dynamic = "force-dynamic";
@@ -7,15 +9,34 @@ export const dynamic = "force-dynamic";
 export default function SupportContactPage() {
   return (
     <TerminalShell>
-      <section className="rounded-2xl border border-white/10 bg-slate-950/55 p-6 shadow-2xl shadow-black/25 backdrop-blur-xl">
-        <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Contact</div>
-        <h1 className="mt-2 text-3xl font-semibold text-slate-50">Contact support</h1>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">Anonymous contact requests create a ticket, but ticket history is only available after signing in.</p>
-        <p className="mt-3 text-xs text-amber-100">{SUPPORT_DISCLAIMER}</p>
-        <div className="mt-6 max-w-2xl">
-          <SupportTicketForm anonymous />
-        </div>
-      </section>
+      <UtilityPageStack>
+        <UtilityHero
+          eyebrow="Contact Support"
+          metrics={[
+            { detail: "Anonymous requests create a one-time support record.", label: "History", tone: "amber", value: "Limited" },
+            { detail: "Signed-in tickets preserve status and replies.", label: "Audit", tone: "cyan", value: "Available" },
+            { detail: SUPPORT_DISCLAIMER, label: "Boundary", tone: "emerald", value: "Research" },
+          ]}
+          right={
+            <UtilityCard eyebrow="What to include" icon={<ShieldCheck className="h-5 w-5" />} title="Useful evidence, no secrets" tone="emerald">
+              <UtilityStatusRows
+                items={[
+                  { detail: "Page, browser, approximate time, symbol, and what looked wrong.", label: "Include", tone: "cyan", value: "Context" },
+                  { detail: "Passwords, reset tokens, payment card details, or brokerage credentials.", label: "Never include", tone: "amber", value: "Secrets" },
+                ]}
+              />
+            </UtilityCard>
+          }
+          subtitle="Anonymous contact requests create a ticket, but ticket history and replies are easiest to manage after signing in."
+          title="Contact support"
+          tone="amber"
+        />
+        <UtilityCard icon={<LifeBuoy className="h-5 w-5" />} title="Send a support request" tone="cyan">
+          <div className="max-w-3xl">
+            <SupportTicketForm anonymous />
+          </div>
+        </UtilityCard>
+      </UtilityPageStack>
     </TerminalShell>
   );
 }

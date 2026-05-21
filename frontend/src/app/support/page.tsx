@@ -1,36 +1,56 @@
-import Link from "next/link";
+import { Bot, CircleHelp, FileText, LifeBuoy, MessageSquare, TicketCheck } from "lucide-react";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
+import { UtilityCard, UtilityHero, UtilityPageStack, UtilityStatusRows } from "@/components/utility/CinematicUtilitySurface";
 import { SUPPORT_DISCLAIMER } from "@/lib/support/content";
 
 export const dynamic = "force-dynamic";
 
 const links = [
-  ["/support/faq", "FAQ", "Answers about product concepts, billing, alerts, paper trading, and data freshness."],
-  ["/support/guides", "Guides", "Short how-to guides for common workflows."],
-  ["/support/tickets", "Tickets", "Create or review support tickets."],
-  ["/support/contact", "Contact", "Send a support request without signing in."],
-  ["/support/chat", "AI Support Chat", "Ask product-support questions with strict no-financial-advice guardrails."],
+  { copy: "Answers about product concepts, billing, alerts, paper trading, and data freshness.", href: "/support/faq", Icon: CircleHelp, title: "FAQ", tone: "cyan" as const },
+  { copy: "Short workflow guides for reading Terminal, alerts, billing, and support handoffs.", href: "/support/guides", Icon: FileText, title: "Guides", tone: "violet" as const },
+  { copy: "Create or review signed-in support tickets with status awareness.", href: "/support/tickets", Icon: TicketCheck, title: "Tickets", tone: "emerald" as const },
+  { copy: "Send a one-time support request without signing in.", href: "/support/contact", Icon: LifeBuoy, title: "Contact", tone: "amber" as const },
+  { copy: "Ask product-support questions with strict no-financial-advice guardrails.", href: "/support/chat", Icon: Bot, title: "AI Support Chat", tone: "cyan" as const },
 ] as const;
 
 export default function SupportPage() {
   return (
     <TerminalShell>
-      <div className="space-y-5">
-        <section className="rounded-2xl border border-white/10 bg-slate-950/55 p-6 shadow-2xl shadow-black/25 backdrop-blur-xl">
-          <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Support Center</div>
-          <h1 className="mt-2 text-3xl font-semibold text-slate-50">How can we help?</h1>
-          <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">Find product help, read guides, open a ticket, or use the support assistant for safe product questions.</p>
-          <p className="mt-3 text-xs text-amber-100">{SUPPORT_DISCLAIMER}</p>
-        </section>
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {links.map(([href, title, copy]) => (
-            <Link className="rounded-2xl border border-white/10 bg-white/[0.03] p-5 transition hover:border-cyan-300/35 hover:bg-cyan-400/[0.06]" href={href} key={href}>
-              <div className="text-lg font-semibold text-slate-50">{title}</div>
-              <p className="mt-2 text-sm leading-6 text-slate-400">{copy}</p>
-            </Link>
+      <UtilityPageStack>
+        <UtilityHero
+          eyebrow="Support Intelligence"
+          metrics={[
+            { detail: "Support assistant blocks financial-advice requests.", label: "Guardrail", tone: "emerald", value: "Active" },
+            { detail: "Tickets preserve category, status, and reply history.", label: "Audit", tone: "cyan", value: "Tracked" },
+            { detail: "Guides route users back into product workflows.", label: "Workflow", tone: "violet", value: "Connected" },
+            { detail: SUPPORT_DISCLAIMER, label: "Boundary", tone: "amber", value: "Research only" },
+          ]}
+          right={
+            <UtilityCard eyebrow="Support operating model" icon={<MessageSquare className="h-5 w-5" />} title="Help without hype or advice" tone="cyan">
+              <UtilityStatusRows
+                items={[
+                  { detail: "Product questions, billing navigation, alert behavior, and troubleshooting are supported.", label: "Allowed", tone: "emerald", value: "Product help" },
+                  { detail: "Personal buy/sell recommendations and broker execution guidance remain blocked.", label: "Blocked", tone: "amber", value: "Advice" },
+                  { detail: "Ticket requests should include page, browser, timestamp, and safe screenshots when useful.", label: "Best evidence", tone: "cyan", value: "Context" },
+                ]}
+              />
+            </UtilityCard>
+          }
+          subtitle="Find workflow help, product explanations, tickets, and support chat inside the same calm research-first system."
+          title="Support command center"
+          tone="cyan"
+        />
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+          {links.map(({ copy, href, Icon, title, tone }) => (
+            <UtilityCard action="Open surface" href={href} icon={<Icon className="h-5 w-5" />} key={href} title={title} tone={tone}>
+              <p className="text-sm leading-6 text-slate-400">{copy}</p>
+            </UtilityCard>
           ))}
         </section>
-      </div>
+        <div className="rounded-3xl border border-amber-300/18 bg-amber-400/[0.055] p-4 text-xs leading-5 text-amber-100">
+          {SUPPORT_DISCLAIMER}
+        </div>
+      </UtilityPageStack>
     </TerminalShell>
   );
 }
