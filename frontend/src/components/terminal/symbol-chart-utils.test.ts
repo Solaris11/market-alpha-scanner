@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { buildChartIndicatorSeries, buildChartWorkflowSummary } from "@/components/terminal/chart-intelligence-overlays";
 import { markerVisualPolicy } from "@/components/terminal/symbol-chart-marker-policy";
 import { buildResearchContextLevels, type ResearchCandle, type ResearchContextLevel } from "@/lib/trading/research-levels";
 
@@ -30,6 +31,30 @@ describe("research chart context levels", () => {
     assert.deepEqual(markerVisualPolicy("FAILURE"), { color: "#ef4444", fallbackText: "FAILURE", position: "aboveBar", shape: "arrowDown" });
     assert.deepEqual(markerVisualPolicy("MEMORY"), { color: "#34d399", fallbackText: "MEMORY", position: "belowBar", shape: "square" });
     assert.deepEqual(markerVisualPolicy("VOLATILITY"), { color: "#f97316", fallbackText: "VOL", position: "aboveBar", shape: "circle" });
+  });
+
+  it("builds managed indicator series only from validated candle history", () => {
+    const indicators = buildChartIndicatorSeries(makeCandles(80), ["ema20", "ema50", "rangePressure"]);
+    assert.equal(indicators.length, 3);
+    assert.ok(indicators.every((indicator) => indicator.points.length >= 2));
+    assert.ok(indicators.every((indicator) => indicator.points.every((point) => Number.isFinite(point.value) && point.value > 0)));
+    assert.equal(indicators.find((indicator) => indicator.id === "ema20")?.label, "EMA 20");
+    assert.equal(indicators.find((indicator) => indicator.id === "rangePressure")?.tone, "rose");
+  });
+
+  it("summarizes synchronized chart workflow state without unsupported claims", () => {
+    const summary = buildChartWorkflowSummary({
+      candleCount: 42,
+      drawingCount: 2,
+      enabledFamilies: ["replay", "macro", "risk"],
+      enabledIndicators: ["ema20", "rangePressure"],
+      markerCount: 5,
+    });
+    assert.equal(summary.activeFamilies, 3);
+    assert.equal(summary.activeIndicators, 2);
+    assert.equal(summary.drawingCount, 2);
+    assert.match(summary.narrative, /5 synchronized intelligence markers/);
+    assert.match(summary.narrative, /2 user drawings/);
   });
 });
 

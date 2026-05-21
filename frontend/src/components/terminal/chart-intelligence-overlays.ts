@@ -5,6 +5,25 @@ export type ChartOverlayFamily = "confidence" | "events" | "levels" | "macro" | 
 
 export type ChartIntelligenceTone = "amber" | "cyan" | "emerald" | "rose" | "violet";
 
+export type ChartIndicatorId = "ema20" | "ema50" | "rangePressure";
+
+export type ChartIndicatorDefinition = {
+  color: string;
+  description: string;
+  id: ChartIndicatorId;
+  label: string;
+  tone: ChartIntelligenceTone;
+};
+
+export type ChartIndicatorPoint = {
+  time: string;
+  value: number;
+};
+
+export type ChartIndicatorSeries = ChartIndicatorDefinition & {
+  points: ChartIndicatorPoint[];
+};
+
 export type ChartIntelligenceZone = {
   family: ChartOverlayFamily;
   heightPct: number;
@@ -31,6 +50,41 @@ export type ChartCompareRow = {
   value: string;
 };
 
+export type ChartWorkflowSummary = {
+  activeFamilies: number;
+  activeIndicators: number;
+  candleCount: number;
+  drawingCount: number;
+  markerCount: number;
+  narrative: string;
+};
+
+export const CHART_INDICATORS: ChartIndicatorDefinition[] = [
+  {
+    color: "#22d3ee",
+    description: "Shorter-term average of validated closes. Useful for trend slope and near-term structure.",
+    id: "ema20",
+    label: "EMA 20",
+    tone: "cyan",
+  },
+  {
+    color: "#a78bfa",
+    description: "Intermediate average of validated closes. Useful for broader trend context.",
+    id: "ema50",
+    label: "EMA 50",
+    tone: "violet",
+  },
+  {
+    color: "#fb7185",
+    description: "Range expansion pressure derived from validated high-low ranges. Useful for uncertainty and shock context.",
+    id: "rangePressure",
+    label: "Range Pressure",
+    tone: "rose",
+  },
+];
+
+export const DEFAULT_CHART_INDICATORS: ChartIndicatorId[] = ["ema20", "ema50"];
+
 export const CHART_OVERLAY_FAMILIES: Array<{ family: ChartOverlayFamily; label: string }> = [
   { family: "replay", label: "Replay" },
   { family: "macro", label: "Macro" },
@@ -42,6 +96,51 @@ export const CHART_OVERLAY_FAMILIES: Array<{ family: ChartOverlayFamily; label: 
 ];
 
 export const DEFAULT_CHART_OVERLAY_FAMILIES: ChartOverlayFamily[] = CHART_OVERLAY_FAMILIES.map((item) => item.family);
+
+export function indicatorDefinition(id: ChartIndicatorId): ChartIndicatorDefinition {
+  return CHART_INDICATORS.find((indicator) => indicator.id === id) ?? CHART_INDICATORS[0]!;
+}
+
+export function buildChartIndicatorSeries(candles: ChartCandle[], enabledIndicators: ChartIndicatorId[]): ChartIndicatorSeries[] {
+  const enabled = new Set(enabledIndicators);
+  const series: ChartIndicatorSeries[] = [];
+  if (!candles.length) return series;
+  if (enabled.has("ema20")) series.push({ ...indicatorDefinition("ema20"), points: buildEmaSeries(candles, 20) });
+  if (enabled.has("ema50")) series.push({ ...indicatorDefinition("ema50"), points: buildEmaSeries(candles, 50) });
+  if (enabled.has("rangePressure")) series.push({ ...indicatorDefinition("rangePressure"), points: buildRangePressureSeries(candles) });
+  return series.filter((item) => item.points.length >= 2);
+}
+
+export function buildChartWorkflowSummary({
+  candleCount,
+  drawingCount,
+  enabledFamilies,
+  enabledIndicators,
+  markerCount,
+}: {
+  candleCount: number;
+  drawingCount: number;
+  enabledFamilies: ChartOverlayFamily[];
+  enabledIndicators: ChartIndicatorId[];
+  markerCount: number;
+}): ChartWorkflowSummary {
+  const activeFamilies = enabledFamilies.length;
+  const activeIndicators = enabledIndicators.length;
+  const narrativeParts: string[] = [];
+  if (markerCount > 0) narrativeParts.push(`${markerCount} synchronized intelligence marker${markerCount === 1 ? "" : "s"}`);
+  if (activeIndicators > 0) narrativeParts.push(`${activeIndicators} managed indicator${activeIndicators === 1 ? "" : "s"}`);
+  if (drawingCount > 0) narrativeParts.push(`${drawingCount} user drawing${drawingCount === 1 ? "" : "s"}`);
+  if (!narrativeParts.length) narrativeParts.push("price-only validated chart context");
+
+  return {
+    activeFamilies,
+    activeIndicators,
+    candleCount,
+    drawingCount,
+    markerCount,
+    narrative: `${narrativeParts.join(", ")} across ${candleCount.toLocaleString("en-US")} validated candle${candleCount === 1 ? "" : "s"}.`,
+  };
+}
 
 export function overlayFamilyForMarker(type: ChartSignalMarkerType): ChartOverlayFamily {
   if (type === "MACRO") return "macro";
@@ -412,6 +511,42 @@ function summarizeMove(candles: ChartCandle[]): { changePct: number | null; labe
   }
   const changePct = ((last - first) / first) * 100;
   return { changePct, label: `${changePct >= 0 ? "+" : ""}${changePct.toFixed(2)}%` };
+}
+
+function buildEmaSeries(candles: ChartCandle[], period: number): ChartIndicatorPoint[] {
+  if (candles.length < Math.max(2, Math.floor(period / 2))) return [];
+  const smoothing = 2 / (period + 1);
+  const points: ChartIndicatorPoint[] = [];
+  let ema: number | null = null;
+  candles.forEach((candle, index) => {
+    if (!Number.isFinite(candle.close)) return;
+    ema = ema === null ? candle.close : candle.close * smoothing + ema * (1 - smoothing);
+    if (index >= Math.floor(period / 2) - 1) {
+      points.push({
+        time: candle.time,
+        value: Number(ema.toFixed(4)),
+      });
+    }
+  });
+  return points;
+}
+
+function buildRangePressureSeries(candles: ChartCandle[]): ChartIndicatorPoint[] {
+  if (candles.length < 8) return [];
+  const ranges = candles.map((candle) => Math.max(0, candle.high - candle.low));
+  const baselineWindow = Math.min(14, Math.max(5, Math.floor(candles.length / 4)));
+  return candles
+    .map((candle, index): ChartIndicatorPoint | null => {
+      if (index < baselineWindow) return null;
+      const baseline = average(ranges.slice(Math.max(0, index - baselineWindow), index));
+      if (baseline <= 0) return null;
+      const pressure = (ranges[index]! / baseline) * candle.close;
+      return {
+        time: candle.time,
+        value: Number(pressure.toFixed(4)),
+      };
+    })
+    .filter((point): point is ChartIndicatorPoint => point !== null);
 }
 
 function average(values: number[]): number {

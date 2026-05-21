@@ -1,13 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { Expand, RotateCcw } from "lucide-react";
 import {
   CandlestickSeries,
   ColorType,
   CrosshairMode,
+  LineSeries,
   createChart,
   createSeriesMarkers,
+  type Time,
 } from "lightweight-charts";
 import {
   addResearchContextLines,
@@ -21,18 +23,25 @@ import {
 } from "./symbol-chart-utils";
 import {
   CHART_OVERLAY_FAMILIES,
+  DEFAULT_CHART_INDICATORS,
   DEFAULT_CHART_OVERLAY_FAMILIES,
+  buildChartIndicatorSeries,
   buildChartCompareRows,
   buildChartIntelligenceZones,
   buildChartStoryPoints,
+  buildChartWorkflowSummary,
   familyLabel,
+  indicatorDefinition,
   overlayFamilyForMarker,
   toneForFamily,
   type ChartCompareRow,
+  type ChartIndicatorId,
+  type ChartIndicatorSeries,
   type ChartIntelligenceTone,
   type ChartIntelligenceZone,
   type ChartOverlayFamily,
   type ChartStoryPoint,
+  type ChartWorkflowSummary,
 } from "./chart-intelligence-overlays";
 import { EmptyState } from "./ui/EmptyState";
 import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
@@ -95,10 +104,33 @@ export type SymbolChartProps = {
   height?: number;
   dataSource?: string;
   defaultPeriod?: InteractiveChartPeriod;
+  controlledPeriod?: InteractiveChartPeriod;
+  onPeriodChange?: (period: InteractiveChartPeriod) => void;
   enableTimeframeSwitching?: boolean;
   expandable?: boolean;
   interpretation?: string;
   lastUpdated?: string | null;
+  defaultIndicators?: ChartIndicatorId[];
+  controlledIndicators?: ChartIndicatorId[];
+  onIndicatorsChange?: (indicators: ChartIndicatorId[]) => void;
+  defaultOverlayFamilies?: ChartOverlayFamily[];
+  controlledOverlayFamilies?: ChartOverlayFamily[];
+  onOverlayFamiliesChange?: (families: ChartOverlayFamily[]) => void;
+  showDrawingTools?: boolean;
+};
+
+type ChartDrawingTool = "inspect" | "marker" | "range" | "trendline";
+
+type ChartDrawingPoint = {
+  x: number;
+  y: number;
+};
+
+type ChartDrawing = {
+  end: ChartDrawingPoint;
+  id: string;
+  start: ChartDrawingPoint;
+  tool: Exclude<ChartDrawingTool, "inspect">;
 };
 
 export function SymbolChart({
@@ -112,19 +144,35 @@ export function SymbolChart({
   height = 360,
   dataSource = "validated price history",
   defaultPeriod = "6mo",
+  controlledPeriod,
+  onPeriodChange,
   enableTimeframeSwitching = true,
   expandable = true,
   interpretation,
   lastUpdated,
+  defaultIndicators = DEFAULT_CHART_INDICATORS,
+  controlledIndicators,
+  onIndicatorsChange,
+  defaultOverlayFamilies = DEFAULT_CHART_OVERLAY_FAMILIES,
+  controlledOverlayFamilies,
+  onOverlayFamiliesChange,
+  showDrawingTools = true,
 }: SymbolChartProps) {
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
   const entryBandRef = useRef<HTMLDivElement | null>(null);
   const [failed, setFailed] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const [period, setPeriod] = useState<InteractiveChartPeriod>(defaultPeriod);
+  const [uncontrolledPeriod, setUncontrolledPeriod] = useState<InteractiveChartPeriod>(defaultPeriod);
   const [resetToken, setResetToken] = useState(0);
   const [showResearchLevels, setShowResearchLevels] = useState(true);
-  const [enabledOverlayFamilies, setEnabledOverlayFamilies] = useState<ChartOverlayFamily[]>(DEFAULT_CHART_OVERLAY_FAMILIES);
+  const [uncontrolledOverlayFamilies, setUncontrolledOverlayFamilies] = useState<ChartOverlayFamily[]>(defaultOverlayFamilies);
+  const [uncontrolledIndicators, setUncontrolledIndicators] = useState<ChartIndicatorId[]>(defaultIndicators);
+  const [drawingTool, setDrawingTool] = useState<ChartDrawingTool>("inspect");
+  const [drawings, setDrawings] = useState<ChartDrawing[]>([]);
+  const [draftDrawing, setDraftDrawing] = useState<ChartDrawing | null>(null);
+  const period = controlledPeriod ?? uncontrolledPeriod;
+  const enabledOverlayFamilies = controlledOverlayFamilies ?? uncontrolledOverlayFamilies;
+  const enabledIndicators = controlledIndicators ?? uncontrolledIndicators;
   const normalizedCandles = useMemo(() => normalizeCandles(candles), [candles]);
   const chartCandles = useMemo(() => filterCandlesByPeriod(normalizedCandles, period), [normalizedCandles, period]);
   const chartSignals = useMemo(() => (
@@ -145,7 +193,15 @@ export function SymbolChart({
     levels: chartLevels,
     signals: visibleChartSignals,
   }), [chartCandles, chartLevels, enabledOverlayFamilies, visibleChartSignals]);
+  const indicatorSeries = useMemo(() => buildChartIndicatorSeries(chartCandles, enabledIndicators), [chartCandles, enabledIndicators]);
   const storyPoints = useMemo(() => buildChartStoryPoints(chartCandles, visibleChartSignals, chartLevels), [chartCandles, chartLevels, visibleChartSignals]);
+  const workflowSummary = useMemo(() => buildChartWorkflowSummary({
+    candleCount: chartCandles.length,
+    drawingCount: drawings.length,
+    enabledFamilies: enabledOverlayFamilies,
+    enabledIndicators,
+    markerCount: visibleChartSignals.length,
+  }), [chartCandles.length, drawings.length, enabledIndicators, enabledOverlayFamilies, visibleChartSignals.length]);
   const move = useMemo(() => summarizeCandles(chartCandles), [chartCandles]);
   const canRenderChart = chartCandles.length >= 2;
 
@@ -160,12 +216,39 @@ export function SymbolChart({
   }
 
   function changePeriod(range: InteractiveChartPeriod): void {
-    setPeriod(range);
+    if (onPeriodChange) onPeriodChange(range);
+    else setUncontrolledPeriod(range);
     trackAnalyticsEvent("timeframe_change", {
       from: period,
       surface: "symbol_chart",
       timeframe: range,
     }, { source: "chart", symbol });
+  }
+
+  function updateOverlayFamilies(nextFamilies: ChartOverlayFamily[]): void {
+    if (onOverlayFamiliesChange) onOverlayFamiliesChange(nextFamilies);
+    else setUncontrolledOverlayFamilies(nextFamilies);
+  }
+
+  function toggleOverlayFamily(family: ChartOverlayFamily): void {
+    updateOverlayFamilies(
+      enabledOverlayFamilies.includes(family)
+        ? enabledOverlayFamilies.filter((item) => item !== family)
+        : [...enabledOverlayFamilies, family],
+    );
+  }
+
+  function updateIndicators(nextIndicators: ChartIndicatorId[]): void {
+    if (onIndicatorsChange) onIndicatorsChange(nextIndicators);
+    else setUncontrolledIndicators(nextIndicators);
+  }
+
+  function toggleIndicator(indicator: ChartIndicatorId): void {
+    updateIndicators(
+      enabledIndicators.includes(indicator)
+        ? enabledIndicators.filter((item) => item !== indicator)
+        : [...enabledIndicators, indicator],
+    );
   }
 
   useEffect(() => {
@@ -216,6 +299,16 @@ export function SymbolChart({
         wickUpColor: "#26a69a",
       });
       candleSeries.setData(toChartData(chartCandles));
+      for (const indicator of indicatorSeries) {
+        const lineSeries = chart.addSeries(LineSeries, {
+          color: indicator.color,
+          lastValueVisible: false,
+          lineWidth: 2,
+          priceLineVisible: false,
+          title: indicator.label,
+        });
+        lineSeries.setData(indicator.points.map((point) => ({ time: point.time as Time, value: point.value })));
+      }
       createSeriesMarkers(candleSeries, toSeriesMarkers(visibleChartSignals), { zOrder: "top" });
       if (showResearchLevelsToggle) {
         if (levelsVisible) addResearchContextLines(candleSeries, researchLevels);
@@ -259,7 +352,7 @@ export function SymbolChart({
       setFailed(true);
       return undefined;
     }
-  }, [canRenderChart, chartCandles, chartLevels, levelsVisible, researchLevels, resetToken, showResearchLevelsToggle, visibleChartSignals]);
+  }, [canRenderChart, chartCandles, chartLevels, indicatorSeries, levelsVisible, researchLevels, resetToken, showResearchLevelsToggle, visibleChartSignals]);
 
   if (failed || (candles?.length && !normalizedCandles.length)) {
     return <EmptyState title="Price chart unavailable" message="The latest price payload could not be validated for this symbol." />;
@@ -336,13 +429,17 @@ export function SymbolChart({
         enabledFamilies={enabledOverlayFamilies}
         hasTradeLevels={hasTradeLevels}
         markerCount={chartSignals.length}
-        onToggle={(family) => {
-          setEnabledOverlayFamilies((current) => {
-            if (current.includes(family)) return current.filter((item) => item !== family);
-            return [...current, family];
-          });
-        }}
+        onToggle={toggleOverlayFamily}
       />
+      <ChartIndicatorControls enabledIndicators={enabledIndicators} indicatorSeries={indicatorSeries} onToggle={toggleIndicator} />
+      {showDrawingTools ? (
+        <ChartDrawingToolbar
+          activeTool={drawingTool}
+          drawingCount={drawings.length}
+          onClear={() => setDrawings([])}
+          onSelect={setDrawingTool}
+        />
+      ) : null}
     <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/40 shadow-xl shadow-black/20" style={{ height }}>
       {canRenderChart ? <div ref={chartContainerRef} className="absolute inset-0" /> : (
         <div className="absolute inset-0 flex items-center justify-center p-5">
@@ -353,6 +450,13 @@ export function SymbolChart({
         </div>
       )}
       <ChartIntelligenceZoneOverlay zones={intelligenceZones} />
+      <ChartDrawingLayer
+        drawings={drawings}
+        draftDrawing={draftDrawing}
+        onCommit={(drawing) => setDrawings((current) => [...current.slice(-7), drawing])}
+        onDraftChange={setDraftDrawing}
+        tool={drawingTool}
+      />
       <div ref={entryBandRef} className={`pointer-events-none absolute left-0 right-0 hidden border-y border-amber-300/35 bg-amber-300/10 ${showResearchLevelsToggle && !levelsVisible ? "opacity-0" : ""}`} />
       {showResearchLevelsToggle ? (
         <div className="absolute left-3 top-3 z-10 flex max-w-[calc(100%-1.5rem)] flex-wrap items-center gap-2">
@@ -361,7 +465,7 @@ export function SymbolChart({
             onClick={() => {
               setShowResearchLevels((value) => !value);
               if (!enabledOverlayFamilies.includes("levels")) {
-                setEnabledOverlayFamilies((current) => [...current, "levels"]);
+                updateOverlayFamilies([...enabledOverlayFamilies, "levels"]);
               }
             }}
             title="Levels are research context only. Not financial advice."
@@ -380,6 +484,7 @@ export function SymbolChart({
         </div>
       ) : null}
     </div>
+      <ChartWorkflowDock indicatorSeries={indicatorSeries} summary={workflowSummary} />
       <ChartStoryPanel points={storyPoints} />
     </div>
     {expanded ? (
@@ -387,6 +492,8 @@ export function SymbolChart({
         candles={normalizedCandles}
         close={() => setExpanded(false)}
         dataSource={dataSource}
+        defaultIndicators={enabledIndicators}
+        defaultOverlayFamilies={enabledOverlayFamilies}
         defaultPeriod={period}
         interpretation={interpretation ?? buildDefaultChartInterpretation(symbol, move)}
         lastUpdated={lastUpdated ?? normalizedCandles[normalizedCandles.length - 1]?.time ?? null}
@@ -447,6 +554,211 @@ function ChartOverlayControls({
   );
 }
 
+function ChartIndicatorControls({
+  enabledIndicators,
+  indicatorSeries,
+  onToggle,
+}: {
+  enabledIndicators: ChartIndicatorId[];
+  indicatorSeries: ChartIndicatorSeries[];
+  onToggle: (indicator: ChartIndicatorId) => void;
+}) {
+  const activePoints = new Map(indicatorSeries.map((series) => [series.id, series.points.length]));
+  return (
+    <div className="mb-2 rounded-2xl border border-white/10 bg-slate-950/50 p-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+          Indicator management
+        </div>
+        <div className="text-[11px] text-slate-500">{enabledIndicators.length.toLocaleString()} enabled</div>
+      </div>
+      <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+        {(["ema20", "ema50", "rangePressure"] as const).map((indicator) => {
+          const definition = indicatorDefinition(indicator);
+          const enabled = enabledIndicators.includes(indicator);
+          const points = activePoints.get(indicator) ?? 0;
+          return (
+            <button
+              aria-pressed={enabled}
+              className={`min-h-10 shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] transition ${
+                enabled
+                  ? `${overlayToneClasses[definition.tone].active} shadow-lg`
+                  : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-white/20 hover:text-slate-200"
+              }`}
+              key={indicator}
+              onClick={() => onToggle(indicator)}
+              title={`${definition.description}${enabled ? ` ${points} plotted points.` : ""}`}
+              type="button"
+            >
+              {definition.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ChartDrawingToolbar({
+  activeTool,
+  drawingCount,
+  onClear,
+  onSelect,
+}: {
+  activeTool: ChartDrawingTool;
+  drawingCount: number;
+  onClear: () => void;
+  onSelect: (tool: ChartDrawingTool) => void;
+}) {
+  const tools: Array<{ label: string; tool: ChartDrawingTool }> = [
+    { label: "Inspect", tool: "inspect" },
+    { label: "Trendline", tool: "trendline" },
+    { label: "Range", tool: "range" },
+    { label: "Marker", tool: "marker" },
+  ];
+  return (
+    <div className="mb-2 rounded-2xl border border-white/10 bg-slate-950/50 p-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Drawing tools</div>
+          <p className="mt-1 text-[11px] leading-4 text-slate-500">Client-side research annotations. Drawings are not treated as TradeVeto evidence.</p>
+        </div>
+        <button
+          className="min-h-9 rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500 transition hover:border-rose-300/40 hover:text-rose-100 disabled:cursor-not-allowed disabled:opacity-45"
+          disabled={!drawingCount}
+          onClick={onClear}
+          type="button"
+        >
+          Clear {drawingCount ? `(${drawingCount})` : ""}
+        </button>
+      </div>
+      <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+        {tools.map(({ label, tool }) => (
+          <button
+            aria-pressed={activeTool === tool}
+            className={`min-h-10 shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] transition ${
+              activeTool === tool
+                ? "border-cyan-300/55 bg-cyan-300/12 text-cyan-100 shadow-lg shadow-cyan-950/20"
+                : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-white/20 hover:text-slate-200"
+            }`}
+            key={tool}
+            onClick={() => onSelect(tool)}
+            type="button"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ChartDrawingLayer({
+  drawings,
+  draftDrawing,
+  onCommit,
+  onDraftChange,
+  tool,
+}: {
+  drawings: ChartDrawing[];
+  draftDrawing: ChartDrawing | null;
+  onCommit: (drawing: ChartDrawing) => void;
+  onDraftChange: (drawing: ChartDrawing | null) => void;
+  tool: ChartDrawingTool;
+}) {
+  const allDrawings = draftDrawing ? [...drawings, draftDrawing] : drawings;
+
+  function pointFromEvent(event: ReactPointerEvent<HTMLDivElement>): ChartDrawingPoint {
+    const box = event.currentTarget.getBoundingClientRect();
+    return {
+      x: clamp(((event.clientX - box.left) / Math.max(1, box.width)) * 100, 0, 100),
+      y: clamp(((event.clientY - box.top) / Math.max(1, box.height)) * 100, 0, 100),
+    };
+  }
+
+  function begin(event: ReactPointerEvent<HTMLDivElement>): void {
+    if (tool === "inspect") return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const start = pointFromEvent(event);
+    onDraftChange({
+      end: start,
+      id: `draft-${tool}`,
+      start,
+      tool,
+    });
+  }
+
+  function move(event: ReactPointerEvent<HTMLDivElement>): void {
+    if (!draftDrawing || tool === "inspect") return;
+    onDraftChange({
+      ...draftDrawing,
+      end: pointFromEvent(event),
+    });
+  }
+
+  function end(event: ReactPointerEvent<HTMLDivElement>): void {
+    if (!draftDrawing || tool === "inspect") return;
+    const endPoint = pointFromEvent(event);
+    const distance = Math.hypot(endPoint.x - draftDrawing.start.x, endPoint.y - draftDrawing.start.y);
+    const nextDrawing = {
+      ...draftDrawing,
+      end: tool === "marker" || distance < 1 ? draftDrawing.start : endPoint,
+      id: `${tool}-${Date.now()}-${Math.round(draftDrawing.start.x * 10)}-${Math.round(draftDrawing.start.y * 10)}`,
+    };
+    onDraftChange(null);
+    if (tool === "marker" || distance >= 2.5) onCommit(nextDrawing);
+  }
+
+  return (
+    <div
+      className={`absolute inset-0 z-[4] ${tool === "inspect" ? "pointer-events-none" : "cursor-crosshair touch-none"}`}
+      onPointerCancel={() => onDraftChange(null)}
+      onPointerDown={begin}
+      onPointerMove={move}
+      onPointerUp={end}
+    >
+      <svg className="h-full w-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
+        {allDrawings.map((drawing) => <DrawingShape drawing={drawing} key={drawing.id} />)}
+      </svg>
+    </div>
+  );
+}
+
+function DrawingShape({ drawing }: { drawing: ChartDrawing }) {
+  if (drawing.tool === "range") {
+    const x = Math.min(drawing.start.x, drawing.end.x);
+    const y = Math.min(drawing.start.y, drawing.end.y);
+    const width = Math.max(1, Math.abs(drawing.end.x - drawing.start.x));
+    const height = Math.max(1, Math.abs(drawing.end.y - drawing.start.y));
+    return (
+      <g>
+        <rect fill="rgba(34,211,238,0.08)" height={height} rx="1.5" stroke="rgba(34,211,238,0.58)" strokeDasharray="1.6 1.2" strokeWidth="0.35" width={width} x={x} y={y} />
+        <text fill="#a5f3fc" fontSize="2.2" fontWeight="800" x={x + 1.4} y={Math.max(3, y + 3)}>
+          RANGE
+        </text>
+      </g>
+    );
+  }
+  if (drawing.tool === "marker") {
+    return (
+      <g>
+        <line stroke="rgba(251,191,36,0.62)" strokeDasharray="1.2 1.1" strokeWidth="0.28" x1={drawing.start.x} x2={drawing.start.x} y1="0" y2="100" />
+        <circle cx={drawing.start.x} cy={drawing.start.y} fill="rgba(251,191,36,0.2)" r="2.2" stroke="#fde68a" strokeWidth="0.32" />
+        <text fill="#fde68a" fontSize="2.2" fontWeight="800" x={Math.min(92, drawing.start.x + 1.5)} y={Math.max(3, drawing.start.y - 1.2)}>
+          NOTE
+        </text>
+      </g>
+    );
+  }
+  return (
+    <g>
+      <line stroke="rgba(196,181,253,0.76)" strokeLinecap="round" strokeWidth="0.42" x1={drawing.start.x} x2={drawing.end.x} y1={drawing.start.y} y2={drawing.end.y} />
+      <circle cx={drawing.start.x} cy={drawing.start.y} fill="#c4b5fd" r="0.95" />
+      <circle cx={drawing.end.x} cy={drawing.end.y} fill="#c4b5fd" r="0.95" />
+    </g>
+  );
+}
+
 function ChartIntelligenceZoneOverlay({ zones }: { zones: ChartIntelligenceZone[] }) {
   if (!zones.length) return null;
   return (
@@ -488,10 +800,48 @@ function ChartStoryPanel({ points }: { points: ChartStoryPoint[] }) {
   );
 }
 
+function ChartWorkflowDock({ indicatorSeries, summary }: { indicatorSeries: ChartIndicatorSeries[]; summary: ChartWorkflowSummary }) {
+  return (
+    <div className="mt-2 rounded-2xl border border-white/10 bg-slate-950/45 p-3">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Chart-linked intelligence state</div>
+          <p className="mt-1 text-xs leading-5 text-slate-500">{summary.narrative}</p>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+          <div className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2">
+            <div className="font-mono text-sm text-slate-100">{summary.activeFamilies}</div>
+            Overlays
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2">
+            <div className="font-mono text-sm text-slate-100">{summary.activeIndicators}</div>
+            Indicators
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2">
+            <div className="font-mono text-sm text-slate-100">{summary.drawingCount}</div>
+            Drawings
+          </div>
+        </div>
+      </div>
+      {indicatorSeries.length ? (
+        <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {indicatorSeries.map((series) => (
+            <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${overlayToneClasses[series.tone].pill}`} key={series.id}>
+              {series.label}: {series.points.length} points
+            </span>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function SymbolChartModal({
   candles,
   close,
   dataSource,
+  defaultIndicators,
+  defaultOverlayFamilies,
   defaultPeriod,
   interpretation,
   lastUpdated,
@@ -504,6 +854,8 @@ function SymbolChartModal({
   candles: ChartCandle[];
   close: () => void;
   dataSource: string;
+  defaultIndicators: ChartIndicatorId[];
+  defaultOverlayFamilies: ChartOverlayFamily[];
   defaultPeriod: InteractiveChartPeriod;
   interpretation: string;
   lastUpdated: string | null;
@@ -514,6 +866,10 @@ function SymbolChartModal({
   tradeLevels?: ChartTradeLevels;
 }) {
   const [detailMode, setDetailMode] = useState<"compare" | "overlays" | "timeline">("overlays");
+  const [layoutMode, setLayoutMode] = useState<"focus" | "split" | "stack">("focus");
+  const [modalPeriod, setModalPeriod] = useState<InteractiveChartPeriod>(defaultPeriod);
+  const [modalOverlayFamilies, setModalOverlayFamilies] = useState<ChartOverlayFamily[]>(defaultOverlayFamilies);
+  const [modalIndicators, setModalIndicators] = useState<ChartIndicatorId[]>(defaultIndicators);
   const normalizedSignals = useMemo(() => (showHistoricalSignals ? filterSignalsByCandles(normalizeSignals(signals ?? []), candles) : []), [candles, showHistoricalSignals, signals]);
   const chartLevels = useMemo(() => normalizeTradeLevels(tradeLevels), [tradeLevels]);
   const markerSummary = markerGroupSummary(normalizedSignals);
@@ -550,19 +906,64 @@ function SymbolChartModal({
               </button>
             ))}
           </div>
-          <div className="text-xs text-slate-500">Fullscreen exploration · synchronized overlays · research only</div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <div className="flex flex-wrap gap-1">
+              {(["focus", "split", "stack"] as const).map((mode) => (
+                <button
+                  className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] transition ${
+                    layoutMode === mode
+                      ? "border-violet-300/55 bg-violet-300/12 text-violet-100"
+                      : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-white/20 hover:text-slate-200"
+                  }`}
+                  key={mode}
+                  onClick={() => setLayoutMode(mode)}
+                  type="button"
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+            <div className="text-xs text-slate-500">Fullscreen exploration · synchronized state · research only</div>
+          </div>
+        </div>
+        <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950/45 p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Synchronized chart state</div>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Timeframe, overlays, and indicators stay linked across fullscreen chart panes.</p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {INTERACTIVE_CHART_PERIODS.map((range) => (
+                <button
+                  className={`min-h-9 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] transition sm:min-h-0 sm:px-2.5 ${
+                    range === modalPeriod
+                      ? "border-cyan-300/55 bg-cyan-300/12 text-cyan-100"
+                      : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-white/20 hover:text-slate-200"
+                  }`}
+                  key={range}
+                  onClick={() => setModalPeriod(range)}
+                  type="button"
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <div className="mt-4">
-          <SymbolChart
+          <ChartLayoutExplorer
             candles={candles}
             dataSource={dataSource}
-            defaultPeriod={defaultPeriod}
-            expandable={false}
-            height={460}
+            indicators={modalIndicators}
             interpretation={interpretation}
             lastUpdated={lastUpdated}
+            layoutMode={layoutMode}
+            onIndicatorsChange={setModalIndicators}
+            onOverlayFamiliesChange={setModalOverlayFamilies}
+            onPeriodChange={setModalPeriod}
+            overlayFamilies={modalOverlayFamilies}
+            period={modalPeriod}
             showHistoricalSignals={showHistoricalSignals}
-            showHeaderBadge={false}
             showResearchLevelsToggle={showResearchLevelsToggle}
             signals={signals}
             symbol={symbol}
@@ -581,6 +982,116 @@ function SymbolChartModal({
           Research only. Entry, stop, target, confidence, risk, replay, and freshness overlays are context for investigation, not a recommendation to buy or sell.
         </div>
     </StableDetailOverlay>
+  );
+}
+
+function ChartLayoutExplorer({
+  candles,
+  dataSource,
+  indicators,
+  interpretation,
+  lastUpdated,
+  layoutMode,
+  onIndicatorsChange,
+  onOverlayFamiliesChange,
+  onPeriodChange,
+  overlayFamilies,
+  period,
+  showHistoricalSignals,
+  showResearchLevelsToggle,
+  signals,
+  symbol,
+  tradeLevels,
+}: {
+  candles: ChartCandle[];
+  dataSource: string;
+  indicators: ChartIndicatorId[];
+  interpretation: string;
+  lastUpdated: string | null;
+  layoutMode: "focus" | "split" | "stack";
+  onIndicatorsChange: (indicators: ChartIndicatorId[]) => void;
+  onOverlayFamiliesChange: (families: ChartOverlayFamily[]) => void;
+  onPeriodChange: (period: InteractiveChartPeriod) => void;
+  overlayFamilies: ChartOverlayFamily[];
+  period: InteractiveChartPeriod;
+  showHistoricalSignals: boolean;
+  showResearchLevelsToggle: boolean;
+  signals?: ChartSignalMarker[];
+  symbol: string;
+  tradeLevels?: ChartTradeLevels;
+}) {
+  const riskMacroFamilies: ChartOverlayFamily[] = ["macro", "risk", "events", "memory", "replay"];
+  const replayMemoryFamilies: ChartOverlayFamily[] = ["replay", "memory", "confidence", "levels"];
+  const sharedProps = {
+    candles,
+    controlledIndicators: indicators,
+    controlledOverlayFamilies: overlayFamilies,
+    controlledPeriod: period,
+    dataSource,
+    defaultPeriod: period,
+    expandable: false,
+    interpretation,
+    lastUpdated,
+    onIndicatorsChange,
+    onOverlayFamiliesChange,
+    onPeriodChange,
+    showHistoricalSignals,
+    showHeaderBadge: false,
+    showResearchLevelsToggle,
+    signals,
+    symbol,
+    tradeLevels,
+  } satisfies Omit<SymbolChartProps, "height">;
+
+  if (layoutMode === "split") {
+    return (
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.68fr)]">
+        <div className="rounded-3xl border border-cyan-300/12 bg-cyan-300/[0.025] p-3">
+          <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Primary chart lane</div>
+          <SymbolChart {...sharedProps} height={420} />
+        </div>
+        <div className="rounded-3xl border border-rose-300/12 bg-rose-300/[0.025] p-3">
+          <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-rose-200">Risk / macro lane</div>
+          <SymbolChart
+            {...sharedProps}
+            controlledIndicators={indicators.includes("rangePressure") ? indicators : [...indicators, "rangePressure"]}
+            controlledOverlayFamilies={riskMacroFamilies.filter((family) => overlayFamilies.includes(family))}
+            enableTimeframeSwitching={false}
+            height={420}
+            showDrawingTools={false}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (layoutMode === "stack") {
+    return (
+      <div className="grid gap-4">
+        <div className="rounded-3xl border border-cyan-300/12 bg-cyan-300/[0.025] p-3">
+          <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Price + indicator pane</div>
+          <SymbolChart {...sharedProps} height={360} />
+        </div>
+        <div className="rounded-3xl border border-violet-300/12 bg-violet-300/[0.025] p-3">
+          <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-violet-200">Replay / memory pane</div>
+          <SymbolChart
+            {...sharedProps}
+            controlledIndicators={indicators.filter((indicator) => indicator !== "rangePressure")}
+            controlledOverlayFamilies={replayMemoryFamilies.filter((family) => overlayFamilies.includes(family))}
+            enableTimeframeSwitching={false}
+            height={300}
+            showDrawingTools={false}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <SymbolChart
+      {...sharedProps}
+      height={460}
+    />
   );
 }
 
@@ -870,4 +1381,8 @@ function formatChartDate(value: string): string {
   const parsed = Date.parse(value);
   if (!Number.isFinite(parsed)) return value.slice(0, 16);
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(parsed));
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
