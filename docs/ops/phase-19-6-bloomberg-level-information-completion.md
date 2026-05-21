@@ -179,6 +179,22 @@ Local validation completed:
 - `npx pyright . --pythonpath .venv/bin/python --warnings`
 - `git diff --check`
 
-Full release validation and production deployment were completed after this report was created.
+Production validation completed:
+
+- commit deployed: `0eeb07b`
+- production container: `healthy`
+- `/api/health`: 200
+- `/api/health/deep`: 200
+- `/terminal`: 200
+- `/symbol/AMD`: 200
+- `/macro`: 200
+- `/feed`: 200
+- `/dashboard`: 200
+- `/discover`: 200
+- `/scanner`: 200
+- `/opportunities`: 200
+- `TRADEVETO_MOBILE_UX_BASE_URL=https://tradeveto.com npm --prefix frontend run test:mobile-ux`
+
+The mobile smoke produced screenshots under `docs/ops/artifacts/mobile-emulation` and passed route checks across the configured emulated device profiles.
 
 Final status: TRADEVETO BLOOMBERG-LEVEL INFORMATION COMPLETION ACCOMPLISHED
