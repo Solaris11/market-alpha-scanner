@@ -84,9 +84,13 @@ export type DailyMarketDevelopment = {
   impact: "mixed" | "negative" | "positive" | "unknown";
   marketMovingLabel: string;
   original: MarketNewsItem;
+  priorityScore: number;
   relatedMacroContext: string;
   relatedReplayContext: string;
+  researchTypeLabel: string;
+  sectorImpactLabel: string;
   source: string;
+  sourceQualityLabel: string;
   sourceUrl: string;
   timestamp: string;
   tone: DailyCommandTone;
@@ -105,18 +109,48 @@ export type DailyEventCalendarItem = {
   tone: DailyCommandTone;
 };
 
+export type DailyMacroEventStory = {
+  affectedSectors: string[];
+  affectedSymbols: string[];
+  detail: string;
+  drivers: string[];
+  id: string;
+  label: string;
+  tone: DailyCommandTone;
+  urgency: DailyMarketDevelopment["urgency"];
+};
+
+export type DailySectorNewsCluster = {
+  affectedSymbols: string[];
+  categories: string[];
+  highImpactCount: number;
+  itemCount: number;
+  latestHeadline: string;
+  latestSource: string;
+  sector: string;
+  tone: DailyCommandTone;
+  watchlistImpactCount: number;
+};
+
 export type DailyNewsEcosystemSummary = {
   affectedSectors: string[];
   affectedSymbols: string[];
   analystCount: number;
+  calendarCount: number;
+  completenessScore: number;
+  coverageGaps: string[];
+  dividendCount: number;
   earningsCount: number;
   eventTrackingCount: number;
   geopoliticalCount: number;
   highImpactCount: number;
   macroCount: number;
+  providerCoverage: string;
   ratesInflationCount: number;
+  sectorNewsCount: number;
   sourceCount: number;
   sourceNames: string[];
+  symbolNewsCount: number;
   topNarrative: string;
   total: number;
   watchlistImpactCount: number;
@@ -137,6 +171,7 @@ export type DailyMarketCommandModel = {
     moneyFlow: string;
     narrative: string;
   };
+  macroStorylines: DailyMacroEventStory[];
   moneyFlow: {
     breadthLabel: string;
     sectors: DailyMoneyFlowSector[];
@@ -147,6 +182,7 @@ export type DailyMarketCommandModel = {
     integrationNeeded: string;
     message: string;
   };
+  sectorNews: DailySectorNewsCluster[];
   watchlistSymbols: string[];
   whatChangedToday: DailyMarketChange[];
 };
@@ -179,9 +215,11 @@ export function buildDailyMarketCommandModel(input: {
     topOpportunitySymbols: bestSetups.map((item) => item.symbol),
     watchlistSymbols: input.watchlistSymbols ?? [],
   });
-  const newsEcosystem = buildNewsEcosystem(developments);
   const whatChangedToday = buildWhatChangedToday(input);
   const calendar = buildEventCalendar(input.rows, input.now ?? new Date());
+  const newsEcosystem = buildNewsEcosystem(developments, calendar);
+  const macroStorylines = buildMacroStorylines(developments, moneyFlow, calendar);
+  const sectorNews = buildSectorNewsClusters(developments);
   const attentionScore = averageNumber([
     bestSetups[0]?.score ?? null,
     breakoutCandidates[0]?.score ?? null,
@@ -219,12 +257,14 @@ export function buildDailyMarketCommandModel(input: {
         risk: crashRisk[0] ?? null,
       }),
     },
+    macroStorylines,
     moneyFlow,
     newsEcosystem,
     newsEmptyState: {
       integrationNeeded: "Required integration: verified headline, source, source URL, timestamp, affected ticker/sector, and impact fields from a configured market-news provider.",
       message: "News source not configured yet",
     },
+    sectorNews,
     watchlistSymbols: (input.watchlistSymbols ?? []).map((symbol) => symbol.toUpperCase()),
     whatChangedToday,
   };
@@ -354,6 +394,14 @@ function buildDevelopments(input: {
       const topPriorityImpact = affectedSymbols.some((symbol) => topSymbols.has(symbol));
       const category = newsCategory(item);
       const urgency: DailyMarketDevelopment["urgency"] = item.relevance >= 75 || topPriorityImpact ? "high" : item.relevance >= 55 || watchlistImpact ? "medium" : "low";
+      const priorityScore = developmentPriorityScore({
+        affectedSymbols,
+        relevance: item.relevance,
+        topDangerSymbols: input.topDangerSymbols,
+        topOpportunitySymbols: input.topOpportunitySymbols,
+        urgency,
+        watchlist,
+      });
       return {
         affectedSectors: item.affectedSectors,
         affectedSymbols,
@@ -366,9 +414,13 @@ function buildDevelopments(input: {
         impact: impactForDirection(item.direction),
         marketMovingLabel: item.marketMovingLabel,
         original: item,
+        priorityScore,
         relatedMacroContext: item.relatedMacroContext,
         relatedReplayContext: item.relatedReplayContext,
+        researchTypeLabel: researchTypeLabel(item),
+        sectorImpactLabel: sectorImpactLabel(item.affectedSectors),
         source: item.source,
+        sourceQualityLabel: sourceQualityLabel(item),
         sourceUrl: item.sourceUrl,
         timestamp: item.publishedAt,
         tone: toneForDevelopment(item, watchlistImpact, urgency),
@@ -388,39 +440,153 @@ function buildDevelopments(input: {
       if (priority !== 0) return priority;
       return Date.parse(right.timestamp) - Date.parse(left.timestamp);
     })
-    .slice(0, 12);
+    .slice(0, 16);
 }
 
-function buildNewsEcosystem(developments: DailyMarketDevelopment[]): DailyNewsEcosystemSummary {
+function buildNewsEcosystem(developments: DailyMarketDevelopment[], calendar: DailyEventCalendarItem[]): DailyNewsEcosystemSummary {
   const sourceNames = uniqueStrings(developments.map((item) => item.source));
   const affectedSymbols = uniqueStrings(developments.flatMap((item) => item.affectedSymbols));
   const affectedSectors = uniqueStrings(developments.flatMap((item) => item.affectedSectors));
   const analystCount = developments.filter((item) => item.category === "Analyst").length;
-  const earningsCount = developments.filter((item) => item.category === "Earnings").length;
+  const calendarEarningsCount = calendar.filter((item) => item.category === "earnings").length;
+  const earningsCount = developments.filter((item) => item.category === "Earnings").length + calendarEarningsCount;
   const geopoliticalCount = developments.filter((item) => item.category === "Geopolitical").length;
   const ratesInflationCount = developments.filter((item) => item.category === "Rates").length;
   const highImpactCount = developments.filter((item) => item.urgency === "high").length;
   const watchlistImpactCount = developments.filter((item) => item.watchlistImpact).length;
   const macroCount = developments.filter((item) => item.category === "Macro" || item.category === "Rates" || item.category === "Energy" || item.category === "Crypto").length;
+  const dividendCount = calendar.filter((item) => item.category === "dividend").length;
+  const categoryCoverage = new Set(developments.map((item) => item.category));
+  const sectorNewsCount = developments.filter((item) => item.affectedSectors.length > 0).length;
+  const symbolNewsCount = developments.filter((item) => item.affectedSymbols.length > 0).length;
+  const completenessScore = Math.round(clamp(
+    Math.min(35, sourceNames.length * 8)
+    + Math.min(25, categoryCoverage.size * 4)
+    + Math.min(18, affectedSymbols.length * 2)
+    + Math.min(12, affectedSectors.length * 3)
+    + Math.min(10, calendar.length * 2),
+  ));
+  const coverageGaps = newsCoverageGaps({
+    analystCount,
+    calendar,
+    developments,
+    dividendCount,
+    earningsCount,
+    geopoliticalCount,
+    macroCount,
+    ratesInflationCount,
+    sourceCount: sourceNames.length,
+  });
   const top = developments[0];
   return {
     affectedSectors,
     affectedSymbols,
     analystCount,
+    calendarCount: calendar.length,
+    completenessScore,
+    coverageGaps,
+    dividendCount,
     earningsCount,
     eventTrackingCount: developments.length,
     geopoliticalCount,
     highImpactCount,
     macroCount,
+    providerCoverage: sourceNames.length >= 4 ? "Broad verified coverage" : sourceNames.length >= 2 ? "Multi-source coverage" : sourceNames.length === 1 ? "Single-source coverage" : "No verified provider coverage",
     ratesInflationCount,
+    sectorNewsCount,
     sourceCount: sourceNames.length,
     sourceNames,
+    symbolNewsCount,
     topNarrative: top
       ? `${top.category} development from ${top.source}: ${top.whyItMatters}`
       : "No source-linked macro/news developments are available in this scanner packet.",
     total: developments.length,
     watchlistImpactCount,
   };
+}
+
+function buildMacroStorylines(developments: DailyMarketDevelopment[], moneyFlow: DailyMarketCommandModel["moneyFlow"], calendar: DailyEventCalendarItem[]): DailyMacroEventStory[] {
+  const stories: DailyMacroEventStory[] = [];
+  const groups: Array<{ id: string; label: string; match: (item: DailyMarketDevelopment) => boolean; tone: DailyCommandTone }> = [
+    { id: "rates-inflation", label: "Rates and inflation pressure", match: (item) => item.category === "Rates", tone: "amber" },
+    { id: "geopolitical-risk", label: "Geopolitical risk awareness", match: (item) => item.category === "Geopolitical", tone: "rose" },
+    { id: "earnings-catalysts", label: "Earnings and company catalysts", match: (item) => item.category === "Earnings" || item.category === "Analyst", tone: "violet" },
+    { id: "cross-asset-macro", label: "Cross-asset macro context", match: (item) => ["Macro", "Energy", "Crypto"].includes(item.category), tone: "cyan" },
+  ];
+  for (const group of groups) {
+    const matches = developments.filter(group.match);
+    if (!matches.length) continue;
+    const highest = matches[0];
+    stories.push({
+      affectedSectors: uniqueStrings(matches.flatMap((item) => item.affectedSectors)),
+      affectedSymbols: uniqueStrings(matches.flatMap((item) => item.affectedSymbols)),
+      detail: `${matches.length} source-linked ${group.label.toLowerCase()} item${matches.length === 1 ? "" : "s"} are active. ${highest?.whyItMatters ?? ""}`,
+      drivers: uniqueStrings(matches.flatMap((item) => [item.sourceQualityLabel, item.marketMovingLabel, item.watchlistImpactReason])),
+      id: group.id,
+      label: group.label,
+      tone: matches.some((item) => item.urgency === "high") ? "rose" : group.tone,
+      urgency: matches.some((item) => item.urgency === "high") ? "high" : matches.some((item) => item.urgency === "medium") ? "medium" : "low",
+    });
+  }
+  const topFlow = moneyFlow.sectors[0];
+  if (topFlow) {
+    stories.push({
+      affectedSectors: [topFlow.sector],
+      affectedSymbols: topFlow.leaders,
+      detail: `${topFlow.sector} is the highest-ranked money-flow cluster with ${topFlow.leaders.slice(0, 4).join(", ") || "limited symbol detail"}.`,
+      drivers: [`${topFlow.score}/100 flow score`, `${topFlow.count} measured symbols`, `1D ${topFlow.averageReturn1d === null ? "limited" : `${topFlow.averageReturn1d.toFixed(2)}%`}`],
+      id: "sector-leadership",
+      label: "Sector leadership and pressure",
+      tone: topFlow.tone,
+      urgency: topFlow.direction === "pressure" ? "medium" : "low",
+    });
+  }
+  const calendarUrgent = calendar.filter((item) => item.category === "earnings" || item.category === "rates" || item.category === "geopolitical").slice(0, 4);
+  if (calendarUrgent.length) {
+    stories.push({
+      affectedSectors: [],
+      affectedSymbols: uniqueStrings(calendarUrgent.map((item) => item.symbol)),
+      detail: `${calendarUrgent.length} validated event-calendar catalyst${calendarUrgent.length === 1 ? "" : "s"} are scheduled in the next 7 days.`,
+      drivers: calendarUrgent.map((item) => `${item.symbol}: ${item.category}`),
+      id: "next-seven-days",
+      label: "Next 7 days event risk",
+      tone: calendarUrgent.some((item) => item.tone === "rose") ? "rose" : "amber",
+      urgency: "medium",
+    });
+  }
+  return stories.slice(0, 5);
+}
+
+function buildSectorNewsClusters(developments: DailyMarketDevelopment[]): DailySectorNewsCluster[] {
+  const bySector = new Map<string, DailyMarketDevelopment[]>();
+  for (const item of developments) {
+    const sectors = item.affectedSectors.length ? item.affectedSectors : ["Cross-market"];
+    for (const sector of sectors) {
+      const current = bySector.get(sector) ?? [];
+      current.push(item);
+      bySector.set(sector, current);
+    }
+  }
+  return Array.from(bySector.entries())
+    .map(([sector, items]) => {
+      const highImpactCount = items.filter((item) => item.urgency === "high").length;
+      const watchlistImpactCount = items.filter((item) => item.watchlistImpact).length;
+      const latest = items.slice().sort((left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp))[0];
+      const tone: DailyCommandTone = highImpactCount ? "rose" : watchlistImpactCount ? "cyan" : items.some((item) => item.tone === "emerald") ? "emerald" : "amber";
+      return {
+        affectedSymbols: uniqueStrings(items.flatMap((item) => item.affectedSymbols)),
+        categories: uniqueStrings(items.map((item) => item.category)),
+        highImpactCount,
+        itemCount: items.length,
+        latestHeadline: latest?.headline ?? "Limited headline detail",
+        latestSource: latest?.source ?? "Source limited",
+        sector,
+        tone,
+        watchlistImpactCount,
+      };
+    })
+    .sort((left, right) => right.highImpactCount - left.highImpactCount || right.watchlistImpactCount - left.watchlistImpactCount || right.itemCount - left.itemCount)
+    .slice(0, 6);
 }
 
 function watchlistImpactReason(input: {
@@ -436,6 +602,66 @@ function watchlistImpactReason(input: {
   const riskMatches = input.affectedSymbols.filter((symbol) => input.topDangerSymbols.includes(symbol));
   if (riskMatches.length) return `Affects top risk-review candidates: ${riskMatches.slice(0, 6).join(", ")}.`;
   return "Market-level context; no direct watchlist match in the current packet.";
+}
+
+function developmentPriorityScore(input: {
+  affectedSymbols: string[];
+  relevance: number;
+  topDangerSymbols: string[];
+  topOpportunitySymbols: string[];
+  urgency: DailyMarketDevelopment["urgency"];
+  watchlist: Set<string>;
+}): number {
+  const watchlistMatch = input.affectedSymbols.some((symbol) => input.watchlist.has(symbol));
+  const topOpportunityMatch = input.affectedSymbols.some((symbol) => input.topOpportunitySymbols.includes(symbol));
+  const topDangerMatch = input.affectedSymbols.some((symbol) => input.topDangerSymbols.includes(symbol));
+  const urgencyBoost = input.urgency === "high" ? 18 : input.urgency === "medium" ? 9 : 0;
+  return Math.round(clamp(input.relevance + urgencyBoost + (watchlistMatch ? 16 : 0) + (topOpportunityMatch ? 8 : 0) + (topDangerMatch ? 10 : 0)));
+}
+
+function sourceQualityLabel(item: MarketNewsItem): string {
+  const textValue = `${item.source} ${item.sourceUrl}`.toLowerCase();
+  if (/sec\.gov|federalreserve\.gov|bls\.gov|bea\.gov|eia\.gov|treasury\.gov|stlouisfed\.org/.test(textValue)) return "Official source";
+  if (/reuters|bloomberg|apnews|ap news|cnbc|marketwatch|yahoo|wsj|stocktitan|nasdaq/.test(textValue)) return "Verified market source";
+  if (/prnewswire|globenewswire|businesswire|investor/.test(textValue)) return "Source-linked company release";
+  return "Verified source-linked item";
+}
+
+function sectorImpactLabel(sectors: string[]): string {
+  if (!sectors.length) return "Cross-market impact";
+  if (sectors.length === 1) return `${sectors[0]} impact`;
+  return `${sectors.slice(0, 2).join(" + ")} impact`;
+}
+
+function researchTypeLabel(item: MarketNewsItem): string {
+  const type = item.eventType.replace(/_/g, " ");
+  if (item.scope === "symbol") return `Symbol ${type}`;
+  if (item.scope === "sector") return `Sector ${type}`;
+  return `Market ${type}`;
+}
+
+function newsCoverageGaps(input: {
+  analystCount: number;
+  calendar: DailyEventCalendarItem[];
+  developments: DailyMarketDevelopment[];
+  dividendCount: number;
+  earningsCount: number;
+  geopoliticalCount: number;
+  macroCount: number;
+  ratesInflationCount: number;
+  sourceCount: number;
+}): string[] {
+  const gaps = [
+    input.sourceCount === 0 ? "No verified provider feed configured" : null,
+    input.macroCount === 0 && input.ratesInflationCount === 0 ? "Macro/rates feed limited" : null,
+    input.geopoliticalCount === 0 ? "Geopolitical feed limited" : null,
+    input.earningsCount === 0 ? "Earnings catalyst depth limited" : null,
+    input.analystCount === 0 ? "Analyst action feed limited" : null,
+    input.dividendCount === 0 ? "Dividend calendar limited" : null,
+    input.calendar.length === 0 ? "Event calendar limited" : null,
+    input.developments.every((item) => item.affectedSymbols.length === 0) ? "Symbol-level impact links limited" : null,
+  ].filter((item): item is string => item !== null);
+  return gaps.slice(0, 5);
 }
 
 function buildWhatChangedToday(input: {
@@ -634,7 +860,7 @@ function toneForDevelopment(item: MarketNewsItem, watchlistImpact: boolean, urge
 }
 
 function developmentPriority(item: DailyMarketDevelopment): number {
-  return (item.watchlistImpact ? 80 : 0) + (item.urgency === "high" ? 60 : item.urgency === "medium" ? 35 : 10) + item.original.relevance;
+  return item.priorityScore + (item.watchlistImpact ? 20 : 0) + (item.urgency === "high" ? 18 : item.urgency === "medium" ? 9 : 0);
 }
 
 function dateWithinWindow(value: unknown, start: Date, end: Date): string | null {

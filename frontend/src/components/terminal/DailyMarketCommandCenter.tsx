@@ -28,12 +28,14 @@ import type {
   DailyCommandTone,
   DailyDevelopmentCategory,
   DailyEventCalendarItem,
+  DailyMacroEventStory,
   DailyMarketCommandModel,
   DailyMarketDevelopment,
   DailyMarketChange,
   DailyMoneyFlowSector,
   DailyMoneyFlowTheme,
   DailyNewsEcosystemSummary,
+  DailySectorNewsCluster,
 } from "@/lib/trading/daily-market-command";
 
 type Props = {
@@ -202,6 +204,8 @@ export function DailyMarketCommandCenter({ model }: Props) {
               ))}
             </div>
             <NewsEcosystemStrip summary={model.newsEcosystem} />
+            <MacroStorylineDeck stories={model.macroStorylines} />
+            <SectorNewsClusterDeck clusters={model.sectorNews} />
             <div className="mt-4 grid gap-2">
               {filteredDevelopments.length ? filteredDevelopments.slice(0, 7).map((item) => (
                 <button
@@ -218,6 +222,7 @@ export function DailyMarketCommandCenter({ model }: Props) {
                         <span>{formatDate(item.timestamp)}</span>
                         <span className={TONE[item.tone].text}>{item.urgency} urgency</span>
                         <span>{item.category}</span>
+                        <span>{item.priorityScore}/100 priority</span>
                         {item.watchlistImpact ? <span className="text-cyan-200">watchlist impact</span> : null}
                       </div>
                       <div className="mt-1 line-clamp-2 text-sm font-semibold leading-5 text-slate-100">{item.headline}</div>
@@ -231,6 +236,8 @@ export function DailyMarketCommandCenter({ model }: Props) {
                   </div>
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {item.affectedSymbols.slice(0, 6).map((symbol) => <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 font-mono text-[10px] text-slate-300" key={symbol}>{symbol}</span>)}
+                    <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300">{item.sourceQualityLabel}</span>
+                    <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300">{item.sectorImpactLabel}</span>
                     <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300">{item.marketMovingLabel}</span>
                   </div>
                 </button>
@@ -255,6 +262,7 @@ export function DailyMarketCommandCenter({ model }: Props) {
               <CalendarClock className="h-5 w-5 text-violet-200" />
             </div>
             <div className="mt-4 grid gap-2">
+              <CalendarBreakdownRail calendar={model.calendar} />
               {model.calendar.length ? model.calendar.slice(0, 8).map((item) => <CalendarEventRow item={item} key={`${item.symbol}:${item.category}:${item.date}`} />) : <LimitedState message="No validated earnings, dividend, or macro-event dates are available for the next 7 days." />}
             </div>
           </div>
@@ -269,19 +277,79 @@ export function DailyMarketCommandCenter({ model }: Props) {
 function NewsEcosystemStrip({ summary }: { summary: DailyNewsEcosystemSummary }) {
   return (
     <div className="mt-4 rounded-3xl border border-cyan-300/14 bg-cyan-300/[0.045] p-3">
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
         <EcosystemMetric label="Source-linked" tone="cyan" value={`${summary.total}`} />
         <EcosystemMetric label="Watchlist impact" tone="emerald" value={`${summary.watchlistImpactCount}`} />
         <EcosystemMetric label="High impact" tone="rose" value={`${summary.highImpactCount}`} />
-        <EcosystemMetric label="Sources" tone="violet" value={`${summary.sourceCount}`} />
+        <EcosystemMetric label="Completeness" tone={summary.completenessScore >= 70 ? "emerald" : summary.completenessScore >= 40 ? "amber" : "rose"} value={`${summary.completenessScore}`} />
+        <EcosystemMetric label="Calendar" tone="violet" value={`${summary.calendarCount}`} />
       </div>
       <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-400">{summary.topNarrative}</p>
       <div className="mt-3 flex flex-wrap gap-1.5">
+        <span className="rounded-full border border-cyan-300/18 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-bold text-cyan-100">{summary.providerCoverage}</span>
         {summary.sourceNames.slice(0, 5).map((source) => <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300" key={source}>{source}</span>)}
+        {summary.symbolNewsCount ? <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2 py-0.5 text-[10px] font-bold text-emerald-100">Symbol news {summary.symbolNewsCount}</span> : null}
+        {summary.sectorNewsCount ? <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-bold text-cyan-100">Sector news {summary.sectorNewsCount}</span> : null}
         {summary.ratesInflationCount ? <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[10px] font-bold text-amber-100">Rates {summary.ratesInflationCount}</span> : null}
         {summary.geopoliticalCount ? <span className="rounded-full border border-rose-300/20 bg-rose-300/10 px-2 py-0.5 text-[10px] font-bold text-rose-100">Geo {summary.geopoliticalCount}</span> : null}
         {summary.analystCount ? <span className="rounded-full border border-violet-300/20 bg-violet-300/10 px-2 py-0.5 text-[10px] font-bold text-violet-100">Analyst {summary.analystCount}</span> : null}
         {summary.earningsCount ? <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-bold text-cyan-100">Earnings {summary.earningsCount}</span> : null}
+        {summary.dividendCount ? <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2 py-0.5 text-[10px] font-bold text-emerald-100">Dividends {summary.dividendCount}</span> : null}
+        {!summary.total && summary.coverageGaps.length ? summary.coverageGaps.slice(0, 3).map((gap) => <span className="rounded-full border border-dashed border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-400" key={gap}>{gap}</span>) : null}
+      </div>
+    </div>
+  );
+}
+
+function MacroStorylineDeck({ stories }: { stories: DailyMacroEventStory[] }) {
+  if (!stories.length) return null;
+  return (
+    <div className="mt-3 grid gap-2 lg:grid-cols-2">
+      {stories.slice(0, 4).map((story) => (
+        <div className={`rounded-2xl border p-3 ${TONE[story.tone].border} ${TONE[story.tone].bg}`} key={story.id}>
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className={`text-[10px] font-black uppercase tracking-[0.16em] ${TONE[story.tone].text}`}>{story.urgency} storyline</div>
+              <div className="mt-1 text-sm font-black text-slate-50">{story.label}</div>
+            </div>
+            <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 font-mono text-[10px] font-black text-slate-300">{story.affectedSymbols.length || story.affectedSectors.length}</span>
+          </div>
+          <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-400">{story.detail}</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {story.drivers.slice(0, 4).map((driver) => <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] text-slate-300" key={driver}>{driver}</span>)}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SectorNewsClusterDeck({ clusters }: { clusters: DailySectorNewsCluster[] }) {
+  if (!clusters.length) return null;
+  return (
+    <div className="mt-3 rounded-3xl border border-white/10 bg-black/18 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Sector news impact map</div>
+        <span className="rounded-full border border-white/10 bg-white/[0.035] px-2 py-1 text-[10px] font-bold text-slate-400">{clusters.length} clusters</span>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        {clusters.slice(0, 6).map((cluster) => (
+          <div className={`rounded-2xl border p-3 ${TONE[cluster.tone].border} ${TONE[cluster.tone].bg}`} key={cluster.sector}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="truncate text-sm font-black text-slate-50">{cluster.sector}</div>
+                <div className="mt-1 text-[10px] uppercase tracking-[0.13em] text-slate-500">{cluster.latestSource}</div>
+              </div>
+              <div className={`font-mono text-lg font-black ${TONE[cluster.tone].text}`}>{cluster.itemCount}</div>
+            </div>
+            <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{cluster.latestHeadline}</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {cluster.categories.slice(0, 3).map((category) => <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] text-slate-300" key={category}>{category}</span>)}
+              {cluster.highImpactCount ? <span className="rounded-full border border-rose-300/20 bg-rose-300/10 px-2 py-0.5 text-[10px] font-bold text-rose-100">High {cluster.highImpactCount}</span> : null}
+              {cluster.watchlistImpactCount ? <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-bold text-cyan-100">Watch {cluster.watchlistImpactCount}</span> : null}
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -431,6 +499,40 @@ function CalendarEventRow({ item }: { item: DailyEventCalendarItem }) {
   );
 }
 
+function CalendarBreakdownRail({ calendar }: { calendar: DailyEventCalendarItem[] }) {
+  if (!calendar.length) return null;
+  const counts = calendar.reduce<Record<DailyEventCalendarItem["category"], number>>((accumulator, item) => {
+    accumulator[item.category] += 1;
+    return accumulator;
+  }, {
+    analyst: 0,
+    dividend: 0,
+    earnings: 0,
+    event: 0,
+    geopolitical: 0,
+    macro: 0,
+    rates: 0,
+  });
+  const metrics: Array<{ label: string; tone: DailyCommandTone; value: number }> = [
+    { label: "Earnings", tone: "cyan" as DailyCommandTone, value: counts.earnings },
+    { label: "Rates", tone: "amber" as DailyCommandTone, value: counts.rates },
+    { label: "Geo", tone: "rose" as DailyCommandTone, value: counts.geopolitical },
+    { label: "Analyst", tone: "violet" as DailyCommandTone, value: counts.analyst },
+    { label: "Dividends", tone: "emerald" as DailyCommandTone, value: counts.dividend },
+  ].filter((item) => item.value > 0);
+  if (!metrics.length) return null;
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {metrics.map((metric) => (
+        <div className={`rounded-2xl border p-2 ${TONE[metric.tone].border} ${TONE[metric.tone].bg}`} key={metric.label}>
+          <div className="text-[9px] font-black uppercase tracking-[0.14em] text-slate-500">{metric.label}</div>
+          <div className={`mt-1 font-mono text-lg font-black ${TONE[metric.tone].text}`}>{metric.value}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function DevelopmentOverlay({ item, onClose }: { item: DailyMarketDevelopment | null; onClose: () => void }) {
   if (!item) return null;
   return (
@@ -454,7 +556,11 @@ function DevelopmentOverlay({ item, onClose }: { item: DailyMarketDevelopment | 
           <DetailMiniPanel label="Affected symbols" value={item.affectedSymbols.join(", ") || "Limited"} />
           <DetailMiniPanel label="Affected sectors" value={item.affectedSectors.join(", ") || "Limited"} />
           <DetailMiniPanel label="TradeVeto relevance" value={`${item.original.relevance}/100`} />
+          <DetailMiniPanel label="Priority score" value={`${item.priorityScore}/100`} />
+          <DetailMiniPanel label="Source quality" value={item.sourceQualityLabel} />
+          <DetailMiniPanel label="Research type" value={item.researchTypeLabel} />
           <DetailMiniPanel label="Event tracking" value={item.eventTrackingLabel} />
+          <DetailMiniPanel label="Sector impact" value={item.sectorImpactLabel} />
           <DetailMiniPanel label="Market moving read" value={item.marketMovingLabel} />
           <DetailMiniPanel label="Watchlist impact" value={item.watchlistImpactReason} />
         </div>

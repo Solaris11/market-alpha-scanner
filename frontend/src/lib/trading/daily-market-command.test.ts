@@ -204,8 +204,16 @@ test("daily market command ranks opportunity, breakout, crash risk, money flow, 
   assert.equal(model.developments[0]?.watchlistImpact, true);
   assert.match(model.developments[0]?.bearishImplication ?? "", /Rates pressure/);
   assert.match(model.developments[0]?.relatedMacroContext ?? "", /growth confidence/);
+  assert.equal(model.developments[0]?.sourceQualityLabel, "Verified market source");
+  assert.equal(model.developments[0]?.sectorImpactLabel, "Semiconductors impact");
+  assert.ok((model.developments[0]?.priorityScore ?? 0) >= 90);
   assert.equal(model.newsEcosystem.watchlistImpactCount, 1);
   assert.equal(model.newsEcosystem.highImpactCount, 1);
+  assert.equal(model.newsEcosystem.providerCoverage, "Single-source coverage");
+  assert.equal(model.newsEcosystem.calendarCount, 3);
+  assert.ok(model.newsEcosystem.completenessScore > 0);
+  assert.ok(model.macroStorylines.some((story) => story.label === "Rates and inflation pressure"));
+  assert.ok(model.sectorNews.some((cluster) => cluster.sector === "Semiconductors"));
   assert.ok(model.calendar.some((item) => item.symbol === "AMD" && item.category === "earnings"));
   assert.match(model.hero.narrative, /leads/);
 });

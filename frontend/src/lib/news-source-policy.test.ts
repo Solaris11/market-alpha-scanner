@@ -7,6 +7,10 @@ describe("news source policy", () => {
     assert.equal(isVerifiedNewsSource("Reuters", "https://www.reuters.com/markets/example"), true);
     assert.equal(isVerifiedNewsSource("Yahoo Finance", "https://finance.yahoo.com/news/example"), true);
     assert.equal(isVerifiedNewsSource("Nasdaq", "https://www.nasdaq.com/articles/example"), true);
+    assert.equal(isVerifiedNewsSource("Federal Reserve", "https://www.federalreserve.gov/newsevents/pressreleases/example.htm"), true);
+    assert.equal(isVerifiedNewsSource("CFTC", "https://www.cftc.gov/PressRoom/PressReleases/example"), true);
+    assert.equal(isVerifiedNewsSource("PR Newswire", "https://www.prnewswire.com/news-releases/company-example.html"), true);
+    assert.equal(isVerifiedNewsSource("StockTitan", "https://www.stocktitan.net/news/NVDA/example.html"), true);
   });
 
   it("blocks unverified social and missing urls", () => {

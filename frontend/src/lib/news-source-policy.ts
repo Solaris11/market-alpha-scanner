@@ -21,6 +21,20 @@ const ALLOWED_SOURCE_PATTERNS = [
   /investor\s*relations/i,
   /(^|\b)alpaca\b/i,
   /(^|\b)bloomberg\b/i,
+  /(^|\b)stocktitan\b/i,
+  /(^|\b)wall\s*street\s*journal\b|(^|\b)wsj\b/i,
+  /(^|\b)federal\s*reserve\b|(^|\b)fed\b/i,
+  /(^|\b)bureau\s*of\s*labor\s*statistics\b|(^|\b)bls\b/i,
+  /(^|\b)bureau\s*of\s*economic\s*analysis\b|(^|\b)bea\b/i,
+  /(^|\b)energy\s*information\s*administration\b|(^|\b)eia\b/i,
+  /(^|\b)u\.?s\.?\s*treasury\b|(^|\b)treasury\b/i,
+  /(^|\b)fred\b|st\.?\s*louis\s*fed/i,
+  /(^|\b)cftc\b|commodity\s*futures\s*trading\s*commission/i,
+  /(^|\b)u\.?s\.?\s*census\b|census\s*bureau/i,
+  /(^|\b)cme\s*group\b/i,
+  /(^|\b)pr\s*newswire\b/i,
+  /(^|\b)globenewswire\b/i,
+  /(^|\b)business\s*wire\b/i,
 ];
 
 const BLOCKED_SOURCE_PATTERNS = [
@@ -42,6 +56,20 @@ const ALLOWED_HOST_PATTERNS = [
   /(^|\.)sec\.gov$/i,
   /(^|\.)alpaca\.markets$/i,
   /(^|\.)bloomberg\.com$/i,
+  /(^|\.)stocktitan\.net$/i,
+  /(^|\.)wsj\.com$/i,
+  /(^|\.)federalreserve\.gov$/i,
+  /(^|\.)bls\.gov$/i,
+  /(^|\.)bea\.gov$/i,
+  /(^|\.)eia\.gov$/i,
+  /(^|\.)treasury\.gov$/i,
+  /(^|\.)stlouisfed\.org$/i,
+  /(^|\.)cftc\.gov$/i,
+  /(^|\.)census\.gov$/i,
+  /(^|\.)cmegroup\.com$/i,
+  /(^|\.)prnewswire\.com$/i,
+  /(^|\.)globenewswire\.com$/i,
+  /(^|\.)businesswire\.com$/i,
 ];
 
 const BLOCKED_HOST_PATTERNS = [
@@ -55,16 +83,16 @@ const BLOCKED_HOST_PATTERNS = [
 
 export function verifiedNewsItemFromRow(row: Record<string, ScannerScalar> | undefined): VerifiedNewsItem | null {
   if (!row) return null;
-  const headline = firstText(row.news_headline, row.headline, row.latest_headline, row.title);
-  const source = firstText(row.news_source, row.headline_source, row.source_name, row.provider);
-  const url = firstText(row.news_url, row.headline_url, row.article_url, row.url, row.canonical_url);
-  const timestamp = firstText(row.news_timestamp, row.published_at, row.pubDate, row.timestamp_utc);
+  const headline = firstText(row.news_headline, row.headline, row.latest_headline, row.title, row.event_headline, row.article_title);
+  const source = firstText(row.news_source, row.headline_source, row.source_name, row.provider, row.source, row.event_source);
+  const url = firstText(row.news_url, row.headline_url, row.article_url, row.url, row.canonical_url, row.source_url);
+  const timestamp = firstText(row.news_timestamp, row.published_at, row.publishedAt, row.pubDate, row.timestamp_utc, row.event_timestamp);
   if (!headline || !source || !url || !timestamp) return null;
   if (!isVerifiedNewsSource(source, url)) return null;
   return {
     headline,
-    impactTag: conservativeImpactTag(row.news_score),
-    sentimentTag: conservativeSentimentTag(row.news_score),
+    impactTag: conservativeImpactTag(row.news_score ?? row.event_relevance ?? row.relevance ?? row.impact_score),
+    sentimentTag: conservativeSentimentTag(row.news_score ?? row.event_sentiment_score ?? row.sentiment_score),
     source,
     timestamp,
     url,
