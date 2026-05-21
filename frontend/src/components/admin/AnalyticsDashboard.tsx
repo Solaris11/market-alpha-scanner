@@ -35,6 +35,7 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
   const topPagesRows = analytics.topPages.map((row) => ({ label: compactPath(row.pagePath), value: row.count }));
   const deviceRows = analytics.visitorInsights.deviceBreakdown.map((row) => ({ color: deviceColor(row.deviceType), label: humanizeLabel(row.deviceType), value: row.count }));
   const browserRows = analytics.visitorInsights.browserBreakdown.map((row) => ({ label: humanizeLabel(row.browserFamily), value: row.count }));
+  const dominanceProof = analytics.realUserProof.dominanceProof;
   const realUserProofSeries = [
     {
       color: COLORS.cyan,
@@ -55,6 +56,18 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
       color: COLORS.rose,
       label: "Friction",
       values: analytics.realUserProof.engagementTrends.map((point) => ({ bucket: point.bucket, value: point.frictionEvents })),
+    },
+  ];
+  const retentionCurveSeries = [
+    {
+      color: COLORS.emerald,
+      label: "Retained Users",
+      values: analytics.realUserProof.retentionCurve.map((point) => ({ bucket: `D${point.dayOffset}`, value: point.retainedUsers })),
+    },
+    {
+      color: COLORS.cyan,
+      label: "Retention Rate",
+      values: analytics.realUserProof.retentionCurve.map((point) => ({ bucket: `D${point.dayOffset}`, value: Math.round(point.retentionRatePct ?? 0) })),
     },
   ];
   const adoptionRows = analytics.realUserProof.featureAdoption.map((row) => ({ label: `${row.feature} · ${formatPct(row.adoptionRatePct)}`, value: row.events }));
@@ -82,7 +95,21 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
           <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[520px]">
             <ProofMetric label="DAU / WAU" value={`${analytics.retention.dau.toLocaleString()} / ${analytics.retention.wau.toLocaleString()}`} />
             <ProofMetric label="Sticky Sessions" value={formatPct(analytics.realUserProof.workflowStickiness.stickySessionRatePct)} />
-            <ProofMetric label="Adaptive Proof" value={`${analytics.realUserProof.adaptiveBehavior.adaptiveProofScore}/100`} />
+            <ProofMetric label="Proof Score" value={`${dominanceProof.proofScore}/100`} />
+          </div>
+        </div>
+        <div className={`mt-5 rounded-2xl border p-4 ${statusPanelClass(dominanceProof.status)}`}>
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-white/70">Dominance Certification</div>
+              <div className="mt-1 text-xl font-black uppercase text-white">{dominanceProof.verdictLabel}</div>
+              <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-200">{dominanceProof.summary}</p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[520px]">
+              <ProofMetric label="Sample" value={`${analytics.retention.activeUsers.toLocaleString()} users`} />
+              <ProofMetric label="First Useful" value={analytics.uxInsights.firstUsefulAction.count.toLocaleString()} />
+              <ProofMetric label="Friction" value={`${analytics.uxInsights.interactionQuality.rageClicks + analytics.uxInsights.interactionQuality.failedActions + analytics.uxInsights.interactionQuality.modalAbandons + analytics.uxInsights.interactionQuality.scrollAbandons}`} />
+            </div>
           </div>
         </div>
         <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
@@ -101,6 +128,63 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
             )}
           </ChartPanel>
         </div>
+        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]">
+          <ChartPanel subtitle="Cohort retention by day offset. D0 is the activation baseline; later offsets require eligible older cohorts." title="Retention Curve">
+            {hasPremiumChartData(retentionCurveSeries) ? (
+              <PremiumEChart ariaLabel="Real user retention curve" height={270} option={buildPremiumTimeSeriesOption({ series: retentionCurveSeries })} />
+            ) : (
+              <EmptyState>No eligible retention cohorts have been recorded yet.</EmptyState>
+            )}
+          </ChartPanel>
+          <ChartPanel subtitle="Hard gates for real-world dominance proof. Failed gates are blockers, not cosmetic warnings." title="Dominance Proof Gates">
+            <div className="grid gap-2 md:grid-cols-2">
+              {dominanceProof.gates.map((gate) => (
+                <div className={`rounded-xl border p-3 ${tonePanelClass(gate.tone)}`} key={gate.key}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-black uppercase tracking-[0.16em] text-slate-100">{gate.label}</div>
+                      <div className="mt-1 text-xs leading-5 text-slate-300">{gate.evidence}</div>
+                    </div>
+                    <span className="shrink-0 rounded-full border border-white/10 bg-black/20 px-2 py-1 text-[10px] font-black uppercase text-white">
+                      {gate.passed ? "Pass" : "Gap"}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-lg bg-black/18 p-2">
+                      <div className="text-slate-500">Current</div>
+                      <div className="font-mono font-black text-white">{gate.value}</div>
+                    </div>
+                    <div className="rounded-lg bg-black/18 p-2">
+                      <div className="text-slate-500">Target</div>
+                      <div className="font-mono font-black text-white">{gate.target}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ChartPanel>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          {dominanceProof.signals.map((signal) => (
+            <div className={`rounded-2xl border p-3 ${tonePanelClass(signal.tone)}`} key={signal.label}>
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">{signal.label}</div>
+              <div className="mt-1 font-mono text-lg font-black text-white">{signal.value}</div>
+              <div className="mt-2 text-xs leading-5 text-slate-300">{signal.interpretation}</div>
+            </div>
+          ))}
+        </div>
+        {dominanceProof.blockers.length ? (
+          <div className="mt-4 rounded-2xl border border-amber-300/20 bg-amber-300/[0.055] p-4">
+            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-200">Remaining Proof Blockers</div>
+            <div className="mt-3 grid gap-2 md:grid-cols-2">
+              {dominanceProof.blockers.map((blocker) => (
+                <div className="rounded-xl border border-white/10 bg-black/20 px-3 py-2 text-xs font-semibold text-amber-50" key={blocker}>
+                  {blocker}
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
         <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <ProofPanel
             rows={[
@@ -472,6 +556,19 @@ function deviceColor(value: string): string {
   if (value === "tablet") return COLORS.violet;
   if (value === "desktop") return COLORS.emerald;
   return COLORS.slate;
+}
+
+function statusPanelClass(status: string): string {
+  if (status === "proven") return "border-emerald-300/25 bg-emerald-400/[0.08] shadow-emerald-950/20";
+  if (status === "insufficient_data") return "border-amber-300/25 bg-amber-400/[0.08] shadow-amber-950/20";
+  return "border-cyan-300/20 bg-cyan-400/[0.06] shadow-cyan-950/20";
+}
+
+function tonePanelClass(tone: string): string {
+  if (tone === "positive") return "border-emerald-300/20 bg-emerald-400/[0.06]";
+  if (tone === "critical") return "border-rose-300/24 bg-rose-400/[0.07]";
+  if (tone === "warning") return "border-amber-300/22 bg-amber-400/[0.06]";
+  return "border-white/10 bg-white/[0.03]";
 }
 
 function geoLabel(row: { city: string | null; country: string; region: string | null }): string {

@@ -18,6 +18,7 @@ import {
   type AnalyticsTimeRange,
   type SanitizedAnalyticsEvent,
 } from "@/lib/analytics-policy";
+import { buildRealUserDominanceProof, type RealUserDominanceProof } from "@/lib/real-user-dominance";
 import type { AuthUser } from "./auth";
 import { dbQuery } from "./db";
 import { getEntitlementForUser, entitlementSummary } from "./entitlements";
@@ -95,6 +96,7 @@ export type AnalyticsSummary = {
       workflowContinuity: number;
       workflowVisits: number;
     };
+    dominanceProof: RealUserDominanceProof;
     engagementTrends: Array<{ activeUsers: number; bucket: string; featureEvents: number; firstUsefulActions: number; frictionEvents: number; workflowContinuity: number }>;
     featureAdoption: Array<{ activeUsers: number; adoptionRatePct: number | null; events: number; feature: string }>;
     mobileEngagement: {
@@ -120,6 +122,7 @@ export type AnalyticsSummary = {
       watchlistActions: number;
       watchlistUsers: number;
     };
+    retentionCurve: Array<{ dayOffset: number; eligibleUsers: number; retainedUsers: number; retentionRatePct: number | null }>;
     workflowStickiness: {
       feedToWatchlistSessions: number;
       multiWorkflowSessions: number;
@@ -358,6 +361,11 @@ type WatchlistRetentionProofRow = QueryResultRow & {
   watchlist_actions: string | number;
   watchlist_users: string | number;
 };
+type RetentionCurveProofRow = QueryResultRow & {
+  day_offset: string | number;
+  eligible_users: string | number;
+  retained_users: string | number;
+};
 
 const MAX_EVENTS_PER_REQUEST = 24;
 const FRICTION_EVENT_NAMES = [
@@ -516,6 +524,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     notificationUsefulnessProof,
     adaptiveBehaviorProof,
     watchlistRetentionProof,
+    retentionCurveProof,
   ] = await Promise.all([
     dbQuery<RetentionRow>(
       `
@@ -974,6 +983,36 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
         FROM actors
       `,
     ),
+    dbQuery<RetentionCurveProofRow>(
+      `
+        WITH actor_days AS (
+          SELECT DISTINCT
+            COALESCE(user_id::text, anonymous_id_hash, session_id_hash, id::text) AS actor_key,
+            occurred_at::date AS active_day
+          FROM analytics_events
+          WHERE occurred_at >= now() - interval '120 days'
+        ),
+        cohorts AS (
+          SELECT actor_key, min(active_day) AS cohort_day
+          FROM actor_days
+          GROUP BY 1
+        ),
+        offsets(day_offset) AS (
+          VALUES (0), (1), (7), (14), (30)
+        )
+        SELECT
+          offsets.day_offset,
+          count(DISTINCT cohorts.actor_key) FILTER (WHERE cohorts.cohort_day <= current_date - offsets.day_offset) AS eligible_users,
+          count(DISTINCT retained.actor_key) AS retained_users
+        FROM offsets
+        LEFT JOIN cohorts ON cohorts.cohort_day >= current_date - ${interval}
+        LEFT JOIN actor_days retained
+          ON retained.actor_key = cohorts.actor_key
+          AND retained.active_day = cohorts.cohort_day + offsets.day_offset
+        GROUP BY 1
+        ORDER BY 1
+      `,
+    ),
   ]);
 
   const retentionRow = retention.rows[0];
@@ -1001,6 +1040,61 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
   const notificationUsefulInteractions = numberFromRow(notificationUsefulnessRow?.useful_interactions);
   const watchlistUsers = numberFromRow(watchlistRetentionRow?.watchlist_users);
   const returningWatchlistUsers = numberFromRow(watchlistRetentionRow?.returning_watchlist_users);
+  const stickySessionRatePct = pctOrNull(multiWorkflowSessions, totalSessions);
+  const watchlistRetentionRatePct = pctOrNull(returningWatchlistUsers, watchlistUsers);
+  const notificationUsefulnessRatePct = pctOrNull(notificationUsefulInteractions, notificationEligibleSignals);
+  const mobileSharePct = pctOrNull(mobileEvents, totalEvents);
+  const featureAdoptionRows = featureAdoptionProof.rows.map((row) => ({
+    activeUsers: numberFromRow(row.active_users),
+    adoptionRatePct: pctOrNull(numberFromRow(row.active_users), activeUsers),
+    events: numberFromRow(row.events),
+    feature: row.feature,
+  }));
+  const retentionCurveRows = retentionCurveProof.rows.map((row) => {
+    const eligibleUsers = numberFromRow(row.eligible_users);
+    const retainedUsers = numberFromRow(row.retained_users);
+    return {
+      dayOffset: numberFromRow(row.day_offset),
+      eligibleUsers,
+      retainedUsers,
+      retentionRatePct: pctOrNull(retainedUsers, eligibleUsers),
+    };
+  });
+  const adaptiveBehaviorScore = adaptiveProofScore({
+    decisionMemoryActions: numberFromRow(adaptiveBehaviorRow?.decision_memory_actions),
+    experimentExposure: numberFromRow(adaptiveBehaviorRow?.experiment_exposure),
+    personalizationUpdates: numberFromRow(adaptiveBehaviorRow?.personalization_updates),
+    workflowContinuity: numberFromRow(adaptiveBehaviorRow?.workflow_continuity),
+    workflowVisits: numberFromRow(adaptiveBehaviorRow?.workflow_visits),
+  });
+  const dominanceProof = buildRealUserDominanceProof({
+    activeUsers,
+    adaptiveProofScore: adaptiveBehaviorScore,
+    averageSessionDepth: nullableNumberFromRow(retentionRow?.avg_session_depth),
+    averageTimeToFirstUsefulActionSeconds: nullableMillisecondsToSeconds(firstUsefulRow?.avg_elapsed_ms),
+    dau: numberFromRow(dau.rows[0]?.count),
+    failedActions: frictionCount("failed_action"),
+    featureAdoption: featureAdoptionRows,
+    feedEngagement: numberFromRow(livingTelemetryRow?.feed_engagement),
+    firstUsefulActions: numberFromRow(firstUsefulRow?.count),
+    mobileFrictionEvents: numberFromRow(mobileEngagementRow?.friction_events),
+    mobileSharePct,
+    modalAbandons: frictionCount("modal_abandon"),
+    notificationEngagement: numberFromRow(livingTelemetryRow?.notification_engagement),
+    notificationUsefulnessRatePct,
+    rageClicks: frictionCount("rage_click"),
+    replayUsage: numberFromRow(livingTelemetryRow?.replay_usage),
+    scannerUsage: numberFromRow(livingTelemetryRow?.scanner_usage),
+    scrollAbandons: frictionCount("scroll_abandon"),
+    strategyUsage: numberFromRow(livingTelemetryRow?.strategy_usage),
+    stickySessionRatePct,
+    totalEvents,
+    totalSessions,
+    watchlistRetentionRatePct,
+    watchlistUsage: numberFromRow(livingTelemetryRow?.watchlist_usage),
+    wau: numberFromRow(wau.rows[0]?.count),
+    workflowContinuityEvents: numberFromRow(workflowStickinessRow?.workflow_continuity_events),
+  });
 
   return {
     activeUsersTrend: trend.rows.map((row) => ({ activeUsers: numberFromRow(row.active_users), bucket: row.bucket, events: numberFromRow(row.events) })),
@@ -1057,19 +1151,14 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     },
     realUserProof: {
       adaptiveBehavior: {
-        adaptiveProofScore: adaptiveProofScore({
-          decisionMemoryActions: numberFromRow(adaptiveBehaviorRow?.decision_memory_actions),
-          experimentExposure: numberFromRow(adaptiveBehaviorRow?.experiment_exposure),
-          personalizationUpdates: numberFromRow(adaptiveBehaviorRow?.personalization_updates),
-          workflowContinuity: numberFromRow(adaptiveBehaviorRow?.workflow_continuity),
-          workflowVisits: numberFromRow(adaptiveBehaviorRow?.workflow_visits),
-        }),
+        adaptiveProofScore: adaptiveBehaviorScore,
         decisionMemoryActions: numberFromRow(adaptiveBehaviorRow?.decision_memory_actions),
         experimentExposure: numberFromRow(adaptiveBehaviorRow?.experiment_exposure),
         personalizationUpdates: numberFromRow(adaptiveBehaviorRow?.personalization_updates),
         workflowContinuity: numberFromRow(adaptiveBehaviorRow?.workflow_continuity),
         workflowVisits: numberFromRow(adaptiveBehaviorRow?.workflow_visits),
       },
+      dominanceProof,
       engagementTrends: engagementTrendProof.rows.map((row) => ({
         activeUsers: numberFromRow(row.active_users),
         bucket: row.bucket,
@@ -1078,19 +1167,14 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
         frictionEvents: numberFromRow(row.friction_events),
         workflowContinuity: numberFromRow(row.workflow_continuity),
       })),
-      featureAdoption: featureAdoptionProof.rows.map((row) => ({
-        activeUsers: numberFromRow(row.active_users),
-        adoptionRatePct: pctOrNull(numberFromRow(row.active_users), activeUsers),
-        events: numberFromRow(row.events),
-        feature: row.feature,
-      })),
+      featureAdoption: featureAdoptionRows,
       mobileEngagement: {
         activeUsers: numberFromRow(mobileEngagementRow?.active_users),
         events: mobileEvents,
         feedEngagement: numberFromRow(mobileEngagementRow?.feed_engagement),
         firstUsefulActions: numberFromRow(mobileEngagementRow?.first_useful_actions),
         frictionEvents: numberFromRow(mobileEngagementRow?.friction_events),
-        mobileSharePct: pctOrNull(mobileEvents, totalEvents),
+        mobileSharePct,
         scannerUsage: numberFromRow(mobileEngagementRow?.scanner_usage),
       },
       notificationUsefulness: {
@@ -1098,21 +1182,22 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
         engaged: numberFromRow(notificationUsefulnessRow?.engaged),
         preferenceUpdates: numberFromRow(notificationUsefulnessRow?.preference_updates),
         usefulInteractions: notificationUsefulInteractions,
-        usefulnessRatePct: pctOrNull(notificationUsefulInteractions, notificationEligibleSignals),
+        usefulnessRatePct: notificationUsefulnessRatePct,
       },
       watchlistRetention: {
         retainedSessions: numberFromRow(watchlistRetentionRow?.retained_sessions),
-        retentionRatePct: pctOrNull(returningWatchlistUsers, watchlistUsers),
+        retentionRatePct: watchlistRetentionRatePct,
         returningWatchlistUsers,
         watchlistActions: numberFromRow(watchlistRetentionRow?.watchlist_actions),
         watchlistUsers,
       },
+      retentionCurve: retentionCurveRows,
       workflowStickiness: {
         feedToWatchlistSessions: numberFromRow(workflowStickinessRow?.feed_to_watchlist_sessions),
         multiWorkflowSessions,
         replayToStrategySessions: numberFromRow(workflowStickinessRow?.replay_to_strategy_sessions),
         scannerToSymbolSessions: numberFromRow(workflowStickinessRow?.scanner_to_symbol_sessions),
-        stickySessionRatePct: pctOrNull(multiWorkflowSessions, totalSessions),
+        stickySessionRatePct,
         totalSessions,
         workflowContinuityEvents: numberFromRow(workflowStickinessRow?.workflow_continuity_events),
       },
