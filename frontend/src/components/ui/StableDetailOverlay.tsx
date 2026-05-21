@@ -113,7 +113,9 @@ function getStableOverlayScrollY(): number {
   const capturedRecently = capturedScrollY !== null && Date.now() - stableTriggerCapturedAt < 500;
   stableTriggerScrollY = null;
   stableTriggerCapturedAt = 0;
-  return capturedRecently ? capturedScrollY : window.scrollY;
+  const currentScrollY = window.scrollY;
+  if (!capturedRecently) return currentScrollY;
+  return Math.abs(capturedScrollY - currentScrollY) <= 8 ? capturedScrollY : currentScrollY;
 }
 
 installStableTriggerCapture();

@@ -82,7 +82,7 @@ User-facing improvements:
 - a ruler drawing supports quick visual measurement
 - chart controls remain synchronized between fullscreen panes
 - keyboard chart control is available when the chart is focused/active
-- production mobile overlay scroll capture now refreshes when the trigger scroll position materially changes, preventing stale lock positions during dense mobile routes
+- production mobile overlay scroll capture now refreshes when the trigger scroll position materially changes and rejects materially stale captured positions, preventing stale lock positions during dense mobile routes
 
 ## Validation
 
@@ -107,7 +107,7 @@ Production validation was completed after deployment:
 
 Production validation note:
 
-- The first production mobile smoke after the chart deployment caught `/paper` overlay scroll drift. The root cause was stale stable-overlay trigger scroll capture after a route-level scroll-to-trigger operation. `StableDetailOverlay` now refreshes the captured trigger position when the scroll delta materially changes while preserving duplicate-event protection for normal pointer/click sequences.
+- The first production mobile smoke after the chart deployment caught `/paper` overlay scroll drift. The root cause was stale stable-overlay trigger scroll capture after a route-level scroll-to-trigger operation. `StableDetailOverlay` now refreshes the captured trigger position when the scroll delta materially changes, then falls back to the current viewport position when a captured value is materially stale while preserving duplicate-event protection for normal pointer/click sequences.
 
 ## Remaining Chart Debt
 
