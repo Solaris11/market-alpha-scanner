@@ -11,6 +11,7 @@ import {
   type AnalyticsEventName,
   type AnalyticsMetadata,
 } from "@/lib/analytics-policy";
+import { readWatchlistStorage } from "@/lib/watchlist-storage";
 
 type ClientAnalyticsEvent = {
   anonymousId: string | null;
@@ -28,7 +29,9 @@ const ANONYMOUS_ID_KEY = "tv_analytics_anonymous_id";
 const FIRST_USEFUL_ACTION_KEY = "tv_first_useful_action_recorded";
 const SESSION_KEY = "tv_analytics_session";
 const SESSION_STARTED_AT_KEY = "tv_analytics_session_started_at";
+const LAST_WORKFLOW_GROUP_KEY = "tv_analytics_last_workflow_group";
 const TELEMETRY_OPT_OUT_KEY = "tv_analytics_opt_out";
+const WATCHLIST_RETENTION_EMITTED_KEY = "tv_watchlist_retention_emitted";
 const SESSION_TTL_MS = 30 * 60 * 1000;
 const MAX_QUEUE = 40;
 const DUPLICATE_CLICK_MS = 900;
@@ -108,6 +111,9 @@ export function trackRouteAnalytics(pathname: string): void {
   if (pageEvent) trackAnalyticsEvent(pageEvent, { path: pagePath }, { pagePath: routePagePath, source: "route", symbol: symbolFromPath(pathname) ?? undefined });
   const usageEvent = usageEventForPath(pathname);
   if (usageEvent) trackAnalyticsEvent(usageEvent, { path: pagePath }, { pagePath: routePagePath, source: "route_usage", symbol: symbolFromPath(pathname) ?? undefined });
+  trackMobileEngagement(pathname, routePagePath);
+  trackWorkflowContinuity(pathname, routePagePath);
+  trackWatchlistRetention(pathname, routePagePath);
 }
 
 export async function flushAnalyticsEvents(): Promise<void> {
@@ -271,6 +277,60 @@ function analyticsElementDescriptor(target: Element): { component: string; kind:
 function usageEventForPath(pathname: string): AnalyticsEventName | null {
   if (pathname === "/discover" || pathname.startsWith("/discover/") || pathname === "/scanner" || pathname.startsWith("/scanner/")) return "scanner_usage";
   if (pathname === "/strategy-labs" || pathname.startsWith("/strategy-labs/")) return "strategy_usage";
+  return null;
+}
+
+function trackMobileEngagement(pathname: string, pagePath?: string): void {
+  const group = workflowGroupForPath(pathname);
+  if (!group) return;
+  const currentDevice = deviceType();
+  if (currentDevice !== "mobile" && currentDevice !== "tablet") return;
+  trackAnalyticsEvent("mobile_engagement", { deviceType: currentDevice, routeGroup: group }, { pagePath, source: "mobile_route", symbol: symbolFromPath(pathname) ?? undefined });
+}
+
+function trackWorkflowContinuity(pathname: string, pagePath?: string): void {
+  const nextGroup = workflowGroupForPath(pathname);
+  if (!nextGroup) return;
+  try {
+    const previousGroup = window.sessionStorage.getItem(LAST_WORKFLOW_GROUP_KEY);
+    window.sessionStorage.setItem(LAST_WORKFLOW_GROUP_KEY, nextGroup);
+    if (!previousGroup || previousGroup === nextGroup) return;
+    trackAnalyticsEvent("workflow_continuity", { from: previousGroup, to: nextGroup }, { pagePath, source: "route_continuity", symbol: symbolFromPath(pathname) ?? undefined });
+  } catch {
+    // Workflow continuity is proof telemetry only; route tracking must never depend on session storage.
+  }
+}
+
+function trackWatchlistRetention(pathname: string, pagePath?: string): void {
+  const group = workflowGroupForPath(pathname);
+  if (!group || group === "support" || group === "account") return;
+  try {
+    const watchlist = readWatchlistStorage();
+    if (!watchlist.length) return;
+    const sessionId = currentSessionId() ?? "unknown";
+    const key = `${WATCHLIST_RETENTION_EMITTED_KEY}:${sessionId}:${group}`;
+    if (window.sessionStorage.getItem(key) === "true") return;
+    window.sessionStorage.setItem(key, "true");
+    trackAnalyticsEvent("watchlist_retention", { routeGroup: group, watchlistSize: watchlist.length }, { pagePath, source: "watchlist_return", symbol: symbolFromPath(pathname) ?? undefined });
+  } catch {
+    // Watchlist retention telemetry degrades silently when storage is unavailable.
+  }
+}
+
+function workflowGroupForPath(pathname: string): string | null {
+  if (pathname === "/terminal" || pathname.startsWith("/terminal/")) return "terminal";
+  if (pathname === "/discover" || pathname.startsWith("/discover/") || pathname === "/scanner" || pathname.startsWith("/scanner/") || pathname === "/opportunities" || pathname.startsWith("/opportunities/")) return "scanner";
+  if (pathname.startsWith("/symbol/")) return "symbol";
+  if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) return "dashboard";
+  if (pathname === "/intelligence" || pathname.startsWith("/intelligence/")) return "feed";
+  if (pathname === "/alerts" || pathname.startsWith("/alerts/")) return "alerts";
+  if (pathname === "/history" || pathname.startsWith("/history/")) return "replay";
+  if (pathname === "/strategy-labs" || pathname.startsWith("/strategy-labs/")) return "strategy";
+  if (pathname === "/paper" || pathname.startsWith("/paper/")) return "paper";
+  if (pathname === "/performance" || pathname.startsWith("/performance/")) return "performance";
+  if (pathname === "/mobile" || pathname.startsWith("/mobile/")) return "mobile";
+  if (pathname === "/support" || pathname.startsWith("/support/")) return "support";
+  if (pathname === "/account" || pathname.startsWith("/account/") || pathname === "/settings" || pathname.startsWith("/settings/")) return "account";
   return null;
 }
 

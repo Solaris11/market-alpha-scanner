@@ -60,6 +60,9 @@ export function IntelligenceFeedNotificationPanel({
   const urgentCount = items.filter((item) => item.notificationEligible).length;
   const visibleItems = items.slice(0, 10);
   const customSymbols = useMemo(() => uniqueSymbols([...preferences.symbols, ...watchlistSymbols]).slice(0, 10), [preferences.symbols, watchlistSymbols]);
+  function trackPreferenceUpdate(field: string, value: string | number | boolean): void {
+    trackAnalyticsEvent("notification_engagement", { action: "preference_update", field, value }, { source: "notification_preferences" });
+  }
 
   return (
     <GlassPanel className="poster-scanline overflow-hidden border-sky-300/15 bg-sky-400/[0.025] p-4 sm:p-5" id="intelligence-feed">
@@ -145,21 +148,30 @@ export function IntelligenceFeedNotificationPanel({
           <div className="space-y-4">
             <ControlGroup label="High-signal categories">
               {NOTIFICATION_CATEGORIES.map((category) => (
-                <Chip active={preferences.categories.includes(category)} key={category} onClick={() => actions.toggleCategory(category)}>
+                <Chip active={preferences.categories.includes(category)} key={category} onClick={() => {
+                  trackPreferenceUpdate("category", category);
+                  actions.toggleCategory(category);
+                }}>
                   {notificationCategoryLabel(category)}
                 </Chip>
               ))}
             </ControlGroup>
             <ControlGroup label="Frequency">
               {NOTIFICATION_FREQUENCIES.map((frequency) => (
-                <Chip active={preferences.frequency === frequency} key={frequency} onClick={() => actions.setFrequency(frequency)}>
+                <Chip active={preferences.frequency === frequency} key={frequency} onClick={() => {
+                  trackPreferenceUpdate("frequency", frequency);
+                  actions.setFrequency(frequency);
+                }}>
                   {notificationFrequencyLabel(frequency)}
                 </Chip>
               ))}
             </ControlGroup>
             <ControlGroup label="Channels">
               {NOTIFICATION_CHANNELS.map((channel) => (
-                <ChannelChip active={preferences.channels.includes(channel)} channel={channel} key={channel} onClick={() => actions.toggleChannel(channel)} />
+                <ChannelChip active={preferences.channels.includes(channel)} channel={channel} key={channel} onClick={() => {
+                  trackPreferenceUpdate("channel", channel);
+                  actions.toggleChannel(channel);
+                }} />
               ))}
             </ControlGroup>
           </div>
@@ -167,7 +179,10 @@ export function IntelligenceFeedNotificationPanel({
           <div className="space-y-3">
             <ControlGroup label="Symbol scope">
               {NOTIFICATION_SYMBOL_SCOPES.map((scope) => (
-                <Chip active={preferences.symbolScope === scope} key={scope} onClick={() => actions.setSymbolScope(scope)}>
+                <Chip active={preferences.symbolScope === scope} key={scope} onClick={() => {
+                  trackPreferenceUpdate("symbol_scope", scope);
+                  actions.setSymbolScope(scope);
+                }}>
                   {scopeLabel(scope)}
                 </Chip>
               ))}
@@ -183,7 +198,11 @@ export function IntelligenceFeedNotificationPanel({
               </div>
               <div className="mt-3 flex items-center justify-between gap-3">
                 <span className="text-xs text-slate-500">Daily in-app cap</span>
-                <input className="h-2 w-28 accent-cyan-300" max={12} min={1} onChange={(event) => actions.setDailyLimit(Number(event.target.value))} type="range" value={preferences.dailyLimit} />
+                <input className="h-2 w-28 accent-cyan-300" max={12} min={1} onChange={(event) => {
+                  const nextLimit = Number(event.target.value);
+                  trackPreferenceUpdate("daily_limit", nextLimit);
+                  actions.setDailyLimit(nextLimit);
+                }} type="range" value={preferences.dailyLimit} />
                 <span className="w-8 text-right font-mono text-sm font-black text-cyan-100">{preferences.dailyLimit}</span>
               </div>
             </div>
@@ -191,7 +210,10 @@ export function IntelligenceFeedNotificationPanel({
               <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Tracked symbols</div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {customSymbols.length ? customSymbols.map((symbol) => (
-                  <button className={`rounded-full border px-3 py-1 font-mono text-xs font-black transition ${preferences.symbols.includes(symbol) ? "border-emerald-300/35 bg-emerald-300/10 text-emerald-100" : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-cyan-300/35"}`} key={symbol} onClick={() => actions.toggleSymbol(symbol)} type="button">
+                  <button className={`rounded-full border px-3 py-1 font-mono text-xs font-black transition ${preferences.symbols.includes(symbol) ? "border-emerald-300/35 bg-emerald-300/10 text-emerald-100" : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-cyan-300/35"}`} key={symbol} onClick={() => {
+                    trackPreferenceUpdate("symbol", symbol);
+                    actions.toggleSymbol(symbol);
+                  }} type="button">
                     {symbol}
                   </button>
                 )) : <span className="text-xs text-slate-500">Add watchlist symbols to tune custom notifications.</span>}

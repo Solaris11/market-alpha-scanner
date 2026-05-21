@@ -27,6 +27,7 @@ export const ANALYTICS_EVENT_NAMES = [
   "watchlist_add",
   "watchlist_remove",
   "watchlist_usage",
+  "watchlist_retention",
   "alert_create",
   "alert_delete",
   "strategy_open",
@@ -65,6 +66,8 @@ export const ANALYTICS_EVENT_NAMES = [
   "decision_journal_save",
   "decision_memory_clear",
   "workflow_visit_recorded",
+  "workflow_continuity",
+  "mobile_engagement",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];

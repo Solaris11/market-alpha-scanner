@@ -35,6 +35,29 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
   const topPagesRows = analytics.topPages.map((row) => ({ label: compactPath(row.pagePath), value: row.count }));
   const deviceRows = analytics.visitorInsights.deviceBreakdown.map((row) => ({ color: deviceColor(row.deviceType), label: humanizeLabel(row.deviceType), value: row.count }));
   const browserRows = analytics.visitorInsights.browserBreakdown.map((row) => ({ label: humanizeLabel(row.browserFamily), value: row.count }));
+  const realUserProofSeries = [
+    {
+      color: COLORS.cyan,
+      label: "Feature Events",
+      values: analytics.realUserProof.engagementTrends.map((point) => ({ bucket: point.bucket, value: point.featureEvents })),
+    },
+    {
+      color: COLORS.emerald,
+      label: "Active Users",
+      values: analytics.realUserProof.engagementTrends.map((point) => ({ bucket: point.bucket, value: point.activeUsers })),
+    },
+    {
+      color: COLORS.violet,
+      label: "Workflow Continuity",
+      values: analytics.realUserProof.engagementTrends.map((point) => ({ bucket: point.bucket, value: point.workflowContinuity })),
+    },
+    {
+      color: COLORS.rose,
+      label: "Friction",
+      values: analytics.realUserProof.engagementTrends.map((point) => ({ bucket: point.bucket, value: point.frictionEvents })),
+    },
+  ];
+  const adoptionRows = analytics.realUserProof.featureAdoption.map((row) => ({ label: `${row.feature} · ${formatPct(row.adoptionRatePct)}`, value: row.events }));
 
   return (
     <div className="space-y-5">
@@ -45,6 +68,77 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
         <MetricCard label="Anonymous Visitors" value={analytics.visitorInsights.anonymousVisitors.toLocaleString()} />
         <MetricCard label="Repeat Visitors" value={analytics.visitorInsights.repeatVisitorCount.toLocaleString()} />
         <MetricCard label="Avg Session" value={formatDuration(analytics.visitorInsights.averageSessionDurationSeconds)} />
+      </section>
+
+      <section className="overflow-hidden rounded-3xl border border-cyan-300/18 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.16),transparent_28rem),radial-gradient(circle_at_86%_12%,rgba(167,139,250,0.12),transparent_24rem),linear-gradient(135deg,rgba(2,6,23,0.98),rgba(15,23,42,0.82))] p-4 shadow-2xl shadow-cyan-950/20 ring-1 ring-white/5 sm:p-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Real User Intelligence Proof</div>
+            <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">Engagement, workflow continuity, and product learning</h2>
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
+              This proof layer uses first-party, privacy-sanitized product behavior only. It shows whether users reach useful actions, return with watchlists, move through core workflows, engage with living intelligence, and encounter friction.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[520px]">
+            <ProofMetric label="DAU / WAU" value={`${analytics.retention.dau.toLocaleString()} / ${analytics.retention.wau.toLocaleString()}`} />
+            <ProofMetric label="Sticky Sessions" value={formatPct(analytics.realUserProof.workflowStickiness.stickySessionRatePct)} />
+            <ProofMetric label="Adaptive Proof" value={`${analytics.realUserProof.adaptiveBehavior.adaptiveProofScore}/100`} />
+          </div>
+        </div>
+        <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(360px,0.75fr)]">
+          <ChartPanel subtitle="Feature events, active users, workflow continuity, and friction over time." title="Engagement Trend">
+            {hasPremiumChartData(realUserProofSeries) ? (
+              <PremiumEChart ariaLabel="Real user proof engagement trend" height={300} option={buildPremiumTimeSeriesOption({ series: realUserProofSeries })} />
+            ) : (
+              <EmptyState>No engagement trend has been recorded for this window yet.</EmptyState>
+            )}
+          </ChartPanel>
+          <ChartPanel subtitle="Scanner, feed, replay, strategy, watchlist, notifications, and mobile adoption." title="Feature Adoption">
+            {hasDistributionData(adoptionRows) ? (
+              <PremiumEChart ariaLabel="Feature adoption" height={300} option={buildDistributionBarOption({ rows: adoptionRows, vertical: true })} />
+            ) : (
+              <EmptyState>No feature adoption events have been recorded yet.</EmptyState>
+            )}
+          </ChartPanel>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <ProofPanel
+            rows={[
+              ["Multi-workflow sessions", analytics.realUserProof.workflowStickiness.multiWorkflowSessions],
+              ["Scanner -> Symbol", analytics.realUserProof.workflowStickiness.scannerToSymbolSessions],
+              ["Feed -> Watchlist", analytics.realUserProof.workflowStickiness.feedToWatchlistSessions],
+              ["Replay -> Strategy", analytics.realUserProof.workflowStickiness.replayToStrategySessions],
+            ]}
+            title="Workflow Stickiness"
+          />
+          <ProofPanel
+            rows={[
+              ["Watchlist users", analytics.realUserProof.watchlistRetention.watchlistUsers],
+              ["Returning users", analytics.realUserProof.watchlistRetention.returningWatchlistUsers],
+              ["Retained sessions", analytics.realUserProof.watchlistRetention.retainedSessions],
+              ["Retention rate", formatPct(analytics.realUserProof.watchlistRetention.retentionRatePct)],
+            ]}
+            title="Watchlist Retention"
+          />
+          <ProofPanel
+            rows={[
+              ["Mobile users", analytics.realUserProof.mobileEngagement.activeUsers],
+              ["Mobile share", formatPct(analytics.realUserProof.mobileEngagement.mobileSharePct)],
+              ["Mobile useful actions", analytics.realUserProof.mobileEngagement.firstUsefulActions],
+              ["Mobile friction", analytics.realUserProof.mobileEngagement.frictionEvents],
+            ]}
+            title="Mobile Engagement"
+          />
+          <ProofPanel
+            rows={[
+              ["Useful interactions", analytics.realUserProof.notificationUsefulness.usefulInteractions],
+              ["Eligible signals", analytics.realUserProof.notificationUsefulness.eligibleSignals],
+              ["Usefulness rate", formatPct(analytics.realUserProof.notificationUsefulness.usefulnessRatePct)],
+              ["Preference updates", analytics.realUserProof.notificationUsefulness.preferenceUpdates],
+            ]}
+            title="Notification Usefulness"
+          />
+        </div>
       </section>
 
       <section className="grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(360px,0.65fr)]">
@@ -292,6 +386,31 @@ function MetricCard({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ProofMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.055] p-3">
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">{label}</div>
+      <div className="mt-1 font-mono text-xl font-black text-white">{value}</div>
+    </div>
+  );
+}
+
+function ProofPanel({ rows, title }: { rows: Array<[string, number | string]>; title: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-slate-950/42 p-3">
+      <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">{title}</div>
+      <div className="mt-3 grid gap-2">
+        {rows.map(([label, value]) => (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2" key={label}>
+            <span className="text-xs font-semibold text-slate-300">{label}</span>
+            <span className="font-mono text-xs font-black text-cyan-100">{typeof value === "number" ? value.toLocaleString() : value}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function MetricGroup({ rows, title }: { rows: Array<[string, number | string]>; title: string }) {
   return (
     <ChartPanel title={title}>
@@ -341,6 +460,11 @@ function formatDuration(value: number | null): string {
   const minutes = value / 60;
   if (minutes < 60) return `${minutes.toFixed(1)}m`;
   return `${(minutes / 60).toFixed(1)}h`;
+}
+
+function formatPct(value: number | null): string {
+  if (value === null || !Number.isFinite(value)) return "N/A";
+  return `${Math.round(value)}%`;
 }
 
 function deviceColor(value: string): string {

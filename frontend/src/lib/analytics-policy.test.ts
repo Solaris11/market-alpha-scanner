@@ -23,6 +23,9 @@ describe("analytics privacy policy", () => {
     assert.equal(normalizeAnalyticsEventName("rage_click"), "rage_click");
     assert.equal(normalizeAnalyticsEventName("failed_action"), "failed_action");
     assert.equal(normalizeAnalyticsEventName("experiment_exposed"), "experiment_exposed");
+    assert.equal(normalizeAnalyticsEventName("watchlist_retention"), "watchlist_retention");
+    assert.equal(normalizeAnalyticsEventName("workflow_continuity"), "workflow_continuity");
+    assert.equal(normalizeAnalyticsEventName("mobile_engagement"), "mobile_engagement");
     assert.equal(normalizeAnalyticsEventName("made_up_event"), null);
   });
 

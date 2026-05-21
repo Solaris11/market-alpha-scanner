@@ -86,6 +86,50 @@ export type AnalyticsSummary = {
     totalSessions: number;
     wau: number;
   };
+  realUserProof: {
+    adaptiveBehavior: {
+      adaptiveProofScore: number;
+      decisionMemoryActions: number;
+      experimentExposure: number;
+      personalizationUpdates: number;
+      workflowContinuity: number;
+      workflowVisits: number;
+    };
+    engagementTrends: Array<{ activeUsers: number; bucket: string; featureEvents: number; firstUsefulActions: number; frictionEvents: number; workflowContinuity: number }>;
+    featureAdoption: Array<{ activeUsers: number; adoptionRatePct: number | null; events: number; feature: string }>;
+    mobileEngagement: {
+      activeUsers: number;
+      events: number;
+      feedEngagement: number;
+      firstUsefulActions: number;
+      frictionEvents: number;
+      mobileSharePct: number | null;
+      scannerUsage: number;
+    };
+    notificationUsefulness: {
+      eligibleSignals: number;
+      engaged: number;
+      preferenceUpdates: number;
+      usefulInteractions: number;
+      usefulnessRatePct: number | null;
+    };
+    watchlistRetention: {
+      retainedSessions: number;
+      retentionRatePct: number | null;
+      returningWatchlistUsers: number;
+      watchlistActions: number;
+      watchlistUsers: number;
+    };
+    workflowStickiness: {
+      feedToWatchlistSessions: number;
+      multiWorkflowSessions: number;
+      replayToStrategySessions: number;
+      scannerToSymbolSessions: number;
+      stickySessionRatePct: number | null;
+      totalSessions: number;
+      workflowContinuityEvents: number;
+    };
+  };
   supportUsage: {
     helpful: number;
     messages: number;
@@ -266,6 +310,54 @@ type LivingTelemetryRow = QueryResultRow & {
   strategy_usage: string | number;
   watchlist_usage: string | number;
 };
+type EngagementTrendProofRow = QueryResultRow & {
+  active_users: string | number;
+  bucket: string;
+  feature_events: string | number;
+  first_useful_actions: string | number;
+  friction_events: string | number;
+  workflow_continuity: string | number;
+};
+type FeatureAdoptionRow = QueryResultRow & {
+  active_users: string | number;
+  events: string | number;
+  feature: string;
+};
+type WorkflowStickinessRow = QueryResultRow & {
+  feed_to_watchlist_sessions: string | number;
+  multi_workflow_sessions: string | number;
+  replay_to_strategy_sessions: string | number;
+  scanner_to_symbol_sessions: string | number;
+  total_sessions: string | number;
+  workflow_continuity_events: string | number;
+};
+type MobileEngagementProofRow = QueryResultRow & {
+  active_users: string | number;
+  events: string | number;
+  feed_engagement: string | number;
+  first_useful_actions: string | number;
+  friction_events: string | number;
+  scanner_usage: string | number;
+};
+type NotificationUsefulnessRow = QueryResultRow & {
+  eligible_signals: string | number;
+  engaged: string | number;
+  preference_updates: string | number;
+  useful_interactions: string | number;
+};
+type AdaptiveBehaviorProofRow = QueryResultRow & {
+  decision_memory_actions: string | number;
+  experiment_exposure: string | number;
+  personalization_updates: string | number;
+  workflow_continuity: string | number;
+  workflow_visits: string | number;
+};
+type WatchlistRetentionProofRow = QueryResultRow & {
+  retained_sessions: string | number;
+  returning_watchlist_users: string | number;
+  watchlist_actions: string | number;
+  watchlist_users: string | number;
+};
 
 const MAX_EVENTS_PER_REQUEST = 24;
 const FRICTION_EVENT_NAMES = [
@@ -278,6 +370,24 @@ const FRICTION_EVENT_NAMES = [
   "rage_click",
   "scroll_abandon",
 ] as const;
+const CORE_FEATURE_EVENT_NAMES = [
+  "alert_create",
+  "chart_expand",
+  "feed_engagement",
+  "notification_engagement",
+  "replay_usage",
+  "scanner_usage",
+  "strategy_usage",
+  "watchlist_usage",
+  "workflow_continuity",
+] as const;
+const SCANNER_FEATURE_EVENTS = ["scanner_usage", "scanner_run", "opportunities_open", "signal_drilldown"] as const;
+const FEED_FEATURE_EVENTS = ["feed_engagement", "feed_item_open"] as const;
+const REPLAY_FEATURE_EVENTS = ["replay_usage", "replay_open"] as const;
+const STRATEGY_FEATURE_EVENTS = ["strategy_usage", "strategy_labs_open"] as const;
+const WATCHLIST_FEATURE_EVENTS = ["watchlist_usage", "watchlist_add", "watch_add", "watchlist_retention"] as const;
+const NOTIFICATION_FEATURE_EVENTS = ["notification_engagement", "alert_create"] as const;
+const MOBILE_FEATURE_EVENTS = ["mobile_engagement"] as const;
 
 export async function recordAnalyticsEvents(input: { events: AnalyticsEventPayload[]; request: Request; user: AuthUser | null }): Promise<{ inserted: number }> {
   const events = input.events.map(sanitizeEventPayload).filter((event): event is SanitizedAnalyticsEvent => event !== null).slice(0, MAX_EVENTS_PER_REQUEST);
@@ -399,6 +509,13 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     flowAbandonment,
     experimentExposure,
     livingTelemetry,
+    engagementTrendProof,
+    featureAdoptionProof,
+    workflowStickinessProof,
+    mobileEngagementProof,
+    notificationUsefulnessProof,
+    adaptiveBehaviorProof,
+    watchlistRetentionProof,
   ] = await Promise.all([
     dbQuery<RetentionRow>(
       `
@@ -729,6 +846,134 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
         WHERE occurred_at >= now() - ${interval}
       `,
     ),
+    dbQuery<EngagementTrendProofRow>(
+      `
+        SELECT
+          date_trunc('${bucket}', occurred_at)::text AS bucket,
+          count(DISTINCT COALESCE(user_id::text, anonymous_id_hash, session_id_hash, id::text)) AS active_users,
+          count(*) FILTER (WHERE event_name = ANY($1::text[])) AS feature_events,
+          count(*) FILTER (WHERE event_name = 'first_useful_action') AS first_useful_actions,
+          count(*) FILTER (WHERE event_name = ANY($2::text[])) AS friction_events,
+          count(*) FILTER (WHERE event_name = 'workflow_continuity') AS workflow_continuity
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+        GROUP BY 1
+        ORDER BY 1
+      `,
+      [CORE_FEATURE_EVENT_NAMES, FRICTION_EVENT_NAMES],
+    ),
+    dbQuery<FeatureAdoptionRow>(
+      `
+        WITH feature_events AS (
+          SELECT
+            CASE
+              WHEN event_name = ANY($1::text[]) THEN 'Scanner'
+              WHEN event_name = ANY($2::text[]) THEN 'Feed'
+              WHEN event_name = ANY($3::text[]) THEN 'Replay'
+              WHEN event_name = ANY($4::text[]) THEN 'Strategy'
+              WHEN event_name = ANY($5::text[]) THEN 'Watchlist'
+              WHEN event_name = ANY($6::text[]) THEN 'Notifications'
+              WHEN event_name = ANY($7::text[]) THEN 'Mobile'
+              ELSE NULL
+            END AS feature,
+            COALESCE(user_id::text, anonymous_id_hash, session_id_hash, id::text) AS actor_key
+          FROM analytics_events
+          WHERE occurred_at >= now() - ${interval}
+        )
+        SELECT feature, count(*) AS events, count(DISTINCT actor_key) AS active_users
+        FROM feature_events
+        WHERE feature IS NOT NULL
+        GROUP BY 1
+        ORDER BY events DESC, feature ASC
+      `,
+      [SCANNER_FEATURE_EVENTS, FEED_FEATURE_EVENTS, REPLAY_FEATURE_EVENTS, STRATEGY_FEATURE_EVENTS, WATCHLIST_FEATURE_EVENTS, NOTIFICATION_FEATURE_EVENTS, MOBILE_FEATURE_EVENTS],
+    ),
+    dbQuery<WorkflowStickinessRow>(
+      `
+        WITH session_flags AS (
+          SELECT
+            COALESCE(session_id_hash, user_id::text, anonymous_id_hash, id::text) AS session_key,
+            bool_or(event_name = ANY($1::text[])) AS scanner,
+            bool_or(event_name = 'symbol_open') AS symbol,
+            bool_or(event_name = ANY($2::text[])) AS feed,
+            bool_or(event_name = ANY($3::text[])) AS watchlist,
+            bool_or(event_name = ANY($4::text[])) AS replay,
+            bool_or(event_name = ANY($5::text[])) AS strategy,
+            count(*) FILTER (WHERE event_name = 'workflow_continuity') AS workflow_continuity_events
+          FROM analytics_events
+          WHERE occurred_at >= now() - ${interval}
+          GROUP BY 1
+        )
+        SELECT
+          count(*) AS total_sessions,
+          count(*) FILTER (WHERE scanner AND symbol) AS scanner_to_symbol_sessions,
+          count(*) FILTER (WHERE feed AND watchlist) AS feed_to_watchlist_sessions,
+          count(*) FILTER (WHERE replay AND strategy) AS replay_to_strategy_sessions,
+          count(*) FILTER (WHERE ((scanner::int + symbol::int + feed::int + watchlist::int + replay::int + strategy::int) >= 2)) AS multi_workflow_sessions,
+          COALESCE(sum(workflow_continuity_events), 0) AS workflow_continuity_events
+        FROM session_flags
+      `,
+      [SCANNER_FEATURE_EVENTS, FEED_FEATURE_EVENTS, WATCHLIST_FEATURE_EVENTS, REPLAY_FEATURE_EVENTS, STRATEGY_FEATURE_EVENTS],
+    ),
+    dbQuery<MobileEngagementProofRow>(
+      `
+        SELECT
+          count(*) AS events,
+          count(DISTINCT COALESCE(user_id::text, anonymous_id_hash, session_id_hash, id::text)) AS active_users,
+          count(*) FILTER (WHERE event_name = 'first_useful_action') AS first_useful_actions,
+          count(*) FILTER (WHERE event_name = 'scanner_usage') AS scanner_usage,
+          count(*) FILTER (WHERE event_name = 'feed_engagement') AS feed_engagement,
+          count(*) FILTER (WHERE event_name = ANY($1::text[])) AS friction_events
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+          AND device_type IN ('mobile', 'tablet')
+      `,
+      [FRICTION_EVENT_NAMES],
+    ),
+    dbQuery<NotificationUsefulnessRow>(
+      `
+        SELECT
+          count(*) FILTER (WHERE event_name = 'notification_engagement') AS engaged,
+          count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' = 'feed_notification_candidate') AS eligible_signals,
+          count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' IN ('open_action', 'mark_read', 'mark_all_read')) AS useful_interactions,
+          count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' = 'preference_update') AS preference_updates
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+      `,
+    ),
+    dbQuery<AdaptiveBehaviorProofRow>(
+      `
+        SELECT
+          count(*) FILTER (WHERE event_name = 'workflow_visit_recorded') AS workflow_visits,
+          count(*) FILTER (WHERE event_name = 'workflow_continuity') AS workflow_continuity,
+          count(*) FILTER (WHERE event_name = 'personalization_update') AS personalization_updates,
+          count(*) FILTER (WHERE event_name IN ('decision_journal_save', 'decision_memory_clear')) AS decision_memory_actions,
+          count(*) FILTER (WHERE event_name = 'experiment_exposed') AS experiment_exposure
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+      `,
+    ),
+    dbQuery<WatchlistRetentionProofRow>(
+      `
+        WITH actors AS (
+          SELECT
+            COALESCE(user_id::text, anonymous_id_hash, session_id_hash, id::text) AS actor_key,
+            COALESCE(session_id_hash, user_id::text, anonymous_id_hash, id::text) AS session_key,
+            bool_or(event_name IN ('watch_add', 'watchlist_add', 'watchlist_usage')) AS used_watchlist,
+            bool_or(event_name = 'watchlist_retention') AS retained_watchlist,
+            count(*) FILTER (WHERE event_name IN ('watch_add', 'watchlist_add', 'watchlist_usage')) AS watchlist_actions
+          FROM analytics_events
+          WHERE occurred_at >= now() - ${interval}
+          GROUP BY 1, 2
+        )
+        SELECT
+          count(DISTINCT actor_key) FILTER (WHERE used_watchlist) AS watchlist_users,
+          count(DISTINCT actor_key) FILTER (WHERE retained_watchlist) AS returning_watchlist_users,
+          count(*) FILTER (WHERE retained_watchlist) AS retained_sessions,
+          COALESCE(sum(watchlist_actions), 0) AS watchlist_actions
+        FROM actors
+      `,
+    ),
   ]);
 
   const retentionRow = retention.rows[0];
@@ -741,7 +986,21 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
   const visitorRow = visitorSummary.rows[0];
   const firstUsefulRow = firstUsefulAction.rows[0];
   const livingTelemetryRow = livingTelemetry.rows[0];
+  const workflowStickinessRow = workflowStickinessProof.rows[0];
+  const mobileEngagementRow = mobileEngagementProof.rows[0];
+  const notificationUsefulnessRow = notificationUsefulnessProof.rows[0];
+  const adaptiveBehaviorRow = adaptiveBehaviorProof.rows[0];
+  const watchlistRetentionRow = watchlistRetentionProof.rows[0];
   const frictionCount = (eventName: string) => numberFromRow(frictionEvents.rows.find((row) => row.event_name === eventName)?.count);
+  const totalEvents = numberFromRow(retentionRow?.total_events);
+  const activeUsers = numberFromRow(retentionRow?.active_users);
+  const totalSessions = numberFromRow(workflowStickinessRow?.total_sessions);
+  const multiWorkflowSessions = numberFromRow(workflowStickinessRow?.multi_workflow_sessions);
+  const mobileEvents = numberFromRow(mobileEngagementRow?.events);
+  const notificationEligibleSignals = numberFromRow(notificationUsefulnessRow?.eligible_signals);
+  const notificationUsefulInteractions = numberFromRow(notificationUsefulnessRow?.useful_interactions);
+  const watchlistUsers = numberFromRow(watchlistRetentionRow?.watchlist_users);
+  const returningWatchlistUsers = numberFromRow(watchlistRetentionRow?.returning_watchlist_users);
 
   return {
     activeUsersTrend: trend.rows.map((row) => ({ activeUsers: numberFromRow(row.active_users), bucket: row.bucket, events: numberFromRow(row.events) })),
@@ -787,14 +1046,76 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
       totalUsers,
     },
     retention: {
-      activeUsers: numberFromRow(retentionRow?.active_users),
+      activeUsers,
       averageSessionDepth: nullableNumberFromRow(retentionRow?.avg_session_depth),
       averageSessionDurationSeconds: nullableNumberFromRow(retentionRow?.avg_session_duration_seconds),
       dau: numberFromRow(dau.rows[0]?.count),
       repeatSessions: numberFromRow(retentionRow?.repeat_sessions),
-      totalEvents: numberFromRow(retentionRow?.total_events),
+      totalEvents,
       totalSessions: numberFromRow(retentionRow?.total_sessions),
       wau: numberFromRow(wau.rows[0]?.count),
+    },
+    realUserProof: {
+      adaptiveBehavior: {
+        adaptiveProofScore: adaptiveProofScore({
+          decisionMemoryActions: numberFromRow(adaptiveBehaviorRow?.decision_memory_actions),
+          experimentExposure: numberFromRow(adaptiveBehaviorRow?.experiment_exposure),
+          personalizationUpdates: numberFromRow(adaptiveBehaviorRow?.personalization_updates),
+          workflowContinuity: numberFromRow(adaptiveBehaviorRow?.workflow_continuity),
+          workflowVisits: numberFromRow(adaptiveBehaviorRow?.workflow_visits),
+        }),
+        decisionMemoryActions: numberFromRow(adaptiveBehaviorRow?.decision_memory_actions),
+        experimentExposure: numberFromRow(adaptiveBehaviorRow?.experiment_exposure),
+        personalizationUpdates: numberFromRow(adaptiveBehaviorRow?.personalization_updates),
+        workflowContinuity: numberFromRow(adaptiveBehaviorRow?.workflow_continuity),
+        workflowVisits: numberFromRow(adaptiveBehaviorRow?.workflow_visits),
+      },
+      engagementTrends: engagementTrendProof.rows.map((row) => ({
+        activeUsers: numberFromRow(row.active_users),
+        bucket: row.bucket,
+        featureEvents: numberFromRow(row.feature_events),
+        firstUsefulActions: numberFromRow(row.first_useful_actions),
+        frictionEvents: numberFromRow(row.friction_events),
+        workflowContinuity: numberFromRow(row.workflow_continuity),
+      })),
+      featureAdoption: featureAdoptionProof.rows.map((row) => ({
+        activeUsers: numberFromRow(row.active_users),
+        adoptionRatePct: pctOrNull(numberFromRow(row.active_users), activeUsers),
+        events: numberFromRow(row.events),
+        feature: row.feature,
+      })),
+      mobileEngagement: {
+        activeUsers: numberFromRow(mobileEngagementRow?.active_users),
+        events: mobileEvents,
+        feedEngagement: numberFromRow(mobileEngagementRow?.feed_engagement),
+        firstUsefulActions: numberFromRow(mobileEngagementRow?.first_useful_actions),
+        frictionEvents: numberFromRow(mobileEngagementRow?.friction_events),
+        mobileSharePct: pctOrNull(mobileEvents, totalEvents),
+        scannerUsage: numberFromRow(mobileEngagementRow?.scanner_usage),
+      },
+      notificationUsefulness: {
+        eligibleSignals: notificationEligibleSignals,
+        engaged: numberFromRow(notificationUsefulnessRow?.engaged),
+        preferenceUpdates: numberFromRow(notificationUsefulnessRow?.preference_updates),
+        usefulInteractions: notificationUsefulInteractions,
+        usefulnessRatePct: pctOrNull(notificationUsefulInteractions, notificationEligibleSignals),
+      },
+      watchlistRetention: {
+        retainedSessions: numberFromRow(watchlistRetentionRow?.retained_sessions),
+        retentionRatePct: pctOrNull(returningWatchlistUsers, watchlistUsers),
+        returningWatchlistUsers,
+        watchlistActions: numberFromRow(watchlistRetentionRow?.watchlist_actions),
+        watchlistUsers,
+      },
+      workflowStickiness: {
+        feedToWatchlistSessions: numberFromRow(workflowStickinessRow?.feed_to_watchlist_sessions),
+        multiWorkflowSessions,
+        replayToStrategySessions: numberFromRow(workflowStickinessRow?.replay_to_strategy_sessions),
+        scannerToSymbolSessions: numberFromRow(workflowStickinessRow?.scanner_to_symbol_sessions),
+        stickySessionRatePct: pctOrNull(multiWorkflowSessions, totalSessions),
+        totalSessions,
+        workflowContinuityEvents: numberFromRow(workflowStickinessRow?.workflow_continuity_events),
+      },
     },
     supportUsage: {
       helpful: numberFromRow(supportRow?.helpful),
@@ -1029,4 +1350,23 @@ function nullableNumberFromRow(value: string | number | null | undefined): numbe
 function nullableMillisecondsToSeconds(value: string | number | null | undefined): number | null {
   const parsed = nullableNumberFromRow(value);
   return parsed === null ? null : parsed / 1000;
+}
+
+function pctOrNull(numerator: number, denominator: number): number | null {
+  if (denominator <= 0) return null;
+  return Math.max(0, Math.min(100, (numerator / denominator) * 100));
+}
+
+function adaptiveProofScore(input: {
+  decisionMemoryActions: number;
+  experimentExposure: number;
+  personalizationUpdates: number;
+  workflowContinuity: number;
+  workflowVisits: number;
+}): number {
+  const workflowScore = Math.min(30, input.workflowContinuity * 3 + input.workflowVisits * 2);
+  const personalizationScore = Math.min(25, input.personalizationUpdates * 5);
+  const memoryScore = Math.min(25, input.decisionMemoryActions * 4);
+  const experimentScore = Math.min(20, input.experimentExposure * 2);
+  return Math.round(Math.min(100, workflowScore + personalizationScore + memoryScore + experimentScore));
 }
