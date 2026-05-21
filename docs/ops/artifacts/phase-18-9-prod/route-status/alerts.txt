@@ -1,0 +1,1 @@
+alerts 200 https://tradeveto.com/alerts

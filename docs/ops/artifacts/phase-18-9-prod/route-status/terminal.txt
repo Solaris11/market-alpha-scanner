@@ -1,0 +1,1 @@
+terminal 200 https://tradeveto.com/terminal
