@@ -203,7 +203,14 @@ export function StableDetailOverlay({
   const isMobileSheet = mobileSheet || (typeof window !== "undefined" && window.innerWidth < 640);
   const mobileFullscreen = isMobileSheet && size === "xl";
   const backdropTransition: Transition = { duration: 0.18, ease: "easeOut" };
-  const surfaceTransition: Transition = { duration: isMobileSheet ? 0.22 : 0.3, ease: [0.22, 1, 0.36, 1] };
+  const surfaceTransition: Transition = { duration: mobileFullscreen ? 0.16 : isMobileSheet ? 0.22 : 0.3, ease: [0.22, 1, 0.36, 1] };
+  const surfaceInitial = reduceMotion
+    ? false
+    : mobileFullscreen
+      ? { opacity: 0, scale: 1, y: 0 }
+      : isMobileSheet
+        ? { opacity: 0, scale: 1, y: 24 }
+        : { opacity: 0, scale: 0.975, y: 18 };
   const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo): void => {
     if (!isMobileSheet || mobileFullscreen) return;
     if (info.offset.y > 96 || info.velocity.y > 720) requestClose("drag");
@@ -239,7 +246,7 @@ export function StableDetailOverlay({
         dragConstraints={{ bottom: 0, top: 0 }}
         dragElastic={0.08}
         dragMomentum={false}
-        initial={reduceMotion ? false : isMobileSheet ? { opacity: 0, scale: mobileFullscreen ? 0.996 : 1, y: mobileFullscreen ? 6 : 24 } : { opacity: 0, scale: 0.975, y: 18 }}
+        initial={surfaceInitial}
         onDragEnd={handleDragEnd}
         transition={reduceMotion ? undefined : surfaceTransition}
       >
