@@ -43,6 +43,15 @@ import {
   type ChartStoryPoint,
   type ChartWorkflowSummary,
 } from "./chart-intelligence-overlays";
+import {
+  readChartWorkflowWorkspace,
+  writeChartWorkflowWorkspace,
+  type ChartDetailMode,
+  type ChartLayoutMode,
+  type StoredChartDrawing,
+  type StoredChartDrawingPoint,
+  type StoredChartDrawingTool,
+} from "./chart-workflow-storage";
 import { EmptyState } from "./ui/EmptyState";
 import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
@@ -119,19 +128,11 @@ export type SymbolChartProps = {
   showDrawingTools?: boolean;
 };
 
-type ChartDrawingTool = "inspect" | "marker" | "range" | "trendline";
+type ChartDrawingTool = StoredChartDrawingTool;
+type ChartDrawingPoint = StoredChartDrawingPoint;
+type ChartDrawing = StoredChartDrawing;
 
-type ChartDrawingPoint = {
-  x: number;
-  y: number;
-};
-
-type ChartDrawing = {
-  end: ChartDrawingPoint;
-  id: string;
-  start: ChartDrawingPoint;
-  tool: Exclude<ChartDrawingTool, "inspect">;
-};
+const CHART_DRAWING_TOOLS: ChartDrawingTool[] = ["inspect", "trendline", "range", "marker", "ruler"];
 
 export function SymbolChart({
   symbol,
@@ -158,6 +159,7 @@ export function SymbolChart({
   onOverlayFamiliesChange,
   showDrawingTools = true,
 }: SymbolChartProps) {
+  const chartRootRef = useRef<HTMLDivElement | null>(null);
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
   const entryBandRef = useRef<HTMLDivElement | null>(null);
   const [failed, setFailed] = useState(false);
@@ -170,6 +172,9 @@ export function SymbolChart({
   const [drawingTool, setDrawingTool] = useState<ChartDrawingTool>("inspect");
   const [drawings, setDrawings] = useState<ChartDrawing[]>([]);
   const [draftDrawing, setDraftDrawing] = useState<ChartDrawing | null>(null);
+  const [hotkeysActive, setHotkeysActive] = useState(false);
+  const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
+  const [workspaceUpdatedAt, setWorkspaceUpdatedAt] = useState<string | null>(null);
   const period = controlledPeriod ?? uncontrolledPeriod;
   const enabledOverlayFamilies = controlledOverlayFamilies ?? uncontrolledOverlayFamilies;
   const enabledIndicators = controlledIndicators ?? uncontrolledIndicators;
@@ -250,6 +255,80 @@ export function SymbolChart({
         : [...enabledIndicators, indicator],
     );
   }
+
+  useEffect(() => {
+    setWorkspaceLoaded(false);
+    const workspace = readChartWorkflowWorkspace(symbol);
+    if (workspace) {
+      if (!controlledPeriod) setUncontrolledPeriod(workspace.period);
+      if (!controlledOverlayFamilies) setUncontrolledOverlayFamilies(workspace.overlayFamilies);
+      if (!controlledIndicators) setUncontrolledIndicators(workspace.indicators);
+      setDrawingTool(workspace.drawingTool);
+      setDrawings(workspace.drawings);
+      setWorkspaceUpdatedAt(workspace.updatedAt);
+    } else {
+      if (!controlledPeriod) setUncontrolledPeriod(defaultPeriod);
+      if (!controlledOverlayFamilies) setUncontrolledOverlayFamilies(defaultOverlayFamilies);
+      if (!controlledIndicators) setUncontrolledIndicators(defaultIndicators);
+      setDrawingTool("inspect");
+      setDrawings([]);
+      setWorkspaceUpdatedAt(null);
+    }
+    setDraftDrawing(null);
+    setWorkspaceLoaded(true);
+  // This effect intentionally keys off the symbol so persisted chart state follows the active instrument.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol]);
+
+  useEffect(() => {
+    if (!workspaceLoaded) return;
+    const saved = writeChartWorkflowWorkspace(symbol, {
+      drawingTool,
+      drawings,
+      indicators: enabledIndicators,
+      overlayFamilies: enabledOverlayFamilies,
+      period,
+    });
+    if (saved) setWorkspaceUpdatedAt(saved.updatedAt);
+  }, [drawingTool, drawings, enabledIndicators, enabledOverlayFamilies, period, symbol, workspaceLoaded]);
+
+  useEffect(() => {
+    if (!hotkeysActive) return undefined;
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (isEditableTarget(event.target)) return;
+      const key = event.key.toLowerCase();
+      const rangeIndex = Number.parseInt(key, 10) - 1;
+      if (enableTimeframeSwitching && rangeIndex >= 0 && rangeIndex < INTERACTIVE_CHART_PERIODS.length) {
+        event.preventDefault();
+        changePeriod(INTERACTIVE_CHART_PERIODS[rangeIndex]!);
+        return;
+      }
+      if (key === "f" && expandable) {
+        event.preventDefault();
+        expandChart();
+        return;
+      }
+      if (key === "r") {
+        event.preventDefault();
+        setResetToken((value) => value + 1);
+        return;
+      }
+      if (key === "d" && showDrawingTools) {
+        event.preventDefault();
+        const currentIndex = CHART_DRAWING_TOOLS.indexOf(drawingTool);
+        setDrawingTool(CHART_DRAWING_TOOLS[(currentIndex + 1) % CHART_DRAWING_TOOLS.length] ?? "inspect");
+        return;
+      }
+      if (key === "escape" && drawingTool !== "inspect") {
+        event.preventDefault();
+        setDraftDrawing(null);
+        setDrawingTool("inspect");
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [drawingTool, enableTimeframeSwitching, expandable, hotkeysActive, period, showDrawingTools]);
 
   useEffect(() => {
     const container = chartContainerRef.current;
@@ -364,7 +443,16 @@ export function SymbolChart({
 
   return (
     <>
-    <div className="min-w-0">
+    <div
+      className="min-w-0"
+      onFocusCapture={() => setHotkeysActive(true)}
+      onBlurCapture={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget)) setHotkeysActive(false);
+      }}
+      onMouseEnter={() => setHotkeysActive(true)}
+      onMouseLeave={() => setHotkeysActive(false)}
+      ref={chartRootRef}
+    >
       {showHeaderBadge ? (
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-slate-950/65 px-4 py-3">
           <div>
@@ -484,7 +572,7 @@ export function SymbolChart({
         </div>
       ) : null}
     </div>
-      <ChartWorkflowDock indicatorSeries={indicatorSeries} summary={workflowSummary} />
+      <ChartWorkflowDock indicatorSeries={indicatorSeries} summary={workflowSummary} workspaceLoaded={workspaceLoaded} workspaceUpdatedAt={workspaceUpdatedAt} />
       <ChartStoryPanel points={storyPoints} />
     </div>
     {expanded ? (
@@ -615,6 +703,7 @@ function ChartDrawingToolbar({
     { label: "Trendline", tool: "trendline" },
     { label: "Range", tool: "range" },
     { label: "Marker", tool: "marker" },
+    { label: "Ruler", tool: "ruler" },
   ];
   return (
     <div className="mb-2 rounded-2xl border border-white/10 bg-slate-950/50 p-2">
@@ -702,6 +791,7 @@ function ChartDrawingLayer({
     const distance = Math.hypot(endPoint.x - draftDrawing.start.x, endPoint.y - draftDrawing.start.y);
     const nextDrawing = {
       ...draftDrawing,
+      createdAt: new Date().toISOString(),
       end: tool === "marker" || distance < 1 ? draftDrawing.start : endPoint,
       id: `${tool}-${Date.now()}-${Math.round(draftDrawing.start.x * 10)}-${Math.round(draftDrawing.start.y * 10)}`,
     };
@@ -746,6 +836,23 @@ function DrawingShape({ drawing }: { drawing: ChartDrawing }) {
         <circle cx={drawing.start.x} cy={drawing.start.y} fill="rgba(251,191,36,0.2)" r="2.2" stroke="#fde68a" strokeWidth="0.32" />
         <text fill="#fde68a" fontSize="2.2" fontWeight="800" x={Math.min(92, drawing.start.x + 1.5)} y={Math.max(3, drawing.start.y - 1.2)}>
           NOTE
+        </text>
+      </g>
+    );
+  }
+  if (drawing.tool === "ruler") {
+    const midX = (drawing.start.x + drawing.end.x) / 2;
+    const midY = (drawing.start.y + drawing.end.y) / 2;
+    const spanX = Math.abs(drawing.end.x - drawing.start.x);
+    const spanY = Math.abs(drawing.end.y - drawing.start.y);
+    return (
+      <g>
+        <line stroke="rgba(34,211,238,0.82)" strokeLinecap="round" strokeDasharray="1.4 1" strokeWidth="0.38" x1={drawing.start.x} x2={drawing.end.x} y1={drawing.start.y} y2={drawing.end.y} />
+        <circle cx={drawing.start.x} cy={drawing.start.y} fill="#67e8f9" r="0.85" />
+        <circle cx={drawing.end.x} cy={drawing.end.y} fill="#67e8f9" r="0.85" />
+        <rect fill="rgba(8,47,73,0.74)" height="5.2" rx="1.4" stroke="rgba(34,211,238,0.38)" strokeWidth="0.22" width="22" x={clamp(midX - 11, 1, 77)} y={clamp(midY - 6, 1, 92)} />
+        <text fill="#a5f3fc" fontSize="2.15" fontWeight="800" x={clamp(midX - 9.4, 2, 78)} y={clamp(midY - 2.45, 4, 95)}>
+          {spanX.toFixed(0)}W / {spanY.toFixed(0)}H
         </text>
       </g>
     );
@@ -800,7 +907,17 @@ function ChartStoryPanel({ points }: { points: ChartStoryPoint[] }) {
   );
 }
 
-function ChartWorkflowDock({ indicatorSeries, summary }: { indicatorSeries: ChartIndicatorSeries[]; summary: ChartWorkflowSummary }) {
+function ChartWorkflowDock({
+  indicatorSeries,
+  summary,
+  workspaceLoaded,
+  workspaceUpdatedAt,
+}: {
+  indicatorSeries: ChartIndicatorSeries[];
+  summary: ChartWorkflowSummary;
+  workspaceLoaded: boolean;
+  workspaceUpdatedAt: string | null;
+}) {
   return (
     <div className="mt-2 rounded-2xl border border-white/10 bg-slate-950/45 p-3">
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -808,7 +925,7 @@ function ChartWorkflowDock({ indicatorSeries, summary }: { indicatorSeries: Char
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Chart-linked intelligence state</div>
           <p className="mt-1 text-xs leading-5 text-slate-500">{summary.narrative}</p>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">
+        <div className="grid grid-cols-2 gap-2 text-center text-[10px] font-black uppercase tracking-[0.12em] text-slate-500 sm:grid-cols-4">
           <div className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2">
             <div className="font-mono text-sm text-slate-100">{summary.activeFamilies}</div>
             Overlays
@@ -821,8 +938,17 @@ function ChartWorkflowDock({ indicatorSeries, summary }: { indicatorSeries: Char
             <div className="font-mono text-sm text-slate-100">{summary.drawingCount}</div>
             Drawings
           </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.035] px-3 py-2">
+            <div className="font-mono text-sm text-slate-100">{workspaceLoaded ? "Saved" : "Session"}</div>
+            Workspace
+          </div>
         </div>
       </div>
+      {workspaceUpdatedAt ? (
+        <div className="mt-3 rounded-xl border border-cyan-300/10 bg-cyan-300/[0.035] px-3 py-2 text-[11px] font-semibold text-cyan-100">
+          Persistent chart workspace · {formatChartDate(workspaceUpdatedAt)}
+        </div>
+      ) : null}
       {indicatorSeries.length ? (
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {indicatorSeries.map((series) => (
@@ -865,11 +991,12 @@ function SymbolChartModal({
   symbol: string;
   tradeLevels?: ChartTradeLevels;
 }) {
-  const [detailMode, setDetailMode] = useState<"compare" | "overlays" | "timeline">("overlays");
-  const [layoutMode, setLayoutMode] = useState<"focus" | "split" | "stack">("focus");
+  const [detailMode, setDetailMode] = useState<ChartDetailMode>("overlays");
+  const [layoutMode, setLayoutMode] = useState<ChartLayoutMode>("focus");
   const [modalPeriod, setModalPeriod] = useState<InteractiveChartPeriod>(defaultPeriod);
   const [modalOverlayFamilies, setModalOverlayFamilies] = useState<ChartOverlayFamily[]>(defaultOverlayFamilies);
   const [modalIndicators, setModalIndicators] = useState<ChartIndicatorId[]>(defaultIndicators);
+  const [modalWorkspaceLoaded, setModalWorkspaceLoaded] = useState(false);
   const normalizedSignals = useMemo(() => (showHistoricalSignals ? filterSignalsByCandles(normalizeSignals(signals ?? []), candles) : []), [candles, showHistoricalSignals, signals]);
   const chartLevels = useMemo(() => normalizeTradeLevels(tradeLevels), [tradeLevels]);
   const markerSummary = markerGroupSummary(normalizedSignals);
@@ -877,6 +1004,64 @@ function SymbolChartModal({
   const storyPoints = useMemo(() => buildChartStoryPoints(candles, normalizedSignals, chartLevels), [candles, chartLevels, normalizedSignals]);
   const compareRows = useMemo(() => buildChartCompareRows(candles, normalizedSignals, chartLevels), [candles, chartLevels, normalizedSignals]);
   const levelSummary = tradeLevelSummary(tradeLevels);
+
+  useEffect(() => {
+    const workspace = readChartWorkflowWorkspace(symbol);
+    if (workspace) {
+      setDetailMode(workspace.detailMode);
+      setLayoutMode(workspace.layoutMode);
+      setModalPeriod(workspace.period);
+      setModalOverlayFamilies(workspace.overlayFamilies);
+      setModalIndicators(workspace.indicators);
+    }
+    setModalWorkspaceLoaded(true);
+  }, [symbol]);
+
+  useEffect(() => {
+    if (!modalWorkspaceLoaded) return;
+    writeChartWorkflowWorkspace(symbol, {
+      detailMode,
+      indicators: modalIndicators,
+      layoutMode,
+      overlayFamilies: modalOverlayFamilies,
+      period: modalPeriod,
+    });
+  }, [detailMode, layoutMode, modalIndicators, modalOverlayFamilies, modalPeriod, modalWorkspaceLoaded, symbol]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || isEditableTarget(event.target)) return;
+      const key = event.key.toLowerCase();
+      const rangeIndex = Number.parseInt(key, 10) - 1;
+      if (rangeIndex >= 0 && rangeIndex < INTERACTIVE_CHART_PERIODS.length) {
+        event.preventDefault();
+        setModalPeriod(INTERACTIVE_CHART_PERIODS[rangeIndex]!);
+        return;
+      }
+      if (key === "c") {
+        event.preventDefault();
+        setDetailMode("compare");
+        return;
+      }
+      if (key === "t") {
+        event.preventDefault();
+        setDetailMode("timeline");
+        return;
+      }
+      if (key === "o") {
+        event.preventDefault();
+        setDetailMode("overlays");
+        return;
+      }
+      if (key === "l") {
+        event.preventDefault();
+        setLayoutMode((current) => current === "focus" ? "split" : current === "split" ? "stack" : "focus");
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   return (
     <StableDetailOverlay
       analyticsSurface="symbol_chart"
@@ -1008,7 +1193,7 @@ function ChartLayoutExplorer({
   indicators: ChartIndicatorId[];
   interpretation: string;
   lastUpdated: string | null;
-  layoutMode: "focus" | "split" | "stack";
+  layoutMode: ChartLayoutMode;
   onIndicatorsChange: (indicators: ChartIndicatorId[]) => void;
   onOverlayFamiliesChange: (families: ChartOverlayFamily[]) => void;
   onPeriodChange: (period: InteractiveChartPeriod) => void;
@@ -1102,7 +1287,7 @@ function ChartModalModePanel({
   timelineMarkers,
 }: {
   compareRows: ChartCompareRow[];
-  mode: "compare" | "overlays" | "timeline";
+  mode: ChartDetailMode;
   storyPoints: ChartStoryPoint[];
   timelineMarkers: ChartSignalMarker[];
 }) {
@@ -1381,6 +1566,12 @@ function formatChartDate(value: string): string {
   const parsed = Date.parse(value);
   if (!Number.isFinite(parsed)) return value.slice(0, 16);
   return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" }).format(new Date(parsed));
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName.toLowerCase();
+  return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
 }
 
 function clamp(value: number, min: number, max: number): number {

@@ -1,8 +1,9 @@
 "use client";
 
-import { useId, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, Expand, Info } from "lucide-react";
 import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
+import { readChartWorkflowWorkspace, writeChartWorkflowWorkspace } from "@/components/terminal/chart-workflow-storage";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import {
   INTERACTIVE_CHART_PERIODS,
@@ -89,6 +90,7 @@ export function InteractivePriceChart({
 }: InteractivePriceChartProps) {
   const [period, setPeriod] = useState<InteractiveChartPeriod>(defaultPeriod);
   const [expanded, setExpanded] = useState(false);
+  const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
   const filtered = useMemo(() => filterInteractivePricePoints(packet.rows, period), [packet.rows, period]);
   const summary = useMemo(() => summarizePriceMove(filtered), [filtered]);
   const valid = useMemo(() => validClosePoints(filtered), [filtered]);
@@ -96,6 +98,17 @@ export function InteractivePriceChart({
   const chartTitle = label ?? packet.symbol;
   const changeClass = summary.tone === "up" ? "text-emerald-200" : summary.tone === "down" ? "text-rose-200" : "text-slate-300";
   const changeText = summary.changePct === null ? "Limited data" : `${summary.changePct >= 0 ? "+" : ""}${summary.changePct.toFixed(2)}%`;
+
+  useEffect(() => {
+    const workspace = readChartWorkflowWorkspace(packet.symbol);
+    setPeriod(workspace?.period ?? defaultPeriod);
+    setWorkspaceLoaded(true);
+  }, [defaultPeriod, packet.symbol]);
+
+  useEffect(() => {
+    if (!workspaceLoaded) return;
+    writeChartWorkflowWorkspace(packet.symbol, { period });
+  }, [packet.symbol, period, workspaceLoaded]);
 
   function openExpanded(source: "button" | "chart"): void {
     trackAnalyticsEvent("chart_expand", {
@@ -337,6 +350,17 @@ function ExpandedChartModal({
   const valid = useMemo(() => validClosePoints(filtered), [filtered]);
   const intelligenceZones = useMemo(() => buildPriceIntelligenceZones(valid), [valid]);
   const toneClass = TONE_CLASSES[tone];
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || isEditableTarget(event.target)) return;
+      const rangeIndex = Number.parseInt(event.key, 10) - 1;
+      if (rangeIndex < 0 || rangeIndex >= INTERACTIVE_CHART_PERIODS.length) return;
+      event.preventDefault();
+      setPeriod(INTERACTIVE_CHART_PERIODS[rangeIndex]!);
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [setPeriod]);
   return (
     <StableDetailOverlay
       analyticsSurface="interactive_price_chart"
@@ -409,6 +433,12 @@ function DetailTile({ detail, label, value }: { detail: string; label: string; v
       <p className="mt-2 text-xs leading-5 text-slate-400">{detail}</p>
     </div>
   );
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName.toLowerCase();
+  return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
 }
 
 const PRICE_ZONE_COLORS: Record<PriceIntelligenceZone["tone"], { fill: string; stroke: string; text: string }> = {
