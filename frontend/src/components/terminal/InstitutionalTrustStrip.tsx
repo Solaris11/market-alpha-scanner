@@ -3,6 +3,12 @@
 import Link from "next/link";
 import { AlertTriangle, Clock3, Database, Eye, Route, ShieldCheck } from "lucide-react";
 import type { InstitutionalTrustModel, TrustTone } from "@/lib/trading/institutional-trust";
+import {
+  buildTrustArchitectureFromInstitutionalModel,
+  certifyTrustArchitecture,
+  type TrustArchitectureCertification,
+  type TrustArchitecturePacket,
+} from "@/lib/trading/trust-architecture";
 
 export function InstitutionalTrustStrip({
   className = "",
@@ -15,6 +21,8 @@ export function InstitutionalTrustStrip({
 }) {
   const visibleProvenance = compact ? model.provenance.slice(0, 4) : model.provenance;
   const visibleWorkflow = compact ? model.workflow.slice(0, 3) : model.workflow;
+  const trustArchitecture = buildTrustArchitectureFromInstitutionalModel(model);
+  const certification = certifyTrustArchitecture(trustArchitecture);
   return (
     <section className={`rounded-2xl border border-cyan-300/15 bg-cyan-400/[0.035] p-3 ${className}`} aria-label="Trust and evidence">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -57,6 +65,7 @@ export function InstitutionalTrustStrip({
           <TrustList title="Limitations" tone={model.limitations[0]?.includes("No major limitation") ? "constructive" : "caution"} items={model.limitations} />
           <TrustList title="Traceability" tone="neutral" items={model.traceability.slice(0, compact ? 3 : 5)} />
         </div>
+        <TrustArchitectureView certification={certification} compact={compact} packet={trustArchitecture} />
         <div className="mt-3 flex flex-wrap gap-2">
           {visibleWorkflow.map((item) => (
             <Link
@@ -72,6 +81,49 @@ export function InstitutionalTrustStrip({
         </div>
       </details>
     </section>
+  );
+}
+
+function TrustArchitectureView({
+  certification,
+  compact,
+  packet,
+}: {
+  certification: TrustArchitectureCertification;
+  compact: boolean;
+  packet: TrustArchitecturePacket;
+}) {
+  const visibleLineage = packet.evidenceLineage.slice(0, compact ? 4 : 6);
+  return (
+    <div className="mt-3 rounded-xl border border-cyan-300/15 bg-slate-950/45 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.16em] text-cyan-200">Evidence lineage</div>
+          <p className="mt-1 text-xs leading-5 text-slate-400">Trace the signals, freshness, sources, and audit path behind this intelligence surface.</p>
+        </div>
+        <div className={`rounded-full border px-3 py-1 font-mono text-[10px] font-black uppercase tracking-[0.1em] ${certification.passed ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-100" : "border-rose-300/25 bg-rose-300/10 text-rose-100"}`}>
+          {packet.status} · {packet.confidence.governedConfidence}/100
+        </div>
+      </div>
+      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        {visibleLineage.map((node) => (
+          <div className={`rounded-xl border p-2.5 ${toneClass(node.tone)}`} key={node.id}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[9px] font-black uppercase tracking-[0.13em] opacity-85">{node.category}</span>
+              <span className="font-mono text-[10px] font-black">{node.strength}/100</span>
+            </div>
+            <div className="mt-1 text-xs font-black text-slate-50">{node.label}: {node.value}</div>
+            <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-300/85">{node.detail}</p>
+          </div>
+        ))}
+      </div>
+      <div className="mt-3 grid gap-2 lg:grid-cols-3">
+        <TrustList title="Confidence governance" tone={packet.confidence.state === "blocked" ? "risk" : packet.confidence.state === "stale" ? "caution" : "intelligence"} items={packet.confidence.downgradeReasons} />
+        <TrustList title="Reproducibility" tone="neutral" items={packet.reproducibility.slice(0, 4)} />
+        <TrustList title="Safety rules" tone="constructive" items={packet.safetyRules.slice(0, 4)} />
+      </div>
+      {certification.blockers.length ? <TrustList title="Trust blockers" tone="risk" items={certification.blockers} /> : null}
+    </div>
   );
 }
 
