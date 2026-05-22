@@ -42,6 +42,22 @@ describe("research chart context levels", () => {
     assert.equal(indicators.find((indicator) => indicator.id === "rangePressure")?.tone, "rose");
   });
 
+  it("separates overlay indicators from diagnostic-only indicators honestly", () => {
+    const indicators = buildChartIndicatorSeries(makeCandles(90), ["sma20", "rsi14", "macd", "atr14", "volatility20", "supertrend", "anchoredVwap"]);
+    const byId = new Map(indicators.map((indicator) => [indicator.id, indicator]));
+
+    assert.equal(byId.get("sma20")?.renderMode, "overlay");
+    assert.ok((byId.get("sma20")?.points.length ?? 0) >= 2);
+    assert.equal(byId.get("supertrend")?.renderMode, "overlay");
+    assert.ok((byId.get("supertrend")?.points.length ?? 0) >= 2);
+    assert.equal(byId.get("rsi14")?.renderMode, "diagnostic");
+    assert.match(byId.get("rsi14")?.valueLabel ?? "", /(elevated|neutral|weak)/);
+    assert.equal(byId.get("atr14")?.renderMode, "diagnostic");
+    assert.match(byId.get("atr14")?.valueLabel ?? "", /^\$/);
+    assert.equal(byId.get("anchoredVwap")?.valueLabel, "Requires volume");
+    assert.equal(byId.get("anchoredVwap")?.points.length, 0);
+  });
+
   it("summarizes synchronized chart workflow state without unsupported claims", () => {
     const summary = buildChartWorkflowSummary({
       candleCount: 42,

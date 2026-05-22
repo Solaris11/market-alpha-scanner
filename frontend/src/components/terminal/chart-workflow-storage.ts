@@ -8,7 +8,20 @@ import {
 } from "./chart-intelligence-overlays";
 import { INTERACTIVE_CHART_PERIODS, type InteractiveChartPeriod } from "@/lib/interactive-chart-data";
 
-export type StoredChartDrawingTool = "inspect" | "marker" | "range" | "ruler" | "trendline";
+export type StoredChartDrawingTool =
+  | "annotation"
+  | "entryZone"
+  | "horizontal"
+  | "inspect"
+  | "marker"
+  | "range"
+  | "resistanceZone"
+  | "riskBox"
+  | "ruler"
+  | "stopZone"
+  | "supportZone"
+  | "targetZone"
+  | "trendline";
 
 export type StoredChartDrawingPoint = {
   x: number;
@@ -24,7 +37,7 @@ export type StoredChartDrawing = {
 };
 
 export type ChartDetailMode = "compare" | "overlays" | "timeline";
-export type ChartLayoutMode = "focus" | "split" | "stack";
+export type ChartLayoutMode = "focus" | "grid" | "split" | "stack";
 
 export type ChartWorkflowWorkspace = {
   detailMode: ChartDetailMode;
@@ -45,9 +58,23 @@ const MAX_STORED_DRAWINGS = 24;
 const VALID_PERIODS = new Set<InteractiveChartPeriod>(INTERACTIVE_CHART_PERIODS);
 const VALID_OVERLAY_FAMILIES = new Set<ChartOverlayFamily>(CHART_OVERLAY_FAMILIES.map((item) => item.family));
 const VALID_INDICATORS = new Set<ChartIndicatorId>(CHART_INDICATORS.map((item) => item.id));
-const VALID_DRAWING_TOOLS = new Set<StoredChartDrawingTool>(["inspect", "marker", "range", "ruler", "trendline"]);
+const VALID_DRAWING_TOOLS = new Set<StoredChartDrawingTool>([
+  "annotation",
+  "entryZone",
+  "horizontal",
+  "inspect",
+  "marker",
+  "range",
+  "resistanceZone",
+  "riskBox",
+  "ruler",
+  "stopZone",
+  "supportZone",
+  "targetZone",
+  "trendline",
+]);
 const VALID_DETAIL_MODES = new Set<ChartDetailMode>(["compare", "overlays", "timeline"]);
-const VALID_LAYOUT_MODES = new Set<ChartLayoutMode>(["focus", "split", "stack"]);
+const VALID_LAYOUT_MODES = new Set<ChartLayoutMode>(["focus", "grid", "split", "stack"]);
 
 export function defaultChartWorkflowWorkspace(): ChartWorkflowWorkspace {
   return {
@@ -148,7 +175,20 @@ function sanitizeDrawings(value: unknown): StoredChartDrawing[] {
 
 function sanitizeDrawing(value: unknown): StoredChartDrawing | null {
   if (!isRecord(value)) return null;
-  const tool = stringFromSet(value.tool, new Set<StoredChartDrawing["tool"]>(["marker", "range", "ruler", "trendline"]), "trendline");
+  const tool = stringFromSet(value.tool, new Set<StoredChartDrawing["tool"]>([
+    "annotation",
+    "entryZone",
+    "horizontal",
+    "marker",
+    "range",
+    "resistanceZone",
+    "riskBox",
+    "ruler",
+    "stopZone",
+    "supportZone",
+    "targetZone",
+    "trendline",
+  ]), "trendline");
   const start = sanitizePoint(value.start);
   const end = sanitizePoint(value.end);
   if (!start || !end) return null;

@@ -26,8 +26,8 @@ describe("chart workflow workspace persistence", () => {
           tool: "trendline",
         },
       ],
-      indicators: ["ema20", "unsupported", "rangePressure", "ema20"],
-      layoutMode: "split",
+      indicators: ["ema20", "unsupported", "rangePressure", "rsi14", "ema20"],
+      layoutMode: "grid",
       overlayFamilies: ["risk", "macro", "bad", "risk"],
       period: "1y",
       updatedAt: "2026-05-21T12:00:00Z",
@@ -35,8 +35,8 @@ describe("chart workflow workspace persistence", () => {
 
     assert.equal(workspace.detailMode, "overlays");
     assert.equal(workspace.drawingTool, "ruler");
-    assert.deepEqual(workspace.indicators, ["ema20", "rangePressure"]);
-    assert.equal(workspace.layoutMode, "split");
+    assert.deepEqual(workspace.indicators, ["ema20", "rangePressure", "rsi14"]);
+    assert.equal(workspace.layoutMode, "grid");
     assert.deepEqual(workspace.overlayFamilies, ["risk", "macro"]);
     assert.equal(workspace.period, "1y");
     assert.equal(workspace.drawings.length, 1);
@@ -56,6 +56,35 @@ describe("chart workflow workspace persistence", () => {
     assert.equal(workspace.drawings.length, 24);
     assert.equal(workspace.drawings[0]?.id, "drawing-6");
     assert.equal(workspace.drawings[23]?.id, "drawing-29");
+  });
+
+  it("preserves professional drawing tool types", () => {
+    const workspace = sanitizeChartWorkflowWorkspace({
+      drawingTool: "entryZone",
+      drawings: [
+        {
+          end: { x: 82, y: 44 },
+          id: "entry-zone-1",
+          start: { x: 22, y: 38 },
+          tool: "entryZone",
+        },
+        {
+          end: { x: 100, y: 31 },
+          id: "support-1",
+          start: { x: 4, y: 35 },
+          tool: "supportZone",
+        },
+        {
+          end: { x: 72, y: 22 },
+          id: "risk-box-1",
+          start: { x: 52, y: 62 },
+          tool: "riskBox",
+        },
+      ],
+    });
+
+    assert.equal(workspace.drawingTool, "entryZone");
+    assert.deepEqual(workspace.drawings.map((drawing) => drawing.tool), ["entryZone", "supportZone", "riskBox"]);
   });
 
   it("merges a patch without dropping existing compare or layout state", () => {
@@ -79,4 +108,3 @@ describe("chart workflow workspace persistence", () => {
     assert.equal(chartWorkflowStorageKey("$bad symbol!"), "tradeveto.chart-workflow.BADSYMBOL");
   });
 });
-

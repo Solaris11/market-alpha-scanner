@@ -22,6 +22,7 @@ import {
   toSeriesMarkers,
 } from "./symbol-chart-utils";
 import {
+  CHART_INDICATORS,
   CHART_OVERLAY_FAMILIES,
   DEFAULT_CHART_INDICATORS,
   DEFAULT_CHART_OVERLAY_FAMILIES,
@@ -132,7 +133,19 @@ type ChartDrawingTool = StoredChartDrawingTool;
 type ChartDrawingPoint = StoredChartDrawingPoint;
 type ChartDrawing = StoredChartDrawing;
 
-const CHART_DRAWING_TOOLS: ChartDrawingTool[] = ["inspect", "trendline", "range", "marker", "ruler"];
+const CHART_DRAWING_TOOLS: ChartDrawingTool[] = [
+  "inspect",
+  "horizontal",
+  "trendline",
+  "supportZone",
+  "resistanceZone",
+  "entryZone",
+  "stopZone",
+  "targetZone",
+  "riskBox",
+  "annotation",
+  "ruler",
+];
 
 export function SymbolChart({
   symbol,
@@ -378,7 +391,7 @@ export function SymbolChart({
         wickUpColor: "#26a69a",
       });
       candleSeries.setData(toChartData(chartCandles));
-      for (const indicator of indicatorSeries) {
+      for (const indicator of indicatorSeries.filter((item) => item.renderMode === "overlay" && item.points.length >= 2)) {
         const lineSeries = chart.addSeries(LineSeries, {
           color: indicator.color,
           lastValueVisible: false,
@@ -651,7 +664,7 @@ function ChartIndicatorControls({
   indicatorSeries: ChartIndicatorSeries[];
   onToggle: (indicator: ChartIndicatorId) => void;
 }) {
-  const activePoints = new Map(indicatorSeries.map((series) => [series.id, series.points.length]));
+  const activeSeries = new Map(indicatorSeries.map((series) => [series.id, series]));
   return (
     <div className="mb-2 rounded-2xl border border-white/10 bg-slate-950/50 p-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -661,10 +674,11 @@ function ChartIndicatorControls({
         <div className="text-[11px] text-slate-500">{enabledIndicators.length.toLocaleString()} enabled</div>
       </div>
       <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
-        {(["ema20", "ema50", "rangePressure"] as const).map((indicator) => {
+        {CHART_INDICATORS.map(({ id: indicator }) => {
           const definition = indicatorDefinition(indicator);
           const enabled = enabledIndicators.includes(indicator);
-          const points = activePoints.get(indicator) ?? 0;
+          const active = activeSeries.get(indicator) ?? null;
+          const evidenceLabel = active ? `${active.valueLabel}${active.renderMode === "overlay" ? ` · ${active.points.length} points` : ""}` : "Limited evidence";
           return (
             <button
               aria-pressed={enabled}
@@ -675,7 +689,7 @@ function ChartIndicatorControls({
               }`}
               key={indicator}
               onClick={() => onToggle(indicator)}
-              title={`${definition.description}${enabled ? ` ${points} plotted points.` : ""}`}
+              title={`${definition.description}${enabled ? ` ${evidenceLabel}.` : ""}`}
               type="button"
             >
               {definition.label}
@@ -700,9 +714,15 @@ function ChartDrawingToolbar({
 }) {
   const tools: Array<{ label: string; tool: ChartDrawingTool }> = [
     { label: "Inspect", tool: "inspect" },
+    { label: "H-Line", tool: "horizontal" },
     { label: "Trendline", tool: "trendline" },
-    { label: "Range", tool: "range" },
-    { label: "Marker", tool: "marker" },
+    { label: "Support", tool: "supportZone" },
+    { label: "Resistance", tool: "resistanceZone" },
+    { label: "Entry", tool: "entryZone" },
+    { label: "Stop", tool: "stopZone" },
+    { label: "Target", tool: "targetZone" },
+    { label: "Risk Box", tool: "riskBox" },
+    { label: "Note", tool: "annotation" },
     { label: "Ruler", tool: "ruler" },
   ];
   return (
@@ -792,11 +812,11 @@ function ChartDrawingLayer({
     const nextDrawing = {
       ...draftDrawing,
       createdAt: new Date().toISOString(),
-      end: tool === "marker" || distance < 1 ? draftDrawing.start : endPoint,
+      end: isPointDrawingTool(tool) || distance < 1 ? draftDrawing.start : endPoint,
       id: `${tool}-${Date.now()}-${Math.round(draftDrawing.start.x * 10)}-${Math.round(draftDrawing.start.y * 10)}`,
     };
     onDraftChange(null);
-    if (tool === "marker" || distance >= 2.5) onCommit(nextDrawing);
+    if (isPointDrawingTool(tool) || distance >= 2.5) onCommit(nextDrawing);
   }
 
   return (
@@ -814,7 +834,59 @@ function ChartDrawingLayer({
   );
 }
 
+function isPointDrawingTool(tool: ChartDrawingTool): boolean {
+  return tool === "annotation" || tool === "horizontal" || tool === "marker";
+}
+
 function DrawingShape({ drawing }: { drawing: ChartDrawing }) {
+  if (drawing.tool === "horizontal") {
+    return (
+      <g>
+        <line stroke="rgba(226,232,240,0.72)" strokeDasharray="1.8 1.2" strokeWidth="0.34" x1="0" x2="100" y1={drawing.start.y} y2={drawing.start.y} />
+        <text fill="#e2e8f0" fontSize="2.15" fontWeight="800" x="1.5" y={clamp(drawing.start.y - 1.2, 3, 96)}>
+          H-LINE
+        </text>
+      </g>
+    );
+  }
+  if (drawing.tool === "supportZone" || drawing.tool === "resistanceZone" || drawing.tool === "entryZone" || drawing.tool === "stopZone" || drawing.tool === "targetZone") {
+    const zone = drawingZoneStyle(drawing.tool);
+    const y = Math.min(drawing.start.y, drawing.end.y);
+    const height = Math.max(2.5, Math.abs(drawing.end.y - drawing.start.y));
+    return (
+      <g>
+        <rect fill={zone.fill} height={height} rx="1.4" stroke={zone.stroke} strokeDasharray="1.4 1" strokeWidth="0.35" width="100" x="0" y={y} />
+        <text fill={zone.text} fontSize="2.2" fontWeight="800" x="1.5" y={clamp(y + 3.2, 3, 98)}>
+          {zone.label}
+        </text>
+      </g>
+    );
+  }
+  if (drawing.tool === "riskBox") {
+    const x = Math.min(drawing.start.x, drawing.end.x);
+    const y = Math.min(drawing.start.y, drawing.end.y);
+    const width = Math.max(1, Math.abs(drawing.end.x - drawing.start.x));
+    const height = Math.max(1, Math.abs(drawing.end.y - drawing.start.y));
+    return (
+      <g>
+        <rect fill="rgba(244,63,94,0.075)" height={height} rx="1.5" stroke="rgba(251,113,133,0.66)" strokeDasharray="1.7 1.1" strokeWidth="0.36" width={width} x={x} y={y} />
+        <text fill="#fecdd3" fontSize="2.2" fontWeight="800" x={x + 1.4} y={Math.max(3, y + 3)}>
+          RISK
+        </text>
+      </g>
+    );
+  }
+  if (drawing.tool === "annotation") {
+    return (
+      <g>
+        <circle cx={drawing.start.x} cy={drawing.start.y} fill="rgba(251,191,36,0.18)" r="2.4" stroke="#fde68a" strokeWidth="0.34" />
+        <rect fill="rgba(15,23,42,0.82)" height="5.4" rx="1.4" stroke="rgba(251,191,36,0.34)" strokeWidth="0.22" width="17" x={clamp(drawing.start.x + 1.5, 1, 82)} y={clamp(drawing.start.y - 6, 1, 92)} />
+        <text fill="#fde68a" fontSize="2.2" fontWeight="800" x={clamp(drawing.start.x + 3, 2, 84)} y={clamp(drawing.start.y - 2.4, 4, 96)}>
+          NOTE
+        </text>
+      </g>
+    );
+  }
   if (drawing.tool === "range") {
     const x = Math.min(drawing.start.x, drawing.end.x);
     const y = Math.min(drawing.start.y, drawing.end.y);
@@ -864,6 +936,14 @@ function DrawingShape({ drawing }: { drawing: ChartDrawing }) {
       <circle cx={drawing.end.x} cy={drawing.end.y} fill="#c4b5fd" r="0.95" />
     </g>
   );
+}
+
+function drawingZoneStyle(tool: Extract<ChartDrawingTool, "entryZone" | "resistanceZone" | "stopZone" | "supportZone" | "targetZone">): { fill: string; label: string; stroke: string; text: string } {
+  if (tool === "supportZone") return { fill: "rgba(34,211,238,0.07)", label: "SUPPORT", stroke: "rgba(34,211,238,0.58)", text: "#a5f3fc" };
+  if (tool === "resistanceZone") return { fill: "rgba(244,114,182,0.07)", label: "RESIST", stroke: "rgba(244,114,182,0.58)", text: "#fbcfe8" };
+  if (tool === "entryZone") return { fill: "rgba(251,191,36,0.08)", label: "ENTRY", stroke: "rgba(251,191,36,0.62)", text: "#fde68a" };
+  if (tool === "stopZone") return { fill: "rgba(244,63,94,0.08)", label: "STOP", stroke: "rgba(251,113,133,0.68)", text: "#fecdd3" };
+  return { fill: "rgba(52,211,153,0.075)", label: "TARGET", stroke: "rgba(52,211,153,0.62)", text: "#bbf7d0" };
 }
 
 function ChartIntelligenceZoneOverlay({ zones }: { zones: ChartIntelligenceZone[] }) {
@@ -953,7 +1033,7 @@ function ChartWorkflowDock({
         <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {indicatorSeries.map((series) => (
             <span className={`shrink-0 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${overlayToneClasses[series.tone].pill}`} key={series.id}>
-              {series.label}: {series.points.length} points
+              {series.label}: {series.valueLabel}
             </span>
           ))}
         </div>
@@ -1093,7 +1173,7 @@ function SymbolChartModal({
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
             <div className="flex flex-wrap gap-1">
-              {(["focus", "split", "stack"] as const).map((mode) => (
+              {(["focus", "split", "grid", "stack"] as const).map((mode) => (
                 <button
                   className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] transition ${
                     layoutMode === mode
@@ -1246,6 +1326,37 @@ function ChartLayoutExplorer({
             showDrawingTools={false}
           />
         </div>
+      </div>
+    );
+  }
+
+  if (layoutMode === "grid") {
+    const gridPanes: Array<{
+      families: ChartOverlayFamily[];
+      indicators: ChartIndicatorId[];
+      label: string;
+      tone: string;
+    }> = [
+      { families: overlayFamilies, indicators, label: "Primary research pane", tone: "border-cyan-300/12 bg-cyan-300/[0.025] text-cyan-200" },
+      { families: riskMacroFamilies.filter((family) => overlayFamilies.includes(family)), indicators: indicators.includes("rangePressure") ? indicators : [...indicators, "rangePressure"], label: "Risk / macro pane", tone: "border-rose-300/12 bg-rose-300/[0.025] text-rose-200" },
+      { families: replayMemoryFamilies.filter((family) => overlayFamilies.includes(family)), indicators: indicators.filter((indicator) => indicator !== "rangePressure"), label: "Replay / memory pane", tone: "border-violet-300/12 bg-violet-300/[0.025] text-violet-200" },
+      { families: overlayFamilies.filter((family) => family === "levels" || family === "confidence" || family === "events"), indicators: uniqueIndicators(["sma20", "ema20", "atr14", ...indicators]), label: "Levels / catalyst pane", tone: "border-amber-300/12 bg-amber-300/[0.025] text-amber-200" },
+    ];
+    return (
+      <div className="grid gap-4 xl:grid-cols-2">
+        {gridPanes.map((pane) => (
+          <div className={`rounded-3xl border p-3 ${pane.tone}`} key={pane.label}>
+            <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em]">{pane.label}</div>
+            <SymbolChart
+              {...sharedProps}
+              controlledIndicators={pane.indicators}
+              controlledOverlayFamilies={pane.families}
+              enableTimeframeSwitching={false}
+              height={300}
+              showDrawingTools={pane.label === "Primary research pane"}
+            />
+          </div>
+        ))}
       </div>
     );
   }
@@ -1572,6 +1683,14 @@ function isEditableTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName.toLowerCase();
   return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
+}
+
+function uniqueIndicators(indicators: ChartIndicatorId[]): ChartIndicatorId[] {
+  const unique: ChartIndicatorId[] = [];
+  for (const indicator of indicators) {
+    if (!unique.includes(indicator)) unique.push(indicator);
+  }
+  return unique;
 }
 
 function clamp(value: number, min: number, max: number): number {
