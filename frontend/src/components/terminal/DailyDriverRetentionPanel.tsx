@@ -160,7 +160,7 @@ function HabitLoopDeck({ loops }: { loops: DailyDriverHabitLoop[] }) {
         <RotateCcw className="h-5 w-5 text-emerald-200" />
       </div>
       <div className="mt-4 grid gap-2">
-        {loops.slice(0, 5).map((loop) => <HabitLoopRow loop={loop} key={loop.key} />)}
+        {loops.map((loop) => <HabitLoopRow loop={loop} key={loop.key} />)}
       </div>
     </div>
   );
