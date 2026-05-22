@@ -10,6 +10,7 @@ Phase 20.3 focused on `/market-memory`, which was materially heavier than the re
 
 - Added safe server-side Market Memory analog caching in `frontend/src/lib/server/market-memory.ts`.
 - Added route-level Market Memory surface caching in `frontend/src/app/market-memory/page.tsx`.
+- Added stale-while-revalidate route behavior so a warmed production process can serve the last trusted memory packet while refreshing analog data in the background.
 - Reduced expensive analog candidate scans and prioritized candidate rows by symbol, setup, sector, regime, and recency.
 - Expanded analog matching with volatility, macro pressure, liquidity, and drawdown similarity buckets.
 - Added freshness, confidence, warnings, and explainability metadata to `MarketMemorySummary`.
@@ -29,7 +30,7 @@ Production URL: `https://tradeveto.com/market-memory`
 | Warm browser desktop load event | 3,495 ms baseline audit window | 409 ms |
 | Warm browser mobile load event | 4,060 ms baseline audit window | 664 ms |
 
-Cold-start note: the first post-deploy smoke hit observed `1.894s` while the frontend container and route cache were cold. Warm production route timing met the Phase 20.3 route targets.
+Cold-start note: the first post-deploy smoke hit observed `1.894s` while the frontend container and route cache were cold. Warm production route timing met the Phase 20.3 route targets, and the route now keeps a stale-while-revalidate packet available for 15 minutes so cache refresh does not repeatedly block users after the process is warm.
 
 ## DOM + Render Weight
 
@@ -104,6 +105,7 @@ Production validation:
 ## Remaining Gaps
 
 - True post-deploy cold route miss can still exceed 800 ms while the frontend process and route cache are cold.
+- A deployment warmup request is still required to eliminate the first process-cold user hit.
 - Physical device QA was not part of this phase; the mobile audit here used production Chrome CDP with iPhone Safari user-agent emulation.
 - Cross-system Market Memory integration is stronger through shared packets and symbol links, but not every connected surface exposes the full new explainability packet yet.
 

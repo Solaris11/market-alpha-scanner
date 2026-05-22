@@ -33,7 +33,7 @@ type MemorySurfaceRow = {
 };
 
 type MarketMemorySurfaceModel = {
-  cacheStatus: "hit" | "miss";
+  cacheStatus: "hit" | "miss" | "stale";
   generatedAt: string;
   limitedReason: string | null;
   rows: MemorySurfaceRow[];
@@ -84,12 +84,15 @@ type MemoryTimelineItem = {
 
 type MarketMemorySurfaceCache = {
   expiresAt: number;
+  refresh?: Promise<MarketMemorySurfaceModel>;
+  staleUntil: number;
   value: Promise<MarketMemorySurfaceModel>;
 };
 
 const MEMORY_CARD_LIMIT = 4;
 const SAMPLE_SIZE = 6;
-const SURFACE_CACHE_TTL_MS = 60_000;
+const SURFACE_CACHE_TTL_MS = 120_000;
+const SURFACE_STALE_TTL_MS = 15 * 60_000;
 
 let marketMemorySurfaceCache: MarketMemorySurfaceCache | null = null;
 
@@ -123,7 +126,7 @@ export default async function MarketMemoryPage() {
                 </p>
                 <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <HeroMetric detail="Latest production scanner universe." label="Universe" tone="cyan" value={model.universeCount.toLocaleString("en-US")} />
-                  <HeroMetric detail={`Route model cache ${model.cacheStatus}.`} label="Cache" tone={model.cacheStatus === "hit" ? "emerald" : "violet"} value={model.cacheStatus.toUpperCase()} />
+                  <HeroMetric detail={`Route model cache ${model.cacheStatus}.`} label="Cache" tone={cacheStatusTone(model.cacheStatus)} value={model.cacheStatus.toUpperCase()} />
                   <HeroMetric detail="Validated comparable setups across sampled rows." label="Comparables" tone={analogCount ? "emerald" : "amber"} value={totalComparableSetups.toLocaleString("en-US")} />
                   <HeroMetric detail="Strongest observed analog similarity." label="Top Similarity" tone={strongestScore === null ? "amber" : strongestScore >= 70 ? "emerald" : "cyan"} value={strongestScore === null ? "Limited" : `${strongestScore}%`} />
                 </div>
@@ -210,9 +213,30 @@ async function loadMarketMemorySurface(): Promise<MarketMemorySurfaceModel> {
     const model = await cached.value;
     return { ...model, cacheStatus: "hit" };
   }
+  if (cached && cached.staleUntil > now) {
+    if (!cached.refresh) {
+      const refresh = buildMarketMemorySurfaceModel(now)
+        .then((model) => {
+          marketMemorySurfaceCache = {
+            expiresAt: Date.now() + SURFACE_CACHE_TTL_MS,
+            staleUntil: Date.now() + SURFACE_CACHE_TTL_MS + SURFACE_STALE_TTL_MS,
+            value: Promise.resolve(model),
+          };
+          return model;
+        })
+        .catch(() => cached.value);
+      cached.refresh = refresh;
+    }
+    const model = await cached.value;
+    return { ...model, cacheStatus: "stale" };
+  }
 
   const value = buildMarketMemorySurfaceModel(now);
-  marketMemorySurfaceCache = { expiresAt: now + SURFACE_CACHE_TTL_MS, value };
+  marketMemorySurfaceCache = {
+    expiresAt: now + SURFACE_CACHE_TTL_MS,
+    staleUntil: now + SURFACE_CACHE_TTL_MS + SURFACE_STALE_TTL_MS,
+    value,
+  };
   try {
     const model = await value;
     return model;
@@ -811,6 +835,12 @@ function toneFromFinalScore(score: unknown): VisualTone {
   if (value >= 55) return "cyan";
   if (value >= 40) return "amber";
   return "rose";
+}
+
+function cacheStatusTone(status: MarketMemorySurfaceModel["cacheStatus"]): VisualTone {
+  if (status === "hit") return "emerald";
+  if (status === "stale") return "amber";
+  return "violet";
 }
 
 function tonePanelClass(tone: VisualTone): string {
