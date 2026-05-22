@@ -1,0 +1,23 @@
+{
+  "at": "2026-05-22T00:54:10.556Z",
+  "desktop": {
+    "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-20-2-prod/discover-desktop-dense.png",
+    "hasDense": true,
+    "hasSearch": true,
+    "hasTable": true,
+    "hydrationMessages": [],
+    "mobile": false,
+    "width": 1440,
+    "height": 1200
+  },
+  "mobile": {
+    "file": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-20-2-prod/discover-mobile-dense.png",
+    "hasDense": true,
+    "hasSearch": true,
+    "hasTable": true,
+    "hydrationMessages": [],
+    "mobile": true,
+    "width": 390,
+    "height": 844
+  }
+}
