@@ -123,25 +123,41 @@ Completed:
 
 ## Production Validation
 
-Production validation is required before certification. This section will be updated after deploy.
+Production validation completed after pulling `main` on the Linux production host and rebuilding `market-alpha-frontend`.
 
-Planned production checks:
+Production route smoke from inside the frontend container:
 
-- `/api/health`
-- `/api/health/deep`
-- `/terminal`
-- `/dashboard`
-- `/discover`
-- `/scanner`
-- `/macro`
-- `/market-memory`
-- `/feed`
-- `/symbol/AMD`
+- `/api/health`: `200`
+- `/api/health/deep`: `200`
+- `/terminal`: `200`
+- `/dashboard`: `200`
+- `/discover`: `200`
+- `/scanner`: `200`
+- `/macro`: `200`
+- `/market-memory`: `200`
+- `/feed`: `200`
+- `/symbol/AMD`: `200`
 
-Planned screenshots:
+Container state:
+
+- `market-alpha-frontend`: healthy
+
+Production screenshots captured with a short-lived premium QA user:
 
 - `docs/ops/artifacts/phase-20-8-prod/terminal-ecosystem-continuity-desktop.png`
 - `docs/ops/artifacts/phase-20-8-prod/terminal-ecosystem-continuity-mobile.png`
+
+QA user cleanup:
+
+- disposable user was deleted after screenshot capture
+- remaining user count for that QA email: `0`
+
+Screenshot findings:
+
+- The Terminal now shows an authenticated Ecosystem Continuity panel.
+- Desktop screenshot proves the continuity score, continuation routes, device restore bridge, adaptive priority engine, and cross-system positioning are present in production.
+- Mobile screenshot proves the panel renders in a single-column mobile layout and keeps Terminal bottom navigation accessible.
+- Static screenshots do not prove every route can restore every overlay/fullscreen context; this remains a known limitation.
 
 ## Remaining Gaps
 
@@ -150,6 +166,7 @@ Planned screenshots:
 - Real physical-device validation is still required for mobile continuity behavior.
 - Cross-page continuity is stronger on Terminal than on every individual downstream page.
 - Broker/execution context is intentionally not restored or inferred.
+- Production screenshots were captured with desktop/mobile browser automation, not physical iPhone/Android/in-app browsers.
 
 ## Current Verdict
 
