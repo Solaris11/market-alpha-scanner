@@ -24,13 +24,13 @@ Production URL: `https://tradeveto.com/market-memory`
 | Metric | Before | After |
 | --- | ---: | ---: |
 | HTML response bytes | 208,677 | 168,431 |
-| Hot route p50 | not captured | 178 ms |
-| Hot route p95 | not captured | 248 ms |
-| Hot route max | not captured | 248 ms |
-| Warm browser desktop load event | 3,495 ms baseline audit window | 409 ms |
-| Warm browser mobile load event | 4,060 ms baseline audit window | 664 ms |
+| Hot route p50 | not captured | 160 ms |
+| Hot route p95 | not captured | 419 ms |
+| Hot route max | not captured | 419 ms |
+| Warm browser desktop load event | 3,495 ms baseline audit window | 424 ms |
+| Warm browser mobile load event | 4,060 ms baseline audit window | 839 ms |
 
-Cold-start note: the first post-deploy smoke hit observed `1.894s` while the frontend container and route cache were cold. Warm production route timing met the Phase 20.3 route targets, and the route now keeps a stale-while-revalidate packet available for 15 minutes so cache refresh does not repeatedly block users after the process is warm.
+Cold-start note: the first post-deploy smoke hit observed `1.880s` while the frontend container and route cache were cold. Warm production route timing met the Phase 20.3 route targets, and the route now keeps a stale-while-revalidate packet available for 15 minutes so cache refresh does not repeatedly block users after the process is warm. After waiting 130 seconds, the stale probe returned in `277 ms` with visible `Route model cache stale`, then refreshed back to `214 ms`.
 
 ## DOM + Render Weight
 
@@ -38,10 +38,10 @@ Cold-start note: the first post-deploy smoke hit observed `1.894s` while the fro
 | --- | ---: | ---: | ---: | ---: |
 | Browser DOM elements | 2,517 | 807 | 2,517 | 807 |
 | Scroll height | 9,160 | 5,321 | 21,847 | 12,547 |
-| CDP Nodes | 3,992 | 1,402 | 3,842 | 1,348 cold / 2,750 warm target reuse |
+| CDP Nodes | 3,992 | 1,402 | 3,842 | 2,750 warm target reuse |
 | Layout count | 144 | 3 | 150 | 3 |
 | Recalc style count | 183 | 4 | 184 | 2 |
-| JS heap used | 34.2 MB | 4.0 MB | 44.1 MB | 3.6 MB cold / 6.2 MB warm target reuse |
+| JS heap used | 34.2 MB | 3.9 MB | 44.1 MB | 5.4 MB warm target reuse |
 
 The primary route DOM dropped by roughly 68%. Layout and style recalculation counts dropped from triple digits to single digits in the production CDP audit.
 

@@ -1,97 +1,104 @@
 {
-  "generatedAt": "2026-05-22T01:25:09.000Z",
+  "generatedAt": "2026-05-22T01:39:35.039Z",
   "url": "https://tradeveto.com/market-memory",
   "samples": [
     {
-      "label": "cold_or_first",
+      "label": "post_warmup_first",
       "code": 200,
-      "ms": 173,
+      "ms": 245,
       "bytes": 168431
     },
     {
       "label": "warmup",
       "code": 200,
-      "ms": 198,
+      "ms": 255,
       "bytes": 168431
     },
     {
       "label": "hot_1",
       "code": 200,
-      "ms": 191,
+      "ms": 143,
       "bytes": 168431
     },
     {
       "label": "hot_2",
       "code": 200,
-      "ms": 204,
+      "ms": 247,
       "bytes": 168431
     },
     {
       "label": "hot_3",
       "code": 200,
-      "ms": 178,
+      "ms": 280,
       "bytes": 168431
     },
     {
       "label": "hot_4",
       "code": 200,
-      "ms": 180,
+      "ms": 297,
       "bytes": 168431
     },
     {
       "label": "hot_5",
       "code": 200,
-      "ms": 248,
+      "ms": 419,
       "bytes": 168431
     },
     {
       "label": "hot_6",
       "code": 200,
-      "ms": 135,
+      "ms": 154,
       "bytes": 168431
     },
     {
       "label": "hot_7",
       "code": 200,
-      "ms": 231,
+      "ms": 141,
       "bytes": 168431
     },
     {
       "label": "hot_8",
       "code": 200,
-      "ms": 162,
+      "ms": 168,
       "bytes": 168431
     },
     {
       "label": "hot_9",
       "code": 200,
-      "ms": 181,
+      "ms": 182,
       "bytes": 168431
     },
     {
       "label": "hot_10",
       "code": 200,
-      "ms": 166,
+      "ms": 141,
       "bytes": 168431
     },
     {
       "label": "hot_11",
       "code": 200,
-      "ms": 140,
+      "ms": 146,
       "bytes": 168431
     },
     {
       "label": "hot_12",
       "code": 200,
-      "ms": 140,
+      "ms": 160,
       "bytes": 168431
     }
   ],
   "hot": {
     "count": 12,
-    "min": 135,
-    "p50": 178,
-    "p95": 248,
-    "max": 248
+    "min": 141,
+    "p50": 160,
+    "p95": 419,
+    "max": 419
+  },
+  "staleWhileRevalidateProbe": {
+    "generatedAt": "2026-05-22T01:42:02.674Z",
+    "waitMs": 130000,
+    "staleProbeMs": 277,
+    "postRefreshMs": 214,
+    "observedCacheText": "Route model cache stale"
   }
 }
