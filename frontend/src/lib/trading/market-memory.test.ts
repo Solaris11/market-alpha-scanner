@@ -80,4 +80,16 @@ describe("market memory helpers", () => {
     assert.equal(summary.evidence.sampleSize, 40);
     assert.equal(summary.evidence.tier, "moderate");
   });
+
+  it("exposes freshness, confidence, warnings, and explainability metadata", () => {
+    const summary = buildMarketMemorySummary({ ...current, last_updated_utc: "2026-04-25T12:30:00Z" }, [candidate()], { generatedAt: "2026-04-25T13:00:00Z" });
+
+    assert.equal(summary.generatedAt, "2026-04-25T13:00:00Z");
+    assert.equal(summary.freshness?.status, "fresh");
+    assert.ok(summary.confidence);
+    assert.ok(summary.confidence.score > 0);
+    assert.ok(summary.insight?.whatIsSimilar.includes("same setup"));
+    assert.ok(summary.insight?.supportingEvidence.length);
+    assert.ok(Array.isArray(summary.warnings));
+  });
 });

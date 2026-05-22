@@ -31,9 +31,31 @@ type ScannerSignalMemoryRow = QueryResultRow & {
   symbol: string;
 };
 
+type MarketMemoryCacheEntry = {
+  expiresAt: number;
+  value: Promise<MarketMemorySummary>;
+};
+
+const MARKET_MEMORY_SIGNAL_CACHE_TTL_MS = 90_000;
+const MARKET_MEMORY_SIGNAL_CACHE_LIMIT = 160;
+const signalMemoryCache = new Map<string, MarketMemoryCacheEntry>();
+
 export async function getMarketMemoryForSignal(row: RankingRow): Promise<MarketMemorySummary> {
-  const candidates = await getMarketMemoryCandidates(row).catch((): MarketMemoryCandidate[] => []);
-  return buildMarketMemorySummary(row, candidates);
+  const key = memoryCacheKey(row);
+  const now = Date.now();
+  const cached = signalMemoryCache.get(key);
+  if (cached && cached.expiresAt > now) return cached.value;
+
+  const generatedAt = new Date(now).toISOString();
+  const value = buildMarketMemoryForSignal(row, generatedAt);
+  signalMemoryCache.set(key, { expiresAt: now + MARKET_MEMORY_SIGNAL_CACHE_TTL_MS, value });
+  pruneSignalMemoryCache(now);
+  try {
+    return await value;
+  } catch (error) {
+    if (signalMemoryCache.get(key)?.value === value) signalMemoryCache.delete(key);
+    throw error;
+  }
 }
 
 async function getMarketMemoryCandidates(row: RankingRow): Promise<MarketMemoryCandidate[]> {
@@ -66,8 +88,16 @@ async function getMarketMemoryCandidates(row: RankingRow): Promise<MarketMemoryC
           OR ($4::text IS NOT NULL AND market_regime = $4)
           OR ($5::text IS NOT NULL AND score_bucket = $5)
         )
-      ORDER BY signal_ts DESC
-      LIMIT 700
+      ORDER BY
+        CASE
+          WHEN symbol = $1 THEN 0
+          WHEN $2::text IS NOT NULL AND setup_type = $2 THEN 1
+          WHEN $3::text IS NOT NULL AND sector = $3 THEN 2
+          WHEN $4::text IS NOT NULL AND market_regime = $4 THEN 3
+          ELSE 4
+        END,
+        signal_ts DESC
+      LIMIT 360
     `,
     [symbol, setupType, sector, marketRegime, bucket, currentTimestamp],
   );
@@ -132,8 +162,18 @@ async function getScannerSignalMemoryCandidates(input: {
             END
           ) = $5)
         )
-      ORDER BY COALESCE(sr.completed_at, sr.created_at) DESC NULLS LAST, ss.rank_position ASC NULLS LAST, ss.symbol ASC
-      LIMIT 900
+      ORDER BY
+        CASE
+          WHEN ss.symbol = $1 THEN 0
+          WHEN $2::text IS NOT NULL AND ss.setup_type = $2 THEN 1
+          WHEN $3::text IS NOT NULL AND ss.sector = $3 THEN 2
+          WHEN $4::text IS NOT NULL AND ss.market_regime = $4 THEN 3
+          ELSE 4
+        END,
+        COALESCE(sr.completed_at, sr.created_at) DESC NULLS LAST,
+        ss.rank_position ASC NULLS LAST,
+        ss.symbol ASC
+      LIMIT 420
     `,
     [input.symbol, input.setupType, input.sector, input.marketRegime, input.bucket, input.currentTimestamp],
   );
@@ -142,11 +182,15 @@ async function getScannerSignalMemoryCandidates(input: {
 }
 
 function snapshotToCandidate(row: MarketMemorySnapshotRow): MarketMemoryCandidate {
+  const signature = signatureRecord(row.signature);
   return {
     decision: textOrNull(row.decision),
-    eventSignature: textOrNull(signatureRecord(row.signature).verified_event_signature),
+    drawdownBucket: textOrNull(signature.drawdown_bucket),
+    eventSignature: textOrNull(signature.verified_event_signature),
     finalScore: finiteDbNumber(row.final_score),
-    macroEventRegimeSignature: textOrNull(signatureRecord(row.signature).macro_event_regime_signature),
+    liquidityBucket: textOrNull(signature.liquidity_bucket),
+    macroEventRegimeSignature: textOrNull(signature.macro_event_regime_signature),
+    macroPressureBucket: textOrNull(signature.macro_pressure_bucket),
     marketRegime: textOrNull(row.market_regime),
     outcomes: outcomePoints(row.outcome),
     scoreBucket: textOrNull(row.score_bucket),
@@ -154,6 +198,7 @@ function snapshotToCandidate(row: MarketMemorySnapshotRow): MarketMemoryCandidat
     setupType: textOrNull(row.setup_type),
     signalTimestamp: timestampText(row.signal_ts),
     symbol: row.symbol.toUpperCase(),
+    volatilityBucket: textOrNull(signature.volatility_bucket),
   };
 }
 
@@ -161,9 +206,12 @@ function scannerSignalToCandidate(row: ScannerSignalMemoryRow): MarketMemoryCand
   const payload = signatureRecord(row.payload);
   return {
     decision: textOrNull(row.decision),
+    drawdownBucket: drawdownBucket(firstNumeric(payload.max_drawdown, payload.avg_max_drawdown, payload.max_drawdown_after_signal)),
     eventSignature: textOrNull(payload.verified_event_signature),
     finalScore: finiteDbNumber(row.final_score),
+    liquidityBucket: liquidityBucket(firstNumeric(payload.liquidity_pressure, payload.liquidity_pressure_adjustment, payload.avg_dollar_volume)),
     macroEventRegimeSignature: textOrNull(payload.macro_event_regime_signature),
+    macroPressureBucket: pressureBucket(firstNumeric(payload.macro_pressure_score, payload.macro_context_adjustment_total, payload.macro_alignment_score)),
     marketRegime: textOrNull(row.market_regime),
     outcomes: outcomePoints(row.outcome),
     scoreBucket: textOrNull(row.score_bucket),
@@ -171,6 +219,7 @@ function scannerSignalToCandidate(row: ScannerSignalMemoryRow): MarketMemoryCand
     setupType: textOrNull(row.setup_type),
     signalTimestamp: timestampText(row.signal_ts),
     symbol: row.symbol.toUpperCase(),
+    volatilityBucket: pressureBucket(firstNumeric(payload.volatility_pressure, payload.atr_pct, payload.annualized_volatility)),
   };
 }
 
@@ -218,4 +267,64 @@ function finiteDbNumber(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
   const parsed = typeof value === "number" ? value : Number(String(value).replace(/[$,%]/g, "").trim());
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+async function buildMarketMemoryForSignal(row: RankingRow, generatedAt: string): Promise<MarketMemorySummary> {
+  const candidates = await getMarketMemoryCandidates(row).catch((): MarketMemoryCandidate[] => []);
+  return buildMarketMemorySummary(row, candidates, { generatedAt });
+}
+
+function memoryCacheKey(row: RankingRow): string {
+  return [
+    row.symbol.trim().toUpperCase(),
+    textOrNull(row.setup_type) ?? "",
+    textOrNull(row.sector) ?? "",
+    textOrNull(row.market_regime) ?? "",
+    scoreBucket(row.final_score) ?? "",
+    textOrNull(row.final_decision ?? row.action) ?? "",
+    textOrNull(row.last_updated_utc ?? row.last_updated) ?? "",
+  ].join("|");
+}
+
+function pruneSignalMemoryCache(now: number): void {
+  for (const [key, entry] of signalMemoryCache) {
+    if (entry.expiresAt <= now) signalMemoryCache.delete(key);
+  }
+  while (signalMemoryCache.size > MARKET_MEMORY_SIGNAL_CACHE_LIMIT) {
+    const oldest = signalMemoryCache.keys().next().value;
+    if (!oldest) break;
+    signalMemoryCache.delete(oldest);
+  }
+}
+
+function firstNumeric(...values: unknown[]): number | null {
+  for (const value of values) {
+    const parsed = finiteDbNumber(value);
+    if (parsed !== null) return parsed;
+  }
+  return null;
+}
+
+function pressureBucket(value: number | null): string | null {
+  if (value === null) return null;
+  if (value >= 75) return "high_pressure";
+  if (value >= 50) return "elevated_pressure";
+  if (value >= 25) return "moderate_pressure";
+  return "low_pressure";
+}
+
+function liquidityBucket(value: number | null): string | null {
+  if (value === null) return null;
+  if (value >= 1_000_000_000) return "deep_liquidity";
+  if (value >= 100_000_000) return "good_liquidity";
+  return pressureBucket(value);
+}
+
+function drawdownBucket(value: number | null): string | null {
+  if (value === null) return null;
+  const magnitude = Math.abs(value);
+  if (magnitude >= 0.2 || magnitude >= 20) return "deep_drawdown";
+  if (magnitude >= 0.1 || magnitude >= 10) return "moderate_drawdown";
+  if (magnitude > 0) return "shallow_drawdown";
+  return null;
 }

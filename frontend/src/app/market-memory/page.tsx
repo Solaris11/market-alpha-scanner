@@ -40,13 +40,23 @@ type MemorySurfaceRow = {
 };
 
 type MarketMemorySurfaceModel = {
+  cacheStatus: "hit" | "miss";
   generatedAt: string;
   limitedReason: string | null;
   rows: MemorySurfaceRow[];
   universeCount: number;
 };
 
-const SAMPLE_SIZE = 8;
+type MarketMemorySurfaceCache = {
+  expiresAt: number;
+  value: Promise<MarketMemorySurfaceModel>;
+};
+
+const MEMORY_CARD_LIMIT = 4;
+const SAMPLE_SIZE = 6;
+const SURFACE_CACHE_TTL_MS = 60_000;
+
+let marketMemorySurfaceCache: MarketMemorySurfaceCache | null = null;
 
 export default async function MarketMemoryPage() {
   const model = await loadMarketMemorySurface();
@@ -78,10 +88,11 @@ export default async function MarketMemoryPage() {
                 </p>
                 <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <HeroMetric detail="Latest production scanner universe." label="Universe" tone="cyan" value={model.universeCount.toLocaleString("en-US")} />
-                  <HeroMetric detail="Current symbols sampled for memory depth." label="Sampled" tone="violet" value={model.rows.length.toLocaleString("en-US")} />
+                  <HeroMetric detail={`Route model cache ${model.cacheStatus}.`} label="Cache" tone={model.cacheStatus === "hit" ? "emerald" : "violet"} value={model.cacheStatus.toUpperCase()} />
                   <HeroMetric detail="Validated comparable setups across sampled rows." label="Comparables" tone={analogCount ? "emerald" : "amber"} value={totalComparableSetups.toLocaleString("en-US")} />
                   <HeroMetric detail="Strongest observed analog similarity." label="Top Similarity" tone={strongestScore === null ? "amber" : strongestScore >= 70 ? "emerald" : "cyan"} value={strongestScore === null ? "Limited" : `${strongestScore}%`} />
                 </div>
+                <MemoryTrustStrip model={model} />
               </div>
               <aside className="rounded-3xl border border-white/10 bg-slate-950/46 p-5">
                 <div className="flex items-center gap-3">
@@ -147,7 +158,7 @@ export default async function MarketMemoryPage() {
           </div>
 
           <section className="grid gap-4 lg:grid-cols-2">
-            {model.rows.map((item) => (
+            {model.rows.slice(0, MEMORY_CARD_LIMIT).map((item) => (
               <MemoryResearchCard item={item} key={item.row.symbol} />
             ))}
           </section>
@@ -158,10 +169,29 @@ export default async function MarketMemoryPage() {
 }
 
 async function loadMarketMemorySurface(): Promise<MarketMemorySurfaceModel> {
-  const generatedAt = new Date().toISOString();
+  const now = Date.now();
+  const cached = marketMemorySurfaceCache;
+  if (cached && cached.expiresAt > now) {
+    const model = await cached.value;
+    return { ...model, cacheStatus: "hit" };
+  }
+
+  const value = buildMarketMemorySurfaceModel(now);
+  marketMemorySurfaceCache = { expiresAt: now + SURFACE_CACHE_TTL_MS, value };
+  try {
+    const model = await value;
+    return model;
+  } catch (error) {
+    if (marketMemorySurfaceCache?.value === value) marketMemorySurfaceCache = null;
+    throw error;
+  }
+}
+
+async function buildMarketMemorySurfaceModel(now: number): Promise<MarketMemorySurfaceModel> {
+  const generatedAt = new Date(now).toISOString();
   try {
     const rankingRows = await getFullRanking();
-    const selectedRows = rankingRows.slice(0, SAMPLE_SIZE);
+    const selectedRows = selectMemoryRows(rankingRows).slice(0, SAMPLE_SIZE);
     const rows = await Promise.all(
       selectedRows.map(async (row): Promise<MemorySurfaceRow> => ({
         memory: await getMarketMemoryForSignal(row).catch(() => unavailableMemorySummary()),
@@ -170,6 +200,7 @@ async function loadMarketMemorySurface(): Promise<MarketMemorySurfaceModel> {
     );
 
     return {
+      cacheStatus: "miss",
       generatedAt,
       limitedReason: selectedRows.length ? null : "No current scanner rows are available, so Market Memory cannot compare current setups yet.",
       rows,
@@ -177,6 +208,7 @@ async function loadMarketMemorySurface(): Promise<MarketMemorySurfaceModel> {
     };
   } catch {
     return {
+      cacheStatus: "miss",
       generatedAt,
       limitedReason: "Market Memory source queries are unavailable right now. The surface remains intentionally limited instead of fabricating historical analogs.",
       rows: [],
@@ -195,9 +227,41 @@ function unavailableMemorySummary(): MarketMemorySummary {
       sampleSize: 0,
       tier: "unavailable",
     },
+    freshness: {
+      ageMinutes: null,
+      generatedAt: new Date().toISOString(),
+      label: "Freshness unknown",
+      sourceLatestAt: null,
+      status: "unknown",
+    },
+    generatedAt: new Date().toISOString(),
+    insight: {
+      invalidationConditions: ["Memory source queries must recover before analog context can be used."],
+      supportingEvidence: ["Market Memory source query was unavailable for this symbol."],
+      whatDiffers: ["No validated differentiator is available yet."],
+      whatIsSimilar: ["No validated similarity driver is available yet."],
+      whyItMatters: "The unavailable state prevents TradeVeto from overstating historical comparison.",
+    },
     narrative: ["Market Memory is unavailable for this symbol in the current production request."],
     outcome: null,
+    warnings: ["Market Memory source query was unavailable for this symbol."],
   };
+}
+
+function selectMemoryRows(rows: RankingRow[]): RankingRow[] {
+  return [...rows]
+    .filter((row) => Boolean(row.symbol))
+    .sort((left, right) => memoryPriorityScore(right) - memoryPriorityScore(left) || String(left.symbol).localeCompare(String(right.symbol)));
+}
+
+function memoryPriorityScore(row: RankingRow): number {
+  return (
+    (finiteScore(row.final_score) ?? 0) * 0.55
+    + (finiteScore((row as unknown as Record<string, unknown>).analog_quality_score) ?? 0) * 0.18
+    + (finiteScore((row as unknown as Record<string, unknown>).regime_similarity_score) ?? 0) * 0.12
+    + (finiteScore((row as unknown as Record<string, unknown>).market_memory_similarity) ?? 0) * 0.12
+    + (finiteScore((row as unknown as Record<string, unknown>).volatility_pressure) ?? 0) * 0.03
+  );
 }
 
 function buildMemoryClusters(model: MarketMemorySurfaceModel): CinematicCluster[] {
@@ -351,6 +415,7 @@ function buildMemoryTimelineItems(model: MarketMemorySurfaceModel): CinematicTim
 function MemoryResearchCard({ item }: { item: MemorySurfaceRow }) {
   const top = item.memory.analogs[0] ?? null;
   const tone = toneFromEvidenceTier(item.memory.evidence.tier);
+  const insight = item.memory.insight;
   return (
     <article className={`rounded-3xl border p-5 shadow-2xl shadow-black/20 ring-1 ring-white/5 ${tonePanelClass(tone)}`}>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -368,16 +433,38 @@ function MemoryResearchCard({ item }: { item: MemorySurfaceRow }) {
 
       <div className="mt-5 grid gap-3 sm:grid-cols-3">
         <MemoryStat label="Evidence" tone={tone} value={item.memory.evidence.label} />
-        <MemoryStat label="Samples" tone="violet" value={item.memory.evidence.sampleSize.toLocaleString("en-US")} />
+        <MemoryStat label="Confidence" tone="violet" value={item.memory.confidence ? `${item.memory.confidence.score}/100` : "Limited"} />
         <MemoryStat label="Top analog" tone={top ? toneFromSimilarity(top.similarityScore) : "amber"} value={top ? `${top.symbol} ${top.similarityScore}%` : "Limited"} />
       </div>
 
       <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
-        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Narrative</div>
-        <div className="mt-2 space-y-2 text-sm leading-6 text-slate-300">
-          {item.memory.narrative.map((line) => <p key={line}>{line}</p>)}
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Memory explanation</div>
+          <div className="font-mono text-[10px] font-black uppercase text-slate-500">{item.memory.freshness?.label ?? "Freshness limited"}</div>
         </div>
+        <p className="mt-2 text-sm leading-6 text-slate-300">{item.memory.narrative[0] ?? "Market Memory context is limited for this symbol."}</p>
+        {insight ? (
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <InsightList label="Similar" tone="cyan" values={insight.whatIsSimilar.slice(0, 3)} />
+            <InsightList label="Differs" tone="amber" values={insight.whatDiffers.slice(0, 3)} />
+          </div>
+        ) : null}
+        {item.memory.warnings?.[0] ? (
+          <div className="mt-3 rounded-2xl border border-amber-300/18 bg-amber-400/[0.055] p-3 text-xs leading-5 text-amber-100">
+            {item.memory.warnings[0]}
+          </div>
+        ) : null}
       </div>
+
+      {insight ? (
+        <div className="mt-4 rounded-2xl border border-violet-300/16 bg-violet-400/[0.045] p-4">
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-200">Why it matters</div>
+          <p className="mt-2 text-sm leading-6 text-slate-300">{insight.whyItMatters}</p>
+          <div className="mt-3 text-xs leading-5 text-slate-500">
+            Invalidation: {insight.invalidationConditions[0] ?? "Memory conditions must remain comparable."}
+          </div>
+        </div>
+      ) : null}
 
       {top ? (
         <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -414,6 +501,45 @@ function MemoryResearchCard({ item }: { item: MemorySurfaceRow }) {
         </div>
       ) : null}
     </article>
+  );
+}
+
+function MemoryTrustStrip({ model }: { model: MarketMemorySurfaceModel }) {
+  const generated = formatMemoryDate(model.generatedAt);
+  const warnings = model.rows.flatMap((item) => item.memory.warnings ?? []);
+  const confidence = averageNumber(model.rows.map((item) => item.memory.confidence?.score ?? null));
+  const staleCount = model.rows.filter((item) => item.memory.freshness?.status === "stale").length;
+  return (
+    <div className="mt-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      <TrustPill label="Generated" tone="cyan" value={generated} />
+      <TrustPill label="Confidence" tone={confidence !== null && confidence >= 60 ? "emerald" : "amber"} value={confidence === null ? "Limited" : `${confidence}/100`} />
+      <TrustPill label="Freshness" tone={staleCount ? "amber" : "emerald"} value={staleCount ? `${staleCount} stale` : "Bounded"} />
+      <TrustPill label="Warnings" tone={warnings.length ? "amber" : "cyan"} value={warnings.length ? `${warnings.length}` : "None"} />
+    </div>
+  );
+}
+
+function TrustPill({ label, tone, value }: { label: string; tone: VisualTone; value: string }) {
+  return (
+    <div className={`rounded-2xl border bg-black/20 px-3 py-2 ${toneBorderClass(tone)}`}>
+      <div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</div>
+      <div className="mt-1 truncate text-xs font-black text-slate-100">{value}</div>
+    </div>
+  );
+}
+
+function InsightList({ label, tone, values }: { label: string; tone: VisualTone; values: string[] }) {
+  return (
+    <div className={`rounded-2xl border bg-slate-950/38 p-3 ${toneBorderClass(tone)}`}>
+      <div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</div>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        {(values.length ? values : ["Limited"]).map((value) => (
+          <span className="rounded-full border border-white/10 bg-white/[0.04] px-2 py-1 text-[10px] font-bold text-slate-300" key={`${label}:${value}`}>
+            {value}
+          </span>
+        ))}
+      </div>
+    </div>
   );
 }
 

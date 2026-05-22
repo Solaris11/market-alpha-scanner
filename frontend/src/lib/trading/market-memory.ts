@@ -11,7 +11,9 @@ export type MarketMemoryCandidate = {
   decision: string | null;
   eventSignature?: string | null;
   finalScore: number | null;
+  liquidityBucket?: string | null;
   macroEventRegimeSignature?: string | null;
+  macroPressureBucket?: string | null;
   marketRegime: string | null;
   outcomes: MarketMemoryOutcomePoint[];
   scoreBucket: string | null;
@@ -19,6 +21,8 @@ export type MarketMemoryCandidate = {
   setupType: string | null;
   signalTimestamp: string;
   symbol: string;
+  volatilityBucket?: string | null;
+  drawdownBucket?: string | null;
 };
 
 export type MarketMemoryAnalog = MarketMemoryCandidate & {
@@ -43,12 +47,39 @@ export type MarketMemoryOutcomeSummary = {
   winRate: number | null;
 };
 
+export type MarketMemoryFreshness = {
+  ageMinutes: number | null;
+  generatedAt: string;
+  label: string;
+  sourceLatestAt: string | null;
+  status: "fresh" | "aging" | "stale" | "unknown";
+};
+
+export type MarketMemoryConfidence = {
+  drivers: string[];
+  label: string;
+  score: number;
+};
+
+export type MarketMemoryInsight = {
+  invalidationConditions: string[];
+  supportingEvidence: string[];
+  whatDiffers: string[];
+  whatIsSimilar: string[];
+  whyItMatters: string;
+};
+
 export type MarketMemorySummary = {
   analogs: MarketMemoryAnalog[];
   available: boolean;
+  confidence?: MarketMemoryConfidence;
   evidence: EvidenceMaturity;
+  freshness?: MarketMemoryFreshness;
+  generatedAt?: string;
+  insight?: MarketMemoryInsight;
   narrative: string[];
   outcome: MarketMemoryOutcomeSummary | null;
+  warnings?: string[];
 };
 
 const OUTCOME_HORIZON_PRIORITY = ["10D", "5D", "3D", "2D", "1D"];
@@ -66,9 +97,12 @@ export function scoreBucket(value: unknown): string | null {
 export function buildCurrentMemoryCandidate(row: RankingRow): MarketMemoryCandidate {
   return {
     decision: textOrNull(row.final_decision ?? row.action),
+    drawdownBucket: drawdownBucket(firstNumeric(rawField(row, "max_drawdown"), rawField(row, "avg_max_drawdown"), rawField(row, "max_drawdown_after_signal"))),
     eventSignature: textOrNull(rawField(row, "verified_event_signature")),
     finalScore: finiteNumber(row.final_score),
+    liquidityBucket: liquidityBucket(firstNumeric(rawField(row, "liquidity_pressure"), rawField(row, "liquidity_pressure_adjustment"), rawField(row, "avg_dollar_volume"))),
     macroEventRegimeSignature: textOrNull(rawField(row, "macro_event_regime_signature")),
+    macroPressureBucket: pressureBucket(firstNumeric(rawField(row, "macro_pressure_score"), rawField(row, "macro_context_adjustment_total"), rawField(row, "macro_alignment_score"))),
     marketRegime: textOrNull(row.market_regime),
     outcomes: [],
     scoreBucket: scoreBucket(row.final_score),
@@ -76,6 +110,7 @@ export function buildCurrentMemoryCandidate(row: RankingRow): MarketMemoryCandid
     setupType: textOrNull(row.setup_type),
     signalTimestamp: textOrNull(row.last_updated_utc ?? row.last_updated) ?? new Date(0).toISOString(),
     symbol: row.symbol.toUpperCase(),
+    volatilityBucket: pressureBucket(firstNumeric(rawField(row, "volatility_pressure"), rawField(row, "atr_pct"), rawField(row, "annualized_volatility"))),
   };
 }
 
@@ -88,6 +123,10 @@ export function similarityReasons(current: MarketMemoryCandidate, candidate: Mar
   if (sameText(current.decision, candidate.decision)) reasons.push("same_decision_state");
   if (sameText(current.eventSignature ?? null, candidate.eventSignature ?? null)) reasons.push("similar_event_context");
   if (sameText(current.macroEventRegimeSignature ?? null, candidate.macroEventRegimeSignature ?? null)) reasons.push("similar_macro_event_regime");
+  if (sameText(current.volatilityBucket ?? null, candidate.volatilityBucket ?? null)) reasons.push("similar_volatility_state");
+  if (sameText(current.macroPressureBucket ?? null, candidate.macroPressureBucket ?? null)) reasons.push("similar_macro_pressure");
+  if (sameText(current.liquidityBucket ?? null, candidate.liquidityBucket ?? null)) reasons.push("similar_liquidity_state");
+  if (sameText(current.drawdownBucket ?? null, candidate.drawdownBucket ?? null)) reasons.push("similar_drawdown_profile");
   if (current.symbol === candidate.symbol) reasons.push("same_symbol_memory");
   return reasons;
 }
@@ -101,6 +140,10 @@ export function marketMemorySimilarity(current: MarketMemoryCandidate, candidate
   if (sameText(current.decision, candidate.decision)) score += 8;
   if (sameText(current.eventSignature ?? null, candidate.eventSignature ?? null)) score += 7;
   if (sameText(current.macroEventRegimeSignature ?? null, candidate.macroEventRegimeSignature ?? null)) score += 8;
+  if (sameText(current.volatilityBucket ?? null, candidate.volatilityBucket ?? null)) score += 6;
+  if (sameText(current.macroPressureBucket ?? null, candidate.macroPressureBucket ?? null)) score += 6;
+  if (sameText(current.liquidityBucket ?? null, candidate.liquidityBucket ?? null)) score += 4;
+  if (sameText(current.drawdownBucket ?? null, candidate.drawdownBucket ?? null)) score += 4;
   if (current.symbol === candidate.symbol) score += 8;
 
   if (current.finalScore !== null && candidate.finalScore !== null) {
@@ -143,8 +186,9 @@ export function evidenceMaturity(sampleSize: number): EvidenceMaturity {
   };
 }
 
-export function buildMarketMemorySummary(row: RankingRow, candidates: MarketMemoryCandidate[], options: { maxAnalogs?: number } = {}): MarketMemorySummary {
+export function buildMarketMemorySummary(row: RankingRow, candidates: MarketMemoryCandidate[], options: { generatedAt?: string; maxAnalogs?: number } = {}): MarketMemorySummary {
   const current = buildCurrentMemoryCandidate(row);
+  const generatedAt = options.generatedAt ?? new Date().toISOString();
   const matchedAnalogs = candidates
     .filter((candidate) => candidate.symbol && candidate.signalTimestamp)
     .filter((candidate) => candidate.symbol !== current.symbol || candidate.signalTimestamp !== current.signalTimestamp)
@@ -159,12 +203,20 @@ export function buildMarketMemorySummary(row: RankingRow, candidates: MarketMemo
 
   const evidence = evidenceMaturity(matchedAnalogs.length);
   const outcome = matchedAnalogs.length ? summarizeOutcomes(matchedAnalogs) : null;
+  const freshness = memoryFreshness(generatedAt, current.signalTimestamp);
+  const confidence = memoryConfidence(evidence, analogs, outcome);
+  const warnings = memoryWarnings(evidence, freshness, outcome);
   return {
     analogs,
     available: matchedAnalogs.length > 0,
+    confidence,
     evidence,
+    freshness,
+    generatedAt,
+    insight: memoryInsight(current, analogs, evidence, outcome),
     narrative: buildNarrative(current, matchedAnalogs, outcome),
     outcome,
+    warnings,
   };
 }
 
@@ -217,6 +269,10 @@ export function memoryReasonLabel(code: string): string {
   if (code === "same_decision_state") return "same decision state";
   if (code === "similar_event_context") return "similar event context";
   if (code === "similar_macro_event_regime") return "similar macro/event regime";
+  if (code === "similar_volatility_state") return "similar volatility state";
+  if (code === "similar_macro_pressure") return "similar macro pressure";
+  if (code === "similar_liquidity_state") return "similar liquidity state";
+  if (code === "similar_drawdown_profile") return "similar drawdown profile";
   if (code === "same_symbol_memory") return "same symbol memory";
   return humanizeLabel(code);
 }
@@ -245,6 +301,115 @@ function textOrNull(value: unknown): string | null {
 
 function rawField(row: RankingRow, key: string): unknown {
   return (row as unknown as Record<string, unknown>)[key];
+}
+
+function firstNumeric(...values: unknown[]): number | null {
+  for (const value of values) {
+    const parsed = finiteNumber(value);
+    if (parsed !== null) return parsed;
+  }
+  return null;
+}
+
+function pressureBucket(value: number | null): string | null {
+  if (value === null) return null;
+  if (value >= 75) return "high_pressure";
+  if (value >= 50) return "elevated_pressure";
+  if (value >= 25) return "moderate_pressure";
+  return "low_pressure";
+}
+
+function liquidityBucket(value: number | null): string | null {
+  if (value === null) return null;
+  if (value >= 1_000_000_000) return "deep_liquidity";
+  if (value >= 100_000_000) return "good_liquidity";
+  return pressureBucket(value);
+}
+
+function drawdownBucket(value: number | null): string | null {
+  if (value === null) return null;
+  const magnitude = Math.abs(value);
+  if (magnitude >= 0.2 || magnitude >= 20) return "deep_drawdown";
+  if (magnitude >= 0.1 || magnitude >= 10) return "moderate_drawdown";
+  if (magnitude > 0) return "shallow_drawdown";
+  return null;
+}
+
+function memoryFreshness(generatedAt: string, sourceLatestAt: string | null): MarketMemoryFreshness {
+  const generated = Date.parse(generatedAt);
+  const source = sourceLatestAt ? Date.parse(sourceLatestAt) : Number.NaN;
+  if (!Number.isFinite(generated) || !Number.isFinite(source)) {
+    return {
+      ageMinutes: null,
+      generatedAt,
+      label: "Freshness unknown",
+      sourceLatestAt,
+      status: "unknown",
+    };
+  }
+  const ageMinutes = Math.max(0, Math.round((generated - source) / 60_000));
+  if (ageMinutes <= 90) return { ageMinutes, generatedAt, label: "Fresh memory packet", sourceLatestAt, status: "fresh" };
+  if (ageMinutes <= 24 * 60) return { ageMinutes, generatedAt, label: "Aging memory packet", sourceLatestAt, status: "aging" };
+  return { ageMinutes, generatedAt, label: "Stale memory packet", sourceLatestAt, status: "stale" };
+}
+
+function memoryConfidence(evidence: EvidenceMaturity, analogs: MarketMemoryAnalog[], outcome: MarketMemoryOutcomeSummary | null): MarketMemoryConfidence {
+  const topSimilarity = analogs[0]?.similarityScore ?? 0;
+  const evidenceScore = evidence.tier === "high" ? 88 : evidence.tier === "moderate" ? 68 : evidence.tier === "limited" ? 38 : 12;
+  const outcomeScore = outcome ? 12 : 0;
+  const score = Math.max(0, Math.min(100, Math.round(evidenceScore * 0.55 + topSimilarity * 0.33 + outcomeScore)));
+  return {
+    drivers: [
+      `${evidence.sampleSize} comparable setups`,
+      analogs[0] ? `${analogs[0].similarityScore}% closest similarity` : "no closest analog",
+      outcome ? `${outcome.horizon} outcome evidence available` : "outcome evidence limited",
+    ],
+    label: score >= 75 ? "High memory confidence" : score >= 55 ? "Moderate memory confidence" : score >= 30 ? "Limited memory confidence" : "Memory confidence unavailable",
+    score,
+  };
+}
+
+function memoryWarnings(evidence: EvidenceMaturity, freshness: MarketMemoryFreshness, outcome: MarketMemoryOutcomeSummary | null): string[] {
+  const warnings: string[] = [];
+  if (evidence.tier === "limited" || evidence.tier === "unavailable") warnings.push(evidence.explanation);
+  if (freshness.status === "stale") warnings.push("This memory packet is stale and should be treated as historical context only.");
+  if (!outcome) warnings.push("Forward outcome evidence is not deep enough for this analog cluster yet.");
+  return warnings;
+}
+
+function memoryInsight(current: MarketMemoryCandidate, analogs: MarketMemoryAnalog[], evidence: EvidenceMaturity, outcome: MarketMemoryOutcomeSummary | null): MarketMemoryInsight {
+  const top = analogs[0] ?? null;
+  const similar = top?.reasonCodes.slice(0, 5).map(memoryReasonLabel) ?? [];
+  const differs = differenceLabels(current, top).slice(0, 4);
+  return {
+    invalidationConditions: [
+      "Current market regime diverges from the analog cluster.",
+      "Volatility or liquidity pressure moves into a different bucket.",
+      "Evidence freshness becomes stale or comparable sample depth falls below the stated threshold.",
+    ],
+    supportingEvidence: [
+      evidence.explanation,
+      top ? `Closest analog is ${top.symbol} at ${top.similarityScore}% similarity.` : "No closest analog is available yet.",
+      outcome ? `${outcome.horizon} historical outcome summary is available.` : "Outcome evidence is still limited.",
+    ],
+    whatDiffers: differs.length ? differs : ["No validated differentiator is available yet."],
+    whatIsSimilar: similar.length ? similar : ["No validated similarity driver is available yet."],
+    whyItMatters: top
+      ? "Memory context helps compare today's setup against prior environments while preserving uncertainty."
+      : "The absence of analog depth is itself a risk signal for relying on historical comparison.",
+  };
+}
+
+function differenceLabels(current: MarketMemoryCandidate, top: MarketMemoryAnalog | null): string[] {
+  if (!top) return [];
+  const labels: string[] = [];
+  if (!sameText(current.setupType, top.setupType)) labels.push("setup type differs");
+  if (!sameText(current.marketRegime, top.marketRegime)) labels.push("market regime differs");
+  if (!sameText(current.sector, top.sector)) labels.push("sector differs");
+  if (!sameText(current.volatilityBucket ?? null, top.volatilityBucket ?? null)) labels.push("volatility state differs");
+  if (!sameText(current.macroPressureBucket ?? null, top.macroPressureBucket ?? null)) labels.push("macro pressure differs");
+  if (!sameText(current.liquidityBucket ?? null, top.liquidityBucket ?? null)) labels.push("liquidity state differs");
+  return labels;
 }
 
 function sameText(left: string | null, right: string | null): boolean {
