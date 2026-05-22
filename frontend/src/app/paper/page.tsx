@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { GhostPortfolioCard } from "@/components/paper/GhostPortfolioCard";
+import { InstitutionalPortfolioOperationsPanel } from "@/components/paper/InstitutionalPortfolioOperationsPanel";
 import { ManualPortfolioScenarioLab } from "@/components/paper/ManualPortfolioScenarioLab";
 import { ManualPaperTradeForm } from "@/components/paper/ManualPaperTradeForm";
 import { PortfolioIntelligencePanel } from "@/components/paper/PortfolioIntelligencePanel";
@@ -31,6 +32,7 @@ import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib
 import { getNarrativeMap } from "@/lib/server/narrative-intelligence";
 import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
+import { buildInstitutionalPortfolioOperationsSystem } from "@/lib/trading/institutional-portfolio-operations";
 import { buildPortfolioIntelligenceSystem } from "@/lib/trading/portfolio-intelligence";
 import { buildScenarioIntelligenceSystem } from "@/lib/trading/scenario-intelligence";
 import { buildSimulatedAiPortfolioSystem, type SimulatedAiPortfolioSystem, type SimulatedPortfolioModeResult } from "@/lib/trading/simulated-ai-portfolio";
@@ -1390,6 +1392,11 @@ export default async function PaperPage() {
     positions: data.positions,
     scenarioSystem: scenarioIntelligence,
   });
+  const institutionalOperations = buildInstitutionalPortfolioOperationsSystem({
+    portfolio: portfolioIntelligence,
+    preferredMode: "balanced",
+    simulatedPortfolio: simulatedEvidencePortfolio,
+  });
   const account = data.account;
   const closedPositions = closedPaperPositions(data.positions);
   const equityPoints = buildEquityPoints(closedPositions);
@@ -1432,6 +1439,8 @@ export default async function PaperPage() {
         />
 
         <PaperPortfolioRealismPanel accountValue={account?.total_account_value ?? null} positions={data.positions} />
+
+        {premiumAccess ? <InstitutionalPortfolioOperationsPanel system={institutionalOperations} /> : null}
 
         {premiumAccess ? <SimulatedEvidencePortfolioBridge sampleCount={completedEvidenceSamples} system={simulatedEvidencePortfolio} /> : null}
 
