@@ -205,6 +205,12 @@ test("daily market command ranks opportunity, breakout, crash risk, money flow, 
   assert.match(model.developments[0]?.bearishImplication ?? "", /Rates pressure/);
   assert.match(model.developments[0]?.relatedMacroContext ?? "", /growth confidence/);
   assert.equal(model.developments[0]?.sourceQualityLabel, "Verified market source");
+  assert.equal(model.developments[0]?.providerAttribution, "Verified market source · Reuters");
+  assert.equal(model.developments[0]?.freshnessLabel, "Recent · 2h old");
+  assert.equal(model.developments[0]?.symbolRelevanceLabel, "Symbol relevance: AMD, MU");
+  assert.equal(model.developments[0]?.watchlistRelevanceLabel, "Watchlist relevance: AMD");
+  assert.match(model.developments[0]?.latencyLabel ?? "", /latency not instrumented/);
+  assert.match(model.developments[0]?.uncertaintyLabel ?? "", /High relevance/);
   assert.equal(model.developments[0]?.sectorImpactLabel, "Semiconductors impact");
   assert.ok((model.developments[0]?.priorityScore ?? 0) >= 90);
   assert.equal(model.newsEcosystem.watchlistImpactCount, 1);
@@ -213,8 +219,12 @@ test("daily market command ranks opportunity, breakout, crash risk, money flow, 
   assert.equal(model.newsEcosystem.calendarCount, 3);
   assert.ok(model.newsEcosystem.completenessScore > 0);
   assert.equal(model.providerCoverage[0]?.source, "Reuters");
+  assert.ok(model.providerStrategyAudit.some((audit) => audit.domain === "rates" && audit.coverage === "active" && audit.provider === "Reuters"));
+  assert.ok(model.providerStrategyAudit.some((audit) => audit.domain === "earnings" && audit.coverage === "calendar-only"));
+  assert.ok(model.providerStrategyAudit.some((audit) => audit.domain === "geopolitical-events" && audit.coverage === "limited"));
   assert.equal(model.newsEvolution[0]?.itemCount, 1);
-  assert.ok(model.crossAssetRelationships.some((relationship) => relationship.affectedSymbols.includes("AMD") && relationship.affectedSymbols.includes("MU")));
+  assert.ok(model.crossAssetRelationships.some((relationship) => relationship.affectedSymbols.includes("AMD") && relationship.affectedSymbols.includes("MU") && relationship.relationshipType === "Rates/yields versus duration-sensitive growth"));
+  assert.ok(model.macroEventTimeline.some((item) => item.source === "Verified market source · Reuters" && item.relationshipType === "Rates/yields versus duration-sensitive growth"));
   assert.ok(model.companyTimelines.some((timeline) => timeline.symbol === "AMD" && timeline.timeline.length > 0));
   assert.ok(model.macroStorylines.some((story) => story.label === "Rates and inflation pressure"));
   assert.ok(model.sectorNews.some((cluster) => cluster.sector === "Semiconductors"));
