@@ -1,14 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { BrainCircuit, Clock3, Database, GitCompareArrows, History, Layers3, ShieldCheck, Target } from "lucide-react";
-import {
-  CinematicClusterMosaic,
-  CinematicHeatMatrix,
-  CinematicTimeline,
-  type CinematicCluster,
-  type CinematicHeatCell,
-  type CinematicTimelineItem,
-} from "@/components/visual/CinematicIntelligencePanels";
+import { BrainCircuit, Database, GitCompareArrows, History, Layers3, ShieldCheck, Target } from "lucide-react";
+import type { ReactNode } from "react";
 import type { ScoreFactor, VisualTone } from "@/components/visual/MiniVisuals";
 import { MarketingShell } from "@/components/marketing/MarketingShell";
 import { marketingMetadata } from "@/lib/marketing-seo";
@@ -45,6 +38,48 @@ type MarketMemorySurfaceModel = {
   limitedReason: string | null;
   rows: MemorySurfaceRow[];
   universeCount: number;
+};
+
+type MemoryClusterItem = {
+  detail?: string;
+  href?: string;
+  label: string;
+  symbol?: string;
+  tone?: VisualTone;
+  value?: string;
+};
+
+type MemoryCluster = {
+  emptyMessage?: string;
+  eyebrow?: string;
+  factors?: ScoreFactor[];
+  icon?: ReactNode;
+  items?: MemoryClusterItem[];
+  metric?: string;
+  metricLabel?: string;
+  score?: number | null;
+  summary: string;
+  title: string;
+  tone?: VisualTone;
+  updatedAt?: string;
+  values?: Array<number | null | undefined>;
+};
+
+type MemoryHeatCell = {
+  detail?: string;
+  href?: string;
+  label: string;
+  tone?: VisualTone;
+  value: number | null;
+};
+
+type MemoryTimelineItem = {
+  detail?: string;
+  href?: string;
+  label: string;
+  metric?: string;
+  tone?: VisualTone;
+  timestamp?: string;
 };
 
 type MarketMemorySurfaceCache = {
@@ -133,7 +168,7 @@ export default async function MarketMemoryPage() {
             </section>
           ) : null}
 
-          <CinematicClusterMosaic
+          <MemoryClusterGrid
             clusters={clusters}
             eyebrow="Memory cognition surface"
             summary="Clusters are derived from current scanner rows and validated historical memory. Empty clusters stay limited instead of being simulated."
@@ -141,14 +176,14 @@ export default async function MarketMemoryPage() {
           />
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_390px]">
-            <CinematicHeatMatrix
+            <MemoryHeatGrid
               cells={heatCells}
               emptyMessage="No validated market-memory heat cells are available yet."
               eyebrow="Similarity heat"
               summary="Heat cells show strongest similarity and evidence depth across sampled current rows."
               title="Analog Similarity Matrix"
             />
-            <CinematicTimeline
+            <MemoryTimelineRail
               emptyMessage="No validated historical analog timeline is available yet."
               eyebrow="Memory timeline"
               items={timelineItems}
@@ -264,7 +299,7 @@ function memoryPriorityScore(row: RankingRow): number {
   );
 }
 
-function buildMemoryClusters(model: MarketMemorySurfaceModel): CinematicCluster[] {
+function buildMemoryClusters(model: MarketMemorySurfaceModel): MemoryCluster[] {
   const rowsWithMemory = model.rows.filter((item) => item.memory.available);
   const topAnalogs = model.rows.flatMap((item) => item.memory.analogs.slice(0, 3));
   const outcomeRows = model.rows.filter((item) => item.memory.outcome);
@@ -377,8 +412,8 @@ function buildMemoryClusters(model: MarketMemorySurfaceModel): CinematicCluster[
   ];
 }
 
-function buildMemoryHeatCells(model: MarketMemorySurfaceModel): CinematicHeatCell[] {
-  return model.rows.flatMap((item): CinematicHeatCell[] => {
+function buildMemoryHeatCells(model: MarketMemorySurfaceModel): MemoryHeatCell[] {
+  return model.rows.flatMap((item): MemoryHeatCell[] => {
     const strongest = item.memory.analogs[0] ?? null;
     return [
       {
@@ -399,9 +434,9 @@ function buildMemoryHeatCells(model: MarketMemorySurfaceModel): CinematicHeatCel
   }).slice(0, 16);
 }
 
-function buildMemoryTimelineItems(model: MarketMemorySurfaceModel): CinematicTimelineItem[] {
+function buildMemoryTimelineItems(model: MarketMemorySurfaceModel): MemoryTimelineItem[] {
   return model.rows
-    .flatMap((item) => item.memory.analogs.slice(0, 2).map((analog): CinematicTimelineItem => ({
+    .flatMap((item) => item.memory.analogs.slice(0, 2).map((analog): MemoryTimelineItem => ({
       detail: `${item.row.symbol} current context matched ${analog.symbol} through ${analog.reasonCodes.slice(0, 3).map(memoryReasonLabel).join(", ") || "limited reason detail"}.`,
       href: `/symbol/${encodeURIComponent(item.row.symbol)}`,
       label: `${item.row.symbol} -> ${analog.symbol}`,
@@ -504,6 +539,122 @@ function MemoryResearchCard({ item }: { item: MemorySurfaceRow }) {
   );
 }
 
+function MemoryClusterGrid({ clusters, eyebrow, summary, title }: { clusters: MemoryCluster[]; eyebrow: string; summary: string; title: string }) {
+  return (
+    <section className="rounded-[2rem] border border-cyan-300/16 bg-slate-950/48 p-5 shadow-2xl shadow-black/20">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">{eyebrow}</div>
+          <h2 className="mt-2 text-2xl font-black text-white sm:text-3xl">{title}</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">{summary}</p>
+        </div>
+      </div>
+      <div className="mt-5 grid gap-3 lg:grid-cols-2 xl:grid-cols-3">
+        {clusters.map((cluster) => {
+          const tone = cluster.tone ?? "cyan";
+          const items = cluster.items ?? [];
+          return (
+            <article className={`rounded-3xl border bg-white/[0.025] p-4 ${toneBorderClass(tone)}`} key={cluster.title}>
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">{cluster.eyebrow ?? "Memory cluster"}</div>
+                  <h3 className="mt-1 truncate text-lg font-black text-white">{cluster.title}</h3>
+                </div>
+                <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-2xl border bg-black/20 ${toneBorderClass(tone)}`}>{cluster.icon}</div>
+              </div>
+              <div className="mt-3 flex items-end justify-between gap-3">
+                <div>
+                  <div className="font-mono text-2xl font-black text-white">{cluster.metric ?? (cluster.score === null || cluster.score === undefined ? "Limited" : Math.round(cluster.score))}</div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{cluster.metricLabel ?? "score"}</div>
+                </div>
+                <div className="text-right text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">{cluster.updatedAt ? formatMemoryDate(cluster.updatedAt) : "Latest"}</div>
+              </div>
+              <p className="mt-3 line-clamp-3 text-xs leading-5 text-slate-400">{cluster.summary}</p>
+              {cluster.factors?.length ? (
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  {cluster.factors.slice(0, 3).map((factor) => {
+                    const factorValue = typeof factor.value === "number" && Number.isFinite(factor.value) ? Math.round(factor.value) : null;
+                    return (
+                      <div className={`rounded-2xl border bg-black/20 px-2 py-2 ${toneBorderClass(factor.tone ?? "cyan")}`} key={`${cluster.title}:${factor.label}`}>
+                        <div className="truncate text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">{factor.label}</div>
+                        <div className="mt-1 font-mono text-xs font-black text-slate-100">{factorValue === null ? "N/A" : `${factorValue}`}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : null}
+              <div className="mt-3 space-y-2">
+                {(items.length ? items : [{ detail: cluster.emptyMessage ?? "Limited validated evidence.", label: "Limited", value: "N/A" }]).slice(0, 3).map((item) => (
+                  <MemoryInlineItem item={item} key={`${cluster.title}:${item.label}:${item.value ?? ""}`} />
+                ))}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function MemoryHeatGrid({ cells, emptyMessage, eyebrow, summary, title }: { cells: MemoryHeatCell[]; emptyMessage: string; eyebrow: string; summary: string; title: string }) {
+  return (
+    <section className="rounded-[2rem] border border-violet-300/16 bg-slate-950/48 p-5">
+      <div className="text-[10px] font-black uppercase tracking-[0.24em] text-violet-300">{eyebrow}</div>
+      <h2 className="mt-2 text-2xl font-black text-white">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-400">{summary}</p>
+      <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {(cells.length ? cells : [{ detail: emptyMessage, label: "Limited", value: null, tone: "amber" as const }]).slice(0, 12).map((cell) => (
+          <LinkOrDiv className={`min-h-24 rounded-2xl border bg-black/20 p-3 ${toneBorderClass(cell.tone ?? "cyan")}`} href={cell.href} key={`${cell.label}:${cell.value ?? "limited"}`}>
+            <div className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">{cell.label}</div>
+            <div className="mt-2 font-mono text-2xl font-black text-white">{cell.value === null ? "N/A" : Math.round(cell.value)}</div>
+            <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-500">{cell.detail}</p>
+          </LinkOrDiv>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MemoryTimelineRail({ emptyMessage, eyebrow, items, summary, title }: { emptyMessage: string; eyebrow: string; items: MemoryTimelineItem[]; summary: string; title: string }) {
+  const visible = items.length ? items : [{ detail: emptyMessage, label: "Limited", metric: "N/A", tone: "amber" as const }];
+  return (
+    <section className="rounded-[2rem] border border-cyan-300/16 bg-slate-950/48 p-5">
+      <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">{eyebrow}</div>
+      <h2 className="mt-2 text-2xl font-black text-white">{title}</h2>
+      <p className="mt-2 text-sm leading-6 text-slate-400">{summary}</p>
+      <div className="mt-5 space-y-2">
+        {visible.slice(0, 8).map((item) => (
+          <LinkOrDiv className={`block rounded-2xl border bg-black/20 p-3 ${toneBorderClass(item.tone ?? "cyan")}`} href={item.href} key={`${item.label}:${item.timestamp ?? ""}`}>
+            <div className="flex items-center justify-between gap-3">
+              <span className="truncate text-sm font-black text-slate-100">{item.label}</span>
+              <span className="shrink-0 font-mono text-xs font-black text-cyan-100">{item.metric ?? "N/A"}</span>
+            </div>
+            <div className="mt-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{item.timestamp ?? "Timeline limited"}</div>
+            <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{item.detail}</p>
+          </LinkOrDiv>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MemoryInlineItem({ item }: { item: MemoryClusterItem }) {
+  return (
+    <LinkOrDiv className="block rounded-2xl border border-white/10 bg-black/20 px-3 py-2" href={item.href}>
+      <div className="flex items-center justify-between gap-3">
+        <span className="truncate text-xs font-black text-slate-100">{item.label}</span>
+        <span className="shrink-0 font-mono text-[11px] font-black text-cyan-100">{item.value ?? "N/A"}</span>
+      </div>
+      {item.detail ? <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-500">{item.detail}</p> : null}
+    </LinkOrDiv>
+  );
+}
+
+function LinkOrDiv({ children, className, href }: { children: ReactNode; className: string; href?: string }) {
+  if (href) return <Link className={className} href={href}>{children}</Link>;
+  return <div className={className}>{children}</div>;
+}
+
 function MemoryTrustStrip({ model }: { model: MarketMemorySurfaceModel }) {
   const generated = formatMemoryDate(model.generatedAt);
   const warnings = model.rows.flatMap((item) => item.memory.warnings ?? []);
@@ -562,7 +713,7 @@ function MemoryStat({ label, tone, value }: { label: string; tone: VisualTone; v
   );
 }
 
-function analogItem(analog: MarketMemoryAnalog): NonNullable<CinematicCluster["items"]>[number] {
+function analogItem(analog: MarketMemoryAnalog): MemoryClusterItem {
   return {
     detail: `${formatMemoryDate(analog.signalTimestamp)} · ${analog.reasonCodes.slice(0, 3).map(memoryReasonLabel).join(", ") || "limited reason detail"}`,
     href: `/symbol/${encodeURIComponent(analog.symbol)}`,
@@ -573,7 +724,7 @@ function analogItem(analog: MarketMemoryAnalog): NonNullable<CinematicCluster["i
   };
 }
 
-function outcomeItem(item: MemorySurfaceRow): NonNullable<CinematicCluster["items"]>[number] {
+function outcomeItem(item: MemorySurfaceRow): MemoryClusterItem {
   const outcome = item.memory.outcome;
   return {
     detail: outcome ? `${outcome.horizon} median ${formatMemoryReturn(outcome.medianReturn)}, downside ${formatMemoryReturn(outcome.downsideRisk)}` : "Outcome history is limited.",
@@ -604,7 +755,7 @@ function regimeFactors(rows: MemorySurfaceRow[]): ScoreFactor[] {
   }));
 }
 
-function regimeItems(rows: MemorySurfaceRow[]): NonNullable<CinematicCluster["items"]> {
+function regimeItems(rows: MemorySurfaceRow[]): MemoryClusterItem[] {
   return regimeGroups(rows).slice(0, 6).map((group) => ({
     detail: `${group.count} sampled current row${group.count === 1 ? "" : "s"} in this regime context.`,
     label: group.label,
