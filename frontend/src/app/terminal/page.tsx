@@ -14,6 +14,7 @@ import { DailyActionCard } from "@/components/terminal/DailyActionCard";
 import { DailyDriverRetentionPanel } from "@/components/terminal/DailyDriverRetentionPanel";
 import { DailyMarketCommandCenter } from "@/components/terminal/DailyMarketCommandCenter";
 import { AdaptiveLearningInsightPanel } from "@/components/terminal/AdaptiveLearningInsightPanel";
+import { EcosystemContinuityPanel } from "@/components/terminal/EcosystemContinuityPanel";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { ExecutionIntelligencePanel } from "@/components/terminal/ExecutionIntelligencePanel";
 import { InstitutionalIntelligencePanel } from "@/components/terminal/InstitutionalIntelligencePanel";
@@ -67,6 +68,7 @@ import { buildLivingIntelligenceProofSystem } from "@/lib/trading/living-intelli
 import { buildInstitutionalSuperplatformSystem } from "@/lib/trading/institutional-superplatform";
 import { buildDailyMarketCommandModel } from "@/lib/trading/daily-market-command";
 import { buildDailyDriverRetentionModel } from "@/lib/trading/daily-driver-retention";
+import { buildEcosystemContinuitySystem } from "@/lib/trading/ecosystem-continuity";
 import { buildMarketCommandModel } from "@/lib/trading/market-research";
 import { buildAutomatedResearchAgentsSystem } from "@/lib/trading/research-agents";
 import { buildRegimeShiftSystem } from "@/lib/trading/regime-shift-intelligence";
@@ -253,6 +255,17 @@ export default async function TerminalPage() {
     workflowEvolution,
     workspacePreferences,
   });
+  const ecosystemContinuity = buildEcosystemContinuitySystem({
+    feedItems: intelligenceFeed.items,
+    generatedAt: scanSafety.lastUpdated,
+    institutionalSuperplatform,
+    marketCondition: snapshot.marketRegime.label,
+    rows: opportunityModel.rows,
+    scanUpdatedAt: scanSafety.lastUpdated,
+    watchlistSymbols,
+    workflowEvolution,
+    workspacePreferences,
+  });
   const automatedResearchAgents = buildAutomatedResearchAgentsSystem({
     liveSystem: liveIntelligence,
     portfolioSystem: portfolioIntelligence,
@@ -279,6 +292,7 @@ export default async function TerminalPage() {
         <div className="space-y-4">
           <DailyMarketCommandCenter model={dailyMarketCommand} />
           <DailyDriverRetentionPanel model={dailyDriverRetention} />
+          <EcosystemContinuityPanel system={ecosystemContinuity} />
           <LivingIntelligenceProofPanel system={livingIntelligenceProof} />
           <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
           <GlobalMarketCommandCenter model={marketCommandModel} />

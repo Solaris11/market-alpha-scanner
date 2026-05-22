@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  recordEcosystemContinuityRoute,
+  type ContinuityWorkflowGroup,
+} from "@/lib/client/ecosystem-continuity-storage";
+import {
   normalizeAnalyticsDevice,
   pageOpenEventForPath,
   sanitizeAnalyticsMetadata,
@@ -113,6 +117,7 @@ export function trackRouteAnalytics(pathname: string): void {
   if (usageEvent) trackAnalyticsEvent(usageEvent, { path: pagePath }, { pagePath: routePagePath, source: "route_usage", symbol: symbolFromPath(pathname) ?? undefined });
   trackMobileEngagement(pathname, routePagePath);
   trackWorkflowContinuity(pathname, routePagePath);
+  recordRouteContinuityMemory(pathname, routePagePath);
   trackWatchlistRetention(pathname, routePagePath);
 }
 
@@ -317,12 +322,28 @@ function trackWatchlistRetention(pathname: string, pagePath?: string): void {
   }
 }
 
-function workflowGroupForPath(pathname: string): string | null {
+function recordRouteContinuityMemory(pathname: string, pagePath?: string): void {
+  const group = workflowGroupForPath(pathname);
+  if (!group) return;
+  try {
+    recordEcosystemContinuityRoute(window.localStorage, {
+      group,
+      path: pagePath ?? pathname,
+      symbol: symbolFromPath(pathname),
+    });
+  } catch {
+    // Continuity memory is an optional local bridge and must never block route analytics.
+  }
+}
+
+function workflowGroupForPath(pathname: string): ContinuityWorkflowGroup | null {
   if (pathname === "/terminal" || pathname.startsWith("/terminal/")) return "terminal";
   if (pathname === "/discover" || pathname.startsWith("/discover/") || pathname === "/scanner" || pathname.startsWith("/scanner/") || pathname === "/opportunities" || pathname.startsWith("/opportunities/")) return "scanner";
   if (pathname.startsWith("/symbol/")) return "symbol";
   if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) return "dashboard";
-  if (pathname === "/intelligence" || pathname.startsWith("/intelligence/")) return "feed";
+  if (pathname === "/intelligence" || pathname.startsWith("/intelligence/") || pathname === "/feed" || pathname.startsWith("/feed/")) return "feed";
+  if (pathname === "/macro" || pathname.startsWith("/macro/")) return "macro";
+  if (pathname === "/market-memory" || pathname.startsWith("/market-memory/")) return "replay";
   if (pathname === "/alerts" || pathname.startsWith("/alerts/")) return "alerts";
   if (pathname === "/history" || pathname.startsWith("/history/")) return "replay";
   if (pathname === "/strategy-labs" || pathname.startsWith("/strategy-labs/")) return "strategy";
