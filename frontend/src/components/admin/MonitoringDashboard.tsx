@@ -234,12 +234,13 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
               return (
                 <div className="rounded-xl border border-white/10 bg-slate-950/55" key={key}>
                   <button
-                    className="grid w-full gap-3 p-3 text-left text-sm text-slate-300 transition hover:bg-white/[0.03] md:grid-cols-[minmax(0,1fr)_110px_90px_90px_90px]"
+                    className="grid w-full gap-3 p-3 text-left text-sm text-slate-300 transition hover:bg-white/[0.03] md:grid-cols-[minmax(0,1fr)_110px_110px_90px_90px_90px]"
                     onClick={() => setExpandedRouteKey(expanded ? null : key)}
                     type="button"
                   >
                     <span className="min-w-0 truncate font-mono text-xs text-slate-100">{route.method} {safeRoute}</span>
                     <MetricPill label="p95" value={formatMonitoringMs(route.p95LatencyMs)} />
+                    <MetricPill label="p99" value={formatMonitoringMs(route.p99LatencyMs)} />
                     <MetricPill label="count" value={formatCount(route.count)} />
                     <MetricPill label="4xx" tone={route.fourXx ? "warn" : "default"} value={formatCount(route.fourXx)} />
                     <MetricPill label="5xx" tone={route.fiveXx ? "bad" : "default"} value={formatCount(route.fiveXx)} />

@@ -57,6 +57,7 @@ function applyDiscoveryPerformanceHeaders(response: NextResponse, latencyMs: num
   response.headers.set("X-TradeVeto-Discovery-Cache", cacheStatus);
   response.headers.set("X-TradeVeto-Discovery-P50", String(snapshot.p50LatencyMs));
   response.headers.set("X-TradeVeto-Discovery-P95", String(snapshot.p95LatencyMs));
+  response.headers.set("X-TradeVeto-Discovery-P99", String(snapshot.p99LatencyMs));
   response.headers.set("X-TradeVeto-Discovery-Max", String(snapshot.maxLatencyMs));
   response.headers.set("X-TradeVeto-Discovery-Target", snapshot.targetMet ? "met" : "miss");
   return response;

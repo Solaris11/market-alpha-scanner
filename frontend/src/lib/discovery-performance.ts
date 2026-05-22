@@ -12,6 +12,7 @@ export type DiscoveryPerformanceSnapshot = {
   maxLatencyMs: number;
   p50LatencyMs: number;
   p95LatencyMs: number;
+  p99LatencyMs: number;
   sampleCount: number;
   targetMet: boolean;
   windowSize: number;
@@ -33,6 +34,7 @@ export function getDiscoveryPerformanceSnapshot(): DiscoveryPerformanceSnapshot 
   const sampleCount = values.length;
   const p50LatencyMs = percentile(values, 0.50);
   const p95LatencyMs = percentile(values, 0.95);
+  const p99LatencyMs = percentile(values, 0.99);
   const maxLatencyMs = values.length ? values[values.length - 1] ?? 0 : 0;
   const cacheable = successful.filter((timing) => timing.cacheStatus !== "limited");
   const hits = cacheable.filter((timing) => timing.cacheStatus === "system-hit" || timing.cacheStatus === "base-hit").length;
@@ -44,6 +46,7 @@ export function getDiscoveryPerformanceSnapshot(): DiscoveryPerformanceSnapshot 
     maxLatencyMs,
     p50LatencyMs,
     p95LatencyMs,
+    p99LatencyMs,
     sampleCount,
     targetMet: p95LatencyMs > 0 && p95LatencyMs <= DISCOVERY_HOT_PATH_TARGET_MS,
     windowSize: DISCOVERY_TIMING_WINDOW_SIZE,

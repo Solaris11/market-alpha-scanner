@@ -154,6 +154,7 @@ export type AdminMonitoringSummary = {
       maxLatencyMs: number;
       method: string;
       p95LatencyMs: number | null;
+      p99LatencyMs: number | null;
       recentErrors: Array<{ createdAt: string | null; statusCode: number }>;
       route: string;
       series: Array<{ bucket: string; errors: number; p50LatencyMs: number | null; p95LatencyMs: number | null; requests: number }>;
@@ -326,6 +327,7 @@ type SlowRouteRow = QueryResultRow & {
   max_latency_ms: string | number;
   method: string;
   p95_latency_ms: string | number | null;
+  p99_latency_ms: string | number | null;
   recent_errors: Array<{ created_at?: string | null; status_code?: string | number | null }> | null;
   route: string;
   route_series: Array<{ bucket?: string | null; errors?: string | number | null; p50_latency_ms?: string | number | null; p95_latency_ms?: string | number | null; requests?: string | number | null }> | null;
@@ -719,7 +721,8 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
             count(*) FILTER (WHERE status_code >= 400 AND status_code < 500) AS four_xx,
             count(*) FILTER (WHERE status_code >= 500) AS five_xx,
             max(latency_ms) AS max_latency_ms,
-            percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms
+            percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms,
+            percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms) AS p99_latency_ms
           FROM request_metrics
           WHERE created_at > now() - ${window.intervalSql}
           GROUP BY route, method
@@ -742,6 +745,7 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
           g.five_xx,
           g.max_latency_ms,
           g.p95_latency_ms,
+          g.p99_latency_ms,
           COALESCE(
             (
               SELECT jsonb_agg(
@@ -921,6 +925,7 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
         maxLatencyMs: toNumber(row.max_latency_ms),
         method: row.method,
         p95LatencyMs: toNullableNumber(row.p95_latency_ms),
+        p99LatencyMs: toNullableNumber(row.p99_latency_ms),
         recentErrors: Array.isArray(row.recent_errors)
           ? row.recent_errors.map((item) => ({ createdAt: item.created_at ?? null, statusCode: toNumber(item.status_code) }))
           : [],

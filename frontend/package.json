@@ -7,6 +7,7 @@
     "build": "next build",
     "start": "next start",
     "monitoring:cleanup": "tsx scripts/monitoring-cleanup.ts",
+    "monitoring:scale": "node scripts/scale-readiness-probe.mjs",
     "monitoring:synthetics": "tsx scripts/monitoring-synthetics.ts",
     "monitoring:system": "tsx scripts/monitoring-system.ts",
     "marketing:qr": "node scripts/generate-marketing-qr.mjs",

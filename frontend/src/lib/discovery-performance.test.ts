@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { getDiscoveryPerformanceSnapshot, recordDiscoveryApiTiming, resetDiscoveryPerformanceForTests } from "./discovery-performance";
 
-test("discovery performance snapshot tracks p50, p95, max, and cache hit rate", () => {
+test("discovery performance snapshot tracks p50, p95, p99, max, and cache hit rate", () => {
   resetDiscoveryPerformanceForTests();
 
   for (const latencyMs of [80, 120, 140, 260, 320]) {
@@ -17,6 +17,7 @@ test("discovery performance snapshot tracks p50, p95, max, and cache hit rate", 
   assert.equal(snapshot.sampleCount, 7);
   assert.equal(snapshot.p50LatencyMs, 140);
   assert.equal(snapshot.p95LatencyMs, 900);
+  assert.equal(snapshot.p99LatencyMs, 900);
   assert.equal(snapshot.maxLatencyMs, 900);
   assert.equal(snapshot.cacheHitRate, 83);
   assert.equal(snapshot.targetMet, false);
@@ -32,5 +33,6 @@ test("discovery performance snapshot reports target met for hot cached paths", (
   const snapshot = getDiscoveryPerformanceSnapshot();
 
   assert.equal(snapshot.p95LatencyMs, 77);
+  assert.equal(snapshot.p99LatencyMs, 77);
   assert.equal(snapshot.targetMet, true);
 });
