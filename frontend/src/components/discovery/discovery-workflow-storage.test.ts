@@ -16,13 +16,19 @@ describe("discovery workflow storage", () => {
     const state = sanitizeDiscoveryWorkflowState({
       compareSymbols: ["amd", "NVDA", "NVDA", "<bad>", "TSLA", "XOM"],
       density: "dense",
+      filter: "breakout_candidates",
       shortlistSymbols: ["xom", "missing", "TSLA", "AMD", "AMD"],
+      sort: "breakout",
+      timeframe: "1W",
       updatedAt: "2026-05-21T12:00:00.000Z",
     }, symbols);
 
     assert.deepEqual(state.compareSymbols, ["AMD", "NVDA", "TSLA", "XOM"]);
     assert.equal(state.density, "dense");
+    assert.equal(state.filter, "breakout_candidates");
     assert.deepEqual(state.shortlistSymbols, ["XOM", "TSLA", "AMD"]);
+    assert.equal(state.sort, "breakout");
+    assert.equal(state.timeframe, "1W");
     assert.equal(state.updatedAt, "2026-05-21T12:00:00.000Z");
   });
 
@@ -31,7 +37,10 @@ describe("discovery workflow storage", () => {
     const state = loadDiscoveryWorkflowState(storage, [symbol("AMD")]);
     assert.deepEqual(state.compareSymbols, []);
     assert.equal(state.density, "speed");
+    assert.equal(state.filter, "all");
     assert.deepEqual(state.shortlistSymbols, []);
+    assert.equal(state.sort, "attention");
+    assert.equal(state.timeframe, "1M");
   });
 
   test("persists sanitized workflow state without unsupported values", () => {
@@ -39,7 +48,10 @@ describe("discovery workflow storage", () => {
     const saved: DiscoveryWorkflowState = {
       compareSymbols: ["AMD", "NVDA", "NVDA"],
       density: "dense",
+      filter: "crash_risk",
       shortlistSymbols: ["TSLA", "AMD"],
+      sort: "crash",
+      timeframe: "1D",
       updatedAt: null,
     };
 
@@ -48,7 +60,10 @@ describe("discovery workflow storage", () => {
 
     assert.deepEqual(loaded.compareSymbols, ["AMD", "NVDA"]);
     assert.equal(loaded.density, "dense");
+    assert.equal(loaded.filter, "crash_risk");
     assert.deepEqual(loaded.shortlistSymbols, ["TSLA", "AMD"]);
+    assert.equal(loaded.sort, "crash");
+    assert.equal(loaded.timeframe, "1D");
     assert.equal(typeof loaded.updatedAt, "string");
   });
 

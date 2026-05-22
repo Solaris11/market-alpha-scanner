@@ -8,6 +8,7 @@ import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
 import { buildIntelligenceDiscoverySystem, type IntelligenceDiscoverySystem } from "@/lib/trading/intelligence-discovery";
 import { buildOpportunitiesPageModel, type OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
+import type { DiscoveryCacheStatus } from "@/lib/discovery-performance";
 
 type DiscoveryBaseRows = {
   generatedAt: string;
@@ -19,11 +20,76 @@ type DiscoveryBaseCache = {
   value: Promise<DiscoveryBaseRows>;
 };
 
-const DISCOVERY_BASE_CACHE_TTL_MS = 30_000;
+export type DiscoveryLoadMeta = {
+  baseCacheStatus: "base-hit" | "base-miss" | "skipped";
+  cacheStatus: DiscoveryCacheStatus;
+  durationMs: number;
+  systemCacheStatus: "system-hit" | "system-miss";
+};
+
+export type DiscoveryLoadResult = {
+  meta: DiscoveryLoadMeta;
+  system: IntelligenceDiscoverySystem;
+};
+
+type DiscoverySystemCache = {
+  expiresAt: number;
+  value: Promise<IntelligenceDiscoverySystem>;
+};
+
+const DISCOVERY_BASE_CACHE_TTL_MS = 90_000;
+const DISCOVERY_SYSTEM_CACHE_TTL_MS = 20_000;
 
 let discoveryBaseCache: DiscoveryBaseCache | null = null;
+const discoverySystemCache = new Map<string, DiscoverySystemCache>();
 
 export async function loadIntelligenceDiscoverySystem(userId: string | null): Promise<IntelligenceDiscoverySystem> {
+  return (await loadIntelligenceDiscoverySystemWithMeta(userId)).system;
+}
+
+export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | null): Promise<DiscoveryLoadResult> {
+  const startedAt = Date.now();
+  const cacheKey = userId ? `user:${userId}` : "anonymous";
+  const now = Date.now();
+  const cachedSystem = discoverySystemCache.get(cacheKey);
+  if (cachedSystem && cachedSystem.expiresAt > now) {
+    const system = await cachedSystem.value;
+    return {
+      meta: {
+        baseCacheStatus: "skipped",
+        cacheStatus: "system-hit",
+        durationMs: Date.now() - startedAt,
+        systemCacheStatus: "system-hit",
+      },
+      system,
+    };
+  }
+
+  const baseStatus: { value: "base-hit" | "base-miss" } = { value: discoveryBaseCache && discoveryBaseCache.expiresAt > now ? "base-hit" : "base-miss" };
+  const value = buildDiscoverySystem(userId);
+  discoverySystemCache.set(cacheKey, {
+    expiresAt: now + DISCOVERY_SYSTEM_CACHE_TTL_MS,
+    value,
+  });
+
+  try {
+    const system = await value;
+    return {
+      meta: {
+        baseCacheStatus: baseStatus.value,
+        cacheStatus: baseStatus.value === "base-hit" ? "base-hit" : "system-miss",
+        durationMs: Date.now() - startedAt,
+        systemCacheStatus: "system-miss",
+      },
+      system,
+    };
+  } catch (error) {
+    if (discoverySystemCache.get(cacheKey)?.value === value) discoverySystemCache.delete(cacheKey);
+    throw error;
+  }
+}
+
+async function buildDiscoverySystem(userId: string | null): Promise<IntelligenceDiscoverySystem> {
   const [base, watchlistSymbols] = await Promise.all([
     loadDiscoveryBaseRows(),
     userId ? readUserWatchlist(userId).catch(() => []) : Promise.resolve([]),

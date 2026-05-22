@@ -277,32 +277,38 @@ export function filterDiscoverySymbols(symbols: DiscoverySymbol[], state: Discov
 }
 
 function matchesDiscoveryQuery(symbol: DiscoverySymbol, query: string): boolean {
-  return [
-    symbol.symbol,
-    symbol.companyName,
-    symbol.sector,
-    symbol.assetType,
-    symbol.setupType,
-    symbol.decision,
-    symbol.reason,
-  ].some((value) => clean(value).toLowerCase().includes(query));
+  if (symbol.symbol.toLowerCase().includes(query)) return true;
+  if (symbol.companyName && symbol.companyName.toLowerCase().includes(query)) return true;
+  if (symbol.sector && symbol.sector.toLowerCase().includes(query)) return true;
+  if (symbol.assetType && symbol.assetType.toLowerCase().includes(query)) return true;
+  if (symbol.setupType.toLowerCase().includes(query)) return true;
+  if (symbol.decision.toLowerCase().includes(query)) return true;
+  return symbol.reason.toLowerCase().includes(query);
 }
 
 export function rankDiscoverySymbols(symbols: DiscoverySymbol[], sort: DiscoverySortKey, timeframe: DiscoveryTimeframe): DiscoverySymbol[] {
-  return [...symbols].sort((left, right) => {
-    if (sort === "symbol") return left.symbol.localeCompare(right.symbol);
-    if (sort === "performance") return numericDesc(left.performance[timeframe], right.performance[timeframe]) || attentionScore(right) - attentionScore(left);
-    if (sort === "weakness") return numericAsc(left.performance[timeframe], right.performance[timeframe]) || crashRiskScore(right) - crashRiskScore(left);
-    if (sort === "breakout") return breakoutScore(right) - breakoutScore(left) || numericDesc(left.confidence, right.confidence);
-    if (sort === "crash") return crashRiskScore(right) - crashRiskScore(left) || numericDesc(left.risk, right.risk);
-    if (sort === "money_flow") return moneyFlowScore(right) - moneyFlowScore(left) || numericDesc(left.performance[timeframe], right.performance[timeframe]);
-    if (sort === "risk") return numericDesc(left.risk, right.risk) || numericDesc(left.shockRisk, right.shockRisk);
-    if (sort === "confidence") return numericDesc(left.confidence, right.confidence) || right.conviction - left.conviction;
-    if (sort === "macro") return numericDesc(left.macro, right.macro) || numericDesc(left.confidence, right.confidence);
-    if (sort === "replay") return numericDesc(left.replay, right.replay) || numericDesc(left.evidence, right.evidence);
-    if (sort === "freshness") return numericDesc(left.freshness, right.freshness) || numericDesc(left.confidence, right.confidence);
-    return attentionScore(right) - attentionScore(left) || left.symbol.localeCompare(right.symbol);
+  const ranked = symbols.map((symbol, index) => {
+    const fallback = fallbackRankValue(symbol, timeframe);
+    return {
+      fallback,
+      index,
+      primary: primaryRankValue(symbol, sort, timeframe),
+      symbol,
+      ticker: symbol.symbol,
+    };
   });
+
+  ranked.sort((left, right) => {
+    if (sort === "symbol") return left.ticker.localeCompare(right.ticker);
+    const multiplier = sort === "weakness" ? 1 : -1;
+    const primary = nullSafeRank(left.primary, right.primary, sort === "weakness") * multiplier;
+    if (primary !== 0) return primary;
+    const fallback = (right.fallback - left.fallback);
+    if (fallback !== 0) return fallback;
+    return left.ticker.localeCompare(right.ticker) || left.index - right.index;
+  });
+
+  return ranked.map((item) => item.symbol);
 }
 
 export function matchesDiscoveryQuickFilter(symbol: DiscoverySymbol, filter: DiscoveryQuickFilterKey): boolean {
@@ -331,6 +337,34 @@ export function matchesDiscoveryQuickFilter(symbol: DiscoverySymbol, filter: Dis
   if (filter === "high_confidence") return (symbol.confidence ?? symbol.conviction) >= 70;
   if (filter === "fresh_setups") return (symbol.freshness ?? 0) >= 70;
   return symbol.watchlisted;
+}
+
+function primaryRankValue(symbol: DiscoverySymbol, sort: DiscoverySortKey, timeframe: DiscoveryTimeframe): number | null {
+  if (sort === "performance" || sort === "weakness") return symbol.performance[timeframe];
+  if (sort === "breakout") return breakoutScore(symbol);
+  if (sort === "crash") return crashRiskScore(symbol);
+  if (sort === "money_flow") return moneyFlowScore(symbol);
+  if (sort === "risk") return symbol.risk;
+  if (sort === "confidence") return symbol.confidence ?? symbol.conviction;
+  if (sort === "macro") return symbol.macro;
+  if (sort === "replay") return symbol.replay;
+  if (sort === "freshness") return symbol.freshness;
+  if (sort === "symbol") return null;
+  return attentionScore(symbol);
+}
+
+function fallbackRankValue(symbol: DiscoverySymbol, timeframe: DiscoveryTimeframe): number {
+  return attentionScore(symbol)
+    + (symbol.confidence ?? symbol.conviction) * 0.08
+    + (symbol.replay ?? 0) * 0.04
+    + normalizeSigned(symbol.performance[timeframe]) * 0.04
+    - (symbol.risk ?? 0) * 0.02;
+}
+
+function nullSafeRank(left: number | null, right: number | null, ascending: boolean): number {
+  const leftValue = left ?? (ascending ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY);
+  const rightValue = right ?? (ascending ? Number.POSITIVE_INFINITY : Number.NEGATIVE_INFINITY);
+  return leftValue - rightValue;
 }
 
 function toDiscoverySymbol(row: OpportunityViewModel, watchlist: Set<string>): DiscoverySymbol {
@@ -623,16 +657,22 @@ function buildComparePresets(symbols: DiscoverySymbol[]): DiscoveryComparePreset
   const sectors = buildSectorHeatmap(symbols).slice(0, 3);
   const momentum = topSymbols(symbols, "performance", "1M", 3).map((symbol) => symbol.symbol);
   const risk = topSymbols(symbols, "risk", "1D", 3).map((symbol) => symbol.symbol);
+  const breakout = topSymbols(symbols, "breakout", "1W", 3).map((symbol) => symbol.symbol);
+  const downside = topSymbols(symbols, "crash", "1D", 3).map((symbol) => symbol.symbol);
+  const replay = topSymbols(symbols.filter((symbol) => (symbol.replay ?? 0) >= 45), "replay", "1M", 3).map((symbol) => symbol.symbol);
   const macro = topSymbols(symbols.filter((symbol) => (symbol.macro ?? 0) >= 55), "macro", "1M", 3).map((symbol) => symbol.symbol);
   const moneyFlow = topSymbols(symbols.filter((symbol) => moneyFlowScore(symbol) >= 55), "money_flow", "1D", 3).map((symbol) => symbol.symbol);
   const presets: DiscoveryComparePreset[] = [
     { key: "momentum", label: "Momentum leaders", summary: "Compare the strongest visible performers.", symbols: momentum, tone: "emerald" },
     { key: "risk", label: "Risk escalation", summary: "Compare elevated-risk candidates before deeper research.", symbols: risk, tone: "rose" },
+    { key: "breakout", label: "Expansion pressure", summary: "Compare breakout pressure, volatility, replay, and macro support.", symbols: breakout, tone: "violet" },
+    { key: "downside", label: "Downside pressure", summary: "Compare fragility, downside movement, and shock risk candidates.", symbols: downside, tone: "rose" },
     { key: "money-flow", label: "Money-flow leaders", summary: "Compare symbols with aligned performance, macro, and liquidity context.", symbols: moneyFlow, tone: "cyan" },
     { key: "macro", label: "Macro-supported", summary: "Compare names with visible macro support.", symbols: macro, tone: "cyan" },
+    { key: "replay", label: "Replay confidence", summary: "Compare historical similarity and evidence depth.", symbols: replay, tone: "violet" },
     ...sectors.map((sector) => ({ key: `sector-${sector.key}`, label: `${sector.label} cluster`, summary: sector.detail, symbols: sector.symbols.slice(0, 3), tone: sector.tone })),
   ];
-  return presets.filter((preset) => preset.symbols.length >= 2).slice(0, 6);
+  return presets.filter((preset) => preset.symbols.length >= 2).slice(0, 8);
 }
 
 function buildOrbitNodes(input: {
@@ -811,21 +851,24 @@ function groupBy<T>(items: T[], keyFor: (item: T) => string): Record<string, T[]
   const grouped: Record<string, T[]> = {};
   for (const item of items) {
     const key = keyFor(item);
-    grouped[key] = [...(grouped[key] ?? []), item];
+    const bucket = grouped[key] ?? [];
+    bucket.push(item);
+    grouped[key] = bucket;
   }
   return grouped;
 }
 
 function latestTimestamp(values: Array<string | null>): string | null {
-  const timestamps = values
-    .map((value) => {
-      if (!value) return null;
-      const time = Date.parse(value);
-      return Number.isFinite(time) ? { time, value } : null;
-    })
-    .filter((value): value is { time: number; value: string } => value !== null)
-    .sort((left, right) => right.time - left.time);
-  return timestamps[0]?.value ?? null;
+  let latestValue: string | null = null;
+  let latestTime = Number.NEGATIVE_INFINITY;
+  for (const value of values) {
+    if (!value) continue;
+    const time = Date.parse(value);
+    if (!Number.isFinite(time) || time <= latestTime) continue;
+    latestTime = time;
+    latestValue = value;
+  }
+  return latestValue;
 }
 
 function average(values: Array<number | null | undefined>): number {
@@ -843,14 +886,6 @@ function roundedAverage(values: Array<number | null | undefined>, fallback: numb
 function rounded(value: number | null | undefined): number | null {
   if (typeof value !== "number" || !Number.isFinite(value)) return null;
   return Math.round(value);
-}
-
-function numericDesc(left: number | null, right: number | null): number {
-  return (right ?? Number.NEGATIVE_INFINITY) - (left ?? Number.NEGATIVE_INFINITY);
-}
-
-function numericAsc(left: number | null, right: number | null): number {
-  return (left ?? Number.POSITIVE_INFINITY) - (right ?? Number.POSITIVE_INFINITY);
 }
 
 function firstNumeric(...values: unknown[]): number | null {

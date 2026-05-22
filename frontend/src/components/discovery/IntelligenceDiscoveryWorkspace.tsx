@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
   ArrowRight,
   Brain,
@@ -177,6 +177,9 @@ export function IntelligenceDiscoveryWorkspace({
   useEffect(() => {
     const saved = loadDiscoveryWorkflowState(typeof window === "undefined" ? null : window.localStorage, system.symbols);
     setDensity(saved.density);
+    setFilter(saved.filter);
+    setSort(saved.sort);
+    setTimeframe(saved.timeframe);
     if (saved.compareSymbols.length) setCompareSymbols(saved.compareSymbols);
     setShortlistSymbols(saved.shortlistSymbols);
     setWorkflowLoaded(true);
@@ -187,10 +190,13 @@ export function IntelligenceDiscoveryWorkspace({
     saveDiscoveryWorkflowState(typeof window === "undefined" ? null : window.localStorage, {
       compareSymbols,
       density,
+      filter,
       shortlistSymbols,
+      sort,
+      timeframe,
       updatedAt: null,
     });
-  }, [compareSymbols, density, shortlistSymbols, workflowLoaded]);
+  }, [compareSymbols, density, filter, shortlistSymbols, sort, timeframe, workflowLoaded]);
 
   useEffect(() => {
     setActiveIndex((current) => Math.min(current, Math.max(visibleSymbols.length - 1, 0)));
@@ -370,6 +376,7 @@ export function IntelligenceDiscoveryWorkspace({
   return (
     <section className={`tv-discovery-system ${mode === "overlay" ? "space-y-4" : "space-y-6"}`} data-discovery-workspace="true">
       <DiscoveryHero
+        inputRef={searchInputRef}
         mode={mode}
         query={query}
         selectedFilter={selectedFilter}
@@ -411,11 +418,15 @@ export function IntelligenceDiscoveryWorkspace({
                 <label className="relative block">
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cyan-200" />
                   <input
+                    aria-label="Search discovery scanner by symbol, company, sector, setup, or risk context"
                     autoComplete="off"
                     className="h-12 w-full rounded-2xl border border-cyan-300/20 bg-slate-950/70 pl-10 pr-3 text-sm font-semibold text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-200/60 focus:ring-2 focus:ring-cyan-300/15"
+                    data-discovery-secondary-search="true"
+                    enterKeyHint="search"
+                    inputMode="search"
                     onChange={(event) => setQuery(event.currentTarget.value)}
                     placeholder="Search symbol, company, sector, setup, risk context..."
-                    ref={searchInputRef}
+                    type="search"
                     value={query}
                   />
                 </label>
@@ -498,10 +509,12 @@ export function IntelligenceDiscoveryWorkspace({
               density={density}
               onDensityChange={setDensity}
               onOpen={setSelectedSymbol}
+              onSortChange={setSort}
               onToggleShortlist={toggleShortlist}
               onToggleCompare={toggleCompare}
               resultCount={filtered.length}
               shortlistedSymbols={shortlistSymbols}
+              sort={sort}
               symbols={visibleSymbols}
               timeframe={timeframe}
             />
@@ -520,12 +533,14 @@ export function IntelligenceDiscoveryWorkspace({
 }
 
 function DiscoveryHero({
+  inputRef,
   mode,
   query,
   selectedFilter,
   setQuery,
   system,
 }: {
+  inputRef: RefObject<HTMLInputElement | null>;
   mode: DiscoveryMode;
   query: string;
   selectedFilter?: DiscoveryQuickFilter;
@@ -550,10 +565,16 @@ function DiscoveryHero({
             <label className="relative block">
               <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-cyan-200" />
               <input
+                aria-label="Search discovery scanner by symbol, company, sector, setup, or risk context"
                 autoComplete="off"
                 className="h-14 w-full rounded-2xl border border-cyan-300/25 bg-slate-950/72 pl-12 pr-4 text-base font-semibold text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-200/70 focus:ring-2 focus:ring-cyan-300/15"
+                data-discovery-search-input="true"
+                enterKeyHint="search"
+                inputMode="search"
                 onChange={(event) => setQuery(event.currentTarget.value)}
                 placeholder="Search AMD, semis, macro-supported pullbacks, risk escalation..."
+                ref={inputRef}
+                type="search"
                 value={query}
               />
             </label>
@@ -894,10 +915,12 @@ function SymbolResultGrid({
   density,
   onOpen,
   onDensityChange,
+  onSortChange,
   onToggleCompare,
   onToggleShortlist,
   resultCount,
   shortlistedSymbols,
+  sort,
   symbols,
   timeframe,
 }: {
@@ -906,15 +929,17 @@ function SymbolResultGrid({
   density: ResultDensity;
   onOpen: (symbol: DiscoverySymbol) => void;
   onDensityChange: (density: ResultDensity) => void;
+  onSortChange: (sort: DiscoverySortKey) => void;
   onToggleCompare: (symbol: string) => void;
   onToggleShortlist: (symbol: string) => void;
   resultCount: number;
   shortlistedSymbols: string[];
+  sort: DiscoverySortKey;
   symbols: DiscoverySymbol[];
   timeframe: DiscoveryTimeframe;
 }) {
   return (
-    <section className="poster-panel rounded-3xl border border-cyan-300/16 bg-slate-950/48 p-4">
+    <section className="poster-panel rounded-3xl border border-cyan-300/16 bg-slate-950/48 p-4" data-discovery-dense-mode={density}>
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Full-universe results</div>
@@ -950,7 +975,7 @@ function SymbolResultGrid({
       </div>
       {symbols.length ? (
         density === "speed" || density === "dense" ? (
-          <RapidScannerTable activeSymbol={activeSymbol} compact={density === "dense"} compareSymbols={compareSymbols} onOpen={onOpen} onToggleCompare={onToggleCompare} onToggleShortlist={onToggleShortlist} shortlistedSymbols={shortlistedSymbols} symbols={symbols} timeframe={timeframe} />
+          <RapidScannerTable activeSymbol={activeSymbol} compact={density === "dense"} compareSymbols={compareSymbols} onOpen={onOpen} onSortChange={onSortChange} onToggleCompare={onToggleCompare} onToggleShortlist={onToggleShortlist} shortlistedSymbols={shortlistedSymbols} sort={sort} symbols={symbols} timeframe={timeframe} />
         ) : (
           <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
             {symbols.map((symbol) => (
@@ -972,9 +997,11 @@ function RapidScannerTable({
   compact,
   compareSymbols,
   onOpen,
+  onSortChange,
   onToggleCompare,
   onToggleShortlist,
   shortlistedSymbols,
+  sort,
   symbols,
   timeframe,
 }: {
@@ -982,9 +1009,11 @@ function RapidScannerTable({
   compact: boolean;
   compareSymbols: string[];
   onOpen: (symbol: DiscoverySymbol) => void;
+  onSortChange: (sort: DiscoverySortKey) => void;
   onToggleCompare: (symbol: string) => void;
   onToggleShortlist: (symbol: string) => void;
   shortlistedSymbols: string[];
+  sort: DiscoverySortKey;
   symbols: DiscoverySymbol[];
   timeframe: DiscoveryTimeframe;
 }) {
@@ -992,17 +1021,17 @@ function RapidScannerTable({
     ? "xl:grid-cols-[2.5rem_5rem_minmax(9rem,1fr)_4.5rem_4.5rem_4.5rem_4.5rem_4.5rem_4.5rem_7rem]"
     : "xl:grid-cols-[3rem_5.5rem_minmax(8rem,1fr)_5rem_5rem_5rem_5rem_5rem_6.5rem]";
   return (
-    <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/48">
+    <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/48" data-discovery-scanner-table="true">
       <div className={`grid gap-2 border-b border-white/10 bg-white/[0.035] px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 max-xl:hidden ${columns}`}>
         <span>Rank</span>
-        <span>Symbol</span>
+        <SortHeader active={sort === "symbol"} label="Symbol" onClick={() => onSortChange("symbol")} />
         <span>Context</span>
-        <span>{timeframe}</span>
-        <span>Conf</span>
-        <span>Risk</span>
-        <span>Macro</span>
-        <span>Replay</span>
-        {compact ? <span>Fresh</span> : null}
+        <SortHeader active={sort === "performance" || sort === "weakness"} label={timeframe} onClick={() => onSortChange(sort === "weakness" ? "performance" : "weakness")} />
+        <SortHeader active={sort === "confidence"} label="Conf" onClick={() => onSortChange("confidence")} />
+        <SortHeader active={sort === "risk" || sort === "crash"} label="Risk" onClick={() => onSortChange(sort === "crash" ? "risk" : "crash")} />
+        <SortHeader active={sort === "macro"} label="Macro" onClick={() => onSortChange("macro")} />
+        <SortHeader active={sort === "replay"} label="Replay" onClick={() => onSortChange("replay")} />
+        {compact ? <SortHeader active={sort === "freshness"} label="Fresh" onClick={() => onSortChange("freshness")} /> : null}
         <span>Action</span>
       </div>
       <div className={`${compact ? "max-h-[56rem]" : "max-h-[44rem]"} overflow-y-auto [scrollbar-width:thin]`}>
@@ -1048,6 +1077,19 @@ function RapidScannerTable({
         })}
       </div>
     </div>
+  );
+}
+
+function SortHeader({ active, label, onClick }: { active: boolean; label: string; onClick: () => void }) {
+  return (
+    <button
+      aria-pressed={active}
+      className={`min-w-0 truncate text-left transition ${active ? "text-cyan-100" : "text-slate-500 hover:text-cyan-100"}`}
+      onClick={onClick}
+      type="button"
+    >
+      {label}
+    </button>
   );
 }
 
