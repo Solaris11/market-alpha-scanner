@@ -11,6 +11,7 @@ import { ShockMoveRadar } from "@/components/opportunities/ShockMoveRadar";
 import { PublicSignalPreviewList } from "@/components/premium/PublicSignalPreview";
 import { PremiumAccessCta } from "@/components/premium/PremiumAccessCta";
 import { DailyActionCard } from "@/components/terminal/DailyActionCard";
+import { DailyDriverRetentionPanel } from "@/components/terminal/DailyDriverRetentionPanel";
 import { DailyMarketCommandCenter } from "@/components/terminal/DailyMarketCommandCenter";
 import { AdaptiveLearningInsightPanel } from "@/components/terminal/AdaptiveLearningInsightPanel";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
@@ -65,6 +66,7 @@ import { buildIntelligenceEcosystemSystem } from "@/lib/trading/intelligence-eco
 import { buildLivingIntelligenceProofSystem } from "@/lib/trading/living-intelligence-proof";
 import { buildInstitutionalSuperplatformSystem } from "@/lib/trading/institutional-superplatform";
 import { buildDailyMarketCommandModel } from "@/lib/trading/daily-market-command";
+import { buildDailyDriverRetentionModel } from "@/lib/trading/daily-driver-retention";
 import { buildMarketCommandModel } from "@/lib/trading/market-research";
 import { buildAutomatedResearchAgentsSystem } from "@/lib/trading/research-agents";
 import { buildRegimeShiftSystem } from "@/lib/trading/regime-shift-intelligence";
@@ -244,6 +246,13 @@ export default async function TerminalPage() {
     watchlistSymbols,
     workflowEvolution,
   });
+  const dailyDriverRetention = buildDailyDriverRetentionModel({
+    marketCondition: snapshot.marketRegime.label,
+    rows: opportunityModel.rows,
+    watchlistSymbols,
+    workflowEvolution,
+    workspacePreferences,
+  });
   const automatedResearchAgents = buildAutomatedResearchAgentsSystem({
     liveSystem: liveIntelligence,
     portfolioSystem: portfolioIntelligence,
@@ -269,6 +278,7 @@ export default async function TerminalPage() {
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">
           <DailyMarketCommandCenter model={dailyMarketCommand} />
+          <DailyDriverRetentionPanel model={dailyDriverRetention} />
           <LivingIntelligenceProofPanel system={livingIntelligenceProof} />
           <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
           <GlobalMarketCommandCenter model={marketCommandModel} />
