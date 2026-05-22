@@ -1,0 +1,144 @@
+{
+  "url": "https://tradeveto.com/symbol/AMD#chart",
+  "capturedAt": "2026-05-22T02:17:17.127Z",
+  "results": [
+    {
+      "name": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1100,
+        "mobile": false,
+        "scale": 1
+      },
+      "clicked": true,
+      "gridClicked": true,
+      "baseProof": {
+        "selectors": {
+          "expandButton": true,
+          "chartCanvas": true
+        },
+        "labels": {
+          "drawing tools": true,
+          "indicator management": true,
+          "ema 20": true,
+          "ema 50": true,
+          "rsi 14": true,
+          "macd": true,
+          "atr 14": true,
+          "volatility 20": true,
+          "anchored vwap": true,
+          "h-line": true,
+          "trendline": true,
+          "support": true,
+          "resistance": true,
+          "entry": true,
+          "stop": true,
+          "target": true,
+          "risk box": true,
+          "note": true,
+          "chart-linked intelligence state": true
+        },
+        "bodyLength": 29759,
+        "scrollY": 16772,
+        "domElements": 5636
+      },
+      "fullscreenProof": {
+        "fullscreenOpen": true,
+        "gridVisible": true,
+        "labels": {
+          "price + intelligence overlays": true,
+          "fullscreen exploration": true,
+          "synchronized chart state": true,
+          "focus": true,
+          "split": true,
+          "grid": true,
+          "stack": true,
+          "primary research pane": true,
+          "risk / macro pane": true,
+          "replay / memory pane": true,
+          "levels / catalyst pane": true,
+          "research only": true
+        },
+        "scrollY": 0,
+        "domElements": 6254
+      },
+      "metrics": {
+        "Nodes": 8873,
+        "JSHeapUsedSize": 42528344,
+        "LayoutCount": 1062,
+        "RecalcStyleCount": 1433,
+        "ScriptDuration": 1.662449
+      },
+      "eventTexts": []
+    },
+    {
+      "name": "mobile",
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "mobile": true,
+        "scale": 3
+      },
+      "clicked": true,
+      "gridClicked": true,
+      "baseProof": {
+        "selectors": {
+          "expandButton": true,
+          "chartCanvas": true
+        },
+        "labels": {
+          "drawing tools": true,
+          "indicator management": true,
+          "ema 20": true,
+          "ema 50": true,
+          "rsi 14": true,
+          "macd": true,
+          "atr 14": true,
+          "volatility 20": true,
+          "anchored vwap": true,
+          "h-line": true,
+          "trendline": true,
+          "support": true,
+          "resistance": true,
+          "entry": true,
+          "stop": true,
+          "target": true,
+          "risk box": true,
+          "note": true,
+          "chart-linked intelligence state": true
+        },
+        "bodyLength": 29799,
+        "scrollY": 35526,
+        "domElements": 5643
+      },
+      "fullscreenProof": {
+        "fullscreenOpen": true,
+        "gridVisible": true,
+        "labels": {
+          "price + intelligence overlays": true,
+          "fullscreen exploration": true,
+          "synchronized chart state": true,
+          "focus": true,
+          "split": true,
+          "grid": true,
+          "stack": true,
+          "primary research pane": true,
+          "risk / macro pane": true,
+          "replay / memory pane": true,
+          "levels / catalyst pane": true,
+          "research only": true
+        },
+        "scrollY": 0,
+        "domElements": 6208
+      },
+      "metrics": {
+        "Nodes": 8816,
+        "JSHeapUsedSize": 41245408,
+        "LayoutCount": 967,
+        "RecalcStyleCount": 1471,
+        "ScriptDuration": 1.474856
+      },
+      "eventTexts": []
+    }
+  ]
+}
