@@ -1,0 +1,165 @@
+{
+  "generatedAt": "2026-05-22T01:31:41.010Z",
+  "url": "https://tradeveto.com/market-memory",
+  "warmCache": true,
+  "previousColdBrowserAudit": {
+    "generatedAt": "2026-05-22T01:30:39.032Z",
+    "url": "https://tradeveto.com/market-memory",
+    "audits": [
+      {
+        "name": "desktop",
+        "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-20-3-prod/market-memory-desktop.png",
+        "cdpLoadMs": 2265,
+        "url": "https://tradeveto.com/market-memory",
+        "title": "Market Memory — TradeVeto | TradeVeto",
+        "nodeCount": 807,
+        "htmlBytes": 168907,
+        "scrollHeight": 5321,
+        "viewport": {
+          "width": 1440,
+          "height": 1200,
+          "dpr": 1
+        },
+        "domContentLoadedMs": 2149,
+        "loadEventMs": 2169,
+        "responseEndMs": 1930,
+        "transferSize": 16425,
+        "encodedBodySize": 16125,
+        "firstPaintMs": 2188,
+        "firstContentfulPaintMs": 2188,
+        "freshnessProof": true,
+        "explainabilityProof": true,
+        "limitedEvidenceVisible": true,
+        "lightRendererProof": true,
+        "cdpMetrics": {
+          "Nodes": 1402,
+          "LayoutCount": 3,
+          "RecalcStyleCount": 4,
+          "JSHeapUsedSize": 4036288,
+          "TaskDuration": 0.279149,
+          "ScriptDuration": 0.06224,
+          "LayoutDuration": 0.050903,
+          "RecalcStyleDuration": 0.017243
+        },
+        "hydrationMessages": [],
+        "consoleMessageCount": 0
+      },
+      {
+        "name": "mobile",
+        "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-20-3-prod/market-memory-mobile.png",
+        "cdpLoadMs": 374,
+        "url": "https://tradeveto.com/market-memory",
+        "title": "Market Memory — TradeVeto | TradeVeto",
+        "nodeCount": 807,
+        "htmlBytes": 168905,
+        "scrollHeight": 12547,
+        "viewport": {
+          "width": 390,
+          "height": 844,
+          "dpr": 3
+        },
+        "domContentLoadedMs": 137,
+        "loadEventMs": 196,
+        "responseEndMs": 81,
+        "transferSize": 16391,
+        "encodedBodySize": 16091,
+        "firstPaintMs": 496,
+        "firstContentfulPaintMs": 496,
+        "freshnessProof": true,
+        "explainabilityProof": true,
+        "limitedEvidenceVisible": true,
+        "lightRendererProof": true,
+        "cdpMetrics": {
+          "Nodes": 1348,
+          "LayoutCount": 3,
+          "RecalcStyleCount": 2,
+          "JSHeapUsedSize": 3596660,
+          "TaskDuration": 0.375546,
+          "ScriptDuration": 0.03221,
+          "LayoutDuration": 0.017703,
+          "RecalcStyleDuration": 0.005634
+        },
+        "hydrationMessages": [],
+        "consoleMessageCount": 0
+      }
+    ]
+  },
+  "audits": [
+    {
+      "name": "desktop",
+      "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-20-3-prod/market-memory-desktop.png",
+      "cdpLoadMs": 515,
+      "url": "https://tradeveto.com/market-memory",
+      "title": "Market Memory — TradeVeto | TradeVeto",
+      "nodeCount": 807,
+      "htmlBytes": 168905,
+      "scrollHeight": 5321,
+      "viewport": {
+        "width": 1440,
+        "height": 1200,
+        "dpr": 1
+      },
+      "domContentLoadedMs": 346,
+      "loadEventMs": 409,
+      "responseEndMs": 200,
+      "transferSize": 16314,
+      "encodedBodySize": 16014,
+      "firstPaintMs": 424,
+      "firstContentfulPaintMs": 424,
+      "freshnessProof": true,
+      "explainabilityProof": true,
+      "limitedEvidenceVisible": true,
+      "lightRendererProof": true,
+      "cdpMetrics": {
+        "Nodes": 1402,
+        "LayoutCount": 3,
+        "RecalcStyleCount": 4,
+        "JSHeapUsedSize": 4011332,
+        "TaskDuration": 0.274188,
+        "ScriptDuration": 0.065316,
+        "LayoutDuration": 0.035865,
+        "RecalcStyleDuration": 0.014507
+      },
+      "hydrationMessages": [],
+      "consoleMessageCount": 0
+    },
+    {
+      "name": "mobile",
+      "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-20-3-prod/market-memory-mobile.png",
+      "cdpLoadMs": 685,
+      "url": "https://tradeveto.com/market-memory",
+      "title": "Market Memory — TradeVeto | TradeVeto",
+      "nodeCount": 807,
+      "htmlBytes": 168905,
+      "scrollHeight": 12547,
+      "viewport": {
+        "width": 390,
+        "height": 844,
+        "dpr": 3
+      },
+      "domContentLoadedMs": 314,
+      "loadEventMs": 664,
+      "responseEndMs": 144,
+      "transferSize": 16306,
+      "encodedBodySize": 16006,
+      "firstPaintMs": 664,
+      "firstContentfulPaintMs": 664,
+      "freshnessProof": true,
+      "explainabilityProof": true,
+      "limitedEvidenceVisible": true,
+      "lightRendererProof": true,
+      "cdpMetrics": {
+        "Nodes": 2750,
+        "LayoutCount": 3,
+        "RecalcStyleCount": 2,
+        "JSHeapUsedSize": 6200360,
+        "TaskDuration": 0.381879,
+        "ScriptDuration": 0.014302,
+        "LayoutDuration": 0.003645,
+        "RecalcStyleDuration": 0.006471
+      },
+      "hydrationMessages": [],
+      "consoleMessageCount": 0
+    }
+  ]
+}

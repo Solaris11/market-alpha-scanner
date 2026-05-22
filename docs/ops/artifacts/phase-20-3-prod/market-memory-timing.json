@@ -1,0 +1,97 @@
+{
+  "generatedAt": "2026-05-22T01:25:09.000Z",
+  "url": "https://tradeveto.com/market-memory",
+  "samples": [
+    {
+      "label": "cold_or_first",
+      "code": 200,
+      "ms": 173,
+      "bytes": 168431
+    },
+    {
+      "label": "warmup",
+      "code": 200,
+      "ms": 198,
+      "bytes": 168431
+    },
+    {
+      "label": "hot_1",
+      "code": 200,
+      "ms": 191,
+      "bytes": 168431
+    },
+    {
+      "label": "hot_2",
+      "code": 200,
+      "ms": 204,
+      "bytes": 168431
+    },
+    {
+      "label": "hot_3",
+      "code": 200,
+      "ms": 178,
+      "bytes": 168431
+    },
+    {
+      "label": "hot_4",
+      "code": 200,
+      "ms": 180,
+      "bytes": 168431
+    },
+    {
+      "label": "hot_5",
+      "code": 200,
+      "ms": 248,
+      "bytes": 168431
+    },
+    {
+      "label": "hot_6",
+      "code": 200,
+      "ms": 135,
+      "bytes": 168431
+    },
+    {
+      "label": "hot_7",
+      "code": 200,
+      "ms": 231,
+      "bytes": 168431
+    },
+    {
+      "label": "hot_8",
+      "code": 200,
+      "ms": 162,
+      "bytes": 168431
+    },
+    {
+      "label": "hot_9",
+      "code": 200,
+      "ms": 181,
+      "bytes": 168431
+    },
+    {
+      "label": "hot_10",
+      "code": 200,
+      "ms": 166,
+      "bytes": 168431
+    },
+    {
+      "label": "hot_11",
+      "code": 200,
+      "ms": 140,
+      "bytes": 168431
+    },
+    {
+      "label": "hot_12",
+      "code": 200,
+      "ms": 140,
+      "bytes": 168431
+    }
+  ],
+  "hot": {
+    "count": 12,
+    "min": 135,
+    "p50": 178,
+    "p95": 248,
+    "max": 248
+  }
+}
