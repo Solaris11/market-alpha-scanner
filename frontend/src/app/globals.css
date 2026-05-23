@@ -446,6 +446,10 @@ a {
 }
 
 .tv-overlay-root {
+  height: var(--tv-visual-viewport-height, 100dvh);
+  max-height: var(--tv-visual-viewport-height, 100dvh);
+  max-width: 100vw;
+  width: min(var(--tv-visual-viewport-width, 100vw), 100vw);
   z-index: var(--tv-z-overlay);
 }
 
@@ -722,8 +726,10 @@ a {
   }
 
   .tv-stable-overlay-surface[data-mobile-fullscreen="true"] {
-    height: var(--tv-visual-viewport-height, 100dvh);
-    max-height: var(--tv-visual-viewport-height, 100dvh);
+    height: min(var(--tv-visual-viewport-height, 100dvh), 100%);
+    max-height: min(var(--tv-visual-viewport-height, 100dvh), 100%);
+    max-width: min(var(--tv-visual-viewport-width, 100vw), 100vw);
+    width: min(var(--tv-visual-viewport-width, 100vw), 100vw);
   }
 
   .tv-expanded-chart-canvas {
