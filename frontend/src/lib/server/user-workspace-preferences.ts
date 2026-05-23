@@ -7,8 +7,16 @@ import {
   normalizeWorkspacePreferences,
   type WorkspacePreferences,
 } from "@/lib/trading/workspace-preferences";
+import {
+  mergeChartWorkflowWorkspaceMap,
+  normalizeChartWorkflowSymbol,
+  sanitizeChartWorkflowWorkspace,
+  sanitizeChartWorkflowWorkspaceMap,
+  type ChartWorkflowWorkspace,
+} from "@/components/terminal/chart-workflow-storage";
 
 type WorkspacePreferencesRow = QueryResultRow & {
+  chart_workspaces: unknown | null;
   favorite_actions: string[] | null;
   favorite_modules: string[] | null;
   favorite_symbols: string[] | null;
@@ -25,11 +33,16 @@ type WorkspacePreferencesRow = QueryResultRow & {
   workspace_mode: string | null;
 };
 
+type ChartWorkspacesRow = QueryResultRow & {
+  chart_workspaces: unknown | null;
+};
+
 export async function readUserWorkspacePreferences(userId: string): Promise<WorkspacePreferences> {
   const result = await dbQuery<WorkspacePreferencesRow>(
     `
       SELECT
         favorite_symbols,
+        chart_workspaces,
         favorite_modules,
         hidden_modules,
         module_order,
@@ -58,6 +71,7 @@ export async function upsertUserWorkspacePreferences(userId: string, value: unkn
     `
       INSERT INTO user_workspace_preferences (
         user_id,
+        chart_workspaces,
         favorite_symbols,
         favorite_modules,
         hidden_modules,
@@ -75,9 +89,10 @@ export async function upsertUserWorkspacePreferences(userId: string, value: unkn
         updated_at,
         preferences_updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, now(), now(), now())
+      VALUES ($1, $2::jsonb, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, now(), now(), now())
       ON CONFLICT (user_id)
       DO UPDATE SET
+        chart_workspaces = EXCLUDED.chart_workspaces,
         favorite_symbols = EXCLUDED.favorite_symbols,
         favorite_modules = EXCLUDED.favorite_modules,
         hidden_modules = EXCLUDED.hidden_modules,
@@ -94,6 +109,7 @@ export async function upsertUserWorkspacePreferences(userId: string, value: unkn
         updated_at = now(),
         preferences_updated_at = now()
       RETURNING
+        chart_workspaces,
         favorite_symbols,
         favorite_modules,
         hidden_modules,
@@ -111,6 +127,7 @@ export async function upsertUserWorkspacePreferences(userId: string, value: unkn
     `,
     [
       userId,
+      JSON.stringify(preferences.chartWorkspaces),
       preferences.favoriteSymbols,
       preferences.favoriteModules,
       preferences.hiddenModules,
@@ -129,9 +146,61 @@ export async function upsertUserWorkspacePreferences(userId: string, value: unkn
   return preferencesFromRow(result.rows[0]);
 }
 
+export async function readUserChartWorkflowWorkspace(userId: string, symbol: string): Promise<ChartWorkflowWorkspace | null> {
+  const normalizedSymbol = normalizeChartWorkflowSymbol(symbol);
+  const result = await dbQuery<ChartWorkspacesRow>(
+    `
+      SELECT chart_workspaces
+      FROM user_workspace_preferences
+      WHERE user_id = $1
+      LIMIT 1
+    `,
+    [userId],
+  );
+  const workspaces = sanitizeChartWorkflowWorkspaceMap(result.rows[0]?.chart_workspaces);
+  return workspaces[normalizedSymbol] ?? null;
+}
+
+export async function upsertUserChartWorkflowWorkspace(userId: string, symbol: string, value: unknown): Promise<ChartWorkflowWorkspace> {
+  const normalizedSymbol = normalizeChartWorkflowSymbol(symbol);
+  const workspace = sanitizeChartWorkflowWorkspace(value);
+  const current = await dbQuery<ChartWorkspacesRow>(
+    `
+      SELECT chart_workspaces
+      FROM user_workspace_preferences
+      WHERE user_id = $1
+      LIMIT 1
+    `,
+    [userId],
+  );
+  const chartWorkspaces = mergeChartWorkflowWorkspaceMap(current.rows[0]?.chart_workspaces, normalizedSymbol, workspace);
+  const result = await dbQuery<ChartWorkspacesRow>(
+    `
+      INSERT INTO user_workspace_preferences (
+        user_id,
+        chart_workspaces,
+        created_at,
+        updated_at,
+        preferences_updated_at
+      )
+      VALUES ($1, $2::jsonb, now(), now(), now())
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        chart_workspaces = EXCLUDED.chart_workspaces,
+        updated_at = now(),
+        preferences_updated_at = now()
+      RETURNING chart_workspaces
+    `,
+    [userId, JSON.stringify(chartWorkspaces)],
+  );
+  const saved = sanitizeChartWorkflowWorkspaceMap(result.rows[0]?.chart_workspaces);
+  return saved[normalizedSymbol] ?? workspace;
+}
+
 function preferencesFromRow(row: WorkspacePreferencesRow | undefined): WorkspacePreferences {
   if (!row) return DEFAULT_WORKSPACE_PREFERENCES;
   return normalizeWorkspacePreferences({
+    chartWorkspaces: row.chart_workspaces,
     favoriteActions: row.favorite_actions ?? [],
     favoriteModules: row.favorite_modules ?? [],
     favoriteSymbols: row.favorite_symbols ?? [],

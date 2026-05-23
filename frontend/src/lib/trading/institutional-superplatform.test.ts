@@ -99,6 +99,7 @@ const workflow: WorkflowEvolutionSummary = {
 };
 
 const preferences: WorkspacePreferences = {
+  chartWorkspaces: {},
   favoriteActions: ["open_terminal", "review_opportunities"],
   favoriteModules: ["macro", "watchlist", "alerts"],
   favoriteSymbols: ["AMD", "NVDA"],

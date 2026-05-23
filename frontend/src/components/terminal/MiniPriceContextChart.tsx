@@ -55,7 +55,7 @@ export function MiniPriceContextChart({
         </div>
       </div>
       <div className="tv-chart-reveal">
-        <SymbolChart candles={chartCandles} height={height} showHeaderBadge={false} symbol={symbol} />
+        <SymbolChart candles={chartCandles} height={height} restoreFullscreenState={false} showHeaderBadge={false} symbol={symbol} />
       </div>
       <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
         <MiniMetric label="Latest" value={latest === null ? "N/A" : formatMoney(latest)} />

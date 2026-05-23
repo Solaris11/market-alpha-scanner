@@ -1,4 +1,8 @@
 import { normalizeWatchlistSymbol } from "@/lib/watchlist-storage";
+import {
+  sanitizeChartWorkflowWorkspaceMap,
+  type ChartWorkflowWorkspaceMap,
+} from "@/components/terminal/chart-workflow-storage";
 
 export const WORKSPACE_MODULES = [
   "what_matters_now",
@@ -38,6 +42,7 @@ export type WorkspacePreferences = {
   favoriteActions: WorkspaceFavoriteAction[];
   favoriteModules: WorkspaceModuleId[];
   favoriteSymbols: string[];
+  chartWorkspaces: ChartWorkflowWorkspaceMap;
   hiddenModules: WorkspaceModuleId[];
   macroFirstMode: boolean;
   mobileLastViewedSymbol: string | null;
@@ -87,6 +92,7 @@ export const DEFAULT_WORKSPACE_PREFERENCES: WorkspacePreferences = {
   favoriteActions: ["open_terminal", "review_opportunities", "open_watchlist"],
   favoriteModules: ["what_matters_now", "watchlist", "best_setups"],
   favoriteSymbols: [],
+  chartWorkspaces: {},
   hiddenModules: [],
   macroFirstMode: false,
   mobileLastViewedSymbol: null,
@@ -120,6 +126,7 @@ export function normalizeWorkspacePreferences(value: unknown): WorkspacePreferen
     favoriteActions: normalizeFavoriteActions(source.favoriteActions ?? source.favorite_actions, DEFAULT_WORKSPACE_PREFERENCES.favoriteActions),
     favoriteModules,
     favoriteSymbols: normalizeSymbols(source.favoriteSymbols ?? source.favorite_symbols, 16),
+    chartWorkspaces: sanitizeChartWorkflowWorkspaceMap(source.chartWorkspaces ?? source.chart_workspaces),
     hiddenModules,
     macroFirstMode: booleanValue(source.macroFirstMode ?? source.macro_first_mode, workspaceMode === "macro_first"),
     mobileLastViewedSymbol: nullableSymbol(source.mobileLastViewedSymbol ?? source.mobile_last_viewed_symbol),

@@ -26,6 +26,24 @@ describe("workspace preferences", () => {
     assert.deepEqual(preferences.preferredTimeframes, ["1D", "5Y"]);
   });
 
+  test("normalizes persisted chart workspaces for account sync", () => {
+    const preferences = normalizeWorkspacePreferences({
+      chart_workspaces: {
+        amd: {
+          drawingTool: "edit",
+          fullscreenOpen: true,
+          indicators: ["ema20", "bad"],
+          period: "1y",
+        },
+      },
+    });
+
+    assert.equal(preferences.chartWorkspaces.AMD?.drawingTool, "edit");
+    assert.equal(preferences.chartWorkspaces.AMD?.fullscreenOpen, true);
+    assert.equal(preferences.chartWorkspaces.AMD?.period, "1y");
+    assert.deepEqual(preferences.chartWorkspaces.AMD?.indicators, ["ema20"]);
+  });
+
   test("applies workflow mode presets without touching unrelated choices", () => {
     const preferences = applyWorkspaceMode(
       normalizeWorkspacePreferences({

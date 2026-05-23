@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
-import { Expand, RotateCcw } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Copy, Expand, RotateCcw, Trash2 } from "lucide-react";
 import {
   CandlestickSeries,
   ColorType,
@@ -9,6 +9,7 @@ import {
   LineSeries,
   createChart,
   createSeriesMarkers,
+  type MouseEventParams,
   type Time,
 } from "lightweight-charts";
 import {
@@ -46,16 +47,24 @@ import {
 } from "./chart-intelligence-overlays";
 import {
   readChartWorkflowWorkspace,
+  replaceChartWorkflowWorkspace,
   writeChartWorkflowWorkspace,
+  type ChartWorkflowWorkspace,
   type ChartDetailMode,
   type ChartLayoutMode,
   type StoredChartDrawing,
   type StoredChartDrawingPoint,
   type StoredChartDrawingTool,
 } from "./chart-workflow-storage";
+import {
+  fetchAccountChartWorkflowWorkspace,
+  mergeLocalAndAccountChartWorkspace,
+  saveAccountChartWorkflowWorkspace,
+} from "./chart-workflow-account-sync";
 import { EmptyState } from "./ui/EmptyState";
 import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { INTERACTIVE_CHART_PERIODS, type InteractiveChartPeriod } from "@/lib/interactive-chart-data";
 
 export type ChartCandle = {
@@ -122,10 +131,13 @@ export type SymbolChartProps = {
   lastUpdated?: string | null;
   defaultIndicators?: ChartIndicatorId[];
   controlledIndicators?: ChartIndicatorId[];
+  crosshairSyncGroup?: string;
+  enableAccountSync?: boolean;
   onIndicatorsChange?: (indicators: ChartIndicatorId[]) => void;
   defaultOverlayFamilies?: ChartOverlayFamily[];
   controlledOverlayFamilies?: ChartOverlayFamily[];
   onOverlayFamiliesChange?: (families: ChartOverlayFamily[]) => void;
+  restoreFullscreenState?: boolean;
   showDrawingTools?: boolean;
 };
 
@@ -135,6 +147,7 @@ type ChartDrawing = StoredChartDrawing;
 
 const CHART_DRAWING_TOOLS: ChartDrawingTool[] = [
   "inspect",
+  "edit",
   "horizontal",
   "trendline",
   "supportZone",
@@ -146,6 +159,17 @@ const CHART_DRAWING_TOOLS: ChartDrawingTool[] = [
   "annotation",
   "ruler",
 ];
+
+const CHART_CROSSHAIR_SYNC_EVENT = "tradeveto-chart-crosshair-sync";
+
+type ChartCrosshairSyncPayload = {
+  clear?: boolean;
+  group: string;
+  price: number | null;
+  sourceId: string;
+  symbol: string;
+  time: Time | null;
+};
 
 export function SymbolChart({
   symbol,
@@ -166,15 +190,22 @@ export function SymbolChart({
   lastUpdated,
   defaultIndicators = DEFAULT_CHART_INDICATORS,
   controlledIndicators,
+  crosshairSyncGroup,
+  enableAccountSync = true,
   onIndicatorsChange,
   defaultOverlayFamilies = DEFAULT_CHART_OVERLAY_FAMILIES,
   controlledOverlayFamilies,
   onOverlayFamiliesChange,
+  restoreFullscreenState = true,
   showDrawingTools = true,
 }: SymbolChartProps) {
+  const chartInstanceId = useId();
+  const { authenticated, loading: accountLoading, user } = useCurrentUser();
   const chartRootRef = useRef<HTMLDivElement | null>(null);
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
   const entryBandRef = useRef<HTMLDivElement | null>(null);
+  const applyingRemoteCrosshairRef = useRef(false);
+  const skipNextWorkspacePersistRef = useRef(false);
   const [failed, setFailed] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [uncontrolledPeriod, setUncontrolledPeriod] = useState<InteractiveChartPeriod>(defaultPeriod);
@@ -187,7 +218,9 @@ export function SymbolChart({
   const [draftDrawing, setDraftDrawing] = useState<ChartDrawing | null>(null);
   const [hotkeysActive, setHotkeysActive] = useState(false);
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
+  const [accountWorkspaceLoaded, setAccountWorkspaceLoaded] = useState(false);
   const [workspaceUpdatedAt, setWorkspaceUpdatedAt] = useState<string | null>(null);
+  const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const period = controlledPeriod ?? uncontrolledPeriod;
   const enabledOverlayFamilies = controlledOverlayFamilies ?? uncontrolledOverlayFamilies;
   const enabledIndicators = controlledIndicators ?? uncontrolledIndicators;
@@ -222,6 +255,8 @@ export function SymbolChart({
   }), [chartCandles.length, drawings.length, enabledIndicators, enabledOverlayFamilies, visibleChartSignals.length]);
   const move = useMemo(() => summarizeCandles(chartCandles), [chartCandles]);
   const canRenderChart = chartCandles.length >= 2;
+  const accountSyncEnabled = enableAccountSync && !controlledPeriod && !controlledOverlayFamilies && !controlledIndicators;
+  const crosshairSourceId = chartInstanceId.replace(/:/g, "");
 
   function expandChart(): void {
     trackAnalyticsEvent("chart_expand", {
@@ -230,7 +265,13 @@ export function SymbolChart({
       period,
       surface: "symbol_chart",
     }, { source: "chart", symbol });
+    writeChartWorkflowWorkspace(symbol, { fullscreenOpen: true });
     setExpanded(true);
+  }
+
+  function closeExpandedChart(): void {
+    writeChartWorkflowWorkspace(symbol, { fullscreenOpen: false });
+    setExpanded(false);
   }
 
   function changePeriod(range: InteractiveChartPeriod): void {
@@ -269,9 +310,7 @@ export function SymbolChart({
     );
   }
 
-  useEffect(() => {
-    setWorkspaceLoaded(false);
-    const workspace = readChartWorkflowWorkspace(symbol);
+  function applyWorkspaceState(workspace: ChartWorkflowWorkspace | null, restoreFullscreen: boolean): void {
     if (workspace) {
       if (!controlledPeriod) setUncontrolledPeriod(workspace.period);
       if (!controlledOverlayFamilies) setUncontrolledOverlayFamilies(workspace.overlayFamilies);
@@ -279,6 +318,7 @@ export function SymbolChart({
       setDrawingTool(workspace.drawingTool);
       setDrawings(workspace.drawings);
       setWorkspaceUpdatedAt(workspace.updatedAt);
+      if (restoreFullscreen && expandable && workspace.fullscreenOpen) setExpanded(true);
     } else {
       if (!controlledPeriod) setUncontrolledPeriod(defaultPeriod);
       if (!controlledOverlayFamilies) setUncontrolledOverlayFamilies(defaultOverlayFamilies);
@@ -288,22 +328,127 @@ export function SymbolChart({
       setWorkspaceUpdatedAt(null);
     }
     setDraftDrawing(null);
+    setSelectedDrawingId(null);
+  }
+
+  function updateDrawing(drawingId: string, updater: (drawing: ChartDrawing) => ChartDrawing): void {
+    setDrawings((current) => current.map((drawing) => drawing.id === drawingId ? updater(drawing) : drawing));
+  }
+
+  function clearDrawings(): void {
+    setDrawings([]);
+    setSelectedDrawingId(null);
+  }
+
+  function deleteSelectedDrawing(): void {
+    if (!selectedDrawingId) return;
+    setDrawings((current) => current.filter((drawing) => drawing.id !== selectedDrawingId));
+    setSelectedDrawingId(null);
+  }
+
+  function duplicateSelectedDrawing(): void {
+    if (!selectedDrawingId) return;
+    const drawing = drawings.find((item) => item.id === selectedDrawingId);
+    if (!drawing) return;
+    const duplicate = nudgeDrawing({
+      ...drawing,
+      createdAt: new Date().toISOString(),
+      id: `${drawing.tool}-${Date.now()}-copy`,
+    }, 1.8, 1.8);
+    setDrawings((current) => [...current, duplicate].slice(-24));
+    setSelectedDrawingId(duplicate.id);
+  }
+
+  function nudgeSelectedDrawing(deltaX: number, deltaY: number): void {
+    if (!selectedDrawingId) return;
+    updateDrawing(selectedDrawingId, (drawing) => nudgeDrawing(drawing, deltaX, deltaY));
+  }
+
+  useEffect(() => {
+    setWorkspaceLoaded(false);
+    setAccountWorkspaceLoaded(false);
+    const workspace = readChartWorkflowWorkspace(symbol);
+    skipNextWorkspacePersistRef.current = true;
+    applyWorkspaceState(workspace, restoreFullscreenState);
     setWorkspaceLoaded(true);
   // This effect intentionally keys off the symbol so persisted chart state follows the active instrument.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol]);
 
   useEffect(() => {
+    if (!workspaceLoaded || !accountSyncEnabled || accountLoading) {
+      if (!accountSyncEnabled) setAccountWorkspaceLoaded(true);
+      return undefined;
+    }
+    if (!authenticated || !user) {
+      setAccountWorkspaceLoaded(true);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setAccountWorkspaceLoaded(false);
+    void fetchAccountChartWorkflowWorkspace(symbol)
+      .then((result) => {
+        if (cancelled) return;
+        const localWorkspace = readChartWorkflowWorkspace(symbol);
+        const nextWorkspace = mergeLocalAndAccountChartWorkspace(localWorkspace, result.workspace);
+        if (nextWorkspace) {
+          skipNextWorkspacePersistRef.current = true;
+          applyWorkspaceState(nextWorkspace, restoreFullscreenState);
+          replaceChartWorkflowWorkspace(symbol, nextWorkspace);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setAccountWorkspaceLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  // Account chart sync intentionally hydrates once per account + symbol. Local state changes are saved by the persistence effect.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountLoading, accountSyncEnabled, authenticated, symbol, user?.id, workspaceLoaded]);
+
+  useEffect(() => {
     if (!workspaceLoaded) return;
+    if (skipNextWorkspacePersistRef.current) {
+      skipNextWorkspacePersistRef.current = false;
+      return;
+    }
     const saved = writeChartWorkflowWorkspace(symbol, {
       drawingTool,
       drawings,
+      fullscreenOpen: expanded,
       indicators: enabledIndicators,
       overlayFamilies: enabledOverlayFamilies,
       period,
     });
     if (saved) setWorkspaceUpdatedAt(saved.updatedAt);
-  }, [drawingTool, drawings, enabledIndicators, enabledOverlayFamilies, period, symbol, workspaceLoaded]);
+  }, [drawingTool, drawings, enabledIndicators, enabledOverlayFamilies, expanded, period, symbol, workspaceLoaded]);
+
+  useEffect(() => {
+    if (!workspaceLoaded || !accountWorkspaceLoaded || !accountSyncEnabled || accountLoading || !authenticated || !user) return undefined;
+    const workspace = readChartWorkflowWorkspace(symbol);
+    if (!workspace) return undefined;
+    const timeout = window.setTimeout(() => {
+      void saveAccountChartWorkflowWorkspace(symbol, workspace).catch(() => undefined);
+    }, 450);
+    return () => window.clearTimeout(timeout);
+  }, [
+    accountLoading,
+    accountSyncEnabled,
+    accountWorkspaceLoaded,
+    authenticated,
+    drawingTool,
+    drawings,
+    enabledIndicators,
+    enabledOverlayFamilies,
+    expanded,
+    period,
+    symbol,
+    user,
+    workspaceLoaded,
+  ]);
 
   useEffect(() => {
     if (!hotkeysActive) return undefined;
@@ -311,6 +456,20 @@ export function SymbolChart({
       if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
       if (isEditableTarget(event.target)) return;
       const key = event.key.toLowerCase();
+      if (selectedDrawingId && (key === "backspace" || key === "delete")) {
+        event.preventDefault();
+        deleteSelectedDrawing();
+        return;
+      }
+      if (selectedDrawingId && key.startsWith("arrow")) {
+        event.preventDefault();
+        const step = event.shiftKey ? 2 : 0.5;
+        if (key === "arrowleft") nudgeSelectedDrawing(-step, 0);
+        if (key === "arrowright") nudgeSelectedDrawing(step, 0);
+        if (key === "arrowup") nudgeSelectedDrawing(0, -step);
+        if (key === "arrowdown") nudgeSelectedDrawing(0, step);
+        return;
+      }
       const rangeIndex = Number.parseInt(key, 10) - 1;
       if (enableTimeframeSwitching && rangeIndex >= 0 && rangeIndex < INTERACTIVE_CHART_PERIODS.length) {
         event.preventDefault();
@@ -333,15 +492,26 @@ export function SymbolChart({
         setDrawingTool(CHART_DRAWING_TOOLS[(currentIndex + 1) % CHART_DRAWING_TOOLS.length] ?? "inspect");
         return;
       }
+      if (key === "e" && showDrawingTools) {
+        event.preventDefault();
+        setDrawingTool("edit");
+        return;
+      }
       if (key === "escape" && drawingTool !== "inspect") {
         event.preventDefault();
         setDraftDrawing(null);
+        setSelectedDrawingId(null);
         setDrawingTool("inspect");
+        return;
+      }
+      if (key === "escape" && selectedDrawingId) {
+        event.preventDefault();
+        setSelectedDrawingId(null);
       }
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [drawingTool, enableTimeframeSwitching, expandable, hotkeysActive, period, showDrawingTools]);
+  }, [drawingTool, enableTimeframeSwitching, expandable, hotkeysActive, period, selectedDrawingId, showDrawingTools]);
 
   useEffect(() => {
     const container = chartContainerRef.current;
@@ -409,6 +579,52 @@ export function SymbolChart({
       }
       chart.timeScale().fitContent();
 
+      const syncGroup = crosshairSyncGroup?.trim() || null;
+      const handleCrosshairMove = (param: MouseEventParams<Time>) => {
+        if (!syncGroup || applyingRemoteCrosshairRef.current) return;
+        if (!param.point || !param.time) {
+          dispatchChartCrosshairSync({
+            clear: true,
+            group: syncGroup,
+            price: null,
+            sourceId: crosshairSourceId,
+            symbol,
+            time: null,
+          });
+          return;
+        }
+        const price = Number(candleSeries.coordinateToPrice(param.point.y));
+        if (!Number.isFinite(price)) return;
+        dispatchChartCrosshairSync({
+          group: syncGroup,
+          price,
+          sourceId: crosshairSourceId,
+          symbol,
+          time: param.time,
+        });
+      };
+      const handleRemoteCrosshair = (event: Event) => {
+        if (!syncGroup || !(event instanceof CustomEvent) || !isChartCrosshairSyncPayload(event.detail)) return;
+        const payload = event.detail;
+        if (payload.group !== syncGroup || payload.sourceId === crosshairSourceId) return;
+        applyingRemoteCrosshairRef.current = true;
+        try {
+          if (payload.clear || payload.time === null || payload.price === null) {
+            chart?.clearCrosshairPosition();
+          } else {
+            chart?.setCrosshairPosition(payload.price, payload.time, candleSeries);
+          }
+        } finally {
+          window.setTimeout(() => {
+            applyingRemoteCrosshairRef.current = false;
+          }, 0);
+        }
+      };
+      if (syncGroup) {
+        chart.subscribeCrosshairMove(handleCrosshairMove);
+        window.addEventListener(CHART_CROSSHAIR_SYNC_EVENT, handleRemoteCrosshair);
+      }
+
       const updateEntryBand = () => {
         const band = entryBandRef.current;
         if (!band || chartLevels.entryLow === null || chartLevels.entryHigh === null || !levelsVisible) {
@@ -436,6 +652,10 @@ export function SymbolChart({
       resizeObserver.observe(container);
 
       return () => {
+        if (syncGroup) {
+          chart?.unsubscribeCrosshairMove(handleCrosshairMove);
+          window.removeEventListener(CHART_CROSSHAIR_SYNC_EVENT, handleRemoteCrosshair);
+        }
         resizeObserver.disconnect();
         chart?.remove();
       };
@@ -444,7 +664,7 @@ export function SymbolChart({
       setFailed(true);
       return undefined;
     }
-  }, [canRenderChart, chartCandles, chartLevels, indicatorSeries, levelsVisible, researchLevels, resetToken, showResearchLevelsToggle, visibleChartSignals]);
+  }, [canRenderChart, chartCandles, chartLevels, crosshairSourceId, crosshairSyncGroup, indicatorSeries, levelsVisible, researchLevels, resetToken, showResearchLevelsToggle, symbol, visibleChartSignals]);
 
   if (failed || (candles?.length && !normalizedCandles.length)) {
     return <EmptyState title="Price chart unavailable" message="The latest price payload could not be validated for this symbol." />;
@@ -537,8 +757,12 @@ export function SymbolChart({
         <ChartDrawingToolbar
           activeTool={drawingTool}
           drawingCount={drawings.length}
-          onClear={() => setDrawings([])}
+          onClear={clearDrawings}
+          onDeleteSelected={deleteSelectedDrawing}
+          onDuplicateSelected={duplicateSelectedDrawing}
+          onNudgeSelected={nudgeSelectedDrawing}
           onSelect={setDrawingTool}
+          selectedDrawing={drawings.find((drawing) => drawing.id === selectedDrawingId) ?? null}
         />
       ) : null}
     <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/40 shadow-xl shadow-black/20" style={{ height }}>
@@ -554,8 +778,14 @@ export function SymbolChart({
       <ChartDrawingLayer
         drawings={drawings}
         draftDrawing={draftDrawing}
-        onCommit={(drawing) => setDrawings((current) => [...current.slice(-7), drawing])}
+        onCommit={(drawing) => {
+          setDrawings((current) => [...current, drawing].slice(-24));
+          setSelectedDrawingId(drawing.id);
+        }}
         onDraftChange={setDraftDrawing}
+        onSelect={setSelectedDrawingId}
+        onUpdate={updateDrawing}
+        selectedDrawingId={selectedDrawingId}
         tool={drawingTool}
       />
       <div ref={entryBandRef} className={`pointer-events-none absolute left-0 right-0 hidden border-y border-amber-300/35 bg-amber-300/10 ${showResearchLevelsToggle && !levelsVisible ? "opacity-0" : ""}`} />
@@ -591,7 +821,7 @@ export function SymbolChart({
     {expanded ? (
       <SymbolChartModal
         candles={normalizedCandles}
-        close={() => setExpanded(false)}
+        close={closeExpandedChart}
         dataSource={dataSource}
         defaultIndicators={enabledIndicators}
         defaultOverlayFamilies={enabledOverlayFamilies}
@@ -705,15 +935,24 @@ function ChartDrawingToolbar({
   activeTool,
   drawingCount,
   onClear,
+  onDeleteSelected,
+  onDuplicateSelected,
+  onNudgeSelected,
   onSelect,
+  selectedDrawing,
 }: {
   activeTool: ChartDrawingTool;
   drawingCount: number;
   onClear: () => void;
+  onDeleteSelected: () => void;
+  onDuplicateSelected: () => void;
+  onNudgeSelected: (deltaX: number, deltaY: number) => void;
   onSelect: (tool: ChartDrawingTool) => void;
+  selectedDrawing: ChartDrawing | null;
 }) {
   const tools: Array<{ label: string; tool: ChartDrawingTool }> = [
     { label: "Inspect", tool: "inspect" },
+    { label: "Edit", tool: "edit" },
     { label: "H-Line", tool: "horizontal" },
     { label: "Trendline", tool: "trendline" },
     { label: "Support", tool: "supportZone" },
@@ -732,14 +971,26 @@ function ChartDrawingToolbar({
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Drawing tools</div>
           <p className="mt-1 text-[11px] leading-4 text-slate-500">Client-side research annotations. Drawings are not treated as TradeVeto evidence.</p>
         </div>
-        <button
-          className="min-h-9 rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500 transition hover:border-rose-300/40 hover:text-rose-100 disabled:cursor-not-allowed disabled:opacity-45"
-          disabled={!drawingCount}
-          onClick={onClear}
-          type="button"
-        >
-          Clear {drawingCount ? `(${drawingCount})` : ""}
-        </button>
+        <div className="flex flex-wrap items-center justify-end gap-1.5">
+          {selectedDrawing ? (
+            <>
+              <IconNudgeButton label="Nudge left" onClick={() => onNudgeSelected(-0.5, 0)}><ArrowLeft className="h-3.5 w-3.5" /></IconNudgeButton>
+              <IconNudgeButton label="Nudge up" onClick={() => onNudgeSelected(0, -0.5)}><ArrowUp className="h-3.5 w-3.5" /></IconNudgeButton>
+              <IconNudgeButton label="Nudge down" onClick={() => onNudgeSelected(0, 0.5)}><ArrowDown className="h-3.5 w-3.5" /></IconNudgeButton>
+              <IconNudgeButton label="Nudge right" onClick={() => onNudgeSelected(0.5, 0)}><ArrowRight className="h-3.5 w-3.5" /></IconNudgeButton>
+              <IconNudgeButton label="Duplicate drawing" onClick={onDuplicateSelected}><Copy className="h-3.5 w-3.5" /></IconNudgeButton>
+              <IconNudgeButton label="Delete drawing" onClick={onDeleteSelected} tone="danger"><Trash2 className="h-3.5 w-3.5" /></IconNudgeButton>
+            </>
+          ) : null}
+          <button
+            className="min-h-9 rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500 transition hover:border-rose-300/40 hover:text-rose-100 disabled:cursor-not-allowed disabled:opacity-45"
+            disabled={!drawingCount}
+            onClick={onClear}
+            type="button"
+          >
+            Clear {drawingCount ? `(${drawingCount})` : ""}
+          </button>
+        </div>
       </div>
       <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
         {tools.map(({ label, tool }) => (
@@ -762,33 +1013,74 @@ function ChartDrawingToolbar({
   );
 }
 
+function IconNudgeButton({
+  children,
+  label,
+  onClick,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  label: string;
+  onClick: () => void;
+  tone?: "danger" | "neutral";
+}) {
+  return (
+    <button
+      aria-label={label}
+      className={`grid h-9 w-9 place-items-center rounded-full border bg-white/[0.035] text-slate-500 transition disabled:cursor-not-allowed disabled:opacity-45 ${
+        tone === "danger"
+          ? "border-rose-300/20 hover:border-rose-300/50 hover:text-rose-100"
+          : "border-white/10 hover:border-cyan-300/40 hover:text-cyan-100"
+      }`}
+      onClick={onClick}
+      title={label}
+      type="button"
+    >
+      {children}
+    </button>
+  );
+}
+
 function ChartDrawingLayer({
   drawings,
   draftDrawing,
   onCommit,
   onDraftChange,
+  onSelect,
+  onUpdate,
+  selectedDrawingId,
   tool,
 }: {
   drawings: ChartDrawing[];
   draftDrawing: ChartDrawing | null;
   onCommit: (drawing: ChartDrawing) => void;
   onDraftChange: (drawing: ChartDrawing | null) => void;
+  onSelect: (drawingId: string | null) => void;
+  onUpdate: (drawingId: string, updater: (drawing: ChartDrawing) => ChartDrawing) => void;
+  selectedDrawingId: string | null;
   tool: ChartDrawingTool;
 }) {
+  const layerRef = useRef<HTMLDivElement | null>(null);
+  const editDragRef = useRef<{ drawing: ChartDrawing; pointerId: number; start: ChartDrawingPoint } | null>(null);
   const allDrawings = draftDrawing ? [...drawings, draftDrawing] : drawings;
 
-  function pointFromEvent(event: ReactPointerEvent<HTMLDivElement>): ChartDrawingPoint {
-    const box = event.currentTarget.getBoundingClientRect();
+  function pointFromClient(clientX: number, clientY: number): ChartDrawingPoint {
+    const box = layerRef.current?.getBoundingClientRect();
+    if (!box) return { x: 0, y: 0 };
     return {
-      x: clamp(((event.clientX - box.left) / Math.max(1, box.width)) * 100, 0, 100),
-      y: clamp(((event.clientY - box.top) / Math.max(1, box.height)) * 100, 0, 100),
+      x: clamp(((clientX - box.left) / Math.max(1, box.width)) * 100, 0, 100),
+      y: clamp(((clientY - box.top) / Math.max(1, box.height)) * 100, 0, 100),
     };
   }
 
   function begin(event: ReactPointerEvent<HTMLDivElement>): void {
+    if (tool === "edit") {
+      onSelect(null);
+      return;
+    }
     if (tool === "inspect") return;
     event.currentTarget.setPointerCapture(event.pointerId);
-    const start = pointFromEvent(event);
+    const start = pointFromClient(event.clientX, event.clientY);
     onDraftChange({
       end: start,
       id: `draft-${tool}`,
@@ -801,13 +1093,13 @@ function ChartDrawingLayer({
     if (!draftDrawing || tool === "inspect") return;
     onDraftChange({
       ...draftDrawing,
-      end: pointFromEvent(event),
+      end: pointFromClient(event.clientX, event.clientY),
     });
   }
 
   function end(event: ReactPointerEvent<HTMLDivElement>): void {
     if (!draftDrawing || tool === "inspect") return;
-    const endPoint = pointFromEvent(event);
+    const endPoint = pointFromClient(event.clientX, event.clientY);
     const distance = Math.hypot(endPoint.x - draftDrawing.start.x, endPoint.y - draftDrawing.start.y);
     const nextDrawing = {
       ...draftDrawing,
@@ -819,16 +1111,58 @@ function ChartDrawingLayer({
     if (isPointDrawingTool(tool) || distance >= 2.5) onCommit(nextDrawing);
   }
 
+  function beginEditDrag(event: ReactPointerEvent<SVGGElement>, drawing: ChartDrawing): void {
+    if (tool !== "edit") return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    onSelect(drawing.id);
+    editDragRef.current = {
+      drawing,
+      pointerId: event.pointerId,
+      start: pointFromClient(event.clientX, event.clientY),
+    };
+  }
+
+  function moveEditDrag(event: ReactPointerEvent<SVGGElement>): void {
+    const drag = editDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const point = pointFromClient(event.clientX, event.clientY);
+    const deltaX = point.x - drag.start.x;
+    const deltaY = point.y - drag.start.y;
+    onUpdate(drag.drawing.id, () => nudgeDrawing(drag.drawing, deltaX, deltaY));
+  }
+
+  function endEditDrag(event: ReactPointerEvent<SVGGElement>): void {
+    const drag = editDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    editDragRef.current = null;
+  }
+
   return (
     <div
-      className={`absolute inset-0 z-[4] ${tool === "inspect" ? "pointer-events-none" : "cursor-crosshair touch-none"}`}
+      className={`absolute inset-0 z-[4] ${tool === "inspect" ? "pointer-events-none" : tool === "edit" ? "cursor-move touch-none" : "cursor-crosshair touch-none"}`}
       onPointerCancel={() => onDraftChange(null)}
       onPointerDown={begin}
       onPointerMove={move}
       onPointerUp={end}
+      ref={layerRef}
     >
       <svg className="h-full w-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
-        {allDrawings.map((drawing) => <DrawingShape drawing={drawing} key={drawing.id} />)}
+        {allDrawings.map((drawing) => (
+          <g
+            className={tool === "edit" ? "pointer-events-auto" : "pointer-events-none"}
+            key={drawing.id}
+            onPointerCancel={endEditDrag}
+            onPointerDown={(event) => beginEditDrag(event, drawing)}
+            onPointerMove={moveEditDrag}
+            onPointerUp={endEditDrag}
+          >
+            <DrawingShape drawing={drawing} />
+            {selectedDrawingId === drawing.id ? <DrawingSelectionFrame drawing={drawing} /> : null}
+            {tool === "edit" ? <DrawingHitTarget drawing={drawing} /> : null}
+          </g>
+        ))}
       </svg>
     </div>
   );
@@ -936,6 +1270,67 @@ function DrawingShape({ drawing }: { drawing: ChartDrawing }) {
       <circle cx={drawing.end.x} cy={drawing.end.y} fill="#c4b5fd" r="0.95" />
     </g>
   );
+}
+
+function DrawingSelectionFrame({ drawing }: { drawing: ChartDrawing }) {
+  const bounds = drawingBounds(drawing, 1.6);
+  return (
+    <g pointerEvents="none">
+      <rect
+        fill="rgba(34,211,238,0.035)"
+        height={bounds.height}
+        rx="1.4"
+        stroke="rgba(103,232,249,0.78)"
+        strokeDasharray="1.2 0.9"
+        strokeWidth="0.3"
+        width={bounds.width}
+        x={bounds.x}
+        y={bounds.y}
+      />
+      <circle cx={drawing.start.x} cy={drawing.start.y} fill="#67e8f9" r="0.95" stroke="#020617" strokeWidth="0.26" />
+      <circle cx={drawing.end.x} cy={drawing.end.y} fill="#67e8f9" r="0.95" stroke="#020617" strokeWidth="0.26" />
+    </g>
+  );
+}
+
+function DrawingHitTarget({ drawing }: { drawing: ChartDrawing }) {
+  const bounds = drawingBounds(drawing, 3);
+  if (drawing.tool === "horizontal") {
+    return <rect fill="transparent" height="8" pointerEvents="all" width="100" x="0" y={clamp(drawing.start.y - 4, 0, 92)} />;
+  }
+  if (drawing.tool === "trendline" || drawing.tool === "ruler") {
+    return <line stroke="transparent" strokeLinecap="round" strokeWidth="5" pointerEvents="stroke" x1={drawing.start.x} x2={drawing.end.x} y1={drawing.start.y} y2={drawing.end.y} />;
+  }
+  return <rect fill="transparent" height={bounds.height} pointerEvents="all" width={bounds.width} x={bounds.x} y={bounds.y} />;
+}
+
+function drawingBounds(drawing: ChartDrawing, padding: number): { height: number; width: number; x: number; y: number } {
+  if (drawing.tool === "horizontal") {
+    return {
+      height: 2 + padding * 2,
+      width: 100,
+      x: 0,
+      y: clamp(drawing.start.y - padding - 1, 0, 100),
+    };
+  }
+  if (isPointDrawingTool(drawing.tool)) {
+    return {
+      height: 6 + padding * 2,
+      width: 6 + padding * 2,
+      x: clamp(drawing.start.x - padding - 3, 0, 100),
+      y: clamp(drawing.start.y - padding - 3, 0, 100),
+    };
+  }
+  const minX = Math.min(drawing.start.x, drawing.end.x);
+  const minY = Math.min(drawing.start.y, drawing.end.y);
+  const maxX = Math.max(drawing.start.x, drawing.end.x);
+  const maxY = Math.max(drawing.start.y, drawing.end.y);
+  return {
+    height: clamp(maxY - minY + padding * 2, 2, 100),
+    width: clamp(maxX - minX + padding * 2, 2, 100),
+    x: clamp(minX - padding, 0, 100),
+    y: clamp(minY - padding, 0, 100),
+  };
 }
 
 function drawingZoneStyle(tool: Extract<ChartDrawingTool, "entryZone" | "resistanceZone" | "stopZone" | "supportZone" | "targetZone">): { fill: string; label: string; stroke: string; text: string } {
@@ -1071,6 +1466,8 @@ function SymbolChartModal({
   symbol: string;
   tradeLevels?: ChartTradeLevels;
 }) {
+  const { authenticated, loading: accountLoading, user } = useCurrentUser();
+  const skipNextModalWorkspacePersistRef = useRef(false);
   const [detailMode, setDetailMode] = useState<ChartDetailMode>("overlays");
   const [layoutMode, setLayoutMode] = useState<ChartLayoutMode>("focus");
   const [modalPeriod, setModalPeriod] = useState<InteractiveChartPeriod>(defaultPeriod);
@@ -1085,28 +1482,68 @@ function SymbolChartModal({
   const compareRows = useMemo(() => buildChartCompareRows(candles, normalizedSignals, chartLevels), [candles, chartLevels, normalizedSignals]);
   const levelSummary = tradeLevelSummary(tradeLevels);
 
+  function applyModalWorkspace(workspace: ChartWorkflowWorkspace): void {
+    setDetailMode(workspace.detailMode);
+    setLayoutMode(workspace.layoutMode);
+    setModalPeriod(workspace.period);
+    setModalOverlayFamilies(workspace.overlayFamilies);
+    setModalIndicators(workspace.indicators);
+  }
+
   useEffect(() => {
     const workspace = readChartWorkflowWorkspace(symbol);
-    if (workspace) {
-      setDetailMode(workspace.detailMode);
-      setLayoutMode(workspace.layoutMode);
-      setModalPeriod(workspace.period);
-      setModalOverlayFamilies(workspace.overlayFamilies);
-      setModalIndicators(workspace.indicators);
-    }
+    skipNextModalWorkspacePersistRef.current = true;
+    if (workspace) applyModalWorkspace(workspace);
     setModalWorkspaceLoaded(true);
+  // This effect restores the modal workspace once for the opened symbol.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol]);
 
   useEffect(() => {
+    if (!modalWorkspaceLoaded || accountLoading) return undefined;
+    if (!authenticated || !user) return undefined;
+    let cancelled = false;
+    void fetchAccountChartWorkflowWorkspace(symbol)
+      .then((result) => {
+        if (cancelled) return;
+        const localWorkspace = readChartWorkflowWorkspace(symbol);
+        const nextWorkspace = mergeLocalAndAccountChartWorkspace(localWorkspace, result.workspace);
+        if (nextWorkspace) {
+          skipNextModalWorkspacePersistRef.current = true;
+          applyModalWorkspace(nextWorkspace);
+          replaceChartWorkflowWorkspace(symbol, nextWorkspace);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  // Account modal sync intentionally hydrates once per account + symbol.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accountLoading, authenticated, modalWorkspaceLoaded, symbol, user?.id]);
+
+  useEffect(() => {
     if (!modalWorkspaceLoaded) return;
-    writeChartWorkflowWorkspace(symbol, {
+    if (skipNextModalWorkspacePersistRef.current) {
+      skipNextModalWorkspacePersistRef.current = false;
+      return undefined;
+    }
+    const saved = writeChartWorkflowWorkspace(symbol, {
       detailMode,
+      fullscreenOpen: true,
       indicators: modalIndicators,
       layoutMode,
       overlayFamilies: modalOverlayFamilies,
       period: modalPeriod,
     });
-  }, [detailMode, layoutMode, modalIndicators, modalOverlayFamilies, modalPeriod, modalWorkspaceLoaded, symbol]);
+    if (!accountLoading && authenticated && user && saved) {
+      const timeout = window.setTimeout(() => {
+        void saveAccountChartWorkflowWorkspace(symbol, saved).catch(() => undefined);
+      }, 450);
+      return () => window.clearTimeout(timeout);
+    }
+    return undefined;
+  }, [accountLoading, authenticated, detailMode, layoutMode, modalIndicators, modalOverlayFamilies, modalPeriod, modalWorkspaceLoaded, symbol, user]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
@@ -1287,13 +1724,16 @@ function ChartLayoutExplorer({
 }) {
   const riskMacroFamilies: ChartOverlayFamily[] = ["macro", "risk", "events", "memory", "replay"];
   const replayMemoryFamilies: ChartOverlayFamily[] = ["replay", "memory", "confidence", "levels"];
+  const crosshairSyncGroup = layoutMode === "focus" ? undefined : `symbol-chart:${symbol}:${layoutMode}`;
   const sharedProps = {
     candles,
     controlledIndicators: indicators,
     controlledOverlayFamilies: overlayFamilies,
     controlledPeriod: period,
+    crosshairSyncGroup,
     dataSource,
     defaultPeriod: period,
+    enableAccountSync: false,
     expandable: false,
     interpretation,
     lastUpdated,
@@ -1691,6 +2131,35 @@ function uniqueIndicators(indicators: ChartIndicatorId[]): ChartIndicatorId[] {
     if (!unique.includes(indicator)) unique.push(indicator);
   }
   return unique;
+}
+
+function nudgeDrawing(drawing: ChartDrawing, deltaX: number, deltaY: number): ChartDrawing {
+  return {
+    ...drawing,
+    end: nudgePoint(drawing.end, deltaX, deltaY),
+    start: nudgePoint(drawing.start, deltaX, deltaY),
+  };
+}
+
+function nudgePoint(point: ChartDrawingPoint, deltaX: number, deltaY: number): ChartDrawingPoint {
+  return {
+    x: clamp(point.x + deltaX, 0, 100),
+    y: clamp(point.y + deltaY, 0, 100),
+  };
+}
+
+function dispatchChartCrosshairSync(payload: ChartCrosshairSyncPayload): void {
+  window.dispatchEvent(new CustomEvent(CHART_CROSSHAIR_SYNC_EVENT, { detail: payload }));
+}
+
+function isChartCrosshairSyncPayload(value: unknown): value is ChartCrosshairSyncPayload {
+  if (!value || typeof value !== "object") return false;
+  const payload = value as Partial<ChartCrosshairSyncPayload>;
+  return typeof payload.group === "string"
+    && typeof payload.sourceId === "string"
+    && typeof payload.symbol === "string"
+    && (payload.price === null || typeof payload.price === "number")
+    && (payload.time === null || payload.time !== undefined);
 }
 
 function clamp(value: number, min: number, max: number): number {
