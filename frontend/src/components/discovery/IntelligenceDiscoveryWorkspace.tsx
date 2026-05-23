@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import {
   ArrowRight,
+  Bell,
   Brain,
   ChevronDown,
   GitCompare,
@@ -11,6 +12,7 @@ import {
   LayoutGrid,
   ListFilter,
   Radar,
+  Save,
   Search,
   ShieldAlert,
   Sparkles,
@@ -30,6 +32,8 @@ import {
   type PosterOrbitNode,
   type PosterVisualTone,
 } from "@/components/visual/PosterDataVisuals";
+import { csrfFetch } from "@/lib/client/csrf-fetch";
+import type { DiscoverySavedScan, DiscoverySavedScanPayload } from "@/lib/discovery-saved-scans";
 import {
   filterDiscoverySymbols,
   type DiscoveryCluster,
@@ -54,6 +58,22 @@ import { loadDiscoveryWorkflowState, saveDiscoveryWorkflowState, type DiscoveryR
 
 type DiscoveryMode = "overlay" | "page";
 type ResultDensity = DiscoveryResultDensity;
+type ScannerMessage = {
+  text: string;
+  tone: "amber" | "cyan" | "emerald" | "rose";
+};
+
+type SavedScanMutationResponse = {
+  message?: string;
+  ok?: boolean;
+  scan?: DiscoverySavedScan;
+};
+
+type AlertMutationResponse = {
+  message?: string;
+  ok?: boolean;
+};
+
 type ScannerLane = {
   detail: string;
   filter: DiscoveryQuickFilterKey;
@@ -140,8 +160,13 @@ export function IntelligenceDiscoveryWorkspace({
   const [selectedCluster, setSelectedCluster] = useState<DiscoveryCluster | null>(null);
   const [compareSymbols, setCompareSymbols] = useState<string[]>(system.comparePresets[0]?.symbols.slice(0, 3) ?? []);
   const [shortlistSymbols, setShortlistSymbols] = useState<string[]>([]);
+  const [scannerPresets, setScannerPresets] = useState<DiscoveryScannerPreset[]>(system.scannerPresets);
   const [activeIndex, setActiveIndex] = useState(0);
   const [workflowLoaded, setWorkflowLoaded] = useState(false);
+  const [savedScanName, setSavedScanName] = useState("");
+  const [savingScan, setSavingScan] = useState(false);
+  const [scannerMessage, setScannerMessage] = useState<ScannerMessage | null>(null);
+  const [alertingSymbol, setAlertingSymbol] = useState<string | null>(null);
 
   const state: DiscoveryFilterState = { assetType, evidence, filter, marketCap, query: deferredQuery, riskBand, sector, sort, timeframe, watchlistOnly };
   const filtered = useMemo(() => filterDiscoverySymbols(system.symbols, state), [assetType, deferredQuery, evidence, filter, marketCap, riskBand, sector, sort, system.symbols, timeframe, watchlistOnly]);
@@ -169,6 +194,10 @@ export function IntelligenceDiscoveryWorkspace({
   }));
   const selectedFilter = system.quickFilters.find((item) => item.key === filter);
   const activeSymbol = visibleSymbols[Math.min(activeIndex, Math.max(visibleSymbols.length - 1, 0))] ?? null;
+
+  useEffect(() => {
+    setScannerPresets(system.scannerPresets);
+  }, [system.scannerPresets]);
 
   useEffect(() => {
     trackAnalyticsEvent("scanner_usage", { action: "open_discovery_workspace", universeCount: system.universeCount }, { source: "discovery_workspace" });
@@ -257,15 +286,101 @@ export function IntelligenceDiscoveryWorkspace({
     setFilter(preset.filter);
     setSort(preset.sort);
     setTimeframe(preset.timeframe);
-    setQuery("");
-    setSector("ALL");
-    setAssetType("ALL");
-    setMarketCap("ALL");
-    setRiskBand("ALL");
-    setEvidence("ALL");
-    setWatchlistOnly(false);
+    setQuery(preset.query ?? "");
+    setSector(preset.sector ?? "ALL");
+    setAssetType(preset.assetType ?? "ALL");
+    setMarketCap(preset.marketCap ?? "ALL");
+    setRiskBand(preset.riskBand ?? "ALL");
+    setEvidence(preset.evidence ?? "ALL");
+    setWatchlistOnly(preset.watchlistOnly ?? false);
+    if (preset.density) setDensity(preset.density);
+    if (preset.userSaved && preset.id) {
+      void csrfFetch(`/api/user/saved-scans/${encodeURIComponent(preset.id)}`, {
+        body: JSON.stringify({ touch: true }),
+        headers: { "Content-Type": "application/json" },
+        method: "PATCH",
+      }).catch(() => undefined);
+    }
     trackAnalyticsEvent("scanner_usage", { action: "preset", preset: preset.key, resultCount: preset.count, sort: preset.sort, timeframe: preset.timeframe }, { source: "discovery_preset" });
     trackFirstUsefulAction("scanner_preset", { preset: preset.key }, { source: "discovery_preset" });
+  }
+
+  async function saveCurrentScan(): Promise<void> {
+    if (savingScan) return;
+    setSavingScan(true);
+    setScannerMessage(null);
+    const payload: DiscoverySavedScanPayload = {
+      assetType,
+      density,
+      evidence,
+      filter,
+      marketCap,
+      query,
+      riskBand,
+      sector,
+      sort,
+      timeframe,
+      watchlistOnly,
+    };
+    const name = savedScanName.trim() || defaultSavedScanName(filter, sort, timeframe, visibleSymbols.length);
+    try {
+      const response = await csrfFetch("/api/user/saved-scans", {
+        body: JSON.stringify({ name, payload }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      const result = (await response.json().catch(() => null)) as SavedScanMutationResponse | null;
+      if (!response.ok || !result?.scan) {
+        throw new Error(result?.message ?? "Saved scan unavailable.");
+      }
+      const preset = savedScanToPreset(result.scan, system.symbols);
+      setScannerPresets((current) => [preset, ...current.filter((item) => item.id !== preset.id && item.key !== preset.key)]);
+      setSavedScanName("");
+      setScannerMessage({ text: `${preset.label} saved for quick reload.`, tone: "emerald" });
+      trackAnalyticsEvent("scanner_usage", { action: "saved_scan_create", filter, resultCount: filtered.length, scanId: preset.id }, { source: "discovery_saved_scan" });
+      trackFirstUsefulAction("scanner_saved_scan", { filter, scanId: preset.id }, { source: "discovery_saved_scan" });
+    } catch (error) {
+      setScannerMessage({ text: error instanceof Error ? error.message : "Saved scan failed.", tone: "rose" });
+    } finally {
+      setSavingScan(false);
+    }
+  }
+
+  async function createScannerAlert(symbol: DiscoverySymbol): Promise<void> {
+    if (alertingSymbol) return;
+    setAlertingSymbol(symbol.symbol);
+    setScannerMessage(null);
+    const threshold = Math.max(60, Math.round(symbol.confidence ?? symbol.conviction ?? 70));
+    try {
+      const response = await csrfFetch("/api/alerts/rules", {
+        body: JSON.stringify({
+          channels: ["email"],
+          cooldown_minutes: 720,
+          enabled: true,
+          entry_filter: "good_or_wait",
+          id: `scanner_${symbol.symbol.toLowerCase()}_score_above`,
+          min_score: Math.max(55, threshold - 5),
+          risk_reason: `Risk ${scoreLabel(symbol.risk)}; macro ${scoreLabel(symbol.macro)}; replay ${scoreLabel(symbol.replay)}; freshness ${scoreLabel(symbol.freshness)}.`,
+          scope: "symbol",
+          source: "user",
+          source_reason: `Created from scanner row: ${humanizeInsightText(symbol.reason)}`,
+          symbol: symbol.symbol,
+          threshold,
+          type: "score_above",
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      const result = (await response.json().catch(() => null)) as AlertMutationResponse | null;
+      if (!response.ok) throw new Error(result?.message ?? "Alert creation failed.");
+      setScannerMessage({ text: `${symbol.symbol} scanner alert is active.`, tone: "emerald" });
+      trackAnalyticsEvent("scanner_usage", { action: "alert_create", symbol: symbol.symbol, threshold }, { source: "discovery_scanner_alert", symbol: symbol.symbol });
+      trackFirstUsefulAction("scanner_alert_create", { symbol: symbol.symbol, threshold }, { source: "discovery_scanner_alert", symbol: symbol.symbol });
+    } catch (error) {
+      setScannerMessage({ text: error instanceof Error ? error.message : "Alert creation failed.", tone: "rose" });
+    } finally {
+      setAlertingSymbol(null);
+    }
   }
 
   function applyScannerLane(nextFilter: DiscoveryQuickFilterKey): void {
@@ -319,7 +434,7 @@ export function IntelligenceDiscoveryWorkspace({
       }
 
       if (/^[0-9]$/.test(event.key)) {
-        const preset = system.scannerPresets.find((item) => item.shortcut === event.key);
+        const preset = scannerPresets.find((item) => item.shortcut === event.key);
         if (preset) {
           event.preventDefault();
           applyScannerPreset(preset);
@@ -371,7 +486,7 @@ export function IntelligenceDiscoveryWorkspace({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeSymbol, focusSearch, selectedCluster, selectedSymbol, system.scannerPresets, visibleSymbols.length]);
+  }, [activeSymbol, focusSearch, scannerPresets, selectedCluster, selectedSymbol, visibleSymbols.length]);
 
   return (
     <section className={`tv-discovery-system ${mode === "overlay" ? "space-y-4" : "space-y-6"}`} data-discovery-workspace="true">
@@ -397,10 +512,11 @@ export function IntelligenceDiscoveryWorkspace({
             onCycleDensity={cycleDensity}
             onFocusSearch={focusSearch}
             onShortlistVisible={shortlistVisible}
-            presets={system.scannerPresets}
+            presets={scannerPresets}
             shortlistCount={shortlistRows.length}
             visibleCount={visibleSymbols.length}
           />
+          {scannerMessage ? <ScannerStatusMessage message={scannerMessage} /> : null}
 
           <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(360px,0.8fr)]">
             <div className="poster-panel overflow-hidden rounded-3xl border border-cyan-300/16 bg-slate-950/52 p-4 shadow-2xl shadow-cyan-950/10">
@@ -436,7 +552,16 @@ export function IntelligenceDiscoveryWorkspace({
               </div>
 
               <div id="filters">
-                <ScannerPresetRail onSelect={applyScannerPreset} presets={system.scannerPresets} />
+                <ScannerPresetRail
+                  isSaving={savingScan}
+                  onNameChange={setSavedScanName}
+                  onSaveCurrent={() => {
+                    void saveCurrentScan();
+                  }}
+                  onSelect={applyScannerPreset}
+                  presets={scannerPresets}
+                  saveName={savedScanName}
+                />
                 <QuickFilterRail active={filter} filters={system.quickFilters} onSelect={applyScannerFilter} />
                 <AdvancedFilterDeck
                   activeCount={activeAdvancedCount}
@@ -507,7 +632,11 @@ export function IntelligenceDiscoveryWorkspace({
               activeSymbol={activeSymbol?.symbol ?? null}
               compareSymbols={compareSymbols}
               density={density}
+              alertingSymbol={alertingSymbol}
               onDensityChange={setDensity}
+              onCreateAlert={(symbol) => {
+                void createScannerAlert(symbol);
+              }}
               onOpen={setSelectedSymbol}
               onSortChange={setSort}
               onToggleShortlist={toggleShortlist}
@@ -526,7 +655,15 @@ export function IntelligenceDiscoveryWorkspace({
         </>
       )}
 
-      <SymbolDetailOverlay onClose={() => setSelectedSymbol(null)} symbol={selectedSymbol} timeframe={timeframe} />
+      <SymbolDetailOverlay
+        alertingSymbol={alertingSymbol}
+        onClose={() => setSelectedSymbol(null)}
+        onCreateAlert={(symbol) => {
+          void createScannerAlert(symbol);
+        }}
+        symbol={selectedSymbol}
+        timeframe={timeframe}
+      />
       <ClusterDetailOverlay cluster={selectedCluster} onClose={() => setSelectedCluster(null)} />
     </section>
   );
@@ -656,6 +793,15 @@ function CommandChip({ label, value }: { label: string; value: string }) {
   );
 }
 
+function ScannerStatusMessage({ message }: { message: ScannerMessage }) {
+  const tone = TONE_CLASS[message.tone];
+  return (
+    <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${tone.border} ${tone.bg} ${tone.text}`}>
+      {message.text}
+    </div>
+  );
+}
+
 function QuickFilterRail({
   active,
   filters,
@@ -689,16 +835,55 @@ function QuickFilterRail({
   );
 }
 
-function ScannerPresetRail({ onSelect, presets }: { onSelect: (preset: DiscoveryScannerPreset) => void; presets: DiscoveryScannerPreset[] }) {
+function ScannerPresetRail({
+  isSaving,
+  onNameChange,
+  onSaveCurrent,
+  onSelect,
+  presets,
+  saveName,
+}: {
+  isSaving: boolean;
+  onNameChange: (value: string) => void;
+  onSaveCurrent: () => void;
+  onSelect: (preset: DiscoveryScannerPreset) => void;
+  presets: DiscoveryScannerPreset[];
+  saveName: string;
+}) {
   if (!presets.length) return null;
   return (
     <div className="mt-4 rounded-[1.35rem] border border-white/10 bg-white/[0.025] p-3">
-      <div className="mb-3 flex items-center justify-between gap-3">
+      <div className="mb-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.55fr)] lg:items-end">
         <div>
-          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Server-side saved scan packs</div>
-          <div className="mt-1 text-xs text-slate-500">Generated on the server from validated scanner rows, then applied instantly with keyboard shortcuts.</div>
+          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Saved scans and scan packs</div>
+          <div className="mt-1 text-xs text-slate-500">Server-backed scanner presets, user scans, and instant reload workflows.</div>
         </div>
-        <Sparkles className="h-4 w-4 text-cyan-200" />
+        <form
+          className="grid grid-cols-[minmax(0,1fr)_auto] gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onSaveCurrent();
+          }}
+        >
+          <label className="block">
+            <span className="sr-only">Saved scan name</span>
+            <input
+              className="h-11 w-full rounded-2xl border border-white/10 bg-slate-950/70 px-3 text-xs font-semibold text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-200/55 focus:ring-2 focus:ring-cyan-300/15"
+              maxLength={48}
+              onChange={(event) => onNameChange(event.currentTarget.value)}
+              placeholder="Name this scan"
+              value={saveName}
+            />
+          </label>
+          <button
+            className="inline-flex h-11 items-center gap-2 rounded-2xl border border-cyan-300/25 bg-cyan-300/10 px-3 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 transition hover:border-cyan-200/60 disabled:cursor-not-allowed disabled:opacity-60"
+            disabled={isSaving}
+            type="submit"
+          >
+            <Save className="h-3.5 w-3.5" />
+            {isSaving ? "Saving" : "Save"}
+          </button>
+        </form>
       </div>
       <div className="-mx-1 flex snap-x gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" data-mobile-gesture-ignore="true">
         {presets.map((preset) => {
@@ -712,10 +897,12 @@ function ScannerPresetRail({ onSelect, presets }: { onSelect: (preset: Discovery
             >
               <div className="flex items-start justify-between gap-3">
                 <div className={`text-sm font-black ${tone.text}`}>{preset.label}</div>
-                <span className="rounded-full bg-black/20 px-2 py-0.5 font-mono text-[10px] font-black text-slate-200">{preset.shortcut}</span>
+                <span className="rounded-full bg-black/20 px-2 py-0.5 font-mono text-[10px] font-black text-slate-200">{preset.userSaved ? "User" : preset.shortcut}</span>
               </div>
               <div className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-400">{preset.summary}</div>
-              <div className="mt-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{preset.count} matches · {preset.timeframe}</div>
+              <div className="mt-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
+                {preset.count} matches · {preset.timeframe}{preset.userSaved ? ` · used ${formatHydrationSafeInteger(preset.useCount ?? 0)}x` : ""}
+              </div>
             </button>
           );
         })}
@@ -911,8 +1098,10 @@ function ScannerLaneBoard({ lanes, onSelect }: { lanes: ScannerLane[]; onSelect:
 
 function SymbolResultGrid({
   activeSymbol,
+  alertingSymbol,
   compareSymbols,
   density,
+  onCreateAlert,
   onOpen,
   onDensityChange,
   onSortChange,
@@ -925,8 +1114,10 @@ function SymbolResultGrid({
   timeframe,
 }: {
   activeSymbol: string | null;
+  alertingSymbol: string | null;
   compareSymbols: string[];
   density: ResultDensity;
+  onCreateAlert: (symbol: DiscoverySymbol) => void;
   onOpen: (symbol: DiscoverySymbol) => void;
   onDensityChange: (density: ResultDensity) => void;
   onSortChange: (sort: DiscoverySortKey) => void;
@@ -975,11 +1166,11 @@ function SymbolResultGrid({
       </div>
       {symbols.length ? (
         density === "speed" || density === "dense" ? (
-          <RapidScannerTable activeSymbol={activeSymbol} compact={density === "dense"} compareSymbols={compareSymbols} onOpen={onOpen} onSortChange={onSortChange} onToggleCompare={onToggleCompare} onToggleShortlist={onToggleShortlist} shortlistedSymbols={shortlistedSymbols} sort={sort} symbols={symbols} timeframe={timeframe} />
+          <RapidScannerTable activeSymbol={activeSymbol} alertingSymbol={alertingSymbol} compact={density === "dense"} compareSymbols={compareSymbols} onCreateAlert={onCreateAlert} onOpen={onOpen} onSortChange={onSortChange} onToggleCompare={onToggleCompare} onToggleShortlist={onToggleShortlist} shortlistedSymbols={shortlistedSymbols} sort={sort} symbols={symbols} timeframe={timeframe} />
         ) : (
           <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
             {symbols.map((symbol) => (
-              <DiscoverySymbolCard compareSelected={compareSymbols.includes(symbol.symbol)} key={symbol.symbol} onOpen={onOpen} onToggleCompare={onToggleCompare} onToggleShortlist={onToggleShortlist} shortlisted={shortlistedSymbols.includes(symbol.symbol)} symbol={symbol} timeframe={timeframe} />
+              <DiscoverySymbolCard alerting={alertingSymbol === symbol.symbol} compareSelected={compareSymbols.includes(symbol.symbol)} key={symbol.symbol} onCreateAlert={onCreateAlert} onOpen={onOpen} onToggleCompare={onToggleCompare} onToggleShortlist={onToggleShortlist} shortlisted={shortlistedSymbols.includes(symbol.symbol)} symbol={symbol} timeframe={timeframe} />
             ))}
           </div>
         )
@@ -994,8 +1185,10 @@ function SymbolResultGrid({
 
 function RapidScannerTable({
   activeSymbol,
+  alertingSymbol,
   compact,
   compareSymbols,
+  onCreateAlert,
   onOpen,
   onSortChange,
   onToggleCompare,
@@ -1006,8 +1199,10 @@ function RapidScannerTable({
   timeframe,
 }: {
   activeSymbol: string | null;
+  alertingSymbol: string | null;
   compact: boolean;
   compareSymbols: string[];
+  onCreateAlert: (symbol: DiscoverySymbol) => void;
   onOpen: (symbol: DiscoverySymbol) => void;
   onSortChange: (sort: DiscoverySortKey) => void;
   onToggleCompare: (symbol: string) => void;
@@ -1018,8 +1213,8 @@ function RapidScannerTable({
   timeframe: DiscoveryTimeframe;
 }) {
   const columns = compact
-    ? "xl:grid-cols-[2.5rem_5rem_minmax(9rem,1fr)_4.5rem_4.5rem_4.5rem_4.5rem_4.5rem_4.5rem_7rem]"
-    : "xl:grid-cols-[3rem_5.5rem_minmax(8rem,1fr)_5rem_5rem_5rem_5rem_5rem_6.5rem]";
+    ? "xl:grid-cols-[2.5rem_5rem_minmax(10rem,1fr)_4.5rem_4.5rem_4.5rem_4.5rem_4.5rem_4.5rem_10rem]"
+    : "xl:grid-cols-[3rem_5.5rem_minmax(10rem,1fr)_5rem_5rem_5rem_5rem_5rem_9rem]";
   return (
     <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/48" data-discovery-scanner-table="true">
       <div className={`grid gap-2 border-b border-white/10 bg-white/[0.035] px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 max-xl:hidden ${columns}`}>
@@ -1051,10 +1246,13 @@ function RapidScannerTable({
                 {symbol.watchlisted ? <Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300 xl:hidden" /> : null}
                 <span className="ml-auto font-mono text-xs text-slate-500 xl:hidden">#{index + 1}</span>
               </button>
-              <button className="min-w-0 text-left" data-stable-overlay-trigger="true" onClick={() => onOpen(symbol)} type="button">
-                <div className="truncate text-sm font-semibold text-slate-200">{symbol.companyName ?? symbol.sector ?? symbol.setupType}</div>
-                <div className="truncate text-[11px] text-slate-500">{humanizeInsightText(symbol.reason)}</div>
-              </button>
+              <div className="min-w-0">
+                <button className="w-full min-w-0 text-left" data-stable-overlay-trigger="true" onClick={() => onOpen(symbol)} type="button">
+                  <div className="truncate text-sm font-semibold text-slate-200">{symbol.companyName ?? symbol.sector ?? symbol.setupType}</div>
+                  <div className="truncate text-[11px] text-slate-500">{humanizeInsightText(symbol.reason)}</div>
+                </button>
+                <ScannerDrilldownRail compact symbol={symbol} />
+              </div>
               <ScannerCell tone={perfTone(symbol.performance[timeframe])} value={formatSigned(symbol.performance[timeframe])} />
               <ScannerCell tone="emerald" value={scoreLabel(symbol.confidence ?? symbol.conviction)} />
               <ScannerCell tone={riskTone} value={scoreLabel(symbol.risk)} />
@@ -1064,6 +1262,15 @@ function RapidScannerTable({
               <div className="flex gap-2">
                 <button className={`h-9 rounded-xl border px-2 text-[10px] font-black uppercase tracking-[0.1em] ${shortlisted ? "border-amber-300/40 bg-amber-300/15 text-amber-100" : "border-white/10 bg-white/[0.035] text-slate-400 hover:text-amber-100"}`} onClick={() => onToggleShortlist(symbol.symbol)} type="button">
                   ★
+                </button>
+                <button
+                  className="grid h-9 w-9 place-items-center rounded-xl border border-emerald-300/25 bg-emerald-300/10 text-emerald-100 hover:border-emerald-200/60 disabled:cursor-wait disabled:opacity-60"
+                  disabled={alertingSymbol === symbol.symbol}
+                  onClick={() => onCreateAlert(symbol)}
+                  title={`Create scanner alert for ${symbol.symbol}`}
+                  type="button"
+                >
+                  <Bell className="h-3.5 w-3.5" />
                 </button>
                 <button className={`h-9 flex-1 rounded-xl border px-2 text-[10px] font-black uppercase tracking-[0.1em] ${selected ? "border-cyan-300/40 bg-cyan-300/15 text-cyan-100" : "border-white/10 bg-white/[0.035] text-slate-400 hover:text-cyan-100"}`} onClick={() => onToggleCompare(symbol.symbol)} type="button">
                   {selected ? "On" : "Cmp"}
@@ -1098,7 +1305,9 @@ function ScannerCell({ tone, value }: { tone: DiscoveryTone; value: string }) {
 }
 
 function DiscoverySymbolCard({
+  alerting,
   compareSelected,
+  onCreateAlert,
   onOpen,
   onToggleCompare,
   onToggleShortlist,
@@ -1106,7 +1315,9 @@ function DiscoverySymbolCard({
   symbol,
   timeframe,
 }: {
+  alerting: boolean;
   compareSelected: boolean;
+  onCreateAlert: (symbol: DiscoverySymbol) => void;
   onOpen: (symbol: DiscoverySymbol) => void;
   onToggleCompare: (symbol: string) => void;
   onToggleShortlist: (symbol: string) => void;
@@ -1142,9 +1353,19 @@ function DiscoverySymbolCard({
         </div>
         <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-400">{humanizeInsightText(symbol.reason)}</p>
       </button>
-      <div className="mt-3 flex items-center justify-between gap-2">
+      <ScannerDrilldownRail symbol={symbol} />
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <button className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] ${shortlisted ? "border-amber-300/40 bg-amber-300/15 text-amber-100" : "border-white/10 bg-white/[0.035] text-slate-400 hover:text-amber-100"}`} onClick={() => onToggleShortlist(symbol.symbol)} type="button">
           {shortlisted ? "Shortlisted" : "Shortlist"}
+        </button>
+        <button
+          className="inline-flex items-center gap-1 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100 hover:border-emerald-200/60 disabled:cursor-wait disabled:opacity-60"
+          disabled={alerting}
+          onClick={() => onCreateAlert(symbol)}
+          type="button"
+        >
+          <Bell className="h-3 w-3" />
+          Alert
         </button>
         <button className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] ${compareSelected ? "border-cyan-300/40 bg-cyan-300/15 text-cyan-100" : "border-white/10 bg-white/[0.035] text-slate-400 hover:text-cyan-100"}`} onClick={() => onToggleCompare(symbol.symbol)} type="button">
           {compareSelected ? "Comparing" : "Compare"}
@@ -1154,6 +1375,31 @@ function DiscoverySymbolCard({
         </Link>
       </div>
     </motion.article>
+  );
+}
+
+function ScannerDrilldownRail({ compact = false, symbol }: { compact?: boolean; symbol: DiscoverySymbol }) {
+  const encoded = encodeURIComponent(symbol.symbol);
+  const links = [
+    { href: `/symbol/${encoded}`, label: "Chart" },
+    { href: `/history?symbol=${encoded}`, label: "Replay" },
+    { href: `/market-memory?symbol=${encoded}`, label: "Memory" },
+    { href: `/strategy-labs?symbol=${encoded}`, label: "Strategy" },
+    { href: `/alerts?symbol=${encoded}&source=scanner`, label: "Alerts" },
+  ];
+  return (
+    <div className={`${compact ? "mt-1 hidden xl:flex" : "mt-3 flex"} flex-wrap gap-1.5`}>
+      {links.map((link) => (
+        <Link
+          className={`${compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-1 text-[10px]"} rounded-full border border-white/10 bg-white/[0.035] font-black uppercase tracking-[0.1em] text-slate-500 hover:border-cyan-300/30 hover:text-cyan-100`}
+          href={link.href}
+          key={link.href}
+          onClick={() => trackAnalyticsEvent("scanner_usage", { action: "drilldown", destination: link.label.toLowerCase(), symbol: symbol.symbol }, { source: "discovery_drilldown", symbol: symbol.symbol })}
+        >
+          {link.label}
+        </Link>
+      ))}
+    </div>
   );
 }
 
@@ -1395,7 +1641,19 @@ function ClusterMiniCard({ cluster, onClick }: { cluster: DiscoveryCluster; onCl
   );
 }
 
-function SymbolDetailOverlay({ onClose, symbol, timeframe }: { onClose: () => void; symbol: DiscoverySymbol | null; timeframe: DiscoveryTimeframe }) {
+function SymbolDetailOverlay({
+  alertingSymbol,
+  onClose,
+  onCreateAlert,
+  symbol,
+  timeframe,
+}: {
+  alertingSymbol: string | null;
+  onClose: () => void;
+  onCreateAlert: (symbol: DiscoverySymbol) => void;
+  symbol: DiscoverySymbol | null;
+  timeframe: DiscoveryTimeframe;
+}) {
   return (
     <StableDetailOverlay
       analyticsSurface="discovery_symbol_detail"
@@ -1410,14 +1668,26 @@ function SymbolDetailOverlay({ onClose, symbol, timeframe }: { onClose: () => vo
         <div className="grid gap-4 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
           <div className="space-y-4">
             <div className="rounded-3xl border border-cyan-300/16 bg-slate-950/50 p-4">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <div className="font-mono text-4xl font-black text-white">{symbol.symbol}</div>
                   <div className="mt-1 text-sm text-slate-400">{symbol.companyName ?? symbol.sector ?? "Validated scanner row"}</div>
                 </div>
-                <Link className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-100" href={symbol.href}>Open full detail</Link>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    className="inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-emerald-100 disabled:cursor-wait disabled:opacity-60"
+                    disabled={alertingSymbol === symbol.symbol}
+                    onClick={() => onCreateAlert(symbol)}
+                    type="button"
+                  >
+                    <Bell className="h-3.5 w-3.5" />
+                    Alert
+                  </button>
+                  <Link className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-100" href={symbol.href}>Open full detail</Link>
+                </div>
               </div>
               <p className="mt-4 text-sm leading-6 text-slate-300">{humanizeInsightText(symbol.reason)}</p>
+              <ScannerDrilldownRail symbol={symbol} />
               <div className="mt-4 grid grid-cols-2 gap-2">
                 <MicroMetric label="Price" value={symbol.price === null ? "N/A" : formatMoney(symbol.price)} />
                 <MicroMetric label={timeframe} tone={perfTone(symbol.performance[timeframe])} value={formatSigned(symbol.performance[timeframe])} />
@@ -1652,6 +1922,61 @@ function buildSpeedLanes(symbols: DiscoverySymbol[]): ScannerLane[] {
       timeframe: definition.timeframe,
     }).slice(0, 6),
   }));
+}
+
+function savedScanToPreset(scan: DiscoverySavedScan, symbols: DiscoverySymbol[]): DiscoveryScannerPreset {
+  const matches = filterDiscoverySymbols(symbols, scan.payload);
+  return {
+    assetType: scan.payload.assetType,
+    count: matches.length,
+    density: scan.payload.density,
+    evidence: scan.payload.evidence,
+    filter: scan.payload.filter,
+    id: scan.id,
+    key: `saved-${scan.id}`,
+    label: scan.name,
+    lastUsedAt: scan.lastUsedAt,
+    marketCap: scan.payload.marketCap,
+    query: scan.payload.query,
+    riskBand: scan.payload.riskBand,
+    sector: scan.payload.sector,
+    serverSaved: true,
+    shortcut: "Saved",
+    sort: scan.payload.sort,
+    source: "user",
+    summary: savedScanSummary(scan.payload),
+    timeframe: scan.payload.timeframe,
+    tone: savedScanTone(scan.payload),
+    useCount: scan.useCount,
+    userSaved: true,
+    watchlistOnly: scan.payload.watchlistOnly,
+  };
+}
+
+function savedScanSummary(payload: DiscoverySavedScanPayload): string {
+  const filters = [
+    payload.query ? `query "${payload.query}"` : null,
+    payload.watchlistOnly ? "watchlist" : null,
+    payload.sector !== "ALL" ? payload.sector : null,
+    payload.assetType !== "ALL" ? payload.assetType : null,
+    payload.marketCap !== "ALL" ? `${payload.marketCap.toLowerCase()} cap` : null,
+    payload.riskBand !== "ALL" ? `${payload.riskBand.toLowerCase()} risk` : null,
+    payload.evidence !== "ALL" ? `${payload.evidence.toLowerCase()} evidence` : null,
+  ].filter((value): value is string => Boolean(value));
+  return `${filters.length ? filters.join(", ") : "full universe"}; ${payload.sort.replace(/_/g, " ")} over ${payload.timeframe}.`;
+}
+
+function savedScanTone(payload: DiscoverySavedScanPayload): DiscoveryTone {
+  if (payload.watchlistOnly) return "amber";
+  if (payload.filter === "crash_risk" || payload.sort === "risk" || payload.sort === "crash" || payload.sort === "weakness") return "rose";
+  if (payload.sort === "macro" || payload.filter === "macro_supported") return "cyan";
+  if (payload.sort === "replay" || payload.filter === "replay_supported" || payload.filter === "breakout_candidates") return "violet";
+  return "emerald";
+}
+
+function defaultSavedScanName(filter: DiscoveryQuickFilterKey, sort: DiscoverySortKey, timeframe: DiscoveryTimeframe, count: number): string {
+  const filterLabel = filter.replace(/_/g, " ");
+  return `${filterLabel} ${sort.replace(/_/g, " ")} ${timeframe} (${formatHydrationSafeInteger(count)})`;
 }
 
 function average(values: Array<number | null | undefined>): number {

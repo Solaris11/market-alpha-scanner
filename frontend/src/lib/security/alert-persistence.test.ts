@@ -22,7 +22,9 @@ test("alert rule payload preserves existing API shape without filesystem paths",
     min_rating: "TOP",
     min_risk_reward: 1.5,
     min_score: 80,
+    risk_reason: "Risk 44; macro 72; replay 68.",
     source: "user",
+    source_reason: "Created from scanner row: breakout pressure is rising.",
   });
 
   assert.deepEqual(payload, {
@@ -34,7 +36,9 @@ test("alert rule payload preserves existing API shape without filesystem paths",
     min_rating: "TOP",
     min_risk_reward: 1.5,
     min_score: 80,
+    risk_reason: "Risk 44; macro 72; replay 68.",
     source: "user",
+    source_reason: "Created from scanner row: breakout pressure is rising.",
   });
   assert.equal(JSON.stringify(payload).includes("scanner_output"), false);
 });

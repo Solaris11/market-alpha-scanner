@@ -16,7 +16,9 @@ export type PersistedAlertRuleShape = {
   min_rating?: string;
   min_risk_reward?: number;
   min_score?: number;
+  risk_reason?: string;
   source?: "system" | "user";
+  source_reason?: string;
 };
 
 export function alertAccessState(input: AlertAccessInput): AlertAccessState {
@@ -34,7 +36,9 @@ export function alertRulePayload(rule: PersistedAlertRuleShape): Record<string, 
     min_rating: rule.min_rating,
     min_risk_reward: rule.min_risk_reward,
     min_score: rule.min_score,
+    risk_reason: rule.risk_reason,
     source: rule.source,
+    source_reason: rule.source_reason,
   };
 }
 

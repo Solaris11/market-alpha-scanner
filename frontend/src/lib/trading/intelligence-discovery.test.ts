@@ -107,6 +107,49 @@ describe("intelligence discovery system", () => {
     assert.equal(matchesDiscoveryQuickFilter(system.symbols.find((symbol) => symbol.symbol === "XOM")!, "top_losers_1m"), true);
   });
 
+  test("promotes user saved scans ahead of default scan packs with full filter state", () => {
+    const system = buildIntelligenceDiscoverySystem({
+      rows: [
+        opportunity("AMD", "Advanced Micro Devices", "Technology", { confidence_score: 72, return_1m: 8.2, risk_pressure_score: 45 }),
+        opportunity("XOM", "Exxon Mobil", "Energy", { confidence_score: 61, fragility_score: 75, return_1m: -4.5, risk_pressure_score: 68 }),
+      ],
+      savedScans: [
+        {
+          createdAt: "2026-05-23T20:00:00.000Z",
+          id: "11111111-1111-4111-8111-111111111111",
+          lastUsedAt: "2026-05-23T20:05:00.000Z",
+          name: "AMD watchlist replay",
+          nameKey: "amd_watchlist_replay",
+          payload: {
+            assetType: "Equity",
+            density: "dense",
+            evidence: "ALL",
+            filter: "all",
+            marketCap: "ALL",
+            query: "advanced",
+            riskBand: "ALL",
+            sector: "Technology",
+            sort: "replay",
+            timeframe: "1M",
+            watchlistOnly: true,
+          },
+          updatedAt: "2026-05-23T20:00:00.000Z",
+          useCount: 3,
+        },
+      ],
+      watchlistSymbols: ["AMD"],
+    });
+
+    const saved = system.scannerPresets[0];
+    assert.equal(saved?.userSaved, true);
+    assert.equal(saved?.label, "AMD watchlist replay");
+    assert.equal(saved?.count, 1);
+    assert.equal(saved?.density, "dense");
+    assert.equal(saved?.query, "advanced");
+    assert.equal(saved?.watchlistOnly, true);
+    assert.equal(system.scannerPresets.some((preset) => preset.key === "preset-best-setups"), true);
+  });
+
   test("applies advanced scanner filters for market cap, risk, evidence, asset, and watchlist speed workflows", () => {
     const system = buildIntelligenceDiscoverySystem({
       rows: [

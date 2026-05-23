@@ -44,7 +44,9 @@ export type AlertRule = {
   enabled: boolean;
   cooldown_minutes: number;
   entry_filter?: EntryFilter;
+  risk_reason?: string;
   source?: "system" | "user";
+  source_reason?: string;
   created_at_utc?: string;
   updated_at_utc?: string;
 };
@@ -240,6 +242,15 @@ function normalizeId(value: unknown, fallback: string) {
   return text || fallback;
 }
 
+function compactAlertText(value: unknown, maxLength: number): string | undefined {
+  const text = String(value ?? "")
+    .replace(/\s+/g, " ")
+    .replace(/[<>]/g, "")
+    .trim()
+    .slice(0, maxLength);
+  return text || undefined;
+}
+
 function isAlertType(value: string): value is AlertType {
   return (ALERT_TYPES as readonly string[]).includes(value);
 }
@@ -323,7 +334,9 @@ export function sanitizeAlertRule(input: Record<string, unknown>, existing?: Ale
     enabled: Boolean(input.enabled ?? existing?.enabled ?? true),
     cooldown_minutes: Number.isFinite(cooldown) ? Math.max(0, Math.round(cooldown)) : 1440,
     entry_filter: isEntryFilter(entryFilterInput) ? entryFilterInput : defaultEntryFilter(typeInput),
+    risk_reason: compactAlertText(input.risk_reason ?? existing?.risk_reason, 220),
     source: sourceInput === "system" ? "system" : "user",
+    source_reason: compactAlertText(input.source_reason ?? existing?.source_reason, 280),
     created_at_utc: existing?.created_at_utc ?? now,
     updated_at_utc: now,
   };

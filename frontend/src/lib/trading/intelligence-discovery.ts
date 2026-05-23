@@ -1,5 +1,6 @@
 import type { OpportunityViewModel } from "./opportunity-view-model";
 import { formatHydrationSafeInteger } from "@/lib/ui/hydration-safe-formatters";
+import type { DiscoverySavedScan, DiscoverySavedScanDensity } from "@/lib/discovery-saved-scans";
 
 export type DiscoveryTone = "amber" | "cyan" | "emerald" | "rose" | "violet";
 
@@ -113,16 +114,29 @@ export type DiscoveryComparePreset = {
 };
 
 export type DiscoveryScannerPreset = {
+  assetType?: string;
   count: number;
+  density?: DiscoverySavedScanDensity;
+  evidence?: DiscoveryEvidenceFilter;
   filter: DiscoveryQuickFilterKey;
+  id?: string;
   key: string;
   label: string;
+  lastUsedAt?: string | null;
+  marketCap?: DiscoveryMarketCapFilter;
+  query?: string;
+  riskBand?: DiscoveryRiskBandFilter;
+  sector?: string;
   serverSaved: boolean;
   shortcut: string;
   sort: DiscoverySortKey;
+  source?: "default" | "user";
   summary: string;
   timeframe: DiscoveryTimeframe;
   tone: DiscoveryTone;
+  useCount?: number;
+  userSaved?: boolean;
+  watchlistOnly?: boolean;
 };
 
 export type DiscoveryOrbitNode = {
@@ -175,6 +189,7 @@ export type DiscoveryFilterState = {
 export type BuildIntelligenceDiscoveryInput = {
   generatedAt?: string;
   rows: OpportunityViewModel[];
+  savedScans?: DiscoverySavedScan[];
   watchlistSymbols?: string[];
 };
 
@@ -218,7 +233,7 @@ export function buildIntelligenceDiscoverySystem(input: BuildIntelligenceDiscove
   const riskClusters = buildRiskClusters(symbols);
   const macroClusters = buildMacroClusters(symbols);
   const quickFilters = buildQuickFilters(symbols);
-  const scannerPresets = buildScannerPresets(symbols);
+  const scannerPresets = buildScannerPresets(symbols, input.savedScans ?? []);
   const stories = buildDiscoveryStories(symbols);
   const comparePresets = buildComparePresets(symbols);
   const discoveryScore = roundedAverage([
@@ -515,7 +530,7 @@ function buildQuickFilters(symbols: DiscoverySymbol[]): DiscoveryQuickFilter[] {
   }));
 }
 
-function buildScannerPresets(symbols: DiscoverySymbol[]): DiscoveryScannerPreset[] {
+function buildScannerPresets(symbols: DiscoverySymbol[], savedScans: DiscoverySavedScan[] = []): DiscoveryScannerPreset[] {
   const definitions: Array<Omit<DiscoveryScannerPreset, "count">> = [
     {
       filter: "best_setups",
@@ -629,10 +644,58 @@ function buildScannerPresets(symbols: DiscoverySymbol[]): DiscoveryScannerPreset
     },
   ];
 
-  return definitions.map((definition) => ({
+  const defaultPresets = definitions.map((definition) => ({
     ...definition,
     count: symbols.filter((symbol) => matchesDiscoveryQuickFilter(symbol, definition.filter)).length,
+    source: "default" as const,
   }));
+
+  const userPresets = savedScans.map((scan) => savedScanToScannerPreset(scan, symbols));
+  return [...userPresets, ...defaultPresets];
+}
+
+function savedScanToScannerPreset(scan: DiscoverySavedScan, symbols: DiscoverySymbol[]): DiscoveryScannerPreset {
+  const payload = scan.payload;
+  const matches = filterDiscoverySymbols(symbols, payload);
+  return {
+    assetType: payload.assetType,
+    count: matches.length,
+    density: payload.density,
+    evidence: payload.evidence,
+    filter: payload.filter,
+    id: scan.id,
+    key: `saved-${scan.id}`,
+    label: scan.name,
+    lastUsedAt: scan.lastUsedAt,
+    marketCap: payload.marketCap,
+    query: payload.query,
+    riskBand: payload.riskBand,
+    sector: payload.sector,
+    serverSaved: true,
+    shortcut: "Saved",
+    sort: payload.sort,
+    source: "user",
+    summary: savedScanSummary(payload),
+    timeframe: payload.timeframe,
+    tone: payload.watchlistOnly ? "amber" : payload.filter === "crash_risk" || payload.sort === "risk" || payload.sort === "crash" ? "rose" : payload.sort === "macro" ? "cyan" : payload.sort === "replay" ? "violet" : "emerald",
+    useCount: scan.useCount,
+    userSaved: true,
+    watchlistOnly: payload.watchlistOnly,
+  };
+}
+
+function savedScanSummary(payload: DiscoverySavedScan["payload"]): string {
+  const filters = [
+    payload.query ? `query "${payload.query}"` : null,
+    payload.watchlistOnly ? "watchlist only" : null,
+    payload.sector && payload.sector !== "ALL" ? payload.sector : null,
+    payload.assetType && payload.assetType !== "ALL" ? payload.assetType : null,
+    payload.marketCap && payload.marketCap !== "ALL" ? `${payload.marketCap.toLowerCase()} cap` : null,
+    payload.riskBand && payload.riskBand !== "ALL" ? `${payload.riskBand.toLowerCase()} risk` : null,
+    payload.evidence && payload.evidence !== "ALL" ? `${payload.evidence.toLowerCase()} evidence` : null,
+  ].filter((value): value is string => Boolean(value));
+  const filterText = filters.length ? filters.join(", ") : "full universe";
+  return `${filterText}; sorted by ${payload.sort.replace(/_/g, " ")} over ${payload.timeframe} in ${payload.density} mode.`;
 }
 
 function buildDiscoveryStories(symbols: DiscoverySymbol[]): DiscoveryStory[] {

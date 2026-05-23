@@ -4,6 +4,7 @@ import { getFullRanking, getPerformanceData } from "@/lib/scanner-data";
 import { getNarrativeMap } from "@/lib/server/narrative-intelligence";
 import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
+import { readUserSavedScans } from "@/lib/server/user-saved-scans";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
 import { buildIntelligenceDiscoverySystem, type IntelligenceDiscoverySystem } from "@/lib/trading/intelligence-discovery";
@@ -115,6 +116,10 @@ export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | n
   }
 }
 
+export function invalidateDiscoverySystemCache(userId: string | null): void {
+  discoverySystemCache.delete(userId ? `user:${userId}` : "anonymous");
+}
+
 function refreshDiscoverySystemCache(cacheKey: string, userId: string | null): void {
   const cached = discoverySystemCache.get(cacheKey);
   if (!cached || cached.refreshing) return;
@@ -139,14 +144,16 @@ function refreshDiscoverySystemCache(cacheKey: string, userId: string | null): v
 }
 
 async function buildDiscoverySystem(userId: string | null): Promise<IntelligenceDiscoverySystem> {
-  const [base, watchlistSymbols] = await Promise.all([
+  const [base, watchlistSymbols, savedScans] = await Promise.all([
     loadDiscoveryBaseRows(),
     userId ? readUserWatchlist(userId).catch(() => []) : Promise.resolve([]),
+    userId ? readUserSavedScans(userId).catch(() => []) : Promise.resolve([]),
   ]);
 
   return buildIntelligenceDiscoverySystem({
     generatedAt: base.generatedAt,
     rows: base.rows,
+    savedScans,
     watchlistSymbols,
   });
 }
