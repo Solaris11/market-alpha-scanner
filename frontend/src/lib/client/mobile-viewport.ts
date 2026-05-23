@@ -15,11 +15,15 @@ export type MobileViewportMetrics = {
 };
 
 export function deriveMobileViewportMetrics(input: MobileViewportInput): MobileViewportMetrics {
-  const viewportHeight = sanitizePositiveNumber(input.viewportHeight) ?? sanitizePositiveNumber(input.innerHeight) ?? 0;
-  const viewportWidth = sanitizePositiveNumber(input.viewportWidth) ?? sanitizePositiveNumber(input.innerWidth) ?? 0;
-  const innerHeight = sanitizePositiveNumber(input.innerHeight) ?? viewportHeight;
+  const innerHeight = sanitizePositiveNumber(input.innerHeight);
+  const innerWidth = sanitizePositiveNumber(input.innerWidth);
+  const rawViewportHeight = sanitizePositiveNumber(input.viewportHeight) ?? innerHeight ?? 0;
+  const rawViewportWidth = sanitizePositiveNumber(input.viewportWidth) ?? innerWidth ?? 0;
+  const viewportHeight = innerHeight === null ? rawViewportHeight : Math.min(rawViewportHeight, innerHeight);
+  const viewportWidth = innerWidth === null ? rawViewportWidth : Math.min(rawViewportWidth, innerWidth);
+  const layoutHeight = innerHeight ?? viewportHeight;
   const viewportOffsetTop = Math.max(0, sanitizePositiveNumber(input.viewportOffsetTop) ?? 0);
-  const keyboardOffset = Math.max(0, innerHeight - viewportHeight - viewportOffsetTop);
+  const keyboardOffset = Math.max(0, layoutHeight - viewportHeight - viewportOffsetTop);
 
   return {
     height: viewportHeight,

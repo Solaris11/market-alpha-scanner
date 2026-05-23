@@ -35,6 +35,22 @@ test("deriveMobileViewportMetrics accounts for Safari visual viewport offset", (
   });
 });
 
+test("deriveMobileViewportMetrics clamps oversized iOS visual viewport reports", () => {
+  const metrics = deriveMobileViewportMetrics({
+    innerHeight: 751,
+    innerWidth: 390,
+    viewportHeight: 844,
+    viewportOffsetTop: 0,
+    viewportWidth: 430,
+  });
+
+  assert.deepEqual(metrics, {
+    height: 751,
+    keyboardOffset: 0,
+    width: 390,
+  });
+});
+
 test("mobileViewportCssVars returns stable pixel strings", () => {
   assert.deepEqual(mobileViewportCssVars({ height: 701.4, keyboardOffset: 142.6, width: 389.8 }), {
     "--tv-keyboard-offset": "143px",
