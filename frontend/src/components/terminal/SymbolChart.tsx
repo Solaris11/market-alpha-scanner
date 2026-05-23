@@ -67,6 +67,7 @@ import {
   mergeLocalAndAccountChartWorkspace,
   saveAccountChartWorkflowWorkspace,
 } from "./chart-workflow-account-sync";
+import { buildChartAlertRulePayload, type ChartAlertRequest, type ChartAlertRuleType } from "./chart-workflow-alerts";
 import { EmptyState } from "./ui/EmptyState";
 import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
@@ -153,14 +154,6 @@ export type SymbolChartProps = {
 type ChartDrawingTool = StoredChartDrawingTool;
 type ChartDrawingPoint = StoredChartDrawingPoint;
 type ChartDrawing = StoredChartDrawing;
-type ChartAlertRuleType = "price_above" | "price_below" | "score_above" | "score_below";
-
-type ChartAlertRequest = {
-  riskReason: string;
-  sourceReason: string;
-  threshold: number;
-  type: ChartAlertRuleType;
-};
 
 const CHART_DRAWING_TOOLS: ChartDrawingTool[] = [
   "inspect",
@@ -428,19 +421,7 @@ export function SymbolChart({
     setChartAlertMessage("Saving chart alert...");
     try {
       const response = await csrfFetch("/api/alerts/rules", {
-        body: JSON.stringify({
-          channels: ["telegram"],
-          cooldown_minutes: 240,
-          enabled: true,
-          id: `chart_${symbol.toLowerCase()}_${request.type}_${Date.now().toString(36)}`,
-          risk_reason: request.riskReason,
-          scope: "symbol",
-          source: "user",
-          source_reason: request.sourceReason,
-          symbol,
-          threshold: request.threshold,
-          type: request.type,
-        }),
+        body: JSON.stringify(buildChartAlertRulePayload({ request, symbol })),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       });
@@ -2318,7 +2299,8 @@ function SymbolChartModal({
       size="xl"
       title={`${symbol.toUpperCase()} Price + Intelligence Overlays`}
     >
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+      <div className="tv-chart-fullscreen-toolbar mt-4" data-chart-fullscreen-toolbar="true">
+        <div className="tv-chart-toolbar-row flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
           <div className="flex flex-wrap gap-1.5">
             {(["overlays", "compare", "timeline"] as const).map((mode) => (
               <button
@@ -2355,7 +2337,7 @@ function SymbolChartModal({
             <div className="text-xs text-slate-500">Fullscreen exploration · synchronized state · research only</div>
           </div>
         </div>
-        <div className="mt-3 rounded-2xl border border-white/10 bg-slate-950/45 p-3">
+        <div className="tv-chart-toolbar-row mt-3 rounded-2xl border border-white/10 bg-slate-950/45 p-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Synchronized chart state</div>
@@ -2379,37 +2361,38 @@ function SymbolChartModal({
             </div>
           </div>
         </div>
-        <div className="mt-4">
-          <ChartLayoutExplorer
-            candles={candles}
-            dataSource={dataSource}
-            indicators={modalIndicators}
-            interpretation={interpretation}
-            lastUpdated={lastUpdated}
-            layoutMode={layoutMode}
-            onIndicatorsChange={setModalIndicators}
-            onOverlayFamiliesChange={setModalOverlayFamilies}
-            onPeriodChange={setModalPeriod}
-            overlayFamilies={modalOverlayFamilies}
-            period={modalPeriod}
-            showHistoricalSignals={showHistoricalSignals}
-            showResearchLevelsToggle={showResearchLevelsToggle}
-            signals={signals}
-            symbol={symbol}
-            tradeLevels={tradeLevels}
-          />
-        </div>
-        <ChartModalModePanel compareRows={compareRows} mode={detailMode} storyPoints={storyPoints} timelineMarkers={markerEvidence} />
-        <div className="mt-4 grid gap-3 md:grid-cols-4">
-          <ChartDetailTile label="Data source" value={dataSource} detail="Stored validated OHLC history only. No seeded or synthetic candles are drawn." />
-          <ChartDetailTile label="Research levels" value={levelSummary.value} detail={levelSummary.detail} />
-          <ChartDetailTile label="Intelligence markers" value={showHistoricalSignals ? `${normalizedSignals.length} available` : "Hidden"} detail={markerSummary.length ? markerSummary.join(" · ") : "Markers appear only when real scanner, freshness, replay, or risk context exists."} />
-          <ChartDetailTile label="Last updated" value={lastUpdated ? formatChartDate(lastUpdated) : "Unavailable"} detail="Timestamp comes from the latest validated chart point or scanner payload." />
-        </div>
-        <ChartMarkerEvidenceList markers={markerEvidence} />
-        <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-xs leading-5 text-slate-500">
-          Research only. Entry, stop, target, confidence, risk, replay, and freshness overlays are context for investigation, not a recommendation to buy or sell.
-        </div>
+      </div>
+      <div className="mt-4">
+        <ChartLayoutExplorer
+          candles={candles}
+          dataSource={dataSource}
+          indicators={modalIndicators}
+          interpretation={interpretation}
+          lastUpdated={lastUpdated}
+          layoutMode={layoutMode}
+          onIndicatorsChange={setModalIndicators}
+          onOverlayFamiliesChange={setModalOverlayFamilies}
+          onPeriodChange={setModalPeriod}
+          overlayFamilies={modalOverlayFamilies}
+          period={modalPeriod}
+          showHistoricalSignals={showHistoricalSignals}
+          showResearchLevelsToggle={showResearchLevelsToggle}
+          signals={signals}
+          symbol={symbol}
+          tradeLevels={tradeLevels}
+        />
+      </div>
+      <ChartModalModePanel compareRows={compareRows} mode={detailMode} storyPoints={storyPoints} timelineMarkers={markerEvidence} />
+      <div className="mt-4 grid gap-3 md:grid-cols-4">
+        <ChartDetailTile label="Data source" value={dataSource} detail="Stored validated OHLC history only. No seeded or synthetic candles are drawn." />
+        <ChartDetailTile label="Research levels" value={levelSummary.value} detail={levelSummary.detail} />
+        <ChartDetailTile label="Intelligence markers" value={showHistoricalSignals ? `${normalizedSignals.length} available` : "Hidden"} detail={markerSummary.length ? markerSummary.join(" · ") : "Markers appear only when real scanner, freshness, replay, or risk context exists."} />
+        <ChartDetailTile label="Last updated" value={lastUpdated ? formatChartDate(lastUpdated) : "Unavailable"} detail="Timestamp comes from the latest validated chart point or scanner payload." />
+      </div>
+      <ChartMarkerEvidenceList markers={markerEvidence} />
+      <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-xs leading-5 text-slate-500">
+        Research only. Entry, stop, target, confidence, risk, replay, and freshness overlays are context for investigation, not a recommendation to buy or sell.
+      </div>
     </StableDetailOverlay>
   );
 }

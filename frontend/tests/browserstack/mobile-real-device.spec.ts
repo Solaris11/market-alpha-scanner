@@ -685,6 +685,13 @@ async function exerciseChartUsability(page: Page, route: string): Promise<void> 
   await page.waitForTimeout(350);
   const dialog = page.locator("[role='dialog']").first();
   await expect(dialog, "chart detail dialog opens").toBeVisible();
+  const toolbar = page.locator("[data-chart-fullscreen-toolbar='true']").first();
+  if (await toolbar.isVisible().catch(() => false)) {
+    const toolbarBox = await toolbar.boundingBox();
+    const viewport = page.viewportSize();
+    expect(toolbarBox?.width ?? 0, "chart fullscreen toolbar should stay inside viewport").toBeLessThanOrEqual((viewport?.width ?? 0) + 1);
+    expect(toolbarBox?.x ?? 0, "chart fullscreen toolbar should not overflow left").toBeGreaterThanOrEqual(-1);
+  }
   await assertOverlayGeometry(page, "chart detail");
   await closeOverlay(page);
 }
