@@ -13,6 +13,7 @@ const authorization = process.env.TRADEVETO_SCALE_AUTHORIZATION ?? "";
 const cookie = process.env.TRADEVETO_SCALE_COOKIE ?? "";
 const streamConnections = positiveInteger(process.env.TRADEVETO_SCALE_STREAM_CONNECTIONS, 25);
 const streamDurationSeconds = positiveInteger(process.env.TRADEVETO_SCALE_STREAM_DURATION_SECONDS, 35);
+const includeSamples = truthy(process.env.TRADEVETO_SCALE_INCLUDE_SAMPLES);
 
 const endpoints = [
   {
@@ -247,7 +248,8 @@ function buildReport(probeSamples, stream, authSmoke) {
     endpointResults,
     generatedAt: new Date().toISOString(),
     overallStatus: blockers.length ? "fail" : "pass",
-    samples: probeSamples,
+    sampleDigest: buildSampleDigest(probeSamples),
+    samples: includeSamples ? probeSamples : undefined,
     stream,
     summary: {
       failedEndpoints,
@@ -258,6 +260,21 @@ function buildReport(probeSamples, stream, authSmoke) {
     },
     timeoutMs,
   };
+}
+
+function buildSampleDigest(probeSamples) {
+  return endpoints.map((endpoint) => {
+    const relevant = probeSamples.filter((sample) => sample.path === endpoint.path && sample.method === endpoint.method);
+    return {
+      method: endpoint.method,
+      path: endpoint.path,
+      sampleCount: relevant.length,
+      window: {
+        firstTimestamp: relevant[0]?.timestamp ?? null,
+        lastTimestamp: relevant[relevant.length - 1]?.timestamp ?? null,
+      },
+    };
+  });
 }
 
 function evaluateEndpoint(endpoint, probeSamples) {
@@ -319,6 +336,11 @@ function max(values) {
 function positiveInteger(value, fallback) {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : fallback;
+}
+
+function truthy(value) {
+  const normalized = String(value ?? "").trim().toLowerCase();
+  return normalized === "1" || normalized === "true" || normalized === "yes";
 }
 
 function stripTrailingSlash(value) {

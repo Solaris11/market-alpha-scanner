@@ -1,0 +1,75 @@
+{
+  "authenticatedCoverage": true,
+  "authSmoke": {
+    "ok": true,
+    "statusCode": 200
+  },
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [],
+  "concurrency": 25,
+  "endpointDurationSeconds": 60,
+  "endpointResults": [
+    {
+      "cacheHeaders": {
+        "system-hit": 14251
+      },
+      "failureCount": 0,
+      "failureReasons": [],
+      "maxLatencyMs": 465,
+      "method": "GET",
+      "p50LatencyMs": 100,
+      "p95BudgetMs": 300,
+      "p95LatencyMs": 150,
+      "p99BudgetMs": 600,
+      "p99LatencyMs": 188,
+      "path": "/api/discovery",
+      "sampleCount": 14251,
+      "status": "pass",
+      "successRatePct": 100,
+      "timeoutCount": 0,
+      "timeoutRatePct": 0
+    },
+    {
+      "cacheHeaders": {
+        "stale-hit": 253,
+        "fresh-hit": 19135
+      },
+      "failureCount": 0,
+      "failureReasons": [],
+      "maxLatencyMs": 700,
+      "method": "GET",
+      "p50LatencyMs": 58,
+      "p95BudgetMs": 400,
+      "p95LatencyMs": 157,
+      "p99BudgetMs": 800,
+      "p99LatencyMs": 280,
+      "path": "/api/live-intelligence",
+      "sampleCount": 19388,
+      "status": "pass",
+      "successRatePct": 100,
+      "timeoutCount": 0,
+      "timeoutRatePct": 0
+    }
+  ],
+  "generatedAt": "2026-05-23T07:35:34.006Z",
+  "overallStatus": "pass",
+  "stream": {
+    "connections": 25,
+    "durationSeconds": 35,
+    "errors": 0,
+    "events": 50,
+    "ok": true,
+    "opened": 25,
+    "statusCodes": {
+      "200": 25
+    }
+  },
+  "summary": {
+    "failedEndpoints": 0,
+    "maxLatencyMs": 700,
+    "p95WorstMs": 157,
+    "p99WorstMs": 280,
+    "sampleCount": 33639
+  },
+  "timeoutMs": 8000
+}
