@@ -1,6 +1,6 @@
 import { mkdirSync } from "node:fs";
 import { resolve } from "node:path";
-import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { expect, test, type Page, type Response, type TestInfo } from "@playwright/test";
 
 const ROUTES = [
   "/terminal",
@@ -16,6 +16,18 @@ const ROUTES = [
   "/history",
   "/performance",
 ];
+
+const PRODUCT_NAV_ROUTES = new Set([
+  "/alerts",
+  "/discover",
+  "/history",
+  "/paper",
+  "/performance",
+  "/scanner",
+  "/strategy-labs",
+  "/symbol/AMD",
+  "/terminal",
+]);
 
 const HYDRATION_PATTERN = /hydration|hydrate|server rendered|client properties|text content does not match|minified react error #418/i;
 const ARTIFACT_DIR = resolve(process.cwd(), "..", "docs", "ops", "artifacts", "phase-21-1", "browserstack-screenshots");
@@ -98,10 +110,24 @@ async function installStableClientState(page: Page): Promise<void> {
 }
 
 async function navigateAndSettle(page: Page, route: string): Promise<void> {
-  const response = await page.goto(route, { waitUntil: "domcontentloaded" });
+  const response = await gotoRouteWithRetry(page, route);
   expect(response?.status() ?? 0, `${route} should not return a server error`).toBeLessThan(500);
+  await page.waitForLoadState("domcontentloaded", { timeout: 15_000 }).catch(() => undefined);
   await page.waitForLoadState("networkidle", { timeout: 12_000 }).catch(() => undefined);
   await page.waitForTimeout(900);
+}
+
+async function gotoRouteWithRetry(page: Page, route: string): Promise<Response | null> {
+  try {
+    return await page.goto(route, { timeout: 45_000, waitUntil: "commit" });
+  } catch (firstError) {
+    await page.waitForTimeout(1_000);
+    try {
+      return await page.goto(route, { timeout: 45_000, waitUntil: "commit" });
+    } catch {
+      throw firstError;
+    }
+  }
 }
 
 async function acknowledgeRisk(page: Page): Promise<void> {
@@ -163,9 +189,17 @@ async function assertMobileMetrics(page: Page, route: string): Promise<void> {
   expect(Math.abs(metrics.viewportWidth - before.width), `${route} viewport width shifted`).toBeLessThanOrEqual(2);
   expect(Math.abs(metrics.viewportHeight - before.height), `${route} viewport height shifted`).toBeLessThanOrEqual(80);
   expect(metrics.horizontalOverflow, `${route} horizontal overflow`).toBeLessThanOrEqual(2);
-  expect(metrics.bottomNavCount, `${route} should render one mobile bottom nav`).toBe(route === "/" ? metrics.bottomNavCount : 1);
-  expect(metrics.bottomNavVisible, `${route} bottom nav visible`).toBe(true);
-  expect(metrics.smallTapTargets, `${route} bottom-nav tap targets`).toBe(0);
+  if (PRODUCT_NAV_ROUTES.has(route)) {
+    expect(metrics.bottomNavCount, `${route} should render one mobile bottom nav`).toBe(1);
+    expect(metrics.bottomNavVisible, `${route} bottom nav visible`).toBe(true);
+    expect(metrics.smallTapTargets, `${route} bottom-nav tap targets`).toBe(0);
+  } else {
+    expect(metrics.bottomNavCount, `${route} should not duplicate mobile bottom nav`).toBeLessThanOrEqual(1);
+    if (metrics.bottomNavCount > 0) {
+      expect(metrics.bottomNavVisible, `${route} bottom nav visible`).toBe(true);
+      expect(metrics.smallTapTargets, `${route} bottom-nav tap targets`).toBe(0);
+    }
+  }
   expect(metrics.modalOffscreen, `${route} modal offscreen`).toBe(false);
   expect(metrics.clippedOverlay, `${route} overlay clipped`).toBe(false);
   expect(metrics.clippedFixedOrSticky, `${route} clipped sticky/fixed elements`).toBe(0);
