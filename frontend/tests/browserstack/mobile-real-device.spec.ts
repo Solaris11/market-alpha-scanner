@@ -51,10 +51,32 @@ type OverlayResult = {
   closeScrollDelta: number;
   closeVisible: boolean;
   clipped: boolean;
+  diagnostics: {
+    bodyPosition: string;
+    bodyTop: string;
+    closeRect: RectSnapshot | null;
+    rootRect: RectSnapshot | null;
+    surfaceRect: RectSnapshot | null;
+    visualViewportHeight: number | null;
+    visualViewportWidth: number | null;
+    viewportHeight: number;
+    viewportWidth: number;
+    visualViewportCssHeight: string;
+    visualViewportCssWidth: string;
+  };
   openScrollDelta: number;
   opened: boolean;
   skipped: boolean;
   stillOpen: boolean;
+};
+
+type RectSnapshot = {
+  bottom: number;
+  height: number;
+  left: number;
+  right: number;
+  top: number;
+  width: number;
 };
 
 test.describe.configure({ mode: "serial" });
@@ -280,6 +302,33 @@ async function exerciseChartUsability(page: Page, route: string): Promise<void> 
 
 async function exerciseStableOverlay(page: Page, route: string, required: boolean): Promise<void> {
   const result: OverlayResult = await page.evaluate(async () => {
+    const rectSnapshot = (rect: DOMRect | undefined): RectSnapshot | null => {
+      if (!rect) return null;
+      return {
+        bottom: Math.round(rect.bottom),
+        height: Math.round(rect.height),
+        left: Math.round(rect.left),
+        right: Math.round(rect.right),
+        top: Math.round(rect.top),
+        width: Math.round(rect.width),
+      };
+    };
+    const overlayDiagnostics = (overlay: Element | null, surface: Element | null, close: HTMLElement | null): OverlayResult["diagnostics"] => {
+      const root = document.documentElement;
+      return {
+        bodyPosition: document.body.style.position,
+        bodyTop: document.body.style.top,
+        closeRect: rectSnapshot(close?.getBoundingClientRect()),
+        rootRect: rectSnapshot(overlay?.getBoundingClientRect()),
+        surfaceRect: rectSnapshot(surface?.getBoundingClientRect()),
+        viewportHeight: window.innerHeight,
+        viewportWidth: window.innerWidth,
+        visualViewportCssHeight: root.style.getPropertyValue("--tv-visual-viewport-height"),
+        visualViewportCssWidth: root.style.getPropertyValue("--tv-visual-viewport-width"),
+        visualViewportHeight: window.visualViewport?.height ?? null,
+        visualViewportWidth: window.visualViewport?.width ?? null,
+      };
+    };
     const triggers = Array.from(document.querySelectorAll<HTMLElement>("[data-stable-overlay-trigger='true']")).filter((node) => {
       const rect = node.getBoundingClientRect();
       const style = window.getComputedStyle(node);
@@ -291,7 +340,16 @@ async function exerciseStableOverlay(page: Page, route: string, required: boolea
     });
     const trigger = visibleTriggers[0] ?? triggers[0];
     if (!trigger) {
-      return { closeScrollDelta: 0, closeVisible: false, clipped: false, openScrollDelta: 0, opened: false, skipped: true, stillOpen: false };
+      return {
+        closeScrollDelta: 0,
+        closeVisible: false,
+        clipped: false,
+        diagnostics: overlayDiagnostics(null, null, null),
+        openScrollDelta: 0,
+        opened: false,
+        skipped: true,
+        stillOpen: false,
+      };
     }
     trigger.scrollIntoView({ behavior: "auto", block: "center", inline: "nearest" });
     await new Promise((resolve) => window.setTimeout(resolve, 250));
@@ -307,6 +365,7 @@ async function exerciseStableOverlay(page: Page, route: string, required: boolea
     const close = overlay?.querySelector<HTMLElement>("button[aria-label*='Close']");
     const surfaceRect = surface?.getBoundingClientRect();
     const closeRect = close?.getBoundingClientRect();
+    const diagnostics = overlayDiagnostics(overlay, surface, close ?? null);
     const clipped = surfaceRect ? surfaceRect.left < -2 || surfaceRect.right > window.innerWidth + 2 || surfaceRect.top < -2 || surfaceRect.bottom > window.innerHeight + 2 : true;
     const closeVisible = closeRect ? closeRect.left >= -2 && closeRect.right <= window.innerWidth + 2 && closeRect.top >= -2 && closeRect.bottom <= window.innerHeight + 2 : false;
     const opened = Boolean(overlay && surface);
@@ -317,6 +376,7 @@ async function exerciseStableOverlay(page: Page, route: string, required: boolea
       closeScrollDelta: Math.abs(window.scrollY - beforeY),
       closeVisible,
       clipped,
+      diagnostics,
       openScrollDelta,
       opened,
       skipped: false,
@@ -329,11 +389,31 @@ async function exerciseStableOverlay(page: Page, route: string, required: boolea
     return;
   }
   expect(result.opened, `${route} stable overlay opened`).toBe(true);
-  expect(result.clipped, `${route} stable overlay clipped`).toBe(false);
-  expect(result.closeVisible, `${route} stable overlay close visible`).toBe(true);
+  expect(result.clipped, `${route} stable overlay clipped ${formatOverlayDiagnostics(result)}`).toBe(false);
+  expect(result.closeVisible, `${route} stable overlay close visible ${formatOverlayDiagnostics(result)}`).toBe(true);
   expect(result.stillOpen, `${route} stable overlay closed`).toBe(false);
   expect(result.openScrollDelta, `${route} overlay open scroll delta`).toBeLessThanOrEqual(8);
   expect(result.closeScrollDelta, `${route} overlay close scroll restoration`).toBeLessThanOrEqual(8);
+}
+
+function formatOverlayDiagnostics(result: OverlayResult): string {
+  return JSON.stringify({
+    bodyPosition: result.diagnostics.bodyPosition,
+    bodyTop: result.diagnostics.bodyTop,
+    closeRect: result.diagnostics.closeRect,
+    rootRect: result.diagnostics.rootRect,
+    surfaceRect: result.diagnostics.surfaceRect,
+    viewport: {
+      height: result.diagnostics.viewportHeight,
+      width: result.diagnostics.viewportWidth,
+    },
+    visualViewport: {
+      cssHeight: result.diagnostics.visualViewportCssHeight,
+      cssWidth: result.diagnostics.visualViewportCssWidth,
+      height: result.diagnostics.visualViewportHeight,
+      width: result.diagnostics.visualViewportWidth,
+    },
+  });
 }
 
 async function exercisePaperDeepScrollOverlay(page: Page): Promise<void> {
