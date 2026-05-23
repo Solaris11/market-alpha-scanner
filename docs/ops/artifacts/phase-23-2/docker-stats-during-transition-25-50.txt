@@ -1,0 +1,4 @@
+captured_at=2026-05-23T20:56:53+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O       PIDS
+7398b98f4fea   market-alpha-frontend                          138.22%   1.072GiB / 31.08GiB   3.45%     3.95GB / 13.7GB   0B / 4.1kB      55
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   11.94%    309.4MiB / 31.08GiB   0.97%     18.2GB / 549GB    3.2GB / 325GB   16

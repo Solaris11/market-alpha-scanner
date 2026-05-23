@@ -1,0 +1,101 @@
+generated_at=2026-05-23T21:37:36.205Z
+
+## request_metrics_hot_routes_1h
+GroupAggregate  (cost=5608.78..110509.78 rows=51 width=42) (actual time=417.829..559.777 rows=3 loops=1)
+  Group Key: route, method
+  Buffers: shared hit=182317 read=11763 written=100, temp read=9874 written=7451
+  ->  Incremental Sort  (cost=5608.78..103768.33 rows=674056 width=26) (actual time=139.892..350.585 rows=865967 loops=1)
+        Sort Key: route, method
+        Presorted Key: route
+        Full-sort Groups: 3  Sort Method: quicksort  Average Memory: 28kB  Peak Memory: 28kB
+        Pre-sorted Groups: 2  Sort Method: external merge  Average Disk: 16144kB  Peak Disk: 17840kB
+        Buffers: shared hit=182310 read=11763 written=100, temp read=4036 written=4051
+        ->  Index Only Scan using ix_request_metrics_route_created_method_latency on request_metrics  (cost=0.43..43861.11 rows=674056 width=26) (actual time=4.252..143.105 rows=865967 loops=1)
+              Index Cond: ((route = ANY ('{/api/discovery,/api/live-intelligence,/api/symbol/[symbol],/api/paper/account,/api/paper/positions}'::text[])) AND (created_at >= (now() - '01:00:00'::interval)))
+              Heap Fetches: 216824
+              Buffers: shared hit=182307 read=11763 written=100
+Planning:
+  Buffers: shared hit=217 read=2 dirtied=3
+Planning Time: 0.692 ms
+JIT:
+  Functions: 11
+  Options: Inlining false, Optimization false, Expressions true, Deforming true
+  Timing: Generation 0.340 ms, Inlining 0.000 ms, Optimization 0.210 ms, Emission 4.010 ms, Total 4.560 ms
+Execution Time: 572.519 ms
+
+## developer_api_key_lookup
+Limit  (cost=0.00..1.04 rows=1 width=318) (actual time=0.010..0.011 rows=0 loops=1)
+  Buffers: shared read=1 dirtied=1
+  ->  Seq Scan on developer_api_keys  (cost=0.00..1.04 rows=1 width=318) (actual time=0.010..0.010 rows=0 loops=1)
+        Filter: ((revoked_at IS NULL) AND (key_hash = 'phase23-nonexistent-key-hash'::text))
+        Buffers: shared read=1 dirtied=1
+Planning:
+  Buffers: shared hit=91 read=4
+Planning Time: 0.312 ms
+Execution Time: 0.021 ms
+
+## rate_limit_bucket_lookup
+Limit  (cost=0.00..5.92 rows=1 width=36) (actual time=0.019..0.019 rows=0 loops=1)
+  Buffers: shared read=5
+  ->  Seq Scan on rate_limit_buckets  (cost=0.00..5.92 rows=1 width=36) (actual time=0.019..0.019 rows=0 loops=1)
+        Filter: (key_hash = 'phase23-nonexistent-rate-limit-key'::text)
+        Rows Removed by Filter: 73
+        Buffers: shared read=5
+Planning:
+  Buffers: shared hit=72 read=6 dirtied=1
+Planning Time: 0.282 ms
+Execution Time: 0.024 ms
+
+## paper_account_latest_by_user
+Limit  (cost=2.05..2.05 rows=1 width=24) (actual time=0.023..0.024 rows=1 loops=1)
+  Buffers: shared hit=4 read=1
+  InitPlan 1 (returns $0)
+    ->  Limit  (cost=1.02..1.02 rows=1 width=24) (actual time=0.005..0.005 rows=1 loops=1)
+          Buffers: shared hit=1
+          ->  Sort  (cost=1.02..1.02 rows=1 width=24) (actual time=0.005..0.005 rows=1 loops=1)
+                Sort Key: paper_accounts_1.created_at DESC
+                Sort Method: quicksort  Memory: 25kB
+                Buffers: shared hit=1
+                ->  Seq Scan on paper_accounts paper_accounts_1  (cost=0.00..1.01 rows=1 width=24) (actual time=0.002..0.002 rows=1 loops=1)
+                      Filter: (user_id IS NOT NULL)
+                      Rows Removed by Filter: 1
+                      Buffers: shared hit=1
+  ->  Sort  (cost=1.02..1.03 rows=1 width=24) (actual time=0.023..0.023 rows=1 loops=1)
+        Sort Key: paper_accounts.created_at DESC
+        Sort Method: quicksort  Memory: 25kB
+        Buffers: shared hit=4 read=1
+        ->  Seq Scan on paper_accounts  (cost=0.00..1.01 rows=1 width=24) (actual time=0.010..0.010 rows=1 loops=1)
+              Filter: (user_id = $0)
+              Rows Removed by Filter: 1
+              Buffers: shared hit=1 read=1
+Planning:
+  Buffers: shared hit=63 read=4
+Planning Time: 0.227 ms
+Execution Time: 0.035 ms
+
+## paper_positions_by_account
+Limit  (cost=2.08..2.09 rows=1 width=140) (actual time=0.015..0.016 rows=0 loops=1)
+  Buffers: shared hit=1 read=1
+  InitPlan 1 (returns $0)
+    ->  Limit  (cost=1.02..1.02 rows=1 width=24) (actual time=0.006..0.006 rows=1 loops=1)
+          Buffers: shared hit=1
+          ->  Sort  (cost=1.02..1.02 rows=1 width=24) (actual time=0.006..0.006 rows=1 loops=1)
+                Sort Key: paper_accounts.created_at DESC
+                Sort Method: quicksort  Memory: 25kB
+                Buffers: shared hit=1
+                ->  Seq Scan on paper_accounts  (cost=0.00..1.01 rows=1 width=24) (actual time=0.002..0.002 rows=1 loops=1)
+                      Filter: (user_id IS NOT NULL)
+                      Rows Removed by Filter: 1
+                      Buffers: shared hit=1
+  ->  Sort  (cost=1.06..1.06 rows=1 width=140) (actual time=0.015..0.015 rows=0 loops=1)
+        Sort Key: (CASE WHEN (paper_positions.status = 'OPEN'::text) THEN 0 ELSE 1 END), (COALESCE(paper_positions.closed_at, paper_positions.opened_at)) DESC
+        Sort Method: quicksort  Memory: 25kB
+        Buffers: shared hit=1 read=1
+        ->  Seq Scan on paper_positions  (cost=0.00..1.05 rows=1 width=140) (actual time=0.012..0.012 rows=0 loops=1)
+              Filter: (account_id = $0)
+              Rows Removed by Filter: 3
+              Buffers: shared hit=1 read=1
+Planning:
+  Buffers: shared hit=88 read=6
+Planning Time: 0.308 ms
+Execution Time: 0.030 ms
