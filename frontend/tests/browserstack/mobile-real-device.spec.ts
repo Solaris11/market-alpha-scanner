@@ -222,8 +222,6 @@ async function assertTouchResponsiveness(page: Page): Promise<void> {
   const x = box.x + Math.min(box.width / 2, 24);
   const y = box.y + Math.min(box.height / 2, 24);
   await page.touchscreen.tap(x, y).catch(async () => {
-    await button.dispatchEvent("pointerdown", { pointerType: "touch", isPrimary: true, clientX: x, clientY: y });
-    await button.dispatchEvent("pointerup", { pointerType: "touch", isPrimary: true, clientX: x, clientY: y });
     await button.click({ force: true });
   });
   await page.keyboard.press("Escape").catch(() => undefined);
