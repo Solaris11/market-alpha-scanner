@@ -4,7 +4,7 @@ Date: 2026-05-23
 
 ## Verdict
 
-Local validation complete; production validation pending.
+Production validation complete.
 
 ## Implementation Summary
 
@@ -91,14 +91,37 @@ Notes:
 
 ## Production Validation
 
-Pending:
+Completed:
 
-- Commit and push to `main`
-- Production pull
-- Production container rebuild/redeploy
-- Production smoke
-- Production artifact update
+- Local commit: `dbc485b2ad4b0bc931df5fa61613a59c73bb2156`
+- Pushed to `origin/main`
+- Production pull completed in `/opt/apps/market-alpha-scanner/app`
+- Production HEAD after pull: `dbc485b2ad4b0bc931df5fa61613a59c73bb2156`
+- Production frontend image after rebuild: `sha256:e3da3e60095a70015f76a3448922b2d1a9a95b1a451e1211336fc300fcea1f95`
+- Production frontend container health: `healthy`
+- Container started at: `2026-05-23T08:23:09.743645753Z`
+
+Production health:
+
+- `https://tradeveto.com/api/health` - HTTP 200, 114 bytes
+- `https://tradeveto.com/api/health/deep` - HTTP 200, `ok: true`, database ok, scanner ok, backup ok
+
+Production route smoke:
+
+- `/terminal` - HTTP 200, 105135 bytes
+- `/discover` - HTTP 200, 52724 bytes
+- `/scanner` - HTTP 200, 46693 bytes
+- `/feed` - HTTP 200, 175475 bytes
+- `/macro` - HTTP 200, 120905 bytes
+- `/symbol/AMD` - HTTP 200, 113338 bytes
+- `/paper` - HTTP 200, 154148 bytes
+- `/strategy-labs` - HTTP 200, 73733 bytes
+- `/market-memory` - HTTP 200, 168420 bytes
+- `/alerts` - HTTP 200, 53129 bytes
+- `/history` - HTTP 200, 72737 bytes
+- `/performance` - HTTP 200, 74321 bytes
 
 ## Remaining Blockers
 
-- Final production validation has not been completed yet.
+- None identified for Phase 21.5 provider-depth and event-intelligence scope.
+- This phase does not claim full Bloomberg/Yahoo/StockTitan parity. It expands provider-backed depth and clearly discloses limited, stale, calendar-only, and outage states where provider evidence is missing.
