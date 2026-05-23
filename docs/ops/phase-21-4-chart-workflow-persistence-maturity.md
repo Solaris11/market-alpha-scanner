@@ -45,7 +45,46 @@ Local browser smoke could not visually exercise a live chart because the local s
 
 ## Production Proof
 
-Pending production pull, rebuild, migration, route smoke, and chart workflow smoke.
+- Git deployed commit: `7eaad07`
+- Production pull: fast-forwarded from `524d795` to `7eaad07`
+- Production migration: `20260523_120000_chart_workflow_persistence.sql` applied, 43 previous migrations skipped
+- Production database proof: `user_workspace_preferences.chart_workspaces` exists as `jsonb`
+- Production Docker build: passed
+- Production frontend redeploy: `market-alpha-frontend` recreated and healthy
+- Production route list includes `/api/user/chart-workspaces/[symbol]` in the Next.js build output
+
+### Production Route Smoke
+
+- `https://tradeveto.com/api/health`: HTTP 200, 0.150s
+- `https://tradeveto.com/api/health/deep`: HTTP 200, 0.157s
+- `https://tradeveto.com/api/user/chart-workspaces/AMD`: HTTP 200 unauthenticated fallback
+- `https://tradeveto.com/terminal`: HTTP 200, 0.376s
+- `https://tradeveto.com/symbol/AMD`: HTTP 200, 0.354s
+- `https://tradeveto.com/scanner`: HTTP 200, 0.118s
+- `https://tradeveto.com/discover`: HTTP 200, 0.122s
+- `https://tradeveto.com/paper`: HTTP 200, 0.601s
+- `https://tradeveto.com/strategy-labs`: HTTP 200, 0.466s
+- `https://tradeveto.com/market-memory`: HTTP 200, 1.865s
+- `https://tradeveto.com/feed`: HTTP 200, 1.071s
+- `https://tradeveto.com/macro`: HTTP 200, 0.601s
+- `https://tradeveto.com/performance`: HTTP 200, 0.544s
+
+### Authenticated Chart Workspace Proof
+
+Temporary authenticated proof user was created directly in production, used for chart workspace API verification, and deleted after the proof.
+
+- `GET /api/auth/me`: HTTP 200, authenticated `true`
+- `GET /api/auth/csrf`: HTTP 200, CSRF token present
+- `PUT /api/user/chart-workspaces/AMD`: HTTP 200, authenticated `true`
+- PUT workspace returned `period=1y`, `layoutMode=grid`, `drawingTool=edit`, `drawingCount=1`
+- `GET /api/user/chart-workspaces/AMD`: HTTP 200, authenticated `true`
+- GET workspace returned `period=1y`, `layoutMode=grid`, `drawingTool=edit`, `drawingCount=1`
+
+### Production Browser Smoke
+
+- Public `/symbol/AMD` loaded without application errors.
+- Public chart controls were not visible because the unauthenticated public symbol route exposes public-safe intelligence and hides premium chart detail.
+- Authenticated chart workspace persistence was therefore proven through the authenticated production API path above.
 
 ## Remaining Limits
 
