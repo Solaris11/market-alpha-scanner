@@ -136,7 +136,10 @@ async function assertMobileMetrics(page: Page, route: string): Promise<void> {
       const rect = node.getBoundingClientRect();
       return rect.width > 8 && rect.height > 8 && (rect.left < -2 || rect.right > window.innerWidth + 2 || rect.top < -2 || rect.bottom > window.innerHeight + 2);
     }).length;
-    const activeRect = document.activeElement instanceof HTMLElement ? document.activeElement.getBoundingClientRect() : null;
+    const activeElement = document.activeElement;
+    const keyboardTarget =
+      activeElement instanceof HTMLElement && activeElement.matches("input:not([type='hidden']), textarea, select, [contenteditable='true']") ? activeElement : null;
+    const activeRect = keyboardTarget ? keyboardTarget.getBoundingClientRect() : null;
     const visualHeight = window.visualViewport?.height ?? window.innerHeight;
     return {
       activeElementBottom: activeRect ? activeRect.bottom : null,
