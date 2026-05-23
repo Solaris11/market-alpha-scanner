@@ -1,0 +1,58 @@
+{
+  "alertRestore": {
+    "hasPriceAlert": true,
+    "hasScoreAlert": true,
+    "latencyMs": 100,
+    "phaseRuleCount": 2,
+    "statusCode": 200
+  },
+  "alertWrite": {
+    "maxLatencyMs": 149,
+    "savedCount": 2,
+    "statusCodes": [
+      200,
+      200
+    ]
+  },
+  "authSmoke": {
+    "authenticated": true,
+    "latencyMs": 98,
+    "premium": true,
+    "statusCode": 200
+  },
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [],
+  "generatedAt": "2026-05-23T13:03:08.276Z",
+  "overallStatus": "ready",
+  "probeIdentity": {
+    "cleanupRequested": true,
+    "created": true,
+    "email": "phase22-chart-1779541384970-cb39e48c@tradeveto-probe.local",
+    "userId": "6aefc518-9536-4401-9607-cd3b3c97bee1"
+  },
+  "startedAt": "2026-05-23T13:03:04.970Z",
+  "symbolSmoke": {
+    "latencyMs": 2463,
+    "statusCode": 200
+  },
+  "timeoutMs": 8000,
+  "workspaceRestore": {
+    "activeIndicatorTemplateId": "phase-22-5-template",
+    "drawingLabels": [
+      "Phase 22.5 Level",
+      "Entry Review"
+    ],
+    "hasCrossDeviceTemplate": true,
+    "hasFullscreenRestore": true,
+    "latencyMs": 47,
+    "statusCode": 200
+  },
+  "workspaceWrite": {
+    "activeIndicatorTemplateId": "phase-22-5-template",
+    "drawingCount": 2,
+    "hasStyledDrawing": true,
+    "hasTemplate": true,
+    "latencyMs": 99,
+    "statusCode": 200
+  }
+}

@@ -1,0 +1,356 @@
+
+> market-alpha-scanner-frontend@0.1.0 test:phase22:chart-real-device
+> BROWSERSTACK_CONFIG_FILE=../browserstack.yml TRADEVETO_MOBILE_UX_BASE_URL=https://tradeveto.com TRADEVETO_BROWSERSTACK_ARTIFACT_ROOT=../docs/ops/artifacts/phase-22-5 npx browserstack-node-sdk playwright test --config=playwright.phase21.config.ts --workers=1
+
+2026-05-23 13:03:26 - [32minfo[39m: Reading configs from /opt/apps/market-alpha-scanner/app/browserstack.yml
+2026-05-23 13:03:26 - [32minfo[39m: Log Directory has been set to /opt/apps/market-alpha-scanner/app/frontend/log
+2026-05-23 13:03:26 - [32minfo[39m: Running SDK with args /usr/bin/node /opt/apps/market-alpha-scanner/app/frontend/node_modules/.bin/browserstack-node-sdk playwright test --config=playwright.phase21.config.ts --workers=1
+2026-05-23 13:03:26 - [32minfo[39m: SDK run started with id: 88c78333-723e-4441-98e3-552fcf1389f6
+2026-05-23 13:03:26 - [32minfo[39m: Project and debug logs are captured by default. To disable, set disableAutoCaptureLogs: true in config.
+2026-05-23 13:03:27 - [32minfo[39m: [BrowserstackCLI] startMain: Starting main process
+2026-05-23 13:03:27 - [32minfo[39m: [CLIUtils] Current CLI Path Found: /home/sre/.browserstack/cli/binary-linuxstatic-x64
+2026-05-23 13:03:28 - [32minfo[39m: [BrowserstackCLI] spawning command='/home/sre/.browserstack/cli/binary-linuxstatic-x64,sdk'
+2026-05-23 13:03:28 - [32minfo[39m: [BrowserstackCLI] CLI params loaded: {"id":"f1805435-4702-40b9-bf02-f72b065f2854","listen":"unix:/tmp/sdk-platform-f1805435-4702-40b9-bf02-f72b065f2854.sock"}
+2026-05-23 13:03:28 - [32minfo[39m: [GrpcClient] Connected to gRPC server at unix:/tmp/sdk-platform-f1805435-4702-40b9-bf02-f72b065f2854.sock
+2026-05-23 13:03:28 - [32minfo[39m: [GrpcClient] Initialized gRPC client with bin session id: f1805435-4702-40b9-bf02-f72b065f2854 and listen address: unix:/tmp/sdk-platform-f1805435-4702-40b9-bf02-f72b065f2854.sock
+2026-05-23 13:03:28 - [32minfo[39m: [GrpcClient] startBinSession: Calling startBinSession
+2026-05-23 13:03:28 - [32minfo[39m: [GrpcClient] setCliArgs: cliArgs=["playwright","test","--config=playwright.phase21.config.ts","--workers=1"], parsedConfig=[]
+2026-05-23 13:03:29 - [32minfo[39m: [GrpcClient] StartBinSession successful
+2026-05-23 13:03:29 - [32minfo[39m: [BrowserstackCLI] loadModules: Loading modules
+2026-05-23 13:03:29 - [32minfo[39m: [BrowserstackCLI] loadModules: binSessionId=f1805435-4702-40b9-bf02-f72b065f2854
+2026-05-23 13:03:29 - [32minfo[39m: [BrowserstackCLI] loading Modules.
+2026-05-23 13:03:29 - [32minfo[39m: [BrowserstackCLI] setCliArgs: cliArgs=["playwright","test","--config=playwright.phase21.config.ts","--workers=1"]
+2026-05-23 13:03:29 - [32minfo[39m: [BrowserstackCLI] Accessibility success=false
+2026-05-23 13:03:30 - [32minfo[39m: [BrowserstackCLI] Starting as child process with session ID: f1805435-4702-40b9-bf02-f72b065f2854
+2026-05-23 13:03:30 - [32minfo[39m: [GrpcClient] Connected to gRPC server at unix:/tmp/sdk-platform-f1805435-4702-40b9-bf02-f72b065f2854.sock
+2026-05-23 13:03:30 - [32minfo[39m: [GrpcClient] Connecting bin session
+2026-05-23 13:03:30 - [32minfo[39m: [GrpcClient] ConnectBinSession successful
+2026-05-23 13:03:30 - [32minfo[39m: [BrowserstackCLI] loadModules: Loading modules
+2026-05-23 13:03:30 - [32minfo[39m: [BrowserstackCLI] loadModules: binSessionId=f1805435-4702-40b9-bf02-f72b065f2854
+2026-05-23 13:03:30 - [32minfo[39m: [BrowserstackCLI] loading Modules.
+2026-05-23 13:03:30 - [32minfo[39m: [BrowserstackCLI] Accessibility success=false
+2026-05-23 13:03:30 - [32minfo[39m: [GrpcClient] Getting Playwright config
+2026-05-23 13:03:30 - [32minfo[39m: [GrpcClient] PlaywrightConfig request successful
+
+Running 9 tests using 1 worker
+
+2026-05-23 13:03:30 - [32minfo[39m: Setting up TestInfo directory at /opt/apps/market-alpha-scanner/app/frontend/log/.obs_test_details-default
+2026-05-23 13:03:30 - [32minfo[39m: [PlaywrightTestFramework] trackPlaywrightInstance: created instance for target=3611165:0, state=TestFrameworkState.INIT_TEST
+2026-05-23 13:03:30 - [32minfo[39m: [PlaywrightTestFramework] trackPlaywrightInstance: saved instance contextId=217ef4542fed3906ed643fc0c36b958eef22525761a0df4fcb53b7c52ee8d367 target=3611165:0
+2026-05-23 13:03:31 - [32minfo[39m: [BrowserstackCLI] Starting as child process with session ID: f1805435-4702-40b9-bf02-f72b065f2854
+2026-05-23 13:03:31 - [32minfo[39m: [GrpcClient] Connected to gRPC server at unix:/tmp/sdk-platform-f1805435-4702-40b9-bf02-f72b065f2854.sock
+2026-05-23 13:03:31 - [32minfo[39m: [GrpcClient] Connecting bin session
+2026-05-23 13:03:31 - [32minfo[39m: [GrpcClient] ConnectBinSession successful
+2026-05-23 13:03:31 - [32minfo[39m: [BrowserstackCLI] loadModules: Loading modules
+2026-05-23 13:03:31 - [32minfo[39m: [BrowserstackCLI] loadModules: binSessionId=f1805435-4702-40b9-bf02-f72b065f2854
+2026-05-23 13:03:31 - [32minfo[39m: [BrowserstackCLI] loading Modules.
+2026-05-23 13:03:31 - [32minfo[39m: [BrowserstackCLI] Accessibility success=false
+2026-05-23 13:03:31 - [32minfo[39m: [GrpcClient] Getting Playwright config
+2026-05-23 13:03:31 - [32minfo[39m: [GrpcClient] PlaywrightConfig request successful
+2026-05-23 13:03:31 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:31 - [32minfo[39m: [BrowserstackCLI] Starting as child process with session ID: f1805435-4702-40b9-bf02-f72b065f2854
+2026-05-23 13:03:31 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:31 - [32minfo[39m: [BrowserstackCLI] startChild: client and channel already exist, stopping here
+2026-05-23 13:03:31 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:31 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:31 - [32minfo[39m: [GrpcClient] Sending LogCreatedEvent
+2026-05-23 13:03:31 - [32minfo[39m: [PlaywrightAutomationFramework] trackPlaywrightInstance: created instance for target=3611212:0, state=AutomationFrameworkState.CREATE
+2026-05-23 13:03:31 - [32minfo[39m: [GrpcClient] LogCreatedEvent request successful
+2026-05-23 13:03:31 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:31 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:31 - [32minfo[39m: [PlaywrightAutomationFramework] trackPlaywrightInstance: saved instance contextId=565fbb1ae11057a2be7d99dbc5133b77346c6c71e201a0bc3ea6d5d536039ffd target=3611212:0
+2026-05-23 13:03:32 - [32minfo[39m: [Accessibility] afterTestHook state: accessibilityPlatform=false, bstackA11yShouldScan=true
+2026-05-23 13:03:32 - [32minfo[39m: [PlaywrightAutomationFramework] trackPlaywrightInstance: instance already exists
+2026-05-23 13:03:32 - [32minfo[39m: [PlaywrightDriverModule] testId: e35c3c89d1e36c2b4580-d7f879af374a8410e01c
+2026-05-23 13:03:32 - [32minfo[39m: [PlaywrightDriverModule] testData from onAfterTest: {
+  uuid: 'ddccb9dd-1ff9-4b60-bbf1-627736d576c1',
+  test_framework_name: 'Playwright',
+  test_framework_version: '1.55.0',
+  test_logs: [],
+  test_hooks_finished: {},
+  test_hooks_started: {},
+  test_uuid: 'ddccb9dd-1ff9-4b60-bbf1-627736d576c1',
+  test_result: 'pending',
+  automate_session_name: 'mobile-real-device.spec.ts - risk acknowledgement overlay mobile safe area',
+  test_file_path: '/opt/apps/market-alpha-scanner/app/frontend/tests/browserstack/mobile-real-device.spec.ts',
+  test_id: 'e35c3c89d1e36c2b4580-d7f879af374a8410e01c',
+  test_name: 'risk acknowledgement overlay mobile safe area',
+  test_location: '/opt/apps/market-alpha-scanner/app/frontend/tests/browserstack/mobile-real-device.spec.ts',
+  test_code: 'async ({\n' +
+    '  page\n' +
+    '}, testInfo) => {\n' +
+    '  const hydrationMessages = bindHydrationCapture(page);\n' +
+    '  await installRiskAcknowledgementTestState(page);\n' +
+    '  await navigateAndSettle(page, "/scanner");\n' +
+    `  const dialog = page.locator("[role='dialog'][aria-label='Risk acknowledgement']").first();\n` +
+    '  await (0, _test.expect)(dialog, "risk acknowledgement dialog is visible").toBeVisible();\n' +
+    '  await assertRiskAcknowledgementOverlaySafe(page);\n' +
+    '  await captureNamedScreenshot(page, "risk-acknowledgement-open", testInfo);\n' +
+    `  const checkbox = dialog.locator("input[type='checkbox']").first();\n` +
+    '  await checkbox.check({\n' +
+    '    force: true\n' +
+    '  });\n' +
+    '  const continueButton = dialog.getByRole("button", {\n' +
+    '    name: /^Continue$/\n' +
+    '  });\n' +
+    '  await (0, _test.expect)(continueButton, "risk acknowledgement continue enabled").toBeEnabled();\n' +
+    '  await continueButton.tap().catch(async () => {\n' +
+    '    await continueButton.click({\n' +
+    '      force: true\n' +
+    '    });\n' +
+    '  });\n' +
+    '  await (0, _test.expect)(dialog, "risk acknowledgement dismisses").toBeHidden({\n' +
+    '    timeout: 10000\n' +
+    '  });\n' +
+    '  await assertMobileMetrics(page, "/scanner");\n' +
+    '  (0, _test.expect)(hydrationMessages, "risk acknowledgement hydration/runtime mismatch").toEqual([]);\n' +
+    '}',
+  test_tags: [],
+  test_started_at: '2026-05-23T13:03:31.264Z',
+  test_scope: 'mobile-real-device.spec.ts - risk acknowledgement overlay mobile safe area',
+  test_scopes: [],
+  test_rerun_name: ' iphone-15-pro-max-safari mobile-real-device.spec.ts risk acknowledgement overlay mobile safe area'
+}
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] Sending TestSessionEvent
+  ✘  1 [iphone-15-pro-max-safari] › tests/browserstack/mobile-real-device.spec.ts:89:5 › risk acknowledgement overlay mobile safe area (8ms)
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+  -  2 [iphone-15-pro-max-safari] › tests/browserstack/mobile-real-device.spec.ts:112:5 › notification overlay mobile safe area
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+  -  3 [iphone-15-pro-max-safari] › tests/browserstack/mobile-real-device.spec.ts:141:5 › real-device mobile QA required routes
+2026-05-23 13:03:32 - [32minfo[39m: getting screenshots results.
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] Sending LogCreatedEvent
+2026-05-23 13:03:32 - [32minfo[39m: getting screenshots results.
+2026-05-23 13:03:32 - [32minfo[39m: getting screenshots results.
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] TestSessionEvent request successful
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] LogCreatedEvent request successful
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:32 - [32minfo[39m: [BrowserstackCLI] Starting as child process with session ID: f1805435-4702-40b9-bf02-f72b065f2854
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] Connected to gRPC server at unix:/tmp/sdk-platform-f1805435-4702-40b9-bf02-f72b065f2854.sock
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] Connecting bin session
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] ConnectBinSession successful
+2026-05-23 13:03:32 - [32minfo[39m: [BrowserstackCLI] loadModules: Loading modules
+2026-05-23 13:03:32 - [32minfo[39m: [BrowserstackCLI] loadModules: binSessionId=f1805435-4702-40b9-bf02-f72b065f2854
+2026-05-23 13:03:32 - [32minfo[39m: [BrowserstackCLI] loading Modules.
+2026-05-23 13:03:32 - [32minfo[39m: [BrowserstackCLI] Accessibility success=false
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] Getting Playwright config
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] PlaywrightConfig request successful
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:32 - [32minfo[39m: [BrowserstackCLI] Starting as child process with session ID: f1805435-4702-40b9-bf02-f72b065f2854
+2026-05-23 13:03:32 - [32minfo[39m: [BrowserstackCLI] startChild: client and channel already exist, stopping here
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] Sending LogCreatedEvent
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] LogCreatedEvent request successful
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:32 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:32 - [32minfo[39m: [PlaywrightAutomationFramework] trackPlaywrightInstance: created instance for target=3611237:0, state=AutomationFrameworkState.CREATE
+2026-05-23 13:03:32 - [32minfo[39m: [PlaywrightAutomationFramework] trackPlaywrightInstance: saved instance contextId=4937efdb6650123081e4444315b14fa7fee35449e1cb4ff77fb3a038583458de target=3611237:0
+2026-05-23 13:03:34 - [32minfo[39m: [Accessibility] afterTestHook state: accessibilityPlatform=undefined, bstackA11yShouldScan=true
+2026-05-23 13:03:34 - [32minfo[39m: [PlaywrightAutomationFramework] trackPlaywrightInstance: instance already exists
+2026-05-23 13:03:34 - [32minfo[39m: [PlaywrightDriverModule] testId: e35c3c89d1e36c2b4580-2f3fe765aa5317ae8ba0
+2026-05-23 13:03:34 - [32minfo[39m: [PlaywrightDriverModule] testData from onAfterTest: {
+  uuid: 'cdff3fd0-821e-47d2-a4ab-ea7d2ea34e5b',
+  test_framework_name: 'Playwright',
+  test_framework_version: '1.55.0',
+  test_logs: [],
+  test_hooks_finished: {},
+  test_hooks_started: {},
+  test_uuid: 'cdff3fd0-821e-47d2-a4ab-ea7d2ea34e5b',
+  test_result: 'pending',
+  automate_session_name: 'mobile-real-device.spec.ts - risk acknowledgement overlay mobile safe area',
+  test_file_path: '/opt/apps/market-alpha-scanner/app/frontend/tests/browserstack/mobile-real-device.spec.ts',
+  test_id: 'e35c3c89d1e36c2b4580-2f3fe765aa5317ae8ba0',
+  test_name: 'risk acknowledgement overlay mobile safe area',
+  test_location: '/opt/apps/market-alpha-scanner/app/frontend/tests/browserstack/mobile-real-device.spec.ts',
+  test_code: 'async ({\n' +
+    '  page\n' +
+    '}, testInfo) => {\n' +
+    '  const hydrationMessages = bindHydrationCapture(page);\n' +
+    '  await installRiskAcknowledgementTestState(page);\n' +
+    '  await navigateAndSettle(page, "/scanner");\n' +
+    `  const dialog = page.locator("[role='dialog'][aria-label='Risk acknowledgement']").first();\n` +
+    '  await (0, _test.expect)(dialog, "risk acknowledgement dialog is visible").toBeVisible();\n' +
+    '  await assertRiskAcknowledgementOverlaySafe(page);\n' +
+    '  await captureNamedScreenshot(page, "risk-acknowledgement-open", testInfo);\n' +
+    `  const checkbox = dialog.locator("input[type='checkbox']").first();\n` +
+    '  await checkbox.check({\n' +
+    '    force: true\n' +
+    '  });\n' +
+    '  const continueButton = dialog.getByRole("button", {\n' +
+    '    name: /^Continue$/\n' +
+    '  });\n' +
+    '  await (0, _test.expect)(continueButton, "risk acknowledgement continue enabled").toBeEnabled();\n' +
+    '  await continueButton.tap().catch(async () => {\n' +
+    '    await continueButton.click({\n' +
+    '      force: true\n' +
+    '    });\n' +
+    '  });\n' +
+    '  await (0, _test.expect)(dialog, "risk acknowledgement dismisses").toBeHidden({\n' +
+    '    timeout: 10000\n' +
+    '  });\n' +
+    '  await assertMobileMetrics(page, "/scanner");\n' +
+    '  (0, _test.expect)(hydrationMessages, "risk acknowledgement hydration/runtime mismatch").toEqual([]);\n' +
+    '}',
+  test_tags: [],
+  test_started_at: '2026-05-23T13:03:32.838Z',
+  test_scope: 'mobile-real-device.spec.ts - risk acknowledgement overlay mobile safe area',
+  test_scopes: [],
+  test_rerun_name: ' samsung-galaxy-s23-ultra-chrome mobile-real-device.spec.ts risk acknowledgement overlay mobile safe area'
+}
+2026-05-23 13:03:34 - [32minfo[39m: [GrpcClient] Sending TestSessionEvent
+  ✘  4 [samsung-galaxy-s23-ultra-chrome] › tests/browserstack/mobile-real-device.spec.ts:89:5 › risk acknowledgement overlay mobile safe area (8ms)
+2026-05-23 13:03:34 - [32minfo[39m: getting screenshots results.
+2026-05-23 13:03:34 - [32minfo[39m: [GrpcClient] Sending LogCreatedEvent
+2026-05-23 13:03:34 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+  -  5 [samsung-galaxy-s23-ultra-chrome] › tests/browserstack/mobile-real-device.spec.ts:112:5 › notification overlay mobile safe area
+2026-05-23 13:03:34 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+  -  6 [samsung-galaxy-s23-ultra-chrome] › tests/browserstack/mobile-real-device.spec.ts:141:5 › real-device mobile QA required routes
+2026-05-23 13:03:34 - [32minfo[39m: getting screenshots results.
+2026-05-23 13:03:34 - [32minfo[39m: getting screenshots results.
+2026-05-23 13:03:34 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:34 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:34 - [32minfo[39m: [GrpcClient] TestSessionEvent request successful
+2026-05-23 13:03:34 - [32minfo[39m: [GrpcClient] LogCreatedEvent request successful
+2026-05-23 13:03:34 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:34 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:34 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:34 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:34 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:34 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:35 - [32minfo[39m: [BrowserstackCLI] Starting as child process with session ID: f1805435-4702-40b9-bf02-f72b065f2854
+2026-05-23 13:03:35 - [32minfo[39m: [GrpcClient] Connected to gRPC server at unix:/tmp/sdk-platform-f1805435-4702-40b9-bf02-f72b065f2854.sock
+2026-05-23 13:03:35 - [32minfo[39m: [GrpcClient] Connecting bin session
+2026-05-23 13:03:35 - [32minfo[39m: [GrpcClient] ConnectBinSession successful
+2026-05-23 13:03:35 - [32minfo[39m: [BrowserstackCLI] loadModules: Loading modules
+2026-05-23 13:03:35 - [32minfo[39m: [BrowserstackCLI] loadModules: binSessionId=f1805435-4702-40b9-bf02-f72b065f2854
+2026-05-23 13:03:35 - [32minfo[39m: [BrowserstackCLI] loading Modules.
+2026-05-23 13:03:35 - [32minfo[39m: [BrowserstackCLI] Accessibility success=false
+2026-05-23 13:03:35 - [32minfo[39m: [GrpcClient] Getting Playwright config
+2026-05-23 13:03:35 - [32minfo[39m: [GrpcClient] PlaywrightConfig request successful
+2026-05-23 13:03:35 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:35 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:35 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:35 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:35 - [32minfo[39m: [BrowserstackCLI] Starting as child process with session ID: f1805435-4702-40b9-bf02-f72b065f2854
+2026-05-23 13:03:35 - [32minfo[39m: [BrowserstackCLI] startChild: client and channel already exist, stopping here
+2026-05-23 13:03:35 - [32minfo[39m: [GrpcClient] Sending LogCreatedEvent
+2026-05-23 13:03:35 - [32minfo[39m: [GrpcClient] LogCreatedEvent request successful
+2026-05-23 13:03:35 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:35 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:35 - [32minfo[39m: [PlaywrightAutomationFramework] trackPlaywrightInstance: created instance for target=3611270:0, state=AutomationFrameworkState.CREATE
+2026-05-23 13:03:35 - [32minfo[39m: [PlaywrightAutomationFramework] trackPlaywrightInstance: saved instance contextId=fb8bcd915ccd94b98f8733f64d4bac4de2b9ed1ef0ff40004ac447b3b12f3b72 target=3611270:0
+2026-05-23 13:03:37 - [32minfo[39m: [Accessibility] afterTestHook state: accessibilityPlatform=false, bstackA11yShouldScan=true
+2026-05-23 13:03:37 - [32minfo[39m: [PlaywrightAutomationFramework] trackPlaywrightInstance: instance already exists
+2026-05-23 13:03:37 - [32minfo[39m: [PlaywrightDriverModule] testId: e35c3c89d1e36c2b4580-ac64b8bd0899bda8eaae
+2026-05-23 13:03:37 - [32minfo[39m: [PlaywrightDriverModule] testData from onAfterTest: {
+  uuid: 'cef6788a-31b5-41d1-bf22-9755e7ee0308',
+  test_framework_name: 'Playwright',
+  test_framework_version: '1.55.0',
+  test_logs: [],
+  test_hooks_finished: {},
+  test_hooks_started: {},
+  test_uuid: 'cef6788a-31b5-41d1-bf22-9755e7ee0308',
+  test_result: 'pending',
+  automate_session_name: 'mobile-real-device.spec.ts - risk acknowledgement overlay mobile safe area',
+  test_file_path: '/opt/apps/market-alpha-scanner/app/frontend/tests/browserstack/mobile-real-device.spec.ts',
+  test_id: 'e35c3c89d1e36c2b4580-ac64b8bd0899bda8eaae',
+  test_name: 'risk acknowledgement overlay mobile safe area',
+  test_location: '/opt/apps/market-alpha-scanner/app/frontend/tests/browserstack/mobile-real-device.spec.ts',
+  test_code: 'async ({\n' +
+    '  page\n' +
+    '}, testInfo) => {\n' +
+    '  const hydrationMessages = bindHydrationCapture(page);\n' +
+    '  await installRiskAcknowledgementTestState(page);\n' +
+    '  await navigateAndSettle(page, "/scanner");\n' +
+    `  const dialog = page.locator("[role='dialog'][aria-label='Risk acknowledgement']").first();\n` +
+    '  await (0, _test.expect)(dialog, "risk acknowledgement dialog is visible").toBeVisible();\n' +
+    '  await assertRiskAcknowledgementOverlaySafe(page);\n' +
+    '  await captureNamedScreenshot(page, "risk-acknowledgement-open", testInfo);\n' +
+    `  const checkbox = dialog.locator("input[type='checkbox']").first();\n` +
+    '  await checkbox.check({\n' +
+    '    force: true\n' +
+    '  });\n' +
+    '  const continueButton = dialog.getByRole("button", {\n' +
+    '    name: /^Continue$/\n' +
+    '  });\n' +
+    '  await (0, _test.expect)(continueButton, "risk acknowledgement continue enabled").toBeEnabled();\n' +
+    '  await continueButton.tap().catch(async () => {\n' +
+    '    await continueButton.click({\n' +
+    '      force: true\n' +
+    '    });\n' +
+    '  });\n' +
+    '  await (0, _test.expect)(dialog, "risk acknowledgement dismisses").toBeHidden({\n' +
+    '    timeout: 10000\n' +
+    '  });\n' +
+    '  await assertMobileMetrics(page, "/scanner");\n' +
+    '  (0, _test.expect)(hydrationMessages, "risk acknowledgement hydration/runtime mismatch").toEqual([]);\n' +
+    '}',
+  test_tags: [],
+  test_started_at: '2026-05-23T13:03:35.588Z',
+  test_scope: 'mobile-real-device.spec.ts - risk acknowledgement overlay mobile safe area',
+  test_scopes: [],
+  test_rerun_name: ' ipad-pro-13-2024-safari mobile-real-device.spec.ts risk acknowledgement overlay mobile safe area'
+}
+2026-05-23 13:03:37 - [32minfo[39m: [GrpcClient] Sending TestSessionEvent
+  ✘  7 [ipad-pro-13-2024-safari] › tests/browserstack/mobile-real-device.spec.ts:89:5 › risk acknowledgement overlay mobile safe area (8ms)
+2026-05-23 13:03:37 - [32minfo[39m: getting screenshots results.
+2026-05-23 13:03:37 - [32minfo[39m: [GrpcClient] Sending LogCreatedEvent
+2026-05-23 13:03:37 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+  -  8 [ipad-pro-13-2024-safari] › tests/browserstack/mobile-real-device.spec.ts:112:5 › notification overlay mobile safe area
+2026-05-23 13:03:37 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+  -  9 [ipad-pro-13-2024-safari] › tests/browserstack/mobile-real-device.spec.ts:141:5 › real-device mobile QA required routes
+2026-05-23 13:03:37 - [32minfo[39m: getting screenshots results.
+2026-05-23 13:03:37 - [32minfo[39m: getting screenshots results.
+2026-05-23 13:03:37 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:37 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 13:03:37 - [32minfo[39m: [GrpcClient] TestSessionEvent request successful
+2026-05-23 13:03:37 - [32minfo[39m: [GrpcClient] LogCreatedEvent request successful
+2026-05-23 13:03:37 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+
+
+  1) [iphone-15-pro-max-safari] › tests/browserstack/mobile-real-device.spec.ts:89:5 › risk acknowledgement overlay mobile safe area 
+
+    Error: browserType.connect: Error: Automate testing time expired.
+        at BrowserType._0x3e7f8f (/opt/apps/market-alpha-scanner/app/frontend/node_modules/browserstack-node-sdk/src/bin/playwright/mock-process.js:1:25884)
+
+  2) [samsung-galaxy-s23-ultra-chrome] › tests/browserstack/mobile-real-device.spec.ts:89:5 › risk acknowledgement overlay mobile safe area 
+
+    Error: browserType.connect: Error: Automate testing time expired.
+        at BrowserType._0x3e7f8f (/opt/apps/market-alpha-scanner/app/frontend/node_modules/browserstack-node-sdk/src/bin/playwright/mock-process.js:1:22201)
+
+  3) [ipad-pro-13-2024-safari] › tests/browserstack/mobile-real-device.spec.ts:89:5 › risk acknowledgement overlay mobile safe area 
+
+    Error: browserType.connect: Error: Automate testing time expired.
+        at BrowserType._0x3e7f8f (/opt/apps/market-alpha-scanner/app/frontend/node_modules/browserstack-node-sdk/src/bin/playwright/mock-process.js:1:25884)
+
+  3 failed
+    [iphone-15-pro-max-safari] › tests/browserstack/mobile-real-device.spec.ts:89:5 › risk acknowledgement overlay mobile safe area 
+    [samsung-galaxy-s23-ultra-chrome] › tests/browserstack/mobile-real-device.spec.ts:89:5 › risk acknowledgement overlay mobile safe area 
+    [ipad-pro-13-2024-safari] › tests/browserstack/mobile-real-device.spec.ts:89:5 › risk acknowledgement overlay mobile safe area 
+  6 did not run
+2026-05-23 13:03:37 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:37 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:37 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:37 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:37 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 13:03:37 - [32minfo[39m: [BrowserstackCLI] stop: CLI stop triggered
+2026-05-23 13:03:37 - [32minfo[39m: [GrpcClient] Stopping bin session
+2026-05-23 13:03:38 - [32minfo[39m: [GrpcClient] StopBinSession successful
+2026-05-23 13:03:38 - [32minfo[39m: stop: stopBinSession build_link=null hashed_id=null o11y_uuid=uneliyaatohej60f3qxvcrk9qw7v6yeyi3vpfghl
+2026-05-23 13:03:38 - [32minfo[39m: [BrowserstackCLI] Unconfiguring modules
+2026-05-23 13:03:38 - [32minfo[39m: [BrowserstackCLI] stop: channel closed
+2026-05-23 13:03:43 - [32minfo[39m: [BrowserstackCLI] stop: shutting down CLI
+2026-05-23 13:03:43 - [32minfo[39m: [BrowserstackCLI] stop: CLI process exited
+2026-05-23 13:03:43 - [32minfo[39m: Visit https://automation.browserstack.com/builds/uneliyaatohej60f3qxvcrk9qw7v6yeyi3vpfghl to view build report, insights, and many more debugging information all at one place!
+
+2026-05-23 13:03:44 - [32minfo[39m: SDK run ended for id: 88c78333-723e-4441-98e3-552fcf1389f6, testhub id: uneliyaatohej60f3qxvcrk9qw7v6yeyi3vpfghl
+2026-05-23 13:03:45 - [32minfo[39m: Deleting /opt/apps/market-alpha-scanner/app/frontend/playwright-browserstack-sdk.config.ts
+2026-05-23 13:03:46 - [32minfo[39m: [BrowserstackCLI] stop: CLI is not running, skipping stop
