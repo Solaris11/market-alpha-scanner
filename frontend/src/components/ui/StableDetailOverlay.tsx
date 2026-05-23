@@ -1,7 +1,7 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import { motion, useReducedMotion, type PanInfo, type Transition } from "motion/react";
@@ -42,6 +42,7 @@ let scrollSamples: Array<{ at: number; y: number }> = [];
 const SCROLL_LOOKBACK_MS = 90;
 const SCROLL_CAPTURE_GRACE_MS = 110;
 const SCROLL_SAMPLE_LIMIT = 48;
+const useStableOverlayLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 function rememberScrollSample(): void {
   const sample = { at: Date.now(), y: window.scrollY };
@@ -118,6 +119,17 @@ function getStableOverlayScrollY(): number {
   return Math.abs(capturedScrollY - currentScrollY) <= 8 ? capturedScrollY : currentScrollY;
 }
 
+function shouldCompensateFixedBodyLockOffset(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iP(?:ad|hone|od)/.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function getFixedBodyLockOffsetY(scrollY: number): number {
+  if (!shouldCompensateFixedBodyLockOffset()) return 0;
+  return Number.isFinite(scrollY) ? Math.round(Math.max(0, scrollY)) : 0;
+}
+
 installStableTriggerCapture();
 
 export function StableDetailOverlay({
@@ -179,9 +191,11 @@ export function StableDetailOverlay({
     };
   }, [open, size, telemetrySurface]);
 
-  useEffect(() => {
+  useStableOverlayLayoutEffect(() => {
     if (!open) return undefined;
-    scrollYRef.current = getStableOverlayScrollY();
+    const lockedScrollY = getStableOverlayScrollY();
+    scrollYRef.current = lockedScrollY;
+    setFixedOverlayOffsetY(getFixedBodyLockOffsetY(lockedScrollY));
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
@@ -200,7 +214,7 @@ export function StableDetailOverlay({
     };
   }, [open, requestClose]);
 
-  useEffect(() => {
+  useStableOverlayLayoutEffect(() => {
     if (!open) {
       setFixedOverlayOffsetY(0);
       return undefined;
@@ -210,7 +224,9 @@ export function StableDetailOverlay({
       const rootRect = overlayRootRef.current?.getBoundingClientRect();
       const bodyTop = Number.parseFloat(document.body.style.top || "0");
       const lockedOffsetY = document.body.style.position === "fixed" && Number.isFinite(bodyTop) ? Math.abs(bodyTop) : 0;
-      const nextOffset = rootRect && rootRect.top < -2 && lockedOffsetY > 0 ? Math.round(lockedOffsetY) : 0;
+      const browserOffsetY = getFixedBodyLockOffsetY(scrollYRef.current);
+      const measuredOffsetY = rootRect && rootRect.top < -2 && lockedOffsetY > 0 ? Math.round(lockedOffsetY) : 0;
+      const nextOffset = browserOffsetY > 0 ? browserOffsetY : measuredOffsetY;
       setFixedOverlayOffsetY((current) => (Math.abs(current - nextOffset) > 1 ? nextOffset : current));
     });
 
