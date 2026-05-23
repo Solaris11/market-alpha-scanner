@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { MetricStrip } from "@/components/metric-strip";
 import { AutoCalibrationRecommendations } from "@/components/auto-calibration-recommendations";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
@@ -6,6 +7,7 @@ import { PerformanceValidation } from "@/components/performance-validation";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/shell";
+import { UtilitySurfaceMaturityPanel } from "@/components/utility/UtilitySurfaceMaturityPanel";
 import { SignalLifecycle } from "@/components/signal-lifecycle";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
 import {
@@ -218,6 +220,66 @@ function PerformanceHowToUse() {
   );
 }
 
+function PerformanceOperationalUtilityPanel({
+  forwardObservationCount,
+  historyCount,
+}: {
+  forwardObservationCount: number;
+  historyCount: number;
+}) {
+  const cards = [
+    {
+      detail: "Admin monitoring exposes request p50, p95, p99, cache-hit, hot-endpoint, and slow-route drilldowns.",
+      href: "/admin/monitoring",
+      label: "p50 / p95 / p99",
+      value: "Monitoring",
+    },
+    {
+      detail: "Retention, alert-return, scanner-return, watchlist-return, and notification-usefulness proof lives in admin analytics and trust monitoring.",
+      href: "/admin/analytics",
+      label: "Retention dashboards",
+      value: "Analytics",
+    },
+    {
+      detail: "Stream health, provider state, cache behavior, and degraded-mode signals are grouped in the production trust architecture dashboard.",
+      href: "/status",
+      label: "Cache / stream / provider health",
+      value: "Status",
+    },
+    {
+      detail: `${forwardObservationCount.toLocaleString()} completed signal observations and ${historyCount.toLocaleString()} saved runs feed operational drilldowns.`,
+      href: "#history",
+      label: "Operational drilldowns",
+      value: "Evidence",
+    },
+  ];
+  return (
+    <section className="terminal-panel rounded-2xl p-5" aria-labelledby="performance-ops-heading">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Performance utility maturity</div>
+          <h2 id="performance-ops-heading" className="mt-1 text-lg font-semibold text-slate-50">Operational dashboards and drilldowns</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+            Performance now separates scanner evidence from production observability: signal behavior is reviewed here, while route latency, retention, cache, stream, and provider health link to the operating dashboards.
+          </p>
+        </div>
+        <Link className="inline-flex min-h-10 items-center rounded-full border border-cyan-300/35 bg-cyan-400/10 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15" href="/admin/monitoring">
+          Open monitoring
+        </Link>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {cards.map((card) => (
+          <Link className="rounded-xl border border-white/10 bg-white/[0.035] p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.055]" href={card.href} key={card.label}>
+            <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{card.label}</div>
+            <div className="mt-1 text-sm font-semibold text-slate-100">{card.value}</div>
+            <p className="mt-2 text-xs leading-5 text-slate-500">{card.detail}</p>
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function PerformanceCinematicEvidenceSystem({
   forwardObservationCount,
   history,
@@ -398,6 +460,7 @@ export default async function PerformancePage() {
   if (requiresLegalAcceptance(entitlement)) {
     return (
       <TerminalShell>
+        <h1 className="sr-only">Performance</h1>
         <LegalAcceptanceRequiredState />
       </TerminalShell>
     );
@@ -406,6 +469,7 @@ export default async function PerformancePage() {
   if (!hasPremiumAccess(entitlement)) {
     return (
       <TerminalShell>
+        <h1 className="sr-only">Performance</h1>
         <PremiumLockedState
           authenticated={entitlement.authenticated}
           description="Performance analytics show recent signal history, scanner behavior, and setup reliability. The main terminal remains available as a free market preview."
@@ -424,6 +488,7 @@ export default async function PerformancePage() {
   return (
     <TerminalShell>
       <div className="space-y-3">
+        <h1 className="sr-only">Performance</h1>
         <div id="summary">
           <MetricStrip
             metrics={[
@@ -438,6 +503,10 @@ export default async function PerformancePage() {
         </div>
 
         <PerformanceHowToUse />
+
+        <UtilitySurfaceMaturityPanel surfaceId="performance" />
+
+        <PerformanceOperationalUtilityPanel forwardObservationCount={forwardObservationCount} historyCount={history.count} />
 
         <PerformanceCinematicEvidenceSystem
           forwardObservationCount={forwardObservationCount}

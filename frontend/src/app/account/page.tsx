@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { QueryResultRow } from "pg";
-import { LockKeyhole, Settings2 } from "lucide-react";
+import { CreditCard, Database, LockKeyhole, ShieldCheck, Smartphone, Settings2 } from "lucide-react";
 import { AccountLogoutButton, AccountSignInCta, BillingActionButton, DeleteAccountButton, LegalReviewButton, SendVerificationEmailButton } from "@/components/account/AccountPageActions";
 import { UserMemoryPrivacyControls } from "@/components/account/UserMemoryPrivacyControls";
 import { betaBillingCopy, parseBooleanFlag, parseTrialDays } from "@/lib/security/beta-billing";
@@ -10,6 +10,7 @@ import { checkoutBlockMessage, checkoutBlockReason } from "@/lib/security/billin
 import { stripeModeLabel } from "@/lib/security/stripe-mode";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { UtilityCard, UtilityHero, UtilityPageStack, UtilityStatusRows, UtilityTimeline } from "@/components/utility/CinematicUtilitySurface";
+import { UtilitySurfaceMaturityPanel } from "@/components/utility/UtilitySurfaceMaturityPanel";
 import { getAlertOverview } from "@/lib/alerts";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { dbQuery } from "@/lib/server/db";
@@ -50,6 +51,18 @@ type RiskProfileResult = {
   profile: UserRiskProfile;
 };
 
+type SessionOverview = {
+  activeCount: number;
+  latestCreatedAt: string | null;
+  nextExpiresAt: string | null;
+};
+
+type SessionOverviewRow = QueryResultRow & {
+  active_count: number | string | null;
+  latest_created_at: string | null;
+  next_expires_at: string | null;
+};
+
 export default async function AccountPage() {
   const entitlement = await getEntitlement();
   const user = entitlement.user;
@@ -86,7 +99,7 @@ export default async function AccountPage() {
     );
   }
 
-  const [riskProfile, watchlist, enabledAlertCount, billingSubscription, decisionMemory, memorySettings, personalizationProfile] = await Promise.all([
+  const [riskProfile, watchlist, enabledAlertCount, billingSubscription, decisionMemory, memorySettings, personalizationProfile, sessionOverview] = await Promise.all([
     readRiskProfile(user.id),
     readWatchlist(user.id),
     readEnabledAlertCount(user.id),
@@ -94,6 +107,7 @@ export default async function AccountPage() {
     getDecisionMemoryForUser(user.id).then((context) => context.memory).catch(() => null),
     readUserMemorySettings(user.id).catch(() => DEFAULT_USER_MEMORY_SETTINGS),
     getPersonalizationProfileForUser(user.id).catch(() => null),
+    readSessionOverview(user.id),
   ]);
   const workflowEvolution = hasPremiumAccess(entitlement)
     ? await (async () => {
@@ -131,6 +145,51 @@ export default async function AccountPage() {
             <Link className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-cyan-300/35 hover:text-cyan-100" href="/support">Get support</Link>
           </div>
         </UtilityHero>
+
+        <UtilitySurfaceMaturityPanel surfaceId="account" />
+
+        <div className="grid gap-5 xl:grid-cols-2">
+          <AccountSection title="Trust Center">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TrustCenterItem
+                detail="Terms, Privacy Policy, Risk Disclosure, billing readiness, and email verification are evaluated before paid account operations."
+                icon={<ShieldCheck className="h-5 w-5" />}
+                label="Legal and identity"
+                value={entitlement.legalStatus.allAccepted && user.emailVerified ? "Clear" : "Needs review"}
+              />
+              <TrustCenterItem
+                detail="Stripe-hosted checkout and portal own card details. TradeVeto only stores entitlement and subscription status needed for access."
+                icon={<CreditCard className="h-5 w-5" />}
+                label="Subscription clarity"
+                value={planLabel(entitlement)}
+              />
+              <TrustCenterItem
+                detail="Decision memory, watchlists, alert rules, and privacy settings are visible from Account and Settings so personalization stays inspectable."
+                icon={<Database className="h-5 w-5" />}
+                label="Data visibility"
+                value={memorySettings.behavioralLearningEnabled ? "Memory enabled" : "Memory paused"}
+              />
+              <TrustCenterItem
+                detail="Account sessions are hashed server-side; raw session tokens are not stored in the database."
+                icon={<Smartphone className="h-5 w-5" />}
+                label="Session model"
+                value={`${sessionOverview.activeCount.toLocaleString()} active`}
+              />
+            </div>
+          </AccountSection>
+
+          <AccountSection title="Session and Device Management">
+            <dl className="grid gap-3 sm:grid-cols-2">
+              <InfoItem label="Active sessions" value={sessionOverview.activeCount.toLocaleString()} />
+              <InfoItem label="Latest session" value={formatDate(sessionOverview.latestCreatedAt)} />
+              <InfoItem label="Current session expiry window" value={formatDate(sessionOverview.nextExpiresAt)} />
+              <InfoItem label="Device visibility" subtext="User-agent inventory is intentionally not shown until device labels can be persisted accurately." value="Privacy-first" />
+            </dl>
+            <p className="mt-3 rounded-xl border border-cyan-300/15 bg-cyan-400/[0.055] px-3 py-2 text-xs leading-5 text-cyan-50/85">
+              Use Logout to end the current browser session. Full remote-session revocation remains gated behind device attribution so the UI does not pretend to identify devices it cannot prove.
+            </p>
+          </AccountSection>
+        </div>
 
         <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
           <AccountSection title="Profile">
@@ -550,6 +609,21 @@ function PlaceholderItem({ text, title }: { text: string; title: string }) {
   );
 }
 
+function TrustCenterItem({ detail, icon, label, value }: { detail: string; icon: ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</div>
+          <div className="mt-1 break-words text-sm font-semibold text-slate-100">{value}</div>
+        </div>
+        <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-400/10 text-cyan-100">{icon}</div>
+      </div>
+      <p className="mt-2 text-xs leading-5 text-slate-500">{detail}</p>
+    </div>
+  );
+}
+
 function SymbolPreview({ symbols }: { symbols: string[] }) {
   if (!symbols.length) {
     return (
@@ -644,6 +718,31 @@ async function readEnabledAlertCount(userId: string): Promise<number | null> {
     return overview.activeCount;
   } catch {
     return null;
+  }
+}
+
+async function readSessionOverview(userId: string): Promise<SessionOverview> {
+  try {
+    const result = await dbQuery<SessionOverviewRow>(
+      `
+        SELECT
+          count(*)::int AS active_count,
+          max(created_at)::text AS latest_created_at,
+          max(expires_at)::text AS next_expires_at
+        FROM user_sessions
+        WHERE user_id = $1
+          AND expires_at > now()
+      `,
+      [userId],
+    );
+    const row = result.rows[0];
+    return {
+      activeCount: Math.max(0, Math.floor(Number(row?.active_count ?? 0))),
+      latestCreatedAt: row?.latest_created_at ?? null,
+      nextExpiresAt: row?.next_expires_at ?? null,
+    };
+  } catch {
+    return { activeCount: 1, latestCreatedAt: null, nextExpiresAt: null };
   }
 }
 

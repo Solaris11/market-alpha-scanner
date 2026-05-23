@@ -1,7 +1,9 @@
 import { BellRing, BrainCircuit, Eye, LockKeyhole, Settings2, ShieldCheck, SlidersHorizontal, UserRound } from "lucide-react";
 import { AccountSignInCta } from "@/components/account/AccountPageActions";
+import { SettingsPreferenceCenter } from "@/components/settings/SettingsPreferenceCenter";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { UtilityCard, UtilityHero, UtilityPageStack, UtilityStatusRows, UtilityTimeline } from "@/components/utility/CinematicUtilitySurface";
+import { UtilitySurfaceMaturityPanel } from "@/components/utility/UtilitySurfaceMaturityPanel";
 import { getAlertOverview } from "@/lib/alerts";
 import { getEntitlement, hasPremiumAccess } from "@/lib/server/entitlements";
 import { readUserMemorySettings } from "@/lib/server/user-memory-settings";
@@ -63,6 +65,10 @@ export default async function SettingsPage() {
           title="Settings command surface"
           tone="violet"
         />
+
+        <UtilitySurfaceMaturityPanel surfaceId="settings" />
+
+        <SettingsPreferenceCenter />
 
         <div className="grid gap-4 xl:grid-cols-4">
           <UtilityCard action="Open Terminal personalization" eyebrow="Risk posture" href="/terminal#workspace-personalization" icon={<SlidersHorizontal className="h-5 w-5" />} title="Risk and density defaults" tone="cyan">

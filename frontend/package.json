@@ -16,6 +16,7 @@
     "stripe:reconcile": "tsx scripts/stripe-reconcile.ts",
     "email:test": "node scripts/send-test-email.mjs",
     "test:mobile-ux": "node scripts/mobile-ux-smoke.mjs",
+    "test:phase22:utility-accessibility": "node scripts/phase22-utility-accessibility-smoke.mjs",
     "test:browserstack": "BROWSERSTACK_CONFIG_FILE=../browserstack.yml npx browserstack-node-sdk playwright test --config=playwright.phase21.config.ts --workers=1",
     "test:browserstack:mobile": "BROWSERSTACK_CONFIG_FILE=../browserstack.yml TRADEVETO_MOBILE_UX_BASE_URL=https://tradeveto.com npx browserstack-node-sdk playwright test --config=playwright.phase21.config.ts --workers=1",
     "test:phase21:mobile-real-device": "npm run test:browserstack:mobile",
@@ -56,6 +57,7 @@
     "web-push": "^3.6.7"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.11.3",
     "@playwright/test": "1.55.0",
     "@tailwindcss/postcss": "4.2.4",
     "@types/node": "25.6.0",

@@ -257,8 +257,11 @@ export function NotificationBell() {
               {mobileMenu ? <button aria-label="Close notifications" className="tv-notification-backdrop fixed inset-0" onClick={() => setOpen(false)} type="button" /> : null}
               <div
                 ref={menuRef}
+                aria-label="Notifications"
+                aria-modal={mobileMenu ? "true" : undefined}
                 className="tv-drawer-surface tv-notification-menu rounded-2xl border border-white/10 bg-slate-950/95 p-2 text-xs text-slate-300 shadow-2xl shadow-black/40 ring-1 ring-cyan-300/10 backdrop-blur-xl"
                 data-mobile-gesture-ignore="true"
+                role={mobileMenu ? "dialog" : "region"}
                 style={menuStyle}
               >
                 <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-slate-950/95 px-3 py-2 backdrop-blur-xl">

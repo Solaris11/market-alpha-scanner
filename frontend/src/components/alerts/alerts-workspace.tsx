@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Activity, BellRing, Eye, ListChecks, RadioTower, ShieldCheck, SlidersHorizontal, Zap } from "lucide-react";
 import { SimpleAdvancedTabs } from "@/components/ui/SimpleAdvancedTabs";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
+import { UtilitySurfaceMaturityPanel } from "@/components/utility/UtilitySurfaceMaturityPanel";
 import {
   CinematicClusterMosaic,
   CinematicHeatMatrix,
@@ -541,6 +542,61 @@ function AlertCinematicEcosystem({ overview, watchlist }: { overview: AlertOverv
   );
 }
 
+function AlertUtilityControlPanel({ overview }: { overview: AlertOverview }) {
+  const totalRules = overview.rules.length;
+  const cooldownRules = overview.rules.filter((rule) => Number(rule.cooldown_minutes ?? 0) > 0).length;
+  const cappedRules = overview.rules.filter((rule) => Number(rule.max_alerts_per_run ?? 0) > 0).length;
+  const sourceLinkedRules = overview.rules.filter((rule) => Boolean(rule.source || rule.type || rule.entry_filter)).length;
+  const stateEntries = Object.keys(overview.state.alerts).length;
+  const items = [
+    {
+      detail: "Useful / not useful feedback is captured on delivered notifications and attributed back to notification engagement analytics.",
+      label: "Usefulness feedback",
+      value: "Tracked",
+    },
+    {
+      detail: `${cooldownRules.toLocaleString()} of ${totalRules.toLocaleString()} rules have cooldowns and ${cappedRules.toLocaleString()} rules have max-per-run caps.`,
+      label: "Fatigue controls",
+      value: totalRules ? `${Math.round((cooldownRules / totalRules) * 100)}%` : "No rules",
+    },
+    {
+      detail: "Notification actions emit alert-return, scanner-return, replay-return, or personalized-intelligence-return events when a user opens the destination.",
+      label: "Return conversion",
+      value: "Attributed",
+    },
+    {
+      detail: `${sourceLinkedRules.toLocaleString()} rules expose type, scope, entry filter, or source state; ${stateEntries.toLocaleString()} alert state entries explain sent, skipped, or radar-only outcomes.`,
+      label: "Source-linked reasons",
+      value: sourceLinkedRules ? "Visible" : "Pending",
+    },
+  ];
+  return (
+    <section className="terminal-panel rounded-2xl p-4" aria-labelledby="alert-utility-controls-heading">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-300">Alert utility maturity</div>
+          <h2 id="alert-utility-controls-heading" className="mt-1 text-lg font-semibold text-slate-50">Usefulness, fatigue, source reasons, and return loops</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+            Alert rules now expose why they exist, how often they can fire, how noisy they may become, and whether delivered notifications were useful.
+          </p>
+        </div>
+        <a className="inline-flex min-h-10 items-center rounded-full border border-cyan-300/35 bg-cyan-400/10 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15" href="#alert-rule-table">
+          Review rule evidence
+        </a>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {items.map((item) => (
+          <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3" key={item.label}>
+            <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{item.label}</div>
+            <div className="mt-1 text-sm font-semibold text-slate-100">{item.value}</div>
+            <p className="mt-2 text-xs leading-5 text-slate-500">{item.detail}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOverview }) {
   const [overview, setOverview] = useState(initialOverview);
   const [scope, setScope] = useState("symbol");
@@ -981,6 +1037,10 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
       </div>
 
       <AlertCinematicEcosystem overview={overview} watchlist={watchlist} />
+
+      <UtilitySurfaceMaturityPanel surfaceId="alerts" />
+
+      <AlertUtilityControlPanel overview={overview} />
 
       <SimpleAdvancedTabs
         simple={(

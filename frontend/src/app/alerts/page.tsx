@@ -12,6 +12,7 @@ export default async function AlertsPage() {
   if (requiresLegalAcceptance(entitlement)) {
     return (
       <TerminalShell>
+        <h1 className="sr-only">Alerts</h1>
         <LegalAcceptanceRequiredState />
       </TerminalShell>
     );
@@ -20,6 +21,7 @@ export default async function AlertsPage() {
   if (!hasPremiumAccess(entitlement)) {
     return (
       <TerminalShell>
+        <h1 className="sr-only">Alerts</h1>
         <PremiumLockedState
           authenticated={entitlement.authenticated}
           description="Saved alert rules, active matches, and notification automation are premium features. The scanner preview remains available without alerts."
@@ -34,6 +36,7 @@ export default async function AlertsPage() {
 
   return (
     <TerminalShell>
+      <h1 className="sr-only">Alerts</h1>
       <AlertsWorkspace initialOverview={overview} />
     </TerminalShell>
   );

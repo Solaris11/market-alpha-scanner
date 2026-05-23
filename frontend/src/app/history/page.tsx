@@ -1,8 +1,10 @@
+import Link from "next/link";
 import { HistoryWorkspace } from "@/components/history-workspace";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { MetricStrip } from "@/components/metric-strip";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { TerminalShell } from "@/components/shell";
+import { UtilitySurfaceMaturityPanel } from "@/components/utility/UtilitySurfaceMaturityPanel";
 import {
   CinematicClusterMosaic,
   CinematicHeatMatrix,
@@ -53,6 +55,69 @@ function HowToUseHistory() {
             <div className="text-sm font-semibold text-slate-100">{title}</div>
             <p className="mt-1 text-xs leading-5 text-slate-400">{copy}</p>
           </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function HistoryUtilityMaturity({
+  defaultSymbol,
+  historyCount,
+  symbolCount,
+}: {
+  defaultSymbol: string;
+  historyCount: number;
+  symbolCount: number;
+}) {
+  const focusHref = defaultSymbol ? `/symbol/${encodeURIComponent(defaultSymbol)}` : "/discover";
+  const cards = [
+    {
+      detail: `${historyCount.toLocaleString()} saved scanner run${historyCount === 1 ? "" : "s"} can anchor replay review.`,
+      href: "#timeline",
+      label: "Replay timeline",
+      value: historyCount ? "Available" : "Build history",
+    },
+    {
+      detail: `${symbolCount.toLocaleString()} symbol${symbolCount === 1 ? "" : "s"} have continuity coverage across current ranking and saved snapshots.`,
+      href: focusHref,
+      label: "Symbol continuity",
+      value: symbolCount ? "Linked" : "Limited",
+    },
+    {
+      detail: "News, financial, and event tabs only show source-backed context from scanner history rows when evidence exists.",
+      href: "#table",
+      label: "Event memory",
+      value: "Evidence-bound",
+    },
+    {
+      detail: "Trade autopsy stays connected to replay/history and paper trading; it does not fabricate fills, broker state, or returns.",
+      href: "/paper",
+      label: "Trade autopsy links",
+      value: "Research only",
+    },
+  ];
+  return (
+    <section className="terminal-panel rounded-2xl p-5" aria-labelledby="history-utility-heading">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">History utility maturity</div>
+          <h2 id="history-utility-heading" className="mt-1 text-lg font-semibold text-slate-50">Replay, continuity, memory, and autopsy routing</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+            History now acts as a utility workflow: pick a symbol, review what changed, inspect event context, then continue to symbol detail, market memory, or paper-trading review.
+          </p>
+        </div>
+        <Link className="inline-flex min-h-10 items-center rounded-full border border-cyan-300/35 bg-cyan-400/10 px-4 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15" href={focusHref}>
+          Continue symbol workflow
+        </Link>
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        {cards.map((card) => (
+          <Link className="rounded-xl border border-white/10 bg-white/[0.035] p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.055]" href={card.href} key={card.label}>
+            <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{card.label}</div>
+            <div className="mt-1 text-sm font-semibold text-slate-100">{card.value}</div>
+            <p className="mt-2 text-xs leading-5 text-slate-500">{card.detail}</p>
+          </Link>
         ))}
       </div>
     </section>
@@ -243,6 +308,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   if (requiresLegalAcceptance(entitlement)) {
     return (
       <TerminalShell>
+        <h1 className="sr-only">History</h1>
         <LegalAcceptanceRequiredState />
       </TerminalShell>
     );
@@ -251,6 +317,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   if (!hasPremiumAccess(entitlement)) {
     return (
       <TerminalShell>
+        <h1 className="sr-only">History</h1>
         <PremiumLockedState
           authenticated={entitlement.authenticated}
           description="Signal memory, historical symbol timelines, and CSV snapshot exports are premium research tools. Free users can still review the current terminal preview."
@@ -271,6 +338,7 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   return (
     <TerminalShell>
       <div className="space-y-3">
+        <h1 className="sr-only">History</h1>
         <MetricStrip
           metrics={[
             { label: "Saved Runs", value: history.count.toLocaleString(), meta: "signal memory" },
@@ -281,6 +349,10 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
         />
 
         <HowToUseHistory />
+
+        <UtilitySurfaceMaturityPanel surfaceId="history" />
+
+        <HistoryUtilityMaturity defaultSymbol={defaultSymbol} historyCount={history.count} symbolCount={symbols.length} />
 
         <HistoryCinematicMemorySystem defaultSymbol={defaultSymbol} history={history} ranking={ranking} symbols={symbols} />
 

@@ -1,6 +1,7 @@
-import { Bot, CircleHelp, FileText, LifeBuoy, MessageSquare, TicketCheck } from "lucide-react";
+import { AlertTriangle, Bot, CircleHelp, FileText, LifeBuoy, MessageSquare, RadioTower, TicketCheck } from "lucide-react";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
-import { UtilityCard, UtilityHero, UtilityPageStack, UtilityStatusRows } from "@/components/utility/CinematicUtilitySurface";
+import { UtilityCard, UtilityHero, UtilityPageStack, UtilityStatusRows, UtilityTimeline } from "@/components/utility/CinematicUtilitySurface";
+import { UtilitySurfaceMaturityPanel } from "@/components/utility/UtilitySurfaceMaturityPanel";
 import { SUPPORT_DISCLAIMER } from "@/lib/support/content";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,27 @@ export default function SupportPage() {
           title="Support command center"
           tone="cyan"
         />
+        <UtilitySurfaceMaturityPanel surfaceId="support" />
+        <section className="grid gap-4 lg:grid-cols-3">
+          <UtilityCard action="Open live status" eyebrow="Incident status" href="/status" icon={<AlertTriangle className="h-5 w-5" />} title="Check degraded systems" tone="amber">
+            <p className="text-sm leading-6 text-slate-400">Public status shows provider freshness, degraded systems, stale data states, and known operational incidents without hiding limitations.</p>
+          </UtilityCard>
+          <UtilityCard action="Open FAQ" eyebrow="Provider outage help" href="/support/faq#wrong-stale-data" icon={<RadioTower className="h-5 w-5" />} title="Understand stale or delayed data" tone="violet">
+            <p className="text-sm leading-6 text-slate-400">Provider outage help routes users to freshness checks, affected symbols, timestamps, and the right support evidence to attach.</p>
+          </UtilityCard>
+          <UtilityCard action="Open tickets" eyebrow="Ticket clarity" href="/support/tickets" icon={<TicketCheck className="h-5 w-5" />} title="Create evidence-backed tickets" tone="emerald">
+            <p className="text-sm leading-6 text-slate-400">Tickets should include page, browser, timestamp, symbol, and safe screenshots so support can reproduce workflow problems.</p>
+          </UtilityCard>
+        </section>
+        <UtilityCard eyebrow="Workflow FAQ routing" icon={<CircleHelp className="h-5 w-5" />} title="Support paths tied to intelligence workflows" tone="cyan">
+          <UtilityTimeline
+            items={[
+              { detail: "Stale scanner or provider issue: check /status first, then include page, symbol, and time in the ticket.", label: "Data freshness issue", tone: "amber" },
+              { detail: "Alert noise or missing trigger: open Alerts, capture rule id, cooldown, target, and last state.", label: "Alert workflow issue", tone: "violet" },
+              { detail: "History, replay, paper, or performance confusion: start with FAQ and attach the workflow step that felt unclear.", label: "Intelligence workflow issue", tone: "cyan" },
+            ]}
+          />
+        </UtilityCard>
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           {links.map(({ copy, href, Icon, title, tone }) => (
             <UtilityCard action="Open surface" href={href} icon={<Icon className="h-5 w-5" />} key={href} title={title} tone={tone}>
