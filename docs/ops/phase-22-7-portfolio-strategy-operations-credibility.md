@@ -2,7 +2,7 @@
 
 Date: 2026-05-23
 
-Final status: **PENDING PRODUCTION VALIDATION**
+Final status: **STRONG PARTIAL ACCOMPLISHED**
 
 ## Scope
 
@@ -52,23 +52,39 @@ Targeted test coverage:
 
 ## Production Evidence
 
-Pending:
+Production deployment:
 
-- Commit and push to `main`
-- Production pull on `sre@100.68.155.121`
-- Frontend rebuild/redeploy
-- Production health smoke
-- Production route smoke for `/paper` and `/strategy-labs`
+- Commit deployed: `b5b8e72b`.
+- Production pull: `git pull --ff-only origin main` fast-forwarded from `00d3cde` to `b5b8e72`.
+- Production rebuild/redeploy: `docker compose --env-file .env up -d --build market-alpha-frontend` completed.
+- Container: `market-alpha-frontend`.
+- Runtime image: `sha256:9cb5374f7295549d0a1a38d9d6de0bbfc5aeca7a57358ef0b3348a5a76738727`.
+- Container started: `2026-05-23T13:27:28.749951506Z`.
+- Container health: `healthy`.
+
+Production smoke:
+
+| Surface | Result | Response bytes |
+| --- | ---: | ---: |
+| `/api/health` | 200 | 114 |
+| `/api/health/deep` | 200 | 1523 |
+| `/terminal` | 200 | 105081 |
+| `/paper` | 200 | 154148 |
+| `/discover` | 200 | 52706 |
+| `/scanner` | 200 | 46693 |
+| `/symbol/AMD` | 200 | 113320 |
+| `/strategy-labs` | 200 | 73733 |
 
 ## Remaining Blockers
 
-Pending final validation. Known product-boundary blockers remain:
+The phase is marked strong partial, not fully accomplished, because product credibility improved inside the paper and Strategy Labs boundary but true institutional operations still require evidence that is not present:
 
 - No broker-backed fills.
 - No external account statements.
 - No compliance approval workflow.
 - No real institutional operations evidence beyond paper and Strategy Labs operating data.
+- No authenticated production portfolio-state probe was added for this phase; production proof is route/build/smoke plus local model tests.
 
 ## Verdict
 
-PENDING
+TRADEVETO PORTFOLIO + STRATEGY OPERATIONS CREDIBILITY STRONG PARTIAL ACCOMPLISHED
