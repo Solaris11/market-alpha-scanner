@@ -251,6 +251,7 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
               ["Scanner returns", dailyDriver.habitLoops.scannerReturns],
               ["Replay returns", dailyDriver.habitLoops.replayReturns],
               ["Alert returns", dailyDriver.habitLoops.alertReturns],
+              ["Strategy returns", dailyDriver.habitLoops.strategyReturns],
               ["Watchlist returns", dailyDriver.habitLoops.watchlistReturns],
               ["Personalized returns", dailyDriver.habitLoops.personalizedReturns],
             ]}

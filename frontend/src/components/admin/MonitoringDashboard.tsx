@@ -454,6 +454,7 @@ function ProductionTrustPanel({ monitoring }: { monitoring: AdminMonitoringSumma
             <MetricPill label="scanner returns" value={formatCount(retention.scannerReturns)} />
             <MetricPill label="watchlist returns" value={formatCount(retention.watchlistReturns)} />
             <MetricPill label="alert returns" value={formatCount(retention.alertReturns)} />
+            <MetricPill label="strategy returns" value={formatCount(retention.strategyReturns)} />
             <MetricPill label="notif useful" value={`${formatMonitoringPercent(retention.notificationUsefulRatePct)} (${retention.notificationUseful}/${retention.notificationFeedbackTotal})`} />
           </div>
         </div>

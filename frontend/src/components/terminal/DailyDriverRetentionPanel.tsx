@@ -21,6 +21,7 @@ import type {
   DailyDriverContextItem,
   DailyDriverFunnelStage,
   DailyDriverHabitLoop,
+  DailyDriverMorningWorkflowItem,
   DailyDriverRetentionModel,
   DailyDriverTone,
 } from "@/lib/trading/daily-driver-retention";
@@ -50,6 +51,14 @@ const ACTION_ICON: Record<DailyDriverAction["key"], ComponentType<{ className?: 
   workflow_restore: RotateCcw,
 };
 
+const MORNING_ICON: Record<DailyDriverMorningWorkflowItem["key"], ComponentType<{ className?: string }>> = {
+  macro_updates: Sparkles,
+  overnight_summary: Gauge,
+  risk_changes: ShieldAlert,
+  scanner_changes: Search,
+  watchlist_movement: ListChecks,
+};
+
 export function DailyDriverRetentionPanel({ model }: Props) {
   return (
     <section
@@ -72,6 +81,10 @@ export function DailyDriverRetentionPanel({ model }: Props) {
         <div className="rounded-[1.6rem] border border-white/10 bg-black/25 p-4">
           <PosterGauge label="Activation readiness" score={model.activationScore} tone={toneToVisual(model.activationScore >= 75 ? "emerald" : model.activationScore >= 55 ? "cyan" : "amber")} />
         </div>
+      </div>
+
+      <div className="relative z-10 mt-5">
+        <MorningWorkflowDeck items={model.morningWorkflow} />
       </div>
 
       <div className="relative z-10 mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -118,6 +131,47 @@ export function DailyDriverRetentionPanel({ model }: Props) {
         </div>
       </div>
     </section>
+  );
+}
+
+function MorningWorkflowDeck({ items }: { items: DailyDriverMorningWorkflowItem[] }) {
+  return (
+    <div className="rounded-[1.6rem] border border-cyan-300/16 bg-slate-950/42 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Morning recovery workflow</div>
+          <div className="mt-1 text-lg font-black text-slate-50">Open with the same five checks every day</div>
+        </div>
+        <Gauge className="h-5 w-5 text-cyan-200" />
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        {items.map((item) => <MorningWorkflowTile item={item} key={item.key} />)}
+      </div>
+    </div>
+  );
+}
+
+function MorningWorkflowTile({ item }: { item: DailyDriverMorningWorkflowItem }) {
+  const tone = TONE[item.tone];
+  const Icon = MORNING_ICON[item.key];
+  return (
+    <Link
+      className={`tv-tap-motion min-w-0 rounded-[1.25rem] border ${tone.border} ${tone.bg} p-3 transition hover:-translate-y-0.5 hover:border-cyan-200/50 hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-cyan-300/40`}
+      data-analytics-id={`daily-morning-${item.key}`}
+      href={item.href}
+      onClick={() => recordMorningWorkflow(item)}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{item.metricLabel}</div>
+          <div className="mt-1 line-clamp-2 font-black leading-5 text-slate-50">{item.label}</div>
+        </div>
+        <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border ${tone.border} bg-black/22 ${tone.text}`}>
+          <Icon className="h-4 w-4" />
+        </div>
+      </div>
+      <p className="mt-3 line-clamp-3 min-h-[3.75rem] text-xs leading-5 text-slate-400">{item.detail}</p>
+    </Link>
   );
 }
 
@@ -225,6 +279,32 @@ function ContextRow({ item }: { item: DailyDriverContextItem }) {
   ) : content;
 }
 
+function recordMorningWorkflow(item: DailyDriverMorningWorkflowItem): void {
+  trackAnalyticsEvent("morning_workflow_start", {
+    check: item.key,
+    routeGroup: item.workflow,
+  }, { source: "daily_driver_morning" });
+  trackAnalyticsEvent("workflow_continuity", {
+    from: "terminal",
+    morningCheck: item.key,
+    to: item.workflow,
+  }, { source: "daily_driver_morning" });
+  const returnEvent = returnEventForMorningItem(item);
+  if (returnEvent) {
+    trackAnalyticsEvent(returnEvent, {
+      check: item.key,
+      routeGroup: item.workflow,
+    }, { source: "daily_driver_morning" });
+  }
+}
+
+function returnEventForMorningItem(item: DailyDriverMorningWorkflowItem): AnalyticsEventName | null {
+  if (item.key === "watchlist_movement") return "watchlist_return";
+  if (item.key === "scanner_changes") return "scanner_return";
+  if (item.key === "risk_changes" || item.key === "macro_updates") return "personalized_intelligence_return";
+  return null;
+}
+
 function recordAction(action: DailyDriverAction): void {
   const habitLoopEvent = habitLoopEventForAction(action);
   trackAnalyticsEvent("workflow_continuity", {
@@ -253,7 +333,8 @@ function habitLoopEventForAction(action: DailyDriverAction): AnalyticsEventName 
   if (action.key === "review_replay") return "replay_return";
   if (action.key === "create_alert") return "alert_return";
   if (action.key === "create_watchlist" || action.key === "review_watchlist") return "watchlist_return";
-  if (action.key === "strategy_review" || action.key === "workflow_restore") return "personalized_intelligence_return";
+  if (action.key === "strategy_review") return "strategy_return";
+  if (action.key === "workflow_restore") return "personalized_intelligence_return";
   return null;
 }
 

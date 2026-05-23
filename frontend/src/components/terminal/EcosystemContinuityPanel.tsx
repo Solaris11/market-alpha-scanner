@@ -30,6 +30,15 @@ type DeviceContinuityState = {
   routeMemory: EcosystemContinuityStorageState | null;
 };
 
+type DeviceSummaryItem = {
+  analyticsKey: string;
+  detail: string;
+  href: string | null;
+  label: string;
+  tone: EcosystemContinuityTone;
+  value: string;
+};
+
 const TONE: Record<EcosystemContinuityTone, { bg: string; border: string; glow: string; text: string }> = {
   amber: { bg: "bg-amber-400/[0.08]", border: "border-amber-300/25", glow: "shadow-[0_0_32px_rgba(251,191,36,0.10)]", text: "text-amber-100" },
   cyan: { bg: "bg-cyan-400/[0.08]", border: "border-cyan-300/25", glow: "shadow-[0_0_32px_rgba(34,211,238,0.11)]", text: "text-cyan-100" },
@@ -288,9 +297,9 @@ function ReadinessRow({ item }: { item: EcosystemRestoreReadiness }) {
   );
 }
 
-function DeviceSummaryRow({ item }: { item: { detail: string; label: string; tone: EcosystemContinuityTone; value: string } }) {
+function DeviceSummaryRow({ item }: { item: DeviceSummaryItem }) {
   const tone = TONE[item.tone];
-  return (
+  const content = (
     <div className={`rounded-2xl border ${tone.border} ${tone.bg} p-3`}>
       <div className="flex items-center justify-between gap-3">
         <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{item.label}</div>
@@ -298,6 +307,20 @@ function DeviceSummaryRow({ item }: { item: { detail: string; label: string; ton
       </div>
       <p className="mt-2 text-xs leading-5 text-slate-400">{item.detail}</p>
     </div>
+  );
+  if (!item.href) return content;
+  return (
+    <Link
+      className="block transition hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-cyan-300/40"
+      data-analytics-id={`ecosystem-device-restore-${item.analyticsKey}`}
+      href={item.href}
+      onClick={() => {
+        trackFirstUsefulAction("workflow_restore", { restoreKind: item.analyticsKey, target: item.href }, { source: "ecosystem_device_restore" });
+        trackAnalyticsEvent("workflow_continuity", { restoreKind: item.analyticsKey, target: item.href }, { source: "ecosystem_device_restore" });
+      }}
+    >
+      {content}
+    </Link>
   );
 }
 
@@ -335,11 +358,13 @@ function PersistenceRow({ item }: { item: EcosystemSessionPersistence }) {
   );
 }
 
-function buildDeviceSummary(state: DeviceContinuityState | null): Array<{ detail: string; label: string; tone: EcosystemContinuityTone; value: string }> {
+function buildDeviceSummary(state: DeviceContinuityState | null): DeviceSummaryItem[] {
   if (!state) {
     return [
       {
+        analyticsKey: "hydration_check",
         detail: "Device-local continuity is checked after hydration so server and client rendering stay stable.",
+        href: null,
         label: "Device bridge",
         tone: "slate",
         value: "checking",
@@ -351,30 +376,56 @@ function buildDeviceSummary(state: DeviceContinuityState | null): Array<{ detail
   const discovery = state.discovery;
   const compareSymbols = discovery?.compareSymbols ?? [];
   const chartWorkspaces = state.chartWorkspaces;
+  const lastRoutePath = safeRestorePath(routes[0]?.path ?? null);
+  const chartSymbol = chartWorkspaces[0]?.symbol ?? null;
   return [
     {
+      analyticsKey: "last_route",
       detail: routes[0] ? `Last captured route was ${routes[0].path}.` : "No previous route has been captured on this device yet.",
+      href: lastRoutePath,
       label: "Last route",
       tone: routes[0] ? "emerald" : "amber",
       value: routes[0]?.group ?? "none",
     },
     {
+      analyticsKey: "scanner_state",
       detail: discovery?.updatedAt ? `Discovery restores ${discovery.filter}, ${discovery.sort} sort, ${discovery.timeframe}, and ${discovery.density} density.` : "No discovery workflow has been saved on this device yet.",
+      href: discovery?.updatedAt ? "/discover" : null,
       label: "Scanner state",
       tone: discovery?.updatedAt ? "violet" : "amber",
       value: discovery?.updatedAt ? discovery.density : "none",
     },
     {
+      analyticsKey: "compare_set",
       detail: compareSymbols.length ? `Compare set restores ${compareSymbols.join(", ")}.` : "No active compare set is stored on this device.",
+      href: compareSymbols.length ? "/discover#compare" : null,
       label: "Compare set",
       tone: compareSymbols.length ? "cyan" : "amber",
       value: compareSymbols.length ? `${compareSymbols.length}` : "none",
     },
     {
+      analyticsKey: "chart_layouts",
       detail: chartWorkspaces.length ? `Chart workspaces found for ${chartWorkspaces.map((item) => item.symbol).join(", ")}.` : "No per-symbol chart workspace has been captured for current anchors yet.",
+      href: chartSymbol ? `/symbol/${encodeURIComponent(chartSymbol)}` : null,
       label: "Chart layouts",
       tone: chartWorkspaces.length ? "emerald" : "amber",
       value: chartWorkspaces.length ? `${chartWorkspaces.length}` : "none",
     },
   ];
+}
+
+function safeRestorePath(path: string | null): string | null {
+  if (!path || !path.startsWith("/")) return null;
+  const withoutHash = path.split("#")[0] ?? "";
+  const [pathname, query = ""] = withoutHash.split("?", 2);
+  const safePathname = pathname.replace(/[^A-Za-z0-9/_\-.]/g, "").replace(/\/{2,}/g, "/").slice(0, 180);
+  if (!safePathname) return null;
+  const params = new URLSearchParams(query);
+  const safeParams = new URLSearchParams();
+  for (const key of ["range", "symbol", "tab"]) {
+    const value = params.get(key);
+    if (value) safeParams.set(key, value.replace(/[^A-Za-z0-9_.-]/g, "").slice(0, 40));
+  }
+  const rendered = safeParams.toString();
+  return rendered ? `${safePathname}?${rendered}` : safePathname;
 }

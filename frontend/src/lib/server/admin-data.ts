@@ -225,6 +225,7 @@ export type MonitoringRetentionMetrics = {
   notificationUsefulRatePct: number | null;
   returnSessions: number;
   scannerReturns: number;
+  strategyReturns: number;
   watchlistReturns: number;
 };
 
@@ -547,6 +548,7 @@ type MonitoringRetentionMetricsRow = QueryResultRow & {
   notification_useful: string | number;
   return_sessions: string | number;
   scanner_returns: string | number;
+  strategy_returns: string | number;
   watchlist_returns: string | number;
 };
 
@@ -1076,6 +1078,7 @@ async function getMonitoringRetentionMetrics(): Promise<MonitoringRetentionMetri
     notificationUsefulRatePct: null,
     returnSessions: 0,
     scannerReturns: 0,
+    strategyReturns: 0,
     watchlistReturns: 0,
   };
   const result = await dbQuery<MonitoringRetentionMetricsRow>(
@@ -1100,6 +1103,7 @@ async function getMonitoringRetentionMetrics(): Promise<MonitoringRetentionMetri
           count(*) FILTER (WHERE event_name = 'scanner_return') AS scanner_returns,
           count(*) FILTER (WHERE event_name = 'watchlist_return') AS watchlist_returns,
           count(*) FILTER (WHERE event_name = 'alert_return') AS alert_returns,
+          count(*) FILTER (WHERE event_name = 'strategy_return') AS strategy_returns,
           count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback' AND metadata->>'action' = 'useful_feedback') AS notification_useful,
           count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback' AND metadata->>'action' = 'not_useful_feedback') AS notification_not_useful,
           count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback') AS notification_feedback_total
@@ -1163,6 +1167,7 @@ async function getMonitoringRetentionMetrics(): Promise<MonitoringRetentionMetri
     notificationUsefulRatePct: pctFromCounts(notificationUseful, notificationTotal),
     returnSessions: toNumber(row.return_sessions),
     scannerReturns: toNumber(row.scanner_returns),
+    strategyReturns: toNumber(row.strategy_returns),
     watchlistReturns: toNumber(row.watchlist_returns),
   };
 }

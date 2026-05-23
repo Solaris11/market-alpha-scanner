@@ -153,6 +153,7 @@ export type AnalyticsSummary = {
         replayReturns: number;
         returnSessions: number;
         scannerReturns: number;
+        strategyReturns: number;
         watchlistReturns: number;
       };
       notificationFeedback: {
@@ -412,6 +413,7 @@ type DailyDriverHabitLoopRow = QueryResultRow & {
   replay_returns: string | number;
   return_sessions: string | number;
   scanner_returns: string | number;
+  strategy_returns: string | number;
   watchlist_returns: string | number;
 };
 type AdaptiveBehaviorProofRow = QueryResultRow & {
@@ -458,6 +460,7 @@ const CORE_FEATURE_EVENT_NAMES = [
   "personalized_intelligence_return",
   "return_session",
   "alert_return",
+  "strategy_return",
   "replay_return",
   "scanner_return",
   "replay_usage",
@@ -470,7 +473,7 @@ const CORE_FEATURE_EVENT_NAMES = [
 const SCANNER_FEATURE_EVENTS = ["scanner_usage", "scanner_return", "scanner_run", "opportunities_open", "signal_drilldown"] as const;
 const FEED_FEATURE_EVENTS = ["feed_engagement", "feed_item_open"] as const;
 const REPLAY_FEATURE_EVENTS = ["replay_usage", "replay_return", "replay_open"] as const;
-const STRATEGY_FEATURE_EVENTS = ["strategy_usage", "strategy_labs_open"] as const;
+const STRATEGY_FEATURE_EVENTS = ["strategy_usage", "strategy_labs_open", "strategy_return"] as const;
 const WATCHLIST_FEATURE_EVENTS = ["watchlist_usage", "watchlist_return", "watchlist_add", "watch_add", "watchlist_retention"] as const;
 const NOTIFICATION_FEATURE_EVENTS = ["notification_engagement", "notification_usefulness_feedback", "alert_create", "alert_return"] as const;
 const MOBILE_FEATURE_EVENTS = ["mobile_engagement"] as const;
@@ -1046,6 +1049,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
           count(*) FILTER (WHERE event_name = 'scanner_return') AS scanner_returns,
           count(*) FILTER (WHERE event_name = 'replay_return') AS replay_returns,
           count(*) FILTER (WHERE event_name = 'alert_return') AS alert_returns,
+          count(*) FILTER (WHERE event_name = 'strategy_return') AS strategy_returns,
           count(*) FILTER (WHERE event_name = 'watchlist_return') AS watchlist_returns,
           count(*) FILTER (WHERE event_name = 'personalized_intelligence_return') AS personalized_returns
         FROM analytics_events
@@ -1369,6 +1373,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
           replayReturns: numberFromRow(dailyDriverHabitLoopRow?.replay_returns),
           returnSessions: numberFromRow(dailyDriverHabitLoopRow?.return_sessions),
           scannerReturns: numberFromRow(dailyDriverHabitLoopRow?.scanner_returns),
+          strategyReturns: numberFromRow(dailyDriverHabitLoopRow?.strategy_returns),
           watchlistReturns: numberFromRow(dailyDriverHabitLoopRow?.watchlist_returns),
         },
         notificationFeedback: {

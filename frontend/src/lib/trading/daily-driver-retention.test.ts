@@ -18,6 +18,13 @@ describe("daily driver retention model", () => {
     });
 
     assert.equal(model.primaryActions[0]?.key, "create_watchlist");
+    assert.deepEqual(model.morningWorkflow.map((item) => item.key), [
+      "overnight_summary",
+      "watchlist_movement",
+      "scanner_changes",
+      "risk_changes",
+      "macro_updates",
+    ]);
     assert.equal(model.funnel.find((stage) => stage.key === "watchlist_anchor")?.value, 0);
     assert.ok(model.blockers.some((blocker) => blocker.includes("No watchlist anchor")));
     assert.match(model.proofBoundary, /does not claim retention victory/i);
@@ -46,6 +53,9 @@ describe("daily driver retention model", () => {
     assert.ok(model.primaryActions.some((action) => action.key === "save_scanner"));
     assert.ok(model.habitLoops.some((loop) => loop.key === "alert_return"));
     assert.ok(model.habitLoops.some((loop) => loop.key === "notification_feedback"));
+    assert.equal(model.morningWorkflow.find((item) => item.key === "watchlist_movement")?.href, "/symbol/AMD");
+    assert.equal(model.morningWorkflow.find((item) => item.key === "scanner_changes")?.metricLabel, "2 rows");
+    assert.match(model.morningWorkflow.find((item) => item.key === "macro_updates")?.metricLabel ?? "", /1 trigger/);
     assert.equal(model.personalization.find((item) => item.label === "Focus cluster")?.value, "Semiconductors");
     assert.equal(model.continuity.find((item) => item.label === "Workspace restore")?.value, "Saved");
   });

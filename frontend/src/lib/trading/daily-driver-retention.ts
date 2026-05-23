@@ -77,12 +77,23 @@ export type DailyDriverContextItem = {
   value: string;
 };
 
+export type DailyDriverMorningWorkflowItem = {
+  detail: string;
+  href: string;
+  key: "macro_updates" | "overnight_summary" | "risk_changes" | "scanner_changes" | "watchlist_movement";
+  label: string;
+  metricLabel: string;
+  tone: DailyDriverTone;
+  workflow: DailyDriverAction["workflow"];
+};
+
 export type DailyDriverRetentionModel = {
   activationScore: number;
   blockers: string[];
   continuity: DailyDriverContextItem[];
   funnel: DailyDriverFunnelStage[];
   habitLoops: DailyDriverHabitLoop[];
+  morningWorkflow: DailyDriverMorningWorkflowItem[];
   personalization: DailyDriverContextItem[];
   primaryActions: DailyDriverAction[];
   proofBoundary: string;
@@ -166,6 +177,15 @@ export function buildDailyDriverRetentionModel(input: DailyDriverRetentionInput)
     workflowEvolution,
   });
 
+  const morningWorkflow = buildMorningWorkflow({
+    marketCondition: input.marketCondition,
+    rows,
+    topRisk,
+    topWatchlist,
+    triggerMonitorCount,
+    watchlistSymbols,
+    workflowEvolution,
+  });
   const continuity = buildContinuity({ preferences, triggerMonitorCount, watchlistSymbols, workflowEvolution });
   const personalization = buildPersonalization({ preferences, rows, watchlistSymbols });
   const blockers = buildBlockers({ persistedWorkspace, replayCandidateCount, watchlistSymbols, workflowEvolution });
@@ -177,11 +197,81 @@ export function buildDailyDriverRetentionModel(input: DailyDriverRetentionInput)
     continuity,
     funnel,
     habitLoops,
+    morningWorkflow,
     personalization,
     primaryActions,
     proofBoundary: "This panel improves and instruments daily-driver workflows. It does not claim retention victory until production cohorts show better 2-day and 7-day retention.",
     summary,
   };
+}
+
+function buildMorningWorkflow(input: {
+  marketCondition: string;
+  rows: OpportunityViewModel[];
+  topRisk: ScoredOpportunity | null;
+  topWatchlist: ScoredOpportunity | null;
+  triggerMonitorCount: number;
+  watchlistSymbols: string[];
+  workflowEvolution: WorkflowEvolutionSummary | null;
+}): DailyDriverMorningWorkflowItem[] {
+  const workflowChangeCount = (input.workflowEvolution?.whatChanged.length ?? 0) + (input.workflowEvolution?.watchlistEvolution.length ?? 0);
+  const watchlistSymbol = input.topWatchlist?.row.symbol ?? input.watchlistSymbols[0] ?? null;
+  const riskSymbol = input.topRisk?.row.symbol ?? null;
+  return [
+    {
+      detail: input.workflowEvolution?.dailyBrief[0] ?? `${input.marketCondition} is the current opening baseline. Start here before jumping into individual symbols.`,
+      href: "/terminal#daily-market-command",
+      key: "overnight_summary",
+      label: "Overnight market summary",
+      metricLabel: input.marketCondition,
+      tone: "cyan",
+      workflow: "terminal",
+    },
+    {
+      detail: watchlistSymbol
+        ? `${watchlistSymbol} is the fastest tracked-symbol review anchor for this session.`
+        : "No tracked symbols are saved yet; create a watchlist so future mornings can show personalized movement.",
+      href: watchlistSymbol ? `/symbol/${watchlistSymbol}` : "/discover",
+      key: "watchlist_movement",
+      label: "Watchlist movement",
+      metricLabel: `${input.watchlistSymbols.length} saved`,
+      tone: input.watchlistSymbols.length ? "emerald" : "amber",
+      workflow: "watchlist",
+    },
+    {
+      detail: workflowChangeCount
+        ? `${workflowChangeCount} workflow change${workflowChangeCount === 1 ? "" : "s"} are ready to compare against the prior baseline.`
+        : "Open discovery to establish the next saved scanner baseline and make tomorrow's changed-since-last-visit loop stronger.",
+      href: "/discover",
+      key: "scanner_changes",
+      label: "Scanner changes",
+      metricLabel: input.rows.length ? `${input.rows.length.toLocaleString()} rows` : "No rows",
+      tone: input.rows.length ? "violet" : "amber",
+      workflow: "scanner",
+    },
+    {
+      detail: riskSymbol
+        ? `${riskSymbol} is the current highest-priority risk review before opening new setups.`
+        : "Risk review is limited until scanner rows expose fragility, macro pressure, or event pressure.",
+      href: riskSymbol ? `/symbol/${riskSymbol}` : "/macro",
+      key: "risk_changes",
+      label: "Risk changes",
+      metricLabel: riskSymbol ? `${Math.round(input.topRisk?.riskScore ?? 0)}/100` : "Limited",
+      tone: riskSymbol ? "rose" : "slate",
+      workflow: riskSymbol ? "watchlist" : "macro",
+    },
+    {
+      detail: input.triggerMonitorCount
+        ? `${input.triggerMonitorCount} trigger monitor${input.triggerMonitorCount === 1 ? "" : "s"} connect macro context to active research.`
+        : "Macro review remains available, but no trigger monitor is active in the current workflow baseline.",
+      href: "/macro",
+      key: "macro_updates",
+      label: "Macro updates",
+      metricLabel: input.triggerMonitorCount ? `${input.triggerMonitorCount} triggers` : "Context",
+      tone: input.triggerMonitorCount ? "amber" : "slate",
+      workflow: "macro",
+    },
+  ];
 }
 
 function buildActions(input: {

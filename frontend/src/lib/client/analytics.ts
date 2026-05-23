@@ -390,6 +390,7 @@ function returnEventForGroup(group: ContinuityWorkflowGroup): AnalyticsEventName
   if (group === "scanner") return "scanner_return";
   if (group === "replay") return "replay_return";
   if (group === "alerts") return "alert_return";
+  if (group === "strategy") return "strategy_return";
   return null;
 }
 

@@ -29,6 +29,7 @@ describe("analytics privacy policy", () => {
     assert.equal(normalizeAnalyticsEventName("scanner_return"), "scanner_return");
     assert.equal(normalizeAnalyticsEventName("replay_return"), "replay_return");
     assert.equal(normalizeAnalyticsEventName("alert_return"), "alert_return");
+    assert.equal(normalizeAnalyticsEventName("strategy_return"), "strategy_return");
     assert.equal(normalizeAnalyticsEventName("watchlist_return"), "watchlist_return");
     assert.equal(normalizeAnalyticsEventName("personalized_intelligence_return"), "personalized_intelligence_return");
     assert.equal(normalizeAnalyticsEventName("notification_usefulness_feedback"), "notification_usefulness_feedback");

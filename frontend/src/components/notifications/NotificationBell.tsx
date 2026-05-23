@@ -233,8 +233,12 @@ export function NotificationBell() {
     const previous = feedbackById[notification.id] ?? null;
     setFeedbackById((items) => ({ ...items, [notification.id]: value }));
     const action = value === "useful" ? "useful_feedback" : "not_useful_feedback";
+    const fatigueSignal = value === "not_useful";
+    const categoryQuality = value === "useful" ? "positive" : "fatigue";
     trackAnalyticsEvent("notification_usefulness_feedback", {
       action,
+      categoryQuality,
+      fatigueSignal,
       feedback: value,
       hasActionUrl: Boolean(notification.actionUrl),
       notificationId: notification.id,
@@ -257,8 +261,11 @@ export function NotificationBell() {
           metadata: {
             action,
             actionPath: notification.actionUrl ?? "none",
+            categoryQuality,
+            fatigueSignal,
             hasActionUrl: Boolean(notification.actionUrl),
             notificationType: notification.type,
+            returnAttribution: notification.actionUrl ? "action_url" : "none",
           },
           source: "notification_bell",
         }),

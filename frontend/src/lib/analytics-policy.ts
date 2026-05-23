@@ -37,6 +37,7 @@ export const ANALYTICS_EVENT_NAMES = [
   "scanner_return",
   "replay_return",
   "alert_return",
+  "strategy_return",
   "watchlist_return",
   "personalized_intelligence_return",
   "alert_create",
