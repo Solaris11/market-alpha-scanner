@@ -96,7 +96,8 @@ Completed:
 - Local commit: `dbc485b2ad4b0bc931df5fa61613a59c73bb2156`
 - Pushed to `origin/main`
 - Production pull completed in `/opt/apps/market-alpha-scanner/app`
-- Production HEAD after pull: `dbc485b2ad4b0bc931df5fa61613a59c73bb2156`
+- Production code-deployment HEAD after pull: `dbc485b2ad4b0bc931df5fa61613a59c73bb2156`
+- Docs-only artifact update was pulled to production after this deploy; production source is fast-forwarded to `origin/main`.
 - Production frontend image after rebuild: `sha256:e3da3e60095a70015f76a3448922b2d1a9a95b1a451e1211336fc300fcea1f95`
 - Production frontend container health: `healthy`
 - Container started at: `2026-05-23T08:23:09.743645753Z`
