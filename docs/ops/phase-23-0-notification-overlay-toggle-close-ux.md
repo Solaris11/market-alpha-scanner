@@ -4,7 +4,7 @@ Date: 2026-05-23
 
 Production target: `https://tradeveto.com`
 
-Status: `LOCAL VALIDATION PASSED - PRODUCTION DEPLOY PENDING`
+Status: `TRADEVETO NOTIFICATION OVERLAY TOGGLE + CLOSE UX FIX ACCOMPLISHED`
 
 ## Issue Summary
 
@@ -135,26 +135,87 @@ Local iPhone-profile Playwright validation confirmed:
 
 ## Production Deployment
 
-Pending.
+Production host:
+
+- `sre@100.68.155.121`
+
+Production path:
+
+- `/opt/apps/market-alpha-scanner/app`
+
+Deployment actions:
+
+```bash
+git pull --ff-only origin main
+docker compose --env-file .env up -d --build market-alpha-frontend
+```
+
+Production proof:
+
+| Check | Result |
+| --- | --- |
+| Deployed commit | `7af85ae` |
+| Frontend image | `market-alpha-scanner-market-alpha-frontend` |
+| Frontend container | `market-alpha-frontend Up 16 seconds (healthy)` |
+| Docker build | Pass |
+| Production build audit during Docker build | 0 vulnerabilities |
 
 ## Production Smoke
 
-Pending.
+Production health:
 
-Required production smoke after deploy:
+| Check | Result |
+| --- | --- |
+| `/api/health` | 200, `ok: true`, service `tradeveto-frontend` |
+| `/api/health/deep` | 200, `ok: true`, DB ok, scanner ok, backup ok |
 
-- `/api/health`
-- `/api/health/deep`
-- `/terminal`
-- `/alerts`
-- `/symbol/AMD`
-- `/discover`
-- `/scanner`
+Route smoke:
+
+| Route | HTTP |
+| --- | ---: |
+| `/terminal` | 200 |
+| `/alerts` | 200 |
+| `/symbol/AMD` | 200 |
+| `/discover` | 200 |
+| `/scanner` | 200 |
+
+Focused production Playwright validation against `https://tradeveto.com`:
+
+```bash
+TRADEVETO_MOBILE_UX_BASE_URL=https://tradeveto.com \
+TRADEVETO_BROWSERSTACK_ARTIFACT_ROOT=../docs/ops/artifacts/phase-23-0-production \
+npx playwright test --config=playwright.phase21.config.ts \
+  -g "notification overlay mobile safe area|notification drawer toggle" \
+  --workers=1
+```
+
+Result:
+
+```text
+2 passed
+```
+
+## Production Screenshots
+
+Production mobile Playwright screenshots were captured under:
+
+```text
+docs/ops/artifacts/phase-23-0-production/browserstack-screenshots/
+```
+
+Files:
+
+- `phase21-mobile-real-device-notifications-open.png`
+- `phase21-mobile-real-device-notifications-scrolled-bottom.png`
+
+These are production-targeted Playwright mobile-emulation screenshots, not BrowserStack Live/real-device screenshots.
 
 ## Remaining Blockers
 
-Pending production deploy and smoke.
+No remaining blocker for this Phase 23.0 notification overlay toggle/close UX fix.
+
+This phase does not claim BrowserStack Live or physical-device certification. That remains part of Phase 23.1.
 
 ## Final Verdict
 
-Pending production validation.
+TRADEVETO NOTIFICATION OVERLAY TOGGLE + CLOSE UX FIX ACCOMPLISHED
