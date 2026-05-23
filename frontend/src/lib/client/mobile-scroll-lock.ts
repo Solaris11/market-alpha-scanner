@@ -94,6 +94,12 @@ export function deriveMobileBodyScrollLockStyles(scrollY: number, scrollbarWidth
 function restoreMobileBodyScroll(snapshot: BodyScrollLockSnapshot): void {
   const body = document.body;
   const root = document.documentElement;
+  const targetScrollY = Number.isFinite(snapshot.scrollY) ? Math.max(0, snapshot.scrollY) : 0;
+  const previousRootScrollBehavior = root.style.scrollBehavior;
+  const previousBodyScrollBehavior = body.style.scrollBehavior;
+
+  root.style.scrollBehavior = "auto";
+  body.style.scrollBehavior = "auto";
   body.style.position = snapshot.bodyPosition;
   body.style.top = snapshot.bodyTop;
   body.style.left = snapshot.bodyLeft;
@@ -106,12 +112,27 @@ function restoreMobileBodyScroll(snapshot: BodyScrollLockSnapshot): void {
   root.style.overflow = snapshot.htmlOverflow;
   root.style.overscrollBehavior = snapshot.htmlOverscroll;
   root.style.touchAction = snapshot.htmlTouchAction;
-  window.scrollTo(0, snapshot.scrollY);
-  window.requestAnimationFrame(() => window.scrollTo(0, snapshot.scrollY));
-  window.setTimeout(() => window.scrollTo(0, snapshot.scrollY), 80);
+  forceScrollY(targetScrollY);
+  window.requestAnimationFrame(() => forceScrollY(targetScrollY));
+  window.requestAnimationFrame(() => {
+    window.requestAnimationFrame(() => forceScrollY(targetScrollY));
+  });
+  window.setTimeout(() => forceScrollY(targetScrollY), 40);
+  window.setTimeout(() => forceScrollY(targetScrollY), 120);
+  window.setTimeout(() => {
+    forceScrollY(targetScrollY);
+    root.style.scrollBehavior = previousRootScrollBehavior;
+    body.style.scrollBehavior = previousBodyScrollBehavior;
+  }, 220);
 }
 
 function getCurrentScrollY(): number {
   if (typeof window === "undefined") return 0;
   return window.scrollY;
+}
+
+function forceScrollY(scrollY: number): void {
+  window.scrollTo({ behavior: "auto", left: 0, top: scrollY });
+  document.documentElement.scrollTop = scrollY;
+  document.body.scrollTop = scrollY;
 }
