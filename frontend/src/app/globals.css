@@ -446,10 +446,10 @@ a {
 }
 
 .tv-overlay-root {
-  height: var(--tv-visual-viewport-height, 100dvh);
-  max-height: var(--tv-visual-viewport-height, 100dvh);
-  max-width: 100vw;
-  width: min(var(--tv-visual-viewport-width, 100vw), 100vw);
+  height: min(var(--tv-visual-viewport-height, 100dvh), 100svh);
+  max-height: min(var(--tv-visual-viewport-height, 100dvh), 100svh);
+  max-width: 100svw;
+  width: min(var(--tv-visual-viewport-width, 100vw), 100svw);
   z-index: var(--tv-z-overlay);
 }
 
@@ -722,14 +722,14 @@ a {
   }
 
   .tv-stable-overlay-surface {
-    max-height: min(calc(var(--tv-visual-viewport-height, 100dvh) - max(0.75rem, env(safe-area-inset-top)) - max(0.75rem, env(safe-area-inset-bottom))), 760px);
+    max-height: min(calc(var(--tv-visual-viewport-height, 100dvh) - max(0.75rem, env(safe-area-inset-top)) - max(0.75rem, env(safe-area-inset-bottom))), calc(100svh - max(0.75rem, env(safe-area-inset-top)) - max(0.75rem, env(safe-area-inset-bottom))), 760px);
   }
 
   .tv-stable-overlay-surface[data-mobile-fullscreen="true"] {
-    height: min(var(--tv-visual-viewport-height, 100dvh), 100%);
-    max-height: min(var(--tv-visual-viewport-height, 100dvh), 100%);
-    max-width: min(var(--tv-visual-viewport-width, 100vw), 100vw);
-    width: min(var(--tv-visual-viewport-width, 100vw), 100vw);
+    height: min(var(--tv-visual-viewport-height, 100dvh), 100svh, 100%);
+    max-height: min(var(--tv-visual-viewport-height, 100dvh), 100svh, 100%);
+    max-width: min(var(--tv-visual-viewport-width, 100vw), 100svw);
+    width: min(var(--tv-visual-viewport-width, 100vw), 100svw);
   }
 
   .tv-expanded-chart-canvas {
