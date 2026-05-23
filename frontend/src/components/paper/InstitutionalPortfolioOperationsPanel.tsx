@@ -2,6 +2,7 @@ import type {
   InstitutionalAllocationHistoryItem,
   InstitutionalDrawdownStory,
   InstitutionalOperatingLane,
+  InstitutionalOperationsCredibilityGate,
   InstitutionalPortfolioOperationsSystem,
   InstitutionalPortfolioOpsTone,
   InstitutionalPositionLifecycle,
@@ -43,6 +44,7 @@ export function InstitutionalPortfolioOperationsPanel({ system }: { system: Inst
 
         <div className="space-y-5">
           <RiskBudgetList items={system.riskBudget.slice(0, 7)} />
+          <ProofGateList items={system.proofGates} />
           <ThesisLifecycleList items={system.thesisLifecycle} />
           <TradeAutopsyList items={system.paperTradeAutopsies} />
           <StrategyMemoryList items={system.strategyMemory} />
@@ -103,6 +105,11 @@ function AllocationHistoryList({ items }: { items: InstitutionalAllocationHistor
               <div className={`shrink-0 font-mono text-sm font-black ${toneText(item.tone)}`}>{item.metric}</div>
             </div>
             <p className="mt-3 text-xs leading-5 text-slate-400">{item.detail}</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              <Mini label="Prior" value={item.priorMetric} />
+              <Mini label="Rationale" value={item.rebalanceRationale} />
+              <Mini label="Risk change" value={item.riskChange} />
+            </div>
             {item.symbols.length ? <div className="mt-2 break-words text-xs text-cyan-200/80">{item.symbols.slice(0, 8).join(", ")}</div> : null}
           </div>
         )) : (
@@ -131,7 +138,10 @@ function DrawdownStoryList({ items }: { items: InstitutionalDrawdownStory[] }) {
               <div className={`font-mono text-sm font-black ${toneText(item.tone)}`}>{item.depth}</div>
             </div>
             <p className="mt-3 text-xs leading-5 text-slate-400">{item.detail}</p>
+            <p className="mt-2 text-xs leading-5 text-slate-300">{item.cause}</p>
+            <p className="mt-2 text-xs leading-5 text-slate-500">{item.macroRiskContext}</p>
             <p className="mt-2 text-xs leading-5 text-amber-100/85">{item.lesson}</p>
+            <p className="mt-2 text-xs leading-5 text-cyan-100/80">{item.recoveryStatus}</p>
             {item.symbols.length ? <div className="mt-2 break-words text-xs text-cyan-200/80">{item.symbols.join(", ")}</div> : null}
           </div>
         )) : (
@@ -163,11 +173,15 @@ function PositionLifecycleList({ items }: { items: InstitutionalPositionLifecycl
             <div className="mt-3 grid gap-2 sm:grid-cols-2">
               <Mini label="Current value" value={formatMoney(item.currentValue, 0)} />
               <Mini label="Open risk" value={formatMoney(item.riskAmount, 0)} />
+              <Mini label="Stop / target" value={item.stopTarget} />
               <Mini label="Opened" value={dateText(item.openedAt)} />
               <Mini label="Unrealized P/L" tone={item.unrealizedPnl} value={formatMoney(item.unrealizedPnl ?? 0, 0)} />
             </div>
             <p className="mt-3 text-xs leading-5 text-slate-400">{item.entryReason}</p>
             <p className="mt-2 text-xs leading-5 text-amber-100/85">{item.invalidation}</p>
+            <p className="mt-2 text-xs leading-5 text-slate-500">{item.exitPlan}</p>
+            <p className="mt-2 text-xs leading-5 text-cyan-100/80">{item.drawdown}</p>
+            <p className="mt-2 text-xs leading-5 text-slate-400">{item.lessonLearned}</p>
           </div>
         )) : (
           <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/45 p-4 text-sm leading-6 text-slate-400">
@@ -223,7 +237,10 @@ function ThesisLifecycleList({ items }: { items: InstitutionalThesisLifecycleIte
                 <div className="text-sm font-semibold text-slate-100">{item.symbol}</div>
                 <div className="mt-1 text-xs text-slate-500">{dateText(item.openedAt)}{item.closedAt ? ` -> ${dateText(item.closedAt)}` : ""}</div>
               </div>
-              <div className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${chipTone(item.tone)}`}>{item.state.replace(/_/g, " ")}</div>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <div className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${chipTone(item.tone)}`}>{item.state.replace(/_/g, " ")}</div>
+                <div className="rounded-full border border-white/10 bg-slate-950/55 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-slate-400">{item.lifecycleStage}</div>
+              </div>
             </div>
             <p className="mt-2 text-xs leading-5 text-slate-400">{item.detail}</p>
             <p className="mt-2 text-xs leading-5 text-slate-500">{item.evidence}</p>
@@ -258,12 +275,18 @@ function TradeAutopsyList({ items }: { items: InstitutionalTradeAutopsyItem[] })
             </div>
             <p className="mt-2 text-xs leading-5 text-slate-400">{item.detail}</p>
             <p className="mt-2 text-xs leading-5 text-cyan-100/80">{item.replayEvidence}</p>
+            <p className="mt-2 text-xs leading-5 text-slate-500">{item.noFakeFillDisclosure}</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <Mini label="Exit" value={item.exit} />
+              <Mini label="Replay status" value={item.replayEvidenceStatus.replace(/_/g, " ")} />
+            </div>
             <div className="mt-3 space-y-1.5">
               {item.lifecycle.slice(0, 3).map((step) => (
                 <div className="rounded-lg bg-slate-950/45 px-2.5 py-2 text-xs leading-5 text-slate-400" key={step}>{step}</div>
               ))}
             </div>
             <p className="mt-2 text-xs leading-5 text-slate-500">{item.thesisReview}</p>
+            <p className="mt-2 text-xs leading-5 text-amber-100/85">{item.lessonLearned}</p>
           </div>
         )) : (
           <div className="rounded-xl border border-dashed border-white/10 bg-slate-950/45 p-3 text-sm leading-6 text-slate-400">
@@ -287,6 +310,26 @@ function RiskBudgetList({ items }: { items: InstitutionalOperatingLane[] }) {
               <div className={`font-mono text-xs font-black ${toneText(item.tone)}`}>{Math.round(item.score)}/100</div>
             </div>
             <p className="mt-2 text-xs leading-5 text-slate-400">{item.detail}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProofGateList({ items }: { items: InstitutionalOperationsCredibilityGate[] }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Operations Proof Gates</div>
+      <div className="mt-3 space-y-3">
+        {items.map((item) => (
+          <div className={`rounded-xl border p-3 ${gatePanelTone(item.status)}`} key={item.label}>
+            <div className="flex items-center justify-between gap-3">
+              <div className="text-sm font-semibold text-slate-100">{item.label}</div>
+              <div className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${gateChipTone(item.status)}`}>{item.status}</div>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-400">{item.evidence}</p>
+            {item.blocker ? <p className="mt-2 text-xs leading-5 text-amber-100/85">{item.blocker}</p> : null}
           </div>
         ))}
       </div>
@@ -338,6 +381,13 @@ function StrategyRevisionList({ items }: { items: InstitutionalStrategyRevisionI
               </div>
             </div>
             <p className="mt-2 text-xs leading-5 text-slate-400">{item.evidence}</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <Mini label="Confidence before" value={item.confidenceBefore === null ? "Not stored" : `${item.confidenceBefore}/100`} />
+              <Mini label="Confidence after" value={item.confidenceAfter === null ? "Not stored" : `${item.confidenceAfter}/100`} />
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-500">{item.whatChanged}</p>
+            <p className="mt-2 text-xs leading-5 text-slate-500">{item.whyChanged}</p>
+            <p className="mt-2 text-xs leading-5 text-slate-500">{item.evidenceBasis}</p>
             <p className="mt-2 text-xs leading-5 text-cyan-100/80">{item.toPolicy}</p>
           </div>
         )) : (
@@ -420,6 +470,18 @@ function chipTone(tone: InstitutionalPortfolioOpsTone): string {
   if (tone === "warn") return "border-amber-300/30 bg-amber-400/10 text-amber-100";
   if (tone === "risk") return "border-rose-300/30 bg-rose-400/10 text-rose-100";
   return "border-slate-600 bg-slate-900 text-slate-300";
+}
+
+function gatePanelTone(status: InstitutionalOperationsCredibilityGate["status"]): string {
+  if (status === "pass") return "border-emerald-300/18 bg-emerald-400/[0.055]";
+  if (status === "partial") return "border-amber-300/22 bg-amber-400/[0.065]";
+  return "border-rose-300/24 bg-rose-400/[0.07]";
+}
+
+function gateChipTone(status: InstitutionalOperationsCredibilityGate["status"]): string {
+  if (status === "pass") return "border-emerald-300/30 bg-emerald-400/10 text-emerald-200";
+  if (status === "partial") return "border-amber-300/30 bg-amber-400/10 text-amber-100";
+  return "border-rose-300/30 bg-rose-400/10 text-rose-100";
 }
 
 function continuityTone(status: InstitutionalWorkspaceContinuityItem["status"]): string {

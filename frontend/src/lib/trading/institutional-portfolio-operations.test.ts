@@ -259,12 +259,19 @@ test("institutional portfolio operations exposes lifecycle and risk budgets with
 
   assert.equal(system.openPositionCount, 2);
   assert.ok(system.positionLifecycle.some((item) => item.symbol === "DDOG" && item.status === "incomplete"));
+  assert.ok(system.positionLifecycle.some((item) => item.symbol === "DDOG" && /Stop limited \/ Target limited/.test(item.stopTarget)));
+  assert.ok(system.positionLifecycle.every((item) => item.drawdown.length > 0 && item.exitPlan.length > 0 && item.lessonLearned.length > 0));
   assert.ok(system.allocationHistory.some((item) => item.source === "paper_event"));
+  assert.ok(system.allocationHistory.every((item) => item.priorMetric.length > 0 && item.rebalanceRationale.length > 0 && item.riskChange.length > 0));
   assert.ok(system.thesisLifecycle.some((item) => item.symbol === "DDOG" && item.state === "incomplete"));
+  assert.ok(system.thesisLifecycle.some((item) => item.symbol === "DDOG" && item.lifecycleStage === "weakened"));
   assert.ok(system.drawdownStories.some((item) => item.source === "paper_account"));
-  assert.ok(system.paperTradeAutopsies.some((item) => item.source === "paper_account" && /manual paper trade/i.test(item.replayEvidence)));
+  assert.ok(system.drawdownStories.every((item) => item.cause.length > 0 && item.macroRiskContext.length > 0 && item.recoveryStatus.length > 0));
+  assert.ok(system.paperTradeAutopsies.some((item) => item.source === "paper_account" && /manual paper trade/i.test(item.replayEvidence) && !item.replayBacked));
+  assert.ok(system.paperTradeAutopsies.every((item) => item.noFakeFillDisclosure.length > 0 && item.exit.length > 0 && item.lessonLearned.length > 0));
   assert.ok(system.workspaceContinuity.some((item) => item.label === "Saved Workspace" && item.status === "available"));
   assert.ok(system.operatingLanes.some((lane) => lane.label === "Thesis Completion"));
+  assert.ok(system.proofGates.some((gate) => gate.label === "Trade autopsy boundary" && gate.status === "partial"));
   assert.ok(system.limitations.some((line) => /missing stop\/target\/thesis fields/i.test(line)));
   assert.ok(system.rebalanceHistory.length === 0);
 });
@@ -294,7 +301,9 @@ test("institutional portfolio operations derives rebalance and strategy memory f
   assert.ok(system.rebalanceHistory.length >= 1);
   assert.ok(system.strategyMemory.length >= 1);
   assert.ok(system.drawdownStories.some((item) => item.source === "strategy_labs"));
-  assert.ok(system.paperTradeAutopsies.some((item) => item.source === "strategy_labs"));
+  assert.ok(system.paperTradeAutopsies.some((item) => item.source === "strategy_labs" && item.replayBacked && item.replayEvidenceStatus === "explicit_replay"));
+  assert.ok(system.strategyRevisions.every((item) => item.whatChanged.length > 0 && item.whyChanged.length > 0 && item.evidenceBasis.length > 0));
   assert.ok(system.workspaceContinuity.some((item) => item.label === "Strategy Labs Memory" && item.status === "available"));
+  assert.ok(system.proofGates.some((gate) => gate.label === "Portfolio risk operations" && gate.status === "pass"));
   assert.match(system.limitations.join(" "), /derived from Strategy Labs simulation evidence/i);
 });
