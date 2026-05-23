@@ -1,0 +1,219 @@
+
+> market-alpha-scanner-frontend@0.1.0 test:phase21:mobile-real-device
+> npm run test:browserstack:mobile
+
+
+> market-alpha-scanner-frontend@0.1.0 test:browserstack:mobile
+> BROWSERSTACK_CONFIG_FILE=../browserstack.yml TRADEVETO_MOBILE_UX_BASE_URL=https://tradeveto.com npx browserstack-node-sdk playwright test --config=playwright.phase21.config.ts --workers=1
+
+2026-05-23 06:54:02 - [32minfo[39m: Reading configs from /opt/apps/market-alpha-scanner/app/browserstack.yml
+2026-05-23 06:54:02 - [32minfo[39m: Log Directory has been set to /opt/apps/market-alpha-scanner/app/frontend/log
+2026-05-23 06:54:02 - [32minfo[39m: Running SDK with args /usr/bin/node /opt/apps/market-alpha-scanner/app/frontend/node_modules/.bin/browserstack-node-sdk playwright test --config=playwright.phase21.config.ts --workers=1
+2026-05-23 06:54:02 - [32minfo[39m: SDK run started with id: 3cdfd3c2-7518-4f7c-affd-9cc7155f87c2
+2026-05-23 06:54:02 - [32minfo[39m: Project and debug logs are captured by default. To disable, set disableAutoCaptureLogs: true in config.
+2026-05-23 06:54:02 - [32minfo[39m: [BrowserstackCLI] startMain: Starting main process
+2026-05-23 06:54:02 - [32minfo[39m: [CLIUtils] Current CLI Path Found: /home/sre/.browserstack/cli/binary-linuxstatic-x64
+2026-05-23 06:54:03 - [32minfo[39m: [BrowserstackCLI] spawning command='/home/sre/.browserstack/cli/binary-linuxstatic-x64,sdk'
+2026-05-23 06:54:04 - [32minfo[39m: [BrowserstackCLI] CLI params loaded: {"id":"3081d55d-1c3e-4f6b-94cd-fdc48df52752","listen":"unix:/tmp/sdk-platform-3081d55d-1c3e-4f6b-94cd-fdc48df52752.sock"}
+2026-05-23 06:54:04 - [32minfo[39m: [GrpcClient] Connected to gRPC server at unix:/tmp/sdk-platform-3081d55d-1c3e-4f6b-94cd-fdc48df52752.sock
+2026-05-23 06:54:04 - [32minfo[39m: [GrpcClient] Initialized gRPC client with bin session id: 3081d55d-1c3e-4f6b-94cd-fdc48df52752 and listen address: unix:/tmp/sdk-platform-3081d55d-1c3e-4f6b-94cd-fdc48df52752.sock
+2026-05-23 06:54:04 - [32minfo[39m: [GrpcClient] startBinSession: Calling startBinSession
+2026-05-23 06:54:04 - [32minfo[39m: [GrpcClient] setCliArgs: cliArgs=["playwright","test","--config=playwright.phase21.config.ts","--workers=1"], parsedConfig=[]
+2026-05-23 06:54:05 - [32minfo[39m: [GrpcClient] StartBinSession successful
+2026-05-23 06:54:05 - [32minfo[39m: [BrowserstackCLI] loadModules: Loading modules
+2026-05-23 06:54:05 - [32minfo[39m: [BrowserstackCLI] loadModules: binSessionId=3081d55d-1c3e-4f6b-94cd-fdc48df52752
+2026-05-23 06:54:05 - [32minfo[39m: [BrowserstackCLI] loading Modules.
+2026-05-23 06:54:05 - [32minfo[39m: [BrowserstackCLI] setCliArgs: cliArgs=["playwright","test","--config=playwright.phase21.config.ts","--workers=1"]
+2026-05-23 06:54:05 - [32minfo[39m: [BrowserstackCLI] Accessibility success=false
+2026-05-23 06:54:06 - [32minfo[39m: [BrowserstackCLI] Starting as child process with session ID: 3081d55d-1c3e-4f6b-94cd-fdc48df52752
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] Connected to gRPC server at unix:/tmp/sdk-platform-3081d55d-1c3e-4f6b-94cd-fdc48df52752.sock
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] Connecting bin session
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] ConnectBinSession successful
+2026-05-23 06:54:06 - [32minfo[39m: [BrowserstackCLI] loadModules: Loading modules
+2026-05-23 06:54:06 - [32minfo[39m: [BrowserstackCLI] loadModules: binSessionId=3081d55d-1c3e-4f6b-94cd-fdc48df52752
+2026-05-23 06:54:06 - [32minfo[39m: [BrowserstackCLI] loading Modules.
+2026-05-23 06:54:06 - [32minfo[39m: [BrowserstackCLI] Accessibility success=false
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] Getting Playwright config
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] PlaywrightConfig request successful
+
+Running 2 tests using 1 worker
+
+2026-05-23 06:54:06 - [32minfo[39m: Setting up TestInfo directory at /opt/apps/market-alpha-scanner/app/frontend/log/.obs_test_details-default
+2026-05-23 06:54:06 - [32minfo[39m: [PlaywrightTestFramework] trackPlaywrightInstance: created instance for target=3414325:0, state=TestFrameworkState.INIT_TEST
+2026-05-23 06:54:06 - [32minfo[39m: [PlaywrightTestFramework] trackPlaywrightInstance: saved instance contextId=69c1198ce71629212ede964d9fdd236e8129d0b6c22629ed2d1e950d4b1fc3e2 target=3414325:0
+2026-05-23 06:54:06 - [32minfo[39m: [BrowserstackCLI] Starting as child process with session ID: 3081d55d-1c3e-4f6b-94cd-fdc48df52752
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] Connected to gRPC server at unix:/tmp/sdk-platform-3081d55d-1c3e-4f6b-94cd-fdc48df52752.sock
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] Connecting bin session
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] ConnectBinSession successful
+2026-05-23 06:54:06 - [32minfo[39m: [BrowserstackCLI] loadModules: Loading modules
+2026-05-23 06:54:06 - [32minfo[39m: [BrowserstackCLI] loadModules: binSessionId=3081d55d-1c3e-4f6b-94cd-fdc48df52752
+2026-05-23 06:54:06 - [32minfo[39m: [BrowserstackCLI] loading Modules.
+2026-05-23 06:54:06 - [32minfo[39m: [BrowserstackCLI] Accessibility success=false
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] Getting Playwright config
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] PlaywrightConfig request successful
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 06:54:06 - [32minfo[39m: [BrowserstackCLI] Starting as child process with session ID: 3081d55d-1c3e-4f6b-94cd-fdc48df52752
+2026-05-23 06:54:06 - [32minfo[39m: [BrowserstackCLI] startChild: client and channel already exist, stopping here
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] Sending LogCreatedEvent
+2026-05-23 06:54:06 - [32minfo[39m: [PlaywrightAutomationFramework] trackPlaywrightInstance: created instance for target=3414350:0, state=AutomationFrameworkState.CREATE
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] LogCreatedEvent request successful
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 06:54:06 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 06:54:06 - [32minfo[39m: [PlaywrightAutomationFramework] trackPlaywrightInstance: saved instance contextId=2f175534f030f4fdec4e43e7c41c027bd83eda219baccc2cd78d9c810b83babf target=3414350:0
+2026-05-23 06:54:07 - [32minfo[39m: [Accessibility] afterTestHook state: accessibilityPlatform=false, bstackA11yShouldScan=true
+2026-05-23 06:54:07 - [32minfo[39m: [PlaywrightAutomationFramework] trackPlaywrightInstance: instance already exists
+2026-05-23 06:54:07 - [32minfo[39m: [PlaywrightDriverModule] testId: e35c3c89d1e36c2b4580-a2996a225b7be0301c2d
+2026-05-23 06:54:07 - [32minfo[39m: [PlaywrightDriverModule] testData from onAfterTest: {
+  uuid: '8bd24dcb-7051-4359-b51a-b82769078f13',
+  test_framework_name: 'Playwright',
+  test_framework_version: '1.55.0',
+  test_logs: [],
+  test_hooks_finished: {},
+  test_hooks_started: {},
+  test_uuid: '8bd24dcb-7051-4359-b51a-b82769078f13',
+  test_result: 'pending',
+  automate_session_name: 'mobile-real-device.spec.ts - real-device mobile QA required routes',
+  test_file_path: '/opt/apps/market-alpha-scanner/app/frontend/tests/browserstack/mobile-real-device.spec.ts',
+  test_id: 'e35c3c89d1e36c2b4580-a2996a225b7be0301c2d',
+  test_name: 'real-device mobile QA required routes',
+  test_location: '/opt/apps/market-alpha-scanner/app/frontend/tests/browserstack/mobile-real-device.spec.ts',
+  test_code: 'async ({\n' +
+    '  page\n' +
+    '}, testInfo) => {\n' +
+    '  const hydrationMessages = bindHydrationCapture(page);\n' +
+    '  await installStableClientState(page);\n' +
+    '  for (const route of ROUTES) {\n' +
+    '    await _test.test.step(`validate ${route}`, async () => {\n' +
+    '      const hydrationStart = hydrationMessages.length;\n' +
+    '      await navigateAndSettle(page, route);\n' +
+    '      await acknowledgeRisk(page);\n' +
+    '      await assertMobileMetrics(page, route);\n' +
+    '      await assertTouchResponsiveness(page);\n' +
+    '      await assertKeyboardSafety(page);\n' +
+    '      await exerciseScannerUsability(page, route);\n' +
+    '      await exerciseChartUsability(page, route);\n' +
+    '      await exerciseStableOverlay(page, route, route === "/paper");\n' +
+    '      if (route === "/paper") await exercisePaperDeepScrollOverlay(page);\n' +
+    '      (0, _test.expect)(hydrationMessages.slice(hydrationStart), `hydration/runtime mismatch on ${route}`).toEqual([]);\n' +
+    '      await captureRouteScreenshot(page, route, testInfo);\n' +
+    '    });\n' +
+    '  }\n' +
+    '}',
+  test_tags: [],
+  test_started_at: '2026-05-23T06:54:06.922Z',
+  test_scope: 'mobile-real-device.spec.ts - real-device mobile QA required routes',
+  test_scopes: [],
+  test_rerun_name: ' iphone-15-pro-max-safari mobile-real-device.spec.ts real-device mobile QA required routes'
+}
+2026-05-23 06:54:07 - [32minfo[39m: [GrpcClient] Sending TestSessionEvent
+  ✘  1 [iphone-15-pro-max-safari] › tests/browserstack/mobile-real-device.spec.ts:88:5 › real-device mobile QA required routes (8ms)
+2026-05-23 06:54:07 - [32minfo[39m: getting screenshots results.
+2026-05-23 06:54:07 - [32minfo[39m: [GrpcClient] Sending LogCreatedEvent
+2026-05-23 06:54:07 - [32minfo[39m: [GrpcClient] LogCreatedEvent request successful
+2026-05-23 06:54:07 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 06:54:07 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 06:54:08 - [32minfo[39m: [BrowserstackCLI] Starting as child process with session ID: 3081d55d-1c3e-4f6b-94cd-fdc48df52752
+2026-05-23 06:54:08 - [32minfo[39m: [GrpcClient] Connected to gRPC server at unix:/tmp/sdk-platform-3081d55d-1c3e-4f6b-94cd-fdc48df52752.sock
+2026-05-23 06:54:08 - [32minfo[39m: [GrpcClient] Connecting bin session
+2026-05-23 06:54:08 - [32minfo[39m: [GrpcClient] ConnectBinSession successful
+2026-05-23 06:54:08 - [32minfo[39m: [BrowserstackCLI] loadModules: Loading modules
+2026-05-23 06:54:08 - [32minfo[39m: [BrowserstackCLI] loadModules: binSessionId=3081d55d-1c3e-4f6b-94cd-fdc48df52752
+2026-05-23 06:54:08 - [32minfo[39m: [BrowserstackCLI] loading Modules.
+2026-05-23 06:54:08 - [32minfo[39m: [BrowserstackCLI] Accessibility success=false
+2026-05-23 06:54:08 - [32minfo[39m: [GrpcClient] Getting Playwright config
+2026-05-23 06:54:08 - [32minfo[39m: [GrpcClient] PlaywrightConfig request successful
+2026-05-23 06:54:08 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 06:54:08 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 06:54:08 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 06:54:08 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 06:54:08 - [32minfo[39m: [BrowserstackCLI] Starting as child process with session ID: 3081d55d-1c3e-4f6b-94cd-fdc48df52752
+2026-05-23 06:54:08 - [32minfo[39m: [BrowserstackCLI] startChild: client and channel already exist, stopping here
+2026-05-23 06:54:08 - [32minfo[39m: [GrpcClient] Sending LogCreatedEvent
+2026-05-23 06:54:08 - [32minfo[39m: [GrpcClient] LogCreatedEvent request successful
+2026-05-23 06:54:08 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 06:54:08 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+2026-05-23 06:54:08 - [32minfo[39m: [PlaywrightAutomationFramework] trackPlaywrightInstance: created instance for target=3414375:0, state=AutomationFrameworkState.CREATE
+2026-05-23 06:54:08 - [32minfo[39m: [PlaywrightAutomationFramework] trackPlaywrightInstance: saved instance contextId=7dc25af9139974725b3283f4cbd2cc3f623f4939ef7e01515c8c7b894073023c target=3414375:0
+2026-05-23 06:54:10 - [32minfo[39m: [Accessibility] afterTestHook state: accessibilityPlatform=undefined, bstackA11yShouldScan=true
+2026-05-23 06:54:10 - [32minfo[39m: [PlaywrightAutomationFramework] trackPlaywrightInstance: instance already exists
+2026-05-23 06:54:10 - [32minfo[39m: [PlaywrightDriverModule] testId: e35c3c89d1e36c2b4580-403157990378cdd65e5b
+2026-05-23 06:54:10 - [32minfo[39m: [PlaywrightDriverModule] testData from onAfterTest: {
+  uuid: '9d084495-4e04-4ed3-8929-284558f30ad5',
+  test_framework_name: 'Playwright',
+  test_framework_version: '1.55.0',
+  test_logs: [],
+  test_hooks_finished: {},
+  test_hooks_started: {},
+  test_uuid: '9d084495-4e04-4ed3-8929-284558f30ad5',
+  test_result: 'pending',
+  automate_session_name: 'mobile-real-device.spec.ts - real-device mobile QA required routes',
+  test_file_path: '/opt/apps/market-alpha-scanner/app/frontend/tests/browserstack/mobile-real-device.spec.ts',
+  test_id: 'e35c3c89d1e36c2b4580-403157990378cdd65e5b',
+  test_name: 'real-device mobile QA required routes',
+  test_location: '/opt/apps/market-alpha-scanner/app/frontend/tests/browserstack/mobile-real-device.spec.ts',
+  test_code: 'async ({\n' +
+    '  page\n' +
+    '}, testInfo) => {\n' +
+    '  const hydrationMessages = bindHydrationCapture(page);\n' +
+    '  await installStableClientState(page);\n' +
+    '  for (const route of ROUTES) {\n' +
+    '    await _test.test.step(`validate ${route}`, async () => {\n' +
+    '      const hydrationStart = hydrationMessages.length;\n' +
+    '      await navigateAndSettle(page, route);\n' +
+    '      await acknowledgeRisk(page);\n' +
+    '      await assertMobileMetrics(page, route);\n' +
+    '      await assertTouchResponsiveness(page);\n' +
+    '      await assertKeyboardSafety(page);\n' +
+    '      await exerciseScannerUsability(page, route);\n' +
+    '      await exerciseChartUsability(page, route);\n' +
+    '      await exerciseStableOverlay(page, route, route === "/paper");\n' +
+    '      if (route === "/paper") await exercisePaperDeepScrollOverlay(page);\n' +
+    '      (0, _test.expect)(hydrationMessages.slice(hydrationStart), `hydration/runtime mismatch on ${route}`).toEqual([]);\n' +
+    '      await captureRouteScreenshot(page, route, testInfo);\n' +
+    '    });\n' +
+    '  }\n' +
+    '}',
+  test_tags: [],
+  test_started_at: '2026-05-23T06:54:08.404Z',
+  test_scope: 'mobile-real-device.spec.ts - real-device mobile QA required routes',
+  test_scopes: [],
+  test_rerun_name: ' samsung-galaxy-s23-ultra-chrome mobile-real-device.spec.ts real-device mobile QA required routes'
+}
+2026-05-23 06:54:10 - [32minfo[39m: [GrpcClient] Sending TestSessionEvent
+  ✘  2 [samsung-galaxy-s23-ultra-chrome] › tests/browserstack/mobile-real-device.spec.ts:88:5 › real-device mobile QA required routes (8ms)
+2026-05-23 06:54:10 - [32minfo[39m: getting screenshots results.
+2026-05-23 06:54:10 - [32minfo[39m: [GrpcClient] Sending LogCreatedEvent
+2026-05-23 06:54:10 - [32minfo[39m: [GrpcClient] LogCreatedEvent request successful
+2026-05-23 06:54:10 - [32minfo[39m: [GrpcClient] Sending TestFrameworkEvent
+2026-05-23 06:54:10 - [32minfo[39m: [GrpcClient] TestFrameworkEvent request successful
+
+
+  1) [iphone-15-pro-max-safari] › tests/browserstack/mobile-real-device.spec.ts:88:5 › real-device mobile QA required routes 
+
+    Error: browserType.connect: Error: Automate testing time expired.
+        at BrowserType._0x3e7f8f (/opt/apps/market-alpha-scanner/app/frontend/node_modules/browserstack-node-sdk/src/bin/playwright/mock-process.js:1:25884)
+
+  2) [samsung-galaxy-s23-ultra-chrome] › tests/browserstack/mobile-real-device.spec.ts:88:5 › real-device mobile QA required routes 
+
+    Error: browserType.connect: Error: Automate testing time expired.
+        at BrowserType._0x3e7f8f (/opt/apps/market-alpha-scanner/app/frontend/node_modules/browserstack-node-sdk/src/bin/playwright/mock-process.js:1:22201)
+
+  2 failed
+    [iphone-15-pro-max-safari] › tests/browserstack/mobile-real-device.spec.ts:88:5 › real-device mobile QA required routes 
+    [samsung-galaxy-s23-ultra-chrome] › tests/browserstack/mobile-real-device.spec.ts:88:5 › real-device mobile QA required routes 
+2026-05-23 06:54:10 - [32minfo[39m: [BrowserstackCLI] stop: CLI stop triggered
+2026-05-23 06:54:10 - [32minfo[39m: [GrpcClient] Stopping bin session
+2026-05-23 06:54:11 - [32minfo[39m: [GrpcClient] StopBinSession successful
+2026-05-23 06:54:11 - [32minfo[39m: stop: stopBinSession build_link=null hashed_id=null o11y_uuid=igcozhjqfjj0hdpedeh1uwqgtprhm6j49vqh9d1m
+2026-05-23 06:54:11 - [32minfo[39m: [BrowserstackCLI] Unconfiguring modules
+2026-05-23 06:54:11 - [32minfo[39m: [BrowserstackCLI] stop: channel closed
+2026-05-23 06:54:16 - [32minfo[39m: [BrowserstackCLI] stop: shutting down CLI
+2026-05-23 06:54:16 - [32minfo[39m: [BrowserstackCLI] stop: CLI process exited
+2026-05-23 06:54:16 - [32minfo[39m: Visit https://automation.browserstack.com/builds/igcozhjqfjj0hdpedeh1uwqgtprhm6j49vqh9d1m to view build report, insights, and many more debugging information all at one place!
+
+2026-05-23 06:54:16 - [32minfo[39m: SDK run ended for id: 3cdfd3c2-7518-4f7c-affd-9cc7155f87c2, testhub id: igcozhjqfjj0hdpedeh1uwqgtprhm6j49vqh9d1m
+2026-05-23 06:54:17 - [32minfo[39m: Deleting /opt/apps/market-alpha-scanner/app/frontend/playwright-browserstack-sdk.config.ts
+2026-05-23 06:54:19 - [32minfo[39m: [BrowserstackCLI] stop: CLI is not running, skipping stop

@@ -1,0 +1,36 @@
+
+> market-alpha-scanner-frontend@0.1.0 test:phase21:mobile-real-device
+> npm run test:browserstack:mobile
+
+
+> market-alpha-scanner-frontend@0.1.0 test:browserstack:mobile
+> BROWSERSTACK_CONFIG_FILE=../browserstack.yml TRADEVETO_MOBILE_UX_BASE_URL=https://tradeveto.com npx browserstack-node-sdk playwright test --config=playwright.phase21.config.ts --workers=1
+
+2026-05-23 06:53:45 - [32minfo[39m: Reading configs from /opt/apps/market-alpha-scanner/app/browserstack.yml
+2026-05-23 06:53:45 - [32minfo[39m: Log Directory has been set to /opt/apps/market-alpha-scanner/app/frontend/log
+2026-05-23 06:53:45 - [32minfo[39m: Running SDK with args /usr/bin/node /opt/apps/market-alpha-scanner/app/frontend/node_modules/.bin/browserstack-node-sdk playwright test --config=playwright.phase21.config.ts --workers=1
+2026-05-23 06:53:45 - [32minfo[39m: SDK run started with id: 1f0eaa67-a4ad-49c1-b74f-9ac6a69b178b
+2026-05-23 06:53:45 - [32minfo[39m: Project and debug logs are captured by default. To disable, set disableAutoCaptureLogs: true in config.
+2026-05-23 06:53:46 - [32minfo[39m: [BrowserstackCLI] startMain: Starting main process
+2026-05-23 06:53:46 - [32minfo[39m: [CLIUtils] Current CLI Path Found: /home/sre/.browserstack/cli/binary-linuxstatic-x64
+2026-05-23 06:53:46 - [31merror[39m: [BrowserstackCLI] CLIUtils.setupCliPath returned null
+2026-05-23 06:53:46 - [31merror[39m: [BrowserstackCLI] bootstrap: failed to bootstrap=Error: Failed to get CLI binary path. CLI setup failed.
+    at BrowserstackCLI.start (/opt/apps/market-alpha-scanner/app/frontend/node_modules/browserstack-node-sdk/src/bin/v2/browserstackCLI.js:1:15079)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async BrowserstackCLI.startMain (/opt/apps/market-alpha-scanner/app/frontend/node_modules/browserstack-node-sdk/src/bin/v2/browserstackCLI.js:1:9507)
+    at async BrowserstackCLI.bootstrap (/opt/apps/market-alpha-scanner/app/frontend/node_modules/browserstack-node-sdk/src/bin/v2/browserstackCLI.js:1:8952)
+    at async /opt/apps/market-alpha-scanner/app/frontend/node_modules/browserstack-node-sdk/src/bin/playwright/command.js:2:12683
+2026-05-23 06:53:46 - [32minfo[39m: [BrowserstackCLI] stop: CLI is not running, skipping stop
+2026-05-23 06:53:47 - [31merror[39m: Access to BrowserStack denied due to incorrect credentials.
+2026-05-23 06:53:47 - [31merror[39m: {
+  success: false,
+  errors: [
+    {
+      message: 'Access to BrowserStack denied due to incorrect credentials.',
+      key: 'ERROR_INVALID_CREDENTIALS'
+    }
+  ],
+  error_trace_id: '5acd4970-fc67-4189-9d86-6d0845ff6d66'
+}
+2026-05-23 06:53:48 - [32minfo[39m: [BrowserstackCLI] stop: CLI is not running, skipping stop
+2026-05-23 06:53:48 - [32minfo[39m: key-metrics.json file not found, skipping processing for event for cli.
