@@ -114,8 +114,8 @@ async function navigateAndSettle(page: Page, route: string): Promise<void> {
   const response = await gotoRouteWithRetry(page, route);
   expect(response?.status() ?? 0, `${route} should not return a server error`).toBeLessThan(500);
   await page.waitForLoadState("domcontentloaded", { timeout: 15_000 }).catch(() => undefined);
-  await page.waitForLoadState("networkidle", { timeout: 12_000 }).catch(() => undefined);
-  await page.waitForTimeout(900);
+  await page.waitForLoadState("networkidle", { timeout: 5_000 }).catch(() => undefined);
+  await page.waitForTimeout(350);
   const path = await page.evaluate(() => window.location.pathname);
   expect(path, `${route} should resolve to requested route`).toBe(route);
 }

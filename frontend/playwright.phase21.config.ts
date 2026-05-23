@@ -23,7 +23,7 @@ export default defineConfig({
   ],
   retries: process.env.CI ? 1 : 0,
   testDir: "./tests/browserstack",
-  timeout: 90_000,
+  timeout: 300_000,
   use: {
     baseURL,
     ignoreHTTPSErrors: true,
