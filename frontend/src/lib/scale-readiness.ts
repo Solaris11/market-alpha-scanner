@@ -33,14 +33,93 @@ export type ScaleProbeSample = {
   timestamp?: string | null;
 };
 
+export type ScaleConcurrencyTier = 25 | 50 | 100;
+
+export type ScaleConcurrencyTierEvidence = {
+  achievedConcurrency: number;
+  durationMinutes: number;
+  failureRatePct: number;
+  p95WorstMs: number;
+  p99WorstMs: number;
+  sampleCount: number;
+  target: ScaleConcurrencyTier;
+  timeoutRatePct: number;
+};
+
+export type ScaleReconnectStormEvidence = {
+  attemptedConnections: number;
+  durationSeconds: number;
+  eventsReceived: number;
+  failedConnections: number;
+  maxConcurrentConnections: number;
+  reconnectAttempts: number;
+};
+
+export type ScaleProviderOutageEvidence = {
+  fallbackObserved: boolean;
+  provider: string;
+  recoverySeconds: number | null;
+  surface: string;
+};
+
+export type ScaleDatabaseExplainEvidence = {
+  indexEvidence: string;
+  maxExecutionMs: number;
+  queryLabel: string;
+  sequentialScan: boolean;
+};
+
+export type ScaleMobileStressEvidence = {
+  horizontalOverflow: boolean;
+  longTaskCount: number;
+  maxDomNodes: number;
+  maxHeapMb: number | null;
+  routeCount: number;
+  viewportCount: number;
+};
+
+export type ScaleLargeWatchlistStressEvidence = {
+  maxSymbols: number;
+  p95InteractionMs: number;
+  scannerRows: number;
+  virtualized: boolean;
+};
+
+export type ScaleMemoryRenderCeilingEvidence = {
+  maxContainerMemoryPct: number | null;
+  maxProcessRssMb: number | null;
+  maxRenderLatencyMs: number;
+  runawayGrowthObserved: boolean;
+};
+
+export type ScaleObservabilityEvidence = {
+  dashboard: "cache_hit" | "hot_endpoint_latency" | "request_latency" | "scale_artifact" | "synthetics" | "system_memory";
+  status: "available" | "missing";
+};
+
 export type ScaleEvidenceInput = {
   authenticatedCoverage: boolean;
+  concurrencyTiers: ScaleConcurrencyTierEvidence[];
   databaseHotPathExplained: boolean;
+  databaseExplainAnalyses: ScaleDatabaseExplainEvidence[];
+  largeWatchlistScannerStress: ScaleLargeWatchlistStressEvidence | null;
+  memoryRenderCeiling: ScaleMemoryRenderCeilingEvidence | null;
   mobileStressTested: boolean;
+  mobileStress: ScaleMobileStressEvidence | null;
+  observabilityDashboards: ScaleObservabilityEvidence[];
   peakConcurrency: number;
   providerDegradationTested: boolean;
+  providerOutages: ScaleProviderOutageEvidence[];
   sustainedMinutes: number;
   websocketReconnectStormTested: boolean;
+  websocketReconnectStorm: ScaleReconnectStormEvidence | null;
+};
+
+export type ScaleChaosMatrixItem = {
+  detail: string;
+  label: string;
+  passed: boolean;
+  required: string;
 };
 
 export type ScaleEndpointResult = {
@@ -70,6 +149,7 @@ export type ScaleCategoryScore = {
 export type ScaleReadinessReport = {
   blockers: string[];
   categoryScores: ScaleCategoryScore[];
+  chaosMatrix: ScaleChaosMatrixItem[];
   endpointResults: ScaleEndpointResult[];
   evidence: ScaleEvidenceInput;
   evidenceBoundary: string;
@@ -105,6 +185,15 @@ export const SCALE_READY_MIN_ENDPOINT_SAMPLES = 10;
 export const SCALE_READY_MIN_PEAK_CONCURRENCY = 25;
 export const SCALE_READY_MIN_SUSTAINED_MINUTES = 15;
 export const SCALE_READY_MIN_SUCCESS_RATE_PCT = 99;
+export const SCALE_REQUIRED_CONCURRENCY_TIERS: readonly ScaleConcurrencyTier[] = [25, 50, 100] as const;
+export const SCALE_REQUIRED_OBSERVABILITY_DASHBOARDS: readonly ScaleObservabilityEvidence["dashboard"][] = [
+  "cache_hit",
+  "hot_endpoint_latency",
+  "request_latency",
+  "scale_artifact",
+  "synthetics",
+  "system_memory",
+] as const;
 
 export const SCALE_ENDPOINT_CATALOG: ScaleEndpointBudget[] = [
   {
@@ -321,6 +410,7 @@ export function buildScaleReadinessReport(input: {
   const evidence = normalizeEvidence(input.evidence);
   const endpointResults = endpointCatalog.map((endpoint) => evaluateScaleEndpoint(endpoint, input.samples));
   const blockers = scaleEvidenceBlockers(evidence, endpointResults, endpointCatalog);
+  const chaosMatrix = buildScaleChaosMatrix(evidence);
   const summary = summarizeEndpointResults(endpointResults);
   const categoryScores = buildCategoryScores(endpointResults);
   const recommendations = buildScaleRecommendations(endpointResults, blockers);
@@ -332,6 +422,7 @@ export function buildScaleReadinessReport(input: {
   return {
     blockers,
     categoryScores,
+    chaosMatrix,
     endpointResults,
     evidence,
     evidenceBoundary: "Scale certification requires authenticated production samples, sustained concurrency, database hot-path evidence, provider degradation tests, websocket reconnect-storm tests, and mobile stress evidence. Synthetic local checks alone cannot certify scale readiness.",
@@ -434,14 +525,120 @@ function endpointStatus(
 }
 
 function normalizeEvidence(input: Partial<ScaleEvidenceInput> | undefined): ScaleEvidenceInput {
+  const concurrencyTiers = Array.isArray(input?.concurrencyTiers)
+    ? input.concurrencyTiers.map(normalizeConcurrencyTierEvidence).filter((tier): tier is ScaleConcurrencyTierEvidence => tier !== null)
+    : [];
+  const providerOutages = Array.isArray(input?.providerOutages)
+    ? input.providerOutages.map(normalizeProviderOutageEvidence).filter((outage): outage is ScaleProviderOutageEvidence => outage !== null)
+    : [];
+  const databaseExplainAnalyses = Array.isArray(input?.databaseExplainAnalyses)
+    ? input.databaseExplainAnalyses.map(normalizeDatabaseExplainEvidence).filter((item): item is ScaleDatabaseExplainEvidence => item !== null)
+    : [];
+  const observabilityDashboards = Array.isArray(input?.observabilityDashboards)
+    ? input.observabilityDashboards.map(normalizeObservabilityEvidence).filter((item): item is ScaleObservabilityEvidence => item !== null)
+    : [];
   return {
     authenticatedCoverage: input?.authenticatedCoverage ?? false,
+    concurrencyTiers,
     databaseHotPathExplained: input?.databaseHotPathExplained ?? false,
+    databaseExplainAnalyses,
+    largeWatchlistScannerStress: normalizeLargeWatchlistStress(input?.largeWatchlistScannerStress),
+    memoryRenderCeiling: normalizeMemoryRenderCeiling(input?.memoryRenderCeiling),
     mobileStressTested: input?.mobileStressTested ?? false,
+    mobileStress: normalizeMobileStress(input?.mobileStress),
+    observabilityDashboards,
     peakConcurrency: Math.max(0, Math.round(input?.peakConcurrency ?? 0)),
     providerDegradationTested: input?.providerDegradationTested ?? false,
+    providerOutages,
     sustainedMinutes: Math.max(0, Math.round(input?.sustainedMinutes ?? 0)),
     websocketReconnectStormTested: input?.websocketReconnectStormTested ?? false,
+    websocketReconnectStorm: normalizeReconnectStorm(input?.websocketReconnectStorm),
+  };
+}
+
+function normalizeConcurrencyTierEvidence(value: ScaleConcurrencyTierEvidence | undefined): ScaleConcurrencyTierEvidence | null {
+  if (!value || !SCALE_REQUIRED_CONCURRENCY_TIERS.includes(value.target)) return null;
+  return {
+    achievedConcurrency: Math.max(0, Math.round(value.achievedConcurrency)),
+    durationMinutes: Math.max(0, value.durationMinutes),
+    failureRatePct: Math.max(0, value.failureRatePct),
+    p95WorstMs: Math.max(0, Math.round(value.p95WorstMs)),
+    p99WorstMs: Math.max(0, Math.round(value.p99WorstMs)),
+    sampleCount: Math.max(0, Math.round(value.sampleCount)),
+    target: value.target,
+    timeoutRatePct: Math.max(0, value.timeoutRatePct),
+  };
+}
+
+function normalizeReconnectStorm(value: ScaleReconnectStormEvidence | null | undefined): ScaleReconnectStormEvidence | null {
+  if (!value) return null;
+  return {
+    attemptedConnections: Math.max(0, Math.round(value.attemptedConnections)),
+    durationSeconds: Math.max(0, Math.round(value.durationSeconds)),
+    eventsReceived: Math.max(0, Math.round(value.eventsReceived)),
+    failedConnections: Math.max(0, Math.round(value.failedConnections)),
+    maxConcurrentConnections: Math.max(0, Math.round(value.maxConcurrentConnections)),
+    reconnectAttempts: Math.max(0, Math.round(value.reconnectAttempts)),
+  };
+}
+
+function normalizeProviderOutageEvidence(value: ScaleProviderOutageEvidence | undefined): ScaleProviderOutageEvidence | null {
+  if (!value?.provider || !value.surface) return null;
+  return {
+    fallbackObserved: Boolean(value.fallbackObserved),
+    provider: String(value.provider).slice(0, 80),
+    recoverySeconds: value.recoverySeconds === null ? null : Math.max(0, Math.round(value.recoverySeconds)),
+    surface: String(value.surface).slice(0, 80),
+  };
+}
+
+function normalizeDatabaseExplainEvidence(value: ScaleDatabaseExplainEvidence | undefined): ScaleDatabaseExplainEvidence | null {
+  if (!value?.queryLabel) return null;
+  return {
+    indexEvidence: String(value.indexEvidence ?? "").slice(0, 160),
+    maxExecutionMs: Math.max(0, value.maxExecutionMs),
+    queryLabel: String(value.queryLabel).slice(0, 100),
+    sequentialScan: Boolean(value.sequentialScan),
+  };
+}
+
+function normalizeMobileStress(value: ScaleMobileStressEvidence | null | undefined): ScaleMobileStressEvidence | null {
+  if (!value) return null;
+  return {
+    horizontalOverflow: Boolean(value.horizontalOverflow),
+    longTaskCount: Math.max(0, Math.round(value.longTaskCount)),
+    maxDomNodes: Math.max(0, Math.round(value.maxDomNodes)),
+    maxHeapMb: value.maxHeapMb === null ? null : Math.max(0, value.maxHeapMb),
+    routeCount: Math.max(0, Math.round(value.routeCount)),
+    viewportCount: Math.max(0, Math.round(value.viewportCount)),
+  };
+}
+
+function normalizeLargeWatchlistStress(value: ScaleLargeWatchlistStressEvidence | null | undefined): ScaleLargeWatchlistStressEvidence | null {
+  if (!value) return null;
+  return {
+    maxSymbols: Math.max(0, Math.round(value.maxSymbols)),
+    p95InteractionMs: Math.max(0, Math.round(value.p95InteractionMs)),
+    scannerRows: Math.max(0, Math.round(value.scannerRows)),
+    virtualized: Boolean(value.virtualized),
+  };
+}
+
+function normalizeMemoryRenderCeiling(value: ScaleMemoryRenderCeilingEvidence | null | undefined): ScaleMemoryRenderCeilingEvidence | null {
+  if (!value) return null;
+  return {
+    maxContainerMemoryPct: value.maxContainerMemoryPct === null ? null : Math.max(0, value.maxContainerMemoryPct),
+    maxProcessRssMb: value.maxProcessRssMb === null ? null : Math.max(0, value.maxProcessRssMb),
+    maxRenderLatencyMs: Math.max(0, Math.round(value.maxRenderLatencyMs)),
+    runawayGrowthObserved: Boolean(value.runawayGrowthObserved),
+  };
+}
+
+function normalizeObservabilityEvidence(value: ScaleObservabilityEvidence | undefined): ScaleObservabilityEvidence | null {
+  if (!value || !SCALE_REQUIRED_OBSERVABILITY_DASHBOARDS.includes(value.dashboard)) return null;
+  return {
+    dashboard: value.dashboard,
+    status: value.status === "available" ? "available" : "missing",
   };
 }
 
@@ -460,11 +657,142 @@ function scaleEvidenceBlockers(
   if (hasAuthRequiredEndpoint && !evidence.authenticatedCoverage) blockers.push("authenticated scanner/chart/strategy paths were not covered");
   if (evidence.peakConcurrency < SCALE_READY_MIN_PEAK_CONCURRENCY) blockers.push(`peak concurrency ${evidence.peakConcurrency} below ${SCALE_READY_MIN_PEAK_CONCURRENCY}`);
   if (evidence.sustainedMinutes < SCALE_READY_MIN_SUSTAINED_MINUTES) blockers.push(`sustained load window ${evidence.sustainedMinutes}m below ${SCALE_READY_MIN_SUSTAINED_MINUTES}m`);
+  blockers.push(...concurrencyTierBlockers(evidence.concurrencyTiers));
   if (!evidence.databaseHotPathExplained) blockers.push("database hot paths were not verified with query/index evidence");
+  if (!databaseExplainEvidencePasses(evidence.databaseExplainAnalyses)) blockers.push("EXPLAIN/ANALYZE evidence is missing or shows unbounded sequential hot-path scans");
   if (!evidence.providerDegradationTested) blockers.push("degraded provider behavior was not tested");
+  if (!providerOutageEvidencePasses(evidence.providerOutages)) blockers.push("provider outage simulation did not prove fallback and recovery behavior");
   if (!evidence.websocketReconnectStormTested) blockers.push("websocket/SSE reconnect storm behavior was not tested");
+  if (!reconnectStormEvidencePasses(evidence.websocketReconnectStorm)) blockers.push("websocket/SSE reconnect storm evidence is missing or failed");
   if (!evidence.mobileStressTested) blockers.push("mobile render/memory stress evidence is missing");
+  if (!mobileStressEvidencePasses(evidence.mobileStress)) blockers.push("mobile stress proof is missing or still shows overflow/long-task pressure");
+  if (!largeWatchlistStressPasses(evidence.largeWatchlistScannerStress)) blockers.push("large watchlist/scanner stress evidence is missing or over budget");
+  if (!memoryRenderCeilingPasses(evidence.memoryRenderCeiling)) blockers.push("memory/render ceiling evidence is missing or shows runaway growth");
+  if (!observabilityDashboardsPass(evidence.observabilityDashboards)) blockers.push("production observability dashboards do not cover all required scale dimensions");
   return blockers;
+}
+
+function concurrencyTierBlockers(tiers: readonly ScaleConcurrencyTierEvidence[]): string[] {
+  const blockers: string[] = [];
+  for (const requiredTier of SCALE_REQUIRED_CONCURRENCY_TIERS) {
+    const tier = tiers.find((candidate) => candidate.target === requiredTier);
+    if (!tier) {
+      blockers.push(`concurrency tier ${requiredTier} was not tested`);
+      continue;
+    }
+    if (tier.achievedConcurrency < requiredTier) blockers.push(`concurrency tier ${requiredTier} achieved only ${tier.achievedConcurrency}`);
+    if (tier.durationMinutes < SCALE_READY_MIN_SUSTAINED_MINUTES) blockers.push(`concurrency tier ${requiredTier} sustained ${tier.durationMinutes}m below ${SCALE_READY_MIN_SUSTAINED_MINUTES}m`);
+    if (tier.sampleCount < SCALE_READY_MIN_ENDPOINT_SAMPLES) blockers.push(`concurrency tier ${requiredTier} has only ${tier.sampleCount} samples`);
+    if (tier.failureRatePct > 1) blockers.push(`concurrency tier ${requiredTier} failure rate ${tier.failureRatePct}% exceeds 1%`);
+    if (tier.timeoutRatePct > 0) blockers.push(`concurrency tier ${requiredTier} had ${tier.timeoutRatePct}% timeouts`);
+  }
+  return blockers;
+}
+
+function reconnectStormEvidencePasses(evidence: ScaleReconnectStormEvidence | null): boolean {
+  if (!evidence) return false;
+  if (evidence.maxConcurrentConnections < 25 || evidence.attemptedConnections < 25) return false;
+  if (evidence.durationSeconds < 30) return false;
+  if (evidence.failedConnections > 0) return false;
+  return evidence.eventsReceived >= evidence.attemptedConnections;
+}
+
+function providerOutageEvidencePasses(outages: readonly ScaleProviderOutageEvidence[]): boolean {
+  if (!outages.length) return false;
+  return outages.some((outage) => outage.fallbackObserved && (outage.recoverySeconds === null || outage.recoverySeconds <= 60));
+}
+
+function databaseExplainEvidencePasses(items: readonly ScaleDatabaseExplainEvidence[]): boolean {
+  if (items.length < 3) return false;
+  return items.every((item) => item.maxExecutionMs <= 50 && (!item.sequentialScan || /bounded|small|index/i.test(item.indexEvidence)));
+}
+
+function mobileStressEvidencePasses(evidence: ScaleMobileStressEvidence | null): boolean {
+  if (!evidence) return false;
+  if (evidence.routeCount < 6 || evidence.viewportCount < 2) return false;
+  if (evidence.horizontalOverflow) return false;
+  return evidence.longTaskCount <= 2 && evidence.maxDomNodes <= 5_000;
+}
+
+function largeWatchlistStressPasses(evidence: ScaleLargeWatchlistStressEvidence | null): boolean {
+  if (!evidence) return false;
+  return evidence.maxSymbols >= 100 && evidence.scannerRows >= 150 && evidence.p95InteractionMs <= 250 && evidence.virtualized;
+}
+
+function memoryRenderCeilingPasses(evidence: ScaleMemoryRenderCeilingEvidence | null): boolean {
+  if (!evidence) return false;
+  if (evidence.runawayGrowthObserved) return false;
+  if (evidence.maxContainerMemoryPct !== null && evidence.maxContainerMemoryPct > 85) return false;
+  if (evidence.maxProcessRssMb !== null && evidence.maxProcessRssMb > 1_024) return false;
+  return evidence.maxRenderLatencyMs <= 500;
+}
+
+function observabilityDashboardsPass(evidence: readonly ScaleObservabilityEvidence[]): boolean {
+  const available = new Set(evidence.filter((item) => item.status === "available").map((item) => item.dashboard));
+  return SCALE_REQUIRED_OBSERVABILITY_DASHBOARDS.every((dashboard) => available.has(dashboard));
+}
+
+function buildScaleChaosMatrix(evidence: ScaleEvidenceInput): ScaleChaosMatrixItem[] {
+  const tierLabels = SCALE_REQUIRED_CONCURRENCY_TIERS.map((tier) => {
+    const item = evidence.concurrencyTiers.find((candidate) => candidate.target === tier);
+    return item ? `${tier}c ${item.durationMinutes}m` : `${tier}c missing`;
+  });
+  return [
+    {
+      detail: tierLabels.join(", "),
+      label: "Sustained concurrency tiers",
+      passed: concurrencyTierBlockers(evidence.concurrencyTiers).length === 0,
+      required: "25/50/100 concurrency, each sustained at least 15 minutes",
+    },
+    {
+      detail: evidence.websocketReconnectStorm
+        ? `${evidence.websocketReconnectStorm.attemptedConnections} attempts, ${evidence.websocketReconnectStorm.failedConnections} failed, ${evidence.websocketReconnectStorm.eventsReceived} event(s)`
+        : "No reconnect storm artifact",
+      label: "Websocket/SSE storm",
+      passed: evidence.websocketReconnectStormTested && reconnectStormEvidencePasses(evidence.websocketReconnectStorm),
+      required: "25+ concurrent stream reconnects with events and zero failed connections",
+    },
+    {
+      detail: evidence.providerOutages.length ? `${evidence.providerOutages.length} outage artifact(s)` : "No outage artifact",
+      label: "Provider outage recovery",
+      passed: evidence.providerDegradationTested && providerOutageEvidencePasses(evidence.providerOutages),
+      required: "Fallback observed and recovery bounded",
+    },
+    {
+      detail: evidence.databaseExplainAnalyses.length ? `${evidence.databaseExplainAnalyses.length} query plan artifact(s)` : "No query plan artifact",
+      label: "DB hot-path plans",
+      passed: evidence.databaseHotPathExplained && databaseExplainEvidencePasses(evidence.databaseExplainAnalyses),
+      required: "EXPLAIN/ANALYZE on scanner, live, replay, and telemetry hot paths",
+    },
+    {
+      detail: evidence.mobileStress ? `${evidence.mobileStress.routeCount} routes, ${evidence.mobileStress.viewportCount} viewport(s)` : "No mobile stress artifact",
+      label: "Mobile render stress",
+      passed: evidence.mobileStressTested && mobileStressEvidencePasses(evidence.mobileStress),
+      required: "Large mobile route set without overflow or long-task pressure",
+    },
+    {
+      detail: evidence.largeWatchlistScannerStress
+        ? `${evidence.largeWatchlistScannerStress.maxSymbols} symbols, ${evidence.largeWatchlistScannerStress.scannerRows} scanner rows`
+        : "No large watchlist artifact",
+      label: "Large watchlist/scanner",
+      passed: largeWatchlistStressPasses(evidence.largeWatchlistScannerStress),
+      required: "100+ symbols and 150+ scanner rows with p95 interaction <= 250ms",
+    },
+    {
+      detail: evidence.memoryRenderCeiling
+        ? `render ${evidence.memoryRenderCeiling.maxRenderLatencyMs}ms, memory ${evidence.memoryRenderCeiling.maxContainerMemoryPct ?? "unknown"}%`
+        : "No memory ceiling artifact",
+      label: "Memory/render ceiling",
+      passed: memoryRenderCeilingPasses(evidence.memoryRenderCeiling),
+      required: "No runaway growth, container memory <= 85%, render <= 500ms",
+    },
+    {
+      detail: `${evidence.observabilityDashboards.filter((item) => item.status === "available").length}/${SCALE_REQUIRED_OBSERVABILITY_DASHBOARDS.length} dashboards available`,
+      label: "Production observability",
+      passed: observabilityDashboardsPass(evidence.observabilityDashboards),
+      required: "Latency, cache, synthetics, system, and scale artifacts visible",
+    },
+  ];
 }
 
 function summarizeEndpointResults(endpointResults: readonly ScaleEndpointResult[]): ScaleReadinessReport["summary"] {
@@ -513,9 +841,14 @@ function buildScaleRecommendations(endpointResults: readonly ScaleEndpointResult
   if (failedReplay) recommendations.push("cache replay and memory analog packets by snapshot id with explicit generated_at/freshness metadata");
   if (failedChart) recommendations.push("index OHLC lookups by symbol and timestamp, then verify chart API budgets under authenticated load");
   if (failedTelemetry) recommendations.push("batch telemetry writes and keep analytics ingestion off the interaction critical path");
+  if (blockers.some((blocker) => blocker.includes("concurrency tier"))) recommendations.push("run 25/50/100 production load tiers for at least 15 minutes each before scale certification");
   if (blockers.some((blocker) => blocker.includes("websocket"))) recommendations.push("run reconnect-storm tests against live-intelligence streams before certification");
   if (blockers.some((blocker) => blocker.includes("database"))) recommendations.push("capture EXPLAIN/ANALYZE evidence for scanner, replay, macro, telemetry, and chart hot queries");
+  if (blockers.some((blocker) => blocker.includes("provider"))) recommendations.push("run controlled provider outage drills and verify explicit degraded-mode fallback plus recovery");
   if (blockers.some((blocker) => blocker.includes("mobile"))) recommendations.push("run mobile stress passes with large watchlists, dense scanner mode, fullscreen charts, and overlay churn");
+  if (blockers.some((blocker) => blocker.includes("watchlist"))) recommendations.push("stress 100+ saved symbols and dense scanner rows with virtualization and p95 interaction telemetry");
+  if (blockers.some((blocker) => blocker.includes("memory"))) recommendations.push("record container memory, process RSS, DOM node count, and render latency during load and mobile stress");
+  if (blockers.some((blocker) => blocker.includes("observability"))) recommendations.push("publish scale-artifact, latency, cache-hit, synthetics, and system-memory panels in production observability");
   if (!recommendations.length) recommendations.push("keep scale probes scheduled and alert on p95/p99 budget regression");
   return recommendations;
 }

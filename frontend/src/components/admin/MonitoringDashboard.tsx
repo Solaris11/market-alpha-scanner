@@ -92,6 +92,10 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
           <HotEndpointRuntimePanel endpoints={monitoring.requestMetrics.hotEndpointRuntime} />
         </ChartPanel>
 
+        <ChartPanel className="xl:col-span-2" subtitle="Evidence gates required before resilience, scale, and chaos certification can be claimed." title="Scale Certification Gate">
+          <ScaleCertificationGatePanel monitoring={monitoring} />
+        </ChartPanel>
+
         <ChartPanel className="xl:col-span-2" subtitle="Request volume from request_metrics for the selected window." title="Request Throughput">
           <TimeSeriesChart
             series={[{
@@ -326,6 +330,57 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
           )}
         </ChartPanel>
       </div>
+    </div>
+  );
+}
+
+function ScaleCertificationGatePanel({ monitoring }: { monitoring: AdminMonitoringSummary }) {
+  const hotSamples = monitoring.requestMetrics.hotEndpointRuntime.reduce((sum, endpoint) => sum + endpoint.sampleCount, 0);
+  const cacheVisible = monitoring.requestMetrics.hotEndpointRuntime.some((endpoint) => endpoint.sampleCount > 0);
+  const checks = [
+    {
+      detail: `${formatCount(monitoring.requestMetrics.requestsLastHour)} request metric row(s) in window.`,
+      label: "Request p50/p95/p99 dashboard",
+      passed: monitoring.requestMetrics.requestsLastHour > 0 && monitoring.requestMetrics.p95LatencyMs !== null,
+    },
+    {
+      detail: `${formatCount(hotSamples)} hot endpoint sample(s) across discovery/live telemetry.`,
+      label: "Hot endpoint latency dashboard",
+      passed: hotSamples > 0,
+    },
+    {
+      detail: cacheVisible ? "Discovery/live cache-hit telemetry is exposed in runtime cards." : "Cache-hit telemetry is still warming.",
+      label: "Cache-hit dashboard",
+      passed: cacheVisible,
+    },
+    {
+      detail: `${formatCount(monitoring.syntheticChecks.length)} latest synthetic check row(s).`,
+      label: "Synthetic checks",
+      passed: monitoring.syntheticChecks.length > 0,
+    },
+    {
+      detail: `Memory ${formatMonitoringPercent(monitoring.system.memoryPercent)}, CPU ${formatMonitoringPercent(monitoring.system.cpuPercent)}.`,
+      label: "System memory dashboard",
+      passed: monitoring.system.memoryPercent !== null || monitoring.system.cpuPercent !== null,
+    },
+    {
+      detail: "Must be attached from load/chaos probe artifacts before certification.",
+      label: "Scale/chaos artifact link",
+      passed: false,
+    },
+  ];
+
+  return (
+    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      {checks.map((check) => (
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4" key={check.label}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="text-sm font-semibold text-slate-100">{check.label}</div>
+            <StatusBadge tone={check.passed ? "good" : "warn"}>{check.passed ? "available" : "needs proof"}</StatusBadge>
+          </div>
+          <p className="mt-2 text-xs leading-5 text-slate-500">{check.detail}</p>
+        </div>
+      ))}
     </div>
   );
 }
