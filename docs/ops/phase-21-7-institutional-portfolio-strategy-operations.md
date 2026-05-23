@@ -48,11 +48,47 @@ Run on local workspace at base commit `fffd1070` plus Phase 21.7 changes:
 
 ## Production Deployment Proof
 
-Pending production pull, rebuild, redeploy, and smoke after commit/push.
+Production host: `sre@100.68.155.121`
+
+Production path: `/opt/apps/market-alpha-scanner/app`
+
+Deployment actions:
+
+- Production checkout before pull: `fffd107`
+- `git pull --ff-only origin main` fast-forwarded production to `59c2cb7`
+- `docker compose build market-alpha-frontend` completed successfully
+- `docker compose up -d market-alpha-frontend` recreated and started the frontend container
+- Production container health: `healthy`
+
+Production image proof:
+
+- Runtime commit after pull: `59c2cb7`
+- Runtime image: `sha256:8abf20f15bba5e0134522dc30e68dd388b3bbd8545bb3dd5275ec1ba734168dc`
+- Container started: `2026-05-23T08:50:33.422042382Z`
+
+Production checkout note:
+
+- The production checkout already had untracked runtime log directories: `frontend/log/` and `log/`. They were not modified.
 
 ## Production Smoke
 
-Pending production smoke after deploy.
+Health checks:
+
+- `https://tradeveto.com/api/health` - passed, `ok: true`, service `tradeveto-frontend`, timestamp `2026-05-23T08:50:48.439Z`
+- `https://tradeveto.com/api/health/deep` - passed, `ok: true`, DB `ok`, scanner `ok`, backup `ok`, R2 offsite backup `ok`
+
+Route checks:
+
+- `/terminal` - HTTP 200
+- `/paper` - HTTP 200
+- `/discover` - HTTP 200
+- `/scanner` - HTTP 200
+- `/symbol/AMD` - HTTP 200
+- `/strategy-labs` - HTTP 200
+
+Additional production HTML smoke:
+
+- `/paper` returned the paper workspace shell and premium-gated paper workflow content. Full authenticated premium portfolio-state proof was not run in this phase.
 
 ## Verdict
 
