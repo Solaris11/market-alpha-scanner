@@ -73,7 +73,15 @@ This is not marked fully accomplished because TradeVeto still does not have a re
 
 ## Production Proof
 
-Pending until commit, push, production pull, frontend rebuild/redeploy, and production smoke.
+| Check | Result |
+| --- | --- |
+| Commit | `01c4a67` |
+| Production pull | Pass, production fast-forwarded to `01c4a67` |
+| Frontend rebuild/redeploy | Pass, `market-alpha-frontend` rebuilt and restarted |
+| Container health | Pass, healthy |
+| `/api/health` | Pass |
+| `/api/health/deep` | Pass |
+| Route smoke | Pass: `/paper`, `/strategy-labs`, `/performance`, `/history`, `/terminal` returned HTTP 200 |
 
 ## Remaining Blockers
 
