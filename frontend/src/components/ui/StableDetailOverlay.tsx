@@ -119,17 +119,6 @@ function getStableOverlayScrollY(): number {
   return Math.abs(capturedScrollY - currentScrollY) <= 8 ? capturedScrollY : currentScrollY;
 }
 
-function shouldCompensateFixedBodyLockOffset(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /iP(?:ad|hone|od)/.test(navigator.userAgent)
-    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-}
-
-function getFixedBodyLockOffsetY(scrollY: number): number {
-  if (!shouldCompensateFixedBodyLockOffset()) return 0;
-  return Number.isFinite(scrollY) ? Math.round(Math.max(0, scrollY)) : 0;
-}
-
 installStableTriggerCapture();
 
 export function StableDetailOverlay({
@@ -195,7 +184,7 @@ export function StableDetailOverlay({
     if (!open) return undefined;
     const lockedScrollY = getStableOverlayScrollY();
     scrollYRef.current = lockedScrollY;
-    setFixedOverlayOffsetY(getFixedBodyLockOffsetY(lockedScrollY));
+    setFixedOverlayOffsetY(0);
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
@@ -220,17 +209,33 @@ export function StableDetailOverlay({
       return undefined;
     }
 
-    const frame = window.requestAnimationFrame(() => {
+    const timeouts: number[] = [];
+    let frame = 0;
+    let disposed = false;
+    const sampleAndCorrect = () => {
+      if (disposed) return;
       const rootRect = overlayRootRef.current?.getBoundingClientRect();
       const bodyTop = Number.parseFloat(document.body.style.top || "0");
       const lockedOffsetY = document.body.style.position === "fixed" && Number.isFinite(bodyTop) ? Math.abs(bodyTop) : 0;
-      const browserOffsetY = getFixedBodyLockOffsetY(scrollYRef.current);
-      const measuredOffsetY = rootRect && rootRect.top < -2 && lockedOffsetY > 0 ? Math.round(lockedOffsetY) : 0;
-      const nextOffset = browserOffsetY > 0 ? browserOffsetY : measuredOffsetY;
-      setFixedOverlayOffsetY((current) => (Math.abs(current - nextOffset) > 1 ? nextOffset : current));
-    });
+      if (!rootRect || lockedOffsetY <= 0) return;
+      setFixedOverlayOffsetY((current) => {
+        const nextOffset = Math.round(Math.max(0, Math.min(lockedOffsetY, current - rootRect.top)));
+        return Math.abs(current - nextOffset) > 1 ? nextOffset : current;
+      });
+    };
+    const scheduleSample = (delayMs: number) => {
+      const timeout = window.setTimeout(() => {
+        frame = window.requestAnimationFrame(sampleAndCorrect);
+      }, delayMs);
+      timeouts.push(timeout);
+    };
+    [0, 40, 100, 180, 280].forEach(scheduleSample);
 
-    return () => window.cancelAnimationFrame(frame);
+    return () => {
+      disposed = true;
+      window.cancelAnimationFrame(frame);
+      timeouts.forEach((timeout) => window.clearTimeout(timeout));
+    };
   }, [open]);
 
   if (!mounted || !open) return null;
