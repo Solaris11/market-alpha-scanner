@@ -13,6 +13,7 @@ export type DiscoveryPerformanceSnapshot = {
   p50LatencyMs: number;
   p95LatencyMs: number;
   p99LatencyMs: number;
+  p99TargetMs: number;
   sampleCount: number;
   targetMet: boolean;
   windowSize: number;
@@ -20,6 +21,7 @@ export type DiscoveryPerformanceSnapshot = {
 
 const DISCOVERY_TIMING_WINDOW_SIZE = 200;
 const DISCOVERY_HOT_PATH_TARGET_MS = 300;
+const DISCOVERY_P99_TARGET_MS = 600;
 
 let discoveryTimings: DiscoveryTimingInput[] = [];
 
@@ -47,8 +49,9 @@ export function getDiscoveryPerformanceSnapshot(): DiscoveryPerformanceSnapshot 
     p50LatencyMs,
     p95LatencyMs,
     p99LatencyMs,
+    p99TargetMs: DISCOVERY_P99_TARGET_MS,
     sampleCount,
-    targetMet: p95LatencyMs > 0 && p95LatencyMs <= DISCOVERY_HOT_PATH_TARGET_MS,
+    targetMet: p95LatencyMs > 0 && p95LatencyMs <= DISCOVERY_HOT_PATH_TARGET_MS && p99LatencyMs <= DISCOVERY_P99_TARGET_MS,
     windowSize: DISCOVERY_TIMING_WINDOW_SIZE,
   };
 }

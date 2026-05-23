@@ -13,6 +13,7 @@ export type LiveIntelligencePerformanceSnapshot = {
   p50LatencyMs: number;
   p95LatencyMs: number;
   p99LatencyMs: number;
+  p99TargetMs: number;
   sampleCount: number;
   targetMet: boolean;
   windowSize: number;
@@ -20,6 +21,7 @@ export type LiveIntelligencePerformanceSnapshot = {
 
 const LIVE_INTELLIGENCE_TIMING_WINDOW_SIZE = 200;
 const LIVE_INTELLIGENCE_HOT_PATH_TARGET_MS = 400;
+const LIVE_INTELLIGENCE_P99_TARGET_MS = 800;
 
 let liveIntelligenceTimings: LiveIntelligenceTimingInput[] = [];
 
@@ -46,8 +48,9 @@ export function getLiveIntelligencePerformanceSnapshot(): LiveIntelligencePerfor
     p50LatencyMs,
     p95LatencyMs,
     p99LatencyMs,
+    p99TargetMs: LIVE_INTELLIGENCE_P99_TARGET_MS,
     sampleCount,
-    targetMet: p95LatencyMs > 0 && p95LatencyMs <= LIVE_INTELLIGENCE_HOT_PATH_TARGET_MS,
+    targetMet: p95LatencyMs > 0 && p95LatencyMs <= LIVE_INTELLIGENCE_HOT_PATH_TARGET_MS && p99LatencyMs <= LIVE_INTELLIGENCE_P99_TARGET_MS,
     windowSize: LIVE_INTELLIGENCE_TIMING_WINDOW_SIZE,
   };
 }

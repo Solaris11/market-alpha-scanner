@@ -47,7 +47,7 @@ type DiscoverySystemCache = {
 
 const DISCOVERY_BASE_CACHE_TTL_MS = 5 * 60_000;
 const DISCOVERY_BASE_STALE_TTL_MS = 20 * 60_000;
-const DISCOVERY_SYSTEM_CACHE_TTL_MS = 90_000;
+const DISCOVERY_SYSTEM_CACHE_TTL_MS = 180_000;
 const DISCOVERY_SYSTEM_STALE_TTL_MS = 10 * 60_000;
 
 let discoveryBaseCache: DiscoveryBaseCache | null = null;

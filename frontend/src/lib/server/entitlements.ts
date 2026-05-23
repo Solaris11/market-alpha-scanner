@@ -35,7 +35,7 @@ type EntitlementCacheEntry = {
   expiresAtMs: number;
 };
 
-const ENTITLEMENT_CACHE_TTL_MS = 2_000;
+const ENTITLEMENT_CACHE_TTL_MS = 10_000;
 const ENTITLEMENT_CACHE_MAX = 500;
 const entitlementCache = new Map<string, EntitlementCacheEntry>();
 const entitlementInflight = new Map<string, Promise<Entitlement>>();

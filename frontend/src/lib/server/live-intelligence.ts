@@ -25,11 +25,13 @@ type LiveIntelligenceCacheEntry = {
   staleUntil: number;
 };
 
-const LIVE_INTELLIGENCE_CACHE_TTL_MS = 12_000;
-const LIVE_INTELLIGENCE_STALE_TTL_MS = 90_000;
+const LIVE_INTELLIGENCE_CACHE_TTL_MS = 20_000;
+const LIVE_INTELLIGENCE_STALE_TTL_MS = 180_000;
 const LIVE_INTELLIGENCE_BUILD_TIMEOUT_MS = 260;
+const LIVE_INTELLIGENCE_ROW_LIMIT = 160;
 
 let liveIntelligenceCache: LiveIntelligenceCacheEntry | null = null;
+let liveIntelligenceInflight: Promise<LiveIntelligenceSystem> | null = null;
 
 export async function loadLiveIntelligenceSystem(options: LiveIntelligenceLoadOptions = {}): Promise<LiveIntelligenceSystem> {
   return (await loadLiveIntelligenceSystemWithMeta(options)).system;
@@ -55,7 +57,7 @@ export async function loadLiveIntelligenceSystemWithMeta(options: LiveIntelligen
     };
   }
 
-  const build = buildLiveIntelligencePacket();
+  const build = getOrStartLiveIntelligenceBuild();
   build.then((system) => setLiveIntelligenceCache(system)).catch((error: unknown) => {
     console.warn("[live-intelligence] background cache warm failed", error instanceof Error ? error.message : error);
   });
@@ -82,7 +84,7 @@ async function buildLiveIntelligencePacket(): Promise<LiveIntelligenceSystem> {
     adapter.getOverviewSignals().catch(() => []),
     getRecentIntradaySignalDriftSummary({ hours: 8, maxRuns: 24, minRuns: 2 }).catch(() => []),
   ]);
-  const model = buildOpportunitiesPageModel(rows, null);
+  const model = buildOpportunitiesPageModel(rows.slice(0, LIVE_INTELLIGENCE_ROW_LIMIT), null);
   return buildLiveIntelligenceSystem({
     driftRows,
     refreshIntervalMs: 30_000,
@@ -94,12 +96,22 @@ async function buildLiveIntelligencePacket(): Promise<LiveIntelligenceSystem> {
 
 function refreshLiveIntelligenceCache(): void {
   if (liveIntelligenceCache?.refreshing) return;
-  const refresh = buildLiveIntelligencePacket();
+  const refresh = getOrStartLiveIntelligenceBuild();
   if (liveIntelligenceCache) liveIntelligenceCache.refreshing = refresh;
   refresh.then((system) => setLiveIntelligenceCache(system)).catch((error: unknown) => {
     if (liveIntelligenceCache) liveIntelligenceCache.refreshing = undefined;
     console.warn("[live-intelligence] stale refresh failed", error instanceof Error ? error.message : error);
   });
+}
+
+function getOrStartLiveIntelligenceBuild(): Promise<LiveIntelligenceSystem> {
+  if (liveIntelligenceInflight) return liveIntelligenceInflight;
+
+  liveIntelligenceInflight = buildLiveIntelligencePacket()
+    .finally(() => {
+      liveIntelligenceInflight = null;
+    });
+  return liveIntelligenceInflight;
 }
 
 function setLiveIntelligenceCache(system: LiveIntelligenceSystem): void {

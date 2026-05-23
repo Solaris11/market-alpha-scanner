@@ -20,6 +20,7 @@
     "test:browserstack:mobile": "BROWSERSTACK_CONFIG_FILE=../browserstack.yml TRADEVETO_MOBILE_UX_BASE_URL=https://tradeveto.com npx browserstack-node-sdk playwright test --config=playwright.phase21.config.ts --workers=1",
     "test:phase21:mobile-real-device": "npm run test:browserstack:mobile",
     "probe:phase21:authenticated": "TRADEVETO_SCALE_BASE_URL=https://tradeveto.com TRADEVETO_SCALE_ITERATIONS=100 TRADEVETO_SCALE_CONCURRENCY=25 TRADEVETO_SCALE_TIMEOUT_MS=8000 node scripts/scale-readiness-probe.mjs",
+    "probe:phase21:critical-performance": "TRADEVETO_SCALE_BASE_URL=https://tradeveto.com TRADEVETO_SCALE_CONCURRENCY=25 TRADEVETO_SCALE_DURATION_SECONDS=60 TRADEVETO_SCALE_STREAM_CONNECTIONS=25 TRADEVETO_SCALE_STREAM_DURATION_SECONDS=35 TRADEVETO_SCALE_TIMEOUT_MS=8000 node scripts/phase21-critical-performance-probe.mjs",
     "test": "node scripts/run-tests.mjs",
     "lint": "tsc --noEmit"
   },
