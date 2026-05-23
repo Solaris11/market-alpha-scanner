@@ -8,9 +8,9 @@ Production host: `sre@100.68.155.121`
 
 Production path: `/opt/apps/market-alpha-scanner/app`
 
-Final deployed runtime commit: `pending`
+Final deployed runtime commit: `22b85bd`
 
-Final verdict: **pending**
+Final verdict: **TRADEVETO RETENTION + DAILY-DRIVER RECOVERY STRONG PARTIAL ACCOMPLISHED**
 
 ## Scope
 
@@ -118,11 +118,62 @@ Passed before production deploy:
 
 ## Production Deploy Proof
 
-Pending production pull, rebuild, and smoke.
+Production was pulled and rebuilt from `main`.
+
+- Before pull: `da14016`
+- After pull: `22b85bd`
+- Rebuild command: `docker compose --env-file .env up -d --build market-alpha-frontend`
+- Container: `market-alpha-frontend`
+- Container state: `running`
+- Container health: `healthy`
+- Runtime image: `sha256:0d2b3a7ae7a2d5b1ea0a94a7c84ed01eaee0c8ac3a38a4bfa11dde1c41eec3ce`
+- Started at: `2026-05-23T22:08:22.281432003Z`
 
 ## Production Smoke
 
-Pending.
+Production smoke from the production Linux host against `https://tradeveto.com`:
+
+| Route | Status | Bytes |
+| --- | ---: | ---: |
+| `/api/health` | 200 | 114 |
+| `/api/health/deep` | 200 | 1538 |
+| `/terminal` | 200 | 105138 |
+| `/discover` | 200 | 52727 |
+| `/scanner` | 200 | 46693 |
+| `/alerts` | 200 | 53237 |
+| `/history` | 200 | 72847 |
+| `/strategy-labs` | 200 | 73736 |
+| `/macro` | 200 | 121243 |
+| `/feed` | 200 | 175401 |
+| `/market-memory` | 200 | 168735 |
+| `/performance` | 200 | 74439 |
+| `/symbol/AMD` | 200 | 113347 |
+
+## Current Production Retention Snapshot
+
+This is current mixed production telemetry, not elapsed Phase 23.4 cohort proof.
+
+| Metric | Eligible / Actors | Retained / Users | Rate |
+| --- | ---: | ---: | ---: |
+| D2 retention | 813 | 3 | 0.37% |
+| D7 retention | 436 | 1 | 0.23% |
+| 2+ active-day users | 900 | 9 | 1.00% |
+
+Last-30-day habit-loop telemetry at deploy time:
+
+| Event | Count |
+| --- | ---: |
+| Return sessions | 0 |
+| Morning workflows | 1 |
+| Scanner returns | 0 |
+| Replay returns | 0 |
+| Alert returns | 0 |
+| Watchlist returns | 0 |
+| Strategy returns | 0 |
+| Personalized returns | 0 |
+| Notification useful feedback | 0 |
+| Notification not-useful feedback | 0 |
+| Notification feedback total | 0 |
 
 ## Retention Proof Boundary
 
@@ -155,4 +206,4 @@ Accomplished requires all strong partial criteria plus elapsed production cohort
 
 ## Verdict
 
-Pending.
+TRADEVETO RETENTION + DAILY-DRIVER RECOVERY STRONG PARTIAL ACCOMPLISHED
