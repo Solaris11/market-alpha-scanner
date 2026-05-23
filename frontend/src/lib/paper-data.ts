@@ -114,10 +114,12 @@ const ZERO_ANALYTICS_SUMMARY: PaperAnalyticsSummary = {
 type PaperDataCacheEntry = {
   expiresAt: number;
   inflight?: Promise<PaperData>;
+  staleUntil: number;
   value?: PaperData;
 };
 
-const PAPER_DATA_CACHE_TTL_MS = 3_000;
+const PAPER_DATA_CACHE_TTL_MS = 60_000;
+const PAPER_DATA_CACHE_STALE_MS = 900_000;
 const PAPER_DATA_CACHE_MAX_ENTRIES = 200;
 const paperDataCache = new Map<string, PaperDataCacheEntry>();
 
@@ -129,6 +131,11 @@ export function emptyPaperData(configured = true, error?: string): PaperData {
     events: [],
     ...(error ? { error } : {}),
   };
+}
+
+export function clearPaperDataCache(userId?: string | null): void {
+  if (!userId) return;
+  paperDataCache.delete(userId);
 }
 
 export function emptyPaperAnalytics(configured = true, error?: string): PaperAnalyticsData {
@@ -396,10 +403,38 @@ async function readPaperDataCache(userId: string, loader: () => Promise<PaperDat
   const now = Date.now();
   const current = paperDataCache.get(userId);
   if (current?.value && current.expiresAt > now) return current.value;
+  if (current?.value && current.staleUntil > now) {
+    if (!current.inflight) {
+      current.inflight = loader()
+        .then((value) => {
+          paperDataCache.set(userId, {
+            expiresAt: Date.now() + PAPER_DATA_CACHE_TTL_MS,
+            staleUntil: Date.now() + PAPER_DATA_CACHE_STALE_MS,
+            value,
+          });
+          trimPaperDataCache();
+          return value;
+        })
+        .catch((error: unknown) => {
+          const stale = paperDataCache.get(userId);
+          if (stale?.value && stale.staleUntil > Date.now()) {
+            stale.inflight = undefined;
+            return stale.value;
+          }
+          paperDataCache.delete(userId);
+          throw error;
+        });
+    }
+    return current.value;
+  }
   if (current?.inflight) return current.inflight;
   const inflight = loader()
     .then((value) => {
-      paperDataCache.set(userId, { expiresAt: Date.now() + PAPER_DATA_CACHE_TTL_MS, value });
+      paperDataCache.set(userId, {
+        expiresAt: Date.now() + PAPER_DATA_CACHE_TTL_MS,
+        staleUntil: Date.now() + PAPER_DATA_CACHE_STALE_MS,
+        value,
+      });
       trimPaperDataCache();
       return value;
     })
@@ -407,7 +442,7 @@ async function readPaperDataCache(userId: string, loader: () => Promise<PaperDat
       paperDataCache.delete(userId);
       throw error;
     });
-  paperDataCache.set(userId, { expiresAt: now, inflight, value: current?.value });
+  paperDataCache.set(userId, { expiresAt: now, inflight, staleUntil: now + PAPER_DATA_CACHE_STALE_MS, value: current?.value });
   return inflight;
 }
 

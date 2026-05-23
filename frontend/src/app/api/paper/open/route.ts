@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { clearPaperDataCache } from "@/lib/paper-data";
 import { safePaperErrorCode } from "@/lib/paper-safety";
 import { isAdminRole } from "@/lib/security/admin-policy";
 import { requireUser } from "@/lib/server/access-control";
@@ -219,6 +220,7 @@ export async function POST(request: NextRequest) {
     );
 
     await client.query("COMMIT");
+    clearPaperDataCache(userId);
     return NextResponse.json({ ok: true, position, event });
   } catch (error) {
     await client.query("ROLLBACK").catch(() => undefined);
