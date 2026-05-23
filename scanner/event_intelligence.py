@@ -5,6 +5,7 @@ import json
 import math
 import os
 import re
+import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -96,8 +97,20 @@ class EventContext(TypedDict):
     events: list[VerifiedEvent]
     generated_at: str
     macro_event_summary: str
+    provider_states: list["ProviderFeedStatus"]
     reason_codes: list[str]
     sources_used: list[str]
+
+
+class ProviderFeedStatus(TypedDict):
+    category_hint: str
+    checked_at: str
+    error: str
+    item_count: int
+    key: str
+    name: str
+    status: str
+    url: str
 
 
 class EventImpact(TypedDict):
@@ -115,6 +128,8 @@ class EventImpact(TypedDict):
     event_shock_pressure_score: float
     event_source_weight: float
     macro_event_regime_signature: str
+    verified_event_feed_disclosure: str
+    verified_event_feed_status: str
     verified_event_pressure_score: float
     verified_event_recent_events: list[dict[str, object]]
     verified_event_signature: str
@@ -242,6 +257,12 @@ TRUSTED_FEED_HOST_SUFFIXES: Final[frozenset[str]] = frozenset(
         "polygon.io",
         "alphavantage.co",
         "iexcloud.io",
+        "alpaca.markets",
+        "stocktitan.net",
+        "nasdaq.com",
+        "treasury.gov",
+        "stlouisfed.org",
+        "cmegroup.com",
         "imf.org",
         "worldbank.org",
         "ecb.europa.eu",
@@ -268,16 +289,23 @@ TRUSTED_NEWS_PROVIDERS: Final[frozenset[str]] = frozenset(
         "wall street journal",
         "yahoo finance",
         "alpha vantage",
+        "alpaca",
         "bank of england",
         "benzinga",
+        "cme group",
         "european central bank",
         "financial modeling prep",
         "finnhub",
+        "fred",
         "imf",
         "iex cloud",
+        "nasdaq",
         "polygon",
         "state department",
+        "stocktitan",
+        "treasury",
         "u.s. department of state",
+        "u.s. treasury",
         "white house",
         "world bank",
     }
@@ -479,6 +507,34 @@ CLASSIFICATION_RULES: Final[tuple[ClassificationRule, ...]] = (
         fragility_bias=1.8,
         shock_bias=2.6,
         reason_code="EVENT_EARNINGS_SENSITIVITY",
+    ),
+    ClassificationRule(
+        event_type="analyst_action",
+        category="company",
+        keywords=("analyst", "upgrade", "downgrade", "price target", "initiates", "initiated", "rating", "outperform", "underperform"),
+        impact_tags=("analyst_action", "company_catalyst"),
+        sectors=(),
+        asset_classes=("equity",),
+        regime_tags=("event_sensitive",),
+        pressure_score=56.0,
+        conviction_bias=0.0,
+        fragility_bias=1.1,
+        shock_bias=1.8,
+        reason_code="EVENT_ANALYST_ACTION",
+    ),
+    ClassificationRule(
+        event_type="dividend_event",
+        category="company",
+        keywords=("dividend", "ex-dividend", "payout", "distribution", "special dividend"),
+        impact_tags=("dividend_event", "income_catalyst"),
+        sectors=(),
+        asset_classes=("equity",),
+        regime_tags=("event_sensitive",),
+        pressure_score=50.0,
+        conviction_bias=0.2,
+        fragility_bias=0.6,
+        shock_bias=1.0,
+        reason_code="EVENT_DIVIDEND_CONTEXT",
     ),
     ClassificationRule(
         event_type="earnings_beat",
@@ -717,6 +773,58 @@ EARNINGS_CONTEXT_TERMS: Final[tuple[str, ...]] = (
     "eps",
     "income",
 )
+ANALYST_CONTEXT_TERMS: Final[tuple[str, ...]] = (
+    "analyst",
+    "upgrade",
+    "downgrade",
+    "price target",
+    "initiates",
+    "initiated",
+    "rating",
+    "outperform",
+    "underperform",
+)
+POSITIVE_ANALYST_TERMS: Final[tuple[str, ...]] = (
+    "upgrade",
+    "upgrades",
+    "raises price target",
+    "price target raised",
+    "initiates buy",
+    "initiated at buy",
+    "outperform",
+    "overweight",
+)
+NEGATIVE_ANALYST_TERMS: Final[tuple[str, ...]] = (
+    "downgrade",
+    "downgrades",
+    "cuts price target",
+    "lowers price target",
+    "price target cut",
+    "underperform",
+    "underweight",
+    "sell rating",
+)
+DIVIDEND_CONTEXT_TERMS: Final[tuple[str, ...]] = (
+    "dividend",
+    "ex-dividend",
+    "payout",
+    "distribution",
+    "special dividend",
+)
+POSITIVE_DIVIDEND_TERMS: Final[tuple[str, ...]] = (
+    "raises dividend",
+    "increases dividend",
+    "dividend increase",
+    "declares special dividend",
+    "special dividend",
+)
+NEGATIVE_DIVIDEND_TERMS: Final[tuple[str, ...]] = (
+    "cuts dividend",
+    "reduces dividend",
+    "dividend cut",
+    "suspends dividend",
+    "eliminates dividend",
+)
 SHAREHOLDER_LITIGATION_TERMS: Final[tuple[str, ...]] = (
     "class action",
     "investor deadline",
@@ -736,36 +844,58 @@ def load_verified_event_context(cache_dir: Path | None, *, now: datetime | None 
     ttl = _cache_ttl_from_env()
     cached = _read_cached_payload(cache_dir, ttl, current_time)
     if cached is not None:
-        return build_event_context(_events_from_payload(cached), cache_status="hit", now=current_time)
+        return build_event_context(_events_from_payload(cached), cache_status="hit", now=current_time, provider_states=_provider_states_from_payload(cached))
 
     stale_cached = _read_cached_payload(cache_dir, DEFAULT_STALE_CACHE_TTL, current_time)
-    events = fetch_verified_events(now=current_time)
+    events, provider_states = fetch_verified_event_packet(now=current_time)
     if not events and stale_cached is not None:
-        return build_event_context(_events_from_payload(stale_cached), cache_status="stale_fallback", now=current_time)
+        cached_states = _provider_states_from_payload(stale_cached)
+        return build_event_context(
+            _events_from_payload(stale_cached),
+            cache_status="stale_fallback",
+            now=current_time,
+            provider_states=provider_states or cached_states,
+        )
 
-    _write_cached_payload(cache_dir, events, current_time)
-    return build_event_context(events, cache_status="refresh", now=current_time)
+    _write_cached_payload(cache_dir, events, provider_states, current_time)
+    return build_event_context(events, cache_status="refresh", now=current_time, provider_states=provider_states)
 
 
 def fetch_verified_events(*, now: datetime | None = None, feeds: tuple[TrustedEventFeed, ...] | None = None) -> list[VerifiedEvent]:
+    events, _ = fetch_verified_event_packet(now=now, feeds=feeds)
+    return events
+
+
+def fetch_verified_event_packet(*, now: datetime | None = None, feeds: tuple[TrustedEventFeed, ...] | None = None) -> tuple[list[VerifiedEvent], list[ProviderFeedStatus]]:
     current_time = now or datetime.now(timezone.utc)
     events: list[VerifiedEvent] = []
+    provider_states: list[ProviderFeedStatus] = []
     for feed in feeds or _configured_event_feeds():
-        events.extend(_fetch_feed_events(feed, current_time))
+        feed_events, status = _fetch_feed_events_with_status(feed, current_time)
+        events.extend(feed_events)
+        provider_states.append(status)
     events = _dedupe_events(events)
     events.sort(key=lambda event: event["published_at"], reverse=True)
-    return events[:MAX_CONTEXT_EVENTS]
+    return events[:MAX_CONTEXT_EVENTS], provider_states
 
 
-def build_event_context(events: list[VerifiedEvent], *, cache_status: str = "computed", now: datetime | None = None) -> EventContext:
+def build_event_context(
+    events: list[VerifiedEvent],
+    *,
+    cache_status: str = "computed",
+    now: datetime | None = None,
+    provider_states: list[ProviderFeedStatus] | None = None,
+) -> EventContext:
     current_time = now or datetime.now(timezone.utc)
+    feed_states = provider_states or []
     recent_events = [
         event
         for event in _recent_events(_dedupe_events(events), current_time)
         if _event_has_actionable_context(event)
     ]
     if not recent_events:
-        return _empty_context("empty" if cache_status != "hit" else cache_status, current_time, "No recent verified macro/event feed items were available.")
+        status = "empty" if cache_status != "hit" else cache_status
+        return _empty_context(status, current_time, "No recent verified macro/event feed items were available.", provider_states=feed_states)
 
     pressure = _weighted_average([(_event_pressure_with_decay(event), _event_quality_weight(event)) for event in recent_events], 50.0)
     event_types = _unique_strings([event_type for event in recent_events for event_type in event["event_types"]])
@@ -780,6 +910,7 @@ def build_event_context(events: list[VerifiedEvent], *, cache_status: str = "com
         "events": recent_events,
         "generated_at": current_time.isoformat(),
         "macro_event_summary": f"Verified event context is {label} based on {len(recent_events)} recent trusted feed item{'' if len(recent_events) == 1 else 's'}.",
+        "provider_states": feed_states,
         "reason_codes": reason_codes,
         "sources_used": sources,
     }
@@ -815,6 +946,8 @@ def apply_event_intelligence(
         "event_context_summary",
         "event_impact_scope",
         "macro_event_regime_signature",
+        "verified_event_feed_disclosure",
+        "verified_event_feed_status",
         "verified_event_recent_events",
         "verified_event_signature",
         "verified_event_sources_used",
@@ -874,6 +1007,8 @@ def event_impact_for_row(row: dict[str, object], context: EventContext, *, symbo
         "event_shock_pressure_score": round(shock, 2),
         "event_source_weight": round(source_weight, 3),
         "macro_event_regime_signature": _macro_event_signature(row, signature),
+        "verified_event_feed_disclosure": _feed_disclosure(context),
+        "verified_event_feed_status": _feed_status(context),
         "verified_event_pressure_score": round(pressure, 2),
         "verified_event_recent_events": recent_events,
         "verified_event_signature": signature,
@@ -921,8 +1056,13 @@ def write_verified_event_context(outdir: Path, context: EventContext) -> Path:
 
 
 def _fetch_feed_events(feed: TrustedEventFeed, now: datetime) -> list[VerifiedEvent]:
+    events, _ = _fetch_feed_events_with_status(feed, now)
+    return events
+
+
+def _fetch_feed_events_with_status(feed: TrustedEventFeed, now: datetime) -> tuple[list[VerifiedEvent], ProviderFeedStatus]:
     if not _is_allowed_source_url(feed.url):
-        return []
+        return [], _provider_feed_status(feed, now, status="blocked", error="source_url_not_allowlisted")
     try:
         request = urllib.request.Request(
             feed.url,
@@ -933,13 +1073,19 @@ def _fetch_feed_events(feed: TrustedEventFeed, now: datetime) -> list[VerifiedEv
         )
         with urllib.request.urlopen(request, timeout=8) as response:
             body = response.read(2_000_000)
+    except urllib.error.HTTPError as exc:
+        return [], _provider_feed_status(feed, now, status="outage", error=f"http_{exc.code}")
+    except urllib.error.URLError:
+        return [], _provider_feed_status(feed, now, status="outage", error="network_or_timeout")
+    except TimeoutError:
+        return [], _provider_feed_status(feed, now, status="outage", error="timeout")
     except Exception:
-        return []
+        return [], _provider_feed_status(feed, now, status="outage", error="provider_fetch_failed")
 
     try:
         root = ET.fromstring(body)
     except ET.ParseError:
-        return []
+        return [], _provider_feed_status(feed, now, status="outage", error="malformed_xml")
 
     events: list[VerifiedEvent] = []
     for item in _feed_items(root):
@@ -961,7 +1107,28 @@ def _fetch_feed_events(feed: TrustedEventFeed, now: datetime) -> list[VerifiedEv
         events.append(event)
         if len(events) >= DEFAULT_FEED_LIMIT:
             break
-    return events
+    status = "active" if events else "no_recent_items"
+    return events, _provider_feed_status(feed, now, status=status, item_count=len(events))
+
+
+def _provider_feed_status(
+    feed: TrustedEventFeed,
+    now: datetime,
+    *,
+    status: str,
+    item_count: int = 0,
+    error: str = "",
+) -> ProviderFeedStatus:
+    return {
+        "category_hint": feed.category_hint,
+        "checked_at": now.isoformat(),
+        "error": error,
+        "item_count": item_count,
+        "key": feed.key,
+        "name": feed.name,
+        "status": status,
+        "url": feed.url,
+    }
 
 
 def classify_verified_event(feed: TrustedEventFeed, title: str, summary: str, source_url: str, published_at: datetime) -> VerifiedEvent:
@@ -1074,6 +1241,14 @@ def _apply_directional_overrides(matched_rules: list[ClassificationRule], direct
         filtered = [rule for rule in filtered if rule.event_type not in {"earnings_miss", "regulatory_issue"}]
     if directional_types.intersection({"earnings_negative_surprise", "negative_product_catalyst", "negative_investment_catalyst", "mna_negative"}):
         filtered = [rule for rule in filtered if rule.event_type != "earnings_beat"]
+    if "analyst_positive_action" in directional_types:
+        filtered = [rule for rule in filtered if rule.event_type != "analyst_negative_action"]
+    if "analyst_negative_action" in directional_types:
+        filtered = [rule for rule in filtered if rule.event_type != "analyst_positive_action"]
+    if "dividend_positive_event" in directional_types:
+        filtered = [rule for rule in filtered if rule.event_type != "dividend_negative_event"]
+    if "dividend_negative_event" in directional_types:
+        filtered = [rule for rule in filtered if rule.event_type != "dividend_positive_event"]
     if "shareholder_litigation" in directional_types:
         filtered = [rule for rule in filtered if rule.event_type not in {"earnings_guidance", "earnings_beat", "earnings_miss"}]
     return [*filtered, *directional_rules]
@@ -1251,6 +1426,70 @@ def _directional_classification_rules(text: str) -> list[ClassificationRule]:
                 fragility_bias=4.0,
                 shock_bias=3.4,
                 reason_code="EVENT_EARNINGS_NEGATIVE_SURPRISE",
+            )
+        )
+    if _has_any(text, ANALYST_CONTEXT_TERMS) and _has_any(text, POSITIVE_ANALYST_TERMS):
+        rules.append(
+            _synthetic_rule(
+                event_type="analyst_positive_action",
+                category="company",
+                impact_tags=("analyst_action_positive", "company_catalyst"),
+                sectors=(),
+                asset_classes=("equity",),
+                regime_tags=("event_sensitive", "momentum_expansion"),
+                pressure_score=42.0,
+                conviction_bias=1.2,
+                fragility_bias=0.8,
+                shock_bias=1.6,
+                reason_code="EVENT_ANALYST_POSITIVE_ACTION",
+            )
+        )
+    if _has_any(text, ANALYST_CONTEXT_TERMS) and _has_any(text, NEGATIVE_ANALYST_TERMS):
+        rules.append(
+            _synthetic_rule(
+                event_type="analyst_negative_action",
+                category="company",
+                impact_tags=("analyst_action_negative", "company_catalyst"),
+                sectors=(),
+                asset_classes=("equity",),
+                regime_tags=("event_sensitive", "fragility_pressure"),
+                pressure_score=72.0,
+                conviction_bias=-1.4,
+                fragility_bias=2.8,
+                shock_bias=2.2,
+                reason_code="EVENT_ANALYST_NEGATIVE_ACTION",
+            )
+        )
+    if _has_any(text, DIVIDEND_CONTEXT_TERMS) and _has_any(text, POSITIVE_DIVIDEND_TERMS):
+        rules.append(
+            _synthetic_rule(
+                event_type="dividend_positive_event",
+                category="company",
+                impact_tags=("dividend_positive", "income_catalyst"),
+                sectors=(),
+                asset_classes=("equity",),
+                regime_tags=("event_sensitive",),
+                pressure_score=44.0,
+                conviction_bias=0.8,
+                fragility_bias=0.4,
+                shock_bias=1.0,
+                reason_code="EVENT_DIVIDEND_POSITIVE",
+            )
+        )
+    if _has_any(text, DIVIDEND_CONTEXT_TERMS) and _has_any(text, NEGATIVE_DIVIDEND_TERMS):
+        rules.append(
+            _synthetic_rule(
+                event_type="dividend_negative_event",
+                category="company",
+                impact_tags=("dividend_negative", "income_catalyst"),
+                sectors=(),
+                asset_classes=("equity",),
+                regime_tags=("event_sensitive", "fragility_pressure"),
+                pressure_score=76.0,
+                conviction_bias=-1.4,
+                fragility_bias=3.2,
+                shock_bias=2.2,
+                reason_code="EVENT_DIVIDEND_NEGATIVE",
             )
         )
     if _has_any(text, SHAREHOLDER_LITIGATION_TERMS):
@@ -1536,7 +1775,7 @@ def _factor_scores_with_event(value: object, impact: EventImpact) -> object:
     return updated
 
 
-def _empty_context(cache_status: str, now: datetime, summary: str) -> EventContext:
+def _empty_context(cache_status: str, now: datetime, summary: str, *, provider_states: list[ProviderFeedStatus] | None = None) -> EventContext:
     return {
         "available": False,
         "cache_status": cache_status,
@@ -1545,6 +1784,7 @@ def _empty_context(cache_status: str, now: datetime, summary: str) -> EventConte
         "events": [],
         "generated_at": now.isoformat(),
         "macro_event_summary": summary,
+        "provider_states": provider_states or [],
         "reason_codes": [],
         "sources_used": [],
     }
@@ -1566,6 +1806,8 @@ def _empty_impact(context: EventContext) -> EventImpact:
         "event_shock_pressure_score": 50.0,
         "event_source_weight": 0.0,
         "macro_event_regime_signature": "",
+        "verified_event_feed_disclosure": _feed_disclosure(context),
+        "verified_event_feed_status": _feed_status(context),
         "verified_event_pressure_score": 50.0,
         "verified_event_recent_events": [],
         "verified_event_signature": "",
@@ -1591,11 +1833,43 @@ def _neutral_impact(row: dict[str, object], context: EventContext) -> EventImpac
         "event_shock_pressure_score": 50.0,
         "event_source_weight": 0.0,
         "macro_event_regime_signature": _macro_event_signature(row, signature),
+        "verified_event_feed_disclosure": _feed_disclosure(context),
+        "verified_event_feed_status": _feed_status(context),
         "verified_event_pressure_score": round(context["event_pressure_score"], 2),
         "verified_event_recent_events": [],
         "verified_event_signature": signature,
         "verified_event_sources_used": context["sources_used"],
     }
+
+
+def _feed_status(context: EventContext) -> str:
+    if context["cache_status"] == "stale_fallback":
+        return "stale_fallback"
+    states = context.get("provider_states", [])
+    if any(state["status"] == "active" for state in states):
+        return "active"
+    if states and all(state["status"] in {"blocked", "outage"} for state in states):
+        return "outage"
+    if any(state["status"] == "outage" for state in states):
+        return "partial_outage"
+    if any(state["status"] == "no_recent_items" for state in states):
+        return "limited"
+    return "unavailable"
+
+
+def _feed_disclosure(context: EventContext) -> str:
+    status = _feed_status(context)
+    if status == "active":
+        return "Verified event providers returned source-linked items in the current packet."
+    if status == "stale_fallback":
+        return "Using cached verified event context because current provider refresh did not return fresh source-linked items."
+    if status == "outage":
+        return "Verified event providers are blocked or unavailable in this refresh; event context is limited."
+    if status == "partial_outage":
+        return "At least one verified event provider failed in this refresh; available source-linked items remain bounded and disclosed."
+    if status == "limited":
+        return "Verified event providers were checked, but no recent source-linked event mapped to this setup."
+    return "Verified event provider status is unavailable for this scanner packet."
 
 
 def _impact_reason_codes(
@@ -1790,13 +2064,14 @@ def _read_cached_payload(cache_dir: Path | None, max_age: timedelta, now: dateti
     return {str(key): value for key, value in payload.items()}
 
 
-def _write_cached_payload(cache_dir: Path | None, events: list[VerifiedEvent], now: datetime) -> None:
+def _write_cached_payload(cache_dir: Path | None, events: list[VerifiedEvent], provider_states: list[ProviderFeedStatus], now: datetime) -> None:
     path = _event_cache_file(cache_dir)
     if path is None:
         return
     payload = {
         "events": events,
         "fetched_at": now.isoformat(),
+        "provider_states": provider_states,
         "sources": [feed.name for feed in _configured_event_feeds()],
     }
     tmp_path: Path | None = None
@@ -1822,6 +2097,39 @@ def _events_from_payload(payload: dict[str, object]) -> list[VerifiedEvent]:
         if event is not None:
             events.append(event)
     return events
+
+
+def _provider_states_from_payload(payload: dict[str, object]) -> list[ProviderFeedStatus]:
+    raw_states = payload.get("provider_states")
+    if not isinstance(raw_states, list):
+        return []
+    states: list[ProviderFeedStatus] = []
+    for raw_state in raw_states:
+        if not isinstance(raw_state, dict):
+            continue
+        state = _provider_state_from_mapping(raw_state)
+        if state is not None:
+            states.append(state)
+    return states
+
+
+def _provider_state_from_mapping(raw_state: Mapping[object, object]) -> ProviderFeedStatus | None:
+    key = safe_str(raw_state.get("key"), "")
+    name = safe_str(raw_state.get("name"), "")
+    status = safe_str(raw_state.get("status"), "")
+    checked_at = safe_str(raw_state.get("checked_at"), "")
+    if not key or not name or not status or not checked_at:
+        return None
+    return {
+        "category_hint": safe_str(raw_state.get("category_hint"), ""),
+        "checked_at": checked_at,
+        "error": safe_str(raw_state.get("error"), ""),
+        "item_count": int(safe_float(raw_state.get("item_count"), 0.0)),
+        "key": key,
+        "name": name,
+        "status": status,
+        "url": safe_str(raw_state.get("url"), ""),
+    }
 
 
 def _event_from_mapping(raw_event: Mapping[object, object]) -> VerifiedEvent | None:
@@ -1920,9 +2228,9 @@ def _is_allowed_source_url(url: str) -> bool:
 
 def _provider_source_weight(source: str) -> float:
     normalized = source.lower().strip()
-    if any(token in normalized for token in ("federal reserve", "bureau of labor", "sec", "cftc", "bea", "census", "eia", "imf", "world bank", "european central bank", "bank of england", "state department", "white house")):
+    if any(token in normalized for token in ("federal reserve", "bureau of labor", "sec", "cftc", "bea", "census", "eia", "treasury", "fred", "imf", "world bank", "european central bank", "bank of england", "state department", "white house")):
         return 1.0
-    if any(token in normalized for token in ("reuters", "associated press", "ap", "wall street journal", "marketwatch", "benzinga", "finnhub", "financial modeling prep", "polygon", "alpha vantage", "iex cloud")):
+    if any(token in normalized for token in ("reuters", "associated press", "ap", "wall street journal", "marketwatch", "stocktitan", "nasdaq", "alpaca", "benzinga", "finnhub", "financial modeling prep", "polygon", "alpha vantage", "iex cloud", "cme group")):
         return 0.86
     if any(token in normalized for token in ("pr newswire", "business wire", "globenewswire", "mt newswires")):
         return 0.78

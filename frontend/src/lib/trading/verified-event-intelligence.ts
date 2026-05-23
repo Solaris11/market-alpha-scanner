@@ -25,6 +25,8 @@ export type VerifiedEventContextSummary = {
   eventDecay: number;
   convictionAdjustment: number;
   eventPressureScore: number;
+  feedDisclosure: string;
+  feedStatus: string;
   fragilityAdjustment: number;
   label: string;
   macroPressureAdjustment: number;
@@ -52,6 +54,8 @@ export function buildVerifiedEventContext(row: RankingRow): VerifiedEventContext
     eventDecay: finiteNumber(rawField(row, "event_decay")) ?? 0,
     convictionAdjustment: finiteNumber(rawField(row, "event_conviction_adjustment")) ?? 0,
     eventPressureScore: finiteNumber(rawField(row, "verified_event_pressure_score")) ?? 50,
+    feedDisclosure: textField(row, "verified_event_feed_disclosure") ?? (available ? "Verified event provider status is available for this scanner packet." : "Verified event provider status is unavailable for this scanner packet."),
+    feedStatus: textField(row, "verified_event_feed_status") ?? (available ? "active" : "unavailable"),
     fragilityAdjustment: finiteNumber(rawField(row, "event_fragility_adjustment")) ?? 0,
     label,
     macroPressureAdjustment: finiteNumber(rawField(row, "event_macro_pressure_adjustment")) ?? 0,
@@ -100,6 +104,12 @@ export function eventReasonLabel(code: string): string {
   if (normalized === "EVENT_EARNINGS_NEGATIVE_SURPRISE") return "negative earnings surprise";
   if (normalized === "EVENT_EARNINGS_SENSITIVITY") return "earnings sensitivity";
   if (normalized === "EVENT_EARNINGS_CALENDAR") return "earnings calendar";
+  if (normalized === "EVENT_ANALYST_ACTION") return "analyst action";
+  if (normalized === "EVENT_ANALYST_POSITIVE_ACTION") return "positive analyst action";
+  if (normalized === "EVENT_ANALYST_NEGATIVE_ACTION") return "negative analyst action";
+  if (normalized === "EVENT_DIVIDEND_CONTEXT") return "dividend context";
+  if (normalized === "EVENT_DIVIDEND_POSITIVE") return "positive dividend event";
+  if (normalized === "EVENT_DIVIDEND_NEGATIVE") return "negative dividend event";
   if (normalized === "EVENT_MERGER_ACQUISITION") return "M&A catalyst";
   if (normalized === "EVENT_MNA_POSITIVE") return "positive M&A context";
   if (normalized === "EVENT_MNA_NEGATIVE") return "negative M&A context";

@@ -123,6 +123,8 @@ export type RankingRow = {
   score_reliability?: number;
   signal_history_days?: number;
   macro_event_regime_signature?: string;
+  verified_event_feed_disclosure?: string;
+  verified_event_feed_status?: string;
   verified_event_pressure_score?: number;
   verified_event_signature?: string;
   news_score?: number;

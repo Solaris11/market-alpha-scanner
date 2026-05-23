@@ -211,7 +211,7 @@ export function DailyMarketCommandCenter({ model }: Props) {
             </div>
             <NewsEcosystemStrip summary={model.newsEcosystem} />
             <ProviderCoverageGrid providers={model.providerCoverage} />
-            <ProviderStrategyAuditGrid audits={model.providerStrategyAudit} />
+            <ProviderStrategyAuditGrid audits={model.providerCoverageMatrix} />
             <MacroStorylineDeck stories={model.macroStorylines} />
             <MacroEventTimelineDeck items={model.macroEventTimeline} />
             <SectorNewsClusterDeck clusters={model.sectorNews} />
@@ -341,7 +341,7 @@ function ProviderStrategyAuditGrid({ audits }: { audits: DailyProviderStrategyAu
   return (
     <div className="mt-3 rounded-3xl border border-white/10 bg-black/18 p-3">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">Provider strategy audit</div>
+        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">Provider coverage matrix</div>
         <span className="rounded-full border border-white/10 bg-white/[0.035] px-2 py-1 text-[10px] font-bold text-slate-400">{audits.length} domains</span>
       </div>
       <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
@@ -349,7 +349,7 @@ function ProviderStrategyAuditGrid({ audits }: { audits: DailyProviderStrategyAu
           <div className={`rounded-2xl border p-3 ${TONE[audit.tone].border} ${TONE[audit.tone].bg}`} key={audit.domain}>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className={`text-[10px] font-black uppercase tracking-[0.14em] ${TONE[audit.tone].text}`}>{audit.coverage.replace("-", " ")}</div>
+                <div className={`text-[10px] font-black uppercase tracking-[0.14em] ${TONE[audit.tone].text}`}>{audit.operationalState.replace("-", " ")}</div>
                 <div className="mt-1 truncate text-sm font-black text-slate-50">{audit.domain.replace(/-/g, " ")}</div>
               </div>
               <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 font-mono text-[10px] font-black text-slate-300">{audit.itemCount}</span>
@@ -359,7 +359,8 @@ function ProviderStrategyAuditGrid({ audits }: { audits: DailyProviderStrategyAu
               <div className="rounded-xl border border-white/10 bg-black/20 px-2 py-1.5 text-[10px] text-slate-300">{audit.freshness}</div>
               <div className="rounded-xl border border-white/10 bg-black/20 px-2 py-1.5 text-[10px] text-slate-400">{audit.latency}</div>
             </div>
-            <div className="mt-2 line-clamp-2 text-[10px] leading-4 text-slate-500">{audit.limitations.join(" ")}</div>
+            <div className="mt-2 line-clamp-2 text-[10px] leading-4 text-slate-300">{audit.disclosure}</div>
+            <div className="mt-2 line-clamp-2 text-[10px] leading-4 text-slate-500">{audit.sourceTransparency} {audit.limitations.join(" ")}</div>
           </div>
         ))}
       </div>

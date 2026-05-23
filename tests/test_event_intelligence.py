@@ -134,6 +134,30 @@ class EventIntelligenceTests(unittest.TestCase):
         self.assertGreater(negative_earnings["fragility_bias"], positive_product["fragility_bias"])
         self.assertLess(negative_earnings["conviction_bias"], 0.0)
 
+    def test_analyst_and_dividend_events_are_classified_from_source_text(self) -> None:
+        feed = TrustedEventFeed("stocktitan", "StockTitan", "https://www.stocktitan.net/feed", "company", source_weight=0.86)
+        positive_analyst = classify_verified_event(
+            feed,
+            "Analyst upgrades AMD and raises price target on AI demand",
+            "The rating moved to outperform after stronger data center checks.",
+            "https://www.stocktitan.net/news/AMD/analyst-upgrade.html",
+            datetime(2026, 5, 8, tzinfo=timezone.utc),
+        )
+        negative_dividend = classify_verified_event(
+            feed,
+            "Company cuts dividend after weak demand",
+            "The board reduced the payout and cited lower cash generation.",
+            "https://www.stocktitan.net/news/XYZ/dividend-cut.html",
+            datetime(2026, 5, 8, tzinfo=timezone.utc),
+        )
+
+        self.assertIn("EVENT_ANALYST_ACTION", positive_analyst["reason_codes"])
+        self.assertIn("EVENT_ANALYST_POSITIVE_ACTION", positive_analyst["reason_codes"])
+        self.assertGreater(positive_analyst["conviction_bias"], 0.0)
+        self.assertIn("EVENT_DIVIDEND_CONTEXT", negative_dividend["reason_codes"])
+        self.assertIn("EVENT_DIVIDEND_NEGATIVE", negative_dividend["reason_codes"])
+        self.assertGreater(negative_dividend["fragility_bias"], positive_analyst["fragility_bias"])
+
     def test_shareholder_litigation_is_not_misclassified_as_earnings(self) -> None:
         feed = TrustedEventFeed("prnewswire", "PR Newswire", "https://www.prnewswire.com/rss/news-releases-list.rss", "company", source_weight=0.78)
         event = classify_verified_event(
@@ -191,15 +215,16 @@ class EventIntelligenceTests(unittest.TestCase):
         self.assertNotIn("NOW", event["affected_symbols"])
 
     def test_applies_bounded_event_fields_to_dataframe(self) -> None:
+        now = datetime.now(timezone.utc)
         feed = TrustedEventFeed("trusted", "Associated Press", "https://example.test/feed", "geopolitical")
         event = classify_verified_event(
             feed,
             "Oil supply shock follows geopolitical escalation",
             "Crude oil prices rose as conflict escalation affected supply routes.",
             "https://example.test/oil-event",
-            datetime(2026, 5, 8, tzinfo=timezone.utc),
+            now,
         )
-        context = build_event_context([event], now=datetime(2026, 5, 8, tzinfo=timezone.utc))
+        context = build_event_context([event], now=now)
         df = pd.DataFrame(
             [
                 {
@@ -224,6 +249,8 @@ class EventIntelligenceTests(unittest.TestCase):
         self.assertGreaterEqual(float(result["event_macro_pressure_adjustment"]), -3.0)
         self.assertLessEqual(float(result["event_macro_pressure_adjustment"]), 2.0)
         self.assertIn("EVENT_OIL_SUPPLY_SHOCK", result["event_context_reason_codes"])
+        self.assertEqual(result["verified_event_feed_status"], "unavailable")
+        self.assertIn("provider status", str(result["verified_event_feed_disclosure"]).lower())
 
     def test_event_pressure_boundedly_reduces_recommendation_quality(self) -> None:
         base_row = pd.Series(
@@ -358,6 +385,46 @@ class EventIntelligenceTests(unittest.TestCase):
         self.assertIsInstance(age_value, (float, int))
         assert isinstance(age_value, (float, int))
         self.assertGreaterEqual(float(age_value), 0.0)
+
+    def test_provider_feed_states_are_disclosed_in_context_and_row_impact(self) -> None:
+        feed = TrustedEventFeed("fed", "Federal Reserve", "https://www.federalreserve.gov/feeds/press_all.xml", "macro", source_weight=1.0)
+        event = classify_verified_event(
+            feed,
+            "Federal Reserve discusses inflation pressure and interest rate policy",
+            "Officials noted inflation and monetary policy remain important.",
+            "https://www.federalreserve.gov/newsevents/pressreleases/test.htm",
+            datetime(2026, 5, 8, tzinfo=timezone.utc),
+        )
+        context = build_event_context(
+            [event],
+            now=datetime(2026, 5, 8, tzinfo=timezone.utc),
+            provider_states=[
+                {
+                    "category_hint": "macro",
+                    "checked_at": "2026-05-08T00:00:00+00:00",
+                    "error": "",
+                    "item_count": 1,
+                    "key": "fed",
+                    "name": "Federal Reserve",
+                    "status": "active",
+                    "url": "https://www.federalreserve.gov/feeds/press_all.xml",
+                }
+            ],
+        )
+        impact = event_impact_for_row(
+            {
+                "asset_type": "EQUITY",
+                "macro_context_label": "Macro Mixed",
+                "market_regime": "NEUTRAL",
+                "sector": "Technology",
+                "symbol": "QQQ",
+            },
+            context,
+        )
+
+        self.assertEqual(context["provider_states"][0]["status"], "active")
+        self.assertEqual(impact["verified_event_feed_status"], "active")
+        self.assertIn("source-linked", impact["verified_event_feed_disclosure"])
 
 
 if __name__ == "__main__":

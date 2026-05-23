@@ -184,16 +184,30 @@ export type DailyProviderCoverageDomain =
   | "rates"
   | "sector-events";
 
+export type DailyProviderOperationalState = "active" | "calendar-only" | "delayed" | "limited" | "outage" | "partial-outage" | "stale";
+
 export type DailyProviderStrategyAudit = {
   coverage: "active" | "calendar-only" | "limited";
+  disclosure: string;
   domain: DailyProviderCoverageDomain;
   freshness: string;
+  freshnessMinutes: number | null;
   itemCount: number;
   latency: string;
   latestTimestamp: string | null;
   limitations: string[];
+  operationalState: DailyProviderOperationalState;
   provider: string;
+  sourceTransparency: string;
   tone: DailyCommandTone;
+};
+
+type ProviderOperationalSignal = {
+  domainText: string;
+  message: string;
+  provider: string;
+  status: "fallback" | "outage" | "stale";
+  symbol: string;
 };
 
 export type DailyInformationEvolutionPoint = {
@@ -279,6 +293,7 @@ export type DailyMarketCommandModel = {
   };
   newsEvolution: DailyInformationEvolutionPoint[];
   providerCoverage: DailyInformationProviderCoverage[];
+  providerCoverageMatrix: DailyProviderStrategyAudit[];
   providerStrategyAudit: DailyProviderStrategyAudit[];
   sectorNews: DailySectorNewsCluster[];
   watchlistSymbols: string[];
@@ -321,7 +336,7 @@ export function buildDailyMarketCommandModel(input: {
   const macroEventTimeline = buildMacroEventTimeline(developments, calendar);
   const sectorNews = buildSectorNewsClusters(developments);
   const providerCoverage = buildProviderCoverage(developments);
-  const providerStrategyAudit = buildProviderStrategyAudit(developments, calendar);
+  const providerCoverageMatrix = buildProviderStrategyAudit(developments, calendar, input.rows, input.now ?? new Date());
   const newsEvolution = buildInformationEvolution(developments);
   const crossAssetRelationships = buildCrossAssetRelationships(developments, input.marketCommand.barItems.map((item) => item.symbol));
   const companyTimelines = buildCompanyTimelines(developments, calendar);
@@ -374,7 +389,8 @@ export function buildDailyMarketCommandModel(input: {
     },
     newsEvolution,
     providerCoverage,
-    providerStrategyAudit,
+    providerCoverageMatrix,
+    providerStrategyAudit: providerCoverageMatrix,
     sectorNews,
     watchlistSymbols: (input.watchlistSymbols ?? []).map((symbol) => symbol.toUpperCase()),
     whatChangedToday,
@@ -872,7 +888,8 @@ function buildCompanyTimelines(developments: DailyMarketDevelopment[], calendar:
     .slice(0, 6);
 }
 
-function buildProviderStrategyAudit(developments: DailyMarketDevelopment[], calendar: DailyEventCalendarItem[]): DailyProviderStrategyAudit[] {
+function buildProviderStrategyAudit(developments: DailyMarketDevelopment[], calendar: DailyEventCalendarItem[], rows: OpportunityViewModel[], now: Date): DailyProviderStrategyAudit[] {
+  const operationalSignals = providerOperationalSignals(rows);
   const domains: Array<{ domain: DailyProviderCoverageDomain; label: string; matchCalendar: (item: DailyEventCalendarItem) => boolean; matchDevelopment: (item: DailyMarketDevelopment) => boolean }> = [
     { domain: "macro", label: "Macro", matchCalendar: (item) => item.category === "macro", matchDevelopment: (item) => ["Energy", "Macro"].includes(item.category) },
     { domain: "inflation", label: "Inflation", matchCalendar: (item) => item.category === "rates" && /cpi|ppi|inflation/i.test(`${item.label} ${item.detail}`), matchDevelopment: (item) => item.category === "Rates" && /cpi|ppi|inflation/i.test(`${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel}`) },
@@ -893,22 +910,54 @@ function buildProviderStrategyAudit(developments: DailyMarketDevelopment[], cale
     const latestCalendar = matchingCalendar.slice().sort((left, right) => Date.parse(right.date) - Date.parse(left.date))[0] ?? null;
     const sourceNames = uniqueStrings(matchingDevelopments.map((item) => item.source));
     const coverage: DailyProviderStrategyAudit["coverage"] = matchingDevelopments.length ? "active" : matchingCalendar.length ? "calendar-only" : "limited";
+    const outageSignals = operationalSignals.filter((signal) => domainMatchesSignal(domain.domain, domain.label, signal));
+    const freshnessMinutes = latestDevelopment ? minutesSince(latestDevelopment.timestamp, now) : null;
+    const operationalState = providerOperationalState({
+      coverage,
+      freshnessMinutes,
+      hasOutageSignal: outageSignals.some((signal) => signal.status === "outage"),
+      hasStaleSignal: outageSignals.some((signal) => signal.status === "stale"),
+    });
     const limitations = providerAuditLimitations({
       coverage,
       domain: domain.label,
       hasCalendar: matchingCalendar.length > 0,
       hasSourceLinked: matchingDevelopments.length > 0,
+      operationalState,
     });
+    const provider = sourceNames.length
+      ? sourceNames.join(", ")
+      : outageSignals.length
+        ? outageSignals[0]?.provider ?? "Provider"
+        : matchingCalendar.length
+          ? "Stored event calendar"
+          : "Provider not configured";
     return {
       coverage,
+      disclosure: providerOperationalDisclosure({
+        coverage,
+        domain: domain.label,
+        freshnessMinutes,
+        operationalState,
+        outageMessage: outageSignals[0]?.message ?? null,
+      }),
       domain: domain.domain,
       freshness: latestDevelopment?.freshnessLabel ?? (latestCalendar ? `Calendar date available: ${latestCalendar.date.slice(0, 10)}` : "No source-linked timestamp available"),
+      freshnessMinutes,
       itemCount: matchingDevelopments.length + matchingCalendar.length,
       latency: latestDevelopment?.latencyLabel ?? (matchingCalendar.length ? "Calendar packet latency not instrumented" : "No provider latency available"),
       latestTimestamp: latestDevelopment?.timestamp ?? latestCalendar?.date ?? null,
       limitations,
-      provider: sourceNames.length ? sourceNames.join(", ") : matchingCalendar.length ? "Stored event calendar" : "Provider not configured",
-      tone: coverage === "active" ? (matchingDevelopments.some((item) => item.urgency === "high") ? "rose" : "emerald") : coverage === "calendar-only" ? "amber" : "rose",
+      operationalState,
+      provider,
+      sourceTransparency: sourceNames.length
+        ? `Source-linked rows: ${sourceNames.join(", ")}.`
+        : outageSignals.length
+          ? `Raw provider status: ${outageSignals[0]?.message ?? "unavailable"}.`
+          : matchingCalendar.length
+            ? "Calendar-only stored scanner/fundamental fields; no source URL is attached."
+            : "No source-linked provider rows found; TradeVeto does not infer missing events.",
+      tone: toneForProviderState(operationalState, matchingDevelopments.some((item) => item.urgency === "high")),
     };
   });
 }
@@ -952,6 +1001,12 @@ function providerLatencyLabel(item: MarketNewsItem): string {
     : "Provider timestamp unavailable";
 }
 
+function minutesSince(timestamp: string, now: Date): number | null {
+  const parsed = Date.parse(timestamp);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.max(0, Math.round((now.getTime() - parsed) / 60000));
+}
+
 function symbolRelevanceLabel(symbols: string[]): string {
   if (!symbols.length) return "No direct symbol link in current packet";
   if (symbols.length === 1) return `Direct symbol relevance: ${symbols[0]}`;
@@ -976,7 +1031,32 @@ function providerAuditLimitations(input: {
   domain: string;
   hasCalendar: boolean;
   hasSourceLinked: boolean;
+  operationalState: DailyProviderOperationalState;
 }): string[] {
+  if (input.operationalState === "outage") {
+    return [
+      `${input.domain} provider status reports an outage or fetch failure in the current packet.`,
+      "No source-linked event is fabricated while the provider is unavailable.",
+    ];
+  }
+  if (input.operationalState === "partial-outage") {
+    return [
+      `${input.domain} has source-linked rows, but at least one provider status also reported a failure.`,
+      "Only available source-linked rows are used; missing provider data remains disclosed.",
+    ];
+  }
+  if (input.operationalState === "stale") {
+    return [
+      `${input.domain} source-linked rows are stale for intraday research.`,
+      "Treat this domain as delayed until a fresher provider timestamp appears.",
+    ];
+  }
+  if (input.operationalState === "delayed") {
+    return [
+      `${input.domain} source-linked rows are delayed beyond the active intraday window.`,
+      "TradeVeto keeps the timestamp visible instead of implying real-time coverage.",
+    ];
+  }
   if (input.coverage === "active") {
     const limitations = ["Coverage depends on configured source-linked provider rows in the current scanner packet."];
     if (!input.hasCalendar) limitations.push(`${input.domain} calendar depth is limited or not configured.`);
@@ -992,6 +1072,88 @@ function providerAuditLimitations(input: {
     `No verified ${input.domain.toLowerCase()} provider rows found in the current packet.`,
     "TradeVeto shows a limited-data state instead of fabricating events.",
   ];
+}
+
+function providerOperationalState(input: {
+  coverage: DailyProviderStrategyAudit["coverage"];
+  freshnessMinutes: number | null;
+  hasOutageSignal: boolean;
+  hasStaleSignal: boolean;
+}): DailyProviderOperationalState {
+  if (input.coverage === "active" && input.hasOutageSignal) return "partial-outage";
+  if (input.coverage !== "active" && input.hasOutageSignal) return "outage";
+  if (input.coverage !== "active" && input.hasStaleSignal) return "stale";
+  if (input.coverage === "calendar-only") return "calendar-only";
+  if (input.coverage !== "active") return "limited";
+  if (input.freshnessMinutes !== null && input.freshnessMinutes > 72 * 60) return "stale";
+  if (input.freshnessMinutes !== null && input.freshnessMinutes > 24 * 60) return "delayed";
+  return "active";
+}
+
+function providerOperationalDisclosure(input: {
+  coverage: DailyProviderStrategyAudit["coverage"];
+  domain: string;
+  freshnessMinutes: number | null;
+  operationalState: DailyProviderOperationalState;
+  outageMessage: string | null;
+}): string {
+  if (input.operationalState === "active") return `${input.domain} has current source-linked provider rows in this scanner packet.`;
+  if (input.operationalState === "partial-outage") return `${input.domain} has usable source-linked rows, but raw provider status also reports ${input.outageMessage ?? "a provider failure"}.`;
+  if (input.operationalState === "outage") return `${input.domain} raw provider status reports ${input.outageMessage ?? "a provider outage"}; no missing events are inferred.`;
+  if (input.operationalState === "stale") return `${input.domain} provider evidence is stale${input.freshnessMinutes === null ? "" : ` at ${Math.round(input.freshnessMinutes / 60)}h old`}.`;
+  if (input.operationalState === "delayed") return `${input.domain} provider evidence is delayed${input.freshnessMinutes === null ? "" : ` at ${Math.round(input.freshnessMinutes / 60)}h old`}.`;
+  if (input.operationalState === "calendar-only") return `${input.domain} has stored calendar fields but no source-linked provider payload.`;
+  return `${input.domain} source-linked provider coverage is limited in the current packet.`;
+}
+
+function toneForProviderState(state: DailyProviderOperationalState, highImpact: boolean): DailyCommandTone {
+  if (state === "outage" || state === "partial-outage" || state === "stale") return "rose";
+  if (state === "delayed" || state === "calendar-only") return "amber";
+  if (state === "active") return highImpact ? "rose" : "emerald";
+  return "rose";
+}
+
+function providerOperationalSignals(rows: OpportunityViewModel[]): ProviderOperationalSignal[] {
+  const signals: ProviderOperationalSignal[] = [];
+  for (const row of rows) {
+    const provider = cleanText(row.raw.news_source ?? row.raw.event_source ?? row.raw.data_provider ?? row.raw.data_provider_primary, "Provider");
+    const symbol = row.symbol.toUpperCase();
+    for (const key of ["news_provider_error", "event_provider_error", "headline_provider_error", "provider_error", "data_provider_error"]) {
+      const message = cleanText(row.raw[key], "");
+      if (!message) continue;
+      signals.push({ domainText: key, message, provider, status: "outage", symbol });
+    }
+    for (const key of ["news_provider_status", "event_provider_status", "headline_provider_status", "provider_status", "verified_event_feed_status"]) {
+      const statusText = cleanText(row.raw[key], "");
+      if (!statusText) continue;
+      if (/outage|failed|failure|unavailable|timeout|blocked/i.test(statusText)) {
+        signals.push({ domainText: key, message: statusText, provider, status: "outage", symbol });
+      } else if (/stale|delayed|fallback/i.test(statusText)) {
+        signals.push({ domainText: key, message: statusText, provider, status: "stale", symbol });
+      }
+    }
+    if (row.dataFreshness.status === "stale") {
+      signals.push({ domainText: "scanner_data_freshness", message: row.dataFreshness.message, provider, status: "stale", symbol });
+    }
+    if (Boolean(row.raw.data_provider_fallback_used)) {
+      signals.push({ domainText: "market_data_provider_fallback", message: "Market data provider fallback was used.", provider, status: "fallback", symbol });
+    }
+  }
+  return signals;
+}
+
+function domainMatchesSignal(domain: DailyProviderCoverageDomain, label: string, signal: ProviderOperationalSignal): boolean {
+  const text = `${domain} ${label} ${signal.domainText} ${signal.message}`.toLowerCase();
+  if (/analyst/.test(text)) return domain === "analyst-actions";
+  if (/dividend/.test(text)) return domain === "dividends";
+  if (/earnings/.test(text)) return domain === "earnings";
+  if (/geopolitical|geo|sanction|war|conflict/.test(text)) return domain === "geopolitical-events";
+  if (/inflation|cpi|ppi/.test(text)) return domain === "inflation";
+  if (/rate|fed|yield/.test(text)) return domain === "rates";
+  if (/crypto|bitcoin|btc/.test(text)) return domain === "crypto-events";
+  if (/sector/.test(text)) return domain === "sector-events";
+  if (/company|event_provider|news_provider|headline_provider|verified_event_feed/.test(text)) return domain === "company-events" || domain === "macro" || domain === "economic-calendar";
+  return false;
 }
 
 function developmentPriorityScore(input: {

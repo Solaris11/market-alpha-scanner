@@ -15,6 +15,8 @@ describe("verified event intelligence", () => {
       event_macro_pressure_adjustment: -1.6,
       event_risk_score: 73,
       event_shock_pressure_score: 68,
+      verified_event_feed_disclosure: "Verified event providers returned source-linked items in the current packet.",
+      verified_event_feed_status: "active",
       symbol: "DDOG",
       verified_event_pressure_score: 70,
       verified_event_recent_events: [
@@ -37,6 +39,8 @@ describe("verified event intelligence", () => {
     assert.equal(context.available, true);
     assert.equal(context.compactLabel, "Event Risk Elevated");
     assert.equal(eventTone(context), "risk");
+    assert.equal(context.feedStatus, "active");
+    assert.match(context.feedDisclosure, /source-linked/);
     assert.equal(context.recentEvents[0]?.source, "Bureau of Labor Statistics");
     assert.match(eventReasonLabel("EVENT_INFLATION_PRESSURE"), /inflation/i);
     assert.doesNotMatch(context.summary.toLowerCase(), /guarantee|buy now|sell now/);

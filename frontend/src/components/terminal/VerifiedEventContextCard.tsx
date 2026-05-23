@@ -24,6 +24,9 @@ export function VerifiedEventContextCard({ row }: { row: RankingRow }) {
         <Metric label="Source Strength" tone={context.eventConfidence >= 82 ? "good" : context.eventConfidence >= 62 ? "mixed" : "risk"} value={`${Math.round(context.eventConfidence)}/100`} />
         <Metric label="Event Freshness" tone={context.eventDecay >= 0.62 ? "good" : context.eventDecay >= 0.32 ? "mixed" : "risk"} value={`${Math.round(context.eventDecay * 100)}%`} />
       </div>
+      <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-xs leading-5 text-slate-400">
+        Feed status: <span className="font-bold text-slate-200">{humanizeLabel(context.feedStatus)}</span>. {humanizeInsightText(context.feedDisclosure)}
+      </div>
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="grid gap-3 md:grid-cols-2">
