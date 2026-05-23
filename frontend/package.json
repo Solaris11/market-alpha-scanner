@@ -17,7 +17,7 @@
     "email:test": "node scripts/send-test-email.mjs",
     "test:mobile-ux": "node scripts/mobile-ux-smoke.mjs",
     "test:browserstack": "BROWSERSTACK_CONFIG_FILE=../browserstack.yml npx browserstack-node-sdk playwright test --config=playwright.phase21.config.ts",
-    "test:browserstack:mobile": "BROWSERSTACK_CONFIG_FILE=../browserstack.yml TRADEVETO_MOBILE_UX_BASE_URL=https://tradeveto.com npx browserstack-node-sdk playwright test --config=playwright.phase21.config.ts --project=phase21-mobile-real-device",
+    "test:browserstack:mobile": "BROWSERSTACK_CONFIG_FILE=../browserstack.yml TRADEVETO_MOBILE_UX_BASE_URL=https://tradeveto.com npx browserstack-node-sdk playwright test --config=playwright.phase21.config.ts",
     "test:phase21:mobile-real-device": "npm run test:browserstack:mobile",
     "probe:phase21:authenticated": "TRADEVETO_SCALE_BASE_URL=https://tradeveto.com TRADEVETO_SCALE_ITERATIONS=100 TRADEVETO_SCALE_CONCURRENCY=25 TRADEVETO_SCALE_TIMEOUT_MS=8000 node scripts/scale-readiness-probe.mjs",
     "test": "node scripts/run-tests.mjs",
