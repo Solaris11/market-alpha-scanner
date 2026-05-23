@@ -3,7 +3,7 @@ import "server-only";
 import type { QueryResultRow } from "pg";
 import { paperAccessScope, safePaperErrorCode } from "@/lib/paper-safety";
 import { getCurrentUser } from "@/lib/server/auth";
-import { getDbPool } from "@/lib/server/db";
+import { getDbPool, type DbExecutor } from "@/lib/server/db";
 
 export type PaperAccountSummary = {
   id: string;
@@ -110,6 +110,16 @@ const ZERO_ANALYTICS_SUMMARY: PaperAnalyticsSummary = {
   total_pnl: 0,
   max_drawdown: 0,
 };
+
+type PaperDataCacheEntry = {
+  expiresAt: number;
+  inflight?: Promise<PaperData>;
+  value?: PaperData;
+};
+
+const PAPER_DATA_CACHE_TTL_MS = 3_000;
+const PAPER_DATA_CACHE_MAX_ENTRIES = 200;
+const paperDataCache = new Map<string, PaperDataCacheEntry>();
 
 export function emptyPaperData(configured = true, error?: string): PaperData {
   return {
@@ -266,11 +276,19 @@ export async function getPaperData(scope?: PaperDataScope): Promise<PaperData> {
 
   const userId = await resolvePaperUserId(scope);
   const access = paperAccessScope(userId);
-  if (!access.canReadServerData) {
+  if (!userId || !access.canReadServerData) {
     return emptyPaperData(true);
   }
 
   try {
+    return await readPaperDataCache(userId, () => readPaperDataFromDb(clientPool, userId));
+  } catch (error) {
+    console.warn("[paper] failed to read paper data", error instanceof Error ? error.message : error);
+    return emptyPaperData(true, safePaperErrorCode("account"));
+  }
+}
+
+async function readPaperDataFromDb(clientPool: DbExecutor, userId: string): Promise<PaperData> {
     const [accountResult, positionsResult, eventsResult] = await Promise.all([
       clientPool.query(`
         WITH scoped_account AS (
@@ -286,6 +304,7 @@ export async function getPaperData(scope?: PaperDataScope): Promise<PaperData> {
             count(*) FILTER (WHERE status = 'OPEN') AS open_positions_count,
             COALESCE(sum(unrealized_pnl) FILTER (WHERE status = 'OPEN'), 0) AS unrealized_pnl
           FROM paper_positions
+          WHERE account_id = (SELECT id FROM scoped_account)
           GROUP BY account_id
         )
         SELECT
@@ -371,9 +390,32 @@ export async function getPaperData(scope?: PaperDataScope): Promise<PaperData> {
       positions: positionsResult.rows.map(positionFromRow),
       events: eventsResult.rows.map(eventFromRow),
     };
-  } catch (error) {
-    console.warn("[paper] failed to read paper data", error instanceof Error ? error.message : error);
-    return emptyPaperData(true, safePaperErrorCode("account"));
+}
+
+async function readPaperDataCache(userId: string, loader: () => Promise<PaperData>): Promise<PaperData> {
+  const now = Date.now();
+  const current = paperDataCache.get(userId);
+  if (current?.value && current.expiresAt > now) return current.value;
+  if (current?.inflight) return current.inflight;
+  const inflight = loader()
+    .then((value) => {
+      paperDataCache.set(userId, { expiresAt: Date.now() + PAPER_DATA_CACHE_TTL_MS, value });
+      trimPaperDataCache();
+      return value;
+    })
+    .catch((error: unknown) => {
+      paperDataCache.delete(userId);
+      throw error;
+    });
+  paperDataCache.set(userId, { expiresAt: now, inflight, value: current?.value });
+  return inflight;
+}
+
+function trimPaperDataCache(): void {
+  while (paperDataCache.size > PAPER_DATA_CACHE_MAX_ENTRIES) {
+    const oldest = paperDataCache.keys().next().value;
+    if (!oldest) return;
+    paperDataCache.delete(oldest);
   }
 }
 

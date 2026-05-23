@@ -32,6 +32,26 @@ export type DeveloperPortfolioPositionInput = {
   symbol?: unknown;
 };
 
+type HotCacheEntry<T> = {
+  expiresAt: number;
+  inflight?: Promise<T>;
+  staleUntil: number;
+  value?: T;
+};
+
+type DeveloperMacroFeed = Awaited<ReturnType<typeof loadDeveloperMacroFeedUncached>>;
+type DeveloperPortfolioScenario = Awaited<ReturnType<typeof runDeveloperPortfolioScenarioUncached>>;
+type DeveloperReplay = Awaited<ReturnType<typeof loadDeveloperReplayUncached>>;
+
+const DEVELOPER_HOT_CACHE_TTL_MS = 60_000;
+const DEVELOPER_HOT_CACHE_STALE_MS = 900_000;
+const DEVELOPER_HOT_CACHE_MAX_ENTRIES = 80;
+
+const opportunityRowsCache = new Map<string, HotCacheEntry<OpportunityViewModel[]>>();
+const developerMacroCache = new Map<string, HotCacheEntry<DeveloperMacroFeed>>();
+const developerPortfolioScenarioCache = new Map<string, HotCacheEntry<DeveloperPortfolioScenario>>();
+const developerReplayCache = new Map<string, HotCacheEntry<DeveloperReplay>>();
+
 export async function loadDeveloperOpportunityFeed(limit = 25): Promise<{ generatedAt: string; opportunities: DeveloperOpportunityFeedItem[] }> {
   const rows = await loadOpportunityRows();
   const opportunities = rows
@@ -42,7 +62,11 @@ export async function loadDeveloperOpportunityFeed(limit = 25): Promise<{ genera
   return { generatedAt: new Date().toISOString(), opportunities };
 }
 
-export async function loadDeveloperMacroFeed() {
+export async function loadDeveloperMacroFeed(): Promise<DeveloperMacroFeed> {
+  return readHotCache(developerMacroCache, "macro", () => loadDeveloperMacroFeedUncached());
+}
+
+async function loadDeveloperMacroFeedUncached() {
   const adapter = new ScannerDataAdapter();
   const regime = await adapter.getMarketRegime();
   return {
@@ -78,12 +102,21 @@ export async function loadDeveloperShockFeed(limit = 25) {
   };
 }
 
-export async function loadDeveloperReplay(input: { symbol?: string | null; timestamp?: string | null }) {
+export async function loadDeveloperReplay(input: { symbol?: string | null; timestamp?: string | null }): Promise<DeveloperReplay> {
+  const key = `${input.symbol ?? ""}|${input.timestamp ?? ""}`;
+  return readHotCache(developerReplayCache, key, () => loadDeveloperReplayUncached(input));
+}
+
+async function loadDeveloperReplayUncached(input: { symbol?: string | null; timestamp?: string | null }) {
   const replay = await getDecisionReplayReport({ symbol: input.symbol ?? null, timestamp: input.timestamp ?? null });
   return replay;
 }
 
-export async function runDeveloperPortfolioScenario(input: { accountValue?: unknown; positions: unknown }) {
+export async function runDeveloperPortfolioScenario(input: { accountValue?: unknown; positions: unknown }): Promise<DeveloperPortfolioScenario> {
+  return readHotCache(developerPortfolioScenarioCache, scenarioCacheKey(input), () => runDeveloperPortfolioScenarioUncached(input));
+}
+
+async function runDeveloperPortfolioScenarioUncached(input: { accountValue?: unknown; positions: unknown }) {
   const rows = await loadOpportunityRows();
   const accountValue = positiveNumber(input.accountValue) ?? 100_000;
   const positions = normalizePortfolioPositions(input.positions, rows, accountValue);
@@ -102,6 +135,10 @@ export async function runDeveloperPortfolioScenario(input: { accountValue?: unkn
 }
 
 async function loadOpportunityRows(): Promise<OpportunityViewModel[]> {
+  return readHotCache(opportunityRowsCache, "overview", loadOpportunityRowsUncached);
+}
+
+async function loadOpportunityRowsUncached(): Promise<OpportunityViewModel[]> {
   const adapter = new ScannerDataAdapter();
   const rows = await adapter.getOverviewSignals();
   const symbols = rows.map((row) => row.symbol);
@@ -189,4 +226,66 @@ function cleanSymbol(value: unknown): string | null {
 function positiveNumber(value: unknown): number | null {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+}
+
+async function readHotCache<T>(cache: Map<string, HotCacheEntry<T>>, key: string, loader: () => Promise<T>): Promise<T> {
+  const now = Date.now();
+  const current = cache.get(key);
+  if (current?.value !== undefined && current.expiresAt > now) return current.value;
+  if (current?.value !== undefined && current.staleUntil > now) {
+    if (!current.inflight) {
+      current.inflight = refreshHotCache(cache, key, loader);
+    }
+    return current.value;
+  }
+  if (current?.inflight) return current.inflight;
+  const inflight = refreshHotCache(cache, key, loader);
+  cache.set(key, { expiresAt: now, inflight, staleUntil: now + DEVELOPER_HOT_CACHE_STALE_MS, value: current?.value });
+  return inflight;
+}
+
+async function refreshHotCache<T>(cache: Map<string, HotCacheEntry<T>>, key: string, loader: () => Promise<T>): Promise<T> {
+  try {
+    const value = await loader();
+    const now = Date.now();
+    cache.set(key, {
+      expiresAt: now + DEVELOPER_HOT_CACHE_TTL_MS,
+      staleUntil: now + DEVELOPER_HOT_CACHE_STALE_MS,
+      value,
+    });
+    trimHotCache(cache);
+    return value;
+  } catch (error) {
+    const current = cache.get(key);
+    if (current?.value !== undefined && current.staleUntil > Date.now()) {
+      current.inflight = undefined;
+      return current.value;
+    }
+    cache.delete(key);
+    throw error;
+  }
+}
+
+function trimHotCache<T>(cache: Map<string, HotCacheEntry<T>>): void {
+  while (cache.size > DEVELOPER_HOT_CACHE_MAX_ENTRIES) {
+    const oldest = cache.keys().next().value;
+    if (!oldest) return;
+    cache.delete(oldest);
+  }
+}
+
+function scenarioCacheKey(input: { accountValue?: unknown; positions: unknown }): string {
+  return boundedCacheKey({
+    accountValue: input.accountValue,
+    positions: input.positions,
+  });
+}
+
+function boundedCacheKey(value: unknown): string {
+  try {
+    const serialized = JSON.stringify(value);
+    return typeof serialized === "string" ? serialized.slice(0, 12_000) : "null";
+  } catch {
+    return "unserializable";
+  }
 }
