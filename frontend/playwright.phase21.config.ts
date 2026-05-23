@@ -29,7 +29,7 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
     navigationTimeout: 45_000,
     screenshot: "only-on-failure",
-    trace: "retain-on-failure",
+    trace: "off",
     video: "retain-on-failure",
   },
   workers: 1,

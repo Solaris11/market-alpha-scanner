@@ -1291,11 +1291,9 @@ html[data-tradeveto-presentation="true"] body {
 @keyframes tradeveto-page-enter {
   from {
     opacity: 0.92;
-    transform: translateY(8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
