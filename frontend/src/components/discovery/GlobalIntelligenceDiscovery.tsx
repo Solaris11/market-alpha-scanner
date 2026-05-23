@@ -204,7 +204,7 @@ export function GlobalIntelligenceDiscovery() {
             initial={reduceMotion ? false : { opacity: 0, scale: 0.985, y: 20 }}
             transition={{ duration: 0.34, ease: [0.22, 1, 0.36, 1] }}
           >
-            <header className="tv-governed-overlay-header sticky top-0 z-10 border-b px-4 pb-3 pt-[calc(0.85rem+env(safe-area-inset-top))] backdrop-blur-xl sm:px-6 sm:pt-3">
+            <header className="tv-governed-overlay-header sticky top-0 z-10 border-b px-4 pb-3 pt-[calc(0.85rem+var(--tv-safe-area-top))] backdrop-blur-xl sm:px-6 sm:pt-3">
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-[10px] font-black uppercase tracking-[0.26em] text-cyan-300">Global command search</div>

@@ -257,7 +257,7 @@ export function StableDetailOverlay({
   };
   const mobileChromeClass = mobileFullscreen
     ? "rounded-none border-x-0 border-b-0"
-    : "mx-2 mb-[max(0.5rem,env(safe-area-inset-bottom))] max-w-[calc(100vw-1rem)] rounded-[1.6rem] sm:mx-0 sm:mb-0 sm:max-w-none";
+    : "mx-2 mb-[var(--tv-overlay-bottom-gap)] max-w-[calc(100vw-1rem)] rounded-[1.6rem] sm:mx-0 sm:mb-0 sm:max-w-none";
   const overlayRootStyle: CSSProperties | undefined = fixedOverlayOffsetY > 0 ? { transform: `translate3d(0, ${fixedOverlayOffsetY}px, 0)` } : undefined;
 
   return createPortal(
@@ -293,7 +293,7 @@ export function StableDetailOverlay({
         onDragEnd={handleDragEnd}
         transition={reduceMotion ? undefined : surfaceTransition}
       >
-        <header className="tv-governed-overlay-header sticky top-0 z-10 border-b px-4 pb-4 pt-[calc(0.85rem+env(safe-area-inset-top))] backdrop-blur-xl sm:px-6 sm:pt-4">
+        <header className="tv-governed-overlay-header sticky top-0 z-10 border-b px-4 pb-4 pt-[calc(0.85rem+var(--tv-safe-area-top))] backdrop-blur-xl sm:px-6 sm:pt-4">
           {!mobileFullscreen ? <div className="mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/20 sm:hidden" /> : null}
           <div className="flex items-start justify-between gap-4">
             <div className="min-w-0">
@@ -311,7 +311,7 @@ export function StableDetailOverlay({
             </button>
           </div>
         </header>
-        <div className="tv-native-scroll min-h-0 overflow-y-auto overscroll-contain p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">{children}</div>
+        <div className="tv-native-scroll min-h-0 overflow-y-auto overscroll-contain p-4 pb-[calc(1rem+var(--tv-safe-area-bottom)+var(--tv-keyboard-offset,0px))] sm:p-6">{children}</div>
       </motion.section>
     </div>,
     document.body,

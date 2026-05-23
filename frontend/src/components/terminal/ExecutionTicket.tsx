@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useExecutionTicket } from "@/hooks/useExecutionTicket";
+import { lockMobileBodyScroll } from "@/lib/client/mobile-scroll-lock";
+import { installMobileViewportCssVars } from "@/lib/client/mobile-viewport";
 import type { TradePlanEngine } from "@/hooks/useTradePlanEngine";
 import type { OrderSide, OrderType, TimeInForce } from "@/lib/trading/order-types";
 import { formatMoney } from "@/lib/ui/formatters";
@@ -152,14 +155,47 @@ function LockIcon() {
 }
 
 function ConfirmModal({ payload, onCancel, onConfirm }: { payload: unknown; onCancel: () => void; onConfirm: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-black/70 p-4 backdrop-blur-sm">
-      <div className="max-w-lg rounded-2xl border border-white/10 bg-slate-950 p-5 shadow-2xl">
-        <div className="text-lg font-semibold text-slate-50">Confirm Paper Simulation</div>
-        <p className="mt-2 text-sm text-amber-100">Mock execution only. No real order will be placed.</p>
-        <pre className="mt-4 max-h-64 overflow-auto rounded-xl bg-black/40 p-3 text-xs text-slate-300">{JSON.stringify(payload, null, 2)}</pre>
-        <div className="mt-4 flex justify-end gap-2"><button className="rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300" onClick={onCancel}>Cancel</button><button className="rounded-xl bg-cyan-300 px-4 py-2 text-sm font-bold text-slate-950" onClick={onConfirm}>Submit Mock</button></div>
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return undefined;
+    const cleanupViewport = installMobileViewportCssVars();
+    const unlockBodyScroll = lockMobileBodyScroll(window.scrollY);
+    return () => {
+      unlockBodyScroll();
+      cleanupViewport();
+    };
+  }, [mounted]);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <div
+      aria-label="Confirm paper simulation"
+      aria-modal="true"
+      className="tv-critical-overlay-root fixed inset-0 flex items-end justify-center bg-black/70 backdrop-blur-sm md:items-center"
+      data-mobile-gesture-ignore="true"
+      data-stable-overlay="true"
+      role="dialog"
+    >
+      <div className="tv-critical-overlay-panel w-full max-w-lg rounded-2xl border border-white/10 bg-slate-950 shadow-2xl">
+        <div className="tv-critical-overlay-scroll p-5">
+          <div className="text-lg font-semibold text-slate-50">Confirm Paper Simulation</div>
+          <p className="mt-2 text-sm text-amber-100">Mock execution only. No real order will be placed.</p>
+          <pre className="mt-4 max-h-64 overflow-auto rounded-xl bg-black/40 p-3 text-xs text-slate-300">{JSON.stringify(payload, null, 2)}</pre>
+        </div>
+        <div className="tv-critical-overlay-footer border-t px-5 py-3">
+          <div className="flex flex-col justify-end gap-2 sm:flex-row">
+            <button className="tv-governed-action min-h-11 rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300" onClick={onCancel} type="button">Cancel</button>
+            <button className="tv-governed-action min-h-11 rounded-xl bg-cyan-300 px-4 py-2 text-sm font-bold text-slate-950" onClick={onConfirm} type="button">Submit Mock</button>
+          </div>
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

@@ -49,6 +49,20 @@
   --tv-keyboard-offset: 0px;
   --tv-visual-viewport-height: 100dvh;
   --tv-visual-viewport-width: 100vw;
+  --tv-safe-area-top: env(safe-area-inset-top, 0px);
+  --tv-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --tv-safe-area-left: env(safe-area-inset-left, 0px);
+  --tv-safe-area-right: env(safe-area-inset-right, 0px);
+  --tv-mobile-nav-height: 4.75rem;
+  --tv-mobile-nav-gap: 0.75rem;
+  --tv-mobile-nav-clearance: calc(var(--tv-mobile-nav-height) + var(--tv-mobile-nav-gap) + var(--tv-safe-area-bottom));
+  --tv-overlay-edge-gap: 0.75rem;
+  --tv-overlay-top-gap: max(var(--tv-overlay-edge-gap), var(--tv-safe-area-top));
+  --tv-overlay-bottom-gap: max(var(--tv-overlay-edge-gap), calc(var(--tv-safe-area-bottom) + var(--tv-keyboard-offset, 0px)));
+  --tv-overlay-inline-gap: max(var(--tv-overlay-edge-gap), var(--tv-safe-area-left), var(--tv-safe-area-right));
+  --tv-mobile-overlay-height: min(var(--tv-visual-viewport-height, 100dvh), 100svh);
+  --tv-mobile-overlay-available-height: max(12rem, calc(var(--tv-mobile-overlay-height) - var(--tv-overlay-top-gap) - var(--tv-overlay-bottom-gap)));
+  --tv-mobile-nav-overlay-available-height: max(12rem, calc(var(--tv-mobile-overlay-height) - var(--tv-overlay-top-gap) - var(--tv-mobile-nav-clearance) - var(--tv-keyboard-offset, 0px) - 0.75rem));
   --tv-status-constructive: #34d399;
   --tv-status-caution: #facc15;
   --tv-status-elevated: #fb923c;
@@ -446,11 +460,46 @@ a {
 }
 
 .tv-overlay-root {
-  height: min(var(--tv-visual-viewport-height, 100dvh), 100svh);
-  max-height: min(var(--tv-visual-viewport-height, 100dvh), 100svh);
+  height: var(--tv-mobile-overlay-height);
+  max-height: var(--tv-mobile-overlay-height);
   max-width: 100svw;
   width: min(var(--tv-visual-viewport-width, 100vw), 100svw);
   z-index: var(--tv-z-overlay);
+}
+
+.tv-critical-overlay-root {
+  height: var(--tv-mobile-overlay-height);
+  max-height: var(--tv-mobile-overlay-height);
+  max-width: 100svw;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--tv-overlay-top-gap) var(--tv-overlay-inline-gap) var(--tv-overlay-bottom-gap);
+  width: min(var(--tv-visual-viewport-width, 100vw), 100svw);
+  z-index: var(--tv-z-critical-overlay);
+}
+
+.tv-critical-overlay-panel {
+  display: flex;
+  flex-direction: column;
+  max-height: var(--tv-mobile-overlay-available-height);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.tv-critical-overlay-scroll {
+  -webkit-overflow-scrolling: touch;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.tv-critical-overlay-footer {
+  background: color-mix(in srgb, var(--tv-glass-strong) 94%, black);
+  border-color: var(--tv-border-subtle);
+  flex: 0 0 auto;
+  padding-bottom: max(0.15rem, calc(var(--tv-safe-area-bottom) + var(--tv-keyboard-offset, 0px) - 0.35rem));
 }
 
 .tv-governed-backdrop {
@@ -477,7 +526,7 @@ a {
 .tv-governed-bottom-sheet {
   border-top-left-radius: var(--tv-radius-shell);
   border-top-right-radius: var(--tv-radius-shell);
-  max-height: min(calc(var(--tv-visual-viewport-height, 100dvh) - env(safe-area-inset-top) - 0.75rem), 760px);
+  max-height: min(var(--tv-mobile-overlay-available-height), 760px);
 }
 
 .tv-governed-discovery-surface {
@@ -712,22 +761,56 @@ a {
 }
 
 .tv-mobile-safe-bottom {
-  padding-bottom: calc(0.9rem + env(safe-area-inset-bottom) + var(--tv-keyboard-offset, 0px));
+  padding-bottom: calc(0.9rem + var(--tv-safe-area-bottom) + var(--tv-keyboard-offset, 0px));
+}
+
+.tv-mobile-nav-safe-bottom {
+  padding-bottom: calc(var(--tv-mobile-nav-clearance) + var(--tv-keyboard-offset, 0px));
+}
+
+.tv-notification-backdrop {
+  background: rgba(2, 6, 23, 0.62);
+  backdrop-filter: blur(10px);
+  z-index: 10540;
+}
+
+.tv-notification-menu {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 10550;
+}
+
+.tv-notification-scroll {
+  -webkit-overflow-scrolling: touch;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-bottom: calc(0.65rem + var(--tv-safe-area-bottom) + var(--tv-keyboard-offset, 0px));
 }
 
 @media (max-width: 639px) {
+  .tv-critical-overlay-root {
+    padding-bottom: calc(var(--tv-mobile-nav-clearance) + var(--tv-keyboard-offset, 0px) + 0.75rem);
+  }
+
+  .tv-critical-overlay-panel {
+    max-height: var(--tv-mobile-nav-overlay-available-height);
+  }
+
   .tv-global-discovery-surface {
-    height: var(--tv-visual-viewport-height, 100dvh);
-    max-height: var(--tv-visual-viewport-height, 100dvh);
+    height: var(--tv-mobile-overlay-height);
+    max-height: var(--tv-mobile-overlay-height);
   }
 
   .tv-stable-overlay-surface {
-    max-height: min(calc(var(--tv-visual-viewport-height, 100dvh) - max(0.75rem, env(safe-area-inset-top)) - max(0.75rem, env(safe-area-inset-bottom))), calc(100svh - max(0.75rem, env(safe-area-inset-top)) - max(0.75rem, env(safe-area-inset-bottom))), 760px);
+    max-height: min(var(--tv-mobile-overlay-available-height), 760px);
   }
 
   .tv-stable-overlay-surface[data-mobile-fullscreen="true"] {
-    height: min(var(--tv-visual-viewport-height, 100dvh), 100svh, 100%);
-    max-height: min(var(--tv-visual-viewport-height, 100dvh), 100svh, 100%);
+    height: min(var(--tv-mobile-overlay-height), 100%);
+    max-height: min(var(--tv-mobile-overlay-height), 100%);
     max-width: min(var(--tv-visual-viewport-width, 100vw), 100svw);
     width: min(var(--tv-visual-viewport-width, 100vw), 100svw);
   }

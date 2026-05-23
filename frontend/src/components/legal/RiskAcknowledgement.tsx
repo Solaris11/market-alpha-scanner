@@ -3,8 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
+import { lockMobileBodyScroll } from "@/lib/client/mobile-scroll-lock";
+import { installMobileViewportCssVars } from "@/lib/client/mobile-viewport";
 
 const STORAGE_KEY = "ma_risk_acknowledged_v1";
 const RISK_ACK_READY_EVENT = "ma:risk-acknowledgement-ready";
@@ -36,8 +39,13 @@ export function RiskAcknowledgement() {
   const [checks, setChecks] = useState({ privacy: false, risk: false, terms: false });
   const [gateChecked, setGateChecked] = useState(false);
   const [legalStatus, setLegalStatus] = useState<LegalStatus>(EMPTY_STATUS);
+  const [mounted, setMounted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (loading || authenticated) return;
@@ -88,63 +96,87 @@ export function RiskAcknowledgement() {
     window.dispatchEvent(new Event(RISK_ACK_READY_EVENT));
   }, [gateChecked, visible]);
 
-  if (!visible) return null;
+  useEffect(() => {
+    if (!visible) return undefined;
+    const cleanupViewport = installMobileViewportCssVars();
+    const unlockBodyScroll = lockMobileBodyScroll(window.scrollY);
+    return () => {
+      unlockBodyScroll();
+      cleanupViewport();
+    };
+  }, [visible]);
+
+  if (!mounted || !visible) return null;
   const accountMode = authenticated && Boolean(user);
   const canContinue = accountMode ? checks.terms && checks.privacy && checks.risk : anonymousChecked;
 
-  return (
-    <div className="fixed inset-0 z-[10000] flex items-end justify-center overflow-y-auto bg-black/70 p-3 backdrop-blur-sm sm:p-4 md:items-center">
-      <div className="w-full min-w-0 max-w-xl rounded-2xl border border-amber-300/30 bg-slate-950 p-4 shadow-2xl shadow-black/60 sm:p-5">
-        <div className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-200">Risk Acknowledgement</div>
-        <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Research software only</h2>
-        <p className="mt-3 text-sm leading-6 text-slate-300">
-          TradeVeto does not provide financial advice, broker execution, or guaranteed outcomes. You can lose money. Use it for research and paper simulation, and make your own decisions.
-        </p>
-        {accountMode ? (
-          <div className="mt-4 space-y-2">
-            <LegalCheckbox checked={checks.terms} label="I accept the Terms of Service" onChange={(value) => setChecks((current) => ({ ...current, terms: value }))} />
-            <LegalCheckbox checked={checks.privacy} label="I accept the Privacy Policy" onChange={(value) => setChecks((current) => ({ ...current, privacy: value }))} />
-            <LegalCheckbox checked={checks.risk} label="I understand this is not financial advice and I can lose money" onChange={(value) => setChecks((current) => ({ ...current, risk: value }))} />
+  return createPortal(
+    <div
+      aria-label="Risk acknowledgement"
+      aria-modal="true"
+      className="tv-critical-overlay-root fixed inset-0 flex items-end justify-center bg-black/70 backdrop-blur-sm md:items-center"
+      data-mobile-gesture-ignore="true"
+      data-stable-overlay="true"
+      role="dialog"
+    >
+      <div className="tv-critical-overlay-panel w-full min-w-0 max-w-xl rounded-2xl border border-amber-300/30 bg-slate-950 shadow-2xl shadow-black/60">
+        <div className="tv-critical-overlay-scroll p-4 sm:p-5">
+          <div className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-200">Risk Acknowledgement</div>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50">Research software only</h2>
+          <p className="mt-3 text-sm leading-6 text-slate-300">
+            TradeVeto does not provide financial advice, broker execution, or guaranteed outcomes. You can lose money. Use it for research and paper simulation, and make your own decisions.
+          </p>
+          {accountMode ? (
+            <div className="mt-4 space-y-2">
+              <LegalCheckbox checked={checks.terms} label="I accept the Terms of Service" onChange={(value) => setChecks((current) => ({ ...current, terms: value }))} />
+              <LegalCheckbox checked={checks.privacy} label="I accept the Privacy Policy" onChange={(value) => setChecks((current) => ({ ...current, privacy: value }))} />
+              <LegalCheckbox checked={checks.risk} label="I understand this is not financial advice and I can lose money" onChange={(value) => setChecks((current) => ({ ...current, risk: value }))} />
+            </div>
+          ) : (
+            <div className="mt-4">
+              <LegalCheckbox checked={anonymousChecked} label="I understand this is not financial advice" onChange={setAnonymousChecked} />
+            </div>
+          )}
+          {error ? <div className="mt-3 rounded-xl border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">{error}</div> : null}
+        </div>
+        <div className="tv-critical-overlay-footer border-t px-4 py-3 sm:px-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-wrap gap-3 text-xs text-slate-400">
+              <Link className="hover:text-cyan-200" href="/terms">Terms</Link>
+              <Link className="hover:text-cyan-200" href="/privacy">Privacy</Link>
+              <Link className="hover:text-cyan-200" href="/risk-disclosure">Risk Disclosure</Link>
+            </div>
+            <button
+              className="tv-governed-action min-h-11 w-full shrink-0 rounded-full bg-amber-300 px-4 py-2 text-sm font-bold text-slate-950 transition disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+              disabled={!canContinue || busy}
+              onClick={async () => {
+                if (!accountMode) {
+                  window.localStorage.setItem(STORAGE_KEY, "true");
+                  setVisible(false);
+                  return;
+                }
+                setBusy(true);
+                setError("");
+                try {
+                  await Promise.all((["terms", "privacy", "risk"] as const).map((type) => (documentAccepted(legalStatus, type) ? Promise.resolve() : acceptDocument(type))));
+                  await refresh();
+                  router.refresh();
+                  setVisible(false);
+                } catch {
+                  setError("Unable to save legal acceptance. Please try again.");
+                } finally {
+                  setBusy(false);
+                }
+              }}
+              type="button"
+            >
+              {busy ? "Saving..." : "Continue"}
+            </button>
           </div>
-        ) : (
-          <LegalCheckbox checked={anonymousChecked} label="I understand this is not financial advice" onChange={setAnonymousChecked} />
-        )}
-        {error ? <div className="mt-3 rounded-xl border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">{error}</div> : null}
-        <div className="mt-4 flex flex-wrap items-center justify-start gap-3 sm:justify-between">
-          <div className="flex flex-wrap gap-3 text-xs text-slate-400">
-            <Link className="hover:text-cyan-200" href="/terms">Terms</Link>
-            <Link className="hover:text-cyan-200" href="/privacy">Privacy</Link>
-            <Link className="hover:text-cyan-200" href="/risk-disclosure">Risk Disclosure</Link>
-          </div>
-          <button
-            className="shrink-0 rounded-full bg-amber-300 px-4 py-2 text-sm font-bold text-slate-950 transition disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={!canContinue || busy}
-            onClick={async () => {
-              if (!accountMode) {
-                window.localStorage.setItem(STORAGE_KEY, "true");
-                setVisible(false);
-                return;
-              }
-              setBusy(true);
-              setError("");
-              try {
-                await Promise.all((["terms", "privacy", "risk"] as const).map((type) => (documentAccepted(legalStatus, type) ? Promise.resolve() : acceptDocument(type))));
-                await refresh();
-                router.refresh();
-                setVisible(false);
-              } catch {
-                setError("Unable to save legal acceptance. Please try again.");
-              } finally {
-                setBusy(false);
-              }
-            }}
-            type="button"
-          >
-            {busy ? "Saving..." : "Continue"}
-          </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

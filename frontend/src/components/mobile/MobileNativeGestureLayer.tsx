@@ -86,7 +86,7 @@ export function MobileNativeGestureLayer() {
   if (!hint) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-x-4 bottom-[calc(5.9rem+env(safe-area-inset-bottom))] z-[8490] flex justify-center xl:hidden">
+    <div className="pointer-events-none fixed inset-x-4 bottom-[calc(var(--tv-mobile-nav-clearance)+0.4rem)] z-[8490] flex justify-center xl:hidden">
       <div className="rounded-full border border-cyan-300/25 bg-slate-950/88 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-100 shadow-2xl shadow-black/40 backdrop-blur-xl">
         {hint}
       </div>

@@ -4,6 +4,7 @@ import { BrainCircuit, Clock3, KeyRound, ShieldCheck, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { installMobileViewportCssVars } from "@/lib/client/mobile-viewport";
 import { ForgotPasswordForm } from "./ForgotPasswordForm";
 import { LoginForm } from "./LoginForm";
 import { RegisterForm } from "./RegisterForm";
@@ -48,11 +49,13 @@ export function AuthModal({
   useEffect(() => {
     const previousBodyOverflow = document.body.style.overflow;
     const previousHtmlOverflow = document.documentElement.style.overflow;
+    const cleanupViewport = installMobileViewportCssVars();
     document.body.style.overflow = "hidden";
     document.documentElement.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = previousBodyOverflow;
       document.documentElement.style.overflow = previousHtmlOverflow;
+      cleanupViewport();
     };
   }, []);
 
@@ -80,7 +83,9 @@ export function AuthModal({
     <AnimatePresence>
       <motion.div
         animate={{ opacity: 1 }}
-        className="fixed inset-0 z-[10000] flex items-center justify-center overflow-y-auto bg-black/74 p-3 backdrop-blur-xl sm:p-6"
+        className="tv-critical-overlay-root fixed inset-0 flex items-end justify-center bg-black/74 backdrop-blur-xl md:items-center"
+        data-mobile-gesture-ignore="true"
+        data-stable-overlay="true"
         exit={{ opacity: 0 }}
         initial={{ opacity: 0 }}
         onMouseDown={(event) => {
@@ -91,7 +96,7 @@ export function AuthModal({
       >
         <motion.div
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          className="relative z-[10001] grid max-h-[calc(100vh-24px)] w-full min-w-0 overflow-hidden rounded-[1.75rem] border border-cyan-300/16 bg-[radial-gradient(circle_at_14%_0%,rgba(34,211,238,0.18),transparent_30rem),radial-gradient(circle_at_90%_8%,rgba(167,139,250,0.13),transparent_26rem),linear-gradient(135deg,rgba(2,6,23,0.98),rgba(15,23,42,0.94))] shadow-2xl shadow-black/55 ring-1 ring-white/10 sm:max-h-[calc(100vh-48px)] lg:grid-cols-[0.82fr_1fr]"
+          className="relative z-[10001] grid max-h-[var(--tv-mobile-overlay-available-height)] w-full min-w-0 overflow-hidden rounded-[1.75rem] border border-cyan-300/16 bg-[radial-gradient(circle_at_14%_0%,rgba(34,211,238,0.18),transparent_30rem),radial-gradient(circle_at_90%_8%,rgba(167,139,250,0.13),transparent_26rem),linear-gradient(135deg,rgba(2,6,23,0.98),rgba(15,23,42,0.94))] shadow-2xl shadow-black/55 ring-1 ring-white/10 lg:grid-cols-[0.82fr_1fr]"
           exit={{ opacity: 0, scale: reduceMotion ? 1 : 0.98, y: reduceMotion ? 0 : 10 }}
           initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.985, y: reduceMotion ? 0 : 16 }}
           role="dialog"
@@ -122,7 +127,7 @@ export function AuthModal({
             </div>
           </div>
 
-          <div className="min-h-0 overflow-y-auto">
+          <div className="tv-native-scroll min-h-0 overflow-y-auto">
             <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
               <div>
                 <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">TradeVeto Access</div>
@@ -134,7 +139,7 @@ export function AuthModal({
               </button>
             </div>
 
-            <div className="space-y-4 px-5 py-5">
+            <div className="space-y-4 px-5 py-5 pb-[calc(1rem+var(--tv-safe-area-bottom)+var(--tv-keyboard-offset,0px))]">
               {(mode === "login" || mode === "register") && googleEnabled ? (
                 <>
                   <button

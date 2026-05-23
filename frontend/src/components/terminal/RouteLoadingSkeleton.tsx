@@ -10,7 +10,7 @@ export function RouteLoadingSkeleton({ metricCount = 4, title }: RouteLoadingSke
   const cards = Array.from({ length: 6 }, (_, index) => `card-${index}`);
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[linear-gradient(135deg,#070a12_0%,#0b1020_48%,#111827_100%)] px-3 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-3 text-slate-100 sm:px-4 sm:pb-6 sm:pt-4 xl:pb-4">
+    <main className="min-h-screen overflow-x-hidden bg-[linear-gradient(135deg,#070a12_0%,#0b1020_48%,#111827_100%)] px-3 pb-[calc(var(--tv-mobile-nav-clearance)+1.5rem)] pt-3 text-slate-100 sm:px-4 sm:pb-6 sm:pt-4 xl:pb-4">
       <div className="mx-auto max-w-[1780px] space-y-4">
         <LoadingHeader />
 

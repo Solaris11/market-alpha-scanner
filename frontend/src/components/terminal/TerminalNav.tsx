@@ -243,7 +243,7 @@ export function MobileTerminalNav() {
           />
           <aside
             aria-labelledby={drawerTitleId}
-            className="tv-drawer-surface fixed right-0 top-0 z-[9000] flex h-[var(--tv-visual-viewport-height,100dvh)] w-[min(88vw,380px)] max-w-[var(--tv-visual-viewport-width,100vw)] flex-col border-l border-white/10 bg-slate-950/95 pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] shadow-2xl shadow-black/50 ring-1 ring-cyan-300/10 backdrop-blur-2xl"
+            className="tv-drawer-surface fixed right-0 top-0 z-[9000] flex h-[var(--tv-mobile-overlay-height)] w-[min(88vw,380px)] max-w-[var(--tv-visual-viewport-width,100vw)] flex-col border-l border-white/10 bg-slate-950/95 pb-[var(--tv-safe-area-bottom)] pt-[var(--tv-safe-area-top)] shadow-2xl shadow-black/50 ring-1 ring-cyan-300/10 backdrop-blur-2xl"
             data-mobile-gesture-ignore="true"
             id="tradeveto-mobile-drawer"
             onTouchEnd={handleDrawerTouchEnd}
@@ -302,7 +302,7 @@ export function MobileTerminalNav() {
         </>
       ) : null}
 
-      <nav aria-label="Primary mobile navigation" className="pointer-events-none fixed inset-x-2 z-[8500] grid grid-cols-7 gap-0.5 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl xl:hidden" style={{ bottom: "calc(0.75rem + env(safe-area-inset-bottom))" }}>
+      <nav aria-label="Primary mobile navigation" className="pointer-events-none fixed inset-x-2 z-[8500] grid min-h-[var(--tv-mobile-nav-height)] grid-cols-7 gap-0.5 rounded-2xl border border-white/10 bg-slate-950/90 p-1 shadow-2xl shadow-black/40 backdrop-blur-xl xl:hidden" style={{ bottom: "calc(var(--tv-mobile-nav-gap) + var(--tv-safe-area-bottom))" }}>
         {MOBILE_BOTTOM_NAV_ITEMS.map((item) => <BottomNavLink item={item} key={item.href} pathname={pathname} />)}
         <BottomMenuButton buttonRef={bottomMenuButtonRef} onClick={() => setOpen(true)} open={open} />
       </nav>

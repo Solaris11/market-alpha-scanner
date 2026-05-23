@@ -7,6 +7,7 @@ import { notificationDisplayMessage, type UserNotification } from "@/lib/notific
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { installMobileViewportCssVars } from "@/lib/client/mobile-viewport";
 
 type NotificationsResponse = {
   notifications?: UserNotification[];
@@ -21,6 +22,7 @@ export function NotificationBell() {
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
+  const [mobileMenu, setMobileMenu] = useState(false);
   const [menuStyle, setMenuStyle] = useState<CSSProperties>({});
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -61,13 +63,28 @@ export function NotificationBell() {
     const margin = 16;
     const width = 340;
     const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const top = Math.min(rect.bottom + 8, viewportHeight - margin);
+    const visualViewport = window.visualViewport;
+    const viewportHeight = Math.min(visualViewport?.height ?? window.innerHeight, window.innerHeight);
+    const isMobile = viewportWidth < 640;
+    setMobileMenu(isMobile);
+    if (isMobile) {
+      setMenuStyle({
+        bottom: "calc(var(--tv-mobile-nav-clearance) + var(--tv-keyboard-offset, 0px) + 0.75rem)",
+        left: "var(--tv-overlay-inline-gap)",
+        maxHeight: "var(--tv-mobile-nav-overlay-available-height)",
+        position: "fixed",
+        right: "var(--tv-overlay-inline-gap)",
+        top: "var(--tv-overlay-top-gap)",
+        width: "auto",
+      });
+      return;
+    }
+    const top = Math.min(rect.bottom + 8, Math.max(margin, viewportHeight - margin));
     const right = Math.max(margin, viewportWidth - rect.right);
+    const availableHeight = Math.max(220, viewportHeight - top - margin);
     setMenuStyle({
-      maxHeight: "calc(100vh - 48px)",
+      maxHeight: `${availableHeight}px`,
       maxWidth: `calc(100vw - ${margin * 2}px)`,
-      overflowY: "auto",
       position: "fixed",
       right,
       top,
@@ -81,6 +98,7 @@ export function NotificationBell() {
 
   useEffect(() => {
     if (!open) return;
+    const cleanupViewport = installMobileViewportCssVars();
 
     function onPointerDown(event: PointerEvent) {
       const target = event.target as Node;
@@ -97,6 +115,7 @@ export function NotificationBell() {
     window.addEventListener("resize", updateMenuPosition);
     window.addEventListener("scroll", updateMenuPosition, true);
     return () => {
+      cleanupViewport();
       window.removeEventListener("pointerdown", onPointerDown);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("resize", updateMenuPosition);
@@ -173,46 +192,50 @@ export function NotificationBell() {
       </button>
       {open && mounted
         ? createPortal(
-            <div
-              ref={menuRef}
-              className="tv-drawer-surface z-[9000] rounded-2xl border border-white/10 bg-slate-950/95 p-2 text-xs text-slate-300 shadow-2xl shadow-black/40 ring-1 ring-cyan-300/10 backdrop-blur-xl"
-              style={menuStyle}
-            >
-              <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2">
-                <div>
-                  <div className="font-semibold text-slate-100">Notifications</div>
-                  <div className="mt-0.5 text-[11px] text-slate-500">{unreadCount ? `${unreadCount} unread` : "All caught up"}</div>
+            <>
+              {mobileMenu ? <button aria-label="Close notifications" className="tv-notification-backdrop fixed inset-0" onClick={() => setOpen(false)} type="button" /> : null}
+              <div
+                ref={menuRef}
+                className="tv-drawer-surface tv-notification-menu rounded-2xl border border-white/10 bg-slate-950/95 p-2 text-xs text-slate-300 shadow-2xl shadow-black/40 ring-1 ring-cyan-300/10 backdrop-blur-xl"
+                data-mobile-gesture-ignore="true"
+                style={menuStyle}
+              >
+                <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-slate-950/95 px-3 py-2 backdrop-blur-xl">
+                  <div>
+                    <div className="font-semibold text-slate-100">Notifications</div>
+                    <div className="mt-0.5 text-[11px] text-slate-500">{unreadCount ? `${unreadCount} unread` : "All caught up"}</div>
+                  </div>
+                  {unreadCount ? (
+                    <button className="tv-mobile-touch-target rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-cyan-100 hover:bg-cyan-400/10" onClick={() => void markAllRead()} type="button">
+                      Mark all read
+                    </button>
+                  ) : null}
                 </div>
-                {unreadCount ? (
-                  <button className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-cyan-100 hover:bg-cyan-400/10" onClick={() => void markAllRead()} type="button">
-                    Mark all read
-                  </button>
-                ) : null}
-              </div>
-              <div className="max-h-[460px] overflow-y-auto py-1">
-                {fetching && !notifications.length ? <div className="px-3 py-6 text-center text-slate-500">Loading notifications...</div> : null}
-                {!fetching && !notifications.length ? <div className="px-3 py-6 text-center text-slate-500">No notifications yet.</div> : null}
-                {notifications.map((notification) => (
-                  <button
-                    className={`tv-tap-motion mt-1 w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/[0.06] ${
-                      notification.read ? "text-slate-400" : "border border-cyan-300/15 bg-cyan-400/[0.07] text-slate-100"
-                    }`}
-                    key={notification.id}
-                    onClick={() => void markRead(notification)}
-                    type="button"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="truncate font-semibold">{notification.title}</div>
-                        <div className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-400">{notificationDisplayMessage(notification)}</div>
+                <div className="tv-notification-scroll py-1">
+                  {fetching && !notifications.length ? <div className="px-3 py-6 text-center text-slate-500">Loading notifications...</div> : null}
+                  {!fetching && !notifications.length ? <div className="px-3 py-6 text-center text-slate-500">No notifications yet.</div> : null}
+                  {notifications.map((notification) => (
+                    <button
+                      className={`tv-tap-motion mt-1 w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/[0.06] ${
+                        notification.read ? "text-slate-400" : "border border-cyan-300/15 bg-cyan-400/[0.07] text-slate-100"
+                      }`}
+                      key={notification.id}
+                      onClick={() => void markRead(notification)}
+                      type="button"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="break-words font-semibold leading-5">{notification.title}</div>
+                          <div className="mt-1 break-words text-[11px] leading-4 text-slate-400">{notificationDisplayMessage(notification)}</div>
+                        </div>
+                        {!notification.read ? <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan-300" /> : null}
                       </div>
-                      {!notification.read ? <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan-300" /> : null}
-                    </div>
-                    <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-slate-600">{formatTimestamp(notification.createdAt)}</div>
-                  </button>
-                ))}
+                      <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-slate-600">{formatTimestamp(notification.createdAt)}</div>
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>,
+            </>,
             document.body,
           )
         : null}
