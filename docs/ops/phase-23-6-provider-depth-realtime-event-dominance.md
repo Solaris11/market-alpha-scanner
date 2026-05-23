@@ -80,17 +80,40 @@ The implementation preserves the no-fabrication rule:
 
 ## Production Deploy Proof
 
-Pending until commit, push, production pull, and runtime rebuild.
+| Check | Result |
+| --- | --- |
+| Commit | `f1a69b5` |
+| Production pull | Pass, fast-forwarded production to `f1a69b5` |
+| Frontend rebuild/redeploy | Pass, `market-alpha-frontend` recreated and healthy |
+| Scanner-job image rebuild | Pass, `market-alpha-scanner-job` image rebuilt for updated provider feed code |
+| `/api/health` | Pass |
+| `/api/health/deep` | Pass |
+| Route smoke | Pass: `/terminal`, `/macro`, `/feed`, `/market-memory`, `/symbol/AMD`, `/scanner`, `/discover` all returned HTTP 200 |
 
 ## Production Probe Proof
 
-Pending until production deploy.
+Artifact:
 
-Required production probe:
+- `docs/ops/artifacts/phase-23-6/provider-depth-production.json`
 
-```bash
-npm --prefix frontend run probe:phase23:provider-depth
-```
+Production authenticated provider-depth probe:
+
+| Metric | Result |
+| --- | --- |
+| Overall status | `not_ready` |
+| Authenticated | Yes |
+| Event cards | 11 |
+| Source completeness | 100% |
+| Context completeness | 100% |
+| Provider states | 7 delayed, 4 limited |
+| Freshness SLA states | 6 breached, 4 not measured |
+| Outage simulation | Fallback visible and recovery visible |
+| Baseline latency | 2214 ms |
+
+Production blockers from the probe:
+
+- Provider domains still limited: inflation, analyst actions, geopolitical events, crypto events.
+- Provider domains breached freshness SLA: macro, rates, earnings, dividends, company events, sector events.
 
 ## Remaining Blockers
 

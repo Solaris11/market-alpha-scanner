@@ -1,0 +1,257 @@
+{
+  "authenticated": true,
+  "baseline": {
+    "eventCardCount": 11,
+    "latencyMs": 2214,
+    "providerStateCounts": {
+      "active": 0,
+      "calendar-only": 0,
+      "delayed": 7,
+      "limited": 4,
+      "outage": 0,
+      "partial-outage": 0,
+      "stale": 0
+    },
+    "requiredDomainCoverage": [
+      {
+        "domain": "macro",
+        "itemCount": 5,
+        "operationalState": "delayed",
+        "present": true,
+        "provider": "SEC, CFTC",
+        "freshnessSlaDisclosure": "Macro source-linked provider row is 3464m old; this breaches the 360m freshness SLA and must not be labeled live.",
+        "freshnessSlaMinutes": 360,
+        "freshnessSlaStatus": "breached",
+        "sourceTransparency": "Source-linked rows: SEC, CFTC."
+      },
+      {
+        "domain": "rates",
+        "itemCount": 4,
+        "operationalState": "delayed",
+        "present": true,
+        "provider": "Federal Reserve",
+        "freshnessSlaDisclosure": "Rates source-linked provider row is 1581m old; this breaches the 360m freshness SLA and must not be labeled live.",
+        "freshnessSlaMinutes": 360,
+        "freshnessSlaStatus": "breached",
+        "sourceTransparency": "Source-linked rows: Federal Reserve."
+      },
+      {
+        "domain": "inflation",
+        "itemCount": 0,
+        "operationalState": "limited",
+        "present": true,
+        "provider": "yfinance",
+        "freshnessSlaDisclosure": "Inflation has no source-linked provider row, so freshness SLA is not measured.",
+        "freshnessSlaMinutes": 360,
+        "freshnessSlaStatus": "not-measured",
+        "sourceTransparency": "Raw provider status: Market data provider fallback was used.."
+      },
+      {
+        "domain": "earnings",
+        "itemCount": 8,
+        "operationalState": "delayed",
+        "present": true,
+        "provider": "SEC, Bureau of Labor Statistics",
+        "freshnessSlaDisclosure": "Earnings source-linked provider row is 1954m old; this breaches the 1440m freshness SLA and must not be labeled live.",
+        "freshnessSlaMinutes": 1440,
+        "freshnessSlaStatus": "breached",
+        "sourceTransparency": "Source-linked rows: SEC, Bureau of Labor Statistics."
+      },
+      {
+        "domain": "analyst-actions",
+        "itemCount": 0,
+        "operationalState": "limited",
+        "present": true,
+        "provider": "yfinance",
+        "freshnessSlaDisclosure": "Analyst actions has no source-linked provider row, so freshness SLA is not measured.",
+        "freshnessSlaMinutes": 360,
+        "freshnessSlaStatus": "not-measured",
+        "sourceTransparency": "Raw provider status: Market data provider fallback was used.."
+      },
+      {
+        "domain": "dividends",
+        "itemCount": 4,
+        "operationalState": "delayed",
+        "present": true,
+        "provider": "Federal Reserve",
+        "freshnessSlaDisclosure": "Dividends source-linked provider row is 1581m old; this breaches the 1440m freshness SLA and must not be labeled live.",
+        "freshnessSlaMinutes": 1440,
+        "freshnessSlaStatus": "breached",
+        "sourceTransparency": "Source-linked rows: Federal Reserve."
+      },
+      {
+        "domain": "geopolitical-events",
+        "itemCount": 0,
+        "operationalState": "limited",
+        "present": true,
+        "provider": "yfinance",
+        "freshnessSlaDisclosure": "Geopolitical events has no source-linked provider row, so freshness SLA is not measured.",
+        "freshnessSlaMinutes": 360,
+        "freshnessSlaStatus": "not-measured",
+        "sourceTransparency": "Raw provider status: Market data provider fallback was used.."
+      },
+      {
+        "domain": "company-events",
+        "itemCount": 17,
+        "operationalState": "delayed",
+        "present": true,
+        "provider": "Federal Reserve, SEC, CFTC, Bureau of Labor Statistics",
+        "freshnessSlaDisclosure": "Company events source-linked provider row is 1581m old; this breaches the 360m freshness SLA and must not be labeled live.",
+        "freshnessSlaMinutes": 360,
+        "freshnessSlaStatus": "breached",
+        "sourceTransparency": "Source-linked rows: Federal Reserve, SEC, CFTC, Bureau of Labor Statistics."
+      },
+      {
+        "domain": "sector-events",
+        "itemCount": 11,
+        "operationalState": "delayed",
+        "present": true,
+        "provider": "Federal Reserve, SEC, CFTC, Bureau of Labor Statistics",
+        "freshnessSlaDisclosure": "Sector events source-linked provider row is 1581m old; this breaches the 360m freshness SLA and must not be labeled live.",
+        "freshnessSlaMinutes": 360,
+        "freshnessSlaStatus": "breached",
+        "sourceTransparency": "Source-linked rows: Federal Reserve, SEC, CFTC, Bureau of Labor Statistics."
+      },
+      {
+        "domain": "crypto-events",
+        "itemCount": 0,
+        "operationalState": "limited",
+        "present": true,
+        "provider": "yfinance",
+        "freshnessSlaDisclosure": "Crypto events has no source-linked provider row, so freshness SLA is not measured.",
+        "freshnessSlaMinutes": 360,
+        "freshnessSlaStatus": "not-measured",
+        "sourceTransparency": "Raw provider status: Market data provider fallback was used.."
+      }
+    ],
+    "slaStatusCounts": {
+      "breached": 6,
+      "not-measured": 4
+    },
+    "sourceTrust": {
+      "completeCardCount": 11,
+      "completenessPct": 100,
+      "contextCompleteCardCount": 11,
+      "contextCompletenessPct": 100,
+      "disclosure": "11 of 11 displayed source-linked event cards disclose provider, source URL, timestamp, freshness, affected symbols, watchlist impact, and uncertainty.",
+      "displayedCardCount": 11,
+      "incompleteCardCount": 0,
+      "missingFieldCounts": {
+        "affectedSymbols": 0,
+        "freshness": 0,
+        "provider": 0,
+        "sourceUrl": 0,
+        "timestamp": 0,
+        "uncertainty": 0,
+        "watchlistImpact": 0
+      },
+      "requiredFields": [
+        "sourceUrl",
+        "provider",
+        "timestamp",
+        "freshness"
+      ],
+      "status": "pass"
+    },
+    "statusCode": 200
+  },
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [
+    "provider domains still limited: inflation, analyst-actions, geopolitical-events, crypto-events",
+    "provider domains breached freshness SLA: macro, rates, earnings, dividends, company-events, sector-events"
+  ],
+  "generatedAt": "2026-05-23T22:35:32.186Z",
+  "outageSimulation": {
+    "enabled": true,
+    "fallbackVisible": true,
+    "recoveryStates": [
+      {
+        "disclosure": "Macro provider evidence is delayed at 58h old.",
+        "domain": "macro",
+        "operationalState": "delayed",
+        "provider": "SEC, CFTC"
+      },
+      {
+        "disclosure": "Inflation source-linked provider coverage is limited in the current packet.",
+        "domain": "inflation",
+        "operationalState": "limited",
+        "provider": "yfinance"
+      },
+      {
+        "disclosure": "Rates provider evidence is delayed at 26h old.",
+        "domain": "rates",
+        "operationalState": "delayed",
+        "provider": "Federal Reserve"
+      },
+      {
+        "disclosure": "Economic calendar provider evidence is delayed at 26h old.",
+        "domain": "economic-calendar",
+        "operationalState": "delayed",
+        "provider": "Federal Reserve, SEC, CFTC"
+      },
+      {
+        "disclosure": "Company events provider evidence is delayed at 26h old.",
+        "domain": "company-events",
+        "operationalState": "delayed",
+        "provider": "Federal Reserve, SEC, CFTC, Bureau of Labor Statistics"
+      },
+      {
+        "disclosure": "Sector events provider evidence is delayed at 26h old.",
+        "domain": "sector-events",
+        "operationalState": "delayed",
+        "provider": "Federal Reserve, SEC, CFTC, Bureau of Labor Statistics"
+      }
+    ],
+    "recoveryVisible": true,
+    "requested": [
+      "news",
+      "macro",
+      "scanner"
+    ],
+    "simulatedStates": [
+      {
+        "disclosure": "macro provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "macro",
+        "operationalState": "outage",
+        "provider": "SEC, CFTC"
+      },
+      {
+        "disclosure": "inflation provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "inflation",
+        "operationalState": "outage",
+        "provider": "yfinance"
+      },
+      {
+        "disclosure": "rates provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "rates",
+        "operationalState": "outage",
+        "provider": "Federal Reserve"
+      },
+      {
+        "disclosure": "economic calendar provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "economic-calendar",
+        "operationalState": "outage",
+        "provider": "Federal Reserve, SEC, CFTC"
+      },
+      {
+        "disclosure": "company events provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "company-events",
+        "operationalState": "outage",
+        "provider": "Federal Reserve, SEC, CFTC, Bureau of Labor Statistics"
+      },
+      {
+        "disclosure": "sector events provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "sector-events",
+        "operationalState": "outage",
+        "provider": "Federal Reserve, SEC, CFTC, Bureau of Labor Statistics"
+      }
+    ]
+  },
+  "overallStatus": "not_ready",
+  "probeIdentity": {
+    "cleanupRequested": true,
+    "created": true,
+    "email": "redacted-probe-identity",
+    "userId": "redacted-probe-user"
+  }
+}
