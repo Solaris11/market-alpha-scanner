@@ -30,8 +30,64 @@ Completed:
 
 ## Production Evidence
 
-Pending production deployment and probe run.
+Production deployment:
+
+- Commit deployed: `d342dc55`.
+- Production pull: `git pull --ff-only origin main` fast-forwarded from `1083498` to `d342dc55`.
+- Production rebuild: `docker compose --env-file .env up -d --build market-alpha-frontend` completed and restarted `market-alpha-frontend`.
+
+Production smoke:
+
+- `/api/health`: 200
+- `/api/health/deep`: 200
+- `/terminal`: 200
+- `/discover`: 200
+- `/scanner`: 200
+- `/symbol/AMD`: 200
+- `/macro`: 200
+- `/feed`: 200
+
+Production authenticated provider source-trust probe:
+
+- Artifact: `docs/ops/artifacts/phase-22-6-provider-source-trust-production.json`
+- Probe route: `https://tradeveto.com/api/intelligence/provider-source-trust`
+- Authenticated: yes
+- Route status: 200
+- Route latency: 1909 ms
+- Displayed source-linked event cards: 11
+- Source URL/provider/timestamp/freshness completeness: 100%
+- Full event-card context completeness: 100%
+- Missing source fields: 0
+- Outage simulation: enabled
+- Fallback state visible: yes
+- Recovery state visible: yes
+
+Production provider matrix:
+
+| Domain | State | Items | Provider |
+| --- | --- | ---: | --- |
+| macro | delayed | 5 | SEC, CFTC |
+| rates | active | 4 | Federal Reserve |
+| inflation | limited | 0 | yfinance |
+| earnings | active | 8 | SEC, Bureau of Labor Statistics |
+| analyst-actions | limited | 0 | yfinance |
+| dividends | active | 4 | Federal Reserve |
+| geopolitical-events | limited | 0 | yfinance |
+| company-events | active | 17 | Federal Reserve, SEC, CFTC, Bureau of Labor Statistics |
+| sector-events | active | 11 | Federal Reserve, SEC, CFTC, Bureau of Labor Statistics |
+| crypto-events | limited | 0 | yfinance |
 
 ## Remaining Blockers
 
-Pending production evidence. Certification cannot be marked accomplished until the production probe proves the 95% source-card target and honest provider state/outage behavior on live data.
+Certification is not accomplished because production provider depth still has limited domains:
+
+- inflation
+- analyst actions
+- geopolitical events
+- crypto events
+
+The 95% event-card source-trust target passed on displayed production cards, and outage/fallback/recovery states were visible, but Bloomberg/Yahoo/StockTitan-level provider depth is still not proven across all required event domains.
+
+## Verdict
+
+TRADEVETO PROVIDER DEPTH + SOURCE TRUST EXPANSION NOT ACCOMPLISHED

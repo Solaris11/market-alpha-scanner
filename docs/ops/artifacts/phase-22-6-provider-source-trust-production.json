@@ -1,0 +1,222 @@
+{
+  "authenticated": true,
+  "baseline": {
+    "eventCardCount": 11,
+    "latencyMs": 1909,
+    "providerStateCounts": {
+      "active": 6,
+      "calendar-only": 0,
+      "delayed": 1,
+      "limited": 4,
+      "outage": 0,
+      "partial-outage": 0,
+      "stale": 0
+    },
+    "requiredDomainCoverage": [
+      {
+        "domain": "macro",
+        "itemCount": 5,
+        "operationalState": "delayed",
+        "present": true,
+        "provider": "SEC, CFTC",
+        "sourceTransparency": "Source-linked rows: SEC, CFTC."
+      },
+      {
+        "domain": "rates",
+        "itemCount": 4,
+        "operationalState": "active",
+        "present": true,
+        "provider": "Federal Reserve",
+        "sourceTransparency": "Source-linked rows: Federal Reserve."
+      },
+      {
+        "domain": "inflation",
+        "itemCount": 0,
+        "operationalState": "limited",
+        "present": true,
+        "provider": "yfinance",
+        "sourceTransparency": "Raw provider status: Market data provider fallback was used.."
+      },
+      {
+        "domain": "earnings",
+        "itemCount": 8,
+        "operationalState": "active",
+        "present": true,
+        "provider": "SEC, Bureau of Labor Statistics",
+        "sourceTransparency": "Source-linked rows: SEC, Bureau of Labor Statistics."
+      },
+      {
+        "domain": "analyst-actions",
+        "itemCount": 0,
+        "operationalState": "limited",
+        "present": true,
+        "provider": "yfinance",
+        "sourceTransparency": "Raw provider status: Market data provider fallback was used.."
+      },
+      {
+        "domain": "dividends",
+        "itemCount": 4,
+        "operationalState": "active",
+        "present": true,
+        "provider": "Federal Reserve",
+        "sourceTransparency": "Source-linked rows: Federal Reserve."
+      },
+      {
+        "domain": "geopolitical-events",
+        "itemCount": 0,
+        "operationalState": "limited",
+        "present": true,
+        "provider": "yfinance",
+        "sourceTransparency": "Raw provider status: Market data provider fallback was used.."
+      },
+      {
+        "domain": "company-events",
+        "itemCount": 17,
+        "operationalState": "active",
+        "present": true,
+        "provider": "Federal Reserve, SEC, CFTC, Bureau of Labor Statistics",
+        "sourceTransparency": "Source-linked rows: Federal Reserve, SEC, CFTC, Bureau of Labor Statistics."
+      },
+      {
+        "domain": "sector-events",
+        "itemCount": 11,
+        "operationalState": "active",
+        "present": true,
+        "provider": "Federal Reserve, SEC, CFTC, Bureau of Labor Statistics",
+        "sourceTransparency": "Source-linked rows: Federal Reserve, SEC, CFTC, Bureau of Labor Statistics."
+      },
+      {
+        "domain": "crypto-events",
+        "itemCount": 0,
+        "operationalState": "limited",
+        "present": true,
+        "provider": "yfinance",
+        "sourceTransparency": "Raw provider status: Market data provider fallback was used.."
+      }
+    ],
+    "sourceTrust": {
+      "completeCardCount": 11,
+      "completenessPct": 100,
+      "contextCompleteCardCount": 11,
+      "contextCompletenessPct": 100,
+      "disclosure": "11 of 11 displayed source-linked event cards disclose provider, source URL, timestamp, freshness, affected symbols, watchlist impact, and uncertainty.",
+      "displayedCardCount": 11,
+      "incompleteCardCount": 0,
+      "missingFieldCounts": {
+        "affectedSymbols": 0,
+        "freshness": 0,
+        "provider": 0,
+        "sourceUrl": 0,
+        "timestamp": 0,
+        "uncertainty": 0,
+        "watchlistImpact": 0
+      },
+      "requiredFields": [
+        "sourceUrl",
+        "provider",
+        "timestamp",
+        "freshness"
+      ],
+      "status": "pass"
+    },
+    "statusCode": 200
+  },
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [
+    "provider domains still limited: inflation, analyst-actions, geopolitical-events, crypto-events"
+  ],
+  "generatedAt": "2026-05-23T13:17:05.495Z",
+  "outageSimulation": {
+    "enabled": true,
+    "fallbackVisible": true,
+    "recoveryStates": [
+      {
+        "disclosure": "Macro provider evidence is delayed at 48h old.",
+        "domain": "macro",
+        "operationalState": "delayed",
+        "provider": "SEC, CFTC"
+      },
+      {
+        "disclosure": "Inflation source-linked provider coverage is limited in the current packet.",
+        "domain": "inflation",
+        "operationalState": "limited",
+        "provider": "yfinance"
+      },
+      {
+        "disclosure": "Rates has current source-linked provider rows in this scanner packet.",
+        "domain": "rates",
+        "operationalState": "active",
+        "provider": "Federal Reserve"
+      },
+      {
+        "disclosure": "Economic calendar has current source-linked provider rows in this scanner packet.",
+        "domain": "economic-calendar",
+        "operationalState": "active",
+        "provider": "Federal Reserve, SEC, CFTC"
+      },
+      {
+        "disclosure": "Company events has current source-linked provider rows in this scanner packet.",
+        "domain": "company-events",
+        "operationalState": "active",
+        "provider": "Federal Reserve, SEC, CFTC, Bureau of Labor Statistics"
+      },
+      {
+        "disclosure": "Sector events has current source-linked provider rows in this scanner packet.",
+        "domain": "sector-events",
+        "operationalState": "active",
+        "provider": "Federal Reserve, SEC, CFTC, Bureau of Labor Statistics"
+      }
+    ],
+    "recoveryVisible": true,
+    "requested": [
+      "news",
+      "macro",
+      "scanner"
+    ],
+    "simulatedStates": [
+      {
+        "disclosure": "macro provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "macro",
+        "operationalState": "outage",
+        "provider": "SEC, CFTC"
+      },
+      {
+        "disclosure": "inflation provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "inflation",
+        "operationalState": "outage",
+        "provider": "yfinance"
+      },
+      {
+        "disclosure": "rates provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "rates",
+        "operationalState": "outage",
+        "provider": "Federal Reserve"
+      },
+      {
+        "disclosure": "economic calendar provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "economic-calendar",
+        "operationalState": "outage",
+        "provider": "Federal Reserve, SEC, CFTC"
+      },
+      {
+        "disclosure": "company events provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "company-events",
+        "operationalState": "outage",
+        "provider": "Federal Reserve, SEC, CFTC, Bureau of Labor Statistics"
+      },
+      {
+        "disclosure": "sector events provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "sector-events",
+        "operationalState": "outage",
+        "provider": "Federal Reserve, SEC, CFTC, Bureau of Labor Statistics"
+      }
+    ]
+  },
+  "overallStatus": "not_ready",
+  "probeIdentity": {
+    "cleanupRequested": true,
+    "created": true,
+    "email": "phase22-provider-1779542222032-d0425ed2@tradeveto-probe.local",
+    "userId": "5fb3335a-dc42-42e9-885c-e484f254bef5"
+  }
+}
