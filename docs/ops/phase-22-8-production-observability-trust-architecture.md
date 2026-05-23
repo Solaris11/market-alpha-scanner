@@ -2,7 +2,7 @@
 
 Date: 2026-05-23
 
-Final status: **PENDING PRODUCTION VALIDATION**
+Final status: **ACCOMPLISHED**
 
 ## Scope
 
@@ -119,20 +119,63 @@ Targeted validation already passed:
 
 ## Production Evidence
 
-Pending:
+Production deployment:
 
-- Commit and push to `main`.
-- Production pull on `sre@100.68.155.121`.
-- Frontend rebuild/redeploy.
-- Production smoke for `/api/health`, `/api/health/deep`, `/status`, `/api/status/trust`, `/admin/monitoring`, `/terminal`, `/discover`, `/scanner`, `/symbol/AMD`.
+- Runtime implementation commit deployed: `4d825902`.
+- Production pull: `git pull --ff-only origin main` fast-forwarded from `b0f5c17` to `4d82590`.
+- Production rebuild/redeploy: `docker compose --env-file .env up -d --build market-alpha-frontend` completed.
+- Runtime image: `sha256:aa4ad79939a72fb08f0e9646abe7528b813173bf5c654fbe3c735957008f0b0f`.
+- Container started: `2026-05-23T13:42:20.867923172Z`.
+- Container health: `healthy`.
+
+Production smoke:
+
+| Surface | Result | Response bytes |
+| --- | ---: | ---: |
+| `/api/health` | 200 | 114 |
+| `/api/health/deep` | 200 | 1525 |
+| `/status` | 200 | 32912 |
+| `/api/status/trust` | 200 | 1951 |
+| `/terminal` | 200 | 105081 |
+| `/discover` | 200 | 52706 |
+| `/scanner` | 200 | 46693 |
+| `/symbol/AMD` | 200 | 113320 |
+| `/api/admin/monitoring` unauthenticated protection check | 401 | 47 |
+| `/admin/monitoring` unauthenticated protection check | 404 | 9976 |
+
+Public trust API proof:
+
+```json
+{
+  "httpStatus": 200,
+  "ok": true,
+  "overallStatus": "degraded",
+  "providerState": "partial-outage",
+  "providerFallbackCount": 5,
+  "scannerStatus": "fresh",
+  "incidentCount": 2,
+  "trustStates": [
+    "stale_intelligence:clear",
+    "limited_evidence:clear",
+    "provider_outage:active",
+    "delayed_data:clear",
+    "degraded_mode:active"
+  ],
+  "generatedAt": "2026-05-23T13:42:53.053Z"
+}
+```
+
+This is the intended behavior: the status surface does not hide degraded state. It makes provider fallback and degraded-mode evidence visible instead of reporting a false all-clear.
 
 ## Remaining Blockers
 
-Pending final validation. Known trust gates intentionally remain unproven until production evidence is attached:
+The observability/trust architecture phase is accomplished, but several underlying operational certifications remain intentionally not green:
 
 - Scale/chaos gate remains unknown or blocked unless a passing monitoring event exists.
 - Mobile real-device certification gate remains unknown or blocked unless passing BrowserStack/physical proof is attached.
+- Production status currently reports degraded state because provider fallback and warning/error incidents are visible.
+- Authenticated admin UI rendering was not exercised with a live admin session in this run; the admin monitoring API protection check returned `401` when unauthenticated.
 
 ## Verdict
 
-PENDING
+TRADEVETO PRODUCTION OBSERVABILITY + TRUST ARCHITECTURE ACCOMPLISHED
