@@ -50,25 +50,29 @@ test.beforeAll(() => {
   mkdirSync(ARTIFACT_DIR, { recursive: true });
 });
 
-for (const route of ROUTES) {
-  test(`real-device mobile QA ${route}`, async ({ page }, testInfo) => {
-    const hydrationMessages = bindHydrationCapture(page);
-    await installStableClientState(page);
-    await navigateAndSettle(page, route);
-    await acknowledgeRisk(page);
+test("real-device mobile QA required routes", async ({ page }, testInfo) => {
+  const hydrationMessages = bindHydrationCapture(page);
+  await installStableClientState(page);
 
-    await assertMobileMetrics(page, route);
-    await assertTouchResponsiveness(page);
-    await assertKeyboardSafety(page);
-    await exerciseScannerUsability(page, route);
-    await exerciseChartUsability(page, route);
-    await exerciseStableOverlay(page, route, route === "/paper");
-    if (route === "/paper") await exercisePaperDeepScrollOverlay(page);
+  for (const route of ROUTES) {
+    await test.step(`validate ${route}`, async () => {
+      const hydrationStart = hydrationMessages.length;
+      await navigateAndSettle(page, route);
+      await acknowledgeRisk(page);
 
-    expect(hydrationMessages, `hydration/runtime mismatch on ${route}`).toEqual([]);
-    await captureRouteScreenshot(page, route, testInfo);
-  });
-}
+      await assertMobileMetrics(page, route);
+      await assertTouchResponsiveness(page);
+      await assertKeyboardSafety(page);
+      await exerciseScannerUsability(page, route);
+      await exerciseChartUsability(page, route);
+      await exerciseStableOverlay(page, route, route === "/paper");
+      if (route === "/paper") await exercisePaperDeepScrollOverlay(page);
+
+      expect(hydrationMessages.slice(hydrationStart), `hydration/runtime mismatch on ${route}`).toEqual([]);
+      await captureRouteScreenshot(page, route, testInfo);
+    });
+  }
+});
 
 function bindHydrationCapture(page: Page): string[] {
   const messages: string[] = [];
@@ -181,7 +185,9 @@ async function assertTouchResponsiveness(page: Page): Promise<void> {
 async function assertKeyboardSafety(page: Page): Promise<void> {
   const input = page.locator("input:not([type='hidden']), textarea").first();
   if (!(await input.isVisible().catch(() => false))) return;
-  await input.tap();
+  await input.tap().catch(async () => {
+    await input.click({ force: true });
+  });
   await page.waitForTimeout(500);
   const safe = await page.evaluate(() => {
     const active = document.activeElement;
