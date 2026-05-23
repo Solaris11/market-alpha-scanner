@@ -1,0 +1,192 @@
+{
+  "authSmoke": {
+    "authenticated": true,
+    "latencyMs": 94,
+    "premium": true,
+    "statusCode": 200
+  },
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [],
+  "durationSeconds": 300,
+  "generatedAt": "2026-05-23T12:43:22.271Z",
+  "memory": {
+    "afterHeapUsedMb": 41.6,
+    "afterRssMb": 178.1,
+    "beforeRssMb": 56.4,
+    "deltaRssMb": 121.7
+  },
+  "overallStatus": "ready",
+  "probeIdentity": {
+    "cleanupRequested": true,
+    "created": true,
+    "email": "phase22-scanner-1779539599430-d67b4a50@tradeveto-probe.local",
+    "userId": "6581f584-260c-4910-b305-6b7ab965cc8f",
+    "watchlistSize": 111
+  },
+  "setup": {
+    "largeWatchlistSize": 111,
+    "savedScanCreateLatencyMs": 64,
+    "savedScanCreateStatusCode": 200,
+    "savedScanId": "daff04e4-b108-4e0b-bb82-dd2bca2baa69"
+  },
+  "startedAt": "2026-05-23T12:33:19.429Z",
+  "tierResults": [
+    {
+      "durationSeconds": 300,
+      "endpointResults": [
+        {
+          "cacheStatuses": {},
+          "category": "saved-scan-reload",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 1506,
+          "method": "GET",
+          "p50LatencyMs": 61,
+          "p95BudgetMs": 300,
+          "p95LatencyMs": 75,
+          "p99BudgetMs": 600,
+          "p99LatencyMs": 86,
+          "path": "/api/user/saved-scans",
+          "requiredTarget": true,
+          "sampleCount": 41989,
+          "status": "pass",
+          "statusCodes": {
+            "200": 41989
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {
+            "system-hit": 77510,
+            "stale-hit": 5
+          },
+          "category": "large-watchlist-discovery",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 477,
+          "method": "GET",
+          "p50LatencyMs": 63,
+          "p95BudgetMs": 600,
+          "p95LatencyMs": 78,
+          "p99BudgetMs": 1000,
+          "p99LatencyMs": 94,
+          "path": "/api/discovery",
+          "requiredTarget": true,
+          "sampleCount": 77515,
+          "status": "pass",
+          "statusCodes": {
+            "200": 77515
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        }
+      ],
+      "maxLatencyMs": 1506,
+      "p95WorstMs": 78,
+      "p99WorstMs": 94,
+      "sampleCount": 119504,
+      "targetConcurrency": 25
+    },
+    {
+      "durationSeconds": 300,
+      "endpointResults": [
+        {
+          "cacheStatuses": {},
+          "category": "saved-scan-reload",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 461,
+          "method": "GET",
+          "p50LatencyMs": 85,
+          "p95BudgetMs": 300,
+          "p95LatencyMs": 104,
+          "p99BudgetMs": 600,
+          "p99LatencyMs": 127,
+          "path": "/api/user/saved-scans",
+          "requiredTarget": true,
+          "sampleCount": 41720,
+          "status": "pass",
+          "statusCodes": {
+            "200": 41720
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {
+            "system-hit": 78076,
+            "stale-hit": 12
+          },
+          "category": "large-watchlist-discovery",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 789,
+          "method": "GET",
+          "p50LatencyMs": 147,
+          "p95BudgetMs": 600,
+          "p95LatencyMs": 174,
+          "p99BudgetMs": 1000,
+          "p99LatencyMs": 195,
+          "path": "/api/discovery",
+          "requiredTarget": true,
+          "sampleCount": 78088,
+          "status": "pass",
+          "statusCodes": {
+            "200": 78088
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        }
+      ],
+      "maxLatencyMs": 789,
+      "p95WorstMs": 174,
+      "p99WorstMs": 195,
+      "sampleCount": 119808,
+      "targetConcurrency": 50
+    }
+  ],
+  "timeoutMs": 8000,
+  "warmup": [
+    {
+      "cacheStatus": null,
+      "latencyMs": 204,
+      "path": "/api/user/saved-scans",
+      "statusCode": 200
+    },
+    {
+      "cacheStatus": null,
+      "latencyMs": 53,
+      "path": "/api/user/saved-scans",
+      "statusCode": 200
+    },
+    {
+      "cacheStatus": null,
+      "latencyMs": 152,
+      "path": "/api/user/saved-scans",
+      "statusCode": 200
+    },
+    {
+      "cacheStatus": "system-miss",
+      "latencyMs": 1770,
+      "path": "/api/discovery",
+      "statusCode": 200
+    },
+    {
+      "cacheStatus": "system-hit",
+      "latencyMs": 61,
+      "path": "/api/discovery",
+      "statusCode": 200
+    },
+    {
+      "cacheStatus": "system-hit",
+      "latencyMs": 52,
+      "path": "/api/discovery",
+      "statusCode": 200
+    }
+  ]
+}
