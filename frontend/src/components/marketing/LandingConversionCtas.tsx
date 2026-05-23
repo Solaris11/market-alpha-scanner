@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AuthModal } from "@/components/account/AuthModal";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { trackAnalyticsEvent } from "@/lib/client/analytics";
 
-const BETA_INTENT_KEY = "tv_landing_beta_intent";
+const EARLY_ACCESS_INTENT_KEY = "tv_landing_early_access_intent";
 const APP_ENTRY_URL = "/terminal";
 
 export function LandingConversionCtas() {
@@ -15,8 +16,8 @@ export function LandingConversionCtas() {
 
   useEffect(() => {
     if (loading || authOpen || !authenticated) return;
-    if (window.sessionStorage.getItem(BETA_INTENT_KEY) !== "true") return;
-    window.sessionStorage.removeItem(BETA_INTENT_KEY);
+    if (window.sessionStorage.getItem(EARLY_ACCESS_INTENT_KEY) !== "true") return;
+    window.sessionStorage.removeItem(EARLY_ACCESS_INTENT_KEY);
     window.location.assign(APP_ENTRY_URL);
   }, [authOpen, authenticated, loading]);
 
@@ -27,7 +28,8 @@ export function LandingConversionCtas() {
       window.location.assign(APP_ENTRY_URL);
       return;
     }
-    window.sessionStorage.setItem(BETA_INTENT_KEY, "true");
+    trackAnalyticsEvent("founding_member_interest", { sourceCta: "landing_primary" }, { source: "landing_conversion" });
+    window.sessionStorage.setItem(EARLY_ACCESS_INTENT_KEY, "true");
     setAuthOpen(true);
   }
 
@@ -37,7 +39,7 @@ export function LandingConversionCtas() {
       ? "Open Dashboard"
       : authenticated
         ? "Open App"
-        : "Get Started";
+        : "Join Early Access";
 
   return (
     <div>

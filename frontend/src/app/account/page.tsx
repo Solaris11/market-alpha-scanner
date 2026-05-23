@@ -238,7 +238,7 @@ export default async function AccountPage() {
               ) : null}
               {!entitlement.betaAccess || billingSubscription ? <BillingTrustChecklist allowPromotionCodes={betaBilling.allowPromotionCodes} trialDays={betaBilling.trialDays} /> : null}
               <p className="mt-3 text-xs leading-5 text-slate-500">
-                {entitlement.betaAccess && !billingSubscription ? "No Stripe subscription is attached to this closed-beta entitlement." : "Payments are securely processed by Stripe."}
+                {entitlement.betaAccess && !billingSubscription ? "No Stripe subscription is attached to this founding early-access entitlement." : "Payments are securely processed by Stripe."}
               </p>
             </div>
           </AccountSection>
@@ -487,7 +487,7 @@ function BillingControl({ billingSubscription, entitlement }: { billingSubscript
   }
 
   if (entitlement.betaAccess && !billingSubscription) {
-    return <p className="text-xs leading-5 text-emerald-100/85">Full closed-beta access is active. No upgrade is needed for this beta account.</p>;
+    return <p className="text-xs leading-5 text-emerald-100/85">Full founding early-access entitlement is active. No upgrade is needed for this account.</p>;
   }
 
   const billingState = billingViewState({ isPremium: entitlement.isPremium, subscription: billingSubscription });
@@ -521,7 +521,7 @@ function BillingControl({ billingSubscription, entitlement }: { billingSubscript
 function BetaAccessNotice({ entitlement }: { entitlement: Entitlement }) {
   return (
     <div className="mt-3 rounded-xl border border-emerald-300/20 bg-emerald-400/[0.07] px-3 py-2 text-xs leading-5 text-emerald-50/90">
-      {entitlement.betaAccessLabel ?? "Beta Premium Access"} is active for this account. Premium research panels, replay, Strategy Labs, and opportunities are unlocked during the closed beta without creating a live Stripe subscription.
+      {entitlement.betaAccessLabel ?? "Founding Early Access"} is active for this account. Premium research panels, replay, Strategy Labs, and scanner workflows are unlocked for this founding member account without creating a live Stripe subscription.
     </div>
   );
 }

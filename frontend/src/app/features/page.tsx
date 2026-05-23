@@ -19,7 +19,7 @@ const featureGroups = [
   ["Paper simulation", "Simulate decisions and track discipline without connecting a brokerage account."],
   ["Alerts", "DB-backed user alerts for important account and signal events."],
   ["Premium research view", "Full scanner intelligence for subscribers without exposing premium data to public previews."],
-  ["Beta feedback loop", "Lightweight feedback and admin analytics help identify confusion, retention signals, and product gaps without invasive tracking."],
+  ["Early access feedback loop", "Lightweight bug reports, feature votes, support workflows, and admin analytics help identify confusion, retention signals, and product gaps without invasive tracking."],
 ] as const;
 
 const notClaims = [
@@ -32,7 +32,7 @@ export default function FeaturesPage() {
   return (
     <MarketingShell>
       <section className="px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
-        <SectionHeader copy="TradeVeto is built around decision quality: fewer impulsive trades, clearer risk, visible evidence, and a single workflow for research. The closed beta focuses on trust, learning, and disciplined product feedback." eyebrow="Closed Beta Features" title="A market intelligence system for disciplined decisions." />
+        <SectionHeader copy="TradeVeto is built around decision quality: fewer impulsive trades, clearer risk, visible evidence, and a single workflow for research. Early access focuses on trust, learning, retention, and disciplined product feedback." eyebrow="Early Access Features" title="A market intelligence system for disciplined decisions." />
         <div className="mx-auto mt-12 grid max-w-7xl gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {featureGroups.map(([title, copy]) => (
             <MarketingCard key={title}>
@@ -49,7 +49,7 @@ export default function FeaturesPage() {
           ))}
         </div>
         <div className="mt-12 text-center">
-          <PrimaryCta>Start Free</PrimaryCta>
+          <PrimaryCta>Join Early Access</PrimaryCta>
         </div>
       </section>
     </MarketingShell>

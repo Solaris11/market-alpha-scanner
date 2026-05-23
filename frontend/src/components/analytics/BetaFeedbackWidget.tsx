@@ -12,6 +12,7 @@ const FEEDBACK_TYPES = [
   { label: "Onboarding Confusion", rating: "negative", value: "onboarding_confusion" },
   { label: "Performance Issue", rating: "negative", value: "performance_issue" },
   { label: "Feature Request", rating: "neutral", value: "feature_request" },
+  { label: "Feature Vote", rating: "neutral", value: "feature_vote" },
 ] as const;
 
 export function BetaFeedbackWidget() {
@@ -41,7 +42,17 @@ export function BetaFeedbackWidget() {
         method: "POST",
       });
       if (!response.ok) throw new Error("Feedback could not be saved.");
+      trackAnalyticsEvent("feedback_modal_submit", { feedbackType, rating: type.rating }, { source: "feedback_widget" });
       trackAnalyticsEvent("beta_feedback_submit", { feedbackType, rating: type.rating }, { source: "feedback_widget" });
+      if (feedbackType === "bug_report" || feedbackType === "performance_issue") {
+        trackAnalyticsEvent("bug_report_submit", { feedbackType, rating: type.rating }, { source: "feedback_widget" });
+      }
+      if (feedbackType === "feature_request" || feedbackType === "feature_vote") {
+        trackAnalyticsEvent("feature_vote_submit", { feedbackType, rating: type.rating }, { source: "feedback_widget" });
+      }
+      if (type.rating === "negative") {
+        trackAnalyticsEvent("churn_risk_signal", { feedbackType, rating: type.rating }, { source: "feedback_widget" });
+      }
       setMessage("");
       setStatus("Feedback received.");
       window.setTimeout(() => {
@@ -59,8 +70,8 @@ export function BetaFeedbackWidget() {
         <section className="w-[min(92vw,360px)] rounded-2xl border border-cyan-300/20 bg-slate-950/95 p-4 shadow-2xl shadow-black/50 backdrop-blur-xl">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Beta Feedback</div>
-              <h2 className="mt-1 text-base font-semibold text-slate-50">Report feedback or a bug</h2>
+              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Early Access Feedback</div>
+              <h2 className="mt-1 text-base font-semibold text-slate-50">Report a bug, vote, or send feedback</h2>
             </div>
             <button className="inline-flex shrink-0 items-center justify-center whitespace-nowrap rounded-full border border-white/10 px-3 py-1 text-xs text-slate-400 hover:text-slate-100" onClick={() => setOpen(false)} type="button">Close</button>
           </div>
@@ -91,15 +102,16 @@ export function BetaFeedbackWidget() {
         </section>
       ) : (
         <button
-          aria-label="Open beta feedback"
+          aria-label="Open early access feedback"
           className="rounded-full border border-cyan-300/25 bg-slate-950/90 px-3 py-1.5 text-[11px] font-bold text-cyan-100 shadow-xl shadow-black/35 backdrop-blur-xl transition hover:border-cyan-200/60 hover:bg-cyan-400/10 sm:px-4 sm:py-2 sm:text-xs"
           onClick={() => {
+            trackAnalyticsEvent("feedback_modal_open", { path: pathname }, { source: "feedback_widget" });
             trackAnalyticsEvent("beta_feedback_open", { path: pathname }, { source: "feedback_widget" });
             setOpen(true);
           }}
           type="button"
         >
-          Beta Feedback
+          Feedback
         </button>
       )}
     </div>

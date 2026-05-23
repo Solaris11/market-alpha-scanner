@@ -25,8 +25,8 @@ export async function betaSignupDecisionForRequest(input: { email: string | null
     { email: input.email, inviteCode: typeof input.inviteCode === "string" ? input.inviteCode : null },
     {
       allowedEmails: parseAllowedBetaEmails(process.env.TRADEVETO_BETA_ALLOWED_EMAILS),
-      inviteCode: process.env.TRADEVETO_BETA_INVITE_CODE?.trim() || null,
-      mode: parseBetaSignupMode(process.env.TRADEVETO_BETA_SIGNUP_MODE),
+      inviteCode: process.env.TRADEVETO_EARLY_ACCESS_INVITE_CODE?.trim() || process.env.TRADEVETO_BETA_INVITE_CODE?.trim() || null,
+      mode: parseBetaSignupMode(process.env.TRADEVETO_EARLY_ACCESS_SIGNUP_MODE),
     },
   );
   if (!baseDecision.allowed || baseDecision.reason === "allowed_email") return baseDecision;
@@ -37,7 +37,7 @@ export async function betaSignupDecisionForRequest(input: { email: string | null
   }
 
   return applyBetaUserCap(baseDecision, {
-    cap: parseBetaUserCap(process.env.TRADEVETO_BETA_USER_CAP),
+    cap: parseBetaUserCap(process.env.TRADEVETO_EARLY_ACCESS_USER_CAP, 0),
     currentUsers: await activeUserCount(),
   });
 }

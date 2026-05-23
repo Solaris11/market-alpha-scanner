@@ -6,8 +6,8 @@ import { marketingMetadata } from "@/lib/marketing-seo";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = marketingMetadata("/register", {
-  title: "Join Closed Beta — TradeVeto",
-  description: "Create a TradeVeto closed-beta account with an invite code. Research-only AI market intelligence. Not financial advice.",
+  title: "Join Early Access — TradeVeto",
+  description: "Create a TradeVeto early-access account for research-only AI market intelligence. Optional founding invite codes are supported. Not financial advice.",
   robots: { follow: true, index: false },
 });
 

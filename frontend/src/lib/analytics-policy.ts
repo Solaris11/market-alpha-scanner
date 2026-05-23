@@ -74,6 +74,15 @@ export const ANALYTICS_EVENT_NAMES = [
   "support_unhelpful_feedback",
   "beta_feedback_open",
   "beta_feedback_submit",
+  "feedback_modal_open",
+  "feedback_modal_submit",
+  "bug_report_submit",
+  "feature_vote_submit",
+  "early_access_signup_start",
+  "early_access_signup_complete",
+  "founding_member_interest",
+  "founding_checkout_start",
+  "churn_risk_signal",
   "personalization_update",
   "decision_journal_save",
   "decision_memory_clear",
@@ -98,7 +107,7 @@ export type SanitizedAnalyticsEvent = {
   deviceType: "desktop" | "mobile" | "tablet" | "unknown";
 };
 
-export type BetaFeedbackType = "bug_report" | "confusing_signal" | "feature_request" | "general" | "helpful" | "issue" | "onboarding_confusion" | "performance_issue";
+export type BetaFeedbackType = "bug_report" | "confusing_signal" | "feature_request" | "feature_vote" | "general" | "helpful" | "issue" | "onboarding_confusion" | "performance_issue";
 export type BetaFeedbackRating = "negative" | "neutral" | "positive";
 
 export const ANALYTICS_TIME_RANGES = ["today", "7d", "30d", "90d"] as const;
@@ -167,7 +176,7 @@ export function normalizeAnalyticsRange(value: unknown): AnalyticsTimeRange {
 
 export function normalizeFeedbackType(value: unknown): BetaFeedbackType {
   const text = String(value ?? "").trim();
-  return text === "bug_report" || text === "confusing_signal" || text === "feature_request" || text === "helpful" || text === "issue" || text === "onboarding_confusion" || text === "performance_issue" ? text : "general";
+  return text === "bug_report" || text === "confusing_signal" || text === "feature_request" || text === "feature_vote" || text === "helpful" || text === "issue" || text === "onboarding_confusion" || text === "performance_issue" ? text : "general";
 }
 
 export function normalizeFeedbackRating(value: unknown): BetaFeedbackRating {

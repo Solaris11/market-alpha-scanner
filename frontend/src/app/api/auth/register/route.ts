@@ -29,7 +29,7 @@ export async function POST(request: Request) {
   try {
     const betaDecision = await betaSignupDecisionForRequest({ email: normalizeAuthEmail(payload.email), inviteCode: payload.inviteCode });
     if (!betaDecision.allowed) {
-      return NextResponse.json({ ok: false, error: "beta_access_required", message: betaDecision.message ?? "Closed beta signup requires access." }, { status: 403 });
+      return NextResponse.json({ ok: false, error: "early_access_required", message: betaDecision.message ?? "Early access signup requires access." }, { status: 403 });
     }
 
     const session = await registerWithPassword({ ...payload, ip: requestIp(request) });

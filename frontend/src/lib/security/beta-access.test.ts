@@ -33,7 +33,7 @@ test("beta user cap blocks new cohort signups once full", () => {
   const blocked = applyBetaUserCap(openDecision, { cap: 25, currentUsers: 25 });
   assert.equal(blocked.allowed, false);
   assert.equal(blocked.reason, "cohort_full");
-  assert.match(blocked.message ?? "", /25-user beta cohort/);
+  assert.match(blocked.message ?? "", /25-member early-access cohort/);
 });
 
 test("beta user cap still allows operators and existing users", () => {

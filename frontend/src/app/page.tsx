@@ -288,7 +288,7 @@ const comparisonRows = [
   ["Regime context", "Market-state-aware research", "Often static filters"],
   ["Risk-first filtering", "Designed to reduce low-quality action", "Often optimized for more signals"],
   ["Research-only positioning", "Explicitly not advice or execution", "Varies by tool"],
-  ["Feedback loop", "Closed-beta feedback and support surfaces", "Depends on platform"],
+  ["Feedback loop", "Early-access feedback, feature voting, and support surfaces", "Depends on platform"],
 ] as const;
 
 const trustItems = [
@@ -297,7 +297,7 @@ const trustItems = [
   ["Transparent logic", "Decision reasons, vetoes, readiness, and confidence are shown as context, not hidden black-box claims."],
   ["Proof over hype", "Simulated strategy performance, replay studies, and evidence maturity are shown with limitations instead of promises."],
   ["Source-backed context", "Verified event context must come from configured trusted sources or the app says it is unavailable."],
-  ["Operational readiness", "Monitoring, backups, support workflows, and health checks are part of the beta operating model."],
+  ["Operational readiness", "Monitoring, backups, support workflows, customer feedback, and health checks are part of the early-access operating model."],
 ] as const;
 
 const edgeItems = [
@@ -343,7 +343,7 @@ export default async function HomePage() {
           <MarketingReveal>
             <div className="flex max-w-full flex-wrap gap-2">
               <div className="inline-flex max-w-full shrink-0 rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-cyan-200 sm:tracking-[0.22em]">AI market intelligence</div>
-              <div className="inline-flex max-w-full shrink-0 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-emerald-200 sm:tracking-[0.22em]">Closed beta</div>
+              <div className="inline-flex max-w-full shrink-0 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-1 text-xs font-bold uppercase tracking-[0.16em] text-emerald-200 sm:tracking-[0.22em]">Early access</div>
             </div>
             <h1 className="poster-display-title no-bad-breaks mt-6 max-w-5xl text-[clamp(2.35rem,10.5vw,4rem)] leading-[0.95] sm:text-6xl lg:text-6xl 2xl:text-7xl">
               <span className="block">AI Market</span>
@@ -431,7 +431,7 @@ export default async function HomePage() {
       <section className="px-4 py-14 sm:px-6 lg:px-8">
         <div className="mx-auto max-w-7xl">
           <SectionHeader
-            copy="Real closed-beta product screens show the terminal, opportunity preview, history, and mobile experience. Premium data remains gated until access is confirmed."
+            copy="Real early-access product screens show the terminal, scanner preview, history, and mobile experience. Premium data remains gated until access is confirmed."
             eyebrow="Product preview"
             title="Decision intelligence that users can inspect."
           />
@@ -529,9 +529,9 @@ export default async function HomePage() {
       <section className="px-4 py-14 sm:px-6 lg:px-8" id="pricing">
         <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[0.9fr_1.1fr]">
           <PricingActionCard>
-            <div className="text-xs font-black uppercase tracking-[0.28em] text-emerald-200">Early adopter Premium</div>
+            <div className="text-xs font-black uppercase tracking-[0.28em] text-emerald-200">Founding Member Premium</div>
             <div className="mt-4 text-5xl font-black text-white">$20<span className="text-lg font-semibold text-slate-400">/month</span></div>
-            <p className="mt-4 text-sm leading-6 text-slate-300">Closed beta pricing is intentionally simple. Stripe shows trial, promo, renewal, and cancellation details before confirmation.</p>
+            <p className="mt-4 text-sm leading-6 text-slate-300">Paid early-access pricing is intentionally simple. Stripe shows trial, promo, renewal, and cancellation details before confirmation.</p>
             <ul className="mt-6 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
               {["Full research context", "Ranked setups", "Alerts and watchlist", "Paper simulation", "Decision intelligence", "Signal history"].map((item) => (
                 <li className="rounded-xl border border-white/10 bg-black/15 px-3 py-2" key={item}>{item}</li>
@@ -570,9 +570,9 @@ export default async function HomePage() {
 
       <section className="px-4 py-14 sm:px-6 lg:px-8">
         <MarketingReveal className="mx-auto max-w-5xl rounded-3xl border border-cyan-300/20 bg-cyan-300/[0.055] p-8 text-center shadow-2xl shadow-cyan-950/20 backdrop-blur-xl">
-          <div className="text-xs font-black uppercase tracking-[0.28em] text-cyan-200">Closed beta traders</div>
+          <div className="text-xs font-black uppercase tracking-[0.28em] text-cyan-200">Founding members</div>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Help shape a decision system that respects risk.</h2>
-          <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-slate-300">Real testimonials will only be shown after real beta feedback exists. For now, the beta program is focused on learning where users trust the system, where they feel confused, and what improves decision discipline.</p>
+          <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-slate-300">Real testimonials will only be shown after real customer feedback exists. The early-access launch is focused on learning where users trust the system, where they feel confused, and what improves decision discipline.</p>
         </MarketingReveal>
       </section>
 
@@ -602,9 +602,9 @@ export default async function HomePage() {
         <MarketingReveal className="mx-auto max-w-6xl rounded-3xl border border-white/10 bg-white/[0.04] p-8 shadow-2xl shadow-black/20 backdrop-blur-xl">
           <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
-              <div className="text-xs font-black uppercase tracking-[0.28em] text-emerald-200">Beta feedback, not fake testimonials</div>
+              <div className="text-xs font-black uppercase tracking-[0.28em] text-emerald-200">Customer feedback, not fake testimonials</div>
               <h2 className="mt-3 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Built with early users, measured honestly.</h2>
-              <p className="mt-4 text-base leading-7 text-slate-300">TradeVeto will only publish real testimonials after real users provide them. During closed beta, the focus is product learning: clarity, trust, retention, and whether WAIT-first guidance reduces impulsive workflows.</p>
+              <p className="mt-4 text-base leading-7 text-slate-300">TradeVeto will only publish real testimonials after real users provide them. During early access, the focus is product learning: clarity, trust, retention, and whether WAIT-first guidance reduces impulsive workflows.</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               {[
@@ -624,7 +624,7 @@ export default async function HomePage() {
 
       <section className="px-4 py-14 sm:px-6 lg:px-8" id="faq">
         <div className="mx-auto max-w-5xl">
-          <SectionHeader eyebrow="FAQ" title="Common closed-beta questions" />
+          <SectionHeader eyebrow="FAQ" title="Common early-access questions" />
           <div className="mt-10 grid gap-3">
             {faqs.map(([question, answer]) => (
               <MarketingCard key={question}>
@@ -639,7 +639,7 @@ export default async function HomePage() {
       <section className="px-4 py-16 sm:px-6 lg:px-8">
         <MarketingReveal className="visual-card mx-auto max-w-6xl overflow-hidden rounded-3xl border border-emerald-300/20 bg-gradient-to-br from-emerald-300/[0.12] to-cyan-300/[0.06] p-8 shadow-2xl shadow-emerald-950/20 backdrop-blur-xl md:flex md:items-center md:justify-between md:gap-8">
           <div>
-            <div className="text-xs font-black uppercase tracking-[0.28em] text-emerald-200">Beta access</div>
+            <div className="text-xs font-black uppercase tracking-[0.28em] text-emerald-200">Early access</div>
             <h2 className="mt-3 text-3xl font-semibold text-white">Ready to filter weak setups before they become decisions?</h2>
             <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-300">{BRAND_PRODUCT_DESCRIPTION}</p>
             <div className="mt-6">
@@ -668,7 +668,7 @@ function FeaturePosterShowcase() {
     <section className="px-4 py-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <SectionHeader
-          copy="The product should feel like a high-signal intelligence system, not a wall of text. These visual modules bring the poster language into the live app: clearer icons, stronger state colors, gauges, bars, sparklines, and QR-ready beta calls to action."
+          copy="The product should feel like a high-signal intelligence system, not a wall of text. These visual modules bring the poster language into the live app: clearer icons, stronger state colors, gauges, bars, sparklines, and QR-ready early-access calls to action."
           eyebrow="Visual intelligence system"
           title="Richer market storytelling without losing discipline."
         />
@@ -717,11 +717,11 @@ function PosterFeatureCard({ feature }: { feature: PosterFeature }) {
               ]}
             />
             <div className="rounded-2xl border border-cyan-300/16 bg-cyan-300/[0.055] p-4">
-              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Beta action</div>
+              <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Early access action</div>
               <div className="mt-2 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
                 <div>
-                  <div className="text-base font-black text-white">Join the limited closed beta</div>
-                  <p className="mt-1 text-xs leading-5 text-slate-400">Invite code required. Research-first intelligence, not financial advice.</p>
+                  <div className="text-base font-black text-white">Join founding early access</div>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">Optional founding invite codes supported. Research-first intelligence, not financial advice.</p>
                 </div>
                 <img
                   alt="TradeVeto register QR code"

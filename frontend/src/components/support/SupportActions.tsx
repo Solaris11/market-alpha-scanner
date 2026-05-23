@@ -12,10 +12,12 @@ export function SupportTicketForm({ anonymous = false }: { anonymous?: boolean }
 
   async function submit(formData: FormData) {
     setStatus("Sending...");
+    const category = String(formData.get("category") ?? "other");
+    const message = String(formData.get("message") ?? "");
     const payload = {
-      category: formData.get("category"),
+      category,
       email: formData.get("email"),
-      message: formData.get("message"),
+      message,
       subject: formData.get("subject"),
     };
     try {
@@ -24,6 +26,10 @@ export function SupportTicketForm({ anonymous = false }: { anonymous?: boolean }
         : await csrfFetch("/api/support/tickets", { body: JSON.stringify(payload), headers: { "Content-Type": "application/json" }, method: "POST" });
       if (!response.ok) throw new Error("Unable to send support request.");
       setStatus("Support request received.");
+      trackAnalyticsEvent("support_message_submit", { anonymous, category, messageLength: message.length }, { source: anonymous ? "support_contact" : "support_ticket" });
+      if (category !== "feedback" && category !== "other") {
+        trackAnalyticsEvent("churn_risk_signal", { anonymous, category }, { source: anonymous ? "support_contact" : "support_ticket" });
+      }
       if (!anonymous) window.location.reload();
     } catch (error) {
       setStatus(error instanceof Error ? error.message : "Unable to send support request.");
@@ -113,7 +119,7 @@ export function SupportChatBox() {
           <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Product copilot</div>
           <h2 className="mt-1 text-lg font-semibold text-slate-50">Ask about using the platform</h2>
           <p className="mt-2 text-sm leading-6 text-slate-400">
-            The assistant is bounded for beta: it explains product concepts, scanner states, billing steps, and support workflows without accessing private portfolio advice.
+            The assistant is bounded for early access: it explains product concepts, scanner states, billing steps, bug reports, feature feedback, and support workflows without accessing private portfolio advice.
           </p>
         </div>
         <div className="grid gap-2">

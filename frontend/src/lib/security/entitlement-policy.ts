@@ -72,7 +72,7 @@ function isPremiumPlan(plan: string | null): boolean {
 function activeBetaPremiumAccess(source: BetaPremiumAccessSource): BetaPremiumAccess {
   return {
     active: true,
-    label: source === "allowlist" ? "Founding Beta User" : "Beta Premium Access",
+    label: source === "allowlist" ? "Founding Member" : "Founding Early Access",
     source,
   };
 }

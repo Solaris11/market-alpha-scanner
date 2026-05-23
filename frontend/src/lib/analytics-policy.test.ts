@@ -34,6 +34,10 @@ describe("analytics privacy policy", () => {
     assert.equal(normalizeAnalyticsEventName("notification_usefulness_feedback"), "notification_usefulness_feedback");
     assert.equal(normalizeAnalyticsEventName("workflow_continuity"), "workflow_continuity");
     assert.equal(normalizeAnalyticsEventName("mobile_engagement"), "mobile_engagement");
+    assert.equal(normalizeAnalyticsEventName("feedback_modal_open"), "feedback_modal_open");
+    assert.equal(normalizeAnalyticsEventName("feature_vote_submit"), "feature_vote_submit");
+    assert.equal(normalizeAnalyticsEventName("early_access_signup_complete"), "early_access_signup_complete");
+    assert.equal(normalizeAnalyticsEventName("founding_checkout_start"), "founding_checkout_start");
     assert.equal(normalizeAnalyticsEventName("made_up_event"), null);
   });
 
@@ -47,6 +51,7 @@ describe("analytics privacy policy", () => {
 
   test("normalizes beta feedback types for cohort learning", () => {
     assert.equal(normalizeFeedbackType("bug_report"), "bug_report");
+    assert.equal(normalizeFeedbackType("feature_vote"), "feature_vote");
     assert.equal(normalizeFeedbackType("onboarding_confusion"), "onboarding_confusion");
     assert.equal(normalizeFeedbackType("performance_issue"), "performance_issue");
     assert.equal(normalizeFeedbackType("private_note"), "general");

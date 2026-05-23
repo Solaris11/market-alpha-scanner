@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = marketingMetadata("/login", {
   title: "Sign In — TradeVeto",
-  description: "Sign in to TradeVeto closed beta market intelligence. Existing beta users can continue to the research terminal.",
+  description: "Sign in to TradeVeto early-access market intelligence. Existing members can continue to the research terminal.",
   robots: { follow: true, index: false },
 });
 

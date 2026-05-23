@@ -437,7 +437,7 @@ function NavGlyph({ active, compact = false, item }: { active: boolean; compact?
 function accountStatusLabel(authenticated: boolean, plan: string, betaAccess = false): string {
   if (!authenticated) return "Sign in to save watchlists and alerts";
   if (plan === "admin") return "Admin workspace";
-  if (betaAccess) return "Closed beta workspace";
+  if (betaAccess) return "Founding workspace";
   if (plan === "premium") return "Premium workspace";
   return "Free workspace";
 }

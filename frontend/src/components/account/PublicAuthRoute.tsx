@@ -14,21 +14,21 @@ const APP_ENTRY_URL = "/terminal";
 const modeCopy = {
   login: {
     cta: "Sign in",
-    eyebrow: "Existing beta users",
+    eyebrow: "Early access members",
     modalMode: "login" as const,
     openLabel: "Open sign-in",
-    supporting: "Use the same email and password you created during closed beta access. If you are already signed in, TradeVeto will take you back to the terminal.",
+    supporting: "Use the same email and password you created for early access. If you are already signed in, TradeVeto will take you back to the terminal.",
     tactical: "Resume your market intelligence workflow without losing watchlists, alerts, paper context, or decision memory.",
     title: "Sign in to TradeVeto",
   },
   register: {
-    cta: "Create beta account",
-    eyebrow: "Closed beta access",
+    cta: "Create early access account",
+    eyebrow: "Founding member access",
     modalMode: "register" as const,
-    openLabel: "Open beta signup",
-    supporting: "TradeVeto is invite-only while the beta cohort is controlled. Use your invite code to create an account, then continue into the research terminal.",
-    tactical: "Create an account that starts with a guided workflow, risk-first defaults, and controlled-beta access rules.",
-    title: "Join the TradeVeto closed beta",
+    openLabel: "Open early access signup",
+    supporting: "TradeVeto is launching as a controlled paid early-access research platform. Create an account, then continue into onboarding, risk disclosure, and the research terminal.",
+    tactical: "Create an account that starts with risk acknowledgement, a scanner walkthrough, watchlist setup, and research-only guardrails.",
+    title: "Join TradeVeto Early Access",
   },
 } as const;
 
@@ -48,9 +48,9 @@ export function PublicAuthRoute({ initialInviteCode = "", mode }: { initialInvit
         <UtilityHero
           eyebrow={copy.eyebrow}
           metrics={[
-            { detail: "Public signup remains gated by invite code.", label: "Access", tone: "cyan", value: "Invite-only" },
+            { detail: "Founding member signup is open unless an operator explicitly pauses early access.", label: "Access", tone: "cyan", value: "Early" },
             { detail: "No broker execution or personalized advice.", label: "Mode", tone: "emerald", value: "Research" },
-            { detail: "Account, support, and onboarding loops stay measured.", label: "Beta", tone: "violet", value: "Controlled" },
+            { detail: "Onboarding, support, feedback, and first useful actions stay measured.", label: "Launch", tone: "violet", value: "Founding" },
             { detail: loading ? "Checking session state now." : "Ready for secure entry.", label: "Session", tone: loading ? "amber" : "emerald", value: loading ? "Checking" : "Stable" },
           ]}
           right={<AuthAccessConsole cta={copy.cta} mode={mode} />}
@@ -79,15 +79,15 @@ export function PublicAuthRoute({ initialInviteCode = "", mode }: { initialInvit
             <UtilityStatusRows
               items={[
                 { detail: "TradeVeto opens into market awareness, not a brokerage execution path.", label: "Financial advice boundary", tone: "emerald", value: "Explicit" },
-                { detail: "Signup stays gated so onboarding, support quality, and trust loops can be monitored.", label: "Closed beta control", tone: "violet", value: "Active" },
-                { detail: "Risk-first wording carries through login, onboarding, and account surfaces.", label: "Emotional state", tone: "cyan", value: "Calm" },
+                { detail: "The platform is still evolving, so source freshness, provider limits, and product gaps remain visible.", label: "Evolving platform", tone: "violet", value: "Disclosed" },
+                { detail: "Risk-first wording carries through login, onboarding, support, and account surfaces.", label: "Research posture", tone: "cyan", value: "Calm" },
               ]}
             />
           </UtilityCard>
           <UtilityCard eyebrow="Workflow continuity" icon={<Route className="h-5 w-5" />} title="The utility layer now belongs to the intelligence system" tone="cyan">
             <UtilityTimeline
               items={[
-                { detail: "Sign in or create a beta account through a stable overlay with no route reset.", label: "Secure entry", tone: "cyan" },
+                { detail: "Sign in or create an early access account through a stable overlay with no route reset.", label: "Secure entry", tone: "cyan" },
                 { detail: "Continue into Terminal with watchlists, alerts, decision memory, and Strategy Labs context intact.", label: "Context restored", tone: "emerald" },
                 { detail: "Use support, account, and settings as operational surfaces inside the same cinematic world.", label: "Operational control", tone: "violet" },
               ]}
@@ -103,7 +103,7 @@ export function PublicAuthRoute({ initialInviteCode = "", mode }: { initialInvit
 
 function AuthAccessConsole({ cta, mode }: { cta: string; mode: PublicAuthMode }) {
   const nodes = [
-    { Icon: KeyRound, label: mode === "register" ? "Invite Code" : "Credentials", tone: "text-cyan-200" },
+    { Icon: KeyRound, label: mode === "register" ? "Founding Pass" : "Credentials", tone: "text-cyan-200" },
     { Icon: LockKeyhole, label: "Secure Session", tone: "text-emerald-200" },
     { Icon: BrainCircuit, label: "Decision Memory", tone: "text-violet-200" },
     { Icon: RadioTower, label: "Alerts", tone: "text-amber-200" },
@@ -118,7 +118,7 @@ function AuthAccessConsole({ cta, mode }: { cta: string; mode: PublicAuthMode })
           <h2 className="mt-2 text-2xl font-black text-white">{cta}</h2>
           <p className="mt-2 text-sm leading-6 text-slate-400">
             {mode === "register"
-              ? "Invite validation, profile creation, beta guardrails, and Terminal entry are part of one controlled workflow."
+              ? "Profile creation, optional invite validation, research disclosure, and Terminal entry are part of one controlled workflow."
               : "Authentication restores your operational context: watchlist, alerts, account state, and research memory."}
           </p>
         </div>
@@ -148,7 +148,7 @@ function AuthAccessConsole({ cta, mode }: { cta: string; mode: PublicAuthMode })
       </div>
       <UtilityMetricGrid
         metrics={[
-          { detail: "No open signup", label: "Gate", tone: "violet", value: "Invite" },
+          { detail: "Controlled paid early access", label: "Launch", tone: "violet", value: "Founding" },
           { detail: "Not financial advice", label: "Boundary", tone: "emerald", value: "Research" },
         ]}
       />

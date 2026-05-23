@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { AuthModal } from "@/components/account/AuthModal";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 
 const CHECKOUT_INTENT_KEY = "tv_pricing_checkout_intent";
@@ -49,6 +50,9 @@ export function usePricingCheckout(): PricingCheckoutController {
   async function startBilling(mode: "checkout" | "portal"): Promise<void> {
     setBusy(true);
     setMessage(null);
+    if (mode === "checkout") {
+      trackAnalyticsEvent("founding_checkout_start", { authenticated }, { source: "pricing_checkout" });
+    }
     try {
       const response = await csrfFetch(`/api/stripe/${mode}`, { method: "POST" });
       const payload = (await response.json().catch(() => null)) as BillingResponse | null;
@@ -71,12 +75,13 @@ export function usePricingCheckout(): PricingCheckoutController {
       return;
     }
     if (!authenticated) {
+      trackAnalyticsEvent("founding_member_interest", { authenticated: false }, { source: "pricing_checkout" });
       window.sessionStorage.setItem(CHECKOUT_INTENT_KEY, "true");
       setAuthOpen(true);
       return;
     }
     if (entitlement.betaAccess) {
-      setMessage("Closed beta access is already active. No billing action is needed for this beta account.");
+      setMessage("Founding early-access premium is already active for this account. No billing action is needed.");
       return;
     }
     if (entitlement.isPremium || entitlement.isAdmin) {
@@ -88,7 +93,7 @@ export function usePricingCheckout(): PricingCheckoutController {
 
   const betaAccessActive = entitlement.betaAccess;
   const premiumActive = entitlement.isPremium || entitlement.isAdmin;
-  const label = loading ? "Checking access..." : entitlement.isAdmin ? "Premium Active" : entitlement.betaAccess ? "Beta Premium Active" : premiumActive ? "Manage Subscription" : authenticated ? "Unlock Premium Intelligence" : "Get Started";
+  const label = loading ? "Checking access..." : entitlement.isAdmin ? "Premium Active" : entitlement.betaAccess ? "Founding Access Active" : premiumActive ? "Manage Subscription" : authenticated ? "Unlock Premium Intelligence" : "Join Early Access";
 
   return {
     authModal: authOpen ? <AuthModal initialMode="register" onClose={() => setAuthOpen(false)} /> : null,

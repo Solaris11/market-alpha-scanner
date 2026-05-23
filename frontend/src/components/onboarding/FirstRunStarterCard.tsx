@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { trackAnalyticsEvent } from "@/lib/client/analytics";
+import { trackAnalyticsEvent, trackFirstUsefulAction } from "@/lib/client/analytics";
 import { markOnboardingReplayPending, replayMarketOnboarding } from "./MarketOnboarding";
 
 const HIDE_KEY = "tradeveto_first_run_starter_hidden_v1";
@@ -17,12 +17,12 @@ type StarterPath = "advanced" | "beginner";
 const STARTER_STEPS: Record<StarterPath, Array<{ href: string; label: string; text: string }>> = {
   advanced: [
     { href: "/terminal?firstRun=1", label: "Read the console", text: "Start with the market state, top risks, and what deserves attention." },
-    { href: "/opportunities?tab=full&firstRun=1", label: "Rank the universe", text: "Use risk/reward filters to compare the broad scan without hiding risk." },
+    { href: "/scanner?tab=full&firstRun=1", label: "Run the scanner", text: "Use dense filters, saved scans, and risk/reward context without hiding risk." },
     { href: "/symbol/AMD?firstRun=1", label: "Open evidence", text: "Review one symbol's timing, late-entry risk, large-move history, and what could break the setup." },
   ],
   beginner: [
     { href: "/terminal?firstRun=1", label: "Read the market read", text: "Check what matters now before opening any symbol." },
-    { href: "/opportunities?firstRun=1", label: "Review one idea", text: "Pick one card and read why it appears, what to wait for, and what could break it." },
+    { href: "/scanner?firstRun=1", label: "Use the scanner", text: "Pick one row and read why it appears, what to wait for, and what could break it." },
     { href: "/account", label: "Build your watchlist", text: "Add 3-5 symbols so future visits show what changed." },
   ],
 };
@@ -54,7 +54,7 @@ const CONCEPTS = [
   },
 ];
 
-const CHECKPOINTS = ["Understand the market state", "Review one opportunity", "Save symbols to revisit"];
+const CHECKPOINTS = ["Accept the research-only boundary", "Use the scanner once", "Save symbols to revisit"];
 
 export function FirstRunStarterCard() {
   const pathname = usePathname();
@@ -94,6 +94,7 @@ export function FirstRunStarterCard() {
 
   function startTour() {
     trackAnalyticsEvent("detail_expand", { detail: "first_run_walkthrough" }, { source: "first_run_starter" });
+    trackFirstUsefulAction("onboarding_walkthrough_start", { path }, { source: "first_run_starter" });
     if (pathname !== "/terminal") {
       markOnboardingReplayPending();
       router.push("/terminal?firstRun=1");
@@ -110,9 +111,9 @@ export function FirstRunStarterCard() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Start here</div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">Understand TradeVeto in 3 minutes</h2>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">Start early access in 3 minutes</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">
-            Start with one market read, review one opportunity, then save a small watchlist. TradeVeto looks for opportunity, but it explains risk, timing, and evidence before action.
+            Start with one market read, use the scanner once, then save a small watchlist. TradeVeto is an evolving research platform: it explains risk, timing, evidence, and provider limits before action.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {CHECKPOINTS.map((checkpoint, index) => (
@@ -142,7 +143,16 @@ export function FirstRunStarterCard() {
 
       <div className="mt-4 grid gap-2 md:grid-cols-3">
         {steps.map((step, index) => (
-          <Link className="rounded-xl border border-white/10 bg-slate-950/35 p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.055]" href={step.href} key={step.label}>
+          <Link
+            className="rounded-xl border border-white/10 bg-slate-950/35 p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.055]"
+            href={step.href}
+            key={step.label}
+            onClick={() => {
+              trackAnalyticsEvent("onboarding_step", { action: "starter_step_click", label: step.label, path }, { source: "first_run_starter" });
+              if (step.href.startsWith("/scanner")) trackFirstUsefulAction("first_scanner_usage", { path }, { pagePath: step.href, source: "first_run_starter" });
+              if (step.href.startsWith("/account")) trackFirstUsefulAction("watchlist_setup_start", { path }, { pagePath: step.href, source: "first_run_starter" });
+            }}
+          >
             <div className="flex items-center gap-2">
               <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full border border-cyan-300/25 bg-cyan-400/10 font-mono text-[11px] font-black text-cyan-100">{index + 1}</span>
               <span className="text-sm font-semibold text-slate-100">{step.label}</span>
@@ -170,10 +180,21 @@ export function FirstRunStarterCard() {
         <button className="rounded-full bg-cyan-300 px-4 py-2 text-xs font-bold text-slate-950 transition hover:bg-cyan-200" onClick={startTour} type="button">
           Start walkthrough
         </button>
-        <Link className="rounded-full border border-white/10 px-4 py-2 text-xs font-bold text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100" href="/opportunities?firstRun=1">
-          Review first opportunity
+        <Link
+          className="rounded-full border border-white/10 px-4 py-2 text-xs font-bold text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100"
+          href="/scanner?firstRun=1"
+          onClick={() => {
+            trackAnalyticsEvent("scanner_usage", { action: "first_run_scanner_walkthrough" }, { pagePath: "/scanner?firstRun=1", source: "first_run_starter" });
+            trackFirstUsefulAction("first_scanner_usage", { entry: "first_run_button" }, { pagePath: "/scanner?firstRun=1", source: "first_run_starter" });
+          }}
+        >
+          Open scanner walkthrough
         </Link>
-        <Link className="rounded-full border border-white/10 px-4 py-2 text-xs font-bold text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100" href="/symbol/AMD?firstRun=1">
+        <Link
+          className="rounded-full border border-white/10 px-4 py-2 text-xs font-bold text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100"
+          href="/symbol/AMD?firstRun=1"
+          onClick={() => trackFirstUsefulAction("symbol_research_start", { symbol: "AMD" }, { pagePath: "/symbol/AMD?firstRun=1", source: "first_run_starter", symbol: "AMD" })}
+        >
           Open example symbol
         </Link>
         <button className="rounded-full border border-white/10 px-4 py-2 text-xs font-bold text-slate-500 transition hover:border-white/20 hover:text-slate-200" onClick={hideCard} type="button">
@@ -182,8 +203,8 @@ export function FirstRunStarterCard() {
       </div>
       <p className="mt-3 text-[11px] leading-5 text-slate-500">
         {entitlement.betaAccess
-          ? "Closed beta premium access is active. Full-universe ranking, deeper evidence, replay, and personalized watchlist intelligence are unlocked after legal acceptance."
-          : "Free preview states may show limited data. Premium unlocks full-universe ranking, deeper evidence, replay, and personalized watchlist intelligence."}
+          ? "Founding early-access premium is active. Full-universe ranking, deeper evidence, replay, and personalized watchlist intelligence are unlocked after legal acceptance."
+          : "Free preview states may show limited data. Premium early access unlocks full-universe ranking, deeper evidence, replay, and personalized watchlist intelligence."}
       </p>
     </section>
   );

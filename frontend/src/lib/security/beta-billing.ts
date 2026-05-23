@@ -21,6 +21,6 @@ export function betaBillingCopy(config: BetaBillingConfig): string {
   const parts = [];
   if (config.trialDays) parts.push(`${config.trialDays}-day trial`);
   if (config.allowPromotionCodes) parts.push("Stripe promo codes");
-  if (!parts.length) return "Closed beta billing uses the standard monthly Premium checkout.";
-  return `Closed beta checkout supports ${parts.join(" and ")}. Stripe shows the final renewal price before confirmation.`;
+  if (!parts.length) return "Founding member billing uses the standard monthly Premium checkout.";
+  return `Founding member checkout supports ${parts.join(" and ")}. Stripe shows the final renewal price before confirmation.`;
 }

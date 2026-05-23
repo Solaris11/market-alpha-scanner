@@ -35,8 +35,8 @@ const STEPS: TourStep[] = [
     selector: "[data-onboarding-target='best-trade'], [data-onboarding-target='what-matters-now']",
   },
   {
-    title: "Change Risk And Reward",
-    message: "Use risk/reward controls to move from safer research lists to more aggressive ideas. The core risk warning stays visible either way.",
+    title: "Open Scanner Workflow",
+    message: "Use scanner controls, saved scans, and risk/reward context to find what changed without treating every mover as actionable.",
     selector: "[data-onboarding-target='ai-decision'], [data-onboarding-target='trade-plan-entry']",
   },
   {
@@ -197,7 +197,7 @@ export function MarketOnboarding({ tradePlanHref }: { tradePlanHref: string }) {
         </div>
         <p className="mt-3 leading-6 text-slate-300">{step.message}</p>
         <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.04] p-3 text-xs leading-5 text-slate-400">
-          <span className="font-semibold text-slate-200">Goal:</span> know what TradeVeto does, where opportunities are, and what to inspect next without reading every panel.
+          <span className="font-semibold text-slate-200">Goal:</span> know what TradeVeto does, where scanner opportunities are, what to inspect next, and why every output remains research-only.
         </div>
         <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
           <button

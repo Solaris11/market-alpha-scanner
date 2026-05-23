@@ -30,14 +30,14 @@ export function betaSignupDecision(input: { email: string | null; inviteCode?: s
     }
     return {
       allowed: false,
-      message: "Closed beta signup requires an invite code. Existing users can still sign in.",
+      message: "Early access signup currently requires an invite code. Existing users can still sign in.",
       reason: "invite_required",
     };
   }
 
   return {
     allowed: false,
-    message: "Closed beta signup is currently invite-only. Existing users can still sign in.",
+    message: "Early access signup is currently paused. Existing users can still sign in.",
     reason: "closed",
   };
 }
@@ -70,7 +70,7 @@ export function applyBetaUserCap(decision: BetaSignupDecision, input: { cap: num
   if (input.currentUsers < input.cap) return decision;
   return {
     allowed: false,
-    message: `The ${input.cap}-user beta cohort is currently full. Existing users can still sign in.`,
+    message: `The ${input.cap}-member early-access cohort is currently full. Existing users can still sign in.`,
     reason: "cohort_full",
   };
 }

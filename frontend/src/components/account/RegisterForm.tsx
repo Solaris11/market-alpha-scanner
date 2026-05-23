@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { AuthInput } from "./LoginForm";
 
 export function RegisterForm({ initialInviteCode = "", onSuccess }: { initialInviteCode?: string; onSuccess: () => void }) {
@@ -31,8 +32,10 @@ export function RegisterForm({ initialInviteCode = "", onSuccess }: { initialInv
     }
 
     setBusy(true);
+    trackAnalyticsEvent("early_access_signup_start", { inviteProvided: Boolean(inviteCode.trim()) }, { source: "register_form" });
     try {
       await register({ displayName, email, inviteCode: inviteCode.trim() || undefined, password });
+      trackAnalyticsEvent("early_access_signup_complete", { inviteProvided: Boolean(inviteCode.trim()) }, { source: "register_form" });
       onSuccess();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to create account.");
@@ -45,7 +48,7 @@ export function RegisterForm({ initialInviteCode = "", onSuccess }: { initialInv
     <form className="space-y-3" onSubmit={submit}>
       <AuthInput autoComplete="name" label="Display name" onChange={setDisplayName} value={displayName} />
       <AuthInput autoComplete="email" label="Email" onChange={setEmail} type="email" value={email} />
-      <AuthInput autoComplete="one-time-code" label="Invite code" onChange={setInviteCode} placeholder="Required during invite-only beta" value={inviteCode} />
+      <AuthInput autoComplete="one-time-code" label="Founding invite code" onChange={setInviteCode} placeholder="Optional if you received one" value={inviteCode} />
       <AuthInput autoComplete="new-password" label="Password" onChange={setPassword} type="password" value={password} />
       <AuthInput autoComplete="new-password" label="Confirm password" onChange={setConfirmPassword} type="password" value={confirmPassword} />
       {error ? <div className="rounded-xl border border-rose-300/20 bg-rose-400/10 px-3 py-2 text-xs text-rose-100">{error}</div> : null}

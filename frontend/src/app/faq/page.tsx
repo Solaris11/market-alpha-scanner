@@ -18,8 +18,8 @@ const faqs = [
   ["How does TradeVeto handle news and events?", "Verified event context must come from trusted configured sources. If the system lacks verified source-backed context, it should say so instead of inventing a catalyst."],
   ["What is public strategy performance?", "It is simulated, research-only strategy evidence with benchmark and drawdown visibility. It is not real-money trading and does not guarantee future returns."],
   ["Can AI override the scores?", "No. The rules-based and statistical engines own scores, rankings, and metrics. AI is used to explain structured data, not to invent facts or make trade decisions."],
-  ["What happens after beta?", "The planned premium price is $20/month. Closed beta access is focused on early feedback, product quality, retention learning, and operational confidence before wider launch."],
-  ["How do beta trials or promo codes work?", "If enabled for your invite cohort, Stripe will show the trial length, discount, renewal price, and billing date before checkout is confirmed."],
+  ["What happens after early access?", "Founding Member pricing starts at $20/month. Early access is focused on real customer feedback, product quality, retention learning, and operational confidence before wider launch."],
+  ["How do founding trials or promo codes work?", "If enabled for your account, Stripe will show the trial length, discount, renewal price, and billing date before checkout is confirmed."],
   ["Can I cancel?", "Yes. Subscription management is handled through Stripe Billing Portal. If you cancel during a trial, Stripe shows when access will end and whether billing will begin."],
 ] as const;
 

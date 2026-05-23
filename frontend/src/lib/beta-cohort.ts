@@ -253,7 +253,7 @@ export function buildBetaCohortDashboardModel(input: BetaCohortInput, cap = CONT
       "P3: copy polish, isolated UI awkwardness, or docs gaps. Track during daily review without blocking the cohort.",
     ],
     feedbackWorkflow: [
-      "Use the floating Beta Feedback form for quick confusion, issue, feature request, and bug signals.",
+      "Use the floating Feedback form for quick confusion, issue, feature vote, feature request, and bug signals.",
       "Escalate account-specific, billing, or reproducible workflow bugs into Support Tickets.",
       "Tag feedback by page, symbol, device type, and severity; never request passwords, tokens, payment credentials, or private brokerage data.",
       "Review confusing-signal and bug-report feedback every day before sending more invites.",

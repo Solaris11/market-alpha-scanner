@@ -48,7 +48,7 @@ export default function HowItWorksPage() {
           ))}
         </div>
         <div className="mt-12 text-center">
-          <PrimaryCta>Start Free</PrimaryCta>
+          <PrimaryCta>Join Early Access</PrimaryCta>
         </div>
       </section>
     </MarketingShell>

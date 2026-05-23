@@ -467,7 +467,7 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
             ))}
           </div>
         </ChartPanel>
-        <ChartPanel title="Beta Feedback">
+        <ChartPanel title="Early Access Feedback">
           <div className="mb-3 flex flex-wrap gap-2">
             {analytics.feedback.typeCounts.map((row) => (
               <span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-semibold text-slate-300" key={row.feedbackType}>

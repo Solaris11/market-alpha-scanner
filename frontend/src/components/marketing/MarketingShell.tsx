@@ -27,8 +27,8 @@ export function MarketingNav() {
   return (
     <header className="sticky top-0 z-50 border-b border-white/10 bg-[#030711]/78 backdrop-blur-xl">
       <Link className="block border-b border-cyan-300/10 bg-cyan-300/[0.08] px-3 py-2 text-center text-[11px] font-black uppercase leading-5 tracking-[0.12em] text-cyan-100 transition-colors hover:bg-cyan-300/[0.12] sm:text-xs sm:tracking-[0.2em]" href="/#pricing">
-        <span className="sm:hidden">Closed beta access · Research only</span>
-        <span className="hidden sm:inline">Closed beta access · Early adopter premium preview · Research only</span>
+        <span className="sm:hidden">Paid early access · Research only</span>
+        <span className="hidden sm:inline">Founding member early access · Research-only intelligence · No financial advice</span>
       </Link>
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-3 py-3 sm:gap-4 sm:px-6 lg:px-8">
         <Link className="flex min-w-0 items-center gap-3 transition-opacity duration-200 hover:opacity-90" href="/">
@@ -72,6 +72,7 @@ export function MarketingFooter() {
             ["Features", "/features"],
             ["How It Works", "/how-it-works"],
             ["Pricing", "/pricing"],
+            ["Waitlist", "/waitlist"],
             ["FAQ", "/faq"],
             ["Open App", APP_URL],
           ]}
@@ -126,7 +127,7 @@ export function MarketingCard({ children, className = "" }: { children: React.Re
   );
 }
 
-export function PrimaryCta({ children = "Start Free" }: { children?: React.ReactNode }) {
+export function PrimaryCta({ children = "Join Early Access" }: { children?: React.ReactNode }) {
   return (
     <a
       className="landing-cta inline-flex items-center justify-center rounded-full bg-cyan-300 px-6 py-3 text-sm font-black text-slate-950 shadow-[0_0_36px_rgba(34,211,238,0.28)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-cyan-200"

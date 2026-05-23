@@ -16,7 +16,7 @@ import {
 } from "@/components/visual/CinematicIntelligencePanels";
 import { InteractiveInsightZoneGrid, type InteractiveInsightZoneItem } from "@/components/visual/InteractiveVisualIntelligence";
 import type { ScoreFactor, VisualTone } from "@/components/visual/MiniVisuals";
-import { trackAnalyticsEvent } from "@/lib/client/analytics";
+import { trackAnalyticsEvent, trackFirstUsefulAction } from "@/lib/client/analytics";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { humanizeLabel } from "@/lib/ui/labels";
 import { readWatchlistStorage, WATCHLIST_EVENT } from "@/lib/watchlist-storage";
@@ -679,7 +679,9 @@ export function AlertsWorkspace({ initialOverview }: { initialOverview: AlertOve
       });
       const resultMessage = result.mode === "updated" ? "Alert rule updated." : "Alert rule saved.";
       setMessage(resultMessage);
-      trackAnalyticsEvent("alert_create", { mode: result.mode ?? "created", type: payload?.type ?? type }, { source: "alerts_workspace", symbol: payload?.symbol ?? (symbolVisible ? normalizeSymbol(symbol) : undefined) });
+      const alertSymbol = payload?.symbol ?? (symbolVisible ? normalizeSymbol(symbol) : undefined);
+      trackAnalyticsEvent("alert_create", { mode: result.mode ?? "created", type: payload?.type ?? type }, { source: "alerts_workspace", symbol: alertSymbol });
+      trackFirstUsefulAction("first_alert_creation", { mode: result.mode ?? "created", type: payload?.type ?? type }, { source: "alerts_workspace", symbol: alertSymbol });
       await reload();
       return { message: resultMessage, mode: result.mode, ok: true };
     } catch (error) {

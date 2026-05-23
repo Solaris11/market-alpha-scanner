@@ -135,7 +135,7 @@ async function upsertOAuthUser(input: {
       userId = existingUser.rows[0]?.id ?? null;
       if (!userId) {
         const betaDecision = await betaSignupDecisionForRequest({ email: input.email });
-        if (!betaDecision.allowed) throw new Error("Closed beta signup requires access.");
+        if (!betaDecision.allowed) throw new Error("Early access signup requires access.");
         const createdUser = await client.query<ExistingUserRow>(
           `
             INSERT INTO users (

@@ -17,7 +17,7 @@ test("invite-only beta mode grants retroactive beta premium without Stripe subsc
 
   assert.equal(result.active, true);
   assert.equal(result.source, "invite_beta");
-  assert.equal(result.label, "Beta Premium Access");
+  assert.equal(result.label, "Founding Early Access");
 });
 
 test("beta allowlist users receive founding beta premium label", () => {
@@ -29,7 +29,7 @@ test("beta allowlist users receive founding beta premium label", () => {
 
   assert.equal(result.active, true);
   assert.equal(result.source, "allowlist");
-  assert.equal(result.label, "Founding Beta User");
+  assert.equal(result.label, "Founding Member");
 });
 
 test("beta premium access can be explicitly disabled", () => {

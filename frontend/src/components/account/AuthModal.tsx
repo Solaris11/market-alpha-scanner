@@ -70,7 +70,7 @@ export function AuthModal({
 
   const title = mode === "register" ? "Create your account" : mode === "forgot" ? "Reset your password" : mode === "reset" ? "Choose a new password" : "Sign in";
   const subtitle = mode === "register"
-    ? "Invite verification, account setup, and research-only guardrails stay in one controlled flow."
+    ? "Account setup, optional founding invite validation, and research-only guardrails stay in one controlled flow."
     : mode === "forgot"
       ? "Request a reset link without exposing account details."
       : mode === "reset"
@@ -107,15 +107,15 @@ export function AuthModal({
           <div className="relative hidden min-h-[32rem] overflow-hidden border-r border-white/10 p-5 lg:block">
             <div aria-hidden="true" className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(34,211,238,0.13),transparent_45%)]" />
             <div className="relative">
-              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">TradeVeto Closed Beta</div>
+              <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">TradeVeto Early Access</div>
               <h2 className="mt-3 text-3xl font-black uppercase leading-none text-white">Access Control</h2>
               <p className="mt-3 text-sm leading-6 text-slate-400">{subtitle}</p>
             </div>
             <div className="relative mt-8 grid gap-3">
-              <AuthSignal icon={<KeyRound className="h-5 w-5" />} label="Secure entry" text="Email, password, invite, or configured Google provider." />
+              <AuthSignal icon={<KeyRound className="h-5 w-5" />} label="Secure entry" text="Email, password, optional founding invite, or configured Google provider." />
               <AuthSignal icon={<BrainCircuit className="h-5 w-5" />} label="Context restored" text="Watchlists, alerts, account state, and memory remain attached." tone="violet" />
               <AuthSignal icon={<ShieldCheck className="h-5 w-5" />} label="Research boundary" text="No broker execution or personalized trade instruction." tone="emerald" />
-              <AuthSignal icon={<Clock3 className="h-5 w-5" />} label="Beta telemetry" text="Onboarding and support loops stay observable without collecting sensitive data." tone="amber" />
+              <AuthSignal icon={<Clock3 className="h-5 w-5" />} label="Launch telemetry" text="Onboarding, feedback, and support loops stay observable without collecting sensitive data." tone="amber" />
             </div>
             <div className="relative mt-5 rounded-3xl border border-cyan-300/16 bg-slate-950/54 p-4">
               <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Operational state</div>

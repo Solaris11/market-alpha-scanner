@@ -25,9 +25,9 @@ export default async function AdminAnalyticsPage({ searchParams }: { searchParam
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Visitor Insights</div>
-            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-50">Page views, retention, and beta learning</h1>
+            <h1 className="mt-1 text-2xl font-semibold tracking-tight text-slate-50">Page views, retention, and early-access learning</h1>
             <p className="mt-1 max-w-4xl text-sm leading-6 text-slate-400">
-              First-party, privacy-conscious analytics for closed beta. No raw IPs, full user agents, passwords, secrets, financial account data, or session tokens are stored.
+              First-party, privacy-conscious analytics for early access. No raw IPs, full user agents, passwords, secrets, financial account data, or session tokens are stored.
             </p>
           </div>
           <nav className="flex flex-wrap gap-2">

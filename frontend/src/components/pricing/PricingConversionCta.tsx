@@ -12,12 +12,12 @@ export function PricingConversionCta() {
           <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Premium next step</div>
           <p className="mt-2 text-sm leading-6 text-slate-300">
           {checkout.isAdmin
-            ? "Admin beta access is active. Billing is managed internally."
+            ? "Operator access is active. Billing is managed internally."
             : checkout.betaAccessActive
-              ? "Closed beta premium access is active. No Stripe subscription is needed for this beta account."
+              ? "Founding early-access premium is active. No Stripe subscription is needed for this account."
             : checkout.premiumActive
               ? "Premium access is active. Manage billing in Stripe when you need to update renewal or cancellation settings."
-              : "Create an account or sign in, then Stripe handles trial, promo, renewal, and cancellation details before confirmation."}
+              : "Create an account or sign in, then Stripe handles founding pricing, trial, promo, renewal, and cancellation details before confirmation."}
           </p>
         </div>
         <button
