@@ -276,20 +276,441 @@ No audited surface reaches world-leading status. The highest areas are visual di
 | Scale readiness | Phase 21.8 chaos certification remains not accomplished |
 | Operational resilience | No production provider-outage recovery drill, no sustained 15 minute tier tests, and incomplete DB growth proof |
 
-## Phase 22 Roadmap
+## PHASE 22 ROADMAP
 
-1. Restore BrowserStack Automate availability and rerun the full production real-device suite on iPhone Safari and Android Chrome with session URLs, videos, screenshots, network logs, and console logs.
-2. Capture physical iPhone, physical Android, Facebook in-app browser, and Instagram in-app browser proof for risk acknowledgement, notifications, paper deep scroll, macro overlays, scanner, and charts.
-3. Run authenticated sustained 25/50/100 concurrency tests for at least 15 minutes per tier, including `/api/discovery`, `/api/live-intelligence`, chart, strategy, replay, and protected user workflows.
-4. Run authenticated EventSource reconnect-storm tests with reconnect jitter, failure injection, and recovery proof.
-5. Execute controlled provider outage simulations and prove degraded-mode fallback plus recovery without fake events or stale-feed mislabeling.
-6. Add and validate DB indexes or query rewrites for hot request, monitoring, analytics, scanner, and retention queries so EXPLAIN/ANALYZE avoids unbounded sequential scans at projected data volume.
-7. Build large watchlist, dense scanner, and mobile long-session stress suites with memory/render ceiling evidence.
-8. Convert retention instrumentation into real cohort improvement: post-release D2 and D7 cohorts, scanner return loops, alert-return conversion, watchlist return workflows, and notification usefulness volume.
-9. Mature charts toward professional parity: chart alerts, richer editable drawing objects, object styling, saved templates, mobile fullscreen proof, and indicator workspace depth.
-10. Expand provider-backed event intelligence with source-linked analyst actions, dividends, company events, macro, geopolitical, outage states, and freshness SLAs without fabricated claims.
-11. Mature institutional paper/strategy operations with evidence-backed position lifecycle, thesis lifecycle, allocation/rebalance history, scenario workflows, and optional real broker integrations only when broker state is real.
-12. Publish authenticated production observability dashboards covering p50/p95/p99, cache hits, provider health, stream reconnects, mobile stress, retention cohorts, and chaos gate state.
+Phase 22 goal: final maturity and dominance gap closure. This roadmap must not become feature bloat. Every sprint below must directly improve trust, retention, operational credibility, workflow dominance, production maturity, or daily-driver quality.
+
+Ultimate objective: move TradeVeto from a highly differentiated premium intelligence platform to a credible world-class primary market intelligence operating system.
+
+### Primary Remaining Blocker
+
+The real reason TradeVeto is still not world-leading is insufficient production proof of daily primary use. The product has strong visual ambition and now has one strong authenticated latency proof, but it does not yet prove that serious traders can rely on it every day across real devices, real retention cohorts, sustained scale, professional chart workflows, terminal-grade provider depth, and institutionally credible portfolio operations.
+
+Primary blocker: operational trust evidence, especially real-device mobile certification, daily-driver retention, and sustained authenticated scale/resilience proof. These three blockers cap every leadership claim even when individual surfaces look strong.
+
+### Scores Still Below 90
+
+All audited page overall scores remain below 90. The 90+ push must prioritize surfaces that define primary daily use before utility pages.
+
+| Surface | Overall | Why below 90 | Changes likely to reach 90+ | Changes likely to reach 95+ or world-class |
+| --- | ---: | --- | --- | --- |
+| Terminal | 87 | Strong visual command center, but no full authenticated daily-driver continuity proof and no real-device certification | Persistent morning workflow, live health indicators, saved workspace restore, faster authenticated first paint | Bloomberg-grade command memory, terminal-wide keyboard workflow, source-linked event stream, sustained scale proof |
+| Discover | 86 | Scanner-adjacent workflow is strong but still gated by mobile and retention proof | Faster route hydration, clearer saved-discovery loops, watchlist-aware return states | Trade Ideas/Finviz-grade high-density discovery with proven large-watchlist scale |
+| Scanner | 86 | Endpoint latency passed at 25 concurrency, but workflow density, authenticated 50/100 scale, and large-watchlist proof are missing | Large-watchlist stress, saved scan returns, compare flow speed, power-user filtering | Trade Ideas-level real-time scanner workflows, alert automation, sustained high-concurrency proof |
+| Symbol AMD | 85 | Intelligence and chart presentation improved, but chart operations and cross-device chart proof trail leaders | Authenticated chart persistence UX, richer event timeline, chart toolbar polish | TradingView-grade chart object model, source-linked live timeline, cross-device workspace continuity |
+| Paper | 83 | Paper workflows are not broker-backed and mobile deep workflow proof is incomplete | Better lifecycle visibility, safe mobile overlays, replay-backed paper autopsy | Institutionally credible paper portfolio operations with audited position/thesis history |
+| Strategy Labs | 83 | Strategy story is useful but does not prove mature automation, revision history, or institutional operating depth | Revision timeline, scenario comparison, saved strategy workspace | Composer/TrendSpider-grade strategy lifecycle, validation, and operational continuity |
+| Market Memory | 82 | Concept is differentiated, but retention proof and source continuity remain weak | Better saved memory sessions, watchlist impact returns, evidence freshness indicators | Bloomberg-like institutional memory with durable event lineage and return workflows |
+| Feed | 81 | News/feed depth and event velocity trail dedicated providers | Provider status states, source filters, watchlist impact ranking | StockTitan/Bloomberg-grade source-linked breaking event depth and freshness SLAs |
+| Macro | 80 | Prior iPhone Safari overlay failure and provider breadth limits cap the score | Real-device overlay certification, macro event timeline, source freshness | Bloomberg-grade macro terminal workflows, calendar drilldowns, provider outage transparency |
+| Alerts | 78 | Alert-return and notification usefulness proof are weak | Useful/not useful loops, alert return conversion, cross-device delivery tracking | Trade Ideas/Webull-grade alert operations with reliable push, audit trail, and conversion proof |
+| History | 80 | Useful replay/history layer, but replay return loops and scale evidence are thin | Replay return workflow, symbol-specific continuity, faster history hydration | Professional trade autopsy and market memory lineage tied to chart/scanner events |
+| Performance | 81 | Performance page is not yet a professional operational dashboard | P50/P95/P99, cache, stream, and retention panels visible to operators | Production-grade observability comparable to serious SaaS operations dashboards |
+| Account | 77 | Utility surface, low intelligence and continuity value | Trust center, entitlement clarity, device/session management | Broker-grade account trust architecture and compliance-grade auditability |
+| Settings | 77 | Utility surface lacks workflow impact | Notification preferences, chart/scanner workspace settings, mobile controls | Cross-device workflow cockpit with data freshness, privacy, and device controls |
+| Support | 78 | Support exists but does not yet build institutional trust | Incident status, provider outage visibility, ticket history clarity | Enterprise-grade support, incident transparency, and operational runbook visibility |
+
+### Major Categories Below Target
+
+| Category | Current | Target | Exact blocker | Complexity | User impact |
+| --- | ---: | ---: | --- | --- | --- |
+| Desktop UX | 90 | 98+ | Strong surfaces but incomplete daily-driver continuity and power-user workflow depth | Medium | High |
+| Mobile UX | 80 | 97+ | Missing passing real-device BrowserStack, physical devices, and in-app browser proof | Medium | Very high |
+| Chart UX | 82 | 97+ | No chart-alert ecosystem, limited object styling, no proven professional mobile chart operations | High | High |
+| Scanner UX | 90 | 98+ | Latency target passed, but large-watchlist, 50/100 concurrency, saved scan, alert loops not certified | High | Very high |
+| Strategy UX | 84 | 97+ | Strategy lifecycle is not yet operationally complete or institutionally proven | High | High |
+| Macro/News UX | 83 | 97+ | Provider breadth, freshness, and event velocity trail dedicated systems | High | High |
+| Intelligence UX | 90 | 99+ | Strong narrative intelligence, but source coverage and continuity are not terminal-grade | High | Very high |
+| Interaction UX | 82 | 97+ | Real-device overlay, keyboard, mobile, and power-user interactions are not fully certified | Medium | Very high |
+| Trust UX | 92 | 99+ | Disclosures are strong, but proof gaps remain in mobile, scale, retention, providers, and institutional operations | High | Very high |
+| Overall UX | 85 | 98+ | Multiple proof gaps compound across daily use, mobile, charts, providers, retention, and resilience | High | Very high |
+
+### Remaining Weak Areas
+
+| Weak area | Exact blocker | Workflow gap | Maturity weakness | Production weakness | Missing operational proof | Competitor advantage | Complexity | User impact |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Real-device mobile polish | BrowserStack real-device matrix incomplete; physical and in-app proof missing | Users cannot trust onboarding, overlays, charts, and scanners on every real mobile context | Mobile QA is still emulation-heavy | Latest BrowserStack sessions failed before route execution | iPhone Safari, Android Chrome, physical devices, Facebook/Instagram in-app videos | Robinhood, Webull, Apple Stocks have native mobile reliability expectations | Medium | Very high |
+| Live-intelligence scaling | 25-concurrency authenticated proof passed, but 50/100 sustained and reconnect storms are not certified | Live view reliability under bursts is not proven | Stream operation lacks full storm/recovery maturity | Phase 21.8 stream storm failed without auth | 15-minute 25/50/100 authenticated stream proof, recovery proof | Bloomberg, Trade Ideas, Webull real-time workflows | High | Very high |
+| Scanner throughput and workflow | Hot endpoint passed, but large-watchlist, saved scan, compare, alert-return loops are incomplete | Power users need dense, fast scanner operations and repeatable routines | Scanner is promising but not yet Trade Ideas/Finviz-grade | Phase 21.8 protected scanner probe was unauthenticated and failed | Auth 50/100 sustained, large-watchlist stress, saved-scan return conversion | Trade Ideas and Finviz scanner familiarity and density | High | Very high |
+| Chart workflow maturity | Persistence improved, but professional chart ecosystem is incomplete | Traders need editable objects, alerts, templates, indicator systems, mobile fullscreen | Charting is useful but not TradingView-grade | Authenticated API proof exists, not full visual real-device chart workflow proof | Mobile real-device chart sessions, chart alerts, object editing proof | TradingView and TrendSpider | High | High |
+| Provider depth | Expanded source transparency, but no Bloomberg/Yahoo/StockTitan parity | Users need richer analyst, dividend, macro, geopolitical, and breaking event workflows | Provider matrix is honest but not deep enough | Freshness and outage states exist, but breadth/velocity proof is limited | Provider coverage SLAs, event latency, outage recovery proof | Bloomberg and StockTitan | High | High |
+| Retention loops | D2/D7 retention under 1%; 7+ active-day retention near zero | Users do not yet return for daily scanner, alerts, watchlists, replay, and morning workflow | Habit loops are instrumented but not proven | Production cohorts remain weak | Post-release D2/D7 improvement, alert return conversion, notification usefulness volume | Robinhood, Apple Stocks, TradingView daily habits | Medium | Very high |
+| Notification usefulness | Feedback exists but volume and conversion are unproven | Notifications do not yet prove they bring users back to valuable workflows | Notification system lacks demonstrated signal quality | Low production feedback and conversion evidence | Useful/not useful volume, alert-return conversion, fatigue metrics | Robinhood, Webull, Trade Ideas | Medium | High |
+| Strategy realism | Better paper/strategy operations, no broker/compliance proof | Strategy lifecycle lacks full operational trust | Still paper/simulation-bound | Authenticated premium portfolio proof was limited | Position/thesis/rebalance history, replay autopsy volume, optional real broker proof | Composer, TrendSpider, institutional platforms | High | High |
+| Portfolio operations | No broker-backed fills, external statements, or account reconciliation | Users cannot treat it as institutional portfolio operations | Paper portfolio is credible only within bounded trust claims | Production proof did not exercise full authenticated premium portfolio state | Evidence-backed lifecycle history, concentration history, scenario operations proof | Webull, Robinhood, Composer, broker platforms | High | High |
+| Chaos and resilience | Phase 21.8 not accomplished | Failure-mode behavior under stress is not certified | Operational runbooks and dashboards are incomplete | No provider outage drill; short load windows only | 15-minute tiers, outage recovery, DB plan proof, memory ceiling | Bloomberg/enterprise platforms | High | Very high |
+| Production observability | Dashboard code exists, but authenticated admin dashboard proof was not captured | Operators lack proven hot-path visibility | Observability is not yet a certification-grade control room | Admin monitoring public edge returned 404 unauthenticated | Authenticated dashboard screenshots and metric drilldowns | Enterprise SaaS and market terminals | Medium | High |
+| Trust architecture | Disclosure language strong, but trust evidence incomplete | Users need proof of freshness, provider limits, mobile reliability, and operational status | Trust is better than average but not 99+ | Missing real-device, scale, outage, and retention proof | Public trust/status center, provider freshness, incident history | Bloomberg, Apple, broker apps | Medium | Very high |
+| Accessibility and browser QA | Not comprehensively certified | Keyboard, screen reader, viewport, and browser-specific workflows can still fail silently | Accessibility maturity is not world-class | No broad a11y/browser matrix proof in Phase 21.9 | Axe/keyboard/screen-reader/browser matrix artifacts | Apple Stocks and mature SaaS tools | Medium | Medium |
+
+### Competitor Gap Analysis
+
+| Competitor | Exact advantage still exists | Gap type | Realistically closable? | Approximate complexity |
+| --- | --- | --- | --- | --- |
+| Bloomberg | Provider breadth, terminal depth, institutional data, event velocity, enterprise trust, workflow density | Data/provider, operational, trust, ecosystem | Partially closable; full parity is not realistic without major data licensing and years of operating history | Very high |
+| TradingView | Chart object ecosystem, indicators, scripts, chart alerts, social/workspace gravity, proven mobile charting | Workflow, ecosystem, mobile, retention | Partially closable for core professional chart workflows; full ecosystem parity is very high | Very high |
+| TrendSpider | Automated technical analysis, backtesting, pattern detection, chart alerts, strategy tooling | Workflow, chart, strategy | Closable in selected workflows if scoped tightly | High |
+| Finviz | Dense scanner tables, fast market maps, familiar discovery workflows | Workflow, scanner, performance | Closable for scanner density and workflow speed | Medium-high |
+| Trade Ideas | Real-time scanner operations, alerting, day-trader routines, AI-assisted live workflows | Scanner, scale, retention | Partially closable with sustained scanner and alert focus | High |
+| Robinhood | Native mobile polish, brokerage integration, habitual account checking, notifications | Mobile, retention, trust, ecosystem | Mobile and retention quality are closable; brokerage integration only if real | High |
+| Webull | Mobile charting, broker-linked watchlists, account continuity, alerts | Mobile, chart, workflow, ecosystem | Partially closable with chart/mobile focus; broker features need real integration | High |
+| StockTitan | Breaking news velocity, source-linked headlines, event feed specialization | Data/provider, workflow | Closable only with stronger provider/event pipeline and freshness SLAs | High |
+| Composer | Strategy automation, portfolio automation, execution-oriented workflows | Strategy, portfolio, ecosystem | Partially closable if strategy ops remain evidence-backed and no fake execution is claimed | High |
+| Apple Stocks | Native reliability, simple daily habit, OS-integrated trust, fast mobile consumption | Mobile, retention, trust | Closable for PWA/mobile reliability and daily habit; OS integration is not fully closable | Medium-high |
+
+### Phase 22 Prioritization Order
+
+1. Real-device mobile certification and onboarding blocker closure.
+2. Sustained authenticated scale, live-intelligence storm resilience, and chaos proof.
+3. Daily-driver retention loops and notification usefulness.
+4. Scanner dominance: large-watchlist, saved scans, alert returns, and power-user density.
+5. Chart professional maturity and mobile fullscreen chart proof.
+6. Provider/event intelligence depth with freshness and outage transparency.
+7. Portfolio and strategy operations credibility.
+8. Production observability and trust architecture.
+9. Low-score utility surface maturity, browser-specific QA, and accessibility.
+10. Final Phase 22 world-leadership recertification.
+
+### Phase 22 Sprint Definitions
+
+#### Phase 22.1 - Real-Device Mobile Trust Certification
+
+Critical issue: Mobile trust is capped because BrowserStack real-device certification, physical-device proof, and in-app browser proof are missing.
+
+Goal: Make mobile onboarding, overlays, scanner, chart, paper, macro, and notifications demonstrably production-safe on real devices.
+
+Implementation targets:
+
+- Restore BrowserStack Automate availability and rerun iPhone Safari plus Android Chrome.
+- Add physical iPhone and Android screenshot/video proof.
+- Add Facebook and Instagram in-app browser proof.
+- Re-test risk acknowledgement, notification overlay, paper deep scroll, macro overlays, scanner, chart fullscreen, and keyboard interactions.
+- Add browser-specific QA for iOS Safari viewport changes, Android Chrome address bar changes, and PWA mode.
+
+Measurable production targets:
+
+- 100% pass on BrowserStack iPhone Safari and Android Chrome route matrix.
+- Zero clipped critical CTAs.
+- Zero horizontal overflow on audited routes.
+- Overlay open/close scroll restoration delta under 8 px on iPhone Safari and Android Chrome.
+- Physical device proof for at least one modern iPhone and one modern Android.
+
+Production-first workflow:
+
+- Implement locally.
+- Validate locally.
+- Commit and push to `main`.
+- Pull on production.
+- Rebuild/redeploy only when runtime code changes.
+- Run production smoke.
+- Run BrowserStack and physical-device capture.
+- Update artifacts with session URLs, screenshots, videos, console logs, and network logs.
+
+Validation requirements:
+
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend test -- --runInBand`
+- `npm --prefix frontend run build`
+- `npm --prefix frontend audit --omit=dev`
+- Python compile and Pyright checks when Python changes.
+- BrowserStack real-device route matrix.
+- Physical mobile QA checklist.
+
+Artifact requirements:
+
+- `docs/ops/phase-22-1-real-device-mobile-trust-certification.md`
+- BrowserStack build URLs and session URLs.
+- Physical-device screenshots/videos.
+- In-app browser proof.
+
+Final verdict criteria:
+
+- ACCOMPLISHED only if iPhone Safari and Android Chrome real-device runs pass and physical/in-app proof is captured.
+- STRONG PARTIAL only if BrowserStack passes but physical or in-app proof remains incomplete.
+
+#### Phase 22.2 - Authenticated Scale + Live-Intelligence Resilience
+
+Critical issue: Phase 21.3 passed 25-concurrency hot endpoints, but Phase 21.8 did not certify sustained scale, stream storms, provider outage recovery, or authenticated protected-path chaos.
+
+Goal: Prove operationally reliable scanner/live-intelligence behavior under sustained authenticated production stress.
+
+Implementation targets:
+
+- Add authenticated 25/50/100 sustained load probes for `/api/discovery`, `/api/live-intelligence`, replay, chart, strategy, and user context.
+- Add EventSource reconnect-storm tests with jitter, recovery, and no reconnect storms.
+- Add provider outage simulation and degraded-mode recovery.
+- Add DB index/query improvements for request, analytics, monitoring, scanner, and retention hot paths.
+- Add memory/render ceiling capture for frontend and database containers.
+
+Measurable production targets:
+
+- `/api/discovery`: p95 under 300 ms and p99 under 600 ms at 25 concurrency; no regression at 50/100 sustained tiers.
+- `/api/live-intelligence`: p95 under 400 ms and p99 under 800 ms at 25 concurrency; no runaway latency at 50/100 tiers.
+- Sustained tier duration: at least 15 minutes.
+- Stream reconnect storm: 0 runaway reconnect loops, 0 server crashes, recovery under 10 seconds after simulated interruption.
+- DB hot-path EXPLAIN/ANALYZE: no unbounded sequential scan on projected hot-path tables.
+
+Artifact requirements:
+
+- `docs/ops/phase-22-2-authenticated-scale-live-resilience.md`
+- JSON probe outputs, DB plans, docker stats, stream logs, provider outage logs, dashboard screenshots.
+
+Final verdict criteria:
+
+- ACCOMPLISHED only if all tier, stream, DB, and outage gates pass in production.
+- STRONG PARTIAL only if endpoint latency passes but one non-critical proof class remains incomplete.
+
+#### Phase 22.3 - Daily-Driver Retention + Notification Usefulness
+
+Critical issue: D2/D7 retention and active-day retention are far below daily-driver credibility.
+
+Goal: Convert instrumentation into measurable repeat-use behavior.
+
+Implementation targets:
+
+- Build a morning workflow loop that lands users on a personalized watchlist/scanner/event briefing.
+- Improve scanner return, replay return, alert return, and watchlist return workflows.
+- Add notification usefulness tracking to notification categories and return sessions.
+- Add friction tracking for onboarding gate abandonment, modal abandonment, and notification fatigue.
+- Add cohort dashboard segmentation by mobile/desktop, source, workflow, and plan.
+
+Measurable production targets:
+
+- D2 retention above 8% in a post-release cohort.
+- D7 retention above 4% in a post-release cohort.
+- 2+ active-day retention above 10%.
+- Alert-return conversion above 12%.
+- Notification useful ratio above 55% with meaningful sample volume.
+
+Artifact requirements:
+
+- `docs/ops/phase-22-3-daily-driver-retention-notifications.md`
+- Cohort SQL outputs, dashboard screenshots, event-name volume, notification usefulness analysis.
+
+Final verdict criteria:
+
+- ACCOMPLISHED only with real cohort improvement after elapsed days.
+- STRONG PARTIAL only if loops ship and early indicators improve but D7 has not elapsed.
+
+#### Phase 22.4 - Scanner Workflow Dominance
+
+Critical issue: Scanner latency improved, but power-user scanner workflows still trail Finviz and Trade Ideas.
+
+Goal: Make scanner workflows fast, repeatable, high-density, and return-worthy.
+
+Implementation targets:
+
+- Saved scans with quick return and comparison.
+- Large-watchlist scanner stress and tuning.
+- Dense table mode with stable mobile alternative.
+- Alert creation from scanner rows with source-linked reasoning.
+- Replay and chart drilldowns from scanner context.
+- Cache-hit and freshness indicators visible to users.
+
+Measurable production targets:
+
+- Saved scan return p95 under 300 ms.
+- Large-watchlist scan p95 under 600 ms for defined test fixture.
+- 25/50 sustained scanner workflows with 0 failures.
+- Scanner reuse lift in post-release cohort.
+
+Artifact requirements:
+
+- `docs/ops/phase-22-4-scanner-workflow-dominance.md`
+- Performance probes, large-watchlist fixture proof, screenshots, reuse telemetry.
+
+Final verdict criteria:
+
+- ACCOMPLISHED only if speed, scale, and reuse evidence all pass.
+
+#### Phase 22.5 - Chart Workflow Professional Maturity
+
+Critical issue: Chart persistence improved, but charting still trails professional chart platforms.
+
+Goal: Make charts operationally credible without faking unsupported advanced features.
+
+Implementation targets:
+
+- Chart alerts tied to real price/indicator conditions.
+- Editable drawing styles, labels, anchors, and object list.
+- Saved indicator templates.
+- Cross-device chart workspace restore proof.
+- Mobile fullscreen chart certification.
+- Keyboard shortcuts for drawing, crosshair, period, and layout.
+
+Measurable production targets:
+
+- Authenticated chart workspace restore across two devices.
+- Mobile fullscreen chart QA pass on iPhone Safari and Android Chrome.
+- Chart interaction latency under 100 ms for toolbar actions.
+- Zero lost drawing/indicator state in persistence tests.
+
+Artifact requirements:
+
+- `docs/ops/phase-22-5-chart-workflow-professional-maturity.md`
+- API proof, screenshots/videos, real-device chart sessions, persistence test logs.
+
+Final verdict criteria:
+
+- ACCOMPLISHED only if persistence, editability, mobile fullscreen, and alert workflows are functional and proven.
+
+#### Phase 22.6 - Provider Depth + Source Trust Expansion
+
+Critical issue: Provider transparency improved, but provider/event depth still trails Bloomberg, StockTitan, and Yahoo-level expectations.
+
+Goal: Increase source-linked event intelligence while preserving no-fabrication trust.
+
+Implementation targets:
+
+- Analyst action provider depth.
+- Dividend/event provider depth.
+- Company event timelines.
+- Macro and geopolitical timelines.
+- Provider freshness SLAs and outage states.
+- Watchlist impact expansion with explicit source links.
+
+Measurable production targets:
+
+- 95% of displayed event cards have source URL, provider, timestamp, and freshness state.
+- Zero generated fake headlines or unsupported analyst actions.
+- Provider outage simulation visibly degrades without mislabeling stale data as fresh.
+- Event latency and freshness dashboard captured.
+
+Artifact requirements:
+
+- `docs/ops/phase-22-6-provider-depth-source-trust.md`
+- Provider matrix, sample source-linked events, outage proof, freshness metrics.
+
+Final verdict criteria:
+
+- ACCOMPLISHED only if source-linked breadth and outage behavior are proven in production.
+
+#### Phase 22.7 - Portfolio + Strategy Operations Credibility
+
+Critical issue: Paper and strategy workflows improved but are not institutionally believable enough for a primary platform.
+
+Goal: Build evidence-backed portfolio and strategy operations without fabricating broker state.
+
+Implementation targets:
+
+- Position lifecycle and thesis lifecycle history.
+- Allocation, rebalance, drawdown, and revision history.
+- Replay-backed trade autopsy when replay evidence exists.
+- Portfolio concentration and scenario-risk operations.
+- Workspace continuity for paper and strategy workflows.
+- Optional broker integration only if real credentials and broker state are available.
+
+Measurable production targets:
+
+- Authenticated premium paper/strategy workflow proof.
+- 100% of lifecycle cards disclose evidence boundaries.
+- No fabricated fills, returns, broker state, or compliance claims.
+- Strategy revision and paper autopsy workflows pass production smoke and real-device QA.
+
+Artifact requirements:
+
+- `docs/ops/phase-22-7-portfolio-strategy-operations-credibility.md`
+- Authenticated screenshots, API proof, lifecycle examples, trust-boundary review.
+
+Final verdict criteria:
+
+- ACCOMPLISHED only if operational workflows are evidence-backed and production-proven.
+- STRONG PARTIAL if broker-grade features remain absent but paper/strategy operations are mature and honest.
+
+#### Phase 22.8 - Production Observability + Trust Architecture
+
+Critical issue: Trust is capped by incomplete observability, dashboard proof, incident transparency, and operational status evidence.
+
+Goal: Make production health, data freshness, provider state, latency, retention, and chaos gates visible and auditable.
+
+Implementation targets:
+
+- Authenticated admin dashboard proof for p50/p95/p99, cache hits, stream reconnects, provider health, retention, and chaos gates.
+- Public trust/status page for provider freshness and known incidents.
+- Hot endpoint telemetry by authenticated/anonymous class.
+- User-visible stale/degraded banners where relevant.
+- Operator runbook links and incident history.
+
+Measurable production targets:
+
+- Admin monitoring route captured authenticated in production.
+- Dashboards show p50/p95/p99, cache hit, stream, provider, retention, and chaos status.
+- Public stale/outage disclosure appears during provider simulation.
+
+Artifact requirements:
+
+- `docs/ops/phase-22-8-production-observability-trust-architecture.md`
+- Dashboard screenshots, telemetry SQL outputs, provider outage proof, trust page screenshots.
+
+Final verdict criteria:
+
+- ACCOMPLISHED only if observability proof is production-authenticated and user-visible trust states work.
+
+#### Phase 22.9 - Low-Score Utility Surfaces + Accessibility Maturity
+
+Critical issue: Account, Settings, Support, Alerts, History, and Performance remain below 90 and can erode trust even if flagship pages improve.
+
+Goal: Raise utility surfaces toward 90+ while improving accessibility and browser-specific maturity.
+
+Implementation targets:
+
+- Account trust center and session/device controls.
+- Settings for notifications, chart/scanner defaults, and data preferences.
+- Support with incident status, ticket clarity, and provider outage help.
+- Alerts with usefulness, return conversion, and fatigue controls.
+- History and Performance with professional density and drilldowns.
+- Accessibility pass for keyboard, focus, labels, reduced motion, contrast, and screen reader names.
+
+Measurable production targets:
+
+- Utility surface overall scores 90+ in recertification.
+- Axe critical violations: 0 on audited routes.
+- Keyboard-only completion for onboarding, notifications, scanner, chart, alerts, and settings.
+- Cross-browser smoke on Chromium, WebKit, and Firefox.
+
+Artifact requirements:
+
+- `docs/ops/phase-22-9-utility-accessibility-maturity.md`
+- Accessibility reports, browser screenshots, keyboard workflow videos, updated scores.
+
+Final verdict criteria:
+
+- ACCOMPLISHED only if low-score utility surfaces reach 90+ evidence-weighted scores.
+
+#### Phase 22.10 - Final World Leadership Re-Certification
+
+Critical issue: Leadership cannot be claimed until the prior sprint evidence proves primary-platform readiness.
+
+Goal: Re-audit TradeVeto against Bloomberg, TradingView, TrendSpider, Finviz, Trade Ideas, Robinhood, Webull, StockTitan, Composer, and Apple Stocks using production evidence only.
+
+Implementation targets:
+
+- Re-score every major surface.
+- Re-run production route smoke, authenticated probes, BrowserStack real-device, physical mobile, retention SQL, provider outage, chaos/load, chart, scanner, and strategy workflows.
+- Re-answer whether a serious trader would choose TradeVeto as the primary intelligence platform.
+
+Measurable production targets:
+
+- Desktop UX 98+.
+- Mobile UX 97+.
+- Chart UX 97+.
+- Scanner UX 98+.
+- Strategy UX 97+.
+- Macro/News UX 97+.
+- Intelligence UX 99+.
+- Interaction UX 97+.
+- Trust UX 99+.
+- Overall UX 98+.
+
+Artifact requirements:
+
+- `docs/ops/phase-22-10-final-world-leadership-recertification.md`
+- Full evidence index with screenshots, videos, BrowserStack sessions, telemetry, load probes, DB plans, retention cohorts, and competitor gap closure.
+
+Final verdict criteria:
+
+- ACCOMPLISHED only if production evidence supports world-leading primary-platform readiness.
+- NOT ACCOMPLISHED if real-device proof, retention, scale, chart maturity, provider depth, or institutional credibility still block primary-platform trust.
 
 ## Final Certification
 
