@@ -58,6 +58,22 @@ export function lockMobileBodyScroll(scrollY = getCurrentScrollY()): () => void 
 
   body.style.overflow = lockStyles.body.overflow;
   body.style.overscrollBehavior = lockStyles.body.overscrollBehavior;
+  if (shouldUseNonFixedScrollLock()) {
+    const preventBackgroundTouchMove = (event: TouchEvent) => {
+      if (event.target instanceof Element && event.target.closest("[data-stable-overlay-content='true']")) return;
+      event.preventDefault();
+    };
+    body.style.touchAction = "none";
+    root.style.overflow = lockStyles.root.overflow;
+    root.style.overscrollBehavior = lockStyles.root.overscrollBehavior;
+    root.style.touchAction = "none";
+    document.addEventListener("touchmove", preventBackgroundTouchMove, { passive: false });
+    return () => {
+      document.removeEventListener("touchmove", preventBackgroundTouchMove);
+      restoreMobileBodyScroll(snapshot);
+    };
+  }
+
   body.style.position = lockStyles.body.position;
   body.style.top = lockStyles.body.top;
   body.style.left = lockStyles.body.left;
@@ -129,6 +145,12 @@ function restoreMobileBodyScroll(snapshot: BodyScrollLockSnapshot): void {
 function getCurrentScrollY(): number {
   if (typeof window === "undefined") return 0;
   return window.scrollY;
+}
+
+function shouldUseNonFixedScrollLock(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iP(?:ad|hone|od)/.test(navigator.userAgent)
+    || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 }
 
 function forceScrollY(scrollY: number): void {
