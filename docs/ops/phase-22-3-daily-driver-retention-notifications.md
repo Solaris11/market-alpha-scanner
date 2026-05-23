@@ -2,7 +2,7 @@
 
 Date: 2026-05-23
 
-Final verdict: Pending production validation
+Final verdict: STRONG PARTIAL ACCOMPLISHED
 
 ## Scope
 
@@ -56,7 +56,7 @@ git diff --check
 
 ## Production Workflow
 
-Pending:
+Completed:
 
 ```bash
 git push origin main
@@ -64,29 +64,75 @@ ssh sre@100.68.155.121
 cd /opt/apps/market-alpha-scanner/app
 git pull --ff-only origin main
 tools/db/run-migrations.sh
-docker compose build frontend
-docker compose up -d frontend
+docker compose build market-alpha-frontend
+docker compose up -d market-alpha-frontend
 ```
+
+Production proof:
+
+- Local implementation commit: `4b6c9872` - `Add daily driver notification usefulness loops`
+- Production pull reached: `4b6c987`
+- Migrations applied during deploy:
+  - `20260523_180000_phase22_hot_telemetry_indexes.sql`
+  - `20260523_190000_notification_usefulness_feedback.sql`
+- `notification_feedback` table exists in production.
+- `schema_migrations` contains `20260523_190000_notification_usefulness_feedback.sql`.
+- Production frontend image: `sha256:94a4c11abc0c3bf6bd37d183f6829db884ed87a223408dc518cfa982afdc182e`
+- `market-alpha-frontend`: healthy, restart count `0`
 
 ## Production Smoke
 
-Pending:
+Passed:
 
-- `/api/health`
-- `/api/health/deep`
-- `/terminal`
-- `/alerts`
-- `/feed`
-- `/scanner`
-- `/symbol/AMD`
-- `/api/notifications`
+- `/api/health`: `ok: true`
+- `/api/health/deep`: `ok: true`, DB ok, scanner fresh, backups ok
+- `/terminal`: `200`
+- `/alerts`: `200`
+- `/feed`: `200`
+- `/scanner`: `200`
+- `/symbol/AMD`: `200`
+- `/api/notifications`: `401` unauthenticated as expected
+- `/api/notifications/feedback`: `401` unauthenticated as expected
+
+Authenticated production contract probe:
+
+- Temporary signed-in probe user created directly in production DB.
+- Session cookie and CSRF flow succeeded.
+- `/api/notifications/feedback` returned `200`.
+- Durable `notification_feedback` row verified with `feedback = useful` and `notification_type = signal`.
+- Probe user was deleted after verification; cascade cleanup removed probe notification/feedback rows.
+
+Probe result:
+
+```json
+{"feedbackStatus":200,"ok":true,"rows":1}
+```
+
+## Current Production Retention Snapshot
+
+This is pre/post-release mixed telemetry, not elapsed Phase 22.3 cohort proof:
+
+| Metric | Eligible / actors | Retained / users | Rate |
+|---|---:|---:|---:|
+| D1 retention | 839 | 7 | 0.83% |
+| D2 retention | 816 | 3 | 0.37% |
+| D7 retention | 439 | 1 | 0.23% |
+| 2+ active-day users | 896 | 9 | 1.00% |
+| 7+ active-day users | 896 | 1 | 0.11% |
+
+Durable notification feedback in the new table after probe cleanup:
+
+- Useful: `0`
+- Not useful: `0`
+- Total: `0`
 
 ## Remaining Blockers
 
 - No post-release elapsed D2/D7 cohort evidence exists yet.
+- Current mixed production retention remains far below the Phase 22.3 targets.
 - Notification useful ratio will remain unproven until real users rate enough delivered notifications.
 - Retention target certification requires a follow-up read after eligible cohorts age past 2 and 7 days.
 
 ## Final Verdict
 
-Pending production validation.
+TRADEVETO DAILY-DRIVER RETENTION + NOTIFICATION USEFULNESS STRONG PARTIAL ACCOMPLISHED
