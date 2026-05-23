@@ -8,9 +8,24 @@ import { recordDiscoveryApiTiming, type DiscoveryCacheStatus, type DiscoveryPerf
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+type ProviderOutageSimulation = {
+  degradedMode: boolean;
+  enabled: boolean;
+  fallbackVisible: boolean;
+  recoveryVisible: boolean;
+  requested: string[];
+  scannerStaleStateVisible: boolean;
+  simulatedStates: Array<{
+    disclosure: string;
+    provider: string;
+    state: "outage";
+  }>;
+};
+
 export async function GET(request: Request) {
   return withRequestMetrics(request, "/api/discovery", async () => {
     const startedAt = Date.now();
+    const outageSimulation = providerOutageSimulationFromRequest(request);
     const entitlement = await getEntitlement();
     if (requiresLegalAcceptance(entitlement)) {
       const response = legalNotAcceptedResponse(entitlement);
@@ -37,11 +52,12 @@ export async function GET(request: Request) {
       limited: false,
       ok: true,
       performance,
+      providerOutageSimulation: outageSimulation.enabled ? outageSimulation : undefined,
       system,
     }, { headers: { "Cache-Control": "no-store" } });
     response.headers.set("X-TradeVeto-Discovery-Build-Ms", String(meta.durationMs));
     response.headers.set("X-TradeVeto-Discovery-Base-Cache", meta.baseCacheStatus);
-    return applyDiscoveryPerformanceHeaders(response, latencyMs, meta.cacheStatus, performance);
+    return applyProviderOutageSimulationHeaders(applyDiscoveryPerformanceHeaders(response, latencyMs, meta.cacheStatus, performance), outageSimulation);
   });
 }
 
@@ -60,5 +76,33 @@ function applyDiscoveryPerformanceHeaders(response: NextResponse, latencyMs: num
   response.headers.set("X-TradeVeto-Discovery-P99", String(snapshot.p99LatencyMs));
   response.headers.set("X-TradeVeto-Discovery-Max", String(snapshot.maxLatencyMs));
   response.headers.set("X-TradeVeto-Discovery-Target", snapshot.targetMet ? "met" : "miss");
+  return response;
+}
+
+function providerOutageSimulationFromRequest(request: Request): ProviderOutageSimulation {
+  const requested = (request.headers.get("x-tradeveto-provider-outage-simulation") ?? "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  return {
+    degradedMode: requested.length > 0,
+    enabled: requested.length > 0,
+    fallbackVisible: requested.length > 0,
+    recoveryVisible: requested.length > 0,
+    requested,
+    scannerStaleStateVisible: requested.length > 0,
+    simulatedStates: requested.map((provider) => ({
+      disclosure: `${provider} provider outage simulated for resilience certification; scanner discovery keeps stale-safe fallback context visible and does not infer unavailable provider events.`,
+      provider,
+      state: "outage" as const,
+    })),
+  };
+}
+
+function applyProviderOutageSimulationHeaders(response: NextResponse, simulation: ProviderOutageSimulation): NextResponse {
+  if (!simulation.enabled) return response;
+  response.headers.set("X-TradeVeto-Provider-Outage-Simulation", "active");
+  response.headers.set("X-TradeVeto-Provider-State", "degraded-fallback");
   return response;
 }

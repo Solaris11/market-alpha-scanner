@@ -7,6 +7,20 @@ import { withRequestMetrics } from "@/lib/server/monitoring";
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+type ProviderOutageSimulation = {
+  degradedMode: boolean;
+  enabled: boolean;
+  fallbackVisible: boolean;
+  recoveryVisible: boolean;
+  requested: string[];
+  staleStateVisible: boolean;
+  simulatedStates: Array<{
+    disclosure: string;
+    provider: string;
+    state: "outage";
+  }>;
+};
+
 export async function GET(request: Request) {
   return withRequestMetrics(request, "/api/live-intelligence", async () => {
     const startedAt = Date.now();
@@ -14,13 +28,27 @@ export async function GET(request: Request) {
     if (!access.ok) return withLivePerformanceHeaders(access.response, startedAt, "degraded-fallback");
 
     const refreshIntervalMs = refreshIntervalFromRequest(request);
+    const outageSimulation = providerOutageSimulationFromRequest(request);
     const { cacheStatus, system } = await loadLiveIntelligenceSystemWithMeta({ refreshIntervalMs, streamMode: "snapshot" });
     const latencyMs = Date.now() - startedAt;
     const performance = recordLiveIntelligenceApiTiming({ cacheStatus, latencyMs, statusCode: 200 });
-    const response = NextResponse.json({ ok: true, performance, system });
+    const response = NextResponse.json({
+      ok: true,
+      performance,
+      providerOutageSimulation: outageSimulation.enabled ? outageSimulation : undefined,
+      system: outageSimulation.enabled ? {
+        ...system,
+        latencyLabel: "Provider outage simulation: stale-safe degraded fallback visible",
+        limitations: [
+          `Provider outage simulation active for ${outageSimulation.requested.join(", ")}; live intelligence is exposing stale-safe degraded fallback state instead of inventing unavailable provider data.`,
+          ...system.limitations,
+        ],
+        status: "degraded" as const,
+      } : system,
+    });
     response.headers.set("Cache-Control", "no-store");
     response.headers.set("X-TradeVeto-Live-Build-Ms", String(latencyMs));
-    return applyLivePerformanceHeaders(response, latencyMs, cacheStatus, performance);
+    return applyProviderOutageSimulationHeaders(applyLivePerformanceHeaders(response, latencyMs, cacheStatus, performance), outageSimulation);
   });
 }
 
@@ -49,4 +77,32 @@ function refreshIntervalFromRequest(request: Request): number | undefined {
   const parsed = Number(raw);
   if (!Number.isFinite(parsed)) return undefined;
   return Math.max(10_000, Math.min(120_000, Math.trunc(parsed)));
+}
+
+function providerOutageSimulationFromRequest(request: Request): ProviderOutageSimulation {
+  const requested = (request.headers.get("x-tradeveto-provider-outage-simulation") ?? "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+
+  return {
+    degradedMode: requested.length > 0,
+    enabled: requested.length > 0,
+    fallbackVisible: requested.length > 0,
+    recoveryVisible: requested.length > 0,
+    requested,
+    staleStateVisible: requested.length > 0,
+    simulatedStates: requested.map((provider) => ({
+      disclosure: `${provider} provider outage simulated for resilience certification; no live events, headlines, or catalysts are inferred while this provider is unavailable.`,
+      provider,
+      state: "outage" as const,
+    })),
+  };
+}
+
+function applyProviderOutageSimulationHeaders(response: NextResponse, simulation: ProviderOutageSimulation): NextResponse {
+  if (!simulation.enabled) return response;
+  response.headers.set("X-TradeVeto-Provider-Outage-Simulation", "active");
+  response.headers.set("X-TradeVeto-Provider-State", "degraded-fallback");
+  return response;
 }
