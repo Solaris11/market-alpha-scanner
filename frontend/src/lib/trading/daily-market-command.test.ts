@@ -216,9 +216,19 @@ test("daily market command ranks opportunity, breakout, crash risk, money flow, 
   assert.equal(model.newsEcosystem.watchlistImpactCount, 1);
   assert.equal(model.newsEcosystem.highImpactCount, 1);
   assert.equal(model.newsEcosystem.providerCoverage, "Single-source coverage");
+  assert.equal(model.newsEcosystem.sourceTrust.status, "pass");
+  assert.equal(model.newsEcosystem.sourceTrust.displayedCardCount, 1);
+  assert.equal(model.newsEcosystem.sourceTrust.completeCardCount, 1);
+  assert.equal(model.newsEcosystem.sourceTrust.completenessPct, 100);
+  assert.equal(model.newsEcosystem.sourceTrust.contextCompletenessPct, 100);
+  assert.equal(model.newsEcosystem.sourceTrust.missingFieldCounts.sourceUrl, 0);
   assert.equal(model.newsEcosystem.calendarCount, 3);
   assert.ok(model.newsEcosystem.completenessScore > 0);
   assert.equal(model.providerCoverage[0]?.source, "Reuters");
+  const requiredProviderDomains = ["macro", "rates", "inflation", "earnings", "analyst-actions", "dividends", "geopolitical-events", "company-events", "sector-events", "crypto-events"];
+  for (const domain of requiredProviderDomains) {
+    assert.ok(model.providerCoverageMatrix.some((audit) => audit.domain === domain), `missing provider domain ${domain}`);
+  }
   assert.ok(model.providerStrategyAudit.some((audit) => audit.domain === "rates" && audit.coverage === "active" && audit.provider === "Reuters"));
   assert.ok(model.providerCoverageMatrix.some((audit) => audit.domain === "rates" && audit.operationalState === "active" && /source-linked/.test(audit.disclosure)));
   assert.ok(model.providerStrategyAudit.some((audit) => audit.domain === "earnings" && audit.coverage === "calendar-only"));
@@ -243,13 +253,27 @@ test("daily market command keeps honest news empty state when no source-linked f
   });
 
   assert.equal(model.developments.length, 0);
+  assert.equal(model.newsEcosystem.sourceTrust.status, "not-applicable");
+  assert.equal(model.newsEcosystem.sourceTrust.displayedCardCount, 0);
   assert.equal(model.newsEmptyState.message, "News source not configured yet");
   assert.match(model.newsEmptyState.integrationNeeded, /verified headline/);
 });
 
-test("daily market command discloses stale and outage provider states without inventing events", () => {
+test("daily market command discloses stale, delayed, partial outage, and outage provider states without inventing events", () => {
   const staleRows = [
     row({ symbol: "AMD" }),
+  ];
+  const delayedRows = [
+    row({ symbol: "AMD" }),
+  ];
+  const partialOutageRows = [
+    row({
+      raw: {
+        event_provider_status: "rates provider timeout",
+        symbol: "AMD",
+      },
+      symbol: "AMD",
+    }),
   ];
   const outageRows = [
     row({
@@ -266,6 +290,11 @@ test("daily market command discloses stale and outage provider states without in
     ...staleCommand.macroNews[0]!,
     publishedAt: "2026-05-15T12:30:00.000Z",
   }];
+  const delayedCommand = marketCommand();
+  delayedCommand.macroNews = [{
+    ...delayedCommand.macroNews[0]!,
+    publishedAt: "2026-05-18T12:30:00.000Z",
+  }];
   const staleUnified = buildUnifiedIntelligenceConsole({ rows: staleRows });
   const staleModel = buildDailyMarketCommandModel({
     marketCommand: staleCommand,
@@ -276,6 +305,26 @@ test("daily market command discloses stale and outage provider states without in
   const staleRates = staleModel.providerCoverageMatrix.find((audit) => audit.domain === "rates");
   assert.equal(staleRates?.operationalState, "stale");
   assert.match(staleRates?.disclosure ?? "", /stale/i);
+
+  const delayedModel = buildDailyMarketCommandModel({
+    marketCommand: delayedCommand,
+    now: new Date("2026-05-19T14:00:00.000Z"),
+    rankedZones: buildUnifiedIntelligenceConsole({ rows: delayedRows }).rankedZones,
+    rows: delayedRows,
+  });
+  const delayedRates = delayedModel.providerCoverageMatrix.find((audit) => audit.domain === "rates");
+  assert.equal(delayedRates?.operationalState, "delayed");
+  assert.match(delayedRates?.disclosure ?? "", /delayed/i);
+
+  const partialOutageModel = buildDailyMarketCommandModel({
+    marketCommand: marketCommand(),
+    now: new Date("2026-05-19T14:00:00.000Z"),
+    rankedZones: buildUnifiedIntelligenceConsole({ rows: partialOutageRows }).rankedZones,
+    rows: partialOutageRows,
+  });
+  const partialOutageRates = partialOutageModel.providerCoverageMatrix.find((audit) => audit.domain === "rates");
+  assert.equal(partialOutageRates?.operationalState, "partial-outage");
+  assert.match(partialOutageRates?.disclosure ?? "", /provider failure|timeout/i);
 
   const outageModel = buildDailyMarketCommandModel({
     marketCommand: { ...marketCommand(), macroNews: [] },

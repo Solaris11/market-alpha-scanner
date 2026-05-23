@@ -27,6 +27,7 @@
     "probe:phase22:authenticated-scale": "TRADEVETO_PHASE22_BASE_URL=https://tradeveto.com TRADEVETO_PHASE22_TIERS=25,50,100 TRADEVETO_PHASE22_DURATION_SECONDS=900 TRADEVETO_PHASE22_STREAM_TIERS=25,50,100 TRADEVETO_PHASE22_TIMEOUT_MS=8000 node scripts/phase22-authenticated-scale-resilience-probe.mjs",
     "probe:phase22:scanner-workflow": "TRADEVETO_PHASE22_SCANNER_BASE_URL=https://tradeveto.com TRADEVETO_PHASE22_SCANNER_TIERS=25,50 TRADEVETO_PHASE22_SCANNER_DURATION_SECONDS=300 TRADEVETO_PHASE22_SCANNER_TIMEOUT_MS=8000 node scripts/phase22-scanner-workflow-probe.mjs",
     "probe:phase22:chart-workflow": "TRADEVETO_PHASE22_CHART_BASE_URL=https://tradeveto.com node scripts/phase22-chart-workflow-probe.mjs",
+    "probe:phase22:provider-source-trust": "TRADEVETO_PHASE22_PROVIDER_BASE_URL=https://tradeveto.com TRADEVETO_PHASE22_CREATE_PROBE_USER=true node scripts/phase22-provider-source-trust-probe.mjs",
     "test": "node scripts/run-tests.mjs",
     "lint": "tsc --noEmit"
   },

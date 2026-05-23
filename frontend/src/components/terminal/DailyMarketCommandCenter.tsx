@@ -40,6 +40,7 @@ import type {
   DailyMoneyFlowSector,
   DailyMoneyFlowTheme,
   DailyNewsEcosystemSummary,
+  DailyProviderOperationalState,
   DailyProviderStrategyAudit,
   DailySectorNewsCluster,
 } from "@/lib/trading/daily-market-command";
@@ -49,6 +50,7 @@ type Props = {
 };
 
 const FILTERS: DailyDevelopmentCategory[] = ["All", "My Watchlist", "Macro", "Earnings", "Analyst", "Rates", "Geopolitical", "Crypto", "Energy", "High Impact"];
+const PROVIDER_STATES: DailyProviderOperationalState[] = ["active", "delayed", "stale", "outage", "partial-outage", "calendar-only", "limited"];
 
 const TONE: Record<DailyCommandTone, { bg: string; border: string; glow: string; ring: string; text: string }> = {
   amber: { bg: "bg-amber-400/[0.075]", border: "border-amber-300/25", glow: "shadow-[0_0_32px_rgba(251,191,36,0.11)]", ring: "ring-amber-300/15", text: "text-amber-100" },
@@ -232,6 +234,7 @@ export function DailyMarketCommandCenter({ model }: Props) {
                       <div className="flex flex-wrap gap-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
                         <span>{item.source}</span>
                         <span>{formatDate(item.timestamp)}</span>
+                        <span>{sourceHost(item.sourceUrl)}</span>
                         <span className={TONE[item.tone].text}>{item.urgency} urgency</span>
                         <span>{item.category}</span>
                         <span>{item.priorityScore}/100 priority</span>
@@ -249,7 +252,9 @@ export function DailyMarketCommandCenter({ model }: Props) {
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {item.affectedSymbols.slice(0, 6).map((symbol) => <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 font-mono text-[10px] text-slate-300" key={symbol}>{symbol}</span>)}
                     <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300">{item.sourceQualityLabel}</span>
+                    <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300">{item.providerAttribution}</span>
                     <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-100">{item.freshnessLabel}</span>
+                    <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[10px] font-semibold text-amber-100">{item.uncertaintyLabel}</span>
                     <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300">{item.symbolRelevanceLabel}</span>
                     <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300">{item.sectorImpactLabel}</span>
                     <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300">{item.marketMovingLabel}</span>
@@ -291,16 +296,19 @@ export function DailyMarketCommandCenter({ model }: Props) {
 function NewsEcosystemStrip({ summary }: { summary: DailyNewsEcosystemSummary }) {
   return (
     <div className="mt-4 rounded-3xl border border-cyan-300/14 bg-cyan-300/[0.045] p-3">
-      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">
         <EcosystemMetric label="Source-linked" tone="cyan" value={`${summary.total}`} />
         <EcosystemMetric label="Watchlist impact" tone="emerald" value={`${summary.watchlistImpactCount}`} />
         <EcosystemMetric label="High impact" tone="rose" value={`${summary.highImpactCount}`} />
         <EcosystemMetric label="Completeness" tone={summary.completenessScore >= 70 ? "emerald" : summary.completenessScore >= 40 ? "amber" : "rose"} value={`${summary.completenessScore}`} />
+        <EcosystemMetric label="Source trust" tone={summary.sourceTrust.status === "pass" ? "emerald" : summary.sourceTrust.status === "not-applicable" ? "amber" : "rose"} value={summary.sourceTrust.displayedCardCount ? `${summary.sourceTrust.completenessPct}%` : "N/A"} />
         <EcosystemMetric label="Calendar" tone="violet" value={`${summary.calendarCount}`} />
       </div>
       <p className="mt-3 line-clamp-2 text-xs leading-5 text-slate-400">{summary.topNarrative}</p>
       <div className="mt-3 flex flex-wrap gap-1.5">
         <span className="rounded-full border border-cyan-300/18 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-bold text-cyan-100">{summary.providerCoverage}</span>
+        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${summary.sourceTrust.status === "pass" ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-100" : "border-amber-300/20 bg-amber-300/10 text-amber-100"}`}>{summary.sourceTrust.completeCardCount}/{summary.sourceTrust.displayedCardCount} source-complete</span>
+        <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300">{summary.sourceTrust.contextCompletenessPct}% full context</span>
         {summary.sourceNames.slice(0, 5).map((source) => <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300" key={source}>{source}</span>)}
         {summary.symbolNewsCount ? <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2 py-0.5 text-[10px] font-bold text-emerald-100">Symbol news {summary.symbolNewsCount}</span> : null}
         {summary.sectorNewsCount ? <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-bold text-cyan-100">Sector news {summary.sectorNewsCount}</span> : null}
@@ -338,11 +346,17 @@ function ProviderCoverageGrid({ providers }: { providers: DailyInformationProvid
 
 function ProviderStrategyAuditGrid({ audits }: { audits: DailyProviderStrategyAudit[] }) {
   if (!audits.length) return null;
+  const stateCounts = providerStateCounts(audits);
   return (
     <div className="mt-3 rounded-3xl border border-white/10 bg-black/18 p-3">
       <div className="flex items-center justify-between gap-3">
         <div className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">Provider coverage matrix</div>
         <span className="rounded-full border border-white/10 bg-white/[0.035] px-2 py-1 text-[10px] font-bold text-slate-400">{audits.length} domains</span>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {PROVIDER_STATES.map((state) => (
+          <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300" key={state}>{state.replace("-", " ")} {stateCounts[state]}</span>
+        ))}
       </div>
       <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
         {audits.map((audit) => (
@@ -884,4 +898,27 @@ function formatDate(value: string): string {
   const parsed = Date.parse(value);
   if (!Number.isFinite(parsed)) return value;
   return new Intl.DateTimeFormat("en-US", { day: "2-digit", month: "short", hour: "numeric", minute: "2-digit" }).format(new Date(parsed));
+}
+
+function sourceHost(value: string): string {
+  try {
+    return new URL(value).host.replace(/^www\./, "");
+  } catch {
+    return "source URL";
+  }
+}
+
+function providerStateCounts(audits: DailyProviderStrategyAudit[]): Record<DailyProviderOperationalState, number> {
+  return audits.reduce<Record<DailyProviderOperationalState, number>>((counts, audit) => {
+    counts[audit.operationalState] += 1;
+    return counts;
+  }, {
+    active: 0,
+    "calendar-only": 0,
+    delayed: 0,
+    limited: 0,
+    outage: 0,
+    "partial-outage": 0,
+    stale: 0,
+  });
 }

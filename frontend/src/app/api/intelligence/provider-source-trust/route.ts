@@ -1,0 +1,224 @@
+import { NextResponse } from "next/server";
+import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
+import { getPerformanceData } from "@/lib/scanner-data";
+import { requirePremium } from "@/lib/server/access-control";
+import { getNarrativeMap } from "@/lib/server/narrative-intelligence";
+import { rateLimitRequest } from "@/lib/server/request-security";
+import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
+import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
+import { getMarketChartHubData } from "@/lib/server/validated-price-history";
+import { readUserWatchlist } from "@/lib/server/user-watchlist";
+import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
+import {
+  buildDailyMarketCommandModel,
+  type DailyMarketDevelopment,
+  type DailyProviderCoverageDomain,
+  type DailyProviderOperationalState,
+  type DailyProviderStrategyAudit,
+} from "@/lib/trading/daily-market-command";
+import { buildMarketCommandModel } from "@/lib/trading/market-research";
+import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
+import { buildUnifiedIntelligenceConsole } from "@/lib/trading/unified-intelligence-console";
+
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+const REQUIRED_PROVIDER_DOMAINS: DailyProviderCoverageDomain[] = [
+  "macro",
+  "rates",
+  "inflation",
+  "earnings",
+  "analyst-actions",
+  "dividends",
+  "geopolitical-events",
+  "company-events",
+  "sector-events",
+  "crypto-events",
+];
+
+type ProviderStateCounts = Record<DailyProviderOperationalState, number>;
+
+type EventCardProof = {
+  affectedSymbols: string[];
+  freshness: string;
+  headline: string;
+  provider: string;
+  source: string;
+  sourceUrl: string;
+  timestamp: string;
+  uncertainty: string;
+  watchlistImpact: boolean;
+  watchlistImpactReason: string;
+  whyItMatters: string;
+};
+
+type ProviderOutageSimulationProof = {
+  enabled: boolean;
+  fallbackVisible: boolean;
+  requested: string[];
+  recoveryVisible: boolean;
+  simulatedStates: Array<{
+    disclosure: string;
+    domain: DailyProviderCoverageDomain;
+    operationalState: "outage";
+    provider: string;
+  }>;
+  recoveryStates: Array<{
+    disclosure: string;
+    domain: DailyProviderCoverageDomain;
+    operationalState: DailyProviderOperationalState;
+    provider: string;
+  }>;
+};
+
+export async function GET(request: Request) {
+  const access = await requirePremium();
+  if (!access.ok) return access.response;
+
+  const limited = await rateLimitRequest(request, "provider-source-trust", { limit: 30, windowMs: 60_000 });
+  if (limited) return limited;
+
+  try {
+    const adapter = new ScannerDataAdapter();
+    const [snapshot, performance, scanSafety, watchlistSymbols, marketChartHubData] = await Promise.all([
+      adapter.getTerminalSnapshot(),
+      getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
+      getCurrentScanSafety(),
+      readUserWatchlist(access.user.id).catch(() => []),
+      getMarketChartHubData().catch(() => []),
+    ]);
+    const symbols = snapshot.signals.map((row) => row.symbol);
+    const [shockPatterns, narratives, workflowEvolution] = await Promise.all([
+      getShockMovePatternMap(symbols).catch(() => new Map()),
+      getNarrativeMap(symbols).catch(() => new Map()),
+      getWorkflowEvolutionForUser(access.user.id, snapshot.signals, { surface: "terminal", watchlistSymbols }).catch(() => null),
+    ]);
+    const opportunities = buildOpportunitiesPageModel(snapshot.signals, performance, shockPatterns, narratives);
+    const marketCommand = buildMarketCommandModel({
+      charts: marketChartHubData,
+      generatedAt: scanSafety.lastUpdated,
+      rows: snapshot.signals,
+    });
+    const unified = buildUnifiedIntelligenceConsole({
+      marketCondition: snapshot.marketRegime.label,
+      rows: opportunities.rows,
+      watchlistSymbols,
+      workflowEvolution,
+    });
+    const model = buildDailyMarketCommandModel({
+      marketCommand,
+      marketCondition: snapshot.marketRegime.label,
+      rankedZones: unified.rankedZones,
+      rows: opportunities.rows,
+      watchlistSymbols,
+      workflowEvolution,
+    });
+    const outageHeader = request.headers.get("x-tradeveto-provider-outage-simulation") ?? "";
+    return NextResponse.json({
+      eventCards: model.developments.map(eventCardProof),
+      generatedAt: new Date().toISOString(),
+      marketCondition: snapshot.marketRegime.label,
+      ok: true,
+      outageSimulation: providerOutageSimulation(model.providerCoverageMatrix, outageHeader),
+      providerCoverageMatrix: model.providerCoverageMatrix,
+      providerStateCounts: providerStateCounts(model.providerCoverageMatrix),
+      requiredDomainCoverage: requiredDomainCoverage(model.providerCoverageMatrix),
+      scanUpdatedAt: scanSafety.lastUpdated,
+      sourceTrust: model.newsEcosystem.sourceTrust,
+    });
+  } catch (error) {
+    console.warn("[provider-source-trust] certification load failed", error instanceof Error ? error.message : error);
+    return NextResponse.json({ ok: false, message: "Provider source trust proof is temporarily unavailable." }, { status: 503 });
+  }
+}
+
+function eventCardProof(item: DailyMarketDevelopment): EventCardProof {
+  return {
+    affectedSymbols: item.affectedSymbols,
+    freshness: item.freshnessLabel,
+    headline: item.headline,
+    provider: item.providerAttribution,
+    source: item.source,
+    sourceUrl: item.sourceUrl,
+    timestamp: item.timestamp,
+    uncertainty: item.uncertaintyLabel,
+    watchlistImpact: item.watchlistImpact,
+    watchlistImpactReason: item.watchlistImpactReason,
+    whyItMatters: item.whyItMatters,
+  };
+}
+
+function requiredDomainCoverage(audits: DailyProviderStrategyAudit[]) {
+  return REQUIRED_PROVIDER_DOMAINS.map((domain) => {
+    const audit = audits.find((item) => item.domain === domain) ?? null;
+    return {
+      domain,
+      itemCount: audit?.itemCount ?? 0,
+      operationalState: audit?.operationalState ?? "limited",
+      present: Boolean(audit),
+      provider: audit?.provider ?? "Provider not configured",
+      sourceTransparency: audit?.sourceTransparency ?? "No source-linked provider rows found; TradeVeto does not infer missing events.",
+    };
+  });
+}
+
+function providerStateCounts(audits: DailyProviderStrategyAudit[]): ProviderStateCounts {
+  return audits.reduce<ProviderStateCounts>((counts, audit) => {
+    counts[audit.operationalState] += 1;
+    return counts;
+  }, {
+    active: 0,
+    "calendar-only": 0,
+    delayed: 0,
+    limited: 0,
+    outage: 0,
+    "partial-outage": 0,
+    stale: 0,
+  });
+}
+
+function providerOutageSimulation(audits: DailyProviderStrategyAudit[], headerValue: string): ProviderOutageSimulationProof {
+  const requested = headerValue
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  if (!requested.length) {
+    return {
+      enabled: false,
+      fallbackVisible: false,
+      recoveryStates: [],
+      recoveryVisible: false,
+      requested: [],
+      simulatedStates: [],
+    };
+  }
+  const targetAudits = audits.filter((audit) => requested.some((token) => domainMatchesToken(audit.domain, token)));
+  const selected = targetAudits.length ? targetAudits : audits.filter((audit) => audit.domain === "macro" || audit.domain === "company-events" || audit.domain === "economic-calendar");
+  return {
+    enabled: true,
+    fallbackVisible: selected.length > 0,
+    recoveryStates: selected.map((audit) => ({
+      disclosure: audit.disclosure,
+      domain: audit.domain,
+      operationalState: audit.operationalState,
+      provider: audit.provider,
+    })),
+    recoveryVisible: selected.length > 0,
+    requested,
+    simulatedStates: selected.map((audit) => ({
+      disclosure: `${audit.domain.replace(/-/g, " ")} provider outage simulated for certification; no missing event is labeled live or inferred.`,
+      domain: audit.domain,
+      operationalState: "outage",
+      provider: audit.provider,
+    })),
+  };
+}
+
+function domainMatchesToken(domain: DailyProviderCoverageDomain, token: string): boolean {
+  if (domain.includes(token)) return true;
+  if (token === "news") return domain === "company-events" || domain === "sector-events" || domain === "macro";
+  if (token === "events") return domain === "company-events" || domain === "economic-calendar" || domain === "geopolitical-events";
+  if (token === "macro") return domain === "macro" || domain === "rates" || domain === "inflation" || domain === "economic-calendar";
+  if (token === "scanner") return domain === "company-events" || domain === "sector-events";
+  return false;
+}

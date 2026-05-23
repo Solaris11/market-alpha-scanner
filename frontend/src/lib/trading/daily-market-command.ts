@@ -138,6 +138,21 @@ export type DailySectorNewsCluster = {
   watchlistImpactCount: number;
 };
 
+export type DailySourceTrustField = "affectedSymbols" | "freshness" | "provider" | "sourceUrl" | "timestamp" | "uncertainty" | "watchlistImpact";
+
+export type DailySourceTrustSummary = {
+  completeCardCount: number;
+  completenessPct: number;
+  contextCompleteCardCount: number;
+  contextCompletenessPct: number;
+  disclosure: string;
+  displayedCardCount: number;
+  incompleteCardCount: number;
+  missingFieldCounts: Record<DailySourceTrustField, number>;
+  requiredFields: DailySourceTrustField[];
+  status: "fail" | "not-applicable" | "pass";
+};
+
 export type DailyNewsEcosystemSummary = {
   affectedSectors: string[];
   affectedSymbols: string[];
@@ -156,6 +171,7 @@ export type DailyNewsEcosystemSummary = {
   sectorNewsCount: number;
   sourceCount: number;
   sourceNames: string[];
+  sourceTrust: DailySourceTrustSummary;
   symbolNewsCount: number;
   topNarrative: string;
   total: number;
@@ -209,6 +225,10 @@ type ProviderOperationalSignal = {
   status: "fallback" | "outage" | "stale";
   symbol: string;
 };
+
+const SOURCE_TRUST_REQUIRED_FIELDS: DailySourceTrustField[] = ["sourceUrl", "provider", "timestamp", "freshness"];
+const SOURCE_TRUST_CONTEXT_FIELDS: DailySourceTrustField[] = ["affectedSymbols", "watchlistImpact", "uncertainty"];
+const SOURCE_TRUST_ALL_FIELDS: DailySourceTrustField[] = [...SOURCE_TRUST_REQUIRED_FIELDS, ...SOURCE_TRUST_CONTEXT_FIELDS];
 
 export type DailyInformationEvolutionPoint = {
   categories: string[];
@@ -630,6 +650,7 @@ function buildNewsEcosystem(developments: DailyMarketDevelopment[], calendar: Da
     sectorNewsCount,
     sourceCount: sourceNames.length,
     sourceNames,
+    sourceTrust: buildSourceTrustSummary(developments),
     symbolNewsCount,
     topNarrative: top
       ? `${top.category} development from ${top.source}: ${top.whyItMatters}`
@@ -637,6 +658,77 @@ function buildNewsEcosystem(developments: DailyMarketDevelopment[], calendar: Da
     total: developments.length,
     watchlistImpactCount,
   };
+}
+
+function buildSourceTrustSummary(developments: DailyMarketDevelopment[]): DailySourceTrustSummary {
+  const missingFieldCounts = SOURCE_TRUST_ALL_FIELDS.reduce<Record<DailySourceTrustField, number>>((counts, field) => {
+    counts[field] = 0;
+    return counts;
+  }, {
+    affectedSymbols: 0,
+    freshness: 0,
+    provider: 0,
+    sourceUrl: 0,
+    timestamp: 0,
+    uncertainty: 0,
+    watchlistImpact: 0,
+  });
+  if (!developments.length) {
+    return {
+      completeCardCount: 0,
+      completenessPct: 0,
+      contextCompleteCardCount: 0,
+      contextCompletenessPct: 0,
+      disclosure: "No source-linked event cards are displayed; provider depth is not proven for this packet.",
+      displayedCardCount: 0,
+      incompleteCardCount: 0,
+      missingFieldCounts,
+      requiredFields: SOURCE_TRUST_REQUIRED_FIELDS,
+      status: "not-applicable",
+    };
+  }
+
+  let completeCardCount = 0;
+  let contextCompleteCardCount = 0;
+  for (const item of developments) {
+    const missing = missingSourceTrustFields(item, SOURCE_TRUST_REQUIRED_FIELDS);
+    const contextMissing = missingSourceTrustFields(item, SOURCE_TRUST_ALL_FIELDS);
+    if (!missing.length) completeCardCount += 1;
+    if (!contextMissing.length) contextCompleteCardCount += 1;
+    for (const field of contextMissing) {
+      missingFieldCounts[field] += 1;
+    }
+  }
+  const completenessPct = Math.round((completeCardCount / developments.length) * 100);
+  const contextCompletenessPct = Math.round((contextCompleteCardCount / developments.length) * 100);
+  return {
+    completeCardCount,
+    completenessPct,
+    contextCompleteCardCount,
+    contextCompletenessPct,
+    disclosure: completenessPct >= 95 && contextCompletenessPct >= 95
+      ? `${completeCardCount} of ${developments.length} displayed source-linked event cards disclose provider, source URL, timestamp, freshness, affected symbols, watchlist impact, and uncertainty.`
+      : `${developments.length - completeCardCount} displayed event card${developments.length - completeCardCount === 1 ? "" : "s"} miss required source/provider/timestamp/freshness fields; ${developments.length - contextCompleteCardCount} miss full context fields.`,
+    displayedCardCount: developments.length,
+    incompleteCardCount: developments.length - completeCardCount,
+    missingFieldCounts,
+    requiredFields: SOURCE_TRUST_REQUIRED_FIELDS,
+    status: completenessPct >= 95 && contextCompletenessPct >= 95 ? "pass" : "fail",
+  };
+}
+
+function missingSourceTrustFields(item: DailyMarketDevelopment, fields: DailySourceTrustField[]): DailySourceTrustField[] {
+  const missing: DailySourceTrustField[] = [];
+  for (const field of fields) {
+    if (field === "affectedSymbols" && item.affectedSymbols.length === 0) missing.push(field);
+    if (field === "freshness" && (!item.freshnessLabel || /timestamp unavailable/i.test(item.freshnessLabel))) missing.push(field);
+    if (field === "provider" && !item.providerAttribution.trim()) missing.push(field);
+    if (field === "sourceUrl" && !/^https?:\/\//i.test(item.sourceUrl)) missing.push(field);
+    if (field === "timestamp" && !Number.isFinite(Date.parse(item.timestamp))) missing.push(field);
+    if (field === "uncertainty" && !item.uncertaintyLabel.trim()) missing.push(field);
+    if (field === "watchlistImpact" && !item.watchlistImpactReason.trim()) missing.push(field);
+  }
+  return missing;
 }
 
 function buildMacroStorylines(developments: DailyMarketDevelopment[], moneyFlow: DailyMarketCommandModel["moneyFlow"], calendar: DailyEventCalendarItem[]): DailyMacroEventStory[] {
