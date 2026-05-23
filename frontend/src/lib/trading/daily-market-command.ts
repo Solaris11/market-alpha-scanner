@@ -201,6 +201,7 @@ export type DailyProviderCoverageDomain =
   | "sector-events";
 
 export type DailyProviderOperationalState = "active" | "calendar-only" | "delayed" | "limited" | "outage" | "partial-outage" | "stale";
+export type DailyProviderFreshnessSlaStatus = "breached" | "not-measured" | "within-sla";
 
 export type DailyProviderStrategyAudit = {
   coverage: "active" | "calendar-only" | "limited";
@@ -208,6 +209,9 @@ export type DailyProviderStrategyAudit = {
   domain: DailyProviderCoverageDomain;
   freshness: string;
   freshnessMinutes: number | null;
+  freshnessSlaDisclosure: string;
+  freshnessSlaMinutes: number | null;
+  freshnessSlaStatus: DailyProviderFreshnessSlaStatus;
   itemCount: number;
   latency: string;
   latestTimestamp: string | null;
@@ -984,7 +988,7 @@ function buildProviderStrategyAudit(developments: DailyMarketDevelopment[], cale
   const operationalSignals = providerOperationalSignals(rows);
   const domains: Array<{ domain: DailyProviderCoverageDomain; label: string; matchCalendar: (item: DailyEventCalendarItem) => boolean; matchDevelopment: (item: DailyMarketDevelopment) => boolean }> = [
     { domain: "macro", label: "Macro", matchCalendar: (item) => item.category === "macro", matchDevelopment: (item) => ["Energy", "Macro"].includes(item.category) },
-    { domain: "inflation", label: "Inflation", matchCalendar: (item) => item.category === "rates" && /cpi|ppi|inflation/i.test(`${item.label} ${item.detail}`), matchDevelopment: (item) => item.category === "Rates" && /cpi|ppi|inflation/i.test(`${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel}`) },
+    { domain: "inflation", label: "Inflation", matchCalendar: (item) => item.category === "rates" && hasInflationLanguage(`${item.label} ${item.detail}`), matchDevelopment: (item) => item.category === "Rates" && hasInflationLanguage(`${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel}`) },
     { domain: "rates", label: "Rates", matchCalendar: (item) => item.category === "rates", matchDevelopment: (item) => item.category === "Rates" },
     { domain: "earnings", label: "Earnings", matchCalendar: (item) => item.category === "earnings", matchDevelopment: (item) => item.category === "Earnings" },
     { domain: "analyst-actions", label: "Analyst actions", matchCalendar: (item) => item.category === "analyst", matchDevelopment: (item) => item.category === "Analyst" },
@@ -1004,6 +1008,7 @@ function buildProviderStrategyAudit(developments: DailyMarketDevelopment[], cale
     const coverage: DailyProviderStrategyAudit["coverage"] = matchingDevelopments.length ? "active" : matchingCalendar.length ? "calendar-only" : "limited";
     const outageSignals = operationalSignals.filter((signal) => domainMatchesSignal(domain.domain, domain.label, signal));
     const freshnessMinutes = latestDevelopment ? minutesSince(latestDevelopment.timestamp, now) : null;
+    const freshnessSlaMinutes = providerDomainSlaMinutes(domain.domain);
     const operationalState = providerOperationalState({
       coverage,
       freshnessMinutes,
@@ -1036,6 +1041,20 @@ function buildProviderStrategyAudit(developments: DailyMarketDevelopment[], cale
       domain: domain.domain,
       freshness: latestDevelopment?.freshnessLabel ?? (latestCalendar ? `Calendar date available: ${latestCalendar.date.slice(0, 10)}` : "No source-linked timestamp available"),
       freshnessMinutes,
+      freshnessSlaDisclosure: providerFreshnessSlaDisclosure({
+        coverage,
+        domain: domain.label,
+        freshnessMinutes,
+        operationalState,
+        slaMinutes: freshnessSlaMinutes,
+      }),
+      freshnessSlaMinutes,
+      freshnessSlaStatus: providerFreshnessSlaStatus({
+        coverage,
+        freshnessMinutes,
+        operationalState,
+        slaMinutes: freshnessSlaMinutes,
+      }),
       itemCount: matchingDevelopments.length + matchingCalendar.length,
       latency: latestDevelopment?.latencyLabel ?? (matchingCalendar.length ? "Calendar packet latency not instrumented" : "No provider latency available"),
       latestTimestamp: latestDevelopment?.timestamp ?? latestCalendar?.date ?? null,
@@ -1182,6 +1201,45 @@ function providerOperationalState(input: {
   return "active";
 }
 
+function providerDomainSlaMinutes(domain: DailyProviderCoverageDomain): number | null {
+  if (domain === "earnings" || domain === "dividends" || domain === "economic-calendar") return 24 * 60;
+  if (domain === "macro" || domain === "rates" || domain === "inflation" || domain === "geopolitical-events" || domain === "crypto-events") return 6 * 60;
+  if (domain === "analyst-actions" || domain === "company-events" || domain === "sector-events") return 6 * 60;
+  return null;
+}
+
+function providerFreshnessSlaStatus(input: {
+  coverage: DailyProviderStrategyAudit["coverage"];
+  freshnessMinutes: number | null;
+  operationalState: DailyProviderOperationalState;
+  slaMinutes: number | null;
+}): DailyProviderFreshnessSlaStatus {
+  if (input.coverage !== "active" || input.slaMinutes === null) return "not-measured";
+  if (input.operationalState === "outage" || input.operationalState === "partial-outage" || input.operationalState === "stale" || input.operationalState === "delayed") return "breached";
+  if (input.freshnessMinutes === null) return "breached";
+  return input.freshnessMinutes <= input.slaMinutes ? "within-sla" : "breached";
+}
+
+function providerFreshnessSlaDisclosure(input: {
+  coverage: DailyProviderStrategyAudit["coverage"];
+  domain: string;
+  freshnessMinutes: number | null;
+  operationalState: DailyProviderOperationalState;
+  slaMinutes: number | null;
+}): string {
+  const status = providerFreshnessSlaStatus(input);
+  if (status === "within-sla" && input.slaMinutes !== null && input.freshnessMinutes !== null) {
+    return `${input.domain} source-linked provider row is ${input.freshnessMinutes}m old against a ${input.slaMinutes}m freshness SLA.`;
+  }
+  if (status === "breached" && input.slaMinutes !== null) {
+    const age = input.freshnessMinutes === null ? "without a measurable source timestamp" : `${input.freshnessMinutes}m old`;
+    return `${input.domain} source-linked provider row is ${age}; this breaches the ${input.slaMinutes}m freshness SLA and must not be labeled live.`;
+  }
+  if (input.coverage === "calendar-only") return `${input.domain} is calendar-only, so real-time provider freshness SLA is not measured.`;
+  if (input.operationalState === "limited") return `${input.domain} has no source-linked provider row, so freshness SLA is not measured.`;
+  return `${input.domain} freshness SLA is not measured for this packet.`;
+}
+
 function providerOperationalDisclosure(input: {
   coverage: DailyProviderStrategyAudit["coverage"];
   domain: string;
@@ -1266,7 +1324,7 @@ function developmentPriorityScore(input: {
 function sourceQualityLabel(item: MarketNewsItem): string {
   const textValue = `${item.source} ${item.sourceUrl}`.toLowerCase();
   if (/sec\.gov|federalreserve\.gov|bls\.gov|bea\.gov|eia\.gov|treasury\.gov|stlouisfed\.org/.test(textValue)) return "Official source";
-  if (/reuters|bloomberg|apnews|ap news|cnbc|marketwatch|yahoo|wsj|stocktitan|nasdaq/.test(textValue)) return "Verified market source";
+  if (/reuters|bloomberg|apnews|ap news|cnbc|coindesk|marketwatch|yahoo|wsj|stocktitan|nasdaq/.test(textValue)) return "Verified market source";
   if (/prnewswire|globenewswire|businesswire|investor/.test(textValue)) return "Source-linked company release";
   return "Verified source-linked item";
 }
@@ -1482,7 +1540,7 @@ function newsCategory(item: MarketNewsItem): DailyMarketDevelopment["category"] 
   const text = `${item.eventType} ${item.title} ${item.reasonCodes.join(" ")} ${item.relatedAssets.join(" ")}`.toLowerCase();
   if (/analyst|upgrade|downgrade|price target|initiated|rating/.test(text)) return "Analyst";
   if (/earnings|eps|revenue|guidance/.test(text)) return "Earnings";
-  if (/fed|rate|bond|yield|cpi|ppi|inflation|jobs|payroll|gdp|recession/.test(text)) return "Rates";
+  if (/fed|rate|bond|yield|jobs|payroll|gdp|recession/.test(text) || hasInflationLanguage(text)) return "Rates";
   if (/war|peace|geopolitical|sanction|conflict/.test(text)) return "Geopolitical";
   if (/oil|energy|crude|uso|opec/.test(text)) return "Energy";
   if (/btc|bitcoin|crypto|coin/.test(text)) return "Crypto";
@@ -1587,7 +1645,7 @@ function dayKey(value: string): string | null {
 function linkedProxiesForDevelopment(item: DailyMarketDevelopment): string[] {
   const text = `${item.category} ${item.headline} ${item.affectedSectors.join(" ")} ${item.affectedSymbols.join(" ")}`.toLowerCase();
   const proxies: string[] = [];
-  if (/rate|yield|bond|fed|inflation|cpi|ppi|jobs|gdp|recession/.test(text)) proxies.push("TLT", "UUP", "SPY", "QQQ");
+  if (/rate|yield|bond|fed|jobs|gdp|recession/.test(text) || hasInflationLanguage(text)) proxies.push("TLT", "UUP", "SPY", "QQQ");
   if (/oil|energy|crude|opec/.test(text)) proxies.push("USO", "GLD", "SPY");
   if (/crypto|btc|bitcoin|coin/.test(text)) proxies.push("BTC", "BTC-USD", "IBIT", "QQQ");
   if (/geopolitical|war|peace|sanction|conflict|defense/.test(text)) proxies.push("USO", "GLD", "UUP", "SPY");
@@ -1598,7 +1656,7 @@ function linkedProxiesForDevelopment(item: DailyMarketDevelopment): string[] {
 
 function crossAssetRelationshipType(item: DailyMarketDevelopment): string {
   const text = `${item.category} ${item.headline} ${item.whyItMatters} ${item.affectedSectors.join(" ")} ${item.affectedSymbols.join(" ")}`.toLowerCase();
-  if (/rate|yield|bond|fed|inflation|cpi|ppi|jobs|gdp|recession/.test(text)) return "Rates/yields versus duration-sensitive growth";
+  if (/rate|yield|bond|fed|jobs|gdp|recession/.test(text) || hasInflationLanguage(text)) return "Rates/yields versus duration-sensitive growth";
   if (/oil|energy|crude|opec/.test(text)) return "Oil and energy versus inflation pressure";
   if (/crypto|btc|bitcoin|coin/.test(text)) return "Crypto beta versus risk appetite";
   if (/geopolitical|war|peace|sanction|conflict|defense/.test(text)) return "Geopolitical risk versus safety/liquidity proxies";
@@ -1609,7 +1667,7 @@ function crossAssetRelationshipType(item: DailyMarketDevelopment): string {
 
 function calendarRelationshipType(item: DailyEventCalendarItem): string {
   const text = `${item.category} ${item.label} ${item.detail}`.toLowerCase();
-  if (/rate|yield|bond|fed|inflation|cpi|ppi|jobs|gdp/.test(text)) return "Scheduled macro release versus rates/liquidity";
+  if (/rate|yield|bond|fed|jobs|gdp/.test(text) || hasInflationLanguage(text)) return "Scheduled macro release versus rates/liquidity";
   if (/war|peace|geopolitical|sanction|conflict/.test(text)) return "Scheduled geopolitical event risk";
   return "Stored macro/event calendar context";
 }
@@ -1641,4 +1699,8 @@ function urgencyRank(value: DailyMarketDevelopment["urgency"]): number {
 
 function uniqueStrings(values: string[]): string[] {
   return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean))).slice(0, 12);
+}
+
+function hasInflationLanguage(value: string): boolean {
+  return /\b(?:cpi|ppi|inflation)\b|consumer price|producer price|price index/i.test(value);
 }

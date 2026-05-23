@@ -157,6 +157,9 @@ function requiredDomainCoverage(audits: DailyProviderStrategyAudit[]) {
       operationalState: audit?.operationalState ?? "limited",
       present: Boolean(audit),
       provider: audit?.provider ?? "Provider not configured",
+      freshnessSlaDisclosure: audit?.freshnessSlaDisclosure ?? "No source-linked provider row, so freshness SLA is not measured.",
+      freshnessSlaMinutes: audit?.freshnessSlaMinutes ?? null,
+      freshnessSlaStatus: audit?.freshnessSlaStatus ?? "not-measured",
       sourceTransparency: audit?.sourceTransparency ?? "No source-linked provider rows found; TradeVeto does not infer missing events.",
     };
   });

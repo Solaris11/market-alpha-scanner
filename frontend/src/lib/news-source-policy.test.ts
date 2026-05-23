@@ -15,6 +15,7 @@ describe("news source policy", () => {
     assert.equal(isVerifiedNewsSource("Financial Modeling Prep", "https://financialmodelingprep.com/market-news/example"), true);
     assert.equal(isVerifiedNewsSource("IMF", "https://www.imf.org/en/News/Articles/example"), true);
     assert.equal(isVerifiedNewsSource("European Central Bank", "https://www.ecb.europa.eu/press/example"), true);
+    assert.equal(isVerifiedNewsSource("CoinDesk", "https://www.coindesk.com/markets/example"), true);
   });
 
   it("blocks unverified social and missing urls", () => {

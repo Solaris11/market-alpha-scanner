@@ -371,10 +371,13 @@ function ProviderStrategyAuditGrid({ audits }: { audits: DailyProviderStrategyAu
             <div className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{audit.provider}</div>
             <div className="mt-2 grid gap-1.5">
               <div className="rounded-xl border border-white/10 bg-black/20 px-2 py-1.5 text-[10px] text-slate-300">{audit.freshness}</div>
+              <div className={`rounded-xl border px-2 py-1.5 text-[10px] ${audit.freshnessSlaStatus === "within-sla" ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-100" : audit.freshnessSlaStatus === "breached" ? "border-rose-300/20 bg-rose-300/10 text-rose-100" : "border-white/10 bg-black/20 text-slate-400"}`}>
+                SLA {audit.freshnessSlaStatus.replace("-", " ")}{audit.freshnessSlaMinutes === null ? "" : ` · ${audit.freshnessSlaMinutes}m`}
+              </div>
               <div className="rounded-xl border border-white/10 bg-black/20 px-2 py-1.5 text-[10px] text-slate-400">{audit.latency}</div>
             </div>
             <div className="mt-2 line-clamp-2 text-[10px] leading-4 text-slate-300">{audit.disclosure}</div>
-            <div className="mt-2 line-clamp-2 text-[10px] leading-4 text-slate-500">{audit.sourceTransparency} {audit.limitations.join(" ")}</div>
+            <div className="mt-2 line-clamp-2 text-[10px] leading-4 text-slate-500">{audit.sourceTransparency} {audit.freshnessSlaDisclosure} {audit.limitations.join(" ")}</div>
           </div>
         ))}
       </div>

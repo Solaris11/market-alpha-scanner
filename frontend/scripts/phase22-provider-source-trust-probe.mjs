@@ -119,6 +119,10 @@ function buildReport({ baseline, outage }) {
   if (missingDomains.length) blockers.push(`provider matrix missing required domains: ${missingDomains.join(", ")}`);
   const limitedDomains = requiredDomainCoverage.filter((item) => item?.operationalState === "limited").map((item) => item.domain);
   if (limitedDomains.length) blockers.push(`provider domains still limited: ${limitedDomains.join(", ")}`);
+  const missingSlaDomains = requiredDomainCoverage.filter((item) => !String(item?.freshnessSlaStatus ?? "").trim()).map((item) => item?.domain ?? "unknown");
+  if (missingSlaDomains.length) blockers.push(`provider domains missing freshness SLA status: ${missingSlaDomains.join(", ")}`);
+  const breachedSlaDomains = requiredDomainCoverage.filter((item) => item?.freshnessSlaStatus === "breached").map((item) => item.domain);
+  if (breachedSlaDomains.length) blockers.push(`provider domains breached freshness SLA: ${breachedSlaDomains.join(", ")}`);
   if (!outageSimulation?.enabled || !outageSimulation.fallbackVisible || !outageSimulation.recoveryVisible) {
     blockers.push("provider outage simulation did not expose fallback and recovery states");
   }
@@ -130,6 +134,7 @@ function buildReport({ baseline, outage }) {
       latencyMs: baseline.latencyMs,
       providerStateCounts: baseline.payload?.providerStateCounts ?? null,
       requiredDomainCoverage,
+      slaStatusCounts: countSlaStatuses(requiredDomainCoverage),
       sourceTrust,
       statusCode: baseline.statusCode,
     },
@@ -147,6 +152,14 @@ function buildReport({ baseline, outage }) {
         }
       : { created: false },
   };
+}
+
+function countSlaStatuses(items) {
+  return items.reduce((counts, item) => {
+    const status = String(item?.freshnessSlaStatus ?? "missing");
+    counts[status] = (counts[status] ?? 0) + 1;
+    return counts;
+  }, {});
 }
 
 function missingCardFields(card) {

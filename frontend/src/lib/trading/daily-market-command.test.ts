@@ -231,7 +231,9 @@ test("daily market command ranks opportunity, breakout, crash risk, money flow, 
   }
   assert.ok(model.providerStrategyAudit.some((audit) => audit.domain === "rates" && audit.coverage === "active" && audit.provider === "Reuters"));
   assert.ok(model.providerCoverageMatrix.some((audit) => audit.domain === "rates" && audit.operationalState === "active" && /source-linked/.test(audit.disclosure)));
+  assert.ok(model.providerCoverageMatrix.some((audit) => audit.domain === "rates" && audit.freshnessSlaStatus === "within-sla" && audit.freshnessSlaMinutes === 360));
   assert.ok(model.providerStrategyAudit.some((audit) => audit.domain === "earnings" && audit.coverage === "calendar-only"));
+  assert.ok(model.providerStrategyAudit.some((audit) => audit.domain === "earnings" && audit.freshnessSlaStatus === "not-measured"));
   assert.ok(model.providerStrategyAudit.some((audit) => audit.domain === "geopolitical-events" && audit.coverage === "limited"));
   assert.equal(model.newsEvolution[0]?.itemCount, 1);
   assert.ok(model.crossAssetRelationships.some((relationship) => relationship.affectedSymbols.includes("AMD") && relationship.affectedSymbols.includes("MU") && relationship.relationshipType === "Rates/yields versus duration-sensitive growth"));
@@ -241,6 +243,90 @@ test("daily market command ranks opportunity, breakout, crash risk, money flow, 
   assert.ok(model.sectorNews.some((cluster) => cluster.sector === "Semiconductors"));
   assert.ok(model.calendar.some((item) => item.symbol === "AMD" && item.category === "earnings"));
   assert.match(model.hero.narrative, /leads/);
+});
+
+test("provider matrix recognizes source-linked inflation, analyst, geopolitical, and crypto depth with SLA disclosure", () => {
+  const rows = [
+    row({ symbol: "AMD" }),
+    row({ symbol: "BTC", assetType: "crypto", sector: "Crypto", raw: { asset_type: "crypto", sector: "Crypto", symbol: "BTC" } }),
+  ];
+  const unified = buildUnifiedIntelligenceConsole({ marketCondition: "Risk-On Transition", rows, watchlistSymbols: ["AMD", "BTC"] });
+  const sourceLinkedCommand = marketCommand();
+  sourceLinkedCommand.macroNews = [
+    {
+      ...sourceLinkedCommand.macroNews[0]!,
+      eventTrackingLabel: "Inflation tracked from Bureau of Labor Statistics",
+      eventType: "macro_data",
+      id: "https://www.bls.gov/news.release/cpi.nr0.htm|CPI inflation cools",
+      publishedAt: "2026-05-19T13:45:00.000Z",
+      reasonCodes: ["EVENT_INFLATION_PRESSURE"],
+      relatedAssets: ["SPY", "QQQ"],
+      source: "Bureau of Labor Statistics",
+      sourceUrl: "https://www.bls.gov/news.release/cpi.nr0.htm",
+      title: "Consumer price index inflation cools",
+      whyItMatters: "Inflation data affects rates-sensitive growth assets.",
+    },
+    {
+      ...sourceLinkedCommand.macroNews[0]!,
+      eventTrackingLabel: "Analyst action tracked from StockTitan",
+      eventType: "analyst_action",
+      id: "https://www.stocktitan.net/news/AMD/analyst-upgrade.html|AMD analyst upgrade",
+      publishedAt: "2026-05-19T13:35:00.000Z",
+      reasonCodes: ["EVENT_ANALYST_ACTION"],
+      relatedAssets: ["AMD"],
+      source: "StockTitan",
+      sourceUrl: "https://www.stocktitan.net/news/AMD/analyst-upgrade.html",
+      title: "Analyst upgrades AMD and raises price target",
+      whyItMatters: "Analyst action adds company-specific catalyst context for AMD.",
+    },
+    {
+      ...sourceLinkedCommand.macroNews[0]!,
+      eventTrackingLabel: "Geopolitical risk tracked from Reuters",
+      eventType: "geopolitical",
+      id: "https://www.reuters.com/world/geopolitical-shipping-risk|Shipping risk",
+      publishedAt: "2026-05-19T13:25:00.000Z",
+      reasonCodes: ["EVENT_GEOPOLITICAL_ESCALATION"],
+      relatedAssets: ["USO", "SPY"],
+      source: "Reuters",
+      sourceUrl: "https://www.reuters.com/world/geopolitical-shipping-risk",
+      title: "Geopolitical conflict escalates near shipping routes",
+      whyItMatters: "Geopolitical risk can affect energy, liquidity, and broad-market risk appetite.",
+    },
+    {
+      ...sourceLinkedCommand.macroNews[0]!,
+      eventTrackingLabel: "Crypto market event tracked from CoinDesk",
+      eventType: "crypto",
+      id: "https://www.coindesk.com/markets/bitcoin-etf-flows|Bitcoin ETF flows",
+      publishedAt: "2026-05-19T13:15:00.000Z",
+      reasonCodes: ["EVENT_CRYPTO_CONTEXT"],
+      relatedAssets: ["BTC", "QQQ"],
+      source: "CoinDesk",
+      sourceUrl: "https://www.coindesk.com/markets/bitcoin-etf-flows",
+      title: "Bitcoin crypto ETF flows shift risk appetite",
+      whyItMatters: "Crypto beta can connect to speculative growth risk appetite.",
+    },
+  ];
+
+  const model = buildDailyMarketCommandModel({
+    marketCommand: sourceLinkedCommand,
+    marketCondition: "Risk-On Transition",
+    now: new Date("2026-05-19T14:00:00.000Z"),
+    rankedZones: unified.rankedZones,
+    rows,
+    watchlistSymbols: ["AMD", "BTC"],
+  });
+
+  const requiredActiveDomains = ["inflation", "analyst-actions", "geopolitical-events", "crypto-events"] as const;
+  for (const domain of requiredActiveDomains) {
+    const audit = model.providerCoverageMatrix.find((item) => item.domain === domain);
+    assert.equal(audit?.operationalState, "active", `${domain} should be active`);
+    assert.equal(audit?.freshnessSlaStatus, "within-sla", `${domain} should be within source freshness SLA`);
+    assert.match(audit?.freshnessSlaDisclosure ?? "", /freshness SLA/i);
+  }
+  assert.ok(model.developments.some((item) => item.source === "CoinDesk" && item.category === "Crypto"));
+  assert.equal(model.newsEcosystem.sourceTrust.status, "pass");
+  assert.equal(model.newsEcosystem.sourceTrust.completenessPct, 100);
+  assert.equal(model.newsEcosystem.sourceTrust.contextCompletenessPct, 100);
 });
 
 test("daily market command keeps honest news empty state when no source-linked feed exists", () => {
@@ -304,6 +390,7 @@ test("daily market command discloses stale, delayed, partial outage, and outage 
   });
   const staleRates = staleModel.providerCoverageMatrix.find((audit) => audit.domain === "rates");
   assert.equal(staleRates?.operationalState, "stale");
+  assert.equal(staleRates?.freshnessSlaStatus, "breached");
   assert.match(staleRates?.disclosure ?? "", /stale/i);
 
   const delayedModel = buildDailyMarketCommandModel({
@@ -314,6 +401,7 @@ test("daily market command discloses stale, delayed, partial outage, and outage 
   });
   const delayedRates = delayedModel.providerCoverageMatrix.find((audit) => audit.domain === "rates");
   assert.equal(delayedRates?.operationalState, "delayed");
+  assert.equal(delayedRates?.freshnessSlaStatus, "breached");
   assert.match(delayedRates?.disclosure ?? "", /delayed/i);
 
   const partialOutageModel = buildDailyMarketCommandModel({
@@ -324,6 +412,7 @@ test("daily market command discloses stale, delayed, partial outage, and outage 
   });
   const partialOutageRates = partialOutageModel.providerCoverageMatrix.find((audit) => audit.domain === "rates");
   assert.equal(partialOutageRates?.operationalState, "partial-outage");
+  assert.equal(partialOutageRates?.freshnessSlaStatus, "breached");
   assert.match(partialOutageRates?.disclosure ?? "", /provider failure|timeout/i);
 
   const outageModel = buildDailyMarketCommandModel({

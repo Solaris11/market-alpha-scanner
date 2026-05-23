@@ -221,6 +221,13 @@ DEFAULT_EVENT_FEEDS: Final[tuple[TrustedEventFeed, ...]] = (
         category_hint="market",
         source_weight=0.82,
     ),
+    TrustedEventFeed(
+        key="coindesk_markets",
+        name="CoinDesk",
+        url="https://www.coindesk.com/arc/outboundfeeds/rss/",
+        category_hint="market",
+        source_weight=0.84,
+    ),
 )
 DEFAULT_CACHE_TTL = timedelta(hours=6)
 DEFAULT_STALE_CACHE_TTL = timedelta(days=3)
@@ -263,6 +270,7 @@ TRUSTED_FEED_HOST_SUFFIXES: Final[frozenset[str]] = frozenset(
         "treasury.gov",
         "stlouisfed.org",
         "cmegroup.com",
+        "coindesk.com",
         "imf.org",
         "worldbank.org",
         "ecb.europa.eu",
@@ -293,6 +301,7 @@ TRUSTED_NEWS_PROVIDERS: Final[frozenset[str]] = frozenset(
         "bank of england",
         "benzinga",
         "cme group",
+        "coindesk",
         "european central bank",
         "financial modeling prep",
         "finnhub",
@@ -2230,7 +2239,7 @@ def _provider_source_weight(source: str) -> float:
     normalized = source.lower().strip()
     if any(token in normalized for token in ("federal reserve", "bureau of labor", "sec", "cftc", "bea", "census", "eia", "treasury", "fred", "imf", "world bank", "european central bank", "bank of england", "state department", "white house")):
         return 1.0
-    if any(token in normalized for token in ("reuters", "associated press", "ap", "wall street journal", "marketwatch", "stocktitan", "nasdaq", "alpaca", "benzinga", "finnhub", "financial modeling prep", "polygon", "alpha vantage", "iex cloud", "cme group")):
+    if any(token in normalized for token in ("reuters", "associated press", "ap", "wall street journal", "marketwatch", "stocktitan", "nasdaq", "alpaca", "benzinga", "finnhub", "financial modeling prep", "polygon", "alpha vantage", "iex cloud", "cme group", "coindesk")):
         return 0.86
     if any(token in normalized for token in ("pr newswire", "business wire", "globenewswire", "mt newswires")):
         return 0.78
