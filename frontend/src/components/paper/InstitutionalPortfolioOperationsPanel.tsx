@@ -1,7 +1,9 @@
 import type {
   InstitutionalAllocationHistoryItem,
+  InstitutionalBrokerIntegrationState,
   InstitutionalDrawdownStory,
   InstitutionalOperatingLane,
+  InstitutionalOperatingLedgerEntry,
   InstitutionalOperationsCredibilityGate,
   InstitutionalPortfolioOperationsSystem,
   InstitutionalPortfolioOpsTone,
@@ -45,6 +47,8 @@ export function InstitutionalPortfolioOperationsPanel({ system }: { system: Inst
         <div className="space-y-5">
           <RiskBudgetList items={system.riskBudget.slice(0, 7)} />
           <ProofGateList items={system.proofGates} />
+          <BrokerBoundaryCard state={system.brokerIntegration} />
+          <OperatingLedgerExport csv={system.operatingLedgerCsv} items={system.operatingLedger} />
           <ThesisLifecycleList items={system.thesisLifecycle} />
           <TradeAutopsyList items={system.paperTradeAutopsies} />
           <StrategyMemoryList items={system.strategyMemory} />
@@ -56,7 +60,7 @@ export function InstitutionalPortfolioOperationsPanel({ system }: { system: Inst
       <div className="border-t border-white/10 bg-white/[0.025] p-4 sm:p-5">
         <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Trust Boundary</div>
         <div className="mt-3 grid gap-2 lg:grid-cols-2">
-          {system.limitations.map((line) => (
+          {[...system.evidenceBoundaryDisclosures, ...system.limitations].map((line) => (
             <div className="rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-xs leading-5 text-slate-400" key={line}>{line}</div>
           ))}
         </div>
@@ -330,6 +334,63 @@ function ProofGateList({ items }: { items: InstitutionalOperationsCredibilityGat
             </div>
             <p className="mt-2 text-xs leading-5 text-slate-400">{item.evidence}</p>
             {item.blocker ? <p className="mt-2 text-xs leading-5 text-amber-100/85">{item.blocker}</p> : null}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function BrokerBoundaryCard({ state }: { state: InstitutionalBrokerIntegrationState }) {
+  return (
+    <div className="rounded-2xl border border-amber-300/18 bg-amber-400/[0.045] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-200">Broker Boundary</div>
+      <div className="mt-3 flex items-start justify-between gap-3">
+        <div>
+          <div className="text-sm font-semibold text-slate-100">{state.provider === "none" ? "No broker connected" : state.provider}</div>
+          <p className="mt-2 text-xs leading-5 text-slate-400">{state.disclosure}</p>
+        </div>
+        <div className="rounded-full border border-amber-300/30 bg-amber-400/10 px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] text-amber-100">{state.status.replace(/_/g, " ")}</div>
+      </div>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <Mini label="Order placement" value={state.canPlaceOrders ? "Enabled" : "Blocked"} />
+        <Mini label="Broker fills" value={state.canReadBrokerFills ? "Imported" : "Not imported"} />
+      </div>
+      <p className="mt-3 text-xs leading-5 text-slate-500">{state.evidence}</p>
+    </div>
+  );
+}
+
+function OperatingLedgerExport({ csv, items }: { csv: string; items: InstitutionalOperatingLedgerEntry[] }) {
+  const href = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
+  return (
+    <div className="rounded-2xl border border-cyan-300/18 bg-cyan-400/[0.045] p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Operating Ledger</div>
+          <h3 className="mt-1 text-lg font-semibold text-slate-50">Exportable evidence ledger</h3>
+          <p className="mt-2 text-xs leading-5 text-slate-400">{items.length} bounded row(s) across paper, risk, thesis, autopsy, and strategy evidence.</p>
+        </div>
+        <a
+          className="shrink-0 rounded-full border border-cyan-300/35 bg-cyan-400/10 px-3 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15"
+          download="tradeveto-operating-ledger.csv"
+          href={href}
+        >
+          CSV
+        </a>
+      </div>
+      <div className="mt-4 space-y-2">
+        {items.slice(0, 5).map((item) => (
+          <div className="rounded-xl border border-white/10 bg-slate-950/45 p-3" key={`${item.category}:${item.date}:${item.event}:${item.symbol ?? "market"}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="break-words text-sm font-semibold text-slate-100">{item.event}</div>
+                <div className="mt-1 text-xs text-slate-500">{item.category.replace(/_/g, " ")} · {item.source.replace(/_/g, " ")}</div>
+              </div>
+              <div className="shrink-0 text-right font-mono text-xs font-black text-cyan-100">{item.symbol ?? "PORT"}</div>
+            </div>
+            <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{item.detail}</p>
+            <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{item.boundaryDisclosure}</p>
           </div>
         ))}
       </div>

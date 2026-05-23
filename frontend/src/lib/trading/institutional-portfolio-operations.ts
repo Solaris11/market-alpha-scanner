@@ -163,15 +163,41 @@ export type InstitutionalWorkspaceContinuityItem = {
   status: "available" | "limited" | "missing";
 };
 
+export type InstitutionalBrokerIntegrationState = {
+  canPlaceOrders: false;
+  canReadBrokerFills: false;
+  disclosure: string;
+  evidence: string;
+  provider: "none";
+  status: "not_integrated";
+};
+
+export type InstitutionalOperatingLedgerEntry = {
+  amount: number | null;
+  boundaryDisclosure: string;
+  category: "allocation" | "autopsy" | "broker_boundary" | "drawdown" | "position_lifecycle" | "risk" | "strategy_revision" | "thesis";
+  date: string;
+  detail: string;
+  evidence: string;
+  event: string;
+  metric: string;
+  source: "paper_account" | "paper_event" | "portfolio_risk" | "strategy_labs" | "trust_boundary";
+  symbol: string | null;
+};
+
 export type InstitutionalPortfolioOperationsSystem = {
   activeMode: SimulatedPortfolioMode | null;
   allocationHistory: InstitutionalAllocationHistoryItem[];
+  brokerIntegration: InstitutionalBrokerIntegrationState;
   drawdownStories: InstitutionalDrawdownStory[];
+  evidenceBoundaryDisclosures: string[];
   generatedAt: string;
   headline: string;
   limitations: string[];
   openPositionCount: number;
   operatingLanes: InstitutionalOperatingLane[];
+  operatingLedger: InstitutionalOperatingLedgerEntry[];
+  operatingLedgerCsv: string;
   operatingScore: number;
   proofGates: InstitutionalOperationsCredibilityGate[];
   paperTradeAutopsies: InstitutionalTradeAutopsyItem[];
@@ -202,6 +228,7 @@ export function buildInstitutionalPortfolioOperationsSystem(
   const rebalanceHistory = rebalanceHistoryFor(activeResult);
   const strategyMemory = strategyMemoryFor(activeResult);
   const strategyRevisions = strategyRevisionsFor(activeResult, paperPositions);
+  const brokerIntegration = brokerIntegrationFor();
   const workspaceContinuity = workspaceContinuityFor(input.portfolio, activeResult, {
     paperAnalytics,
     paperEvents,
@@ -210,6 +237,13 @@ export function buildInstitutionalPortfolioOperationsSystem(
   });
   const operatingLanes = operatingLanesFor(input.portfolio, riskBudget, positionLifecycle);
   const limitations = limitationsFor(input.portfolio, activeResult, paperTradeAutopsies, paperAnalytics);
+  const evidenceBoundaryDisclosures = evidenceBoundaryDisclosuresFor({
+    activeResult,
+    brokerIntegration,
+    paperAnalytics,
+    paperEvents,
+    paperPositions,
+  });
   const proofGates = proofGatesFor({
     allocationHistory,
     drawdownStories,
@@ -226,16 +260,31 @@ export function buildInstitutionalPortfolioOperationsSystem(
     paperTradeAutopsies,
     thesisLifecycle,
   });
+  const operatingLedger = operatingLedgerFor({
+    allocationHistory,
+    brokerIntegration,
+    drawdownStories,
+    generatedAt: input.generatedAt ?? input.portfolio.generatedAt,
+    paperTradeAutopsies,
+    positionLifecycle,
+    riskBudget,
+    strategyRevisions,
+    thesisLifecycle,
+  });
 
   return {
     activeMode,
     allocationHistory,
+    brokerIntegration,
     drawdownStories,
+    evidenceBoundaryDisclosures,
     generatedAt: input.generatedAt ?? input.portfolio.generatedAt,
     headline: headlineFor(input.portfolio, activeResult, operatingScore),
     limitations,
     openPositionCount: input.portfolio.openPositionCount,
     operatingLanes,
+    operatingLedger,
+    operatingLedgerCsv: operatingLedgerCsvFor(operatingLedger),
     operatingScore,
     proofGates,
     paperTradeAutopsies,
@@ -851,6 +900,199 @@ function workspaceContinuityFor(
       status: "missing",
     },
   ];
+}
+
+function brokerIntegrationFor(): InstitutionalBrokerIntegrationState {
+  return {
+    canPlaceOrders: false,
+    canReadBrokerFills: false,
+    disclosure: "No live broker integration is configured for Institutional Portfolio Operations. Broker fills, order status, and account balances are not imported or inferred.",
+    evidence: "Current operating evidence is limited to TradeVeto paper rows, paper event rows, analytics checkpoints, portfolio risk packets, and Strategy Labs simulation output.",
+    provider: "none",
+    status: "not_integrated",
+  };
+}
+
+function evidenceBoundaryDisclosuresFor(input: {
+  activeResult: SimulatedPortfolioModeResult | null;
+  brokerIntegration: InstitutionalBrokerIntegrationState;
+  paperAnalytics: PaperAnalyticsData | null;
+  paperEvents: PaperTradeEventRow[];
+  paperPositions: PaperPositionRow[];
+}): string[] {
+  const closedPaperCount = input.paperPositions.filter((position) => position.status.toUpperCase() === "CLOSED").length;
+  return [
+    input.brokerIntegration.disclosure,
+    `Paper operating evidence includes ${input.paperPositions.length} paper position row(s), ${input.paperEvents.length} paper event row(s), and ${input.paperAnalytics?.timeline.length ?? 0} closed-trade timeline checkpoint(s).`,
+    closedPaperCount
+      ? `${closedPaperCount} closed paper trade(s) can be reviewed, but replay-backed proof is shown only when explicit replay or Strategy Labs evidence exists.`
+      : "No closed paper trade rows exist yet, so paper-account autopsy remains limited.",
+    input.activeResult
+      ? `${input.activeResult.config.label} Strategy Labs mode contributes ${input.activeResult.closedTrades.length} completed simulated trade sample(s) and ${input.activeResult.allocationHistory.length} allocation checkpoint(s).`
+      : "Strategy Labs evidence is not attached to this operating packet.",
+    "The operating ledger is exportable audit evidence; it is not a brokerage statement, account statement, tax document, or performance guarantee.",
+  ];
+}
+
+function operatingLedgerFor(input: {
+  allocationHistory: InstitutionalAllocationHistoryItem[];
+  brokerIntegration: InstitutionalBrokerIntegrationState;
+  drawdownStories: InstitutionalDrawdownStory[];
+  generatedAt: string;
+  paperTradeAutopsies: InstitutionalTradeAutopsyItem[];
+  positionLifecycle: InstitutionalPositionLifecycle[];
+  riskBudget: InstitutionalOperatingLane[];
+  strategyRevisions: InstitutionalStrategyRevisionItem[];
+  thesisLifecycle: InstitutionalThesisLifecycleItem[];
+}): InstitutionalOperatingLedgerEntry[] {
+  const rows: InstitutionalOperatingLedgerEntry[] = [];
+
+  for (const item of input.positionLifecycle) {
+    rows.push({
+      amount: item.unrealizedPnl,
+      boundaryDisclosure: "Position lifecycle row is reconstructed from stored paper position and portfolio-risk context only.",
+      category: "position_lifecycle",
+      date: item.openedAt,
+      detail: `${item.detail} ${item.invalidation}`,
+      evidence: item.entryReason,
+      event: `Position lifecycle ${item.status}`,
+      metric: `${item.allocationPct}% allocation / ${formatMoney(item.riskAmount)} risk`,
+      source: "paper_account",
+      symbol: item.symbol,
+    });
+  }
+
+  for (const item of input.thesisLifecycle) {
+    rows.push({
+      amount: null,
+      boundaryDisclosure: "Thesis lifecycle row is bounded to stored paper thesis, stop, target, setup, and close fields.",
+      category: "thesis",
+      date: item.closedAt ?? item.openedAt,
+      detail: item.detail,
+      evidence: item.evidence,
+      event: `Thesis ${item.lifecycleStage}`,
+      metric: item.invalidation,
+      source: "paper_account",
+      symbol: item.symbol,
+    });
+  }
+
+  for (const item of input.allocationHistory) {
+    rows.push({
+      amount: null,
+      boundaryDisclosure: item.source === "paper_event"
+        ? "Allocation ledger row comes from a stored paper event, not a broker fill."
+        : "Allocation checkpoint is reconstructed from paper/account analytics evidence, not a broker account.",
+      category: "allocation",
+      date: item.date,
+      detail: item.detail,
+      evidence: item.rebalanceRationale,
+      event: item.label,
+      metric: item.metric,
+      source: item.source === "paper_event" ? "paper_event" : "paper_account",
+      symbol: item.symbols[0] ?? null,
+    });
+  }
+
+  for (const item of input.drawdownStories) {
+    rows.push({
+      amount: numericDepth(item.depth),
+      boundaryDisclosure: item.source === "strategy_labs"
+        ? "Strategy Labs drawdown row is simulated research evidence."
+        : "Paper drawdown row uses closed paper P/L timeline only.",
+      category: "drawdown",
+      date: item.period,
+      detail: item.detail,
+      evidence: item.macroRiskContext,
+      event: "Drawdown story",
+      metric: item.depth,
+      source: item.source,
+      symbol: item.symbols[0] ?? null,
+    });
+  }
+
+  for (const item of input.paperTradeAutopsies) {
+    rows.push({
+      amount: item.pnl,
+      boundaryDisclosure: item.noFakeFillDisclosure,
+      category: "autopsy",
+      date: item.exit,
+      detail: item.detail,
+      evidence: item.replayEvidence,
+      event: `Trade autopsy ${item.replayEvidenceStatus.replace(/_/g, " ")}`,
+      metric: item.returnPct === null ? "Return limited" : formatPercent(item.returnPct),
+      source: item.source,
+      symbol: item.symbol,
+    });
+  }
+
+  for (const item of input.strategyRevisions) {
+    rows.push({
+      amount: null,
+      boundaryDisclosure: "Strategy revision row changes research policy only; it does not update broker rules or automated execution.",
+      category: "strategy_revision",
+      date: item.date,
+      detail: item.whatChanged,
+      evidence: item.evidenceBasis,
+      event: item.label,
+      metric: item.toPolicy,
+      source: item.evidenceBasis.toLowerCase().includes("strategy labs") ? "strategy_labs" : "paper_account",
+      symbol: item.symbols[0] ?? null,
+    });
+  }
+
+  for (const item of input.riskBudget.slice(0, 8)) {
+    rows.push({
+      amount: item.score,
+      boundaryDisclosure: "Risk row is a TradeVeto research risk score derived from current paper exposure and scanner context.",
+      category: "risk",
+      date: input.generatedAt,
+      detail: item.detail,
+      evidence: item.evidence,
+      event: item.label,
+      metric: `${Math.round(item.score)}/100`,
+      source: "portfolio_risk",
+      symbol: item.symbols[0] ?? null,
+    });
+  }
+
+  rows.push({
+    amount: null,
+    boundaryDisclosure: input.brokerIntegration.disclosure,
+    category: "broker_boundary",
+    date: input.generatedAt,
+    detail: input.brokerIntegration.evidence,
+    evidence: "No broker provider, broker fill import, live order status, or account statement import is configured.",
+    event: "Broker integration boundary",
+    metric: input.brokerIntegration.status.replace(/_/g, " "),
+    source: "trust_boundary",
+    symbol: null,
+  });
+
+  return rows
+    .sort((left, right) => sortDate(right.date) - sortDate(left.date) || left.category.localeCompare(right.category) || String(left.symbol ?? "").localeCompare(String(right.symbol ?? "")))
+    .slice(0, 80);
+}
+
+function operatingLedgerCsvFor(rows: InstitutionalOperatingLedgerEntry[]): string {
+  const headers = ["date", "category", "source", "symbol", "event", "metric", "amount", "detail", "evidence", "boundary_disclosure"];
+  const body = rows.map((row) => [
+    row.date,
+    row.category,
+    row.source,
+    row.symbol ?? "",
+    row.event,
+    row.metric,
+    row.amount === null ? "" : String(row.amount),
+    row.detail,
+    row.evidence,
+    row.boundaryDisclosure,
+  ]);
+  return [headers, ...body].map((line) => line.map(csvCell).join(",")).join("\n");
+}
+
+function csvCell(value: string): string {
+  return `"${value.replace(/"/g, "\"\"")}"`;
 }
 
 function operatingLanesFor(
