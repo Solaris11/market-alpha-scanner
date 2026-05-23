@@ -71,6 +71,7 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
     },
   ];
   const adoptionRows = analytics.realUserProof.featureAdoption.map((row) => ({ label: `${row.feature} · ${formatPct(row.adoptionRatePct)}`, value: row.events }));
+  const dailyDriver = analytics.realUserProof.dailyDriver;
 
   return (
     <div className="space-y-5">
@@ -92,9 +93,10 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
               This proof layer uses first-party, privacy-sanitized product behavior only. It shows whether users reach useful actions, return with watchlists, move through core workflows, engage with living intelligence, and encounter friction.
             </p>
           </div>
-          <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[520px]">
+          <div className="grid gap-2 sm:grid-cols-4 xl:min-w-[680px]">
             <ProofMetric label="DAU / WAU" value={`${analytics.retention.dau.toLocaleString()} / ${analytics.retention.wau.toLocaleString()}`} />
             <ProofMetric label="Sticky Sessions" value={formatPct(analytics.realUserProof.workflowStickiness.stickySessionRatePct)} />
+            <ProofMetric label="D2 / D7" value={`${formatPct(dailyDriver.cohortEvidence.day2RetentionRatePct)} / ${formatPct(dailyDriver.cohortEvidence.day7RetentionRatePct)}`} />
             <ProofMetric label="Proof Score" value={`${dominanceProof.proofScore}/100`} />
           </div>
         </div>
@@ -218,9 +220,42 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
               ["Useful interactions", analytics.realUserProof.notificationUsefulness.usefulInteractions],
               ["Eligible signals", analytics.realUserProof.notificationUsefulness.eligibleSignals],
               ["Usefulness rate", formatPct(analytics.realUserProof.notificationUsefulness.usefulnessRatePct)],
+              ["Explicit useful", analytics.realUserProof.notificationUsefulness.explicitUsefulFeedback],
               ["Preference updates", analytics.realUserProof.notificationUsefulness.preferenceUpdates],
             ]}
             title="Notification Usefulness"
+          />
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <ProofPanel
+            rows={[
+              ["D2 retained", `${dailyDriver.cohortEvidence.day2RetainedUsers.toLocaleString()} / ${dailyDriver.cohortEvidence.day2EligibleUsers.toLocaleString()}`],
+              ["D2 retention", formatPct(dailyDriver.cohortEvidence.day2RetentionRatePct)],
+              ["D7 retained", `${dailyDriver.cohortEvidence.day7RetainedUsers.toLocaleString()} / ${dailyDriver.cohortEvidence.day7EligibleUsers.toLocaleString()}`],
+              ["D7 retention", formatPct(dailyDriver.cohortEvidence.day7RetentionRatePct)],
+            ]}
+            title="Cohort Retention"
+          />
+          <ProofPanel
+            rows={[
+              ["Return sessions", dailyDriver.habitLoops.returnSessions],
+              ["Morning workflows", dailyDriver.habitLoops.morningWorkflows],
+              ["Scanner returns", dailyDriver.habitLoops.scannerReturns],
+              ["Replay returns", dailyDriver.habitLoops.replayReturns],
+              ["Alert returns", dailyDriver.habitLoops.alertReturns],
+              ["Watchlist returns", dailyDriver.habitLoops.watchlistReturns],
+              ["Personalized returns", dailyDriver.habitLoops.personalizedReturns],
+            ]}
+            title="Daily Driver Habit Loops"
+          />
+          <ProofPanel
+            rows={[
+              ["Useful feedback", dailyDriver.notificationFeedback.useful],
+              ["Not useful feedback", dailyDriver.notificationFeedback.notUseful],
+              ["Feedback total", dailyDriver.notificationFeedback.total],
+              ["Useful rate", formatPct(dailyDriver.notificationFeedback.usefulnessFeedbackRatePct)],
+            ]}
+            title="Notification Feedback"
           />
         </div>
       </section>

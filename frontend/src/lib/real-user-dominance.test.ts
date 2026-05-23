@@ -28,6 +28,10 @@ function dominanceInput(overrides: Partial<RealUserDominanceInput> = {}): RealUs
     notificationEngagement: 12,
     notificationUsefulnessRatePct: 50,
     rageClicks: 1,
+    retentionDay2EligibleUsers: 110,
+    retentionDay2RatePct: 22,
+    retentionDay7EligibleUsers: 96,
+    retentionDay7RatePct: 12,
     replayUsage: 120,
     scannerUsage: 240,
     scrollAbandons: 1,
@@ -74,6 +78,8 @@ describe("real user dominance proof", () => {
       notificationEngagement: 0,
       notificationUsefulnessRatePct: null,
       rageClicks: 6,
+      retentionDay2RatePct: 2,
+      retentionDay7RatePct: 0,
       scrollAbandons: 7,
       stickySessionRatePct: 8,
       watchlistRetentionRatePct: 4,
@@ -83,6 +89,7 @@ describe("real user dominance proof", () => {
     assert.equal(proof.status, "developing");
     assert.ok(proof.blockers.some((blocker) => blocker.includes("Workflow continuity")));
     assert.ok(proof.blockers.some((blocker) => blocker.includes("Watchlist retention")));
+    assert.ok(proof.blockers.some((blocker) => blocker.includes("2-day and 7-day cohort retention")));
     assert.ok(proof.blockers.some((blocker) => blocker.includes("Notification usefulness")));
     assert.ok(proof.blockers.some((blocker) => blocker.includes("Friction control")));
   });

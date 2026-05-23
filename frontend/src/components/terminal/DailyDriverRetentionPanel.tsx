@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type { ComponentType } from "react";
 import { trackAnalyticsEvent, trackFirstUsefulAction } from "@/lib/client/analytics";
+import type { AnalyticsEventName } from "@/lib/analytics-policy";
 import type {
   DailyDriverAction,
   DailyDriverContextItem,
@@ -225,17 +226,35 @@ function ContextRow({ item }: { item: DailyDriverContextItem }) {
 }
 
 function recordAction(action: DailyDriverAction): void {
+  const habitLoopEvent = habitLoopEventForAction(action);
   trackAnalyticsEvent("workflow_continuity", {
     action: action.key,
     from: "terminal",
     to: action.workflow,
   }, { source: "daily_driver", symbol: action.symbol ?? undefined });
+  if (habitLoopEvent) {
+    trackAnalyticsEvent(habitLoopEvent, {
+      action: action.key,
+      routeGroup: action.workflow,
+      status: action.status,
+    }, { source: "daily_driver_action", symbol: action.symbol ?? undefined });
+  }
   if (action.firstUsefulAction) {
     trackFirstUsefulAction(action.key, {
       surface: "daily_driver_retention",
       workflow: action.workflow,
     }, { source: "daily_driver", symbol: action.symbol ?? undefined });
   }
+}
+
+function habitLoopEventForAction(action: DailyDriverAction): AnalyticsEventName | null {
+  if (action.key === "morning_brief") return "morning_workflow_start";
+  if (action.key === "save_scanner") return "scanner_return";
+  if (action.key === "review_replay") return "replay_return";
+  if (action.key === "create_alert") return "alert_return";
+  if (action.key === "create_watchlist" || action.key === "review_watchlist") return "watchlist_return";
+  if (action.key === "strategy_review" || action.key === "workflow_restore") return "personalized_intelligence_return";
+  return null;
 }
 
 function toneToVisual(tone: DailyDriverTone): VisualTone {

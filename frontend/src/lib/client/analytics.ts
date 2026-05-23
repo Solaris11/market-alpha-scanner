@@ -34,9 +34,15 @@ const FIRST_USEFUL_ACTION_KEY = "tv_first_useful_action_recorded";
 const SESSION_KEY = "tv_analytics_session";
 const SESSION_STARTED_AT_KEY = "tv_analytics_session_started_at";
 const LAST_WORKFLOW_GROUP_KEY = "tv_analytics_last_workflow_group";
+const LAST_ACTIVE_DAY_KEY = "tv_analytics_last_active_day";
 const TELEMETRY_OPT_OUT_KEY = "tv_analytics_opt_out";
+const MORNING_WORKFLOW_EMITTED_KEY = "tv_morning_workflow_emitted";
+const RETURN_SESSION_EMITTED_KEY = "tv_return_session_emitted";
+const RETURN_WORKFLOW_EMITTED_KEY = "tv_return_workflow_emitted";
+const PERSONALIZED_RETURN_EMITTED_KEY = "tv_personalized_return_emitted";
 const WATCHLIST_RETENTION_EMITTED_KEY = "tv_watchlist_retention_emitted";
 const SESSION_TTL_MS = 30 * 60 * 1000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_QUEUE = 40;
 const DUPLICATE_CLICK_MS = 900;
 const RAGE_CLICK_WINDOW_MS = 1600;
@@ -116,6 +122,7 @@ export function trackRouteAnalytics(pathname: string): void {
   const usageEvent = usageEventForPath(pathname);
   if (usageEvent) trackAnalyticsEvent(usageEvent, { path: pagePath }, { pagePath: routePagePath, source: "route_usage", symbol: symbolFromPath(pathname) ?? undefined });
   trackMobileEngagement(pathname, routePagePath);
+  trackReturnSession(pathname, routePagePath);
   trackWorkflowContinuity(pathname, routePagePath);
   recordRouteContinuityMemory(pathname, routePagePath);
   trackWatchlistRetention(pathname, routePagePath);
@@ -320,6 +327,102 @@ function trackWatchlistRetention(pathname: string, pagePath?: string): void {
   } catch {
     // Watchlist retention telemetry degrades silently when storage is unavailable.
   }
+}
+
+function trackReturnSession(pathname: string, pagePath?: string): void {
+  const group = workflowGroupForPath(pathname);
+  if (!group || group === "support" || group === "account") return;
+  try {
+    const today = localDateKey(new Date());
+    const previousDay = window.localStorage.getItem(LAST_ACTIVE_DAY_KEY);
+    window.localStorage.setItem(LAST_ACTIVE_DAY_KEY, today);
+    const dayGap = daysBetweenLocalDates(previousDay, today);
+    const watchlistSize = readWatchlistSize();
+    const sessionId = currentSessionId() ?? "unknown";
+    const isReturning = dayGap !== null && dayGap >= 1;
+
+    if (isReturning) {
+      const returnKind = dayGap >= 7 ? "weekly_return" : dayGap >= 2 ? "multi_day_return" : "next_day_return";
+      const metadata = { dayGap, returnKind, routeGroup: group, watchlistSize };
+      emitOncePerSession(`${RETURN_SESSION_EMITTED_KEY}:${sessionId}`, "return_session", metadata, pagePath, pathname, "return_session");
+
+      const workflowEvent = returnEventForGroup(group);
+      if (workflowEvent) {
+        emitOncePerSession(`${RETURN_WORKFLOW_EMITTED_KEY}:${sessionId}:${workflowEvent}`, workflowEvent, metadata, pagePath, pathname, "return_workflow");
+      }
+
+      if (watchlistSize > 0 && group !== "mobile") {
+        emitOncePerSession(`${RETURN_WORKFLOW_EMITTED_KEY}:${sessionId}:watchlist_return`, "watchlist_return", metadata, pagePath, pathname, "watchlist_return");
+      }
+
+      if (watchlistSize > 0 && (group === "terminal" || group === "feed" || group === "symbol" || group === "scanner")) {
+        emitOncePerSession(`${PERSONALIZED_RETURN_EMITTED_KEY}:${sessionId}`, "personalized_intelligence_return", metadata, pagePath, pathname, "personalized_return");
+      }
+    }
+
+    const hour = new Date().getHours();
+    if (hour >= 4 && hour <= 11 && (group === "terminal" || group === "scanner" || group === "feed")) {
+      const key = `${MORNING_WORKFLOW_EMITTED_KEY}:${today}:${group}`;
+      if (window.localStorage.getItem(key) !== "true") {
+        window.localStorage.setItem(key, "true");
+        trackAnalyticsEvent("morning_workflow_start", { localHour: hour, routeGroup: group, watchlistSize }, { pagePath, source: "morning_workflow", symbol: symbolFromPath(pathname) ?? undefined });
+      }
+    }
+  } catch {
+    // Return-session telemetry must never block route analytics.
+  }
+}
+
+function emitOncePerSession(
+  key: string,
+  eventName: AnalyticsEventName,
+  metadata: Record<string, string | number | boolean | null>,
+  pagePath: string | undefined,
+  pathname: string,
+  source: string,
+): void {
+  if (window.sessionStorage.getItem(key) === "true") return;
+  window.sessionStorage.setItem(key, "true");
+  trackAnalyticsEvent(eventName, metadata, { pagePath, source, symbol: symbolFromPath(pathname) ?? undefined });
+}
+
+function returnEventForGroup(group: ContinuityWorkflowGroup): AnalyticsEventName | null {
+  if (group === "scanner") return "scanner_return";
+  if (group === "replay") return "replay_return";
+  if (group === "alerts") return "alert_return";
+  return null;
+}
+
+function readWatchlistSize(): number {
+  try {
+    return readWatchlistStorage().length;
+  } catch {
+    return 0;
+  }
+}
+
+function localDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function daysBetweenLocalDates(previous: string | null, current: string): number | null {
+  if (!previous || !/^\d{4}-\d{2}-\d{2}$/.test(previous) || !/^\d{4}-\d{2}-\d{2}$/.test(current)) return null;
+  const previousTime = utcMidnightFromLocalDate(previous);
+  const currentTime = utcMidnightFromLocalDate(current);
+  if (previousTime === null || currentTime === null || currentTime <= previousTime) return null;
+  return Math.round((currentTime - previousTime) / DAY_MS);
+}
+
+function utcMidnightFromLocalDate(value: string): number | null {
+  const [yearText, monthText, dayText] = value.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+  return Date.UTC(year, month - 1, day);
 }
 
 function recordRouteContinuityMemory(pathname: string, pagePath?: string): void {

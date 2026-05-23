@@ -27,6 +27,7 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [fetching, setFetching] = useState(false);
+  const [feedbackById, setFeedbackById] = useState<Record<string, "not_useful" | "useful">>({});
 
   useEffect(() => {
     setMounted(true);
@@ -166,6 +167,21 @@ export function NotificationBell() {
     }
   }
 
+  function trackNotificationFeedback(notification: UserNotification, value: "not_useful" | "useful"): void {
+    setFeedbackById((items) => ({ ...items, [notification.id]: value }));
+    const action = value === "useful" ? "useful_feedback" : "not_useful_feedback";
+    trackAnalyticsEvent("notification_usefulness_feedback", {
+      action,
+      notificationType: notification.type,
+      wasUnread: !notification.read,
+    }, { source: "notification_bell" });
+    trackAnalyticsEvent("notification_engagement", {
+      action,
+      notificationType: notification.type,
+      wasUnread: !notification.read,
+    }, { source: "notification_bell" });
+  }
+
   return (
     <div data-sensitive>
       <button
@@ -214,25 +230,53 @@ export function NotificationBell() {
                 <div className="tv-notification-scroll py-1">
                   {fetching && !notifications.length ? <div className="px-3 py-6 text-center text-slate-500">Loading notifications...</div> : null}
                   {!fetching && !notifications.length ? <div className="px-3 py-6 text-center text-slate-500">No notifications yet.</div> : null}
-                  {notifications.map((notification) => (
-                    <button
-                      className={`tv-tap-motion mt-1 w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/[0.06] ${
-                        notification.read ? "text-slate-400" : "border border-cyan-300/15 bg-cyan-400/[0.07] text-slate-100"
-                      }`}
-                      key={notification.id}
-                      onClick={() => void markRead(notification)}
-                      type="button"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="break-words font-semibold leading-5">{notification.title}</div>
-                          <div className="mt-1 break-words text-[11px] leading-4 text-slate-400">{notificationDisplayMessage(notification)}</div>
+                  {notifications.map((notification) => {
+                    const feedback = feedbackById[notification.id] ?? null;
+                    return (
+                      <div
+                        className={`mt-1 rounded-xl transition ${
+                          notification.read ? "text-slate-400" : "border border-cyan-300/15 bg-cyan-400/[0.07] text-slate-100"
+                        }`}
+                        key={notification.id}
+                      >
+                        <button
+                          className="tv-tap-motion w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/[0.06]"
+                          onClick={() => void markRead(notification)}
+                          type="button"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="break-words font-semibold leading-5">{notification.title}</div>
+                              <div className="mt-1 break-words text-[11px] leading-4 text-slate-400">{notificationDisplayMessage(notification)}</div>
+                            </div>
+                            {!notification.read ? <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan-300" /> : null}
+                          </div>
+                          <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-slate-600">{formatTimestamp(notification.createdAt)}</div>
+                        </button>
+                        <div className="flex flex-wrap items-center gap-2 px-3 pb-2">
+                          <span className="text-[10px] uppercase tracking-[0.16em] text-slate-600">Was this useful?</span>
+                          <button
+                            className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] transition ${
+                              feedback === "useful" ? "border-emerald-300/45 bg-emerald-300/15 text-emerald-100" : "border-white/10 bg-black/15 text-slate-400 hover:border-emerald-300/35 hover:text-emerald-100"
+                            }`}
+                            onClick={() => trackNotificationFeedback(notification, "useful")}
+                            type="button"
+                          >
+                            Useful
+                          </button>
+                          <button
+                            className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] transition ${
+                              feedback === "not_useful" ? "border-amber-300/45 bg-amber-300/15 text-amber-100" : "border-white/10 bg-black/15 text-slate-400 hover:border-amber-300/35 hover:text-amber-100"
+                            }`}
+                            onClick={() => trackNotificationFeedback(notification, "not_useful")}
+                            type="button"
+                          >
+                            Not useful
+                          </button>
                         </div>
-                        {!notification.read ? <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan-300" /> : null}
                       </div>
-                      <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-slate-600">{formatTimestamp(notification.createdAt)}</div>
-                    </button>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </>,

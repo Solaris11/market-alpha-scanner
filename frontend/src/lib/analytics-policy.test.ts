@@ -24,6 +24,14 @@ describe("analytics privacy policy", () => {
     assert.equal(normalizeAnalyticsEventName("failed_action"), "failed_action");
     assert.equal(normalizeAnalyticsEventName("experiment_exposed"), "experiment_exposed");
     assert.equal(normalizeAnalyticsEventName("watchlist_retention"), "watchlist_retention");
+    assert.equal(normalizeAnalyticsEventName("return_session"), "return_session");
+    assert.equal(normalizeAnalyticsEventName("morning_workflow_start"), "morning_workflow_start");
+    assert.equal(normalizeAnalyticsEventName("scanner_return"), "scanner_return");
+    assert.equal(normalizeAnalyticsEventName("replay_return"), "replay_return");
+    assert.equal(normalizeAnalyticsEventName("alert_return"), "alert_return");
+    assert.equal(normalizeAnalyticsEventName("watchlist_return"), "watchlist_return");
+    assert.equal(normalizeAnalyticsEventName("personalized_intelligence_return"), "personalized_intelligence_return");
+    assert.equal(normalizeAnalyticsEventName("notification_usefulness_feedback"), "notification_usefulness_feedback");
     assert.equal(normalizeAnalyticsEventName("workflow_continuity"), "workflow_continuity");
     assert.equal(normalizeAnalyticsEventName("mobile_engagement"), "mobile_engagement");
     assert.equal(normalizeAnalyticsEventName("made_up_event"), null);

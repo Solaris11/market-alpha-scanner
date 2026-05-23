@@ -111,9 +111,36 @@ export type AnalyticsSummary = {
     notificationUsefulness: {
       eligibleSignals: number;
       engaged: number;
+      explicitNotUsefulFeedback: number;
+      explicitUsefulFeedback: number;
       preferenceUpdates: number;
       usefulInteractions: number;
       usefulnessRatePct: number | null;
+    };
+    dailyDriver: {
+      cohortEvidence: {
+        day2EligibleUsers: number;
+        day2RetainedUsers: number;
+        day2RetentionRatePct: number | null;
+        day7EligibleUsers: number;
+        day7RetainedUsers: number;
+        day7RetentionRatePct: number | null;
+      };
+      habitLoops: {
+        alertReturns: number;
+        morningWorkflows: number;
+        personalizedReturns: number;
+        replayReturns: number;
+        returnSessions: number;
+        scannerReturns: number;
+        watchlistReturns: number;
+      };
+      notificationFeedback: {
+        notUseful: number;
+        total: number;
+        useful: number;
+        usefulnessFeedbackRatePct: number | null;
+      };
     };
     watchlistRetention: {
       retainedSessions: number;
@@ -345,8 +372,19 @@ type MobileEngagementProofRow = QueryResultRow & {
 type NotificationUsefulnessRow = QueryResultRow & {
   eligible_signals: string | number;
   engaged: string | number;
+  explicit_not_useful_feedback: string | number;
+  explicit_useful_feedback: string | number;
   preference_updates: string | number;
   useful_interactions: string | number;
+};
+type DailyDriverHabitLoopRow = QueryResultRow & {
+  alert_returns: string | number;
+  morning_workflows: string | number;
+  personalized_returns: string | number;
+  replay_returns: string | number;
+  return_sessions: string | number;
+  scanner_returns: string | number;
+  watchlist_returns: string | number;
 };
 type AdaptiveBehaviorProofRow = QueryResultRow & {
   decision_memory_actions: string | number;
@@ -382,19 +420,26 @@ const CORE_FEATURE_EVENT_NAMES = [
   "alert_create",
   "chart_expand",
   "feed_engagement",
+  "morning_workflow_start",
   "notification_engagement",
+  "personalized_intelligence_return",
+  "return_session",
+  "alert_return",
+  "replay_return",
+  "scanner_return",
   "replay_usage",
   "scanner_usage",
   "strategy_usage",
+  "watchlist_return",
   "watchlist_usage",
   "workflow_continuity",
 ] as const;
-const SCANNER_FEATURE_EVENTS = ["scanner_usage", "scanner_run", "opportunities_open", "signal_drilldown"] as const;
+const SCANNER_FEATURE_EVENTS = ["scanner_usage", "scanner_return", "scanner_run", "opportunities_open", "signal_drilldown"] as const;
 const FEED_FEATURE_EVENTS = ["feed_engagement", "feed_item_open"] as const;
-const REPLAY_FEATURE_EVENTS = ["replay_usage", "replay_open"] as const;
+const REPLAY_FEATURE_EVENTS = ["replay_usage", "replay_return", "replay_open"] as const;
 const STRATEGY_FEATURE_EVENTS = ["strategy_usage", "strategy_labs_open"] as const;
-const WATCHLIST_FEATURE_EVENTS = ["watchlist_usage", "watchlist_add", "watch_add", "watchlist_retention"] as const;
-const NOTIFICATION_FEATURE_EVENTS = ["notification_engagement", "alert_create"] as const;
+const WATCHLIST_FEATURE_EVENTS = ["watchlist_usage", "watchlist_return", "watchlist_add", "watch_add", "watchlist_retention"] as const;
+const NOTIFICATION_FEATURE_EVENTS = ["notification_engagement", "notification_usefulness_feedback", "alert_create", "alert_return"] as const;
 const MOBILE_FEATURE_EVENTS = ["mobile_engagement"] as const;
 
 export async function recordAnalyticsEvents(input: { events: AnalyticsEventPayload[]; request: Request; user: AuthUser | null }): Promise<{ inserted: number }> {
@@ -522,6 +567,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     workflowStickinessProof,
     mobileEngagementProof,
     notificationUsefulnessProof,
+    dailyDriverHabitLoopProof,
     adaptiveBehaviorProof,
     watchlistRetentionProof,
     retentionCurveProof,
@@ -944,8 +990,24 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
         SELECT
           count(*) FILTER (WHERE event_name = 'notification_engagement') AS engaged,
           count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' = 'feed_notification_candidate') AS eligible_signals,
-          count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' IN ('open_action', 'mark_read', 'mark_all_read')) AS useful_interactions,
-          count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' = 'preference_update') AS preference_updates
+          count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' IN ('open_action', 'mark_read', 'mark_all_read', 'useful_feedback')) AS useful_interactions,
+          count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' = 'preference_update') AS preference_updates,
+          count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback' AND metadata->>'action' = 'useful_feedback') AS explicit_useful_feedback,
+          count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback' AND metadata->>'action' = 'not_useful_feedback') AS explicit_not_useful_feedback
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+      `,
+    ),
+    dbQuery<DailyDriverHabitLoopRow>(
+      `
+        SELECT
+          count(*) FILTER (WHERE event_name = 'return_session') AS return_sessions,
+          count(*) FILTER (WHERE event_name = 'morning_workflow_start') AS morning_workflows,
+          count(*) FILTER (WHERE event_name = 'scanner_return') AS scanner_returns,
+          count(*) FILTER (WHERE event_name = 'replay_return') AS replay_returns,
+          count(*) FILTER (WHERE event_name = 'alert_return') AS alert_returns,
+          count(*) FILTER (WHERE event_name = 'watchlist_return') AS watchlist_returns,
+          count(*) FILTER (WHERE event_name = 'personalized_intelligence_return') AS personalized_returns
         FROM analytics_events
         WHERE occurred_at >= now() - ${interval}
       `,
@@ -968,9 +1030,9 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
           SELECT
             COALESCE(user_id::text, anonymous_id_hash, session_id_hash, id::text) AS actor_key,
             COALESCE(session_id_hash, user_id::text, anonymous_id_hash, id::text) AS session_key,
-            bool_or(event_name IN ('watch_add', 'watchlist_add', 'watchlist_usage')) AS used_watchlist,
-            bool_or(event_name = 'watchlist_retention') AS retained_watchlist,
-            count(*) FILTER (WHERE event_name IN ('watch_add', 'watchlist_add', 'watchlist_usage')) AS watchlist_actions
+            bool_or(event_name IN ('watch_add', 'watchlist_add', 'watchlist_usage', 'watchlist_return')) AS used_watchlist,
+            bool_or(event_name IN ('watchlist_retention', 'watchlist_return')) AS retained_watchlist,
+            count(*) FILTER (WHERE event_name IN ('watch_add', 'watchlist_add', 'watchlist_usage', 'watchlist_return')) AS watchlist_actions
           FROM analytics_events
           WHERE occurred_at >= now() - ${interval}
           GROUP BY 1, 2
@@ -998,7 +1060,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
           GROUP BY 1
         ),
         offsets(day_offset) AS (
-          VALUES (0), (1), (7), (14), (30)
+          VALUES (0), (1), (2), (7), (14), (30)
         )
         SELECT
           offsets.day_offset,
@@ -1028,6 +1090,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
   const workflowStickinessRow = workflowStickinessProof.rows[0];
   const mobileEngagementRow = mobileEngagementProof.rows[0];
   const notificationUsefulnessRow = notificationUsefulnessProof.rows[0];
+  const dailyDriverHabitLoopRow = dailyDriverHabitLoopProof.rows[0];
   const adaptiveBehaviorRow = adaptiveBehaviorProof.rows[0];
   const watchlistRetentionRow = watchlistRetentionProof.rows[0];
   const frictionCount = (eventName: string) => numberFromRow(frictionEvents.rows.find((row) => row.event_name === eventName)?.count);
@@ -1038,6 +1101,9 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
   const mobileEvents = numberFromRow(mobileEngagementRow?.events);
   const notificationEligibleSignals = numberFromRow(notificationUsefulnessRow?.eligible_signals);
   const notificationUsefulInteractions = numberFromRow(notificationUsefulnessRow?.useful_interactions);
+  const explicitUsefulFeedback = numberFromRow(notificationUsefulnessRow?.explicit_useful_feedback);
+  const explicitNotUsefulFeedback = numberFromRow(notificationUsefulnessRow?.explicit_not_useful_feedback);
+  const explicitFeedbackTotal = explicitUsefulFeedback + explicitNotUsefulFeedback;
   const watchlistUsers = numberFromRow(watchlistRetentionRow?.watchlist_users);
   const returningWatchlistUsers = numberFromRow(watchlistRetentionRow?.returning_watchlist_users);
   const stickySessionRatePct = pctOrNull(multiWorkflowSessions, totalSessions);
@@ -1060,6 +1126,8 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
       retentionRatePct: pctOrNull(retainedUsers, eligibleUsers),
     };
   });
+  const day2Retention = retentionCurveRows.find((row) => row.dayOffset === 2) ?? null;
+  const day7Retention = retentionCurveRows.find((row) => row.dayOffset === 7) ?? null;
   const adaptiveBehaviorScore = adaptiveProofScore({
     decisionMemoryActions: numberFromRow(adaptiveBehaviorRow?.decision_memory_actions),
     experimentExposure: numberFromRow(adaptiveBehaviorRow?.experiment_exposure),
@@ -1083,6 +1151,10 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     notificationEngagement: numberFromRow(livingTelemetryRow?.notification_engagement),
     notificationUsefulnessRatePct,
     rageClicks: frictionCount("rage_click"),
+    retentionDay2EligibleUsers: day2Retention?.eligibleUsers ?? 0,
+    retentionDay2RatePct: day2Retention?.retentionRatePct ?? null,
+    retentionDay7EligibleUsers: day7Retention?.eligibleUsers ?? 0,
+    retentionDay7RatePct: day7Retention?.retentionRatePct ?? null,
     replayUsage: numberFromRow(livingTelemetryRow?.replay_usage),
     scannerUsage: numberFromRow(livingTelemetryRow?.scanner_usage),
     scrollAbandons: frictionCount("scroll_abandon"),
@@ -1180,9 +1252,36 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
       notificationUsefulness: {
         eligibleSignals: notificationEligibleSignals,
         engaged: numberFromRow(notificationUsefulnessRow?.engaged),
+        explicitNotUsefulFeedback,
+        explicitUsefulFeedback,
         preferenceUpdates: numberFromRow(notificationUsefulnessRow?.preference_updates),
         usefulInteractions: notificationUsefulInteractions,
         usefulnessRatePct: notificationUsefulnessRatePct,
+      },
+      dailyDriver: {
+        cohortEvidence: {
+          day2EligibleUsers: day2Retention?.eligibleUsers ?? 0,
+          day2RetainedUsers: day2Retention?.retainedUsers ?? 0,
+          day2RetentionRatePct: day2Retention?.retentionRatePct ?? null,
+          day7EligibleUsers: day7Retention?.eligibleUsers ?? 0,
+          day7RetainedUsers: day7Retention?.retainedUsers ?? 0,
+          day7RetentionRatePct: day7Retention?.retentionRatePct ?? null,
+        },
+        habitLoops: {
+          alertReturns: numberFromRow(dailyDriverHabitLoopRow?.alert_returns),
+          morningWorkflows: numberFromRow(dailyDriverHabitLoopRow?.morning_workflows),
+          personalizedReturns: numberFromRow(dailyDriverHabitLoopRow?.personalized_returns),
+          replayReturns: numberFromRow(dailyDriverHabitLoopRow?.replay_returns),
+          returnSessions: numberFromRow(dailyDriverHabitLoopRow?.return_sessions),
+          scannerReturns: numberFromRow(dailyDriverHabitLoopRow?.scanner_returns),
+          watchlistReturns: numberFromRow(dailyDriverHabitLoopRow?.watchlist_returns),
+        },
+        notificationFeedback: {
+          notUseful: explicitNotUsefulFeedback,
+          total: explicitFeedbackTotal,
+          useful: explicitUsefulFeedback,
+          usefulnessFeedbackRatePct: pctOrNull(explicitUsefulFeedback, explicitFeedbackTotal),
+        },
       },
       watchlistRetention: {
         retainedSessions: numberFromRow(watchlistRetentionRow?.retained_sessions),

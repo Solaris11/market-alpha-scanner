@@ -52,6 +52,10 @@ export type RealUserDominanceInput = {
   notificationEngagement: number;
   notificationUsefulnessRatePct: number | null;
   rageClicks: number;
+  retentionDay2EligibleUsers: number;
+  retentionDay2RatePct: number | null;
+  retentionDay7EligibleUsers: number;
+  retentionDay7RatePct: number | null;
   replayUsage: number;
   scannerUsage: number;
   scrollAbandons: number;
@@ -128,6 +132,17 @@ export function buildRealUserDominanceProof(input: RealUserDominanceInput): Real
       passed: (input.watchlistRetentionRatePct ?? 0) >= 20,
       target: "20%+ returning watchlist users",
       value: formatPct(input.watchlistRetentionRatePct),
+    }),
+    gate({
+      evidence: "Cohort retention uses observed first active day plus later active days. D2 and D7 require eligible older cohorts before any certification claim.",
+      key: "cohort_retention",
+      label: "2-day and 7-day cohort retention",
+      passed: input.retentionDay2EligibleUsers >= MIN_ACTIVE_USERS_FOR_PROOF
+        && input.retentionDay7EligibleUsers >= MIN_ACTIVE_USERS_FOR_PROOF
+        && (input.retentionDay2RatePct ?? 0) >= 15
+        && (input.retentionDay7RatePct ?? 0) >= 8,
+      target: "15%+ D2 and 8%+ D7 with 25+ eligible users",
+      value: `D2 ${formatPct(input.retentionDay2RatePct)} (${input.retentionDay2EligibleUsers.toLocaleString()} eligible) / D7 ${formatPct(input.retentionDay7RatePct)} (${input.retentionDay7EligibleUsers.toLocaleString()} eligible)`,
     }),
     gate({
       evidence: "Adaptive proof combines workflow visits, continuity, personalization updates, experiments, and decision-memory actions.",
@@ -216,6 +231,12 @@ export function buildRealUserDominanceProof(input: RealUserDominanceInput): Real
         label: "Repeat session rate",
         tone: toneForPct(repeatSessionRatePct, 20),
         value: formatPct(repeatSessionRatePct),
+      },
+      {
+        interpretation: "Cohort retention is the hard proof for daily-driver behavior.",
+        label: "D2 / D7 retention",
+        tone: input.retentionDay2EligibleUsers >= MIN_ACTIVE_USERS_FOR_PROOF && input.retentionDay7EligibleUsers >= MIN_ACTIVE_USERS_FOR_PROOF && (input.retentionDay2RatePct ?? 0) >= 15 && (input.retentionDay7RatePct ?? 0) >= 8 ? "positive" : "critical",
+        value: `${formatPct(input.retentionDay2RatePct)} / ${formatPct(input.retentionDay7RatePct)}`,
       },
     ],
     status,
