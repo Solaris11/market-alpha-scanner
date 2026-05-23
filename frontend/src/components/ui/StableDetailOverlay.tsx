@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
@@ -134,10 +134,12 @@ export function StableDetailOverlay({
   title,
 }: StableDetailOverlayProps) {
   const scrollYRef = useRef(0);
+  const overlayRootRef = useRef<HTMLDivElement | null>(null);
   const closeReasonRef = useRef<string | null>(null);
   const openedAtRef = useRef(0);
   const [mounted, setMounted] = useState(false);
   const [mobileSheet, setMobileSheet] = useState(false);
+  const [fixedOverlayOffsetY, setFixedOverlayOffsetY] = useState(0);
   const reduceMotion = useReducedMotion();
   const telemetrySurface = analyticsSurface ?? (typeof title === "string" ? title : closeLabel);
 
@@ -198,6 +200,23 @@ export function StableDetailOverlay({
     };
   }, [open, requestClose]);
 
+  useEffect(() => {
+    if (!open) {
+      setFixedOverlayOffsetY(0);
+      return undefined;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const rootRect = overlayRootRef.current?.getBoundingClientRect();
+      const bodyTop = Number.parseFloat(document.body.style.top || "0");
+      const lockedOffsetY = document.body.style.position === "fixed" && Number.isFinite(bodyTop) ? Math.abs(bodyTop) : 0;
+      const nextOffset = rootRect && rootRect.top < -2 && lockedOffsetY > 0 ? Math.round(lockedOffsetY) : 0;
+      setFixedOverlayOffsetY((current) => (Math.abs(current - nextOffset) > 1 ? nextOffset : current));
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [open]);
+
   if (!mounted || !open) return null;
 
   const isMobileSheet = mobileSheet || (typeof window !== "undefined" && window.innerWidth < 640);
@@ -218,6 +237,7 @@ export function StableDetailOverlay({
   const mobileChromeClass = mobileFullscreen
     ? "rounded-none border-x-0 border-b-0"
     : "mx-2 mb-[max(0.5rem,env(safe-area-inset-bottom))] max-w-[calc(100vw-1rem)] rounded-[1.6rem] sm:mx-0 sm:mb-0 sm:max-w-none";
+  const overlayRootStyle: CSSProperties | undefined = fixedOverlayOffsetY > 0 ? { transform: `translate3d(0, ${fixedOverlayOffsetY}px, 0)` } : undefined;
 
   return createPortal(
     <div
@@ -225,7 +245,9 @@ export function StableDetailOverlay({
       aria-modal="true"
       className="tv-overlay-root fixed inset-0 flex items-end justify-center overflow-hidden p-0 sm:items-center sm:p-6"
       data-stable-overlay="true"
+      ref={overlayRootRef}
       role="dialog"
+      style={overlayRootStyle}
     >
       <motion.button
         aria-label={closeLabel}
