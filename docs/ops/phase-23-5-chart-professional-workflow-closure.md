@@ -69,23 +69,57 @@ These features were implemented before Phase 23.5 and remain part of the chart w
 
 ## Production Deploy Proof
 
-Pending until the Phase 23.5 commit is pushed, pulled on production, and the frontend container is rebuilt.
+Production host:
+
+- `ssh sre@100.68.155.121`
+- path: `/opt/apps/market-alpha-scanner/app`
+- deployed commit: `ba6c20c`
+- production pull: `git pull --ff-only origin main`
+- runtime rebuild: `docker compose --env-file .env up -d --build market-alpha-frontend`
+
+Deploy result:
+
+- Production fast-forwarded from `6418c3e` to `ba6c20c`.
+- Frontend image `market-alpha-scanner-market-alpha-frontend:latest` rebuilt.
+- Image manifest: `sha256:b69976821f39a37cf71b4f147021f793e23d1679141bd34eec73e24c854e4e6d`.
+- Container `market-alpha-frontend` recreated and started.
+- Container status after deploy: `Up` and `healthy`.
 
 ## Production Smoke Proof
 
-Pending until production deploy.
-
-Required smoke routes:
+Timestamp: `2026-05-23T22:20:31Z`
 
 | Surface | Result |
 | --- | --- |
-| `/api/health` | Pending |
-| `/api/health/deep` | Pending |
-| `/symbol/AMD` | Pending |
-| `/terminal` | Pending |
-| `/discover` | Pending |
-| `/scanner` | Pending |
-| `/alerts` | Pending |
+| `/api/health` | 200, `ok: true`, service `tradeveto-frontend` |
+| `/api/health/deep` | 200, DB ok, backup ok, scanner ok |
+| `/symbol/AMD` | 200 |
+| `/terminal` | 200 |
+| `/discover` | 200 |
+| `/scanner` | 200 |
+| `/alerts` | 200 |
+
+## Authenticated Production Chart Workflow Probe
+
+Artifact:
+
+- `docs/ops/artifacts/phase-23-5/chart-workflow-probe-production.json`
+
+Result: `overallStatus: ready`
+
+| Probe area | Result |
+| --- | --- |
+| Authenticated premium smoke | Pass, 62 ms |
+| Chart workspace write | Pass, 100 ms |
+| Chart workspace restore | Pass, 51 ms |
+| Styled drawing persistence | Pass |
+| Indicator template persistence | Pass |
+| Cross-device template restore | Pass |
+| Fullscreen restore flag | Pass |
+| Price alert persistence | Pass |
+| Score alert persistence | Pass |
+| Alert restore | Pass, 98 ms |
+| `/symbol/AMD` authenticated smoke | Pass, 2457 ms |
 
 ## Real-Device Fullscreen Chart Certification
 
