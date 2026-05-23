@@ -1,6 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const baseURL = (process.env.TRADEVETO_MOBILE_UX_BASE_URL ?? "https://tradeveto.com").replace(/\/$/, "");
+const artifactRoot = process.env.TRADEVETO_BROWSERSTACK_ARTIFACT_ROOT ?? "../docs/ops/artifacts/phase-22-1";
 
 export default defineConfig({
   expect: {
@@ -8,7 +9,7 @@ export default defineConfig({
   },
   forbidOnly: true,
   fullyParallel: false,
-  outputDir: "../docs/ops/artifacts/phase-21-1/playwright-output",
+  outputDir: `${artifactRoot}/playwright-output`,
   projects: [
     {
       name: "phase21-mobile-real-device",
@@ -19,7 +20,7 @@ export default defineConfig({
   ],
   reporter: [
     ["list"],
-    ["json", { outputFile: "../docs/ops/artifacts/phase-21-1/browserstack-playwright-report.json" }],
+    ["json", { outputFile: `${artifactRoot}/browserstack-playwright-report.json` }],
   ],
   retries: process.env.CI ? 1 : 0,
   testDir: "./tests/browserstack",

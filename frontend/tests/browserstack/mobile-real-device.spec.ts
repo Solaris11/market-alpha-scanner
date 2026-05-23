@@ -30,7 +30,8 @@ const PRODUCT_NAV_ROUTES = new Set([
 ]);
 
 const HYDRATION_PATTERN = /hydration|hydrate|server rendered|client properties|text content does not match|minified react error #418/i;
-const ARTIFACT_DIR = resolve(process.cwd(), "..", "docs", "ops", "artifacts", "phase-21-1", "browserstack-screenshots");
+const ARTIFACT_ROOT = resolve(process.cwd(), process.env.TRADEVETO_BROWSERSTACK_ARTIFACT_ROOT ?? "../docs/ops/artifacts/phase-22-1");
+const ARTIFACT_DIR = resolve(ARTIFACT_ROOT, "browserstack-screenshots");
 const BASE_URL = (process.env.TRADEVETO_MOBILE_UX_BASE_URL ?? "https://tradeveto.com").replace(/\/$/, "");
 
 type MobileMetrics = {
@@ -85,6 +86,58 @@ test.beforeAll(() => {
   mkdirSync(ARTIFACT_DIR, { recursive: true });
 });
 
+test("risk acknowledgement overlay mobile safe area", async ({ page }, testInfo) => {
+  const hydrationMessages = bindHydrationCapture(page);
+  await installRiskAcknowledgementTestState(page);
+
+  await navigateAndSettle(page, "/scanner");
+
+  const dialog = page.locator("[role='dialog'][aria-label='Risk acknowledgement']").first();
+  await expect(dialog, "risk acknowledgement dialog is visible").toBeVisible();
+  await assertRiskAcknowledgementOverlaySafe(page);
+  await captureNamedScreenshot(page, "risk-acknowledgement-open", testInfo);
+
+  const checkbox = dialog.locator("input[type='checkbox']").first();
+  await checkbox.check({ force: true });
+  const continueButton = dialog.getByRole("button", { name: /^Continue$/ });
+  await expect(continueButton, "risk acknowledgement continue enabled").toBeEnabled();
+  await continueButton.tap().catch(async () => {
+    await continueButton.click({ force: true });
+  });
+  await expect(dialog, "risk acknowledgement dismisses").toBeHidden({ timeout: 10_000 });
+  await assertMobileMetrics(page, "/scanner");
+  expect(hydrationMessages, "risk acknowledgement hydration/runtime mismatch").toEqual([]);
+});
+
+test("notification overlay mobile safe area", async ({ page }, testInfo) => {
+  const hydrationMessages = bindHydrationCapture(page);
+  await installStableClientState(page);
+  await installAuthenticatedNotificationMocks(page);
+
+  await navigateAndSettle(page, "/terminal");
+  await openNotifications(page);
+
+  const menu = page.locator(".tv-notification-menu").first();
+  await expect(menu, "notification menu is visible").toBeVisible();
+  await assertNotificationOverlaySafe(page, "notification overlay top");
+  await captureNamedScreenshot(page, "notifications-open", testInfo);
+
+  await page.evaluate(() => {
+    const scroll = document.querySelector<HTMLElement>(".tv-notification-scroll");
+    if (scroll) scroll.scrollTop = scroll.scrollHeight;
+  });
+  await page.waitForTimeout(150);
+  await assertNotificationOverlaySafe(page, "notification overlay bottom");
+  await captureNamedScreenshot(page, "notifications-scrolled-bottom", testInfo);
+
+  await page.evaluate(() => {
+    document.querySelector<HTMLElement>("button[aria-label='Close notifications']")?.click();
+  });
+  await page.keyboard.press("Escape").catch(() => undefined);
+  await expect(menu, "notification menu closes").toBeHidden({ timeout: 10_000 });
+  expect(hydrationMessages, "notification overlay hydration/runtime mismatch").toEqual([]);
+});
+
 test("real-device mobile QA required routes", async ({ page }, testInfo) => {
   const hydrationMessages = bindHydrationCapture(page);
   await installStableClientState(page);
@@ -132,6 +185,121 @@ async function installStableClientState(page: Page): Promise<void> {
   });
 }
 
+async function installRiskAcknowledgementTestState(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    window.localStorage.removeItem("ma_risk_acknowledged_v1");
+    window.localStorage.setItem("ma_onboarding_completed", "true");
+    window.localStorage.setItem("tradeveto_first_run_starter_hidden_v1", "true");
+    window.localStorage.setItem("tradeveto_first_opportunity_review_hidden_v1", "true");
+    window.sessionStorage.removeItem("ma_onboarding_replay_pending");
+  });
+}
+
+async function installAuthenticatedNotificationMocks(page: Page): Promise<void> {
+  const now = new Date().toISOString();
+  await page.route("**/api/auth/me", async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({
+        authenticated: true,
+        entitlement: {
+          authenticated: true,
+          betaAccess: true,
+          betaAccessLabel: "Phase 22 QA",
+          isAdmin: false,
+          isPremium: true,
+          legalStatus: {
+            allAccepted: true,
+            privacyAccepted: true,
+            riskAccepted: true,
+            termsAccepted: true,
+          },
+          plan: "premium",
+        },
+        user: {
+          createdAt: now,
+          displayName: "Phase 22 Mobile QA",
+          email: "phase22-mobile@example.test",
+          emailVerified: true,
+          id: "phase22-mobile-qa",
+          lastLoginAt: now,
+          onboardingCompleted: true,
+          profileImageUrl: null,
+          riskExperienceLevel: "advanced",
+          role: "user",
+          state: "active",
+          timezone: "America/New_York",
+        },
+      }),
+      contentType: "application/json",
+      status: 200,
+    });
+  });
+  await page.route("**/api/legal/status", async (route) => {
+    await route.fulfill({
+      body: JSON.stringify({ allAccepted: true, authenticated: true, ok: true, privacyAccepted: true, riskAccepted: true, termsAccepted: true }),
+      contentType: "application/json",
+      status: 200,
+    });
+  });
+  await page.route("**/api/notifications**", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === "/api/notifications") {
+      await route.fulfill({
+        body: JSON.stringify({
+          notifications: [
+            {
+              actionUrl: "/alerts",
+              createdAt: now,
+              id: "11111111-1111-4111-8111-111111111111",
+              message: "AMD moved into a watchlist risk state with a long source-linked explanation that must wrap cleanly without vertical clipping on real mobile devices.",
+              read: false,
+              title: "Watchlist risk changed",
+              type: "signal",
+            },
+            {
+              actionUrl: "/feed",
+              createdAt: now,
+              id: "22222222-2222-4222-8222-222222222222",
+              message: "A macro pressure update is available. This notification intentionally uses enough text to exercise card height, internal scroll behavior, and safe-area spacing.",
+              read: false,
+              title: "Macro pressure update",
+              type: "system",
+            },
+            {
+              actionUrl: "/account",
+              createdAt: now,
+              id: "33333333-3333-4333-8333-333333333333",
+              message: "Your premium access is active. Review account details if you want to confirm entitlement state.",
+              read: true,
+              title: "Premium active",
+              type: "subscription",
+            },
+            {
+              actionUrl: "/market-memory",
+              createdAt: now,
+              id: "44444444-4444-4444-8444-444444444444",
+              message: "Market memory found a similar replay context. The card should remain readable and scrollable at the bottom of the overlay.",
+              read: false,
+              title: "Replay context available",
+              type: "signal",
+            },
+          ],
+          ok: true,
+          unreadCount: 3,
+        }),
+        contentType: "application/json",
+        status: 200,
+      });
+      return;
+    }
+    if (url.pathname.startsWith("/api/notifications/read")) {
+      await route.fulfill({ body: JSON.stringify({ ok: true }), contentType: "application/json", status: 200 });
+      return;
+    }
+    await route.continue();
+  });
+}
+
 async function navigateAndSettle(page: Page, route: string): Promise<void> {
   const response = await gotoRouteWithRetry(page, route);
   expect(response?.status() ?? 0, `${route} should not return a server error`).toBeLessThan(500);
@@ -157,6 +325,144 @@ async function gotoRouteWithRetry(page: Page, route: string): Promise<Response |
       await page.waitForFunction((expectedPath: string) => window.location.pathname === expectedPath, route, { timeout: 45_000 });
       return null;
     }
+  }
+}
+
+async function openNotifications(page: Page): Promise<void> {
+  await page.waitForFunction(() => {
+    return Array.from(document.querySelectorAll<HTMLElement>("button[aria-label*='notification' i]")).some((button) => {
+      const rect = button.getBoundingClientRect();
+      return rect.width >= 20 && rect.height >= 20 && rect.bottom > 0 && rect.top < window.innerHeight;
+    });
+  }, null, { timeout: 15_000 });
+  const clicked = await page.evaluate(() => {
+    const buttons = Array.from(document.querySelectorAll<HTMLElement>("button[aria-label*='notification' i]")).reverse();
+    const button = buttons.find((candidate) => {
+      const rect = candidate.getBoundingClientRect();
+      return rect.width >= 20 && rect.height >= 20 && rect.bottom > 0 && rect.top < window.innerHeight;
+    });
+    button?.click();
+    return Boolean(button);
+  });
+  if (clicked) {
+    await page.waitForTimeout(450);
+    if (await page.locator(".tv-notification-menu").first().isVisible().catch(() => false)) return;
+  }
+
+  const buttons = page.locator("button[aria-label*='notification' i]");
+  const count = await buttons.count();
+  for (let index = count - 1; index >= 0; index -= 1) {
+    const button = buttons.nth(index);
+    if (!(await button.isVisible().catch(() => false))) continue;
+    const box = await button.boundingBox();
+    if (!box || box.width < 20 || box.height < 20) continue;
+    await button.tap({ timeout: 3_000 }).catch(async () => {
+      await button.click({ force: true, timeout: 3_000 });
+    });
+    await page.waitForTimeout(450);
+    if (await page.locator(".tv-notification-menu").first().isVisible().catch(() => false)) return;
+  }
+  throw new Error("No visible notification button opened the notification overlay.");
+}
+
+async function assertRiskAcknowledgementOverlaySafe(page: Page): Promise<void> {
+  const geometry = await page.evaluate(() => {
+    const dialog = document.querySelector<HTMLElement>("[role='dialog'][aria-label='Risk acknowledgement']");
+    const panel = dialog?.querySelector<HTMLElement>(".tv-critical-overlay-panel") ?? null;
+    const footer = dialog?.querySelector<HTMLElement>(".tv-critical-overlay-footer") ?? null;
+    const checkbox = dialog?.querySelector<HTMLInputElement>("input[type='checkbox']") ?? null;
+    const continueButton = Array.from(dialog?.querySelectorAll<HTMLButtonElement>("button") ?? []).find((button) => button.textContent?.trim() === "Continue") ?? null;
+    const nav = document.querySelector<HTMLElement>("nav[aria-label='Primary mobile navigation']");
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+    const rect = (element: Element | null) => {
+      const box = element?.getBoundingClientRect();
+      return box ? { bottom: box.bottom, height: box.height, left: box.left, right: box.right, top: box.top, width: box.width } : null;
+    };
+    const buttonRect = rect(continueButton);
+    const checkboxRect = rect(checkbox);
+    const footerRect = rect(footer);
+    const navRect = rect(nav);
+    const navVisible = navRect ? navRect.bottom > 0 && navRect.top < viewportHeight : false;
+    const horizontalOverflow = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth;
+    return {
+      buttonClearanceFromNav: buttonRect && navRect && navVisible ? navRect.top - buttonRect.bottom : null,
+      buttonRect,
+      checkboxRect,
+      footerRect,
+      horizontalOverflow,
+      panelRect: rect(panel),
+      viewportHeight,
+      viewportWidth,
+    };
+  });
+
+  expect(geometry.panelRect, "risk acknowledgement panel exists").not.toBeNull();
+  expect(geometry.buttonRect, "risk acknowledgement continue exists").not.toBeNull();
+  expect(geometry.checkboxRect, "risk acknowledgement checkbox exists").not.toBeNull();
+  expect(geometry.footerRect, "risk acknowledgement footer exists").not.toBeNull();
+  expect(geometry.horizontalOverflow, "risk acknowledgement horizontal overflow").toBeLessThanOrEqual(2);
+  expect(geometry.panelRect?.left ?? -1, "risk acknowledgement panel left").toBeGreaterThanOrEqual(-2);
+  expect(geometry.panelRect?.right ?? Number.POSITIVE_INFINITY, "risk acknowledgement panel right").toBeLessThanOrEqual(geometry.viewportWidth + 2);
+  expect(geometry.panelRect?.bottom ?? Number.POSITIVE_INFINITY, "risk acknowledgement panel bottom").toBeLessThanOrEqual(geometry.viewportHeight + 2);
+  expect(geometry.buttonRect?.bottom ?? Number.POSITIVE_INFINITY, "risk acknowledgement continue bottom").toBeLessThanOrEqual(geometry.viewportHeight + 2);
+  expect(geometry.checkboxRect?.bottom ?? Number.POSITIVE_INFINITY, "risk acknowledgement checkbox bottom").toBeLessThanOrEqual(geometry.viewportHeight + 2);
+  if (geometry.buttonClearanceFromNav !== null) {
+    expect(geometry.buttonClearanceFromNav, "risk acknowledgement continue clearance above bottom nav").toBeGreaterThanOrEqual(0);
+  }
+}
+
+async function assertNotificationOverlaySafe(page: Page, label: string): Promise<void> {
+  const geometry = await page.evaluate(() => {
+    const menu = document.querySelector<HTMLElement>(".tv-notification-menu");
+    const scroll = document.querySelector<HTMLElement>(".tv-notification-scroll");
+    const nav = document.querySelector<HTMLElement>("nav[aria-label='Primary mobile navigation']");
+    const cards = Array.from(scroll?.children ?? []).filter((node): node is HTMLElement => node instanceof HTMLElement && Boolean(node.querySelector("button")));
+    const lastCard = cards[cards.length - 1] ?? null;
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+    const rect = (element: Element | null) => {
+      const box = element?.getBoundingClientRect();
+      return box ? { bottom: box.bottom, height: box.height, left: box.left, right: box.right, top: box.top, width: box.width } : null;
+    };
+    const menuRect = rect(menu);
+    const scrollRect = rect(scroll);
+    const navRect = rect(nav);
+    const lastCardRect = rect(lastCard);
+    const navVisible = navRect ? navRect.bottom > 0 && navRect.top < viewportHeight : false;
+    const horizontalOverflow = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth;
+    return {
+      cardCount: cards.length,
+      horizontalOverflow,
+      lastCardBottomClearance: lastCardRect && scrollRect ? scrollRect.bottom - lastCardRect.bottom : null,
+      lastCardRect,
+      menuBottomClearanceFromNav: menuRect && navRect && navVisible ? navRect.top - menuRect.bottom : null,
+      menuRect,
+      scrollClientHeight: scroll?.clientHeight ?? 0,
+      scrollHeight: scroll?.scrollHeight ?? 0,
+      scrollTop: scroll?.scrollTop ?? 0,
+      scrollRect,
+      viewportHeight,
+      viewportWidth,
+    };
+  });
+
+  expect(geometry.menuRect, `${label} menu exists`).not.toBeNull();
+  expect(geometry.scrollRect, `${label} scroll exists`).not.toBeNull();
+  expect(geometry.cardCount, `${label} notification cards rendered`).toBeGreaterThanOrEqual(4);
+  expect(geometry.horizontalOverflow, `${label} horizontal overflow`).toBeLessThanOrEqual(2);
+  expect(geometry.menuRect?.left ?? -1, `${label} menu left`).toBeGreaterThanOrEqual(-2);
+  expect(geometry.menuRect?.right ?? Number.POSITIVE_INFINITY, `${label} menu right`).toBeLessThanOrEqual(geometry.viewportWidth + 2);
+  expect(geometry.menuRect?.top ?? -1, `${label} menu top`).toBeGreaterThanOrEqual(-2);
+  expect(geometry.menuRect?.bottom ?? Number.POSITIVE_INFINITY, `${label} menu bottom`).toBeLessThanOrEqual(geometry.viewportHeight + 2);
+  expect(geometry.scrollClientHeight, `${label} scroll client height`).toBeGreaterThan(120);
+  expect(geometry.scrollHeight, `${label} scroll height`).toBeGreaterThanOrEqual(geometry.scrollClientHeight);
+  if (geometry.menuBottomClearanceFromNav !== null) {
+    expect(geometry.menuBottomClearanceFromNav, `${label} menu clearance above bottom nav`).toBeGreaterThanOrEqual(0);
+  }
+  const scrolledToBottom = geometry.scrollTop + geometry.scrollClientHeight >= geometry.scrollHeight - 2;
+  if (scrolledToBottom && geometry.lastCardBottomClearance !== null) {
+    expect(geometry.lastCardBottomClearance, `${label} last visible card is not vertically clipped`).toBeGreaterThanOrEqual(-2);
   }
 }
 
@@ -445,6 +751,14 @@ async function captureRouteScreenshot(page: Page, route: string, testInfo: TestI
   await page.screenshot({
     fullPage: false,
     path: resolve(ARTIFACT_DIR, `${projectSlug}-${slug(route)}.png`),
+  });
+}
+
+async function captureNamedScreenshot(page: Page, name: string, testInfo: TestInfo): Promise<void> {
+  const projectSlug = slug(testInfo.project.name || "browserstack-device");
+  await page.screenshot({
+    fullPage: false,
+    path: resolve(ARTIFACT_DIR, `${projectSlug}-${slug(name)}.png`),
   });
 }
 

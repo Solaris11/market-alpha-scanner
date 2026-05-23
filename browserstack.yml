@@ -2,7 +2,7 @@ userName: ${BROWSERSTACK_USERNAME}
 accessKey: ${BROWSERSTACK_ACCESS_KEY}
 framework: playwright
 projectName: TradeVeto
-buildName: phase-21-1-real-device-certification
+buildName: phase-22-1-real-device-mobile-trust-certification
 
 platforms:
   - browserName: safari
@@ -17,6 +17,12 @@ platforms:
     deviceOrientation: portrait
     playwrightConfigOptions:
       name: samsung-galaxy-s23-ultra-chrome
+  - browserName: safari
+    osVersion: 17
+    deviceName: iPad Pro 13 2024
+    deviceOrientation: portrait
+    playwrightConfigOptions:
+      name: ipad-pro-13-2024-safari
 
 debug: true
 consoleLogs: info
