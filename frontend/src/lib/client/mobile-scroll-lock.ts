@@ -59,6 +59,9 @@ export function lockMobileBodyScroll(scrollY = getCurrentScrollY()): () => void 
   body.style.overflow = lockStyles.body.overflow;
   body.style.overscrollBehavior = lockStyles.body.overscrollBehavior;
   if (shouldUseNonFixedScrollLock()) {
+    const stabilizationTimers: number[] = [];
+    let stabilizationFrame = 0;
+    const stabilizeScroll = () => forceScrollY(scrollY);
     const preventBackgroundTouchMove = (event: TouchEvent) => {
       if (event.target instanceof Element && event.target.closest("[data-stable-overlay-content='true']")) return;
       event.preventDefault();
@@ -68,7 +71,14 @@ export function lockMobileBodyScroll(scrollY = getCurrentScrollY()): () => void 
     root.style.overscrollBehavior = lockStyles.root.overscrollBehavior;
     root.style.touchAction = "none";
     document.addEventListener("touchmove", preventBackgroundTouchMove, { passive: false });
+    stabilizeScroll();
+    stabilizationFrame = window.requestAnimationFrame(stabilizeScroll);
+    [40, 120, 240, 320].forEach((delayMs) => {
+      stabilizationTimers.push(window.setTimeout(stabilizeScroll, delayMs));
+    });
     return () => {
+      window.cancelAnimationFrame(stabilizationFrame);
+      stabilizationTimers.forEach((timeout) => window.clearTimeout(timeout));
       document.removeEventListener("touchmove", preventBackgroundTouchMove);
       restoreMobileBodyScroll(snapshot);
     };
