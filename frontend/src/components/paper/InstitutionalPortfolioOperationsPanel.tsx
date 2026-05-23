@@ -1,4 +1,6 @@
 import type {
+  InstitutionalAllocationHistoryItem,
+  InstitutionalDrawdownStory,
   InstitutionalOperatingLane,
   InstitutionalPortfolioOperationsSystem,
   InstitutionalPortfolioOpsTone,
@@ -6,6 +8,8 @@ import type {
   InstitutionalRebalanceCheckpoint,
   InstitutionalStrategyMemoryItem,
   InstitutionalStrategyRevisionItem,
+  InstitutionalThesisLifecycleItem,
+  InstitutionalTradeAutopsyItem,
   InstitutionalWorkspaceContinuityItem,
 } from "@/lib/trading/institutional-portfolio-operations";
 import { formatMoney } from "@/lib/ui/formatters";
@@ -32,11 +36,15 @@ export function InstitutionalPortfolioOperationsPanel({ system }: { system: Inst
         <div className="space-y-5">
           <LaneGrid lanes={system.operatingLanes} />
           <PositionLifecycleList items={system.positionLifecycle} />
+          <AllocationHistoryList items={system.allocationHistory} />
+          <DrawdownStoryList items={system.drawdownStories} />
           <RebalanceTimeline items={system.rebalanceHistory} />
         </div>
 
         <div className="space-y-5">
           <RiskBudgetList items={system.riskBudget.slice(0, 7)} />
+          <ThesisLifecycleList items={system.thesisLifecycle} />
+          <TradeAutopsyList items={system.paperTradeAutopsies} />
           <StrategyMemoryList items={system.strategyMemory} />
           <StrategyRevisionList items={system.strategyRevisions} />
           <WorkspaceContinuityList items={system.workspaceContinuity} />
@@ -75,6 +83,63 @@ function LaneGrid({ lanes }: { lanes: InstitutionalOperatingLane[] }) {
           {lane.symbols.length ? <div className="mt-2 break-words text-xs text-cyan-200/80">{lane.symbols.slice(0, 6).join(", ")}</div> : null}
         </div>
       ))}
+    </div>
+  );
+}
+
+function AllocationHistoryList({ items }: { items: InstitutionalAllocationHistoryItem[] }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Allocation History</div>
+      <h3 className="mt-1 text-lg font-semibold text-slate-50">Paper events and exposure checkpoints</h3>
+      <div className="mt-4 space-y-3">
+        {items.length ? items.map((item) => (
+          <div className={`rounded-2xl border p-3 ${panelTone(item.tone)}`} key={`${item.source}:${item.date}:${item.label}:${item.symbols.join(",")}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-slate-50">{item.label}</div>
+                <div className="mt-1 text-xs text-slate-500">{dateText(item.date)} · {item.source.replace(/_/g, " ")}</div>
+              </div>
+              <div className={`shrink-0 font-mono text-sm font-black ${toneText(item.tone)}`}>{item.metric}</div>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-slate-400">{item.detail}</p>
+            {item.symbols.length ? <div className="mt-2 break-words text-xs text-cyan-200/80">{item.symbols.slice(0, 8).join(", ")}</div> : null}
+          </div>
+        )) : (
+          <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/45 p-4 text-sm leading-6 text-slate-400">
+            Allocation history is unavailable until paper account or paper event evidence exists.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function DrawdownStoryList({ items }: { items: InstitutionalDrawdownStory[] }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-rose-200">Drawdown Story</div>
+      <h3 className="mt-1 text-lg font-semibold text-slate-50">Stress periods and lessons</h3>
+      <div className="mt-4 space-y-3">
+        {items.length ? items.map((item) => (
+          <div className={`rounded-2xl border p-3 ${panelTone(item.tone)}`} key={`${item.source}:${item.period}:${item.depth}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-50">{item.period}</div>
+                <div className="mt-1 text-xs text-slate-500">{item.source.replace(/_/g, " ")}</div>
+              </div>
+              <div className={`font-mono text-sm font-black ${toneText(item.tone)}`}>{item.depth}</div>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-slate-400">{item.detail}</p>
+            <p className="mt-2 text-xs leading-5 text-amber-100/85">{item.lesson}</p>
+            {item.symbols.length ? <div className="mt-2 break-words text-xs text-cyan-200/80">{item.symbols.join(", ")}</div> : null}
+          </div>
+        )) : (
+          <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/45 p-4 text-sm leading-6 text-slate-400">
+            Drawdown storytelling needs actual closed-trade timeline or Strategy Labs stress evidence.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -139,6 +204,70 @@ function RebalanceTimeline({ items }: { items: InstitutionalRebalanceCheckpoint[
         )) : (
           <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/45 p-4 text-sm leading-6 text-slate-400">
             No allocation checkpoints are available. The system will not invent rebalance history without Strategy Labs evidence.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ThesisLifecycleList({ items }: { items: InstitutionalThesisLifecycleItem[] }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">Thesis Lifecycle</div>
+      <div className="mt-3 space-y-3">
+        {items.length ? items.slice(0, 8).map((item) => (
+          <div className={`rounded-xl border p-3 ${panelTone(item.tone)}`} key={`${item.symbol}:${item.openedAt}:${item.closedAt ?? "open"}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-100">{item.symbol}</div>
+                <div className="mt-1 text-xs text-slate-500">{dateText(item.openedAt)}{item.closedAt ? ` -> ${dateText(item.closedAt)}` : ""}</div>
+              </div>
+              <div className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.12em] ${chipTone(item.tone)}`}>{item.state.replace(/_/g, " ")}</div>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-400">{item.detail}</p>
+            <p className="mt-2 text-xs leading-5 text-slate-500">{item.evidence}</p>
+            <p className="mt-2 text-xs leading-5 text-amber-100/85">{item.invalidation}</p>
+          </div>
+        )) : (
+          <div className="rounded-xl border border-dashed border-white/10 bg-slate-950/45 p-3 text-sm leading-6 text-slate-400">
+            Thesis lifecycle evidence is unavailable until paper positions exist.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function TradeAutopsyList({ items }: { items: InstitutionalTradeAutopsyItem[] }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-200">Trade Autopsy</div>
+      <div className="mt-3 space-y-3">
+        {items.length ? items.slice(0, 7).map((item) => (
+          <div className={`rounded-xl border p-3 ${panelTone(item.tone)}`} key={`${item.source}:${item.symbol}:${item.evidence}`}>
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-100">{item.symbol}</div>
+                <div className="mt-1 text-xs text-slate-500">{item.source.replace(/_/g, " ")}</div>
+              </div>
+              <div className={`text-right font-mono text-xs font-black ${toneText(item.tone)}`}>
+                <div>{formatMoney(item.pnl ?? 0, 0)}</div>
+                <div>{item.returnPct === null ? "N/A" : `${item.returnPct.toFixed(1)}%`}</div>
+              </div>
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-400">{item.detail}</p>
+            <p className="mt-2 text-xs leading-5 text-cyan-100/80">{item.replayEvidence}</p>
+            <div className="mt-3 space-y-1.5">
+              {item.lifecycle.slice(0, 3).map((step) => (
+                <div className="rounded-lg bg-slate-950/45 px-2.5 py-2 text-xs leading-5 text-slate-400" key={step}>{step}</div>
+              ))}
+            </div>
+            <p className="mt-2 text-xs leading-5 text-slate-500">{item.thesisReview}</p>
+          </div>
+        )) : (
+          <div className="rounded-xl border border-dashed border-white/10 bg-slate-950/45 p-3 text-sm leading-6 text-slate-400">
+            Trade autopsy requires closed paper trades or Strategy Labs closed-trade evidence.
           </div>
         )}
       </div>

@@ -31,6 +31,7 @@ import { getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getNarrativeMap } from "@/lib/server/narrative-intelligence";
 import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
+import { readUserWorkspacePreferences } from "@/lib/server/user-workspace-preferences";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 import { buildInstitutionalPortfolioOperationsSystem } from "@/lib/trading/institutional-portfolio-operations";
 import { buildPortfolioIntelligenceSystem } from "@/lib/trading/portfolio-intelligence";
@@ -1361,11 +1362,12 @@ export default async function PaperPage() {
   const premiumAccess = hasPremiumAccess(entitlement);
   const paperScope = { userId: entitlement.user?.id ?? null };
   const adapter = new ScannerDataAdapter();
-  const [data, analytics, scannerRows, performance] = await Promise.all([
+  const [data, analytics, scannerRows, performance, workspacePreferences] = await Promise.all([
     getPaperData(paperScope),
     premiumAccess ? getPaperAnalytics(paperScope) : Promise.resolve(null),
     premiumAccess ? adapter.getOverviewSignals().catch(() => []) : Promise.resolve([]),
     premiumAccess ? getPerformanceData({ forwardTailRows: 5000 }).catch(() => null) : Promise.resolve(null),
+    entitlement.user?.id ? readUserWorkspacePreferences(entitlement.user.id).catch(() => null) : Promise.resolve(null),
   ]);
   const scannerSymbols = scannerRows.map((row) => row.symbol);
   const [shockPatterns, narratives] = premiumAccess && scannerSymbols.length
@@ -1393,9 +1395,13 @@ export default async function PaperPage() {
     scenarioSystem: scenarioIntelligence,
   });
   const institutionalOperations = buildInstitutionalPortfolioOperationsSystem({
+    paperAnalytics: analytics,
+    paperEvents: data.events,
+    paperPositions: data.positions,
     portfolio: portfolioIntelligence,
     preferredMode: "balanced",
     simulatedPortfolio: simulatedEvidencePortfolio,
+    workspacePreferences,
   });
   const account = data.account;
   const closedPositions = closedPaperPositions(data.positions);

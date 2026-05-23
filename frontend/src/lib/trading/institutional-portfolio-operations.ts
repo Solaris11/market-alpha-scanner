@@ -1,11 +1,14 @@
+import type { PaperAnalyticsData, PaperAnalyticsTimelinePoint, PaperPositionRow, PaperTradeEventRow } from "@/lib/paper-data";
 import type {
   PortfolioIntelligenceSystem,
   PortfolioPositionContext,
   PortfolioRiskTone,
 } from "./portfolio-intelligence";
+import { moduleLabel, WORKSPACE_MODE_LABELS, type WorkspacePreferences } from "./workspace-preferences";
 import type {
   SimulatedAiPortfolioSystem,
   SimulatedPortfolioAllocationPoint,
+  SimulatedPortfolioDrawdownEpisode,
   SimulatedPortfolioMode,
   SimulatedPortfolioModeResult,
   SimulatedPortfolioModelRevision,
@@ -16,9 +19,13 @@ export type InstitutionalPortfolioOpsTone = PortfolioRiskTone;
 
 export type InstitutionalPortfolioOperationsInput = {
   generatedAt?: string;
+  paperAnalytics?: PaperAnalyticsData | null;
+  paperEvents?: PaperTradeEventRow[];
+  paperPositions?: PaperPositionRow[];
   portfolio: PortfolioIntelligenceSystem;
   preferredMode?: SimulatedPortfolioMode;
   simulatedPortfolio?: SimulatedAiPortfolioSystem | null;
+  workspacePreferences?: WorkspacePreferences | null;
 };
 
 export type InstitutionalOperatingLane = {
@@ -44,6 +51,50 @@ export type InstitutionalPositionLifecycle = {
   thesis: string;
   tone: InstitutionalPortfolioOpsTone;
   unrealizedPnl: number | null;
+};
+
+export type InstitutionalAllocationHistoryItem = {
+  date: string;
+  detail: string;
+  label: string;
+  metric: string;
+  source: "current_paper_state" | "paper_event" | "paper_pnl";
+  symbols: string[];
+  tone: InstitutionalPortfolioOpsTone;
+};
+
+export type InstitutionalThesisLifecycleItem = {
+  closedAt: string | null;
+  detail: string;
+  evidence: string;
+  invalidation: string;
+  openedAt: string;
+  state: "active" | "closed_lost" | "closed_won" | "incomplete" | "manual_review";
+  symbol: string;
+  tone: InstitutionalPortfolioOpsTone;
+};
+
+export type InstitutionalDrawdownStory = {
+  depth: string;
+  detail: string;
+  lesson: string;
+  period: string;
+  source: "paper_account" | "strategy_labs";
+  symbols: string[];
+  tone: InstitutionalPortfolioOpsTone;
+};
+
+export type InstitutionalTradeAutopsyItem = {
+  detail: string;
+  evidence: string;
+  lifecycle: string[];
+  pnl: number | null;
+  replayEvidence: string;
+  returnPct: number | null;
+  source: "paper_account" | "strategy_labs";
+  symbol: string;
+  thesisReview: string;
+  tone: InstitutionalPortfolioOpsTone;
 };
 
 export type InstitutionalRebalanceCheckpoint = {
@@ -86,17 +137,21 @@ export type InstitutionalWorkspaceContinuityItem = {
 
 export type InstitutionalPortfolioOperationsSystem = {
   activeMode: SimulatedPortfolioMode | null;
+  allocationHistory: InstitutionalAllocationHistoryItem[];
+  drawdownStories: InstitutionalDrawdownStory[];
   generatedAt: string;
   headline: string;
   limitations: string[];
   openPositionCount: number;
   operatingLanes: InstitutionalOperatingLane[];
   operatingScore: number;
+  paperTradeAutopsies: InstitutionalTradeAutopsyItem[];
   positionLifecycle: InstitutionalPositionLifecycle[];
   rebalanceHistory: InstitutionalRebalanceCheckpoint[];
   riskBudget: InstitutionalOperatingLane[];
   strategyMemory: InstitutionalStrategyMemoryItem[];
   strategyRevisions: InstitutionalStrategyRevisionItem[];
+  thesisLifecycle: InstitutionalThesisLifecycleItem[];
   totalExposureValue: number;
   workspaceContinuity: InstitutionalWorkspaceContinuityItem[];
 };
@@ -106,29 +161,50 @@ export function buildInstitutionalPortfolioOperationsSystem(
 ): InstitutionalPortfolioOperationsSystem {
   const activeMode = input.simulatedPortfolio ? input.preferredMode ?? "balanced" : null;
   const activeResult = activeMode ? input.simulatedPortfolio?.modes[activeMode] ?? null : null;
+  const paperPositions = input.paperPositions ?? input.portfolio.positionContexts.map((context) => context.position);
+  const paperEvents = input.paperEvents ?? [];
+  const paperAnalytics = input.paperAnalytics ?? null;
   const riskBudget = riskBudgetFor(input.portfolio);
   const positionLifecycle = lifecycleFor(input.portfolio.positionContexts);
+  const allocationHistory = allocationHistoryFor(input.portfolio, paperEvents, paperAnalytics);
+  const thesisLifecycle = thesisLifecycleFor(paperPositions, input.portfolio.positionContexts);
+  const drawdownStories = drawdownStoriesFor(paperAnalytics?.timeline ?? [], activeResult?.institutionalRealism.drawdownEpisodes ?? []);
+  const paperTradeAutopsies = paperTradeAutopsiesFor(paperPositions, activeResult);
   const rebalanceHistory = rebalanceHistoryFor(activeResult);
   const strategyMemory = strategyMemoryFor(activeResult);
-  const strategyRevisions = strategyRevisionsFor(activeResult);
-  const workspaceContinuity = workspaceContinuityFor(input.portfolio, activeResult);
+  const strategyRevisions = strategyRevisionsFor(activeResult, paperPositions);
+  const workspaceContinuity = workspaceContinuityFor(input.portfolio, activeResult, {
+    paperAnalytics,
+    paperEvents,
+    paperTradeAutopsies,
+    workspacePreferences: input.workspacePreferences ?? null,
+  });
   const operatingLanes = operatingLanesFor(input.portfolio, riskBudget, positionLifecycle);
-  const limitations = limitationsFor(input.portfolio, activeResult);
-  const operatingScore = operatingScoreFor(input.portfolio, activeResult, riskBudget, rebalanceHistory, strategyMemory);
+  const limitations = limitationsFor(input.portfolio, activeResult, paperTradeAutopsies, paperAnalytics);
+  const operatingScore = operatingScoreFor(input.portfolio, activeResult, riskBudget, rebalanceHistory, strategyMemory, {
+    allocationHistory,
+    drawdownStories,
+    paperTradeAutopsies,
+    thesisLifecycle,
+  });
 
   return {
     activeMode,
+    allocationHistory,
+    drawdownStories,
     generatedAt: input.generatedAt ?? input.portfolio.generatedAt,
     headline: headlineFor(input.portfolio, activeResult, operatingScore),
     limitations,
     openPositionCount: input.portfolio.openPositionCount,
     operatingLanes,
     operatingScore,
+    paperTradeAutopsies,
     positionLifecycle,
     rebalanceHistory,
     riskBudget,
     strategyMemory,
     strategyRevisions,
+    thesisLifecycle,
     totalExposureValue: input.portfolio.totalExposureValue,
     workspaceContinuity,
   };
@@ -255,6 +331,238 @@ function lifecycleFor(contexts: PortfolioPositionContext[]): InstitutionalPositi
     });
 }
 
+function allocationHistoryFor(
+  portfolio: PortfolioIntelligenceSystem,
+  paperEvents: PaperTradeEventRow[],
+  paperAnalytics: PaperAnalyticsData | null,
+): InstitutionalAllocationHistoryItem[] {
+  const currentDeployedPct = portfolio.accountValue && portfolio.accountValue > 0
+    ? (portfolio.totalExposureValue / portfolio.accountValue) * 100
+    : null;
+  const items: InstitutionalAllocationHistoryItem[] = [{
+    date: portfolio.generatedAt,
+    detail: portfolio.accountValue && portfolio.accountValue > 0
+      ? `${formatMoney(portfolio.totalExposureValue)} deployed across ${portfolio.openPositionCount} open paper position(s), ${formatPercent(currentDeployedPct)} of account value.`
+      : `${formatMoney(portfolio.totalExposureValue)} deployed across ${portfolio.openPositionCount} open paper position(s). Account value is unavailable, so deployment percent is limited.`,
+    label: "Current paper allocation",
+    metric: currentDeployedPct === null ? formatMoney(portfolio.totalExposureValue) : formatPercent(currentDeployedPct),
+    source: "current_paper_state",
+    symbols: portfolio.positionContexts.map((context) => context.symbol).slice(0, 8),
+    tone: currentDeployedPct === null ? "neutral" : currentDeployedPct >= 75 ? "risk" : currentDeployedPct >= 45 ? "warn" : "good",
+  }];
+
+  for (const event of paperEvents.slice(0, 8)) {
+    const eventType = cleanLabel(event.event_type, "PAPER_EVENT").toUpperCase();
+    const cashDelta = finite(event.cash_delta);
+    const pnlDelta = finite(event.pnl_delta);
+    const quantity = finite(event.quantity);
+    const price = finite(event.price);
+    const notional = quantity !== null && price !== null ? Math.abs(quantity * price) : Math.abs(cashDelta ?? 0);
+    const isOpen = eventType.includes("OPEN") || eventType.includes("BUY");
+    const isClose = eventType.includes("CLOSE") || eventType.includes("SELL");
+    items.push({
+      date: event.created_at,
+      detail: `${event.symbol} ${eventType.toLowerCase().replace(/_/g, " ")}${event.event_reason ? `: ${event.event_reason}` : ""}. Cash delta ${formatMoney(cashDelta ?? 0)}, P/L delta ${formatMoney(pnlDelta ?? 0)}.`,
+      label: isOpen ? "Paper allocation opened" : isClose ? "Paper allocation closed" : "Paper allocation event",
+      metric: isClose ? formatMoney(pnlDelta ?? 0) : formatMoney(notional),
+      source: "paper_event",
+      symbols: [event.symbol],
+      tone: pnlDelta !== null ? pnlTone(pnlDelta) : isOpen ? "neutral" : "warn",
+    });
+  }
+
+  const latestTimeline = [...(paperAnalytics?.timeline ?? [])].slice(-4).reverse();
+  for (const point of latestTimeline) {
+    items.push({
+      date: point.date,
+      detail: `Paper account realized ${formatMoney(point.daily_pnl)} on this closed-trade checkpoint; cumulative realized P/L became ${formatMoney(point.cumulative_pnl)}.`,
+      label: "Paper P/L checkpoint",
+      metric: formatMoney(point.cumulative_pnl),
+      source: "paper_pnl",
+      symbols: [],
+      tone: pnlTone(point.daily_pnl),
+    });
+  }
+
+  return items
+    .sort((left, right) => sortDate(right.date) - sortDate(left.date))
+    .slice(0, 12);
+}
+
+function thesisLifecycleFor(
+  positions: PaperPositionRow[],
+  contexts: PortfolioPositionContext[],
+): InstitutionalThesisLifecycleItem[] {
+  const contextById = new Map(contexts.map((context) => [context.position.id, context]));
+  return positions
+    .slice()
+    .sort((left, right) => sortDate(right.closed_at ?? right.opened_at) - sortDate(left.closed_at ?? left.opened_at))
+    .slice(0, 12)
+    .map((position): InstitutionalThesisLifecycleItem => {
+      const context = contextById.get(position.id) ?? null;
+      const status = position.status.toUpperCase();
+      const pnl = finite(position.realized_pnl);
+      const incomplete = position.stop_loss === null || position.target_price === null;
+      const manual = isManualPosition(position);
+      const state: InstitutionalThesisLifecycleItem["state"] = status === "OPEN"
+        ? incomplete ? "incomplete" : manual ? "manual_review" : "active"
+        : (pnl ?? 0) >= 0 ? "closed_won" : "closed_lost";
+      return {
+        closedAt: position.closed_at,
+        detail: thesisDetailFor(position, context),
+        evidence: `Decision ${cleanLabel(position.final_decision, "limited")}; setup ${cleanLabel(position.setup_type, "limited")}; quality ${cleanLabel(position.recommendation_quality, "limited")}.`,
+        invalidation: position.stop_loss === null
+          ? "No stored stop/invalidation level. Thesis discipline is incomplete."
+          : `Stored paper invalidation ${formatPrice(position.stop_loss)}; target ${position.target_price === null ? "limited" : formatPrice(position.target_price)}.`,
+        openedAt: position.opened_at,
+        state,
+        symbol: position.symbol,
+        tone: state === "closed_lost" ? "risk" : state === "incomplete" || state === "manual_review" ? "warn" : state === "closed_won" ? "good" : "neutral",
+      };
+    });
+}
+
+function thesisDetailFor(position: PaperPositionRow, context: PortfolioPositionContext | null): string {
+  if (context) {
+    return `${context.symbol} active thesis links to ${context.sector} / ${context.theme}, ${Math.round(context.weightPct)}% of open exposure, and ${formatMoney(context.riskAmount)} planned risk.`;
+  }
+  const closeText = position.closed_at ? `closed ${formatDate(position.closed_at)}` : "still open";
+  return `${position.symbol} thesis is reconstructed from stored paper fields only; ${closeText}, P/L ${formatMoney(finite(position.realized_pnl) ?? finite(position.unrealized_pnl) ?? 0)}.`;
+}
+
+function drawdownStoriesFor(
+  paperTimeline: PaperAnalyticsTimelinePoint[],
+  simulatedEpisodes: SimulatedPortfolioDrawdownEpisode[],
+): InstitutionalDrawdownStory[] {
+  const paperStories = paperDrawdownStoriesFor(paperTimeline);
+  const simulatedStories = simulatedEpisodes.slice(0, 4).map((episode): InstitutionalDrawdownStory => ({
+    depth: formatPercent(episode.depthPct),
+    detail: episode.detail,
+    lesson: episode.lesson,
+    period: `${episode.peakDate} -> ${episode.troughDate}${episode.recoveryDate ? ` -> ${episode.recoveryDate}` : ""}`,
+    source: "strategy_labs",
+    symbols: drawdownEpisodeSymbols(episode),
+    tone: episode.tone,
+  }));
+  return [...paperStories, ...simulatedStories].slice(0, 8);
+}
+
+function paperDrawdownStoriesFor(timeline: PaperAnalyticsTimelinePoint[]): InstitutionalDrawdownStory[] {
+  if (timeline.length < 2) return [];
+  const stories: InstitutionalDrawdownStory[] = [];
+  let peak = timeline[0] ?? null;
+  let trough = timeline[0] ?? null;
+  for (const point of timeline.slice(1)) {
+    if (!peak || !trough) continue;
+    if (point.cumulative_pnl >= peak.cumulative_pnl) {
+      const depth = peak.cumulative_pnl - trough.cumulative_pnl;
+      if (depth > 0) {
+        stories.push(paperDrawdownStoryFrom(peak, trough, point));
+      }
+      peak = point;
+      trough = point;
+      continue;
+    }
+    if (point.cumulative_pnl < trough.cumulative_pnl) trough = point;
+  }
+  if (peak && trough && peak.date !== trough.date && peak.cumulative_pnl > trough.cumulative_pnl) {
+    stories.push(paperDrawdownStoryFrom(peak, trough, null));
+  }
+  return stories
+    .sort((left, right) => numericDepth(right.depth) - numericDepth(left.depth))
+    .slice(0, 4);
+}
+
+function paperDrawdownStoryFrom(
+  peak: PaperAnalyticsTimelinePoint,
+  trough: PaperAnalyticsTimelinePoint,
+  recovery: PaperAnalyticsTimelinePoint | null,
+): InstitutionalDrawdownStory {
+  const depth = peak.cumulative_pnl - trough.cumulative_pnl;
+  return {
+    depth: formatMoney(depth),
+    detail: `Paper realized P/L moved from ${formatMoney(peak.cumulative_pnl)} to ${formatMoney(trough.cumulative_pnl)}.`,
+    lesson: recovery
+      ? `Recovered by ${formatDate(recovery.date)} after closed-trade P/L returned to ${formatMoney(recovery.cumulative_pnl)}.`
+      : "Recovery is not yet visible in the closed-trade paper timeline.",
+    period: `${formatDate(peak.date)} -> ${formatDate(trough.date)}${recovery ? ` -> ${formatDate(recovery.date)}` : ""}`,
+    source: "paper_account",
+    symbols: [],
+    tone: depth >= 500 ? "risk" : depth >= 100 ? "warn" : "neutral",
+  };
+}
+
+function paperTradeAutopsiesFor(
+  positions: PaperPositionRow[],
+  result: SimulatedPortfolioModeResult | null,
+): InstitutionalTradeAutopsyItem[] {
+  const paperAutopsies = positions
+    .filter((position) => position.status.toUpperCase() === "CLOSED")
+    .sort((left, right) => sortDate(right.closed_at) - sortDate(left.closed_at))
+    .slice(0, 6)
+    .map(paperTradeAutopsyFor);
+  const simulatedAutopsies = (result?.closedTrades ?? [])
+    .slice(-4)
+    .reverse()
+    .map((trade): InstitutionalTradeAutopsyItem => ({
+      detail: trade.autopsy.systemLearned,
+      evidence: `${trade.symbol} ${formatPercent(trade.realizedReturnPct)} return, ${formatPercent(trade.drawdownPct)} adverse movement, confidence ${trade.confidenceAtEntry}->${trade.confidenceAtExit}.`,
+      lifecycle: trade.lifecycle.map((step) => `${step.label}: ${step.detail}`).slice(0, 4),
+      pnl: trade.realizedPnl,
+      replayEvidence: trade.autopsy.replayContext,
+      returnPct: trade.realizedReturnPct,
+      source: "strategy_labs",
+      symbol: trade.symbol,
+      thesisReview: [...trade.autopsy.whatWorked, ...trade.autopsy.whatFailed].slice(0, 3).join(" "),
+      tone: trade.realizedPnl > 0 ? "good" : trade.realizedPnl < 0 ? "risk" : "neutral",
+    }));
+  return [...paperAutopsies, ...simulatedAutopsies].slice(0, 10);
+}
+
+function paperTradeAutopsyFor(position: PaperPositionRow): InstitutionalTradeAutopsyItem {
+  const pnl = finite(position.realized_pnl);
+  const returnPct = paperPositionReturnPct(position);
+  const closeReason = cleanLabel(position.close_reason, "closed");
+  const lifecycle = [
+    `Entry: opened ${formatDate(position.opened_at)} at ${formatPrice(position.entry_price)} for ${formatQuantity(position.quantity)} share(s).`,
+    `Risk plan: stop ${position.stop_loss === null ? "limited" : formatPrice(position.stop_loss)}, target ${position.target_price === null ? "limited" : formatPrice(position.target_price)}.`,
+    `Exit: ${position.closed_at ? formatDate(position.closed_at) : "closed date limited"} at ${position.exit_price === null ? "limited" : formatPrice(position.exit_price)} because ${closeReason}.`,
+  ];
+  const manual = isManualPosition(position);
+  return {
+    detail: pnl === null
+      ? "Closed paper trade has limited realized P/L fields."
+      : pnl >= 0
+        ? `Closed paper trade preserved positive realized P/L of ${formatMoney(pnl)}.`
+        : `Closed paper trade lost ${formatMoney(Math.abs(pnl))}; review timing, stop placement, and setup evidence before repeating.`,
+    evidence: `Stored fields: decision ${cleanLabel(position.final_decision, "limited")}, setup ${cleanLabel(position.setup_type, "limited")}, rating ${cleanLabel(position.rating, "limited")}.`,
+    lifecycle,
+    pnl,
+    replayEvidence: manual
+      ? "Manual paper trade; scanner replay context was not the primary entry evidence."
+      : position.setup_type
+        ? "Setup context exists, but no replay snapshot id is stored on the paper trade row. Treat this as setup-context autopsy, not validated replay proof."
+        : "No replay packet is attached to this paper trade row.",
+    returnPct,
+    source: "paper_account",
+    symbol: position.symbol,
+    thesisReview: thesisReviewFor(position),
+    tone: pnl === null ? "neutral" : pnl > 0 ? "good" : pnl < 0 ? "risk" : "neutral",
+  };
+}
+
+function thesisReviewFor(position: PaperPositionRow): string {
+  if (position.stop_loss === null || position.target_price === null) {
+    return "Thesis lifecycle is incomplete because stop or target evidence is missing.";
+  }
+  const reward = Math.abs((position.target_price - position.entry_price) * position.quantity);
+  const risk = Math.abs((position.entry_price - position.stop_loss) * position.quantity);
+  const ratio = risk > 0 ? reward / risk : null;
+  if (ratio !== null && ratio >= 2) return `Recorded thesis had ${ratio.toFixed(1)}R planned reward/risk.`;
+  if (ratio !== null) return `Recorded thesis had thin ${ratio.toFixed(1)}R planned reward/risk.`;
+  return "Recorded thesis has stop/target fields, but reward/risk could not be calculated.";
+}
+
 function rebalanceHistoryFor(result: SimulatedPortfolioModeResult | null): InstitutionalRebalanceCheckpoint[] {
   if (!result) return [];
   return result.allocationHistory.slice(-12).map((point) => checkpointFromAllocation(point));
@@ -298,9 +606,35 @@ function memoryItemFor(item: SimulatedPortfolioStrategyMemory): InstitutionalStr
   };
 }
 
-function strategyRevisionsFor(result: SimulatedPortfolioModeResult | null): InstitutionalStrategyRevisionItem[] {
-  if (!result) return [];
-  return result.institutionalRealism.modelRevisions.map((item) => revisionItemFor(item));
+function strategyRevisionsFor(
+  result: SimulatedPortfolioModeResult | null,
+  paperPositions: PaperPositionRow[],
+): InstitutionalStrategyRevisionItem[] {
+  const simulated = result?.institutionalRealism.modelRevisions.map((item) => revisionItemFor(item)) ?? [];
+  const paperReviews = paperPositions
+    .filter((position) => position.status.toUpperCase() === "CLOSED" || position.stop_loss === null || position.target_price === null)
+    .sort((left, right) => sortDate(right.closed_at ?? right.opened_at) - sortDate(left.closed_at ?? left.opened_at))
+    .slice(0, 4)
+    .map((position): InstitutionalStrategyRevisionItem => {
+      const pnl = finite(position.realized_pnl);
+      const missingPlan = position.stop_loss === null || position.target_price === null;
+      return {
+        date: position.closed_at ?? position.opened_at,
+        evidence: missingPlan
+          ? `${position.symbol} has incomplete paper thesis fields; stop or target is missing.`
+          : `${position.symbol} closed with stored paper P/L ${formatMoney(pnl ?? 0)} and return ${formatPercent(paperPositionReturnPct(position))}.`,
+        fromPolicy: "Paper workflow accepts manually entered entries when stored context is limited.",
+        label: missingPlan ? "Paper Thesis Completion Review" : "Paper Trade Rule Review",
+        symbols: [position.symbol],
+        toPolicy: missingPlan
+          ? "Require stop, target, and thesis reason before treating a paper entry as institutionally reviewable."
+          : pnl !== null && pnl < 0
+            ? "Flag repeat setups with realized losses for sizing and entry-timing review before reuse."
+            : "Keep the closed trade in memory without upgrading the rule until larger evidence exists.",
+        tone: missingPlan ? "warn" : pnl !== null && pnl < 0 ? "risk" : "neutral",
+      };
+    });
+  return [...paperReviews, ...simulated].slice(0, 8);
 }
 
 function revisionItemFor(item: SimulatedPortfolioModelRevision): InstitutionalStrategyRevisionItem {
@@ -318,7 +652,15 @@ function revisionItemFor(item: SimulatedPortfolioModelRevision): InstitutionalSt
 function workspaceContinuityFor(
   portfolio: PortfolioIntelligenceSystem,
   result: SimulatedPortfolioModeResult | null,
+  evidence: {
+    paperAnalytics: PaperAnalyticsData | null;
+    paperEvents: PaperTradeEventRow[];
+    paperTradeAutopsies: InstitutionalTradeAutopsyItem[];
+    workspacePreferences: WorkspacePreferences | null;
+  },
 ): InstitutionalWorkspaceContinuityItem[] {
+  const workspace = evidence.workspacePreferences;
+  const favoriteModules = workspace?.favoriteModules.map((moduleId) => moduleLabel(moduleId)).join(", ") ?? "";
   return [
     {
       detail: portfolio.openPositionCount
@@ -333,6 +675,34 @@ function workspaceContinuityFor(
         : "Strategy Labs evidence is unavailable for this workflow.",
       label: "Strategy Labs Memory",
       status: result ? "available" : "limited",
+    },
+    {
+      detail: evidence.paperEvents.length
+        ? `${evidence.paperEvents.length} recent paper event(s) are available for allocation and rebalance reconstruction.`
+        : "No paper event ledger rows are available for allocation history.",
+      label: "Paper Event Ledger",
+      status: evidence.paperEvents.length ? "available" : "limited",
+    },
+    {
+      detail: evidence.paperAnalytics?.timeline.length
+        ? `${evidence.paperAnalytics.timeline.length} closed-trade P/L checkpoint(s) are linked into drawdown storytelling.`
+        : "Paper analytics timeline is unavailable, so actual paper drawdown stories are limited.",
+      label: "Paper Analytics Timeline",
+      status: evidence.paperAnalytics?.timeline.length ? "available" : "limited",
+    },
+    {
+      detail: evidence.paperTradeAutopsies.some((item) => item.source === "paper_account")
+        ? "Closed paper trades are converted into autopsy cards with explicit replay-evidence boundaries."
+        : "No closed paper trades are available for account-backed trade autopsy.",
+      label: "Paper Autopsy Queue",
+      status: evidence.paperTradeAutopsies.some((item) => item.source === "paper_account") ? "available" : "limited",
+    },
+    {
+      detail: workspace
+        ? `${WORKSPACE_MODE_LABELS[workspace.workspaceMode]} workspace preferences are saved${workspace.updatedAt ? ` as of ${formatDate(workspace.updatedAt)}` : ""}; favorite modules: ${favoriteModules || "default modules"}.`
+        : "No saved workspace preferences are linked to this portfolio workflow.",
+      label: "Saved Workspace",
+      status: workspace ? "available" : "limited",
     },
     {
       detail: portfolio.scenarioStress.length
@@ -384,10 +754,13 @@ function operatingLanesFor(
 function limitationsFor(
   portfolio: PortfolioIntelligenceSystem,
   result: SimulatedPortfolioModeResult | null,
+  paperTradeAutopsies: InstitutionalTradeAutopsyItem[],
+  paperAnalytics: PaperAnalyticsData | null,
 ): string[] {
   const limitations = [
     "Institutional Portfolio Operations is research-only. It does not place orders, rebalance broker accounts, or provide financial advice.",
     "Position lifecycle uses current paper positions and stored paper trade fields; missing stop/target/thesis fields are shown as incomplete instead of invented.",
+    "Paper allocation history uses stored paper account/event rows, not broker fills or external execution reports.",
     result
       ? "Rebalance history and strategy memory are derived from Strategy Labs simulation evidence, not broker execution history."
       : "Strategy memory is unavailable because Strategy Labs simulation evidence is not available in this session.",
@@ -395,6 +768,12 @@ function limitationsFor(
   ];
   if (!portfolio.openPositionCount) limitations.push("No active paper positions are available, so portfolio operations are limited to evidence boundaries.");
   if (!result?.closedTrades.length) limitations.push("Closed-trade institutional memory is limited until completed historical evidence exists for this mode.");
+  if (!paperAnalytics?.timeline.length) limitations.push("Actual paper drawdown storytelling is limited until closed-trade analytics timeline rows exist.");
+  if (paperTradeAutopsies.some((item) => item.source === "paper_account" && !/replay/i.test(item.replayEvidence))) {
+    limitations.push("Paper trade autopsy cards do not imply validated replay proof unless a replay packet is explicitly attached.");
+  } else if (paperTradeAutopsies.some((item) => item.source === "paper_account")) {
+    limitations.push("Paper trade autopsy cards expose whether replay evidence is present instead of fabricating replay-backed proof.");
+  }
   return limitations;
 }
 
@@ -404,6 +783,12 @@ function operatingScoreFor(
   riskBudget: InstitutionalOperatingLane[],
   rebalanceHistory: InstitutionalRebalanceCheckpoint[],
   strategyMemory: InstitutionalStrategyMemoryItem[],
+  evidence: {
+    allocationHistory: InstitutionalAllocationHistoryItem[];
+    drawdownStories: InstitutionalDrawdownStory[];
+    paperTradeAutopsies: InstitutionalTradeAutopsyItem[];
+    thesisLifecycle: InstitutionalThesisLifecycleItem[];
+  },
 ): number {
   const evidenceScore = portfolio.openPositionCount > 0 ? 28 : 0;
   const lifecycleScore = portfolio.positionContexts.length
@@ -411,8 +796,15 @@ function operatingScoreFor(
     : 0;
   const strategyScore = result ? Math.min(22, Math.log10(Math.max(1, result.stats.closedTradeCount)) * 10 + (strategyMemory.length ? 6 : 0)) : 0;
   const rebalanceScore = rebalanceHistory.length ? Math.min(12, rebalanceHistory.length * 1.5) : 0;
+  const operationsEvidenceScore = Math.min(
+    16,
+    (evidence.allocationHistory.length ? 4 : 0)
+    + (evidence.thesisLifecycle.length ? 4 : 0)
+    + (evidence.drawdownStories.length ? 4 : 0)
+    + (evidence.paperTradeAutopsies.length ? 4 : 0),
+  );
   const riskScore = Math.max(0, 20 - (riskBudget[0]?.score ?? 0) * 0.12);
-  return Math.round(clamp(evidenceScore + lifecycleScore + strategyScore + rebalanceScore + riskScore));
+  return Math.round(clamp(evidenceScore + lifecycleScore + strategyScore + rebalanceScore + operationsEvidenceScore + riskScore));
 }
 
 function headlineFor(
@@ -456,6 +848,64 @@ function finite(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
   const parsed = typeof value === "number" ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function sortDate(value: string | null | undefined): number {
+  if (!value) return 0;
+  const date = new Date(value);
+  const time = date.getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function formatDate(value: string | null | undefined): string {
+  if (!value) return "N/A";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("en-US", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function formatPercent(value: number | null): string {
+  if (value === null) return "N/A";
+  return `${value.toFixed(1)}%`;
+}
+
+function formatQuantity(value: number): string {
+  return Number.isInteger(value) ? value.toLocaleString("en-US") : value.toLocaleString("en-US", { maximumFractionDigits: 4 });
+}
+
+function pnlTone(value: number): InstitutionalPortfolioOpsTone {
+  if (value > 0) return "good";
+  if (value < 0) return "risk";
+  return "neutral";
+}
+
+function numericDepth(value: string): number {
+  const parsed = Number(value.replace(/[$,%\s]/g, ""));
+  return Number.isFinite(parsed) ? Math.abs(parsed) : 0;
+}
+
+function drawdownEpisodeSymbols(episode: SimulatedPortfolioDrawdownEpisode): string[] {
+  const match = /^([A-Z][A-Z0-9.-]{0,9}) stress$/.exec(episode.troughDate.trim());
+  return match?.[1] ? [match[1]] : [];
+}
+
+function isManualPosition(position: PaperPositionRow): boolean {
+  return [position.final_decision, position.recommendation_quality, position.entry_status, position.setup_type, position.rating]
+    .some((value) => String(value ?? "").trim().toUpperCase() === "MANUAL");
+}
+
+function paperPositionReturnPct(position: PaperPositionRow): number | null {
+  const stored = finite(position.return_pct);
+  if (stored !== null) return stored * 100;
+  const entry = finite(position.entry_price);
+  const exit = finite(position.exit_price) ?? finite(position.current_price);
+  if (entry !== null && exit !== null && entry > 0) return ((exit - entry) / entry) * 100;
+  const pnl = finite(position.realized_pnl) ?? finite(position.unrealized_pnl);
+  const quantity = finite(position.quantity);
+  if (entry !== null && pnl !== null && quantity !== null && entry > 0 && quantity > 0) {
+    return (pnl / (entry * quantity)) * 100;
+  }
+  return null;
 }
 
 function cleanLabel(value: unknown, fallback: string): string {
