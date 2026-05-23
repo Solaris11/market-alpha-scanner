@@ -387,7 +387,6 @@ async function measureStreamConnection({ cycle, index, tier }) {
         if (packet.includes("event: live-intelligence")) events += 1;
         boundary = buffer.indexOf("\n\n");
       }
-      if (events >= 1) break;
     }
     await reader.cancel().catch(() => undefined);
     return { error: null, events, statusCode };
