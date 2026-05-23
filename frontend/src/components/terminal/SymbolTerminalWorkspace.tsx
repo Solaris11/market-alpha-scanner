@@ -283,10 +283,12 @@ export function SymbolTerminalWorkspace({
               ? `${symbol} chart is using real stored scanner price observations because full OHLC history is not populated yet. Use it as sparse signal-evolution context, not a complete tape.`
               : `${symbol} price history is shown with real stored candles. Use it with decision quality, risk pressure, replay context, and market regime before interpreting the setup.`}
             lastUpdated={typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null}
+            scannerScore={numericValue(row.final_score ?? row.score ?? row.quality_score)}
             showHistoricalSignals={showHistoricalMarkers}
             showResearchLevelsToggle
             signals={chartSignals}
             symbol={symbol}
+            symbolSequence={contextRows.map((contextRow) => String(contextRow.symbol ?? ""))}
             tradeLevels={canTrade ? tradeLevels : undefined}
           />
         </div>

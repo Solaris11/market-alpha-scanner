@@ -29,23 +29,43 @@ export type StoredChartDrawingPoint = {
   y: number;
 };
 
+export type StoredChartDrawingColor = "amber" | "cyan" | "emerald" | "rose" | "slate" | "violet";
+export type StoredChartDrawingStyle = "dashed" | "dotted" | "solid";
+export type StoredChartDrawingWidth = 1 | 2 | 3 | 4;
+
 export type StoredChartDrawing = {
+  color?: StoredChartDrawingColor;
   createdAt?: string;
   end: StoredChartDrawingPoint;
   id: string;
+  label?: string;
+  lineWidth?: StoredChartDrawingWidth;
   start: StoredChartDrawingPoint;
+  style?: StoredChartDrawingStyle;
   tool: Exclude<StoredChartDrawingTool, "edit" | "inspect">;
+};
+
+export type ChartIndicatorTemplate = {
+  createdAt?: string;
+  id: string;
+  indicators: ChartIndicatorId[];
+  name: string;
+  overlayFamilies: ChartOverlayFamily[];
+  source: "default" | "user";
+  updatedAt?: string;
 };
 
 export type ChartDetailMode = "compare" | "overlays" | "timeline";
 export type ChartLayoutMode = "focus" | "grid" | "split" | "stack";
 
 export type ChartWorkflowWorkspace = {
+  activeIndicatorTemplateId: string | null;
   detailMode: ChartDetailMode;
   drawingTool: StoredChartDrawingTool;
   drawings: StoredChartDrawing[];
   fullscreenOpen: boolean;
   indicators: ChartIndicatorId[];
+  indicatorTemplates: ChartIndicatorTemplate[];
   layoutMode: ChartLayoutMode;
   overlayFamilies: ChartOverlayFamily[];
   period: InteractiveChartPeriod;
@@ -59,6 +79,7 @@ export type ChartWorkflowWorkspaceMap = Record<string, ChartWorkflowWorkspace>;
 const STORAGE_PREFIX = "tradeveto.chart-workflow";
 export const CHART_WORKFLOW_STORAGE_EVENT = "tradeveto-chart-workflow-change";
 const MAX_STORED_DRAWINGS = 24;
+const MAX_STORED_INDICATOR_TEMPLATES = 12;
 const MAX_STORED_CHART_WORKSPACES = 24;
 const VALID_PERIODS = new Set<InteractiveChartPeriod>(INTERACTIVE_CHART_PERIODS);
 const VALID_OVERLAY_FAMILIES = new Set<ChartOverlayFamily>(CHART_OVERLAY_FAMILIES.map((item) => item.family));
@@ -81,14 +102,50 @@ const VALID_DRAWING_TOOLS = new Set<StoredChartDrawingTool>([
 ]);
 const VALID_DETAIL_MODES = new Set<ChartDetailMode>(["compare", "overlays", "timeline"]);
 const VALID_LAYOUT_MODES = new Set<ChartLayoutMode>(["focus", "grid", "split", "stack"]);
+const VALID_DRAWING_COLORS = new Set<StoredChartDrawingColor>(["amber", "cyan", "emerald", "rose", "slate", "violet"]);
+const VALID_DRAWING_STYLES = new Set<StoredChartDrawingStyle>(["dashed", "dotted", "solid"]);
+const VALID_DRAWING_WIDTHS = new Set<StoredChartDrawingWidth>([1, 2, 3, 4]);
+
+export const DEFAULT_CHART_INDICATOR_TEMPLATES: ChartIndicatorTemplate[] = [
+  {
+    id: "default-trend-risk",
+    indicators: ["ema20", "ema50", "rsi14"],
+    name: "Trend + Risk",
+    overlayFamilies: [...DEFAULT_CHART_OVERLAY_FAMILIES],
+    source: "default",
+  },
+  {
+    id: "default-momentum",
+    indicators: ["ema20", "sma20", "macd", "rsi14"],
+    name: "Momentum",
+    overlayFamilies: ["confidence", "events", "levels", "replay"],
+    source: "default",
+  },
+  {
+    id: "default-volatility",
+    indicators: ["atr14", "rangePressure", "supertrend", "volatility20"],
+    name: "Volatility",
+    overlayFamilies: ["macro", "risk", "events", "levels"],
+    source: "default",
+  },
+  {
+    id: "default-replay-memory",
+    indicators: ["ema20", "anchoredVwap", "rangePressure"],
+    name: "Replay Memory",
+    overlayFamilies: ["memory", "replay", "confidence", "levels"],
+    source: "default",
+  },
+];
 
 export function defaultChartWorkflowWorkspace(): ChartWorkflowWorkspace {
   return {
+    activeIndicatorTemplateId: "default-trend-risk",
     detailMode: "overlays",
     drawingTool: "inspect",
     drawings: [],
     fullscreenOpen: false,
     indicators: [...DEFAULT_CHART_INDICATORS],
+    indicatorTemplates: [...DEFAULT_CHART_INDICATOR_TEMPLATES],
     layoutMode: "focus",
     overlayFamilies: [...DEFAULT_CHART_OVERLAY_FAMILIES],
     period: "6mo",
@@ -107,12 +164,17 @@ export function chartWorkflowStorageKey(symbol: string): string {
 
 export function sanitizeChartWorkflowWorkspace(input: unknown, fallback: ChartWorkflowWorkspace = defaultChartWorkflowWorkspace()): ChartWorkflowWorkspace {
   const record = isRecord(input) ? input : {};
+  const indicatorTemplates = sanitizeIndicatorTemplates(record.indicatorTemplates, fallback.indicatorTemplates);
+  const activeIndicatorTemplateId = compactText(record.activeIndicatorTemplateId, 96) ?? fallback.activeIndicatorTemplateId;
+  const activeTemplateExists = activeIndicatorTemplateId ? indicatorTemplates.some((template) => template.id === activeIndicatorTemplateId) : false;
   return {
+    activeIndicatorTemplateId: activeTemplateExists ? activeIndicatorTemplateId : null,
     detailMode: stringFromSet(record.detailMode, VALID_DETAIL_MODES, fallback.detailMode),
     drawingTool: stringFromSet(record.drawingTool, VALID_DRAWING_TOOLS, fallback.drawingTool),
     drawings: sanitizeDrawings(record.drawings),
     fullscreenOpen: booleanValue(record.fullscreenOpen, fallback.fullscreenOpen),
     indicators: stringsFromSet(record.indicators, VALID_INDICATORS, fallback.indicators),
+    indicatorTemplates,
     layoutMode: stringFromSet(record.layoutMode, VALID_LAYOUT_MODES, fallback.layoutMode),
     overlayFamilies: stringsFromSet(record.overlayFamilies, VALID_OVERLAY_FAMILIES, fallback.overlayFamilies),
     period: stringFromSet(record.period, VALID_PERIODS, fallback.period),
@@ -211,7 +273,9 @@ function stringsFromSet<T extends string>(value: unknown, valid: Set<T>, fallbac
   return normalized.length ? normalized : [...fallback];
 }
 
-function stringFromSet<T extends string>(value: unknown, valid: Set<T>, fallback: T): T {
+function stringFromSet<T extends string>(value: unknown, valid: Set<T>, fallback: T): T;
+function stringFromSet<T extends string>(value: unknown, valid: Set<T>, fallback: null): T | null;
+function stringFromSet<T extends string>(value: unknown, valid: Set<T>, fallback: T | null): T | null {
   return typeof value === "string" && valid.has(value as T) ? value as T : fallback;
 }
 
@@ -253,8 +317,51 @@ function sanitizeDrawing(value: unknown): StoredChartDrawing | null {
     start,
     tool,
   };
+  const label = compactText(value.label, 48);
+  if (label) drawing.label = label;
+  const color = stringFromSet(value.color, VALID_DRAWING_COLORS, null);
+  if (color) drawing.color = color;
+  const style = stringFromSet(value.style, VALID_DRAWING_STYLES, null);
+  if (style) drawing.style = style;
+  const lineWidth = finiteIntegerFromSet(value.lineWidth, VALID_DRAWING_WIDTHS);
+  if (lineWidth) drawing.lineWidth = lineWidth;
   if (typeof value.createdAt === "string" && value.createdAt.trim()) drawing.createdAt = value.createdAt;
   return drawing;
+}
+
+function sanitizeIndicatorTemplates(value: unknown, fallback: ChartIndicatorTemplate[]): ChartIndicatorTemplate[] {
+  const defaults = DEFAULT_CHART_INDICATOR_TEMPLATES.map((template) => sanitizeIndicatorTemplate(template)).filter((template): template is ChartIndicatorTemplate => template !== null);
+  const candidates = Array.isArray(value) ? value : fallback;
+  const templates = candidates
+    .map((item) => sanitizeIndicatorTemplate(item))
+    .filter((item): item is ChartIndicatorTemplate => item !== null);
+  const merged = new Map<string, ChartIndicatorTemplate>();
+  for (const template of [...defaults, ...templates]) {
+    merged.set(template.id, template.source === "default" ? { ...template, source: "default" } : template);
+  }
+  const defaultTemplates = [...merged.values()].filter((template) => template.source === "default");
+  const userTemplates = [...merged.values()].filter((template) => template.source === "user").slice(-(MAX_STORED_INDICATOR_TEMPLATES - defaultTemplates.length));
+  return [...defaultTemplates, ...userTemplates];
+}
+
+function sanitizeIndicatorTemplate(value: unknown): ChartIndicatorTemplate | null {
+  if (!isRecord(value)) return null;
+  const id = normalizeId(value.id, "");
+  const name = compactText(value.name, 36);
+  if (!id || !name) return null;
+  const indicators = stringsFromSet(value.indicators, VALID_INDICATORS, DEFAULT_CHART_INDICATORS);
+  const overlayFamilies = stringsFromSet(value.overlayFamilies, VALID_OVERLAY_FAMILIES, DEFAULT_CHART_OVERLAY_FAMILIES);
+  const source = value.source === "user" ? "user" : "default";
+  const template: ChartIndicatorTemplate = {
+    id,
+    indicators,
+    name,
+    overlayFamilies,
+    source,
+  };
+  if (typeof value.createdAt === "string" && value.createdAt.trim()) template.createdAt = value.createdAt;
+  if (typeof value.updatedAt === "string" && value.updatedAt.trim()) template.updatedAt = value.updatedAt;
+  return template;
 }
 
 function sanitizePoint(value: unknown): StoredChartDrawingPoint | null {
@@ -270,6 +377,27 @@ function sanitizePoint(value: unknown): StoredChartDrawingPoint | null {
 
 function finiteNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function finiteIntegerFromSet<T extends number>(value: unknown, valid: Set<T>): T | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  const rounded = Math.round(value);
+  return valid.has(rounded as T) ? rounded as T : null;
+}
+
+function compactText(value: unknown, maxLength: number): string | null {
+  const text = String(value ?? "").replace(/\s+/g, " ").trim().slice(0, maxLength);
+  return text || null;
+}
+
+function normalizeId(value: unknown, fallback: string): string {
+  const text = String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 96);
+  return text || fallback;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

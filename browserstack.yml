@@ -2,7 +2,7 @@ userName: ${BROWSERSTACK_USERNAME}
 accessKey: ${BROWSERSTACK_ACCESS_KEY}
 framework: playwright
 projectName: TradeVeto
-buildName: phase-22-1-real-device-mobile-trust-certification
+buildName: phase-22-5-chart-workflow-professional-maturity
 
 platforms:
   - browserName: safari

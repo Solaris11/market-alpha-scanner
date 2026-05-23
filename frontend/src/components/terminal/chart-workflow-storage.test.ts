@@ -18,9 +18,13 @@ describe("chart workflow workspace persistence", () => {
       drawingTool: "ruler",
       drawings: [
         {
+          color: "cyan",
           end: { x: 103, y: -2 },
           id: "measure-1",
+          label: "Breakout watch",
+          lineWidth: 4,
           start: { x: 10, y: 20 },
+          style: "dotted",
           tool: "ruler",
         },
         {
@@ -32,6 +36,15 @@ describe("chart workflow workspace persistence", () => {
       ],
       fullscreenOpen: true,
       indicators: ["ema20", "unsupported", "rangePressure", "rsi14", "ema20"],
+      indicatorTemplates: [
+        {
+          id: "fast-momentum",
+          indicators: ["ema20", "macd", "unsupported"],
+          name: "Fast Momentum",
+          overlayFamilies: ["confidence", "replay", "bad"],
+          source: "user",
+        },
+      ],
       layoutMode: "grid",
       overlayFamilies: ["risk", "macro", "bad", "risk"],
       period: "1y",
@@ -47,6 +60,12 @@ describe("chart workflow workspace persistence", () => {
     assert.equal(workspace.period, "1y");
     assert.equal(workspace.drawings.length, 1);
     assert.deepEqual(workspace.drawings[0]?.end, { x: 100, y: 0 });
+    assert.equal(workspace.drawings[0]?.label, "Breakout watch");
+    assert.equal(workspace.drawings[0]?.color, "cyan");
+    assert.equal(workspace.drawings[0]?.style, "dotted");
+    assert.equal(workspace.drawings[0]?.lineWidth, 4);
+    assert.ok(workspace.indicatorTemplates.some((template) => template.id === "default-trend-risk"));
+    assert.deepEqual(workspace.indicatorTemplates.find((template) => template.id === "fast-momentum")?.indicators, ["ema20", "macd"]);
   });
 
   it("keeps only the latest stored research drawings", () => {
@@ -91,6 +110,24 @@ describe("chart workflow workspace persistence", () => {
 
     assert.equal(workspace.drawingTool, "edit");
     assert.deepEqual(workspace.drawings.map((drawing) => drawing.tool), ["entryZone", "supportZone", "riskBox"]);
+  });
+
+  it("sanitizes indicator templates for cross-device restore", () => {
+    const workspace = sanitizeChartWorkflowWorkspace({
+      activeIndicatorTemplateId: "swing-template",
+      indicatorTemplates: [
+        {
+          id: "swing template!!",
+          indicators: ["ema20", "ema50", "atr14"],
+          name: "Swing Template",
+          overlayFamilies: ["levels", "risk", "macro"],
+          source: "user",
+        },
+      ],
+    });
+
+    assert.equal(workspace.activeIndicatorTemplateId, "swing-template");
+    assert.deepEqual(workspace.indicatorTemplates.find((template) => template.id === "swing-template")?.overlayFamilies, ["levels", "risk", "macro"]);
   });
 
   it("merges a patch without dropping existing compare or layout state", () => {
