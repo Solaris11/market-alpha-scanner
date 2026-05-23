@@ -221,8 +221,10 @@ async function assertTouchResponsiveness(page: Page): Promise<void> {
   if (!box || box.width < 20 || box.height < 20) return;
   const x = box.x + Math.min(box.width / 2, 24);
   const y = box.y + Math.min(box.height / 2, 24);
-  await page.touchscreen.tap(x, y).catch(async () => {
-    await button.click({ force: true });
+  await button.tap({ timeout: 5_000 }).catch(async () => {
+    await page.touchscreen.tap(x, y).catch(async () => {
+      await button.click({ timeout: 5_000 });
+    });
   });
   await page.keyboard.press("Escape").catch(() => undefined);
   await page.waitForTimeout(200);
