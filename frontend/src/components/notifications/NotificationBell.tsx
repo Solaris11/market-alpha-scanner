@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
-import { notificationDisplayMessage, type UserNotification } from "@/lib/notifications";
+import { notificationDisplayMessage, type NotificationFeedbackValue, type UserNotification } from "@/lib/notifications";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
@@ -27,7 +27,7 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [fetching, setFetching] = useState(false);
-  const [feedbackById, setFeedbackById] = useState<Record<string, "not_useful" | "useful">>({});
+  const [feedbackById, setFeedbackById] = useState<Record<string, NotificationFeedbackValue>>({});
 
   useEffect(() => {
     setMounted(true);
@@ -44,11 +44,14 @@ export function NotificationBell() {
       const response = await fetch("/api/notifications", { cache: "no-store" });
       const payload = (await response.json().catch(() => null)) as NotificationsResponse | null;
       if (!response.ok || !payload?.ok) throw new Error("Notifications unavailable.");
-      setNotifications(payload.notifications ?? []);
+      const loadedNotifications = payload.notifications ?? [];
+      setNotifications(loadedNotifications);
       setUnreadCount(payload.unreadCount ?? 0);
+      setFeedbackById(feedbackMapFromNotifications(loadedNotifications));
     } catch {
       setNotifications([]);
       setUnreadCount(0);
+      setFeedbackById({});
     } finally {
       setFetching(false);
     }
@@ -145,11 +148,13 @@ export function NotificationBell() {
 
     trackAnalyticsEvent("notification_engagement", {
       action: notification.actionUrl ? "open_action" : "mark_read",
+      notificationId: notification.id,
       notificationType: notification.type,
       wasUnread: !notification.read,
     }, { source: "notification_bell" });
 
     if (notification.actionUrl) {
+      trackNotificationReturn(notification);
       setOpen(false);
       router.push(notification.actionUrl);
     }
@@ -167,19 +172,59 @@ export function NotificationBell() {
     }
   }
 
-  function trackNotificationFeedback(notification: UserNotification, value: "not_useful" | "useful"): void {
+  async function trackNotificationFeedback(notification: UserNotification, value: NotificationFeedbackValue): Promise<void> {
+    const previous = feedbackById[notification.id] ?? null;
     setFeedbackById((items) => ({ ...items, [notification.id]: value }));
     const action = value === "useful" ? "useful_feedback" : "not_useful_feedback";
     trackAnalyticsEvent("notification_usefulness_feedback", {
       action,
+      feedback: value,
+      hasActionUrl: Boolean(notification.actionUrl),
+      notificationId: notification.id,
       notificationType: notification.type,
       wasUnread: !notification.read,
     }, { source: "notification_bell" });
     trackAnalyticsEvent("notification_engagement", {
       action,
+      feedback: value,
+      notificationId: notification.id,
       notificationType: notification.type,
       wasUnread: !notification.read,
     }, { source: "notification_bell" });
+
+    try {
+      const response = await csrfFetch("/api/notifications/feedback", {
+        body: JSON.stringify({
+          feedback: value,
+          id: notification.id,
+          metadata: {
+            action,
+            actionPath: notification.actionUrl ?? "none",
+            hasActionUrl: Boolean(notification.actionUrl),
+            notificationType: notification.type,
+          },
+          source: "notification_bell",
+        }),
+        headers: { "Content-Type": "application/json" },
+        method: "POST",
+      });
+      if (!response.ok) throw new Error("Unable to record notification feedback.");
+    } catch {
+      setFeedbackById((items) => {
+        const next = { ...items };
+        if (previous) {
+          next[notification.id] = previous;
+        } else {
+          delete next[notification.id];
+        }
+        return next;
+      });
+      trackAnalyticsEvent("failed_action", {
+        component: "notification_feedback",
+        notificationId: notification.id,
+        reason: "request_failed",
+      }, { source: "notification_bell" });
+    }
   }
 
   return (
@@ -259,7 +304,8 @@ export function NotificationBell() {
                             className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] transition ${
                               feedback === "useful" ? "border-emerald-300/45 bg-emerald-300/15 text-emerald-100" : "border-white/10 bg-black/15 text-slate-400 hover:border-emerald-300/35 hover:text-emerald-100"
                             }`}
-                            onClick={() => trackNotificationFeedback(notification, "useful")}
+                            aria-pressed={feedback === "useful"}
+                            onClick={() => void trackNotificationFeedback(notification, "useful")}
                             type="button"
                           >
                             Useful
@@ -268,7 +314,8 @@ export function NotificationBell() {
                             className={`rounded-full border px-2 py-1 text-[10px] font-black uppercase tracking-[0.12em] transition ${
                               feedback === "not_useful" ? "border-amber-300/45 bg-amber-300/15 text-amber-100" : "border-white/10 bg-black/15 text-slate-400 hover:border-amber-300/35 hover:text-amber-100"
                             }`}
-                            onClick={() => trackNotificationFeedback(notification, "not_useful")}
+                            aria-pressed={feedback === "not_useful"}
+                            onClick={() => void trackNotificationFeedback(notification, "not_useful")}
                             type="button"
                           >
                             Not useful
@@ -285,6 +332,40 @@ export function NotificationBell() {
         : null}
     </div>
   );
+}
+
+function feedbackMapFromNotifications(notifications: UserNotification[]): Record<string, NotificationFeedbackValue> {
+  const feedback: Record<string, NotificationFeedbackValue> = {};
+  for (const notification of notifications) {
+    if (notification.feedback) feedback[notification.id] = notification.feedback;
+  }
+  return feedback;
+}
+
+function trackNotificationReturn(notification: UserNotification): void {
+  const actionUrl = notification.actionUrl;
+  if (!actionUrl) return;
+  const metadata = {
+    action: "notification_open",
+    actionPath: actionUrl,
+    notificationId: notification.id,
+    notificationType: notification.type,
+  };
+  if (actionUrl.startsWith("/alerts")) {
+    trackAnalyticsEvent("alert_return", metadata, { source: "notification_bell" });
+    return;
+  }
+  if (actionUrl.startsWith("/discover") || actionUrl.startsWith("/scanner") || actionUrl.startsWith("/opportunities")) {
+    trackAnalyticsEvent("scanner_return", metadata, { source: "notification_bell" });
+    return;
+  }
+  if (actionUrl.startsWith("/history") || actionUrl.startsWith("/market-memory")) {
+    trackAnalyticsEvent("replay_return", metadata, { source: "notification_bell" });
+    return;
+  }
+  if (actionUrl.startsWith("/symbol/") || actionUrl.startsWith("/terminal") || actionUrl.startsWith("/feed") || actionUrl.startsWith("/macro")) {
+    trackAnalyticsEvent("personalized_intelligence_return", metadata, { source: "notification_bell" });
+  }
 }
 
 function formatTimestamp(value: string): string {

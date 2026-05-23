@@ -220,19 +220,27 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
               ["Useful interactions", analytics.realUserProof.notificationUsefulness.usefulInteractions],
               ["Eligible signals", analytics.realUserProof.notificationUsefulness.eligibleSignals],
               ["Usefulness rate", formatPct(analytics.realUserProof.notificationUsefulness.usefulnessRatePct)],
+              ["Durable feedback", analytics.realUserProof.notificationUsefulness.durableFeedbackTotal],
+              ["Fatigue signals", analytics.realUserProof.notificationUsefulness.fatigueSignals],
               ["Explicit useful", analytics.realUserProof.notificationUsefulness.explicitUsefulFeedback],
               ["Preference updates", analytics.realUserProof.notificationUsefulness.preferenceUpdates],
             ]}
             title="Notification Usefulness"
           />
         </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <ProofPanel
             rows={[
+              ["D1 retained", `${dailyDriver.cohortEvidence.day1RetainedUsers.toLocaleString()} / ${dailyDriver.cohortEvidence.day1EligibleUsers.toLocaleString()}`],
+              ["D1 retention", formatPct(dailyDriver.cohortEvidence.day1RetentionRatePct)],
               ["D2 retained", `${dailyDriver.cohortEvidence.day2RetainedUsers.toLocaleString()} / ${dailyDriver.cohortEvidence.day2EligibleUsers.toLocaleString()}`],
               ["D2 retention", formatPct(dailyDriver.cohortEvidence.day2RetentionRatePct)],
               ["D7 retained", `${dailyDriver.cohortEvidence.day7RetainedUsers.toLocaleString()} / ${dailyDriver.cohortEvidence.day7EligibleUsers.toLocaleString()}`],
               ["D7 retention", formatPct(dailyDriver.cohortEvidence.day7RetentionRatePct)],
+              ["2+ active days", `${dailyDriver.cohortEvidence.twoPlusActiveDayUsers.toLocaleString()} / ${dailyDriver.cohortEvidence.totalActiveDayUsers.toLocaleString()}`],
+              ["2+ active-day rate", formatPct(dailyDriver.cohortEvidence.twoPlusActiveDayRatePct)],
+              ["7+ active days", `${dailyDriver.cohortEvidence.sevenPlusActiveDayUsers.toLocaleString()} / ${dailyDriver.cohortEvidence.totalActiveDayUsers.toLocaleString()}`],
+              ["7+ active-day rate", formatPct(dailyDriver.cohortEvidence.sevenPlusActiveDayRatePct)],
             ]}
             title="Cohort Retention"
           />
@@ -254,8 +262,13 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
               ["Not useful feedback", dailyDriver.notificationFeedback.notUseful],
               ["Feedback total", dailyDriver.notificationFeedback.total],
               ["Useful rate", formatPct(dailyDriver.notificationFeedback.usefulnessFeedbackRatePct)],
+              ["Fatigue signals", dailyDriver.notificationFeedback.fatigueSignals],
             ]}
             title="Notification Feedback"
+          />
+          <ProofPanel
+            rows={notificationCategoryRows(analytics)}
+            title="Notification Categories"
           />
         </div>
       </section>
@@ -528,6 +541,14 @@ function ProofPanel({ rows, title }: { rows: Array<[string, number | string]>; t
       </div>
     </div>
   );
+}
+
+function notificationCategoryRows(analytics: AnalyticsSummary): Array<[string, number | string]> {
+  const rows = analytics.realUserProof.notificationUsefulness.categoryBreakdown.slice(0, 6).map((row): [string, string] => [
+    humanizeLabel(row.category),
+    `${formatPct(row.usefulnessRatePct)} useful (${row.total.toLocaleString()})`,
+  ]);
+  return rows.length ? rows : [["No durable feedback", "N/A"]];
 }
 
 function MetricGroup({ rows, title }: { rows: Array<[string, number | string]>; title: string }) {

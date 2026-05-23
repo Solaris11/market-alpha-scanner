@@ -109,10 +109,22 @@ export type AnalyticsSummary = {
       scannerUsage: number;
     };
     notificationUsefulness: {
+      categoryBreakdown: Array<{
+        category: string;
+        fatigueSignals: number;
+        notUseful: number;
+        total: number;
+        useful: number;
+        usefulnessRatePct: number | null;
+      }>;
+      durableFeedbackTotal: number;
+      durableNotUsefulFeedback: number;
+      durableUsefulFeedback: number;
       eligibleSignals: number;
       engaged: number;
       explicitNotUsefulFeedback: number;
       explicitUsefulFeedback: number;
+      fatigueSignals: number;
       preferenceUpdates: number;
       usefulInteractions: number;
       usefulnessRatePct: number | null;
@@ -122,9 +134,17 @@ export type AnalyticsSummary = {
         day2EligibleUsers: number;
         day2RetainedUsers: number;
         day2RetentionRatePct: number | null;
+        day1EligibleUsers: number;
+        day1RetainedUsers: number;
+        day1RetentionRatePct: number | null;
         day7EligibleUsers: number;
         day7RetainedUsers: number;
         day7RetentionRatePct: number | null;
+        sevenPlusActiveDayRatePct: number | null;
+        sevenPlusActiveDayUsers: number;
+        totalActiveDayUsers: number;
+        twoPlusActiveDayRatePct: number | null;
+        twoPlusActiveDayUsers: number;
       };
       habitLoops: {
         alertReturns: number;
@@ -136,6 +156,7 @@ export type AnalyticsSummary = {
         watchlistReturns: number;
       };
       notificationFeedback: {
+        fatigueSignals: number;
         notUseful: number;
         total: number;
         useful: number;
@@ -374,8 +395,15 @@ type NotificationUsefulnessRow = QueryResultRow & {
   engaged: string | number;
   explicit_not_useful_feedback: string | number;
   explicit_useful_feedback: string | number;
+  fatigue_signals: string | number;
   preference_updates: string | number;
   useful_interactions: string | number;
+};
+type NotificationFeedbackCategoryRow = QueryResultRow & {
+  category: string;
+  not_useful: string | number;
+  total: string | number;
+  useful: string | number;
 };
 type DailyDriverHabitLoopRow = QueryResultRow & {
   alert_returns: string | number;
@@ -403,6 +431,11 @@ type RetentionCurveProofRow = QueryResultRow & {
   day_offset: string | number;
   eligible_users: string | number;
   retained_users: string | number;
+};
+type ActiveDayDepthProofRow = QueryResultRow & {
+  active_day_users: string | number;
+  seven_plus_active_day_users: string | number;
+  two_plus_active_day_users: string | number;
 };
 
 const MAX_EVENTS_PER_REQUEST = 24;
@@ -567,10 +600,12 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     workflowStickinessProof,
     mobileEngagementProof,
     notificationUsefulnessProof,
+    notificationFeedbackCategoryProof,
     dailyDriverHabitLoopProof,
     adaptiveBehaviorProof,
     watchlistRetentionProof,
     retentionCurveProof,
+    activeDayDepthProof,
   ] = await Promise.all([
     dbQuery<RetentionRow>(
       `
@@ -993,11 +1028,16 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
           count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' IN ('open_action', 'mark_read', 'mark_all_read', 'useful_feedback')) AS useful_interactions,
           count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' = 'preference_update') AS preference_updates,
           count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback' AND metadata->>'action' = 'useful_feedback') AS explicit_useful_feedback,
-          count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback' AND metadata->>'action' = 'not_useful_feedback') AS explicit_not_useful_feedback
+          count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback' AND metadata->>'action' = 'not_useful_feedback') AS explicit_not_useful_feedback,
+          count(*) FILTER (
+            WHERE (event_name = 'notification_usefulness_feedback' AND metadata->>'action' = 'not_useful_feedback')
+               OR (event_name = 'notification_engagement' AND metadata->>'action' IN ('close_menu', 'preference_update'))
+          ) AS fatigue_signals
         FROM analytics_events
         WHERE occurred_at >= now() - ${interval}
       `,
     ),
+    notificationFeedbackCategoryBreakdown(interval),
     dbQuery<DailyDriverHabitLoopRow>(
       `
         SELECT
@@ -1075,6 +1115,23 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
         ORDER BY 1
       `,
     ),
+    dbQuery<ActiveDayDepthProofRow>(
+      `
+        WITH actor_day_counts AS (
+          SELECT
+            COALESCE(user_id::text, anonymous_id_hash, session_id_hash, id::text) AS actor_key,
+            count(DISTINCT occurred_at::date) AS active_days
+          FROM analytics_events
+          WHERE occurred_at >= now() - ${interval}
+          GROUP BY 1
+        )
+        SELECT
+          count(*) AS active_day_users,
+          count(*) FILTER (WHERE active_days >= 2) AS two_plus_active_day_users,
+          count(*) FILTER (WHERE active_days >= 7) AS seven_plus_active_day_users
+        FROM actor_day_counts
+      `,
+    ),
   ]);
 
   const retentionRow = retention.rows[0];
@@ -1093,6 +1150,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
   const dailyDriverHabitLoopRow = dailyDriverHabitLoopProof.rows[0];
   const adaptiveBehaviorRow = adaptiveBehaviorProof.rows[0];
   const watchlistRetentionRow = watchlistRetentionProof.rows[0];
+  const activeDayDepthRow = activeDayDepthProof.rows[0];
   const frictionCount = (eventName: string) => numberFromRow(frictionEvents.rows.find((row) => row.event_name === eventName)?.count);
   const totalEvents = numberFromRow(retentionRow?.total_events);
   const activeUsers = numberFromRow(retentionRow?.active_users);
@@ -1103,12 +1161,32 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
   const notificationUsefulInteractions = numberFromRow(notificationUsefulnessRow?.useful_interactions);
   const explicitUsefulFeedback = numberFromRow(notificationUsefulnessRow?.explicit_useful_feedback);
   const explicitNotUsefulFeedback = numberFromRow(notificationUsefulnessRow?.explicit_not_useful_feedback);
-  const explicitFeedbackTotal = explicitUsefulFeedback + explicitNotUsefulFeedback;
+  const notificationFatigueSignals = numberFromRow(notificationUsefulnessRow?.fatigue_signals);
+  const notificationFeedbackCategories = notificationFeedbackCategoryProof.rows.map((row) => {
+    const useful = numberFromRow(row.useful);
+    const notUseful = numberFromRow(row.not_useful);
+    const total = numberFromRow(row.total);
+    return {
+      category: row.category,
+      fatigueSignals: notUseful,
+      notUseful,
+      total,
+      useful,
+      usefulnessRatePct: pctOrNull(useful, total),
+    };
+  });
+  const durableUsefulFeedback = notificationFeedbackCategories.reduce((total, row) => total + row.useful, 0);
+  const durableNotUsefulFeedback = notificationFeedbackCategories.reduce((total, row) => total + row.notUseful, 0);
+  const durableFeedbackTotal = durableUsefulFeedback + durableNotUsefulFeedback;
+  const usefulFeedbackForSummary = durableFeedbackTotal > 0 ? durableUsefulFeedback : explicitUsefulFeedback;
+  const notUsefulFeedbackForSummary = durableFeedbackTotal > 0 ? durableNotUsefulFeedback : explicitNotUsefulFeedback;
+  const feedbackTotalForSummary = usefulFeedbackForSummary + notUsefulFeedbackForSummary;
   const watchlistUsers = numberFromRow(watchlistRetentionRow?.watchlist_users);
   const returningWatchlistUsers = numberFromRow(watchlistRetentionRow?.returning_watchlist_users);
   const stickySessionRatePct = pctOrNull(multiWorkflowSessions, totalSessions);
   const watchlistRetentionRatePct = pctOrNull(returningWatchlistUsers, watchlistUsers);
-  const notificationUsefulnessRatePct = pctOrNull(notificationUsefulInteractions, notificationEligibleSignals);
+  const notificationFeedbackUsefulnessRatePct = pctOrNull(usefulFeedbackForSummary, feedbackTotalForSummary);
+  const notificationUsefulnessRatePct = notificationFeedbackUsefulnessRatePct ?? pctOrNull(notificationUsefulInteractions, notificationEligibleSignals);
   const mobileSharePct = pctOrNull(mobileEvents, totalEvents);
   const featureAdoptionRows = featureAdoptionProof.rows.map((row) => ({
     activeUsers: numberFromRow(row.active_users),
@@ -1126,8 +1204,12 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
       retentionRatePct: pctOrNull(retainedUsers, eligibleUsers),
     };
   });
+  const day1Retention = retentionCurveRows.find((row) => row.dayOffset === 1) ?? null;
   const day2Retention = retentionCurveRows.find((row) => row.dayOffset === 2) ?? null;
   const day7Retention = retentionCurveRows.find((row) => row.dayOffset === 7) ?? null;
+  const totalActiveDayUsers = numberFromRow(activeDayDepthRow?.active_day_users);
+  const twoPlusActiveDayUsers = numberFromRow(activeDayDepthRow?.two_plus_active_day_users);
+  const sevenPlusActiveDayUsers = numberFromRow(activeDayDepthRow?.seven_plus_active_day_users);
   const adaptiveBehaviorScore = adaptiveProofScore({
     decisionMemoryActions: numberFromRow(adaptiveBehaviorRow?.decision_memory_actions),
     experimentExposure: numberFromRow(adaptiveBehaviorRow?.experiment_exposure),
@@ -1250,22 +1332,35 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
         scannerUsage: numberFromRow(mobileEngagementRow?.scanner_usage),
       },
       notificationUsefulness: {
+        categoryBreakdown: notificationFeedbackCategories,
+        durableFeedbackTotal,
+        durableNotUsefulFeedback,
+        durableUsefulFeedback,
         eligibleSignals: notificationEligibleSignals,
         engaged: numberFromRow(notificationUsefulnessRow?.engaged),
         explicitNotUsefulFeedback,
         explicitUsefulFeedback,
+        fatigueSignals: notificationFatigueSignals + durableNotUsefulFeedback,
         preferenceUpdates: numberFromRow(notificationUsefulnessRow?.preference_updates),
         usefulInteractions: notificationUsefulInteractions,
         usefulnessRatePct: notificationUsefulnessRatePct,
       },
       dailyDriver: {
         cohortEvidence: {
+          day1EligibleUsers: day1Retention?.eligibleUsers ?? 0,
+          day1RetainedUsers: day1Retention?.retainedUsers ?? 0,
+          day1RetentionRatePct: day1Retention?.retentionRatePct ?? null,
           day2EligibleUsers: day2Retention?.eligibleUsers ?? 0,
           day2RetainedUsers: day2Retention?.retainedUsers ?? 0,
           day2RetentionRatePct: day2Retention?.retentionRatePct ?? null,
           day7EligibleUsers: day7Retention?.eligibleUsers ?? 0,
           day7RetainedUsers: day7Retention?.retainedUsers ?? 0,
           day7RetentionRatePct: day7Retention?.retentionRatePct ?? null,
+          sevenPlusActiveDayRatePct: pctOrNull(sevenPlusActiveDayUsers, totalActiveDayUsers),
+          sevenPlusActiveDayUsers,
+          totalActiveDayUsers,
+          twoPlusActiveDayRatePct: pctOrNull(twoPlusActiveDayUsers, totalActiveDayUsers),
+          twoPlusActiveDayUsers,
         },
         habitLoops: {
           alertReturns: numberFromRow(dailyDriverHabitLoopRow?.alert_returns),
@@ -1277,10 +1372,11 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
           watchlistReturns: numberFromRow(dailyDriverHabitLoopRow?.watchlist_returns),
         },
         notificationFeedback: {
-          notUseful: explicitNotUsefulFeedback,
-          total: explicitFeedbackTotal,
-          useful: explicitUsefulFeedback,
-          usefulnessFeedbackRatePct: pctOrNull(explicitUsefulFeedback, explicitFeedbackTotal),
+          fatigueSignals: notificationFatigueSignals + notUsefulFeedbackForSummary,
+          notUseful: notUsefulFeedbackForSummary,
+          total: feedbackTotalForSummary,
+          useful: usefulFeedbackForSummary,
+          usefulnessFeedbackRatePct: pctOrNull(usefulFeedbackForSummary, feedbackTotalForSummary),
         },
       },
       watchlistRetention: {
@@ -1432,6 +1528,28 @@ function eventCount(eventName: AnalyticsEventName, intervalSql: string) {
     `,
     [eventName],
   );
+}
+
+async function notificationFeedbackCategoryBreakdown(intervalSql: string): Promise<{ rows: NotificationFeedbackCategoryRow[] }> {
+  try {
+    return await dbQuery<NotificationFeedbackCategoryRow>(
+      `
+        SELECT
+          COALESCE(NULLIF(notification_type, ''), 'unknown') AS category,
+          count(*) FILTER (WHERE feedback = 'useful') AS useful,
+          count(*) FILTER (WHERE feedback = 'not_useful') AS not_useful,
+          count(*) AS total
+        FROM notification_feedback
+        WHERE updated_at >= now() - ${intervalSql}
+        GROUP BY 1
+        ORDER BY total DESC, category ASC
+        LIMIT 8
+      `,
+    );
+  } catch (error) {
+    console.warn("[analytics] notification feedback breakdown unavailable", error instanceof Error ? error.message : error);
+    return { rows: [] };
+  }
 }
 
 function topSessionPages(intervalSql: string, direction: "ASC" | "DESC") {

@@ -12,6 +12,7 @@ export type OversizedRequestResult =
 export const REQUEST_BODY_LIMITS = {
   analyticsEvents: 64 * 1024,
   developerMutation: 24 * 1024,
+  notificationFeedback: 8 * 1024,
   researchCopilot: 48 * 1024,
   supportMessage: 32 * 1024,
 } as const;

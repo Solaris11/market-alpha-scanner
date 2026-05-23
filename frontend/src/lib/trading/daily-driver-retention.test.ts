@@ -42,8 +42,10 @@ describe("daily driver retention model", () => {
 
     assert.ok(model.activationScore >= 60);
     assert.ok(model.primaryActions.some((action) => action.key === "review_watchlist"));
+    assert.ok(model.primaryActions.some((action) => action.key === "workflow_restore"));
     assert.ok(model.primaryActions.some((action) => action.key === "save_scanner"));
     assert.ok(model.habitLoops.some((loop) => loop.key === "alert_return"));
+    assert.ok(model.habitLoops.some((loop) => loop.key === "notification_feedback"));
     assert.equal(model.personalization.find((item) => item.label === "Focus cluster")?.value, "Semiconductors");
     assert.equal(model.continuity.find((item) => item.label === "Workspace restore")?.value, "Saved");
   });

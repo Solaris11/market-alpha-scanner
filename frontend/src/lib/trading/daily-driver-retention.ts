@@ -53,7 +53,15 @@ export type DailyDriverAction = {
 export type DailyDriverHabitLoop = {
   detail: string;
   href: string;
-  key: "alert_return" | "macro_check" | "morning_check" | "replay_review" | "scanner_reuse" | "strategy_evolution" | "watchlist_movement";
+  key:
+    | "alert_return"
+    | "macro_check"
+    | "morning_check"
+    | "notification_feedback"
+    | "replay_review"
+    | "scanner_reuse"
+    | "strategy_evolution"
+    | "watchlist_movement";
   nextActionLabel: string;
   proofEvent: string;
   status: DailyDriverStatus;
@@ -200,6 +208,26 @@ function buildActions(input: {
     tone: "cyan",
     workflow: "terminal",
   });
+
+  if (input.workflowEvolution?.lastSeenAt) {
+    const restoreSymbol = workflowContinuationSymbol(input.workflowEvolution) ?? input.topWatchlist?.row.symbol ?? input.topOpportunity?.row.symbol ?? null;
+    actions.push({
+      continuityLabel: "Continue where you left off",
+      detail: restoreSymbol
+        ? `${restoreSymbol} has changed enough to restore yesterday's workflow before opening unrelated research.`
+        : "Restore the prior workflow baseline, review what changed, and continue the same research thread.",
+      firstUsefulAction: true,
+      href: restoreSymbol ? `/symbol/${restoreSymbol}` : "/terminal#workflow-evolution",
+      key: "workflow_restore",
+      label: "Continue last workflow",
+      metricLabel: input.workflowEvolution.whatChanged.length ? `${input.workflowEvolution.whatChanged.length} changes` : "Workflow memory",
+      priority: 86,
+      status: "ready",
+      symbol: restoreSymbol,
+      tone: "cyan",
+      workflow: "terminal",
+    });
+  }
 
   if (input.watchlistSymbols.length) {
     const watchSymbol = input.topWatchlist?.row.symbol ?? input.watchlistSymbols[0] ?? null;
@@ -371,6 +399,16 @@ function buildHabitLoops(input: {
       tone: "rose",
     },
     {
+      detail: "Explicit useful and not-useful feedback turns notification delivery into a measurable return loop instead of a vanity alert count.",
+      href: "/alerts",
+      key: "notification_feedback",
+      nextActionLabel: "Rate notifications",
+      proofEvent: "notification_usefulness_feedback",
+      status: "partial",
+      title: "Notification usefulness",
+      tone: "violet",
+    },
+    {
       detail: `${input.triggerMonitorCount} trigger monitor${input.triggerMonitorCount === 1 ? "" : "s"} can connect macro and opportunity review.`,
       href: "/macro",
       key: "macro_check",
@@ -527,6 +565,16 @@ function dominantSector(rows: OpportunityViewModel[], watchlistSymbols: string[]
     }
   }
   return selected;
+}
+
+function workflowContinuationSymbol(workflowEvolution: WorkflowEvolutionSummary | null): string | null {
+  const symbol = workflowEvolution?.watchlistEvolution[0]?.symbol
+    ?? workflowEvolution?.whatChanged[0]?.symbol
+    ?? workflowEvolution?.improvingSetups[0]?.symbol
+    ?? workflowEvolution?.deterioratingSetups[0]?.symbol
+    ?? workflowEvolution?.triggerMonitors[0]?.symbol
+    ?? null;
+  return normalizeSymbols(symbol ? [symbol] : [])[0] ?? null;
 }
 
 function normalizeSymbols(symbols: string[]): string[] {
