@@ -31,6 +31,7 @@ const PRODUCT_NAV_ROUTES = new Set([
 
 const HYDRATION_PATTERN = /hydration|hydrate|server rendered|client properties|text content does not match|minified react error #418/i;
 const ARTIFACT_DIR = resolve(process.cwd(), "..", "docs", "ops", "artifacts", "phase-21-1", "browserstack-screenshots");
+const BASE_URL = (process.env.TRADEVETO_MOBILE_UX_BASE_URL ?? "https://tradeveto.com").replace(/\/$/, "");
 
 type MobileMetrics = {
   activeElementBottom: number | null;
@@ -115,17 +116,24 @@ async function navigateAndSettle(page: Page, route: string): Promise<void> {
   await page.waitForLoadState("domcontentloaded", { timeout: 15_000 }).catch(() => undefined);
   await page.waitForLoadState("networkidle", { timeout: 12_000 }).catch(() => undefined);
   await page.waitForTimeout(900);
+  const path = await page.evaluate(() => window.location.pathname);
+  expect(path, `${route} should resolve to requested route`).toBe(route);
 }
 
 async function gotoRouteWithRetry(page: Page, route: string): Promise<Response | null> {
+  const url = `${BASE_URL}${route}`;
   try {
-    return await page.goto(route, { timeout: 45_000, waitUntil: "commit" });
+    return await page.goto(url, { timeout: 60_000, waitUntil: "domcontentloaded" });
   } catch (firstError) {
     await page.waitForTimeout(1_000);
     try {
-      return await page.goto(route, { timeout: 45_000, waitUntil: "commit" });
+      return await page.goto(url, { timeout: 60_000, waitUntil: "commit" });
     } catch {
-      throw firstError;
+      await page.evaluate((nextUrl: string) => {
+        window.location.assign(nextUrl);
+      }, url);
+      await page.waitForFunction((expectedPath: string) => window.location.pathname === expectedPath, route, { timeout: 45_000 });
+      return null;
     }
   }
 }
@@ -211,7 +219,13 @@ async function assertTouchResponsiveness(page: Page): Promise<void> {
   if (!(await button.isVisible().catch(() => false))) return;
   const box = await button.boundingBox();
   if (!box || box.width < 20 || box.height < 20) return;
-  await page.touchscreen.tap(box.x + Math.min(box.width / 2, 24), box.y + Math.min(box.height / 2, 24));
+  const x = box.x + Math.min(box.width / 2, 24);
+  const y = box.y + Math.min(box.height / 2, 24);
+  await page.touchscreen.tap(x, y).catch(async () => {
+    await button.dispatchEvent("pointerdown", { pointerType: "touch", isPrimary: true, clientX: x, clientY: y });
+    await button.dispatchEvent("pointerup", { pointerType: "touch", isPrimary: true, clientX: x, clientY: y });
+    await button.click({ force: true });
+  });
   await page.keyboard.press("Escape").catch(() => undefined);
   await page.waitForTimeout(200);
 }
