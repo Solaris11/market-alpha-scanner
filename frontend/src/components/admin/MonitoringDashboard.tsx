@@ -44,6 +44,7 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
   const backupProvider = monitoring.backupHealth?.offsiteProvider ?? metadataText(latestBackupMetadata, "offsite_provider") ?? metadataText(latestBackupMetadata, "provider") ?? "unknown";
   const backupDurationSeconds = metadataNumber(latestBackupMetadata, "duration_seconds");
   const backupRetryCount = metadataNumber(latestBackupMetadata, "retry_count");
+  const trust = monitoring.trustArchitecture;
 
   const routeKey = (route: SlowRoute, index: number) => `${route.method}:${route.route}:${index}`;
   const latestSelectedCheck = monitoring.syntheticChecks.find((check) => check.checkName === selectedCheck) ?? monitoring.syntheticChecks[0] ?? null;
@@ -85,11 +86,22 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
         <MetricCard label="LLM Calls Today" value={formatCount(monitoring.llmUsage.today.requests)} />
         <MetricCard label="LLM Cache Hits" value={formatCount(monitoring.llmUsage.today.cacheHits)} />
         <MetricCard label="LLM Blocks" tone={monitoring.llmUsage.today.blocked ? "warn" : "good"} value={formatCount(monitoring.llmUsage.today.blocked)} />
+        <MetricCard label="SSE Active" tone={trust.sseStreamHealth.reconnectPressure === "elevated" ? "warn" : "default"} value={formatCount(trust.sseStreamHealth.activeStreams)} />
+        <MetricCard label="SSE Errors 1h" tone={trust.sseStreamHealth.errorsLastHour ? "warn" : "good"} value={formatCount(trust.sseStreamHealth.errorsLastHour)} />
+        <MetricCard label="Provider State" tone={statusTone(trust.publicStatus.providerFreshness.operationalState)} value={humanizeLabel(trust.publicStatus.providerFreshness.operationalState)} />
+        <MetricCard label="D2 Retention" value={formatMonitoringPercent(trust.retention.day2RetentionRatePct)} />
+        <MetricCard label="D7 Retention" value={formatMonitoringPercent(trust.retention.day7RetentionRatePct)} />
+        <MetricCard label="Chaos Gate" tone={statusTone(trust.chaosGate.status)} value={humanizeLabel(trust.chaosGate.status)} />
+        <MetricCard label="Mobile Cert" tone={statusTone(trust.mobileCertification.status)} value={humanizeLabel(trust.mobileCertification.status)} />
       </section>
 
       <div className="grid gap-5 xl:grid-cols-2">
         <ChartPanel className="xl:col-span-2" subtitle="In-process hot packet telemetry for authenticated scanner and live-intelligence endpoints." title="Hot Endpoint Runtime">
           <HotEndpointRuntimePanel endpoints={monitoring.requestMetrics.hotEndpointRuntime} />
+        </ChartPanel>
+
+        <ChartPanel className="xl:col-span-2" subtitle="Admin-only rollup of public trust status, stream health, retention proof, and certification gates." title="Production Trust Architecture">
+          <ProductionTrustPanel monitoring={monitoring} />
         </ChartPanel>
 
         <ChartPanel className="xl:col-span-2" subtitle="Evidence gates required before resilience, scale, and chaos certification can be claimed." title="Scale Certification Gate">
@@ -121,6 +133,12 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
                 label: "P95",
                 valueFormatter: formatMonitoringMs,
                 values: requestSeries.map((point) => ({ bucket: point.bucket, value: point.p95LatencyMs })),
+              },
+              {
+                color: COLORS.rose,
+                label: "P99",
+                valueFormatter: formatMonitoringMs,
+                values: requestSeries.map((point) => ({ bucket: point.bucket, value: point.p99LatencyMs })),
               },
             ]}
           />
@@ -337,6 +355,9 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
 function ScaleCertificationGatePanel({ monitoring }: { monitoring: AdminMonitoringSummary }) {
   const hotSamples = monitoring.requestMetrics.hotEndpointRuntime.reduce((sum, endpoint) => sum + endpoint.sampleCount, 0);
   const cacheVisible = monitoring.requestMetrics.hotEndpointRuntime.some((endpoint) => endpoint.sampleCount > 0);
+  const stream = monitoring.trustArchitecture.sseStreamHealth;
+  const chaosGate = monitoring.trustArchitecture.chaosGate;
+  const mobileGate = monitoring.trustArchitecture.mobileCertification;
   const checks = [
     {
       detail: `${formatCount(monitoring.requestMetrics.requestsLastHour)} request metric row(s) in window.`,
@@ -354,6 +375,11 @@ function ScaleCertificationGatePanel({ monitoring }: { monitoring: AdminMonitori
       passed: cacheVisible,
     },
     {
+      detail: `${formatCount(stream.activeStreams)} active stream(s), ${formatCount(stream.eventsLastHour)} event(s), ${formatCount(stream.errorsLastHour)} error(s) in the in-process one-hour window.`,
+      label: "SSE stream health",
+      passed: stream.reconnectPressure !== "elevated",
+    },
+    {
       detail: `${formatCount(monitoring.syntheticChecks.length)} latest synthetic check row(s).`,
       label: "Synthetic checks",
       passed: monitoring.syntheticChecks.length > 0,
@@ -364,9 +390,14 @@ function ScaleCertificationGatePanel({ monitoring }: { monitoring: AdminMonitori
       passed: monitoring.system.memoryPercent !== null || monitoring.system.cpuPercent !== null,
     },
     {
-      detail: "Must be attached from load/chaos probe artifacts before certification.",
+      detail: chaosGate.evidence,
       label: "Scale/chaos artifact link",
-      passed: false,
+      passed: chaosGate.status === "certified",
+    },
+    {
+      detail: mobileGate.evidence,
+      label: "Mobile certification link",
+      passed: mobileGate.status === "certified",
     },
   ];
 
@@ -381,6 +412,79 @@ function ScaleCertificationGatePanel({ monitoring }: { monitoring: AdminMonitori
           <p className="mt-2 text-xs leading-5 text-slate-500">{check.detail}</p>
         </div>
       ))}
+    </div>
+  );
+}
+
+function ProductionTrustPanel({ monitoring }: { monitoring: AdminMonitoringSummary }) {
+  const trust = monitoring.trustArchitecture;
+  const provider = trust.publicStatus.providerFreshness;
+  const retention = trust.retention;
+  const gates = [trust.chaosGate, trust.mobileCertification];
+  return (
+    <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+      <div className="space-y-3">
+        <div className="grid gap-2 sm:grid-cols-2">
+          <MetricPill label="public status" tone={statusTone(trust.publicStatus.overallStatus)} value={humanizeLabel(trust.publicStatus.overallStatus)} />
+          <MetricPill label="provider" tone={statusTone(provider.operationalState)} value={humanizeLabel(provider.operationalState)} />
+          <MetricPill label="fallback rows" tone={provider.fallbackCount ? "warn" : "default"} value={formatCount(provider.fallbackCount)} />
+          <MetricPill label="incidents" tone={trust.publicStatus.incidents.length ? "warn" : "good"} value={formatCount(trust.publicStatus.incidents.length)} />
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {trust.publicStatus.trustStates.map((state) => (
+            <div className={`rounded-xl border p-3 ${trustStatePanelClass(state.status)}`} key={state.key}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm font-semibold text-slate-100">{state.label}</div>
+                <StatusBadge tone={trustStateTone(state.status)}>{state.status}</StatusBadge>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-500">{state.detail}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-3">
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Retention Proof</div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <MetricPill label="active users" value={formatCount(retention.activeUsers)} />
+            <MetricPill label="D2" value={`${formatMonitoringPercent(retention.day2RetentionRatePct)} (${retention.day2RetainedUsers}/${retention.day2EligibleUsers})`} />
+            <MetricPill label="D7" value={`${formatMonitoringPercent(retention.day7RetentionRatePct)} (${retention.day7RetainedUsers}/${retention.day7EligibleUsers})`} />
+            <MetricPill label="return sessions" value={formatCount(retention.returnSessions)} />
+            <MetricPill label="scanner returns" value={formatCount(retention.scannerReturns)} />
+            <MetricPill label="watchlist returns" value={formatCount(retention.watchlistReturns)} />
+            <MetricPill label="alert returns" value={formatCount(retention.alertReturns)} />
+            <MetricPill label="notif useful" value={`${formatMonitoringPercent(retention.notificationUsefulRatePct)} (${retention.notificationUseful}/${retention.notificationFeedbackTotal})`} />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+          <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">Live Stream Health</div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <MetricPill label="active" value={formatCount(trust.sseStreamHealth.activeStreams)} />
+            <MetricPill label="opened 1h" value={formatCount(trust.sseStreamHealth.openedStreamsLastHour)} />
+            <MetricPill label="closed 1h" value={formatCount(trust.sseStreamHealth.closedStreamsLastHour)} />
+            <MetricPill label="events 1h" value={formatCount(trust.sseStreamHealth.eventsLastHour)} />
+            <MetricPill label="errors 1h" tone={trust.sseStreamHealth.errorsLastHour ? "warn" : "default"} value={formatCount(trust.sseStreamHealth.errorsLastHour)} />
+            <MetricPill label="error rate" value={formatMonitoringPercent(trust.sseStreamHealth.errorRatePct)} />
+            <MetricPill label="avg build" value={formatMonitoringMs(trust.sseStreamHealth.averageEventBuildMs)} />
+            <MetricPill label="pressure" tone={trust.sseStreamHealth.reconnectPressure === "elevated" ? "warn" : "default"} value={humanizeLabel(trust.sseStreamHealth.reconnectPressure)} />
+          </div>
+        </div>
+
+        <div className="grid gap-2">
+          {gates.map((gate) => (
+            <div className={`rounded-xl border p-3 ${statusPanelClass(gate.status)}`} key={gate.label}>
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-sm font-semibold text-slate-100">{gate.label}</div>
+                <StatusBadge tone={statusTone(gate.status)}>{humanizeLabel(gate.status)}</StatusBadge>
+              </div>
+              <p className="mt-2 text-xs leading-5 text-slate-500">{gate.evidence}</p>
+              {gate.blockers.length ? <p className="mt-2 text-xs leading-5 text-amber-100">{gate.blockers.slice(0, 2).join(" ")}</p> : null}
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
@@ -656,10 +760,30 @@ function EmptyState({ children }: { children: ReactNode }) {
 
 function statusTone(status: string | null | undefined): Tone {
   const normalized = String(status ?? "").toLowerCase();
-  if (["backup_success", "backup_r2_success", "local_backup_ok", "offsite_sync_ok", "ok", "success", "active", "trialing", "healthy"].includes(normalized)) return "good";
-  if (["backup_partial", "partial", "warn", "warning", "pending", "past_due", "stale", "unknown"].includes(normalized)) return "warn";
-  if (["backup_failed", "backup_r2_failure", "offsite_sync_failed", "error", "fail", "failed", "missing", "canceled", "unpaid", "inactive"].includes(normalized)) return "bad";
+  if (["backup_success", "backup_r2_success", "certified", "clear", "local_backup_ok", "offsite_sync_ok", "ok", "operational", "success", "active", "trialing", "healthy", "normal"].includes(normalized)) return "good";
+  if (["backup_partial", "degraded", "delayed", "limited", "partial", "partial-outage", "warn", "warning", "pending", "past_due", "stale", "unknown"].includes(normalized)) return "warn";
+  if (["backup_failed", "blocked", "backup_r2_failure", "offsite_sync_failed", "error", "fail", "failed", "missing", "outage", "canceled", "unpaid", "inactive", "elevated"].includes(normalized)) return "bad";
   return "default";
+}
+
+function statusPanelClass(status: string): string {
+  const tone = statusTone(status);
+  if (tone === "good") return "border-emerald-300/20 bg-emerald-400/[0.055]";
+  if (tone === "warn") return "border-amber-300/20 bg-amber-400/[0.06]";
+  if (tone === "bad") return "border-rose-300/20 bg-rose-400/[0.065]";
+  return "border-white/10 bg-white/[0.03]";
+}
+
+function trustStateTone(status: string): Tone {
+  if (status === "clear") return "good";
+  if (status === "active") return "warn";
+  return "default";
+}
+
+function trustStatePanelClass(status: string): string {
+  if (status === "clear") return "border-emerald-300/20 bg-emerald-400/[0.055]";
+  if (status === "active") return "border-amber-300/20 bg-amber-400/[0.06]";
+  return "border-white/10 bg-white/[0.03]";
 }
 
 function metadataText(metadata: Record<string, unknown> | null | undefined, key: string): string | null {

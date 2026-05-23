@@ -1,3 +1,9 @@
+import {
+  recordLiveIntelligenceStreamClose,
+  recordLiveIntelligenceStreamError,
+  recordLiveIntelligenceStreamEvent,
+  recordLiveIntelligenceStreamOpen,
+} from "@/lib/live-intelligence-stream-health";
 import { requirePremium } from "@/lib/server/access-control";
 import { loadLiveIntelligenceSystem } from "@/lib/server/live-intelligence";
 
@@ -13,16 +19,21 @@ export async function GET(request: Request) {
   let closed = false;
   let timer: ReturnType<typeof setInterval> | null = null;
   let sequence = 0;
+  let streamId: string | null = null;
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
+      streamId = recordLiveIntelligenceStreamOpen(refreshIntervalMs);
       async function send(): Promise<void> {
         if (closed) return;
+        const startedAt = Date.now();
         try {
           sequence += 1;
           const system = await loadLiveIntelligenceSystem({ refreshIntervalMs, sequence, streamMode: "sse" });
           controller.enqueue(encoder.encode(`event: live-intelligence\ndata: ${JSON.stringify(system)}\n\n`));
+          recordLiveIntelligenceStreamEvent(Date.now() - startedAt);
         } catch {
+          recordLiveIntelligenceStreamError(Date.now() - startedAt);
           if (!closed) {
             try {
               controller.enqueue(encoder.encode(`event: live-error\ndata: ${JSON.stringify({ message: "Live intelligence is temporarily unavailable." })}\n\n`));
@@ -41,6 +52,7 @@ export async function GET(request: Request) {
       request.signal.addEventListener("abort", () => {
         closed = true;
         if (timer) clearInterval(timer);
+        if (streamId) recordLiveIntelligenceStreamClose(streamId);
         try {
           controller.close();
         } catch {
@@ -51,6 +63,7 @@ export async function GET(request: Request) {
     cancel() {
       closed = true;
       if (timer) clearInterval(timer);
+      if (streamId) recordLiveIntelligenceStreamClose(streamId);
     },
   });
 

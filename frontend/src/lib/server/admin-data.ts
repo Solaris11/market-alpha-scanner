@@ -3,13 +3,16 @@ import "server-only";
 import type { QueryResultRow } from "pg";
 import type { BackupHealthDetails } from "@/lib/backup-health";
 import { getDiscoveryPerformanceSnapshot } from "@/lib/discovery-performance";
+import { getLiveIntelligenceStreamHealthSnapshot, type LiveIntelligenceStreamHealthSnapshot } from "@/lib/live-intelligence-stream-health";
 import { getLiveIntelligencePerformanceSnapshot } from "@/lib/live-intelligence-performance";
 import { llmBudgetCapsFromEnv } from "@/lib/llm-cost-policy";
 import { getScanDataHealth } from "@/lib/scanner-data";
 import { buildEvidenceDepthSummary, type EvidenceDepthDuplicateCheck, type EvidenceDepthSummary, type EvidenceDepthSymbol, type EvidenceDepthTableCount, type EvidenceDepthWindow } from "@/lib/trading/evidence-depth";
 import { buildScoreCalibrationSystem, type CalibrationAxisDirection, type ScoreCalibrationAnomaly, type ScoreCalibrationAnomalyType, type ScoreCalibrationBucketInput, type ScoreCalibrationSystem } from "@/lib/trading/score-calibration";
+import { certificationGateStatusFromEvent, type CertificationGateStatus } from "@/lib/production-trust-status";
 import { deepHealth } from "./monitoring";
 import { dbQuery } from "./db";
+import { getProductionTrustStatus, type ProductionTrustStatus } from "./production-trust-status";
 
 export type AdminDashboardSummary = {
   billing: {
@@ -158,7 +161,7 @@ export type AdminMonitoringSummary = {
     recent4xx: number;
     recent5xx: number;
     requestsLastHour: number;
-    series: Array<{ bucket: string; fiveXx: number; fourXx: number; p50LatencyMs: number | null; p95LatencyMs: number | null; requests: number }>;
+    series: Array<{ bucket: string; fiveXx: number; fourXx: number; p50LatencyMs: number | null; p95LatencyMs: number | null; p99LatencyMs: number | null; requests: number }>;
     slowestRoutes: Array<{
       count: number;
       errors: number;
@@ -190,6 +193,39 @@ export type AdminMonitoringSummary = {
   };
   systemSeries: Array<{ bucket: string; cpuPercent: number | null; diskPercent: number | null; memoryPercent: number | null }>;
   timeRange: MonitoringTimeRange;
+  trustArchitecture: {
+    chaosGate: OperationalCertificationGate;
+    mobileCertification: OperationalCertificationGate;
+    publicStatus: ProductionTrustStatus;
+    retention: MonitoringRetentionMetrics;
+    sseStreamHealth: LiveIntelligenceStreamHealthSnapshot;
+  };
+};
+
+export type OperationalCertificationGate = {
+  blockers: string[];
+  evidence: string;
+  label: string;
+  lastUpdated: string | null;
+  status: CertificationGateStatus;
+};
+
+export type MonitoringRetentionMetrics = {
+  activeUsers: number;
+  alertReturns: number;
+  day2EligibleUsers: number;
+  day2RetainedUsers: number;
+  day2RetentionRatePct: number | null;
+  day7EligibleUsers: number;
+  day7RetainedUsers: number;
+  day7RetentionRatePct: number | null;
+  notificationFeedbackTotal: number;
+  notificationNotUseful: number;
+  notificationUseful: number;
+  notificationUsefulRatePct: number | null;
+  returnSessions: number;
+  scannerReturns: number;
+  watchlistReturns: number;
 };
 
 export type MonitoringTimeRange = "15m" | "1h" | "6h" | "24h" | "1w" | "1m" | "6m";
@@ -354,6 +390,7 @@ type RequestSeriesRow = QueryResultRow & {
   four_xx: string | number;
   p50_latency_ms: string | number | null;
   p95_latency_ms: string | number | null;
+  p99_latency_ms: string | number | null;
   requests: string | number;
 };
 type SyntheticCheckSeriesRow = QueryResultRow & {
@@ -497,6 +534,20 @@ type ProviderUsageDbRow = QueryResultRow & {
 type FallbackReasonDbRow = QueryResultRow & {
   count: string | number;
   reason: string | null;
+};
+type MonitoringRetentionMetricsRow = QueryResultRow & {
+  active_users: string | number;
+  alert_returns: string | number;
+  day2_eligible_users: string | number;
+  day2_retained_users: string | number;
+  day7_eligible_users: string | number;
+  day7_retained_users: string | number;
+  notification_feedback_total: string | number;
+  notification_not_useful: string | number;
+  notification_useful: string | number;
+  return_sessions: string | number;
+  scanner_returns: string | number;
+  watchlist_returns: string | number;
 };
 
 export async function getAdminDashboardSummary(): Promise<AdminDashboardSummary> {
@@ -683,7 +734,7 @@ export async function getAdminScannerSummary(): Promise<AdminScannerSummary> {
 
 export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange = "1h"): Promise<AdminMonitoringSummary> {
   const window = monitoringWindow(timeRange);
-  const [synthetics, requestMetrics, requestSeries, slowestRoutes, system, systemSeries, syntheticSeries, syntheticCheckSeries, backupSeries, appEvents, latestBackup, llmUsage, deep] = await Promise.all([
+  const [synthetics, requestMetrics, requestSeries, slowestRoutes, system, systemSeries, syntheticSeries, syntheticCheckSeries, backupSeries, appEvents, latestBackup, llmUsage, deep, publicStatus, retention, chaosGate, mobileCertification] = await Promise.all([
     dbQuery<SyntheticRow>(
       `
         SELECT DISTINCT ON (check_name)
@@ -717,7 +768,8 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
           count(*) FILTER (WHERE status_code >= 400 AND status_code < 500) AS four_xx,
           count(*) FILTER (WHERE status_code >= 500) AS five_xx,
           percentile_cont(0.50) WITHIN GROUP (ORDER BY latency_ms) AS p50_latency_ms,
-          percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms
+          percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms,
+          percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms) AS p99_latency_ms
         FROM request_metrics
         WHERE created_at > now() - ${window.intervalSql}
         GROUP BY bucket
@@ -906,6 +958,26 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
     recentMonitoringEventByType("backup"),
     getLlmUsageSummary(),
     deepHealth().catch(() => null),
+    getProductionTrustStatus(),
+    getMonitoringRetentionMetrics(),
+    getOperationalCertificationGate({
+      defaultBlockers: [
+        "No passing production chaos certification event is attached to monitoring_events.",
+        "Provider outage fallback/recovery must be recorded before this gate can be certified.",
+      ],
+      eventTypes: ["phase22:scale_resilience", "phase22_scale_resilience", "resilience_chaos", "chaos_probe"],
+      label: "Scale and chaos gate",
+      missingEvidence: "No recent scale/chaos certification monitoring event found.",
+    }),
+    getOperationalCertificationGate({
+      defaultBlockers: [
+        "No passing BrowserStack real-device certification event is attached to monitoring_events.",
+        "Physical and in-app browser proof must be recorded before this gate can be certified.",
+      ],
+      eventTypes: ["phase22:mobile_real_device", "browserstack_real_device", "mobile_certification", "browserstack"],
+      label: "Mobile real-device gate",
+      missingEvidence: "No recent real-device mobile certification monitoring event found.",
+    }),
   ]);
   const metrics = requestMetrics.rows[0];
   const latestSystem = system.rows[0];
@@ -932,6 +1004,7 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
         fourXx: toNumber(row.four_xx),
         p50LatencyMs: toNullableNumber(row.p50_latency_ms),
         p95LatencyMs: toNullableNumber(row.p95_latency_ms),
+        p99LatencyMs: toNullableNumber(row.p99_latency_ms),
         requests: toNumber(row.requests),
       })),
       slowestRoutes: slowestRoutes.rows.map((row) => ({
@@ -977,6 +1050,156 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
     },
     systemSeries: systemSeries.rows.map((row) => ({ bucket: row.bucket, cpuPercent: toNullableNumber(row.cpu_percent), diskPercent: toNullableNumber(row.disk_percent), memoryPercent: toNullableNumber(row.memory_percent) })),
     timeRange,
+    trustArchitecture: {
+      chaosGate,
+      mobileCertification,
+      publicStatus,
+      retention,
+      sseStreamHealth: getLiveIntelligenceStreamHealthSnapshot(),
+    },
+  };
+}
+
+async function getMonitoringRetentionMetrics(): Promise<MonitoringRetentionMetrics> {
+  const empty: MonitoringRetentionMetrics = {
+    activeUsers: 0,
+    alertReturns: 0,
+    day2EligibleUsers: 0,
+    day2RetainedUsers: 0,
+    day2RetentionRatePct: null,
+    day7EligibleUsers: 0,
+    day7RetainedUsers: 0,
+    day7RetentionRatePct: null,
+    notificationFeedbackTotal: 0,
+    notificationNotUseful: 0,
+    notificationUseful: 0,
+    notificationUsefulRatePct: null,
+    returnSessions: 0,
+    scannerReturns: 0,
+    watchlistReturns: 0,
+  };
+  const result = await dbQuery<MonitoringRetentionMetricsRow>(
+    `
+      WITH actor_days AS (
+        SELECT
+          COALESCE(user_id::text, anonymous_id_hash) AS actor_id,
+          occurred_at::date AS active_day
+        FROM analytics_events
+        WHERE occurred_at > now() - interval '45 days'
+          AND COALESCE(user_id::text, anonymous_id_hash) IS NOT NULL
+        GROUP BY actor_id, active_day
+      ),
+      first_seen AS (
+        SELECT actor_id, min(active_day) AS first_day
+        FROM actor_days
+        GROUP BY actor_id
+      ),
+      loops AS (
+        SELECT
+          count(*) FILTER (WHERE event_name = 'return_session') AS return_sessions,
+          count(*) FILTER (WHERE event_name = 'scanner_return') AS scanner_returns,
+          count(*) FILTER (WHERE event_name = 'watchlist_return') AS watchlist_returns,
+          count(*) FILTER (WHERE event_name = 'alert_return') AS alert_returns,
+          count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback' AND metadata->>'action' = 'useful_feedback') AS notification_useful,
+          count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback' AND metadata->>'action' = 'not_useful_feedback') AS notification_not_useful,
+          count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback') AS notification_feedback_total
+        FROM analytics_events
+        WHERE occurred_at > now() - interval '30 days'
+      )
+      SELECT
+        (SELECT count(*) FROM first_seen) AS active_users,
+        (SELECT count(*) FROM first_seen f WHERE f.first_day <= current_date - 2) AS day2_eligible_users,
+        (
+          SELECT count(*)
+          FROM first_seen f
+          WHERE f.first_day <= current_date - 2
+            AND EXISTS (
+              SELECT 1 FROM actor_days d
+              WHERE d.actor_id = f.actor_id
+                AND d.active_day = f.first_day + 2
+            )
+        ) AS day2_retained_users,
+        (SELECT count(*) FROM first_seen f WHERE f.first_day <= current_date - 7) AS day7_eligible_users,
+        (
+          SELECT count(*)
+          FROM first_seen f
+          WHERE f.first_day <= current_date - 7
+            AND EXISTS (
+              SELECT 1 FROM actor_days d
+              WHERE d.actor_id = f.actor_id
+                AND d.active_day = f.first_day + 7
+            )
+        ) AS day7_retained_users,
+        loops.return_sessions,
+        loops.scanner_returns,
+        loops.watchlist_returns,
+        loops.alert_returns,
+        loops.notification_useful,
+        loops.notification_not_useful,
+        loops.notification_feedback_total
+      FROM loops
+    `,
+  ).catch(() => ({ rows: [] as MonitoringRetentionMetricsRow[] }));
+  const row = result.rows[0];
+  if (!row) return empty;
+  const day2EligibleUsers = toNumber(row.day2_eligible_users);
+  const day2RetainedUsers = toNumber(row.day2_retained_users);
+  const day7EligibleUsers = toNumber(row.day7_eligible_users);
+  const day7RetainedUsers = toNumber(row.day7_retained_users);
+  const notificationUseful = toNumber(row.notification_useful);
+  const notificationTotal = toNumber(row.notification_feedback_total);
+  return {
+    activeUsers: toNumber(row.active_users),
+    alertReturns: toNumber(row.alert_returns),
+    day2EligibleUsers,
+    day2RetainedUsers,
+    day2RetentionRatePct: pctFromCounts(day2RetainedUsers, day2EligibleUsers),
+    day7EligibleUsers,
+    day7RetainedUsers,
+    day7RetentionRatePct: pctFromCounts(day7RetainedUsers, day7EligibleUsers),
+    notificationFeedbackTotal: notificationTotal,
+    notificationNotUseful: toNumber(row.notification_not_useful),
+    notificationUseful,
+    notificationUsefulRatePct: pctFromCounts(notificationUseful, notificationTotal),
+    returnSessions: toNumber(row.return_sessions),
+    scannerReturns: toNumber(row.scanner_returns),
+    watchlistReturns: toNumber(row.watchlist_returns),
+  };
+}
+
+async function getOperationalCertificationGate(input: {
+  defaultBlockers: string[];
+  eventTypes: string[];
+  label: string;
+  missingEvidence: string;
+}): Promise<OperationalCertificationGate> {
+  const result = await dbQuery<MonitoringEventRow>(
+    `
+      SELECT event_type, severity, status, message, metadata, created_at::text
+      FROM monitoring_events
+      WHERE event_type = ANY($1::text[])
+      ORDER BY created_at DESC
+      LIMIT 1
+    `,
+    [input.eventTypes],
+  ).catch(() => ({ rows: [] as MonitoringEventRow[] }));
+  const event = result.rows[0] ?? null;
+  if (!event) {
+    return {
+      blockers: input.defaultBlockers,
+      evidence: input.missingEvidence,
+      label: input.label,
+      lastUpdated: null,
+      status: "unknown",
+    };
+  }
+  const status = certificationGateStatusFromEvent({ eventStatus: event.status, hasEvidence: true });
+  return {
+    blockers: status === "certified" ? [] : input.defaultBlockers,
+    evidence: event.message,
+    label: input.label,
+    lastUpdated: event.created_at,
+    status,
   };
 }
 
@@ -1305,6 +1528,11 @@ function toNullableNumber(value: string | number | null | undefined): number | n
   if (value === null || value === undefined) return null;
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
+}
+
+function pctFromCounts(numerator: number, denominator: number): number | null {
+  if (!Number.isFinite(numerator) || !Number.isFinite(denominator) || denominator <= 0) return null;
+  return Math.round((numerator / denominator) * 10_000) / 100;
 }
 
 async function calibrationGroupQuery(groupType: CalibrationGroupType): Promise<CalibrationMetricRow[]> {
