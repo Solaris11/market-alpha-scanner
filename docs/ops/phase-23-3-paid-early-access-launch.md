@@ -8,9 +8,9 @@ Production host: `sre@100.68.155.121`
 
 Production path: `/opt/apps/market-alpha-scanner/app`
 
-Final deployed runtime commit: pending production deployment
+Final deployed runtime commit: `272f8ad`
 
-Final verdict: pending production deployment
+Final verdict: **TRADEVETO PAID EARLY ACCESS LAUNCH ACCOMPLISHED**
 
 ## Scope
 
@@ -90,25 +90,39 @@ Final local validation after all code and docs changes:
 
 ## Production Deploy Proof
 
-Pending after commit/push and production deployment.
+Production was pulled and rebuilt from `main`.
 
-Required production workflow:
+- Before pull: `c050d8a`
+- After pull: `272f8ad`
+- Rebuild command: `docker compose --env-file .env up -d --build market-alpha-frontend`
+- Container: `market-alpha-frontend`
+- Final health state: `healthy`
 
-- `git pull --ff-only origin main`
-- `docker compose --env-file .env up -d --build market-alpha-frontend`
-- `curl -fsS https://tradeveto.com/api/health`
-- `curl -fsS https://tradeveto.com/api/health/deep`
+Pre-pull note:
 
-Required route smoke:
+- Production had untracked Phase 23.2 artifact files from the prior certification run. They were moved to `/tmp/tradeveto-prepull-phase23-20260523215550/docs/ops/artifacts/phase-23-2` before `git pull --ff-only` so the tracked artifact files from `main` could be checked out safely.
 
-- `/`
-- `/pricing`
-- `/register`
-- `/waitlist`
-- `/terminal`
-- `/scanner`
-- `/support`
-- `/account`
+Production smoke from the production Linux host against `https://tradeveto.com`:
+
+| Route | Status | Bytes |
+| --- | ---: | ---: |
+| `/api/health` | 200 | 114 |
+| `/api/health/deep` | 200 | 1490 |
+| `/` | 200 | 306764 |
+| `/pricing` | 200 | 46259 |
+| `/register` | 200 | 45855 |
+| `/waitlist` | 200 | 34546 |
+| `/terminal` | 200 | 105084 |
+| `/scanner` | 200 | 46693 |
+| `/support` | 200 | 91716 |
+| `/account` | 200 | 48671 |
+| `/discover` | 200 | 52709 |
+| `/symbol/AMD` | 200 | 113329 |
+
+Registration gate proof:
+
+- POST `/api/auth/register` with a unique email and intentionally invalid short password returned HTTP 400 with `{"ok":false,"error":"Unable to create account."}`.
+- It did not return `early_access_required` or `beta_access_required`, proving the request was not blocked by the removed beta-only signup gate.
 
 ## Remaining Evidence Gaps
 
@@ -131,4 +145,4 @@ Accomplished requires:
 
 ## Verdict
 
-Pending production deployment.
+TRADEVETO PAID EARLY ACCESS LAUNCH ACCOMPLISHED
