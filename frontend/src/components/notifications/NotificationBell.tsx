@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
+import { X } from "lucide-react";
 import { notificationDisplayMessage, type NotificationFeedbackValue, type UserNotification } from "@/lib/notifications";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
@@ -15,10 +16,16 @@ type NotificationsResponse = {
   unreadCount?: number;
 };
 
+const NOTIFICATION_DRAWER_OPEN_EVENT = "tradeveto:notifications-open";
+
 export function NotificationBell() {
   const router = useRouter();
   const { authenticated, loading } = useCurrentUser();
+  const instanceId = useId();
+  const menuId = useId();
+  const titleId = useId();
   const buttonRef = useRef<HTMLButtonElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
   const [open, setOpen] = useState(false);
@@ -96,9 +103,44 @@ export function NotificationBell() {
     });
   }, []);
 
+  const closeNotifications = useCallback((options: { restoreFocus?: boolean } = {}) => {
+    const restoreFocus = options.restoreFocus ?? true;
+    setOpen(false);
+    if (restoreFocus) {
+      window.setTimeout(() => {
+        buttonRef.current?.focus({ preventScroll: true });
+      }, 0);
+    }
+  }, []);
+
+  const toggleNotifications = useCallback(() => {
+    updateMenuPosition();
+    setOpen((value) => {
+      const next = !value;
+      if (next) {
+        window.dispatchEvent(new CustomEvent(NOTIFICATION_DRAWER_OPEN_EVENT, { detail: instanceId }));
+      }
+      trackAnalyticsEvent("notification_engagement", { action: next ? "open_menu" : "close_menu", unreadCount }, { source: "notification_bell" });
+      return next;
+    });
+    void loadNotifications();
+  }, [instanceId, loadNotifications, unreadCount, updateMenuPosition]);
+
   useLayoutEffect(() => {
     if (open) updateMenuPosition();
   }, [open, updateMenuPosition]);
+
+  useEffect(() => {
+    function onPeerDrawerOpen(event: Event) {
+      if (!(event instanceof CustomEvent) || event.detail === instanceId) return;
+      setOpen(false);
+    }
+
+    window.addEventListener(NOTIFICATION_DRAWER_OPEN_EVENT, onPeerDrawerOpen);
+    return () => {
+      window.removeEventListener(NOTIFICATION_DRAWER_OPEN_EVENT, onPeerDrawerOpen);
+    };
+  }, [instanceId]);
 
   useEffect(() => {
     if (!open) return;
@@ -107,25 +149,40 @@ export function NotificationBell() {
     function onPointerDown(event: PointerEvent) {
       const target = event.target as Node;
       if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return;
-      setOpen(false);
+      event.preventDefault();
+      event.stopPropagation();
+      closeNotifications();
     }
 
     function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setOpen(false);
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        closeNotifications();
+      }
     }
 
-    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointerdown", onPointerDown, true);
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("resize", updateMenuPosition);
     window.addEventListener("scroll", updateMenuPosition, true);
     return () => {
       cleanupViewport();
-      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("pointerdown", onPointerDown, true);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("resize", updateMenuPosition);
       window.removeEventListener("scroll", updateMenuPosition, true);
     };
-  }, [open, updateMenuPosition]);
+  }, [closeNotifications, open, updateMenuPosition]);
+
+  useEffect(() => {
+    if (!open) return;
+    const focusTimer = window.setTimeout(() => {
+      closeButtonRef.current?.focus({ preventScroll: true });
+    }, 0);
+    return () => {
+      window.clearTimeout(focusTimer);
+    };
+  }, [open]);
 
   if (!authenticated || loading) return null;
 
@@ -155,7 +212,7 @@ export function NotificationBell() {
 
     if (notification.actionUrl) {
       trackNotificationReturn(notification);
-      setOpen(false);
+      closeNotifications({ restoreFocus: false });
       router.push(notification.actionUrl);
     }
   }
@@ -231,17 +288,13 @@ export function NotificationBell() {
     <div data-sensitive>
       <button
         ref={buttonRef}
+        aria-controls={open ? menuId : undefined}
+        aria-expanded={open}
+        aria-haspopup="dialog"
         aria-label={unreadCount ? `${unreadCount} unread notifications` : "Notifications"}
         className={`tv-tap-motion relative grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-sm text-slate-200 transition hover:border-cyan-300/40 hover:bg-cyan-400/10 hover:text-cyan-100 ${unreadCount ? "tv-alert-pulse" : ""}`}
-        onClick={() => {
-          updateMenuPosition();
-          setOpen((value) => {
-            const next = !value;
-            trackAnalyticsEvent("notification_engagement", { action: next ? "open_menu" : "close_menu", unreadCount }, { source: "notification_bell" });
-            return next;
-          });
-          void loadNotifications();
-        }}
+        data-notification-bell="true"
+        onClick={toggleNotifications}
         type="button"
       >
         🔔
@@ -254,26 +307,41 @@ export function NotificationBell() {
       {open && mounted
         ? createPortal(
             <>
-              {mobileMenu ? <button aria-label="Close notifications" className="tv-notification-backdrop fixed inset-0" onClick={() => setOpen(false)} type="button" /> : null}
+              <div
+                aria-hidden="true"
+                className={`${mobileMenu ? "tv-notification-backdrop" : "tv-notification-click-layer"} fixed inset-0`}
+              />
               <div
                 ref={menuRef}
-                aria-label="Notifications"
-                aria-modal={mobileMenu ? "true" : undefined}
+                aria-labelledby={titleId}
+                aria-modal="true"
                 className="tv-drawer-surface tv-notification-menu rounded-2xl border border-white/10 bg-slate-950/95 p-2 text-xs text-slate-300 shadow-2xl shadow-black/40 ring-1 ring-cyan-300/10 backdrop-blur-xl"
                 data-mobile-gesture-ignore="true"
-                role={mobileMenu ? "dialog" : "region"}
+                id={menuId}
+                role="dialog"
                 style={menuStyle}
               >
                 <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-3 border-b border-white/10 bg-slate-950/95 px-3 py-2 backdrop-blur-xl">
                   <div>
-                    <div className="font-semibold text-slate-100">Notifications</div>
+                    <div className="font-semibold text-slate-100" id={titleId}>Notifications</div>
                     <div className="mt-0.5 text-[11px] text-slate-500">{unreadCount ? `${unreadCount} unread` : "All caught up"}</div>
                   </div>
-                  {unreadCount ? (
-                    <button className="tv-mobile-touch-target rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-cyan-100 hover:bg-cyan-400/10" onClick={() => void markAllRead()} type="button">
-                      Mark all read
+                  <div className="flex shrink-0 items-center gap-2">
+                    {unreadCount ? (
+                      <button className="tv-mobile-touch-target rounded-full border border-white/10 px-2.5 py-1 text-[11px] text-cyan-100 hover:bg-cyan-400/10" onClick={() => void markAllRead()} type="button">
+                        Mark all read
+                      </button>
+                    ) : null}
+                    <button
+                      ref={closeButtonRef}
+                      aria-label="Close notifications"
+                      className="tv-mobile-touch-target grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/40 hover:bg-cyan-400/10 hover:text-cyan-100"
+                      onClick={() => closeNotifications()}
+                      type="button"
+                    >
+                      <X aria-hidden="true" className="h-4 w-4" />
                     </button>
-                  ) : null}
+                  </div>
                 </div>
                 <div className="tv-notification-scroll py-1">
                   {fetching && !notifications.length ? <div className="px-3 py-6 text-center text-slate-500">Loading notifications...</div> : null}

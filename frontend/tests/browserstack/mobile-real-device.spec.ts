@@ -17,6 +17,8 @@ const ROUTES = [
   "/performance",
 ];
 
+const NOTIFICATION_DRAWER_ROUTES = ["/terminal", "/alerts", "/symbol/AMD"] as const;
+
 const PRODUCT_NAV_ROUTES = new Set([
   "/alerts",
   "/discover",
@@ -136,6 +138,62 @@ test("notification overlay mobile safe area", async ({ page }, testInfo) => {
   await page.keyboard.press("Escape").catch(() => undefined);
   await expect(menu, "notification menu closes").toBeHidden({ timeout: 10_000 });
   expect(hydrationMessages, "notification overlay hydration/runtime mismatch").toEqual([]);
+});
+
+test("notification drawer toggle and close behavior preserves route and scroll", async ({ page }) => {
+  const hydrationMessages = bindHydrationCapture(page);
+  await installStableClientState(page);
+  await installAuthenticatedNotificationMocks(page);
+
+  for (const route of NOTIFICATION_DRAWER_ROUTES) {
+    await test.step(`notification drawer controls on ${route}`, async () => {
+      await navigateAndSettle(page, route);
+      await acknowledgeRisk(page);
+      await page.evaluate(() => {
+        window.scrollTo({ behavior: "auto", top: 0 });
+      });
+      await page.waitForTimeout(200);
+
+      const before = await currentRouteState(page);
+      await clickVisibleNotificationBell(page);
+      const menu = page.locator(".tv-notification-menu").first();
+      await expect(menu, `${route} notification drawer opens from bell`).toBeVisible();
+      await expect(menu, `${route} notification drawer uses dialog semantics`).toHaveAttribute("role", "dialog");
+      await expect(page.getByRole("button", { name: "Close notifications" }), `${route} close button visible`).toBeVisible();
+      await assertNotificationOverlaySafe(page, `${route} notification drawer`);
+      await expectRouteStateStable(page, route, before, `${route} after open`);
+
+      await clickVisibleNotificationBell(page);
+      await expect(menu, `${route} notification drawer closes from bell toggle`).toBeHidden({ timeout: 10_000 });
+      await expectRouteStateStable(page, route, before, `${route} after bell close`);
+
+      await clickVisibleNotificationBell(page);
+      await expect(menu, `${route} notification drawer reopens`).toBeVisible();
+      await page.getByRole("button", { name: "Close notifications" }).click();
+      await expect(menu, `${route} notification drawer closes from close button`).toBeHidden({ timeout: 10_000 });
+      await expectRouteStateStable(page, route, before, `${route} after close button`);
+      const focusRestored = await page.evaluate(() => document.activeElement?.getAttribute("data-notification-bell") === "true");
+      expect(focusRestored, `${route} focus returns to notification bell`).toBe(true);
+
+      await clickVisibleNotificationBell(page);
+      await expect(menu, `${route} notification drawer opens for inside click test`).toBeVisible();
+      const box = await menu.boundingBox();
+      expect(box, `${route} notification drawer has geometry`).not.toBeNull();
+      if (box) await page.mouse.click(box.x + 20, box.y + 20);
+      await expect(menu, `${route} clicking inside drawer does not close it`).toBeVisible();
+      await page.mouse.click(2, 2);
+      await expect(menu, `${route} outside click closes drawer`).toBeHidden({ timeout: 10_000 });
+      await expectRouteStateStable(page, route, before, `${route} after outside click`);
+
+      await clickVisibleNotificationBell(page);
+      await expect(menu, `${route} notification drawer opens for Escape test`).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(menu, `${route} Escape closes drawer`).toBeHidden({ timeout: 10_000 });
+      await expectRouteStateStable(page, route, before, `${route} after Escape`);
+    });
+  }
+
+  expect(hydrationMessages, "notification drawer toggle hydration/runtime mismatch").toEqual([]);
 });
 
 test("real-device mobile QA required routes", async ({ page }, testInfo) => {
@@ -329,14 +387,21 @@ async function gotoRouteWithRetry(page: Page, route: string): Promise<Response |
 }
 
 async function openNotifications(page: Page): Promise<void> {
+  await clickVisibleNotificationBell(page);
+  await page.waitForTimeout(450);
+  if (await page.locator(".tv-notification-menu").first().isVisible().catch(() => false)) return;
+  throw new Error("No visible notification button opened the notification overlay.");
+}
+
+async function clickVisibleNotificationBell(page: Page): Promise<void> {
   await page.waitForFunction(() => {
-    return Array.from(document.querySelectorAll<HTMLElement>("button[aria-label*='notification' i]")).some((button) => {
+    return Array.from(document.querySelectorAll<HTMLElement>("button[data-notification-bell='true']")).some((button) => {
       const rect = button.getBoundingClientRect();
       return rect.width >= 20 && rect.height >= 20 && rect.bottom > 0 && rect.top < window.innerHeight;
     });
   }, null, { timeout: 15_000 });
   const clicked = await page.evaluate(() => {
-    const buttons = Array.from(document.querySelectorAll<HTMLElement>("button[aria-label*='notification' i]")).reverse();
+    const buttons = Array.from(document.querySelectorAll<HTMLElement>("button[data-notification-bell='true']")).reverse();
     const button = buttons.find((candidate) => {
       const rect = candidate.getBoundingClientRect();
       return rect.width >= 20 && rect.height >= 20 && rect.bottom > 0 && rect.top < window.innerHeight;
@@ -344,12 +409,9 @@ async function openNotifications(page: Page): Promise<void> {
     button?.click();
     return Boolean(button);
   });
-  if (clicked) {
-    await page.waitForTimeout(450);
-    if (await page.locator(".tv-notification-menu").first().isVisible().catch(() => false)) return;
-  }
+  if (clicked) return;
 
-  const buttons = page.locator("button[aria-label*='notification' i]");
+  const buttons = page.locator("button[data-notification-bell='true']");
   const count = await buttons.count();
   for (let index = count - 1; index >= 0; index -= 1) {
     const button = buttons.nth(index);
@@ -359,10 +421,31 @@ async function openNotifications(page: Page): Promise<void> {
     await button.tap({ timeout: 3_000 }).catch(async () => {
       await button.click({ force: true, timeout: 3_000 });
     });
-    await page.waitForTimeout(450);
-    if (await page.locator(".tv-notification-menu").first().isVisible().catch(() => false)) return;
+    return;
   }
-  throw new Error("No visible notification button opened the notification overlay.");
+  throw new Error("No visible notification bell was available.");
+}
+
+type RouteState = {
+  historyLength: number;
+  path: string;
+  scrollY: number;
+};
+
+async function currentRouteState(page: Page): Promise<RouteState> {
+  return page.evaluate(() => ({
+    historyLength: window.history.length,
+    path: window.location.pathname,
+    scrollY: window.scrollY,
+  }));
+}
+
+async function expectRouteStateStable(page: Page, route: string, before: RouteState, label: string): Promise<void> {
+  await page.waitForTimeout(100);
+  const state = await currentRouteState(page);
+  expect(state.path, `${label} path`).toBe(route);
+  expect(state.historyLength, `${label} history length`).toBe(before.historyLength);
+  expect(Math.abs(state.scrollY - before.scrollY), `${label} scroll preservation`).toBeLessThanOrEqual(8);
 }
 
 async function assertRiskAcknowledgementOverlaySafe(page: Page): Promise<void> {

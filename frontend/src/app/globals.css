@@ -771,12 +771,20 @@ a {
 .tv-notification-backdrop {
   background: rgba(2, 6, 23, 0.62);
   backdrop-filter: blur(10px);
+  pointer-events: none;
+  z-index: 10540;
+}
+
+.tv-notification-click-layer {
+  background: transparent;
+  pointer-events: none;
   z-index: 10540;
 }
 
 .tv-notification-menu {
   display: flex;
   flex-direction: column;
+  max-width: calc(100vw - (var(--tv-overlay-inline-gap) * 2));
   overflow: hidden;
   z-index: 10550;
 }
@@ -813,6 +821,10 @@ a {
     max-height: min(var(--tv-mobile-overlay-height), 100%);
     max-width: min(var(--tv-visual-viewport-width, 100vw), 100svw);
     width: min(var(--tv-visual-viewport-width, 100vw), 100svw);
+  }
+
+  .tv-notification-menu {
+    max-width: calc(100svw - (var(--tv-overlay-inline-gap) * 2));
   }
 
   .tv-expanded-chart-canvas {
