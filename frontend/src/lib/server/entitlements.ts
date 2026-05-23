@@ -30,6 +30,16 @@ type SubscriptionRow = QueryResultRow & {
   status: string | null;
 };
 
+type EntitlementCacheEntry = {
+  entitlement: Entitlement;
+  expiresAtMs: number;
+};
+
+const ENTITLEMENT_CACHE_TTL_MS = 2_000;
+const ENTITLEMENT_CACHE_MAX = 500;
+const entitlementCache = new Map<string, EntitlementCacheEntry>();
+const entitlementInflight = new Map<string, Promise<Entitlement>>();
+
 export const ROUTE_CLASSIFICATION: Record<RouteAccess, string[]> = {
   public: [
     "/",
@@ -133,6 +143,25 @@ export async function getEntitlement(): Promise<Entitlement> {
 export async function getEntitlementForUser(user: AuthUser | null): Promise<Entitlement> {
   if (!user) return entitlementForUser(null);
 
+  const cacheKey = entitlementCacheKey(user);
+  const cached = readCachedEntitlement(cacheKey);
+  if (cached) return cloneEntitlement(cached);
+
+  const inflight = entitlementInflight.get(cacheKey);
+  if (inflight) return cloneEntitlement(await inflight);
+
+  const promise = loadEntitlementForUser(user);
+  entitlementInflight.set(cacheKey, promise);
+  try {
+    const entitlement = await promise;
+    writeCachedEntitlement(cacheKey, entitlement);
+    return cloneEntitlement(entitlement);
+  } finally {
+    entitlementInflight.delete(cacheKey);
+  }
+}
+
+async function loadEntitlementForUser(user: AuthUser): Promise<Entitlement> {
   const [subscription, legalStatus] = await Promise.all([getUserSubscription(user.id), getLegalStatusForEntitlement(user.id)]);
   const admin = isAdminUser(user);
   const betaPremium = betaPremiumAccessForEmail(user.email);
@@ -285,4 +314,53 @@ function routePatternToRegExp(pattern: string): RegExp {
     .replace(/\/\*/g, "(?:/.*)?")
     .replace(/\\\[.+?\\\]/g, "[^/]+");
   return new RegExp(`^${escaped}/?$`);
+}
+
+function entitlementCacheKey(user: AuthUser): string {
+  return `${user.id}:${user.email}:${user.role}:${user.state}`;
+}
+
+function readCachedEntitlement(cacheKey: string): Entitlement | null {
+  const cached = entitlementCache.get(cacheKey);
+  if (!cached) return null;
+  if (cached.expiresAtMs <= Date.now()) {
+    entitlementCache.delete(cacheKey);
+    return null;
+  }
+  return cached.entitlement;
+}
+
+function writeCachedEntitlement(cacheKey: string, entitlement: Entitlement): void {
+  trimEntitlementCache();
+  entitlementCache.set(cacheKey, {
+    entitlement: cloneEntitlement(entitlement),
+    expiresAtMs: Date.now() + ENTITLEMENT_CACHE_TTL_MS,
+  });
+}
+
+function trimEntitlementCache(): void {
+  if (entitlementCache.size < ENTITLEMENT_CACHE_MAX) return;
+  const now = Date.now();
+  for (const [key, value] of entitlementCache) {
+    if (value.expiresAtMs <= now) entitlementCache.delete(key);
+  }
+  while (entitlementCache.size >= ENTITLEMENT_CACHE_MAX) {
+    const firstKey = entitlementCache.keys().next().value;
+    if (typeof firstKey !== "string") return;
+    entitlementCache.delete(firstKey);
+  }
+}
+
+function cloneEntitlement(entitlement: Entitlement): Entitlement {
+  return {
+    authenticated: entitlement.authenticated,
+    betaAccess: entitlement.betaAccess,
+    betaAccessLabel: entitlement.betaAccessLabel,
+    isAdmin: entitlement.isAdmin,
+    isPremium: entitlement.isPremium,
+    legalStatus: { ...entitlement.legalStatus },
+    plan: entitlement.plan,
+    subscriptionStatus: entitlement.subscriptionStatus,
+    user: entitlement.user ? { ...entitlement.user } : null,
+  };
 }

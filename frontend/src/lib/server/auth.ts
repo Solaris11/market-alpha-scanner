@@ -12,6 +12,9 @@ export const SESSION_COOKIE_NAME = "market_alpha_session";
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const BCRYPT_ROUNDS = 12;
+const SESSION_USER_CACHE_TTL_MS = 2_000;
+const SESSION_USER_NEGATIVE_CACHE_TTL_MS = 250;
+const SESSION_USER_CACHE_MAX = 500;
 
 export type AuthUser = {
   id: string;
@@ -52,6 +55,14 @@ type UserRow = QueryResultRow & {
 type UserWithPasswordRow = UserRow & {
   password_hash: string | null;
 };
+
+type SessionUserCacheEntry = {
+  expiresAtMs: number;
+  user: AuthUser | null;
+};
+
+const sessionUserCache = new Map<string, SessionUserCacheEntry>();
+const sessionUserInflight = new Map<string, Promise<AuthUser | null>>();
 
 const USER_SELECT = `
   id::text,
@@ -191,6 +202,25 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 export async function getUserForSessionToken(token: string): Promise<AuthUser | null> {
   if (!token.trim()) return null;
   const tokenHash = hashSessionToken(token);
+  const cached = readCachedSessionUser(tokenHash);
+  if (cached !== undefined) return cloneAuthUserOrNull(cached);
+
+  const inflight = sessionUserInflight.get(tokenHash);
+  if (inflight) return cloneAuthUserOrNull(await inflight);
+
+  const promise = loadUserForSessionTokenHash(tokenHash);
+  sessionUserInflight.set(tokenHash, promise);
+
+  try {
+    const user = await promise;
+    writeCachedSessionUser(tokenHash, user);
+    return cloneAuthUserOrNull(user);
+  } finally {
+    sessionUserInflight.delete(tokenHash);
+  }
+}
+
+async function loadUserForSessionTokenHash(tokenHash: string): Promise<AuthUser | null> {
   const result = await dbQuery<UserRow>(
     `
       SELECT ${USER_SELECT_U}
@@ -258,4 +288,39 @@ function cleanNullableText(value: unknown, maxLength: number): string | null {
   const text = String(value ?? "").trim();
   if (!text) return null;
   return text.slice(0, maxLength);
+}
+
+function readCachedSessionUser(tokenHash: string): AuthUser | null | undefined {
+  const cached = sessionUserCache.get(tokenHash);
+  if (!cached) return undefined;
+  if (cached.expiresAtMs <= Date.now()) {
+    sessionUserCache.delete(tokenHash);
+    return undefined;
+  }
+  return cached.user;
+}
+
+function writeCachedSessionUser(tokenHash: string, user: AuthUser | null): void {
+  trimSessionUserCache();
+  sessionUserCache.set(tokenHash, {
+    expiresAtMs: Date.now() + (user ? SESSION_USER_CACHE_TTL_MS : SESSION_USER_NEGATIVE_CACHE_TTL_MS),
+    user: cloneAuthUserOrNull(user),
+  });
+}
+
+function trimSessionUserCache(): void {
+  if (sessionUserCache.size < SESSION_USER_CACHE_MAX) return;
+  const now = Date.now();
+  for (const [key, value] of sessionUserCache) {
+    if (value.expiresAtMs <= now) sessionUserCache.delete(key);
+  }
+  while (sessionUserCache.size >= SESSION_USER_CACHE_MAX) {
+    const firstKey = sessionUserCache.keys().next().value;
+    if (typeof firstKey !== "string") return;
+    sessionUserCache.delete(firstKey);
+  }
+}
+
+function cloneAuthUserOrNull(user: AuthUser | null): AuthUser | null {
+  return user ? { ...user } : null;
 }
