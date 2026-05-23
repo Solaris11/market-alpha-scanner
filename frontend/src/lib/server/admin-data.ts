@@ -2,6 +2,8 @@ import "server-only";
 
 import type { QueryResultRow } from "pg";
 import type { BackupHealthDetails } from "@/lib/backup-health";
+import { getDiscoveryPerformanceSnapshot } from "@/lib/discovery-performance";
+import { getLiveIntelligencePerformanceSnapshot } from "@/lib/live-intelligence-performance";
 import { llmBudgetCapsFromEnv } from "@/lib/llm-cost-policy";
 import { getScanDataHealth } from "@/lib/scanner-data";
 import { buildEvidenceDepthSummary, type EvidenceDepthDuplicateCheck, type EvidenceDepthSummary, type EvidenceDepthSymbol, type EvidenceDepthTableCount, type EvidenceDepthWindow } from "@/lib/trading/evidence-depth";
@@ -138,6 +140,18 @@ export type AdminMonitoringSummary = {
     };
   };
   requestMetrics: {
+    hotEndpointRuntime: Array<{
+      cacheHitRate: number;
+      endpoint: string;
+      hotPathTargetMs: number;
+      maxLatencyMs: number;
+      p50LatencyMs: number;
+      p95LatencyMs: number;
+      p99LatencyMs: number;
+      sampleCount: number;
+      targetMet: boolean;
+      windowSize: number;
+    }>;
     p50LatencyMs: number | null;
     p95LatencyMs: number | null;
     p99LatencyMs: number | null;
@@ -902,6 +916,10 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
     latestBackup,
     llmUsage,
     requestMetrics: {
+      hotEndpointRuntime: [
+        { endpoint: "/api/discovery", ...getDiscoveryPerformanceSnapshot() },
+        { endpoint: "/api/live-intelligence", ...getLiveIntelligencePerformanceSnapshot() },
+      ],
       p50LatencyMs: toNullableNumber(metrics?.p50_latency_ms),
       p95LatencyMs: toNullableNumber(metrics?.p95_latency_ms),
       p99LatencyMs: toNullableNumber(metrics?.p99_latency_ms),

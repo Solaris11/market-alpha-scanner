@@ -1,0 +1,26 @@
+userName: ${BROWSERSTACK_USERNAME}
+accessKey: ${BROWSERSTACK_ACCESS_KEY}
+framework: playwright
+projectName: TradeVeto
+buildName: phase-21-1-real-device-certification
+
+platforms:
+  - browserName: safari
+    osVersion: 17
+    deviceName: iPhone 15 Pro Max
+    deviceOrientation: portrait
+    playwrightConfigOptions:
+      name: iphone-15-pro-max-safari
+  - browserName: chrome
+    osVersion: 13.0
+    deviceName: Samsung Galaxy S23 Ultra
+    deviceOrientation: portrait
+    playwrightConfigOptions:
+      name: samsung-galaxy-s23-ultra-chrome
+
+debug: true
+consoleLogs: info
+networkLogs: true
+video: true
+selfHeal: false
+browserstackLocal: false

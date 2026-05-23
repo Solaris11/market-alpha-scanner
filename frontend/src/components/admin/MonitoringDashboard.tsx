@@ -55,6 +55,22 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
         <MetricCard label={`4xx ${range}`} tone={monitoring.requestMetrics.recent4xx ? "warn" : "good"} value={formatCount(monitoring.requestMetrics.recent4xx)} />
         <MetricCard label={`5xx ${range}`} tone={monitoring.requestMetrics.recent5xx ? "bad" : "good"} value={formatCount(monitoring.requestMetrics.recent5xx)} />
         <MetricCard label="P95 latency" value={formatMonitoringMs(monitoring.requestMetrics.p95LatencyMs)} />
+        {monitoring.requestMetrics.hotEndpointRuntime.map((endpoint) => (
+          <MetricCard
+            key={endpoint.endpoint}
+            label={`${endpointLabel(endpoint.endpoint)} p95`}
+            tone={endpoint.targetMet || endpoint.sampleCount === 0 ? "default" : "warn"}
+            value={endpoint.sampleCount ? formatMonitoringMs(endpoint.p95LatencyMs) : "warming"}
+          />
+        ))}
+        {monitoring.requestMetrics.hotEndpointRuntime.map((endpoint) => (
+          <MetricCard
+            key={`${endpoint.endpoint}-cache`}
+            label={`${endpointLabel(endpoint.endpoint)} cache`}
+            tone={endpoint.cacheHitRate >= 80 || endpoint.sampleCount === 0 ? "good" : "warn"}
+            value={endpoint.sampleCount ? `${endpoint.cacheHitRate}%` : "warming"}
+          />
+        ))}
         <MetricCard label="CPU" value={formatMonitoringPercent(monitoring.system.cpuPercent)} />
         <MetricCard label="Memory" value={formatMonitoringPercent(monitoring.system.memoryPercent)} />
         <MetricCard label="Disk" tone={monitoring.system.diskPercent !== null && monitoring.system.diskPercent > 85 ? "warn" : "default"} value={formatMonitoringPercent(monitoring.system.diskPercent)} />
@@ -72,6 +88,10 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
       </section>
 
       <div className="grid gap-5 xl:grid-cols-2">
+        <ChartPanel className="xl:col-span-2" subtitle="In-process hot packet telemetry for authenticated scanner and live-intelligence endpoints." title="Hot Endpoint Runtime">
+          <HotEndpointRuntimePanel endpoints={monitoring.requestMetrics.hotEndpointRuntime} />
+        </ChartPanel>
+
         <ChartPanel className="xl:col-span-2" subtitle="Request volume from request_metrics for the selected window." title="Request Throughput">
           <TimeSeriesChart
             series={[{
@@ -306,6 +326,33 @@ export function MonitoringDashboard({ monitoring, range }: { monitoring: AdminMo
           )}
         </ChartPanel>
       </div>
+    </div>
+  );
+}
+
+function HotEndpointRuntimePanel({ endpoints }: { endpoints: AdminMonitoringSummary["requestMetrics"]["hotEndpointRuntime"] }) {
+  return (
+    <div className="grid gap-3 md:grid-cols-2">
+      {endpoints.map((endpoint) => (
+        <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4" key={endpoint.endpoint}>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-500">{endpointLabel(endpoint.endpoint)}</div>
+              <div className="mt-1 font-mono text-sm text-slate-100">{endpoint.endpoint}</div>
+            </div>
+            <StatusBadge tone={endpoint.targetMet || endpoint.sampleCount === 0 ? "good" : "warn"}>{endpoint.sampleCount ? (endpoint.targetMet ? "target met" : "over target") : "warming"}</StatusBadge>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-4">
+            <MetricPill label="p50" value={endpoint.sampleCount ? formatMonitoringMs(endpoint.p50LatencyMs) : "warming"} />
+            <MetricPill label="p95" value={endpoint.sampleCount ? formatMonitoringMs(endpoint.p95LatencyMs) : "warming"} />
+            <MetricPill label="p99" value={endpoint.sampleCount ? formatMonitoringMs(endpoint.p99LatencyMs) : "warming"} />
+            <MetricPill label="cache hit" value={endpoint.sampleCount ? `${endpoint.cacheHitRate}%` : "warming"} />
+          </div>
+          <p className="mt-3 text-xs leading-5 text-slate-500">
+            {formatCount(endpoint.sampleCount)} samples in memory window {formatCount(endpoint.windowSize)}. Target p95: {formatMonitoringMs(endpoint.hotPathTargetMs)}. Max: {endpoint.sampleCount ? formatMonitoringMs(endpoint.maxLatencyMs) : "warming"}.
+          </p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -588,6 +635,12 @@ function statusBucketClass(label: string): string {
   if (label === "4xx") return "text-amber-100";
   if (label === "2xx") return "text-emerald-100";
   return "text-slate-300";
+}
+
+function endpointLabel(endpoint: string): string {
+  if (endpoint.includes("live-intelligence")) return "Live";
+  if (endpoint.includes("discovery")) return "Discovery";
+  return humanizeLabel(endpoint.replace(/^\/api\//, ""));
 }
 
 function formatBytes(value: number | null | undefined): string {

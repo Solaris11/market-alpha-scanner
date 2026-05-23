@@ -2,6 +2,7 @@ import "server-only";
 
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
 import { getRecentIntradaySignalDriftSummary } from "@/lib/scanner-data";
+import type { LiveIntelligenceCacheStatus } from "@/lib/live-intelligence-performance";
 import { buildLiveIntelligenceSystem, type LiveIntelligenceSystem } from "@/lib/trading/live-intelligence";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 
@@ -11,7 +12,71 @@ export type LiveIntelligenceLoadOptions = {
   streamMode?: "snapshot" | "sse";
 };
 
+export type LiveIntelligenceLoadResult = {
+  cacheStatus: LiveIntelligenceCacheStatus;
+  durationMs: number;
+  system: LiveIntelligenceSystem;
+};
+
+type LiveIntelligenceCacheEntry = {
+  expiresAt: number;
+  refreshing?: Promise<LiveIntelligenceSystem>;
+  resolved: LiveIntelligenceSystem;
+  staleUntil: number;
+};
+
+const LIVE_INTELLIGENCE_CACHE_TTL_MS = 12_000;
+const LIVE_INTELLIGENCE_STALE_TTL_MS = 90_000;
+const LIVE_INTELLIGENCE_BUILD_TIMEOUT_MS = 260;
+
+let liveIntelligenceCache: LiveIntelligenceCacheEntry | null = null;
+
 export async function loadLiveIntelligenceSystem(options: LiveIntelligenceLoadOptions = {}): Promise<LiveIntelligenceSystem> {
+  return (await loadLiveIntelligenceSystemWithMeta(options)).system;
+}
+
+export async function loadLiveIntelligenceSystemWithMeta(options: LiveIntelligenceLoadOptions = {}): Promise<LiveIntelligenceLoadResult> {
+  const startedAt = Date.now();
+  const now = Date.now();
+  const cached = liveIntelligenceCache;
+  if (cached && cached.expiresAt > now) {
+    return {
+      cacheStatus: "fresh-hit",
+      durationMs: Date.now() - startedAt,
+      system: packetForOptions(cached.resolved, options),
+    };
+  }
+  if (cached && cached.staleUntil > now) {
+    refreshLiveIntelligenceCache();
+    return {
+      cacheStatus: "stale-hit",
+      durationMs: Date.now() - startedAt,
+      system: packetForOptions(cached.resolved, options),
+    };
+  }
+
+  const build = buildLiveIntelligencePacket();
+  build.then((system) => setLiveIntelligenceCache(system)).catch((error: unknown) => {
+    console.warn("[live-intelligence] background cache warm failed", error instanceof Error ? error.message : error);
+  });
+
+  const warmed = await settleWithTimeout(build.catch(() => null), LIVE_INTELLIGENCE_BUILD_TIMEOUT_MS);
+  if (warmed) {
+    return {
+      cacheStatus: "warm-miss",
+      durationMs: Date.now() - startedAt,
+      system: packetForOptions(warmed, options),
+    };
+  }
+
+  return {
+    cacheStatus: "degraded-fallback",
+    durationMs: Date.now() - startedAt,
+    system: degradedLiveIntelligencePacket(options),
+  };
+}
+
+async function buildLiveIntelligencePacket(): Promise<LiveIntelligenceSystem> {
   const adapter = new ScannerDataAdapter();
   const [rows, driftRows] = await Promise.all([
     adapter.getOverviewSignals().catch(() => []),
@@ -20,9 +85,86 @@ export async function loadLiveIntelligenceSystem(options: LiveIntelligenceLoadOp
   const model = buildOpportunitiesPageModel(rows, null);
   return buildLiveIntelligenceSystem({
     driftRows,
-    refreshIntervalMs: options.refreshIntervalMs,
+    refreshIntervalMs: 30_000,
     rows: model.rows,
+    sequence: 0,
+    streamMode: "snapshot",
+  });
+}
+
+function refreshLiveIntelligenceCache(): void {
+  if (liveIntelligenceCache?.refreshing) return;
+  const refresh = buildLiveIntelligencePacket();
+  if (liveIntelligenceCache) liveIntelligenceCache.refreshing = refresh;
+  refresh.then((system) => setLiveIntelligenceCache(system)).catch((error: unknown) => {
+    if (liveIntelligenceCache) liveIntelligenceCache.refreshing = undefined;
+    console.warn("[live-intelligence] stale refresh failed", error instanceof Error ? error.message : error);
+  });
+}
+
+function setLiveIntelligenceCache(system: LiveIntelligenceSystem): void {
+  const now = Date.now();
+  liveIntelligenceCache = {
+    expiresAt: now + LIVE_INTELLIGENCE_CACHE_TTL_MS,
+    resolved: system,
+    staleUntil: now + LIVE_INTELLIGENCE_STALE_TTL_MS,
+  };
+}
+
+async function settleWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | null> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<null>((resolve) => {
+        timer = setTimeout(() => resolve(null), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
+function packetForOptions(system: LiveIntelligenceSystem, options: LiveIntelligenceLoadOptions): LiveIntelligenceSystem {
+  const refreshIntervalMs = boundedRefreshInterval(options.refreshIntervalMs);
+  return {
+    ...system,
+    generatedAt: new Date().toISOString(),
+    latencyLabel: latencyLabel(refreshIntervalMs, system.status),
+    refreshIntervalMs,
+    sequence: Math.max(0, Math.trunc(options.sequence ?? system.sequence)),
+    streamMode: options.streamMode ?? "snapshot",
+  };
+}
+
+function degradedLiveIntelligencePacket(options: LiveIntelligenceLoadOptions): LiveIntelligenceSystem {
+  const refreshIntervalMs = boundedRefreshInterval(options.refreshIntervalMs);
+  const system = buildLiveIntelligenceSystem({
+    driftRows: [],
+    generatedAt: new Date().toISOString(),
+    refreshIntervalMs,
+    rows: [],
     sequence: options.sequence,
     streamMode: options.streamMode ?? "snapshot",
   });
+  return {
+    ...system,
+    latencyLabel: "Degraded warmup fallback",
+    limitations: [
+      "Live Intelligence returned a bounded degraded packet because the scanner-derived market packet did not warm inside the latency budget.",
+      ...system.limitations,
+    ],
+  };
+}
+
+function boundedRefreshInterval(value: unknown): number {
+  const parsed = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(parsed)) return 30_000;
+  return Math.max(10_000, Math.min(120_000, Math.trunc(parsed)));
+}
+
+function latencyLabel(refreshIntervalMs: number, status: LiveIntelligenceSystem["status"]): string {
+  if (status === "paused") return "Waiting for scanner rows";
+  if (status === "degraded") return `Live-ish, observation-limited (${Math.round(refreshIntervalMs / 1000)}s refresh)`;
+  return `Streaming every ${Math.round(refreshIntervalMs / 1000)}s`;
 }

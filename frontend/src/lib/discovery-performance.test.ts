@@ -11,15 +11,16 @@ test("discovery performance snapshot tracks p50, p95, p99, max, and cache hit ra
   }
   recordDiscoveryApiTiming({ cacheStatus: "system-miss", latencyMs: 900, statusCode: 200 });
   recordDiscoveryApiTiming({ cacheStatus: "limited", latencyMs: 20, statusCode: 401 });
+  recordDiscoveryApiTiming({ cacheStatus: "stale-hit", latencyMs: 85, statusCode: 200 });
 
   const snapshot = getDiscoveryPerformanceSnapshot();
 
-  assert.equal(snapshot.sampleCount, 7);
-  assert.equal(snapshot.p50LatencyMs, 140);
+  assert.equal(snapshot.sampleCount, 8);
+  assert.equal(snapshot.p50LatencyMs, 120);
   assert.equal(snapshot.p95LatencyMs, 900);
   assert.equal(snapshot.p99LatencyMs, 900);
   assert.equal(snapshot.maxLatencyMs, 900);
-  assert.equal(snapshot.cacheHitRate, 83);
+  assert.equal(snapshot.cacheHitRate, 86);
   assert.equal(snapshot.targetMet, false);
 });
 

@@ -102,7 +102,7 @@ const endpoints = [
     path: "/api/live-intelligence",
     p95BudgetMs: 400,
     p99BudgetMs: 800,
-    requiresAuth: false,
+    requiresAuth: true,
   },
   {
     body: { accountValue: 100000, positions: [] },
@@ -234,8 +234,11 @@ function evaluateEndpoint(endpoint, probeSamples) {
   const relevant = probeSamples.filter((sample) => sample.path === endpoint.path && sample.method === endpoint.method);
   const latencies = relevant.map((sample) => sanitizeLatency(sample.latencyMs)).sort((left, right) => left - right);
   const successful = relevant.filter((sample) => sample.statusCode < 500 && !sample.error);
+  const failureCount = relevant.filter((sample) => sample.statusCode >= 500 || sample.error).length;
+  const timeoutCount = relevant.filter((sample) => /abort|timeout|timed out/i.test(String(sample.error ?? ""))).length;
   const sampleCount = relevant.length;
   const successRatePct = sampleCount ? Math.round((successful.length / sampleCount) * 10_000) / 100 : 0;
+  const timeoutRatePct = sampleCount ? Math.round((timeoutCount / sampleCount) * 10_000) / 100 : 0;
   const p50LatencyMs = percentile(latencies, 0.50);
   const p95LatencyMs = percentile(latencies, 0.95);
   const p99LatencyMs = percentile(latencies, 0.99);
@@ -249,6 +252,7 @@ function evaluateEndpoint(endpoint, probeSamples) {
 
   return {
     category: endpoint.category,
+    failureCount,
     failureReasons,
     maxLatencyMs,
     method: endpoint.method,
@@ -261,6 +265,7 @@ function evaluateEndpoint(endpoint, probeSamples) {
     sampleCount,
     status,
     successRatePct,
+    timeoutRatePct,
   };
 }
 

@@ -1,4 +1,4 @@
-export type DiscoveryCacheStatus = "base-hit" | "base-miss" | "limited" | "system-hit" | "system-miss";
+export type DiscoveryCacheStatus = "base-hit" | "base-miss" | "limited" | "stale-hit" | "system-hit" | "system-miss";
 
 export type DiscoveryTimingInput = {
   cacheStatus: DiscoveryCacheStatus;
@@ -37,7 +37,7 @@ export function getDiscoveryPerformanceSnapshot(): DiscoveryPerformanceSnapshot 
   const p99LatencyMs = percentile(values, 0.99);
   const maxLatencyMs = values.length ? values[values.length - 1] ?? 0 : 0;
   const cacheable = successful.filter((timing) => timing.cacheStatus !== "limited");
-  const hits = cacheable.filter((timing) => timing.cacheStatus === "system-hit" || timing.cacheStatus === "base-hit").length;
+  const hits = cacheable.filter((timing) => timing.cacheStatus === "system-hit" || timing.cacheStatus === "base-hit" || timing.cacheStatus === "stale-hit").length;
   const cacheHitRate = cacheable.length ? Math.round((hits / cacheable.length) * 100) : 0;
 
   return {
