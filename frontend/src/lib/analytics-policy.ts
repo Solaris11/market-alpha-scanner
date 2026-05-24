@@ -34,6 +34,7 @@ export const ANALYTICS_EVENT_NAMES = [
   "watchlist_retention",
   "return_session",
   "morning_workflow_start",
+  "morning_workflow_complete",
   "scanner_return",
   "replay_return",
   "alert_return",

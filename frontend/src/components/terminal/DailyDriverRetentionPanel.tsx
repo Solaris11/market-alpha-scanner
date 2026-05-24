@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import {
+  Activity,
   BellRing,
   BrainCircuit,
+  CalendarCheck,
   CheckCircle2,
   Gauge,
   History,
@@ -12,17 +14,22 @@ import {
   Search,
   ShieldAlert,
   Sparkles,
+  Target,
 } from "lucide-react";
-import type { ComponentType } from "react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 import { trackAnalyticsEvent, trackFirstUsefulAction } from "@/lib/client/analytics";
 import type { AnalyticsEventName } from "@/lib/analytics-policy";
 import type {
   DailyDriverAction,
+  DailyDriverAdaptivePriority,
+  DailyDriverChangeSignal,
   DailyDriverContextItem,
   DailyDriverFunnelStage,
   DailyDriverHabitLoop,
   DailyDriverMorningWorkflowItem,
   DailyDriverRetentionModel,
+  DailyDriverRetentionTarget,
+  DailyDriverTelemetrySignal,
   DailyDriverTone,
 } from "@/lib/trading/daily-driver-retention";
 import { PosterGauge, ScoreFactorStrip, type VisualTone } from "@/components/visual/MiniVisuals";
@@ -52,14 +59,19 @@ const ACTION_ICON: Record<DailyDriverAction["key"], ComponentType<{ className?: 
 };
 
 const MORNING_ICON: Record<DailyDriverMorningWorkflowItem["key"], ComponentType<{ className?: string }>> = {
+  ai_digest: BrainCircuit,
   macro_updates: Sparkles,
+  overnight_events: BellRing,
   overnight_summary: Gauge,
   risk_changes: ShieldAlert,
   scanner_changes: Search,
   watchlist_movement: ListChecks,
 };
 
+const DAILY_COMPLETION_KEY = "tv_daily_driver_morning_completion_days";
+
 export function DailyDriverRetentionPanel({ model }: Props) {
+  const habit = useDailyHabitCompletion();
   return (
     <section
       className="relative overflow-hidden rounded-[2rem] border border-cyan-300/18 bg-[radial-gradient(circle_at_14%_0%,rgba(34,211,238,0.16),transparent_28rem),radial-gradient(circle_at_88%_18%,rgba(16,185,129,0.13),transparent_24rem),linear-gradient(135deg,rgba(2,6,23,0.96),rgba(15,23,42,0.78))] p-4 shadow-2xl shadow-black/30 ring-1 ring-cyan-300/10 sm:p-5"
@@ -84,7 +96,13 @@ export function DailyDriverRetentionPanel({ model }: Props) {
       </div>
 
       <div className="relative z-10 mt-5">
-        <MorningWorkflowDeck items={model.morningWorkflow} />
+        <MorningWorkflowDeck habit={habit} items={model.morningWorkflow} />
+      </div>
+
+      <div className="relative z-10 mt-4 grid gap-4 xl:grid-cols-3">
+        <AdaptivePriorityDeck items={model.adaptivePriorities} />
+        <ChangeVisualizationDeck items={model.changeVisualization} />
+        <RetentionTargetDeck targets={model.retentionTargets} telemetry={model.telemetry} />
       </div>
 
       <div className="relative z-10 mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
@@ -134,17 +152,39 @@ export function DailyDriverRetentionPanel({ model }: Props) {
   );
 }
 
-function MorningWorkflowDeck({ items }: { items: DailyDriverMorningWorkflowItem[] }) {
+type DailyHabitCompletionState = {
+  completedToday: boolean;
+  completeToday: () => void;
+  lastCompletedDay: string | null;
+  loaded: boolean;
+  streakDays: number;
+};
+
+function MorningWorkflowDeck({ habit, items }: { habit: DailyHabitCompletionState; items: DailyDriverMorningWorkflowItem[] }) {
   return (
     <div className="rounded-[1.6rem] border border-cyan-300/16 bg-slate-950/42 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Morning recovery workflow</div>
-          <div className="mt-1 text-lg font-black text-slate-50">Open with the same five checks every day</div>
+          <div className="mt-1 text-lg font-black text-slate-50">Open with the same command checks every day</div>
         </div>
-        <Gauge className="h-5 w-5 text-cyan-200" />
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-100">
+            {habit.loaded ? `${habit.streakDays}d streak` : "streak"}
+          </span>
+          <button
+            className="tv-tap-motion inline-flex min-h-10 items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-3 py-2 text-[11px] font-black uppercase tracking-[0.12em] text-emerald-100 transition hover:border-emerald-200/50 hover:bg-emerald-300/15 focus:outline-none focus:ring-2 focus:ring-emerald-300/35 disabled:cursor-default disabled:opacity-70"
+            data-analytics-id="daily-morning-complete"
+            disabled={habit.completedToday}
+            onClick={habit.completeToday}
+            type="button"
+          >
+            <CalendarCheck className="h-4 w-4" />
+            {habit.completedToday ? "Completed today" : "Complete briefing"}
+          </button>
+        </div>
       </div>
-      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-7">
         {items.map((item) => <MorningWorkflowTile item={item} key={item.key} />)}
       </div>
     </div>
@@ -201,6 +241,159 @@ function DailyActionTile({ action }: { action: DailyDriverAction }) {
         <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">{action.status}</span>
       </div>
     </Link>
+  );
+}
+
+function AdaptivePriorityDeck({ items }: { items: DailyDriverAdaptivePriority[] }) {
+  return (
+    <div className="rounded-[1.6rem] border border-white/10 bg-slate-950/42 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-violet-300">Personalized intelligence</div>
+          <div className="mt-1 text-lg font-black text-slate-50">Adaptive return priority</div>
+        </div>
+        <BrainCircuit className="h-5 w-5 text-violet-200" />
+      </div>
+      <div className="mt-4 grid gap-2">
+        {items.slice(0, 5).map((item) => <AdaptivePriorityRow item={item} key={item.key} />)}
+      </div>
+    </div>
+  );
+}
+
+function AdaptivePriorityRow({ item }: { item: DailyDriverAdaptivePriority }) {
+  const tone = TONE[item.tone];
+  return (
+    <Link
+      className={`block rounded-2xl border ${tone.border} ${tone.bg} p-3 transition hover:border-cyan-300/45 hover:bg-white/[0.055]`}
+      data-analytics-id={`daily-adaptive-${item.key}`}
+      data-symbol={item.symbol ?? undefined}
+      href={item.href}
+      onClick={() => {
+        trackAnalyticsEvent("personalized_intelligence_return", {
+          adaptivePriority: item.key,
+          rank: item.rank,
+          routeGroup: item.workflow,
+          score: item.score,
+        }, { source: "daily_driver_adaptive", symbol: item.symbol ?? undefined });
+        trackAnalyticsEvent("workflow_continuity", {
+          adaptivePriority: item.key,
+          from: "terminal",
+          to: item.workflow,
+        }, { source: "daily_driver_adaptive", symbol: item.symbol ?? undefined });
+      }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{item.priorityLabel}</div>
+          <div className="mt-1 line-clamp-1 font-black text-slate-50">{item.label}</div>
+        </div>
+        <span className={`rounded-full border ${tone.border} bg-black/20 px-2.5 py-1 font-mono text-xs font-black ${tone.text}`}>{item.score}</span>
+      </div>
+      <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{item.detail}</p>
+      <div className="mt-2 rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-semibold text-slate-400">{item.proofEvent}</div>
+    </Link>
+  );
+}
+
+function ChangeVisualizationDeck({ items }: { items: DailyDriverChangeSignal[] }) {
+  return (
+    <div className="rounded-[1.6rem] border border-white/10 bg-slate-950/42 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Since last session</div>
+          <div className="mt-1 text-lg font-black text-slate-50">Daily change visualization</div>
+        </div>
+        <Activity className="h-5 w-5 text-cyan-200" />
+      </div>
+      <div className="mt-4 grid gap-2">
+        {items.slice(0, 6).map((item) => <ChangeSignalRow item={item} key={item.key} />)}
+      </div>
+    </div>
+  );
+}
+
+function ChangeSignalRow({ item }: { item: DailyDriverChangeSignal }) {
+  const tone = TONE[item.tone];
+  return (
+    <Link
+      className={`block rounded-2xl border ${tone.border} ${tone.bg} p-3 transition hover:border-cyan-300/45 hover:bg-white/[0.055]`}
+      data-analytics-id={`daily-change-${item.type}`}
+      data-symbol={item.symbol ?? undefined}
+      href={item.href}
+      onClick={() => {
+        trackAnalyticsEvent("workflow_continuity", {
+          changeType: item.type,
+          from: "terminal",
+          to: item.symbol ? "symbol" : "scanner",
+        }, { source: "daily_driver_change", symbol: item.symbol ?? undefined });
+      }}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{item.metricLabel}</div>
+          <div className="mt-1 line-clamp-1 font-black text-slate-50">{item.label}</div>
+        </div>
+        <span className={`rounded-full border ${tone.border} bg-black/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] ${tone.text}`}>{item.type}</span>
+      </div>
+      <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{item.detail}</p>
+    </Link>
+  );
+}
+
+function RetentionTargetDeck({ targets, telemetry }: { targets: DailyDriverRetentionTarget[]; telemetry: DailyDriverTelemetrySignal[] }) {
+  return (
+    <div className="rounded-[1.6rem] border border-white/10 bg-slate-950/42 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Proof gates</div>
+          <div className="mt-1 text-lg font-black text-slate-50">Retention targets and telemetry</div>
+        </div>
+        <Target className="h-5 w-5 text-emerald-200" />
+      </div>
+      <div className="mt-4 grid gap-2">
+        {targets.map((target) => <RetentionTargetRow target={target} key={target.key} />)}
+      </div>
+      <div className="mt-3 border-t border-white/10 pt-3">
+        <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Instrumented events</div>
+        <div className="mt-2 grid gap-1.5">
+          {telemetry.slice(0, 5).map((item) => <TelemetrySignalRow item={item} key={item.eventName} />)}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RetentionTargetRow({ target }: { target: DailyDriverRetentionTarget }) {
+  const tone = TONE[target.tone];
+  return (
+    <div className={`rounded-2xl border ${tone.border} ${tone.bg} p-3`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{target.evidenceLabel}</div>
+          <div className="mt-1 line-clamp-1 font-black text-slate-50">{target.label}</div>
+        </div>
+        <span className={`rounded-full border ${tone.border} bg-black/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${tone.text}`}>{target.targetLabel}</span>
+      </div>
+      <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{target.detail}</p>
+      <div className="mt-2 flex flex-wrap gap-1.5">
+        <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-400">{target.currentLabel}</span>
+        <span className={`rounded-full border ${tone.border} bg-black/20 px-2 py-0.5 text-[10px] font-semibold ${tone.text}`}>{target.status}</span>
+      </div>
+    </div>
+  );
+}
+
+function TelemetrySignalRow({ item }: { item: DailyDriverTelemetrySignal }) {
+  const tone = TONE[item.tone];
+  return (
+    <div className="flex min-w-0 items-center justify-between gap-2 rounded-2xl border border-white/10 bg-black/18 px-3 py-2">
+      <div className="min-w-0">
+        <div className="truncate text-xs font-semibold text-slate-200">{item.label}</div>
+        <div className="truncate font-mono text-[10px] text-slate-500">{item.eventName}</div>
+      </div>
+      <span className={`shrink-0 rounded-full border ${tone.border} bg-black/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] ${tone.text}`}>{item.status}</span>
+    </div>
   );
 }
 
@@ -301,7 +494,8 @@ function recordMorningWorkflow(item: DailyDriverMorningWorkflowItem): void {
 function returnEventForMorningItem(item: DailyDriverMorningWorkflowItem): AnalyticsEventName | null {
   if (item.key === "watchlist_movement") return "watchlist_return";
   if (item.key === "scanner_changes") return "scanner_return";
-  if (item.key === "risk_changes" || item.key === "macro_updates") return "personalized_intelligence_return";
+  if (item.key === "overnight_events") return "feed_engagement";
+  if (item.key === "ai_digest" || item.key === "risk_changes" || item.key === "macro_updates") return "personalized_intelligence_return";
   return null;
 }
 
@@ -336,6 +530,101 @@ function habitLoopEventForAction(action: DailyDriverAction): AnalyticsEventName 
   if (action.key === "strategy_review") return "strategy_return";
   if (action.key === "workflow_restore") return "personalized_intelligence_return";
   return null;
+}
+
+function useDailyHabitCompletion(): DailyHabitCompletionState {
+  const today = useMemo(() => localDateKey(new Date()), []);
+  const [completionDays, setCompletionDays] = useState<string[]>([]);
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    setCompletionDays(readCompletionDays(today));
+    setLoaded(true);
+  }, [today]);
+
+  const streakDays = useMemo(() => consecutiveDayStreak(completionDays, today), [completionDays, today]);
+  const completedToday = completionDays.includes(today);
+  const lastCompletedDay = completionDays[completionDays.length - 1] ?? null;
+
+  return {
+    completedToday,
+    completeToday: () => {
+      setCompletionDays((current) => {
+        if (current.includes(today)) return current;
+        const next = [...current, today].slice(-90);
+        writeCompletionDays(next);
+        const nextStreak = consecutiveDayStreak(next, today);
+        trackAnalyticsEvent("morning_workflow_complete", {
+          completedDay: today,
+          streakDays: nextStreak,
+        }, { source: "daily_driver_morning" });
+        trackAnalyticsEvent("workflow_continuity", {
+          action: "morning_workflow_complete",
+          from: "terminal",
+          streakDays: nextStreak,
+          to: "terminal",
+        }, { source: "daily_driver_morning" });
+        return next;
+      });
+    },
+    lastCompletedDay,
+    loaded,
+    streakDays,
+  };
+}
+
+function readCompletionDays(today: string): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(DAILY_COMPLETION_KEY) ?? "[]") as unknown;
+    if (!Array.isArray(parsed)) return [];
+    const days = parsed
+      .map((value) => String(value ?? "").trim())
+      .filter((value) => /^\d{4}-\d{2}-\d{2}$/.test(value) && value <= today);
+    return [...new Set(days)].sort().slice(-90);
+  } catch {
+    return [];
+  }
+}
+
+function writeCompletionDays(days: string[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(DAILY_COMPLETION_KEY, JSON.stringify(days));
+  } catch {
+    // Local habit completion is a retention aid; telemetry and navigation must not depend on storage.
+  }
+}
+
+function consecutiveDayStreak(days: string[], today: string): number {
+  const daySet = new Set(days);
+  let cursor = today;
+  let streak = 0;
+  while (daySet.has(cursor)) {
+    streak += 1;
+    const previous = previousLocalDate(cursor);
+    if (!previous) break;
+    cursor = previous;
+  }
+  return streak;
+}
+
+function localDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function previousLocalDate(value: string): string | null {
+  const [yearText, monthText, dayText] = value.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) return null;
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() - 1);
+  return localDateKey(date);
 }
 
 function toneToVisual(tone: DailyDriverTone): VisualTone {

@@ -248,6 +248,7 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
             rows={[
               ["Return sessions", dailyDriver.habitLoops.returnSessions],
               ["Morning workflows", dailyDriver.habitLoops.morningWorkflows],
+              ["Morning completions", dailyDriver.habitLoops.morningWorkflowCompletions],
               ["Scanner returns", dailyDriver.habitLoops.scannerReturns],
               ["Replay returns", dailyDriver.habitLoops.replayReturns],
               ["Alert returns", dailyDriver.habitLoops.alertReturns],

@@ -20,12 +20,17 @@ describe("daily driver retention model", () => {
     assert.equal(model.primaryActions[0]?.key, "create_watchlist");
     assert.deepEqual(model.morningWorkflow.map((item) => item.key), [
       "overnight_summary",
+      "overnight_events",
       "watchlist_movement",
       "scanner_changes",
       "risk_changes",
       "macro_updates",
+      "ai_digest",
     ]);
     assert.equal(model.funnel.find((stage) => stage.key === "watchlist_anchor")?.value, 0);
+    assert.ok(model.retentionTargets.some((target) => target.key === "d2_retention" && target.targetLabel === "> 10%"));
+    assert.ok(model.telemetry.some((item) => item.eventName === "morning_workflow_complete"));
+    assert.equal(model.changeVisualization[0]?.type, "baseline");
     assert.ok(model.blockers.some((blocker) => blocker.includes("No watchlist anchor")));
     assert.match(model.proofBoundary, /does not claim retention victory/i);
   });
@@ -56,6 +61,12 @@ describe("daily driver retention model", () => {
     assert.equal(model.morningWorkflow.find((item) => item.key === "watchlist_movement")?.href, "/symbol/AMD");
     assert.equal(model.morningWorkflow.find((item) => item.key === "scanner_changes")?.metricLabel, "2 rows");
     assert.match(model.morningWorkflow.find((item) => item.key === "macro_updates")?.metricLabel ?? "", /1 trigger/);
+    assert.equal(model.morningWorkflow.find((item) => item.key === "overnight_events")?.metricLabel, "4 signals");
+    assert.equal(model.morningWorkflow.find((item) => item.key === "ai_digest")?.href, "/symbol/AMD");
+    assert.ok(model.changeVisualization.some((item) => item.symbol === "AMD" && item.type === "watchlist"));
+    assert.ok(model.adaptivePriorities.some((item) => item.key === "adaptive_scanner" && item.proofEvent.includes("scanner_return")));
+    assert.ok(model.retentionTargets.some((target) => target.key === "notification_useful_ratio" && target.targetLabel === "> 65%"));
+    assert.ok(model.telemetry.some((item) => item.eventName === "watchlist_return / scanner_return" && item.status === "ready"));
     assert.equal(model.personalization.find((item) => item.label === "Focus cluster")?.value, "Semiconductors");
     assert.equal(model.continuity.find((item) => item.label === "Workspace restore")?.value, "Saved");
   });

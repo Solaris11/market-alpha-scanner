@@ -148,6 +148,7 @@ export type AnalyticsSummary = {
       };
       habitLoops: {
         alertReturns: number;
+        morningWorkflowCompletions: number;
         morningWorkflows: number;
         personalizedReturns: number;
         replayReturns: number;
@@ -408,6 +409,7 @@ type NotificationFeedbackCategoryRow = QueryResultRow & {
 };
 type DailyDriverHabitLoopRow = QueryResultRow & {
   alert_returns: string | number;
+  morning_workflow_completions: string | number;
   morning_workflows: string | number;
   personalized_returns: string | number;
   replay_returns: string | number;
@@ -455,6 +457,7 @@ const CORE_FEATURE_EVENT_NAMES = [
   "alert_create",
   "chart_expand",
   "feed_engagement",
+  "morning_workflow_complete",
   "morning_workflow_start",
   "notification_engagement",
   "personalized_intelligence_return",
@@ -1046,6 +1049,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
         SELECT
           count(*) FILTER (WHERE event_name = 'return_session') AS return_sessions,
           count(*) FILTER (WHERE event_name = 'morning_workflow_start') AS morning_workflows,
+          count(*) FILTER (WHERE event_name = 'morning_workflow_complete') AS morning_workflow_completions,
           count(*) FILTER (WHERE event_name = 'scanner_return') AS scanner_returns,
           count(*) FILTER (WHERE event_name = 'replay_return') AS replay_returns,
           count(*) FILTER (WHERE event_name = 'alert_return') AS alert_returns,
@@ -1368,6 +1372,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
         },
         habitLoops: {
           alertReturns: numberFromRow(dailyDriverHabitLoopRow?.alert_returns),
+          morningWorkflowCompletions: numberFromRow(dailyDriverHabitLoopRow?.morning_workflow_completions),
           morningWorkflows: numberFromRow(dailyDriverHabitLoopRow?.morning_workflows),
           personalizedReturns: numberFromRow(dailyDriverHabitLoopRow?.personalized_returns),
           replayReturns: numberFromRow(dailyDriverHabitLoopRow?.replay_returns),
