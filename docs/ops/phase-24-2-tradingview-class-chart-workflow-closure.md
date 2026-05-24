@@ -65,6 +65,25 @@ Local validation completed:
 - `npx pyright . --pythonpath .venv/bin/python --warnings` - passed, 0 errors / 0 warnings
 - `git diff --check` - passed
 
+Production deployment:
+
+- Commit deployed: `6bd0610b`
+- Production host: `sre@100.68.155.121`
+- Production path: `/opt/apps/market-alpha-scanner/app`
+- `git pull --ff-only origin main` - passed
+- `docker compose --env-file .env up -d --build market-alpha-frontend` - passed
+- Frontend container rebuilt and restarted successfully.
+
+Production smoke:
+
+- `https://tradeveto.com/api/health` - passed
+- `https://tradeveto.com/api/health/deep` - passed
+- `/terminal` - 200
+- `/symbol/AMD` - 200
+- `/discover` - 200
+- `/scanner` - 200
+- `/alerts` - 200
+
 Focused chart workflow validation:
 
 - `npm --prefix frontend run test:phase23:chart-workflow` - passed, 497 tests
