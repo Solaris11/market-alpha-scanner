@@ -5,6 +5,7 @@ import type {
   InstitutionalOperatingLane,
   InstitutionalOperatingLedgerEntry,
   InstitutionalOperationsCredibilityGate,
+  InstitutionalOperationsAuditManifest,
   InstitutionalPortfolioOperationsSystem,
   InstitutionalPortfolioOpsTone,
   InstitutionalPositionLifecycle,
@@ -47,6 +48,7 @@ export function InstitutionalPortfolioOperationsPanel({ system }: { system: Inst
         <div className="space-y-5">
           <RiskBudgetList items={system.riskBudget.slice(0, 7)} />
           <ProofGateList items={system.proofGates} />
+          <AuditManifestCard manifest={system.auditManifest} />
           <BrokerBoundaryCard state={system.brokerIntegration} />
           <OperatingLedgerExport csv={system.operatingLedgerCsv} items={system.operatingLedger} />
           <ThesisLifecycleList items={system.thesisLifecycle} />
@@ -178,6 +180,7 @@ function PositionLifecycleList({ items }: { items: InstitutionalPositionLifecycl
               <Mini label="Current value" value={formatMoney(item.currentValue, 0)} />
               <Mini label="Open risk" value={formatMoney(item.riskAmount, 0)} />
               <Mini label="Stop / target" value={item.stopTarget} />
+              <Mini label="Scaling" value={item.scalingPlan} />
               <Mini label="Opened" value={dateText(item.openedAt)} />
               <Mini label="Unrealized P/L" tone={item.unrealizedPnl} value={formatMoney(item.unrealizedPnl ?? 0, 0)} />
             </div>
@@ -186,6 +189,18 @@ function PositionLifecycleList({ items }: { items: InstitutionalPositionLifecycl
             <p className="mt-2 text-xs leading-5 text-slate-500">{item.exitPlan}</p>
             <p className="mt-2 text-xs leading-5 text-cyan-100/80">{item.drawdown}</p>
             <p className="mt-2 text-xs leading-5 text-slate-400">{item.lessonLearned}</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {item.lifecycleSteps.map((step) => (
+                <div className="rounded-xl border border-white/10 bg-black/18 p-2.5" key={`${item.symbol}:${step.type}`}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-500">{step.label}</div>
+                    <div className={`rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.1em] ${stepTone(step.status)}`}>{step.status}</div>
+                  </div>
+                  <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{step.detail}</p>
+                  <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-500">{step.evidence}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )) : (
           <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/45 p-4 text-sm leading-6 text-slate-400">
@@ -341,6 +356,26 @@ function ProofGateList({ items }: { items: InstitutionalOperationsCredibilityGat
   );
 }
 
+function AuditManifestCard({ manifest }: { manifest: InstitutionalOperationsAuditManifest }) {
+  return (
+    <div className="rounded-2xl border border-emerald-300/18 bg-emerald-400/[0.045] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">Audit Manifest</div>
+      <h3 className="mt-1 text-lg font-semibold text-slate-50">Evidence-bound operating proof</h3>
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+        <Mini label="Lifecycle evidence" value={formatManifestPct(manifest.evidenceBoundLifecyclePct)} />
+        <Mini label="Revision trace" value={formatManifestPct(manifest.revisionTraceabilityPct)} />
+        <Mini label="Ledger rows" value={manifest.exportRowCount.toLocaleString()} />
+        <Mini label="CSV columns" value={manifest.exportColumnCount.toLocaleString()} />
+        <Mini label="Replay-backed" value={`${manifest.replayBackedAutopsyCount}/${manifest.replayEligibleAutopsyCount}`} />
+        <Mini label="Ledger integrity" value={manifest.ledgerIntegrity} />
+      </div>
+      <p className="mt-3 text-xs leading-5 text-slate-400">
+        Broker boundary: {manifest.brokerBoundary.replace(/_/g, " ")}. This manifest proves export shape and evidence lineage; it does not certify broker execution or real-money account state.
+      </p>
+    </div>
+  );
+}
+
 function BrokerBoundaryCard({ state }: { state: InstitutionalBrokerIntegrationState }) {
   return (
     <div className="rounded-2xl border border-amber-300/18 bg-amber-400/[0.045] p-4">
@@ -390,6 +425,7 @@ function OperatingLedgerExport({ csv, items }: { csv: string; items: Institution
               <div className="shrink-0 text-right font-mono text-xs font-black text-cyan-100">{item.symbol ?? "PORT"}</div>
             </div>
             <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{item.detail}</p>
+            <p className="mt-2 line-clamp-1 font-mono text-[10px] text-cyan-100/70">{item.evidenceLineage}</p>
             <p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-500">{item.boundaryDisclosure}</p>
           </div>
         ))}
@@ -549,6 +585,16 @@ function continuityTone(status: InstitutionalWorkspaceContinuityItem["status"]):
   if (status === "available") return "border-emerald-300/30 bg-emerald-400/10 text-emerald-200";
   if (status === "limited") return "border-amber-300/30 bg-amber-400/10 text-amber-100";
   return "border-rose-300/30 bg-rose-400/10 text-rose-100";
+}
+
+function stepTone(status: "bounded" | "complete" | "missing"): string {
+  if (status === "complete") return "border-emerald-300/30 bg-emerald-400/10 text-emerald-200";
+  if (status === "bounded") return "border-cyan-300/30 bg-cyan-400/10 text-cyan-100";
+  return "border-rose-300/30 bg-rose-400/10 text-rose-100";
+}
+
+function formatManifestPct(value: number | null): string {
+  return value === null ? "N/A" : `${value.toFixed(0)}%`;
 }
 
 function dateText(value: string): string {

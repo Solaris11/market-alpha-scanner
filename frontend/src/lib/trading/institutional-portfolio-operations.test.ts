@@ -261,6 +261,8 @@ test("institutional portfolio operations exposes lifecycle and risk budgets with
   assert.ok(system.positionLifecycle.some((item) => item.symbol === "DDOG" && item.status === "incomplete"));
   assert.ok(system.positionLifecycle.some((item) => item.symbol === "DDOG" && /Stop limited \/ Target limited/.test(item.stopTarget)));
   assert.ok(system.positionLifecycle.every((item) => item.drawdown.length > 0 && item.exitPlan.length > 0 && item.lessonLearned.length > 0));
+  assert.ok(system.positionLifecycle.every((item) => item.scalingPlan.length > 0 && item.lifecycleSteps.length === 7));
+  assert.ok(system.positionLifecycle.some((item) => item.symbol === "DDOG" && item.lifecycleSteps.some((step) => step.type === "invalidation" && step.status === "missing")));
   assert.ok(system.allocationHistory.some((item) => item.source === "paper_event"));
   assert.ok(system.allocationHistory.every((item) => item.priorMetric.length > 0 && item.rebalanceRationale.length > 0 && item.riskChange.length > 0));
   assert.ok(system.thesisLifecycle.some((item) => item.symbol === "DDOG" && item.state === "incomplete"));
@@ -270,8 +272,14 @@ test("institutional portfolio operations exposes lifecycle and risk budgets with
   assert.ok(system.paperTradeAutopsies.some((item) => item.source === "paper_account" && /manual paper trade/i.test(item.replayEvidence) && !item.replayBacked));
   assert.ok(system.paperTradeAutopsies.every((item) => item.noFakeFillDisclosure.length > 0 && item.exit.length > 0 && item.lessonLearned.length > 0));
   assert.ok(system.workspaceContinuity.some((item) => item.label === "Saved Workspace" && item.status === "available"));
+  assert.ok(system.workspaceContinuity.some((item) => item.label === "Portfolio Workspace Restore" && item.status === "available"));
+  assert.ok(system.workspaceContinuity.some((item) => item.label === "Compare Restore" && item.status === "available"));
   assert.ok(system.operatingLanes.some((lane) => lane.label === "Thesis Completion"));
+  assert.equal(system.auditManifest.evidenceBoundLifecyclePct, 100);
+  assert.equal(system.auditManifest.ledgerIntegrity, "pass");
   assert.ok(system.proofGates.some((gate) => gate.label === "Trade autopsy boundary" && gate.status === "partial"));
+  assert.ok(system.proofGates.some((gate) => gate.label === "Evidence-bound lifecycle records" && gate.status === "pass"));
+  assert.ok(system.proofGates.some((gate) => gate.label === "Exportable operating ledger" && gate.status === "pass"));
   assert.equal(system.brokerIntegration.status, "not_integrated");
   assert.equal(system.brokerIntegration.canPlaceOrders, false);
   assert.equal(system.brokerIntegration.canReadBrokerFills, false);
@@ -279,8 +287,9 @@ test("institutional portfolio operations exposes lifecycle and risk budgets with
   assert.ok(system.operatingLedger.some((row) => row.category === "broker_boundary" && /No broker provider/i.test(row.evidence)));
   assert.ok(system.operatingLedger.some((row) => row.category === "position_lifecycle" && row.symbol === "AMD"));
   assert.ok(system.operatingLedger.some((row) => row.category === "allocation" && row.source === "paper_event"));
-  assert.ok(system.operatingLedger.every((row) => row.boundaryDisclosure.length > 0));
+  assert.ok(system.operatingLedger.every((row) => row.boundaryDisclosure.length > 0 && row.evidenceLineage.length > 0));
   assert.match(system.operatingLedgerCsv, /boundary_disclosure/);
+  assert.match(system.operatingLedgerCsv, /evidence_lineage/);
   assert.match(system.operatingLedgerCsv, /not a broker fill|No live broker integration/i);
   assert.ok(system.limitations.some((line) => /missing stop\/target\/thesis fields/i.test(line)));
   assert.ok(system.rebalanceHistory.length === 0);
@@ -313,8 +322,12 @@ test("institutional portfolio operations derives rebalance and strategy memory f
   assert.ok(system.drawdownStories.some((item) => item.source === "strategy_labs"));
   assert.ok(system.paperTradeAutopsies.some((item) => item.source === "strategy_labs" && item.replayBacked && item.replayEvidenceStatus === "explicit_replay"));
   assert.ok(system.strategyRevisions.every((item) => item.whatChanged.length > 0 && item.whyChanged.length > 0 && item.evidenceBasis.length > 0));
+  assert.equal(system.auditManifest.revisionTraceabilityPct, 100);
   assert.ok(system.workspaceContinuity.some((item) => item.label === "Strategy Labs Memory" && item.status === "available"));
+  assert.ok(system.workspaceContinuity.some((item) => item.label === "Strategy Workspace Restore" && item.status === "available"));
+  assert.ok(system.workspaceContinuity.some((item) => item.label === "Scenario Restore" && item.status === "available"));
   assert.ok(system.proofGates.some((gate) => gate.label === "Portfolio risk operations" && gate.status === "pass"));
+  assert.ok(system.proofGates.some((gate) => gate.label === "Revision traceability" && gate.status === "pass"));
   assert.ok(system.operatingLedger.some((row) => row.category === "strategy_revision" && row.source === "strategy_labs"));
   assert.ok(system.operatingLedger.some((row) => row.category === "autopsy" && row.source === "strategy_labs"));
   assert.ok(system.operatingLedgerCsv.includes("Strategy Labs"));
@@ -360,7 +373,10 @@ test("institutional portfolio operating ledger is exportable without broker or r
 
   assert.ok(system.operatingLedger.length > 0);
   assert.ok(system.operatingLedger.every((row) => !/guarantee|broker execution confirmed|live fill/i.test(`${row.detail} ${row.evidence} ${row.boundaryDisclosure}`)));
+  assert.equal(system.auditManifest.exportRowCount, system.operatingLedger.length);
+  assert.equal(system.auditManifest.exportColumnCount, 11);
   assert.ok(system.operatingLedgerCsv.startsWith("\"date\",\"category\",\"source\""));
   assert.match(system.operatingLedgerCsv, /paper close, not broker fill/);
+  assert.match(system.operatingLedgerCsv, /paper_event:AMD/);
   assert.match(system.operatingLedgerCsv, /broker|Broker/);
 });
