@@ -29,6 +29,7 @@ import type {
   DailyCompanyEventTimeline,
   DailyCrossAssetEventRelationship,
   DailyDevelopmentCategory,
+  DailyEventDomainTimeline,
   DailyEventCalendarItem,
   DailyInformationEvolutionPoint,
   DailyInformationProviderCoverage,
@@ -49,7 +50,7 @@ type Props = {
   model: DailyMarketCommandModel;
 };
 
-const FILTERS: DailyDevelopmentCategory[] = ["All", "My Watchlist", "Macro", "Earnings", "Analyst", "Rates", "Geopolitical", "Crypto", "Energy", "High Impact"];
+const FILTERS: DailyDevelopmentCategory[] = ["All", "My Watchlist", "Macro", "Earnings", "Analyst", "Dividend", "Rates", "Geopolitical", "Crypto", "Energy", "High Impact"];
 const PROVIDER_STATES: DailyProviderOperationalState[] = ["active", "delayed", "stale", "outage", "partial-outage", "calendar-only", "limited"];
 
 const TONE: Record<DailyCommandTone, { bg: string; border: string; glow: string; ring: string; text: string }> = {
@@ -216,6 +217,7 @@ export function DailyMarketCommandCenter({ model }: Props) {
             <ProviderStrategyAuditGrid audits={model.providerCoverageMatrix} />
             <MacroStorylineDeck stories={model.macroStorylines} />
             <MacroEventTimelineDeck items={model.macroEventTimeline} />
+            <EventDomainTimelineDeck timelines={model.eventDomainTimelines} />
             <SectorNewsClusterDeck clusters={model.sectorNews} />
             <InformationEvolutionRail points={model.newsEvolution} />
             <CrossAssetRelationshipDeck relationships={model.crossAssetRelationships} />
@@ -254,6 +256,8 @@ export function DailyMarketCommandCenter({ model }: Props) {
                     <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300">{item.sourceQualityLabel}</span>
                     <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300">{item.providerAttribution}</span>
                     <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-100">{item.freshnessLabel}</span>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${item.providerState === "active" ? "border-emerald-300/20 bg-emerald-300/10 text-emerald-100" : "border-amber-300/20 bg-amber-300/10 text-amber-100"}`}>{item.providerStateLabel}</span>
+                    <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300">{item.freshnessSlaLabel}</span>
                     <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[10px] font-semibold text-amber-100">{item.uncertaintyLabel}</span>
                     <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300">{item.symbolRelevanceLabel}</span>
                     <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300">{item.sectorImpactLabel}</span>
@@ -439,6 +443,60 @@ function MacroEventTimelineDeck({ items }: { items: DailyMacroEventTimelineItem[
               {item.affectedSectors.slice(0, 3).map((sector) => <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] text-slate-300" key={sector}>{sector}</span>)}
             </div>
           </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EventDomainTimelineDeck({ timelines }: { timelines: DailyEventDomainTimeline[] }) {
+  if (!timelines.length) return null;
+  return (
+    <div className="mt-3 rounded-3xl border border-white/10 bg-black/18 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300">Provider event timelines</div>
+        <span className="rounded-full border border-white/10 bg-white/[0.035] px-2 py-1 text-[10px] font-bold text-slate-400">{timelines.length} domains</span>
+      </div>
+      <div className="mt-3 grid gap-2 lg:grid-cols-2">
+        {timelines.slice(0, 6).map((timeline) => (
+          <div className={`rounded-2xl border p-3 ${TONE[timeline.tone].border} ${TONE[timeline.tone].bg}`} key={timeline.domain}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className={`text-[10px] font-black uppercase tracking-[0.14em] ${TONE[timeline.tone].text}`}>{timeline.domain.replace(/-/g, " ")}</div>
+                <div className="mt-1 text-sm font-black text-slate-50">{timeline.label}</div>
+              </div>
+              <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1 font-mono text-[10px] font-black text-slate-300">{timeline.activeSourceCount}/{timeline.itemCount}</span>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-100">{timeline.activeSourceCount} source-linked</span>
+              {timeline.calendarCount ? <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2 py-0.5 text-[10px] font-semibold text-amber-100">{timeline.calendarCount} calendar-only</span> : null}
+              <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] font-semibold text-slate-300">{timeline.providerStateSummary}</span>
+            </div>
+            <div className="mt-3 space-y-2">
+              {timeline.items.slice(0, 3).map((item) => (
+                <a
+                  className={`block rounded-xl border border-white/10 bg-black/20 p-2 ${item.sourceUrl ? "transition hover:border-cyan-300/35 hover:bg-white/[0.055]" : ""}`}
+                  href={item.sourceUrl ?? undefined}
+                  key={item.id}
+                  rel="noreferrer"
+                  target={item.sourceUrl ? "_blank" : undefined}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className={`text-[10px] font-black uppercase tracking-[0.12em] ${TONE[item.tone].text}`}>{formatDate(item.date)} · {item.providerState.replace("-", " ")}</div>
+                      <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{item.detail}</p>
+                    </div>
+                    {item.sourceUrl ? <ExternalLink className="h-4 w-4 shrink-0 text-slate-500" /> : null}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] text-slate-300">{item.source}</span>
+                    <span className="rounded-full border border-white/10 bg-black/20 px-2 py-0.5 text-[10px] text-slate-400">{item.freshnessLabel}</span>
+                    {item.watchlistImpact ? <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-2 py-0.5 text-[10px] font-bold text-cyan-100">watchlist</span> : null}
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
         ))}
       </div>
     </div>
@@ -775,9 +833,14 @@ function DevelopmentOverlay({ item, onClose }: { item: DailyMarketDevelopment | 
           <DetailMiniPanel label="Priority score" value={`${item.priorityScore}/100`} />
           <DetailMiniPanel label="Source quality" value={item.sourceQualityLabel} />
           <DetailMiniPanel label="Provider attribution" value={item.providerAttribution} />
+          <DetailMiniPanel label="Provider state" value={item.providerStateLabel} />
           <DetailMiniPanel label="Freshness" value={item.freshnessLabel} />
+          <DetailMiniPanel label="Freshness SLA" value={item.freshnessSlaLabel} />
+          <DetailMiniPanel label="Source completeness" value={item.sourceCompletenessLabel} />
           <DetailMiniPanel label="Feed latency" value={item.latencyLabel} />
           <DetailMiniPanel label="Research type" value={item.researchTypeLabel} />
+          <DetailMiniPanel label="Timeline bucket" value={item.timelineBucket} />
+          <DetailMiniPanel label="Historical analog" value={item.historicalAnalogLabel} />
           <DetailMiniPanel label="Event tracking" value={item.eventTrackingLabel} />
           <DetailMiniPanel label="Sector impact" value={item.sectorImpactLabel} />
           <DetailMiniPanel label="Market moving read" value={item.marketMovingLabel} />

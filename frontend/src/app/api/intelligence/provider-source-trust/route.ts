@@ -41,11 +41,17 @@ type ProviderStateCounts = Record<DailyProviderOperationalState, number>;
 type EventCardProof = {
   affectedSymbols: string[];
   freshness: string;
+  freshnessSla: string;
   headline: string;
+  historicalAnalog: string;
   provider: string;
+  providerState: DailyProviderOperationalState;
+  providerStateLabel: string;
   source: string;
+  sourceCompleteness: string;
   sourceUrl: string;
   timestamp: string;
+  timelineBucket: string;
   uncertainty: string;
   watchlistImpact: boolean;
   watchlistImpactReason: string;
@@ -116,6 +122,7 @@ export async function GET(request: Request) {
     const outageHeader = request.headers.get("x-tradeveto-provider-outage-simulation") ?? "";
     return NextResponse.json({
       eventCards: model.developments.map(eventCardProof),
+      eventDomainTimelines: model.eventDomainTimelines,
       generatedAt: new Date().toISOString(),
       marketCondition: snapshot.marketRegime.label,
       ok: true,
@@ -136,11 +143,17 @@ function eventCardProof(item: DailyMarketDevelopment): EventCardProof {
   return {
     affectedSymbols: item.affectedSymbols,
     freshness: item.freshnessLabel,
+    freshnessSla: item.freshnessSlaLabel,
     headline: item.headline,
+    historicalAnalog: item.historicalAnalogLabel,
     provider: item.providerAttribution,
+    providerState: item.providerState,
+    providerStateLabel: item.providerStateLabel,
     source: item.source,
+    sourceCompleteness: item.sourceCompletenessLabel,
     sourceUrl: item.sourceUrl,
     timestamp: item.timestamp,
+    timelineBucket: item.timelineBucket,
     uncertainty: item.uncertaintyLabel,
     watchlistImpact: item.watchlistImpact,
     watchlistImpactReason: item.watchlistImpactReason,

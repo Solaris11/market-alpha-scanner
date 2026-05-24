@@ -206,7 +206,13 @@ test("daily market command ranks opportunity, breakout, crash risk, money flow, 
   assert.match(model.developments[0]?.relatedMacroContext ?? "", /growth confidence/);
   assert.equal(model.developments[0]?.sourceQualityLabel, "Verified market source");
   assert.equal(model.developments[0]?.providerAttribution, "Verified market source · Reuters");
+  assert.equal(model.developments[0]?.providerState, "active");
+  assert.equal(model.developments[0]?.providerStateLabel, "Provider active");
   assert.equal(model.developments[0]?.freshnessLabel, "Recent · 2h old");
+  assert.match(model.developments[0]?.freshnessSlaLabel ?? "", /within 360m/);
+  assert.match(model.developments[0]?.sourceCompletenessLabel ?? "", /Source complete/);
+  assert.equal(model.developments[0]?.timelineBucket, "rates timeline");
+  assert.match(model.developments[0]?.historicalAnalogLabel ?? "", /limited/);
   assert.equal(model.developments[0]?.symbolRelevanceLabel, "Symbol relevance: AMD, MU");
   assert.equal(model.developments[0]?.watchlistRelevanceLabel, "Watchlist relevance: AMD");
   assert.match(model.developments[0]?.latencyLabel ?? "", /latency not instrumented/);
@@ -222,6 +228,8 @@ test("daily market command ranks opportunity, breakout, crash risk, money flow, 
   assert.equal(model.newsEcosystem.sourceTrust.completenessPct, 100);
   assert.equal(model.newsEcosystem.sourceTrust.contextCompletenessPct, 100);
   assert.equal(model.newsEcosystem.sourceTrust.missingFieldCounts.sourceUrl, 0);
+  assert.equal(model.newsEcosystem.sourceTrust.missingFieldCounts.providerState, 0);
+  assert.ok(model.newsEcosystem.sourceTrust.requiredFields.includes("providerState"));
   assert.equal(model.newsEcosystem.calendarCount, 3);
   assert.ok(model.newsEcosystem.completenessScore > 0);
   assert.equal(model.providerCoverage[0]?.source, "Reuters");
@@ -238,6 +246,7 @@ test("daily market command ranks opportunity, breakout, crash risk, money flow, 
   assert.equal(model.newsEvolution[0]?.itemCount, 1);
   assert.ok(model.crossAssetRelationships.some((relationship) => relationship.affectedSymbols.includes("AMD") && relationship.affectedSymbols.includes("MU") && relationship.relationshipType === "Rates/yields versus duration-sensitive growth"));
   assert.ok(model.macroEventTimeline.some((item) => item.source === "Verified market source · Reuters" && item.relationshipType === "Rates/yields versus duration-sensitive growth"));
+  assert.ok(model.eventDomainTimelines.some((timeline) => timeline.domain === "rates" && timeline.activeSourceCount === 1));
   assert.ok(model.companyTimelines.some((timeline) => timeline.symbol === "AMD" && timeline.timeline.length > 0));
   assert.ok(model.macroStorylines.some((story) => story.label === "Rates and inflation pressure"));
   assert.ok(model.sectorNews.some((cluster) => cluster.sector === "Semiconductors"));
@@ -305,6 +314,19 @@ test("provider matrix recognizes source-linked inflation, analyst, geopolitical,
       title: "Bitcoin crypto ETF flows shift risk appetite",
       whyItMatters: "Crypto beta can connect to speculative growth risk appetite.",
     },
+    {
+      ...sourceLinkedCommand.macroNews[0]!,
+      eventTrackingLabel: "Dividend event tracked from Nasdaq",
+      eventType: "dividend",
+      id: "https://www.nasdaq.com/market-activity/stocks/msft/dividend-history|MSFT dividend event",
+      publishedAt: "2026-05-19T13:10:00.000Z",
+      reasonCodes: ["EVENT_DIVIDEND"],
+      relatedAssets: ["MSFT"],
+      source: "Nasdaq",
+      sourceUrl: "https://www.nasdaq.com/market-activity/stocks/msft/dividend-history",
+      title: "Microsoft declares quarterly dividend",
+      whyItMatters: "Dividend event context adds shareholder-return and timeline evidence.",
+    },
   ];
 
   const model = buildDailyMarketCommandModel({
@@ -316,7 +338,7 @@ test("provider matrix recognizes source-linked inflation, analyst, geopolitical,
     watchlistSymbols: ["AMD", "BTC"],
   });
 
-  const requiredActiveDomains = ["inflation", "analyst-actions", "geopolitical-events", "crypto-events"] as const;
+  const requiredActiveDomains = ["inflation", "analyst-actions", "dividends", "geopolitical-events", "crypto-events"] as const;
   for (const domain of requiredActiveDomains) {
     const audit = model.providerCoverageMatrix.find((item) => item.domain === domain);
     assert.equal(audit?.operationalState, "active", `${domain} should be active`);
@@ -324,6 +346,8 @@ test("provider matrix recognizes source-linked inflation, analyst, geopolitical,
     assert.match(audit?.freshnessSlaDisclosure ?? "", /freshness SLA/i);
   }
   assert.ok(model.developments.some((item) => item.source === "CoinDesk" && item.category === "Crypto"));
+  assert.ok(model.developments.some((item) => item.source === "Nasdaq" && item.category === "Dividend"));
+  assert.ok(model.eventDomainTimelines.some((timeline) => timeline.domain === "dividends" && timeline.activeSourceCount === 1));
   assert.equal(model.newsEcosystem.sourceTrust.status, "pass");
   assert.equal(model.newsEcosystem.sourceTrust.completenessPct, 100);
   assert.equal(model.newsEcosystem.sourceTrust.contextCompletenessPct, 100);

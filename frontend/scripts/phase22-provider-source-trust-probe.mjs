@@ -166,6 +166,9 @@ function missingCardFields(card) {
   const missing = [];
   if (!String(card?.sourceUrl ?? "").startsWith("http")) missing.push("sourceUrl");
   if (!String(card?.provider ?? "").trim()) missing.push("provider");
+  if (!String(card?.providerState ?? "").trim()) missing.push("providerState");
+  if (!String(card?.freshnessSla ?? "").trim()) missing.push("freshnessSla");
+  if (!String(card?.sourceCompleteness ?? "").trim()) missing.push("sourceCompleteness");
   if (!Number.isFinite(Date.parse(String(card?.timestamp ?? "")))) missing.push("timestamp");
   if (!String(card?.freshness ?? "").trim()) missing.push("freshness");
   if (!Array.isArray(card?.affectedSymbols) || card.affectedSymbols.length === 0) missing.push("affectedSymbols");

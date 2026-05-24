@@ -135,6 +135,26 @@ type RawEvent = {
   weight?: unknown;
 };
 
+type SourceLinkedEventField = {
+  eventType: string;
+  key: string;
+  reasonCode: string;
+  scope: "market" | "sector" | "symbol";
+};
+
+type DirectSourceLinkedEventSpec = {
+  affectedSectorKeys?: string[];
+  affectedSymbolKeys?: string[];
+  directionKeys?: string[];
+  eventType: string;
+  reasonCode: string;
+  scope: "market" | "sector" | "symbol";
+  sourceKeys: string[];
+  timestampKeys: string[];
+  titleKeys: string[];
+  urlKeys: string[];
+};
+
 const MARKET_CATEGORY: Record<string, MarketCommandItem["category"]> = {
   BTC: "crypto",
   DIA: "equity",
@@ -145,6 +165,107 @@ const MARKET_CATEGORY: Record<string, MarketCommandItem["category"]> = {
   UUP: "currency",
   USO: "commodity",
 };
+
+const SOURCE_LINKED_EVENT_FIELDS: SourceLinkedEventField[] = [
+  { eventType: "market_event", key: "verified_event_recent_events", reasonCode: "EVENT_SOURCE_LINKED", scope: "market" },
+  { eventType: "market_event", key: "source_linked_events", reasonCode: "EVENT_SOURCE_LINKED", scope: "market" },
+  { eventType: "market_event", key: "provider_events", reasonCode: "EVENT_PROVIDER_LINKED", scope: "market" },
+  { eventType: "market_event", key: "market_events", reasonCode: "EVENT_MARKET_CONTEXT", scope: "market" },
+  { eventType: "macro_data", key: "macro_events", reasonCode: "EVENT_MACRO_CONTEXT", scope: "market" },
+  { eventType: "macro_data", key: "economic_events", reasonCode: "EVENT_ECONOMIC_CALENDAR", scope: "market" },
+  { eventType: "macro_data", key: "inflation_events", reasonCode: "EVENT_INFLATION_PRESSURE", scope: "market" },
+  { eventType: "rates", key: "rates_events", reasonCode: "EVENT_RATE_PRESSURE", scope: "market" },
+  { eventType: "analyst_action", key: "analyst_action_events", reasonCode: "EVENT_ANALYST_ACTION", scope: "symbol" },
+  { eventType: "analyst_action", key: "analyst_revision_events", reasonCode: "EVENT_ANALYST_ACTION", scope: "symbol" },
+  { eventType: "dividend", key: "dividend_events", reasonCode: "EVENT_DIVIDEND", scope: "symbol" },
+  { eventType: "earnings", key: "earnings_events", reasonCode: "EVENT_EARNINGS", scope: "symbol" },
+  { eventType: "company_event", key: "company_events", reasonCode: "EVENT_COMPANY_CATALYST", scope: "symbol" },
+  { eventType: "sector_event", key: "sector_events", reasonCode: "EVENT_SECTOR_CONTEXT", scope: "sector" },
+  { eventType: "geopolitical", key: "geopolitical_events", reasonCode: "EVENT_GEOPOLITICAL_ESCALATION", scope: "market" },
+  { eventType: "crypto", key: "crypto_events", reasonCode: "EVENT_CRYPTO_CONTEXT", scope: "market" },
+];
+
+const DIRECT_SOURCE_LINKED_EVENT_SPECS: DirectSourceLinkedEventSpec[] = [
+  {
+    affectedSymbolKeys: ["analyst_action_symbols", "rating_action_symbols"],
+    directionKeys: ["analyst_action_sentiment", "rating_action_sentiment", "analyst_action_direction"],
+    eventType: "analyst_action",
+    reasonCode: "EVENT_ANALYST_ACTION",
+    scope: "symbol",
+    sourceKeys: ["analyst_action_source", "rating_action_source"],
+    timestampKeys: ["analyst_action_timestamp", "analyst_action_date", "rating_action_timestamp", "rating_action_date"],
+    titleKeys: ["analyst_action_headline", "analyst_action_summary", "rating_action_headline", "rating_action_summary"],
+    urlKeys: ["analyst_action_url", "rating_action_url"],
+  },
+  {
+    affectedSymbolKeys: ["dividend_symbols"],
+    eventType: "dividend",
+    reasonCode: "EVENT_DIVIDEND",
+    scope: "symbol",
+    sourceKeys: ["dividend_source", "dividend_event_source"],
+    timestampKeys: ["dividend_timestamp", "dividend_event_timestamp", "ex_dividend_date", "dividend_ex_date"],
+    titleKeys: ["dividend_headline", "dividend_event_headline", "dividend_summary", "dividend_event_summary"],
+    urlKeys: ["dividend_url", "dividend_event_url"],
+  },
+  {
+    affectedSymbolKeys: ["earnings_symbols"],
+    directionKeys: ["earnings_sentiment", "earnings_direction"],
+    eventType: "earnings",
+    reasonCode: "EVENT_EARNINGS",
+    scope: "symbol",
+    sourceKeys: ["earnings_source", "earnings_event_source"],
+    timestampKeys: ["earnings_timestamp", "earnings_event_timestamp", "earnings_date"],
+    titleKeys: ["earnings_headline", "earnings_event_headline", "earnings_summary", "earnings_event_summary"],
+    urlKeys: ["earnings_url", "earnings_event_url"],
+  },
+  {
+    affectedSectorKeys: ["geopolitical_affected_sectors"],
+    affectedSymbolKeys: ["geopolitical_affected_symbols"],
+    directionKeys: ["geopolitical_sentiment", "geopolitical_direction"],
+    eventType: "geopolitical",
+    reasonCode: "EVENT_GEOPOLITICAL_ESCALATION",
+    scope: "market",
+    sourceKeys: ["geopolitical_source", "geopolitical_event_source"],
+    timestampKeys: ["geopolitical_timestamp", "geopolitical_event_timestamp", "geopolitical_event_date"],
+    titleKeys: ["geopolitical_headline", "geopolitical_event_headline", "geopolitical_summary", "geopolitical_event_summary"],
+    urlKeys: ["geopolitical_url", "geopolitical_event_url"],
+  },
+  {
+    affectedSymbolKeys: ["crypto_affected_symbols", "crypto_symbols"],
+    directionKeys: ["crypto_sentiment", "crypto_direction"],
+    eventType: "crypto",
+    reasonCode: "EVENT_CRYPTO_CONTEXT",
+    scope: "market",
+    sourceKeys: ["crypto_source", "crypto_event_source"],
+    timestampKeys: ["crypto_timestamp", "crypto_event_timestamp", "crypto_event_date"],
+    titleKeys: ["crypto_headline", "crypto_event_headline", "crypto_summary", "crypto_event_summary"],
+    urlKeys: ["crypto_url", "crypto_event_url"],
+  },
+  {
+    affectedSectorKeys: ["macro_affected_sectors", "inflation_affected_sectors", "rates_affected_sectors"],
+    affectedSymbolKeys: ["macro_affected_symbols", "inflation_affected_symbols", "rates_affected_symbols"],
+    directionKeys: ["macro_event_sentiment", "inflation_sentiment", "rates_sentiment", "macro_event_direction"],
+    eventType: "macro_data",
+    reasonCode: "EVENT_MACRO_CONTEXT",
+    scope: "market",
+    sourceKeys: ["macro_event_source", "inflation_source", "rates_source"],
+    timestampKeys: ["macro_event_timestamp", "macro_event_date", "inflation_timestamp", "rates_timestamp", "cpi_date", "ppi_date", "fed_event_date"],
+    titleKeys: ["macro_event_headline", "macro_event_summary", "inflation_headline", "inflation_summary", "rates_headline", "rates_summary"],
+    urlKeys: ["macro_event_url", "inflation_url", "rates_url"],
+  },
+  {
+    affectedSectorKeys: ["sector_event_affected_sectors", "sector_affected_sectors"],
+    affectedSymbolKeys: ["sector_event_symbols", "sector_event_affected_symbols"],
+    directionKeys: ["sector_event_sentiment", "sector_event_direction"],
+    eventType: "sector_event",
+    reasonCode: "EVENT_SECTOR_CONTEXT",
+    scope: "sector",
+    sourceKeys: ["sector_event_source"],
+    timestampKeys: ["sector_event_timestamp", "sector_event_date"],
+    titleKeys: ["sector_event_headline", "sector_event_summary"],
+    urlKeys: ["sector_event_url"],
+  },
+];
 
 export function buildMarketCommandModel(input: { charts: MarketChartHubItem[]; generatedAt?: string | null; rows: RankingRow[] }): MarketCommandModel {
   const rowBySymbol = new Map(input.rows.map((row) => [row.symbol.toUpperCase(), row]));
@@ -360,16 +481,10 @@ function buildMacroNews(rows: RankingRow[]): MarketNewsItem[] {
 
 function rawEvents(row: RankingRow): RawEvent[] {
   const events: RawEvent[] = [];
-  const raw = row.verified_event_recent_events;
-  if (Array.isArray(raw)) events.push(...raw.filter(isRecord).map((item) => item as RawEvent));
-  if (typeof raw === "string") {
-    try {
-      const parsed = JSON.parse(raw) as unknown;
-      if (Array.isArray(parsed)) events.push(...parsed.filter(isRecord).map((item) => item as RawEvent));
-    } catch {
-      // Keep direct source-linked row news below even if the event JSON is malformed.
-    }
+  for (const field of SOURCE_LINKED_EVENT_FIELDS) {
+    events.push(...rawEventsFromField(row[field.key], field));
   }
+  events.push(...directSourceLinkedEventsFromRow(row));
   const directNews = verifiedNewsItemFromRow(row);
   if (directNews) {
     events.push({
@@ -385,6 +500,75 @@ function rawEvents(row: RankingRow): RawEvent[] {
     });
   }
   return events;
+}
+
+function rawEventsFromField(raw: ScannerScalar, field: SourceLinkedEventField): RawEvent[] {
+  return parseRawEventList(raw).map((event) => ({
+    ...event,
+    event_type: event.event_type ?? field.eventType,
+    reason_codes: mergeReasonCodes(event.reason_codes, field.reasonCode),
+    scope: event.scope ?? field.scope,
+  }));
+}
+
+function parseRawEventList(raw: ScannerScalar): RawEvent[] {
+  if (Array.isArray(raw)) return raw.filter(isRecord).map((item) => item as RawEvent);
+  if (isRecord(raw)) {
+    const nested = raw.events ?? raw.items ?? raw.data ?? null;
+    if (Array.isArray(nested)) return nested.filter(isRecord).map((item) => item as RawEvent);
+    return [raw as RawEvent];
+  }
+  if (typeof raw !== "string") return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (Array.isArray(parsed)) return parsed.filter(isRecord).map((item) => item as RawEvent);
+    if (isRecord(parsed)) {
+      const nested = parsed.events ?? parsed.items ?? parsed.data ?? null;
+      if (Array.isArray(nested)) return nested.filter(isRecord).map((item) => item as RawEvent);
+      return [parsed as RawEvent];
+    }
+  } catch {
+    // Keep direct source-linked row news even if one provider payload is malformed.
+  }
+  return [];
+}
+
+function directSourceLinkedEventsFromRow(row: RankingRow): RawEvent[] {
+  const events: RawEvent[] = [];
+  for (const spec of DIRECT_SOURCE_LINKED_EVENT_SPECS) {
+    const event = directSourceLinkedEventFromRow(row, spec);
+    if (event) events.push(event);
+  }
+  return events;
+}
+
+function directSourceLinkedEventFromRow(row: RankingRow, spec: DirectSourceLinkedEventSpec): RawEvent | null {
+  const title = firstRowText(row, spec.titleKeys);
+  const source = firstRowText(row, spec.sourceKeys);
+  const sourceUrl = firstRowText(row, spec.urlKeys);
+  const publishedAt = firstRowText(row, spec.timestampKeys);
+  if (!title || !source || !sourceUrl || !publishedAt) return null;
+  const affectedSymbols = unique([
+    ...rowStringArray(row, spec.affectedSymbolKeys ?? []),
+    row.symbol.toUpperCase(),
+  ]);
+  const affectedSectors = unique([
+    ...rowStringArray(row, spec.affectedSectorKeys ?? []),
+    text(row.sector) ?? "",
+  ]);
+  return {
+    affected_sectors: affectedSectors,
+    affected_symbols: affectedSymbols,
+    direction: firstRowText(row, spec.directionKeys ?? []),
+    event_type: spec.eventType,
+    published_at: publishedAt,
+    reason_codes: [spec.reasonCode],
+    scope: spec.scope,
+    source,
+    source_url: sourceUrl,
+    title,
+    weight: directEventWeight(row, spec.eventType),
+  };
 }
 
 function eventToNewsItem(event: RawEvent, row: RankingRow): MarketNewsItem | null {
@@ -442,12 +626,14 @@ function normalizedDirection(value: string | null): string {
 function inferEventType(value: string): string {
   const normalized = value.toLowerCase();
   if (/upgrade|downgrade|price target|initiated|analyst|rating/.test(normalized)) return "analyst_action";
+  if (/dividend|ex-dividend|payout/.test(normalized)) return "dividend";
   if (/earnings|eps|revenue|guidance|margin/.test(normalized)) return "earnings";
   if (/fed|rate|yield|treasury|bond/.test(normalized)) return "rates";
   if (/cpi|ppi|inflation|jobs|payroll|gdp|recession/.test(normalized)) return "macro_data";
   if (/war|peace|geopolitical|sanction|conflict/.test(normalized)) return "geopolitical";
   if (/oil|energy|crude|opec|gas/.test(normalized)) return "energy";
   if (/btc|bitcoin|crypto/.test(normalized)) return "crypto";
+  if (/sector|industry/.test(normalized)) return "sector_event";
   return "market_event";
 }
 
@@ -569,6 +755,14 @@ function text(value: unknown): string | null {
   return cleaned;
 }
 
+function firstRowText(row: RankingRow, keys: string[]): string | null {
+  for (const key of keys) {
+    const value = text(row[key]);
+    if (value) return value;
+  }
+  return null;
+}
+
 function numeric(value: unknown): number | null {
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
   if (value === null || value === undefined) return null;
@@ -577,8 +771,39 @@ function numeric(value: unknown): number | null {
 }
 
 function stringArray(value: unknown): string[] {
-  if (!Array.isArray(value)) return [];
-  return value.map((item) => text(item)).filter((item): item is string => Boolean(item)).slice(0, 8);
+  if (Array.isArray(value)) return value.map((item) => text(item)).filter((item): item is string => Boolean(item)).slice(0, 8);
+  const single = text(value);
+  if (!single) return [];
+  try {
+    const parsed = JSON.parse(single) as unknown;
+    if (Array.isArray(parsed)) return parsed.map((item) => text(item)).filter((item): item is string => Boolean(item)).slice(0, 8);
+  } catch {
+    // Comma-separated provider fields are handled below.
+  }
+  return single
+    .split(",")
+    .map((item) => text(item))
+    .filter((item): item is string => Boolean(item))
+    .slice(0, 8);
+}
+
+function rowStringArray(row: RankingRow, keys: string[]): string[] {
+  return unique(keys.flatMap((key) => stringArray(row[key])));
+}
+
+function mergeReasonCodes(value: unknown, fallback: string): string[] {
+  const codes = stringArray(value);
+  if (!codes.includes(fallback)) codes.unshift(fallback);
+  return codes.slice(0, 8);
+}
+
+function directEventWeight(row: RankingRow, eventType: string): number {
+  const explicit = numeric(row.event_source_weight ?? row.event_relevance ?? row.news_score);
+  if (explicit !== null) return explicit > 1 ? Math.max(0, Math.min(1, explicit / 100)) : Math.max(0, Math.min(1, explicit));
+  const risk = numeric(row.event_risk_score ?? row.verified_event_pressure_score);
+  if (risk !== null) return Math.max(0.35, Math.min(0.95, risk / 100));
+  if (eventType === "geopolitical" || eventType === "rates" || eventType === "macro_data") return 0.72;
+  return 0.62;
 }
 
 function isRecord(value: unknown): value is Record<string, ScannerScalar> {

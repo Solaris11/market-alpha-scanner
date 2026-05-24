@@ -139,3 +139,57 @@ test("buildMarketCommandModel ingests direct source-linked row news without fabr
   assert.deepEqual(model.macroNews[0]?.relatedAssets, ["NVDA"]);
   assert.match(model.macroNews[0]?.marketMovingLabel ?? "", /impact|Tracked/i);
 });
+
+test("market command ingests only source-linked provider event domains", () => {
+  const row: RankingRow = {
+    analyst_revision_events: JSON.stringify([{
+      affected_symbols: ["AMD"],
+      event_type: "analyst_action",
+      published_at: "2026-05-19T13:35:00.000Z",
+      source: "StockTitan",
+      source_url: "https://www.stocktitan.net/news/AMD/analyst-upgrade.html",
+      title: "Analyst raises AMD price target",
+    }]),
+    crypto_events: [{
+      affected_symbols: ["BTC", "QQQ"],
+      event_type: "crypto",
+      published_at: "2026-05-19T13:15:00.000Z",
+      source: "CoinDesk",
+      source_url: "https://www.coindesk.com/markets/bitcoin-etf-flows",
+      title: "Bitcoin ETF flows shift crypto risk appetite",
+    }],
+    dividend_headline: "Microsoft declares quarterly dividend",
+    dividend_source: "Nasdaq",
+    dividend_timestamp: "2026-05-19T13:10:00.000Z",
+    dividend_url: "https://www.nasdaq.com/market-activity/stocks/msft/dividend-history",
+    event_risk_score: 82,
+    geopolitical_events: {
+      events: [{
+        affected_sectors: ["Energy"],
+        affected_symbols: ["USO", "SPY"],
+        event_type: "geopolitical",
+        published_at: "2026-05-19T13:25:00.000Z",
+        source: "Reuters",
+        source_url: "https://www.reuters.com/world/geopolitical-shipping-risk",
+        title: "Geopolitical conflict escalates near shipping routes",
+      }],
+    },
+    sector: "Semiconductors",
+    symbol: "AMD",
+    unverified_blog_events: [{
+      published_at: "2026-05-19T13:00:00.000Z",
+      source: "Random Blog",
+      source_url: "https://example.com/unverified",
+      title: "Unverified rumor",
+    }],
+  };
+
+  const model = buildMarketCommandModel({ charts: [], generatedAt: "2026-05-19T14:00:00.000Z", rows: [row] });
+
+  assert.ok(model.macroNews.some((item) => item.eventType === "analyst_action" && item.source === "StockTitan" && item.relatedAssets.includes("AMD")));
+  assert.ok(model.macroNews.some((item) => item.eventType === "geopolitical" && item.source === "Reuters" && item.affectedSectors.includes("Energy")));
+  assert.ok(model.macroNews.some((item) => item.eventType === "crypto" && item.source === "CoinDesk" && item.relatedAssets.includes("BTC")));
+  assert.ok(model.macroNews.some((item) => item.eventType === "dividend" && item.source === "Nasdaq" && item.relatedAssets.includes("AMD")));
+  assert.equal(model.macroNews.some((item) => item.source === "Random Blog"), false);
+  assert.ok(model.macroNews.every((item) => item.sourceUrl.startsWith("https://")));
+});

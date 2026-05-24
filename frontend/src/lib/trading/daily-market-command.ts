@@ -64,6 +64,7 @@ export type DailyDevelopmentCategory =
   | "All"
   | "Analyst"
   | "Crypto"
+  | "Dividend"
   | "Earnings"
   | "Energy"
   | "Geopolitical"
@@ -80,7 +81,9 @@ export type DailyMarketDevelopment = {
   category: Exclude<DailyDevelopmentCategory, "All" | "High Impact" | "My Watchlist">;
   eventTrackingLabel: string;
   freshnessLabel: string;
+  freshnessSlaLabel: string;
   headline: string;
+  historicalAnalogLabel: string;
   id: string;
   impact: "mixed" | "negative" | "positive" | "unknown";
   latencyLabel: string;
@@ -88,15 +91,19 @@ export type DailyMarketDevelopment = {
   original: MarketNewsItem;
   priorityScore: number;
   providerAttribution: string;
+  providerState: DailyProviderOperationalState;
+  providerStateLabel: string;
   relatedMacroContext: string;
   relatedReplayContext: string;
   researchTypeLabel: string;
   sectorImpactLabel: string;
   source: string;
+  sourceCompletenessLabel: string;
   sourceQualityLabel: string;
   sourceUrl: string;
   symbolRelevanceLabel: string;
   timestamp: string;
+  timelineBucket: string;
   tone: DailyCommandTone;
   uncertaintyLabel: string;
   urgency: "high" | "low" | "medium";
@@ -138,7 +145,7 @@ export type DailySectorNewsCluster = {
   watchlistImpactCount: number;
 };
 
-export type DailySourceTrustField = "affectedSymbols" | "freshness" | "provider" | "sourceUrl" | "timestamp" | "uncertainty" | "watchlistImpact";
+export type DailySourceTrustField = "affectedSymbols" | "freshness" | "provider" | "providerState" | "sourceUrl" | "timestamp" | "uncertainty" | "watchlistImpact";
 
 export type DailySourceTrustSummary = {
   completeCardCount: number;
@@ -230,7 +237,7 @@ type ProviderOperationalSignal = {
   symbol: string;
 };
 
-const SOURCE_TRUST_REQUIRED_FIELDS: DailySourceTrustField[] = ["sourceUrl", "provider", "timestamp", "freshness"];
+const SOURCE_TRUST_REQUIRED_FIELDS: DailySourceTrustField[] = ["sourceUrl", "provider", "timestamp", "freshness", "providerState"];
 const SOURCE_TRUST_CONTEXT_FIELDS: DailySourceTrustField[] = ["affectedSymbols", "watchlistImpact", "uncertainty"];
 const SOURCE_TRUST_ALL_FIELDS: DailySourceTrustField[] = [...SOURCE_TRUST_REQUIRED_FIELDS, ...SOURCE_TRUST_CONTEXT_FIELDS];
 
@@ -272,6 +279,31 @@ export type DailyMacroEventTimelineItem = {
   tone: DailyCommandTone;
 };
 
+export type DailyEventDomainTimelineItem = {
+  affectedSymbols: string[];
+  category: DailyMarketDevelopment["category"] | DailyEventCalendarItem["category"];
+  date: string;
+  detail: string;
+  freshnessLabel: string;
+  id: string;
+  providerState: DailyProviderOperationalState;
+  source: string;
+  sourceUrl: string | null;
+  tone: DailyCommandTone;
+  watchlistImpact: boolean;
+};
+
+export type DailyEventDomainTimeline = {
+  activeSourceCount: number;
+  calendarCount: number;
+  domain: DailyProviderCoverageDomain;
+  itemCount: number;
+  items: DailyEventDomainTimelineItem[];
+  label: string;
+  providerStateSummary: string;
+  tone: DailyCommandTone;
+};
+
 export type DailyCompanyEventTimeline = {
   nextEvent: DailyEventCalendarItem | null;
   sourceCount: number;
@@ -294,6 +326,7 @@ export type DailyMarketCommandModel = {
   crashRisk: DailyCommandRankedItem[];
   crossAssetRelationships: DailyCrossAssetEventRelationship[];
   developments: DailyMarketDevelopment[];
+  eventDomainTimelines: DailyEventDomainTimeline[];
   generatedAt: string | null;
   hero: {
     attentionScore: number | null;
@@ -358,6 +391,7 @@ export function buildDailyMarketCommandModel(input: {
   const newsEcosystem = buildNewsEcosystem(developments, calendar);
   const macroStorylines = buildMacroStorylines(developments, moneyFlow, calendar);
   const macroEventTimeline = buildMacroEventTimeline(developments, calendar);
+  const eventDomainTimelines = buildEventDomainTimelines(developments, calendar);
   const sectorNews = buildSectorNewsClusters(developments);
   const providerCoverage = buildProviderCoverage(developments);
   const providerCoverageMatrix = buildProviderStrategyAudit(developments, calendar, input.rows, input.now ?? new Date());
@@ -389,6 +423,7 @@ export function buildDailyMarketCommandModel(input: {
     crashRisk,
     crossAssetRelationships,
     developments,
+    eventDomainTimelines,
     generatedAt: input.marketCommand.generatedAt,
     hero: {
       attentionScore,
@@ -554,6 +589,7 @@ function buildDevelopments(input: {
         urgency,
         watchlist,
       });
+      const providerState = providerStateForDevelopment(item.publishedAt, input.now);
       return {
         affectedSectors: item.affectedSectors,
         affectedSymbols,
@@ -562,7 +598,9 @@ function buildDevelopments(input: {
         category,
         eventTrackingLabel: item.eventTrackingLabel,
         freshnessLabel: freshnessLabel(item.publishedAt, input.now),
+        freshnessSlaLabel: freshnessSlaLabelForDevelopment(category, item.publishedAt, input.now),
         headline: item.title,
+        historicalAnalogLabel: historicalAnalogLabel(item),
         id: item.id,
         impact: impactForDirection(item.direction),
         latencyLabel: providerLatencyLabel(item),
@@ -570,15 +608,19 @@ function buildDevelopments(input: {
         original: item,
         priorityScore,
         providerAttribution: providerAttribution(item),
+        providerState,
+        providerStateLabel: providerStateLabel(providerState),
         relatedMacroContext: item.relatedMacroContext,
         relatedReplayContext: item.relatedReplayContext,
         researchTypeLabel: researchTypeLabel(item),
         sectorImpactLabel: sectorImpactLabel(item.affectedSectors),
         source: item.source,
+        sourceCompletenessLabel: sourceCompletenessLabel(providerState, item),
         sourceQualityLabel: sourceQualityLabel(item),
         sourceUrl: item.sourceUrl,
         symbolRelevanceLabel: symbolRelevanceLabel(affectedSymbols),
         timestamp: item.publishedAt,
+        timelineBucket: timelineBucketForDevelopment(category),
         tone: toneForDevelopment(item, watchlistImpact, urgency),
         uncertaintyLabel: uncertaintyLabel(item),
         urgency,
@@ -613,7 +655,7 @@ function buildNewsEcosystem(developments: DailyMarketDevelopment[], calendar: Da
   const highImpactCount = developments.filter((item) => item.urgency === "high").length;
   const watchlistImpactCount = developments.filter((item) => item.watchlistImpact).length;
   const macroCount = developments.filter((item) => item.category === "Macro" || item.category === "Rates" || item.category === "Energy" || item.category === "Crypto").length;
-  const dividendCount = calendar.filter((item) => item.category === "dividend").length;
+  const dividendCount = developments.filter((item) => item.category === "Dividend").length + calendar.filter((item) => item.category === "dividend").length;
   const categoryCoverage = new Set(developments.map((item) => item.category));
   const sectorNewsCount = developments.filter((item) => item.affectedSectors.length > 0).length;
   const symbolNewsCount = developments.filter((item) => item.affectedSymbols.length > 0).length;
@@ -672,6 +714,7 @@ function buildSourceTrustSummary(developments: DailyMarketDevelopment[]): DailyS
     affectedSymbols: 0,
     freshness: 0,
     provider: 0,
+    providerState: 0,
     sourceUrl: 0,
     timestamp: 0,
     uncertainty: 0,
@@ -711,8 +754,8 @@ function buildSourceTrustSummary(developments: DailyMarketDevelopment[]): DailyS
     contextCompleteCardCount,
     contextCompletenessPct,
     disclosure: completenessPct >= 95 && contextCompletenessPct >= 95
-      ? `${completeCardCount} of ${developments.length} displayed source-linked event cards disclose provider, source URL, timestamp, freshness, affected symbols, watchlist impact, and uncertainty.`
-      : `${developments.length - completeCardCount} displayed event card${developments.length - completeCardCount === 1 ? "" : "s"} miss required source/provider/timestamp/freshness fields; ${developments.length - contextCompleteCardCount} miss full context fields.`,
+      ? `${completeCardCount} of ${developments.length} displayed source-linked event cards disclose provider, source URL, timestamp, freshness, provider state, affected symbols, watchlist impact, and uncertainty.`
+      : `${developments.length - completeCardCount} displayed event card${developments.length - completeCardCount === 1 ? "" : "s"} miss required source/provider/timestamp/freshness/provider-state fields; ${developments.length - contextCompleteCardCount} miss full context fields.`,
     displayedCardCount: developments.length,
     incompleteCardCount: developments.length - completeCardCount,
     missingFieldCounts,
@@ -727,6 +770,7 @@ function missingSourceTrustFields(item: DailyMarketDevelopment, fields: DailySou
     if (field === "affectedSymbols" && item.affectedSymbols.length === 0) missing.push(field);
     if (field === "freshness" && (!item.freshnessLabel || /timestamp unavailable/i.test(item.freshnessLabel))) missing.push(field);
     if (field === "provider" && !item.providerAttribution.trim()) missing.push(field);
+    if (field === "providerState" && (!item.providerState || !item.providerStateLabel.trim())) missing.push(field);
     if (field === "sourceUrl" && !/^https?:\/\//i.test(item.sourceUrl)) missing.push(field);
     if (field === "timestamp" && !Number.isFinite(Date.parse(item.timestamp))) missing.push(field);
     if (field === "uncertainty" && !item.uncertaintyLabel.trim()) missing.push(field);
@@ -740,7 +784,7 @@ function buildMacroStorylines(developments: DailyMarketDevelopment[], moneyFlow:
   const groups: Array<{ id: string; label: string; match: (item: DailyMarketDevelopment) => boolean; tone: DailyCommandTone }> = [
     { id: "rates-inflation", label: "Rates and inflation pressure", match: (item) => item.category === "Rates", tone: "amber" },
     { id: "geopolitical-risk", label: "Geopolitical risk awareness", match: (item) => item.category === "Geopolitical", tone: "rose" },
-    { id: "earnings-catalysts", label: "Earnings and company catalysts", match: (item) => item.category === "Earnings" || item.category === "Analyst", tone: "violet" },
+    { id: "earnings-catalysts", label: "Earnings and company catalysts", match: (item) => item.category === "Earnings" || item.category === "Analyst" || item.category === "Dividend", tone: "violet" },
     { id: "cross-asset-macro", label: "Cross-asset macro context", match: (item) => ["Macro", "Energy", "Crypto"].includes(item.category), tone: "cyan" },
   ];
   for (const group of groups) {
@@ -941,6 +985,76 @@ function buildMacroEventTimeline(developments: DailyMarketDevelopment[], calenda
     .slice(0, 10);
 }
 
+function buildEventDomainTimelines(developments: DailyMarketDevelopment[], calendar: DailyEventCalendarItem[]): DailyEventDomainTimeline[] {
+  const domains: Array<{
+    domain: DailyProviderCoverageDomain;
+    label: string;
+    matchCalendar: (item: DailyEventCalendarItem) => boolean;
+    matchDevelopment: (item: DailyMarketDevelopment) => boolean;
+  }> = [
+    { domain: "inflation", label: "Inflation timeline", matchCalendar: (item) => item.category === "rates" && hasInflationLanguage(`${item.label} ${item.detail}`), matchDevelopment: (item) => item.category === "Rates" && hasInflationLanguage(`${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel}`) },
+    { domain: "rates", label: "Rates timeline", matchCalendar: (item) => item.category === "rates", matchDevelopment: (item) => item.category === "Rates" },
+    { domain: "analyst-actions", label: "Analyst revision timeline", matchCalendar: (item) => item.category === "analyst", matchDevelopment: (item) => item.category === "Analyst" },
+    { domain: "dividends", label: "Dividend timeline", matchCalendar: (item) => item.category === "dividend", matchDevelopment: (item) => item.category === "Dividend" || /dividend|ex-dividend|payout/i.test(`${item.headline} ${item.whyItMatters}`) },
+    { domain: "earnings", label: "Earnings and guidance timeline", matchCalendar: (item) => item.category === "earnings", matchDevelopment: (item) => item.category === "Earnings" },
+    { domain: "geopolitical-events", label: "Geopolitical timeline", matchCalendar: (item) => item.category === "geopolitical", matchDevelopment: (item) => item.category === "Geopolitical" },
+    { domain: "crypto-events", label: "Crypto event timeline", matchCalendar: (item) => /crypto|btc|bitcoin/i.test(`${item.label} ${item.detail} ${item.symbol}`), matchDevelopment: (item) => item.category === "Crypto" },
+    { domain: "sector-events", label: "Sector event continuity", matchCalendar: () => false, matchDevelopment: (item) => item.affectedSectors.length > 0 || item.original.scope === "sector" },
+    { domain: "company-events", label: "Company event continuity", matchCalendar: (item) => ["analyst", "dividend", "earnings", "event"].includes(item.category), matchDevelopment: (item) => item.affectedSymbols.length > 0 || item.original.scope === "symbol" },
+    { domain: "macro", label: "Macro event timeline", matchCalendar: (item) => item.category === "macro" || item.category === "rates" || item.category === "geopolitical", matchDevelopment: (item) => ["Energy", "Geopolitical", "Macro", "Rates"].includes(item.category) },
+  ];
+  return domains
+    .map((domain) => {
+      const developmentItems = developments.filter(domain.matchDevelopment).map((item): DailyEventDomainTimelineItem => ({
+        affectedSymbols: item.affectedSymbols,
+        category: item.category,
+        date: item.timestamp,
+        detail: `${item.headline}. ${item.whyItMatters}`,
+        freshnessLabel: `${item.freshnessLabel} · ${item.freshnessSlaLabel}`,
+        id: `development:${domain.domain}:${item.id}`,
+        providerState: item.providerState,
+        source: item.providerAttribution,
+        sourceUrl: item.sourceUrl,
+        tone: item.tone,
+        watchlistImpact: item.watchlistImpact,
+      }));
+      const calendarItems = calendar.filter(domain.matchCalendar).map((item): DailyEventDomainTimelineItem => ({
+        affectedSymbols: item.symbol === "MARKET" ? [] : [item.symbol],
+        category: item.category,
+        date: item.date,
+        detail: `${item.label}. ${item.detail}`,
+        freshnessLabel: "Calendar-only; source-linked freshness not measured",
+        id: `calendar:${domain.domain}:${item.symbol}:${item.category}:${item.date}`,
+        providerState: "calendar-only",
+        source: "Stored event calendar",
+        sourceUrl: null,
+        tone: item.tone,
+        watchlistImpact: false,
+      }));
+      const items = dedupeEventDomainTimeline([...developmentItems, ...calendarItems])
+        .sort((left, right) => Date.parse(right.date) - Date.parse(left.date))
+        .slice(0, 8);
+      if (!items.length) return null;
+      const activeSourceCount = developmentItems.length;
+      const calendarCount = calendarItems.length;
+      const providerStates = uniqueStrings(items.map((item) => item.providerState));
+      const highRisk = items.some((item) => item.tone === "rose");
+      return {
+        activeSourceCount,
+        calendarCount,
+        domain: domain.domain,
+        itemCount: items.length,
+        items,
+        label: domain.label,
+        providerStateSummary: providerStates.join(", ").replace(/-/g, " "),
+        tone: highRisk ? "rose" : activeSourceCount ? "emerald" : "amber",
+      };
+    })
+    .filter((item): item is DailyEventDomainTimeline => item !== null)
+    .sort((left, right) => right.activeSourceCount - left.activeSourceCount || right.itemCount - left.itemCount)
+    .slice(0, 8);
+}
+
 function buildCompanyTimelines(developments: DailyMarketDevelopment[], calendar: DailyEventCalendarItem[]): DailyCompanyEventTimeline[] {
   const symbols = uniqueStrings([
     ...developments.flatMap((item) => item.affectedSymbols),
@@ -992,7 +1106,7 @@ function buildProviderStrategyAudit(developments: DailyMarketDevelopment[], cale
     { domain: "rates", label: "Rates", matchCalendar: (item) => item.category === "rates", matchDevelopment: (item) => item.category === "Rates" },
     { domain: "earnings", label: "Earnings", matchCalendar: (item) => item.category === "earnings", matchDevelopment: (item) => item.category === "Earnings" },
     { domain: "analyst-actions", label: "Analyst actions", matchCalendar: (item) => item.category === "analyst", matchDevelopment: (item) => item.category === "Analyst" },
-    { domain: "dividends", label: "Dividends", matchCalendar: (item) => item.category === "dividend", matchDevelopment: (item) => /dividend|ex-dividend|yield/i.test(`${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel}`) },
+    { domain: "dividends", label: "Dividends", matchCalendar: (item) => item.category === "dividend", matchDevelopment: (item) => item.category === "Dividend" || /dividend|ex-dividend|yield/i.test(`${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel}`) },
     { domain: "geopolitical-events", label: "Geopolitical events", matchCalendar: (item) => item.category === "geopolitical", matchDevelopment: (item) => item.category === "Geopolitical" },
     { domain: "economic-calendar", label: "Economic calendar", matchCalendar: () => true, matchDevelopment: (item) => ["Energy", "Geopolitical", "Macro", "Rates"].includes(item.category) },
     { domain: "company-events", label: "Company events", matchCalendar: (item) => ["analyst", "dividend", "earnings", "event"].includes(item.category), matchDevelopment: (item) => item.affectedSymbols.length > 0 || item.original.scope === "symbol" },
@@ -1104,6 +1218,50 @@ function freshnessLabel(timestamp: string, now: Date): string {
   const days = Math.round(hours / 24);
   if (days <= 7) return `Aging · ${days}d old`;
   return `Stale · ${days}d old`;
+}
+
+function providerStateForDevelopment(timestamp: string, now: Date): DailyProviderOperationalState {
+  const ageMinutes = minutesSince(timestamp, now);
+  if (ageMinutes === null) return "limited";
+  if (ageMinutes > 72 * 60) return "stale";
+  if (ageMinutes > 24 * 60) return "delayed";
+  return "active";
+}
+
+function providerStateLabel(state: DailyProviderOperationalState): string {
+  return `Provider ${state.replace("-", " ")}`;
+}
+
+function freshnessSlaLabelForDevelopment(category: DailyMarketDevelopment["category"], timestamp: string, now: Date): string {
+  const ageMinutes = minutesSince(timestamp, now);
+  const domain = providerDomainForDevelopment(category);
+  const slaMinutes = providerDomainSlaMinutes(domain);
+  const state = providerStateForDevelopment(timestamp, now);
+  if (ageMinutes === null || slaMinutes === null) return "Freshness SLA not measured";
+  const status = providerFreshnessSlaStatus({
+    coverage: "active",
+    freshnessMinutes: ageMinutes,
+    operationalState: state,
+    slaMinutes,
+  });
+  return status === "within-sla"
+    ? `Freshness SLA within ${slaMinutes}m · ${ageMinutes}m old`
+    : `Freshness SLA breached · ${ageMinutes}m old against ${slaMinutes}m`;
+}
+
+function sourceCompletenessLabel(state: DailyProviderOperationalState, item: MarketNewsItem): string {
+  const hasRequired = Boolean(item.source && /^https?:\/\//i.test(item.sourceUrl) && Number.isFinite(Date.parse(item.publishedAt)));
+  if (hasRequired && state !== "limited") return "Source complete: provider, URL, timestamp, freshness, state";
+  return "Source completeness limited; do not treat as live intelligence";
+}
+
+function timelineBucketForDevelopment(category: DailyMarketDevelopment["category"]): string {
+  return `${providerDomainForDevelopment(category).replace(/-/g, " ")} timeline`;
+}
+
+function historicalAnalogLabel(item: MarketNewsItem): string {
+  if (/limited/i.test(item.relatedReplayContext)) return "Historical analog limited; replay context not proven for this event";
+  return "Replay/memory analog attached from current scanner packet";
 }
 
 function providerLatencyLabel(item: MarketNewsItem): string {
@@ -1539,12 +1697,24 @@ function themeForCluster(label: string, rows: OpportunityViewModel[]): DailyMone
 function newsCategory(item: MarketNewsItem): DailyMarketDevelopment["category"] {
   const text = `${item.eventType} ${item.title} ${item.reasonCodes.join(" ")} ${item.relatedAssets.join(" ")}`.toLowerCase();
   if (/analyst|upgrade|downgrade|price target|initiated|rating/.test(text)) return "Analyst";
+  if (/dividend|ex-dividend|payout/.test(text)) return "Dividend";
   if (/earnings|eps|revenue|guidance/.test(text)) return "Earnings";
   if (/fed|rate|bond|yield|jobs|payroll|gdp|recession/.test(text) || hasInflationLanguage(text)) return "Rates";
   if (/war|peace|geopolitical|sanction|conflict/.test(text)) return "Geopolitical";
   if (/oil|energy|crude|uso|opec/.test(text)) return "Energy";
   if (/btc|bitcoin|crypto|coin/.test(text)) return "Crypto";
   return "Macro";
+}
+
+function providerDomainForDevelopment(category: DailyMarketDevelopment["category"]): DailyProviderCoverageDomain {
+  if (category === "Analyst") return "analyst-actions";
+  if (category === "Crypto") return "crypto-events";
+  if (category === "Dividend") return "dividends";
+  if (category === "Earnings") return "earnings";
+  if (category === "Geopolitical") return "geopolitical-events";
+  if (category === "Rates") return "rates";
+  if (category === "Energy") return "macro";
+  return "macro";
 }
 
 function impactForDirection(direction: string): DailyMarketDevelopment["impact"] {
@@ -1684,6 +1854,18 @@ function dedupeMacroTimeline(items: DailyMacroEventTimelineItem[]): DailyMacroEv
   const deduped: DailyMacroEventTimelineItem[] = [];
   for (const item of items) {
     const key = `${item.category}:${item.date}:${item.detail.slice(0, 80)}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(item);
+  }
+  return deduped;
+}
+
+function dedupeEventDomainTimeline(items: DailyEventDomainTimelineItem[]): DailyEventDomainTimelineItem[] {
+  const seen = new Set<string>();
+  const deduped: DailyEventDomainTimelineItem[] = [];
+  for (const item of items) {
+    const key = `${item.category}:${item.date}:${item.detail.slice(0, 100)}`;
     if (seen.has(key)) continue;
     seen.add(key);
     deduped.push(item);
