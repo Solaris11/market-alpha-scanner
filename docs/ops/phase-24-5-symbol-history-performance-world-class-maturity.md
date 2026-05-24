@@ -99,7 +99,23 @@ Focused coverage added in `symbol-workflow-maturity.test.ts` verifies:
 
 ## Production Deployment Proof
 
-Pending production deploy and smoke.
+- Runtime commit deployed: `998bc0a0`
+- Production host: `sre@100.68.155.121`
+- Production path: `/opt/apps/market-alpha-scanner/app`
+- `git pull --ff-only origin main` - passed, fast-forwarded from `c410951` to `998bc0a`
+- `docker compose --env-file .env up -d --build market-alpha-frontend` - passed
+- Production container: `market-alpha-frontend` rebuilt and restarted
+
+Production smoke:
+
+- `https://tradeveto.com/api/health` - passed, `ok: true`
+- `https://tradeveto.com/api/health/deep` - passed, `ok: true`
+- `/symbol/AMD` - 200
+- `/history` - 200
+- `/performance` - 200
+- `/discover` - 200
+- `/scanner` - 200
+- `/terminal` - 200
 
 ## Competitor Gap Status
 
