@@ -4,6 +4,8 @@ import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptance
 import { MetricStrip } from "@/components/metric-strip";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { TerminalShell } from "@/components/shell";
+import { SymbolCommandSearch } from "@/components/symbol/SymbolCommandSearch";
+import { HistoryWorkflowMaturityPanel } from "@/components/symbol/SymbolWorkflowMaturityPanels";
 import { UtilitySurfaceMaturityPanel } from "@/components/utility/UtilitySurfaceMaturityPanel";
 import {
   CinematicClusterMosaic,
@@ -14,10 +16,11 @@ import {
   type CinematicTimelineItem,
 } from "@/components/visual/CinematicIntelligencePanels";
 import type { ScoreFactor } from "@/components/visual/MiniVisuals";
-import { getFullRanking, getHistorySummary, getHistorySymbolsFromSnapshots } from "@/lib/scanner-data";
+import { getFullRanking, getHistorySummary, getHistorySymbolsFromSnapshots, getSymbolHistoryForSymbol } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
+import { buildHistoryWorkflowMaturityModel, buildSymbolSearchIndex } from "@/lib/trading/symbol-workflow-maturity";
 import type { RankingRow } from "@/lib/types";
 import { humanizeInsightText, humanizeLabel } from "@/lib/ui/labels";
 
@@ -334,6 +337,13 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
   const params = searchParams ? await searchParams : undefined;
   const requestedSymbol = requestedSymbolFromSearchParams(params);
   const defaultSymbol = requestedSymbol && symbols.includes(requestedSymbol) ? requestedSymbol : String(ranking[0]?.symbol ?? symbols[0] ?? "").trim().toUpperCase();
+  const selectedHistoryRows = defaultSymbol ? await getSymbolHistoryForSymbol(defaultSymbol).catch(() => []) : [];
+  const symbolSearchDocuments = buildSymbolSearchIndex({
+    historySymbols: symbols,
+    recentSymbols: defaultSymbol ? [defaultSymbol] : [],
+    rows: ranking,
+  });
+  const historyMaturity = buildHistoryWorkflowMaturityModel({ history, rows: selectedHistoryRows, selectedSymbol: defaultSymbol });
 
   return (
     <TerminalShell>
@@ -352,7 +362,11 @@ export default async function HistoryPage({ searchParams }: HistoryPageProps) {
 
         <UtilitySurfaceMaturityPanel surfaceId="history" />
 
+        <SymbolCommandSearch documents={symbolSearchDocuments} initialQuery={defaultSymbol} title="Find symbol memory, replay clusters, and sector context" />
+
         <HistoryUtilityMaturity defaultSymbol={defaultSymbol} historyCount={history.count} symbolCount={symbols.length} />
+
+        <HistoryWorkflowMaturityPanel model={historyMaturity} />
 
         <HistoryCinematicMemorySystem defaultSymbol={defaultSymbol} history={history} ranking={ranking} symbols={symbols} />
 

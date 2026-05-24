@@ -4,6 +4,8 @@ import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptance
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { PublicSymbolPreview } from "@/components/premium/PublicSignalPreview";
 import { PublishedSymbolIntelligenceBlock } from "@/components/seo/IntelligencePublishingBlocks";
+import { SymbolCommandSearch } from "@/components/symbol/SymbolCommandSearch";
+import { SymbolWorkflowMaturityPanel } from "@/components/symbol/SymbolWorkflowMaturityPanels";
 import { SymbolTerminalWorkspace } from "@/components/terminal/SymbolTerminalWorkspace";
 import { SymbolWorkspaceTracker } from "@/components/terminal/SymbolWorkspaceTracker";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
@@ -38,6 +40,7 @@ import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-mode
 import { buildScenarioIntelligenceSystem } from "@/lib/trading/scenario-intelligence";
 import { buildStrategyIntelligenceSystem } from "@/lib/trading/strategy-intelligence";
 import { publishingJsonLdForSymbol } from "@/lib/trading/intelligence-publishing";
+import { buildSymbolSearchIndex, buildSymbolWorkflowMaturityModel } from "@/lib/trading/symbol-workflow-maturity";
 import { DEFAULT_USER_MEMORY_SETTINGS } from "@/lib/trading/user-memory-settings";
 
 export const dynamic = "force-dynamic";
@@ -177,6 +180,20 @@ export default async function SymbolDetailPage({ params }: PageProps) {
         }
     : null;
   const workflowEvolution = row ? await getWorkflowEvolutionForUser(entitlement.user?.id ?? null, [row], { surface: "symbol" }).catch(() => null) : null;
+  const symbolSearchDocuments = buildSymbolSearchIndex({
+    historySymbols: history.map(() => cleanSymbol(symbol)).filter(Boolean),
+    recentSymbols: [cleanSymbol(symbol)],
+    rows: snapshot.signals,
+  });
+  const symbolWorkflowMaturity = row
+    ? buildSymbolWorkflowMaturityModel({
+        history,
+        marketMemoryAvailable: marketMemory?.available ?? false,
+        row,
+        symbol: row.symbol,
+        workflowChanges: workflowEvolution?.whatChanged,
+      })
+    : null;
   const unavailableMarketMemory: MarketMemorySummary = {
     analogs: [],
     available: false,
@@ -202,6 +219,8 @@ export default async function SymbolDetailPage({ params }: PageProps) {
       ) : (
         <>
           <SymbolWorkspaceTracker symbol={row.symbol} />
+          <SymbolCommandSearch documents={symbolSearchDocuments} initialQuery={row.symbol} title="Search related symbols, macro peers, and replay context" />
+          {symbolWorkflowMaturity ? <SymbolWorkflowMaturityPanel model={symbolWorkflowMaturity} symbol={row.symbol} /> : null}
           <SymbolTerminalWorkspace
             dataFreshness={dataFreshness ?? freshnessFromTimestamp(null)}
             adaptiveLearning={adaptiveLearning}

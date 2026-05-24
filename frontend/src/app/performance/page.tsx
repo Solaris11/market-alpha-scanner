@@ -9,6 +9,8 @@ import { RunCommandButton } from "@/components/run-command-button";
 import { TerminalShell } from "@/components/shell";
 import { UtilitySurfaceMaturityPanel } from "@/components/utility/UtilitySurfaceMaturityPanel";
 import { SignalLifecycle } from "@/components/signal-lifecycle";
+import { SymbolCommandSearch } from "@/components/symbol/SymbolCommandSearch";
+import { PerformanceWorkflowMaturityPanel } from "@/components/symbol/SymbolWorkflowMaturityPanels";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
 import {
   CinematicClusterMosaic,
@@ -19,10 +21,11 @@ import {
   type CinematicTimelineItem,
 } from "@/components/visual/CinematicIntelligencePanels";
 import type { ScoreFactor } from "@/components/visual/MiniVisuals";
-import { getCalibrationInsights, getFullRanking, getHistorySummary, getIntradaySignalDriftSummary, getPerformanceData } from "@/lib/scanner-data";
+import { getCalibrationInsights, getFullRanking, getHistorySummary, getHistorySymbolsFromSnapshots, getIntradaySignalDriftSummary, getPerformanceData } from "@/lib/scanner-data";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
+import { buildPerformanceWorkflowMaturityModel, buildSymbolSearchIndex } from "@/lib/trading/symbol-workflow-maturity";
 import { humanizeLabel, humanizeQuantText } from "@/lib/ui/labels";
 
 export const dynamic = "force-dynamic";
@@ -480,10 +483,12 @@ export default async function PerformancePage() {
     );
   }
 
-  const [performance, history, driftRows, rawRanking, calibrationInsights, scanSafety] = await Promise.all([getPerformanceData({ forwardTailRows: 5000 }), getHistorySummary(), getIntradaySignalDriftSummary(), getFullRanking(), getCalibrationInsights(), getCurrentScanSafety()]);
+  const [performance, history, driftRows, rawRanking, calibrationInsights, scanSafety, historySymbols] = await Promise.all([getPerformanceData({ forwardTailRows: 5000 }), getHistorySummary(), getIntradaySignalDriftSummary(), getFullRanking(), getCalibrationInsights(), getCurrentScanSafety(), getHistorySymbolsFromSnapshots()]);
   const ranking = applyStaleDataSafetyToRows(rawRanking, scanSafety);
   const forwardReturnsReady = performance.forwardReturns.rows.length > 0;
   const forwardObservationCount = Math.max(0, performance.forwardReturns.lineCount - 1);
+  const symbolSearchDocuments = buildSymbolSearchIndex({ historySymbols, rows: ranking });
+  const performanceMaturity = buildPerformanceWorkflowMaturityModel({ history, performance, rankingRows: ranking });
 
   return (
     <TerminalShell>
@@ -506,7 +511,11 @@ export default async function PerformancePage() {
 
         <UtilitySurfaceMaturityPanel surfaceId="performance" />
 
+        <SymbolCommandSearch documents={symbolSearchDocuments} title="Search symbols from performance, history, and scanner evidence" />
+
         <PerformanceOperationalUtilityPanel forwardObservationCount={forwardObservationCount} historyCount={history.count} />
+
+        <PerformanceWorkflowMaturityPanel model={performanceMaturity} />
 
         <PerformanceCinematicEvidenceSystem
           forwardObservationCount={forwardObservationCount}
