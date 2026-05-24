@@ -82,7 +82,24 @@ Focused validation also covered `institutional-portfolio-operations.test.ts`, in
 
 ## Production Deployment Proof
 
-Pending production deploy and smoke.
+- Runtime commit deployed: `cfc5235a`
+- Production host: `sre@100.68.155.121`
+- Production path: `/opt/apps/market-alpha-scanner/app`
+- `git pull --ff-only origin main` - passed, fast-forwarded from `7e0ac14` to `cfc5235a`
+- `docker compose --env-file .env up -d --build market-alpha-frontend` - passed
+- Production container: `market-alpha-frontend` rebuilt and restarted
+
+Production smoke:
+
+- `https://tradeveto.com/api/health` - passed, `ok: true`
+- `https://tradeveto.com/api/health/deep` - passed, `ok: true`
+- `/paper` - 200
+- `/strategy-labs` - 200
+- `/terminal` - 200
+- `/performance` - 200
+- `/alerts` - 200
+- `/discover` - 200
+- `/scanner` - 200
 
 ## Competitor Gap Status
 
