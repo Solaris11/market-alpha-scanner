@@ -77,29 +77,63 @@ Focused test coverage:
 
 Production deployment:
 
-- Commit deployed: pending
+- Commit deployed: `dd57d2fb`
 - Production host: `sre@100.68.155.121`
 - Production path: `/opt/apps/market-alpha-scanner/app`
-- `git pull --ff-only origin main` - pending
-- `docker compose --env-file .env up -d --build market-alpha-frontend` - pending
+- `git pull --ff-only origin main` - passed, fast-forwarded from `6f01eec` to `dd57d2f`
+- `docker compose --env-file .env up -d --build market-alpha-frontend` - passed
+- `market-alpha-frontend` container status - healthy
 
 Production smoke:
 
-- `https://tradeveto.com/api/health` - pending
-- `https://tradeveto.com/api/health/deep` - pending
-- `/terminal` - pending
-- `/macro` - pending
-- `/feed` - pending
-- `/discover` - pending
-- `/symbol/AMD` - pending
+- `https://tradeveto.com/api/health` - passed
+- `https://tradeveto.com/api/health/deep` - passed
+- `/terminal` - 200
+- `/macro` - 200
+- `/feed` - 200
+- `/discover` - 200
+- `/symbol/AMD` - 200
 
 Provider source-trust probe:
 
-- Baseline provider-source-trust API proof - pending
-- Outage simulation proof - pending
-- Source completeness proof - pending
-- Provider freshness proof - pending
-- Event timeline proof - pending
+- Probe command - executed inside `market-alpha-frontend` container so Docker-network Postgres resolution was valid.
+- Baseline provider-source-trust API proof - passed HTTP 200
+- Authenticated proof - passed, temporary premium probe identity created and cleaned up
+- Displayed event cards - 8
+- Source completeness proof - passed, 8/8 displayed event cards source-complete
+- Context completeness proof - passed, 8/8 displayed event cards context-complete
+- Provider-state field proof - passed, 0 cards missing provider state
+- Outage simulation proof - passed, fallback and recovery states visible
+- Event timeline proof - exposed through `eventDomainTimelines` on the provider-source-trust API
+- Probe overall status - `not_ready`
+
+Production provider-state counts:
+
+- active: 9
+- calendar-only: 0
+- delayed: 0
+- limited: 2
+- outage: 0
+- partial-outage: 0
+- stale: 0
+
+Production source-trust summary:
+
+- displayedCardCount: 8
+- completeCardCount: 8
+- completenessPct: 100
+- contextCompleteCardCount: 8
+- contextCompletenessPct: 100
+- missing sourceUrl/provider/timestamp/freshness/providerState: 0
+
+Production provider blockers:
+
+- macro remains limited in the live packet
+- inflation remains limited in the live packet
+- rates breached the 360m freshness SLA
+- analyst-actions breached the 360m freshness SLA
+- geopolitical-events breached the 360m freshness SLA
+- crypto-events breached the 360m freshness SLA
 
 ## Remaining Gaps
 
