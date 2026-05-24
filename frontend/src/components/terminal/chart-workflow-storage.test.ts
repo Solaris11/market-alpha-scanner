@@ -20,12 +20,15 @@ describe("chart workflow workspace persistence", () => {
         {
           color: "cyan",
           end: { x: 103, y: -2 },
+          folder: "Levels",
           id: "measure-1",
           label: "Breakout watch",
           lineWidth: 4,
+          locked: true,
           start: { x: 10, y: 20 },
           style: "dotted",
           tool: "ruler",
+          visible: false,
         },
         {
           end: { x: "bad", y: 50 },
@@ -34,6 +37,38 @@ describe("chart workflow workspace persistence", () => {
           tool: "trendline",
         },
       ],
+      alertHistory: [
+        {
+          cooldownMinutes: 240,
+          createdAt: "2026-05-24T12:00:00Z",
+          id: "chart_amd_price_above_test",
+          label: "Price above $200.00",
+          sourceReason: "Created from chart.",
+          threshold: 200,
+          type: "price_above",
+        },
+        {
+          cooldownMinutes: "bad",
+          createdAt: "2026-05-24T12:00:00Z",
+          id: "bad",
+          label: "Bad",
+          threshold: Number.NaN,
+          type: "unknown",
+        },
+      ],
+      chartTabs: [
+        {
+          detailMode: "compare",
+          id: "swing-tab",
+          indicators: ["ema20", "rsi14", "bad"],
+          label: "Swing Tab",
+          layoutMode: "split",
+          overlayFamilies: ["risk", "macro", "bad"],
+          period: "3mo",
+          symbol: " amd ",
+        },
+      ],
+      compactMode: true,
       fullscreenOpen: true,
       indicators: ["ema20", "unsupported", "rangePressure", "rsi14", "ema20"],
       indicatorTemplates: [
@@ -46,14 +81,19 @@ describe("chart workflow workspace persistence", () => {
         },
       ],
       layoutMode: "grid",
+      magnetMode: true,
       overlayFamilies: ["risk", "macro", "bad", "risk"],
       period: "1y",
+      toolbarCollapsed: true,
       updatedAt: "2026-05-21T12:00:00Z",
     });
 
     assert.equal(workspace.detailMode, "overlays");
     assert.equal(workspace.drawingTool, "ruler");
     assert.equal(workspace.fullscreenOpen, true);
+    assert.equal(workspace.compactMode, true);
+    assert.equal(workspace.magnetMode, true);
+    assert.equal(workspace.toolbarCollapsed, true);
     assert.deepEqual(workspace.indicators, ["ema20", "rangePressure", "rsi14"]);
     assert.equal(workspace.layoutMode, "grid");
     assert.deepEqual(workspace.overlayFamilies, ["risk", "macro"]);
@@ -62,8 +102,18 @@ describe("chart workflow workspace persistence", () => {
     assert.deepEqual(workspace.drawings[0]?.end, { x: 100, y: 0 });
     assert.equal(workspace.drawings[0]?.label, "Breakout watch");
     assert.equal(workspace.drawings[0]?.color, "cyan");
+    assert.equal(workspace.drawings[0]?.folder, "Levels");
+    assert.equal(workspace.drawings[0]?.locked, true);
+    assert.equal(workspace.drawings[0]?.visible, false);
     assert.equal(workspace.drawings[0]?.style, "dotted");
     assert.equal(workspace.drawings[0]?.lineWidth, 4);
+    assert.equal(workspace.alertHistory.length, 1);
+    assert.equal(workspace.alertHistory[0]?.type, "price_above");
+    assert.equal(workspace.chartTabs.length, 1);
+    assert.equal(workspace.chartTabs[0]?.detailMode, "compare");
+    assert.deepEqual(workspace.chartTabs[0]?.indicators, ["ema20", "rsi14"]);
+    assert.deepEqual(workspace.chartTabs[0]?.overlayFamilies, ["risk", "macro"]);
+    assert.equal(workspace.chartTabs[0]?.symbol, "AMD");
     assert.ok(workspace.indicatorTemplates.some((template) => template.id === "default-trend-risk"));
     assert.deepEqual(workspace.indicatorTemplates.find((template) => template.id === "fast-momentum")?.indicators, ["ema20", "macd"]);
   });

@@ -37,12 +37,16 @@ export type StoredChartDrawing = {
   color?: StoredChartDrawingColor;
   createdAt?: string;
   end: StoredChartDrawingPoint;
+  folder?: string;
   id: string;
   label?: string;
   lineWidth?: StoredChartDrawingWidth;
+  locked?: boolean;
   start: StoredChartDrawingPoint;
   style?: StoredChartDrawingStyle;
   tool: Exclude<StoredChartDrawingTool, "edit" | "inspect">;
+  updatedAt?: string;
+  visible?: boolean;
 };
 
 export type ChartIndicatorTemplate = {
@@ -57,9 +61,35 @@ export type ChartIndicatorTemplate = {
 
 export type ChartDetailMode = "compare" | "overlays" | "timeline";
 export type ChartLayoutMode = "focus" | "grid" | "split" | "stack";
+export type StoredChartAlertRuleType = "price_above" | "price_below" | "score_above" | "score_below";
+
+export type StoredChartAlertHistoryEntry = {
+  cooldownMinutes: number;
+  createdAt: string;
+  id: string;
+  label: string;
+  sourceReason?: string;
+  threshold: number;
+  type: StoredChartAlertRuleType;
+};
+
+export type ChartWorkspaceTab = {
+  detailMode: ChartDetailMode;
+  id: string;
+  indicators: ChartIndicatorId[];
+  label: string;
+  layoutMode: ChartLayoutMode;
+  overlayFamilies: ChartOverlayFamily[];
+  period: InteractiveChartPeriod;
+  symbol?: string;
+  updatedAt?: string;
+};
 
 export type ChartWorkflowWorkspace = {
   activeIndicatorTemplateId: string | null;
+  alertHistory: StoredChartAlertHistoryEntry[];
+  chartTabs: ChartWorkspaceTab[];
+  compactMode: boolean;
   detailMode: ChartDetailMode;
   drawingTool: StoredChartDrawingTool;
   drawings: StoredChartDrawing[];
@@ -67,8 +97,10 @@ export type ChartWorkflowWorkspace = {
   indicators: ChartIndicatorId[];
   indicatorTemplates: ChartIndicatorTemplate[];
   layoutMode: ChartLayoutMode;
+  magnetMode: boolean;
   overlayFamilies: ChartOverlayFamily[];
   period: InteractiveChartPeriod;
+  toolbarCollapsed: boolean;
   updatedAt: string | null;
   version: 1;
 };
@@ -80,6 +112,8 @@ const STORAGE_PREFIX = "tradeveto.chart-workflow";
 export const CHART_WORKFLOW_STORAGE_EVENT = "tradeveto-chart-workflow-change";
 const MAX_STORED_DRAWINGS = 24;
 const MAX_STORED_INDICATOR_TEMPLATES = 12;
+const MAX_STORED_ALERT_HISTORY = 20;
+const MAX_STORED_CHART_TABS = 8;
 const MAX_STORED_CHART_WORKSPACES = 24;
 const VALID_PERIODS = new Set<InteractiveChartPeriod>(INTERACTIVE_CHART_PERIODS);
 const VALID_OVERLAY_FAMILIES = new Set<ChartOverlayFamily>(CHART_OVERLAY_FAMILIES.map((item) => item.family));
@@ -102,6 +136,7 @@ const VALID_DRAWING_TOOLS = new Set<StoredChartDrawingTool>([
 ]);
 const VALID_DETAIL_MODES = new Set<ChartDetailMode>(["compare", "overlays", "timeline"]);
 const VALID_LAYOUT_MODES = new Set<ChartLayoutMode>(["focus", "grid", "split", "stack"]);
+const VALID_ALERT_RULE_TYPES = new Set<StoredChartAlertRuleType>(["price_above", "price_below", "score_above", "score_below"]);
 const VALID_DRAWING_COLORS = new Set<StoredChartDrawingColor>(["amber", "cyan", "emerald", "rose", "slate", "violet"]);
 const VALID_DRAWING_STYLES = new Set<StoredChartDrawingStyle>(["dashed", "dotted", "solid"]);
 const VALID_DRAWING_WIDTHS = new Set<StoredChartDrawingWidth>([1, 2, 3, 4]);
@@ -140,6 +175,9 @@ export const DEFAULT_CHART_INDICATOR_TEMPLATES: ChartIndicatorTemplate[] = [
 export function defaultChartWorkflowWorkspace(): ChartWorkflowWorkspace {
   return {
     activeIndicatorTemplateId: "default-trend-risk",
+    alertHistory: [],
+    chartTabs: [],
+    compactMode: false,
     detailMode: "overlays",
     drawingTool: "inspect",
     drawings: [],
@@ -147,8 +185,10 @@ export function defaultChartWorkflowWorkspace(): ChartWorkflowWorkspace {
     indicators: [...DEFAULT_CHART_INDICATORS],
     indicatorTemplates: [...DEFAULT_CHART_INDICATOR_TEMPLATES],
     layoutMode: "focus",
+    magnetMode: false,
     overlayFamilies: [...DEFAULT_CHART_OVERLAY_FAMILIES],
     period: "6mo",
+    toolbarCollapsed: false,
     updatedAt: null,
     version: 1,
   };
@@ -169,6 +209,9 @@ export function sanitizeChartWorkflowWorkspace(input: unknown, fallback: ChartWo
   const activeTemplateExists = activeIndicatorTemplateId ? indicatorTemplates.some((template) => template.id === activeIndicatorTemplateId) : false;
   return {
     activeIndicatorTemplateId: activeTemplateExists ? activeIndicatorTemplateId : null,
+    alertHistory: sanitizeAlertHistory(record.alertHistory),
+    chartTabs: sanitizeChartTabs(record.chartTabs),
+    compactMode: booleanValue(record.compactMode, fallback.compactMode),
     detailMode: stringFromSet(record.detailMode, VALID_DETAIL_MODES, fallback.detailMode),
     drawingTool: stringFromSet(record.drawingTool, VALID_DRAWING_TOOLS, fallback.drawingTool),
     drawings: sanitizeDrawings(record.drawings),
@@ -176,8 +219,10 @@ export function sanitizeChartWorkflowWorkspace(input: unknown, fallback: ChartWo
     indicators: stringsFromSet(record.indicators, VALID_INDICATORS, fallback.indicators),
     indicatorTemplates,
     layoutMode: stringFromSet(record.layoutMode, VALID_LAYOUT_MODES, fallback.layoutMode),
+    magnetMode: booleanValue(record.magnetMode, fallback.magnetMode),
     overlayFamilies: stringsFromSet(record.overlayFamilies, VALID_OVERLAY_FAMILIES, fallback.overlayFamilies),
     period: stringFromSet(record.period, VALID_PERIODS, fallback.period),
+    toolbarCollapsed: booleanValue(record.toolbarCollapsed, fallback.toolbarCollapsed),
     updatedAt: typeof record.updatedAt === "string" && record.updatedAt.trim() ? record.updatedAt : fallback.updatedAt,
     version: 1,
   };
@@ -319,14 +364,76 @@ function sanitizeDrawing(value: unknown): StoredChartDrawing | null {
   };
   const label = compactText(value.label, 48);
   if (label) drawing.label = label;
+  const folder = compactText(value.folder, 32);
+  if (folder) drawing.folder = folder;
   const color = stringFromSet(value.color, VALID_DRAWING_COLORS, null);
   if (color) drawing.color = color;
   const style = stringFromSet(value.style, VALID_DRAWING_STYLES, null);
   if (style) drawing.style = style;
   const lineWidth = finiteIntegerFromSet(value.lineWidth, VALID_DRAWING_WIDTHS);
   if (lineWidth) drawing.lineWidth = lineWidth;
+  if (typeof value.locked === "boolean") drawing.locked = value.locked;
+  if (typeof value.visible === "boolean") drawing.visible = value.visible;
   if (typeof value.createdAt === "string" && value.createdAt.trim()) drawing.createdAt = value.createdAt;
+  if (typeof value.updatedAt === "string" && value.updatedAt.trim()) drawing.updatedAt = value.updatedAt;
   return drawing;
+}
+
+function sanitizeAlertHistory(value: unknown): StoredChartAlertHistoryEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => sanitizeAlertHistoryEntry(item))
+    .filter((item): item is StoredChartAlertHistoryEntry => item !== null)
+    .slice(-MAX_STORED_ALERT_HISTORY);
+}
+
+function sanitizeAlertHistoryEntry(value: unknown): StoredChartAlertHistoryEntry | null {
+  if (!isRecord(value)) return null;
+  const type = stringFromSet(value.type, VALID_ALERT_RULE_TYPES, null);
+  const threshold = finiteNumber(value.threshold);
+  const createdAt = compactText(value.createdAt, 48);
+  const id = normalizeId(value.id, "");
+  const label = compactText(value.label, 80);
+  if (!type || threshold === null || !createdAt || !id || !label) return null;
+  const cooldown = finiteNumber(value.cooldownMinutes);
+  const entry: StoredChartAlertHistoryEntry = {
+    cooldownMinutes: cooldown === null ? 240 : Math.max(0, Math.min(10_080, Math.round(cooldown))),
+    createdAt,
+    id,
+    label,
+    threshold,
+    type,
+  };
+  const sourceReason = compactText(value.sourceReason, 180);
+  if (sourceReason) entry.sourceReason = sourceReason;
+  return entry;
+}
+
+function sanitizeChartTabs(value: unknown): ChartWorkspaceTab[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item, index) => sanitizeChartTab(item, index))
+    .filter((item): item is ChartWorkspaceTab => item !== null)
+    .slice(-MAX_STORED_CHART_TABS);
+}
+
+function sanitizeChartTab(value: unknown, index: number): ChartWorkspaceTab | null {
+  if (!isRecord(value)) return null;
+  const label = compactText(value.label, 36);
+  if (!label) return null;
+  const tab: ChartWorkspaceTab = {
+    detailMode: stringFromSet(value.detailMode, VALID_DETAIL_MODES, "overlays"),
+    id: normalizeId(value.id, `tab-${index + 1}`),
+    indicators: stringsFromSet(value.indicators, VALID_INDICATORS, DEFAULT_CHART_INDICATORS),
+    label,
+    layoutMode: stringFromSet(value.layoutMode, VALID_LAYOUT_MODES, "focus"),
+    overlayFamilies: stringsFromSet(value.overlayFamilies, VALID_OVERLAY_FAMILIES, DEFAULT_CHART_OVERLAY_FAMILIES),
+    period: stringFromSet(value.period, VALID_PERIODS, "6mo"),
+  };
+  const symbol = compactText(value.symbol, 24);
+  if (symbol) tab.symbol = normalizeChartWorkflowSymbol(symbol);
+  if (typeof value.updatedAt === "string" && value.updatedAt.trim()) tab.updatedAt = value.updatedAt;
+  return tab;
 }
 
 function sanitizeIndicatorTemplates(value: unknown, fallback: ChartIndicatorTemplate[]): ChartIndicatorTemplate[] {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useId, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
-import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Copy, Expand, Palette, RotateCcw, Save, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Copy, Expand, Eye, EyeOff, Keyboard, Lock, Magnet, Palette, PanelTopClose, PanelTopOpen, RotateCcw, Save, Search, Trash2, Unlock, X } from "lucide-react";
 import {
   CandlestickSeries,
   ColorType,
@@ -52,9 +52,11 @@ import {
   replaceChartWorkflowWorkspace,
   writeChartWorkflowWorkspace,
   type ChartIndicatorTemplate,
+  type ChartWorkspaceTab,
   type ChartWorkflowWorkspace,
   type ChartDetailMode,
   type ChartLayoutMode,
+  type StoredChartAlertHistoryEntry,
   type StoredChartDrawingColor,
   type StoredChartDrawing,
   type StoredChartDrawingStyle,
@@ -228,6 +230,12 @@ export function SymbolChart({
   const [drawingTool, setDrawingTool] = useState<ChartDrawingTool>("inspect");
   const [drawings, setDrawings] = useState<ChartDrawing[]>([]);
   const [draftDrawing, setDraftDrawing] = useState<ChartDrawing | null>(null);
+  const [alertHistory, setAlertHistory] = useState<StoredChartAlertHistoryEntry[]>([]);
+  const [chartTabs, setChartTabs] = useState<ChartWorkspaceTab[]>([]);
+  const [compactMode, setCompactMode] = useState(false);
+  const [magnetMode, setMagnetMode] = useState(false);
+  const [toolbarCollapsed, setToolbarCollapsed] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const [hotkeysActive, setHotkeysActive] = useState(false);
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
   const [accountWorkspaceLoaded, setAccountWorkspaceLoaded] = useState(false);
@@ -402,13 +410,18 @@ export function SymbolChart({
   function currentWorkspacePatch(fullscreenOpen: boolean): Partial<ChartWorkflowWorkspace> {
     return {
       activeIndicatorTemplateId,
+      alertHistory,
+      chartTabs,
+      compactMode,
       drawingTool,
       drawings,
       fullscreenOpen,
       indicators: enabledIndicators,
       indicatorTemplates,
+      magnetMode,
       overlayFamilies: enabledOverlayFamilies,
       period,
+      toolbarCollapsed,
     };
   }
 
@@ -420,8 +433,9 @@ export function SymbolChart({
     setChartAlertSaving(true);
     setChartAlertMessage("Saving chart alert...");
     try {
+      const rulePayload = buildChartAlertRulePayload({ request, symbol });
       const response = await csrfFetch("/api/alerts/rules", {
-        body: JSON.stringify(buildChartAlertRulePayload({ request, symbol })),
+        body: JSON.stringify(rulePayload),
         headers: { "Content-Type": "application/json" },
         method: "POST",
       });
@@ -430,6 +444,16 @@ export function SymbolChart({
         throw new Error(payload?.message ?? "Chart alert save failed.");
       }
       setChartAlertMessage("Chart alert saved");
+      const historyEntry: StoredChartAlertHistoryEntry = {
+        cooldownMinutes: rulePayload.cooldown_minutes,
+        createdAt: new Date().toISOString(),
+        id: rulePayload.id,
+        label: `${chartAlertTypeLabel(rulePayload.type)} ${formatChartAlertThreshold(rulePayload.threshold, rulePayload.type)}`,
+        sourceReason: rulePayload.source_reason,
+        threshold: rulePayload.threshold,
+        type: rulePayload.type,
+      };
+      setAlertHistory((current) => [...current.filter((entry) => entry.id !== historyEntry.id), historyEntry].slice(-20));
       trackAnalyticsEvent("chart_alert_create", {
         threshold: request.threshold,
         type: request.type,
@@ -461,20 +485,30 @@ export function SymbolChart({
       if (!controlledPeriod) setUncontrolledPeriod(workspace.period);
       if (!controlledOverlayFamilies) setUncontrolledOverlayFamilies(workspace.overlayFamilies);
       if (!controlledIndicators) setUncontrolledIndicators(workspace.indicators);
+      setAlertHistory(workspace.alertHistory);
+      setChartTabs(workspace.chartTabs);
+      setCompactMode(workspace.compactMode);
       setDrawingTool(workspace.drawingTool);
       setDrawings(workspace.drawings);
       setIndicatorTemplates(workspace.indicatorTemplates);
       setActiveIndicatorTemplateId(workspace.activeIndicatorTemplateId);
+      setMagnetMode(workspace.magnetMode);
+      setToolbarCollapsed(workspace.toolbarCollapsed);
       setWorkspaceUpdatedAt(workspace.updatedAt);
       if (restoreFullscreen && expandable && workspace.fullscreenOpen) setExpanded(true);
     } else {
       if (!controlledPeriod) setUncontrolledPeriod(defaultPeriod);
       if (!controlledOverlayFamilies) setUncontrolledOverlayFamilies(defaultOverlayFamilies);
       if (!controlledIndicators) setUncontrolledIndicators(defaultIndicators);
+      setAlertHistory([]);
+      setChartTabs([]);
+      setCompactMode(false);
       setDrawingTool("inspect");
       setDrawings([]);
       setIndicatorTemplates([...DEFAULT_CHART_INDICATOR_TEMPLATES]);
       setActiveIndicatorTemplateId("default-trend-risk");
+      setMagnetMode(false);
+      setToolbarCollapsed(false);
       setWorkspaceUpdatedAt(null);
     }
     setDraftDrawing(null);
@@ -482,7 +516,7 @@ export function SymbolChart({
   }
 
   function updateDrawing(drawingId: string, updater: (drawing: ChartDrawing) => ChartDrawing): void {
-    setDrawings((current) => current.map((drawing) => drawing.id === drawingId ? updater(drawing) : drawing));
+    setDrawings((current) => current.map((drawing) => drawing.id === drawingId ? { ...updater(drawing), updatedAt: new Date().toISOString() } : drawing));
   }
 
   function clearDrawings(): void {
@@ -492,6 +526,7 @@ export function SymbolChart({
 
   function deleteSelectedDrawing(): void {
     if (!selectedDrawingId) return;
+    if (selectedDrawing?.locked) return;
     setDrawings((current) => current.filter((drawing) => drawing.id !== selectedDrawingId));
     setSelectedDrawingId(null);
   }
@@ -504,6 +539,8 @@ export function SymbolChart({
       ...drawing,
       createdAt: new Date().toISOString(),
       id: `${drawing.tool}-${Date.now()}-copy`,
+      locked: false,
+      visible: true,
     }, 1.8, 1.8);
     setDrawings((current) => [...current, duplicate].slice(-24));
     setSelectedDrawingId(duplicate.id);
@@ -511,6 +548,7 @@ export function SymbolChart({
 
   function nudgeSelectedDrawing(deltaX: number, deltaY: number): void {
     if (!selectedDrawingId) return;
+    if (selectedDrawing?.locked) return;
     updateDrawing(selectedDrawingId, (drawing) => nudgeDrawing(drawing, deltaX, deltaY));
   }
 
@@ -567,16 +605,21 @@ export function SymbolChart({
     }
     const saved = writeChartWorkflowWorkspace(symbol, {
       activeIndicatorTemplateId,
+      alertHistory,
+      chartTabs,
+      compactMode,
       drawingTool,
       drawings,
       fullscreenOpen: expanded,
       indicators: enabledIndicators,
       indicatorTemplates,
+      magnetMode,
       overlayFamilies: enabledOverlayFamilies,
       period,
+      toolbarCollapsed,
     });
     if (saved) setWorkspaceUpdatedAt(saved.updatedAt);
-  }, [activeIndicatorTemplateId, drawingTool, drawings, enabledIndicators, enabledOverlayFamilies, expanded, indicatorTemplates, period, symbol, workspaceLoaded]);
+  }, [activeIndicatorTemplateId, alertHistory, chartTabs, compactMode, drawingTool, drawings, enabledIndicators, enabledOverlayFamilies, expanded, indicatorTemplates, magnetMode, period, symbol, toolbarCollapsed, workspaceLoaded]);
 
   useEffect(() => {
     if (!workspaceLoaded || !accountWorkspaceLoaded || !accountSyncEnabled || accountLoading || !authenticated || !user) return undefined;
@@ -592,14 +635,19 @@ export function SymbolChart({
     accountWorkspaceLoaded,
     authenticated,
     activeIndicatorTemplateId,
+    alertHistory,
+    chartTabs,
+    compactMode,
     drawingTool,
     drawings,
     enabledIndicators,
     enabledOverlayFamilies,
     expanded,
     indicatorTemplates,
+    magnetMode,
     period,
     symbol,
+    toolbarCollapsed,
     user,
     workspaceLoaded,
   ]);
@@ -607,9 +655,20 @@ export function SymbolChart({
   useEffect(() => {
     if (!hotkeysActive) return undefined;
     function handleKeyDown(event: KeyboardEvent): void {
-      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+      if (event.defaultPrevented || event.altKey) return;
       if (isEditableTarget(event.target)) return;
       const key = event.key.toLowerCase();
+      if ((event.ctrlKey || event.metaKey) && key === "k") {
+        event.preventDefault();
+        setCommandPaletteOpen(true);
+        return;
+      }
+      if (event.ctrlKey || event.metaKey) return;
+      if (key === "/" || key === "?") {
+        event.preventDefault();
+        setCommandPaletteOpen(true);
+        return;
+      }
       if (selectedDrawingId && (key === "backspace" || key === "delete")) {
         event.preventDefault();
         deleteSelectedDrawing();
@@ -656,6 +715,16 @@ export function SymbolChart({
         setActiveIndicatorTemplateId(null);
         return;
       }
+      if (key === "m" && showDrawingTools) {
+        event.preventDefault();
+        setMagnetMode((value) => !value);
+        return;
+      }
+      if (key === ",") {
+        event.preventDefault();
+        setCompactMode((value) => !value);
+        return;
+      }
       if (key === "r" && event.shiftKey) {
         event.preventDefault();
         resetWorkspaceState();
@@ -684,6 +753,11 @@ export function SymbolChart({
         setDrawingTool("inspect");
         return;
       }
+      if (key === "escape" && commandPaletteOpen) {
+        event.preventDefault();
+        setCommandPaletteOpen(false);
+        return;
+      }
       if (key === "escape" && selectedDrawingId) {
         event.preventDefault();
         setSelectedDrawingId(null);
@@ -691,7 +765,7 @@ export function SymbolChart({
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [drawingTool, enableTimeframeSwitching, enabledIndicators.length, expandable, hotkeysActive, navigationSymbols, period, selectedDrawingId, showDrawingTools]);
+  }, [commandPaletteOpen, drawingTool, enableTimeframeSwitching, enabledIndicators.length, expandable, hotkeysActive, navigationSymbols, period, selectedDrawingId, showDrawingTools]);
 
   useEffect(() => {
     const container = chartContainerRef.current;
@@ -963,6 +1037,7 @@ export function SymbolChart({
           activeTool={drawingTool}
           drawings={drawings}
           drawingCount={drawings.length}
+          magnetMode={magnetMode}
           onClear={clearDrawings}
           onDeleteSelected={deleteSelectedDrawing}
           onDuplicateSelected={duplicateSelectedDrawing}
@@ -970,16 +1045,20 @@ export function SymbolChart({
           onReset={resetWorkspaceState}
           onSelect={setDrawingTool}
           onSelectDrawing={setSelectedDrawingId}
+          onToggleMagnet={() => setMagnetMode((value) => !value)}
+          onToggleToolbar={() => setToolbarCollapsed((value) => !value)}
           onUpdateSelected={(patch) => {
             if (!selectedDrawingId) return;
             updateDrawing(selectedDrawingId, (drawing) => ({ ...drawing, ...patch }));
           }}
           selectedDrawing={selectedDrawing}
+          toolbarCollapsed={toolbarCollapsed}
         />
       ) : null}
       <ChartAlertPanel
         authenticated={authenticated}
         drawingPrice={selectedDrawingPrice}
+        history={alertHistory}
         latestClose={latestClose}
         message={chartAlertMessage}
         onCreate={createChartAlert}
@@ -988,7 +1067,7 @@ export function SymbolChart({
         selectedDrawing={selectedDrawing}
         symbol={symbol}
       />
-    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/40 shadow-xl shadow-black/20" style={{ height }}>
+    <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/40 shadow-xl shadow-black/20" style={{ height: compactMode ? Math.max(260, height - 80) : height }}>
       {canRenderChart ? <div ref={chartContainerRef} className="absolute inset-0" /> : (
         <div className="absolute inset-0 flex items-center justify-center p-5">
           <div className="max-w-md text-center">
@@ -1008,6 +1087,7 @@ export function SymbolChart({
         onDraftChange={setDraftDrawing}
         onSelect={setSelectedDrawingId}
         onUpdate={updateDrawing}
+        magnetMode={magnetMode}
         selectedDrawingId={selectedDrawingId}
         tool={drawingTool}
       />
@@ -1040,6 +1120,19 @@ export function SymbolChart({
     </div>
       <ChartWorkflowDock indicatorSeries={indicatorSeries} message={workspaceMessage} summary={workflowSummary} workspaceLoaded={workspaceLoaded} workspaceUpdatedAt={workspaceUpdatedAt} />
       <ChartStoryPanel points={storyPoints} />
+      <ChartCommandPalette
+        commands={[
+          { action: saveWorkspaceNow, detail: "Persist local and account chart state.", label: "Save workspace", shortcut: "S" },
+          { action: () => setCompactMode((value) => !value), detail: compactMode ? "Return to full chart density." : "Reduce chrome and chart height.", label: compactMode ? "Disable compact mode" : "Enable compact mode", shortcut: "," },
+          { action: () => setMagnetMode((value) => !value), detail: magnetMode ? "Freehand drawing points." : "Snap drawing points to a stable grid.", label: magnetMode ? "Disable magnet mode" : "Enable magnet mode", shortcut: "M" },
+          { action: () => setDrawingTool("edit"), detail: "Move drawings and drag anchor handles.", label: "Edit drawings", shortcut: "E" },
+          { action: () => updateIndicators(enabledIndicators.length ? [] : [...DEFAULT_CHART_INDICATORS]), detail: "Toggle default indicator stack.", label: "Toggle indicators", shortcut: "I" },
+          { action: resetWorkspaceState, detail: "Restore default chart workspace.", label: "Reset workspace", shortcut: "Shift+R" },
+          ...(expandable ? [{ action: expandChart, detail: "Open the fullscreen chart workflow.", label: "Fullscreen chart", shortcut: "F" }] : []),
+        ]}
+        onClose={() => setCommandPaletteOpen(false)}
+        open={commandPaletteOpen}
+      />
     </div>
     {expanded ? (
       <SymbolChartModal
@@ -1118,16 +1211,37 @@ function ChartIndicatorControls({
   onToggle: (indicator: ChartIndicatorId) => void;
 }) {
   const activeSeries = new Map(indicatorSeries.map((series) => [series.id, series]));
+  const [indicatorQuery, setIndicatorQuery] = useState("");
+  const query = indicatorQuery.trim().toLowerCase();
+  const visibleIndicators = query
+    ? CHART_INDICATORS.filter(({ id }) => {
+      const definition = indicatorDefinition(id);
+      return `${definition.label} ${definition.description} ${id}`.toLowerCase().includes(query);
+    })
+    : CHART_INDICATORS;
   return (
     <div className="mb-2 rounded-2xl border border-white/10 bg-slate-950/50 p-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
           Indicator management
         </div>
-        <div className="text-[11px] text-slate-500">{enabledIndicators.length.toLocaleString()} enabled</div>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center justify-end gap-2">
+          <label className="relative min-w-0 sm:max-w-56">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
+            <input
+              aria-label="Search indicators"
+              className="min-h-8 w-full rounded-full border border-white/10 bg-slate-950/55 py-1 pl-8 pr-3 text-xs font-semibold text-slate-100 outline-none placeholder:text-slate-600 focus:border-cyan-300/40"
+              onChange={(event) => setIndicatorQuery(event.target.value)}
+              placeholder="Quick indicator"
+              type="search"
+              value={indicatorQuery}
+            />
+          </label>
+          <div className="text-[11px] text-slate-500">{enabledIndicators.length.toLocaleString()} enabled</div>
+        </div>
       </div>
       <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
-        {CHART_INDICATORS.map(({ id: indicator }) => {
+        {visibleIndicators.map(({ id: indicator }) => {
           const definition = indicatorDefinition(indicator);
           const enabled = enabledIndicators.includes(indicator);
           const active = activeSeries.get(indicator) ?? null;
@@ -1235,6 +1349,7 @@ function ChartDrawingToolbar({
   activeTool,
   drawings,
   drawingCount,
+  magnetMode,
   onClear,
   onDeleteSelected,
   onDuplicateSelected,
@@ -1242,12 +1357,16 @@ function ChartDrawingToolbar({
   onReset,
   onSelect,
   onSelectDrawing,
+  onToggleMagnet,
+  onToggleToolbar,
   onUpdateSelected,
   selectedDrawing,
+  toolbarCollapsed,
 }: {
   activeTool: ChartDrawingTool;
   drawings: ChartDrawing[];
   drawingCount: number;
+  magnetMode: boolean;
   onClear: () => void;
   onDeleteSelected: () => void;
   onDuplicateSelected: () => void;
@@ -1255,8 +1374,11 @@ function ChartDrawingToolbar({
   onReset: () => void;
   onSelect: (tool: ChartDrawingTool) => void;
   onSelectDrawing: (drawingId: string | null) => void;
-  onUpdateSelected: (patch: Partial<Pick<ChartDrawing, "color" | "label" | "lineWidth" | "style">>) => void;
+  onToggleMagnet: () => void;
+  onToggleToolbar: () => void;
+  onUpdateSelected: (patch: Partial<Pick<ChartDrawing, "color" | "folder" | "label" | "lineWidth" | "locked" | "style" | "visible">>) => void;
   selectedDrawing: ChartDrawing | null;
+  toolbarCollapsed: boolean;
 }) {
   const tools: Array<{ label: string; tool: ChartDrawingTool }> = [
     { label: "Inspect", tool: "inspect" },
@@ -1280,14 +1402,37 @@ function ChartDrawingToolbar({
           <p className="mt-1 text-[11px] leading-4 text-slate-500">Client-side research annotations. Drawings are not treated as TradeVeto evidence.</p>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-1.5">
+          <button
+            aria-pressed={magnetMode}
+            className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] transition ${
+              magnetMode
+                ? "border-cyan-300/55 bg-cyan-300/12 text-cyan-100"
+                : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-cyan-300/40 hover:text-cyan-100"
+            }`}
+            onClick={onToggleMagnet}
+            title="Snap new and edited drawing points to a stable chart grid"
+            type="button"
+          >
+            <Magnet className="h-3.5 w-3.5" />
+            Magnet
+          </button>
+          <button
+            aria-expanded={!toolbarCollapsed}
+            className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.035] text-slate-500 transition hover:border-cyan-300/40 hover:text-cyan-100"
+            onClick={onToggleToolbar}
+            title={toolbarCollapsed ? "Show drawing controls" : "Collapse drawing controls"}
+            type="button"
+          >
+            {toolbarCollapsed ? <PanelTopOpen className="h-3.5 w-3.5" /> : <PanelTopClose className="h-3.5 w-3.5" />}
+          </button>
           {selectedDrawing ? (
             <>
-              <IconNudgeButton label="Nudge left" onClick={() => onNudgeSelected(-0.5, 0)}><ArrowLeft className="h-3.5 w-3.5" /></IconNudgeButton>
-              <IconNudgeButton label="Nudge up" onClick={() => onNudgeSelected(0, -0.5)}><ArrowUp className="h-3.5 w-3.5" /></IconNudgeButton>
-              <IconNudgeButton label="Nudge down" onClick={() => onNudgeSelected(0, 0.5)}><ArrowDown className="h-3.5 w-3.5" /></IconNudgeButton>
-              <IconNudgeButton label="Nudge right" onClick={() => onNudgeSelected(0.5, 0)}><ArrowRight className="h-3.5 w-3.5" /></IconNudgeButton>
+              <IconNudgeButton disabled={Boolean(selectedDrawing.locked)} label="Nudge left" onClick={() => onNudgeSelected(-0.5, 0)}><ArrowLeft className="h-3.5 w-3.5" /></IconNudgeButton>
+              <IconNudgeButton disabled={Boolean(selectedDrawing.locked)} label="Nudge up" onClick={() => onNudgeSelected(0, -0.5)}><ArrowUp className="h-3.5 w-3.5" /></IconNudgeButton>
+              <IconNudgeButton disabled={Boolean(selectedDrawing.locked)} label="Nudge down" onClick={() => onNudgeSelected(0, 0.5)}><ArrowDown className="h-3.5 w-3.5" /></IconNudgeButton>
+              <IconNudgeButton disabled={Boolean(selectedDrawing.locked)} label="Nudge right" onClick={() => onNudgeSelected(0.5, 0)}><ArrowRight className="h-3.5 w-3.5" /></IconNudgeButton>
               <IconNudgeButton label="Duplicate drawing" onClick={onDuplicateSelected}><Copy className="h-3.5 w-3.5" /></IconNudgeButton>
-              <IconNudgeButton label="Delete drawing" onClick={onDeleteSelected} tone="danger"><Trash2 className="h-3.5 w-3.5" /></IconNudgeButton>
+              <IconNudgeButton disabled={Boolean(selectedDrawing.locked)} label="Delete drawing" onClick={onDeleteSelected} tone="danger"><Trash2 className="h-3.5 w-3.5" /></IconNudgeButton>
             </>
           ) : null}
           <button
@@ -1307,24 +1452,26 @@ function ChartDrawingToolbar({
           </button>
         </div>
       </div>
-      <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
-        {tools.map(({ label, tool }) => (
-          <button
-            aria-pressed={activeTool === tool}
-            className={`min-h-10 shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] transition ${
-              activeTool === tool
-                ? "border-cyan-300/55 bg-cyan-300/12 text-cyan-100 shadow-lg shadow-cyan-950/20"
-                : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-white/20 hover:text-slate-200"
-            }`}
-            key={tool}
-            onClick={() => onSelect(tool)}
-            type="button"
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      {drawings.length ? (
+      {!toolbarCollapsed ? (
+        <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+          {tools.map(({ label, tool }) => (
+            <button
+              aria-pressed={activeTool === tool}
+              className={`min-h-10 shrink-0 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] transition ${
+                activeTool === tool
+                  ? "border-cyan-300/55 bg-cyan-300/12 text-cyan-100 shadow-lg shadow-cyan-950/20"
+                  : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-white/20 hover:text-slate-200"
+              }`}
+              key={tool}
+              onClick={() => onSelect(tool)}
+              type="button"
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {!toolbarCollapsed && drawings.length ? (
         <ChartDrawingObjectControls
           drawings={drawings}
           onDeleteSelected={onDeleteSelected}
@@ -1362,18 +1509,39 @@ function ChartDrawingObjectControls({
   onDeleteSelected: () => void;
   onDuplicateSelected: () => void;
   onSelectDrawing: (drawingId: string | null) => void;
-  onUpdateSelected: (patch: Partial<Pick<ChartDrawing, "color" | "label" | "lineWidth" | "style">>) => void;
+  onUpdateSelected: (patch: Partial<Pick<ChartDrawing, "color" | "folder" | "label" | "lineWidth" | "locked" | "style" | "visible">>) => void;
   selectedDrawing: ChartDrawing | null;
 }) {
+  const [drawingSearch, setDrawingSearch] = useState("");
   const selectedColor = selectedDrawing?.color ?? "cyan";
   const selectedStyle = selectedDrawing?.style ?? "solid";
   const selectedWidth = selectedDrawing?.lineWidth ?? 2;
+  const selectedFolder = selectedDrawing?.folder ?? "General";
+  const selectedVisible = selectedDrawing?.visible !== false;
+  const selectedLocked = Boolean(selectedDrawing?.locked);
+  const drawingQuery = drawingSearch.trim().toLowerCase();
+  const filteredDrawings = drawingQuery
+    ? drawings.filter((drawing) => `${drawing.label ?? ""} ${drawingToolLabel(drawing.tool)} ${drawing.folder ?? ""}`.toLowerCase().includes(drawingQuery))
+    : drawings;
   return (
     <div className="mt-3 grid gap-3 border-t border-white/10 pt-3 xl:grid-cols-[minmax(0,0.75fr)_minmax(280px,1fr)]">
       <div className="min-w-0">
-        <div className="mb-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Object list</div>
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Object list</div>
+          <label className="relative min-w-0 flex-1 sm:max-w-48">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-600" />
+            <input
+              aria-label="Search drawings"
+              className="min-h-8 w-full rounded-full border border-white/10 bg-slate-950/55 py-1 pl-8 pr-3 text-xs font-semibold text-slate-100 outline-none placeholder:text-slate-600 focus:border-cyan-300/40"
+              onChange={(event) => setDrawingSearch(event.target.value)}
+              placeholder="Find object"
+              type="search"
+              value={drawingSearch}
+            />
+          </label>
+        </div>
         <div className="max-h-36 space-y-1 overflow-y-auto pr-1">
-          {drawings.map((drawing, index) => (
+          {filteredDrawings.map((drawing, index) => (
             <button
               aria-pressed={selectedDrawing?.id === drawing.id}
               className={`flex w-full min-w-0 items-center justify-between gap-2 rounded-xl border px-3 py-2 text-left text-xs transition ${
@@ -1385,10 +1553,20 @@ function ChartDrawingObjectControls({
               onClick={() => onSelectDrawing(drawing.id)}
               type="button"
             >
-              <span className="min-w-0 truncate font-semibold">{drawing.label || drawingToolLabel(drawing.tool)}</span>
-              <span className="shrink-0 font-mono text-[10px] text-slate-500">#{index + 1}</span>
+              <span className="min-w-0">
+                <span className="block truncate font-semibold">{drawing.label || drawingToolLabel(drawing.tool)}</span>
+                <span className="block truncate text-[10px] text-slate-500">{drawing.folder ?? "General"}</span>
+              </span>
+              <span className="flex shrink-0 items-center gap-1 font-mono text-[10px] text-slate-500">
+                {drawing.visible === false ? <EyeOff className="h-3 w-3" /> : null}
+                {drawing.locked ? <Lock className="h-3 w-3" /> : null}
+                #{index + 1}
+              </span>
             </button>
           ))}
+          {!filteredDrawings.length ? (
+            <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-slate-500">No matching drawings.</div>
+          ) : null}
         </div>
       </div>
       <div className="min-w-0 rounded-2xl border border-white/10 bg-white/[0.025] p-3">
@@ -1397,8 +1575,14 @@ function ChartDrawingObjectControls({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">{drawingToolLabel(selectedDrawing.tool)}</div>
               <div className="flex items-center gap-1.5">
+                <IconNudgeButton label={selectedVisible ? "Hide drawing" : "Show drawing"} onClick={() => onUpdateSelected({ visible: !selectedVisible })}>
+                  {selectedVisible ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+                </IconNudgeButton>
+                <IconNudgeButton label={selectedLocked ? "Unlock drawing" : "Lock drawing"} onClick={() => onUpdateSelected({ locked: !selectedLocked })}>
+                  {selectedLocked ? <Unlock className="h-3.5 w-3.5" /> : <Lock className="h-3.5 w-3.5" />}
+                </IconNudgeButton>
                 <IconNudgeButton label="Duplicate drawing" onClick={onDuplicateSelected}><Copy className="h-3.5 w-3.5" /></IconNudgeButton>
-                <IconNudgeButton label="Delete drawing" onClick={onDeleteSelected} tone="danger"><Trash2 className="h-3.5 w-3.5" /></IconNudgeButton>
+                <IconNudgeButton disabled={selectedLocked} label="Delete drawing" onClick={onDeleteSelected} tone="danger"><Trash2 className="h-3.5 w-3.5" /></IconNudgeButton>
               </div>
             </div>
             <label className="block">
@@ -1410,6 +1594,16 @@ function ChartDrawingObjectControls({
                 type="text"
                 value={selectedDrawing.label ?? ""}
               />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Folder / group</span>
+              <select
+                className="min-h-9 w-full rounded-xl border border-white/10 bg-slate-950/60 px-3 py-2 text-xs font-semibold text-slate-100 outline-none focus:border-cyan-300/40"
+                onChange={(event) => onUpdateSelected({ folder: event.target.value })}
+                value={selectedFolder}
+              >
+                {["General", "Levels", "Risk", "Replay", "Notes"].map((folder) => <option key={folder} value={folder}>{folder}</option>)}
+              </select>
             </label>
             <div>
               <div className="mb-1 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">
@@ -1456,6 +1650,14 @@ function ChartDrawingObjectControls({
                 </select>
               </label>
             </div>
+            <div>
+              <div className="mb-1 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">Style presets</div>
+              <div className="flex flex-wrap gap-1.5">
+                <button className="min-h-8 rounded-full border border-cyan-300/20 bg-cyan-300/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100" onClick={() => onUpdateSelected({ color: "cyan", folder: "Levels", lineWidth: 2, style: "solid" })} type="button">Level</button>
+                <button className="min-h-8 rounded-full border border-rose-300/20 bg-rose-300/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-rose-100" onClick={() => onUpdateSelected({ color: "rose", folder: "Risk", lineWidth: 3, style: "dashed" })} type="button">Risk</button>
+                <button className="min-h-8 rounded-full border border-amber-300/20 bg-amber-300/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-amber-100" onClick={() => onUpdateSelected({ color: "amber", folder: "Notes", lineWidth: 2, style: "dotted" })} type="button">Note</button>
+              </div>
+            </div>
           </div>
         ) : (
           <button
@@ -1474,6 +1676,7 @@ function ChartDrawingObjectControls({
 function ChartAlertPanel({
   authenticated,
   drawingPrice,
+  history,
   latestClose,
   message,
   onCreate,
@@ -1484,6 +1687,7 @@ function ChartAlertPanel({
 }: {
   authenticated: boolean;
   drawingPrice: number | null;
+  history: StoredChartAlertHistoryEntry[];
   latestClose: number | null;
   message: string | null;
   onCreate: (request: ChartAlertRequest) => Promise<void>;
@@ -1609,7 +1813,29 @@ function ChartAlertPanel({
         {!hasScoreContext ? (
           <span className="text-[11px] text-slate-600">Indicator alerts stay limited to server-evaluated scanner score conditions when score context exists.</span>
         ) : null}
+        <span className="rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">
+          Cooldown 240m
+        </span>
       </div>
+      {history.length ? (
+        <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.025] p-3">
+          <div className="mb-2 text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Recent chart alert history</div>
+          <div className="grid gap-2 md:grid-cols-2">
+            {history.slice(-4).reverse().map((entry) => (
+              <div className="rounded-xl border border-white/10 bg-slate-950/45 px-3 py-2" key={entry.id}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-xs font-bold text-slate-100">{entry.label}</span>
+                  <span className="font-mono text-[10px] text-slate-500">{formatChartDate(entry.createdAt)}</span>
+                </div>
+                <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.1em] text-slate-500">
+                  {chartAlertTypeLabel(entry.type)} · {entry.cooldownMinutes}m cooldown
+                </div>
+                {entry.sourceReason ? <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-500">{entry.sourceReason}</p> : null}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {message ? (
         <div className="mt-2 rounded-xl border border-cyan-300/10 bg-cyan-300/[0.035] px-3 py-2 text-[11px] font-semibold text-cyan-100">
           {message}
@@ -1619,13 +1845,97 @@ function ChartAlertPanel({
   );
 }
 
+type ChartCommand = {
+  action: () => void;
+  detail: string;
+  label: string;
+  shortcut: string;
+};
+
+function ChartCommandPalette({
+  commands,
+  onClose,
+  open,
+}: {
+  commands: ChartCommand[];
+  onClose: () => void;
+  open: boolean;
+}) {
+  const [query, setQuery] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const filteredCommands = useMemo(() => {
+    const normalizedQuery = query.trim().toLowerCase();
+    if (!normalizedQuery) return commands;
+    return commands.filter((command) => `${command.label} ${command.detail} ${command.shortcut}`.toLowerCase().includes(normalizedQuery));
+  }, [commands, query]);
+
+  useEffect(() => {
+    if (!open) return;
+    setQuery("");
+    window.setTimeout(() => inputRef.current?.focus(), 0);
+  }, [open]);
+
+  if (!open) return null;
+  return (
+    <div aria-label="Chart command palette" aria-modal="true" className="fixed inset-0 z-[11000] grid place-items-start bg-slate-950/55 px-3 pt-[calc(4rem+var(--tv-safe-area-top))] backdrop-blur-sm sm:place-items-center sm:p-6" role="dialog">
+      <button aria-label="Close chart command palette" className="absolute inset-0 cursor-default" onClick={onClose} type="button" />
+      <div className="relative w-full max-w-xl overflow-hidden rounded-2xl border border-cyan-300/20 bg-slate-950 shadow-2xl shadow-black/45">
+        <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3">
+          <Keyboard className="h-4 w-4 text-cyan-200" />
+          <input
+            aria-label="Search chart commands"
+            className="min-h-10 min-w-0 flex-1 bg-transparent text-sm font-semibold text-slate-100 outline-none placeholder:text-slate-600"
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search chart command"
+            ref={inputRef}
+            type="search"
+            value={query}
+          />
+          <button
+            aria-label="Close chart command palette"
+            className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-400 transition hover:border-cyan-300/40 hover:text-cyan-100"
+            onClick={onClose}
+            type="button"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <div className="max-h-[min(60dvh,420px)] overflow-y-auto p-2">
+          {filteredCommands.map((command) => (
+            <button
+              className="flex w-full items-center justify-between gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left transition hover:border-cyan-300/20 hover:bg-cyan-300/[0.06]"
+              key={`${command.label}-${command.shortcut}`}
+              onClick={() => {
+                command.action();
+                onClose();
+              }}
+              type="button"
+            >
+              <span className="min-w-0">
+                <span className="block text-sm font-bold text-slate-100">{command.label}</span>
+                <span className="mt-0.5 block text-xs leading-5 text-slate-500">{command.detail}</span>
+              </span>
+              <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.035] px-2.5 py-1 font-mono text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100">{command.shortcut}</span>
+            </button>
+          ))}
+          {!filteredCommands.length ? (
+            <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.025] p-4 text-sm text-slate-500">No chart commands found.</div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function IconNudgeButton({
   children,
+  disabled = false,
   label,
   onClick,
   tone = "neutral",
 }: {
   children: ReactNode;
+  disabled?: boolean;
   label: string;
   onClick: () => void;
   tone?: "danger" | "neutral";
@@ -1638,6 +1948,7 @@ function IconNudgeButton({
           ? "border-rose-300/20 hover:border-rose-300/50 hover:text-rose-100"
           : "border-white/10 hover:border-cyan-300/40 hover:text-cyan-100"
       }`}
+      disabled={disabled}
       onClick={onClick}
       title={label}
       type="button"
@@ -1650,6 +1961,7 @@ function IconNudgeButton({
 function ChartDrawingLayer({
   drawings,
   draftDrawing,
+  magnetMode,
   onCommit,
   onDraftChange,
   onSelect,
@@ -1659,6 +1971,7 @@ function ChartDrawingLayer({
 }: {
   drawings: ChartDrawing[];
   draftDrawing: ChartDrawing | null;
+  magnetMode: boolean;
   onCommit: (drawing: ChartDrawing) => void;
   onDraftChange: (drawing: ChartDrawing | null) => void;
   onSelect: (drawingId: string | null) => void;
@@ -1667,16 +1980,18 @@ function ChartDrawingLayer({
   tool: ChartDrawingTool;
 }) {
   const layerRef = useRef<HTMLDivElement | null>(null);
-  const editDragRef = useRef<{ drawing: ChartDrawing; pointerId: number; start: ChartDrawingPoint } | null>(null);
-  const allDrawings = draftDrawing ? [...drawings, draftDrawing] : drawings;
+  const editDragRef = useRef<{ anchor: "end" | "move" | "start"; drawing: ChartDrawing; pointerId: number; start: ChartDrawingPoint } | null>(null);
+  const visibleDrawings = drawings.filter((drawing) => drawing.visible !== false);
+  const allDrawings = draftDrawing ? [...visibleDrawings, draftDrawing] : visibleDrawings;
 
   function pointFromClient(clientX: number, clientY: number): ChartDrawingPoint {
     const box = layerRef.current?.getBoundingClientRect();
     if (!box) return { x: 0, y: 0 };
-    return {
+    const point = {
       x: clamp(((clientX - box.left) / Math.max(1, box.width)) * 100, 0, 100),
       y: clamp(((clientY - box.top) / Math.max(1, box.height)) * 100, 0, 100),
     };
+    return magnetMode ? snapChartPoint(point) : point;
   }
 
   function begin(event: ReactPointerEvent<HTMLDivElement>): void {
@@ -1717,14 +2032,15 @@ function ChartDrawingLayer({
     if (isPointDrawingTool(tool) || distance >= 2.5) onCommit(nextDrawing);
   }
 
-  function beginEditDrag(event: ReactPointerEvent<SVGGElement>, drawing: ChartDrawing): void {
-    if (tool !== "edit") return;
+  function beginEditDrag(event: ReactPointerEvent<SVGElement>, drawing: ChartDrawing, anchor: "end" | "move" | "start" = "move"): void {
+    if (tool !== "edit" || drawing.locked) return;
     event.preventDefault();
     event.stopPropagation();
     event.currentTarget.setPointerCapture(event.pointerId);
     onSelect(drawing.id);
     editDragRef.current = {
       drawing,
+      anchor,
       pointerId: event.pointerId,
       start: pointFromClient(event.clientX, event.clientY),
     };
@@ -1736,7 +2052,11 @@ function ChartDrawingLayer({
     const point = pointFromClient(event.clientX, event.clientY);
     const deltaX = point.x - drag.start.x;
     const deltaY = point.y - drag.start.y;
-    onUpdate(drag.drawing.id, () => nudgeDrawing(drag.drawing, deltaX, deltaY));
+    onUpdate(drag.drawing.id, () => (
+      drag.anchor === "move"
+        ? nudgeDrawing(drag.drawing, deltaX, deltaY)
+        : resizeDrawingAtAnchor(drag.drawing, drag.anchor, point)
+    ));
   }
 
   function endEditDrag(event: ReactPointerEvent<SVGGElement>): void {
@@ -1765,8 +2085,14 @@ function ChartDrawingLayer({
             onPointerUp={endEditDrag}
           >
             <DrawingShape drawing={drawing} />
-            {selectedDrawingId === drawing.id ? <DrawingSelectionFrame drawing={drawing} /> : null}
             {tool === "edit" ? <DrawingHitTarget drawing={drawing} /> : null}
+            {selectedDrawingId === drawing.id ? <DrawingSelectionFrame drawing={drawing} /> : null}
+            {tool === "edit" && selectedDrawingId === drawing.id && !drawing.locked ? (
+              <DrawingAnchorHandles
+                drawing={drawing}
+                onAnchorPointerDown={(event, anchor) => beginEditDrag(event, drawing, anchor)}
+              />
+            ) : null}
           </g>
         ))}
       </svg>
@@ -1942,6 +2268,41 @@ function DrawingSelectionFrame({ drawing }: { drawing: ChartDrawing }) {
       />
       <circle cx={drawing.start.x} cy={drawing.start.y} fill="#67e8f9" r="0.95" stroke="#020617" strokeWidth="0.26" />
       <circle cx={drawing.end.x} cy={drawing.end.y} fill="#67e8f9" r="0.95" stroke="#020617" strokeWidth="0.26" />
+    </g>
+  );
+}
+
+function DrawingAnchorHandles({
+  drawing,
+  onAnchorPointerDown,
+}: {
+  drawing: ChartDrawing;
+  onAnchorPointerDown: (event: ReactPointerEvent<SVGCircleElement>, anchor: "end" | "start") => void;
+}) {
+  const anchors: Array<{ anchor: "end" | "start"; point: ChartDrawingPoint }> = isPointDrawingTool(drawing.tool)
+    ? [{ anchor: "start", point: drawing.start }]
+    : [
+      { anchor: "start", point: drawing.start },
+      { anchor: "end", point: drawing.end },
+    ];
+  return (
+    <g>
+      {anchors.map(({ anchor, point }) => (
+        <circle
+          aria-label={`${anchor} drawing anchor`}
+          cx={point.x}
+          cy={point.y}
+          fill="#020617"
+          key={anchor}
+          onPointerDown={(event) => onAnchorPointerDown(event, anchor)}
+          pointerEvents="all"
+          r="1.7"
+          role="button"
+          stroke="#67e8f9"
+          strokeWidth="0.45"
+          tabIndex={-1}
+        />
+      ))}
     </g>
   );
 }
@@ -2130,9 +2491,13 @@ function SymbolChartModal({
   const skipNextModalWorkspacePersistRef = useRef(false);
   const [detailMode, setDetailMode] = useState<ChartDetailMode>("overlays");
   const [layoutMode, setLayoutMode] = useState<ChartLayoutMode>("focus");
+  const [modalChartTabs, setModalChartTabs] = useState<ChartWorkspaceTab[]>([]);
+  const [modalCommandPaletteOpen, setModalCommandPaletteOpen] = useState(false);
+  const [modalCompactMode, setModalCompactMode] = useState(false);
   const [modalPeriod, setModalPeriod] = useState<InteractiveChartPeriod>(defaultPeriod);
   const [modalOverlayFamilies, setModalOverlayFamilies] = useState<ChartOverlayFamily[]>(defaultOverlayFamilies);
   const [modalIndicators, setModalIndicators] = useState<ChartIndicatorId[]>(defaultIndicators);
+  const [modalToolbarCollapsed, setModalToolbarCollapsed] = useState(false);
   const [modalWorkspaceLoaded, setModalWorkspaceLoaded] = useState(false);
   const normalizedSignals = useMemo(() => (showHistoricalSignals ? filterSignalsByCandles(normalizeSignals(signals ?? []), candles) : []), [candles, showHistoricalSignals, signals]);
   const chartLevels = useMemo(() => normalizeTradeLevels(tradeLevels), [tradeLevels]);
@@ -2143,21 +2508,27 @@ function SymbolChartModal({
   const levelSummary = tradeLevelSummary(tradeLevels);
 
   function applyModalWorkspace(workspace: ChartWorkflowWorkspace): void {
+    setModalChartTabs(workspace.chartTabs);
+    setModalCompactMode(workspace.compactMode);
     setDetailMode(workspace.detailMode);
     setLayoutMode(workspace.layoutMode);
     setModalPeriod(workspace.period);
     setModalOverlayFamilies(workspace.overlayFamilies);
     setModalIndicators(workspace.indicators);
+    setModalToolbarCollapsed(workspace.toolbarCollapsed);
   }
 
   function saveModalWorkspaceNow(): void {
     const saved = writeChartWorkflowWorkspace(symbol, {
       detailMode,
+      chartTabs: modalChartTabs,
+      compactMode: modalCompactMode,
       fullscreenOpen: true,
       indicators: modalIndicators,
       layoutMode,
       overlayFamilies: modalOverlayFamilies,
       period: modalPeriod,
+      toolbarCollapsed: modalToolbarCollapsed,
     });
     if (!accountLoading && authenticated && user && saved) {
       void saveAccountChartWorkflowWorkspace(symbol, saved).catch(() => undefined);
@@ -2176,6 +2547,35 @@ function SymbolChartModal({
     if (!accountLoading && authenticated && user) {
       void saveAccountChartWorkflowWorkspace(symbol, nextWorkspace).catch(() => undefined);
     }
+  }
+
+  function saveModalChartTab(): void {
+    const now = new Date().toISOString();
+    const label = `${symbol.toUpperCase()} ${modalPeriod} ${layoutMode}`;
+    const tab: ChartWorkspaceTab = {
+      detailMode,
+      id: `tab-${symbol.toLowerCase()}-${modalPeriod}-${layoutMode}-${Date.now().toString(36)}`,
+      indicators: [...modalIndicators],
+      label,
+      layoutMode,
+      overlayFamilies: [...modalOverlayFamilies],
+      period: modalPeriod,
+      symbol: symbol.toUpperCase(),
+      updatedAt: now,
+    };
+    setModalChartTabs((current) => [...current.filter((item) => item.id !== tab.id), tab].slice(-8));
+  }
+
+  function applyModalChartTab(tab: ChartWorkspaceTab): void {
+    setDetailMode(tab.detailMode);
+    setLayoutMode(tab.layoutMode);
+    setModalPeriod(tab.period);
+    setModalIndicators(tab.indicators);
+    setModalOverlayFamilies(tab.overlayFamilies);
+  }
+
+  function deleteModalChartTab(tabId: string): void {
+    setModalChartTabs((current) => current.filter((tab) => tab.id !== tabId));
   }
 
   useEffect(() => {
@@ -2217,12 +2617,15 @@ function SymbolChartModal({
       return undefined;
     }
     const saved = writeChartWorkflowWorkspace(symbol, {
+      chartTabs: modalChartTabs,
+      compactMode: modalCompactMode,
       detailMode,
       fullscreenOpen: true,
       indicators: modalIndicators,
       layoutMode,
       overlayFamilies: modalOverlayFamilies,
       period: modalPeriod,
+      toolbarCollapsed: modalToolbarCollapsed,
     });
     if (!accountLoading && authenticated && user && saved) {
       const timeout = window.setTimeout(() => {
@@ -2231,12 +2634,28 @@ function SymbolChartModal({
       return () => window.clearTimeout(timeout);
     }
     return undefined;
-  }, [accountLoading, authenticated, detailMode, layoutMode, modalIndicators, modalOverlayFamilies, modalPeriod, modalWorkspaceLoaded, symbol, user]);
+  }, [accountLoading, authenticated, detailMode, layoutMode, modalChartTabs, modalCompactMode, modalIndicators, modalOverlayFamilies, modalPeriod, modalToolbarCollapsed, modalWorkspaceLoaded, symbol, user]);
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
-      if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || isEditableTarget(event.target)) return;
+      if (event.defaultPrevented || event.altKey || isEditableTarget(event.target)) return;
       const key = event.key.toLowerCase();
+      if ((event.ctrlKey || event.metaKey) && key === "k") {
+        event.preventDefault();
+        setModalCommandPaletteOpen(true);
+        return;
+      }
+      if (event.ctrlKey || event.metaKey) return;
+      if (key === "/" || key === "?") {
+        event.preventDefault();
+        setModalCommandPaletteOpen(true);
+        return;
+      }
+      if (key === "escape" && modalCommandPaletteOpen) {
+        event.preventDefault();
+        setModalCommandPaletteOpen(false);
+        return;
+      }
       const rangeIndex = Number.parseInt(key, 10) - 1;
       if (rangeIndex >= 0 && rangeIndex < INTERACTIVE_CHART_PERIODS.length) {
         event.preventDefault();
@@ -2273,6 +2692,11 @@ function SymbolChartModal({
         setModalIndicators((current) => current.length ? [] : [...DEFAULT_CHART_INDICATORS]);
         return;
       }
+      if (key === ",") {
+        event.preventDefault();
+        setModalCompactMode((current) => !current);
+        return;
+      }
       if (key === "s") {
         event.preventDefault();
         saveModalWorkspaceNow();
@@ -2285,7 +2709,7 @@ function SymbolChartModal({
     }
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [accountLoading, authenticated, close, detailMode, layoutMode, modalIndicators, modalOverlayFamilies, modalPeriod, symbol, user]);
+  }, [accountLoading, authenticated, close, detailMode, layoutMode, modalCommandPaletteOpen, modalIndicators, modalOverlayFamilies, modalPeriod, symbol, user]);
 
   return (
     <StableDetailOverlay
@@ -2334,10 +2758,39 @@ function SymbolChartModal({
                 </button>
               ))}
             </div>
+            <button
+              className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-500 transition hover:border-cyan-300/40 hover:text-cyan-100"
+              onClick={() => setModalCommandPaletteOpen(true)}
+              type="button"
+            >
+              <Keyboard className="h-3.5 w-3.5" />
+              Command
+            </button>
+            <button
+              aria-pressed={modalCompactMode}
+              className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] transition ${
+                modalCompactMode
+                  ? "border-emerald-300/45 bg-emerald-300/10 text-emerald-100"
+                  : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-emerald-300/40 hover:text-emerald-100"
+              }`}
+              onClick={() => setModalCompactMode((current) => !current)}
+              type="button"
+            >
+              Compact
+            </button>
+            <button
+              aria-expanded={!modalToolbarCollapsed}
+              className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.035] text-slate-500 transition hover:border-cyan-300/40 hover:text-cyan-100"
+              onClick={() => setModalToolbarCollapsed((current) => !current)}
+              title={modalToolbarCollapsed ? "Show fullscreen toolbar" : "Collapse fullscreen toolbar"}
+              type="button"
+            >
+              {modalToolbarCollapsed ? <PanelTopOpen className="h-3.5 w-3.5" /> : <PanelTopClose className="h-3.5 w-3.5" />}
+            </button>
             <div className="text-xs text-slate-500">Fullscreen exploration · synchronized state · research only</div>
           </div>
         </div>
-        <div className="tv-chart-toolbar-row mt-3 rounded-2xl border border-white/10 bg-slate-950/45 p-3">
+        {!modalToolbarCollapsed ? <div className="tv-chart-toolbar-row mt-3 rounded-2xl border border-white/10 bg-slate-950/45 p-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Synchronized chart state</div>
@@ -2360,11 +2813,20 @@ function SymbolChartModal({
               ))}
             </div>
           </div>
-        </div>
+        </div> : null}
+        {!modalToolbarCollapsed ? (
+          <ChartWorkspaceTabs
+            onApply={applyModalChartTab}
+            onDelete={deleteModalChartTab}
+            onSave={saveModalChartTab}
+            tabs={modalChartTabs}
+          />
+        ) : null}
       </div>
       <div className="mt-4">
         <ChartLayoutExplorer
           candles={candles}
+          compactMode={modalCompactMode}
           dataSource={dataSource}
           indicators={modalIndicators}
           interpretation={interpretation}
@@ -2393,12 +2855,84 @@ function SymbolChartModal({
       <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-xs leading-5 text-slate-500">
         Research only. Entry, stop, target, confidence, risk, replay, and freshness overlays are context for investigation, not a recommendation to buy or sell.
       </div>
+      <ChartCommandPalette
+        commands={[
+          { action: saveModalWorkspaceNow, detail: "Persist fullscreen layout, timeframe, indicators, and overlays.", label: "Save fullscreen workspace", shortcut: "S" },
+          { action: saveModalChartTab, detail: "Save the current fullscreen mode as a reusable chart tab.", label: "Save chart tab", shortcut: "Tab" },
+          { action: () => setModalCompactMode((current) => !current), detail: modalCompactMode ? "Return panes to full working height." : "Reduce chart pane height for faster review.", label: modalCompactMode ? "Disable compact chart" : "Enable compact chart", shortcut: "," },
+          { action: () => setLayoutMode((current) => current === "focus" ? "split" : current === "split" ? "grid" : current === "grid" ? "stack" : "focus"), detail: "Cycle focus, split, grid, and stack layouts.", label: "Cycle layout", shortcut: "L" },
+          { action: () => setDetailMode("compare"), detail: "Open the compare evidence panel.", label: "Compare mode", shortcut: "C" },
+          { action: () => setDetailMode("timeline"), detail: "Open replay and marker timeline.", label: "Timeline mode", shortcut: "T" },
+          { action: () => setModalIndicators((current) => current.length ? [] : [...DEFAULT_CHART_INDICATORS]), detail: "Toggle the default indicator stack.", label: "Toggle indicators", shortcut: "I" },
+          { action: resetModalWorkspace, detail: "Restore the default fullscreen chart workspace.", label: "Reset fullscreen workspace", shortcut: "Shift+R" },
+        ]}
+        onClose={() => setModalCommandPaletteOpen(false)}
+        open={modalCommandPaletteOpen}
+      />
     </StableDetailOverlay>
+  );
+}
+
+function ChartWorkspaceTabs({
+  onApply,
+  onDelete,
+  onSave,
+  tabs,
+}: {
+  onApply: (tab: ChartWorkspaceTab) => void;
+  onDelete: (tabId: string) => void;
+  onSave: () => void;
+  tabs: ChartWorkspaceTab[];
+}) {
+  return (
+    <div className="tv-chart-toolbar-row mt-3 rounded-2xl border border-white/10 bg-white/[0.025] p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-200">Chart tabs</div>
+          <p className="mt-1 text-xs leading-5 text-slate-500">Saved fullscreen tabs restore layout, timeframe, overlays, and indicators for this workspace.</p>
+        </div>
+        <button
+          className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-300/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100 transition hover:border-emerald-300/45 hover:text-emerald-50"
+          onClick={onSave}
+          type="button"
+        >
+          <Save className="h-3.5 w-3.5" />
+          Save tab
+        </button>
+      </div>
+      {tabs.length ? (
+        <div className="mt-3 flex gap-1.5 overflow-x-auto pb-1 sm:flex-wrap sm:overflow-visible">
+          {tabs.map((tab) => (
+            <div className="flex shrink-0 items-center gap-1" key={tab.id}>
+              <button
+                className="min-h-10 rounded-full border border-violet-300/20 bg-violet-300/[0.06] px-3 py-1.5 text-left text-[10px] font-black uppercase tracking-[0.12em] text-violet-100 transition hover:border-violet-300/45"
+                onClick={() => onApply(tab)}
+                title={`${tab.period} · ${tab.layoutMode} · ${tab.indicators.length} indicators`}
+                type="button"
+              >
+                {tab.label}
+              </button>
+              <button
+                aria-label={`Delete ${tab.label} chart tab`}
+                className="grid h-9 w-9 place-items-center rounded-full border border-rose-300/20 bg-white/[0.035] text-slate-500 transition hover:border-rose-300/50 hover:text-rose-100"
+                onClick={() => onDelete(tab.id)}
+                type="button"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="mt-3 rounded-xl border border-dashed border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-slate-500">No saved chart tabs yet.</div>
+      )}
+    </div>
   );
 }
 
 function ChartLayoutExplorer({
   candles,
+  compactMode,
   dataSource,
   indicators,
   interpretation,
@@ -2416,6 +2950,7 @@ function ChartLayoutExplorer({
   tradeLevels,
 }: {
   candles: ChartCandle[];
+  compactMode: boolean;
   dataSource: string;
   indicators: ChartIndicatorId[];
   interpretation: string;
@@ -2435,6 +2970,11 @@ function ChartLayoutExplorer({
   const riskMacroFamilies: ChartOverlayFamily[] = ["macro", "risk", "events", "memory", "replay"];
   const replayMemoryFamilies: ChartOverlayFamily[] = ["replay", "memory", "confidence", "levels"];
   const crosshairSyncGroup = layoutMode === "focus" ? undefined : `symbol-chart:${symbol}:${layoutMode}`;
+  const primaryHeight = compactMode ? 340 : 460;
+  const splitHeight = compactMode ? 320 : 420;
+  const gridHeight = compactMode ? 240 : 300;
+  const stackPrimaryHeight = compactMode ? 300 : 360;
+  const stackSecondaryHeight = compactMode ? 240 : 300;
   const sharedProps = {
     candles,
     controlledIndicators: indicators,
@@ -2463,7 +3003,7 @@ function ChartLayoutExplorer({
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.68fr)]">
         <div className="rounded-3xl border border-cyan-300/12 bg-cyan-300/[0.025] p-3">
           <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Primary chart lane</div>
-          <SymbolChart {...sharedProps} height={420} />
+          <SymbolChart {...sharedProps} height={splitHeight} />
         </div>
         <div className="rounded-3xl border border-rose-300/12 bg-rose-300/[0.025] p-3">
           <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-rose-200">Risk / macro lane</div>
@@ -2472,7 +3012,7 @@ function ChartLayoutExplorer({
             controlledIndicators={indicators.includes("rangePressure") ? indicators : [...indicators, "rangePressure"]}
             controlledOverlayFamilies={riskMacroFamilies.filter((family) => overlayFamilies.includes(family))}
             enableTimeframeSwitching={false}
-            height={420}
+            height={splitHeight}
             showDrawingTools={false}
           />
         </div>
@@ -2502,7 +3042,7 @@ function ChartLayoutExplorer({
               controlledIndicators={pane.indicators}
               controlledOverlayFamilies={pane.families}
               enableTimeframeSwitching={false}
-              height={300}
+              height={gridHeight}
               showDrawingTools={pane.label === "Primary research pane"}
             />
           </div>
@@ -2516,7 +3056,7 @@ function ChartLayoutExplorer({
       <div className="grid gap-4">
         <div className="rounded-3xl border border-cyan-300/12 bg-cyan-300/[0.025] p-3">
           <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Price + indicator pane</div>
-          <SymbolChart {...sharedProps} height={360} />
+          <SymbolChart {...sharedProps} height={stackPrimaryHeight} />
         </div>
         <div className="rounded-3xl border border-violet-300/12 bg-violet-300/[0.025] p-3">
           <div className="mb-3 text-[10px] font-black uppercase tracking-[0.18em] text-violet-200">Replay / memory pane</div>
@@ -2525,7 +3065,7 @@ function ChartLayoutExplorer({
             controlledIndicators={indicators.filter((indicator) => indicator !== "rangePressure")}
             controlledOverlayFamilies={replayMemoryFamilies.filter((family) => overlayFamilies.includes(family))}
             enableTimeframeSwitching={false}
-            height={300}
+            height={stackSecondaryHeight}
             showDrawingTools={false}
           />
         </div>
@@ -2536,7 +3076,7 @@ function ChartLayoutExplorer({
   return (
     <SymbolChart
       {...sharedProps}
-      height={460}
+      height={primaryHeight}
     />
   );
 }
@@ -2906,6 +3446,46 @@ function nudgePoint(point: ChartDrawingPoint, deltaX: number, deltaY: number): C
     x: clamp(point.x + deltaX, 0, 100),
     y: clamp(point.y + deltaY, 0, 100),
   };
+}
+
+function resizeDrawingAtAnchor(drawing: ChartDrawing, anchor: "end" | "start", point: ChartDrawingPoint): ChartDrawing {
+  if (isPointDrawingTool(drawing.tool)) {
+    return {
+      ...drawing,
+      end: point,
+      start: point,
+    };
+  }
+  if (drawing.tool === "horizontal") {
+    const nextPoint = { x: drawing.start.x, y: point.y };
+    return {
+      ...drawing,
+      end: { x: drawing.end.x, y: point.y },
+      start: nextPoint,
+    };
+  }
+  return {
+    ...drawing,
+    [anchor]: point,
+  };
+}
+
+function snapChartPoint(point: ChartDrawingPoint): ChartDrawingPoint {
+  return {
+    x: clamp(Math.round(point.x / 2.5) * 2.5, 0, 100),
+    y: clamp(Math.round(point.y / 2.5) * 2.5, 0, 100),
+  };
+}
+
+function chartAlertTypeLabel(type: ChartAlertRuleType): string {
+  if (type === "price_above") return "Price above";
+  if (type === "price_below") return "Price below";
+  if (type === "score_above") return "Score above";
+  return "Score below";
+}
+
+function formatChartAlertThreshold(value: number, type: ChartAlertRuleType): string {
+  return type.startsWith("score") ? value.toFixed(0) : formatChartMoney(value);
 }
 
 function dispatchChartCrosshairSync(payload: ChartCrosshairSyncPayload): void {
