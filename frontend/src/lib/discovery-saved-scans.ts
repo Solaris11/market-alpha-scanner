@@ -7,7 +7,7 @@ import type {
   DiscoveryTimeframe,
 } from "@/lib/trading/intelligence-discovery";
 
-export type DiscoverySavedScanDensity = "cards" | "dense" | "speed";
+export type DiscoverySavedScanDensity = "cards" | "dense" | "speed" | "ultra";
 
 export type DiscoverySavedScanPayload = {
   assetType: string;
@@ -34,7 +34,7 @@ export type DiscoverySavedScan = {
   useCount: number;
 };
 
-const DENSITIES = new Set<DiscoverySavedScanDensity>(["cards", "dense", "speed"]);
+const DENSITIES = new Set<DiscoverySavedScanDensity>(["cards", "dense", "speed", "ultra"]);
 const FILTERS = new Set<DiscoveryQuickFilterKey>([
   "all",
   "best_setups",
