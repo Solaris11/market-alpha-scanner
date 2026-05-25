@@ -976,7 +976,7 @@ def apply_event_intelligence(
 
 
 def event_impact_for_row(row: dict[str, object], context: EventContext, *, symbol_events: list[VerifiedEvent] | None = None) -> EventImpact:
-    available_events = [*context["events"], *_row_earnings_events(row), *(symbol_events or [])]
+    available_events = [*context["events"], *_row_earnings_events(row), *_row_dividend_events(row), *(symbol_events or [])]
     if not context["available"] and not available_events:
         return _empty_impact(context)
 
@@ -1748,6 +1748,58 @@ def _row_earnings_events(row: dict[str, object]) -> list[VerifiedEvent]:
     event["pressure_score"] = round(_clamp(54.0 + max(0, 7 - abs(days_until_event)) * 2.6), 2)
     event["fragility_bias"] = round(_clamp(1.1 + max(0, 7 - abs(days_until_event)) * 0.32, 0.0, 4.0), 2)
     event["shock_bias"] = round(_clamp(1.8 + max(0, 7 - abs(days_until_event)) * 0.22, 0.0, 4.0), 2)
+    return [event]
+
+
+def _row_dividend_events(row: dict[str, object]) -> list[VerifiedEvent]:
+    symbol = _normalize_symbol(row.get("symbol"))
+    ex_dividend_date_text = safe_str(row.get("ex_dividend_date") or row.get("dividend_ex_date"), "")
+    dividend_date_text = safe_str(row.get("dividend_date"), "")
+    last_dividend_date_text = safe_str(row.get("last_dividend_date"), "")
+    event_date_text = ex_dividend_date_text or dividend_date_text or last_dividend_date_text
+    if not symbol or not event_date_text:
+        return []
+    try:
+        event_date = datetime.fromisoformat(event_date_text).replace(tzinfo=timezone.utc)
+    except ValueError:
+        try:
+            event_date = datetime.fromisoformat(f"{event_date_text}T00:00:00+00:00")
+        except ValueError:
+            return []
+
+    now = datetime.now(timezone.utc)
+    days_until_event = (event_date.date() - now.date()).days
+    if days_until_event < -10 or days_until_event > 90:
+        return []
+
+    source_url = safe_str(row.get("dividend_url"), "") or f"https://finance.yahoo.com/quote/{symbol}"
+    source_name = safe_str(row.get("dividend_source"), "") or "Yahoo Finance Dividend Calendar"
+    dividend_yield = safe_float(row.get("dividend_yield"), np.nan)
+    yield_text = "" if np.isnan(dividend_yield) else f" Current stored dividend yield is {dividend_yield:.2f}%."
+    feed = TrustedEventFeed(
+        key=f"dividend_calendar_{symbol.lower()}",
+        name=source_name,
+        url=source_url,
+        category_hint="company",
+        source_weight=0.72,
+    )
+    title = safe_str(row.get("dividend_headline"), "") or f"{symbol} dividend calendar context"
+    date_label = "ex-dividend" if ex_dividend_date_text else "dividend"
+    summary = f"{symbol} has a stored {date_label} date of {event_date.date().isoformat()}.{yield_text}"
+    event = classify_verified_event(feed, title, summary, source_url, now)
+    event["affected_symbols"] = [symbol]
+    event["event_type"] = "dividend_calendar"
+    event["event_types"] = _unique_strings(["dividend_calendar", *event["event_types"]])
+    event["reason_codes"] = _unique_strings(["EVENT_DIVIDEND_CALENDAR", "EVENT_DIVIDEND_CONTEXT", *event["reason_codes"]])
+    event["event_confidence"] = 72.0
+    event["confidence"] = 72.0
+    event["source_confidence"] = "calendar"
+    event["source_weight"] = 0.72
+    event["event_decay"] = _earnings_event_decay(days_until_event)
+    event["event_age_days"] = 0.0
+    event["pressure_score"] = round(_clamp(49.0 + max(0, 14 - abs(days_until_event)) * 0.45), 2)
+    event["fragility_bias"] = round(_clamp(0.4 + max(0, 7 - abs(days_until_event)) * 0.08, 0.0, 2.0), 2)
+    event["shock_bias"] = round(_clamp(0.8 + max(0, 7 - abs(days_until_event)) * 0.06, 0.0, 2.0), 2)
     return [event]
 
 

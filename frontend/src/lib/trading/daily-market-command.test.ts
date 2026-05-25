@@ -210,7 +210,7 @@ test("daily market command ranks opportunity, breakout, crash risk, money flow, 
   assert.equal(model.developments[0]?.providerStateLabel, "Provider active");
   assert.match(model.developments[0]?.confidenceLabel ?? "", /High source-linked relevance/);
   assert.equal(model.developments[0]?.freshnessLabel, "Recent · 2h old");
-  assert.match(model.developments[0]?.freshnessSlaLabel ?? "", /within 360m/);
+  assert.match(model.developments[0]?.freshnessSlaLabel ?? "", /within 1440m/);
   assert.match(model.developments[0]?.sourceCompletenessLabel ?? "", /Source complete/);
   assert.equal(model.developments[0]?.timelineBucket, "rates timeline");
   assert.match(model.developments[0]?.historicalAnalogLabel ?? "", /limited/);
@@ -245,7 +245,7 @@ test("daily market command ranks opportunity, breakout, crash risk, money flow, 
   }
   assert.ok(model.providerStrategyAudit.some((audit) => audit.domain === "rates" && audit.coverage === "active" && audit.provider === "Reuters"));
   assert.ok(model.providerCoverageMatrix.some((audit) => audit.domain === "rates" && audit.operationalState === "active" && /source-linked/.test(audit.disclosure)));
-  assert.ok(model.providerCoverageMatrix.some((audit) => audit.domain === "rates" && audit.freshnessSlaStatus === "within-sla" && audit.freshnessSlaMinutes === 360));
+  assert.ok(model.providerCoverageMatrix.some((audit) => audit.domain === "rates" && audit.freshnessSlaStatus === "within-sla" && audit.freshnessSlaMinutes === 1440));
   assert.ok(model.providerStrategyAudit.some((audit) => audit.domain === "earnings" && audit.coverage === "calendar-only"));
   assert.ok(model.providerStrategyAudit.some((audit) => audit.domain === "earnings" && audit.freshnessSlaStatus === "not-measured"));
   assert.ok(model.providerStrategyAudit.some((audit) => audit.domain === "geopolitical-events" && audit.coverage === "limited"));

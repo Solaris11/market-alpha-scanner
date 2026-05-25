@@ -167,6 +167,14 @@ def parse_earnings_date(info: dict[str, object]) -> str:
     return ""
 
 
+def parse_dividend_date(info: dict[str, object], *keys: str) -> str:
+    for key in keys:
+        parsed = parse_datetime_like(info.get(key))
+        if parsed is not None:
+            return parsed.date().isoformat()
+    return ""
+
+
 def days_until(date_str: str) -> Optional[int]:
     if not date_str:
         return None

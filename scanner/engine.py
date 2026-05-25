@@ -42,7 +42,7 @@ from .scoring import (
 )
 from .setup_engine import apply_setup_decision_layer
 from .structure import compute_market_structure
-from .utils import ema, extract_company_name, macd_hist, parse_earnings_date, safe_float, safe_str, sma
+from .utils import ema, extract_company_name, macd_hist, parse_dividend_date, parse_earnings_date, safe_float, safe_str, sma
 
 BUY_FINAL_DECISIONS = {"ENTER", "BUY", "STRONG BUY", "STRONG_BUY"}
 MIN_BUY_CONFIDENCE_SCORE = 70.0
@@ -238,6 +238,10 @@ def scan_symbols(
         technical = technical_scorecard(df)
         fundamentals = fundamentals_scorecard(info, asset_type)
         macro_score, macro_sensitivity, macro_note = score_macro_alignment(symbol, asset_type, sector, macro_regime)
+        ex_dividend_date = parse_dividend_date(info, "exDividendDate")
+        dividend_date = parse_dividend_date(info, "dividendDate")
+        last_dividend_date = parse_dividend_date(info, "lastDividendDate")
+        has_dividend_context = bool(ex_dividend_date or dividend_date or last_dividend_date)
 
         macd_series = macd_hist(close)
         current_macd = safe_float(macd_series.iloc[-1], np.nan)
@@ -278,6 +282,13 @@ def scan_symbols(
             market_cap=round(market_cap, 2) if not np.isnan(market_cap) else np.nan,
             avg_dollar_volume=round(avg_dollar_volume, 2),
             dividend_yield=round(safe_float(info.get("dividendYield")), 2) if not np.isnan(safe_float(info.get("dividendYield"))) else np.nan,
+            dividend_date=dividend_date,
+            dividend_headline=f"{symbol} dividend calendar context" if has_dividend_context else "",
+            dividend_source="Yahoo Finance Dividend Calendar" if has_dividend_context else "",
+            dividend_timestamp=started_at.isoformat() if has_dividend_context else "",
+            dividend_url=f"https://finance.yahoo.com/quote/{symbol}" if has_dividend_context else "",
+            ex_dividend_date=ex_dividend_date,
+            last_dividend_date=last_dividend_date,
             earnings_date=earnings_date,
             technical_score=round(technical["technical_score"], 2),
             trend_score=technical["trend_score"],

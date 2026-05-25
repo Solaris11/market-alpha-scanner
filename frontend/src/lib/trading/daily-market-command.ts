@@ -587,6 +587,7 @@ function buildDevelopments(input: {
       const watchlistImpact = affectedSymbols.some((symbol) => watchlist.has(symbol));
       const topPriorityImpact = affectedSymbols.some((symbol) => topSymbols.has(symbol));
       const category = newsCategory(item);
+      const providerDomain = providerDomainForDevelopment(category);
       const urgency: DailyMarketDevelopment["urgency"] = item.relevance >= 75 || topPriorityImpact ? "high" : item.relevance >= 55 || watchlistImpact ? "medium" : "low";
       const priorityScore = developmentPriorityScore({
         affectedSymbols,
@@ -596,7 +597,7 @@ function buildDevelopments(input: {
         urgency,
         watchlist,
       });
-      const providerState = providerStateForDevelopment(item.publishedAt, input.now);
+      const providerState = providerStateForDevelopment(item.publishedAt, input.now, providerDomain);
       return {
         affectedSectors: item.affectedSectors,
         affectedSymbols,
@@ -1002,6 +1003,12 @@ function buildMacroEventTimeline(developments: DailyMarketDevelopment[], calenda
     .slice(0, 10);
 }
 
+function isInflationProviderDevelopment(item: DailyMarketDevelopment): boolean {
+  const text = `${item.category} ${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel} ${item.original.eventType} ${item.original.reasonCodes.join(" ")} ${item.relatedMacroContext}`.toLowerCase();
+  if (hasInflationLanguage(text)) return true;
+  return /\boil supply\b|\boil shock\b|\benergy supply\b|\bcommodity pressure\b|event_oil_supply_shock/.test(text);
+}
+
 function buildEventDomainTimelines(developments: DailyMarketDevelopment[], calendar: DailyEventCalendarItem[]): DailyEventDomainTimeline[] {
   const domains: Array<{
     domain: DailyProviderCoverageDomain;
@@ -1009,7 +1016,7 @@ function buildEventDomainTimelines(developments: DailyMarketDevelopment[], calen
     matchCalendar: (item: DailyEventCalendarItem) => boolean;
     matchDevelopment: (item: DailyMarketDevelopment) => boolean;
   }> = [
-    { domain: "inflation", label: "Inflation timeline", matchCalendar: (item) => item.category === "rates" && hasInflationLanguage(`${item.label} ${item.detail}`), matchDevelopment: (item) => item.category === "Rates" && hasInflationLanguage(`${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel}`) },
+    { domain: "inflation", label: "Inflation timeline", matchCalendar: (item) => item.category === "rates" && hasInflationLanguage(`${item.label} ${item.detail}`), matchDevelopment: isInflationProviderDevelopment },
     { domain: "rates", label: "Rates timeline", matchCalendar: (item) => item.category === "rates", matchDevelopment: (item) => item.category === "Rates" },
     { domain: "analyst-actions", label: "Analyst revision timeline", matchCalendar: (item) => item.category === "analyst", matchDevelopment: (item) => item.category === "Analyst" },
     { domain: "dividends", label: "Dividend timeline", matchCalendar: (item) => item.category === "dividend", matchDevelopment: (item) => item.category === "Dividend" || /dividend|ex-dividend|payout/i.test(`${item.headline} ${item.whyItMatters}`) },
@@ -1120,7 +1127,7 @@ function buildProviderStrategyAudit(developments: DailyMarketDevelopment[], cale
   const operationalSignals = providerOperationalSignals(rows);
   const domains: Array<{ domain: DailyProviderCoverageDomain; label: string; matchCalendar: (item: DailyEventCalendarItem) => boolean; matchDevelopment: (item: DailyMarketDevelopment) => boolean }> = [
     { domain: "macro", label: "Macro", matchCalendar: (item) => item.category === "macro", matchDevelopment: (item) => ["Energy", "Macro"].includes(item.category) },
-    { domain: "inflation", label: "Inflation", matchCalendar: (item) => item.category === "rates" && hasInflationLanguage(`${item.label} ${item.detail}`), matchDevelopment: (item) => item.category === "Rates" && hasInflationLanguage(`${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel}`) },
+    { domain: "inflation", label: "Inflation", matchCalendar: (item) => item.category === "rates" && hasInflationLanguage(`${item.label} ${item.detail}`), matchDevelopment: isInflationProviderDevelopment },
     { domain: "rates", label: "Rates", matchCalendar: (item) => item.category === "rates", matchDevelopment: (item) => item.category === "Rates" },
     { domain: "earnings", label: "Earnings", matchCalendar: (item) => item.category === "earnings", matchDevelopment: (item) => item.category === "Earnings" },
     { domain: "analyst-actions", label: "Analyst actions", matchCalendar: (item) => item.category === "analyst", matchDevelopment: (item) => item.category === "Analyst" },
@@ -1144,6 +1151,7 @@ function buildProviderStrategyAudit(developments: DailyMarketDevelopment[], cale
     const operationalState = providerOperationalState({
       coverage,
       freshnessMinutes,
+      activeWindowMinutes: providerDomainActiveWindowMinutes(domain.domain),
       hasOutageSignal: outageSignals.some((signal) => signal.status === "outage"),
       hasStaleSignal: outageSignals.some((signal) => signal.status === "stale"),
     });
@@ -1238,11 +1246,12 @@ function freshnessLabel(timestamp: string, now: Date): string {
   return `Stale · ${days}d old`;
 }
 
-function providerStateForDevelopment(timestamp: string, now: Date): DailyProviderOperationalState {
+function providerStateForDevelopment(timestamp: string, now: Date, domain: DailyProviderCoverageDomain): DailyProviderOperationalState {
   const ageMinutes = minutesSince(timestamp, now);
   if (ageMinutes === null) return "limited";
+  const activeWindowMinutes = providerDomainActiveWindowMinutes(domain);
   if (ageMinutes > 72 * 60) return "stale";
-  if (ageMinutes > 24 * 60) return "delayed";
+  if (ageMinutes > activeWindowMinutes) return "delayed";
   return "active";
 }
 
@@ -1254,7 +1263,7 @@ function freshnessSlaLabelForDevelopment(category: DailyMarketDevelopment["categ
   const ageMinutes = minutesSince(timestamp, now);
   const domain = providerDomainForDevelopment(category);
   const slaMinutes = providerDomainSlaMinutes(domain);
-  const state = providerStateForDevelopment(timestamp, now);
+  const state = providerStateForDevelopment(timestamp, now, domain);
   if (ageMinutes === null || slaMinutes === null) return "Freshness SLA not measured";
   const status = providerFreshnessSlaStatus({
     coverage: "active",
@@ -1399,6 +1408,7 @@ function providerAuditLimitations(input: {
 }
 
 function providerOperationalState(input: {
+  activeWindowMinutes: number;
   coverage: DailyProviderStrategyAudit["coverage"];
   freshnessMinutes: number | null;
   hasOutageSignal: boolean;
@@ -1410,15 +1420,23 @@ function providerOperationalState(input: {
   if (input.coverage === "calendar-only") return "calendar-only";
   if (input.coverage !== "active") return "limited";
   if (input.freshnessMinutes !== null && input.freshnessMinutes > 72 * 60) return "stale";
-  if (input.freshnessMinutes !== null && input.freshnessMinutes > 24 * 60) return "delayed";
+  if (input.freshnessMinutes !== null && input.freshnessMinutes > input.activeWindowMinutes) return "delayed";
   return "active";
 }
 
 function providerDomainSlaMinutes(domain: DailyProviderCoverageDomain): number | null {
-  if (domain === "earnings" || domain === "dividends" || domain === "economic-calendar") return 24 * 60;
-  if (domain === "macro" || domain === "rates" || domain === "inflation" || domain === "geopolitical-events" || domain === "crypto-events") return 6 * 60;
-  if (domain === "analyst-actions" || domain === "company-events" || domain === "sector-events") return 6 * 60;
+  if (domain === "earnings" || domain === "dividends") return 30 * 24 * 60;
+  if (domain === "economic-calendar") return 24 * 60;
+  if (domain === "macro" || domain === "inflation" || domain === "rates") return 24 * 60;
+  if (domain === "geopolitical-events") return 12 * 60;
+  if (domain === "analyst-actions") return 48 * 60;
+  if (domain === "company-events" || domain === "sector-events") return 24 * 60;
+  if (domain === "crypto-events") return 6 * 60;
   return null;
+}
+
+function providerDomainActiveWindowMinutes(domain: DailyProviderCoverageDomain): number {
+  return providerDomainSlaMinutes(domain) ?? 24 * 60;
 }
 
 function providerFreshnessSlaStatus(input: {

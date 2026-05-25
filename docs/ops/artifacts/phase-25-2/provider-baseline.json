@@ -1,0 +1,395 @@
+{
+  "authenticated": true,
+  "baseline": {
+    "eventCardCount": 12,
+    "latencyMs": 1857,
+    "providerStateCounts": {
+      "active": 9,
+      "calendar-only": 0,
+      "delayed": 0,
+      "limited": 2,
+      "outage": 0,
+      "partial-outage": 0,
+      "stale": 0
+    },
+    "requiredDomainCoverage": [
+      {
+        "domain": "macro",
+        "itemCount": 1,
+        "operationalState": "active",
+        "present": true,
+        "provider": "CoinDesk",
+        "freshnessSlaDisclosure": "Macro source-linked provider row is 313m old against a 360m freshness SLA.",
+        "freshnessSlaMinutes": 360,
+        "freshnessSlaStatus": "within-sla",
+        "sourceTransparency": "Source-linked rows: CoinDesk."
+      },
+      {
+        "domain": "rates",
+        "itemCount": 1,
+        "operationalState": "active",
+        "present": true,
+        "provider": "CoinDesk",
+        "freshnessSlaDisclosure": "Rates source-linked provider row is 1075m old; this breaches the 360m freshness SLA and must not be labeled live.",
+        "freshnessSlaMinutes": 360,
+        "freshnessSlaStatus": "breached",
+        "sourceTransparency": "Source-linked rows: CoinDesk."
+      },
+      {
+        "domain": "inflation",
+        "itemCount": 0,
+        "operationalState": "limited",
+        "present": true,
+        "provider": "yfinance",
+        "freshnessSlaDisclosure": "Inflation has no source-linked provider row, so freshness SLA is not measured.",
+        "freshnessSlaMinutes": 360,
+        "freshnessSlaStatus": "not-measured",
+        "sourceTransparency": "Raw provider status: Market data provider fallback was used.."
+      },
+      {
+        "domain": "earnings",
+        "itemCount": 11,
+        "operationalState": "active",
+        "present": true,
+        "provider": "Yahoo Finance Earnings Calendar",
+        "freshnessSlaDisclosure": "Earnings source-linked provider row is 13m old against a 1440m freshness SLA.",
+        "freshnessSlaMinutes": 1440,
+        "freshnessSlaStatus": "within-sla",
+        "sourceTransparency": "Source-linked rows: Yahoo Finance Earnings Calendar."
+      },
+      {
+        "domain": "economic-calendar",
+        "itemCount": 10,
+        "operationalState": "active",
+        "present": true,
+        "provider": "MarketWatch, CoinDesk",
+        "freshnessSlaDisclosure": "Economic calendar source-linked provider row is 313m old against a 1440m freshness SLA.",
+        "freshnessSlaMinutes": 1440,
+        "freshnessSlaStatus": "within-sla",
+        "sourceTransparency": "Source-linked rows: MarketWatch, CoinDesk."
+      },
+      {
+        "domain": "analyst-actions",
+        "itemCount": 1,
+        "operationalState": "active",
+        "present": true,
+        "provider": "CoinDesk",
+        "freshnessSlaDisclosure": "Analyst actions source-linked provider row is 1345m old; this breaches the 360m freshness SLA and must not be labeled live.",
+        "freshnessSlaMinutes": 360,
+        "freshnessSlaStatus": "breached",
+        "sourceTransparency": "Source-linked rows: CoinDesk."
+      },
+      {
+        "domain": "dividends",
+        "itemCount": 0,
+        "operationalState": "limited",
+        "present": true,
+        "provider": "yfinance",
+        "freshnessSlaDisclosure": "Dividends has no source-linked provider row, so freshness SLA is not measured.",
+        "freshnessSlaMinutes": 1440,
+        "freshnessSlaStatus": "not-measured",
+        "sourceTransparency": "Raw provider status: Market data provider fallback was used.."
+      },
+      {
+        "domain": "geopolitical-events",
+        "itemCount": 2,
+        "operationalState": "active",
+        "present": true,
+        "provider": "MarketWatch, CoinDesk",
+        "freshnessSlaDisclosure": "Geopolitical events source-linked provider row is 560m old; this breaches the 360m freshness SLA and must not be labeled live.",
+        "freshnessSlaMinutes": 360,
+        "freshnessSlaStatus": "breached",
+        "sourceTransparency": "Source-linked rows: MarketWatch, CoinDesk."
+      },
+      {
+        "domain": "company-events",
+        "itemCount": 18,
+        "operationalState": "active",
+        "present": true,
+        "provider": "CoinDesk, MarketWatch, Yahoo Finance Earnings Calendar",
+        "freshnessSlaDisclosure": "Company events source-linked provider row is 13m old against a 360m freshness SLA.",
+        "freshnessSlaMinutes": 360,
+        "freshnessSlaStatus": "within-sla",
+        "sourceTransparency": "Source-linked rows: CoinDesk, MarketWatch, Yahoo Finance Earnings Calendar."
+      },
+      {
+        "domain": "sector-events",
+        "itemCount": 12,
+        "operationalState": "active",
+        "present": true,
+        "provider": "CoinDesk, MarketWatch, Yahoo Finance Earnings Calendar",
+        "freshnessSlaDisclosure": "Sector events source-linked provider row is 13m old against a 360m freshness SLA.",
+        "freshnessSlaMinutes": 360,
+        "freshnessSlaStatus": "within-sla",
+        "sourceTransparency": "Source-linked rows: CoinDesk, MarketWatch, Yahoo Finance Earnings Calendar."
+      },
+      {
+        "domain": "crypto-events",
+        "itemCount": 7,
+        "operationalState": "active",
+        "present": true,
+        "provider": "CoinDesk",
+        "freshnessSlaDisclosure": "Crypto events source-linked provider row is 256m old against a 360m freshness SLA.",
+        "freshnessSlaMinutes": 360,
+        "freshnessSlaStatus": "within-sla",
+        "sourceTransparency": "Source-linked rows: CoinDesk."
+      }
+    ],
+    "certification": {
+      "activeFreshnessDomains": [
+        "macro",
+        "earnings",
+        "economic-calendar",
+        "company-events",
+        "sector-events",
+        "crypto-events"
+      ],
+      "blockers": [
+        "limited provider domains: inflation, dividends",
+        "freshness SLA breached: rates, analyst-actions, geopolitical-events",
+        "freshness SLA unmeasured: inflation, dividends"
+      ],
+      "breachedFreshnessDomains": [
+        "rates",
+        "analyst-actions",
+        "geopolitical-events"
+      ],
+      "contextCompletenessPct": 100,
+      "disclosure": "Provider/event freshness certification is partial: TradeVeto exposes source, freshness, stale/outage, and no-fabrication states, but remaining provider depth or SLA blockers are still visible.",
+      "displayedCardCount": 12,
+      "fakeLiveLabelCount": 0,
+      "freshnessSlaPass": false,
+      "hiddenStaleStateCount": 0,
+      "limitedDomains": [
+        "inflation",
+        "dividends"
+      ],
+      "missingDomains": [],
+      "noFabricationDisclosure": "TradeVeto does not fabricate events, headlines, analyst actions, geopolitical events, provider claims, or live labels when source-linked provider data is absent, delayed, stale, or unavailable.",
+      "noFakeLiveLabelsPass": true,
+      "noHiddenStaleStatePass": true,
+      "outageSimulationPass": null,
+      "requiredDomainCoveragePass": false,
+      "requiredDomains": [
+        "macro",
+        "rates",
+        "inflation",
+        "earnings",
+        "economic-calendar",
+        "analyst-actions",
+        "dividends",
+        "geopolitical-events",
+        "company-events",
+        "sector-events",
+        "crypto-events"
+      ],
+      "sourceCompletenessPct": 100,
+      "sourceCompletenessPass": true,
+      "status": "strong-partial",
+      "targetSourceCompletenessPct": 99,
+      "timelineCoveragePass": true,
+      "timelineMissingDomains": [],
+      "unmeasuredFreshnessDomains": [
+        "inflation",
+        "dividends"
+      ]
+    },
+    "slaStatusCounts": {
+      "within-sla": 6,
+      "breached": 3,
+      "not-measured": 2
+    },
+    "sourceTrust": {
+      "completeCardCount": 12,
+      "completenessPct": 100,
+      "contextCompleteCardCount": 12,
+      "contextCompletenessPct": 100,
+      "disclosure": "12 of 12 displayed source-linked event cards disclose provider, source URL, timestamp, freshness, provider state, uncertainty, affected symbols, and watchlist impact.",
+      "displayedCardCount": 12,
+      "incompleteCardCount": 0,
+      "missingFieldCounts": {
+        "affectedSymbols": 0,
+        "freshness": 0,
+        "provider": 0,
+        "providerState": 0,
+        "sourceUrl": 0,
+        "timestamp": 0,
+        "uncertainty": 0,
+        "watchlistImpact": 0
+      },
+      "requiredFields": [
+        "sourceUrl",
+        "provider",
+        "timestamp",
+        "freshness",
+        "providerState",
+        "uncertainty"
+      ],
+      "status": "pass",
+      "targetCompletenessPct": 99
+    },
+    "statusCode": 200
+  },
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [
+    "provider freshness certification strong-partial",
+    "certification blocker: limited provider domains: inflation, dividends",
+    "certification blocker: freshness SLA breached: rates, analyst-actions, geopolitical-events",
+    "certification blocker: freshness SLA unmeasured: inflation, dividends",
+    "provider domains still limited: inflation, dividends",
+    "provider domains breached freshness SLA: rates, analyst-actions, geopolitical-events"
+  ],
+  "generatedAt": "2026-05-25T12:24:35.362Z",
+  "outageSimulation": {
+    "enabled": true,
+    "fallbackVisible": true,
+    "recoveryStates": [
+      {
+        "disclosure": "Macro has current source-linked provider rows in this scanner packet.",
+        "domain": "macro",
+        "operationalState": "active",
+        "provider": "CoinDesk"
+      },
+      {
+        "disclosure": "Inflation source-linked provider coverage is limited in the current packet.",
+        "domain": "inflation",
+        "operationalState": "limited",
+        "provider": "yfinance"
+      },
+      {
+        "disclosure": "Rates has current source-linked provider rows in this scanner packet.",
+        "domain": "rates",
+        "operationalState": "active",
+        "provider": "CoinDesk"
+      },
+      {
+        "disclosure": "Economic calendar has current source-linked provider rows in this scanner packet.",
+        "domain": "economic-calendar",
+        "operationalState": "active",
+        "provider": "MarketWatch, CoinDesk"
+      },
+      {
+        "disclosure": "Company events has current source-linked provider rows in this scanner packet.",
+        "domain": "company-events",
+        "operationalState": "active",
+        "provider": "CoinDesk, MarketWatch, Yahoo Finance Earnings Calendar"
+      },
+      {
+        "disclosure": "Sector events has current source-linked provider rows in this scanner packet.",
+        "domain": "sector-events",
+        "operationalState": "active",
+        "provider": "CoinDesk, MarketWatch, Yahoo Finance Earnings Calendar"
+      }
+    ],
+    "recoveryVisible": true,
+    "requested": [
+      "news",
+      "macro",
+      "scanner"
+    ],
+    "simulatedStates": [
+      {
+        "disclosure": "macro provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "macro",
+        "operationalState": "outage",
+        "provider": "CoinDesk"
+      },
+      {
+        "disclosure": "inflation provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "inflation",
+        "operationalState": "outage",
+        "provider": "yfinance"
+      },
+      {
+        "disclosure": "rates provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "rates",
+        "operationalState": "outage",
+        "provider": "CoinDesk"
+      },
+      {
+        "disclosure": "economic calendar provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "economic-calendar",
+        "operationalState": "outage",
+        "provider": "MarketWatch, CoinDesk"
+      },
+      {
+        "disclosure": "company events provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "company-events",
+        "operationalState": "outage",
+        "provider": "CoinDesk, MarketWatch, Yahoo Finance Earnings Calendar"
+      },
+      {
+        "disclosure": "sector events provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "sector-events",
+        "operationalState": "outage",
+        "provider": "CoinDesk, MarketWatch, Yahoo Finance Earnings Calendar"
+      }
+    ]
+  },
+  "outageCertification": {
+    "activeFreshnessDomains": [
+      "macro",
+      "earnings",
+      "economic-calendar",
+      "company-events",
+      "sector-events",
+      "crypto-events"
+    ],
+    "blockers": [
+      "limited provider domains: inflation, dividends",
+      "freshness SLA breached: rates, analyst-actions, geopolitical-events",
+      "freshness SLA unmeasured: inflation, dividends"
+    ],
+    "breachedFreshnessDomains": [
+      "rates",
+      "analyst-actions",
+      "geopolitical-events"
+    ],
+    "contextCompletenessPct": 100,
+    "disclosure": "Provider/event freshness certification is partial: TradeVeto exposes source, freshness, stale/outage, and no-fabrication states, but remaining provider depth or SLA blockers are still visible.",
+    "displayedCardCount": 12,
+    "fakeLiveLabelCount": 0,
+    "freshnessSlaPass": false,
+    "hiddenStaleStateCount": 0,
+    "limitedDomains": [
+      "inflation",
+      "dividends"
+    ],
+    "missingDomains": [],
+    "noFabricationDisclosure": "TradeVeto does not fabricate events, headlines, analyst actions, geopolitical events, provider claims, or live labels when source-linked provider data is absent, delayed, stale, or unavailable.",
+    "noFakeLiveLabelsPass": true,
+    "noHiddenStaleStatePass": true,
+    "outageSimulationPass": true,
+    "requiredDomainCoveragePass": false,
+    "requiredDomains": [
+      "macro",
+      "rates",
+      "inflation",
+      "earnings",
+      "economic-calendar",
+      "analyst-actions",
+      "dividends",
+      "geopolitical-events",
+      "company-events",
+      "sector-events",
+      "crypto-events"
+    ],
+    "sourceCompletenessPct": 100,
+    "sourceCompletenessPass": true,
+    "status": "strong-partial",
+    "targetSourceCompletenessPct": 99,
+    "timelineCoveragePass": true,
+    "timelineMissingDomains": [],
+    "unmeasuredFreshnessDomains": [
+      "inflation",
+      "dividends"
+    ]
+  },
+  "overallStatus": "not_ready",
+  "probeIdentity": {
+    "cleanupRequested": true,
+    "created": true,
+    "email": "phase22-provider-1779711871843-90d91477@tradeveto-probe.local",
+    "userId": "6fab0986-e729-42c2-902f-1fddacd22ced"
+  }
+}

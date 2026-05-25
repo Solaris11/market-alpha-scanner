@@ -158,6 +158,32 @@ class EventIntelligenceTests(unittest.TestCase):
         self.assertIn("EVENT_DIVIDEND_NEGATIVE", negative_dividend["reason_codes"])
         self.assertGreater(negative_dividend["fragility_bias"], positive_analyst["fragility_bias"])
 
+    def test_dividend_calendar_row_creates_source_linked_event_without_fake_headline(self) -> None:
+        now = datetime.now(timezone.utc)
+        ex_dividend_date = (now + pd.Timedelta(days=21)).date().isoformat()
+        context = build_event_context([], now=now)
+        impact = event_impact_for_row(
+            {
+                "symbol": "JPM",
+                "dividend_headline": "JPM dividend calendar context",
+                "dividend_source": "Yahoo Finance Dividend Calendar",
+                "dividend_url": "https://finance.yahoo.com/quote/JPM",
+                "dividend_yield": 1.96,
+                "ex_dividend_date": ex_dividend_date,
+            },
+            context,
+        )
+
+        recent_events = impact["verified_event_recent_events"]
+        self.assertTrue(any(event.get("event_type") == "dividend_calendar" for event in recent_events))
+        self.assertTrue(any(event.get("source") == "Yahoo Finance Dividend Calendar" for event in recent_events))
+        has_dividend_calendar_reason = False
+        for event in recent_events:
+            reason_codes = event.get("reason_codes")
+            if isinstance(reason_codes, list) and "EVENT_DIVIDEND_CALENDAR" in [str(code) for code in reason_codes]:
+                has_dividend_calendar_reason = True
+        self.assertTrue(has_dividend_calendar_reason)
+
     def test_shareholder_litigation_is_not_misclassified_as_earnings(self) -> None:
         feed = TrustedEventFeed("prnewswire", "PR Newswire", "https://www.prnewswire.com/rss/news-releases-list.rss", "company", source_weight=0.78)
         event = classify_verified_event(

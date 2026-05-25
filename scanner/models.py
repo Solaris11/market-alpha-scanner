@@ -14,6 +14,13 @@ class RankedAsset:
     market_cap: float
     avg_dollar_volume: float
     dividend_yield: float
+    dividend_date: str
+    dividend_headline: str
+    dividend_source: str
+    dividend_timestamp: str
+    dividend_url: str
+    ex_dividend_date: str
+    last_dividend_date: str
     earnings_date: str
     technical_score: float
     trend_score: float
