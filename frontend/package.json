@@ -36,6 +36,7 @@
     "probe:phase22:provider-source-trust": "TRADEVETO_PHASE22_PROVIDER_BASE_URL=https://tradeveto.com TRADEVETO_PHASE22_CREATE_PROBE_USER=true node scripts/phase22-provider-source-trust-probe.mjs",
     "probe:phase23:provider-depth": "TRADEVETO_PHASE22_PROVIDER_BASE_URL=https://tradeveto.com TRADEVETO_PHASE22_CREATE_PROBE_USER=true node scripts/phase22-provider-source-trust-probe.mjs",
     "probe:phase25:provider-freshness": "TRADEVETO_PHASE22_PROVIDER_BASE_URL=https://tradeveto.com TRADEVETO_PHASE22_CREATE_PROBE_USER=true TRADEVETO_PROVIDER_SOURCE_TRUST_TARGET_PCT=99 node scripts/phase22-provider-source-trust-probe.mjs",
+    "probe:phase25:chart-scanner-power": "node scripts/phase25-chart-scanner-power-workflow-probe.mjs",
     "test": "node scripts/run-tests.mjs",
     "lint": "tsc --noEmit"
   },

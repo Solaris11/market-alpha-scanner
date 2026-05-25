@@ -110,6 +110,8 @@ const SORTS: Array<{ key: DiscoverySortKey; label: string }> = [
   { key: "freshness", label: "Freshness" },
   { key: "symbol", label: "A-Z" },
 ];
+const SCANNER_VIRTUALIZATION_THRESHOLD = 180;
+const SCANNER_VIRTUAL_OVERSCAN_ROWS = 24;
 
 const FILTER_BEHAVIOR: Partial<Record<DiscoveryQuickFilterKey, { sort: DiscoverySortKey; timeframe: DiscoveryTimeframe }>> = {
   best_setups: { sort: "confidence", timeframe: "1M" },
@@ -1509,8 +1511,45 @@ function RapidScannerTable({
   const activeMetricColumns = DEFAULT_SCANNER_COLUMNS.filter((column) => visibleColumns.includes(column));
   const tableTemplate = scannerTableTemplate(activeMetricColumns, compact);
   const tableStyle = { "--scanner-grid-template": tableTemplate } as CSSProperties;
+  const scrollerRef = useRef<HTMLDivElement | null>(null);
+  const [scrollTop, setScrollTop] = useState(0);
+  const estimatedRowHeight = ultra ? 46 : compact ? 56 : 86;
+  const viewportHeight = ultra ? 1152 : compact ? 896 : 704;
+  const virtualizationActive = symbols.length > SCANNER_VIRTUALIZATION_THRESHOLD;
+  const virtualWindow = useMemo(() => {
+    if (!virtualizationActive) {
+      return {
+        bottomPaddingPx: 0,
+        endIndex: symbols.length,
+        rows: symbols.map((symbol, index) => ({ index, symbol })),
+        topPaddingPx: 0,
+      };
+    }
+    const startIndex = Math.max(0, Math.floor(scrollTop / estimatedRowHeight) - SCANNER_VIRTUAL_OVERSCAN_ROWS);
+    const visibleCount = Math.ceil(viewportHeight / estimatedRowHeight) + SCANNER_VIRTUAL_OVERSCAN_ROWS * 2;
+    const endIndex = Math.min(symbols.length, startIndex + visibleCount);
+    return {
+      bottomPaddingPx: Math.max(0, (symbols.length - endIndex) * estimatedRowHeight),
+      endIndex,
+      rows: symbols.slice(startIndex, endIndex).map((symbol, offset) => ({ index: startIndex + offset, symbol })),
+      topPaddingPx: Math.max(0, startIndex * estimatedRowHeight),
+    };
+  }, [estimatedRowHeight, scrollTop, symbols, viewportHeight, virtualizationActive]);
+
+  useEffect(() => {
+    setScrollTop(0);
+    if (scrollerRef.current) scrollerRef.current.scrollTop = 0;
+  }, [symbols]);
+
   return (
-    <div className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/48" data-discovery-scanner-table="true" style={tableStyle}>
+    <div
+      className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/48"
+      data-discovery-scanner-table="true"
+      data-scanner-rendered-rows={virtualWindow.rows.length}
+      data-scanner-total-rows={symbols.length}
+      data-scanner-virtualized={virtualizationActive ? "true" : "false"}
+      style={tableStyle}
+    >
       <div className="sticky top-0 z-20 grid gap-2 border-b border-white/10 bg-slate-950/95 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 max-xl:hidden xl:[grid-template-columns:var(--scanner-grid-template)]">
         <span>Rank</span>
         <SortHeader active={sort === "symbol"} className="sticky left-0 z-20 bg-slate-950/95" label="Symbol" onClick={() => onSortChange("symbol")} />
@@ -1520,8 +1559,15 @@ function RapidScannerTable({
         ))}
         <span>Action</span>
       </div>
-      <div className={`${ultra ? "max-h-[72rem]" : compact ? "max-h-[56rem]" : "max-h-[44rem]"} overflow-y-auto [scrollbar-width:thin]`}>
-        {symbols.map((symbol, index) => {
+      <div
+        className={`${ultra ? "max-h-[72rem]" : compact ? "max-h-[56rem]" : "max-h-[44rem]"} overflow-y-auto [scrollbar-width:thin]`}
+        onScroll={(event) => {
+          if (virtualizationActive) setScrollTop(event.currentTarget.scrollTop);
+        }}
+        ref={scrollerRef}
+      >
+        {virtualizationActive ? <div aria-hidden="true" style={{ height: virtualWindow.topPaddingPx }} /> : null}
+        {virtualWindow.rows.map(({ index, symbol }) => {
           const riskTone: DiscoveryTone = (symbol.risk ?? 0) >= 70 ? "rose" : (symbol.risk ?? 0) >= 55 ? "amber" : "cyan";
           const selected = compareSymbols.includes(symbol.symbol);
           const shortlisted = shortlistedSymbols.includes(symbol.symbol);
@@ -1576,6 +1622,7 @@ function RapidScannerTable({
             </div>
           );
         })}
+        {virtualizationActive ? <div aria-hidden="true" style={{ height: virtualWindow.bottomPaddingPx }} /> : null}
       </div>
     </div>
   );
