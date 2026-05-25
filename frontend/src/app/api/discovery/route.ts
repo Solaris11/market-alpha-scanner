@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { gzipSync } from "node:zlib";
 import { entitlementSummary, getEntitlement, hasPremiumAccess, legalNotAcceptedResponse, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { loadIntelligenceDiscoverySystemWithMeta } from "@/lib/server/discovery-intelligence";
 import { withRequestMetrics } from "@/lib/server/monitoring";
@@ -21,6 +22,16 @@ type ProviderOutageSimulation = {
     state: "outage";
   }>;
 };
+
+type DiscoveryBodyCacheEntry = {
+  body: string;
+  entitlementJson: string;
+  gzipBody: ArrayBuffer;
+  serializedSystem: string;
+};
+
+const discoveryBodyCache = new Map<string, DiscoveryBodyCacheEntry>();
+const DISCOVERY_BODY_CACHE_MAX_ENTRIES = 200;
 
 export async function GET(request: Request) {
   return withRequestMetrics(request, "/api/discovery", async () => {
@@ -57,6 +68,8 @@ export async function GET(request: Request) {
         system: JSON.parse(serializedSystem) as unknown,
       }, { headers: { "Cache-Control": "no-store" } })
       : discoveryJsonResponse({
+        acceptEncoding: request.headers.get("accept-encoding"),
+        cacheKey: entitlement.user?.id ?? "anonymous",
         entitlementJson: JSON.stringify(entitlementSummary(entitlement)),
         performanceJson: JSON.stringify(performance),
         serializedSystem,
@@ -67,17 +80,59 @@ export async function GET(request: Request) {
   });
 }
 
-function discoveryJsonResponse(input: { entitlementJson: string; performanceJson: string; serializedSystem: string }): NextResponse {
-  return new NextResponse(
-    `{"entitlement":${input.entitlementJson},"limited":false,"ok":true,"performance":${input.performanceJson},"system":${input.serializedSystem}}`,
-    {
-      headers: {
-        "Cache-Control": "no-store",
-        "Content-Type": "application/json",
-      },
-      status: 200,
-    },
-  );
+function discoveryJsonResponse(input: {
+  acceptEncoding: string | null;
+  cacheKey: string;
+  entitlementJson: string;
+  performanceJson: string;
+  serializedSystem: string;
+}): NextResponse {
+  const cacheEntry = readDiscoveryBodyCache(input);
+  const supportsGzip = /\bgzip\b/i.test(input.acceptEncoding ?? "");
+  const headers = new Headers({
+    "Cache-Control": "no-store",
+    "Content-Type": "application/json",
+    "Vary": "Accept-Encoding",
+  });
+  if (supportsGzip) headers.set("Content-Encoding", "gzip");
+  return new NextResponse(supportsGzip ? cacheEntry.gzipBody : cacheEntry.body, {
+    headers,
+    status: 200,
+  });
+}
+
+function readDiscoveryBodyCache(input: {
+  cacheKey: string;
+  entitlementJson: string;
+  performanceJson: string;
+  serializedSystem: string;
+}): DiscoveryBodyCacheEntry {
+  const current = discoveryBodyCache.get(input.cacheKey);
+  if (current && current.entitlementJson === input.entitlementJson && current.serializedSystem === input.serializedSystem) {
+    return current;
+  }
+
+  const body = `{"entitlement":${input.entitlementJson},"limited":false,"ok":true,"performance":${input.performanceJson},"system":${input.serializedSystem}}`;
+  const compressed = gzipSync(body);
+  const gzipBody = new ArrayBuffer(compressed.byteLength);
+  new Uint8Array(gzipBody).set(compressed);
+  const entry: DiscoveryBodyCacheEntry = {
+    body,
+    entitlementJson: input.entitlementJson,
+    gzipBody,
+    serializedSystem: input.serializedSystem,
+  };
+  discoveryBodyCache.set(input.cacheKey, entry);
+  trimDiscoveryBodyCache();
+  return entry;
+}
+
+function trimDiscoveryBodyCache(): void {
+  while (discoveryBodyCache.size > DISCOVERY_BODY_CACHE_MAX_ENTRIES) {
+    const oldest = discoveryBodyCache.keys().next().value;
+    if (!oldest) return;
+    discoveryBodyCache.delete(oldest);
+  }
 }
 
 function withDiscoveryPerformanceHeaders(response: NextResponse, startedAt: number, cacheStatus: DiscoveryCacheStatus): NextResponse {
