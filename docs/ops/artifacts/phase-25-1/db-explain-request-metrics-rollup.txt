@@ -1,0 +1,31 @@
+                                                                           QUERY PLAN                                                                           
+----------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=57045.02..57045.04 rows=10 width=46) (actual time=153.363..154.211 rows=10 loops=1)
+   Buffers: shared hit=559 read=27564, temp read=1471 written=1474
+   ->  Sort  (cost=57045.02..57045.18 rows=66 width=46) (actual time=153.362..154.208 rows=10 loops=1)
+         Sort Key: (count(*)) DESC
+         Sort Method: quicksort  Memory: 26kB
+         Buffers: shared hit=559 read=27564, temp read=1471 written=1474
+         ->  GroupAggregate  (cost=49721.95..57043.59 rows=66 width=46) (actual time=116.602..154.186 rows=13 loops=1)
+               Group Key: route, method
+               Buffers: shared hit=556 read=27564, temp read=1471 written=1474
+               ->  Gather Merge  (cost=49721.95..56333.05 rows=56764 width=26) (actual time=82.224..123.528 rows=315817 loops=1)
+                     Workers Planned: 2
+                     Workers Launched: 2
+                     Buffers: shared hit=548 read=27564, temp read=1471 written=1474
+                     ->  Sort  (cost=48721.92..48781.05 rows=23652 width=26) (actual time=79.107..87.862 rows=105272 loops=3)
+                           Sort Key: route, method
+                           Sort Method: external merge  Disk: 3984kB
+                           Buffers: shared hit=548 read=27564, temp read=1471 written=1474
+                           Worker 0:  Sort Method: external merge  Disk: 3992kB
+                           Worker 1:  Sort Method: external merge  Disk: 3792kB
+                           ->  Parallel Seq Scan on request_metrics  (cost=0.00..47003.64 rows=23652 width=26) (actual time=45.459..57.733 rows=105272 loops=3)
+                                 Filter: (created_at > (now() - '01:00:00'::interval))
+                                 Rows Removed by Filter: 764279
+                                 Buffers: shared hit=472 read=27564
+ Planning:
+   Buffers: shared hit=235 read=2 dirtied=3
+ Planning Time: 0.773 ms
+ Execution Time: 154.713 ms
+(27 rows)
+

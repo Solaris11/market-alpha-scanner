@@ -1,0 +1,25 @@
+                                                                                                 QUERY PLAN                                                                                                  
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=8794.18..8794.21 rows=10 width=46) (actual time=146.813..146.815 rows=10 loops=1)
+   Buffers: shared hit=3344 read=1128, temp read=1471 written=1476
+   ->  Sort  (cost=8794.18..8794.35 rows=66 width=46) (actual time=146.812..146.813 rows=10 loops=1)
+         Sort Key: (count(*)) DESC
+         Sort Method: quicksort  Memory: 26kB
+         Buffers: shared hit=3344 read=1128, temp read=1471 written=1476
+         ->  GroupAggregate  (cost=7938.48..8792.76 rows=66 width=46) (actual time=109.405..146.790 rows=13 loops=1)
+               Group Key: route, method
+               Buffers: shared hit=3341 read=1128, temp read=1471 written=1476
+               ->  Sort  (cost=7938.48..8080.69 rows=56886 width=26) (actual time=74.014..114.606 rows=315815 loops=1)
+                     Sort Key: route, method
+                     Sort Method: external merge  Disk: 11768kB
+                     Buffers: shared hit=3333 read=1128, temp read=1471 written=1476
+                     ->  Index Only Scan using idx_request_metrics_created_route_method_latency on request_metrics  (cost=0.43..3445.68 rows=56886 width=26) (actual time=0.032..21.119 rows=315815 loops=1)
+                           Index Cond: (created_at > (now() - '01:00:00'::interval))
+                           Heap Fetches: 54636
+                           Buffers: shared hit=3330 read=1128
+ Planning:
+   Buffers: shared hit=255 read=5
+ Planning Time: 1.197 ms
+ Execution Time: 147.932 ms
+(21 rows)
+

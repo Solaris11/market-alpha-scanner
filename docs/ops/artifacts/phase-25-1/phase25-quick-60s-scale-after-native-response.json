@@ -1,0 +1,1136 @@
+{
+  "authSmoke": {
+    "authenticated": true,
+    "latencyMs": 464,
+    "premium": true,
+    "statusCode": 200
+  },
+  "authenticatedCoverage": true,
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [
+    "load duration 60s below 15 minute sustained certification window",
+    "25c /api/v1/replay?symbol=AMD fail: p95 1202ms exceeds 1200ms",
+    "25c /api/v1/macro fail: p95 1247ms exceeds 1200ms",
+    "25c /api/v1/opportunities?limit=10 fail: p95 2777ms exceeds 1200ms; p99 2777ms exceeds 2000ms",
+    "25c /api/v1/portfolio/scenario fail: p95 2819ms exceeds 1200ms; p99 2819ms exceeds 2000ms",
+    "25c /api/paper/positions fail: p95 1060ms exceeds 800ms",
+    "100c /api/discovery fail: p95 718ms exceeds 300ms; p99 1048ms exceeds 600ms",
+    "100c /api/live-intelligence?intervalMs=10000 fail: p95 410ms exceeds 400ms",
+    "100c /api/symbol/AMD fail: p95 1770ms exceeds 1200ms"
+  ],
+  "developerCoverage": true,
+  "durationSeconds": 60,
+  "generatedAt": "2026-05-25T01:23:20.103Z",
+  "memory": {
+    "afterHeapUsedMb": 17.2,
+    "afterRssMb": 144.8,
+    "beforeRssMb": 56.6,
+    "deltaRssMb": 88.3
+  },
+  "overallStatus": "not_ready",
+  "probeIdentity": {
+    "apiKeyPrefix": "tvk_live_JKbpm...8jSc",
+    "cleanupRequested": true,
+    "created": true,
+    "email": "phase22-scale-1779671917338-313f27e9@tradeveto-probe.local",
+    "userId": "c7208112-1811-4c53-ae28-8f4a1c26d978"
+  },
+  "providerOutageSimulation": {
+    "fallbackObserved": true,
+    "mode": "header-simulation",
+    "ok": true,
+    "outageStatusCodes": [
+      200,
+      200
+    ],
+    "recoveryObserved": true,
+    "recoverySeconds": 0,
+    "recoveryStatusCodes": [
+      200,
+      200
+    ],
+    "skippedReason": null
+  },
+  "startedAt": "2026-05-25T01:18:37.338Z",
+  "streamStorms": [
+    {
+      "attemptedConnections": 25,
+      "durationSeconds": 10,
+      "eventsReceived": 75,
+      "failedConnections": 0,
+      "forcedReconnectCycles": 3,
+      "maxConcurrentConnections": 25,
+      "ok": true,
+      "skippedReason": null,
+      "statusCodes": {
+        "200": 75
+      }
+    },
+    {
+      "attemptedConnections": 50,
+      "durationSeconds": 10,
+      "eventsReceived": 150,
+      "failedConnections": 0,
+      "forcedReconnectCycles": 3,
+      "maxConcurrentConnections": 50,
+      "ok": true,
+      "skippedReason": null,
+      "statusCodes": {
+        "200": 150
+      }
+    },
+    {
+      "attemptedConnections": 100,
+      "durationSeconds": 10,
+      "eventsReceived": 300,
+      "failedConnections": 0,
+      "forcedReconnectCycles": 3,
+      "maxConcurrentConnections": 100,
+      "ok": true,
+      "skippedReason": null,
+      "statusCodes": {
+        "200": 300
+      }
+    }
+  ],
+  "thinkTimeMs": 0,
+  "tierResults": [
+    {
+      "durationSeconds": 60,
+      "endpointResults": [
+        {
+          "cacheStatuses": {
+            "system-miss": 1,
+            "system-hit": 8806
+          },
+          "category": "scanner",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 1974,
+          "method": "GET",
+          "p50LatencyMs": 70,
+          "p95BudgetMs": 300,
+          "p95LatencyMs": 117,
+          "p99BudgetMs": 600,
+          "p99LatencyMs": 171,
+          "path": "/api/discovery",
+          "requiredTarget": true,
+          "sampleCount": 8807,
+          "status": "pass",
+          "statusCodes": {
+            "200": 8807
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {
+            "stale-hit": 142,
+            "fresh-hit": 8643
+          },
+          "category": "live-intelligence",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 1047,
+          "method": "GET",
+          "p50LatencyMs": 68,
+          "p95BudgetMs": 400,
+          "p95LatencyMs": 109,
+          "p99BudgetMs": 800,
+          "p99LatencyMs": 152,
+          "path": "/api/live-intelligence?intervalMs=10000",
+          "requiredTarget": true,
+          "sampleCount": 8785,
+          "status": "pass",
+          "statusCodes": {
+            "200": 8785
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "user-context",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 1037,
+          "method": "GET",
+          "p50LatencyMs": 67,
+          "p95BudgetMs": 500,
+          "p95LatencyMs": 108,
+          "p99BudgetMs": 1000,
+          "p99LatencyMs": 158,
+          "path": "/api/auth/me",
+          "requiredTarget": false,
+          "sampleCount": 780,
+          "status": "pass",
+          "statusCodes": {
+            "200": 780
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "user-context",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 770,
+          "method": "GET",
+          "p50LatencyMs": 74,
+          "p95BudgetMs": 500,
+          "p95LatencyMs": 121,
+          "p99BudgetMs": 1000,
+          "p99LatencyMs": 170,
+          "path": "/api/user/workspace-preferences",
+          "requiredTarget": false,
+          "sampleCount": 394,
+          "status": "pass",
+          "statusCodes": {
+            "200": 394
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "chart-workspace",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 455,
+          "method": "GET",
+          "p50LatencyMs": 74,
+          "p95BudgetMs": 500,
+          "p95LatencyMs": 115,
+          "p99BudgetMs": 1000,
+          "p99LatencyMs": 173,
+          "path": "/api/user/chart-workspaces/AMD",
+          "requiredTarget": false,
+          "sampleCount": 371,
+          "status": "pass",
+          "statusCodes": {
+            "200": 371
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "watchlist",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 471,
+          "method": "GET",
+          "p50LatencyMs": 67,
+          "p95BudgetMs": 500,
+          "p95LatencyMs": 102,
+          "p99BudgetMs": 1000,
+          "p99LatencyMs": 119,
+          "path": "/api/user/watchlist",
+          "requiredTarget": false,
+          "sampleCount": 433,
+          "status": "pass",
+          "statusCodes": {
+            "200": 433
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "replay",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 613,
+          "method": "GET",
+          "p50LatencyMs": 404,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 613,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 613,
+          "path": "/api/history/replay?symbol=AMD",
+          "requiredTarget": false,
+          "sampleCount": 3,
+          "status": "pass",
+          "statusCodes": {
+            "200": 3
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "developer-replay",
+          "failureCount": 0,
+          "failureReasons": [
+            "p95 1202ms exceeds 1200ms"
+          ],
+          "maxLatencyMs": 1202,
+          "method": "GET",
+          "p50LatencyMs": 122,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 1202,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 1202,
+          "path": "/api/v1/replay?symbol=AMD",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "fail",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "developer-macro",
+          "failureCount": 0,
+          "failureReasons": [
+            "p95 1247ms exceeds 1200ms"
+          ],
+          "maxLatencyMs": 1247,
+          "method": "GET",
+          "p50LatencyMs": 132,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 1247,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 1247,
+          "path": "/api/v1/macro",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "fail",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "developer-opportunities",
+          "failureCount": 0,
+          "failureReasons": [
+            "p95 2777ms exceeds 1200ms",
+            "p99 2777ms exceeds 2000ms"
+          ],
+          "maxLatencyMs": 2777,
+          "method": "GET",
+          "p50LatencyMs": 112,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 2777,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 2777,
+          "path": "/api/v1/opportunities?limit=10",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "fail",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "developer-portfolio",
+          "failureCount": 0,
+          "failureReasons": [
+            "p95 2819ms exceeds 1200ms",
+            "p99 2819ms exceeds 2000ms"
+          ],
+          "maxLatencyMs": 2819,
+          "method": "POST",
+          "p50LatencyMs": 122,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 2819,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 2819,
+          "path": "/api/v1/portfolio/scenario",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "fail",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "chart-symbol",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 1111,
+          "method": "GET",
+          "p50LatencyMs": 180,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 1111,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 1111,
+          "path": "/api/symbol/AMD",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "pass",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "paper-account",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 457,
+          "method": "GET",
+          "p50LatencyMs": 101,
+          "p95BudgetMs": 800,
+          "p95LatencyMs": 457,
+          "p99BudgetMs": 1500,
+          "p99LatencyMs": 457,
+          "path": "/api/paper/account",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "pass",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "paper-positions",
+          "failureCount": 0,
+          "failureReasons": [
+            "p95 1060ms exceeds 800ms"
+          ],
+          "maxLatencyMs": 1060,
+          "method": "GET",
+          "p50LatencyMs": 88,
+          "p95BudgetMs": 800,
+          "p95LatencyMs": 1060,
+          "p99BudgetMs": 1500,
+          "p99LatencyMs": 1060,
+          "path": "/api/paper/positions",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "fail",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        }
+      ],
+      "p95WorstMs": 2819,
+      "p99WorstMs": 2819,
+      "sampleCount": 19657,
+      "sustainedEndpointCount": 6,
+      "sampledEndpointCount": 8,
+      "targetConcurrency": 25
+    },
+    {
+      "durationSeconds": 60,
+      "endpointResults": [
+        {
+          "cacheStatuses": {
+            "system-hit": 8827
+          },
+          "category": "scanner",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 852,
+          "method": "GET",
+          "p50LatencyMs": 167,
+          "p95BudgetMs": 300,
+          "p95LatencyMs": 298,
+          "p99BudgetMs": 600,
+          "p99LatencyMs": 498,
+          "path": "/api/discovery",
+          "requiredTarget": true,
+          "sampleCount": 8827,
+          "status": "pass",
+          "statusCodes": {
+            "200": 8827
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {
+            "fresh-hit": 8388,
+            "stale-hit": 310
+          },
+          "category": "live-intelligence",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 693,
+          "method": "GET",
+          "p50LatencyMs": 122,
+          "p95BudgetMs": 400,
+          "p95LatencyMs": 211,
+          "p99BudgetMs": 800,
+          "p99LatencyMs": 376,
+          "path": "/api/live-intelligence?intervalMs=10000",
+          "requiredTarget": true,
+          "sampleCount": 8698,
+          "status": "pass",
+          "statusCodes": {
+            "200": 8698
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "user-context",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 561,
+          "method": "GET",
+          "p50LatencyMs": 108,
+          "p95BudgetMs": 500,
+          "p95LatencyMs": 190,
+          "p99BudgetMs": 1000,
+          "p99LatencyMs": 440,
+          "path": "/api/auth/me",
+          "requiredTarget": false,
+          "sampleCount": 783,
+          "status": "pass",
+          "statusCodes": {
+            "200": 783
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "user-context",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 570,
+          "method": "GET",
+          "p50LatencyMs": 116,
+          "p95BudgetMs": 500,
+          "p95LatencyMs": 204,
+          "p99BudgetMs": 1000,
+          "p99LatencyMs": 498,
+          "path": "/api/user/workspace-preferences",
+          "requiredTarget": false,
+          "sampleCount": 398,
+          "status": "pass",
+          "statusCodes": {
+            "200": 398
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "chart-workspace",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 839,
+          "method": "GET",
+          "p50LatencyMs": 117,
+          "p95BudgetMs": 500,
+          "p95LatencyMs": 215,
+          "p99BudgetMs": 1000,
+          "p99LatencyMs": 525,
+          "path": "/api/user/chart-workspaces/AMD",
+          "requiredTarget": false,
+          "sampleCount": 406,
+          "status": "pass",
+          "statusCodes": {
+            "200": 406
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "watchlist",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 472,
+          "method": "GET",
+          "p50LatencyMs": 110,
+          "p95BudgetMs": 500,
+          "p95LatencyMs": 194,
+          "p99BudgetMs": 1000,
+          "p99LatencyMs": 353,
+          "path": "/api/user/watchlist",
+          "requiredTarget": false,
+          "sampleCount": 380,
+          "status": "pass",
+          "statusCodes": {
+            "200": 380
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "replay",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 306,
+          "method": "GET",
+          "p50LatencyMs": 285,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 306,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 306,
+          "path": "/api/history/replay?symbol=AMD",
+          "requiredTarget": false,
+          "sampleCount": 3,
+          "status": "pass",
+          "statusCodes": {
+            "200": 3
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "developer-replay",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 485,
+          "method": "GET",
+          "p50LatencyMs": 152,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 485,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 485,
+          "path": "/api/v1/replay?symbol=AMD",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "pass",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "developer-macro",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 642,
+          "method": "GET",
+          "p50LatencyMs": 147,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 642,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 642,
+          "path": "/api/v1/macro",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "pass",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "developer-opportunities",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 417,
+          "method": "GET",
+          "p50LatencyMs": 164,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 417,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 417,
+          "path": "/api/v1/opportunities?limit=10",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "pass",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "developer-portfolio",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 488,
+          "method": "POST",
+          "p50LatencyMs": 308,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 488,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 488,
+          "path": "/api/v1/portfolio/scenario",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "pass",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "chart-symbol",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 760,
+          "method": "GET",
+          "p50LatencyMs": 370,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 760,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 760,
+          "path": "/api/symbol/AMD",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "pass",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "paper-account",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 200,
+          "method": "GET",
+          "p50LatencyMs": 109,
+          "p95BudgetMs": 800,
+          "p95LatencyMs": 200,
+          "p99BudgetMs": 1500,
+          "p99LatencyMs": 200,
+          "path": "/api/paper/account",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "pass",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "paper-positions",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 175,
+          "method": "GET",
+          "p50LatencyMs": 91,
+          "p95BudgetMs": 800,
+          "p95LatencyMs": 175,
+          "p99BudgetMs": 1500,
+          "p99LatencyMs": 175,
+          "path": "/api/paper/positions",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "pass",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        }
+      ],
+      "p95WorstMs": 760,
+      "p99WorstMs": 760,
+      "sampleCount": 19579,
+      "sustainedEndpointCount": 6,
+      "sampledEndpointCount": 8,
+      "targetConcurrency": 50
+    },
+    {
+      "durationSeconds": 60,
+      "endpointResults": [
+        {
+          "cacheStatuses": {
+            "system-hit": 8031,
+            "stale-hit": 5
+          },
+          "category": "scanner",
+          "failureCount": 0,
+          "failureReasons": [
+            "p95 718ms exceeds 300ms",
+            "p99 1048ms exceeds 600ms"
+          ],
+          "maxLatencyMs": 1431,
+          "method": "GET",
+          "p50LatencyMs": 428,
+          "p95BudgetMs": 300,
+          "p95LatencyMs": 718,
+          "p99BudgetMs": 600,
+          "p99LatencyMs": 1048,
+          "path": "/api/discovery",
+          "requiredTarget": true,
+          "sampleCount": 8036,
+          "status": "fail",
+          "statusCodes": {
+            "200": 8036
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {
+            "fresh-hit": 7770,
+            "stale-hit": 279
+          },
+          "category": "live-intelligence",
+          "failureCount": 0,
+          "failureReasons": [
+            "p95 410ms exceeds 400ms"
+          ],
+          "maxLatencyMs": 1142,
+          "method": "GET",
+          "p50LatencyMs": 230,
+          "p95BudgetMs": 400,
+          "p95LatencyMs": 410,
+          "p99BudgetMs": 800,
+          "p99LatencyMs": 670,
+          "path": "/api/live-intelligence?intervalMs=10000",
+          "requiredTarget": true,
+          "sampleCount": 8049,
+          "status": "fail",
+          "statusCodes": {
+            "200": 8049
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "user-context",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 1024,
+          "method": "GET",
+          "p50LatencyMs": 167,
+          "p95BudgetMs": 500,
+          "p95LatencyMs": 313,
+          "p99BudgetMs": 1000,
+          "p99LatencyMs": 691,
+          "path": "/api/auth/me",
+          "requiredTarget": false,
+          "sampleCount": 707,
+          "status": "pass",
+          "statusCodes": {
+            "200": 707
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "user-context",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 996,
+          "method": "GET",
+          "p50LatencyMs": 181,
+          "p95BudgetMs": 500,
+          "p95LatencyMs": 377,
+          "p99BudgetMs": 1000,
+          "p99LatencyMs": 775,
+          "path": "/api/user/workspace-preferences",
+          "requiredTarget": false,
+          "sampleCount": 384,
+          "status": "pass",
+          "statusCodes": {
+            "200": 384
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "chart-workspace",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 1203,
+          "method": "GET",
+          "p50LatencyMs": 173,
+          "p95BudgetMs": 500,
+          "p95LatencyMs": 337,
+          "p99BudgetMs": 1000,
+          "p99LatencyMs": 765,
+          "path": "/api/user/chart-workspaces/AMD",
+          "requiredTarget": false,
+          "sampleCount": 364,
+          "status": "pass",
+          "statusCodes": {
+            "200": 364
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "watchlist",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 948,
+          "method": "GET",
+          "p50LatencyMs": 165,
+          "p95BudgetMs": 500,
+          "p95LatencyMs": 279,
+          "p99BudgetMs": 1000,
+          "p99LatencyMs": 466,
+          "path": "/api/user/watchlist",
+          "requiredTarget": false,
+          "sampleCount": 350,
+          "status": "pass",
+          "statusCodes": {
+            "200": 350
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "replay",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 727,
+          "method": "GET",
+          "p50LatencyMs": 247,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 727,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 727,
+          "path": "/api/history/replay?symbol=AMD",
+          "requiredTarget": false,
+          "sampleCount": 3,
+          "status": "pass",
+          "statusCodes": {
+            "200": 3
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "developer-replay",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 424,
+          "method": "GET",
+          "p50LatencyMs": 246,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 424,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 424,
+          "path": "/api/v1/replay?symbol=AMD",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "pass",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "developer-macro",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 592,
+          "method": "GET",
+          "p50LatencyMs": 179,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 592,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 592,
+          "path": "/api/v1/macro",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "pass",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "developer-opportunities",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 476,
+          "method": "GET",
+          "p50LatencyMs": 179,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 476,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 476,
+          "path": "/api/v1/opportunities?limit=10",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "pass",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "developer-portfolio",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 1091,
+          "method": "POST",
+          "p50LatencyMs": 835,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 1091,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 1091,
+          "path": "/api/v1/portfolio/scenario",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "pass",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "chart-symbol",
+          "failureCount": 0,
+          "failureReasons": [
+            "p95 1770ms exceeds 1200ms"
+          ],
+          "maxLatencyMs": 1770,
+          "method": "GET",
+          "p50LatencyMs": 1128,
+          "p95BudgetMs": 1200,
+          "p95LatencyMs": 1770,
+          "p99BudgetMs": 2000,
+          "p99LatencyMs": 1770,
+          "path": "/api/symbol/AMD",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "fail",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "paper-account",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 287,
+          "method": "GET",
+          "p50LatencyMs": 140,
+          "p95BudgetMs": 800,
+          "p95LatencyMs": 287,
+          "p99BudgetMs": 1500,
+          "p99LatencyMs": 287,
+          "path": "/api/paper/account",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "pass",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        },
+        {
+          "cacheStatuses": {},
+          "category": "paper-positions",
+          "failureCount": 0,
+          "failureReasons": [],
+          "maxLatencyMs": 259,
+          "method": "GET",
+          "p50LatencyMs": 151,
+          "p95BudgetMs": 800,
+          "p95LatencyMs": 259,
+          "p99BudgetMs": 1500,
+          "p99LatencyMs": 259,
+          "path": "/api/paper/positions",
+          "requiredTarget": false,
+          "sampleCount": 12,
+          "status": "pass",
+          "statusCodes": {
+            "200": 12
+          },
+          "successRatePct": 100,
+          "timeoutCount": 0,
+          "timeoutRatePct": 0
+        }
+      ],
+      "p95WorstMs": 1770,
+      "p99WorstMs": 1770,
+      "sampleCount": 17977,
+      "sustainedEndpointCount": 6,
+      "sampledEndpointCount": 8,
+      "targetConcurrency": 100
+    }
+  ],
+  "timeoutMs": 8000
+}
+

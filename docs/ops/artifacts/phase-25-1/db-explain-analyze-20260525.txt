@@ -1,0 +1,68 @@
+Timing is on.
+                                                                                               QUERY PLAN                                                                                                
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=154.15..154.40 rows=100 width=44) (actual time=0.439..0.447 rows=100 loops=1)
+   Buffers: shared hit=78 read=62
+   ->  Sort  (cost=154.15..154.64 rows=196 width=44) (actual time=0.438..0.442 rows=100 loops=1)
+         Sort Key: bucket_start DESC
+         Sort Method: quicksort  Memory: 45kB
+         Buffers: shared hit=78 read=62
+         ->  Seq Scan on request_metric_rollups_minute  (cost=0.00..146.69 rows=196 width=44) (actual time=0.005..0.387 rows=198 loops=1)
+               Filter: ((route = ANY ('{/api/discovery,/api/live-intelligence,/api/v1/opportunities,/api/v1/replay,/api/paper/positions}'::text[])) AND (bucket_start > (now() - '02:00:00'::interval)))
+               Rows Removed by Filter: 221
+               Buffers: shared hit=75 read=62
+ Planning:
+   Buffers: shared hit=205 dirtied=7
+ Planning Time: 0.753 ms
+ Execution Time: 0.471 ms
+(14 rows)
+
+Time: 2.248 ms
+                                                                                  QUERY PLAN                                                                                  
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Sort  (cost=1333.60..1334.57 rows=390 width=51) (actual time=0.200..0.210 rows=390 loops=1)
+   Sort Key: symbol_price_history.ts
+   Sort Method: quicksort  Memory: 55kB
+   Buffers: shared hit=369 read=16
+   ->  Limit  (cost=0.42..1316.81 rows=390 width=51) (actual time=0.026..0.141 rows=390 loops=1)
+         Buffers: shared hit=369 read=16
+         ->  Index Scan using idx_symbol_price_history_symbol_ts on symbol_price_history  (cost=0.42..3419.67 rows=1013 width=51) (actual time=0.025..0.128 rows=390 loops=1)
+               Index Cond: (symbol = 'AMD'::text)
+               Buffers: shared hit=369 read=16
+ Planning:
+   Buffers: shared hit=81 read=5 dirtied=4
+ Planning Time: 0.331 ms
+ Execution Time: 0.240 ms
+(13 rows)
+
+Time: 0.786 ms
+                                                            QUERY PLAN                                                             
+-----------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=2.10..2.10 rows=1 width=268) (actual time=0.038..0.039 rows=0 loops=1)
+   Buffers: shared hit=3 read=2
+   InitPlan 1 (returns $0)
+     ->  Subquery Scan on scoped_account  (cost=1.02..1.03 rows=1 width=16) (actual time=0.014..0.014 rows=1 loops=1)
+           Buffers: shared read=1
+           ->  Limit  (cost=1.02..1.02 rows=1 width=24) (actual time=0.013..0.014 rows=1 loops=1)
+                 Buffers: shared read=1
+                 ->  Sort  (cost=1.02..1.02 rows=1 width=24) (actual time=0.013..0.013 rows=1 loops=1)
+                       Sort Key: paper_accounts.created_at DESC
+                       Sort Method: quicksort  Memory: 25kB
+                       Buffers: shared read=1
+                       ->  Seq Scan on paper_accounts  (cost=0.00..1.01 rows=1 width=24) (actual time=0.005..0.005 rows=2 loops=1)
+                             Buffers: shared read=1
+   ->  Sort  (cost=1.07..1.07 rows=1 width=268) (actual time=0.038..0.038 rows=0 loops=1)
+         Sort Key: (CASE WHEN (p.status = 'OPEN'::text) THEN 0 ELSE 1 END), (COALESCE(p.closed_at, p.opened_at)) DESC
+         Sort Method: quicksort  Memory: 25kB
+         Buffers: shared hit=3 read=2
+         ->  Seq Scan on paper_positions p  (cost=0.00..1.06 rows=1 width=268) (actual time=0.022..0.022 rows=0 loops=1)
+               Filter: (account_id = $0)
+               Rows Removed by Filter: 3
+               Buffers: shared read=2
+ Planning:
+   Buffers: shared hit=168 read=10
+ Planning Time: 0.583 ms
+ Execution Time: 0.064 ms
+(25 rows)
+
+Time: 1.216 ms

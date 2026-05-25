@@ -1,0 +1,6 @@
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+e40d2957953b   market-alpha-frontend                          0.00%     602.2MiB / 31.08GiB   1.89%     10.8GB / 77.3MB   0B / 557kB        43
+f5bfa785e7aa   hdsm-caddy                                     0.00%     547.8MiB / 31.08GiB   1.72%     146GB / 35.1GB    90.3MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   4.12%     2.533GiB / 31.08GiB   8.15%     20.8GB / 624GB    3.32GB / 372GB    6
+17472819aee4   hdsm-app                                       0.00%     107.9MiB / 31.08GiB   0.34%     8.93MB / 13MB     104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.95%     359.2MiB / 31.08GiB   1.13%     7.71MB / 6.49MB   170MB / 32MB      39

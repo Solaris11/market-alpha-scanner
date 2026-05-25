@@ -1,0 +1,14 @@
+                                                                 QUERY PLAN                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------
+ Limit  (cost=0.00..1.19 rows=1 width=89) (actual time=0.006..0.006 rows=0 loops=1)
+   Buffers: shared hit=1
+   ->  Seq Scan on user_sessions  (cost=0.00..1.19 rows=1 width=89) (actual time=0.005..0.005 rows=0 loops=1)
+         Filter: ((session_token_hash = '0000000000000000000000000000000000000000000000000000000000000000'::text) AND (expires_at > now()))
+         Rows Removed by Filter: 11
+         Buffers: shared hit=1
+ Planning:
+   Buffers: shared hit=149
+ Planning Time: 0.540 ms
+ Execution Time: 0.029 ms
+(10 rows)
+

@@ -1,0 +1,346 @@
+2026-05-25T11:30:18+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          27.51%    375.5MiB / 31.08GiB   1.18%     136MB / 1.42MB    0B / 4.1kB        66
+f5bfa785e7aa   hdsm-caddy                                     0.00%     554.3MiB / 31.08GiB   1.74%     207GB / 47.4GB    90.5MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   172.79%   3.176GiB / 31.08GiB   10.22%    21.2GB / 630GB    3.32GB / 387GB    16
+17472819aee4   hdsm-app                                       0.00%     107.8MiB / 31.08GiB   0.34%     8.96MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.45%     359.2MiB / 31.08GiB   1.13%     7.73MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:31:20+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          150.26%   792.8MiB / 31.08GiB   2.49%     560MB / 1.36GB    0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     50.42%    568.3MiB / 31.08GiB   1.79%     208GB / 47.6GB    90.5MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   6.55%     3.154GiB / 31.08GiB   10.15%    21.2GB / 630GB    3.32GB / 387GB    10
+17472819aee4   hdsm-app                                       0.00%     107.9MiB / 31.08GiB   0.34%     8.96MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.36%     359.2MiB / 31.08GiB   1.13%     7.73MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:32:22+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          133.80%   1.315GiB / 31.08GiB   4.23%     966MB / 2.76GB    0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     49.25%    568.9MiB / 31.08GiB   1.79%     210GB / 47.9GB    90.5MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   6.51%     3.154GiB / 31.08GiB   10.15%    21.2GB / 630GB    3.32GB / 388GB    10
+17472819aee4   hdsm-app                                       0.00%     108MiB / 31.08GiB     0.34%     8.96MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.44%     359.2MiB / 31.08GiB   1.13%     7.73MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:33:24+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          132.31%   1.332GiB / 31.08GiB   4.28%     1.37GB / 4.16GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     48.65%    568.9MiB / 31.08GiB   1.79%     211GB / 48.2GB    90.5MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   7.67%     3.167GiB / 31.08GiB   10.19%    21.2GB / 630GB    3.32GB / 388GB    12
+17472819aee4   hdsm-app                                       0.01%     108.1MiB / 31.08GiB   0.34%     8.96MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.42%     359.2MiB / 31.08GiB   1.13%     7.73MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:34:26+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          142.29%   1.333GiB / 31.08GiB   4.29%     1.78GB / 5.56GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     49.19%    568.7MiB / 31.08GiB   1.79%     213GB / 48.5GB    90.5MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   6.68%     3.159GiB / 31.08GiB   10.16%    21.2GB / 630GB    3.32GB / 388GB    12
+17472819aee4   hdsm-app                                       0.00%     107.6MiB / 31.08GiB   0.34%     8.96MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.34%     359.2MiB / 31.08GiB   1.13%     7.73MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:35:29+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          147.24%   1.334GiB / 31.08GiB   4.29%     2.18GB / 6.92GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     50.44%    567.2MiB / 31.08GiB   1.78%     214GB / 48.7GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   8.93%     3.165GiB / 31.08GiB   10.18%    21.2GB / 630GB    3.32GB / 389GB    11
+17472819aee4   hdsm-app                                       0.01%     107.8MiB / 31.08GiB   0.34%     8.96MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.43%     359.2MiB / 31.08GiB   1.13%     7.73MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:36:31+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          148.45%   1.335GiB / 31.08GiB   4.29%     2.59GB / 8.31GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     48.75%    567MiB / 31.08GiB     1.78%     215GB / 49GB      90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   11.99%    3.166GiB / 31.08GiB   10.18%    21.2GB / 630GB    3.32GB / 389GB    11
+17472819aee4   hdsm-app                                       0.01%     107.9MiB / 31.08GiB   0.34%     8.96MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.37%     359.2MiB / 31.08GiB   1.13%     7.73MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:37:33+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          131.51%   1.335GiB / 31.08GiB   4.29%     2.99GB / 9.69GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     48.49%    567.1MiB / 31.08GiB   1.78%     217GB / 49.3GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   6.21%     3.174GiB / 31.08GiB   10.21%    21.2GB / 631GB    3.32GB / 389GB    11
+17472819aee4   hdsm-app                                       0.00%     108MiB / 31.08GiB     0.34%     8.96MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     2.45%     359.2MiB / 31.08GiB   1.13%     7.73MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:38:35+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          144.95%   1.336GiB / 31.08GiB   4.30%     3.39GB / 11.1GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     51.47%    564MiB / 31.08GiB     1.77%     218GB / 49.6GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   6.62%     3.172GiB / 31.08GiB   10.21%    21.2GB / 631GB    3.32GB / 390GB    14
+17472819aee4   hdsm-app                                       0.00%     108.1MiB / 31.08GiB   0.34%     8.96MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.36%     359.2MiB / 31.08GiB   1.13%     7.73MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:39:37+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          143.14%   1.338GiB / 31.08GiB   4.30%     3.79GB / 12.5GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     47.66%    569MiB / 31.08GiB     1.79%     219GB / 49.8GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   9.76%     3.162GiB / 31.08GiB   10.17%    21.3GB / 631GB    3.32GB / 390GB    13
+17472819aee4   hdsm-app                                       0.00%     108.2MiB / 31.08GiB   0.34%     8.96MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.42%     359.2MiB / 31.08GiB   1.13%     7.73MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:40:39+00:00
+CONTAINER ID   NAME                                                             CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+f811fcc0e118   market-alpha-scanner-market-alpha-scanner-job-run-0287a1b375ef   101.51%   118.8MiB / 31.08GiB   0.37%     5.47MB / 72.8kB   0B / 4.1kB        21
+7e0b7559e269   market-alpha-frontend                                            153.42%   1.338GiB / 31.08GiB   4.30%     4.2GB / 13.8GB    0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                                       55.31%    563MiB / 31.08GiB     1.77%     221GB / 50.1GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1                     10.19%    3.168GiB / 31.08GiB   10.19%    21.3GB / 631GB    3.32GB / 391GB    12
+17472819aee4   hdsm-app                                                         0.00%     107.7MiB / 31.08GiB   0.34%     8.96MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                                       0.36%     359.2MiB / 31.08GiB   1.13%     7.73MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:41:41+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          139.41%   1.34GiB / 31.08GiB    4.31%     4.6GB / 15.2GB    0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     51.95%    566MiB / 31.08GiB     1.78%     222GB / 50.4GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   3.98%     3.174GiB / 31.08GiB   10.21%    21.3GB / 631GB    3.32GB / 391GB    11
+17472819aee4   hdsm-app                                       0.00%     107.8MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.43%     359.2MiB / 31.08GiB   1.13%     7.73MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:42:43+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          146.00%   1.375GiB / 31.08GiB   4.42%     5.02GB / 16.6GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     50.50%    567.1MiB / 31.08GiB   1.78%     224GB / 50.7GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   5.09%     3.167GiB / 31.08GiB   10.19%    21.3GB / 631GB    3.32GB / 392GB    11
+17472819aee4   hdsm-app                                       0.00%     107.9MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.39%     359.2MiB / 31.08GiB   1.13%     7.73MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:43:45+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          149.88%   1.368GiB / 31.08GiB   4.40%     5.42GB / 18GB     0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     52.01%    564.3MiB / 31.08GiB   1.77%     225GB / 51GB      90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   7.26%     3.159GiB / 31.08GiB   10.16%    21.3GB / 631GB    3.32GB / 392GB    11
+17472819aee4   hdsm-app                                       0.00%     108MiB / 31.08GiB     0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.38%     359.2MiB / 31.08GiB   1.13%     7.73MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:44:47+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          141.79%   1.37GiB / 31.08GiB    4.41%     5.83GB / 19.4GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     49.57%    565.2MiB / 31.08GiB   1.78%     226GB / 51.2GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   7.87%     3.167GiB / 31.08GiB   10.19%    21.3GB / 631GB    3.32GB / 392GB    11
+17472819aee4   hdsm-app                                       0.00%     108.1MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.42%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:45:49+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          128.48%   1.395GiB / 31.08GiB   4.49%     6.27GB / 20.8GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     31.52%    573.3MiB / 31.08GiB   1.80%     228GB / 51.5GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   5.92%     3.177GiB / 31.08GiB   10.22%    21.3GB / 631GB    3.32GB / 393GB    15
+17472819aee4   hdsm-app                                       0.00%     107.6MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.40%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:46:51+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          159.32%   1.405GiB / 31.08GiB   4.52%     6.68GB / 22.2GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     47.89%    571.7MiB / 31.08GiB   1.80%     229GB / 51.8GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   34.34%    3.174GiB / 31.08GiB   10.21%    21.3GB / 632GB    3.32GB / 393GB    11
+17472819aee4   hdsm-app                                       0.00%     107.7MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.42%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:47:53+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          136.37%   1.402GiB / 31.08GiB   4.51%     7.08GB / 23.6GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     48.39%    569.3MiB / 31.08GiB   1.79%     231GB / 52.1GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   13.72%    3.151GiB / 31.08GiB   10.14%    21.3GB / 632GB    3.32GB / 393GB    11
+17472819aee4   hdsm-app                                       0.00%     107.8MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.41%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:48:55+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          134.27%   1.403GiB / 31.08GiB   4.51%     7.5GB / 25GB      0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     49.79%    568MiB / 31.08GiB     1.78%     232GB / 52.4GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   7.31%     3.168GiB / 31.08GiB   10.19%    21.3GB / 632GB    3.32GB / 394GB    11
+17472819aee4   hdsm-app                                       0.00%     107.9MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.41%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:49:57+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          146.92%   1.404GiB / 31.08GiB   4.52%     7.92GB / 26.4GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     51.09%    570.8MiB / 31.08GiB   1.79%     233GB / 52.7GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   5.99%     3.166GiB / 31.08GiB   10.18%    21.3GB / 632GB    3.32GB / 394GB    10
+17472819aee4   hdsm-app                                       0.00%     108MiB / 31.08GiB     0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.48%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:50:59+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          135.71%   1.403GiB / 31.08GiB   4.52%     8.33GB / 27.8GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     49.56%    571.2MiB / 31.08GiB   1.79%     235GB / 52.9GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   7.42%     3.169GiB / 31.08GiB   10.20%    21.4GB / 632GB    3.32GB / 395GB    11
+17472819aee4   hdsm-app                                       14.35%    108.2MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.42%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:52:01+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          137.66%   1.406GiB / 31.08GiB   4.52%     8.75GB / 29.2GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     49.98%    570.6MiB / 31.08GiB   1.79%     236GB / 53.2GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   4.49%     3.171GiB / 31.08GiB   10.20%    21.4GB / 632GB    3.32GB / 395GB    12
+17472819aee4   hdsm-app                                       0.00%     108.5MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.39%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:53:03+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          137.03%   1.406GiB / 31.08GiB   4.52%     9.18GB / 30.6GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     50.46%    567.7MiB / 31.08GiB   1.78%     237GB / 53.5GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   6.57%     3.16GiB / 31.08GiB    10.17%    21.4GB / 632GB    3.32GB / 395GB    11
+17472819aee4   hdsm-app                                       0.00%     108.6MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.46%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:54:05+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          133.84%   1.406GiB / 31.08GiB   4.52%     9.6GB / 32GB      0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     47.10%    573.4MiB / 31.08GiB   1.80%     239GB / 53.8GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   3.59%     3.168GiB / 31.08GiB   10.19%    21.4GB / 632GB    3.32GB / 396GB    11
+17472819aee4   hdsm-app                                       0.01%     108.7MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.40%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:55:08+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          130.67%   1.411GiB / 31.08GiB   4.54%     10GB / 33.4GB     0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     48.58%    568.6MiB / 31.08GiB   1.79%     240GB / 54.1GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   6.52%     3.173GiB / 31.08GiB   10.21%    21.4GB / 632GB    3.32GB / 396GB    13
+17472819aee4   hdsm-app                                       0.00%     108.9MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.45%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:56:10+00:00
+CONTAINER ID   NAME                                                             CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+23b86ff9dbfb   market-alpha-scanner-market-alpha-scanner-job-run-0ecc0edbd8a7   59.96%    858.2MiB / 31.08GiB   2.70%     8.31MB / 12.6MB   0B / 11.3MB       21
+7e0b7559e269   market-alpha-frontend                                            154.82%   1.407GiB / 31.08GiB   4.53%     10.4GB / 34.8GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                                       56.62%    568MiB / 31.08GiB     1.78%     242GB / 54.4GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1                     98.97%    3.183GiB / 31.08GiB   10.24%    21.4GB / 633GB    3.32GB / 396GB    13
+17472819aee4   hdsm-app                                                         0.00%     109MiB / 31.08GiB     0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                                       0.36%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:57:12+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          135.06%   1.411GiB / 31.08GiB   4.54%     10.9GB / 36.2GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     48.63%    569.6MiB / 31.08GiB   1.79%     243GB / 54.6GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   3.71%     3.163GiB / 31.08GiB   10.18%    21.4GB / 633GB    3.32GB / 397GB    12
+17472819aee4   hdsm-app                                       0.01%     108.3MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.42%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:58:14+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          139.98%   1.41GiB / 31.08GiB    4.54%     11.3GB / 37.6GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     51.57%    569.3MiB / 31.08GiB   1.79%     245GB / 54.9GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   5.88%     3.163GiB / 31.08GiB   10.18%    21.4GB / 633GB    3.32GB / 397GB    12
+17472819aee4   hdsm-app                                       0.00%     108.3MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.39%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.51MB   170MB / 32MB      39
+2026-05-25T11:59:15+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          138.50%   1.414GiB / 31.08GiB   4.55%     11.7GB / 39GB     0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     49.44%    574.3MiB / 31.08GiB   1.80%     246GB / 55.2GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   9.65%     3.165GiB / 31.08GiB   10.18%    21.4GB / 633GB    3.32GB / 398GB    12
+17472819aee4   hdsm-app                                       0.01%     108.3MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.41%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.51MB   170MB / 32MB      39
+2026-05-25T12:00:17+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          137.92%   1.43GiB / 31.08GiB    4.60%     12.1GB / 40.4GB   0B / 8.19kB       74
+f5bfa785e7aa   hdsm-caddy                                     25.67%    570.4MiB / 31.08GiB   1.79%     247GB / 55.5GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   37.09%    3.19GiB / 31.08GiB    10.26%    21.4GB / 633GB    3.32GB / 398GB    18
+17472819aee4   hdsm-app                                       0.00%     108.3MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.35%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:01:20+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          156.13%   1.424GiB / 31.08GiB   4.58%     12.6GB / 41.9GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     54.46%    572.9MiB / 31.08GiB   1.80%     249GB / 55.8GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   60.03%    3.185GiB / 31.08GiB   10.25%    21.4GB / 633GB    3.32GB / 399GB    15
+17472819aee4   hdsm-app                                       0.00%     108.3MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.34%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:02:22+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          156.60%   1.436GiB / 31.08GiB   4.62%     13GB / 43.3GB     0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     52.98%    581.1MiB / 31.08GiB   1.83%     250GB / 56.1GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   50.45%    3.173GiB / 31.08GiB   10.21%    21.4GB / 633GB    3.32GB / 399GB    14
+17472819aee4   hdsm-app                                       0.00%     108.3MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.34%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:03:24+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          69.86%    1.439GiB / 31.08GiB   4.63%     13.4GB / 44.6GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     19.75%    568.8MiB / 31.08GiB   1.79%     251GB / 56.3GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   1.76%     3.229GiB / 31.08GiB   10.39%    21.5GB / 633GB    3.32GB / 399GB    11
+17472819aee4   hdsm-app                                       0.00%     107.6MiB / 31.08GiB   0.34%     8.97MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     2.90%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:04:26+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          67.02%    1.436GiB / 31.08GiB   4.62%     13.6GB / 45GB     0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     20.98%    568.8MiB / 31.08GiB   1.79%     252GB / 56.4GB    90.6MB / 6.37MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   2.18%     3.236GiB / 31.08GiB   10.41%    21.5GB / 633GB    3.32GB / 400GB    10
+17472819aee4   hdsm-app                                       0.00%     107.7MiB / 31.08GiB   0.34%     8.98MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.43%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:05:28+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          88.83%    1.438GiB / 31.08GiB   4.63%     13.8GB / 45.4GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     27.16%    565.8MiB / 31.08GiB   1.78%     252GB / 56.5GB    90.6MB / 6.39MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   7.28%     3.242GiB / 31.08GiB   10.43%    21.5GB / 633GB    3.32GB / 400GB    9
+17472819aee4   hdsm-app                                       0.00%     107.9MiB / 31.08GiB   0.34%     8.98MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.51%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:06:30+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          138.44%   1.443GiB / 31.08GiB   4.64%     14GB / 45.9GB     0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     48.92%    569MiB / 31.08GiB     1.79%     253GB / 56.6GB    90.6MB / 6.39MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   10.27%    3.236GiB / 31.08GiB   10.41%    21.5GB / 634GB    3.32GB / 400GB    10
+17472819aee4   hdsm-app                                       0.01%     108MiB / 31.08GiB     0.34%     8.98MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.41%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:07:32+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          144.21%   1.635GiB / 31.08GiB   5.26%     14.4GB / 47.4GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     50.17%    571.5MiB / 31.08GiB   1.80%     254GB / 56.9GB    90.6MB / 6.39MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   4.12%     3.238GiB / 31.08GiB   10.42%    21.5GB / 634GB    3.32GB / 400GB    11
+17472819aee4   hdsm-app                                       0.00%     108.1MiB / 31.08GiB   0.34%     8.98MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.38%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:08:34+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          141.52%   1.632GiB / 31.08GiB   5.25%     14.9GB / 48.8GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     49.48%    576MiB / 31.08GiB     1.81%     256GB / 57.2GB    90.6MB / 6.39MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   6.20%     3.238GiB / 31.08GiB   10.42%    21.5GB / 634GB    3.32GB / 401GB    11
+17472819aee4   hdsm-app                                       8.02%     126.8MiB / 31.08GiB   0.40%     8.98MB / 13.1MB   104MB / 5.26MB    18
+7cc4898ad086   hdsm-mysql                                     0.41%     359.2MiB / 31.08GiB   1.13%     7.74MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:09:36+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          146.28%   1.638GiB / 31.08GiB   5.27%     15.3GB / 50.2GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     50.94%    571.1MiB / 31.08GiB   1.79%     257GB / 57.5GB    90.6MB / 6.39MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   6.82%     3.243GiB / 31.08GiB   10.43%    21.5GB / 634GB    3.32GB / 401GB    13
+17472819aee4   hdsm-app                                       0.00%     107.7MiB / 31.08GiB   0.34%     8.98MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.42%     359.2MiB / 31.08GiB   1.13%     7.75MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:10:38+00:00
+CONTAINER ID   NAME                                                             CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+a5f39bf7b232   market-alpha-scanner-market-alpha-scanner-job-run-e760e0134b51   2.53%     115.8MiB / 31.08GiB   0.36%     5.08MB / 66.8kB   0B / 4.1kB        21
+7e0b7559e269   market-alpha-frontend                                            146.51%   1.638GiB / 31.08GiB   5.27%     15.7GB / 51.6GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                                       51.68%    569.2MiB / 31.08GiB   1.79%     258GB / 57.7GB    90.6MB / 6.39MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1                     6.89%     3.245GiB / 31.08GiB   10.44%    21.5GB / 634GB    3.32GB / 402GB    14
+17472819aee4   hdsm-app                                                         0.00%     107.9MiB / 31.08GiB   0.34%     8.98MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                                       0.38%     359.2MiB / 31.08GiB   1.13%     7.75MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:11:40+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          147.28%   1.64GiB / 31.08GiB    5.27%     16.1GB / 53GB     0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     52.97%    572.8MiB / 31.08GiB   1.80%     260GB / 58GB      90.6MB / 6.39MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   4.80%     3.243GiB / 31.08GiB   10.44%    21.5GB / 634GB    3.32GB / 402GB    13
+17472819aee4   hdsm-app                                       0.00%     108MiB / 31.08GiB     0.34%     8.98MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     3.40%     359.2MiB / 31.08GiB   1.13%     7.75MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:12:42+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          148.81%   1.64GiB / 31.08GiB    5.28%     16.6GB / 54.5GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     50.73%    573.7MiB / 31.08GiB   1.80%     261GB / 58.3GB    90.6MB / 6.39MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   5.33%     3.246GiB / 31.08GiB   10.44%    21.5GB / 634GB    3.32GB / 403GB    14
+17472819aee4   hdsm-app                                       0.01%     108.1MiB / 31.08GiB   0.34%     8.98MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.44%     359.2MiB / 31.08GiB   1.13%     7.75MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:13:44+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          143.29%   1.639GiB / 31.08GiB   5.27%     17GB / 55.9GB     0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     47.95%    569.8MiB / 31.08GiB   1.79%     263GB / 58.6GB    90.6MB / 6.39MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   5.33%     3.263GiB / 31.08GiB   10.50%    21.5GB / 634GB    3.32GB / 403GB    14
+17472819aee4   hdsm-app                                       0.00%     108.2MiB / 31.08GiB   0.34%     8.98MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.46%     359.2MiB / 31.08GiB   1.13%     7.75MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:14:46+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          144.32%   1.639GiB / 31.08GiB   5.27%     17.4GB / 57.3GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     36.23%    576MiB / 31.08GiB     1.81%     264GB / 58.9GB    90.6MB / 6.39MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   32.77%    3.242GiB / 31.08GiB   10.43%    21.5GB / 634GB    3.32GB / 404GB    12
+17472819aee4   hdsm-app                                       0.00%     108.5MiB / 31.08GiB   0.34%     8.98MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.33%     359.2MiB / 31.08GiB   1.13%     7.75MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:15:48+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          0.03%     306.3MiB / 31.08GiB   0.96%     17.7GB / 58.1GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     0.00%     572.1MiB / 31.08GiB   1.80%     265GB / 59GB      90.6MB / 6.39MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   0.38%     3.219GiB / 31.08GiB   10.36%    21.5GB / 635GB    3.32GB / 404GB    6
+17472819aee4   hdsm-app                                       0.01%     108.6MiB / 31.08GiB   0.34%     8.98MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     1.03%     359.2MiB / 31.08GiB   1.13%     7.75MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:16:50+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          13.94%    301.4MiB / 31.08GiB   0.95%     17.8GB / 58.1GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     0.00%     567.1MiB / 31.08GiB   1.78%     265GB / 59GB      90.6MB / 6.39MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   0.91%     3.219GiB / 31.08GiB   10.36%    21.5GB / 635GB    3.32GB / 404GB    6
+17472819aee4   hdsm-app                                       0.01%     108.7MiB / 31.08GiB   0.34%     8.98MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.92%     359.2MiB / 31.08GiB   1.13%     7.75MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:17:52+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          0.04%     383.2MiB / 31.08GiB   1.20%     17.9GB / 58.1GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     0.00%     560.6MiB / 31.08GiB   1.76%     265GB / 59GB      90.6MB / 6.39MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   0.08%     3.219GiB / 31.08GiB   10.36%    21.5GB / 635GB    3.32GB / 404GB    6
+17472819aee4   hdsm-app                                       0.01%     108.8MiB / 31.08GiB   0.34%     8.98MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.92%     359.2MiB / 31.08GiB   1.13%     7.75MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:18:55+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          6.85%     468.5MiB / 31.08GiB   1.47%     18GB / 58.1GB     0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     0.00%     565.6MiB / 31.08GiB   1.78%     265GB / 59GB      90.6MB / 6.39MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   1.92%     3.223GiB / 31.08GiB   10.37%    21.5GB / 635GB    3.32GB / 404GB    8
+17472819aee4   hdsm-app                                       0.00%     108.9MiB / 31.08GiB   0.34%     8.98MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     0.93%     359.2MiB / 31.08GiB   1.13%     7.75MB / 6.52MB   170MB / 32MB      39
+2026-05-25T12:19:57+00:00
+CONTAINER ID   NAME                                           CPU %     MEM USAGE / LIMIT     MEM %     NET I/O           BLOCK I/O         PIDS
+7e0b7559e269   market-alpha-frontend                          0.03%     473.2MiB / 31.08GiB   1.49%     18.1GB / 58.1GB   0B / 8.19kB       66
+f5bfa785e7aa   hdsm-caddy                                     0.00%     572MiB / 31.08GiB     1.80%     265GB / 59.1GB    90.6MB / 6.39MB   38094
+15ef2c6029e0   market-alpha-scanner-market-alpha-postgres-1   0.14%     3.223GiB / 31.08GiB   10.37%    21.5GB / 635GB    3.32GB / 404GB    8
+17472819aee4   hdsm-app                                       0.01%     109MiB / 31.08GiB     0.34%     8.98MB / 13.1MB   104MB / 5.26MB    14
+7cc4898ad086   hdsm-mysql                                     3.33%     359.2MiB / 31.08GiB   1.13%     7.75MB / 6.52MB   170MB / 32MB      39
