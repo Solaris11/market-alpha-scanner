@@ -84,14 +84,14 @@ function discoveryJsonResponse(input: {
   entitlementJson: string;
   performanceJson: string;
   serializedSystem: string;
-}): Response {
+}): NextResponse {
   const cacheEntry = readDiscoveryBodyCache(input);
   const headers = new Headers({
     "Cache-Control": "no-store",
     "Content-Type": "application/json",
   });
   headers.set("Content-Length", String(cacheEntry.bodyLength));
-  return new Response(cacheEntry.bodyBuffer, {
+  return new NextResponse(cacheEntry.bodyBuffer, {
     headers,
     status: 200,
   });
@@ -129,13 +129,13 @@ function trimDiscoveryBodyCache(): void {
   }
 }
 
-function withDiscoveryPerformanceHeaders(response: Response, startedAt: number, cacheStatus: DiscoveryCacheStatus): Response {
+function withDiscoveryPerformanceHeaders(response: NextResponse, startedAt: number, cacheStatus: DiscoveryCacheStatus): NextResponse {
   const latencyMs = Date.now() - startedAt;
   const snapshot = recordDiscoveryApiTiming({ cacheStatus, latencyMs, statusCode: response.status });
   return applyDiscoveryPerformanceHeaders(response, latencyMs, cacheStatus, snapshot);
 }
 
-function applyDiscoveryPerformanceHeaders(response: Response, latencyMs: number, cacheStatus: DiscoveryCacheStatus, snapshot: DiscoveryPerformanceSnapshot): Response {
+function applyDiscoveryPerformanceHeaders(response: NextResponse, latencyMs: number, cacheStatus: DiscoveryCacheStatus, snapshot: DiscoveryPerformanceSnapshot): NextResponse {
   response.headers.set("Cache-Control", "no-store");
   response.headers.set("Server-Timing", `discovery;dur=${latencyMs};desc="${cacheStatus}"`);
   response.headers.set("X-TradeVeto-Discovery-Cache", cacheStatus);
@@ -168,7 +168,7 @@ function providerOutageSimulationFromRequest(request: Request): ProviderOutageSi
   };
 }
 
-function applyProviderOutageSimulationHeaders(response: Response, simulation: ProviderOutageSimulation): Response {
+function applyProviderOutageSimulationHeaders(response: NextResponse, simulation: ProviderOutageSimulation): NextResponse {
   if (!simulation.enabled) return response;
   response.headers.set("X-TradeVeto-Provider-Outage-Simulation", "active");
   response.headers.set("X-TradeVeto-Provider-State", "degraded-fallback");
