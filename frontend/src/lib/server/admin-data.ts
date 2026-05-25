@@ -760,28 +760,28 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
     dbQuery<RequestMetricsRow>(
       `
         SELECT
-          count(*) AS requests_last_hour,
-          count(*) FILTER (WHERE status_code >= 400 AND status_code < 500) AS recent_4xx,
-          count(*) FILTER (WHERE status_code >= 500) AS recent_5xx,
-          percentile_cont(0.50) WITHIN GROUP (ORDER BY latency_ms) AS p50_latency_ms,
-          percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms,
-          percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms) AS p99_latency_ms
-        FROM request_metrics
-        WHERE created_at > now() - ${window.intervalSql}
+          COALESCE(sum(request_count), 0) AS requests_last_hour,
+          COALESCE(sum(request_count) FILTER (WHERE status_bucket = '4xx'), 0) AS recent_4xx,
+          COALESCE(sum(request_count) FILTER (WHERE status_bucket = '5xx'), 0) AS recent_5xx,
+          max(p50_latency_ms) AS p50_latency_ms,
+          max(p95_latency_ms) AS p95_latency_ms,
+          max(p99_latency_ms) AS p99_latency_ms
+        FROM request_metric_rollups_minute
+        WHERE bucket_start > now() - ${window.intervalSql}
       `,
     ).catch(() => ({ rows: [] as RequestMetricsRow[] })),
     dbQuery<RequestSeriesRow>(
       `
         SELECT
-          date_bin(${window.bucketSql}, created_at, TIMESTAMPTZ '2000-01-01')::text AS bucket,
-          count(*) AS requests,
-          count(*) FILTER (WHERE status_code >= 400 AND status_code < 500) AS four_xx,
-          count(*) FILTER (WHERE status_code >= 500) AS five_xx,
-          percentile_cont(0.50) WITHIN GROUP (ORDER BY latency_ms) AS p50_latency_ms,
-          percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms,
-          percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms) AS p99_latency_ms
-        FROM request_metrics
-        WHERE created_at > now() - ${window.intervalSql}
+          date_bin(${window.bucketSql}, bucket_start, TIMESTAMPTZ '2000-01-01')::text AS bucket,
+          COALESCE(sum(request_count), 0) AS requests,
+          COALESCE(sum(request_count) FILTER (WHERE status_bucket = '4xx'), 0) AS four_xx,
+          COALESCE(sum(request_count) FILTER (WHERE status_bucket = '5xx'), 0) AS five_xx,
+          max(p50_latency_ms) AS p50_latency_ms,
+          max(p95_latency_ms) AS p95_latency_ms,
+          max(p99_latency_ms) AS p99_latency_ms
+        FROM request_metric_rollups_minute
+        WHERE bucket_start > now() - ${window.intervalSql}
         GROUP BY bucket
         ORDER BY bucket ASC
       `,
@@ -792,29 +792,22 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
           SELECT
             route,
             method,
-            count(*) AS count,
-            count(*) FILTER (WHERE status_code >= 400) AS errors,
-            count(*) FILTER (WHERE status_code >= 400 AND status_code < 500) AS four_xx,
-            count(*) FILTER (WHERE status_code >= 500) AS five_xx,
-            max(latency_ms) AS max_latency_ms,
-            percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms,
-            percentile_cont(0.99) WITHIN GROUP (ORDER BY latency_ms) AS p99_latency_ms
-          FROM request_metrics
-          WHERE created_at > now() - ${window.intervalSql}
+            COALESCE(sum(request_count), 0) AS count,
+            COALESCE(sum(error_count), 0) AS errors,
+            COALESCE(sum(request_count) FILTER (WHERE status_bucket = '4xx'), 0) AS four_xx,
+            COALESCE(sum(request_count) FILTER (WHERE status_bucket = '5xx'), 0) AS five_xx,
+            max(max_latency_ms) AS max_latency_ms,
+            max(p95_latency_ms) AS p95_latency_ms,
+            max(p99_latency_ms) AS p99_latency_ms
+          FROM request_metric_rollups_minute
+          WHERE bucket_start > now() - ${window.intervalSql}
           GROUP BY route, method
-        ),
-        slowest AS (
-          SELECT route, method, status_code, latency_ms
-          FROM request_metrics
-          WHERE created_at > now() - ${window.intervalSql}
-          ORDER BY latency_ms DESC
-          LIMIT 40
         )
         SELECT
           g.route,
           g.method,
-          COALESCE(s.status_code, 0) AS status_code,
-          COALESCE(s.latency_ms, g.max_latency_ms) AS latency_ms,
+          0 AS status_code,
+          g.max_latency_ms AS latency_ms,
           g.count,
           g.errors,
           g.four_xx,
@@ -836,15 +829,15 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
               )
               FROM (
                 SELECT
-                  date_bin(${window.bucketSql}, created_at, TIMESTAMPTZ '2000-01-01')::text AS bucket,
-                  count(*) AS requests,
-                  count(*) FILTER (WHERE status_code >= 400) AS errors,
-                  percentile_cont(0.50) WITHIN GROUP (ORDER BY latency_ms) AS p50_latency_ms,
-                  percentile_cont(0.95) WITHIN GROUP (ORDER BY latency_ms) AS p95_latency_ms
-                FROM request_metrics
+                  date_bin(${window.bucketSql}, bucket_start, TIMESTAMPTZ '2000-01-01')::text AS bucket,
+                  COALESCE(sum(request_count), 0) AS requests,
+                  COALESCE(sum(error_count), 0) AS errors,
+                  max(p50_latency_ms) AS p50_latency_ms,
+                  max(p95_latency_ms) AS p95_latency_ms
+                FROM request_metric_rollups_minute
                 WHERE route = g.route
                   AND method = g.method
-                  AND created_at > now() - ${window.intervalSql}
+                  AND bucket_start > now() - ${window.intervalSql}
                 GROUP BY bucket
                 ORDER BY bucket ASC
               ) series
@@ -855,11 +848,13 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
             (
               SELECT jsonb_agg(jsonb_build_object('status_code', status_code, 'count', count) ORDER BY status_code)
               FROM (
-                SELECT status_code, count(*) AS count
-                FROM request_metrics
+                SELECT
+                  CASE status_bucket WHEN '5xx' THEN 500 WHEN '4xx' THEN 400 WHEN '3xx' THEN 300 ELSE 200 END AS status_code,
+                  sum(request_count) AS count
+                FROM request_metric_rollups_minute
                 WHERE route = g.route
                   AND method = g.method
-                  AND created_at > now() - ${window.intervalSql}
+                  AND bucket_start > now() - ${window.intervalSql}
                 GROUP BY status_code
                 ORDER BY status_code
               ) statuses
@@ -868,28 +863,23 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
           ) AS status_counts,
           COALESCE(
             (
-              SELECT jsonb_agg(jsonb_build_object('status_code', rm.status_code, 'created_at', rm.created_at::text) ORDER BY rm.created_at DESC)
+              SELECT jsonb_agg(jsonb_build_object('status_code', status_code, 'created_at', bucket_start::text) ORDER BY bucket_start DESC)
               FROM (
-                SELECT status_code, created_at
-                FROM request_metrics
+                SELECT
+                  bucket_start,
+                  CASE status_bucket WHEN '5xx' THEN 500 WHEN '4xx' THEN 400 ELSE 0 END AS status_code
+                FROM request_metric_rollups_minute
                 WHERE route = g.route
                   AND method = g.method
-                  AND status_code >= 400
-                  AND created_at > now() - ${window.intervalSql}
-                ORDER BY created_at DESC
+                  AND status_bucket IN ('4xx', '5xx')
+                  AND bucket_start > now() - ${window.intervalSql}
+                ORDER BY bucket_start DESC
                 LIMIT 5
               ) rm
             ),
             '[]'::jsonb
           ) AS recent_errors
         FROM grouped g
-        LEFT JOIN LATERAL (
-          SELECT status_code, latency_ms
-          FROM slowest s
-          WHERE s.route = g.route AND s.method = g.method
-          ORDER BY s.latency_ms DESC
-          LIMIT 1
-        ) s ON true
         ORDER BY g.max_latency_ms DESC
         LIMIT 10
       `,

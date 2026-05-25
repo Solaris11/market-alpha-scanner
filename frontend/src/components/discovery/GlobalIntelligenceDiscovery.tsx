@@ -64,6 +64,15 @@ export function GlobalIntelligenceDiscovery() {
         }
         setSystem(payload.system);
         loadedRef.current = Boolean(payload.ok);
+        if (payload.ok && payload.system.symbols.length < payload.system.universeCount) {
+          void fetch("/api/discovery?packet=full", { cache: "no-store", signal })
+            .then(async (fullResponse) => {
+              const fullPayload = await fullResponse.json().catch(() => null) as DiscoveryApiResponse | null;
+              if (signal?.aborted || !fullPayload?.system || !fullPayload.ok) return;
+              setSystem(fullPayload.system);
+            })
+            .catch(() => undefined);
+        }
       })
       .catch((reason: unknown) => {
         const timedOut = timeoutAbortRef.current;

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { entitlementSummary, getEntitlement, hasPremiumAccess, legalNotAcceptedResponse, requiresLegalAcceptance } from "@/lib/server/entitlements";
-import { loadIntelligenceDiscoverySystemWithMeta } from "@/lib/server/discovery-intelligence";
+import { loadIntelligenceDiscoverySystemWithMeta, type DiscoveryPacketMode } from "@/lib/server/discovery-intelligence";
 import { withRequestMetrics } from "@/lib/server/monitoring";
 import { buildLimitedIntelligenceDiscoverySystem } from "@/lib/trading/intelligence-discovery";
 import { recordDiscoveryApiTiming, type DiscoveryCacheStatus, type DiscoveryPerformanceSnapshot } from "@/lib/discovery-performance";
@@ -55,7 +55,8 @@ export async function GET(request: Request) {
       return withDiscoveryPerformanceHeaders(response, startedAt, "limited");
     }
 
-    const { meta, serializedSystem } = await loadIntelligenceDiscoverySystemWithMeta(entitlement.user?.id ?? null);
+    const packetMode = discoveryPacketModeFromRequest(request);
+    const { meta, serializedSystem } = await loadIntelligenceDiscoverySystemWithMeta(entitlement.user?.id ?? null, { packetMode });
     const latencyMs = Date.now() - startedAt;
     const performance = recordDiscoveryApiTiming({ cacheStatus: meta.cacheStatus, latencyMs, statusCode: 200 });
     const response = outageSimulation.enabled
@@ -68,15 +69,22 @@ export async function GET(request: Request) {
         system: JSON.parse(serializedSystem) as unknown,
       }, { headers: { "Cache-Control": "no-store" } })
       : discoveryJsonResponse({
-        cacheKey: entitlement.user?.id ?? "anonymous",
+        cacheKey: `${entitlement.user?.id ?? "anonymous"}:${packetMode}`,
         entitlementJson: JSON.stringify(entitlementSummary(entitlement)),
         performanceJson: JSON.stringify(performance),
         serializedSystem,
       });
     response.headers.set("X-TradeVeto-Discovery-Build-Ms", String(meta.durationMs));
     response.headers.set("X-TradeVeto-Discovery-Base-Cache", meta.baseCacheStatus);
+    response.headers.set("X-TradeVeto-Discovery-Packet", packetMode);
     return applyProviderOutageSimulationHeaders(applyDiscoveryPerformanceHeaders(response, latencyMs, meta.cacheStatus, performance), outageSimulation);
   });
+}
+
+function discoveryPacketModeFromRequest(request: Request): DiscoveryPacketMode {
+  const url = new URL(request.url);
+  const raw = (url.searchParams.get("packet") ?? url.searchParams.get("scope") ?? "").trim().toLowerCase();
+  return raw === "full" || raw === "full-universe" ? "full" : "initial";
 }
 
 function discoveryJsonResponse(input: {

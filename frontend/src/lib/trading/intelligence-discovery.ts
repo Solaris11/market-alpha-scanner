@@ -194,6 +194,7 @@ export type BuildIntelligenceDiscoveryInput = {
 };
 
 const TIMEFRAMES: DiscoveryTimeframe[] = ["1D", "1W", "1M", "3M", "6M", "1Y", "5Y"];
+const DEFAULT_INITIAL_DISCOVERY_SYMBOL_LIMIT = 320;
 
 export function buildLimitedIntelligenceDiscoverySystem(message = "Discovery is limited until premium scanner data is available."): IntelligenceDiscoverySystem {
   return {
@@ -265,6 +266,19 @@ export function buildIntelligenceDiscoverySystem(input: BuildIntelligenceDiscove
     symbols,
     universeCount,
     watchlistCount: symbols.filter((symbol) => symbol.watchlisted).length,
+  };
+}
+
+export function compactIntelligenceDiscoverySystem(system: IntelligenceDiscoverySystem, symbolLimit = DEFAULT_INITIAL_DISCOVERY_SYMBOL_LIMIT): IntelligenceDiscoverySystem {
+  if (system.limited || system.symbols.length <= symbolLimit) return system;
+  const requestedLimit = Number.isFinite(symbolLimit)
+    ? Math.trunc(symbolLimit)
+    : DEFAULT_INITIAL_DISCOVERY_SYMBOL_LIMIT;
+  const boundedLimit = Math.max(1, Math.min(system.symbols.length, requestedLimit));
+  return {
+    ...system,
+    symbols: system.symbols.slice(0, boundedLimit),
+    summary: `Initial discovery packet loaded ${formatHydrationSafeInteger(boundedLimit)} of ${formatHydrationSafeInteger(system.universeCount)} validated symbols. Full-universe rows hydrate progressively when the workspace is open.`,
   };
 }
 

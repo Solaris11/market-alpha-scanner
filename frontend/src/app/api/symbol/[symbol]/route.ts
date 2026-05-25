@@ -28,8 +28,14 @@ export async function GET(request: Request, context: { params: Promise<{ symbol:
       });
     }
 
-    const [rawDetail, scanSafety] = await Promise.all([getSymbolDetail(symbol), getCurrentScanSafety()]);
+    const [rawDetail, scanSafety] = await Promise.all([getSymbolDetail(symbol, symbolPeriodFromRequest(request)), getCurrentScanSafety()]);
     const detail = applyStaleDataSafetyToSymbolDetail(rawDetail, scanSafety);
     return NextResponse.json({ ...detail, scanSafety, limited: false, entitlement: entitlementSummary(entitlement) });
   });
+}
+
+function symbolPeriodFromRequest(request: Request): string {
+  const raw = new URL(request.url).searchParams.get("period")?.trim().toLowerCase();
+  if (raw === "all" || raw === "2y" || raw === "1y" || raw === "6m" || raw === "3m" || raw === "1m") return raw;
+  return "1y";
 }

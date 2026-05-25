@@ -148,13 +148,14 @@ async function settleWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Pro
 
 function packetForOptions(system: LiveIntelligenceSystem, options: LiveIntelligenceLoadOptions): LiveIntelligenceSystem {
   const refreshIntervalMs = boundedRefreshInterval(options.refreshIntervalMs);
+  const streamMode = options.streamMode ?? "snapshot";
   return {
     ...system,
-    generatedAt: new Date().toISOString(),
+    generatedAt: streamMode === "sse" ? new Date().toISOString() : system.generatedAt,
     latencyLabel: latencyLabel(refreshIntervalMs, system.status),
     refreshIntervalMs,
     sequence: Math.max(0, Math.trunc(options.sequence ?? system.sequence)),
-    streamMode: options.streamMode ?? "snapshot",
+    streamMode,
   };
 }
 

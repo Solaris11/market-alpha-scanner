@@ -1656,14 +1656,14 @@ export async function getMarketStructure() {
   return readJson(path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "analysis", "market_structure.json"));
 }
 
-export async function getSymbolDetail(symbol: string): Promise<SymbolDetail> {
+export async function getSymbolDetail(symbol: string, period = "all"): Promise<SymbolDetail> {
   const cleaned = symbol.trim().toUpperCase();
   const ranking = await getFullRanking();
   const row = ranking.find((item) => item.symbol === cleaned) ?? null;
   const dbSummary = await getDbSymbolSummary(cleaned);
   const symbolDir = path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "symbols", symbolSlug(cleaned));
   const summary = dbSummary ?? (allowScannerCsvFallback(`symbol summary DB read unavailable for ${cleaned}`) ? await readJson(path.join(/*turbopackIgnore: true*/ symbolDir, "summary.json")) : null);
-  const history = await getSymbolPriceHistory(cleaned, "all");
+  const history = await getSymbolPriceHistory(cleaned, period);
 
   if (row && summary) {
     row.company_name = displayName({ ...summary, ...row });
@@ -1694,14 +1694,27 @@ export async function getSymbolPriceHistory(symbol: string, period = "1y"): Prom
 const getSymbolPriceHistoryCached = cache(async (symbol: string, period: string): Promise<Record<string, ScannerScalar>[]> => {
   const cleaned = symbol.trim().toUpperCase();
   try {
+    const rowLimit = symbolPriceHistoryLimit(period);
     const result = await dbQuery<DbPriceRow>(
-      `
-        SELECT ts, open, high, low, close, volume
-        FROM symbol_price_history
-        WHERE symbol = $1
-        ORDER BY ts ASC
-      `,
-      [cleaned],
+      rowLimit === null
+        ? `
+          SELECT ts, open, high, low, close, volume
+          FROM symbol_price_history
+          WHERE symbol = $1
+          ORDER BY ts ASC
+        `
+        : `
+          SELECT ts, open, high, low, close, volume
+          FROM (
+            SELECT ts, open, high, low, close, volume
+            FROM symbol_price_history
+            WHERE symbol = $1
+            ORDER BY ts DESC
+            LIMIT $2
+          ) recent
+          ORDER BY ts ASC
+        `,
+      rowLimit === null ? [cleaned] : [cleaned, rowLimit],
     );
     if (result.rows.length) {
       const normalized = result.rows.map((row) => ({
@@ -1753,6 +1766,15 @@ const getSymbolPriceHistoryCached = cache(async (symbol: string, period: string)
 
   return filterSymbolPriceRowsByPeriod(normalized, period);
 });
+
+function symbolPriceHistoryLimit(period: string): number | null {
+  if (period === "1m") return 45;
+  if (period === "3m") return 110;
+  if (period === "6m") return 210;
+  if (period === "1y") return 390;
+  if (period === "2y") return 780;
+  return null;
+}
 
 function filterSymbolPriceRowsByPeriod(rows: Record<string, ScannerScalar>[], period: string): Record<string, ScannerScalar>[] {
   if (!rows.length || period === "all") return rows;

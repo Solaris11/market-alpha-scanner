@@ -38,6 +38,19 @@ type BackupEventRow = QueryResultRow & {
 
 type NormalizedRequestMetric = Required<RequestMetricInput>;
 
+type RequestMetricRollupInput = {
+  bucketStart: string;
+  errorCount: number;
+  maxLatencyMs: number;
+  method: string;
+  p50LatencyMs: number;
+  p95LatencyMs: number;
+  p99LatencyMs: number;
+  requestCount: number;
+  route: string;
+  statusBucket: string;
+};
+
 type RequestMetricQueueState = {
   dropped: number;
   flushing: boolean;
@@ -331,18 +344,130 @@ async function flushRequestMetrics(): Promise<void> {
 
 async function writeRequestMetricBatch(batch: NormalizedRequestMetric[]): Promise<void> {
   if (!batch.length) return;
+  await Promise.all([
+    dbQuery(
+      `
+        INSERT INTO request_metrics (route, method, status_code, latency_ms, user_id, created_at)
+        SELECT route, method, status_code, latency_ms, user_id, now()
+        FROM unnest($1::text[], $2::text[], $3::int[], $4::int[], $5::uuid[]) AS metric(route, method, status_code, latency_ms, user_id)
+      `,
+      [
+        batch.map((metric) => metric.route),
+        batch.map((metric) => metric.method),
+        batch.map((metric) => metric.statusCode),
+        batch.map((metric) => metric.latencyMs),
+        batch.map((metric) => metric.userId),
+      ],
+    ),
+    writeRequestMetricRollupBatch(batch).catch((error: unknown) => {
+      console.warn("[monitoring] request metric rollup write failed", error instanceof Error ? error.message : error);
+    }),
+  ]);
+}
+
+async function writeRequestMetricRollupBatch(batch: NormalizedRequestMetric[]): Promise<void> {
+  const rollups = buildRequestMetricRollups(batch);
+  if (!rollups.length) return;
   await dbQuery(
     `
-      INSERT INTO request_metrics (route, method, status_code, latency_ms, user_id, created_at)
-      SELECT route, method, status_code, latency_ms, user_id, now()
-      FROM unnest($1::text[], $2::text[], $3::int[], $4::int[], $5::uuid[]) AS metric(route, method, status_code, latency_ms, user_id)
+      INSERT INTO request_metric_rollups_minute (
+        bucket_start,
+        route,
+        method,
+        status_bucket,
+        request_count,
+        error_count,
+        p50_latency_ms,
+        p95_latency_ms,
+        p99_latency_ms,
+        max_latency_ms,
+        updated_at
+      )
+      SELECT
+        bucket_start,
+        route,
+        method,
+        status_bucket,
+        request_count,
+        error_count,
+        p50_latency_ms,
+        p95_latency_ms,
+        p99_latency_ms,
+        max_latency_ms,
+        now()
+      FROM unnest(
+        $1::timestamptz[],
+        $2::text[],
+        $3::text[],
+        $4::text[],
+        $5::int[],
+        $6::int[],
+        $7::int[],
+        $8::int[],
+        $9::int[],
+        $10::int[]
+      ) AS rollup(bucket_start, route, method, status_bucket, request_count, error_count, p50_latency_ms, p95_latency_ms, p99_latency_ms, max_latency_ms)
+      ON CONFLICT (bucket_start, route, method, status_bucket)
+      DO UPDATE SET
+        request_count = request_metric_rollups_minute.request_count + EXCLUDED.request_count,
+        error_count = request_metric_rollups_minute.error_count + EXCLUDED.error_count,
+        p50_latency_ms = GREATEST(request_metric_rollups_minute.p50_latency_ms, EXCLUDED.p50_latency_ms),
+        p95_latency_ms = GREATEST(request_metric_rollups_minute.p95_latency_ms, EXCLUDED.p95_latency_ms),
+        p99_latency_ms = GREATEST(request_metric_rollups_minute.p99_latency_ms, EXCLUDED.p99_latency_ms),
+        max_latency_ms = GREATEST(request_metric_rollups_minute.max_latency_ms, EXCLUDED.max_latency_ms),
+        updated_at = now()
     `,
     [
-      batch.map((metric) => metric.route),
-      batch.map((metric) => metric.method),
-      batch.map((metric) => metric.statusCode),
-      batch.map((metric) => metric.latencyMs),
-      batch.map((metric) => metric.userId),
+      rollups.map((rollup) => rollup.bucketStart),
+      rollups.map((rollup) => rollup.route),
+      rollups.map((rollup) => rollup.method),
+      rollups.map((rollup) => rollup.statusBucket),
+      rollups.map((rollup) => rollup.requestCount),
+      rollups.map((rollup) => rollup.errorCount),
+      rollups.map((rollup) => rollup.p50LatencyMs),
+      rollups.map((rollup) => rollup.p95LatencyMs),
+      rollups.map((rollup) => rollup.p99LatencyMs),
+      rollups.map((rollup) => rollup.maxLatencyMs),
     ],
   );
+}
+
+function buildRequestMetricRollups(batch: NormalizedRequestMetric[]): RequestMetricRollupInput[] {
+  const groups = new Map<string, NormalizedRequestMetric[]>();
+  const bucketStart = minuteBucketIso(new Date());
+  for (const metric of batch) {
+    const statusBucket = metric.statusCode >= 500 ? "5xx" : metric.statusCode >= 400 ? "4xx" : metric.statusCode >= 300 ? "3xx" : "2xx";
+    const key = `${bucketStart}\u0000${metric.route}\u0000${metric.method}\u0000${statusBucket}`;
+    const current = groups.get(key) ?? [];
+    current.push(metric);
+    groups.set(key, current);
+  }
+
+  return Array.from(groups.entries()).map(([key, metrics]) => {
+    const [bucket, route, method, statusBucket] = key.split("\u0000");
+    const latencies = metrics.map((metric) => metric.latencyMs).sort((left, right) => left - right);
+    return {
+      bucketStart: bucket ?? bucketStart,
+      errorCount: metrics.filter((metric) => metric.statusCode >= 400).length,
+      maxLatencyMs: latencies[latencies.length - 1] ?? 0,
+      method: method ?? "GET",
+      p50LatencyMs: percentileFromSorted(latencies, 0.50),
+      p95LatencyMs: percentileFromSorted(latencies, 0.95),
+      p99LatencyMs: percentileFromSorted(latencies, 0.99),
+      requestCount: metrics.length,
+      route: route ?? "unknown",
+      statusBucket: statusBucket ?? "unknown",
+    };
+  });
+}
+
+function minuteBucketIso(value: Date): string {
+  value.setSeconds(0, 0);
+  return value.toISOString();
+}
+
+function percentileFromSorted(values: number[], percentileValue: number): number {
+  if (!values.length) return 0;
+  const index = Math.min(values.length - 1, Math.max(0, Math.ceil(values.length * percentileValue) - 1));
+  return values[index] ?? 0;
 }

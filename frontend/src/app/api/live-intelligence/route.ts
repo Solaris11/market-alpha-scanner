@@ -21,6 +21,16 @@ type ProviderOutageSimulation = {
   }>;
 };
 
+type LiveBodyCacheEntry = {
+  bodyBuffer: ArrayBuffer;
+  bodyLength: number;
+  serializedSystem: string;
+};
+
+const liveBodyCache = new Map<string, LiveBodyCacheEntry>();
+const LIVE_BODY_CACHE_MAX_ENTRIES = 32;
+const liveBodyEncoder = new TextEncoder();
+
 export async function GET(request: Request) {
   return withRequestMetrics(request, "/api/live-intelligence", async () => {
     const startedAt = Date.now();
@@ -49,16 +59,38 @@ export async function GET(request: Request) {
 }
 
 function liveJsonResponse(input: { performanceJson: string; serializedSystem: string }): NextResponse {
-  return new NextResponse(
-    `{"ok":true,"performance":${input.performanceJson},"system":${input.serializedSystem}}`,
-    {
-      headers: {
-        "Cache-Control": "no-store",
-        "Content-Type": "application/json",
-      },
-      status: 200,
+  const cacheEntry = readLiveBodyCache(input);
+  return new NextResponse(cacheEntry.bodyBuffer, {
+    headers: {
+      "Cache-Control": "no-store",
+      "Content-Length": String(cacheEntry.bodyLength),
+      "Content-Type": "application/json",
     },
-  );
+    status: 200,
+  });
+}
+
+function readLiveBodyCache(input: { performanceJson: string; serializedSystem: string }): LiveBodyCacheEntry {
+  const current = liveBodyCache.get(input.serializedSystem);
+  if (current?.serializedSystem === input.serializedSystem) return current;
+  const body = `{"ok":true,"performance":${input.performanceJson},"system":${input.serializedSystem}}`;
+  const bodyBytes = liveBodyEncoder.encode(body);
+  const entry: LiveBodyCacheEntry = {
+    bodyBuffer: bodyBytes.buffer.slice(bodyBytes.byteOffset, bodyBytes.byteOffset + bodyBytes.byteLength),
+    bodyLength: bodyBytes.byteLength,
+    serializedSystem: input.serializedSystem,
+  };
+  liveBodyCache.set(input.serializedSystem, entry);
+  trimLiveBodyCache();
+  return entry;
+}
+
+function trimLiveBodyCache(): void {
+  while (liveBodyCache.size > LIVE_BODY_CACHE_MAX_ENTRIES) {
+    const oldest = liveBodyCache.keys().next().value;
+    if (!oldest) return;
+    liveBodyCache.delete(oldest);
+  }
 }
 
 function liveOutageSimulationResponse(input: {

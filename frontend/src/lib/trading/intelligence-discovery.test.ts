@@ -5,6 +5,7 @@ import type { OpportunityViewModel } from "./opportunity-view-model";
 import {
   buildIntelligenceDiscoverySystem,
   buildLimitedIntelligenceDiscoverySystem,
+  compactIntelligenceDiscoverySystem,
   filterDiscoverySymbols,
   matchesDiscoveryQuickFilter,
 } from "./intelligence-discovery";
@@ -259,6 +260,18 @@ describe("intelligence discovery system", () => {
     assert.deepEqual(risk, ["TSLA"]);
     assert.ok(system.comparePresets.every((preset) => preset.symbols.length >= 2));
     assert.ok(system.comparePresets.every((preset) => new Set(preset.symbols).size === preset.symbols.length));
+  });
+
+  test("builds a compact initial discovery packet without changing full-universe counts", () => {
+    const rows = Array.from({ length: 40 }, (_, index) => opportunity(`TV${index}`, `TradeVeto ${index}`, index % 2 === 0 ? "Technology" : "Energy", { final_score: 80 - (index % 20), return_1m: index }));
+    const system = buildIntelligenceDiscoverySystem({ rows, watchlistSymbols: ["TV1", "TV2"] });
+    const compact = compactIntelligenceDiscoverySystem(system, 12);
+
+    assert.equal(compact.universeCount, system.universeCount);
+    assert.equal(compact.watchlistCount, system.watchlistCount);
+    assert.equal(compact.quickFilters.find((filter) => filter.key === "all")?.count, 40);
+    assert.equal(compact.symbols.length, 12);
+    assert.match(compact.summary, /Full-universe rows hydrate progressively/i);
   });
 });
 

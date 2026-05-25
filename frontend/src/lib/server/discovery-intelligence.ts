@@ -7,7 +7,7 @@ import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
 import { readUserSavedScans } from "@/lib/server/user-saved-scans";
 import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { applyStaleDataSafetyToRows } from "@/lib/stale-data-safety";
-import { buildIntelligenceDiscoverySystem, type IntelligenceDiscoverySystem } from "@/lib/trading/intelligence-discovery";
+import { buildIntelligenceDiscoverySystem, compactIntelligenceDiscoverySystem, type IntelligenceDiscoverySystem } from "@/lib/trading/intelligence-discovery";
 import { buildOpportunitiesPageModel, type OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import type { DiscoveryCacheStatus } from "@/lib/discovery-performance";
 
@@ -39,11 +39,14 @@ export type DiscoveryLoadResult = {
   system: IntelligenceDiscoverySystem;
 };
 
+export type DiscoveryPacketMode = "full" | "initial";
+
 type DiscoverySystemCache = {
   expiresAt: number;
   refreshedAt: number;
   refreshing?: Promise<IntelligenceDiscoverySystem>;
-  serialized?: string;
+  serializedFull?: string;
+  serializedInitial?: string;
   staleUntil: number;
   value: Promise<IntelligenceDiscoverySystem>;
   resolved?: IntelligenceDiscoverySystem;
@@ -61,15 +64,15 @@ export async function loadIntelligenceDiscoverySystem(userId: string | null): Pr
   return (await loadIntelligenceDiscoverySystemWithMeta(userId)).system;
 }
 
-export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | null): Promise<DiscoveryLoadResult> {
+export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | null, options: { packetMode?: DiscoveryPacketMode } = {}): Promise<DiscoveryLoadResult> {
   const startedAt = Date.now();
   const cacheKey = userId ? `user:${userId}` : "anonymous";
+  const packetMode = options.packetMode ?? "full";
   const now = Date.now();
   const cachedSystem = discoverySystemCache.get(cacheKey);
   if (cachedSystem && cachedSystem.expiresAt > now) {
     const system = await cachedSystem.value;
-    const serializedSystem = cachedSystem.serialized ?? serializeDiscoverySystem(system);
-    cachedSystem.serialized = serializedSystem;
+    const serializedSystem = serializedDiscoverySystem(cachedSystem, system, packetMode);
     return {
       meta: {
         baseCacheStatus: "skipped",
@@ -78,13 +81,12 @@ export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | n
         systemCacheStatus: "system-hit",
       },
       serializedSystem,
-      system,
+      system: systemForPacketMode(system, packetMode),
     };
   }
   if (cachedSystem?.resolved && cachedSystem.staleUntil > now) {
     refreshDiscoverySystemCache(cacheKey, userId);
-    const serializedSystem = cachedSystem.serialized ?? serializeDiscoverySystem(cachedSystem.resolved);
-    cachedSystem.serialized = serializedSystem;
+    const serializedSystem = serializedDiscoverySystem(cachedSystem, cachedSystem.resolved, packetMode);
     return {
       meta: {
         baseCacheStatus: "skipped",
@@ -93,7 +95,7 @@ export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | n
         systemCacheStatus: "system-hit",
       },
       serializedSystem,
-      system: cachedSystem.resolved,
+      system: systemForPacketMode(cachedSystem.resolved, packetMode),
     };
   }
 
@@ -109,9 +111,8 @@ export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | n
 
   try {
     const system = await value;
-    const serializedSystem = serializeDiscoverySystem(system);
+    const serializedSystem = serializedDiscoverySystem(cacheEntry, system, packetMode);
     cacheEntry.resolved = system;
-    cacheEntry.serialized = serializedSystem;
     return {
       meta: {
         baseCacheStatus: baseStatus.value,
@@ -120,7 +121,7 @@ export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | n
         systemCacheStatus: "system-miss",
       },
       serializedSystem,
-      system,
+      system: systemForPacketMode(system, packetMode),
     };
   } catch (error) {
     if (discoverySystemCache.get(cacheKey)?.value === value) discoverySystemCache.delete(cacheKey);
@@ -145,7 +146,8 @@ function refreshDiscoverySystemCache(cacheKey: string, userId: string | null): v
         expiresAt: now + DISCOVERY_SYSTEM_CACHE_TTL_MS,
         refreshedAt: now,
         resolved: system,
-        serialized: serializeDiscoverySystem(system),
+        serializedFull: serializeDiscoverySystem(system),
+        serializedInitial: serializeDiscoverySystem(systemForPacketMode(system, "initial")),
         staleUntil: now + DISCOVERY_SYSTEM_STALE_TTL_MS,
         value: Promise.resolve(system),
       });
@@ -158,6 +160,19 @@ function refreshDiscoverySystemCache(cacheKey: string, userId: string | null): v
 
 function serializeDiscoverySystem(system: IntelligenceDiscoverySystem): string {
   return JSON.stringify(system);
+}
+
+function systemForPacketMode(system: IntelligenceDiscoverySystem, packetMode: DiscoveryPacketMode): IntelligenceDiscoverySystem {
+  return packetMode === "initial" ? compactIntelligenceDiscoverySystem(system) : system;
+}
+
+function serializedDiscoverySystem(cacheEntry: DiscoverySystemCache, system: IntelligenceDiscoverySystem, packetMode: DiscoveryPacketMode): string {
+  if (packetMode === "initial") {
+    cacheEntry.serializedInitial ??= serializeDiscoverySystem(systemForPacketMode(system, "initial"));
+    return cacheEntry.serializedInitial;
+  }
+  cacheEntry.serializedFull ??= serializeDiscoverySystem(system);
+  return cacheEntry.serializedFull;
 }
 
 async function buildDiscoverySystem(userId: string | null): Promise<IntelligenceDiscoverySystem> {

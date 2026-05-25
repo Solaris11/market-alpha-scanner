@@ -145,6 +145,15 @@ type ApiUsageRow = QueryResultRow & {
   status_bucket: string;
 };
 
+type DeveloperApiAccessCacheEntry = {
+  access: DeveloperApiAccess;
+  expiresAt: number;
+};
+
+const DEVELOPER_API_ACCESS_CACHE_TTL_MS = 30_000;
+const DEVELOPER_API_ACCESS_CACHE_MAX = 500;
+const developerApiAccessCache = new Map<string, DeveloperApiAccessCacheEntry>();
+
 export async function listDeveloperApiKeys(userId: string): Promise<DeveloperApiKeyRecord[]> {
   const result = await dbQuery<ApiKeyRow>(
     `
@@ -204,6 +213,9 @@ export async function authenticateDeveloperApiRequest(request: Request, required
   }
   await enforceDeveloperApiKeyQuota(keyHash);
 
+  const cachedAccess = readDeveloperApiAccessCache(keyHash, requiredScope);
+  if (cachedAccess) return cachedAccess;
+
   const result = await dbQuery<ApiKeyRow>(
     `
       SELECT id::text, user_id::text, name, key_prefix, scopes, last_used_at::text, revoked_at::text, created_at::text
@@ -221,7 +233,32 @@ export async function authenticateDeveloperApiRequest(request: Request, required
     throw new DeveloperApiAuthError(`API key does not include ${requiredScope}.`, 403);
   }
   await dbQuery("UPDATE developer_api_keys SET last_used_at = now(), updated_at = now() WHERE id = $1::uuid", [row.id]).catch(() => undefined);
-  return { keyId: row.id, scopes, userId: row.user_id };
+  const access = { keyId: row.id, scopes, userId: row.user_id };
+  writeDeveloperApiAccessCache(keyHash, access);
+  return access;
+}
+
+function readDeveloperApiAccessCache(keyHash: string, requiredScope: DeveloperApiScope): DeveloperApiAccess | null {
+  const current = developerApiAccessCache.get(keyHash);
+  if (!current) return null;
+  if (current.expiresAt <= Date.now()) {
+    developerApiAccessCache.delete(keyHash);
+    return null;
+  }
+  if (!hasDeveloperScope(current.access.scopes, requiredScope)) return null;
+  return { ...current.access, scopes: [...current.access.scopes] };
+}
+
+function writeDeveloperApiAccessCache(keyHash: string, access: DeveloperApiAccess): void {
+  developerApiAccessCache.set(keyHash, {
+    access: { ...access, scopes: [...access.scopes] },
+    expiresAt: Date.now() + DEVELOPER_API_ACCESS_CACHE_TTL_MS,
+  });
+  while (developerApiAccessCache.size > DEVELOPER_API_ACCESS_CACHE_MAX) {
+    const oldest = developerApiAccessCache.keys().next().value;
+    if (!oldest) return;
+    developerApiAccessCache.delete(oldest);
+  }
 }
 
 export async function recordDeveloperApiUsage(input: { access: DeveloperApiAccess; endpoint: string; method: string; status: number }): Promise<void> {
