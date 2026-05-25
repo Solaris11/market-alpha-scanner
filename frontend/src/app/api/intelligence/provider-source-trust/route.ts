@@ -18,6 +18,7 @@ import {
 } from "@/lib/trading/daily-market-command";
 import { buildMarketCommandModel } from "@/lib/trading/market-research";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
+import { buildProviderFreshnessCertification } from "@/lib/trading/provider-source-certification";
 import { buildUnifiedIntelligenceConsole } from "@/lib/trading/unified-intelligence-console";
 
 export const dynamic = "force-dynamic";
@@ -28,6 +29,7 @@ const REQUIRED_PROVIDER_DOMAINS: DailyProviderCoverageDomain[] = [
   "rates",
   "inflation",
   "earnings",
+  "economic-calendar",
   "analyst-actions",
   "dividends",
   "geopolitical-events",
@@ -40,16 +42,21 @@ type ProviderStateCounts = Record<DailyProviderOperationalState, number>;
 
 type EventCardProof = {
   affectedSymbols: string[];
+  confidence: string;
   freshness: string;
   freshnessSla: string;
+  eventRelevanceScore: number;
   headline: string;
   historicalAnalog: string;
+  macroImpact: string;
   provider: string;
   providerState: DailyProviderOperationalState;
   providerStateLabel: string;
+  replayLinkage: string;
   source: string;
   sourceCompleteness: string;
   sourceUrl: string;
+  strategyLinkage: string;
   timestamp: string;
   timelineBucket: string;
   uncertainty: string;
@@ -120,13 +127,24 @@ export async function GET(request: Request) {
       workflowEvolution,
     });
     const outageHeader = request.headers.get("x-tradeveto-provider-outage-simulation") ?? "";
+    const eventCards = model.developments.map(eventCardProof);
+    const outageSimulation = providerOutageSimulation(model.providerCoverageMatrix, outageHeader);
     return NextResponse.json({
-      eventCards: model.developments.map(eventCardProof),
+      certification: buildProviderFreshnessCertification({
+        eventCards,
+        eventDomainTimelines: model.eventDomainTimelines,
+        outageSimulation,
+        outageSimulationRequired: Boolean(outageHeader.trim()),
+        providerCoverageMatrix: model.providerCoverageMatrix,
+        requiredDomains: REQUIRED_PROVIDER_DOMAINS,
+        sourceTrust: model.newsEcosystem.sourceTrust,
+      }),
+      eventCards,
       eventDomainTimelines: model.eventDomainTimelines,
       generatedAt: new Date().toISOString(),
       marketCondition: snapshot.marketRegime.label,
       ok: true,
-      outageSimulation: providerOutageSimulation(model.providerCoverageMatrix, outageHeader),
+      outageSimulation,
       providerCoverageMatrix: model.providerCoverageMatrix,
       providerStateCounts: providerStateCounts(model.providerCoverageMatrix),
       requiredDomainCoverage: requiredDomainCoverage(model.providerCoverageMatrix),
@@ -142,16 +160,21 @@ export async function GET(request: Request) {
 function eventCardProof(item: DailyMarketDevelopment): EventCardProof {
   return {
     affectedSymbols: item.affectedSymbols,
+    confidence: item.confidenceLabel,
     freshness: item.freshnessLabel,
     freshnessSla: item.freshnessSlaLabel,
+    eventRelevanceScore: item.original.relevance,
     headline: item.headline,
     historicalAnalog: item.historicalAnalogLabel,
+    macroImpact: item.macroImpactLabel,
     provider: item.providerAttribution,
     providerState: item.providerState,
     providerStateLabel: item.providerStateLabel,
+    replayLinkage: item.replayLinkageLabel,
     source: item.source,
     sourceCompleteness: item.sourceCompletenessLabel,
     sourceUrl: item.sourceUrl,
+    strategyLinkage: item.strategyLinkageLabel,
     timestamp: item.timestamp,
     timelineBucket: item.timelineBucket,
     uncertainty: item.uncertaintyLabel,

@@ -208,11 +208,15 @@ test("daily market command ranks opportunity, breakout, crash risk, money flow, 
   assert.equal(model.developments[0]?.providerAttribution, "Verified market source · Reuters");
   assert.equal(model.developments[0]?.providerState, "active");
   assert.equal(model.developments[0]?.providerStateLabel, "Provider active");
+  assert.match(model.developments[0]?.confidenceLabel ?? "", /High source-linked relevance/);
   assert.equal(model.developments[0]?.freshnessLabel, "Recent · 2h old");
   assert.match(model.developments[0]?.freshnessSlaLabel ?? "", /within 360m/);
   assert.match(model.developments[0]?.sourceCompletenessLabel ?? "", /Source complete/);
   assert.equal(model.developments[0]?.timelineBucket, "rates timeline");
   assert.match(model.developments[0]?.historicalAnalogLabel ?? "", /limited/);
+  assert.match(model.developments[0]?.macroImpactLabel ?? "", /growth confidence/);
+  assert.match(model.developments[0]?.replayLinkageLabel ?? "", /Replay linkage limited/);
+  assert.match(model.developments[0]?.strategyLinkageLabel ?? "", /Strategy review candidate/);
   assert.equal(model.developments[0]?.symbolRelevanceLabel, "Symbol relevance: AMD, MU");
   assert.equal(model.developments[0]?.watchlistRelevanceLabel, "Watchlist relevance: AMD");
   assert.match(model.developments[0]?.latencyLabel ?? "", /latency not instrumented/);
@@ -230,10 +234,12 @@ test("daily market command ranks opportunity, breakout, crash risk, money flow, 
   assert.equal(model.newsEcosystem.sourceTrust.missingFieldCounts.sourceUrl, 0);
   assert.equal(model.newsEcosystem.sourceTrust.missingFieldCounts.providerState, 0);
   assert.ok(model.newsEcosystem.sourceTrust.requiredFields.includes("providerState"));
+  assert.ok(model.newsEcosystem.sourceTrust.requiredFields.includes("uncertainty"));
+  assert.equal(model.newsEcosystem.sourceTrust.targetCompletenessPct, 99);
   assert.equal(model.newsEcosystem.calendarCount, 3);
   assert.ok(model.newsEcosystem.completenessScore > 0);
   assert.equal(model.providerCoverage[0]?.source, "Reuters");
-  const requiredProviderDomains = ["macro", "rates", "inflation", "earnings", "analyst-actions", "dividends", "geopolitical-events", "company-events", "sector-events", "crypto-events"];
+  const requiredProviderDomains = ["macro", "rates", "inflation", "earnings", "economic-calendar", "analyst-actions", "dividends", "geopolitical-events", "company-events", "sector-events", "crypto-events"];
   for (const domain of requiredProviderDomains) {
     assert.ok(model.providerCoverageMatrix.some((audit) => audit.domain === domain), `missing provider domain ${domain}`);
   }
@@ -247,6 +253,7 @@ test("daily market command ranks opportunity, breakout, crash risk, money flow, 
   assert.ok(model.crossAssetRelationships.some((relationship) => relationship.affectedSymbols.includes("AMD") && relationship.affectedSymbols.includes("MU") && relationship.relationshipType === "Rates/yields versus duration-sensitive growth"));
   assert.ok(model.macroEventTimeline.some((item) => item.source === "Verified market source · Reuters" && item.relationshipType === "Rates/yields versus duration-sensitive growth"));
   assert.ok(model.eventDomainTimelines.some((timeline) => timeline.domain === "rates" && timeline.activeSourceCount === 1));
+  assert.ok(model.eventDomainTimelines.some((timeline) => timeline.domain === "economic-calendar" && timeline.itemCount > 0));
   assert.ok(model.companyTimelines.some((timeline) => timeline.symbol === "AMD" && timeline.timeline.length > 0));
   assert.ok(model.macroStorylines.some((story) => story.label === "Rates and inflation pressure"));
   assert.ok(model.sectorNews.some((cluster) => cluster.sector === "Semiconductors"));
@@ -348,6 +355,7 @@ test("provider matrix recognizes source-linked inflation, analyst, geopolitical,
   assert.ok(model.developments.some((item) => item.source === "CoinDesk" && item.category === "Crypto"));
   assert.ok(model.developments.some((item) => item.source === "Nasdaq" && item.category === "Dividend"));
   assert.ok(model.eventDomainTimelines.some((timeline) => timeline.domain === "dividends" && timeline.activeSourceCount === 1));
+  assert.ok(model.eventDomainTimelines.some((timeline) => timeline.domain === "economic-calendar" && timeline.activeSourceCount >= 1));
   assert.equal(model.newsEcosystem.sourceTrust.status, "pass");
   assert.equal(model.newsEcosystem.sourceTrust.completenessPct, 100);
   assert.equal(model.newsEcosystem.sourceTrust.contextCompletenessPct, 100);

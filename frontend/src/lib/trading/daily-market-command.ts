@@ -79,6 +79,7 @@ export type DailyMarketDevelopment = {
   bearishImplication: string;
   bullishImplication: string;
   category: Exclude<DailyDevelopmentCategory, "All" | "High Impact" | "My Watchlist">;
+  confidenceLabel: string;
   eventTrackingLabel: string;
   freshnessLabel: string;
   freshnessSlaLabel: string;
@@ -95,11 +96,14 @@ export type DailyMarketDevelopment = {
   providerStateLabel: string;
   relatedMacroContext: string;
   relatedReplayContext: string;
+  macroImpactLabel: string;
+  replayLinkageLabel: string;
   researchTypeLabel: string;
   sectorImpactLabel: string;
   source: string;
   sourceCompletenessLabel: string;
   sourceQualityLabel: string;
+  strategyLinkageLabel: string;
   sourceUrl: string;
   symbolRelevanceLabel: string;
   timestamp: string;
@@ -158,6 +162,7 @@ export type DailySourceTrustSummary = {
   missingFieldCounts: Record<DailySourceTrustField, number>;
   requiredFields: DailySourceTrustField[];
   status: "fail" | "not-applicable" | "pass";
+  targetCompletenessPct: number;
 };
 
 export type DailyNewsEcosystemSummary = {
@@ -237,8 +242,10 @@ type ProviderOperationalSignal = {
   symbol: string;
 };
 
-const SOURCE_TRUST_REQUIRED_FIELDS: DailySourceTrustField[] = ["sourceUrl", "provider", "timestamp", "freshness", "providerState"];
-const SOURCE_TRUST_CONTEXT_FIELDS: DailySourceTrustField[] = ["affectedSymbols", "watchlistImpact", "uncertainty"];
+export const SOURCE_TRUST_TARGET_PCT = 99;
+
+const SOURCE_TRUST_REQUIRED_FIELDS: DailySourceTrustField[] = ["sourceUrl", "provider", "timestamp", "freshness", "providerState", "uncertainty"];
+const SOURCE_TRUST_CONTEXT_FIELDS: DailySourceTrustField[] = ["affectedSymbols", "watchlistImpact"];
 const SOURCE_TRUST_ALL_FIELDS: DailySourceTrustField[] = [...SOURCE_TRUST_REQUIRED_FIELDS, ...SOURCE_TRUST_CONTEXT_FIELDS];
 
 export type DailyInformationEvolutionPoint = {
@@ -596,6 +603,7 @@ function buildDevelopments(input: {
         bearishImplication: item.bearishImplication,
         bullishImplication: item.bullishImplication,
         category,
+        confidenceLabel: eventConfidenceLabel(item, providerState),
         eventTrackingLabel: item.eventTrackingLabel,
         freshnessLabel: freshnessLabel(item.publishedAt, input.now),
         freshnessSlaLabel: freshnessSlaLabelForDevelopment(category, item.publishedAt, input.now),
@@ -612,11 +620,18 @@ function buildDevelopments(input: {
         providerStateLabel: providerStateLabel(providerState),
         relatedMacroContext: item.relatedMacroContext,
         relatedReplayContext: item.relatedReplayContext,
+        macroImpactLabel: macroImpactLabel(item),
+        replayLinkageLabel: replayLinkageLabel(item),
         researchTypeLabel: researchTypeLabel(item),
         sectorImpactLabel: sectorImpactLabel(item.affectedSectors),
         source: item.source,
         sourceCompletenessLabel: sourceCompletenessLabel(providerState, item),
         sourceQualityLabel: sourceQualityLabel(item),
+        strategyLinkageLabel: strategyLinkageLabel({
+          affectedSectors: item.affectedSectors,
+          affectedSymbols,
+          scope: item.scope,
+        }),
         sourceUrl: item.sourceUrl,
         symbolRelevanceLabel: symbolRelevanceLabel(affectedSymbols),
         timestamp: item.publishedAt,
@@ -732,6 +747,7 @@ function buildSourceTrustSummary(developments: DailyMarketDevelopment[]): DailyS
       missingFieldCounts,
       requiredFields: SOURCE_TRUST_REQUIRED_FIELDS,
       status: "not-applicable",
+      targetCompletenessPct: SOURCE_TRUST_TARGET_PCT,
     };
   }
 
@@ -753,14 +769,15 @@ function buildSourceTrustSummary(developments: DailyMarketDevelopment[]): DailyS
     completenessPct,
     contextCompleteCardCount,
     contextCompletenessPct,
-    disclosure: completenessPct >= 95 && contextCompletenessPct >= 95
-      ? `${completeCardCount} of ${developments.length} displayed source-linked event cards disclose provider, source URL, timestamp, freshness, provider state, affected symbols, watchlist impact, and uncertainty.`
-      : `${developments.length - completeCardCount} displayed event card${developments.length - completeCardCount === 1 ? "" : "s"} miss required source/provider/timestamp/freshness/provider-state fields; ${developments.length - contextCompleteCardCount} miss full context fields.`,
+    disclosure: completenessPct >= SOURCE_TRUST_TARGET_PCT && contextCompletenessPct >= SOURCE_TRUST_TARGET_PCT
+      ? `${completeCardCount} of ${developments.length} displayed source-linked event cards disclose provider, source URL, timestamp, freshness, provider state, uncertainty, affected symbols, and watchlist impact.`
+      : `${developments.length - completeCardCount} displayed event card${developments.length - completeCardCount === 1 ? "" : "s"} miss required source/provider/timestamp/freshness/provider-state/uncertainty fields; ${developments.length - contextCompleteCardCount} miss full context fields. Target is ${SOURCE_TRUST_TARGET_PCT}%.`,
     displayedCardCount: developments.length,
     incompleteCardCount: developments.length - completeCardCount,
     missingFieldCounts,
     requiredFields: SOURCE_TRUST_REQUIRED_FIELDS,
-    status: completenessPct >= 95 && contextCompletenessPct >= 95 ? "pass" : "fail",
+    status: completenessPct >= SOURCE_TRUST_TARGET_PCT && contextCompletenessPct >= SOURCE_TRUST_TARGET_PCT ? "pass" : "fail",
+    targetCompletenessPct: SOURCE_TRUST_TARGET_PCT,
   };
 }
 
@@ -999,6 +1016,7 @@ function buildEventDomainTimelines(developments: DailyMarketDevelopment[], calen
     { domain: "earnings", label: "Earnings and guidance timeline", matchCalendar: (item) => item.category === "earnings", matchDevelopment: (item) => item.category === "Earnings" },
     { domain: "geopolitical-events", label: "Geopolitical timeline", matchCalendar: (item) => item.category === "geopolitical", matchDevelopment: (item) => item.category === "Geopolitical" },
     { domain: "crypto-events", label: "Crypto event timeline", matchCalendar: (item) => /crypto|btc|bitcoin/i.test(`${item.label} ${item.detail} ${item.symbol}`), matchDevelopment: (item) => item.category === "Crypto" },
+    { domain: "economic-calendar", label: "Economic calendar timeline", matchCalendar: () => true, matchDevelopment: (item) => ["Energy", "Geopolitical", "Macro", "Rates"].includes(item.category) },
     { domain: "sector-events", label: "Sector event continuity", matchCalendar: () => false, matchDevelopment: (item) => item.affectedSectors.length > 0 || item.original.scope === "sector" },
     { domain: "company-events", label: "Company event continuity", matchCalendar: (item) => ["analyst", "dividend", "earnings", "event"].includes(item.category), matchDevelopment: (item) => item.affectedSymbols.length > 0 || item.original.scope === "symbol" },
     { domain: "macro", label: "Macro event timeline", matchCalendar: (item) => item.category === "macro" || item.category === "rates" || item.category === "geopolitical", matchDevelopment: (item) => ["Energy", "Geopolitical", "Macro", "Rates"].includes(item.category) },
@@ -1052,7 +1070,7 @@ function buildEventDomainTimelines(developments: DailyMarketDevelopment[], calen
     })
     .filter((item): item is DailyEventDomainTimeline => item !== null)
     .sort((left, right) => right.activeSourceCount - left.activeSourceCount || right.itemCount - left.itemCount)
-    .slice(0, 8);
+    .slice(0, domains.length);
 }
 
 function buildCompanyTimelines(developments: DailyMarketDevelopment[], calendar: DailyEventCalendarItem[]): DailyCompanyEventTimeline[] {
@@ -1251,7 +1269,7 @@ function freshnessSlaLabelForDevelopment(category: DailyMarketDevelopment["categ
 
 function sourceCompletenessLabel(state: DailyProviderOperationalState, item: MarketNewsItem): string {
   const hasRequired = Boolean(item.source && /^https?:\/\//i.test(item.sourceUrl) && Number.isFinite(Date.parse(item.publishedAt)));
-  if (hasRequired && state !== "limited") return "Source complete: provider, URL, timestamp, freshness, state";
+  if (hasRequired && state !== "limited") return "Source complete: provider, URL, timestamp, freshness, state, uncertainty";
   return "Source completeness limited; do not treat as live intelligence";
 }
 
@@ -1293,6 +1311,43 @@ function uncertaintyLabel(item: MarketNewsItem): string {
   if (item.relevance >= 75) return "High relevance, research-only interpretation";
   if (item.relevance >= 55) return "Moderate relevance; confirm with price, macro, and replay evidence";
   return "Limited relevance; keep as contextual evidence only";
+}
+
+function eventConfidenceLabel(item: MarketNewsItem, providerState: DailyProviderOperationalState): string {
+  if (providerState === "outage" || providerState === "partial-outage") return "Provider-state limited confidence; verify against live source before action.";
+  if (providerState === "stale" || providerState === "delayed") return "Freshness-limited confidence; timestamp remains visible and no live label is implied.";
+  if (item.relevance >= 75) return "High source-linked relevance; research-only and still uncertain.";
+  if (item.relevance >= 55) return "Moderate source-linked relevance; confirm with price, macro, and replay context.";
+  return "Context-only relevance; not enough evidence for a standalone decision.";
+}
+
+function macroImpactLabel(item: MarketNewsItem): string {
+  const context = cleanText(item.relatedMacroContext, "");
+  if (context) return context;
+  if (item.scope === "market") return "Market-level event; macro impact is source-linked but not quantified.";
+  if (item.affectedSectors.length) return `Sector-level macro impact candidate across ${item.affectedSectors.slice(0, 3).join(", ")}.`;
+  return "Macro impact is not established beyond the source-linked event.";
+}
+
+function replayLinkageLabel(item: MarketNewsItem): string {
+  const context = cleanText(item.relatedReplayContext, "");
+  if (!context || /limited/i.test(context)) return "Replay linkage limited; no historical analog is inferred for this event.";
+  return context;
+}
+
+function strategyLinkageLabel(input: {
+  affectedSectors: string[];
+  affectedSymbols: string[];
+  scope: MarketNewsItem["scope"];
+}): string {
+  if (input.affectedSymbols.length) {
+    return `Strategy review candidate for ${input.affectedSymbols.slice(0, 5).join(", ")}; TradeVeto does not change allocations automatically.`;
+  }
+  if (input.affectedSectors.length) {
+    return `Sector strategy context for ${input.affectedSectors.slice(0, 3).join(", ")}; no position or return is inferred.`;
+  }
+  if (input.scope === "market") return "Market strategy context only; no symbol-specific action is inferred.";
+  return "Strategy linkage limited until a source-linked symbol or sector impact exists.";
 }
 
 function providerAuditLimitations(input: {

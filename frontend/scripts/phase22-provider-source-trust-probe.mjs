@@ -10,6 +10,8 @@ const { Pool } = pg;
 const baseUrl = stripTrailingSlash(process.env.TRADEVETO_PHASE22_PROVIDER_BASE_URL ?? process.env.TRADEVETO_PHASE22_BASE_URL ?? "https://tradeveto.com");
 const outputPath = process.env.TRADEVETO_PHASE22_PROVIDER_OUTPUT ?? "";
 const strict = truthy(process.env.TRADEVETO_PHASE22_PROVIDER_STRICT);
+const parsedSourceTrustTargetPct = Number.parseInt(process.env.TRADEVETO_PROVIDER_SOURCE_TRUST_TARGET_PCT ?? "99", 10);
+const sourceTrustTargetPct = Number.isFinite(parsedSourceTrustTargetPct) && parsedSourceTrustTargetPct > 0 ? parsedSourceTrustTargetPct : 99;
 const createProbeIdentity = truthy(process.env.TRADEVETO_PHASE22_CREATE_PROBE_USER);
 const cleanupProbeIdentity = process.env.TRADEVETO_PHASE22_CLEANUP_PROBE_USER !== "false";
 const providedCookie = process.env.TRADEVETO_PHASE22_COOKIE ?? "";
@@ -96,6 +98,8 @@ async function fetchProviderSourceTrust(extraHeaders) {
 function buildReport({ baseline, outage }) {
   const blockers = [];
   const sourceTrust = baseline.payload?.sourceTrust ?? null;
+  const certification = baseline.payload?.certification ?? null;
+  const outageCertification = outage.payload?.certification ?? null;
   const eventCards = Array.isArray(baseline.payload?.eventCards) ? baseline.payload.eventCards : [];
   const requiredDomainCoverage = Array.isArray(baseline.payload?.requiredDomainCoverage) ? baseline.payload.requiredDomainCoverage : [];
   const outageSimulation = outage.payload?.outageSimulation ?? null;
@@ -107,9 +111,15 @@ function buildReport({ baseline, outage }) {
     blockers.push("source-trust summary missing");
   } else {
     if (sourceTrust.status !== "pass") blockers.push(`source-trust status ${sourceTrust.status}`);
-    if ((sourceTrust.completenessPct ?? 0) < 95) blockers.push(`source card completeness ${sourceTrust.completenessPct ?? 0}% below 95%`);
-    if ((sourceTrust.contextCompletenessPct ?? 0) < 95) blockers.push(`source card context completeness ${sourceTrust.contextCompletenessPct ?? 0}% below 95%`);
+    if ((sourceTrust.completenessPct ?? 0) < sourceTrustTargetPct) blockers.push(`source card completeness ${sourceTrust.completenessPct ?? 0}% below ${sourceTrustTargetPct}%`);
+    if ((sourceTrust.contextCompletenessPct ?? 0) < sourceTrustTargetPct) blockers.push(`source card context completeness ${sourceTrust.contextCompletenessPct ?? 0}% below ${sourceTrustTargetPct}%`);
     if ((sourceTrust.displayedCardCount ?? 0) <= 0) blockers.push("no displayed source-linked event cards were available for provider-depth proof");
+  }
+  if (!certification) {
+    blockers.push("provider freshness certification summary missing");
+  } else {
+    if (certification.status !== "ready") blockers.push(`provider freshness certification ${certification.status}`);
+    if (Array.isArray(certification.blockers) && certification.blockers.length) blockers.push(...certification.blockers.map((item) => `certification blocker: ${item}`));
   }
   for (const card of eventCards) {
     const missing = missingCardFields(card);
@@ -126,6 +136,9 @@ function buildReport({ baseline, outage }) {
   if (!outageSimulation?.enabled || !outageSimulation.fallbackVisible || !outageSimulation.recoveryVisible) {
     blockers.push("provider outage simulation did not expose fallback and recovery states");
   }
+  if (!outageCertification || outageCertification.outageSimulationPass !== true) {
+    blockers.push("provider outage certification did not pass fallback/recovery proof");
+  }
 
   return {
     authenticated: Boolean(cookie || authorization),
@@ -134,6 +147,7 @@ function buildReport({ baseline, outage }) {
       latencyMs: baseline.latencyMs,
       providerStateCounts: baseline.payload?.providerStateCounts ?? null,
       requiredDomainCoverage,
+      certification,
       slaStatusCounts: countSlaStatuses(requiredDomainCoverage),
       sourceTrust,
       statusCode: baseline.statusCode,
@@ -142,6 +156,7 @@ function buildReport({ baseline, outage }) {
     blockers,
     generatedAt: new Date().toISOString(),
     outageSimulation: outageSimulation ?? null,
+    outageCertification: outageCertification ?? null,
     overallStatus: blockers.length ? "not_ready" : "ready",
     probeIdentity: probeIdentity
       ? {
@@ -171,6 +186,10 @@ function missingCardFields(card) {
   if (!String(card?.sourceCompleteness ?? "").trim()) missing.push("sourceCompleteness");
   if (!Number.isFinite(Date.parse(String(card?.timestamp ?? "")))) missing.push("timestamp");
   if (!String(card?.freshness ?? "").trim()) missing.push("freshness");
+  if (!String(card?.confidence ?? "").trim()) missing.push("confidence");
+  if (!String(card?.macroImpact ?? "").trim()) missing.push("macroImpact");
+  if (!String(card?.replayLinkage ?? "").trim()) missing.push("replayLinkage");
+  if (!String(card?.strategyLinkage ?? "").trim()) missing.push("strategyLinkage");
   if (!Array.isArray(card?.affectedSymbols) || card.affectedSymbols.length === 0) missing.push("affectedSymbols");
   if (!String(card?.watchlistImpactReason ?? "").trim()) missing.push("watchlistImpact");
   if (!String(card?.uncertainty ?? "").trim()) missing.push("uncertainty");

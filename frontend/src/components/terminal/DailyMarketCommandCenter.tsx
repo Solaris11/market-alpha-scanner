@@ -844,6 +844,10 @@ function DevelopmentOverlay({ item, onClose }: { item: DailyMarketDevelopment | 
           <DetailMiniPanel label="Event tracking" value={item.eventTrackingLabel} />
           <DetailMiniPanel label="Sector impact" value={item.sectorImpactLabel} />
           <DetailMiniPanel label="Market moving read" value={item.marketMovingLabel} />
+          <DetailMiniPanel label="Confidence" value={item.confidenceLabel} />
+          <DetailMiniPanel label="Macro impact" value={item.macroImpactLabel} />
+          <DetailMiniPanel label="Replay linkage" value={item.replayLinkageLabel} />
+          <DetailMiniPanel label="Strategy linkage" value={item.strategyLinkageLabel} />
           <DetailMiniPanel label="Watchlist impact" value={item.watchlistImpactReason} />
           <DetailMiniPanel label="Symbol relevance" value={item.symbolRelevanceLabel} />
           <DetailMiniPanel label="Watchlist relevance" value={item.watchlistRelevanceLabel} />
