@@ -199,6 +199,8 @@ export type InstitutionalOperatingLedgerEntry = {
 export type InstitutionalOperationsAuditManifest = {
   brokerBoundary: "not_integrated";
   evidenceBoundLifecyclePct: number | null;
+  exportIntegrityHash: string;
+  exportIntegrityHashAlgorithm: "fnv1a32";
   exportColumnCount: number;
   exportRowCount: number;
   ledgerIntegrity: "fail" | "pass" | "partial";
@@ -284,9 +286,11 @@ export function buildInstitutionalPortfolioOperationsSystem(
     strategyRevisions,
     thesisLifecycle,
   });
+  const operatingLedgerCsv = operatingLedgerCsvFor(operatingLedger);
   const auditManifest = auditManifestFor({
     brokerIntegration,
     operatingLedger,
+    operatingLedgerCsv,
     paperTradeAutopsies,
     positionLifecycle,
     strategyRevisions,
@@ -317,7 +321,7 @@ export function buildInstitutionalPortfolioOperationsSystem(
     openPositionCount: input.portfolio.openPositionCount,
     operatingLanes,
     operatingLedger,
-    operatingLedgerCsv: operatingLedgerCsvFor(operatingLedger),
+    operatingLedgerCsv,
     operatingScore,
     proofGates,
     paperTradeAutopsies,
@@ -1290,6 +1294,7 @@ function operatingLanesFor(
 function auditManifestFor(input: {
   brokerIntegration: InstitutionalBrokerIntegrationState;
   operatingLedger: InstitutionalOperatingLedgerEntry[];
+  operatingLedgerCsv: string;
   paperTradeAutopsies: InstitutionalTradeAutopsyItem[];
   positionLifecycle: InstitutionalPositionLifecycle[];
   strategyRevisions: InstitutionalStrategyRevisionItem[];
@@ -1313,17 +1318,29 @@ function auditManifestFor(input: {
       && row.evidenceLineage.length > 0
       && row.event.length > 0;
   });
+  const exportIntegrityHash = deterministicLedgerHash(input.operatingLedgerCsv);
   const replayEligibleAutopsyCount = input.paperTradeAutopsies.length;
   return {
     brokerBoundary: input.brokerIntegration.status,
     evidenceBoundLifecyclePct: pctOrNull(lifecycleEvidenceBound, input.positionLifecycle.length),
+    exportIntegrityHash,
+    exportIntegrityHashAlgorithm: "fnv1a32",
     exportColumnCount: 11,
     exportRowCount: input.operatingLedger.length,
-    ledgerIntegrity: ledgerComplete && input.operatingLedger.length ? "pass" : input.operatingLedger.length ? "partial" : "fail",
+    ledgerIntegrity: ledgerComplete && input.operatingLedger.length && exportIntegrityHash.length > 0 ? "pass" : input.operatingLedger.length ? "partial" : "fail",
     replayBackedAutopsyCount: input.paperTradeAutopsies.filter((item) => item.replayBacked).length,
     replayEligibleAutopsyCount,
     revisionTraceabilityPct: pctOrNull(traceableRevisions, input.strategyRevisions.length),
   };
+}
+
+export function deterministicLedgerHash(value: string): string {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193) >>> 0;
+  }
+  return hash.toString(16).padStart(8, "0");
 }
 
 function proofGatesFor(input: {

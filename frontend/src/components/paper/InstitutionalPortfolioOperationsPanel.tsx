@@ -20,7 +20,19 @@ import { formatMoney } from "@/lib/ui/formatters";
 
 export function InstitutionalPortfolioOperationsPanel({ system }: { system: InstitutionalPortfolioOperationsSystem }) {
   return (
-    <section className="min-w-0 overflow-hidden rounded-3xl border border-cyan-300/20 bg-slate-950/70 shadow-2xl shadow-black/25 ring-1 ring-white/5 backdrop-blur-xl" id="institutional-portfolio-operations">
+    <section
+      className="min-w-0 overflow-hidden rounded-3xl border border-cyan-300/20 bg-slate-950/70 shadow-2xl shadow-black/25 ring-1 ring-white/5 backdrop-blur-xl"
+      data-broker-boundary={system.brokerIntegration.status}
+      data-institutional-portfolio-operations="true"
+      data-ledger-integrity={system.auditManifest.ledgerIntegrity}
+      data-ledger-integrity-hash={system.auditManifest.exportIntegrityHash}
+      data-ledger-rows={system.auditManifest.exportRowCount}
+      data-lifecycle-evidence-pct={system.auditManifest.evidenceBoundLifecyclePct ?? "na"}
+      data-operating-score={system.operatingScore}
+      data-replay-backed-autopsy-count={system.auditManifest.replayBackedAutopsyCount}
+      data-revision-traceability-pct={system.auditManifest.revisionTraceabilityPct ?? "na"}
+      id="institutional-portfolio-operations"
+    >
       <div className="border-b border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.14),transparent_34%),radial-gradient(circle_at_80%_10%,rgba(168,85,247,0.12),transparent_32%)] p-5 sm:p-6">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
           <div className="min-w-0">
@@ -358,7 +370,13 @@ function ProofGateList({ items }: { items: InstitutionalOperationsCredibilityGat
 
 function AuditManifestCard({ manifest }: { manifest: InstitutionalOperationsAuditManifest }) {
   return (
-    <div className="rounded-2xl border border-emerald-300/18 bg-emerald-400/[0.045] p-4">
+    <div
+      className="rounded-2xl border border-emerald-300/18 bg-emerald-400/[0.045] p-4"
+      data-audit-manifest="true"
+      data-export-integrity-hash={manifest.exportIntegrityHash}
+      data-export-integrity-hash-algorithm={manifest.exportIntegrityHashAlgorithm}
+      data-ledger-integrity={manifest.ledgerIntegrity}
+    >
       <div className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">Audit Manifest</div>
       <h3 className="mt-1 text-lg font-semibold text-slate-50">Evidence-bound operating proof</h3>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
@@ -368,6 +386,7 @@ function AuditManifestCard({ manifest }: { manifest: InstitutionalOperationsAudi
         <Mini label="CSV columns" value={manifest.exportColumnCount.toLocaleString()} />
         <Mini label="Replay-backed" value={`${manifest.replayBackedAutopsyCount}/${manifest.replayEligibleAutopsyCount}`} />
         <Mini label="Ledger integrity" value={manifest.ledgerIntegrity} />
+        <Mini label="Export hash" value={`${manifest.exportIntegrityHashAlgorithm}:${manifest.exportIntegrityHash}`} />
       </div>
       <p className="mt-3 text-xs leading-5 text-slate-400">
         Broker boundary: {manifest.brokerBoundary.replace(/_/g, " ")}. This manifest proves export shape and evidence lineage; it does not certify broker execution or real-money account state.
@@ -378,7 +397,14 @@ function AuditManifestCard({ manifest }: { manifest: InstitutionalOperationsAudi
 
 function BrokerBoundaryCard({ state }: { state: InstitutionalBrokerIntegrationState }) {
   return (
-    <div className="rounded-2xl border border-amber-300/18 bg-amber-400/[0.045] p-4">
+    <div
+      className="rounded-2xl border border-amber-300/18 bg-amber-400/[0.045] p-4"
+      data-broker-boundary-card="true"
+      data-broker-can-place-orders={state.canPlaceOrders ? "true" : "false"}
+      data-broker-can-read-fills={state.canReadBrokerFills ? "true" : "false"}
+      data-broker-provider={state.provider}
+      data-broker-status={state.status}
+    >
       <div className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-200">Broker Boundary</div>
       <div className="mt-3 flex items-start justify-between gap-3">
         <div>
@@ -399,7 +425,7 @@ function BrokerBoundaryCard({ state }: { state: InstitutionalBrokerIntegrationSt
 function OperatingLedgerExport({ csv, items }: { csv: string; items: InstitutionalOperatingLedgerEntry[] }) {
   const href = `data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
   return (
-    <div className="rounded-2xl border border-cyan-300/18 bg-cyan-400/[0.045] p-4">
+    <div className="rounded-2xl border border-cyan-300/18 bg-cyan-400/[0.045] p-4" data-operating-ledger-card="true" data-operating-ledger-row-count={items.length}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Operating Ledger</div>
@@ -408,6 +434,7 @@ function OperatingLedgerExport({ csv, items }: { csv: string; items: Institution
         </div>
         <a
           className="shrink-0 rounded-full border border-cyan-300/35 bg-cyan-400/10 px-3 py-2 text-xs font-black text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15"
+          data-operating-ledger-export="true"
           download="tradeveto-operating-ledger.csv"
           href={href}
         >

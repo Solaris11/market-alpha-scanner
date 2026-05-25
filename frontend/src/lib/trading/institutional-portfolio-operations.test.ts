@@ -5,7 +5,7 @@ import type { PaperAnalyticsData, PaperPositionRow, PaperTradeEventRow } from "@
 import type { CsvRow } from "@/lib/types";
 import type { OpportunityViewModel } from "./opportunity-view-model";
 import type { ShockMovePattern } from "./shock-move";
-import { buildInstitutionalPortfolioOperationsSystem } from "./institutional-portfolio-operations";
+import { buildInstitutionalPortfolioOperationsSystem, deterministicLedgerHash } from "./institutional-portfolio-operations";
 import { buildPortfolioIntelligenceSystem } from "./portfolio-intelligence";
 import { buildScenarioIntelligenceSystem } from "./scenario-intelligence";
 import { buildSimulatedAiPortfolioSystem } from "./simulated-ai-portfolio";
@@ -277,6 +277,8 @@ test("institutional portfolio operations exposes lifecycle and risk budgets with
   assert.ok(system.operatingLanes.some((lane) => lane.label === "Thesis Completion"));
   assert.equal(system.auditManifest.evidenceBoundLifecyclePct, 100);
   assert.equal(system.auditManifest.ledgerIntegrity, "pass");
+  assert.equal(system.auditManifest.exportIntegrityHashAlgorithm, "fnv1a32");
+  assert.equal(system.auditManifest.exportIntegrityHash, deterministicLedgerHash(system.operatingLedgerCsv));
   assert.ok(system.proofGates.some((gate) => gate.label === "Trade autopsy boundary" && gate.status === "partial"));
   assert.ok(system.proofGates.some((gate) => gate.label === "Evidence-bound lifecycle records" && gate.status === "pass"));
   assert.ok(system.proofGates.some((gate) => gate.label === "Exportable operating ledger" && gate.status === "pass"));
@@ -375,6 +377,7 @@ test("institutional portfolio operating ledger is exportable without broker or r
   assert.ok(system.operatingLedger.every((row) => !/guarantee|broker execution confirmed|live fill/i.test(`${row.detail} ${row.evidence} ${row.boundaryDisclosure}`)));
   assert.equal(system.auditManifest.exportRowCount, system.operatingLedger.length);
   assert.equal(system.auditManifest.exportColumnCount, 11);
+  assert.equal(system.auditManifest.exportIntegrityHash, deterministicLedgerHash(system.operatingLedgerCsv));
   assert.ok(system.operatingLedgerCsv.startsWith("\"date\",\"category\",\"source\""));
   assert.match(system.operatingLedgerCsv, /paper close, not broker fill/);
   assert.match(system.operatingLedgerCsv, /paper_event:AMD/);
