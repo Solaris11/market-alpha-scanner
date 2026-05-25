@@ -39,7 +39,7 @@ async function main() {
   } catch (error) {
     exitCode = 1;
     const failure = {
-      error: error instanceof Error ? error.message : "Phase 25.4 chart/scanner power workflow probe failed",
+      error: error instanceof Error ? error.message : "Phase 25 chart/scanner power workflow probe failed",
       generatedAt: new Date().toISOString(),
       overallStatus: "not_ready",
       startedAt,
@@ -156,14 +156,14 @@ function buildReport() {
     largeWatchlistCount,
     metrics,
     overallStatus: blockers.length === 0 ? "ready" : "not_ready",
-    proofScope: "Production container deterministic workflow proof for scanner filtering, large-watchlist operations, compare matrix creation, chart persistence, fullscreen state, and workspace restore. This is not Browser DOM frame timing, physical-device proof, or TradingView parity.",
+    proofScope: "Production container deterministic workflow proof for scanner filtering, large-watchlist operations, compare matrix creation, chart persistence, fullscreen state, and workspace restore. Browser DOM frame timing is captured by the Phase 25 browser timing companion probe. This is not physical-device proof or TradingView parity.",
     samples,
     startedAt,
     symbolCount: symbols.length,
     unsupportedClaims: [
       "No unsupported TradingView parity claim.",
       "No broker execution, fake fills, or trading automation claim.",
-      "Browser DOM frame timing and physical-device gesture latency require separate evidence.",
+      "Physical-device gesture latency requires separate evidence.",
     ],
     virtualWindow,
   };
