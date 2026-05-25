@@ -132,19 +132,65 @@ export type DailyDriverTelemetrySignal = {
   tone: DailyDriverTone;
 };
 
+export type DailyDriverActivationMilestone = {
+  detail: string;
+  eventName: "activation_milestone" | "first_useful_action";
+  href: string;
+  key: "first_alert" | "first_compare" | "first_replay" | "first_scanner" | "first_symbol_investigation" | "first_watchlist";
+  label: string;
+  status: DailyDriverStatus;
+  targetLabel: string;
+  tone: DailyDriverTone;
+};
+
+export type DailyDriverReturnLoop = {
+  detail: string;
+  eventName: "alert_return" | "chart_return" | "compare_return" | "replay_return" | "scanner_habit_loop" | "scanner_return" | "strategy_return" | "watchlist_return";
+  href: string;
+  key: "alert" | "chart" | "compare" | "replay" | "scanner" | "scanner_habit" | "strategy" | "watchlist";
+  label: string;
+  status: DailyDriverStatus;
+  targetLabel: string;
+  tone: DailyDriverTone;
+};
+
+export type DailyDriverNotificationQualityControl = {
+  detail: string;
+  eventName: "notification_engagement" | "notification_usefulness_feedback";
+  key: "adaptive_relevance" | "category_quality" | "fatigue_suppression" | "intelligent_priority" | "quiet_low_value";
+  label: string;
+  status: DailyDriverStatus;
+  targetLabel: string;
+  tone: DailyDriverTone;
+};
+
+export type DailyDriverContinuationItem = {
+  detail: string;
+  href: string;
+  key: "chart_state" | "compare_state" | "history_investigation" | "replay_workflow" | "scanner_state" | "strategy_workflow";
+  label: string;
+  status: DailyDriverStatus;
+  tone: DailyDriverTone;
+  value: string;
+};
+
 export type DailyDriverRetentionModel = {
   activationScore: number;
+  activationMilestones: DailyDriverActivationMilestone[];
   adaptivePriorities: DailyDriverAdaptivePriority[];
   blockers: string[];
   changeVisualization: DailyDriverChangeSignal[];
+  continuationWorkflows: DailyDriverContinuationItem[];
   continuity: DailyDriverContextItem[];
   funnel: DailyDriverFunnelStage[];
   habitLoops: DailyDriverHabitLoop[];
   morningWorkflow: DailyDriverMorningWorkflowItem[];
+  notificationQuality: DailyDriverNotificationQualityControl[];
   personalization: DailyDriverContextItem[];
   primaryActions: DailyDriverAction[];
   proofBoundary: string;
   retentionTargets: DailyDriverRetentionTarget[];
+  returnLoops: DailyDriverReturnLoop[];
   summary: string;
   telemetry: DailyDriverTelemetrySignal[];
 };
@@ -225,6 +271,21 @@ export function buildDailyDriverRetentionModel(input: DailyDriverRetentionInput)
     watchlistSymbols,
     workflowEvolution,
   });
+  const activationMilestones = buildActivationMilestones({
+    replayCandidateCount,
+    rows,
+    topOpportunity,
+    watchlistSymbols,
+  });
+  const returnLoops = buildReturnLoops({
+    replayCandidateCount,
+    topOpportunity,
+    topReplay,
+    topWatchlist,
+    triggerMonitorCount,
+    watchlistSymbols,
+    workflowEvolution,
+  });
 
   const morningWorkflow = buildMorningWorkflow({
     marketCondition: input.marketCondition,
@@ -237,7 +298,9 @@ export function buildDailyDriverRetentionModel(input: DailyDriverRetentionInput)
     workflowEvolution,
   });
   const continuity = buildContinuity({ preferences, triggerMonitorCount, watchlistSymbols, workflowEvolution });
+  const continuationWorkflows = buildContinuationWorkflows({ preferences, topOpportunity, topReplay, topWatchlist, workflowEvolution });
   const personalization = buildPersonalization({ preferences, rows, watchlistSymbols });
+  const notificationQuality = buildNotificationQualityControls({ triggerMonitorCount, watchlistSymbols, workflowEvolution });
   const changeVisualization = buildChangeVisualization({
     rows,
     topOpportunity,
@@ -272,17 +335,21 @@ export function buildDailyDriverRetentionModel(input: DailyDriverRetentionInput)
 
   return {
     activationScore,
+    activationMilestones,
     adaptivePriorities,
     blockers,
     changeVisualization,
+    continuationWorkflows,
     continuity,
     funnel,
     habitLoops,
     morningWorkflow,
+    notificationQuality,
     personalization,
     primaryActions,
-    proofBoundary: "This panel improves and instruments daily-driver workflows. It does not claim retention victory until elapsed production cohorts prove D2, D7, active-day depth, notification usefulness, and alert-return targets.",
+    proofBoundary: "This panel improves and instruments daily-driver workflows. It does not claim retention victory until elapsed production cohorts prove D2 > 8%, D7 > 4%, 2+ active-day > 10%, notification usefulness > 55%, and alert-return conversion > 12%.",
     retentionTargets,
+    returnLoops,
     summary,
     telemetry,
   };
@@ -619,6 +686,175 @@ function buildHabitLoops(input: {
   ];
 }
 
+function buildActivationMilestones(input: {
+  replayCandidateCount: number;
+  rows: OpportunityViewModel[];
+  topOpportunity: ScoredOpportunity | null;
+  watchlistSymbols: string[];
+}): DailyDriverActivationMilestone[] {
+  const symbol = input.topOpportunity?.row.symbol ?? input.rows[0]?.symbol ?? "AMD";
+  const hasRows = input.rows.length > 0;
+  const hasWatchlist = input.watchlistSymbols.length > 0;
+  return [
+    {
+      detail: hasWatchlist ? `${input.watchlistSymbols.length} tracked symbol${input.watchlistSymbols.length === 1 ? "" : "s"} can anchor every return session.` : "The first saved watchlist is still the highest-impact activation step.",
+      eventName: "activation_milestone",
+      href: "/discover",
+      key: "first_watchlist",
+      label: "First watchlist",
+      status: hasWatchlist ? "ready" : "blocked",
+      targetLabel: "< first session",
+      tone: hasWatchlist ? "emerald" : "amber",
+    },
+    {
+      detail: hasRows ? "Scanner activation is available from Terminal, Discover, Scanner, and first-run walkthrough entry points." : "Scanner activation is limited until current opportunity rows load.",
+      eventName: "activation_milestone",
+      href: "/scanner",
+      key: "first_scanner",
+      label: "First scanner run",
+      status: hasRows ? "ready" : "blocked",
+      targetLabel: "< 3 minutes",
+      tone: hasRows ? "violet" : "rose",
+    },
+    {
+      detail: "Compare activation gives users a concrete reason to evaluate alternatives instead of browsing isolated cards.",
+      eventName: "activation_milestone",
+      href: "/discover#compare",
+      key: "first_compare",
+      label: "First compare",
+      status: hasRows ? "partial" : "blocked",
+      targetLabel: "< first session",
+      tone: hasRows ? "cyan" : "amber",
+    },
+    {
+      detail: "Alert activation creates the return trigger needed to turn intelligence into a measured comeback loop.",
+      eventName: "activation_milestone",
+      href: "/alerts",
+      key: "first_alert",
+      label: "First alert",
+      status: hasWatchlist ? "ready" : "partial",
+      targetLabel: "> 12% return",
+      tone: hasWatchlist ? "emerald" : "amber",
+    },
+    {
+      detail: input.replayCandidateCount ? `${input.replayCandidateCount} replay candidates can become the first evidence review.` : "Replay activation exists but needs stronger current candidates.",
+      eventName: "activation_milestone",
+      href: `/history?symbol=${encodeURIComponent(symbol)}`,
+      key: "first_replay",
+      label: "First replay",
+      status: input.replayCandidateCount ? "ready" : "partial",
+      targetLabel: "Replay reuse",
+      tone: input.replayCandidateCount ? "cyan" : "slate",
+    },
+    {
+      detail: `${symbol} is the safest starter symbol for chart, risk, catalyst, and confidence investigation.`,
+      eventName: "first_useful_action",
+      href: `/symbol/${encodeURIComponent(symbol)}`,
+      key: "first_symbol_investigation",
+      label: "First symbol investigation",
+      status: hasRows ? "ready" : "partial",
+      targetLabel: "Useful action",
+      tone: hasRows ? "emerald" : "amber",
+    },
+  ];
+}
+
+function buildReturnLoops(input: {
+  replayCandidateCount: number;
+  topOpportunity: ScoredOpportunity | null;
+  topReplay: ScoredOpportunity | null;
+  topWatchlist: ScoredOpportunity | null;
+  triggerMonitorCount: number;
+  watchlistSymbols: string[];
+  workflowEvolution: WorkflowEvolutionSummary | null;
+}): DailyDriverReturnLoop[] {
+  const continuationSymbol = workflowContinuationSymbol(input.workflowEvolution) ?? input.topWatchlist?.row.symbol ?? input.topOpportunity?.row.symbol ?? input.watchlistSymbols[0] ?? "AMD";
+  const hasContinuity = Boolean(input.workflowEvolution?.lastSeenAt);
+  const hasWatchlist = input.watchlistSymbols.length > 0;
+  return [
+    {
+      detail: hasContinuity ? "Scanner return can compare today's row set against the prior workflow baseline." : "The next scanner visit will create the baseline needed for changed-since-last-visit proof.",
+      eventName: "scanner_return",
+      href: "/discover",
+      key: "scanner",
+      label: "Scanner return",
+      status: hasContinuity ? "ready" : "partial",
+      targetLabel: "scanner reuse",
+      tone: hasContinuity ? "violet" : "amber",
+    },
+    {
+      detail: "Repeated scanner entry is now separated from generic usage so addictive scanner-loop behavior can be measured directly.",
+      eventName: "scanner_habit_loop",
+      href: "/scanner",
+      key: "scanner_habit",
+      label: "Scanner habit loop",
+      status: "partial",
+      targetLabel: "repeat scan",
+      tone: "violet",
+    },
+    {
+      detail: hasWatchlist ? `${input.watchlistSymbols.length} saved symbols can produce movement, risk, news, and memory return prompts.` : "Watchlist returns remain weak until the user saves symbols.",
+      eventName: "watchlist_return",
+      href: continuationSymbol ? `/symbol/${encodeURIComponent(continuationSymbol)}` : "/discover",
+      key: "watchlist",
+      label: "Watchlist return",
+      status: hasWatchlist ? "ready" : "blocked",
+      targetLabel: "movement review",
+      tone: hasWatchlist ? "emerald" : "amber",
+    },
+    {
+      detail: input.topReplay || input.replayCandidateCount ? "History and Market Memory returns can reopen replay evidence from the current research thread." : "Replay returns need more comparable history before they become habit-forming.",
+      eventName: "replay_return",
+      href: `/history?symbol=${encodeURIComponent(input.topReplay?.row.symbol ?? continuationSymbol)}`,
+      key: "replay",
+      label: "Replay return",
+      status: input.topReplay || input.replayCandidateCount ? "ready" : "partial",
+      targetLabel: "replay reuse",
+      tone: input.topReplay || input.replayCandidateCount ? "cyan" : "slate",
+    },
+    {
+      detail: "Chart returns are tracked separately from symbol opens so restored chart workspaces can become a measured daily loop.",
+      eventName: "chart_return",
+      href: `/symbol/${encodeURIComponent(continuationSymbol)}`,
+      key: "chart",
+      label: "Chart return",
+      status: hasContinuity ? "partial" : "blocked",
+      targetLabel: "chart restore",
+      tone: hasContinuity ? "cyan" : "amber",
+    },
+    {
+      detail: "Compare return records whether users resume a side-by-side investigation instead of restarting from generic discovery.",
+      eventName: "compare_return",
+      href: "/discover#compare",
+      key: "compare",
+      label: "Compare return",
+      status: hasContinuity ? "partial" : "blocked",
+      targetLabel: "compare restore",
+      tone: hasContinuity ? "cyan" : "amber",
+    },
+    {
+      detail: "Alert returns measure whether notification triggers actually bring users back into a useful workflow.",
+      eventName: "alert_return",
+      href: "/alerts",
+      key: "alert",
+      label: "Alert return",
+      status: hasWatchlist || input.triggerMonitorCount ? "partial" : "blocked",
+      targetLabel: "> 12%",
+      tone: hasWatchlist || input.triggerMonitorCount ? "rose" : "amber",
+    },
+    {
+      detail: "Strategy returns prove that simulated strategy review becomes an ongoing operating habit, not a one-off feature tour.",
+      eventName: "strategy_return",
+      href: "/strategy-labs",
+      key: "strategy",
+      label: "Strategy return",
+      status: "partial",
+      targetLabel: "strategy reuse",
+      tone: "emerald",
+    },
+  ];
+}
+
 function buildContinuity(input: {
   preferences: WorkspacePreferences;
   triggerMonitorCount: number;
@@ -657,6 +893,74 @@ function buildContinuity(input: {
   ];
 }
 
+function buildContinuationWorkflows(input: {
+  preferences: WorkspacePreferences;
+  topOpportunity: ScoredOpportunity | null;
+  topReplay: ScoredOpportunity | null;
+  topWatchlist: ScoredOpportunity | null;
+  workflowEvolution: WorkflowEvolutionSummary | null;
+}): DailyDriverContinuationItem[] {
+  const symbol = workflowContinuationSymbol(input.workflowEvolution) ?? input.topWatchlist?.row.symbol ?? input.topOpportunity?.row.symbol ?? "AMD";
+  const hasWorkflowMemory = Boolean(input.workflowEvolution?.lastSeenAt);
+  const workspaceSaved = Boolean(input.preferences.updatedAt);
+  return [
+    {
+      detail: workspaceSaved ? "Discovery filters, scanner preferences, and saved workspace choices reduce first-minute setup friction." : "Scanner state still needs a saved workspace preference to become reliably restorable.",
+      href: "/discover",
+      key: "scanner_state",
+      label: "Restore scanner state",
+      status: workspaceSaved ? "ready" : "partial",
+      tone: workspaceSaved ? "emerald" : "amber",
+      value: workspaceSaved ? "Saved" : "Default",
+    },
+    {
+      detail: "Chart workspace persistence is treated as a return loop only when users reopen symbol research after an elapsed day.",
+      href: `/symbol/${encodeURIComponent(symbol)}`,
+      key: "chart_state",
+      label: "Restore chart state",
+      status: hasWorkflowMemory ? "partial" : "blocked",
+      tone: hasWorkflowMemory ? "cyan" : "amber",
+      value: symbol,
+    },
+    {
+      detail: "Compare restore keeps side-by-side research from becoming throwaway browsing.",
+      href: "/discover#compare",
+      key: "compare_state",
+      label: "Restore compare state",
+      status: workspaceSaved ? "partial" : "blocked",
+      tone: workspaceSaved ? "cyan" : "amber",
+      value: workspaceSaved ? "Ready" : "Needs save",
+    },
+    {
+      detail: input.topReplay ? `${input.topReplay.row.symbol} can resume the prior replay investigation.` : "History investigation resumes from the selected symbol when enough replay context exists.",
+      href: `/history?symbol=${encodeURIComponent(input.topReplay?.row.symbol ?? symbol)}`,
+      key: "history_investigation",
+      label: "Continue history investigation",
+      status: input.topReplay ? "ready" : "partial",
+      tone: input.topReplay ? "cyan" : "slate",
+      value: input.topReplay?.row.symbol ?? "Learning",
+    },
+    {
+      detail: "Market Memory can reopen comparable replay evidence without inventing unsupported analogs.",
+      href: `/market-memory?symbol=${encodeURIComponent(symbol)}`,
+      key: "replay_workflow",
+      label: "Continue replay workflow",
+      status: input.topReplay ? "ready" : "partial",
+      tone: input.topReplay ? "violet" : "slate",
+      value: input.topReplay ? "Candidate" : "Limited",
+    },
+    {
+      detail: "Strategy Labs stays connected to current risk and setup context, but habit proof still needs repeated strategy returns.",
+      href: "/strategy-labs",
+      key: "strategy_workflow",
+      label: "Continue strategy workflow",
+      status: "partial",
+      tone: "emerald",
+      value: input.preferences.preferredRiskStyle,
+    },
+  ];
+}
+
 function buildPersonalization(input: { preferences: WorkspacePreferences; rows: OpportunityViewModel[]; watchlistSymbols: string[] }): DailyDriverContextItem[] {
   const sector = dominantSector(input.rows, input.watchlistSymbols);
   return [
@@ -687,6 +991,61 @@ function buildPersonalization(input: { preferences: WorkspacePreferences; rows: 
       label: "Timeframe habit",
       tone: "amber",
       value: input.preferences.preferredTimeframes.join("/") || "Default",
+    },
+  ];
+}
+
+function buildNotificationQualityControls(input: {
+  triggerMonitorCount: number;
+  watchlistSymbols: string[];
+  workflowEvolution: WorkflowEvolutionSummary | null;
+}): DailyDriverNotificationQualityControl[] {
+  const hasPersonalContext = input.watchlistSymbols.length > 0 || Boolean(input.workflowEvolution?.lastSeenAt);
+  return [
+    {
+      detail: "Low-value notifications are explicitly measured through not-useful feedback and suppressed preference actions.",
+      eventName: "notification_usefulness_feedback",
+      key: "fatigue_suppression",
+      label: "Fatigue suppression",
+      status: "partial",
+      targetLabel: "quiet noise",
+      tone: "amber",
+    },
+    {
+      detail: hasPersonalContext ? "Watchlist and workflow memory give notifications a personalized ranking basis." : "Adaptive relevance remains weak until watchlist or return-session context exists.",
+      eventName: "notification_engagement",
+      key: "adaptive_relevance",
+      label: "Adaptive relevance",
+      status: hasPersonalContext ? "partial" : "blocked",
+      targetLabel: "return fit",
+      tone: hasPersonalContext ? "cyan" : "amber",
+    },
+    {
+      detail: "Useful/not-useful feedback is categorized so weak categories can be reduced instead of blindly increasing notification volume.",
+      eventName: "notification_usefulness_feedback",
+      key: "category_quality",
+      label: "Category quality scoring",
+      status: "partial",
+      targetLabel: "> 55% useful",
+      tone: "violet",
+    },
+    {
+      detail: input.triggerMonitorCount ? `${input.triggerMonitorCount} trigger monitor${input.triggerMonitorCount === 1 ? "" : "s"} can raise only high-priority notifications.` : "Priority routing is present but has limited trigger-monitor evidence in this snapshot.",
+      eventName: "notification_engagement",
+      key: "intelligent_priority",
+      label: "Intelligent prioritization",
+      status: input.triggerMonitorCount ? "ready" : "partial",
+      targetLabel: "high signal",
+      tone: input.triggerMonitorCount ? "emerald" : "slate",
+    },
+    {
+      detail: "Quieting low-value notifications is a retention protection, not a vanity engagement feature.",
+      eventName: "notification_usefulness_feedback",
+      key: "quiet_low_value",
+      label: "Quiet low-value notifications",
+      status: "partial",
+      targetLabel: "fatigue down",
+      tone: "cyan",
     },
   ];
 }
@@ -870,7 +1229,7 @@ function buildRetentionTargets(input: {
       key: "d2_retention",
       label: "D2 retention",
       status: hasReturnInfrastructure ? "partial" : "blocked",
-      targetLabel: "> 10%",
+      targetLabel: "> 8%",
       tone: hasReturnInfrastructure ? "cyan" : "amber",
     },
     {
@@ -880,7 +1239,7 @@ function buildRetentionTargets(input: {
       key: "d7_retention",
       label: "D7 retention",
       status: "blocked",
-      targetLabel: "> 6%",
+      targetLabel: "> 4%",
       tone: "rose",
     },
     {
@@ -890,7 +1249,7 @@ function buildRetentionTargets(input: {
       key: "active_day_depth",
       label: "2+ active-day retention",
       status: hasContinuity ? "partial" : "blocked",
-      targetLabel: "> 15%",
+      targetLabel: "> 10%",
       tone: hasContinuity ? "cyan" : "amber",
     },
     {
@@ -900,7 +1259,7 @@ function buildRetentionTargets(input: {
       key: "notification_useful_ratio",
       label: "Notification useful ratio",
       status: "partial",
-      targetLabel: "> 65%",
+      targetLabel: "> 55%",
       tone: "violet",
     },
     {
@@ -910,7 +1269,7 @@ function buildRetentionTargets(input: {
       key: "alert_return_conversion",
       label: "Alert-return conversion",
       status: hasWatchlist || input.triggerMonitorCount ? "partial" : "blocked",
-      targetLabel: "> 15%",
+      targetLabel: "> 12%",
       tone: hasWatchlist || input.triggerMonitorCount ? "emerald" : "amber",
     },
   ];
@@ -923,6 +1282,14 @@ function buildTelemetrySignals(input: {
   workflowEvolution: WorkflowEvolutionSummary | null;
 }): DailyDriverTelemetrySignal[] {
   return [
+    {
+      detail: input.watchlistSymbols.length ? "Activation milestone telemetry can distinguish first watchlist, first scanner, first compare, first alert, first replay, and first symbol investigation." : "Activation milestone telemetry is live, but users still need watchlist creation to complete the activation ladder.",
+      eventName: "activation_milestone",
+      label: "Activation milestones",
+      status: input.watchlistSymbols.length ? "ready" : "partial",
+      targetLabel: "First-session activation",
+      tone: input.watchlistSymbols.length ? "emerald" : "amber",
+    },
     {
       detail: "Route-level telemetry records the start of the morning workflow when users return through Terminal, Scanner, or Feed in morning hours.",
       eventName: "morning_workflow_start",
@@ -956,6 +1323,14 @@ function buildTelemetrySignals(input: {
       tone: input.watchlistSymbols.length ? "violet" : "amber",
     },
     {
+      detail: "Chart, compare, and history returns are separated from generic route opens so workflow restore can be audited directly.",
+      eventName: "chart_return / compare_return / history_return",
+      label: "Chart and compare returns",
+      status: input.workflowEvolution?.lastSeenAt ? "partial" : "blocked",
+      targetLabel: "Continuation proof",
+      tone: input.workflowEvolution?.lastSeenAt ? "cyan" : "amber",
+    },
+    {
       detail: input.replayCandidateCount ? "Replay return is measurable from current replay candidates." : "Replay return telemetry exists but this snapshot has limited replay candidates.",
       eventName: "replay_return",
       label: "Replay return",
@@ -972,11 +1347,19 @@ function buildTelemetrySignals(input: {
       tone: input.persistedWorkspace ? "emerald" : "amber",
     },
     {
+      detail: "Workflow dropoff records sessions that leave core surfaces without a useful interaction, making abandonment and first-session friction visible.",
+      eventName: "workflow_dropoff",
+      label: "Workflow dropoff",
+      status: "partial",
+      targetLabel: "Abandonment down",
+      tone: "rose",
+    },
+    {
       detail: "Notification usefulness feedback feeds fatigue suppression and alert quality review.",
       eventName: "notification_usefulness_feedback",
       label: "Notification usefulness",
       status: "partial",
-      targetLabel: "> 65% useful",
+      targetLabel: "> 55% useful",
       tone: "violet",
     },
   ];
@@ -993,7 +1376,7 @@ function buildBlockers(input: {
   if (!input.persistedWorkspace) blockers.push("Workspace preferences have not been saved, so repeat sessions still start from default layout.");
   if (!input.workflowEvolution?.lastSeenAt) blockers.push("Workflow continuity is starting, but repeat-visit proof is not established yet.");
   if (!input.replayCandidateCount) blockers.push("Replay candidates are limited in this snapshot, weakening the replay habit loop.");
-  blockers.push("Real retention dominance cannot be claimed until production cohorts show D2 > 10%, D7 > 6%, 2+ active-day > 15%, notification usefulness > 65%, and alert-return conversion > 15%.");
+  blockers.push("Real retention dominance cannot be claimed until production cohorts show D2 > 8%, D7 > 4%, 2+ active-day > 10%, notification usefulness > 55%, and alert-return conversion > 12%.");
   return blockers;
 }
 

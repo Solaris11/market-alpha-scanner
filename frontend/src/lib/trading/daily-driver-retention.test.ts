@@ -28,7 +28,22 @@ describe("daily driver retention model", () => {
       "ai_digest",
     ]);
     assert.equal(model.funnel.find((stage) => stage.key === "watchlist_anchor")?.value, 0);
-    assert.ok(model.retentionTargets.some((target) => target.key === "d2_retention" && target.targetLabel === "> 10%"));
+    assert.deepEqual(model.activationMilestones.map((item) => item.key), [
+      "first_watchlist",
+      "first_scanner",
+      "first_compare",
+      "first_alert",
+      "first_replay",
+      "first_symbol_investigation",
+    ]);
+    assert.ok(model.activationMilestones.some((item) => item.key === "first_watchlist" && item.status === "blocked"));
+    assert.ok(model.returnLoops.some((loop) => loop.eventName === "scanner_habit_loop"));
+    assert.ok(model.returnLoops.some((loop) => loop.eventName === "chart_return" && loop.status === "blocked"));
+    assert.ok(model.continuationWorkflows.some((item) => item.key === "scanner_state"));
+    assert.ok(model.notificationQuality.some((item) => item.key === "fatigue_suppression"));
+    assert.ok(model.retentionTargets.some((target) => target.key === "d2_retention" && target.targetLabel === "> 8%"));
+    assert.ok(model.telemetry.some((item) => item.eventName === "activation_milestone"));
+    assert.ok(model.telemetry.some((item) => item.eventName === "workflow_dropoff"));
     assert.ok(model.telemetry.some((item) => item.eventName === "morning_workflow_complete"));
     assert.equal(model.changeVisualization[0]?.type, "baseline");
     assert.ok(model.blockers.some((blocker) => blocker.includes("No watchlist anchor")));
@@ -58,6 +73,11 @@ describe("daily driver retention model", () => {
     assert.ok(model.primaryActions.some((action) => action.key === "save_scanner"));
     assert.ok(model.habitLoops.some((loop) => loop.key === "alert_return"));
     assert.ok(model.habitLoops.some((loop) => loop.key === "notification_feedback"));
+    assert.ok(model.activationMilestones.some((item) => item.key === "first_alert" && item.status === "ready"));
+    assert.ok(model.returnLoops.some((loop) => loop.eventName === "chart_return" && loop.status === "partial"));
+    assert.ok(model.returnLoops.some((loop) => loop.eventName === "compare_return" && loop.status === "partial"));
+    assert.equal(model.continuationWorkflows.find((item) => item.key === "chart_state")?.value, "AMD");
+    assert.ok(model.notificationQuality.some((item) => item.key === "adaptive_relevance" && item.status === "partial"));
     assert.equal(model.morningWorkflow.find((item) => item.key === "watchlist_movement")?.href, "/symbol/AMD");
     assert.equal(model.morningWorkflow.find((item) => item.key === "scanner_changes")?.metricLabel, "2 rows");
     assert.match(model.morningWorkflow.find((item) => item.key === "macro_updates")?.metricLabel ?? "", /1 trigger/);
@@ -65,7 +85,7 @@ describe("daily driver retention model", () => {
     assert.equal(model.morningWorkflow.find((item) => item.key === "ai_digest")?.href, "/symbol/AMD");
     assert.ok(model.changeVisualization.some((item) => item.symbol === "AMD" && item.type === "watchlist"));
     assert.ok(model.adaptivePriorities.some((item) => item.key === "adaptive_scanner" && item.proofEvent.includes("scanner_return")));
-    assert.ok(model.retentionTargets.some((target) => target.key === "notification_useful_ratio" && target.targetLabel === "> 65%"));
+    assert.ok(model.retentionTargets.some((target) => target.key === "notification_useful_ratio" && target.targetLabel === "> 55%"));
     assert.ok(model.telemetry.some((item) => item.eventName === "watchlist_return / scanner_return" && item.status === "ready"));
     assert.equal(model.personalization.find((item) => item.label === "Focus cluster")?.value, "Semiconductors");
     assert.equal(model.continuity.find((item) => item.label === "Workspace restore")?.value, "Saved");

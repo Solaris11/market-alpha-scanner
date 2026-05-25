@@ -30,6 +30,7 @@ type ClientAnalyticsEvent = {
 };
 
 const ANONYMOUS_ID_KEY = "tv_analytics_anonymous_id";
+const ACTIVATION_MILESTONES_KEY = "tv_activation_milestones_recorded";
 const FIRST_USEFUL_ACTION_KEY = "tv_first_useful_action_recorded";
 const SESSION_KEY = "tv_analytics_session";
 const SESSION_STARTED_AT_KEY = "tv_analytics_session_started_at";
@@ -41,6 +42,7 @@ const RETURN_SESSION_EMITTED_KEY = "tv_return_session_emitted";
 const RETURN_WORKFLOW_EMITTED_KEY = "tv_return_workflow_emitted";
 const PERSONALIZED_RETURN_EMITTED_KEY = "tv_personalized_return_emitted";
 const WATCHLIST_RETENTION_EMITTED_KEY = "tv_watchlist_retention_emitted";
+const WORKFLOW_DROPOFF_EMITTED_KEY = "tv_workflow_dropoff_emitted";
 const SESSION_TTL_MS = 30 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_QUEUE = 40;
@@ -62,6 +64,17 @@ let emittedScrollAbandonPath = "";
 let maxScrollDepth = 0;
 let lastInteractionAt = Date.now();
 let lastCardClickAt = 0;
+
+export type ActivationMilestone =
+  | "alert"
+  | "chart"
+  | "compare"
+  | "morning_command"
+  | "replay"
+  | "scanner"
+  | "strategy"
+  | "symbol_investigation"
+  | "watchlist";
 
 export function trackAnalyticsEvent(eventName: AnalyticsEventName, metadata: Record<string, unknown> = {}, options: { pagePath?: string; source?: string; symbol?: string } = {}): void {
   if (typeof window === "undefined" || !analyticsEnabled()) return;
@@ -105,6 +118,23 @@ export function trackFirstUsefulAction(action: string, metadata: Record<string, 
   trackAnalyticsEvent("first_useful_action", { ...metadata, action }, options);
 }
 
+export function trackActivationMilestone(milestone: ActivationMilestone, metadata: Record<string, unknown> = {}, options: { pagePath?: string; source?: string; symbol?: string } = {}): void {
+  if (typeof window === "undefined" || !analyticsEnabled()) return;
+  try {
+    const milestones = readActivationMilestones();
+    if (milestones.includes(milestone)) return;
+    const next = [...milestones, milestone].slice(-20);
+    window.localStorage.setItem(ACTIVATION_MILESTONES_KEY, JSON.stringify(next));
+    trackAnalyticsEvent("activation_milestone", {
+      ...metadata,
+      milestone,
+      milestoneCount: next.length,
+    }, options);
+  } catch {
+    trackAnalyticsEvent("activation_milestone", { ...metadata, milestone }, options);
+  }
+}
+
 export function trackRouteAnalytics(pathname: string): void {
   if (typeof window === "undefined" || !analyticsEnabled()) return;
   pageStartedAtMs = Date.now();
@@ -121,6 +151,7 @@ export function trackRouteAnalytics(pathname: string): void {
   if (pageEvent) trackAnalyticsEvent(pageEvent, { path: pagePath }, { pagePath: routePagePath, source: "route", symbol: symbolFromPath(pathname) ?? undefined });
   const usageEvent = usageEventForPath(pathname);
   if (usageEvent) trackAnalyticsEvent(usageEvent, { path: pagePath }, { pagePath: routePagePath, source: "route_usage", symbol: symbolFromPath(pathname) ?? undefined });
+  trackRouteActivationMilestone(pathname, routePagePath);
   trackMobileEngagement(pathname, routePagePath);
   trackReturnSession(pathname, routePagePath);
   trackWorkflowContinuity(pathname, routePagePath);
@@ -162,7 +193,7 @@ export function installBehaviorTelemetry(): () => void {
 
   document.addEventListener("click", handleDocumentClick, { capture: true, passive: true, signal });
   window.addEventListener("scroll", handleScroll, { passive: true, signal });
-  window.addEventListener("pagehide", emitScrollAbandonIfNeeded, { signal });
+  window.addEventListener("pagehide", emitExitTelemetry, { signal });
   window.addEventListener("popstate", () => {
     trackAnalyticsEvent("back_navigation", { path: sanitizeAnalyticsPath(`${window.location.pathname}${window.location.search}`) }, { source: "browser_history" });
   }, { signal });
@@ -272,6 +303,32 @@ function emitScrollAbandonIfNeeded(): void {
   }
 }
 
+function emitWorkflowDropoffIfNeeded(): void {
+  const path = sanitizeAnalyticsPath(`${window.location.pathname}${window.location.search}`) ?? "unknown";
+  const group = workflowGroupForPath(window.location.pathname);
+  if (!group || group === "support" || group === "account") return;
+  const pageElapsedMs = Date.now() - pageStartedAtMs;
+  if (pageElapsedMs < 12_000 || usefulInteractionSeen) return;
+  const sessionId = currentSessionId() ?? "unknown";
+  const key = `${WORKFLOW_DROPOFF_EMITTED_KEY}:${sessionId}:${path}`;
+  try {
+    if (window.sessionStorage.getItem(key) === "true") return;
+    window.sessionStorage.setItem(key, "true");
+  } catch {
+    // If session storage is unavailable, still emit once for this pagehide path.
+  }
+  trackAnalyticsEvent("workflow_dropoff", {
+    maxScrollDepth: Number(maxScrollDepth.toFixed(2)),
+    pageElapsedMs: Math.round(pageElapsedMs),
+    routeGroup: group,
+  }, { pagePath: path, source: "friction_detector", symbol: symbolFromPath(window.location.pathname) ?? undefined });
+}
+
+function emitExitTelemetry(): void {
+  emitScrollAbandonIfNeeded();
+  emitWorkflowDropoffIfNeeded();
+}
+
 function analyticsElementDescriptor(target: Element): { component: string; kind: string; symbol: string | null } | null {
   const element = target.closest<HTMLElement>("[data-analytics-id], [data-analytics-component], [data-telemetry-id], [data-symbol], a, button, summary, [role='button']");
   if (!element) return null;
@@ -284,6 +341,25 @@ function analyticsElementDescriptor(target: Element): { component: string; kind:
     kind: compactComponent(kind),
     symbol: sanitizeAnalyticsSymbol(element.dataset.symbol),
   };
+}
+
+function trackRouteActivationMilestone(pathname: string, pagePath?: string): void {
+  const group = workflowGroupForPath(pathname);
+  const symbol = symbolFromPath(pathname);
+  if (pathname === "/terminal" || pathname.startsWith("/terminal/")) {
+    trackActivationMilestone("morning_command", { routeGroup: "terminal" }, { pagePath, source: "route_activation" });
+  }
+  if (group === "scanner") {
+    trackActivationMilestone("scanner", { routeGroup: group }, { pagePath, source: "route_activation", symbol: symbol ?? undefined });
+    if (compareModeVisible()) trackActivationMilestone("compare", { routeGroup: group }, { pagePath, source: "route_activation" });
+  }
+  if (group === "symbol") {
+    trackActivationMilestone("symbol_investigation", { routeGroup: group }, { pagePath, source: "route_activation", symbol: symbol ?? undefined });
+    trackActivationMilestone("chart", { routeGroup: group }, { pagePath, source: "route_activation", symbol: symbol ?? undefined });
+  }
+  if (group === "replay") trackActivationMilestone("replay", { routeGroup: group }, { pagePath, source: "route_activation", symbol: symbol ?? undefined });
+  if (group === "alerts") trackActivationMilestone("alert", { routeGroup: group }, { pagePath, source: "route_activation" });
+  if (group === "strategy") trackActivationMilestone("strategy", { routeGroup: group }, { pagePath, source: "route_activation" });
 }
 
 function usageEventForPath(pathname: string): AnalyticsEventName | null {
@@ -350,6 +426,18 @@ function trackReturnSession(pathname: string, pagePath?: string): void {
       if (workflowEvent) {
         emitOncePerSession(`${RETURN_WORKFLOW_EMITTED_KEY}:${sessionId}:${workflowEvent}`, workflowEvent, metadata, pagePath, pathname, "return_workflow");
       }
+      if (group === "scanner") {
+        emitOncePerSession(`${RETURN_WORKFLOW_EMITTED_KEY}:${sessionId}:scanner_habit_loop`, "scanner_habit_loop", metadata, pagePath, pathname, "return_workflow");
+      }
+      if (group === "symbol") {
+        emitOncePerSession(`${RETURN_WORKFLOW_EMITTED_KEY}:${sessionId}:chart_return`, "chart_return", metadata, pagePath, pathname, "return_workflow");
+      }
+      if (group === "replay") {
+        emitOncePerSession(`${RETURN_WORKFLOW_EMITTED_KEY}:${sessionId}:history_return`, "history_return", metadata, pagePath, pathname, "return_workflow");
+      }
+      if (compareModeVisible()) {
+        emitOncePerSession(`${RETURN_WORKFLOW_EMITTED_KEY}:${sessionId}:compare_return`, "compare_return", metadata, pagePath, pathname, "return_workflow");
+      }
 
       if (watchlistSize > 0 && group !== "mobile") {
         emitOncePerSession(`${RETURN_WORKFLOW_EMITTED_KEY}:${sessionId}:watchlist_return`, "watchlist_return", metadata, pagePath, pathname, "watchlist_return");
@@ -391,6 +479,34 @@ function returnEventForGroup(group: ContinuityWorkflowGroup): AnalyticsEventName
   if (group === "replay") return "replay_return";
   if (group === "alerts") return "alert_return";
   if (group === "strategy") return "strategy_return";
+  return null;
+}
+
+function compareModeVisible(): boolean {
+  if (typeof window === "undefined") return false;
+  const hash = window.location.hash.toLowerCase();
+  const search = window.location.search.toLowerCase();
+  return hash.includes("compare") || search.includes("compare") || search.includes("tab=compare");
+}
+
+function readActivationMilestones(): ActivationMilestone[] {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(ACTIVATION_MILESTONES_KEY) ?? "[]") as unknown;
+    if (!Array.isArray(parsed)) return [];
+    const output: ActivationMilestone[] = [];
+    for (const item of parsed) {
+      const milestone = normalizeActivationMilestone(item);
+      if (milestone && !output.includes(milestone)) output.push(milestone);
+    }
+    return output;
+  } catch {
+    return [];
+  }
+}
+
+function normalizeActivationMilestone(value: unknown): ActivationMilestone | null {
+  const text = String(value ?? "");
+  if (text === "alert" || text === "chart" || text === "compare" || text === "morning_command" || text === "replay" || text === "scanner" || text === "strategy" || text === "symbol_investigation" || text === "watchlist") return text;
   return null;
 }
 

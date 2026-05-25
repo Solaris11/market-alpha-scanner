@@ -211,8 +211,11 @@ export type OperationalCertificationGate = {
 };
 
 export type MonitoringRetentionMetrics = {
+  activationMilestones: number;
   activeUsers: number;
   alertReturns: number;
+  chartReturns: number;
+  compareReturns: number;
   day2EligibleUsers: number;
   day2RetainedUsers: number;
   day2RetentionRatePct: number | null;
@@ -227,6 +230,7 @@ export type MonitoringRetentionMetrics = {
   scannerReturns: number;
   strategyReturns: number;
   watchlistReturns: number;
+  workflowDropoffs: number;
 };
 
 export type MonitoringTimeRange = "15m" | "1h" | "6h" | "24h" | "1w" | "1m" | "6m";
@@ -537,8 +541,11 @@ type FallbackReasonDbRow = QueryResultRow & {
   reason: string | null;
 };
 type MonitoringRetentionMetricsRow = QueryResultRow & {
+  activation_milestones: string | number;
   active_users: string | number;
   alert_returns: string | number;
+  chart_returns: string | number;
+  compare_returns: string | number;
   day2_eligible_users: string | number;
   day2_retained_users: string | number;
   day7_eligible_users: string | number;
@@ -550,6 +557,7 @@ type MonitoringRetentionMetricsRow = QueryResultRow & {
   scanner_returns: string | number;
   strategy_returns: string | number;
   watchlist_returns: string | number;
+  workflow_dropoffs: string | number;
 };
 
 export async function getAdminDashboardSummary(): Promise<AdminDashboardSummary> {
@@ -1064,8 +1072,11 @@ export async function getAdminMonitoringSummary(timeRange: MonitoringTimeRange =
 
 async function getMonitoringRetentionMetrics(): Promise<MonitoringRetentionMetrics> {
   const empty: MonitoringRetentionMetrics = {
+    activationMilestones: 0,
     activeUsers: 0,
     alertReturns: 0,
+    chartReturns: 0,
+    compareReturns: 0,
     day2EligibleUsers: 0,
     day2RetainedUsers: 0,
     day2RetentionRatePct: null,
@@ -1080,6 +1091,7 @@ async function getMonitoringRetentionMetrics(): Promise<MonitoringRetentionMetri
     scannerReturns: 0,
     strategyReturns: 0,
     watchlistReturns: 0,
+    workflowDropoffs: 0,
   };
   const result = await dbQuery<MonitoringRetentionMetricsRow>(
     `
@@ -1099,14 +1111,18 @@ async function getMonitoringRetentionMetrics(): Promise<MonitoringRetentionMetri
       ),
       loops AS (
         SELECT
+          count(*) FILTER (WHERE event_name = 'activation_milestone') AS activation_milestones,
           count(*) FILTER (WHERE event_name = 'return_session') AS return_sessions,
           count(*) FILTER (WHERE event_name = 'scanner_return') AS scanner_returns,
+          count(*) FILTER (WHERE event_name = 'chart_return') AS chart_returns,
+          count(*) FILTER (WHERE event_name = 'compare_return') AS compare_returns,
           count(*) FILTER (WHERE event_name = 'watchlist_return') AS watchlist_returns,
           count(*) FILTER (WHERE event_name = 'alert_return') AS alert_returns,
           count(*) FILTER (WHERE event_name = 'strategy_return') AS strategy_returns,
           count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback' AND metadata->>'action' = 'useful_feedback') AS notification_useful,
           count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback' AND metadata->>'action' = 'not_useful_feedback') AS notification_not_useful,
-          count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback') AS notification_feedback_total
+          count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback') AS notification_feedback_total,
+          count(*) FILTER (WHERE event_name = 'workflow_dropoff') AS workflow_dropoffs
         FROM analytics_events
         WHERE occurred_at > now() - interval '30 days'
       )
@@ -1135,12 +1151,17 @@ async function getMonitoringRetentionMetrics(): Promise<MonitoringRetentionMetri
             )
         ) AS day7_retained_users,
         loops.return_sessions,
+        loops.activation_milestones,
         loops.scanner_returns,
+        loops.chart_returns,
+        loops.compare_returns,
         loops.watchlist_returns,
         loops.alert_returns,
+        loops.strategy_returns,
         loops.notification_useful,
         loops.notification_not_useful,
-        loops.notification_feedback_total
+        loops.notification_feedback_total,
+        loops.workflow_dropoffs
       FROM loops
     `,
   ).catch(() => ({ rows: [] as MonitoringRetentionMetricsRow[] }));
@@ -1153,8 +1174,11 @@ async function getMonitoringRetentionMetrics(): Promise<MonitoringRetentionMetri
   const notificationUseful = toNumber(row.notification_useful);
   const notificationTotal = toNumber(row.notification_feedback_total);
   return {
+    activationMilestones: toNumber(row.activation_milestones),
     activeUsers: toNumber(row.active_users),
     alertReturns: toNumber(row.alert_returns),
+    chartReturns: toNumber(row.chart_returns),
+    compareReturns: toNumber(row.compare_returns),
     day2EligibleUsers,
     day2RetainedUsers,
     day2RetentionRatePct: pctFromCounts(day2RetainedUsers, day2EligibleUsers),
@@ -1169,6 +1193,7 @@ async function getMonitoringRetentionMetrics(): Promise<MonitoringRetentionMetri
     scannerReturns: toNumber(row.scanner_returns),
     strategyReturns: toNumber(row.strategy_returns),
     watchlistReturns: toNumber(row.watchlist_returns),
+    workflowDropoffs: toNumber(row.workflow_dropoffs),
   };
 }
 

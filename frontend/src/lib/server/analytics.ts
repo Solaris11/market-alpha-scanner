@@ -147,15 +147,21 @@ export type AnalyticsSummary = {
         twoPlusActiveDayUsers: number;
       };
       habitLoops: {
+        activationMilestones: number;
         alertReturns: number;
+        chartReturns: number;
+        compareReturns: number;
+        historyReturns: number;
         morningWorkflowCompletions: number;
         morningWorkflows: number;
         personalizedReturns: number;
         replayReturns: number;
         returnSessions: number;
+        scannerHabitLoops: number;
         scannerReturns: number;
         strategyReturns: number;
         watchlistReturns: number;
+        workflowDropoffs: number;
       };
       notificationFeedback: {
         fatigueSignals: number;
@@ -408,15 +414,21 @@ type NotificationFeedbackCategoryRow = QueryResultRow & {
   useful: string | number;
 };
 type DailyDriverHabitLoopRow = QueryResultRow & {
+  activation_milestones: string | number;
   alert_returns: string | number;
+  chart_returns: string | number;
+  compare_returns: string | number;
+  history_returns: string | number;
   morning_workflow_completions: string | number;
   morning_workflows: string | number;
   personalized_returns: string | number;
   replay_returns: string | number;
   return_sessions: string | number;
+  scanner_habit_loops: string | number;
   scanner_returns: string | number;
   strategy_returns: string | number;
   watchlist_returns: string | number;
+  workflow_dropoffs: string | number;
 };
 type AdaptiveBehaviorProofRow = QueryResultRow & {
   decision_memory_actions: string | number;
@@ -452,11 +464,16 @@ const FRICTION_EVENT_NAMES = [
   "nav_confusion",
   "rage_click",
   "scroll_abandon",
+  "workflow_dropoff",
 ] as const;
 const CORE_FEATURE_EVENT_NAMES = [
   "alert_create",
+  "activation_milestone",
   "chart_expand",
+  "chart_return",
+  "compare_return",
   "feed_engagement",
+  "history_return",
   "morning_workflow_complete",
   "morning_workflow_start",
   "notification_engagement",
@@ -465,6 +482,7 @@ const CORE_FEATURE_EVENT_NAMES = [
   "alert_return",
   "strategy_return",
   "replay_return",
+  "scanner_habit_loop",
   "scanner_return",
   "replay_usage",
   "scanner_usage",
@@ -473,7 +491,7 @@ const CORE_FEATURE_EVENT_NAMES = [
   "watchlist_usage",
   "workflow_continuity",
 ] as const;
-const SCANNER_FEATURE_EVENTS = ["scanner_usage", "scanner_return", "scanner_run", "opportunities_open", "signal_drilldown"] as const;
+const SCANNER_FEATURE_EVENTS = ["scanner_usage", "scanner_return", "scanner_habit_loop", "scanner_run", "opportunities_open", "signal_drilldown"] as const;
 const FEED_FEATURE_EVENTS = ["feed_engagement", "feed_item_open"] as const;
 const REPLAY_FEATURE_EVENTS = ["replay_usage", "replay_return", "replay_open"] as const;
 const STRATEGY_FEATURE_EVENTS = ["strategy_usage", "strategy_labs_open", "strategy_return"] as const;
@@ -1047,15 +1065,21 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     dbQuery<DailyDriverHabitLoopRow>(
       `
         SELECT
+          count(*) FILTER (WHERE event_name = 'activation_milestone') AS activation_milestones,
           count(*) FILTER (WHERE event_name = 'return_session') AS return_sessions,
           count(*) FILTER (WHERE event_name = 'morning_workflow_start') AS morning_workflows,
           count(*) FILTER (WHERE event_name = 'morning_workflow_complete') AS morning_workflow_completions,
           count(*) FILTER (WHERE event_name = 'scanner_return') AS scanner_returns,
+          count(*) FILTER (WHERE event_name = 'scanner_habit_loop') AS scanner_habit_loops,
           count(*) FILTER (WHERE event_name = 'replay_return') AS replay_returns,
+          count(*) FILTER (WHERE event_name = 'chart_return') AS chart_returns,
+          count(*) FILTER (WHERE event_name = 'compare_return') AS compare_returns,
+          count(*) FILTER (WHERE event_name = 'history_return') AS history_returns,
           count(*) FILTER (WHERE event_name = 'alert_return') AS alert_returns,
           count(*) FILTER (WHERE event_name = 'strategy_return') AS strategy_returns,
           count(*) FILTER (WHERE event_name = 'watchlist_return') AS watchlist_returns,
-          count(*) FILTER (WHERE event_name = 'personalized_intelligence_return') AS personalized_returns
+          count(*) FILTER (WHERE event_name = 'personalized_intelligence_return') AS personalized_returns,
+          count(*) FILTER (WHERE event_name = 'workflow_dropoff') AS workflow_dropoffs
         FROM analytics_events
         WHERE occurred_at >= now() - ${interval}
       `,
@@ -1371,15 +1395,21 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
           twoPlusActiveDayUsers,
         },
         habitLoops: {
+          activationMilestones: numberFromRow(dailyDriverHabitLoopRow?.activation_milestones),
           alertReturns: numberFromRow(dailyDriverHabitLoopRow?.alert_returns),
+          chartReturns: numberFromRow(dailyDriverHabitLoopRow?.chart_returns),
+          compareReturns: numberFromRow(dailyDriverHabitLoopRow?.compare_returns),
+          historyReturns: numberFromRow(dailyDriverHabitLoopRow?.history_returns),
           morningWorkflowCompletions: numberFromRow(dailyDriverHabitLoopRow?.morning_workflow_completions),
           morningWorkflows: numberFromRow(dailyDriverHabitLoopRow?.morning_workflows),
           personalizedReturns: numberFromRow(dailyDriverHabitLoopRow?.personalized_returns),
           replayReturns: numberFromRow(dailyDriverHabitLoopRow?.replay_returns),
           returnSessions: numberFromRow(dailyDriverHabitLoopRow?.return_sessions),
+          scannerHabitLoops: numberFromRow(dailyDriverHabitLoopRow?.scanner_habit_loops),
           scannerReturns: numberFromRow(dailyDriverHabitLoopRow?.scanner_returns),
           strategyReturns: numberFromRow(dailyDriverHabitLoopRow?.strategy_returns),
           watchlistReturns: numberFromRow(dailyDriverHabitLoopRow?.watchlist_returns),
+          workflowDropoffs: numberFromRow(dailyDriverHabitLoopRow?.workflow_dropoffs),
         },
         notificationFeedback: {
           fatigueSignals: notificationFatigueSignals + notUsefulFeedbackForSummary,

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { trackAnalyticsEvent, trackFirstUsefulAction } from "@/lib/client/analytics";
+import { trackActivationMilestone, trackAnalyticsEvent, trackFirstUsefulAction } from "@/lib/client/analytics";
 import { markOnboardingReplayPending, replayMarketOnboarding } from "./MarketOnboarding";
 
 const HIDE_KEY = "tradeveto_first_run_starter_hidden_v1";
@@ -94,6 +94,7 @@ export function FirstRunStarterCard() {
 
   function startTour() {
     trackAnalyticsEvent("detail_expand", { detail: "first_run_walkthrough" }, { source: "first_run_starter" });
+    trackActivationMilestone("morning_command", { entry: "walkthrough", path }, { source: "first_run_starter" });
     trackFirstUsefulAction("onboarding_walkthrough_start", { path }, { source: "first_run_starter" });
     if (pathname !== "/terminal") {
       markOnboardingReplayPending();
@@ -149,8 +150,18 @@ export function FirstRunStarterCard() {
             key={step.label}
             onClick={() => {
               trackAnalyticsEvent("onboarding_step", { action: "starter_step_click", label: step.label, path }, { source: "first_run_starter" });
-              if (step.href.startsWith("/scanner")) trackFirstUsefulAction("first_scanner_usage", { path }, { pagePath: step.href, source: "first_run_starter" });
-              if (step.href.startsWith("/account")) trackFirstUsefulAction("watchlist_setup_start", { path }, { pagePath: step.href, source: "first_run_starter" });
+              if (step.href.startsWith("/scanner")) {
+                trackActivationMilestone("scanner", { entry: "starter_step", path }, { pagePath: step.href, source: "first_run_starter" });
+                trackFirstUsefulAction("first_scanner_usage", { path }, { pagePath: step.href, source: "first_run_starter" });
+              }
+              if (step.href.startsWith("/account")) {
+                trackActivationMilestone("watchlist", { entry: "starter_step", path }, { pagePath: step.href, source: "first_run_starter" });
+                trackFirstUsefulAction("watchlist_setup_start", { path }, { pagePath: step.href, source: "first_run_starter" });
+              }
+              if (step.href.startsWith("/symbol/")) {
+                trackActivationMilestone("symbol_investigation", { entry: "starter_step", path }, { pagePath: step.href, source: "first_run_starter", symbol: "AMD" });
+                trackActivationMilestone("chart", { entry: "starter_step", path }, { pagePath: step.href, source: "first_run_starter", symbol: "AMD" });
+              }
             }}
           >
             <div className="flex items-center gap-2">
@@ -185,6 +196,7 @@ export function FirstRunStarterCard() {
           href="/scanner?firstRun=1"
           onClick={() => {
             trackAnalyticsEvent("scanner_usage", { action: "first_run_scanner_walkthrough" }, { pagePath: "/scanner?firstRun=1", source: "first_run_starter" });
+            trackActivationMilestone("scanner", { entry: "first_run_button" }, { pagePath: "/scanner?firstRun=1", source: "first_run_starter" });
             trackFirstUsefulAction("first_scanner_usage", { entry: "first_run_button" }, { pagePath: "/scanner?firstRun=1", source: "first_run_starter" });
           }}
         >
@@ -193,7 +205,11 @@ export function FirstRunStarterCard() {
         <Link
           className="rounded-full border border-white/10 px-4 py-2 text-xs font-bold text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100"
           href="/symbol/AMD?firstRun=1"
-          onClick={() => trackFirstUsefulAction("symbol_research_start", { symbol: "AMD" }, { pagePath: "/symbol/AMD?firstRun=1", source: "first_run_starter", symbol: "AMD" })}
+          onClick={() => {
+            trackActivationMilestone("symbol_investigation", { entry: "first_run_button" }, { pagePath: "/symbol/AMD?firstRun=1", source: "first_run_starter", symbol: "AMD" });
+            trackActivationMilestone("chart", { entry: "first_run_button" }, { pagePath: "/symbol/AMD?firstRun=1", source: "first_run_starter", symbol: "AMD" });
+            trackFirstUsefulAction("symbol_research_start", { symbol: "AMD" }, { pagePath: "/symbol/AMD?firstRun=1", source: "first_run_starter", symbol: "AMD" });
+          }}
         >
           Open example symbol
         </Link>

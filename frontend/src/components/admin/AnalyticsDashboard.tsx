@@ -247,14 +247,20 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
           <ProofPanel
             rows={[
               ["Return sessions", dailyDriver.habitLoops.returnSessions],
+              ["Activation milestones", dailyDriver.habitLoops.activationMilestones],
               ["Morning workflows", dailyDriver.habitLoops.morningWorkflows],
               ["Morning completions", dailyDriver.habitLoops.morningWorkflowCompletions],
               ["Scanner returns", dailyDriver.habitLoops.scannerReturns],
+              ["Scanner habit loops", dailyDriver.habitLoops.scannerHabitLoops],
               ["Replay returns", dailyDriver.habitLoops.replayReturns],
+              ["Chart returns", dailyDriver.habitLoops.chartReturns],
+              ["Compare returns", dailyDriver.habitLoops.compareReturns],
+              ["History returns", dailyDriver.habitLoops.historyReturns],
               ["Alert returns", dailyDriver.habitLoops.alertReturns],
               ["Strategy returns", dailyDriver.habitLoops.strategyReturns],
               ["Watchlist returns", dailyDriver.habitLoops.watchlistReturns],
               ["Personalized returns", dailyDriver.habitLoops.personalizedReturns],
+              ["Workflow dropoffs", dailyDriver.habitLoops.workflowDropoffs],
             ]}
             title="Daily Driver Habit Loops"
           />

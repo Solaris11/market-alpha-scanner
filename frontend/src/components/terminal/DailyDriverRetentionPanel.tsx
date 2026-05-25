@@ -16,19 +16,24 @@ import {
   Sparkles,
   Target,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type ComponentType } from "react";
-import { trackAnalyticsEvent, trackFirstUsefulAction } from "@/lib/client/analytics";
+import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
+import { trackActivationMilestone, trackAnalyticsEvent, trackFirstUsefulAction, type ActivationMilestone } from "@/lib/client/analytics";
 import type { AnalyticsEventName } from "@/lib/analytics-policy";
 import type {
   DailyDriverAction,
+  DailyDriverActivationMilestone,
   DailyDriverAdaptivePriority,
   DailyDriverChangeSignal,
+  DailyDriverContinuationItem,
   DailyDriverContextItem,
   DailyDriverFunnelStage,
   DailyDriverHabitLoop,
   DailyDriverMorningWorkflowItem,
+  DailyDriverNotificationQualityControl,
   DailyDriverRetentionModel,
   DailyDriverRetentionTarget,
+  DailyDriverReturnLoop,
+  DailyDriverStatus,
   DailyDriverTelemetrySignal,
   DailyDriverTone,
 } from "@/lib/trading/daily-driver-retention";
@@ -97,6 +102,13 @@ export function DailyDriverRetentionPanel({ model }: Props) {
 
       <div className="relative z-10 mt-5">
         <MorningWorkflowDeck habit={habit} items={model.morningWorkflow} />
+      </div>
+
+      <div className="relative z-10 mt-4 grid gap-4 xl:grid-cols-4">
+        <ActivationMilestoneDeck items={model.activationMilestones} />
+        <ReturnLoopDeck loops={model.returnLoops} />
+        <ContinuationWorkflowDeck items={model.continuationWorkflows} />
+        <NotificationQualityDeck items={model.notificationQuality} />
       </div>
 
       <div className="relative z-10 mt-4 grid gap-4 xl:grid-cols-3">
@@ -241,6 +253,151 @@ function DailyActionTile({ action }: { action: DailyDriverAction }) {
         <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">{action.status}</span>
       </div>
     </Link>
+  );
+}
+
+function ActivationMilestoneDeck({ items }: { items: DailyDriverActivationMilestone[] }) {
+  return (
+    <CompactProofDeck
+      eyebrow="Activation ladder"
+      icon={<Target className="h-5 w-5 text-emerald-200" />}
+      rows={items.map((item) => ({
+        detail: item.detail,
+        href: item.href,
+        key: item.key,
+        label: item.label,
+        metric: item.targetLabel,
+        status: item.status,
+        tone: item.tone,
+        tracking: () => recordActivationMilestone(item),
+      }))}
+      title="First-session useful actions"
+    />
+  );
+}
+
+function recordActivationMilestone(item: DailyDriverActivationMilestone): void {
+  const milestone = milestoneForActivationItem(item.key);
+  trackActivationMilestone(milestone, { activationStep: item.key, status: item.status }, { source: "daily_driver_activation" });
+  if (item.eventName === "first_useful_action") {
+    trackFirstUsefulAction(item.key, { activationStep: item.key }, { source: "daily_driver_activation" });
+  }
+}
+
+function milestoneForActivationItem(key: DailyDriverActivationMilestone["key"]): ActivationMilestone {
+  if (key === "first_alert") return "alert";
+  if (key === "first_compare") return "compare";
+  if (key === "first_replay") return "replay";
+  if (key === "first_scanner") return "scanner";
+  if (key === "first_symbol_investigation") return "symbol_investigation";
+  return "watchlist";
+}
+
+function ReturnLoopDeck({ loops }: { loops: DailyDriverReturnLoop[] }) {
+  return (
+    <CompactProofDeck
+      eyebrow="Return loops"
+      icon={<RotateCcw className="h-5 w-5 text-cyan-200" />}
+      rows={loops.map((loop) => ({
+        detail: loop.detail,
+        href: loop.href,
+        key: loop.eventName,
+        label: loop.label,
+        metric: loop.targetLabel,
+        status: loop.status,
+        tone: loop.tone,
+        tracking: () => trackAnalyticsEvent(loop.eventName, { returnLoop: loop.key }, { source: "daily_driver_return_loop" }),
+      }))}
+      title="Measured comeback paths"
+    />
+  );
+}
+
+function ContinuationWorkflowDeck({ items }: { items: DailyDriverContinuationItem[] }) {
+  return (
+    <CompactProofDeck
+      eyebrow="Continuation"
+      icon={<History className="h-5 w-5 text-violet-200" />}
+      rows={items.map((item) => ({
+        detail: item.detail,
+        href: item.href,
+        key: item.key,
+        label: item.label,
+        metric: item.value,
+        status: item.status,
+        tone: item.tone,
+        tracking: () => trackAnalyticsEvent("workflow_continuity", { continuation: item.key, status: item.status }, { source: "daily_driver_continuation" }),
+      }))}
+      title="Continue where left off"
+    />
+  );
+}
+
+function NotificationQualityDeck({ items }: { items: DailyDriverNotificationQualityControl[] }) {
+  return (
+    <CompactProofDeck
+      eyebrow="Notification quality"
+      icon={<BellRing className="h-5 w-5 text-amber-200" />}
+      rows={items.map((item) => ({
+        detail: item.detail,
+        href: "/alerts",
+        key: item.key,
+        label: item.label,
+        metric: item.targetLabel,
+        status: item.status,
+        tone: item.tone,
+        tracking: () => trackAnalyticsEvent(item.eventName, { qualityControl: item.key }, { source: "daily_driver_notification_quality" }),
+      }))}
+      title="Fatigue and usefulness"
+    />
+  );
+}
+
+type CompactProofRow = {
+  detail: string;
+  href: string;
+  key: string;
+  label: string;
+  metric: string;
+  status: DailyDriverStatus;
+  tone: DailyDriverTone;
+  tracking: () => void;
+};
+
+function CompactProofDeck({ eyebrow, icon, rows, title }: { eyebrow: string; icon: ReactNode; rows: CompactProofRow[]; title: string }) {
+  return (
+    <div className="rounded-[1.6rem] border border-white/10 bg-slate-950/42 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">{eyebrow}</div>
+          <div className="mt-1 text-lg font-black text-slate-50">{title}</div>
+        </div>
+        {icon}
+      </div>
+      <div className="mt-4 grid gap-2">
+        {rows.slice(0, 6).map((row) => {
+          const tone = TONE[row.tone];
+          return (
+            <Link
+              className={`block rounded-2xl border ${tone.border} ${tone.bg} p-3 transition hover:border-cyan-300/45 hover:bg-white/[0.055]`}
+              data-analytics-id={`daily-proof-${row.key}`}
+              href={row.href}
+              key={row.key}
+              onClick={row.tracking}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="line-clamp-1 font-semibold text-slate-100">{row.label}</div>
+                  <div className="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">{row.detail}</div>
+                </div>
+                <span className={`shrink-0 rounded-full border ${tone.border} bg-black/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] ${tone.text}`}>{row.status}</span>
+              </div>
+              <div className="mt-2 rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[10px] font-semibold text-slate-400">{row.metric}</div>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
@@ -473,6 +630,10 @@ function ContextRow({ item }: { item: DailyDriverContextItem }) {
 }
 
 function recordMorningWorkflow(item: DailyDriverMorningWorkflowItem): void {
+  trackActivationMilestone(activationMilestoneForWorkflow(item.workflow), {
+    check: item.key,
+    routeGroup: item.workflow,
+  }, { source: "daily_driver_morning" });
   trackAnalyticsEvent("morning_workflow_start", {
     check: item.key,
     routeGroup: item.workflow,
@@ -501,6 +662,10 @@ function returnEventForMorningItem(item: DailyDriverMorningWorkflowItem): Analyt
 
 function recordAction(action: DailyDriverAction): void {
   const habitLoopEvent = habitLoopEventForAction(action);
+  trackActivationMilestone(activationMilestoneForWorkflow(action.workflow), {
+    action: action.key,
+    status: action.status,
+  }, { source: "daily_driver", symbol: action.symbol ?? undefined });
   trackAnalyticsEvent("workflow_continuity", {
     action: action.key,
     from: "terminal",
@@ -519,6 +684,15 @@ function recordAction(action: DailyDriverAction): void {
       workflow: action.workflow,
     }, { source: "daily_driver", symbol: action.symbol ?? undefined });
   }
+}
+
+function activationMilestoneForWorkflow(workflow: DailyDriverAction["workflow"]): ActivationMilestone {
+  if (workflow === "alerts") return "alert";
+  if (workflow === "replay") return "replay";
+  if (workflow === "scanner") return "scanner";
+  if (workflow === "strategy") return "strategy";
+  if (workflow === "terminal" || workflow === "macro") return "morning_command";
+  return "watchlist";
 }
 
 function habitLoopEventForAction(action: DailyDriverAction): AnalyticsEventName | null {

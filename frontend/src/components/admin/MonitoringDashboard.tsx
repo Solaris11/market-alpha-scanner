@@ -451,10 +451,14 @@ function ProductionTrustPanel({ monitoring }: { monitoring: AdminMonitoringSumma
             <MetricPill label="D2" value={`${formatMonitoringPercent(retention.day2RetentionRatePct)} (${retention.day2RetainedUsers}/${retention.day2EligibleUsers})`} />
             <MetricPill label="D7" value={`${formatMonitoringPercent(retention.day7RetentionRatePct)} (${retention.day7RetainedUsers}/${retention.day7EligibleUsers})`} />
             <MetricPill label="return sessions" value={formatCount(retention.returnSessions)} />
+            <MetricPill label="activation" value={formatCount(retention.activationMilestones)} />
             <MetricPill label="scanner returns" value={formatCount(retention.scannerReturns)} />
+            <MetricPill label="chart returns" value={formatCount(retention.chartReturns)} />
+            <MetricPill label="compare returns" value={formatCount(retention.compareReturns)} />
             <MetricPill label="watchlist returns" value={formatCount(retention.watchlistReturns)} />
             <MetricPill label="alert returns" value={formatCount(retention.alertReturns)} />
             <MetricPill label="strategy returns" value={formatCount(retention.strategyReturns)} />
+            <MetricPill label="dropoffs" tone={retention.workflowDropoffs ? "warn" : "default"} value={formatCount(retention.workflowDropoffs)} />
             <MetricPill label="notif useful" value={`${formatMonitoringPercent(retention.notificationUsefulRatePct)} (${retention.notificationUseful}/${retention.notificationFeedbackTotal})`} />
           </div>
         </div>
