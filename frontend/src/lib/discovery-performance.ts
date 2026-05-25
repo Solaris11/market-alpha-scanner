@@ -24,23 +24,28 @@ const DISCOVERY_HOT_PATH_TARGET_MS = 300;
 const DISCOVERY_P99_TARGET_MS = 600;
 
 let discoveryTimings: DiscoveryTimingInput[] = [];
+let discoverySuccessfulLatencies: number[] = [];
+let discoveryCacheableSamples = 0;
+let discoveryCacheHits = 0;
 
 export function recordDiscoveryApiTiming(input: DiscoveryTimingInput): DiscoveryPerformanceSnapshot {
-  discoveryTimings = [...discoveryTimings, sanitizeTiming(input)].slice(-DISCOVERY_TIMING_WINDOW_SIZE);
+  const timing = sanitizeTiming(input);
+  discoveryTimings.push(timing);
+  addDiscoveryTiming(timing);
+  if (discoveryTimings.length > DISCOVERY_TIMING_WINDOW_SIZE) {
+    const removed = discoveryTimings.splice(0, discoveryTimings.length - DISCOVERY_TIMING_WINDOW_SIZE);
+    for (const removedTiming of removed) removeDiscoveryTiming(removedTiming);
+  }
   return getDiscoveryPerformanceSnapshot();
 }
 
 export function getDiscoveryPerformanceSnapshot(): DiscoveryPerformanceSnapshot {
-  const successful = discoveryTimings.filter((timing) => timing.statusCode < 500);
-  const values = successful.map((timing) => timing.latencyMs).sort((left, right) => left - right);
-  const sampleCount = values.length;
-  const p50LatencyMs = percentile(values, 0.50);
-  const p95LatencyMs = percentile(values, 0.95);
-  const p99LatencyMs = percentile(values, 0.99);
-  const maxLatencyMs = values.length ? values[values.length - 1] ?? 0 : 0;
-  const cacheable = successful.filter((timing) => timing.cacheStatus !== "limited");
-  const hits = cacheable.filter((timing) => timing.cacheStatus === "system-hit" || timing.cacheStatus === "base-hit" || timing.cacheStatus === "stale-hit").length;
-  const cacheHitRate = cacheable.length ? Math.round((hits / cacheable.length) * 100) : 0;
+  const sampleCount = discoverySuccessfulLatencies.length;
+  const p50LatencyMs = percentile(discoverySuccessfulLatencies, 0.50);
+  const p95LatencyMs = percentile(discoverySuccessfulLatencies, 0.95);
+  const p99LatencyMs = percentile(discoverySuccessfulLatencies, 0.99);
+  const maxLatencyMs = discoverySuccessfulLatencies.length ? discoverySuccessfulLatencies[discoverySuccessfulLatencies.length - 1] ?? 0 : 0;
+  const cacheHitRate = discoveryCacheableSamples ? Math.round((discoveryCacheHits / discoveryCacheableSamples) * 100) : 0;
 
   return {
     cacheHitRate,
@@ -58,6 +63,9 @@ export function getDiscoveryPerformanceSnapshot(): DiscoveryPerformanceSnapshot 
 
 export function resetDiscoveryPerformanceForTests(): void {
   discoveryTimings = [];
+  discoverySuccessfulLatencies = [];
+  discoveryCacheableSamples = 0;
+  discoveryCacheHits = 0;
 }
 
 function sanitizeTiming(input: DiscoveryTimingInput): DiscoveryTimingInput {
@@ -74,4 +82,50 @@ function percentile(values: number[], percentileValue: number): number {
   if (!values.length) return 0;
   const index = Math.min(values.length - 1, Math.max(0, Math.ceil(values.length * percentileValue) - 1));
   return values[index] ?? 0;
+}
+
+function addDiscoveryTiming(timing: DiscoveryTimingInput): void {
+  if (timing.statusCode >= 500) return;
+  insertSortedLatency(discoverySuccessfulLatencies, timing.latencyMs);
+  if (timing.cacheStatus === "limited") return;
+  discoveryCacheableSamples += 1;
+  if (timing.cacheStatus === "system-hit" || timing.cacheStatus === "base-hit" || timing.cacheStatus === "stale-hit") {
+    discoveryCacheHits += 1;
+  }
+}
+
+function removeDiscoveryTiming(timing: DiscoveryTimingInput): void {
+  if (timing.statusCode >= 500) return;
+  removeSortedLatency(discoverySuccessfulLatencies, timing.latencyMs);
+  if (timing.cacheStatus === "limited") return;
+  discoveryCacheableSamples = Math.max(0, discoveryCacheableSamples - 1);
+  if (timing.cacheStatus === "system-hit" || timing.cacheStatus === "base-hit" || timing.cacheStatus === "stale-hit") {
+    discoveryCacheHits = Math.max(0, discoveryCacheHits - 1);
+  }
+}
+
+function insertSortedLatency(values: number[], latencyMs: number): void {
+  let low = 0;
+  let high = values.length;
+  while (low < high) {
+    const midpoint = Math.floor((low + high) / 2);
+    if ((values[midpoint] ?? 0) <= latencyMs) low = midpoint + 1;
+    else high = midpoint;
+  }
+  values.splice(low, 0, latencyMs);
+}
+
+function removeSortedLatency(values: number[], latencyMs: number): void {
+  let low = 0;
+  let high = values.length - 1;
+  while (low <= high) {
+    const midpoint = Math.floor((low + high) / 2);
+    const value = values[midpoint] ?? 0;
+    if (value === latencyMs) {
+      values.splice(midpoint, 1);
+      return;
+    }
+    if (value < latencyMs) low = midpoint + 1;
+    else high = midpoint - 1;
+  }
 }

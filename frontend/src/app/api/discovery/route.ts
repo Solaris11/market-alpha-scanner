@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { gzipSync } from "node:zlib";
 import { entitlementSummary, getEntitlement, hasPremiumAccess, legalNotAcceptedResponse, requiresLegalAcceptance } from "@/lib/server/entitlements";
 import { loadIntelligenceDiscoverySystemWithMeta } from "@/lib/server/discovery-intelligence";
 import { withRequestMetrics } from "@/lib/server/monitoring";
@@ -26,7 +25,6 @@ type ProviderOutageSimulation = {
 type DiscoveryBodyCacheEntry = {
   body: string;
   entitlementJson: string;
-  gzipBody: ArrayBuffer;
   serializedSystem: string;
 };
 
@@ -68,7 +66,6 @@ export async function GET(request: Request) {
         system: JSON.parse(serializedSystem) as unknown,
       }, { headers: { "Cache-Control": "no-store" } })
       : discoveryJsonResponse({
-        acceptEncoding: request.headers.get("accept-encoding"),
         cacheKey: entitlement.user?.id ?? "anonymous",
         entitlementJson: JSON.stringify(entitlementSummary(entitlement)),
         performanceJson: JSON.stringify(performance),
@@ -81,21 +78,17 @@ export async function GET(request: Request) {
 }
 
 function discoveryJsonResponse(input: {
-  acceptEncoding: string | null;
   cacheKey: string;
   entitlementJson: string;
   performanceJson: string;
   serializedSystem: string;
 }): NextResponse {
   const cacheEntry = readDiscoveryBodyCache(input);
-  const supportsGzip = /\bgzip\b/i.test(input.acceptEncoding ?? "");
   const headers = new Headers({
     "Cache-Control": "no-store",
     "Content-Type": "application/json",
-    "Vary": "Accept-Encoding",
   });
-  if (supportsGzip) headers.set("Content-Encoding", "gzip");
-  return new NextResponse(supportsGzip ? cacheEntry.gzipBody : cacheEntry.body, {
+  return new NextResponse(cacheEntry.body, {
     headers,
     status: 200,
   });
@@ -113,13 +106,9 @@ function readDiscoveryBodyCache(input: {
   }
 
   const body = `{"entitlement":${input.entitlementJson},"limited":false,"ok":true,"performance":${input.performanceJson},"system":${input.serializedSystem}}`;
-  const compressed = gzipSync(body);
-  const gzipBody = new ArrayBuffer(compressed.byteLength);
-  new Uint8Array(gzipBody).set(compressed);
   const entry: DiscoveryBodyCacheEntry = {
     body,
     entitlementJson: input.entitlementJson,
-    gzipBody,
     serializedSystem: input.serializedSystem,
   };
   discoveryBodyCache.set(input.cacheKey, entry);
