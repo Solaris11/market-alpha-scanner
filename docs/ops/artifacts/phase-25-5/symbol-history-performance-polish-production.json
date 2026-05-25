@@ -1,0 +1,74 @@
+{
+  "blockers": [],
+  "budgets": {
+    "fuzzySearchMs": 50,
+    "largeUniverseSearchMs": 50,
+    "modelBuildMs": 100,
+    "watchlistReplaySearchMs": 50
+  },
+  "generatedAt": "2026-05-25T08:07:11.137Z",
+  "indexSize": 760,
+  "metrics": [
+    {
+      "budgetMs": 50,
+      "id": "large-universe-search",
+      "maxMs": 13.393,
+      "p50Ms": 3.346,
+      "p95Ms": 4.085,
+      "pass": true,
+      "samples": 72
+    },
+    {
+      "budgetMs": 50,
+      "id": "fuzzy-search",
+      "maxMs": 5.75,
+      "p50Ms": 2.25,
+      "p95Ms": 2.866,
+      "pass": true,
+      "samples": 72
+    },
+    {
+      "budgetMs": 50,
+      "id": "watchlist-replay-search",
+      "maxMs": 0.387,
+      "p50Ms": 0.117,
+      "p95Ms": 0.151,
+      "pass": true,
+      "samples": 72
+    },
+    {
+      "budgetMs": 100,
+      "id": "model-build",
+      "maxMs": 0.444,
+      "p50Ms": 0.123,
+      "p95Ms": 0.254,
+      "pass": true,
+      "samples": 72
+    }
+  ],
+  "overallStatus": "ready",
+  "proofScope": "Production container deterministic proof for large-universe symbol search, fuzzy search, source-aware replay/watchlist search, and 90+ maturity scoring for Symbol Detail, History, and Performance. This is not competitor parity or real-user retention proof.",
+  "samples": 72,
+  "scores": {
+    "history": 100,
+    "performance": 99,
+    "symbol": 100
+  },
+  "startedAt": "2026-05-25T08:07:10.689Z",
+  "unsupportedClaims": [
+    "No Bloomberg, TradingView, StockTitan, or Finviz parity claim.",
+    "No fabricated provider event, return, fill, broker, or trading advice claim.",
+    "Manual UX proof and real retention remain separate certification evidence."
+  ],
+  "memory": {
+    "after": {
+      "heapUsedMb": 6.37,
+      "rssMb": 66.652
+    },
+    "before": {
+      "heapUsedMb": 4.123,
+      "rssMb": 45
+    },
+    "deltaRssMb": 21.652
+  }
+}

@@ -66,19 +66,45 @@ Local proof snapshot:
 
 ## Production Deployment
 
-Pending deployment.
+- Production host: `sre@100.68.155.121`
+- Production path: `/opt/apps/market-alpha-scanner/app`
+- Deployed revision: `6381a46`
+- Deployment command: `docker compose --env-file .env up -d --build market-alpha-frontend`
+- Result: frontend container rebuilt and reached `healthy`.
 
 ## Production Smoke
 
-Pending smoke.
+| Route | Result |
+| --- | --- |
+| `https://tradeveto.com/api/health` | 200 |
+| `https://tradeveto.com/api/health/deep` | 200 |
+| `https://tradeveto.com/symbol/AMD` | 200 |
+| `https://tradeveto.com/history` | 200 |
+| `https://tradeveto.com/performance` | 200 |
+| `https://tradeveto.com/terminal` | 200 |
+| `https://tradeveto.com/discover` | 200 |
 
 ## Production Proof
 
-Expected artifact:
+Artifact:
 
 - `docs/ops/artifacts/phase-25-5/symbol-history-performance-polish-production.json`
 
-Pending production probe.
+Production container probe:
+
+| Proof gate | Result |
+| --- | ---: |
+| Overall status | ready |
+| Symbol Detail proof score | 100 |
+| History proof score | 100 |
+| Performance proof score | 99 |
+| Search index size | 760 |
+| Large-universe search p50 / p95 / max | 3.346 ms / 4.085 ms / 13.393 ms |
+| Fuzzy search p50 / p95 / max | 2.250 ms / 2.866 ms / 5.750 ms |
+| Watchlist/replay/source-aware search p50 / p95 / max | 0.117 ms / 0.151 ms / 0.387 ms |
+| Maturity model build p50 / p95 / max | 0.123 ms / 0.254 ms / 0.444 ms |
+| Memory RSS delta | 21.652 MB |
+| Blockers | none in deterministic probe |
 
 ## Certification Notes
 
