@@ -213,3 +213,51 @@ test("market command parses scanner Python-literal verified events without fabri
   assert.ok(model.macroNews.some((item) => item.source === "CoinDesk" && item.eventType === "crypto_macro" && item.title.includes("oil's slide")));
   assert.ok(model.macroNews.every((item) => item.sourceUrl.startsWith("https://")));
 });
+
+test("market command preserves provider-domain breadth when one event type dominates", () => {
+  const dividendRows: RankingRow[] = Array.from({ length: 16 }, (_, index) => ({
+    dividend_headline: `DIV${index} dividend calendar context`,
+    dividend_source: "Yahoo Finance Dividend Calendar",
+    dividend_timestamp: "2026-05-25T12:00:00.000Z",
+    dividend_url: `https://finance.yahoo.com/quote/DIV${index}`,
+    event_risk_score: 95 - index,
+    sector: "Financial Services",
+    symbol: `DIV${index}`,
+  }));
+  const sourceRows: RankingRow[] = [
+    {
+      event_risk_score: 74,
+      geopolitical_events: JSON.stringify([{
+        affected_sectors: ["Energy"],
+        affected_symbols: ["USO"],
+        event_type: "geopolitical",
+        published_at: "2026-05-25T03:05:00.000Z",
+        source: "MarketWatch",
+        source_url: "https://www.marketwatch.com/story/geopolitical-shipping-risk",
+        title: "Geopolitical conflict escalates near shipping routes",
+      }]),
+      sector: "Energy",
+      symbol: "USO",
+    },
+    {
+      crypto_events: JSON.stringify([{
+        affected_symbols: ["BTC"],
+        event_type: "crypto",
+        published_at: "2026-05-25T08:09:00.000Z",
+        source: "CoinDesk",
+        source_url: "https://www.coindesk.com/markets/bitcoin-etf-flows",
+        title: "Bitcoin ETF flows shift crypto risk appetite",
+      }]),
+      event_risk_score: 70,
+      sector: "Crypto",
+      symbol: "BTC",
+    },
+  ];
+
+  const model = buildMarketCommandModel({ charts: [], generatedAt: "2026-05-25T13:00:00.000Z", rows: [...dividendRows, ...sourceRows] });
+
+  assert.equal(model.macroNews.length, 12);
+  assert.ok(model.macroNews.some((item) => item.source === "MarketWatch" && item.eventType === "geopolitical"));
+  assert.ok(model.macroNews.some((item) => item.source === "CoinDesk" && item.eventType === "crypto"));
+  assert.ok(model.macroNews.some((item) => item.source === "Yahoo Finance Dividend Calendar" && item.eventType === "dividend"));
+});

@@ -474,9 +474,57 @@ function buildMacroNews(rows: RankingRow[]): MarketNewsItem[] {
       }
     }
   }
-  return Array.from(byKey.values())
+  const sorted = Array.from(byKey.values())
     .sort((left, right) => right.relevance - left.relevance || Date.parse(right.publishedAt) - Date.parse(left.publishedAt))
-    .slice(0, 12);
+  return selectDiverseMarketNews(sorted, 12);
+}
+
+const MARKET_NEWS_DOMAIN_ORDER = [
+  "geopolitical-events",
+  "rates",
+  "inflation",
+  "analyst-actions",
+  "crypto-events",
+  "dividends",
+  "earnings",
+  "company-events",
+  "sector-events",
+  "macro",
+] as const;
+
+type MarketNewsDomainKey = typeof MARKET_NEWS_DOMAIN_ORDER[number];
+
+function selectDiverseMarketNews(items: MarketNewsItem[], limit: number): MarketNewsItem[] {
+  const selected: MarketNewsItem[] = [];
+  const selectedIds = new Set<string>();
+  for (const domain of MARKET_NEWS_DOMAIN_ORDER) {
+    const match = items.find((item) => !selectedIds.has(item.id) && marketNewsDomainKey(item) === domain);
+    if (!match) continue;
+    selected.push(match);
+    selectedIds.add(match.id);
+    if (selected.length >= limit) return selected;
+  }
+  for (const item of items) {
+    if (selectedIds.has(item.id)) continue;
+    selected.push(item);
+    selectedIds.add(item.id);
+    if (selected.length >= limit) return selected;
+  }
+  return selected;
+}
+
+function marketNewsDomainKey(item: MarketNewsItem): MarketNewsDomainKey {
+  const text = `${item.eventType} ${item.title} ${item.reasonCodes.join(" ")} ${item.relatedAssets.join(" ")} ${item.affectedSectors.join(" ")}`.toLowerCase();
+  if (/war|peace|geopolitical|sanction|conflict|event_geopolitical/.test(text)) return "geopolitical-events";
+  if (/fed|rate|bond|yield|jobs|payroll|gdp|recession/.test(text)) return "rates";
+  if (/cpi|ppi|inflation|consumer price|producer price|price index|oil supply|commodity pressure/.test(text)) return "inflation";
+  if (/analyst|upgrade|downgrade|price target|initiated|rating/.test(text)) return "analyst-actions";
+  if (/btc|bitcoin|crypto|coin/.test(text)) return "crypto-events";
+  if (/dividend|ex-dividend|payout/.test(text)) return "dividends";
+  if (/earnings|eps|revenue|guidance/.test(text)) return "earnings";
+  if (item.scope === "symbol" || item.relatedAssets.length > 0) return "company-events";
+  if (item.scope === "sector" || item.affectedSectors.length > 0) return "sector-events";
+  return "macro";
 }
 
 function rawEvents(row: RankingRow): RawEvent[] {
