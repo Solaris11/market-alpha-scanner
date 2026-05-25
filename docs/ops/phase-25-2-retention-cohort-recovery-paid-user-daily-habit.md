@@ -72,11 +72,32 @@ Local validation:
 
 Production deployment:
 
-- Pending final deploy in this artifact revision.
+- Pulled `main` on production with `git pull --ff-only origin main`.
+- Rebuilt/redeployed `market-alpha-frontend` with `docker compose --env-file .env up -d --build market-alpha-frontend`.
+- Production frontend became healthy.
+- Production code after deploy: `097e442`.
+- Applied `db/migrations/20260524_180000_retention_cohort_recovery_events.sql` through production Postgres.
+- Verified production index exists: `ix_analytics_events_retention_recovery`.
 
 Production smoke:
 
-- Pending final smoke in this artifact revision.
+- `/api/health` 200
+- `/api/health/deep` 200
+- `/terminal` 200
+- `/discover` 200
+- `/scanner` 200
+- `/paper` 200
+- `/macro` 200
+- `/symbol/AMD` 200
+- `/alerts` 200
+- `/feed` 200
+- `/market-memory` 200
+- `/performance` 200
+- `/settings` 200
+
+Admin route note:
+
+- Anonymous `/admin/analytics` returned 404, which is expected for a protected admin surface. The local and production builds validated the admin analytics and monitoring components compile with the new retention fields.
 
 ## Retention Targets
 
