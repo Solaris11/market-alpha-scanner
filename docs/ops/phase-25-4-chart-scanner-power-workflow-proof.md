@@ -48,19 +48,47 @@ Phase 25.4 targets hard operational proof for chart and scanner workflows withou
 
 ## Production Deployment
 
-Pending deployment.
+- Production host pulled `origin/main` from `f81991b` to `708b66e`.
+- Rebuilt and redeployed `market-alpha-frontend` with `docker compose --env-file .env up -d --build market-alpha-frontend`.
+- Container health reached `healthy`.
 
 ## Production Smoke
 
-Pending smoke.
+All production smoke checks returned HTTP 200:
+
+- `https://tradeveto.com/api/health`
+- `https://tradeveto.com/api/health/deep`
+- `https://tradeveto.com/discover`
+- `https://tradeveto.com/scanner`
+- `https://tradeveto.com/symbol/AMD`
+- `https://tradeveto.com/terminal`
+- `https://tradeveto.com/market-memory`
 
 ## Production Power Workflow Probe
 
-Expected artifact:
+Artifact:
 
 - `docs/ops/artifacts/phase-25-4/chart-scanner-power-workflow-production.json`
 
-Pending production probe.
+Production probe status: `ready`.
+
+| Workflow | p95 | p99 | Budget | Result |
+| --- | ---: | ---: | ---: | --- |
+| Scanner interaction | 0.389 ms | 2.174 ms | 100 ms | Pass |
+| Large-watchlist filter | 0.186 ms | 0.232 ms | 150 ms | Pass |
+| Compare open | 0.021 ms | 0.153 ms | 150 ms | Pass |
+| Chart interaction | 0.010 ms | 0.088 ms | 60 ms | Pass |
+| Fullscreen chart open | 0.003 ms | 0.017 ms | 150 ms | Pass |
+| Chart workspace restore | 0.049 ms | 0.154 ms | 250 ms | Pass |
+| Rapid symbol switch | 0.163 ms | 4.700 ms | 100 ms | Pass |
+
+Large-universe proof:
+
+- Synthetic scanner universe: 520 symbols.
+- Large watchlist: 500 symbols.
+- Scanner virtual window: 74 rendered rows out of 520 total rows.
+- Probe memory delta: 14.117 MB RSS.
+- Blockers reported by probe: none.
 
 ## Certification Notes
 

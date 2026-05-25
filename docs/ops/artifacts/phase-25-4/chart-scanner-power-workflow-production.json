@@ -1,0 +1,130 @@
+{
+  "blockers": [],
+  "budgets": {
+    "chartInteractionMs": 60,
+    "compareOpenMs": 150,
+    "fullscreenChartOpenMs": 150,
+    "largeWatchlistFilterMs": 150,
+    "rapidSymbolSwitchMs": 100,
+    "scannerInteractionMs": 100,
+    "workspaceRestoreMs": 250
+  },
+  "generatedAt": "2026-05-25T02:14:40.448Z",
+  "largeWatchlistCount": 500,
+  "metrics": [
+    {
+      "budgetMs": 100,
+      "checksum": 727680,
+      "id": "scanner-interaction",
+      "label": "Filter, sort, rank, and return first rows from a 500+ symbol scanner universe",
+      "maxMs": 2.174,
+      "p50Ms": 0.105,
+      "p95Ms": 0.389,
+      "p99Ms": 2.174,
+      "pass": true,
+      "samples": 96
+    },
+    {
+      "budgetMs": 150,
+      "checksum": 1083360,
+      "id": "large-watchlist-filter",
+      "label": "Filter and sort 500 watchlisted scanner rows",
+      "maxMs": 0.232,
+      "p50Ms": 0.051,
+      "p95Ms": 0.186,
+      "p99Ms": 0.232,
+      "pass": true,
+      "samples": 96
+    },
+    {
+      "budgetMs": 150,
+      "checksum": 53664,
+      "id": "compare-open",
+      "label": "Build a rapid compare matrix with symbol, risk, macro, replay, and reason columns",
+      "maxMs": 0.153,
+      "p50Ms": 0.006,
+      "p95Ms": 0.021,
+      "p99Ms": 0.153,
+      "pass": true,
+      "samples": 96
+    },
+    {
+      "budgetMs": 60,
+      "checksum": 864,
+      "id": "chart-interaction",
+      "label": "Apply chart toolbar state, indicators, overlays, drawings, and compact mode",
+      "maxMs": 0.088,
+      "p50Ms": 0.003,
+      "p95Ms": 0.01,
+      "p99Ms": 0.088,
+      "pass": true,
+      "samples": 96
+    },
+    {
+      "budgetMs": 150,
+      "checksum": 96,
+      "id": "fullscreen-chart-open",
+      "label": "Open fullscreen chart state with stable toolbar and grid workspace settings",
+      "maxMs": 0.017,
+      "p50Ms": 0.002,
+      "p95Ms": 0.003,
+      "p99Ms": 0.017,
+      "pass": true,
+      "samples": 96
+    },
+    {
+      "budgetMs": 250,
+      "checksum": 2400,
+      "id": "chart-workspace-restore",
+      "label": "Sanitize and restore multi-symbol chart workspace state",
+      "maxMs": 0.154,
+      "p50Ms": 0.038,
+      "p95Ms": 0.049,
+      "p99Ms": 0.154,
+      "pass": true,
+      "samples": 96
+    },
+    {
+      "budgetMs": 100,
+      "checksum": 2400,
+      "id": "rapid-symbol-switch",
+      "label": "Switch symbols while keeping chart workspace persistence bounded",
+      "maxMs": 4.7,
+      "p50Ms": 0.059,
+      "p95Ms": 0.163,
+      "p99Ms": 4.7,
+      "pass": true,
+      "samples": 96
+    }
+  ],
+  "overallStatus": "ready",
+  "proofScope": "Production container deterministic workflow proof for scanner filtering, large-watchlist operations, compare matrix creation, chart persistence, fullscreen state, and workspace restore. This is not Browser DOM frame timing, physical-device proof, or TradingView parity.",
+  "samples": 96,
+  "startedAt": "2026-05-25T02:14:40.403Z",
+  "symbolCount": 520,
+  "unsupportedClaims": [
+    "No unsupported TradingView parity claim.",
+    "No broker execution, fake fills, or trading automation claim.",
+    "Browser DOM frame timing and physical-device gesture latency require separate evidence."
+  ],
+  "virtualWindow": {
+    "bottomPaddingPx": 10120,
+    "endIndex": 300,
+    "renderedRows": 74,
+    "startIndex": 226,
+    "topPaddingPx": 10396,
+    "totalRows": 520,
+    "virtualized": true
+  },
+  "memory": {
+    "before": {
+      "heapUsedMb": 4.129,
+      "rssMb": 44.992
+    },
+    "after": {
+      "heapUsedMb": 6.148,
+      "rssMb": 59.109
+    },
+    "deltaRssMb": 14.117
+  }
+}
