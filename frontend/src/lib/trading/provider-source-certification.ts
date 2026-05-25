@@ -140,5 +140,11 @@ function hasHiddenStaleState(card: ProviderCertificationEventCard): boolean {
 function hasFakeLiveLabel(card: ProviderCertificationEventCard): boolean {
   if (card.providerState === "active") return false;
   const visibleText = `${card.headline} ${card.provider} ${card.providerStateLabel} ${card.freshness} ${card.freshnessSla} ${card.confidence} ${card.uncertainty}`.toLowerCase();
-  return /\blive\b/.test(visibleText);
+  const guardrailStripped = visibleText
+    .replace(/must not be labeled live/g, "")
+    .replace(/no live label is implied/g, "")
+    .replace(/no fake live labels?/g, "")
+    .replace(/not labeled live/g, "")
+    .replace(/does not imply live/g, "");
+  return /\blive\b/.test(guardrailStripped);
 }

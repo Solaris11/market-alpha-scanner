@@ -1124,7 +1124,7 @@ function buildProviderStrategyAudit(developments: DailyMarketDevelopment[], cale
     { domain: "rates", label: "Rates", matchCalendar: (item) => item.category === "rates", matchDevelopment: (item) => item.category === "Rates" },
     { domain: "earnings", label: "Earnings", matchCalendar: (item) => item.category === "earnings", matchDevelopment: (item) => item.category === "Earnings" },
     { domain: "analyst-actions", label: "Analyst actions", matchCalendar: (item) => item.category === "analyst", matchDevelopment: (item) => item.category === "Analyst" },
-    { domain: "dividends", label: "Dividends", matchCalendar: (item) => item.category === "dividend", matchDevelopment: (item) => item.category === "Dividend" || /dividend|ex-dividend|yield/i.test(`${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel}`) },
+    { domain: "dividends", label: "Dividends", matchCalendar: (item) => item.category === "dividend", matchDevelopment: (item) => item.category === "Dividend" || /dividend|ex-dividend|payout/i.test(`${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel}`) },
     { domain: "geopolitical-events", label: "Geopolitical events", matchCalendar: (item) => item.category === "geopolitical", matchDevelopment: (item) => item.category === "Geopolitical" },
     { domain: "economic-calendar", label: "Economic calendar", matchCalendar: () => true, matchDevelopment: (item) => ["Energy", "Geopolitical", "Macro", "Rates"].includes(item.category) },
     { domain: "company-events", label: "Company events", matchCalendar: (item) => ["analyst", "dividend", "earnings", "event"].includes(item.category), matchDevelopment: (item) => item.affectedSymbols.length > 0 || item.original.scope === "symbol" },

@@ -166,3 +166,28 @@ test("provider freshness certification exposes limited domains, stale disclosure
   assert.equal(result.outageSimulationPass, false);
   assert.ok(result.blockers.some((blocker) => /limited provider domains/.test(blocker)));
 });
+
+test("provider freshness certification does not treat no-live guardrail text as a fake live label", () => {
+  const result = buildProviderFreshnessCertification({
+    eventCards: [eventCard({
+      confidence: "Freshness-limited confidence; timestamp remains visible and no live label is implied.",
+      freshness: "Aging · 2d old",
+      freshnessSla: "Freshness SLA breached · 2880m old against 360m; this must not be labeled live.",
+      providerState: "delayed",
+      providerStateLabel: "Provider delayed",
+    })],
+    eventDomainTimelines: requiredDomains.map(timeline),
+    outageSimulationRequired: false,
+    providerCoverageMatrix: requiredDomains.map((domain) => audit(domain, domain === "rates" ? {
+      freshnessMinutes: 2880,
+      freshnessSlaStatus: "breached",
+      operationalState: "delayed",
+    } : {})),
+    requiredDomains,
+    sourceTrust: sourceTrust(),
+  });
+
+  assert.equal(result.fakeLiveLabelCount, 0);
+  assert.equal(result.noFakeLiveLabelsPass, true);
+  assert.ok(result.blockers.some((blocker) => /freshness SLA breached/.test(blocker)));
+});
