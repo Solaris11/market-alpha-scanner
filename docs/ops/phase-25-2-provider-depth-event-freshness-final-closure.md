@@ -50,6 +50,8 @@ Baseline status:
   - no fake geopolitical events
   - no fake live labels
   - missing provider rows remain limited/outage/stale instead of inferred
+- Added frontend parsing for scanner-owned Python-literal verified event payloads so structured provider rows are not dropped when the latest scan stores provider event lists as Python repr-style strings.
+- Changed market command event selection to preserve provider-domain breadth before filling with repeated high-score event types. This prevents dividend calendar rows from crowding out source-linked geopolitical, inflation, earnings, and economic-calendar evidence.
 
 ## Local Validation
 
@@ -70,24 +72,90 @@ Local caveat:
 
 ## Production Workflow
 
-Pending after commit/push:
+Completed:
 
-1. Pull latest `main` on production.
-2. Rebuild/redeploy frontend.
-3. Rebuild/run scanner job because provider ingestion changed.
-4. Run production smoke.
-5. Run authenticated provider-source-trust probe.
-6. Run provider outage/fallback/recovery simulation.
-7. Capture final production artifacts.
+1. Pushed implementation commits to `main`:
+   - `64cc0eb1` - scanner dividend provider extraction and initial provider freshness governance.
+   - `781db065` - parser fallback for scanner provider event payloads.
+   - `244826e7` - domain-breadth selection for displayed provider events.
+2. Pulled latest `main` on production at `/opt/apps/market-alpha-scanner/app`.
+3. Rebuilt/redeployed `market-alpha-frontend`.
+4. Rebuilt and ran `market-alpha-scanner-job` after provider ingestion changes.
+5. Reran `market-alpha-frontend` rebuild after frontend parser/domain-selection changes.
+6. Ran production smoke:
+   - `curl -fsS https://tradeveto.com/api/health`
+   - `curl -fsS https://tradeveto.com/api/health/deep`
+   - `/terminal` 200
+   - `/macro` 200
+   - `/feed` 200
+   - `/market-memory` 200
+   - `/symbol/AMD` 200
+   - `/scanner` 200
+   - `/discover` 200
+7. Ran authenticated provider-source-trust probe against `https://tradeveto.com`.
+8. Ran provider outage/fallback/recovery simulation through the same authenticated probe.
+9. Captured final production artifact:
+   - `docs/ops/artifacts/phase-25-2/provider-final.json`
 
 ## Production Evidence
 
-Pending.
+Final authenticated provider-source-trust artifact:
+
+- `docs/ops/artifacts/phase-25-2/provider-final.json`
+
+Final production probe result:
+
+- Authenticated probe: pass
+- Overall status: not_ready
+- Certification status: strong-partial
+- Displayed source-linked event cards: 12
+- Source completeness: 100%
+- Context completeness: 100%
+- Hidden stale states: 0
+- Fake live labels: 0
+- Outage simulation: pass
+- Fallback visible: pass
+- Recovery visible: pass
+
+Final active freshness domains:
+
+- inflation
+- earnings
+- economic-calendar
+- dividends
+- geopolitical-events
+- company-events
+- sector-events
+
+Final provider/source examples:
+
+- MarketWatch: inflation/geopolitical/economic-calendar source-linked event evidence.
+- Yahoo Finance Dividend Calendar: dividend, company-event, and sector-event source-linked calendar evidence.
+- Yahoo Finance Earnings Calendar: earnings source-linked calendar evidence.
 
 ## Remaining Blockers
 
-Pending production probe.
+The final production probe is still not `ready`.
+
+Remaining limited domains:
+
+- macro
+- rates
+- analyst-actions
+
+Remaining unmeasured SLA domains:
+
+- macro
+- rates
+- analyst-actions
+- crypto-events
+
+Interpretation:
+
+- TradeVeto now proves source-complete displayed event cards and honest outage/fallback behavior.
+- TradeVeto does not yet prove Bloomberg/StockTitan/Yahoo-level breadth across all required domains.
+- The system correctly exposes limited/unmeasured states rather than fabricating providers, events, analyst actions, or live labels.
 
 ## Verdict
 
-Pending production probe.
+TRADEVETO PROVIDER DEPTH + EVENT FRESHNESS FINAL CLOSURE STRONG PARTIAL ACCOMPLISHED
