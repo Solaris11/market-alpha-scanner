@@ -51,7 +51,7 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
     function onKeyDown(event: KeyboardEvent) {
       const target = event.target;
       if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
-      if (event.altKey && event.key.toLowerCase() === "s") {
+      if (event.key === "/" || (event.altKey && event.key.toLowerCase() === "s") || ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k")) {
         event.preventDefault();
         inputRef.current?.focus();
       }
@@ -113,7 +113,7 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
           type="button"
         >
           <Search className="h-4 w-4" />
-          Alt+S
+          Cmd+K / Alt+S
         </button>
       </div>
 
@@ -152,10 +152,11 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
             </div>
           </label>
 
-          <div className="grid gap-2 md:grid-cols-5">
+          <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-7">
             <SelectFilter label="Sector" onChange={(value) => updateFilter("sectors", value ? [value] : [])} options={facets.sectors} value={filters.sectors[0] ?? ""} />
             <SelectFilter label="Setup" onChange={(value) => updateFilter("setups", value ? [value] : [])} options={facets.setups} value={filters.setups[0] ?? ""} />
             <SelectFilter label="Macro" onChange={(value) => updateFilter("macroRegimes", value ? [value] : [])} options={facets.macroRegimes} value={filters.macroRegimes[0] ?? ""} />
+            <SelectFilter label="Source" onChange={(value) => updateFilter("sourceTags", value ? [value] : [])} options={facets.sourceTags} value={filters.sourceTags[0] ?? ""} />
             <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
               Min score
               <select className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs normal-case tracking-normal text-slate-100 outline-none focus:border-cyan-300/50" onChange={(event) => updateFilter("minScore", event.target.value ? Number(event.target.value) : null)} value={filters.minScore ?? ""}>
@@ -164,6 +165,16 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
                 <option value="60">60+</option>
                 <option value="70">70+</option>
                 <option value="80">80+</option>
+              </select>
+            </label>
+            <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+              Max risk
+              <select className="mt-1 h-9 w-full rounded border border-slate-700/80 bg-slate-950/70 px-2 text-xs normal-case tracking-normal text-slate-100 outline-none focus:border-cyan-300/50" onChange={(event) => updateFilter("maxRisk", event.target.value ? Number(event.target.value) : null)} value={filters.maxRisk ?? ""}>
+                <option value="">Any</option>
+                <option value="80">80 or less</option>
+                <option value="70">70 or less</option>
+                <option value="60">60 or less</option>
+                <option value="50">50 or less</option>
               </select>
             </label>
             <label className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">

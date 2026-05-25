@@ -33,22 +33,9 @@ export function HistoryWorkflowMaturityPanel({ model }: { model: HistoryWorkflow
           <TimelineColumn empty="No source-linked event chronology exists for this symbol yet." items={model.eventChronology} title="Event chronology" />
           <TimelineColumn empty="No macro regime changes are visible in this selected history." items={model.macroChronology} title="Macro chronology" />
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
-          <div className="text-[10px] font-black uppercase tracking-[0.16em] text-violet-200">Replay clusters</div>
-          <div className="mt-3 space-y-2">
-            {model.replayClusters.length ? model.replayClusters.map((cluster) => (
-              <div className="rounded-lg border border-white/10 bg-black/20 p-2.5" key={cluster.label}>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 truncate text-sm font-semibold text-slate-100">{cluster.label}</div>
-                  <div className="font-mono text-xs text-cyan-100">{cluster.count}</div>
-                </div>
-                <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{cluster.detail}</p>
-                <div className="mt-2 flex flex-wrap gap-1.5">
-                  {cluster.symbols.map((symbol) => <span className="rounded-full border border-white/10 px-2 py-0.5 font-mono text-[10px] text-slate-400" key={`${cluster.label}:${symbol}`}>{symbol}</span>)}
-                </div>
-              </div>
-            )) : <div className="rounded-lg border border-dashed border-slate-700/70 p-3 text-xs text-slate-500">Replay clusters need more saved observations.</div>}
-          </div>
+        <div className="space-y-3">
+          <ClusterPanel empty="Replay clusters need more saved observations." title="Replay clusters" tone="violet" clusters={model.replayClusters} />
+          <ClusterPanel empty="Historical analogs need more setup, macro, and score-band overlap." title="Historical analogs" tone="cyan" clusters={model.historicalAnalogs} />
         </div>
       </div>
       <ActionGrid actions={[...model.replayCompareActions, ...model.tradeAutopsyContinuity]} />
@@ -138,6 +125,28 @@ function ActionGrid({ actions }: { actions: SymbolWorkflowAction[] }) {
           <p className="mt-2 line-clamp-3 text-xs leading-5 text-slate-400">{action.detail}</p>
         </Link>
       ))}
+    </div>
+  );
+}
+
+function ClusterPanel({ clusters, empty, title, tone }: { clusters: HistoryWorkflowMaturityModel["replayClusters"]; empty: string; title: string; tone: "cyan" | "violet" }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
+      <div className={`text-[10px] font-black uppercase tracking-[0.16em] ${tone === "violet" ? "text-violet-200" : "text-cyan-200"}`}>{title}</div>
+      <div className="mt-3 space-y-2">
+        {clusters.length ? clusters.map((cluster) => (
+          <div className="rounded-lg border border-white/10 bg-black/20 p-2.5" key={`${title}:${cluster.label}`}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 truncate text-sm font-semibold text-slate-100">{cluster.label}</div>
+              <div className="font-mono text-xs text-cyan-100">{cluster.count}</div>
+            </div>
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">{cluster.detail}</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {cluster.symbols.map((symbol) => <span className="rounded-full border border-white/10 px-2 py-0.5 font-mono text-[10px] text-slate-400" key={`${title}:${cluster.label}:${symbol}`}>{symbol}</span>)}
+            </div>
+          </div>
+        )) : <div className="rounded-lg border border-dashed border-slate-700/70 p-3 text-xs text-slate-500">{empty}</div>}
+      </div>
     </div>
   );
 }

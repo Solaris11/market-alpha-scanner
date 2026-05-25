@@ -9,6 +9,7 @@ export type SymbolSearchFilterState = {
   maxRisk: number | null;
   minScore: number | null;
   sectors: string[];
+  sourceTags: string[];
   setups: string[];
   sort: SymbolSearchSort;
   watchlistOnly: boolean;
@@ -27,6 +28,7 @@ export type SymbolSearchDocument = {
   scannerRanked: boolean;
   score: number | null;
   searchText: string;
+  searchWords: string[];
   sector: string;
   setupType: string;
   sourceTags: string[];
@@ -52,6 +54,7 @@ export type SymbolSearchFacetSet = {
   decisions: string[];
   macroRegimes: string[];
   sectors: string[];
+  sourceTags: string[];
   setups: string[];
 };
 
@@ -91,6 +94,7 @@ export type HistoryReplayCluster = {
 
 export type HistoryWorkflowMaturityModel = {
   eventChronology: SymbolTimelineItem[];
+  historicalAnalogs: HistoryReplayCluster[];
   macroChronology: SymbolTimelineItem[];
   replayClusters: HistoryReplayCluster[];
   replayCompareActions: SymbolWorkflowAction[];
@@ -129,6 +133,7 @@ const DEFAULT_FILTERS: SymbolSearchFilterState = {
   maxRisk: null,
   minScore: null,
   sectors: [],
+  sourceTags: [],
   setups: [],
   sort: "relevance",
   watchlistOnly: false,
@@ -141,6 +146,7 @@ export function defaultSymbolSearchFilters(overrides: Partial<SymbolSearchFilter
     decisions: overrides.decisions ? cleanList(overrides.decisions) : [...DEFAULT_FILTERS.decisions],
     macroRegimes: overrides.macroRegimes ? cleanList(overrides.macroRegimes) : [...DEFAULT_FILTERS.macroRegimes],
     sectors: overrides.sectors ? cleanList(overrides.sectors) : [...DEFAULT_FILTERS.sectors],
+    sourceTags: overrides.sourceTags ? cleanList(overrides.sourceTags) : [...DEFAULT_FILTERS.sourceTags],
     setups: overrides.setups ? cleanList(overrides.setups) : [...DEFAULT_FILTERS.setups],
   };
 }
@@ -173,6 +179,7 @@ export function buildSymbolSearchIndex(input: {
     const riskScore = finiteNumber(row.risk_pressure_score ?? row.risk_pressure ?? row.event_risk_score ?? row.macro_pressure_score ?? row.risk_penalty);
     const rankPosition = finiteNumber(row.rank_position);
     const sourceTags = sourceTagsFor(row, historyCounts.has(symbol), watchlist.has(symbol), recent.has(symbol));
+    const searchText = searchableText([symbol, companyName, sector, setupType, macroRegime, macroLabel, decision, theme, ...sourceTags]);
     const aiRankedRelevance = relevanceBaseScore({ historyCount: historyCounts.get(symbol) ?? 0, rankPosition, recent: recent.has(symbol), riskScore, score, watchlist: watchlist.has(symbol) });
     const document: SymbolSearchDocument = {
       aiRankedRelevance,
@@ -186,7 +193,8 @@ export function buildSymbolSearchIndex(input: {
       riskScore,
       scannerRanked: true,
       score,
-      searchText: searchableText([symbol, companyName, sector, setupType, macroRegime, macroLabel, decision, theme, ...sourceTags]),
+      searchText,
+      searchWords: searchWordsFor(searchText),
       sector,
       setupType,
       sourceTags,
@@ -199,6 +207,7 @@ export function buildSymbolSearchIndex(input: {
 
   for (const [symbol, count] of historyCounts.entries()) {
     if (bySymbol.has(symbol)) continue;
+    const searchText = searchableText([symbol, "history", "replay", "signal memory"]);
     bySymbol.set(symbol, {
       aiRankedRelevance: relevanceBaseScore({ historyCount: count, rankPosition: null, recent: recent.has(symbol), riskScore: null, score: null, watchlist: watchlist.has(symbol) }),
       companyName: "",
@@ -211,7 +220,8 @@ export function buildSymbolSearchIndex(input: {
       riskScore: null,
       scannerRanked: false,
       score: null,
-      searchText: searchableText([symbol, "history", "replay", "signal memory"]),
+      searchText,
+      searchWords: searchWordsFor(searchText),
       sector: "Unclassified",
       setupType: "History only",
       sourceTags: ["history", "replay"],
@@ -233,6 +243,7 @@ export function buildSymbolSearchFacets(index: SymbolSearchDocument[]): SymbolSe
     decisions: uniqueSorted(index.map((item) => item.decision)),
     macroRegimes: uniqueSorted(index.map((item) => item.macroRegime)),
     sectors: uniqueSorted(index.map((item) => item.sector)),
+    sourceTags: uniqueSorted(index.flatMap((item) => item.sourceTags)),
     setups: uniqueSorted(index.map((item) => item.setupType)),
   };
 }
@@ -337,18 +348,30 @@ export function buildHistoryWorkflowMaturityModel(input: {
   ];
   const eventChronology = eventTimelineFromRows(rows);
   const macroChronology = macroTimelineFromRows(rows);
+  const historicalAnalogs = historicalAnalogClusters(rows);
   const replayCompareActions: SymbolWorkflowAction[] = [
     { detail: replayClusters.length ? `${replayClusters.length} replay cluster(s) are available for setup, decision, or macro comparison.` : "Replay comparison needs more saved observations.", href: `/history?symbol=${encodeURIComponent(cleanSymbol(input.selectedSymbol))}`, label: "Replay compare", status: replayClusters.length ? "available" : "limited" },
+    { detail: historicalAnalogs.length ? `${historicalAnalogs.length} historical analog group(s) connect setup, macro, and score evolution.` : "Historical analogs need more varied saved observations.", href: "/market-memory", label: "Historical analogs", status: historicalAnalogs.length ? "available" : "limited" },
     { detail: "Continue the selected symbol in the full symbol cockpit.", href: `/symbol/${encodeURIComponent(cleanSymbol(input.selectedSymbol))}`, label: "Symbol detail", status: cleanSymbol(input.selectedSymbol) ? "available" : "limited" },
   ];
   const tradeAutopsyContinuity: SymbolWorkflowAction[] = [
     { detail: rows.length ? "History can feed paper-trading autopsy context, but does not fabricate fills or broker state." : "No history rows are available for autopsy continuity yet.", href: "/paper", label: "Trade autopsy continuity", status: rows.length ? "available" : "limited" },
     { detail: "Strategy-linked history is available only when Strategy Labs evidence exists.", href: "/strategy-labs", label: "Strategy-linked history", status: "limited" },
   ];
-  const score = boundedScore((rows.length ? 25 : 0) + Math.min(25, input.history.uniqueDates.length * 3) + Math.min(25, replayClusters.length * 8) + (eventChronology.length ? 15 : 0) + (macroChronology.length ? 10 : 0));
+  const selectedSymbolRows = rows.filter((row) => cleanSymbol(row.symbol) === cleanSymbol(input.selectedSymbol)).length;
+  const score = boundedScore(
+    Math.min(25, rows.length * 5)
+      + Math.min(18, input.history.uniqueDates.length * 4)
+      + Math.min(18, replayClusters.length * 8)
+      + Math.min(14, historicalAnalogs.length * 6)
+      + (eventChronology.length ? 10 : 0)
+      + (macroChronology.length ? 10 : 0)
+      + Math.min(7, selectedSymbolRows),
+  );
 
   return {
     eventChronology,
+    historicalAnalogs,
     macroChronology,
     replayClusters,
     replayCompareActions,
@@ -379,6 +402,7 @@ export function buildPerformanceWorkflowMaturityModel(input: {
     { detail: "Average completed signal outcome from stored forward-return rows.", label: "Signal-quality analysis", status: avgReturn === null ? "limited" : "available", value: avgReturn === null ? "Limited" : `${(avgReturn * 100).toFixed(2)}%` },
     { detail: `${input.performance.lifecycle.rows.length.toLocaleString()} lifecycle row(s) support signal aging and replay review.`, label: "Replay success analysis", status: input.performance.lifecycle.rows.length ? "available" : "limited", value: input.performance.lifecycle.rows.length.toLocaleString() },
     { detail: `${calibration.length.toLocaleString()} score bucket(s) are available for calibration review.`, label: "Confidence calibration", status: calibration.length ? "available" : "limited", value: calibration.length.toLocaleString() },
+    { detail: `${input.performance.lifecycleSummary.rows.length.toLocaleString()} strategy lifecycle summary row(s) explain how scanner/strategy behavior changed over time.`, label: "Strategy evolution", status: input.performance.lifecycleSummary.rows.length ? "available" : "limited", value: input.performance.lifecycleSummary.rows.length.toLocaleString() },
   ];
   const falsePositiveAnalysis: PerformanceCockpitCard = {
     detail: falsePositiveRows.length ? `${falsePositiveRows.length.toLocaleString()} high-score completed row(s) had non-positive forward returns.` : "No high-score false-positive rows were found in the current forward-return sample.",
@@ -390,13 +414,24 @@ export function buildPerformanceWorkflowMaturityModel(input: {
     timelineItem("History loaded", `${input.history.count.toLocaleString()} saved scanner run(s) and ${input.history.uniqueDates.length.toLocaleString()} distinct date(s).`, input.history.latest ?? "N/A", "history summary", input.history.count ? "violet" : "amber"),
     timelineItem("Forward evidence checked", `${forwardRows.length.toLocaleString()} displayed forward-return row(s); source state ${input.performance.forwardReturns.state}.`, "Current performance packet", "performance forward returns", forwardRows.length ? "cyan" : "amber"),
     timelineItem("Model quality review", falsePositiveAnalysis.detail, "Current performance packet", "forward returns and score fields", falsePositiveRows.length ? "rose" : "emerald"),
+    timelineItem("Confidence evolution", calibration.length ? `${calibration.length} calibration bucket(s) explain where confidence was aligned or miscalibrated.` : "Confidence evolution needs completed score/outcome rows.", "Current performance packet", "score buckets and completed outcomes", calibration.length ? "emerald" : "amber"),
+    timelineItem("Strategy evolution", input.performance.lifecycleSummary.rows.length ? "Strategy changes are reviewable through lifecycle summary rows and Strategy Labs continuity." : "Strategy evolution is limited until lifecycle summary rows exist.", "Current performance packet", "lifecycle summary evidence", input.performance.lifecycleSummary.rows.length ? "violet" : "amber"),
   ];
   const watchlistPortfolioState: SymbolWorkflowAction[] = [
     { detail: "Watchlist-specific performance is limited unless watchlist attribution is present in stored rows.", href: "/settings", label: "Watchlist performance", status: "limited" },
     { detail: `${input.rankingRows.length.toLocaleString()} current scanner row(s) can be cross-checked against portfolio intelligence scoring.`, href: "/paper", label: "Portfolio intelligence scoring", status: input.rankingRows.length ? "available" : "limited" },
     { detail: "Strategy quality evolution is available through Strategy Labs and completed simulated evidence only.", href: "/strategy-labs", label: "Strategy-quality evolution", status: "available" },
+    { detail: "Continue this performance investigation through symbol search, history replay, and scanner comparison without losing context.", href: "/performance#history", label: "Continue performance investigation", status: forwardRows.length ? "available" : "limited" },
   ];
-  const score = boundedScore((returnValues.length ? 30 : 0) + Math.min(25, calibration.length * 8) + (input.performance.lifecycle.rows.length ? 20 : 0) + (input.history.count ? 15 : 0) + (input.rankingRows.length ? 10 : 0));
+  const score = boundedScore(
+    (returnValues.length ? 25 : 0)
+      + Math.min(20, calibration.length * 7)
+      + (input.performance.lifecycle.rows.length ? 15 : 0)
+      + (input.performance.lifecycleSummary.rows.length ? 10 : 0)
+      + Math.min(15, input.history.uniqueDates.length * 2)
+      + (input.history.count ? 8 : 0)
+      + (input.rankingRows.length ? 7 : 0),
+  );
 
   return {
     calibration,
@@ -431,12 +466,16 @@ function queryScore(document: SymbolSearchDocument, query: string, tokens: strin
   if (!tokens.length) return { reasons: ["AI-ranked relevance from scanner, history, watchlist, and macro context."], score: 0 };
   let score = 0;
   const reasons: string[] = [];
+  const companyAcronym = acronym(document.companyName);
   if (document.symbol === query) {
     score += 600;
     reasons.push("exact ticker match");
   } else if (document.symbol.startsWith(query)) {
     score += 420;
     reasons.push("ticker prefix match");
+  } else if (companyAcronym && companyAcronym === query) {
+    score += 360;
+    reasons.push("company acronym match");
   } else if (fuzzyMatch(document.symbol, query)) {
     score += 260;
     reasons.push("fuzzy ticker match");
@@ -461,6 +500,19 @@ function queryScore(document: SymbolSearchDocument, query: string, tokens: strin
     score += 90;
     reasons.push("workflow source match");
   }
+  const fuzzyMetadata = fuzzyTokenMetadataScore(document.searchWords, tokens);
+  if (fuzzyMetadata.score > 0) {
+    score += fuzzyMetadata.score;
+    reasons.push(fuzzyMetadata.reason);
+  }
+  if (document.watchlist && tokens.some((token) => token === "WATCHLIST" || token === "WL")) {
+    score += 140;
+    reasons.push("watchlist context match");
+  }
+  if (document.historyCount > 0 && tokens.some((token) => token === "HISTORY" || token === "REPLAY" || token === "MEMORY")) {
+    score += 130;
+    reasons.push("replay/history continuity match");
+  }
   if (!score && containsAll(document.searchText, tokens)) {
     score += 80;
     reasons.push("fuzzy metadata match");
@@ -484,6 +536,10 @@ function documentPassesFilters(document: SymbolSearchDocument, filters: SymbolSe
   if (filters.sectors.length && !filters.sectors.includes(cleanText(document.sector).toUpperCase())) return false;
   if (filters.setups.length && !filters.setups.includes(cleanText(document.setupType).toUpperCase())) return false;
   if (filters.macroRegimes.length && !filters.macroRegimes.includes(cleanText(document.macroRegime).toUpperCase())) return false;
+  if (filters.sourceTags.length) {
+    const tags = new Set(document.sourceTags.map((tag) => cleanText(tag).toUpperCase()));
+    if (!filters.sourceTags.some((tag) => tags.has(tag))) return false;
+  }
   if (filters.decisions.length && !filters.decisions.includes(cleanText(document.decision).toUpperCase())) return false;
   return true;
 }
@@ -512,6 +568,39 @@ function clusterHistoryRows(rows: SymbolHistoryRow[]): HistoryReplayCluster[] {
       };
     })
     .sort((left, right) => right.count - left.count)
+    .slice(0, 6);
+}
+
+function historicalAnalogClusters(rows: SymbolHistoryRow[]): HistoryReplayCluster[] {
+  const groups = new Map<string, SymbolHistoryRow[]>();
+  for (const row of rows) {
+    const setup = cleanText(row.setup_type, "unknown setup");
+    const regime = cleanText(row.market_regime ?? row.macro_context_label, "macro limited");
+    const score = finiteNumber(row.final_score);
+    const scoreBand = score === null ? "score limited" : score >= 70 ? "high score" : score >= 50 ? "middle score" : "low score";
+    const key = `${setup} / ${regime} / ${scoreBand}`;
+    const current = groups.get(key) ?? [];
+    current.push(row);
+    groups.set(key, current);
+  }
+  return Array.from(groups.entries())
+    .map(([label, groupRows]) => {
+      const first = groupRows[0];
+      const latest = groupRows[groupRows.length - 1];
+      const firstScore = finiteNumber(first?.final_score);
+      const latestScore = finiteNumber(latest?.final_score);
+      const scoreDelta = firstScore !== null && latestScore !== null ? latestScore - firstScore : null;
+      const symbols = uniqueSorted(groupRows.map((row) => cleanSymbol(row.symbol))).slice(0, 8);
+      return {
+        count: groupRows.length,
+        detail: `${symbols.length.toLocaleString()} symbol(s) share setup, macro, and score-band context; ${scoreDelta === null ? "score delta limited" : `${formatSigned(scoreDelta)} score delta`}.`,
+        label,
+        scoreDelta,
+        symbols,
+      };
+    })
+    .filter((cluster) => cluster.count >= 2 || cluster.symbols.length >= 2)
+    .sort((left, right) => right.count - left.count || Math.abs(right.scoreDelta ?? 0) - Math.abs(left.scoreDelta ?? 0))
     .slice(0, 6);
 }
 
@@ -629,4 +718,65 @@ function fuzzyMatch(value: string, query: string): boolean {
     if (index === target.length) return true;
   }
   return false;
+}
+
+function fuzzyTokenMetadataScore(words: string[], tokens: string[]): { reason: string; score: number } {
+  if (!tokens.length) return { reason: "fuzzy metadata match", score: 0 };
+  let score = 0;
+  let matched = 0;
+  for (const token of tokens) {
+    if (token.length < 3) continue;
+    let tokenScore = 0;
+    for (const word of words) {
+      if (word[0] !== token[0]) continue;
+      if (word === token) {
+        tokenScore = Math.max(tokenScore, 80);
+      } else if (word.startsWith(token) || token.startsWith(word)) {
+        tokenScore = Math.max(tokenScore, 60);
+      } else if (boundedEditDistance(word, token, token.length <= 5 ? 1 : 2) !== null) {
+        tokenScore = Math.max(tokenScore, 46);
+      }
+      if (tokenScore >= 80) break;
+    }
+    if (tokenScore > 0) matched += 1;
+    score += tokenScore;
+  }
+  if (!matched) return { reason: "fuzzy metadata match", score: 0 };
+  return { reason: matched === tokens.length ? "fuzzy metadata match" : "partial fuzzy metadata match", score: Math.min(180, score) };
+}
+
+function boundedEditDistance(left: string, right: string, maxDistance: number): number | null {
+  if (Math.abs(left.length - right.length) > maxDistance) return null;
+  const previous = Array.from({ length: right.length + 1 }, (_, index) => index);
+  let current = new Array<number>(right.length + 1).fill(0);
+  for (let leftIndex = 1; leftIndex <= left.length; leftIndex += 1) {
+    current[0] = leftIndex;
+    let rowMin = current[0] ?? leftIndex;
+    for (let rightIndex = 1; rightIndex <= right.length; rightIndex += 1) {
+      const cost = left[leftIndex - 1] === right[rightIndex - 1] ? 0 : 1;
+      current[rightIndex] = Math.min(
+        (previous[rightIndex] ?? 0) + 1,
+        (current[rightIndex - 1] ?? 0) + 1,
+        (previous[rightIndex - 1] ?? 0) + cost,
+      );
+      rowMin = Math.min(rowMin, current[rightIndex] ?? rowMin);
+    }
+    if (rowMin > maxDistance) return null;
+    for (let index = 0; index < current.length; index += 1) previous[index] = current[index] ?? 0;
+    current = new Array<number>(right.length + 1).fill(0);
+  }
+  const distance = previous[right.length] ?? null;
+  return distance !== null && distance <= maxDistance ? distance : null;
+}
+
+function acronym(value: string): string {
+  return cleanText(value)
+    .split(/[^A-Za-z0-9]+/)
+    .map((word) => word[0]?.toUpperCase() ?? "")
+    .join("")
+    .slice(0, 12);
+}
+
+function searchWordsFor(text: string): string[] {
+  return uniqueSorted(cleanText(text).toUpperCase().split(/[^A-Z0-9]+/).filter((word) => word.length >= 2)).slice(0, 80);
 }

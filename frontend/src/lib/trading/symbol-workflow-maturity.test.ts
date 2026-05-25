@@ -8,6 +8,7 @@ import {
   buildSymbolWorkflowMaturityModel,
   searchSymbolIndex,
 } from "./symbol-workflow-maturity";
+import { measureSymbolHistoryPerformancePolishProof } from "./symbol-history-performance-polish-proof";
 
 const rows: RankingRow[] = [
   {
@@ -100,6 +101,12 @@ test("symbol search supports ticker, company, sector, macro, history, and filter
 
   const historyOnly = searchSymbolIndex(index, "tsla", { historyOnly: true });
   assert.equal(historyOnly.results[0]?.document.symbol, "TSLA");
+
+  const fuzzy = searchSymbolIndex(index, "advaned micro devces");
+  assert.equal(fuzzy.results[0]?.document.symbol, "AMD");
+
+  const sourceFiltered = searchSymbolIndex(index, "replay", { sourceTags: ["history"], watchlistOnly: true });
+  assert.equal(sourceFiltered.results[0]?.document.symbol, "XLE");
 });
 
 test("symbol maturity exposes timelines and continuity without fabricating catalysts", () => {
@@ -130,6 +137,7 @@ test("history maturity builds replay clusters, macro chronology, and autopsy bou
 
   assert.ok(model.score > 50);
   assert.ok(model.replayClusters.some((cluster) => cluster.label.includes("breakout")));
+  assert.ok(model.historicalAnalogs.length >= 1);
   assert.ok(model.macroChronology.length >= 1);
   assert.ok(model.tradeAutopsyContinuity.some((item) => /does not fabricate fills/i.test(item.detail)));
 });
@@ -146,4 +154,17 @@ test("performance maturity derives hit rate, calibration, and false-positive ana
   assert.equal(model.falsePositiveAnalysis.value, "1");
   assert.ok(model.calibration.some((bucket) => bucket.label === "High score" && bucket.count === 2));
   assert.ok(model.watchlistPortfolioState.some((item) => item.label === "Watchlist performance" && item.status === "limited"));
+  assert.ok(model.cockpitCards.some((card) => card.label === "Strategy evolution"));
+});
+
+test("phase 25.5 proof validates 90+ symbol, history, and performance maturity with large-universe search", () => {
+  const report = measureSymbolHistoryPerformancePolishProof({ modelBuildBudgetMs: 1_000, samples: 16, searchBudgetMs: 1_000, symbolCount: 520 });
+
+  assert.equal(report.overallStatus, "ready");
+  assert.equal(report.indexSize >= 500, true);
+  assert.equal(report.symbolScore >= 90, true);
+  assert.equal(report.historyScore >= 90, true);
+  assert.equal(report.performanceScore >= 90, true);
+  assert.equal(report.metrics.every((metric) => metric.pass), true);
+  assert.ok(report.unsupportedClaims.some((claim) => claim.includes("No Bloomberg")));
 });
