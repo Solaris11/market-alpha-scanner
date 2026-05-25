@@ -36,9 +36,25 @@ type BackupEventRow = QueryResultRow & {
   status: string;
 };
 
+type NormalizedRequestMetric = Required<RequestMetricInput>;
+
+type RequestMetricQueueState = {
+  dropped: number;
+  flushing: boolean;
+  metrics: NormalizedRequestMetric[];
+  timer: ReturnType<typeof setTimeout> | null;
+};
+
 const DEFAULT_BACKUP_DIR = "/app/backups";
 const BACKUP_WARN_MINUTES = 8 * 60;
 const BACKUP_FAIL_MINUTES = 30 * 60;
+const REQUEST_METRIC_BATCH_SIZE = 500;
+const REQUEST_METRIC_FLUSH_DELAY_MS = 250;
+const REQUEST_METRIC_MAX_QUEUE = 5_000;
+
+const monitoringGlobal = globalThis as typeof globalThis & {
+  __tradevetoRequestMetricQueue?: RequestMetricQueueState;
+};
 
 export async function deepHealth(): Promise<DeepHealthResult> {
   const [db, scanner, backup] = await Promise.all([dbHealth(), scannerHealth(), backupHealth()]);
@@ -70,13 +86,7 @@ export async function recordMonitoringEvent(input: {
 
 export async function recordRequestMetric(input: RequestMetricInput): Promise<void> {
   const metric = normalizeRequestMetric(input);
-  await dbQuery(
-    `
-      INSERT INTO request_metrics (route, method, status_code, latency_ms, user_id, created_at)
-      VALUES ($1, $2, $3, $4, $5::uuid, now())
-    `,
-    [metric.route, metric.method, metric.statusCode, metric.latencyMs, metric.userId],
-  );
+  enqueueRequestMetric(metric);
 }
 
 export async function recordSyntheticCheck(input: {
@@ -269,4 +279,70 @@ function safeNullableInteger(value: number | null): number | null {
 function safeNullablePercent(value: number | null): number | null {
   if (value === null || !Number.isFinite(value)) return null;
   return Math.max(0, Math.min(100, Number(value.toFixed(2))));
+}
+
+function requestMetricQueue(): RequestMetricQueueState {
+  if (!monitoringGlobal.__tradevetoRequestMetricQueue) {
+    monitoringGlobal.__tradevetoRequestMetricQueue = {
+      dropped: 0,
+      flushing: false,
+      metrics: [],
+      timer: null,
+    };
+  }
+  return monitoringGlobal.__tradevetoRequestMetricQueue;
+}
+
+function enqueueRequestMetric(metric: NormalizedRequestMetric): void {
+  const queue = requestMetricQueue();
+  if (queue.metrics.length >= REQUEST_METRIC_MAX_QUEUE) {
+    queue.metrics.shift();
+    queue.dropped += 1;
+  }
+  queue.metrics.push(metric);
+  scheduleRequestMetricFlush(queue);
+}
+
+function scheduleRequestMetricFlush(queue: RequestMetricQueueState): void {
+  if (queue.timer || queue.flushing) return;
+  queue.timer = setTimeout(() => {
+    queue.timer = null;
+    flushRequestMetrics().catch((error: unknown) => {
+      console.warn("[monitoring] request metric batch write failed", error instanceof Error ? error.message : error);
+    });
+  }, REQUEST_METRIC_FLUSH_DELAY_MS);
+  queue.timer.unref?.();
+}
+
+async function flushRequestMetrics(): Promise<void> {
+  const queue = requestMetricQueue();
+  if (queue.flushing) return;
+  queue.flushing = true;
+  try {
+    while (queue.metrics.length > 0) {
+      const batch = queue.metrics.splice(0, REQUEST_METRIC_BATCH_SIZE);
+      await writeRequestMetricBatch(batch);
+    }
+  } finally {
+    queue.flushing = false;
+    if (queue.metrics.length > 0) scheduleRequestMetricFlush(queue);
+  }
+}
+
+async function writeRequestMetricBatch(batch: NormalizedRequestMetric[]): Promise<void> {
+  if (!batch.length) return;
+  await dbQuery(
+    `
+      INSERT INTO request_metrics (route, method, status_code, latency_ms, user_id, created_at)
+      SELECT route, method, status_code, latency_ms, user_id, now()
+      FROM unnest($1::text[], $2::text[], $3::int[], $4::int[], $5::uuid[]) AS metric(route, method, status_code, latency_ms, user_id)
+    `,
+    [
+      batch.map((metric) => metric.route),
+      batch.map((metric) => metric.method),
+      batch.map((metric) => metric.statusCode),
+      batch.map((metric) => metric.latencyMs),
+      batch.map((metric) => metric.userId),
+    ],
+  );
 }

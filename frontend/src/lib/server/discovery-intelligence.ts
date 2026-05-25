@@ -20,6 +20,7 @@ type DiscoveryBaseCache = {
   expiresAt: number;
   refreshedAt: number;
   refreshing?: Promise<DiscoveryBaseRows>;
+  serialized?: string;
   staleUntil: number;
   value: Promise<DiscoveryBaseRows>;
   resolved?: DiscoveryBaseRows;
@@ -34,6 +35,7 @@ export type DiscoveryLoadMeta = {
 
 export type DiscoveryLoadResult = {
   meta: DiscoveryLoadMeta;
+  serializedSystem: string;
   system: IntelligenceDiscoverySystem;
 };
 
@@ -41,6 +43,7 @@ type DiscoverySystemCache = {
   expiresAt: number;
   refreshedAt: number;
   refreshing?: Promise<IntelligenceDiscoverySystem>;
+  serialized?: string;
   staleUntil: number;
   value: Promise<IntelligenceDiscoverySystem>;
   resolved?: IntelligenceDiscoverySystem;
@@ -65,6 +68,8 @@ export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | n
   const cachedSystem = discoverySystemCache.get(cacheKey);
   if (cachedSystem && cachedSystem.expiresAt > now) {
     const system = await cachedSystem.value;
+    const serializedSystem = cachedSystem.serialized ?? serializeDiscoverySystem(system);
+    cachedSystem.serialized = serializedSystem;
     return {
       meta: {
         baseCacheStatus: "skipped",
@@ -72,11 +77,14 @@ export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | n
         durationMs: Date.now() - startedAt,
         systemCacheStatus: "system-hit",
       },
+      serializedSystem,
       system,
     };
   }
   if (cachedSystem?.resolved && cachedSystem.staleUntil > now) {
     refreshDiscoverySystemCache(cacheKey, userId);
+    const serializedSystem = cachedSystem.serialized ?? serializeDiscoverySystem(cachedSystem.resolved);
+    cachedSystem.serialized = serializedSystem;
     return {
       meta: {
         baseCacheStatus: "skipped",
@@ -84,6 +92,7 @@ export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | n
         durationMs: Date.now() - startedAt,
         systemCacheStatus: "system-hit",
       },
+      serializedSystem,
       system: cachedSystem.resolved,
     };
   }
@@ -100,7 +109,9 @@ export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | n
 
   try {
     const system = await value;
+    const serializedSystem = serializeDiscoverySystem(system);
     cacheEntry.resolved = system;
+    cacheEntry.serialized = serializedSystem;
     return {
       meta: {
         baseCacheStatus: baseStatus.value,
@@ -108,6 +119,7 @@ export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | n
         durationMs: Date.now() - startedAt,
         systemCacheStatus: "system-miss",
       },
+      serializedSystem,
       system,
     };
   } catch (error) {
@@ -133,6 +145,7 @@ function refreshDiscoverySystemCache(cacheKey: string, userId: string | null): v
         expiresAt: now + DISCOVERY_SYSTEM_CACHE_TTL_MS,
         refreshedAt: now,
         resolved: system,
+        serialized: serializeDiscoverySystem(system),
         staleUntil: now + DISCOVERY_SYSTEM_STALE_TTL_MS,
         value: Promise.resolve(system),
       });
@@ -141,6 +154,10 @@ function refreshDiscoverySystemCache(cacheKey: string, userId: string | null): v
       cached.refreshing = undefined;
       console.warn("[discovery] background system refresh failed", error instanceof Error ? error.message : error);
     });
+}
+
+function serializeDiscoverySystem(system: IntelligenceDiscoverySystem): string {
+  return JSON.stringify(system);
 }
 
 async function buildDiscoverySystem(userId: string | null): Promise<IntelligenceDiscoverySystem> {

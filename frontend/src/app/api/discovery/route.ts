@@ -44,21 +44,40 @@ export async function GET(request: Request) {
       return withDiscoveryPerformanceHeaders(response, startedAt, "limited");
     }
 
-    const { meta, system } = await loadIntelligenceDiscoverySystemWithMeta(entitlement.user?.id ?? null);
+    const { meta, serializedSystem } = await loadIntelligenceDiscoverySystemWithMeta(entitlement.user?.id ?? null);
     const latencyMs = Date.now() - startedAt;
     const performance = recordDiscoveryApiTiming({ cacheStatus: meta.cacheStatus, latencyMs, statusCode: 200 });
-    const response = NextResponse.json({
-      entitlement: entitlementSummary(entitlement),
-      limited: false,
-      ok: true,
-      performance,
-      providerOutageSimulation: outageSimulation.enabled ? outageSimulation : undefined,
-      system,
-    }, { headers: { "Cache-Control": "no-store" } });
+    const response = outageSimulation.enabled
+      ? NextResponse.json({
+        entitlement: entitlementSummary(entitlement),
+        limited: false,
+        ok: true,
+        performance,
+        providerOutageSimulation: outageSimulation,
+        system: JSON.parse(serializedSystem) as unknown,
+      }, { headers: { "Cache-Control": "no-store" } })
+      : discoveryJsonResponse({
+        entitlementJson: JSON.stringify(entitlementSummary(entitlement)),
+        performanceJson: JSON.stringify(performance),
+        serializedSystem,
+      });
     response.headers.set("X-TradeVeto-Discovery-Build-Ms", String(meta.durationMs));
     response.headers.set("X-TradeVeto-Discovery-Base-Cache", meta.baseCacheStatus);
     return applyProviderOutageSimulationHeaders(applyDiscoveryPerformanceHeaders(response, latencyMs, meta.cacheStatus, performance), outageSimulation);
   });
+}
+
+function discoveryJsonResponse(input: { entitlementJson: string; performanceJson: string; serializedSystem: string }): NextResponse {
+  return new NextResponse(
+    `{"entitlement":${input.entitlementJson},"limited":false,"ok":true,"performance":${input.performanceJson},"system":${input.serializedSystem}}`,
+    {
+      headers: {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+      },
+      status: 200,
+    },
+  );
 }
 
 function withDiscoveryPerformanceHeaders(response: NextResponse, startedAt: number, cacheStatus: DiscoveryCacheStatus): NextResponse {

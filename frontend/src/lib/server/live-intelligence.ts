@@ -15,6 +15,7 @@ export type LiveIntelligenceLoadOptions = {
 export type LiveIntelligenceLoadResult = {
   cacheStatus: LiveIntelligenceCacheStatus;
   durationMs: number;
+  serializedSystem: string;
   system: LiveIntelligenceSystem;
 };
 
@@ -42,18 +43,22 @@ export async function loadLiveIntelligenceSystemWithMeta(options: LiveIntelligen
   const now = Date.now();
   const cached = liveIntelligenceCache;
   if (cached && cached.expiresAt > now) {
+    const system = packetForOptions(cached.resolved, options);
     return {
       cacheStatus: "fresh-hit",
       durationMs: Date.now() - startedAt,
-      system: packetForOptions(cached.resolved, options),
+      serializedSystem: serializeLiveIntelligenceSystem(system),
+      system,
     };
   }
   if (cached && cached.staleUntil > now) {
     refreshLiveIntelligenceCache();
+    const system = packetForOptions(cached.resolved, options);
     return {
       cacheStatus: "stale-hit",
       durationMs: Date.now() - startedAt,
-      system: packetForOptions(cached.resolved, options),
+      serializedSystem: serializeLiveIntelligenceSystem(system),
+      system,
     };
   }
 
@@ -64,17 +69,21 @@ export async function loadLiveIntelligenceSystemWithMeta(options: LiveIntelligen
 
   const warmed = await settleWithTimeout(build.catch(() => null), LIVE_INTELLIGENCE_BUILD_TIMEOUT_MS);
   if (warmed) {
+    const system = packetForOptions(warmed, options);
     return {
       cacheStatus: "warm-miss",
       durationMs: Date.now() - startedAt,
-      system: packetForOptions(warmed, options),
+      serializedSystem: serializeLiveIntelligenceSystem(system),
+      system,
     };
   }
 
+  const system = degradedLiveIntelligencePacket(options);
   return {
     cacheStatus: "degraded-fallback",
     durationMs: Date.now() - startedAt,
-    system: degradedLiveIntelligencePacket(options),
+    serializedSystem: serializeLiveIntelligenceSystem(system),
+    system,
   };
 }
 
@@ -179,4 +188,8 @@ function latencyLabel(refreshIntervalMs: number, status: LiveIntelligenceSystem[
   if (status === "paused") return "Waiting for scanner rows";
   if (status === "degraded") return `Live-ish, observation-limited (${Math.round(refreshIntervalMs / 1000)}s refresh)`;
   return `Streaming every ${Math.round(refreshIntervalMs / 1000)}s`;
+}
+
+function serializeLiveIntelligenceSystem(system: LiveIntelligenceSystem): string {
+  return JSON.stringify(system);
 }

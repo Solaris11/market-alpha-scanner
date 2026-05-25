@@ -29,26 +29,57 @@ export async function GET(request: Request) {
 
     const refreshIntervalMs = refreshIntervalFromRequest(request);
     const outageSimulation = providerOutageSimulationFromRequest(request);
-    const { cacheStatus, system } = await loadLiveIntelligenceSystemWithMeta({ refreshIntervalMs, streamMode: "snapshot" });
+    const { cacheStatus, serializedSystem } = await loadLiveIntelligenceSystemWithMeta({ refreshIntervalMs, streamMode: "snapshot" });
     const latencyMs = Date.now() - startedAt;
     const performance = recordLiveIntelligenceApiTiming({ cacheStatus, latencyMs, statusCode: 200 });
-    const response = NextResponse.json({
-      ok: true,
-      performance,
-      providerOutageSimulation: outageSimulation.enabled ? outageSimulation : undefined,
-      system: outageSimulation.enabled ? {
-        ...system,
-        latencyLabel: "Provider outage simulation: stale-safe degraded fallback visible",
-        limitations: [
-          `Provider outage simulation active for ${outageSimulation.requested.join(", ")}; live intelligence is exposing stale-safe degraded fallback state instead of inventing unavailable provider data.`,
-          ...system.limitations,
-        ],
-        status: "degraded" as const,
-      } : system,
-    });
+    const response = outageSimulation.enabled
+      ? liveOutageSimulationResponse({
+        outageSimulation,
+        performance,
+        serializedSystem,
+      })
+      : liveJsonResponse({
+        performanceJson: JSON.stringify(performance),
+        serializedSystem,
+      });
     response.headers.set("Cache-Control", "no-store");
     response.headers.set("X-TradeVeto-Live-Build-Ms", String(latencyMs));
     return applyProviderOutageSimulationHeaders(applyLivePerformanceHeaders(response, latencyMs, cacheStatus, performance), outageSimulation);
+  });
+}
+
+function liveJsonResponse(input: { performanceJson: string; serializedSystem: string }): NextResponse {
+  return new NextResponse(
+    `{"ok":true,"performance":${input.performanceJson},"system":${input.serializedSystem}}`,
+    {
+      headers: {
+        "Cache-Control": "no-store",
+        "Content-Type": "application/json",
+      },
+      status: 200,
+    },
+  );
+}
+
+function liveOutageSimulationResponse(input: {
+  outageSimulation: ProviderOutageSimulation;
+  performance: LiveIntelligencePerformanceSnapshot;
+  serializedSystem: string;
+}): NextResponse {
+  const system = JSON.parse(input.serializedSystem) as { latencyLabel?: string; limitations?: string[]; status?: string };
+  return NextResponse.json({
+    ok: true,
+    performance: input.performance,
+    providerOutageSimulation: input.outageSimulation,
+    system: {
+      ...system,
+      latencyLabel: "Provider outage simulation: stale-safe degraded fallback visible",
+      limitations: [
+        `Provider outage simulation active for ${input.outageSimulation.requested.join(", ")}; live intelligence is exposing stale-safe degraded fallback state instead of inventing unavailable provider data.`,
+        ...(Array.isArray(system.limitations) ? system.limitations : []),
+      ],
+      status: "degraded" as const,
+    },
   });
 }
 

@@ -12,7 +12,7 @@ export const SESSION_COOKIE_NAME = "market_alpha_session";
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const BCRYPT_ROUNDS = 12;
-const SESSION_USER_CACHE_TTL_MS = 2_000;
+const SESSION_USER_CACHE_TTL_MS = 30_000;
 const SESSION_USER_NEGATIVE_CACHE_TTL_MS = 250;
 const SESSION_USER_CACHE_MAX = 500;
 
@@ -249,7 +249,10 @@ export async function createSessionForUser(userId: string): Promise<AuthSession>
 
 export async function deleteSessionToken(token: string | undefined): Promise<void> {
   if (!token) return;
-  await dbQuery("DELETE FROM user_sessions WHERE session_token_hash = $1", [hashSessionToken(token)]);
+  const tokenHash = hashSessionToken(token);
+  await dbQuery("DELETE FROM user_sessions WHERE session_token_hash = $1", [tokenHash]);
+  sessionUserCache.delete(tokenHash);
+  sessionUserInflight.delete(tokenHash);
 }
 
 export function userFromRow(row: UserRow | undefined): AuthUser {
