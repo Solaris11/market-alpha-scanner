@@ -193,3 +193,23 @@ test("market command ingests only source-linked provider event domains", () => {
   assert.equal(model.macroNews.some((item) => item.source === "Random Blog"), false);
   assert.ok(model.macroNews.every((item) => item.sourceUrl.startsWith("https://")));
 });
+
+test("market command parses scanner Python-literal verified events without fabricating rows", () => {
+  const row: RankingRow = {
+    event_risk_score: 74,
+    sector: "Energy",
+    symbol: "EOG",
+    verified_event_recent_events: "[{'affected_sectors': ['energy', 'commodities'], 'affected_symbols': ['OIL'], 'direction': 'negative', 'event_type': 'oil_supply_shock', 'published_at': '2026-05-25T03:05:00+00:00', 'reason_codes': ['EVENT_OIL_SUPPLY_SHOCK', 'EVENT_GEOPOLITICAL_ESCALATION'], 'scope': 'sector', 'source': 'MarketWatch', 'source_confidence': 'high', 'source_name': 'MarketWatch', 'source_url': 'https://www.marketwatch.com/story/oil-prices-tumble', 'title': \"Oil prices tumble as deal to end Iran war appears close\", 'weight': 0.42}, {'affected_sectors': ['crypto'], 'affected_symbols': [], 'direction': 'neutral', 'event_type': 'crypto_macro', 'published_at': '2026-05-25T08:09:00+00:00', 'reason_codes': ['EVENT_CRYPTO_CONTEXT'], 'scope': 'broad', 'source': 'CoinDesk', 'source_url': 'https://www.coindesk.com/markets/test', 'title': 'Bitcoin trades above $77,000 as oil\\'s slide pushes equities higher', 'weight': 0.37}]",
+  };
+
+  const model = buildMarketCommandModel({
+    charts: [],
+    generatedAt: "2026-05-25T12:00:00.000Z",
+    rows: [row],
+  });
+
+  assert.equal(model.macroNews.length, 2);
+  assert.ok(model.macroNews.some((item) => item.source === "MarketWatch" && item.eventType === "oil_supply_shock"));
+  assert.ok(model.macroNews.some((item) => item.source === "CoinDesk" && item.eventType === "crypto_macro" && item.title.includes("oil's slide")));
+  assert.ok(model.macroNews.every((item) => item.sourceUrl.startsWith("https://")));
+});

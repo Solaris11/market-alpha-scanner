@@ -512,25 +512,81 @@ function rawEventsFromField(raw: ScannerScalar, field: SourceLinkedEventField): 
 }
 
 function parseRawEventList(raw: ScannerScalar): RawEvent[] {
-  if (Array.isArray(raw)) return raw.filter(isRecord).map((item) => item as RawEvent);
-  if (isRecord(raw)) {
-    const nested = raw.events ?? raw.items ?? raw.data ?? null;
-    if (Array.isArray(nested)) return nested.filter(isRecord).map((item) => item as RawEvent);
-    return [raw as RawEvent];
-  }
+  if (Array.isArray(raw) || isRecord(raw)) return rawEventsFromParsedValue(raw);
   if (typeof raw !== "string") return [];
+  const normalized = raw.trim();
+  if (!normalized) return [];
   try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (Array.isArray(parsed)) return parsed.filter(isRecord).map((item) => item as RawEvent);
-    if (isRecord(parsed)) {
-      const nested = parsed.events ?? parsed.items ?? parsed.data ?? null;
-      if (Array.isArray(nested)) return nested.filter(isRecord).map((item) => item as RawEvent);
-      return [parsed as RawEvent];
-    }
+    return rawEventsFromParsedValue(JSON.parse(normalized) as unknown);
   } catch {
-    // Keep direct source-linked row news even if one provider payload is malformed.
+    const parsed = parsePythonLiteralPayload(normalized);
+    if (parsed !== null) return rawEventsFromParsedValue(parsed);
   }
   return [];
+}
+
+function rawEventsFromParsedValue(value: unknown): RawEvent[] {
+  if (Array.isArray(value)) return value.filter(isRecord).map((item) => item as RawEvent);
+  if (isRecord(value)) {
+    const nested = value.events ?? value.items ?? value.data ?? null;
+    if (Array.isArray(nested)) return nested.filter(isRecord).map((item) => item as RawEvent);
+    return [value as RawEvent];
+  }
+  return [];
+}
+
+function parsePythonLiteralPayload(raw: string): unknown | null {
+  const json = pythonLiteralToJson(raw);
+  if (json === null) return null;
+  try {
+    return JSON.parse(json) as unknown;
+  } catch {
+    // Scanner-owned provider payloads are best-effort; malformed rows must not fabricate events.
+    return null;
+  }
+}
+
+function pythonLiteralToJson(raw: string): string | null {
+  let output = "";
+  let inString = false;
+  let quote: "'" | "\"" | null = null;
+  let escaped = false;
+  for (const char of raw) {
+    if (inString) {
+      if (escaped) {
+        if (char === "'") output += "'";
+        else if (char === "\"") output += "\\\"";
+        else if (char === "\\") output += "\\\\";
+        else output += `\\${char}`;
+        escaped = false;
+        continue;
+      }
+      if (char === "\\") {
+        escaped = true;
+        continue;
+      }
+      if (char === quote) {
+        output += "\"";
+        inString = false;
+        quote = null;
+        continue;
+      }
+      output += char === "\"" ? "\\\"" : char;
+      continue;
+    }
+    if (char === "'" || char === "\"") {
+      inString = true;
+      quote = char;
+      output += "\"";
+      continue;
+    }
+    output += char;
+  }
+  if (inString || escaped) return null;
+  return output
+    .replace(/\bTrue\b/g, "true")
+    .replace(/\bFalse\b/g, "false")
+    .replace(/\bNone\b/g, "null");
 }
 
 function directSourceLinkedEventsFromRow(row: RankingRow): RawEvent[] {
