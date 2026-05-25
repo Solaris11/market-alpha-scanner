@@ -675,13 +675,9 @@ function buildReport({ chart, memoryAfter, memoryBefore, scanner, setup }) {
 }
 
 function cookieHeaderToBrowserCookies(header) {
-  const url = new URL(baseUrl);
   return Object.entries(requestCookieMap(header)).map(([name, value]) => ({
     httpOnly: name === "market_alpha_session",
     name,
-    path: "/",
-    sameSite: "Lax",
-    secure: url.protocol === "https:",
     url: baseUrl,
     value,
   }));
