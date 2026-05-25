@@ -39,6 +39,7 @@
     "probe:phase25:chart-scanner-power": "node scripts/phase25-chart-scanner-power-workflow-probe.mjs",
     "probe:phase25:chart-scanner-browser-timing": "node scripts/phase25-chart-scanner-browser-timing-probe.mjs",
     "probe:phase25:symbol-history-performance-polish": "node scripts/phase25-symbol-history-performance-polish-probe.mjs",
+    "probe:phase25:symbol-history-performance-browser": "node scripts/phase25-symbol-history-performance-browser-probe.mjs",
     "test": "node scripts/run-tests.mjs",
     "lint": "tsc --noEmit"
   },

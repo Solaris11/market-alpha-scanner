@@ -9,7 +9,7 @@ import type {
 
 export function SymbolWorkflowMaturityPanel({ model, symbol }: { model: SymbolWorkflowMaturityModel; symbol: string }) {
   return (
-    <section className="terminal-panel rounded-2xl p-5" aria-labelledby="symbol-workflow-maturity-heading">
+    <section className="terminal-panel rounded-2xl p-5" aria-labelledby="symbol-workflow-maturity-heading" data-symbol-workflow-maturity="true" data-symbol-workflow-score={model.maturityScore}>
       <Header eyebrow="Symbol workflow maturity" headingId="symbol-workflow-maturity-heading" score={model.maturityScore} title={`${symbol} continuity cockpit`} />
       <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-400">{model.summary}</p>
       <div className="mt-4 grid gap-3 lg:grid-cols-4">
@@ -25,7 +25,7 @@ export function SymbolWorkflowMaturityPanel({ model, symbol }: { model: SymbolWo
 
 export function HistoryWorkflowMaturityPanel({ model }: { model: HistoryWorkflowMaturityModel }) {
   return (
-    <section className="terminal-panel rounded-2xl p-5" aria-labelledby="history-workflow-maturity-heading">
+    <section className="terminal-panel rounded-2xl p-5" aria-labelledby="history-workflow-maturity-heading" data-history-workflow-maturity="true" data-history-workflow-score={model.score}>
       <Header eyebrow="History workflow dominance" headingId="history-workflow-maturity-heading" score={model.score} title="Replay memory and chronology cockpit" />
       <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="grid gap-3 md:grid-cols-3">
@@ -45,7 +45,7 @@ export function HistoryWorkflowMaturityPanel({ model }: { model: HistoryWorkflow
 
 export function PerformanceWorkflowMaturityPanel({ model }: { model: PerformanceWorkflowMaturityModel }) {
   return (
-    <section className="terminal-panel rounded-2xl p-5" aria-labelledby="performance-workflow-maturity-heading">
+    <section className="terminal-panel rounded-2xl p-5" aria-labelledby="performance-workflow-maturity-heading" data-performance-workflow-maturity="true" data-performance-workflow-score={model.score}>
       <Header eyebrow="Performance workflow dominance" headingId="performance-workflow-maturity-heading" score={model.score} title="Intelligence-performance cockpit" />
       <div className="mt-4 grid gap-3 lg:grid-cols-5">
         {[...model.cockpitCards, model.falsePositiveAnalysis].map((card) => (

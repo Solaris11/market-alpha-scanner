@@ -98,7 +98,13 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
   }
 
   return (
-    <section className="terminal-panel rounded-2xl p-4" aria-labelledby="symbol-command-search-heading">
+    <section
+      className="terminal-panel rounded-2xl p-4"
+      aria-labelledby="symbol-command-search-heading"
+      data-symbol-command-search="true"
+      data-symbol-search-index-size={documents.length}
+      data-symbol-search-result-count={results.length}
+    >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Instant symbol workflow</div>
@@ -126,6 +132,7 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
               <input
                 ref={inputRef}
                 className="min-w-0 flex-1 bg-transparent py-3 text-sm text-slate-100 outline-none placeholder:text-slate-600"
+                data-symbol-search-input="true"
                 onChange={(event) => setQuery(event.target.value)}
                 onKeyDown={(event) => {
                   if (event.key === "ArrowDown") {
@@ -198,11 +205,12 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
             </button>
           </div>
 
-          <div className="grid gap-2" role="listbox">
+          <div className="grid gap-2" data-symbol-search-results="true" role="listbox">
             {results.length ? results.map((result, index) => (
               <Link
                 aria-selected={activeIndex === index}
                 className={`rounded-xl border p-3 transition ${activeIndex === index ? "border-cyan-300/45 bg-cyan-400/10" : "border-white/10 bg-white/[0.035] hover:border-cyan-300/30 hover:bg-white/[0.055]"}`}
+                data-symbol-search-result="true"
                 href={`/symbol/${encodeURIComponent(result.document.symbol)}`}
                 key={result.document.symbol}
                 onClick={() => remember(result.document.symbol)}

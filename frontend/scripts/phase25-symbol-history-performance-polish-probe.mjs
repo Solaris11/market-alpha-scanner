@@ -36,7 +36,7 @@ async function main() {
   } catch (error) {
     exitCode = 1;
     const failure = {
-      error: error instanceof Error ? error.message : "Phase 25.5 symbol/history/performance polish probe failed",
+      error: error instanceof Error ? error.message : "Phase 25.4 symbol/history/performance polish probe failed",
       generatedAt: new Date().toISOString(),
       overallStatus: "not_ready",
       startedAt,
