@@ -19,6 +19,7 @@ import {
   type SanitizedAnalyticsEvent,
 } from "@/lib/analytics-policy";
 import { buildRealUserDominanceProof, type RealUserDominanceProof } from "@/lib/real-user-dominance";
+import { buildPaidUserCohortCertification, type PaidUserCohortCertification, type RetentionCohortSegmentInput } from "@/lib/retention-cohort-certification";
 import type { AuthUser } from "./auth";
 import { dbQuery } from "./db";
 import { getEntitlementForUser, entitlementSummary } from "./entitlements";
@@ -170,6 +171,7 @@ export type AnalyticsSummary = {
         useful: number;
         usefulnessFeedbackRatePct: number | null;
       };
+      paidUserCohorts: PaidUserCohortCertification;
     };
     watchlistRetention: {
       retainedSessions: number;
@@ -453,6 +455,26 @@ type ActiveDayDepthProofRow = QueryResultRow & {
   seven_plus_active_day_users: string | number;
   two_plus_active_day_users: string | number;
 };
+type PaidUserCohortRow = QueryResultRow & {
+  active_day_users: string | number;
+  actors: string | number;
+  alert_return_users: string | number;
+  alert_trigger_users: string | number;
+  eligible_d2_users: string | number;
+  eligible_d7_users: string | number;
+  first_alert_users: string | number;
+  first_chart_save_users: string | number;
+  first_morning_briefing_users: string | number;
+  first_replay_users: string | number;
+  first_scanner_users: string | number;
+  first_watchlist_users: string | number;
+  notification_feedback_total: string | number;
+  notification_useful_feedback: string | number;
+  retained_d2_users: string | number;
+  retained_d7_users: string | number;
+  segment: string;
+  two_plus_active_day_users: string | number;
+};
 
 const MAX_EVENTS_PER_REQUEST = 24;
 const FRICTION_EVENT_NAMES = [
@@ -630,6 +652,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     watchlistRetentionProof,
     retentionCurveProof,
     activeDayDepthProof,
+    paidUserCohortProof,
   ] = await Promise.all([
     dbQuery<RetentionRow>(
       `
@@ -1164,6 +1187,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
         FROM actor_day_counts
       `,
     ),
+    paidUserRetentionCohorts(),
   ]);
 
   const retentionRow = retention.rows[0];
@@ -1242,6 +1266,28 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
   const totalActiveDayUsers = numberFromRow(activeDayDepthRow?.active_day_users);
   const twoPlusActiveDayUsers = numberFromRow(activeDayDepthRow?.two_plus_active_day_users);
   const sevenPlusActiveDayUsers = numberFromRow(activeDayDepthRow?.seven_plus_active_day_users);
+  const paidUserCohorts = buildPaidUserCohortCertification(paidUserCohortProof.rows.map((row): RetentionCohortSegmentInput => ({
+    activeDayUsers: numberFromRow(row.active_day_users),
+    actors: numberFromRow(row.actors),
+    alertReturnUsers: numberFromRow(row.alert_return_users),
+    alertTriggerUsers: numberFromRow(row.alert_trigger_users),
+    eligibleD2Users: numberFromRow(row.eligible_d2_users),
+    eligibleD7Users: numberFromRow(row.eligible_d7_users),
+    firstUsefulActions: {
+      alert: numberFromRow(row.first_alert_users),
+      chartSave: numberFromRow(row.first_chart_save_users),
+      morningBriefing: numberFromRow(row.first_morning_briefing_users),
+      replay: numberFromRow(row.first_replay_users),
+      scanner: numberFromRow(row.first_scanner_users),
+      watchlist: numberFromRow(row.first_watchlist_users),
+    },
+    notificationFeedbackTotal: numberFromRow(row.notification_feedback_total),
+    notificationUsefulFeedback: numberFromRow(row.notification_useful_feedback),
+    retainedD2Users: numberFromRow(row.retained_d2_users),
+    retainedD7Users: numberFromRow(row.retained_d7_users),
+    segment: row.segment,
+    twoPlusActiveDayUsers: numberFromRow(row.two_plus_active_day_users),
+  })));
   const adaptiveBehaviorScore = adaptiveProofScore({
     decisionMemoryActions: numberFromRow(adaptiveBehaviorRow?.decision_memory_actions),
     experimentExposure: numberFromRow(adaptiveBehaviorRow?.experiment_exposure),
@@ -1418,6 +1464,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
           useful: usefulFeedbackForSummary,
           usefulnessFeedbackRatePct: pctOrNull(usefulFeedbackForSummary, feedbackTotalForSummary),
         },
+        paidUserCohorts,
       },
       watchlistRetention: {
         retainedSessions: numberFromRow(watchlistRetentionRow?.retained_sessions),
@@ -1590,6 +1637,161 @@ async function notificationFeedbackCategoryBreakdown(intervalSql: string): Promi
     console.warn("[analytics] notification feedback breakdown unavailable", error instanceof Error ? error.message : error);
     return { rows: [] };
   }
+}
+
+async function paidUserRetentionCohorts(): Promise<{ rows: PaidUserCohortRow[] }> {
+  return dbQuery<PaidUserCohortRow>(
+    `
+      WITH events AS (
+        SELECT
+          COALESCE(user_id::text, anonymous_id_hash, session_id_hash, id::text) AS actor_key,
+          user_id,
+          occurred_at::date AS active_day,
+          event_name,
+          COALESCE(plan, CASE WHEN user_id IS NULL THEN 'anonymous' ELSE 'free' END) AS plan,
+          metadata
+        FROM analytics_events
+        WHERE occurred_at >= now() - interval '120 days'
+      ),
+      actor_profile AS (
+        SELECT
+          actor_key,
+          bool_or(user_id IS NOT NULL) AS authenticated,
+          bool_or(COALESCE(plan, '') IN ('premium', 'admin')) AS paid,
+          min(active_day) AS cohort_day,
+          count(*) AS total_events,
+          count(DISTINCT active_day) AS active_days,
+          count(*) FILTER (WHERE event_name = 'page_view') AS page_views,
+          bool_or(
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['watchlist', 'watchlist_add', 'first_watchlist']::text[]))
+            OR event_name IN ('watch_add', 'watchlist_add', 'watchlist_usage')
+          ) AS first_watchlist,
+          bool_or(
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['scanner', 'first_scanner']::text[]))
+            OR event_name IN ('scanner_usage', 'scanner_run', 'opportunities_open')
+          ) AS first_scanner,
+          bool_or(
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['alert', 'first_alert']::text[]))
+            OR event_name = 'alert_create'
+          ) AS first_alert,
+          bool_or(
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['chart', 'chart_save', 'first_chart', 'first_chart_save']::text[]))
+            OR event_name IN ('chart_return', 'chart_workspace_save', 'chart_expand')
+          ) AS first_chart_save,
+          bool_or(
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['replay', 'first_replay']::text[]))
+            OR event_name IN ('replay_usage', 'replay_open')
+          ) AS first_replay,
+          bool_or(
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['morning_command', 'morning_briefing', 'morning_workflow', 'first_morning_briefing']::text[]))
+            OR event_name = 'morning_workflow_complete'
+          ) AS first_morning_briefing,
+          bool_or(event_name IN ('alert_create', 'notification_engagement')) AS alert_triggered,
+          bool_or(event_name = 'alert_return') AS alert_returned,
+          count(*) FILTER (
+            WHERE event_name = 'notification_usefulness_feedback'
+              AND COALESCE(metadata->>'action', '') = 'useful_feedback'
+          ) AS notification_useful_feedback,
+          count(*) FILTER (
+            WHERE event_name = 'notification_usefulness_feedback'
+              AND COALESCE(metadata->>'action', '') IN ('useful_feedback', 'not_useful_feedback')
+          ) AS notification_feedback_total
+        FROM events
+        GROUP BY 1
+      ),
+      classified AS (
+        SELECT
+          *,
+          CASE
+            WHEN total_events >= 2500 OR page_views >= 400 OR (active_days = 1 AND total_events >= 350) THEN 'bot_or_noise_filtered'
+            WHEN NOT authenticated THEN 'anonymous_users'
+            WHEN paid THEN 'founding_members'
+            WHEN cohort_day < current_date - 30 THEN 'legacy_users'
+            ELSE 'free_research_preview'
+          END AS segment
+        FROM actor_profile
+      ),
+      actor_days AS (
+        SELECT DISTINCT actor_key, active_day
+        FROM events
+      ),
+      segment_summary AS (
+        SELECT
+          segment,
+          count(*) AS actors,
+          count(*) FILTER (
+            WHERE segment <> 'bot_or_noise_filtered'
+              AND cohort_day <= current_date - 2
+          ) AS eligible_d2_users,
+          count(*) FILTER (
+            WHERE segment <> 'bot_or_noise_filtered'
+              AND cohort_day <= current_date - 2
+              AND EXISTS (
+                SELECT 1
+                FROM actor_days retained
+                WHERE retained.actor_key = classified.actor_key
+                  AND retained.active_day = classified.cohort_day + 2
+              )
+          ) AS retained_d2_users,
+          count(*) FILTER (
+            WHERE segment <> 'bot_or_noise_filtered'
+              AND cohort_day <= current_date - 7
+          ) AS eligible_d7_users,
+          count(*) FILTER (
+            WHERE segment <> 'bot_or_noise_filtered'
+              AND cohort_day <= current_date - 7
+              AND EXISTS (
+                SELECT 1
+                FROM actor_days retained
+                WHERE retained.actor_key = classified.actor_key
+                  AND retained.active_day = classified.cohort_day + 7
+              )
+          ) AS retained_d7_users,
+          count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered') AS active_day_users,
+          count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND active_days >= 2) AS two_plus_active_day_users,
+          count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND alert_triggered) AS alert_trigger_users,
+          count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND alert_triggered AND alert_returned) AS alert_return_users,
+          COALESCE(sum(notification_feedback_total) FILTER (WHERE segment <> 'bot_or_noise_filtered'), 0) AS notification_feedback_total,
+          COALESCE(sum(notification_useful_feedback) FILTER (WHERE segment <> 'bot_or_noise_filtered'), 0) AS notification_useful_feedback,
+          count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND first_watchlist) AS first_watchlist_users,
+          count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND first_scanner) AS first_scanner_users,
+          count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND first_alert) AS first_alert_users,
+          count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND first_chart_save) AS first_chart_save_users,
+          count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND first_replay) AS first_replay_users,
+          count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND first_morning_briefing) AS first_morning_briefing_users
+        FROM classified
+        GROUP BY segment
+      )
+      SELECT
+        segment,
+        actors,
+        eligible_d2_users,
+        retained_d2_users,
+        eligible_d7_users,
+        retained_d7_users,
+        active_day_users,
+        two_plus_active_day_users,
+        alert_trigger_users,
+        alert_return_users,
+        notification_feedback_total,
+        notification_useful_feedback,
+        first_watchlist_users,
+        first_scanner_users,
+        first_alert_users,
+        first_chart_save_users,
+        first_replay_users,
+        first_morning_briefing_users
+      FROM segment_summary
+      ORDER BY CASE segment
+        WHEN 'founding_members' THEN 1
+        WHEN 'free_research_preview' THEN 2
+        WHEN 'legacy_users' THEN 3
+        WHEN 'anonymous_users' THEN 4
+        WHEN 'bot_or_noise_filtered' THEN 5
+        ELSE 6
+      END
+    `,
+  );
 }
 
 function topSessionPages(intervalSql: string, direction: "ASC" | "DESC") {

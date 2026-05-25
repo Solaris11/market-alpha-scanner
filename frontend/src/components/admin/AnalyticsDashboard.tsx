@@ -72,6 +72,7 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
   ];
   const adoptionRows = analytics.realUserProof.featureAdoption.map((row) => ({ label: `${row.feature} · ${formatPct(row.adoptionRatePct)}`, value: row.events }));
   const dailyDriver = analytics.realUserProof.dailyDriver;
+  const paidCohorts = dailyDriver.paidUserCohorts;
 
   return (
     <div className="space-y-5">
@@ -97,7 +98,7 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
             <ProofMetric label="DAU / WAU" value={`${analytics.retention.dau.toLocaleString()} / ${analytics.retention.wau.toLocaleString()}`} />
             <ProofMetric label="Sticky Sessions" value={formatPct(analytics.realUserProof.workflowStickiness.stickySessionRatePct)} />
             <ProofMetric label="D2 / D7" value={`${formatPct(dailyDriver.cohortEvidence.day2RetentionRatePct)} / ${formatPct(dailyDriver.cohortEvidence.day7RetentionRatePct)}`} />
-            <ProofMetric label="Proof Score" value={`${dominanceProof.proofScore}/100`} />
+            <ProofMetric label="Paid Cohort" value={paidCohortStatusLabel(paidCohorts.status)} />
           </div>
         </div>
         <div className={`mt-5 rounded-2xl border p-4 ${statusPanelClass(dominanceProof.status)}`}>
@@ -278,6 +279,46 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
             rows={notificationCategoryRows(analytics)}
             title="Notification Categories"
           />
+        </div>
+        <div className={`mt-4 rounded-2xl border p-4 ${paidCohortPanelClass(paidCohorts.status)}`}>
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-white/70">Paid Early-Access Cohorts</div>
+              <div className="mt-1 text-lg font-black uppercase text-white">{paidCohorts.verdictLabel}</div>
+              <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-200">{paidCohorts.proofBoundary}</p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[520px]">
+              <ProofMetric label="Founding Actors" value={paidCohorts.sampleSize.foundingMemberActors.toLocaleString()} />
+              <ProofMetric label="Noise Filtered" value={paidCohorts.sampleSize.botOrNoiseActors.toLocaleString()} />
+              <ProofMetric label="Target Set" value={`${paidCohorts.targets.d2RetentionRatePct}% / ${paidCohorts.targets.d7RetentionRatePct}%`} />
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 xl:grid-cols-5">
+            {paidCohorts.segments.map((segment) => (
+              <div className="rounded-2xl border border-white/10 bg-black/18 p-3" key={segment.segment}>
+                <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">{segment.label}</div>
+                <div className="mt-2 grid gap-2 text-xs">
+                  <MetricLine label="Actors" value={segment.actors.toLocaleString()} />
+                  <MetricLine label="D2" value={`${formatPct(segment.d2RetentionRatePct)} (${segment.retainedD2Users}/${segment.eligibleD2Users})`} />
+                  <MetricLine label="D7" value={`${formatPct(segment.d7RetentionRatePct)} (${segment.retainedD7Users}/${segment.eligibleD7Users})`} />
+                  <MetricLine label="2+ active" value={formatPct(segment.twoPlusActiveDayRatePct)} />
+                  <MetricLine label="Alert return" value={formatPct(segment.alertReturnConversionPct)} />
+                  <MetricLine label="Notif useful" value={formatPct(segment.notificationUsefulRatioPct)} />
+                  <MetricLine label="First scanner" value={segment.firstUsefulActions.scanner.toLocaleString()} />
+                  <MetricLine label="First watchlist" value={segment.firstUsefulActions.watchlist.toLocaleString()} />
+                </div>
+              </div>
+            ))}
+          </div>
+          {paidCohorts.blockers.length ? (
+            <div className="mt-4 grid gap-2 md:grid-cols-2">
+              {paidCohorts.blockers.map((blocker) => (
+                <div className="rounded-xl border border-amber-300/20 bg-amber-300/[0.06] px-3 py-2 text-xs font-semibold text-amber-50" key={blocker}>
+                  {blocker}
+                </div>
+              ))}
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -551,6 +592,15 @@ function ProofPanel({ rows, title }: { rows: Array<[string, number | string]>; t
   );
 }
 
+function MetricLine({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between gap-2 rounded-lg bg-white/[0.035] px-2 py-1.5">
+      <span className="min-w-0 truncate text-slate-400">{label}</span>
+      <span className="font-mono font-black text-cyan-100">{value}</span>
+    </div>
+  );
+}
+
 function notificationCategoryRows(analytics: AnalyticsSummary): Array<[string, number | string]> {
   const rows = analytics.realUserProof.notificationUsefulness.categoryBreakdown.slice(0, 6).map((row): [string, string] => [
     humanizeLabel(row.category),
@@ -626,6 +676,18 @@ function statusPanelClass(status: string): string {
   if (status === "proven") return "border-emerald-300/25 bg-emerald-400/[0.08] shadow-emerald-950/20";
   if (status === "insufficient_data") return "border-amber-300/25 bg-amber-400/[0.08] shadow-amber-950/20";
   return "border-cyan-300/20 bg-cyan-400/[0.06] shadow-cyan-950/20";
+}
+
+function paidCohortPanelClass(status: string): string {
+  if (status === "ready") return "border-emerald-300/25 bg-emerald-400/[0.08]";
+  if (status === "not_ready") return "border-rose-300/24 bg-rose-400/[0.07]";
+  return "border-amber-300/24 bg-amber-400/[0.07]";
+}
+
+function paidCohortStatusLabel(status: string): string {
+  if (status === "ready") return "Ready";
+  if (status === "not_ready") return "No Data";
+  return "Partial";
 }
 
 function tonePanelClass(tone: string): string {
