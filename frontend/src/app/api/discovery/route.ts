@@ -23,13 +23,15 @@ type ProviderOutageSimulation = {
 };
 
 type DiscoveryBodyCacheEntry = {
-  body: string;
+  bodyBuffer: ArrayBuffer;
+  bodyLength: number;
   entitlementJson: string;
   serializedSystem: string;
 };
 
 const discoveryBodyCache = new Map<string, DiscoveryBodyCacheEntry>();
 const DISCOVERY_BODY_CACHE_MAX_ENTRIES = 200;
+const discoveryBodyEncoder = new TextEncoder();
 
 export async function GET(request: Request) {
   return withRequestMetrics(request, "/api/discovery", async () => {
@@ -88,7 +90,8 @@ function discoveryJsonResponse(input: {
     "Cache-Control": "no-store",
     "Content-Type": "application/json",
   });
-  return new NextResponse(cacheEntry.body, {
+  headers.set("Content-Length", String(cacheEntry.bodyLength));
+  return new NextResponse(cacheEntry.bodyBuffer, {
     headers,
     status: 200,
   });
@@ -106,8 +109,10 @@ function readDiscoveryBodyCache(input: {
   }
 
   const body = `{"entitlement":${input.entitlementJson},"limited":false,"ok":true,"performance":${input.performanceJson},"system":${input.serializedSystem}}`;
+  const bodyBytes = discoveryBodyEncoder.encode(body);
   const entry: DiscoveryBodyCacheEntry = {
-    body,
+    bodyBuffer: bodyBytes.buffer.slice(bodyBytes.byteOffset, bodyBytes.byteOffset + bodyBytes.byteLength),
+    bodyLength: bodyBytes.byteLength,
     entitlementJson: input.entitlementJson,
     serializedSystem: input.serializedSystem,
   };
