@@ -194,7 +194,7 @@ export type BuildIntelligenceDiscoveryInput = {
 };
 
 const TIMEFRAMES: DiscoveryTimeframe[] = ["1D", "1W", "1M", "3M", "6M", "1Y", "5Y"];
-const DEFAULT_INITIAL_DISCOVERY_SYMBOL_LIMIT = 320;
+const DEFAULT_INITIAL_DISCOVERY_SYMBOL_LIMIT = 160;
 
 export function buildLimitedIntelligenceDiscoverySystem(message = "Discovery is limited until premium scanner data is available."): IntelligenceDiscoverySystem {
   return {

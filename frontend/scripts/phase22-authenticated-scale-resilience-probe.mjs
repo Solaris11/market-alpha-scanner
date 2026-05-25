@@ -27,6 +27,7 @@ const streamJitterMinMs = nonNegativeInteger(process.env.TRADEVETO_PHASE22_STREA
 const streamJitterMaxMs = Math.max(streamJitterMinMs, nonNegativeInteger(process.env.TRADEVETO_PHASE22_STREAM_JITTER_MAX_MS, 1_500));
 const sampledEndpointCap = positiveInteger(process.env.TRADEVETO_PHASE22_SAMPLED_ENDPOINT_CAP, 12);
 const minTargetSamples = positiveInteger(process.env.TRADEVETO_PHASE22_MIN_TARGET_SAMPLES, 100);
+const warmupRounds = nonNegativeInteger(process.env.TRADEVETO_PHASE22_WARMUP_ROUNDS, 2);
 
 const startedAt = new Date().toISOString();
 const memoryBefore = process.memoryUsage();
@@ -184,6 +185,7 @@ async function main() {
       developerApiKey = developerApiKey || probeIdentity.developerApiKey;
     }
 
+    const warmup = await warmHotPaths();
     const authSmoke = await runAuthSmoke();
     const tierResults = [];
     for (const tier of tiers) {
@@ -203,6 +205,7 @@ async function main() {
       startedAt,
       streamStorms,
       tierResults,
+      warmup,
     });
     const serialized = `${JSON.stringify(report, null, 2)}\n`;
     console.log(serialized);
@@ -236,6 +239,38 @@ async function main() {
     }
     process.exitCode = exitCode;
   }
+}
+
+async function warmHotPaths() {
+  if (warmupRounds <= 0) {
+    return {
+      endpointCount: 0,
+      maxLatencyMs: 0,
+      rounds: 0,
+      sampleCount: 0,
+      statusCodes: {},
+    };
+  }
+  const endpoints = [...sustainedEndpoints, ...sampledEndpoints];
+  const statusCodes = {};
+  let maxLatencyMs = 0;
+  let sampleCount = 0;
+  for (let round = 0; round < warmupRounds; round += 1) {
+    const samples = await Promise.all(endpoints.map((endpoint) => measureEndpoint(endpoint)));
+    for (const sample of samples) {
+      statusCodes[String(sample.statusCode)] = (statusCodes[String(sample.statusCode)] ?? 0) + 1;
+      maxLatencyMs = Math.max(maxLatencyMs, sample.latencyMs);
+      sampleCount += 1;
+    }
+    await sleep(250);
+  }
+  return {
+    endpointCount: endpoints.length,
+    maxLatencyMs,
+    rounds: warmupRounds,
+    sampleCount,
+    statusCodes,
+  };
 }
 
 async function runAuthSmoke() {
@@ -488,7 +523,7 @@ async function measureEndpoint(endpoint) {
   }
 }
 
-function buildReport({ authSmoke, memoryAfter, memoryBefore, providerOutageSimulation, startedAt, streamStorms, tierResults }) {
+function buildReport({ authSmoke, memoryAfter, memoryBefore, providerOutageSimulation, startedAt, streamStorms, tierResults, warmup }) {
   const authenticatedCoverage = Boolean(cookie || authorization);
   const developerCoverage = Boolean(developerApiKey);
   const blockers = [];
@@ -544,6 +579,7 @@ function buildReport({ authSmoke, memoryAfter, memoryBefore, providerOutageSimul
     thinkTimeMs,
     tierResults,
     timeoutMs,
+    warmup,
   };
 }
 

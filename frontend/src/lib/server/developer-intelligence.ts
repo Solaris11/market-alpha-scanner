@@ -40,6 +40,7 @@ type HotCacheEntry<T> = {
 };
 
 type DeveloperMacroFeed = Awaited<ReturnType<typeof loadDeveloperMacroFeedUncached>>;
+type DeveloperOpportunityFeed = Awaited<ReturnType<typeof loadDeveloperOpportunityFeedUncached>>;
 type DeveloperPortfolioScenario = Awaited<ReturnType<typeof runDeveloperPortfolioScenarioUncached>>;
 type DeveloperReplay = Awaited<ReturnType<typeof loadDeveloperReplayUncached>>;
 
@@ -47,17 +48,23 @@ const DEVELOPER_HOT_CACHE_TTL_MS = 60_000;
 const DEVELOPER_HOT_CACHE_STALE_MS = 900_000;
 const DEVELOPER_HOT_CACHE_MAX_ENTRIES = 80;
 
+const developerOpportunityFeedCache = new Map<string, HotCacheEntry<DeveloperOpportunityFeed>>();
 const opportunityRowsCache = new Map<string, HotCacheEntry<OpportunityViewModel[]>>();
 const developerMacroCache = new Map<string, HotCacheEntry<DeveloperMacroFeed>>();
 const developerPortfolioScenarioCache = new Map<string, HotCacheEntry<DeveloperPortfolioScenario>>();
 const developerReplayCache = new Map<string, HotCacheEntry<DeveloperReplay>>();
 
 export async function loadDeveloperOpportunityFeed(limit = 25): Promise<{ generatedAt: string; opportunities: DeveloperOpportunityFeedItem[] }> {
+  const normalizedLimit = boundedLimit(limit, 50);
+  return readHotCache(developerOpportunityFeedCache, `opportunities:${normalizedLimit}`, () => loadDeveloperOpportunityFeedUncached(normalizedLimit));
+}
+
+async function loadDeveloperOpportunityFeedUncached(limit: number): Promise<{ generatedAt: string; opportunities: DeveloperOpportunityFeedItem[] }> {
   const rows = await loadOpportunityRows();
   const opportunities = rows
     .slice()
     .sort((left, right) => opportunityRankScore(right) - opportunityRankScore(left))
-    .slice(0, boundedLimit(limit, 50))
+    .slice(0, limit)
     .map(opportunityFeedItem);
   return { generatedAt: new Date().toISOString(), opportunities };
 }
