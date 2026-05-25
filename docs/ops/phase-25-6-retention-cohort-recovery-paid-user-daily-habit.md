@@ -38,31 +38,59 @@ Certification can only be `ACCOMPLISHED` when elapsed founding-member cohorts me
 
 ## Validation
 
-Local validation pending.
+Local validation passed on 2026-05-25:
 
-Production deployment pending.
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend test -- --runInBand`
+- `npm --prefix frontend run build`
+- `npm --prefix frontend audit --omit=dev`
+- `python3 -m py_compile $(git ls-files '*.py')`
+- `npx pyright . --pythonpath .venv/bin/python --warnings`
+- `git diff --check`
 
-Production retention proof pending.
+Production deployment passed on 2026-05-25:
+
+- `git pull --ff-only origin main` fast-forwarded production to `bb31a309`.
+- `docker compose --env-file .env up -d --build market-alpha-frontend` rebuilt and restarted `market-alpha-frontend`.
+- `https://tradeveto.com/api/health` returned `ok`.
+- `https://tradeveto.com/api/health/deep` returned `ok` for database, scanner, and backups.
+- Route smoke returned `200` for `/terminal`, `/discover`, `/scanner`, `/paper`, and `/performance`.
+- `/admin/analytics` is not publicly reachable without an authenticated admin session, as expected.
+
+Production retention proof:
+
+- Host-side probe could not reach the Docker-only Postgres DNS name from outside the Compose network.
+- The same probe was rerun inside `market-alpha-frontend`, where deployed runtime environment variables and `market-alpha-postgres` DNS are available.
+- `/api/admin/analytics?range=90d` returned `200` in `378ms`.
+- The probe did not create cohort events or seed retention data.
 
 ## Production Evidence
 
 | Evidence | Result |
 | --- | --- |
-| Production deploy | Pending |
-| Production smoke | Pending |
-| Admin analytics retention probe | Pending |
-| Founding-member sample size | Pending |
-| D2 retention | Pending |
-| D7 retention | Pending |
-| 2+ active-day retention | Pending |
-| Alert-return conversion | Pending |
-| Notification useful ratio | Pending |
+| Production deploy | Passed |
+| Production smoke | Passed |
+| Admin analytics retention probe | Passed |
+| Total actors segmented | 909 |
+| Bot/noise filtered actors | 2 |
+| Founding-member sample size | 1 actor |
+| Founding-member D2 retention | 0%: 0 / 1 |
+| Founding-member D7 retention | 0%: 0 / 1 |
+| Founding-member 2+ active-day retention | 0%: 0 / 1 |
+| Founding-member alert-return conversion | No eligible alert-trigger population |
+| Founding-member notification useful ratio | No notification usefulness sample |
+| Free research preview sample | 1 actor |
+| Anonymous sample | 905 actors |
 
 ## Remaining Blockers
 
-- Real elapsed paid/founding cohort performance must be measured after production deployment.
+- Founding-member D2 retention is 0%, below the 8% target.
+- Founding-member D7 retention is 0%, below the 4% target.
+- Founding-member 2+ active-day retention is 0%, below the 10% target.
+- No founding-member alert-trigger population exists for alert-return conversion proof.
+- No founding-member notification usefulness sample exists.
 - Same-day or synthetic data is not valid retention certification evidence.
 
 ## Verdict
 
-Pending production proof.
+TRADEVETO RETENTION COHORT RECOVERY + PAID USER DAILY HABIT STRONG PARTIAL ACCOMPLISHED
