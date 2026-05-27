@@ -99,7 +99,7 @@ export async function GET(request: Request) {
       getCurrentScanSafety(),
       readUserWatchlist(access.user.id).catch(() => []),
       getMarketChartHubData().catch(() => []),
-      getRecentScannerHistoryRows({ hours: 72, maxRuns: 32, minRuns: 3 }).catch(() => []),
+      getRecentScannerHistoryRows({ hours: 96, maxRuns: 96, minRuns: 3 }).catch(() => []),
     ]);
     const symbols = snapshot.signals.map((row) => row.symbol);
     const [shockPatterns, narratives, workflowEvolution] = await Promise.all([

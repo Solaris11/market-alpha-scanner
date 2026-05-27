@@ -1087,7 +1087,7 @@ function isGeopoliticalProviderDevelopment(item: DailyMarketDevelopment): boolea
 }
 
 function isCryptoProviderDevelopment(item: DailyMarketDevelopment): boolean {
-  const text = `${item.category} ${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel} ${item.original.eventType} ${item.original.reasonCodes.join(" ")} ${item.affectedSectors.join(" ")} ${item.affectedSymbols.join(" ")}`.toLowerCase();
+  const text = `${item.category} ${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel} ${item.original.eventType} ${item.original.reasonCodes.join(" ")} ${item.source} ${item.affectedSymbols.join(" ")}`.toLowerCase();
   return item.category === "Crypto" || /\bcrypto\b|\bbtc\b|bitcoin|coinbase|coindesk|event_crypto/.test(text);
 }
 

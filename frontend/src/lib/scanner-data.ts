@@ -1418,7 +1418,7 @@ const getRecentDbHistoryRows = cache(async (hours: number, maxRuns: number, minR
 
 export async function getRecentScannerHistoryRows(options: { hours?: number; maxRuns?: number; minRuns?: number } = {}): Promise<SymbolHistoryRow[]> {
   const hours = Math.max(1, Math.min(96, Math.trunc(options.hours ?? 72)));
-  const maxRuns = Math.max(2, Math.min(48, Math.trunc(options.maxRuns ?? 32)));
+  const maxRuns = Math.max(2, Math.min(96, Math.trunc(options.maxRuns ?? 32)));
   const minRuns = Math.max(1, Math.min(maxRuns, Math.trunc(options.minRuns ?? 3)));
   const dbHistory = await getRecentDbHistoryRows(hours, maxRuns, minRuns);
   return dbHistory ?? [];
