@@ -1581,10 +1581,10 @@ function RapidScannerTable({
     >
       <div className="sticky top-0 z-20 grid gap-2 border-b border-white/10 bg-slate-950/95 px-3 py-2 text-[10px] font-black uppercase tracking-[0.14em] text-slate-500 max-xl:hidden xl:[grid-template-columns:var(--scanner-grid-template)]">
         <span>Rank</span>
-        <SortHeader active={sort === "symbol"} className="sticky left-0 z-20 bg-slate-950/95" label="Symbol" onClick={() => onSortChange("symbol")} />
+        <SortHeader active={sort === "symbol"} className="sticky left-0 z-20 bg-slate-950/95" label="Symbol" onClick={() => onSortChange("symbol")} sortKey="symbol" />
         <span>Context</span>
         {activeMetricColumns.map((column) => (
-          <SortHeader active={sortActiveForColumn(column, sort)} key={column} label={column === "performance" ? timeframe : SCANNER_COLUMN_LABELS[column]} onClick={() => onSortChange(nextSortForColumn(column, sort))} />
+          <SortHeader active={sortActiveForColumn(column, sort)} key={column} label={column === "performance" ? timeframe : SCANNER_COLUMN_LABELS[column]} onClick={() => onSortChange(nextSortForColumn(column, sort))} sortKey={column} />
         ))}
         <span>Action</span>
       </div>
@@ -1657,11 +1657,12 @@ function RapidScannerTable({
   );
 }
 
-function SortHeader({ active, className = "", label, onClick }: { active: boolean; className?: string; label: string; onClick: () => void }) {
+function SortHeader({ active, className = "", label, onClick, sortKey }: { active: boolean; className?: string; label: string; onClick: () => void; sortKey: string }) {
   return (
     <button
       aria-pressed={active}
       className={`min-w-0 truncate text-left transition ${active ? "text-cyan-100" : "text-slate-500 hover:text-cyan-100"} ${className}`}
+      data-scanner-sort-column={sortKey}
       onClick={onClick}
       type="button"
     >

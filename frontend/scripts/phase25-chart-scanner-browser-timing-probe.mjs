@@ -134,7 +134,7 @@ async function runScannerProof(page, setup) {
   const filteredMeta = await readScannerMeta(page);
 
   timings.push(await measureBrowserWorkflow(page, "scanner-sort-search", "Sort the production scanner table by confidence", budgets.scannerInteractionMs, ["scanner:sort"], async () => {
-    await page.getByRole("button", { name: /^Conf$/i }).first().click();
+    await page.locator("[data-discovery-scanner-table='true'] [data-scanner-sort-column='confidence']").first().click();
     await page.locator("[data-discovery-scanner-table='true'][data-scanner-sort='confidence']").waitFor({ state: "visible" });
   }));
 
@@ -155,6 +155,9 @@ async function runScannerProof(page, setup) {
     await page.locator("[data-scanner-expanded-row='true']").first().waitFor({ state: "visible" });
   }));
 
+  const rowAlert = await probeScannerRowAlert(page);
+  checks.push(rowAlert);
+
   timings.push(await measureBrowserWorkflow(page, "fullscreen-scanner", "Open fullscreen scanner table", budgets.scannerInteractionMs, ["scanner:fullscreen-toggle"], async () => {
     await page.getByRole("button", { name: /fullscreen/i }).filter({ hasText: /fullscreen/i }).first().click();
     await page.locator("[data-scanner-fullscreen='true']").waitFor({ state: "visible" });
@@ -163,9 +166,6 @@ async function runScannerProof(page, setup) {
 
   const keyboard = await probeScannerKeyboard(page);
   checks.push(keyboard);
-
-  const rowAlert = await probeScannerRowAlert(page);
-  checks.push(rowAlert);
 
   if (initialMeta.totalRows < 500) {
     errors.push(`browser scanner table exposed ${initialMeta.totalRows} rows; 500+ browser-row proof is not established`);
@@ -202,7 +202,7 @@ async function runChartProof(page, setup) {
     await page.goto(`${baseUrl}/symbol/AMD`, { waitUntil: "domcontentloaded" });
     await page.waitForLoadState("networkidle", { timeout: waitTimeoutMs }).catch(() => undefined);
     await dismissRiskAcknowledgement(page);
-    await page.getByRole("button", { name: /Expand AMD chart/i }).waitFor({ state: "visible" });
+    await page.locator("[data-chart-symbol='AMD'][data-chart-workspace-loaded='true']").waitFor({ state: "visible" });
   }));
   screenshots.push(await capture(page, "symbol-amd.png"));
 
@@ -210,7 +210,7 @@ async function runChartProof(page, setup) {
   checks.push(await probeChartAlert(page));
 
   timings.push(await measureBrowserWorkflow(page, "fullscreen-chart-open", "Open fullscreen AMD chart overlay", budgets.fullscreenChartOpenMs, ["chart:fullscreen-open"], async () => {
-    await page.getByRole("button", { name: /Expand AMD chart/i }).click();
+    await page.locator("[data-chart-expand-trigger='AMD']").first().click();
     await page.locator("[data-chart-fullscreen-toolbar='true']").waitFor({ state: "visible" });
   }));
   screenshots.push(await capture(page, "symbol-amd-fullscreen.png"));
@@ -225,12 +225,12 @@ async function runChartProof(page, setup) {
   timings.push(await measureBrowserWorkflow(page, "chart-drawing-operation", "Toggle chart drawing magnet mode", budgets.chartInteractionMs, ["chart:drawing-operation"], async () => {
     await page.keyboard.press("Escape");
     await page.locator("[data-chart-drawing-toolbar='true']").getByRole("button", { name: /magnet/i }).first().click();
-    await page.locator("[data-chart-drawing-toolbar='true']").waitFor({ state: "visible" });
+    await page.locator("[data-chart-drawing-toolbar='true']").first().waitFor({ state: "visible" });
   }));
 
   timings.push(await measureBrowserWorkflow(page, "chart-toolbar-interaction", "Collapse and restore chart drawing toolbar", budgets.chartInteractionMs, ["chart:toolbar-interaction"], async () => {
     await page.locator("[data-chart-drawing-toolbar='true']").getByRole("button", { name: /collapse drawing controls/i }).first().click();
-    await page.locator("[data-chart-drawing-toolbar='true']").waitFor({ state: "visible" });
+    await page.locator("[data-chart-drawing-toolbar='true']").first().waitFor({ state: "visible" });
   }));
 
   timings.push(await measure("rapid-symbol-switch", "Navigate from AMD chart to NVDA symbol chart", budgets.rapidSymbolSwitchMs, async () => {
@@ -286,8 +286,7 @@ async function probeIndicatorTemplate(page) {
     const input = page.getByLabel("Template name").first();
     await input.scrollIntoViewIfNeeded();
     await input.fill(`Phase 25.3 ${Date.now().toString(36)}`);
-    const container = input.locator("xpath=ancestor::div[contains(@class, 'rounded-2xl')][1]");
-    await container.getByRole("button", { name: /^Save$/i }).click();
+    await page.locator("[data-chart-template-save='true']").first().click();
     return { id: "chart-indicator-template", pass: true, status: "pass" };
   } catch (error) {
     return { error: messageFor(error), id: "chart-indicator-template", pass: false, status: "fail" };
@@ -298,8 +297,7 @@ async function probeChartAlert(page) {
   try {
     const threshold = page.getByLabel("Chart alert threshold").first();
     await threshold.scrollIntoViewIfNeeded();
-    const container = threshold.locator("xpath=ancestor::div[contains(@class, 'rounded-2xl')][1]");
-    const saveButton = container.getByRole("button", { name: /^Save$/i }).first();
+    const saveButton = page.locator("[data-chart-alert-save='true']").first();
     const disabled = await saveButton.isDisabled().catch(() => false);
     if (!disabled) await saveButton.click();
     return { disabled, id: "chart-alert-save", pass: !disabled, status: disabled ? "not_proven" : "pass" };
@@ -527,7 +525,7 @@ function chartWorkspacePayload() {
         visible: true,
       },
     ],
-    fullscreenOpen: true,
+    fullscreenOpen: false,
     indicators: ["ema20", "ema50", "rsi14", "macd"],
     indicatorTemplates: [
       {

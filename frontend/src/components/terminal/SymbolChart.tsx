@@ -969,6 +969,7 @@ export function SymbolChart({
             {expandable ? (
               <button
                 className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/40 hover:text-cyan-100"
+                data-chart-expand-trigger={symbol.toUpperCase()}
                 data-stable-overlay-trigger="true"
                 onClick={expandChart}
                 type="button"
@@ -1319,6 +1320,7 @@ function ChartIndicatorTemplateControls({
           />
           <button
             className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-emerald-300/20 bg-emerald-300/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100 transition hover:border-emerald-300/45 hover:text-emerald-50 disabled:cursor-not-allowed disabled:opacity-45"
+            data-chart-template-save="true"
             disabled={!templateName.trim()}
             onClick={() => {
               onSave(templateName);
@@ -1794,6 +1796,7 @@ function ChartAlertPanel({
           />
           <button
             className="inline-flex min-h-9 items-center gap-1.5 rounded-full border border-cyan-300/20 bg-cyan-300/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-cyan-100 transition hover:border-cyan-300/45 hover:text-cyan-50 disabled:cursor-not-allowed disabled:opacity-45"
+            data-chart-alert-save="true"
             disabled={saving || !authenticated || !Number.isFinite(Number(thresholdInput))}
             onClick={() => void submit()}
             type="button"
