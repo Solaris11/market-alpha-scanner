@@ -75,7 +75,20 @@ Completed locally:
 
 Production:
 
-- Pending at the time of this artifact update. Runtime deploy and smoke are required before broader platform certification.
+- Commit `292c2b44` pulled to production.
+- Rebuilt and restarted:
+  - `market-alpha-frontend`
+  - `market-alpha-frontend-hot-api`
+- Production smoke:
+  - `/api/health` - 200
+  - `/api/health/deep` - 200
+  - `/market-memory` - 200
+  - `/symbol/AMD` - 200
+  - `/terminal` - 200
+  - `/discover` - 200
+  - `/scanner` - 200
+- Public `/market-memory` HTML proof: `data-symbol-knowledge-graph` present.
+- Authenticated `/symbol/AMD` proof: temporary premium probe user created through the production Postgres container, `data-symbol-knowledge-graph="AMD"` present, probe user removed after verification.
 
 ## Remaining Blockers
 
