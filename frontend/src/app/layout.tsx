@@ -4,6 +4,7 @@ import { AccountOnboardingGate } from "@/components/account/AccountOnboardingGat
 import { AnalyticsProvider } from "@/components/analytics/AnalyticsProvider";
 import { BetaFeedbackWidget } from "@/components/analytics/BetaFeedbackWidget";
 import { PresentationModeController } from "@/components/presentation/PresentationModeController";
+import { SymbolIntelligenceOverlay } from "@/components/symbol/SymbolIntelligenceOverlay";
 import { CurrentUserProvider } from "@/hooks/useCurrentUser";
 import { BRAND_DESCRIPTION, BRAND_NAME, CANONICAL_URL } from "@/lib/brand";
 import "./globals.css";
@@ -47,6 +48,7 @@ export default function RootLayout({
         <CurrentUserProvider>
           <AnalyticsProvider>
             {children}
+            <SymbolIntelligenceOverlay />
             <AccountOnboardingGate />
             <Suspense fallback={null}>
               <PresentationModeController />

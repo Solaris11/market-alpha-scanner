@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { RankingRow } from "@/lib/types";
 import { actionFor, compact, formatNumber } from "@/lib/format";
+import { openSymbolCard } from "@/lib/symbol/symbol-overlay-store";
+import { symbolCardContextFromRow } from "@/lib/symbol/symbol-intelligence-card";
 import { cleanText } from "@/lib/ui/formatters";
 import { decisionLabel, humanizeInsightText, humanizeLabel, normalizedToken } from "@/lib/ui/labels";
 import { SymbolIdentityLine, SymbolLogo } from "@/components/visual/SymbolLogo";
@@ -174,7 +174,6 @@ function SortButton({ active, direction, label, onClick }: { active: boolean; di
 }
 
 export function RankingTable({ rows, highlight = false, limit, emptyMessage = "No scanner rows available.", sortKey = null, sortDirection = "asc", onSort }: Props) {
-  const router = useRouter();
   const visibleRows = typeof limit === "number" ? rows.slice(0, limit) : rows;
 
   if (!visibleRows.length) {
@@ -196,6 +195,7 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
         const signals = signalLabelsForRow(row);
         const symbol = String(row.symbol ?? "").trim().toUpperCase();
         const symbolHref = symbol ? `/symbol/${encodeURIComponent(symbol)}` : "";
+        const sourceContext = symbolCardContextFromRow(row, "ranking-table");
         return (
           <article
             className={`group rounded-2xl border border-white/10 bg-slate-950/55 p-4 shadow-xl shadow-black/20 ring-1 ring-white/5 transition-all duration-200 ${
@@ -208,7 +208,7 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
               if (!symbolHref) return;
               const target = event.target instanceof Element ? event.target : null;
               if (target?.closest("a,button,summary,details,input,select,textarea")) return;
-              router.push(symbolHref);
+              openSymbolCard(symbol, { sourceContext, trigger: event.currentTarget });
             }}
             onKeyDown={(event) => {
               if (!symbolHref) return;
@@ -216,18 +216,18 @@ export function RankingTable({ rows, highlight = false, limit, emptyMessage = "N
               const target = event.target instanceof Element ? event.target : null;
               if (target?.closest("a,button,summary,details,input,select,textarea")) return;
               event.preventDefault();
-              router.push(symbolHref);
+              openSymbolCard(symbol, { sourceContext, trigger: event.currentTarget });
             }}
-            role={symbolHref ? "link" : undefined}
+            role={symbolHref ? "button" : undefined}
             tabIndex={symbolHref ? 0 : undefined}
           >
             <div className="grid gap-4 lg:grid-cols-[minmax(180px,1fr)_150px_130px_190px_130px] lg:items-center">
               <div className="flex min-w-0 items-center gap-3">
                 <SymbolLogo companyName={row.company_name} sector={row.sector} size="md" symbol={symbol || String(row.symbol ?? "")} />
                 <div className="min-w-0">
-                  <Link className="font-mono text-2xl font-semibold text-slate-50 transition-colors hover:text-cyan-100" href={symbolHref || "#"}>
+                  <button className="font-mono text-2xl font-semibold text-slate-50 transition-colors hover:text-cyan-100" onClick={(event) => openSymbolCard(symbol, { sourceContext, trigger: event.currentTarget })} type="button">
                     {row.symbol}
-                  </Link>
+                  </button>
                   <div className="mt-1 truncate text-sm text-slate-400" title={row.company_name || ""}>
                     {compact(row.company_name || row.sector || "Market signal", 72)}
                   </div>

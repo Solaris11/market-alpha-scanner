@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Clock3, Filter, Save, Search } from "lucide-react";
+import { openSymbolCard } from "@/lib/symbol/symbol-overlay-store";
+import { symbolCardContextFromRow } from "@/lib/symbol/symbol-intelligence-card";
 import {
   buildSymbolSearchFacets,
   defaultSymbolSearchFilters,
@@ -80,7 +82,7 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
     const active = results[activeIndex] ?? results[0];
     if (!active) return;
     remember(active.document.symbol);
-    window.location.assign(`/symbol/${encodeURIComponent(active.document.symbol)}`);
+    openSymbolCard(active.document.symbol, { sourceContext: symbolDocumentContext(active.document, "symbol-command-search"), trigger: inputRef.current });
   }
 
   function updateFilter<K extends keyof SymbolSearchFilterState>(key: K, value: SymbolSearchFilterState[K]): void {
@@ -207,14 +209,17 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
 
           <div className="grid gap-2" data-symbol-search-results="true" role="listbox">
             {results.length ? results.map((result, index) => (
-              <Link
+              <button
                 aria-selected={activeIndex === index}
-                className={`rounded-xl border p-3 transition ${activeIndex === index ? "border-cyan-300/45 bg-cyan-400/10" : "border-white/10 bg-white/[0.035] hover:border-cyan-300/30 hover:bg-white/[0.055]"}`}
+                className={`w-full rounded-xl border p-3 text-left transition ${activeIndex === index ? "border-cyan-300/45 bg-cyan-400/10" : "border-white/10 bg-white/[0.035] hover:border-cyan-300/30 hover:bg-white/[0.055]"}`}
                 data-symbol-search-result="true"
-                href={`/symbol/${encodeURIComponent(result.document.symbol)}`}
                 key={result.document.symbol}
-                onClick={() => remember(result.document.symbol)}
+                onClick={(event) => {
+                  remember(result.document.symbol);
+                  openSymbolCard(result.document.symbol, { sourceContext: symbolDocumentContext(result.document, "symbol-search-result"), trigger: event.currentTarget });
+                }}
                 role="option"
+                type="button"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -235,7 +240,7 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
                     <span className="rounded-full border border-white/10 bg-black/20 px-2 py-1" key={`${result.document.symbol}:${tag}`}>{tag}</span>
                   ))}
                 </div>
-              </Link>
+              </button>
             )) : (
               <div className="rounded-xl border border-dashed border-slate-700/70 bg-slate-950/35 p-5 text-sm text-slate-400">No symbol matches the current search and filters.</div>
             )}
@@ -260,6 +265,20 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
       </div>
     </section>
   );
+}
+
+function symbolDocumentContext(document: SymbolSearchDocument, source: string) {
+  return symbolCardContextFromRow({
+    company_name: document.companyName,
+    final_decision: document.decision,
+    final_score: document.score,
+    market_regime: document.macroRegime,
+    reason: document.theme,
+    risk_score: document.riskScore,
+    sector: document.sector,
+    setup_type: document.setupType,
+    symbol: document.symbol,
+  }, source);
 }
 
 function SelectFilter({ label, onChange, options, value }: { label: string; onChange: (value: string) => void; options: string[]; value: string }) {

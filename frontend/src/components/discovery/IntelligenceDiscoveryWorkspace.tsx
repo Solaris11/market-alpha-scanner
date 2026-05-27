@@ -34,6 +34,8 @@ import {
   type PosterVisualTone,
 } from "@/components/visual/PosterDataVisuals";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
+import { openSymbolCard } from "@/lib/symbol/symbol-overlay-store";
+import { symbolCardContextFromRow } from "@/lib/symbol/symbol-intelligence-card";
 import type { DiscoverySavedScan, DiscoverySavedScanPayload } from "@/lib/discovery-saved-scans";
 import {
   filterDiscoverySymbols,
@@ -227,6 +229,13 @@ export function IntelligenceDiscoveryWorkspace({
   }));
   const selectedFilter = system.quickFilters.find((item) => item.key === filter);
   const activeSymbol = visibleSymbols[Math.min(activeIndex, Math.max(visibleSymbols.length - 1, 0))] ?? null;
+
+  const openDiscoverySymbolCard = useCallback((symbol: DiscoverySymbol): void => {
+    openSymbolCard(symbol.symbol, {
+      sourceContext: symbolCardContextFromRow(discoverySymbolRecord(symbol), "discovery-scanner"),
+    });
+    trackAnalyticsEvent("scanner_usage", { action: "open_global_symbol_card", symbol: symbol.symbol }, { source: "discovery_scanner", symbol: symbol.symbol });
+  }, []);
 
   function recordScannerWorkflow(id: string, startedAt: number): void {
     recordBrowserWorkflowMetric(`scanner:${id}`, startedAt);
@@ -680,7 +689,7 @@ export function IntelligenceDiscoveryWorkspace({
 
       if (key === "o" && activeSymbol) {
         event.preventDefault();
-        setSelectedSymbol(activeSymbol);
+        openDiscoverySymbolCard(activeSymbol);
         return;
       }
 
@@ -698,14 +707,14 @@ export function IntelligenceDiscoveryWorkspace({
 
       if (event.key === "Enter" && activeSymbol) {
         event.preventDefault();
-        if (event.shiftKey) setSelectedSymbol(activeSymbol);
+        if (event.shiftKey) openDiscoverySymbolCard(activeSymbol);
         else toggleExpandedSymbol(activeSymbol.symbol);
       }
     }
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [activeSymbol, focusSearch, rangeSelectedSymbols, scannerFullscreen, scannerPresets, selectedCluster, selectedSymbol, visibleSymbols]);
+  }, [activeSymbol, focusSearch, openDiscoverySymbolCard, rangeSelectedSymbols, scannerFullscreen, scannerPresets, selectedCluster, selectedSymbol, visibleSymbols]);
 
   return (
     <section className={`tv-discovery-system ${mode === "overlay" ? "space-y-4" : "space-y-6"}`} data-discovery-workspace="true">
@@ -865,7 +874,7 @@ export function IntelligenceDiscoveryWorkspace({
               onCreateAlert={(symbol) => {
                 void createScannerAlert(symbol);
               }}
-              onOpen={setSelectedSymbol}
+              onOpen={openDiscoverySymbolCard}
               onSortChange={(nextSort) => runTimedScannerWorkflow("sort", () => setSort(nextSort))}
               onToggleColumn={toggleScannerColumn}
               onToggleExpanded={(symbol) => runTimedScannerWorkflow("row-expansion", () => toggleExpandedSymbol(symbol))}
@@ -882,7 +891,7 @@ export function IntelligenceDiscoveryWorkspace({
               watchedSymbols={watchedSymbols}
             />
             <div className="space-y-4">
-              <ShortlistDock compareShortlist={compareShortlist} onClear={() => setShortlistSymbols([])} onOpen={setSelectedSymbol} onToggleShortlist={toggleShortlist} symbols={shortlistRows} />
+              <ShortlistDock compareShortlist={compareShortlist} onClear={() => setShortlistSymbols([])} onOpen={openDiscoverySymbolCard} onToggleShortlist={toggleShortlist} symbols={shortlistRows} />
               <CompareModePanel compareRows={compareRows} onClearCompare={() => setCompareSymbols([])} onCompareShortlist={compareShortlist} onCompareVisible={compareVisible} onExportCompare={exportCompareMatrix} onTogglePin={toggleComparePin} pinnedCompareSymbols={pinnedCompareSymbols} presets={system.comparePresets} setCompareSymbols={setCompareSymbols} />
             </div>
           </div>
@@ -1639,7 +1648,7 @@ function RapidScannerTable({
                   <button className={`h-9 flex-1 rounded-xl border px-2 text-[10px] font-black uppercase tracking-[0.1em] ${selected ? "border-cyan-300/40 bg-cyan-300/15 text-cyan-100" : "border-white/10 bg-white/[0.035] text-slate-400 hover:text-cyan-100"}`} onClick={() => onToggleCompare(symbol.symbol)} type="button">
                     {selected ? "On" : "Cmp"}
                   </button>
-                  <Link className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-slate-400 hover:border-cyan-300/30 hover:text-cyan-100" href={symbol.href}>
+                  <Link className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-slate-400 hover:border-cyan-300/30 hover:text-cyan-100" data-symbol-navigation="page" href={symbol.href}>
                     <ArrowRight className="h-3.5 w-3.5" />
                   </Link>
                 </div>
@@ -1782,7 +1791,7 @@ function DiscoverySymbolCard({
         <button className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] ${compareSelected ? "border-cyan-300/40 bg-cyan-300/15 text-cyan-100" : "border-white/10 bg-white/[0.035] text-slate-400 hover:text-cyan-100"}`} onClick={() => onToggleCompare(symbol.symbol)} type="button">
           {compareSelected ? "Comparing" : "Compare"}
         </button>
-        <Link className="inline-flex items-center gap-1 rounded-full border border-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 hover:border-cyan-300/30 hover:text-cyan-100" href={symbol.href}>
+        <Link className="inline-flex items-center gap-1 rounded-full border border-white/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 hover:border-cyan-300/30 hover:text-cyan-100" data-symbol-navigation="page" href={symbol.href}>
           Open <ArrowRight className="h-3 w-3" />
         </Link>
       </div>
@@ -1804,6 +1813,7 @@ function ScannerDrilldownRail({ compact = false, symbol }: { compact?: boolean; 
       {links.map((link) => (
         <Link
           className={`${compact ? "px-1.5 py-0.5 text-[9px]" : "px-2 py-1 text-[10px]"} rounded-full border border-white/10 bg-white/[0.035] font-black uppercase tracking-[0.1em] text-slate-500 hover:border-cyan-300/30 hover:text-cyan-100`}
+          data-symbol-navigation={link.href.startsWith("/symbol/") ? "page" : undefined}
           href={link.href}
           key={link.href}
           onClick={() => trackAnalyticsEvent("scanner_usage", { action: "drilldown", destination: link.label.toLowerCase(), symbol: symbol.symbol }, { source: "discovery_drilldown", symbol: symbol.symbol })}
@@ -2138,7 +2148,7 @@ function SymbolDetailOverlay({
                     <Bell className="h-3.5 w-3.5" />
                     Alert
                   </button>
-                  <Link className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-100" href={symbol.href}>Open full detail</Link>
+                  <Link className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-100" data-symbol-navigation="page" href={symbol.href}>Open full detail</Link>
                 </div>
               </div>
               <p className="mt-4 text-sm leading-6 text-slate-300">{humanizeInsightText(symbol.reason)}</p>
@@ -2450,6 +2460,24 @@ function uniqueSymbols(symbols: string[]): string[] {
     result.push(symbol);
   }
   return result;
+}
+
+function discoverySymbolRecord(symbol: DiscoverySymbol): Record<string, unknown> {
+  return {
+    asset_type: symbol.assetType,
+    company_name: symbol.companyName,
+    decision: symbol.decision,
+    evidence_maturity: symbol.evidenceLabel,
+    final_score: symbol.confidence ?? symbol.conviction,
+    freshness_label: symbol.freshnessLabel,
+    macro_score: symbol.macro,
+    price: symbol.price,
+    reason: symbol.reason,
+    risk_score: symbol.risk,
+    sector: symbol.sector,
+    setup_type: symbol.setupType,
+    symbol: symbol.symbol,
+  };
 }
 
 function browserWorkflowNow(): number {

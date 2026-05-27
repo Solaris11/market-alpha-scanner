@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo } from "react";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
+import { openSymbolCard } from "@/lib/symbol/symbol-overlay-store";
+import { symbolCardContextFromRow } from "@/lib/symbol/symbol-intelligence-card";
 import { buildOpportunityTrustModel } from "@/lib/trading/institutional-trust";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import { cleanText, formatMoney, formatNumber } from "@/lib/ui/formatters";
@@ -36,21 +37,20 @@ export function MyWatchlistWidget({ rows }: { rows: OpportunityViewModel[] }) {
 }
 
 function WatchlistRow({ row }: { row: OpportunityViewModel }) {
-  const router = useRouter();
   const href = `/symbol/${row.symbol}`;
-  const openDetail = () => router.push(href);
+  const sourceContext = symbolCardContextFromRow(row as unknown as Record<string, unknown>, "watchlist-widget");
   const trustModel = buildOpportunityTrustModel(row, { shownBecause: "Shown because this symbol is saved in your watchlist.", watchlisted: true });
   return (
     <div
       className="cursor-pointer rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.07] focus:outline-none focus:ring-2 focus:ring-cyan-300/40"
-      onClick={openDetail}
+      onClick={(event) => openSymbolCard(row.symbol, { sourceContext, trigger: event.currentTarget })}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          openDetail();
+          openSymbolCard(row.symbol, { sourceContext, trigger: event.currentTarget });
         }
       }}
-      role="link"
+      role="button"
       tabIndex={0}
     >
       <div className="flex items-start justify-between gap-3">
@@ -79,19 +79,18 @@ function WatchlistRow({ row }: { row: OpportunityViewModel }) {
 }
 
 function MissingWatchlistRow({ symbol }: { symbol: string }) {
-  const router = useRouter();
   const href = `/symbol/${symbol}`;
   return (
     <div
       className="flex cursor-pointer items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-3 transition hover:border-cyan-300/35 hover:bg-white/[0.07]"
-      onClick={() => router.push(href)}
+      onClick={(event) => openSymbolCard(symbol, { sourceContext: { href, source: "watchlist-widget", symbol }, trigger: event.currentTarget })}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          router.push(href);
+          openSymbolCard(symbol, { sourceContext: { href, source: "watchlist-widget", symbol }, trigger: event.currentTarget });
         }
       }}
-      role="link"
+      role="button"
       tabIndex={0}
     >
       <Link className="font-mono font-black text-slate-50 hover:text-cyan-100" href={href} onClick={(event) => event.stopPropagation()}>
