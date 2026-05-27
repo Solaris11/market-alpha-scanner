@@ -1,0 +1,98 @@
+{
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [
+    "workspaceRestoreMs 3791.408ms exceeds 3000ms budget"
+  ],
+  "budgets": {
+    "fullscreenOpenMs": 1500,
+    "layoutSwitchMs": 250,
+    "replayScrubMs": 250,
+    "workspaceRestoreMs": 3000
+  },
+  "generatedAt": "2026-05-27T14:37:05.797Z",
+  "overallStatus": "not_ready",
+  "probeIdentity": {
+    "created": false
+  },
+  "proof": {
+    "geometry": {
+      "horizontalOverflow": 0,
+      "viewportHeight": 960,
+      "viewportWidth": 1440,
+      "workstationBottom": 3452.40625,
+      "workstationLeft": 49,
+      "workstationRight": 1376,
+      "workstationTop": 1914.90625
+    },
+    "overlayStates": [
+      {
+        "id": "anchoredVwap",
+        "status": "limited",
+        "text": "Anchored VWAPlimitedCurrent chart payload is OHLC-only. VWAP remains limited until validated volume is attached.Source: Validated OHLCV candlesCurrent chart payload is OHLC-only. VWAP remains limited until validated volume is attached."
+      },
+      {
+        "id": "volumeProfile",
+        "status": "limited",
+        "text": "Volume profilelimitedNo validated volume provider is attached to the chart candle payload.Source: Validated OHLCV candlesNo validated volume provider is attached to the chart candle payload."
+      },
+      {
+        "id": "sessionVolume",
+        "status": "limited",
+        "text": "Session volumelimitedSession volume remains hidden until intraday OHLCV history is supplied.Source: Intraday OHLCV providerSession volume remains hidden until intraday OHLCV history is supplied."
+      },
+      {
+        "id": "atrBands",
+        "status": "available",
+        "text": "ATR bandsavailable$27.70 ATR context from validated OHLC ranges.Source: Validated OHLC candlesAverage true range is computed from real high/low/close history."
+      },
+      {
+        "id": "liquidityZones",
+        "status": "available",
+        "text": "Liquidity zonesavailableRepeated range-touch zones around $116.62 support context and $221.48 resistance context.Source: Validated OHLC candlesPrice-touch liquidity proxy only; no order-book liquidity is claimed."
+      },
+      {
+        "id": "relativeStrength",
+        "status": "limited",
+        "text": "Relative strengthlimitedBenchmark-relative strength needs a second validated benchmark series. Current chart has managed trend overlays only.Source: Chart workspaceBenchmark-relative strength needs a second validated benchmark series. Curre"
+      },
+      {
+        "id": "marketRegime",
+        "status": "available",
+        "text": "Market regime overlayavailable241 macro/risk markers available for regime context.Source: Scanner and macro marker streamRegime context is descriptive and source-bound."
+      },
+      {
+        "id": "strategyZones",
+        "status": "limited",
+        "text": "Strategy zoneslimitedNo source-backed entry, stop, or target levels are attached to this symbol payload.Source: Scanner trade levelsNo source-backed entry, stop, or target levels are attached to this symbol payload."
+      },
+      {
+        "id": "replayPlayback",
+        "status": "available",
+        "text": "Replay playbackavailable1 replay/memory marker can drive a historical scrubber.Source: Replay and market-memory markersPlayback uses historical markers only."
+      },
+      {
+        "id": "aiDecisionLayer",
+        "status": "available",
+        "text": "Decision layeravailableThe decision layer explains setup context, weakness, invalidation, confirmation, and confidence changes without predictive claims.Source: Derived from validated chart, levels, markers, and scanner scoreResearch-only e"
+      }
+    ],
+    "replayStatus": "available",
+    "route": "/symbol/AMD",
+    "screenshots": [
+      "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-27-2-chart-workstation/chart-workstation-chromium.png"
+    ],
+    "textSafety": {
+      "hasFinancialAdviceDisclosure": true,
+      "hasUnsupportedClaim": false
+    },
+    "timings": {
+      "workspaceRestoreMs": 3791.408,
+      "backgroundNetworkIdleMs": 5858.005,
+      "fullscreenOpenMs": 184.657,
+      "layoutSwitchMs": 225.678,
+      "replayScrubMs": 8.616
+    }
+  },
+  "proofScope": "Authenticated production browser proof for the AMD fullscreen chart decision workstation. This does not claim full TradingView parity, physical-device proof, or unsupported volume/benchmark overlays.",
+  "startedAt": "2026-05-27T14:36:54.017Z"
+}
