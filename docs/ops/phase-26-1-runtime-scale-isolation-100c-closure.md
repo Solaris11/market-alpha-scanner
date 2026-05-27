@@ -22,10 +22,10 @@ Phase 25.1 did not fully certify production scale:
 ## Implemented Changes
 
 - Reduced `/api/discovery` runtime pressure by separating initial and full packet system caches.
-- Kept the initial discovery packet to 40 rows and extended stale-safe cache windows so background refreshes are less likely to contend with sustained 100c traffic.
+- Kept the initial discovery packet to 12 rows and extended stale-safe cache windows so background refreshes are less likely to contend with sustained 100c traffic.
 - Preserved full-universe hydration via full packet requests; no premium data is exposed to unauthenticated users.
 - Added serialized snapshot reuse for cached live-intelligence packets to avoid repeated JSON serialization on hot snapshot hits.
-- Reduced the live-intelligence snapshot build cap to 64 rows so the hot response stays bounded while richer scanner context remains available through scanner/discovery surfaces.
+- Reduced the live-intelligence snapshot build cap to 24 rows so the hot response stays bounded while richer scanner context remains available through scanner/discovery surfaces.
 - Added a short-lived local rate-limit fast path after DB verification to remove repeated hot-row upserts from high-concurrency developer and replay probes.
 - Coalesced developer API usage writes into hourly rollup batches instead of one DB upsert per request.
 - Sampled raw request metric writes for hot endpoints while still writing full minute rollups for dashboards.

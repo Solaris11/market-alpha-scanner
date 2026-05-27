@@ -52,7 +52,7 @@ type DiscoverySystemCache = {
   resolved?: IntelligenceDiscoverySystem;
 };
 
-const DISCOVERY_INITIAL_PACKET_ROW_LIMIT = 40;
+const DISCOVERY_INITIAL_PACKET_ROW_LIMIT = 12;
 const DISCOVERY_BASE_CACHE_TTL_MS = 10 * 60_000;
 const DISCOVERY_BASE_STALE_TTL_MS = 30 * 60_000;
 const DISCOVERY_SYSTEM_CACHE_TTL_MS = 10 * 60_000;

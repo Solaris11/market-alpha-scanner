@@ -30,7 +30,7 @@ type LiveIntelligenceCacheEntry = {
 const LIVE_INTELLIGENCE_CACHE_TTL_MS = 20_000;
 const LIVE_INTELLIGENCE_STALE_TTL_MS = 180_000;
 const LIVE_INTELLIGENCE_BUILD_TIMEOUT_MS = 260;
-const LIVE_INTELLIGENCE_ROW_LIMIT = 64;
+const LIVE_INTELLIGENCE_ROW_LIMIT = 24;
 
 let liveIntelligenceCache: LiveIntelligenceCacheEntry | null = null;
 let liveIntelligenceInflight: Promise<LiveIntelligenceSystem> | null = null;
