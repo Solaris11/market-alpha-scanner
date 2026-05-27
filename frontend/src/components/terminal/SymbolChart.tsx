@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useEffect, useId, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Copy, Expand, Eye, EyeOff, Keyboard, Lock, Magnet, Palette, PanelTopClose, PanelTopOpen, RotateCcw, Save, Search, Trash2, Unlock, X } from "lucide-react";
 import {
@@ -221,6 +222,7 @@ export function SymbolChart({
   symbolSequence = [],
 }: SymbolChartProps) {
   const chartInstanceId = useId();
+  const router = useRouter();
   const { authenticated, loading: accountLoading, user } = useCurrentUser();
   const chartRootRef = useRef<HTMLDivElement | null>(null);
   const chartContainerRef = useRef<HTMLDivElement | null>(null);
@@ -308,14 +310,14 @@ export function SymbolChart({
       period,
       surface: "symbol_chart",
     }, { source: "chart", symbol });
-    writeChartWorkflowWorkspace(symbol, { fullscreenOpen: true });
     setExpanded(true);
+    deferChartWorkspacePatch(symbol, { fullscreenOpen: true });
     recordBrowserWorkflowMetric("chart:fullscreen-open", startedAt);
   }
 
   function closeExpandedChart(): void {
-    writeChartWorkflowWorkspace(symbol, { fullscreenOpen: false });
     setExpanded(false);
+    deferChartWorkspacePatch(symbol, { fullscreenOpen: false });
   }
 
   function changePeriod(range: InteractiveChartPeriod): void {
@@ -492,7 +494,7 @@ export function SymbolChart({
       direction,
       nextSymbol,
     }, { source: "chart", symbol });
-    window.location.assign(`/symbol/${encodeURIComponent(nextSymbol)}`);
+    router.push(`/symbol/${encodeURIComponent(nextSymbol)}`);
   }
 
   function applyWorkspaceState(workspace: ChartWorkflowWorkspace | null, restoreFullscreen: boolean): void {
@@ -666,6 +668,12 @@ export function SymbolChart({
     user,
     workspaceLoaded,
   ]);
+
+  useEffect(() => {
+    for (const nextSymbol of adjacentSymbols(navigationSymbols, symbol)) {
+      router.prefetch(`/symbol/${encodeURIComponent(nextSymbol)}`);
+    }
+  }, [navigationSymbols, router, symbol]);
 
   useEffect(() => {
     if (!hotkeysActive) return undefined;
@@ -2531,14 +2539,15 @@ function SymbolChartModal({
   const [modalIndicators, setModalIndicators] = useState<ChartIndicatorId[]>(defaultIndicators);
   const [modalToolbarCollapsed, setModalToolbarCollapsed] = useState(false);
   const [modalWorkspaceLoaded, setModalWorkspaceLoaded] = useState(false);
+  const [modalHeavyContentReady, setModalHeavyContentReady] = useState(false);
   const normalizedSignals = useMemo(() => (showHistoricalSignals ? filterSignalsByCandles(normalizeSignals(signals ?? []), candles) : []), [candles, showHistoricalSignals, signals]);
   const chartLevels = useMemo(() => normalizeTradeLevels(tradeLevels), [tradeLevels]);
   const markerSummary = markerGroupSummary(normalizedSignals);
   const markerEvidence = normalizedSignals.slice(-14).reverse();
-  const storyPoints = useMemo(() => buildChartStoryPoints(candles, normalizedSignals, chartLevels), [candles, chartLevels, normalizedSignals]);
-  const compareRows = useMemo(() => buildChartCompareRows(candles, normalizedSignals, chartLevels), [candles, chartLevels, normalizedSignals]);
+  const storyPoints = useMemo(() => (modalHeavyContentReady ? buildChartStoryPoints(candles, normalizedSignals, chartLevels) : []), [candles, chartLevels, modalHeavyContentReady, normalizedSignals]);
+  const compareRows = useMemo(() => (modalHeavyContentReady ? buildChartCompareRows(candles, normalizedSignals, chartLevels) : []), [candles, chartLevels, modalHeavyContentReady, normalizedSignals]);
   const levelSummary = tradeLevelSummary(tradeLevels);
-  const workstationModel = useMemo(() => buildChartDecisionWorkstationModel({
+  const workstationModel = useMemo(() => (modalHeavyContentReady ? buildChartDecisionWorkstationModel({
     candles,
     enabledIndicators: modalIndicators,
     enabledOverlayFamilies: modalOverlayFamilies,
@@ -2549,7 +2558,7 @@ function SymbolChartModal({
     signals: normalizedSignals,
     symbol,
     tradeLevels,
-  }), [candles, interpretation, layoutMode, modalIndicators, modalOverlayFamilies, modalPeriod, normalizedSignals, scannerScore, symbol, tradeLevels]);
+  }) : null), [candles, interpretation, layoutMode, modalHeavyContentReady, modalIndicators, modalOverlayFamilies, modalPeriod, normalizedSignals, scannerScore, symbol, tradeLevels]);
 
   function applyModalWorkspace(workspace: ChartWorkflowWorkspace): void {
     setModalChartTabs(workspace.chartTabs);
@@ -2623,12 +2632,18 @@ function SymbolChartModal({
   }
 
   useEffect(() => {
+    setModalHeavyContentReady(false);
     const workspace = readChartWorkflowWorkspace(symbol);
     skipNextModalWorkspacePersistRef.current = true;
     if (workspace) applyModalWorkspace(workspace);
     setModalWorkspaceLoaded(true);
   // This effect restores the modal workspace once for the opened symbol.
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol]);
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setModalHeavyContentReady(true), 0);
+    return () => window.clearTimeout(timeout);
   }, [symbol]);
 
   useEffect(() => {
@@ -2889,35 +2904,43 @@ function SymbolChartModal({
           />
         ) : null}
       </div>
-      <div className="mt-4">
-        <ChartLayoutExplorer
-          candles={candles}
-          compactMode={modalCompactMode}
-          dataSource={dataSource}
-          indicators={modalIndicators}
-          interpretation={interpretation}
-          lastUpdated={lastUpdated}
-          layoutMode={layoutMode}
-          onIndicatorsChange={setModalIndicators}
-          onOverlayFamiliesChange={setModalOverlayFamilies}
-          onPeriodChange={setModalPeriod}
-          overlayFamilies={modalOverlayFamilies}
-          period={modalPeriod}
-          showHistoricalSignals={showHistoricalSignals}
-          showResearchLevelsToggle={showResearchLevelsToggle}
-          signals={signals}
-          symbol={symbol}
-          tradeLevels={tradeLevels}
-        />
-      </div>
-      <ChartDecisionWorkstationPanel
-        layoutMode={layoutMode}
-        model={workstationModel}
-        onDetailModeChange={setDetailMode}
-        onLayoutModeChange={setLayoutMode}
-        onPeriodChange={setModalPeriod}
-      />
-      <ChartModalModePanel compareRows={compareRows} mode={detailMode} storyPoints={storyPoints} timelineMarkers={markerEvidence} />
+      {modalHeavyContentReady && workstationModel ? (
+        <>
+          <div className="mt-4">
+            <ChartLayoutExplorer
+              candles={candles}
+              compactMode={modalCompactMode}
+              dataSource={dataSource}
+              indicators={modalIndicators}
+              interpretation={interpretation}
+              lastUpdated={lastUpdated}
+              layoutMode={layoutMode}
+              onIndicatorsChange={setModalIndicators}
+              onOverlayFamiliesChange={setModalOverlayFamilies}
+              onPeriodChange={setModalPeriod}
+              overlayFamilies={modalOverlayFamilies}
+              period={modalPeriod}
+              showHistoricalSignals={showHistoricalSignals}
+              showResearchLevelsToggle={showResearchLevelsToggle}
+              signals={signals}
+              symbol={symbol}
+              tradeLevels={tradeLevels}
+            />
+          </div>
+          <ChartDecisionWorkstationPanel
+            layoutMode={layoutMode}
+            model={workstationModel}
+            onDetailModeChange={setDetailMode}
+            onLayoutModeChange={setLayoutMode}
+            onPeriodChange={setModalPeriod}
+          />
+          <ChartModalModePanel compareRows={compareRows} mode={detailMode} storyPoints={storyPoints} timelineMarkers={markerEvidence} />
+        </>
+      ) : (
+        <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4 text-xs leading-5 text-slate-400" data-chart-workstation-loading="true">
+          Preparing chart workstation panels...
+        </div>
+      )}
       <div className="mt-4 grid gap-3 md:grid-cols-4">
         <ChartDetailTile label="Data source" value={dataSource} detail="Stored validated OHLC history only. No seeded or synthetic candles are drawn." />
         <ChartDetailTile label="Research levels" value={levelSummary.value} detail={levelSummary.detail} />
@@ -3632,6 +3655,31 @@ function normalizeSymbolSequence(symbols: string[], fallbackSymbol: string): str
     if (symbol && !sequence.includes(symbol)) sequence.push(symbol);
   }
   return sequence;
+}
+
+function adjacentSymbols(symbols: string[], currentSymbol: string): string[] {
+  if (symbols.length < 2) return [];
+  const current = currentSymbol.trim().toUpperCase();
+  const currentIndex = symbols.indexOf(current);
+  if (currentIndex < 0) return [];
+  const previous = symbols[(currentIndex - 1 + symbols.length) % symbols.length];
+  const next = symbols[(currentIndex + 1) % symbols.length];
+  return [...new Set([previous, next].filter((value): value is string => Boolean(value && value !== current)))];
+}
+
+function deferChartWorkspacePatch(symbol: string, patch: Partial<ChartWorkflowWorkspace>): void {
+  if (typeof window === "undefined") return;
+  const writePatch = () => {
+    writeChartWorkflowWorkspace(symbol, patch);
+  };
+  const idleWindow = window as Window & {
+    requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+  };
+  if (typeof idleWindow.requestIdleCallback === "function") {
+    idleWindow.requestIdleCallback(writePatch, { timeout: 750 });
+    return;
+  }
+  window.setTimeout(writePatch, 0);
 }
 
 function slugifyChartId(value: string): string {
