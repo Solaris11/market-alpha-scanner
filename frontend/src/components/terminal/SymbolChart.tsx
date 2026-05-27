@@ -64,6 +64,7 @@ import {
   type StoredChartDrawingPoint,
   type StoredChartDrawingTool,
 } from "./chart-workflow-storage";
+import { buildChartDecisionWorkstationModel, type ChartDecisionWorkstationModel, type ChartDecisionWorkstationStatus } from "./chart-decision-workstation";
 import {
   fetchAccountChartWorkflowWorkspace,
   mergeLocalAndAccountChartWorkspace,
@@ -1165,6 +1166,7 @@ export function SymbolChart({
         defaultPeriod={period}
         interpretation={interpretation ?? buildDefaultChartInterpretation(symbol, move)}
         lastUpdated={lastUpdated ?? normalizedCandles[normalizedCandles.length - 1]?.time ?? null}
+        scannerScore={scannerScore}
         showHistoricalSignals={showHistoricalSignals}
         showResearchLevelsToggle={showResearchLevelsToggle}
         signals={signals}
@@ -2495,6 +2497,7 @@ function SymbolChartModal({
   defaultPeriod,
   interpretation,
   lastUpdated,
+  scannerScore,
   showHistoricalSignals,
   showResearchLevelsToggle,
   signals,
@@ -2509,6 +2512,7 @@ function SymbolChartModal({
   defaultPeriod: InteractiveChartPeriod;
   interpretation: string;
   lastUpdated: string | null;
+  scannerScore?: number | null;
   showHistoricalSignals: boolean;
   showResearchLevelsToggle: boolean;
   signals?: ChartSignalMarker[];
@@ -2534,6 +2538,18 @@ function SymbolChartModal({
   const storyPoints = useMemo(() => buildChartStoryPoints(candles, normalizedSignals, chartLevels), [candles, chartLevels, normalizedSignals]);
   const compareRows = useMemo(() => buildChartCompareRows(candles, normalizedSignals, chartLevels), [candles, chartLevels, normalizedSignals]);
   const levelSummary = tradeLevelSummary(tradeLevels);
+  const workstationModel = useMemo(() => buildChartDecisionWorkstationModel({
+    candles,
+    enabledIndicators: modalIndicators,
+    enabledOverlayFamilies: modalOverlayFamilies,
+    interpretation,
+    layoutMode,
+    period: modalPeriod,
+    scannerScore,
+    signals: normalizedSignals,
+    symbol,
+    tradeLevels,
+  }), [candles, interpretation, layoutMode, modalIndicators, modalOverlayFamilies, modalPeriod, normalizedSignals, scannerScore, symbol, tradeLevels]);
 
   function applyModalWorkspace(workspace: ChartWorkflowWorkspace): void {
     setModalChartTabs(workspace.chartTabs);
@@ -2894,6 +2910,13 @@ function SymbolChartModal({
           tradeLevels={tradeLevels}
         />
       </div>
+      <ChartDecisionWorkstationPanel
+        layoutMode={layoutMode}
+        model={workstationModel}
+        onDetailModeChange={setDetailMode}
+        onLayoutModeChange={setLayoutMode}
+        onPeriodChange={setModalPeriod}
+      />
       <ChartModalModePanel compareRows={compareRows} mode={detailMode} storyPoints={storyPoints} timelineMarkers={markerEvidence} />
       <div className="mt-4 grid gap-3 md:grid-cols-4">
         <ChartDetailTile label="Data source" value={dataSource} detail="Stored validated OHLC history only. No seeded or synthetic candles are drawn." />
@@ -3128,6 +3151,222 @@ function ChartLayoutExplorer({
       {...sharedProps}
       height={primaryHeight}
     />
+  );
+}
+
+function ChartDecisionWorkstationPanel({
+  layoutMode,
+  model,
+  onDetailModeChange,
+  onLayoutModeChange,
+  onPeriodChange,
+}: {
+  layoutMode: ChartLayoutMode;
+  model: ChartDecisionWorkstationModel;
+  onDetailModeChange: (mode: ChartDetailMode) => void;
+  onLayoutModeChange: (mode: ChartLayoutMode) => void;
+  onPeriodChange: (period: InteractiveChartPeriod) => void;
+}) {
+  const [replayIndex, setReplayIndex] = useState(0);
+  const [replayPlaying, setReplayPlaying] = useState(false);
+  const [replaySpeed, setReplaySpeed] = useState<0.5 | 1 | 2>(1);
+  const availableOverlayCount = model.advancedOverlays.filter((overlay) => overlay.status === "available").length;
+  const replayAvailable = model.replay.status === "available" && model.replay.markers.length > 0;
+  const activeReplayMarker = model.replay.markers[Math.min(replayIndex, Math.max(0, model.replay.markers.length - 1))] ?? null;
+
+  return (
+    <section
+      className="mt-4 rounded-2xl border border-cyan-300/15 bg-cyan-300/[0.025] p-4"
+      data-chart-workstation="true"
+      data-chart-workstation-layout={layoutMode}
+      data-chart-workstation-overlays-available={availableOverlayCount}
+      data-chart-workstation-replay={model.replay.status}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Decision workstation</div>
+          <h3 className="mt-1 text-base font-black text-slate-50">{model.symbol} chart decision environment</h3>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-slate-400">
+            Multi-panel layouts, synchronized timeframe, strategy zones, replay context, and source-bounded decision explanations. Research only; no predictive claims.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {(["split", "grid", "stack"] as const).map((mode) => (
+            <button
+              className={`min-h-9 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] transition ${
+                layoutMode === mode
+                  ? "border-cyan-300/55 bg-cyan-300/12 text-cyan-100"
+                  : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-cyan-300/40 hover:text-cyan-100"
+              }`}
+              key={mode}
+              onClick={() => onLayoutModeChange(mode)}
+              type="button"
+            >
+              {mode}
+            </button>
+          ))}
+          <button
+            className="min-h-9 rounded-full border border-violet-300/20 bg-violet-300/[0.06] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-violet-100 transition hover:border-violet-300/45"
+            onClick={() => onDetailModeChange("timeline")}
+            type="button"
+          >
+            Timeline
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-4">
+        {model.capabilities.map((capability) => (
+          <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-3" key={capability.label}>
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{capability.label}</div>
+              <StatusPill status={capability.status} />
+            </div>
+            <p className="mt-2 text-[11px] leading-5 text-slate-400">{capability.detail}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)]">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-200">Strategy visualization</div>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Entry, stop, target, invalidation, and risk/reward context only appears from real scanner levels.</p>
+            </div>
+            <div className="font-mono text-xs font-bold text-slate-500">{model.latestClose === null ? "Close limited" : `Close ${formatChartMoney(model.latestClose)}`}</div>
+          </div>
+          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            {model.strategyZones.map((zone) => (
+              <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3" key={zone.label}>
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{zone.label}</div>
+                  <StatusPill status={zone.status} />
+                </div>
+                <div className="mt-2 font-mono text-sm font-black text-slate-100">{zone.value}</div>
+                <div className="mt-1 text-[11px] text-slate-500">{zone.source}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-200">Decision layer</div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-violet-300/20 bg-violet-300/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-violet-100">{model.decisionLayer.setupQuality}</span>
+            <span className="rounded-full border border-white/10 bg-slate-950/60 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">No financial advice</span>
+          </div>
+          <div className="mt-3 space-y-2 text-xs leading-5 text-slate-400">
+            <p><span className="font-bold text-slate-200">Why:</span> {model.decisionLayer.whyExists}</p>
+            <p><span className="font-bold text-slate-200">Invalidates:</span> {model.decisionLayer.invalidates}</p>
+            <p><span className="font-bold text-slate-200">Confirms:</span> {model.decisionLayer.confirms}</p>
+            <p><span className="font-bold text-slate-200">Confidence:</span> {model.decisionLayer.confidenceChanged}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-200">Advanced overlays</div>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Every overlay declares whether it is source-backed or limited by missing provider data.</p>
+            </div>
+            <div className="text-[11px] text-slate-500">{availableOverlayCount}/{model.advancedOverlays.length} available</div>
+          </div>
+          <div className="mt-3 grid gap-2 md:grid-cols-2">
+            {model.advancedOverlays.map((overlay) => (
+              <div className="rounded-xl border border-white/10 bg-slate-950/50 p-3" data-chart-workstation-overlay={overlay.id} data-chart-workstation-overlay-status={overlay.status} key={overlay.id}>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{overlay.label}</div>
+                  <StatusPill status={overlay.status} />
+                </div>
+                <p className="mt-2 text-xs leading-5 text-slate-300">{overlay.summary}</p>
+                <div className="mt-2 text-[11px] text-slate-500">Source: {overlay.source}</div>
+                <div className="mt-1 text-[11px] text-slate-500">{overlay.reason ?? overlay.evidence}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4" data-chart-workstation-replay-panel="true">
+          <div className="flex items-center justify-between gap-2">
+            <div>
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-200">Playback + replay</div>
+              <p className="mt-1 text-xs leading-5 text-slate-500">Historical scrubber is enabled only when replay or memory markers exist.</p>
+            </div>
+            <StatusPill status={model.replay.status} />
+          </div>
+          {replayAvailable ? (
+            <div className="mt-4">
+              <div className="rounded-xl border border-violet-300/15 bg-violet-300/[0.05] p-3">
+                <div className="font-mono text-xs font-black text-violet-100">{activeReplayMarker?.time ?? "Replay marker"}</div>
+                <div className="mt-1 text-sm font-bold text-slate-100">{activeReplayMarker?.label ?? "Historical marker"}</div>
+                <div className="mt-1 text-[11px] uppercase tracking-[0.12em] text-slate-500">{activeReplayMarker?.type ?? "REPLAY"}</div>
+              </div>
+              <input
+                aria-label="Replay marker scrubber"
+                className="mt-4 w-full accent-violet-300"
+                data-chart-workstation-replay-scrubber="true"
+                max={Math.max(0, model.replay.markers.length - 1)}
+                min={0}
+                onChange={(event) => setReplayIndex(Number.parseInt(event.currentTarget.value, 10) || 0)}
+                step={1}
+                type="range"
+                value={Math.min(replayIndex, Math.max(0, model.replay.markers.length - 1))}
+              />
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <button
+                  className="min-h-9 rounded-full border border-violet-300/25 bg-violet-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-violet-100"
+                  onClick={() => setReplayPlaying((value) => !value)}
+                  type="button"
+                >
+                  {replayPlaying ? "Pause" : "Play"}
+                </button>
+                {([0.5, 1, 2] as const).map((speed) => (
+                  <button
+                    aria-pressed={replaySpeed === speed}
+                    className={`min-h-9 rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] transition ${
+                      replaySpeed === speed
+                        ? "border-cyan-300/45 bg-cyan-300/10 text-cyan-100"
+                        : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-cyan-300/35"
+                    }`}
+                    key={speed}
+                    onClick={() => setReplaySpeed(speed)}
+                    type="button"
+                  >
+                    {speed}x
+                  </button>
+                ))}
+                <button
+                  className="min-h-9 rounded-full border border-white/10 bg-white/[0.035] px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400 transition hover:border-cyan-300/35"
+                  onClick={() => onPeriodChange(model.period)}
+                  type="button"
+                >
+                  Sync period
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl border border-dashed border-white/10 bg-slate-950/45 p-3 text-xs leading-5 text-slate-400">
+              {model.replay.reason ?? "Replay playback is limited for this range."}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function StatusPill({ status }: { status: ChartDecisionWorkstationStatus }) {
+  return (
+    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] ${
+      status === "available"
+        ? "border-emerald-300/25 bg-emerald-300/10 text-emerald-100"
+        : "border-amber-300/25 bg-amber-300/10 text-amber-100"
+    }`}>
+      {status}
+    </span>
   );
 }
 
