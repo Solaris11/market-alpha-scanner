@@ -23,6 +23,7 @@ type LiveIntelligenceCacheEntry = {
   expiresAt: number;
   refreshing?: Promise<LiveIntelligenceSystem>;
   resolved: LiveIntelligenceSystem;
+  serializedSnapshots: Map<string, string>;
   staleUntil: number;
 };
 
@@ -47,7 +48,7 @@ export async function loadLiveIntelligenceSystemWithMeta(options: LiveIntelligen
     return {
       cacheStatus: "fresh-hit",
       durationMs: Date.now() - startedAt,
-      serializedSystem: serializeLiveIntelligenceSystem(system),
+      serializedSystem: serializedLiveIntelligenceSnapshot(cached, system, options),
       system,
     };
   }
@@ -57,7 +58,7 @@ export async function loadLiveIntelligenceSystemWithMeta(options: LiveIntelligen
     return {
       cacheStatus: "stale-hit",
       durationMs: Date.now() - startedAt,
-      serializedSystem: serializeLiveIntelligenceSystem(system),
+      serializedSystem: serializedLiveIntelligenceSnapshot(cached, system, options),
       system,
     };
   }
@@ -128,6 +129,7 @@ function setLiveIntelligenceCache(system: LiveIntelligenceSystem): void {
   liveIntelligenceCache = {
     expiresAt: now + LIVE_INTELLIGENCE_CACHE_TTL_MS,
     resolved: system,
+    serializedSnapshots: new Map(),
     staleUntil: now + LIVE_INTELLIGENCE_STALE_TTL_MS,
   };
 }
@@ -193,4 +195,20 @@ function latencyLabel(refreshIntervalMs: number, status: LiveIntelligenceSystem[
 
 function serializeLiveIntelligenceSystem(system: LiveIntelligenceSystem): string {
   return JSON.stringify(system);
+}
+
+function serializedLiveIntelligenceSnapshot(cacheEntry: LiveIntelligenceCacheEntry, system: LiveIntelligenceSystem, options: LiveIntelligenceLoadOptions): string {
+  const streamMode = options.streamMode ?? "snapshot";
+  if (streamMode === "sse") return serializeLiveIntelligenceSystem(system);
+  const key = `${boundedRefreshInterval(options.refreshIntervalMs)}:${system.sequence}:${system.status}`;
+  const cached = cacheEntry.serializedSnapshots.get(key);
+  if (cached) return cached;
+  const serialized = serializeLiveIntelligenceSystem(system);
+  cacheEntry.serializedSnapshots.set(key, serialized);
+  while (cacheEntry.serializedSnapshots.size > 12) {
+    const oldest = cacheEntry.serializedSnapshots.keys().next().value;
+    if (!oldest) break;
+    cacheEntry.serializedSnapshots.delete(oldest);
+  }
+  return serialized;
 }

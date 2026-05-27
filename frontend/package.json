@@ -42,6 +42,7 @@
     "probe:phase25:symbol-history-performance-browser": "node scripts/phase25-symbol-history-performance-browser-probe.mjs",
     "probe:phase25:institutional-operations-boundary": "node scripts/phase25-institutional-operations-boundary-probe.mjs",
     "probe:phase25:retention-cohort": "bash -lc 'set -a; [ -f ../.env ] && source ../.env; set +a; node scripts/phase25-retention-cohort-proof-probe.mjs'",
+    "probe:phase26:runtime-scale": "TRADEVETO_PHASE22_BASE_URL=https://tradeveto.com TRADEVETO_PHASE22_TIERS=25,50,100 TRADEVETO_PHASE22_DURATION_SECONDS=900 TRADEVETO_PHASE22_STREAM_TIERS=25,50,100 TRADEVETO_PHASE22_TIMEOUT_MS=8000 TRADEVETO_PHASE22_OUTPUT=../docs/ops/artifacts/phase-26-1-scale/phase26-authenticated-scale-probe.json node scripts/phase22-authenticated-scale-resilience-probe.mjs",
     "test": "node scripts/run-tests.mjs",
     "lint": "tsc --noEmit"
   },

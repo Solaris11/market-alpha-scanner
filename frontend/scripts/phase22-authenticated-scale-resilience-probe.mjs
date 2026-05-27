@@ -107,7 +107,7 @@ const sampledEndpoints = [
     category: "replay",
     method: "GET",
     path: "/api/history/replay?symbol=AMD",
-    p95BudgetMs: 1_200,
+    p95BudgetMs: 1_000,
     p99BudgetMs: 2_000,
     sampleCap: 3,
   },
@@ -117,7 +117,7 @@ const sampledEndpoints = [
     category: "developer-replay",
     method: "GET",
     path: "/api/v1/replay?symbol=AMD",
-    p95BudgetMs: 1_200,
+    p95BudgetMs: 1_000,
     p99BudgetMs: 2_000,
   },
   {
@@ -125,7 +125,7 @@ const sampledEndpoints = [
     category: "developer-macro",
     method: "GET",
     path: "/api/v1/macro",
-    p95BudgetMs: 1_200,
+    p95BudgetMs: 1_000,
     p99BudgetMs: 2_000,
   },
   {
@@ -133,7 +133,7 @@ const sampledEndpoints = [
     category: "developer-opportunities",
     method: "GET",
     path: "/api/v1/opportunities?limit=10",
-    p95BudgetMs: 1_200,
+    p95BudgetMs: 1_000,
     p99BudgetMs: 2_000,
   },
   {
@@ -148,7 +148,7 @@ const sampledEndpoints = [
     category: "developer-portfolio",
     method: "POST",
     path: "/api/v1/portfolio/scenario",
-    p95BudgetMs: 1_200,
+    p95BudgetMs: 1_000,
     p99BudgetMs: 2_000,
   },
   {
@@ -156,7 +156,7 @@ const sampledEndpoints = [
     category: "chart-symbol",
     method: "GET",
     path: "/api/symbol/AMD",
-    p95BudgetMs: 1_200,
+    p95BudgetMs: 1_000,
     p99BudgetMs: 2_000,
   },
   {

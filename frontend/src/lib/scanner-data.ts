@@ -1656,8 +1656,26 @@ export async function getMarketStructure() {
   return readJson(path.join(/*turbopackIgnore: true*/ scannerOutputDir(), "analysis", "market_structure.json"));
 }
 
+type SymbolDetailCacheEntry = {
+  expiresAt: number;
+  hasValue: boolean;
+  inflight?: Promise<SymbolDetail>;
+  staleUntil: number;
+  value: SymbolDetail | null;
+};
+
+const SYMBOL_DETAIL_CACHE_TTL_MS = 60_000;
+const SYMBOL_DETAIL_CACHE_STALE_MS = 15 * 60_000;
+const SYMBOL_DETAIL_CACHE_MAX = 240;
+const symbolDetailCache = new Map<string, SymbolDetailCacheEntry>();
+
 export async function getSymbolDetail(symbol: string, period = "all"): Promise<SymbolDetail> {
-  const cleaned = symbol.trim().toUpperCase();
+  const cleaned = cleanSymbolForDetail(symbol);
+  const normalizedPeriod = normalizeSymbolPeriod(period);
+  return readSymbolDetailCache(`${cleaned}|${normalizedPeriod}`, () => getSymbolDetailUncached(cleaned, normalizedPeriod));
+}
+
+async function getSymbolDetailUncached(cleaned: string, period: string): Promise<SymbolDetail> {
   const ranking = await getFullRanking();
   const row = ranking.find((item) => item.symbol === cleaned) ?? null;
   const dbSummary = await getDbSymbolSummary(cleaned);
@@ -1679,6 +1697,63 @@ export async function getSymbolDetail(symbol: string, period = "all"): Promise<S
     summary,
     history,
   };
+}
+
+async function readSymbolDetailCache(key: string, loader: () => Promise<SymbolDetail>): Promise<SymbolDetail> {
+  const now = Date.now();
+  const current = symbolDetailCache.get(key);
+  if (current?.hasValue && current.value && current.expiresAt > now) return current.value;
+  if (current?.hasValue && current.value && current.staleUntil > now) {
+    if (!current.inflight) {
+      current.inflight = refreshSymbolDetailCache(key, loader);
+    }
+    return current.value;
+  }
+  if (current?.inflight) return current.inflight;
+  const inflight = refreshSymbolDetailCache(key, loader);
+  symbolDetailCache.set(key, { expiresAt: now, hasValue: current?.hasValue ?? false, inflight, staleUntil: now + SYMBOL_DETAIL_CACHE_STALE_MS, value: current?.value ?? null });
+  return inflight;
+}
+
+async function refreshSymbolDetailCache(key: string, loader: () => Promise<SymbolDetail>): Promise<SymbolDetail> {
+  try {
+    const value = await loader();
+    const now = Date.now();
+    symbolDetailCache.set(key, {
+      expiresAt: now + SYMBOL_DETAIL_CACHE_TTL_MS,
+      hasValue: true,
+      staleUntil: now + SYMBOL_DETAIL_CACHE_STALE_MS,
+      value,
+    });
+    trimSymbolDetailCache();
+    return value;
+  } catch (error) {
+    const current = symbolDetailCache.get(key);
+    if (current?.hasValue && current.value && current.staleUntil > Date.now()) {
+      current.inflight = undefined;
+      return current.value;
+    }
+    symbolDetailCache.delete(key);
+    throw error;
+  }
+}
+
+function trimSymbolDetailCache(): void {
+  while (symbolDetailCache.size > SYMBOL_DETAIL_CACHE_MAX) {
+    const oldest = symbolDetailCache.keys().next().value;
+    if (!oldest) return;
+    symbolDetailCache.delete(oldest);
+  }
+}
+
+function cleanSymbolForDetail(symbol: string): string {
+  return symbol.trim().toUpperCase().replace(/[^A-Z0-9._-]/g, "").slice(0, 24);
+}
+
+function normalizeSymbolPeriod(period: string): string {
+  const normalized = period.trim().toLowerCase();
+  if (normalized === "all" || normalized === "2y" || normalized === "1y" || normalized === "6m" || normalized === "3m" || normalized === "1m") return normalized;
+  return "1y";
 }
 
 function periodCutoff(latestMs: number, period: string) {

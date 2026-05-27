@@ -47,7 +47,25 @@ type ReplayOutcomeRow = QueryResultRow & {
   symbol: string;
 };
 
+type DecisionReplayCacheEntry = {
+  expiresAt: number;
+  hasValue: boolean;
+  inflight?: Promise<DecisionReplayReport | null>;
+  staleUntil: number;
+  value: DecisionReplayReport | null;
+};
+
+const DECISION_REPLAY_CACHE_TTL_MS = 60_000;
+const DECISION_REPLAY_CACHE_STALE_MS = 15 * 60_000;
+const DECISION_REPLAY_CACHE_MAX = 120;
+const decisionReplayCache = new Map<string, DecisionReplayCacheEntry>();
+
 export async function getDecisionReplayReport(input: { symbol?: string | null; timestamp?: string | null }): Promise<DecisionReplayReport | null> {
+  const key = `${cleanSymbol(input.symbol)}|${timestampParam(input.timestamp) ?? ""}`;
+  return readDecisionReplayCache(key, () => getDecisionReplayReportUncached(input));
+}
+
+async function getDecisionReplayReportUncached(input: { symbol?: string | null; timestamp?: string | null }): Promise<DecisionReplayReport | null> {
   const requestedTimestamp = timestampParam(input.timestamp);
   const run = await findReplayRun(requestedTimestamp);
   if (!run) return null;
@@ -65,6 +83,53 @@ export async function getDecisionReplayReport(input: { symbol?: string | null; t
     rows: opportunityModel.rows,
     symbol: input.symbol,
   });
+}
+
+async function readDecisionReplayCache(key: string, loader: () => Promise<DecisionReplayReport | null>): Promise<DecisionReplayReport | null> {
+  const now = Date.now();
+  const current = decisionReplayCache.get(key);
+  if (current?.hasValue && current.expiresAt > now) return current.value;
+  if (current?.hasValue && current.staleUntil > now) {
+    if (!current.inflight) {
+      current.inflight = refreshDecisionReplayCache(key, loader);
+    }
+    return current.value;
+  }
+  if (current?.inflight) return current.inflight;
+  const inflight = refreshDecisionReplayCache(key, loader);
+  decisionReplayCache.set(key, { expiresAt: now, hasValue: current?.hasValue ?? false, inflight, staleUntil: now + DECISION_REPLAY_CACHE_STALE_MS, value: current?.value ?? null });
+  return inflight;
+}
+
+async function refreshDecisionReplayCache(key: string, loader: () => Promise<DecisionReplayReport | null>): Promise<DecisionReplayReport | null> {
+  try {
+    const value = await loader();
+    const now = Date.now();
+    decisionReplayCache.set(key, {
+      expiresAt: now + DECISION_REPLAY_CACHE_TTL_MS,
+      hasValue: true,
+      staleUntil: now + DECISION_REPLAY_CACHE_STALE_MS,
+      value,
+    });
+    trimDecisionReplayCache();
+    return value;
+  } catch (error) {
+    const current = decisionReplayCache.get(key);
+    if (current?.hasValue && current.staleUntil > Date.now()) {
+      current.inflight = undefined;
+      return current.value;
+    }
+    decisionReplayCache.delete(key);
+    throw error;
+  }
+}
+
+function trimDecisionReplayCache(): void {
+  while (decisionReplayCache.size > DECISION_REPLAY_CACHE_MAX) {
+    const oldest = decisionReplayCache.keys().next().value;
+    if (!oldest) return;
+    decisionReplayCache.delete(oldest);
+  }
 }
 
 async function findReplayRun(requestedTimestamp: string | null): Promise<ReplayRunRow | null> {
@@ -208,6 +273,10 @@ function timestampParam(value: string | null | undefined): string | null {
   if (!text) return null;
   const date = new Date(text);
   return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+}
+
+function cleanSymbol(value: string | null | undefined): string {
+  return String(value ?? "").trim().toUpperCase().replace(/[^A-Z0-9._-]/g, "").slice(0, 24);
 }
 
 function textOrUndefined(value: unknown): string | undefined {

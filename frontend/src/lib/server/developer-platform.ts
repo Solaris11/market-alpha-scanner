@@ -150,9 +150,38 @@ type DeveloperApiAccessCacheEntry = {
   expiresAt: number;
 };
 
-const DEVELOPER_API_ACCESS_CACHE_TTL_MS = 30_000;
+type DeveloperApiUsageInput = {
+  access: DeveloperApiAccess;
+  endpoint: string;
+  method: string;
+  status: number;
+};
+
+type DeveloperApiUsageRollup = {
+  apiKeyId: string;
+  endpoint: string;
+  lastStatus: number;
+  method: string;
+  requestCount: number;
+  statusBucket: ReturnType<typeof developerApiStatusBucket>;
+  userId: string;
+};
+
+type DeveloperApiUsageQueueState = {
+  flushing: boolean;
+  rollups: Map<string, DeveloperApiUsageRollup>;
+  timer: ReturnType<typeof setTimeout> | null;
+};
+
+const DEVELOPER_API_ACCESS_CACHE_TTL_MS = 60_000;
 const DEVELOPER_API_ACCESS_CACHE_MAX = 500;
+const DEVELOPER_API_USAGE_FLUSH_DELAY_MS = 1_000;
+const DEVELOPER_API_USAGE_MAX_GROUPS = 5_000;
 const developerApiAccessCache = new Map<string, DeveloperApiAccessCacheEntry>();
+
+const developerPlatformGlobal = globalThis as typeof globalThis & {
+  __tradevetoDeveloperApiUsageQueue?: DeveloperApiUsageQueueState;
+};
 
 export async function listDeveloperApiKeys(userId: string): Promise<DeveloperApiKeyRecord[]> {
   const result = await dbQuery<ApiKeyRow>(
@@ -261,10 +290,76 @@ function writeDeveloperApiAccessCache(keyHash: string, access: DeveloperApiAcces
   }
 }
 
-export async function recordDeveloperApiUsage(input: { access: DeveloperApiAccess; endpoint: string; method: string; status: number }): Promise<void> {
+export async function recordDeveloperApiUsage(input: DeveloperApiUsageInput): Promise<void> {
   const method = cleanText(input.method, 12).toUpperCase() || "GET";
   const endpoint = cleanText(input.endpoint, 160) || "unknown";
   const statusBucket = developerApiStatusBucket(input.status);
+  enqueueDeveloperApiUsage({
+    apiKeyId: input.access.keyId,
+    endpoint,
+    lastStatus: input.status,
+    method,
+    requestCount: 1,
+    statusBucket,
+    userId: input.access.userId,
+  });
+}
+
+function developerApiUsageQueue(): DeveloperApiUsageQueueState {
+  if (!developerPlatformGlobal.__tradevetoDeveloperApiUsageQueue) {
+    developerPlatformGlobal.__tradevetoDeveloperApiUsageQueue = {
+      flushing: false,
+      rollups: new Map(),
+      timer: null,
+    };
+  }
+  return developerPlatformGlobal.__tradevetoDeveloperApiUsageQueue;
+}
+
+function enqueueDeveloperApiUsage(input: DeveloperApiUsageRollup): void {
+  const queue = developerApiUsageQueue();
+  const key = `${input.userId}\u0000${input.apiKeyId}\u0000${input.endpoint}\u0000${input.method}\u0000${input.statusBucket}`;
+  const current = queue.rollups.get(key);
+  if (current) {
+    current.lastStatus = input.lastStatus;
+    current.requestCount += input.requestCount;
+  } else {
+    queue.rollups.set(key, { ...input });
+  }
+  while (queue.rollups.size > DEVELOPER_API_USAGE_MAX_GROUPS) {
+    const oldest = queue.rollups.keys().next().value;
+    if (!oldest) break;
+    queue.rollups.delete(oldest);
+  }
+  scheduleDeveloperApiUsageFlush(queue);
+}
+
+function scheduleDeveloperApiUsageFlush(queue: DeveloperApiUsageQueueState): void {
+  if (queue.timer || queue.flushing) return;
+  queue.timer = setTimeout(() => {
+    queue.timer = null;
+    flushDeveloperApiUsage().catch((error: unknown) => {
+      console.warn("[developer-api] usage rollup write failed", error instanceof Error ? error.message : error);
+    });
+  }, DEVELOPER_API_USAGE_FLUSH_DELAY_MS);
+  queue.timer.unref?.();
+}
+
+async function flushDeveloperApiUsage(): Promise<void> {
+  const queue = developerApiUsageQueue();
+  if (queue.flushing) return;
+  queue.flushing = true;
+  try {
+    const rollups = Array.from(queue.rollups.values());
+    queue.rollups.clear();
+    if (rollups.length) await writeDeveloperApiUsageRollups(rollups);
+  } finally {
+    queue.flushing = false;
+    if (queue.rollups.size > 0) scheduleDeveloperApiUsageFlush(queue);
+  }
+}
+
+async function writeDeveloperApiUsageRollups(rollups: DeveloperApiUsageRollup[]): Promise<void> {
   await dbQuery(
     `
       INSERT INTO developer_api_usage_hourly (
@@ -279,26 +374,42 @@ export async function recordDeveloperApiUsage(input: { access: DeveloperApiAcces
         last_used_at,
         updated_at
       )
-      VALUES (
+      SELECT
         date_trunc('hour', now()),
-        $1::uuid,
-        $2::uuid,
-        $3,
-        $4,
-        $5,
-        1,
-        $6,
+        user_id,
+        api_key_id,
+        endpoint,
+        method,
+        status_bucket,
+        request_count,
+        last_status,
         now(),
         now()
-      )
+      FROM unnest(
+        $1::uuid[],
+        $2::uuid[],
+        $3::text[],
+        $4::text[],
+        $5::text[],
+        $6::int[],
+        $7::int[]
+      ) AS usage(user_id, api_key_id, endpoint, method, status_bucket, request_count, last_status)
       ON CONFLICT (hour_start, user_id, api_key_id, endpoint, method, status_bucket)
       DO UPDATE SET
-        request_count = developer_api_usage_hourly.request_count + 1,
+        request_count = developer_api_usage_hourly.request_count + EXCLUDED.request_count,
         last_status = EXCLUDED.last_status,
         last_used_at = now(),
         updated_at = now()
     `,
-    [input.access.userId, input.access.keyId, endpoint, method, statusBucket, input.status],
+    [
+      rollups.map((rollup) => rollup.userId),
+      rollups.map((rollup) => rollup.apiKeyId),
+      rollups.map((rollup) => rollup.endpoint),
+      rollups.map((rollup) => rollup.method),
+      rollups.map((rollup) => rollup.statusBucket),
+      rollups.map((rollup) => rollup.requestCount),
+      rollups.map((rollup) => rollup.lastStatus),
+    ],
   );
 }
 

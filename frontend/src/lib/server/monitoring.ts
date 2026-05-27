@@ -64,6 +64,19 @@ const BACKUP_FAIL_MINUTES = 30 * 60;
 const REQUEST_METRIC_BATCH_SIZE = 500;
 const REQUEST_METRIC_FLUSH_DELAY_MS = 250;
 const REQUEST_METRIC_MAX_QUEUE = 5_000;
+const REQUEST_METRIC_HOT_ROUTES = new Set([
+  "/api/discovery",
+  "/api/live-intelligence",
+  "/api/v1/opportunities",
+  "/api/v1/portfolio/scenario",
+  "/api/v1/replay",
+  "/api/history/replay",
+  "/api/symbol/[symbol]",
+  "/api/paper/account",
+  "/api/paper/positions",
+]);
+const REQUEST_METRIC_RAW_SAMPLE_RATE = boundedSampleRate(process.env.TRADEVETO_REQUEST_METRIC_RAW_SAMPLE_RATE, 1);
+const REQUEST_METRIC_HOT_RAW_SAMPLE_RATE = boundedSampleRate(process.env.TRADEVETO_REQUEST_METRIC_HOT_RAW_SAMPLE_RATE, 0.2);
 
 const monitoringGlobal = globalThis as typeof globalThis & {
   __tradevetoRequestMetricQueue?: RequestMetricQueueState;
@@ -344,25 +357,37 @@ async function flushRequestMetrics(): Promise<void> {
 
 async function writeRequestMetricBatch(batch: NormalizedRequestMetric[]): Promise<void> {
   if (!batch.length) return;
+  const rawBatch = sampleRawRequestMetricBatch(batch);
   await Promise.all([
-    dbQuery(
+    rawBatch.length
+      ? dbQuery(
       `
         INSERT INTO request_metrics (route, method, status_code, latency_ms, user_id, created_at)
         SELECT route, method, status_code, latency_ms, user_id, now()
         FROM unnest($1::text[], $2::text[], $3::int[], $4::int[], $5::uuid[]) AS metric(route, method, status_code, latency_ms, user_id)
       `,
       [
-        batch.map((metric) => metric.route),
-        batch.map((metric) => metric.method),
-        batch.map((metric) => metric.statusCode),
-        batch.map((metric) => metric.latencyMs),
-        batch.map((metric) => metric.userId),
+        rawBatch.map((metric) => metric.route),
+        rawBatch.map((metric) => metric.method),
+        rawBatch.map((metric) => metric.statusCode),
+        rawBatch.map((metric) => metric.latencyMs),
+        rawBatch.map((metric) => metric.userId),
       ],
-    ),
+      )
+      : Promise.resolve(),
     writeRequestMetricRollupBatch(batch).catch((error: unknown) => {
       console.warn("[monitoring] request metric rollup write failed", error instanceof Error ? error.message : error);
     }),
   ]);
+}
+
+function sampleRawRequestMetricBatch(batch: NormalizedRequestMetric[]): NormalizedRequestMetric[] {
+  return batch.filter((metric) => {
+    const sampleRate = REQUEST_METRIC_HOT_ROUTES.has(metric.route) ? REQUEST_METRIC_HOT_RAW_SAMPLE_RATE : REQUEST_METRIC_RAW_SAMPLE_RATE;
+    if (sampleRate >= 1) return true;
+    if (sampleRate <= 0) return false;
+    return Math.random() < sampleRate;
+  });
 }
 
 async function writeRequestMetricRollupBatch(batch: NormalizedRequestMetric[]): Promise<void> {
@@ -470,4 +495,10 @@ function percentileFromSorted(values: number[], percentileValue: number): number
   if (!values.length) return 0;
   const index = Math.min(values.length - 1, Math.max(0, Math.ceil(values.length * percentileValue) - 1));
   return values[index] ?? 0;
+}
+
+function boundedSampleRate(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(0, Math.min(1, parsed));
 }

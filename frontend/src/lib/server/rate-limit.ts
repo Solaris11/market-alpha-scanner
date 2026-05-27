@@ -23,10 +23,25 @@ type RateLimitRow = QueryResultRow & {
   expires_at: string | Date;
 };
 
+type LocalRateLimitBucket = {
+  count: number;
+  expiresAtMs: number;
+  limit: number;
+  scope: string;
+};
+
+const LOCAL_RATE_LIMIT_CACHE_MAX = 5_000;
+const LOCAL_RATE_LIMIT_FAST_PATH_ENABLED = process.env.TRADEVETO_RATE_LIMIT_FAST_PATH !== "false";
+const localRateLimitBuckets = new Map<string, LocalRateLimitBucket>();
+
 export async function rateLimit(options: RateLimitOptions): Promise<RateLimitResult> {
   const safeLimit = Math.max(1, Math.trunc(options.limit));
   const safeWindowMs = Math.max(1_000, Math.trunc(options.windowMs));
   const keyHash = hashRateLimitKey(options.key);
+  const scope = cleanScope(options.scope);
+  const localResult = readLocalRateLimitBucket(keyHash, scope, safeLimit);
+  if (localResult) return localResult;
+
   const result = await dbQuery<RateLimitRow>(
     `
       INSERT INTO rate_limit_buckets (key_hash, scope, count, window_start, expires_at, updated_at)
@@ -49,12 +64,19 @@ export async function rateLimit(options: RateLimitOptions): Promise<RateLimitRes
         scope = EXCLUDED.scope
       RETURNING count, expires_at::text
     `,
-    [keyHash, cleanScope(options.scope), safeWindowMs],
+    [keyHash, scope, safeWindowMs],
   );
 
   const row = result.rows[0];
   const count = Number(row?.count ?? 0);
-  const retryAfter = retryAfterSeconds(row?.expires_at ?? null);
+  const expiresAtMs = expiresAtMilliseconds(row?.expires_at ?? null);
+  writeLocalRateLimitBucket(keyHash, {
+    count,
+    expiresAtMs,
+    limit: safeLimit,
+    scope,
+  });
+  const retryAfter = retryAfterSecondsFromMs(expiresAtMs);
   return {
     allowed: count <= safeLimit,
     count,
@@ -79,9 +101,43 @@ function cleanScope(value: string): string {
   return value.trim().slice(0, 120) || "unknown";
 }
 
-function retryAfterSeconds(value: string | Date | null): number {
-  if (!value) return 60;
+function readLocalRateLimitBucket(keyHash: string, scope: string, limit: number): RateLimitResult | null {
+  if (!LOCAL_RATE_LIMIT_FAST_PATH_ENABLED) return null;
+  const bucket = localRateLimitBuckets.get(keyHash);
+  const now = Date.now();
+  if (!bucket) return null;
+  if (bucket.expiresAtMs <= now || bucket.scope !== scope || bucket.limit !== limit) {
+    localRateLimitBuckets.delete(keyHash);
+    return null;
+  }
+
+  bucket.count += 1;
+  const allowed = bucket.count <= limit;
+  return {
+    allowed,
+    count: bucket.count,
+    retryAfter: retryAfterSecondsFromMs(bucket.expiresAtMs),
+  };
+}
+
+function writeLocalRateLimitBucket(keyHash: string, bucket: LocalRateLimitBucket): void {
+  if (!LOCAL_RATE_LIMIT_FAST_PATH_ENABLED) return;
+  localRateLimitBuckets.set(keyHash, bucket);
+  while (localRateLimitBuckets.size > LOCAL_RATE_LIMIT_CACHE_MAX) {
+    const oldest = localRateLimitBuckets.keys().next().value;
+    if (!oldest) return;
+    localRateLimitBuckets.delete(oldest);
+  }
+}
+
+function expiresAtMilliseconds(value: string | Date | null): number {
+  if (!value) return Date.now() + 60_000;
   const expiresAt = value instanceof Date ? value : new Date(value);
-  if (!Number.isFinite(expiresAt.getTime())) return 60;
-  return Math.max(1, Math.ceil((expiresAt.getTime() - Date.now()) / 1000));
+  if (!Number.isFinite(expiresAt.getTime())) return Date.now() + 60_000;
+  return expiresAt.getTime();
+}
+
+function retryAfterSecondsFromMs(expiresAtMs: number): number {
+  if (!Number.isFinite(expiresAtMs)) return 60;
+  return Math.max(1, Math.ceil((expiresAtMs - Date.now()) / 1000));
 }

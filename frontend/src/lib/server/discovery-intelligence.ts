@@ -52,10 +52,11 @@ type DiscoverySystemCache = {
   resolved?: IntelligenceDiscoverySystem;
 };
 
-const DISCOVERY_BASE_CACHE_TTL_MS = 5 * 60_000;
-const DISCOVERY_BASE_STALE_TTL_MS = 20 * 60_000;
-const DISCOVERY_SYSTEM_CACHE_TTL_MS = 180_000;
-const DISCOVERY_SYSTEM_STALE_TTL_MS = 10 * 60_000;
+const DISCOVERY_INITIAL_PACKET_ROW_LIMIT = 160;
+const DISCOVERY_BASE_CACHE_TTL_MS = 10 * 60_000;
+const DISCOVERY_BASE_STALE_TTL_MS = 30 * 60_000;
+const DISCOVERY_SYSTEM_CACHE_TTL_MS = 10 * 60_000;
+const DISCOVERY_SYSTEM_STALE_TTL_MS = 30 * 60_000;
 
 let discoveryBaseCache: DiscoveryBaseCache | null = null;
 const discoverySystemCache = new Map<string, DiscoverySystemCache>();
@@ -66,8 +67,8 @@ export async function loadIntelligenceDiscoverySystem(userId: string | null): Pr
 
 export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | null, options: { packetMode?: DiscoveryPacketMode } = {}): Promise<DiscoveryLoadResult> {
   const startedAt = Date.now();
-  const cacheKey = userId ? `user:${userId}` : "anonymous";
   const packetMode = options.packetMode ?? "full";
+  const cacheKey = userId ? `user:${userId}:${packetMode}` : `anonymous:${packetMode}`;
   const now = Date.now();
   const cachedSystem = discoverySystemCache.get(cacheKey);
   if (cachedSystem && cachedSystem.expiresAt > now) {
@@ -100,7 +101,7 @@ export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | n
   }
 
   const baseStatus: { value: "base-hit" | "base-miss" } = { value: discoveryBaseCache && discoveryBaseCache.expiresAt > now ? "base-hit" : "base-miss" };
-  const value = buildDiscoverySystem(userId);
+  const value = buildDiscoverySystem(userId, packetMode);
   const cacheEntry: DiscoverySystemCache = {
     expiresAt: now + DISCOVERY_SYSTEM_CACHE_TTL_MS,
     refreshedAt: now,
@@ -137,7 +138,8 @@ function refreshDiscoverySystemCache(cacheKey: string, userId: string | null): v
   const cached = discoverySystemCache.get(cacheKey);
   if (!cached || cached.refreshing) return;
 
-  const refresh = buildDiscoverySystem(userId);
+  const packetMode = cacheKey.endsWith(":initial") ? "initial" : "full";
+  const refresh = buildDiscoverySystem(userId, packetMode);
   cached.refreshing = refresh;
   refresh
     .then((system) => {
@@ -175,19 +177,29 @@ function serializedDiscoverySystem(cacheEntry: DiscoverySystemCache, system: Int
   return cacheEntry.serializedFull;
 }
 
-async function buildDiscoverySystem(userId: string | null): Promise<IntelligenceDiscoverySystem> {
+async function buildDiscoverySystem(userId: string | null, packetMode: DiscoveryPacketMode): Promise<IntelligenceDiscoverySystem> {
   const [base, watchlistSymbols, savedScans] = await Promise.all([
     loadDiscoveryBaseRows(),
     userId ? readUserWatchlist(userId).catch(() => []) : Promise.resolve([]),
     userId ? readUserSavedScans(userId).catch(() => []) : Promise.resolve([]),
   ]);
 
-  return buildIntelligenceDiscoverySystem({
+  const rows = packetMode === "initial" ? base.rows.slice(0, DISCOVERY_INITIAL_PACKET_ROW_LIMIT) : base.rows;
+  const system = buildIntelligenceDiscoverySystem({
     generatedAt: base.generatedAt,
-    rows: base.rows,
+    rows,
     savedScans,
     watchlistSymbols,
   });
+  if (packetMode !== "initial" || base.rows.length <= rows.length || system.limited) return system;
+
+  const baseSymbolSet = new Set(base.rows.map((row) => row.symbol.toUpperCase()));
+  return {
+    ...system,
+    summary: `Initial discovery packet loaded ${rows.length.toLocaleString()} of ${base.rows.length.toLocaleString()} validated symbols. Full-universe rows hydrate progressively when the workspace is open.`,
+    universeCount: base.rows.length,
+    watchlistCount: watchlistSymbols.filter((symbol) => baseSymbolSet.has(symbol.trim().toUpperCase())).length,
+  };
 }
 
 async function loadDiscoveryBaseRows(): Promise<DiscoveryBaseRows> {
