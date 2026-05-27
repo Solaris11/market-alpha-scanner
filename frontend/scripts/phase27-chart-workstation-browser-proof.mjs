@@ -84,11 +84,13 @@ async function runWorkstationProof(page) {
   const screenshots = [];
   const startedRestore = performance.now();
   await page.goto(`${baseUrl}/symbol/AMD`, { waitUntil: "domcontentloaded" });
-  await page.waitForLoadState("networkidle", { timeout: waitTimeoutMs }).catch(() => undefined);
   await dismissRiskAcknowledgement(page);
   const chartRoot = page.locator("[data-chart-symbol='AMD'][data-chart-workspace-loaded='true']").first();
   await chartRoot.waitFor({ state: "visible" });
   timings.workspaceRestoreMs = elapsed(startedRestore);
+  const startedNetworkIdle = performance.now();
+  await page.waitForLoadState("networkidle", { timeout: waitTimeoutMs }).catch(() => undefined);
+  timings.backgroundNetworkIdleMs = elapsed(startedNetworkIdle);
 
   const startedFullscreen = performance.now();
   await page.locator("[data-chart-expand-trigger='AMD']").first().click();
