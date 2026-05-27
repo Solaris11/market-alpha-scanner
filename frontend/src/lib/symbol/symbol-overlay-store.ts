@@ -20,6 +20,8 @@ type OpenOptions = {
 };
 
 type CloseOptions = {
+  restoreFocus?: boolean;
+  restoreScroll?: boolean;
   skipHistoryBack?: boolean;
 };
 
@@ -36,6 +38,7 @@ const CLOSED_STATE: SymbolOverlayState = {
 const listeners = new Set<() => void>();
 let state: SymbolOverlayState = CLOSED_STATE;
 let installed = false;
+let restoreScrollOnNextClose = true;
 let suppressNextPopState = false;
 
 export function getSymbolOverlayState(): SymbolOverlayState {
@@ -103,13 +106,14 @@ export function replaceSymbolCard(symbol: string, sourceContext?: SymbolCardSour
 export function closeSymbolCard(options: CloseOptions = {}): void {
   if (!state.open) return;
   const previous = state;
+  restoreScrollOnNextClose = options.restoreScroll !== false;
   state = CLOSED_STATE;
   emitSymbolOverlayChange();
 
   if (typeof window !== "undefined") {
     const restoreScrollAndFocus = (): void => {
-      if (previous.scrollY >= 0) window.scrollTo({ behavior: "auto", top: previous.scrollY });
-      previous.trigger?.focus({ preventScroll: true });
+      if (options.restoreScroll !== false && previous.scrollY >= 0) window.scrollTo({ behavior: "auto", top: previous.scrollY });
+      if (options.restoreFocus !== false) previous.trigger?.focus({ preventScroll: true });
     };
     if (!options.skipHistoryBack && previous.historyPushed && currentHistoryStateIsSymbolCard()) {
       const previousScrollRestoration = window.history.scrollRestoration;
@@ -122,9 +126,20 @@ export function closeSymbolCard(options: CloseOptions = {}): void {
       }, 80);
       window.setTimeout(restoreScrollAndFocus, 200);
     } else {
+      if (options.skipHistoryBack && previous.historyPushed && currentHistoryStateIsSymbolCard()) {
+        window.history.replaceState(symbolCardStrippedHistoryState(window.history.state), "", window.location.href);
+      }
       window.requestAnimationFrame(restoreScrollAndFocus);
     }
   }
+}
+
+export function shouldRestoreSymbolOverlayScrollOnClose(): boolean {
+  return restoreScrollOnNextClose;
+}
+
+export function resetSymbolOverlayCloseIntent(): void {
+  restoreScrollOnNextClose = true;
 }
 
 export function installGlobalSymbolOverlayListeners(): void {
@@ -200,4 +215,11 @@ function historyStateRecord(value: unknown): Record<string, unknown> | null {
 function currentHistoryStateIsSymbolCard(): boolean {
   if (typeof window === "undefined") return false;
   return historyStateRecord(window.history.state)?.tradevetoSymbolCard === true;
+}
+
+function symbolCardStrippedHistoryState(value: unknown): Record<string, unknown> {
+  const record = { ...(historyStateRecord(value) ?? {}) };
+  delete record.tradevetoSymbolCard;
+  delete record.tradevetoSymbol;
+  return record;
 }

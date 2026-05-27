@@ -8,6 +8,8 @@ import { installMobileViewportCssVars } from "@/lib/client/mobile-viewport";
 import {
   closeSymbolCard,
   installGlobalSymbolOverlayListeners,
+  resetSymbolOverlayCloseIntent,
+  shouldRestoreSymbolOverlayScrollOnClose,
   useSymbolOverlayState,
 } from "@/lib/symbol/symbol-overlay-store";
 import {
@@ -86,7 +88,7 @@ export function SymbolIntelligenceOverlay() {
   useSymbolLayoutEffect(() => {
     if (!overlay.open) return undefined;
     const cleanupViewport = installMobileViewportCssVars();
-    const unlock = lockMobileBodyScroll(overlay.scrollY);
+    const unlock = lockMobileBodyScroll(overlay.scrollY, { restoreScroll: shouldRestoreSymbolOverlayScrollOnClose });
 
     function onKeyDown(event: KeyboardEvent): void {
       if (event.key === "Escape") {
@@ -106,6 +108,7 @@ export function SymbolIntelligenceOverlay() {
       window.clearTimeout(focusTimer);
       window.removeEventListener("keydown", onKeyDown);
       unlock();
+      resetSymbolOverlayCloseIntent();
       cleanupViewport();
     };
   }, [overlay.open, overlay.scrollY]);

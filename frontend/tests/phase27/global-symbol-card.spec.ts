@@ -62,9 +62,33 @@ test("Open full symbol page navigates intentionally from the card", async ({ pag
   await page.waitForLoadState("networkidle").catch(() => undefined);
   await installInjectedSymbolSurface(page, "/terminal");
   await page.getByTestId("phase27-symbol-link").click();
-  await expect(page.locator("[data-symbol-intelligence-card='true']")).toBeVisible();
+  const card = page.locator("[data-symbol-intelligence-card='true']");
+  await expect(card).toBeVisible();
   await page.getByRole("link", { name: /open full symbol page/i }).click();
+  await expect(card).toBeHidden();
   await expect(page).toHaveURL(/\/symbol\/AMD$/);
+});
+
+([
+  { label: "Create alert", target: "/alerts?symbol=AMD&source=symbol-card" },
+  { label: "Full chart", target: "/symbol/AMD#chart" },
+  { label: "History", target: "/history?symbol=AMD" },
+  { label: "Performance", target: "/performance#history" },
+  { label: "Compare", target: "/discover?compare=AMD" },
+] as const).forEach((action) => {
+  test(`${action.label} action closes card and navigates intentionally`, async ({ page }) => {
+    await page.goto("/terminal", { waitUntil: "domcontentloaded" });
+    await page.waitForLoadState("networkidle").catch(() => undefined);
+    await installInjectedSymbolSurface(page, "/terminal");
+    await page.getByTestId("phase27-symbol-link").click();
+    const card = page.locator("[data-symbol-intelligence-card='true']");
+    await expect(card).toBeVisible();
+
+    await card.getByRole("link", { exact: true, name: action.label }).click();
+
+    await expect(card).toBeHidden();
+    await expect.poll(async () => routeWithSearchAndHash(page), { timeout: 10_000 }).toBe(action.target);
+  });
 });
 
 test("mobile symbol card has visible close control and no bottom-nav obstruction", async ({ page }, testInfo) => {
@@ -94,6 +118,10 @@ async function installInjectedSymbolSurface(page: Page, route: string): Promise<
 
 async function routeState(page: Page): Promise<{ pathname: string; scrollY: number }> {
   return page.evaluate(() => ({ pathname: window.location.pathname, scrollY: Math.round(window.scrollY) }));
+}
+
+async function routeWithSearchAndHash(page: Page): Promise<string> {
+  return page.evaluate(() => `${window.location.pathname}${window.location.search}${window.location.hash}`);
 }
 
 async function expectRouteStateStable(page: Page, before: { pathname: string; scrollY: number }): Promise<void> {

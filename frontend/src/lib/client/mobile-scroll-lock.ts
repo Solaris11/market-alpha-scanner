@@ -33,7 +33,11 @@ export type MobileBodyScrollLockStyles = {
   };
 };
 
-export function lockMobileBodyScroll(scrollY = getCurrentScrollY()): () => void {
+type BodyScrollLockOptions = {
+  restoreScroll?: boolean | (() => boolean);
+};
+
+export function lockMobileBodyScroll(scrollY = getCurrentScrollY(), options: BodyScrollLockOptions = {}): () => void {
   if (typeof window === "undefined" || typeof document === "undefined") return () => undefined;
 
   const body = document.body;
@@ -84,7 +88,7 @@ export function lockMobileBodyScroll(scrollY = getCurrentScrollY()): () => void 
       window.clearInterval(stabilizationInterval);
       stabilizationTimers.forEach((timeout) => window.clearTimeout(timeout));
       document.removeEventListener("touchmove", preventBackgroundTouchMove);
-      restoreMobileBodyScroll(snapshot);
+      restoreMobileBodyScroll(snapshot, resolveRestoreScroll(options.restoreScroll));
     };
   }
 
@@ -97,7 +101,7 @@ export function lockMobileBodyScroll(scrollY = getCurrentScrollY()): () => void 
   root.style.overflow = lockStyles.root.overflow;
   root.style.overscrollBehavior = lockStyles.root.overscrollBehavior;
 
-  return () => restoreMobileBodyScroll(snapshot);
+  return () => restoreMobileBodyScroll(snapshot, resolveRestoreScroll(options.restoreScroll));
 }
 
 export function deriveMobileBodyScrollLockStyles(scrollY: number, scrollbarWidth: number): MobileBodyScrollLockStyles {
@@ -121,7 +125,7 @@ export function deriveMobileBodyScrollLockStyles(scrollY: number, scrollbarWidth
   };
 }
 
-function restoreMobileBodyScroll(snapshot: BodyScrollLockSnapshot): void {
+function restoreMobileBodyScroll(snapshot: BodyScrollLockSnapshot, restoreScroll: boolean): void {
   const body = document.body;
   const root = document.documentElement;
   const targetScrollY = Number.isFinite(snapshot.scrollY) ? Math.max(0, snapshot.scrollY) : 0;
@@ -142,6 +146,11 @@ function restoreMobileBodyScroll(snapshot: BodyScrollLockSnapshot): void {
   root.style.overflow = snapshot.htmlOverflow;
   root.style.overscrollBehavior = snapshot.htmlOverscroll;
   root.style.touchAction = snapshot.htmlTouchAction;
+  if (!restoreScroll) {
+    root.style.scrollBehavior = previousRootScrollBehavior;
+    body.style.scrollBehavior = previousBodyScrollBehavior;
+    return;
+  }
   forceScrollY(targetScrollY);
   window.requestAnimationFrame(() => forceScrollY(targetScrollY));
   window.requestAnimationFrame(() => {
@@ -154,6 +163,10 @@ function restoreMobileBodyScroll(snapshot: BodyScrollLockSnapshot): void {
     root.style.scrollBehavior = previousRootScrollBehavior;
     body.style.scrollBehavior = previousBodyScrollBehavior;
   }, 220);
+}
+
+function resolveRestoreScroll(restoreScroll: BodyScrollLockOptions["restoreScroll"]): boolean {
+  return typeof restoreScroll === "function" ? restoreScroll() : restoreScroll !== false;
 }
 
 function getCurrentScrollY(): number {

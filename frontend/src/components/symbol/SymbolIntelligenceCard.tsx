@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useRouter } from "next/navigation";
+import type { MouseEvent, ReactNode } from "react";
 import { AlertCircle, Bell, ExternalLink, GitCompare, History, LineChart, ShieldAlert, Star } from "lucide-react";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
+import { closeSymbolCard } from "@/lib/symbol/symbol-overlay-store";
 import type { SymbolChartPoint, SymbolIntelligenceCardModel, SymbolSourceField } from "@/lib/symbol/symbol-intelligence-card";
 
 type SymbolIntelligenceCardProps = {
@@ -73,19 +75,12 @@ export function SymbolIntelligenceCard({ error = "", loading = false, model }: S
               {watched ? "Watching" : "Watchlist"}
             </button>
             <ActionLink href={`/alerts?symbol=${encodeURIComponent(model.symbol)}&source=symbol-card`} icon={<Bell className="h-4 w-4" />} label="Create alert" />
-            <ActionLink href={`/symbol/${encodeURIComponent(model.symbol)}#chart`} icon={<LineChart className="h-4 w-4" />} label="Full chart" pageNavigation />
+            <ActionLink href={`/symbol/${encodeURIComponent(model.symbol)}#chart`} icon={<LineChart className="h-4 w-4" />} label="Full chart" />
             <ActionLink href={`/history?symbol=${encodeURIComponent(model.symbol)}`} icon={<History className="h-4 w-4" />} label="History" />
             <ActionLink href="/performance#history" icon={<ShieldAlert className="h-4 w-4" />} label="Performance" />
             <ActionLink href={`/discover?compare=${encodeURIComponent(model.symbol)}`} icon={<GitCompare className="h-4 w-4" />} label="Compare" />
           </div>
-          <Link
-            className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-cyan-300/35 bg-cyan-300/10 px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-cyan-100 transition hover:border-cyan-200/70"
-            data-symbol-navigation="page"
-            href={`/symbol/${encodeURIComponent(model.symbol)}`}
-          >
-            Open full symbol page
-            <ExternalLink className="h-4 w-4" />
-          </Link>
+          <ActionLink className="mt-3 w-full border-cyan-300/35 bg-cyan-300/10 text-cyan-100 hover:border-cyan-200/70" href={`/symbol/${encodeURIComponent(model.symbol)}`} icon={<ExternalLink className="h-4 w-4" />} label="Open full symbol page" />
         </div>
       </section>
 
@@ -164,17 +159,27 @@ export function SymbolIntelligenceCard({ error = "", loading = false, model }: S
   );
 }
 
-function ActionLink({ href, icon, label, pageNavigation = false }: { href: string; icon: ReactNode; label: string; pageNavigation?: boolean }) {
+function ActionLink({ className = "", href, icon, label }: { className?: string; href: string; icon: ReactNode; label: string }) {
+  const router = useRouter();
+
   return (
     <Link
-      className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100"
-      data-symbol-navigation={pageNavigation ? "page" : undefined}
+      className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100 ${className}`}
+      data-symbol-navigation="page"
       href={href}
+      onClick={(event) => handleCardNavigation(event, href, (target) => router.push(target))}
     >
       {icon}
       {label}
     </Link>
   );
+}
+
+function handleCardNavigation(event: MouseEvent<HTMLAnchorElement>, href: string, navigate: (href: string) => void): void {
+  if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+  event.preventDefault();
+  closeSymbolCard({ restoreFocus: false, restoreScroll: false, skipHistoryBack: true });
+  window.setTimeout(() => navigate(href), 0);
 }
 
 function HeroMetric({ label, tone = "cyan", value }: { label: string; tone?: "amber" | "cyan" | "rose"; value: string }) {
