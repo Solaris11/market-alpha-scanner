@@ -4,6 +4,7 @@ import { BrainCircuit, Database, GitCompareArrows, History, Layers3, ShieldCheck
 import type { ReactNode } from "react";
 import type { ScoreFactor, VisualTone } from "@/components/visual/MiniVisuals";
 import { MarketingShell } from "@/components/marketing/MarketingShell";
+import { SymbolKnowledgeGraphPanel } from "@/components/symbol/SymbolKnowledgeGraphPanel";
 import { marketingMetadata } from "@/lib/marketing-seo";
 import { getFullRanking } from "@/lib/scanner-data";
 import { getMarketMemoryForSignal } from "@/lib/server/market-memory";
@@ -16,6 +17,7 @@ import {
   type MarketMemoryAnalog,
   type MarketMemorySummary,
 } from "@/lib/trading/market-memory";
+import { buildSymbolKnowledgeGraphModel } from "@/lib/trading/symbol-knowledge-graph";
 import { humanizeLabel } from "@/lib/ui/labels";
 import type { RankingRow } from "@/lib/types";
 
@@ -106,6 +108,14 @@ export default async function MarketMemoryPage() {
   const clusters = buildMemoryClusters(model);
   const heatCells = buildMemoryHeatCells(model);
   const timelineItems = buildMemoryTimelineItems(model);
+  const knowledgeModels = model.rows.slice(0, 3).map((item) =>
+    buildSymbolKnowledgeGraphModel({
+      contextRows: model.rows.map((rowItem) => rowItem.row),
+      generatedAt: model.generatedAt,
+      marketMemory: item.memory,
+      row: item.row,
+    }),
+  );
 
   return (
     <MarketingShell>
@@ -194,6 +204,23 @@ export default async function MarketMemoryPage() {
               title="Historical Analog Timeline"
             />
           </div>
+
+          {knowledgeModels.length ? (
+            <section className="space-y-4">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-[0.22em] text-violet-300">Knowledge graph samples</div>
+                <h2 className="mt-2 text-3xl font-black tracking-tight text-white">Living Market Memory Links</h2>
+                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-400">
+                  These graph samples connect current scanner rows to sector, sympathy, macro, event, and replay evidence without fabricating missing inverse links or event domains.
+                </p>
+              </div>
+              <div className="grid gap-4">
+                {knowledgeModels.map((knowledgeModel) => (
+                  <SymbolKnowledgeGraphPanel key={knowledgeModel.symbol} model={knowledgeModel} />
+                ))}
+              </div>
+            </section>
+          ) : null}
 
           <section className="grid gap-4 lg:grid-cols-2">
             {model.rows.slice(0, MEMORY_CARD_LIMIT).map((item) => (

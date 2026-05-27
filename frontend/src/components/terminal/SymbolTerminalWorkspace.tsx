@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { Activity, Brain, LineChart, ShieldAlert, Target } from "lucide-react";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { SymbolDeepResearchCockpit } from "@/components/research/SymbolDeepResearchCockpit";
+import { SymbolKnowledgeGraphPanel } from "@/components/symbol/SymbolKnowledgeGraphPanel";
 import { IntelligenceGraphPanel } from "@/components/visual/IntelligenceGraphPanel";
 import {
   CinematicClusterMosaic,
@@ -35,6 +36,7 @@ import type { RiskPortfolioPosition } from "@/lib/trading/risk-veto";
 import type { ScenarioIntelligenceSystem } from "@/lib/trading/scenario-intelligence";
 import type { ShockMovePattern } from "@/lib/trading/shock-move";
 import type { StrategyIntelligenceSystem } from "@/lib/trading/strategy-intelligence";
+import { buildSymbolKnowledgeGraphModel } from "@/lib/trading/symbol-knowledge-graph";
 import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution";
 import { buildSymbolResearchModel } from "@/lib/trading/market-research";
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
@@ -139,6 +141,10 @@ export function SymbolTerminalWorkspace({
     () => buildSymbolIntelligenceGraph({ contextRows, macroContext, marketMemory, row, shockPattern: shockPattern ?? null }),
     [contextRows, macroContext, marketMemory, row, shockPattern],
   );
+  const knowledgeGraph = useMemo(
+    () => buildSymbolKnowledgeGraphModel({ contextRows, history, marketMemory, priceSeries, row }),
+    [contextRows, history, marketMemory, priceSeries, row],
+  );
   const cognitionLayer = useMemo(
     () => institutionalOpportunity
       ? buildAICognitionLayer({
@@ -219,6 +225,7 @@ export function SymbolTerminalWorkspace({
       <div id="intelligence">
         <IntelligenceGraphPanel graph={relationshipGraph} />
       </div>
+      <SymbolKnowledgeGraphPanel model={knowledgeGraph} />
       {cognitionLayer ? <AICognitionLayerPanel compact model={cognitionLayer} /> : null}
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
