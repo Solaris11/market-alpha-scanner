@@ -4,7 +4,7 @@ Date: 2026-05-27
 
 ## Verdict
 
-Pending production deployment proof.
+Accomplished.
 
 ## Issue Summary
 
@@ -102,11 +102,47 @@ Dev-mode notes:
 
 ## Production Deployment Proof
 
-Pending.
+Production host:
+
+- `sre@100.68.155.121`
+- `/opt/apps/market-alpha-scanner/app`
+
+Deployment:
+
+- Pulled `main` with fast-forward from `a39be43` to `d54f4de9`.
+- Rebuilt and restarted `market-alpha-frontend` and `market-alpha-frontend-hot-api`:
+  - `docker compose --env-file .env up -d --build market-alpha-frontend market-alpha-frontend-hot-api`
+- Both containers reported healthy after startup warmup.
+- Production git revision after deploy: `d54f4de9ad87870532c4ef577ae1db32d2da4070`
+
+Note:
+
+- The first immediate health request returned `502` while the rebuilt containers were still starting. A warmup retry succeeded after both containers reported healthy.
 
 ## Production Smoke
 
-Pending.
+Passed:
+
+- `/api/health`: `ok=true`, service `tradeveto-frontend`, status `ok`
+- `/api/health/deep`: `ok=true`; database `ok`; scanner fresh; backup `ok`
+- `/terminal`: 200
+- `/discover`: 200
+- `/scanner`: 200
+- `/symbol/EOG`: 200
+- `/symbol/AMD`: 200
+- `/history`: 200
+- `/performance`: 200
+- `/alerts`: 200
+- `/feed`: 200
+- `/macro`: 200
+- `/market-memory`: 200
+
+Production browser proof:
+
+- Command: `TRADEVETO_PHASE27_BASE_URL=https://tradeveto.com npx playwright test --config=playwright.phase27.config.ts --workers=1`
+- Result: 9 passed, 1 skipped intentionally because the mobile geometry test only runs in the mobile project.
+- Routes covered by the production focused browser proof: `/terminal`, `/alerts`, `/symbol/AMD`
+- Assertions covered: open without route change, close button, Escape close, backdrop close, browser-back closes card first, scroll restoration, intentional full-symbol-page navigation, mobile close visibility, mobile horizontal overflow guard, and mobile viewport geometry.
 
 ## Remaining Blockers
 
