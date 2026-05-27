@@ -202,7 +202,7 @@ async function runChartProof(page, setup) {
     await page.goto(`${baseUrl}/symbol/AMD`, { waitUntil: "domcontentloaded" });
     await page.waitForLoadState("networkidle", { timeout: waitTimeoutMs }).catch(() => undefined);
     await dismissRiskAcknowledgement(page);
-    await page.locator("[data-chart-symbol='AMD'][data-chart-workspace-loaded='true']").waitFor({ state: "visible" });
+    await page.locator("[data-chart-symbol='AMD'][data-chart-workspace-loaded='true']").first().waitFor({ state: "visible" });
   }));
   screenshots.push(await capture(page, "symbol-amd.png"));
 
