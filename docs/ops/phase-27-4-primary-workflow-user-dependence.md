@@ -4,7 +4,7 @@ Date: 2026-05-27
 
 ## Verdict
 
-Status: Strong partial pending production deployment and refreshed retention proof.
+Status: Strong partial accomplished.
 
 Full accomplishment is not claimed from same-day implementation. The requested retention gates require elapsed production cohorts:
 
@@ -87,15 +87,73 @@ Full validation:
 
 Production deployment:
 
-- Pending.
+- Local commit: `9bc75b1f` - `Add primary workflow user dependence loops`.
+- Pushed to `origin/main`.
+- Production pull fast-forwarded to `9bc75b1`.
+- Rebuilt and restarted:
+  - `market-alpha-frontend`
+  - `market-alpha-frontend-hot-api`
+- Both containers reported healthy after deploy.
 
 Production smoke:
 
-- Pending.
+- `/api/health` - 200.
+- `/api/health/deep` - 200.
+- `/terminal` - 200.
+- `/discover` - 200.
+- `/scanner` - 200.
+- `/paper` - 200.
+- `/strategy-labs` - 200.
+- `/market-memory` - 200.
+- `/symbol/AMD` - 200.
+- `/alerts` - 200.
+- `/feed` - 200.
+- `/macro` - 200.
 
 Retention proof:
 
-- Pending refreshed production probe.
+- Production retention proof probe ran from inside `market-alpha-frontend`.
+- Artifact: `docs/ops/artifacts/phase-27-4-primary-workflow-user-dependence/retention-proof.json`.
+- `/api/admin/analytics?range=90d` returned 200 in 460ms.
+- Probe did not create cohort events, seed retention activity, backfill outcomes, or fabricate D2/D7 success.
+- Overall status: `strong_partial`.
+
+## Refreshed Production Cohort Evidence
+
+Founding-member cohort:
+
+| Metric | Evidence | Target | Result |
+| --- | ---: | ---: | --- |
+| Founding actors | 4 | n/a | sample exists |
+| Founding D2 retention | 0 / 1 = 0% | > 10% | failed |
+| Founding D7 retention | 0 / 1 = 0% | > 6% | failed |
+| Founding 2+ active-day retention | 0 / 4 = 0% | > 15% | failed |
+| Alert-return conversion | no alert-trigger population | > 12% | failed |
+| Notification useful ratio | no usefulness sample | > 55% | failed |
+
+Aggregate 90-day evidence:
+
+| Metric | Evidence |
+| --- | ---: |
+| Total active-day users | 935 |
+| D1 retention | 7 / 914 = 0.77% |
+| D2 retention | 3 / 911 = 0.33% |
+| D7 retention | 1 / 679 = 0.15% |
+| 2+ active-day retention | 9 / 935 = 0.96% |
+
+Workflow-return counts from the production read:
+
+| Metric | Count |
+| --- | ---: |
+| Morning workflow starts | 22 |
+| Morning workflow completions | 0 |
+| Return sessions | 6 |
+| Personalized returns | 8 |
+| Watchlist returns | 6 |
+| Chart returns | 1 |
+| Scanner returns | 0 |
+| Alert returns | 0 |
+| Workflow dropoffs | 2 |
 
 ## Retention Evidence Boundary
 
@@ -106,7 +164,7 @@ Prior production evidence remains below target:
 - Founding D2 retention: 0%.
 - Founding D7 retention: 0%.
 - Founding 2+ active-day retention: 0%.
-- Aggregate D2/D7 retention remains below 1% in the last documented production read.
+- Aggregate D2/D7 retention remains below 1%.
 
 ## Remaining Blockers
 
@@ -118,3 +176,7 @@ Prior production evidence remains below target:
 ## Final Certification Rule
 
 Strong partial is the maximum defensible status after implementation and deployment unless refreshed production cohorts already meet every target.
+
+Final certification status:
+
+`TRADEVETO PRIMARY WORKFLOW + USER DEPENDENCE STRONG PARTIAL ACCOMPLISHED`
