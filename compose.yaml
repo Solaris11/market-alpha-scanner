@@ -144,7 +144,7 @@ services:
     networks:
       - market-alpha-scanner-private
 
-  market-alpha-frontend:
+  market-alpha-frontend: &frontend-service
     build:
       context: .
       dockerfile: frontend/Dockerfile
@@ -257,6 +257,10 @@ services:
     networks:
       - market-alpha-scanner-private
       - public-edge
+
+  market-alpha-frontend-hot-api:
+    <<: *frontend-service
+    container_name: market-alpha-frontend-hot-api
 
 networks:
   market-alpha-scanner-private:

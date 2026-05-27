@@ -1664,8 +1664,8 @@ type SymbolDetailCacheEntry = {
   value: SymbolDetail | null;
 };
 
-const SYMBOL_DETAIL_CACHE_TTL_MS = 60_000;
-const SYMBOL_DETAIL_CACHE_STALE_MS = 15 * 60_000;
+const SYMBOL_DETAIL_CACHE_TTL_MS = 20 * 60_000;
+const SYMBOL_DETAIL_CACHE_STALE_MS = 60 * 60_000;
 const SYMBOL_DETAIL_CACHE_MAX = 240;
 const symbolDetailCache = new Map<string, SymbolDetailCacheEntry>();
 

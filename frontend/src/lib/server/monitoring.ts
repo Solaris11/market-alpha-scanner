@@ -77,6 +77,7 @@ const REQUEST_METRIC_HOT_ROUTES = new Set([
 ]);
 const REQUEST_METRIC_RAW_SAMPLE_RATE = boundedSampleRate(process.env.TRADEVETO_REQUEST_METRIC_RAW_SAMPLE_RATE, 1);
 const REQUEST_METRIC_HOT_RAW_SAMPLE_RATE = boundedSampleRate(process.env.TRADEVETO_REQUEST_METRIC_HOT_RAW_SAMPLE_RATE, 0.2);
+const REQUEST_METRIC_HOT_QUEUE_SAMPLE_RATE = boundedSampleRate(process.env.TRADEVETO_REQUEST_METRIC_HOT_QUEUE_SAMPLE_RATE, 0.25);
 
 const monitoringGlobal = globalThis as typeof globalThis & {
   __tradevetoRequestMetricQueue?: RequestMetricQueueState;
@@ -320,6 +321,7 @@ function requestMetricQueue(): RequestMetricQueueState {
 }
 
 function enqueueRequestMetric(metric: NormalizedRequestMetric): void {
+  if (!shouldQueueRequestMetric(metric)) return;
   const queue = requestMetricQueue();
   if (queue.metrics.length >= REQUEST_METRIC_MAX_QUEUE) {
     queue.metrics.shift();
@@ -327,6 +329,13 @@ function enqueueRequestMetric(metric: NormalizedRequestMetric): void {
   }
   queue.metrics.push(metric);
   scheduleRequestMetricFlush(queue);
+}
+
+function shouldQueueRequestMetric(metric: NormalizedRequestMetric): boolean {
+  if (!REQUEST_METRIC_HOT_ROUTES.has(metric.route)) return true;
+  if (REQUEST_METRIC_HOT_QUEUE_SAMPLE_RATE >= 1) return true;
+  if (REQUEST_METRIC_HOT_QUEUE_SAMPLE_RATE <= 0) return false;
+  return Math.random() < REQUEST_METRIC_HOT_QUEUE_SAMPLE_RATE;
 }
 
 function scheduleRequestMetricFlush(queue: RequestMetricQueueState): void {
