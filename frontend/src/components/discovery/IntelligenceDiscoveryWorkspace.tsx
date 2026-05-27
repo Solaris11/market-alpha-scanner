@@ -64,6 +64,18 @@ type ScannerMessage = {
   tone: "amber" | "cyan" | "emerald" | "rose";
 };
 
+type BrowserWorkflowMetric = {
+  id: string;
+  latencyMs: number;
+  recordedAt: string;
+};
+
+declare global {
+  interface Window {
+    __tradevetoBrowserWorkflowMetrics?: BrowserWorkflowMetric[];
+  }
+}
+
 type SavedScanMutationResponse = {
   message?: string;
   ok?: boolean;
@@ -215,6 +227,22 @@ export function IntelligenceDiscoveryWorkspace({
   }));
   const selectedFilter = system.quickFilters.find((item) => item.key === filter);
   const activeSymbol = visibleSymbols[Math.min(activeIndex, Math.max(visibleSymbols.length - 1, 0))] ?? null;
+
+  function recordScannerWorkflow(id: string, startedAt: number): void {
+    recordBrowserWorkflowMetric(`scanner:${id}`, startedAt);
+  }
+
+  function runTimedScannerWorkflow(id: string, operation: () => void): void {
+    const startedAt = browserWorkflowNow();
+    operation();
+    recordScannerWorkflow(id, startedAt);
+  }
+
+  function updateQueryWithTiming(value: string): void {
+    const startedAt = browserWorkflowNow();
+    setQuery(value);
+    recordScannerWorkflow("filter", startedAt);
+  }
 
   useEffect(() => {
     setScannerPresets(system.scannerPresets);
@@ -686,7 +714,7 @@ export function IntelligenceDiscoveryWorkspace({
         mode={mode}
         query={query}
         selectedFilter={selectedFilter}
-        setQuery={setQuery}
+                setQuery={updateQueryWithTiming}
         system={system}
       />
 
@@ -700,14 +728,14 @@ export function IntelligenceDiscoveryWorkspace({
             density={density}
             filteredCount={filtered.length}
             isFullscreen={scannerFullscreen}
-            onCompareVisible={compareVisible}
-            onCycleDensity={cycleDensity}
+            onCompareVisible={() => runTimedScannerWorkflow("compare-open", compareVisible)}
+            onCycleDensity={() => runTimedScannerWorkflow("density-cycle", cycleDensity)}
             onFocusSearch={focusSearch}
             onSaveCurrent={() => {
               void saveCurrentScan();
             }}
             onShortlistVisible={shortlistVisible}
-            onToggleFullscreen={() => setScannerFullscreen((current) => !current)}
+            onToggleFullscreen={() => runTimedScannerWorkflow("fullscreen-toggle", () => setScannerFullscreen((current) => !current))}
             presets={scannerPresets}
             rangeCount={rangeSelectedSymbols.length}
             shortlistCount={shortlistRows.length}
@@ -738,7 +766,7 @@ export function IntelligenceDiscoveryWorkspace({
                     data-discovery-secondary-search="true"
                     enterKeyHint="search"
                     inputMode="search"
-                    onChange={(event) => setQuery(event.currentTarget.value)}
+                    onChange={(event) => updateQueryWithTiming(event.currentTarget.value)}
                     placeholder="Search symbol, company, sector, setup, risk context..."
                     type="search"
                     value={query}
@@ -833,15 +861,15 @@ export function IntelligenceDiscoveryWorkspace({
               expandedSymbols={expandedSymbols}
               fullscreen={scannerFullscreen}
               alertingSymbol={alertingSymbol}
-              onDensityChange={setDensity}
+              onDensityChange={(nextDensity) => runTimedScannerWorkflow(nextDensity === "ultra" ? "ultra-dense" : "density-change", () => setDensity(nextDensity))}
               onCreateAlert={(symbol) => {
                 void createScannerAlert(symbol);
               }}
               onOpen={setSelectedSymbol}
-              onSortChange={setSort}
+              onSortChange={(nextSort) => runTimedScannerWorkflow("sort", () => setSort(nextSort))}
               onToggleColumn={toggleScannerColumn}
-              onToggleExpanded={toggleExpandedSymbol}
-              onToggleFullscreen={() => setScannerFullscreen((current) => !current)}
+              onToggleExpanded={(symbol) => runTimedScannerWorkflow("row-expansion", () => toggleExpandedSymbol(symbol))}
+              onToggleFullscreen={() => runTimedScannerWorkflow("fullscreen-toggle", () => setScannerFullscreen((current) => !current))}
               onToggleShortlist={toggleShortlist}
               onToggleCompare={toggleCompare}
               resultCount={filtered.length}
@@ -1377,7 +1405,7 @@ function SymbolResultGrid({
     : "poster-panel rounded-3xl border border-cyan-300/16 bg-slate-950/48 p-4";
 
   return (
-    <section className={shellClass} data-discovery-dense-mode={density}>
+    <section className={shellClass} data-discovery-dense-mode={density} data-scanner-fullscreen={fullscreen ? "true" : "false"}>
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Full-universe results</div>
@@ -1546,6 +1574,7 @@ function RapidScannerTable({
       className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/48"
       data-discovery-scanner-table="true"
       data-scanner-rendered-rows={virtualWindow.rows.length}
+      data-scanner-sort={sort}
       data-scanner-total-rows={symbols.length}
       data-scanner-virtualized={virtualizationActive ? "true" : "false"}
       style={tableStyle}
@@ -1666,7 +1695,7 @@ function ScannerMetricCell({
 
 function ExpandedScannerRow({ symbol, timeframe }: { symbol: DiscoverySymbol; timeframe: DiscoveryTimeframe }) {
   return (
-    <div className="border-b border-cyan-300/10 bg-cyan-300/[0.035] px-3 py-3">
+    <div className="border-b border-cyan-300/10 bg-cyan-300/[0.035] px-3 py-3" data-scanner-expanded-row="true" data-scanner-expanded-symbol={symbol.symbol}>
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)]">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">Expanded intelligence row</div>
@@ -1855,7 +1884,7 @@ function CompareModePanel({
   setCompareSymbols: (symbols: string[]) => void;
 }) {
   return (
-    <section className="poster-panel sticky top-24 rounded-3xl border border-violet-300/16 bg-slate-950/50 p-4" id="compare">
+    <section className="poster-panel sticky top-24 rounded-3xl border border-violet-300/16 bg-slate-950/50 p-4" data-discovery-compare-panel="true" data-compare-count={compareRows.length} id="compare">
       <div className="flex items-center gap-3">
         <div className="grid h-11 w-11 place-items-center rounded-2xl border border-violet-300/25 bg-violet-300/10 text-violet-100">
           <GitCompare className="h-5 w-5" />
@@ -2420,6 +2449,24 @@ function uniqueSymbols(symbols: string[]): string[] {
     result.push(symbol);
   }
   return result;
+}
+
+function browserWorkflowNow(): number {
+  return typeof performance === "undefined" ? Date.now() : performance.now();
+}
+
+function recordBrowserWorkflowMetric(id: string, startedAt: number): void {
+  if (typeof window === "undefined") return;
+  const finish = () => {
+    const latencyMs = Math.max(0, browserWorkflowNow() - startedAt);
+    const nextMetric: BrowserWorkflowMetric = {
+      id,
+      latencyMs: Math.round(latencyMs * 1000) / 1000,
+      recordedAt: new Date().toISOString(),
+    };
+    window.__tradevetoBrowserWorkflowMetrics = [...(window.__tradevetoBrowserWorkflowMetrics ?? []), nextMetric].slice(-120);
+  };
+  window.requestAnimationFrame(() => window.requestAnimationFrame(finish));
 }
 
 function leaderIndex(values: Array<number | null>, lowerIsBetter: boolean): number {

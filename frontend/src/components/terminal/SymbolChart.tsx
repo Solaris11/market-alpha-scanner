@@ -183,6 +183,12 @@ type ChartCrosshairSyncPayload = {
   time: Time | null;
 };
 
+type BrowserWorkflowMetric = {
+  id: string;
+  latencyMs: number;
+  recordedAt: string;
+};
+
 export function SymbolChart({
   symbol,
   candles,
@@ -287,7 +293,14 @@ export function SymbolChart({
   const accountSyncEnabled = enableAccountSync && !controlledPeriod && !controlledOverlayFamilies && !controlledIndicators;
   const crosshairSourceId = chartInstanceId.replace(/:/g, "");
 
+  function runTimedChartWorkflow(id: string, operation: () => void): void {
+    const startedAt = browserWorkflowNow();
+    operation();
+    recordBrowserWorkflowMetric(`chart:${id}`, startedAt);
+  }
+
   function expandChart(): void {
+    const startedAt = browserWorkflowNow();
     trackAnalyticsEvent("chart_expand", {
       candleCount: chartCandles.length,
       markerCount: visibleChartSignals.length,
@@ -296,6 +309,7 @@ export function SymbolChart({
     }, { source: "chart", symbol });
     writeChartWorkflowWorkspace(symbol, { fullscreenOpen: true });
     setExpanded(true);
+    recordBrowserWorkflowMetric("chart:fullscreen-open", startedAt);
   }
 
   function closeExpandedChart(): void {
@@ -932,6 +946,10 @@ export function SymbolChart({
     <>
     <div
       className="min-w-0"
+      data-chart-account-workspace-loaded={accountWorkspaceLoaded ? "true" : "false"}
+      data-chart-expanded={expanded ? "true" : "false"}
+      data-chart-symbol={symbol.toUpperCase()}
+      data-chart-workspace-loaded={workspaceLoaded ? "true" : "false"}
       onFocusCapture={() => setHotkeysActive(true)}
       onBlurCapture={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setHotkeysActive(false);
@@ -1038,18 +1056,18 @@ export function SymbolChart({
           drawings={drawings}
           drawingCount={drawings.length}
           magnetMode={magnetMode}
-          onClear={clearDrawings}
-          onDeleteSelected={deleteSelectedDrawing}
-          onDuplicateSelected={duplicateSelectedDrawing}
-          onNudgeSelected={nudgeSelectedDrawing}
-          onReset={resetWorkspaceState}
-          onSelect={setDrawingTool}
+          onClear={() => runTimedChartWorkflow("drawing-operation", clearDrawings)}
+          onDeleteSelected={() => runTimedChartWorkflow("drawing-operation", deleteSelectedDrawing)}
+          onDuplicateSelected={() => runTimedChartWorkflow("drawing-operation", duplicateSelectedDrawing)}
+          onNudgeSelected={(deltaX, deltaY) => runTimedChartWorkflow("drawing-operation", () => nudgeSelectedDrawing(deltaX, deltaY))}
+          onReset={() => runTimedChartWorkflow("workspace-reset", resetWorkspaceState)}
+          onSelect={(tool) => runTimedChartWorkflow("drawing-operation", () => setDrawingTool(tool))}
           onSelectDrawing={setSelectedDrawingId}
-          onToggleMagnet={() => setMagnetMode((value) => !value)}
-          onToggleToolbar={() => setToolbarCollapsed((value) => !value)}
+          onToggleMagnet={() => runTimedChartWorkflow("drawing-operation", () => setMagnetMode((value) => !value))}
+          onToggleToolbar={() => runTimedChartWorkflow("toolbar-interaction", () => setToolbarCollapsed((value) => !value))}
           onUpdateSelected={(patch) => {
             if (!selectedDrawingId) return;
-            updateDrawing(selectedDrawingId, (drawing) => ({ ...drawing, ...patch }));
+            runTimedChartWorkflow("drawing-operation", () => updateDrawing(selectedDrawingId, (drawing) => ({ ...drawing, ...patch })));
           }}
           selectedDrawing={selectedDrawing}
           toolbarCollapsed={toolbarCollapsed}
@@ -1081,8 +1099,10 @@ export function SymbolChart({
         drawings={drawings}
         draftDrawing={draftDrawing}
         onCommit={(drawing) => {
+          const startedAt = browserWorkflowNow();
           setDrawings((current) => [...current, drawing].slice(-24));
           setSelectedDrawingId(drawing.id);
+          recordBrowserWorkflowMetric("chart:drawing-operation", startedAt);
         }}
         onDraftChange={setDraftDrawing}
         onSelect={setSelectedDrawingId}
@@ -1395,7 +1415,12 @@ function ChartDrawingToolbar({
     { label: "Ruler", tool: "ruler" },
   ];
   return (
-    <div className="mb-2 rounded-2xl border border-white/10 bg-slate-950/50 p-2">
+    <div
+      className="mb-2 rounded-2xl border border-white/10 bg-slate-950/50 p-2"
+      data-chart-drawing-count={drawingCount}
+      data-chart-drawing-toolbar="true"
+      data-chart-drawing-tool={activeTool}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Drawing tools</div>
@@ -2723,7 +2748,13 @@ function SymbolChartModal({
       size="xl"
       title={`${symbol.toUpperCase()} Price + Intelligence Overlays`}
     >
-      <div className="tv-chart-fullscreen-toolbar mt-4" data-chart-fullscreen-toolbar="true">
+      <div
+        className="tv-chart-fullscreen-toolbar mt-4"
+        data-chart-fullscreen-layout={layoutMode}
+        data-chart-fullscreen-mode={detailMode}
+        data-chart-fullscreen-toolbar="true"
+        data-chart-fullscreen-workspace-loaded={modalWorkspaceLoaded ? "true" : "false"}
+      >
         <div className="tv-chart-toolbar-row flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
           <div className="flex flex-wrap gap-1.5">
             {(["overlays", "compare", "timeline"] as const).map((mode) => (
@@ -2734,7 +2765,11 @@ function SymbolChartModal({
                     : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-white/20 hover:text-slate-200"
                 }`}
                 key={mode}
-                onClick={() => setDetailMode(mode)}
+                onClick={() => {
+                  const startedAt = browserWorkflowNow();
+                  setDetailMode(mode);
+                  recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt);
+                }}
                 type="button"
               >
                 {mode}
@@ -2751,7 +2786,11 @@ function SymbolChartModal({
                       : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-white/20 hover:text-slate-200"
                   }`}
                   key={mode}
-                  onClick={() => setLayoutMode(mode)}
+                  onClick={() => {
+                    const startedAt = browserWorkflowNow();
+                    setLayoutMode(mode);
+                    recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt);
+                  }}
                   type="button"
                 >
                   {mode}
@@ -2773,7 +2812,11 @@ function SymbolChartModal({
                   ? "border-emerald-300/45 bg-emerald-300/10 text-emerald-100"
                   : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-emerald-300/40 hover:text-emerald-100"
               }`}
-              onClick={() => setModalCompactMode((current) => !current)}
+              onClick={() => {
+                const startedAt = browserWorkflowNow();
+                setModalCompactMode((current) => !current);
+                recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt);
+              }}
               type="button"
             >
               Compact
@@ -2781,7 +2824,11 @@ function SymbolChartModal({
             <button
               aria-expanded={!modalToolbarCollapsed}
               className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.035] text-slate-500 transition hover:border-cyan-300/40 hover:text-cyan-100"
-              onClick={() => setModalToolbarCollapsed((current) => !current)}
+              onClick={() => {
+                const startedAt = browserWorkflowNow();
+                setModalToolbarCollapsed((current) => !current);
+                recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt);
+              }}
               title={modalToolbarCollapsed ? "Show fullscreen toolbar" : "Collapse fullscreen toolbar"}
               type="button"
             >
@@ -3482,6 +3529,25 @@ function chartAlertTypeLabel(type: ChartAlertRuleType): string {
   if (type === "price_below") return "Price below";
   if (type === "score_above") return "Score above";
   return "Score below";
+}
+
+function browserWorkflowNow(): number {
+  return typeof performance === "undefined" ? Date.now() : performance.now();
+}
+
+function recordBrowserWorkflowMetric(id: string, startedAt: number): void {
+  if (typeof window === "undefined") return;
+  const finish = () => {
+    const latencyMs = Math.max(0, browserWorkflowNow() - startedAt);
+    const nextMetric: BrowserWorkflowMetric = {
+      id,
+      latencyMs: Math.round(latencyMs * 1000) / 1000,
+      recordedAt: new Date().toISOString(),
+    };
+    const metricsWindow = window as Window & { __tradevetoBrowserWorkflowMetrics?: BrowserWorkflowMetric[] };
+    metricsWindow.__tradevetoBrowserWorkflowMetrics = [...(metricsWindow.__tradevetoBrowserWorkflowMetrics ?? []), nextMetric].slice(-120);
+  };
+  window.requestAnimationFrame(() => window.requestAnimationFrame(finish));
 }
 
 function formatChartAlertThreshold(value: number, type: ChartAlertRuleType): string {

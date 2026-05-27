@@ -9,17 +9,20 @@ import pg from "pg";
 
 const { Pool } = pg;
 
-const baseUrl = stripTrailingSlash(process.env.TRADEVETO_PHASE25_BROWSER_BASE_URL ?? "https://tradeveto.com");
-const artifactRoot = resolve(process.cwd(), process.env.TRADEVETO_PHASE25_BROWSER_ARTIFACT_ROOT ?? "../docs/ops/artifacts/phase-25-3/chart-scanner-power/browser-timing");
-const outputPath = resolve(process.cwd(), process.env.TRADEVETO_PHASE25_BROWSER_TIMING_OUTPUT ?? join(artifactRoot, "chart-scanner-browser-timing.json"));
-const screenshotDir = resolve(process.cwd(), process.env.TRADEVETO_PHASE25_BROWSER_SCREENSHOT_DIR ?? join(artifactRoot, "screenshots"));
-const navigationTimeoutMs = positiveInteger(process.env.TRADEVETO_PHASE25_BROWSER_NAVIGATION_TIMEOUT_MS, 90_000);
-const waitTimeoutMs = positiveInteger(process.env.TRADEVETO_PHASE25_BROWSER_WAIT_TIMEOUT_MS, 30_000);
-const largeWatchlistSize = positiveInteger(process.env.TRADEVETO_PHASE25_BROWSER_WATCHLIST_SIZE, 520);
-const strict = truthy(process.env.TRADEVETO_PHASE25_BROWSER_STRICT);
-const headless = process.env.TRADEVETO_PHASE25_BROWSER_HEADLESS !== "false";
-const createProbeIdentity = process.env.TRADEVETO_PHASE25_BROWSER_CREATE_PROBE_USER !== "false" && Boolean(process.env.DATABASE_URL);
-const cleanupProbeIdentity = process.env.TRADEVETO_PHASE25_BROWSER_CLEANUP_PROBE_USER !== "false";
+const defaultArtifactRoot = "../docs/ops/artifacts/phase-25-3/chart-scanner-power/browser-timing";
+const phase26ArtifactRoot = "../docs/ops/artifacts/phase-26-4-browser-workflows";
+const baseUrl = stripTrailingSlash(process.env.TRADEVETO_PHASE26_BROWSER_BASE_URL ?? process.env.TRADEVETO_PHASE25_BROWSER_BASE_URL ?? "https://tradeveto.com");
+const artifactRoot = resolve(process.cwd(), process.env.TRADEVETO_PHASE26_BROWSER_ARTIFACT_ROOT ?? process.env.TRADEVETO_PHASE25_BROWSER_ARTIFACT_ROOT ?? (truthy(process.env.TRADEVETO_PHASE26_BROWSER_PROBE) ? phase26ArtifactRoot : defaultArtifactRoot));
+const outputPath = resolve(process.cwd(), process.env.TRADEVETO_PHASE26_BROWSER_TIMING_OUTPUT ?? process.env.TRADEVETO_PHASE25_BROWSER_TIMING_OUTPUT ?? join(artifactRoot, "chart-scanner-browser-timing.json"));
+const screenshotDir = resolve(process.cwd(), process.env.TRADEVETO_PHASE26_BROWSER_SCREENSHOT_DIR ?? process.env.TRADEVETO_PHASE25_BROWSER_SCREENSHOT_DIR ?? join(artifactRoot, "screenshots"));
+const largeUniverseOutputPath = resolve(process.cwd(), process.env.TRADEVETO_PHASE26_BROWSER_LARGE_UNIVERSE_OUTPUT ?? join(artifactRoot, "large-universe-proof.json"));
+const navigationTimeoutMs = positiveInteger(process.env.TRADEVETO_PHASE26_BROWSER_NAVIGATION_TIMEOUT_MS ?? process.env.TRADEVETO_PHASE25_BROWSER_NAVIGATION_TIMEOUT_MS, 90_000);
+const waitTimeoutMs = positiveInteger(process.env.TRADEVETO_PHASE26_BROWSER_WAIT_TIMEOUT_MS ?? process.env.TRADEVETO_PHASE25_BROWSER_WAIT_TIMEOUT_MS, 30_000);
+const largeWatchlistSize = positiveInteger(process.env.TRADEVETO_PHASE26_BROWSER_WATCHLIST_SIZE ?? process.env.TRADEVETO_PHASE25_BROWSER_WATCHLIST_SIZE, 520);
+const strict = truthy(process.env.TRADEVETO_PHASE26_BROWSER_STRICT ?? process.env.TRADEVETO_PHASE25_BROWSER_STRICT);
+const headless = (process.env.TRADEVETO_PHASE26_BROWSER_HEADLESS ?? process.env.TRADEVETO_PHASE25_BROWSER_HEADLESS) !== "false";
+const createProbeIdentity = (process.env.TRADEVETO_PHASE26_BROWSER_CREATE_PROBE_USER ?? process.env.TRADEVETO_PHASE25_BROWSER_CREATE_PROBE_USER) !== "false" && Boolean(process.env.DATABASE_URL);
+const cleanupProbeIdentity = (process.env.TRADEVETO_PHASE26_BROWSER_CLEANUP_PROBE_USER ?? process.env.TRADEVETO_PHASE25_BROWSER_CLEANUP_PROBE_USER) !== "false";
 
 const budgets = {
   chartInteractionMs: 60,
@@ -27,13 +30,14 @@ const budgets = {
   compareOpenMs: 150,
   fullscreenChartOpenMs: 150,
   largeWatchlistFilterMs: 150,
+  rapidSymbolSwitchMs: 100,
   savedScanRestoreMs: 250,
   scannerInteractionMs: 100,
 };
 
 const startedAt = new Date().toISOString();
 let probeIdentity = null;
-let cookie = process.env.TRADEVETO_PHASE25_BROWSER_COOKIE ?? "";
+let cookie = process.env.TRADEVETO_PHASE26_BROWSER_COOKIE ?? process.env.TRADEVETO_PHASE25_BROWSER_COOKIE ?? "";
 let csrfToken = "";
 let browser = null;
 
@@ -96,6 +100,8 @@ async function main() {
   else console.error(serialized);
   await mkdir(dirname(outputPath), { recursive: true });
   await writeFile(outputPath, serialized, "utf8");
+  await mkdir(dirname(largeUniverseOutputPath), { recursive: true });
+  await writeFile(largeUniverseOutputPath, `${JSON.stringify(buildLargeUniverseProof(report), null, 2)}\n`, "utf8");
   if (strict && report.overallStatus !== "ready") process.exitCode = 1;
 }
 
@@ -110,7 +116,7 @@ async function runScannerProof(page, setup) {
   await dismissRiskAcknowledgement(page);
   await page.locator("[data-discovery-workspace='true']").waitFor({ state: "visible" });
 
-  timings.push(await measure("scanner-interaction", "Switch discovery scanner to ultra-dense table mode", budgets.scannerInteractionMs, async () => {
+  timings.push(await measureBrowserWorkflow(page, "scanner-interaction", "Switch discovery scanner to ultra-dense table mode", budgets.scannerInteractionMs, ["scanner:ultra-dense", "scanner:density-change"], async () => {
     await page.locator("button[title='Ultra dense scanner']").first().click();
     await page.locator("[data-discovery-dense-mode='ultra']").waitFor({ state: "visible" });
     await page.locator("[data-discovery-scanner-table='true']").waitFor({ state: "visible" });
@@ -119,7 +125,7 @@ async function runScannerProof(page, setup) {
   const initialMeta = await readScannerMeta(page);
   screenshots.push(await capture(page, "discover-ultra-dense.png"));
 
-  timings.push(await measure("large-watchlist-filter", "Filter the production scanner table after large-watchlist setup", budgets.largeWatchlistFilterMs, async () => {
+  timings.push(await measureBrowserWorkflow(page, "large-watchlist-filter", "Filter the production scanner table after large-watchlist setup", budgets.largeWatchlistFilterMs, ["scanner:filter"], async () => {
     const input = page.locator("[data-discovery-search-input='true']").first();
     await input.fill("");
     await input.fill("A");
@@ -127,15 +133,14 @@ async function runScannerProof(page, setup) {
   }));
   const filteredMeta = await readScannerMeta(page);
 
-  timings.push(await measure("scanner-sort-search", "Sort the production scanner table by confidence", budgets.scannerInteractionMs, async () => {
+  timings.push(await measureBrowserWorkflow(page, "scanner-sort-search", "Sort the production scanner table by confidence", budgets.scannerInteractionMs, ["scanner:sort"], async () => {
     await page.getByRole("button", { name: /^Conf$/i }).first().click();
-    await page.locator("[data-discovery-scanner-table='true']").waitFor({ state: "visible" });
+    await page.locator("[data-discovery-scanner-table='true'][data-scanner-sort='confidence']").waitFor({ state: "visible" });
   }));
 
-  timings.push(await measure("compare-open", "Open the rapid compare matrix from discovery", budgets.compareOpenMs, async () => {
+  timings.push(await measureBrowserWorkflow(page, "compare-open", "Open the rapid compare matrix from discovery", budgets.compareOpenMs, ["scanner:compare-open"], async () => {
     await page.getByRole("button", { name: /compare top/i }).first().click();
-    await page.locator("#compare").scrollIntoViewIfNeeded();
-    await page.getByText(/Compare storytelling|Compare factors|Compare visible/i).first().waitFor({ state: "visible" });
+    await page.locator("[data-discovery-compare-panel='true'][data-compare-count='8']").waitFor({ state: "visible" });
   }));
   screenshots.push(await capture(page, "discover-compare.png"));
 
@@ -144,6 +149,17 @@ async function runScannerProof(page, setup) {
     await page.getByText(setup.savedScanName, { exact: false }).first().click();
     await page.locator("[data-discovery-dense-mode='ultra']").waitFor({ state: "visible" });
   }));
+
+  timings.push(await measureBrowserWorkflow(page, "row-expansion", "Expand a scanner row in ultra-dense mode", budgets.scannerInteractionMs, ["scanner:row-expansion"], async () => {
+    await page.keyboard.press("Enter");
+    await page.locator("[data-scanner-expanded-row='true']").first().waitFor({ state: "visible" });
+  }));
+
+  timings.push(await measureBrowserWorkflow(page, "fullscreen-scanner", "Open fullscreen scanner table", budgets.scannerInteractionMs, ["scanner:fullscreen-toggle"], async () => {
+    await page.getByRole("button", { name: /fullscreen/i }).filter({ hasText: /fullscreen/i }).first().click();
+    await page.locator("[data-scanner-fullscreen='true']").waitFor({ state: "visible" });
+  }));
+  screenshots.push(await capture(page, "discover-fullscreen-scanner.png"));
 
   const keyboard = await probeScannerKeyboard(page);
   checks.push(keyboard);
@@ -193,20 +209,31 @@ async function runChartProof(page, setup) {
   checks.push(await probeIndicatorTemplate(page));
   checks.push(await probeChartAlert(page));
 
-  timings.push(await measure("fullscreen-chart-open", "Open fullscreen AMD chart overlay", budgets.fullscreenChartOpenMs, async () => {
+  timings.push(await measureBrowserWorkflow(page, "fullscreen-chart-open", "Open fullscreen AMD chart overlay", budgets.fullscreenChartOpenMs, ["chart:fullscreen-open"], async () => {
     await page.getByRole("button", { name: /Expand AMD chart/i }).click();
     await page.locator("[data-chart-fullscreen-toolbar='true']").waitFor({ state: "visible" });
   }));
   screenshots.push(await capture(page, "symbol-amd-fullscreen.png"));
 
-  timings.push(await measure("chart-interaction", "Switch fullscreen chart to compare mode", budgets.chartInteractionMs, async () => {
+  timings.push(await measureBrowserWorkflow(page, "chart-interaction", "Switch fullscreen chart to compare mode", budgets.chartInteractionMs, ["chart:toolbar-interaction"], async () => {
     await page.locator("[data-chart-fullscreen-toolbar='true']").getByRole("button", { name: /^compare$/i }).first().click();
-    await page.getByText(/compare evidence|compare mode|confidence/i).first().waitFor({ state: "visible" });
+    await page.locator("[data-chart-fullscreen-toolbar='true'][data-chart-fullscreen-mode='compare']").waitFor({ state: "visible" });
   }));
 
   checks.push(await probeFullscreenToolbar(page));
 
-  timings.push(await measure("rapid-symbol-switch", "Navigate from AMD chart to NVDA symbol chart", budgets.scannerInteractionMs, async () => {
+  timings.push(await measureBrowserWorkflow(page, "chart-drawing-operation", "Toggle chart drawing magnet mode", budgets.chartInteractionMs, ["chart:drawing-operation"], async () => {
+    await page.keyboard.press("Escape");
+    await page.locator("[data-chart-drawing-toolbar='true']").getByRole("button", { name: /magnet/i }).first().click();
+    await page.locator("[data-chart-drawing-toolbar='true']").waitFor({ state: "visible" });
+  }));
+
+  timings.push(await measureBrowserWorkflow(page, "chart-toolbar-interaction", "Collapse and restore chart drawing toolbar", budgets.chartInteractionMs, ["chart:toolbar-interaction"], async () => {
+    await page.locator("[data-chart-drawing-toolbar='true']").getByRole("button", { name: /collapse drawing controls/i }).first().click();
+    await page.locator("[data-chart-drawing-toolbar='true']").waitFor({ state: "visible" });
+  }));
+
+  timings.push(await measure("rapid-symbol-switch", "Navigate from AMD chart to NVDA symbol chart", budgets.rapidSymbolSwitchMs, async () => {
     await page.keyboard.press("Escape");
     await page.goto(`${baseUrl}/symbol/NVDA`, { waitUntil: "domcontentloaded" });
     await page.getByRole("button", { name: /Expand NVDA chart/i }).waitFor({ state: "visible" });
@@ -318,6 +345,60 @@ async function measure(id, label, budgetMs, operation) {
       status: "fail",
     };
   }
+}
+
+async function measureBrowserWorkflow(page, id, label, budgetMs, metricIds, operation) {
+  const beforeMetrics = await readWorkflowMetrics(page);
+  const beforeCount = beforeMetrics.length;
+  const started = performance.now();
+  try {
+    await operation();
+    const automationLatencyMs = roundMetric(performance.now() - started);
+    const browserMetric = await waitForWorkflowMetric(page, metricIds, beforeCount);
+    const latencyMs = roundMetric(browserMetric?.latencyMs ?? automationLatencyMs);
+    return {
+      automationLatencyMs,
+      browserMetricId: browserMetric?.id ?? null,
+      budgetMs,
+      id,
+      label,
+      latencyMs,
+      pass: latencyMs <= budgetMs,
+      status: latencyMs <= budgetMs ? "pass" : "fail",
+      timingSource: browserMetric ? "browser-performance" : "playwright-automation",
+    };
+  } catch (error) {
+    return {
+      automationLatencyMs: roundMetric(performance.now() - started),
+      budgetMs,
+      error: messageFor(error),
+      id,
+      label,
+      latencyMs: roundMetric(performance.now() - started),
+      pass: false,
+      status: "fail",
+      timingSource: "playwright-automation",
+    };
+  }
+}
+
+async function waitForWorkflowMetric(page, ids, beforeCount) {
+  const deadline = Date.now() + 2_500;
+  while (Date.now() < deadline) {
+    const metrics = await readWorkflowMetrics(page);
+    const next = metrics.slice(beforeCount).find((metric) => ids.includes(metric.id));
+    if (next) return next;
+    await page.waitForTimeout(50);
+  }
+  const metrics = await readWorkflowMetrics(page);
+  return [...metrics].reverse().find((metric) => ids.includes(metric.id)) ?? null;
+}
+
+async function readWorkflowMetrics(page) {
+  return page.evaluate(() => {
+    const metrics = window.__tradevetoBrowserWorkflowMetrics;
+    return Array.isArray(metrics) ? metrics : [];
+  }).catch(() => []);
 }
 
 async function capture(page, filename) {
@@ -671,6 +752,30 @@ function buildReport({ chart, memoryAfter, memoryBefore, scanner, setup }) {
       "No fake indicator alert or fake drawing proximity alert claim.",
       "Physical-device gesture latency is outside this browser timing probe.",
     ],
+  };
+}
+
+function buildLargeUniverseProof(report) {
+  const initialMeta = report.scanner?.initialMeta ?? null;
+  const watchlistSize = report.probeIdentity?.watchlistSize ?? report.scanner?.setup?.watchlistSize ?? null;
+  const productionRows = Number(initialMeta?.totalRows ?? 0);
+  const renderedRows = Number(initialMeta?.renderedRows ?? 0);
+  const virtualized = initialMeta?.virtualized === true;
+  const blockers = [];
+  if (productionRows < 500) blockers.push(`production browser scanner exposed ${productionRows} rows, below the 500+ target`);
+  if (watchlistSize !== null && watchlistSize < 500) blockers.push(`authenticated watchlist fixture has ${watchlistSize} symbols, below the 500+ target`);
+  if (productionRows >= 500 && !virtualized) blockers.push("500+ production browser rows are not virtualized");
+  if (virtualized && renderedRows > 90) blockers.push(`virtualized scanner rendered ${renderedRows} rows, above the 90-row browser ceiling`);
+  return {
+    baseUrl: report.baseUrl,
+    blockers,
+    generatedAt: report.generatedAt,
+    productionBrowserRows: productionRows,
+    proofType: "production-browser",
+    renderedRows,
+    status: blockers.length ? "not_ready" : "ready",
+    virtualized,
+    watchlistFixtureSize: watchlistSize,
   };
 }
 
