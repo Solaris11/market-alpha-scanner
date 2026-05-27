@@ -35,6 +35,9 @@ describe("paid user retention cohort certification", () => {
     assert.equal(proof.paidSegment.d7RetentionRatePct, 7.142857142857142);
     assert.equal(proof.paidSegment.alertReturnConversionPct, 20);
     assert.equal(proof.paidSegment.notificationUsefulRatioPct, 70);
+    assert.equal(proof.targets.d2RetentionRatePct, 10);
+    assert.equal(proof.targets.d7RetentionRatePct, 6);
+    assert.equal(proof.targets.twoPlusActiveDayRatePct, 15);
   });
 
   test("does not claim success when paid cohorts have not aged to D7", () => {

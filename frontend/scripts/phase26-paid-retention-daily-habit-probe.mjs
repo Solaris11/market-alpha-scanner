@@ -140,10 +140,10 @@ function buildReport({ analyticsPayload, analyticsResponse }) {
     startedAt,
     targets: paidUserCohorts?.targets ?? {
       alertReturnConversionPct: 12,
-      d2RetentionRatePct: 8,
-      d7RetentionRatePct: 4,
+      d2RetentionRatePct: 10,
+      d7RetentionRatePct: 6,
       notificationUsefulRatioPct: 55,
-      twoPlusActiveDayRatePct: 10,
+      twoPlusActiveDayRatePct: 15,
     },
     timeoutMs,
     workflowReturnMetrics: dailyDriver?.habitLoops ?? null,

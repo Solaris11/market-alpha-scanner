@@ -64,10 +64,10 @@ export type PaidUserCohortCertification = {
 
 export const RETENTION_COHORT_TARGETS: RetentionCohortTargets = {
   alertReturnConversionPct: 12,
-  d2RetentionRatePct: 8,
-  d7RetentionRatePct: 4,
+  d2RetentionRatePct: 10,
+  d7RetentionRatePct: 6,
   notificationUsefulRatioPct: 55,
-  twoPlusActiveDayRatePct: 10,
+  twoPlusActiveDayRatePct: 15,
 };
 
 const SEGMENT_LABELS: Record<RetentionCohortSegmentKey, string> = {

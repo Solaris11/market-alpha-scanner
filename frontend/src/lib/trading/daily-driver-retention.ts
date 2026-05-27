@@ -80,11 +80,57 @@ export type DailyDriverContextItem = {
 export type DailyDriverMorningWorkflowItem = {
   detail: string;
   href: string;
-  key: "ai_digest" | "macro_updates" | "overnight_events" | "overnight_summary" | "risk_changes" | "scanner_changes" | "watchlist_movement";
+  key:
+    | "ai_digest"
+    | "important_events_today"
+    | "macro_updates"
+    | "overnight_events"
+    | "overnight_summary"
+    | "portfolio_pressure"
+    | "risk_changes"
+    | "scanner_changes"
+    | "watchlist_movement";
   label: string;
   metricLabel: string;
   tone: DailyDriverTone;
   workflow: DailyDriverAction["workflow"];
+};
+
+export type DailyDriverBriefingItem = {
+  detail: string;
+  href: string;
+  key: "deteriorated" | "improved" | "matters" | "next_action" | "risk" | "what_changed";
+  label: string;
+  metricLabel: string;
+  status: DailyDriverStatus;
+  tone: DailyDriverTone;
+  workflow: DailyDriverAction["workflow"];
+};
+
+export type DailyDriverDependenceLoop = {
+  detail: string;
+  eventName:
+    | "alert_return"
+    | "chart_return"
+    | "compare_return"
+    | "morning_workflow_start"
+    | "replay_return"
+    | "return_session"
+    | "scanner_return"
+    | "watchlist_return";
+  href: string;
+  key:
+    | "compare_dependence"
+    | "first_open"
+    | "repeat_chart_usage"
+    | "repeat_scanner_usage"
+    | "repeat_watchlist_usage"
+    | "replay_dependence"
+    | "return_sessions";
+  label: string;
+  status: DailyDriverStatus;
+  targetLabel: string;
+  tone: DailyDriverTone;
 };
 
 export type DailyDriverChangeSignal = {
@@ -164,6 +210,16 @@ export type DailyDriverNotificationQualityControl = {
   tone: DailyDriverTone;
 };
 
+export type DailyDriverAlertQualityEngineItem = {
+  detail: string;
+  eventName: "alert_return" | "notification_engagement" | "notification_usefulness_feedback";
+  key: "adaptive_importance" | "fatigue_score" | "relevance" | "return_attribution" | "workflow_linked_alerts";
+  label: string;
+  status: DailyDriverStatus;
+  targetLabel: string;
+  tone: DailyDriverTone;
+};
+
 export type DailyDriverContinuationItem = {
   detail: string;
   href: string;
@@ -178,10 +234,13 @@ export type DailyDriverRetentionModel = {
   activationScore: number;
   activationMilestones: DailyDriverActivationMilestone[];
   adaptivePriorities: DailyDriverAdaptivePriority[];
+  alertQualityEngine: DailyDriverAlertQualityEngineItem[];
   blockers: string[];
   changeVisualization: DailyDriverChangeSignal[];
   continuationWorkflows: DailyDriverContinuationItem[];
   continuity: DailyDriverContextItem[];
+  dailyBriefing: DailyDriverBriefingItem[];
+  dependenceLoops: DailyDriverDependenceLoop[];
   funnel: DailyDriverFunnelStage[];
   habitLoops: DailyDriverHabitLoop[];
   morningWorkflow: DailyDriverMorningWorkflowItem[];
@@ -297,10 +356,28 @@ export function buildDailyDriverRetentionModel(input: DailyDriverRetentionInput)
     watchlistSymbols,
     workflowEvolution,
   });
+  const dailyBriefing = buildDailyBriefing({
+    marketCondition: input.marketCondition,
+    topOpportunity,
+    topReplay,
+    topRisk,
+    topWatchlist,
+    workflowEvolution,
+  });
+  const dependenceLoops = buildDependenceLoops({
+    replayCandidateCount,
+    topOpportunity,
+    topReplay,
+    topWatchlist,
+    triggerMonitorCount,
+    watchlistSymbols,
+    workflowEvolution,
+  });
   const continuity = buildContinuity({ preferences, triggerMonitorCount, watchlistSymbols, workflowEvolution });
   const continuationWorkflows = buildContinuationWorkflows({ preferences, topOpportunity, topReplay, topWatchlist, workflowEvolution });
   const personalization = buildPersonalization({ preferences, rows, watchlistSymbols });
   const notificationQuality = buildNotificationQualityControls({ triggerMonitorCount, watchlistSymbols, workflowEvolution });
+  const alertQualityEngine = buildAlertQualityEngine({ triggerMonitorCount, watchlistSymbols, workflowEvolution });
   const changeVisualization = buildChangeVisualization({
     rows,
     topOpportunity,
@@ -337,17 +414,20 @@ export function buildDailyDriverRetentionModel(input: DailyDriverRetentionInput)
     activationScore,
     activationMilestones,
     adaptivePriorities,
+    alertQualityEngine,
     blockers,
     changeVisualization,
     continuationWorkflows,
     continuity,
+    dailyBriefing,
+    dependenceLoops,
     funnel,
     habitLoops,
     morningWorkflow,
     notificationQuality,
     personalization,
     primaryActions,
-    proofBoundary: "This panel improves and instruments daily-driver workflows. It does not claim retention victory until elapsed production cohorts prove D2 > 8%, D7 > 4%, 2+ active-day > 10%, notification usefulness > 55%, and alert-return conversion > 12%.",
+    proofBoundary: "This panel improves and instruments daily-driver workflows. It does not claim retention victory until elapsed production cohorts prove D2 > 10%, D7 > 6%, 2+ active-day > 15%, notification usefulness > 55%, and alert-return conversion > 12%.",
     retentionTargets,
     returnLoops,
     summary,
@@ -370,6 +450,11 @@ function buildMorningWorkflow(input: {
   const watchlistSymbol = input.topWatchlist?.row.symbol ?? input.watchlistSymbols[0] ?? null;
   const riskSymbol = input.topRisk?.row.symbol ?? null;
   const opportunitySymbol = input.topOpportunity?.row.symbol ?? null;
+  const portfolioPressureScore = Math.round(clamp((input.topRisk?.riskScore ?? 0) * 0.68 + Math.min(24, input.watchlistSymbols.length * 4) + Math.min(16, input.triggerMonitorCount * 4)));
+  const eventReviewSymbol = input.workflowEvolution?.deterioratingSetups[0]?.symbol
+    ?? input.workflowEvolution?.triggerMonitors[0]?.symbol
+    ?? input.workflowEvolution?.whatChanged[0]?.symbol
+    ?? null;
   return [
     {
       detail: input.workflowEvolution?.dailyBrief[0] ?? `${input.marketCondition} is the current opening baseline. Start here before jumping into individual symbols.`,
@@ -389,6 +474,17 @@ function buildMorningWorkflow(input: {
       label: "Overnight event summary",
       metricLabel: overnightEventCount ? `${overnightEventCount} signals` : "Feed",
       tone: overnightEventCount ? "violet" : "slate",
+      workflow: "terminal",
+    },
+    {
+      detail: eventReviewSymbol
+        ? `${eventReviewSymbol} is the highest-priority event review for today's opening workflow.`
+        : "Review today's scheduled and source-linked events before treating scanner movement as actionable.",
+      href: eventReviewSymbol ? `/feed?symbol=${encodeURIComponent(eventReviewSymbol)}` : "/feed",
+      key: "important_events_today",
+      label: "Important events today",
+      metricLabel: overnightEventCount ? `${overnightEventCount} events` : "Calendar",
+      tone: overnightEventCount ? "amber" : "slate",
       workflow: "terminal",
     },
     {
@@ -425,6 +521,17 @@ function buildMorningWorkflow(input: {
       workflow: riskSymbol ? "watchlist" : "macro",
     },
     {
+      detail: riskSymbol
+        ? `${riskSymbol} drives the current portfolio-pressure check. Review concentration, drawdown, and scenario exposure before adding new risk.`
+        : "Portfolio pressure is visible as a daily command step, but needs watchlist and risk context to become personalized.",
+      href: "/paper",
+      key: "portfolio_pressure",
+      label: "Portfolio pressure",
+      metricLabel: portfolioPressureScore ? `${portfolioPressureScore}/100` : "Paper",
+      tone: portfolioPressureScore >= 58 ? "rose" : portfolioPressureScore >= 35 ? "amber" : "slate",
+      workflow: "strategy",
+    },
+    {
       detail: input.triggerMonitorCount
         ? `${input.triggerMonitorCount} trigger monitor${input.triggerMonitorCount === 1 ? "" : "s"} connect macro context to active research.`
         : "Macro review remains available, but no trigger monitor is active in the current workflow baseline.",
@@ -445,6 +552,180 @@ function buildMorningWorkflow(input: {
       metricLabel: opportunitySymbol ? `${Math.round(input.topOpportunity?.opportunityScore ?? 0)}/100` : "Learning",
       tone: opportunitySymbol ? "emerald" : "slate",
       workflow: "terminal",
+    },
+  ];
+}
+
+function buildDailyBriefing(input: {
+  marketCondition: string;
+  topOpportunity: ScoredOpportunity | null;
+  topReplay: ScoredOpportunity | null;
+  topRisk: ScoredOpportunity | null;
+  topWatchlist: ScoredOpportunity | null;
+  workflowEvolution: WorkflowEvolutionSummary | null;
+}): DailyDriverBriefingItem[] {
+  const workflowChangeCount = (input.workflowEvolution?.whatChanged.length ?? 0) + (input.workflowEvolution?.watchlistEvolution.length ?? 0);
+  const improving = input.workflowEvolution?.improvingSetups[0] ?? null;
+  const deteriorating = input.workflowEvolution?.deterioratingSetups[0] ?? null;
+  const watchlist = input.workflowEvolution?.watchlistEvolution[0] ?? null;
+  const opportunitySymbol = input.topOpportunity?.row.symbol ?? null;
+  const replaySymbol = input.topReplay?.row.symbol ?? opportunitySymbol;
+  const riskSymbol = input.topRisk?.row.symbol ?? deteriorating?.symbol ?? null;
+  const watchlistSymbol = input.topWatchlist?.row.symbol ?? watchlist?.symbol ?? null;
+  return [
+    {
+      detail: input.workflowEvolution?.dailyBrief[0] ?? `${input.marketCondition} is the current market baseline; today's first action is to establish what changed before opening isolated research.`,
+      href: "/terminal#daily-market-command",
+      key: "what_changed",
+      label: "What changed overnight",
+      metricLabel: workflowChangeCount ? `${workflowChangeCount} changes` : "Baseline",
+      status: workflowChangeCount ? "ready" : "partial",
+      tone: workflowChangeCount ? "cyan" : "amber",
+      workflow: "terminal",
+    },
+    {
+      detail: watchlistSymbol
+        ? `${watchlistSymbol} is the highest-priority personalized review anchor from watchlist, scanner, or prior workflow memory.`
+        : "The highest-value dependency loop is still the first watchlist; without it the briefing cannot become personally sticky.",
+      href: watchlistSymbol ? `/symbol/${encodeURIComponent(watchlistSymbol)}` : "/discover",
+      key: "matters",
+      label: "What matters now",
+      metricLabel: watchlistSymbol ?? "Watchlist",
+      status: watchlistSymbol ? "ready" : "blocked",
+      tone: watchlistSymbol ? "emerald" : "amber",
+      workflow: "watchlist",
+    },
+    {
+      detail: deteriorating?.detail
+        ?? (riskSymbol ? `${riskSymbol} is the highest-risk symbol in the current opening review.` : "No source-backed deterioration is detected in this snapshot; keep risk review visible instead of hiding uncertainty."),
+      href: riskSymbol ? `/symbol/${encodeURIComponent(riskSymbol)}` : "/macro",
+      key: "deteriorated",
+      label: "What deteriorated",
+      metricLabel: deteriorating?.metricLabel ?? (riskSymbol ? `${Math.round(input.topRisk?.riskScore ?? 0)}/100 risk` : "Limited"),
+      status: deteriorating || riskSymbol ? "partial" : "blocked",
+      tone: deteriorating || riskSymbol ? "rose" : "slate",
+      workflow: riskSymbol ? "watchlist" : "macro",
+    },
+    {
+      detail: improving?.detail
+        ?? (opportunitySymbol ? `${opportunitySymbol} has the best blended setup quality, evidence, replay, and risk context for today's opening workflow.` : "No improving setup is strong enough to promote as a daily-driver anchor yet."),
+      href: opportunitySymbol ? `/symbol/${encodeURIComponent(opportunitySymbol)}` : "/discover",
+      key: "improved",
+      label: "What improved",
+      metricLabel: improving?.metricLabel ?? (opportunitySymbol ? `${Math.round(input.topOpportunity?.opportunityScore ?? 0)}/100` : "Learning"),
+      status: improving || opportunitySymbol ? "ready" : "partial",
+      tone: improving || opportunitySymbol ? "emerald" : "slate",
+      workflow: "scanner",
+    },
+    {
+      detail: riskSymbol
+        ? `${riskSymbol} should be reviewed before any new alert, compare, or strategy action because it currently carries the highest pressure.`
+        : "Risk state remains a first-screen item even when the current data cannot name a single high-pressure symbol.",
+      href: riskSymbol ? `/symbol/${encodeURIComponent(riskSymbol)}` : "/macro",
+      key: "risk",
+      label: "What risk changed",
+      metricLabel: riskSymbol ? "Risk review" : "Macro",
+      status: riskSymbol ? "ready" : "partial",
+      tone: riskSymbol ? "amber" : "slate",
+      workflow: "macro",
+    },
+    {
+      detail: replaySymbol
+        ? `${replaySymbol} is the best next investigation for replay, chart, compare, or alert follow-up after the morning briefing.`
+        : "The next action is to save a scanner/watchlist baseline so tomorrow can show a real change delta.",
+      href: replaySymbol ? `/history?symbol=${encodeURIComponent(replaySymbol)}` : "/discover",
+      key: "next_action",
+      label: "Next useful action",
+      metricLabel: replaySymbol ? "Replay" : "Baseline",
+      status: replaySymbol ? "ready" : "partial",
+      tone: replaySymbol ? "cyan" : "amber",
+      workflow: replaySymbol ? "replay" : "scanner",
+    },
+  ];
+}
+
+function buildDependenceLoops(input: {
+  replayCandidateCount: number;
+  topOpportunity: ScoredOpportunity | null;
+  topReplay: ScoredOpportunity | null;
+  topWatchlist: ScoredOpportunity | null;
+  triggerMonitorCount: number;
+  watchlistSymbols: string[];
+  workflowEvolution: WorkflowEvolutionSummary | null;
+}): DailyDriverDependenceLoop[] {
+  const continuationSymbol = workflowContinuationSymbol(input.workflowEvolution) ?? input.topWatchlist?.row.symbol ?? input.topOpportunity?.row.symbol ?? input.watchlistSymbols[0] ?? "AMD";
+  const hasContinuity = Boolean(input.workflowEvolution?.lastSeenAt);
+  const hasWatchlist = input.watchlistSymbols.length > 0;
+  return [
+    {
+      detail: "Terminal opening in the morning creates the first-screen habit event and anchors the daily command workflow.",
+      eventName: "morning_workflow_start",
+      href: "/terminal#daily-driver-retention",
+      key: "first_open",
+      label: "First open dependence",
+      status: "ready",
+      targetLabel: "first screen",
+      tone: "cyan",
+    },
+    {
+      detail: hasContinuity ? "A prior workflow baseline exists, so return sessions can be tied to what changed instead of generic page views." : "This session can create the baseline needed for future return-session dependence proof.",
+      eventName: "return_session",
+      href: "/terminal#workflow-evolution",
+      key: "return_sessions",
+      label: "Return-session dependence",
+      status: hasContinuity ? "ready" : "partial",
+      targetLabel: "D2/D7 cohorts",
+      tone: hasContinuity ? "emerald" : "amber",
+    },
+    {
+      detail: "Scanner returns measure whether users repeatedly start market work from TradeVeto discovery instead of ad hoc external screens.",
+      eventName: "scanner_return",
+      href: "/discover",
+      key: "repeat_scanner_usage",
+      label: "Repeat scanner usage",
+      status: "partial",
+      targetLabel: "repeat scan",
+      tone: "violet",
+    },
+    {
+      detail: "Chart returns are tracked separately so saved chart context can become a repeat workflow rather than a transient visual.",
+      eventName: "chart_return",
+      href: `/symbol/${encodeURIComponent(continuationSymbol)}`,
+      key: "repeat_chart_usage",
+      label: "Repeat chart usage",
+      status: hasContinuity ? "partial" : "blocked",
+      targetLabel: "chart return",
+      tone: hasContinuity ? "cyan" : "amber",
+    },
+    {
+      detail: hasWatchlist ? `${input.watchlistSymbols.length} tracked symbols can create movement, risk, news, and replay return prompts.` : "Watchlist dependence is blocked until users save tracked symbols.",
+      eventName: "watchlist_return",
+      href: hasWatchlist ? `/symbol/${encodeURIComponent(continuationSymbol)}` : "/discover",
+      key: "repeat_watchlist_usage",
+      label: "Repeat watchlist usage",
+      status: hasWatchlist ? "ready" : "blocked",
+      targetLabel: "watchlist return",
+      tone: hasWatchlist ? "emerald" : "amber",
+    },
+    {
+      detail: input.replayCandidateCount || input.topReplay ? "Replay dependence can reopen prior evidence, history, and analog review from current candidates." : "Replay dependence remains partial until stronger candidates exist.",
+      eventName: "replay_return",
+      href: `/history?symbol=${encodeURIComponent(input.topReplay?.row.symbol ?? continuationSymbol)}`,
+      key: "replay_dependence",
+      label: "Replay dependence",
+      status: input.replayCandidateCount || input.topReplay ? "ready" : "partial",
+      targetLabel: "replay reuse",
+      tone: input.replayCandidateCount || input.topReplay ? "cyan" : "slate",
+    },
+    {
+      detail: input.triggerMonitorCount ? "Compare returns can be tied to trigger monitors and active research threads." : "Compare dependence needs more saved workflow context before it can be certified.",
+      eventName: "compare_return",
+      href: "/discover#compare",
+      key: "compare_dependence",
+      label: "Compare dependence",
+      status: hasContinuity || input.triggerMonitorCount ? "partial" : "blocked",
+      targetLabel: "compare return",
+      tone: hasContinuity || input.triggerMonitorCount ? "violet" : "amber",
     },
   ];
 }
@@ -1050,6 +1331,68 @@ function buildNotificationQualityControls(input: {
   ];
 }
 
+function buildAlertQualityEngine(input: {
+  triggerMonitorCount: number;
+  watchlistSymbols: string[];
+  workflowEvolution: WorkflowEvolutionSummary | null;
+}): DailyDriverAlertQualityEngineItem[] {
+  const hasPersonalContext = input.watchlistSymbols.length > 0 || Boolean(input.workflowEvolution?.lastSeenAt);
+  const workflowChangeCount = (input.workflowEvolution?.whatChanged.length ?? 0) + (input.workflowEvolution?.watchlistEvolution.length ?? 0);
+  return [
+    {
+      detail: hasPersonalContext
+        ? "Alert relevance can use watchlist, workflow memory, and prior return context before notifying the user."
+        : "Relevance scoring is limited until users create watchlist or workflow memory.",
+      eventName: "notification_engagement",
+      key: "relevance",
+      label: "Relevance scoring",
+      status: hasPersonalContext ? "partial" : "blocked",
+      targetLabel: "high signal",
+      tone: hasPersonalContext ? "cyan" : "amber",
+    },
+    {
+      detail: "Category-level fatigue scoring is measured through not-useful feedback, suppression actions, and repeated ignored categories.",
+      eventName: "notification_usefulness_feedback",
+      key: "fatigue_score",
+      label: "Fatigue score",
+      status: "partial",
+      targetLabel: "noise down",
+      tone: "amber",
+    },
+    {
+      detail: input.triggerMonitorCount
+        ? `${input.triggerMonitorCount} trigger monitor${input.triggerMonitorCount === 1 ? "" : "s"} can promote only workflow-relevant alerts.`
+        : "Adaptive importance exists, but trigger-monitor evidence is limited in this snapshot.",
+      eventName: "notification_engagement",
+      key: "adaptive_importance",
+      label: "Adaptive importance",
+      status: input.triggerMonitorCount ? "ready" : "partial",
+      targetLabel: "priority fit",
+      tone: input.triggerMonitorCount ? "emerald" : "slate",
+    },
+    {
+      detail: workflowChangeCount
+        ? `${workflowChangeCount} workflow change${workflowChangeCount === 1 ? "" : "s"} can be linked back to scanner, watchlist, chart, or replay return actions.`
+        : "Workflow-linked alerts need a changed-since-last-session baseline before they can become a strong return loop.",
+      eventName: "alert_return",
+      key: "workflow_linked_alerts",
+      label: "Workflow-linked alerts",
+      status: workflowChangeCount ? "partial" : "blocked",
+      targetLabel: "> 12% return",
+      tone: workflowChangeCount ? "violet" : "amber",
+    },
+    {
+      detail: "Alert return attribution separates notification opens that create useful workflows from notifications that merely create page views.",
+      eventName: "alert_return",
+      key: "return_attribution",
+      label: "Return attribution",
+      status: "partial",
+      targetLabel: "useful return",
+      tone: "rose",
+    },
+  ];
+}
+
 function buildChangeVisualization(input: {
   rows: OpportunityViewModel[];
   topOpportunity: ScoredOpportunity | null;
@@ -1229,7 +1572,7 @@ function buildRetentionTargets(input: {
       key: "d2_retention",
       label: "D2 retention",
       status: hasReturnInfrastructure ? "partial" : "blocked",
-      targetLabel: "> 8%",
+      targetLabel: "> 10%",
       tone: hasReturnInfrastructure ? "cyan" : "amber",
     },
     {
@@ -1239,7 +1582,7 @@ function buildRetentionTargets(input: {
       key: "d7_retention",
       label: "D7 retention",
       status: "blocked",
-      targetLabel: "> 4%",
+      targetLabel: "> 6%",
       tone: "rose",
     },
     {
@@ -1249,7 +1592,7 @@ function buildRetentionTargets(input: {
       key: "active_day_depth",
       label: "2+ active-day retention",
       status: hasContinuity ? "partial" : "blocked",
-      targetLabel: "> 10%",
+      targetLabel: "> 15%",
       tone: hasContinuity ? "cyan" : "amber",
     },
     {
@@ -1376,7 +1719,7 @@ function buildBlockers(input: {
   if (!input.persistedWorkspace) blockers.push("Workspace preferences have not been saved, so repeat sessions still start from default layout.");
   if (!input.workflowEvolution?.lastSeenAt) blockers.push("Workflow continuity is starting, but repeat-visit proof is not established yet.");
   if (!input.replayCandidateCount) blockers.push("Replay candidates are limited in this snapshot, weakening the replay habit loop.");
-  blockers.push("Real retention dominance cannot be claimed until production cohorts show D2 > 8%, D7 > 4%, 2+ active-day > 10%, notification usefulness > 55%, and alert-return conversion > 12%.");
+  blockers.push("Real retention dominance cannot be claimed until production cohorts show D2 > 10%, D7 > 6%, 2+ active-day > 15%, notification usefulness > 55%, and alert-return conversion > 12%.");
   return blockers;
 }
 

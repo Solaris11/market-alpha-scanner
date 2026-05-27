@@ -21,11 +21,21 @@ describe("daily driver retention model", () => {
     assert.deepEqual(model.morningWorkflow.map((item) => item.key), [
       "overnight_summary",
       "overnight_events",
+      "important_events_today",
       "watchlist_movement",
       "scanner_changes",
       "risk_changes",
+      "portfolio_pressure",
       "macro_updates",
       "ai_digest",
+    ]);
+    assert.deepEqual(model.dailyBriefing.map((item) => item.key), [
+      "what_changed",
+      "matters",
+      "deteriorated",
+      "improved",
+      "risk",
+      "next_action",
     ]);
     assert.equal(model.funnel.find((stage) => stage.key === "watchlist_anchor")?.value, 0);
     assert.deepEqual(model.activationMilestones.map((item) => item.key), [
@@ -38,10 +48,14 @@ describe("daily driver retention model", () => {
     ]);
     assert.ok(model.activationMilestones.some((item) => item.key === "first_watchlist" && item.status === "blocked"));
     assert.ok(model.returnLoops.some((loop) => loop.eventName === "scanner_habit_loop"));
+    assert.ok(model.dependenceLoops.some((loop) => loop.key === "first_open" && loop.status === "ready"));
     assert.ok(model.returnLoops.some((loop) => loop.eventName === "chart_return" && loop.status === "blocked"));
     assert.ok(model.continuationWorkflows.some((item) => item.key === "scanner_state"));
+    assert.ok(model.alertQualityEngine.some((item) => item.key === "fatigue_score"));
     assert.ok(model.notificationQuality.some((item) => item.key === "fatigue_suppression"));
-    assert.ok(model.retentionTargets.some((target) => target.key === "d2_retention" && target.targetLabel === "> 8%"));
+    assert.ok(model.retentionTargets.some((target) => target.key === "d2_retention" && target.targetLabel === "> 10%"));
+    assert.ok(model.retentionTargets.some((target) => target.key === "d7_retention" && target.targetLabel === "> 6%"));
+    assert.ok(model.retentionTargets.some((target) => target.key === "active_day_depth" && target.targetLabel === "> 15%"));
     assert.ok(model.telemetry.some((item) => item.eventName === "activation_milestone"));
     assert.ok(model.telemetry.some((item) => item.eventName === "workflow_dropoff"));
     assert.ok(model.telemetry.some((item) => item.eventName === "morning_workflow_complete"));
@@ -80,9 +94,13 @@ describe("daily driver retention model", () => {
     assert.ok(model.notificationQuality.some((item) => item.key === "adaptive_relevance" && item.status === "partial"));
     assert.equal(model.morningWorkflow.find((item) => item.key === "watchlist_movement")?.href, "/symbol/AMD");
     assert.equal(model.morningWorkflow.find((item) => item.key === "scanner_changes")?.metricLabel, "2 rows");
+    assert.equal(model.morningWorkflow.find((item) => item.key === "portfolio_pressure")?.href, "/paper");
     assert.match(model.morningWorkflow.find((item) => item.key === "macro_updates")?.metricLabel ?? "", /1 trigger/);
     assert.equal(model.morningWorkflow.find((item) => item.key === "overnight_events")?.metricLabel, "4 signals");
     assert.equal(model.morningWorkflow.find((item) => item.key === "ai_digest")?.href, "/symbol/AMD");
+    assert.ok(model.dailyBriefing.some((item) => item.key === "deteriorated" && item.href === "/symbol/MU"));
+    assert.ok(model.dependenceLoops.some((loop) => loop.key === "repeat_watchlist_usage" && loop.status === "ready"));
+    assert.ok(model.alertQualityEngine.some((item) => item.key === "workflow_linked_alerts" && item.status === "partial"));
     assert.ok(model.changeVisualization.some((item) => item.symbol === "AMD" && item.type === "watchlist"));
     assert.ok(model.adaptivePriorities.some((item) => item.key === "adaptive_scanner" && item.proofEvent.includes("scanner_return")));
     assert.ok(model.retentionTargets.some((target) => target.key === "notification_useful_ratio" && target.targetLabel === "> 55%"));

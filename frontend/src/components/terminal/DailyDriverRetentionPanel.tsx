@@ -23,9 +23,12 @@ import type {
   DailyDriverAction,
   DailyDriverActivationMilestone,
   DailyDriverAdaptivePriority,
+  DailyDriverAlertQualityEngineItem,
+  DailyDriverBriefingItem,
   DailyDriverChangeSignal,
   DailyDriverContinuationItem,
   DailyDriverContextItem,
+  DailyDriverDependenceLoop,
   DailyDriverFunnelStage,
   DailyDriverHabitLoop,
   DailyDriverMorningWorkflowItem,
@@ -65,9 +68,11 @@ const ACTION_ICON: Record<DailyDriverAction["key"], ComponentType<{ className?: 
 
 const MORNING_ICON: Record<DailyDriverMorningWorkflowItem["key"], ComponentType<{ className?: string }>> = {
   ai_digest: BrainCircuit,
+  important_events_today: BellRing,
   macro_updates: Sparkles,
   overnight_events: BellRing,
   overnight_summary: Gauge,
+  portfolio_pressure: ShieldAlert,
   risk_changes: ShieldAlert,
   scanner_changes: Search,
   watchlist_movement: ListChecks,
@@ -86,11 +91,11 @@ export function DailyDriverRetentionPanel({ model }: Props) {
       <div className="relative z-10 grid gap-5 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-100">Daily driver system</span>
-            <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100">Retention loop</span>
+            <span className="rounded-full border border-cyan-300/25 bg-cyan-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-100">Morning command center</span>
+            <span className="rounded-full border border-emerald-300/20 bg-emerald-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-emerald-100">User dependence loop</span>
           </div>
           <h2 className="mt-3 max-w-5xl text-3xl font-black tracking-tight text-white sm:text-5xl">
-            Turn today's market read into a repeat workflow
+            Make TradeVeto the first market screen every day
           </h2>
           <p className="mt-3 max-w-4xl text-sm leading-6 text-slate-300 sm:text-base">{model.summary}</p>
           <p className="mt-2 max-w-4xl text-xs leading-5 text-slate-500">{model.proofBoundary}</p>
@@ -104,11 +109,16 @@ export function DailyDriverRetentionPanel({ model }: Props) {
         <MorningWorkflowDeck habit={habit} items={model.morningWorkflow} />
       </div>
 
-      <div className="relative z-10 mt-4 grid gap-4 xl:grid-cols-4">
+      <div className="relative z-10 mt-4">
+        <DailyBriefingDeck items={model.dailyBriefing} />
+      </div>
+
+      <div className="relative z-10 mt-4 grid gap-4 xl:grid-cols-5">
         <ActivationMilestoneDeck items={model.activationMilestones} />
+        <DependenceLoopDeck loops={model.dependenceLoops} />
         <ReturnLoopDeck loops={model.returnLoops} />
         <ContinuationWorkflowDeck items={model.continuationWorkflows} />
-        <NotificationQualityDeck items={model.notificationQuality} />
+        <AlertQualityEngineDeck items={model.alertQualityEngine} />
       </div>
 
       <div className="relative z-10 mt-4 grid gap-4 xl:grid-cols-3">
@@ -144,8 +154,12 @@ export function DailyDriverRetentionPanel({ model }: Props) {
       </div>
 
       <div className="relative z-10 mt-4 grid gap-4 xl:grid-cols-3">
+        <NotificationQualityDeck items={model.notificationQuality} />
         <HabitLoopDeck loops={model.habitLoops} />
         <ContextDeck items={model.continuity} title="Workflow continuity" />
+      </div>
+
+      <div className="relative z-10 mt-4">
         <ContextDeck items={model.personalization} title="Personalization memory" />
       </div>
 
@@ -221,6 +235,44 @@ function MorningWorkflowTile({ item }: { item: DailyDriverMorningWorkflowItem })
         <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-full border ${tone.border} bg-black/22 ${tone.text}`}>
           <Icon className="h-4 w-4" />
         </div>
+      </div>
+      <p className="mt-3 line-clamp-3 min-h-[3.75rem] text-xs leading-5 text-slate-400">{item.detail}</p>
+    </Link>
+  );
+}
+
+function DailyBriefingDeck({ items }: { items: DailyDriverBriefingItem[] }) {
+  return (
+    <div className="rounded-[1.6rem] border border-emerald-300/16 bg-slate-950/42 p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-300">Daily briefing engine</div>
+          <div className="mt-1 text-lg font-black text-slate-50">What changed, what matters, and what to do next</div>
+        </div>
+        <BrainCircuit className="h-5 w-5 text-emerald-200" />
+      </div>
+      <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {items.map((item) => <DailyBriefingTile item={item} key={item.key} />)}
+      </div>
+    </div>
+  );
+}
+
+function DailyBriefingTile({ item }: { item: DailyDriverBriefingItem }) {
+  const tone = TONE[item.tone];
+  return (
+    <Link
+      className={`tv-tap-motion min-w-0 rounded-[1.25rem] border ${tone.border} ${tone.bg} p-3 transition hover:-translate-y-0.5 hover:border-emerald-200/50 hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-emerald-300/40`}
+      data-analytics-id={`daily-briefing-${item.key}`}
+      href={item.href}
+      onClick={() => recordDailyBriefing(item)}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{item.metricLabel}</div>
+          <div className="mt-1 line-clamp-2 font-black leading-5 text-slate-50">{item.label}</div>
+        </div>
+        <span className={`shrink-0 rounded-full border ${tone.border} bg-black/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] ${tone.text}`}>{item.status}</span>
       </div>
       <p className="mt-3 line-clamp-3 min-h-[3.75rem] text-xs leading-5 text-slate-400">{item.detail}</p>
     </Link>
@@ -313,6 +365,26 @@ function ReturnLoopDeck({ loops }: { loops: DailyDriverReturnLoop[] }) {
   );
 }
 
+function DependenceLoopDeck({ loops }: { loops: DailyDriverDependenceLoop[] }) {
+  return (
+    <CompactProofDeck
+      eyebrow="Dependence loops"
+      icon={<Activity className="h-5 w-5 text-emerald-200" />}
+      rows={loops.map((loop) => ({
+        detail: loop.detail,
+        href: loop.href,
+        key: loop.key,
+        label: loop.label,
+        metric: loop.targetLabel,
+        status: loop.status,
+        tone: loop.tone,
+        tracking: () => trackAnalyticsEvent(loop.eventName, { dependenceLoop: loop.key }, { source: "daily_driver_dependence" }),
+      }))}
+      title="First-screen dependence"
+    />
+  );
+}
+
 function ContinuationWorkflowDeck({ items }: { items: DailyDriverContinuationItem[] }) {
   return (
     <CompactProofDeck
@@ -329,6 +401,26 @@ function ContinuationWorkflowDeck({ items }: { items: DailyDriverContinuationIte
         tracking: () => trackAnalyticsEvent("workflow_continuity", { continuation: item.key, status: item.status }, { source: "daily_driver_continuation" }),
       }))}
       title="Continue where left off"
+    />
+  );
+}
+
+function AlertQualityEngineDeck({ items }: { items: DailyDriverAlertQualityEngineItem[] }) {
+  return (
+    <CompactProofDeck
+      eyebrow="Alert quality engine"
+      icon={<BellRing className="h-5 w-5 text-rose-200" />}
+      rows={items.map((item) => ({
+        detail: item.detail,
+        href: "/alerts",
+        key: item.key,
+        label: item.label,
+        metric: item.targetLabel,
+        status: item.status,
+        tone: item.tone,
+        tracking: () => trackAnalyticsEvent(item.eventName, { alertQuality: item.key }, { source: "daily_driver_alert_quality" }),
+      }))}
+      title="Relevance, fatigue, returns"
     />
   );
 }
@@ -656,8 +748,38 @@ function returnEventForMorningItem(item: DailyDriverMorningWorkflowItem): Analyt
   if (item.key === "watchlist_movement") return "watchlist_return";
   if (item.key === "scanner_changes") return "scanner_return";
   if (item.key === "overnight_events") return "feed_engagement";
+  if (item.key === "portfolio_pressure") return "strategy_return";
+  if (item.key === "important_events_today") return "feed_engagement";
   if (item.key === "ai_digest" || item.key === "risk_changes" || item.key === "macro_updates") return "personalized_intelligence_return";
   return null;
+}
+
+function recordDailyBriefing(item: DailyDriverBriefingItem): void {
+  trackAnalyticsEvent("morning_workflow_start", {
+    briefingItem: item.key,
+    routeGroup: item.workflow,
+    status: item.status,
+  }, { source: "daily_briefing_engine" });
+  trackAnalyticsEvent("workflow_continuity", {
+    briefingItem: item.key,
+    from: "terminal",
+    to: item.workflow,
+  }, { source: "daily_briefing_engine" });
+  const returnEvent = returnEventForBriefingItem(item);
+  if (returnEvent) {
+    trackAnalyticsEvent(returnEvent, {
+      briefingItem: item.key,
+      routeGroup: item.workflow,
+    }, { source: "daily_briefing_engine" });
+  }
+}
+
+function returnEventForBriefingItem(item: DailyDriverBriefingItem): AnalyticsEventName | null {
+  if (item.workflow === "scanner") return "scanner_return";
+  if (item.workflow === "watchlist") return "watchlist_return";
+  if (item.workflow === "replay") return "replay_return";
+  if (item.workflow === "macro") return "personalized_intelligence_return";
+  return "morning_workflow_start";
 }
 
 function recordAction(action: DailyDriverAction): void {
