@@ -1,0 +1,958 @@
+{
+  "generatedAt": "2026-05-27T06:51:15.589Z",
+  "statusCode": 200,
+  "timelineCount": 9,
+  "eventDomainTimelines": [
+    {
+      "activeSourceCount": 16,
+      "calendarCount": 0,
+      "domain": "sector-events",
+      "itemCount": 8,
+      "items": [
+        {
+          "affectedSymbols": [
+            "MRVL"
+          ],
+          "category": "Dividend",
+          "date": "2026-05-27T06:40:57.501172+00:00",
+          "detail": "MRVL dividend calendar context. Dividend adds context for Technology / MRVL through dividend.",
+          "freshnessLabel": "Fresh · 10m old · Freshness SLA within 43200m · 10m old",
+          "id": "development:sector-events:https://finance.yahoo.com/quote/MRVL|MRVL dividend calendar context",
+          "providerState": "active",
+          "source": "Verified market source · Yahoo Finance Dividend Calendar",
+          "sourceUrl": "https://finance.yahoo.com/quote/MRVL",
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "CRM"
+          ],
+          "category": "Dividend",
+          "date": "2026-05-27T06:40:57.501172+00:00",
+          "detail": "CRM dividend calendar context. Dividend adds context for Technology / CRM through dividend.",
+          "freshnessLabel": "Fresh · 10m old · Freshness SLA within 43200m · 10m old",
+          "id": "development:sector-events:https://finance.yahoo.com/quote/CRM|CRM dividend calendar context",
+          "providerState": "active",
+          "source": "Verified market source · Yahoo Finance Dividend Calendar",
+          "sourceUrl": "https://finance.yahoo.com/quote/CRM",
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "COST"
+          ],
+          "category": "Dividend",
+          "date": "2026-05-27T06:40:57.501172+00:00",
+          "detail": "COST dividend calendar context. Dividend adds context for Consumer Defensive / COST through dividend.",
+          "freshnessLabel": "Fresh · 10m old · Freshness SLA within 43200m · 10m old",
+          "id": "development:sector-events:https://finance.yahoo.com/quote/COST|COST dividend calendar context",
+          "providerState": "active",
+          "source": "Verified market source · Yahoo Finance Dividend Calendar",
+          "sourceUrl": "https://finance.yahoo.com/quote/COST",
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "MS"
+          ],
+          "category": "Dividend",
+          "date": "2026-05-27T06:40:57.501172+00:00",
+          "detail": "MS dividend calendar context. Dividend adds context for Financial Services / MS through dividend.",
+          "freshnessLabel": "Fresh · 10m old · Freshness SLA within 43200m · 10m old",
+          "id": "development:sector-events:https://finance.yahoo.com/quote/MS|MS dividend calendar context",
+          "providerState": "active",
+          "source": "Verified market source · Yahoo Finance Dividend Calendar",
+          "sourceUrl": "https://finance.yahoo.com/quote/MS",
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "V"
+          ],
+          "category": "Dividend",
+          "date": "2026-05-27T06:40:57.501172+00:00",
+          "detail": "V dividend calendar context. Dividend adds context for Financial Services / V through dividend.",
+          "freshnessLabel": "Fresh · 10m old · Freshness SLA within 43200m · 10m old",
+          "id": "development:sector-events:https://finance.yahoo.com/quote/V|V dividend calendar context",
+          "providerState": "active",
+          "source": "Verified market source · Yahoo Finance Dividend Calendar",
+          "sourceUrl": "https://finance.yahoo.com/quote/V",
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "WFC"
+          ],
+          "category": "Dividend",
+          "date": "2026-05-27T06:40:57.501172+00:00",
+          "detail": "WFC dividend calendar context. Dividend adds context for Financial Services / WFC through dividend.",
+          "freshnessLabel": "Fresh · 10m old · Freshness SLA within 43200m · 10m old",
+          "id": "development:sector-events:https://finance.yahoo.com/quote/WFC|WFC dividend calendar context",
+          "providerState": "active",
+          "source": "Verified market source · Yahoo Finance Dividend Calendar",
+          "sourceUrl": "https://finance.yahoo.com/quote/WFC",
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "AXP"
+          ],
+          "category": "Dividend",
+          "date": "2026-05-27T06:40:57.501172+00:00",
+          "detail": "AXP dividend calendar context. Dividend adds context for Financial Services / AXP through dividend.",
+          "freshnessLabel": "Fresh · 10m old · Freshness SLA within 43200m · 10m old",
+          "id": "development:sector-events:https://finance.yahoo.com/quote/AXP|AXP dividend calendar context",
+          "providerState": "active",
+          "source": "Verified market source · Yahoo Finance Dividend Calendar",
+          "sourceUrl": "https://finance.yahoo.com/quote/AXP",
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "UUP",
+            "HYG",
+            "MS",
+            "GS",
+            "LLY",
+            "SOXX",
+            "SLB",
+            "TSM",
+            "LRCX",
+            "AMAT"
+          ],
+          "category": "Rates",
+          "date": "2026-05-26T21:27:56+00:00",
+          "detail": "8-K - Trinseo PLC (0001519061) (Filer). Fed rates adds risk pressure across UUP, HYG, MS, GS, LLY in technology, software, financial services through source linked.",
+          "freshnessLabel": "Recent · 9h old · Freshness SLA within 1440m · 563m old",
+          "id": "development:sector-events:https://www.sec.gov/Archives/edgar/data/1519061/000110465926066376/0001104659-26-066376-index.htm|8-K - Trinseo PLC (0001519061) (Filer)",
+          "providerState": "active",
+          "source": "Official source · SEC EDGAR 8-K Filings",
+          "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1519061/000110465926066376/0001104659-26-066376-index.htm",
+          "tone": "rose",
+          "watchlistImpact": false
+        }
+      ],
+      "label": "Sector event continuity",
+      "providerStateSummary": "active",
+      "tone": "rose"
+    },
+    {
+      "activeSourceCount": 16,
+      "calendarCount": 12,
+      "domain": "company-events",
+      "itemCount": 8,
+      "items": [
+        {
+          "affectedSymbols": [
+            "AVGO"
+          ],
+          "category": "earnings",
+          "date": "2026-06-03T00:00:00.000Z",
+          "detail": "AVGO earnings. Macro Event Pressure: 3 verified event items mapped to this setup. Confirmed event context keeps context mixed; key context: Fed Rates, Regulatory Issue, Liquidity Easing. Event risk 62/100. This is probabilistic context, not a forecast.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:company-events:AVGO:earnings:2026-06-03T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "amber",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "MCD"
+          ],
+          "category": "dividend",
+          "date": "2026-06-02T00:00:00.000Z",
+          "detail": "MCD ex-dividend. Stored ex-dividend context from the latest scanner/fundamental packet.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:company-events:MCD:dividend:2026-06-02T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "cyan",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "PANW"
+          ],
+          "category": "earnings",
+          "date": "2026-06-02T00:00:00.000Z",
+          "detail": "PANW earnings. Macro Event Pressure: 3 verified event items mapped to this setup. Confirmed event context keeps context mixed; key context: Fed Rates, Regulatory Issue, Liquidity Easing. Event risk 64/100. This is probabilistic context, not a forecast.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:company-events:PANW:earnings:2026-06-02T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "amber",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "GS"
+          ],
+          "category": "dividend",
+          "date": "2026-06-01T00:00:00.000Z",
+          "detail": "GS ex-dividend. Stored ex-dividend context from the latest scanner/fundamental packet.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:company-events:GS:dividend:2026-06-01T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "cyan",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "LMT"
+          ],
+          "category": "dividend",
+          "date": "2026-06-01T00:00:00.000Z",
+          "detail": "LMT ex-dividend. Stored ex-dividend context from the latest scanner/fundamental packet.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:company-events:LMT:dividend:2026-06-01T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "cyan",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "NKE"
+          ],
+          "category": "dividend",
+          "date": "2026-06-01T00:00:00.000Z",
+          "detail": "NKE ex-dividend. Stored ex-dividend context from the latest scanner/fundamental packet.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:company-events:NKE:dividend:2026-06-01T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "cyan",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "UNP"
+          ],
+          "category": "dividend",
+          "date": "2026-05-29T00:00:00.000Z",
+          "detail": "UNP ex-dividend. Stored ex-dividend context from the latest scanner/fundamental packet.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:company-events:UNP:dividend:2026-05-29T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "cyan",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "COST"
+          ],
+          "category": "earnings",
+          "date": "2026-05-28T00:00:00.000Z",
+          "detail": "COST earnings. Event Risk Elevated: 3 verified event items mapped to this setup. Confirmed event context raises fragility; key context: Fed Rates, Regulatory Issue, Earnings Calendar. Event risk 73/100. This is probabilistic context, not a forecast.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:company-events:COST:earnings:2026-05-28T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "rose",
+          "watchlistImpact": false
+        }
+      ],
+      "label": "Company event continuity",
+      "providerStateSummary": "calendar only",
+      "tone": "rose"
+    },
+    {
+      "activeSourceCount": 9,
+      "calendarCount": 5,
+      "domain": "dividends",
+      "itemCount": 8,
+      "items": [
+        {
+          "affectedSymbols": [
+            "MCD"
+          ],
+          "category": "dividend",
+          "date": "2026-06-02T00:00:00.000Z",
+          "detail": "MCD ex-dividend. Stored ex-dividend context from the latest scanner/fundamental packet.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:dividends:MCD:dividend:2026-06-02T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "cyan",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "GS"
+          ],
+          "category": "dividend",
+          "date": "2026-06-01T00:00:00.000Z",
+          "detail": "GS ex-dividend. Stored ex-dividend context from the latest scanner/fundamental packet.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:dividends:GS:dividend:2026-06-01T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "cyan",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "LMT"
+          ],
+          "category": "dividend",
+          "date": "2026-06-01T00:00:00.000Z",
+          "detail": "LMT ex-dividend. Stored ex-dividend context from the latest scanner/fundamental packet.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:dividends:LMT:dividend:2026-06-01T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "cyan",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "NKE"
+          ],
+          "category": "dividend",
+          "date": "2026-06-01T00:00:00.000Z",
+          "detail": "NKE ex-dividend. Stored ex-dividend context from the latest scanner/fundamental packet.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:dividends:NKE:dividend:2026-06-01T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "cyan",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "UNP"
+          ],
+          "category": "dividend",
+          "date": "2026-05-29T00:00:00.000Z",
+          "detail": "UNP ex-dividend. Stored ex-dividend context from the latest scanner/fundamental packet.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:dividends:UNP:dividend:2026-05-29T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "cyan",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "MRVL"
+          ],
+          "category": "Dividend",
+          "date": "2026-05-27T06:40:57.501172+00:00",
+          "detail": "MRVL dividend calendar context. Dividend adds context for Technology / MRVL through dividend.",
+          "freshnessLabel": "Fresh · 10m old · Freshness SLA within 43200m · 10m old",
+          "id": "development:dividends:https://finance.yahoo.com/quote/MRVL|MRVL dividend calendar context",
+          "providerState": "active",
+          "source": "Verified market source · Yahoo Finance Dividend Calendar",
+          "sourceUrl": "https://finance.yahoo.com/quote/MRVL",
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "CRM"
+          ],
+          "category": "Dividend",
+          "date": "2026-05-27T06:40:57.501172+00:00",
+          "detail": "CRM dividend calendar context. Dividend adds context for Technology / CRM through dividend.",
+          "freshnessLabel": "Fresh · 10m old · Freshness SLA within 43200m · 10m old",
+          "id": "development:dividends:https://finance.yahoo.com/quote/CRM|CRM dividend calendar context",
+          "providerState": "active",
+          "source": "Verified market source · Yahoo Finance Dividend Calendar",
+          "sourceUrl": "https://finance.yahoo.com/quote/CRM",
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "COST"
+          ],
+          "category": "Dividend",
+          "date": "2026-05-27T06:40:57.501172+00:00",
+          "detail": "COST dividend calendar context. Dividend adds context for Consumer Defensive / COST through dividend.",
+          "freshnessLabel": "Fresh · 10m old · Freshness SLA within 43200m · 10m old",
+          "id": "development:dividends:https://finance.yahoo.com/quote/COST|COST dividend calendar context",
+          "providerState": "active",
+          "source": "Verified market source · Yahoo Finance Dividend Calendar",
+          "sourceUrl": "https://finance.yahoo.com/quote/COST",
+          "tone": "rose",
+          "watchlistImpact": false
+        }
+      ],
+      "label": "Dividend timeline",
+      "providerStateSummary": "calendar only, active",
+      "tone": "rose"
+    },
+    {
+      "activeSourceCount": 5,
+      "calendarCount": 12,
+      "domain": "economic-calendar",
+      "itemCount": 8,
+      "items": [
+        {
+          "affectedSymbols": [
+            "AVGO"
+          ],
+          "category": "earnings",
+          "date": "2026-06-03T00:00:00.000Z",
+          "detail": "AVGO earnings. Macro Event Pressure: 3 verified event items mapped to this setup. Confirmed event context keeps context mixed; key context: Fed Rates, Regulatory Issue, Liquidity Easing. Event risk 62/100. This is probabilistic context, not a forecast.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:economic-calendar:AVGO:earnings:2026-06-03T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "amber",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "MCD"
+          ],
+          "category": "dividend",
+          "date": "2026-06-02T00:00:00.000Z",
+          "detail": "MCD ex-dividend. Stored ex-dividend context from the latest scanner/fundamental packet.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:economic-calendar:MCD:dividend:2026-06-02T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "cyan",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "PANW"
+          ],
+          "category": "earnings",
+          "date": "2026-06-02T00:00:00.000Z",
+          "detail": "PANW earnings. Macro Event Pressure: 3 verified event items mapped to this setup. Confirmed event context keeps context mixed; key context: Fed Rates, Regulatory Issue, Liquidity Easing. Event risk 64/100. This is probabilistic context, not a forecast.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:economic-calendar:PANW:earnings:2026-06-02T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "amber",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "GS"
+          ],
+          "category": "dividend",
+          "date": "2026-06-01T00:00:00.000Z",
+          "detail": "GS ex-dividend. Stored ex-dividend context from the latest scanner/fundamental packet.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:economic-calendar:GS:dividend:2026-06-01T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "cyan",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "LMT"
+          ],
+          "category": "dividend",
+          "date": "2026-06-01T00:00:00.000Z",
+          "detail": "LMT ex-dividend. Stored ex-dividend context from the latest scanner/fundamental packet.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:economic-calendar:LMT:dividend:2026-06-01T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "cyan",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "NKE"
+          ],
+          "category": "dividend",
+          "date": "2026-06-01T00:00:00.000Z",
+          "detail": "NKE ex-dividend. Stored ex-dividend context from the latest scanner/fundamental packet.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:economic-calendar:NKE:dividend:2026-06-01T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "cyan",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "UNP"
+          ],
+          "category": "dividend",
+          "date": "2026-05-29T00:00:00.000Z",
+          "detail": "UNP ex-dividend. Stored ex-dividend context from the latest scanner/fundamental packet.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:economic-calendar:UNP:dividend:2026-05-29T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "cyan",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "COST"
+          ],
+          "category": "earnings",
+          "date": "2026-05-28T00:00:00.000Z",
+          "detail": "COST earnings. Event Risk Elevated: 3 verified event items mapped to this setup. Confirmed event context raises fragility; key context: Fed Rates, Regulatory Issue, Earnings Calendar. Event risk 73/100. This is probabilistic context, not a forecast.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:economic-calendar:COST:earnings:2026-05-28T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "rose",
+          "watchlistImpact": false
+        }
+      ],
+      "label": "Economic calendar timeline",
+      "providerStateSummary": "calendar only",
+      "tone": "rose"
+    },
+    {
+      "activeSourceCount": 5,
+      "calendarCount": 0,
+      "domain": "macro",
+      "itemCount": 5,
+      "items": [
+        {
+          "affectedSymbols": [
+            "UUP",
+            "HYG",
+            "MS",
+            "GS",
+            "LLY",
+            "SOXX",
+            "SLB",
+            "TSM",
+            "LRCX",
+            "AMAT"
+          ],
+          "category": "Rates",
+          "date": "2026-05-26T21:27:56+00:00",
+          "detail": "8-K - Trinseo PLC (0001519061) (Filer). Fed rates adds risk pressure across UUP, HYG, MS, GS, LLY in technology, software, financial services through source linked.",
+          "freshnessLabel": "Recent · 9h old · Freshness SLA within 1440m · 563m old",
+          "id": "development:macro:https://www.sec.gov/Archives/edgar/data/1519061/000110465926066376/0001104659-26-066376-index.htm|8-K - Trinseo PLC (0001519061) (Filer)",
+          "providerState": "active",
+          "source": "Official source · SEC EDGAR 8-K Filings",
+          "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1519061/000110465926066376/0001104659-26-066376-index.htm",
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "UUP",
+            "MS",
+            "GS",
+            "EOG",
+            "SOXX",
+            "TSM",
+            "SLB",
+            "LLY",
+            "QQQ",
+            "SMH"
+          ],
+          "category": "Rates",
+          "date": "2026-05-26T15:36:37+00:00",
+          "detail": "8-K - Lamb Weston Holdings, Inc. (0001679273) (Filer). Fed rates adds risk pressure across UUP, MS, GS, EOG, SOXX in technology, software, financial services through source linked.",
+          "freshnessLabel": "Recent · 15h old · Freshness SLA within 1440m · 915m old",
+          "id": "development:macro:https://www.sec.gov/Archives/edgar/data/1679273/000167927326000018/0001679273-26-000018-index.htm|8-K - Lamb Weston Holdings, Inc. (0001679273) (Filer)",
+          "providerState": "active",
+          "source": "Official source · SEC EDGAR 8-K Filings",
+          "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1679273/000167927326000018/0001679273-26-000018-index.htm",
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "UUP",
+            "MS",
+            "HYG",
+            "GS",
+            "EOG",
+            "LLY",
+            "AAPL",
+            "TSM",
+            "XLE",
+            "HAL"
+          ],
+          "category": "Rates",
+          "date": "2026-05-26T10:02:50+00:00",
+          "detail": "8-K - Octave Intelligence plc (0002083632) (Filer). Fed rates adds risk pressure across UUP, MS, HYG, GS, EOG in technology, software, financial services through source linked.",
+          "freshnessLabel": "Recent · 21h old · Freshness SLA within 1440m · 1248m old",
+          "id": "development:macro:https://www.sec.gov/Archives/edgar/data/2083632/000162828026037912/0001628280-26-037912-index.htm|8-K - Octave Intelligence plc (0002083632) (Filer)",
+          "providerState": "active",
+          "source": "Official source · SEC EDGAR 8-K Filings",
+          "sourceUrl": "https://www.sec.gov/Archives/edgar/data/2083632/000162828026037912/0001628280-26-037912-index.htm",
+          "tone": "rose",
+          "watchlistImpact": true
+        },
+        {
+          "affectedSymbols": [
+            "UUP",
+            "MS",
+            "HYG",
+            "GS",
+            "EOG",
+            "LLY",
+            "AAPL",
+            "TSM",
+            "XLE",
+            "HAL"
+          ],
+          "category": "Macro",
+          "date": "2026-05-26T10:01:31+00:00",
+          "detail": "8-K - Artificial Intelligence Technology Solutions Inc. (0001498148) (Filer). Ai semiconductor momentum may support UUP, MS, HYG, GS, EOG in semiconductors, technology, US Dollar through source linked.",
+          "freshnessLabel": "Recent · 21h old · Freshness SLA within 1440m · 1250m old",
+          "id": "development:macro:https://www.sec.gov/Archives/edgar/data/1498148/000106299326002862/0001062993-26-002862-index.htm|8-K - Artificial Intelligence Technology Solutions Inc. (0001498148) (Filer)",
+          "providerState": "active",
+          "source": "Official source · SEC EDGAR 8-K Filings",
+          "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1498148/000106299326002862/0001062993-26-002862-index.htm",
+          "tone": "rose",
+          "watchlistImpact": true
+        },
+        {
+          "affectedSymbols": [
+            "OIL",
+            "EOG",
+            "XLE",
+            "HAL",
+            "MPC",
+            "SLB",
+            "VLO",
+            "OXY",
+            "XOM",
+            "CVX"
+          ],
+          "category": "Energy",
+          "date": "2026-05-26T09:42:00+00:00",
+          "detail": "China’s hidden reserves may be the reason why oil prices haven’t exploded even higher. Oil supply shock adds risk pressure across OIL, EOG, XLE, HAL, MPC in energy, commodities, Energy through source linked.",
+          "freshnessLabel": "Recent · 21h old · Freshness SLA within 1440m · 1269m old",
+          "id": "development:macro:https://www.marketwatch.com/story/chinas-hidden-reserves-may-be-the-reason-why-oil-prices-havent-exploded-even-higher-0e5f8fef?mod=mw_rss_topstories|China’s hidden reserves may be the reason why oil prices haven’t exploded even higher",
+          "providerState": "active",
+          "source": "Verified market source · MarketWatch",
+          "sourceUrl": "https://www.marketwatch.com/story/chinas-hidden-reserves-may-be-the-reason-why-oil-prices-havent-exploded-even-higher-0e5f8fef?mod=mw_rss_topstories",
+          "tone": "rose",
+          "watchlistImpact": false
+        }
+      ],
+      "label": "Macro event timeline",
+      "providerStateSummary": "active",
+      "tone": "rose"
+    },
+    {
+      "activeSourceCount": 3,
+      "calendarCount": 0,
+      "domain": "rates",
+      "itemCount": 3,
+      "items": [
+        {
+          "affectedSymbols": [
+            "UUP",
+            "HYG",
+            "MS",
+            "GS",
+            "LLY",
+            "SOXX",
+            "SLB",
+            "TSM",
+            "LRCX",
+            "AMAT"
+          ],
+          "category": "Rates",
+          "date": "2026-05-26T21:27:56+00:00",
+          "detail": "8-K - Trinseo PLC (0001519061) (Filer). Fed rates adds risk pressure across UUP, HYG, MS, GS, LLY in technology, software, financial services through source linked.",
+          "freshnessLabel": "Recent · 9h old · Freshness SLA within 1440m · 563m old",
+          "id": "development:rates:https://www.sec.gov/Archives/edgar/data/1519061/000110465926066376/0001104659-26-066376-index.htm|8-K - Trinseo PLC (0001519061) (Filer)",
+          "providerState": "active",
+          "source": "Official source · SEC EDGAR 8-K Filings",
+          "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1519061/000110465926066376/0001104659-26-066376-index.htm",
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "UUP",
+            "MS",
+            "GS",
+            "EOG",
+            "SOXX",
+            "TSM",
+            "SLB",
+            "LLY",
+            "QQQ",
+            "SMH"
+          ],
+          "category": "Rates",
+          "date": "2026-05-26T15:36:37+00:00",
+          "detail": "8-K - Lamb Weston Holdings, Inc. (0001679273) (Filer). Fed rates adds risk pressure across UUP, MS, GS, EOG, SOXX in technology, software, financial services through source linked.",
+          "freshnessLabel": "Recent · 15h old · Freshness SLA within 1440m · 915m old",
+          "id": "development:rates:https://www.sec.gov/Archives/edgar/data/1679273/000167927326000018/0001679273-26-000018-index.htm|8-K - Lamb Weston Holdings, Inc. (0001679273) (Filer)",
+          "providerState": "active",
+          "source": "Official source · SEC EDGAR 8-K Filings",
+          "sourceUrl": "https://www.sec.gov/Archives/edgar/data/1679273/000167927326000018/0001679273-26-000018-index.htm",
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "UUP",
+            "MS",
+            "HYG",
+            "GS",
+            "EOG",
+            "LLY",
+            "AAPL",
+            "TSM",
+            "XLE",
+            "HAL"
+          ],
+          "category": "Rates",
+          "date": "2026-05-26T10:02:50+00:00",
+          "detail": "8-K - Octave Intelligence plc (0002083632) (Filer). Fed rates adds risk pressure across UUP, MS, HYG, GS, EOG in technology, software, financial services through source linked.",
+          "freshnessLabel": "Recent · 21h old · Freshness SLA within 1440m · 1248m old",
+          "id": "development:rates:https://www.sec.gov/Archives/edgar/data/2083632/000162828026037912/0001628280-26-037912-index.htm|8-K - Octave Intelligence plc (0002083632) (Filer)",
+          "providerState": "active",
+          "source": "Official source · SEC EDGAR 8-K Filings",
+          "sourceUrl": "https://www.sec.gov/Archives/edgar/data/2083632/000162828026037912/0001628280-26-037912-index.htm",
+          "tone": "rose",
+          "watchlistImpact": true
+        }
+      ],
+      "label": "Rates timeline",
+      "providerStateSummary": "active",
+      "tone": "rose"
+    },
+    {
+      "activeSourceCount": 1,
+      "calendarCount": 7,
+      "domain": "earnings",
+      "itemCount": 8,
+      "items": [
+        {
+          "affectedSymbols": [
+            "AVGO"
+          ],
+          "category": "earnings",
+          "date": "2026-06-03T00:00:00.000Z",
+          "detail": "AVGO earnings. Macro Event Pressure: 3 verified event items mapped to this setup. Confirmed event context keeps context mixed; key context: Fed Rates, Regulatory Issue, Liquidity Easing. Event risk 62/100. This is probabilistic context, not a forecast.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:earnings:AVGO:earnings:2026-06-03T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "amber",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "PANW"
+          ],
+          "category": "earnings",
+          "date": "2026-06-02T00:00:00.000Z",
+          "detail": "PANW earnings. Macro Event Pressure: 3 verified event items mapped to this setup. Confirmed event context keeps context mixed; key context: Fed Rates, Regulatory Issue, Liquidity Easing. Event risk 64/100. This is probabilistic context, not a forecast.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:earnings:PANW:earnings:2026-06-02T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "amber",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "COST"
+          ],
+          "category": "earnings",
+          "date": "2026-05-28T00:00:00.000Z",
+          "detail": "COST earnings. Event Risk Elevated: 3 verified event items mapped to this setup. Confirmed event context raises fragility; key context: Fed Rates, Regulatory Issue, Earnings Calendar. Event risk 73/100. This is probabilistic context, not a forecast.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:earnings:COST:earnings:2026-05-28T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "MDB"
+          ],
+          "category": "earnings",
+          "date": "2026-05-28T00:00:00.000Z",
+          "detail": "MDB earnings. Event Risk Elevated: 3 verified event items mapped to this setup. Confirmed event context raises fragility; key context: Fed Rates, Regulatory Issue, Liquidity Easing. Event risk 70/100. This is probabilistic context, not a forecast.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:earnings:MDB:earnings:2026-05-28T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "CRM"
+          ],
+          "category": "earnings",
+          "date": "2026-05-27T00:00:00.000Z",
+          "detail": "CRM earnings. Event Risk Elevated: 3 verified event items mapped to this setup. Confirmed event context raises fragility; key context: Fed Rates, Regulatory Issue, Liquidity Easing. Event risk 72/100. This is probabilistic context, not a forecast.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:earnings:CRM:earnings:2026-05-27T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "MRVL"
+          ],
+          "category": "earnings",
+          "date": "2026-05-27T00:00:00.000Z",
+          "detail": "MRVL earnings. Event Risk Elevated: 3 verified event items mapped to this setup. Confirmed event context raises fragility; key context: Fed Rates, Regulatory Issue, Liquidity Easing. Event risk 72/100. This is probabilistic context, not a forecast.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:earnings:MRVL:earnings:2026-05-27T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "SNOW"
+          ],
+          "category": "earnings",
+          "date": "2026-05-27T00:00:00.000Z",
+          "detail": "SNOW earnings. Event Risk Elevated: 3 verified event items mapped to this setup. Confirmed event context raises fragility; key context: Fed Rates, Regulatory Issue, Liquidity Easing. Event risk 72/100. This is probabilistic context, not a forecast.",
+          "freshnessLabel": "Calendar-only; source-linked freshness not measured",
+          "id": "calendar:earnings:SNOW:earnings:2026-05-27T00:00:00.000Z",
+          "providerState": "calendar-only",
+          "source": "Stored event calendar",
+          "sourceUrl": null,
+          "tone": "rose",
+          "watchlistImpact": false
+        },
+        {
+          "affectedSymbols": [
+            "MS",
+            "GS",
+            "EOG",
+            "LLY",
+            "AAPL",
+            "TSM",
+            "HAL",
+            "LRCX",
+            "ASML",
+            "MPC"
+          ],
+          "category": "Earnings",
+          "date": "2026-05-25T14:00:00+00:00",
+          "detail": "These underdogs are a big reason S&P 500 profit growth is the fastest in nearly 5 years. Ai semiconductor momentum adds context across MS, GS, EOG, LLY, AAPL in semiconductors, technology, Financial Services through source linked.",
+          "freshnessLabel": "Aging · 2d old · Freshness SLA within 43200m · 2451m old",
+          "id": "development:earnings:https://www.marketwatch.com/story/these-underdogs-are-a-big-reason-s-p-500-profit-growth-is-the-fastest-in-nearly-5-years-4a43f142?mod=mw_rss_topstories|These underdogs are a big reason S&P 500 profit growth is the fastest in nearly 5 years",
+          "providerState": "active",
+          "source": "Verified market source · MarketWatch",
+          "sourceUrl": "https://www.marketwatch.com/story/these-underdogs-are-a-big-reason-s-p-500-profit-growth-is-the-fastest-in-nearly-5-years-4a43f142?mod=mw_rss_topstories",
+          "tone": "rose",
+          "watchlistImpact": true
+        }
+      ],
+      "label": "Earnings and guidance timeline",
+      "providerStateSummary": "calendar only, active",
+      "tone": "rose"
+    },
+    {
+      "activeSourceCount": 1,
+      "calendarCount": 0,
+      "domain": "inflation",
+      "itemCount": 1,
+      "items": [
+        {
+          "affectedSymbols": [
+            "OIL",
+            "EOG",
+            "XLE",
+            "HAL",
+            "MPC",
+            "SLB",
+            "VLO",
+            "OXY",
+            "XOM",
+            "CVX"
+          ],
+          "category": "Energy",
+          "date": "2026-05-26T09:42:00+00:00",
+          "detail": "China’s hidden reserves may be the reason why oil prices haven’t exploded even higher. Oil supply shock adds risk pressure across OIL, EOG, XLE, HAL, MPC in energy, commodities, Energy through source linked.",
+          "freshnessLabel": "Recent · 21h old · Freshness SLA within 1440m · 1269m old",
+          "id": "development:inflation:https://www.marketwatch.com/story/chinas-hidden-reserves-may-be-the-reason-why-oil-prices-havent-exploded-even-higher-0e5f8fef?mod=mw_rss_topstories|China’s hidden reserves may be the reason why oil prices haven’t exploded even higher",
+          "providerState": "active",
+          "source": "Verified market source · MarketWatch",
+          "sourceUrl": "https://www.marketwatch.com/story/chinas-hidden-reserves-may-be-the-reason-why-oil-prices-havent-exploded-even-higher-0e5f8fef?mod=mw_rss_topstories",
+          "tone": "rose",
+          "watchlistImpact": false
+        }
+      ],
+      "label": "Inflation timeline",
+      "providerStateSummary": "active",
+      "tone": "rose"
+    },
+    {
+      "activeSourceCount": 1,
+      "calendarCount": 0,
+      "domain": "crypto-events",
+      "itemCount": 1,
+      "items": [
+        {
+          "affectedSymbols": [
+            "NOW",
+            "BTC-USD",
+            "IBIT",
+            "ETH-USD"
+          ],
+          "category": "Crypto",
+          "date": "2026-05-26T06:16:35+00:00",
+          "detail": "At $322 billion, the stablecoin market value exceeds the FX reserves of 95 nations. Crypto macro adds context across NOW, BTC-USD, IBIT, ETH-USD in crypto, Technology, Crypto through source linked.",
+          "freshnessLabel": "Aging · 1d old · Freshness SLA within 2880m · 1475m old",
+          "id": "development:crypto-events:https://www.coindesk.com/markets/2026/05/26/at-usd318-billion-the-stablecoin-market-value-exceeds-the-fx-reserves-of-95-nations|At $322 billion, the stablecoin market value exceeds the FX reserves of 95 nations",
+          "providerState": "active",
+          "source": "Verified market source · CoinDesk",
+          "sourceUrl": "https://www.coindesk.com/markets/2026/05/26/at-usd318-billion-the-stablecoin-market-value-exceeds-the-fx-reserves-of-95-nations",
+          "tone": "rose",
+          "watchlistImpact": false
+        }
+      ],
+      "label": "Crypto event timeline",
+      "providerStateSummary": "active",
+      "tone": "rose"
+    }
+  ]
+}

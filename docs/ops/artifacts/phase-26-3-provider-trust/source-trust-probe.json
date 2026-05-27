@@ -1,0 +1,389 @@
+{
+  "authenticated": true,
+  "baseline": {
+    "eventCardCount": 16,
+    "latencyMs": 6511,
+    "providerStateCounts": {
+      "active": 9,
+      "calendar-only": 0,
+      "delayed": 0,
+      "limited": 2,
+      "outage": 0,
+      "partial-outage": 0,
+      "stale": 0
+    },
+    "requiredDomainCoverage": [
+      {
+        "domain": "macro",
+        "itemCount": 5,
+        "operationalState": "active",
+        "present": true,
+        "provider": "SEC EDGAR 8-K Filings, MarketWatch",
+        "freshnessSlaDisclosure": "Macro source-linked provider row is 561m old against a 1440m freshness SLA.",
+        "freshnessSlaMinutes": 1440,
+        "freshnessSlaStatus": "within-sla",
+        "sourceTransparency": "Source-linked rows: SEC EDGAR 8-K Filings, MarketWatch."
+      },
+      {
+        "domain": "rates",
+        "itemCount": 3,
+        "operationalState": "active",
+        "present": true,
+        "provider": "SEC EDGAR 8-K Filings",
+        "freshnessSlaDisclosure": "Rates source-linked provider row is 561m old against a 1440m freshness SLA.",
+        "freshnessSlaMinutes": 1440,
+        "freshnessSlaStatus": "within-sla",
+        "sourceTransparency": "Source-linked rows: SEC EDGAR 8-K Filings."
+      },
+      {
+        "domain": "inflation",
+        "itemCount": 1,
+        "operationalState": "active",
+        "present": true,
+        "provider": "MarketWatch",
+        "freshnessSlaDisclosure": "Inflation source-linked provider row is 1267m old against a 1440m freshness SLA.",
+        "freshnessSlaMinutes": 1440,
+        "freshnessSlaStatus": "within-sla",
+        "sourceTransparency": "Source-linked rows: MarketWatch."
+      },
+      {
+        "domain": "earnings",
+        "itemCount": 8,
+        "operationalState": "active",
+        "present": true,
+        "provider": "MarketWatch",
+        "freshnessSlaDisclosure": "Earnings source-linked provider row is 2449m old against a 43200m freshness SLA.",
+        "freshnessSlaMinutes": 43200,
+        "freshnessSlaStatus": "within-sla",
+        "sourceTransparency": "Source-linked rows: MarketWatch."
+      },
+      {
+        "domain": "economic-calendar",
+        "itemCount": 17,
+        "operationalState": "active",
+        "present": true,
+        "provider": "SEC EDGAR 8-K Filings, MarketWatch",
+        "freshnessSlaDisclosure": "Economic calendar source-linked provider row is 561m old against a 1440m freshness SLA.",
+        "freshnessSlaMinutes": 1440,
+        "freshnessSlaStatus": "within-sla",
+        "sourceTransparency": "Source-linked rows: SEC EDGAR 8-K Filings, MarketWatch."
+      },
+      {
+        "domain": "analyst-actions",
+        "itemCount": 0,
+        "operationalState": "limited",
+        "present": true,
+        "provider": "yfinance",
+        "freshnessSlaDisclosure": "Analyst actions has no source-linked provider row, so freshness SLA is not measured.",
+        "freshnessSlaMinutes": 2880,
+        "freshnessSlaStatus": "not-measured",
+        "sourceTransparency": "Raw provider status: Market data provider fallback was used.."
+      },
+      {
+        "domain": "dividends",
+        "itemCount": 14,
+        "operationalState": "active",
+        "present": true,
+        "provider": "Yahoo Finance Dividend Calendar",
+        "freshnessSlaDisclosure": "Dividends source-linked provider row is 8m old against a 43200m freshness SLA.",
+        "freshnessSlaMinutes": 43200,
+        "freshnessSlaStatus": "within-sla",
+        "sourceTransparency": "Source-linked rows: Yahoo Finance Dividend Calendar."
+      },
+      {
+        "domain": "geopolitical-events",
+        "itemCount": 0,
+        "operationalState": "limited",
+        "present": true,
+        "provider": "yfinance",
+        "freshnessSlaDisclosure": "Geopolitical events has no source-linked provider row, so freshness SLA is not measured.",
+        "freshnessSlaMinutes": 4320,
+        "freshnessSlaStatus": "not-measured",
+        "sourceTransparency": "Raw provider status: Market data provider fallback was used.."
+      },
+      {
+        "domain": "company-events",
+        "itemCount": 28,
+        "operationalState": "active",
+        "present": true,
+        "provider": "SEC EDGAR 8-K Filings, MarketWatch, Yahoo Finance Dividend Calendar, CoinDesk",
+        "freshnessSlaDisclosure": "Company events source-linked provider row is 8m old against a 1440m freshness SLA.",
+        "freshnessSlaMinutes": 1440,
+        "freshnessSlaStatus": "within-sla",
+        "sourceTransparency": "Source-linked rows: SEC EDGAR 8-K Filings, MarketWatch, Yahoo Finance Dividend Calendar, CoinDesk."
+      },
+      {
+        "domain": "sector-events",
+        "itemCount": 16,
+        "operationalState": "active",
+        "present": true,
+        "provider": "SEC EDGAR 8-K Filings, MarketWatch, Yahoo Finance Dividend Calendar, CoinDesk",
+        "freshnessSlaDisclosure": "Sector events source-linked provider row is 8m old against a 1440m freshness SLA.",
+        "freshnessSlaMinutes": 1440,
+        "freshnessSlaStatus": "within-sla",
+        "sourceTransparency": "Source-linked rows: SEC EDGAR 8-K Filings, MarketWatch, Yahoo Finance Dividend Calendar, CoinDesk."
+      },
+      {
+        "domain": "crypto-events",
+        "itemCount": 1,
+        "operationalState": "active",
+        "present": true,
+        "provider": "CoinDesk",
+        "freshnessSlaDisclosure": "Crypto events source-linked provider row is 1473m old against a 2880m freshness SLA.",
+        "freshnessSlaMinutes": 2880,
+        "freshnessSlaStatus": "within-sla",
+        "sourceTransparency": "Source-linked rows: CoinDesk."
+      }
+    ],
+    "certification": {
+      "activeFreshnessDomains": [
+        "macro",
+        "rates",
+        "inflation",
+        "earnings",
+        "economic-calendar",
+        "dividends",
+        "company-events",
+        "sector-events",
+        "crypto-events"
+      ],
+      "blockers": [
+        "limited provider domains: analyst-actions, geopolitical-events",
+        "freshness SLA unmeasured: analyst-actions, geopolitical-events"
+      ],
+      "breachedFreshnessDomains": [],
+      "contextCompletenessPct": 100,
+      "disclosure": "Provider/event freshness certification is partial: TradeVeto exposes source, freshness, stale/outage, and no-fabrication states, but remaining provider depth or SLA blockers are still visible.",
+      "displayedCardCount": 16,
+      "fakeLiveLabelCount": 0,
+      "freshnessSlaPass": false,
+      "hiddenStaleStateCount": 0,
+      "limitedDomains": [
+        "analyst-actions",
+        "geopolitical-events"
+      ],
+      "missingDomains": [],
+      "noFabricationDisclosure": "TradeVeto does not fabricate events, headlines, analyst actions, geopolitical events, provider claims, or live labels when source-linked provider data is absent, delayed, stale, or unavailable.",
+      "noFakeLiveLabelsPass": true,
+      "noHiddenStaleStatePass": true,
+      "outageSimulationPass": null,
+      "requiredDomainCoveragePass": false,
+      "requiredDomains": [
+        "macro",
+        "rates",
+        "inflation",
+        "earnings",
+        "economic-calendar",
+        "analyst-actions",
+        "dividends",
+        "geopolitical-events",
+        "company-events",
+        "sector-events",
+        "crypto-events"
+      ],
+      "sourceCompletenessPct": 100,
+      "sourceCompletenessPass": true,
+      "status": "strong-partial",
+      "targetSourceCompletenessPct": 99,
+      "timelineCoveragePass": true,
+      "timelineMissingDomains": [],
+      "unmeasuredFreshnessDomains": [
+        "analyst-actions",
+        "geopolitical-events"
+      ]
+    },
+    "slaStatusCounts": {
+      "within-sla": 9,
+      "not-measured": 2
+    },
+    "sourceTrust": {
+      "completeCardCount": 16,
+      "completenessPct": 100,
+      "contextCompleteCardCount": 16,
+      "contextCompletenessPct": 100,
+      "disclosure": "16 of 16 displayed source-linked event cards disclose provider, source URL, timestamp, freshness, provider state, uncertainty, affected symbols, and watchlist impact.",
+      "displayedCardCount": 16,
+      "incompleteCardCount": 0,
+      "missingFieldCounts": {
+        "affectedSymbols": 0,
+        "freshness": 0,
+        "provider": 0,
+        "providerState": 0,
+        "sourceUrl": 0,
+        "timestamp": 0,
+        "uncertainty": 0,
+        "watchlistImpact": 0
+      },
+      "requiredFields": [
+        "sourceUrl",
+        "provider",
+        "timestamp",
+        "freshness",
+        "providerState",
+        "uncertainty"
+      ],
+      "status": "pass",
+      "targetCompletenessPct": 99
+    },
+    "statusCode": 200
+  },
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [
+    "provider freshness certification strong-partial",
+    "certification blocker: limited provider domains: analyst-actions, geopolitical-events",
+    "certification blocker: freshness SLA unmeasured: analyst-actions, geopolitical-events",
+    "provider domains still limited: analyst-actions, geopolitical-events"
+  ],
+  "generatedAt": "2026-05-27T06:49:27.265Z",
+  "outageSimulation": {
+    "enabled": true,
+    "fallbackVisible": true,
+    "recoveryStates": [
+      {
+        "disclosure": "Macro has current source-linked provider rows in this scanner packet.",
+        "domain": "macro",
+        "operationalState": "active",
+        "provider": "SEC EDGAR 8-K Filings, MarketWatch"
+      },
+      {
+        "disclosure": "Inflation has current source-linked provider rows in this scanner packet.",
+        "domain": "inflation",
+        "operationalState": "active",
+        "provider": "MarketWatch"
+      },
+      {
+        "disclosure": "Rates has current source-linked provider rows in this scanner packet.",
+        "domain": "rates",
+        "operationalState": "active",
+        "provider": "SEC EDGAR 8-K Filings"
+      },
+      {
+        "disclosure": "Economic calendar has current source-linked provider rows in this scanner packet.",
+        "domain": "economic-calendar",
+        "operationalState": "active",
+        "provider": "SEC EDGAR 8-K Filings, MarketWatch"
+      },
+      {
+        "disclosure": "Company events has current source-linked provider rows in this scanner packet.",
+        "domain": "company-events",
+        "operationalState": "active",
+        "provider": "SEC EDGAR 8-K Filings, MarketWatch, Yahoo Finance Dividend Calendar, CoinDesk"
+      },
+      {
+        "disclosure": "Sector events has current source-linked provider rows in this scanner packet.",
+        "domain": "sector-events",
+        "operationalState": "active",
+        "provider": "SEC EDGAR 8-K Filings, MarketWatch, Yahoo Finance Dividend Calendar, CoinDesk"
+      }
+    ],
+    "recoveryVisible": true,
+    "requested": [
+      "news",
+      "macro",
+      "scanner"
+    ],
+    "simulatedStates": [
+      {
+        "disclosure": "macro provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "macro",
+        "operationalState": "outage",
+        "provider": "SEC EDGAR 8-K Filings, MarketWatch"
+      },
+      {
+        "disclosure": "inflation provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "inflation",
+        "operationalState": "outage",
+        "provider": "MarketWatch"
+      },
+      {
+        "disclosure": "rates provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "rates",
+        "operationalState": "outage",
+        "provider": "SEC EDGAR 8-K Filings"
+      },
+      {
+        "disclosure": "economic calendar provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "economic-calendar",
+        "operationalState": "outage",
+        "provider": "SEC EDGAR 8-K Filings, MarketWatch"
+      },
+      {
+        "disclosure": "company events provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "company-events",
+        "operationalState": "outage",
+        "provider": "SEC EDGAR 8-K Filings, MarketWatch, Yahoo Finance Dividend Calendar, CoinDesk"
+      },
+      {
+        "disclosure": "sector events provider outage simulated for certification; no missing event is labeled live or inferred.",
+        "domain": "sector-events",
+        "operationalState": "outage",
+        "provider": "SEC EDGAR 8-K Filings, MarketWatch, Yahoo Finance Dividend Calendar, CoinDesk"
+      }
+    ]
+  },
+  "outageCertification": {
+    "activeFreshnessDomains": [
+      "macro",
+      "rates",
+      "inflation",
+      "earnings",
+      "economic-calendar",
+      "dividends",
+      "company-events",
+      "sector-events",
+      "crypto-events"
+    ],
+    "blockers": [
+      "limited provider domains: analyst-actions, geopolitical-events",
+      "freshness SLA unmeasured: analyst-actions, geopolitical-events"
+    ],
+    "breachedFreshnessDomains": [],
+    "contextCompletenessPct": 100,
+    "disclosure": "Provider/event freshness certification is partial: TradeVeto exposes source, freshness, stale/outage, and no-fabrication states, but remaining provider depth or SLA blockers are still visible.",
+    "displayedCardCount": 16,
+    "fakeLiveLabelCount": 0,
+    "freshnessSlaPass": false,
+    "hiddenStaleStateCount": 0,
+    "limitedDomains": [
+      "analyst-actions",
+      "geopolitical-events"
+    ],
+    "missingDomains": [],
+    "noFabricationDisclosure": "TradeVeto does not fabricate events, headlines, analyst actions, geopolitical events, provider claims, or live labels when source-linked provider data is absent, delayed, stale, or unavailable.",
+    "noFakeLiveLabelsPass": true,
+    "noHiddenStaleStatePass": true,
+    "outageSimulationPass": true,
+    "requiredDomainCoveragePass": false,
+    "requiredDomains": [
+      "macro",
+      "rates",
+      "inflation",
+      "earnings",
+      "economic-calendar",
+      "analyst-actions",
+      "dividends",
+      "geopolitical-events",
+      "company-events",
+      "sector-events",
+      "crypto-events"
+    ],
+    "sourceCompletenessPct": 100,
+    "sourceCompletenessPass": true,
+    "status": "strong-partial",
+    "targetSourceCompletenessPct": 99,
+    "timelineCoveragePass": true,
+    "timelineMissingDomains": [],
+    "unmeasuredFreshnessDomains": [
+      "analyst-actions",
+      "geopolitical-events"
+    ]
+  },
+  "overallStatus": "not_ready",
+  "probeIdentity": {
+    "cleanupRequested": true,
+    "created": true,
+    "email": "phase22-provider-1779864554474-cdb68a4f@tradeveto-probe.local",
+    "userId": "cbe46e7f-4b7c-4150-ab79-f45f77d6e631"
+  }
+}
+

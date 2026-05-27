@@ -1,0 +1,136 @@
+{
+  "generatedAt": "2026-05-27T06:51:15.589Z",
+  "statusCode": 200,
+  "domains": [
+    {
+      "domain": "macro",
+      "itemCount": 5,
+      "operationalState": "active",
+      "present": true,
+      "provider": "SEC EDGAR 8-K Filings, MarketWatch",
+      "freshnessSlaDisclosure": "Macro source-linked provider row is 563m old against a 1440m freshness SLA.",
+      "freshnessSlaMinutes": 1440,
+      "freshnessSlaStatus": "within-sla",
+      "sourceTransparency": "Source-linked rows: SEC EDGAR 8-K Filings, MarketWatch."
+    },
+    {
+      "domain": "rates",
+      "itemCount": 3,
+      "operationalState": "active",
+      "present": true,
+      "provider": "SEC EDGAR 8-K Filings",
+      "freshnessSlaDisclosure": "Rates source-linked provider row is 563m old against a 1440m freshness SLA.",
+      "freshnessSlaMinutes": 1440,
+      "freshnessSlaStatus": "within-sla",
+      "sourceTransparency": "Source-linked rows: SEC EDGAR 8-K Filings."
+    },
+    {
+      "domain": "inflation",
+      "itemCount": 1,
+      "operationalState": "active",
+      "present": true,
+      "provider": "MarketWatch",
+      "freshnessSlaDisclosure": "Inflation source-linked provider row is 1269m old against a 1440m freshness SLA.",
+      "freshnessSlaMinutes": 1440,
+      "freshnessSlaStatus": "within-sla",
+      "sourceTransparency": "Source-linked rows: MarketWatch."
+    },
+    {
+      "domain": "earnings",
+      "itemCount": 8,
+      "operationalState": "active",
+      "present": true,
+      "provider": "MarketWatch",
+      "freshnessSlaDisclosure": "Earnings source-linked provider row is 2451m old against a 43200m freshness SLA.",
+      "freshnessSlaMinutes": 43200,
+      "freshnessSlaStatus": "within-sla",
+      "sourceTransparency": "Source-linked rows: MarketWatch."
+    },
+    {
+      "domain": "economic-calendar",
+      "itemCount": 17,
+      "operationalState": "active",
+      "present": true,
+      "provider": "SEC EDGAR 8-K Filings, MarketWatch",
+      "freshnessSlaDisclosure": "Economic calendar source-linked provider row is 563m old against a 1440m freshness SLA.",
+      "freshnessSlaMinutes": 1440,
+      "freshnessSlaStatus": "within-sla",
+      "sourceTransparency": "Source-linked rows: SEC EDGAR 8-K Filings, MarketWatch."
+    },
+    {
+      "domain": "analyst-actions",
+      "itemCount": 0,
+      "operationalState": "limited",
+      "present": true,
+      "provider": "yfinance",
+      "freshnessSlaDisclosure": "Analyst actions has no source-linked provider row, so freshness SLA is not measured.",
+      "freshnessSlaMinutes": 2880,
+      "freshnessSlaStatus": "not-measured",
+      "sourceTransparency": "Raw provider status: Market data provider fallback was used.."
+    },
+    {
+      "domain": "dividends",
+      "itemCount": 14,
+      "operationalState": "active",
+      "present": true,
+      "provider": "Yahoo Finance Dividend Calendar",
+      "freshnessSlaDisclosure": "Dividends source-linked provider row is 10m old against a 43200m freshness SLA.",
+      "freshnessSlaMinutes": 43200,
+      "freshnessSlaStatus": "within-sla",
+      "sourceTransparency": "Source-linked rows: Yahoo Finance Dividend Calendar."
+    },
+    {
+      "domain": "geopolitical-events",
+      "itemCount": 0,
+      "operationalState": "limited",
+      "present": true,
+      "provider": "yfinance",
+      "freshnessSlaDisclosure": "Geopolitical events has no source-linked provider row, so freshness SLA is not measured.",
+      "freshnessSlaMinutes": 4320,
+      "freshnessSlaStatus": "not-measured",
+      "sourceTransparency": "Raw provider status: Market data provider fallback was used.."
+    },
+    {
+      "domain": "company-events",
+      "itemCount": 28,
+      "operationalState": "active",
+      "present": true,
+      "provider": "SEC EDGAR 8-K Filings, MarketWatch, Yahoo Finance Dividend Calendar, CoinDesk",
+      "freshnessSlaDisclosure": "Company events source-linked provider row is 10m old against a 1440m freshness SLA.",
+      "freshnessSlaMinutes": 1440,
+      "freshnessSlaStatus": "within-sla",
+      "sourceTransparency": "Source-linked rows: SEC EDGAR 8-K Filings, MarketWatch, Yahoo Finance Dividend Calendar, CoinDesk."
+    },
+    {
+      "domain": "sector-events",
+      "itemCount": 16,
+      "operationalState": "active",
+      "present": true,
+      "provider": "SEC EDGAR 8-K Filings, MarketWatch, Yahoo Finance Dividend Calendar, CoinDesk",
+      "freshnessSlaDisclosure": "Sector events source-linked provider row is 10m old against a 1440m freshness SLA.",
+      "freshnessSlaMinutes": 1440,
+      "freshnessSlaStatus": "within-sla",
+      "sourceTransparency": "Source-linked rows: SEC EDGAR 8-K Filings, MarketWatch, Yahoo Finance Dividend Calendar, CoinDesk."
+    },
+    {
+      "domain": "crypto-events",
+      "itemCount": 1,
+      "operationalState": "active",
+      "present": true,
+      "provider": "CoinDesk",
+      "freshnessSlaDisclosure": "Crypto events source-linked provider row is 1475m old against a 2880m freshness SLA.",
+      "freshnessSlaMinutes": 2880,
+      "freshnessSlaStatus": "within-sla",
+      "sourceTransparency": "Source-linked rows: CoinDesk."
+    }
+  ],
+  "providerStateCounts": {
+    "active": 9,
+    "calendar-only": 0,
+    "delayed": 0,
+    "limited": 2,
+    "outage": 0,
+    "partial-outage": 0,
+    "stale": 0
+  }
+}
