@@ -36,6 +36,7 @@
     "probe:phase22:provider-source-trust": "TRADEVETO_PHASE22_PROVIDER_BASE_URL=https://tradeveto.com TRADEVETO_PHASE22_CREATE_PROBE_USER=true node scripts/phase22-provider-source-trust-probe.mjs",
     "probe:phase23:provider-depth": "TRADEVETO_PHASE22_PROVIDER_BASE_URL=https://tradeveto.com TRADEVETO_PHASE22_CREATE_PROBE_USER=true node scripts/phase22-provider-source-trust-probe.mjs",
     "probe:phase25:provider-freshness": "TRADEVETO_PHASE22_PROVIDER_BASE_URL=https://tradeveto.com TRADEVETO_PHASE22_CREATE_PROBE_USER=true TRADEVETO_PROVIDER_SOURCE_TRUST_TARGET_PCT=99 node scripts/phase22-provider-source-trust-probe.mjs",
+    "probe:phase26:provider-trust": "TRADEVETO_PHASE22_PROVIDER_BASE_URL=https://tradeveto.com TRADEVETO_PHASE22_CREATE_PROBE_USER=true TRADEVETO_PROVIDER_SOURCE_TRUST_TARGET_PCT=99 TRADEVETO_PHASE22_PROVIDER_OUTPUT=../docs/ops/artifacts/phase-26-3-provider-trust/source-trust-probe.json node scripts/phase22-provider-source-trust-probe.mjs",
     "probe:phase25:chart-scanner-power": "node scripts/phase25-chart-scanner-power-workflow-probe.mjs",
     "probe:phase25:chart-scanner-browser-timing": "node scripts/phase25-chart-scanner-browser-timing-probe.mjs",
     "probe:phase25:symbol-history-performance-polish": "node scripts/phase25-symbol-history-performance-polish-probe.mjs",

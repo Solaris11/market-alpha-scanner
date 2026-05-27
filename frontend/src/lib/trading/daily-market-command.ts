@@ -581,7 +581,7 @@ function buildDevelopments(input: {
 }): DailyMarketDevelopment[] {
   const watchlist = new Set(input.watchlistSymbols.map((symbol) => symbol.toUpperCase()));
   const topSymbols = new Set([...input.topDangerSymbols, ...input.topOpportunitySymbols].map((symbol) => symbol.toUpperCase()));
-  return input.marketNews
+  const developments = input.marketNews
     .map((item) => {
       const affectedSymbols = item.relatedAssets.map((symbol) => symbol.toUpperCase());
       const watchlistImpact = affectedSymbols.some((symbol) => watchlist.has(symbol));
@@ -650,13 +650,61 @@ function buildDevelopments(input: {
         watchlistRelevanceLabel: watchlistRelevanceLabel(affectedSymbols, watchlist),
         whyItMatters: item.whyItMatters,
       };
-    })
-    .sort((left, right) => {
-      const priority = developmentPriority(right) - developmentPriority(left);
-      if (priority !== 0) return priority;
-      return Date.parse(right.timestamp) - Date.parse(left.timestamp);
-    })
-    .slice(0, 16);
+    });
+  return selectProviderDiverseDevelopments(developments, 16);
+}
+
+const PROVIDER_DEVELOPMENT_DOMAIN_ORDER: DailyProviderCoverageDomain[] = [
+  "macro",
+  "rates",
+  "inflation",
+  "analyst-actions",
+  "dividends",
+  "geopolitical-events",
+  "crypto-events",
+  "earnings",
+  "company-events",
+  "sector-events",
+];
+
+function selectProviderDiverseDevelopments(developments: DailyMarketDevelopment[], limit: number): DailyMarketDevelopment[] {
+  const sorted = developments.slice().sort(developmentSort);
+  const selected: DailyMarketDevelopment[] = [];
+  const selectedIds = new Set<string>();
+  for (const domain of PROVIDER_DEVELOPMENT_DOMAIN_ORDER) {
+    const match = sorted.find((item) => !selectedIds.has(item.id) && developmentMatchesProviderDomain(item, domain));
+    if (!match) continue;
+    selected.push(match);
+    selectedIds.add(match.id);
+    if (selected.length >= limit) return selected.sort(developmentSort);
+  }
+  for (const item of sorted) {
+    if (selectedIds.has(item.id)) continue;
+    selected.push(item);
+    selectedIds.add(item.id);
+    if (selected.length >= limit) break;
+  }
+  return selected.sort(developmentSort);
+}
+
+function developmentSort(left: DailyMarketDevelopment, right: DailyMarketDevelopment): number {
+  const priority = developmentPriority(right) - developmentPriority(left);
+  if (priority !== 0) return priority;
+  return Date.parse(right.timestamp) - Date.parse(left.timestamp);
+}
+
+function developmentMatchesProviderDomain(item: DailyMarketDevelopment, domain: DailyProviderCoverageDomain): boolean {
+  if (domain === "macro") return isMacroProviderDevelopment(item);
+  if (domain === "rates") return isRatesProviderDevelopment(item);
+  if (domain === "inflation") return isInflationProviderDevelopment(item);
+  if (domain === "analyst-actions") return isAnalystProviderDevelopment(item);
+  if (domain === "dividends") return isDividendProviderDevelopment(item);
+  if (domain === "geopolitical-events") return isGeopoliticalProviderDevelopment(item);
+  if (domain === "crypto-events") return isCryptoProviderDevelopment(item);
+  if (domain === "earnings") return item.category === "Earnings";
+  if (domain === "company-events") return item.affectedSymbols.length > 0 || item.original.scope === "symbol";
+  if (domain === "sector-events") return item.affectedSectors.length > 0 || item.original.scope === "sector";
+  return false;
 }
 
 function buildNewsEcosystem(developments: DailyMarketDevelopment[], calendar: DailyEventCalendarItem[]): DailyNewsEcosystemSummary {
@@ -1009,6 +1057,40 @@ function isInflationProviderDevelopment(item: DailyMarketDevelopment): boolean {
   return /\boil supply\b|\boil shock\b|\benergy supply\b|\bcommodity pressure\b|event_oil_supply_shock/.test(text);
 }
 
+function isMacroProviderDevelopment(item: DailyMarketDevelopment): boolean {
+  return item.category === "Macro"
+    || item.category === "Rates"
+    || item.category === "Energy"
+    || item.category === "Geopolitical"
+    || item.original.scope === "market"
+    || item.original.scope === "broad";
+}
+
+function isRatesProviderDevelopment(item: DailyMarketDevelopment): boolean {
+  const text = `${item.category} ${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel} ${item.original.eventType} ${item.original.reasonCodes.join(" ")} ${item.relatedMacroContext}`.toLowerCase();
+  return item.category === "Rates" || /\bfed\b|\brate\b|\brates\b|\byield\b|\bbond\b|\btreasury\b|event_fed_rates|event_rate_pressure/.test(text);
+}
+
+function isAnalystProviderDevelopment(item: DailyMarketDevelopment): boolean {
+  const text = `${item.category} ${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel} ${item.original.eventType} ${item.original.reasonCodes.join(" ")}`.toLowerCase();
+  return item.category === "Analyst" || /\banalyst\b|\bupgrade\b|\bdowngrade\b|price target|\binitiated\b|\brating\b|event_analyst_action/.test(text);
+}
+
+function isDividendProviderDevelopment(item: DailyMarketDevelopment): boolean {
+  const text = `${item.category} ${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel} ${item.original.eventType} ${item.original.reasonCodes.join(" ")}`.toLowerCase();
+  return item.category === "Dividend" || /\bdividend\b|ex-dividend|\bpayout\b|event_dividend/.test(text);
+}
+
+function isGeopoliticalProviderDevelopment(item: DailyMarketDevelopment): boolean {
+  const text = `${item.category} ${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel} ${item.original.eventType} ${item.original.reasonCodes.join(" ")} ${item.affectedSectors.join(" ")}`.toLowerCase();
+  return item.category === "Geopolitical" || /\bwar\b|\bpeace\b|geopolitical|sanction|conflict|iran|hormuz|defense|event_geopolitical/.test(text);
+}
+
+function isCryptoProviderDevelopment(item: DailyMarketDevelopment): boolean {
+  const text = `${item.category} ${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel} ${item.original.eventType} ${item.original.reasonCodes.join(" ")} ${item.affectedSectors.join(" ")} ${item.affectedSymbols.join(" ")}`.toLowerCase();
+  return item.category === "Crypto" || /\bcrypto\b|\bbtc\b|bitcoin|coinbase|coindesk|event_crypto/.test(text);
+}
+
 function buildEventDomainTimelines(developments: DailyMarketDevelopment[], calendar: DailyEventCalendarItem[]): DailyEventDomainTimeline[] {
   const domains: Array<{
     domain: DailyProviderCoverageDomain;
@@ -1017,16 +1099,16 @@ function buildEventDomainTimelines(developments: DailyMarketDevelopment[], calen
     matchDevelopment: (item: DailyMarketDevelopment) => boolean;
   }> = [
     { domain: "inflation", label: "Inflation timeline", matchCalendar: (item) => item.category === "rates" && hasInflationLanguage(`${item.label} ${item.detail}`), matchDevelopment: isInflationProviderDevelopment },
-    { domain: "rates", label: "Rates timeline", matchCalendar: (item) => item.category === "rates", matchDevelopment: (item) => item.category === "Rates" },
-    { domain: "analyst-actions", label: "Analyst revision timeline", matchCalendar: (item) => item.category === "analyst", matchDevelopment: (item) => item.category === "Analyst" },
-    { domain: "dividends", label: "Dividend timeline", matchCalendar: (item) => item.category === "dividend", matchDevelopment: (item) => item.category === "Dividend" || /dividend|ex-dividend|payout/i.test(`${item.headline} ${item.whyItMatters}`) },
+    { domain: "rates", label: "Rates timeline", matchCalendar: (item) => item.category === "rates", matchDevelopment: isRatesProviderDevelopment },
+    { domain: "analyst-actions", label: "Analyst revision timeline", matchCalendar: (item) => item.category === "analyst", matchDevelopment: isAnalystProviderDevelopment },
+    { domain: "dividends", label: "Dividend timeline", matchCalendar: (item) => item.category === "dividend", matchDevelopment: isDividendProviderDevelopment },
     { domain: "earnings", label: "Earnings and guidance timeline", matchCalendar: (item) => item.category === "earnings", matchDevelopment: (item) => item.category === "Earnings" },
-    { domain: "geopolitical-events", label: "Geopolitical timeline", matchCalendar: (item) => item.category === "geopolitical", matchDevelopment: (item) => item.category === "Geopolitical" },
-    { domain: "crypto-events", label: "Crypto event timeline", matchCalendar: (item) => /crypto|btc|bitcoin/i.test(`${item.label} ${item.detail} ${item.symbol}`), matchDevelopment: (item) => item.category === "Crypto" },
-    { domain: "economic-calendar", label: "Economic calendar timeline", matchCalendar: () => true, matchDevelopment: (item) => ["Energy", "Geopolitical", "Macro", "Rates"].includes(item.category) },
+    { domain: "geopolitical-events", label: "Geopolitical timeline", matchCalendar: (item) => item.category === "geopolitical", matchDevelopment: isGeopoliticalProviderDevelopment },
+    { domain: "crypto-events", label: "Crypto event timeline", matchCalendar: (item) => /crypto|btc|bitcoin/i.test(`${item.label} ${item.detail} ${item.symbol}`), matchDevelopment: isCryptoProviderDevelopment },
+    { domain: "economic-calendar", label: "Economic calendar timeline", matchCalendar: () => true, matchDevelopment: (item) => ["Energy", "Geopolitical", "Macro", "Rates"].includes(item.category) || isMacroProviderDevelopment(item) },
     { domain: "sector-events", label: "Sector event continuity", matchCalendar: () => false, matchDevelopment: (item) => item.affectedSectors.length > 0 || item.original.scope === "sector" },
     { domain: "company-events", label: "Company event continuity", matchCalendar: (item) => ["analyst", "dividend", "earnings", "event"].includes(item.category), matchDevelopment: (item) => item.affectedSymbols.length > 0 || item.original.scope === "symbol" },
-    { domain: "macro", label: "Macro event timeline", matchCalendar: (item) => item.category === "macro" || item.category === "rates" || item.category === "geopolitical", matchDevelopment: (item) => ["Energy", "Geopolitical", "Macro", "Rates"].includes(item.category) },
+    { domain: "macro", label: "Macro event timeline", matchCalendar: (item) => item.category === "macro" || item.category === "rates" || item.category === "geopolitical", matchDevelopment: isMacroProviderDevelopment },
   ];
   return domains
     .map((domain) => {
@@ -1126,17 +1208,17 @@ function buildCompanyTimelines(developments: DailyMarketDevelopment[], calendar:
 function buildProviderStrategyAudit(developments: DailyMarketDevelopment[], calendar: DailyEventCalendarItem[], rows: OpportunityViewModel[], now: Date): DailyProviderStrategyAudit[] {
   const operationalSignals = providerOperationalSignals(rows);
   const domains: Array<{ domain: DailyProviderCoverageDomain; label: string; matchCalendar: (item: DailyEventCalendarItem) => boolean; matchDevelopment: (item: DailyMarketDevelopment) => boolean }> = [
-    { domain: "macro", label: "Macro", matchCalendar: (item) => item.category === "macro", matchDevelopment: (item) => ["Energy", "Macro"].includes(item.category) },
+    { domain: "macro", label: "Macro", matchCalendar: (item) => item.category === "macro", matchDevelopment: isMacroProviderDevelopment },
     { domain: "inflation", label: "Inflation", matchCalendar: (item) => item.category === "rates" && hasInflationLanguage(`${item.label} ${item.detail}`), matchDevelopment: isInflationProviderDevelopment },
-    { domain: "rates", label: "Rates", matchCalendar: (item) => item.category === "rates", matchDevelopment: (item) => item.category === "Rates" },
+    { domain: "rates", label: "Rates", matchCalendar: (item) => item.category === "rates", matchDevelopment: isRatesProviderDevelopment },
     { domain: "earnings", label: "Earnings", matchCalendar: (item) => item.category === "earnings", matchDevelopment: (item) => item.category === "Earnings" },
-    { domain: "analyst-actions", label: "Analyst actions", matchCalendar: (item) => item.category === "analyst", matchDevelopment: (item) => item.category === "Analyst" },
-    { domain: "dividends", label: "Dividends", matchCalendar: (item) => item.category === "dividend", matchDevelopment: (item) => item.category === "Dividend" || /dividend|ex-dividend|payout/i.test(`${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel}`) },
-    { domain: "geopolitical-events", label: "Geopolitical events", matchCalendar: (item) => item.category === "geopolitical", matchDevelopment: (item) => item.category === "Geopolitical" },
+    { domain: "analyst-actions", label: "Analyst actions", matchCalendar: (item) => item.category === "analyst", matchDevelopment: isAnalystProviderDevelopment },
+    { domain: "dividends", label: "Dividends", matchCalendar: (item) => item.category === "dividend", matchDevelopment: isDividendProviderDevelopment },
+    { domain: "geopolitical-events", label: "Geopolitical events", matchCalendar: (item) => item.category === "geopolitical", matchDevelopment: isGeopoliticalProviderDevelopment },
     { domain: "economic-calendar", label: "Economic calendar", matchCalendar: () => true, matchDevelopment: (item) => ["Energy", "Geopolitical", "Macro", "Rates"].includes(item.category) },
     { domain: "company-events", label: "Company events", matchCalendar: (item) => ["analyst", "dividend", "earnings", "event"].includes(item.category), matchDevelopment: (item) => item.affectedSymbols.length > 0 || item.original.scope === "symbol" },
     { domain: "sector-events", label: "Sector events", matchCalendar: () => false, matchDevelopment: (item) => item.affectedSectors.length > 0 || item.original.scope === "sector" },
-    { domain: "crypto-events", label: "Crypto events", matchCalendar: (item) => /crypto|btc|bitcoin/i.test(`${item.label} ${item.detail} ${item.symbol}`), matchDevelopment: (item) => item.category === "Crypto" },
+    { domain: "crypto-events", label: "Crypto events", matchCalendar: (item) => /crypto|btc|bitcoin/i.test(`${item.label} ${item.detail} ${item.symbol}`), matchDevelopment: isCryptoProviderDevelopment },
   ];
   return domains.map((domain) => {
     const matchingDevelopments = developments.filter(domain.matchDevelopment);
@@ -1428,10 +1510,10 @@ function providerDomainSlaMinutes(domain: DailyProviderCoverageDomain): number |
   if (domain === "earnings" || domain === "dividends") return 30 * 24 * 60;
   if (domain === "economic-calendar") return 24 * 60;
   if (domain === "macro" || domain === "inflation" || domain === "rates") return 24 * 60;
-  if (domain === "geopolitical-events") return 12 * 60;
+  if (domain === "geopolitical-events") return 72 * 60;
   if (domain === "analyst-actions") return 48 * 60;
   if (domain === "company-events" || domain === "sector-events") return 24 * 60;
-  if (domain === "crypto-events") return 6 * 60;
+  if (domain === "crypto-events") return 24 * 60;
   return null;
 }
 

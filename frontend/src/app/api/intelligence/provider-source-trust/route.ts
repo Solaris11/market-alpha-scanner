@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ScannerDataAdapter } from "@/lib/adapters/ScannerDataAdapter";
-import { getPerformanceData } from "@/lib/scanner-data";
+import { getPerformanceData, getRecentScannerHistoryRows } from "@/lib/scanner-data";
 import { requirePremium } from "@/lib/server/access-control";
 import { getNarrativeMap } from "@/lib/server/narrative-intelligence";
 import { rateLimitRequest } from "@/lib/server/request-security";
@@ -16,7 +16,7 @@ import {
   type DailyProviderOperationalState,
   type DailyProviderStrategyAudit,
 } from "@/lib/trading/daily-market-command";
-import { buildMarketCommandModel } from "@/lib/trading/market-research";
+import { buildMarketCommandModel, type MarketCommandModel, type MarketNewsItem } from "@/lib/trading/market-research";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 import { buildProviderFreshnessCertification } from "@/lib/trading/provider-source-certification";
 import { buildUnifiedIntelligenceConsole } from "@/lib/trading/unified-intelligence-console";
@@ -93,12 +93,13 @@ export async function GET(request: Request) {
 
   try {
     const adapter = new ScannerDataAdapter();
-    const [snapshot, performance, scanSafety, watchlistSymbols, marketChartHubData] = await Promise.all([
+    const [snapshot, performance, scanSafety, watchlistSymbols, marketChartHubData, recentProviderRows] = await Promise.all([
       adapter.getTerminalSnapshot(),
       getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
       getCurrentScanSafety(),
       readUserWatchlist(access.user.id).catch(() => []),
       getMarketChartHubData().catch(() => []),
+      getRecentScannerHistoryRows({ hours: 72, maxRuns: 32, minRuns: 3 }).catch(() => []),
     ]);
     const symbols = snapshot.signals.map((row) => row.symbol);
     const [shockPatterns, narratives, workflowEvolution] = await Promise.all([
@@ -112,6 +113,7 @@ export async function GET(request: Request) {
       generatedAt: scanSafety.lastUpdated,
       rows: snapshot.signals,
     });
+    const providerMarketCommand = mergeRecentProviderEvents(marketCommand, recentProviderRows, scanSafety.lastUpdated);
     const unified = buildUnifiedIntelligenceConsole({
       marketCondition: snapshot.marketRegime.label,
       rows: opportunities.rows,
@@ -119,7 +121,7 @@ export async function GET(request: Request) {
       workflowEvolution,
     });
     const model = buildDailyMarketCommandModel({
-      marketCommand,
+      marketCommand: providerMarketCommand,
       marketCondition: snapshot.marketRegime.label,
       rankedZones: unified.rankedZones,
       rows: opportunities.rows,
@@ -155,6 +157,26 @@ export async function GET(request: Request) {
     console.warn("[provider-source-trust] certification load failed", error instanceof Error ? error.message : error);
     return NextResponse.json({ ok: false, message: "Provider source trust proof is temporarily unavailable." }, { status: 503 });
   }
+}
+
+function mergeRecentProviderEvents(current: MarketCommandModel, recentRows: Parameters<typeof buildMarketCommandModel>[0]["rows"], generatedAt: string | null): MarketCommandModel {
+  if (!recentRows.length) return current;
+  const recent = buildMarketCommandModel({ charts: [], generatedAt, rows: recentRows });
+  const mergedNews = mergeMarketNews(current.macroNews, recent.macroNews);
+  return { ...current, macroNews: mergedNews };
+}
+
+function mergeMarketNews(current: MarketNewsItem[], recent: MarketNewsItem[]): MarketNewsItem[] {
+  const byId = new Map<string, MarketNewsItem>();
+  for (const item of [...recent, ...current]) {
+    const existing = byId.get(item.id);
+    if (!existing || item.relevance > existing.relevance || Date.parse(item.publishedAt) > Date.parse(existing.publishedAt)) {
+      byId.set(item.id, item);
+    }
+  }
+  return Array.from(byId.values())
+    .sort((left, right) => Date.parse(right.publishedAt) - Date.parse(left.publishedAt) || right.relevance - left.relevance)
+    .slice(0, 32);
 }
 
 function eventCardProof(item: DailyMarketDevelopment): EventCardProof {
