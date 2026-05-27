@@ -2,7 +2,7 @@
 
 Date: 2026-05-27
 Target: https://tradeveto.com
-Status: Strong partial pending production redeploy and re-measurement.
+Status: Strong partial accomplished. Production was deployed and re-measured, but certification targets are still missed.
 
 ## Scope
 
@@ -75,17 +75,93 @@ Local validation completed:
 - `npx pyright . --pythonpath .venv/bin/python --warnings`
 - `git diff --check`
 
+## Production Deployment
+
+Production deployment completed on 2026-05-27:
+
+- Pulled `main` to `/opt/apps/market-alpha-scanner/app`.
+- Deployed commit `d993b4da`.
+- Rebuilt and restarted:
+  - `market-alpha-frontend`
+  - `market-alpha-frontend-hot-api`
+- Container health was green after rebuild.
+
+Production smoke passed:
+
+| Route | Result |
+| --- | --- |
+| `/api/health` | 200 |
+| `/api/health/deep` | 200 |
+| `/terminal` | 200 |
+| `/discover` | 200 |
+| `/scanner` | 200 |
+| `/paper` | 200 |
+| `/strategy-labs` | 200 |
+| `/market-memory` | 200 |
+| `/symbol/AMD` | 200 |
+| `/alerts` | 200 |
+| `/feed` | 200 |
+| `/macro` | 200 |
+| `/history` | 200 |
+| `/performance` | 200 |
+
+## Post-Deploy Browser Proof
+
+The production browser probe was rerun after deploy with Chromium, Firefox, and WebKit. A short-lived authenticated probe user was created for the run and deleted afterward. Cookie values were not printed or committed.
+
+Post-deploy artifact:
+
+- `docs/ops/artifacts/phase-27-5-performance/full-platform-browser-performance.json`
+- `docs/ops/artifacts/phase-27-5-performance/traces/chromium-trace.zip`
+- `docs/ops/artifacts/phase-27-5-performance/traces/firefox-trace.zip`
+- `docs/ops/artifacts/phase-27-5-performance/traces/webkit-trace.zip`
+- `docs/ops/artifacts/phase-27-5-performance/screenshots/chromium/`
+
+Post-deploy wins:
+
+| Workflow | Post-deploy timing | Target | Result |
+| --- | ---: | ---: | --- |
+| Scanner filter | 55.7 ms | <100 ms | Pass |
+| Compare open | 59.9 ms | <150 ms | Pass |
+| Fullscreen chart open | 123.8 ms | <150 ms | Pass |
+
+Post-deploy blockers:
+
+| Browser | Surface / Workflow | Observed | Target | Result |
+| --- | --- | ---: | ---: | --- |
+| Chromium | `/terminal` interactive | 4206.594 ms | <2000 ms | Fail |
+| Chromium | `/discover` interactive | 3241.659 ms | <2500 ms | Fail |
+| Chromium | `/scanner` CLS | 0.272 | <=0.25 | Fail |
+| Chromium | `/symbol/AMD` interactive | 3195.214 ms | <2500 ms | Fail |
+| Chromium | `/history` interactive | 1914.356 ms | <1000 ms | Fail |
+| Chromium | `/performance` interactive | 3309.736 ms | <1000 ms | Fail |
+| Chromium | Chart restore | 2950.487 ms | <250 ms | Fail |
+| Chromium | Chart toolbar interaction | 79.2 ms | <60 ms | Fail |
+| Chromium | Symbol switch | 3663.42 ms | <150 ms | Fail |
+| Chromium | Symbol search open | 233.284 ms | <100 ms | Fail |
+| Firefox | `/terminal` interactive | 6664.44 ms | <2000 ms | Fail |
+| Firefox | `/symbol/AMD` interactive | 6347.995 ms | <2500 ms | Fail |
+| Firefox | `/history` interactive | 1883.906 ms | <1000 ms | Fail |
+| Firefox | `/performance` interactive | 5493.693 ms | <1000 ms | Fail |
+| WebKit | `/terminal` interactive | 7444.755 ms | <2000 ms | Fail |
+| WebKit | `/symbol/AMD` interactive | 5450.95 ms | <2500 ms | Fail |
+| WebKit | `/history` interactive | 2154.433 ms | <1000 ms | Fail |
+| WebKit | `/performance` interactive | 17516.133 ms | <1000 ms | Fail |
+
+Chromium browser heap moved from 0.617 MB at start to 79.729 MB after the route/workflow pass. No browser crash occurred, but the session still shows high memory pressure on rich surfaces.
+
 ## Remaining Work
 
-This phase is not fully accomplished yet. The audit is now available and two scanner browser workflows pass, but these areas remain below production targets:
+This phase is not fully accomplished. The audit is now available and three important Chromium interactions pass after remediation, but these areas remain below production targets:
 
 - Terminal and symbol route initial interactive time.
 - History and performance page load budgets.
-- Chart workspace restore and symbol switching.
+- Chart workspace restore, chart toolbar interaction, and symbol switching.
 - Symbol search open latency.
 - Small but repeated CLS regressions on discovery, scanner, and alerts.
-- Cross-browser Chromium/WebKit/Firefox proof must be rerun after production deploy.
+- Firefox and WebKit page timing regressions.
+- `/api/discovery` browser-observed outliers still appear during route sequences even though most requests are fast.
 
 ## Verdict
 
-Strong partial only. The audit and targeted remediation shipped locally, but full certification requires production redeploy and passing browser measurements across the required surfaces.
+Strong partial only. The audit tooling, production deployment, browser artifacts, and targeted chart remediation are complete. Full certification is blocked by remaining route, chart restore, symbol workflow, CLS, and cross-browser timing failures.
