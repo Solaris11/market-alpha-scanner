@@ -32,6 +32,7 @@ type ClientAnalyticsEvent = {
 const ANONYMOUS_ID_KEY = "tv_analytics_anonymous_id";
 const ACTIVATION_MILESTONES_KEY = "tv_activation_milestones_recorded";
 const FIRST_USEFUL_ACTION_KEY = "tv_first_useful_action_recorded";
+const FIRST_USEFUL_ACTIONS_KEY = "tv_first_useful_actions_recorded";
 const SESSION_KEY = "tv_analytics_session";
 const SESSION_STARTED_AT_KEY = "tv_analytics_session_started_at";
 const LAST_WORKFLOW_GROUP_KEY = "tv_analytics_last_workflow_group";
@@ -107,15 +108,24 @@ export function trackAnalyticsEvent(eventName: AnalyticsEventName, metadata: Rec
 
 export function trackFirstUsefulAction(action: string, metadata: Record<string, unknown> = {}, options: { pagePath?: string; source?: string; symbol?: string } = {}): void {
   if (typeof window === "undefined" || !analyticsEnabled()) return;
+  const actionKey = normalizeFirstUsefulActionKey(action);
+  if (!actionKey) return;
+  let firstGlobalUsefulAction = false;
   try {
-    if (window.localStorage.getItem(FIRST_USEFUL_ACTION_KEY)) return;
-    window.localStorage.setItem(FIRST_USEFUL_ACTION_KEY, new Date().toISOString());
+    const actions = readFirstUsefulActions();
+    if (actions.includes(actionKey)) return;
+    const next = [...actions, actionKey].slice(-32);
+    window.localStorage.setItem(FIRST_USEFUL_ACTIONS_KEY, JSON.stringify(next));
+    if (!window.localStorage.getItem(FIRST_USEFUL_ACTION_KEY)) {
+      window.localStorage.setItem(FIRST_USEFUL_ACTION_KEY, new Date().toISOString());
+      firstGlobalUsefulAction = true;
+    }
   } catch {
     // If local storage is unavailable, still emit the activation event once for the current call path.
   }
   usefulInteractionSeen = true;
   lastInteractionAt = Date.now();
-  trackAnalyticsEvent("first_useful_action", { ...metadata, action }, options);
+  trackAnalyticsEvent("first_useful_action", { ...metadata, action, actionKey, firstGlobalUsefulAction }, options);
 }
 
 export function trackActivationMilestone(milestone: ActivationMilestone, metadata: Record<string, unknown> = {}, options: { pagePath?: string; source?: string; symbol?: string } = {}): void {
@@ -322,6 +332,12 @@ function emitWorkflowDropoffIfNeeded(): void {
     pageElapsedMs: Math.round(pageElapsedMs),
     routeGroup: group,
   }, { pagePath: path, source: "friction_detector", symbol: symbolFromPath(window.location.pathname) ?? undefined });
+  trackAnalyticsEvent("churn_risk_signal", {
+    maxScrollDepth: Number(maxScrollDepth.toFixed(2)),
+    pageElapsedMs: Math.round(pageElapsedMs),
+    riskType: "workflow_abandonment",
+    routeGroup: group,
+  }, { pagePath: path, source: "friction_detector", symbol: symbolFromPath(window.location.pathname) ?? undefined });
 }
 
 function emitExitTelemetry(): void {
@@ -421,6 +437,16 @@ function trackReturnSession(pathname: string, pagePath?: string): void {
       const returnKind = dayGap >= 7 ? "weekly_return" : dayGap >= 2 ? "multi_day_return" : "next_day_return";
       const metadata = { dayGap, returnKind, routeGroup: group, watchlistSize };
       emitOncePerSession(`${RETURN_SESSION_EMITTED_KEY}:${sessionId}`, "return_session", metadata, pagePath, pathname, "return_session");
+      if (dayGap >= 7) {
+        emitOncePerSession(
+          `${RETURN_WORKFLOW_EMITTED_KEY}:${sessionId}:long_return_gap`,
+          "churn_risk_signal",
+          { dayGap, riskType: "repeat_non_return_gap", routeGroup: group, watchlistSize },
+          pagePath,
+          pathname,
+          "retention_detector",
+        );
+      }
 
       const workflowEvent = returnEventForGroup(group);
       if (workflowEvent) {
@@ -502,6 +528,34 @@ function readActivationMilestones(): ActivationMilestone[] {
   } catch {
     return [];
   }
+}
+
+function readFirstUsefulActions(): string[] {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(FIRST_USEFUL_ACTIONS_KEY) ?? "[]") as unknown;
+    if (Array.isArray(parsed)) {
+      const actions: string[] = [];
+      for (const item of parsed) {
+        const action = normalizeFirstUsefulActionKey(item);
+        if (action && !actions.includes(action)) actions.push(action);
+      }
+      return actions;
+    }
+    const legacy = window.localStorage.getItem(FIRST_USEFUL_ACTION_KEY);
+    return legacy ? ["legacy_first_action"] : [];
+  } catch {
+    return [];
+  }
+}
+
+function normalizeFirstUsefulActionKey(value: unknown): string | null {
+  const text = String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "_")
+    .replace(/_+/g, "_")
+    .slice(0, 64);
+  return text || null;
 }
 
 function normalizeActivationMilestone(value: unknown): ActivationMilestone | null {

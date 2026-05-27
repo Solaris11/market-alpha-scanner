@@ -7,6 +7,7 @@ import {
   type NotificationFeedbackValue,
   type NotificationType,
   type UserNotification,
+  type UserNotificationContext,
 } from "@/lib/notifications";
 import { sanitizeAnalyticsMetadata, sanitizeAnalyticsSource } from "@/lib/analytics-policy";
 import { dbQuery } from "./db";
@@ -17,6 +18,7 @@ type NotificationRow = QueryResultRow & {
   feedback: string | null;
   id: string;
   message: string;
+  metadata: Record<string, unknown> | string | null;
   read: boolean;
   title: string;
   type: string;
@@ -47,6 +49,8 @@ export type NotificationFeedbackSummary = {
   usefulnessRatePct: number | null;
 };
 
+export type NotificationCreateMetadata = Record<string, string | number | boolean | null | undefined>;
+
 export async function listNotifications(userId: string, limit = 20): Promise<{ notifications: UserNotification[]; unreadCount: number }> {
   const safeLimit = Math.min(Math.max(Math.trunc(limit), 1), 20);
   const [notificationsResult, unreadResult] = await Promise.all([
@@ -59,6 +63,7 @@ export async function listNotifications(userId: string, limit = 20): Promise<{ n
           notifications.message,
           notifications.read,
           notifications.action_url,
+          notifications.metadata,
           notifications.created_at::text,
           notification_feedback.feedback
         FROM notifications
@@ -101,15 +106,22 @@ export async function createNotification(userId: string, type: NotificationType,
   return createNotificationWithAction(userId, type, title, message, null);
 }
 
-export async function createNotificationWithAction(userId: string, type: NotificationType, title: string, message: string, actionUrl: string | null): Promise<UserNotification> {
+export async function createNotificationWithAction(
+  userId: string,
+  type: NotificationType,
+  title: string,
+  message: string,
+  actionUrl: string | null,
+  metadata: NotificationCreateMetadata = {},
+): Promise<UserNotification> {
   if (!isNotificationType(type)) throw new Error("Unsupported notification type.");
   const result = await dbQuery<NotificationRow>(
     `
-      INSERT INTO notifications (user_id, type, title, message, read, action_url, created_at)
-      VALUES ($1, $2, $3, $4, false, $5, now())
-      RETURNING id::text, type, title, message, read, action_url, created_at::text, NULL::text AS feedback
+      INSERT INTO notifications (user_id, type, title, message, read, action_url, metadata, created_at)
+      VALUES ($1, $2, $3, $4, false, $5, $6::jsonb, now())
+      RETURNING id::text, type, title, message, read, action_url, metadata, created_at::text, NULL::text AS feedback
     `,
-    [userId, type, cleanText(title, 140), cleanText(message, 500), cleanActionUrl(actionUrl)],
+    [userId, type, cleanText(title, 140), cleanText(message, 500), cleanActionUrl(actionUrl), JSON.stringify(sanitizeNotificationMetadata(metadata))],
   );
   return notificationFromRow(result.rows[0]);
 }
@@ -182,33 +194,47 @@ export async function createLoginNotifications(userId: string): Promise<void> {
   }
 }
 
-export async function createNotificationOnce(userId: string, type: NotificationType, title: string, message: string, actionUrl: string | null = null): Promise<void> {
+export async function createNotificationOnce(
+  userId: string,
+  type: NotificationType,
+  title: string,
+  message: string,
+  actionUrl: string | null = null,
+  metadata: NotificationCreateMetadata = {},
+): Promise<void> {
   await dbQuery(
     `
-      INSERT INTO notifications (user_id, type, title, message, read, action_url, created_at)
-      SELECT $1, $2, $3, $4, false, $5, now()
+      INSERT INTO notifications (user_id, type, title, message, read, action_url, metadata, created_at)
+      SELECT $1, $2, $3, $4, false, $5, $6::jsonb, now()
       WHERE NOT EXISTS (
         SELECT 1
         FROM notifications
         WHERE user_id = $1 AND type = $2 AND title = $3
       )
     `,
-    [userId, type, cleanText(title, 140), cleanText(message, 500), cleanActionUrl(actionUrl)],
+    [userId, type, cleanText(title, 140), cleanText(message, 500), cleanActionUrl(actionUrl), JSON.stringify(sanitizeNotificationMetadata(metadata))],
   );
 }
 
-export async function createUnreadNotificationIfMissing(userId: string, type: NotificationType, title: string, message: string, actionUrl: string | null = null): Promise<void> {
+export async function createUnreadNotificationIfMissing(
+  userId: string,
+  type: NotificationType,
+  title: string,
+  message: string,
+  actionUrl: string | null = null,
+  metadata: NotificationCreateMetadata = {},
+): Promise<void> {
   await dbQuery(
     `
-      INSERT INTO notifications (user_id, type, title, message, read, action_url, created_at)
-      SELECT $1, $2, $3, $4, false, $5, now()
+      INSERT INTO notifications (user_id, type, title, message, read, action_url, metadata, created_at)
+      SELECT $1, $2, $3, $4, false, $5, $6::jsonb, now()
       WHERE NOT EXISTS (
         SELECT 1
         FROM notifications
         WHERE user_id = $1 AND type = $2 AND title = $3 AND read = false
       )
     `,
-    [userId, type, cleanText(title, 140), cleanText(message, 500), cleanActionUrl(actionUrl)],
+    [userId, type, cleanText(title, 140), cleanText(message, 500), cleanActionUrl(actionUrl), JSON.stringify(sanitizeNotificationMetadata(metadata))],
   );
 }
 
@@ -267,6 +293,7 @@ function notificationFromRow(row: NotificationRow | undefined): UserNotification
   if (!row) throw new Error("Notification record was not returned.");
   return {
     actionUrl: cleanActionUrl(row.action_url),
+    context: notificationContextFromMetadata(row.metadata),
     createdAt: row.created_at,
     feedback: normalizeNotificationFeedbackValue(row.feedback),
     id: row.id,
@@ -275,6 +302,38 @@ function notificationFromRow(row: NotificationRow | undefined): UserNotification
     title: row.title,
     type: isNotificationType(row.type) ? row.type : "system",
   };
+}
+
+function sanitizeNotificationMetadata(metadata: NotificationCreateMetadata): Record<string, string | number | boolean | null> {
+  return sanitizeAnalyticsMetadata(metadata);
+}
+
+function notificationContextFromMetadata(value: NotificationRow["metadata"]): UserNotificationContext {
+  const metadata = metadataRecord(value);
+  return {
+    adaptivePriority: cleanContextValue(metadata.adaptivePriority),
+    feedCategory: cleanContextValue(metadata.feedCategory),
+    feedSeverity: cleanContextValue(metadata.feedSeverity),
+    sourceKey: cleanContextValue(metadata.sourceKey),
+  };
+}
+
+function metadataRecord(value: NotificationRow["metadata"]): Record<string, unknown> {
+  if (!value) return {};
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
+    } catch {
+      return {};
+    }
+  }
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+
+function cleanContextValue(value: unknown): string | null {
+  const text = String(value ?? "").trim().replace(/[^A-Za-z0-9:_./-]/g, "_").slice(0, 96);
+  return text || null;
 }
 
 function cleanText(value: string, maxLength: number): string {

@@ -221,6 +221,13 @@ export function NotificationBell() {
     setNotifications((items) => items.map((item) => ({ ...item, read: true })));
     setUnreadCount(0);
     trackAnalyticsEvent("notification_engagement", { action: "mark_all_read", unreadCount }, { source: "notification_bell" });
+    if (unreadCount >= 5) {
+      trackAnalyticsEvent("churn_risk_signal", {
+        action: "bulk_notification_clear",
+        riskType: "notification_fatigue",
+        unreadCount,
+      }, { source: "notification_bell" });
+    }
     try {
       const response = await csrfFetch("/api/notifications/read-all", { method: "POST" });
       if (!response.ok) throw new Error("Unable to mark all notifications read.");
@@ -240,18 +247,30 @@ export function NotificationBell() {
       categoryQuality,
       fatigueSignal,
       feedback: value,
+      feedCategory: notification.context.feedCategory ?? "unknown",
+      feedSeverity: notification.context.feedSeverity ?? "unknown",
       hasActionUrl: Boolean(notification.actionUrl),
       notificationId: notification.id,
       notificationType: notification.type,
+      sourceKey: notification.context.sourceKey ?? "unknown",
       wasUnread: !notification.read,
     }, { source: "notification_bell" });
     trackAnalyticsEvent("notification_engagement", {
       action,
       feedback: value,
+      feedCategory: notification.context.feedCategory ?? "unknown",
       notificationId: notification.id,
       notificationType: notification.type,
       wasUnread: !notification.read,
     }, { source: "notification_bell" });
+    if (fatigueSignal) {
+      trackAnalyticsEvent("churn_risk_signal", {
+        action: "notification_not_useful",
+        feedCategory: notification.context.feedCategory ?? "unknown",
+        notificationId: notification.id,
+        riskType: "notification_fatigue",
+      }, { source: "notification_bell" });
+    }
 
     try {
       const response = await csrfFetch("/api/notifications/feedback", {
@@ -261,11 +280,15 @@ export function NotificationBell() {
           metadata: {
             action,
             actionPath: notification.actionUrl ?? "none",
+            adaptivePriority: notification.context.adaptivePriority ?? "none",
             categoryQuality,
+            feedCategory: notification.context.feedCategory ?? "unknown",
+            feedSeverity: notification.context.feedSeverity ?? "unknown",
             fatigueSignal,
             hasActionUrl: Boolean(notification.actionUrl),
             notificationType: notification.type,
             returnAttribution: notification.actionUrl ? "action_url" : "none",
+            sourceKey: notification.context.sourceKey ?? "unknown",
           },
           source: "notification_bell",
         }),
@@ -426,8 +449,11 @@ function trackNotificationReturn(notification: UserNotification): void {
   const metadata = {
     action: "notification_open",
     actionPath: actionUrl,
+    feedCategory: notification.context.feedCategory ?? "unknown",
+    feedSeverity: notification.context.feedSeverity ?? "unknown",
     notificationId: notification.id,
     notificationType: notification.type,
+    sourceKey: notification.context.sourceKey ?? "unknown",
   };
   if (actionUrl.startsWith("/alerts")) {
     trackAnalyticsEvent("alert_return", metadata, { source: "notification_bell" });

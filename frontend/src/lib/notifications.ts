@@ -4,8 +4,16 @@ export const NOTIFICATION_FEEDBACK_VALUES = ["useful", "not_useful"] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 export type NotificationFeedbackValue = (typeof NOTIFICATION_FEEDBACK_VALUES)[number];
 
+export type UserNotificationContext = {
+  adaptivePriority: string | null;
+  feedCategory: string | null;
+  feedSeverity: string | null;
+  sourceKey: string | null;
+};
+
 export type UserNotification = {
   actionUrl: string | null;
+  context: UserNotificationContext;
   createdAt: string;
   feedback: NotificationFeedbackValue | null;
   id: string;

@@ -151,6 +151,7 @@ export type AnalyticsSummary = {
         activationMilestones: number;
         alertReturns: number;
         chartReturns: number;
+        churnRiskSignals: number;
         compareReturns: number;
         historyReturns: number;
         morningWorkflowCompletions: number;
@@ -419,6 +420,7 @@ type DailyDriverHabitLoopRow = QueryResultRow & {
   activation_milestones: string | number;
   alert_returns: string | number;
   chart_returns: string | number;
+  churn_risk_signals: string | number;
   compare_returns: string | number;
   history_returns: string | number;
   morning_workflow_completions: string | number;
@@ -1102,7 +1104,8 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
           count(*) FILTER (WHERE event_name = 'strategy_return') AS strategy_returns,
           count(*) FILTER (WHERE event_name = 'watchlist_return') AS watchlist_returns,
           count(*) FILTER (WHERE event_name = 'personalized_intelligence_return') AS personalized_returns,
-          count(*) FILTER (WHERE event_name = 'workflow_dropoff') AS workflow_dropoffs
+          count(*) FILTER (WHERE event_name = 'workflow_dropoff') AS workflow_dropoffs,
+          count(*) FILTER (WHERE event_name = 'churn_risk_signal') AS churn_risk_signals
         FROM analytics_events
         WHERE occurred_at >= now() - ${interval}
       `,
@@ -1444,6 +1447,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
           activationMilestones: numberFromRow(dailyDriverHabitLoopRow?.activation_milestones),
           alertReturns: numberFromRow(dailyDriverHabitLoopRow?.alert_returns),
           chartReturns: numberFromRow(dailyDriverHabitLoopRow?.chart_returns),
+          churnRiskSignals: numberFromRow(dailyDriverHabitLoopRow?.churn_risk_signals),
           compareReturns: numberFromRow(dailyDriverHabitLoopRow?.compare_returns),
           historyReturns: numberFromRow(dailyDriverHabitLoopRow?.history_returns),
           morningWorkflowCompletions: numberFromRow(dailyDriverHabitLoopRow?.morning_workflow_completions),
@@ -1663,15 +1667,15 @@ async function paidUserRetentionCohorts(): Promise<{ rows: PaidUserCohortRow[] }
           count(DISTINCT active_day) AS active_days,
           count(*) FILTER (WHERE event_name = 'page_view') AS page_views,
           bool_or(
-            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['watchlist', 'watchlist_add', 'first_watchlist']::text[]))
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['watchlist', 'watchlist_add', 'first_watchlist', 'create_watchlist', 'first_watchlist_creation']::text[]))
             OR event_name IN ('watch_add', 'watchlist_add', 'watchlist_usage')
           ) AS first_watchlist,
           bool_or(
-            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['scanner', 'first_scanner']::text[]))
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['scanner', 'first_scanner', 'first_scanner_usage', 'save_scanner']::text[]))
             OR event_name IN ('scanner_usage', 'scanner_run', 'opportunities_open')
           ) AS first_scanner,
           bool_or(
-            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['alert', 'first_alert']::text[]))
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['alert', 'first_alert', 'first_alert_creation', 'create_alert']::text[]))
             OR event_name = 'alert_create'
           ) AS first_alert,
           bool_or(
@@ -1679,11 +1683,11 @@ async function paidUserRetentionCohorts(): Promise<{ rows: PaidUserCohortRow[] }
             OR event_name IN ('chart_return', 'chart_workspace_save', 'chart_expand')
           ) AS first_chart_save,
           bool_or(
-            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['replay', 'first_replay']::text[]))
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['replay', 'first_replay', 'review_replay']::text[]))
             OR event_name IN ('replay_usage', 'replay_open')
           ) AS first_replay,
           bool_or(
-            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['morning_command', 'morning_briefing', 'morning_workflow', 'first_morning_briefing']::text[]))
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['morning_command', 'morning_briefing', 'morning_workflow', 'first_morning_briefing', 'morning_brief']::text[]))
             OR event_name = 'morning_workflow_complete'
           ) AS first_morning_briefing,
           bool_or(event_name IN ('alert_create', 'notification_engagement')) AS alert_triggered,

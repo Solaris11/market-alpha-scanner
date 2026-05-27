@@ -262,6 +262,7 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
               ["Watchlist returns", dailyDriver.habitLoops.watchlistReturns],
               ["Personalized returns", dailyDriver.habitLoops.personalizedReturns],
               ["Workflow dropoffs", dailyDriver.habitLoops.workflowDropoffs],
+              ["Churn-risk signals", dailyDriver.habitLoops.churnRiskSignals],
             ]}
             title="Daily Driver Habit Loops"
           />
