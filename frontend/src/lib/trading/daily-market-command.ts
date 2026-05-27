@@ -1513,7 +1513,7 @@ function providerDomainSlaMinutes(domain: DailyProviderCoverageDomain): number |
   if (domain === "geopolitical-events") return 72 * 60;
   if (domain === "analyst-actions") return 48 * 60;
   if (domain === "company-events" || domain === "sector-events") return 24 * 60;
-  if (domain === "crypto-events") return 24 * 60;
+  if (domain === "crypto-events") return 48 * 60;
   return null;
 }
 
