@@ -49,15 +49,17 @@ Live local supplemental fetch returned all targeted supplemental domains from ve
 
 ## Production Deployment
 
-Pending production deployment proof at initial commit time.
+- Implementation commit deployed: `6445d34` (`Close provider coverage supplemental source proof`).
+- Production path: `/opt/apps/market-alpha-scanner/app`.
+- Production pull completed with `git pull --ff-only origin main`.
+- Runtime rebuild completed with `docker compose --env-file .env up -d --build market-alpha-frontend market-alpha-frontend-hot-api`.
+- Production containers restarted healthy.
 
-Expected workflow:
+Production smoke passed after deploy:
 
-1. Pull latest `main` in `/opt/apps/market-alpha-scanner/app`.
-2. Rebuild/redeploy `market-alpha-frontend` and `market-alpha-frontend-hot-api`.
-3. Run production health and route smoke.
-4. Run authenticated provider-source-trust probe from inside the production frontend container.
-5. Capture provider matrix, freshness certification, source trust summary, and outage simulation artifacts.
+- `GET /api/health` - healthy.
+- `GET /api/health/deep` - database, backup, and scanner health ok.
+- Route smoke returned HTTP 200 for `/terminal`, `/discover`, `/scanner`, `/paper`, `/strategy-labs`, `/market-memory`, `/symbol/AMD`, `/alerts`, `/feed`, `/macro`, and `/status`.
 
 ## Production Evidence
 
@@ -65,7 +67,7 @@ Artifact directory:
 
 `docs/ops/artifacts/phase-28-4-provider-coverage-final-closure/`
 
-Expected artifacts:
+Production artifacts:
 
 - `production-smoke.txt`
 - `provider-source-trust-probe.log`
@@ -74,6 +76,35 @@ Expected artifacts:
 - `source-trust-summary.json`
 - `freshness-certification.json`
 - `outage-certification.json`
+
+Authenticated production provider-source-trust probe:
+
+- Base URL: `https://tradeveto.com`
+- Probe route: `/api/intelligence/provider-source-trust`
+- Probe runtime: production `market-alpha-frontend` container.
+- `overallStatus`: `ready`
+- Blockers: none.
+- Source completeness: `100%`
+- Context completeness: `100%`
+- Fake live labels: `0`
+- Hidden stale states: `0`
+- Outage simulation: fallback visible and recovery visible.
+
+Required domain coverage:
+
+| Domain | State | Freshness SLA | Provider | Items |
+| --- | --- | --- | --- | ---: |
+| `macro` | active | within-sla | SEC EDGAR 8-K Filings, MarketWatch, Nasdaq | 7 |
+| `rates` | active | within-sla | SEC EDGAR 8-K Filings | 4 |
+| `inflation` | active | within-sla | MarketWatch, Nasdaq | 2 |
+| `earnings` | active | within-sla | Yahoo Finance Earnings Calendar | 6 |
+| `economic-calendar` | active | within-sla | SEC EDGAR 8-K Filings, MarketWatch, Nasdaq | 19 |
+| `analyst-actions` | active | within-sla | MarketBeat | 1 |
+| `dividends` | active | within-sla | Yahoo Finance Dividend Calendar | 13 |
+| `geopolitical-events` | active | within-sla | Nasdaq | 1 |
+| `company-events` | active | within-sla | SEC EDGAR 8-K Filings, MarketWatch, CoinDesk, Yahoo Finance Earnings Calendar, Yahoo Finance Dividend Calendar, MarketBeat | 27 |
+| `sector-events` | active | within-sla | SEC EDGAR 8-K Filings, MarketWatch, CoinDesk, Yahoo Finance Earnings Calendar, Yahoo Finance Dividend Calendar, Nasdaq | 15 |
+| `crypto-events` | active | within-sla | CoinDesk | 1 |
 
 ## Certification Criteria
 
@@ -91,4 +122,6 @@ If production proof closes one but not both remaining domains while source compl
 
 ## Final Verdict
 
-Pending production provider-source-trust probe.
+Phase 28.4 is accomplished.
+
+The production provider-source-trust probe returned `ready`, both previously limited domains are now active and within SLA from source-linked providers, source/context completeness is 100%, fake live labels and hidden stale states remain 0, and outage fallback/recovery proof passes. This closes the provider coverage certification without fabricated events, headlines, analyst actions, geopolitical claims, or fake live data.
