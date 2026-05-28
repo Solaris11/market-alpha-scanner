@@ -1,0 +1,209 @@
+{
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [],
+  "budgets": {
+    "compareOpenMs": 150,
+    "fullscreenScannerMs": 100,
+    "rowExpansionMs": 100,
+    "savedScanRestoreMs": 250,
+    "scannerFilterMs": 100,
+    "scannerScrollMs": 100,
+    "scannerSortMs": 100,
+    "scannerSearchMs": 100
+  },
+  "generatedAt": "2026-05-28T04:30:06.251Z",
+  "overallStatus": "ready",
+  "probeIdentity": {
+    "created": false
+  },
+  "proofScope": "Production browser proof for an authenticated, isolated, test-only 500+ row scanner universe. This proves virtualization and browser workflow behavior without claiming the current real scanner universe contains 500 live symbols.",
+  "result": {
+    "checks": [
+      {
+        "focusedSearch": true,
+        "id": "scanner-keyboard-navigation",
+        "pass": true,
+        "status": "pass"
+      }
+    ],
+    "dom": {
+      "after": {
+        "nodeCount": 4717,
+        "scannerRowsInDom": 148
+      },
+      "before": {
+        "nodeCount": 7130,
+        "scannerRowsInDom": 288
+      },
+      "deltaNodes": -2413
+    },
+    "filteredMeta": {
+      "density": "ultra",
+      "horizontalOverflowPx": 0,
+      "proofMode": "large-universe",
+      "renderedRows": 74,
+      "totalRows": 520,
+      "virtualized": true
+    },
+    "initialMeta": {
+      "density": "ultra",
+      "horizontalOverflowPx": 0,
+      "proofMode": "large-universe",
+      "renderedRows": 74,
+      "totalRows": 520,
+      "virtualized": true
+    },
+    "memory": {
+      "after": {
+        "jsHeapUsedMb": 36.169,
+        "source": "cdp"
+      },
+      "before": {
+        "jsHeapUsedMb": 18.717,
+        "source": "cdp"
+      },
+      "deltaJsHeapUsedMb": 17.452
+    },
+    "proofUrl": "https://tradeveto.com/discover?proof=large-universe",
+    "savedScanMeta": {
+      "density": "ultra",
+      "horizontalOverflowPx": 0,
+      "proofMode": "large-universe",
+      "renderedRows": 74,
+      "totalRows": 520,
+      "virtualized": true
+    },
+    "screenshots": [
+      "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-5-large-universe-scanner-proof/screenshots/large-universe-ultra-dense.png",
+      "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-5-large-universe-scanner-proof/screenshots/large-universe-compare.png",
+      "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-5-large-universe-scanner-proof/screenshots/large-universe-fullscreen.png"
+    ],
+    "scrolledMeta": {
+      "density": "ultra",
+      "horizontalOverflowPx": 0,
+      "proofMode": "large-universe",
+      "renderedRows": 74,
+      "totalRows": 520,
+      "virtualized": true
+    },
+    "searchedMeta": {
+      "density": "ultra",
+      "horizontalOverflowPx": 0,
+      "proofMode": "large-universe",
+      "renderedRows": 74,
+      "totalRows": 520,
+      "virtualized": true
+    },
+    "timings": [
+      {
+        "automationLatencyMs": 176.766,
+        "browserMetricId": "scanner:ultra-dense",
+        "budgetMs": 100,
+        "id": "scanner-interaction",
+        "label": "Switch large-universe scanner to ultra-dense mode",
+        "latencyMs": 38.3,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "browser-performance"
+      },
+      {
+        "automationLatencyMs": 35.985,
+        "browserMetricId": "scanner:filter",
+        "budgetMs": 100,
+        "id": "scanner-filter",
+        "label": "Filter 500+ scanner rows",
+        "latencyMs": 26.3,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "browser-performance"
+      },
+      {
+        "automationLatencyMs": 85.402,
+        "browserMetricId": "scanner:filter",
+        "budgetMs": 100,
+        "id": "scanner-search",
+        "label": "Search large-universe proof symbols",
+        "latencyMs": 34.1,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "browser-performance"
+      },
+      {
+        "automationLatencyMs": 172.489,
+        "browserMetricId": "scanner:sort",
+        "budgetMs": 100,
+        "id": "scanner-sort",
+        "label": "Sort 500+ scanner rows by confidence",
+        "latencyMs": 48.8,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "browser-performance"
+      },
+      {
+        "automationLatencyMs": 130.383,
+        "browserMetricId": "scanner:compare-open",
+        "budgetMs": 150,
+        "id": "compare-open",
+        "label": "Open compare matrix from 500+ scanner rows",
+        "latencyMs": 30.2,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "browser-performance"
+      },
+      {
+        "automationLatencyMs": 56.366,
+        "browserMetricId": "scanner:ultra-dense",
+        "budgetMs": 250,
+        "id": "saved-scan-restore",
+        "label": "Restore saved large-universe scanner preset",
+        "latencyMs": 38.3,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "browser-performance"
+      },
+      {
+        "automationLatencyMs": 29.73,
+        "browserMetricId": null,
+        "budgetMs": 100,
+        "id": "row-expansion",
+        "label": "Expand a scanner row in 500+ universe",
+        "latencyMs": 29.73,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "playwright-automation"
+      },
+      {
+        "automationLatencyMs": 97.124,
+        "browserMetricId": "scanner:fullscreen-toggle",
+        "budgetMs": 100,
+        "id": "fullscreen-scanner",
+        "label": "Open fullscreen scanner in 500+ universe",
+        "latencyMs": 32.5,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "browser-performance"
+      },
+      {
+        "budgetMs": 100,
+        "id": "scanner-scroll-window",
+        "label": "Scroll the virtualized scanner window without unbounded rendering",
+        "latencyMs": 69.373,
+        "pass": true,
+        "status": "pass"
+      }
+    ]
+  },
+  "setup": {
+    "authenticated": true,
+    "ok": true,
+    "savedScanId": "701be6f9-5169-401a-9bc8-35ccf0fdbb8f",
+    "savedScanName": "Phase 28.5 Large Universe mpozuyy9",
+    "savedScanStatusCode": 200
+  },
+  "startedAt": "2026-05-28T04:29:47.826Z",
+  "unsupportedClaims": [
+    "No fake scanner scores are presented as real market signals.",
+    "No live 500-symbol production scanner universe claim.",
+    "No recommendation, trade signal, or financial advice claim."
+  ]
+}

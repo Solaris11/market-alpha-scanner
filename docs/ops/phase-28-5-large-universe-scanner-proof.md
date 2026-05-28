@@ -2,7 +2,8 @@
 
 Date: 2026-05-28
 Target: https://tradeveto.com
-Status: Pending production proof.
+Production commit: `fe863ed`
+Status: Strong partial accomplished. The production browser proof passed all scanner workflow, virtualization, timing, memory, and screenshot gates on an isolated 520-row test-only universe. Full scanner dominance remains blocked by the real live scanner universe still exposing only 111 supported symbols.
 
 ## Scope
 
@@ -128,15 +129,101 @@ Completed before production deployment:
 
 ## Production Deployment
 
-Pending.
+Production workflow completed:
+
+- Pulled `main` on `/opt/apps/market-alpha-scanner/app`.
+- Deployed commit `65a8da7` for the initial proof implementation.
+- Deployed follow-up commit `fe863ed` to include authenticated saved scans in proof-mode SSR/API packets.
+- Rebuilt and restarted:
+  - `market-alpha-frontend`
+  - `market-alpha-frontend-hot-api`
 
 ## Production Smoke
 
-Pending.
+Production smoke passed after the final deploy:
+
+| Route | Result |
+| --- | --- |
+| `/api/health` | Pass, `ok: true` |
+| `/api/health/deep` | Pass, DB ok, backup ok, scanner fresh |
+| `/terminal` | HTTP 200 |
+| `/discover` | HTTP 200 |
+| `/scanner` | HTTP 200 |
+| `/symbol/AMD` | HTTP 200 |
+| `/alerts` | HTTP 200 |
+| `/feed` | HTTP 200 |
+| `/macro` | HTTP 200 |
+| `/market-memory` | HTTP 200 |
+
+Smoke artifact:
+
+- `docs/ops/artifacts/phase-28-5-large-universe-scanner-proof/production-smoke.txt`
 
 ## Production Browser Proof
 
-Pending.
+Probe command:
+
+```bash
+npm --prefix frontend run probe:phase28:large-universe-scanner
+```
+
+Because the production host can run Playwright but cannot resolve the Docker-only Postgres hostname, the proof used a temporary `@tradeveto-probe.local` session created through `psql` inside the Postgres container. The session token was passed only as an environment variable and was not printed. The temporary user/session/subscription/legal rows were deleted after the run.
+
+Final probe artifact:
+
+- `docs/ops/artifacts/phase-28-5-large-universe-scanner-proof/large-universe-scanner-proof.json`
+
+Overall result: `ready`.
+
+Blockers: none.
+
+### Universe And Virtualization
+
+| Metric | Result |
+| --- | ---: |
+| Proof mode | `large-universe` |
+| Total scanner rows | `520` |
+| Rendered rows, initial | `74` |
+| Rendered rows, after scroll | `74` |
+| Virtualized | `true` |
+| Density | `ultra` |
+| Horizontal overflow | `0 px` |
+
+### Browser Workflow Timings
+
+| Workflow | Observed | Budget | Result | Source |
+| --- | ---: | ---: | --- | --- |
+| Scanner interaction / ultra-dense | `38.3 ms` | `<100 ms` | Pass | Browser performance |
+| Filter | `26.3 ms` | `<100 ms` | Pass | Browser performance |
+| Search | `34.1 ms` | `<100 ms` | Pass | Browser performance |
+| Sort | `48.8 ms` | `<100 ms` | Pass | Browser performance |
+| Compare open | `30.2 ms` | `<150 ms` | Pass | Browser performance |
+| Saved scan restore | `38.3 ms` | `<250 ms` | Pass | Browser performance |
+| Row expansion | `29.73 ms` | `<100 ms` | Pass | Playwright automation |
+| Fullscreen scanner | `32.5 ms` | `<100 ms` | Pass | Browser performance |
+| Virtualized scroll window | `69.373 ms` | `<100 ms` | Pass | Browser timer |
+
+Keyboard navigation proof passed:
+
+- `/` focused scanner search.
+- `Escape`, `j`, `k`, and `x` completed without breaking the scanner table.
+
+### Memory And DOM Proof
+
+| Metric | Before | After | Delta |
+| --- | ---: | ---: | ---: |
+| JS heap used | `18.717 MB` | `36.169 MB` | `+17.452 MB` |
+| DOM node count | `7130` | `4717` | `-2413` |
+
+No scanner crash, horizontal overflow, or runaway browser memory growth was observed.
+
+### Screenshots
+
+Captured production screenshots:
+
+- `docs/ops/artifacts/phase-28-5-large-universe-scanner-proof/screenshots/large-universe-ultra-dense.png`
+- `docs/ops/artifacts/phase-28-5-large-universe-scanner-proof/screenshots/large-universe-compare.png`
+- `docs/ops/artifacts/phase-28-5-large-universe-scanner-proof/screenshots/large-universe-fullscreen.png`
 
 ## No-Fabrication Proof
 
@@ -146,6 +233,10 @@ Pending.
 - The probe report records unsupported claims that must not be made.
 - The artifact distinguishes isolated browser workflow proof from real scanner universe proof.
 
-## Current Verdict
+## Final Verdict
 
-Pending production browser proof.
+Strong partial accomplished.
+
+The production browser proof passed every required performance, virtualization, memory, scroll, keyboard, screenshot, and no-horizontal-overflow gate with 520 isolated scanner rows. The proof rows are explicitly marked test-only and are not presented as live market signals.
+
+This is not marked fully accomplished because the real live production scanner universe remains at 111 supported symbols. TradeVeto now has credible large-universe browser workflow proof, but it does not yet prove a real 500+ supported-symbol scanner universe.

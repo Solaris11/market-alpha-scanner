@@ -1,0 +1,14 @@
+Thu May 28 04:29:23 UTC 2026
+commit fe863ed
+health
+{"ok":true,"service":"tradeveto-frontend","status":"ok","timestamp":"2026-05-28T04:29:23.848Z","uptimeSeconds":7}
+deep
+{"backup":{"activeBackupProvider":"r2","ageMinutes":263.2660666666667,"latestEvent":{"createdAt":"2026-05-28 00:06:08.142394+00","message":"backup completed","metadata":{"script":"market-alpha-backup.sh","provider":"r2","exit_code":0,"timestamp":"2026-05-28T00:06:08.065993+00:00","backup_path":"r2:market-alpha-backups","retry_count":1,"classification":"backup_success","offsite_status":"ok","scanner_backup":"2026-05-28_00-02.tar.gz","postgres_backup":"2026-05-28_00-00.sql.gz","duration_seconds":367,"offsite_provider":"r2","scanner_size_bytes":162656598,"postgres_size_bytes":577137846,"active_backup_provider":"r2"},"severity":"info","status":"backup_success"},"latestSuccessfulOffsiteProvider":"r2","lastUpdated":"2026-05-28T00:06:08.142Z","local_backup":"ok","localBackup":{"ageMinutes":266.44696666666664,"lastUpdated":"2026-05-28T00:02:57.288Z","message":"Latest local backup updated 266 minutes ago.","status":"ok"},"message":"Local and offsite backups are healthy.","offsite_backup":"ok","offsiteBackup":{"ageMinutes":263.2660666666667,"lastUpdated":"2026-05-28 00:06:08.142394+00","message":"Latest R2 offsite backup synced 263 minutes ago.","status":"ok"},"offsiteProvider":"r2","overall_backup":"ok","overallBackup":"ok","status":"ok"},"db":{"message":"Database connectivity ok.","status":"ok"},"ok":true,"scanner":{"ageMinutes":2.7222333333333335,"lastUpdated":"2026-05-28T04:26:40.761Z","message":"Fresh - updated 3 min ago","status":"ok"},"service":"tradeveto-frontend","timestamp":"2026-05-28T04:29:24.106Z"}
+/terminal 200
+/discover 200
+/scanner 200
+/symbol/AMD 200
+/alerts 200
+/feed 200
+/macro 200
+/market-memory 200
