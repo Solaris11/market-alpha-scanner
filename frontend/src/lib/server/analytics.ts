@@ -1648,20 +1648,23 @@ async function paidUserRetentionCohorts(): Promise<{ rows: PaidUserCohortRow[] }
     `
       WITH events AS (
         SELECT
-          COALESCE(user_id::text, anonymous_id_hash, session_id_hash, id::text) AS actor_key,
-          user_id,
-          occurred_at::date AS active_day,
-          event_name,
-          COALESCE(plan, CASE WHEN user_id IS NULL THEN 'anonymous' ELSE 'free' END) AS plan,
-          metadata
-        FROM analytics_events
-        WHERE occurred_at >= now() - interval '120 days'
+          COALESCE(ae.user_id::text, ae.anonymous_id_hash, ae.session_id_hash, ae.id::text) AS actor_key,
+          ae.user_id,
+          lower(COALESCE(u.email, '')) AS user_email,
+          ae.occurred_at::date AS active_day,
+          ae.event_name,
+          COALESCE(ae.plan, CASE WHEN ae.user_id IS NULL THEN 'anonymous' ELSE 'free' END) AS plan,
+          ae.metadata
+        FROM analytics_events ae
+        LEFT JOIN users u ON u.id = ae.user_id
+        WHERE ae.occurred_at >= now() - interval '120 days'
       ),
       actor_profile AS (
         SELECT
           actor_key,
           bool_or(user_id IS NOT NULL) AS authenticated,
           bool_or(COALESCE(plan, '') IN ('premium', 'admin')) AS paid,
+          bool_or(user_email LIKE '%@tradeveto-probe.local') AS probe_user,
           min(active_day) AS cohort_day,
           count(*) AS total_events,
           count(DISTINCT active_day) AS active_days,
@@ -1707,6 +1710,7 @@ async function paidUserRetentionCohorts(): Promise<{ rows: PaidUserCohortRow[] }
         SELECT
           *,
           CASE
+            WHEN probe_user THEN 'bot_or_noise_filtered'
             WHEN total_events >= 2500 OR page_views >= 400 OR (active_days = 1 AND total_events >= 350) THEN 'bot_or_noise_filtered'
             WHEN NOT authenticated THEN 'anonymous_users'
             WHEN paid THEN 'founding_members'
