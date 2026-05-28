@@ -63,6 +63,7 @@ export function FirstRunStarterCard() {
   const [resolved, setResolved] = useState(false);
   const [visible, setVisible] = useState(false);
   const [path, setPath] = useState<StarterPath>("beginner");
+  const isUtilitySurface = pathname ? UTILITY_SURFACE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) : false;
 
   useEffect(() => {
     const explicitFirstRun = new URLSearchParams(window.location.search).get("firstRun") === "1";
@@ -70,16 +71,17 @@ export function FirstRunStarterCard() {
     const completed = window.localStorage.getItem(TOUR_COMPLETE_KEY) === "true";
     const storedPath = window.localStorage.getItem(PATH_KEY);
     if (storedPath === "advanced" || storedPath === "beginner") setPath(storedPath);
-    if (!explicitFirstRun && UTILITY_SURFACE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
+    if (!explicitFirstRun && isUtilitySurface) {
       setVisible(false);
       setResolved(true);
       return;
     }
     setVisible(explicitFirstRun || (!hidden && !completed));
     setResolved(true);
-  }, [pathname]);
+  }, [isUtilitySurface, pathname]);
 
   if (!resolved) {
+    if (isUtilitySurface) return null;
     return <section aria-hidden="true" className="mb-4 min-h-[29.5rem] rounded-2xl border border-cyan-300/10 bg-cyan-400/[0.025]" data-onboarding-target="start-here" />;
   }
 
