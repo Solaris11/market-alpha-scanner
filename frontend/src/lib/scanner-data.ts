@@ -260,6 +260,13 @@ type DbHistorySummaryRow = QueryResultRow & {
   created_at: string | Date;
 };
 
+type DbHistoryAggregateRow = QueryResultRow & {
+  earliest: string | Date | null;
+  latest: string | Date | null;
+  total_count: string | number | null;
+  unique_dates: string[] | null;
+};
+
 type DbSymbolRow = QueryResultRow & {
   symbol: string;
 };
@@ -440,6 +447,7 @@ const getDbHistoryRows = cache(async (symbol?: string): Promise<SymbolHistoryRow
     const params = symbol ? [symbol.trim().toUpperCase()] : [];
     const result = await dbQuery<DbHistoryRow>(
       `
+        WITH bounded_history AS (
         SELECT
           ss.scan_run_id::text,
           ss.symbol,
@@ -474,7 +482,12 @@ const getDbHistoryRows = cache(async (symbol?: string): Promise<SymbolHistoryRow
         JOIN scan_runs sr ON sr.id = ss.scan_run_id
         WHERE sr.status = 'success'
           ${symbol ? "AND ss.symbol = $1" : ""}
-        ORDER BY sr.completed_at ASC NULLS LAST, sr.created_at ASC, ss.rank_position ASC NULLS LAST, ss.symbol ASC
+        ORDER BY sr.completed_at DESC NULLS LAST, sr.created_at DESC, ss.rank_position ASC NULLS LAST, ss.symbol ASC
+        ${symbol ? "LIMIT 360" : ""}
+        )
+        SELECT *
+        FROM bounded_history
+        ORDER BY completed_at ASC NULLS LAST, created_at ASC, rank_position ASC NULLS LAST, symbol ASC
       `,
       params,
     );
@@ -1002,16 +1015,41 @@ function parseSnapshotTimestamp(name: string) {
 
 export const getHistorySummary = cache(async (): Promise<HistorySummary> => {
   try {
-    const result = await dbQuery<DbHistorySummaryRow>(
-      `
-        SELECT id::text, completed_at, created_at
-        FROM scan_runs
-        WHERE status = 'success'
-        ORDER BY completed_at DESC NULLS LAST, created_at DESC
-      `,
-    );
-    if (result.rows.length) {
-      const snapshots = result.rows.map((row) => {
+    const [aggregateResult, snapshotResult] = await Promise.all([
+      dbQuery<DbHistoryAggregateRow>(
+        `
+          WITH successful AS (
+            SELECT COALESCE(completed_at, created_at) AS scan_ts
+            FROM scan_runs
+            WHERE status = 'success'
+          ),
+          dates AS (
+            SELECT DISTINCT scan_ts::date AS scan_date
+            FROM successful
+            WHERE scan_ts IS NOT NULL
+          )
+          SELECT
+            count(*)::text AS total_count,
+            min(scan_ts) AS earliest,
+            max(scan_ts) AS latest,
+            COALESCE((SELECT array_agg(scan_date::text ORDER BY scan_date ASC) FROM dates), ARRAY[]::text[]) AS unique_dates
+          FROM successful
+        `,
+      ),
+      dbQuery<DbHistorySummaryRow>(
+        `
+          SELECT id::text, completed_at, created_at
+          FROM scan_runs
+          WHERE status = 'success'
+          ORDER BY completed_at DESC NULLS LAST, created_at DESC
+          LIMIT 240
+        `,
+      ),
+    ]);
+    const aggregate = aggregateResult.rows[0] ?? null;
+    const totalCount = dbCount(aggregate?.total_count) ?? snapshotResult.rows.length;
+    if (aggregate || snapshotResult.rows.length) {
+      const snapshots = snapshotResult.rows.map((row) => {
         const timestamp = dbTimestamp(row.completed_at) ?? dbTimestamp(row.created_at);
         return {
           name: `db_${row.id}`,
@@ -1019,14 +1057,12 @@ export const getHistorySummary = cache(async (): Promise<HistorySummary> => {
           timestamp,
         };
       });
-      const dated = snapshots.map((snapshot) => snapshot.timestamp).filter((timestamp): timestamp is string => Boolean(timestamp));
-      const uniqueDates = Array.from(new Set(dated.map((timestamp) => timestamp.slice(0, 10)))).sort();
       return {
         snapshots,
-        count: snapshots.length,
-        earliest: dated.length ? dated[dated.length - 1] : null,
-        latest: dated.length ? dated[0] : null,
-        uniqueDates,
+        count: totalCount,
+        earliest: dbTimestamp(aggregate?.earliest) ?? null,
+        latest: dbTimestamp(aggregate?.latest) ?? null,
+        uniqueDates: Array.isArray(aggregate?.unique_dates) ? aggregate.unique_dates : [],
       };
     }
   } catch {

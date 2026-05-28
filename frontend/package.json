@@ -51,6 +51,7 @@
     "probe:phase26:paid-retention": "bash -lc 'set -a; [ -f ../.env ] && source ../.env; set +a; TRADEVETO_PHASE26_RETENTION_BASE_URL=https://tradeveto.com TRADEVETO_PHASE26_RETENTION_ARTIFACT_ROOT=../docs/ops/artifacts/phase-26-2-retention node scripts/phase26-paid-retention-daily-habit-probe.mjs'",
     "probe:phase26:browser-power-workflow": "TRADEVETO_PHASE26_BROWSER_PROBE=true TRADEVETO_PHASE26_BROWSER_BASE_URL=https://tradeveto.com TRADEVETO_PHASE26_BROWSER_ARTIFACT_ROOT=../docs/ops/artifacts/phase-26-4-browser-workflows node scripts/phase25-chart-scanner-browser-timing-probe.mjs",
     "probe:phase27:chart-workstation": "bash -lc 'set -a; [ -f ../.env ] && source ../.env; set +a; TRADEVETO_PHASE272_BASE_URL=https://tradeveto.com node scripts/phase27-chart-workstation-browser-proof.mjs'",
+    "probe:phase28:route-performance": "TRADEVETO_PHASE275_BASE_URL=https://tradeveto.com TRADEVETO_PHASE275_ARTIFACT_ROOT=../docs/ops/artifacts/phase-28-2-route-performance TRADEVETO_PHASE275_SCREENSHOTS=all node scripts/phase27-full-platform-performance-probe.mjs",
     "test": "node scripts/run-tests.mjs",
     "lint": "tsc --noEmit"
   },

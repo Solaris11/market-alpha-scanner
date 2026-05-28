@@ -118,7 +118,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
     adapter.getSymbolDetail(symbol),
     adapter.getSignalHistory(symbol),
     getPaperData().catch(() => ({ positions: [], events: [] })),
-    getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
+    getPerformanceData({ forwardTailRows: 1200 }).catch(() => null),
     adapter.getTerminalSnapshot(),
     getCurrentScanSafety(),
     getShockMovePattern(symbol).catch(() => null),

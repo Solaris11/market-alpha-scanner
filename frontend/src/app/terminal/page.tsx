@@ -137,14 +137,14 @@ export default async function TerminalPage() {
   const adapter = new ScannerDataAdapter();
   const [snapshot, performance, scanSafety, watchlistSymbols, activeAlertMatches, personalizationProfile, workspacePreferences, paperData, marketChartHubData] = await Promise.all([
     adapter.getTerminalSnapshot(),
-    getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
+    getPerformanceData({ forwardTailRows: 1200 }).catch(() => null),
     getCurrentScanSafety(),
     entitlement.user?.id ? readUserWatchlist(entitlement.user.id).catch(() => []) : Promise.resolve([]),
     getActiveAlertMatches(entitlement.user?.id ?? null).then((result) => result.matches).catch(() => []),
     getPersonalizationProfileForUser(entitlement.user?.id ?? null).catch(() => null),
     entitlement.user?.id ? readUserWorkspacePreferences(entitlement.user.id).catch(() => null) : Promise.resolve(null),
     getPaperData({ userId: entitlement.user?.id ?? null }).catch(() => ({ account: null, configured: false, events: [], positions: [] })),
-    getMarketChartHubData().catch(() => []),
+    getMarketChartHubData(260).catch(() => []),
   ]);
   const edges = buildEdgeLookup(snapshot.signals, performance);
   const symbols = snapshot.signals.map((row) => row.symbol);

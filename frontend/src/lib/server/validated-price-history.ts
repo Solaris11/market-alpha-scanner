@@ -66,10 +66,10 @@ export async function getValidatedPriceHistory(symbol: string, maxRows = 1600): 
   }
 }
 
-export async function getMarketChartHubData(): Promise<MarketChartHubItem[]> {
+export async function getMarketChartHubData(maxRows = 1600): Promise<MarketChartHubItem[]> {
   const packets = await Promise.all(MARKET_CHART_SYMBOLS.map(async (item) => ({
     ...item,
-    chart: await getValidatedPriceHistory(item.symbol),
+    chart: await getValidatedPriceHistory(item.symbol, maxRows),
   })));
   return packets;
 }

@@ -21,7 +21,6 @@ import {
   type ScoreFactor,
   type VisualTone,
 } from "@/components/visual/MiniVisuals";
-import { PosterHeatmapChart, PosterIntelligenceOrbit, type PosterOrbitNode } from "@/components/visual/PosterDataVisuals";
 
 type ToneStyle = {
   border: string;
@@ -113,6 +112,16 @@ export type CinematicTimelineItem = {
   timestamp?: string;
 };
 
+type PosterOrbitNode = {
+  detail?: string;
+  icon?: ReactNode;
+  id?: string;
+  label: string;
+  metric?: string;
+  score?: number | null;
+  tone?: VisualTone;
+};
+
 type ClusterSelection =
   | { cluster: CinematicCluster; kind: "cluster" }
   | { clusterTitle?: string; item: CinematicClusterItem; kind: "item" };
@@ -125,6 +134,10 @@ function openWithKeyboard(event: KeyboardEvent<HTMLElement>, open: () => void): 
 
 function symbolHref(symbol: string): string {
   return `/symbol/${encodeURIComponent(symbol.toUpperCase())}`;
+}
+
+function finiteScore(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : null;
 }
 
 function finiteClusterValues(values: Array<number | null | undefined> | undefined): number[] {
@@ -184,6 +197,101 @@ function strongestNarrativeCluster(clusters: CinematicCluster[]): CinematicClust
     .sort((left, right) => right.delta - left.delta || right.score - left.score);
 
   return scored[0]?.cluster ?? null;
+}
+
+function LightweightIntelligenceOrbit({
+  centerLabel,
+  nodes,
+  onNodeClick,
+}: {
+  centerLabel: string;
+  nodes: PosterOrbitNode[];
+  onNodeClick?: (node: PosterOrbitNode, index: number) => void;
+}) {
+  const visible = nodes.slice(0, 8);
+  return (
+    <div className="relative min-h-[22rem] overflow-hidden rounded-[2rem] border border-cyan-300/16 bg-[radial-gradient(circle_at_50%_42%,rgba(34,211,238,0.14),transparent_15rem),linear-gradient(135deg,rgba(2,8,23,0.92),rgba(15,23,42,0.62))] p-4">
+      <div className="absolute left-1/2 top-1/2 grid h-28 w-28 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full border border-cyan-300/25 bg-slate-950/90 text-center shadow-[0_0_44px_rgba(34,211,238,0.16)]">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">{centerLabel}</div>
+          <div className="mt-1 text-xs font-semibold text-slate-400">evidence graph</div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {visible.map((node, index) => {
+          const tone = node.tone ?? "cyan";
+          const style = TONE_STYLE[tone];
+          const score = finiteScore(node.score);
+          return (
+            <button
+              className={`min-h-32 rounded-2xl border ${style.border} bg-slate-950/65 p-3 text-left outline-none transition hover:bg-white/[0.055] focus-visible:ring-2 focus-visible:ring-cyan-200/70`}
+              key={node.id ?? node.label}
+              onClick={() => onNodeClick?.(node, index)}
+              type="button"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className={`grid h-9 w-9 place-items-center rounded-xl ring-1 ${style.icon}`}>{node.icon}</span>
+                <span className={`font-mono text-sm font-black ${style.text}`}>{node.metric ?? (score === null ? "Limited" : Math.round(score))}</span>
+              </div>
+              <div className="mt-3 line-clamp-2 text-sm font-black text-slate-100">{node.label}</div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
+                <div className={toneAccentClass(tone)} style={{ width: `${score ?? 20}%` }} />
+              </div>
+              {node.detail ? <p className="mt-2 line-clamp-2 text-[11px] leading-4 text-slate-500">{node.detail}</p> : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function LightweightHeatmapChart({
+  cells,
+  className = "",
+  emptyMessage = "No validated heat-map data is available yet.",
+  onCellSelect,
+}: {
+  cells: CinematicHeatCell[];
+  className?: string;
+  emptyMessage?: string;
+  onCellSelect?: (cell: CinematicHeatCell) => void;
+}) {
+  const visibleCells = cells.filter((cell) => finiteScore(cell.value) !== null).slice(0, 16);
+  if (!visibleCells.length) {
+    return (
+      <div className={`grid min-h-64 place-items-center rounded-2xl border border-dashed border-white/10 bg-slate-950/45 px-4 py-5 text-center text-xs leading-5 text-slate-500 ${className}`}>
+        {emptyMessage}
+      </div>
+    );
+  }
+
+  return (
+    <div className={`grid min-h-64 grid-cols-2 gap-2 rounded-2xl border border-cyan-300/16 bg-slate-950/45 p-2 sm:grid-cols-4 ${className}`}>
+      {visibleCells.map((cell) => {
+        const tone = cell.tone ?? toneForScore(cell.value);
+        const style = TONE_STYLE[tone];
+        const value = finiteScore(cell.value);
+        return (
+          <button
+            className={`min-h-28 rounded-2xl border ${style.border} bg-gradient-to-br ${style.panel} p-3 text-left outline-none transition hover:bg-white/[0.055] focus-visible:ring-2 focus-visible:ring-cyan-200/70`}
+            key={cell.label}
+            onClick={() => onCellSelect?.(cell)}
+            type="button"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <span className="line-clamp-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">{cell.label}</span>
+              <span className={`font-mono text-lg font-black ${style.text}`}>{value === null ? "N/A" : Math.round(value)}</span>
+            </div>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
+              <div className={toneAccentClass(tone)} style={{ width: `${value ?? 0}%` }} />
+            </div>
+            {cell.detail ? <p className="mt-2 line-clamp-2 text-[11px] leading-4 text-slate-500">{cell.detail}</p> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function CinematicNarrativeThread({
@@ -330,7 +438,7 @@ export function CinematicClusterMosaic({
         <CinematicNarrativeThread clusters={clusters} stories={livingStories} updatedAt={latestUpdatedAt} />
 
         <div className="mt-5 grid gap-3 xl:grid-cols-[minmax(310px,0.72fr)_minmax(0,1.28fr)]">
-          <PosterIntelligenceOrbit
+          <LightweightIntelligenceOrbit
             centerLabel="TradeVeto"
             nodes={orbitNodes}
             onNodeClick={(_, index) => {
@@ -720,7 +828,7 @@ export function CinematicHeatMatrix({
           </div>
         </div>
         <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(300px,0.55fr)]">
-          <PosterHeatmapChart cells={cells} emptyMessage={emptyMessage} onCellSelect={setActiveCell} />
+          <LightweightHeatmapChart cells={cells} emptyMessage={emptyMessage} onCellSelect={setActiveCell} />
           <div className="grid max-h-64 gap-2 overflow-y-auto pr-1">
             {cells.length ? cells.slice(0, 8).map((cell) => <HeatMatrixCell cell={cell} key={cell.label} onOpen={setActiveCell} />) : (
               <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/35 p-4 text-sm text-slate-500">{emptyMessage}</div>

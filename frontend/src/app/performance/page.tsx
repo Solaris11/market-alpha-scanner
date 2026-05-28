@@ -483,7 +483,7 @@ export default async function PerformancePage() {
     );
   }
 
-  const [performance, history, driftRows, rawRanking, calibrationInsights, scanSafety, historySymbols] = await Promise.all([getPerformanceData({ forwardTailRows: 5000 }), getHistorySummary(), getIntradaySignalDriftSummary(), getFullRanking(), getCalibrationInsights(), getCurrentScanSafety(), getHistorySymbolsFromSnapshots()]);
+  const [performance, history, driftRows, rawRanking, calibrationInsights, scanSafety, historySymbols] = await Promise.all([getPerformanceData({ forwardTailRows: 2000 }), getHistorySummary(), getIntradaySignalDriftSummary(), getFullRanking(), getCalibrationInsights(), getCurrentScanSafety(), getHistorySymbolsFromSnapshots()]);
   const ranking = applyStaleDataSafetyToRows(rawRanking, scanSafety);
   const forwardReturnsReady = performance.forwardReturns.rows.length > 0;
   const forwardObservationCount = Math.max(0, performance.forwardReturns.lineCount - 1);

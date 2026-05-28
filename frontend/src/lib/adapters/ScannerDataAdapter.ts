@@ -53,7 +53,7 @@ export class ScannerDataAdapter implements DataServiceAdapter {
   }
 
   async getSymbolDetail(symbol: string): Promise<SymbolDetail> {
-    const [detail, safety] = await Promise.all([getSymbolDetail(symbol), getCurrentScanSafety()]);
+    const [detail, safety] = await Promise.all([getSymbolDetail(symbol, "2y"), getCurrentScanSafety()]);
     if (detail.row) return applyStaleDataSafetyToSymbolDetail(detail, safety);
     return detail;
   }

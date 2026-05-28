@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties, type RefObject } from "react";
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
 import {
   ArrowRight,
   Bell,
@@ -24,15 +24,11 @@ import { motion } from "motion/react";
 import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import {
-  PosterFactorBars,
-  PosterHeatmapChart,
-  PosterIntelligenceOrbit,
-  PosterRadialGauge,
-  PosterTrendChart,
-  type PosterHeatCell,
-  type PosterOrbitNode,
-  type PosterVisualTone,
-} from "@/components/visual/PosterDataVisuals";
+  MiniSparkline as PosterTrendChart,
+  PosterGauge as PosterRadialGauge,
+  ScoreFactorStrip as PosterFactorBars,
+  type VisualTone as PosterVisualTone,
+} from "@/components/visual/MiniVisuals";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { openSymbolCard } from "@/lib/symbol/symbol-overlay-store";
 import { symbolCardContextFromRow } from "@/lib/symbol/symbol-intelligence-card";
@@ -98,6 +94,23 @@ type ScannerLane = {
   timeframe: DiscoveryTimeframe;
   title: string;
   tone: DiscoveryTone;
+};
+
+type PosterHeatCell = {
+  detail?: string;
+  label: string;
+  tone?: PosterVisualTone;
+  value: number | null;
+};
+
+type PosterOrbitNode = {
+  detail?: string;
+  icon?: ReactNode;
+  id?: string;
+  label: string;
+  metric?: string;
+  score?: number | null;
+  tone?: PosterVisualTone;
 };
 
 const TIMEFRAMES: DiscoveryTimeframe[] = ["1D", "1W", "1M", "3M", "6M", "1Y", "5Y"];
@@ -2448,6 +2461,125 @@ function average(values: Array<number | null | undefined>): number {
   const finite = values.filter((value): value is number => typeof value === "number" && Number.isFinite(value));
   if (!finite.length) return 0;
   return finite.reduce((total, value) => total + value, 0) / finite.length;
+}
+
+function finiteDiscoveryScore(value: number | null | undefined): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : null;
+}
+
+function scoreTone(value: number | null | undefined): DiscoveryTone {
+  const score = finiteDiscoveryScore(value);
+  if (score === null) return "cyan";
+  if (score >= 70) return "emerald";
+  if (score >= 50) return "amber";
+  if (score <= 35) return "rose";
+  return "cyan";
+}
+
+function accentClass(tone: DiscoveryTone): string {
+  if (tone === "emerald") return "bg-emerald-300";
+  if (tone === "amber") return "bg-amber-300";
+  if (tone === "rose") return "bg-rose-300";
+  if (tone === "violet") return "bg-violet-300";
+  return "bg-cyan-300";
+}
+
+function PosterIntelligenceOrbit({
+  centerLabel,
+  className = "",
+  nodes,
+  onNodeClick,
+}: {
+  centerLabel: string;
+  className?: string;
+  nodes: PosterOrbitNode[];
+  onNodeClick?: (node: PosterOrbitNode, index: number) => void;
+}) {
+  const visible = nodes.slice(0, 10);
+  return (
+    <div className={`relative overflow-hidden rounded-3xl border border-cyan-300/16 bg-[radial-gradient(circle_at_50%_38%,rgba(34,211,238,0.13),transparent_16rem),linear-gradient(135deg,rgba(2,8,23,0.92),rgba(15,23,42,0.62))] p-4 ${className}`}>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">{centerLabel}</div>
+          <div className="mt-1 text-sm font-semibold text-slate-300">Evidence orbit</div>
+        </div>
+        <div className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 font-mono text-[11px] font-black text-cyan-100">
+          {visible.length} nodes
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        {visible.map((node, index) => {
+          const tone = node.tone ?? "cyan";
+          const style = TONE_CLASS[tone];
+          const score = finiteDiscoveryScore(node.score);
+          return (
+            <button
+              className={`min-h-28 rounded-2xl border ${style.border} ${style.bg} p-3 text-left outline-none transition hover:bg-white/[0.055] focus-visible:ring-2 focus-visible:ring-cyan-200/70`}
+              key={node.id ?? node.label}
+              onClick={() => onNodeClick?.(node, index)}
+              type="button"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-white/10 bg-slate-950/55 ${style.text}`}>{node.icon}</span>
+                <span className={`font-mono text-sm font-black ${style.text}`}>{node.metric ?? (score === null ? "Limited" : Math.round(score))}</span>
+              </div>
+              <div className="mt-2 line-clamp-2 text-sm font-black text-slate-100">{node.label}</div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
+                <div className={`h-full rounded-full ${accentClass(tone)}`} style={{ width: `${score ?? 20}%` }} />
+              </div>
+              {node.detail ? <p className="mt-2 line-clamp-2 text-[11px] leading-4 text-slate-500">{node.detail}</p> : null}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function PosterHeatmapChart({
+  cells,
+  emptyMessage = "No validated heat-map data is available yet.",
+  onCellSelect,
+}: {
+  cells: PosterHeatCell[];
+  emptyMessage?: string;
+  onCellSelect?: (cell: PosterHeatCell) => void;
+}) {
+  const visibleCells = cells.filter((cell) => finiteDiscoveryScore(cell.value) !== null).slice(0, 16);
+  if (!visibleCells.length) {
+    return (
+      <div className="grid min-h-64 place-items-center rounded-2xl border border-dashed border-white/10 bg-slate-950/45 px-4 py-5 text-center text-xs leading-5 text-slate-500">
+        {emptyMessage}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid min-h-64 grid-cols-2 gap-2 rounded-2xl border border-cyan-300/16 bg-slate-950/45 p-2 sm:grid-cols-4">
+      {visibleCells.map((cell) => {
+        const tone = cell.tone ?? scoreTone(cell.value);
+        const style = TONE_CLASS[tone];
+        const value = finiteDiscoveryScore(cell.value);
+        return (
+          <button
+            className={`min-h-28 rounded-2xl border ${style.border} ${style.bg} p-3 text-left outline-none transition hover:bg-white/[0.055] focus-visible:ring-2 focus-visible:ring-cyan-200/70`}
+            key={cell.label}
+            onClick={() => onCellSelect?.(cell)}
+            type="button"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <span className="line-clamp-2 text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">{cell.label}</span>
+              <span className={`font-mono text-lg font-black ${style.text}`}>{value === null ? "N/A" : Math.round(value)}</span>
+            </div>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/[0.08]">
+              <div className={`h-full rounded-full ${accentClass(tone)}`} style={{ width: `${value ?? 0}%` }} />
+            </div>
+            {cell.detail ? <p className="mt-2 line-clamp-2 text-[11px] leading-4 text-slate-500">{cell.detail}</p> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function uniqueSymbols(symbols: string[]): string[] {
