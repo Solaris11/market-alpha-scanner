@@ -131,7 +131,13 @@ export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | n
 }
 
 export function invalidateDiscoverySystemCache(userId: string | null): void {
-  discoverySystemCache.delete(userId ? `user:${userId}` : "anonymous");
+  const prefix = userId ? `user:${userId}` : "anonymous";
+  discoverySystemCache.delete(prefix);
+  discoverySystemCache.delete(`${prefix}:full`);
+  discoverySystemCache.delete(`${prefix}:initial`);
+  for (const cacheKey of discoverySystemCache.keys()) {
+    if (cacheKey.startsWith(`${prefix}:`)) discoverySystemCache.delete(cacheKey);
+  }
 }
 
 function refreshDiscoverySystemCache(cacheKey: string, userId: string | null): void {

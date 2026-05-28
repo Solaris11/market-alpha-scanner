@@ -1,4 +1,4 @@
-export type DiscoveryCacheStatus = "base-hit" | "base-miss" | "limited" | "stale-hit" | "system-hit" | "system-miss";
+export type DiscoveryCacheStatus = "base-hit" | "base-miss" | "limited" | "response-hit" | "stale-hit" | "system-hit" | "system-miss";
 
 export type DiscoveryTimingInput = {
   cacheStatus: DiscoveryCacheStatus;
@@ -106,7 +106,7 @@ function addDiscoveryTiming(timing: DiscoveryTimingInput): void {
   insertSortedLatency(discoverySuccessfulLatencies, timing.latencyMs);
   if (timing.cacheStatus === "limited") return;
   discoveryCacheableSamples += 1;
-  if (timing.cacheStatus === "system-hit" || timing.cacheStatus === "base-hit" || timing.cacheStatus === "stale-hit") {
+  if (timing.cacheStatus === "response-hit" || timing.cacheStatus === "system-hit" || timing.cacheStatus === "base-hit" || timing.cacheStatus === "stale-hit") {
     discoveryCacheHits += 1;
   }
 }
@@ -116,7 +116,7 @@ function removeDiscoveryTiming(timing: DiscoveryTimingInput): void {
   removeSortedLatency(discoverySuccessfulLatencies, timing.latencyMs);
   if (timing.cacheStatus === "limited") return;
   discoveryCacheableSamples = Math.max(0, discoveryCacheableSamples - 1);
-  if (timing.cacheStatus === "system-hit" || timing.cacheStatus === "base-hit" || timing.cacheStatus === "stale-hit") {
+  if (timing.cacheStatus === "response-hit" || timing.cacheStatus === "system-hit" || timing.cacheStatus === "base-hit" || timing.cacheStatus === "stale-hit") {
     discoveryCacheHits = Math.max(0, discoveryCacheHits - 1);
   }
 }

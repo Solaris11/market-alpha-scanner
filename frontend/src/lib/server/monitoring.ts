@@ -77,7 +77,7 @@ const REQUEST_METRIC_HOT_ROUTES = new Set([
 ]);
 const REQUEST_METRIC_RAW_SAMPLE_RATE = boundedSampleRate(process.env.TRADEVETO_REQUEST_METRIC_RAW_SAMPLE_RATE, 1);
 const REQUEST_METRIC_HOT_RAW_SAMPLE_RATE = boundedSampleRate(process.env.TRADEVETO_REQUEST_METRIC_HOT_RAW_SAMPLE_RATE, 0.2);
-const REQUEST_METRIC_HOT_QUEUE_SAMPLE_RATE = boundedSampleRate(process.env.TRADEVETO_REQUEST_METRIC_HOT_QUEUE_SAMPLE_RATE, 0.25);
+const REQUEST_METRIC_HOT_QUEUE_SAMPLE_RATE = boundedSampleRate(process.env.TRADEVETO_REQUEST_METRIC_HOT_QUEUE_SAMPLE_RATE, 0.05);
 
 const monitoringGlobal = globalThis as typeof globalThis & {
   __tradevetoRequestMetricQueue?: RequestMetricQueueState;

@@ -27,12 +27,19 @@ test("discovery performance snapshot tracks p50, p95, p99, max, and cache hit ra
 test("discovery performance snapshot reports target met for hot cached paths", () => {
   resetDiscoveryPerformanceForTests();
 
-  for (const latencyMs of [42, 48, 51, 60, 77]) {
-    recordDiscoveryApiTiming({ cacheStatus: "system-hit", latencyMs, statusCode: 200 });
+  for (const [cacheStatus, latencyMs] of [
+    ["response-hit", 22],
+    ["response-hit", 28],
+    ["system-hit", 42],
+    ["system-hit", 48],
+    ["stale-hit", 77],
+  ] as const) {
+    recordDiscoveryApiTiming({ cacheStatus, latencyMs, statusCode: 200 });
   }
 
   const snapshot = getDiscoveryPerformanceSnapshot();
 
+  assert.equal(snapshot.cacheHitRate, 100);
   assert.equal(snapshot.p95LatencyMs, 77);
   assert.equal(snapshot.p99LatencyMs, 77);
   assert.equal(snapshot.targetMet, true);
