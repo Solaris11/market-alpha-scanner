@@ -819,7 +819,7 @@ function buildSourceTrustSummary(developments: DailyMarketDevelopment[]): DailyS
     contextCompleteCardCount,
     contextCompletenessPct,
     disclosure: completenessPct >= SOURCE_TRUST_TARGET_PCT && contextCompletenessPct >= SOURCE_TRUST_TARGET_PCT
-      ? `${completeCardCount} of ${developments.length} displayed source-linked event cards disclose provider, source URL, timestamp, freshness, provider state, uncertainty, affected symbols, and watchlist impact.`
+      ? `${completeCardCount} of ${developments.length} displayed source-linked event cards disclose provider, source URL, timestamp, freshness, provider state, uncertainty, affected symbols/sectors, and watchlist impact.`
       : `${developments.length - completeCardCount} displayed event card${developments.length - completeCardCount === 1 ? "" : "s"} miss required source/provider/timestamp/freshness/provider-state/uncertainty fields; ${developments.length - contextCompleteCardCount} miss full context fields. Target is ${SOURCE_TRUST_TARGET_PCT}%.`,
     displayedCardCount: developments.length,
     incompleteCardCount: developments.length - completeCardCount,
@@ -833,7 +833,7 @@ function buildSourceTrustSummary(developments: DailyMarketDevelopment[]): DailyS
 function missingSourceTrustFields(item: DailyMarketDevelopment, fields: DailySourceTrustField[]): DailySourceTrustField[] {
   const missing: DailySourceTrustField[] = [];
   for (const field of fields) {
-    if (field === "affectedSymbols" && item.affectedSymbols.length === 0) missing.push(field);
+    if (field === "affectedSymbols" && item.affectedSymbols.length === 0 && item.affectedSectors.length === 0) missing.push(field);
     if (field === "freshness" && (!item.freshnessLabel || /timestamp unavailable/i.test(item.freshnessLabel))) missing.push(field);
     if (field === "provider" && !item.providerAttribution.trim()) missing.push(field);
     if (field === "providerState" && (!item.providerState || !item.providerStateLabel.trim())) missing.push(field);
@@ -1054,7 +1054,7 @@ function buildMacroEventTimeline(developments: DailyMarketDevelopment[], calenda
 function isInflationProviderDevelopment(item: DailyMarketDevelopment): boolean {
   const text = `${item.category} ${item.headline} ${item.whyItMatters} ${item.eventTrackingLabel} ${item.original.eventType} ${item.original.reasonCodes.join(" ")} ${item.relatedMacroContext}`.toLowerCase();
   if (hasInflationLanguage(text)) return true;
-  return /\boil supply\b|\boil shock\b|\benergy supply\b|\bcommodity pressure\b|event_oil_supply_shock/.test(text);
+  return /\boil supply\b|\boil shock\b|\benergy supply\b|\bcommodity pressure\b|\bcommodity\b|\bcommodities\b|\bcrude\b|\bcotton\b|\bsugar\b|\bcocoa\b|\bcorn\b|\bwheat\b|event_oil_supply_shock/.test(text);
 }
 
 function isMacroProviderDevelopment(item: DailyMarketDevelopment): boolean {
@@ -1637,7 +1637,7 @@ function developmentPriorityScore(input: {
 function sourceQualityLabel(item: MarketNewsItem): string {
   const textValue = `${item.source} ${item.sourceUrl}`.toLowerCase();
   if (/sec\.gov|federalreserve\.gov|bls\.gov|bea\.gov|eia\.gov|treasury\.gov|stlouisfed\.org/.test(textValue)) return "Official source";
-  if (/reuters|bloomberg|apnews|ap news|cnbc|coindesk|marketwatch|yahoo|wsj|stocktitan|nasdaq/.test(textValue)) return "Verified market source";
+  if (/reuters|bloomberg|apnews|ap news|cnbc|coindesk|marketbeat|marketwatch|yahoo|wsj|stocktitan|nasdaq/.test(textValue)) return "Verified market source";
   if (/prnewswire|globenewswire|businesswire|investor/.test(textValue)) return "Source-linked company release";
   return "Verified source-linked item";
 }

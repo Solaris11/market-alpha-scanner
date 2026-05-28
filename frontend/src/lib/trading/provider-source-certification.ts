@@ -8,6 +8,7 @@ import {
 } from "./daily-market-command";
 
 export type ProviderCertificationEventCard = {
+  affectedSectors?: string[];
   confidence: string;
   freshness: string;
   freshnessSla: string;

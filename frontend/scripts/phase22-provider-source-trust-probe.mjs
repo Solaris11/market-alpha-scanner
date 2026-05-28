@@ -190,7 +190,9 @@ function missingCardFields(card) {
   if (!String(card?.macroImpact ?? "").trim()) missing.push("macroImpact");
   if (!String(card?.replayLinkage ?? "").trim()) missing.push("replayLinkage");
   if (!String(card?.strategyLinkage ?? "").trim()) missing.push("strategyLinkage");
-  if (!Array.isArray(card?.affectedSymbols) || card.affectedSymbols.length === 0) missing.push("affectedSymbols");
+  const hasAffectedSymbols = Array.isArray(card?.affectedSymbols) && card.affectedSymbols.length > 0;
+  const hasAffectedSectors = Array.isArray(card?.affectedSectors) && card.affectedSectors.length > 0;
+  if (!hasAffectedSymbols && !hasAffectedSectors) missing.push("affectedSymbolsOrSectors");
   if (!String(card?.watchlistImpactReason ?? "").trim()) missing.push("watchlistImpact");
   if (!String(card?.uncertainty ?? "").trim()) missing.push("uncertainty");
   return missing;

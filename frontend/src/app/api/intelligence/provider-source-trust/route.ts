@@ -18,6 +18,7 @@ import {
 } from "@/lib/trading/daily-market-command";
 import { buildMarketCommandModel, type MarketCommandModel, type MarketNewsItem } from "@/lib/trading/market-research";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
+import { fetchSupplementalProviderEvents } from "@/lib/trading/provider-coverage-supplement";
 import { buildProviderFreshnessCertification } from "@/lib/trading/provider-source-certification";
 import { buildUnifiedIntelligenceConsole } from "@/lib/trading/unified-intelligence-console";
 
@@ -42,6 +43,7 @@ type ProviderStateCounts = Record<DailyProviderOperationalState, number>;
 
 type EventCardProof = {
   affectedSymbols: string[];
+  affectedSectors: string[];
   confidence: string;
   freshness: string;
   freshnessSla: string;
@@ -93,13 +95,14 @@ export async function GET(request: Request) {
 
   try {
     const adapter = new ScannerDataAdapter();
-    const [snapshot, performance, scanSafety, watchlistSymbols, marketChartHubData, recentProviderRows] = await Promise.all([
+    const [snapshot, performance, scanSafety, watchlistSymbols, marketChartHubData, recentProviderRows, supplementalProviderEvents] = await Promise.all([
       adapter.getTerminalSnapshot(),
       getPerformanceData({ forwardTailRows: 5000 }).catch(() => null),
       getCurrentScanSafety(),
       readUserWatchlist(access.user.id).catch(() => []),
       getMarketChartHubData().catch(() => []),
       getRecentScannerHistoryRows({ hours: 168, maxRuns: 192, minRuns: 3 }).catch(() => []),
+      fetchSupplementalProviderEvents({ limit: 8 }).catch(() => []),
     ]);
     const symbols = snapshot.signals.map((row) => row.symbol);
     const [shockPatterns, narratives, workflowEvolution] = await Promise.all([
@@ -113,7 +116,7 @@ export async function GET(request: Request) {
       generatedAt: scanSafety.lastUpdated,
       rows: snapshot.signals,
     });
-    const providerMarketCommand = mergeRecentProviderEvents(marketCommand, recentProviderRows, scanSafety.lastUpdated);
+    const providerMarketCommand = mergeProviderEvents(marketCommand, recentProviderRows, supplementalProviderEvents, scanSafety.lastUpdated);
     const unified = buildUnifiedIntelligenceConsole({
       marketCondition: snapshot.marketRegime.label,
       rows: opportunities.rows,
@@ -159,16 +162,15 @@ export async function GET(request: Request) {
   }
 }
 
-function mergeRecentProviderEvents(current: MarketCommandModel, recentRows: Parameters<typeof buildMarketCommandModel>[0]["rows"], generatedAt: string | null): MarketCommandModel {
-  if (!recentRows.length) return current;
+function mergeProviderEvents(current: MarketCommandModel, recentRows: Parameters<typeof buildMarketCommandModel>[0]["rows"], supplemental: MarketNewsItem[], generatedAt: string | null): MarketCommandModel {
   const recent = buildMarketCommandModel({ charts: [], generatedAt, rows: recentRows });
-  const mergedNews = mergeMarketNews(current.macroNews, recent.macroNews);
+  const mergedNews = mergeMarketNews(current.macroNews, recent.macroNews, supplemental);
   return { ...current, macroNews: mergedNews };
 }
 
-function mergeMarketNews(current: MarketNewsItem[], recent: MarketNewsItem[]): MarketNewsItem[] {
+function mergeMarketNews(...groups: MarketNewsItem[][]): MarketNewsItem[] {
   const byId = new Map<string, MarketNewsItem>();
-  for (const item of [...recent, ...current]) {
+  for (const item of groups.flat()) {
     const existing = byId.get(item.id);
     if (!existing || item.relevance > existing.relevance || Date.parse(item.publishedAt) > Date.parse(existing.publishedAt)) {
       byId.set(item.id, item);
@@ -182,6 +184,7 @@ function mergeMarketNews(current: MarketNewsItem[], recent: MarketNewsItem[]): M
 function eventCardProof(item: DailyMarketDevelopment): EventCardProof {
   return {
     affectedSymbols: item.affectedSymbols,
+    affectedSectors: item.affectedSectors,
     confidence: item.confidenceLabel,
     freshness: item.freshnessLabel,
     freshnessSla: item.freshnessSlaLabel,
