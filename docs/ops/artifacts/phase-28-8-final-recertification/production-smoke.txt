@@ -1,0 +1,25 @@
+2026-05-28T04:47:09Z
+Already up to date.
+bed3a09133c5b74d985b28003ad00acec2c4a0cf
+NAME                                           IMAGE                                                COMMAND                  SERVICE                         CREATED         STATUS                   PORTS
+market-alpha-frontend                          market-alpha-scanner-market-alpha-frontend           "docker-entrypoint.s…"   market-alpha-frontend           5 minutes ago   Up 5 minutes (healthy)   3001/tcp
+market-alpha-frontend-hot-api                  market-alpha-scanner-market-alpha-frontend-hot-api   "docker-entrypoint.s…"   market-alpha-frontend-hot-api   5 minutes ago   Up 5 minutes (healthy)   3001/tcp
+market-alpha-scanner-market-alpha-postgres-1   postgres:16-alpine                                   "docker-entrypoint.s…"   market-alpha-postgres           3 weeks ago     Up 2 weeks (healthy)     5432/tcp
+200 https://tradeveto.com/api/health bytes=115
+200 https://tradeveto.com/api/health/deep bytes=1526
+200 https://tradeveto.com/terminal bytes=104510
+200 https://tradeveto.com/discover bytes=53519
+200 https://tradeveto.com/scanner bytes=48393
+200 https://tradeveto.com/symbol/AMD bytes=116125
+200 https://tradeveto.com/history bytes=74589
+200 https://tradeveto.com/performance bytes=76194
+200 https://tradeveto.com/alerts bytes=54029
+200 https://tradeveto.com/macro bytes=131373
+200 https://tradeveto.com/feed bytes=176535
+200 https://tradeveto.com/market-memory bytes=334255
+200 https://tradeveto.com/paper bytes=154284
+200 https://tradeveto.com/strategy-labs bytes=74583
+200 https://tradeveto.com/account bytes=50295
+200 https://tradeveto.com/settings bytes=48482
+200 https://tradeveto.com/support bytes=93340
+200 https://tradeveto.com/status bytes=33811
