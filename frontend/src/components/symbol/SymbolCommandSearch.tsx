@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Clock3, Filter, Save, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { ArrowRight, Clock3, Filter, Save, Search, X } from "lucide-react";
 import { openSymbolCard } from "@/lib/symbol/symbol-overlay-store";
 import { symbolCardContextFromRow } from "@/lib/symbol/symbol-intelligence-card";
 import {
@@ -35,12 +35,18 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
   const [query, setQuery] = useState(initialQuery);
   const [activeIndex, setActiveIndex] = useState(0);
   const [filters, setFilters] = useState<SymbolSearchFilterState>(() => defaultSymbolSearchFilters());
+  const [quickOpen, setQuickOpen] = useState(false);
+  const [quickQuery, setQuickQuery] = useState(initialQuery);
+  const [quickReady, setQuickReady] = useState(false);
   const [recentSymbols, setRecentSymbols] = useState<string[]>([]);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const quickInputRef = useRef<HTMLInputElement | null>(null);
   const facets = useMemo(() => buildSymbolSearchFacets(documents), [documents]);
   const response = useMemo(() => searchSymbolIndex(documents, query, filters, 10), [documents, filters, query]);
+  const quickResponse = useMemo(() => (quickReady ? searchSymbolIndex(documents, quickQuery, filters, 8) : null), [documents, filters, quickQuery, quickReady]);
   const results = response.results;
+  const quickResults = quickResponse?.results ?? [];
 
   useEffect(() => {
     setRecentSymbols(readStringArray(RECENT_KEY));
@@ -51,16 +57,24 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
+      const key = event.key.toLowerCase();
+      const isGlobalSearchShortcut = (event.metaKey || event.ctrlKey) && key === "k";
       const target = event.target;
-      if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement) return;
-      if (event.key === "/" || (event.altKey && event.key.toLowerCase() === "s") || ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k")) {
+      const isEditable = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement;
+      if (isGlobalSearchShortcut) {
         event.preventDefault();
-        inputRef.current?.focus();
+        openQuickSearch(query);
+        return;
+      }
+      if (isEditable) return;
+      if (event.key === "/" || (event.altKey && key === "s")) {
+        event.preventDefault();
+        openQuickSearch(query);
       }
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }, [query]);
 
   useEffect(() => {
     setActiveIndex(0);
@@ -85,6 +99,32 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
     openSymbolCard(active.document.symbol, { sourceContext: symbolDocumentContext(active.document, "symbol-command-search"), trigger: inputRef.current });
   }
 
+  function openQuickSearch(seed: string): void {
+    const startedAt = browserWorkflowNow();
+    setQuickQuery(seed);
+    setQuickReady(false);
+    setActiveIndex(0);
+    setQuickOpen(true);
+    window.requestAnimationFrame(() => {
+      quickInputRef.current?.focus();
+      recordBrowserWorkflowMetric("symbol-search:open", startedAt);
+      window.setTimeout(() => setQuickReady(true), 0);
+    });
+  }
+
+  function closeQuickSearch(): void {
+    setQuickOpen(false);
+    setQuickReady(false);
+  }
+
+  function openQuickActive(): void {
+    const active = quickResults[activeIndex] ?? quickResults[0];
+    if (!active) return;
+    remember(active.document.symbol);
+    openSymbolCard(active.document.symbol, { sourceContext: symbolDocumentContext(active.document, "symbol-command-overlay"), trigger: quickInputRef.current });
+    closeQuickSearch();
+  }
+
   function updateFilter<K extends keyof SymbolSearchFilterState>(key: K, value: SymbolSearchFilterState[K]): void {
     setFilters((current) => defaultSymbolSearchFilters({ ...current, [key]: value }));
   }
@@ -100,6 +140,97 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
   }
 
   return (
+    <>
+    {quickOpen ? (
+      <div
+        aria-label="Global symbol search"
+        aria-modal="true"
+        className="fixed inset-0 z-[1200] flex items-start justify-center bg-black/58 px-3 pt-[calc(env(safe-area-inset-top)+72px)] backdrop-blur-sm"
+        onMouseDown={(event) => {
+          if (event.target === event.currentTarget) closeQuickSearch();
+        }}
+        role="dialog"
+      >
+        <div className="w-full max-w-2xl rounded-2xl border border-cyan-300/20 bg-slate-950/96 p-3 shadow-2xl shadow-cyan-950/30">
+          <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/30 px-3">
+            <Search className="h-4 w-4 shrink-0 text-cyan-200" />
+            <input
+              ref={quickInputRef}
+              className="min-w-0 flex-1 bg-transparent py-3 text-sm text-slate-100 outline-none placeholder:text-slate-600"
+              data-symbol-search-input="true"
+              onChange={(event) => {
+                setQuickReady(true);
+                setQuickQuery(event.target.value);
+                setActiveIndex(0);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "ArrowDown") {
+                  event.preventDefault();
+                  setActiveIndex((index) => Math.min(quickResults.length - 1, index + 1));
+                }
+                if (event.key === "ArrowUp") {
+                  event.preventDefault();
+                  setActiveIndex((index) => Math.max(0, index - 1));
+                }
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  openQuickActive();
+                }
+                if (event.key === "Escape") {
+                  event.preventDefault();
+                  closeQuickSearch();
+                }
+              }}
+              placeholder="Search AMD, NVDA, sectors, macro exposure..."
+              type="search"
+              value={quickQuery}
+            />
+            <button
+              aria-label="Close symbol search"
+              className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.035] text-slate-400 transition hover:border-cyan-300/40 hover:text-cyan-100"
+              onClick={closeQuickSearch}
+              type="button"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="mt-3 max-h-[min(58vh,460px)] overflow-y-auto pr-1">
+            {quickReady ? (
+              quickResults.length ? quickResults.map((result, index) => (
+                <button
+                  aria-selected={activeIndex === index}
+                  className={`mb-2 w-full rounded-xl border p-3 text-left transition ${activeIndex === index ? "border-cyan-300/45 bg-cyan-400/10" : "border-white/10 bg-white/[0.035] hover:border-cyan-300/30 hover:bg-white/[0.055]"}`}
+                  data-symbol-search-result="true"
+                  key={`quick:${result.document.symbol}`}
+                  onClick={(event) => {
+                    remember(result.document.symbol);
+                    openSymbolCard(result.document.symbol, { sourceContext: symbolDocumentContext(result.document, "symbol-command-overlay-result"), trigger: event.currentTarget });
+                    closeQuickSearch();
+                  }}
+                  role="option"
+                  type="button"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-base font-black text-slate-50">{result.document.symbol}</span>
+                        <span className="truncate text-sm font-semibold text-slate-300">{result.document.companyName || result.document.theme}</span>
+                      </div>
+                      <p className="mt-1 line-clamp-1 text-xs text-slate-500">{result.matchReasons.join(", ") || "ranked by scanner relevance and workflow context"}</p>
+                    </div>
+                    <Mini label="Score" value={metric(result.document.score)} />
+                  </div>
+                </button>
+              )) : (
+                <div className="rounded-xl border border-dashed border-slate-700/70 bg-slate-950/35 p-5 text-sm text-slate-400">No symbol matches the current search.</div>
+              )
+            ) : (
+              <div className="rounded-xl border border-dashed border-cyan-300/20 bg-cyan-300/[0.04] p-5 text-sm text-cyan-100">Search ready.</div>
+            )}
+          </div>
+        </div>
+      </div>
+    ) : null}
     <section
       className="terminal-panel rounded-2xl p-4"
       aria-labelledby="symbol-command-search-heading"
@@ -117,7 +248,7 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
         </div>
         <button
           className="inline-flex min-h-10 items-center gap-2 rounded-full border border-cyan-300/35 bg-cyan-400/10 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-400/15"
-          onClick={() => inputRef.current?.focus()}
+          onClick={() => openQuickSearch(query)}
           type="button"
         >
           <Search className="h-4 w-4" />
@@ -264,6 +395,7 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
         </aside>
       </div>
     </section>
+    </>
   );
 }
 
@@ -302,7 +434,7 @@ function Toggle({ checked, label, onChange }: { checked: boolean; label: string;
   );
 }
 
-function Panel({ children, icon, title }: { children: React.ReactNode; icon: React.ReactNode; title: string }) {
+function Panel({ children, icon, title }: { children: ReactNode; icon: ReactNode; title: string }) {
   return (
     <div className="rounded-xl border border-white/10 bg-white/[0.035] p-3">
       <div className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.14em] text-cyan-200">
@@ -368,4 +500,28 @@ function pushUnique(value: string, current: string[]): string[] {
   const cleaned = value.trim().toUpperCase();
   if (!cleaned) return current;
   return [cleaned, ...current.filter((item) => item !== cleaned)];
+}
+
+type BrowserWorkflowMetric = {
+  id: string;
+  latencyMs: number;
+  recordedAt: string;
+};
+
+function browserWorkflowNow(): number {
+  return typeof performance === "undefined" ? Date.now() : performance.now();
+}
+
+function recordBrowserWorkflowMetric(id: string, startedAt: number): void {
+  if (typeof window === "undefined") return;
+  window.requestAnimationFrame(() => {
+    const metricWindow = window as Window & { __tradevetoBrowserWorkflowMetrics?: BrowserWorkflowMetric[] };
+    const latencyMs = Math.max(0, browserWorkflowNow() - startedAt);
+    const nextMetric: BrowserWorkflowMetric = {
+      id,
+      latencyMs: Math.round(latencyMs * 1000) / 1000,
+      recordedAt: new Date().toISOString(),
+    };
+    metricWindow.__tradevetoBrowserWorkflowMetrics = [...(metricWindow.__tradevetoBrowserWorkflowMetrics ?? []), nextMetric].slice(-120);
+  });
 }

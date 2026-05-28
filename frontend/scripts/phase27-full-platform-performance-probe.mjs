@@ -223,7 +223,7 @@ async function runInteractionProbes(page) {
     ]);
   }));
 
-  interactions.push(await measure("chart-restore", "Load AMD chart workspace", interactionBudgets.chartRestoreMs, async () => {
+  interactions.push(await measureBrowserWorkflow(page, "chart-restore", "Load AMD chart workspace", interactionBudgets.chartRestoreMs, ["chart:workspace-restore"], async () => {
     await page.goto(`${baseUrl}/symbol/AMD`, { waitUntil: "domcontentloaded" });
     await dismissRiskAcknowledgement(page);
     await page.locator("[data-chart-symbol='AMD'][data-chart-workspace-loaded='true']").first().waitFor({ state: "visible", timeout: interactionWaitMs });
@@ -236,18 +236,24 @@ async function runInteractionProbes(page) {
     await page.locator("[data-chart-fullscreen-toolbar='true']").getByRole("button", { name: /^compare$/i }).first().click({ timeout: interactionWaitMs });
     await page.locator("[data-chart-fullscreen-toolbar='true'][data-chart-fullscreen-mode='compare']").first().waitFor({ state: "visible", timeout: interactionWaitMs });
   }));
-  interactions.push(await measure("symbol-switch", "Switch from AMD to NVDA through client chart navigation", interactionBudgets.symbolSwitchMs, async () => {
+  await page.keyboard.press("Escape").catch(() => undefined);
+  await page.locator("[data-chart-fullscreen-toolbar='true']").first().waitFor({ state: "hidden", timeout: 2_000 }).catch(() => undefined);
+  interactions.push(await measureBrowserWorkflow(page, "symbol-switch", "Switch from AMD to NVDA through client chart navigation", interactionBudgets.symbolSwitchMs, ["symbol:switch"], async () => {
     const nextButton = page.getByRole("button", { name: /next symbol/i }).first();
     if (await nextButton.isVisible({ timeout: 2_000 }).catch(() => false)) {
-      await nextButton.click({ timeout: interactionWaitMs });
+      await Promise.all([
+        page.waitForURL(/\/symbol\/NVDA/, { timeout: interactionWaitMs }).catch(() => undefined),
+        nextButton.click({ timeout: interactionWaitMs }),
+      ]);
     } else {
-      await page.keyboard.press("Escape").catch(() => undefined);
-      await page.goto(`${baseUrl}/symbol/NVDA`, { waitUntil: "domcontentloaded" });
+      await page.goto(`${baseUrl}/symbol/AMD`, { waitUntil: "domcontentloaded" });
+      await dismissRiskAcknowledgement(page);
+      await page.getByRole("button", { name: /next symbol/i }).first().click({ timeout: interactionWaitMs });
     }
-    await page.getByRole("button", { name: /Expand NVDA chart/i }).first().waitFor({ state: "visible", timeout: interactionWaitMs });
+    await page.locator("[data-chart-symbol='NVDA']").first().waitFor({ state: "visible", timeout: interactionWaitMs });
   }));
 
-  interactions.push(await measure("symbol-search-open", "Open global symbol search", interactionBudgets.symbolSearchOpenMs, async () => {
+  interactions.push(await measureBrowserWorkflow(page, "symbol-search-open", "Open global symbol search", interactionBudgets.symbolSearchOpenMs, ["symbol-search:open"], async () => {
     await page.keyboard.press(process.platform === "darwin" ? "Meta+K" : "Control+K");
     await page.locator("[data-symbol-search-input='true']").first().waitFor({ state: "visible", timeout: interactionWaitMs });
   }));

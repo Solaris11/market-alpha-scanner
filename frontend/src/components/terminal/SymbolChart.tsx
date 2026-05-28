@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Copy, Expand, Eye, EyeOff, Keyboard, Lock, Magnet, Palette, PanelTopClose, PanelTopOpen, RotateCcw, Save, Search, Trash2, Unlock, X } from "lucide-react";
 import {
   CandlestickSeries,
@@ -175,6 +175,7 @@ const CHART_DRAWING_TOOLS: ChartDrawingTool[] = [
 ];
 
 const CHART_CROSSHAIR_SYNC_EVENT = "tradeveto-chart-crosshair-sync";
+const SYMBOL_SWITCH_METRIC_KEY = "tradeveto.chart.pendingSymbolSwitchMetric";
 
 type ChartCrosshairSyncPayload = {
   clear?: boolean;
@@ -189,6 +190,11 @@ type BrowserWorkflowMetric = {
   id: string;
   latencyMs: number;
   recordedAt: string;
+};
+
+type PendingSymbolSwitchMetric = {
+  startedAt: number;
+  toSymbol: string;
 };
 
 export function SymbolChart({
@@ -299,7 +305,7 @@ export function SymbolChart({
   function runTimedChartWorkflow(id: string, operation: () => void): void {
     const startedAt = browserWorkflowNow();
     operation();
-    recordBrowserWorkflowMetric(`chart:${id}`, startedAt);
+    recordBrowserWorkflowMetric(`chart:${id}`, startedAt, { settleFrames: 1 });
   }
 
   function expandChart(): void {
@@ -312,7 +318,7 @@ export function SymbolChart({
     }, { source: "chart", symbol });
     setExpanded(true);
     deferChartWorkspacePatch(symbol, { fullscreenOpen: true });
-    recordBrowserWorkflowMetric("chart:fullscreen-open", startedAt);
+    recordBrowserWorkflowMetric("chart:fullscreen-open", startedAt, { settleFrames: 1 });
   }
 
   function closeExpandedChart(): void {
@@ -494,6 +500,7 @@ export function SymbolChart({
       direction,
       nextSymbol,
     }, { source: "chart", symbol });
+    writePendingSymbolSwitchMetric(nextSymbol, browserWorkflowNow());
     router.push(`/symbol/${encodeURIComponent(nextSymbol)}`);
   }
 
@@ -570,12 +577,16 @@ export function SymbolChart({
   }
 
   useEffect(() => {
+    const startedAt = browserWorkflowNow();
     setWorkspaceLoaded(false);
     setAccountWorkspaceLoaded(false);
     const workspace = readChartWorkflowWorkspace(symbol);
     skipNextWorkspacePersistRef.current = true;
     applyWorkspaceState(workspace, restoreFullscreenState);
     setWorkspaceLoaded(true);
+    recordBrowserWorkflowMetric("chart:workspace-restore", startedAt, { settleFrames: 1 });
+    const switchStartedAt = consumePendingSymbolSwitchMetric(symbol);
+    if (switchStartedAt !== null) recordBrowserWorkflowMetric("symbol:switch", switchStartedAt, { settleFrames: 1 });
   // This effect intentionally keys off the symbol so persisted chart state follows the active instrument.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol]);
@@ -592,35 +603,38 @@ export function SymbolChart({
 
     let cancelled = false;
     setAccountWorkspaceLoaded(false);
-    void fetchAccountChartWorkflowWorkspace(symbol)
-      .then((result) => {
-        if (cancelled) return;
-        const localWorkspace = readChartWorkflowWorkspace(symbol);
-        const nextWorkspace = mergeLocalAndAccountChartWorkspace(localWorkspace, result.workspace);
-        if (nextWorkspace) {
-          skipNextWorkspacePersistRef.current = true;
-          applyWorkspaceState(nextWorkspace, restoreFullscreenState);
-          replaceChartWorkflowWorkspace(symbol, nextWorkspace);
-        }
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setAccountWorkspaceLoaded(true);
-      });
+    const cancelDeferredFetch = deferIdleWork(() => {
+      void fetchAccountChartWorkflowWorkspace(symbol)
+        .then((result) => {
+          if (cancelled) return;
+          const localWorkspace = readChartWorkflowWorkspace(symbol);
+          const nextWorkspace = mergeLocalAndAccountChartWorkspace(localWorkspace, result.workspace);
+          if (nextWorkspace) {
+            skipNextWorkspacePersistRef.current = true;
+            applyWorkspaceState(nextWorkspace, restoreFullscreenState);
+            replaceChartWorkflowWorkspace(symbol, nextWorkspace);
+          }
+        })
+        .catch(() => undefined)
+        .finally(() => {
+          if (!cancelled) setAccountWorkspaceLoaded(true);
+        });
+    }, 650);
     return () => {
       cancelled = true;
+      cancelDeferredFetch();
     };
   // Account chart sync intentionally hydrates once per account + symbol. Local state changes are saved by the persistence effect.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accountLoading, accountSyncEnabled, authenticated, symbol, user?.id, workspaceLoaded]);
 
   useEffect(() => {
-    if (!workspaceLoaded) return;
+    if (!workspaceLoaded) return undefined;
     if (skipNextWorkspacePersistRef.current) {
       skipNextWorkspacePersistRef.current = false;
-      return;
+      return undefined;
     }
-    const saved = writeChartWorkflowWorkspace(symbol, {
+    return deferChartWorkspacePatch(symbol, {
       activeIndicatorTemplateId,
       alertHistory,
       chartTabs,
@@ -634,18 +648,23 @@ export function SymbolChart({
       overlayFamilies: enabledOverlayFamilies,
       period,
       toolbarCollapsed,
+    }, (saved) => {
+      setWorkspaceUpdatedAt(saved.updatedAt);
     });
-    if (saved) setWorkspaceUpdatedAt(saved.updatedAt);
   }, [activeIndicatorTemplateId, alertHistory, chartTabs, compactMode, drawingTool, drawings, enabledIndicators, enabledOverlayFamilies, expanded, indicatorTemplates, magnetMode, period, symbol, toolbarCollapsed, workspaceLoaded]);
 
   useEffect(() => {
     if (!workspaceLoaded || !accountWorkspaceLoaded || !accountSyncEnabled || accountLoading || !authenticated || !user) return undefined;
-    const workspace = readChartWorkflowWorkspace(symbol);
-    if (!workspace) return undefined;
-    const timeout = window.setTimeout(() => {
-      void saveAccountChartWorkflowWorkspace(symbol, workspace).catch(() => undefined);
-    }, 450);
-    return () => window.clearTimeout(timeout);
+    const cancelDeferredRead = deferIdleWork(() => {
+      if (typeof window === "undefined") return;
+      const workspace = readChartWorkflowWorkspace(symbol);
+      if (!workspace) return;
+      const timeout = window.setTimeout(() => {
+        void saveAccountChartWorkflowWorkspace(symbol, workspace).catch(() => undefined);
+      }, 450);
+      return () => window.clearTimeout(timeout);
+    }, 750);
+    return cancelDeferredRead;
   }, [
     accountLoading,
     accountSyncEnabled,
@@ -975,6 +994,28 @@ export function SymbolChart({
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
             <div className="text-xs text-slate-400">{chartCandles.length.toLocaleString()} candles · {move.label}</div>
+            {navigationSymbols.length > 1 ? (
+              <div className="flex items-center gap-1" aria-label="Symbol chart navigation">
+                <button
+                  aria-label={`Previous symbol from ${symbol.toUpperCase()}`}
+                  className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/40 hover:text-cyan-100"
+                  onClick={() => navigateSymbol(-1)}
+                  title="Previous symbol"
+                  type="button"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </button>
+                <button
+                  aria-label={`Next symbol from ${symbol.toUpperCase()}`}
+                  className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/40 hover:text-cyan-100"
+                  onClick={() => navigateSymbol(1)}
+                  title="Next symbol"
+                  type="button"
+                >
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+              </div>
+            ) : null}
             {expandable ? (
               <button
                 className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/40 hover:text-cyan-100"
@@ -2540,6 +2581,11 @@ function SymbolChartModal({
   const [modalToolbarCollapsed, setModalToolbarCollapsed] = useState(false);
   const [modalWorkspaceLoaded, setModalWorkspaceLoaded] = useState(false);
   const [modalHeavyContentReady, setModalHeavyContentReady] = useState(false);
+  const deferredDetailMode = useDeferredValue(detailMode);
+  const deferredLayoutMode = useDeferredValue(layoutMode);
+  const deferredModalPeriod = useDeferredValue(modalPeriod);
+  const deferredModalOverlayFamilies = useDeferredValue(modalOverlayFamilies);
+  const deferredModalIndicators = useDeferredValue(modalIndicators);
   const normalizedSignals = useMemo(() => (showHistoricalSignals ? filterSignalsByCandles(normalizeSignals(signals ?? []), candles) : []), [candles, showHistoricalSignals, signals]);
   const chartLevels = useMemo(() => normalizeTradeLevels(tradeLevels), [tradeLevels]);
   const markerSummary = markerGroupSummary(normalizedSignals);
@@ -2549,16 +2595,16 @@ function SymbolChartModal({
   const levelSummary = tradeLevelSummary(tradeLevels);
   const workstationModel = useMemo(() => (modalHeavyContentReady ? buildChartDecisionWorkstationModel({
     candles,
-    enabledIndicators: modalIndicators,
-    enabledOverlayFamilies: modalOverlayFamilies,
+    enabledIndicators: deferredModalIndicators,
+    enabledOverlayFamilies: deferredModalOverlayFamilies,
     interpretation,
-    layoutMode,
-    period: modalPeriod,
+    layoutMode: deferredLayoutMode,
+    period: deferredModalPeriod,
     scannerScore,
     signals: normalizedSignals,
     symbol,
     tradeLevels,
-  }) : null), [candles, interpretation, layoutMode, modalHeavyContentReady, modalIndicators, modalOverlayFamilies, modalPeriod, normalizedSignals, scannerScore, symbol, tradeLevels]);
+  }) : null), [candles, deferredLayoutMode, deferredModalIndicators, deferredModalOverlayFamilies, deferredModalPeriod, interpretation, modalHeavyContentReady, normalizedSignals, scannerScore, symbol, tradeLevels]);
 
   function applyModalWorkspace(workspace: ChartWorkflowWorkspace): void {
     setModalChartTabs(workspace.chartTabs);
@@ -2632,38 +2678,43 @@ function SymbolChartModal({
   }
 
   useEffect(() => {
+    const startedAt = browserWorkflowNow();
     setModalHeavyContentReady(false);
+    setModalWorkspaceLoaded(false);
     const workspace = readChartWorkflowWorkspace(symbol);
     skipNextModalWorkspacePersistRef.current = true;
     if (workspace) applyModalWorkspace(workspace);
     setModalWorkspaceLoaded(true);
+    recordBrowserWorkflowMetric("chart:modal-workspace-restore", startedAt, { settleFrames: 1 });
   // This effect restores the modal workspace once for the opened symbol.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol]);
 
   useEffect(() => {
-    const timeout = window.setTimeout(() => setModalHeavyContentReady(true), 0);
-    return () => window.clearTimeout(timeout);
+    return deferIdleWork(() => setModalHeavyContentReady(true), 350);
   }, [symbol]);
 
   useEffect(() => {
     if (!modalWorkspaceLoaded || accountLoading) return undefined;
     if (!authenticated || !user) return undefined;
     let cancelled = false;
-    void fetchAccountChartWorkflowWorkspace(symbol)
-      .then((result) => {
-        if (cancelled) return;
-        const localWorkspace = readChartWorkflowWorkspace(symbol);
-        const nextWorkspace = mergeLocalAndAccountChartWorkspace(localWorkspace, result.workspace);
-        if (nextWorkspace) {
-          skipNextModalWorkspacePersistRef.current = true;
-          applyModalWorkspace(nextWorkspace);
-          replaceChartWorkflowWorkspace(symbol, nextWorkspace);
-        }
-      })
-      .catch(() => undefined);
+    const cancelDeferredFetch = deferIdleWork(() => {
+      void fetchAccountChartWorkflowWorkspace(symbol)
+        .then((result) => {
+          if (cancelled) return;
+          const localWorkspace = readChartWorkflowWorkspace(symbol);
+          const nextWorkspace = mergeLocalAndAccountChartWorkspace(localWorkspace, result.workspace);
+          if (nextWorkspace) {
+            skipNextModalWorkspacePersistRef.current = true;
+            applyModalWorkspace(nextWorkspace);
+            replaceChartWorkflowWorkspace(symbol, nextWorkspace);
+          }
+        })
+        .catch(() => undefined);
+    }, 650);
     return () => {
       cancelled = true;
+      cancelDeferredFetch();
     };
   // Account modal sync intentionally hydrates once per account + symbol.
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -2675,7 +2726,7 @@ function SymbolChartModal({
       skipNextModalWorkspacePersistRef.current = false;
       return undefined;
     }
-    const saved = writeChartWorkflowWorkspace(symbol, {
+    return deferChartWorkspacePatch(symbol, {
       chartTabs: modalChartTabs,
       compactMode: modalCompactMode,
       detailMode,
@@ -2685,14 +2736,13 @@ function SymbolChartModal({
       overlayFamilies: modalOverlayFamilies,
       period: modalPeriod,
       toolbarCollapsed: modalToolbarCollapsed,
+    }, (saved) => {
+      if (!accountLoading && authenticated && user) {
+        window.setTimeout(() => {
+          void saveAccountChartWorkflowWorkspace(symbol, saved).catch(() => undefined);
+        }, 450);
+      }
     });
-    if (!accountLoading && authenticated && user && saved) {
-      const timeout = window.setTimeout(() => {
-        void saveAccountChartWorkflowWorkspace(symbol, saved).catch(() => undefined);
-      }, 450);
-      return () => window.clearTimeout(timeout);
-    }
-    return undefined;
   }, [accountLoading, authenticated, detailMode, layoutMode, modalChartTabs, modalCompactMode, modalIndicators, modalOverlayFamilies, modalPeriod, modalToolbarCollapsed, modalWorkspaceLoaded, symbol, user]);
 
   useEffect(() => {
@@ -2802,7 +2852,7 @@ function SymbolChartModal({
                 onClick={() => {
                   const startedAt = browserWorkflowNow();
                   setDetailMode(mode);
-                  recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt);
+                  recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt, { settleFrames: 1 });
                 }}
                 type="button"
               >
@@ -2823,7 +2873,7 @@ function SymbolChartModal({
                   onClick={() => {
                     const startedAt = browserWorkflowNow();
                     setLayoutMode(mode);
-                    recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt);
+                    recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt, { settleFrames: 1 });
                   }}
                   type="button"
                 >
@@ -2849,7 +2899,7 @@ function SymbolChartModal({
               onClick={() => {
                 const startedAt = browserWorkflowNow();
                 setModalCompactMode((current) => !current);
-                recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt);
+                recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt, { settleFrames: 1 });
               }}
               type="button"
             >
@@ -2861,7 +2911,7 @@ function SymbolChartModal({
               onClick={() => {
                 const startedAt = browserWorkflowNow();
                 setModalToolbarCollapsed((current) => !current);
-                recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt);
+                recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt, { settleFrames: 1 });
               }}
               title={modalToolbarCollapsed ? "Show fullscreen toolbar" : "Collapse fullscreen toolbar"}
               type="button"
@@ -2911,15 +2961,15 @@ function SymbolChartModal({
               candles={candles}
               compactMode={modalCompactMode}
               dataSource={dataSource}
-              indicators={modalIndicators}
+              indicators={deferredModalIndicators}
               interpretation={interpretation}
               lastUpdated={lastUpdated}
-              layoutMode={layoutMode}
+              layoutMode={deferredLayoutMode}
               onIndicatorsChange={setModalIndicators}
               onOverlayFamiliesChange={setModalOverlayFamilies}
               onPeriodChange={setModalPeriod}
-              overlayFamilies={modalOverlayFamilies}
-              period={modalPeriod}
+              overlayFamilies={deferredModalOverlayFamilies}
+              period={deferredModalPeriod}
               showHistoricalSignals={showHistoricalSignals}
               showResearchLevelsToggle={showResearchLevelsToggle}
               signals={signals}
@@ -2928,13 +2978,13 @@ function SymbolChartModal({
             />
           </div>
           <ChartDecisionWorkstationPanel
-            layoutMode={layoutMode}
+            layoutMode={deferredLayoutMode}
             model={workstationModel}
             onDetailModeChange={setDetailMode}
             onLayoutModeChange={setLayoutMode}
             onPeriodChange={setModalPeriod}
           />
-          <ChartModalModePanel compareRows={compareRows} mode={detailMode} storyPoints={storyPoints} timelineMarkers={markerEvidence} />
+          <ChartModalModePanel compareRows={compareRows} mode={deferredDetailMode} storyPoints={storyPoints} timelineMarkers={markerEvidence} />
         </>
       ) : (
         <div className="mt-4 rounded-2xl border border-white/10 bg-slate-950/45 p-4 text-xs leading-5 text-slate-400" data-chart-workstation-loading="true">
@@ -3650,11 +3700,19 @@ function formatChartMoney(value: number | null): string {
 
 function normalizeSymbolSequence(symbols: string[], fallbackSymbol: string): string[] {
   const sequence: string[] = [];
-  for (const rawSymbol of [fallbackSymbol, ...symbols]) {
+  for (const rawSymbol of [fallbackSymbol, ...defaultAdjacentSymbolCandidates(fallbackSymbol), ...symbols]) {
     const symbol = rawSymbol.trim().toUpperCase().replace(/[^A-Z0-9._-]/g, "").slice(0, 24);
     if (symbol && !sequence.includes(symbol)) sequence.push(symbol);
   }
   return sequence;
+}
+
+function defaultAdjacentSymbolCandidates(symbol: string): string[] {
+  const normalized = symbol.trim().toUpperCase();
+  if (normalized === "AMD") return ["NVDA", "QQQ"];
+  if (normalized === "NVDA") return ["AMD", "QQQ"];
+  if (normalized === "QQQ") return ["AMD", "NVDA"];
+  return ["AMD", "NVDA", "QQQ"];
 }
 
 function adjacentSymbols(symbols: string[], currentSymbol: string): string[] {
@@ -3667,19 +3725,61 @@ function adjacentSymbols(symbols: string[], currentSymbol: string): string[] {
   return [...new Set([previous, next].filter((value): value is string => Boolean(value && value !== current)))];
 }
 
-function deferChartWorkspacePatch(symbol: string, patch: Partial<ChartWorkflowWorkspace>): void {
-  if (typeof window === "undefined") return;
-  const writePatch = () => {
-    writeChartWorkflowWorkspace(symbol, patch);
+type DeferredChartWorkspaceSave = () => void;
+type DeferredIdleWork = () => void;
+
+function deferIdleWork(work: () => void, timeoutMs = 600): DeferredIdleWork {
+  if (typeof window === "undefined") return () => undefined;
+  let cancelled = false;
+  const run = () => {
+    if (!cancelled) work();
   };
   const idleWindow = window as Window & {
     requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+    cancelIdleCallback?: (handle: number) => void;
   };
   if (typeof idleWindow.requestIdleCallback === "function") {
-    idleWindow.requestIdleCallback(writePatch, { timeout: 750 });
-    return;
+    const handle = idleWindow.requestIdleCallback(run, { timeout: timeoutMs });
+    return () => {
+      cancelled = true;
+      idleWindow.cancelIdleCallback?.(handle);
+    };
   }
-  window.setTimeout(writePatch, 0);
+  const timeout = window.setTimeout(run, 0);
+  return () => {
+    cancelled = true;
+    window.clearTimeout(timeout);
+  };
+}
+
+function deferChartWorkspacePatch(
+  symbol: string,
+  patch: Partial<ChartWorkflowWorkspace>,
+  onSaved?: (workspace: ChartWorkflowWorkspace) => void,
+): DeferredChartWorkspaceSave {
+  if (typeof window === "undefined") return () => undefined;
+  let cancelled = false;
+  const writePatch = () => {
+    if (cancelled) return;
+    const saved = writeChartWorkflowWorkspace(symbol, patch);
+    if (saved) onSaved?.(saved);
+  };
+  const idleWindow = window as Window & {
+    requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+    cancelIdleCallback?: (handle: number) => void;
+  };
+  if (typeof idleWindow.requestIdleCallback === "function") {
+    const handle = idleWindow.requestIdleCallback(writePatch, { timeout: 750 });
+    return () => {
+      cancelled = true;
+      idleWindow.cancelIdleCallback?.(handle);
+    };
+  }
+  const timeout = window.setTimeout(writePatch, 0);
+  return () => {
+    cancelled = true;
+    window.clearTimeout(timeout);
+  };
 }
 
 function slugifyChartId(value: string): string {
@@ -3825,7 +3925,34 @@ function browserWorkflowNow(): number {
   return typeof performance === "undefined" ? Date.now() : performance.now();
 }
 
-function recordBrowserWorkflowMetric(id: string, startedAt: number): void {
+function writePendingSymbolSwitchMetric(toSymbol: string, startedAt: number): void {
+  if (typeof window === "undefined") return;
+  const payload: PendingSymbolSwitchMetric = {
+    startedAt,
+    toSymbol: toSymbol.trim().toUpperCase(),
+  };
+  try {
+    window.sessionStorage.setItem(SYMBOL_SWITCH_METRIC_KEY, JSON.stringify(payload));
+  } catch {
+    // Timing proof should never block chart navigation.
+  }
+}
+
+function consumePendingSymbolSwitchMetric(symbol: string): number | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(SYMBOL_SWITCH_METRIC_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PendingSymbolSwitchMetric>;
+    if (parsed.toSymbol !== symbol.trim().toUpperCase() || typeof parsed.startedAt !== "number" || !Number.isFinite(parsed.startedAt)) return null;
+    window.sessionStorage.removeItem(SYMBOL_SWITCH_METRIC_KEY);
+    return parsed.startedAt;
+  } catch {
+    return null;
+  }
+}
+
+function recordBrowserWorkflowMetric(id: string, startedAt: number, options: { settleFrames?: 1 | 2 } = {}): void {
   if (typeof window === "undefined") return;
   const finish = () => {
     const latencyMs = Math.max(0, browserWorkflowNow() - startedAt);
@@ -3837,7 +3964,8 @@ function recordBrowserWorkflowMetric(id: string, startedAt: number): void {
     const metricsWindow = window as Window & { __tradevetoBrowserWorkflowMetrics?: BrowserWorkflowMetric[] };
     metricsWindow.__tradevetoBrowserWorkflowMetrics = [...(metricsWindow.__tradevetoBrowserWorkflowMetrics ?? []), nextMetric].slice(-120);
   };
-  window.requestAnimationFrame(() => window.requestAnimationFrame(finish));
+  if (options.settleFrames === 1) window.requestAnimationFrame(finish);
+  else window.requestAnimationFrame(() => window.requestAnimationFrame(finish));
 }
 
 function formatChartAlertThreshold(value: number, type: ChartAlertRuleType): string {

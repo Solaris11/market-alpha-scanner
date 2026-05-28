@@ -267,14 +267,30 @@ export function mergeChartWorkflowWorkspace(current: unknown, patch: ChartWorkfl
   }, base);
 }
 
+type WorkspaceCacheEntry = {
+  raw: string;
+  workspace: ChartWorkflowWorkspace;
+};
+
+const workspaceCache = new Map<string, WorkspaceCacheEntry>();
+
 export function readChartWorkflowWorkspace(symbol: string): ChartWorkflowWorkspace | null {
   const storage = browserStorage();
   if (!storage) return null;
-  const raw = storage.getItem(chartWorkflowStorageKey(symbol));
-  if (!raw) return null;
+  const key = chartWorkflowStorageKey(symbol);
+  const raw = storage.getItem(key);
+  if (!raw) {
+    workspaceCache.delete(key);
+    return null;
+  }
+  const cached = workspaceCache.get(key);
+  if (cached?.raw === raw) return cached.workspace;
   try {
-    return sanitizeChartWorkflowWorkspace(JSON.parse(raw));
+    const workspace = sanitizeChartWorkflowWorkspace(JSON.parse(raw));
+    workspaceCache.set(key, { raw, workspace });
+    return workspace;
   } catch {
+    workspaceCache.delete(key);
     return null;
   }
 }
@@ -284,7 +300,10 @@ export function writeChartWorkflowWorkspace(symbol: string, patch: ChartWorkflow
   if (!storage) return null;
   const existing = readChartWorkflowWorkspace(symbol) ?? defaultChartWorkflowWorkspace();
   const next = mergeChartWorkflowWorkspace(existing, patch);
-  storage.setItem(chartWorkflowStorageKey(symbol), JSON.stringify(next));
+  const key = chartWorkflowStorageKey(symbol);
+  const raw = JSON.stringify(next);
+  storage.setItem(key, raw);
+  workspaceCache.set(key, { raw, workspace: next });
   dispatchChartWorkflowStorageEvent(symbol, next);
   return next;
 }
@@ -293,7 +312,10 @@ export function replaceChartWorkflowWorkspace(symbol: string, workspace: unknown
   const storage = browserStorage();
   if (!storage) return null;
   const next = sanitizeChartWorkflowWorkspace(workspace);
-  storage.setItem(chartWorkflowStorageKey(symbol), JSON.stringify(next));
+  const key = chartWorkflowStorageKey(symbol);
+  const raw = JSON.stringify(next);
+  storage.setItem(key, raw);
+  workspaceCache.set(key, { raw, workspace: next });
   dispatchChartWorkflowStorageEvent(symbol, next);
   return next;
 }
