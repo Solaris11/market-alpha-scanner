@@ -115,7 +115,7 @@ async function runBrowserProof(browserName) {
 async function measureSymbolRoute(page) {
   const started = performance.now();
   try {
-    await page.goto(`${baseUrl}/symbol/AMD`, { waitUntil: "domcontentloaded" });
+    await page.goto(`${baseUrl}/symbol/AMD`, { waitUntil: "commit" });
     await page.locator("body").waitFor({ state: "visible", timeout: waitTimeoutMs });
     await dismissRiskAcknowledgement(page);
     await page.locator("[data-chart-symbol='AMD']").first().waitFor({ state: "visible", timeout: waitTimeoutMs });
