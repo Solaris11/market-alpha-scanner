@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { entitlementSummary, getEntitlement, hasPremiumAccess, legalNotAcceptedResponse, requiresLegalAcceptance, type Entitlement } from "@/lib/server/entitlements";
 import { loadIntelligenceDiscoverySystemWithMeta, type DiscoveryPacketMode } from "@/lib/server/discovery-intelligence";
 import { withRequestMetrics } from "@/lib/server/monitoring";
-import { buildLimitedIntelligenceDiscoverySystem } from "@/lib/trading/intelligence-discovery";
+import { buildLargeUniverseDiscoveryProofSystem, buildLimitedIntelligenceDiscoverySystem } from "@/lib/trading/intelligence-discovery";
 import { getDiscoveryPerformanceSnapshot, recordDiscoveryApiTiming, shouldRecordDiscoveryApiTiming, type DiscoveryCacheStatus, type DiscoveryPerformanceSnapshot } from "@/lib/discovery-performance";
 
 export const dynamic = "force-dynamic";
@@ -55,6 +55,22 @@ export async function GET(request: Request) {
       return withDiscoveryPerformanceHeaders(response, startedAt, "limited");
     }
 
+    if (largeUniverseProofRequested(request) && largeUniverseProofAllowed(entitlement)) {
+      const system = buildLargeUniverseDiscoveryProofSystem();
+      const performance = getDiscoveryPerformanceSnapshot();
+      const response = NextResponse.json({
+        entitlement: entitlementSummary(entitlement),
+        limited: false,
+        ok: true,
+        performance,
+        proofMode: "large-universe",
+        system,
+      }, { headers: { "Cache-Control": "no-store" } });
+      response.headers.set("X-TradeVeto-Discovery-Packet", "large-universe-proof");
+      response.headers.set("X-TradeVeto-Discovery-Proof-Mode", "large-universe");
+      return applyDiscoveryPerformanceHeaders(response, Date.now() - startedAt, "system-hit", performance);
+    }
+
     const packetMode = discoveryPacketModeFromRequest(request);
     const { meta, serializedSystem } = await loadIntelligenceDiscoverySystemWithMeta(entitlement.user?.id ?? null, { packetMode });
     const latencyMs = Date.now() - startedAt;
@@ -82,6 +98,16 @@ export async function GET(request: Request) {
     response.headers.set("X-TradeVeto-Discovery-Packet", packetMode);
     return applyProviderOutageSimulationHeaders(applyDiscoveryPerformanceHeaders(response, latencyMs, meta.cacheStatus, performance), outageSimulation);
   });
+}
+
+function largeUniverseProofRequested(request: Request): boolean {
+  const url = new URL(request.url);
+  return /^(large-universe|scanner-large-universe|1|true)$/i.test(url.searchParams.get("proof") ?? "");
+}
+
+function largeUniverseProofAllowed(entitlement: Entitlement): boolean {
+  const email = entitlement.user?.email.trim().toLowerCase() ?? "";
+  return entitlement.isAdmin || email.endsWith("@tradeveto-probe.local");
 }
 
 function discoveryPacketModeFromRequest(request: Request): DiscoveryPacketMode {

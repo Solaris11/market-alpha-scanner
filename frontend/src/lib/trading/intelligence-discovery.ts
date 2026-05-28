@@ -195,6 +195,30 @@ export type BuildIntelligenceDiscoveryInput = {
 
 const TIMEFRAMES: DiscoveryTimeframe[] = ["1D", "1W", "1M", "3M", "6M", "1Y", "5Y"];
 const DEFAULT_INITIAL_DISCOVERY_SYMBOL_LIMIT = 160;
+const LARGE_UNIVERSE_PROOF_SYMBOL_COUNT = 520;
+const LARGE_UNIVERSE_PROOF_WATCHLIST_COUNT = 500;
+const LARGE_UNIVERSE_PROOF_REAL_SYMBOLS = [
+  "AMD",
+  "NVDA",
+  "AAPL",
+  "MSFT",
+  "TSLA",
+  "META",
+  "GOOGL",
+  "AMZN",
+  "AVGO",
+  "SMCI",
+  "PLTR",
+  "COIN",
+  "MSTR",
+  "XOM",
+  "JPM",
+  "LLY",
+  "UNH",
+  "BA",
+  "SHOP",
+  "SNOW",
+] as const;
 
 export function buildLimitedIntelligenceDiscoverySystem(message = "Discovery is limited until premium scanner data is available."): IntelligenceDiscoverySystem {
   return {
@@ -266,6 +290,58 @@ export function buildIntelligenceDiscoverySystem(input: BuildIntelligenceDiscove
     symbols,
     universeCount,
     watchlistCount: symbols.filter((symbol) => symbol.watchlisted).length,
+  };
+}
+
+export function buildLargeUniverseDiscoveryProofSystem(input: { generatedAt?: string; symbolCount?: number; watchlistCount?: number } = {}): IntelligenceDiscoverySystem {
+  const generatedAt = input.generatedAt ?? new Date().toISOString();
+  const symbolCount = Math.max(500, Math.min(760, Math.trunc(input.symbolCount ?? LARGE_UNIVERSE_PROOF_SYMBOL_COUNT)));
+  const watchlistCount = Math.max(0, Math.min(symbolCount, Math.trunc(input.watchlistCount ?? LARGE_UNIVERSE_PROOF_WATCHLIST_COUNT)));
+  const symbols = buildLargeUniverseProofSymbols({ symbolCount, watchlistCount });
+  const sectorHeatmap = buildSectorHeatmap(symbols);
+  const momentumClusters = buildMomentumClusters(symbols);
+  const riskClusters = buildRiskClusters(symbols);
+  const macroClusters = buildMacroClusters(symbols);
+  const quickFilters = buildQuickFilters(symbols);
+  const scannerPresets = buildScannerPresets(symbols, []);
+  const stories = [
+    {
+      detail: "This is an isolated, authenticated, test-only large-universe scanner proof. Rows beyond real production symbols are non-trading proof rows used only to validate virtualization, browser timing, memory, and workflow behavior.",
+      key: "large-universe-proof-boundary",
+      metric: `${formatHydrationSafeInteger(symbolCount)} test-only rows`,
+      symbols: symbols.slice(0, 6).map((symbol) => symbol.symbol),
+      title: "Large-universe proof mode is isolated from user-facing scanner data",
+      tone: "amber" as const,
+    },
+    ...buildDiscoveryStories(symbols).slice(0, 5),
+  ];
+  const comparePresets = buildComparePresets(symbols);
+  const discoveryScore = roundedAverage([
+    average(symbols.map((symbol) => symbol.confidence)),
+    average(symbols.map((symbol) => symbol.freshness)),
+    average(symbols.map((symbol) => symbol.macro)),
+    100 - average(symbols.map((symbol) => symbol.risk)),
+  ], 50);
+
+  return {
+    comparePresets,
+    dataTimestamp: generatedAt,
+    discoveryScore,
+    generatedAt,
+    headline: "TEST-ONLY large-universe scanner proof mode. Non-trading rows validate browser virtualization and workflow latency only.",
+    limited: false,
+    macroClusters,
+    momentumClusters,
+    orbitNodes: buildOrbitNodes({ macroClusters, momentumClusters, riskClusters, sectorHeatmap, stories, symbols }),
+    quickFilters,
+    riskClusters,
+    scannerPresets,
+    sectorHeatmap,
+    stories,
+    summary: `Test-only proof mode exposes ${formatHydrationSafeInteger(symbolCount)} isolated scanner rows with ${formatHydrationSafeInteger(watchlistCount)} proof watchlist rows. These rows are not recommendations, not live market signals, and not presented to normal production users.`,
+    symbols,
+    universeCount: symbolCount,
+    watchlistCount,
   };
 }
 
@@ -438,6 +514,68 @@ function toDiscoverySymbol(row: OpportunityViewModel, watchlist: Set<string>): D
     volume: firstNumeric(raw.volume, raw.avg_volume, raw.average_volume),
     watchlisted: watchlist.has(symbol),
   };
+}
+
+function buildLargeUniverseProofSymbols(input: { symbolCount: number; watchlistCount: number }): DiscoverySymbol[] {
+  const sectors = ["Technology", "Semiconductors", "Financials", "Energy", "Healthcare", "Industrials", "Consumer Cyclical", "Crypto"] as const;
+  const setups = ["Test-only momentum", "Test-only mean reversion", "Test-only risk compression", "Test-only macro divergence", "Test-only replay analog", "Test-only catalyst"] as const;
+  return Array.from({ length: input.symbolCount }, (_, index): DiscoverySymbol => {
+    const realSymbol = LARGE_UNIVERSE_PROOF_REAL_SYMBOLS[index];
+    const symbol = realSymbol ?? `TVP${String(index + 1).padStart(4, "0")}`;
+    const sector = sectors[index % sectors.length] ?? "Technology";
+    const setupType = setups[index % setups.length] ?? "Test-only scanner proof";
+    const confidence = 42 + ((index * 17) % 57);
+    const risk = 28 + ((index * 19) % 69);
+    const macro = 36 + ((index * 23) % 61);
+    const replay = 31 + ((index * 29) % 66);
+    const freshness = 45 + ((index * 31) % 54);
+    const watchlisted = index < input.watchlistCount;
+    return {
+      alertState: "test-only",
+      assetType: index % 13 === 0 ? "Crypto" : "Equity",
+      companyName: `${symbol} TEST-ONLY large-universe scanner proof row`,
+      confidence,
+      conviction: confidence,
+      decision: "Test-only proof row",
+      evidence: 40 + ((index * 7) % 60),
+      evidenceLabel: "Test-only evidence",
+      fragility: 20 + ((index * 11) % 75),
+      freshness,
+      freshnessLabel: "Test-only proof freshness",
+      href: realSymbol ? `/symbol/${symbol}` : "/discover?proof=large-universe",
+      macro,
+      marketCap: 800_000_000 + index * 9_750_000_000,
+      performance: buildProofPerformance(index),
+      price: realSymbol ? 12 + index * 1.37 : null,
+      reason: `TEST-ONLY non-trading scanner proof row for ${sector}. Used only to validate 500+ browser rows, virtualization, latency, memory, and workflow behavior; no market signal or recommendation is inferred.`,
+      replay,
+      risk,
+      sector,
+      setupType,
+      shockRisk: 25 + ((index * 5) % 70),
+      symbol,
+      trend: 30 + ((index * 37) % 68),
+      volatility: 20 + ((index * 41) % 76),
+      volume: 1_000_000 + index * 173_000,
+      watchlisted,
+    };
+  });
+}
+
+function buildProofPerformance(index: number): Record<DiscoveryTimeframe, number | null> {
+  return {
+    "1D": proofSigned(index, 3, 2.4),
+    "1W": proofSigned(index, 5, 5.8),
+    "1M": proofSigned(index, 7, 14.2),
+    "3M": proofSigned(index, 11, 26.5),
+    "6M": proofSigned(index, 13, 41.5),
+    "1Y": proofSigned(index, 17, 72.5),
+    "5Y": proofSigned(index, 19, 180),
+  };
+}
+
+function proofSigned(index: number, multiplier: number, range: number): number {
+  return Math.round(((((index * multiplier) % 200) / 100) * range - range) * 100) / 100;
 }
 
 function buildSectorHeatmap(symbols: DiscoverySymbol[]): DiscoveryCluster[] {

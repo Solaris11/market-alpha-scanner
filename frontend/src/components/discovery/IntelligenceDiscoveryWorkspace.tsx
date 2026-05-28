@@ -242,6 +242,7 @@ export function IntelligenceDiscoveryWorkspace({
   }));
   const selectedFilter = system.quickFilters.find((item) => item.key === filter);
   const activeSymbol = visibleSymbols[Math.min(activeIndex, Math.max(visibleSymbols.length - 1, 0))] ?? null;
+  const proofMode = /test-only large-universe scanner proof/i.test(`${system.headline} ${system.summary}`) ? "large-universe" : "none";
 
   const openDiscoverySymbolCard = useCallback((symbol: DiscoverySymbol): void => {
     openSymbolCard(symbol.symbol, {
@@ -730,7 +731,7 @@ export function IntelligenceDiscoveryWorkspace({
   }, [activeSymbol, focusSearch, openDiscoverySymbolCard, rangeSelectedSymbols, scannerFullscreen, scannerPresets, selectedCluster, selectedSymbol, visibleSymbols]);
 
   return (
-    <section className={`tv-discovery-system ${mode === "overlay" ? "space-y-4" : "space-y-6"}`} data-discovery-workspace="true">
+    <section className={`tv-discovery-system ${mode === "overlay" ? "space-y-4" : "space-y-6"}`} data-discovery-proof-mode={proofMode} data-discovery-workspace="true">
       <DiscoveryHero
         inputRef={searchInputRef}
         mode={mode}
@@ -1612,6 +1613,7 @@ function RapidScannerTable({
       </div>
       <div
         className={`${ultra ? "max-h-[72rem]" : compact ? "max-h-[56rem]" : "max-h-[44rem]"} overflow-y-auto [scrollbar-width:thin]`}
+        data-scanner-scroll-container="true"
         onScroll={(event) => {
           if (virtualizationActive) setScrollTop(event.currentTarget.scrollTop);
         }}

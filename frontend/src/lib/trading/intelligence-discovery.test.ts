@@ -4,6 +4,7 @@ import { describe, test } from "node:test";
 import type { OpportunityViewModel } from "./opportunity-view-model";
 import {
   buildIntelligenceDiscoverySystem,
+  buildLargeUniverseDiscoveryProofSystem,
   buildLimitedIntelligenceDiscoverySystem,
   compactIntelligenceDiscoverySystem,
   filterDiscoverySymbols,
@@ -272,6 +273,32 @@ describe("intelligence discovery system", () => {
     assert.equal(compact.quickFilters.find((filter) => filter.key === "all")?.count, 40);
     assert.equal(compact.symbols.length, 12);
     assert.match(compact.summary, /Full-universe rows hydrate progressively/i);
+  });
+
+  test("builds an isolated test-only large-universe scanner proof without trading claims", () => {
+    const system = buildLargeUniverseDiscoveryProofSystem({ generatedAt: "2026-05-28T12:00:00.000Z", symbolCount: 520, watchlistCount: 500 });
+    const filtered = filterDiscoverySymbols(system.symbols, {
+      evidence: "ALL",
+      filter: "all",
+      marketCap: "ALL",
+      query: "test-only",
+      riskBand: "ALL",
+      sector: "ALL",
+      sort: "attention",
+      timeframe: "1M",
+    });
+
+    assert.equal(system.limited, false);
+    assert.equal(system.universeCount, 520);
+    assert.equal(system.symbols.length, 520);
+    assert.equal(system.watchlistCount, 500);
+    assert.equal(system.symbols.filter((symbol) => symbol.watchlisted).length, 500);
+    assert.equal(system.quickFilters.find((filter) => filter.key === "all")?.count, 520);
+    assert.equal(filtered.length, 520);
+    assert.match(system.headline, /TEST-ONLY/i);
+    assert.match(system.summary, /not recommendations|not live market signals/i);
+    assert.ok(system.symbols.slice(20).every((symbol) => symbol.companyName?.includes("TEST-ONLY")));
+    assert.ok(system.symbols.slice(20).every((symbol) => symbol.href === "/discover?proof=large-universe"));
   });
 });
 
