@@ -276,7 +276,35 @@ describe("intelligence discovery system", () => {
   });
 
   test("builds an isolated test-only large-universe scanner proof without trading claims", () => {
-    const system = buildLargeUniverseDiscoveryProofSystem({ generatedAt: "2026-05-28T12:00:00.000Z", symbolCount: 520, watchlistCount: 500 });
+    const system = buildLargeUniverseDiscoveryProofSystem({
+      generatedAt: "2026-05-28T12:00:00.000Z",
+      savedScans: [
+        {
+          createdAt: "2026-05-28T12:00:00.000Z",
+          id: "22222222-2222-4222-8222-222222222222",
+          lastUsedAt: "2026-05-28T12:00:00.000Z",
+          name: "Phase 28.5 large universe restore",
+          nameKey: "phase_28_5_large_universe_restore",
+          payload: {
+            assetType: "ALL",
+            density: "ultra",
+            evidence: "ALL",
+            filter: "all",
+            marketCap: "ALL",
+            query: "TVP",
+            riskBand: "ALL",
+            sector: "ALL",
+            sort: "attention",
+            timeframe: "1M",
+            watchlistOnly: true,
+          },
+          updatedAt: "2026-05-28T12:00:00.000Z",
+          useCount: 1,
+        },
+      ],
+      symbolCount: 520,
+      watchlistCount: 500,
+    });
     const filtered = filterDiscoverySymbols(system.symbols, {
       evidence: "ALL",
       filter: "all",
@@ -293,6 +321,9 @@ describe("intelligence discovery system", () => {
     assert.equal(system.symbols.length, 520);
     assert.equal(system.watchlistCount, 500);
     assert.equal(system.symbols.filter((symbol) => symbol.watchlisted).length, 500);
+    assert.equal(system.scannerPresets[0]?.label, "Phase 28.5 large universe restore");
+    assert.equal(system.scannerPresets[0]?.userSaved, true);
+    assert.equal(system.scannerPresets[0]?.count, 480);
     assert.equal(system.quickFilters.find((filter) => filter.key === "all")?.count, 520);
     assert.equal(filtered.length, 520);
     assert.match(system.headline, /TEST-ONLY/i);

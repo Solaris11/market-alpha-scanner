@@ -5,6 +5,7 @@ import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { getEntitlement, hasPremiumAccess, requiresLegalAcceptance, type Entitlement } from "@/lib/server/entitlements";
 import { loadIntelligenceDiscoverySystem } from "@/lib/server/discovery-intelligence";
 import { getPublicMarketSummary } from "@/lib/server/public-signal-data";
+import { readUserSavedScans } from "@/lib/server/user-saved-scans";
 import { premiumAccessState } from "@/lib/security/premium-access-state";
 import { buildLargeUniverseDiscoveryProofSystem } from "@/lib/trading/intelligence-discovery";
 
@@ -35,8 +36,10 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
   }
 
   const proofRequested = largeUniverseProofRequested(params.proof);
-  const system = proofRequested && largeUniverseProofAllowed(entitlement)
-    ? buildLargeUniverseDiscoveryProofSystem()
+  const proofAllowed = proofRequested && largeUniverseProofAllowed(entitlement);
+  const savedScans = proofAllowed && entitlement.user?.id ? await readUserSavedScans(entitlement.user.id).catch(() => []) : [];
+  const system = proofAllowed
+    ? buildLargeUniverseDiscoveryProofSystem({ savedScans })
     : await loadIntelligenceDiscoverySystem(entitlement.user?.id ?? null);
 
   return (

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { entitlementSummary, getEntitlement, hasPremiumAccess, legalNotAcceptedResponse, requiresLegalAcceptance, type Entitlement } from "@/lib/server/entitlements";
 import { loadIntelligenceDiscoverySystemWithMeta, type DiscoveryPacketMode } from "@/lib/server/discovery-intelligence";
 import { withRequestMetrics } from "@/lib/server/monitoring";
+import { readUserSavedScans } from "@/lib/server/user-saved-scans";
 import { buildLargeUniverseDiscoveryProofSystem, buildLimitedIntelligenceDiscoverySystem } from "@/lib/trading/intelligence-discovery";
 import { getDiscoveryPerformanceSnapshot, recordDiscoveryApiTiming, shouldRecordDiscoveryApiTiming, type DiscoveryCacheStatus, type DiscoveryPerformanceSnapshot } from "@/lib/discovery-performance";
 
@@ -56,7 +57,8 @@ export async function GET(request: Request) {
     }
 
     if (largeUniverseProofRequested(request) && largeUniverseProofAllowed(entitlement)) {
-      const system = buildLargeUniverseDiscoveryProofSystem();
+      const savedScans = entitlement.user?.id ? await readUserSavedScans(entitlement.user.id).catch(() => []) : [];
+      const system = buildLargeUniverseDiscoveryProofSystem({ savedScans });
       const performance = getDiscoveryPerformanceSnapshot();
       const response = NextResponse.json({
         entitlement: entitlementSummary(entitlement),

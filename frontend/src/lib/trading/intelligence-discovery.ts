@@ -293,7 +293,7 @@ export function buildIntelligenceDiscoverySystem(input: BuildIntelligenceDiscove
   };
 }
 
-export function buildLargeUniverseDiscoveryProofSystem(input: { generatedAt?: string; symbolCount?: number; watchlistCount?: number } = {}): IntelligenceDiscoverySystem {
+export function buildLargeUniverseDiscoveryProofSystem(input: { generatedAt?: string; savedScans?: DiscoverySavedScan[]; symbolCount?: number; watchlistCount?: number } = {}): IntelligenceDiscoverySystem {
   const generatedAt = input.generatedAt ?? new Date().toISOString();
   const symbolCount = Math.max(500, Math.min(760, Math.trunc(input.symbolCount ?? LARGE_UNIVERSE_PROOF_SYMBOL_COUNT)));
   const watchlistCount = Math.max(0, Math.min(symbolCount, Math.trunc(input.watchlistCount ?? LARGE_UNIVERSE_PROOF_WATCHLIST_COUNT)));
@@ -303,7 +303,7 @@ export function buildLargeUniverseDiscoveryProofSystem(input: { generatedAt?: st
   const riskClusters = buildRiskClusters(symbols);
   const macroClusters = buildMacroClusters(symbols);
   const quickFilters = buildQuickFilters(symbols);
-  const scannerPresets = buildScannerPresets(symbols, []);
+  const scannerPresets = buildScannerPresets(symbols, input.savedScans ?? []);
   const stories = [
     {
       detail: "This is an isolated, authenticated, test-only large-universe scanner proof. Rows beyond real production symbols are non-trading proof rows used only to validate virtualization, browser timing, memory, and workflow behavior.",
