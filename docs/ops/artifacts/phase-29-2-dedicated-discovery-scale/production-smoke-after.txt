@@ -1,0 +1,14 @@
+Post-load production smoke
+timestamp=2026-05-28T09:39:24+00:00
+200 /api/health 116 bytes
+200 /api/health/deep 1538 bytes
+200 /terminal 106090 bytes
+200 /discover 54973 bytes
+200 /scanner 49847 bytes
+200 /paper 156046 bytes
+200 /strategy-labs 76079 bytes
+200 /market-memory 335121 bytes
+200 /symbol/AMD 117621 bytes
+200 /alerts 55483 bytes
+200 /feed 177347 bytes
+200 /macro 132323 bytes
