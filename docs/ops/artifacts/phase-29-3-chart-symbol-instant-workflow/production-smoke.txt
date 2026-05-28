@@ -1,0 +1,11 @@
+Production smoke
+timestamp=2026-05-28T10:33:28+00:00
+commit=992ad30a605c0eb4ad2dc2857964f27b28e1de4f
+200 /api/health 114 bytes
+200 /api/health/deep 1494 bytes
+200 /symbol/AMD 113020 bytes
+200 /symbol/NVDA 115076 bytes
+200 /terminal 106160 bytes
+200 /scanner 49917 bytes
+200 /history 76168 bytes
+200 /performance 76852 bytes

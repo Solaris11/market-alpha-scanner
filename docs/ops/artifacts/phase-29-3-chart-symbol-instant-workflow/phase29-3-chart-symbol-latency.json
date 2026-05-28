@@ -1,0 +1,225 @@
+{
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [
+    "webkit /symbol/AMD interactive 3529.746ms exceeds 2500ms",
+    "webkit symbol-switch: 151ms exceeds 150ms"
+  ],
+  "browserReports": [
+    {
+      "browserName": "chromium",
+      "generatedAt": "2026-05-28T10:36:45.355Z",
+      "interactions": [
+        {
+          "browserMetricId": "chart:workspace-restore",
+          "budgetMs": 250,
+          "id": "chart-restore",
+          "label": "AMD chart workspace shell restore",
+          "latencyMs": 0,
+          "status": "pass",
+          "timingSource": "browser-performance"
+        },
+        {
+          "automationLatencyMs": 3774.873,
+          "browserMetricId": "chart:fullscreen-open",
+          "budgetMs": 150,
+          "id": "fullscreen-chart-open",
+          "label": "Open AMD fullscreen chart",
+          "latencyMs": 3.9,
+          "status": "pass",
+          "timingSource": "browser-performance"
+        },
+        {
+          "automationLatencyMs": 589.914,
+          "browserMetricId": "chart:toolbar-interaction",
+          "budgetMs": 60,
+          "id": "chart-toolbar-interaction",
+          "label": "Switch fullscreen chart to compare mode",
+          "latencyMs": 0,
+          "status": "pass",
+          "timingSource": "browser-performance"
+        },
+        {
+          "automationLatencyMs": 265.403,
+          "browserMetricId": "symbol:switch",
+          "budgetMs": 150,
+          "id": "symbol-switch",
+          "label": "Switch from AMD to NVDA using chart navigation",
+          "latencyMs": 7.5,
+          "status": "pass",
+          "timingSource": "browser-performance"
+        },
+        {
+          "automationLatencyMs": 308.566,
+          "browserMetricId": "symbol-search:open",
+          "budgetMs": 100,
+          "id": "symbol-search-open",
+          "label": "Open global symbol command search",
+          "latencyMs": 2.8,
+          "status": "pass",
+          "timingSource": "browser-performance"
+        }
+      ],
+      "overallStatus": "ready",
+      "route": {
+        "budgetMs": 2500,
+        "interactiveMs": 540.514,
+        "path": "/symbol/AMD",
+        "status": "pass"
+      },
+      "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-29-3-chart-symbol-instant-workflow/screenshots/chromium/symbol-workflow.png",
+      "startedAt": "2026-05-28T10:36:37.857Z",
+      "tracePath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-29-3-chart-symbol-instant-workflow/traces/chromium-phase29-3-trace.zip"
+    },
+    {
+      "browserName": "firefox",
+      "generatedAt": "2026-05-28T10:36:53.044Z",
+      "interactions": [
+        {
+          "browserMetricId": "chart:workspace-restore",
+          "budgetMs": 250,
+          "id": "chart-restore",
+          "label": "AMD chart workspace shell restore",
+          "latencyMs": 0,
+          "status": "pass",
+          "timingSource": "browser-performance"
+        },
+        {
+          "automationLatencyMs": 3417.162,
+          "browserMetricId": "chart:fullscreen-open",
+          "budgetMs": 150,
+          "id": "fullscreen-chart-open",
+          "label": "Open AMD fullscreen chart",
+          "latencyMs": 6,
+          "status": "pass",
+          "timingSource": "browser-performance"
+        },
+        {
+          "automationLatencyMs": 995.526,
+          "browserMetricId": "chart:toolbar-interaction",
+          "budgetMs": 60,
+          "id": "chart-toolbar-interaction",
+          "label": "Switch fullscreen chart to compare mode",
+          "latencyMs": 0,
+          "status": "pass",
+          "timingSource": "browser-performance"
+        },
+        {
+          "automationLatencyMs": 494.615,
+          "browserMetricId": "symbol:switch",
+          "budgetMs": 150,
+          "id": "symbol-switch",
+          "label": "Switch from AMD to NVDA using chart navigation",
+          "latencyMs": 13,
+          "status": "pass",
+          "timingSource": "browser-performance"
+        },
+        {
+          "automationLatencyMs": 142.87,
+          "browserMetricId": "symbol-search:open",
+          "budgetMs": 100,
+          "id": "symbol-search-open",
+          "label": "Open global symbol command search",
+          "latencyMs": 54,
+          "status": "pass",
+          "timingSource": "browser-performance"
+        }
+      ],
+      "overallStatus": "ready",
+      "route": {
+        "budgetMs": 2500,
+        "interactiveMs": 539.513,
+        "path": "/symbol/AMD",
+        "status": "pass"
+      },
+      "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-29-3-chart-symbol-instant-workflow/screenshots/firefox/symbol-workflow.png",
+      "startedAt": "2026-05-28T10:36:45.374Z",
+      "tracePath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-29-3-chart-symbol-instant-workflow/traces/firefox-phase29-3-trace.zip"
+    },
+    {
+      "browserName": "webkit",
+      "generatedAt": "2026-05-28T10:37:03.659Z",
+      "interactions": [
+        {
+          "browserMetricId": "chart:workspace-restore",
+          "budgetMs": 250,
+          "id": "chart-restore",
+          "label": "AMD chart workspace shell restore",
+          "latencyMs": 0,
+          "status": "pass",
+          "timingSource": "browser-performance"
+        },
+        {
+          "automationLatencyMs": 908.961,
+          "browserMetricId": "chart:fullscreen-open",
+          "budgetMs": 150,
+          "id": "fullscreen-chart-open",
+          "label": "Open AMD fullscreen chart",
+          "latencyMs": 4,
+          "status": "pass",
+          "timingSource": "browser-performance"
+        },
+        {
+          "automationLatencyMs": 784.12,
+          "browserMetricId": "chart:toolbar-interaction",
+          "budgetMs": 60,
+          "id": "chart-toolbar-interaction",
+          "label": "Switch fullscreen chart to compare mode",
+          "latencyMs": 0,
+          "status": "pass",
+          "timingSource": "browser-performance"
+        },
+        {
+          "automationLatencyMs": 929.331,
+          "browserMetricId": "symbol:switch",
+          "budgetMs": 150,
+          "id": "symbol-switch",
+          "label": "Switch from AMD to NVDA using chart navigation",
+          "latencyMs": 151,
+          "status": "fail",
+          "timingSource": "browser-performance"
+        },
+        {
+          "automationLatencyMs": 475.487,
+          "browserMetricId": "symbol-search:open",
+          "budgetMs": 100,
+          "id": "symbol-search-open",
+          "label": "Open global symbol command search",
+          "latencyMs": 1,
+          "status": "pass",
+          "timingSource": "browser-performance"
+        }
+      ],
+      "overallStatus": "not_ready",
+      "route": {
+        "budgetMs": 2500,
+        "interactiveMs": 3529.746,
+        "path": "/symbol/AMD",
+        "status": "fail"
+      },
+      "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-29-3-chart-symbol-instant-workflow/screenshots/webkit/symbol-workflow.png",
+      "startedAt": "2026-05-28T10:36:53.536Z",
+      "tracePath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-29-3-chart-symbol-instant-workflow/traces/webkit-phase29-3-trace.zip"
+    }
+  ],
+  "budgets": {
+    "chartInteractionMs": 60,
+    "chartRestoreMs": 250,
+    "fullscreenChartOpenMs": 150,
+    "symbolPageInteractiveMs": 2500,
+    "symbolSearchOpenMs": 100,
+    "symbolSwitchMs": 150
+  },
+  "generatedAt": "2026-05-28T10:37:03.794Z",
+  "overallStatus": "not_ready",
+  "probeIdentity": {
+    "created": false
+  },
+  "proofScope": "Focused production browser proof for Phase 29.3 chart restore, fullscreen open, chart toolbar interaction, symbol switch, symbol search open, and /symbol/AMD interactive timing.",
+  "setup": {
+    "authenticated": true,
+    "chartWorkspaceSaved": true,
+    "premium": false,
+    "workspaceStatusCode": 200
+  },
+  "startedAt": "2026-05-28T10:36:37.344Z"
+}
