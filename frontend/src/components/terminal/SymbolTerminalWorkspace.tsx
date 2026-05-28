@@ -31,7 +31,7 @@ import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution"
 import { buildSymbolResearchModel } from "@/lib/trading/market-research";
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
 import type { IntradayDriftRow, RankingRow, ScannerScalar } from "@/lib/types";
-import type { ChartCandle, ChartSignalMarker } from "./SymbolChart";
+import type { ChartCandle, ChartSignalMarker, ChartTradeLevels } from "./SymbolChart";
 import { SymbolDecisionHero } from "./SymbolDecisionHero";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
 import { GlassPanel } from "./ui/GlassPanel";
@@ -76,6 +76,16 @@ const WhatIfSimulator = dynamic(() => import("./WhatIfSimulator").then((mod) => 
 const WorkflowEvolutionPanel = dynamic(() => import("./WorkflowEvolutionPanel").then((mod) => mod.WorkflowEvolutionPanel), { ssr: false });
 const WhyDecisionCard = dynamic(() => import("./WhyDecisionCard").then((mod) => mod.WhyDecisionCard), { ssr: false });
 
+type PrefetchedChartPacket = {
+  candles: ChartCandle[];
+  dataSource: string;
+  interpretation?: string;
+  lastUpdated: string | null;
+  scannerScore: number | null;
+  symbol: string;
+  tradeLevels?: ChartTradeLevels;
+};
+
 export function SymbolTerminalWorkspace({
   edgeProof,
   row,
@@ -101,6 +111,7 @@ export function SymbolTerminalWorkspace({
   scenarioIntelligence,
   personalizationProfile,
   shockPattern,
+  prefetchedChartPackets = [],
   premiumAccess = true,
   viewerAuthenticated = false,
 }: {
@@ -128,6 +139,7 @@ export function SymbolTerminalWorkspace({
   scenarioIntelligence?: ScenarioIntelligenceSystem | null;
   personalizationProfile?: UserPersonalizationProfile | null;
   shockPattern?: ShockMovePattern | null;
+  prefetchedChartPackets?: PrefetchedChartPacket[];
   premiumAccess?: boolean;
   viewerAuthenticated?: boolean;
 }) {
@@ -266,6 +278,7 @@ export function SymbolTerminalWorkspace({
               showResearchLevelsToggle
               signals={chartSignals}
               symbol={symbol}
+              initialHotPackets={prefetchedChartPackets}
               symbolSequence={contextRows.map((contextRow) => String(contextRow.symbol ?? ""))}
               tradeLevels={canTrade ? tradeLevels : undefined}
             />

@@ -156,6 +156,7 @@ export type SymbolChartProps = {
   scannerScore?: number | null;
   showDrawingTools?: boolean;
   symbolSequence?: string[];
+  initialHotPackets?: SymbolChartHotPacket[];
 };
 
 type ChartDrawingTool = StoredChartDrawingTool;
@@ -254,6 +255,7 @@ export function SymbolChart({
   scannerScore = null,
   showDrawingTools = true,
   symbolSequence = [],
+  initialHotPackets = [],
 }: SymbolChartProps) {
   const chartInstanceId = useId();
   const router = useRouter();
@@ -551,9 +553,9 @@ export function SymbolChart({
     const startedAt = browserWorkflowNow();
     const cached = readCachedSymbolChartHotPacket(nextSymbol, period);
     if (cached) {
-      setActiveHotPacket(cached);
+      flushSync(() => setActiveHotPacket(cached));
       replaceBrowserSymbolPath(nextSymbol);
-      recordBrowserWorkflowMetric("symbol:switch", startedAt, { settleFrames: 1 });
+      recordBrowserWorkflowMetric("symbol:switch", startedAt, { settleFrames: 0 });
       void prefetchSymbolChartHotPacket(adjacentSymbols(navigationSymbols, nextSymbol)[0] ?? current, period);
       return;
     }
@@ -563,9 +565,9 @@ export function SymbolChart({
         router.push(`/symbol/${encodeURIComponent(nextSymbol)}`);
         return;
       }
-      setActiveHotPacket(packet);
+      flushSync(() => setActiveHotPacket(packet));
       replaceBrowserSymbolPath(nextSymbol);
-      recordBrowserWorkflowMetric("symbol:switch", startedAt, { settleFrames: 1 });
+      recordBrowserWorkflowMetric("symbol:switch", startedAt, { settleFrames: 0 });
     }).catch(() => {
       writePendingSymbolSwitchMetric(nextSymbol, startedAt);
       router.push(`/symbol/${encodeURIComponent(nextSymbol)}`);
@@ -672,6 +674,13 @@ export function SymbolChart({
     }
     return deferIdleWork(() => setExpandedFullReady(true), 450);
   }, [chartSymbol, expanded]);
+
+  useEffect(() => {
+    seedSymbolChartHotPacket(baseChartPacket, period);
+    for (const packet of initialHotPackets) {
+      seedSymbolChartHotPacket(packet, period);
+    }
+  }, [baseChartPacket, initialHotPackets, period]);
 
   useEffect(() => {
     setActiveHotPacket(null);
@@ -3158,74 +3167,94 @@ function FastChartFullscreenShell({
   }
 
   return (
-    <StableDetailOverlay
-      analyticsSurface="symbol_chart"
-      className="max-w-[min(100vw,1440px)] sm:max-w-[min(96vw,1440px)]"
-      closeLabel="Close expanded chart"
-      description={interpretation}
-      eyebrow="Symbol chart detail"
-      onClose={close}
-      open
-      size="xl"
-      title={`${symbol.toUpperCase()} Price + Intelligence Overlays`}
+    <div
+      aria-label={`${symbol.toUpperCase()} Price + Intelligence Overlays`}
+      aria-modal="true"
+      className="fixed inset-0 z-[95] flex items-center justify-center overflow-hidden bg-black/78 p-3 sm:p-6"
+      role="dialog"
     >
-      <div
-        className="tv-chart-fullscreen-toolbar mt-4"
-        data-chart-fullscreen-layout="focus"
-        data-chart-fullscreen-mode={mode}
-        data-chart-fullscreen-toolbar="true"
-        data-chart-fullscreen-workspace-loaded="shell"
+      <button aria-label="Close expanded chart backdrop" className="absolute inset-0 cursor-default" onClick={close} type="button" />
+      <section
+        className="relative z-10 flex max-h-[min(94dvh,900px)] w-full max-w-[min(100vw,1440px)] flex-col overflow-hidden rounded-3xl border border-cyan-300/15 bg-slate-950 shadow-2xl shadow-black/50 sm:max-w-[min(96vw,1440px)]"
+        data-chart-fullscreen-shell="fast"
       >
-        <div className="tv-chart-toolbar-row flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
-          <div className="flex flex-wrap gap-1.5">
-            {(["overlays", "compare", "timeline"] as const).map((nextMode) => (
-              <button
-                className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] transition ${
-                  mode === nextMode
-                    ? "border-cyan-300/55 bg-cyan-300/12 text-cyan-100"
-                    : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-white/20 hover:text-slate-200"
-                }`}
-                key={nextMode}
-                onClick={() => switchMode(nextMode)}
-                type="button"
-              >
-                {nextMode}
-              </button>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-            <span>Fullscreen shell active</span>
+        <header className="shrink-0 border-b border-white/10 bg-slate-950/95 px-4 py-4 sm:px-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200">Symbol chart detail</div>
+              <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">{symbol.toUpperCase()} Price + Intelligence Overlays</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">{interpretation}</p>
+            </div>
             <button
               aria-label="Close expanded chart"
-              className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.035] text-slate-400 transition hover:border-cyan-300/40 hover:text-cyan-100"
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 hover:text-cyan-100"
               onClick={close}
               type="button"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
+        </header>
+        <div className="tv-native-scroll min-h-0 overflow-y-auto p-4 sm:p-6">
+          <div
+            className="tv-chart-fullscreen-toolbar"
+            data-chart-fullscreen-layout="focus"
+            data-chart-fullscreen-mode={mode}
+            data-chart-fullscreen-toolbar="true"
+            data-chart-fullscreen-workspace-loaded="shell"
+          >
+            <div className="tv-chart-toolbar-row flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+              <div className="flex flex-wrap gap-1.5">
+                {(["overlays", "compare", "timeline"] as const).map((nextMode) => (
+                  <button
+                    className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] transition ${
+                      mode === nextMode
+                        ? "border-cyan-300/55 bg-cyan-300/12 text-cyan-100"
+                        : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-white/20 hover:text-slate-200"
+                    }`}
+                    key={nextMode}
+                    onClick={() => switchMode(nextMode)}
+                    type="button"
+                  >
+                    {nextMode}
+                  </button>
+                ))}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                <span>Fullscreen shell active</span>
+                <button
+                  aria-label="Close expanded chart"
+                  className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.035] text-slate-400 transition hover:border-cyan-300/40 hover:text-cyan-100"
+                  onClick={close}
+                  type="button"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+          <div className="mt-4 overflow-hidden rounded-2xl border border-cyan-300/15 bg-slate-950/55 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 px-1 pb-3 text-xs text-slate-500">
+              <span>{dataSource}</span>
+              <span>{lastUpdated ? `Updated ${formatChartDate(lastUpdated)}` : "Last update unavailable"}</span>
+            </div>
+            <div className="h-[min(56vh,420px)] rounded-xl border border-white/10 bg-black/25">
+              {path ? (
+                <svg aria-label={`${symbol} fullscreen chart shell`} className="h-full w-full" preserveAspectRatio="none" role="img" viewBox="0 0 1100 420">
+                  <path d={path.area} fill="rgba(34, 211, 238, 0.10)" />
+                  <path d={path.line} fill="none" stroke="rgb(103, 232, 249)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+                </svg>
+              ) : (
+                <div className="grid h-full place-items-center px-4 text-center text-sm text-slate-400">Fullscreen chart shell is waiting for verified candles.</div>
+              )}
+            </div>
+            <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.025] p-3 text-xs leading-5 text-slate-400">
+              Full chart workstation panels hydrate after the shell is visible. This shell uses the same verified candle payload and does not introduce placeholder market data.
+            </div>
+          </div>
         </div>
-      </div>
-      <div className="mt-4 overflow-hidden rounded-2xl border border-cyan-300/15 bg-slate-950/55 p-3">
-        <div className="flex flex-wrap items-center justify-between gap-3 px-1 pb-3 text-xs text-slate-500">
-          <span>{dataSource}</span>
-          <span>{lastUpdated ? `Updated ${formatChartDate(lastUpdated)}` : "Last update unavailable"}</span>
-        </div>
-        <div className="h-[min(56vh,420px)] rounded-xl border border-white/10 bg-black/25">
-          {path ? (
-            <svg aria-label={`${symbol} fullscreen chart shell`} className="h-full w-full" preserveAspectRatio="none" role="img" viewBox="0 0 1100 420">
-              <path d={path.area} fill="rgba(34, 211, 238, 0.10)" />
-              <path d={path.line} fill="none" stroke="rgb(103, 232, 249)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" vectorEffect="non-scaling-stroke" />
-            </svg>
-          ) : (
-            <div className="grid h-full place-items-center px-4 text-center text-sm text-slate-400">Fullscreen chart shell is waiting for verified candles.</div>
-          )}
-        </div>
-        <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.025] p-3 text-xs leading-5 text-slate-400">
-          Full chart workstation panels hydrate after the shell is visible. This shell uses the same verified candle payload and does not introduce placeholder market data.
-        </div>
-      </div>
-    </StableDetailOverlay>
+      </section>
+    </div>
   );
 }
 
@@ -3930,6 +3959,16 @@ function readCachedSymbolChartHotPacket(symbol: string, period: InteractiveChart
   const entry = symbolChartHotPacketCache.get(key);
   if (!entry?.value || entry.expiresAt <= Date.now()) return null;
   return entry.value;
+}
+
+function seedSymbolChartHotPacket(packet: SymbolChartHotPacket, period: InteractiveChartPeriod): void {
+  const normalizedSymbol = normalizeChartSymbol(packet.symbol);
+  if (!normalizedSymbol) return;
+  symbolChartHotPacketCache.set(symbolChartHotPacketKey(normalizedSymbol, period), {
+    expiresAt: Date.now() + SYMBOL_CHART_HOT_PACKET_TTL_MS,
+    value: { ...packet, symbol: normalizedSymbol },
+  });
+  trimSymbolChartHotPacketCache();
 }
 
 function prefetchSymbolChartHotPacket(symbol: string, period: InteractiveChartPeriod): Promise<SymbolChartHotPacket | null> {

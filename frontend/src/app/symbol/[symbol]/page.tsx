@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { PublicSymbolPreview } from "@/components/premium/PublicSignalPreview";
@@ -42,11 +43,29 @@ import { buildStrategyIntelligenceSystem } from "@/lib/trading/strategy-intellig
 import { publishingJsonLdForSymbol } from "@/lib/trading/intelligence-publishing";
 import { buildSymbolSearchIndex, buildSymbolWorkflowMaturityModel } from "@/lib/trading/symbol-workflow-maturity";
 import { DEFAULT_USER_MEMORY_SETTINGS } from "@/lib/trading/user-memory-settings";
+import type { RankingRow, ScannerScalar, SymbolDetail } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 type PageProps = {
   params: Promise<{ symbol: string }>;
+};
+
+type FastShellCandle = {
+  close: number;
+  high: number;
+  low: number;
+  open: number;
+  time: string;
+};
+
+type PrefetchedChartPacket = {
+  candles: FastShellCandle[];
+  dataSource: string;
+  interpretation?: string;
+  lastUpdated: string | null;
+  scannerScore: number | null;
+  symbol: string;
 };
 
 function cleanSymbol(value: string): string {
@@ -114,8 +133,55 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   }
 
   const adapter = new ScannerDataAdapter();
-  const [detail, history, paper, performance, snapshot, scanSafety, shockPattern, narrative, personalizationProfile, intradayDriftRows] = await Promise.all([
-    adapter.getSymbolDetail(symbol),
+  const detail = await adapter.getSymbolDetail(symbol);
+  const row = detail.row;
+  const dataFreshness = row ? freshnessFromTimestamp(typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null) : freshnessFromTimestamp(null);
+
+  return (
+    <TerminalShell>
+      <div className="mb-4">
+        <Link className="inline-flex min-h-9 items-center rounded-full border border-white/10 px-3 py-2 text-sm font-semibold text-cyan-300 transition hover:border-cyan-300/40 hover:text-cyan-100" href="/terminal">
+          Back to terminal
+        </Link>
+      </div>
+      {!row ? (
+        <EmptyState title="Symbol not found" message={`${symbol.toUpperCase()} is not available in the current scanner output.`} />
+      ) : (
+        <>
+          <SymbolWorkspaceTracker symbol={row.symbol} />
+          <Suspense fallback={<SymbolInstantWorkflowShell dataFreshness={dataFreshness} priceSeries={detail.history} row={row} />}>
+            <SymbolDetailWorkspaceContent
+              detail={detail}
+              entitlementAuthenticated={entitlement.authenticated}
+              entitlementUserId={entitlement.user?.id ?? null}
+              premiumAccess={premiumAccess}
+              symbol={symbol}
+            />
+          </Suspense>
+        </>
+      )}
+    </TerminalShell>
+  );
+}
+
+async function SymbolDetailWorkspaceContent({
+  detail,
+  entitlementAuthenticated,
+  entitlementUserId,
+  premiumAccess,
+  symbol,
+}: {
+  detail: SymbolDetail;
+  entitlementAuthenticated: boolean;
+  entitlementUserId: string | null;
+  premiumAccess: boolean;
+  symbol: string;
+}) {
+  const row = detail.row;
+  if (!row) return null;
+
+  const adapter = new ScannerDataAdapter();
+  const [history, paper, performance, snapshot, scanSafety, shockPattern, narrative, personalizationProfile, intradayDriftRows] = await Promise.all([
     adapter.getSignalHistory(symbol),
     getPaperData().catch(() => ({ positions: [], events: [] })),
     getPerformanceData({ forwardTailRows: 1200 }).catch(() => null),
@@ -123,10 +189,9 @@ export default async function SymbolDetailPage({ params }: PageProps) {
     getCurrentScanSafety(),
     getShockMovePattern(symbol).catch(() => null),
     getNarrativeForSymbol(symbol).catch(() => null),
-    getPersonalizationProfileForUser(entitlement.user?.id ?? null).catch(() => null),
+    getPersonalizationProfileForUser(entitlementUserId).catch(() => null),
     getRecentIntradaySignalDriftSummary({ hours: 8, maxRuns: 18, minRuns: 2 }).catch(() => []),
   ]);
-  const row = detail.row;
   const edgeProof = row ? buildHistoricalEdgeProof(row, performance) : null;
   const symbolForwardRows = (performance?.forwardReturns.rows ?? []).filter((item) => String(item.symbol ?? "").toUpperCase() === symbol.trim().toUpperCase());
   const adaptiveLearning = buildAdaptiveLearningSystem({
@@ -146,8 +211,8 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   const [marketMemory, decisionJournalContext, memorySettings] = row
     ? await Promise.all([
         getMarketMemoryForSignal(row),
-        entitlement.user?.id ? getDecisionMemoryForUser(entitlement.user.id, { symbol: row.symbol }).catch(() => null) : Promise.resolve(null),
-        entitlement.user?.id ? readUserMemorySettings(entitlement.user.id).catch(() => DEFAULT_USER_MEMORY_SETTINGS) : Promise.resolve(DEFAULT_USER_MEMORY_SETTINGS),
+        entitlementUserId ? getDecisionMemoryForUser(entitlementUserId, { symbol: row.symbol }).catch(() => null) : Promise.resolve(null),
+        entitlementUserId ? readUserMemorySettings(entitlementUserId).catch(() => DEFAULT_USER_MEMORY_SETTINGS) : Promise.resolve(DEFAULT_USER_MEMORY_SETTINGS),
       ])
     : [null, null, DEFAULT_USER_MEMORY_SETTINGS];
   const macroContext = row ? createMacroContextResolver(snapshot.signals).forRow(row) : null;
@@ -179,7 +244,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           warningReason: "The scanner decision, fragility, and invalidation context remain the source of truth.",
         }
     : null;
-  const workflowEvolution = row ? await getWorkflowEvolutionForUser(entitlement.user?.id ?? null, [row], { surface: "symbol" }).catch(() => null) : null;
+  const workflowEvolution = row ? await getWorkflowEvolutionForUser(entitlementUserId, [row], { surface: "symbol" }).catch(() => null) : null;
   const symbolSearchDocuments = buildSymbolSearchIndex({
     historySymbols: history.map(() => cleanSymbol(symbol)).filter(Boolean),
     recentSymbols: [cleanSymbol(symbol)],
@@ -194,6 +259,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
         workflowChanges: workflowEvolution?.whatChanged,
       })
     : null;
+  const prefetchedChartPackets = await buildPrefetchedChartPackets(adapter, row.symbol, snapshot.signals);
   const unavailableMarketMemory: MarketMemorySummary = {
     analogs: [],
     available: false,
@@ -208,49 +274,176 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   };
 
   return (
-    <TerminalShell>
-      <div className="mb-4">
-        <Link className="inline-flex min-h-9 items-center rounded-full border border-white/10 px-3 py-2 text-sm font-semibold text-cyan-300 transition hover:border-cyan-300/40 hover:text-cyan-100" href="/terminal">
-          Back to terminal
-        </Link>
-      </div>
-      {!row ? (
-        <EmptyState title="Symbol not found" message={`${symbol.toUpperCase()} is not available in the current scanner output.`} />
-      ) : (
-        <>
-          <SymbolWorkspaceTracker symbol={row.symbol} />
-          <SymbolCommandSearch documents={symbolSearchDocuments} initialQuery={row.symbol} title="Search related symbols, macro peers, and replay context" />
-          {symbolWorkflowMaturity ? <SymbolWorkflowMaturityPanel model={symbolWorkflowMaturity} symbol={row.symbol} /> : null}
-          <SymbolTerminalWorkspace
-            dataFreshness={dataFreshness ?? freshnessFromTimestamp(null)}
-            adaptiveLearning={adaptiveLearning}
-            contextRows={snapshot.signals}
-            decisionCoaching={decisionCoaching}
-            decisionJournalEntries={decisionJournalEntries}
-            decisionMemory={decisionMemory}
-            workflowEvolution={workflowEvolution}
-            edgeProof={edgeProof ?? buildHistoricalEdgeProof(row, null)}
-            history={history}
-            globalDecision={globalDecision}
-            institutionalOpportunity={symbolOpportunity}
-            intradayDriftRows={intradayDriftRows}
-            macroContext={macroContext}
-            marketMemory={marketMemory ?? unavailableMarketMemory}
-            narrative={narrative}
-            paperEvents={paper.events ?? []}
-            paperPositions={paper.positions ?? []}
-            personalizationProfile={personalizationProfile}
-            premiumAccess
-            viewerAuthenticated={entitlement.authenticated}
-            priceSeries={detail.history}
-            row={row}
-            shockPattern={shockPattern}
-            scenarioIntelligence={scenarioIntelligence}
-            strategyIntelligence={strategyIntelligence}
-            timeline={timeline}
-          />
-        </>
-      )}
-    </TerminalShell>
+    <>
+      <SymbolCommandSearch documents={symbolSearchDocuments} initialQuery={row.symbol} title="Search related symbols, macro peers, and replay context" />
+      {symbolWorkflowMaturity ? <SymbolWorkflowMaturityPanel model={symbolWorkflowMaturity} symbol={row.symbol} /> : null}
+      <SymbolTerminalWorkspace
+        dataFreshness={dataFreshness ?? freshnessFromTimestamp(null)}
+        adaptiveLearning={adaptiveLearning}
+        contextRows={snapshot.signals}
+        decisionCoaching={decisionCoaching}
+        decisionJournalEntries={decisionJournalEntries}
+        decisionMemory={decisionMemory}
+        workflowEvolution={workflowEvolution}
+        edgeProof={edgeProof ?? buildHistoricalEdgeProof(row, null)}
+        history={history}
+        globalDecision={globalDecision}
+        institutionalOpportunity={symbolOpportunity}
+        intradayDriftRows={intradayDriftRows}
+        macroContext={macroContext}
+        marketMemory={marketMemory ?? unavailableMarketMemory}
+        narrative={narrative}
+        paperEvents={paper.events ?? []}
+        paperPositions={paper.positions ?? []}
+        personalizationProfile={personalizationProfile}
+        premiumAccess={premiumAccess}
+        prefetchedChartPackets={prefetchedChartPackets}
+        viewerAuthenticated={entitlementAuthenticated}
+        priceSeries={detail.history}
+        row={row}
+        shockPattern={shockPattern}
+        scenarioIntelligence={scenarioIntelligence}
+        strategyIntelligence={strategyIntelligence}
+        timeline={timeline}
+      />
+    </>
   );
+}
+
+function SymbolInstantWorkflowShell({
+  dataFreshness,
+  priceSeries,
+  row,
+}: {
+  dataFreshness: ReturnType<typeof freshnessFromTimestamp>;
+  priceSeries: Record<string, ScannerScalar>[];
+  row: RankingRow;
+}) {
+  const candles = rowsToFastShellCandles(priceSeries);
+  const latest = candles[candles.length - 1]?.close ?? numericShellValue(row.price);
+  const first = candles[0]?.close ?? null;
+  const movePct = latest !== null && first !== null && first !== 0 ? ((latest - first) / first) * 100 : null;
+  const path = fastShellPath(candles, 1040, 300);
+  const decision = String(row.final_decision ?? row.action ?? "WATCH").replace(/_/g, " ");
+  const score = numericShellValue(row.final_score ?? row.score ?? row.quality_score);
+  return (
+    <section
+      className="rounded-3xl border border-cyan-300/15 bg-slate-950/70 p-5 shadow-2xl shadow-cyan-950/20"
+      data-chart-fast-route-shell="true"
+      data-chart-symbol={row.symbol.toUpperCase()}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Instant symbol shell</div>
+          <h1 className="mt-2 font-mono text-4xl font-black tracking-tight text-slate-50 sm:text-6xl">{row.symbol.toUpperCase()}</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+            {String(row.company_name ?? row.sector ?? "Scanner signal")} · full chart workstation, replay, performance, and provider panels hydrate after this real data shell.
+          </p>
+        </div>
+        <div className="grid gap-2 text-right">
+          <div className="font-mono text-2xl font-black text-slate-50">{latest === null ? "Limited" : shellMoney(latest)}</div>
+          <div className={movePct !== null && movePct >= 0 ? "text-sm font-bold text-emerald-200" : "text-sm font-bold text-rose-200"}>
+            {movePct === null ? "Move limited" : `${movePct >= 0 ? "+" : ""}${movePct.toFixed(2)}%`}
+          </div>
+        </div>
+      </div>
+      <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="h-[300px] overflow-hidden rounded-2xl border border-white/10 bg-black/25">
+          {path ? (
+            <svg aria-label={`${row.symbol} instant verified chart shell`} className="h-full w-full" preserveAspectRatio="none" role="img" viewBox="0 0 1040 300">
+              <path d={path.area} fill="rgba(34, 211, 238, 0.10)" />
+              <path d={path.line} fill="none" stroke="rgb(103, 232, 249)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+            </svg>
+          ) : (
+            <div className="grid h-full place-items-center px-4 text-center text-sm text-slate-400">Verified chart history is limited for this symbol. No synthetic candles are drawn.</div>
+          )}
+        </div>
+        <div className="grid gap-3">
+          <ShellMetric label="Decision" value={decision} />
+          <ShellMetric label="Score" value={score === null ? "Limited" : `${Math.round(score)}`} />
+          <ShellMetric label="Freshness" value={dataFreshness.label} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ShellMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+      <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{label}</div>
+      <div className="mt-2 text-sm font-bold text-slate-100">{value}</div>
+    </div>
+  );
+}
+
+async function buildPrefetchedChartPackets(adapter: ScannerDataAdapter, currentSymbol: string, rows: RankingRow[]): Promise<PrefetchedChartPacket[]> {
+  const current = cleanSymbol(currentSymbol);
+  const symbols = new Set<string>();
+  for (const symbol of ["AMD", "NVDA", "QQQ", ...rows.slice(0, 8).map((row) => row.symbol)]) {
+    const cleaned = cleanSymbol(symbol);
+    if (cleaned && cleaned !== current) symbols.add(cleaned);
+    if (symbols.size >= 4) break;
+  }
+  const details = await Promise.all([...symbols].map(async (symbol) => ({ detail: await adapter.getSymbolDetail(symbol).catch(() => null), symbol })));
+  return details.flatMap(({ detail, symbol }) => {
+    if (!detail?.row) return [];
+    const candles = rowsToFastShellCandles(detail.history);
+    return [{
+      candles,
+      dataSource: candles.length ? "scanner validated OHLC history" : "limited validated price history",
+      interpretation: candles.length
+        ? `${symbol} chart can switch in place from a server-prefetched authenticated packet. Use it with TradeVeto risk, replay, and regime context.`
+        : `${symbol} has limited validated chart history for this in-place switch. No synthetic candles are drawn.`,
+      lastUpdated: textShellValue(detail.row.last_updated ?? detail.row.last_updated_utc ?? candles[candles.length - 1]?.time ?? null),
+      scannerScore: numericShellValue(detail.row.final_score ?? detail.row.score ?? detail.row.quality_score),
+      symbol,
+    }];
+  });
+}
+
+function rowsToFastShellCandles(rows: Record<string, ScannerScalar>[]): FastShellCandle[] {
+  return rows
+    .map((row) => {
+      const time = textShellValue(row.date ?? row.datetime ?? row.timestamp_utc ?? row.time);
+      const open = numericShellValue(row.open ?? row.Open);
+      const high = numericShellValue(row.high ?? row.High);
+      const low = numericShellValue(row.low ?? row.Low);
+      const close = numericShellValue(row.close ?? row.Close);
+      if (!time || open === null || high === null || low === null || close === null) return null;
+      return { close, high, low, open, time };
+    })
+    .filter((candle): candle is FastShellCandle => Boolean(candle));
+}
+
+function fastShellPath(candles: FastShellCandle[], width: number, height: number): { area: string; line: string } | null {
+  const closes = candles.map((candle) => candle.close).filter((value) => Number.isFinite(value));
+  if (closes.length < 2) return null;
+  const min = Math.min(...closes);
+  const max = Math.max(...closes);
+  const span = max - min || 1;
+  const step = width / Math.max(1, closes.length - 1);
+  const points = closes.map((close, index) => {
+    const x = index * step;
+    const y = height - ((close - min) / span) * (height - 28) - 14;
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  });
+  const line = `M ${points.join(" L ")}`;
+  const lastX = (closes.length - 1) * step;
+  return { area: `${line} L ${lastX.toFixed(2)},${height} L 0,${height} Z`, line };
+}
+
+function numericShellValue(value: ScannerScalar): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(String(value).replace(/[$,%]/g, "").trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function textShellValue(value: ScannerScalar): string | null {
+  const text = String(value ?? "").trim();
+  return text || null;
+}
+
+function shellMoney(value: number): string {
+  return value.toLocaleString("en-US", { currency: "USD", maximumFractionDigits: 2, minimumFractionDigits: 2, style: "currency" });
 }
