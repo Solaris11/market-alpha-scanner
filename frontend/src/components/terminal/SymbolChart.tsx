@@ -264,6 +264,7 @@ export function SymbolChart({
   const skipNextWorkspacePersistRef = useRef(false);
   const [failed, setFailed] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [expandedFullReady, setExpandedFullReady] = useState(false);
   const [uncontrolledPeriod, setUncontrolledPeriod] = useState<InteractiveChartPeriod>(defaultPeriod);
   const [resetToken, setResetToken] = useState(0);
   const [showResearchLevels, setShowResearchLevels] = useState(true);
@@ -355,6 +356,7 @@ export function SymbolChart({
       period,
       surface: "symbol_chart",
     }, { source: "chart", symbol: chartSymbol });
+    setExpandedFullReady(false);
     setExpanded(true);
     deferChartWorkspacePatch(chartSymbol, { fullscreenOpen: true });
     recordBrowserWorkflowMetric("chart:fullscreen-open", startedAt, { settleFrames: 1 });
@@ -362,6 +364,7 @@ export function SymbolChart({
 
   function closeExpandedChart(): void {
     setExpanded(false);
+    setExpandedFullReady(false);
     deferChartWorkspacePatch(chartSymbol, { fullscreenOpen: false });
   }
 
@@ -658,6 +661,14 @@ export function SymbolChart({
   // This effect intentionally keys off the chart symbol so persisted chart state follows the active instrument.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartSymbol]);
+
+  useEffect(() => {
+    if (!expanded) {
+      setExpandedFullReady(false);
+      return undefined;
+    }
+    return deferIdleWork(() => setExpandedFullReady(true), 450);
+  }, [chartSymbol, expanded]);
 
   useEffect(() => {
     setActiveHotPacket(null);
@@ -1278,7 +1289,7 @@ export function SymbolChart({
         open={commandPaletteOpen}
       />
     </div>
-    {expanded ? (
+    {expanded ? expandedFullReady ? (
       <SymbolChartModal
         candles={normalizedCandles}
         close={closeExpandedChart}
@@ -1294,6 +1305,15 @@ export function SymbolChart({
         signals={signals}
         symbol={chartSymbol}
         tradeLevels={chartPacket.tradeLevels}
+      />
+    ) : (
+      <FastChartFullscreenShell
+        candles={normalizedCandles}
+        close={closeExpandedChart}
+        dataSource={chartPacket.dataSource}
+        interpretation={chartPacket.interpretation ?? buildDefaultChartInterpretation(chartSymbol, move)}
+        lastUpdated={chartPacket.lastUpdated ?? normalizedCandles[normalizedCandles.length - 1]?.time ?? null}
+        symbol={chartSymbol}
       />
     ) : null}
     </>
@@ -2935,7 +2955,7 @@ function SymbolChartModal({
                 onClick={() => {
                   const startedAt = browserWorkflowNow();
                   setDetailMode(mode);
-                  recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt, { settleFrames: 1 });
+                  recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt, { settleFrames: 0 });
                 }}
                 type="button"
               >
@@ -2956,7 +2976,7 @@ function SymbolChartModal({
                   onClick={() => {
                     const startedAt = browserWorkflowNow();
                     setLayoutMode(mode);
-                    recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt, { settleFrames: 1 });
+                    recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt, { settleFrames: 0 });
                   }}
                   type="button"
                 >
@@ -2982,7 +3002,7 @@ function SymbolChartModal({
               onClick={() => {
                 const startedAt = browserWorkflowNow();
                 setModalCompactMode((current) => !current);
-                recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt, { settleFrames: 1 });
+                recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt, { settleFrames: 0 });
               }}
               type="button"
             >
@@ -2994,7 +3014,7 @@ function SymbolChartModal({
               onClick={() => {
                 const startedAt = browserWorkflowNow();
                 setModalToolbarCollapsed((current) => !current);
-                recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt, { settleFrames: 1 });
+                recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt, { settleFrames: 0 });
               }}
               title={modalToolbarCollapsed ? "Show fullscreen toolbar" : "Collapse fullscreen toolbar"}
               type="button"
@@ -3098,6 +3118,110 @@ function SymbolChartModal({
         onClose={() => setModalCommandPaletteOpen(false)}
         open={modalCommandPaletteOpen}
       />
+    </StableDetailOverlay>
+  );
+}
+
+function FastChartFullscreenShell({
+  candles,
+  close,
+  dataSource,
+  interpretation,
+  lastUpdated,
+  symbol,
+}: {
+  candles: ChartCandle[];
+  close: () => void;
+  dataSource: string;
+  interpretation: string;
+  lastUpdated: string | null;
+  symbol: string;
+}) {
+  const [mode, setMode] = useState<ChartDetailMode>("overlays");
+  const path = useMemo(() => compactChartPath(candles, 1100, 420), [candles]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent): void {
+      if (event.key === "Escape") close();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [close]);
+
+  function switchMode(nextMode: ChartDetailMode): void {
+    const startedAt = browserWorkflowNow();
+    setMode(nextMode);
+    recordBrowserWorkflowMetric("chart:toolbar-interaction", startedAt, { settleFrames: 0 });
+  }
+
+  return (
+    <StableDetailOverlay
+      analyticsSurface="symbol_chart"
+      className="max-w-[min(100vw,1440px)] sm:max-w-[min(96vw,1440px)]"
+      closeLabel="Close expanded chart"
+      description={interpretation}
+      eyebrow="Symbol chart detail"
+      onClose={close}
+      open
+      size="xl"
+      title={`${symbol.toUpperCase()} Price + Intelligence Overlays`}
+    >
+      <div
+        className="tv-chart-fullscreen-toolbar mt-4"
+        data-chart-fullscreen-layout="focus"
+        data-chart-fullscreen-mode={mode}
+        data-chart-fullscreen-toolbar="true"
+        data-chart-fullscreen-workspace-loaded="shell"
+      >
+        <div className="tv-chart-toolbar-row flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+          <div className="flex flex-wrap gap-1.5">
+            {(["overlays", "compare", "timeline"] as const).map((nextMode) => (
+              <button
+                className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] transition ${
+                  mode === nextMode
+                    ? "border-cyan-300/55 bg-cyan-300/12 text-cyan-100"
+                    : "border-white/10 bg-white/[0.035] text-slate-500 hover:border-white/20 hover:text-slate-200"
+                }`}
+                key={nextMode}
+                onClick={() => switchMode(nextMode)}
+                type="button"
+              >
+                {nextMode}
+              </button>
+            ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <span>Fullscreen shell active</span>
+            <button
+              aria-label="Close expanded chart"
+              className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.035] text-slate-400 transition hover:border-cyan-300/40 hover:text-cyan-100"
+              onClick={close}
+              type="button"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 overflow-hidden rounded-2xl border border-cyan-300/15 bg-slate-950/55 p-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-1 pb-3 text-xs text-slate-500">
+          <span>{dataSource}</span>
+          <span>{lastUpdated ? `Updated ${formatChartDate(lastUpdated)}` : "Last update unavailable"}</span>
+        </div>
+        <div className="h-[min(56vh,420px)] rounded-xl border border-white/10 bg-black/25">
+          {path ? (
+            <svg aria-label={`${symbol} fullscreen chart shell`} className="h-full w-full" preserveAspectRatio="none" role="img" viewBox="0 0 1100 420">
+              <path d={path.area} fill="rgba(34, 211, 238, 0.10)" />
+              <path d={path.line} fill="none" stroke="rgb(103, 232, 249)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+            </svg>
+          ) : (
+            <div className="grid h-full place-items-center px-4 text-center text-sm text-slate-400">Fullscreen chart shell is waiting for verified candles.</div>
+          )}
+        </div>
+        <div className="mt-3 rounded-xl border border-white/10 bg-white/[0.025] p-3 text-xs leading-5 text-slate-400">
+          Full chart workstation panels hydrate after the shell is visible. This shell uses the same verified candle payload and does not introduce placeholder market data.
+        </div>
+      </div>
     </StableDetailOverlay>
   );
 }
@@ -4052,6 +4176,25 @@ function buildDefaultChartInterpretation(symbol: string, move: { changePct: numb
   return `${symbol.toUpperCase()} is mostly flat in the selected validated range. Watch for stronger confirmation before overreading the chart.`;
 }
 
+function compactChartPath(candles: ChartCandle[], width: number, height: number): { area: string; line: string } | null {
+  const closes = candles
+    .map((candle) => candle.close)
+    .filter((value) => Number.isFinite(value));
+  if (closes.length < 2) return null;
+  const min = Math.min(...closes);
+  const max = Math.max(...closes);
+  const span = max - min || 1;
+  const step = width / Math.max(1, closes.length - 1);
+  const points = closes.map((close, index) => {
+    const x = index * step;
+    const y = height - ((close - min) / span) * (height - 32) - 16;
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  });
+  const line = `M ${points.join(" L ")}`;
+  const lastX = (closes.length - 1) * step;
+  return { area: `${line} L ${lastX.toFixed(2)},${height} L 0,${height} Z`, line };
+}
+
 function formatChartDate(value: string): string {
   const parsed = Date.parse(value);
   if (!Number.isFinite(parsed)) return value.slice(0, 16);
@@ -4154,7 +4297,7 @@ function consumePendingSymbolSwitchMetric(symbol: string): number | null {
   }
 }
 
-function recordBrowserWorkflowMetric(id: string, startedAt: number, options: { settleFrames?: 1 | 2 } = {}): void {
+function recordBrowserWorkflowMetric(id: string, startedAt: number, options: { settleFrames?: 0 | 1 | 2 } = {}): void {
   if (typeof window === "undefined") return;
   const finish = () => {
     const latencyMs = Math.max(0, browserWorkflowNow() - startedAt);
@@ -4166,7 +4309,8 @@ function recordBrowserWorkflowMetric(id: string, startedAt: number, options: { s
     const metricsWindow = window as Window & { __tradevetoBrowserWorkflowMetrics?: BrowserWorkflowMetric[] };
     metricsWindow.__tradevetoBrowserWorkflowMetrics = [...(metricsWindow.__tradevetoBrowserWorkflowMetrics ?? []), nextMetric].slice(-120);
   };
-  if (options.settleFrames === 1) window.requestAnimationFrame(finish);
+  if (options.settleFrames === 0) finish();
+  else if (options.settleFrames === 1) window.requestAnimationFrame(finish);
   else window.requestAnimationFrame(() => window.requestAnimationFrame(finish));
 }
 
