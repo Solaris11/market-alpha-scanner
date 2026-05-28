@@ -78,6 +78,8 @@ import { trackActivationMilestone, trackAnalyticsEvent, trackFirstUsefulAction }
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { INTERACTIVE_CHART_PERIODS, type InteractiveChartPeriod } from "@/lib/interactive-chart-data";
+import { buildSignalTradeLevels } from "@/lib/trading/signal-lifecycle";
+import type { RankingRow, ScannerScalar } from "@/lib/types";
 
 export type ChartCandle = {
   time: string;
@@ -197,6 +199,31 @@ type PendingSymbolSwitchMetric = {
   toSymbol: string;
 };
 
+type SymbolChartHotPacket = {
+  candles: ChartCandle[];
+  dataSource: string;
+  interpretation?: string;
+  lastUpdated: string | null;
+  scannerScore: number | null;
+  symbol: string;
+  tradeLevels?: ChartTradeLevels;
+};
+
+type SymbolApiPayload = {
+  history?: Record<string, ScannerScalar>[];
+  limited?: boolean;
+  row?: RankingRow | null;
+};
+
+type SymbolChartHotPacketCacheEntry = {
+  expiresAt: number;
+  inflight?: Promise<SymbolChartHotPacket | null>;
+  value?: SymbolChartHotPacket | null;
+};
+
+const SYMBOL_CHART_HOT_PACKET_TTL_MS = 90_000;
+const symbolChartHotPacketCache = new Map<string, SymbolChartHotPacketCacheEntry>();
+
 export function SymbolChart({
   symbol,
   candles,
@@ -261,15 +288,27 @@ export function SymbolChart({
   const [workspaceMessage, setWorkspaceMessage] = useState<string | null>(null);
   const [chartAlertMessage, setChartAlertMessage] = useState<string | null>(null);
   const [chartAlertSaving, setChartAlertSaving] = useState(false);
+  const baseChartPacket = useMemo<SymbolChartHotPacket>(() => ({
+    candles: candles ?? [],
+    dataSource,
+    interpretation,
+    lastUpdated: lastUpdated ?? null,
+    scannerScore,
+    symbol: symbol.toUpperCase(),
+    tradeLevels,
+  }), [candles, dataSource, interpretation, lastUpdated, scannerScore, symbol, tradeLevels]);
+  const [activeHotPacket, setActiveHotPacket] = useState<SymbolChartHotPacket | null>(null);
+  const chartPacket = activeHotPacket ?? baseChartPacket;
+  const chartSymbol = chartPacket.symbol;
   const period = controlledPeriod ?? uncontrolledPeriod;
   const enabledOverlayFamilies = controlledOverlayFamilies ?? uncontrolledOverlayFamilies;
   const enabledIndicators = controlledIndicators ?? uncontrolledIndicators;
-  const normalizedCandles = useMemo(() => normalizeCandles(candles), [candles]);
+  const normalizedCandles = useMemo(() => normalizeCandles(chartPacket.candles), [chartPacket.candles]);
   const chartCandles = useMemo(() => filterCandlesByPeriod(normalizedCandles, period), [normalizedCandles, period]);
   const chartSignals = useMemo(() => (
     showHistoricalSignals && signals?.length ? filterSignalsByCandles(normalizeSignals(signals), chartCandles) : []
   ), [chartCandles, showHistoricalSignals, signals]);
-  const chartLevels = useMemo(() => normalizeTradeLevels(tradeLevels), [tradeLevels]);
+  const chartLevels = useMemo(() => normalizeTradeLevels(chartPacket.tradeLevels), [chartPacket.tradeLevels]);
   const researchLevels = useMemo(() => buildResearchContextLevels(chartCandles, chartLevels), [chartCandles, chartLevels]);
   const hasTradeLevels = chartLevels.entry !== null || chartLevels.entryLow !== null || chartLevels.entryHigh !== null || chartLevels.stop !== null || chartLevels.target !== null;
   const visibleChartSignals = useMemo(() => {
@@ -297,7 +336,7 @@ export function SymbolChart({
   const latestClose = chartCandles[chartCandles.length - 1]?.close ?? null;
   const selectedDrawing = drawings.find((drawing) => drawing.id === selectedDrawingId) ?? null;
   const selectedDrawingPrice = useMemo(() => selectedDrawing ? priceFromDrawingY(chartCandles, drawingReferenceY(selectedDrawing)) : null, [chartCandles, selectedDrawing]);
-  const navigationSymbols = useMemo(() => normalizeSymbolSequence(symbolSequence, symbol), [symbol, symbolSequence]);
+  const navigationSymbols = useMemo(() => normalizeSymbolSequence(symbolSequence, chartSymbol), [chartSymbol, symbolSequence]);
   const canRenderChart = chartCandles.length >= 2;
   const accountSyncEnabled = enableAccountSync && !controlledPeriod && !controlledOverlayFamilies && !controlledIndicators;
   const crosshairSourceId = chartInstanceId.replace(/:/g, "");
@@ -315,15 +354,15 @@ export function SymbolChart({
       markerCount: visibleChartSignals.length,
       period,
       surface: "symbol_chart",
-    }, { source: "chart", symbol });
+    }, { source: "chart", symbol: chartSymbol });
     setExpanded(true);
-    deferChartWorkspacePatch(symbol, { fullscreenOpen: true });
+    deferChartWorkspacePatch(chartSymbol, { fullscreenOpen: true });
     recordBrowserWorkflowMetric("chart:fullscreen-open", startedAt, { settleFrames: 1 });
   }
 
   function closeExpandedChart(): void {
     setExpanded(false);
-    deferChartWorkspacePatch(symbol, { fullscreenOpen: false });
+    deferChartWorkspacePatch(chartSymbol, { fullscreenOpen: false });
   }
 
   function changePeriod(range: InteractiveChartPeriod): void {
@@ -333,7 +372,7 @@ export function SymbolChart({
       from: period,
       surface: "symbol_chart",
       timeframe: range,
-    }, { source: "chart", symbol });
+    }, { source: "chart", symbol: chartSymbol });
   }
 
   function updateOverlayFamilies(nextFamilies: ChartOverlayFamily[]): void {
@@ -374,7 +413,7 @@ export function SymbolChart({
       indicatorCount: template.indicators.length,
       overlayCount: template.overlayFamilies.length,
       templateId: template.id,
-    }, { source: "chart", symbol });
+    }, { source: "chart", symbol: chartSymbol });
   }
 
   function saveIndicatorTemplate(name: string): void {
@@ -396,7 +435,7 @@ export function SymbolChart({
     trackAnalyticsEvent("chart_indicator_template_save", {
       indicatorCount: template.indicators.length,
       overlayCount: template.overlayFamilies.length,
-    }, { source: "chart", symbol });
+    }, { source: "chart", symbol: chartSymbol });
   }
 
   function deleteIndicatorTemplate(templateId: string): void {
@@ -405,15 +444,15 @@ export function SymbolChart({
   }
 
   function saveWorkspaceNow(): void {
-    const saved = writeChartWorkflowWorkspace(symbol, currentWorkspacePatch(expanded));
+    const saved = writeChartWorkflowWorkspace(chartSymbol, currentWorkspacePatch(expanded));
     if (saved) {
       setWorkspaceUpdatedAt(saved.updatedAt);
       setWorkspaceMessage("Chart workspace saved");
-      trackAnalyticsEvent("chart_interaction", { action: "workspace_save", period }, { source: "chart_workspace", symbol });
-      trackActivationMilestone("chart", { action: "workspace_save", period }, { source: "chart_workspace", symbol });
-      trackFirstUsefulAction("chart_workspace_save", { period }, { source: "chart_workspace", symbol });
+      trackAnalyticsEvent("chart_interaction", { action: "workspace_save", period }, { source: "chart_workspace", symbol: chartSymbol });
+      trackActivationMilestone("chart", { action: "workspace_save", period }, { source: "chart_workspace", symbol: chartSymbol });
+      trackFirstUsefulAction("chart_workspace_save", { period }, { source: "chart_workspace", symbol: chartSymbol });
       if (!accountLoading && authenticated && user && accountSyncEnabled) {
-        void saveAccountChartWorkflowWorkspace(symbol, saved).catch(() => undefined);
+        void saveAccountChartWorkflowWorkspace(chartSymbol, saved).catch(() => undefined);
       }
     }
   }
@@ -425,11 +464,11 @@ export function SymbolChart({
     };
     skipNextWorkspacePersistRef.current = true;
     applyWorkspaceState(nextWorkspace, false);
-    replaceChartWorkflowWorkspace(symbol, nextWorkspace);
+    replaceChartWorkflowWorkspace(chartSymbol, nextWorkspace);
     setResetToken((value) => value + 1);
     setWorkspaceMessage("Chart workspace reset");
     if (!accountLoading && authenticated && user && accountSyncEnabled) {
-      void saveAccountChartWorkflowWorkspace(symbol, nextWorkspace).catch(() => undefined);
+      void saveAccountChartWorkflowWorkspace(chartSymbol, nextWorkspace).catch(() => undefined);
     }
   }
 
@@ -459,7 +498,7 @@ export function SymbolChart({
     setChartAlertSaving(true);
     setChartAlertMessage("Saving chart alert...");
     try {
-      const rulePayload = buildChartAlertRulePayload({ request, symbol });
+      const rulePayload = buildChartAlertRulePayload({ request, symbol: chartSymbol });
       const response = await csrfFetch("/api/alerts/rules", {
         body: JSON.stringify(rulePayload),
         headers: { "Content-Type": "application/json" },
@@ -483,7 +522,7 @@ export function SymbolChart({
       trackAnalyticsEvent("chart_alert_create", {
         threshold: request.threshold,
         type: request.type,
-      }, { source: "chart", symbol });
+      }, { source: "chart", symbol: chartSymbol });
     } catch (error) {
       setChartAlertMessage(error instanceof Error ? error.message : "Chart alert save failed");
     } finally {
@@ -493,7 +532,7 @@ export function SymbolChart({
 
   function navigateSymbol(direction: -1 | 1): void {
     if (navigationSymbols.length < 2 || typeof window === "undefined") return;
-    const current = symbol.toUpperCase();
+    const current = chartSymbol.toUpperCase();
     const currentIndex = navigationSymbols.indexOf(current);
     if (currentIndex < 0) return;
     const nextIndex = (currentIndex + direction + navigationSymbols.length) % navigationSymbols.length;
@@ -502,9 +541,29 @@ export function SymbolChart({
     trackAnalyticsEvent("chart_symbol_keyboard_navigate", {
       direction,
       nextSymbol,
-    }, { source: "chart", symbol });
-    writePendingSymbolSwitchMetric(nextSymbol, browserWorkflowNow());
-    router.push(`/symbol/${encodeURIComponent(nextSymbol)}`);
+    }, { source: "chart", symbol: chartSymbol });
+    const startedAt = browserWorkflowNow();
+    const cached = readCachedSymbolChartHotPacket(nextSymbol, period);
+    if (cached) {
+      setActiveHotPacket(cached);
+      replaceBrowserSymbolPath(nextSymbol);
+      recordBrowserWorkflowMetric("symbol:switch", startedAt, { settleFrames: 1 });
+      void prefetchSymbolChartHotPacket(adjacentSymbols(navigationSymbols, nextSymbol)[0] ?? current, period);
+      return;
+    }
+    void fetchSymbolChartHotPacket(nextSymbol, period).then((packet) => {
+      if (!packet) {
+        writePendingSymbolSwitchMetric(nextSymbol, startedAt);
+        router.push(`/symbol/${encodeURIComponent(nextSymbol)}`);
+        return;
+      }
+      setActiveHotPacket(packet);
+      replaceBrowserSymbolPath(nextSymbol);
+      recordBrowserWorkflowMetric("symbol:switch", startedAt, { settleFrames: 1 });
+    }).catch(() => {
+      writePendingSymbolSwitchMetric(nextSymbol, startedAt);
+      router.push(`/symbol/${encodeURIComponent(nextSymbol)}`);
+    });
   }
 
   function applyWorkspaceState(workspace: ChartWorkflowWorkspace | null, restoreFullscreen: boolean): void {
@@ -583,12 +642,12 @@ export function SymbolChart({
     const startedAt = browserWorkflowNow();
     setWorkspaceLoaded(false);
     setAccountWorkspaceLoaded(false);
-    const workspace = readChartWorkflowWorkspace(symbol);
+    const workspace = readChartWorkflowWorkspace(chartSymbol);
     skipNextWorkspacePersistRef.current = true;
     if (!workspace) applyWorkspaceState(null, false);
     setWorkspaceLoaded(true);
     recordBrowserWorkflowMetric("chart:workspace-restore", startedAt, { settleFrames: 1 });
-    const switchStartedAt = consumePendingSymbolSwitchMetric(symbol);
+    const switchStartedAt = consumePendingSymbolSwitchMetric(chartSymbol);
     if (switchStartedAt !== null) recordBrowserWorkflowMetric("symbol:switch", switchStartedAt, { settleFrames: 1 });
     if (workspace) {
       return deferIdleWork(() => {
@@ -596,9 +655,13 @@ export function SymbolChart({
       }, 250);
     }
     return undefined;
-  // This effect intentionally keys off the symbol so persisted chart state follows the active instrument.
+  // This effect intentionally keys off the chart symbol so persisted chart state follows the active instrument.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [symbol]);
+  }, [chartSymbol]);
+
+  useEffect(() => {
+    setActiveHotPacket(null);
+  }, [baseChartPacket]);
 
   useEffect(() => {
     if (!workspaceLoaded || !accountSyncEnabled || accountLoading) {
@@ -613,15 +676,15 @@ export function SymbolChart({
     let cancelled = false;
     setAccountWorkspaceLoaded(false);
     const cancelDeferredFetch = deferIdleWork(() => {
-      void fetchAccountChartWorkflowWorkspace(symbol)
+      void fetchAccountChartWorkflowWorkspace(chartSymbol)
         .then((result) => {
           if (cancelled) return;
-          const localWorkspace = readChartWorkflowWorkspace(symbol);
+          const localWorkspace = readChartWorkflowWorkspace(chartSymbol);
           const nextWorkspace = mergeLocalAndAccountChartWorkspace(localWorkspace, result.workspace);
           if (nextWorkspace) {
             skipNextWorkspacePersistRef.current = true;
             applyWorkspaceState(nextWorkspace, restoreFullscreenState);
-            replaceChartWorkflowWorkspace(symbol, nextWorkspace);
+            replaceChartWorkflowWorkspace(chartSymbol, nextWorkspace);
           }
         })
         .catch(() => undefined)
@@ -633,9 +696,9 @@ export function SymbolChart({
       cancelled = true;
       cancelDeferredFetch();
     };
-  // Account chart sync intentionally hydrates once per account + symbol. Local state changes are saved by the persistence effect.
+  // Account chart sync intentionally hydrates once per account + chart symbol. Local state changes are saved by the persistence effect.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accountLoading, accountSyncEnabled, authenticated, symbol, user?.id, workspaceLoaded]);
+  }, [accountLoading, accountSyncEnabled, authenticated, chartSymbol, user?.id, workspaceLoaded]);
 
   useEffect(() => {
     if (!workspaceLoaded) return undefined;
@@ -643,7 +706,7 @@ export function SymbolChart({
       skipNextWorkspacePersistRef.current = false;
       return undefined;
     }
-    return deferChartWorkspacePatch(symbol, {
+    return deferChartWorkspacePatch(chartSymbol, {
       activeIndicatorTemplateId,
       alertHistory,
       chartTabs,
@@ -660,16 +723,16 @@ export function SymbolChart({
     }, (saved) => {
       setWorkspaceUpdatedAt(saved.updatedAt);
     });
-  }, [activeIndicatorTemplateId, alertHistory, chartTabs, compactMode, drawingTool, drawings, enabledIndicators, enabledOverlayFamilies, expanded, indicatorTemplates, magnetMode, period, symbol, toolbarCollapsed, workspaceLoaded]);
+  }, [activeIndicatorTemplateId, alertHistory, chartTabs, compactMode, drawingTool, drawings, enabledIndicators, enabledOverlayFamilies, expanded, indicatorTemplates, magnetMode, period, chartSymbol, toolbarCollapsed, workspaceLoaded]);
 
   useEffect(() => {
     if (!workspaceLoaded || !accountWorkspaceLoaded || !accountSyncEnabled || accountLoading || !authenticated || !user) return undefined;
     const cancelDeferredRead = deferIdleWork(() => {
       if (typeof window === "undefined") return;
-      const workspace = readChartWorkflowWorkspace(symbol);
+      const workspace = readChartWorkflowWorkspace(chartSymbol);
       if (!workspace) return;
       const timeout = window.setTimeout(() => {
-        void saveAccountChartWorkflowWorkspace(symbol, workspace).catch(() => undefined);
+        void saveAccountChartWorkflowWorkspace(chartSymbol, workspace).catch(() => undefined);
       }, 450);
       return () => window.clearTimeout(timeout);
     }, 750);
@@ -691,17 +754,18 @@ export function SymbolChart({
     indicatorTemplates,
     magnetMode,
     period,
-    symbol,
+    chartSymbol,
     toolbarCollapsed,
     user,
     workspaceLoaded,
   ]);
 
   useEffect(() => {
-    for (const nextSymbol of adjacentSymbols(navigationSymbols, symbol)) {
+    for (const nextSymbol of adjacentSymbols(navigationSymbols, chartSymbol)) {
       router.prefetch(`/symbol/${encodeURIComponent(nextSymbol)}`);
+      void prefetchSymbolChartHotPacket(nextSymbol, period);
     }
-  }, [navigationSymbols, router, symbol]);
+  }, [navigationSymbols, period, router, chartSymbol]);
 
   useEffect(() => {
     if (!hotkeysActive) return undefined;
@@ -893,7 +957,7 @@ export function SymbolChart({
             group: syncGroup,
             price: null,
             sourceId: crosshairSourceId,
-            symbol,
+            symbol: chartSymbol,
             time: null,
           });
           return;
@@ -904,7 +968,7 @@ export function SymbolChart({
           group: syncGroup,
           price,
           sourceId: crosshairSourceId,
-          symbol,
+          symbol: chartSymbol,
           time: param.time,
         });
       };
@@ -969,9 +1033,9 @@ export function SymbolChart({
       setFailed(true);
       return undefined;
     }
-  }, [canRenderChart, chartCandles, chartLevels, crosshairSourceId, crosshairSyncGroup, indicatorSeries, levelsVisible, researchLevels, resetToken, showResearchLevelsToggle, symbol, visibleChartSignals]);
+  }, [canRenderChart, chartCandles, chartLevels, chartSymbol, crosshairSourceId, crosshairSyncGroup, indicatorSeries, levelsVisible, researchLevels, resetToken, showResearchLevelsToggle, visibleChartSignals]);
 
-  if (failed || (candles?.length && !normalizedCandles.length)) {
+  if (failed || (chartPacket.candles.length && !normalizedCandles.length)) {
     return <EmptyState title="Price chart unavailable" message="The latest price payload could not be validated for this symbol." />;
   }
 
@@ -985,7 +1049,7 @@ export function SymbolChart({
       className="min-w-0"
       data-chart-account-workspace-loaded={accountWorkspaceLoaded ? "true" : "false"}
       data-chart-expanded={expanded ? "true" : "false"}
-      data-chart-symbol={symbol.toUpperCase()}
+      data-chart-symbol={chartSymbol.toUpperCase()}
       data-chart-workspace-loaded={workspaceLoaded ? "true" : "false"}
       onFocusCapture={() => setHotkeysActive(true)}
       onBlurCapture={(event) => {
@@ -998,7 +1062,7 @@ export function SymbolChart({
       {showHeaderBadge ? (
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-white/10 bg-slate-950/65 px-4 py-3">
           <div>
-            <div className="font-mono text-sm font-bold text-slate-50">{symbol.toUpperCase()}</div>
+            <div className="font-mono text-sm font-bold text-slate-50">{chartSymbol.toUpperCase()}</div>
             <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Interactive Price Action</div>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
@@ -1006,7 +1070,7 @@ export function SymbolChart({
             {navigationSymbols.length > 1 ? (
               <div className="flex items-center gap-1" aria-label="Symbol chart navigation">
                 <button
-                  aria-label={`Previous symbol from ${symbol.toUpperCase()}`}
+                  aria-label={`Previous symbol from ${chartSymbol.toUpperCase()}`}
                   className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/40 hover:text-cyan-100"
                   onClick={() => navigateSymbol(-1)}
                   title="Previous symbol"
@@ -1015,7 +1079,7 @@ export function SymbolChart({
                   <ArrowLeft className="h-4 w-4" />
                 </button>
                 <button
-                  aria-label={`Next symbol from ${symbol.toUpperCase()}`}
+                  aria-label={`Next symbol from ${chartSymbol.toUpperCase()}`}
                   className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/40 hover:text-cyan-100"
                   onClick={() => navigateSymbol(1)}
                   title="Next symbol"
@@ -1028,11 +1092,11 @@ export function SymbolChart({
             {expandable ? (
               <button
                 className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/40 hover:text-cyan-100"
-                data-chart-expand-trigger={symbol.toUpperCase()}
+                data-chart-expand-trigger={chartSymbol.toUpperCase()}
                 data-stable-overlay-trigger="true"
                 onClick={expandChart}
                 type="button"
-                aria-label={`Expand ${symbol.toUpperCase()} chart`}
+                aria-label={`Expand ${chartSymbol.toUpperCase()} chart`}
               >
                 <Expand className="h-4 w-4" />
               </button>
@@ -1086,12 +1150,12 @@ export function SymbolChart({
               <RotateCcw className="h-3.5 w-3.5" />
               Workspace
             </button>
-            <div className="text-[11px] text-slate-500">{lastUpdated ? `Updated ${formatChartDate(lastUpdated)}` : dataSource}</div>
+            <div className="text-[11px] text-slate-500">{chartPacket.lastUpdated ? `Updated ${formatChartDate(chartPacket.lastUpdated)}` : chartPacket.dataSource}</div>
           </div>
         </div>
       ) : null}
       <ChartOverlaySummary
-        dataSource={dataSource}
+        dataSource={chartPacket.dataSource}
         hasTradeLevels={hasTradeLevels}
         markerGroups={overlayGroups}
         showHistoricalSignals={showHistoricalSignals}
@@ -1141,9 +1205,9 @@ export function SymbolChart({
         message={chartAlertMessage}
         onCreate={createChartAlert}
         saving={chartAlertSaving}
-        scannerScore={scannerScore}
+        scannerScore={chartPacket.scannerScore}
         selectedDrawing={selectedDrawing}
-        symbol={symbol}
+        symbol={chartSymbol}
       />
     <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-slate-950/40 shadow-xl shadow-black/20" style={{ height: compactMode ? Math.max(260, height - 80) : height }}>
       {canRenderChart ? <div ref={chartContainerRef} className="absolute inset-0" /> : (
@@ -1218,18 +1282,18 @@ export function SymbolChart({
       <SymbolChartModal
         candles={normalizedCandles}
         close={closeExpandedChart}
-        dataSource={dataSource}
+        dataSource={chartPacket.dataSource}
         defaultIndicators={enabledIndicators}
         defaultOverlayFamilies={enabledOverlayFamilies}
         defaultPeriod={period}
-        interpretation={interpretation ?? buildDefaultChartInterpretation(symbol, move)}
-        lastUpdated={lastUpdated ?? normalizedCandles[normalizedCandles.length - 1]?.time ?? null}
-        scannerScore={scannerScore}
+        interpretation={chartPacket.interpretation ?? buildDefaultChartInterpretation(chartSymbol, move)}
+        lastUpdated={chartPacket.lastUpdated ?? normalizedCandles[normalizedCandles.length - 1]?.time ?? null}
+        scannerScore={chartPacket.scannerScore}
         showHistoricalSignals={showHistoricalSignals}
         showResearchLevelsToggle={showResearchLevelsToggle}
         signals={signals}
-        symbol={symbol}
-        tradeLevels={tradeLevels}
+        symbol={chartSymbol}
+        tradeLevels={chartPacket.tradeLevels}
       />
     ) : null}
     </>
@@ -3727,6 +3791,125 @@ function defaultAdjacentSymbolCandidates(symbol: string): string[] {
   if (normalized === "NVDA") return ["AMD", "QQQ"];
   if (normalized === "QQQ") return ["AMD", "NVDA"];
   return ["AMD", "NVDA", "QQQ"];
+}
+
+function readCachedSymbolChartHotPacket(symbol: string, period: InteractiveChartPeriod): SymbolChartHotPacket | null {
+  const key = symbolChartHotPacketKey(symbol, period);
+  const entry = symbolChartHotPacketCache.get(key);
+  if (!entry?.value || entry.expiresAt <= Date.now()) return null;
+  return entry.value;
+}
+
+function prefetchSymbolChartHotPacket(symbol: string, period: InteractiveChartPeriod): Promise<SymbolChartHotPacket | null> {
+  return fetchSymbolChartHotPacket(symbol, period);
+}
+
+function fetchSymbolChartHotPacket(symbol: string, period: InteractiveChartPeriod): Promise<SymbolChartHotPacket | null> {
+  if (typeof window === "undefined") return Promise.resolve(null);
+  const key = symbolChartHotPacketKey(symbol, period);
+  const current = symbolChartHotPacketCache.get(key);
+  const now = Date.now();
+  if (current?.value && current.expiresAt > now) return Promise.resolve(current.value);
+  if (current?.inflight) return current.inflight;
+
+  const normalizedSymbol = normalizeChartSymbol(symbol);
+  if (!normalizedSymbol) return Promise.resolve(null);
+  const inflight = fetch(`/api/symbol/${encodeURIComponent(normalizedSymbol)}?period=${chartApiPeriod(period)}`, {
+    cache: "no-store",
+    credentials: "same-origin",
+    headers: { Accept: "application/json" },
+  })
+    .then(async (response) => {
+      if (!response.ok) return null;
+      const payload = (await response.json().catch(() => null)) as SymbolApiPayload | null;
+      if (!payload || payload.limited === true || !payload.row) return null;
+      const packet = symbolApiPayloadToHotPacket(normalizedSymbol, payload);
+      symbolChartHotPacketCache.set(key, { expiresAt: Date.now() + SYMBOL_CHART_HOT_PACKET_TTL_MS, value: packet });
+      trimSymbolChartHotPacketCache();
+      return packet;
+    })
+    .catch(() => null)
+    .finally(() => {
+      const entry = symbolChartHotPacketCache.get(key);
+      if (entry?.inflight) symbolChartHotPacketCache.set(key, { expiresAt: entry.expiresAt, value: entry.value ?? null });
+    });
+  symbolChartHotPacketCache.set(key, { expiresAt: now + 15_000, inflight, value: current?.value ?? null });
+  return inflight;
+}
+
+function symbolApiPayloadToHotPacket(symbol: string, payload: SymbolApiPayload): SymbolChartHotPacket {
+  const row = payload.row;
+  const candles = rowsToChartCandles(payload.history ?? []);
+  const lastUpdated = textScalar(row?.last_updated ?? row?.last_updated_utc ?? candles[candles.length - 1]?.time ?? null);
+  return {
+    candles,
+    dataSource: candles.length ? "scanner validated OHLC history" : "limited validated price history",
+    interpretation: candles.length
+      ? `${symbol} chart switched in place using authenticated symbol data. Use it with TradeVeto risk, replay, and regime context.`
+      : `${symbol} has limited validated price history for this in-place chart switch. No synthetic candles are drawn.`,
+    lastUpdated,
+    scannerScore: numericScalar(row?.final_score ?? row?.score ?? row?.quality_score),
+    symbol,
+    tradeLevels: row ? buildSignalTradeLevels(row) : undefined,
+  };
+}
+
+function rowsToChartCandles(rows: Record<string, ScannerScalar>[]): ChartCandle[] {
+  return rows
+    .map((row) => {
+      const time = textScalar(row.date ?? row.datetime ?? row.timestamp_utc ?? row.time);
+      const open = numericScalar(row.open ?? row.Open);
+      const high = numericScalar(row.high ?? row.High);
+      const low = numericScalar(row.low ?? row.Low);
+      const close = numericScalar(row.close ?? row.Close);
+      if (!time || open === null || high === null || low === null || close === null) return null;
+      return { close, high, low, open, time };
+    })
+    .filter((candle): candle is ChartCandle => Boolean(candle));
+}
+
+function chartApiPeriod(period: InteractiveChartPeriod): string {
+  if (period === "5y") return "2y";
+  if (period === "1y") return "1y";
+  if (period === "6mo") return "6m";
+  if (period === "3mo") return "3m";
+  return "1m";
+}
+
+function symbolChartHotPacketKey(symbol: string, period: InteractiveChartPeriod): string {
+  return `${normalizeChartSymbol(symbol)}:${chartApiPeriod(period)}`;
+}
+
+function normalizeChartSymbol(symbol: string): string {
+  return symbol.trim().toUpperCase().replace(/[^A-Z0-9._-]/g, "").slice(0, 24);
+}
+
+function numericScalar(value: ScannerScalar): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const parsed = typeof value === "number" ? value : Number(String(value).replace(/[$,%]/g, "").trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function textScalar(value: ScannerScalar): string | null {
+  const text = String(value ?? "").trim();
+  return text || null;
+}
+
+function replaceBrowserSymbolPath(symbol: string): void {
+  if (typeof window === "undefined") return;
+  const normalized = normalizeChartSymbol(symbol);
+  if (!normalized) return;
+  const nextPath = `/symbol/${encodeURIComponent(normalized)}`;
+  if (window.location.pathname === nextPath) return;
+  window.history.pushState({ tradevetoChartSymbolSwitch: true, symbol: normalized }, "", nextPath);
+}
+
+function trimSymbolChartHotPacketCache(): void {
+  if (symbolChartHotPacketCache.size <= 48) return;
+  const entries = [...symbolChartHotPacketCache.entries()].sort((left, right) => left[1].expiresAt - right[1].expiresAt);
+  for (const [key] of entries.slice(0, Math.max(0, entries.length - 48))) {
+    symbolChartHotPacketCache.delete(key);
+  }
 }
 
 function adjacentSymbols(symbols: string[], currentSymbol: string): string[] {

@@ -56,7 +56,8 @@
     "probe:phase27:chart-workstation": "bash -lc 'set -a; [ -f ../.env ] && source ../.env; set +a; TRADEVETO_PHASE272_BASE_URL=https://tradeveto.com node scripts/phase27-chart-workstation-browser-proof.mjs'",
     "probe:phase28:route-performance": "TRADEVETO_PHASE275_BASE_URL=https://tradeveto.com TRADEVETO_PHASE275_ARTIFACT_ROOT=../docs/ops/artifacts/phase-28-2-route-performance TRADEVETO_PHASE275_SCREENSHOTS=all node scripts/phase27-full-platform-performance-probe.mjs",
     "test": "node scripts/run-tests.mjs",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "probe:phase29:chart-symbol-instant": "TRADEVETO_CHART_SYMBOL_PHASE_LABEL=\"Phase 29.3\" TRADEVETO_CHART_SYMBOL_PHASE_SLUG=phase29-3 TRADEVETO_PHASE29_BASE_URL=https://tradeveto.com TRADEVETO_PHASE29_ARTIFACT_ROOT=../docs/ops/artifacts/phase-29-3-chart-symbol-instant-workflow node scripts/phase28-chart-symbol-latency-probe.mjs"
   },
   "dependencies": {
     "@nivo/heatmap": "^0.99.0",

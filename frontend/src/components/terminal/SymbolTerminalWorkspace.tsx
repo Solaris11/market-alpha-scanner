@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Activity, Brain, LineChart, ShieldAlert, Target } from "lucide-react";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { SymbolDeepResearchCockpit } from "@/components/research/SymbolDeepResearchCockpit";
@@ -133,20 +133,23 @@ export function SymbolTerminalWorkspace({
   viewerAuthenticated?: boolean;
 }) {
   const [showHistoricalMarkers, setShowHistoricalMarkers] = useState(true);
+  const [deepPanelsReady, setDeepPanelsReady] = useState(false);
   const tradeLevels = useMemo(() => buildSignalTradeLevels(row), [row]);
   const lifecycle = useMemo(() => computeSignalLifecycle(row, tradeLevels), [row, tradeLevels]);
-  const structuralQuality = useMemo(() => buildConvictionFragilityModel(row, { history, macroContext: macroContext ?? undefined, marketMemory }), [history, macroContext, marketMemory, row]);
   const symbol = row.symbol.toUpperCase();
+  const structuralQuality = useMemo(() => (
+    deepPanelsReady ? buildConvictionFragilityModel(row, { history, macroContext: macroContext ?? undefined, marketMemory }) : null
+  ), [deepPanelsReady, history, macroContext, marketMemory, row]);
   const relationshipGraph = useMemo(
-    () => buildSymbolIntelligenceGraph({ contextRows, macroContext, marketMemory, row, shockPattern: shockPattern ?? null }),
-    [contextRows, macroContext, marketMemory, row, shockPattern],
+    () => deepPanelsReady ? buildSymbolIntelligenceGraph({ contextRows, macroContext, marketMemory, row, shockPattern: shockPattern ?? null }) : null,
+    [contextRows, deepPanelsReady, macroContext, marketMemory, row, shockPattern],
   );
   const knowledgeGraph = useMemo(
-    () => buildSymbolKnowledgeGraphModel({ contextRows, history, marketMemory, priceSeries, row }),
-    [contextRows, history, marketMemory, priceSeries, row],
+    () => deepPanelsReady ? buildSymbolKnowledgeGraphModel({ contextRows, history, marketMemory, priceSeries, row }) : null,
+    [contextRows, deepPanelsReady, history, marketMemory, priceSeries, row],
   );
   const cognitionLayer = useMemo(
-    () => institutionalOpportunity
+    () => deepPanelsReady && institutionalOpportunity
       ? buildAICognitionLayer({
           marketCondition: String(row.market_regime ?? "Current market"),
           rows: [institutionalOpportunity],
@@ -155,10 +158,10 @@ export function SymbolTerminalWorkspace({
           generatedAt: dataFreshness.lastUpdated ?? undefined,
         })
       : null,
-    [dataFreshness.lastUpdated, institutionalOpportunity, row.market_regime, workflowEvolution],
+    [dataFreshness.lastUpdated, deepPanelsReady, institutionalOpportunity, row.market_regime, workflowEvolution],
   );
   const riskPortfolio = useMemo(() => buildRiskPortfolio(paperPositions, row.sector, symbol), [paperPositions, row.sector, symbol]);
-  const symbolResearch = useMemo(() => buildSymbolResearchModel(row, contextRows), [contextRows, row]);
+  const symbolResearch = useMemo(() => (deepPanelsReady ? buildSymbolResearchModel(row, contextRows) : null), [contextRows, deepPanelsReady, row]);
   const tradeEngine = useTradePlanEngine(row, riskPortfolio);
   const symbolPositions = paperPositions.filter((position) => position.symbol.toUpperCase() === symbol);
   const openPaper = symbolPositions.filter((position) => position.status === "OPEN");
@@ -176,6 +179,30 @@ export function SymbolTerminalWorkspace({
   const canTrade = globalDecision ? dailyActionAllowsTrade(globalDecision) : true;
   const noTradeCopy = globalDecision && !canTrade ? noTradeActionCopy(globalDecision) : null;
   const researchModeReason = noTradeCopy?.reason ?? "The global decision system is keeping this in research mode for now.";
+
+  useEffect(() => {
+    setDeepPanelsReady(false);
+    let cancelled = false;
+    const run = () => {
+      if (!cancelled) setDeepPanelsReady(true);
+    };
+    const idleWindow = window as Window & {
+      cancelIdleCallback?: (handle: number) => void;
+      requestIdleCallback?: (callback: () => void, options?: { timeout?: number }) => number;
+    };
+    if (typeof idleWindow.requestIdleCallback === "function") {
+      const handle = idleWindow.requestIdleCallback(run, { timeout: 700 });
+      return () => {
+        cancelled = true;
+        idleWindow.cancelIdleCallback?.(handle);
+      };
+    }
+    const timeout = window.setTimeout(run, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeout);
+    };
+  }, [symbol]);
 
   if (!premiumAccess) {
     return (
@@ -208,26 +235,66 @@ export function SymbolTerminalWorkspace({
         </GlassPanel>
       ) : null}
 
-      <SymbolDeepResearchCockpit model={symbolResearch} />
+      <GlassPanel className="p-6" id="chart">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <SectionTitle eyebrow="Chart" title="Current Signal Map" />
+          <button
+            className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all duration-200 hover:border-cyan-300/40 hover:bg-white/[0.07] hover:text-cyan-100"
+            onClick={() => setShowHistoricalMarkers((value) => !value)}
+            type="button"
+          >
+            {showHistoricalMarkers ? "Hide intelligence overlays" : "Show intelligence overlays"}
+          </button>
+        </div>
+        <div className="mt-5">
+          <SymbolChart
+            candles={candles.length ? candles : undefined}
+            dataSource={usesScannerSignalPriceTrail ? "scanner signal price trail" : "scanner validated OHLC history"}
+            interpretation={usesScannerSignalPriceTrail
+              ? `${symbol} chart is using real stored scanner price observations because full OHLC history is not populated yet. Use it as sparse signal-evolution context, not a complete tape.`
+              : `${symbol} price history is shown with real stored candles. Use it with decision quality, risk pressure, replay context, and market regime before interpreting the setup.`}
+            lastUpdated={typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null}
+            scannerScore={numericValue(row.final_score ?? row.score ?? row.quality_score)}
+            showHistoricalSignals={showHistoricalMarkers}
+            showResearchLevelsToggle
+            signals={chartSignals}
+            symbol={symbol}
+            symbolSequence={contextRows.map((contextRow) => String(contextRow.symbol ?? ""))}
+            tradeLevels={canTrade ? tradeLevels : undefined}
+          />
+        </div>
+      </GlassPanel>
 
-      <SymbolCinematicResearchCockpit
-        candles={candles}
-        canTrade={canTrade}
-        dataFreshness={dataFreshness}
-        history={history}
-        marketMemory={marketMemory}
-        row={row}
-        shockPattern={shockPattern ?? null}
-        symbol={symbol}
-        workflowEvolution={workflowEvolution ?? null}
-      />
+      {symbolResearch ? <SymbolDeepResearchCockpit model={symbolResearch} /> : (
+        <GlassPanel className="p-5" data-symbol-deferred-intelligence="true">
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Deferred intelligence</div>
+          <p className="mt-2 text-sm leading-6 text-slate-400">Chart and decision shell are ready. Deep replay, market memory, and provider panels hydrate after first paint using existing evidence.</p>
+        </GlassPanel>
+      )}
 
-      <div id="intelligence">
-        <IntelligenceGraphPanel graph={relationshipGraph} />
-      </div>
-      <SymbolKnowledgeGraphPanel model={knowledgeGraph} />
+      {deepPanelsReady ? (
+        <SymbolCinematicResearchCockpit
+          candles={candles}
+          canTrade={canTrade}
+          dataFreshness={dataFreshness}
+          history={history}
+          marketMemory={marketMemory}
+          row={row}
+          shockPattern={shockPattern ?? null}
+          symbol={symbol}
+          workflowEvolution={workflowEvolution ?? null}
+        />
+      ) : null}
+
+      {relationshipGraph ? (
+        <div id="intelligence">
+          <IntelligenceGraphPanel graph={relationshipGraph} />
+        </div>
+      ) : null}
+      {knowledgeGraph ? <SymbolKnowledgeGraphPanel model={knowledgeGraph} /> : null}
       {cognitionLayer ? <AICognitionLayerPanel compact model={cognitionLayer} /> : null}
 
+      {deepPanelsReady ? (
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_410px]">
         <div className="space-y-5">
           {canTrade ? (
@@ -260,7 +327,7 @@ export function SymbolTerminalWorkspace({
             {institutionalOpportunity ? <InstitutionalIntelligencePanel compact focusSymbol={symbol} rows={[institutionalOpportunity]} /> : null}
             {macroContext ? <MacroExchangeContextCard context={macroContext} row={row} /> : null}
             <VerifiedEventContextCard row={row} />
-            <ConvictionFragilityCard model={structuralQuality} />
+            {structuralQuality ? <ConvictionFragilityCard model={structuralQuality} /> : null}
           </ResponsiveAdvancedDetails>
         </div>
         <aside className="space-y-5 xl:sticky xl:top-5 xl:self-start" id="risk">
@@ -268,40 +335,11 @@ export function SymbolTerminalWorkspace({
           {canTrade ? <ExecutionTicket canTrade={canTrade} engine={tradeEngine} researchModeReason={researchModeReason} symbol={symbol} /> : null}
         </aside>
       </div>
+      ) : null}
 
-      {canTrade ? <SignalStatusCard lifecycle={lifecycle} /> : null}
+      {deepPanelsReady && canTrade ? <SignalStatusCard lifecycle={lifecycle} /> : null}
 
-      <GlassPanel className="p-6" id="chart">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <SectionTitle eyebrow="Chart" title="Current Signal Map" />
-          <button
-            className="rounded-full border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-bold uppercase tracking-[0.16em] text-slate-300 transition-all duration-200 hover:border-cyan-300/40 hover:bg-white/[0.07] hover:text-cyan-100"
-            onClick={() => setShowHistoricalMarkers((value) => !value)}
-            type="button"
-          >
-            {showHistoricalMarkers ? "Hide intelligence overlays" : "Show intelligence overlays"}
-          </button>
-        </div>
-        <div className="mt-5">
-          <SymbolChart
-            candles={candles.length ? candles : undefined}
-            dataSource={usesScannerSignalPriceTrail ? "scanner signal price trail" : "scanner validated OHLC history"}
-            interpretation={usesScannerSignalPriceTrail
-              ? `${symbol} chart is using real stored scanner price observations because full OHLC history is not populated yet. Use it as sparse signal-evolution context, not a complete tape.`
-              : `${symbol} price history is shown with real stored candles. Use it with decision quality, risk pressure, replay context, and market regime before interpreting the setup.`}
-            lastUpdated={typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null}
-            scannerScore={numericValue(row.final_score ?? row.score ?? row.quality_score)}
-            showHistoricalSignals={showHistoricalMarkers}
-            showResearchLevelsToggle
-            signals={chartSignals}
-            symbol={symbol}
-            symbolSequence={contextRows.map((contextRow) => String(contextRow.symbol ?? ""))}
-            tradeLevels={canTrade ? tradeLevels : undefined}
-          />
-        </div>
-      </GlassPanel>
-
-      <ResponsiveAdvancedDetails
+      {deepPanelsReady ? <ResponsiveAdvancedDetails
         deferMount
         eyebrow="Deep symbol proof"
         summary="Open for trade plan, market memory, historical edge, paper context, and conviction timeline."
@@ -324,7 +362,7 @@ export function SymbolTerminalWorkspace({
 
         <PaperContextCard events={symbolEvents} openPositions={openPaper} positions={symbolPositions} symbol={symbol} />
         <ConvictionTimeline timeline={timeline} />
-      </ResponsiveAdvancedDetails>
+      </ResponsiveAdvancedDetails> : null}
     </div>
   );
 }

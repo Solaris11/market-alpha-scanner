@@ -10,18 +10,20 @@ import pg from "pg";
 const { Pool } = pg;
 
 const browserLaunchers = { chromium, firefox, webkit };
-const baseUrl = stripTrailingSlash(process.env.TRADEVETO_PHASE28_BASE_URL ?? "https://tradeveto.com");
-const artifactRoot = resolve(process.cwd(), process.env.TRADEVETO_PHASE28_ARTIFACT_ROOT ?? "../docs/ops/artifacts/phase-28-1-chart-symbol-latency");
-const outputPath = resolve(process.cwd(), process.env.TRADEVETO_PHASE28_OUTPUT ?? join(artifactRoot, "phase28-chart-symbol-latency.json"));
-const screenshotDir = resolve(process.cwd(), process.env.TRADEVETO_PHASE28_SCREENSHOT_DIR ?? join(artifactRoot, "screenshots"));
-const traceDir = resolve(process.cwd(), process.env.TRADEVETO_PHASE28_TRACE_DIR ?? join(artifactRoot, "traces"));
-const headless = process.env.TRADEVETO_PHASE28_HEADLESS !== "false";
-const strict = truthy(process.env.TRADEVETO_PHASE28_STRICT);
-const waitTimeoutMs = positiveInteger(process.env.TRADEVETO_PHASE28_WAIT_TIMEOUT_MS, 12_000);
-const navigationTimeoutMs = positiveInteger(process.env.TRADEVETO_PHASE28_NAVIGATION_TIMEOUT_MS, 90_000);
-const browserNames = parseBrowserList(process.env.TRADEVETO_PHASE28_BROWSERS ?? "chromium,firefox,webkit");
-const createProbeIdentity = process.env.TRADEVETO_PHASE28_CREATE_PROBE_USER !== "false" && Boolean(process.env.DATABASE_URL);
-const cleanupProbeIdentity = process.env.TRADEVETO_PHASE28_CLEANUP_PROBE_USER !== "false";
+const phaseLabel = process.env.TRADEVETO_CHART_SYMBOL_PHASE_LABEL ?? "Phase 28.1";
+const phaseSlug = process.env.TRADEVETO_CHART_SYMBOL_PHASE_SLUG ?? "phase28";
+const baseUrl = stripTrailingSlash(process.env.TRADEVETO_PHASE29_BASE_URL ?? process.env.TRADEVETO_PHASE28_BASE_URL ?? "https://tradeveto.com");
+const artifactRoot = resolve(process.cwd(), process.env.TRADEVETO_PHASE29_ARTIFACT_ROOT ?? process.env.TRADEVETO_PHASE28_ARTIFACT_ROOT ?? "../docs/ops/artifacts/phase-28-1-chart-symbol-latency");
+const outputPath = resolve(process.cwd(), process.env.TRADEVETO_PHASE29_OUTPUT ?? process.env.TRADEVETO_PHASE28_OUTPUT ?? join(artifactRoot, `${phaseSlug}-chart-symbol-latency.json`));
+const screenshotDir = resolve(process.cwd(), process.env.TRADEVETO_PHASE29_SCREENSHOT_DIR ?? process.env.TRADEVETO_PHASE28_SCREENSHOT_DIR ?? join(artifactRoot, "screenshots"));
+const traceDir = resolve(process.cwd(), process.env.TRADEVETO_PHASE29_TRACE_DIR ?? process.env.TRADEVETO_PHASE28_TRACE_DIR ?? join(artifactRoot, "traces"));
+const headless = (process.env.TRADEVETO_PHASE29_HEADLESS ?? process.env.TRADEVETO_PHASE28_HEADLESS) !== "false";
+const strict = truthy(process.env.TRADEVETO_PHASE29_STRICT ?? process.env.TRADEVETO_PHASE28_STRICT);
+const waitTimeoutMs = positiveInteger(process.env.TRADEVETO_PHASE29_WAIT_TIMEOUT_MS ?? process.env.TRADEVETO_PHASE28_WAIT_TIMEOUT_MS, 12_000);
+const navigationTimeoutMs = positiveInteger(process.env.TRADEVETO_PHASE29_NAVIGATION_TIMEOUT_MS ?? process.env.TRADEVETO_PHASE28_NAVIGATION_TIMEOUT_MS, 90_000);
+const browserNames = parseBrowserList(process.env.TRADEVETO_PHASE29_BROWSERS ?? process.env.TRADEVETO_PHASE28_BROWSERS ?? "chromium,firefox,webkit");
+const createProbeIdentity = (process.env.TRADEVETO_PHASE29_CREATE_PROBE_USER ?? process.env.TRADEVETO_PHASE28_CREATE_PROBE_USER) !== "false" && Boolean(process.env.DATABASE_URL);
+const cleanupProbeIdentity = (process.env.TRADEVETO_PHASE29_CLEANUP_PROBE_USER ?? process.env.TRADEVETO_PHASE28_CLEANUP_PROBE_USER) !== "false";
 
 const budgets = {
   chartInteractionMs: 60,
@@ -78,7 +80,7 @@ async function runBrowserProof(browserName) {
     const context = await browser.newContext({
       ignoreHTTPSErrors: true,
       reducedMotion: "reduce",
-      userAgent: `TradeVeto-Phase28ChartSymbolLatency/${browserName}`,
+      userAgent: `TradeVeto-${phaseSlug}-ChartSymbolLatency/${browserName}`,
       viewport: { height: 960, width: 1440 },
     });
     if (cookie) await context.addCookies(cookieHeaderToBrowserCookies(cookie));
@@ -90,7 +92,7 @@ async function runBrowserProof(browserName) {
     const route = await measureSymbolRoute(page);
     const interactions = await runChartSymbolInteractions(page);
     const screenshotPath = await capture(page, browserName, "symbol-workflow.png").catch(() => null);
-    const tracePath = join(traceDir, `${browserName}-phase28-trace.zip`);
+    const tracePath = join(traceDir, `${browserName}-${phaseSlug}-trace.zip`);
     await context.tracing.stop({ path: tracePath }).catch(() => undefined);
     await context.close();
     return {
@@ -279,7 +281,7 @@ async function request({ body, method, path, token }) {
     Accept: "application/json",
     Cookie: cookie,
     Origin: baseUrl,
-    "User-Agent": "TradeVeto-Phase28ChartSymbolLatency/1.0",
+    "User-Agent": `TradeVeto-${phaseSlug}-ChartSymbolLatency/1.0`,
   };
   if (body !== undefined) {
     headers["Content-Type"] = "application/json";
@@ -297,7 +299,7 @@ async function request({ body, method, path, token }) {
 async function fetchCsrfToken() {
   const response = await fetch(`${baseUrl}/api/auth/csrf`, {
     cache: "no-store",
-    headers: { Accept: "application/json", Cookie: cookie, "User-Agent": "TradeVeto-Phase28ChartSymbolLatency/1.0" },
+    headers: { Accept: "application/json", Cookie: cookie, "User-Agent": `TradeVeto-${phaseSlug}-ChartSymbolLatency/1.0` },
     method: "GET",
   });
   const payload = await response.json().catch(() => null);
@@ -311,7 +313,7 @@ async function fetchCsrfToken() {
 function chartWorkspacePayload() {
   const now = new Date().toISOString();
   return {
-    activeIndicatorTemplateId: "phase-28-1-latency",
+    activeIndicatorTemplateId: `${phaseSlug}-latency`,
     alertHistory: [],
     chartTabs: [],
     compactMode: true,
@@ -323,9 +325,9 @@ function chartWorkspacePayload() {
     indicatorTemplates: [
       {
         createdAt: now,
-        id: "phase-28-1-latency",
+        id: `${phaseSlug}-latency`,
         indicators: ["ema20", "ema50", "rsi14"],
-        name: "Phase 28.1 Latency",
+        name: `${phaseLabel} Latency`,
         overlayFamilies: ["confidence", "risk", "events", "replay"],
         source: "user",
         updatedAt: now,
@@ -346,7 +348,7 @@ async function createProductionProbeIdentity() {
   if (!databaseUrl) throw new Error("DATABASE_URL is required to create a Phase 28.1 browser probe user.");
   const sessionSecret = sessionHashSecret(process.env);
   const pool = new Pool({ connectionString: databaseUrl });
-  const email = `phase28-chart-symbol-${Date.now()}-${randomBytes(4).toString("hex")}@tradeveto-probe.local`;
+  const email = `${phaseSlug}-chart-symbol-${Date.now()}-${randomBytes(4).toString("hex")}@tradeveto-probe.local`;
   const sessionToken = randomBytes(32).toString("base64url");
   const sessionTokenHash = createHmac("sha256", sessionSecret).update(sessionToken).digest("hex");
   let client;
@@ -368,10 +370,10 @@ async function createProductionProbeIdentity() {
           created_at,
           updated_at
         )
-        VALUES ($1, 'Phase 28.1 Chart Symbol Probe', true, now(), 'active', 'user', 'America/New_York', 'advanced', true, now(), now())
+        VALUES ($1, $2, true, now(), 'active', 'user', 'America/New_York', 'advanced', true, now(), now())
         RETURNING id::text
       `,
-      [email],
+      [email, `${phaseLabel} Chart Symbol Probe`],
     );
     const userId = userResult.rows[0]?.id;
     if (!userId) throw new Error("Failed to create Phase 28.1 browser probe user.");
@@ -452,7 +454,7 @@ function buildReport({ browserReports, cleanupError, fatalError, setup, startedA
     generatedAt: new Date().toISOString(),
     overallStatus: blockers.length ? "not_ready" : "ready",
     probeIdentity: probeIdentity ? { cleanupRequested: cleanupProbeIdentity, created: true, email: probeIdentity.email, userId: probeIdentity.userId } : { created: false },
-    proofScope: "Focused production browser proof for Phase 28.1 chart restore, fullscreen open, chart toolbar interaction, symbol switch, symbol search open, and /symbol/AMD interactive timing.",
+    proofScope: `Focused production browser proof for ${phaseLabel} chart restore, fullscreen open, chart toolbar interaction, symbol switch, symbol search open, and /symbol/AMD interactive timing.`,
     setup,
     startedAt,
   };
