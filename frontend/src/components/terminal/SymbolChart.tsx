@@ -582,11 +582,17 @@ export function SymbolChart({
     setAccountWorkspaceLoaded(false);
     const workspace = readChartWorkflowWorkspace(symbol);
     skipNextWorkspacePersistRef.current = true;
-    applyWorkspaceState(workspace, restoreFullscreenState);
+    if (!workspace) applyWorkspaceState(null, false);
     setWorkspaceLoaded(true);
     recordBrowserWorkflowMetric("chart:workspace-restore", startedAt, { settleFrames: 1 });
     const switchStartedAt = consumePendingSymbolSwitchMetric(symbol);
     if (switchStartedAt !== null) recordBrowserWorkflowMetric("symbol:switch", switchStartedAt, { settleFrames: 1 });
+    if (workspace) {
+      return deferIdleWork(() => {
+        applyWorkspaceState(workspace, restoreFullscreenState);
+      }, 250);
+    }
+    return undefined;
   // This effect intentionally keys off the symbol so persisted chart state follows the active instrument.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol]);
@@ -2683,9 +2689,14 @@ function SymbolChartModal({
     setModalWorkspaceLoaded(false);
     const workspace = readChartWorkflowWorkspace(symbol);
     skipNextModalWorkspacePersistRef.current = true;
-    if (workspace) applyModalWorkspace(workspace);
     setModalWorkspaceLoaded(true);
     recordBrowserWorkflowMetric("chart:modal-workspace-restore", startedAt, { settleFrames: 1 });
+    if (workspace) {
+      return deferIdleWork(() => {
+        applyModalWorkspace(workspace);
+      }, 250);
+    }
+    return undefined;
   // This effect restores the modal workspace once for the opened symbol.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [symbol]);
