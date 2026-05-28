@@ -12,7 +12,7 @@ export const SESSION_COOKIE_NAME = "market_alpha_session";
 
 const SESSION_TTL_MS = 1000 * 60 * 60 * 24 * 30;
 const BCRYPT_ROUNDS = 12;
-const SESSION_USER_CACHE_TTL_MS = 30_000;
+const SESSION_USER_CACHE_TTL_MS = boundedAuthCacheMs(process.env.TRADEVETO_SESSION_USER_CACHE_TTL_MS, 120_000, 10_000, 300_000);
 const SESSION_USER_NEGATIVE_CACHE_TTL_MS = 250;
 const SESSION_USER_CACHE_MAX = 500;
 
@@ -326,4 +326,11 @@ function trimSessionUserCache(): void {
 
 function cloneAuthUserOrNull(user: AuthUser | null): AuthUser | null {
   return user ? { ...user } : null;
+}
+
+function boundedAuthCacheMs(rawValue: string | undefined, fallbackMs: number, minMs: number, maxMs: number): number {
+  if (!rawValue) return fallbackMs;
+  const value = Number(rawValue);
+  if (!Number.isFinite(value)) return fallbackMs;
+  return Math.max(minMs, Math.min(maxMs, Math.round(value)));
 }

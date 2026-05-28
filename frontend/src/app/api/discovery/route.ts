@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { entitlementSummary, getEntitlement, hasPremiumAccess, legalNotAcceptedResponse, requiresLegalAcceptance } from "@/lib/server/entitlements";
+import { entitlementSummary, getEntitlement, hasPremiumAccess, legalNotAcceptedResponse, requiresLegalAcceptance, type Entitlement } from "@/lib/server/entitlements";
 import { loadIntelligenceDiscoverySystemWithMeta, type DiscoveryPacketMode } from "@/lib/server/discovery-intelligence";
 import { withRequestMetrics } from "@/lib/server/monitoring";
 import { buildLimitedIntelligenceDiscoverySystem } from "@/lib/trading/intelligence-discovery";
-import { recordDiscoveryApiTiming, type DiscoveryCacheStatus, type DiscoveryPerformanceSnapshot } from "@/lib/discovery-performance";
+import { getDiscoveryPerformanceSnapshot, recordDiscoveryApiTiming, shouldRecordDiscoveryApiTiming, type DiscoveryCacheStatus, type DiscoveryPerformanceSnapshot } from "@/lib/discovery-performance";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -25,7 +25,7 @@ type ProviderOutageSimulation = {
 type DiscoveryBodyCacheEntry = {
   bodyBuffer: ArrayBuffer;
   bodyLength: number;
-  entitlementJson: string;
+  entitlementKey: string;
   serializedSystem: string;
 };
 
@@ -58,7 +58,9 @@ export async function GET(request: Request) {
     const packetMode = discoveryPacketModeFromRequest(request);
     const { meta, serializedSystem } = await loadIntelligenceDiscoverySystemWithMeta(entitlement.user?.id ?? null, { packetMode });
     const latencyMs = Date.now() - startedAt;
-    const performance = recordDiscoveryApiTiming({ cacheStatus: meta.cacheStatus, latencyMs, statusCode: 200 });
+    const performance = shouldRecordDiscoveryApiTiming()
+      ? recordDiscoveryApiTiming({ cacheStatus: meta.cacheStatus, latencyMs, statusCode: 200 })
+      : getDiscoveryPerformanceSnapshot();
     const response = outageSimulation.enabled
       ? NextResponse.json({
         entitlement: entitlementSummary(entitlement),
@@ -70,8 +72,9 @@ export async function GET(request: Request) {
       }, { headers: { "Cache-Control": "no-store" } })
       : discoveryJsonResponse({
         cacheKey: `${entitlement.user?.id ?? "anonymous"}:${packetMode}`,
-        entitlementJson: JSON.stringify(entitlementSummary(entitlement)),
-        performanceJson: JSON.stringify(performance),
+        entitlementJson: () => JSON.stringify(entitlementSummary(entitlement)),
+        entitlementKey: discoveryEntitlementKey(entitlement),
+        performanceJson: () => JSON.stringify(performance),
         serializedSystem,
       });
     response.headers.set("X-TradeVeto-Discovery-Build-Ms", String(meta.durationMs));
@@ -89,8 +92,9 @@ function discoveryPacketModeFromRequest(request: Request): DiscoveryPacketMode {
 
 function discoveryJsonResponse(input: {
   cacheKey: string;
-  entitlementJson: string;
-  performanceJson: string;
+  entitlementJson: () => string;
+  entitlementKey: string;
+  performanceJson: () => string;
   serializedSystem: string;
 }): NextResponse {
   const cacheEntry = readDiscoveryBodyCache(input);
@@ -107,26 +111,44 @@ function discoveryJsonResponse(input: {
 
 function readDiscoveryBodyCache(input: {
   cacheKey: string;
-  entitlementJson: string;
-  performanceJson: string;
+  entitlementJson: () => string;
+  entitlementKey: string;
+  performanceJson: () => string;
   serializedSystem: string;
 }): DiscoveryBodyCacheEntry {
   const current = discoveryBodyCache.get(input.cacheKey);
-  if (current && current.entitlementJson === input.entitlementJson && current.serializedSystem === input.serializedSystem) {
+  if (current && current.entitlementKey === input.entitlementKey && current.serializedSystem === input.serializedSystem) {
     return current;
   }
 
-  const body = `{"entitlement":${input.entitlementJson},"limited":false,"ok":true,"performance":${input.performanceJson},"system":${input.serializedSystem}}`;
+  const body = `{"entitlement":${input.entitlementJson()},"limited":false,"ok":true,"performance":${input.performanceJson()},"system":${input.serializedSystem}}`;
   const bodyBytes = discoveryBodyEncoder.encode(body);
   const entry: DiscoveryBodyCacheEntry = {
     bodyBuffer: bodyBytes.buffer.slice(bodyBytes.byteOffset, bodyBytes.byteOffset + bodyBytes.byteLength),
     bodyLength: bodyBytes.byteLength,
-    entitlementJson: input.entitlementJson,
+    entitlementKey: input.entitlementKey,
     serializedSystem: input.serializedSystem,
   };
   discoveryBodyCache.set(input.cacheKey, entry);
   trimDiscoveryBodyCache();
   return entry;
+}
+
+function discoveryEntitlementKey(entitlement: Entitlement): string {
+  const legal = entitlement.legalStatus;
+  return [
+    entitlement.user?.id ?? "anonymous",
+    entitlement.authenticated ? "auth" : "anon",
+    entitlement.plan,
+    entitlement.isAdmin ? "admin" : "user",
+    entitlement.isPremium ? "premium" : "limited",
+    entitlement.betaAccess ? entitlement.betaAccessLabel ?? "beta" : "no-beta",
+    entitlement.subscriptionStatus ?? "no-subscription",
+    legal.termsAccepted ? "terms" : "no-terms",
+    legal.privacyAccepted ? "privacy" : "no-privacy",
+    legal.riskAccepted ? "risk" : "no-risk",
+    legal.allAccepted ? "accepted" : "pending",
+  ].join(":");
 }
 
 function trimDiscoveryBodyCache(): void {

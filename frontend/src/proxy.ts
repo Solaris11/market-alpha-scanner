@@ -92,5 +92,5 @@ export function proxy(request: NextRequest): NextResponse {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|favicon-ma.ico|favicon.svg|icon.png|apple-touch-icon.png|logo.svg|logo-icon.svg|og-image.svg|og-image.png).*)"],
+  matcher: ["/((?!api|_next/static|_next/image|favicon.ico|favicon-ma.ico|favicon.svg|icon.png|apple-touch-icon.png|logo.svg|logo-icon.svg|og-image.svg|og-image.png).*)"],
 };

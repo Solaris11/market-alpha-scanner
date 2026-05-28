@@ -22,11 +22,13 @@ export type DiscoveryPerformanceSnapshot = {
 const DISCOVERY_TIMING_WINDOW_SIZE = 200;
 const DISCOVERY_HOT_PATH_TARGET_MS = 300;
 const DISCOVERY_P99_TARGET_MS = 600;
+const DISCOVERY_TIMING_SAMPLE_RATE = boundedSampleRate(process.env.TRADEVETO_DISCOVERY_TIMING_SAMPLE_RATE, 0.2);
 
 let discoveryTimings: DiscoveryTimingInput[] = [];
 let discoverySuccessfulLatencies: number[] = [];
 let discoveryCacheableSamples = 0;
 let discoveryCacheHits = 0;
+let discoverySnapshotCache: DiscoveryPerformanceSnapshot | null = null;
 
 export function recordDiscoveryApiTiming(input: DiscoveryTimingInput): DiscoveryPerformanceSnapshot {
   const timing = sanitizeTiming(input);
@@ -36,10 +38,32 @@ export function recordDiscoveryApiTiming(input: DiscoveryTimingInput): Discovery
     const removed = discoveryTimings.splice(0, discoveryTimings.length - DISCOVERY_TIMING_WINDOW_SIZE);
     for (const removedTiming of removed) removeDiscoveryTiming(removedTiming);
   }
-  return getDiscoveryPerformanceSnapshot();
+  discoverySnapshotCache = buildDiscoveryPerformanceSnapshot();
+  return discoverySnapshotCache;
 }
 
 export function getDiscoveryPerformanceSnapshot(): DiscoveryPerformanceSnapshot {
+  if (discoverySnapshotCache) return discoverySnapshotCache;
+  discoverySnapshotCache = buildDiscoveryPerformanceSnapshot();
+  return discoverySnapshotCache;
+}
+
+export function shouldRecordDiscoveryApiTiming(): boolean {
+  if (discoverySuccessfulLatencies.length === 0) return true;
+  if (DISCOVERY_TIMING_SAMPLE_RATE >= 1) return true;
+  if (DISCOVERY_TIMING_SAMPLE_RATE <= 0) return false;
+  return Math.random() < DISCOVERY_TIMING_SAMPLE_RATE;
+}
+
+export function resetDiscoveryPerformanceForTests(): void {
+  discoveryTimings = [];
+  discoverySuccessfulLatencies = [];
+  discoveryCacheableSamples = 0;
+  discoveryCacheHits = 0;
+  discoverySnapshotCache = null;
+}
+
+function buildDiscoveryPerformanceSnapshot(): DiscoveryPerformanceSnapshot {
   const sampleCount = discoverySuccessfulLatencies.length;
   const p50LatencyMs = percentile(discoverySuccessfulLatencies, 0.50);
   const p95LatencyMs = percentile(discoverySuccessfulLatencies, 0.95);
@@ -59,13 +83,6 @@ export function getDiscoveryPerformanceSnapshot(): DiscoveryPerformanceSnapshot 
     targetMet: p95LatencyMs > 0 && p95LatencyMs <= DISCOVERY_HOT_PATH_TARGET_MS && p99LatencyMs <= DISCOVERY_P99_TARGET_MS,
     windowSize: DISCOVERY_TIMING_WINDOW_SIZE,
   };
-}
-
-export function resetDiscoveryPerformanceForTests(): void {
-  discoveryTimings = [];
-  discoverySuccessfulLatencies = [];
-  discoveryCacheableSamples = 0;
-  discoveryCacheHits = 0;
 }
 
 function sanitizeTiming(input: DiscoveryTimingInput): DiscoveryTimingInput {
@@ -128,4 +145,11 @@ function removeSortedLatency(values: number[], latencyMs: number): void {
     if (value < latencyMs) low = midpoint + 1;
     else high = midpoint - 1;
   }
+}
+
+function boundedSampleRate(rawValue: string | undefined, fallback: number): number {
+  if (!rawValue) return fallback;
+  const value = Number(rawValue);
+  if (!Number.isFinite(value)) return fallback;
+  return Math.max(0, Math.min(1, value));
 }

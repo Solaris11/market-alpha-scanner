@@ -35,7 +35,7 @@ type EntitlementCacheEntry = {
   expiresAtMs: number;
 };
 
-const ENTITLEMENT_CACHE_TTL_MS = 10_000;
+const ENTITLEMENT_CACHE_TTL_MS = boundedEntitlementCacheMs(process.env.TRADEVETO_ENTITLEMENT_CACHE_TTL_MS, 120_000, 10_000, 300_000);
 const ENTITLEMENT_CACHE_MAX = 500;
 const entitlementCache = new Map<string, EntitlementCacheEntry>();
 const entitlementInflight = new Map<string, Promise<Entitlement>>();
@@ -363,4 +363,11 @@ function cloneEntitlement(entitlement: Entitlement): Entitlement {
     subscriptionStatus: entitlement.subscriptionStatus,
     user: entitlement.user ? { ...entitlement.user } : null,
   };
+}
+
+function boundedEntitlementCacheMs(rawValue: string | undefined, fallbackMs: number, minMs: number, maxMs: number): number {
+  if (!rawValue) return fallbackMs;
+  const value = Number(rawValue);
+  if (!Number.isFinite(value)) return fallbackMs;
+  return Math.max(minMs, Math.min(maxMs, Math.round(value)));
 }
