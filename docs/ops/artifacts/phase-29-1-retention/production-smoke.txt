@@ -1,0 +1,23 @@
+Production host: sre@100.68.155.121
+Production path: /opt/apps/market-alpha-scanner/app
+Deployed commit: f14098ab4247ab062a50c25c8a44ef854f6d4782
+Deploy command: git pull --ff-only origin main && docker compose --env-file .env up -d --build market-alpha-frontend market-alpha-frontend-hot-api
+
+health_ok attempt=1
+route                            status
+/api/health                      200
+/api/health/deep                 200
+/terminal                        200
+/discover                        200
+/scanner                         200
+/alerts                          200
+/feed                            200
+/history                         200
+/performance                     200
+/symbol/AMD                      200
+/account                         200
+/status                          200
+
+Container health:
+market-alpha-frontend: healthy
+market-alpha-frontend-hot-api: healthy
