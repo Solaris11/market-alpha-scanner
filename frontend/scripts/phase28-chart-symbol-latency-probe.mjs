@@ -9,6 +9,7 @@ import pg from "pg";
 
 const { Pool } = pg;
 
+const browserLaunchers = { chromium, firefox, webkit };
 const baseUrl = stripTrailingSlash(process.env.TRADEVETO_PHASE28_BASE_URL ?? "https://tradeveto.com");
 const artifactRoot = resolve(process.cwd(), process.env.TRADEVETO_PHASE28_ARTIFACT_ROOT ?? "../docs/ops/artifacts/phase-28-1-chart-symbol-latency");
 const outputPath = resolve(process.cwd(), process.env.TRADEVETO_PHASE28_OUTPUT ?? join(artifactRoot, "phase28-chart-symbol-latency.json"));
@@ -22,7 +23,6 @@ const browserNames = parseBrowserList(process.env.TRADEVETO_PHASE28_BROWSERS ?? 
 const createProbeIdentity = process.env.TRADEVETO_PHASE28_CREATE_PROBE_USER !== "false" && Boolean(process.env.DATABASE_URL);
 const cleanupProbeIdentity = process.env.TRADEVETO_PHASE28_CLEANUP_PROBE_USER !== "false";
 
-const browserLaunchers = { chromium, firefox, webkit };
 const budgets = {
   chartInteractionMs: 60,
   chartRestoreMs: 250,
