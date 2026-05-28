@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useDeferredValue, useEffect, useId, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Bell, Copy, Expand, Eye, EyeOff, Keyboard, Lock, Magnet, Palette, PanelTopClose, PanelTopOpen, RotateCcw, Save, Search, Trash2, Unlock, X } from "lucide-react";
 import {
   CandlestickSeries,
@@ -356,10 +357,12 @@ export function SymbolChart({
       period,
       surface: "symbol_chart",
     }, { source: "chart", symbol: chartSymbol });
-    setExpandedFullReady(false);
-    setExpanded(true);
+    flushSync(() => {
+      setExpandedFullReady(false);
+      setExpanded(true);
+    });
     deferChartWorkspacePatch(chartSymbol, { fullscreenOpen: true });
-    recordBrowserWorkflowMetric("chart:fullscreen-open", startedAt, { settleFrames: 1 });
+    recordBrowserWorkflowMetric("chart:fullscreen-open", startedAt, { settleFrames: 0 });
   }
 
   function closeExpandedChart(): void {
