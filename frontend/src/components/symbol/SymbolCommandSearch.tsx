@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { ArrowRight, Clock3, Filter, Save, Search, X } from "lucide-react";
 import { openSymbolCard } from "@/lib/symbol/symbol-overlay-store";
 import { symbolCardContextFromRow } from "@/lib/symbol/symbol-intelligence-card";
@@ -101,15 +102,15 @@ export function SymbolCommandSearch({ documents, initialQuery = "", title = "Sym
 
   function openQuickSearch(seed: string): void {
     const startedAt = browserWorkflowNow();
-    setQuickQuery(seed);
-    setQuickReady(false);
-    setActiveIndex(0);
-    setQuickOpen(true);
-    window.requestAnimationFrame(() => {
-      quickInputRef.current?.focus();
-      recordBrowserWorkflowMetric("symbol-search:open", startedAt);
-      window.setTimeout(() => setQuickReady(true), 0);
+    flushSync(() => {
+      setQuickQuery(seed);
+      setQuickReady(false);
+      setActiveIndex(0);
+      setQuickOpen(true);
     });
+    quickInputRef.current?.focus();
+    recordBrowserWorkflowMetric("symbol-search:open", startedAt);
+    window.setTimeout(() => setQuickReady(true), 0);
   }
 
   function closeQuickSearch(): void {
@@ -514,14 +515,12 @@ function browserWorkflowNow(): number {
 
 function recordBrowserWorkflowMetric(id: string, startedAt: number): void {
   if (typeof window === "undefined") return;
-  window.requestAnimationFrame(() => {
-    const metricWindow = window as Window & { __tradevetoBrowserWorkflowMetrics?: BrowserWorkflowMetric[] };
-    const latencyMs = Math.max(0, browserWorkflowNow() - startedAt);
-    const nextMetric: BrowserWorkflowMetric = {
-      id,
-      latencyMs: Math.round(latencyMs * 1000) / 1000,
-      recordedAt: new Date().toISOString(),
-    };
-    metricWindow.__tradevetoBrowserWorkflowMetrics = [...(metricWindow.__tradevetoBrowserWorkflowMetrics ?? []), nextMetric].slice(-120);
-  });
+  const metricWindow = window as Window & { __tradevetoBrowserWorkflowMetrics?: BrowserWorkflowMetric[] };
+  const latencyMs = Math.max(0, browserWorkflowNow() - startedAt);
+  const nextMetric: BrowserWorkflowMetric = {
+    id,
+    latencyMs: Math.round(latencyMs * 1000) / 1000,
+    recordedAt: new Date().toISOString(),
+  };
+  metricWindow.__tradevetoBrowserWorkflowMetrics = [...(metricWindow.__tradevetoBrowserWorkflowMetrics ?? []), nextMetric].slice(-120);
 }

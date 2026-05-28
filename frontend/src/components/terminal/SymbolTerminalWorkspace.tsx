@@ -1,19 +1,9 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
 import { Activity, Brain, LineChart, ShieldAlert, Target } from "lucide-react";
-import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
-import { SymbolDeepResearchCockpit } from "@/components/research/SymbolDeepResearchCockpit";
-import { SymbolKnowledgeGraphPanel } from "@/components/symbol/SymbolKnowledgeGraphPanel";
-import { IntelligenceGraphPanel } from "@/components/visual/IntelligenceGraphPanel";
-import {
-  CinematicClusterMosaic,
-  CinematicHeatMatrix,
-  CinematicTimeline,
-  type CinematicCluster,
-  type CinematicHeatCell,
-  type CinematicTimelineItem,
-} from "@/components/visual/CinematicIntelligencePanels";
+import type { CinematicCluster, CinematicHeatCell, CinematicTimelineItem } from "@/components/visual/CinematicIntelligencePanels";
 import type { ScoreFactor, VisualTone } from "@/components/visual/MiniVisuals";
 import { useTradePlanEngine } from "@/hooks/useTradePlanEngine";
 import type { SignalHistoryPoint } from "@/lib/adapters/DataServiceAdapter";
@@ -41,41 +31,49 @@ import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution"
 import { buildSymbolResearchModel } from "@/lib/trading/market-research";
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
 import type { IntradayDriftRow, RankingRow, ScannerScalar } from "@/lib/types";
-import { AICopilotPanel } from "./AICopilotPanel";
-import { AICognitionLayerPanel } from "./AICognitionLayerPanel";
-import { AdaptiveLearningInsightPanel } from "./AdaptiveLearningInsightPanel";
-import { ConvictionFragilityCard } from "./ConvictionFragilityCard";
-import { ConvictionTimeline } from "./ConvictionTimeline";
-import { CorrectionMapCard } from "./CorrectionMapCard";
-import { DecisionJournalCard } from "./DecisionJournalCard";
-import { ExecutionTicket } from "./ExecutionTicket";
-import { ExecutionIntelligencePanel } from "./ExecutionIntelligencePanel";
-import { EvidenceMaturityCard } from "./EvidenceMaturityCard";
-import { HistoricalEdgeCard } from "./HistoricalEdgeCard";
-import { InstitutionalIntelligencePanel } from "./InstitutionalIntelligencePanel";
-import { IntradayRegimeDriftPanel } from "./IntradayRegimeDriftPanel";
-import { MacroExchangeContextCard } from "./MacroExchangeContextCard";
-import { MarketMemoryCard } from "./MarketMemoryCard";
-import { MetaIntelligenceOperatingSystemPanel } from "./MetaIntelligenceOperatingSystemPanel";
-import { NarrativeIntelligenceCard } from "./NarrativeIntelligenceCard";
-import { PaperContextCard } from "./PaperContextCard";
-import { PersonalizedIntelligenceCard } from "./PersonalizedIntelligenceCard";
 import { SymbolChart, type ChartCandle, type ChartSignalMarker } from "./SymbolChart";
-import { SymbolDecisionIntelligencePanel } from "./SymbolDecisionIntelligencePanel";
 import { SymbolDecisionHero } from "./SymbolDecisionHero";
-import { SignalStatusCard } from "./SignalStatusCard";
-import { ScenarioIntelligencePanel } from "./ScenarioIntelligencePanel";
-import { ShockPatternMemoryCard } from "./ShockPatternMemoryCard";
-import { StrategyIntelligencePanel } from "./StrategyIntelligencePanel";
-import { TechnicalSnapshotCard } from "./TechnicalSnapshotCard";
-import { TradePlanCard } from "./TradePlanCard";
-import { VerifiedEventContextCard } from "./VerifiedEventContextCard";
-import { WhatIfSimulator } from "./WhatIfSimulator";
-import { WorkflowEvolutionPanel } from "./WorkflowEvolutionPanel";
-import { WhyDecisionCard } from "./WhyDecisionCard";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
+
+const PremiumLockedState = dynamic(() => import("@/components/premium/PremiumLockedState").then((mod) => mod.PremiumLockedState), { ssr: false });
+const SymbolDeepResearchCockpit = dynamic(() => import("@/components/research/SymbolDeepResearchCockpit").then((mod) => mod.SymbolDeepResearchCockpit), { ssr: false });
+const SymbolKnowledgeGraphPanel = dynamic(() => import("@/components/symbol/SymbolKnowledgeGraphPanel").then((mod) => mod.SymbolKnowledgeGraphPanel), { ssr: false });
+const IntelligenceGraphPanel = dynamic(() => import("@/components/visual/IntelligenceGraphPanel").then((mod) => mod.IntelligenceGraphPanel), { ssr: false });
+const CinematicClusterMosaic = dynamic(() => import("@/components/visual/CinematicIntelligencePanels").then((mod) => mod.CinematicClusterMosaic), { ssr: false });
+const CinematicHeatMatrix = dynamic(() => import("@/components/visual/CinematicIntelligencePanels").then((mod) => mod.CinematicHeatMatrix), { ssr: false });
+const CinematicTimeline = dynamic(() => import("@/components/visual/CinematicIntelligencePanels").then((mod) => mod.CinematicTimeline), { ssr: false });
+const AICopilotPanel = dynamic(() => import("./AICopilotPanel").then((mod) => mod.AICopilotPanel), { ssr: false });
+const AICognitionLayerPanel = dynamic(() => import("./AICognitionLayerPanel").then((mod) => mod.AICognitionLayerPanel), { ssr: false });
+const AdaptiveLearningInsightPanel = dynamic(() => import("./AdaptiveLearningInsightPanel").then((mod) => mod.AdaptiveLearningInsightPanel), { ssr: false });
+const ConvictionFragilityCard = dynamic(() => import("./ConvictionFragilityCard").then((mod) => mod.ConvictionFragilityCard), { ssr: false });
+const ConvictionTimeline = dynamic(() => import("./ConvictionTimeline").then((mod) => mod.ConvictionTimeline), { ssr: false });
+const CorrectionMapCard = dynamic(() => import("./CorrectionMapCard").then((mod) => mod.CorrectionMapCard), { ssr: false });
+const DecisionJournalCard = dynamic(() => import("./DecisionJournalCard").then((mod) => mod.DecisionJournalCard), { ssr: false });
+const ExecutionTicket = dynamic(() => import("./ExecutionTicket").then((mod) => mod.ExecutionTicket), { ssr: false });
+const ExecutionIntelligencePanel = dynamic(() => import("./ExecutionIntelligencePanel").then((mod) => mod.ExecutionIntelligencePanel), { ssr: false });
+const EvidenceMaturityCard = dynamic(() => import("./EvidenceMaturityCard").then((mod) => mod.EvidenceMaturityCard), { ssr: false });
+const HistoricalEdgeCard = dynamic(() => import("./HistoricalEdgeCard").then((mod) => mod.HistoricalEdgeCard), { ssr: false });
+const InstitutionalIntelligencePanel = dynamic(() => import("./InstitutionalIntelligencePanel").then((mod) => mod.InstitutionalIntelligencePanel), { ssr: false });
+const IntradayRegimeDriftPanel = dynamic(() => import("./IntradayRegimeDriftPanel").then((mod) => mod.IntradayRegimeDriftPanel), { ssr: false });
+const MacroExchangeContextCard = dynamic(() => import("./MacroExchangeContextCard").then((mod) => mod.MacroExchangeContextCard), { ssr: false });
+const MarketMemoryCard = dynamic(() => import("./MarketMemoryCard").then((mod) => mod.MarketMemoryCard), { ssr: false });
+const MetaIntelligenceOperatingSystemPanel = dynamic(() => import("./MetaIntelligenceOperatingSystemPanel").then((mod) => mod.MetaIntelligenceOperatingSystemPanel), { ssr: false });
+const NarrativeIntelligenceCard = dynamic(() => import("./NarrativeIntelligenceCard").then((mod) => mod.NarrativeIntelligenceCard), { ssr: false });
+const PaperContextCard = dynamic(() => import("./PaperContextCard").then((mod) => mod.PaperContextCard), { ssr: false });
+const PersonalizedIntelligenceCard = dynamic(() => import("./PersonalizedIntelligenceCard").then((mod) => mod.PersonalizedIntelligenceCard), { ssr: false });
+const SignalStatusCard = dynamic(() => import("./SignalStatusCard").then((mod) => mod.SignalStatusCard), { ssr: false });
+const ScenarioIntelligencePanel = dynamic(() => import("./ScenarioIntelligencePanel").then((mod) => mod.ScenarioIntelligencePanel), { ssr: false });
+const ShockPatternMemoryCard = dynamic(() => import("./ShockPatternMemoryCard").then((mod) => mod.ShockPatternMemoryCard), { ssr: false });
+const StrategyIntelligencePanel = dynamic(() => import("./StrategyIntelligencePanel").then((mod) => mod.StrategyIntelligencePanel), { ssr: false });
+const SymbolDecisionIntelligencePanel = dynamic(() => import("./SymbolDecisionIntelligencePanel").then((mod) => mod.SymbolDecisionIntelligencePanel), { ssr: false });
+const TechnicalSnapshotCard = dynamic(() => import("./TechnicalSnapshotCard").then((mod) => mod.TechnicalSnapshotCard), { ssr: false });
+const TradePlanCard = dynamic(() => import("./TradePlanCard").then((mod) => mod.TradePlanCard), { ssr: false });
+const VerifiedEventContextCard = dynamic(() => import("./VerifiedEventContextCard").then((mod) => mod.VerifiedEventContextCard), { ssr: false });
+const WhatIfSimulator = dynamic(() => import("./WhatIfSimulator").then((mod) => mod.WhatIfSimulator), { ssr: false });
+const WorkflowEvolutionPanel = dynamic(() => import("./WorkflowEvolutionPanel").then((mod) => mod.WorkflowEvolutionPanel), { ssr: false });
+const WhyDecisionCard = dynamic(() => import("./WhyDecisionCard").then((mod) => mod.WhyDecisionCard), { ssr: false });
 
 export function SymbolTerminalWorkspace({
   edgeProof,

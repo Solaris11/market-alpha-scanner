@@ -2659,13 +2659,18 @@ function SymbolChartModal({
   const deferredModalPeriod = useDeferredValue(modalPeriod);
   const deferredModalOverlayFamilies = useDeferredValue(modalOverlayFamilies);
   const deferredModalIndicators = useDeferredValue(modalIndicators);
-  const normalizedSignals = useMemo(() => (showHistoricalSignals ? filterSignalsByCandles(normalizeSignals(signals ?? []), candles) : []), [candles, showHistoricalSignals, signals]);
-  const chartLevels = useMemo(() => normalizeTradeLevels(tradeLevels), [tradeLevels]);
-  const markerSummary = markerGroupSummary(normalizedSignals);
-  const markerEvidence = normalizedSignals.slice(-14).reverse();
+  const normalizedSignals = useMemo(
+    () => (modalHeavyContentReady && showHistoricalSignals ? filterSignalsByCandles(normalizeSignals(signals ?? []), candles) : []),
+    [candles, modalHeavyContentReady, showHistoricalSignals, signals],
+  );
+  const chartLevels = useMemo(() => normalizeTradeLevels(modalHeavyContentReady ? tradeLevels : undefined), [modalHeavyContentReady, tradeLevels]);
+  const markerSummary = modalHeavyContentReady ? markerGroupSummary(normalizedSignals) : [];
+  const markerEvidence = modalHeavyContentReady ? normalizedSignals.slice(-14).reverse() : [];
   const storyPoints = useMemo(() => (modalHeavyContentReady ? buildChartStoryPoints(candles, normalizedSignals, chartLevels) : []), [candles, chartLevels, modalHeavyContentReady, normalizedSignals]);
   const compareRows = useMemo(() => (modalHeavyContentReady ? buildChartCompareRows(candles, normalizedSignals, chartLevels) : []), [candles, chartLevels, modalHeavyContentReady, normalizedSignals]);
-  const levelSummary = tradeLevelSummary(tradeLevels);
+  const levelSummary = modalHeavyContentReady
+    ? tradeLevelSummary(tradeLevels)
+    : { detail: "Research levels hydrate after the fullscreen shell is visible.", value: "Deferred" };
   const workstationModel = useMemo(() => (modalHeavyContentReady ? buildChartDecisionWorkstationModel({
     candles,
     enabledIndicators: deferredModalIndicators,
