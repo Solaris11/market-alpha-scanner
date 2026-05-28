@@ -31,7 +31,7 @@ import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution"
 import { buildSymbolResearchModel } from "@/lib/trading/market-research";
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
 import type { IntradayDriftRow, RankingRow, ScannerScalar } from "@/lib/types";
-import { SymbolChart, type ChartCandle, type ChartSignalMarker } from "./SymbolChart";
+import type { ChartCandle, ChartSignalMarker } from "./SymbolChart";
 import { SymbolDecisionHero } from "./SymbolDecisionHero";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
 import { GlassPanel } from "./ui/GlassPanel";
@@ -67,6 +67,7 @@ const SignalStatusCard = dynamic(() => import("./SignalStatusCard").then((mod) =
 const ScenarioIntelligencePanel = dynamic(() => import("./ScenarioIntelligencePanel").then((mod) => mod.ScenarioIntelligencePanel), { ssr: false });
 const ShockPatternMemoryCard = dynamic(() => import("./ShockPatternMemoryCard").then((mod) => mod.ShockPatternMemoryCard), { ssr: false });
 const StrategyIntelligencePanel = dynamic(() => import("./StrategyIntelligencePanel").then((mod) => mod.StrategyIntelligencePanel), { ssr: false });
+const SymbolChart = dynamic(() => import("./SymbolChart").then((mod) => mod.SymbolChart), { ssr: false });
 const SymbolDecisionIntelligencePanel = dynamic(() => import("./SymbolDecisionIntelligencePanel").then((mod) => mod.SymbolDecisionIntelligencePanel), { ssr: false });
 const TechnicalSnapshotCard = dynamic(() => import("./TechnicalSnapshotCard").then((mod) => mod.TechnicalSnapshotCard), { ssr: false });
 const TradePlanCard = dynamic(() => import("./TradePlanCard").then((mod) => mod.TradePlanCard), { ssr: false });
@@ -131,6 +132,7 @@ export function SymbolTerminalWorkspace({
   viewerAuthenticated?: boolean;
 }) {
   const [showHistoricalMarkers, setShowHistoricalMarkers] = useState(true);
+  const [chartReady, setChartReady] = useState(false);
   const [deepPanelsReady, setDeepPanelsReady] = useState(false);
   const tradeLevels = useMemo(() => buildSignalTradeLevels(row), [row]);
   const lifecycle = useMemo(() => computeSignalLifecycle(row, tradeLevels), [row, tradeLevels]);
@@ -179,8 +181,12 @@ export function SymbolTerminalWorkspace({
   const researchModeReason = noTradeCopy?.reason ?? "The global decision system is keeping this in research mode for now.";
 
   useEffect(() => {
+    setChartReady(false);
     setDeepPanelsReady(false);
     let cancelled = false;
+    const chartTimer = window.setTimeout(() => {
+      if (!cancelled) setChartReady(true);
+    }, 0);
     const run = () => {
       if (!cancelled) setDeepPanelsReady(true);
     };
@@ -192,12 +198,14 @@ export function SymbolTerminalWorkspace({
       const handle = idleWindow.requestIdleCallback(run, { timeout: 700 });
       return () => {
         cancelled = true;
+        window.clearTimeout(chartTimer);
         idleWindow.cancelIdleCallback?.(handle);
       };
     }
     const timeout = window.setTimeout(run, 0);
     return () => {
       cancelled = true;
+      window.clearTimeout(chartTimer);
       window.clearTimeout(timeout);
     };
   }, [symbol]);
@@ -245,21 +253,25 @@ export function SymbolTerminalWorkspace({
           </button>
         </div>
         <div className="mt-5">
-          <SymbolChart
-            candles={candles.length ? candles : undefined}
-            dataSource={usesScannerSignalPriceTrail ? "scanner signal price trail" : "scanner validated OHLC history"}
-            interpretation={usesScannerSignalPriceTrail
-              ? `${symbol} chart is using real stored scanner price observations because full OHLC history is not populated yet. Use it as sparse signal-evolution context, not a complete tape.`
-              : `${symbol} price history is shown with real stored candles. Use it with decision quality, risk pressure, replay context, and market regime before interpreting the setup.`}
-            lastUpdated={typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null}
-            scannerScore={numericValue(row.final_score ?? row.score ?? row.quality_score)}
-            showHistoricalSignals={showHistoricalMarkers}
-            showResearchLevelsToggle
-            signals={chartSignals}
-            symbol={symbol}
-            symbolSequence={contextRows.map((contextRow) => String(contextRow.symbol ?? ""))}
-            tradeLevels={canTrade ? tradeLevels : undefined}
-          />
+          {chartReady ? (
+            <SymbolChart
+              candles={candles.length ? candles : undefined}
+              dataSource={usesScannerSignalPriceTrail ? "scanner signal price trail" : "scanner validated OHLC history"}
+              interpretation={usesScannerSignalPriceTrail
+                ? `${symbol} chart is using real stored scanner price observations because full OHLC history is not populated yet. Use it as sparse signal-evolution context, not a complete tape.`
+                : `${symbol} price history is shown with real stored candles. Use it with decision quality, risk pressure, replay context, and market regime before interpreting the setup.`}
+              lastUpdated={typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null}
+              scannerScore={numericValue(row.final_score ?? row.score ?? row.quality_score)}
+              showHistoricalSignals={showHistoricalMarkers}
+              showResearchLevelsToggle
+              signals={chartSignals}
+              symbol={symbol}
+              symbolSequence={contextRows.map((contextRow) => String(contextRow.symbol ?? ""))}
+              tradeLevels={canTrade ? tradeLevels : undefined}
+            />
+          ) : (
+            <FastSymbolChartShell candles={candles} dataSource={usesScannerSignalPriceTrail ? "scanner signal price trail" : "scanner validated OHLC history"} symbol={symbol} />
+          )}
         </div>
       </GlassPanel>
 
@@ -361,6 +373,45 @@ export function SymbolTerminalWorkspace({
         <PaperContextCard events={symbolEvents} openPositions={openPaper} positions={symbolPositions} symbol={symbol} />
         <ConvictionTimeline timeline={timeline} />
       </ResponsiveAdvancedDetails> : null}
+    </div>
+  );
+}
+
+function FastSymbolChartShell({ candles, dataSource, symbol }: { candles: ChartCandle[]; dataSource: string; symbol: string }) {
+  const latest = candles[candles.length - 1]?.close ?? null;
+  const first = candles[0]?.close ?? null;
+  const movePct = latest !== null && first !== null && first !== 0 ? ((latest - first) / first) * 100 : null;
+  const path = fastChartPath(candles, 900, 260);
+  return (
+    <div
+      className="rounded-3xl border border-cyan-300/15 bg-slate-950/55 p-4"
+      data-chart-fast-shell="true"
+      data-chart-symbol={symbol}
+    >
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Chart shell</div>
+          <h3 className="mt-1 font-mono text-xl font-black text-slate-50">{symbol}</h3>
+        </div>
+        <div className="text-right text-xs text-slate-400">
+          <div className="font-mono text-lg font-black text-slate-100">{latest === null ? "Limited" : moneyText(latest)}</div>
+          <div className={movePct !== null && movePct >= 0 ? "text-emerald-200" : "text-rose-200"}>{movePct === null ? "Move limited" : `${movePct >= 0 ? "+" : ""}${movePct.toFixed(2)}%`}</div>
+        </div>
+      </div>
+      <div className="mt-4 h-[260px] overflow-hidden rounded-2xl border border-white/10 bg-black/25">
+        {path ? (
+          <svg aria-label={`${symbol} real candle chart preview`} className="h-full w-full" preserveAspectRatio="none" role="img" viewBox="0 0 900 260">
+            <path d={path.area} fill="rgba(34, 211, 238, 0.10)" />
+            <path d={path.line} fill="none" stroke="rgb(103, 232, 249)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+          </svg>
+        ) : (
+          <div className="grid h-full place-items-center px-4 text-center text-sm text-slate-400">Chart preview is limited because no verified candles are available.</div>
+        )}
+      </div>
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500">
+        <span>{dataSource}</span>
+        <span>Full chart workstation loading after first paint.</span>
+      </div>
     </div>
   );
 }
@@ -583,6 +634,26 @@ function freshnessScore(dataFreshness: DataFreshness): number | null {
 
 function moneyText(value: number | null): string {
   return value === null ? "Limited" : `$${value.toFixed(2)}`;
+}
+
+function fastChartPath(candles: ChartCandle[], width: number, height: number): { area: string; line: string } | null {
+  const closes = candles
+    .map((candle) => candle.close)
+    .filter((value) => Number.isFinite(value));
+  if (closes.length < 2) return null;
+  const min = Math.min(...closes);
+  const max = Math.max(...closes);
+  const span = max - min || 1;
+  const step = width / Math.max(1, closes.length - 1);
+  const points = closes.map((close, index) => {
+    const x = index * step;
+    const y = height - ((close - min) / span) * (height - 24) - 12;
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  });
+  const line = `M ${points.join(" L ")}`;
+  const lastX = (closes.length - 1) * step;
+  const area = `${line} L ${lastX.toFixed(2)},${height} L 0,${height} Z`;
+  return { area, line };
 }
 
 function scoreText(value: number | null): string {
