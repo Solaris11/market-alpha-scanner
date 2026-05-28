@@ -60,6 +60,7 @@ export function FirstRunStarterCard() {
   const pathname = usePathname();
   const router = useRouter();
   const { entitlement } = useCurrentUser();
+  const [resolved, setResolved] = useState(false);
   const [visible, setVisible] = useState(false);
   const [path, setPath] = useState<StarterPath>("beginner");
 
@@ -71,10 +72,16 @@ export function FirstRunStarterCard() {
     if (storedPath === "advanced" || storedPath === "beginner") setPath(storedPath);
     if (!explicitFirstRun && UTILITY_SURFACE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`))) {
       setVisible(false);
+      setResolved(true);
       return;
     }
     setVisible(explicitFirstRun || (!hidden && !completed));
+    setResolved(true);
   }, [pathname]);
+
+  if (!resolved) {
+    return <section aria-hidden="true" className="mb-4 min-h-[29.5rem] rounded-2xl border border-cyan-300/10 bg-cyan-400/[0.025]" data-onboarding-target="start-here" />;
+  }
 
   if (!visible) return null;
 
