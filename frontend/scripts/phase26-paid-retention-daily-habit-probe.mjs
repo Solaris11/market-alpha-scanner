@@ -85,9 +85,12 @@ function buildReport({ analyticsPayload, analyticsResponse }) {
       ? {
           firstAlertUsers: paidSegment.firstUsefulActions?.alert ?? 0,
           firstChartSaveUsers: paidSegment.firstUsefulActions?.chartSave ?? 0,
+          firstCompareUsers: paidSegment.firstUsefulActions?.compare ?? 0,
+          firstHistoryUsers: paidSegment.firstUsefulActions?.history ?? 0,
           firstMorningBriefingUsers: paidSegment.firstUsefulActions?.morningBriefing ?? 0,
           firstReplayUsers: paidSegment.firstUsefulActions?.replay ?? 0,
           firstScannerUsers: paidSegment.firstUsefulActions?.scanner ?? 0,
+          firstSymbolCardUsers: paidSegment.firstUsefulActions?.symbolCard ?? 0,
           firstWatchlistUsers: paidSegment.firstUsefulActions?.watchlist ?? 0,
         }
       : null,

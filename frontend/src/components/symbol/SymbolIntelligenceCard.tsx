@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { MouseEvent, ReactNode } from "react";
 import { AlertCircle, Bell, ExternalLink, GitCompare, History, LineChart, ShieldAlert, Star } from "lucide-react";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
+import { trackActivationMilestone, trackAnalyticsEvent, trackFirstUsefulAction, type ActivationMilestone } from "@/lib/client/analytics";
 import { closeSymbolCard } from "@/lib/symbol/symbol-overlay-store";
 import type { SymbolChartPoint, SymbolIntelligenceCardModel, SymbolSourceField } from "@/lib/symbol/symbol-intelligence-card";
 
@@ -17,6 +18,24 @@ type SymbolIntelligenceCardProps = {
 export function SymbolIntelligenceCard({ error = "", loading = false, model }: SymbolIntelligenceCardProps) {
   const { isWatched, toggle } = useLocalWatchlist();
   const watched = isWatched(model.symbol);
+
+  function recordCardAction(action: SymbolCardAction, milestone?: ActivationMilestone): void {
+    trackAnalyticsEvent("workflow_continuity", {
+      action,
+      sourceContext: model.sourceContext,
+      symbol: model.symbol,
+    }, { source: "symbol_card", symbol: model.symbol });
+    trackFirstUsefulAction(`symbol_card_${action}`, {
+      sourceContext: model.sourceContext,
+      symbol: model.symbol,
+    }, { source: "symbol_card", symbol: model.symbol });
+    if (milestone) {
+      trackActivationMilestone(milestone, {
+        entry: "symbol_card",
+        sourceContext: model.sourceContext,
+      }, { source: "symbol_card", symbol: model.symbol });
+    }
+  }
 
   return (
     <div className="space-y-4" data-symbol-card-content="true">
@@ -68,19 +87,22 @@ export function SymbolIntelligenceCard({ error = "", loading = false, model }: S
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button
               className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border px-3 py-2 text-xs font-black uppercase tracking-[0.12em] transition ${watched ? "border-amber-300/40 bg-amber-300/15 text-amber-100" : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-amber-300/35 hover:text-amber-100"}`}
-              onClick={() => toggle(model.symbol)}
+              onClick={() => {
+                recordCardAction("watchlist", "watchlist");
+                toggle(model.symbol);
+              }}
               type="button"
             >
               <Star className={`h-4 w-4 ${watched ? "fill-amber-300" : ""}`} />
               {watched ? "Watching" : "Watchlist"}
             </button>
-            <ActionLink href={`/alerts?symbol=${encodeURIComponent(model.symbol)}&source=symbol-card`} icon={<Bell className="h-4 w-4" />} label="Create alert" />
-            <ActionLink href={`/symbol/${encodeURIComponent(model.symbol)}#chart`} icon={<LineChart className="h-4 w-4" />} label="Full chart" />
-            <ActionLink href={`/history?symbol=${encodeURIComponent(model.symbol)}`} icon={<History className="h-4 w-4" />} label="History" />
-            <ActionLink href="/performance#history" icon={<ShieldAlert className="h-4 w-4" />} label="Performance" />
-            <ActionLink href={`/discover?compare=${encodeURIComponent(model.symbol)}`} icon={<GitCompare className="h-4 w-4" />} label="Compare" />
+            <ActionLink action="alert" href={`/alerts?symbol=${encodeURIComponent(model.symbol)}&source=symbol-card`} icon={<Bell className="h-4 w-4" />} label="Create alert" milestone="alert" model={model} />
+            <ActionLink action="full_chart" href={`/symbol/${encodeURIComponent(model.symbol)}#chart`} icon={<LineChart className="h-4 w-4" />} label="Full chart" milestone="chart" model={model} />
+            <ActionLink action="history" href={`/history?symbol=${encodeURIComponent(model.symbol)}`} icon={<History className="h-4 w-4" />} label="History" milestone="replay" model={model} />
+            <ActionLink action="performance" href="/performance#history" icon={<ShieldAlert className="h-4 w-4" />} label="Performance" model={model} />
+            <ActionLink action="compare" href={`/discover?compare=${encodeURIComponent(model.symbol)}`} icon={<GitCompare className="h-4 w-4" />} label="Compare" milestone="compare" model={model} />
           </div>
-          <ActionLink className="mt-3 w-full border-cyan-300/35 bg-cyan-300/10 text-cyan-100 hover:border-cyan-200/70" href={`/symbol/${encodeURIComponent(model.symbol)}`} icon={<ExternalLink className="h-4 w-4" />} label="Open full symbol page" />
+          <ActionLink action="full_page" className="mt-3 w-full border-cyan-300/35 bg-cyan-300/10 text-cyan-100 hover:border-cyan-200/70" href={`/symbol/${encodeURIComponent(model.symbol)}`} icon={<ExternalLink className="h-4 w-4" />} label="Open full symbol page" milestone="symbol_investigation" model={model} />
         </div>
       </section>
 
@@ -159,7 +181,9 @@ export function SymbolIntelligenceCard({ error = "", loading = false, model }: S
   );
 }
 
-function ActionLink({ className = "", href, icon, label }: { className?: string; href: string; icon: ReactNode; label: string }) {
+type SymbolCardAction = "alert" | "compare" | "full_chart" | "full_page" | "history" | "performance" | "watchlist";
+
+function ActionLink({ action, className = "", href, icon, label, milestone, model }: { action: SymbolCardAction; className?: string; href: string; icon: ReactNode; label: string; milestone?: ActivationMilestone; model: SymbolIntelligenceCardModel }) {
   const router = useRouter();
 
   return (
@@ -167,7 +191,21 @@ function ActionLink({ className = "", href, icon, label }: { className?: string;
       className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-black uppercase tracking-[0.12em] text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100 ${className}`}
       data-symbol-navigation="page"
       href={href}
-      onClick={(event) => handleCardNavigation(event, href, (target) => router.push(target))}
+      onClick={(event) => {
+        trackAnalyticsEvent("workflow_continuity", {
+          action: `symbol_card_${action}`,
+          destination: href,
+          sourceContext: model.sourceContext,
+        }, { source: "symbol_card", symbol: model.symbol });
+        trackFirstUsefulAction(`symbol_card_${action}`, {
+          destination: href,
+          sourceContext: model.sourceContext,
+        }, { source: "symbol_card", symbol: model.symbol });
+        if (milestone) {
+          trackActivationMilestone(milestone, { entry: "symbol_card", destination: href }, { source: "symbol_card", symbol: model.symbol });
+        }
+        handleCardNavigation(event, href, (target) => router.push(target));
+      }}
     >
       {icon}
       {label}

@@ -74,7 +74,7 @@ import {
 import { buildChartAlertRulePayload, type ChartAlertRequest, type ChartAlertRuleType } from "./chart-workflow-alerts";
 import { EmptyState } from "./ui/EmptyState";
 import { StableDetailOverlay } from "@/components/ui/StableDetailOverlay";
-import { trackAnalyticsEvent } from "@/lib/client/analytics";
+import { trackActivationMilestone, trackAnalyticsEvent, trackFirstUsefulAction } from "@/lib/client/analytics";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { INTERACTIVE_CHART_PERIODS, type InteractiveChartPeriod } from "@/lib/interactive-chart-data";
@@ -409,6 +409,9 @@ export function SymbolChart({
     if (saved) {
       setWorkspaceUpdatedAt(saved.updatedAt);
       setWorkspaceMessage("Chart workspace saved");
+      trackAnalyticsEvent("chart_interaction", { action: "workspace_save", period }, { source: "chart_workspace", symbol });
+      trackActivationMilestone("chart", { action: "workspace_save", period }, { source: "chart_workspace", symbol });
+      trackFirstUsefulAction("chart_workspace_save", { period }, { source: "chart_workspace", symbol });
       if (!accountLoading && authenticated && user && accountSyncEnabled) {
         void saveAccountChartWorkflowWorkspace(symbol, saved).catch(() => undefined);
       }

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import { trackActivationMilestone, trackAnalyticsEvent, trackFirstUsefulAction } from "@/lib/client/analytics";
 import { markOnboardingReplayPending, replayMarketOnboarding } from "./MarketOnboarding";
 
@@ -55,15 +56,19 @@ const CONCEPTS = [
 ];
 
 const CHECKPOINTS = ["Accept the research-only boundary", "Use the scanner once", "Save symbols to revisit"];
+const STARTER_SYMBOL = "AMD";
 
 export function FirstRunStarterCard() {
   const pathname = usePathname();
   const router = useRouter();
   const { entitlement } = useCurrentUser();
+  const { add, isWatched } = useLocalWatchlist();
   const [resolved, setResolved] = useState(false);
   const [visible, setVisible] = useState(false);
   const [path, setPath] = useState<StarterPath>("beginner");
+  const [morningBriefingComplete, setMorningBriefingComplete] = useState(false);
   const isUtilitySurface = pathname ? UTILITY_SURFACE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) : false;
+  const starterSymbolWatched = isWatched(STARTER_SYMBOL);
 
   useEffect(() => {
     const explicitFirstRun = new URLSearchParams(window.location.search).get("firstRun") === "1";
@@ -99,6 +104,8 @@ export function FirstRunStarterCard() {
     window.localStorage.setItem(HIDE_KEY, "true");
     setVisible(false);
     trackAnalyticsEvent("onboarding_skip", { onboarding: "first_run_starter" }, { source: "first_run_starter" });
+    trackAnalyticsEvent("workflow_dropoff", { onboarding: "first_run_starter", reason: "starter_hidden_before_completion" }, { source: "first_run_starter" });
+    trackAnalyticsEvent("churn_risk_signal", { riskType: "onboarding_abandonment", surface: "first_run_starter" }, { source: "first_run_starter" });
   }
 
   function startTour() {
@@ -113,6 +120,19 @@ export function FirstRunStarterCard() {
     replayMarketOnboarding();
   }
 
+  function addStarterWatchlist() {
+    add(STARTER_SYMBOL);
+    trackActivationMilestone("watchlist", { entry: "first_60_seconds", symbol: STARTER_SYMBOL }, { source: "first_run_starter", symbol: STARTER_SYMBOL });
+    trackFirstUsefulAction("watchlist_add", { entry: "first_60_seconds", symbol: STARTER_SYMBOL }, { source: "first_run_starter", symbol: STARTER_SYMBOL });
+  }
+
+  function completeMorningBriefing() {
+    setMorningBriefingComplete(true);
+    trackAnalyticsEvent("morning_workflow_complete", { entry: "first_60_seconds", path }, { source: "first_run_starter" });
+    trackActivationMilestone("morning_command", { entry: "first_60_seconds", path }, { source: "first_run_starter" });
+    trackFirstUsefulAction("morning_briefing_complete", { entry: "first_60_seconds", path }, { source: "first_run_starter" });
+  }
+
   return (
     <section
       className="mb-4 rounded-2xl border border-cyan-300/20 bg-cyan-400/[0.045] p-4 shadow-2xl shadow-cyan-950/10 sm:p-5"
@@ -121,9 +141,9 @@ export function FirstRunStarterCard() {
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="max-w-3xl">
           <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">Start here</div>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">Start early access in 3 minutes</h2>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-50 sm:text-3xl">Start early access in 60 seconds</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">
-            Start with one market read, use the scanner once, then save a small watchlist. TradeVeto is an evolving research platform: it explains risk, timing, evidence, and provider limits before action.
+            Pick one concrete action now: save a symbol, open the scanner, create an alert, or finish the morning read. TradeVeto is an evolving research platform, so every activation step stays research-only and evidence-bound.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             {CHECKPOINTS.map((checkpoint, index) => (
@@ -151,6 +171,41 @@ export function FirstRunStarterCard() {
         </div>
       </div>
 
+      <div className="mt-4 rounded-2xl border border-cyan-300/15 bg-slate-950/35 p-3">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Most useful next action</div>
+            <p className="mt-1 text-sm leading-6 text-slate-300">Complete at least one useful workflow before leaving so tomorrow's command center has something to continue.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              className={`rounded-full border px-4 py-2 text-xs font-bold transition ${starterSymbolWatched ? "border-emerald-300/40 bg-emerald-300/15 text-emerald-100" : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-emerald-300/35 hover:text-emerald-100"}`}
+              onClick={addStarterWatchlist}
+              type="button"
+            >
+              {starterSymbolWatched ? `${STARTER_SYMBOL} saved` : `Save ${STARTER_SYMBOL}`}
+            </button>
+            <Link
+              className="rounded-full border border-white/10 px-4 py-2 text-xs font-bold text-slate-300 transition hover:border-cyan-300/35 hover:text-cyan-100"
+              href={`/alerts?symbol=${STARTER_SYMBOL}&firstRun=1`}
+              onClick={() => {
+                trackActivationMilestone("alert", { entry: "first_60_seconds", symbol: STARTER_SYMBOL }, { pagePath: `/alerts?symbol=${STARTER_SYMBOL}&firstRun=1`, source: "first_run_starter", symbol: STARTER_SYMBOL });
+                trackFirstUsefulAction("alert_setup_start", { entry: "first_60_seconds", symbol: STARTER_SYMBOL }, { pagePath: `/alerts?symbol=${STARTER_SYMBOL}&firstRun=1`, source: "first_run_starter", symbol: STARTER_SYMBOL });
+              }}
+            >
+              Create alert
+            </Link>
+            <button
+              className={`rounded-full border px-4 py-2 text-xs font-bold transition ${morningBriefingComplete ? "border-emerald-300/40 bg-emerald-300/15 text-emerald-100" : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-cyan-300/35 hover:text-cyan-100"}`}
+              onClick={completeMorningBriefing}
+              type="button"
+            >
+              {morningBriefingComplete ? "Morning read done" : "Finish morning read"}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <div className="mt-4 grid gap-2 md:grid-cols-3">
         {steps.map((step, index) => (
           <Link
@@ -170,6 +225,7 @@ export function FirstRunStarterCard() {
               if (step.href.startsWith("/symbol/")) {
                 trackActivationMilestone("symbol_investigation", { entry: "starter_step", path }, { pagePath: step.href, source: "first_run_starter", symbol: "AMD" });
                 trackActivationMilestone("chart", { entry: "starter_step", path }, { pagePath: step.href, source: "first_run_starter", symbol: "AMD" });
+                trackFirstUsefulAction("symbol_research_start", { path, symbol: "AMD" }, { pagePath: step.href, source: "first_run_starter", symbol: "AMD" });
               }
             }}
           >
@@ -206,6 +262,7 @@ export function FirstRunStarterCard() {
           onClick={() => {
             trackAnalyticsEvent("scanner_usage", { action: "first_run_scanner_walkthrough" }, { pagePath: "/scanner?firstRun=1", source: "first_run_starter" });
             trackActivationMilestone("scanner", { entry: "first_run_button" }, { pagePath: "/scanner?firstRun=1", source: "first_run_starter" });
+            trackAnalyticsEvent("scanner_habit_loop", { action: "first_run_scanner_walkthrough" }, { pagePath: "/scanner?firstRun=1", source: "first_run_starter" });
             trackFirstUsefulAction("first_scanner_usage", { entry: "first_run_button" }, { pagePath: "/scanner?firstRun=1", source: "first_run_starter" });
           }}
         >

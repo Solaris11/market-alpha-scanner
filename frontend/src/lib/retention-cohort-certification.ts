@@ -5,9 +5,12 @@ export type RetentionCohortCertificationStatus = "ready" | "strong_partial" | "n
 export type RetentionCohortFirstUsefulActions = {
   alert: number;
   chartSave: number;
+  compare: number;
+  history: number;
   morningBriefing: number;
   replay: number;
   scanner: number;
+  symbolCard: number;
   watchlist: number;
 };
 
@@ -130,9 +133,12 @@ function buildSegment(segment: RetentionCohortSegmentKey, input?: RetentionCohor
     firstUsefulActions: {
       alert: 0,
       chartSave: 0,
+      compare: 0,
+      history: 0,
       morningBriefing: 0,
       replay: 0,
       scanner: 0,
+      symbolCard: 0,
       watchlist: 0,
     },
     notificationFeedbackTotal: 0,

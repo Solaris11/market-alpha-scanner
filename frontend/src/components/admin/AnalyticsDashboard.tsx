@@ -307,6 +307,12 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
                   <MetricLine label="Notif useful" value={formatPct(segment.notificationUsefulRatioPct)} />
                   <MetricLine label="First scanner" value={segment.firstUsefulActions.scanner.toLocaleString()} />
                   <MetricLine label="First watchlist" value={segment.firstUsefulActions.watchlist.toLocaleString()} />
+                  <MetricLine label="First alert" value={segment.firstUsefulActions.alert.toLocaleString()} />
+                  <MetricLine label="First chart save" value={segment.firstUsefulActions.chartSave.toLocaleString()} />
+                  <MetricLine label="First symbol card" value={segment.firstUsefulActions.symbolCard.toLocaleString()} />
+                  <MetricLine label="First compare" value={segment.firstUsefulActions.compare.toLocaleString()} />
+                  <MetricLine label="First history" value={segment.firstUsefulActions.history.toLocaleString()} />
+                  <MetricLine label="First morning" value={segment.firstUsefulActions.morningBriefing.toLocaleString()} />
                 </div>
               </div>
             ))}

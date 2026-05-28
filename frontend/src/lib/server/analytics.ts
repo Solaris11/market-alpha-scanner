@@ -466,9 +466,12 @@ type PaidUserCohortRow = QueryResultRow & {
   eligible_d7_users: string | number;
   first_alert_users: string | number;
   first_chart_save_users: string | number;
+  first_compare_users: string | number;
+  first_history_users: string | number;
   first_morning_briefing_users: string | number;
   first_replay_users: string | number;
   first_scanner_users: string | number;
+  first_symbol_card_users: string | number;
   first_watchlist_users: string | number;
   notification_feedback_total: string | number;
   notification_useful_feedback: string | number;
@@ -1279,9 +1282,12 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     firstUsefulActions: {
       alert: numberFromRow(row.first_alert_users),
       chartSave: numberFromRow(row.first_chart_save_users),
+      compare: numberFromRow(row.first_compare_users),
+      history: numberFromRow(row.first_history_users),
       morningBriefing: numberFromRow(row.first_morning_briefing_users),
       replay: numberFromRow(row.first_replay_users),
       scanner: numberFromRow(row.first_scanner_users),
+      symbolCard: numberFromRow(row.first_symbol_card_users),
       watchlist: numberFromRow(row.first_watchlist_users),
     },
     notificationFeedbackTotal: numberFromRow(row.notification_feedback_total),
@@ -1670,27 +1676,39 @@ async function paidUserRetentionCohorts(): Promise<{ rows: PaidUserCohortRow[] }
           count(DISTINCT active_day) AS active_days,
           count(*) FILTER (WHERE event_name = 'page_view') AS page_views,
           bool_or(
-            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['watchlist', 'watchlist_add', 'first_watchlist', 'create_watchlist', 'first_watchlist_creation']::text[]))
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'actionKey', metadata->>'action', '') = ANY(ARRAY['watchlist', 'watchlist_add', 'watchlist_setup_start', 'symbol_card_watchlist', 'first_watchlist', 'create_watchlist', 'first_watchlist_creation']::text[]))
             OR event_name IN ('watch_add', 'watchlist_add', 'watchlist_usage')
           ) AS first_watchlist,
           bool_or(
-            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['scanner', 'first_scanner', 'first_scanner_usage', 'save_scanner']::text[]))
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'actionKey', metadata->>'action', '') = ANY(ARRAY['scanner', 'first_scanner', 'first_scanner_usage', 'save_scanner', 'scanner_filter', 'scanner_compare', 'scanner_shortlist', 'scanner_saved_scan', 'scanner_alert_create', 'scanner_preset']::text[]))
             OR event_name IN ('scanner_usage', 'scanner_run', 'opportunities_open')
           ) AS first_scanner,
           bool_or(
-            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['alert', 'first_alert', 'first_alert_creation', 'create_alert']::text[]))
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'actionKey', metadata->>'action', '') = ANY(ARRAY['alert', 'first_alert', 'first_alert_creation', 'create_alert', 'alert_setup_start', 'scanner_alert_create', 'symbol_card_alert']::text[]))
             OR event_name = 'alert_create'
           ) AS first_alert,
           bool_or(
-            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['chart', 'chart_save', 'first_chart', 'first_chart_save']::text[]))
-            OR event_name IN ('chart_return', 'chart_workspace_save', 'chart_expand')
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'actionKey', metadata->>'action', '') = ANY(ARRAY['chart', 'chart_save', 'first_chart', 'first_chart_save', 'chart_workspace_save', 'full_chart_open', 'symbol_card_full_chart']::text[]))
+            OR event_name IN ('chart_return', 'chart_workspace_save', 'chart_expand', 'chart_indicator_template_save')
           ) AS first_chart_save,
           bool_or(
-            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['replay', 'first_replay', 'review_replay']::text[]))
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'actionKey', metadata->>'action', '') = ANY(ARRAY['replay', 'first_replay', 'review_replay', 'replay_open']::text[]))
             OR event_name IN ('replay_usage', 'replay_open')
           ) AS first_replay,
           bool_or(
-            (event_name = 'first_useful_action' AND COALESCE(metadata->>'action', '') = ANY(ARRAY['morning_command', 'morning_briefing', 'morning_workflow', 'first_morning_briefing', 'morning_brief']::text[]))
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'actionKey', metadata->>'action', '') = ANY(ARRAY['history', 'history_open', 'first_history', 'replay_history', 'symbol_card_history']::text[]))
+            OR event_name IN ('history_open', 'history_return')
+          ) AS first_history,
+          bool_or(
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'actionKey', metadata->>'action', '') = ANY(ARRAY['compare', 'first_compare', 'compare_open', 'compare_add', 'scanner_compare', 'symbol_card_compare']::text[]))
+            OR event_name = 'compare_return'
+          ) AS first_compare,
+          bool_or(
+            event_name = 'first_useful_action'
+            AND COALESCE(metadata->>'actionKey', metadata->>'action', '') = ANY(ARRAY['symbol_card_open', 'symbol_card_watchlist', 'symbol_card_alert', 'symbol_card_full_chart', 'symbol_card_history', 'symbol_card_performance', 'symbol_card_compare', 'symbol_card_full_page', 'symbol_research_start']::text[])
+          ) AS first_symbol_card,
+          bool_or(
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'actionKey', metadata->>'action', '') = ANY(ARRAY['morning_command', 'morning_briefing', 'morning_workflow', 'first_morning_briefing', 'morning_brief', 'morning_briefing_complete']::text[]))
             OR event_name = 'morning_workflow_complete'
           ) AS first_morning_briefing,
           bool_or(event_name IN ('alert_create', 'notification_engagement')) AS alert_triggered,
@@ -1765,7 +1783,10 @@ async function paidUserRetentionCohorts(): Promise<{ rows: PaidUserCohortRow[] }
           count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND first_scanner) AS first_scanner_users,
           count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND first_alert) AS first_alert_users,
           count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND first_chart_save) AS first_chart_save_users,
+          count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND first_compare) AS first_compare_users,
+          count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND first_history) AS first_history_users,
           count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND first_replay) AS first_replay_users,
+          count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND first_symbol_card) AS first_symbol_card_users,
           count(*) FILTER (WHERE segment <> 'bot_or_noise_filtered' AND first_morning_briefing) AS first_morning_briefing_users
         FROM classified
         GROUP BY segment
@@ -1787,7 +1808,10 @@ async function paidUserRetentionCohorts(): Promise<{ rows: PaidUserCohortRow[] }
         first_scanner_users,
         first_alert_users,
         first_chart_save_users,
+        first_compare_users,
+        first_history_users,
         first_replay_users,
+        first_symbol_card_users,
         first_morning_briefing_users
       FROM segment_summary
       ORDER BY CASE segment

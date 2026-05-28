@@ -52,7 +52,7 @@ export function NotificationBell() {
       const payload = (await response.json().catch(() => null)) as NotificationsResponse | null;
       if (!response.ok || !payload?.ok) throw new Error("Notifications unavailable.");
       const loadedNotifications = payload.notifications ?? [];
-      setNotifications(loadedNotifications);
+      setNotifications(rankNotificationsForRetention(loadedNotifications));
       setUnreadCount(payload.unreadCount ?? 0);
       setFeedbackById(feedbackMapFromNotifications(loadedNotifications));
     } catch {
@@ -239,6 +239,7 @@ export function NotificationBell() {
   async function trackNotificationFeedback(notification: UserNotification, value: NotificationFeedbackValue): Promise<void> {
     const previous = feedbackById[notification.id] ?? null;
     setFeedbackById((items) => ({ ...items, [notification.id]: value }));
+    setNotifications((items) => rankNotificationsForRetention(items.map((item) => (item.id === notification.id ? { ...item, feedback: value } : item))));
     const action = value === "useful" ? "useful_feedback" : "not_useful_feedback";
     const fatigueSignal = value === "not_useful";
     const categoryQuality = value === "useful" ? "positive" : "fatigue";
@@ -306,6 +307,7 @@ export function NotificationBell() {
         }
         return next;
       });
+      setNotifications((items) => rankNotificationsForRetention(items.map((item) => (item.id === notification.id ? { ...item, feedback: previous } : item))));
       trackAnalyticsEvent("failed_action", {
         component: "notification_feedback",
         notificationId: notification.id,
@@ -378,6 +380,7 @@ export function NotificationBell() {
                   {!fetching && !notifications.length ? <div className="px-3 py-6 text-center text-slate-500">No notifications yet.</div> : null}
                   {notifications.map((notification) => {
                     const feedback = feedbackById[notification.id] ?? null;
+                    const retentionContext = notificationRetentionContext(notification);
                     return (
                       <div
                         className={`mt-1 rounded-xl transition ${
@@ -394,6 +397,11 @@ export function NotificationBell() {
                             <div className="min-w-0">
                               <div className="break-words font-semibold leading-5">{notification.title}</div>
                               <div className="mt-1 break-words text-[11px] leading-4 text-slate-400">{notificationDisplayMessage(notification)}</div>
+                              <div className="mt-2 grid gap-1 rounded-xl border border-white/10 bg-black/15 p-2 text-[10px] leading-4 text-slate-500">
+                                <div><span className="font-black uppercase tracking-[0.12em] text-cyan-200">Why</span> {retentionContext.why}</div>
+                                <div><span className="font-black uppercase tracking-[0.12em] text-cyan-200">Changed</span> {retentionContext.changed}</div>
+                                <div><span className="font-black uppercase tracking-[0.12em] text-cyan-200">Next</span> {retentionContext.next}</div>
+                              </div>
                             </div>
                             {!notification.read ? <span className="mt-1 h-2 w-2 shrink-0 rounded-full bg-cyan-300" /> : null}
                           </div>
@@ -441,6 +449,36 @@ function feedbackMapFromNotifications(notifications: UserNotification[]): Record
     if (notification.feedback) feedback[notification.id] = notification.feedback;
   }
   return feedback;
+}
+
+function rankNotificationsForRetention(notifications: UserNotification[]): UserNotification[] {
+  return [...notifications].sort((left, right) => {
+    const leftScore = notificationRetentionPriority(left);
+    const rightScore = notificationRetentionPriority(right);
+    if (leftScore !== rightScore) return rightScore - leftScore;
+    return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
+  });
+}
+
+function notificationRetentionPriority(notification: UserNotification): number {
+  let score = notification.read ? 10 : 40;
+  if (notification.feedback === "not_useful") score -= 35;
+  if (notification.feedback === "useful") score += 20;
+  if (notification.actionUrl) score += 12;
+  if (notification.context.adaptivePriority === "high") score += 18;
+  if (notification.context.feedSeverity === "high") score += 10;
+  return score;
+}
+
+function notificationRetentionContext(notification: UserNotification): { changed: string; next: string; why: string } {
+  const category = notification.context.feedCategory ?? notification.type;
+  const severity = notification.context.feedSeverity ?? "normal";
+  const priority = notification.context.adaptivePriority ?? "standard";
+  return {
+    changed: `${category} signal updated with ${severity} severity.`,
+    next: notification.actionUrl ? "Open the linked workflow and mark whether this was useful." : "Review it here and mark useful or not useful.",
+    why: `${priority} priority notification from ${notification.context.sourceKey ?? "TradeVeto"} context.`,
+  };
 }
 
 function trackNotificationReturn(notification: UserNotification): void {

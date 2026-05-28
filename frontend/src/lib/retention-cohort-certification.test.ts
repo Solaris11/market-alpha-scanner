@@ -12,9 +12,12 @@ const baseFoundingSegment: RetentionCohortSegmentInput = {
   firstUsefulActions: {
     alert: 8,
     chartSave: 7,
+    compare: 6,
+    history: 5,
     morningBriefing: 9,
     replay: 6,
     scanner: 12,
+    symbolCard: 10,
     watchlist: 11,
   },
   notificationFeedbackTotal: 10,
