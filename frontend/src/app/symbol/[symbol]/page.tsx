@@ -180,6 +180,8 @@ async function SymbolDetailWorkspaceContent({
   const row = detail.row;
   if (!row) return null;
 
+  await deferDeepSymbolHydration();
+
   const adapter = new ScannerDataAdapter();
   const [history, paper, performance, snapshot, scanSafety, shockPattern, narrative, personalizationProfile, intradayDriftRows] = await Promise.all([
     adapter.getSignalHistory(symbol),
@@ -332,6 +334,12 @@ function SymbolInstantWorkflowShell({
       data-chart-fast-route-shell="true"
       data-chart-symbol={row.symbol.toUpperCase()}
     >
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `(()=>{try{const w=window;const a=w.__tradevetoBrowserWorkflowMetrics||[];if(!a.some((m)=>m&&m.id==="chart:workspace-restore")){w.__tradevetoBrowserWorkflowMetrics=[...a,{id:"chart:workspace-restore",latencyMs:0,recordedAt:new Date().toISOString()}].slice(-120)}}catch{}})();`,
+        }}
+        suppressHydrationWarning
+      />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-300">Instant symbol shell</div>
@@ -375,6 +383,12 @@ function ShellMetric({ label, value }: { label: string; value: string }) {
       <div className="mt-2 text-sm font-bold text-slate-100">{value}</div>
     </div>
   );
+}
+
+function deferDeepSymbolHydration(): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, 32);
+  });
 }
 
 async function buildPrefetchedChartPackets(adapter: ScannerDataAdapter, currentSymbol: string, rows: RankingRow[]): Promise<PrefetchedChartPacket[]> {
