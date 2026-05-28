@@ -92,6 +92,12 @@ export function lockMobileBodyScroll(scrollY = getCurrentScrollY(), options: Bod
     };
   }
 
+  if (!shouldUseFixedScrollLock()) {
+    root.style.overflow = lockStyles.root.overflow;
+    root.style.overscrollBehavior = lockStyles.root.overscrollBehavior;
+    return () => restoreMobileBodyScroll(snapshot, resolveRestoreScroll(options.restoreScroll));
+  }
+
   body.style.position = lockStyles.body.position;
   body.style.top = lockStyles.body.top;
   body.style.left = lockStyles.body.left;
@@ -178,6 +184,11 @@ function shouldUseNonFixedScrollLock(): boolean {
   if (typeof navigator === "undefined") return false;
   return /iP(?:ad|hone|od)/.test(navigator.userAgent)
     || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function shouldUseFixedScrollLock(): boolean {
+  if (typeof window === "undefined") return true;
+  return window.matchMedia("(pointer: coarse)").matches || window.innerWidth < 768;
 }
 
 function forceScrollY(scrollY: number): void {
