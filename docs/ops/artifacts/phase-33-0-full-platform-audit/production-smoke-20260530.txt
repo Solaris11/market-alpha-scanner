@@ -1,0 +1,24 @@
+commit=ed70e33
+timestamp=2026-05-30T17:21:55Z
+{"ok":true,"service":"tradeveto-frontend","status":"ok","timestamp":"2026-05-30T17:21:55.319Z","uptimeSeconds":286}
+{"backup":{"activeBackupProvider":"r2","ageMinutes":315.91745,"latestEvent":{"createdAt":"2026-05-30 12:06:00.547099+00","message":"backup completed","metadata":{"script":"market-alpha-backup.sh","provider":"r2","exit_code":0,"timestamp":"2026-05-30T12:06:00.472318+00:00","backup_path":"r2:market-alpha-backups","retry_count":1,"classification":"backup_success","offsite_status":"ok","scanner_backup":"2026-05-30_12-02.tar.gz","postgres_backup":"2026-05-30_12-00.sql.gz","duration_seconds":359,"offsite_provider":"r2","scanner_size_bytes":178461372,"postgres_size_bytes":624379012,"active_backup_provider":"r2"},"severity":"info","status":"backup_success"},"latestSuccessfulOffsiteProvider":"r2","lastUpdated":"2026-05-30T12:06:00.547Z","local_backup":"ok","localBackup":{"ageMinutes":318.9236,"lastUpdated":"2026-05-30T12:03:00.178Z","message":"Latest local backup updated 319 minutes ago.","status":"ok"},"message":"Local and offsite backups are healthy.","offsite_backup":"ok","offsiteBackup":{"ageMinutes":315.91745,"lastUpdated":"2026-05-30 12:06:00.547099+00","message":"Latest R2 offsite backup synced 316 minutes ago.","status":"ok"},"offsiteProvider":"r2","overall_backup":"ok","overallBackup":"ok","status":"ok"},"db":{"message":"Database connectivity ok.","status":"ok"},"ok":true,"scanner":{"ageMinutes":9.801483333333334,"lastUpdated":"2026-05-30T17:12:07.500Z","message":"Slightly stale - updated 10 min ago","status":"ok"},"service":"tradeveto-frontend","timestamp":"2026-05-30T17:21:55.595Z"}
+/ 200
+/terminal 200
+/discover 200
+/scanner 200
+/symbol/AMD 200
+/history 200
+/performance 200
+/macro 200
+/feed 200
+/paper 200
+/strategy-labs 200
+/alerts 200
+/market-memory 200
+/status 200
+/account 200
+/settings 200
+/support 200
+/pricing 200
+/register 200
+/login 200

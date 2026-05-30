@@ -1,0 +1,162 @@
+{
+  "phase": "33.0",
+  "title": "Full Platform Audit + Certification",
+  "generatedAt": "2026-05-30T17:30:00Z",
+  "productionBaseUrl": "https://tradeveto.com",
+  "productionCommit": "ed70e33",
+  "finalVerdict": "NOT READY",
+  "launchReadiness": {
+    "controlledTechnicalPreview": "conditionally_ready",
+    "v1Launch": "not_ready",
+    "scaleLaunch": "not_ready",
+    "categoryLeadership": "not_ready"
+  },
+  "hardGates": [
+    {
+      "gate": "production_smoke",
+      "status": "pass",
+      "evidence": "docs/ops/artifacts/phase-33-0-full-platform-audit/production-smoke-20260530.txt"
+    },
+    {
+      "gate": "authenticated_100c_scale",
+      "status": "pass",
+      "evidence": "docs/ops/artifacts/phase-29-2-dedicated-discovery-scale/phase29-2-authenticated-scale-probe.json",
+      "metrics": {
+        "discovery100cP95Ms": 178,
+        "discovery100cP99Ms": 202,
+        "liveIntelligence100cP95Ms": 145,
+        "liveIntelligence100cP99Ms": 167
+      }
+    },
+    {
+      "gate": "browser_chart_symbol_latency",
+      "status": "pass",
+      "evidence": "docs/ops/artifacts/sprint-30-0-webkit-safari-latency/sprint30-0-chart-symbol-latency.json",
+      "metrics": {
+        "webkitSymbolAmdInteractiveMs": 739.039,
+        "webkitSymbolSwitchMs": 65,
+        "chromiumSymbolAmdInteractiveMs": 499.417,
+        "firefoxSymbolAmdInteractiveMs": 558.793
+      }
+    },
+    {
+      "gate": "large_universe_scanner_browser_proof",
+      "status": "strong_partial",
+      "evidence": "docs/ops/artifacts/phase-28-5-large-universe-scanner-proof/large-universe-scanner-proof.json",
+      "metrics": {
+        "proofRows": 520,
+        "renderedRows": 74,
+        "virtualized": true,
+        "scannerFilterMs": 26.3,
+        "compareOpenMs": 30.2
+      },
+      "limitation": "The 520-row proof is isolated/test-only and does not prove the current live production scanner universe has 500 real supported symbols."
+    },
+    {
+      "gate": "provider_source_trust",
+      "status": "not_ready",
+      "evidence": "docs/ops/artifacts/phase-33-0-full-platform-audit/provider-source-trust-20260530.json",
+      "metrics": {
+        "sourceCompletenessPct": 100,
+        "contextCompletenessPct": 100,
+        "fakeLiveLabelCount": 0,
+        "hiddenStaleStateCount": 0,
+        "freshnessSlaBreachedDomains": [
+          "rates"
+        ]
+      }
+    },
+    {
+      "gate": "retention_daily_habit",
+      "status": "not_ready",
+      "evidence": "docs/ops/artifacts/phase-33-0-full-platform-audit/retention-cohort-20260530.json",
+      "metrics": {
+        "aggregateD1RetentionPct": 0.7121057985757884,
+        "aggregateD2RetentionPct": 0.30612244897959184,
+        "aggregateD7RetentionPct": 0.11074197120708748,
+        "aggregateTwoPlusActiveDayPct": 0.9036144578313252,
+        "foundingD2RetentionPct": 0,
+        "foundingD7RetentionPct": 0,
+        "foundingTwoPlusActiveDayPct": 0,
+        "foundingActors": 1,
+        "alertReturnConversionPct": null,
+        "notificationUsefulRatioPct": null
+      }
+    },
+    {
+      "gate": "real_device_mobile",
+      "status": "not_ready",
+      "evidence": "docs/ops/phase-28-6-real-device-mobile-certification-closure.md",
+      "limitation": "Required iPhone Safari and Android Chrome screenshots/videos/session URLs remain missing."
+    },
+    {
+      "gate": "ai_quality",
+      "status": "pass",
+      "evidence": "docs/ops/artifacts/sprint-31-1-ai-trading-copilot/ai-trading-copilot-proof.json",
+      "metrics": {
+        "overallStatus": "ready",
+        "blockers": 0,
+        "noFakeMarketClaims": true
+      }
+    },
+    {
+      "gate": "predictive_intelligence",
+      "status": "pass",
+      "evidence": "docs/ops/artifacts/sprint-32-1-predictive-intelligence/predictive-intelligence-proof.json",
+      "metrics": {
+        "overallStatus": "ready",
+        "opportunityForecastCount": 12,
+        "predictiveAlertCount": 12,
+        "portfolioForecastStatus": "operational"
+      }
+    },
+    {
+      "gate": "platform_moat",
+      "status": "pass",
+      "evidence": "docs/ops/artifacts/sprint-32-2-platform-moat/platform-moat-proof.json",
+      "metrics": {
+        "overallStatus": "ready",
+        "moatScore": 94,
+        "proprietaryDatasets": 3,
+        "uniqueSignals": 4,
+        "marketMemoryRelationships": 92,
+        "userIntelligenceRelationships": 16,
+        "opportunityKnowledgeRelationships": 188
+      }
+    },
+    {
+      "gate": "security_dependency_audit",
+      "status": "pass",
+      "evidence": "npm --prefix frontend audit --omit=dev, 2026-05-30",
+      "metrics": {
+        "productionDependencyVulnerabilities": 0
+      }
+    },
+    {
+      "gate": "disaster_recovery_restore",
+      "status": "not_ready",
+      "evidence": "docs/ops/artifacts/phase-33-0-full-platform-audit/production-smoke-20260530.txt",
+      "limitation": "Health check proves current local/offsite backup freshness, but no Phase 33 restore drill or failover drill was executed."
+    }
+  ],
+  "sectionScores": {
+    "product": 64,
+    "retention": 6,
+    "conversion": 18,
+    "performance": 82,
+    "security": 82,
+    "ai": 91,
+    "mobile": 20,
+    "infrastructure": 76,
+    "competitive": 82,
+    "business": 14,
+    "overall": 57
+  },
+  "criticalBlockers": [
+    "Retention and paid/founding daily dependence are far below targets.",
+    "Real-device mobile certification evidence is missing.",
+    "Current provider-source-trust probe is not ready because rates freshness SLA is breached.",
+    "Conversion, revenue, ARPU, LTV, CAC, referral, and organic growth outcomes are not proven.",
+    "Disaster recovery restore and failover are not verified."
+  ]
+}
