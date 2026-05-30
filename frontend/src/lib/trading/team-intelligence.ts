@@ -2,7 +2,7 @@ import type { OpportunityViewModel } from "./opportunity-view-model";
 import { finiteNumber, formatNumber } from "@/lib/ui/formatters";
 import { humanizeInsightText, humanizeLabel } from "@/lib/ui/labels";
 
-export type TeamWorkspaceRole = "owner" | "admin" | "analyst" | "viewer";
+export type TeamWorkspaceRole = "owner" | "admin" | "manager" | "member" | "viewer";
 
 export type TeamWorkspace = {
   createdAt: string;
@@ -118,12 +118,12 @@ export type TeamWorkspaceIntelligenceInput = {
 
 export function teamRoleCapabilities(role: TeamWorkspaceRole): TeamRoleCapabilities {
   const canAdmin = role === "owner" || role === "admin";
-  const canEditResearch = canAdmin || role === "analyst";
+  const canEditResearch = canAdmin || role === "manager" || role === "member";
   return {
     canAdmin,
     canEditResearch,
     canInvite: canAdmin,
-    canManageWatchlist: canEditResearch,
+    canManageWatchlist: canAdmin || role === "manager",
     canView: true,
     label: humanizeLabel(role),
   };
@@ -253,8 +253,9 @@ function teamBriefing(input: TeamWorkspaceIntelligenceInput, opportunities: Team
     lines.push("No shared symbol currently has a dominant fragility warning from the latest scanner context.");
   }
 
-  const analysts = input.members.filter((member) => member.role === "analyst" || member.role === "admin" || member.role === "owner").length;
-  lines.push(`${formatNumber(input.members.length)} workspace member${input.members.length === 1 ? "" : "s"} configured; ${formatNumber(analysts)} can edit research and shared watchlists.`);
+  const editors = input.members.filter((member) => member.role === "member" || member.role === "manager" || member.role === "admin" || member.role === "owner").length;
+  const managers = input.members.filter((member) => member.role === "manager" || member.role === "admin" || member.role === "owner").length;
+  lines.push(`${formatNumber(input.members.length)} workspace member${input.members.length === 1 ? "" : "s"} configured; ${formatNumber(editors)} can edit research and ${formatNumber(managers)} can manage shared watchlists.`);
   return lines.slice(0, 4);
 }
 

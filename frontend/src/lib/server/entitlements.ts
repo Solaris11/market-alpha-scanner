@@ -93,6 +93,7 @@ export const ROUTE_CLASSIFICATION: Record<RouteAccess, string[]> = {
   ],
   premium: [
     "/dashboard",
+    "/enterprise",
     "/team",
     "/community",
     "/developers",
@@ -108,6 +109,7 @@ export const ROUTE_CLASSIFICATION: Record<RouteAccess, string[]> = {
     "/api/community",
     "/api/community/*",
     "/api/developer/*",
+    "/api/enterprise/*",
     "/api/v1/*",
     "/api/team/*",
     "/api/mobile/intelligence",

@@ -37,6 +37,13 @@ export type AuthSession = {
   user: AuthUser;
 };
 
+export type SessionMetadata = {
+  authMethod?: string;
+  ip?: string | null;
+  request?: Request;
+  userAgent?: string | null;
+};
+
 type UserRow = QueryResultRow & {
   id: string;
   email: string;
@@ -126,7 +133,7 @@ export function devLoginEnabled(): boolean {
   return process.env.NODE_ENV !== "production" && process.env.TRADEVETO_ENABLE_DEV_LOGIN !== "false" && process.env.MARKET_ALPHA_ENABLE_DEV_LOGIN !== "false";
 }
 
-export async function registerWithPassword(input: { displayName?: unknown; email?: unknown; ip?: string | null; password?: unknown }): Promise<AuthSession> {
+export async function registerWithPassword(input: { displayName?: unknown; email?: unknown; ip?: string | null; password?: unknown; request?: Request; userAgent?: string | null }): Promise<AuthSession> {
   const email = normalizeAuthEmail(input.email);
   const password = validatePassword(input.password);
   if (!email || !password) throw new Error("Invalid registration input.");
@@ -156,10 +163,10 @@ export async function registerWithPassword(input: { displayName?: unknown; email
     );
 
   await updateLastLogin(userResult.rows[0].id, input.ip ?? null);
-  return createSessionForUser(userResult.rows[0].id);
+  return createSessionForUser(userResult.rows[0].id, { authMethod: "password_register", ip: input.ip ?? null, request: input.request, userAgent: input.userAgent ?? null });
 }
 
-export async function loginWithPassword(input: { email?: unknown; ip?: string | null; password?: unknown }): Promise<AuthSession | null> {
+export async function loginWithPassword(input: { email?: unknown; ip?: string | null; password?: unknown; request?: Request; userAgent?: string | null }): Promise<AuthSession | null> {
   const email = normalizeAuthEmail(input.email);
   const password = String(input.password ?? "");
   if (!email || !password) return null;
@@ -171,10 +178,10 @@ export async function loginWithPassword(input: { email?: unknown; ip?: string | 
   if (!valid) return null;
 
   await updateLastLogin(user.id, input.ip ?? null);
-  return createSessionForUser(user.id);
+  return createSessionForUser(user.id, { authMethod: "password", ip: input.ip ?? null, request: input.request, userAgent: input.userAgent ?? null });
 }
 
-export async function createDevLoginSession(rawEmail: unknown): Promise<AuthSession> {
+export async function createDevLoginSession(rawEmail: unknown, metadata: SessionMetadata = {}): Promise<AuthSession> {
   const email = normalizeAuthEmail(rawEmail);
   if (!email) throw new Error("Enter a valid email address.");
 
@@ -189,7 +196,7 @@ export async function createDevLoginSession(rawEmail: unknown): Promise<AuthSess
     `,
     [email, displayName],
   );
-  return createSessionForUser(userResult.rows[0].id);
+  return createSessionForUser(userResult.rows[0].id, { ...metadata, authMethod: metadata.authMethod ?? "dev_login" });
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
@@ -237,14 +244,49 @@ async function loadUserForSessionTokenHash(tokenHash: string): Promise<AuthUser 
   return row ? userFromRow(row) : null;
 }
 
-export async function createSessionForUser(userId: string): Promise<AuthSession> {
+export async function createSessionForUser(userId: string, metadata: SessionMetadata = {}): Promise<AuthSession> {
   const user = await getUserById(userId);
   if (!user) throw new Error("User is unavailable.");
   const token = randomBytes(32).toString("base64url");
   const tokenHash = hashSessionToken(token);
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
-  await dbQuery("INSERT INTO user_sessions (user_id, session_token_hash, expires_at, created_at) VALUES ($1, $2, $3, now())", [user.id, tokenHash, expiresAt]);
+  const ip = metadata.ip ?? (metadata.request ? clientIp(metadata.request) : null);
+  const userAgent = cleanNullableText(metadata.userAgent ?? metadata.request?.headers.get("user-agent"), 240);
+  await dbQuery(
+    `
+      INSERT INTO user_sessions (
+        user_id,
+        session_token_hash,
+        expires_at,
+        created_at,
+        created_ip,
+        user_agent,
+        device_label,
+        auth_method,
+        last_seen_at
+      )
+      VALUES ($1, $2, $3, now(), $4, $5, $6, $7, now())
+    `,
+    [user.id, tokenHash, expiresAt, ip, userAgent, deviceLabelFromUserAgent(userAgent), cleanNullableText(metadata.authMethod, 60) ?? "password"],
+  );
   return { expiresAt, token, user };
+}
+
+export async function touchSessionActivity(token: string | undefined, request?: Request): Promise<void> {
+  if (!token) return;
+  const tokenHash = hashSessionToken(token);
+  await dbQuery(
+    `
+      UPDATE user_sessions
+      SET last_seen_at = now(),
+          user_agent = COALESCE(user_agent, $2),
+          created_ip = COALESCE(created_ip, $3)
+      WHERE session_token_hash = $1
+        AND expires_at > now()
+        AND revoked_at IS NULL
+    `,
+    [tokenHash, request ? cleanNullableText(request.headers.get("user-agent"), 240) : null, request ? clientIp(request) : null],
+  ).catch(() => undefined);
 }
 
 export async function deleteSessionToken(token: string | undefined): Promise<void> {
@@ -291,6 +333,18 @@ function cleanNullableText(value: unknown, maxLength: number): string | null {
   const text = String(value ?? "").trim();
   if (!text) return null;
   return text.slice(0, maxLength);
+}
+
+function deviceLabelFromUserAgent(userAgent: string | null): string | null {
+  if (!userAgent) return null;
+  const lower = userAgent.toLowerCase();
+  if (lower.includes("iphone")) return "iPhone";
+  if (lower.includes("ipad")) return "iPad";
+  if (lower.includes("android")) return "Android";
+  if (lower.includes("firefox")) return "Firefox";
+  if (lower.includes("safari") && !lower.includes("chrome")) return "Safari";
+  if (lower.includes("chrome") || lower.includes("chromium")) return "Chrome";
+  return "Browser";
 }
 
 function readCachedSessionUser(tokenHash: string): AuthUser | null | undefined {

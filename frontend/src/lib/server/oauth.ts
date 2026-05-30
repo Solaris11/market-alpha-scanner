@@ -101,7 +101,7 @@ export async function authenticateGoogleCode(code: string, ip: string | null): P
     providerAccountId,
   });
   await dbQuery("UPDATE users SET last_login_at = now(), last_login_ip = $2, updated_at = now() WHERE id = $1", [userId, ip]);
-  return createSessionForUser(userId);
+  return createSessionForUser(userId, { authMethod: "google", ip });
 }
 
 function getGoogleOAuthConfig(): GoogleOAuthConfig | null {

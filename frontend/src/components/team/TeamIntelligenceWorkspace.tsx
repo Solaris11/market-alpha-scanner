@@ -108,6 +108,7 @@ export function TeamIntelligenceWorkspace({ initialSystem }: { initialSystem: Te
               { enabled: system.roleCapabilities.canView, label: "View shared intelligence" },
               { enabled: system.roleCapabilities.canManageWatchlist, label: "Manage shared watchlist" },
               { enabled: system.roleCapabilities.canEditResearch, label: "Add research notes" },
+              { enabled: system.roleCapabilities.canInvite, label: "Invite and administer members" },
               { enabled: system.roleCapabilities.canAdmin, label: "Admin workspace" },
             ].map(({ enabled, label }) => (
               <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-2 text-sm" key={label}>

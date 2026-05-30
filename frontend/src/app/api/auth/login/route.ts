@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { loginWithPassword, normalizeAuthEmail, SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
+import { recordEnterpriseSecurityEvent } from "@/lib/server/enterprise";
 import { createLoginNotifications } from "@/lib/server/notifications";
 import { rateLimitRequest, requestIp, validateMutationRequest } from "@/lib/server/request-security";
 
@@ -22,10 +23,11 @@ export async function POST(request: Request) {
   if (rateLimited) return rateLimited;
 
   try {
-    const session = await loginWithPassword({ email: payload?.email, ip, password: payload?.password });
+    const session = await loginWithPassword({ email: payload?.email, ip, password: payload?.password, request });
     if (!session) {
       return NextResponse.json({ ok: false, error: "Invalid email or password" }, { status: 401 });
     }
+    await recordEnterpriseSecurityEvent({ authMethod: "password", eventType: "login.success", ip, request, userId: session.user.id }).catch(() => undefined);
     await createLoginNotifications(session.user.id).catch((notificationError) => {
       console.warn("[notifications] login notification failed", notificationError instanceof Error ? notificationError.message : notificationError);
     });

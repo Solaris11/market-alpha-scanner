@@ -260,7 +260,7 @@ async function readTeamWorkspaceMembers(workspaceId: string): Promise<TeamWorksp
       FROM team_workspace_members m
       JOIN users u ON u.id = m.user_id
       WHERE m.workspace_id = $1::uuid
-      ORDER BY CASE m.role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 WHEN 'analyst' THEN 3 ELSE 4 END, m.created_at ASC
+      ORDER BY CASE m.role WHEN 'owner' THEN 1 WHEN 'admin' THEN 2 WHEN 'manager' THEN 3 WHEN 'member' THEN 4 ELSE 5 END, m.created_at ASC
       LIMIT 100
     `,
     [workspaceId],
@@ -378,6 +378,25 @@ async function writeTeamAuditLog(
       input.request ? cleanText(input.request.headers.get("user-agent") ?? "", 240) : null,
     ],
   );
+  await db.query(
+    `
+      INSERT INTO enterprise_audit_log (organization_id, workspace_id, actor_user_id, action, target_type, target_id, metadata, ip, user_agent, severity, created_at)
+      SELECT w.organization_id, $1::uuid, $2::uuid, $3, $4, $5, $6::jsonb, $7, $8, 'info', now()
+      FROM team_workspaces w
+      WHERE w.id = $1::uuid
+        AND w.organization_id IS NOT NULL
+    `,
+    [
+      input.workspaceId,
+      input.actorUserId,
+      cleanText(input.action, 120),
+      cleanText(input.targetType, 80),
+      input.targetId ? cleanText(input.targetId, 180) : null,
+      JSON.stringify(metadata),
+      input.request ? requestIp(input.request) : null,
+      input.request ? cleanText(input.request.headers.get("user-agent") ?? "", 240) : null,
+    ],
+  ).catch(() => undefined);
 }
 
 async function touchWorkspace(db: DbExecutor, workspaceId: string): Promise<void> {
@@ -385,7 +404,7 @@ async function touchWorkspace(db: DbExecutor, workspaceId: string): Promise<void
 }
 
 function assertCanEdit(role: TeamWorkspaceRole, message: string): void {
-  if (role === "owner" || role === "admin" || role === "analyst") return;
+  if (role === "owner" || role === "admin" || role === "manager" || role === "member") return;
   throw new TeamWorkspaceAccessError(message, 403);
 }
 
@@ -402,7 +421,8 @@ function workspaceFromRow(row: WorkspaceRow): TeamWorkspace {
 }
 
 function normalizeTeamRole(value: unknown): TeamWorkspaceRole {
-  return value === "owner" || value === "admin" || value === "analyst" || value === "viewer" ? value : "viewer";
+  if (value === "analyst") return "manager";
+  return value === "owner" || value === "admin" || value === "manager" || value === "member" || value === "viewer" ? value : "viewer";
 }
 
 function cleanText(value: unknown, maxLength: number): string {

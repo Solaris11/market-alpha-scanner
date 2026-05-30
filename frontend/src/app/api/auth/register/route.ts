@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { betaSignupDecisionForRequest } from "@/lib/server/beta-access";
 import { normalizeAuthEmail, registerWithPassword, SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
 import { recordAnalyticsEvents } from "@/lib/server/analytics";
+import { recordEnterpriseSecurityEvent } from "@/lib/server/enterprise";
 import { createLoginNotifications } from "@/lib/server/notifications";
 import { rateLimitRequest, requestIp, validateMutationRequest } from "@/lib/server/request-security";
 
@@ -38,7 +39,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ ok: false, error: "early_access_required", message: betaDecision.message ?? "Early access signup requires access." }, { status: 403 });
     }
 
-    const session = await registerWithPassword({ ...payload, ip: requestIp(request) });
+    const ip = requestIp(request);
+    const session = await registerWithPassword({ ...payload, ip, request });
+    await recordEnterpriseSecurityEvent({ authMethod: "password_register", eventType: "login.register", ip, request, userId: session.user.id }).catch(() => undefined);
     await createLoginNotifications(session.user.id).catch((notificationError) => {
       console.warn("[notifications] register notification failed", notificationError instanceof Error ? notificationError.message : notificationError);
     });

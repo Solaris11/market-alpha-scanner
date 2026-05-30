@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createDevLoginSession, devLoginEnabled, SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
-import { rateLimitRequest, validateMutationRequest } from "@/lib/server/request-security";
+import { recordEnterpriseSecurityEvent } from "@/lib/server/enterprise";
+import { rateLimitRequest, requestIp, validateMutationRequest } from "@/lib/server/request-security";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -26,7 +27,9 @@ export async function POST(request: Request) {
   }
 
   try {
-    const session = await createDevLoginSession(payload.email);
+    const ip = requestIp(request);
+    const session = await createDevLoginSession(payload.email, { ip, request });
+    await recordEnterpriseSecurityEvent({ authMethod: "dev_login", eventType: "login.dev", ip, request, userId: session.user.id }).catch(() => undefined);
     const response = NextResponse.json({
       ok: true,
       user: session.user,

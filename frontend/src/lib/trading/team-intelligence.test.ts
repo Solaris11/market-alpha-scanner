@@ -26,7 +26,7 @@ const workspace: TeamWorkspace = {
 
 const members: TeamWorkspaceMember[] = [
   { createdAt: "2026-05-09T15:00:00.000Z", displayName: "Owner", email: "owner@example.com", role: "owner", userId: "user-1" },
-  { createdAt: "2026-05-09T15:01:00.000Z", displayName: "Analyst", email: "analyst@example.com", role: "analyst", userId: "user-2" },
+  { createdAt: "2026-05-09T15:01:00.000Z", displayName: "Manager", email: "manager@example.com", role: "manager", userId: "user-2" },
 ];
 
 function row(input: Partial<OpportunityViewModel> & { symbol: string }): OpportunityViewModel {
@@ -75,7 +75,9 @@ function row(input: Partial<OpportunityViewModel> & { symbol: string }): Opportu
 describe("team intelligence", () => {
   test("maps workspace roles to edit capabilities", () => {
     assert.equal(teamRoleCapabilities("owner").canAdmin, true);
-    assert.equal(teamRoleCapabilities("analyst").canEditResearch, true);
+    assert.equal(teamRoleCapabilities("manager").canManageWatchlist, true);
+    assert.equal(teamRoleCapabilities("member").canEditResearch, true);
+    assert.equal(teamRoleCapabilities("member").canManageWatchlist, false);
     assert.equal(teamRoleCapabilities("viewer").canManageWatchlist, false);
   });
 
@@ -88,7 +90,7 @@ describe("team intelligence", () => {
       auditTrail: [],
       members,
       notes: [],
-      role: "analyst",
+      role: "manager",
       rows: [
         row({ conviction: 73, final_score: 78, fragility: 54, macroLabel: "Macro Aligned", symbol: "AMD" }),
         row({ conviction: 60, final_score: 64, fragility: 70, fragilityLabel: "Elevated", symbol: "MU" }),
