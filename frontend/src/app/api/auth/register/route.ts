@@ -12,6 +12,9 @@ type RegisterPayload = {
   displayName?: unknown;
   email?: unknown;
   inviteCode?: unknown;
+  organicLandingPath?: unknown;
+  organicSearchEngine?: unknown;
+  organicSource?: unknown;
   password?: unknown;
   referralCode?: unknown;
   referralShareId?: unknown;
@@ -56,6 +59,26 @@ export async function POST(request: Request) {
         user: session.user,
       }).catch((analyticsError) => {
         console.warn("[growth] referral signup attribution failed", analyticsError instanceof Error ? analyticsError.message : analyticsError);
+      });
+    }
+    if (typeof payload.organicSource === "string") {
+      await recordAnalyticsEvents({
+        events: [{
+          deviceType: "unknown",
+          eventName: "organic_signup",
+          metadata: {
+            organicLandingPath: typeof payload.organicLandingPath === "string" ? payload.organicLandingPath : null,
+            organicSearchEngine: typeof payload.organicSearchEngine === "string" ? payload.organicSearchEngine : null,
+            organicSource: payload.organicSource,
+          },
+          occurredAt: new Date().toISOString(),
+          pagePath: "/register",
+          source: "auth_register",
+        }],
+        request,
+        user: session.user,
+      }).catch((analyticsError) => {
+        console.warn("[seo] organic signup attribution failed", analyticsError instanceof Error ? analyticsError.message : analyticsError);
       });
     }
     const response = NextResponse.json({ ok: true, user: session.user });

@@ -122,6 +122,12 @@ export const ANALYTICS_EVENT_NAMES = [
   "referral_signup",
   "referral_paid_conversion",
   "organic_growth_visit",
+  "organic_search_visit",
+  "search_landing_open",
+  "seo_core_web_vital",
+  "seo_keyword_rank_observed",
+  "organic_signup",
+  "organic_paid_conversion",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];

@@ -21,6 +21,7 @@ import {
 import { buildRealUserDominanceProof, type RealUserDominanceProof } from "@/lib/real-user-dominance";
 import { buildPaidUserCohortCertification, type PaidUserCohortCertification, type RetentionCohortSegmentInput } from "@/lib/retention-cohort-certification";
 import { calculateViralGrowthMetrics } from "@/lib/growth/viral-growth";
+import { calculateOrganicAcquisitionMetrics } from "@/lib/seo/organic-acquisition";
 import type { AuthUser } from "./auth";
 import { dbQuery } from "./db";
 import { getEntitlementForUser, entitlementSummary } from "./entitlements";
@@ -128,6 +129,18 @@ export type AnalyticsSummary = {
     shareConversionPct: number | null;
     trafficSourceQuality: Array<{ activatedUsers: number; activationRatePct: number | null; actors: number; source: string; visits: number }>;
     viralCoefficient: number | null;
+  };
+  organicAcquisition: {
+    keywordRankings: Array<{ keyword: string; latestPosition: number | null; observedAt: string | null; searchEngine: string }>;
+    landingPages: Array<{ landingPath: string; organicVisits: number; paidConversions: number; signupRatePct: number | null; signups: number }>;
+    organicPaidConversionRatePct: number | null;
+    organicPaidConversions: number;
+    organicSearchVisits: number;
+    organicSessions: number;
+    organicSignupRatePct: number | null;
+    organicSignups: number;
+    pagePerformance: Array<{ averageValue: number | null; goodSamples: number; metricName: string; pagePath: string; poorSamples: number; samples: number }>;
+    searchLandingVisits: number;
   };
   realUserProof: {
     adaptiveBehavior: {
@@ -585,6 +598,33 @@ type ViralTrafficSourceQualityRow = QueryResultRow & {
   source: string;
   visits: string | number;
 };
+type OrganicAcquisitionSummaryRow = QueryResultRow & {
+  organic_paid_conversions: string | number;
+  organic_search_visits: string | number;
+  organic_sessions: string | number;
+  organic_signups: string | number;
+  search_landing_visits: string | number;
+};
+type OrganicLandingQualityRow = QueryResultRow & {
+  landing_path: string;
+  organic_visits: string | number;
+  paid_conversions: string | number;
+  signups: string | number;
+};
+type OrganicKeywordRankingRow = QueryResultRow & {
+  keyword: string;
+  latest_position: string | number | null;
+  observed_at: string | null;
+  search_engine: string;
+};
+type SeoPagePerformanceRow = QueryResultRow & {
+  avg_value: string | number | null;
+  good_samples: string | number;
+  metric_name: string;
+  page_path: string;
+  poor_samples: string | number;
+  samples: string | number;
+};
 
 const MAX_EVENTS_PER_REQUEST = 24;
 const FRICTION_EVENT_NAMES = [
@@ -768,6 +808,10 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     paidUserCohortProof,
     viralGrowthProof,
     viralTrafficSourceQualityProof,
+    organicAcquisitionProof,
+    organicLandingQualityProof,
+    organicKeywordRankingProof,
+    seoPagePerformanceProof,
     activationFunnelProof,
     activationDropoffProof,
     activationHeatmapProof,
@@ -1358,6 +1402,77 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
         LIMIT 8
       `,
     ),
+    dbQuery<OrganicAcquisitionSummaryRow>(
+      `
+        SELECT
+          count(*) FILTER (WHERE event_name = 'organic_search_visit') AS organic_search_visits,
+          count(DISTINCT COALESCE(session_id_hash, user_id::text, anonymous_id_hash, id::text)) FILTER (
+            WHERE event_name IN ('organic_search_visit', 'search_landing_open')
+          ) AS organic_sessions,
+          count(*) FILTER (WHERE event_name = 'search_landing_open') AS search_landing_visits,
+          count(*) FILTER (WHERE event_name = 'organic_signup') AS organic_signups,
+          count(*) FILTER (WHERE event_name = 'organic_paid_conversion') AS organic_paid_conversions
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+          AND event_name IN ('organic_search_visit', 'search_landing_open', 'organic_signup', 'organic_paid_conversion')
+      `,
+    ),
+    dbQuery<OrganicLandingQualityRow>(
+      `
+        SELECT
+          COALESCE(NULLIF(metadata->>'organicLandingPath', ''), NULLIF(page_path, ''), 'unknown') AS landing_path,
+          count(*) FILTER (WHERE event_name IN ('organic_search_visit', 'search_landing_open')) AS organic_visits,
+          count(*) FILTER (WHERE event_name = 'organic_signup') AS signups,
+          count(*) FILTER (WHERE event_name = 'organic_paid_conversion') AS paid_conversions
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+          AND event_name IN ('organic_search_visit', 'search_landing_open', 'organic_signup', 'organic_paid_conversion')
+        GROUP BY 1
+        ORDER BY organic_visits DESC, signups DESC, landing_path ASC
+        LIMIT 10
+      `,
+    ),
+    dbQuery<OrganicKeywordRankingRow>(
+      `
+        SELECT DISTINCT ON (COALESCE(metadata->>'keyword', 'unknown'), COALESCE(metadata->>'searchEngine', source, 'unknown'))
+          COALESCE(metadata->>'keyword', 'unknown') AS keyword,
+          COALESCE(metadata->>'searchEngine', source, 'unknown') AS search_engine,
+          CASE
+            WHEN metadata->>'position' ~ '^[0-9]+(\\.[0-9]+)?$'
+            THEN (metadata->>'position')::float
+            ELSE NULL
+          END AS latest_position,
+          occurred_at::text AS observed_at
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+          AND event_name = 'seo_keyword_rank_observed'
+        ORDER BY COALESCE(metadata->>'keyword', 'unknown'), COALESCE(metadata->>'searchEngine', source, 'unknown'), occurred_at DESC
+        LIMIT 12
+      `,
+    ),
+    dbQuery<SeoPagePerformanceRow>(
+      `
+        SELECT
+          COALESCE(page_path, 'unknown') AS page_path,
+          COALESCE(metadata->>'metricName', 'unknown') AS metric_name,
+          count(*) AS samples,
+          avg(
+            CASE
+              WHEN metadata->>'metricValue' ~ '^[0-9]+(\\.[0-9]+)?$'
+              THEN (metadata->>'metricValue')::float
+              ELSE NULL
+            END
+          ) AS avg_value,
+          count(*) FILTER (WHERE metadata->>'metricRating' = 'good') AS good_samples,
+          count(*) FILTER (WHERE metadata->>'metricRating' = 'poor') AS poor_samples
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+          AND event_name = 'seo_core_web_vital'
+        GROUP BY 1, 2
+        ORDER BY samples DESC, page_path ASC, metric_name ASC
+        LIMIT 20
+      `,
+    ),
     activationFunnel(interval),
     activationDropoffs(interval),
     activationHeatmap(interval),
@@ -1480,6 +1595,15 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     shareClicks: numberFromRow(viralGrowthRow?.share_clicks),
   };
   const viralGrowthMetrics = calculateViralGrowthMetrics(viralGrowthCounts);
+  const organicAcquisitionRow = organicAcquisitionProof.rows[0];
+  const organicAcquisitionCounts = {
+    organicPaidConversions: numberFromRow(organicAcquisitionRow?.organic_paid_conversions),
+    organicSearchVisits: numberFromRow(organicAcquisitionRow?.organic_search_visits),
+    organicSessions: numberFromRow(organicAcquisitionRow?.organic_sessions),
+    organicSignups: numberFromRow(organicAcquisitionRow?.organic_signups),
+    searchLandingVisits: numberFromRow(organicAcquisitionRow?.search_landing_visits),
+  };
+  const organicAcquisitionMetrics = calculateOrganicAcquisitionMetrics(organicAcquisitionCounts);
   const activationFunnelRow = activationFunnelProof.rows[0];
   const totalActivationActors = numberFromRow(activationFunnelRow?.total_actors);
   const activationFunnelRows = [
@@ -1657,6 +1781,40 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
         };
       }),
       viralCoefficient: viralGrowthMetrics.viralCoefficient,
+    },
+    organicAcquisition: {
+      keywordRankings: organicKeywordRankingProof.rows.map((row) => ({
+        keyword: row.keyword,
+        latestPosition: nullableNumberFromRow(row.latest_position),
+        observedAt: row.observed_at,
+        searchEngine: row.search_engine,
+      })),
+      landingPages: organicLandingQualityProof.rows.map((row) => {
+        const visits = numberFromRow(row.organic_visits);
+        const signups = numberFromRow(row.signups);
+        return {
+          landingPath: row.landing_path,
+          organicVisits: visits,
+          paidConversions: numberFromRow(row.paid_conversions),
+          signupRatePct: pctOrNull(signups, visits),
+          signups,
+        };
+      }),
+      organicPaidConversionRatePct: organicAcquisitionMetrics.organicPaidConversionRatePct,
+      organicPaidConversions: organicAcquisitionCounts.organicPaidConversions,
+      organicSearchVisits: organicAcquisitionCounts.organicSearchVisits,
+      organicSessions: organicAcquisitionCounts.organicSessions,
+      organicSignupRatePct: organicAcquisitionMetrics.organicSignupRatePct,
+      organicSignups: organicAcquisitionCounts.organicSignups,
+      pagePerformance: seoPagePerformanceProof.rows.map((row) => ({
+        averageValue: nullableNumberFromRow(row.avg_value),
+        goodSamples: numberFromRow(row.good_samples),
+        metricName: row.metric_name,
+        pagePath: row.page_path,
+        poorSamples: numberFromRow(row.poor_samples),
+        samples: numberFromRow(row.samples),
+      })),
+      searchLandingVisits: organicAcquisitionCounts.searchLandingVisits,
     },
     realUserProof: {
       adaptiveBehavior: {

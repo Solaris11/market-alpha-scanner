@@ -6,6 +6,7 @@ import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { growthAttributionMetadata, readStoredGrowthAttribution } from "@/lib/client/growth-attribution";
+import { readStoredSeoOrganicAttribution, seoOrganicAttributionMetadata } from "@/lib/client/seo-organic-attribution";
 import { AuthModal } from "./AuthModal";
 
 export function AccountSignInCta() {
@@ -81,15 +82,22 @@ export function BillingActionButton({ disabledReason, label, mode }: BillingActi
     setBusy(true);
     setError(null);
     const attributionMetadata = growthAttributionMetadata(readStoredGrowthAttribution());
+    const organicMetadata = seoOrganicAttributionMetadata(readStoredSeoOrganicAttribution());
     if (mode === "checkout") {
-      trackAnalyticsEvent("founding_checkout_start", attributionMetadata, { source: "account_billing" });
+      trackAnalyticsEvent("founding_checkout_start", { ...attributionMetadata, ...organicMetadata }, { source: "account_billing" });
       if (attributionMetadata.referralCode || attributionMetadata.shareId) {
         trackAnalyticsEvent("referral_paid_conversion", { conversionStage: "checkout_start", ...attributionMetadata }, { source: "account_billing" });
       }
     }
     try {
       const response = await csrfFetch(`/api/stripe/${mode}`, {
-        body: mode === "checkout" ? JSON.stringify({ referralCode: attributionMetadata.referralCode, referralShareId: attributionMetadata.shareId }) : undefined,
+        body: mode === "checkout" ? JSON.stringify({
+          organicLandingPath: organicMetadata.organicLandingPath,
+          organicSearchEngine: organicMetadata.organicSearchEngine,
+          organicSource: organicMetadata.organicSource,
+          referralCode: attributionMetadata.referralCode,
+          referralShareId: attributionMetadata.shareId,
+        }) : undefined,
         headers: mode === "checkout" ? { "Content-Type": "application/json" } : undefined,
         method: "POST",
       });

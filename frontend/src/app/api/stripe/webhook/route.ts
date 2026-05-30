@@ -138,6 +138,7 @@ async function processStripeWebhook(event: Stripe.Event, mode: StripeMode): Prom
     });
     if (event.type === "checkout.session.completed") {
       await recordReferralPaidConversion(prepared.session, result, db, mode);
+      await recordOrganicPaidConversion(prepared.session, result, db, mode);
     }
     const emailIntent = await notifyForStripeEvent(event, result, db, mode);
     return { duplicate: false, emailIntent, result };
@@ -248,9 +249,38 @@ async function recordReferralPaidConversion(session: Stripe.Checkout.Session | n
   );
 }
 
+async function recordOrganicPaidConversion(session: Stripe.Checkout.Session | null, result: StripeSyncResult, db: DbExecutor, mode: StripeMode): Promise<void> {
+  if (!session || !result.userId) return;
+  const organicSource = normalizeReferralMetadata(session.metadata?.organic_source);
+  if (!organicSource) return;
+  await db.query(
+    `
+      INSERT INTO analytics_events
+        (user_id, event_name, page_path, source, device_type, plan, metadata, occurred_at, created_at)
+      VALUES
+        ($1::uuid, 'organic_paid_conversion', '/account', 'stripe_webhook', 'unknown', 'premium', $2::jsonb, now(), now())
+    `,
+    [
+      result.userId,
+      JSON.stringify({
+        conversionStage: "checkout_session_completed",
+        organicLandingPath: normalizeOrganicPathMetadata(session.metadata?.organic_landing_path),
+        organicSearchEngine: normalizeReferralMetadata(session.metadata?.organic_search_engine),
+        organicSource,
+        stripeMode: mode,
+      }),
+    ],
+  );
+}
+
 function normalizeReferralMetadata(value: unknown): string | null {
   const text = String(value ?? "").trim().replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
   return text || null;
+}
+
+function normalizeOrganicPathMetadata(value: unknown): string | null {
+  const text = String(value ?? "").trim().replace(/[^A-Za-z0-9/_\-.]/g, "").slice(0, 160);
+  return text.startsWith("/") ? text : null;
 }
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice | null, subscription: Stripe.Subscription | null, eventCreatedAt: Date | null, db: DbExecutor, mode: StripeMode): Promise<StripeSyncResult> {

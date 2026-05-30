@@ -133,6 +133,37 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
         </div>
       </section>
 
+      <section className="rounded-3xl border border-cyan-300/18 bg-[radial-gradient(circle_at_10%_0%,rgba(34,211,238,0.14),transparent_24rem),linear-gradient(135deg,rgba(2,6,23,0.95),rgba(15,23,42,0.78))] p-4 shadow-2xl shadow-black/20 sm:p-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.28em] text-cyan-300">SEO + Organic Acquisition</div>
+            <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">Search visibility and organic conversion</h2>
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
+              Tracks organic search sessions, search landing page visits, organic signups, Stripe-backed organic paid conversions, Core Web Vitals samples, and keyword ranking observations when connected.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[520px]">
+            <ProofMetric label="Organic Sessions" value={analytics.organicAcquisition.organicSessions.toLocaleString()} />
+            <ProofMetric label="Organic Signup" value={formatPct(analytics.organicAcquisition.organicSignupRatePct)} />
+            <ProofMetric label="Organic Paid" value={formatPct(analytics.organicAcquisition.organicPaidConversionRatePct)} />
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <ProofPanel
+            rows={[
+              ["Organic visits", analytics.organicAcquisition.organicSearchVisits],
+              ["Search landing visits", analytics.organicAcquisition.searchLandingVisits],
+              ["Organic signups", analytics.organicAcquisition.organicSignups],
+              ["Paid conversions", analytics.organicAcquisition.organicPaidConversions],
+            ]}
+            title="Organic Funnel"
+          />
+          <ProofPanel rows={organicLandingRows(analytics)} title="Top Organic Pages" />
+          <ProofPanel rows={seoPerformanceRows(analytics)} title="Core Web Vitals" />
+          <ProofPanel rows={keywordRankingRows(analytics)} title="Keyword Rankings" />
+        </div>
+      </section>
+
       <section className="overflow-hidden rounded-3xl border border-cyan-300/18 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.16),transparent_28rem),radial-gradient(circle_at_86%_12%,rgba(167,139,250,0.12),transparent_24rem),linear-gradient(135deg,rgba(2,6,23,0.98),rgba(15,23,42,0.82))] p-4 shadow-2xl shadow-cyan-950/20 ring-1 ring-white/5 sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
@@ -769,6 +800,35 @@ function viralTrafficSourceRows(analytics: AnalyticsSummary): Array<[string, num
     `${row.visits.toLocaleString()} visits / ${formatPct(row.activationRatePct)} activation`,
   ]);
   return rows.length ? rows : [["No growth source data", "N/A"]];
+}
+
+function organicLandingRows(analytics: AnalyticsSummary): Array<[string, number | string]> {
+  const rows = analytics.organicAcquisition.landingPages.slice(0, 6).map((row): [string, string] => [
+    compactPath(row.landingPath),
+    `${row.organicVisits.toLocaleString()} visits / ${formatPct(row.signupRatePct)} signup`,
+  ]);
+  return rows.length ? rows : [["No organic page data", "N/A"]];
+}
+
+function seoPerformanceRows(analytics: AnalyticsSummary): Array<[string, number | string]> {
+  const priority = ["LCP", "INP", "CLS", "TTFB"];
+  const rows = analytics.organicAcquisition.pagePerformance
+    .slice()
+    .sort((left, right) => priority.indexOf(left.metricName) - priority.indexOf(right.metricName))
+    .slice(0, 6)
+    .map((row): [string, string] => [
+      `${compactPath(row.pagePath)} ${row.metricName}`,
+      `${row.samples.toLocaleString()} samples / ${row.averageValue === null ? "N/A" : row.averageValue.toFixed(row.metricName === "CLS" ? 3 : 0)}`,
+    ]);
+  return rows.length ? rows : [["No web vital samples", "N/A"]];
+}
+
+function keywordRankingRows(analytics: AnalyticsSummary): Array<[string, number | string]> {
+  const rows = analytics.organicAcquisition.keywordRankings.slice(0, 6).map((row): [string, string] => [
+    humanizeLabel(row.keyword),
+    row.latestPosition === null ? `${humanizeLabel(row.searchEngine)} pending` : `${humanizeLabel(row.searchEngine)} #${Math.round(row.latestPosition)}`,
+  ]);
+  return rows.length ? rows : [["Search Console import", "not connected"]];
 }
 
 function MetricGroup({ rows, title }: { rows: Array<[string, number | string]>; title: string }) {

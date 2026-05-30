@@ -51,6 +51,9 @@ type RegisterInput = {
   email: string;
   inviteCode?: string;
   password: string;
+  organicLandingPath?: string;
+  organicSearchEngine?: string;
+  organicSource?: string;
   referralCode?: string;
   referralShareId?: string;
 };

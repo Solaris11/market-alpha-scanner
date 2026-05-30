@@ -27,6 +27,7 @@ const SOCIAL_PREVIEW_PATHS = [
   "/market-memory",
   "/intelligence/why-wait/",
   "/symbol/",
+  "/search/",
   "/robots.txt",
   "/og-image.png",
 ];

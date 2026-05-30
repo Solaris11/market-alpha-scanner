@@ -12,6 +12,9 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 type CheckoutPayload = {
+  organicLandingPath?: unknown;
+  organicSearchEngine?: unknown;
+  organicSource?: unknown;
   referralCode?: unknown;
   referralShareId?: unknown;
 };
@@ -46,6 +49,9 @@ async function checkout(request: Request): Promise<Response> {
     const payload = (await request.json().catch(() => null)) as CheckoutPayload | null;
     const referralCode = normalizeStripeReferralField(payload?.referralCode);
     const referralShareId = normalizeStripeReferralField(payload?.referralShareId);
+    const organicLandingPath = normalizeStripeOrganicPath(payload?.organicLandingPath);
+    const organicSearchEngine = normalizeStripeReferralField(payload?.organicSearchEngine);
+    const organicSource = normalizeStripeReferralField(payload?.organicSource);
     const appBaseUrl = stripeAppBaseUrl();
     const subscription = await getBillingSubscriptionForUser(access.user.id, STRIPE_LIVE_MODE);
 
@@ -69,6 +75,9 @@ async function checkout(request: Request): Promise<Response> {
       line_items: [{ price: stripePriceId(STRIPE_LIVE_MODE), quantity: 1 }],
       metadata: {
         email: access.user.email,
+        organic_landing_path: organicLandingPath ?? "",
+        organic_search_engine: organicSearchEngine ?? "",
+        organic_source: organicSource ?? "",
         referral_code: referralCode ?? "",
         referral_share_id: referralShareId ?? "",
         stripe_mode: STRIPE_LIVE_MODE,
@@ -78,6 +87,9 @@ async function checkout(request: Request): Promise<Response> {
       subscription_data: {
         metadata: {
           email: access.user.email,
+          organic_landing_path: organicLandingPath ?? "",
+          organic_search_engine: organicSearchEngine ?? "",
+          organic_source: organicSource ?? "",
           referral_code: referralCode ?? "",
           referral_share_id: referralShareId ?? "",
           stripe_mode: STRIPE_LIVE_MODE,
@@ -102,4 +114,9 @@ async function checkout(request: Request): Promise<Response> {
 function normalizeStripeReferralField(value: unknown): string | null {
   const text = String(value ?? "").trim().replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
   return text || null;
+}
+
+function normalizeStripeOrganicPath(value: unknown): string | null {
+  const text = String(value ?? "").trim().replace(/[^A-Za-z0-9/_\-.]/g, "").slice(0, 160);
+  return text.startsWith("/") ? text : null;
 }

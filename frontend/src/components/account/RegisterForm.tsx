@@ -4,6 +4,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { growthAttributionMetadata, readStoredGrowthAttribution } from "@/lib/client/growth-attribution";
+import { readStoredSeoOrganicAttribution, seoOrganicAttributionMetadata } from "@/lib/client/seo-organic-attribution";
 import { AuthInput } from "./LoginForm";
 
 export function RegisterForm({ initialInviteCode = "", onSuccess }: { initialInviteCode?: string; onSuccess: () => void }) {
@@ -35,21 +36,32 @@ export function RegisterForm({ initialInviteCode = "", onSuccess }: { initialInv
     setBusy(true);
     const attribution = readStoredGrowthAttribution();
     const attributionMetadata = growthAttributionMetadata(attribution);
-    trackAnalyticsEvent("early_access_signup_start", { inviteProvided: Boolean(inviteCode.trim()), ...attributionMetadata }, { source: "register_form" });
+    const organicAttribution = readStoredSeoOrganicAttribution();
+    const organicMetadata = seoOrganicAttributionMetadata(organicAttribution);
+    trackAnalyticsEvent("early_access_signup_start", { inviteProvided: Boolean(inviteCode.trim()), ...attributionMetadata, ...organicMetadata }, { source: "register_form" });
     try {
       await register({
         displayName,
         email,
         inviteCode: inviteCode.trim() || undefined,
+        organicLandingPath: organicMetadata.organicLandingPath ?? undefined,
+        organicSearchEngine: organicMetadata.organicSearchEngine ?? undefined,
+        organicSource: organicMetadata.organicSource ?? undefined,
         password,
         referralCode: attributionMetadata.referralCode ?? undefined,
         referralShareId: attributionMetadata.shareId ?? undefined,
       });
-      trackAnalyticsEvent("early_access_signup_complete", { inviteProvided: Boolean(inviteCode.trim()), ...attributionMetadata }, { source: "register_form" });
+      trackAnalyticsEvent("early_access_signup_complete", { inviteProvided: Boolean(inviteCode.trim()), ...attributionMetadata, ...organicMetadata }, { source: "register_form" });
       if (attributionMetadata.referralCode || attributionMetadata.shareId) {
         trackAnalyticsEvent("referral_signup", {
           inviteProvided: Boolean(inviteCode.trim()),
           ...attributionMetadata,
+        }, { source: "register_form" });
+      }
+      if (organicMetadata.organicSource) {
+        trackAnalyticsEvent("organic_signup", {
+          inviteProvided: Boolean(inviteCode.trim()),
+          ...organicMetadata,
         }, { source: "register_form" });
       }
       onSuccess();

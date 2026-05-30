@@ -59,7 +59,8 @@
     "lint": "tsc --noEmit",
     "probe:phase29:chart-symbol-instant": "TRADEVETO_CHART_SYMBOL_PHASE_LABEL=\"Phase 29.3\" TRADEVETO_CHART_SYMBOL_PHASE_SLUG=phase29-3 TRADEVETO_PHASE29_BASE_URL=https://tradeveto.com TRADEVETO_PHASE29_ARTIFACT_ROOT=../docs/ops/artifacts/phase-29-3-chart-symbol-instant-workflow node scripts/phase28-chart-symbol-latency-probe.mjs",
     "probe:sprint30:webkit-latency": "TRADEVETO_CHART_SYMBOL_PHASE_LABEL=\"Sprint 30.0\" TRADEVETO_CHART_SYMBOL_PHASE_SLUG=sprint30-0 TRADEVETO_PHASE29_BASE_URL=https://tradeveto.com TRADEVETO_PHASE29_ARTIFACT_ROOT=../docs/ops/artifacts/sprint-30-0-webkit-safari-latency node scripts/phase28-chart-symbol-latency-probe.mjs",
-    "probe:sprint30:viral-growth": "bash -lc 'set -a; [ -f ../.env ] && source ../.env; set +a; TRADEVETO_SPRINT30_GROWTH_BASE_URL=https://tradeveto.com TRADEVETO_SPRINT30_GROWTH_ARTIFACT_ROOT=../docs/ops/artifacts/sprint-30-4-viral-growth node scripts/sprint30-4-viral-growth-probe.mjs'"
+    "probe:sprint30:viral-growth": "bash -lc 'set -a; [ -f ../.env ] && source ../.env; set +a; TRADEVETO_SPRINT30_GROWTH_BASE_URL=https://tradeveto.com TRADEVETO_SPRINT30_GROWTH_ARTIFACT_ROOT=../docs/ops/artifacts/sprint-30-4-viral-growth node scripts/sprint30-4-viral-growth-probe.mjs'",
+    "probe:sprint30:seo-organic": "bash -lc 'set -a; [ -f ../.env ] && source ../.env; set +a; TRADEVETO_SPRINT30_SEO_BASE_URL=https://tradeveto.com TRADEVETO_SPRINT30_SEO_ARTIFACT_ROOT=../docs/ops/artifacts/sprint-30-5-seo-organic node scripts/sprint30-5-seo-organic-probe.mjs'"
   },
   "dependencies": {
     "@nivo/heatmap": "^0.99.0",

@@ -32,6 +32,15 @@ import {
   readInboundReferralCode,
   readInboundShareId,
 } from "@/lib/client/growth-attribution";
+import {
+  captureSeoOrganicAttribution,
+  hasEmittedSeoOrganicOpen,
+  isSearchLandingPath,
+  markSeoOrganicOpenEmitted,
+  readStoredSeoOrganicAttribution,
+  seoOrganicAttributionMetadata,
+  seoOrganicOpenStorageKey,
+} from "@/lib/client/seo-organic-attribution";
 
 type ClientAnalyticsEvent = {
   anonymousId: string | null;
@@ -186,6 +195,7 @@ export function trackRouteAnalytics(pathname: string): void {
   recordRouteContinuityMemory(pathname, routePagePath);
   trackWatchlistRetention(pathname, routePagePath);
   trackGrowthAttribution(pathname, routePagePath);
+  trackSeoOrganicAttribution(pathname, routePagePath);
 }
 
 export async function flushAnalyticsEvents(): Promise<void> {
@@ -628,6 +638,34 @@ function trackGrowthAttribution(pathname: string, pagePath?: string): void {
         routeGroup: workflowGroupForPath(pathname) ?? "public",
       }, { pagePath, source: "growth_attribution", symbol: symbolFromPath(pathname) ?? undefined });
     }
+  }
+}
+
+function trackSeoOrganicAttribution(pathname: string, pagePath?: string): void {
+  if (typeof window === "undefined") return;
+  const attribution = captureSeoOrganicAttribution(window.location, document.referrer) ?? readStoredSeoOrganicAttribution();
+  const metadata = seoOrganicAttributionMetadata(attribution);
+  const routeGroup = workflowGroupForPath(pathname) ?? "public";
+  if (attribution) {
+    const key = seoOrganicOpenStorageKey({ pathname, source: attribution.source });
+    if (!hasEmittedSeoOrganicOpen(key)) {
+      markSeoOrganicOpenEmitted(key);
+      trackAnalyticsEvent("organic_search_visit", {
+        ...metadata,
+        routeGroup,
+      }, { pagePath, source: "seo_organic", symbol: symbolFromPath(pathname) ?? undefined });
+      trackAnalyticsEvent("organic_growth_visit", {
+        ...metadata,
+        routeGroup,
+      }, { pagePath, source: "seo_organic", symbol: symbolFromPath(pathname) ?? undefined });
+    }
+  }
+  if (isSearchLandingPath(pathname)) {
+    trackAnalyticsEvent("search_landing_open", {
+      ...metadata,
+      routeGroup,
+      searchSlug: pathname.replace(/^\/search\//, "").slice(0, 80),
+    }, { pagePath, source: "seo_landing", symbol: symbolFromPath(pathname) ?? undefined });
   }
 }
 
