@@ -269,6 +269,12 @@ test("research copilot infers portfolio, scenario, and event synthesis intents",
   assert.equal(inferResearchIntent("What events are influencing AMD and MU?", ["AMD", "MU"]), "event_synthesis");
 });
 
+test("research copilot infers AI trading copilot market-search intents", () => {
+  assert.equal(inferResearchIntent("Why is AMD moving today?", ["AMD"]), "symbol_explanation");
+  assert.equal(inferResearchIntent("Show AI stocks with improving momentum.", []), "natural_language_search");
+  assert.equal(inferResearchIntent("Which symbols look similar to NVDA?", ["NVDA"]), "similar_symbols");
+});
+
 test("research copilot compares symbols without direct action language", () => {
   const answer = answerResearchCopilotDeterministically(contextFor("Why is AMD ranked above MU today?"));
 
@@ -299,6 +305,108 @@ test("research copilot supports DDOG vs CRWD comparison prompts", () => {
   assert.equal(answer.intent, "comparison");
   assert.deepEqual(answer.referencedSymbols, ["DDOG", "CRWD"]);
   assert.ok(answer.symbolComparisons.some((item) => /DDOG|CRWD/.test(item)));
+});
+
+test("research copilot explains symbol movement from traceable scanner fields", () => {
+  const rows = [
+    row({
+      raw: {
+        relative_volume: 1.8,
+        return_1d: 0.028,
+        score_change: 4,
+        symbol: "AMD",
+        technical_score: 74,
+      },
+      symbol: "AMD",
+    }),
+    row({ symbol: "MU" }),
+  ];
+  const metaSystem = buildTradeVetoOperatingSystem({ rows, workflowEvolution: workflow });
+  const context = buildResearchCopilotContext({
+    metaSystem,
+    question: "Why is AMD moving today?",
+    regimeSystem: buildRegimeShiftSystem({ rows, workflowEvolution: workflow }),
+    rows,
+    workflowEvolution: workflow,
+  });
+  const answer = answerResearchCopilotDeterministically(context);
+
+  assert.equal(answer.intent, "symbol_explanation");
+  assert.ok(answer.keyPoints.some((point) => /one-day move|technical|volume/i.test(point)));
+  assert.ok(answer.traceability.some((trace) => trace.sourceType === "scanner"));
+  assert.ok(answer.marketSearchResults.some((result) => result.symbol === "AMD" && result.priceMovement.status === "available"));
+  assert.doesNotMatch(JSON.stringify(answer), /Reuters reported|guaranteed|buy now|sell now/i);
+});
+
+test("research copilot supports natural-language AI momentum screens with action boundaries", () => {
+  const rows = [
+    row({
+      final_score: 84,
+      raw: {
+        company_name: "NVIDIA Corp",
+        momentum_score: 82,
+        return_1d: 0.019,
+        score_change: 5,
+        sector: "Semiconductors",
+        symbol: "NVDA",
+        technical_score: 83,
+      },
+      sector: "Semiconductors",
+      symbol: "NVDA",
+    }),
+    row({
+      final_score: 79,
+      raw: {
+        company_name: "Advanced Micro Devices",
+        momentum_score: 76,
+        return_1d: 0.011,
+        sector: "Semiconductors",
+        symbol: "AMD",
+      },
+      sector: "Semiconductors",
+      symbol: "AMD",
+    }),
+    row({ final_score: 55, raw: { sector: "Utilities", symbol: "UTL" }, sector: "Utilities", symbol: "UTL" }),
+  ];
+  const metaSystem = buildTradeVetoOperatingSystem({ rows, workflowEvolution: workflow });
+  const context = buildResearchCopilotContext({
+    metaSystem,
+    question: "Show AI stocks with improving momentum.",
+    regimeSystem: buildRegimeShiftSystem({ rows, workflowEvolution: workflow }),
+    rows,
+    watchlistSymbols: ["AMD"],
+    workflowEvolution: workflow,
+  });
+  const answer = answerResearchCopilotDeterministically(context);
+
+  assert.equal(answer.intent, "natural_language_search");
+  assert.ok(answer.marketSearchResults.some((result) => result.symbol === "NVDA"));
+  assert.ok(answer.marketSearchResults.every((result) => result.matchReasons.length > 0));
+  assert.ok(answer.opportunityActions.every((action) => /Research|Watchlist|Risk review|Portfolio context|suggestion/i.test(action.boundary)));
+  assert.doesNotMatch(JSON.stringify(answer.opportunityActions), /must buy|guaranteed|execute/i);
+});
+
+test("research copilot finds similar symbols without fabricating analogs", () => {
+  const rows = [
+    row({ final_score: 86, fragility: 38, raw: { setup_type: "MOMENTUM_CONTINUATION", symbol: "NVDA" }, sector: "Semiconductors", symbol: "NVDA" }),
+    row({ final_score: 81, fragility: 44, raw: { setup_type: "MOMENTUM_CONTINUATION", symbol: "AMD" }, sector: "Semiconductors", symbol: "AMD" }),
+    row({ final_score: 79, fragility: 48, raw: { setup_type: "MOMENTUM_CONTINUATION", symbol: "AVGO" }, sector: "Semiconductors", symbol: "AVGO" }),
+    row({ final_score: 72, fragility: 51, raw: { setup_type: "DEFENSIVE_ROTATION", symbol: "XLU" }, sector: "Utilities", symbol: "XLU" }),
+  ];
+  const metaSystem = buildTradeVetoOperatingSystem({ rows, workflowEvolution: workflow });
+  const context = buildResearchCopilotContext({
+    metaSystem,
+    question: "Which symbols look similar to NVDA?",
+    regimeSystem: buildRegimeShiftSystem({ rows, workflowEvolution: workflow }),
+    rows,
+    workflowEvolution: workflow,
+  });
+  const answer = answerResearchCopilotDeterministically(context);
+
+  assert.equal(answer.intent, "similar_symbols");
+  assert.ok(answer.marketSearchResults.some((result) => result.symbol === "AMD"));
+  assert.ok(answer.symbolComparisons.some((line) => /AMD|AVGO/.test(line)));
+  assert.doesNotMatch(JSON.stringify(answer), /fake analog|will definitely|price target/i);
 });
 
 test("research copilot answers what changed from workflow evolution", () => {

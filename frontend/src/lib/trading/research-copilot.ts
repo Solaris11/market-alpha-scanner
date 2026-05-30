@@ -9,6 +9,19 @@ import type { RegimeShiftSystem } from "./regime-shift-intelligence";
 import type { ScenarioIntelligenceSystem } from "./scenario-intelligence";
 import type { WorkflowEvolutionSummary } from "./workflow-evolution";
 import { buildAICognitionLayer, type AICognitionLayerModel } from "./ai-cognition-layer";
+import {
+  buildAICopilotActionPlan,
+  buildAICopilotMarketSearch,
+  buildAICopilotPersonalMemory,
+  buildAICopilotTraceability,
+  movementSignalsForRow,
+  type AICopilotAction,
+  type AICopilotMarketSearch,
+  type AICopilotMarketSearchResult,
+  type AICopilotPersonalMemory,
+  type AICopilotSignalLine,
+  type AICopilotTraceItem,
+} from "./ai-trading-copilot";
 import { cleanText } from "@/lib/ui/formatters";
 import { decisionLabel } from "@/lib/ui/labels";
 
@@ -19,12 +32,15 @@ export type ResearchCopilotIntent =
   | "fragility"
   | "historical_analogs"
   | "market_state"
+  | "natural_language_search"
   | "opportunity_fit"
   | "portfolio"
   | "ranking"
   | "replay"
   | "scenario"
   | "shock"
+  | "similar_symbols"
+  | "symbol_explanation"
   | "what_changed";
 
 export type ResearchCopilotMode = "concise" | "deep_dive";
@@ -42,10 +58,13 @@ export type ResearchCopilotSymbolContext = {
   macroContext: string;
   memoryNarrative: string[];
   narrativeSummary: string | null;
+  priceMovement: AICopilotSignalLine;
   sector: string | null;
   setupType: string | null;
   shockContext: string | null;
   symbol: string;
+  technicalChange: AICopilotSignalLine;
+  volumeChange: AICopilotSignalLine;
 };
 
 export type ResearchCopilotCitation = {
@@ -100,6 +119,7 @@ export type ResearchCopilotContext = {
     transitionRiskScore: number;
     volatilityPressure: number;
   };
+  marketSearch: AICopilotMarketSearch;
   memory: {
     behaviorFlags: string[];
     coachingNotes: string[];
@@ -113,6 +133,8 @@ export type ResearchCopilotContext = {
     summary: string;
   };
   mode: ResearchCopilotMode;
+  opportunityActions: AICopilotAction[];
+  personalMemory: AICopilotPersonalMemory;
   portfolio: {
     available: boolean;
     fragilityScore: number | null;
@@ -143,6 +165,7 @@ export type ResearchCopilotContext = {
     terminalInsights: string[];
   } | null;
   symbols: ResearchCopilotSymbolContext[];
+  traceability: AICopilotTraceItem[];
   workflow: {
     deteriorating: string[];
     improving: string[];
@@ -157,11 +180,15 @@ export type ResearchCopilotAnswer = {
   followUpQuestions: string[];
   intent: ResearchCopilotIntent;
   keyPoints: string[];
+  marketSearchResults: AICopilotMarketSearchResult[];
   mode: ResearchCopilotMode;
+  opportunityActions: AICopilotAction[];
+  personalMemory: AICopilotPersonalMemory;
   referencedSymbols: string[];
   safetyLanguage: string;
   source: "deterministic" | "llm";
   symbolComparisons: string[];
+  traceability: AICopilotTraceItem[];
   unsupportedClaimsDetected: boolean;
   whatToWatch: string[];
 };
@@ -202,7 +229,16 @@ export function buildResearchCopilotContext(input: ResearchCopilotBuildInput): R
   const directSymbols = referencedSymbolsFor(question, availableSymbols);
   const referencedSymbols = directSymbols.length ? directSymbols : referencedSymbolsFromConversation(conversation, availableSymbols);
   const intent = inferResearchIntent(question, referencedSymbols);
-  const selectedSymbols = selectedSymbolsFor({ intent, referencedSymbols, rows: input.rows, system: input.metaSystem });
+  const marketSearch = buildAICopilotMarketSearch({
+    conversation,
+    portfolioSystem: input.portfolioSystem ?? null,
+    profile: input.personalizationProfile ?? null,
+    question,
+    referencedSymbols,
+    rows: input.rows,
+    watchlistSymbols: input.watchlistSymbols ?? [],
+  });
+  const selectedSymbols = selectedSymbolsFor({ intent, marketSearch, referencedSymbols, rows: input.rows, system: input.metaSystem });
   const memoryMap = input.marketMemoryBySymbol ?? new Map<string, MarketMemorySummary>();
   const symbolContexts = selectedSymbols.map((row) => symbolContextFor(row, memoryMap.get(row.symbol.toUpperCase()) ?? null));
   const cognition = buildAICognitionLayer({
@@ -215,12 +251,33 @@ export function buildResearchCopilotContext(input: ResearchCopilotBuildInput): R
   const scenario = slimScenarioContext(input.scenarioSystem ?? null);
   const eventSynthesis = eventSynthesisFor(symbolContexts, input.rows);
   const conversationMemory = conversationMemoryFor(conversation, question, [...availableSymbols, ...(input.watchlistSymbols ?? [])]);
+  const opportunityActions = buildAICopilotActionPlan({
+    marketSearch,
+    portfolioSystem: input.portfolioSystem ?? null,
+    watchlistSymbols: input.watchlistSymbols ?? [],
+  });
+  const personalMemory = buildAICopilotPersonalMemory({
+    conversation,
+    portfolioSystem: input.portfolioSystem ?? null,
+    profile: input.personalizationProfile ?? null,
+    question,
+    referencedSymbols,
+    rows: input.rows,
+    watchlistSymbols: input.watchlistSymbols ?? [],
+  });
+  const traceability = buildAICopilotTraceability({
+    marketSearch,
+    opportunityActions,
+    personalMemory,
+    portfolioSystem: input.portfolioSystem ?? null,
+  });
   const citations = citationsFor({
     conversationMemory,
     eventSynthesis,
     hasDecisionMemory: Boolean(input.decisionMemory),
     intradaySystem: input.intradaySystem ?? null,
     memoryMap,
+    marketSearch,
     portfolio,
     regimeSystem: input.regimeSystem,
     scenario,
@@ -268,6 +325,7 @@ export function buildResearchCopilotContext(input: ResearchCopilotBuildInput): R
       transitionRiskScore: input.regimeSystem.transitionRiskScore,
       volatilityPressure: input.regimeSystem.volatilityPressure,
     },
+    marketSearch,
     memory: input.decisionMemory ? {
       behaviorFlags: input.decisionMemory.behaviorFlags.slice(0, 4),
       coachingNotes: input.decisionMemory.coachingNotes.slice(0, 4),
@@ -287,6 +345,8 @@ export function buildResearchCopilotContext(input: ResearchCopilotBuildInput): R
       summary: input.metaSystem.summary,
     },
     mode: normalizeResearchCopilotMode(input.mode),
+    opportunityActions,
+    personalMemory,
     portfolio,
     profile: input.personalizationProfile ? {
       label: input.personalizationProfile.label,
@@ -298,6 +358,7 @@ export function buildResearchCopilotContext(input: ResearchCopilotBuildInput): R
     referencedSymbols,
     scenario,
     symbols: symbolContexts,
+    traceability,
     workflow: {
       deteriorating: (input.workflowEvolution?.deterioratingSetups ?? []).slice(0, 5).map((item) => `${item.symbol}: ${item.title}. ${item.detail}`),
       improving: (input.workflowEvolution?.improvingSetups ?? []).slice(0, 5).map((item) => `${item.symbol}: ${item.title}. ${item.detail}`),
@@ -308,6 +369,9 @@ export function buildResearchCopilotContext(input: ResearchCopilotBuildInput): R
 
 export function answerResearchCopilotDeterministically(context: ResearchCopilotContext): ResearchCopilotAnswer {
   if (context.intent === "comparison" && context.symbols.length >= 2) return comparisonAnswer(context);
+  if (context.intent === "symbol_explanation") return symbolExplanationAnswer(context);
+  if (context.intent === "similar_symbols") return similarSymbolsAnswer(context);
+  if (context.intent === "natural_language_search") return naturalLanguageSearchAnswer(context);
   if (context.intent === "cognition") return cognitionAnswer(context);
   if (context.intent === "portfolio") return portfolioAnswer(context);
   if (context.intent === "scenario") return scenarioAnswer(context);
@@ -334,9 +398,15 @@ export function inferResearchIntent(question: string, referencedSymbols: string[
   const asksScenario = /\b(scenario|what if|stress|qqq -?3|spy risk|vix|rates surge|yields surge|oil shock|ai narrative|earnings miss)\b/i.test(text);
   const asksEvent = /\b(event|events|news|earnings|guidance|fed|cpi|nfp|inflation|jobs|oil|regulation|filing|catalyst|press release)\b/i.test(text);
   const asksMarket = /\b(market|risk-on|risk off|fragile|cautious|sparse|sector|narrative weakening|regime)\b/i.test(text);
+  const asksSearch = /\b(show|find|screen|scan|list|which symbols|which stocks|opportunities|candidates)\b/i.test(text);
+  const asksSimilar = /\b(similar to|look similar|symbols similar|analogs like|like [A-Z]{2,5})\b/i.test(question);
+  const asksMovement = /\b(why .*moving|moving today|move today|moved today|what.*driving|why .*up|why .*down|explain .*move)\b/i.test(text);
   if (asksComparison || (referencedSymbols.length >= 2 && !asksFragility && !asksReplay && !asksChanged && !asksShock && !asksPortfolio && !asksScenario && !asksEvent && !asksMarket)) return "comparison";
   if (asksPortfolio) return "portfolio";
   if (asksScenario) return "scenario";
+  if (asksSimilar) return "similar_symbols";
+  if (asksMovement && referencedSymbols.length) return "symbol_explanation";
+  if (asksSearch) return "natural_language_search";
   if (asksEvent) return "event_synthesis";
   if (asksReplay) return "replay";
   if (asksCognition) return "cognition";
@@ -367,6 +437,64 @@ function comparisonAnswer(context: ResearchCopilotContext): ResearchCopilotAnswe
       "Whether the weaker symbol improves macro, event, or fragility context.",
       "Whether the stronger symbol becomes extended or chase-prone.",
       "Whether market-state alerts change the relative ranking.",
+    ],
+  });
+}
+
+function symbolExplanationAnswer(context: ResearchCopilotContext): ResearchCopilotAnswer {
+  const lines = context.symbols.flatMap((symbol) => [
+    `${symbol.symbol}: ${symbol.priceMovement.detail}`,
+    `${symbol.symbol}: ${symbol.technicalChange.detail}`,
+    `${symbol.symbol}: ${symbol.volumeChange.detail}`,
+    `${symbol.symbol}: event ${symbol.eventContext}; macro ${symbol.macroContext}.`,
+  ]).slice(0, context.mode === "deep_dive" ? 8 : 4);
+  return baseAnswer(context, {
+    answer: context.symbols.length
+      ? "The movement explanation is bounded to the current TradeVeto scanner packet: price movement, technical context, volume context, verified event pressure, macro state, and freshness."
+      : "No matching symbol packet was available, so I cannot explain the move without fabricating market context.",
+    keyPoints: lines.length ? lines : [context.marketState.summary, context.meta.summary],
+    symbolComparisons: [],
+    whatToWatch: [
+      "Whether price movement is confirmed by technical and volume evidence.",
+      "Whether event or macro pressure is source-backed and still fresh.",
+      "Whether fragility rises faster than conviction.",
+    ],
+  });
+}
+
+function naturalLanguageSearchAnswer(context: ResearchCopilotContext): ResearchCopilotAnswer {
+  const results = context.marketSearch.results.slice(0, context.mode === "deep_dive" ? 6 : 4);
+  return baseAnswer(context, {
+    answer: results.length
+      ? `The strongest current matches for this natural-language screen are ${results.map((result) => result.symbol).join(", ")}. They are ranked from current TradeVeto scanner data, not generated from hidden claims.`
+      : context.marketSearch.limitedReason ?? "No current scanner rows matched this natural-language screen.",
+    keyPoints: results.length
+      ? results.map((result) => `${result.symbol}: score ${scoreText(result.finalScore)}, conviction ${result.conviction}, fragility ${result.fragility}; ${result.matchReasons.slice(0, 2).join("; ")}.`)
+      : [context.marketState.summary, context.meta.summary],
+    symbolComparisons: [],
+    whatToWatch: [
+      "Whether the matched rows stay fresh after the next scan.",
+      "Whether momentum improves without creating late-entry fragility.",
+      "Whether macro and event context support or weaken the screen.",
+    ],
+  });
+}
+
+function similarSymbolsAnswer(context: ResearchCopilotContext): ResearchCopilotAnswer {
+  const results = context.marketSearch.results.slice(0, context.mode === "deep_dive" ? 6 : 4);
+  const base = context.marketSearch.filters.similarBaseSymbol;
+  return baseAnswer(context, {
+    answer: results.length
+      ? `Current symbols most similar to ${base ?? "the requested base"} are ${results.map((result) => result.symbol).join(", ")} based on sector, setup, score, fragility, macro, and AI/theme overlap.`
+      : context.marketSearch.limitedReason ?? "No similar-symbol packet is available for the requested base symbol.",
+    keyPoints: results.length
+      ? results.map((result) => `${result.symbol}: ${result.matchReasons.slice(0, 3).join("; ")}.`)
+      : [context.marketState.summary, "Similarity requires a current scanner row for the base symbol."],
+    symbolComparisons: results.map((result) => `${result.symbol}: score ${scoreText(result.finalScore)}, conviction ${result.conviction}, fragility ${result.fragility}, macro ${result.macroContext}.`),
+    whatToWatch: [
+      "Whether similarity is confirmed by actual setup quality and not only sector membership.",
+      "Whether the analog has better or worse fragility than the base symbol.",
+      "Whether event and macro context are comparable.",
     ],
   });
 }
@@ -638,17 +766,22 @@ function baseAnswer(
     followUpQuestions: (body.followUpQuestions ?? followUpQuestionsFor(context)).map(safeOutputText).filter(Boolean).slice(0, 3),
     intent: context.intent,
     keyPoints: body.keyPoints.map(safeOutputText).filter(Boolean).slice(0, keyPointLimit),
+    marketSearchResults: context.marketSearch.results.slice(0, 8),
     mode: context.mode,
+    opportunityActions: context.opportunityActions.slice(0, 6),
+    personalMemory: context.personalMemory,
     referencedSymbols: context.symbols.map((symbol) => symbol.symbol),
     safetyLanguage: "Research context only. Not financial advice. Deterministic TradeVeto scores remain the source of truth.",
     source: "deterministic",
     symbolComparisons: body.symbolComparisons.map(safeOutputText).filter(Boolean).slice(0, 4),
+    traceability: context.traceability.slice(0, 10),
     unsupportedClaimsDetected: false,
     whatToWatch: body.whatToWatch.map(safeOutputText).filter(Boolean).slice(0, watchLimit),
   };
 }
 
 function symbolContextFor(row: OpportunityViewModel, memory: MarketMemorySummary | null): ResearchCopilotSymbolContext {
+  const movementSignals = movementSignalsForRow(row);
   return {
     conviction: row.conviction,
     decision: decisionLabel(row.final_decision),
@@ -662,10 +795,13 @@ function symbolContextFor(row: OpportunityViewModel, memory: MarketMemorySummary
     macroContext: row.macroLabel,
     memoryNarrative: memory?.narrative.slice(0, 3) ?? [],
     narrativeSummary: row.narrative?.narrativeSummary ?? null,
+    priceMovement: movementSignals.priceMovement,
     sector: row.sector,
     setupType: cleanText(row.raw.setup_type, "") || null,
     shockContext: row.shockPattern ? `${row.shockPattern.opportunityState}, upside ${row.shockPattern.upsideShockScore}/100, downside ${row.shockPattern.downsideRiskScore}/100` : null,
     symbol: row.symbol,
+    technicalChange: movementSignals.technicalChange,
+    volumeChange: movementSignals.volumeChange,
   };
 }
 
@@ -747,6 +883,7 @@ function citationsFor(input: {
   hasDecisionMemory: boolean;
   intradaySystem: IntradayRegimeDriftSystem | null;
   memoryMap: Map<string, MarketMemorySummary>;
+  marketSearch: AICopilotMarketSearch;
   portfolio: ResearchCopilotContext["portfolio"];
   regimeSystem: RegimeShiftSystem;
   scenario: ResearchCopilotContext["scenario"];
@@ -796,6 +933,22 @@ function citationsFor(input: {
     label: "AI cognition packet",
     sourceType: "workflow",
   });
+  citations.push({
+    detail: input.marketSearch.results.length
+      ? `${input.marketSearch.results.length} natural-language market search result(s): ${input.marketSearch.results.slice(0, 5).map((item) => item.symbol).join(", ")}.`
+      : input.marketSearch.limitedReason ?? "Natural-language market search returned no rows.",
+    id: "scanner:natural-language-search",
+    label: "Natural-language market search",
+    sourceType: "scanner",
+  });
+  if (input.portfolio) {
+    citations.push({
+      detail: input.portfolio.summary,
+      id: "portfolio:exposure",
+      label: "Portfolio exposure packet",
+      sourceType: "portfolio",
+    });
+  }
   for (const [symbol, memory] of input.memoryMap.entries()) {
     citations.push({
       detail: memory.evidence.explanation,
@@ -819,14 +972,6 @@ function citationsFor(input: {
       id: "scenario:stress",
       label: "Scenario stress packet",
       sourceType: "scenario",
-    });
-  }
-  if (input.portfolio) {
-    citations.push({
-      detail: input.portfolio.summary,
-      id: "portfolio:exposure",
-      label: "Portfolio exposure packet",
-      sourceType: "portfolio",
     });
   }
   if (input.hasDecisionMemory) {
@@ -866,6 +1011,7 @@ function eventSourcesFor(row: OpportunityViewModel): string[] {
 
 function selectedSymbolsFor(input: {
   intent: ResearchCopilotIntent;
+  marketSearch: AICopilotMarketSearch;
   referencedSymbols: string[];
   rows: OpportunityViewModel[];
   system: TradeVetoOperatingSystem;
@@ -873,6 +1019,8 @@ function selectedSymbolsFor(input: {
   const bySymbol = new Map(input.rows.map((row) => [row.symbol.toUpperCase(), row]));
   const selected = input.referencedSymbols.map((symbol) => bySymbol.get(symbol)).filter((row): row is OpportunityViewModel => Boolean(row));
   if (selected.length) return selected.slice(0, input.intent === "comparison" ? 4 : 5);
+  const searched = input.marketSearch.results.map((result) => bySymbol.get(result.symbol.toUpperCase())).filter((row): row is OpportunityViewModel => Boolean(row));
+  if (searched.length) return searched.slice(0, input.intent === "similar_symbols" || input.intent === "natural_language_search" ? 6 : 5);
   const priority = input.system.priorityQueue.map((item) => bySymbol.get(item.symbol)).filter((row): row is OpportunityViewModel => Boolean(row));
   if (input.intent === "fragility") return [...input.rows].sort((left, right) => right.fragility - left.fragility).slice(0, 5);
   return priority.length ? priority.slice(0, 5) : input.rows.slice(0, 5);
@@ -948,8 +1096,9 @@ function confidenceNoteFor(context: ResearchCopilotContext): string {
   const evidence = context.symbols.map((symbol) => symbol.evidenceLabel ?? "").join(" ");
   const limitedEvidence = /\b(limited|unavailable|missing|low)\b/i.test(evidence);
   const followUp = context.followUpContext ? " Follow-up context was carried forward from the recent conversation." : "";
+  const searchLimit = context.marketSearch.limitedReason ? ` ${context.marketSearch.limitedReason}` : "";
   if (limitedEvidence) return `Confidence is moderate to limited because historical evidence is still building.${followUp}`;
-  return `Confidence comes from the latest scanner, market, event, workflow, and memory data.${followUp}`;
+  return `Confidence comes from the latest scanner, market, event, workflow, market-search, and memory data.${followUp}${searchLimit}`;
 }
 
 function followUpQuestionsFor(context: ResearchCopilotContext): string[] {
@@ -981,6 +1130,27 @@ function followUpQuestionsFor(context: ResearchCopilotContext): string[] {
       "What increased risk?",
       "What is stale?",
       "What needs confirmation?",
+    ];
+  }
+  if (context.intent === "symbol_explanation" && first) {
+    return [
+      `What changed most for ${first.symbol}?`,
+      `Which risk could break ${first.symbol}?`,
+      `Show symbols similar to ${first.symbol}.`,
+    ];
+  }
+  if (context.intent === "similar_symbols" && first) {
+    return [
+      `Compare ${first.symbol} with the closest match.`,
+      `Which similar symbol has lower fragility?`,
+      "Show the strongest AI-related setups.",
+    ];
+  }
+  if (context.intent === "natural_language_search") {
+    return [
+      "Show AI stocks with improving momentum.",
+      "Which matched symbols have elevated risk?",
+      "Which should I add to my watchlist for research?",
     ];
   }
   return [

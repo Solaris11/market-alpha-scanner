@@ -191,6 +191,7 @@ function requestPayload(model: string, context: ResearchCopilotContext): Record<
           "You are TradeVeto's conversational market research copilot.",
           "Use only the supplied deterministic context packet.",
           "Explain rankings, comparisons, portfolio exposure, replay context, event synthesis, scenarios, market state, fragility, historical analogs, user fit, and what changed.",
+          "Use context.marketSearch, context.opportunityActions, context.personalMemory, and context.traceability as deterministic support when the user asks natural-language market search, watchlist, or opportunity workflow questions.",
           "Citations are attached by the application from the deterministic context; do not invent external links or source names.",
           "Honor context.mode: concise means one short answer with only the strongest evidence; deep_dive means more detail but still no filler.",
           "Do not invent prices, news, events, probabilities, performance, or hidden institutional flows.",
@@ -268,6 +269,7 @@ function validateCopilotAnswer(value: unknown, context: ResearchCopilotContext):
     requiredFields: ["answer", "confidenceNote", "keyPoints", "safetyLanguage", "whatToWatch"],
   });
   if (!grounding.safeForUse) return null;
+  const deterministic = answerResearchCopilotDeterministically(context);
   return {
     answer,
     citations: context.citations.slice(0, 8),
@@ -275,11 +277,15 @@ function validateCopilotAnswer(value: unknown, context: ResearchCopilotContext):
     followUpQuestions,
     intent: context.intent,
     keyPoints,
+    marketSearchResults: deterministic.marketSearchResults,
     mode: context.mode,
+    opportunityActions: deterministic.opportunityActions,
+    personalMemory: deterministic.personalMemory,
     referencedSymbols: context.symbols.map((symbol) => symbol.symbol),
     safetyLanguage,
     source: "llm",
     symbolComparisons,
+    traceability: deterministic.traceability,
     unsupportedClaimsDetected: false,
     whatToWatch,
   };
@@ -306,6 +312,18 @@ function trimContextForLlm(context: ResearchCopilotContext): ResearchCopilotCont
       memoryNarrative: symbol.memoryNarrative.slice(0, 3),
       narrativeSummary: symbol.narrativeSummary ? symbol.narrativeSummary.slice(0, 600) : null,
     })),
+    marketSearch: {
+      ...context.marketSearch,
+      results: context.marketSearch.results.slice(0, 8),
+    },
+    opportunityActions: context.opportunityActions.slice(0, 6),
+    personalMemory: {
+      ...context.personalMemory,
+      personalizedInterests: context.personalMemory.personalizedInterests.slice(0, 8),
+      previousQuestions: context.personalMemory.previousQuestions.slice(0, 4),
+      watchlistSymbols: context.personalMemory.watchlistSymbols.slice(0, 12),
+    },
+    traceability: context.traceability.slice(0, 8),
   };
 }
 
