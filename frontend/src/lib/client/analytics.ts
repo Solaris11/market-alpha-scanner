@@ -555,6 +555,7 @@ function trackReturnSession(pathname: string, pagePath?: string): void {
         emitOncePerSession(`${RETURN_WORKFLOW_EMITTED_KEY}:${sessionId}:scanner_habit_loop`, "scanner_habit_loop", metadata, pagePath, pathname, "return_workflow");
       }
       if (group === "symbol") {
+        emitOncePerSession(`${RETURN_WORKFLOW_EMITTED_KEY}:${sessionId}:symbol_return`, "symbol_return", metadata, pagePath, pathname, "return_workflow");
         emitOncePerSession(`${RETURN_WORKFLOW_EMITTED_KEY}:${sessionId}:chart_return`, "chart_return", metadata, pagePath, pathname, "return_workflow");
       }
       if (group === "replay") {
@@ -579,6 +580,9 @@ function trackReturnSession(pathname: string, pagePath?: string): void {
       if (window.localStorage.getItem(key) !== "true") {
         window.localStorage.setItem(key, "true");
         trackAnalyticsEvent("morning_workflow_start", { localHour: hour, routeGroup: group, watchlistSize }, { pagePath, source: "morning_workflow", symbol: symbolFromPath(pathname) ?? undefined });
+        if (group === "terminal") {
+          trackAnalyticsEvent("briefing_return", { localHour: hour, routeGroup: group, watchlistSize }, { pagePath, source: "morning_workflow", symbol: symbolFromPath(pathname) ?? undefined });
+        }
       }
     }
   } catch {
@@ -600,10 +604,12 @@ function emitOncePerSession(
 }
 
 function returnEventForGroup(group: ContinuityWorkflowGroup): AnalyticsEventName | null {
+  if (group === "terminal") return "briefing_return";
   if (group === "scanner") return "scanner_return";
   if (group === "replay") return "replay_return";
   if (group === "alerts") return "alert_return";
   if (group === "strategy") return "strategy_return";
+  if (group === "symbol") return "symbol_return";
   return null;
 }
 

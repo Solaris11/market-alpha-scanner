@@ -48,6 +48,24 @@ describe("daily driver retention model", () => {
     ]);
     assert.ok(model.activationMilestones.some((item) => item.key === "first_watchlist" && item.status === "blocked"));
     assert.ok(model.returnLoops.some((loop) => loop.eventName === "scanner_habit_loop"));
+    assert.ok(model.returnLoops.some((loop) => loop.eventName === "briefing_return"));
+    assert.ok(model.returnLoops.some((loop) => loop.eventName === "symbol_return"));
+    assert.equal(model.dailySetupCard.tasks.length, 8);
+    assert.deepEqual(model.dailySetupCard.tasks.map((item) => item.key), [
+      "daily_briefing",
+      "watchlist_review",
+      "market_opportunities",
+      "alert_follow_up",
+      "symbol_follow_up",
+      "performance_review",
+      "replay_review",
+      "market_memory_updates",
+    ]);
+    assert.ok(model.returnReasons.some((reason) => reason.key === "new_opportunities" && reason.status === "ready"));
+    assert.ok(model.returnReasons.some((reason) => reason.key === "watchlist_movers" && reason.status === "blocked"));
+    assert.ok(model.notificationContextRules.some((rule) => rule.key === "why_matters"));
+    assert.ok(model.habitMetrics.some((metric) => metric.key === "daily_active_users"));
+    assert.ok(model.habitMetrics.some((metric) => metric.key === "symbol_returns" && metric.eventName === "symbol_return"));
     assert.ok(model.dependenceLoops.some((loop) => loop.key === "first_open" && loop.status === "ready"));
     assert.ok(model.returnLoops.some((loop) => loop.eventName === "chart_return" && loop.status === "blocked"));
     assert.ok(model.continuationWorkflows.some((item) => item.key === "scanner_state"));
@@ -89,6 +107,8 @@ describe("daily driver retention model", () => {
     assert.ok(model.habitLoops.some((loop) => loop.key === "notification_feedback"));
     assert.ok(model.activationMilestones.some((item) => item.key === "first_alert" && item.status === "ready"));
     assert.ok(model.returnLoops.some((loop) => loop.eventName === "chart_return" && loop.status === "partial"));
+    assert.ok(model.returnLoops.some((loop) => loop.eventName === "briefing_return" && loop.status === "ready"));
+    assert.ok(model.returnLoops.some((loop) => loop.eventName === "symbol_return" && loop.status === "partial"));
     assert.ok(model.returnLoops.some((loop) => loop.eventName === "compare_return" && loop.status === "partial"));
     assert.equal(model.continuationWorkflows.find((item) => item.key === "chart_state")?.value, "AMD");
     assert.ok(model.notificationQuality.some((item) => item.key === "adaptive_relevance" && item.status === "partial"));
@@ -98,6 +118,13 @@ describe("daily driver retention model", () => {
     assert.match(model.morningWorkflow.find((item) => item.key === "macro_updates")?.metricLabel ?? "", /1 trigger/);
     assert.equal(model.morningWorkflow.find((item) => item.key === "overnight_events")?.metricLabel, "4 signals");
     assert.equal(model.morningWorkflow.find((item) => item.key === "ai_digest")?.href, "/symbol/AMD");
+    assert.equal(model.dailySetupCard.status, "ready");
+    assert.ok(model.dailySetupCard.label.includes("watchlist symbol moved"));
+    assert.ok(model.returnReasons.some((reason) => reason.key === "watchlist_movers" && reason.label === "1 watchlist symbol moved"));
+    assert.ok(model.returnReasons.some((reason) => reason.key === "triggered_alerts" && reason.label === "1 alert triggered"));
+    assert.ok(model.returnReasons.some((reason) => reason.key === "new_opportunities" && reason.label === "1 new opportunity detected"));
+    assert.ok(model.notificationContextRules.some((rule) => rule.key === "opened" && rule.status === "ready"));
+    assert.ok(model.habitMetrics.some((metric) => metric.key === "briefing_returns" && metric.eventName === "briefing_return"));
     assert.ok(model.dailyBriefing.some((item) => item.key === "deteriorated" && item.href === "/symbol/MU"));
     assert.ok(model.dependenceLoops.some((loop) => loop.key === "repeat_watchlist_usage" && loop.status === "ready"));
     assert.ok(model.alertQualityEngine.some((item) => item.key === "workflow_linked_alerts" && item.status === "partial"));

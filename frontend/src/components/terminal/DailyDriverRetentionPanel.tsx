@@ -28,13 +28,18 @@ import type {
   DailyDriverChangeSignal,
   DailyDriverContinuationItem,
   DailyDriverContextItem,
+  DailyDriverDailySetupCard,
+  DailyDriverDailySetupTask,
   DailyDriverDependenceLoop,
   DailyDriverFunnelStage,
+  DailyDriverHabitMetric,
   DailyDriverHabitLoop,
   DailyDriverMorningWorkflowItem,
+  DailyDriverNotificationContextRule,
   DailyDriverNotificationQualityControl,
   DailyDriverRetentionModel,
   DailyDriverRetentionTarget,
+  DailyDriverReturnReason,
   DailyDriverReturnLoop,
   DailyDriverStatus,
   DailyDriverTelemetrySignal,
@@ -103,6 +108,16 @@ export function DailyDriverRetentionPanel({ model }: Props) {
         <div className="rounded-[1.6rem] border border-white/10 bg-black/25 p-4">
           <PosterGauge label="Activation readiness" score={model.activationScore} tone={toneToVisual(model.activationScore >= 75 ? "emerald" : model.activationScore >= 55 ? "cyan" : "amber")} />
         </div>
+      </div>
+
+      <div className="relative z-10 mt-5">
+        <DailySetupCardPanel card={model.dailySetupCard} />
+      </div>
+
+      <div className="relative z-10 mt-4 grid gap-4 xl:grid-cols-3">
+        <ReturnReasonsDeck reasons={model.returnReasons} />
+        <HabitMetricDeck metrics={model.habitMetrics} />
+        <NotificationContextContractDeck rules={model.notificationContextRules} />
       </div>
 
       <div className="relative z-10 mt-5">
@@ -308,6 +323,120 @@ function DailyActionTile({ action }: { action: DailyDriverAction }) {
   );
 }
 
+function DailySetupCardPanel({ card }: { card: DailyDriverDailySetupCard }) {
+  const tone = TONE[card.tone];
+  return (
+    <div className={`rounded-[1.6rem] border ${tone.border} ${tone.bg} p-4 shadow-xl ${tone.glow}`}>
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div>
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-300">Daily setup card</div>
+          <div className="mt-1 text-xl font-black text-slate-50">{card.label}</div>
+          <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">{card.detail}</p>
+        </div>
+        <Link
+          className={`tv-tap-motion inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border ${tone.border} bg-black/20 px-4 py-2 text-xs font-black uppercase tracking-[0.14em] ${tone.text} transition hover:border-cyan-200/50 hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-cyan-300/35`}
+          data-analytics-id="daily-setup-primary"
+          href={card.primaryHref}
+          onClick={() => trackAnalyticsEvent(card.eventName, { setupCard: card.key, status: card.status }, { source: "daily_setup_card" })}
+        >
+          {card.primaryLabel}
+        </Link>
+      </div>
+      <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+        {card.tasks.map((task) => <DailySetupTaskTile key={task.key} task={task} />)}
+      </div>
+    </div>
+  );
+}
+
+function DailySetupTaskTile({ task }: { task: DailyDriverDailySetupTask }) {
+  const tone = TONE[task.tone];
+  return (
+    <Link
+      className={`block min-w-0 rounded-2xl border ${tone.border} ${tone.bg} p-3 transition hover:-translate-y-0.5 hover:border-cyan-200/45 hover:bg-white/[0.055] focus:outline-none focus:ring-2 focus:ring-cyan-300/35`}
+      data-analytics-id={`daily-setup-${task.key}`}
+      href={task.href}
+      onClick={() => trackAnalyticsEvent(task.eventName, { setupTask: task.key, status: task.status }, { source: "daily_setup_card" })}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[10px] font-black uppercase tracking-[0.14em] text-slate-500">{task.metricLabel}</div>
+          <div className="mt-1 line-clamp-1 font-black text-slate-50">{task.label}</div>
+        </div>
+        <span className={`shrink-0 rounded-full border ${tone.border} bg-black/20 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] ${tone.text}`}>{task.status}</span>
+      </div>
+      <p className="mt-2 line-clamp-2 min-h-10 text-xs leading-5 text-slate-400">{task.detail}</p>
+    </Link>
+  );
+}
+
+function ReturnReasonsDeck({ reasons }: { reasons: DailyDriverReturnReason[] }) {
+  return (
+    <CompactProofDeck
+      eyebrow="Return reasons"
+      icon={<CalendarCheck className="h-5 w-5 text-cyan-200" />}
+      rows={reasons.map((reason) => ({
+        detail: reason.detail,
+        href: reason.href,
+        key: reason.key,
+        label: reason.label,
+        metric: reason.metricLabel,
+        status: reason.status,
+        tone: reason.tone,
+        tracking: () => trackAnalyticsEvent(reason.eventName, { returnReason: reason.key, status: reason.status }, { source: "daily_return_reason" }),
+      }))}
+      limit={8}
+      title="Reasons to come back"
+    />
+  );
+}
+
+function HabitMetricDeck({ metrics }: { metrics: DailyDriverHabitMetric[] }) {
+  return (
+    <CompactProofDeck
+      eyebrow="Habit metrics"
+      icon={<Activity className="h-5 w-5 text-emerald-200" />}
+      rows={metrics.map((metric) => ({
+        detail: metric.detail,
+        href: metric.eventName === "analytics_rollup" ? "/admin/analytics" : "/terminal#daily-driver-retention",
+        key: metric.key,
+        label: metric.label,
+        metric: metric.targetLabel,
+        status: metric.status,
+        tone: metric.tone,
+        tracking: () => {
+          if (metric.eventName !== "analytics_rollup") {
+            trackAnalyticsEvent(metric.eventName, { habitMetric: metric.key, status: metric.status }, { source: "daily_habit_metric" });
+          }
+        },
+      }))}
+      limit={10}
+      title="Daily return proof"
+    />
+  );
+}
+
+function NotificationContextContractDeck({ rules }: { rules: DailyDriverNotificationContextRule[] }) {
+  return (
+    <CompactProofDeck
+      eyebrow="Notification context"
+      icon={<BellRing className="h-5 w-5 text-amber-200" />}
+      rows={rules.map((rule) => ({
+        detail: rule.detail,
+        href: "/alerts",
+        key: rule.key,
+        label: rule.label,
+        metric: rule.targetLabel,
+        status: rule.status,
+        tone: rule.tone,
+        tracking: () => trackAnalyticsEvent(rule.eventName, { contextRule: rule.key, status: rule.status }, { source: "notification_context_contract" }),
+      }))}
+      limit={6}
+      title="Why, changed, matters, next"
+    />
+  );
+}
+
 function ActivationMilestoneDeck({ items }: { items: DailyDriverActivationMilestone[] }) {
   return (
     <CompactProofDeck
@@ -456,7 +585,7 @@ type CompactProofRow = {
   tracking: () => void;
 };
 
-function CompactProofDeck({ eyebrow, icon, rows, title }: { eyebrow: string; icon: ReactNode; rows: CompactProofRow[]; title: string }) {
+function CompactProofDeck({ eyebrow, icon, limit = 6, rows, title }: { eyebrow: string; icon: ReactNode; limit?: number; rows: CompactProofRow[]; title: string }) {
   return (
     <div className="rounded-[1.6rem] border border-white/10 bg-slate-950/42 p-4">
       <div className="flex items-center justify-between gap-3">
@@ -467,7 +596,7 @@ function CompactProofDeck({ eyebrow, icon, rows, title }: { eyebrow: string; ico
         {icon}
       </div>
       <div className="mt-4 grid gap-2">
-        {rows.slice(0, 6).map((row) => {
+        {rows.slice(0, limit).map((row) => {
           const tone = TONE[row.tone];
           return (
             <Link
@@ -745,6 +874,7 @@ function recordMorningWorkflow(item: DailyDriverMorningWorkflowItem): void {
 }
 
 function returnEventForMorningItem(item: DailyDriverMorningWorkflowItem): AnalyticsEventName | null {
+  if (item.key === "overnight_summary") return "briefing_return";
   if (item.key === "watchlist_movement") return "watchlist_return";
   if (item.key === "scanner_changes") return "scanner_return";
   if (item.key === "overnight_events") return "feed_engagement";
@@ -779,7 +909,7 @@ function returnEventForBriefingItem(item: DailyDriverBriefingItem): AnalyticsEve
   if (item.workflow === "watchlist") return "watchlist_return";
   if (item.workflow === "replay") return "replay_return";
   if (item.workflow === "macro") return "personalized_intelligence_return";
-  return "morning_workflow_start";
+  return "briefing_return";
 }
 
 function recordAction(action: DailyDriverAction): void {
@@ -818,7 +948,7 @@ function activationMilestoneForWorkflow(workflow: DailyDriverAction["workflow"])
 }
 
 function habitLoopEventForAction(action: DailyDriverAction): AnalyticsEventName | null {
-  if (action.key === "morning_brief") return "morning_workflow_start";
+  if (action.key === "morning_brief") return "briefing_return";
   if (action.key === "save_scanner") return "scanner_return";
   if (action.key === "review_replay") return "replay_return";
   if (action.key === "create_alert") return "alert_return";
@@ -851,6 +981,10 @@ function useDailyHabitCompletion(): DailyHabitCompletionState {
         writeCompletionDays(next);
         const nextStreak = consecutiveDayStreak(next, today);
         trackAnalyticsEvent("morning_workflow_complete", {
+          completedDay: today,
+          streakDays: nextStreak,
+        }, { source: "daily_driver_morning" });
+        trackAnalyticsEvent("briefing_return", {
           completedDay: today,
           streakDays: nextStreak,
         }, { source: "daily_driver_morning" });

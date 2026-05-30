@@ -109,6 +109,7 @@ export type AnalyticsSummary = {
     averageSessionDepth: number | null;
     averageSessionDurationSeconds: number | null;
     dau: number;
+    mau: number;
     repeatSessions: number;
     totalEvents: number;
     totalSessions: number;
@@ -176,6 +177,7 @@ export type AnalyticsSummary = {
       habitLoops: {
         activationMilestones: number;
         alertReturns: number;
+        briefingReturns: number;
         chartReturns: number;
         churnRiskSignals: number;
         compareReturns: number;
@@ -188,12 +190,16 @@ export type AnalyticsSummary = {
         scannerHabitLoops: number;
         scannerReturns: number;
         strategyReturns: number;
+        symbolReturns: number;
         watchlistReturns: number;
         workflowDropoffs: number;
       };
       notificationFeedback: {
+        converted: number;
         fatigueSignals: number;
+        ignored: number;
         notUseful: number;
+        opened: number;
         total: number;
         useful: number;
         usefulnessFeedbackRatePct: number | null;
@@ -428,11 +434,14 @@ type MobileEngagementProofRow = QueryResultRow & {
   scanner_usage: string | number;
 };
 type NotificationUsefulnessRow = QueryResultRow & {
+  converted: string | number;
   eligible_signals: string | number;
   engaged: string | number;
   explicit_not_useful_feedback: string | number;
   explicit_useful_feedback: string | number;
   fatigue_signals: string | number;
+  ignored: string | number;
+  opened: string | number;
   preference_updates: string | number;
   useful_interactions: string | number;
 };
@@ -445,6 +454,7 @@ type NotificationFeedbackCategoryRow = QueryResultRow & {
 type DailyDriverHabitLoopRow = QueryResultRow & {
   activation_milestones: string | number;
   alert_returns: string | number;
+  briefing_returns: string | number;
   chart_returns: string | number;
   churn_risk_signals: string | number;
   compare_returns: string | number;
@@ -457,6 +467,7 @@ type DailyDriverHabitLoopRow = QueryResultRow & {
   scanner_habit_loops: string | number;
   scanner_returns: string | number;
   strategy_returns: string | number;
+  symbol_returns: string | number;
   watchlist_returns: string | number;
   workflow_dropoffs: string | number;
 };
@@ -561,6 +572,7 @@ const FRICTION_EVENT_NAMES = [
 const CORE_FEATURE_EVENT_NAMES = [
   "alert_create",
   "activation_milestone",
+  "briefing_return",
   "chart_expand",
   "chart_return",
   "compare_return",
@@ -576,6 +588,7 @@ const CORE_FEATURE_EVENT_NAMES = [
   "replay_return",
   "scanner_habit_loop",
   "scanner_return",
+  "symbol_return",
   "replay_usage",
   "scanner_usage",
   "strategy_usage",
@@ -681,6 +694,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     retention,
     dau,
     wau,
+    mau,
     trend,
     topPages,
     topEvents,
@@ -752,6 +766,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     ),
     activeUsersForInterval("interval '24 hours'"),
     activeUsersForInterval("interval '7 days'"),
+    activeUsersForInterval("interval '30 days'"),
     dbQuery<TrendRow>(
       `
         SELECT
@@ -1145,14 +1160,17 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
       `
         SELECT
           count(*) FILTER (WHERE event_name = 'notification_engagement') AS engaged,
+          count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' IN ('opened', 'open_menu', 'open_action')) AS opened,
+          count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' = 'ignored') AS ignored,
+          count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' = 'converted') AS converted,
           count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' = 'feed_notification_candidate') AS eligible_signals,
-          count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' IN ('open_action', 'mark_read', 'mark_all_read', 'useful_feedback')) AS useful_interactions,
+          count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' IN ('opened', 'open_action', 'converted', 'mark_read', 'mark_all_read', 'useful_feedback')) AS useful_interactions,
           count(*) FILTER (WHERE event_name = 'notification_engagement' AND metadata->>'action' = 'preference_update') AS preference_updates,
           count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback' AND metadata->>'action' = 'useful_feedback') AS explicit_useful_feedback,
           count(*) FILTER (WHERE event_name = 'notification_usefulness_feedback' AND metadata->>'action' = 'not_useful_feedback') AS explicit_not_useful_feedback,
           count(*) FILTER (
             WHERE (event_name = 'notification_usefulness_feedback' AND metadata->>'action' = 'not_useful_feedback')
-               OR (event_name = 'notification_engagement' AND metadata->>'action' IN ('close_menu', 'preference_update'))
+               OR (event_name = 'notification_engagement' AND metadata->>'action' IN ('close_menu', 'ignored', 'preference_update'))
           ) AS fatigue_signals
         FROM analytics_events
         WHERE occurred_at >= now() - ${interval}
@@ -1164,6 +1182,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
         SELECT
           count(*) FILTER (WHERE event_name = 'activation_milestone') AS activation_milestones,
           count(*) FILTER (WHERE event_name = 'return_session') AS return_sessions,
+          count(*) FILTER (WHERE event_name = 'briefing_return') AS briefing_returns,
           count(*) FILTER (WHERE event_name = 'morning_workflow_start') AS morning_workflows,
           count(*) FILTER (WHERE event_name = 'morning_workflow_complete') AS morning_workflow_completions,
           count(*) FILTER (WHERE event_name = 'scanner_return') AS scanner_returns,
@@ -1174,6 +1193,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
           count(*) FILTER (WHERE event_name = 'history_return') AS history_returns,
           count(*) FILTER (WHERE event_name = 'alert_return') AS alert_returns,
           count(*) FILTER (WHERE event_name = 'strategy_return') AS strategy_returns,
+          count(*) FILTER (WHERE event_name = 'symbol_return') AS symbol_returns,
           count(*) FILTER (WHERE event_name = 'watchlist_return') AS watchlist_returns,
           count(*) FILTER (WHERE event_name = 'personalized_intelligence_return') AS personalized_returns,
           count(*) FILTER (WHERE event_name = 'workflow_dropoff') AS workflow_dropoffs,
@@ -1294,6 +1314,9 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
   const mobileEvents = numberFromRow(mobileEngagementRow?.events);
   const notificationEligibleSignals = numberFromRow(notificationUsefulnessRow?.eligible_signals);
   const notificationUsefulInteractions = numberFromRow(notificationUsefulnessRow?.useful_interactions);
+  const notificationOpened = numberFromRow(notificationUsefulnessRow?.opened);
+  const notificationIgnored = numberFromRow(notificationUsefulnessRow?.ignored);
+  const notificationConverted = numberFromRow(notificationUsefulnessRow?.converted);
   const explicitUsefulFeedback = numberFromRow(notificationUsefulnessRow?.explicit_useful_feedback);
   const explicitNotUsefulFeedback = numberFromRow(notificationUsefulnessRow?.explicit_not_useful_feedback);
   const notificationFatigueSignals = numberFromRow(notificationUsefulnessRow?.fatigue_signals);
@@ -1519,6 +1542,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
       averageSessionDepth: nullableNumberFromRow(retentionRow?.avg_session_depth),
       averageSessionDurationSeconds: nullableNumberFromRow(retentionRow?.avg_session_duration_seconds),
       dau: numberFromRow(dau.rows[0]?.count),
+      mau: numberFromRow(mau.rows[0]?.count),
       repeatSessions: numberFromRow(retentionRow?.repeat_sessions),
       totalEvents,
       totalSessions: numberFromRow(retentionRow?.total_sessions),
@@ -1586,6 +1610,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
         habitLoops: {
           activationMilestones: numberFromRow(dailyDriverHabitLoopRow?.activation_milestones),
           alertReturns: numberFromRow(dailyDriverHabitLoopRow?.alert_returns),
+          briefingReturns: numberFromRow(dailyDriverHabitLoopRow?.briefing_returns),
           chartReturns: numberFromRow(dailyDriverHabitLoopRow?.chart_returns),
           churnRiskSignals: numberFromRow(dailyDriverHabitLoopRow?.churn_risk_signals),
           compareReturns: numberFromRow(dailyDriverHabitLoopRow?.compare_returns),
@@ -1598,12 +1623,16 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
           scannerHabitLoops: numberFromRow(dailyDriverHabitLoopRow?.scanner_habit_loops),
           scannerReturns: numberFromRow(dailyDriverHabitLoopRow?.scanner_returns),
           strategyReturns: numberFromRow(dailyDriverHabitLoopRow?.strategy_returns),
+          symbolReturns: numberFromRow(dailyDriverHabitLoopRow?.symbol_returns),
           watchlistReturns: numberFromRow(dailyDriverHabitLoopRow?.watchlist_returns),
           workflowDropoffs: numberFromRow(dailyDriverHabitLoopRow?.workflow_dropoffs),
         },
         notificationFeedback: {
+          converted: notificationConverted,
           fatigueSignals: notificationFatigueSignals + notUsefulFeedbackForSummary,
+          ignored: notificationIgnored,
           notUseful: notUsefulFeedbackForSummary,
+          opened: notificationOpened,
           total: feedbackTotalForSummary,
           useful: usefulFeedbackForSummary,
           usefulnessFeedbackRatePct: pctOrNull(usefulFeedbackForSummary, feedbackTotalForSummary),

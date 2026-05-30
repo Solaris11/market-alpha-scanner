@@ -103,28 +103,51 @@ export function NotificationBell() {
     });
   }, []);
 
-  const closeNotifications = useCallback((options: { restoreFocus?: boolean } = {}) => {
+  const emitIgnoredNotifications = useCallback((reason: string) => {
+    const ignoredUnread = notifications.filter((notification) => !notification.read);
+    if (!ignoredUnread.length) return;
+    const topNotification = ignoredUnread[0] ?? null;
+    trackAnalyticsEvent("notification_engagement", {
+      action: "ignored",
+      ignoredCount: ignoredUnread.length,
+      reason,
+      topCategory: topNotification?.context.feedCategory ?? topNotification?.type ?? "unknown",
+      topSeverity: topNotification?.context.feedSeverity ?? "unknown",
+      unreadCount,
+      visibleCount: notifications.length,
+    }, { source: "notification_bell" });
+    if (ignoredUnread.length >= 3) {
+      trackAnalyticsEvent("churn_risk_signal", {
+        ignoredCount: ignoredUnread.length,
+        reason,
+        riskType: "notification_fatigue",
+      }, { source: "notification_bell" });
+    }
+  }, [notifications, unreadCount]);
+
+  const closeNotifications = useCallback((options: { reason?: string; restoreFocus?: boolean; trackIgnored?: boolean } = {}) => {
     const restoreFocus = options.restoreFocus ?? true;
+    if (options.trackIgnored ?? true) emitIgnoredNotifications(options.reason ?? "close_drawer");
     setOpen(false);
     if (restoreFocus) {
       window.setTimeout(() => {
         buttonRef.current?.focus({ preventScroll: true });
       }, 0);
     }
-  }, []);
+  }, [emitIgnoredNotifications]);
 
   const toggleNotifications = useCallback(() => {
     updateMenuPosition();
-    setOpen((value) => {
-      const next = !value;
-      if (next) {
-        window.dispatchEvent(new CustomEvent(NOTIFICATION_DRAWER_OPEN_EVENT, { detail: instanceId }));
-      }
-      trackAnalyticsEvent("notification_engagement", { action: next ? "open_menu" : "close_menu", unreadCount }, { source: "notification_bell" });
-      return next;
-    });
+    if (open) {
+      trackAnalyticsEvent("notification_engagement", { action: "close_menu", unreadCount }, { source: "notification_bell" });
+      closeNotifications({ reason: "bell_toggle" });
+      return;
+    }
+    window.dispatchEvent(new CustomEvent(NOTIFICATION_DRAWER_OPEN_EVENT, { detail: instanceId }));
+    trackAnalyticsEvent("notification_engagement", { action: "opened", unreadCount }, { source: "notification_bell" });
+    setOpen(true);
     void loadNotifications();
-  }, [instanceId, loadNotifications, unreadCount, updateMenuPosition]);
+  }, [closeNotifications, instanceId, loadNotifications, open, unreadCount, updateMenuPosition]);
 
   useLayoutEffect(() => {
     if (open) updateMenuPosition();
@@ -151,13 +174,13 @@ export function NotificationBell() {
       if (buttonRef.current?.contains(target) || menuRef.current?.contains(target)) return;
       event.preventDefault();
       event.stopPropagation();
-      closeNotifications();
+      closeNotifications({ reason: "outside_click" });
     }
 
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         event.stopPropagation();
-        closeNotifications();
+        closeNotifications({ reason: "escape_key" });
       }
     }
 
@@ -212,7 +235,7 @@ export function NotificationBell() {
 
     if (notification.actionUrl) {
       trackNotificationReturn(notification);
-      closeNotifications({ restoreFocus: false });
+      closeNotifications({ restoreFocus: false, trackIgnored: false });
       router.push(notification.actionUrl);
     }
   }
@@ -368,7 +391,7 @@ export function NotificationBell() {
                       ref={closeButtonRef}
                       aria-label="Close notifications"
                       className="tv-mobile-touch-target grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/40 hover:bg-cyan-400/10 hover:text-cyan-100"
-                      onClick={() => closeNotifications()}
+                      onClick={() => closeNotifications({ reason: "close_button" })}
                       type="button"
                     >
                       <X aria-hidden="true" className="h-4 w-4" />
@@ -400,6 +423,7 @@ export function NotificationBell() {
                               <div className="mt-2 grid gap-1 rounded-xl border border-white/10 bg-black/15 p-2 text-[10px] leading-4 text-slate-500">
                                 <div><span className="font-black uppercase tracking-[0.12em] text-cyan-200">Why</span> {retentionContext.why}</div>
                                 <div><span className="font-black uppercase tracking-[0.12em] text-cyan-200">Changed</span> {retentionContext.changed}</div>
+                                <div><span className="font-black uppercase tracking-[0.12em] text-cyan-200">Matters</span> {retentionContext.matters}</div>
                                 <div><span className="font-black uppercase tracking-[0.12em] text-cyan-200">Next</span> {retentionContext.next}</div>
                               </div>
                             </div>
@@ -470,22 +494,37 @@ function notificationRetentionPriority(notification: UserNotification): number {
   return score;
 }
 
-function notificationRetentionContext(notification: UserNotification): { changed: string; next: string; why: string } {
+function notificationRetentionContext(notification: UserNotification): { changed: string; matters: string; next: string; why: string } {
   const category = notification.context.feedCategory ?? notification.type;
   const severity = notification.context.feedSeverity ?? "normal";
   const priority = notification.context.adaptivePriority ?? "standard";
+  const source = notification.context.sourceKey ?? "TradeVeto";
+  const workflow = workflowLabelForNotification(notification.actionUrl);
   return {
-    changed: `${category} signal updated with ${severity} severity.`,
-    next: notification.actionUrl ? "Open the linked workflow and mark whether this was useful." : "Review it here and mark useful or not useful.",
-    why: `${priority} priority notification from ${notification.context.sourceKey ?? "TradeVeto"} context.`,
+    changed: `${category} signal updated with ${severity} severity from ${source}.`,
+    matters: `${priority} priority means this was ranked for ${workflow} review, not sent as a generic broadcast.`,
+    next: notification.actionUrl ? `Open ${workflow}, complete one useful action, then rate the notification.` : "Review it here, then mark useful or not useful so low-value categories can be reduced.",
+    why: `${source} context matched the current alert, watchlist, feed, or workflow memory rules.`,
   };
+}
+
+function workflowLabelForNotification(actionUrl: string | null): string {
+  if (!actionUrl) return "notification";
+  if (actionUrl.startsWith("/alerts")) return "alert follow-up";
+  if (actionUrl.startsWith("/discover") || actionUrl.startsWith("/scanner") || actionUrl.startsWith("/opportunities")) return "scanner";
+  if (actionUrl.startsWith("/history") || actionUrl.startsWith("/market-memory")) return "replay";
+  if (actionUrl.startsWith("/symbol/")) return "symbol research";
+  if (actionUrl.startsWith("/terminal")) return "morning briefing";
+  if (actionUrl.startsWith("/macro")) return "macro";
+  if (actionUrl.startsWith("/feed")) return "feed";
+  return "linked workflow";
 }
 
 function trackNotificationReturn(notification: UserNotification): void {
   const actionUrl = notification.actionUrl;
   if (!actionUrl) return;
   const metadata = {
-    action: "notification_open",
+    action: "converted",
     actionPath: actionUrl,
     feedCategory: notification.context.feedCategory ?? "unknown",
     feedSeverity: notification.context.feedSeverity ?? "unknown",
@@ -493,6 +532,7 @@ function trackNotificationReturn(notification: UserNotification): void {
     notificationType: notification.type,
     sourceKey: notification.context.sourceKey ?? "unknown",
   };
+  trackAnalyticsEvent("notification_engagement", metadata, { source: "notification_bell" });
   if (actionUrl.startsWith("/alerts")) {
     trackAnalyticsEvent("alert_return", metadata, { source: "notification_bell" });
     return;
@@ -507,6 +547,8 @@ function trackNotificationReturn(notification: UserNotification): void {
   }
   if (actionUrl.startsWith("/symbol/") || actionUrl.startsWith("/terminal") || actionUrl.startsWith("/feed") || actionUrl.startsWith("/macro")) {
     trackAnalyticsEvent("personalized_intelligence_return", metadata, { source: "notification_bell" });
+    if (actionUrl.startsWith("/symbol/")) trackAnalyticsEvent("symbol_return", metadata, { source: "notification_bell" });
+    if (actionUrl.startsWith("/terminal")) trackAnalyticsEvent("briefing_return", metadata, { source: "notification_bell" });
   }
 }
 

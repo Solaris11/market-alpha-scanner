@@ -96,7 +96,7 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
             </p>
           </div>
           <div className="grid gap-2 sm:grid-cols-4 xl:min-w-[680px]">
-            <ProofMetric label="DAU / WAU" value={`${analytics.retention.dau.toLocaleString()} / ${analytics.retention.wau.toLocaleString()}`} />
+            <ProofMetric label="DAU / WAU / MAU" value={`${analytics.retention.dau.toLocaleString()} / ${analytics.retention.wau.toLocaleString()} / ${analytics.retention.mau.toLocaleString()}`} />
             <ProofMetric label="Sticky Sessions" value={formatPct(analytics.realUserProof.workflowStickiness.stickySessionRatePct)} />
             <ProofMetric label="D2 / D7" value={`${formatPct(dailyDriver.cohortEvidence.day2RetentionRatePct)} / ${formatPct(dailyDriver.cohortEvidence.day7RetentionRatePct)}`} />
             <ProofMetric label="Paid Cohort" value={paidCohortStatusLabel(paidCohorts.status)} />
@@ -249,6 +249,7 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
           <ProofPanel
             rows={[
               ["Return sessions", dailyDriver.habitLoops.returnSessions],
+              ["Briefing returns", dailyDriver.habitLoops.briefingReturns],
               ["Activation milestones", dailyDriver.habitLoops.activationMilestones],
               ["Morning workflows", dailyDriver.habitLoops.morningWorkflows],
               ["Morning completions", dailyDriver.habitLoops.morningWorkflowCompletions],
@@ -260,6 +261,7 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
               ["History returns", dailyDriver.habitLoops.historyReturns],
               ["Alert returns", dailyDriver.habitLoops.alertReturns],
               ["Strategy returns", dailyDriver.habitLoops.strategyReturns],
+              ["Symbol returns", dailyDriver.habitLoops.symbolReturns],
               ["Watchlist returns", dailyDriver.habitLoops.watchlistReturns],
               ["Personalized returns", dailyDriver.habitLoops.personalizedReturns],
               ["Workflow dropoffs", dailyDriver.habitLoops.workflowDropoffs],
@@ -271,6 +273,9 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
             rows={[
               ["Useful feedback", dailyDriver.notificationFeedback.useful],
               ["Not useful feedback", dailyDriver.notificationFeedback.notUseful],
+              ["Opened", dailyDriver.notificationFeedback.opened],
+              ["Ignored", dailyDriver.notificationFeedback.ignored],
+              ["Converted", dailyDriver.notificationFeedback.converted],
               ["Feedback total", dailyDriver.notificationFeedback.total],
               ["Useful rate", formatPct(dailyDriver.notificationFeedback.usefulnessFeedbackRatePct)],
               ["Fatigue signals", dailyDriver.notificationFeedback.fatigueSignals],
@@ -484,6 +489,7 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
           rows={[
             ["DAU", analytics.retention.dau],
             ["WAU", analytics.retention.wau],
+            ["MAU", analytics.retention.mau],
             ["Sessions", analytics.retention.totalSessions],
             ["Avg depth", analytics.retention.averageSessionDepth === null ? "N/A" : analytics.retention.averageSessionDepth.toFixed(1)],
           ]}
