@@ -380,11 +380,11 @@ async function closeExpandedChart(page) {
 
 async function dismissRiskAcknowledgement(page) {
   const checkbox = page.getByRole("checkbox", { name: /financial advice|understand|risk/i }).first();
-  if (await checkbox.isVisible({ timeout: 1_000 }).catch(() => false)) {
+  if (await checkbox.isVisible({ timeout: 150 }).catch(() => false)) {
     await checkbox.check({ force: true }).catch(() => undefined);
   }
   const button = page.getByRole("button", { name: /continue|understand|accept/i }).first();
-  if (await button.isVisible({ timeout: 1_000 }).catch(() => false)) {
+  if (await button.isVisible({ timeout: 150 }).catch(() => false)) {
     await button.click({ force: true }).catch(() => undefined);
   }
 }
