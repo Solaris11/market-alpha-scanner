@@ -100,6 +100,7 @@ let marketMemorySurfaceCache: MarketMemorySurfaceCache | null = null;
 
 export default async function MarketMemoryPage() {
   const model = await loadMarketMemorySurface();
+  const structuredData = buildMarketMemoryStructuredData(model);
   const allAnalogs = model.rows.flatMap((item) => item.memory.analogs.map((analog) => ({ analog, currentSymbol: item.row.symbol })));
   const strongestAnalog = allAnalogs.slice().sort((left, right) => right.analog.similarityScore - left.analog.similarityScore)[0]?.analog ?? null;
   const analogCount = allAnalogs.length;
@@ -119,6 +120,13 @@ export default async function MarketMemoryPage() {
 
   return (
     <MarketingShell>
+      {structuredData.map((entry, index) => (
+        <script
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(entry) }}
+          key={`market-memory-json-ld-${index}`}
+          type="application/ld+json"
+        />
+      ))}
       <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <div className="mx-auto max-w-7xl space-y-10">
           <section className="relative overflow-hidden rounded-[2.35rem] border border-violet-300/20 bg-[radial-gradient(circle_at_14%_0%,rgba(167,139,250,0.22),transparent_32rem),radial-gradient(circle_at_90%_10%,rgba(34,211,238,0.14),transparent_28rem),linear-gradient(135deg,rgba(2,8,23,0.98),rgba(15,23,42,0.72))] p-6 shadow-2xl shadow-black/30 ring-1 ring-white/5 sm:p-8">
@@ -231,6 +239,67 @@ export default async function MarketMemoryPage() {
       </section>
     </MarketingShell>
   );
+}
+
+function buildMarketMemoryStructuredData(model: MarketMemorySurfaceModel): Array<Record<string, unknown>> {
+  const url = "https://tradeveto.com/market-memory";
+  const itemListElements = model.rows.slice(0, MEMORY_CARD_LIMIT).map((item, index) => ({
+    "@type": "ListItem",
+    item: {
+      "@type": "Thing",
+      description: item.memory.available
+        ? `Market Memory evidence for ${item.row.symbol} includes ${item.memory.evidence.sampleSize} comparable setup sample(s).`
+        : item.memory.evidence.explanation,
+      name: `${item.row.symbol} ${companyName(item.row)}`,
+      url: `https://tradeveto.com/symbol/${encodeURIComponent(item.row.symbol)}`,
+    },
+    position: index + 1,
+  }));
+
+  return [
+    {
+      "@context": "https://schema.org",
+      "@type": "CollectionPage",
+      about: ["historical market analogs", "market memory", "scanner evidence", "research intelligence"],
+      dateModified: model.generatedAt,
+      description:
+        "TradeVeto Market Memory surfaces evidence-backed historical analogs, replay context, and limited-data states for current market setups. Research only, not financial advice.",
+      isAccessibleForFree: true,
+      isPartOf: {
+        "@type": "WebSite",
+        name: "TradeVeto",
+        url: "https://tradeveto.com",
+      },
+      name: "TradeVeto Market Memory",
+      url,
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      itemListElement: itemListElements,
+      name: "Market Memory sampled symbols",
+      numberOfItems: itemListElements.length,
+      url,
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        {
+          "@type": "ListItem",
+          item: "https://tradeveto.com",
+          name: "Home",
+          position: 1,
+        },
+        {
+          "@type": "ListItem",
+          item: url,
+          name: "Market Memory",
+          position: 2,
+        },
+      ],
+    },
+  ];
 }
 
 async function loadMarketMemorySurface(): Promise<MarketMemorySurfaceModel> {
