@@ -139,6 +139,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
 
   return (
     <TerminalShell prioritizeContent>
+      {row ? <SymbolRouteReadyStrip dataFreshness={dataFreshness} row={row} /> : null}
       <div className="mb-4">
         <Link className="inline-flex min-h-9 items-center rounded-full border border-white/10 px-3 py-2 text-sm font-semibold text-cyan-300 transition hover:border-cyan-300/40 hover:text-cyan-100" href="/terminal">
           Back to terminal
@@ -395,6 +396,39 @@ function ShellMetric({ label, value }: { label: string; value: string }) {
       <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{label}</div>
       <div className="mt-2 text-sm font-bold text-slate-100">{value}</div>
     </div>
+  );
+}
+
+function SymbolRouteReadyStrip({
+  dataFreshness,
+  row,
+}: {
+  dataFreshness: ReturnType<typeof freshnessFromTimestamp>;
+  row: RankingRow;
+}) {
+  const price = numericShellValue(row.price);
+  const decision = String(row.final_decision ?? row.action ?? "WATCH").replace(/_/g, " ");
+  const score = numericShellValue(row.final_score ?? row.score ?? row.quality_score);
+  return (
+    <section
+      className="mb-3 flex min-h-16 flex-wrap items-center justify-between gap-3 rounded-2xl border border-cyan-300/15 bg-slate-950/75 px-4 py-3 shadow-lg shadow-cyan-950/10"
+      data-chart-symbol={row.symbol.toUpperCase()}
+      data-symbol-route-ready-shell="true"
+    >
+      <div className="min-w-0">
+        <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Symbol ready</div>
+        <div className="mt-1 flex flex-wrap items-baseline gap-2">
+          <h1 className="font-mono text-2xl font-black leading-none text-slate-50">{row.symbol.toUpperCase()}</h1>
+          <span className="truncate text-xs font-semibold text-slate-400">{String(row.company_name ?? row.sector ?? "Scanner signal")}</span>
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center justify-end gap-2 text-xs">
+        <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 font-mono font-black text-slate-100">{price === null ? "Limited price" : shellMoney(price)}</span>
+        <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 font-black uppercase tracking-[0.12em] text-cyan-100">{decision}</span>
+        <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 font-semibold text-slate-300">Score {score === null ? "limited" : Math.round(score)}</span>
+        <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 font-semibold text-slate-400">{dataFreshness.label}</span>
+      </div>
+    </section>
   );
 }
 
