@@ -1,0 +1,29 @@
+{
+  "analyticsRequest": {
+    "latencyMs": 869,
+    "statusCode": 200
+  },
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [],
+  "finalVerdict": "TRADEVETO VIRAL GROWTH ENGINE STRONG PARTIAL ACCOMPLISHED",
+  "generatedAt": "2026-05-30T15:28:24.178Z",
+  "growthDashboardPresent": true,
+  "noSyntheticGrowthEventsCreated": true,
+  "overallStatus": "strong_partial",
+  "proofBoundary": "This probe verifies production growth analytics plumbing. It does not fabricate referral traffic, organic traffic, paid conversions, or user-generated shares.",
+  "startedAt": "2026-05-30T15:28:23.283Z",
+  "trafficSourceQuality": [],
+  "viralGrowth": {
+    "inviteOpenedUsers": 0,
+    "inviteSent": 0,
+    "organicGrowthVisits": 0,
+    "paidConversions": 0,
+    "referralConversionPct": null,
+    "referralSignups": 0,
+    "shareAssetOpened": 0,
+    "shareClicks": 0,
+    "shareConversionPct": null,
+    "trafficSourceQuality": [],
+    "viralCoefficient": 0
+  }
+}

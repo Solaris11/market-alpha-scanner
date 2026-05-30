@@ -82,19 +82,55 @@ Passed locally:
 
 ## Production Deployment
 
-Pending at artifact creation time.
+- Production host: `sre@100.68.155.121`
+- Production path: `/opt/apps/market-alpha-scanner/app`
+- Deployed commit: `58e537e9`
+- Pull: `git pull --ff-only origin main`
+- Migration: `db/migrations/20260530_180000_viral_growth_events.sql`
+- Rebuild: `docker compose --env-file .env up -d --build market-alpha-frontend market-alpha-frontend-hot-api`
+- Container health: `market-alpha-frontend` and `market-alpha-frontend-hot-api` reached `healthy:running`.
 
 ## Production Smoke
 
-Pending at artifact creation time.
+All smoke targets returned HTTP 200:
+
+| Route | HTTP | Bytes |
+| --- | ---: | ---: |
+| `/api/health` | 200 | 114 |
+| `/api/health/deep` | 200 | 1527 |
+| `/terminal` | 200 | 106194 |
+| `/discover` | 200 | 55113 |
+| `/scanner` | 200 | 51042 |
+| `/symbol/AMD` | 200 | 113077 |
+| `/macro` | 200 | 140646 |
+| `/performance` | 200 | 76791 |
+| `/account` | 200 | 52986 |
+| `/register` | 200 | 47380 |
+| `/pricing` | 200 | 47813 |
 
 ## Viral Analytics Proof
 
-Pending at artifact creation time.
-
-Expected artifact:
-
 - `docs/ops/artifacts/sprint-30-4-viral-growth/viral-growth-proof.json`
+
+The proof probe ran inside the deployed production frontend container so the production database hostname and runtime secrets were available without printing secrets.
+
+| Field | Value |
+| --- | --- |
+| Admin analytics status | `200` |
+| Admin analytics latency | `869 ms` |
+| Growth dashboard present | `true` |
+| Overall status | `strong_partial` |
+| No synthetic growth events created | `true` |
+| Viral coefficient | `0` |
+| Invite sent | `0` |
+| Invite opened users | `0` |
+| Referral signups | `0` |
+| Paid referral conversions | `0` |
+| Share clicks | `0` |
+| Share asset opens | `0` |
+| Organic growth visits | `0` |
+
+The zero production counters are expected immediately after deployment and are not inflated.
 
 ## Remaining Blockers
 
