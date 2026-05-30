@@ -62,7 +62,8 @@
     "probe:sprint30:viral-growth": "bash -lc 'set -a; [ -f ../.env ] && source ../.env; set +a; TRADEVETO_SPRINT30_GROWTH_BASE_URL=https://tradeveto.com TRADEVETO_SPRINT30_GROWTH_ARTIFACT_ROOT=../docs/ops/artifacts/sprint-30-4-viral-growth node scripts/sprint30-4-viral-growth-probe.mjs'",
     "probe:sprint30:seo-organic": "bash -lc 'set -a; [ -f ../.env ] && source ../.env; set +a; TRADEVETO_SPRINT30_SEO_BASE_URL=https://tradeveto.com TRADEVETO_SPRINT30_SEO_ARTIFACT_ROOT=../docs/ops/artifacts/sprint-30-5-seo-organic node scripts/sprint30-5-seo-organic-probe.mjs'",
     "probe:sprint31:enterprise": "bash -lc 'set -a; [ -f ../.env ] && source ../.env; set +a; TRADEVETO_SPRINT31_ENTERPRISE_BASE_URL=https://tradeveto.com TRADEVETO_SPRINT31_ENTERPRISE_ARTIFACT_ROOT=../docs/ops/artifacts/sprint-31-0-enterprise-readiness node scripts/sprint31-enterprise-readiness-probe.mjs'",
-    "probe:sprint31:ai-copilot": "bash -lc 'set -a; [ -f ../.env ] && source ../.env; set +a; TRADEVETO_SPRINT31_AI_COPILOT_BASE_URL=https://tradeveto.com TRADEVETO_SPRINT31_AI_COPILOT_ARTIFACT_ROOT=../docs/ops/artifacts/sprint-31-1-ai-trading-copilot node scripts/sprint31-1-ai-trading-copilot-probe.mjs'"
+    "probe:sprint31:ai-copilot": "bash -lc 'set -a; [ -f ../.env ] && source ../.env; set +a; TRADEVETO_SPRINT31_AI_COPILOT_BASE_URL=https://tradeveto.com TRADEVETO_SPRINT31_AI_COPILOT_ARTIFACT_ROOT=../docs/ops/artifacts/sprint-31-1-ai-trading-copilot node scripts/sprint31-1-ai-trading-copilot-probe.mjs'",
+    "probe:sprint31:competitive-leadership": "bash -lc 'set -a; [ -f ../.env ] && source ../.env; set +a; TRADEVETO_SPRINT31_COMPETITIVE_BASE_URL=https://tradeveto.com TRADEVETO_SPRINT31_COMPETITIVE_ARTIFACT_ROOT=../docs/ops/artifacts/sprint-31-2-competitive-leadership node scripts/sprint31-2-competitive-leadership-probe.mjs'"
   },
   "dependencies": {
     "@nivo/heatmap": "^0.99.0",
