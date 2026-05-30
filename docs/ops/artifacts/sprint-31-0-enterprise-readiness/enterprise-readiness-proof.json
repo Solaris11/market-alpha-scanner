@@ -1,0 +1,158 @@
+{
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [],
+  "enterprisePage": {
+    "bytes": 119885,
+    "containsAuditCopy": true,
+    "containsSsoCopy": true,
+    "latencyMs": 2919,
+    "statusCode": 200
+  },
+  "finalVerdict": "TRADEVETO ENTERPRISE READINESS PLATFORM STRONG PARTIAL ACCOMPLISHED",
+  "generatedAt": "2026-05-30T16:10:25.213Z",
+  "noFakeEnterpriseClaims": true,
+  "oauthProviders": {
+    "enterprise": [
+      {
+        "configured": false,
+        "label": "Google",
+        "provider": "google",
+        "status": "missing_config"
+      },
+      {
+        "configured": false,
+        "label": "Microsoft",
+        "provider": "microsoft",
+        "status": "missing_config"
+      },
+      {
+        "configured": false,
+        "label": "OIDC",
+        "provider": "oidc",
+        "status": "missing_config"
+      },
+      {
+        "configured": false,
+        "label": "SAML",
+        "provider": "saml",
+        "status": "missing_config"
+      }
+    ],
+    "google": {
+      "enabled": false
+    }
+  },
+  "overallStatus": "strong_partial",
+  "proofBoundary": "This probe verifies production enterprise architecture, RBAC, organization workspace readiness, SSO visibility, audit/session categories, and API availability. It does not fabricate live SAML/OIDC customer IdP login, compliance attestation, or paid enterprise customers.",
+  "readinessApi": {
+    "latencyMs": 2891,
+    "ok": true,
+    "statusCode": 200
+  },
+  "readinessModel": {
+    "accountTypes": [
+      "individual",
+      "team",
+      "enterprise"
+    ],
+    "analyticsCount": 6,
+    "auditCoverageCount": 7,
+    "certificationGates": [
+      {
+        "blocker": null,
+        "evidence": "team account with team plan tier.",
+        "key": "organization_accounts",
+        "label": "Organization Accounts",
+        "status": "pass"
+      },
+      {
+        "blocker": null,
+        "evidence": "0 shared symbol(s), 0 note(s), 8 opportunity row(s).",
+        "key": "workspace_system",
+        "label": "Workspace System",
+        "status": "pass"
+      },
+      {
+        "blocker": null,
+        "evidence": "owner, admin, manager, member, viewer roles.",
+        "key": "permissions",
+        "label": "Permissions Model",
+        "status": "pass"
+      },
+      {
+        "blocker": null,
+        "evidence": "6/7 audit categories pass.",
+        "key": "audit_logging",
+        "label": "Audit Logging",
+        "status": "partial"
+      },
+      {
+        "blocker": "No enterprise SSO provider is configured in the environment.",
+        "evidence": "No configured SSO provider detected.",
+        "key": "enterprise_authentication",
+        "label": "Enterprise Authentication",
+        "status": "partial"
+      },
+      {
+        "blocker": null,
+        "evidence": "4/4 session controls pass.",
+        "key": "session_controls",
+        "label": "Session Controls",
+        "status": "pass"
+      },
+      {
+        "blocker": null,
+        "evidence": "3/6 analytics categories pass.",
+        "key": "organization_analytics",
+        "label": "Organization Analytics",
+        "status": "partial"
+      }
+    ],
+    "organization": {
+      "accountType": "team",
+      "createdAt": "2026-05-30 16:10:22.443338+00",
+      "deviceTrackingEnabled": true,
+      "id": "1f74033c-60b4-4aae-aff5-f48e002ab175",
+      "name": "Sprint 31 Enterprise Probe Workspace",
+      "ownerUserId": "b16c65bb-858b-4c34-9a3c-7a0e2285ae2b",
+      "planTier": "team",
+      "primaryDomain": "tradeveto-probe.local",
+      "sessionTtlMinutes": 43200,
+      "slug": "tradeveto-probe-org",
+      "ssoRequired": false,
+      "updatedAt": "2026-05-30 16:10:22.443338+00"
+    },
+    "overallStatus": "strong_partial",
+    "permissionRoles": [
+      "owner",
+      "admin",
+      "manager",
+      "member",
+      "viewer"
+    ],
+    "sessionControlsCount": 4,
+    "ssoProviders": [
+      {
+        "configured": false,
+        "provider": "google",
+        "status": "missing_config"
+      },
+      {
+        "configured": false,
+        "provider": "microsoft",
+        "status": "missing_config"
+      },
+      {
+        "configured": false,
+        "provider": "oidc",
+        "status": "missing_config"
+      },
+      {
+        "configured": false,
+        "provider": "saml",
+        "status": "missing_config"
+      }
+    ]
+  },
+  "startedAt": "2026-05-30T16:10:22.265Z"
+}

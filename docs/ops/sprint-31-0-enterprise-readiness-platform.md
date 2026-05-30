@@ -49,7 +49,6 @@ The enterprise account architecture, shared workspace model, role matrix, audit 
 - `frontend/src/components/team/TeamIntelligenceWorkspace.tsx`
 - `frontend/src/lib/enterprise-readiness.ts`
 - `frontend/src/lib/enterprise-readiness.test.ts`
-- `frontend/src/lib/navigation.ts`
 - `frontend/src/lib/server/auth.ts`
 - `frontend/src/lib/server/enterprise.ts`
 - `frontend/src/lib/server/entitlements.ts`
@@ -87,19 +86,77 @@ The enterprise account architecture, shared workspace model, role matrix, audit 
 
 ## Local Validation
 
-Pending.
+Passed on 2026-05-30:
+
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend test -- --runInBand` - 550 passed, 0 failed
+- `npm --prefix frontend run build`
+- `npm --prefix frontend audit --omit=dev` - 0 vulnerabilities
+- `python3 -m py_compile $(git ls-files '*.py')`
+- `npx pyright . --pythonpath .venv/bin/python --warnings` - 0 errors, 0 warnings
+- `git diff --check`
 
 ## Production Deployment
 
-Pending.
+- Production host: `sre@100.68.155.121`
+- Production path: `/opt/apps/market-alpha-scanner/app`
+- Production commit pulled: `31fddfd0`
+- Database migration: `20260530_210000_enterprise_readiness.sql` applied successfully
+- Rebuilt and restarted:
+  - `market-alpha-frontend`
+  - `market-alpha-frontend-hot-api`
+- Container health after deploy:
+  - `market-alpha-frontend`: healthy
+  - `market-alpha-frontend-hot-api`: healthy
 
 ## Production Smoke
 
-Pending.
+| Route | Status | Bytes |
+| --- | ---: | ---: |
+| `/api/health` | 200 | 114 |
+| `/api/health/deep` | 200 | 1538 |
+| `/terminal` | 200 | 108428 |
+| `/discover` | 200 | 57354 |
+| `/scanner` | 200 | 53265 |
+| `/paper` | 200 | 157155 |
+| `/strategy-labs` | 200 | 78311 |
+| `/market-memory` | 200 | 338849 |
+| `/symbol/AMD` | 200 | 113329 |
+| `/alerts` | 200 | 57993 |
+| `/feed` | 200 | 177558 |
+| `/macro` | 200 | 140880 |
+| `/enterprise` | 200 | 53710 |
+| `/api/auth/oauth-providers` | 200 | 377 |
 
 ## Enterprise Certification Proof
 
-Pending.
+- Artifact: `docs/ops/artifacts/sprint-31-0-enterprise-readiness/enterprise-readiness-proof.json`
+- Generated at: `2026-05-30T16:10:25.213Z`
+- Base URL: `https://tradeveto.com`
+- Overall status: `strong_partial`
+- Final verdict: `TRADEVETO ENTERPRISE READINESS PLATFORM STRONG PARTIAL ACCOMPLISHED`
+- Probe blockers: none
+- `/enterprise` authenticated probe: 200, 119885 bytes, 2919 ms
+- `/api/enterprise/readiness` authenticated probe: 200, 2891 ms
+
+| Certification Gate | Status | Evidence |
+| --- | --- | --- |
+| Organization Accounts | pass | Team account with team plan tier. |
+| Workspace System | pass | 0 shared symbols, 0 notes, 8 opportunity rows. |
+| Permissions Model | pass | Owner, admin, manager, member, viewer roles. |
+| Audit Logging | partial | 6/7 audit categories pass. |
+| Enterprise Authentication | partial | No configured enterprise SSO provider detected in production env. |
+| Session Controls | pass | 4/4 session controls pass. |
+| Organization Analytics | partial | 3/6 analytics categories pass. |
+
+Production SSO provider visibility:
+
+| Provider | Status | Configured |
+| --- | --- | --- |
+| Google | missing_config | false |
+| Microsoft | missing_config | false |
+| OIDC | missing_config | false |
+| SAML | missing_config | false |
 
 ## Remaining Blockers
 
