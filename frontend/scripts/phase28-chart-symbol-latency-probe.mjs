@@ -91,6 +91,9 @@ async function runBrowserProof(browserName) {
     await installMetricBuffer(page);
     const route = await measureSymbolRoute(page);
     const interactions = await runChartSymbolInteractions(page);
+    const finalRouteTimingMarks = await readRouteTimingMarks(page);
+    const finalNavigationTiming = await readNavigationTiming(page);
+    const timingBreakdown = buildTimingBreakdown({ finalNavigationTiming, finalRouteTimingMarks, route });
     const screenshotPath = await capture(page, browserName, "symbol-workflow.png").catch(() => null);
     const tracePath = join(traceDir, `${browserName}-${phaseSlug}-trace.zip`);
     await context.tracing.stop({ path: tracePath }).catch(() => undefined);
@@ -103,6 +106,7 @@ async function runBrowserProof(browserName) {
       route,
       screenshotPath,
       startedAt,
+      timingBreakdown,
       tracePath,
     };
   } catch (error) {
@@ -114,25 +118,50 @@ async function runBrowserProof(browserName) {
 
 async function measureSymbolRoute(page) {
   const started = performance.now();
+  const timings = {
+    bodyVisibleMs: null,
+    deepHydrationCompleteObservedMs: null,
+    firstShellVisibleMs: null,
+    gotoCommitMs: null,
+    shellInteractiveObservedMs: null,
+  };
   try {
-    await page.goto(`${baseUrl}/symbol/AMD`, { waitUntil: "commit" });
+    const response = await page.goto(`${baseUrl}/symbol/AMD`, { waitUntil: "commit" });
+    timings.gotoCommitMs = roundMetric(performance.now() - started);
     await page.locator("body").waitFor({ state: "visible", timeout: waitTimeoutMs });
+    timings.bodyVisibleMs = roundMetric(performance.now() - started);
     await dismissRiskAcknowledgement(page);
     await page.locator("[data-chart-symbol='AMD']").first().waitFor({ state: "visible", timeout: waitTimeoutMs });
+    timings.firstShellVisibleMs = roundMetric(performance.now() - started);
+    const shellInteractive = await waitForRouteTimingMark(page, ["symbol:shell-interactive"], 750).catch(() => null);
+    timings.shellInteractiveObservedMs = shellInteractive ? roundMetric(performance.now() - started) : null;
+    const deepHydration = await waitForRouteTimingMark(page, ["symbol:deep-hydration-complete"], 5_000).catch(() => null);
+    timings.deepHydrationCompleteObservedMs = deepHydration ? roundMetric(performance.now() - started) : null;
+    const routeTimingMarks = await readRouteTimingMarks(page);
+    const navigationTiming = await readNavigationTiming(page);
     const interactiveMs = roundMetric(performance.now() - started);
     return {
       budgetMs: budgets.symbolPageInteractiveMs,
+      httpStatus: response?.status() ?? null,
       interactiveMs,
+      navigationTiming,
       path: "/symbol/AMD",
+      routeTimingMarks,
       status: interactiveMs <= budgets.symbolPageInteractiveMs ? "pass" : "fail",
+      timings,
     };
   } catch (error) {
+    const routeTimingMarks = await readRouteTimingMarks(page);
+    const navigationTiming = await readNavigationTiming(page);
     return {
       budgetMs: budgets.symbolPageInteractiveMs,
       error: messageFor(error),
       interactiveMs: roundMetric(performance.now() - started),
+      navigationTiming,
       path: "/symbol/AMD",
+      routeTimingMarks,
       status: "fail",
+      timings,
     };
   }
 }
@@ -235,7 +264,109 @@ async function readWorkflowMetrics(page) {
 async function installMetricBuffer(page) {
   await page.addInitScript(() => {
     window.__tradevetoBrowserWorkflowMetrics = window.__tradevetoBrowserWorkflowMetrics ?? [];
+    window.__tradevetoSymbolRouteTimings = window.__tradevetoSymbolRouteTimings ?? [];
+    window.__tradevetoSymbolRouteTimings.push({
+      atMs: performance.now(),
+      id: "page:init-script",
+      recordedAt: new Date().toISOString(),
+    });
   });
+}
+
+async function waitForRouteTimingMark(page, ids, timeoutMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const marks = await readRouteTimingMarks(page);
+    const next = marks.find((mark) => ids.includes(mark.id));
+    if (next) return next;
+    await page.waitForTimeout(25);
+  }
+  const marks = await readRouteTimingMarks(page);
+  return marks.find((mark) => ids.includes(mark.id)) ?? null;
+}
+
+async function readRouteTimingMarks(page) {
+  return page.evaluate(() => {
+    const marks = window.__tradevetoSymbolRouteTimings;
+    return Array.isArray(marks) ? marks : [];
+  }).catch(() => []);
+}
+
+async function readNavigationTiming(page) {
+  return page.evaluate(() => {
+    const nav = performance.getEntriesByType("navigation")[0];
+    if (!nav) return null;
+    const item = nav;
+    return {
+      connectEnd: round(item.connectEnd),
+      connectStart: round(item.connectStart),
+      domComplete: round(item.domComplete),
+      domContentLoadedEventEnd: round(item.domContentLoadedEventEnd),
+      domInteractive: round(item.domInteractive),
+      domainLookupEnd: round(item.domainLookupEnd),
+      domainLookupStart: round(item.domainLookupStart),
+      fetchStart: round(item.fetchStart),
+      loadEventEnd: round(item.loadEventEnd),
+      name: item.name,
+      redirectEnd: round(item.redirectEnd),
+      redirectStart: round(item.redirectStart),
+      requestStart: round(item.requestStart),
+      responseEnd: round(item.responseEnd),
+      responseStart: round(item.responseStart),
+      secureConnectionStart: round(item.secureConnectionStart),
+      startTime: round(item.startTime),
+      transferSize: item.transferSize,
+      type: item.type,
+    };
+
+    function round(value) {
+      return Math.round(Number(value ?? 0) * 1000) / 1000;
+    }
+  }).catch(() => null);
+}
+
+function buildTimingBreakdown({ finalNavigationTiming, finalRouteTimingMarks, route }) {
+  const mark = (id) => finalRouteTimingMarks.find((item) => item.id === id) ?? null;
+  const switchStart = mark("symbol:switch-start");
+  const switchComplete = mark("symbol:switch-complete");
+  const chartRenderStart = mark("chart:render-start");
+  const chartRenderComplete = mark("chart:render-complete");
+  const firstShellVisible = mark("symbol:first-shell-visible");
+  const shellInteractive = mark("symbol:shell-interactive");
+  const deepHydrationStart = mark("symbol:deep-hydration-start");
+  const deepHydrationComplete = mark("symbol:deep-hydration-complete");
+  const nav = finalNavigationTiming ?? route.navigationTiming;
+  return {
+    chartRenderCompleteAtMs: numberOrNull(chartRenderComplete?.atMs),
+    chartRenderDurationMs: deltaMs(chartRenderStart, chartRenderComplete),
+    chartRenderStartAtMs: numberOrNull(chartRenderStart?.atMs),
+    deepHydrationCompleteAtMs: numberOrNull(deepHydrationComplete?.atMs),
+    deepHydrationDurationMs: deltaMs(deepHydrationStart, deepHydrationComplete),
+    deepHydrationServerDurationMs: numberOrNull(deepHydrationComplete?.detail?.serverDurationMs),
+    deepHydrationStartAtMs: numberOrNull(deepHydrationStart?.atMs),
+    domContentLoadedMs: numberOrNull(nav?.domContentLoadedEventEnd),
+    firstShellVisibleAtMs: numberOrNull(firstShellVisible?.atMs ?? route.timings?.firstShellVisibleMs),
+    htmlStreamingStartMs: numberOrNull(nav?.responseStart),
+    htmlStreamingEndMs: numberOrNull(nav?.responseEnd),
+    pageGotoCommitMs: route.timings?.gotoCommitMs ?? null,
+    requestStartMs: numberOrNull(nav?.requestStart),
+    shellInteractiveAtMs: numberOrNull(shellInteractive?.atMs ?? route.timings?.shellInteractiveObservedMs),
+    symbolSwitchCompleteAtMs: numberOrNull(switchComplete?.atMs),
+    symbolSwitchDurationMs: deltaMs(switchStart, switchComplete),
+    symbolSwitchStartAtMs: numberOrNull(switchStart?.atMs),
+    ttfbMs: nav ? roundMetric(Math.max(0, nav.responseStart - (nav.requestStart || nav.startTime || 0))) : null,
+  };
+}
+
+function deltaMs(startMark, completeMark) {
+  const start = numberOrNull(startMark?.atMs);
+  const complete = numberOrNull(completeMark?.atMs);
+  return start === null || complete === null ? null : roundMetric(Math.max(0, complete - start));
+}
+
+function numberOrNull(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? roundMetric(parsed) : null;
 }
 
 async function closeExpandedChart(page) {

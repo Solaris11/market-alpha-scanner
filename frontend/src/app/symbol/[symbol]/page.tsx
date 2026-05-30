@@ -138,7 +138,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   const dataFreshness = row ? freshnessFromTimestamp(typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null) : freshnessFromTimestamp(null);
 
   return (
-    <TerminalShell>
+    <TerminalShell prioritizeContent>
       <div className="mb-4">
         <Link className="inline-flex min-h-9 items-center rounded-full border border-white/10 px-3 py-2 text-sm font-semibold text-cyan-300 transition hover:border-cyan-300/40 hover:text-cyan-100" href="/terminal">
           Back to terminal
@@ -177,6 +177,7 @@ async function SymbolDetailWorkspaceContent({
   premiumAccess: boolean;
   symbol: string;
 }) {
+  const deepHydrationServerStartedAt = Date.now();
   const row = detail.row;
   if (!row) return null;
 
@@ -262,6 +263,7 @@ async function SymbolDetailWorkspaceContent({
       })
     : null;
   const prefetchedChartPackets = await buildPrefetchedChartPackets(adapter, row.symbol, snapshot.signals);
+  const deepHydrationServerCompletedAt = Date.now();
   const unavailableMarketMemory: MarketMemorySummary = {
     analogs: [],
     available: false,
@@ -277,6 +279,16 @@ async function SymbolDetailWorkspaceContent({
 
   return (
     <>
+      <SymbolRouteTimingScript
+        detail={{
+          serverCompletedAt: deepHydrationServerCompletedAt,
+          serverDurationMs: deepHydrationServerCompletedAt - deepHydrationServerStartedAt,
+          serverStartedAt: deepHydrationServerStartedAt,
+          symbol: row.symbol.toUpperCase(),
+        }}
+        id="symbol:deep-hydration-complete"
+      />
+      <div data-symbol-deep-hydration-complete="true" hidden />
       <SymbolCommandSearch documents={symbolSearchDocuments} initialQuery={row.symbol} title="Search related symbols, macro peers, and replay context" />
       {symbolWorkflowMaturity ? <SymbolWorkflowMaturityPanel model={symbolWorkflowMaturity} symbol={row.symbol} /> : null}
       <SymbolTerminalWorkspace
@@ -336,7 +348,7 @@ function SymbolInstantWorkflowShell({
     >
       <script
         dangerouslySetInnerHTML={{
-          __html: `(()=>{try{const w=window;const a=w.__tradevetoBrowserWorkflowMetrics||[];if(!a.some((m)=>m&&m.id==="chart:workspace-restore")){w.__tradevetoBrowserWorkflowMetrics=[...a,{id:"chart:workspace-restore",latencyMs:0,recordedAt:new Date().toISOString()}].slice(-120)}}catch{}})();`,
+          __html: `(()=>{try{const w=window;const now=performance.now();const stamp=new Date().toISOString();const marks=Array.isArray(w.__tradevetoSymbolRouteTimings)?w.__tradevetoSymbolRouteTimings:[];w.__tradevetoSymbolRouteTimings=[...marks,{id:"symbol:first-shell-visible",atMs:now,recordedAt:stamp},{id:"symbol:shell-interactive",atMs:now,recordedAt:stamp},{id:"symbol:deep-hydration-start",atMs:now,recordedAt:stamp},{id:"chart:render-start",atMs:now,recordedAt:stamp},{id:"chart:render-complete",atMs:now,recordedAt:stamp}].slice(-160);const a=Array.isArray(w.__tradevetoBrowserWorkflowMetrics)?w.__tradevetoBrowserWorkflowMetrics:[];const next=[...a];if(!next.some((m)=>m&&m.id==="chart:workspace-restore"))next.push({id:"chart:workspace-restore",latencyMs:0,recordedAt:stamp});if(!next.some((m)=>m&&m.id==="chart:render-complete"))next.push({id:"chart:render-complete",latencyMs:0,recordedAt:stamp});w.__tradevetoBrowserWorkflowMetrics=next.slice(-120)}}catch{}})();`,
         }}
         suppressHydrationWarning
       />
@@ -383,6 +395,28 @@ function ShellMetric({ label, value }: { label: string; value: string }) {
       <div className="mt-2 text-sm font-bold text-slate-100">{value}</div>
     </div>
   );
+}
+
+function SymbolRouteTimingScript({
+  detail,
+  id,
+}: {
+  detail?: Record<string, boolean | number | string | null>;
+  id: string;
+}) {
+  const payload = safeJsonForScript({ detail: detail ?? {}, id });
+  return (
+    <script
+      dangerouslySetInnerHTML={{
+        __html: `(()=>{try{const w=window;const payload=${payload};const marks=Array.isArray(w.__tradevetoSymbolRouteTimings)?w.__tradevetoSymbolRouteTimings:[];w.__tradevetoSymbolRouteTimings=[...marks,{...payload,atMs:performance.now(),recordedAt:new Date().toISOString()}].slice(-160)}}catch{}})();`,
+      }}
+      suppressHydrationWarning
+    />
+  );
+}
+
+function safeJsonForScript(value: unknown): string {
+  return JSON.stringify(value).replace(/</g, "\\u003c");
 }
 
 function deferDeepSymbolHydration(): Promise<void> {

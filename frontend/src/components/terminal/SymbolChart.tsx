@@ -551,10 +551,12 @@ export function SymbolChart({
       nextSymbol,
     }, { source: "chart", symbol: chartSymbol });
     const startedAt = browserWorkflowNow();
+    recordSymbolRouteTimingMark("symbol:switch-start", { direction, fromSymbol: current, toSymbol: nextSymbol });
     const cached = readCachedSymbolChartHotPacket(nextSymbol, period);
     if (cached) {
       flushSync(() => setActiveHotPacket(cached));
       replaceBrowserSymbolPath(nextSymbol);
+      recordSymbolRouteTimingMark("symbol:switch-complete", { fromSymbol: current, source: "hot-packet-cache", toSymbol: nextSymbol });
       recordBrowserWorkflowMetric("symbol:switch", startedAt, { settleFrames: 0 });
       void prefetchSymbolChartHotPacket(adjacentSymbols(navigationSymbols, nextSymbol)[0] ?? current, period);
       return;
@@ -567,6 +569,7 @@ export function SymbolChart({
       }
       flushSync(() => setActiveHotPacket(packet));
       replaceBrowserSymbolPath(nextSymbol);
+      recordSymbolRouteTimingMark("symbol:switch-complete", { fromSymbol: current, source: "network-hot-packet", toSymbol: nextSymbol });
       recordBrowserWorkflowMetric("symbol:switch", startedAt, { settleFrames: 0 });
     }).catch(() => {
       writePendingSymbolSwitchMetric(nextSymbol, startedAt);
@@ -911,6 +914,8 @@ export function SymbolChart({
 
     let chart: ReturnType<typeof createChart> | null = null;
     try {
+      const renderStartedAt = browserWorkflowNow();
+      recordSymbolRouteTimingMark("chart:render-start", { candleCount: chartCandles.length, symbol: chartSymbol });
       setFailed(false);
       const bounds = container.getBoundingClientRect();
       chart = createChart(container, {
@@ -970,6 +975,12 @@ export function SymbolChart({
         addTradeLevelLines(candleSeries, chartLevels);
       }
       chart.timeScale().fitContent();
+      recordSymbolRouteTimingMark("chart:render-complete", {
+        candleCount: chartCandles.length,
+        latencyMs: Math.max(0, browserWorkflowNow() - renderStartedAt),
+        symbol: chartSymbol,
+      });
+      recordBrowserWorkflowMetric("chart:render-complete", renderStartedAt, { settleFrames: 0 });
 
       const syncGroup = crosshairSyncGroup?.trim() || null;
       const handleCrosshairMove = (param: MouseEventParams<Time>) => {
@@ -4354,6 +4365,22 @@ function recordBrowserWorkflowMetric(id: string, startedAt: number, options: { s
   if (options.settleFrames === 0) finish();
   else if (options.settleFrames === 1) window.requestAnimationFrame(finish);
   else window.requestAnimationFrame(() => window.requestAnimationFrame(finish));
+}
+
+function recordSymbolRouteTimingMark(id: string, detail: Record<string, boolean | number | string | null> = {}): void {
+  if (typeof window === "undefined") return;
+  const timingWindow = window as Window & {
+    __tradevetoSymbolRouteTimings?: Array<Record<string, unknown>>;
+  };
+  timingWindow.__tradevetoSymbolRouteTimings = [
+    ...(timingWindow.__tradevetoSymbolRouteTimings ?? []),
+    {
+      atMs: Math.round(browserWorkflowNow() * 1000) / 1000,
+      detail,
+      id,
+      recordedAt: new Date().toISOString(),
+    },
+  ].slice(-160);
 }
 
 function formatChartAlertThreshold(value: number, type: ChartAlertRuleType): string {
