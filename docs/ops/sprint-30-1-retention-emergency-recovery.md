@@ -171,6 +171,67 @@ Required production validation:
 - admin analytics dashboard check
 - cohort export after enough elapsed time
 
+## Validation Results
+
+Local validation passed:
+
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend test -- --runInBand`
+- `npm --prefix frontend run build`
+- `npm --prefix frontend audit --omit=dev`
+- `python3 -m py_compile $(git ls-files '*.py')`
+- `npx pyright . --pythonpath .venv/bin/python --warnings`
+- `git diff --check`
+
+Production deployment:
+
+- Runtime commit deployed: `43079f03`
+- Production pull: `git pull --ff-only origin main`
+- Rebuild: `docker compose --env-file .env up -d --build market-alpha-frontend market-alpha-frontend-hot-api`
+- Container health: `market-alpha-frontend` and `market-alpha-frontend-hot-api` both healthy after rebuild.
+
+Production smoke:
+
+| Target | Result |
+| --- | ---: |
+| `/api/health` | `200` |
+| `/api/health/deep` | `200` |
+| `/` | `200` |
+| `/terminal` | `200` |
+| `/discover` | `200` |
+| `/scanner` | `200` |
+| `/alerts` | `200` |
+| `/feed` | `200` |
+| `/history` | `200` |
+| `/performance` | `200` |
+| `/symbol/AMD` | `200` |
+| `/market-memory` | `200` |
+| `/macro` | `200` |
+| `/account` | `200` |
+| `/status` | `200` |
+
+Production admin analytics probe:
+
+- `/api/admin/analytics?range=90d` authenticated probe status: `200`
+- Probe latency: `447 ms`
+- Overall retention proof status after deploy: `strong_partial`
+- No synthetic cohort data created: `true`
+- Elapsed cohort only: `true`
+
+Post-deploy cohort readout:
+
+| Metric | Current production readout | Target | Status |
+| --- | ---: | ---: | --- |
+| D1 retention | `0.712%` | improve materially | Baseline still weak |
+| D2 retention | `0.306%` | `> 10%` founding | Fail |
+| D7 retention | `0.111%` | `> 6%` founding | Fail |
+| 2+ active days | `0.904%` | `> 15%` founding | Fail |
+| Founding D2 retention | `0%` | `> 10%` | Fail |
+| Founding D7 retention | `0%` | `> 6%` | Fail |
+| Founding 2+ active-day | `0%` | `> 15%` | Fail |
+| Alert-return conversion | `N/A` | `> 12%` | No founding alert-trigger sample |
+| Notification useful ratio | `N/A` | `> 55%` | No founding feedback sample |
+
 ## Remaining Certification Blocker
 
 Retention recovery is not certified by implementation alone. Final recovery requires aged production cohorts showing materially improved D1/D2/D7, 2+ active-day, alert-return conversion, and notification usefulness metrics.
