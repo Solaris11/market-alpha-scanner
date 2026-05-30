@@ -58,32 +58,52 @@ Passed on 2026-05-30:
 - `npx pyright . --pythonpath .venv/bin/python --warnings` - 0 errors, 0 warnings
 - `git diff --check`
 
-## Production Workflow
+## Production Deployment
 
-Pending deployment:
+Completed on 2026-05-30.
 
-1. Commit and push to `main`.
-2. Production pull in `/opt/apps/market-alpha-scanner/app`.
-3. Rebuild `market-alpha-frontend` and `market-alpha-frontend-hot-api`.
-4. Run production smoke.
-5. Run `npm --prefix frontend run probe:sprint32:predictive-intelligence`.
-6. Store proof JSON in `docs/ops/artifacts/sprint-32-1-predictive-intelligence/predictive-intelligence-proof.json`.
+- Commit deployed: `1b9a35e9`
+- Production path: `/opt/apps/market-alpha-scanner/app`
+- Pull: `git pull --ff-only origin main`
+- Rebuild/redeploy: `docker compose --env-file .env up -d --build market-alpha-frontend market-alpha-frontend-hot-api`
+- Container status: `market-alpha-frontend` healthy; `market-alpha-frontend-hot-api` healthy
+
+Production smoke:
+
+- `/api/health` - ok
+- `/api/health/deep` - ok
+- `/terminal` - 200
+- `/discover` - 200
+- `/scanner` - 200
+- `/macro` - 200
+- `/symbol/AMD` - 200
+- `/paper` - 200
+- `/alerts` - 200
 
 ## Certification Evidence
 
-Pending production proof.
+Production proof artifact:
 
-Expected proof checks:
+- `docs/ops/artifacts/sprint-32-1-predictive-intelligence/predictive-intelligence-proof.json`
 
-- `/terminal` renders Predictive Intelligence panel.
-- `/api/intelligence/predictive` returns `ok=true`.
-- market regime forecast exists with evidence.
-- opportunity forecasts are ranked.
-- predictive alerts are ranked.
-- authenticated portfolio forecast is operational with probe positions.
-- confidence framework exposes trust boundary.
-- payload avoids guaranteed outcome or direct-action certainty language.
+Proof results:
+
+- overallStatus: `ready`
+- finalVerdict: `TRADEVETO PREDICTIVE INTELLIGENCE ENGINE ACCOMPLISHED`
+- `/terminal` rendered Predictive Intelligence panel: `true`
+- `/api/intelligence/predictive` returned `ok=true`
+- market regime forecast: present
+- opportunity forecasts: `12`
+- predictive alerts: `12`
+- authenticated portfolio forecast: `operational`
+- evidence count: `102`
+- no fabricated certainty: `true`
+
+Production note:
+
+- The host-side probe command cannot resolve Docker-only `DATABASE_URL` hostnames on production.
+- Production proof used the Docker-network command and the repo now includes `probe:sprint32:predictive-intelligence:docker` for repeatable production execution.
 
 ## Current Verdict
 
-Pending production deployment and probe.
+TRADEVETO PREDICTIVE INTELLIGENCE ENGINE ACCOMPLISHED
