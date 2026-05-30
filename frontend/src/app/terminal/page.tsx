@@ -26,6 +26,7 @@ import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
 import { MarketChartHub } from "@/components/terminal/MarketChartHub";
 import { MetricCard } from "@/components/terminal/MetricCard";
 import { MyWatchlistWidget } from "@/components/terminal/MyWatchlistWidget";
+import { PlatformMoatPanel } from "@/components/terminal/PlatformMoatPanel";
 import { PredictiveIntelligencePanel } from "@/components/terminal/PredictiveIntelligencePanel";
 import { RegimeShiftIntelligencePanel } from "@/components/terminal/RegimeShiftIntelligencePanel";
 import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
@@ -65,6 +66,7 @@ import { dailyActionBlocksTradeUi, getDailyAction, noTradeActionCopy } from "@/l
 import { buildLiveIntelligenceSystem } from "@/lib/trading/live-intelligence";
 import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
 import { buildPortfolioIntelligenceSystem } from "@/lib/trading/portfolio-intelligence";
+import { buildPlatformMoatSystem } from "@/lib/trading/platform-moat";
 import { buildPredictiveIntelligenceSystem } from "@/lib/trading/predictive-intelligence";
 import { buildIntelligenceEcosystemSystem } from "@/lib/trading/intelligence-ecosystem";
 import { buildLivingIntelligenceProofSystem } from "@/lib/trading/living-intelligence-proof";
@@ -205,6 +207,14 @@ export default async function TerminalPage() {
     rows: opportunityModel.rows,
     watchlistSymbols,
   });
+  const platformMoat = buildPlatformMoatSystem({
+    generatedAt: scanSafety.lastUpdated ?? undefined,
+    personalizationProfile,
+    predictiveSystem: predictiveIntelligence,
+    rows: opportunityModel.rows,
+    watchlistSymbols,
+    workflowEvolution,
+  });
   const intelligenceEcosystem = buildIntelligenceEcosystemSystem({
     feedItems: intelligenceFeed.items,
     generatedAt: scanSafety.lastUpdated,
@@ -328,6 +338,7 @@ export default async function TerminalPage() {
           <IntelligenceEcosystemPanel system={intelligenceEcosystem} />
           <InstitutionalSuperplatformPanel system={institutionalSuperplatform} />
           <PredictiveIntelligencePanel system={predictiveIntelligence} />
+          <PlatformMoatPanel system={platformMoat} />
           <AICognitionLayerPanel model={cognitionLayer} />
           <IntelligenceFeedNotificationPanel
             brief={intelligenceFeed.brief}
