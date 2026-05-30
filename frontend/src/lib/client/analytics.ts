@@ -15,6 +15,13 @@ import {
   type AnalyticsEventName,
   type AnalyticsMetadata,
 } from "@/lib/analytics-policy";
+import {
+  activationActionFromFirstUsefulAction,
+  activationActionFromMilestone,
+  buildActivationScoreModel,
+  type ActivationActionState,
+  type ActivationScoreModel,
+} from "@/lib/activation-recovery";
 import { readWatchlistStorage } from "@/lib/watchlist-storage";
 
 type ClientAnalyticsEvent = {
@@ -44,6 +51,7 @@ const RETURN_WORKFLOW_EMITTED_KEY = "tv_return_workflow_emitted";
 const PERSONALIZED_RETURN_EMITTED_KEY = "tv_personalized_return_emitted";
 const WATCHLIST_RETENTION_EMITTED_KEY = "tv_watchlist_retention_emitted";
 const WORKFLOW_DROPOFF_EMITTED_KEY = "tv_workflow_dropoff_emitted";
+const ACTIVATION_SCORE_EMITTED_KEY = "tv_activation_score_emitted";
 const SESSION_TTL_MS = 30 * 60 * 1000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_QUEUE = 40;
@@ -165,6 +173,7 @@ export function trackRouteAnalytics(pathname: string): void {
   trackMobileEngagement(pathname, routePagePath);
   trackReturnSession(pathname, routePagePath);
   trackWorkflowContinuity(pathname, routePagePath);
+  trackActivationJourneyAndScore(pathname, routePagePath);
   recordRouteContinuityMemory(pathname, routePagePath);
   trackWatchlistRetention(pathname, routePagePath);
 }
@@ -243,6 +252,10 @@ export function analyticsIdentityPayload(): { anonymousId: string | null; device
 
 export function analyticsOptOutStorageKey(): string {
   return TELEMETRY_OPT_OUT_KEY;
+}
+
+export function readClientActivationScoreModel(): ActivationScoreModel {
+  return buildActivationScoreModel(readClientActivationActionState());
 }
 
 export function setAnalyticsOptOut(optOut: boolean): void {
@@ -367,13 +380,18 @@ function trackRouteActivationMilestone(pathname: string, pagePath?: string): voi
   }
   if (group === "scanner") {
     trackActivationMilestone("scanner", { routeGroup: group }, { pagePath, source: "route_activation", symbol: symbol ?? undefined });
+    trackFirstUsefulAction("first_scanner_usage", { routeGroup: group }, { pagePath, source: "route_activation", symbol: symbol ?? undefined });
     if (compareModeVisible()) trackActivationMilestone("compare", { routeGroup: group }, { pagePath, source: "route_activation" });
   }
   if (group === "symbol") {
     trackActivationMilestone("symbol_investigation", { routeGroup: group }, { pagePath, source: "route_activation", symbol: symbol ?? undefined });
     trackActivationMilestone("chart", { routeGroup: group }, { pagePath, source: "route_activation", symbol: symbol ?? undefined });
+    trackFirstUsefulAction("symbol_research_start", { routeGroup: group }, { pagePath, source: "route_activation", symbol: symbol ?? undefined });
   }
-  if (group === "replay") trackActivationMilestone("replay", { routeGroup: group }, { pagePath, source: "route_activation", symbol: symbol ?? undefined });
+  if (group === "replay") {
+    trackActivationMilestone("replay", { routeGroup: group }, { pagePath, source: "route_activation", symbol: symbol ?? undefined });
+    trackFirstUsefulAction(pathname === "/history" || pathname.startsWith("/history/") ? "first_history_usage" : "first_replay_usage", { routeGroup: group }, { pagePath, source: "route_activation", symbol: symbol ?? undefined });
+  }
   if (group === "alerts") trackActivationMilestone("alert", { routeGroup: group }, { pagePath, source: "route_activation" });
   if (group === "strategy") trackActivationMilestone("strategy", { routeGroup: group }, { pagePath, source: "route_activation" });
 }
@@ -403,6 +421,87 @@ function trackWorkflowContinuity(pathname: string, pagePath?: string): void {
   } catch {
     // Workflow continuity is proof telemetry only; route tracking must never depend on session storage.
   }
+}
+
+function trackActivationJourneyAndScore(pathname: string, pagePath?: string): void {
+  const group = workflowGroupForPath(pathname);
+  const journeyStep = journeyStepForPath(pathname);
+  const model = readClientActivationScoreModel();
+  trackAnalyticsEvent("activation_journey_step", {
+    completedActions: model.completedActions.length,
+    journeyStep,
+    level: model.level,
+    missingActions: model.missingActions.length,
+    routeGroup: group ?? "public",
+    score: model.score,
+  }, { pagePath, source: "activation_journey", symbol: symbolFromPath(pathname) ?? undefined });
+
+  try {
+    const sessionId = currentSessionId() ?? "unknown";
+    const scoreBucket = model.level;
+    const key = `${ACTIVATION_SCORE_EMITTED_KEY}:${sessionId}:${scoreBucket}:${Math.floor(model.score / 10)}`;
+    if (window.sessionStorage.getItem(key) === "true") return;
+    window.sessionStorage.setItem(key, "true");
+    trackAnalyticsEvent("activation_score_update", {
+      completedActions: model.completedActions.length,
+      journeyStep,
+      level: model.level,
+      missingActions: model.missingActions.length,
+      score: model.score,
+      topPrompt: model.prompts[0]?.telemetryAction ?? null,
+    }, { pagePath, source: "activation_score", symbol: symbolFromPath(pathname) ?? undefined });
+  } catch {
+    trackAnalyticsEvent("activation_score_update", {
+      completedActions: model.completedActions.length,
+      journeyStep,
+      level: model.level,
+      missingActions: model.missingActions.length,
+      score: model.score,
+    }, { pagePath, source: "activation_score", symbol: symbolFromPath(pathname) ?? undefined });
+  }
+}
+
+function readClientActivationActionState(): ActivationActionState {
+  const state: ActivationActionState = {};
+  try {
+    const milestones = readActivationMilestones();
+    for (const milestone of milestones) {
+      const action = activationActionFromMilestone(milestone);
+      if (action) state[action] = true;
+    }
+  } catch {
+    // Activation state is best-effort local telemetry.
+  }
+  try {
+    const actions = readFirstUsefulActions();
+    for (const firstAction of actions) {
+      const action = activationActionFromFirstUsefulAction(firstAction);
+      if (action) state[action] = true;
+    }
+  } catch {
+    // Activation state is best-effort local telemetry.
+  }
+  if (readWatchlistSize() > 0) state.watchlist = true;
+  return state;
+}
+
+function journeyStepForPath(pathname: string): string {
+  if (pathname === "/") return "landing";
+  if (pathname === "/register" || pathname.startsWith("/register/") || pathname === "/join" || pathname.startsWith("/join/")) return "signup";
+  if (pathname === "/discover" || pathname.startsWith("/discover/")) return "discover";
+  if (pathname === "/scanner" || pathname.startsWith("/scanner/")) return "scanner";
+  if (pathname === "/alerts" || pathname.startsWith("/alerts/")) return "alert";
+  if (pathname.startsWith("/symbol/")) return "symbol";
+  if (pathname === "/history" || pathname.startsWith("/history/")) return "history";
+  if (pathname === "/market-memory" || pathname.startsWith("/market-memory/")) return "replay";
+  if (pathname === "/terminal" || pathname.startsWith("/terminal/")) return "morning_briefing";
+  if (pathname === "/account" || pathname.startsWith("/account/")) return "account";
+  if (pathname === "/feed" || pathname.startsWith("/feed/")) return "feed";
+  if (pathname === "/macro" || pathname.startsWith("/macro/")) return "macro";
+  if (pathname === "/performance" || pathname.startsWith("/performance/")) return "performance";
+  if (pathname === "/paper" || pathname.startsWith("/paper/")) return "paper";
+  if (pathname === "/strategy-labs" || pathname.startsWith("/strategy-labs/")) return "strategy";
+  return "other";
 }
 
 function trackWatchlistRetention(pathname: string, pagePath?: string): void {

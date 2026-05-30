@@ -1,6 +1,14 @@
 export const ANALYTICS_EVENT_NAMES = [
   "page_view",
+  "landing_open",
+  "signup_open",
   "terminal_open",
+  "discover_open",
+  "scanner_open",
+  "alerts_open",
+  "feed_open",
+  "macro_open",
+  "market_memory_open",
   "opportunities_open",
   "dashboard_open",
   "performance_open",
@@ -33,6 +41,11 @@ export const ANALYTICS_EVENT_NAMES = [
   "watchlist_usage",
   "watchlist_retention",
   "activation_milestone",
+  "activation_score_update",
+  "activation_nudge_view",
+  "activation_nudge_click",
+  "activation_nudge_dismiss",
+  "activation_journey_step",
   "return_session",
   "morning_workflow_start",
   "morning_workflow_complete",
@@ -203,8 +216,15 @@ export function sanitizeFeedbackMessage(value: unknown): string | null {
 }
 
 export function pageOpenEventForPath(pathname: string): AnalyticsEventName | null {
+  if (pathname === "/") return "landing_open";
+  if (pathname === "/register" || pathname.startsWith("/register/") || pathname === "/join" || pathname.startsWith("/join/")) return "signup_open";
   if (pathname === "/terminal" || pathname.startsWith("/terminal/")) return "terminal_open";
-  if (pathname === "/discover" || pathname.startsWith("/discover/")) return "opportunities_open";
+  if (pathname === "/discover" || pathname.startsWith("/discover/")) return "discover_open";
+  if (pathname === "/scanner" || pathname.startsWith("/scanner/")) return "scanner_open";
+  if (pathname === "/alerts" || pathname.startsWith("/alerts/")) return "alerts_open";
+  if (pathname === "/feed" || pathname.startsWith("/feed/")) return "feed_open";
+  if (pathname === "/macro" || pathname.startsWith("/macro/")) return "macro_open";
+  if (pathname === "/market-memory" || pathname.startsWith("/market-memory/")) return "market_memory_open";
   if (pathname === "/opportunities" || pathname.startsWith("/opportunities/")) return "opportunities_open";
   if (pathname === "/dashboard" || pathname.startsWith("/dashboard/")) return "dashboard_open";
   if (pathname === "/performance" || pathname.startsWith("/performance/")) return "performance_open";

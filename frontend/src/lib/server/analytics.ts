@@ -48,6 +48,32 @@ export type BetaFeedbackPayload = {
 };
 
 export type AnalyticsSummary = {
+  activationRecovery: {
+    dropoffs: Array<{ completions: number; dropoffRatePct: number | null; dropoffs: number; entrants: number; stage: string }>;
+    funnel: Array<{ actors: number; key: string; label: string; ratePct: number | null }>;
+    heatmap: Array<{
+      activationEvents: number;
+      activationRatePct: number | null;
+      actors: number;
+      dropoffRatePct: number | null;
+      dropoffs: number;
+      frictionEvents: number;
+      nudgeClicks: number;
+      nudgeViews: number;
+      surface: string;
+      visits: number;
+    }>;
+    score: {
+      activatedUsers: number;
+      atRiskUsers: number;
+      averageScore: number | null;
+      nudgeClicks: number;
+      nudgeCtrPct: number | null;
+      nudgeViews: number;
+      partialUsers: number;
+      scoredUsers: number;
+    };
+  };
   activeUsersTrend: Array<{ activeUsers: number; bucket: string; events: number }>;
   betaCohort: {
     keyEvents: Array<{ count: number; eventName: string }>;
@@ -480,6 +506,45 @@ type PaidUserCohortRow = QueryResultRow & {
   segment: string;
   two_plus_active_day_users: string | number;
 };
+type ActivationFunnelRow = QueryResultRow & {
+  account_actors: string | number;
+  alert_actors: string | number;
+  chart_save_actors: string | number;
+  compare_actors: string | number;
+  discover_actors: string | number;
+  history_replay_actors: string | number;
+  landing_actors: string | number;
+  morning_briefing_actors: string | number;
+  scanner_actors: string | number;
+  signup_actors: string | number;
+  symbol_actors: string | number;
+  total_actors: string | number;
+  watchlist_actors: string | number;
+};
+type ActivationDropoffRow = QueryResultRow & {
+  completions: string | number;
+  entrants: string | number;
+  stage: string;
+};
+type ActivationHeatmapRow = QueryResultRow & {
+  activation_events: string | number;
+  actors: string | number;
+  dropoffs: string | number;
+  friction_events: string | number;
+  nudge_clicks: string | number;
+  nudge_views: string | number;
+  surface: string;
+  visits: string | number;
+};
+type ActivationScoreRow = QueryResultRow & {
+  activated_users: string | number;
+  at_risk_users: string | number;
+  avg_score: string | number | null;
+  nudge_clicks: string | number;
+  nudge_views: string | number;
+  partial_users: string | number;
+  scored_users: string | number;
+};
 
 const MAX_EVENTS_PER_REQUEST = 24;
 const FRICTION_EVENT_NAMES = [
@@ -518,7 +583,7 @@ const CORE_FEATURE_EVENT_NAMES = [
   "watchlist_usage",
   "workflow_continuity",
 ] as const;
-const SCANNER_FEATURE_EVENTS = ["scanner_usage", "scanner_return", "scanner_habit_loop", "scanner_run", "opportunities_open", "signal_drilldown"] as const;
+const SCANNER_FEATURE_EVENTS = ["discover_open", "scanner_open", "scanner_usage", "scanner_return", "scanner_habit_loop", "scanner_run", "opportunities_open", "signal_drilldown"] as const;
 const FEED_FEATURE_EVENTS = ["feed_engagement", "feed_item_open"] as const;
 const REPLAY_FEATURE_EVENTS = ["replay_usage", "replay_return", "replay_open"] as const;
 const STRATEGY_FEATURE_EVENTS = ["strategy_usage", "strategy_labs_open", "strategy_return"] as const;
@@ -658,6 +723,10 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     retentionCurveProof,
     activeDayDepthProof,
     paidUserCohortProof,
+    activationFunnelProof,
+    activationDropoffProof,
+    activationHeatmapProof,
+    activationScoreProof,
   ] = await Promise.all([
     dbQuery<RetentionRow>(
       `
@@ -777,7 +846,7 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
             bool_or(event_name = 'terminal_open') AS terminal_open,
             bool_or(event_name = 'symbol_open') AS symbol_open,
             bool_or(event_name = 'watchlist_add') AS watchlist_add,
-            bool_or(event_name = 'opportunities_open') AS opportunities_open,
+            bool_or(event_name IN ('discover_open', 'scanner_open', 'opportunities_open')) AS opportunities_open,
             bool_or(event_name = 'support_open' OR event_name = 'support_message_submit') AS support_used,
             bool_or(event_name = 'onboarding_complete') AS onboarding_complete,
             bool_or(event_name = 'alert_create') AS alert_create,
@@ -1194,6 +1263,10 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
       `,
     ),
     paidUserRetentionCohorts(),
+    activationFunnel(interval),
+    activationDropoffs(interval),
+    activationHeatmap(interval),
+    activationScore(interval),
   ]);
 
   const retentionRow = retention.rows[0];
@@ -1297,6 +1370,25 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     segment: row.segment,
     twoPlusActiveDayUsers: numberFromRow(row.two_plus_active_day_users),
   })));
+  const activationFunnelRow = activationFunnelProof.rows[0];
+  const totalActivationActors = numberFromRow(activationFunnelRow?.total_actors);
+  const activationFunnelRows = [
+    activationFunnelItem("landing", "Landing", activationFunnelRow?.landing_actors, totalActivationActors),
+    activationFunnelItem("signup", "Signup", activationFunnelRow?.signup_actors, totalActivationActors),
+    activationFunnelItem("discover", "Discover", activationFunnelRow?.discover_actors, totalActivationActors),
+    activationFunnelItem("scanner", "First scanner usage", activationFunnelRow?.scanner_actors, totalActivationActors),
+    activationFunnelItem("watchlist", "First watchlist save", activationFunnelRow?.watchlist_actors, totalActivationActors),
+    activationFunnelItem("symbol", "First symbol investigation", activationFunnelRow?.symbol_actors, totalActivationActors),
+    activationFunnelItem("alert", "First alert creation", activationFunnelRow?.alert_actors, totalActivationActors),
+    activationFunnelItem("chart_save", "First chart save", activationFunnelRow?.chart_save_actors, totalActivationActors),
+    activationFunnelItem("compare", "First compare usage", activationFunnelRow?.compare_actors, totalActivationActors),
+    activationFunnelItem("history_replay", "History or replay usage", activationFunnelRow?.history_replay_actors, totalActivationActors),
+    activationFunnelItem("morning_briefing", "Morning briefing completion", activationFunnelRow?.morning_briefing_actors, totalActivationActors),
+    activationFunnelItem("account", "Account visit", activationFunnelRow?.account_actors, totalActivationActors),
+  ];
+  const activationScoreRow = activationScoreProof.rows[0];
+  const activationNudgeViews = numberFromRow(activationScoreRow?.nudge_views);
+  const activationNudgeClicks = numberFromRow(activationScoreRow?.nudge_clicks);
   const adaptiveBehaviorScore = adaptiveProofScore({
     decisionMemoryActions: numberFromRow(adaptiveBehaviorRow?.decision_memory_actions),
     experimentExposure: numberFromRow(adaptiveBehaviorRow?.experiment_exposure),
@@ -1338,6 +1430,48 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
   });
 
   return {
+    activationRecovery: {
+      dropoffs: activationDropoffProof.rows.map((row) => {
+        const entrants = numberFromRow(row.entrants);
+        const completions = numberFromRow(row.completions);
+        const dropoffs = Math.max(0, entrants - completions);
+        return {
+          completions,
+          dropoffRatePct: pctOrNull(dropoffs, entrants),
+          dropoffs,
+          entrants,
+          stage: row.stage,
+        };
+      }),
+      funnel: activationFunnelRows,
+      heatmap: activationHeatmapProof.rows.map((row) => {
+        const visits = numberFromRow(row.visits);
+        const activationEvents = numberFromRow(row.activation_events);
+        const dropoffs = numberFromRow(row.dropoffs);
+        return {
+          activationEvents,
+          activationRatePct: pctOrNull(activationEvents, visits),
+          actors: numberFromRow(row.actors),
+          dropoffRatePct: pctOrNull(dropoffs, visits),
+          dropoffs,
+          frictionEvents: numberFromRow(row.friction_events),
+          nudgeClicks: numberFromRow(row.nudge_clicks),
+          nudgeViews: numberFromRow(row.nudge_views),
+          surface: row.surface,
+          visits,
+        };
+      }),
+      score: {
+        activatedUsers: numberFromRow(activationScoreRow?.activated_users),
+        atRiskUsers: numberFromRow(activationScoreRow?.at_risk_users),
+        averageScore: nullableNumberFromRow(activationScoreRow?.avg_score),
+        nudgeClicks: activationNudgeClicks,
+        nudgeCtrPct: pctOrNull(activationNudgeClicks, activationNudgeViews),
+        nudgeViews: activationNudgeViews,
+        partialUsers: numberFromRow(activationScoreRow?.partial_users),
+        scoredUsers: numberFromRow(activationScoreRow?.scored_users),
+      },
+    },
     activeUsersTrend: trend.rows.map((row) => ({ activeUsers: numberFromRow(row.active_users), bucket: row.bucket, events: numberFromRow(row.events) })),
     betaCohort: {
       keyEvents: betaCohortEvents.rows.map((row) => ({ count: numberFromRow(row.count), eventName: row.event_name })),
@@ -1681,15 +1815,15 @@ async function paidUserRetentionCohorts(): Promise<{ rows: PaidUserCohortRow[] }
           ) AS first_watchlist,
           bool_or(
             (event_name = 'first_useful_action' AND COALESCE(metadata->>'actionKey', metadata->>'action', '') = ANY(ARRAY['scanner', 'first_scanner', 'first_scanner_usage', 'save_scanner', 'scanner_filter', 'scanner_compare', 'scanner_shortlist', 'scanner_saved_scan', 'scanner_alert_create', 'scanner_preset']::text[]))
-            OR event_name IN ('scanner_usage', 'scanner_run', 'opportunities_open')
+            OR event_name IN ('discover_open', 'scanner_open', 'scanner_usage', 'scanner_run', 'opportunities_open')
           ) AS first_scanner,
           bool_or(
             (event_name = 'first_useful_action' AND COALESCE(metadata->>'actionKey', metadata->>'action', '') = ANY(ARRAY['alert', 'first_alert', 'first_alert_creation', 'create_alert', 'alert_setup_start', 'scanner_alert_create', 'symbol_card_alert']::text[]))
             OR event_name = 'alert_create'
           ) AS first_alert,
           bool_or(
-            (event_name = 'first_useful_action' AND COALESCE(metadata->>'actionKey', metadata->>'action', '') = ANY(ARRAY['chart', 'chart_save', 'first_chart', 'first_chart_save', 'chart_workspace_save', 'full_chart_open', 'symbol_card_full_chart']::text[]))
-            OR event_name IN ('chart_return', 'chart_workspace_save', 'chart_expand', 'chart_indicator_template_save')
+            (event_name = 'first_useful_action' AND COALESCE(metadata->>'actionKey', metadata->>'action', '') = ANY(ARRAY['chart_save', 'first_chart_save', 'chart_workspace_save']::text[]))
+            OR event_name = 'chart_indicator_template_save'
           ) AS first_chart_save,
           bool_or(
             (event_name = 'first_useful_action' AND COALESCE(metadata->>'actionKey', metadata->>'action', '') = ANY(ARRAY['replay', 'first_replay', 'review_replay', 'replay_open']::text[]))
@@ -1826,6 +1960,170 @@ async function paidUserRetentionCohorts(): Promise<{ rows: PaidUserCohortRow[] }
   );
 }
 
+function activationActorFlagsCte(intervalSql: string): string {
+  return `
+    WITH events AS (
+      SELECT
+        COALESCE(user_id::text, anonymous_id_hash, session_id_hash, id::text) AS actor_key,
+        event_name,
+        COALESCE(page_path, '') AS page_path,
+        COALESCE(metadata->>'actionKey', metadata->>'action', '') AS action_key
+      FROM analytics_events
+      WHERE occurred_at >= now() - ${intervalSql}
+    ),
+    flags AS (
+      SELECT
+        actor_key,
+        bool_or(event_name = 'landing_open' OR page_path = '/') AS landing,
+        bool_or(event_name IN ('signup_open', 'early_access_signup_start', 'early_access_signup_complete', 'founding_checkout_start') OR page_path LIKE '/register%' OR page_path LIKE '/join%') AS signup,
+        bool_or(event_name IN ('discover_open', 'opportunities_open') OR page_path LIKE '/discover%') AS discover,
+        bool_or(event_name IN ('scanner_open', 'scanner_usage', 'scanner_run') OR action_key LIKE '%scanner%') AS scanner,
+        bool_or(event_name IN ('watch_add', 'watchlist_add', 'watchlist_usage', 'watchlist_retention', 'watchlist_return') OR action_key LIKE '%watchlist%' OR action_key = 'watch_add') AS watchlist,
+        bool_or(event_name = 'symbol_open' OR action_key IN ('symbol_research_start', 'symbol_card_open') OR action_key LIKE 'symbol_card_%') AS symbol,
+        bool_or(event_name = 'alert_create' OR action_key LIKE '%alert%') AS alert,
+        bool_or(event_name = 'chart_indicator_template_save' OR action_key LIKE '%chart_save%' OR action_key LIKE '%chart_workspace_save%' OR action_key LIKE '%workspace_save%' OR action_key LIKE '%template_save%') AS chart_save,
+        bool_or(event_name = 'compare_return' OR action_key LIKE '%compare%') AS compare,
+        bool_or(event_name IN ('history_open', 'history_return', 'market_memory_open', 'replay_open', 'replay_return', 'replay_usage') OR action_key LIKE '%history%' OR action_key LIKE '%replay%') AS history_replay,
+        bool_or(event_name = 'morning_workflow_complete' OR action_key LIKE '%morning%' OR action_key LIKE '%briefing%') AS morning_briefing,
+        bool_or(event_name = 'account_open' OR page_path LIKE '/account%') AS account
+      FROM events
+      GROUP BY 1
+    )
+  `;
+}
+
+function activationFunnel(intervalSql: string): Promise<{ rows: ActivationFunnelRow[] }> {
+  return dbQuery<ActivationFunnelRow>(
+    `
+      ${activationActorFlagsCte(intervalSql)}
+      SELECT
+        count(*) AS total_actors,
+        count(*) FILTER (WHERE landing) AS landing_actors,
+        count(*) FILTER (WHERE signup) AS signup_actors,
+        count(*) FILTER (WHERE discover) AS discover_actors,
+        count(*) FILTER (WHERE scanner) AS scanner_actors,
+        count(*) FILTER (WHERE watchlist) AS watchlist_actors,
+        count(*) FILTER (WHERE symbol) AS symbol_actors,
+        count(*) FILTER (WHERE alert) AS alert_actors,
+        count(*) FILTER (WHERE chart_save) AS chart_save_actors,
+        count(*) FILTER (WHERE compare) AS compare_actors,
+        count(*) FILTER (WHERE history_replay) AS history_replay_actors,
+        count(*) FILTER (WHERE morning_briefing) AS morning_briefing_actors,
+        count(*) FILTER (WHERE account) AS account_actors
+      FROM flags
+    `,
+  );
+}
+
+function activationDropoffs(intervalSql: string): Promise<{ rows: ActivationDropoffRow[] }> {
+  return dbQuery<ActivationDropoffRow>(
+    `
+      ${activationActorFlagsCte(intervalSql)}
+      SELECT *
+      FROM (
+        SELECT 'landing_to_signup'::text AS stage, count(*) FILTER (WHERE landing) AS entrants, count(*) FILTER (WHERE landing AND signup) AS completions FROM flags
+        UNION ALL
+        SELECT 'signup_to_scanner'::text AS stage, count(*) FILTER (WHERE signup) AS entrants, count(*) FILTER (WHERE signup AND scanner) AS completions FROM flags
+        UNION ALL
+        SELECT 'discover_to_scanner'::text AS stage, count(*) FILTER (WHERE discover) AS entrants, count(*) FILTER (WHERE discover AND scanner) AS completions FROM flags
+        UNION ALL
+        SELECT 'scanner_to_watchlist'::text AS stage, count(*) FILTER (WHERE scanner) AS entrants, count(*) FILTER (WHERE scanner AND watchlist) AS completions FROM flags
+        UNION ALL
+        SELECT 'scanner_to_symbol'::text AS stage, count(*) FILTER (WHERE scanner) AS entrants, count(*) FILTER (WHERE scanner AND symbol) AS completions FROM flags
+        UNION ALL
+        SELECT 'symbol_to_alert'::text AS stage, count(*) FILTER (WHERE symbol) AS entrants, count(*) FILTER (WHERE symbol AND alert) AS completions FROM flags
+        UNION ALL
+        SELECT 'symbol_to_chart_save'::text AS stage, count(*) FILTER (WHERE symbol) AS entrants, count(*) FILTER (WHERE symbol AND chart_save) AS completions FROM flags
+        UNION ALL
+        SELECT 'scanner_to_compare'::text AS stage, count(*) FILTER (WHERE scanner) AS entrants, count(*) FILTER (WHERE scanner AND compare) AS completions FROM flags
+        UNION ALL
+        SELECT 'history_to_replay_memory'::text AS stage, count(*) FILTER (WHERE history_replay) AS entrants, count(*) FILTER (WHERE history_replay AND symbol) AS completions FROM flags
+        UNION ALL
+        SELECT 'terminal_to_morning_complete'::text AS stage, count(*) FILTER (WHERE morning_briefing OR landing OR discover OR scanner) AS entrants, count(*) FILTER (WHERE morning_briefing) AS completions FROM flags
+      ) stages
+      ORDER BY entrants DESC, stage ASC
+    `,
+  );
+}
+
+function activationHeatmap(intervalSql: string): Promise<{ rows: ActivationHeatmapRow[] }> {
+  return dbQuery<ActivationHeatmapRow>(
+    `
+      WITH events AS (
+        SELECT
+          COALESCE(user_id::text, anonymous_id_hash, session_id_hash, id::text) AS actor_key,
+          event_name,
+          CASE
+            WHEN COALESCE(page_path, '') = '/' THEN 'landing'
+            WHEN COALESCE(page_path, '') LIKE '/terminal%' THEN 'terminal'
+            WHEN COALESCE(page_path, '') LIKE '/discover%' THEN 'discover'
+            WHEN COALESCE(page_path, '') LIKE '/scanner%' THEN 'scanner'
+            WHEN COALESCE(page_path, '') LIKE '/symbol/%' THEN 'symbol'
+            WHEN COALESCE(page_path, '') LIKE '/alerts%' THEN 'alerts'
+            WHEN COALESCE(page_path, '') LIKE '/history%' THEN 'history'
+            WHEN COALESCE(page_path, '') LIKE '/market-memory%' THEN 'market-memory'
+            WHEN COALESCE(page_path, '') LIKE '/performance%' THEN 'performance'
+            WHEN COALESCE(page_path, '') LIKE '/macro%' THEN 'macro'
+            WHEN COALESCE(page_path, '') LIKE '/feed%' THEN 'feed'
+            WHEN COALESCE(page_path, '') LIKE '/paper%' THEN 'paper'
+            WHEN COALESCE(page_path, '') LIKE '/strategy-labs%' THEN 'strategy-labs'
+            WHEN COALESCE(page_path, '') LIKE '/account%' THEN 'account'
+            ELSE COALESCE(NULLIF(split_part(trim(leading '/' from split_part(COALESCE(page_path, 'unknown'), '?', 1)), '/', 1), ''), 'unknown')
+          END AS surface
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${intervalSql}
+      )
+      SELECT
+        surface,
+        count(*) FILTER (WHERE event_name = 'page_view') AS visits,
+        count(DISTINCT actor_key) AS actors,
+        count(*) FILTER (WHERE event_name IN ('activation_journey_step', 'activation_milestone', 'activation_nudge_click', 'activation_score_update', 'first_useful_action')) AS activation_events,
+        count(*) FILTER (WHERE event_name = 'activation_nudge_view') AS nudge_views,
+        count(*) FILTER (WHERE event_name = 'activation_nudge_click') AS nudge_clicks,
+        count(*) FILTER (WHERE event_name IN ('workflow_dropoff', 'scroll_abandon', 'modal_abandon', 'churn_risk_signal')) AS dropoffs,
+        count(*) FILTER (WHERE event_name = ANY($1::text[])) AS friction_events
+      FROM events
+      GROUP BY 1
+      ORDER BY visits DESC, activation_events DESC, surface ASC
+      LIMIT 16
+    `,
+    [FRICTION_EVENT_NAMES],
+  );
+}
+
+function activationScore(intervalSql: string): Promise<{ rows: ActivationScoreRow[] }> {
+  return dbQuery<ActivationScoreRow>(
+    `
+      WITH actor_scores AS (
+        SELECT
+          COALESCE(user_id::text, anonymous_id_hash, session_id_hash, id::text) AS actor_key,
+          max((metadata->>'score')::float) AS score
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${intervalSql}
+          AND event_name = 'activation_score_update'
+          AND metadata->>'score' ~ '^[0-9]+(\\.[0-9]+)?$'
+        GROUP BY 1
+      ),
+      nudge AS (
+        SELECT
+          count(*) FILTER (WHERE event_name = 'activation_nudge_view') AS nudge_views,
+          count(*) FILTER (WHERE event_name = 'activation_nudge_click') AS nudge_clicks
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${intervalSql}
+      )
+      SELECT
+        (SELECT avg(score) FROM actor_scores) AS avg_score,
+        (SELECT count(*) FROM actor_scores) AS scored_users,
+        (SELECT count(*) FROM actor_scores WHERE score < 35) AS at_risk_users,
+        (SELECT count(*) FROM actor_scores WHERE score >= 35 AND score < 72) AS partial_users,
+        (SELECT count(*) FROM actor_scores WHERE score >= 72) AS activated_users,
+        nudge.nudge_views,
+        nudge.nudge_clicks
+      FROM nudge
+    `,
+  );
+}
+
 function topSessionPages(intervalSql: string, direction: "ASC" | "DESC") {
   return dbQuery<PageCountRow>(
     `
@@ -1926,6 +2224,16 @@ function nullableNumberFromRow(value: string | number | null | undefined): numbe
 function nullableMillisecondsToSeconds(value: string | number | null | undefined): number | null {
   const parsed = nullableNumberFromRow(value);
   return parsed === null ? null : parsed / 1000;
+}
+
+function activationFunnelItem(key: string, label: string, actorValue: string | number | null | undefined, totalActors: number): { actors: number; key: string; label: string; ratePct: number | null } {
+  const actors = numberFromRow(actorValue);
+  return {
+    actors,
+    key,
+    label,
+    ratePct: pctOrNull(actors, totalActors),
+  };
 }
 
 function pctOrNull(numerator: number, denominator: number): number | null {

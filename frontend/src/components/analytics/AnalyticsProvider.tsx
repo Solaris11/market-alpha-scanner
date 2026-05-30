@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import { useEffect } from "react";
+import { ActivationRecoveryNudge } from "@/components/analytics/ActivationRecoveryNudge";
 import { flushAnalyticsEvents, installBehaviorTelemetry, trackRouteAnalytics } from "@/lib/client/analytics";
 
 export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
@@ -26,5 +27,10 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      <ActivationRecoveryNudge />
+    </>
+  );
 }

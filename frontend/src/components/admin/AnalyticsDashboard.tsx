@@ -73,6 +73,7 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
   const adoptionRows = analytics.realUserProof.featureAdoption.map((row) => ({ label: `${row.feature} · ${formatPct(row.adoptionRatePct)}`, value: row.events }));
   const dailyDriver = analytics.realUserProof.dailyDriver;
   const paidCohorts = dailyDriver.paidUserCohorts;
+  const activationRecovery = analytics.activationRecovery;
 
   return (
     <div className="space-y-5">
@@ -326,6 +327,99 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
               ))}
             </div>
           ) : null}
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-3xl border border-rose-300/18 bg-[radial-gradient(circle_at_12%_0%,rgba(251,113,133,0.13),transparent_26rem),radial-gradient(circle_at_86%_10%,rgba(34,211,238,0.1),transparent_24rem),linear-gradient(135deg,rgba(2,6,23,0.98),rgba(15,23,42,0.84))] p-4 shadow-2xl shadow-rose-950/15 ring-1 ring-white/5 sm:p-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.28em] text-rose-200">Retention Emergency Recovery</div>
+            <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">Activation funnel, dropoff, and nudge proof</h2>
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
+              This section isolates first-session activation failure points: signup, scanner use, watchlist save, alert creation, chart save, symbol investigation, replay/history use, and morning briefing completion.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-4 xl:min-w-[700px]">
+            <ProofMetric label="Avg Score" value={activationRecovery.score.averageScore === null ? "N/A" : Math.round(activationRecovery.score.averageScore).toLocaleString()} />
+            <ProofMetric label="At Risk" value={activationRecovery.score.atRiskUsers.toLocaleString()} />
+            <ProofMetric label="Activated" value={activationRecovery.score.activatedUsers.toLocaleString()} />
+            <ProofMetric label="Nudge CTR" value={formatPct(activationRecovery.score.nudgeCtrPct)} />
+          </div>
+        </div>
+        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+          <ChartPanel subtitle="User-level adoption of the required first-useful-action milestones in the selected window." title="Activation Funnel Report">
+            <div className="grid gap-2 md:grid-cols-2">
+              {activationRecovery.funnel.map((row) => (
+                <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3" key={row.key}>
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="min-w-0 truncate text-xs font-black uppercase tracking-[0.14em] text-slate-300">{row.label}</span>
+                    <span className="font-mono text-xs font-black text-cyan-100">{formatPct(row.ratePct)}</span>
+                  </div>
+                  <div className="mt-2 font-mono text-xl font-black text-white">{row.actors.toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+          </ChartPanel>
+          <ChartPanel subtitle="Stage-level abandonment estimates. These are instrumentation gates, not aged retention claims." title="Dropoff Analysis">
+            <div className="grid gap-2">
+              {activationRecovery.dropoffs.map((row) => (
+                <div className="grid gap-2 rounded-xl border border-white/10 bg-white/[0.03] p-3 md:grid-cols-[1fr_auto_auto_auto]" key={row.stage}>
+                  <span className="min-w-0 truncate text-sm font-semibold text-slate-100">{humanizeLabel(row.stage)}</span>
+                  <span className="font-mono text-xs text-slate-400">{row.completions.toLocaleString()} complete</span>
+                  <span className="font-mono text-xs text-rose-100">{row.dropoffs.toLocaleString()} dropoff</span>
+                  <span className="font-mono text-xs text-cyan-100">{formatPct(row.dropoffRatePct)}</span>
+                </div>
+              ))}
+            </div>
+          </ChartPanel>
+        </div>
+        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
+          <ChartPanel subtitle="Surfaces with page visits, activation events, first-useful actions, nudges, and friction events." title="Activation Heatmap">
+            {activationRecovery.heatmap.length ? (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[720px] text-left text-xs">
+                  <thead className="text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                    <tr>
+                      <th className="py-2 pr-3">Surface</th>
+                      <th className="py-2 pr-3">Visits</th>
+                      <th className="py-2 pr-3">Actors</th>
+                      <th className="py-2 pr-3">Activation</th>
+                      <th className="py-2 pr-3">Dropoff</th>
+                      <th className="py-2 pr-3">Nudges</th>
+                      <th className="py-2 pr-3">Friction</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {activationRecovery.heatmap.map((row) => (
+                      <tr className="border-t border-white/10" key={row.surface}>
+                        <td className="py-2 pr-3 font-semibold text-slate-100">{humanizeLabel(row.surface)}</td>
+                        <td className="py-2 pr-3 font-mono text-cyan-100">{row.visits.toLocaleString()}</td>
+                        <td className="py-2 pr-3 font-mono text-slate-300">{row.actors.toLocaleString()}</td>
+                        <td className="py-2 pr-3 font-mono text-emerald-100">{row.activationEvents.toLocaleString()} · {formatPct(row.activationRatePct)}</td>
+                        <td className="py-2 pr-3 font-mono text-rose-100">{row.dropoffs.toLocaleString()} · {formatPct(row.dropoffRatePct)}</td>
+                        <td className="py-2 pr-3 font-mono text-violet-100">{row.nudgeClicks.toLocaleString()} / {row.nudgeViews.toLocaleString()}</td>
+                        <td className="py-2 pr-3 font-mono text-amber-100">{row.frictionEvents.toLocaleString()}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <EmptyState>No activation heatmap events have been recorded yet.</EmptyState>
+            )}
+          </ChartPanel>
+          <ProofPanel
+            rows={[
+              ["Scored users", activationRecovery.score.scoredUsers],
+              ["At-risk users", activationRecovery.score.atRiskUsers],
+              ["Partial users", activationRecovery.score.partialUsers],
+              ["Activated users", activationRecovery.score.activatedUsers],
+              ["Nudge views", activationRecovery.score.nudgeViews],
+              ["Nudge clicks", activationRecovery.score.nudgeClicks],
+              ["Nudge CTR", formatPct(activationRecovery.score.nudgeCtrPct)],
+            ]}
+            title="Targeted Prompt Scoreboard"
+          />
         </div>
       </section>
 

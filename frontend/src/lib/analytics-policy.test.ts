@@ -33,6 +33,11 @@ describe("analytics privacy policy", () => {
     assert.equal(normalizeAnalyticsEventName("strategy_return"), "strategy_return");
     assert.equal(normalizeAnalyticsEventName("watchlist_return"), "watchlist_return");
     assert.equal(normalizeAnalyticsEventName("personalized_intelligence_return"), "personalized_intelligence_return");
+    assert.equal(normalizeAnalyticsEventName("activation_score_update"), "activation_score_update");
+    assert.equal(normalizeAnalyticsEventName("activation_nudge_view"), "activation_nudge_view");
+    assert.equal(normalizeAnalyticsEventName("activation_nudge_click"), "activation_nudge_click");
+    assert.equal(normalizeAnalyticsEventName("activation_nudge_dismiss"), "activation_nudge_dismiss");
+    assert.equal(normalizeAnalyticsEventName("activation_journey_step"), "activation_journey_step");
     assert.equal(normalizeAnalyticsEventName("notification_usefulness_feedback"), "notification_usefulness_feedback");
     assert.equal(normalizeAnalyticsEventName("workflow_continuity"), "workflow_continuity");
     assert.equal(normalizeAnalyticsEventName("mobile_engagement"), "mobile_engagement");
@@ -44,9 +49,17 @@ describe("analytics privacy policy", () => {
   });
 
   test("maps dashboard route views to a dedicated analytics event", () => {
+    assert.equal(pageOpenEventForPath("/"), "landing_open");
+    assert.equal(pageOpenEventForPath("/register"), "signup_open");
     assert.equal(pageOpenEventForPath("/dashboard"), "dashboard_open");
     assert.equal(pageOpenEventForPath("/dashboard/heatmaps"), "dashboard_open");
-    assert.equal(pageOpenEventForPath("/discover"), "opportunities_open");
+    assert.equal(pageOpenEventForPath("/discover"), "discover_open");
+    assert.equal(pageOpenEventForPath("/scanner"), "scanner_open");
+    assert.equal(pageOpenEventForPath("/alerts"), "alerts_open");
+    assert.equal(pageOpenEventForPath("/feed"), "feed_open");
+    assert.equal(pageOpenEventForPath("/macro"), "macro_open");
+    assert.equal(pageOpenEventForPath("/market-memory"), "market_memory_open");
+    assert.equal(pageOpenEventForPath("/opportunities"), "opportunities_open");
     assert.equal(pageOpenEventForPath("/strategy-labs"), "strategy_labs_open");
     assert.equal(pageOpenEventForPath("/paper"), "paper_trade_open");
   });
