@@ -76,24 +76,94 @@ Passed locally:
 
 ## Production Deployment
 
-Pending:
-
 - Production host: `sre@100.68.155.121`
 - Production path: `/opt/apps/market-alpha-scanner/app`
+- Deployed commit: `e0fb4cb1`
 - Pull: `git pull --ff-only origin main`
 - Rebuild: `docker compose --env-file .env up -d --build market-alpha-frontend market-alpha-frontend-hot-api`
+- Container health: `market-alpha-frontend` and `market-alpha-frontend-hot-api` reached healthy state after rebuild.
+
+## Production Smoke
+
+Artifact: `docs/ops/artifacts/sprint-30-2-habit-loop/production-smoke.txt`
+
+All smoke targets returned HTTP 200:
+
+- `/api/health`
+- `/api/health/deep`
+- `/terminal`
+- `/discover`
+- `/scanner`
+- `/alerts`
+- `/feed`
+- `/history`
+- `/performance`
+- `/symbol/AMD`
+- `/market-memory`
+- `/macro`
+- `/account`
+- `/status`
 
 ## Retention Proof
 
-Pending post-deploy cohort export.
+Artifact: `docs/ops/artifacts/sprint-30-2-habit-loop/paid-retention-daily-habit-proof.json`
+
+- Generated at: `2026-05-30T15:04:07.648Z`
+- Admin analytics status: `200`
+- Admin analytics latency: `370 ms`
+- Overall status: `strong_partial`
+- Elapsed cohort only: `true`
+- No synthetic cohort data created: `true`
+- Total actors: `996`
+- Founding actors: `1`
+- Bot/noise filtered actors: `18`
+
+| Metric | Current | Target | Status |
+| --- | ---: | ---: | --- |
+| Founding D2 retention | `0%` | `> 10%` | Fail |
+| Founding D7 retention | `0%` | `> 6%` | Fail |
+| Founding 2+ active-day | `0%` | `> 15%` | Fail |
+| Alert-return conversion | `N/A` | `> 12%` | Fail - no founding alert-trigger sample |
+| Notification useful ratio | `N/A` | `> 55%` | Fail - no founding notification feedback sample |
+
+Aggregate context:
+
+- D1 retention: `0.712%` (`7 / 983`)
+- D2 retention: `0.306%` (`3 / 980`)
+- D7 retention: `0.111%` (`1 / 903`)
+- 2+ active-day rate: `0.904%` (`9 / 996`)
 
 ## Habit Loop Report
 
 The Terminal now presents a single daily setup surface before the user falls into generic browsing. The card promotes one top return reason plus eight daily workflow tasks. The model stays evidence-bound: return reasons use watchlist evolution, trigger monitors, scanner rows, replay candidates, and workflow evolution; missing evidence remains `partial` or `blocked`.
 
+Artifact: `docs/ops/artifacts/sprint-30-2-habit-loop/habit-notification-quality-report.json`
+
+90-day production habit metrics after deploy:
+
+- DAU: `14`
+- WAU: `97`
+- MAU: `996`
+- Return sessions: `10`
+- Briefing returns: `0`
+- Watchlist returns: `10`
+- Alert returns: `0`
+- Replay returns: `0`
+- Compare returns: `0`
+- Symbol returns: `0`
+
 ## Notification Quality Report
 
 The notification drawer now distinguishes drawer opens, action conversions, ignored unread notifications, explicit useful/not-useful feedback, and fatigue signals. Notification copy includes Why / Changed / Matters / Next so a generic notification cannot satisfy the UI contract.
+
+90-day production notification metrics after deploy:
+
+- Notification opened: `29`
+- Notification ignored: `0`
+- Notification converted: `0`
+- Useful feedback: `0`
+- Not useful feedback: `0`
+- Useful ratio: `N/A`
 
 ## Remaining Blockers
 

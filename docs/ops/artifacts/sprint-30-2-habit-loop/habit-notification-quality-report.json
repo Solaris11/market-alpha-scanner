@@ -1,0 +1,27 @@
+{
+  "generatedAt": "2026-05-30T15:05:12.534Z",
+  "window": "90d",
+  "dau": 14,
+  "wau": 97,
+  "mau": 996,
+  "return_sessions": 10,
+  "briefing_returns": 0,
+  "watchlist_returns": 10,
+  "alert_returns": 0,
+  "replay_returns": 0,
+  "compare_returns": 0,
+  "symbol_returns": 0,
+  "notification_opened": 29,
+  "notification_ignored": 0,
+  "notification_converted": 0,
+  "notification_useful": 0,
+  "notification_not_useful": 0,
+  "notification_useful_ratio_pct": null,
+  "targets": {
+    "alert_return_conversion_pct": 12,
+    "d2_retention_pct": 10,
+    "d7_retention_pct": 6,
+    "notification_useful_ratio_pct": 55,
+    "two_plus_active_day_pct": 15
+  }
+}
