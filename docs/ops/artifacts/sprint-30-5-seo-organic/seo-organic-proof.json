@@ -1,0 +1,190 @@
+{
+  "analyticsProof": {
+    "blockers": [],
+    "latencyMs": 1035,
+    "organicAcquisition": {
+      "keywordRankings": [],
+      "landingPages": [],
+      "organicPaidConversionRatePct": null,
+      "organicPaidConversions": 0,
+      "organicSearchVisits": 0,
+      "organicSessions": 0,
+      "organicSignupRatePct": null,
+      "organicSignups": 0,
+      "pagePerformance": [],
+      "searchLandingVisits": 0
+    },
+    "statusCode": 200
+  },
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [],
+  "coreWebVitals": {
+    "measuredBy": "seo_core_web_vital client event via useReportWebVitals",
+    "productionSamples": []
+  },
+  "finalVerdict": "TRADEVETO SEO + ORGANIC ACQUISITION ENGINE STRONG PARTIAL ACCOMPLISHED",
+  "generatedAt": "2026-05-30T15:49:07.353Z",
+  "indexationReport": {
+    "requiredSearchRoutes": [
+      "/search/amd-forecast",
+      "/search/nvda-analysis",
+      "/search/best-ai-stocks",
+      "/search/market-opportunities",
+      "/search/earnings-analysis",
+      "/search/sector-intelligence"
+    ],
+    "sitemapRouteCount": 49,
+    "sitemapSearchRoutesPresent": true,
+    "sitemapSymbolAmdPresent": true
+  },
+  "noSyntheticOrganicEventsCreated": true,
+  "organicGrowthProofBoundary": "The probe verifies technical SEO, indexation plumbing, search landing pages, and analytics dashboards. It does not fabricate organic sessions, Search Console rankings, signups, or paid conversions.",
+  "overallStatus": "strong_partial",
+  "publicRouteAudits": [
+    {
+      "blockers": [],
+      "bytes": 357778,
+      "hasCanonical": true,
+      "hasDescription": true,
+      "hasOpenGraph": true,
+      "hasStructuredData": true,
+      "route": "/",
+      "statusCode": 200
+    },
+    {
+      "blockers": [],
+      "bytes": 178038,
+      "hasCanonical": true,
+      "hasDescription": true,
+      "hasOpenGraph": true,
+      "hasStructuredData": true,
+      "route": "/feed",
+      "statusCode": 200
+    },
+    {
+      "blockers": [],
+      "bytes": 141364,
+      "hasCanonical": true,
+      "hasDescription": true,
+      "hasOpenGraph": true,
+      "hasStructuredData": true,
+      "route": "/macro",
+      "statusCode": 200
+    },
+    {
+      "blockers": [],
+      "bytes": 339288,
+      "hasCanonical": true,
+      "hasDescription": true,
+      "hasOpenGraph": true,
+      "hasStructuredData": true,
+      "route": "/market-memory",
+      "statusCode": 200
+    },
+    {
+      "blockers": [],
+      "bytes": 164596,
+      "hasCanonical": true,
+      "hasDescription": true,
+      "hasOpenGraph": true,
+      "hasStructuredData": true,
+      "route": "/intelligence",
+      "statusCode": 200
+    },
+    {
+      "blockers": [],
+      "bytes": 113819,
+      "hasCanonical": true,
+      "hasDescription": true,
+      "hasOpenGraph": true,
+      "hasStructuredData": true,
+      "route": "/symbol/AMD",
+      "statusCode": 200
+    },
+    {
+      "blockers": [],
+      "bytes": 50127,
+      "hasCanonical": true,
+      "hasDescription": true,
+      "hasOpenGraph": true,
+      "hasStructuredData": true,
+      "route": "/search/amd-forecast",
+      "statusCode": 200
+    },
+    {
+      "blockers": [],
+      "bytes": 49037,
+      "hasCanonical": true,
+      "hasDescription": true,
+      "hasOpenGraph": true,
+      "hasStructuredData": true,
+      "route": "/search/nvda-analysis",
+      "statusCode": 200
+    },
+    {
+      "blockers": [],
+      "bytes": 50079,
+      "hasCanonical": true,
+      "hasDescription": true,
+      "hasOpenGraph": true,
+      "hasStructuredData": true,
+      "route": "/search/best-ai-stocks",
+      "statusCode": 200
+    },
+    {
+      "blockers": [],
+      "bytes": 49402,
+      "hasCanonical": true,
+      "hasDescription": true,
+      "hasOpenGraph": true,
+      "hasStructuredData": true,
+      "route": "/search/market-opportunities",
+      "statusCode": 200
+    },
+    {
+      "blockers": [],
+      "bytes": 49581,
+      "hasCanonical": true,
+      "hasDescription": true,
+      "hasOpenGraph": true,
+      "hasStructuredData": true,
+      "route": "/search/earnings-analysis",
+      "statusCode": 200
+    },
+    {
+      "blockers": [],
+      "bytes": 49247,
+      "hasCanonical": true,
+      "hasDescription": true,
+      "hasOpenGraph": true,
+      "hasStructuredData": true,
+      "route": "/search/sector-intelligence",
+      "statusCode": 200
+    }
+  ],
+  "robots": {
+    "allowsSearch": true,
+    "hasSitemap": true,
+    "statusCode": 200
+  },
+  "sitemap": {
+    "requiredSearchRoutes": [
+      "/search/amd-forecast",
+      "/search/nvda-analysis",
+      "/search/best-ai-stocks",
+      "/search/market-opportunities",
+      "/search/earnings-analysis",
+      "/search/sector-intelligence"
+    ],
+    "statusCode": 200,
+    "urlCount": 49
+  },
+  "startedAt": "2026-05-30T15:49:03.705Z",
+  "successCriteria": {
+    "indexedPageGrowth": "instrumented via sitemap and future indexation reports",
+    "organicPaidConversionGrowth": "instrumented via organic_paid_conversion from Stripe webhook metadata",
+    "organicSignupGrowth": "instrumented via organic_signup events",
+    "organicTrafficGrowth": "instrumented via organic_search_visit and search_landing_open events",
+    "searchImpressionGrowth": "requires external Search Console export or ranking observer events"
+  }
+}

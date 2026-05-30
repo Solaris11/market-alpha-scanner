@@ -38,6 +38,7 @@ The technical SEO, search landing page, organic attribution, Core Web Vitals tel
 - `frontend/package.json`
 - `frontend/scripts/sprint30-5-seo-organic-probe.mjs`
 - `frontend/src/app/layout.tsx`
+- `frontend/src/app/market-memory/page.tsx`
 - `frontend/src/app/robots.txt/route.ts`
 - `frontend/src/app/search/[slug]/page.tsx`
 - `frontend/src/app/sitemap.ts`
@@ -91,23 +92,117 @@ Passed locally:
 
 ## Production Deployment
 
-Pending.
+- Production host: `sre@100.68.155.121`
+- Production path: `/opt/apps/market-alpha-scanner/app`
+- Production commit: `9998438`
+- Deploy command:
+  - `git pull --ff-only origin main`
+  - `docker compose --env-file .env up -d --build market-alpha-frontend market-alpha-frontend-hot-api`
+- Container status after deploy:
+  - `market-alpha-frontend`: healthy
+  - `market-alpha-frontend-hot-api`: healthy
 
 ## Production Smoke
 
-Pending.
+Passed on `https://tradeveto.com` after production rebuild:
+
+| Route | Status | Bytes |
+| --- | ---: | ---: |
+| `/api/health` | 200 | 114 |
+| `/api/health/deep` | 200 | 1497 |
+| `/` | 200 | 357298 |
+| `/feed` | 200 | 177558 |
+| `/macro` | 200 | 140880 |
+| `/market-memory` | 200 | 338847 |
+| `/intelligence` | 200 | 164112 |
+| `/symbol/AMD` | 200 | 113329 |
+| `/search/amd-forecast` | 200 | 49631 |
+| `/search/nvda-analysis` | 200 | 48541 |
+| `/search/best-ai-stocks` | 200 | 49583 |
+| `/search/market-opportunities` | 200 | 48906 |
+| `/search/earnings-analysis` | 200 | 49085 |
+| `/search/sector-intelligence` | 200 | 48751 |
+| `/sitemap.xml` | 200 | 8183 |
+| `/robots.txt` | 200 | 1203 |
 
 ## SEO Audit Report
 
-Pending.
+Production SEO probe artifact:
+
+- `docs/ops/artifacts/sprint-30-5-seo-organic/seo-organic-proof.json`
+
+Probe result:
+
+- Overall status: `strong_partial`
+- Blockers: `0`
+- Robots: `200`, search routes allowed, sitemap declared
+- Sitemap: `200`, `49` URLs
+- Required search routes in sitemap: yes
+- `/symbol/AMD` in sitemap: yes
+- Public route audit: all audited routes returned `200`
+- Metadata audit: all audited routes have canonical, meta description, Open Graph metadata, and structured data
+
+| Route | Canonical | Description | Open Graph | Structured Data | Blockers |
+| --- | --- | --- | --- | --- | --- |
+| `/` | yes | yes | yes | yes | 0 |
+| `/feed` | yes | yes | yes | yes | 0 |
+| `/macro` | yes | yes | yes | yes | 0 |
+| `/market-memory` | yes | yes | yes | yes | 0 |
+| `/intelligence` | yes | yes | yes | yes | 0 |
+| `/symbol/AMD` | yes | yes | yes | yes | 0 |
+| `/search/amd-forecast` | yes | yes | yes | yes | 0 |
+| `/search/nvda-analysis` | yes | yes | yes | yes | 0 |
+| `/search/best-ai-stocks` | yes | yes | yes | yes | 0 |
+| `/search/market-opportunities` | yes | yes | yes | yes | 0 |
+| `/search/earnings-analysis` | yes | yes | yes | yes | 0 |
+| `/search/sector-intelligence` | yes | yes | yes | yes | 0 |
 
 ## Search Performance Dashboard
 
-Pending.
+Production analytics endpoint proof:
+
+- Endpoint: `/api/admin/analytics?range=30d`
+- Status: `200`
+- Latency: `1035 ms`
+- Dashboard section: SEO + Organic Acquisition
+- Metrics exposed:
+  - organic sessions
+  - organic search visits
+  - search landing visits
+  - organic signups
+  - organic signup rate
+  - organic paid conversions
+  - organic paid conversion rate
+  - landing-page quality
+  - keyword ranking observations
+  - Core Web Vitals samples
+
+Current production sample values are intentionally not inflated:
+
+| Metric | Value |
+| --- | ---: |
+| Organic sessions | 0 |
+| Organic search visits | 0 |
+| Search landing visits | 0 |
+| Organic signups | 0 |
+| Organic paid conversions | 0 |
+| Keyword ranking observations | 0 |
+| Core Web Vitals production samples | 0 |
 
 ## Indexation Report
 
-Pending.
+Indexation plumbing is ready; external indexing growth is not yet proven.
+
+| Check | Result |
+| --- | --- |
+| Sitemap reachable | pass |
+| Sitemap URL count | 49 |
+| Search landing routes in sitemap | pass |
+| `/symbol/AMD` in sitemap | pass |
+| Robots includes sitemap | pass |
+| Robots allows `/search/` | pass |
+| Search Console impressions | not yet available |
+| Indexed page growth | requires elapsed crawl evidence |
 
 ## Remaining Blockers
 
