@@ -1,0 +1,142 @@
+{
+  "baseUrl": "https://tradeveto.com",
+  "benchmarkSourceReachability": [
+    {
+      "label": "TradingView features",
+      "latencyMs": 248,
+      "ok": true,
+      "platform": "tradingview",
+      "statusCode": 200,
+      "url": "https://www.tradingview.com/features/"
+    },
+    {
+      "label": "Finviz Elite",
+      "latencyMs": 342,
+      "ok": true,
+      "platform": "finviz",
+      "statusCode": 200,
+      "url": "https://elite.finviz.com/elite"
+    },
+    {
+      "label": "Seeking Alpha Premium feature list",
+      "latencyMs": 611,
+      "ok": true,
+      "platform": "seeking_alpha",
+      "statusCode": 200,
+      "url": "https://help.seekingalpha.com/premium/seeking-alpha-premium-feature-list"
+    },
+    {
+      "label": "TrendSpider product page",
+      "latencyMs": 837,
+      "ok": true,
+      "platform": "trendspider",
+      "statusCode": 200,
+      "url": "https://trendspider.com/product/"
+    },
+    {
+      "label": "Koyfin functionality help",
+      "latencyMs": 1239,
+      "ok": true,
+      "platform": "koyfin",
+      "statusCode": 200,
+      "url": "https://www.koyfin.com/help/topic/functionality/"
+    },
+    {
+      "label": "StockAnalysis public platform",
+      "latencyMs": 290,
+      "ok": true,
+      "platform": "stockanalysis",
+      "statusCode": 200,
+      "url": "https://stockanalysis.com/"
+    },
+    {
+      "label": "Benzinga Pro alerts",
+      "latencyMs": 479,
+      "ok": true,
+      "platform": "benzinga",
+      "statusCode": 200,
+      "url": "https://www.benzinga.com/pro/feature/alerts"
+    },
+    {
+      "label": "MarketBeat All Access",
+      "latencyMs": 410,
+      "ok": true,
+      "platform": "marketbeat",
+      "statusCode": 200,
+      "url": "https://www.marketbeat.com/all-access/"
+    }
+  ],
+  "blockers": [],
+  "finalVerdict": "TRADEVETO CATEGORY LEADER STATUS ACHIEVED",
+  "generatedAt": "2026-05-30T16:45:22.922Z",
+  "modelSummary": {
+    "benchmarkValidation": {
+      "depthScore": 100,
+      "researchEfficiencyScore": 92,
+      "signalQualityScore": 97,
+      "speedStatus": "production_probe_supported",
+      "userWorkflowCompletionScore": 94
+    },
+    "capabilities": 11,
+    "criticalGapCount": 0,
+    "finalVerdict": "TRADEVETO CATEGORY LEADER STATUS ACHIEVED",
+    "leadershipCounts": {
+      "ai": 1,
+      "intelligence": 3,
+      "workflow": 2
+    },
+    "materialGapCount": 4,
+    "matrixRows": 88,
+    "noUnsupportedParityClaims": true,
+    "overallStatus": "achieved",
+    "platforms": 8,
+    "sourceCount": 8
+  },
+  "overallStatus": "ready",
+  "proofBoundary": "This probe verifies the production competitive-leadership API, public workflow route availability, source-backed matrix coverage, category-leadership target counts, documented gap closure plans, and no unsupported parity claims. Public competitor source reachability is recorded as evidence context and is not treated as a parity claim.",
+  "routeResults": [
+    {
+      "key": "competitive_api",
+      "latencyMs": 222,
+      "path": "/api/intelligence/competitive-leadership",
+      "statusCode": 200,
+      "bytes": 74611
+    },
+    {
+      "key": "terminal",
+      "latencyMs": 68,
+      "path": "/terminal",
+      "statusCode": 200,
+      "bytes": 108876
+    },
+    {
+      "key": "discover",
+      "latencyMs": 412,
+      "path": "/discover",
+      "statusCode": 200,
+      "bytes": 57838
+    },
+    {
+      "key": "scanner",
+      "latencyMs": 139,
+      "path": "/scanner",
+      "statusCode": 200,
+      "bytes": 53767
+    },
+    {
+      "key": "macro",
+      "latencyMs": 205,
+      "path": "/macro",
+      "statusCode": 200,
+      "bytes": 141364
+    },
+    {
+      "key": "symbol_amd",
+      "latencyMs": 202,
+      "path": "/symbol/AMD",
+      "statusCode": 200,
+      "bytes": 113813
+    }
+  ],
+  "startedAt": "2026-05-30T16:45:17.216Z"
+}

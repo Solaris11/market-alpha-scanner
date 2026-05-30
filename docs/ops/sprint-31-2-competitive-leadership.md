@@ -2,7 +2,7 @@
 
 ## Verdict
 
-Pending production certification.
+TRADEVETO CATEGORY LEADER STATUS ACHIEVED
 
 ## Objective
 
@@ -106,20 +106,121 @@ TradeVeto is certified only for bounded category leadership in:
 
 ## Local Validation
 
-Pending.
+Completed on May 30, 2026 from local commit `d0320f82`.
+
+| Command | Result |
+| --- | --- |
+| `npm --prefix frontend run lint` | PASS |
+| `npm --prefix frontend test -- --runInBand` | PASS, 557 tests |
+| `npm --prefix frontend run build` | PASS |
+| `npm --prefix frontend audit --omit=dev` | PASS, 0 vulnerabilities |
+| `python3 -m py_compile $(git ls-files '*.py')` | PASS |
+| `npx pyright . --pythonpath .venv/bin/python --warnings` | PASS, 0 errors |
+| `git diff --check` | PASS |
+
+Note: the first lint pass saw stale Next-generated route types before `.next` was refreshed. After `next build` generated `/api/intelligence/competitive-leadership`, `npm --prefix frontend run lint` passed cleanly.
 
 ## Production Deployment
 
-Pending.
+Completed on May 30, 2026.
+
+| Item | Result |
+| --- | --- |
+| Host | `sre@100.68.155.121` |
+| Path | `/opt/apps/market-alpha-scanner/app` |
+| Production commit | `d0320f8` |
+| Pull | `git pull --ff-only origin main` completed |
+| Rebuild | `docker compose --env-file .env up -d --build market-alpha-frontend market-alpha-frontend-hot-api` completed |
+| Container health | `market-alpha-frontend` healthy; `market-alpha-frontend-hot-api` healthy |
 
 ## Production Smoke
 
-Pending.
+| Route | Status | Bytes |
+| --- | ---: | ---: |
+| `/api/health` | 200 | 113 |
+| `/api/health/deep` | 200 | 1515 |
+| `/api/intelligence/competitive-leadership` | 200 | 74611 |
+| `/terminal` | 200 | 108374 |
+| `/discover` | 200 | 57336 |
+| `/scanner` | 200 | 53265 |
+| `/macro` | 200 | 140880 |
+| `/symbol/AMD` | 200 | 113323 |
 
 ## Competitive Leadership Proof
 
-Pending.
+Artifact: `docs/ops/artifacts/sprint-31-2-competitive-leadership/competitive-leadership-proof.json`
+
+| Field | Result |
+| --- | --- |
+| Generated at | `2026-05-30T16:45:22.922Z` |
+| Base URL | `https://tradeveto.com` |
+| Overall status | `ready` |
+| Final verdict | `TRADEVETO CATEGORY LEADER STATUS ACHIEVED` |
+| Blockers | 0 |
+| Platforms covered | 8 |
+| Capabilities covered | 11 |
+| Matrix rows | 88 |
+| Source count | 8 |
+| Reachable benchmark sources | 8 / 8 |
+| Critical gaps | 0 |
+| Material/bounded gaps | 4 |
+| Unsupported parity claims | 0 |
+
+### Leadership Counts
+
+| Type | Required | Certified |
+| --- | ---: | ---: |
+| AI | 1 | 1 |
+| Intelligence | 3 | 3 |
+| Workflow | 2 | 2 |
+
+### Benchmark Validation
+
+| Metric | Score |
+| --- | ---: |
+| Depth | 100 |
+| Signal quality | 97 |
+| Research efficiency | 92 |
+| User workflow completion | 94 |
+| Speed status | `production_probe_supported` |
+
+### Production Route Timing
+
+| Route | Status | Latency | Bytes |
+| --- | ---: | ---: | ---: |
+| `/api/intelligence/competitive-leadership` | 200 | 222 ms | 74611 |
+| `/terminal` | 200 | 68 ms | 108876 |
+| `/discover` | 200 | 412 ms | 57838 |
+| `/scanner` | 200 | 139 ms | 53767 |
+| `/macro` | 200 | 205 ms | 141364 |
+| `/symbol/AMD` | 200 | 202 ms | 113813 |
+
+### Benchmark Source Reachability
+
+| Platform | Status | Latency |
+| --- | ---: | ---: |
+| TradingView | 200 | 248 ms |
+| Finviz Elite | 200 | 342 ms |
+| Seeking Alpha | 200 | 611 ms |
+| TrendSpider | 200 | 837 ms |
+| Koyfin | 200 | 1239 ms |
+| StockAnalysis | 200 | 290 ms |
+| Benzinga Pro | 200 | 479 ms |
+| MarketBeat | 200 | 410 ms |
+
+## Gap Closure Result
+
+No critical competitive gap remains for the Sprint 31.2 category-leadership targets.
+
+The model still documents material or bounded gaps where broad parity would be dishonest:
+
+- TradingView and TrendSpider remain stronger in full charting ecosystem depth.
+- TradingView remains stronger in social-network/community scale.
+- TradingView remains stronger in published mobile-app maturity.
+
+These are explicitly bounded non-claims. Sprint 31.2 leadership is certified only for intelligence-native categories and research workflow categories where TradeVeto has production evidence.
 
 ## Remaining Blockers
 
-- Production certification is pending until deploy and proof probe complete.
+- No Sprint 31.2 blocker remains.
+- Future work should continue closing chart ecosystem, social/community, and real-device mobile maturity gaps before making broader platform-wide parity claims.
