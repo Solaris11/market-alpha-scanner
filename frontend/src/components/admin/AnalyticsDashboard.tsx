@@ -86,6 +86,53 @@ export function AnalyticsDashboard({ analytics }: { analytics: AnalyticsSummary 
         <MetricCard label="Avg Session" value={formatDuration(analytics.visitorInsights.averageSessionDurationSeconds)} />
       </section>
 
+      <section className="rounded-3xl border border-emerald-300/18 bg-[radial-gradient(circle_at_10%_0%,rgba(52,211,153,0.13),transparent_24rem),linear-gradient(135deg,rgba(2,6,23,0.94),rgba(15,23,42,0.76))] p-4 shadow-2xl shadow-black/20 sm:p-5">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.28em] text-emerald-300">Viral Growth Engine</div>
+            <h2 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">Referral and share analytics</h2>
+            <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-300">
+              Measures shareable intelligence assets, invite opens, referral signups, checkout conversion attribution, and traffic-source quality. Values are first-party analytics only and do not infer paid success without Stripe-backed events.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3 xl:min-w-[520px]">
+            <ProofMetric label="Viral Coefficient" value={analytics.viralGrowth.viralCoefficient === null ? "N/A" : analytics.viralGrowth.viralCoefficient.toFixed(2)} />
+            <ProofMetric label="Referral Conv." value={formatPct(analytics.viralGrowth.referralConversionPct)} />
+            <ProofMetric label="Share Conv." value={formatPct(analytics.viralGrowth.shareConversionPct)} />
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <ProofPanel
+            rows={[
+              ["Share clicks", analytics.viralGrowth.shareClicks],
+              ["Share opens", analytics.viralGrowth.shareAssetOpened],
+              ["Invite sent", analytics.viralGrowth.inviteSent],
+              ["Invite opened users", analytics.viralGrowth.inviteOpenedUsers],
+            ]}
+            title="Share Loop"
+          />
+          <ProofPanel
+            rows={[
+              ["Referral signups", analytics.viralGrowth.referralSignups],
+              ["Paid conversions", analytics.viralGrowth.paidConversions],
+              ["Organic visits", analytics.viralGrowth.organicGrowthVisits],
+              ["Active users", analytics.retention.activeUsers],
+            ]}
+            title="Acquisition Loop"
+          />
+          <ProofPanel rows={viralTrafficSourceRows(analytics)} title="Traffic Source Quality" />
+          <ProofPanel
+            rows={[
+              ["X / Facebook / LinkedIn", "enabled"],
+              ["Reddit / Discord / Telegram", "enabled"],
+              ["Copy link", "enabled"],
+              ["Brand attribution", "tv_ref + tv_share"],
+            ]}
+            title="Distribution Channels"
+          />
+        </div>
+      </section>
+
       <section className="overflow-hidden rounded-3xl border border-cyan-300/18 bg-[radial-gradient(circle_at_12%_0%,rgba(34,211,238,0.16),transparent_28rem),radial-gradient(circle_at_86%_12%,rgba(167,139,250,0.12),transparent_24rem),linear-gradient(135deg,rgba(2,6,23,0.98),rgba(15,23,42,0.82))] p-4 shadow-2xl shadow-cyan-950/20 ring-1 ring-white/5 sm:p-5">
         <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
           <div>
@@ -714,6 +761,14 @@ function notificationCategoryRows(analytics: AnalyticsSummary): Array<[string, n
     `${formatPct(row.usefulnessRatePct)} useful (${row.total.toLocaleString()})`,
   ]);
   return rows.length ? rows : [["No durable feedback", "N/A"]];
+}
+
+function viralTrafficSourceRows(analytics: AnalyticsSummary): Array<[string, number | string]> {
+  const rows = analytics.viralGrowth.trafficSourceQuality.slice(0, 6).map((row): [string, string] => [
+    humanizeLabel(row.source),
+    `${row.visits.toLocaleString()} visits / ${formatPct(row.activationRatePct)} activation`,
+  ]);
+  return rows.length ? rows : [["No growth source data", "N/A"]];
 }
 
 function MetricGroup({ rows, title }: { rows: Array<[string, number | string]>; title: string }) {

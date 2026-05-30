@@ -112,6 +112,16 @@ export const ANALYTICS_EVENT_NAMES = [
   "workflow_visit_recorded",
   "workflow_continuity",
   "mobile_engagement",
+  "share_asset_view",
+  "share_asset_click",
+  "share_asset_copy",
+  "share_asset_opened",
+  "invite_link_created",
+  "invite_sent",
+  "invite_opened",
+  "referral_signup",
+  "referral_paid_conversion",
+  "organic_growth_visit",
 ] as const;
 
 export type AnalyticsEventName = (typeof ANALYTICS_EVENT_NAMES)[number];

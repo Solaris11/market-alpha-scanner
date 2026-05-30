@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { MouseEvent, ReactNode } from "react";
 import { AlertCircle, Bell, ExternalLink, GitCompare, History, LineChart, ShieldAlert, Star } from "lucide-react";
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
+import { ShareIntelligenceAsset } from "@/components/growth/ShareIntelligenceAsset";
 import { trackActivationMilestone, trackAnalyticsEvent, trackFirstUsefulAction, type ActivationMilestone } from "@/lib/client/analytics";
 import { closeSymbolCard } from "@/lib/symbol/symbol-overlay-store";
 import type { SymbolChartPoint, SymbolIntelligenceCardModel, SymbolSourceField } from "@/lib/symbol/symbol-intelligence-card";
@@ -105,6 +106,17 @@ export function SymbolIntelligenceCard({ error = "", loading = false, model }: S
           <ActionLink action="full_page" className="mt-3 w-full border-cyan-300/35 bg-cyan-300/10 text-cyan-100 hover:border-cyan-200/70" href={`/symbol/${encodeURIComponent(model.symbol)}`} icon={<ExternalLink className="h-4 w-4" />} label="Open full symbol page" milestone="symbol_investigation" model={model} />
         </div>
       </section>
+
+      <ShareIntelligenceAsset
+        asset={{
+          assetType: "symbol_page",
+          description: `${model.symbol} research card with price context, decision zones, source-linked events, confidence, and risk framing. Research only; not financial advice.`,
+          path: `/symbol/${encodeURIComponent(model.symbol)}`,
+          symbol: model.symbol,
+          title: `${model.symbol} symbol intelligence`,
+        }}
+        compact
+      />
 
       <section className="grid gap-4 xl:grid-cols-[minmax(0,0.96fr)_minmax(0,1.04fr)]">
         <div className="rounded-3xl border border-white/10 bg-slate-950/50 p-4">

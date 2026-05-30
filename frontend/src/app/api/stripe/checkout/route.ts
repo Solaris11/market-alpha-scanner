@@ -11,6 +11,11 @@ import { stripe, stripeAppBaseUrl, stripeBetaTrialDays, stripePriceId, stripePro
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+type CheckoutPayload = {
+  referralCode?: unknown;
+  referralShareId?: unknown;
+};
+
 export async function POST(request: Request) {
   return withRequestMetrics(request, "/api/stripe/checkout", () => checkout(request));
 }
@@ -38,6 +43,9 @@ async function checkout(request: Request): Promise<Response> {
   }
 
   try {
+    const payload = (await request.json().catch(() => null)) as CheckoutPayload | null;
+    const referralCode = normalizeStripeReferralField(payload?.referralCode);
+    const referralShareId = normalizeStripeReferralField(payload?.referralShareId);
     const appBaseUrl = stripeAppBaseUrl();
     const subscription = await getBillingSubscriptionForUser(access.user.id, STRIPE_LIVE_MODE);
 
@@ -61,6 +69,8 @@ async function checkout(request: Request): Promise<Response> {
       line_items: [{ price: stripePriceId(STRIPE_LIVE_MODE), quantity: 1 }],
       metadata: {
         email: access.user.email,
+        referral_code: referralCode ?? "",
+        referral_share_id: referralShareId ?? "",
         stripe_mode: STRIPE_LIVE_MODE,
         user_id: access.user.id,
       },
@@ -68,6 +78,8 @@ async function checkout(request: Request): Promise<Response> {
       subscription_data: {
         metadata: {
           email: access.user.email,
+          referral_code: referralCode ?? "",
+          referral_share_id: referralShareId ?? "",
           stripe_mode: STRIPE_LIVE_MODE,
           user_id: access.user.id,
         },
@@ -85,4 +97,9 @@ async function checkout(request: Request): Promise<Response> {
     console.warn("[stripe] checkout unavailable", error instanceof Error ? error.message : error);
     return NextResponse.json({ ok: false, message: "Checkout is temporarily unavailable." }, { status: 503 });
   }
+}
+
+function normalizeStripeReferralField(value: unknown): string | null {
+  const text = String(value ?? "").trim().replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
+  return text || null;
 }

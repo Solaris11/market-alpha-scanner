@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { betaSignupDecisionForRequest } from "@/lib/server/beta-access";
 import { normalizeAuthEmail, registerWithPassword, SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/server/auth";
+import { recordAnalyticsEvents } from "@/lib/server/analytics";
 import { createLoginNotifications } from "@/lib/server/notifications";
 import { rateLimitRequest, requestIp, validateMutationRequest } from "@/lib/server/request-security";
 
@@ -12,6 +13,8 @@ type RegisterPayload = {
   email?: unknown;
   inviteCode?: unknown;
   password?: unknown;
+  referralCode?: unknown;
+  referralShareId?: unknown;
 };
 
 export async function POST(request: Request) {
@@ -36,6 +39,25 @@ export async function POST(request: Request) {
     await createLoginNotifications(session.user.id).catch((notificationError) => {
       console.warn("[notifications] register notification failed", notificationError instanceof Error ? notificationError.message : notificationError);
     });
+    if (typeof payload.referralCode === "string" || typeof payload.referralShareId === "string") {
+      await recordAnalyticsEvents({
+        events: [{
+          deviceType: "unknown",
+          eventName: "referral_signup",
+          metadata: {
+            referralCode: typeof payload.referralCode === "string" ? payload.referralCode : null,
+            shareId: typeof payload.referralShareId === "string" ? payload.referralShareId : null,
+          },
+          occurredAt: new Date().toISOString(),
+          pagePath: "/register",
+          source: "auth_register",
+        }],
+        request,
+        user: session.user,
+      }).catch((analyticsError) => {
+        console.warn("[growth] referral signup attribution failed", analyticsError instanceof Error ? analyticsError.message : analyticsError);
+      });
+    }
     const response = NextResponse.json({ ok: true, user: session.user });
     response.cookies.set(SESSION_COOKIE_NAME, session.token, sessionCookieOptions(session.expiresAt));
     return response;

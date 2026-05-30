@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { MetricStrip } from "@/components/metric-strip";
 import { AutoCalibrationRecommendations } from "@/components/auto-calibration-recommendations";
+import { ShareIntelligenceAsset } from "@/components/growth/ShareIntelligenceAsset";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { PerformanceDrift } from "@/components/performance-drift";
 import { PerformanceValidation } from "@/components/performance-validation";
@@ -508,6 +509,16 @@ export default async function PerformancePage() {
         </div>
 
         <PerformanceHowToUse />
+
+        <ShareIntelligenceAsset
+          asset={{
+            assetType: "performance_summary",
+            description: "Share TradeVeto's performance cockpit: scanner hit-rate review, signal quality, confidence calibration, false-positive analysis, and research-only process evidence.",
+            path: "/performance",
+            title: "TradeVeto performance intelligence",
+          }}
+          compact
+        />
 
         <UtilitySurfaceMaturityPanel surfaceId="performance" />
 

@@ -20,6 +20,7 @@ import {
 } from "@/lib/analytics-policy";
 import { buildRealUserDominanceProof, type RealUserDominanceProof } from "@/lib/real-user-dominance";
 import { buildPaidUserCohortCertification, type PaidUserCohortCertification, type RetentionCohortSegmentInput } from "@/lib/retention-cohort-certification";
+import { calculateViralGrowthMetrics } from "@/lib/growth/viral-growth";
 import type { AuthUser } from "./auth";
 import { dbQuery } from "./db";
 import { getEntitlementForUser, entitlementSummary } from "./entitlements";
@@ -114,6 +115,19 @@ export type AnalyticsSummary = {
     totalEvents: number;
     totalSessions: number;
     wau: number;
+  };
+  viralGrowth: {
+    inviteOpenedUsers: number;
+    inviteSent: number;
+    organicGrowthVisits: number;
+    paidConversions: number;
+    referralConversionPct: number | null;
+    referralSignups: number;
+    shareAssetOpened: number;
+    shareClicks: number;
+    shareConversionPct: number | null;
+    trafficSourceQuality: Array<{ activatedUsers: number; activationRatePct: number | null; actors: number; source: string; visits: number }>;
+    viralCoefficient: number | null;
   };
   realUserProof: {
     adaptiveBehavior: {
@@ -556,6 +570,21 @@ type ActivationScoreRow = QueryResultRow & {
   partial_users: string | number;
   scored_users: string | number;
 };
+type ViralGrowthSummaryRow = QueryResultRow & {
+  invite_opened_users: string | number;
+  invite_sent: string | number;
+  organic_growth_visits: string | number;
+  paid_conversions: string | number;
+  referral_signups: string | number;
+  share_asset_opened: string | number;
+  share_clicks: string | number;
+};
+type ViralTrafficSourceQualityRow = QueryResultRow & {
+  activated_users: string | number;
+  actors: string | number;
+  source: string;
+  visits: string | number;
+};
 
 const MAX_EVENTS_PER_REQUEST = 24;
 const FRICTION_EVENT_NAMES = [
@@ -737,6 +766,8 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     retentionCurveProof,
     activeDayDepthProof,
     paidUserCohortProof,
+    viralGrowthProof,
+    viralTrafficSourceQualityProof,
     activationFunnelProof,
     activationDropoffProof,
     activationHeatmapProof,
@@ -1283,6 +1314,50 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
       `,
     ),
     paidUserRetentionCohorts(),
+    dbQuery<ViralGrowthSummaryRow>(
+      `
+        SELECT
+          count(*) FILTER (WHERE event_name = 'invite_sent') AS invite_sent,
+          count(DISTINCT COALESCE(user_id::text, anonymous_id_hash, session_id_hash, id::text)) FILTER (WHERE event_name = 'invite_opened') AS invite_opened_users,
+          count(*) FILTER (WHERE event_name = 'share_asset_click') AS share_clicks,
+          count(*) FILTER (WHERE event_name = 'share_asset_opened') AS share_asset_opened,
+          count(*) FILTER (WHERE event_name = 'referral_signup') AS referral_signups,
+          count(*) FILTER (WHERE event_name = 'referral_paid_conversion') AS paid_conversions,
+          count(*) FILTER (WHERE event_name = 'organic_growth_visit') AS organic_growth_visits
+        FROM analytics_events
+        WHERE occurred_at >= now() - ${interval}
+      `,
+    ),
+    dbQuery<ViralTrafficSourceQualityRow>(
+      `
+        WITH growth_visits AS (
+          SELECT
+            COALESCE(NULLIF(metadata->>'utmSource', ''), NULLIF(metadata->>'platform', ''), NULLIF(metadata->>'tvAsset', ''), source, 'unknown') AS source_label,
+            COALESCE(user_id::text, anonymous_id_hash, session_id_hash, id::text) AS actor_key,
+            session_id_hash,
+            occurred_at
+          FROM analytics_events
+          WHERE occurred_at >= now() - ${interval}
+            AND event_name IN ('invite_opened', 'share_asset_opened', 'organic_growth_visit')
+        ),
+        activated AS (
+          SELECT DISTINCT COALESCE(user_id::text, anonymous_id_hash, session_id_hash, id::text) AS actor_key
+          FROM analytics_events
+          WHERE occurred_at >= now() - ${interval}
+            AND event_name IN ('first_useful_action', 'activation_milestone', 'early_access_signup_complete', 'referral_signup')
+        )
+        SELECT
+          source_label AS source,
+          count(*) AS visits,
+          count(DISTINCT growth_visits.actor_key) AS actors,
+          count(DISTINCT growth_visits.actor_key) FILTER (WHERE activated.actor_key IS NOT NULL) AS activated_users
+        FROM growth_visits
+        LEFT JOIN activated ON activated.actor_key = growth_visits.actor_key
+        GROUP BY 1
+        ORDER BY visits DESC, source ASC
+        LIMIT 8
+      `,
+    ),
     activationFunnel(interval),
     activationDropoffs(interval),
     activationHeatmap(interval),
@@ -1393,6 +1468,18 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
     segment: row.segment,
     twoPlusActiveDayUsers: numberFromRow(row.two_plus_active_day_users),
   })));
+  const viralGrowthRow = viralGrowthProof.rows[0];
+  const viralGrowthCounts = {
+    activeUsers,
+    inviteOpenedUsers: numberFromRow(viralGrowthRow?.invite_opened_users),
+    inviteSent: numberFromRow(viralGrowthRow?.invite_sent),
+    organicGrowthVisits: numberFromRow(viralGrowthRow?.organic_growth_visits),
+    paidConversions: numberFromRow(viralGrowthRow?.paid_conversions),
+    referralSignups: numberFromRow(viralGrowthRow?.referral_signups),
+    shareAssetOpened: numberFromRow(viralGrowthRow?.share_asset_opened),
+    shareClicks: numberFromRow(viralGrowthRow?.share_clicks),
+  };
+  const viralGrowthMetrics = calculateViralGrowthMetrics(viralGrowthCounts);
   const activationFunnelRow = activationFunnelProof.rows[0];
   const totalActivationActors = numberFromRow(activationFunnelRow?.total_actors);
   const activationFunnelRows = [
@@ -1547,6 +1634,29 @@ export async function getAnalyticsSummary(rangeInput: unknown): Promise<Analytic
       totalEvents,
       totalSessions: numberFromRow(retentionRow?.total_sessions),
       wau: numberFromRow(wau.rows[0]?.count),
+    },
+    viralGrowth: {
+      inviteOpenedUsers: viralGrowthCounts.inviteOpenedUsers,
+      inviteSent: viralGrowthCounts.inviteSent,
+      organicGrowthVisits: viralGrowthCounts.organicGrowthVisits,
+      paidConversions: viralGrowthCounts.paidConversions,
+      referralConversionPct: viralGrowthMetrics.referralConversionPct,
+      referralSignups: viralGrowthCounts.referralSignups,
+      shareAssetOpened: viralGrowthCounts.shareAssetOpened,
+      shareClicks: viralGrowthCounts.shareClicks,
+      shareConversionPct: viralGrowthMetrics.shareConversionPct,
+      trafficSourceQuality: viralTrafficSourceQualityProof.rows.map((row) => {
+        const actors = numberFromRow(row.actors);
+        const activatedUsers = numberFromRow(row.activated_users);
+        return {
+          activatedUsers,
+          activationRatePct: pctOrNull(activatedUsers, actors),
+          actors,
+          source: row.source,
+          visits: numberFromRow(row.visits),
+        };
+      }),
+      viralCoefficient: viralGrowthMetrics.viralCoefficient,
     },
     realUserProof: {
       adaptiveBehavior: {

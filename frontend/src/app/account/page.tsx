@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { QueryResultRow } from "pg";
 import { CreditCard, Database, LockKeyhole, ShieldCheck, Smartphone, Settings2 } from "lucide-react";
 import { AccountLogoutButton, AccountSignInCta, BillingActionButton, DeleteAccountButton, LegalReviewButton, SendVerificationEmailButton } from "@/components/account/AccountPageActions";
+import { GrowthReferralPanel, ShareIntelligenceAsset } from "@/components/growth/ShareIntelligenceAsset";
 import { UserMemoryPrivacyControls } from "@/components/account/UserMemoryPrivacyControls";
 import { betaBillingCopy, parseBooleanFlag, parseTrialDays } from "@/lib/security/beta-billing";
 import { billingViewState } from "@/lib/security/billing-state";
@@ -147,6 +148,18 @@ export default async function AccountPage() {
         </UtilityHero>
 
         <UtilitySurfaceMaturityPanel surfaceId="account" />
+
+        <div className="grid gap-4 xl:grid-cols-2">
+          <GrowthReferralPanel />
+          <ShareIntelligenceAsset
+            asset={{
+              assetType: "watchlist_snapshot",
+              description: `${watchlist.length.toLocaleString()} saved symbol${watchlist.length === 1 ? "" : "s"} are driving this account's return workflow. Shared link invites a trader into the TradeVeto watchlist review path without exposing private holdings.`,
+              path: "/terminal",
+              title: "TradeVeto watchlist intelligence snapshot",
+            }}
+          />
+        </div>
 
         <div className="grid gap-5 xl:grid-cols-2">
           <AccountSection title="Trust Center">

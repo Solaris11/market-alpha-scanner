@@ -3,6 +3,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
+import { growthAttributionMetadata, readStoredGrowthAttribution } from "@/lib/client/growth-attribution";
 import { AuthInput } from "./LoginForm";
 
 export function RegisterForm({ initialInviteCode = "", onSuccess }: { initialInviteCode?: string; onSuccess: () => void }) {
@@ -32,10 +33,25 @@ export function RegisterForm({ initialInviteCode = "", onSuccess }: { initialInv
     }
 
     setBusy(true);
-    trackAnalyticsEvent("early_access_signup_start", { inviteProvided: Boolean(inviteCode.trim()) }, { source: "register_form" });
+    const attribution = readStoredGrowthAttribution();
+    const attributionMetadata = growthAttributionMetadata(attribution);
+    trackAnalyticsEvent("early_access_signup_start", { inviteProvided: Boolean(inviteCode.trim()), ...attributionMetadata }, { source: "register_form" });
     try {
-      await register({ displayName, email, inviteCode: inviteCode.trim() || undefined, password });
-      trackAnalyticsEvent("early_access_signup_complete", { inviteProvided: Boolean(inviteCode.trim()) }, { source: "register_form" });
+      await register({
+        displayName,
+        email,
+        inviteCode: inviteCode.trim() || undefined,
+        password,
+        referralCode: attributionMetadata.referralCode ?? undefined,
+        referralShareId: attributionMetadata.shareId ?? undefined,
+      });
+      trackAnalyticsEvent("early_access_signup_complete", { inviteProvided: Boolean(inviteCode.trim()), ...attributionMetadata }, { source: "register_form" });
+      if (attributionMetadata.referralCode || attributionMetadata.shareId) {
+        trackAnalyticsEvent("referral_signup", {
+          inviteProvided: Boolean(inviteCode.trim()),
+          ...attributionMetadata,
+        }, { source: "register_form" });
+      }
       onSuccess();
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "Unable to create account.");

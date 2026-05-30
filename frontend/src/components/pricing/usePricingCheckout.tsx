@@ -5,6 +5,7 @@ import { AuthModal } from "@/components/account/AuthModal";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
+import { growthAttributionMetadata, readStoredGrowthAttribution } from "@/lib/client/growth-attribution";
 
 const CHECKOUT_INTENT_KEY = "tv_pricing_checkout_intent";
 
@@ -50,11 +51,19 @@ export function usePricingCheckout(): PricingCheckoutController {
   async function startBilling(mode: "checkout" | "portal"): Promise<void> {
     setBusy(true);
     setMessage(null);
+    const attributionMetadata = growthAttributionMetadata(readStoredGrowthAttribution());
     if (mode === "checkout") {
-      trackAnalyticsEvent("founding_checkout_start", { authenticated }, { source: "pricing_checkout" });
+      trackAnalyticsEvent("founding_checkout_start", { authenticated, ...attributionMetadata }, { source: "pricing_checkout" });
+      if (attributionMetadata.referralCode || attributionMetadata.shareId) {
+        trackAnalyticsEvent("referral_paid_conversion", { authenticated, conversionStage: "checkout_start", ...attributionMetadata }, { source: "pricing_checkout" });
+      }
     }
     try {
-      const response = await csrfFetch(`/api/stripe/${mode}`, { method: "POST" });
+      const response = await csrfFetch(`/api/stripe/${mode}`, {
+        body: mode === "checkout" ? JSON.stringify({ referralCode: attributionMetadata.referralCode, referralShareId: attributionMetadata.shareId }) : undefined,
+        headers: mode === "checkout" ? { "Content-Type": "application/json" } : undefined,
+        method: "POST",
+      });
       const payload = (await response.json().catch(() => null)) as BillingResponse | null;
       if (!response.ok || !payload?.url) {
         setMessage(payload?.message ?? (mode === "checkout" ? "Checkout is temporarily unavailable." : "Billing portal is temporarily unavailable."));

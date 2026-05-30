@@ -4,6 +4,7 @@ import { AICognitionLayerPanel } from "@/components/terminal/AICognitionLayerPan
 import { AutomatedResearchAgentsPanel } from "@/components/terminal/AutomatedResearchAgentsPanel";
 import { BestTradeNowCard } from "@/components/terminal/BestTradeNowCard";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
+import { GrowthReferralPanel, ShareIntelligenceAsset } from "@/components/growth/ShareIntelligenceAsset";
 import { GlobalMarketCommandCenter } from "@/components/market/GlobalMarketCommandCenter";
 import { MarketOnboarding } from "@/components/onboarding/MarketOnboarding";
 import { RiskTolerantOpportunityRadar } from "@/components/opportunities/RiskTolerantOpportunityRadar";
@@ -295,6 +296,16 @@ export default async function TerminalPage() {
           <EcosystemContinuityPanel system={ecosystemContinuity} />
           <LivingIntelligenceProofPanel system={livingIntelligenceProof} />
           <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
+          <ShareIntelligenceAsset
+            asset={{
+              assetType: "ai_insight",
+              description: `${dailyAction.label} research context for today's market, generated from TradeVeto scanner, macro, risk, and replay intelligence. Research only; not financial advice.`,
+              path: "/terminal",
+              symbol: leader?.symbol ?? null,
+              title: `TradeVeto daily intelligence${leader?.symbol ? `: ${leader.symbol}` : ""}`,
+            }}
+          />
+          <GrowthReferralPanel compact />
           <GlobalMarketCommandCenter model={marketCommandModel} />
           <UnifiedIntelligenceConsole
             marketCondition={snapshot.marketRegime.label}

@@ -136,6 +136,9 @@ async function processStripeWebhook(event: Stripe.Event, mode: StripeMode): Prom
       stripeEventId: event.id,
       userId: result.userId,
     });
+    if (event.type === "checkout.session.completed") {
+      await recordReferralPaidConversion(prepared.session, result, db, mode);
+    }
     const emailIntent = await notifyForStripeEvent(event, result, db, mode);
     return { duplicate: false, emailIntent, result };
   });
@@ -219,6 +222,35 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session | null, 
     stripeSubscriptionId: subscriptionId,
     userId,
   };
+}
+
+async function recordReferralPaidConversion(session: Stripe.Checkout.Session | null, result: StripeSyncResult, db: DbExecutor, mode: StripeMode): Promise<void> {
+  if (!session || !result.userId) return;
+  const referralCode = normalizeReferralMetadata(session.metadata?.referral_code);
+  const shareId = normalizeReferralMetadata(session.metadata?.referral_share_id);
+  if (!referralCode && !shareId) return;
+  await db.query(
+    `
+      INSERT INTO analytics_events
+        (user_id, event_name, page_path, source, device_type, plan, metadata, occurred_at, created_at)
+      VALUES
+        ($1::uuid, 'referral_paid_conversion', '/account', 'stripe_webhook', 'unknown', 'premium', $2::jsonb, now(), now())
+    `,
+    [
+      result.userId,
+      JSON.stringify({
+        conversionStage: "checkout_session_completed",
+        referralCode,
+        shareId,
+        stripeMode: mode,
+      }),
+    ],
+  );
+}
+
+function normalizeReferralMetadata(value: unknown): string | null {
+  const text = String(value ?? "").trim().replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64);
+  return text || null;
 }
 
 async function handleInvoicePaymentFailed(invoice: Stripe.Invoice | null, subscription: Stripe.Subscription | null, eventCreatedAt: Date | null, db: DbExecutor, mode: StripeMode): Promise<StripeSyncResult> {

@@ -23,6 +23,15 @@ import {
   type ActivationScoreModel,
 } from "@/lib/activation-recovery";
 import { readWatchlistStorage } from "@/lib/watchlist-storage";
+import {
+  captureGrowthAttributionFromLocation,
+  growthAttributionMetadata,
+  growthOpenStorageKey,
+  hasEmittedGrowthOpen,
+  markGrowthOpenEmitted,
+  readInboundReferralCode,
+  readInboundShareId,
+} from "@/lib/client/growth-attribution";
 
 type ClientAnalyticsEvent = {
   anonymousId: string | null;
@@ -176,6 +185,7 @@ export function trackRouteAnalytics(pathname: string): void {
   trackActivationJourneyAndScore(pathname, routePagePath);
   recordRouteContinuityMemory(pathname, routePagePath);
   trackWatchlistRetention(pathname, routePagePath);
+  trackGrowthAttribution(pathname, routePagePath);
 }
 
 export async function flushAnalyticsEvents(): Promise<void> {
@@ -587,6 +597,37 @@ function trackReturnSession(pathname: string, pagePath?: string): void {
     }
   } catch {
     // Return-session telemetry must never block route analytics.
+  }
+}
+
+function trackGrowthAttribution(pathname: string, pagePath?: string): void {
+  if (typeof window === "undefined") return;
+  const attribution = captureGrowthAttributionFromLocation(window.location);
+  const referralCode = attribution?.referralCode ?? readInboundReferralCode();
+  const shareId = attribution?.shareId ?? readInboundShareId();
+  const metadata = growthAttributionMetadata(attribution);
+  const key = growthOpenStorageKey({ pathname, referralCode, shareId });
+  const hasCampaign = Boolean(metadata.utmSource || metadata.utmMedium || metadata.utmCampaign);
+  if ((referralCode || shareId || hasCampaign) && !hasEmittedGrowthOpen(key)) {
+    markGrowthOpenEmitted(key);
+    if (referralCode) {
+      trackAnalyticsEvent("invite_opened", {
+        ...metadata,
+        routeGroup: workflowGroupForPath(pathname) ?? "public",
+      }, { pagePath, source: "growth_attribution", symbol: symbolFromPath(pathname) ?? undefined });
+    }
+    if (shareId || metadata.tvAsset) {
+      trackAnalyticsEvent("share_asset_opened", {
+        ...metadata,
+        routeGroup: workflowGroupForPath(pathname) ?? "public",
+      }, { pagePath, source: "growth_attribution", symbol: symbolFromPath(pathname) ?? undefined });
+    }
+    if (hasCampaign) {
+      trackAnalyticsEvent("organic_growth_visit", {
+        ...metadata,
+        routeGroup: workflowGroupForPath(pathname) ?? "public",
+      }, { pagePath, source: "growth_attribution", symbol: symbolFromPath(pathname) ?? undefined });
+    }
   }
 }
 

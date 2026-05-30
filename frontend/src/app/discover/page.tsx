@@ -1,4 +1,5 @@
 import { IntelligenceDiscoveryWorkspace } from "@/components/discovery/IntelligenceDiscoveryWorkspace";
+import { ShareIntelligenceAsset } from "@/components/growth/ShareIntelligenceAsset";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { PublicSignalPreviewList } from "@/components/premium/PublicSignalPreview";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
@@ -44,6 +45,17 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
 
   return (
     <TerminalShell>
+      <div className="mb-4">
+        <ShareIntelligenceAsset
+          asset={{
+            assetType: "market_opportunity",
+            description: "Share TradeVeto's discovery workflow: dense scanner context, opportunity clusters, replay-aware setups, and research-only risk framing.",
+            path: "/discover",
+            title: "TradeVeto market opportunity scanner",
+          }}
+          compact
+        />
+      </div>
       <div id="search" className="scroll-mt-28">
         <IntelligenceDiscoveryWorkspace system={system} />
       </div>

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ShareIntelligenceAsset } from "@/components/growth/ShareIntelligenceAsset";
 import { MarketingShell } from "@/components/marketing/MarketingShell";
 import { MacroPublishingView } from "@/components/seo/IntelligencePublishingBlocks";
 import { marketingMetadata } from "@/lib/marketing-seo";
@@ -21,7 +22,16 @@ export default async function MacroPage() {
     <MarketingShell>
       <script type="application/ld+json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <section className="px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
-        <div className="mx-auto max-w-7xl">
+        <div className="mx-auto max-w-7xl space-y-4">
+          <ShareIntelligenceAsset
+            asset={{
+              assetType: "macro_intelligence",
+              description: "Share TradeVeto macro intelligence with source-aware market regime, breadth, volatility, liquidity, and risk context.",
+              path: "/macro",
+              title: "TradeVeto macro intelligence",
+            }}
+            compact
+          />
           <MacroPublishingView page={page} />
         </div>
       </section>

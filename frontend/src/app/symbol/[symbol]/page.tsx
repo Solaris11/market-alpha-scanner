@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { ShareIntelligenceAsset } from "@/components/growth/ShareIntelligenceAsset";
 import { LegalAcceptanceRequiredState } from "@/components/legal/LegalAcceptanceRequiredState";
 import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { PublicSymbolPreview } from "@/components/premium/PublicSignalPreview";
@@ -151,6 +152,18 @@ export default async function SymbolDetailPage({ params }: PageProps) {
         <>
           <SymbolWorkspaceTracker symbol={row.symbol} />
           <SymbolInstantWorkflowShell dataFreshness={dataFreshness} priceSeries={detail.history} row={row} />
+          <div className="my-4">
+            <ShareIntelligenceAsset
+              asset={{
+                assetType: "symbol_page",
+                description: `${row.symbol} symbol research with chart context, scanner state, replay evidence, and source-aware risk framing. Research only; not financial advice.`,
+                path: `/symbol/${encodeURIComponent(row.symbol)}`,
+                symbol: row.symbol,
+                title: `${row.symbol} TradeVeto symbol intelligence`,
+              }}
+              compact
+            />
+          </div>
           <Suspense fallback={null}>
             <SymbolFastWorkspaceContent
               detail={detail}

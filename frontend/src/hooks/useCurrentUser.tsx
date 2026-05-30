@@ -51,6 +51,8 @@ type RegisterInput = {
   email: string;
   inviteCode?: string;
   password: string;
+  referralCode?: string;
+  referralShareId?: string;
 };
 
 type CurrentUserContextValue = {
