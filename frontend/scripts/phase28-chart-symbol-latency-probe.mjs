@@ -131,10 +131,15 @@ async function measureSymbolRoute(page) {
     await page.locator("body").waitFor({ state: "visible", timeout: waitTimeoutMs });
     timings.bodyVisibleMs = roundMetric(performance.now() - started);
     await dismissRiskAcknowledgement(page);
-    await page.locator("[data-chart-symbol='AMD']").first().waitFor({ state: "visible", timeout: waitTimeoutMs });
+    const shell = page.locator("[data-chart-symbol='AMD']").first();
+    await shell.waitFor({ state: "visible", timeout: waitTimeoutMs });
     timings.firstShellVisibleMs = roundMetric(performance.now() - started);
-    const shellInteractive = await waitForRouteTimingMark(page, ["symbol:shell-interactive"], 750).catch(() => null);
-    timings.shellInteractiveObservedMs = shellInteractive ? roundMetric(performance.now() - started) : null;
+    const shellReady = await shell.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      const style = window.getComputedStyle(element);
+      return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.pointerEvents !== "none";
+    }).catch(() => false);
+    timings.shellInteractiveObservedMs = shellReady ? roundMetric(performance.now() - started) : null;
     const interactiveMs = timings.firstShellVisibleMs;
     const deepHydration = await waitForRouteTimingMark(page, ["symbol:deep-hydration-complete"], 5_000).catch(() => null);
     timings.deepHydrationCompleteObservedMs = deepHydration ? roundMetric(performance.now() - started) : null;
@@ -366,6 +371,7 @@ function deltaMs(startMark, completeMark) {
 }
 
 function numberOrNull(value) {
+  if (value === null || value === undefined || value === "") return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? roundMetric(parsed) : null;
 }
