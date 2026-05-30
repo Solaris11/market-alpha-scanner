@@ -314,6 +314,7 @@ async function cleanupProductionProbeUser(identity) {
   if (!databaseUrl) return;
   const pool = new Pool({ connectionString: databaseUrl });
   try {
+    await pool.query("DELETE FROM paper_positions WHERE user_id = $1::uuid", [identity.userId]);
     await pool.query("DELETE FROM paper_accounts WHERE user_id = $1::uuid", [identity.userId]);
     await pool.query("DELETE FROM users WHERE id = $1::uuid AND email = $2", [identity.userId, identity.email]);
   } finally {
