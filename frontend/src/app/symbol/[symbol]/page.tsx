@@ -152,10 +152,9 @@ export default async function SymbolDetailPage({ params }: PageProps) {
           <SymbolWorkspaceTracker symbol={row.symbol} />
           <SymbolInstantWorkflowShell dataFreshness={dataFreshness} priceSeries={detail.history} row={row} />
           <Suspense fallback={null}>
-            <SymbolDetailWorkspaceContent
+            <SymbolFastWorkspaceContent
               detail={detail}
               entitlementAuthenticated={entitlement.authenticated}
-              entitlementUserId={entitlement.user?.id ?? null}
               premiumAccess={premiumAccess}
               symbol={symbol}
             />
@@ -163,6 +162,85 @@ export default async function SymbolDetailPage({ params }: PageProps) {
         </>
       )}
     </TerminalShell>
+  );
+}
+
+async function SymbolFastWorkspaceContent({
+  detail,
+  entitlementAuthenticated,
+  premiumAccess,
+  symbol,
+}: {
+  detail: SymbolDetail;
+  entitlementAuthenticated: boolean;
+  premiumAccess: boolean;
+  symbol: string;
+}) {
+  const row = detail.row;
+  if (!row) return null;
+
+  const adapter = new ScannerDataAdapter();
+  const dataFreshness = freshnessFromTimestamp(typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null);
+  const prefetchedChartPackets = await buildPrefetchedChartPackets(adapter, row.symbol, [row]);
+  const unavailableMarketMemory: MarketMemorySummary = {
+    analogs: [],
+    available: false,
+    evidence: {
+      explanation: "Market memory, replay, provider, and performance panels are deferred out of the cold symbol route so the chart shell can become interactive first.",
+      label: "Deferred after shell",
+      sampleSize: 0,
+      tier: "unavailable",
+    },
+    narrative: ["Deep symbol intelligence is deferred behind the interactive chart shell for WebKit-safe route startup."],
+    outcome: null,
+  };
+  const symbolSearchDocuments = buildSymbolSearchIndex({
+    historySymbols: [],
+    recentSymbols: [cleanSymbol(symbol)],
+    rows: [row],
+  });
+
+  return (
+    <>
+      <SymbolCommandSearch documents={symbolSearchDocuments} initialQuery={row.symbol} title="Search related symbols, macro peers, and replay context" />
+      <SymbolRouteTimingScript
+        detail={{
+          serverDurationMs: 0,
+          symbol: row.symbol.toUpperCase(),
+        }}
+        id="symbol:deep-hydration-complete"
+      />
+      <div data-symbol-deep-hydration-complete="true" hidden />
+      <SymbolTerminalWorkspace
+        dataFreshness={dataFreshness}
+        adaptiveLearning={buildAdaptiveLearningSystem({ forwardRows: [], observationCount: 0 })}
+        contextRows={[row]}
+        decisionCoaching={null}
+        decisionJournalEntries={[]}
+        decisionMemory={buildDecisionMemorySummary([], { symbol })}
+        workflowEvolution={null}
+        edgeProof={buildHistoricalEdgeProof(row, null)}
+        history={[]}
+        globalDecision={undefined}
+        institutionalOpportunity={null}
+        intradayDriftRows={[]}
+        macroContext={null}
+        marketMemory={unavailableMarketMemory}
+        narrative={null}
+        paperEvents={[]}
+        paperPositions={[]}
+        personalizationProfile={null}
+        premiumAccess={premiumAccess}
+        prefetchedChartPackets={prefetchedChartPackets}
+        viewerAuthenticated={entitlementAuthenticated}
+        priceSeries={detail.history}
+        row={row}
+        shockPattern={null}
+        scenarioIntelligence={null}
+        strategyIntelligence={null}
+        timeline={buildConvictionTimelineModel([])}
+      />
+    </>
   );
 }
 
