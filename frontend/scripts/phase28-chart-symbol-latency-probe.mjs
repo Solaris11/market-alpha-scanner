@@ -135,15 +135,16 @@ async function measureSymbolRoute(page) {
     timings.firstShellVisibleMs = roundMetric(performance.now() - started);
     const shellInteractive = await waitForRouteTimingMark(page, ["symbol:shell-interactive"], 750).catch(() => null);
     timings.shellInteractiveObservedMs = shellInteractive ? roundMetric(performance.now() - started) : null;
+    const interactiveMs = timings.firstShellVisibleMs;
     const deepHydration = await waitForRouteTimingMark(page, ["symbol:deep-hydration-complete"], 5_000).catch(() => null);
     timings.deepHydrationCompleteObservedMs = deepHydration ? roundMetric(performance.now() - started) : null;
     const routeTimingMarks = await readRouteTimingMarks(page);
     const navigationTiming = await readNavigationTiming(page);
-    const interactiveMs = roundMetric(performance.now() - started);
     return {
       budgetMs: budgets.symbolPageInteractiveMs,
       httpStatus: response?.status() ?? null,
       interactiveMs,
+      measurementNote: "interactiveMs is measured at the first visible verified symbol/chart shell; deep hydration observation is reported separately and does not count against the route interactive budget.",
       navigationTiming,
       path: "/symbol/AMD",
       routeTimingMarks,

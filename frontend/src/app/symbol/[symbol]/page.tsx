@@ -149,7 +149,8 @@ export default async function SymbolDetailPage({ params }: PageProps) {
       ) : (
         <>
           <SymbolWorkspaceTracker symbol={row.symbol} />
-          <Suspense fallback={<SymbolInstantWorkflowShell dataFreshness={dataFreshness} priceSeries={detail.history} row={row} />}>
+          <SymbolInstantWorkflowShell dataFreshness={dataFreshness} priceSeries={detail.history} row={row} />
+          <Suspense fallback={null}>
             <SymbolDetailWorkspaceContent
               detail={detail}
               entitlementAuthenticated={entitlement.authenticated}
