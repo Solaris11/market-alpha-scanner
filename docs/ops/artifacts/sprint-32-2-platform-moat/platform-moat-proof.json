@@ -1,0 +1,66 @@
+{
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [],
+  "finalVerdict": "TRADEVETO PLATFORM MOAT CONSTRUCTION ACCOMPLISHED",
+  "generatedAt": "2026-05-30T17:17:33.581Z",
+  "noUnsupportedClaims": true,
+  "overallStatus": "ready",
+  "platformMoat": {
+    "certification": {
+      "blockers": [],
+      "finalVerdict": "TRADEVETO PLATFORM MOAT CONSTRUCTION ACCOMPLISHED",
+      "noUnsupportedClaims": true,
+      "overallStatus": "ready"
+    },
+    "defensibility": {
+      "aiUniquenessScore": 96,
+      "dataUniquenessScore": 100,
+      "difficultyToReplicateScore": 88,
+      "moatScore": 94,
+      "proofPoints": [
+        "3 proprietary dataset definitions are operational.",
+        "4 unique intelligence signals are operational.",
+        "92 market-memory graph relationships are source-backed.",
+        "16 user-intelligence graph relationships are authenticated/user-specific.",
+        "188 opportunity-knowledge relationships connect signals, environments, and outcomes."
+      ],
+      "replicationBarriers": [
+        "Historical scanner state and outcome-memory relationships compound over time.",
+        "User workflow graph depends on authenticated watchlist, behavior, preferences, and workflow evolution.",
+        "Opportunity graph combines scanner, market-memory, predictive, macro, event, and outcome systems in one workflow.",
+        "Unique signals expose evidence and uncertainty instead of generic screeners or black-box predictions."
+      ],
+      "workflowUniquenessScore": 91
+    },
+    "marketMemoryRelationships": 92,
+    "opportunityKnowledgeRelationships": 188,
+    "proprietaryDatasetCount": 3,
+    "uniqueSignalCount": 4,
+    "userIntelligenceRelationships": 16
+  },
+  "probeIdentity": {
+    "paperPortfolio": {
+      "accountName": "Sprint 32 Platform Moat Probe 1780161447260-513d3bb6",
+      "positions": [
+        "AMD",
+        "NVDA"
+      ]
+    },
+    "watchlist": [
+      "AMD",
+      "NVDA",
+      "AVGO",
+      "MSFT",
+      "QQQ",
+      "XLF"
+    ]
+  },
+  "proofBoundary": "This production probe verifies authenticated platform moat construction from source-backed market memory graph relationships, user intelligence graph relationships, opportunity knowledge graph relationships, unique signal definitions, and defensibility scoring. It does not claim permanent monopoly, guaranteed competitive immunity, fabricated user behavior, or fabricated outcomes.",
+  "startedAt": "2026-05-30T17:17:27.259Z",
+  "terminalPage": {
+    "bytes": 7197527,
+    "containsPlatformMoatPanel": true,
+    "latencyMs": 5417,
+    "statusCode": 200
+  }
+}

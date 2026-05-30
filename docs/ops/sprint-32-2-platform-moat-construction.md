@@ -57,34 +57,60 @@ Passed locally on 2026-05-30:
 
 ## Production Deployment
 
-Pending.
+Completed on 2026-05-30.
 
-Production workflow:
+- Commit deployed: `25faff86`
+- Production path: `/opt/apps/market-alpha-scanner/app`
+- Pull: `git pull --ff-only origin main`
+- Rebuild/redeploy: `docker compose --env-file .env up -d --build market-alpha-frontend market-alpha-frontend-hot-api`
+- Container status: `market-alpha-frontend` started; `market-alpha-frontend-hot-api` started
 
-- `git pull --ff-only origin main`
-- `docker compose --env-file .env up -d --build market-alpha-frontend market-alpha-frontend-hot-api`
-- smoke `/api/health`, `/api/health/deep`, `/terminal`
-- run `npm --prefix frontend run probe:sprint32:platform-moat:docker`
+Production smoke:
+
+- `/api/health` - ok
+- `/api/health/deep` - ok
+- `/terminal` - 200
+- `/discover` - 200
+- `/scanner` - 200
+- `/macro` - 200
+- `/symbol/AMD` - 200
+- `/paper` - 200
+- `/alerts` - 200
+- `/market-memory` - 200
 
 ## Certification Evidence
 
-Expected production proof artifact:
+Production proof artifact:
 
 - `docs/ops/artifacts/sprint-32-2-platform-moat/platform-moat-proof.json`
 
-Proof gates:
+Production proof command:
 
-- `/terminal` renders Platform Moat panel
-- `/api/intelligence/platform-moat` returns `ok=true`
-- certification `overallStatus=ready`
-- proprietary datasets `>= 3`
-- unique signals `>= 4`
-- Market Memory Graph relationships `>= 8`
-- User Intelligence Graph relationships `>= 3`
-- Opportunity Knowledge Graph relationships `>= 20`
-- moat score `>= 70`
-- no unsupported monopoly/certainty language
+- `npm --prefix frontend run probe:sprint32:platform-moat:docker`
+
+Proof results:
+
+- overallStatus: `ready`
+- finalVerdict: `TRADEVETO PLATFORM MOAT CONSTRUCTION ACCOMPLISHED`
+- `/terminal` rendered Platform Moat panel: `true`
+- `/api/intelligence/platform-moat` returned `ok=true`
+- proprietary datasets: `3`
+- unique signals: `4`
+- Market Memory Graph relationships: `92`
+- User Intelligence Graph relationships: `16`
+- Opportunity Knowledge Graph relationships: `188`
+- moat score: `94`
+- data uniqueness score: `100`
+- workflow uniqueness score: `91`
+- AI uniqueness score: `96`
+- difficulty to replicate score: `88`
+- no unsupported monopoly/certainty language: `true`
+
+Production note:
+
+- The production proof used the Docker-network command so the temporary authenticated probe user could be created using production database networking without printing secrets.
+- The probe cleaned up its temporary user, watchlist, risk profile, paper account, and positions after execution.
 
 ## Current Verdict
 
-TRADEVETO PLATFORM MOAT CONSTRUCTION NOT ACCOMPLISHED
+TRADEVETO PLATFORM MOAT CONSTRUCTION ACCOMPLISHED
