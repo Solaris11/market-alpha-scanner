@@ -1,0 +1,120 @@
+{
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [],
+  "finalVerdict": "TRADEVETO AI TRADING COPILOT ACCOMPLISHED",
+  "generatedAt": "2026-05-30T16:33:19.270Z",
+  "noFakeMarketClaims": true,
+  "overallStatus": "ready",
+  "probePortfolio": {
+    "accountName": "Sprint 31 AI Copilot Probe 1780158779095-0ed13707",
+    "positions": [
+      "AMD",
+      "MU"
+    ]
+  },
+  "proofBoundary": "This probe verifies authenticated natural-language market Q&A, symbol movement explanation, market search, portfolio copilot behavior, conversation memory payloads, traceability fields, and no-fabrication guardrails. It does not claim autonomous trading, guaranteed outcomes, or broker execution.",
+  "questions": [
+    {
+      "answerSummary": {
+        "actionCount": 4,
+        "citationCount": 8,
+        "intent": "symbol_explanation",
+        "marketSearchCount": 8,
+        "referencedSymbols": [
+          "AMD"
+        ],
+        "source": "deterministic",
+        "traceabilityCount": 8
+      },
+      "blockers": [],
+      "expectedIntent": "symbol_explanation",
+      "key": "symbol_movement",
+      "latencyMs": 3575,
+      "question": "Why is AMD moving today?",
+      "statusCode": 200
+    },
+    {
+      "answerSummary": {
+        "actionCount": 4,
+        "citationCount": 8,
+        "intent": "natural_language_search",
+        "marketSearchCount": 8,
+        "referencedSymbols": [
+          "AMD"
+        ],
+        "source": "deterministic",
+        "traceabilityCount": 8
+      },
+      "blockers": [],
+      "expectedIntent": "natural_language_search",
+      "key": "ai_momentum_search",
+      "latencyMs": 3880,
+      "question": "Show AI stocks with improving momentum.",
+      "statusCode": 200
+    },
+    {
+      "answerSummary": {
+        "actionCount": 4,
+        "citationCount": 8,
+        "intent": "portfolio",
+        "marketSearchCount": 8,
+        "referencedSymbols": [
+          "AMD"
+        ],
+        "source": "deterministic",
+        "traceabilityCount": 8
+      },
+      "blockers": [],
+      "expectedIntent": "portfolio",
+      "key": "portfolio_risk",
+      "latencyMs": 3167,
+      "question": "Which holdings have elevated risk?",
+      "statusCode": 200
+    },
+    {
+      "answerSummary": {
+        "actionCount": 4,
+        "citationCount": 8,
+        "intent": "what_changed",
+        "marketSearchCount": 8,
+        "referencedSymbols": [
+          "AMD"
+        ],
+        "source": "deterministic",
+        "traceabilityCount": 8
+      },
+      "blockers": [],
+      "expectedIntent": "what_changed",
+      "key": "what_changed",
+      "latencyMs": 2871,
+      "question": "What changed since yesterday?",
+      "statusCode": 200
+    },
+    {
+      "answerSummary": {
+        "actionCount": 4,
+        "citationCount": 8,
+        "intent": "similar_symbols",
+        "marketSearchCount": 8,
+        "referencedSymbols": [
+          "NVDA"
+        ],
+        "source": "deterministic",
+        "traceabilityCount": 8
+      },
+      "blockers": [],
+      "expectedIntent": "similar_symbols",
+      "key": "similar_symbols",
+      "latencyMs": 2790,
+      "question": "Which symbols look similar to NVDA?",
+      "statusCode": 200
+    }
+  ],
+  "startedAt": "2026-05-30T16:32:59.094Z",
+  "terminalPage": {
+    "bytes": 7100923,
+    "containsCopilotCopy": true,
+    "latencyMs": 3565,
+    "statusCode": 200
+  }
+}
