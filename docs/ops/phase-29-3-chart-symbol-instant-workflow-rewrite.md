@@ -2,9 +2,9 @@
 
 ## Verdict
 
-**TRADEVETO CHART/SYMBOL INSTANT WORKFLOW REWRITE NOT ACCOMPLISHED**
+**TRADEVETO CHART/SYMBOL INSTANT WORKFLOW REWRITE ACCOMPLISHED**
 
-Phase 29.3 substantially improved the chart/symbol workflow path, but the strict cross-browser production gate is still red because WebKit missed the `/symbol/AMD` route interactive target and narrowly missed one symbol-switch timing sample.
+Phase 29.3 substantially improved the chart/symbol workflow path, and Sprint 30.0 closed the remaining WebKit/Safari latency blockers with production proof across Chromium, Firefox, and WebKit.
 
 ## Production Deployment
 
@@ -59,11 +59,23 @@ Artifact: `docs/ops/artifacts/phase-29-3-chart-symbol-instant-workflow/productio
 
 Artifact: `docs/ops/artifacts/phase-29-3-chart-symbol-instant-workflow/phase29-3-chart-symbol-latency.json`
 
+Historical Phase 29.3 run before Sprint 30.0 closure:
+
 | Browser | Overall | `/symbol/AMD` Interactive | Chart Restore | Fullscreen Open | Toolbar | Symbol Switch | Search Open |
 | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Chromium | ready | 540.514 ms | 0 ms | 3.9 ms | 0 ms | 7.5 ms | 2.8 ms |
 | Firefox | ready | 539.513 ms | 0 ms | 6 ms | 0 ms | 13 ms | 54 ms |
 | WebKit | not_ready | 3529.746 ms | 0 ms | 4 ms | 0 ms | 151 ms | 1 ms |
+
+Sprint 30.0 production closure run:
+
+Artifact: `docs/ops/artifacts/sprint-30-0-webkit-safari-latency/sprint30-0-chart-symbol-latency.json`
+
+| Browser | Overall | `/symbol/AMD` Interactive | Chart Restore | Fullscreen Open | Toolbar | Symbol Switch | Search Open |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Chromium | ready | 499.417 ms | 32.1 ms | 1.9 ms | 0 ms | 11.9 ms | 2.5 ms |
+| Firefox | ready | 558.793 ms | 39 ms | 5 ms | 0 ms | 9 ms | 41 ms |
+| WebKit | ready | 739.039 ms | 87 ms | 3 ms | 0 ms | 65 ms | 2 ms |
 
 Budgets:
 
@@ -91,23 +103,27 @@ Budgets:
 
 - The fast symbol shell uses the same verified symbol row and real stored price history used by the full workstation.
 - No fake candles, fake alerts, fake provider events, or fake intelligence fields were introduced.
-- Deferred panels are explicitly described as hydrating after the shell; placeholders are not presented as completed intelligence.
-- The final verdict is not inflated because the WebKit hard gate remains red.
+- Deferred panels are explicitly described as outside the cold symbol route; placeholders are not presented as completed intelligence.
+- The final verdict is based on the Sprint 30.0 production closure matrix with all strict browser gates ready.
 
-## Remaining Blockers
+## Closed Blockers
 
 1. WebKit `/symbol/AMD` direct route interactive remains above budget:
-   - Measured: `3529.746 ms`
+   - Previous measured: `3529.746 ms`
+   - Sprint 30.0 measured: `739.039 ms`
    - Target: `< 2500 ms`
+   - Status: closed
 
 2. WebKit symbol switch narrowly missed in the final full matrix:
-   - Measured: `151 ms`
+   - Previous measured: `151 ms`
+   - Sprint 30.0 measured: `65 ms`
    - Target: `< 150 ms`
+   - Status: closed
 
-3. Follow-up work should isolate WebKit cold route behavior with route timing breakdowns:
+3. WebKit cold route behavior was isolated with route timing breakdowns:
    - `page.goto` commit time
    - body visibility time
    - first streamed shell visibility time
    - full server response completion time
    - WebKit connection/browser-process warmup cost
-
+   - Status: closed in `docs/ops/sprint-30-0-webkit-safari-latency-closure.md`
