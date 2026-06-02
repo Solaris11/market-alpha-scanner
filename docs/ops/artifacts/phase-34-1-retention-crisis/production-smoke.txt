@@ -1,0 +1,23 @@
+Production host: sre@100.68.155.121
+Production path: /opt/apps/market-alpha-scanner/app
+Deployed commit: c3260988ca8451de85efc942aab3592f4da82a83
+Smoke generated: 2026-06-02T04:38:35Z
+route                            status
+/api/health                      200
+/api/health/deep                 200
+/terminal                        200
+/discover                        200
+/scanner                         200
+/alerts                          200
+/feed                            200
+/history                         200
+/performance                     200
+/symbol/AMD                      200
+/market-memory                   200
+/macro                           200
+/account                         200
+/status                          200
+
+NAME                            IMAGE                                                COMMAND                  SERVICE                         CREATED          STATUS                    PORTS
+market-alpha-frontend           market-alpha-scanner-market-alpha-frontend           "docker-entrypoint.s…"   market-alpha-frontend           48 seconds ago   Up 44 seconds (healthy)   3001/tcp
+market-alpha-frontend-hot-api   market-alpha-scanner-market-alpha-frontend-hot-api   "docker-entrypoint.s…"   market-alpha-frontend-hot-api   48 seconds ago   Up 44 seconds (healthy)   3001/tcp

@@ -108,20 +108,86 @@ Local probe dry run:
 
 ## Production Deployment
 
-Pending.
+- Production host: `sre@100.68.155.121`
+- Production path: `/opt/apps/market-alpha-scanner/app`
+- Deployed commit: `c3260988ca8451de85efc942aab3592f4da82a83`
+- Production pull: `git pull --ff-only origin main`
+- Rebuild: `docker compose --env-file .env up -d --build market-alpha-frontend market-alpha-frontend-hot-api`
+- Container health: `market-alpha-frontend` and `market-alpha-frontend-hot-api` reported `healthy`.
 
 ## Production Proof
 
-Pending.
+Artifacts:
 
-Expected artifact:
-
+- `docs/ops/artifacts/phase-34-1-retention-crisis/production-smoke.txt`
 - `docs/ops/artifacts/phase-34-1-retention-crisis/retention-crisis-forensics-proof.json`
+- `docs/ops/artifacts/phase-34-1-retention-crisis/probe-exit.txt`
+
+Production smoke returned HTTP `200` for:
+
+- `/api/health`
+- `/api/health/deep`
+- `/terminal`
+- `/discover`
+- `/scanner`
+- `/alerts`
+- `/feed`
+- `/history`
+- `/performance`
+- `/symbol/AMD`
+- `/market-memory`
+- `/macro`
+- `/account`
+- `/status`
+
+Production retention probe:
+
+- Status: `strong_partial`
+- Query latency: `10004 ms`
+- Total actors observed: `999`
+- Real actors after probe/admin filtering: `982`
+- Filtered actors: `17`
+- Segment counts:
+  - anonymous users: `784`
+  - founding/paid: `197`
+  - free authenticated: `1`
+  - probe filtered: `16`
+  - admin/internal filtered: `1`
+
+Retention proof:
+
+| Metric | Production result | Target | Status |
+| --- | ---: | ---: | --- |
+| D1 retention | `0.815%` (`8 / 982`) | `> 20%` | Fail |
+| D2 retention | `0.408%` (`4 / 981`) | diagnostic | Fail context |
+| D7 retention | `0%` (`0 / 913`) | `> 10%` | Fail |
+| D30 retention | `N/A` (`0` eligible) | `> 5%` | Not yet aged |
+| 2+ active-day rate | `0.815%` (`8 / 982`) | `> 15%` | Fail |
+
+Behavioral findings:
+
+- `982` real actors are in activation score tiers below `25`; first-session durable actions are not consistently happening.
+- Top exit surface is `landing`; `100%` of those actors have no first useful action.
+- `scanner` is the largest measured workflow missing D7 return behavior.
+- AI confidence-change return triggers have no usable sample yet.
+
+Return trigger readiness:
+
+| Trigger | Evidence events | Readiness |
+| --- | ---: | --- |
+| Watchlist changes | `10` | ready to test |
+| New scanner opportunities | `276` | ready to test |
+| AI confidence changes | `0` | blocked by no sample |
+| Macro changes | `19` | ready to test |
+| Portfolio risk changes | `215` | ready to test |
+| Alert opportunities | `7` | ready to test |
 
 ## Final Retention Proof
 
-Pending elapsed production cohort proof.
+Retention crisis elimination is not proven. The implementation now provides production retention forensics, cohort segmentation, blocker attribution, and A/B experiment definitions, but elapsed production cohorts still miss every hard success target.
 
 ## Current Verdict
 
-Local implementation is validated. Production proof is pending.
+TRADEVETO RETENTION CRISIS ELIMINATION STRONG PARTIAL ACCOMPLISHED
+
+This is strong partial because Phase 34.1 forensics, cohorts, return triggers, and experiment definitions are implemented, locally validated, deployed, and production-probed. It is not accomplished because D1, D7, D30, and 2+ active-day targets are not met.
