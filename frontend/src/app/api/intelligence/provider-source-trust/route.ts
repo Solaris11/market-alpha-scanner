@@ -41,6 +41,31 @@ const REQUIRED_PROVIDER_DOMAINS: DailyProviderCoverageDomain[] = [
 
 type ProviderStateCounts = Record<DailyProviderOperationalState, number>;
 
+type ProviderFreshnessDashboard = {
+  degradedDomainCount: number;
+  degradedModeFrequencyPct: number;
+  domains: Array<{
+    ageMinutes: number | null;
+    availability: "available" | "limited" | "unavailable";
+    domain: DailyProviderCoverageDomain;
+    fallbackActive: boolean;
+    freshness: string;
+    freshnessSlaDisclosure: string;
+    freshnessSlaMinutes: number | null;
+    freshnessSlaStatus: DailyProviderStrategyAudit["freshnessSlaStatus"];
+    itemCount: number;
+    latestTimestamp: string | null;
+    operationalState: DailyProviderOperationalState;
+    provider: string;
+  }>;
+  fallbackActivationCount: number;
+  generatedAt: string;
+  outageEventCount: number;
+  ratesSlaStatus: DailyProviderStrategyAudit["freshnessSlaStatus"] | "missing";
+  readiness: "not-ready" | "ready";
+  slaBreachedDomains: DailyProviderCoverageDomain[];
+};
+
 type EventCardProof = {
   affectedSymbols: string[];
   affectedSectors: string[];
@@ -134,18 +159,20 @@ export async function GET(request: Request) {
     const outageHeader = request.headers.get("x-tradeveto-provider-outage-simulation") ?? "";
     const eventCards = model.developments.map(eventCardProof);
     const outageSimulation = providerOutageSimulation(model.providerCoverageMatrix, outageHeader);
-    return NextResponse.json({
-      certification: buildProviderFreshnessCertification({
-        eventCards,
-        eventDomainTimelines: model.eventDomainTimelines,
-        outageSimulation,
-        outageSimulationRequired: Boolean(outageHeader.trim()),
-        providerCoverageMatrix: model.providerCoverageMatrix,
-        requiredDomains: REQUIRED_PROVIDER_DOMAINS,
-        sourceTrust: model.newsEcosystem.sourceTrust,
-      }),
+    const certification = buildProviderFreshnessCertification({
       eventCards,
       eventDomainTimelines: model.eventDomainTimelines,
+      outageSimulation,
+      outageSimulationRequired: Boolean(outageHeader.trim()),
+      providerCoverageMatrix: model.providerCoverageMatrix,
+      requiredDomains: REQUIRED_PROVIDER_DOMAINS,
+      sourceTrust: model.newsEcosystem.sourceTrust,
+    });
+    return NextResponse.json({
+      certification,
+      eventCards,
+      eventDomainTimelines: model.eventDomainTimelines,
+      freshnessDashboard: providerFreshnessDashboard(model.providerCoverageMatrix, certification.status),
       generatedAt: new Date().toISOString(),
       marketCondition: snapshot.marketRegime.label,
       ok: true,
@@ -239,6 +266,50 @@ function providerStateCounts(audits: DailyProviderStrategyAudit[]): ProviderStat
     "partial-outage": 0,
     stale: 0,
   });
+}
+
+function providerFreshnessDashboard(audits: DailyProviderStrategyAudit[], certificationStatus: "not-ready" | "ready" | "strong-partial"): ProviderFreshnessDashboard {
+  const dashboardDomains = REQUIRED_PROVIDER_DOMAINS.map((domain) => {
+    const audit = audits.find((item) => item.domain === domain) ?? null;
+    const operationalState = audit?.operationalState ?? "limited";
+    const fallbackActive = operationalState === "outage" || operationalState === "partial-outage" || operationalState === "stale" || operationalState === "delayed";
+    return {
+      ageMinutes: audit?.freshnessMinutes ?? null,
+      availability: availabilityForAudit(audit),
+      domain,
+      fallbackActive,
+      freshness: audit?.freshness ?? "No source-linked timestamp available",
+      freshnessSlaDisclosure: audit?.freshnessSlaDisclosure ?? "No source-linked provider row, so freshness SLA is not measured.",
+      freshnessSlaMinutes: audit?.freshnessSlaMinutes ?? null,
+      freshnessSlaStatus: audit?.freshnessSlaStatus ?? "not-measured",
+      itemCount: audit?.itemCount ?? 0,
+      latestTimestamp: audit?.latestTimestamp ?? null,
+      operationalState,
+      provider: audit?.provider ?? "Provider not configured",
+    };
+  });
+  const fallbackActivationCount = dashboardDomains.filter((item) => item.fallbackActive).length;
+  const outageEventCount = dashboardDomains.filter((item) => item.operationalState === "outage" || item.operationalState === "partial-outage").length;
+  const degradedDomainCount = dashboardDomains.filter((item) => item.operationalState !== "active").length;
+  const rates = dashboardDomains.find((item) => item.domain === "rates") ?? null;
+  return {
+    degradedDomainCount,
+    degradedModeFrequencyPct: dashboardDomains.length ? Math.round((degradedDomainCount / dashboardDomains.length) * 10000) / 100 : 0,
+    domains: dashboardDomains,
+    fallbackActivationCount,
+    generatedAt: new Date().toISOString(),
+    outageEventCount,
+    ratesSlaStatus: rates?.freshnessSlaStatus ?? "missing",
+    readiness: certificationStatus === "ready" ? "ready" : "not-ready",
+    slaBreachedDomains: dashboardDomains.filter((item) => item.freshnessSlaStatus === "breached").map((item) => item.domain),
+  };
+}
+
+function availabilityForAudit(audit: DailyProviderStrategyAudit | null): "available" | "limited" | "unavailable" {
+  if (!audit) return "unavailable";
+  if (audit.operationalState === "outage" || audit.coverage === "limited") return "unavailable";
+  if (audit.operationalState === "calendar-only" || audit.operationalState === "delayed" || audit.operationalState === "stale" || audit.operationalState === "partial-outage") return "limited";
+  return "available";
 }
 
 function providerOutageSimulation(audits: DailyProviderStrategyAudit[], headerValue: string): ProviderOutageSimulationProof {

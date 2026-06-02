@@ -25,6 +25,7 @@ const MARKETBEAT_ANALYST_PAGES = [
 ] as const;
 const STOCKTITAN_RSS = "https://www.stocktitan.net/rss";
 const NASDAQ_STOCKS_RSS = "https://www.nasdaq.com/feed/rssoutbound?category=Stocks";
+const TREASURY_YIELD_CURVE_XML = "https://home.treasury.gov/resource-center/data-chart-center/interest-rates/pages/xml?data=daily_treasury_yield_curve";
 
 export async function fetchSupplementalProviderEvents(input: { fetcher?: FetchLike; limit?: number; now?: Date } = {}): Promise<MarketNewsItem[]> {
   const fetcher = input.fetcher ?? fetch;
@@ -34,6 +35,7 @@ export async function fetchSupplementalProviderEvents(input: { fetcher?: FetchLi
     fetchMarketBeatAnalystActions(fetcher, now).catch(() => []),
     fetchStockTitanAnalystActions(fetcher).catch(() => []),
     fetchNasdaqMacroAndGeopoliticalEvents(fetcher).catch(() => []),
+    fetchTreasuryDailyYieldCurveRates(fetcher, now).catch(() => []),
   ]);
   const byId = new Map<string, MarketNewsItem>();
   for (const item of batches.flat()) {
@@ -195,6 +197,40 @@ export function parseNasdaqMacroAndGeopoliticalEvents(xml: string): MarketNewsIt
   return events.slice(0, 6);
 }
 
+export function parseTreasuryDailyYieldCurveRates(xml: string, now: Date): MarketNewsItem[] {
+  const feedUpdated = normalizeDate(firstTag(xml, "updated") ?? "") ?? now.toISOString();
+  const entries = (xml.match(/<entry\b[\s\S]*?<\/entry>/gi) ?? [])
+    .map((entry) => treasuryYieldCurveEntry(entry, feedUpdated))
+    .filter((entry): entry is TreasuryYieldCurveEntry => entry !== null)
+    .sort((left, right) => Date.parse(right.recordDate) - Date.parse(left.recordDate));
+  const latest = entries[0] ?? null;
+  if (!latest) return [];
+  const slope = latest.tenYear !== null && latest.twoYear !== null ? Number((latest.tenYear - latest.twoYear).toFixed(2)) : null;
+  const sourceUrl = treasurySourceUrl(now);
+  return [{
+    affectedSectors: ["Bonds", "Financials", "Growth equities"],
+    bearishImplication: "Higher or steeper Treasury-rate pressure can reduce risk appetite for rate-sensitive growth and duration-heavy assets when confirmed by price action.",
+    bullishImplication: "Lower or easing Treasury-rate pressure can support liquidity-sensitive risk review when breadth and price confirmation improve.",
+    direction: slope !== null && slope < 0 ? "negative" : "neutral",
+    eventTrackingLabel: "Official U.S. Treasury daily yield-curve feed",
+    eventType: "rates",
+    id: `${sourceUrl}|${latest.recordDate}|${latest.updatedAt}`.slice(0, 380),
+    marketMovingLabel: "Source-linked Treasury rates context",
+    publishedAt: latest.updatedAt,
+    reasonCodes: ["EVENT_RATE_PRESSURE", "EVENT_TREASURY_YIELD_CURVE"],
+    relatedAssets: ["TLT", "IEF", "SPY", "QQQ"],
+    relatedMacroContext: `U.S. Treasury yield curve record ${latest.recordDate.slice(0, 10)}: 2Y ${formatRate(latest.twoYear)}, 10Y ${formatRate(latest.tenYear)}${slope === null ? "" : `, 10Y-2Y ${slope.toFixed(2)} pp`}.`,
+    relatedReplayContext: "Replay linkage limited; no historical analog is inferred from the Treasury feed row.",
+    relevance: 78,
+    scope: "market",
+    source: "U.S. Treasury",
+    sourceUrl,
+    title: `Treasury yield curve updated: 2Y ${formatRate(latest.twoYear)}, 10Y ${formatRate(latest.tenYear)}`,
+    tone: slope !== null && slope < 0 ? "rose" : "amber",
+    whyItMatters: "Treasury yields are source-linked rates context for liquidity, duration, equity-risk appetite, and macro-sensitive scanner interpretation; no trading outcome is implied.",
+  }];
+}
+
 async function fetchMarketBeatAnalystActions(fetcher: FetchLike, now: Date): Promise<MarketNewsItem[]> {
   const htmlPages = await Promise.all(MARKETBEAT_ANALYST_PAGES.map(async (url) => {
     const response = await fetcher(url, requestInit());
@@ -216,6 +252,13 @@ async function fetchNasdaqMacroAndGeopoliticalEvents(fetcher: FetchLike): Promis
   return parseNasdaqMacroAndGeopoliticalEvents(await response.text());
 }
 
+async function fetchTreasuryDailyYieldCurveRates(fetcher: FetchLike, now: Date): Promise<MarketNewsItem[]> {
+  const year = now.getUTCFullYear();
+  const response = await fetcher(`${TREASURY_YIELD_CURVE_XML}&field_tdr_date_value=${year}`, requestInit());
+  if (!response.ok) return [];
+  return parseTreasuryDailyYieldCurveRates(await response.text(), now);
+}
+
 function requestInit(): RequestInit {
   return {
     cache: "no-store",
@@ -225,6 +268,29 @@ function requestInit(): RequestInit {
     },
     signal: AbortSignal.timeout(6000),
   };
+}
+
+type TreasuryYieldCurveEntry = {
+  recordDate: string;
+  tenYear: number | null;
+  twoYear: number | null;
+  updatedAt: string;
+};
+
+function treasuryYieldCurveEntry(entry: string, feedUpdated: string): TreasuryYieldCurveEntry | null {
+  const recordDate = normalizeDate(firstTag(entry, "d:NEW_DATE") ?? "");
+  if (!recordDate) return null;
+  return {
+    recordDate,
+    tenYear: numericTag(entry, "d:BC_10YEAR"),
+    twoYear: numericTag(entry, "d:BC_2YEAR"),
+    updatedAt: normalizeDate(firstTag(entry, "updated") ?? "") ?? feedUpdated,
+  };
+}
+
+function numericTag(raw: string, tag: string): number | null {
+  const value = Number(firstTag(raw, tag) ?? "");
+  return Number.isFinite(value) ? value : null;
 }
 
 function parseRssItems(xml: string): RssItem[] {
@@ -302,6 +368,14 @@ function normalizeDate(value: string): string | null {
   return Number.isFinite(parsed) ? new Date(parsed).toISOString() : null;
 }
 
+function treasurySourceUrl(now: Date): string {
+  return `${TREASURY_YIELD_CURVE_XML}&field_tdr_date_value=${now.getUTCFullYear()}`;
+}
+
+function formatRate(value: number | null): string {
+  return value === null ? "not available" : `${value.toFixed(2)}%`;
+}
+
 function isAnalystActionText(value: string): boolean {
   return /\banalyst\b|\bupgrade(?:d|s)?\b|\bdowngrade(?:d|s)?\b|price target|\binitiated\b|\binitiates\b|\brating\b|\bcoverage\b/i.test(value);
 }
@@ -355,7 +429,7 @@ function uniqueStrings(values: string[]): string[] {
 function selectProviderDomainCoverage(items: MarketNewsItem[], limit: number): MarketNewsItem[] {
   const sorted = [...items].sort(compareMarketNewsRecency);
   const selected = new Map<string, MarketNewsItem>();
-  for (const domain of ["analyst-actions", "geopolitical-events", "inflation"] as const) {
+  for (const domain of ["rates", "analyst-actions", "geopolitical-events", "inflation"] as const) {
     const match = sorted.find((item) => !selected.has(item.id) && providerDomain(item) === domain);
     if (match) selected.set(match.id, match);
   }
@@ -370,8 +444,9 @@ function compareMarketNewsRecency(left: MarketNewsItem, right: MarketNewsItem): 
   return Date.parse(right.publishedAt) - Date.parse(left.publishedAt) || right.relevance - left.relevance;
 }
 
-function providerDomain(item: MarketNewsItem): "analyst-actions" | "geopolitical-events" | "inflation" | "other" {
+function providerDomain(item: MarketNewsItem): "analyst-actions" | "geopolitical-events" | "inflation" | "rates" | "other" {
   const text = `${item.eventType} ${item.title} ${item.reasonCodes.join(" ")} ${item.relatedMacroContext}`.toLowerCase();
+  if (item.eventType === "rates" || /event_rate_pressure|event_treasury_yield_curve|\byield curve\b|\btreasury\b|\b10y\b|\b2y\b/.test(text)) return "rates";
   if (item.eventType === "analyst_action" || /\banalyst\b|price target|\bupgrade|\bdowngrade|\bcoverage\b/.test(text)) return "analyst-actions";
   if (item.eventType === "geopolitical" || /event_geopolitical|\biran\b|\bhormuz\b|\bgeopolitical\b|\bsanction\b|\bwar\b|\bconflict\b/.test(text)) return "geopolitical-events";
   if (/event_inflation_pressure|\binflation\b|\bcommodity\b|\bcommodities\b|\bcrude\b|\boil\b|\bdollar\b|\bcorn\b|\bwheat\b|\bcotton\b|\bsugar\b|\bcocoa\b/.test(text)) return "inflation";
