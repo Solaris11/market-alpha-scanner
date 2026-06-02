@@ -10,32 +10,32 @@
   "baselineSamples": [
     {
       "certificationStatus": "strong-partial",
-      "latencyMs": 6800,
+      "latencyMs": 7027,
       "ok": true,
       "providerReadiness": "not-ready",
       "ratesSlaStatus": "within-sla",
       "sampleNumber": 1,
-      "startedAt": "2026-06-02T04:55:33.240Z",
+      "startedAt": "2026-06-02T05:20:03.225Z",
       "statusCode": 200
     },
     {
       "certificationStatus": "strong-partial",
-      "latencyMs": 6761,
+      "latencyMs": 6879,
       "ok": true,
       "providerReadiness": "not-ready",
       "ratesSlaStatus": "within-sla",
       "sampleNumber": 2,
-      "startedAt": "2026-06-02T04:55:40.641Z",
+      "startedAt": "2026-06-02T05:20:10.852Z",
       "statusCode": 200
     },
     {
       "certificationStatus": "strong-partial",
-      "latencyMs": 6845,
+      "latencyMs": 6585,
       "ok": true,
       "providerReadiness": "not-ready",
       "ratesSlaStatus": "within-sla",
       "sampleNumber": 3,
-      "startedAt": "2026-06-02T04:55:48.002Z",
+      "startedAt": "2026-06-02T05:20:18.331Z",
       "statusCode": 200
     }
   ],
@@ -61,12 +61,12 @@
     "degradedModeFrequencyPct": 9.09,
     "domains": [
       {
-        "ageMinutes": 86,
+        "ageMinutes": 111,
         "availability": "available",
         "domain": "macro",
         "fallbackActive": false,
-        "freshness": "Recent · 1h old",
-        "freshnessSlaDisclosure": "Macro source-linked provider row is 86m old against a 1440m freshness SLA.",
+        "freshness": "Recent · 2h old",
+        "freshnessSlaDisclosure": "Macro source-linked provider row is 111m old against a 1440m freshness SLA.",
         "freshnessSlaMinutes": 1440,
         "freshnessSlaStatus": "within-sla",
         "itemCount": 6,
@@ -75,12 +75,12 @@
         "provider": "SEC EDGAR 8-K Filings, U.S. Treasury, MarketWatch, GlobeNewswire, Nasdaq"
       },
       {
-        "ageMinutes": 456,
+        "ageMinutes": 481,
         "availability": "available",
         "domain": "rates",
         "fallbackActive": false,
         "freshness": "Recent · 8h old",
-        "freshnessSlaDisclosure": "Rates source-linked provider row is 456m old against a 1440m freshness SLA.",
+        "freshnessSlaDisclosure": "Rates source-linked provider row is 481m old against a 1440m freshness SLA.",
         "freshnessSlaMinutes": 1440,
         "freshnessSlaStatus": "within-sla",
         "itemCount": 2,
@@ -89,12 +89,12 @@
         "provider": "SEC EDGAR 8-K Filings, U.S. Treasury"
       },
       {
-        "ageMinutes": 86,
+        "ageMinutes": 111,
         "availability": "available",
         "domain": "inflation",
         "fallbackActive": false,
-        "freshness": "Recent · 1h old",
-        "freshnessSlaDisclosure": "Inflation source-linked provider row is 86m old against a 1440m freshness SLA.",
+        "freshness": "Recent · 2h old",
+        "freshnessSlaDisclosure": "Inflation source-linked provider row is 111m old against a 1440m freshness SLA.",
         "freshnessSlaMinutes": 1440,
         "freshnessSlaStatus": "within-sla",
         "itemCount": 2,
@@ -103,12 +103,12 @@
         "provider": "MarketWatch, Nasdaq"
       },
       {
-        "ageMinutes": 3480,
+        "ageMinutes": 3504,
         "availability": "available",
         "domain": "earnings",
         "fallbackActive": false,
         "freshness": "Aging · 2d old",
-        "freshnessSlaDisclosure": "Earnings source-linked provider row is 3480m old against a 43200m freshness SLA.",
+        "freshnessSlaDisclosure": "Earnings source-linked provider row is 3504m old against a 43200m freshness SLA.",
         "freshnessSlaMinutes": 43200,
         "freshnessSlaStatus": "within-sla",
         "itemCount": 4,
@@ -117,12 +117,12 @@
         "provider": "MarketWatch"
       },
       {
-        "ageMinutes": 86,
+        "ageMinutes": 111,
         "availability": "available",
         "domain": "economic-calendar",
         "fallbackActive": false,
-        "freshness": "Recent · 1h old",
-        "freshnessSlaDisclosure": "Economic calendar source-linked provider row is 86m old against a 1440m freshness SLA.",
+        "freshness": "Recent · 2h old",
+        "freshnessSlaDisclosure": "Economic calendar source-linked provider row is 111m old against a 1440m freshness SLA.",
         "freshnessSlaMinutes": 1440,
         "freshnessSlaStatus": "within-sla",
         "itemCount": 17,
@@ -131,12 +131,12 @@
         "provider": "SEC EDGAR 8-K Filings, U.S. Treasury, MarketWatch, GlobeNewswire, Nasdaq"
       },
       {
-        "ageMinutes": 342,
+        "ageMinutes": 366,
         "availability": "available",
         "domain": "analyst-actions",
         "fallbackActive": false,
         "freshness": "Recent · 6h old",
-        "freshnessSlaDisclosure": "Analyst actions source-linked provider row is 342m old against a 2880m freshness SLA.",
+        "freshnessSlaDisclosure": "Analyst actions source-linked provider row is 366m old against a 2880m freshness SLA.",
         "freshnessSlaMinutes": 2880,
         "freshnessSlaStatus": "within-sla",
         "itemCount": 2,
@@ -145,26 +145,26 @@
         "provider": "MarketWatch"
       },
       {
-        "ageMinutes": 2894,
+        "ageMinutes": 2888,
         "availability": "available",
         "domain": "dividends",
         "fallbackActive": false,
         "freshness": "Aging · 2d old",
-        "freshnessSlaDisclosure": "Dividends source-linked provider row is 2894m old against a 43200m freshness SLA.",
+        "freshnessSlaDisclosure": "Dividends source-linked provider row is 2888m old against a 43200m freshness SLA.",
         "freshnessSlaMinutes": 43200,
         "freshnessSlaStatus": "within-sla",
         "itemCount": 17,
-        "latestTimestamp": "2026-05-31T04:42:12.777558+00:00",
+        "latestTimestamp": "2026-05-31T05:12:13.051773+00:00",
         "operationalState": "active",
         "provider": "Yahoo Finance Dividend Calendar"
       },
       {
-        "ageMinutes": 86,
+        "ageMinutes": 111,
         "availability": "available",
         "domain": "geopolitical-events",
         "fallbackActive": false,
-        "freshness": "Recent · 1h old",
-        "freshnessSlaDisclosure": "Geopolitical events source-linked provider row is 86m old against a 4320m freshness SLA.",
+        "freshness": "Recent · 2h old",
+        "freshnessSlaDisclosure": "Geopolitical events source-linked provider row is 111m old against a 4320m freshness SLA.",
         "freshnessSlaMinutes": 4320,
         "freshnessSlaStatus": "within-sla",
         "itemCount": 2,
@@ -173,12 +173,12 @@
         "provider": "MarketWatch, Nasdaq"
       },
       {
-        "ageMinutes": 206,
+        "ageMinutes": 230,
         "availability": "available",
         "domain": "company-events",
         "fallbackActive": false,
-        "freshness": "Recent · 3h old",
-        "freshnessSlaDisclosure": "Company events source-linked provider row is 206m old against a 1440m freshness SLA.",
+        "freshness": "Recent · 4h old",
+        "freshnessSlaDisclosure": "Company events source-linked provider row is 230m old against a 1440m freshness SLA.",
         "freshnessSlaMinutes": 1440,
         "freshnessSlaStatus": "within-sla",
         "itemCount": 27,
@@ -187,12 +187,12 @@
         "provider": "SEC EDGAR 8-K Filings, U.S. Treasury, Yahoo Finance Dividend Calendar, MarketWatch, GlobeNewswire"
       },
       {
-        "ageMinutes": 86,
+        "ageMinutes": 111,
         "availability": "available",
         "domain": "sector-events",
         "fallbackActive": false,
-        "freshness": "Recent · 1h old",
-        "freshnessSlaDisclosure": "Sector events source-linked provider row is 86m old against a 1440m freshness SLA.",
+        "freshness": "Recent · 2h old",
+        "freshnessSlaDisclosure": "Sector events source-linked provider row is 111m old against a 1440m freshness SLA.",
         "freshnessSlaMinutes": 1440,
         "freshnessSlaStatus": "within-sla",
         "itemCount": 16,
@@ -216,39 +216,39 @@
       }
     ],
     "fallbackActivationCount": 0,
-    "generatedAt": "2026-06-02T04:55:54.628Z",
+    "generatedAt": "2026-06-02T05:20:24.794Z",
     "outageEventCount": 0,
     "ratesSlaStatus": "within-sla",
     "readiness": "not-ready",
     "slaBreachedDomains": []
   },
-  "generatedAt": "2026-06-02T04:56:01.500Z",
+  "generatedAt": "2026-06-02T05:20:31.679Z",
   "latency": {
-    "maxMs": 6845,
-    "p50Ms": 6800,
-    "p95Ms": 6845,
+    "maxMs": 7027,
+    "p50Ms": 6879,
+    "p95Ms": 7027,
     "samplesMs": [
-      6800,
-      6761,
-      6845
+      7027,
+      6879,
+      6585
     ]
   },
   "noFabricationBoundary": "The probe only certifies source-linked provider rows. Stale, delayed, outage, limited, and breached-SLA domains remain visible and must not be labeled live.",
   "outageSample": {
     "certificationStatus": "strong-partial",
-    "latencyMs": 6653,
+    "latencyMs": 6763,
     "ok": true,
     "providerReadiness": "not-ready",
     "ratesSlaStatus": "within-sla",
     "sampleNumber": 4,
-    "startedAt": "2026-06-02T04:55:54.847Z",
+    "startedAt": "2026-06-02T05:20:24.916Z",
     "statusCode": 200
   },
   "overallStatus": "not_ready",
   "providerReadinessCertified": false,
   "rates": {
-    "ageMinutes": 456,
-    "freshnessSlaDisclosure": "Rates source-linked provider row is 456m old against a 1440m freshness SLA.",
+    "ageMinutes": 481,
+    "freshnessSlaDisclosure": "Rates source-linked provider row is 481m old against a 1440m freshness SLA.",
     "freshnessSlaMinutes": 1440,
     "freshnessSlaStatus": "within-sla",
     "itemCount": 2,

@@ -1,6 +1,6 @@
 {
   "acquisitionCampaignExecution": "The probe reads real acquisition telemetry only. Product Hunt, Reddit, X, Discord, and trading community campaigns are not marked run unless their traffic/conversion/cost events exist in production analytics.",
-  "durationMs": 43,
+  "durationMs": 42,
   "report": {
     "blockers": [
       "No trial-to-paid conversion evidence is proven.",
@@ -30,7 +30,7 @@
       "trialUsers": 0,
       "visitorActors": 979
     },
-    "generatedAt": "2026-06-02T05:17:02.544Z",
+    "generatedAt": "2026-06-02T05:20:57.912Z",
     "gates": {
       "arpuBaseline": false,
       "firstPaidCustomers": true,
@@ -51,7 +51,7 @@
     },
     "status": "strong_partial"
   },
-  "startedAt": "2026-06-02T05:17:02.501Z",
+  "startedAt": "2026-06-02T05:20:57.870Z",
   "successCriteria": {
     "arpuBaseline": "ARPU requires live MRR or a trusted monthly price amount plus live paid customers.",
     "firstPaidCustomers": "At least one live-mode active Stripe subscription with premium plan and a current period end in the future.",

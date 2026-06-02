@@ -1,0 +1,34 @@
+[2026-06-02T05:21:50Z] TradeVeto restore drill started restore_db=market_alpha_restore_20260602_052150_1991123 work_dir=/tmp/tradeveto_restore_drill_20260602T052150Z_1991123
+[2026-06-02T05:21:50Z] Latest Postgres backup=/opt/backups/market-alpha/postgres/2026-06-02_00-00.sql.gz
+[2026-06-02T05:21:50Z] Latest scanner_output backup=/opt/backups/market-alpha/scanner_output/2026-06-02_00-03.tar.gz
+[2026-06-02T05:21:50Z] Verifying Postgres backup archive: /opt/backups/market-alpha/postgres/2026-06-02_00-00.sql.gz
+[2026-06-02T05:22:08Z] Postgres backup gzip OK size_bytes=663851420 age_minutes=319
+[2026-06-02T05:22:08Z] Verifying scanner_output archive: /opt/backups/market-alpha/scanner_output/2026-06-02_00-03.tar.gz
+[2026-06-02T05:22:14Z] scanner_output tar OK size_bytes=194645291 age_minutes=318
+[2026-06-02T05:22:14Z] Creating temporary restore database: market_alpha_restore_20260602_052150_1991123
+NOTICE:  database "market_alpha_restore_20260602_052150_1991123" does not exist, skipping
+[2026-06-02T05:22:14Z] Restoring Postgres backup into temporary DB
+[2026-06-02T05:24:55Z] Postgres restore completed duration_seconds=161
+[2026-06-02T05:24:55Z] Restored database public_table_count=79
+[2026-06-02T05:24:55Z] Restored table scan_runs rows=3980
+[2026-06-02T05:24:55Z] Restored table scanner_signals rows=440689
+[2026-06-02T05:24:55Z] Restored table symbol_price_history rows=115073
+[2026-06-02T05:24:55Z] Restored table forward_returns rows=232434
+[2026-06-02T05:24:55Z] Restored table market_memory_snapshots rows=440689
+[2026-06-02T05:24:56Z] Restored table narrative_intelligence_snapshots rows=222
+[2026-06-02T05:24:56Z] Restored table shock_move_patterns rows=333
+[2026-06-02T05:24:56Z] Restored table shock_move_events rows=6044
+[2026-06-02T05:24:56Z] Restored table user_decision_journal rows=0
+[2026-06-02T05:24:56Z] Restored table community_replay_studies rows=0
+[2026-06-02T05:24:56Z] Restored table monitoring_events rows=1237
+[2026-06-02T05:24:56Z] Scanner restore evidence latest_scan='2026-06-01 23:57:29.369331+00' scanner_signal_rows=440689
+[2026-06-02T05:24:57Z] Market memory snapshot rows=440689
+[2026-06-02T05:24:57Z] Shock pattern rows=333
+[2026-06-02T05:24:57Z] Shock event rows=6044
+[2026-06-02T05:24:57Z] Replay study rows=0
+[2026-06-02T05:24:57Z] Extracting scanner_output backup into /tmp/tradeveto_restore_drill_20260602T052150Z_1991123/scanner_restore
+[2026-06-02T05:25:03Z] Scanner restore evidence files=4123 ranking_files=1 analysis_files=11
+[2026-06-02T05:25:03Z] RTO_ESTIMATE_SECONDS=193
+[2026-06-02T05:25:03Z] RPO_ESTIMATE_MINUTES_POSTGRES=322
+[2026-06-02T05:25:03Z] RPO_ESTIMATE_MINUTES_SCANNER=321
+[2026-06-02T05:25:03Z] RESULT: BACKUP RESTORE DRILL PASSED

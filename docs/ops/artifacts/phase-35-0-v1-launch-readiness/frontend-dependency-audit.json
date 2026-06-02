@@ -1,0 +1,6 @@
+{
+  "generatedAt": "2026-06-02T05:28:22.606Z",
+  "command": "npm --prefix frontend audit --omit=dev",
+  "result": "found 0 vulnerabilities",
+  "vulnerabilities": 0
+}

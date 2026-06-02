@@ -1,0 +1,84 @@
+{
+  "generatedAt": "2026-06-02T05:26:53.979Z",
+  "target": "https://tradeveto.com",
+  "routes": [
+    {
+      "route": "/api/health",
+      "status": 200,
+      "ok": true,
+      "durationMs": 145,
+      "error": null
+    },
+    {
+      "route": "/api/health/deep",
+      "status": 200,
+      "ok": true,
+      "durationMs": 146,
+      "error": null
+    },
+    {
+      "route": "/",
+      "status": 200,
+      "ok": true,
+      "durationMs": 224,
+      "error": null
+    },
+    {
+      "route": "/terminal",
+      "status": 200,
+      "ok": true,
+      "durationMs": 143,
+      "error": null
+    },
+    {
+      "route": "/discover",
+      "status": 200,
+      "ok": true,
+      "durationMs": 142,
+      "error": null
+    },
+    {
+      "route": "/scanner",
+      "status": 200,
+      "ok": true,
+      "durationMs": 160,
+      "error": null
+    },
+    {
+      "route": "/symbol/AMD",
+      "status": 200,
+      "ok": true,
+      "durationMs": 212,
+      "error": null
+    },
+    {
+      "route": "/history",
+      "status": 200,
+      "ok": true,
+      "durationMs": 162,
+      "error": null
+    },
+    {
+      "route": "/performance",
+      "status": 200,
+      "ok": true,
+      "durationMs": 166,
+      "error": null
+    },
+    {
+      "route": "/alerts",
+      "status": 200,
+      "ok": true,
+      "durationMs": 147,
+      "error": null
+    },
+    {
+      "route": "/account",
+      "status": 200,
+      "ok": true,
+      "durationMs": 151,
+      "error": null
+    }
+  ],
+  "allOk": true
+}

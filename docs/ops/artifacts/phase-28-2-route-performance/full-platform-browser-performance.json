@@ -4,36 +4,36 @@
     {
       "apiTimings": [
         {
-          "count": 22,
-          "errors": 14,
+          "count": 46,
+          "errors": 34,
           "path": "/api/analytics/events",
-          "p50Ms": 0.081,
-          "p95Ms": 112.91,
-          "p99Ms": 190.076
+          "p50Ms": 0.151,
+          "p95Ms": 215.13,
+          "p99Ms": 418.331
         },
         {
           "count": 20,
           "errors": 0,
           "path": "/api/auth/me",
-          "p50Ms": 53.714,
-          "p95Ms": 134.531,
-          "p99Ms": 161.155
+          "p50Ms": 80.498,
+          "p95Ms": 269.45,
+          "p99Ms": 417.455
         },
         {
           "count": 17,
           "errors": 17,
           "path": "/api/discovery",
-          "p50Ms": 62.575,
-          "p95Ms": 139.142,
-          "p99Ms": 139.142
+          "p50Ms": 70.652,
+          "p95Ms": 409.582,
+          "p99Ms": 409.582
         },
         {
           "count": 1,
           "errors": 0,
           "path": "/api/symbol/AMD?…",
-          "p50Ms": 79.299,
-          "p95Ms": 79.299,
-          "p99Ms": 79.299
+          "p50Ms": 55.09,
+          "p95Ms": 55.09,
+          "p99Ms": 55.09
         }
       ],
       "browserName": "chromium",
@@ -193,25 +193,25 @@
           "type": "error"
         }
       ],
-      "generatedAt": "2026-05-28T01:44:03.899Z",
+      "generatedAt": "2026-06-02T05:23:06.232Z",
       "interactions": [
         {
-          "automationLatencyMs": 4007.241,
+          "automationLatencyMs": 4009.791,
           "budgetMs": 100,
-          "error": "locator.waitFor: Timeout 4000ms exceeded.\nCall log:\n  - waiting for locator('[data-discovery-search-input=\\'true\\']').first() to be visible\n",
+          "error": "locator.waitFor: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-discovery-search-input=\\'true\\']').first() to be visible\u001b[22m\n",
           "id": "scanner-filter",
           "label": "Filter scanner/discovery results",
-          "latencyMs": 4007.273,
+          "latencyMs": 4009.847,
           "status": "fail",
           "timingSource": "playwright-automation"
         },
         {
-          "automationLatencyMs": 4005.69,
+          "automationLatencyMs": 4006.036,
           "budgetMs": 150,
-          "error": "locator.click: Timeout 4000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: /compare top/i }).first()\n",
+          "error": "locator.click: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /compare top/i }).first()\u001b[22m\n",
           "id": "compare-open",
           "label": "Open compare panel from discovery",
-          "latencyMs": 4005.696,
+          "latencyMs": 4006.042,
           "status": "fail",
           "timingSource": "playwright-automation"
         },
@@ -220,63 +220,63 @@
           "error": "page.waitForURL: Timeout 4000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n  navigated to \"https://tradeveto.com/discover\"\n============================================================",
           "id": "symbol-route-transition",
           "label": "Client transition from discovery to AMD symbol",
-          "latencyMs": 4315.415,
+          "latencyMs": 4638.566,
           "status": "fail"
         },
         {
-          "automationLatencyMs": 4241.893,
+          "automationLatencyMs": 4293.52,
           "budgetMs": 250,
-          "error": "locator.waitFor: Timeout 4000ms exceeded.\nCall log:\n  - waiting for locator('[data-chart-symbol=\\'AMD\\'][data-chart-workspace-loaded=\\'true\\']').first() to be visible\n",
+          "error": "locator.waitFor: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-chart-symbol=\\'AMD\\'][data-chart-workspace-loaded=\\'true\\']').first() to be visible\u001b[22m\n",
           "id": "chart-restore",
           "label": "Load AMD chart workspace",
-          "latencyMs": 4241.899,
+          "latencyMs": 4293.528,
           "status": "fail",
           "timingSource": "playwright-automation"
         },
         {
-          "automationLatencyMs": 4004.469,
+          "automationLatencyMs": 4012.286,
           "budgetMs": 150,
-          "error": "locator.click: Timeout 4000ms exceeded.\nCall log:\n  - waiting for locator('[data-chart-expand-trigger=\\'AMD\\']').first()\n",
+          "error": "locator.click: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-chart-expand-trigger=\\'AMD\\']').first()\u001b[22m\n",
           "id": "fullscreen-chart-open",
           "label": "Open fullscreen AMD chart",
-          "latencyMs": 4004.472,
+          "latencyMs": 4012.294,
           "status": "fail",
           "timingSource": "playwright-automation"
         },
         {
-          "automationLatencyMs": 4004.179,
+          "automationLatencyMs": 4006.286,
           "budgetMs": 60,
-          "error": "locator.click: Timeout 4000ms exceeded.\nCall log:\n  - waiting for locator('[data-chart-fullscreen-toolbar=\\'true\\']').getByRole('button', { name: /^compare$/i }).first()\n",
+          "error": "locator.click: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-chart-fullscreen-toolbar=\\'true\\']').getByRole('button', { name: /^compare$/i }).first()\u001b[22m\n",
           "id": "chart-interaction",
           "label": "Switch fullscreen chart mode",
-          "latencyMs": 4004.185,
+          "latencyMs": 4006.291,
           "status": "fail",
           "timingSource": "playwright-automation"
         },
         {
-          "automationLatencyMs": 4250.886,
+          "automationLatencyMs": 4298.608,
           "budgetMs": 150,
-          "error": "locator.click: Timeout 4000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: /next symbol/i }).first()\n",
+          "error": "locator.click: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /next symbol/i }).first()\u001b[22m\n",
           "id": "symbol-switch",
           "label": "Switch from AMD to NVDA through client chart navigation",
-          "latencyMs": 4250.892,
+          "latencyMs": 4298.619,
           "status": "fail",
           "timingSource": "playwright-automation"
         },
         {
-          "automationLatencyMs": 4066.786,
+          "automationLatencyMs": 4091.574,
           "budgetMs": 100,
-          "error": "locator.waitFor: Timeout 4000ms exceeded.\nCall log:\n  - waiting for locator('[data-symbol-search-input=\\'true\\']').first() to be visible\n",
+          "error": "locator.waitFor: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-symbol-search-input=\\'true\\']').first() to be visible\u001b[22m\n",
           "id": "symbol-search-open",
           "label": "Open global symbol search",
-          "latencyMs": 4066.792,
+          "latencyMs": 4091.58,
           "status": "fail",
           "timingSource": "playwright-automation"
         }
       ],
       "memory": {
         "after": {
-          "jsHeapUsedMb": 9.479,
+          "jsHeapUsedMb": 9.611,
           "source": "cdp"
         },
         "before": {
@@ -290,34 +290,34 @@
           "blockers": [],
           "geometry": {
             "horizontalOverflowPx": 0,
-            "scrollHeight": 2313,
+            "scrollHeight": 2398,
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 466.864,
+          "interactiveMs": 1085.422,
           "memory": {
-            "jsHeapUsedMb": 6.223,
+            "jsHeapUsedMb": 8.39,
             "source": "cdp"
           },
           "metrics": {
             "apiResourceCount": 3,
             "apiTransferBytes": 1584,
-            "cls": 0,
-            "domContentLoadedMs": 333,
-            "fcpMs": 408,
+            "cls": 0.0236,
+            "domContentLoadedMs": 514,
+            "fcpMs": 476,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 92,
-            "lcpMs": 860,
-            "loadEventMs": 436,
-            "resourceCount": 102,
-            "scriptEncodedBytes": 1061325,
-            "ttfbMs": 215,
-            "transferBytes": 1232048
+            "jsExecutionEstimateMs": 269,
+            "lcpMs": 852,
+            "loadEventMs": 514,
+            "resourceCount": 90,
+            "scriptEncodedBytes": 976063,
+            "ttfbMs": 202,
+            "transferBytes": 1138003
           },
           "path": "/terminal",
           "routeId": "terminal",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/terminal.png",
-          "settledMs": 3728.797,
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/terminal.png",
+          "settledMs": 2571.828,
           "status": "pass",
           "targetLoadMs": 2000
         },
@@ -325,34 +325,34 @@
           "blockers": [],
           "geometry": {
             "horizontalOverflowPx": 0,
-            "scrollHeight": 1422,
+            "scrollHeight": 1507,
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 165.869,
+          "interactiveMs": 660.336,
           "memory": {
-            "jsHeapUsedMb": 10.976,
+            "jsHeapUsedMb": 11.516,
             "source": "cdp"
           },
           "metrics": {
             "apiResourceCount": 0,
             "apiTransferBytes": 0,
             "cls": 0.0005,
-            "domContentLoadedMs": 89,
-            "fcpMs": 260,
+            "domContentLoadedMs": 92,
+            "fcpMs": 424,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 29,
-            "lcpMs": 260,
-            "loadEventMs": 137,
-            "resourceCount": 101,
-            "scriptEncodedBytes": 1061325,
-            "ttfbMs": 58,
-            "transferBytes": 123297
+            "jsExecutionEstimateMs": 30,
+            "lcpMs": 424,
+            "loadEventMs": 131,
+            "resourceCount": 87,
+            "scriptEncodedBytes": 976063,
+            "ttfbMs": 59,
+            "transferBytes": 114728
           },
           "path": "/discover",
           "routeId": "discover",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/discover.png",
-          "settledMs": 1783.34,
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/discover.png",
+          "settledMs": 1785.881,
           "status": "pass",
           "targetLoadMs": 2500
         },
@@ -360,34 +360,34 @@
           "blockers": [],
           "geometry": {
             "horizontalOverflowPx": 0,
-            "scrollHeight": 1232,
+            "scrollHeight": 1317,
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 158.707,
+          "interactiveMs": 222.86,
           "memory": {
-            "jsHeapUsedMb": 13.382,
+            "jsHeapUsedMb": 23.277,
             "source": "cdp"
           },
           "metrics": {
             "apiResourceCount": 0,
             "apiTransferBytes": 0,
-            "cls": 0.0005,
-            "domContentLoadedMs": 89,
-            "fcpMs": 164,
+            "cls": 0.0184,
+            "domContentLoadedMs": 81,
+            "fcpMs": 244,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 27,
-            "lcpMs": 236,
-            "loadEventMs": 128,
-            "resourceCount": 103,
-            "scriptEncodedBytes": 1064543,
-            "ttfbMs": 59,
-            "transferBytes": 131781
+            "jsExecutionEstimateMs": 10,
+            "lcpMs": 244,
+            "loadEventMs": 161,
+            "resourceCount": 88,
+            "scriptEncodedBytes": 979575,
+            "ttfbMs": 55,
+            "transferBytes": 123841
           },
           "path": "/scanner",
           "routeId": "scanner",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/scanner.png",
-          "settledMs": 1804.324,
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/scanner.png",
+          "settledMs": 1685.612,
           "status": "pass",
           "targetLoadMs": 2500
         },
@@ -395,209 +395,34 @@
           "blockers": [],
           "geometry": {
             "horizontalOverflowPx": 0,
-            "scrollHeight": 960,
+            "scrollHeight": 2962,
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 226.36,
+          "interactiveMs": 483.456,
           "memory": {
-            "jsHeapUsedMb": 14.755,
-            "source": "cdp"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 170,
-            "fcpMs": 176,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 5,
-            "lcpMs": 176,
-            "loadEventMs": 0,
-            "resourceCount": 24,
-            "scriptEncodedBytes": 566635,
-            "ttfbMs": 84,
-            "transferBytes": 244257
-          },
-          "path": "/symbol/AMD",
-          "routeId": "symbol-amd",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/symbol-amd.png",
-          "settledMs": 3483.968,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 1256,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 315.898,
-          "memory": {
-            "jsHeapUsedMb": 17.475,
-            "source": "cdp"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0.0005,
-            "domContentLoadedMs": 105,
-            "fcpMs": 272,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 35,
-            "lcpMs": null,
-            "loadEventMs": 130,
-            "resourceCount": 94,
-            "scriptEncodedBytes": 1095866,
-            "ttfbMs": 65,
-            "transferBytes": 146713
-          },
-          "path": "/history",
-          "routeId": "history",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/history.png",
-          "settledMs": 1843.713,
-          "status": "pass",
-          "targetLoadMs": 1000
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 960,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 144.301,
-          "memory": {
-            "jsHeapUsedMb": 23.202,
-            "source": "cdp"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 98,
-            "fcpMs": 140,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 24,
-            "lcpMs": 140,
-            "loadEventMs": 0,
-            "resourceCount": 20,
-            "scriptEncodedBytes": 355213,
-            "ttfbMs": 61,
-            "transferBytes": 36933
-          },
-          "path": "/performance",
-          "routeId": "performance",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/performance.png",
-          "settledMs": 3399.9,
-          "status": "pass",
-          "targetLoadMs": 1000
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 5555,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 437.015,
-          "memory": {
-            "jsHeapUsedMb": 28.04,
-            "source": "cdp"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0.0009,
-            "domContentLoadedMs": 241,
-            "fcpMs": 436,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 30,
-            "lcpMs": 436,
-            "loadEventMs": 277,
-            "resourceCount": 24,
-            "scriptEncodedBytes": 305192,
-            "ttfbMs": 194,
-            "transferBytes": 10606
-          },
-          "path": "/macro",
-          "routeId": "macro",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/macro.png",
-          "settledMs": 1315.283,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 8491,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 261.532,
-          "memory": {
-            "jsHeapUsedMb": 29.052,
-            "source": "cdp"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0.0009,
-            "domContentLoadedMs": 194,
-            "fcpMs": 232,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 35,
-            "lcpMs": 232,
-            "loadEventMs": 215,
-            "resourceCount": 24,
-            "scriptEncodedBytes": 305192,
-            "ttfbMs": 154,
-            "transferBytes": 9647
-          },
-          "path": "/feed",
-          "routeId": "feed",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/feed.png",
-          "settledMs": 1117.672,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 7032,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 349.097,
-          "memory": {
-            "jsHeapUsedMb": 34.468,
+            "jsHeapUsedMb": 26.149,
             "source": "cdp"
           },
           "metrics": {
             "apiResourceCount": 1,
-            "apiTransferBytes": 795,
-            "cls": 0.0005,
-            "domContentLoadedMs": 117,
-            "fcpMs": 332,
+            "apiTransferBytes": 793,
+            "cls": 0.0174,
+            "domContentLoadedMs": 218,
+            "fcpMs": 388,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 43,
-            "lcpMs": 332,
-            "loadEventMs": 137,
-            "resourceCount": 90,
-            "scriptEncodedBytes": 1083824,
-            "ttfbMs": 68,
-            "transferBytes": 132787
+            "jsExecutionEstimateMs": 29,
+            "lcpMs": 388,
+            "loadEventMs": 348,
+            "resourceCount": 92,
+            "scriptEncodedBytes": 1072010,
+            "ttfbMs": 73,
+            "transferBytes": 215334
           },
-          "path": "/paper",
-          "routeId": "paper",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/paper.png",
-          "settledMs": 1764.017,
+          "path": "/symbol/AMD",
+          "routeId": "symbol-amd",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/symbol-amd.png",
+          "settledMs": 1983.862,
           "status": "pass",
           "targetLoadMs": 2500
         },
@@ -605,104 +430,279 @@
           "blockers": [],
           "geometry": {
             "horizontalOverflowPx": 0,
-            "scrollHeight": 1276,
+            "scrollHeight": 1341,
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 151.237,
+          "interactiveMs": 230.073,
           "memory": {
-            "jsHeapUsedMb": 33.901,
+            "jsHeapUsedMb": 27.294,
             "source": "cdp"
           },
           "metrics": {
             "apiResourceCount": 0,
             "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 82,
-            "fcpMs": 216,
+            "cls": 0.0196,
+            "domContentLoadedMs": 77,
+            "fcpMs": 252,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 27,
-            "lcpMs": 668,
-            "loadEventMs": 569,
+            "jsExecutionEstimateMs": 12,
+            "lcpMs": 252,
+            "loadEventMs": 201,
             "resourceCount": 91,
-            "scriptEncodedBytes": 1294229,
+            "scriptEncodedBytes": 1011271,
             "ttfbMs": 53,
-            "transferBytes": 343503
+            "transferBytes": 146183
           },
-          "path": "/strategy-labs",
-          "routeId": "strategy-labs",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/strategy-labs.png",
-          "settledMs": 2035.534,
+          "path": "/history",
+          "routeId": "history",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/history.png",
+          "settledMs": 1784.257,
           "status": "pass",
-          "targetLoadMs": 2500
+          "targetLoadMs": 1000
         },
         {
           "blockers": [],
           "geometry": {
             "horizontalOverflowPx": 0,
-            "scrollHeight": 1256,
+            "scrollHeight": 1341,
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 142.927,
+          "interactiveMs": 251.867,
           "memory": {
-            "jsHeapUsedMb": 42.648,
+            "jsHeapUsedMb": 37.011,
             "source": "cdp"
           },
           "metrics": {
             "apiResourceCount": 0,
             "apiTransferBytes": 0,
-            "cls": 0.0005,
-            "domContentLoadedMs": 73,
-            "fcpMs": 240,
+            "cls": 0.0178,
+            "domContentLoadedMs": 79,
+            "fcpMs": 252,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 21,
-            "lcpMs": 240,
-            "loadEventMs": 184,
-            "resourceCount": 88,
-            "scriptEncodedBytes": 1060912,
-            "ttfbMs": 51,
-            "transferBytes": 107599
+            "jsExecutionEstimateMs": 15,
+            "lcpMs": 252,
+            "loadEventMs": 213,
+            "resourceCount": 91,
+            "scriptEncodedBytes": 1048391,
+            "ttfbMs": 63,
+            "transferBytes": 191197
           },
-          "path": "/alerts",
-          "routeId": "alerts",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/alerts.png",
-          "settledMs": 1485.488,
+          "path": "/performance",
+          "routeId": "performance",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/performance.png",
+          "settledMs": 1784.668,
           "status": "pass",
-          "targetLoadMs": 2500
+          "targetLoadMs": 1000
         },
         {
           "blockers": [],
           "geometry": {
             "horizontalOverflowPx": 0,
-            "scrollHeight": 15305,
+            "scrollHeight": 5748,
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 278.085,
+          "interactiveMs": 719.461,
           "memory": {
-            "jsHeapUsedMb": 37.237,
+            "jsHeapUsedMb": 7.692,
             "source": "cdp"
           },
           "metrics": {
             "apiResourceCount": 0,
             "apiTransferBytes": 0,
             "cls": 0.0009,
-            "domContentLoadedMs": 159,
-            "fcpMs": 228,
+            "domContentLoadedMs": 195,
+            "fcpMs": 460,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 62,
-            "lcpMs": 228,
-            "loadEventMs": 187,
-            "resourceCount": 23,
-            "scriptEncodedBytes": 256324,
-            "ttfbMs": 90,
-            "transferBytes": 14071
+            "jsExecutionEstimateMs": 70,
+            "lcpMs": 460,
+            "loadEventMs": 195,
+            "resourceCount": 29,
+            "scriptEncodedBytes": 317932,
+            "ttfbMs": 122,
+            "transferBytes": 13185
+          },
+          "path": "/macro",
+          "routeId": "macro",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/macro.png",
+          "settledMs": 1598.248,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 8327,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 253.161,
+          "memory": {
+            "jsHeapUsedMb": 20.809,
+            "source": "cdp"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0.0009,
+            "domContentLoadedMs": 189,
+            "fcpMs": 248,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 25,
+            "lcpMs": 248,
+            "loadEventMs": 246,
+            "resourceCount": 29,
+            "scriptEncodedBytes": 317932,
+            "ttfbMs": 151,
+            "transferBytes": 12219
+          },
+          "path": "/feed",
+          "routeId": "feed",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/feed.png",
+          "settledMs": 1153.264,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 7117,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 474.644,
+          "memory": {
+            "jsHeapUsedMb": 14.351,
+            "source": "cdp"
+          },
+          "metrics": {
+            "apiResourceCount": 1,
+            "apiTransferBytes": 792,
+            "cls": 0.0182,
+            "domContentLoadedMs": 123,
+            "fcpMs": 440,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 16,
+            "lcpMs": 440,
+            "loadEventMs": 406,
+            "resourceCount": 89,
+            "scriptEncodedBytes": 999271,
+            "ttfbMs": 81,
+            "transferBytes": 141460
+          },
+          "path": "/paper",
+          "routeId": "paper",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/paper.png",
+          "settledMs": 1899.819,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1361,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 158.465,
+          "memory": {
+            "jsHeapUsedMb": 25.459,
+            "source": "cdp"
+          },
+          "metrics": {
+            "apiResourceCount": 1,
+            "apiTransferBytes": 792,
+            "cls": 0.0178,
+            "domContentLoadedMs": 113,
+            "fcpMs": 236,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 2,
+            "lcpMs": 344,
+            "loadEventMs": 295,
+            "resourceCount": 91,
+            "scriptEncodedBytes": 1202654,
+            "ttfbMs": 75,
+            "transferBytes": 345484
+          },
+          "path": "/strategy-labs",
+          "routeId": "strategy-labs",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/strategy-labs.png",
+          "settledMs": 1908.284,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1341,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 127.661,
+          "memory": {
+            "jsHeapUsedMb": 35.163,
+            "source": "cdp"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0.0005,
+            "domContentLoadedMs": 66,
+            "fcpMs": 208,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 8,
+            "lcpMs": 208,
+            "loadEventMs": 135,
+            "resourceCount": 88,
+            "scriptEncodedBytes": 976063,
+            "ttfbMs": 54,
+            "transferBytes": 116429
+          },
+          "path": "/alerts",
+          "routeId": "alerts",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/alerts.png",
+          "settledMs": 1600.956,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 15141,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 2206.488,
+          "memory": {
+            "jsHeapUsedMb": 41.826,
+            "source": "cdp"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 2055,
+            "fcpMs": 2168,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 22,
+            "lcpMs": 2168,
+            "loadEventMs": 2116,
+            "resourceCount": 28,
+            "scriptEncodedBytes": 269191,
+            "ttfbMs": 2028,
+            "transferBytes": 28113
           },
           "path": "/market-memory",
           "routeId": "market-memory",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/market-memory.png",
-          "settledMs": 1149.166,
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/market-memory.png",
+          "settledMs": 3135.214,
           "status": "pass",
           "targetLoadMs": 2500
         },
@@ -714,30 +714,30 @@
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 147.443,
+          "interactiveMs": 505.787,
           "memory": {
-            "jsHeapUsedMb": 18.427,
+            "jsHeapUsedMb": 15.141,
             "source": "cdp"
           },
           "metrics": {
             "apiResourceCount": 0,
             "apiTransferBytes": 0,
             "cls": 0,
-            "domContentLoadedMs": 91,
-            "fcpMs": 124,
+            "domContentLoadedMs": 133,
+            "fcpMs": 160,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 17,
-            "lcpMs": 124,
-            "loadEventMs": 91,
-            "resourceCount": 12,
-            "scriptEncodedBytes": 242953,
-            "ttfbMs": 72,
-            "transferBytes": 757
+            "jsExecutionEstimateMs": 9,
+            "lcpMs": 160,
+            "loadEventMs": 133,
+            "resourceCount": 14,
+            "scriptEncodedBytes": 255754,
+            "ttfbMs": 109,
+            "transferBytes": 754
           },
           "path": "/status",
           "routeId": "status",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/status.png",
-          "settledMs": 934.965,
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/status.png",
+          "settledMs": 1280.816,
           "status": "pass",
           "targetLoadMs": 2000
         },
@@ -749,30 +749,30 @@
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 145.038,
+          "interactiveMs": 193.475,
           "memory": {
-            "jsHeapUsedMb": 26.026,
+            "jsHeapUsedMb": 36.69,
             "source": "cdp"
           },
           "metrics": {
             "apiResourceCount": 1,
-            "apiTransferBytes": 793,
+            "apiTransferBytes": 792,
             "cls": 0.0005,
-            "domContentLoadedMs": 76,
-            "fcpMs": 156,
+            "domContentLoadedMs": 69,
+            "fcpMs": 208,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 20,
-            "lcpMs": 156,
-            "loadEventMs": 126,
-            "resourceCount": 96,
-            "scriptEncodedBytes": 1068839,
+            "jsExecutionEstimateMs": 12,
+            "lcpMs": 208,
+            "loadEventMs": 181,
+            "resourceCount": 91,
+            "scriptEncodedBytes": 984198,
             "ttfbMs": 54,
-            "transferBytes": 128413
+            "transferBytes": 133496
           },
           "path": "/account",
           "routeId": "account",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/account.png",
-          "settledMs": 1645.127,
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/account.png",
+          "settledMs": 1958.826,
           "status": "pass",
           "targetLoadMs": 2500
         },
@@ -784,30 +784,30 @@
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 118.724,
+          "interactiveMs": 198.998,
           "memory": {
-            "jsHeapUsedMb": 36.837,
+            "jsHeapUsedMb": 29.087,
             "source": "cdp"
           },
           "metrics": {
             "apiResourceCount": 0,
             "apiTransferBytes": 0,
             "cls": 0.0005,
-            "domContentLoadedMs": 70,
-            "fcpMs": 204,
+            "domContentLoadedMs": 88,
+            "fcpMs": 224,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 14,
-            "lcpMs": 204,
-            "loadEventMs": 156,
-            "resourceCount": 97,
-            "scriptEncodedBytes": 1072041,
-            "ttfbMs": 55,
-            "transferBytes": 132070
+            "jsExecutionEstimateMs": 8,
+            "lcpMs": 224,
+            "loadEventMs": 198,
+            "resourceCount": 92,
+            "scriptEncodedBytes": 987396,
+            "ttfbMs": 63,
+            "transferBytes": 136437
           },
           "path": "/settings",
           "routeId": "settings",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/settings.png",
-          "settledMs": 1688.975,
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/settings.png",
+          "settledMs": 1853.206,
           "status": "pass",
           "targetLoadMs": 2500
         },
@@ -819,62 +819,62 @@
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 154.799,
+          "interactiveMs": 264.671,
           "memory": {
-            "jsHeapUsedMb": 23.982,
+            "jsHeapUsedMb": 39.219,
             "source": "cdp"
           },
           "metrics": {
             "apiResourceCount": 0,
             "apiTransferBytes": 0,
             "cls": 0.0005,
-            "domContentLoadedMs": 80,
-            "fcpMs": 228,
+            "domContentLoadedMs": 79,
+            "fcpMs": 260,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 21,
-            "lcpMs": 228,
-            "loadEventMs": 121,
-            "resourceCount": 80,
-            "scriptEncodedBytes": 1060912,
-            "ttfbMs": 57,
-            "transferBytes": 93490
+            "jsExecutionEstimateMs": 10,
+            "lcpMs": 260,
+            "loadEventMs": 124,
+            "resourceCount": 75,
+            "scriptEncodedBytes": 976063,
+            "ttfbMs": 64,
+            "transferBytes": 97573
           },
           "path": "/support",
           "routeId": "support",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/support.png",
-          "settledMs": 1441.152,
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/chromium/support.png",
+          "settledMs": 1523.581,
           "status": "pass",
           "targetLoadMs": 2500
         }
       ],
-      "startedAt": "2026-05-28T01:42:50.394Z",
-      "tracePath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/traces/chromium-trace.zip"
+      "startedAt": "2026-06-02T05:21:52.013Z",
+      "tracePath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/traces/chromium-trace.zip"
     },
     {
       "apiTimings": [
         {
-          "count": 16,
+          "count": 34,
           "errors": 0,
-          "path": "/api/auth/me",
-          "p50Ms": 51.054,
-          "p95Ms": 75.404,
-          "p99Ms": 75.404
+          "path": "/api/analytics/events",
+          "p50Ms": 99.142,
+          "p95Ms": 344.224,
+          "p99Ms": 493.685
         },
         {
           "count": 16,
           "errors": 0,
-          "path": "/api/analytics/events",
-          "p50Ms": 74.225,
-          "p95Ms": 132.811,
-          "p99Ms": 132.811
+          "path": "/api/auth/me",
+          "p50Ms": 64.286,
+          "p95Ms": 104.434,
+          "p99Ms": 104.434
         },
         {
           "count": 12,
           "errors": 12,
           "path": "/api/discovery",
-          "p50Ms": 57.47,
-          "p95Ms": 84.034,
-          "p99Ms": 84.034
+          "p50Ms": 71.154,
+          "p95Ms": 98.517,
+          "p99Ms": 98.517
         }
       ],
       "browserName": "firefox",
@@ -1034,7 +1034,7 @@
           "type": "warning"
         }
       ],
-      "generatedAt": "2026-05-28T01:44:37.330Z",
+      "generatedAt": "2026-06-02T05:23:52.136Z",
       "interactions": [],
       "memory": {
         "after": {
@@ -1050,33 +1050,33 @@
           "blockers": [],
           "geometry": {
             "horizontalOverflowPx": 0,
-            "scrollHeight": 2257,
+            "scrollHeight": 2342,
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 964.501,
+          "interactiveMs": 1661.242,
           "memory": {
             "source": "unavailable"
           },
           "metrics": {
-            "apiResourceCount": 2,
-            "apiTransferBytes": 1251,
+            "apiResourceCount": 3,
+            "apiTransferBytes": 1588,
             "cls": 0,
-            "domContentLoadedMs": 552,
-            "fcpMs": 474,
+            "domContentLoadedMs": 949,
+            "fcpMs": 963,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 222,
-            "lcpMs": 751,
-            "loadEventMs": 553,
-            "resourceCount": 88,
-            "scriptEncodedBytes": 1072370,
-            "ttfbMs": 201,
-            "transferBytes": 1212292
+            "jsExecutionEstimateMs": 424,
+            "lcpMs": 1593,
+            "loadEventMs": 1009,
+            "resourceCount": 99,
+            "scriptEncodedBytes": 987934,
+            "ttfbMs": 240,
+            "transferBytes": 1149850
           },
           "path": "/terminal",
           "routeId": "terminal",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/terminal.png",
-          "settledMs": 2307.411,
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/terminal.png",
+          "settledMs": 4033.256,
           "status": "pass",
           "targetLoadMs": 2000
         },
@@ -1084,11 +1084,11 @@
           "blockers": [],
           "geometry": {
             "horizontalOverflowPx": 0,
-            "scrollHeight": 1402,
+            "scrollHeight": 1487,
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 279.407,
+          "interactiveMs": 1225.652,
           "memory": {
             "source": "unavailable"
           },
@@ -1096,21 +1096,21 @@
             "apiResourceCount": 0,
             "apiTransferBytes": 0,
             "cls": 0,
-            "domContentLoadedMs": 197,
-            "fcpMs": 66,
+            "domContentLoadedMs": 212,
+            "fcpMs": 109,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 20,
-            "lcpMs": 242,
-            "loadEventMs": 201,
-            "resourceCount": 85,
-            "scriptEncodedBytes": 1072370,
-            "ttfbMs": 55,
-            "transferBytes": 102088
+            "jsExecutionEstimateMs": 17,
+            "lcpMs": 626,
+            "loadEventMs": 626,
+            "resourceCount": 92,
+            "scriptEncodedBytes": 792620,
+            "ttfbMs": 90,
+            "transferBytes": 123259
           },
           "path": "/discover",
           "routeId": "discover",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/discover.png",
-          "settledMs": 1813.769,
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/discover.png",
+          "settledMs": 2332.797,
           "status": "pass",
           "targetLoadMs": 2500
         },
@@ -1118,11 +1118,11 @@
           "blockers": [],
           "geometry": {
             "horizontalOverflowPx": 0,
-            "scrollHeight": 1212,
+            "scrollHeight": 1297,
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 277.882,
+          "interactiveMs": 1000.48,
           "memory": {
             "source": "unavailable"
           },
@@ -1130,603 +1130,21 @@
             "apiResourceCount": 0,
             "apiTransferBytes": 0,
             "cls": 0,
-            "domContentLoadedMs": 109,
-            "fcpMs": 84,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 12,
-            "lcpMs": 84,
-            "loadEventMs": 204,
-            "resourceCount": 91,
-            "scriptEncodedBytes": 1075588,
-            "ttfbMs": 60,
-            "transferBytes": 115654
-          },
-          "path": "/scanner",
-          "routeId": "scanner",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/scanner.png",
-          "settledMs": 1839.544,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 2837,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 350.572,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 284,
-            "fcpMs": 101,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 142,
-            "lcpMs": 557,
-            "loadEventMs": 535,
-            "resourceCount": 98,
-            "scriptEncodedBytes": 1346817,
-            "ttfbMs": 68,
-            "transferBytes": 386829
-          },
-          "path": "/symbol/AMD",
-          "routeId": "symbol-amd",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/symbol-amd.png",
-          "settledMs": 2070.296,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 1236,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 218.353,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 124,
-            "fcpMs": 67,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 15,
-            "lcpMs": 80,
-            "loadEventMs": 149,
-            "resourceCount": 89,
-            "scriptEncodedBytes": 1107324,
-            "ttfbMs": 58,
-            "transferBytes": 140873
-          },
-          "path": "/history",
-          "routeId": "history",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/history.png",
-          "settledMs": 1591.709,
-          "status": "pass",
-          "targetLoadMs": 1000
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 1236,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 196.733,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 1,
-            "apiTransferBytes": 333,
-            "cls": 0,
-            "domContentLoadedMs": 120,
-            "fcpMs": 84,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 13,
-            "lcpMs": 92,
-            "loadEventMs": 1514,
-            "resourceCount": 95,
-            "scriptEncodedBytes": 1141526,
-            "ttfbMs": 59,
-            "transferBytes": 180781
-          },
-          "path": "/performance",
-          "routeId": "performance",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/performance.png",
-          "settledMs": 3457.385,
-          "status": "pass",
-          "targetLoadMs": 1000
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 5555,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 385.319,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 237,
-            "fcpMs": 168,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 69,
-            "lcpMs": 196,
-            "loadEventMs": 248,
-            "resourceCount": 26,
-            "scriptEncodedBytes": 316650,
-            "ttfbMs": 146,
-            "transferBytes": 11428
-          },
-          "path": "/macro",
-          "routeId": "macro",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/macro.png",
-          "settledMs": 1231.782,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 8563,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 358.291,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 248,
-            "fcpMs": 184,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 56,
-            "lcpMs": 195,
-            "loadEventMs": 278,
-            "resourceCount": 26,
-            "scriptEncodedBytes": 316650,
-            "ttfbMs": 170,
-            "transferBytes": 10463
-          },
-          "path": "/feed",
-          "routeId": "feed",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/feed.png",
-          "settledMs": 1240.16,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 6979,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 305.46,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 1,
-            "apiTransferBytes": 792,
-            "cls": 0,
-            "domContentLoadedMs": 148,
-            "fcpMs": 84,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 17,
-            "lcpMs": 113,
-            "loadEventMs": 178,
-            "resourceCount": 87,
-            "scriptEncodedBytes": 1095282,
-            "ttfbMs": 62,
-            "transferBytes": 127257
-          },
-          "path": "/paper",
-          "routeId": "paper",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/paper.png",
-          "settledMs": 1662.187,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 1256,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 267.533,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 137,
-            "fcpMs": 84,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 12,
-            "lcpMs": 90,
-            "loadEventMs": 913,
-            "resourceCount": 93,
-            "scriptEncodedBytes": 1305687,
-            "ttfbMs": 71,
-            "transferBytes": 344310
-          },
-          "path": "/strategy-labs",
-          "routeId": "strategy-labs",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/strategy-labs.png",
-          "settledMs": 2430.175,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 1236,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 220.397,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 115,
-            "fcpMs": 67,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 14,
-            "lcpMs": 75,
-            "loadEventMs": 142,
-            "resourceCount": 86,
-            "scriptEncodedBytes": 1072370,
-            "ttfbMs": 52,
-            "transferBytes": 103347
-          },
-          "path": "/alerts",
-          "routeId": "alerts",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/alerts.png",
-          "settledMs": 1632.939,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 15304,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 342.188,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 163,
-            "fcpMs": 102,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 67,
-            "lcpMs": 132,
-            "loadEventMs": 204,
-            "resourceCount": 25,
-            "scriptEncodedBytes": 267782,
-            "ttfbMs": 79,
-            "transferBytes": 14895
-          },
-          "path": "/market-memory",
-          "routeId": "market-memory",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/market-memory.png",
-          "settledMs": 1170.387,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 1324,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 204.793,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 139,
-            "fcpMs": 101,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 12,
-            "lcpMs": 112,
-            "loadEventMs": 139,
-            "resourceCount": 14,
-            "scriptEncodedBytes": 254411,
-            "ttfbMs": 82,
-            "transferBytes": 754
-          },
-          "path": "/status",
-          "routeId": "status",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/status.png",
-          "settledMs": 963.044,
-          "status": "pass",
-          "targetLoadMs": 2000
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 960,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 205.179,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 1,
-            "apiTransferBytes": 794,
-            "cls": 0,
-            "domContentLoadedMs": 118,
-            "fcpMs": 84,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 16,
-            "lcpMs": 97,
-            "loadEventMs": 140,
-            "resourceCount": 93,
-            "scriptEncodedBytes": 1080297,
-            "ttfbMs": 60,
-            "transferBytes": 123541
-          },
-          "path": "/account",
-          "routeId": "account",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/account.png",
-          "settledMs": 1628.469,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 960,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 212.399,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 130,
-            "fcpMs": 84,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 13,
-            "lcpMs": 91,
-            "loadEventMs": 149,
-            "resourceCount": 94,
-            "scriptEncodedBytes": 1083499,
-            "ttfbMs": 63,
-            "transferBytes": 126488
-          },
-          "path": "/settings",
-          "routeId": "settings",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/settings.png",
-          "settledMs": 1710.589,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 2114,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 222.139,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 129,
+            "domContentLoadedMs": 125,
             "fcpMs": 83,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 17,
-            "lcpMs": 98,
-            "loadEventMs": 153,
-            "resourceCount": 79,
-            "scriptEncodedBytes": 1072370,
-            "ttfbMs": 58,
-            "transferBytes": 90458
-          },
-          "path": "/support",
-          "routeId": "support",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/support.png",
-          "settledMs": 1493.784,
-          "status": "pass",
-          "targetLoadMs": 2500
-        }
-      ],
-      "startedAt": "2026-05-28T01:44:03.925Z",
-      "tracePath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/traces/firefox-trace.zip"
-    },
-    {
-      "apiTimings": [
-        {
-          "count": 16,
-          "errors": 0,
-          "path": "/api/auth/me",
-          "p50Ms": 71.553,
-          "p95Ms": 140.683,
-          "p99Ms": 140.683
-        },
-        {
-          "count": 15,
-          "errors": 2,
-          "path": "/api/analytics/events",
-          "p50Ms": 123.028,
-          "p95Ms": 177.632,
-          "p99Ms": 177.632
-        }
-      ],
-      "browserName": "webkit",
-      "consoleIssueCount": 0,
-      "consoleIssues": [],
-      "generatedAt": "2026-05-28T01:45:14.532Z",
-      "interactions": [],
-      "memory": {
-        "after": {
-          "source": "unavailable"
-        },
-        "before": {
-          "source": "unavailable"
-        }
-      },
-      "overallStatus": "ready",
-      "routes": [
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 2255,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 942.759,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 1,
-            "apiTransferBytes": 467,
-            "cls": 0,
-            "domContentLoadedMs": 299,
-            "fcpMs": 214,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 131,
-            "lcpMs": null,
-            "loadEventMs": 487,
-            "resourceCount": 97,
-            "scriptEncodedBytes": 1063134,
-            "ttfbMs": -110,
-            "transferBytes": 1229901
-          },
-          "path": "/terminal",
-          "routeId": "terminal",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/terminal.png",
-          "settledMs": 2733.718,
-          "status": "pass",
-          "targetLoadMs": 2000
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 1401,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 310.102,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 186,
-            "fcpMs": 192,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 127,
-            "lcpMs": null,
-            "loadEventMs": 226,
-            "resourceCount": 97,
-            "scriptEncodedBytes": 0,
-            "ttfbMs": 56,
-            "transferBytes": 157898
-          },
-          "path": "/discover",
-          "routeId": "discover",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/discover.png",
-          "settledMs": 2029.473,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 1211,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 193.543,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 73,
-            "fcpMs": 80,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 12,
-            "lcpMs": null,
-            "loadEventMs": 220,
-            "resourceCount": 100,
-            "scriptEncodedBytes": 3236,
-            "ttfbMs": 58,
-            "transferBytes": 129211
+            "jsExecutionEstimateMs": 16,
+            "lcpMs": 927,
+            "loadEventMs": 868,
+            "resourceCount": 90,
+            "scriptEncodedBytes": 991033,
+            "ttfbMs": 55,
+            "transferBytes": 124665
           },
           "path": "/scanner",
           "routeId": "scanner",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/scanner.png",
-          "settledMs": 1995.39,
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/scanner.png",
+          "settledMs": 3044.908,
           "status": "pass",
           "targetLoadMs": 2500
         },
@@ -1734,305 +1152,33 @@
           "blockers": [],
           "geometry": {
             "horizontalOverflowPx": 0,
-            "scrollHeight": 2836,
+            "scrollHeight": 2922,
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 312.615,
+          "interactiveMs": 821.453,
           "memory": {
             "source": "unavailable"
           },
           "metrics": {
             "apiResourceCount": 1,
-            "apiTransferBytes": 346,
+            "apiTransferBytes": 793,
             "cls": 0,
-            "domContentLoadedMs": 137,
-            "fcpMs": 155,
+            "domContentLoadedMs": 252,
+            "fcpMs": 99,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 3,
-            "lcpMs": null,
-            "loadEventMs": 1218,
-            "resourceCount": 107,
-            "scriptEncodedBytes": 274879,
-            "ttfbMs": 50,
-            "transferBytes": 399913
+            "jsExecutionEstimateMs": 141,
+            "lcpMs": 930,
+            "loadEventMs": 480,
+            "resourceCount": 94,
+            "scriptEncodedBytes": 1083468,
+            "ttfbMs": 70,
+            "transferBytes": 216182
           },
           "path": "/symbol/AMD",
           "routeId": "symbol-amd",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/symbol-amd.png",
-          "settledMs": 3576.663,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 1235,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 234.547,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 89,
-            "fcpMs": 98,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 14,
-            "lcpMs": null,
-            "loadEventMs": 227,
-            "resourceCount": 101,
-            "scriptEncodedBytes": 35026,
-            "ttfbMs": 72,
-            "transferBytes": 158208
-          },
-          "path": "/history",
-          "routeId": "history",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/history.png",
-          "settledMs": 2010.335,
-          "status": "pass",
-          "targetLoadMs": 1000
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 1235,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 215.896,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 89,
-            "fcpMs": 99,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 9,
-            "lcpMs": null,
-            "loadEventMs": 744,
-            "resourceCount": 102,
-            "scriptEncodedBytes": 69282,
-            "ttfbMs": 72,
-            "transferBytes": 192982
-          },
-          "path": "/performance",
-          "routeId": "performance",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/performance.png",
-          "settledMs": 2533.222,
-          "status": "pass",
-          "targetLoadMs": 1000
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 5544,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 561.356,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 325,
-            "fcpMs": 262,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 132,
-            "lcpMs": null,
-            "loadEventMs": 459,
-            "resourceCount": 25,
-            "scriptEncodedBytes": 629,
-            "ttfbMs": 188,
-            "transferBytes": 11463
-          },
-          "path": "/macro",
-          "routeId": "macro",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/macro.png",
-          "settledMs": 1560.354,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 8562,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 297.48,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 183,
-            "fcpMs": 204,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 14,
-            "lcpMs": null,
-            "loadEventMs": 282,
-            "resourceCount": 25,
-            "scriptEncodedBytes": 0,
-            "ttfbMs": 164,
-            "transferBytes": 10525
-          },
-          "path": "/feed",
-          "routeId": "feed",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/feed.png",
-          "settledMs": 1163.85,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 6963,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 358.823,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 91,
-            "fcpMs": 132,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 10,
-            "lcpMs": null,
-            "loadEventMs": 235,
-            "resourceCount": 99,
-            "scriptEncodedBytes": 22966,
-            "ttfbMs": 66,
-            "transferBytes": 144612
-          },
-          "path": "/paper",
-          "routeId": "paper",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/paper.png",
-          "settledMs": 2144.529,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 1255,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 182.274,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 76,
-            "fcpMs": 84,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 4,
-            "lcpMs": null,
-            "loadEventMs": 680,
-            "resourceCount": 101,
-            "scriptEncodedBytes": 233614,
-            "ttfbMs": 52,
-            "transferBytes": 356632
-          },
-          "path": "/strategy-labs",
-          "routeId": "strategy-labs",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/strategy-labs.png",
-          "settledMs": 2489.786,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 1235,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 323.085,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 135,
-            "fcpMs": 150,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 23,
-            "lcpMs": null,
-            "loadEventMs": 216,
-            "resourceCount": 98,
-            "scriptEncodedBytes": 0,
-            "ttfbMs": 109,
-            "transferBytes": 120581
-          },
-          "path": "/alerts",
-          "routeId": "alerts",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/alerts.png",
-          "settledMs": 2053.283,
-          "status": "pass",
-          "targetLoadMs": 2500
-        },
-        {
-          "blockers": [],
-          "geometry": {
-            "horizontalOverflowPx": 0,
-            "scrollHeight": 15288,
-            "viewportHeight": 960,
-            "viewportWidth": 1440
-          },
-          "interactiveMs": 717.656,
-          "memory": {
-            "source": "unavailable"
-          },
-          "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
-            "cls": 0,
-            "domContentLoadedMs": 165,
-            "fcpMs": 356,
-            "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 40,
-            "lcpMs": null,
-            "loadEventMs": 573,
-            "resourceCount": 24,
-            "scriptEncodedBytes": 4150,
-            "ttfbMs": 105,
-            "transferBytes": 15030
-          },
-          "path": "/market-memory",
-          "routeId": "market-memory",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/market-memory.png",
-          "settledMs": 2025.619,
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/symbol-amd.png",
+          "settledMs": 2479.248,
           "status": "pass",
           "targetLoadMs": 2500
         },
@@ -2044,7 +1190,7 @@
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 173.481,
+          "interactiveMs": 291.159,
           "memory": {
             "source": "unavailable"
           },
@@ -2052,21 +1198,293 @@
             "apiResourceCount": 0,
             "apiTransferBytes": 0,
             "cls": 0,
-            "domContentLoadedMs": 91,
+            "domContentLoadedMs": 149,
+            "fcpMs": 90,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 21,
+            "lcpMs": 246,
+            "loadEventMs": 212,
+            "resourceCount": 93,
+            "scriptEncodedBytes": 1022729,
+            "ttfbMs": 64,
+            "transferBytes": 147015
+          },
+          "path": "/history",
+          "routeId": "history",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/history.png",
+          "settledMs": 1973.332,
+          "status": "pass",
+          "targetLoadMs": 1000
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1321,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 398.791,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 177,
             "fcpMs": 112,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 14,
-            "lcpMs": null,
-            "loadEventMs": 178,
-            "resourceCount": 13,
-            "scriptEncodedBytes": 0,
-            "ttfbMs": 73,
-            "transferBytes": 1791
+            "jsExecutionEstimateMs": 28,
+            "lcpMs": 123,
+            "loadEventMs": 283,
+            "resourceCount": 89,
+            "scriptEncodedBytes": 1059849,
+            "ttfbMs": 86,
+            "transferBytes": 185922
+          },
+          "path": "/performance",
+          "routeId": "performance",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/performance.png",
+          "settledMs": 2143.586,
+          "status": "pass",
+          "targetLoadMs": 1000
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 5748,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 557.618,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 313,
+            "fcpMs": 207,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 106,
+            "lcpMs": 212,
+            "loadEventMs": 318,
+            "resourceCount": 33,
+            "scriptEncodedBytes": 329390,
+            "ttfbMs": 175,
+            "transferBytes": 14008
+          },
+          "path": "/macro",
+          "routeId": "macro",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/macro.png",
+          "settledMs": 2344.226,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 8423,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 1130.47,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 267,
+            "fcpMs": 176,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 95,
+            "lcpMs": 193,
+            "loadEventMs": 282,
+            "resourceCount": 31,
+            "scriptEncodedBytes": 329390,
+            "ttfbMs": 155,
+            "transferBytes": 13042
+          },
+          "path": "/feed",
+          "routeId": "feed",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/feed.png",
+          "settledMs": 1388.706,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 7064,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 410.474,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 1,
+            "apiTransferBytes": 794,
+            "cls": 0,
+            "domContentLoadedMs": 175,
+            "fcpMs": 84,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 43,
+            "lcpMs": 109,
+            "loadEventMs": 201,
+            "resourceCount": 86,
+            "scriptEncodedBytes": 1010729,
+            "ttfbMs": 70,
+            "transferBytes": 134693
+          },
+          "path": "/paper",
+          "routeId": "paper",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/paper.png",
+          "settledMs": 1937.647,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1341,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 735.384,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 1,
+            "apiTransferBytes": 794,
+            "cls": 0,
+            "domContentLoadedMs": 190,
+            "fcpMs": 132,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 25,
+            "lcpMs": 140,
+            "loadEventMs": 294,
+            "resourceCount": 93,
+            "scriptEncodedBytes": 1214112,
+            "ttfbMs": 108,
+            "transferBytes": 346314
+          },
+          "path": "/strategy-labs",
+          "routeId": "strategy-labs",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/strategy-labs.png",
+          "settledMs": 2358.358,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1321,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 377.321,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 199,
+            "fcpMs": 110,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 31,
+            "lcpMs": 120,
+            "loadEventMs": 200,
+            "resourceCount": 86,
+            "scriptEncodedBytes": 987521,
+            "ttfbMs": 90,
+            "transferBytes": 111163
+          },
+          "path": "/alerts",
+          "routeId": "alerts",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/alerts.png",
+          "settledMs": 2348.162,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 15140,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 1194.808,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 230,
+            "fcpMs": 115,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 107,
+            "lcpMs": 167,
+            "loadEventMs": 272,
+            "resourceCount": 30,
+            "scriptEncodedBytes": 280649,
+            "ttfbMs": 101,
+            "transferBytes": 28938
+          },
+          "path": "/market-memory",
+          "routeId": "market-memory",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/market-memory.png",
+          "settledMs": 1472.232,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1324,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 265.284,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 145,
+            "fcpMs": 115,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 13,
+            "lcpMs": 116,
+            "loadEventMs": 174,
+            "resourceCount": 16,
+            "scriptEncodedBytes": 267212,
+            "ttfbMs": 81,
+            "transferBytes": 754
           },
           "path": "/status",
           "routeId": "status",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/status.png",
-          "settledMs": 1006.966,
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/status.png",
+          "settledMs": 1021.647,
           "status": "pass",
           "targetLoadMs": 2000
         },
@@ -2078,29 +1496,29 @@
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 181.972,
+          "interactiveMs": 242.354,
           "memory": {
             "source": "unavailable"
           },
           "metrics": {
-            "apiResourceCount": 0,
-            "apiTransferBytes": 0,
+            "apiResourceCount": 1,
+            "apiTransferBytes": 795,
             "cls": 0,
-            "domContentLoadedMs": 71,
-            "fcpMs": 80,
+            "domContentLoadedMs": 109,
+            "fcpMs": 70,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 4,
-            "lcpMs": null,
-            "loadEventMs": 181,
-            "resourceCount": 91,
-            "scriptEncodedBytes": 35992,
-            "ttfbMs": 52,
-            "transferBytes": 152148
+            "jsExecutionEstimateMs": 17,
+            "lcpMs": 79,
+            "loadEventMs": 166,
+            "resourceCount": 88,
+            "scriptEncodedBytes": 995656,
+            "ttfbMs": 55,
+            "transferBytes": 125984
           },
           "path": "/account",
           "routeId": "account",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/account.png",
-          "settledMs": 2017.9,
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/account.png",
+          "settledMs": 1841.619,
           "status": "pass",
           "targetLoadMs": 2500
         },
@@ -2112,7 +1530,7 @@
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 139.814,
+          "interactiveMs": 274.449,
           "memory": {
             "source": "unavailable"
           },
@@ -2120,21 +1538,603 @@
             "apiResourceCount": 0,
             "apiTransferBytes": 0,
             "cls": 0,
-            "domContentLoadedMs": 70,
-            "fcpMs": 77,
+            "domContentLoadedMs": 138,
+            "fcpMs": 94,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 13,
-            "lcpMs": null,
-            "loadEventMs": 190,
-            "resourceCount": 92,
-            "scriptEncodedBytes": 10743,
-            "ttfbMs": 53,
-            "transferBytes": 126672
+            "jsExecutionEstimateMs": 14,
+            "lcpMs": 100,
+            "loadEventMs": 174,
+            "resourceCount": 89,
+            "scriptEncodedBytes": 998854,
+            "ttfbMs": 74,
+            "transferBytes": 129634
           },
           "path": "/settings",
           "routeId": "settings",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/settings.png",
-          "settledMs": 1997.25,
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/settings.png",
+          "settledMs": 1756.079,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 2114,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 187.052,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 101,
+            "fcpMs": 70,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 11,
+            "lcpMs": 79,
+            "loadEventMs": 151,
+            "resourceCount": 72,
+            "scriptEncodedBytes": 987521,
+            "ttfbMs": 55,
+            "transferBytes": 90768
+          },
+          "path": "/support",
+          "routeId": "support",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/firefox/support.png",
+          "settledMs": 1450.387,
+          "status": "pass",
+          "targetLoadMs": 2500
+        }
+      ],
+      "startedAt": "2026-06-02T05:23:06.278Z",
+      "tracePath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/traces/firefox-trace.zip"
+    },
+    {
+      "apiTimings": [
+        {
+          "count": 18,
+          "errors": 0,
+          "path": "/api/analytics/events",
+          "p50Ms": 93.133,
+          "p95Ms": 154.325,
+          "p99Ms": 154.325
+        },
+        {
+          "count": 16,
+          "errors": 0,
+          "path": "/api/auth/me",
+          "p50Ms": 57.495,
+          "p95Ms": 71.813,
+          "p99Ms": 71.813
+        }
+      ],
+      "browserName": "webkit",
+      "consoleIssueCount": 0,
+      "consoleIssues": [],
+      "generatedAt": "2026-06-02T05:24:28.727Z",
+      "interactions": [],
+      "memory": {
+        "after": {
+          "source": "unavailable"
+        },
+        "before": {
+          "source": "unavailable"
+        }
+      },
+      "overallStatus": "ready",
+      "routes": [
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 2340,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 731.996,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 1,
+            "apiTransferBytes": 456,
+            "cls": 0,
+            "domContentLoadedMs": 152,
+            "fcpMs": 205,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 145,
+            "lcpMs": null,
+            "loadEventMs": 288,
+            "resourceCount": 96,
+            "scriptEncodedBytes": 977105,
+            "ttfbMs": -108,
+            "transferBytes": 1149054
+          },
+          "path": "/terminal",
+          "routeId": "terminal",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/terminal.png",
+          "settledMs": 2575.2,
+          "status": "pass",
+          "targetLoadMs": 2000
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1486,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 193.827,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 1,
+            "apiTransferBytes": 334,
+            "cls": 0,
+            "domContentLoadedMs": 119,
+            "fcpMs": 131,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 36,
+            "lcpMs": null,
+            "loadEventMs": 170,
+            "resourceCount": 97,
+            "scriptEncodedBytes": 0,
+            "ttfbMs": 65,
+            "transferBytes": 164974
+          },
+          "path": "/discover",
+          "routeId": "discover",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/discover.png",
+          "settledMs": 1955.056,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1296,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 184.65,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 100,
+            "fcpMs": 112,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 17,
+            "lcpMs": null,
+            "loadEventMs": 176,
+            "resourceCount": 98,
+            "scriptEncodedBytes": 3517,
+            "ttfbMs": 83,
+            "transferBytes": 135190
+          },
+          "path": "/scanner",
+          "routeId": "scanner",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/scanner.png",
+          "settledMs": 1991.523,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 2921,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 235.008,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 1,
+            "apiTransferBytes": 456,
+            "cls": 0,
+            "domContentLoadedMs": 153,
+            "fcpMs": 175,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 2,
+            "lcpMs": null,
+            "loadEventMs": 217,
+            "resourceCount": 102,
+            "scriptEncodedBytes": 96003,
+            "ttfbMs": 89,
+            "transferBytes": 226783
+          },
+          "path": "/symbol/AMD",
+          "routeId": "symbol-amd",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/symbol-amd.png",
+          "settledMs": 2069.117,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1320,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 237.058,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 90,
+            "fcpMs": 103,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 3,
+            "lcpMs": null,
+            "loadEventMs": 201,
+            "resourceCount": 101,
+            "scriptEncodedBytes": 27604,
+            "ttfbMs": 72,
+            "transferBytes": 157522
+          },
+          "path": "/history",
+          "routeId": "history",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/history.png",
+          "settledMs": 1942.708,
+          "status": "pass",
+          "targetLoadMs": 1000
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1320,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 162.847,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 79,
+            "fcpMs": 93,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 17,
+            "lcpMs": null,
+            "loadEventMs": 221,
+            "resourceCount": 101,
+            "scriptEncodedBytes": 72384,
+            "ttfbMs": 61,
+            "transferBytes": 202561
+          },
+          "path": "/performance",
+          "routeId": "performance",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/performance.png",
+          "settledMs": 2036.12,
+          "status": "pass",
+          "targetLoadMs": 1000
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 5737,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 350.436,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 205,
+            "fcpMs": 197,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 36,
+            "lcpMs": null,
+            "loadEventMs": 278,
+            "resourceCount": 30,
+            "scriptEncodedBytes": 616,
+            "ttfbMs": 149,
+            "transferBytes": 13918
+          },
+          "path": "/macro",
+          "routeId": "macro",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/macro.png",
+          "settledMs": 1240.277,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 8422,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 290.897,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 219,
+            "fcpMs": 207,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 1,
+            "lcpMs": null,
+            "loadEventMs": 272,
+            "resourceCount": 30,
+            "scriptEncodedBytes": 0,
+            "ttfbMs": 169,
+            "transferBytes": 13003
+          },
+          "path": "/feed",
+          "routeId": "feed",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/feed.png",
+          "settledMs": 1272.497,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 7048,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 259.24,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 108,
+            "fcpMs": 135,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 10,
+            "lcpMs": null,
+            "loadEventMs": 204,
+            "resourceCount": 98,
+            "scriptEncodedBytes": 23230,
+            "ttfbMs": 88,
+            "transferBytes": 151223
+          },
+          "path": "/paper",
+          "routeId": "paper",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/paper.png",
+          "settledMs": 2023.189,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1340,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 158.953,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 1,
+            "apiTransferBytes": 334,
+            "cls": 0,
+            "domContentLoadedMs": 83,
+            "fcpMs": 97,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 13,
+            "lcpMs": null,
+            "loadEventMs": 222,
+            "resourceCount": 101,
+            "scriptEncodedBytes": 226667,
+            "ttfbMs": 65,
+            "transferBytes": 356894
+          },
+          "path": "/strategy-labs",
+          "routeId": "strategy-labs",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/strategy-labs.png",
+          "settledMs": 2014.155,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1320,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 146.16,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 73,
+            "fcpMs": 88,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 16,
+            "lcpMs": null,
+            "loadEventMs": 154,
+            "resourceCount": 98,
+            "scriptEncodedBytes": 0,
+            "ttfbMs": 56,
+            "transferBytes": 127716
+          },
+          "path": "/alerts",
+          "routeId": "alerts",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/alerts.png",
+          "settledMs": 1931.932,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 15124,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 292.527,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 140,
+            "fcpMs": 136,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 2,
+            "lcpMs": null,
+            "loadEventMs": 228,
+            "resourceCount": 29,
+            "scriptEncodedBytes": 12792,
+            "ttfbMs": 76,
+            "transferBytes": 28919
+          },
+          "path": "/market-memory",
+          "routeId": "market-memory",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/market-memory.png",
+          "settledMs": 1234.907,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1321,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 229.433,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 171,
+            "fcpMs": 181,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 11,
+            "lcpMs": null,
+            "loadEventMs": 233,
+            "resourceCount": 15,
+            "scriptEncodedBytes": 0,
+            "ttfbMs": 152,
+            "transferBytes": 1767
+          },
+          "path": "/status",
+          "routeId": "status",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/status.png",
+          "settledMs": 1040.116,
+          "status": "pass",
+          "targetLoadMs": 2000
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 960,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 168.17,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 95,
+            "fcpMs": 114,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 15,
+            "lcpMs": null,
+            "loadEventMs": 190,
+            "resourceCount": 86,
+            "scriptEncodedBytes": 7730,
+            "ttfbMs": 64,
+            "transferBytes": 125454
+          },
+          "path": "/account",
+          "routeId": "account",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/account.png",
+          "settledMs": 1997.546,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 960,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 152.829,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 93,
+            "fcpMs": 104,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 3,
+            "lcpMs": null,
+            "loadEventMs": 207,
+            "resourceCount": 87,
+            "scriptEncodedBytes": 10931,
+            "ttfbMs": 73,
+            "transferBytes": 129131
+          },
+          "path": "/settings",
+          "routeId": "settings",
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/settings.png",
+          "settledMs": 2008.638,
           "status": "pass",
           "targetLoadMs": 2500
         },
@@ -2146,7 +2146,7 @@
             "viewportHeight": 960,
             "viewportWidth": 1440
           },
-          "interactiveMs": 206.586,
+          "interactiveMs": 164.316,
           "memory": {
             "source": "unavailable"
           },
@@ -2154,27 +2154,27 @@
             "apiResourceCount": 0,
             "apiTransferBytes": 0,
             "cls": 0,
-            "domContentLoadedMs": 82,
-            "fcpMs": 95,
+            "domContentLoadedMs": 83,
+            "fcpMs": 104,
             "hydrationMarkerCount": 0,
-            "jsExecutionEstimateMs": 14,
+            "jsExecutionEstimateMs": 13,
             "lcpMs": null,
-            "loadEventMs": 226,
-            "resourceCount": 89,
+            "loadEventMs": 164,
+            "resourceCount": 84,
             "scriptEncodedBytes": 0,
-            "ttfbMs": 64,
-            "transferBytes": 104891
+            "ttfbMs": 66,
+            "transferBytes": 107257
           },
           "path": "/support",
           "routeId": "support",
-          "screenshotPath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/support.png",
-          "settledMs": 2006.504,
+          "screenshotPath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/screenshots/webkit/support.png",
+          "settledMs": 2016.47,
           "status": "pass",
           "targetLoadMs": 2500
         }
       ],
-      "startedAt": "2026-05-28T01:44:37.801Z",
-      "tracePath": "/opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-28-2-route-performance/traces/webkit-trace.zip"
+      "startedAt": "2026-06-02T05:23:52.549Z",
+      "tracePath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-28-2-route-performance/traces/webkit-trace.zip"
     }
   ],
   "budgets": {
@@ -2207,18 +2207,18 @@
       "/support": 2500
     }
   },
-  "generatedAt": "2026-05-28T01:45:14.607Z",
+  "generatedAt": "2026-06-02T05:24:28.762Z",
   "overallStatus": "not_ready",
   "probeScope": "Production browser performance audit across major TradeVeto routes. Uses real browsers via Playwright against the configured base URL. Authentication is optional via TRADEVETO_PHASE275_COOKIE.",
-  "startedAt": "2026-05-28T01:42:50.393Z",
+  "startedAt": "2026-06-02T05:21:52.011Z",
   "blockers": [
-    "chromium scanner-filter: locator.waitFor: Timeout 4000ms exceeded.\nCall log:\n  - waiting for locator('[data-discovery-search-input=\\'true\\']').first() to be visible\n",
-    "chromium compare-open: locator.click: Timeout 4000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: /compare top/i }).first()\n",
+    "chromium scanner-filter: locator.waitFor: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-discovery-search-input=\\'true\\']').first() to be visible\u001b[22m\n",
+    "chromium compare-open: locator.click: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /compare top/i }).first()\u001b[22m\n",
     "chromium symbol-route-transition: page.waitForURL: Timeout 4000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n  navigated to \"https://tradeveto.com/discover\"\n============================================================",
-    "chromium chart-restore: locator.waitFor: Timeout 4000ms exceeded.\nCall log:\n  - waiting for locator('[data-chart-symbol=\\'AMD\\'][data-chart-workspace-loaded=\\'true\\']').first() to be visible\n",
-    "chromium fullscreen-chart-open: locator.click: Timeout 4000ms exceeded.\nCall log:\n  - waiting for locator('[data-chart-expand-trigger=\\'AMD\\']').first()\n",
-    "chromium chart-interaction: locator.click: Timeout 4000ms exceeded.\nCall log:\n  - waiting for locator('[data-chart-fullscreen-toolbar=\\'true\\']').getByRole('button', { name: /^compare$/i }).first()\n",
-    "chromium symbol-switch: locator.click: Timeout 4000ms exceeded.\nCall log:\n  - waiting for getByRole('button', { name: /next symbol/i }).first()\n",
-    "chromium symbol-search-open: locator.waitFor: Timeout 4000ms exceeded.\nCall log:\n  - waiting for locator('[data-symbol-search-input=\\'true\\']').first() to be visible\n"
+    "chromium chart-restore: locator.waitFor: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-chart-symbol=\\'AMD\\'][data-chart-workspace-loaded=\\'true\\']').first() to be visible\u001b[22m\n",
+    "chromium fullscreen-chart-open: locator.click: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-chart-expand-trigger=\\'AMD\\']').first()\u001b[22m\n",
+    "chromium chart-interaction: locator.click: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-chart-fullscreen-toolbar=\\'true\\']').getByRole('button', { name: /^compare$/i }).first()\u001b[22m\n",
+    "chromium symbol-switch: locator.click: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /next symbol/i }).first()\u001b[22m\n",
+    "chromium symbol-search-open: locator.waitFor: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-symbol-search-input=\\'true\\']').first() to be visible\u001b[22m\n"
   ]
 }

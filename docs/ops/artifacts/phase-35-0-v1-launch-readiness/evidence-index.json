@@ -1,0 +1,162 @@
+{
+  "generatedAt": "2026-06-02T05:28:22.640Z",
+  "source": "Phase 35.0 launch readiness recertification evidence index",
+  "productionCommit": "8ac3767",
+  "finalVerdict": "NOT_READY",
+  "launchReadinessOutcome": "NOT READY",
+  "productionSmoke": {
+    "verdict": "PASS",
+    "generatedAt": "2026-06-02T05:26:53.979Z",
+    "routeCount": 11,
+    "failedRoutes": []
+  },
+  "gates": {
+    "retention": {
+      "verdict": "FAIL",
+      "status": "strong_partial",
+      "generatedAt": "2026-06-02T05:19:29.097Z",
+      "sampleSize": {
+        "actors": 999,
+        "filteredActors": 17,
+        "realActors": 982,
+        "segments": {
+          "admin_internal_filtered": 1,
+          "anonymous_users": 784,
+          "free_authenticated": 1,
+          "founding_paid": 197,
+          "probe_noise_filtered": 16
+        }
+      },
+      "d1Percent": 0.8146639511201629,
+      "d2Percent": 0.40774719673802245,
+      "d7Percent": 0,
+      "d30Percent": null,
+      "activeDay2PlusPercent": 0.8146639511201629,
+      "blockers": [
+        "D1 retention is 0.815%, below 20%.",
+        "D7 retention is 0%, below 10%.",
+        "No elapsed D30 cohort is available.",
+        "D30 retention is N/A, below 5%.",
+        "2+ active-day rate is 0.815%, below 15%."
+      ]
+    },
+    "mobile": {
+      "verdict": "FAIL",
+      "evidenceDocument": "docs/ops/phase-34-2-mobile-certification-closure.md",
+      "reason": "Required real-device evidence remains missing for iPhone Safari, Android Chrome, iPad Safari, Facebook in-app browser, and Instagram in-app browser."
+    },
+    "providerTrust": {
+      "verdict": "FAIL",
+      "status": "not_ready",
+      "generatedAt": "2026-06-02T05:20:31.679Z",
+      "ratesSlaStatus": "within-sla",
+      "sourceCompletenessPct": 100,
+      "availabilitySuccessPct": 100,
+      "limitedOrUnmeasuredDomains": [
+        {
+          "domain": "crypto-events",
+          "availability": "unavailable",
+          "operationalState": "limited",
+          "freshnessSlaStatus": "not-measured",
+          "itemCount": 0
+        }
+      ],
+      "blockers": [
+        "provider freshness certification strong-partial",
+        "certification blocker: limited provider domains: crypto-events",
+        "certification blocker: freshness SLA unmeasured: crypto-events"
+      ]
+    },
+    "revenue": {
+      "verdict": "FAIL",
+      "status": "strong_partial",
+      "generatedAt": "2026-06-02T05:20:57.912Z",
+      "funnel": {
+        "activatedUsers": 2,
+        "freeUsers": 8,
+        "freeToPaidConversions": 2,
+        "paidUsers": 2,
+        "retainedPaidUsers": 0,
+        "signups": 10,
+        "trialToPaidConversions": 0,
+        "trialUsers": 0,
+        "visitorActors": 979
+      },
+      "economics": {
+        "arpuCents": null,
+        "arrCents": null,
+        "cacCents": null,
+        "campaignRevenueCents": null,
+        "campaignSpendCents": null,
+        "ltvBaselineCents": null,
+        "monthlyPriceCents": null,
+        "mrrCents": null
+      },
+      "gates": {
+        "arpuBaseline": false,
+        "firstPaidCustomers": true,
+        "freeToPaidEvidence": true,
+        "ltvBaseline": false,
+        "realAcquisitionCampaignEvidence": false,
+        "trialToPaidEvidence": false
+      },
+      "blockers": [
+        "No trial-to-paid conversion evidence is proven.",
+        "ARPU is unproven because no trusted live MRR or monthly price amount is available.",
+        "LTV baseline is unproven because no retained paid renewal/churn evidence is available.",
+        "No real acquisition campaign traffic, conversion, cost, or revenue evidence is present."
+      ]
+    },
+    "disasterRecovery": {
+      "verdict": "PARTIAL",
+      "restoreDrillPassed": true,
+      "restoreDrillLog": "docs/ops/artifacts/phase-35-0-v1-launch-readiness/disaster-recovery-restore-drill.log",
+      "reason": "Backup restore drill passed, but full application/failover/container/R2 disaster recovery certification is not fully proven by Phase 35 evidence."
+    },
+    "security": {
+      "verdict": "PARTIAL",
+      "dependencyAudit": {
+        "command": "npm --prefix frontend audit --omit=dev",
+        "vulnerabilities": 0
+      },
+      "reason": "Dependency audit is clean; full OWASP/privilege escalation/premium bypass recertification has no fresh independent Phase 35 evidence artifact."
+    },
+    "performance": {
+      "verdict": "FAIL",
+      "routePerformanceStatus": "not_ready",
+      "routePerformanceGeneratedAt": "2026-06-02T05:24:28.762Z",
+      "routePerformanceBlockerCount": 8,
+      "scaleOverallStatus": "ready",
+      "scaleGeneratedAt": "2026-05-28T09:37:15.582Z",
+      "chartSymbolOverallStatus": "ready",
+      "chartSymbolGeneratedAt": "2026-05-30T14:27:04.482Z",
+      "blockers": [
+        "chromium scanner-filter: locator.waitFor: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-discovery-search-input=\\'true\\']').first() to be visible\u001b[22m\n",
+        "chromium compare-open: locator.click: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /compare top/i }).first()\u001b[22m\n",
+        "chromium symbol-route-transition: page.waitForURL: Timeout 4000ms exceeded.\n=========================== logs ===========================\nwaiting for navigation until \"load\"\n  navigated to \"https://tradeveto.com/discover\"\n============================================================",
+        "chromium chart-restore: locator.waitFor: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-chart-symbol=\\'AMD\\'][data-chart-workspace-loaded=\\'true\\']').first() to be visible\u001b[22m\n",
+        "chromium fullscreen-chart-open: locator.click: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-chart-expand-trigger=\\'AMD\\']').first()\u001b[22m\n",
+        "chromium chart-interaction: locator.click: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-chart-fullscreen-toolbar=\\'true\\']').getByRole('button', { name: /^compare$/i }).first()\u001b[22m\n",
+        "chromium symbol-switch: locator.click: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: /next symbol/i }).first()\u001b[22m\n",
+        "chromium symbol-search-open: locator.waitFor: Timeout 4000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('[data-symbol-search-input=\\'true\\']').first() to be visible\u001b[22m\n"
+      ]
+    },
+    "ai": {
+      "verdict": "PASS",
+      "copilotStatus": "ready",
+      "predictiveStatus": "ready",
+      "moatStatus": "ready",
+      "noFabricationBoundaries": {
+        "copilotNoFakeMarketClaims": true,
+        "predictiveNoFabricatedCertainty": true,
+        "moatNoUnsupportedClaims": true
+      }
+    },
+    "competitive": {
+      "verdict": "PASS",
+      "status": "ready",
+      "generatedAt": "2026-05-30T16:45:22.922Z",
+      "finalVerdict": "TRADEVETO CATEGORY LEADER STATUS ACHIEVED"
+    }
+  }
+}

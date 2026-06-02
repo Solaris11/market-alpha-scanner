@@ -1079,11 +1079,11 @@
     },
     "verdict": "forensics_ready_targets_not_met"
   },
-  "generatedAt": "2026-06-02T04:39:02.067Z",
+  "generatedAt": "2026-06-02T05:19:29.097Z",
   "lookbackDays": 120,
   "noSyntheticCohortDataCreated": true,
   "proofBoundary": "This probe reads production analytics only. It does not create users, create events, backfill cohorts, count probe/admin actors, or convert same-day activity into elapsed D1/D7/D30 retention.",
-  "queryLatencyMs": 10004,
+  "queryLatencyMs": 9840,
   "returnTriggers": [
     {
       "evidenceEvents": 10,
@@ -1134,7 +1134,7 @@
       "probe_noise_filtered": 16
     }
   },
-  "startedAt": "2026-06-02T04:38:52.054Z",
+  "startedAt": "2026-06-02T05:19:19.248Z",
   "status": "strong_partial",
   "targets": {
     "d1RetentionPct": 20,
