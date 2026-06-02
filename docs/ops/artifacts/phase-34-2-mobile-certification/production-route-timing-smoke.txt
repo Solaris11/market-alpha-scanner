@@ -1,0 +1,17 @@
+Production host: sre@100.68.155.121
+Production path: /opt/apps/market-alpha-scanner/app
+Commit: f8d2afc04721b505a20ef2b0165844c9c1f9bc95
+Generated: 2026-06-02T04:43:18Z
+Target: https://tradeveto.com
+Note: HTTP timing smoke only; not real-device certification.
+route                status total_s    ttfb_s     connect_s  bytes     
+/                    200    0.622255   0.342246   0.073296   357298    
+/discover            200    0.258250   0.257835   0.045358   57336     
+/scanner             200    0.340077   0.299985   0.045360   53265     
+/symbol/AMD          200    0.430987   0.289191   0.060028   113317    
+/terminal            200    0.409483   0.313977   0.047073   108374    
+/feed                200    0.588413   0.480982   0.062963   175524    
+/history             200    0.500996   0.458139   0.048063   78330     
+/performance         200    0.283209   0.257983   0.021366   79014     
+/alerts              200    0.237176   0.225745   0.036038   57993     
+/account             200    0.358389   0.321119   0.096937   55209     
