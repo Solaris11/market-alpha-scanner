@@ -7,6 +7,7 @@ import { getLiveIntelligenceStreamHealthSnapshot, type LiveIntelligenceStreamHea
 import { getLiveIntelligencePerformanceSnapshot } from "@/lib/live-intelligence-performance";
 import { llmBudgetCapsFromEnv } from "@/lib/llm-cost-policy";
 import { getScanDataHealth } from "@/lib/scanner-data";
+import { buildRevenueValidationReport, type AcquisitionCampaignInput, type RevenueValidationReport } from "@/lib/revenue-validation";
 import { buildEvidenceDepthSummary, type EvidenceDepthDuplicateCheck, type EvidenceDepthSummary, type EvidenceDepthSymbol, type EvidenceDepthTableCount, type EvidenceDepthWindow } from "@/lib/trading/evidence-depth";
 import { buildScoreCalibrationSystem, type CalibrationAxisDirection, type ScoreCalibrationAnomaly, type ScoreCalibrationAnomalyType, type ScoreCalibrationBucketInput, type ScoreCalibrationSystem } from "@/lib/trading/score-calibration";
 import { certificationGateStatusFromEvent, type CertificationGateStatus } from "@/lib/production-trust-status";
@@ -328,6 +329,26 @@ type BillingEventRow = QueryResultRow & {
   stripe_mode: string | null;
   user_id: string | null;
 };
+type RevenueFunnelRow = QueryResultRow & {
+  activated_users: string | number;
+  free_to_paid_conversions: string | number;
+  free_users: string | number;
+  paid_users: string | number;
+  retained_paid_users: string | number;
+  signups: string | number;
+  trial_to_paid_conversions: string | number;
+  trial_users: string | number;
+  visitor_actors: string | number;
+};
+type RevenueCampaignRow = QueryResultRow & {
+  campaign: string | null;
+  paid_conversions: string | number;
+  revenue_cents: string | number | null;
+  signups: string | number;
+  source: string | null;
+  spend_cents: string | number | null;
+  visitors: string | number;
+};
 type AlertByUserRow = QueryResultRow & {
   active: string | number;
   email: string | null;
@@ -638,8 +659,8 @@ export async function listAdminUsers(input: { role?: string | null; search?: str
   }));
 }
 
-export async function listAdminBilling(): Promise<{ events: BillingEventSummary[]; subscriptions: AdminBillingItem[] }> {
-  const [subscriptions, events] = await Promise.all([
+export async function listAdminBilling(): Promise<{ events: BillingEventSummary[]; revenue: RevenueValidationReport; subscriptions: AdminBillingItem[] }> {
+  const [subscriptions, events, revenue] = await Promise.all([
     dbQuery<BillingRow>(
       `
         SELECT
@@ -661,9 +682,11 @@ export async function listAdminBilling(): Promise<{ events: BillingEventSummary[
       `,
     ),
     recentBillingEvents(30),
+    getRevenueValidationSummary(),
   ]);
   return {
     events,
+    revenue,
     subscriptions: subscriptions.rows.map((row) => ({
       cancelAt: row.cancel_at,
       cancelAtPeriodEnd: Boolean(row.cancel_at_period_end),
@@ -678,6 +701,30 @@ export async function listAdminBilling(): Promise<{ events: BillingEventSummary[
       userId: row.user_id,
     })),
   };
+}
+
+export async function getRevenueValidationSummary(lookbackDays = 90): Promise<RevenueValidationReport> {
+  const boundedLookback = Math.max(1, Math.min(365, Math.trunc(lookbackDays)));
+  const [funnel, campaigns] = await Promise.all([
+    revenueFunnelCounts(boundedLookback),
+    revenueCampaignRows(boundedLookback),
+  ]);
+  const campaignSpendCents = sumNullableMoney(campaigns.map((campaign) => campaign.spendCents));
+  const campaignRevenueCents = sumNullableMoney(campaigns.map((campaign) => campaign.revenueCents));
+  return buildRevenueValidationReport({
+    campaigns,
+    economics: {
+      campaignPaidConversions: campaigns.reduce((sum, campaign) => sum + campaign.paidConversions, 0),
+      campaignRevenueCents,
+      campaignSpendCents,
+      ltvBaselineCents: revenueEnvCents("TRADEVETO_REVENUE_LTV_BASELINE_CENTS"),
+      monthlyPriceCents: revenueEnvCents("TRADEVETO_REVENUE_MONTHLY_PRICE_CENTS") ?? revenueEnvCents("STRIPE_MONTHLY_PRICE_CENTS"),
+      mrrCents: revenueEnvCents("TRADEVETO_REVENUE_MRR_CENTS"),
+    },
+    funnel,
+    generatedAt: new Date().toISOString(),
+    lookbackDays: boundedLookback,
+  });
 }
 
 export async function getAdminAlertSummary(): Promise<AdminAlertSummary> {
@@ -1488,6 +1535,174 @@ async function recentBillingEvents(limit: number): Promise<BillingEventSummary[]
   return result.rows.map((row) => ({ createdAt: row.created_at, eventType: row.event_type, id: row.id, stripeEventId: row.stripe_event_id, stripeMode: row.stripe_mode, userId: row.user_id }));
 }
 
+async function revenueFunnelCounts(lookbackDays: number): Promise<RevenueValidationReport["funnel"]> {
+  const result = await dbQuery<RevenueFunnelRow>(
+    `
+      WITH real_users AS (
+        SELECT u.id, u.created_at
+        FROM users u
+        WHERE COALESCE(u.role, '') <> 'admin'
+          AND lower(COALESCE(u.email, '')) NOT LIKE '%@tradeveto-probe.local'
+      ),
+      real_events AS (
+        SELECT
+          ae.user_id,
+          COALESCE(ae.user_id::text, ae.anonymous_id_hash, ae.session_id_hash, ae.id::text) AS actor_key,
+          ae.event_name,
+          ae.occurred_at
+        FROM analytics_events ae
+        LEFT JOIN users u ON u.id = ae.user_id
+        WHERE ae.occurred_at >= now() - ($1::int * interval '1 day')
+          AND COALESCE(u.role, '') <> 'admin'
+          AND lower(COALESCE(u.email, '')) NOT LIKE '%@tradeveto-probe.local'
+          AND COALESCE(ae.source, '') NOT ILIKE '%probe%'
+      ),
+      live_subscriptions AS (
+        SELECT s.*
+        FROM user_subscriptions s
+        JOIN real_users u ON u.id = s.user_id
+        WHERE COALESCE(s.stripe_mode, 'live') = 'live'
+      ),
+      paid_subscriptions AS (
+        SELECT *
+        FROM live_subscriptions
+        WHERE status = 'active'
+          AND plan = 'premium'
+          AND current_period_end > now()
+          AND stripe_subscription_id IS NOT NULL
+      ),
+      trial_subscriptions AS (
+        SELECT *
+        FROM live_subscriptions
+        WHERE status = 'trialing'
+          AND plan = 'premium'
+          AND current_period_end > now()
+          AND stripe_subscription_id IS NOT NULL
+      ),
+      live_billing_events AS (
+        SELECT be.*
+        FROM billing_events be
+        LEFT JOIN users u ON u.id = be.user_id
+        WHERE COALESCE(be.stripe_mode, 'live') = 'live'
+          AND COALESCE(u.role, '') <> 'admin'
+          AND lower(COALESCE(u.email, '')) NOT LIKE '%@tradeveto-probe.local'
+      )
+      SELECT
+        (SELECT count(DISTINCT actor_key) FROM real_events WHERE event_name IN ('page_view', 'landing_open', 'organic_search_visit', 'organic_growth_visit', 'search_landing_open', 'invite_opened', 'share_asset_opened')) AS visitor_actors,
+        (SELECT count(*) FROM real_users WHERE created_at >= now() - ($1::int * interval '1 day')) AS signups,
+        (SELECT count(DISTINCT user_id) FROM real_events WHERE user_id IS NOT NULL AND event_name IN ('activation_milestone', 'activation_score_update', 'onboarding_complete', 'first_useful_action')) AS activated_users,
+        (SELECT count(*) FROM real_users u WHERE NOT EXISTS (SELECT 1 FROM paid_subscriptions p WHERE p.user_id = u.id)) AS free_users,
+        (SELECT count(*) FROM trial_subscriptions) AS trial_users,
+        (SELECT count(*) FROM paid_subscriptions) AS paid_users,
+        (
+          SELECT count(*)
+          FROM paid_subscriptions p
+          WHERE EXISTS (
+            SELECT 1
+            FROM real_events e
+            WHERE e.user_id = p.user_id
+              AND e.occurred_at::date >= p.created_at::date + 1
+          )
+        ) AS retained_paid_users,
+        (
+          SELECT count(DISTINCT user_id)
+          FROM real_events
+          WHERE user_id IS NOT NULL
+            AND event_name = 'trial_to_paid_conversion'
+        ) AS trial_to_paid_conversions,
+        (
+          SELECT count(DISTINCT user_id)
+          FROM live_billing_events
+          WHERE user_id IS NOT NULL
+            AND event_type = 'checkout.session.completed'
+            AND COALESCE(payload_summary->>'status', '') = 'active'
+        ) + (
+          SELECT count(DISTINCT user_id)
+          FROM real_events
+          WHERE user_id IS NOT NULL
+            AND event_name IN ('free_to_paid_conversion', 'referral_paid_conversion', 'organic_paid_conversion')
+        ) AS free_to_paid_conversions
+    `,
+    [lookbackDays],
+  ).catch(() => ({ rows: [] as RevenueFunnelRow[] }));
+  const row = result.rows[0];
+  return {
+    activatedUsers: toNumber(row?.activated_users),
+    freeToPaidConversions: toNumber(row?.free_to_paid_conversions),
+    freeUsers: toNumber(row?.free_users),
+    paidUsers: toNumber(row?.paid_users),
+    retainedPaidUsers: toNumber(row?.retained_paid_users),
+    signups: toNumber(row?.signups),
+    trialToPaidConversions: toNumber(row?.trial_to_paid_conversions),
+    trialUsers: toNumber(row?.trial_users),
+    visitorActors: toNumber(row?.visitor_actors),
+  };
+}
+
+async function revenueCampaignRows(lookbackDays: number): Promise<AcquisitionCampaignInput[]> {
+  const result = await dbQuery<RevenueCampaignRow>(
+    `
+      WITH campaign_events AS (
+        SELECT
+          COALESCE(NULLIF(ae.metadata->>'utmSource', ''), NULLIF(ae.metadata->>'source', ''), NULLIF(ae.source, ''), 'unknown') AS source,
+          COALESCE(NULLIF(ae.metadata->>'utmCampaign', ''), NULLIF(ae.metadata->>'campaign', ''), NULLIF(ae.metadata->>'referralCode', ''), NULLIF(ae.metadata->>'organicSource', ''), 'unknown') AS campaign,
+          COALESCE(ae.user_id::text, ae.anonymous_id_hash, ae.session_id_hash, ae.id::text) AS actor_key,
+          ae.user_id,
+          ae.event_name,
+          ae.metadata
+        FROM analytics_events ae
+        LEFT JOIN users u ON u.id = ae.user_id
+        WHERE ae.occurred_at >= now() - ($1::int * interval '1 day')
+          AND COALESCE(u.role, '') <> 'admin'
+          AND lower(COALESCE(u.email, '')) NOT LIKE '%@tradeveto-probe.local'
+          AND COALESCE(ae.source, '') NOT ILIKE '%probe%'
+          AND (
+            ae.event_name IN (
+              'organic_growth_visit',
+              'organic_search_visit',
+              'search_landing_open',
+              'invite_opened',
+              'invite_sent',
+              'referral_signup',
+              'organic_signup',
+              'referral_paid_conversion',
+              'organic_paid_conversion',
+              'share_asset_opened',
+              'share_asset_click',
+              'founding_checkout_start'
+            )
+            OR ae.metadata ? 'utmSource'
+            OR ae.metadata ? 'utmCampaign'
+            OR ae.metadata ? 'campaignSpendCents'
+            OR ae.metadata ? 'campaignRevenueCents'
+          )
+      )
+      SELECT
+        source,
+        campaign,
+        count(DISTINCT actor_key) FILTER (WHERE event_name IN ('organic_growth_visit', 'organic_search_visit', 'search_landing_open', 'invite_opened', 'share_asset_opened', 'share_asset_click')) AS visitors,
+        count(DISTINCT user_id) FILTER (WHERE user_id IS NOT NULL AND event_name IN ('referral_signup', 'organic_signup', 'early_access_signup_complete')) AS signups,
+        count(DISTINCT user_id) FILTER (WHERE user_id IS NOT NULL AND event_name IN ('referral_paid_conversion', 'organic_paid_conversion', 'free_to_paid_conversion')) AS paid_conversions,
+        sum(CASE WHEN metadata ? 'campaignSpendCents' AND metadata->>'campaignSpendCents' ~ '^[0-9]+$' THEN (metadata->>'campaignSpendCents')::bigint ELSE NULL END) AS spend_cents,
+        sum(CASE WHEN metadata ? 'campaignRevenueCents' AND metadata->>'campaignRevenueCents' ~ '^[0-9]+$' THEN (metadata->>'campaignRevenueCents')::bigint ELSE NULL END) AS revenue_cents
+      FROM campaign_events
+      GROUP BY source, campaign
+      ORDER BY paid_conversions DESC, signups DESC, visitors DESC
+      LIMIT 25
+    `,
+    [lookbackDays],
+  ).catch(() => ({ rows: [] as RevenueCampaignRow[] }));
+  return result.rows.map((row) => ({
+    campaign: row.campaign ?? "unknown",
+    paidConversions: toNumber(row.paid_conversions),
+    revenueCents: toNullableNumber(row.revenue_cents),
+    signups: toNumber(row.signups),
+    source: row.source ?? "unknown",
+    spendCents: toNullableNumber(row.spend_cents),
+    visitors: toNumber(row.visitors),
+  }));
+}
+
 async function recentMonitoringWarnings(limit: number): Promise<MonitoringEventSummary[]> {
   const result = await dbQuery<MonitoringEventRow>(
     `
@@ -1537,6 +1752,19 @@ function cleanSearch(value: string | null | undefined): string | null {
   const text = String(value ?? "").trim();
   if (!text) return null;
   return text.slice(0, 160);
+}
+
+function revenueEnvCents(name: string): number | null {
+  const raw = process.env[name]?.trim();
+  if (!raw || !/^[0-9]+$/.test(raw)) return null;
+  const parsed = Number.parseInt(raw, 10);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function sumNullableMoney(values: Array<number | null>): number | null {
+  const measured = values.filter((value): value is number => value !== null);
+  if (!measured.length) return null;
+  return measured.reduce((sum, value) => sum + value, 0);
 }
 
 function toNumber(value: string | number | null | undefined): number {
