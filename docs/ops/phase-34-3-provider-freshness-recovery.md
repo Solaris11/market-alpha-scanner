@@ -84,6 +84,67 @@ Expected production proof:
 
 - `provider-reliability-proof.json`
 
+Production proof captured:
+
+- `docs/ops/artifacts/phase-34-3-provider-freshness/provider-reliability-proof.json`
+
+## Production Deployment
+
+- Commit deployed: `60f78f0`
+- Production pull: complete
+- Rebuilt containers: `market-alpha-frontend`, `market-alpha-frontend-hot-api`
+- Container status: both healthy
+- `/api/health`: pass
+- `/api/health/deep`: pass
+
+## Production Provider Proof
+
+Run time: `2026-06-02T04:56:01.500Z`
+
+Summary:
+
+- Authenticated route covered: yes
+- Baseline samples: 3
+- Success rate: 100%
+- Failure rate: 0%
+- Latency samples: 6800 ms, 6761 ms, 6845 ms
+- p50: 6800 ms
+- p95: 6845 ms
+- Source trust: pass
+- Source completeness: 100%
+- Context completeness: 100%
+- Outage simulation: fallback visible and recovery visible
+
+Rates SLA:
+
+- Status: restored
+- Domain state: active
+- SLA status: within-sla
+- Age: 456 minutes
+- SLA: 1440 minutes
+- Provider: SEC EDGAR 8-K Filings, U.S. Treasury
+- Disclosure: Rates source-linked provider row is 456m old against a 1440m freshness SLA.
+
+Provider domain audit:
+
+- macro: within-sla
+- rates: within-sla
+- inflation: within-sla
+- earnings: within-sla
+- economic-calendar: within-sla
+- analyst-actions: within-sla
+- dividends: within-sla
+- geopolitical-events: within-sla
+- company-events: within-sla
+- sector-events: within-sla
+- crypto-events: limited / not-measured
+
+## Remaining Blockers
+
+Provider readiness is not fully certified because `crypto-events` remains limited and freshness SLA is unmeasured. This is not a rates blocker, but it prevents the provider-source-trust certification from returning `ready`.
+
 ## Current Verdict
 
-Pending production deployment and provider freshness proof.
+TRADEVETO PROVIDER FRESHNESS RECOVERY STRONG PARTIAL ACCOMPLISHED
+
+Reason: the Phase 33 rates SLA blocker is recovered with source-linked U.S. Treasury evidence, source trust is passing, and outage fallback/recovery proof passes. Full provider readiness is not certified because crypto-event coverage remains limited/not-measured.
