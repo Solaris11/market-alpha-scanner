@@ -60,12 +60,12 @@ npm --prefix frontend run probe:phase34:revenue-validation:docker
 
 | Gate | Requirement | Status |
 | --- | --- | --- |
-| First paid customers | At least one live-mode active Stripe premium subscription | Pending production proof |
-| Trial-to-paid evidence | Explicit trial-to-paid telemetry | Pending production proof |
-| Free-to-paid evidence | Live checkout completion or paid conversion telemetry | Pending production proof |
-| ARPU baseline | Live MRR or trusted monthly price amount plus paid customer count | Pending production proof |
-| LTV baseline | Retained paid renewal/churn evidence or explicit real billing baseline | Pending production proof |
-| Acquisition campaign evidence | Real campaign traffic/conversion/cost/revenue telemetry | Pending production proof |
+| First paid customers | At least one live-mode active Stripe premium subscription | Proven: 2 live paid users |
+| Trial-to-paid evidence | Explicit trial-to-paid telemetry | Not proven: 0 trial-to-paid conversions |
+| Free-to-paid evidence | Live checkout completion or paid conversion telemetry | Proven: 2 free-to-paid conversions |
+| ARPU baseline | Live MRR or trusted monthly price amount plus paid customer count | Not proven: no trusted live MRR/monthly price amount |
+| LTV baseline | Retained paid renewal/churn evidence or explicit real billing baseline | Not proven: retained paid users = 0 |
+| Acquisition campaign evidence | Real campaign traffic/conversion/cost/revenue telemetry | Not proven: no campaign evidence rows |
 
 ## Acquisition Campaigns
 
@@ -85,8 +85,46 @@ Product Hunt, Reddit, X, Discord, and trading-community campaigns are not marked
 
 ## Production Validation
 
-Pending production deployment and probe.
+- Deployed commit: `d4c01d82`.
+- Production pull: `git pull --ff-only origin main` completed.
+- Production rebuild: `docker compose --env-file .env up -d --build market-alpha-frontend market-alpha-frontend-hot-api` completed.
+- Production smoke:
+  - `/api/health`: `200`
+  - `/api/health/deep`: `200`
+  - `/terminal`: `200`
+  - `/pricing`: `200`
+  - `/account`: `200`
+- Revenue probe:
+  - command: `npm --prefix frontend run probe:phase34:revenue-validation:docker`
+  - artifact: `docs/ops/artifacts/phase-34-4-revenue-validation/monetization-proof.json`
+  - probe status: `strong_partial`
+
+## Production Metrics
+
+| Metric | Value |
+| --- | ---: |
+| Visitor actors | 979 |
+| Signups | 10 |
+| Activated users | 2 |
+| Trial users | 0 |
+| Live paid users | 2 |
+| Retained paid users | 0 |
+| Free-to-paid conversions | 2 |
+| Trial-to-paid conversions | 0 |
+| Visitor-to-signup | 1.02% |
+| Signup-to-activated | 20.00% |
+| Free-to-paid | 25.00% |
+| Paid retention | 0.00% |
+
+## Remaining Blockers
+
+- No trial-to-paid conversion evidence is proven.
+- ARPU is unproven because no trusted live MRR or monthly price amount is available.
+- LTV baseline is unproven because no retained paid renewal/churn evidence is available.
+- No real acquisition campaign traffic, conversion, cost, or revenue evidence is present.
 
 ## Verdict
 
-Pending production proof.
+**STRONG PARTIAL ACCOMPLISHED**
+
+TradeVeto now has production evidence of first paid customers and free-to-paid conversion, but Phase 34.4 is not fully revenue validated because ARPU, LTV, CAC, trial-to-paid conversion, and campaign-backed acquisition evidence remain unproven.

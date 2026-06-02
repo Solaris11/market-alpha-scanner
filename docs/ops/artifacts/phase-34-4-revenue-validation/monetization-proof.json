@@ -1,0 +1,62 @@
+{
+  "acquisitionCampaignExecution": "The probe reads real acquisition telemetry only. Product Hunt, Reddit, X, Discord, and trading community campaigns are not marked run unless their traffic/conversion/cost events exist in production analytics.",
+  "durationMs": 43,
+  "report": {
+    "blockers": [
+      "No trial-to-paid conversion evidence is proven.",
+      "ARPU is unproven because no trusted live MRR or monthly price amount is available.",
+      "LTV baseline is unproven because no retained paid renewal/churn evidence is available.",
+      "No real acquisition campaign traffic, conversion, cost, or revenue evidence is present."
+    ],
+    "campaigns": [],
+    "economics": {
+      "arpuCents": null,
+      "arrCents": null,
+      "cacCents": null,
+      "campaignRevenueCents": null,
+      "campaignSpendCents": null,
+      "ltvBaselineCents": null,
+      "monthlyPriceCents": null,
+      "mrrCents": null
+    },
+    "funnel": {
+      "activatedUsers": 2,
+      "freeUsers": 8,
+      "freeToPaidConversions": 2,
+      "paidUsers": 2,
+      "retainedPaidUsers": 0,
+      "signups": 10,
+      "trialToPaidConversions": 0,
+      "trialUsers": 0,
+      "visitorActors": 979
+    },
+    "generatedAt": "2026-06-02T05:17:02.544Z",
+    "gates": {
+      "arpuBaseline": false,
+      "firstPaidCustomers": true,
+      "freeToPaidEvidence": true,
+      "ltvBaseline": false,
+      "realAcquisitionCampaignEvidence": false,
+      "trialToPaidEvidence": false
+    },
+    "lookbackDays": 90,
+    "noSyntheticRevenueDataCreated": true,
+    "proofBoundary": "Revenue validation reads first-party analytics, live-mode Stripe subscription state, billing lifecycle events, and explicit campaign metadata only. It does not create customers, backfill conversions, infer paid users from test-mode subscriptions, or fabricate campaign spend.",
+    "rates": {
+      "freeToPaidPct": 25,
+      "paidRetentionPct": 0,
+      "signupToActivatedPct": 20,
+      "trialToPaidPct": null,
+      "visitorToSignupPct": 1.02
+    },
+    "status": "strong_partial"
+  },
+  "startedAt": "2026-06-02T05:17:02.501Z",
+  "successCriteria": {
+    "arpuBaseline": "ARPU requires live MRR or a trusted monthly price amount plus live paid customers.",
+    "firstPaidCustomers": "At least one live-mode active Stripe subscription with premium plan and a current period end in the future.",
+    "freeToPaidEvidence": "Live checkout completion or paid conversion telemetry tied to a user.",
+    "ltvBaseline": "Retained paid renewal/churn evidence or an explicitly provided baseline from real billing data.",
+    "trialToPaidEvidence": "Explicit trial-to-paid telemetry only; generic invoice success is not relabeled as trial conversion."
+  }
+}
