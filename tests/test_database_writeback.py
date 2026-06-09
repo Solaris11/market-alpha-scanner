@@ -1,10 +1,24 @@
 from __future__ import annotations
 
+from collections.abc import Callable
+from typing import cast
 import unittest
 
 import pandas as pd
+from sqlalchemy.orm import Session
 
+from database import writeback
 from database.writeback import to_database_jsonable
+
+
+class RecordingSession:
+    def __init__(self) -> None:
+        self.executed_batch_sizes: list[int] = []
+
+    def execute(self, statement: object, params: object | None = None) -> None:
+        _ = statement
+        if isinstance(params, list):
+            self.executed_batch_sizes.append(len(params))
 
 
 class DatabaseWritebackTests(unittest.TestCase):
@@ -51,6 +65,31 @@ class DatabaseWritebackTests(unittest.TestCase):
         self.assertIsNone(rows[0]["trailing_pe"])
         self.assertIsNone(rows[0]["forward_pe"])
         self.assertEqual(rows[0]["market_cap"], 1_000_000_000)
+
+    def test_price_history_writeback_streams_batches(self) -> None:
+        price_rows = 1001
+        price_frame = pd.DataFrame(
+            {
+                "Date": pd.date_range("2026-01-01", periods=price_rows, freq="D", tz="UTC"),
+                "Open": [1.0] * price_rows,
+                "High": [1.1] * price_rows,
+                "Low": [0.9] * price_rows,
+                "Close": [1.05] * price_rows,
+                "Volume": [1000.0] * price_rows,
+            }
+        )
+        ranking_frame = pd.DataFrame([{"symbol": "AMD"}])
+        ranking_frame.attrs["price_map"] = {"AMD": price_frame}
+        session = RecordingSession()
+        persist_symbol_price_history = cast(
+            Callable[[Session, pd.DataFrame], int],
+            getattr(writeback, "_persist_symbol_price_history"),
+        )
+
+        inserted = persist_symbol_price_history(cast(Session, session), ranking_frame)
+
+        self.assertEqual(inserted, price_rows)
+        self.assertEqual(session.executed_batch_sizes, [1000, 1])
 
 
 if __name__ == "__main__":

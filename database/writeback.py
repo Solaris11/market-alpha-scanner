@@ -186,7 +186,17 @@ def _persist_symbol_price_history(session: Session, df_rank: pd.DataFrame) -> in
           volume = EXCLUDED.volume
         """
     )
-    params: list[dict[str, object]] = []
+    chunk: list[dict[str, object]] = []
+    total = 0
+
+    def flush_chunk() -> None:
+        nonlocal total
+        if not chunk:
+            return
+        session.execute(statement, chunk)
+        total += len(chunk)
+        chunk.clear()
+
     for symbol_raw, frame_raw in price_map.items():
         symbol = _string_or_none(symbol_raw)
         if symbol is None or not isinstance(frame_raw, pd.DataFrame) or frame_raw.empty:
@@ -197,7 +207,7 @@ def _persist_symbol_price_history(session: Session, df_rank: pd.DataFrame) -> in
             timestamp = _timestamp_or_none(_first_present_mapping(normalized_row, ("Date", "Datetime", "date", "datetime", "index")))
             if timestamp is None:
                 continue
-            params.append(
+            chunk.append(
                 {
                     "symbol": symbol.upper(),
                     "ts": timestamp,
@@ -208,13 +218,10 @@ def _persist_symbol_price_history(session: Session, df_rank: pd.DataFrame) -> in
                     "volume": _float_or_none(_first_present_mapping(normalized_row, ("Volume", "volume"))),
                 }
             )
+            if len(chunk) >= 1000:
+                flush_chunk()
 
-    total = 0
-    for chunk_start in range(0, len(params), 1000):
-        chunk = params[chunk_start : chunk_start + 1000]
-        if chunk:
-            session.execute(statement, chunk)
-            total += len(chunk)
+    flush_chunk()
     return total
 
 
