@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 from collections.abc import Mapping
 from dataclasses import asdict, is_dataclass
 from datetime import date, datetime, timezone
@@ -15,6 +16,9 @@ from .config import get_database_url
 from .market_memory import refresh_market_memory_snapshots
 from .repositories import add_scanner_signal_rows, create_scan_run
 from .session import session_scope
+
+DEFAULT_PRICE_HISTORY_MAX_SYMBOLS = 250
+DEFAULT_PRICE_HISTORY_MAX_ROWS_PER_SYMBOL = 260
 
 
 def persist_scan_dataframe(df_rank: pd.DataFrame, *, scanner_version: str | None = None, notes: str | None = None) -> dict[str, Any]:
@@ -173,6 +177,10 @@ def _persist_symbol_price_history(session: Session, df_rank: pd.DataFrame) -> in
     if not isinstance(price_map, Mapping):
         return 0
 
+    max_symbols = _env_positive_int("TRADEVETO_PRICE_HISTORY_MAX_SYMBOLS", DEFAULT_PRICE_HISTORY_MAX_SYMBOLS)
+    max_rows_per_symbol = _env_positive_int("TRADEVETO_PRICE_HISTORY_MAX_ROWS_PER_SYMBOL", DEFAULT_PRICE_HISTORY_MAX_ROWS_PER_SYMBOL)
+    ranked_symbols = _ranked_symbols_for_price_history(df_rank, max_symbols)
+
     statement = text(
         """
         INSERT INTO symbol_price_history (symbol, ts, open, high, low, close, volume, source, created_at)
@@ -188,6 +196,7 @@ def _persist_symbol_price_history(session: Session, df_rank: pd.DataFrame) -> in
     )
     chunk: list[dict[str, object]] = []
     total = 0
+    fallback_symbols_seen = 0
 
     def flush_chunk() -> None:
         nonlocal total
@@ -201,7 +210,15 @@ def _persist_symbol_price_history(session: Session, df_rank: pd.DataFrame) -> in
         symbol = _string_or_none(symbol_raw)
         if symbol is None or not isinstance(frame_raw, pd.DataFrame) or frame_raw.empty:
             continue
-        frame = frame_raw.reset_index()
+        normalized_symbol = symbol.upper()
+        if ranked_symbols:
+            if normalized_symbol not in ranked_symbols:
+                continue
+        else:
+            if fallback_symbols_seen >= max_symbols:
+                continue
+            fallback_symbols_seen += 1
+        frame = frame_raw.tail(max_rows_per_symbol).reset_index()
         for row in frame.to_dict(orient="records"):
             normalized_row: dict[str, object] = {str(key): value for key, value in row.items()}
             timestamp = _timestamp_or_none(_first_present_mapping(normalized_row, ("Date", "Datetime", "date", "datetime", "index")))
@@ -209,7 +226,7 @@ def _persist_symbol_price_history(session: Session, df_rank: pd.DataFrame) -> in
                 continue
             chunk.append(
                 {
-                    "symbol": symbol.upper(),
+                    "symbol": normalized_symbol,
                     "ts": timestamp,
                     "open": _float_or_none(_first_present_mapping(normalized_row, ("Open", "open"))),
                     "high": _float_or_none(_first_present_mapping(normalized_row, ("High", "high"))),
@@ -223,6 +240,25 @@ def _persist_symbol_price_history(session: Session, df_rank: pd.DataFrame) -> in
 
     flush_chunk()
     return total
+
+
+def _ranked_symbols_for_price_history(df_rank: pd.DataFrame, max_symbols: int) -> set[str]:
+    if "symbol" not in df_rank.columns:
+        return set()
+    symbols: list[str] = []
+    seen: set[str] = set()
+    for value in df_rank["symbol"].tolist():
+        symbol = _string_or_none(value)
+        if symbol is None:
+            continue
+        normalized = symbol.upper()
+        if normalized in seen:
+            continue
+        symbols.append(normalized)
+        seen.add(normalized)
+        if len(symbols) >= max_symbols:
+            break
+    return set(symbols)
 
 
 def _persist_performance_summary(session: Session, scan_run_id: UUID | None, summary_df: pd.DataFrame) -> int:
@@ -326,6 +362,17 @@ def _sequence_len(value: object) -> int | None:
     if isinstance(value, (list, tuple, set)):
         return len(value)
     return None
+
+
+def _env_positive_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        parsed = int(raw)
+    except ValueError:
+        return default
+    return parsed if parsed > 0 else default
 
 
 def _int_or_none(value: object) -> int | None:
