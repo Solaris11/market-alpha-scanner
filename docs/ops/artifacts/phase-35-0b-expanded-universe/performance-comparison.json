@@ -1,0 +1,54 @@
+{
+  "environment": "local macOS repo venv, DATABASE_URL unset, --fast, --no-save-history, yfinance chunk size 125",
+  "notes": [
+    "111 and 500 full scanner timings are measured on final code after yfinance chunking.",
+    "1000 full scanner timing is measured on final chunked provider code before the final one-symbol POCI provider-compatibility prune; the final 1000 universe then passed price-only provider compatibility with 1000 frames and 0 errors.",
+    "No database writes, news enrichment, or forward-return analysis were included in these scanner hot-path timings."
+  ],
+  "runs": {
+    "1000_chunked_cold": {
+      "csv_write_seconds": 0.4,
+      "fundamentals_hits": 0,
+      "fundamentals_misses": 555,
+      "input_symbols": 1000,
+      "macro_download_seconds": 3.9,
+      "price_history_download_seconds": 178.6,
+      "provider_price_check_errors": 0,
+      "provider_price_check_frames": 1000,
+      "provider_price_check_seconds": 48.2,
+      "ranked_rows": 545,
+      "ranking_table_build_seconds": 2.8,
+      "sampled_rss_mb": 284.5,
+      "scoring_seconds": 484.4,
+      "total_runtime_seconds": 703.0
+    },
+    "111_core_cold": {
+      "csv_write_seconds": 0.1,
+      "fundamentals_hits": 0,
+      "fundamentals_misses": 111,
+      "input_symbols": 111,
+      "macro_download_seconds": 6.0,
+      "price_history_download_seconds": 31.3,
+      "ranked_rows": 111,
+      "ranking_table_build_seconds": 0.6,
+      "scoring_seconds": 105.3,
+      "total_runtime_seconds": 169.5
+    },
+    "500_chunked_cold": {
+      "csv_write_seconds": 0.2,
+      "fundamentals_hits": 0,
+      "fundamentals_misses": 368,
+      "input_symbols": 500,
+      "macro_download_seconds": 1.2,
+      "price_history_download_seconds": 41.4,
+      "provider_price_check_errors": 0,
+      "provider_price_check_frames": 500,
+      "provider_price_check_seconds": 26.0,
+      "ranked_rows": 362,
+      "ranking_table_build_seconds": 1.9,
+      "sampled_rss_mb": 304.2,
+      "scoring_seconds": 158.1,
+      "total_runtime_seconds": 210.1
+    }
+  }
+}

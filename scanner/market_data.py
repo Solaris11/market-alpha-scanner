@@ -21,6 +21,7 @@ ALPACA_DEFAULT_BASE_URL = "https://data.alpaca.markets"
 ALPACA_DEFAULT_FEED = "iex"
 ALPACA_CHUNK_SIZE = 50
 ALPACA_PAGE_LIMIT = 10000
+YFINANCE_CHUNK_SIZE = 125
 REQUEST_TIMEOUT_SECONDS = 30
 
 
@@ -257,6 +258,28 @@ class YFinanceProvider:
         return ProviderHealth(ok=ok, provider="yfinance", message="yfinance ok." if ok else "No SPY data returned.")
 
     def get_daily_bars_many(
+        self,
+        symbols: list[str],
+        *,
+        period: str = DOWNLOAD_PERIOD,
+        start: Optional[str] = None,
+        end: Optional[str] = None,
+    ) -> ProviderResponse:
+        normalized_symbols = [symbol.upper() for symbol in symbols]
+        if len(normalized_symbols) > YFINANCE_CHUNK_SIZE:
+            out: dict[str, pd.DataFrame] = {}
+            metadata: dict[str, ProviderMetadata] = {}
+            errors: dict[str, str] = {}
+            for chunk_start in range(0, len(normalized_symbols), YFINANCE_CHUNK_SIZE):
+                chunk = normalized_symbols[chunk_start : chunk_start + YFINANCE_CHUNK_SIZE]
+                response = self._download_daily_bars_many(chunk, period=period, start=start, end=end)
+                out.update(response.frames)
+                metadata.update(response.metadata)
+                errors.update(response.errors)
+            return ProviderResponse(frames=out, metadata=metadata, errors=errors)
+        return self._download_daily_bars_many(normalized_symbols, period=period, start=start, end=end)
+
+    def _download_daily_bars_many(
         self,
         symbols: list[str],
         *,

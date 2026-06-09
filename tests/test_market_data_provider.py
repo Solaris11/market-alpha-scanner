@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 from datetime import datetime, timezone
+from unittest.mock import patch
 
 import pandas as pd
 
@@ -12,6 +13,7 @@ from scanner.market_data import (
     ProviderMetadata,
     ProviderResponse,
     ProviderRouter,
+    YFINANCE_CHUNK_SIZE,
     YFinanceProvider,
     alpaca_bars_to_frame,
     alpaca_symbol_for,
@@ -116,6 +118,37 @@ class MarketDataProviderTests(unittest.TestCase):
 
         self.assertEqual(frames["AAPL"].attrs["provider_metadata"]["data_provider"], "alpaca")
         self.assertEqual(frames["AAPL"].attrs["provider_metadata"]["alpaca_request_id"], "req-123")
+
+    def test_yfinance_large_downloads_are_chunked(self) -> None:
+        symbols = [f"T{i}" for i in range(YFINANCE_CHUNK_SIZE + 2)]
+        calls: list[list[str]] = []
+
+        def fake_download(tickers: str, **kwargs: object) -> pd.DataFrame:
+            _ = kwargs
+            chunk_symbols = tickers.split()
+            calls.append(chunk_symbols)
+            index = pd.DatetimeIndex([pd.Timestamp("2026-05-04"), pd.Timestamp("2026-05-05")], name="Date")
+            columns = pd.MultiIndex.from_tuples(
+                (symbol, column)
+                for symbol in chunk_symbols
+                for column in ["Open", "High", "Low", "Close", "Adj Close", "Volume"]
+            )
+            data: list[list[float]] = []
+            for row_index in range(len(index)):
+                values: list[float] = []
+                for _symbol in chunk_symbols:
+                    close = 100.0 + row_index
+                    values.extend([close, close + 1.0, close - 1.0, close, close, 1_000_000.0])
+                data.append(values)
+            return pd.DataFrame(data, index=index, columns=columns)
+
+        with patch("scanner.market_data.yf.download", side_effect=fake_download):
+            response = YFinanceProvider().get_daily_bars_many(symbols, period="2y")
+
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(len(calls[0]), YFINANCE_CHUNK_SIZE)
+        self.assertEqual(len(calls[1]), 2)
+        self.assertEqual(set(response.frames), set(symbols))
 
     def test_provider_metadata_is_attached_to_scanner_payload_columns(self) -> None:
         frame = _frame()

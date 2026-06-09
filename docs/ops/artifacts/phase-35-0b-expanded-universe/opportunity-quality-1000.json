@@ -1,0 +1,29 @@
+{
+  "asset_type_counts": {
+    "BOND_PROXY": 2,
+    "COMMODITY_PROXY": 3,
+    "CRYPTO": 2,
+    "CRYPTO_PROXY": 1,
+    "EQUITY": 516,
+    "ETF": 20,
+    "FX_PROXY": 1
+  },
+  "decision_counts": {},
+  "ranked_rows": 545,
+  "required_symbols_missing_from_ranked_output": [],
+  "required_symbols_ranked": [
+    "APP",
+    "ASTS",
+    "HIMS",
+    "IONQ",
+    "LITE",
+    "LUNR",
+    "PL",
+    "QBTS",
+    "QUBT",
+    "RGTI",
+    "RKLB",
+    "SOUN",
+    "TEM"
+  ]
+}

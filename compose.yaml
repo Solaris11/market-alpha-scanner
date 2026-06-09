@@ -124,6 +124,7 @@ services:
       ALPACA_SECRET_KEY: ${ALPACA_SECRET_KEY:-}
       ALPACA_DATA_BASE_URL: ${ALPACA_DATA_BASE_URL:-https://data.alpaca.markets}
       ALPACA_DATA_FEED: ${ALPACA_DATA_FEED:-iex}
+      TRADEVETO_UNIVERSE_SIZE: ${TRADEVETO_SCANNER_UNIVERSE_SIZE:-500}
       TRADEVETO_EVENT_INTELLIGENCE: ${TRADEVETO_EVENT_INTELLIGENCE:-true}
       TRADEVETO_EVENT_CACHE_TTL_MINUTES: ${TRADEVETO_EVENT_CACHE_TTL_MINUTES:-360}
       TRADEVETO_EVENT_FEEDS_JSON: ${TRADEVETO_EVENT_FEEDS_JSON:-}
@@ -137,6 +138,8 @@ services:
         "investment_scanner_mvp.py",
         "--fast",
         "--timing",
+        "--universe-size",
+        "${TRADEVETO_SCANNER_UNIVERSE_SIZE:-500}",
         "--outdir",
         "/app/scanner_output",
       ]

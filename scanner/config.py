@@ -1,19 +1,8 @@
 from __future__ import annotations
 
-DEFAULT_UNIVERSE = [
-    "AAPL", "MSFT", "NVDA", "AMZN", "META", "GOOGL", "AVGO", "TSLA", "NFLX", "AMD",
-    "ORCL", "CRM", "ADBE", "INTU", "QCOM", "MU", "PANW", "CRWD", "DDOG", "SNOW",
-    "PLTR", "SHOP", "NOW", "ANET", "INTC", "ARM", "ASML", "TSM", "AMAT", "LRCX",
-    "KLAC", "MRVL", "UBER", "ABNB", "MSTR", "COIN", "APP", "RBLX", "MDB", "ZS",
-    "JPM", "GS", "MS", "BAC", "WFC", "BLK", "BRK-B", "V", "MA", "AXP",
-    "CAT", "DE", "HON", "GE", "RTX", "LMT", "BA", "UNP", "UPS", "FDX",
-    "WMT", "COST", "PG", "KO", "PEP", "MCD", "HD", "LOW", "NKE", "SBUX",
-    "JNJ", "LLY", "UNH", "MRK", "ABBV", "PFE", "TMO", "ISRG", "DHR", "SYK",
-    "XOM", "CVX", "COP", "SLB", "EOG", "MPC", "VLO", "OXY", "DVN", "HAL",
-    "SPY", "QQQ", "DIA", "IWM", "SMH", "SOXX", "XLK", "XLE", "XLF", "XLV",
-    "ARKK", "IBIT", "GLD", "SLV", "USO", "TLT", "HYG", "UUP", "VNQ",
-    "BTC-USD", "ETH-USD",
-]
+from .universe import CORE_UNIVERSE
+
+DEFAULT_UNIVERSE = CORE_UNIVERSE
 
 MACRO_SYMBOLS = {
     "spx": "SPY",
@@ -66,4 +55,3 @@ LOOKBACK_1Y = 252
 DOWNLOAD_PERIOD = "2y"
 TOP_N = 20
 ACTION_LEVELS = ["STRONG SELL", "SELL", "WAIT / HOLD", "BUY", "STRONG BUY"]
-

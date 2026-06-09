@@ -16,7 +16,7 @@ from pathlib import Path
 from alerts import evaluate_alert_rules, read_alert_input_files
 from database import persist_analysis_data, persist_scan_dataframe
 from scanner.analysis import analyze_performance, compute_forward_returns
-from scanner.config import DEFAULT_NEWS_LIMIT, DEFAULT_UNIVERSE, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE
+from scanner.config import DEFAULT_NEWS_LIMIT, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE
 from scanner.engine import load_universe_from_csv, scan_symbols
 from scanner.outputs import print_top_table, save_snapshot
 from scanner.paper_trading import run_paper_trading
@@ -24,6 +24,7 @@ from scanner.perf import log_timing, timer_start
 from scanner.regime import write_market_regime
 from scanner.safety import atomic_write_dataframe_csv, check_data_freshness, ensure_action_column, scanner_run_lock, validate_ranking_schema
 from scanner.structure import write_market_structure
+from scanner.universe import UNIVERSE_SIZE_CHOICES, build_universe
 
 DEFAULT_ANALYSIS_TIME_BUDGET_SECONDS = 900.0
 DEFAULT_ANALYSIS_MAX_SNAPSHOTS = 1800
@@ -82,9 +83,23 @@ def env_positive_float(name: str, default: float) -> float:
     return parsed if parsed > 0 else default
 
 
+def env_universe_size(name: str = "TRADEVETO_UNIVERSE_SIZE", default: str = "core") -> str:
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    normalized = raw.strip().lower()
+    return normalized if normalized in UNIVERSE_SIZE_CHOICES else default
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Practical multi-asset ranking scanner")
     parser.add_argument("--universe-csv", help="Optional CSV with symbol/ticker column")
+    parser.add_argument(
+        "--universe-size",
+        choices=list(UNIVERSE_SIZE_CHOICES),
+        default=env_universe_size(),
+        help="Built-in universe size to scan when --symbols/--universe-csv are not provided",
+    )
     parser.add_argument("--symbols", help="Optional comma-separated symbols for a constrained scan")
     parser.add_argument("--top", type=int, default=20, help="Number of top results to show")
     parser.add_argument("--outdir", default="scanner_output", help="Output directory")
@@ -177,7 +192,8 @@ def main() -> None:
         elif args.universe_csv:
             universe = load_universe_from_csv(args.universe_csv)
         else:
-            universe = DEFAULT_UNIVERSE
+            universe = build_universe(str(args.universe_size))
+        print(f"[universe] selected {len(universe)} symbols")
 
         outdir = Path(args.outdir)
         outdir.mkdir(parents=True, exist_ok=True)

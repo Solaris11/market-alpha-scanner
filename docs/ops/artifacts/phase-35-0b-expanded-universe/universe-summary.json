@@ -1,0 +1,63 @@
+{
+  "1000": {
+    "missing_required_opportunity_symbols": [],
+    "requested_symbols": 1000,
+    "source_category_counts": {
+      "ai": 25,
+      "biotech": 38,
+      "core": 111,
+      "crypto_proxies": 21,
+      "defense": 17,
+      "emerging_leaders": 3,
+      "growth": 23,
+      "momentum_midcap": 32,
+      "nasdaqtrader_nasdaq": 398,
+      "nasdaqtrader_otherlisted": 306,
+      "quantum": 4,
+      "required_opportunity": 12,
+      "space": 10
+    },
+    "unique_symbols": 1000
+  },
+  "500": {
+    "missing_required_opportunity_symbols": [],
+    "requested_symbols": 500,
+    "source_category_counts": {
+      "ai": 25,
+      "biotech": 38,
+      "core": 111,
+      "crypto_proxies": 21,
+      "defense": 17,
+      "emerging_leaders": 3,
+      "growth": 23,
+      "momentum_midcap": 32,
+      "nasdaqtrader_nasdaq": 115,
+      "nasdaqtrader_otherlisted": 89,
+      "quantum": 4,
+      "required_opportunity": 12,
+      "space": 10
+    },
+    "unique_symbols": 500
+  },
+  "core": {
+    "missing_required_opportunity_symbols": [
+      "RGTI",
+      "QBTS",
+      "QUBT",
+      "IONQ",
+      "LITE",
+      "RKLB",
+      "ASTS",
+      "LUNR",
+      "TEM",
+      "SOUN",
+      "HIMS",
+      "PL"
+    ],
+    "requested_symbols": 111,
+    "source_category_counts": {
+      "core": 111
+    },
+    "unique_symbols": 111
+  }
+}
