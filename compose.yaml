@@ -104,7 +104,7 @@ services:
       dockerfile: Dockerfile
     restart: "no"
     cpus: "1.5"
-    mem_limit: 2g
+    mem_limit: 4g
     security_opt:
       - no-new-privileges:true
     cap_drop:
