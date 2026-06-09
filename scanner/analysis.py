@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from collections.abc import Mapping
@@ -209,11 +210,18 @@ def _prepare_snapshot_frame(df: pd.DataFrame, stats: dict[str, int]) -> pd.DataF
     return working
 
 
-def load_snapshot_history(history_dir: str) -> pd.DataFrame:
+def load_snapshot_history(history_dir: str, max_snapshots: int | None = None) -> pd.DataFrame:
     history_path = Path(history_dir)
     files = sorted(history_path.glob("scan_*.csv"))
     if not files:
         return pd.DataFrame()
+    original_file_count = len(files)
+    if max_snapshots is not None and max_snapshots > 0 and original_file_count > max_snapshots:
+        files = files[-max_snapshots:]
+        print(
+            "[analysis] snapshot guardrail:"
+            f" using latest {len(files)} of {original_file_count} snapshots"
+        )
 
     frames: list[pd.DataFrame] = []
     schema_stats = {"legacy_missing_action": 0, "critical_missing": 0}
@@ -443,6 +451,9 @@ def _empty_forward_df(analysis_dir: Path, analysis_raw: bool = False, history_di
     forward_df.attrs["canonical_rows"] = 0
     forward_df.attrs["analysis_raw"] = analysis_raw
     forward_df.attrs["horizons_completed"] = []
+    forward_df.attrs["input_signal_rows"] = 0
+    forward_df.attrs["signal_rows_analyzed"] = 0
+    forward_df.attrs["time_budget_exhausted"] = False
     return forward_df
 
 
@@ -495,8 +506,44 @@ def _apply_canonical_sampling(forward_df: pd.DataFrame) -> pd.DataFrame:
     return canonical_df.sort_values(["symbol", "timestamp_utc", "horizon"], kind="mergesort").reset_index(drop=True)
 
 
-def compute_forward_returns(history_dir: str, analysis_raw: bool = False) -> pd.DataFrame:
-    history_df = load_snapshot_history(history_dir)
+def _apply_signal_canonical_sampling(history_df: pd.DataFrame) -> pd.DataFrame:
+    if history_df.empty:
+        return history_df
+    working = history_df.copy()
+    working["_trading_date"] = working["timestamp_utc"].astype(str).str[:10]
+    working = working[working["_trading_date"].str.match(r"^\d{4}-\d{2}-\d{2}$", na=False)].copy()
+    canonical_rows = [
+        selectCanonicalRow(group)
+        for _, group in working.groupby(["symbol", "_trading_date"], sort=False, dropna=False)
+    ]
+    if not canonical_rows:
+        return pd.DataFrame(columns=history_df.columns)
+    canonical_df = pd.DataFrame(canonical_rows).drop(columns=["_trading_date"], errors="ignore")
+    return canonical_df.sort_values(["timestamp_utc", "symbol"], kind="mergesort").reset_index(drop=True)
+
+
+def _limit_signal_rows(history_df: pd.DataFrame, max_signal_rows: int | None) -> pd.DataFrame:
+    if max_signal_rows is None or max_signal_rows <= 0 or len(history_df) <= max_signal_rows:
+        return history_df
+    limited = history_df.sort_values(["timestamp_utc", "symbol"], kind="mergesort").tail(max_signal_rows).copy()
+    print(
+        "[analysis] signal-row guardrail:"
+        f" using latest {len(limited)} of {len(history_df)} signal rows"
+    )
+    return limited.reset_index(drop=True)
+
+
+def compute_forward_returns(
+    history_dir: str,
+    analysis_raw: bool = False,
+    max_snapshots: int | None = None,
+    max_signal_rows: int | None = None,
+    time_budget_seconds: float | None = None,
+) -> pd.DataFrame:
+    started_at = time.monotonic()
+    deadline = started_at + time_budget_seconds if time_budget_seconds is not None and time_budget_seconds > 0 else None
+    time_budget_exhausted = False
+    history_df = load_snapshot_history(history_dir, max_snapshots=max_snapshots)
     analysis_dir = Path(history_dir).parent / "analysis"
     analysis_dir.mkdir(parents=True, exist_ok=True)
     forward_path = analysis_dir / "forward_returns.csv"
@@ -508,6 +555,7 @@ def compute_forward_returns(history_dir: str, analysis_raw: bool = False) -> pd.
         return forward_df
 
     snapshot_count = int(history_df["source_file"].nunique()) if "source_file" in history_df.columns else 0
+    input_signal_rows = len(history_df)
     history_df = history_df.copy()
     history_df["final_score"] = pd.to_numeric(history_df["final_score"], errors="coerce")
     history_df["score_bucket"] = history_df["final_score"].apply(score_bucket_label)
@@ -523,10 +571,26 @@ def compute_forward_returns(history_dir: str, analysis_raw: bool = False) -> pd.
     else:
         history_df["trade_quality"] = history_df["recommendation_quality"]
 
+    if not analysis_raw:
+        canonical_signal_df = _apply_signal_canonical_sampling(history_df)
+        print("[analysis] canonical signal sampling enabled")
+        print(f"[analysis] input signal rows: {input_signal_rows}")
+        print(f"[analysis] canonical signal rows: {len(canonical_signal_df)}")
+        history_df = canonical_signal_df
+
+    history_df = _limit_signal_rows(history_df, max_signal_rows)
+    signal_rows_analyzed = len(history_df)
+
     rows: list[dict[str, object]] = []
     for symbol, symbol_df in history_df.groupby("symbol"):
+        if deadline is not None and time.monotonic() >= deadline:
+            time_budget_exhausted = True
+            break
         symbol_df = symbol_df.sort_values("timestamp_utc").reset_index(drop=True)
-        for index, signal in symbol_df.iterrows():
+        for row_number, (_, signal) in enumerate(symbol_df.iterrows()):
+            if deadline is not None and row_number % 25 == 0 and time.monotonic() >= deadline:
+                time_budget_exhausted = True
+                break
             signal_time = signal["timestamp_utc"]
             entry_price = safe_float(signal.get("price"), np.nan)
             if pd.isna(signal_time) or np.isnan(entry_price) or entry_price <= 0:
@@ -579,6 +643,8 @@ def compute_forward_returns(history_dir: str, analysis_raw: bool = False) -> pd.
                         "hit": bool(forward_return > 0),
                     }
                 )
+        if time_budget_exhausted:
+            break
 
     raw_forward_df = pd.DataFrame(rows, columns=FORWARD_RETURN_COLUMNS)
     raw_row_count = len(raw_forward_df)
@@ -591,6 +657,11 @@ def compute_forward_returns(history_dir: str, analysis_raw: bool = False) -> pd.
         forward_df = _apply_canonical_sampling(raw_forward_df)
         print(f"[analysis] raw observations: {raw_row_count}")
         print(f"[analysis] canonical observations: {len(forward_df)}")
+    if time_budget_exhausted:
+        print(
+            "[analysis] time-budget guardrail reached:"
+            f" wrote {len(forward_df)} bounded observations after {time.monotonic() - started_at:.1f}s"
+        )
 
     forward_df.attrs["analysis_dir"] = str(analysis_dir)
     forward_df.attrs["history_dir"] = history_dir
@@ -600,6 +671,12 @@ def compute_forward_returns(history_dir: str, analysis_raw: bool = False) -> pd.
     forward_df.attrs["canonical_rows"] = len(forward_df)
     forward_df.attrs["analysis_raw"] = analysis_raw
     forward_df.attrs["horizons_completed"] = sorted(forward_df["horizon"].dropna().unique().tolist()) if not forward_df.empty else []
+    forward_df.attrs["input_signal_rows"] = input_signal_rows
+    forward_df.attrs["signal_rows_analyzed"] = signal_rows_analyzed
+    forward_df.attrs["max_snapshots"] = max_snapshots
+    forward_df.attrs["max_signal_rows"] = max_signal_rows
+    forward_df.attrs["time_budget_seconds"] = time_budget_seconds
+    forward_df.attrs["time_budget_exhausted"] = time_budget_exhausted
     atomic_write_dataframe_csv(forward_df, forward_path, index=False)
     if forward_df.empty:
         print("[analysis] Analysis complete, but no completed forward-return windows yet.")
@@ -827,8 +904,8 @@ def summarize_signal_lifecycle(lifecycle_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=SIGNAL_LIFECYCLE_SUMMARY_COLUMNS)
 
 
-def compute_signal_lifecycle(history_dir: str) -> tuple[pd.DataFrame, pd.DataFrame]:
-    history_df = load_snapshot_history(history_dir)
+def compute_signal_lifecycle(history_dir: str, max_snapshots: int | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    history_df = load_snapshot_history(history_dir, max_snapshots=max_snapshots)
     analysis_dir = Path(history_dir).parent / "analysis"
     analysis_dir.mkdir(parents=True, exist_ok=True)
     lifecycle_path = analysis_dir / "signal_lifecycle.csv"
@@ -1607,7 +1684,9 @@ def analyze_performance(forward_returns_df: pd.DataFrame) -> pd.DataFrame:
     history_dir = forward_returns_df.attrs.get("history_dir")
     lifecycle_summary_df = pd.DataFrame(columns=SIGNAL_LIFECYCLE_SUMMARY_COLUMNS)
     if history_dir:
-        _, lifecycle_summary_df = compute_signal_lifecycle(str(history_dir))
+        max_snapshots_value = forward_returns_df.attrs.get("max_snapshots")
+        max_snapshots = max_snapshots_value if isinstance(max_snapshots_value, int) else None
+        _, lifecycle_summary_df = compute_signal_lifecycle(str(history_dir), max_snapshots=max_snapshots)
     generate_calibration_insights(summary_df, forward_returns_df, analysis_dir)
     generate_auto_calibration_recommendations(summary_df, lifecycle_summary_df, analysis_dir)
 

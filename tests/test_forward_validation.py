@@ -74,6 +74,64 @@ class ForwardValidationTests(unittest.TestCase):
             self.assertAlmostEqual(float(first["data_quality_score"]), 94.0)
             self.assertTrue(str(first["signal_created_at"]).startswith("2026-05-01"))
 
+    def test_default_forward_returns_canonicalize_intraday_signal_rows_before_horizon_work(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            history_dir = Path(tmp_dir) / "history"
+            history_dir.mkdir()
+            rows = [
+                _snapshot_row("2026-05-01T09:00:00+00:00", 100.0),
+                {**_snapshot_row("2026-05-01T12:00:00+00:00", 105.0), "final_score": 91.0},
+                _snapshot_row("2026-05-02T13:00:00+00:00", 110.0),
+                _snapshot_row("2026-05-04T13:00:00+00:00", 112.0),
+                _snapshot_row("2026-05-06T13:00:00+00:00", 115.0),
+                _snapshot_row("2026-05-11T13:00:00+00:00", 120.0),
+                _snapshot_row("2026-05-21T13:00:00+00:00", 140.0),
+            ]
+            for index, row in enumerate(rows):
+                pd.DataFrame([row]).to_csv(history_dir / f"scan_20260501_{index:06d}.csv", index=False)
+
+            forward = compute_forward_returns(str(history_dir), analysis_raw=False)
+            may_first = forward[forward["signal_created_at"].astype(str).str.startswith("2026-05-01")]
+
+            self.assertFalse(may_first.empty)
+            self.assertEqual(set(may_first["price_at_signal"].astype(float).tolist()), {105.0})
+            self.assertEqual(forward.attrs["input_signal_rows"], 7)
+            self.assertLess(forward.attrs["signal_rows_analyzed"], forward.attrs["input_signal_rows"])
+
+    def test_forward_return_snapshot_guardrail_uses_latest_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            history_dir = Path(tmp_dir) / "history"
+            history_dir.mkdir()
+            for index in range(5):
+                day = index + 1
+                pd.DataFrame([_snapshot_row(f"2026-05-{day:02d}T00:00:00+00:00", 100.0 + index)]).to_csv(
+                    history_dir / f"scan_202605{day:02d}_000000.csv",
+                    index=False,
+                )
+
+            forward = compute_forward_returns(str(history_dir), analysis_raw=True, max_snapshots=3)
+
+            self.assertEqual(forward.attrs["snapshots_loaded"], 3)
+            self.assertEqual(forward.attrs["input_signal_rows"], 3)
+            self.assertTrue(all(str(value).startswith(("2026-05-03", "2026-05-04")) for value in forward["signal_created_at"].astype(str)))
+
+    def test_forward_return_signal_row_guardrail_limits_work_after_loading(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            history_dir = Path(tmp_dir) / "history"
+            history_dir.mkdir()
+            for index in range(5):
+                day = index + 1
+                pd.DataFrame([_snapshot_row(f"2026-05-{day:02d}T00:00:00+00:00", 100.0 + index)]).to_csv(
+                    history_dir / f"scan_202605{day:02d}_000000.csv",
+                    index=False,
+                )
+
+            forward = compute_forward_returns(str(history_dir), analysis_raw=True, max_signal_rows=2)
+
+            self.assertEqual(forward.attrs["input_signal_rows"], 5)
+            self.assertEqual(forward.attrs["signal_rows_analyzed"], 2)
+            self.assertEqual(set(forward["price_at_signal"].astype(float).tolist()), {103.0})
+
     def test_summary_includes_expectancy_and_sample_confidence(self) -> None:
         forward = pd.DataFrame(
             [

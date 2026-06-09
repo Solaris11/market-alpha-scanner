@@ -9,6 +9,7 @@ CLI orchestration and output flow.
 from __future__ import annotations
 
 import argparse
+import os
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
@@ -24,6 +25,10 @@ from scanner.regime import write_market_regime
 from scanner.safety import atomic_write_dataframe_csv, check_data_freshness, ensure_action_column, scanner_run_lock, validate_ranking_schema
 from scanner.structure import write_market_structure
 
+DEFAULT_ANALYSIS_TIME_BUDGET_SECONDS = 900.0
+DEFAULT_ANALYSIS_MAX_SNAPSHOTS = 1800
+DEFAULT_ANALYSIS_MAX_SIGNAL_ROWS = 25000
+
 
 def positive_decimal(value: str) -> Decimal:
     try:
@@ -33,6 +38,48 @@ def positive_decimal(value: str) -> Decimal:
     if parsed <= Decimal("0"):
         raise argparse.ArgumentTypeError("must be greater than zero")
     return parsed
+
+
+def positive_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a valid integer") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
+
+
+def positive_float(value: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a valid number") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than zero")
+    return parsed
+
+
+def env_positive_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        parsed = int(raw)
+    except ValueError:
+        return default
+    return parsed if parsed > 0 else default
+
+
+def env_positive_float(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        parsed = float(raw)
+    except ValueError:
+        return default
+    return parsed if parsed > 0 else default
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -49,6 +96,24 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--run-analysis", action="store_true", help="Compute forward returns and performance summaries from saved history")
     parser.add_argument("--skip-analysis", action="store_true", help="Skip forward-return, lifecycle, calibration, and auto-calibration outputs")
     parser.add_argument("--analysis-raw", action="store_true", help="Keep raw intraday observations instead of canonical daily sampling")
+    parser.add_argument(
+        "--analysis-time-budget-seconds",
+        type=positive_float,
+        default=env_positive_float("TRADEVETO_ANALYSIS_TIME_BUDGET_SECONDS", DEFAULT_ANALYSIS_TIME_BUDGET_SECONDS),
+        help="Maximum seconds to spend on forward-return analysis before writing bounded partial output",
+    )
+    parser.add_argument(
+        "--analysis-max-snapshots",
+        type=positive_int,
+        default=env_positive_int("TRADEVETO_ANALYSIS_MAX_SNAPSHOTS", DEFAULT_ANALYSIS_MAX_SNAPSHOTS),
+        help="Maximum latest snapshot CSV files to load for scheduled analysis",
+    )
+    parser.add_argument(
+        "--analysis-max-signal-rows",
+        type=positive_int,
+        default=env_positive_int("TRADEVETO_ANALYSIS_MAX_SIGNAL_ROWS", DEFAULT_ANALYSIS_MAX_SIGNAL_ROWS),
+        help="Maximum latest signal rows to analyze after canonical signal sampling",
+    )
     parser.add_argument("--fast", action="store_true", help="Fast monitoring mode: skip news enrichment and analysis outputs")
     parser.add_argument("--timing", action="store_true", help="Print phase timing logs")
     parser.add_argument("--save-history", dest="save_history", action="store_true", help="Save a timestamped snapshot after each scan")
@@ -229,7 +294,13 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
         print("[analysis] starting forward-return analysis")
         write_market_regime(outdir)
         write_market_structure(outdir)
-        forward_df = compute_forward_returns(str(history_dir), analysis_raw=args.analysis_raw)
+        forward_df = compute_forward_returns(
+            str(history_dir),
+            analysis_raw=args.analysis_raw,
+            max_snapshots=args.analysis_max_snapshots,
+            max_signal_rows=args.analysis_max_signal_rows,
+            time_budget_seconds=args.analysis_time_budget_seconds,
+        )
         if forward_df.empty:
             print("\n[analysis] No completed forward-return observations yet.")
         else:
