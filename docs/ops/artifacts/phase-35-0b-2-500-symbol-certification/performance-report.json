@@ -1,0 +1,177 @@
+{
+  "comparison_basis": {
+    "111_vs_500_scanner_hot_path": "Phase 35.0B local scanner timing artifact, same code family, no DB writes/news enrichment/forward-return analysis.",
+    "production_500": "Fresh Phase 35.0B.2 production DB proof plus copied production full_ranking.csv.",
+    "route_latency": "Five unauthenticated HTTPS samples per public route from local workstation to production."
+  },
+  "db_usage": {
+    "market_memory_snapshots": "1087 MB",
+    "scan_runs": "8016 kB",
+    "scanner_signals": "2887 MB",
+    "symbol_price_history": "122 MB"
+  },
+  "generated_at": "2026-06-09T13:36:15.524329+00:00",
+  "provider_traffic_and_cache": {
+    "500_provider_price_check_errors": 0,
+    "500_provider_price_check_frames": 500,
+    "previous_production_fundamentals_hits": 369,
+    "previous_production_fundamentals_misses": 0,
+    "production_primary_provider_counts": {
+      "alpaca": 362
+    },
+    "production_provider_counts": {
+      "alpaca": 180,
+      "yfinance": 182
+    },
+    "production_provider_fallback_rows": 182
+  },
+  "resource_usage": {
+    "during_scan_observed": {
+      "note": "The 500-symbol job completed, but peak observed scanner container memory was close to its 2GiB limit and remains a watch item for the 1000-symbol phase.",
+      "scanner_job_cpu": "27.56%",
+      "scanner_job_memory": "1.929GiB / 2GiB"
+    },
+    "post_scan": {
+      "frontend_memory": "161.9MiB / 31.08GiB",
+      "hot_api_memory": "125.5MiB / 31.08GiB",
+      "postgres_memory": "2.464GiB / 31.08GiB",
+      "scanner_processes_after_scan": 0
+    }
+  },
+  "route_latency_summary": {
+    "/alerts": {
+      "errors": [],
+      "max_ms": 219.46,
+      "p50_ms": 207.96,
+      "p95_ms": 219.46,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/api/discovery": {
+      "errors": [
+        "HTTP Error 401: Unauthorized",
+        "HTTP Error 401: Unauthorized",
+        "HTTP Error 401: Unauthorized",
+        "HTTP Error 401: Unauthorized",
+        "HTTP Error 401: Unauthorized"
+      ],
+      "max_ms": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "sample_count": 5,
+      "statuses": [
+        0
+      ]
+    },
+    "/api/health": {
+      "errors": [],
+      "max_ms": 267.42,
+      "p50_ms": 221.26,
+      "p95_ms": 267.42,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/api/health/deep": {
+      "errors": [],
+      "max_ms": 486.42,
+      "p50_ms": 307.3,
+      "p95_ms": 486.42,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/discover": {
+      "errors": [],
+      "max_ms": 263.57,
+      "p50_ms": 249.88,
+      "p95_ms": 263.57,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/feed": {
+      "errors": [],
+      "max_ms": 681.98,
+      "p50_ms": 513.8,
+      "p95_ms": 681.98,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/macro": {
+      "errors": [],
+      "max_ms": 574.83,
+      "p50_ms": 562.73,
+      "p95_ms": 574.83,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/market-memory": {
+      "errors": [],
+      "max_ms": 625.18,
+      "p50_ms": 507.73,
+      "p95_ms": 625.18,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/scanner": {
+      "errors": [],
+      "max_ms": 287.53,
+      "p50_ms": 261.53,
+      "p95_ms": 287.53,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/symbol/AMD": {
+      "errors": [],
+      "max_ms": 530.31,
+      "p50_ms": 500.97,
+      "p95_ms": 530.31,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/symbol/RGTI": {
+      "errors": [],
+      "max_ms": 413.07,
+      "p50_ms": 364.42,
+      "p95_ms": 413.07,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    }
+  },
+  "scanner_latency": {
+    "111_core_cold_seconds": 169.5,
+    "500_chunked_cold_seconds": 210.1,
+    "500_production_warm_cache_seconds_previous": 254.7,
+    "latest_production_ranked_rows": 362,
+    "latest_production_scan_completed_at_utc": "2026-06-09T13:32:01.95933+00:00",
+    "latest_production_universe_count": 500
+  },
+  "verification_result": {
+    "authenticated_discovery_timing_not_measured": true,
+    "critical_memory_exhaustion_observed": false,
+    "public_routes_return_200": true,
+    "ranked_rows_gt_original_universe": true,
+    "required_symbols_ranked": true,
+    "scanner_job_orphaned_after_run": false,
+    "scanner_memory_watch_item": true,
+    "supported_symbols_ge_500": true
+  }
+}

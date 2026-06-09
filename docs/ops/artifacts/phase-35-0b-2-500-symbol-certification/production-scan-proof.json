@@ -1,0 +1,31 @@
+{
+  "db_storage_snapshot": {
+    "market_memory_snapshots": "1087 MB",
+    "scan_runs": "8016 kB",
+    "scanner_signals": "2887 MB",
+    "symbol_price_history": "122 MB"
+  },
+  "generated_at": "2026-06-09T13:34:25.190030+00:00",
+  "in_scan_resource_observation": {
+    "note": "The 500-symbol job completed, but peak observed scanner container memory was close to its 2GiB limit and remains a watch item for the 1000-symbol phase.",
+    "scanner_job_cpu": "27.56%",
+    "scanner_job_memory": "1.929GiB / 2GiB"
+  },
+  "latest_completed_scan": {
+    "completed_at_utc": "2026-06-09T13:32:01.95933+00:00",
+    "persisted_scanner_signals": 362,
+    "symbols_scored": 369,
+    "universe_count": 500
+  },
+  "post_scan_resource_snapshot": {
+    "frontend_memory": "161.9MiB / 31.08GiB",
+    "hot_api_memory": "125.5MiB / 31.08GiB",
+    "postgres_memory": "2.464GiB / 31.08GiB",
+    "scanner_processes_after_scan": 0
+  },
+  "production_scanner_output": {
+    "full_ranking_path": "/opt/apps/market-alpha-scanner/runtime/scanner_output/full_ranking.csv",
+    "full_ranking_size_local_copy_rows_including_header": 363,
+    "local_copy": "docs/ops/artifacts/phase-35-0b-2-500-symbol-certification/production-full-ranking-500.csv"
+  }
+}

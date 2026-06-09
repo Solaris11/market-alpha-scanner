@@ -1,0 +1,51 @@
+symbol,company_name,sector,industry,final_score,final_decision,action,setup_type,data_provider,price_history_rows,confidence_score
+UUP,Invesco DB US Dollar Index Bullish Fund,US Dollar,,90.41,AVOID,BUY,AVOID,yfinance,500,7.47
+MTB,M&T Bank Corporation,Financial Services,Banks - Regional,80.1,AVOID,STRONG BUY,AVOID,yfinance,500,15.78
+LLY,Eli Lilly and Company,Healthcare,Drug Manufacturers - General,79.11,AVOID,STRONG BUY,AVOID,alpaca,505,60.62
+EOG,"EOG Resources, Inc.",Energy,Oil & Gas E&P,79.08,WATCH,BUY,PULLBACK,alpaca,505,84.78
+MPC,Marathon Petroleum Corporation,Energy,Oil & Gas Refining & Marketing,78.74,AVOID,STRONG BUY,AVOID,alpaca,505,60.62
+PFG,"Principal Financial Group, Inc.",Financial Services,Asset Management,78.43,AVOID,STRONG BUY,AVOID,yfinance,501,62.78
+BAC,Bank of America Corporation,Financial Services,Banks - Diversified,77.7,AVOID,BUY,AVOID,alpaca,505,54.68
+ASB,Associated Banc-Corp,Financial Services,Banks - Regional,76.27,AVOID,BUY,AVOID,yfinance,501,72.78
+MS,Morgan Stanley,Financial Services,Capital Markets,76.16,AVOID,BUY,AVOID,alpaca,505,54.62
+HLT,Hilton Worldwide Holdings Inc.,Consumer Cyclical,Lodging,76.14,AVOID,STRONG BUY,AVOID,alpaca,505,54.62
+INCY,Incyte Corporation,Healthcare,Biotechnology,75.96,WAIT_PULLBACK,BUY,AVOID,yfinance,500,38.62
+BNL,"Broadstone Net Lease, Inc.",Real Estate,REIT - Diversified,75.43,AVOID,STRONG BUY,AVOID,yfinance,501,54.78
+FDX,FedEx Corporation,Industrials,Integrated Freight & Logistics,75.22,AVOID,STRONG BUY,AVOID,alpaca,505,70.39
+HYG,,High Yield Credit,,75.21,AVOID,WAIT / HOLD,AVOID,alpaca,505,46.47
+ASML,ASML Holding N.V.,Technology,Semiconductor Equipment & Materials,74.77,AVOID,STRONG BUY,AVOID,alpaca,505,55.1
+TSM,Taiwan Semiconductor Manufacturing Company Limited,Technology,Semiconductors,74.77,AVOID,BUY,AVOID,alpaca,505,65.04
+AAPL,Apple Inc.,Technology,Consumer Electronics,74.72,WATCH,BUY,PULLBACK,alpaca,505,86.1
+UBS,UBS Group AG,Financial Services,Banks - Diversified,74.53,AVOID,BUY,AVOID,yfinance,501,62.62
+EXPD,"Expeditors International of Washington, Inc.",Industrials,Integrated Freight & Logistics,74.5,AVOID,STRONG BUY,AVOID,yfinance,501,54.78
+SLB,SLB N.V.,Energy,Oil & Gas Equipment & Services,74.4,AVOID,BUY,AVOID,alpaca,505,70.74
+ONB,Old National Bancorp,Financial Services,Banks - Regional,74.24,AVOID,BUY,AVOID,yfinance,501,64.68
+VLO,Valero Energy Corporation,Energy,Oil & Gas Refining & Marketing,73.88,AVOID,BUY,AVOID,alpaca,505,64.62
+AMAT,"Applied Materials, Inc.",Technology,Semiconductor Equipment & Materials,73.85,AVOID,STRONG BUY,AVOID,alpaca,505,61.1
+GS,"The Goldman Sachs Group, Inc.",Financial Services,Capital Markets,73.79,AVOID,BUY,AVOID,alpaca,505,54.78
+RL,Ralph Lauren Corporation,Consumer Cyclical,Apparel Manufacturing,73.08,AVOID,BUY,AVOID,alpaca,505,64.78
+UNP,Union Pacific Corporation,Industrials,Railroads,72.4,AVOID,BUY,AVOID,alpaca,505,64.62
+HALO,"Halozyme Therapeutics, Inc.",Healthcare,Biotechnology,71.68,AVOID,BUY,AVOID,yfinance,501,54.62
+CAT,Caterpillar Inc.,Industrials,Farm & Heavy Construction Machinery,71.64,AVOID,BUY,AVOID,alpaca,505,64.62
+KLAC,KLA Corporation,Technology,Semiconductor Equipment & Materials,71.23,AVOID,BUY,AVOID,alpaca,505,55.1
+SAIA,"Saia, Inc.",Industrials,Trucking,70.55,AVOID,BUY,AVOID,yfinance,501,54.62
+CW,Curtiss-Wright Corporation,Industrials,Aerospace & Defense,70.07,WATCH,BUY,PULLBACK,yfinance,501,61.74
+ARGX,argenx SE,Healthcare,Biotechnology,69.67,AVOID,BUY,AVOID,alpaca,505,60.62
+LTH,"Life Time Group Holdings, Inc.",Consumer Cyclical,Leisure,69.52,AVOID,BUY,AVOID,yfinance,501,54.62
+MRK,"Merck & Co., Inc.",Healthcare,Drug Manufacturers - General,69.2,AVOID,BUY,AVOID,alpaca,505,64.74
+INGM,Ingram Micro Holding Corporation,Technology,Information Technology Services,69.1,AVOID,BUY,AVOID,yfinance,406,55.1
+DIA,State Street SPDR Dow Jones Industrial Average ETF Trust,Large Cap Value,,68.69,AVOID,BUY,AVOID,alpaca,505,54.47
+UNH,UnitedHealth Group Incorporated,Healthcare,Healthcare Plans,68.66,AVOID,BUY,AVOID,alpaca,505,54.74
+TXT,Textron Inc.,Industrials,Aerospace & Defense,68.64,WATCH,BUY,PULLBACK,yfinance,501,66.65
+XLF,State Street Financial Select Sector SPDR ETF,Financial Services,,68.59,AVOID,WAIT / HOLD,AVOID,alpaca,505,57.47
+JPM,JPMorgan Chase & Co.,Financial Services,Banks - Diversified,68.04,AVOID,BUY,AVOID,alpaca,505,64.78
+HAL,Halliburton Company,Energy,Oil & Gas Equipment & Services,67.88,WATCH,BUY,PULLBACK,alpaca,505,84.74
+NXPI,NXP Semiconductors N.V.,Technology,Semiconductors,67.86,WATCH,BUY,PULLBACK,alpaca,505,77.1
+SOXX,iShares Semiconductor ETF,Semiconductors,,67.79,AVOID,BUY,AVOID,alpaca,505,69.14
+GM,General Motors Company,Consumer Cyclical,Auto Manufacturers,67.46,AVOID,BUY,AVOID,alpaca,505,54.68
+VRTX,Vertex Pharmaceuticals Incorporated,Healthcare,Biotechnology,67.28,WATCH,WAIT / HOLD,PULLBACK,alpaca,505,84.62
+BRK-B,Berkshire Hathaway Inc.,Financial Services,Insurance - Diversified,67.1,AVOID,WAIT / HOLD,AVOID,alpaca,505,36.62
+LRCX,Lam Research Corporation,Technology,Semiconductor Equipment & Materials,66.92,AVOID,BUY,AVOID,alpaca,505,53.18
+SAIC,Science Applications International Corporation,Technology,Information Technology Services,66.73,AVOID,BUY,AVOID,yfinance,500,8.18
+XLV,State Street Health Care Select Sector SPDR ETF,Healthcare,,66.67,AVOID,BUY,AVOID,alpaca,505,70.47
+MKSI,MKS Inc.,Technology,Scientific & Technical Instruments,66.65,AVOID,BUY,AVOID,alpaca,505,47.15

@@ -1,0 +1,121 @@
+{
+  "generated_at": "2026-06-09T13:34:53.159852+00:00",
+  "routes": {
+    "/alerts": {
+      "errors": [],
+      "max_ms": 219.46,
+      "p50_ms": 207.96,
+      "p95_ms": 219.46,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/api/discovery": {
+      "errors": [
+        "HTTP Error 401: Unauthorized",
+        "HTTP Error 401: Unauthorized",
+        "HTTP Error 401: Unauthorized",
+        "HTTP Error 401: Unauthorized",
+        "HTTP Error 401: Unauthorized"
+      ],
+      "max_ms": null,
+      "p50_ms": null,
+      "p95_ms": null,
+      "sample_count": 5,
+      "statuses": [
+        0
+      ]
+    },
+    "/api/health": {
+      "errors": [],
+      "max_ms": 267.42,
+      "p50_ms": 221.26,
+      "p95_ms": 267.42,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/api/health/deep": {
+      "errors": [],
+      "max_ms": 486.42,
+      "p50_ms": 307.3,
+      "p95_ms": 486.42,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/discover": {
+      "errors": [],
+      "max_ms": 263.57,
+      "p50_ms": 249.88,
+      "p95_ms": 263.57,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/feed": {
+      "errors": [],
+      "max_ms": 681.98,
+      "p50_ms": 513.8,
+      "p95_ms": 681.98,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/macro": {
+      "errors": [],
+      "max_ms": 574.83,
+      "p50_ms": 562.73,
+      "p95_ms": 574.83,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/market-memory": {
+      "errors": [],
+      "max_ms": 625.18,
+      "p50_ms": 507.73,
+      "p95_ms": 625.18,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/scanner": {
+      "errors": [],
+      "max_ms": 287.53,
+      "p50_ms": 261.53,
+      "p95_ms": 287.53,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/symbol/AMD": {
+      "errors": [],
+      "max_ms": 530.31,
+      "p50_ms": 500.97,
+      "p95_ms": 530.31,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    },
+    "/symbol/RGTI": {
+      "errors": [],
+      "max_ms": 413.07,
+      "p50_ms": 364.42,
+      "p95_ms": 413.07,
+      "sample_count": 5,
+      "statuses": [
+        200
+      ]
+    }
+  }
+}
