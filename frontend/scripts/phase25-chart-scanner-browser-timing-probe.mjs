@@ -200,7 +200,6 @@ async function runChartProof(page, setup) {
 
   timings.push(await measure("chart-workspace-restore", "Load /symbol/AMD with persisted chart workspace context", budgets.chartWorkspaceRestoreMs, async () => {
     await page.goto(`${baseUrl}/symbol/AMD`, { waitUntil: "domcontentloaded" });
-    await page.waitForLoadState("networkidle", { timeout: waitTimeoutMs }).catch(() => undefined);
     await dismissRiskAcknowledgement(page);
     await page.locator("[data-chart-symbol='AMD'][data-chart-workspace-loaded='true']").first().waitFor({ state: "visible" });
   }));

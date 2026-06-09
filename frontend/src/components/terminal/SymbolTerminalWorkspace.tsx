@@ -31,7 +31,7 @@ import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution"
 import { buildSymbolResearchModel } from "@/lib/trading/market-research";
 import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
 import type { IntradayDriftRow, RankingRow, ScannerScalar } from "@/lib/types";
-import type { ChartCandle, ChartSignalMarker, ChartTradeLevels } from "./SymbolChart";
+import { SymbolChart, type ChartCandle, type ChartSignalMarker, type ChartTradeLevels } from "./SymbolChart";
 import { SymbolDecisionHero } from "./SymbolDecisionHero";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
 import { GlassPanel } from "./ui/GlassPanel";
@@ -67,7 +67,6 @@ const SignalStatusCard = dynamic(() => import("./SignalStatusCard").then((mod) =
 const ScenarioIntelligencePanel = dynamic(() => import("./ScenarioIntelligencePanel").then((mod) => mod.ScenarioIntelligencePanel), { ssr: false });
 const ShockPatternMemoryCard = dynamic(() => import("./ShockPatternMemoryCard").then((mod) => mod.ShockPatternMemoryCard), { ssr: false });
 const StrategyIntelligencePanel = dynamic(() => import("./StrategyIntelligencePanel").then((mod) => mod.StrategyIntelligencePanel), { ssr: false });
-const SymbolChart = dynamic(() => import("./SymbolChart").then((mod) => mod.SymbolChart), { ssr: false });
 const SymbolDecisionIntelligencePanel = dynamic(() => import("./SymbolDecisionIntelligencePanel").then((mod) => mod.SymbolDecisionIntelligencePanel), { ssr: false });
 const TechnicalSnapshotCard = dynamic(() => import("./TechnicalSnapshotCard").then((mod) => mod.TechnicalSnapshotCard), { ssr: false });
 const TradePlanCard = dynamic(() => import("./TradePlanCard").then((mod) => mod.TradePlanCard), { ssr: false });
