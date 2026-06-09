@@ -192,9 +192,7 @@ async function SymbolFastWorkspaceContent({
   const row = detail.row;
   if (!row) return null;
 
-  const adapter = new ScannerDataAdapter();
   const dataFreshness = freshnessFromTimestamp(typeof row.last_updated === "string" ? row.last_updated : typeof row.last_updated_utc === "string" ? row.last_updated_utc : null);
-  const prefetchedChartPackets = await buildPrefetchedChartPackets(adapter, row.symbol, [row]);
   const unavailableMarketMemory: MarketMemorySummary = {
     analogs: [],
     available: false,
@@ -244,7 +242,7 @@ async function SymbolFastWorkspaceContent({
         paperPositions={[]}
         personalizationProfile={null}
         premiumAccess={premiumAccess}
-        prefetchedChartPackets={prefetchedChartPackets}
+        prefetchedChartPackets={[]}
         viewerAuthenticated={entitlementAuthenticated}
         priceSeries={detail.history}
         row={row}
