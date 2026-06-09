@@ -20,6 +20,52 @@ HORIZONS = {"1D": 1, "2D": 2, "3D": 3, "5D": 5, "10D": 10, "20D": 20, "60D": 60}
 SNAPSHOT_REQUIRED_COLUMNS = ("symbol", "price", "final_score", "rating")
 SNAPSHOT_ACTION_COLUMNS = ("action", "long_action", "mid_action", "short_action", "composite_action", "recommended_action")
 SNAPSHOT_ACTION_FALLBACK_COLUMNS = ("long_action", "mid_action", "short_action", "composite_action", "recommended_action")
+SNAPSHOT_ANALYSIS_COLUMNS = frozenset(
+    {
+        "timestamp_utc",
+        "symbol",
+        "company_name",
+        "long_name",
+        "short_name",
+        "display_name",
+        "security_name",
+        "name",
+        "asset_type",
+        "sector",
+        "price",
+        "final_score",
+        "final_score_adjusted",
+        "confidence_score",
+        "data_quality_score",
+        "rating",
+        "action",
+        "long_action",
+        "mid_action",
+        "short_action",
+        "composite_action",
+        "recommended_action",
+        "final_decision",
+        "setup_type",
+        "market_regime",
+        "recommendation_quality",
+        "trade_quality",
+        "trade_quality_note",
+        "target_warning",
+        "buy_zone_low",
+        "buy_zone_high",
+        "buy_zone",
+        "entry_zone",
+        "stop_loss",
+        "invalidation_level",
+        "conservative_target",
+        "take_profit_low",
+        "take_profit_high",
+        "take_profit_zone",
+        "take_profit",
+        "target",
+        "upside_target",
+    }
+)
 ENTRY_STATUS_PRIORITY = {
     "GOOD ENTRY": 0,
     "NEAR ENTRY": 1,
@@ -227,7 +273,11 @@ def load_snapshot_history(history_dir: str, max_snapshots: int | None = None) ->
     schema_stats = {"legacy_missing_action": 0, "critical_missing": 0}
     for path in files:
         try:
-            df = pd.read_csv(path)
+            df = pd.read_csv(
+                path,
+                low_memory=False,
+                usecols=lambda column: str(column) in SNAPSHOT_ANALYSIS_COLUMNS,
+            )
         except Exception:
             continue
         if df.empty:
