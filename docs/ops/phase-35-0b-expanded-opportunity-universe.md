@@ -103,6 +103,56 @@ Artifact: `docs/ops/artifacts/phase-35-0b-expanded-universe/performance-comparis
 | 500 chunked cold | 500 | 362 | 41.4s | 158.1s | 210.1s | 368 | ~304 MB |
 | 1000 chunked cold | 1000 | 545 | 178.6s | 484.4s | 703.0s | 555 | ~284 MB |
 
+## Production Deployment Proof
+
+Production was deployed from `main` and pulled to:
+
+- `31ace59` for the universe expansion.
+- `2bd3cb7` for the JSON payload persistence sanitizer.
+
+Production scanner-job image was rebuilt after both commits.
+
+First production 500-symbol scanner run:
+
+- Selected `500` symbols.
+- Completed scanner calculation.
+- Failed DB persistence because a provider payload included JSON `Infinity` in `trailing_pe`.
+- This exposed a real production writeback blocker.
+
+Follow-up fix:
+
+- Added `database.writeback.to_database_jsonable`.
+- Non-finite floats now serialize as `null` before JSONB insert.
+- Added `tests/test_database_writeback.py`.
+
+Successful production rerun:
+
+| Metric | Value |
+|---|---:|
+| Commit | `2bd3cb7` |
+| Selected symbols | 500 |
+| Symbols scored | 369 |
+| Scanner signals persisted | 362 |
+| Price download | 86.4s |
+| Macro download | 2.8s |
+| Scoring | 132.0s |
+| Total runtime | 254.7s |
+| Fundamentals cache hits | 369 |
+| Fundamentals cache misses | 0 |
+| Completed at | `2026-06-09 13:20:50.412232+00` |
+
+Production DB proof:
+
+```text
+500|369|362|2026-06-09 13:20:50.412232+00
+```
+
+Production smoke after rerun:
+
+- `/api/health`: ok.
+- `/api/health/deep`: app/db/scanner ok; backup status warn due unrelated offsite backup timeout.
+- Routes returning `200`: `/terminal`, `/discover`, `/scanner`, `/symbol/AMD`, `/alerts`, `/feed`, `/macro`, `/market-memory`.
+
 ## Performance Interpretation
 
 500-symbol rollout is acceptable for the scheduled scanner job:
@@ -148,10 +198,18 @@ The scanner continues to filter by real provider data, price, liquidity, and mar
 
 Focused validation passed:
 
+- `.venv/bin/python -m unittest tests.test_database_writeback tests.test_expanded_universe tests.test_market_data_provider.MarketDataProviderTests.test_yfinance_large_downloads_are_chunked`
 - `.venv/bin/python -m unittest tests.test_expanded_universe`
 - `.venv/bin/python -m unittest tests.test_market_data_provider.MarketDataProviderTests.test_yfinance_large_downloads_are_chunked`
 - CLI smoke:
   - `.venv/bin/python investment_scanner_mvp.py --universe-size 500 --symbols AMD --skip-news --skip-analysis --no-save-history --timing --outdir /tmp/tradeveto_phase35b_cli_smoke`
+- `python3 -m py_compile $(git ls-files '*.py')`
+- `npx pyright . --pythonpath .venv/bin/python --warnings`
+- `git diff --check`
+- `npm --prefix frontend run lint`
+- `npm --prefix frontend test -- --runInBand`
+- `npm --prefix frontend run build`
+- `npm --prefix frontend audit --omit=dev`
 
 Known unrelated validation issue:
 

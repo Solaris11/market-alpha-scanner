@@ -3,7 +3,8 @@
   "notes": [
     "111 and 500 full scanner timings are measured on final code after yfinance chunking.",
     "1000 full scanner timing is measured on final chunked provider code before the final one-symbol POCI provider-compatibility prune; the final 1000 universe then passed price-only provider compatibility with 1000 frames and 0 errors.",
-    "No database writes, news enrichment, or forward-return analysis were included in these scanner hot-path timings."
+    "No database writes, news enrichment, or forward-return analysis were included in these scanner hot-path timings.",
+    "Production 500-symbol scan at commit 2bd3cb7 wrote scan_runs=1 and scanner_signals=362 after non-finite JSON payload sanitization was added."
   ],
   "runs": {
     "1000_chunked_cold": {
@@ -49,6 +50,24 @@
       "sampled_rss_mb": 304.2,
       "scoring_seconds": 158.1,
       "total_runtime_seconds": 210.1
+    },
+    "production_500_warm_cache_after_deploy": {
+      "completed_at_utc": "2026-06-09 13:20:50.412232+00",
+      "csv_write_seconds": 0.5,
+      "database_scanner_signals": 362,
+      "deep_health_backup_status": "warn_offsite_backup_timeout_unrelated",
+      "fundamentals_hits": 369,
+      "fundamentals_misses": 0,
+      "health_after_scan": "ok",
+      "input_symbols": 500,
+      "macro_download_seconds": 2.8,
+      "price_history_download_seconds": 86.4,
+      "production_commit": "2bd3cb7",
+      "ranked_rows": 362,
+      "ranking_table_build_seconds": 2.4,
+      "scoring_seconds": 132.0,
+      "symbols_scored": 369,
+      "total_runtime_seconds": 254.7
     }
   }
 }
