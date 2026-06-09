@@ -1,0 +1,14 @@
+symbol,company_name,sector,industry,final_score,final_decision,action,data_provider,data_provider_primary,data_provider_fallback_used,price_history_rows,data_quality_score,confidence_score
+RGTI,"Rigetti Computing, Inc.",Technology,Computer Hardware,23.76,EXIT,STRONG SELL,alpaca,alpaca,False,506,100.0,45.1
+QBTS,D-Wave Quantum Inc.,Technology,Computer Hardware,24.09,EXIT,STRONG SELL,alpaca,alpaca,False,506,100.0,40.1
+QUBT,Quantum Computing Inc.,Technology,Computer Hardware,14.02,EXIT,STRONG SELL,yfinance,alpaca,True,501,95.0,45.1
+IONQ,"IonQ, Inc.",Technology,Computer Hardware,31.75,EXIT,STRONG SELL,alpaca,alpaca,False,506,100.0,40.1
+LITE,Lumentum Holdings Inc.,Technology,Communication Equipment,44.89,EXIT,SELL,alpaca,alpaca,False,506,100.0,37.1
+RKLB,Rocket Lab Corporation,Industrials,Aerospace & Defense,22.76,EXIT,STRONG SELL,alpaca,alpaca,False,506,100.0,54.62
+ASTS,"AST SpaceMobile, Inc.",Technology,Communication Equipment,24.46,EXIT,SELL,alpaca,alpaca,False,506,100.0,55.1
+LUNR,"Intuitive Machines, Inc.",Industrials,Aerospace & Defense,21.65,EXIT,STRONG SELL,yfinance,alpaca,True,501,95.0,36.62
+TEM,"Tempus AI, Inc.",Healthcare,Health Information Services,19.45,EXIT,STRONG SELL,yfinance,alpaca,True,497,95.0,31.62
+SOUN,"SoundHound AI, Inc.",Technology,Software - Application,15.42,EXIT,STRONG SELL,yfinance,alpaca,True,501,95.0,47.1
+HIMS,"Hims & Hers Health, Inc.",Healthcare,Drug Manufacturers - Specialty & Generic,32.18,EXIT,STRONG SELL,yfinance,alpaca,True,501,95.0,14.62
+APP,AppLovin Corporation,Communication Services,Advertising Agencies,55.24,EXIT,SELL,alpaca,alpaca,False,506,100.0,61.62
+PL,Planet Labs PBC,Industrials,Aerospace & Defense,21.35,EXIT,STRONG SELL,yfinance,alpaca,True,501,95.0,36.62

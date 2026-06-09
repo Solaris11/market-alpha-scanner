@@ -1,0 +1,10 @@
+route,status,total_seconds
+/api/health,200,0.122648
+/api/health/deep,200,0.526510
+/discover,200,0.189013
+/scanner,200,0.306827
+/symbol/AMD,200,0.423016
+/symbol/RGTI,200,0.509765
+/market-memory,200,0.533424
+/feed,200,0.547721
+/macro,200,0.495725

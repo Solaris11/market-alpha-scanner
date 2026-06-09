@@ -1,0 +1,71 @@
+{
+  "failure_sequence": [
+    {
+      "attempt": "2g baseline",
+      "result": "exit_137_after_csv_before_db_write"
+    },
+    {
+      "attempt": "streaming_price_history_2g",
+      "result": "exit_137_after_csv_before_db_write"
+    },
+    {
+      "attempt": "bounded_price_history_2g",
+      "result": "exit_137_after_csv_before_db_write"
+    },
+    {
+      "attempt": "bounded_price_history_4g",
+      "result": "passed_db_writeback"
+    }
+  ],
+  "generated_at": "2026-06-09T14:34:02.471471+00:00",
+  "post_run_process_state": "no scanner process remained after successful run",
+  "post_run_routes": {
+    "/api/health": {
+      "status": 200,
+      "total_ms": 122.65
+    },
+    "/api/health/deep": {
+      "status": 200,
+      "total_ms": 526.51
+    },
+    "/discover": {
+      "status": 200,
+      "total_ms": 189.01
+    },
+    "/feed": {
+      "status": 200,
+      "total_ms": 547.72
+    },
+    "/macro": {
+      "status": 200,
+      "total_ms": 495.73
+    },
+    "/market-memory": {
+      "status": 200,
+      "total_ms": 533.42
+    },
+    "/scanner": {
+      "status": 200,
+      "total_ms": 306.83
+    },
+    "/symbol/AMD": {
+      "status": 200,
+      "total_ms": 423.02
+    },
+    "/symbol/RGTI": {
+      "status": 200,
+      "total_ms": 509.77
+    }
+  },
+  "production_db_latest_scan": {
+    "completed_at_utc": "2026-06-09T14:31:03.750285+00:00",
+    "created_at_utc": "2026-06-09T14:31:08.930897+00:00",
+    "persisted_scanner_signals": 543,
+    "symbols_scored": 554,
+    "universe_count": 1000
+  },
+  "runtime_changes_required": {
+    "price_history_writeback": "bounded to configured symbol and recent-row limits",
+    "scanner_job_memory_limit": "raised from 2g to 4g"
+  }
+}

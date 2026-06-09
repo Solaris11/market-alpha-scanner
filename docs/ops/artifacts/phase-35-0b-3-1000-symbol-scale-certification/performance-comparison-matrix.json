@@ -1,0 +1,122 @@
+{
+  "comparison_matrix": {
+    "1000_chunked_cold_local": {
+      "csv_write_seconds": 0.4,
+      "fundamentals_hits": 0,
+      "fundamentals_misses": 555,
+      "input_symbols": 1000,
+      "macro_download_seconds": 3.9,
+      "price_history_download_seconds": 178.6,
+      "provider_price_check_errors": 0,
+      "provider_price_check_frames": 1000,
+      "provider_price_check_seconds": 48.2,
+      "ranked_rows": 545,
+      "ranking_table_build_seconds": 2.8,
+      "sampled_rss_mb": 284.5,
+      "scoring_seconds": 484.4,
+      "total_runtime_seconds": 703.0
+    },
+    "1000_production_4g_bounded_writeback": {
+      "csv_write_seconds": 1.1,
+      "database_scanner_signals": 543,
+      "event_context_cache": "hit",
+      "fundamentals_hits": 554,
+      "fundamentals_misses": 0,
+      "input_symbols": 1000,
+      "macro_download_seconds": 4.4,
+      "price_history_download_seconds": 179.7,
+      "ranked_rows": 543,
+      "ranking_table_build_seconds": 3.5,
+      "scanner_job_cpu_peak_observed_pct": 100.74,
+      "scanner_job_memory_peak_observed_mib": 3707.904,
+      "scoring_seconds": 360.5,
+      "symbols_scored": 554,
+      "total_runtime_seconds": 588.1
+    },
+    "111_core_cold_local": {
+      "csv_write_seconds": 0.1,
+      "fundamentals_hits": 0,
+      "fundamentals_misses": 111,
+      "input_symbols": 111,
+      "macro_download_seconds": 6.0,
+      "price_history_download_seconds": 31.3,
+      "ranked_rows": 111,
+      "ranking_table_build_seconds": 0.6,
+      "scoring_seconds": 105.3,
+      "total_runtime_seconds": 169.5
+    },
+    "500_chunked_cold_local": {
+      "csv_write_seconds": 0.2,
+      "fundamentals_hits": 0,
+      "fundamentals_misses": 368,
+      "input_symbols": 500,
+      "macro_download_seconds": 1.2,
+      "price_history_download_seconds": 41.4,
+      "provider_price_check_errors": 0,
+      "provider_price_check_frames": 500,
+      "provider_price_check_seconds": 26.0,
+      "ranked_rows": 362,
+      "ranking_table_build_seconds": 1.9,
+      "sampled_rss_mb": 304.2,
+      "scoring_seconds": 158.1,
+      "total_runtime_seconds": 210.1
+    },
+    "500_production_warm_cache": {
+      "completed_at_utc": "2026-06-09 13:20:50.412232+00",
+      "csv_write_seconds": 0.5,
+      "database_scanner_signals": 362,
+      "deep_health_backup_status": "warn_offsite_backup_timeout_unrelated",
+      "fundamentals_hits": 369,
+      "fundamentals_misses": 0,
+      "health_after_scan": "ok",
+      "input_symbols": 500,
+      "macro_download_seconds": 2.8,
+      "price_history_download_seconds": 86.4,
+      "production_commit": "2bd3cb7",
+      "ranked_rows": 362,
+      "ranking_table_build_seconds": 2.4,
+      "scoring_seconds": 132.0,
+      "symbols_scored": 369,
+      "total_runtime_seconds": 254.7
+    }
+  },
+  "generated_at": "2026-06-09T14:34:02.470743+00:00",
+  "route_smoke_after_1000": {
+    "/api/health": {
+      "status": 200,
+      "total_ms": 122.65
+    },
+    "/api/health/deep": {
+      "status": 200,
+      "total_ms": 526.51
+    },
+    "/discover": {
+      "status": 200,
+      "total_ms": 189.01
+    },
+    "/feed": {
+      "status": 200,
+      "total_ms": 547.72
+    },
+    "/macro": {
+      "status": 200,
+      "total_ms": 495.73
+    },
+    "/market-memory": {
+      "status": 200,
+      "total_ms": 533.42
+    },
+    "/scanner": {
+      "status": 200,
+      "total_ms": 306.83
+    },
+    "/symbol/AMD": {
+      "status": 200,
+      "total_ms": 423.02
+    },
+    "/symbol/RGTI": {
+      "status": 200,
+      "total_ms": 509.77
+    }
+  }
+}

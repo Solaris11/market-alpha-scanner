@@ -1,0 +1,51 @@
+symbol,company_name,sector,industry,final_score,final_decision,action,setup_type,data_provider,price_history_rows,confidence_score
+UUP,Invesco DB US Dollar Index Bullish Fund,US Dollar,,85.57,AVOID,BUY,AVOID,yfinance,501,54.47
+AMG,"Affiliated Managers Group, Inc.",Financial Services,Asset Management,80.98,AVOID,STRONG BUY,AVOID,yfinance,501,62.62
+ABCB,Ameris Bancorp,Financial Services,Banks - Regional,80.27,AVOID,STRONG BUY,AVOID,yfinance,501,62.62
+HYG,,High Yield Credit,,79.85,AVOID,BUY,AVOID,alpaca,506,54.47
+ZION,"Zions Bancorporation, National Association",Financial Services,Banks - Regional,79.59,AVOID,STRONG BUY,AVOID,yfinance,501,62.62
+BNS,The Bank of Nova Scotia,Financial Services,Banks - Diversified,79.59,AVOID,STRONG BUY,AVOID,yfinance,501,62.78
+MTB,M&T Bank Corporation,Financial Services,Banks - Regional,79.3,AVOID,STRONG BUY,AVOID,yfinance,501,62.78
+ASB,Associated Banc-Corp,Financial Services,Banks - Regional,79.21,AVOID,STRONG BUY,AVOID,yfinance,501,62.78
+PFG,"Principal Financial Group, Inc.",Financial Services,Asset Management,78.99,AVOID,STRONG BUY,AVOID,yfinance,501,62.78
+BAC,Bank of America Corporation,Financial Services,Banks - Diversified,78.91,AVOID,STRONG BUY,AVOID,alpaca,506,62.68
+JPM,JPMorgan Chase & Co.,Financial Services,Banks - Diversified,78.8,AVOID,BUY,AVOID,alpaca,506,62.78
+ONB,Old National Bancorp,Financial Services,Banks - Regional,78.67,AVOID,STRONG BUY,AVOID,yfinance,501,62.68
+RF,Regions Financial Corporation,Financial Services,Banks - Regional,77.97,AVOID,BUY,AVOID,yfinance,501,62.78
+RL,Ralph Lauren Corporation,Consumer Cyclical,Apparel Manufacturing,77.86,AVOID,STRONG BUY,AVOID,alpaca,506,54.78
+HLT,Hilton Worldwide Holdings Inc.,Consumer Cyclical,Lodging,77.83,AVOID,STRONG BUY,AVOID,alpaca,506,54.62
+INCY,Incyte Corporation,Healthcare,Biotechnology,77.1,AVOID,BUY,AVOID,yfinance,501,54.62
+LLY,Eli Lilly and Company,Healthcare,Drug Manufacturers - General,77.01,AVOID,STRONG BUY,AVOID,alpaca,506,54.62
+ASML,ASML Holding N.V.,Technology,Semiconductor Equipment & Materials,76.34,AVOID,STRONG BUY,AVOID,alpaca,506,55.1
+AMAT,"Applied Materials, Inc.",Technology,Semiconductor Equipment & Materials,76.34,AVOID,STRONG BUY,AVOID,alpaca,506,55.1
+BNL,"Broadstone Net Lease, Inc.",Real Estate,REIT - Diversified,76.03,AVOID,STRONG BUY,AVOID,yfinance,501,54.78
+MS,Morgan Stanley,Financial Services,Capital Markets,75.76,AVOID,BUY,AVOID,alpaca,506,62.62
+UBS,UBS Group AG,Financial Services,Banks - Diversified,75.26,AVOID,STRONG BUY,AVOID,yfinance,501,62.62
+EXPD,"Expeditors International of Washington, Inc.",Industrials,Integrated Freight & Logistics,75.18,AVOID,STRONG BUY,AVOID,yfinance,501,54.78
+LGND,Ligand Pharmaceuticals Incorporated,Healthcare,Biotechnology,75.05,AVOID,STRONG BUY,AVOID,yfinance,501,54.62
+TSM,Taiwan Semiconductor Manufacturing Company Limited,Technology,Semiconductors,74.98,AVOID,BUY,AVOID,alpaca,506,65.03
+XLF,State Street Financial Select Sector SPDR ETF,Financial Services,,74.65,AVOID,BUY,AVOID,alpaca,506,54.47
+TFC,Truist Financial Corporation,Financial Services,Banks - Regional,74.55,AVOID,BUY,AVOID,alpaca,506,72.62
+LEVI,Levi Strauss & Co.,Consumer Cyclical,Apparel Manufacturing,74.14,AVOID,STRONG BUY,AVOID,yfinance,501,54.62
+CPAY,"Corpay, Inc.",Technology,Software - Infrastructure,74.07,AVOID,BUY,AVOID,yfinance,501,65.1
+EOG,"EOG Resources, Inc.",Energy,Oil & Gas E&P,74.01,WAIT_PULLBACK,BUY,PULLBACK,alpaca,506,66.78
+MCY,Mercury General Corporation,Financial Services,Insurance - Property & Casualty,73.84,AVOID,BUY,AVOID,yfinance,501,72.62
+BYD,Boyd Gaming Corporation,Consumer Cyclical,Resorts & Casinos,73.83,AVOID,BUY,AVOID,yfinance,501,54.74
+CNK,"Cinemark Holdings, Inc.",Communication Services,Entertainment,73.79,AVOID,STRONG BUY,AVOID,yfinance,501,54.62
+AON,Aon plc,Financial Services,Insurance Brokers,73.63,AVOID,BUY,AVOID,alpaca,506,62.62
+GS,"The Goldman Sachs Group, Inc.",Financial Services,Capital Markets,73.32,AVOID,BUY,AVOID,alpaca,506,72.78
+HBAN,Huntington Bancshares Incorporated,Financial Services,Banks - Regional,73.05,AVOID,BUY,AVOID,yfinance,501,72.78
+MPC,Marathon Petroleum Corporation,Energy,Oil & Gas Refining & Marketing,72.89,AVOID,BUY,AVOID,alpaca,506,64.62
+CRS,Carpenter Technology Corporation,Industrials,Metal Fabrication,72.79,AVOID,STRONG BUY,AVOID,yfinance,501,54.62
+CSCO,"Cisco Systems, Inc.",Technology,Communication Equipment,72.71,AVOID,BUY,AVOID,alpaca,506,55.16
+FDX,FedEx Corporation,Industrials,Integrated Freight & Logistics,72.52,AVOID,BUY,AVOID,alpaca,506,64.39
+UNP,Union Pacific Corporation,Industrials,Railroads,72.0,AVOID,BUY,AVOID,alpaca,506,64.62
+KLAC,KLA Corporation,Technology,Semiconductor Equipment & Materials,71.96,AVOID,STRONG BUY,AVOID,alpaca,506,47.1
+AD,"Array Digital Infrastructure, Inc.",Communication Services,Telecom Services,71.93,WATCH,BUY,PULLBACK,yfinance,501,84.62
+CW,Curtiss-Wright Corporation,Industrials,Aerospace & Defense,71.48,AVOID,BUY,AVOID,yfinance,501,64.74
+VLO,Valero Energy Corporation,Energy,Oil & Gas Refining & Marketing,71.39,AVOID,BUY,AVOID,alpaca,506,64.62
+WCC,"WESCO International, Inc.",Industrials,Industrial Distribution,71.25,AVOID,BUY,AVOID,yfinance,501,64.65
+SAIA,"Saia, Inc.",Industrials,Trucking,71.24,AVOID,BUY,AVOID,yfinance,501,54.62
+CAT,Caterpillar Inc.,Industrials,Farm & Heavy Construction Machinery,71.24,AVOID,BUY,AVOID,alpaca,506,64.62
+MAS,Masco Corporation,Industrials,Building Products & Equipment,71.21,AVOID,BUY,AVOID,yfinance,501,54.62
+SLB,SLB N.V.,Energy,Oil & Gas Equipment & Services,71.04,AVOID,BUY,AVOID,alpaca,506,64.74

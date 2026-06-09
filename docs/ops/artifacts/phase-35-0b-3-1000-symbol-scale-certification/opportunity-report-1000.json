@@ -1,0 +1,96 @@
+{
+  "category_counts_1000_universe": {
+    "AI": 49,
+    "Biotech": 51,
+    "Cloud": 20,
+    "Crypto": 26,
+    "Cybersecurity": 6,
+    "Defense": 25,
+    "Energy": 22,
+    "Growth": 128,
+    "Momentum": 89,
+    "Quantum": 9,
+    "Semiconductor": 30,
+    "Space": 17
+  },
+  "category_counts_ranked_output": {
+    "AI": 46,
+    "Biotech": 45,
+    "Cloud": 20,
+    "Crypto": 22,
+    "Cybersecurity": 6,
+    "Defense": 25,
+    "Energy": 22,
+    "Growth": 117,
+    "Momentum": 82,
+    "Quantum": 8,
+    "Semiconductor": 30,
+    "Space": 15
+  },
+  "database_scanner_signals": 543,
+  "generated_at": "2026-06-09T14:34:02.471322+00:00",
+  "low_confidence_rows": 3,
+  "primary_provider_counts": {
+    "alpaca": 543
+  },
+  "provider_counts": {
+    "alpaca": 204,
+    "yfinance": 339
+  },
+  "provider_fallback_rows": 339,
+  "ranked_row_count": 543,
+  "required_symbols": {
+    "expected": [
+      "RGTI",
+      "QBTS",
+      "QUBT",
+      "IONQ",
+      "LITE",
+      "RKLB",
+      "ASTS",
+      "LUNR",
+      "TEM",
+      "SOUN",
+      "HIMS",
+      "APP",
+      "PL"
+    ],
+    "missing_from_ranked_output": [],
+    "ranked": [
+      "APP",
+      "LITE",
+      "HIMS",
+      "IONQ",
+      "ASTS",
+      "QBTS",
+      "RGTI",
+      "RKLB",
+      "LUNR",
+      "PL",
+      "TEM",
+      "SOUN",
+      "QUBT"
+    ]
+  },
+  "score_summary": {
+    "count": 543,
+    "max": 85.57,
+    "min": 7.82,
+    "p50": 50.66
+  },
+  "selected_universe_count": 1000,
+  "stale_rows": 3,
+  "symbols_scored": 554,
+  "top_10_symbols_by_score": [
+    "UUP",
+    "AMG",
+    "ABCB",
+    "HYG",
+    "ZION",
+    "BNS",
+    "MTB",
+    "ASB",
+    "PFG",
+    "BAC"
+  ]
+}
