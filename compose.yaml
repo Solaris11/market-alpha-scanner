@@ -103,6 +103,8 @@ services:
       context: .
       dockerfile: Dockerfile
     restart: "no"
+    cpus: "1.5"
+    mem_limit: 2g
     security_opt:
       - no-new-privileges:true
     cap_drop:
