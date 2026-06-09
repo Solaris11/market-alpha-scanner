@@ -1,0 +1,21 @@
+== attempt 1 ==
+market-alpha-frontend-hot-api                                    Up 9 seconds (healthy)
+market-alpha-frontend                                            Up 9 seconds (healthy)
+hdsm-caddy                                                       Up 14 hours (healthy)
+market-alpha-scanner-market-alpha-postgres-1                     Up 4 weeks (healthy)
+{"ok":true,"service":"tradeveto-frontend","status":"ok","timestamp":"2026-06-09T15:02:18.288Z","uptimeSeconds":8}
+{"backup":{"activeBackupProvider":"r2","ageMinutes":131.50728333333333,"latestEvent":{"createdAt":"2026-06-09 12:50:47.982121+00","message":"backup partial: offsite sync failed","metadata":{"script":"market-alpha-backup.sh","provider":"r2","exit_code":124,"timestamp":"2026-06-09T12:50:47.910490+00:00","backup_path":"r2:market-alpha-backups","retry_count":3,"failure_type":"timeout","classification":"backup_partial","offsite_status":"offsite_sync_failed","scanner_backup":"2026-06-09_12-03.tar.gz","postgres_backup":"2026-06-09_12-00.sql.gz","duration_seconds":3046,"offsite_provider":"r2","scanner_size_bytes":241409966,"postgres_size_bytes":790402939,"active_backup_provider":"r2"},"severity":"error","status":"backup_partial"},"latestSuccessfulOffsiteProvider":null,"lastUpdated":"2026-06-09T12:50:47.982Z","local_backup":"ok","localBackup":{"ageMinutes":178.39505,"lastUpdated":"2026-06-09T12:03:54.716Z","message":"Latest local backup updated 178 minutes ago.","status":"ok"},"message":"Backup partial: local=ok, offsite=failed. backup partial: offsite sync failed","offsite_backup":"failed","offsiteBackup":{"ageMinutes":null,"lastUpdated":"2026-06-09 12:50:47.982121+00","message":"backup partial: offsite sync failed","status":"failed"},"offsiteProvider":"r2","overall_backup":"partial","overallBackup":"partial","status":"warn"},"db":{"message":"Database connectivity ok.","status":"ok"},"ok":true,"scanner":{"ageMinutes":14.699516666666666,"lastUpdated":"2026-06-09T14:47:36.439Z","message":"Slightly stale - updated 15 min ago","status":"ok"},"service":"tradeveto-frontend","timestamp":"2026-06-09T15:02:18.420Z"}
+== route smoke ==
+/,200
+/terminal,200
+/discover,200
+/scanner,200
+/symbol/AMD,200
+/history,200
+/performance,200
+/feed,200
+/alerts,200
+/account,200
+/market-memory,200
+== git ==
+4e1b868

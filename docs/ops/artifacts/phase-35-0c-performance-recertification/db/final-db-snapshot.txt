@@ -1,0 +1,43 @@
+          captured_at
+-------------------------------
+ 2026-06-09 15:07:53.599233+00
+(1 row)
+
+ state  | wait_event_type |      wait_event      | count
+--------+-----------------+----------------------+-------
+ idle   | Client          | ClientRead           |     6
+        | Activity        | WalWriterMain        |     1
+        | Activity        | LogicalLauncherMain  |     1
+        | Timeout         | CheckpointWriteDelay |     1
+ active |                 |                      |     1
+        | Activity        | AutoVacuumMain       |     1
+        | Activity        | BgWriterMain         |     1
+(7 rows)
+
+         relname         | total_size | n_live_tup | n_dead_tup
+-------------------------+------------+------------+------------
+ scanner_signals         | 2897 MB    |     522458 |       2721
+ request_metrics         | 1701 MB    |    5582840 |      44651
+ market_memory_snapshots | 1087 MB    |     519427 |          0
+ symbol_snapshots        | 997 MB     |     380870 |          0
+ forward_returns         | 328 MB     |     346200 |          0
+(5 rows)
+
+            route             | samples |       p95_ms       |      p99_ms
+------------------------------+---------+--------------------+-------------------
+ /api/health/deep             |     325 |  48.80000000000001 | 84.27999999999997
+ /api/analytics/events        |     431 |                 43 | 305.3999999999995
+ /api/alerts/rules            |      10 | 30.549999999999997 |             30.91
+ /api/user/saved-scans        |       5 |               22.6 |             22.92
+ /api/ranking                 |     265 |                  4 |                 7
+ /api/symbol/[symbol]         |       1 |                  3 |                 3
+ /api/history/latest          |     263 |                  1 |                 1
+ /api/session                 |     264 |                  1 |                 1
+ /api/health                  |    9235 |                  1 |                 1
+ /api/intelligence/predictive |       1 |                  0 |                 0
+(10 rows)
+
+ latest_signal_rows | latest_distinct_symbols
+--------------------+-------------------------
+                362 |                     362
+(1 row)

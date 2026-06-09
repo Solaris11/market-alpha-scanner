@@ -1,0 +1,156 @@
+Timing is on.
+          captured_at
+-------------------------------
+ 2026-06-09 14:39:32.372455+00
+(1 row)
+
+Time: 0.207 ms
+ active_connections
+--------------------
+                  5
+(1 row)
+
+Time: 1.933 ms
+ state  | count
+--------+-------
+ idle   |     4
+ active |     1
+(2 rows)
+
+Time: 1.094 ms
+ wait_event_type | wait_event | count
+-----------------+------------+-------
+ Client          | ClientRead |     4
+(1 row)
+
+Time: 0.596 ms
+  locktype  |      mode       | granted | count
+------------+-----------------+---------+-------
+ virtualxid | ExclusiveLock   | t       |     1
+ relation   | AccessShareLock | t       |     1
+(2 rows)
+
+Time: 0.489 ms
+             relname              | total_size | table_size | n_live_tup | n_dead_tup | vacuum_count | autovacuum_count | analyze_count | autoanalyze_count
+----------------------------------+------------+------------+------------+------------+--------------+------------------+---------------+-------------------
+ scanner_signals                  | 2891 MB    | 144 MB     |     521735 |       2721 |            0 |                9 |             0 |                20
+ request_metrics                  | 1701 MB    | 484 MB     |    5582354 |      44651 |            0 |               26 |             0 |                55
+ market_memory_snapshots          | 1087 MB    | 957 MB     |     518704 |          0 |            0 |               21 |             0 |                24
+ symbol_snapshots                 | 995 MB     | 247 MB     |     380147 |          0 |            0 |               13 |             0 |                30
+ forward_returns                  | 328 MB     | 300 MB     |     346200 |          0 |            0 |                9 |             0 |                18
+ symbol_price_history             | 124 MB     | 65 MB      |     328552 |      38378 |            0 |             3266 |             0 |              3256
+ synthetic_check_results          | 57 MB      | 30 MB      |     139074 |      10275 |            0 |               14 |             0 |                41
+ analytics_events                 | 24 MB      | 10008 kB   |      22061 |          0 |            0 |                8 |             0 |                41
+ request_metric_rollups_minute    | 11 MB      | 4048 kB    |      40649 |        561 |            0 |               76 |             0 |               527
+ price_history                    | 8800 kB    | 5496 kB    |          0 |          0 |            0 |                0 |             0 |                 0
+ scan_runs                        | 8040 kB    | 7128 kB    |       4702 |          5 |            0 |                2 |             0 |                12
+ shock_move_patterns              | 7408 kB    | 1088 kB    |        333 |          0 |            0 |               26 |             0 |                29
+ shock_move_events                | 6560 kB    | 5536 kB    |       6288 |          0 |            0 |                9 |             0 |                35
+ performance_summary              | 6440 kB    | 5720 kB    |       9452 |          0 |            0 |                3 |             0 |                12
+ system_metrics                   | 5416 kB    | 4536 kB    |       8680 |       1663 |            0 |                4 |             0 |                26
+ narrative_intelligence_snapshots | 2336 kB    | 504 kB     |        222 |          0 |            0 |                1 |             0 |                 3
+ monitoring_events                | 1688 kB    | 1120 kB    |       2259 |        232 |            0 |                2 |             0 |                21
+ user_intelligence_feed_items     | 1408 kB    | 864 kB     |       1399 |        279 |            0 |               63 |             0 |               241
+ fundamental_snapshots            | 632 kB     | 40 kB      |          0 |          0 |            0 |                0 |             0 |                 0
+ user_workflow_symbol_snapshots   | 424 kB     | 168 kB     |        387 |          0 |            0 |              265 |             0 |               423
+ symbol_reasons                   | 296 kB     | 88 kB      |          0 |          0 |            0 |                0 |             0 |                 0
+ notifications                    | 288 kB     | 96 kB      |        214 |         31 |            0 |                6 |             0 |                15
+ user_workspace_preferences       | 272 kB     | 40 kB      |         17 |         27 |            0 |               63 |             0 |                65
+ user_subscriptions               | 192 kB     | 8192 bytes |         22 |         43 |            0 |                2 |             0 |                 4
+ user_watchlist                   | 192 kB     | 48 kB      |        544 |         84 |            0 |                7 |             0 |                22
+(25 rows)
+
+Time: 24.776 ms
+            relname            |                   indexrelname                   | idx_scan  | idx_tup_read | idx_tup_fetch | index_size
+-------------------------------+--------------------------------------------------+-----------+--------------+---------------+------------
+ request_metrics               | ix_request_metrics_route_created_method_latency  |        10 |      1851495 |        298348 | 291 MB
+ request_metrics               | ix_request_metrics_route_created_at              |      7156 |      1200155 |        481693 | 274 MB
+ request_metrics               | idx_request_metrics_created_route_method_latency |        33 |       397091 |         99290 | 239 MB
+ request_metrics               | request_metrics_pkey                             |         0 |            0 |             0 | 223 MB
+ request_metrics               | ix_request_metrics_status_created_at             |       960 |       566500 |             0 | 190 MB
+ market_memory_snapshots       | idx_market_memory_symbol_ts                      |        57 |       409829 |         11907 | 34 MB
+ market_memory_snapshots       | uq_market_memory_scanner_signal                  |   7785421 |      7929646 |       6913971 | 31 MB
+ market_memory_snapshots       | market_memory_snapshots_pkey                     |         0 |            0 |             0 | 31 MB
+ scanner_signals               | idx_scanner_signals_scan_run_rank                |   3881423 |    143321858 |         82016 | 25 MB
+ scanner_signals               | uq_scanner_signals_scan_run_symbol               |   7018928 |      8840570 |       7222007 | 25 MB
+ symbol_price_history          | uq_symbol_price_history_symbol_ts_source         | 184461060 |    186050749 |     186050749 | 23 MB
+ scanner_signals               | scanner_signals_pkey                             |    961278 |       885244 |        863506 | 20 MB
+ symbol_snapshots              | uq_symbol_snapshots_run_symbol                   |    364428 |         2102 |          2102 | 18 MB
+ symbol_price_history          | idx_symbol_price_history_symbol_ts               |     19538 |     17445723 |        214560 | 18 MB
+ symbol_price_history          | symbol_price_history_pkey                        |         0 |            0 |             0 | 18 MB
+ symbol_snapshots              | symbol_snapshots_pkey1                           |         0 |            0 |             0 | 16 MB
+ scanner_signals               | idx_scanner_signals_score                        |         0 |            0 |             0 | 16 MB
+ market_memory_snapshots       | idx_market_memory_sector_ts                      |         9 |        28344 |             0 | 14 MB
+ forward_returns               | forward_returns_pkey                             |         0 |            0 |             0 | 14 MB
+ synthetic_check_results       | ix_synthetic_check_results_name_created_at       |         1 |         5434 |          5434 | 13 MB
+ market_memory_snapshots       | idx_market_memory_setup_regime_score             |        41 |      1945818 |        182535 | 10 MB
+ market_memory_snapshots       | idx_market_memory_scan_run_id                    |        12 |      2074267 |        118550 | 9520 kB
+ synthetic_check_results       | ix_synthetic_check_results_status_created_at     |       379 |        30130 |         30130 | 8456 kB
+ synthetic_check_results       | synthetic_check_results_pkey                     |         0 |            0 |             0 | 5896 kB
+ scanner_signals               | idx_scanner_signals_scan_run_id                  |     26441 |      2521406 |        120385 | 4880 kB
+ symbol_snapshots              | idx_symbol_snapshots_created_at                  |         0 |            0 |             0 | 4608 kB
+ scanner_signals               | idx_scanner_signals_symbol                       |      1409 |      1573987 |         14755 | 3880 kB
+ scanner_signals               | idx_scanner_signals_created_at                   |        16 |      1862617 |        219168 | 3752 kB
+ request_metric_rollups_minute | ix_request_metric_rollups_minute_route_bucket    |         4 |          218 |             0 | 3688 kB
+ analytics_events              | ix_analytics_events_occurred_actor               |       529 |        29742 |          1797 | 3552 kB
+(30 rows)
+
+Time: 3.959 ms
+ schemaname |        tablename        |                    indexname                     |                                                                                                    indexdef
+------------+-------------------------+--------------------------------------------------+----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ public     | forward_returns         | forward_returns_pkey                             | CREATE UNIQUE INDEX forward_returns_pkey ON public.forward_returns USING btree (id)
+ public     | forward_returns         | idx_forward_returns_created_at                   | CREATE INDEX idx_forward_returns_created_at ON public.forward_returns USING btree (created_at DESC)
+ public     | forward_returns         | idx_forward_returns_horizon_signal_date          | CREATE INDEX idx_forward_returns_horizon_signal_date ON public.forward_returns USING btree (horizon, signal_date DESC)
+ public     | forward_returns         | idx_forward_returns_scan_run_id                  | CREATE INDEX idx_forward_returns_scan_run_id ON public.forward_returns USING btree (scan_run_id)
+ public     | forward_returns         | idx_forward_returns_scanner_signal_id            | CREATE INDEX idx_forward_returns_scanner_signal_id ON public.forward_returns USING btree (scanner_signal_id)
+ public     | forward_returns         | idx_forward_returns_symbol_signal_date           | CREATE INDEX idx_forward_returns_symbol_signal_date ON public.forward_returns USING btree (symbol, signal_date DESC)
+ public     | market_memory_snapshots | idx_market_memory_scan_run_id                    | CREATE INDEX idx_market_memory_scan_run_id ON public.market_memory_snapshots USING btree (scan_run_id)
+ public     | market_memory_snapshots | idx_market_memory_sector_ts                      | CREATE INDEX idx_market_memory_sector_ts ON public.market_memory_snapshots USING btree (sector, signal_ts DESC)
+ public     | market_memory_snapshots | idx_market_memory_setup_regime_score             | CREATE INDEX idx_market_memory_setup_regime_score ON public.market_memory_snapshots USING btree (setup_type, market_regime, score_bucket, signal_ts DESC)
+ public     | market_memory_snapshots | idx_market_memory_symbol_ts                      | CREATE INDEX idx_market_memory_symbol_ts ON public.market_memory_snapshots USING btree (symbol, signal_ts DESC)
+ public     | market_memory_snapshots | market_memory_snapshots_pkey                     | CREATE UNIQUE INDEX market_memory_snapshots_pkey ON public.market_memory_snapshots USING btree (id)
+ public     | market_memory_snapshots | uq_market_memory_scanner_signal                  | CREATE UNIQUE INDEX uq_market_memory_scanner_signal ON public.market_memory_snapshots USING btree (scanner_signal_id)
+ public     | request_metrics         | idx_request_metrics_created_route_method_latency | CREATE INDEX idx_request_metrics_created_route_method_latency ON public.request_metrics USING btree (created_at DESC, route, method, latency_ms)
+ public     | request_metrics         | ix_request_metrics_route_created_at              | CREATE INDEX ix_request_metrics_route_created_at ON public.request_metrics USING btree (route, created_at DESC)
+ public     | request_metrics         | ix_request_metrics_route_created_method_latency  | CREATE INDEX ix_request_metrics_route_created_method_latency ON public.request_metrics USING btree (route, created_at DESC, method, latency_ms)
+ public     | request_metrics         | ix_request_metrics_status_created_at             | CREATE INDEX ix_request_metrics_status_created_at ON public.request_metrics USING btree (status_code, created_at DESC)
+ public     | request_metrics         | request_metrics_pkey                             | CREATE UNIQUE INDEX request_metrics_pkey ON public.request_metrics USING btree (id)
+ public     | scan_runs               | idx_scan_runs_completed_at                       | CREATE INDEX idx_scan_runs_completed_at ON public.scan_runs USING btree (completed_at DESC NULLS LAST, created_at DESC)
+ public     | scan_runs               | idx_scan_runs_status_completed_at                | CREATE INDEX idx_scan_runs_status_completed_at ON public.scan_runs USING btree (status, completed_at DESC NULLS LAST)
+ public     | scan_runs               | scan_runs_pkey1                                  | CREATE UNIQUE INDEX scan_runs_pkey1 ON public.scan_runs USING btree (id)
+ public     | scan_runs               | uq_scan_runs_history_source_file                 | CREATE UNIQUE INDEX uq_scan_runs_history_source_file ON public.scan_runs USING btree (((metadata ->> 'source_file'::text))) WHERE ((run_type = 'history_backfill'::text) AND (metadata ? 'source_file'::text))
+ public     | scanner_signals         | idx_scanner_signals_created_at                   | CREATE INDEX idx_scanner_signals_created_at ON public.scanner_signals USING btree (created_at)
+ public     | scanner_signals         | idx_scanner_signals_final_decision               | CREATE INDEX idx_scanner_signals_final_decision ON public.scanner_signals USING btree (final_decision)
+ public     | scanner_signals         | idx_scanner_signals_rating                       | CREATE INDEX idx_scanner_signals_rating ON public.scanner_signals USING btree (rating)
+ public     | scanner_signals         | idx_scanner_signals_scan_run_id                  | CREATE INDEX idx_scanner_signals_scan_run_id ON public.scanner_signals USING btree (scan_run_id)
+ public     | scanner_signals         | idx_scanner_signals_scan_run_rank                | CREATE INDEX idx_scanner_signals_scan_run_rank ON public.scanner_signals USING btree (scan_run_id, rank_position)
+ public     | scanner_signals         | idx_scanner_signals_score                        | CREATE INDEX idx_scanner_signals_score ON public.scanner_signals USING btree (final_score DESC NULLS LAST)
+ public     | scanner_signals         | idx_scanner_signals_symbol                       | CREATE INDEX idx_scanner_signals_symbol ON public.scanner_signals USING btree (symbol)
+ public     | scanner_signals         | scanner_signals_pkey                             | CREATE UNIQUE INDEX scanner_signals_pkey ON public.scanner_signals USING btree (id)
+ public     | scanner_signals         | uq_scanner_signals_scan_run_symbol               | CREATE UNIQUE INDEX uq_scanner_signals_scan_run_symbol ON public.scanner_signals USING btree (scan_run_id, symbol)
+ public     | symbol_snapshots        | idx_symbol_snapshots_created_at                  | CREATE INDEX idx_symbol_snapshots_created_at ON public.symbol_snapshots USING btree (created_at DESC)
+ public     | symbol_snapshots        | idx_symbol_snapshots_scan_run_id                 | CREATE INDEX idx_symbol_snapshots_scan_run_id ON public.symbol_snapshots USING btree (scan_run_id)
+ public     | symbol_snapshots        | idx_symbol_snapshots_symbol                      | CREATE INDEX idx_symbol_snapshots_symbol ON public.symbol_snapshots USING btree (symbol)
+ public     | symbol_snapshots        | symbol_snapshots_pkey1                           | CREATE UNIQUE INDEX symbol_snapshots_pkey1 ON public.symbol_snapshots USING btree (id)
+ public     | symbol_snapshots        | uq_symbol_snapshots_run_symbol                   | CREATE UNIQUE INDEX uq_symbol_snapshots_run_symbol ON public.symbol_snapshots USING btree (scan_run_id, symbol)
+(35 rows)
+
+Time: 3.644 ms
+       table_name        |  rows
+-------------------------+---------
+ request_metrics         | 5581492
+ scanner_signals         |  521735
+ market_memory_snapshots |  521735
+ symbol_snapshots        |  379995
+ forward_returns         |  346209
+ scan_runs               |    4702
+(6 rows)
+
+Time: 684.182 ms
+         oldest_metric         |         newest_metric         | request_metric_rows
+-------------------------------+-------------------------------+---------------------
+ 2026-05-10 03:17:02.941419+00 | 2026-06-09 14:39:19.142515+00 |             5581492
+(1 row)
+
+Time: 124.696 ms
+Time: 0.147 ms

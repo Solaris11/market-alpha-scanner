@@ -1,0 +1,730 @@
+{
+  "baseUrl": "https://tradeveto.com",
+  "browserReports": [
+    {
+      "apiTimings": [
+        {
+          "count": 20,
+          "errors": 0,
+          "path": "/api/analytics/events",
+          "p50Ms": 149.282,
+          "p95Ms": 274.06,
+          "p99Ms": 335.454
+        },
+        {
+          "count": 16,
+          "errors": 0,
+          "path": "/api/auth/me",
+          "p50Ms": 75.509,
+          "p95Ms": 187.966,
+          "p99Ms": 187.966
+        },
+        {
+          "count": 11,
+          "errors": 11,
+          "path": "/api/discovery",
+          "p50Ms": 68.19,
+          "p95Ms": 251.228,
+          "p99Ms": 251.228
+        }
+      ],
+      "browserName": "webkit",
+      "consoleIssueCount": 11,
+      "consoleIssues": [
+        {
+          "location": {
+            "url": "https://tradeveto.com/api/discovery",
+            "lineNumber": 0,
+            "columnNumber": 0
+          },
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+          "type": "error"
+        },
+        {
+          "location": {
+            "url": "https://tradeveto.com/api/discovery",
+            "lineNumber": 0,
+            "columnNumber": 0
+          },
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+          "type": "error"
+        },
+        {
+          "location": {
+            "url": "https://tradeveto.com/api/discovery",
+            "lineNumber": 0,
+            "columnNumber": 0
+          },
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+          "type": "error"
+        },
+        {
+          "location": {
+            "url": "https://tradeveto.com/api/discovery",
+            "lineNumber": 0,
+            "columnNumber": 0
+          },
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+          "type": "error"
+        },
+        {
+          "location": {
+            "url": "https://tradeveto.com/api/discovery",
+            "lineNumber": 0,
+            "columnNumber": 0
+          },
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+          "type": "error"
+        },
+        {
+          "location": {
+            "url": "https://tradeveto.com/api/discovery",
+            "lineNumber": 0,
+            "columnNumber": 0
+          },
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+          "type": "error"
+        },
+        {
+          "location": {
+            "url": "https://tradeveto.com/api/discovery",
+            "lineNumber": 0,
+            "columnNumber": 0
+          },
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+          "type": "error"
+        },
+        {
+          "location": {
+            "url": "https://tradeveto.com/api/discovery",
+            "lineNumber": 0,
+            "columnNumber": 0
+          },
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+          "type": "error"
+        },
+        {
+          "location": {
+            "url": "https://tradeveto.com/api/discovery",
+            "lineNumber": 0,
+            "columnNumber": 0
+          },
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+          "type": "error"
+        },
+        {
+          "location": {
+            "url": "https://tradeveto.com/api/discovery",
+            "lineNumber": 0,
+            "columnNumber": 0
+          },
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+          "type": "error"
+        },
+        {
+          "location": {
+            "url": "https://tradeveto.com/api/discovery",
+            "lineNumber": 0,
+            "columnNumber": 0
+          },
+          "text": "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+          "type": "error"
+        }
+      ],
+      "generatedAt": "2026-06-09T14:53:35.891Z",
+      "interactions": [],
+      "memory": {
+        "after": {
+          "source": "unavailable"
+        },
+        "before": {
+          "source": "unavailable"
+        }
+      },
+      "overallStatus": "ready",
+      "routes": [
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 2340,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 756.328,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 4,
+            "apiTransferBytes": 1916,
+            "cls": 0,
+            "domContentLoadedMs": 235,
+            "fcpMs": 283,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 229,
+            "lcpMs": null,
+            "loadEventMs": 538,
+            "resourceCount": 103,
+            "scriptEncodedBytes": 977110,
+            "ttfbMs": -140,
+            "transferBytes": 1156279
+          },
+          "path": "/terminal",
+          "routeId": "terminal",
+          "screenshotPath": null,
+          "settledMs": 4023.864,
+          "status": "pass",
+          "targetLoadMs": 2000
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1486,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 271.336,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 175,
+            "fcpMs": 191,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 24,
+            "lcpMs": null,
+            "loadEventMs": 230,
+            "resourceCount": 101,
+            "scriptEncodedBytes": 0,
+            "ttfbMs": 65,
+            "transferBytes": 147675
+          },
+          "path": "/discover",
+          "routeId": "discover",
+          "screenshotPath": null,
+          "settledMs": 3543.421,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1296,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 244.629,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 174,
+            "fcpMs": 94,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 1,
+            "lcpMs": null,
+            "loadEventMs": 236,
+            "resourceCount": 103,
+            "scriptEncodedBytes": 3517,
+            "ttfbMs": 74,
+            "transferBytes": 141538
+          },
+          "path": "/scanner",
+          "routeId": "scanner",
+          "screenshotPath": null,
+          "settledMs": 3504.794,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 2921,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 503.766,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 1,
+            "apiTransferBytes": 799,
+            "cls": 0,
+            "domContentLoadedMs": 400,
+            "fcpMs": 424,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 0,
+            "lcpMs": null,
+            "loadEventMs": 433,
+            "resourceCount": 108,
+            "scriptEncodedBytes": 96005,
+            "ttfbMs": 137,
+            "transferBytes": 233552
+          },
+          "path": "/symbol/AMD",
+          "routeId": "symbol-amd",
+          "screenshotPath": null,
+          "settledMs": 3766.828,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1320,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 286.041,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 199,
+            "fcpMs": 211,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 1,
+            "lcpMs": null,
+            "loadEventMs": 371,
+            "resourceCount": 106,
+            "scriptEncodedBytes": 27604,
+            "ttfbMs": 80,
+            "transferBytes": 162859
+          },
+          "path": "/history",
+          "routeId": "history",
+          "screenshotPath": null,
+          "settledMs": 2924.189,
+          "status": "pass",
+          "targetLoadMs": 1000
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1320,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 290.743,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 197,
+            "fcpMs": 210,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 1,
+            "lcpMs": null,
+            "loadEventMs": 345,
+            "resourceCount": 106,
+            "scriptEncodedBytes": 72372,
+            "ttfbMs": 93,
+            "transferBytes": 206856
+          },
+          "path": "/performance",
+          "routeId": "performance",
+          "screenshotPath": null,
+          "settledMs": 3548.248,
+          "status": "pass",
+          "targetLoadMs": 1000
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 5737,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 480.995,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 369,
+            "fcpMs": 262,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 3,
+            "lcpMs": null,
+            "loadEventMs": 427,
+            "resourceCount": 30,
+            "scriptEncodedBytes": 616,
+            "ttfbMs": 237,
+            "transferBytes": 13925
+          },
+          "path": "/macro",
+          "routeId": "macro",
+          "screenshotPath": null,
+          "settledMs": 1498.015,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 8558,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 687.406,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 600,
+            "fcpMs": 300,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 3,
+            "lcpMs": null,
+            "loadEventMs": 608,
+            "resourceCount": 30,
+            "scriptEncodedBytes": 0,
+            "ttfbMs": 270,
+            "transferBytes": 13010
+          },
+          "path": "/feed",
+          "routeId": "feed",
+          "screenshotPath": null,
+          "settledMs": 1797.093,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 7048,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 598.71,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 2,
+            "apiTransferBytes": 1134,
+            "cls": 0,
+            "domContentLoadedMs": 462,
+            "fcpMs": 493,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 2,
+            "lcpMs": null,
+            "loadEventMs": 503,
+            "resourceCount": 104,
+            "scriptEncodedBytes": 23224,
+            "ttfbMs": 227,
+            "transferBytes": 157026
+          },
+          "path": "/paper",
+          "routeId": "paper",
+          "screenshotPath": null,
+          "settledMs": 3874.076,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1340,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 338.756,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 225,
+            "fcpMs": 238,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 1,
+            "lcpMs": null,
+            "loadEventMs": 377,
+            "resourceCount": 105,
+            "scriptEncodedBytes": 226665,
+            "ttfbMs": 87,
+            "transferBytes": 361903
+          },
+          "path": "/strategy-labs",
+          "routeId": "strategy-labs",
+          "screenshotPath": null,
+          "settledMs": 3612.025,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1320,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 225.437,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 171,
+            "fcpMs": 118,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 2,
+            "lcpMs": null,
+            "loadEventMs": 224,
+            "resourceCount": 99,
+            "scriptEncodedBytes": 0,
+            "ttfbMs": 92,
+            "transferBytes": 123585
+          },
+          "path": "/alerts",
+          "routeId": "alerts",
+          "screenshotPath": null,
+          "settledMs": 3484.683,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 14448,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 607.132,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 497,
+            "fcpMs": 133,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 1,
+            "lcpMs": null,
+            "loadEventMs": 570,
+            "resourceCount": 29,
+            "scriptEncodedBytes": 12789,
+            "ttfbMs": 113,
+            "transferBytes": 28927
+          },
+          "path": "/market-memory",
+          "routeId": "market-memory",
+          "screenshotPath": null,
+          "settledMs": 1676.728,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 2297,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 394.678,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 332,
+            "fcpMs": 232,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 1,
+            "lcpMs": null,
+            "loadEventMs": 347,
+            "resourceCount": 15,
+            "scriptEncodedBytes": 0,
+            "ttfbMs": 209,
+            "transferBytes": 1767
+          },
+          "path": "/status",
+          "routeId": "status",
+          "screenshotPath": null,
+          "settledMs": 1204.875,
+          "status": "pass",
+          "targetLoadMs": 2000
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 960,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 286.418,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 2,
+            "apiTransferBytes": 1130,
+            "cls": 0,
+            "domContentLoadedMs": 223,
+            "fcpMs": 180,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 3,
+            "lcpMs": null,
+            "loadEventMs": 280,
+            "resourceCount": 85,
+            "scriptEncodedBytes": 7730,
+            "ttfbMs": 142,
+            "transferBytes": 121744
+          },
+          "path": "/account",
+          "routeId": "account",
+          "screenshotPath": null,
+          "settledMs": 3561.664,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 960,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 207.058,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 153,
+            "fcpMs": 107,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 5,
+            "lcpMs": null,
+            "loadEventMs": 205,
+            "resourceCount": 87,
+            "scriptEncodedBytes": 10928,
+            "ttfbMs": 71,
+            "transferBytes": 128649
+          },
+          "path": "/settings",
+          "routeId": "settings",
+          "screenshotPath": null,
+          "settledMs": 2381.686,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 2113,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 758.507,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 2,
+            "apiTransferBytes": 1132,
+            "cls": 0,
+            "domContentLoadedMs": 689,
+            "fcpMs": 100,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 1,
+            "lcpMs": null,
+            "loadEventMs": 693,
+            "resourceCount": 83,
+            "scriptEncodedBytes": 0,
+            "ttfbMs": 80,
+            "transferBytes": 104189
+          },
+          "path": "/support",
+          "routeId": "support",
+          "screenshotPath": null,
+          "settledMs": 4021.258,
+          "status": "pass",
+          "targetLoadMs": 2500
+        }
+      ],
+      "startedAt": "2026-06-09T14:52:46.329Z",
+      "tracePath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-35-0c-performance-recertification/browser-webkit-only-after-noscreenshot/traces/webkit-trace.zip"
+    }
+  ],
+  "budgets": {
+    "interactionBudgets": {
+      "chartInteractionMs": 60,
+      "chartRestoreMs": 250,
+      "compareOpenMs": 150,
+      "fullscreenChartOpenMs": 150,
+      "routeTransitionMs": 200,
+      "scannerInteractionMs": 100,
+      "symbolSearchOpenMs": 100,
+      "symbolSwitchMs": 150
+    },
+    "routeLoadTargets": {
+      "/terminal": 2000,
+      "/discover": 2500,
+      "/scanner": 2500,
+      "/symbol/AMD": 2500,
+      "/history": 1000,
+      "/performance": 1000,
+      "/macro": 2500,
+      "/feed": 2500,
+      "/paper": 2500,
+      "/strategy-labs": 2500,
+      "/alerts": 2500,
+      "/market-memory": 2500,
+      "/status": 2000,
+      "/account": 2500,
+      "/settings": 2500,
+      "/support": 2500
+    }
+  },
+  "generatedAt": "2026-06-09T14:53:35.927Z",
+  "overallStatus": "ready",
+  "probeScope": "Production browser performance audit across major TradeVeto routes. Uses real browsers via Playwright against the configured base URL. Authentication is optional via TRADEVETO_PHASE275_COOKIE.",
+  "startedAt": "2026-06-09T14:52:46.328Z",
+  "blockers": []
+}

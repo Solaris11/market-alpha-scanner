@@ -1,0 +1,17 @@
+sample,route,status,time_starttransfer,time_total,size_download
+1,/api/health,200,0.143782,0.143925,115
+1,/api/health/deep,200,0.162953,0.163048,1623
+2,/api/health,200,0.230528,0.230600,115
+2,/api/health/deep,200,0.224661,0.224804,1623
+3,/api/health,200,0.154332,0.154454,115
+3,/api/health/deep,200,0.291567,0.291796,1624
+4,/api/health,200,0.399688,0.399823,115
+4,/api/health/deep,200,0.267926,0.268061,1614
+5,/api/health,200,3.366145,3.366261,115
+5,/api/health/deep,200,0.145682,0.145827,1623
+6,/api/health,200,0.266298,0.266417,115
+6,/api/health/deep,200,0.180234,0.180521,1633
+7,/api/health,200,0.154310,0.154443,115
+7,/api/health/deep,200,0.323817,0.323965,1624
+8,/api/health,200,0.393958,0.394075,115
+8,/api/health/deep,200,0.144028,0.144155,1633

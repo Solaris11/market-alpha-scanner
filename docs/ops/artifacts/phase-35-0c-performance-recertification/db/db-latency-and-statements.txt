@@ -1,0 +1,50 @@
+Timing is on.
+          captured_at
+-------------------------------
+ 2026-06-09 14:39:49.366855+00
+(1 row)
+
+Time: 0.373 ms
+         route         | method | samples | avg_ms | p95_ms | p99_ms
+-----------------------+--------+---------+--------+--------+--------
+ /api/health/deep      | GET    |     319 |  24.54 |     51 |     92
+ /api/analytics/events | POST   |     182 |  20.20 |     37 |    104
+ /api/ranking          | GET    |     265 |   2.63 |      4 |      7
+ /api/symbol/[symbol]  | GET    |       1 |   3.00 |      3 |      3
+ /api/history/latest   | GET    |     263 |   0.29 |      1 |      1
+ /api/health           | GET    |    9227 |   0.11 |      1 |      1
+ /api/session          | GET    |     264 |   0.27 |      1 |      1
+(7 rows)
+
+Time: 31.118 ms
+        route        | method | samples | avg_ms | p95_ms | p99_ms
+---------------------+--------+---------+--------+--------+--------
+ /api/health/deep    | GET    |      33 |  21.24 |     38 |     41
+ /api/ranking        | GET    |      12 |   2.92 |      5 |      5
+ /api/health         | GET    |     405 |   0.10 |      1 |      1
+ /api/history/latest | GET    |      12 |   0.42 |      1 |      1
+ /api/session        | GET    |      12 |   0.17 |      1 |      1
+(5 rows)
+
+Time: 1.171 ms
+ status_code | count
+-------------+-------
+         200 | 10258
+         401 |   263
+(2 rows)
+
+Time: 3.725 ms
+ extname
+----------
+ pgcrypto
+ plpgsql
+(2 rows)
+
+Time: 0.691 ms
+ pg_stat_statements_view
+-------------------------
+
+(1 row)
+
+Time: 0.162 ms
+Time: 0.086 ms

@@ -1,0 +1,241 @@
+Jun 09 14:47:39 onsre-node-01 docker[3089206]: symbol asset_type             sector    price  score decision setup_type  confidence  data_quality                                                        reason
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:    UUP   FX_PROXY          US Dollar   27.975  85.50    AVOID      AVOID       54.47          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:    HYG BOND_PROXY  High Yield Credit   79.705  79.73    AVOID      AVOID       54.47         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:    MTB     EQUITY Financial Services  225.650  79.30    AVOID      AVOID       62.78          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:    PFG     EQUITY Financial Services  106.080  79.03    AVOID      AVOID       62.78          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:    ASB     EQUITY Financial Services   28.420  78.99    AVOID      AVOID       62.78          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:    BAC     EQUITY Financial Services   54.150  78.83    AVOID      AVOID       54.68         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:    ONB     EQUITY Financial Services   24.320  78.46    AVOID      AVOID       72.68          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:    HLT     EQUITY  Consumer Cyclical  346.620  77.63    AVOID      AVOID       54.62         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:     RL     EQUITY  Consumer Cyclical  391.170  77.27    AVOID      AVOID       54.78         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:   INCY     EQUITY         Healthcare  103.230  76.86    AVOID      AVOID       54.62          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:    LLY     EQUITY         Healthcare 1156.450  76.79    AVOID      AVOID       54.62         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:    BNL     EQUITY        Real Estate   20.980  75.96    AVOID      AVOID       54.78          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:    TSM     EQUITY         Technology  429.200  75.71    AVOID      AVOID       65.03         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:   AMAT     EQUITY         Technology  509.595  75.67    AVOID      AVOID       55.10         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:     MS     EQUITY Financial Services  211.990  75.67    AVOID      AVOID       54.62         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:   ASML     EQUITY         Technology 1798.895  75.58    AVOID      AVOID       55.10         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:   EXPD     EQUITY        Industrials  165.300  75.01    AVOID      AVOID       54.78          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:    XLF        ETF Financial Services   52.480  74.61    AVOID      AVOID       46.47         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:    UBS     EQUITY Financial Services   48.120  74.11    AVOID      AVOID       62.62          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]:     GS     EQUITY Financial Services 1039.085  73.22    AVOID      AVOID       72.78         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 14:47:39 onsre-node-01 docker[3089206]: Saved full ranking to: /app/scanner_output/full_ranking.csv
+Jun 09 14:47:39 onsre-node-01 docker[3089206]: Saved top 20 to: /app/scanner_output/top_candidates.csv
+Jun 09 14:47:39 onsre-node-01 docker[3089206]: Saved scan snapshot to: /app/scanner_output/history/scan_20260609_144738.csv
+Jun 09 14:47:55 onsre-node-01 docker[3089206]: Wrote database rows: scan_runs=1, scanner_signals=361
+Jun 09 14:47:55 onsre-node-01 docker[3089206]: Important:
+Jun 09 14:47:55 onsre-node-01 docker[3089206]: - This is a ranking engine, not financial advice or a prediction guarantee.
+Jun 09 14:47:55 onsre-node-01 docker[3089206]: - Headline and macro layers are intentionally simple and can be wrong.
+Jun 09 14:47:55 onsre-node-01 docker[3089206]: - AVWAP uses objective anchors (YTD and recent swing low) rather than hand-picked discretionary anchors.
+Jun 09 14:47:55 onsre-node-01 docker[3089206]: - VPVR is intentionally not included because Yahoo daily bars are not reliable enough for it.
+Jun 09 14:47:55 onsre-node-01 docker[3089206]: - Historical evaluation is useful, but it is not survivorship-free or point-in-time perfect.
+Jun 09 14:47:55 onsre-node-01 docker[3089206]: [scanner] lock released
+Jun 09 14:47:55 onsre-node-01 docker[3089206]: [perf] total_runtime took 284.1s
+Jun 09 14:47:55 onsre-node-01 systemd[1]: market-alpha-fast-scan.service: Deactivated successfully.
+Jun 09 14:47:55 onsre-node-01 systemd[1]: Finished market-alpha-fast-scan.service - Market Alpha Fast Scan.
+Jun 09 14:58:09 onsre-node-01 systemd[1]: Starting market-alpha-fast-scan.service - Market Alpha Fast Scan...
+Jun 09 14:58:09 onsre-node-01 docker[3099734]:  Container market-alpha-scanner-market-alpha-postgres-1 Running
+Jun 09 14:58:09 onsre-node-01 docker[3099734]:  Container market-alpha-scanner-market-alpha-postgres-1 Waiting
+Jun 09 14:58:09 onsre-node-01 docker[3099734]:  Container market-alpha-scanner-market-alpha-postgres-1 Healthy
+Jun 09 14:58:09 onsre-node-01 docker[3099734]:  Container market-alpha-scanner-market-alpha-scanner-job-run-c830642f6568 Creating
+Jun 09 14:58:09 onsre-node-01 docker[3099734]:  Container market-alpha-scanner-market-alpha-scanner-job-run-c830642f6568 Created
+Jun 09 14:58:11 onsre-node-01 docker[3099734]: [mode] FAST mode enabled
+Jun 09 14:58:11 onsre-node-01 docker[3099734]: [mode] skipping news enrichment
+Jun 09 14:58:11 onsre-node-01 docker[3099734]: [mode] skipping analysis outputs
+Jun 09 14:58:11 onsre-node-01 docker[3099734]: [universe] selected 500 symbols
+Jun 09 14:58:11 onsre-node-01 docker[3099734]: [scanner] lock acquired
+Jun 09 14:58:11 onsre-node-01 docker[3099734]: [1/5] Downloading price history for 500 symbols...
+Jun 09 14:59:44 onsre-node-01 docker[3099734]: [perf] price_history_download took 93.1s
+Jun 09 14:59:44 onsre-node-01 docker[3099734]: [2/5] Downloading macro proxies...
+Jun 09 14:59:47 onsre-node-01 docker[3099734]: [event] verified context available=True cache=hit sources=SEC EDGAR 8-K Filings,CoinDesk
+Jun 09 14:59:47 onsre-node-01 docker[3099734]: [perf] macro_download took 2.8s
+Jun 09 14:59:47 onsre-node-01 docker[3099734]: [3/5] Scoring symbols...
+Jun 09 14:59:48 onsre-node-01 docker[3099734]:     scored 15/500...
+Jun 09 14:59:49 onsre-node-01 docker[3099734]:     scored 30/500...
+Jun 09 14:59:50 onsre-node-01 docker[3099734]:     scored 45/500...
+Jun 09 14:59:51 onsre-node-01 docker[3099734]:     scored 60/500...
+Jun 09 14:59:52 onsre-node-01 docker[3099734]:     scored 75/500...
+Jun 09 14:59:53 onsre-node-01 docker[3099734]:     scored 90/500...
+Jun 09 14:59:55 onsre-node-01 docker[3099734]:     scored 105/500...
+Jun 09 15:00:01 onsre-node-01 docker[3099734]:     scored 120/500...
+Jun 09 15:00:06 onsre-node-01 docker[3099734]:     scored 135/500...
+Jun 09 15:00:09 onsre-node-01 docker[3099734]:     scored 150/500...
+Jun 09 15:00:12 onsre-node-01 docker[3099734]:     scored 165/500...
+Jun 09 15:00:21 onsre-node-01 docker[3099734]:     scored 180/500...
+Jun 09 15:00:33 onsre-node-01 docker[3099734]:     scored 195/500...
+Jun 09 15:00:43 onsre-node-01 docker[3099734]:     scored 210/500...
+Jun 09 15:00:54 onsre-node-01 docker[3099734]:     scored 225/500...
+Jun 09 15:01:08 onsre-node-01 docker[3099734]:     scored 240/500...
+Jun 09 15:01:15 onsre-node-01 docker[3099734]:     scored 255/500...
+Jun 09 15:01:20 onsre-node-01 docker[3099734]:     scored 270/500...
+Jun 09 15:01:27 onsre-node-01 docker[3099734]:     scored 285/500...
+Jun 09 15:01:50 onsre-node-01 docker[3099734]:     scored 330/500...
+Jun 09 15:02:06 onsre-node-01 docker[3099734]:     scored 375/500...
+Jun 09 15:02:29 onsre-node-01 docker[3099734]:     scored 435/500...
+Jun 09 15:02:40 onsre-node-01 docker[3099734]:     scored 465/500...
+Jun 09 15:02:44 onsre-node-01 docker[3099734]:     scored 480/500...
+Jun 09 15:02:51 onsre-node-01 docker[3099734]: [cache] fundamentals hits=369 misses=0
+Jun 09 15:02:51 onsre-node-01 docker[3099734]: [perf] scoring took 184.8s
+Jun 09 15:02:51 onsre-node-01 docker[3099734]: [4/5] Enriching top names with headline / event context...
+Jun 09 15:02:51 onsre-node-01 docker[3099734]: [cache] news hits=0 misses=0
+Jun 09 15:02:51 onsre-node-01 docker[3099734]: [perf] headline_news_enrichment took 0.0s
+Jun 09 15:02:51 onsre-node-01 docker[3099734]: [5/5] Building ranking table...
+Jun 09 15:02:54 onsre-node-01 docker[3099734]: [perf] ranking_table_build took 2.5s
+Jun 09 15:02:54 onsre-node-01 docker[3099734]: [perf] csv_writes took 0.5s
+Jun 09 15:02:55 onsre-node-01 docker[3099734]: TOP CANDIDATES (final_decision source of truth)
+Jun 09 15:02:56 onsre-node-01 docker[3099734]: symbol asset_type             sector     price  score decision setup_type  confidence  data_quality                                                        reason
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:    UUP   FX_PROXY          US Dollar   27.9793  85.44    AVOID      AVOID       54.47          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:    PFG     EQUITY Financial Services  105.9900  79.00    AVOID      AVOID       62.78          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:    ASB     EQUITY Financial Services   28.4050  78.98    AVOID      AVOID       72.78          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:    BAC     EQUITY Financial Services   54.2350  78.91    AVOID      AVOID       54.68         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:    ONB     EQUITY Financial Services   24.3150  78.44    AVOID      AVOID       72.68          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:    MTB     EQUITY Financial Services  225.0600  77.75    AVOID      AVOID       62.78          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:     RL     EQUITY  Consumer Cyclical  388.5600  77.72    AVOID      AVOID       54.78         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:    HLT     EQUITY  Consumer Cyclical  345.5550  77.65    AVOID      AVOID       54.62         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:    HYG BOND_PROXY  High Yield Credit   79.6450  77.64    AVOID      AVOID       46.47         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:   INCY     EQUITY         Healthcare  103.2400  76.86    AVOID      AVOID       54.62          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:    LLY     EQUITY         Healthcare 1157.6650  76.75    AVOID      AVOID       54.62         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:    BNL     EQUITY        Real Estate   20.9800  75.97    AVOID      AVOID       54.78          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:     MS     EQUITY Financial Services  209.9300  75.67    AVOID      AVOID       64.62         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:   ASML     EQUITY         Technology 1782.6100  75.59    AVOID      AVOID       55.10         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:   EXPD     EQUITY        Industrials  165.3450  74.98    AVOID      AVOID       54.78          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:    XLF        ETF Financial Services   52.3950  74.58    AVOID      AVOID       46.47         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:    UBS     EQUITY Financial Services   48.0350  74.14    AVOID      AVOID       54.62          95.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:    TSM     EQUITY         Technology  426.7800  74.03    AVOID      AVOID       65.03         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:     GS     EQUITY Financial Services 1033.6800  73.19    AVOID      AVOID       64.78         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]:    MPC     EQUITY             Energy  259.3100  72.72    AVOID      AVOID       64.62         100.0 Poor risk/reward or overextended in current market conditions
+Jun 09 15:02:56 onsre-node-01 docker[3099734]: Saved full ranking to: /app/scanner_output/full_ranking.csv
+Jun 09 15:02:56 onsre-node-01 docker[3099734]: Saved top 20 to: /app/scanner_output/top_candidates.csv
+Jun 09 15:02:56 onsre-node-01 docker[3099734]: Saved scan snapshot to: /app/scanner_output/history/scan_20260609_150254.csv
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: Wrote database rows: scan_runs=1, scanner_signals=362
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: Important:
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: - This is a ranking engine, not financial advice or a prediction guarantee.
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: - Headline and macro layers are intentionally simple and can be wrong.
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: - AVWAP uses objective anchors (YTD and recent swing low) rather than hand-picked discretionary anchors.
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: - VPVR is intentionally not included because Yahoo daily bars are not reliable enough for it.
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: - Historical evaluation is useful, but it is not survivorship-free or point-in-time perfect.
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: [scanner] lock released
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: [perf] total_runtime took 301.4s
+Jun 09 15:03:13 onsre-node-01 systemd[1]: market-alpha-fast-scan.service: Deactivated successfully.
+Jun 09 15:03:13 onsre-node-01 systemd[1]: Finished market-alpha-fast-scan.service - Market Alpha Fast Scan.
+Jun 06 04:20:12 onsre-node-01 docker[397557]: [analysis] canonical observations: 24087
+Jun 06 04:20:14 onsre-node-01 docker[397557]: [analysis] Computed forward returns for 24087 snapshot rows.
+Jun 06 04:20:51 onsre-node-01 docker[397557]: [data] schema compatibility: 172 legacy snapshots missing action, using fallback
+Jun 06 04:25:07 onsre-node-01 docker[397557]: [analysis] signal lifecycle rows: 4641
+Jun 06 04:25:07 onsre-node-01 docker[397557]: [analysis] signal lifecycle summary rows: 66
+Jun 06 04:25:07 onsre-node-01 docker[397557]: [analysis] calibration insights written: 377 rows
+Jun 06 04:25:07 onsre-node-01 docker[397557]: Saved calibration insights to: /app/scanner_output/analysis/calibration_insights.json
+Jun 06 04:25:07 onsre-node-01 docker[397557]: [analysis] auto calibration recommendations written: 365 rows
+Jun 06 04:25:07 onsre-node-01 docker[397557]: Saved auto calibration recommendations to: /app/scanner_output/analysis/auto_calibration_recommendations.json
+Jun 06 04:25:07 onsre-node-01 docker[397557]: === PERFORMANCE BY RATING ===
+Jun 06 04:25:07 onsre-node-01 docker[397557]:      label avg_1D hit_1D  n_1D avg_2D hit_2D  n_2D avg_5D hit_5D  n_5D avg_10D hit_10D  n_10D avg_20D hit_20D  n_20D avg_60D hit_60D  n_60D
+Jun 06 04:25:07 onsre-node-01 docker[397557]: ACTIONABLE -0.32% 24.66%  1699 -0.27% 33.11%  1658  0.20% 49.48%  1538   1.04%  51.22%   1316   3.93%  65.30%    928       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]:       PASS -0.54% 20.85%  1290 -0.39% 30.10%  1269  0.10% 45.79%  1199   0.93%  52.98%   1091   2.81%  56.41%    741       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]:        TOP -0.25% 31.03%   145 -0.15% 38.52%   135  0.39% 55.96%   109  -0.74%  43.90%     82   3.12%  74.51%     51       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]:      WATCH -0.40% 23.89%  1528 -0.02% 35.33%  1489  1.12% 50.73%  1372   2.81%  54.17%   1174   3.75%  49.82%    833       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]: === PERFORMANCE BY SETUP ===
+Jun 06 04:25:07 onsre-node-01 docker[397557]:                 label avg_1D hit_1D  n_1D avg_2D hit_2D  n_2D avg_5D hit_5D  n_5D avg_10D hit_10D  n_10D avg_20D hit_20D  n_20D avg_60D hit_60D  n_60D
+Jun 06 04:25:07 onsre-node-01 docker[397557]:                 AVOID -0.42% 24.05%  3052 -0.18% 33.21%  2957  0.49% 49.10%  2662   1.48%  52.21%   2170   3.86%  58.66%   1132       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]:          CONTINUATION -1.64% 11.76%    17 -1.63% 18.75%    16 -0.72% 31.25%    16  -0.74%  33.33%     12   2.55%  42.86%      7       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]:              PULLBACK -0.49% 25.67%   261 -0.40% 28.46%   246  0.21% 44.71%   208   0.13%  46.98%    149   1.66%  51.22%     82       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]: breakout continuation  0.09% 25.00%    52  0.11% 48.08%    52  1.41% 61.54%    52   5.06%  61.54%     52   8.68%  69.23%     52       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]:           mixed setup -0.52% 18.93%   713 -0.38% 32.82%   713 -0.12% 44.18%   713   0.63%  50.49%    713   1.82%  49.65%    713       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]:     pullback to AVWAP -0.18% 20.97%   186 -0.17% 31.72%   186  0.54% 53.76%   186   0.95%  53.76%    186   1.65%  62.37%    186       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]:    trend continuation -0.15% 28.35%   381 -0.12% 35.70%   381  1.55% 56.43%   381   3.91%  59.06%    381   6.38%  68.77%    381       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]: === PERFORMANCE BY ASSET TYPE ===
+Jun 06 04:25:07 onsre-node-01 docker[397557]:           label avg_1D hit_1D  n_1D avg_2D hit_2D  n_2D avg_5D hit_5D  n_5D avg_10D hit_10D  n_10D avg_20D hit_20D  n_20D avg_60D hit_60D  n_60D
+Jun 06 04:25:07 onsre-node-01 docker[397557]:      BOND_PROXY -0.12% 22.62%    84 -0.12% 25.61%    82 -0.24% 42.11%    76  -0.27%  31.82%     66  -0.70%  21.74%     46       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]: COMMODITY_PROXY -0.72% 21.43%   126 -0.75% 28.46%   123 -0.69% 38.60%   114  -1.29%  31.31%     99  -2.13%  27.54%     69       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]:          CRYPTO -1.54% 25.00%    84 -1.90% 29.27%    82 -3.05% 25.00%    76  -4.85%  25.76%     66  -8.88%   6.52%     46       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]:    CRYPTO_PROXY -0.85% 16.67%    42 -1.35% 21.95%    41 -2.04% 26.32%    38  -2.93%  36.36%     33  -5.81%  30.43%     23       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]:          EQUITY -0.41% 23.17%  3780 -0.20% 32.87%  3690  0.59% 48.60%  3420   1.81%  52.32%   2970   4.16%  57.25%   2070       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]:             ETF -0.10% 27.78%   504  0.11% 39.23%   492  0.87% 62.72%   456   2.00%  69.19%    396   3.96%  83.70%    276       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]:        FX_PROXY -0.06% 19.05%    42 -0.03% 34.15%    41  0.06% 36.84%    38   0.25%  45.45%     33   0.89%  95.65%     23       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]: === PERFORMANCE BY SCORE BUCKET ===
+Jun 06 04:25:07 onsre-node-01 docker[397557]: label avg_1D hit_1D  n_1D avg_2D hit_2D  n_2D avg_5D hit_5D  n_5D avg_10D hit_10D  n_10D avg_20D hit_20D  n_20D avg_60D hit_60D  n_60D
+Jun 06 04:25:07 onsre-node-01 docker[397557]: 50-59 -0.40% 25.00%   992  0.01% 36.33%   969  1.29% 52.01%   894   3.53%  56.36%    770   4.21%  51.47%    544       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]: 60-69 -0.31% 22.81%  1131 -0.05% 33.48%  1099  0.68% 51.53%  1015   1.48%  52.49%    865   3.74%  55.12%    606       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]: 70-79 -0.37% 25.18%  1104 -0.40% 32.90%  1079  0.00% 46.85%  1001   0.77%  49.36%    855   3.62%  66.61%    611       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]:   80+ -0.25% 31.03%   145 -0.15% 38.52%   135  0.39% 55.96%   109  -0.74%  43.90%     82   3.12%  74.51%     51       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]:   <50 -0.54% 20.85%  1290 -0.39% 30.10%  1269  0.10% 45.79%  1199   0.93%  52.98%   1091   2.81%  56.41%    741       -       -      0
+Jun 06 04:25:07 onsre-node-01 docker[397557]: [analysis] snapshots loaded: 4102
+Jun 06 04:25:07 onsre-node-01 docker[397557]: [analysis] observations created: 24087
+Jun 06 04:25:07 onsre-node-01 docker[397557]: [analysis] horizons completed: 10D, 1D, 20D, 2D, 3D, 5D
+Jun 06 04:25:07 onsre-node-01 docker[397557]: [analysis] summary rows written: 377
+Jun 06 04:25:07 onsre-node-01 docker[397557]: Saved performance summary to: /app/scanner_output/analysis/performance_summary.csv
+Jun 06 04:28:33 onsre-node-01 docker[397557]: Wrote analysis database rows: performance_summary=377, forward_returns=24087
+Jun 06 04:28:33 onsre-node-01 docker[397557]: [perf] analysis took 25052.3s
+Jun 06 04:28:33 onsre-node-01 docker[397557]: Important:
+Jun 06 04:28:33 onsre-node-01 docker[397557]: - This is a ranking engine, not financial advice or a prediction guarantee.
+Jun 06 04:28:33 onsre-node-01 docker[397557]: - Headline and macro layers are intentionally simple and can be wrong.
+Jun 06 04:28:33 onsre-node-01 docker[397557]: - AVWAP uses objective anchors (YTD and recent swing low) rather than hand-picked discretionary anchors.
+Jun 06 04:28:33 onsre-node-01 docker[397557]: - VPVR is intentionally not included because Yahoo daily bars are not reliable enough for it.
+Jun 06 04:28:33 onsre-node-01 docker[397557]: - Historical evaluation is useful, but it is not survivorship-free or point-in-time perfect.
+Jun 06 04:28:33 onsre-node-01 docker[397557]: [scanner] lock released
+Jun 06 04:28:33 onsre-node-01 docker[397557]: [perf] total_runtime took 25109.2s
+Jun 06 04:28:33 onsre-node-01 systemd[1]: market-alpha-full-scan.service: Deactivated successfully.
+Jun 06 04:28:33 onsre-node-01 systemd[1]: Finished market-alpha-full-scan.service - Market Alpha Full Scan With Analysis.
+Jun 06 04:28:33 onsre-node-01 systemd[1]: market-alpha-full-scan.service: Consumed 1.673s CPU time.
+Jun 08 21:30:01 onsre-node-01 systemd[1]: Starting market-alpha-full-scan.service - Market Alpha Full Scan With Analysis...
+Jun 08 21:30:01 onsre-node-01 docker[2544537]:  Container market-alpha-scanner-market-alpha-postgres-1 Running
+Jun 08 21:30:01 onsre-node-01 docker[2544537]:  Container market-alpha-scanner-market-alpha-postgres-1 Waiting
+Jun 08 21:30:01 onsre-node-01 docker[2544537]:  Container market-alpha-scanner-market-alpha-postgres-1 Healthy
+Jun 08 21:30:01 onsre-node-01 docker[2544537]:  Container market-alpha-scanner-market-alpha-scanner-job-run-e6c627254236 Creating
+Jun 08 21:30:01 onsre-node-01 docker[2544537]:  Container market-alpha-scanner-market-alpha-scanner-job-run-e6c627254236 Created
+Jun 08 21:30:03 onsre-node-01 docker[2544537]: [mode] FULL mode enabled
+Jun 08 21:30:03 onsre-node-01 docker[2544537]: [scanner] lock acquired
+Jun 08 21:30:03 onsre-node-01 docker[2544537]: [1/5] Downloading price history for 111 symbols...
+Jun 08 21:30:26 onsre-node-01 docker[2544537]: [perf] price_history_download took 23.4s
+Jun 08 21:30:26 onsre-node-01 docker[2544537]: [2/5] Downloading macro proxies...
+Jun 08 21:30:29 onsre-node-01 docker[2544537]: [event] verified context available=True cache=hit sources=CoinDesk,MarketWatch
+Jun 08 21:30:29 onsre-node-01 docker[2544537]: [perf] macro_download took 2.8s
+Jun 08 21:30:29 onsre-node-01 docker[2544537]: [3/5] Scoring symbols...
+Jun 08 21:30:30 onsre-node-01 docker[2544537]:     scored 15/111...
+Jun 08 21:30:31 onsre-node-01 docker[2544537]:     scored 30/111...
+Jun 08 21:30:32 onsre-node-01 docker[2544537]:     scored 45/111...
+Jun 08 21:30:33 onsre-node-01 docker[2544537]:     scored 60/111...
+Jun 08 21:30:35 onsre-node-01 docker[2544537]:     scored 75/111...
+Jun 08 21:30:36 onsre-node-01 docker[2544537]:     scored 90/111...
+Jun 08 21:30:39 onsre-node-01 docker[2544537]:     scored 105/111...
+Jun 08 21:30:41 onsre-node-01 docker[2544537]: [cache] fundamentals hits=111 misses=0
+Jun 08 21:30:41 onsre-node-01 docker[2544537]: [perf] scoring took 11.7s
+Jun 08 21:30:41 onsre-node-01 docker[2544537]: [4/5] Enriching top names with headline / event context...
+Jun 08 21:30:46 onsre-node-01 docker[2544537]: [cache] news hits=0 misses=23
+Jun 08 21:30:46 onsre-node-01 docker[2544537]: [perf] headline_news_enrichment took 5.4s
+Jun 08 21:30:46 onsre-node-01 docker[2544537]: [5/5] Building ranking table...
+Jun 08 21:30:47 onsre-node-01 docker[2544537]: [perf] ranking_table_build took 0.9s
+Jun 08 21:30:48 onsre-node-01 docker[2544537]: [analysis] market structure written: breadth=MIXED, leadership=BALANCED, strong_signals=31
+Jun 08 21:30:48 onsre-node-01 docker[2544537]: [perf] csv_writes took 0.8s
+Jun 08 21:30:48 onsre-node-01 docker[2544537]: TOP CANDIDATES (final_decision source of truth)
+Jun 08 21:30:48 onsre-node-01 docker[2544537]: symbol asset_type             sector    price  score decision setup_type  confidence  data_quality                                                           reason
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:    UUP   FX_PROXY          US Dollar   28.030  90.38    AVOID      AVOID       51.66          95.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:    MPC     EQUITY             Energy  265.890  81.55    AVOID      AVOID       56.54         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:    EOG     EQUITY             Energy  140.200  79.48    WATCH   PULLBACK       82.13         100.0 Regime-adjusted score below 80; monitor until conditions improve
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:    LLY     EQUITY         Healthcare 1149.790  79.34    AVOID      AVOID       56.54         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:    BAC     EQUITY Financial Services   53.590  78.81    AVOID      AVOID       58.86         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:     MS     EQUITY Financial Services  212.160  75.90    AVOID      AVOID       47.49         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:   ASML     EQUITY         Technology 1749.025  74.74    AVOID      AVOID       47.60         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:    TSM     EQUITY         Technology  426.770  74.74    AVOID      AVOID       61.04         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:    HYG BOND_PROXY  High Yield Credit   79.520  74.71    AVOID      AVOID       43.66         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:   AAPL     EQUITY         Technology  301.570  74.68    WATCH   PULLBACK       78.49         100.0 Regime-adjusted score below 80; monitor until conditions improve
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:    SLB     EQUITY             Energy   56.550  74.41    AVOID      AVOID       67.97         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:    FDX     EQUITY        Industrials  330.165  74.33    AVOID      AVOID       65.99         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:   AMAT     EQUITY         Technology  492.120  74.21    AVOID      AVOID       53.49         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:     GS     EQUITY Financial Services 1046.040  73.94    AVOID      AVOID       59.34         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:    VLO     EQUITY             Energy  258.405  73.89    AVOID      AVOID       60.54         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:    UNP     EQUITY        Industrials  268.710  72.31    AVOID      AVOID       61.34         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:   KLAC     EQUITY         Technology 2107.600  71.99    AVOID      AVOID       47.49         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:    CAT     EQUITY        Industrials  915.040  71.55    AVOID      AVOID       57.49         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:    JPM     EQUITY Financial Services  311.110  69.44    AVOID      AVOID       69.34         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]:    UNH     EQUITY         Healthcare  406.660  69.38    AVOID      AVOID       52.13         100.0    Poor risk/reward or overextended in current market conditions
+Jun 08 21:30:48 onsre-node-01 docker[2544537]: Saved full ranking to: /app/scanner_output/full_ranking.csv
+Jun 08 21:30:48 onsre-node-01 docker[2544537]: Saved top 20 to: /app/scanner_output/top_candidates.csv
+Jun 08 21:30:48 onsre-node-01 docker[2544537]: Saved scan snapshot to: /app/scanner_output/history/scan_20260608_213048.csv
+Jun 08 21:30:54 onsre-node-01 docker[2544537]: Wrote database rows: scan_runs=1, scanner_signals=111
+Jun 08 21:30:54 onsre-node-01 docker[2544537]: [analysis] starting forward-return analysis
+Jun 08 21:31:01 onsre-node-01 docker[2544537]: [analysis] market structure written: breadth=MIXED, leadership=BALANCED, strong_signals=31
+Jun 08 21:31:37 onsre-node-01 docker[2544537]: [data] schema compatibility: 172 legacy snapshots missing action, using fallback
+Jun 09 00:37:58 onsre-node-01 systemd[1]: market-alpha-full-scan.service: Main process exited, code=exited, status=137/n/a
+Jun 09 00:37:58 onsre-node-01 systemd[1]: market-alpha-full-scan.service: Failed with result 'exit-code'.
+Jun 09 00:37:58 onsre-node-01 systemd[1]: Failed to start market-alpha-full-scan.service - Market Alpha Full Scan With Analysis.
+-- No entries --

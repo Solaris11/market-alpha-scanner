@@ -1,0 +1,374 @@
+== before ==
+bcd8d4b
+== pull ==
+Updating bcd8d4b..4e1b868
+Fast-forward
+ frontend/scripts/phase25-chart-scanner-browser-timing-probe.mjs | 1 -
+ frontend/src/components/terminal/SymbolTerminalWorkspace.tsx    | 3 +--
+ 2 files changed, 1 insertion(+), 3 deletions(-)
+== rebuild ==
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.18kB done
+#1 DONE 0.0s
+
+#2 [market-alpha-frontend-hot-api internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.17kB done
+#2 DONE 0.0s
+
+#3 [market-alpha-frontend-hot-api] resolve image config for docker-image://docker.io/docker/dockerfile:1
+#3 DONE 0.6s
+
+#4 [market-alpha-frontend] docker-image://docker.io/docker/dockerfile:1@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89
+#4 resolve docker.io/docker/dockerfile:1@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89 0.1s done
+#4 CACHED
+
+#5 [market-alpha-frontend internal] load metadata for docker.io/library/node:22-bookworm-slim
+#5 DONE 1.0s
+
+#6 [market-alpha-frontend internal] load .dockerignore
+#6 transferring context: 244B done
+#6 DONE 0.0s
+
+#7 [market-alpha-frontend-hot-api internal] load build context
+#7 DONE 0.0s
+
+#8 [market-alpha-frontend-hot-api deps 1/4] FROM docker.io/library/node:22-bookworm-slim@sha256:7af03b14a13c8cdd38e45058fd957bf00a72bbe17feac43b1c15a689c029c732
+#8 resolve docker.io/library/node:22-bookworm-slim@sha256:7af03b14a13c8cdd38e45058fd957bf00a72bbe17feac43b1c15a689c029c732 0.0s done
+#8 resolve docker.io/library/node:22-bookworm-slim@sha256:7af03b14a13c8cdd38e45058fd957bf00a72bbe17feac43b1c15a689c029c732 0.0s done
+#8 DONE 0.0s
+
+#7 [market-alpha-frontend internal] load build context
+#7 transferring context: 163.15kB 0.0s done
+#7 DONE 0.1s
+
+#9 [market-alpha-frontend-hot-api deps 2/4] WORKDIR /app
+#9 CACHED
+
+#10 [market-alpha-frontend-hot-api deps 3/4] COPY frontend/package*.json ./
+#10 CACHED
+
+#11 [market-alpha-frontend-hot-api deps 4/4] RUN npm ci
+#11 CACHED
+
+#12 [market-alpha-frontend-hot-api builder 3/5] COPY --from=deps /app/node_modules ./node_modules
+#12 CACHED
+
+#13 [market-alpha-frontend-hot-api builder 4/5] COPY frontend/ ./
+#13 DONE 0.1s
+
+#14 [market-alpha-frontend builder 5/5] RUN mkdir -p public && npm run build && npm prune --omit=dev
+#14 0.426
+#14 0.426 > market-alpha-scanner-frontend@0.1.0 build
+#14 0.426 > next build
+#14 0.426
+#14 0.789 ▲ Next.js 16.2.6 (Turbopack)
+#14 0.789 - Experiments (use with caution):
+#14 0.789   · clientTraceMetadata
+#14 0.789
+#14 0.817   Creating an optimized production build ...
+#14 11.00 ✓ Compiled successfully in 9.9s
+#14 11.00   Running next.config.js provided runAfterProductionCompile ...
+#14 11.21 ✓ Completed runAfterProductionCompile in 208ms
+#14 11.21   Running TypeScript ...
+#14 25.86   Finished TypeScript in 14.7s ...
+#14 25.87   Collecting page data using 19 workers ...
+#14 27.24   Generating static pages using 19 workers (0/22) ...
+#14 27.41   Generating static pages using 19 workers (5/22)
+#14 27.50   Generating static pages using 19 workers (10/22)
+#14 27.50   Generating static pages using 19 workers (16/22)
+#14 27.54 ✓ Generating static pages using 19 workers (22/22) in 305ms
+#14 27.55   Finalizing page optimization ...
+#14 27.55
+#14 27.55 Route (app)
+#14 27.55 ┌ ƒ /
+#14 27.55 ├ ○ /_not-found
+#14 27.55 ├ ƒ /account
+#14 27.55 ├ ƒ /admin
+#14 27.55 ├ ƒ /admin/alerts
+#14 27.55 ├ ƒ /admin/alpha-lab
+#14 27.55 ├ ƒ /admin/analytics
+#14 27.55 ├ ƒ /admin/audit
+#14 27.55 ├ ƒ /admin/beta
+#14 27.55 ├ ƒ /admin/billing
+#14 27.55 ├ ƒ /admin/calibration
+#14 27.55 ├ ƒ /admin/monitoring
+#14 27.55 ├ ƒ /admin/scanner
+#14 27.55 ├ ƒ /admin/scenarios
+#14 27.55 ├ ƒ /admin/support
+#14 27.55 ├ ƒ /admin/support/[ticketId]
+#14 27.55 ├ ƒ /admin/users
+#14 27.55 ├ ƒ /advanced
+#14 27.55 ├ ƒ /alerts
+#14 27.55 ├ ƒ /api/account
+#14 27.55 ├ ƒ /api/admin/alerts
+#14 27.55 ├ ƒ /api/admin/alerts/rules/[id]/disable
+#14 27.55 ├ ƒ /api/admin/analytics
+#14 27.55 ├ ƒ /api/admin/audit
+#14 27.55 ├ ƒ /api/admin/billing
+#14 27.55 ├ ƒ /api/admin/email-preview
+#14 27.55 ├ ƒ /api/admin/monitoring
+#14 27.55 ├ ƒ /api/admin/scanner
+#14 27.55 ├ ƒ /api/admin/summary
+#14 27.55 ├ ƒ /api/admin/support/tickets
+#14 27.55 ├ ƒ /api/admin/support/tickets/[ticketId]
+#14 27.55 ├ ƒ /api/admin/support/tickets/[ticketId]/reply
+#14 27.55 ├ ƒ /api/admin/support/tickets/[ticketId]/status
+#14 27.55 ├ ƒ /api/admin/users
+#14 27.55 ├ ƒ /api/admin/users/[id]/role
+#14 27.55 ├ ƒ /api/alerts/active-matches
+#14 27.55 ├ ƒ /api/alerts/rules
+#14 27.55 ├ ƒ /api/alerts/rules/[id]
+#14 27.55 ├ ƒ /api/alerts/test-send
+#14 27.55 ├ ƒ /api/analytics/events
+#14 27.55 ├ ƒ /api/analytics/feedback
+#14 27.55 ├ ƒ /api/auth/csrf
+#14 27.55 ├ ƒ /api/auth/dev-login
+#14 27.55 ├ ƒ /api/auth/forgot-password
+#14 27.55 ├ ƒ /api/auth/google/callback
+#14 27.55 ├ ƒ /api/auth/google/start
+#14 27.55 ├ ƒ /api/auth/login
+#14 27.55 ├ ƒ /api/auth/logout
+#14 27.55 ├ ƒ /api/auth/me
+#14 27.55 ├ ƒ /api/auth/oauth-providers
+#14 27.55 ├ ƒ /api/auth/register
+#14 27.55 ├ ƒ /api/auth/reset-password
+#14 27.55 ├ ƒ /api/auth/send-verification-email
+#14 27.55 ├ ƒ /api/auth/verify-email
+#14 27.55 ├ ƒ /api/community
+#14 27.55 ├ ƒ /api/community/follows
+#14 27.55 ├ ƒ /api/community/follows/[symbol]
+#14 27.55 ├ ƒ /api/community/replay-studies
+#14 27.55 ├ ƒ /api/community/watchlists
+#14 27.55 ├ ƒ /api/developer/api-keys
+#14 27.55 ├ ƒ /api/developer/api-keys/[id]/revoke
+#14 27.55 ├ ƒ /api/developer/webhooks
+#14 27.55 ├ ƒ /api/developer/webhooks/[id]/deactivate
+#14 27.55 ├ ƒ /api/developer/webhooks/[id]/test
+#14 27.55 ├ ƒ /api/discovery
+#14 27.55 ├ ƒ /api/enterprise/organization
+#14 27.55 ├ ƒ /api/enterprise/readiness
+#14 27.55 ├ ƒ /api/health
+#14 27.55 ├ ƒ /api/health/deep
+#14 27.55 ├ ƒ /api/history/latest
+#14 27.55 ├ ƒ /api/history/replay
+#14 27.55 ├ ƒ /api/history/symbol/[symbol]
+#14 27.55 ├ ƒ /api/intelligence/competitive-leadership
+#14 27.55 ├ ƒ /api/intelligence/feed
+#14 27.55 ├ ƒ /api/intelligence/platform-moat
+#14 27.55 ├ ƒ /api/intelligence/predictive
+#14 27.55 ├ ƒ /api/intelligence/provider-source-trust
+#14 27.55 ├ ƒ /api/legal/accept
+#14 27.55 ├ ƒ /api/legal/status
+#14 27.55 ├ ƒ /api/live-intelligence
+#14 27.55 ├ ƒ /api/live-intelligence/stream
+#14 27.55 ├ ƒ /api/mobile/intelligence
+#14 27.55 ├ ƒ /api/monitoring/ingest
+#14 27.55 ├ ƒ /api/notifications
+#14 27.55 ├ ƒ /api/notifications/feedback
+#14 27.55 ├ ƒ /api/notifications/read
+#14 27.55 ├ ƒ /api/notifications/read-all
+#14 27.55 ├ ƒ /api/opportunities/risk-tolerant-analysis
+#14 27.55 ├ ƒ /api/paper/account
+#14 27.55 ├ ƒ /api/paper/analytics/groups
+#14 27.55 ├ ƒ /api/paper/analytics/summary
+#14 27.55 ├ ƒ /api/paper/analytics/timeline
+#14 27.55 ├ ƒ /api/paper/events
+#14 27.55 ├ ƒ /api/paper/open
+#14 27.55 ├ ƒ /api/paper/positions
+#14 27.55 ├ ƒ /api/performance/forward-returns
+#14 27.55 ├ ƒ /api/price-history/[symbol]
+#14 27.55 ├ ƒ /api/profile
+#14 27.55 ├ ƒ /api/public/strategy-performance
+#14 27.55 ├ ƒ /api/push/intelligence
+#14 27.55 ├ ƒ /api/push/status
+#14 27.55 ├ ƒ /api/push/subscribe
+#14 27.55 ├ ƒ /api/push/test
+#14 27.55 ├ ƒ /api/push/unsubscribe
+#14 27.55 ├ ƒ /api/ranking
+#14 27.55 ├ ƒ /api/research/agents
+#14 27.55 ├ ƒ /api/research/copilot
+#14 27.55 ├ ƒ /api/risk-profile
+#14 27.55 ├ ƒ /api/run-analysis
+#14 27.55 ├ ƒ /api/run-scanner
+#14 27.55 ├ ƒ /api/session
+#14 27.55 ├ ƒ /api/status/trust
+#14 27.55 ├ ƒ /api/stripe/checkout
+#14 27.55 ├ ƒ /api/stripe/portal
+#14 27.55 ├ ƒ /api/stripe/test/checkout
+#14 27.55 ├ ƒ /api/stripe/test/portal
+#14 27.55 ├ ƒ /api/stripe/test/webhook
+#14 27.55 ├ ƒ /api/stripe/webhook
+#14 27.55 ├ ƒ /api/support/chat
+#14 27.55 ├ ƒ /api/support/contact
+#14 27.55 ├ ƒ /api/support/tickets
+#14 27.55 ├ ƒ /api/support/tickets/[ticketId]
+#14 27.55 ├ ƒ /api/support/tickets/[ticketId]/reply
+#14 27.55 ├ ƒ /api/symbol/[symbol]
+#14 27.55 ├ ƒ /api/team/research-notes
+#14 27.55 ├ ƒ /api/team/watchlist
+#14 27.55 ├ ƒ /api/team/watchlist/[symbol]
+#14 27.55 ├ ƒ /api/team/workspace
+#14 27.55 ├ ƒ /api/top-candidates
+#14 27.55 ├ ƒ /api/user/chart-workspaces/[symbol]
+#14 27.55 ├ ƒ /api/user/decision-journal
+#14 27.55 ├ ƒ /api/user/memory-settings
+#14 27.55 ├ ƒ /api/user/memory/export
+#14 27.55 ├ ƒ /api/user/notification-preferences
+#14 27.55 ├ ƒ /api/user/profile
+#14 27.55 ├ ƒ /api/user/risk-profile
+#14 27.55 ├ ƒ /api/user/saved-scans
+#14 27.55 ├ ƒ /api/user/saved-scans/[id]
+#14 27.55 ├ ƒ /api/user/watchlist
+#14 27.55 ├ ƒ /api/user/watchlist/[symbol]
+#14 27.55 ├ ƒ /api/user/workflow-visit
+#14 27.55 ├ ƒ /api/user/workspace-preferences
+#14 27.55 ├ ƒ /api/v1/macro
+#14 27.55 ├ ƒ /api/v1/opportunities
+#14 27.55 ├ ƒ /api/v1/portfolio/scenario
+#14 27.55 ├ ƒ /api/v1/replay
+#14 27.55 ├ ƒ /api/v1/shocks
+#14 27.55 ├ ƒ /api/visual/symbol-logo
+#14 27.55 ├ ƒ /api/watchlist
+#14 27.55 ├ ○ /beta
+#14 27.55 ├ ƒ /community
+#14 27.55 ├ ƒ /dashboard
+#14 27.55 ├ ƒ /developers
+#14 27.55 ├ ƒ /discover
+#14 27.55 ├ ƒ /enterprise
+#14 27.55 ├ ○ /faq
+#14 27.55 ├ ○ /features
+#14 27.55 ├ ƒ /feed
+#14 27.55 ├ ƒ /history
+#14 27.55 ├ ○ /how-it-works
+#14 27.55 ├ ƒ /intelligence
+#14 27.55 ├ ƒ /intelligence/macro-regime
+#14 27.55 ├ ƒ /intelligence/shock-opportunities
+#14 27.55 ├ ƒ /intelligence/strategy-performance
+#14 27.55 ├ ƒ /intelligence/why-wait/[symbol]
+#14 27.55 ├ ○ /invite
+#14 27.55 ├ ○ /join
+#14 27.55 ├ ƒ /login
+#14 27.55 ├ ƒ /macro
+#14 27.55 ├ ○ /manifest.webmanifest
+#14 27.55 ├ ƒ /market-memory
+#14 27.55 ├ ƒ /mobile
+#14 27.55 ├ ƒ /opportunities
+#14 27.55 ├ ƒ /paper
+#14 27.55 ├ ƒ /performance
+#14 27.55 ├ ○ /pricing
+#14 27.55 ├ ○ /privacy
+#14 27.55 ├ ƒ /register
+#14 27.55 ├ ƒ /reset-password
+#14 27.55 ├ ○ /risk-disclaimer
+#14 27.55 ├ ○ /risk-disclosure
+#14 27.55 ├ ƒ /robots.txt
+#14 27.55 ├ ƒ /scanner
+#14 27.55 ├ ● /search/[slug]
+#14 27.55 │ ├ /search/amd-forecast
+#14 27.55 │ ├ /search/nvda-analysis
+#14 27.55 │ ├ /search/best-ai-stocks
+#14 27.55 │ └ [+3 more paths]
+#14 27.55 ├ ƒ /settings
+#14 27.55 ├ ○ /sitemap.xml
+#14 27.55 ├ ƒ /status
+#14 27.55 ├ ƒ /strategy-labs
+#14 27.55 ├ ƒ /support
+#14 27.55 ├ ƒ /support/chat
+#14 27.55 ├ ƒ /support/contact
+#14 27.55 ├ ƒ /support/faq
+#14 27.55 ├ ƒ /support/guides
+#14 27.55 ├ ƒ /support/tickets
+#14 27.55 ├ ƒ /support/tickets/[ticketId]
+#14 27.55 ├ ƒ /symbol/[symbol]
+#14 27.55 ├ ƒ /team
+#14 27.55 ├ ƒ /terminal
+#14 27.55 ├ ○ /terms
+#14 27.55 └ ○ /waitlist
+#14 27.55
+#14 27.55
+#14 27.55 ƒ Proxy (Middleware)
+#14 27.55
+#14 27.55 ○  (Static)   prerendered as static content
+#14 27.55 ●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+#14 27.55 ƒ  (Dynamic)  server-rendered on demand
+#14 27.55
+#14 27.64 npm notice
+#14 27.64 npm notice New major version of npm available! 10.9.8 -> 11.16.0
+#14 27.64 npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.16.0
+#14 27.64 npm notice To update run: npm install -g npm@11.16.0
+#14 27.64 npm notice
+#14 39.87
+#14 39.87 up to date, audited 320 packages in 12s
+#14 39.87
+#14 39.87 28 packages are looking for funding
+#14 39.87   run `npm fund` for details
+#14 39.87
+#14 39.87 found 0 vulnerabilities
+#14 DONE 39.9s
+
+#15 [market-alpha-frontend runner 3/9] RUN mkdir -p /app/scanner_output && chown -R node:node /app
+#15 CACHED
+
+#16 [market-alpha-frontend runner 4/9] COPY --from=builder --chown=node:node /app/package*.json ./
+#16 CACHED
+
+#17 [market-alpha-frontend runner 5/9] COPY --from=builder --chown=node:node /app/next.config.ts ./next.config.ts
+#17 CACHED
+
+#18 [market-alpha-frontend runner 6/9] COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+#18 CACHED
+
+#17 [market-alpha-frontend-hot-api runner 5/9] COPY --from=builder --chown=node:node /app/next.config.ts ./next.config.ts
+#17 CACHED
+
+#15 [market-alpha-frontend-hot-api runner 3/9] RUN mkdir -p /app/scanner_output && chown -R node:node /app
+#15 CACHED
+
+#16 [market-alpha-frontend-hot-api runner 4/9] COPY --from=builder --chown=node:node /app/package*.json ./
+#16 CACHED
+
+#18 [market-alpha-frontend-hot-api runner 6/9] COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+#18 CACHED
+
+#19 [market-alpha-frontend-hot-api runner 7/9] COPY --from=builder --chown=node:node /app/.next ./.next
+#19 DONE 0.3s
+
+#20 [market-alpha-frontend runner 8/9] COPY --from=builder --chown=node:node /app/public ./public
+#20 DONE 0.2s
+
+#21 [market-alpha-frontend runner 9/9] COPY --from=builder --chown=node:node /app/scripts ./scripts
+#21 DONE 0.1s
+
+#22 [market-alpha-frontend] exporting to image
+#22 exporting layers
+#22 exporting layers 3.0s done
+#22 exporting manifest sha256:605ed5130487671bcf78df0dd12e8f71499db4582cd78b79841f3a5221053466 0.0s done
+#22 exporting config sha256:a0f8e7d91639d5a1c93de437f9e11fd1ddfcabdcbc8d023ac8b4c836af2ca6d2 0.1s done
+#22 exporting attestation manifest sha256:fc4e077e3ac1f328f9538c2ad409c1baf596a12d15d943f0aedd3188263d75eb 0.1s done
+#22 exporting manifest list sha256:05e7c7d6390b024e54e7dcb5e15fec4980538c36da3597d31bd1392812a86e6f 0.1s done
+#22 naming to docker.io/library/market-alpha-scanner-market-alpha-frontend:latest 0.0s done
+#22 unpacking to docker.io/library/market-alpha-scanner-market-alpha-frontend:latest
+#22 unpacking to docker.io/library/market-alpha-scanner-market-alpha-frontend:latest 0.7s done
+#22 DONE 4.1s
+
+#23 [market-alpha-frontend-hot-api] exporting to image
+#23 exporting layers 3.0s done
+#23 exporting manifest sha256:5b25f33512c9e9d6327e40b91f067812d56e3166d8e31d716bdcaaa81d28c2fb 0.1s done
+#23 exporting config sha256:8974f8339556c6a3b2f2d0e0c00e3c249ae64f50518a9409679c45cf44d418c5 0.1s done
+#23 exporting attestation manifest sha256:4c41fd46c4e61a5408ff933b7206b91e4c4a71fdeba1fefaed40caee5c4bd24e 0.1s done
+#23 exporting manifest list sha256:3689e69df3c6bad69d0fa5a4bf0162fff4a0c21363a1f8cc5350b474d38d71db 0.1s done
+#23 naming to docker.io/library/market-alpha-scanner-market-alpha-frontend-hot-api:latest 0.0s done
+#23 unpacking to docker.io/library/market-alpha-scanner-market-alpha-frontend-hot-api:latest 0.7s done
+#23 DONE 4.1s
+
+#24 [market-alpha-frontend-hot-api] resolving provenance for metadata file
+#24 DONE 0.0s
+
+#25 [market-alpha-frontend] resolving provenance for metadata file
+#25 DONE 0.0s
+== containers ==
+market-alpha-frontend-hot-api                                    Up Less than a second (health: starting)
+market-alpha-frontend                                            Up Less than a second (health: starting)
+hdsm-caddy                                                       Up 14 hours (healthy)
+market-alpha-scanner-market-alpha-postgres-1                     Up 4 weeks (healthy)
+== health ==

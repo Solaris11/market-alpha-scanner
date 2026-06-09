@@ -1,0 +1,108 @@
+== before ==
+bcd8d4b
+== pull ==
+Already up to date.
+== rebuild ==
+#1 [internal] load local bake definitions
+#1 reading from stdin 1.18kB done
+#1 DONE 0.0s
+
+#2 [market-alpha-frontend internal] load build definition from Dockerfile
+#2 transferring dockerfile: 1.17kB done
+#2 DONE 0.0s
+
+#3 [market-alpha-frontend] resolve image config for docker-image://docker.io/docker/dockerfile:1
+#3 DONE 0.6s
+
+#4 [market-alpha-frontend-hot-api] docker-image://docker.io/docker/dockerfile:1@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89
+#4 resolve docker.io/docker/dockerfile:1@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89 0.0s done
+#4 CACHED
+
+#5 [market-alpha-frontend internal] load metadata for docker.io/library/node:22-bookworm-slim
+#5 DONE 0.6s
+
+#6 [market-alpha-frontend internal] load .dockerignore
+#6 transferring context: 244B done
+#6 DONE 0.0s
+
+#7 [market-alpha-frontend internal] load build context
+#7 DONE 0.0s
+
+#8 [market-alpha-frontend deps 1/4] FROM docker.io/library/node:22-bookworm-slim@sha256:7af03b14a13c8cdd38e45058fd957bf00a72bbe17feac43b1c15a689c029c732
+#8 resolve docker.io/library/node:22-bookworm-slim@sha256:7af03b14a13c8cdd38e45058fd957bf00a72bbe17feac43b1c15a689c029c732 0.0s done
+#8 resolve docker.io/library/node:22-bookworm-slim@sha256:7af03b14a13c8cdd38e45058fd957bf00a72bbe17feac43b1c15a689c029c732 0.0s done
+#8 DONE 0.1s
+
+#7 [market-alpha-frontend internal] load build context
+#7 transferring context: 77.53kB 0.1s done
+#7 DONE 0.1s
+
+#9 [market-alpha-frontend builder 4/5] COPY frontend/ ./
+#9 CACHED
+
+#10 [market-alpha-frontend runner 7/9] COPY --from=builder --chown=node:node /app/.next ./.next
+#10 CACHED
+
+#11 [market-alpha-frontend deps 2/4] WORKDIR /app
+#11 CACHED
+
+#12 [market-alpha-frontend runner 3/9] RUN mkdir -p /app/scanner_output && chown -R node:node /app
+#12 CACHED
+
+#13 [market-alpha-frontend builder 3/5] COPY --from=deps /app/node_modules ./node_modules
+#13 CACHED
+
+#14 [market-alpha-frontend runner 6/9] COPY --from=builder --chown=node:node /app/node_modules ./node_modules
+#14 CACHED
+
+#15 [market-alpha-frontend runner 5/9] COPY --from=builder --chown=node:node /app/next.config.ts ./next.config.ts
+#15 CACHED
+
+#16 [market-alpha-frontend runner 4/9] COPY --from=builder --chown=node:node /app/package*.json ./
+#16 CACHED
+
+#17 [market-alpha-frontend deps 3/4] COPY frontend/package*.json ./
+#17 CACHED
+
+#18 [market-alpha-frontend deps 4/4] RUN npm ci
+#18 CACHED
+
+#19 [market-alpha-frontend builder 5/5] RUN mkdir -p public && npm run build && npm prune --omit=dev
+#19 CACHED
+
+#20 [market-alpha-frontend runner 8/9] COPY --from=builder --chown=node:node /app/public ./public
+#20 CACHED
+
+#21 [market-alpha-frontend-hot-api runner 9/9] COPY --from=builder --chown=node:node /app/scripts ./scripts
+#21 CACHED
+
+#22 [market-alpha-frontend-hot-api] exporting to image
+#22 exporting layers done
+#22 exporting manifest sha256:e4f012009847849bee26f6f246130b70b99e260e6d6537883d0c44062df7afe2 done
+#22 exporting config sha256:24c35745040e56acc5ca2de5d900dab8199f9d43cbb7dd95219a0f8269b4eff9 0.0s done
+#22 exporting attestation manifest sha256:13a744abf8cd6d7482f0ec74a502e4cdb2bbc3329ec6c699a894c16c85f60f43
+#22 ...
+
+#23 [market-alpha-frontend] exporting to image
+#23 exporting layers done
+#23 exporting manifest sha256:607f539e564888e9fac8b00466ad1f6969b6e6cbdbd993d2aab085bfe74fb3f1 done
+#23 exporting config sha256:15f6d7595d3ceb820daa9c6d8cddd3225b868f4af404ade137a976ef71d79d79 0.0s done
+#23 exporting attestation manifest sha256:190dbff4b59c0b08270cb2ab71cb2b0c1e3203f6fc06ef4bdafe4ca7f4fa8fbf 0.1s done
+#23 exporting manifest list sha256:7664a05332f72d469ca29d870c5f3e19960e15c8b9cd1a6814bbd86fad625c10 0.1s done
+#23 naming to docker.io/library/market-alpha-scanner-market-alpha-frontend:latest 0.0s done
+#23 unpacking to docker.io/library/market-alpha-scanner-market-alpha-frontend:latest 0.0s done
+#23 DONE 0.3s
+
+#22 [market-alpha-frontend-hot-api] exporting to image
+#22 exporting attestation manifest sha256:13a744abf8cd6d7482f0ec74a502e4cdb2bbc3329ec6c699a894c16c85f60f43 0.1s done
+#22 exporting manifest list sha256:e1b3d5e31b8b64b42781d8adcfb1b881252efdad65ebcc6d7463cc08b8066986 0.1s done
+#22 naming to docker.io/library/market-alpha-scanner-market-alpha-frontend-hot-api:latest 0.0s done
+#22 unpacking to docker.io/library/market-alpha-scanner-market-alpha-frontend-hot-api:latest 0.0s done
+#22 DONE 0.3s
+
+#24 [market-alpha-frontend] resolving provenance for metadata file
+#24 DONE 0.0s
+
+#25 [market-alpha-frontend-hot-api] resolving provenance for metadata file
+#25 DONE 0.0s
+== ps ==

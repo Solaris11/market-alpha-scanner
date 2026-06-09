@@ -1,0 +1,261 @@
+{
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [
+    "browser scanner table exposed 361 rows; 500+ browser-row proof is not established",
+    "chart-workspace-restore 13695.904ms exceeds 250ms budget",
+    "rapid-symbol-switch 1922.156ms exceeds 100ms budget"
+  ],
+  "budgets": {
+    "chartInteractionMs": 60,
+    "chartWorkspaceRestoreMs": 250,
+    "compareOpenMs": 150,
+    "fullscreenChartOpenMs": 150,
+    "largeWatchlistFilterMs": 150,
+    "rapidSymbolSwitchMs": 100,
+    "savedScanRestoreMs": 250,
+    "scannerInteractionMs": 100
+  },
+  "chart": {
+    "checks": [
+      {
+        "id": "chart-indicator-template",
+        "pass": true,
+        "status": "pass"
+      },
+      {
+        "disabled": false,
+        "id": "chart-alert-save",
+        "pass": true,
+        "status": "pass"
+      },
+      {
+        "id": "fullscreen-toolbar-collapse",
+        "pass": true,
+        "status": "pass"
+      }
+    ],
+    "errors": [],
+    "screenshots": [
+      "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-35-0c-performance-recertification/workflows/authenticated-after/screenshots/symbol-amd.png",
+      "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-35-0c-performance-recertification/workflows/authenticated-after/screenshots/symbol-amd-fullscreen.png",
+      "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-35-0c-performance-recertification/workflows/authenticated-after/screenshots/symbol-nvda.png"
+    ],
+    "setup": {
+      "authenticated": true,
+      "chartWorkspaceSaved": true
+    },
+    "timings": [
+      {
+        "budgetMs": 250,
+        "id": "chart-workspace-restore",
+        "label": "Load /symbol/AMD with persisted chart workspace context",
+        "latencyMs": 13695.904,
+        "pass": false,
+        "status": "fail"
+      },
+      {
+        "automationLatencyMs": 256.577,
+        "browserMetricId": "chart:fullscreen-open",
+        "budgetMs": 150,
+        "id": "fullscreen-chart-open",
+        "label": "Open fullscreen AMD chart overlay",
+        "latencyMs": 1.7,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "browser-performance"
+      },
+      {
+        "automationLatencyMs": 193.811,
+        "browserMetricId": "chart:toolbar-interaction",
+        "budgetMs": 60,
+        "id": "chart-interaction",
+        "label": "Switch fullscreen chart to compare mode",
+        "latencyMs": 0.1,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "browser-performance"
+      },
+      {
+        "automationLatencyMs": 152.989,
+        "browserMetricId": "chart:drawing-operation",
+        "budgetMs": 60,
+        "id": "chart-drawing-operation",
+        "label": "Toggle chart drawing magnet mode",
+        "latencyMs": 32.9,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "browser-performance"
+      },
+      {
+        "automationLatencyMs": 141.426,
+        "browserMetricId": "chart:toolbar-interaction",
+        "budgetMs": 60,
+        "id": "chart-toolbar-interaction",
+        "label": "Collapse and restore chart drawing toolbar",
+        "latencyMs": 31.8,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "browser-performance"
+      },
+      {
+        "budgetMs": 100,
+        "id": "rapid-symbol-switch",
+        "label": "Navigate from AMD chart to NVDA symbol chart",
+        "latencyMs": 1922.156,
+        "pass": false,
+        "status": "fail"
+      }
+    ]
+  },
+  "generatedAt": "2026-06-09T14:56:45.957Z",
+  "memory": {
+    "after": {
+      "jsHeapUsedMb": 22.771,
+      "source": "cdp"
+    },
+    "before": {
+      "jsHeapUsedMb": 0.49,
+      "source": "cdp"
+    },
+    "deltaJsHeapUsedMb": 22.281
+  },
+  "overallStatus": "not_ready",
+  "probeIdentity": {
+    "created": false
+  },
+  "proofScope": "Browser DOM timing proof for production discovery and symbol chart workflows. The deterministic companion probe remains the 500+ synthetic large-universe proof. This report does not claim full TradingView parity or unsupported alert evaluation.",
+  "scanner": {
+    "checks": [
+      {
+        "disabled": false,
+        "id": "scanner-row-alert",
+        "pass": true,
+        "status": "pass"
+      },
+      {
+        "id": "scanner-keyboard-shortcuts",
+        "pass": true,
+        "status": "pass"
+      }
+    ],
+    "errors": [
+      "browser scanner table exposed 361 rows; 500+ browser-row proof is not established"
+    ],
+    "filteredMeta": {
+      "density": "ultra",
+      "horizontalOverflowPx": 0,
+      "renderedRows": 74,
+      "totalRows": 361,
+      "virtualized": true
+    },
+    "initialMeta": {
+      "density": "ultra",
+      "horizontalOverflowPx": 0,
+      "renderedRows": 74,
+      "totalRows": 361,
+      "virtualized": true
+    },
+    "screenshots": [
+      "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-35-0c-performance-recertification/workflows/authenticated-after/screenshots/discover-ultra-dense.png",
+      "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-35-0c-performance-recertification/workflows/authenticated-after/screenshots/discover-compare.png",
+      "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-35-0c-performance-recertification/workflows/authenticated-after/screenshots/discover-fullscreen-scanner.png"
+    ],
+    "setup": {
+      "authenticated": true,
+      "savedScanCreated": true,
+      "watchlistSize": null
+    },
+    "timings": [
+      {
+        "automationLatencyMs": 189.2,
+        "browserMetricId": "scanner:ultra-dense",
+        "budgetMs": 100,
+        "id": "scanner-interaction",
+        "label": "Switch discovery scanner to ultra-dense table mode",
+        "latencyMs": 56.9,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "browser-performance"
+      },
+      {
+        "automationLatencyMs": 33.99,
+        "browserMetricId": "scanner:filter",
+        "budgetMs": 150,
+        "id": "large-watchlist-filter",
+        "label": "Filter the production scanner table after large-watchlist setup",
+        "latencyMs": 24.2,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "browser-performance"
+      },
+      {
+        "automationLatencyMs": 200.549,
+        "browserMetricId": "scanner:sort",
+        "budgetMs": 100,
+        "id": "scanner-sort-search",
+        "label": "Sort the production scanner table by confidence",
+        "latencyMs": 44.2,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "browser-performance"
+      },
+      {
+        "automationLatencyMs": 90.361,
+        "browserMetricId": "scanner:compare-open",
+        "budgetMs": 150,
+        "id": "compare-open",
+        "label": "Open the rapid compare matrix from discovery",
+        "latencyMs": 30.5,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "browser-performance"
+      },
+      {
+        "budgetMs": 250,
+        "id": "saved-scan-restore",
+        "label": "Reload a server-backed saved scanner preset",
+        "latencyMs": 43.081,
+        "pass": true,
+        "status": "pass"
+      },
+      {
+        "automationLatencyMs": 13.694,
+        "browserMetricId": null,
+        "budgetMs": 100,
+        "id": "row-expansion",
+        "label": "Expand a scanner row in ultra-dense mode",
+        "latencyMs": 13.694,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "playwright-automation"
+      },
+      {
+        "automationLatencyMs": 99.073,
+        "browserMetricId": "scanner:fullscreen-toggle",
+        "budgetMs": 100,
+        "id": "fullscreen-scanner",
+        "label": "Open fullscreen scanner table",
+        "latencyMs": 28.2,
+        "pass": true,
+        "status": "pass",
+        "timingSource": "browser-performance"
+      }
+    ]
+  },
+  "setup": {
+    "authenticated": true,
+    "chartWorkspaceSaved": true,
+    "ok": true,
+    "savedScanId": "09993f71-8bce-4f81-9e75-79b30099528d",
+    "savedScanName": "Phase 25.3 Power Scan mq6rilf4",
+    "savedScanStatusCode": 200,
+    "watchlistSize": null,
+    "workspaceStatusCode": 200
+  },
+  "startedAt": "2026-06-09T14:56:04.272Z",
+  "unsupportedClaims": [
+    "No full TradingView parity claim.",
+    "No fake indicator alert or fake drawing proximity alert claim.",
+    "Physical-device gesture latency is outside this browser timing probe."
+  ]
+}

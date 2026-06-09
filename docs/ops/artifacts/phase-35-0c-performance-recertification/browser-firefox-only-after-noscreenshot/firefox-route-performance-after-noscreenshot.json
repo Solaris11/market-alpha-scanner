@@ -1,0 +1,784 @@
+{
+  "baseUrl": "https://tradeveto.com",
+  "browserReports": [
+    {
+      "apiTimings": [
+        {
+          "count": 34,
+          "errors": 1,
+          "path": "/api/analytics/events",
+          "p50Ms": 125.017,
+          "p95Ms": 1037.939,
+          "p99Ms": 4880.052
+        },
+        {
+          "count": 16,
+          "errors": 0,
+          "path": "/api/auth/me",
+          "p50Ms": 63.416,
+          "p95Ms": 155.89,
+          "p99Ms": 155.89
+        },
+        {
+          "count": 12,
+          "errors": 12,
+          "path": "/api/discovery",
+          "p50Ms": 80.562,
+          "p95Ms": 158.454,
+          "p99Ms": 158.454
+        }
+      ],
+      "browserName": "firefox",
+      "consoleIssueCount": 17,
+      "consoleIssues": [
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        },
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        },
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        },
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        },
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        },
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        },
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        },
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        },
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        },
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        },
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        },
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        },
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        },
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        },
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        },
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        },
+        {
+          "location": {
+            "url": "debugger eval code",
+            "lineNumber": 10,
+            "columnNumber": 19
+          },
+          "text": "[JavaScript Warning: \"Ignoring unsupported entryTypes: layout-shift.\" {file: \"debugger eval code\" line: 10}]",
+          "type": "warning"
+        }
+      ],
+      "generatedAt": "2026-06-09T14:54:30.135Z",
+      "interactions": [],
+      "memory": {
+        "after": {
+          "source": "unavailable"
+        },
+        "before": {
+          "source": "unavailable"
+        }
+      },
+      "overallStatus": "ready",
+      "routes": [
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 2342,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 1167.828,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 3,
+            "apiTransferBytes": 1582,
+            "cls": 0,
+            "domContentLoadedMs": 988,
+            "fcpMs": 514,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 405,
+            "lcpMs": 795,
+            "loadEventMs": 988,
+            "resourceCount": 92,
+            "scriptEncodedBytes": 987521,
+            "ttfbMs": 407,
+            "transferBytes": 1139230
+          },
+          "path": "/terminal",
+          "routeId": "terminal",
+          "screenshotPath": null,
+          "settledMs": 3278.764,
+          "status": "pass",
+          "targetLoadMs": 2000
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1487,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 256.31,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 205,
+            "fcpMs": 105,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 111,
+            "lcpMs": 230,
+            "loadEventMs": 207,
+            "resourceCount": 85,
+            "scriptEncodedBytes": 987521,
+            "ttfbMs": 69,
+            "transferBytes": 108965
+          },
+          "path": "/discover",
+          "routeId": "discover",
+          "screenshotPath": null,
+          "settledMs": 2473.475,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1297,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 244.086,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 177,
+            "fcpMs": 100,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 87,
+            "lcpMs": 237,
+            "loadEventMs": 216,
+            "resourceCount": 91,
+            "scriptEncodedBytes": 991033,
+            "ttfbMs": 80,
+            "transferBytes": 124490
+          },
+          "path": "/scanner",
+          "routeId": "scanner",
+          "screenshotPath": null,
+          "settledMs": 3516.05,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 2922,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 426.825,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 1,
+            "apiTransferBytes": 336,
+            "cls": 0,
+            "domContentLoadedMs": 348,
+            "fcpMs": 99,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 258,
+            "lcpMs": 410,
+            "loadEventMs": 370,
+            "resourceCount": 95,
+            "scriptEncodedBytes": 1083468,
+            "ttfbMs": 78,
+            "transferBytes": 215973
+          },
+          "path": "/symbol/AMD",
+          "routeId": "symbol-amd",
+          "screenshotPath": null,
+          "settledMs": 3694.169,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1321,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 218.879,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 169,
+            "fcpMs": 92,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 85,
+            "lcpMs": 1147,
+            "loadEventMs": 1137,
+            "resourceCount": 94,
+            "scriptEncodedBytes": 1022729,
+            "ttfbMs": 66,
+            "transferBytes": 146819
+          },
+          "path": "/history",
+          "routeId": "history",
+          "screenshotPath": null,
+          "settledMs": 3485.39,
+          "status": "pass",
+          "targetLoadMs": 1000
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1321,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 216.673,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 163,
+            "fcpMs": 97,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 77,
+            "lcpMs": 227,
+            "loadEventMs": 191,
+            "resourceCount": 94,
+            "scriptEncodedBytes": 1059849,
+            "ttfbMs": 69,
+            "transferBytes": 191824
+          },
+          "path": "/performance",
+          "routeId": "performance",
+          "screenshotPath": null,
+          "settledMs": 3483.032,
+          "status": "pass",
+          "targetLoadMs": 1000
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 5748,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 484.752,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 356,
+            "fcpMs": 229,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 110,
+            "lcpMs": 270,
+            "loadEventMs": 511,
+            "resourceCount": 31,
+            "scriptEncodedBytes": 329390,
+            "ttfbMs": 218,
+            "transferBytes": 13999
+          },
+          "path": "/macro",
+          "routeId": "macro",
+          "screenshotPath": null,
+          "settledMs": 1475.48,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 8559,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 572.393,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 511,
+            "fcpMs": 250,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 266,
+            "lcpMs": 253,
+            "loadEventMs": 513,
+            "resourceCount": 31,
+            "scriptEncodedBytes": 329390,
+            "ttfbMs": 231,
+            "transferBytes": 13051
+          },
+          "path": "/feed",
+          "routeId": "feed",
+          "screenshotPath": null,
+          "settledMs": 1661.443,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 7064,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 708.572,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 2,
+            "apiTransferBytes": 1130,
+            "cls": 0,
+            "domContentLoadedMs": 591,
+            "fcpMs": 213,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 375,
+            "lcpMs": 610,
+            "loadEventMs": 591,
+            "resourceCount": 92,
+            "scriptEncodedBytes": 1010729,
+            "ttfbMs": 191,
+            "transferBytes": 142110
+          },
+          "path": "/paper",
+          "routeId": "paper",
+          "screenshotPath": null,
+          "settledMs": 3971.051,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1341,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 275.318,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 191,
+            "fcpMs": 96,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 98,
+            "lcpMs": 281,
+            "loadEventMs": 267,
+            "resourceCount": 90,
+            "scriptEncodedBytes": 1209177,
+            "ttfbMs": 74,
+            "transferBytes": 335192
+          },
+          "path": "/strategy-labs",
+          "routeId": "strategy-labs",
+          "screenshotPath": null,
+          "settledMs": 3548.524,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 1321,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 204.121,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 154,
+            "fcpMs": 114,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 83,
+            "lcpMs": 118,
+            "loadEventMs": 187,
+            "resourceCount": 90,
+            "scriptEncodedBytes": 987521,
+            "ttfbMs": 68,
+            "transferBytes": 116729
+          },
+          "path": "/alerts",
+          "routeId": "alerts",
+          "screenshotPath": null,
+          "settledMs": 2339.358,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 14464,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 639.549,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 497,
+            "fcpMs": 112,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 377,
+            "lcpMs": 132,
+            "loadEventMs": 498,
+            "resourceCount": 30,
+            "scriptEncodedBytes": 280649,
+            "ttfbMs": 91,
+            "transferBytes": 28946
+          },
+          "path": "/market-memory",
+          "routeId": "market-memory",
+          "screenshotPath": null,
+          "settledMs": 1552.277,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 2304,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 183.749,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 144,
+            "fcpMs": 138,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 45,
+            "lcpMs": 138,
+            "loadEventMs": 144,
+            "resourceCount": 16,
+            "scriptEncodedBytes": 267212,
+            "ttfbMs": 80,
+            "transferBytes": 757
+          },
+          "path": "/status",
+          "routeId": "status",
+          "screenshotPath": null,
+          "settledMs": 974.911,
+          "status": "pass",
+          "targetLoadMs": 2000
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 960,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 244.954,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 1,
+            "apiTransferBytes": 793,
+            "cls": 0,
+            "domContentLoadedMs": 178,
+            "fcpMs": 139,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 17,
+            "lcpMs": 145,
+            "loadEventMs": 222,
+            "resourceCount": 88,
+            "scriptEncodedBytes": 995656,
+            "ttfbMs": 118,
+            "transferBytes": 126184
+          },
+          "path": "/account",
+          "routeId": "account",
+          "screenshotPath": null,
+          "settledMs": 2446.591,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 960,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 192.586,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 145,
+            "fcpMs": 104,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 64,
+            "lcpMs": 110,
+            "loadEventMs": 203,
+            "resourceCount": 89,
+            "scriptEncodedBytes": 998854,
+            "ttfbMs": 74,
+            "transferBytes": 129115
+          },
+          "path": "/settings",
+          "routeId": "settings",
+          "screenshotPath": null,
+          "settledMs": 2393.377,
+          "status": "pass",
+          "targetLoadMs": 2500
+        },
+        {
+          "blockers": [],
+          "geometry": {
+            "horizontalOverflowPx": 0,
+            "scrollHeight": 2114,
+            "viewportHeight": 960,
+            "viewportWidth": 1440
+          },
+          "interactiveMs": 343.047,
+          "memory": {
+            "source": "unavailable"
+          },
+          "metrics": {
+            "apiResourceCount": 0,
+            "apiTransferBytes": 0,
+            "cls": 0,
+            "domContentLoadedMs": 289,
+            "fcpMs": 149,
+            "hydrationMarkerCount": 0,
+            "jsExecutionEstimateMs": 154,
+            "lcpMs": 162,
+            "loadEventMs": 298,
+            "resourceCount": 72,
+            "scriptEncodedBytes": 987521,
+            "ttfbMs": 110,
+            "transferBytes": 90238
+          },
+          "path": "/support",
+          "routeId": "support",
+          "screenshotPath": null,
+          "settledMs": 2134.109,
+          "status": "pass",
+          "targetLoadMs": 2500
+        }
+      ],
+      "startedAt": "2026-06-09T14:53:44.803Z",
+      "tracePath": "/Users/hdtv/dev/market-alpha-scanner/docs/ops/artifacts/phase-35-0c-performance-recertification/browser-firefox-only-after-noscreenshot/traces/firefox-trace.zip"
+    }
+  ],
+  "budgets": {
+    "interactionBudgets": {
+      "chartInteractionMs": 60,
+      "chartRestoreMs": 250,
+      "compareOpenMs": 150,
+      "fullscreenChartOpenMs": 150,
+      "routeTransitionMs": 200,
+      "scannerInteractionMs": 100,
+      "symbolSearchOpenMs": 100,
+      "symbolSwitchMs": 150
+    },
+    "routeLoadTargets": {
+      "/terminal": 2000,
+      "/discover": 2500,
+      "/scanner": 2500,
+      "/symbol/AMD": 2500,
+      "/history": 1000,
+      "/performance": 1000,
+      "/macro": 2500,
+      "/feed": 2500,
+      "/paper": 2500,
+      "/strategy-labs": 2500,
+      "/alerts": 2500,
+      "/market-memory": 2500,
+      "/status": 2000,
+      "/account": 2500,
+      "/settings": 2500,
+      "/support": 2500
+    }
+  },
+  "generatedAt": "2026-06-09T14:54:30.530Z",
+  "overallStatus": "ready",
+  "probeScope": "Production browser performance audit across major TradeVeto routes. Uses real browsers via Playwright against the configured base URL. Authentication is optional via TRADEVETO_PHASE275_COOKIE.",
+  "startedAt": "2026-06-09T14:53:44.802Z",
+  "blockers": []
+}

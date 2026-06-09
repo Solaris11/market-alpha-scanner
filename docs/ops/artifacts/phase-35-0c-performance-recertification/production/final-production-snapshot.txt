@@ -1,0 +1,89 @@
+== git ==
+143839e
+== host ==
+ 15:07:53 up 28 days, 17:03,  1 user,  load average: 1.40, 1.80, 1.27
+               total        used        free      shared  buff/cache   available
+Mem:            31Gi       5.8Gi       3.6Gi       198Mi        22Gi        25Gi
+Swap:          8.0Gi       602Mi       7.4Gi
+Filesystem                         Size  Used Avail Use% Mounted on
+/dev/mapper/ubuntu--vg-ubuntu--lv  936G  447G  450G  50% /
+/dev/mapper/ubuntu--vg-ubuntu--lv  936G  447G  450G  50% /
+== containers ==
+NAME                                           CPU %     MEM USAGE / LIMIT     NET I/O           BLOCK I/O        PIDS
+market-alpha-frontend                          0.01%     290.1MiB / 31.08GiB   255MB / 7.15MB    0B / 12.3kB      43
+market-alpha-frontend-hot-api                  0.00%     146.1MiB / 31.08GiB   21.7MB / 1.16MB   0B / 4.1kB       43
+hdsm-caddy                                     0.00%     36.42MiB / 31.08GiB   179MB / 172MB     8.26MB / 123kB   26
+market-alpha-scanner-market-alpha-postgres-1   0.07%     314.3MiB / 31.08GiB   75.7GB / 6.34TB   44.8GB / 883GB   12
+hdsm-app                                       0.01%     90.07MiB / 31.08GiB   18.9MB / 27.6MB   287MB / 35.8MB   14
+hdsm-mysql                                     0.94%     27.1MiB / 31.08GiB    16.3MB / 13.7MB   188MB / 380MB    39
+== processes ==
+    PID    PPID %CPU %MEM     ELAPSED COMMAND         COMMAND
+   2542       1 14.7  2.6 28-17:02:54 k3s-server      /usr/local/bin/k3s server
+3106826 3106824 11.5  1.0       01:56 next-server (v1 next-server (v16.2.6)
+3107692    1787  9.4  0.1       00:41 postgres        postgres: market_alpha market_alpha 172.19.0.4(44302) idle
+3107686    1787  8.5  0.1       00:42 postgres        postgres: market_alpha market_alpha 172.19.0.3(43388) idle
+3107061    1787  5.4  0.5       01:48 postgres        postgres: market_alpha market_alpha 172.19.0.4(40006) idle
+3106818 3106817  2.8  0.5       01:56 next-server (v1 next-server (v16.2.6)
+3107703    1787  1.4  0.5       00:41 postgres        postgres: market_alpha market_alpha 172.19.0.4(44428) idle
+3107682    1787  1.2  0.5       00:48 postgres        postgres: market_alpha market_alpha 172.19.0.4(46334) idle
+   1283       1  1.1  5.3 28-17:02:59 dockerd         /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
+   2533       1  1.0  0.1 28-17:02:54 cloudflared     /usr/bin/cloudflared --no-autoupdate --config /etc/cloudflared/config.yml tunnel run
+   2900    2542  1.0  0.3 28-17:02:53 containerd      containerd
+    765       2  1.0  0.0 28-17:03:05 irq/150-rtw89_p [irq/150-rtw89_pci]
+   6508    6041  0.9  0.0 28-17:02:48 redis-server    redis-server *:6379
+   7206    6093  0.9  0.0 28-17:02:46 redis-server    redis-server *:6379
+   1801    1671  0.8  0.0 28-17:02:58 mysqld          mysqld
+   6225    5494  0.6  0.1 28-17:02:48 metrics-server  /metrics-server --cert-dir=/tmp --secure-port=10250 --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname --kubelet-use-node-status-port --metric-resolution=15s --tls-cipher-suites=TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+   6905    6868  0.5  0.5 28-17:02:48 argocd-applicat /usr/local/bin/argocd-application-controller
+3108051  187289  0.4  0.0       00:02 sshd            sshd: sre [priv]
+   1145       1  0.3  0.3 28-17:03:00 containerd      /usr/bin/containerd
+   6151    5170  0.2  0.0 28-17:02:48 coredns         /coredns -conf /etc/coredns/Corefile
+3106692 3106638  0.2  0.2       01:57 npm start -H 0. npm start -H 0.0.0.0 -p 3001
+3106699 3106652  0.2  0.2       01:57 npm start -H 0. npm start -H 0.0.0.0 -p 3001
+ 187123    7761  0.1  0.0 28-10:10:44 bash            -bash
+     17       2  0.1  0.0 28-17:03:08 rcu_preempt     [rcu_preempt]
+== timers ==
+Tue 2026-06-09 15:13:09 UTC     5min Tue 2026-06-09 14:58:08 UTC      9min ago market-alpha-fast-scan.timer   market-alpha-fast-scan.service
+Tue 2026-06-09 21:30:00 UTC       6h Mon 2026-06-08 21:30:01 UTC       17h ago market-alpha-full-scan.timer   market-alpha-full-scan.service
+Wed 2026-06-10 00:00:00 UTC       8h Tue 2026-06-09 00:00:00 UTC       15h ago dpkg-db-backup.timer           dpkg-db-backup.service
+== recent scan services ==
+○ market-alpha-fast-scan.service - Market Alpha Fast Scan
+     Loaded: loaded (/etc/systemd/system/market-alpha-fast-scan.service; static)
+    Drop-In: /etc/systemd/system/market-alpha-fast-scan.service.d
+             └─override.conf
+     Active: inactive (dead) since Tue 2026-06-09 15:03:13 UTC; 4min 42s ago
+TriggeredBy: ● market-alpha-fast-scan.timer
+    Process: 3099712 ExecStart=/usr/bin/docker compose --env-file /opt/apps/market-alpha-scanner/app/.env -f /opt/apps/market-alpha-scanner/app/compose.yaml --profile scanner-job run --rm market-alpha-scanner-job python investment_scanner_mvp.py --fast --timing --outdir /app/scanner_output (code=exited, status=0/SUCCESS)
+   Main PID: 3099712 (code=exited, status=0/SUCCESS)
+        CPU: 183ms
+
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: Important:
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: - This is a ranking engine, not financial advice or a prediction guarantee.
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: - Headline and macro layers are intentionally simple and can be wrong.
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: - AVWAP uses objective anchors (YTD and recent swing low) rather than hand-picked discretionary anchors.
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: - VPVR is intentionally not included because Yahoo daily bars are not reliable enough for it.
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: - Historical evaluation is useful, but it is not survivorship-free or point-in-time perfect.
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: [scanner] lock released
+Jun 09 15:03:12 onsre-node-01 docker[3099734]: [perf] total_runtime took 301.4s
+Jun 09 15:03:13 onsre-node-01 systemd[1]: market-alpha-fast-scan.service: Deactivated successfully.
+Jun 09 15:03:13 onsre-node-01 systemd[1]: Finished market-alpha-fast-scan.service - Market Alpha Fast Scan.
+
+× market-alpha-full-scan.service - Market Alpha Full Scan With Analysis
+     Loaded: loaded (/etc/systemd/system/market-alpha-full-scan.service; static)
+    Drop-In: /etc/systemd/system/market-alpha-full-scan.service.d
+             └─override.conf
+     Active: failed (Result: exit-code) since Tue 2026-06-09 00:37:58 UTC; 14h ago
+TriggeredBy: ● market-alpha-full-scan.timer
+   Main PID: 2544475 (code=exited, status=137)
+        CPU: 845ms
+
+Jun 08 21:30:48 onsre-node-01 docker[2544537]: Saved full ranking to: /app/scanner_output/full_ranking.csv
+Jun 08 21:30:48 onsre-node-01 docker[2544537]: Saved top 20 to: /app/scanner_output/top_candidates.csv
+Jun 08 21:30:48 onsre-node-01 docker[2544537]: Saved scan snapshot to: /app/scanner_output/history/scan_20260608_213048.csv
+Jun 08 21:30:54 onsre-node-01 docker[2544537]: Wrote database rows: scan_runs=1, scanner_signals=111
+Jun 08 21:30:54 onsre-node-01 docker[2544537]: [analysis] starting forward-return analysis
+Jun 08 21:31:01 onsre-node-01 docker[2544537]: [analysis] market structure written: breadth=MIXED, leadership=BALANCED, strong_signals=31
+Jun 08 21:31:37 onsre-node-01 docker[2544537]: [data] schema compatibility: 172 legacy snapshots missing action, using fallback
+Jun 09 00:37:58 onsre-node-01 systemd[1]: market-alpha-full-scan.service: Main process exited, code=exited, status=137/n/a
+Jun 09 00:37:58 onsre-node-01 systemd[1]: market-alpha-full-scan.service: Failed with result 'exit-code'.
+Jun 09 00:37:58 onsre-node-01 systemd[1]: Failed to start market-alpha-full-scan.service - Market Alpha Full Scan With Analysis.

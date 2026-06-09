@@ -1,0 +1,86 @@
+# generated_at=2026-06-09T14:39:11+00:00
+## git
+5066da9
+## main...origin/main
+?? frontend/log/
+?? log/
+## docker-compose-ps
+NAME                                           IMAGE                                                COMMAND                  SERVICE                         CREATED       STATUS                 PORTS
+market-alpha-frontend                          market-alpha-scanner-market-alpha-frontend           "docker-entrypoint.s…"   market-alpha-frontend           2 hours ago   Up 2 hours (healthy)   3001/tcp
+market-alpha-frontend-hot-api                  market-alpha-scanner-market-alpha-frontend-hot-api   "docker-entrypoint.s…"   market-alpha-frontend-hot-api   2 hours ago   Up 2 hours (healthy)   3001/tcp
+market-alpha-scanner-market-alpha-postgres-1   postgres:16-alpine                                   "docker-entrypoint.s…"   market-alpha-postgres           5 weeks ago   Up 4 weeks (healthy)   5432/tcp
+## docker-stats
+NAME                                           CPU %     MEM USAGE / LIMIT     NET I/O           BLOCK I/O        PIDS
+market-alpha-frontend                          0.00%     189.8MiB / 31.08GiB   1.09GB / 19.4MB   664kB / 4.1kB    43
+market-alpha-frontend-hot-api                  0.00%     130.1MiB / 31.08GiB   1.14MB / 1.16MB   770kB / 4.1kB    43
+hdsm-caddy                                     0.00%     19.11MiB / 31.08GiB   102MB / 99.5MB    3.3MB / 123kB    26
+market-alpha-scanner-market-alpha-postgres-1   0.16%     286.7MiB / 31.08GiB   75.6GB / 6.34TB   44.6GB / 882GB   10
+hdsm-app                                       0.01%     91.45MiB / 31.08GiB   18.9MB / 27.6MB   287MB / 35.8MB   14
+hdsm-mysql                                     0.96%     27.11MiB / 31.08GiB   16.3MB / 13.7MB   188MB / 380MB    39
+## host-memory
+               total        used        free      shared  buff/cache   available
+Mem:            31Gi       4.5Gi       4.7Gi       198Mi        22Gi        26Gi
+Swap:          8.0Gi       896Mi       7.1Gi
+## host-load
+ 14:39:13 up 28 days, 16:34,  1 user,  load average: 0.28, 0.43, 0.55
+## disk
+Filesystem                         Size  Used Avail Use% Mounted on
+/dev/mapper/ubuntu--vg-ubuntu--lv  936G  447G  450G  50% /
+/dev/mapper/ubuntu--vg-ubuntu--lv  936G  447G  450G  50% /
+## top-cpu
+    PID    PPID %CPU %MEM     ELAPSED COMMAND         COMMAND
+   2542       1 14.7  2.6 28-16:34:12 k3s-server      /usr/local/bin/k3s server
+   1283       1  1.1  2.9 28-16:34:17 dockerd         /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
+   2533       1  1.0  0.0 28-16:34:12 cloudflared     /usr/bin/cloudflared --no-autoupdate --config /etc/cloudflared/config.yml tunnel run
+   2900    2542  1.0  0.3 28-16:34:11 containerd      containerd
+    765       2  1.0  0.0 28-16:34:23 irq/150-rtw89_p [irq/150-rtw89_pci]
+3024428 3024426  0.9  0.6    01:36:34 next-server (v1 next-server (v16.2.6)
+   6508    6041  0.9  0.0 28-16:34:07 redis-server    redis-server *:6379
+   7206    6093  0.9  0.0 28-16:34:04 redis-server    redis-server *:6379
+   1801    1671  0.8  0.0 28-16:34:16 mysqld          mysqld
+   6225    5494  0.6  0.1 28-16:34:07 metrics-server  /metrics-server --cert-dir=/tmp --secure-port=10250 --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname --kubelet-use-node-status-port --metric-resolution=15s --tls-cipher-suites=TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+   6905    6868  0.5  0.5 28-16:34:06 argocd-applicat /usr/local/bin/argocd-application-controller
+3086934  187289  0.4  0.0       00:02 sshd            sshd: sre [priv]
+   1145       1  0.3  0.3 28-16:34:18 containerd      /usr/bin/containerd
+   6151    5170  0.2  0.0 28-16:34:07 coredns         /coredns -conf /etc/coredns/Corefile
+3078105    1787  0.2  0.5       14:08 postgres        postgres: market_alpha market_alpha 172.19.0.4(59798) idle
+ 187123    7761  0.1  0.0 28-09:42:02 bash            -bash
+     17       2  0.1  0.0 28-16:34:26 rcu_preempt     [rcu_preempt]
+   6815    6776  0.0  0.1 28-16:34:06 argocd-server   /usr/local/bin/argocd-server
+3024420 3024419  0.0  0.4    01:36:34 next-server (v1 next-server (v16.2.6)
+   1672       1  0.0  0.0 28-16:34:16 containerd-shim /usr/bin/containerd-shim-runc-v2 -namespace moby -id 15ef2c6029e04c52ca24f28b14b3bbb0ed7ff459de888e09f3ac44c16b6262a4 -address /run/containerd/containerd.sock
+ 347564       1  0.0  0.1  9-17:13:13 tailscaled      /usr/sbin/tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/run/tailscale/tailscaled.sock --port=41641
+2649361 2649337  0.0  0.1    13:47:02 caddy           caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+   6790    6753  0.0  0.1 28-16:34:06 argocd-applicat /usr/local/bin/argocd-applicationset-controller
+3078968       2  0.0  0.0       12:47 kworker/u41:1-r [kworker/u41:1-rtw89_tx_wq]
+## top-memory
+    PID    PPID %CPU %MEM     ELAPSED COMMAND         COMMAND
+   1283       1  1.1  2.9 28-16:34:17 dockerd         /usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock
+   2542       1 14.7  2.6 28-16:34:12 k3s-server      /usr/local/bin/k3s server
+3024428 3024426  0.9  0.6    01:36:34 next-server (v1 next-server (v16.2.6)
+   6905    6868  0.5  0.5 28-16:34:06 argocd-applicat /usr/local/bin/argocd-application-controller
+3078105    1787  0.2  0.5       14:08 postgres        postgres: market_alpha market_alpha 172.19.0.4(59798) idle
+3024420 3024419  0.0  0.4    01:36:34 next-server (v1 next-server (v16.2.6)
+   2139    1787  0.0  0.4 28-16:34:15 postgres        postgres: checkpointer
+   2140    1787  0.0  0.4 28-16:34:15 postgres        postgres: background writer
+   2900    2542  1.0  0.3 28-16:34:11 containerd      containerd
+   1145       1  0.3  0.3 28-16:34:18 containerd      /usr/bin/containerd
+   2509    2492  0.0  0.2 28-16:34:14 node            node dist/index.js
+3024295 3024243  0.0  0.2    01:36:34 npm start -H 0. npm start -H 0.0.0.0 -p 3001
+3024292 3024248  0.0  0.2    01:36:34 npm start -H 0. npm start -H 0.0.0.0 -p 3001
+   6815    6776  0.0  0.1 28-16:34:06 argocd-server   /usr/local/bin/argocd-server
+2810068       1  0.0  0.1    08:21:38 systemd-journal /usr/lib/systemd/systemd-journald
+   6790    6753  0.0  0.1 28-16:34:06 argocd-applicat /usr/local/bin/argocd-applicationset-controller
+   6958    6909  0.0  0.1 28-16:34:06 argocd-notifica /usr/local/bin/argocd-notifications
+ 347564       1  0.0  0.1  9-17:13:13 tailscaled      /usr/sbin/tailscaled --state=/var/lib/tailscale/tailscaled.state --socket=/run/tailscale/tailscaled.sock --port=41641
+   6225    5494  0.6  0.1 28-16:34:07 metrics-server  /metrics-server --cert-dir=/tmp --secure-port=10250 --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname --kubelet-use-node-status-port --metric-resolution=15s --tls-cipher-suites=TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305
+   6293    5584  0.0  0.1 28-16:34:07 traefik         traefik traefik --entryPoints.metrics.address=:9100/tcp --entryPoints.traefik.address=:8080/tcp --entryPoints.web.address=:8000/tcp --entryPoints.websecure.address=:8443/tcp --api.dashboard=true --ping=true --metrics.prometheus=true --metrics.prometheus.entrypoint=metrics --providers.kubernetescrd --providers.kubernetescrd.allowEmptyServices=true --providers.kubernetesingress --providers.kubernetesingress.allowEmptyServices=true --providers.kubernetesingress.ingressendpoint.publishedservice=kube-system/traefik --entryPoints.websecure.http.tls=true --log.level=INFO
+3083930    1787  0.0  0.1       06:22 postgres        postgres: market_alpha market_alpha 172.19.0.4(46716) idle
+2649361 2649337  0.0  0.1    13:47:02 caddy           caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+   1801    1671  0.8  0.0 28-16:34:16 mysqld          mysqld
+   7101    6028  0.0  0.0 28-16:34:05 argocd-dex      /shared/argocd-dex rundex
+## timers
+Tue 2026-06-09 14:43:08 UTC 3min 54s Tue 2026-06-09 14:28:08 UTC     11min ago market-alpha-fast-scan.timer   market-alpha-fast-scan.service
+Tue 2026-06-09 21:30:00 UTC       6h Mon 2026-06-08 21:30:01 UTC       17h ago market-alpha-full-scan.timer   market-alpha-full-scan.service
+## services
+## recent-scanner-job-containers

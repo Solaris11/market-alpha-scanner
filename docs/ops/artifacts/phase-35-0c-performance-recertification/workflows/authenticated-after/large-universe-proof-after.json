@@ -1,0 +1,13 @@
+{
+  "baseUrl": "https://tradeveto.com",
+  "blockers": [
+    "production browser scanner exposed 361 rows, below the 500+ target"
+  ],
+  "generatedAt": "2026-06-09T14:56:45.957Z",
+  "productionBrowserRows": 361,
+  "proofType": "production-browser",
+  "renderedRows": 74,
+  "status": "not_ready",
+  "virtualized": true,
+  "watchlistFixtureSize": null
+}

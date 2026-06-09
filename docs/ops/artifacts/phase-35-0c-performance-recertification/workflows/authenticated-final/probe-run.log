@@ -1,0 +1,4 @@
+created authenticated probe fixture with 362 watchlist symbols
+
+> market-alpha-scanner-frontend@0.1.0 probe:phase25:chart-scanner-browser-timing
+> node scripts/phase25-chart-scanner-browser-timing-probe.mjs
