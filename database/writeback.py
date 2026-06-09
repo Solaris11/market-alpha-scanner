@@ -51,9 +51,9 @@ def persist_scan_dataframe(df_rank: pd.DataFrame, *, scanner_version: str | None
             metadata={
                 "notes": notes,
                 "scanner_version": scanner_version,
-                "requested_universe": _jsonable(requested_universe),
-                "market_regime": _jsonable(df_rank.attrs.get("market_regime")),
-                "market_structure": _jsonable(market_structure),
+                "requested_universe": to_database_jsonable(requested_universe),
+                "market_regime": to_database_jsonable(df_rank.attrs.get("market_regime")),
+                "market_structure": to_database_jsonable(market_structure),
             },
         )
         counts["scan_runs"] = 1
@@ -105,7 +105,7 @@ def _mapping_attr(value: object) -> dict[str, object]:
 def _dataframe_rows(df: pd.DataFrame) -> list[dict[str, object]]:
     rows: list[dict[str, object]] = []
     for rank_position, row in enumerate(df.to_dict(orient="records"), start=1):
-        normalized_row = {str(key): _jsonable(value) for key, value in row.items()}
+        normalized_row = {str(key): to_database_jsonable(value) for key, value in row.items()}
         normalized_row["rank_position"] = rank_position
         rows.append(normalized_row)
     return rows
@@ -165,7 +165,7 @@ def _asset_summary(item: object) -> dict[str, object]:
     else:
         symbol = getattr(item, "symbol", None)
         raw = {"symbol": symbol} if symbol is not None else {}
-    return {str(key): _jsonable(value) for key, value in raw.items()}
+    return {str(key): to_database_jsonable(value) for key, value in raw.items()}
 
 
 def _persist_symbol_price_history(session: Session, df_rank: pd.DataFrame) -> int:
@@ -404,11 +404,11 @@ def _first_present_mapping(row: Mapping[str, object], keys: tuple[str, ...]) -> 
     return None
 
 
-def _jsonable(value: object) -> object:
+def to_database_jsonable(value: object) -> object:
     if isinstance(value, Mapping):
-        return {str(key): _jsonable(item) for key, item in value.items()}
+        return {str(key): to_database_jsonable(item) for key, item in value.items()}
     if isinstance(value, (list, tuple, set)):
-        return [_jsonable(item) for item in value]
+        return [to_database_jsonable(item) for item in value]
     if isinstance(value, pd.Timestamp):
         return value.isoformat()
     if isinstance(value, datetime):
@@ -416,8 +416,11 @@ def _jsonable(value: object) -> object:
     if value is None:
         return None
     if isinstance(value, (str, int, float, bool)):
-        if isinstance(value, float) and value != value:
-            return None
+        if isinstance(value, float):
+            if value != value:
+                return None
+            if value in (float("inf"), float("-inf")):
+                return None
         if isinstance(value, str) and value.strip().lower() in {"nan", "none", "null", "n/a", "na", "<na>"}:
             return None
         return value
