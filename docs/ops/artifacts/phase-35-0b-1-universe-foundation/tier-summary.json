@@ -1,0 +1,32 @@
+{
+  "category_counts": {
+    "AI": 49,
+    "Biotech": 51,
+    "Cloud": 20,
+    "Consumer": 31,
+    "Crypto": 26,
+    "Cybersecurity": 6,
+    "Defense": 25,
+    "Energy": 22,
+    "Growth": 128,
+    "Large Cap": 89,
+    "Mega Cap": 15,
+    "Mid Cap": 443,
+    "Momentum": 89,
+    "Quantum": 9,
+    "Semiconductor": 30,
+    "Small Cap": 421,
+    "Space": 17
+  },
+  "scanner_frequency_counts": {
+    "every_scan": 111,
+    "opportunistic": 704,
+    "regular": 185
+  },
+  "tier_counts": {
+    "Tier 1": 111,
+    "Tier 2": 185,
+    "Tier 3": 704
+  },
+  "universe_size": 1000
+}

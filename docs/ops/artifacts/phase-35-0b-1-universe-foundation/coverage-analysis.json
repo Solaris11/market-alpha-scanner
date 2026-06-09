@@ -1,0 +1,41 @@
+{
+  "classification_complete": true,
+  "classification_issues": [],
+  "phase_1_runtime_universe_size": 500,
+  "phase_2_available_universe_size": 1000,
+  "production_ranked_rows": 362,
+  "production_required_symbols_missing_from_ranked_output": [],
+  "production_required_symbols_ranked": [
+    "APP",
+    "ASTS",
+    "HIMS",
+    "IONQ",
+    "LITE",
+    "LUNR",
+    "PL",
+    "QBTS",
+    "QUBT",
+    "RGTI",
+    "RKLB",
+    "SOUN",
+    "TEM"
+  ],
+  "required_symbols_missing": [],
+  "required_symbols_present": [
+    "APP",
+    "ASTS",
+    "HIMS",
+    "IONQ",
+    "LITE",
+    "LUNR",
+    "PL",
+    "QBTS",
+    "QUBT",
+    "RGTI",
+    "RKLB",
+    "SOUN",
+    "TEM"
+  ],
+  "supported_symbols": 1000,
+  "unique_symbols": 1000
+}

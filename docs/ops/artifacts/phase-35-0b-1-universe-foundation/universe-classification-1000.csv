@@ -1,0 +1,1001 @@
+symbol,tier,source_category,categories,scan_priority,scanner_frequency,classification_basis
+AAPL,Tier 1,core,Mega Cap,100,every_scan,core scanner universe plus curated symbol category map
+MSFT,Tier 1,core,Mega Cap|AI|Cloud,100,every_scan,core scanner universe plus curated symbol category map
+NVDA,Tier 1,core,Mega Cap|AI|Semiconductor|Growth,100,every_scan,core scanner universe plus curated symbol category map
+AMZN,Tier 1,core,Mega Cap|AI|Cloud|Consumer,100,every_scan,core scanner universe plus curated symbol category map
+META,Tier 1,core,Mega Cap|AI,100,every_scan,core scanner universe plus curated symbol category map
+GOOGL,Tier 1,core,Mega Cap|AI|Cloud,100,every_scan,core scanner universe plus curated symbol category map
+AVGO,Tier 1,core,Mega Cap|AI|Semiconductor,100,every_scan,core scanner universe plus curated symbol category map
+TSLA,Tier 1,core,Mega Cap|Consumer|Growth,100,every_scan,core scanner universe plus curated symbol category map
+NFLX,Tier 1,core,Large Cap|Consumer,100,every_scan,core scanner universe plus curated symbol category map
+AMD,Tier 1,core,Large Cap|AI|Semiconductor|Growth,100,every_scan,core scanner universe plus curated symbol category map
+ORCL,Tier 1,core,Large Cap|AI|Cloud,100,every_scan,core scanner universe plus curated symbol category map
+CRM,Tier 1,core,Large Cap|Cloud,100,every_scan,core scanner universe plus curated symbol category map
+ADBE,Tier 1,core,Large Cap|Cloud,100,every_scan,core scanner universe plus curated symbol category map
+INTU,Tier 1,core,Large Cap,100,every_scan,core scanner universe plus curated symbol category map
+QCOM,Tier 1,core,Large Cap|Semiconductor,100,every_scan,core scanner universe plus curated symbol category map
+MU,Tier 1,core,Large Cap|AI|Semiconductor,100,every_scan,core scanner universe plus curated symbol category map
+PANW,Tier 1,core,Large Cap|Cybersecurity,100,every_scan,core scanner universe plus curated symbol category map
+CRWD,Tier 1,core,Large Cap|Cybersecurity|Growth,100,every_scan,core scanner universe plus curated symbol category map
+DDOG,Tier 1,core,Mid Cap|AI|Cloud|Growth,100,every_scan,core scanner universe plus curated symbol category map
+SNOW,Tier 1,core,Large Cap|AI|Cloud|Growth,100,every_scan,core scanner universe plus curated symbol category map
+PLTR,Tier 1,core,Large Cap|AI|Defense,100,every_scan,core scanner universe plus curated symbol category map
+SHOP,Tier 1,core,Large Cap|Cloud|Consumer|Growth,100,every_scan,core scanner universe plus curated symbol category map
+NOW,Tier 1,core,Large Cap|Cloud,100,every_scan,core scanner universe plus curated symbol category map
+ANET,Tier 1,core,Large Cap|AI,100,every_scan,core scanner universe plus curated symbol category map
+INTC,Tier 1,core,Large Cap|Semiconductor,100,every_scan,core scanner universe plus curated symbol category map
+ARM,Tier 1,core,Large Cap|AI|Semiconductor,100,every_scan,core scanner universe plus curated symbol category map
+ASML,Tier 1,core,Large Cap|AI|Semiconductor,100,every_scan,core scanner universe plus curated symbol category map
+TSM,Tier 1,core,Large Cap|AI|Semiconductor,100,every_scan,core scanner universe plus curated symbol category map
+AMAT,Tier 1,core,Large Cap|AI|Semiconductor,100,every_scan,core scanner universe plus curated symbol category map
+LRCX,Tier 1,core,Large Cap|AI|Semiconductor,100,every_scan,core scanner universe plus curated symbol category map
+KLAC,Tier 1,core,Large Cap|AI|Semiconductor,100,every_scan,core scanner universe plus curated symbol category map
+MRVL,Tier 1,core,Large Cap|AI|Semiconductor,100,every_scan,core scanner universe plus curated symbol category map
+UBER,Tier 1,core,Large Cap|Consumer|Growth,100,every_scan,core scanner universe plus curated symbol category map
+ABNB,Tier 1,core,Large Cap|Consumer|Growth,100,every_scan,core scanner universe plus curated symbol category map
+MSTR,Tier 1,core,Large Cap|Crypto,100,every_scan,core scanner universe plus curated symbol category map
+COIN,Tier 1,core,Large Cap|Crypto,100,every_scan,core scanner universe plus curated symbol category map
+APP,Tier 1,core,Large Cap|AI|Growth|Momentum,100,every_scan,core scanner universe plus curated symbol category map
+RBLX,Tier 1,core,Mid Cap|Consumer|Growth,100,every_scan,core scanner universe plus curated symbol category map
+MDB,Tier 1,core,Mid Cap|AI|Cloud|Growth,100,every_scan,core scanner universe plus curated symbol category map
+ZS,Tier 1,core,Mid Cap|Cybersecurity|Growth,100,every_scan,core scanner universe plus curated symbol category map
+JPM,Tier 1,core,Mega Cap|Large Cap,100,every_scan,core scanner universe plus curated symbol category map
+GS,Tier 1,core,Large Cap,100,every_scan,core scanner universe plus curated symbol category map
+MS,Tier 1,core,Large Cap,100,every_scan,core scanner universe plus curated symbol category map
+BAC,Tier 1,core,Large Cap,100,every_scan,core scanner universe plus curated symbol category map
+WFC,Tier 1,core,Large Cap,100,every_scan,core scanner universe plus curated symbol category map
+BLK,Tier 1,core,Large Cap,100,every_scan,core scanner universe plus curated symbol category map
+BRK-B,Tier 1,core,Mega Cap,100,every_scan,core scanner universe plus curated symbol category map
+V,Tier 1,core,Mega Cap,100,every_scan,core scanner universe plus curated symbol category map
+MA,Tier 1,core,Mega Cap,100,every_scan,core scanner universe plus curated symbol category map
+AXP,Tier 1,core,Large Cap,100,every_scan,core scanner universe plus curated symbol category map
+CAT,Tier 1,core,Large Cap,100,every_scan,core scanner universe plus curated symbol category map
+DE,Tier 1,core,Large Cap,100,every_scan,core scanner universe plus curated symbol category map
+HON,Tier 1,core,Large Cap,100,every_scan,core scanner universe plus curated symbol category map
+GE,Tier 1,core,Large Cap|Defense,100,every_scan,core scanner universe plus curated symbol category map
+RTX,Tier 1,core,Large Cap|Defense|Space,100,every_scan,core scanner universe plus curated symbol category map
+LMT,Tier 1,core,Large Cap|Defense|Space,100,every_scan,core scanner universe plus curated symbol category map
+BA,Tier 1,core,Large Cap|Defense|Space,100,every_scan,core scanner universe plus curated symbol category map
+UNP,Tier 1,core,Large Cap,100,every_scan,core scanner universe plus curated symbol category map
+UPS,Tier 1,core,Large Cap,100,every_scan,core scanner universe plus curated symbol category map
+FDX,Tier 1,core,Large Cap,100,every_scan,core scanner universe plus curated symbol category map
+WMT,Tier 1,core,Large Cap|Consumer,100,every_scan,core scanner universe plus curated symbol category map
+COST,Tier 1,core,Large Cap|Consumer,100,every_scan,core scanner universe plus curated symbol category map
+PG,Tier 1,core,Large Cap|Consumer,100,every_scan,core scanner universe plus curated symbol category map
+KO,Tier 1,core,Large Cap|Consumer,100,every_scan,core scanner universe plus curated symbol category map
+PEP,Tier 1,core,Large Cap|Consumer,100,every_scan,core scanner universe plus curated symbol category map
+MCD,Tier 1,core,Large Cap|Consumer,100,every_scan,core scanner universe plus curated symbol category map
+HD,Tier 1,core,Large Cap|Consumer,100,every_scan,core scanner universe plus curated symbol category map
+LOW,Tier 1,core,Large Cap|Consumer,100,every_scan,core scanner universe plus curated symbol category map
+NKE,Tier 1,core,Large Cap|Consumer,100,every_scan,core scanner universe plus curated symbol category map
+SBUX,Tier 1,core,Large Cap|Consumer,100,every_scan,core scanner universe plus curated symbol category map
+JNJ,Tier 1,core,Large Cap|Biotech,100,every_scan,core scanner universe plus curated symbol category map
+LLY,Tier 1,core,Mega Cap|Biotech,100,every_scan,core scanner universe plus curated symbol category map
+UNH,Tier 1,core,Mega Cap|Biotech,100,every_scan,core scanner universe plus curated symbol category map
+MRK,Tier 1,core,Large Cap|Biotech,100,every_scan,core scanner universe plus curated symbol category map
+ABBV,Tier 1,core,Large Cap|Biotech,100,every_scan,core scanner universe plus curated symbol category map
+PFE,Tier 1,core,Large Cap|Biotech,100,every_scan,core scanner universe plus curated symbol category map
+TMO,Tier 1,core,Large Cap|Biotech,100,every_scan,core scanner universe plus curated symbol category map
+ISRG,Tier 1,core,Large Cap|Biotech,100,every_scan,core scanner universe plus curated symbol category map
+DHR,Tier 1,core,Large Cap|Biotech,100,every_scan,core scanner universe plus curated symbol category map
+SYK,Tier 1,core,Large Cap|Biotech,100,every_scan,core scanner universe plus curated symbol category map
+XOM,Tier 1,core,Mega Cap|Energy,100,every_scan,core scanner universe plus curated symbol category map
+CVX,Tier 1,core,Large Cap|Energy,100,every_scan,core scanner universe plus curated symbol category map
+COP,Tier 1,core,Large Cap|Energy,100,every_scan,core scanner universe plus curated symbol category map
+SLB,Tier 1,core,Large Cap|Energy,100,every_scan,core scanner universe plus curated symbol category map
+EOG,Tier 1,core,Large Cap|Energy,100,every_scan,core scanner universe plus curated symbol category map
+MPC,Tier 1,core,Large Cap|Energy,100,every_scan,core scanner universe plus curated symbol category map
+VLO,Tier 1,core,Large Cap|Energy,100,every_scan,core scanner universe plus curated symbol category map
+OXY,Tier 1,core,Large Cap|Energy,100,every_scan,core scanner universe plus curated symbol category map
+DVN,Tier 1,core,Large Cap|Energy,100,every_scan,core scanner universe plus curated symbol category map
+HAL,Tier 1,core,Large Cap|Energy,100,every_scan,core scanner universe plus curated symbol category map
+SPY,Tier 1,core,Small Cap,100,every_scan,core scanner universe plus curated symbol category map
+QQQ,Tier 1,core,Small Cap,100,every_scan,core scanner universe plus curated symbol category map
+DIA,Tier 1,core,Small Cap,100,every_scan,core scanner universe plus curated symbol category map
+IWM,Tier 1,core,Small Cap,100,every_scan,core scanner universe plus curated symbol category map
+SMH,Tier 1,core,Semiconductor,100,every_scan,core scanner universe plus curated symbol category map
+SOXX,Tier 1,core,Semiconductor,100,every_scan,core scanner universe plus curated symbol category map
+XLK,Tier 1,core,Small Cap,100,every_scan,core scanner universe plus curated symbol category map
+XLE,Tier 1,core,Energy,100,every_scan,core scanner universe plus curated symbol category map
+XLF,Tier 1,core,Small Cap,100,every_scan,core scanner universe plus curated symbol category map
+XLV,Tier 1,core,Biotech,100,every_scan,core scanner universe plus curated symbol category map
+ARKK,Tier 1,core,Small Cap,100,every_scan,core scanner universe plus curated symbol category map
+IBIT,Tier 1,core,Crypto,100,every_scan,core scanner universe plus curated symbol category map
+GLD,Tier 1,core,Small Cap,100,every_scan,core scanner universe plus curated symbol category map
+SLV,Tier 1,core,Small Cap,100,every_scan,core scanner universe plus curated symbol category map
+USO,Tier 1,core,Energy,100,every_scan,core scanner universe plus curated symbol category map
+TLT,Tier 1,core,Small Cap,100,every_scan,core scanner universe plus curated symbol category map
+HYG,Tier 1,core,Small Cap,100,every_scan,core scanner universe plus curated symbol category map
+UUP,Tier 1,core,Small Cap,100,every_scan,core scanner universe plus curated symbol category map
+VNQ,Tier 1,core,Small Cap,100,every_scan,core scanner universe plus curated symbol category map
+BTC-USD,Tier 1,core,Crypto,100,every_scan,core scanner universe plus curated symbol category map
+ETH-USD,Tier 1,core,Crypto,100,every_scan,core scanner universe plus curated symbol category map
+RGTI,Tier 2,required_opportunity,Small Cap|Quantum|Growth|Momentum,70,regular,"curated required_opportunity opportunity bucket mapped to Small Cap, Quantum, Growth, Momentum"
+QBTS,Tier 2,required_opportunity,Small Cap|Quantum|Growth|Momentum,70,regular,"curated required_opportunity opportunity bucket mapped to Small Cap, Quantum, Growth, Momentum"
+QUBT,Tier 2,required_opportunity,Small Cap|Quantum|Growth|Momentum,70,regular,"curated required_opportunity opportunity bucket mapped to Small Cap, Quantum, Growth, Momentum"
+IONQ,Tier 2,required_opportunity,Mid Cap|Quantum|Growth|Momentum,70,regular,"curated required_opportunity opportunity bucket mapped to Mid Cap, Quantum, Growth, Momentum"
+LITE,Tier 2,required_opportunity,Mid Cap|Quantum|Growth|Momentum,70,regular,"curated required_opportunity opportunity bucket mapped to Mid Cap, Quantum, Growth, Momentum"
+RKLB,Tier 2,required_opportunity,Mid Cap|Space|Growth|Momentum,70,regular,"curated required_opportunity opportunity bucket mapped to Mid Cap, Space, Growth, Momentum"
+ASTS,Tier 2,required_opportunity,Mid Cap|Space|Growth|Momentum,70,regular,"curated required_opportunity opportunity bucket mapped to Mid Cap, Space, Growth, Momentum"
+LUNR,Tier 2,required_opportunity,Mid Cap|Space|Growth|Momentum,70,regular,"curated required_opportunity opportunity bucket mapped to Mid Cap, Space, Growth, Momentum"
+TEM,Tier 2,required_opportunity,Mid Cap|AI|Biotech|Growth|Momentum,70,regular,"curated required_opportunity opportunity bucket mapped to Mid Cap, AI, Biotech, Growth, Momentum"
+SOUN,Tier 2,required_opportunity,Mid Cap|AI|Growth|Momentum,70,regular,"curated required_opportunity opportunity bucket mapped to Mid Cap, AI, Growth, Momentum"
+HIMS,Tier 2,required_opportunity,Mid Cap|Growth|Momentum,70,regular,"curated required_opportunity opportunity bucket mapped to Mid Cap, Growth, Momentum"
+PL,Tier 2,required_opportunity,Mid Cap|Space|Growth|Momentum,70,regular,"curated required_opportunity opportunity bucket mapped to Mid Cap, Space, Growth, Momentum"
+SMCI,Tier 2,ai,Mid Cap|AI|Semiconductor|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Semiconductor, Growth"
+DELL,Tier 2,ai,Mid Cap|AI|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Growth"
+HPE,Tier 2,ai,Mid Cap|AI|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Growth"
+AI,Tier 2,ai,Mid Cap|AI|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Growth"
+PATH,Tier 2,ai,Mid Cap|AI|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Growth"
+BBAI,Tier 2,ai,Small Cap|AI|Growth,70,regular,"curated ai opportunity bucket mapped to Small Cap, AI, Growth"
+RXRX,Tier 2,ai,Mid Cap|AI|Biotech|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Biotech, Growth"
+SERV,Tier 2,ai,Small Cap|AI|Growth,70,regular,"curated ai opportunity bucket mapped to Small Cap, AI, Growth"
+VRT,Tier 2,ai,Mid Cap|AI|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Growth"
+CEG,Tier 2,ai,Mid Cap|AI|Energy|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Energy, Growth"
+OKLO,Tier 2,ai,Mid Cap|AI|Energy|Growth|Momentum,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Energy, Growth, Momentum"
+NBIS,Tier 2,ai,Mid Cap|AI|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Growth"
+GTLB,Tier 2,ai,Mid Cap|AI|Cloud|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Cloud, Growth"
+ESTC,Tier 2,ai,Mid Cap|AI|Cloud|Growth|Momentum,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Cloud, Growth, Momentum"
+NET,Tier 2,ai,Mid Cap|AI|Cloud|Cybersecurity|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Cloud, Cybersecurity, Growth"
+HUBS,Tier 2,ai,Mid Cap|AI|Cloud|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Cloud, Growth"
+TEAM,Tier 2,ai,Mid Cap|AI|Cloud|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Cloud, Growth"
+DT,Tier 2,ai,Mid Cap|AI|Cloud|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Cloud, Growth"
+TOST,Tier 2,ai,Mid Cap|AI|Consumer|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Consumer, Growth"
+DUOL,Tier 2,ai,Mid Cap|AI|Consumer|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Consumer, Growth"
+TTD,Tier 2,ai,Mid Cap|AI|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Growth"
+SE,Tier 2,ai,Mid Cap|AI|Cloud|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Cloud, Growth"
+MELI,Tier 2,ai,Mid Cap|AI|Cloud|Consumer|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Cloud, Consumer, Growth"
+DASH,Tier 2,ai,Mid Cap|AI|Cloud|Consumer|Growth,70,regular,"curated ai opportunity bucket mapped to Mid Cap, AI, Cloud, Consumer, Growth"
+RBRK,Tier 2,ai,AI|Growth,70,regular,"curated ai opportunity bucket mapped to AI, Growth"
+ARQQ,Tier 2,quantum,Mid Cap|Quantum|Growth|Momentum,70,regular,"curated quantum opportunity bucket mapped to Mid Cap, Quantum, Growth, Momentum"
+IBM,Tier 2,quantum,Quantum|Growth|Momentum,70,regular,"curated quantum opportunity bucket mapped to Quantum, Growth, Momentum"
+COHR,Tier 2,quantum,Mid Cap|Quantum|Semiconductor|Growth|Momentum,70,regular,"curated quantum opportunity bucket mapped to Mid Cap, Quantum, Semiconductor, Growth, Momentum"
+MKSI,Tier 2,quantum,Mid Cap|Quantum|Semiconductor|Growth|Momentum,70,regular,"curated quantum opportunity bucket mapped to Mid Cap, Quantum, Semiconductor, Growth, Momentum"
+HOOD,Tier 2,crypto_proxies,Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Crypto, Momentum"
+MARA,Tier 2,crypto_proxies,Mid Cap|Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Mid Cap, Crypto, Momentum"
+RIOT,Tier 2,crypto_proxies,Mid Cap|Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Mid Cap, Crypto, Momentum"
+CLSK,Tier 2,crypto_proxies,Mid Cap|Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Mid Cap, Crypto, Momentum"
+HUT,Tier 2,crypto_proxies,Mid Cap|Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Mid Cap, Crypto, Momentum"
+HIVE,Tier 2,crypto_proxies,Mid Cap|Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Mid Cap, Crypto, Momentum"
+BTBT,Tier 2,crypto_proxies,Mid Cap|Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Mid Cap, Crypto, Momentum"
+IREN,Tier 2,crypto_proxies,Mid Cap|Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Mid Cap, Crypto, Momentum"
+WULF,Tier 2,crypto_proxies,Mid Cap|Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Mid Cap, Crypto, Momentum"
+CORZ,Tier 2,crypto_proxies,Mid Cap|Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Mid Cap, Crypto, Momentum"
+CIFR,Tier 2,crypto_proxies,Mid Cap|Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Mid Cap, Crypto, Momentum"
+CAN,Tier 2,crypto_proxies,Mid Cap|Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Mid Cap, Crypto, Momentum"
+BITB,Tier 2,crypto_proxies,Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Crypto, Momentum"
+FBTC,Tier 2,crypto_proxies,Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Crypto, Momentum"
+ARKB,Tier 2,crypto_proxies,Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Crypto, Momentum"
+GBTC,Tier 2,crypto_proxies,Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Crypto, Momentum"
+ETHA,Tier 2,crypto_proxies,Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Crypto, Momentum"
+ETHE,Tier 2,crypto_proxies,Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Crypto, Momentum"
+BITO,Tier 2,crypto_proxies,Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Crypto, Momentum"
+BLOK,Tier 2,crypto_proxies,Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Crypto, Momentum"
+BKCH,Tier 2,crypto_proxies,Crypto|Momentum,70,regular,"curated crypto_proxies opportunity bucket mapped to Crypto, Momentum"
+SPIR,Tier 2,space,Small Cap|Space|Growth|Momentum,70,regular,"curated space opportunity bucket mapped to Small Cap, Space, Growth, Momentum"
+IRDM,Tier 2,space,Mid Cap|Space|Growth|Momentum,70,regular,"curated space opportunity bucket mapped to Mid Cap, Space, Growth, Momentum"
+SATS,Tier 2,space,Mid Cap|Space|Growth|Momentum,70,regular,"curated space opportunity bucket mapped to Mid Cap, Space, Growth, Momentum"
+GSAT,Tier 2,space,Mid Cap|Space|Growth|Momentum,70,regular,"curated space opportunity bucket mapped to Mid Cap, Space, Growth, Momentum"
+NOC,Tier 2,space,Defense|Space|Growth|Momentum,70,regular,"curated space opportunity bucket mapped to Defense, Space, Growth, Momentum"
+SPCE,Tier 2,space,Mid Cap|Space|Growth|Momentum,70,regular,"curated space opportunity bucket mapped to Mid Cap, Space, Growth, Momentum"
+BKSY,Tier 2,space,Mid Cap|Space|Growth|Momentum,70,regular,"curated space opportunity bucket mapped to Mid Cap, Space, Growth, Momentum"
+VSAT,Tier 2,space,Mid Cap|Space|Growth|Momentum,70,regular,"curated space opportunity bucket mapped to Mid Cap, Space, Growth, Momentum"
+TDY,Tier 2,space,Mid Cap|Defense|Space|Growth|Momentum,70,regular,"curated space opportunity bucket mapped to Mid Cap, Defense, Space, Growth, Momentum"
+HEI,Tier 2,space,Mid Cap|Defense|Space|Growth|Momentum,70,regular,"curated space opportunity bucket mapped to Mid Cap, Defense, Space, Growth, Momentum"
+GD,Tier 2,defense,Large Cap|Mid Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Mid Cap, Defense"
+HII,Tier 2,defense,Large Cap|Mid Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Mid Cap, Defense"
+LHX,Tier 2,defense,Large Cap|Mid Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Mid Cap, Defense"
+LDOS,Tier 2,defense,Large Cap|Mid Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Mid Cap, Defense"
+KTOS,Tier 2,defense,Large Cap|Mid Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Mid Cap, Defense"
+AVAV,Tier 2,defense,Large Cap|Mid Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Mid Cap, Defense"
+TXT,Tier 2,defense,Large Cap|Mid Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Mid Cap, Defense"
+TDG,Tier 2,defense,Large Cap|Mid Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Mid Cap, Defense"
+CW,Tier 2,defense,Large Cap|Mid Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Mid Cap, Defense"
+BWXT,Tier 2,defense,Large Cap|Mid Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Mid Cap, Defense"
+MRCY,Tier 2,defense,Large Cap|Mid Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Mid Cap, Defense"
+HWM,Tier 2,defense,Large Cap|Mid Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Mid Cap, Defense"
+SAIC,Tier 2,defense,Large Cap|Mid Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Mid Cap, Defense"
+CACI,Tier 2,defense,Large Cap|Mid Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Mid Cap, Defense"
+OSK,Tier 2,defense,Large Cap|Mid Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Mid Cap, Defense"
+AXON,Tier 2,defense,Large Cap|Mid Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Mid Cap, Defense"
+LOAR,Tier 2,defense,Large Cap|Small Cap|Defense,70,regular,"curated defense opportunity bucket mapped to Large Cap, Small Cap, Defense"
+CRSP,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+NTLA,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+EDIT,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+BEAM,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+VRTX,Tier 2,biotech,Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Biotech, Growth"
+REGN,Tier 2,biotech,Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Biotech, Growth"
+MRNA,Tier 2,biotech,Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Biotech, Growth"
+BNTX,Tier 2,biotech,Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Biotech, Growth"
+GILD,Tier 2,biotech,Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Biotech, Growth"
+BIIB,Tier 2,biotech,Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Biotech, Growth"
+ALNY,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+SRPT,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+RARE,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+TGTX,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+EXEL,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+VKTX,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+NTRA,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+DNA,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+TMDX,Tier 2,biotech,Mid Cap|Biotech|Growth|Momentum,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth, Momentum"
+IOVA,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+AXSM,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+HALO,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+IMVT,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+LEGN,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+ARGX,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+PCVX,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+INCY,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+IONS,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+TWST,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+DNLI,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+BBIO,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+ACLX,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+VIR,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+NVAX,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+APLS,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+MDGL,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+RVMD,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+FOLD,Tier 2,biotech,Mid Cap|Biotech|Growth,70,regular,"curated biotech opportunity bucket mapped to Mid Cap, Biotech, Growth"
+BILL,Tier 2,growth,Growth,70,regular,curated growth opportunity bucket mapped to Growth
+AFRM,Tier 2,growth,Growth,70,regular,curated growth opportunity bucket mapped to Growth
+UPST,Tier 2,growth,Growth,70,regular,curated growth opportunity bucket mapped to Growth
+ROKU,Tier 2,growth,Growth,70,regular,curated growth opportunity bucket mapped to Growth
+FROG,Tier 2,growth,Growth,70,regular,curated growth opportunity bucket mapped to Growth
+CELH,Tier 2,growth,Consumer|Growth|Momentum,70,regular,"curated growth opportunity bucket mapped to Consumer, Growth, Momentum"
+ELF,Tier 2,growth,Consumer|Growth|Momentum,70,regular,"curated growth opportunity bucket mapped to Consumer, Growth, Momentum"
+CAVA,Tier 2,growth,Consumer|Growth|Momentum,70,regular,"curated growth opportunity bucket mapped to Consumer, Growth, Momentum"
+ONON,Tier 2,growth,Consumer|Growth,70,regular,"curated growth opportunity bucket mapped to Consumer, Growth"
+RIVN,Tier 2,growth,Growth,70,regular,curated growth opportunity bucket mapped to Growth
+LCID,Tier 2,growth,Growth,70,regular,curated growth opportunity bucket mapped to Growth
+GM,Tier 2,growth,Consumer|Growth,70,regular,"curated growth opportunity bucket mapped to Consumer, Growth"
+F,Tier 2,growth,Consumer|Growth,70,regular,"curated growth opportunity bucket mapped to Consumer, Growth"
+DKNG,Tier 2,growth,Consumer|Growth,70,regular,"curated growth opportunity bucket mapped to Consumer, Growth"
+PINS,Tier 2,growth,Consumer|Growth,70,regular,"curated growth opportunity bucket mapped to Consumer, Growth"
+SNAP,Tier 2,growth,Consumer|Growth,70,regular,"curated growth opportunity bucket mapped to Consumer, Growth"
+RDDT,Tier 2,growth,Consumer|Growth,70,regular,"curated growth opportunity bucket mapped to Consumer, Growth"
+SOFI,Tier 2,growth,Growth,70,regular,curated growth opportunity bucket mapped to Growth
+NU,Tier 2,growth,Growth,70,regular,curated growth opportunity bucket mapped to Growth
+FOUR,Tier 2,growth,Growth,70,regular,curated growth opportunity bucket mapped to Growth
+GLOB,Tier 2,growth,Growth,70,regular,curated growth opportunity bucket mapped to Growth
+MNDY,Tier 2,growth,Growth,70,regular,curated growth opportunity bucket mapped to Growth
+XYZ,Tier 2,growth,Growth,70,regular,curated growth opportunity bucket mapped to Growth
+FSLR,Tier 2,momentum_midcap,Mid Cap|Energy|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Energy, Momentum"
+ENPH,Tier 2,momentum_midcap,Mid Cap|Energy|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Energy, Momentum"
+WOLF,Tier 2,momentum_midcap,Mid Cap|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Momentum"
+ACLS,Tier 2,momentum_midcap,Mid Cap|Semiconductor|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Semiconductor, Momentum"
+AEHR,Tier 2,momentum_midcap,Mid Cap|Small Cap|Semiconductor|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Small Cap, Semiconductor, Momentum"
+CAMT,Tier 2,momentum_midcap,Mid Cap|Semiconductor|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Semiconductor, Momentum"
+SITM,Tier 2,momentum_midcap,Mid Cap|Semiconductor|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Semiconductor, Momentum"
+ON,Tier 2,momentum_midcap,Mid Cap|Semiconductor|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Semiconductor, Momentum"
+NXPI,Tier 2,momentum_midcap,Mid Cap|Semiconductor|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Semiconductor, Momentum"
+MP,Tier 2,momentum_midcap,Mid Cap|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Momentum"
+ALB,Tier 2,momentum_midcap,Mid Cap|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Momentum"
+PYPL,Tier 2,momentum_midcap,Mid Cap|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Momentum"
+DOCN,Tier 2,momentum_midcap,Mid Cap|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Momentum"
+TENB,Tier 2,momentum_midcap,Mid Cap|Cybersecurity|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Cybersecurity, Momentum"
+S,Tier 2,momentum_midcap,Mid Cap|Cybersecurity|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Cybersecurity, Momentum"
+IOT,Tier 2,momentum_midcap,Mid Cap|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Momentum"
+SMR,Tier 2,momentum_midcap,Mid Cap|Small Cap|Energy|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Small Cap, Energy, Momentum"
+NNE,Tier 2,momentum_midcap,Mid Cap|Small Cap|Energy|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Small Cap, Energy, Momentum"
+BE,Tier 2,momentum_midcap,Mid Cap|Energy|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Energy, Momentum"
+FLNC,Tier 2,momentum_midcap,Mid Cap|Energy|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Energy, Momentum"
+ARRY,Tier 2,momentum_midcap,Mid Cap|Energy|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Energy, Momentum"
+RUN,Tier 2,momentum_midcap,Mid Cap|Energy|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Energy, Momentum"
+NXT,Tier 2,momentum_midcap,Mid Cap|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Momentum"
+BLDR,Tier 2,momentum_midcap,Mid Cap|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Momentum"
+FIX,Tier 2,momentum_midcap,Mid Cap|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Momentum"
+ONTO,Tier 2,momentum_midcap,Mid Cap|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Momentum"
+LSCC,Tier 2,momentum_midcap,Mid Cap|Semiconductor|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Semiconductor, Momentum"
+MTSI,Tier 2,momentum_midcap,Mid Cap|Semiconductor|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Semiconductor, Momentum"
+POWI,Tier 2,momentum_midcap,Mid Cap|Semiconductor|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Semiconductor, Momentum"
+RMBS,Tier 2,momentum_midcap,Mid Cap|Semiconductor|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Semiconductor, Momentum"
+NVMI,Tier 2,momentum_midcap,Mid Cap|Semiconductor|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Semiconductor, Momentum"
+SYNA,Tier 2,momentum_midcap,Mid Cap|Semiconductor|Momentum,70,regular,"curated momentum_midcap opportunity bucket mapped to Mid Cap, Semiconductor, Momentum"
+BIRK,Tier 2,emerging_leaders,Growth|Momentum,70,regular,"curated emerging_leaders opportunity bucket mapped to Growth, Momentum"
+KVYO,Tier 2,emerging_leaders,Growth|Momentum,70,regular,"curated emerging_leaders opportunity bucket mapped to Growth, Momentum"
+CART,Tier 2,emerging_leaders,Growth|Momentum,70,regular,"curated emerging_leaders opportunity bucket mapped to Growth, Momentum"
+CRAI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RL,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SFBS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FBIZ,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FANG,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SUPN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AURE,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FWRG,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ADVB,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IQST,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TXNM,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TTEK,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+KEX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PXED,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GCO,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SLGN,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SJ,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FDBC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TPCS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SM,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PKOH,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CHGG,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AOSL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+A,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SANG,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RACC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+OUT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AACI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FNWD,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AGEN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ICLR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HOV,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TRNR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MMYT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RCMT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BFST,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FDP,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BSVN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AIFU,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+YEXT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RRX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BIPC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ACHR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EMAT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TDC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PTLE,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MTB,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ELTK,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TNET,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DYOR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HMH,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IMRX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MIND,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SPHL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PFG,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RMIX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IVR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FCEL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BENF,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HTLD,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LUD,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BCSS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BBCQ,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HIT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GRMN,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BEEP,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WING,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PPLI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ZKIN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+OPK,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ONB,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RXT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TRAX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ASAN,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PBM,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IMO,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+OPXS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HLX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SKYW,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TSBK,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MTVA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SCZM,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MXC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NGVT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DKS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+UNCY,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MNTK,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BJ,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WHG,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+QURE,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DGICB,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ASIC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CINF,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BZAI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+OPTH,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TCBK,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NOG,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BCHT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+COPL,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+STRL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BKTI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IBN,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TRMB,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PCRX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+UBS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ALM,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GRC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SSBI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BKKT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+VACI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ELVN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WYNN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RAVE,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MAGN,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CWAN,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CLBR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MGRC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ICUI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IKT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LAWR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BRUN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EQT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LTH,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DLX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BATRA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+COR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DG,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+INTJ,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WBUY,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CRVS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CELC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AKA,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TECH,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SUMA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DTIL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HBAN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EXPD,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FVR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HLT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CVM,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RHLD,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+KINS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+INGM,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BGMS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IGC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+UTI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IBAC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AORT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HIPO,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SBC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RCKT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CLWT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DSP,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WSR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RYAM,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MLYS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SDGR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CBNA,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LXU,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TROX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+USAR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CHD,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MRP,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ASB,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GNW,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HUMA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WELL,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+UTSI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CNVS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WMG,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AGBK,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ELAN,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LH,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GIW,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IQV,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+JOB,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LXRX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GTM,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BOLT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RGEN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GLXY,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IAG,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MANH,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WAY,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CRI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+COF,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+KR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CSAN,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CHDN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MGLD,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BNL,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MUR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AMRZ,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SAIA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ACGC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WBTN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CTGO,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DCH,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CAQ,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PTGX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FPH,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+JYD,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PLYX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BFLY,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HIW,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+STXS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CMII,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NUE,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SVIV,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+VRSN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CATX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HDSN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PLTS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+STRR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EBS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RGA,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MERC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+III,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PWP,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PLX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SMRT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MAS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SCM,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LEVI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TRSG,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MPV,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IDT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ECOR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NEOG,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CETX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+STTK,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RSKD,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MATW,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PGC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LPTH,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CREX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BCH,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TU,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RIME,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GENC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NEUP,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+INAC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+JSPR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NKSH,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+VGNT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AEAQ,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DCI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NVGS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AVNW,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AMBA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MACI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SRTA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AGO,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FIVN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+JXN,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HNRG,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LWAY,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BMEA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HUDI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CTOS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CMS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SHIP,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SGHT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GXAI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GJH,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CAAS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CHMG,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RENX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+OR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SCI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SRTS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IMMX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CLPR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CVLG,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+OMC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ABCB,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EIG,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SBSI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ZD,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DBI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MNKD,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ABT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IPSC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RBC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+USCB,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WDC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ZWS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ESQ,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SNOA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HBIO,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+QCRH,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ENB,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CCU,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AGNC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BCTX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MWA,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FLYW,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WSC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LYEL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RDGT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TYRA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ALLE,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BUD,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CMTL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ERAS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MUSA,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MIST,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BUR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ICE,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SVCC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ACFN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+OPAD,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TCRX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CGNX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AYTU,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SIEB,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LBRT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SRCE,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SGA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SKYA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EQX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HLIT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BLSH,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ANNA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AFBI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BRBS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MGNX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SAFT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TGS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BNS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+KB,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ZJYL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SEI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NEOV,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CRNX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RDN,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PHI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WATT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GLIBA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RH,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EHTH,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NTAP,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AXR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RDIB,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+USFD,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EG,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GDEV,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GGB,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GYRE,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+VCEL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TUSK,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+INV,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HUN,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SLE,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EUDA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AESI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ENLT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GPAC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ALLR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SKK,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PRSU,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DFH,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+XPER,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+QGEN,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WLK,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CMC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ERO,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MTDR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PCB,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BYAH,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SONO,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+USAU,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TNK,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ECPG,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+STAK,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+QXO,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LYFT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MGX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DLTR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RGC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BLLN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SFL,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EGAN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SCPQ,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LGND,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+JEM,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BALY,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+OBA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SUNB,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TFC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+INOD,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BAK,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+Z,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LPSN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AXIN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CNXU,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+VVX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SBSW,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NUTX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+VHI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SPMC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+KFFB,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PYXS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ENTA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+VRSK,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IMTX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SG,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LODE,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RFAM,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+JAGX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ARXS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LNSR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+QTTB,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+YCY,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IFBD,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+KVUE,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RELL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PRVA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+YSS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HLXC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BSET,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ESP,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NHIC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CNK,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WM,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PALI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WTO,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ASH,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PSNY,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DOGZ,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SNDA,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NPAC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BBNX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+COLM,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EPAC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ARKR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CVS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+APG,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SF,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SYF,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TENX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+INKT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SILC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CWST,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CSCO,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WAFD,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NWSA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TTI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SPRO,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+UHS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CTSH,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GLND,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MSBI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FLR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LAZ,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WSBF,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WLDN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NSIT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PXS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PVLA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BMBL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SWX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ADSK,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+JVA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+QSI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AZZ,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PLSE,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NAT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FMAC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+VEL,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GIII,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CHR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CLDI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AIV,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+OSS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+STVN,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WIX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FER,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LFTO,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ACCL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MPWR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HCHL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ANGX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+OVV,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NNVC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HL,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+VERX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BBCP,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SW,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ELE,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TAVI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BMR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GNE,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+VNRX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BRT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ACIU,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TCGL,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ASBP,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RXST,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RDWR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SMTC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BYD,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FULC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CSW,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LAKE,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CVR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+XFLH,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+JCTC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SAIH,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GWRE,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SLMT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EIKN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+VNOM,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TFSL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+KDP,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MGA,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CRDO,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+UNF,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DOMO,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CRCL,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MNDO,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AVA,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PFLT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SOR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MDT,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FCRS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IPM,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RSVR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RYZ,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SNSE,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MVST,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CPAY,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AMWL,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CB,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DMRA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+STKS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+OCG,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+UPWK,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ARKO,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TRAK,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AENT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ENTG,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TOL,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CCAQ,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MYE,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SVAQ,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SRL,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CCRN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AKBA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ERII,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CANG,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FDXF,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MCY,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CRS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MHH,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FNV,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AUPH,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GEV,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MTA,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MAIN,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GOLF,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BALL,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PLTK,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AG,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NCT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MEGL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FPS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IPAR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ING,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TWG,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PRDO,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+USAS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NTB,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PCG,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+KAPA,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PHAR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+INUV,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NWN,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+COKE,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ZION,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AZO,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+STAA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SABS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FBLA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CTMX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AON,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+REI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RBNE,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CTVA,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AXTA,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DAR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FTI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RNGR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BMNR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+KMTS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HCAT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AUST,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EZRA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WCT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ASR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WK,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+INVX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WCC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ACMR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RMCF,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SII,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NMTC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BVS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EBAY,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+THRY,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LPX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LNN,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DRI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TILE,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+JANX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BELFA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LPLA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+HDB,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CLDX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LKFN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GLPI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+IPEX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AMS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CZR,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NNNN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BNRG,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+WMB,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+POR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EE,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NIVF,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GTE,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GDRX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FLGT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GOGO,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GLXG,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MKTW,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NTR,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ATLO,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EMIS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AMPY,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BPAC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MSLE,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ARE,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+E,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ATEX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MORN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DGXX,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ALLO,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+QNST,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AVT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+FRST,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+XWEL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+VSTM,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AD,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BLDP,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BZFD,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LGN,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MDAI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+ITHA,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SNDL,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+MBBC,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+CLNE,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AVEX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+PDCC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+DJT,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+THRM,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SNTI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NINE,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NWS,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RAL,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+GPGI,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TBBB,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SSTI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+P,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LB,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AADX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TIC,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+SMJF,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+BAH,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TVRD,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+LARK,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AFRI,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TSLX,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+OMF,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+USIO,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+RF,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+TEAD,Tier 3,nasdaqtrader_nasdaq,Small Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+AMG,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+EQS,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist
+NIQ,Tier 3,nasdaqtrader_otherlisted,Mid Cap,35,opportunistic,exchange-listed common stock filler; market-cap bucket remains provisional until provider health rows exist

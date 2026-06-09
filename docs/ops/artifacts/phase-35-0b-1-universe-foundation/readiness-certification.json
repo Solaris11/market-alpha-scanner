@@ -1,0 +1,36 @@
+{
+  "basis": [
+    "1000 symbols have classification rows",
+    "500-symbol scheduled universe remains intact",
+    "Tier 1/2/3 scan-frequency model is defined",
+    "Production 500-symbol scan persisted 362 scanner signals",
+    "Health dashboard derives provider/liquidity/market-cap/data-quality states from production scanner rows"
+  ],
+  "certification": "universe_expansion_foundation_ready",
+  "health_state_counts": {
+    "data_quality_state": {
+      "acceptable": 180,
+      "strong": 182,
+      "unknown": 138
+    },
+    "liquidity_state": {
+      "acceptable": 202,
+      "strong": 160,
+      "unknown": 138
+    },
+    "market_cap_state": {
+      "acceptable": 119,
+      "strong": 216,
+      "unknown": 165
+    },
+    "provider_coverage": {
+      "active": 362,
+      "not_ranked_latest_scan": 138
+    },
+    "scan_quality_state": {
+      "acceptable": 362,
+      "unknown": 138
+    }
+  },
+  "ready": true
+}
