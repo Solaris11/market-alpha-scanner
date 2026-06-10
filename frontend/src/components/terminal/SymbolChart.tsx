@@ -551,12 +551,23 @@ export function SymbolChart({
       nextSymbol,
     }, { source: "chart", symbol: chartSymbol });
     const startedAt = browserWorkflowNow();
-    recordSymbolRouteTimingMark("symbol:switch-start", { direction, fromSymbol: current, toSymbol: nextSymbol });
+    const navigationEntriesBefore = window.performance.getEntriesByType("navigation").length;
+    recordSymbolRouteTimingMark("symbol:switch-start", {
+      direction,
+      fromSymbol: current,
+      navigationEntriesBefore,
+      toSymbol: nextSymbol,
+    });
     const cached = readCachedSymbolChartHotPacket(nextSymbol, period);
     if (cached) {
       flushSync(() => setActiveHotPacket(cached));
       replaceBrowserSymbolPath(nextSymbol);
-      recordSymbolRouteTimingMark("symbol:switch-complete", { fromSymbol: current, source: "hot-packet-cache", toSymbol: nextSymbol });
+      recordSymbolRouteTimingMark("symbol:switch-complete", {
+        fromSymbol: current,
+        navigationEntriesAfter: window.performance.getEntriesByType("navigation").length,
+        source: "hot-packet-cache",
+        toSymbol: nextSymbol,
+      });
       recordBrowserWorkflowMetric("symbol:switch", startedAt, { settleFrames: 0 });
       void prefetchSymbolChartHotPacket(adjacentSymbols(navigationSymbols, nextSymbol)[0] ?? current, period);
       return;
@@ -569,7 +580,12 @@ export function SymbolChart({
       }
       flushSync(() => setActiveHotPacket(packet));
       replaceBrowserSymbolPath(nextSymbol);
-      recordSymbolRouteTimingMark("symbol:switch-complete", { fromSymbol: current, source: "network-hot-packet", toSymbol: nextSymbol });
+      recordSymbolRouteTimingMark("symbol:switch-complete", {
+        fromSymbol: current,
+        navigationEntriesAfter: window.performance.getEntriesByType("navigation").length,
+        source: "network-hot-packet",
+        toSymbol: nextSymbol,
+      });
       recordBrowserWorkflowMetric("symbol:switch", startedAt, { settleFrames: 0 });
     }).catch(() => {
       writePendingSymbolSwitchMetric(nextSymbol, startedAt);
@@ -651,18 +667,39 @@ export function SymbolChart({
 
   useEffect(() => {
     const startedAt = browserWorkflowNow();
+    recordSymbolRouteTimingMark("chart:workspace-restore-start", { symbol: chartSymbol });
     setWorkspaceLoaded(false);
     setAccountWorkspaceLoaded(false);
+    const localStorageStartedAt = browserWorkflowNow();
     const workspace = readChartWorkflowWorkspace(chartSymbol);
+    recordSymbolRouteTimingMark("chart:workspace-local-storage-read-complete", {
+      hasWorkspace: Boolean(workspace),
+      latencyMs: Math.max(0, browserWorkflowNow() - localStorageStartedAt),
+      symbol: chartSymbol,
+    });
     skipNextWorkspacePersistRef.current = true;
-    if (!workspace) applyWorkspaceState(null, false);
+    if (!workspace) {
+      const applyStartedAt = browserWorkflowNow();
+      applyWorkspaceState(null, false);
+      recordSymbolRouteTimingMark("chart:workspace-default-state-applied", {
+        latencyMs: Math.max(0, browserWorkflowNow() - applyStartedAt),
+        symbol: chartSymbol,
+      });
+    }
     setWorkspaceLoaded(true);
+    recordSymbolRouteTimingMark("chart:workspace-shell-ready", { symbol: chartSymbol });
     recordBrowserWorkflowMetric("chart:workspace-restore", startedAt, { settleFrames: 1 });
     const switchStartedAt = consumePendingSymbolSwitchMetric(chartSymbol);
     if (switchStartedAt !== null) recordBrowserWorkflowMetric("symbol:switch", switchStartedAt, { settleFrames: 1 });
     if (workspace) {
       return deferIdleWork(() => {
+        const deferredStartedAt = browserWorkflowNow();
+        recordSymbolRouteTimingMark("chart:workspace-deferred-hydration-start", { symbol: chartSymbol });
         applyWorkspaceState(workspace, restoreFullscreenState);
+        recordSymbolRouteTimingMark("chart:workspace-deferred-hydration-complete", {
+          latencyMs: Math.max(0, browserWorkflowNow() - deferredStartedAt),
+          symbol: chartSymbol,
+        });
       }, 250);
     }
     return undefined;
@@ -702,11 +739,24 @@ export function SymbolChart({
     let cancelled = false;
     setAccountWorkspaceLoaded(false);
     const cancelDeferredFetch = deferIdleWork(() => {
+      const accountFetchStartedAt = browserWorkflowNow();
+      recordSymbolRouteTimingMark("chart:account-workspace-fetch-start", { symbol: chartSymbol });
       void fetchAccountChartWorkflowWorkspace(chartSymbol)
         .then((result) => {
           if (cancelled) return;
+          recordSymbolRouteTimingMark("chart:account-workspace-fetch-complete", {
+            hasWorkspace: Boolean(result.workspace),
+            latencyMs: Math.max(0, browserWorkflowNow() - accountFetchStartedAt),
+            symbol: chartSymbol,
+          });
+          const mergeStartedAt = browserWorkflowNow();
           const localWorkspace = readChartWorkflowWorkspace(chartSymbol);
           const nextWorkspace = mergeLocalAndAccountChartWorkspace(localWorkspace, result.workspace);
+          recordSymbolRouteTimingMark("chart:account-workspace-merge-complete", {
+            hasMergedWorkspace: Boolean(nextWorkspace),
+            latencyMs: Math.max(0, browserWorkflowNow() - mergeStartedAt),
+            symbol: chartSymbol,
+          });
           if (nextWorkspace) {
             skipNextWorkspacePersistRef.current = true;
             applyWorkspaceState(nextWorkspace, restoreFullscreenState);
@@ -917,7 +967,15 @@ export function SymbolChart({
       const renderStartedAt = browserWorkflowNow();
       recordSymbolRouteTimingMark("chart:render-start", { candleCount: chartCandles.length, symbol: chartSymbol });
       setFailed(false);
+      const layoutMeasureStartedAt = browserWorkflowNow();
       const bounds = container.getBoundingClientRect();
+      recordSymbolRouteTimingMark("chart:layout-measure-complete", {
+        height: Math.max(1, Math.floor(bounds.height)),
+        latencyMs: Math.max(0, browserWorkflowNow() - layoutMeasureStartedAt),
+        symbol: chartSymbol,
+        width: Math.max(1, Math.floor(bounds.width)),
+      });
+      const libraryInitStartedAt = browserWorkflowNow();
       chart = createChart(container, {
         autoSize: false,
         width: Math.max(1, Math.floor(bounds.width)),
@@ -948,7 +1006,12 @@ export function SymbolChart({
           visible: true,
         },
       });
+      recordSymbolRouteTimingMark("chart:library-init-complete", {
+        latencyMs: Math.max(0, browserWorkflowNow() - libraryInitStartedAt),
+        symbol: chartSymbol,
+      });
 
+      const seriesCreateStartedAt = browserWorkflowNow();
       const candleSeries = chart.addSeries(CandlestickSeries, {
         borderDownColor: "#ef5350",
         borderUpColor: "#26a69a",
@@ -957,6 +1020,11 @@ export function SymbolChart({
         wickDownColor: "#ef5350",
         wickUpColor: "#26a69a",
       });
+      recordSymbolRouteTimingMark("chart:series-create-complete", {
+        latencyMs: Math.max(0, browserWorkflowNow() - seriesCreateStartedAt),
+        symbol: chartSymbol,
+      });
+      const seriesDataStartedAt = browserWorkflowNow();
       candleSeries.setData(toChartData(chartCandles));
       for (const indicator of indicatorSeries.filter((item) => item.renderMode === "overlay" && item.points.length >= 2)) {
         const lineSeries = chart.addSeries(LineSeries, {
@@ -968,13 +1036,24 @@ export function SymbolChart({
         });
         lineSeries.setData(indicator.points.map((point) => ({ time: point.time as Time, value: point.value })));
       }
+      recordSymbolRouteTimingMark("chart:series-data-complete", {
+        candleCount: chartCandles.length,
+        indicatorCount: indicatorSeries.length,
+        latencyMs: Math.max(0, browserWorkflowNow() - seriesDataStartedAt),
+        symbol: chartSymbol,
+      });
       createSeriesMarkers(candleSeries, toSeriesMarkers(visibleChartSignals), { zOrder: "top" });
       if (showResearchLevelsToggle) {
         if (levelsVisible) addResearchContextLines(candleSeries, researchLevels);
       } else {
         addTradeLevelLines(candleSeries, chartLevels);
       }
+      const layoutFitStartedAt = browserWorkflowNow();
       chart.timeScale().fitContent();
+      recordSymbolRouteTimingMark("chart:layout-fit-complete", {
+        latencyMs: Math.max(0, browserWorkflowNow() - layoutFitStartedAt),
+        symbol: chartSymbol,
+      });
       recordSymbolRouteTimingMark("chart:render-complete", {
         candleCount: chartCandles.length,
         latencyMs: Math.max(0, browserWorkflowNow() - renderStartedAt),
@@ -1077,12 +1156,16 @@ export function SymbolChart({
     return <EmptyState title="No validated price history" message="This chart is hidden until real OHLC history is available. Scanner insights can still appear without drawing synthetic prices." />;
   }
 
+  const chartNavigationTargets = adjacentSymbols(navigationSymbols, chartSymbol);
+
   return (
     <>
     <div
       className="min-w-0"
       data-chart-account-workspace-loaded={accountWorkspaceLoaded ? "true" : "false"}
+      data-chart-candle-count={chartCandles.length}
       data-chart-expanded={expanded ? "true" : "false"}
+      data-chart-packet-source={activeHotPacket ? "active-hot-packet" : "base-route-packet"}
       data-chart-symbol={chartSymbol.toUpperCase()}
       data-chart-workspace-loaded={workspaceLoaded ? "true" : "false"}
       onFocusCapture={() => setHotkeysActive(true)}
@@ -1106,6 +1189,8 @@ export function SymbolChart({
                 <button
                   aria-label={`Previous symbol from ${chartSymbol.toUpperCase()}`}
                   className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/40 hover:text-cyan-100"
+                  data-chart-symbol-switch="previous"
+                  data-chart-symbol-switch-target={chartNavigationTargets[0] ?? ""}
                   onClick={() => navigateSymbol(-1)}
                   title="Previous symbol"
                   type="button"
@@ -1115,6 +1200,8 @@ export function SymbolChart({
                 <button
                   aria-label={`Next symbol from ${chartSymbol.toUpperCase()}`}
                   className="grid h-9 w-9 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-slate-300 transition hover:border-cyan-300/40 hover:text-cyan-100"
+                  data-chart-symbol-switch="next"
+                  data-chart-symbol-switch-target={chartNavigationTargets[1] ?? chartNavigationTargets[0] ?? ""}
                   onClick={() => navigateSymbol(1)}
                   title="Next symbol"
                   type="button"
@@ -3991,26 +4078,50 @@ function fetchSymbolChartHotPacket(symbol: string, period: InteractiveChartPerio
   const key = symbolChartHotPacketKey(symbol, period);
   const current = symbolChartHotPacketCache.get(key);
   const now = Date.now();
-  if (current?.value && current.expiresAt > now) return Promise.resolve(current.value);
-  if (current?.inflight) return current.inflight;
+  if (current?.value && current.expiresAt > now) {
+    recordSymbolRouteTimingMark("symbol:hot-packet-cache-hit", { key, symbol: normalizeChartSymbol(symbol) });
+    return Promise.resolve(current.value);
+  }
+  if (current?.inflight) {
+    recordSymbolRouteTimingMark("symbol:hot-packet-inflight-reuse", { key, symbol: normalizeChartSymbol(symbol) });
+    return current.inflight;
+  }
 
   const normalizedSymbol = normalizeChartSymbol(symbol);
   if (!normalizedSymbol) return Promise.resolve(null);
+  const fetchStartedAt = browserWorkflowNow();
+  recordSymbolRouteTimingMark("symbol:hot-packet-fetch-start", { key, symbol: normalizedSymbol });
   const inflight = fetch(`/api/symbol/${encodeURIComponent(normalizedSymbol)}?period=${chartApiPeriod(period)}`, {
     cache: "no-store",
     credentials: "same-origin",
     headers: { Accept: "application/json" },
   })
     .then(async (response) => {
+      recordSymbolRouteTimingMark("symbol:hot-packet-fetch-response", {
+        latencyMs: Math.max(0, browserWorkflowNow() - fetchStartedAt),
+        status: response.status,
+        symbol: normalizedSymbol,
+      });
       if (!response.ok) return null;
       const payload = (await response.json().catch(() => null)) as SymbolApiPayload | null;
       if (!payload || payload.limited === true || !payload.row) return null;
       const packet = symbolApiPayloadToHotPacket(normalizedSymbol, payload);
       symbolChartHotPacketCache.set(key, { expiresAt: Date.now() + SYMBOL_CHART_HOT_PACKET_TTL_MS, value: packet });
       trimSymbolChartHotPacketCache();
+      recordSymbolRouteTimingMark("symbol:hot-packet-fetch-complete", {
+        candleCount: packet.candles.length,
+        latencyMs: Math.max(0, browserWorkflowNow() - fetchStartedAt),
+        symbol: normalizedSymbol,
+      });
       return packet;
     })
-    .catch(() => null)
+    .catch(() => {
+      recordSymbolRouteTimingMark("symbol:hot-packet-fetch-failed", {
+        latencyMs: Math.max(0, browserWorkflowNow() - fetchStartedAt),
+        symbol: normalizedSymbol,
+      });
+      return null;
+    })
     .finally(() => {
       const entry = symbolChartHotPacketCache.get(key);
       if (entry?.inflight) symbolChartHotPacketCache.set(key, { expiresAt: entry.expiresAt, value: entry.value ?? null });

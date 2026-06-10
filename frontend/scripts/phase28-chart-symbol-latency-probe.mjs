@@ -12,18 +12,18 @@ const { Pool } = pg;
 const browserLaunchers = { chromium, firefox, webkit };
 const phaseLabel = process.env.TRADEVETO_CHART_SYMBOL_PHASE_LABEL ?? "Phase 28.1";
 const phaseSlug = process.env.TRADEVETO_CHART_SYMBOL_PHASE_SLUG ?? "phase28";
-const baseUrl = stripTrailingSlash(process.env.TRADEVETO_PHASE29_BASE_URL ?? process.env.TRADEVETO_PHASE28_BASE_URL ?? "https://tradeveto.com");
-const artifactRoot = resolve(process.cwd(), process.env.TRADEVETO_PHASE29_ARTIFACT_ROOT ?? process.env.TRADEVETO_PHASE28_ARTIFACT_ROOT ?? "../docs/ops/artifacts/phase-28-1-chart-symbol-latency");
-const outputPath = resolve(process.cwd(), process.env.TRADEVETO_PHASE29_OUTPUT ?? process.env.TRADEVETO_PHASE28_OUTPUT ?? join(artifactRoot, `${phaseSlug}-chart-symbol-latency.json`));
-const screenshotDir = resolve(process.cwd(), process.env.TRADEVETO_PHASE29_SCREENSHOT_DIR ?? process.env.TRADEVETO_PHASE28_SCREENSHOT_DIR ?? join(artifactRoot, "screenshots"));
-const traceDir = resolve(process.cwd(), process.env.TRADEVETO_PHASE29_TRACE_DIR ?? process.env.TRADEVETO_PHASE28_TRACE_DIR ?? join(artifactRoot, "traces"));
-const headless = (process.env.TRADEVETO_PHASE29_HEADLESS ?? process.env.TRADEVETO_PHASE28_HEADLESS) !== "false";
-const strict = truthy(process.env.TRADEVETO_PHASE29_STRICT ?? process.env.TRADEVETO_PHASE28_STRICT);
-const waitTimeoutMs = positiveInteger(process.env.TRADEVETO_PHASE29_WAIT_TIMEOUT_MS ?? process.env.TRADEVETO_PHASE28_WAIT_TIMEOUT_MS, 12_000);
-const navigationTimeoutMs = positiveInteger(process.env.TRADEVETO_PHASE29_NAVIGATION_TIMEOUT_MS ?? process.env.TRADEVETO_PHASE28_NAVIGATION_TIMEOUT_MS, 90_000);
-const browserNames = parseBrowserList(process.env.TRADEVETO_PHASE29_BROWSERS ?? process.env.TRADEVETO_PHASE28_BROWSERS ?? "chromium,firefox,webkit");
-const createProbeIdentity = (process.env.TRADEVETO_PHASE29_CREATE_PROBE_USER ?? process.env.TRADEVETO_PHASE28_CREATE_PROBE_USER) !== "false" && Boolean(process.env.DATABASE_URL);
-const cleanupProbeIdentity = (process.env.TRADEVETO_PHASE29_CLEANUP_PROBE_USER ?? process.env.TRADEVETO_PHASE28_CLEANUP_PROBE_USER) !== "false";
+const baseUrl = stripTrailingSlash(process.env.TRADEVETO_PHASE35C2_BASE_URL ?? process.env.TRADEVETO_PHASE29_BASE_URL ?? process.env.TRADEVETO_PHASE28_BASE_URL ?? "https://tradeveto.com");
+const artifactRoot = resolve(process.cwd(), process.env.TRADEVETO_PHASE35C2_ARTIFACT_ROOT ?? process.env.TRADEVETO_PHASE29_ARTIFACT_ROOT ?? process.env.TRADEVETO_PHASE28_ARTIFACT_ROOT ?? "../docs/ops/artifacts/phase-28-1-chart-symbol-latency");
+const outputPath = resolve(process.cwd(), process.env.TRADEVETO_PHASE35C2_OUTPUT ?? process.env.TRADEVETO_PHASE29_OUTPUT ?? process.env.TRADEVETO_PHASE28_OUTPUT ?? join(artifactRoot, `${phaseSlug}-chart-symbol-latency.json`));
+const screenshotDir = resolve(process.cwd(), process.env.TRADEVETO_PHASE35C2_SCREENSHOT_DIR ?? process.env.TRADEVETO_PHASE29_SCREENSHOT_DIR ?? process.env.TRADEVETO_PHASE28_SCREENSHOT_DIR ?? join(artifactRoot, "screenshots"));
+const traceDir = resolve(process.cwd(), process.env.TRADEVETO_PHASE35C2_TRACE_DIR ?? process.env.TRADEVETO_PHASE29_TRACE_DIR ?? process.env.TRADEVETO_PHASE28_TRACE_DIR ?? join(artifactRoot, "traces"));
+const headless = (process.env.TRADEVETO_PHASE35C2_HEADLESS ?? process.env.TRADEVETO_PHASE29_HEADLESS ?? process.env.TRADEVETO_PHASE28_HEADLESS) !== "false";
+const strict = truthy(process.env.TRADEVETO_PHASE35C2_STRICT ?? process.env.TRADEVETO_PHASE29_STRICT ?? process.env.TRADEVETO_PHASE28_STRICT);
+const waitTimeoutMs = positiveInteger(process.env.TRADEVETO_PHASE35C2_WAIT_TIMEOUT_MS ?? process.env.TRADEVETO_PHASE29_WAIT_TIMEOUT_MS ?? process.env.TRADEVETO_PHASE28_WAIT_TIMEOUT_MS, 12_000);
+const navigationTimeoutMs = positiveInteger(process.env.TRADEVETO_PHASE35C2_NAVIGATION_TIMEOUT_MS ?? process.env.TRADEVETO_PHASE29_NAVIGATION_TIMEOUT_MS ?? process.env.TRADEVETO_PHASE28_NAVIGATION_TIMEOUT_MS, 90_000);
+const browserNames = parseBrowserList(process.env.TRADEVETO_PHASE35C2_BROWSERS ?? process.env.TRADEVETO_PHASE29_BROWSERS ?? process.env.TRADEVETO_PHASE28_BROWSERS ?? "chromium,firefox,webkit");
+const createProbeIdentity = (process.env.TRADEVETO_PHASE35C2_CREATE_PROBE_USER ?? process.env.TRADEVETO_PHASE29_CREATE_PROBE_USER ?? process.env.TRADEVETO_PHASE28_CREATE_PROBE_USER) !== "false" && Boolean(process.env.DATABASE_URL);
+const cleanupProbeIdentity = (process.env.TRADEVETO_PHASE35C2_CLEANUP_PROBE_USER ?? process.env.TRADEVETO_PHASE29_CLEANUP_PROBE_USER ?? process.env.TRADEVETO_PHASE28_CLEANUP_PROBE_USER) !== "false";
 
 const budgets = {
   chartInteractionMs: 60,
@@ -31,10 +31,10 @@ const budgets = {
   fullscreenChartOpenMs: 150,
   symbolPageInteractiveMs: 2_500,
   symbolSearchOpenMs: 100,
-  symbolSwitchMs: 150,
+  symbolSwitchMs: positiveInteger(process.env.TRADEVETO_CHART_SYMBOL_SWITCH_BUDGET_MS ?? process.env.TRADEVETO_PHASE35C2_SYMBOL_SWITCH_BUDGET_MS, 150),
 };
 
-let cookie = process.env.TRADEVETO_PHASE28_COOKIE ?? "";
+let cookie = process.env.TRADEVETO_PHASE35C2_COOKIE ?? process.env.TRADEVETO_PHASE29_COOKIE ?? process.env.TRADEVETO_PHASE28_COOKIE ?? "";
 let probeIdentity = null;
 
 async function main() {
@@ -93,7 +93,7 @@ async function runBrowserProof(browserName) {
     const interactions = await runChartSymbolInteractions(page);
     const finalRouteTimingMarks = await readRouteTimingMarks(page);
     const finalNavigationTiming = await readNavigationTiming(page);
-    const timingBreakdown = buildTimingBreakdown({ finalNavigationTiming, finalRouteTimingMarks, route });
+    const timingBreakdown = buildTimingBreakdown({ finalNavigationTiming, finalRouteTimingMarks, interactions, route });
     const screenshotPath = await capture(page, browserName, "symbol-workflow.png").catch(() => null);
     const tracePath = join(traceDir, `${browserName}-${phaseSlug}-trace.zip`);
     await context.tracing.stop({ path: tracePath }).catch(() => undefined);
@@ -185,6 +185,9 @@ async function runChartSymbolInteractions(page) {
   }));
   await closeExpandedChart(page);
   interactions.push(await measureBrowserWorkflow(page, "symbol-switch", "Switch from AMD to NVDA using chart navigation", budgets.symbolSwitchMs, ["symbol:switch"], async () => {
+    const beforeNavigationEntryCount = await readNavigationEntryCount(page);
+    const beforeUrl = page.url();
+    const beforeChart = await readChartRootMeta(page);
     const nextButton = page.getByRole("button", { name: /next symbol/i }).first();
     await nextButton.waitFor({ state: "visible", timeout: waitTimeoutMs });
     await Promise.all([
@@ -192,6 +195,17 @@ async function runChartSymbolInteractions(page) {
       nextButton.click({ timeout: waitTimeoutMs }),
     ]);
     await page.locator("[data-chart-symbol='NVDA']").first().waitFor({ state: "visible", timeout: waitTimeoutMs });
+    const afterNavigationEntryCount = await readNavigationEntryCount(page);
+    const afterChart = await readChartRootMeta(page);
+    return {
+      afterChart,
+      afterNavigationEntryCount,
+      afterUrl: page.url(),
+      beforeChart,
+      beforeNavigationEntryCount,
+      beforeUrl,
+      routeNavigationOccurred: afterNavigationEntryCount > beforeNavigationEntryCount,
+    };
   }));
   interactions.push(await measureBrowserWorkflow(page, "symbol-search-open", "Open global symbol command search", budgets.symbolSearchOpenMs, ["symbol-search:open"], async () => {
     await page.keyboard.press(process.platform === "darwin" ? "Meta+K" : "Control+K");
@@ -219,7 +233,7 @@ async function measureBrowserWorkflow(page, id, label, budgetMs, metricIds, oper
   const beforeCount = beforeMetrics.length;
   const started = performance.now();
   try {
-    await operation();
+    const operationResult = await operation();
     const automationLatencyMs = roundMetric(performance.now() - started);
     const browserMetric = await waitForWorkflowMetric(page, metricIds, beforeCount);
     const latencyMs = roundMetric(browserMetric?.latencyMs ?? automationLatencyMs);
@@ -230,6 +244,7 @@ async function measureBrowserWorkflow(page, id, label, budgetMs, metricIds, oper
       id,
       label,
       latencyMs,
+      operationResult: operationResult ?? null,
       status: latencyMs <= budgetMs ? "pass" : "fail",
       timingSource: browserMetric ? "browser-performance" : "playwright-automation",
     };
@@ -265,6 +280,25 @@ async function readWorkflowMetrics(page) {
     const metrics = window.__tradevetoBrowserWorkflowMetrics;
     return Array.isArray(metrics) ? metrics : [];
   }).catch(() => []);
+}
+
+async function readNavigationEntryCount(page) {
+  return page.evaluate(() => performance.getEntriesByType("navigation").length).catch(() => 0);
+}
+
+async function readChartRootMeta(page) {
+  return page.evaluate(() => {
+    const root = document.querySelector("[data-chart-symbol]");
+    if (!(root instanceof HTMLElement)) return null;
+    return {
+      accountWorkspaceLoaded: root.getAttribute("data-chart-account-workspace-loaded"),
+      candleCount: Number(root.getAttribute("data-chart-candle-count") ?? "0"),
+      expanded: root.getAttribute("data-chart-expanded"),
+      packetSource: root.getAttribute("data-chart-packet-source"),
+      symbol: root.getAttribute("data-chart-symbol"),
+      workspaceLoaded: root.getAttribute("data-chart-workspace-loaded"),
+    };
+  }).catch(() => null);
 }
 
 async function installMetricBuffer(page) {
@@ -331,21 +365,46 @@ async function readNavigationTiming(page) {
   }).catch(() => null);
 }
 
-function buildTimingBreakdown({ finalNavigationTiming, finalRouteTimingMarks, route }) {
-  const mark = (id) => finalRouteTimingMarks.find((item) => item.id === id) ?? null;
-  const switchStart = mark("symbol:switch-start");
-  const switchComplete = mark("symbol:switch-complete");
-  const chartRenderStart = mark("chart:render-start");
-  const chartRenderComplete = mark("chart:render-complete");
-  const firstShellVisible = mark("symbol:first-shell-visible");
-  const shellInteractive = mark("symbol:shell-interactive");
-  const deepHydrationStart = mark("symbol:deep-hydration-start");
-  const deepHydrationComplete = mark("symbol:deep-hydration-complete");
+function buildTimingBreakdown({ finalNavigationTiming, finalRouteTimingMarks, interactions, route }) {
+  const firstMark = (id) => finalRouteTimingMarks.find((item) => item.id === id) ?? null;
+  const lastMark = (id) => [...finalRouteTimingMarks].reverse().find((item) => item.id === id) ?? null;
+  const switchStart = lastMark("symbol:switch-start");
+  const switchComplete = lastMark("symbol:switch-complete");
+  const chartRenderStart = firstMark("chart:render-start");
+  const chartRenderComplete = firstMark("chart:render-complete");
+  const firstShellVisible = firstMark("symbol:first-shell-visible");
+  const shellInteractive = firstMark("symbol:shell-interactive");
+  const deepHydrationStart = firstMark("symbol:deep-hydration-start");
+  const deepHydrationComplete = firstMark("symbol:deep-hydration-complete");
+  const workspaceStart = firstMark("chart:workspace-restore-start");
+  const workspaceLocalStorageComplete = firstMark("chart:workspace-local-storage-read-complete");
+  const workspaceDefaultStateApplied = firstMark("chart:workspace-default-state-applied");
+  const workspaceShellReady = firstMark("chart:workspace-shell-ready");
+  const workspaceDeferredStart = firstMark("chart:workspace-deferred-hydration-start");
+  const workspaceDeferredComplete = firstMark("chart:workspace-deferred-hydration-complete");
+  const accountWorkspaceFetchStart = firstMark("chart:account-workspace-fetch-start");
+  const accountWorkspaceFetchComplete = firstMark("chart:account-workspace-fetch-complete");
+  const accountWorkspaceMergeComplete = firstMark("chart:account-workspace-merge-complete");
+  const chartLayoutMeasureComplete = firstMark("chart:layout-measure-complete");
+  const chartLibraryInitComplete = firstMark("chart:library-init-complete");
+  const chartSeriesCreateComplete = firstMark("chart:series-create-complete");
+  const chartSeriesDataComplete = firstMark("chart:series-data-complete");
+  const chartLayoutFitComplete = firstMark("chart:layout-fit-complete");
+  const hotPacketFetchStart = lastMark("symbol:hot-packet-fetch-start");
+  const hotPacketFetchComplete = lastMark("symbol:hot-packet-fetch-complete");
+  const symbolSwitch = interactions.find((item) => item.id === "symbol-switch") ?? null;
   const nav = finalNavigationTiming ?? route.navigationTiming;
   return {
     chartRenderCompleteAtMs: numberOrNull(chartRenderComplete?.atMs),
     chartRenderDurationMs: deltaMs(chartRenderStart, chartRenderComplete),
     chartRenderStartAtMs: numberOrNull(chartRenderStart?.atMs),
+    chartRenderPipeline: {
+      layoutFitMs: numberOrNull(chartLayoutFitComplete?.detail?.latencyMs),
+      layoutMeasureMs: numberOrNull(chartLayoutMeasureComplete?.detail?.latencyMs),
+      libraryInitMs: numberOrNull(chartLibraryInitComplete?.detail?.latencyMs),
+      seriesCreateMs: numberOrNull(chartSeriesCreateComplete?.detail?.latencyMs),
+      seriesDataMs: numberOrNull(chartSeriesDataComplete?.detail?.latencyMs),
+    },
     deepHydrationCompleteAtMs: numberOrNull(deepHydrationComplete?.atMs),
     deepHydrationDurationMs: deltaMs(deepHydrationStart, deepHydrationComplete),
     deepHydrationServerDurationMs: numberOrNull(deepHydrationComplete?.detail?.serverDurationMs),
@@ -357,9 +416,32 @@ function buildTimingBreakdown({ finalNavigationTiming, finalRouteTimingMarks, ro
     pageGotoCommitMs: route.timings?.gotoCommitMs ?? null,
     requestStartMs: numberOrNull(nav?.requestStart),
     shellInteractiveAtMs: numberOrNull(shellInteractive?.atMs ?? route.timings?.shellInteractiveObservedMs),
-    symbolSwitchCompleteAtMs: numberOrNull(switchComplete?.atMs),
-    symbolSwitchDurationMs: deltaMs(switchStart, switchComplete),
-    symbolSwitchStartAtMs: numberOrNull(switchStart?.atMs),
+    symbolSwitch: {
+      afterChart: symbolSwitch?.operationResult?.afterChart ?? null,
+      afterNavigationEntryCount: numberOrNull(symbolSwitch?.operationResult?.afterNavigationEntryCount),
+      afterUrl: symbolSwitch?.operationResult?.afterUrl ?? null,
+      beforeChart: symbolSwitch?.operationResult?.beforeChart ?? null,
+      beforeNavigationEntryCount: numberOrNull(symbolSwitch?.operationResult?.beforeNavigationEntryCount),
+      beforeUrl: symbolSwitch?.operationResult?.beforeUrl ?? null,
+      completeAtMs: numberOrNull(switchComplete?.atMs),
+      durationMs: deltaMs(switchStart, switchComplete),
+      hotPacketFetchDurationMs: deltaMs(hotPacketFetchStart, hotPacketFetchComplete),
+      routeNavigationOccurred: Boolean(symbolSwitch?.operationResult?.routeNavigationOccurred),
+      source: switchComplete?.detail?.source ?? null,
+      startAtMs: numberOrNull(switchStart?.atMs),
+    },
+    workspaceRestore: {
+      accountFetchMs: numberOrNull(accountWorkspaceFetchComplete?.detail?.latencyMs),
+      accountMergeMs: numberOrNull(accountWorkspaceMergeComplete?.detail?.latencyMs),
+      accountSyncStartedAtMs: numberOrNull(accountWorkspaceFetchStart?.atMs),
+      defaultStateApplyMs: numberOrNull(workspaceDefaultStateApplied?.detail?.latencyMs),
+      deferredHydrationDurationMs: deltaMs(workspaceDeferredStart, workspaceDeferredComplete),
+      deferredHydrationWorkMs: numberOrNull(workspaceDeferredComplete?.detail?.latencyMs),
+      localStorageReadMs: numberOrNull(workspaceLocalStorageComplete?.detail?.latencyMs),
+      shellReadyDeltaMs: deltaMs(workspaceStart, workspaceShellReady),
+      startAtMs: numberOrNull(workspaceStart?.atMs),
+      workspaceApiFetchTiming: accountWorkspaceFetchComplete ? "deferred-after-shell" : "not-observed",
+    },
     ttfbMs: nav ? roundMetric(Math.max(0, nav.responseStart - (nav.requestStart || nav.startTime || 0))) : null,
   };
 }
@@ -582,6 +664,9 @@ function buildReport({ browserReports, cleanupError, fatalError, setup, startedA
     if (report.route?.status !== "pass") blockers.push(`${report.browserName} /symbol/AMD interactive ${report.route?.interactiveMs ?? "unknown"}ms exceeds ${budgets.symbolPageInteractiveMs}ms`);
     for (const interaction of report.interactions ?? []) {
       if (interaction.status !== "pass") blockers.push(`${report.browserName} ${interaction.id}: ${interaction.latencyMs ?? "missing"}ms exceeds ${interaction.budgetMs}ms${interaction.error ? ` (${interaction.error})` : ""}`);
+      if (interaction.id === "symbol-switch" && interaction.operationResult?.routeNavigationOccurred === true) {
+        blockers.push(`${report.browserName} symbol-switch triggered a document navigation instead of in-place chart replacement`);
+      }
     }
   }
   return {
