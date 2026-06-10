@@ -954,7 +954,11 @@ def summarize_signal_lifecycle(lifecycle_df: pd.DataFrame) -> pd.DataFrame:
     return pd.DataFrame(rows, columns=SIGNAL_LIFECYCLE_SUMMARY_COLUMNS)
 
 
-def compute_signal_lifecycle(history_dir: str, max_snapshots: int | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+def compute_signal_lifecycle(
+    history_dir: str,
+    max_snapshots: int | None = None,
+    max_signal_rows: int | None = None,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
     history_df = load_snapshot_history(history_dir, max_snapshots=max_snapshots)
     analysis_dir = Path(history_dir).parent / "analysis"
     analysis_dir.mkdir(parents=True, exist_ok=True)
@@ -969,6 +973,7 @@ def compute_signal_lifecycle(history_dir: str, max_snapshots: int | None = None)
 
     history_df = _prepare_lifecycle_history(history_df)
     signal_rows = _tracked_signal_rows(history_df)
+    signal_rows = _limit_signal_rows(signal_rows, max_signal_rows)
     if signal_rows.empty:
         lifecycle_df, summary_df = _empty_lifecycle_outputs(analysis_dir)
         print("[analysis] signal lifecycle rows: 0")
@@ -1736,7 +1741,9 @@ def analyze_performance(forward_returns_df: pd.DataFrame) -> pd.DataFrame:
     if history_dir:
         max_snapshots_value = forward_returns_df.attrs.get("max_snapshots")
         max_snapshots = max_snapshots_value if isinstance(max_snapshots_value, int) else None
-        _, lifecycle_summary_df = compute_signal_lifecycle(str(history_dir), max_snapshots=max_snapshots)
+        max_signal_rows_value = forward_returns_df.attrs.get("max_signal_rows")
+        max_signal_rows = max_signal_rows_value if isinstance(max_signal_rows_value, int) else None
+        _, lifecycle_summary_df = compute_signal_lifecycle(str(history_dir), max_snapshots=max_snapshots, max_signal_rows=max_signal_rows)
     generate_calibration_insights(summary_df, forward_returns_df, analysis_dir)
     generate_auto_calibration_recommendations(summary_df, lifecycle_summary_df, analysis_dir)
 

@@ -33,6 +33,7 @@ def persist_scan_dataframe(df_rank: pd.DataFrame, *, scanner_version: str | None
     symbols_scored = _int_or_none(df_rank.attrs.get("scanned_count"))
     market_regime = _market_regime_value(df_rank)
     market_structure = _mapping_attr(df_rank.attrs.get("market_structure"))
+    scanner_accounting_report = _mapping_attr(df_rank.attrs.get("scanner_accounting_report"))
 
     counts: dict[str, Any] = {
         "enabled": True,
@@ -58,6 +59,7 @@ def persist_scan_dataframe(df_rank: pd.DataFrame, *, scanner_version: str | None
                 "requested_universe": to_database_jsonable(requested_universe),
                 "market_regime": to_database_jsonable(df_rank.attrs.get("market_regime")),
                 "market_structure": to_database_jsonable(market_structure),
+                "scanner_accounting": to_database_jsonable(scanner_accounting_report.get("summary") or scanner_accounting_report),
             },
         )
         counts["scan_runs"] = 1
@@ -79,12 +81,13 @@ def persist_analysis_data(forward_returns_df: pd.DataFrame, summary_df: pd.DataF
         "enabled": True,
         "performance_summary": 0,
         "forward_returns": 0,
+        "market_memory_refresh_scope": "latest_scan_run",
     }
     with session_scope() as session:
         scan_run_id = _latest_scan_run_id(session)
         counts["performance_summary"] = _persist_performance_summary(session, scan_run_id, summary_df)
         counts["forward_returns"] = _persist_forward_returns(session, scan_run_id, forward_returns_df)
-        counts["market_memory_snapshots"] = refresh_market_memory_snapshots(session)
+        counts["market_memory_snapshots"] = refresh_market_memory_snapshots(session, scan_run_id) if scan_run_id is not None else 0
     return counts
 
 

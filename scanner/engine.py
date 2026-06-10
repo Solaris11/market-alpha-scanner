@@ -15,6 +15,7 @@ from .cache import CacheStats, read_symbol_cache, write_symbol_cache
 from .config import DEFAULT_NEWS_LIMIT, DOWNLOAD_PERIOD, MACRO_SYMBOLS, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE, TOP_N
 from .data_fetch import batch_download, fetch_info, fetch_recent_news_items, fetch_recent_news_score
 from .diagnostics import apply_scoring_diagnostics
+from .drop_reasons import ScannerAccounting, write_scanner_accounting_report
 from .event_intelligence import apply_event_intelligence, load_verified_event_context, write_verified_event_context
 from .market_data import ProviderMetadata, YFinanceProvider
 from .models import RankedAsset
@@ -137,13 +138,15 @@ def scan_symbols(
 ) -> pd.DataFrame:
     started_at = datetime.now(timezone.utc)
     cache_dir = outdir / "cache" if outdir is not None else None
+    accounting = ScannerAccounting(symbols)
+    symbols_to_scan = accounting.symbols_to_scan
     fundamentals_cache_stats = CacheStats()
     news_cache_stats = CacheStats()
     verified_event_context = load_verified_event_context(cache_dir)
 
-    print(f"[1/5] Downloading price history for {len(symbols)} symbols...")
+    print(f"[1/5] Downloading price history for {len(symbols_to_scan)} symbols...")
     phase_started = timer_start()
-    price_map = batch_download(symbols, DOWNLOAD_PERIOD)
+    price_map = batch_download(symbols_to_scan, DOWNLOAD_PERIOD)
     log_timing(timing, "price_history_download", phase_started)
 
     print("[2/5] Downloading macro proxies...")
@@ -181,207 +184,255 @@ def scan_symbols(
 
     print("[3/5] Scoring symbols...")
     phase_started = timer_start()
-    for i, symbol in enumerate(symbols, start=1):
-        df = price_map.get(symbol)
-        if df is None or df.empty or len(df) < 220:
-            fallback_df = _fallback_yfinance_frame(symbol, df, "alpaca_insufficient_history")
-            if fallback_df is None or fallback_df.empty:
+    for i, symbol in enumerate(symbols_to_scan, start=1):
+        try:
+            df = price_map.get(symbol)
+            if df is None or df.empty or len(df) < 220:
+                fallback_df = _fallback_yfinance_frame(symbol, df, "alpaca_insufficient_history")
+                if fallback_df is None or fallback_df.empty:
+                    state = "provider_unavailable" if df is None or df.empty else "provider_partial"
+                    accounting.mark(symbol, state, "missing or insufficient price history", frame=df)
+                    continue
+                df = fallback_df
+                price_map[symbol] = df
+            if df is None or df.empty or len(df) < 220:
+                state = "provider_unavailable" if df is None or df.empty else "provider_partial"
+                accounting.mark(symbol, state, "missing or insufficient price history after fallback", frame=df)
                 continue
-            df = fallback_df
-            price_map[symbol] = df
-        if df is None or df.empty or len(df) < 220:
-            continue
 
-        close = df["Close"].dropna()
-        if close.empty:
-            continue
+            close = df["Close"].dropna()
+            if close.empty:
+                accounting.mark(symbol, "provider_partial", "price history has no close values", frame=df)
+                continue
 
-        last_price = safe_float(close.iloc[-1], np.nan)
-        previous_close = safe_float(close.iloc[-2], np.nan) if len(close) >= 2 else np.nan
-        one_day_return = (last_price / previous_close - 1.0) if not np.isnan(last_price) and not np.isnan(previous_close) and previous_close != 0 else np.nan
-        avg_dollar_volume = safe_float((df["Close"].iloc[-20:] * df["Volume"].iloc[-20:]).mean(), np.nan)
-        if np.isnan(last_price) or last_price < min_price:
-            continue
-        if np.isnan(avg_dollar_volume) or avg_dollar_volume < min_avg_dollar_volume:
-            fallback_df = _fallback_yfinance_frame(symbol, df, "alpaca_low_liquidity_proxy")
-            if fallback_df is None or fallback_df.empty or len(fallback_df) < 220:
-                continue
-            fallback_close = fallback_df["Close"].dropna()
-            if fallback_close.empty:
-                continue
-            fallback_last_price = safe_float(fallback_close.iloc[-1], np.nan)
-            fallback_previous_close = safe_float(fallback_close.iloc[-2], np.nan) if len(fallback_close) >= 2 else np.nan
-            fallback_avg_dollar_volume = safe_float((fallback_df["Close"].iloc[-20:] * fallback_df["Volume"].iloc[-20:]).mean(), np.nan)
-            if np.isnan(fallback_last_price) or fallback_last_price < min_price:
-                continue
-            if np.isnan(fallback_avg_dollar_volume) or fallback_avg_dollar_volume < min_avg_dollar_volume:
-                continue
-            df = fallback_df
-            price_map[symbol] = df
-            close = fallback_close
-            last_price = fallback_last_price
-            previous_close = fallback_previous_close
+            last_price = safe_float(close.iloc[-1], np.nan)
+            previous_close = safe_float(close.iloc[-2], np.nan) if len(close) >= 2 else np.nan
             one_day_return = (last_price / previous_close - 1.0) if not np.isnan(last_price) and not np.isnan(previous_close) and previous_close != 0 else np.nan
-            avg_dollar_volume = fallback_avg_dollar_volume
+            avg_dollar_volume = safe_float((df["Close"].iloc[-20:] * df["Volume"].iloc[-20:]).mean(), np.nan)
+            if np.isnan(last_price):
+                accounting.mark(symbol, "provider_partial", "latest price is unavailable", frame=df)
+                continue
+            if last_price < min_price:
+                accounting.mark(symbol, "filtered_liquidity", f"price below minimum {min_price}", frame=df, avg_dollar_volume=avg_dollar_volume)
+                continue
+            if np.isnan(avg_dollar_volume) or avg_dollar_volume < min_avg_dollar_volume:
+                fallback_df = _fallback_yfinance_frame(symbol, df, "alpaca_low_liquidity_proxy")
+                if fallback_df is None or fallback_df.empty or len(fallback_df) < 220:
+                    accounting.mark(
+                        symbol,
+                        "filtered_liquidity",
+                        f"average dollar volume below minimum {min_avg_dollar_volume}",
+                        frame=df,
+                        avg_dollar_volume=avg_dollar_volume,
+                    )
+                    continue
+                fallback_close = fallback_df["Close"].dropna()
+                if fallback_close.empty:
+                    accounting.mark(symbol, "provider_partial", "fallback price history has no close values", frame=fallback_df)
+                    continue
+                fallback_last_price = safe_float(fallback_close.iloc[-1], np.nan)
+                fallback_previous_close = safe_float(fallback_close.iloc[-2], np.nan) if len(fallback_close) >= 2 else np.nan
+                fallback_avg_dollar_volume = safe_float((fallback_df["Close"].iloc[-20:] * fallback_df["Volume"].iloc[-20:]).mean(), np.nan)
+                if np.isnan(fallback_last_price):
+                    accounting.mark(symbol, "provider_partial", "fallback latest price is unavailable", frame=fallback_df)
+                    continue
+                if fallback_last_price < min_price:
+                    accounting.mark(symbol, "filtered_liquidity", f"fallback price below minimum {min_price}", frame=fallback_df, avg_dollar_volume=fallback_avg_dollar_volume)
+                    continue
+                if np.isnan(fallback_avg_dollar_volume) or fallback_avg_dollar_volume < min_avg_dollar_volume:
+                    accounting.mark(
+                        symbol,
+                        "filtered_liquidity",
+                        f"fallback average dollar volume below minimum {min_avg_dollar_volume}",
+                        frame=fallback_df,
+                        avg_dollar_volume=fallback_avg_dollar_volume,
+                    )
+                    continue
+                df = fallback_df
+                price_map[symbol] = df
+                close = fallback_close
+                last_price = fallback_last_price
+                previous_close = fallback_previous_close
+                one_day_return = (last_price / previous_close - 1.0) if not np.isnan(last_price) and not np.isnan(previous_close) and previous_close != 0 else np.nan
+                avg_dollar_volume = fallback_avg_dollar_volume
 
-        info, earnings_date = _fetch_info_with_cache(symbol, cache_dir, fundamentals_cache_stats)
-        info_cache[symbol] = info
-        one_day_return_cache[symbol] = round(one_day_return, 6) if not np.isnan(one_day_return) else np.nan
-        scanned_count += 1
-        asset_type = infer_asset_type(symbol, info)
-        sector = infer_sector(symbol, asset_type, info)
-        industry = safe_str(info.get("industry"))
-        market_cap = safe_float(info.get("marketCap"), np.nan)
-        if asset_type == "EQUITY" and (np.isnan(market_cap) or market_cap < min_market_cap):
+            info, earnings_date = _fetch_info_with_cache(symbol, cache_dir, fundamentals_cache_stats)
+            info_cache[symbol] = info
+            one_day_return_cache[symbol] = round(one_day_return, 6) if not np.isnan(one_day_return) else np.nan
+            scanned_count += 1
+            asset_type = infer_asset_type(symbol, info)
+            sector = infer_sector(symbol, asset_type, info)
+            industry = safe_str(info.get("industry"))
+            market_cap = safe_float(info.get("marketCap"), np.nan)
+            if asset_type == "EQUITY" and (np.isnan(market_cap) or market_cap < min_market_cap):
+                accounting.mark(symbol, "filtered_market_cap", f"market cap below minimum {min_market_cap} or unavailable", frame=df, avg_dollar_volume=avg_dollar_volume, market_cap=market_cap)
+                continue
+
+            technical = technical_scorecard(df)
+            fundamentals = fundamentals_scorecard(info, asset_type)
+            macro_score, macro_sensitivity, macro_note = score_macro_alignment(symbol, asset_type, sector, macro_regime)
+            ex_dividend_date = parse_dividend_date(info, "exDividendDate")
+            dividend_date = parse_dividend_date(info, "dividendDate")
+            last_dividend_date = parse_dividend_date(info, "lastDividendDate")
+            has_dividend_context = bool(ex_dividend_date or dividend_date or last_dividend_date)
+
+            macd_series = macd_hist(close)
+            current_macd = safe_float(macd_series.iloc[-1], np.nan)
+            previous_macd = safe_float(macd_series.iloc[-2], np.nan) if len(macd_series) >= 2 else np.nan
+            risk_penalty, ann_vol, atr_pct, dd_pct = compute_risk_penalty(df, technical["current_rsi"], current_macd, previous_macd, earnings_date, asset_type)
+
+            news_score = 50.0
+            headline_bias = "not yet enriched"
+            upside_driver = derive_upside_driver(technical["technical_score"], safe_float(fundamentals["fundamental_score"]), news_score, macro_score)
+            key_risk = derive_key_risk(asset_type, technical["current_rsi"], current_macd, previous_macd, risk_penalty, earnings_date, "")
+            final_score = composite_score(asset_type, technical["technical_score"], safe_float(fundamentals["fundamental_score"]), news_score, macro_score, risk_penalty)
+            rating = rating_from_score(final_score)
+
+            ema20_value = safe_float(ema(close, 20).iloc[-1])
+            sma50_value = safe_float(sma(close, 50).iloc[-1])
+            setup_type = derive_setup_type(technical, last_price, technical["avwap_swing"], technical["supertrend_line"])
+            trade_plan = derive_trade_plan(
+                df,
+                last_price,
+                setup_type,
+                ema20_value,
+                sma50_value,
+                technical["avwap_ytd"],
+                technical["avwap_swing"],
+                technical["supertrend_line"],
+            )
+            macd_cache[symbol] = (current_macd, previous_macd)
+            horizon_context = build_horizon_context(df, technical, dd_pct)
+            horizon_context_cache[symbol] = horizon_context
+
+            asset = RankedAsset(
+                symbol=symbol,
+                company_name=extract_company_name(info),
+                asset_type=asset_type,
+                sector=sector,
+                industry=industry,
+                price=round(last_price, 4),
+                market_cap=round(market_cap, 2) if not np.isnan(market_cap) else np.nan,
+                avg_dollar_volume=round(avg_dollar_volume, 2),
+                dividend_yield=round(safe_float(info.get("dividendYield")), 2) if not np.isnan(safe_float(info.get("dividendYield"))) else np.nan,
+                dividend_date=dividend_date,
+                dividend_headline=f"{symbol} dividend calendar context" if has_dividend_context else "",
+                dividend_source="Yahoo Finance Dividend Calendar" if has_dividend_context else "",
+                dividend_timestamp=started_at.isoformat() if has_dividend_context else "",
+                dividend_url=f"https://finance.yahoo.com/quote/{symbol}" if has_dividend_context else "",
+                ex_dividend_date=ex_dividend_date,
+                last_dividend_date=last_dividend_date,
+                earnings_date=earnings_date,
+                technical_score=round(technical["technical_score"], 2),
+                trend_score=technical["trend_score"],
+                supertrend_score=technical["supertrend_score"],
+                momentum_score=technical["momentum_score"],
+                breakout_score=technical["breakout_score"],
+                relative_volume_score=technical["relative_volume_score"],
+                avwap_score=technical["avwap_score"],
+                fundamental_score=safe_float(fundamentals["fundamental_score"]),
+                quality_score=safe_float(fundamentals["quality_score"]),
+                growth_score=safe_float(fundamentals["growth_score"]),
+                valuation_score=safe_float(fundamentals["valuation_score"]),
+                news_score=round(news_score, 2),
+                macro_score=round(macro_score, 2),
+                risk_penalty=round(risk_penalty, 2),
+                final_score=round(final_score, 2),
+                short_score=np.nan,
+                mid_score=np.nan,
+                long_score=np.nan,
+                rating=rating,
+                setup_type=setup_type,
+                short_action="WAIT / HOLD",
+                mid_action="WAIT / HOLD",
+                long_action="WAIT / HOLD",
+                composite_action="WAIT / HOLD",
+                short_reason="",
+                mid_reason="",
+                long_reason="",
+                selection_reason="",
+                entry_zone=str(trade_plan["buy_zone"]),
+                invalidation_level=str(trade_plan["stop_loss"]),
+                buy_zone=str(trade_plan["buy_zone"]),
+                stop_loss=str(trade_plan["stop_loss"]),
+                take_profit_zone=str(trade_plan["take_profit_zone"]),
+                buy_zone_reason=str(trade_plan["buy_zone_reason"]),
+                stop_loss_reason=str(trade_plan["stop_loss_reason"]),
+                take_profit_reason=str(trade_plan["take_profit_reason"]),
+                risk_reward_reason=str(trade_plan["risk_reward_reason"]),
+                take_profit_low=safe_float(trade_plan["take_profit_low"], np.nan),
+                take_profit_high=safe_float(trade_plan["take_profit_high"], np.nan),
+                conservative_target=str(trade_plan["conservative_target"]),
+                balanced_target=str(trade_plan["balanced_target"]),
+                aggressive_target=str(trade_plan["aggressive_target"]),
+                conservative_target_reason=str(trade_plan["conservative_target_reason"]),
+                balanced_target_reason=str(trade_plan["balanced_target_reason"]),
+                aggressive_target_reason=str(trade_plan["aggressive_target_reason"]),
+                risk_reward=safe_float(trade_plan["risk_reward"], np.nan),
+                risk_reward_low=safe_float(trade_plan["risk_reward_low"], np.nan),
+                risk_reward_high=safe_float(trade_plan["risk_reward_high"], np.nan),
+                risk_reward_label=str(trade_plan["risk_reward_label"]),
+                conservative_risk_reward=safe_float(trade_plan["conservative_risk_reward"], np.nan),
+                balanced_risk_reward_low=safe_float(trade_plan["balanced_risk_reward_low"], np.nan),
+                balanced_risk_reward_high=safe_float(trade_plan["balanced_risk_reward_high"], np.nan),
+                aggressive_risk_reward_low=safe_float(trade_plan["aggressive_risk_reward_low"], np.nan),
+                aggressive_risk_reward_high=safe_float(trade_plan["aggressive_risk_reward_high"], np.nan),
+                target_risk_reward_label=str(trade_plan["target_risk_reward_label"]),
+                trade_quality=str(trade_plan["trade_quality"]),
+                trade_quality_note=str(trade_plan["trade_quality_note"]),
+                target_warning=str(trade_plan["target_warning"]),
+                upside_driver=upside_driver,
+                key_risk=key_risk,
+                profitability_status=safe_str(fundamentals["profitability_status"]),
+                valuation_flag=safe_str(fundamentals["valuation_flag"]),
+                trailing_pe=safe_float(info.get("trailingPE"), np.nan),
+                forward_pe=safe_float(info.get("forwardPE"), np.nan),
+                revenue_growth=safe_float(info.get("revenueGrowth"), np.nan),
+                earnings_growth=safe_float(info.get("earningsGrowth"), np.nan),
+                gross_margin=safe_float(info.get("grossMargins"), np.nan),
+                operating_margin=safe_float(info.get("operatingMargins"), np.nan),
+                profit_margin=safe_float(info.get("profitMargins"), np.nan),
+                debt_to_equity=safe_float(info.get("debtToEquity"), np.nan),
+                return_on_equity=safe_float(info.get("returnOnEquity"), np.nan),
+                macro_sensitivity=macro_sensitivity,
+                confidence_level=derive_confidence_level(asset_type, technical["technical_score"], safe_float(fundamentals["fundamental_score"]), macro_score, news_score, risk_penalty),
+                macro_note=macro_note,
+                headline_bias=headline_bias,
+                current_rsi=technical["current_rsi"],
+                current_macd_hist=technical["current_macd_hist"],
+                atr_pct=atr_pct,
+                annualized_volatility=ann_vol,
+                max_drawdown=dd_pct,
+            )
+            apply_horizon_recommendations(asset, horizon_context)
+            ranked.append(asset)
+            accounting.mark_ranked(
+                symbol,
+                frame=df,
+                avg_dollar_volume=avg_dollar_volume,
+                market_cap=market_cap,
+                final_score=final_score,
+            )
+
+            if i % 15 == 0:
+                print(f"    scored {i}/{len(symbols_to_scan)}...")
+            time.sleep(0.03)
+        except Exception as exc:
+            accounting.mark(
+                symbol,
+                "provider_partial",
+                f"symbol processing failed: {type(exc).__name__}: {exc}",
+                frame=price_map.get(symbol),
+            )
             continue
-
-        technical = technical_scorecard(df)
-        fundamentals = fundamentals_scorecard(info, asset_type)
-        macro_score, macro_sensitivity, macro_note = score_macro_alignment(symbol, asset_type, sector, macro_regime)
-        ex_dividend_date = parse_dividend_date(info, "exDividendDate")
-        dividend_date = parse_dividend_date(info, "dividendDate")
-        last_dividend_date = parse_dividend_date(info, "lastDividendDate")
-        has_dividend_context = bool(ex_dividend_date or dividend_date or last_dividend_date)
-
-        macd_series = macd_hist(close)
-        current_macd = safe_float(macd_series.iloc[-1], np.nan)
-        previous_macd = safe_float(macd_series.iloc[-2], np.nan) if len(macd_series) >= 2 else np.nan
-        risk_penalty, ann_vol, atr_pct, dd_pct = compute_risk_penalty(df, technical["current_rsi"], current_macd, previous_macd, earnings_date, asset_type)
-
-        news_score = 50.0
-        headline_bias = "not yet enriched"
-        upside_driver = derive_upside_driver(technical["technical_score"], safe_float(fundamentals["fundamental_score"]), news_score, macro_score)
-        key_risk = derive_key_risk(asset_type, technical["current_rsi"], current_macd, previous_macd, risk_penalty, earnings_date, "")
-        final_score = composite_score(asset_type, technical["technical_score"], safe_float(fundamentals["fundamental_score"]), news_score, macro_score, risk_penalty)
-        rating = rating_from_score(final_score)
-
-        ema20_value = safe_float(ema(close, 20).iloc[-1])
-        sma50_value = safe_float(sma(close, 50).iloc[-1])
-        setup_type = derive_setup_type(technical, last_price, technical["avwap_swing"], technical["supertrend_line"])
-        trade_plan = derive_trade_plan(
-            df,
-            last_price,
-            setup_type,
-            ema20_value,
-            sma50_value,
-            technical["avwap_ytd"],
-            technical["avwap_swing"],
-            technical["supertrend_line"],
-        )
-        macd_cache[symbol] = (current_macd, previous_macd)
-        horizon_context = build_horizon_context(df, technical, dd_pct)
-        horizon_context_cache[symbol] = horizon_context
-
-        asset = RankedAsset(
-            symbol=symbol,
-            company_name=extract_company_name(info),
-            asset_type=asset_type,
-            sector=sector,
-            industry=industry,
-            price=round(last_price, 4),
-            market_cap=round(market_cap, 2) if not np.isnan(market_cap) else np.nan,
-            avg_dollar_volume=round(avg_dollar_volume, 2),
-            dividend_yield=round(safe_float(info.get("dividendYield")), 2) if not np.isnan(safe_float(info.get("dividendYield"))) else np.nan,
-            dividend_date=dividend_date,
-            dividend_headline=f"{symbol} dividend calendar context" if has_dividend_context else "",
-            dividend_source="Yahoo Finance Dividend Calendar" if has_dividend_context else "",
-            dividend_timestamp=started_at.isoformat() if has_dividend_context else "",
-            dividend_url=f"https://finance.yahoo.com/quote/{symbol}" if has_dividend_context else "",
-            ex_dividend_date=ex_dividend_date,
-            last_dividend_date=last_dividend_date,
-            earnings_date=earnings_date,
-            technical_score=round(technical["technical_score"], 2),
-            trend_score=technical["trend_score"],
-            supertrend_score=technical["supertrend_score"],
-            momentum_score=technical["momentum_score"],
-            breakout_score=technical["breakout_score"],
-            relative_volume_score=technical["relative_volume_score"],
-            avwap_score=technical["avwap_score"],
-            fundamental_score=safe_float(fundamentals["fundamental_score"]),
-            quality_score=safe_float(fundamentals["quality_score"]),
-            growth_score=safe_float(fundamentals["growth_score"]),
-            valuation_score=safe_float(fundamentals["valuation_score"]),
-            news_score=round(news_score, 2),
-            macro_score=round(macro_score, 2),
-            risk_penalty=round(risk_penalty, 2),
-            final_score=round(final_score, 2),
-            short_score=np.nan,
-            mid_score=np.nan,
-            long_score=np.nan,
-            rating=rating,
-            setup_type=setup_type,
-            short_action="WAIT / HOLD",
-            mid_action="WAIT / HOLD",
-            long_action="WAIT / HOLD",
-            composite_action="WAIT / HOLD",
-            short_reason="",
-            mid_reason="",
-            long_reason="",
-            selection_reason="",
-            entry_zone=str(trade_plan["buy_zone"]),
-            invalidation_level=str(trade_plan["stop_loss"]),
-            buy_zone=str(trade_plan["buy_zone"]),
-            stop_loss=str(trade_plan["stop_loss"]),
-            take_profit_zone=str(trade_plan["take_profit_zone"]),
-            buy_zone_reason=str(trade_plan["buy_zone_reason"]),
-            stop_loss_reason=str(trade_plan["stop_loss_reason"]),
-            take_profit_reason=str(trade_plan["take_profit_reason"]),
-            risk_reward_reason=str(trade_plan["risk_reward_reason"]),
-            take_profit_low=safe_float(trade_plan["take_profit_low"], np.nan),
-            take_profit_high=safe_float(trade_plan["take_profit_high"], np.nan),
-            conservative_target=str(trade_plan["conservative_target"]),
-            balanced_target=str(trade_plan["balanced_target"]),
-            aggressive_target=str(trade_plan["aggressive_target"]),
-            conservative_target_reason=str(trade_plan["conservative_target_reason"]),
-            balanced_target_reason=str(trade_plan["balanced_target_reason"]),
-            aggressive_target_reason=str(trade_plan["aggressive_target_reason"]),
-            risk_reward=safe_float(trade_plan["risk_reward"], np.nan),
-            risk_reward_low=safe_float(trade_plan["risk_reward_low"], np.nan),
-            risk_reward_high=safe_float(trade_plan["risk_reward_high"], np.nan),
-            risk_reward_label=str(trade_plan["risk_reward_label"]),
-            conservative_risk_reward=safe_float(trade_plan["conservative_risk_reward"], np.nan),
-            balanced_risk_reward_low=safe_float(trade_plan["balanced_risk_reward_low"], np.nan),
-            balanced_risk_reward_high=safe_float(trade_plan["balanced_risk_reward_high"], np.nan),
-            aggressive_risk_reward_low=safe_float(trade_plan["aggressive_risk_reward_low"], np.nan),
-            aggressive_risk_reward_high=safe_float(trade_plan["aggressive_risk_reward_high"], np.nan),
-            target_risk_reward_label=str(trade_plan["target_risk_reward_label"]),
-            trade_quality=str(trade_plan["trade_quality"]),
-            trade_quality_note=str(trade_plan["trade_quality_note"]),
-            target_warning=str(trade_plan["target_warning"]),
-            upside_driver=upside_driver,
-            key_risk=key_risk,
-            profitability_status=safe_str(fundamentals["profitability_status"]),
-            valuation_flag=safe_str(fundamentals["valuation_flag"]),
-            trailing_pe=safe_float(info.get("trailingPE"), np.nan),
-            forward_pe=safe_float(info.get("forwardPE"), np.nan),
-            revenue_growth=safe_float(info.get("revenueGrowth"), np.nan),
-            earnings_growth=safe_float(info.get("earningsGrowth"), np.nan),
-            gross_margin=safe_float(info.get("grossMargins"), np.nan),
-            operating_margin=safe_float(info.get("operatingMargins"), np.nan),
-            profit_margin=safe_float(info.get("profitMargins"), np.nan),
-            debt_to_equity=safe_float(info.get("debtToEquity"), np.nan),
-            return_on_equity=safe_float(info.get("returnOnEquity"), np.nan),
-            macro_sensitivity=macro_sensitivity,
-            confidence_level=derive_confidence_level(asset_type, technical["technical_score"], safe_float(fundamentals["fundamental_score"]), macro_score, news_score, risk_penalty),
-            macro_note=macro_note,
-            headline_bias=headline_bias,
-            current_rsi=technical["current_rsi"],
-            current_macd_hist=technical["current_macd_hist"],
-            atr_pct=atr_pct,
-            annualized_volatility=ann_vol,
-            max_drawdown=dd_pct,
-        )
-        apply_horizon_recommendations(asset, horizon_context)
-        ranked.append(asset)
-
-        if i % 15 == 0:
-            print(f"    scored {i}/{len(symbols)}...")
-        time.sleep(0.03)
     print(f"[cache] fundamentals hits={fundamentals_cache_stats.hits} misses={fundamentals_cache_stats.misses}")
     log_timing(timing, "scoring", phase_started)
 
     if not ranked:
-        return pd.DataFrame()
+        empty = pd.DataFrame()
+        empty.attrs["scanner_accounting"] = accounting
+        empty.attrs["scanner_accounting_report"] = write_scanner_accounting_report(accounting, outdir) if outdir is not None else accounting.summary()
+        return empty
 
     print("[4/5] Enriching top names with headline / event context...")
     phase_started = timer_start()
@@ -423,6 +474,19 @@ def scan_symbols(
     df_rank = apply_decision_safety_gates(df_rank)
     df_rank = apply_scoring_diagnostics(df_rank)
     df_rank = df_rank.sort_values(by=["final_score", "technical_score", "macro_score"], ascending=[False, False, False]).reset_index(drop=True)
+    for row in df_rank.to_dict(orient="records"):
+        symbol = safe_str(row.get("symbol"), "").upper()
+        if not symbol:
+            continue
+        accounting.mark(
+            symbol,
+            "ranked",
+            "ranked and included in full_ranking.csv",
+            frame=price_map.get(symbol),
+            avg_dollar_volume=_optional_float(row.get("avg_dollar_volume")),
+            market_cap=_optional_float(row.get("market_cap")),
+            final_score=_optional_float(row.get("final_score")),
+        )
     df_rank.attrs["ranked_assets"] = ranked
     df_rank.attrs["price_map"] = price_map
     df_rank.attrs["info_cache"] = info_cache
@@ -434,9 +498,13 @@ def scan_symbols(
     df_rank.attrs["scan_completed_at"] = datetime.now(timezone.utc)
     df_rank.attrs["market_regime"] = market_regime
     df_rank.attrs["market_structure"] = market_structure
+    df_rank.attrs["scanner_accounting"] = accounting
 
     if outdir is not None:
         save_symbol_detail_outputs(ranked, price_map, info_cache, outdir)
+        df_rank.attrs["scanner_accounting_report"] = write_scanner_accounting_report(accounting, outdir)
+    else:
+        df_rank.attrs["scanner_accounting_report"] = accounting.summary()
     log_timing(timing, "ranking_table_build", phase_started)
     return df_rank
 

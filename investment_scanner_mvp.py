@@ -17,6 +17,7 @@ from alerts import evaluate_alert_rules, read_alert_input_files
 from database import persist_analysis_data, persist_scan_dataframe
 from scanner.analysis import analyze_performance, compute_forward_returns
 from scanner.config import DEFAULT_NEWS_LIMIT, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE
+from scanner.drop_reasons import ScannerAccounting, write_scanner_accounting_report
 from scanner.engine import load_universe_from_csv, scan_symbols
 from scanner.outputs import print_top_table, save_snapshot
 from scanner.paper_trading import run_paper_trading
@@ -272,6 +273,7 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
         print(f"Saved scan snapshot to: {history_path}")
 
     db_notes = f"skip_news={args.skip_news}; news_limit={args.news_limit}; outdir={outdir}"
+    scanner_accounting = df_rank.attrs.get("scanner_accounting")
     try:
         db_result = persist_scan_dataframe(df_rank, scanner_version="market-alpha-scanner", notes=db_notes)
         if db_result.get("enabled"):
@@ -280,10 +282,21 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
                 f" scan_runs={db_result['scan_runs']},"
                 f" scanner_signals={db_result['scanner_signals']}"
             )
+            if isinstance(scanner_accounting, ScannerAccounting):
+                persisted_signals = _int_value(db_result.get("scanner_signals"))
+                ranked_rows = int(len(df_rank))
+                if persisted_signals is not None and persisted_signals < ranked_rows:
+                    scanner_accounting.mark_ranked_writeback_failed(
+                        f"database persisted {persisted_signals} scanner_signals for {ranked_rows} ranked rows"
+                    )
+                write_scanner_accounting_report(scanner_accounting, outdir)
         else:
             print(f"Skipping database write: {db_result.get('reason', 'DATABASE_URL not configured')}")
     except Exception as exc:
         print(f"Warning: database write skipped due to error: {exc}")
+        if isinstance(scanner_accounting, ScannerAccounting):
+            scanner_accounting.mark_ranked_writeback_failed(f"database write failed: {type(exc).__name__}: {exc}")
+            write_scanner_accounting_report(scanner_accounting, outdir)
 
     if args.paper_trade:
         run_paper_trading()
@@ -344,6 +357,15 @@ def run_with_lock(args: argparse.Namespace, universe: list[str], outdir: Path) -
     print("- AVWAP uses objective anchors (YTD and recent swing low) rather than hand-picked discretionary anchors.")
     print("- VPVR is intentionally not included because Yahoo daily bars are not reliable enough for it.")
     print("- Historical evaluation is useful, but it is not survivorship-free or point-in-time perfect.")
+
+
+def _int_value(value: object) -> int | None:
+    if value is None:
+        return None
+    try:
+        return int(str(value))
+    except (TypeError, ValueError):
+        return None
 
 
 if __name__ == "__main__":
