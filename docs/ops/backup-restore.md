@@ -31,10 +31,16 @@ the local Postgres gzip and scanner tar before attempting off-host sync.
 
 Cloudflare R2 is the primary offsite target. Google Drive is optional secondary
 redundancy only and should not be treated as the source of operational truth.
-Off-host rclone sync is bounded with connection, operation, retry, and total
-timeout controls so a stuck provider connection cannot leave orphaned rclone
-processes indefinitely. Result classifications written to `monitoring_events`
-include:
+Off-host sync is bounded with connection, operation, retry, and total timeout
+controls so a stuck provider connection cannot leave orphaned transfer
+processes indefinitely. Cloudflare R2 is synced through the current-artifact
+helper instead of a full-tree `rclone copy`: `/opt/ops/market-alpha-backup.sh`
+calls `tradeveto-r2-current-backup-sync.py` for the newly created Postgres and
+scanner backups, then the post-deploy verifier uses rclone listing to confirm
+the objects exist. This avoids turning each scheduled backup into a full backlog
+resync. Non-R2 remotes continue to use rclone copy.
+
+Result classifications written to `monitoring_events` include:
 
 - `local_backup_ok`
 - `offsite_sync_ok`
@@ -58,6 +64,7 @@ MARKET_ALPHA_BACKUP_RCLONE_OP_TIMEOUT=60s
 MARKET_ALPHA_BACKUP_RCLONE_CONNECT_TIMEOUT=20s
 MARKET_ALPHA_BACKUP_RCLONE_RETRIES=2
 MARKET_ALPHA_BACKUP_RCLONE_LOW_LEVEL_RETRIES=3
+MARKET_ALPHA_BACKUP_R2_SYNC_SCRIPT=/opt/ops/tradeveto-r2-current-backup-sync.py
 ```
 
 ## Post-Deploy Backup
@@ -129,6 +136,18 @@ rm -rf "$SRC_DIR" "$DST_DIR"
 
 Expected result: upload, list, download, compare, and cleanup all complete
 without `AccessDenied` or hanging rclone processes.
+
+If rclone uploads to R2 fail with `NotImplemented` while listing still works,
+validate the boto3 current-artifact path before changing credentials:
+
+```bash
+sudo python3 /opt/ops/tradeveto-r2-current-backup-sync.py \
+  --remote r2:market-alpha-backups \
+  --object /tmp/validation.txt ops-validation/manual/validation.txt
+```
+
+Expected result: JSON output ending with `{"object_count": 1, "status": "ok"}`.
+Delete the disposable validation object after the test.
 
 ## Restore Drill Into A Temporary DB
 
