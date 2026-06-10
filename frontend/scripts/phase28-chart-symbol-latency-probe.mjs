@@ -187,7 +187,7 @@ async function runChartSymbolInteractions(page) {
   interactions.push(await measureBrowserWorkflow(page, "symbol-switch", "Switch from AMD to NVDA using chart navigation", budgets.symbolSwitchMs, ["symbol:switch"], async () => {
     const beforeNavigationEntryCount = await readNavigationEntryCount(page);
     const beforeUrl = page.url();
-    const beforeChart = await readChartRootMeta(page);
+    const beforeChart = await readChartRootMeta(page, "AMD");
     const nextButton = page.getByRole("button", { name: /next symbol/i }).first();
     await nextButton.waitFor({ state: "visible", timeout: waitTimeoutMs });
     await Promise.all([
@@ -196,7 +196,7 @@ async function runChartSymbolInteractions(page) {
     ]);
     await page.locator("[data-chart-symbol='NVDA']").first().waitFor({ state: "visible", timeout: waitTimeoutMs });
     const afterNavigationEntryCount = await readNavigationEntryCount(page);
-    const afterChart = await readChartRootMeta(page);
+    const afterChart = await readChartRootMeta(page, "NVDA");
     return {
       afterChart,
       afterNavigationEntryCount,
@@ -286,9 +286,17 @@ async function readNavigationEntryCount(page) {
   return page.evaluate(() => performance.getEntriesByType("navigation").length).catch(() => 0);
 }
 
-async function readChartRootMeta(page) {
-  return page.evaluate(() => {
-    const root = document.querySelector("[data-chart-symbol]");
+async function readChartRootMeta(page, expectedSymbol) {
+  return page.evaluate((symbol) => {
+    const roots = [...document.querySelectorAll("[data-chart-symbol][data-chart-workspace-loaded]")];
+    const visibleRoots = roots.filter((candidate) => {
+      if (!(candidate instanceof HTMLElement)) return false;
+      const rect = candidate.getBoundingClientRect();
+      const style = window.getComputedStyle(candidate);
+      return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden";
+    });
+    const normalized = String(symbol ?? "").trim().toUpperCase();
+    const root = visibleRoots.find((candidate) => candidate.getAttribute("data-chart-symbol") === normalized) ?? visibleRoots[0] ?? null;
     if (!(root instanceof HTMLElement)) return null;
     return {
       accountWorkspaceLoaded: root.getAttribute("data-chart-account-workspace-loaded"),
@@ -298,7 +306,7 @@ async function readChartRootMeta(page) {
       symbol: root.getAttribute("data-chart-symbol"),
       workspaceLoaded: root.getAttribute("data-chart-workspace-loaded"),
     };
-  }).catch(() => null);
+  }, expectedSymbol).catch(() => null);
 }
 
 async function installMetricBuffer(page) {
