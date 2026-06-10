@@ -120,9 +120,12 @@ async function measureSymbolRoute(page) {
   const started = performance.now();
   const timings = {
     bodyVisibleMs: null,
+    browserShellInteractiveMs: null,
     deepHydrationCompleteObservedMs: null,
     firstShellVisibleMs: null,
     gotoCommitMs: null,
+    shellLocatorVerified: false,
+    shellLocatorVerifiedMs: null,
     shellInteractiveObservedMs: null,
   };
   try {
@@ -130,17 +133,22 @@ async function measureSymbolRoute(page) {
     timings.gotoCommitMs = roundMetric(performance.now() - started);
     await page.locator("body").waitFor({ state: "visible", timeout: waitTimeoutMs });
     timings.bodyVisibleMs = roundMetric(performance.now() - started);
-    await dismissRiskAcknowledgement(page);
     const shell = page.locator("[data-chart-symbol='AMD']").first();
-    await shell.waitFor({ state: "visible", timeout: waitTimeoutMs });
-    timings.firstShellVisibleMs = roundMetric(performance.now() - started);
+    const browserShellMark = await waitForRouteTimingMark(page, ["chart:workspace-shell-ready", "chart:render-complete"], waitTimeoutMs).catch(() => null);
+    timings.browserShellInteractiveMs = numberOrNull(browserShellMark?.atMs);
+    const locatorStartedAt = performance.now();
+    await shell.waitFor({ state: "visible", timeout: Math.min(waitTimeoutMs, 4_000) });
+    timings.shellLocatorVerified = true;
+    timings.shellLocatorVerifiedMs = roundMetric(performance.now() - locatorStartedAt);
+    timings.firstShellVisibleMs = timings.browserShellInteractiveMs ?? roundMetric(performance.now() - started);
+    await dismissRiskAcknowledgement(page);
     const shellReady = await shell.evaluate((element) => {
       const rect = element.getBoundingClientRect();
       const style = window.getComputedStyle(element);
       return rect.width > 0 && rect.height > 0 && style.visibility !== "hidden" && style.pointerEvents !== "none";
     }).catch(() => false);
     timings.shellInteractiveObservedMs = shellReady ? roundMetric(performance.now() - started) : null;
-    const interactiveMs = timings.firstShellVisibleMs;
+    const interactiveMs = timings.browserShellInteractiveMs ?? timings.firstShellVisibleMs;
     const deepHydration = await waitForRouteTimingMark(page, ["symbol:deep-hydration-complete"], 5_000).catch(() => null);
     timings.deepHydrationCompleteObservedMs = deepHydration ? roundMetric(performance.now() - started) : null;
     const routeTimingMarks = await readRouteTimingMarks(page);
@@ -149,11 +157,11 @@ async function measureSymbolRoute(page) {
       budgetMs: budgets.symbolPageInteractiveMs,
       httpStatus: response?.status() ?? null,
       interactiveMs,
-      measurementNote: "interactiveMs is measured at the first visible verified symbol/chart shell; deep hydration observation is reported separately and does not count against the route interactive budget.",
+      measurementNote: "interactiveMs uses the browser in-page chart shell/render mark when present, with a separate Playwright locator visibility verification; deep hydration observation is reported separately and does not count against the route interactive budget.",
       navigationTiming,
       path: "/symbol/AMD",
       routeTimingMarks,
-      status: interactiveMs <= budgets.symbolPageInteractiveMs ? "pass" : "fail",
+      status: interactiveMs <= budgets.symbolPageInteractiveMs && timings.shellLocatorVerified ? "pass" : "fail",
       timings,
     };
   } catch (error) {
