@@ -77,6 +77,9 @@ Production checks:
 | Root disposable helper upload/list/delete | Pass |
 | First full post-deploy R2 run | Failed on the prior 900s bound before completion |
 | Direct large-artifact R2 helper upload | Failed with `SSLEOFError` during multipart upload |
+| Hardened single-concurrency R2 helper upload | Failed: one-hour timeout before Postgres object verification |
+| Orphan backup process check after timeout | Pass, no backup/rclone/helper process remained |
+| Production health after timeout | HTTP 200; app/db/scanner ok; backup remains warn/partial |
 
 Validation:
 
@@ -99,6 +102,13 @@ sudo /opt/apps/market-alpha-scanner/app/tools/ops/tradeveto-stability-observe.sh
   --interval-seconds 60 \
   --output-dir /opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-35-0c-3-stability/observation-24h
 ```
+
+Started production observer:
+
+- Started at approximately `2026-06-10T03:40Z`
+- Process: `sudo /opt/ops/tradeveto-stability-observe.sh --duration-seconds 86400 --interval-seconds 60`
+- First sample: `observation-24h/samples.jsonl`, 1 sample written at startup
+- Completion expected after the 24h window elapses.
 
 Expected derived reports:
 
@@ -143,9 +153,9 @@ Required proof still pending:
 
 | Severity | Blocker | Status |
 | --- | --- | --- |
-| Critical | 24h memory/container observation | Not elapsed |
+| Critical | 24h memory/container observation | Running, not elapsed |
 | High | 6h observation report | Not elapsed |
-| High | R2 current backup run with large artifacts | Pending rerun with one-hour R2 bound and single-concurrency multipart upload |
+| High | R2 current backup run with large artifacts | Failed after one-hour timeout; latest R2 listing still stops at older `2026-06-05_06-00.sql.gz` Postgres backup |
 | High | Restore from local latest backup | Pending |
 | High | Restore from R2-downloaded backup | Pending |
 | High | Container restart/recovery proof | Pending |
