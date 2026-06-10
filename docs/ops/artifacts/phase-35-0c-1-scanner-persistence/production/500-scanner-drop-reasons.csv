@@ -1,0 +1,501 @@
+selected_index,symbol,state,detail,price_history_rows,data_timestamp,provider,provider_error,avg_dollar_volume,market_cap,final_score
+1,AAPL,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,466402928.54,4267410980864.0,66.63
+2,MSFT,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,403109842.7,2996704903168.0,50.77
+3,NVDA,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,1087832757.43,5042570002432.0,66.87
+4,AMZN,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,487530169.88,2626778562560.0,57.39
+5,META,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,311765488.45,1483936890880.0,48.82
+6,GOOGL,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,393221274.35,4442127073280.0,66.34
+7,AVGO,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,370074462.84,1865732718592.0,51.77
+8,TSLA,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,320655549.16,1489820450816.0,40.68
+9,NFLX,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,186860898.57,342801121280.0,48.6
+10,AMD,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,315264025.1,775358709760.0,57.44
+11,ORCL,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,130647245.86,591919054848.0,45.79
+12,CRM,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,110007667.45,143611658240.0,53.58
+13,ADBE,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,46485968.47,96151101440.0,48.93
+14,INTU,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,125540830.78,80359694336.0,32.99
+15,QCOM,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,145809094.05,216512675840.0,55.75
+16,MU,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,781640564.65,1055434997760.0,52.12
+17,PANW,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,102966371.24,212323794944.0,55.04
+18,CRWD,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,93206902.09,164176478208.0,42.88
+19,DDOG,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,69570579.05,80923992064.0,49.17
+20,SNOW,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,105345101.59,83066159104.0,38.41
+21,PLTR,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,154272717.81,316613001216.0,36.86
+22,SHOP,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,51337986.01,143287025664.0,42.5
+23,NOW,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,141266478.0,110319017984.0,37.04
+24,ANET,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,70967331.53,191595216896.0,51.04
+25,INTC,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,369806509.79,542405885952.0,39.11
+26,ARM,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,115961382.16,346976059392.0,48.01
+27,ASML,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,112522128.96,685183991808.0,79.46
+28,TSM,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,208758474.09,2219396038656.0,78.15
+29,AMAT,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,119795278.89,396352487424.0,73.73
+30,LRCX,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,100221244.41,409136824320.0,69.14
+31,KLAC,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,108505939.31,279460610048.0,74.15
+32,MRVL,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,305178779.56,233667624960.0,51.38
+33,UBER,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,85077663.29,143265447936.0,42.91
+34,ABNB,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,24773007.03,77956874240.0,52.97
+35,MSTR,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,54851222.48,41345634304.0,18.62
+36,COIN,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,43652568.52,40968151040.0,31.14
+37,APP,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,106049360.07,174970748928.0,53.24
+38,RBLX,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,21926910.7,30787086336.0,23.36
+39,MDB,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,54580900.42,27369375744.0,43.52
+40,ZS,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,39425870.94,20349526016.0,13.59
+41,JPM,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,76923868.29,837883199488.0,72.4
+42,GS,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,71190882.93,304450600960.0,76.68
+43,MS,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,67639362.22,331624153088.0,77.95
+44,BAC,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,127217906.98,386196471808.0,82.32
+45,WFC,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,84255870.73,250935541760.0,68.69
+46,BLK,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,39676088.43,164796186624.0,57.31
+47,BRK-B,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,62984648.44,1052048556032.0,68.61
+48,V,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,116657408.04,618161766400.0,67.82
+49,MA,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,107388510.52,437586067456.0,60.67
+50,AXP,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,37409247.78,217239109632.0,63.16
+51,CAT,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,96056554.06,421303484416.0,72.01
+52,DE,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,51502181.29,155941044224.0,60.17
+53,HON,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,40883570.73,136678973440.0,47.85
+54,GE,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,67153181.3,345253511168.0,71.03
+55,RTX,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,34749508.03,244503838720.0,61.97
+56,LMT,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,22973768.39,122228686848.0,49.62
+57,BA,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,53381368.06,169098723328.0,43.1
+58,UNP,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,42944107.98,161062518784.0,72.83
+59,UPS,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,24029732.62,91690180608.0,65.85
+60,FDX,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,26555340.75,79160180736.0,73.83
+61,WMT,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,118110965.53,946056396800.0,51.17
+62,COST,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,79926108.66,429549158400.0,52.0
+63,PG,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,53961138.43,346192805888.0,63.92
+64,KO,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,71042487.73,349963911168.0,71.89
+65,PEP,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,40417606.85,195171827712.0,50.28
+66,MCD,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,44041541.48,200540274688.0,55.67
+67,HD,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,67130933.97,320403472384.0,56.17
+68,LOW,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,34574181.41,121944563712.0,46.54
+69,NKE,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,48166926.0,66121609216.0,53.21
+70,SBUX,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,36340883.85,111018180608.0,51.0
+71,JNJ,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,61999373.04,570510409728.0,69.41
+72,LLY,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,144305074.78,1020758589440.0,76.85
+73,UNH,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,97166619.76,375063642112.0,71.67
+74,MRK,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,41469839.09,295391002624.0,70.86
+75,ABBV,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,51532486.96,398270431232.0,66.51
+76,PFE,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,40901493.96,146475728896.0,50.85
+77,TMO,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,73842301.99,183607017472.0,59.23
+78,ISRG,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,45100104.1,151089414144.0,48.24
+79,DHR,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,50559626.08,133351063552.0,60.89
+80,SYK,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,60684418.55,120379121664.0,55.67
+81,XOM,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,101145389.57,617224077312.0,52.91
+82,CVX,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,50746309.04,371950780416.0,54.52
+83,COP,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,48239137.16,142284554240.0,55.65
+84,SLB,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,40979965.16,83498967040.0,71.3
+85,EOG,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,22657398.39,73145876480.0,74.12
+86,MPC,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,28617875.08,75363442688.0,76.0
+87,VLO,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,32158095.34,75355594752.0,73.88
+88,OXY,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,38372061.24,56246591488.0,64.7
+89,DVN,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,39639733.31,50830475264.0,51.22
+90,HAL,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,26786932.78,33098459136.0,61.07
+91,SPY,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,1168969332.29,,60.79
+92,QQQ,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,621362448.87,,63.81
+93,DIA,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,44190627.48,,69.49
+94,IWM,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,377794067.63,,70.84
+95,SMH,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,249495096.18,,65.6
+96,SOXX,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,206331373.52,,69.7
+97,XLK,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,157095934.8,,64.04
+98,XLE,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,134953808.7,,56.55
+99,XLF,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,134590743.83,,77.9
+100,XLV,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,137280290.57,,73.04
+101,ARKK,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,40925870.05,,42.26
+102,IBIT,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,98452330.71,,25.38
+103,GLD,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,53686626.51,,25.01
+104,SLV,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,48560284.38,,17.37
+105,USO,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,979028265.32,,51.0
+106,TLT,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,96510944.72,,48.79
+107,HYG,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,219042421.94,,78.24
+108,UUP,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,62193038.95,,87.32
+109,VNQ,filtered_market_cap,market cap below minimum 1000000000 or unavailable,506,2026-06-09T04:00:00+00:00,alpaca,,20464840.327750005,,
+110,BTC-USD,ranked,ranked and included in full_ranking.csv,730,2026-06-10T00:00:00,yfinance,,2502558154112327.0,,24.89
+111,ETH-USD,ranked,ranked and included in full_ranking.csv,730,2026-06-10T00:00:00,yfinance,,32403425884223.34,,20.58
+112,RGTI,filtered_market_cap,market cap below minimum 1000000000 or unavailable,506,2026-06-09T04:00:00+00:00,alpaca,,40029188.6165,,
+113,QBTS,filtered_market_cap,market cap below minimum 1000000000 or unavailable,506,2026-06-09T04:00:00+00:00,alpaca,,43930897.242750004,,
+114,QUBT,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,377888304.07,2143710080.0,9.98
+115,IONQ,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,53126814.77,21160673280.0,33.85
+116,LITE,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,189666607.43,63932928000.0,39.74
+117,RKLB,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,62140526.96,67624136704.0,23.4
+118,ASTS,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,57391102.31,34430529536.0,21.4
+119,LUNR,filtered_liquidity,average dollar volume below minimum 20000000,506,2026-06-09T04:00:00+00:00,alpaca,,18861213.417000003,,
+120,TEM,filtered_market_cap,market cap below minimum 1000000000 or unavailable,497,2026-06-09T00:00:00,yfinance,,329642109.357296,,
+121,SOUN,filtered_liquidity,average dollar volume below minimum 20000000,506,2026-06-09T04:00:00+00:00,alpaca,,6995668.445,,
+122,HIMS,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,541461308.8,6707643904.0,34.69
+123,PL,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,590631254.1,11108775936.0,22.93
+124,SMCI,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,65121869.88,24441647104.0,43.96
+125,DELL,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,132972511.91,247992172544.0,51.67
+126,HPE,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,110637827.94,63919304704.0,58.18
+127,AI,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,79483861.46,1567692160.0,35.2
+128,PATH,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,505168814.92,5569792512.0,45.89
+129,BBAI,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,5682773.26475,,
+130,RXRX,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,2773524.6155000003,,
+131,SERV,filtered_market_cap,market cap below minimum 1000000000 or unavailable,501,2026-06-09T00:00:00,yfinance,,49437984.904470086,590526208.0,
+132,VRT,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,82851277.59,111207178240.0,49.95
+133,CEG,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,60616078.47,89864716288.0,34.37
+134,OKLO,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,998519831.91,9827011584.0,8.06
+135,NBIS,ranked,ranked and included in full_ranking.csv,409,2026-06-09T04:00:00+00:00,alpaca,,111517950.54,55888068608.0,41.67
+136,GTLB,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,225974271.87,5117669888.0,43.96
+137,ESTC,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,152802791.95,6417075200.0,56.06
+138,NET,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,44091922.37,83463987200.0,48.67
+139,HUBS,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,31488358.39,10119890944.0,29.44
+140,TEAM,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,26504498.58,24262744064.0,37.09
+141,DT,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,21780780.13,11883465728.0,52.91
+142,TOST,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,23586880.93,14499999744.0,44.54
+143,DUOL,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,158150947.19,5491464704.0,59.5
+144,TTD,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,425171248.6,9350455296.0,31.31
+145,SE,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,20438333.69,51981565952.0,40.37
+146,MELI,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,51535887.33,83202195456.0,40.65
+147,DASH,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,38244068.19,67828330496.0,40.69
+148,RBRK,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,320955988.62,14766140416.0,48.11
+149,ARQQ,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,11431970.261875343,,
+150,IBM,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,114645259.96,260808769536.0,60.51
+151,COHR,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,92281404.78,69635866624.0,51.68
+152,MKSI,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,21628613.99,21678962688.0,67.81
+153,HOOD,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,68994898.42,75435311104.0,53.84
+154,MARA,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,547023998.23,5074710528.0,33.36
+155,RIOT,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,23069926.59,9565335552.0,41.21
+156,CLSK,filtered_market_cap,market cap below minimum 1000000000 or unavailable,501,2026-06-09T00:00:00,yfinance,,401599705.38989323,,
+157,HUT,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,20569199.94,12683726848.0,41.72
+158,HIVE,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,4910228.3245,,
+159,BTBT,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,2193310.0337499995,,
+160,IREN,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,78317722.02,19305596928.0,39.48
+161,WULF,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,31591670.77,12536975360.0,44.82
+162,CORZ,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,24239379.06,8586081280.0,49.23
+163,CIFR,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,27344761.43,9422447616.0,32.53
+164,CAN,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,45726.618579999995,,
+165,BITB,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,71712731.15,,34.84
+166,FBTC,filtered_liquidity,average dollar volume below minimum 20000000,506,2026-06-09T04:00:00+00:00,alpaca,,6375322.167499999,,
+167,ARKB,filtered_liquidity,average dollar volume below minimum 20000000,506,2026-06-09T04:00:00+00:00,alpaca,,2365985.62475,,
+168,GBTC,filtered_liquidity,average dollar volume below minimum 20000000,506,2026-06-09T04:00:00+00:00,alpaca,,4404454.659999999,,
+169,ETHA,filtered_market_cap,market cap below minimum 1000000000 or unavailable,472,2026-06-09T04:00:00+00:00,alpaca,,22778456.838,,
+170,ETHE,filtered_market_cap,market cap below minimum 1000000000 or unavailable,501,2026-06-09T00:00:00,yfinance,,44262008.90936241,,
+171,BITO,filtered_market_cap,market cap below minimum 1000000000 or unavailable,506,2026-06-09T04:00:00+00:00,alpaca,,167520727.7605,,
+172,BLOK,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,28940429.44,,51.53
+173,BKCH,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,10733423.819829559,,
+174,SPIR,filtered_market_cap,market cap below minimum 1000000000 or unavailable,501,2026-06-09T00:00:00,yfinance,,34261267.786157325,629449792.0,
+175,IRDM,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,109408719.24,4768321024.0,47.57
+176,SATS,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,39078623.99,33841522688.0,30.1
+177,GSAT,filtered_market_cap,market cap below minimum 1000000000 or unavailable,501,2026-06-09T00:00:00,yfinance,,105030276.05183983,,
+178,NOC,filtered_market_cap,market cap below minimum 1000000000 or unavailable,506,2026-06-09T04:00:00+00:00,alpaca,,24086016.3495,,
+179,SPCE,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,7524633.88875,,
+180,BKSY,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,107912138.01,1174500608.0,11.75
+181,VSAT,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,205778836.92,8732219392.0,27.06
+182,TDY,filtered_market_cap,market cap below minimum 1000000000 or unavailable,501,2026-06-09T00:00:00,yfinance,,197392918.0196289,,
+183,HEI,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,255290270.42,45587582976.0,67.19
+184,GD,filtered_market_cap,market cap below minimum 1000000000 or unavailable,501,2026-06-09T00:00:00,yfinance,,327252735.105484,,
+185,HII,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,157287172.58,11723486208.0,45.12
+186,LHX,filtered_market_cap,market cap below minimum 1000000000 or unavailable,501,2026-06-09T00:00:00,yfinance,,332508937.8036957,,
+187,LDOS,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,163262750.97,15537019904.0,42.02
+188,KTOS,filtered_market_cap,market cap below minimum 1000000000 or unavailable,501,2026-06-09T00:00:00,yfinance,,291111825.619837,,
+189,AVAV,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,245532672.99,8932300800.0,23.4
+190,TXT,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,113637425.65,16222102528.0,72.15
+191,TDG,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,35227199.93,70321938432.0,65.47
+192,CW,filtered_market_cap,market cap below minimum 1000000000 or unavailable,501,2026-06-09T00:00:00,yfinance,,210071262.55203858,,
+193,BWXT,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,192087000.76,17311504384.0,50.16
+194,MRCY,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,67710998.13,6533910016.0,50.78
+195,HWM,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,26293410.15,102891642880.0,66.97
+196,SAIC,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,62979406.12,4822939648.0,68.45
+197,CACI,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,149754683.01,11598817280.0,51.62
+198,OSK,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,107298060.04,8269030400.0,44.12
+199,AXON,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,26281940.07,36473249792.0,47.1
+200,LOAR,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,41215732.97,6132402688.0,56.35
+201,CRSP,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,88407058.76,5069962752.0,27.45
+202,NTLA,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,81349455.57,1801020160.0,12.45
+203,EDIT,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,433062.34124999994,,
+204,BEAM,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,59517989.09,3134729728.0,39.18
+205,VRTX,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,23678080.9,113138843648.0,67.4
+206,REGN,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,58466298.05,64599715840.0,46.43
+207,MRNA,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,284746189.52,18938607616.0,27.59
+208,BNTX,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,84477989.9,21874487296.0,28.45
+209,GILD,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,39022232.32,155817017344.0,49.13
+210,BIIB,filtered_liquidity,average dollar volume below minimum 20000000,506,2026-06-09T04:00:00+00:00,alpaca,,10570611.215,,
+211,ALNY,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,301278470.5,39745359872.0,46.6
+212,SRPT,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,50577534.36,1677606272.0,26.66
+213,RARE,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,36200953.56,2244569600.0,26.37
+214,TGTX,filtered_market_cap,market cap below minimum 1000000000 or unavailable,501,2026-06-09T00:00:00,yfinance,,68350127.16000938,,
+215,EXEL,filtered_liquidity,average dollar volume below minimum 20000000,506,2026-06-09T04:00:00+00:00,alpaca,,6437416.196500001,,
+216,VKTX,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,58356424.07,3393767680.0,20.2
+217,NTRA,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,22083755.25,31911251968.0,50.01
+218,DNA,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,11143659.207630824,,
+219,TMDX,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,92869607.47,2567530240.0,35.72
+220,IOVA,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,2028413.77425,,
+221,AXSM,filtered_liquidity,average dollar volume below minimum 20000000,506,2026-06-09T04:00:00+00:00,alpaca,,8651617.298,,
+222,HALO,filtered_market_cap,market cap below minimum 1000000000 or unavailable,501,2026-06-09T00:00:00,yfinance,,136546189.14497834,,
+223,IMVT,filtered_liquidity,average dollar volume below minimum 20000000,506,2026-06-09T04:00:00+00:00,alpaca,,4545920.344249999,,
+224,LEGN,filtered_liquidity,average dollar volume below minimum 20000000,506,2026-06-09T04:00:00+00:00,alpaca,,5511374.059,,
+225,ARGX,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,23036107.89,55245553664.0,71.39
+226,PCVX,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,72348394.69,6769363456.0,30.35
+227,INCY,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,161743079.08,20623513600.0,79.82
+228,IONS,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,125433320.6,12325281792.0,43.69
+229,TWST,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,101110592.3,4362727936.0,42.37
+230,DNLI,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,35518213.53,3299575808.0,48.9
+231,BBIO,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,191539435.48,13255888896.0,44.61
+232,ACLX,ranked,ranked and included in full_ranking.csv,473,2026-04-29T00:00:00,yfinance,,166205573.24,6732325376.0,42.28
+233,VIR,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,14627579.63772049,,
+234,NVAX,filtered_market_cap,market cap below minimum 1000000000 or unavailable,501,2026-06-09T00:00:00,yfinance,,52500473.32354002,,
+235,APLS,filtered_liquidity,average dollar volume below minimum 20000000,488,2026-05-13T04:00:00+00:00,alpaca,,11432995.4615,,
+236,MDGL,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,138890630.83,10995013632.0,35.52
+237,RVMD,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,424113203.96,31793801216.0,42.43
+238,FOLD,ranked,ranked and included in full_ranking.csv,471,2026-04-27T00:00:00,yfinance,,38985381.23,4549870080.0,60.03
+239,BILL,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,106517897.78,3395252480.0,35.55
+240,AFRM,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,329780133.44,21805246464.0,53.28
+241,UPST,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,142073466.92,2972801280.0,43.73
+242,ROKU,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,263836100.51,17857650688.0,66.06
+243,FROG,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,191640086.09,9842189312.0,46.69
+244,CELH,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,305680160.99,7206501888.0,34.36
+245,ELF,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,248458332.42,3309054208.0,30.0
+246,CAVA,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,265990088.14,8884625408.0,38.6
+247,ONON,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,259959523.36,12749861888.0,56.13
+248,RIVN,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,22333127.98,21123289088.0,36.42
+249,LCID,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,89286047.33,2009822592.0,9.72
+250,GM,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,32600975.25,75523481600.0,68.76
+251,F,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,84692036.36,59571154944.0,50.73
+252,DKNG,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,302615554.2,13688194048.0,61.22
+253,PINS,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,27761283.59,12278648832.0,60.76
+254,SNAP,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,230045526.67,9263529984.0,32.83
+255,RDDT,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,35414700.48,34287785984.0,59.3
+256,SOFI,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,30268920.39,21126748160.0,47.52
+257,NU,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,54904616.83,57757483008.0,49.75
+258,FOUR,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,60863067.36,3777842432.0,26.79
+259,GLOB,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,82841470.63,1617938048.0,33.41
+260,MNDY,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,169787991.94,4290628608.0,51.54
+261,XYZ,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,427463149.16,40644911104.0,49.61
+262,FSLR,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,36341541.19,28173197312.0,58.94
+263,ENPH,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,21968118.48,7052522496.0,42.36
+264,WOLF,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,22275513.6,2357980160.0,24.83
+265,ACLS,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,83233351.73,5057877504.0,59.45
+266,AEHR,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,234524178.68,2966356224.0,28.84
+267,CAMT,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,97802750.64,7742378496.0,36.09
+268,SITM,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,24772631.66,17409236992.0,39.88
+269,ON,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,68315582.44,45489975296.0,57.85
+270,NXPI,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,49970585.69,75087421440.0,66.57
+271,MP,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,432406475.5,9666605056.0,16.57
+272,ALB,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,359182099.95,18019233792.0,38.91
+273,PYPL,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,26950177.44,36572090368.0,44.9
+274,DOCN,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,21366610.33,17567623168.0,51.55
+275,TENB,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,106709488.87,2943159040.0,49.9
+276,S,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,174421543.34,5204187136.0,31.3
+277,IOT,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,231234230.6,19590711296.0,51.64
+278,SMR,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,416193965.51,3461058048.0,3.12
+279,NNE,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,79920553.67,1247797760.0,13.48
+280,BE,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,83621317.67,73844465664.0,44.18
+281,FLNC,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,337454429.24,4323928576.0,24.16
+282,ARRY,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,47403452.68,1139084416.0,25.09
+283,RUN,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,119685414.13,3005721088.0,29.69
+284,NXT,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,22933045.7,18150901760.0,38.34
+285,BLDR,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,211799092.25,8340192768.0,41.0
+286,FIX,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,43805773.22,64441548800.0,59.3
+287,ONTO,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,348911873.97,13631229952.0,56.71
+288,LSCC,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,24711712.48,18846799872.0,63.24
+289,MTSI,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,33357780.38,27368820736.0,61.76
+290,POWI,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,111112308.27,4162840064.0,48.01
+291,RMBS,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,342810828.06,15878832128.0,50.79
+292,NVMI,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,231302908.98,16363951104.0,61.46
+293,SYNA,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,126079531.97,5056900096.0,48.1
+294,BIRK,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,132022827.08,8312553472.0,57.93
+295,KVYO,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,106748986.08,4423355392.0,22.7
+296,CART,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,160004937.9,9927659520.0,65.38
+297,CRAI,filtered_market_cap,market cap below minimum 1000000000 or unavailable,501,2026-06-09T00:00:00,yfinance,,21925809.654470824,959373376.0,
+298,RL,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,23816179.26,23280412672.0,78.68
+299,SFBS,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,15383190.482002258,,
+300,FBIZ,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,1802372.1611070633,,
+301,FANG,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,451297356.49,54642298880.0,63.79
+302,SUPN,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,27074204.63,2650093568.0,38.86
+303,AURE,filtered_liquidity,price below minimum 5.0,505,2026-06-08T04:00:00+00:00,alpaca,,9359.9465,,
+304,FWRG,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,15224721.13650465,,
+305,ADVB,filtered_liquidity,price below minimum 5.0,317,2026-06-09T04:00:00+00:00,alpaca,,1167.3095,,
+306,IQST,filtered_liquidity,price below minimum 5.0,269,2026-06-09T04:00:00+00:00,alpaca,,12032.427749999999,,
+307,TXNM,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,87696038.31,6396665344.0,47.42
+308,TTEK,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,109721196.62,7269286912.0,46.27
+309,KEX,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,77081963.83,7649703936.0,54.97
+310,PXED,provider_partial,missing or insufficient price history after fallback,167,2026-06-09T00:00:00,yfinance,,,,
+311,GCO,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,7393364.327768326,,
+312,SLGN,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,31774520.69,4089806848.0,46.79
+313,SJ,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,508.32349999999997,,
+314,FDBC,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,448968.636769104,,
+315,TPCS,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,867.42975,,
+316,SM,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,125473755.87,7451389952.0,52.26
+317,PKOH,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,2357041.013346863,,
+318,CHGG,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,81167.84315,,
+319,AOSL,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,46143147.02,1228010496.0,31.05
+320,A,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,329698450.66,38263877632.0,67.12
+321,SANG,filtered_liquidity,price below minimum 5.0,505,2026-06-08T04:00:00+00:00,alpaca,,372.81000000000006,,
+322,RACC,provider_partial,missing or insufficient price history after fallback,14,2026-06-09T00:00:00,yfinance,,,,
+323,OUT,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,57384838.62,5396346368.0,62.27
+324,AACI,filtered_liquidity,average dollar volume below minimum 20000000,505,2026-06-08T04:00:00+00:00,alpaca,,0.0,,
+325,FNWD,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,309603.2437759399,,
+326,AGEN,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,86696.01875000002,,
+327,ICLR,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,155813183.68,11624452096.0,50.12
+328,HOV,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,12544444.76361389,,
+329,TRNR,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,5334.906785,,
+330,MMYT,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,40902616.6,3892400896.0,23.69
+331,RCMT,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,2048958.6566207886,,
+332,BFST,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,5258921.382837772,,
+333,FDP,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,18506023.758053303,,
+334,BSVN,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,509218.79244384763,,
+335,AIFU,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,547.1270000000001,,
+336,YEXT,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,325626.37074999994,,
+337,RRX,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,185747888.03,14199289856.0,61.51
+338,BIPC,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,43910169.04,5065985536.0,47.08
+339,ACHR,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,347746054.04,4058441472.0,13.47
+340,EMAT,provider_partial,missing or insufficient price history after fallback,106,2026-06-09T00:00:00,yfinance,,,,
+341,TDC,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,74854759.63,3149527040.0,68.58
+342,PTLE,filtered_liquidity,fallback average dollar volume below minimum 20000000,412,2026-06-09T00:00:00,yfinance,,96463.75774269104,,
+343,MTB,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,205880217.07,33013108736.0,80.34
+344,ELTK,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,104997.02511167526,,
+345,TNET,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,19291565.256227873,,
+346,DYOR,provider_partial,missing or insufficient price history after fallback,139,2026-06-09T00:00:00,yfinance,,,,
+347,HMH,provider_partial,missing or insufficient price history after fallback,48,2026-06-09T00:00:00,yfinance,,,,
+348,IMRX,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,525604.78825,,
+349,MIND,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,631838.6553002119,,
+350,SPHL,filtered_liquidity,price below minimum 5.0,411,2026-06-09T04:00:00+00:00,alpaca,,38948.195,,
+351,PFG,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,112431055.92,23039881216.0,80.04
+352,RMIX,filtered_liquidity,average dollar volume below minimum 20000000,506,2026-06-09T04:00:00+00:00,alpaca,,305189.91524999996,,
+353,IVR,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,17792884.25291753,,
+354,FCEL,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,267445948.04,1182466944.0,31.99
+355,BENF,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,671.86075,,
+356,HTLD,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,9053348.08942337,,
+357,LUD,filtered_liquidity,price below minimum 5.0,321,2026-06-08T04:00:00+00:00,alpaca,,3529.77425,,
+358,BCSS,provider_partial,missing or insufficient price history after fallback,137,2026-06-09T00:00:00,yfinance,,,,
+359,BBCQ,provider_partial,missing or insufficient price history after fallback,92,2026-06-09T00:00:00,yfinance,,,,
+360,HIT,filtered_liquidity,price below minimum 5.0,364,2026-06-09T04:00:00+00:00,alpaca,,4116.282,,
+361,GRMN,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,171859987.68,45870850048.0,58.27
+362,BEEP,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,2154.384,,
+363,WING,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,177297014.64,3917675008.0,36.73
+364,PPLI,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,48508484.66,3140640256.0,61.3
+365,ZKIN,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,383.276,,
+366,OPK,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,214380.2225,,
+367,ONB,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,69151095.96,9381136384.0,80.76
+368,RXT,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,3320629.6285,,
+369,TRAX,provider_partial,missing or insufficient price history after fallback,46,2026-06-09T00:00:00,yfinance,,,,
+370,ASAN,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,50591116.61,1789719424.0,36.29
+371,PBM,filtered_liquidity,price below minimum 5.0,505,2026-06-08T04:00:00+00:00,alpaca,,1868.3005,,
+372,IMO,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,72538123.97,59161378816.0,48.17
+373,OPXS,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,568067.8811611176,,
+374,HLX,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,14655140.031572914,,
+375,SKYW,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,32089281.95,3481379328.0,51.72
+376,TSBK,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,1033067.5391344071,,
+377,MTVA,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,151631.6745,,
+378,SCZM,filtered_liquidity,average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,4636352.333536601,,
+379,MXC,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,103072.88602528573,,
+380,NGVT,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,15798139.439879227,,
+381,DKS,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,22892907.05,19652966400.0,66.13
+382,UNCY,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,5731180.670740008,,
+383,MNTK,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,16918.501750000003,,
+384,BJ,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,243541577.81,11437411328.0,43.46
+385,WHG,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,221156.32233467101,,
+386,QURE,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,43708712.72,1668765568.0,23.95
+387,DGICB,filtered_liquidity,fallback average dollar volume below minimum 20000000,500,2026-06-08T00:00:00,yfinance,,9778.450031280518,,
+388,ASIC,filtered_liquidity,fallback average dollar volume below minimum 20000000,250,2026-06-09T00:00:00,yfinance,,1321452.1904755593,,
+389,CINF,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,101098566.7,25342328832.0,65.44
+390,BZAI,filtered_liquidity,price below minimum 5.0,352,2026-06-09T04:00:00+00:00,alpaca,,367853.8615,,
+391,OPTH,provider_partial,missing or insufficient price history after fallback,14,2026-06-09T00:00:00,yfinance,,,,
+392,TCBK,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,5543349.15124321,,
+393,NOG,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,64152849.64,2256183296.0,33.34
+394,BCHT,filtered_liquidity,price below minimum 5.0,501,2026-06-09T00:00:00,yfinance,,237481.02977277042,,
+395,COPL,filtered_liquidity,fallback average dollar volume below minimum 20000000,257,2026-06-09T00:00:00,yfinance,,237731.7975215912,,
+396,STRL,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,33607149.23,25837881344.0,53.03
+397,BKTI,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,3751054.0681030275,,
+398,IBN,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,193449191.05,94260805632.0,55.24
+399,TRMB,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,162102045.19,12343255040.0,46.26
+400,PCRX,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,10319039.852703094,,
+401,UBS,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,107511500.02,156875751424.0,77.13
+402,ALM,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,92251656.96,4531357696.0,16.27
+403,GRC,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,8314293.939418793,,
+404,SSBI,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,59423.888041973114,,
+405,BKKT,filtered_market_cap,market cap below minimum 1000000000 or unavailable,501,2026-06-09T00:00:00,yfinance,,24896968.14796567,344243296.0,
+406,VACI,provider_partial,missing or insufficient price history after fallback,137,2026-06-09T00:00:00,yfinance,,,,
+407,ELVN,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,32839823.61,2199277568.0,31.27
+408,WYNN,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,140808575.59,11150845952.0,66.03
+409,RAVE,filtered_liquidity,price below minimum 5.0,505,2026-06-08T04:00:00+00:00,alpaca,,6251.6085,,
+410,MAGN,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,3920716.561074448,,
+411,CWAN,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,60958852.63,7268189696.0,64.7
+412,CLBR,filtered_liquidity,average dollar volume below minimum 20000000,505,2026-06-08T04:00:00+00:00,alpaca,,1150.9379999999999,,
+413,MGRC,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,17236773.652648926,,
+414,ICUI,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,40316332.28,3549089024.0,65.97
+415,IKT,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,89102.88225,,
+416,LAWR,filtered_liquidity,price below minimum 5.0,225,2026-06-08T04:00:00+00:00,alpaca,,0.0,,
+417,BRUN,ranked,ranked and included in full_ranking.csv,361,2026-06-09T00:00:00,yfinance,,73036769.68,1790645760.0,37.67
+418,EQT,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,22402571.14,32956436480.0,53.57
+419,LTH,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,87174677.14,7261301248.0,68.37
+420,DLX,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,11157086.52010994,,
+421,BATRA,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,2390925.2111915587,,
+422,COR,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,29699322.67,54393434112.0,47.77
+423,DG,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,26197799.86,24127766528.0,46.92
+424,INTJ,filtered_liquidity,fallback price below minimum 5.0,501,2026-06-09T00:00:00,yfinance,,26301.809865951538,,
+425,SI,provider_partial,missing or insufficient price history after fallback,216,2026-06-09T00:00:00,yfinance,,,,
+426,WBUY,filtered_liquidity,price below minimum 5.0,273,2026-06-09T04:00:00+00:00,alpaca,,909.69722,,
+427,CRVS,filtered_market_cap,market cap below minimum 1000000000 or unavailable,501,2026-06-09T00:00:00,yfinance,,23953469.728811644,939290048.0,
+428,NN,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,61527837.38,2847439104.0,34.81
+429,CELC,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,188684864.12,4515270656.0,15.16
+430,AKA,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,61061.86011295319,,
+431,TECH,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,150111817.59,8518905856.0,58.07
+432,SUMA,provider_partial,missing or insufficient price history after fallback,36,2026-06-09T00:00:00,yfinance,,,,
+433,DTIL,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,2612223.502076745,,
+434,HBAN,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,21083902.74,34096336896.0,71.52
+435,EXPD,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,187442176.27,21755797504.0,77.24
+436,FVR,filtered_liquidity,fallback average dollar volume below minimum 20000000,422,2026-06-09T00:00:00,yfinance,,2337804.6012607575,,
+437,HLT,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,25361052.73,77985505280.0,76.64
+438,CVM,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,16358.486500000003,,
+439,RHLD,ranked,ranked and included in full_ranking.csv,325,2026-06-09T00:00:00,yfinance,,21495397.0,1008481344.0,31.99
+440,KINS,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,1776558.2398222922,,
+441,INGM,ranked,ranked and included in full_ranking.csv,406,2026-06-09T00:00:00,yfinance,,34511265.0,6712851456.0,70.49
+442,BGMS,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,20915.705625000002,,
+443,IGC,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,840.3571300000001,,
+444,UTI,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,69018012.35,2162810880.0,54.73
+445,IBAC,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,64803.505755519865,,
+446,AORT,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,16421634.185853291,,
+447,HIPO,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,3088331.502893448,,
+448,SBC,filtered_liquidity,price below minimum 5.0,504,2026-06-09T04:00:00+00:00,alpaca,,18768.973000000005,,
+449,RCKT,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,331506.824,,
+450,CLWT,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,240.14175,,
+451,DSP,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,3491848.604089546,,
+452,WSR,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,9029629.154208755,,
+453,RYAM,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,7969208.339023972,,
+454,MLYS,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,50713503.73,2131672064.0,15.9
+455,SDGR,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,18969023.28180809,,
+456,CBNA,filtered_liquidity,fallback average dollar volume below minimum 20000000,420,2026-06-09T00:00:00,yfinance,,195955.19314746856,,
+457,LXU,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,12269843.797122383,,
+458,TROX,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,23411072.08,1129430528.0,18.19
+459,USAR,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,448364275.69,5113377792.0,9.4
+460,CHD,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,192331660.14,22990637056.0,69.19
+461,MRP,ranked,ranked and included in full_ranking.csv,337,2026-06-09T00:00:00,yfinance,,43638279.03,4865203712.0,60.97
+462,ASB,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,45109072.05,5363353600.0,80.34
+463,GNW,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,22295496.85,3336010496.0,56.07
+464,HUMA,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,235811.979965,,
+465,WELL,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,32150618.53,145961926656.0,53.3
+466,UTSI,filtered_liquidity,price below minimum 5.0,505,2026-06-08T04:00:00+00:00,alpaca,,157.1595,,
+467,CNVS,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,5189.755500000001,,
+468,WMG,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,90649560.57,15314631680.0,53.22
+469,AGBK,provider_partial,missing or insufficient price history after fallback,82,2026-06-09T00:00:00,yfinance,,,,
+470,ELAN,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,156528072.74,12236514304.0,53.92
+471,LH,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,144381307.1,22241679360.0,70.67
+472,GIW,provider_partial,missing or insufficient price history after fallback,155,2026-06-09T00:00:00,yfinance,,,,
+473,IQV,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,20215544.4,31085125632.0,61.9
+474,JOB,filtered_liquidity,price below minimum 5.0,505,2026-06-08T04:00:00+00:00,alpaca,,262.1659250000001,,
+475,LXRX,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,250858.94249999998,,
+476,GTM,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,3185828.09875,,
+477,BOLT,filtered_liquidity,price below minimum 5.0,505,2026-06-08T04:00:00+00:00,alpaca,,1353.57,,
+478,RGEN,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,142051155.46,7340339712.0,59.13
+479,GLXY,ranked,ranked and included in full_ranking.csv,267,2026-06-09T00:00:00,yfinance,,186648746.44,12741935104.0,40.39
+480,IAG,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,88686690.38,8924319744.0,36.56
+481,MANH,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,83449876.61,8669979648.0,61.3
+482,WAY,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,45720574.14,3677053184.0,39.35
+483,CRI,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,32008971.59,1466634624.0,66.29
+484,COF,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,49109626.79,114097389568.0,46.03
+485,KR,ranked,ranked and included in full_ranking.csv,506,2026-06-09T04:00:00+00:00,alpaca,,21212896.14,38837157888.0,48.28
+486,CSAN,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,580600.73225,,
+487,CHDN,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,67449521.21,6190479872.0,50.66
+488,MGLD,filtered_liquidity,price below minimum 5.0,505,2026-06-08T04:00:00+00:00,alpaca,,58.237,,
+489,BNL,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,33562426.44,4189310208.0,78.08
+490,MUR,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,62923824.06,5537593856.0,62.83
+491,AMRZ,ranked,ranked and included in full_ranking.csv,243,2026-06-09T00:00:00,yfinance,,180325565.6,29165844480.0,49.13
+492,SAIA,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,171136771.16,12750301184.0,72.62
+493,ACGC,provider_partial,missing or insufficient price history after fallback,9,2026-06-09T00:00:00,yfinance,,,,
+494,WBTN,filtered_liquidity,fallback average dollar volume below minimum 20000000,489,2026-06-09T00:00:00,yfinance,,4707724.537733364,,
+495,CTGO,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,9176728.854138708,,
+496,DCH,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,26450842.36,1495410432.0,31.86
+497,CAQ,provider_partial,missing or insufficient price history after fallback,50,2026-06-09T00:00:00,yfinance,,,,
+498,PTGX,ranked,ranked and included in full_ranking.csv,501,2026-06-09T00:00:00,yfinance,,56273346.62,6808645120.0,64.63
+499,FPH,filtered_liquidity,fallback average dollar volume below minimum 20000000,501,2026-06-09T00:00:00,yfinance,,956826.3970552444,,
+500,JYD,filtered_liquidity,price below minimum 5.0,506,2026-06-09T04:00:00+00:00,alpaca,,10473.05377,,

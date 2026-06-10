@@ -1,0 +1,121 @@
+ Container market-alpha-scanner-market-alpha-postgres-1 Running 
+ Container market-alpha-scanner-market-alpha-postgres-1 Waiting 
+ Container market-alpha-scanner-market-alpha-postgres-1 Healthy 
+ Container market-alpha-scanner-market-alpha-scanner-job-run-616a043654a2 Creating 
+ Container market-alpha-scanner-market-alpha-scanner-job-run-616a043654a2 Created 
+[mode] FULL mode enabled
+[universe] selected 500 symbols
+[scanner] lock acquired
+[1/5] Downloading price history for 500 symbols...
+[perf] price_history_download took 84.7s
+[2/5] Downloading macro proxies...
+[event] verified context available=True cache=hit sources=PR Newswire,MarketWatch
+[perf] macro_download took 2.8s
+[3/5] Scoring symbols...
+    scored 15/500...
+    scored 30/500...
+    scored 45/500...
+    scored 60/500...
+    scored 75/500...
+    scored 90/500...
+    scored 105/500...
+    scored 135/500...
+    scored 150/500...
+    scored 165/500...
+    scored 180/500...
+    scored 195/500...
+    scored 210/500...
+    scored 225/500...
+    scored 240/500...
+    scored 255/500...
+    scored 270/500...
+    scored 285/500...
+    scored 330/500...
+    scored 375/500...
+    scored 435/500...
+    scored 465/500...
+    scored 480/500...
+[cache] fundamentals hits=369 misses=0
+[perf] scoring took 195.1s
+[4/5] Enriching top names with headline / event context...
+[cache] news hits=0 misses=26
+[perf] headline_news_enrichment took 6.7s
+[5/5] Building ranking table...
+[scanner] accounting: selected=500 accounted=500 ranked=346 unknown=0 report=/app/scanner_output/phase35c1_full_analysis/scanner_drop_reasons.csv
+[perf] ranking_table_build took 2.3s
+[analysis] market structure written: breadth=MIXED, leadership=BALANCED, strong_signals=66
+[perf] csv_writes took 2.9s
+
+TOP CANDIDATES (final_decision source of truth)
+symbol asset_type             sector   price  score decision setup_type  confidence  data_quality                                                        reason
+   UUP   FX_PROXY          US Dollar   28.01  87.32    AVOID      AVOID       53.71          95.0 Poor risk/reward or overextended in current market conditions
+   BAC     EQUITY Financial Services   54.39  83.52    AVOID      AVOID       61.67         100.0 Poor risk/reward or overextended in current market conditions
+   ONB     EQUITY Financial Services   24.28  80.76    AVOID      AVOID       77.67          95.0 Poor risk/reward or overextended in current market conditions
+   MTB     EQUITY Financial Services  225.43  80.58    AVOID      AVOID       61.82          95.0 Poor risk/reward or overextended in current market conditions
+   ASB     EQUITY Financial Services   28.39  80.34    AVOID      AVOID       71.82          95.0 Poor risk/reward or overextended in current market conditions
+  INCY     EQUITY         Healthcare  103.23  80.12    AVOID      AVOID       59.22          95.0 Poor risk/reward or overextended in current market conditions
+    RL     EQUITY  Consumer Cyclical  390.99  80.06    AVOID      AVOID       53.82         100.0 Poor risk/reward or overextended in current market conditions
+   PFG     EQUITY Financial Services  106.66  80.04    AVOID      AVOID       61.82          95.0 Poor risk/reward or overextended in current market conditions
+  ASML     EQUITY         Technology 1778.47  79.46    AVOID      AVOID       58.72         100.0 Poor risk/reward or overextended in current market conditions
+   TSM     EQUITY         Technology  427.91  79.35    AVOID      AVOID       69.20         100.0 Poor risk/reward or overextended in current market conditions
+    MS     EQUITY Financial Services  210.30  79.15    AVOID      AVOID       77.22         100.0 Poor risk/reward or overextended in current market conditions
+   HYG BOND_PROXY  High Yield Credit   79.62  78.24    AVOID      AVOID       45.71         100.0 Poor risk/reward or overextended in current market conditions
+   BNL     EQUITY        Real Estate   20.94  78.08    AVOID      AVOID       61.82          95.0 Poor risk/reward or overextended in current market conditions
+   LLY     EQUITY         Healthcare 1143.94  77.95    AVOID      AVOID       59.22         100.0 Poor risk/reward or overextended in current market conditions
+   XLF        ETF Financial Services   52.47  77.90    AVOID      AVOID       59.71         100.0 Poor risk/reward or overextended in current market conditions
+    GS     EQUITY Financial Services 1032.31  77.28    AVOID      AVOID       77.82         100.0 Poor risk/reward or overextended in current market conditions
+  EXPD     EQUITY        Industrials  166.34  76.84    AVOID      AVOID       69.13          95.0 Poor risk/reward or overextended in current market conditions
+   MPC     EQUITY             Energy  258.19  76.70    AVOID      AVOID       67.78         100.0 Poor risk/reward or overextended in current market conditions
+   HLT     EQUITY  Consumer Cyclical  342.66  76.64    AVOID      AVOID       53.22         100.0 Poor risk/reward or overextended in current market conditions
+   UBS     EQUITY Financial Services   47.86  76.32    AVOID      AVOID       77.59          95.0 Poor risk/reward or overextended in current market conditions
+
+Saved full ranking to: /app/scanner_output/phase35c1_full_analysis/full_ranking.csv
+Saved top 20 to: /app/scanner_output/phase35c1_full_analysis/top_candidates.csv
+Saved scan snapshot to: /app/scanner_output/phase35c1_full_analysis/history/scan_20260610_011835.csv
+Wrote database rows: scan_runs=1, scanner_signals=346
+[scanner] accounting: selected=500 accounted=500 ranked=346 unknown=0 report=/app/scanner_output/phase35c1_full_analysis/scanner_drop_reasons.csv
+[analysis] starting forward-return analysis
+[analysis] market structure written: breadth=MIXED, leadership=BALANCED, strong_signals=66
+[analysis] canonical signal sampling enabled
+[analysis] input signal rows: 346
+[analysis] canonical signal rows: 346
+[analysis] canonical sampling enabled
+[analysis] raw observations: 0
+[analysis] canonical observations: 0
+[analysis] Analysis complete, but no completed forward-return windows yet.
+
+[analysis] No completed forward-return observations yet.
+[analysis] signal lifecycle rows: 301
+[analysis] signal lifecycle summary rows: 58
+[analysis] calibration insights written: 0 rows
+[analysis] auto calibration recommendations written: 0 rows
+
+=== PERFORMANCE BY RATING ===
+No completed forward-return observations yet.
+
+=== PERFORMANCE BY SETUP ===
+No completed forward-return observations yet.
+
+=== PERFORMANCE BY ASSET TYPE ===
+No completed forward-return observations yet.
+
+=== PERFORMANCE BY SCORE BUCKET ===
+No completed forward-return observations yet.
+
+[analysis] snapshots loaded: 1
+[analysis] observations created: 0
+[analysis] horizons completed: none
+[analysis] summary rows written: 0
+
+Saved performance summary to: /app/scanner_output/phase35c1_full_analysis/analysis/performance_summary.csv
+Wrote analysis database rows: performance_summary=0, forward_returns=0
+[perf] analysis took 4.9s
+
+Important:
+- This is a ranking engine, not financial advice or a prediction guarantee.
+- Headline and macro layers are intentionally simple and can be wrong.
+- AVWAP uses objective anchors (YTD and recent swing low) rather than hand-picked discretionary anchors.
+- VPVR is intentionally not included because Yahoo daily bars are not reliable enough for it.
+- Historical evaluation is useful, but it is not survivorship-free or point-in-time perfect.
+[scanner] lock released
+[perf] total_runtime took 317.0s
