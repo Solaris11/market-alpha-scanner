@@ -12,6 +12,7 @@ import pandas as pd
 
 
 RUN_LOCK_FILENAME = "run.lock"
+RUN_LOCK_ENV = "TRADEVETO_SCANNER_LOCK_PATH"
 LOCK_STALE_AFTER = timedelta(minutes=30)
 DATA_STALE_AFTER = timedelta(minutes=60)
 REQUIRED_RANKING_COLUMNS = ("symbol", "price", "final_score", "rating", "action")
@@ -110,10 +111,24 @@ def _read_lock(lock_path: Path) -> dict[str, object]:
     return payload if isinstance(payload, dict) else {}
 
 
+def scanner_lock_path(outdir: Path) -> Path:
+    configured = os.getenv(RUN_LOCK_ENV)
+    if configured:
+        return Path(configured)
+
+    resolved = outdir.resolve(strict=False)
+    candidates = (resolved, *resolved.parents)
+    for candidate in candidates:
+        if candidate.name == "scanner_output":
+            return candidate / RUN_LOCK_FILENAME
+    return outdir / RUN_LOCK_FILENAME
+
+
 @contextmanager
 def scanner_run_lock(outdir: Path) -> Iterator[bool]:
     outdir.mkdir(parents=True, exist_ok=True)
-    lock_path = outdir / RUN_LOCK_FILENAME
+    lock_path = scanner_lock_path(outdir)
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
     acquired = False
 
     if lock_path.exists():
