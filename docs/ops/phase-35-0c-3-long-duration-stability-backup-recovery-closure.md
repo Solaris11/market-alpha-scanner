@@ -80,6 +80,8 @@ Production checks:
 | Hardened single-concurrency R2 helper upload | Failed: one-hour timeout before Postgres object verification |
 | Orphan backup process check after timeout | Pass, no backup/rclone/helper process remained |
 | Production health after timeout | HTTP 200; app/db/scanner ok; backup remains warn/partial |
+| Latest local restore drill | Pass; temporary DB restored and scanner archive extracted |
+| Post-restore production smoke | Pass for health plus 10 primary routes |
 
 Validation:
 
@@ -132,11 +134,41 @@ Required proof still pending after deployment:
 1. Run current-artifact backup with R2 helper.
 2. Verify local Postgres gzip and scanner tar.
 3. Verify current Postgres and scanner objects exist in R2.
-4. Run local restore drill into temporary DB.
-5. Download the current R2 Postgres and scanner artifacts into a temporary
+4. Download the current R2 Postgres and scanner artifacts into a temporary
    restore directory.
-6. Run restore drill against the R2-downloaded artifacts.
-7. Run production smoke after restore tests.
+5. Run restore drill against the R2-downloaded artifacts.
+6. Run production smoke after restore tests.
+
+Completed local restore proof:
+
+- Latest local Postgres backup: `2026-06-10_02-00.sql.gz`
+- Latest local scanner backup: `2026-06-10_02-04.tar.gz`
+- Public tables restored: `79`
+- `scanner_signals` rows restored: `537728`
+- `market_memory_snapshots` rows restored: `537728`
+- Scanner artifact files extracted: `10171`
+- Ranking files extracted: `4`
+- Analysis files extracted: `22`
+- RTO estimate: `244` seconds
+- RPO estimate: Postgres `102` minutes, scanner `101` minutes
+- Result: `BACKUP RESTORE DRILL PASSED`
+
+Post-restore smoke:
+
+| Route | Status |
+| --- | ---: |
+| `/api/health` | 200 |
+| `/api/health/deep` | 200, backup warn/partial |
+| `/` | 200 |
+| `/terminal` | 200 |
+| `/discover` | 200 |
+| `/scanner` | 200 |
+| `/symbol/AMD` | 200 |
+| `/history` | 200 |
+| `/performance` | 200 |
+| `/feed` | 200 |
+| `/alerts` | 200 |
+| `/account` | 200 |
 
 ## Recovery Test Plan
 
@@ -156,7 +188,7 @@ Required proof still pending:
 | Critical | 24h memory/container observation | Running, not elapsed |
 | High | 6h observation report | Not elapsed |
 | High | R2 current backup run with large artifacts | Failed after one-hour timeout; latest R2 listing still stops at older `2026-06-05_06-00.sql.gz` Postgres backup |
-| High | Restore from local latest backup | Pending |
+| High | Restore from local latest backup | Passed |
 | High | Restore from R2-downloaded backup | Pending |
 | High | Container restart/recovery proof | Pending |
 
