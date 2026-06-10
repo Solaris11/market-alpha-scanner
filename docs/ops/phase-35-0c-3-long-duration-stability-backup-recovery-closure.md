@@ -76,6 +76,7 @@ Production checks:
 | Root `rclone lsf` to R2 | Pass |
 | Root disposable helper upload/list/delete | Pass |
 | First full post-deploy R2 run | Failed on the prior 900s bound before completion |
+| Direct large-artifact R2 helper upload | Failed with `SSLEOFError` during multipart upload |
 
 Validation:
 
@@ -144,7 +145,7 @@ Required proof still pending:
 | --- | --- | --- |
 | Critical | 24h memory/container observation | Not elapsed |
 | High | 6h observation report | Not elapsed |
-| High | R2 current backup run with large artifacts | Pending rerun with one-hour R2 bound |
+| High | R2 current backup run with large artifacts | Pending rerun with one-hour R2 bound and single-concurrency multipart upload |
 | High | Restore from local latest backup | Pending |
 | High | Restore from R2-downloaded backup | Pending |
 | High | Container restart/recovery proof | Pending |

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Mapping, Protocol, Sequence
 
 import boto3
+from boto3.s3.transfer import TransferConfig
 from botocore.config import Config
 
 
@@ -23,7 +24,7 @@ class RemoteTarget:
 
 
 class S3Client(Protocol):
-    def upload_file(self, Filename: str, Bucket: str, Key: str) -> None:
+    def upload_file(self, Filename: str, Bucket: str, Key: str, Config: object | None = None) -> None:
         ...
 
     def head_object(self, Bucket: str, Key: str) -> Mapping[str, object]:
@@ -66,7 +67,12 @@ def build_client(settings: Mapping[str, str]) -> S3Client:
         aws_access_key_id=access_key,
         aws_secret_access_key=secret_key,
         region_name=region,
-        config=Config(signature_version="s3v4"),
+        config=Config(
+            signature_version="s3v4",
+            retries={"max_attempts": 10, "mode": "standard"},
+            connect_timeout=20,
+            read_timeout=300,
+        ),
     )
 
 
@@ -88,7 +94,13 @@ def object_size(client: S3Client, bucket: str, key: str) -> int | None:
     return int(value) if isinstance(value, int) else None
 
 
-def sync_object(client: S3Client, bucket: str, local_path: Path, key: str) -> Mapping[str, object]:
+def sync_object(
+    client: S3Client,
+    bucket: str,
+    local_path: Path,
+    key: str,
+    transfer_config: object,
+) -> Mapping[str, object]:
     if not local_path.is_file():
         raise FileNotFoundError(f"local backup file not found: {local_path}")
     local_size = local_path.stat().st_size
@@ -101,7 +113,20 @@ def sync_object(client: S3Client, bucket: str, local_path: Path, key: str) -> Ma
             "local_path": str(local_path),
             "status": "already_present",
         }
-    client.upload_file(str(local_path), Bucket=bucket, Key=key)
+    print(
+        json.dumps(
+            {
+                "bucket": bucket,
+                "bytes": local_size,
+                "key": key,
+                "local_path": str(local_path),
+                "status": "uploading",
+            },
+            sort_keys=True,
+        ),
+        flush=True,
+    )
+    client.upload_file(str(local_path), Bucket=bucket, Key=key, Config=transfer_config)
     verified_size = object_size(client, bucket, key)
     if verified_size != local_size:
         raise RuntimeError(f"R2 object size mismatch for {key}: local={local_size} remote={verified_size}")
@@ -131,7 +156,27 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
         required=True,
         help="Local file and remote key under the R2 bucket or configured prefix. Repeat for multiple files.",
     )
+    parser.add_argument(
+        "--max-concurrency",
+        default=os.environ.get("TRADEVETO_R2_MAX_CONCURRENCY", "1"),
+        help="S3 multipart upload concurrency. Default: 1 for stable R2 backup uploads.",
+    )
+    parser.add_argument(
+        "--multipart-chunk-mb",
+        default=os.environ.get("TRADEVETO_R2_MULTIPART_CHUNK_MB", "64"),
+        help="Multipart chunk size in MiB. Default: 64.",
+    )
     return parser.parse_args(argv)
+
+
+def positive_int(value: object, label: str) -> int:
+    try:
+        parsed = int(str(value))
+    except ValueError as exc:
+        raise ValueError(f"{label} must be an integer") from exc
+    if parsed <= 0:
+        raise ValueError(f"{label} must be positive")
+    return parsed
 
 
 def main(argv: Sequence[str]) -> int:
@@ -142,12 +187,21 @@ def main(argv: Sequence[str]) -> int:
     if provider != "cloudflare":
         raise ValueError(f"remote {target.remote_name} is not configured as Cloudflare R2")
     client = build_client(settings)
+    max_concurrency = positive_int(args.max_concurrency, "max concurrency")
+    chunk_mb = positive_int(args.multipart_chunk_mb, "multipart chunk MiB")
+    chunk_bytes = chunk_mb * 1024 * 1024
+    transfer_config = TransferConfig(
+        multipart_threshold=chunk_bytes,
+        multipart_chunksize=chunk_bytes,
+        max_concurrency=max_concurrency,
+        use_threads=max_concurrency > 1,
+    )
 
     results: list[Mapping[str, object]] = []
     for local_value, key_value in args.objects:
         local_path = Path(str(local_value))
         key = object_key(target, str(key_value))
-        result = sync_object(client, target.bucket, local_path, key)
+        result = sync_object(client, target.bucket, local_path, key, transfer_config)
         results.append(result)
         print(json.dumps(result, sort_keys=True), flush=True)
 
