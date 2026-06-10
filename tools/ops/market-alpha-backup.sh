@@ -41,6 +41,7 @@ BACKUP_ENV_OVERRIDE_NAMES=(
   MARKET_ALPHA_BACKUP_RCLONE_COPY_ATTEMPTS
   MARKET_ALPHA_BACKUP_RCLONE_COPY_BACKOFF_SECONDS
   MARKET_ALPHA_BACKUP_R2_SYNC_SCRIPT
+  MARKET_ALPHA_BACKUP_R2_SYNC_TIMEOUT_SECONDS
 )
 declare -A BACKUP_ENV_OVERRIDES=()
 
@@ -207,6 +208,7 @@ RCLONE_STATS_INTERVAL="${MARKET_ALPHA_BACKUP_RCLONE_STATS_INTERVAL:-30s}"
 RCLONE_COPY_ATTEMPTS="${MARKET_ALPHA_BACKUP_RCLONE_COPY_ATTEMPTS:-3}"
 RCLONE_COPY_BACKOFF_SECONDS="${MARKET_ALPHA_BACKUP_RCLONE_COPY_BACKOFF_SECONDS:-45}"
 R2_SYNC_SCRIPT="${MARKET_ALPHA_BACKUP_R2_SYNC_SCRIPT:-}"
+R2_SYNC_TIMEOUT_SECONDS="${MARKET_ALPHA_BACKUP_R2_SYNC_TIMEOUT_SECONDS:-3600}"
 apply_operator_override_aliases
 
 if [[ -z "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE" ]]; then
@@ -354,7 +356,7 @@ sync_current_artifacts_to_r2() {
   run_bounded_retry \
     "$RCLONE_COPY_ATTEMPTS" \
     "$RCLONE_COPY_BACKOFF_SECONDS" \
-    "$RCLONE_COPY_TIMEOUT_SECONDS" \
+    "$R2_SYNC_TIMEOUT_SECONDS" \
     python3 "$script" \
       --remote "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE" \
       --object "$PG_FILE" "postgres/$(basename "$PG_FILE")" \
@@ -442,7 +444,11 @@ write_monitoring_event "info" "local_backup_ok" "local backup completed" "$LOCAL
 
 if [[ -n "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE" ]]; then
   command -v rclone >/dev/null 2>&1 || fail "rclone is not installed"
-  log "Syncing backups to primary offsite provider=${MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER} with bounded timeout=${RCLONE_COPY_TIMEOUT_SECONDS}s attempts=${RCLONE_COPY_ATTEMPTS}"
+  if [[ "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" == "r2" ]]; then
+    log "Syncing backups to primary offsite provider=${MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER} with bounded timeout=${R2_SYNC_TIMEOUT_SECONDS}s attempts=${RCLONE_COPY_ATTEMPTS}"
+  else
+    log "Syncing backups to primary offsite provider=${MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER} with bounded timeout=${RCLONE_COPY_TIMEOUT_SECONDS}s attempts=${RCLONE_COPY_ATTEMPTS}"
+  fi
   if [[ "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" == "r2" ]]; then
     START_METADATA="$(metadata_json "backup_r2_started" "started" "$PG_FILE" "$SCANNER_FILE" 0 0 "$(duration_seconds)" "" "$MARKET_ALPHA_BACKUP_PRIMARY_PROVIDER" "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE")"
     write_monitoring_event "info" "backup_r2_started" "R2 backup sync started" "$START_METADATA"

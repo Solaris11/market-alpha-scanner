@@ -51,6 +51,8 @@ Postgres and scanner artifacts on the hot scheduled path.
   - Prints JSON summaries without secret values.
 - Updated `tools/ops/market-alpha-backup.sh`.
   - R2 provider now uses the boto3 current-artifact helper.
+  - R2 helper uploads use a separate one-hour bound because current compressed
+    Postgres plus scanner artifacts are roughly 1 GB.
   - Non-R2 providers still use the existing bounded rclone copy path.
   - Existing monitoring event classifications remain unchanged.
 - Added `tools/ops/tradeveto-stability-observe.sh`.
@@ -73,6 +75,7 @@ Production checks:
 | `/api/health/deep` | HTTP 200, app/db/scanner ok, backup warn |
 | Root `rclone lsf` to R2 | Pass |
 | Root disposable helper upload/list/delete | Pass |
+| First full post-deploy R2 run | Failed on the prior 900s bound before completion |
 
 Validation:
 
@@ -141,7 +144,7 @@ Required proof still pending:
 | --- | --- | --- |
 | Critical | 24h memory/container observation | Not elapsed |
 | High | 6h observation report | Not elapsed |
-| High | R2 current backup run with large artifacts | Pending deployment/run |
+| High | R2 current backup run with large artifacts | Pending rerun with one-hour R2 bound |
 | High | Restore from local latest backup | Pending |
 | High | Restore from R2-downloaded backup | Pending |
 | High | Container restart/recovery proof | Pending |
