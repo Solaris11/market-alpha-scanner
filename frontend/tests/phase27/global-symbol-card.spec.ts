@@ -69,6 +69,24 @@ test("Open full symbol page navigates intentionally from the card", async ({ pag
   await expect(page).toHaveURL(/\/symbol\/AMD$/);
 });
 
+test("symbol page opened from card has a close control that returns to the previous workflow", async ({ page }) => {
+  await page.goto("/terminal", { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle").catch(() => undefined);
+  await installInjectedSymbolSurface(page, "/terminal");
+  await page.getByTestId("phase27-symbol-link").click();
+  const card = page.locator("[data-symbol-intelligence-card='true']");
+  await expect(card).toBeVisible();
+
+  await card.getByRole("link", { exact: true, name: "Full chart" }).click();
+
+  await expect(card).toBeHidden();
+  await expect.poll(async () => routeWithSearchAndHash(page), { timeout: 10_000 }).toBe("/symbol/AMD#chart");
+  const closeSymbolPage = page.getByRole("button", { name: "Close symbol page and return to previous workflow" });
+  await expect(closeSymbolPage).toBeVisible();
+  await closeSymbolPage.click();
+  await expect.poll(async () => routeWithSearchAndHash(page), { timeout: 10_000 }).toBe("/terminal");
+});
+
 ([
   { label: "Create alert", target: "/alerts?symbol=AMD&source=symbol-card" },
   { label: "Full chart", target: "/symbol/AMD#chart" },
@@ -99,6 +117,48 @@ test("mobile symbol card has visible close control and no bottom-nav obstruction
   await page.getByTestId("phase27-symbol-link").click();
   await expect(page.locator("[data-symbol-intelligence-card='true']")).toBeVisible();
   await assertCardGeometry(page);
+});
+
+test("iPad symbol card scrolls internally and remains dismissible", async ({ page }, testInfo) => {
+  test.skip(testInfo.project.name !== "ipad-safari", "iPad scroll regression check runs in iPad Safari/WebKit project");
+  await page.goto("/terminal", { waitUntil: "domcontentloaded" });
+  await page.waitForLoadState("networkidle").catch(() => undefined);
+  await installInjectedSymbolSurface(page, "/terminal");
+  await page.getByTestId("phase27-symbol-link").click();
+
+  const card = page.locator("[data-symbol-intelligence-card='true']");
+  const panel = page.locator("[data-symbol-card-panel='true']");
+  const scrollArea = page.locator("[data-symbol-card-scroll='true']");
+  const closeButton = page.getByRole("button", { exact: true, name: "Close symbol intelligence card" });
+
+  await expect(card).toBeVisible();
+  await expect(panel).toBeVisible();
+  await expect(scrollArea).toBeVisible();
+  await expect(closeButton).toBeVisible();
+  await assertCardGeometry(page);
+
+  const scrollability = await page.evaluate(() => {
+    const panelElement = document.querySelector<HTMLElement>("[data-symbol-card-panel='true']");
+    const scrollElement = document.querySelector<HTMLElement>("[data-symbol-card-scroll='true']");
+    if (!panelElement || !scrollElement) return null;
+    return {
+      panelAllowsOverlayTouch: panelElement.closest("[data-stable-overlay-content='true']") !== null,
+      scrollAllowsOverlayTouch: scrollElement.closest("[data-stable-overlay-content='true']") !== null,
+      scrollClientHeight: scrollElement.clientHeight,
+      scrollHeight: scrollElement.scrollHeight,
+    };
+  });
+  expect(scrollability).not.toBeNull();
+  expect(scrollability?.panelAllowsOverlayTouch).toBe(true);
+  expect(scrollability?.scrollAllowsOverlayTouch).toBe(true);
+  expect(scrollability?.scrollHeight ?? 0).toBeGreaterThan((scrollability?.scrollClientHeight ?? 0) + 160);
+
+  await expectTouchMoveAllowedInsideCard(page);
+  await scrollArea.evaluate((element) => element.scrollTo({ behavior: "auto", top: element.scrollHeight }));
+  await expect.poll(async () => scrollArea.evaluate((element) => Math.round(element.scrollTop)), { timeout: 3_000 }).toBeGreaterThan(120);
+
+  await closeButton.click();
+  await expect(card, "iPad close button closes scrollable symbol card").toBeHidden();
 });
 
 async function installInjectedSymbolSurface(page: Page, route: string): Promise<void> {
@@ -166,4 +226,14 @@ async function assertCardGeometry(page: Page): Promise<void> {
   expect(geometry.closeTop ?? -1).toBeGreaterThanOrEqual(-2);
   expect(geometry.closeBottom ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(geometry.viewportHeight + 2);
   expect(geometry.panelBottom ?? Number.POSITIVE_INFINITY).toBeLessThanOrEqual(geometry.viewportHeight + 2);
+}
+
+async function expectTouchMoveAllowedInsideCard(page: Page): Promise<void> {
+  const touchAllowed = await page.evaluate(() => {
+    const scrollElement = document.querySelector<HTMLElement>("[data-symbol-card-scroll='true']");
+    if (!scrollElement) return false;
+    const event = new Event("touchmove", { bubbles: true, cancelable: true });
+    return scrollElement.dispatchEvent(event);
+  });
+  expect(touchAllowed).toBe(true);
 }

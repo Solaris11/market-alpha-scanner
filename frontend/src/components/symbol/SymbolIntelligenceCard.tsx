@@ -7,6 +7,7 @@ import { AlertCircle, Bell, ExternalLink, GitCompare, History, LineChart, Shield
 import { useLocalWatchlist } from "@/hooks/useLocalWatchlist";
 import { ShareIntelligenceAsset } from "@/components/growth/ShareIntelligenceAsset";
 import { trackActivationMilestone, trackAnalyticsEvent, trackFirstUsefulAction, type ActivationMilestone } from "@/lib/client/analytics";
+import { clearSymbolCardReturn, rememberSymbolCardReturn } from "@/lib/symbol/symbol-card-return";
 import { closeSymbolCard } from "@/lib/symbol/symbol-overlay-store";
 import type { SymbolChartPoint, SymbolIntelligenceCardModel, SymbolSourceField } from "@/lib/symbol/symbol-intelligence-card";
 
@@ -228,6 +229,11 @@ function ActionLink({ action, className = "", href, icon, label, milestone, mode
 function handleCardNavigation(event: MouseEvent<HTMLAnchorElement>, href: string, navigate: (href: string) => void): void {
   if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
   event.preventDefault();
+  if (href.startsWith("/symbol/")) {
+    rememberSymbolCardReturn(href);
+  } else {
+    clearSymbolCardReturn();
+  }
   closeSymbolCard({ restoreFocus: false, restoreScroll: false, skipHistoryBack: true });
   window.setTimeout(() => navigate(href), 0);
 }

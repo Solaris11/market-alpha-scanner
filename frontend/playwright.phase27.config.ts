@@ -24,6 +24,12 @@ export default defineConfig({
         ...devices["Pixel 7"],
       },
     },
+    {
+      name: "ipad-safari",
+      use: {
+        ...devices["iPad Pro 11"],
+      },
+    },
   ],
   reporter: [
     ["list"],

@@ -80,6 +80,9 @@ class ExpandedUniverseTests(unittest.TestCase):
         self.assertIn("Quantum", by_symbol["RGTI"].categories)
         self.assertIn("Space", by_symbol["RKLB"].categories)
         self.assertIn("AI", by_symbol["SOUN"].categories)
+        self.assertIn("Semiconductor", by_symbol["SNDK"].categories)
+        self.assertIn("Growth", by_symbol["SNDK"].categories)
+        self.assertIn("Momentum", by_symbol["SNDK"].categories)
         self.assertIn("Biotech", by_symbol["TEM"].categories)
         self.assertIn("Crypto", by_symbol["IBIT"].categories)
         for category in CATEGORY_ORDER:

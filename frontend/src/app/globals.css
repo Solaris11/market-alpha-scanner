@@ -524,6 +524,28 @@ a {
   border-color: var(--tv-border-subtle);
 }
 
+.tv-symbol-card-surface {
+  --tv-symbol-card-bottom-clearance: max(var(--tv-overlay-bottom-gap), var(--tv-mobile-nav-clearance));
+  height: calc(var(--tv-visual-viewport-height, 100dvh) - var(--tv-safe-area-top) - var(--tv-symbol-card-bottom-clearance) - 1.5rem);
+  max-height: calc(var(--tv-visual-viewport-height, 100dvh) - var(--tv-safe-area-top) - var(--tv-symbol-card-bottom-clearance) - 1.5rem);
+  min-height: 0;
+}
+
+.tv-symbol-card-scroll {
+  -webkit-overflow-scrolling: touch;
+  flex: 1 1 auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+@media (min-width: 640px) {
+  .tv-symbol-card-surface {
+    height: min(900px, calc(var(--tv-visual-viewport-height, 100dvh) - var(--tv-safe-area-top) - var(--tv-symbol-card-bottom-clearance) - 3rem));
+    max-height: calc(var(--tv-visual-viewport-height, 100dvh) - var(--tv-safe-area-top) - var(--tv-symbol-card-bottom-clearance) - 3rem);
+  }
+}
+
 .tv-governed-bottom-sheet {
   border-top-left-radius: var(--tv-radius-shell);
   border-top-right-radius: var(--tv-radius-shell);

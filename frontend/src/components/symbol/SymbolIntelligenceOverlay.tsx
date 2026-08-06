@@ -139,7 +139,9 @@ export function SymbolIntelligenceOverlay() {
         type="button"
       />
       <div
-        className="tv-governed-overlay-surface relative z-10 flex max-h-[calc(var(--tv-visual-viewport-height,100dvh)-var(--tv-safe-area-top)-var(--tv-mobile-nav-clearance)-1.5rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-[1.25rem] border bg-slate-950 shadow-2xl shadow-black/60 sm:max-h-[calc(var(--tv-visual-viewport-height,100dvh)-var(--tv-safe-area-top)-var(--tv-overlay-bottom-gap)-3rem)]"
+        className="tv-governed-overlay-surface tv-symbol-card-surface relative z-10 flex max-h-[calc(var(--tv-visual-viewport-height,100dvh)-var(--tv-safe-area-top)-var(--tv-mobile-nav-clearance)-1.5rem)] w-full max-w-[1180px] flex-col overflow-hidden rounded-[1.25rem] border bg-slate-950 shadow-2xl shadow-black/60 sm:max-h-[calc(var(--tv-visual-viewport-height,100dvh)-var(--tv-safe-area-top)-var(--tv-overlay-bottom-gap)-3rem)]"
+        data-mobile-gesture-ignore="true"
+        data-stable-overlay-content="true"
         data-symbol-card-panel="true"
         ref={dialogRef}
       >
@@ -160,7 +162,12 @@ export function SymbolIntelligenceOverlay() {
             </button>
           </div>
         </header>
-        <div className="tv-native-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 pb-[calc(1rem+var(--tv-safe-area-bottom)+var(--tv-keyboard-offset,0px))] sm:p-5">
+        <div
+          className="tv-native-scroll tv-symbol-card-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 pb-[calc(1rem+var(--tv-safe-area-bottom)+var(--tv-keyboard-offset,0px))] sm:p-5"
+          data-mobile-gesture-ignore="true"
+          data-stable-overlay-content="true"
+          data-symbol-card-scroll="true"
+        >
           <SymbolIntelligenceCard error={error} loading={loading} model={model} />
         </div>
       </div>

@@ -9,6 +9,7 @@ import {
   compactIntelligenceDiscoverySystem,
   filterDiscoverySymbols,
   matchesDiscoveryQuickFilter,
+  symbolCandidateFromDiscoveryQuery,
 } from "./intelligence-discovery";
 
 describe("intelligence discovery system", () => {
@@ -107,6 +108,14 @@ describe("intelligence discovery system", () => {
     assert.deepEqual(weakest.map((symbol) => symbol.symbol), ["XOM"]);
     assert.equal(matchesDiscoveryQuickFilter(system.symbols.find((symbol) => symbol.symbol === "XOM")!, "top_gainers_1m"), false);
     assert.equal(matchesDiscoveryQuickFilter(system.symbols.find((symbol) => symbol.symbol === "XOM")!, "top_losers_1m"), true);
+  });
+
+  test("normalizes ticker-only fallback searches without turning normal text into symbols", () => {
+    assert.equal(symbolCandidateFromDiscoveryQuery("sndk"), "SNDK");
+    assert.equal(symbolCandidateFromDiscoveryQuery(" BRK-B "), "BRK-B");
+    assert.equal(symbolCandidateFromDiscoveryQuery("BTC-USD"), "BTC-USD");
+    assert.equal(symbolCandidateFromDiscoveryQuery("semiconductor risk"), null);
+    assert.equal(symbolCandidateFromDiscoveryQuery("risk/escalation"), null);
   });
 
   test("promotes user saved scans ahead of default scan packs with full filter state", () => {

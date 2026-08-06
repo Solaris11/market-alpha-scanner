@@ -7,6 +7,7 @@ import { PremiumLockedState } from "@/components/premium/PremiumLockedState";
 import { PublicSymbolPreview } from "@/components/premium/PublicSignalPreview";
 import { PublishedSymbolIntelligenceBlock } from "@/components/seo/IntelligencePublishingBlocks";
 import { SymbolCommandSearch } from "@/components/symbol/SymbolCommandSearch";
+import { SymbolPageReturnControl } from "@/components/symbol/SymbolPageReturnControl";
 import { SymbolWorkflowMaturityPanel } from "@/components/symbol/SymbolWorkflowMaturityPanels";
 import { SymbolTerminalWorkspace } from "@/components/terminal/SymbolTerminalWorkspace";
 import { SymbolWorkspaceTracker } from "@/components/terminal/SymbolWorkspaceTracker";
@@ -88,6 +89,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
   if (requiresLegalAcceptance(entitlement)) {
     return (
       <TerminalShell>
+        <SymbolPageReturnControl />
         <div className="mb-4">
           <Link className="inline-flex min-h-9 items-center rounded-full border border-white/10 px-3 py-2 text-sm font-semibold text-cyan-300 transition hover:border-cyan-300/40 hover:text-cyan-100" href="/terminal">
             Back to terminal
@@ -112,6 +114,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
 
     return (
       <TerminalShell>
+        <SymbolPageReturnControl />
         {jsonLd ? <script type="application/ld+json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} /> : null}
         <div className="mb-4">
           <Link className="inline-flex min-h-9 items-center rounded-full border border-white/10 px-3 py-2 text-sm font-semibold text-cyan-300 transition hover:border-cyan-300/40 hover:text-cyan-100" href="/terminal">
@@ -140,6 +143,7 @@ export default async function SymbolDetailPage({ params }: PageProps) {
 
   return (
     <TerminalShell prioritizeContent>
+      <SymbolPageReturnControl />
       {row ? <SymbolRouteReadyStrip dataFreshness={dataFreshness} row={row} /> : null}
       <div className="mb-4">
         <Link className="inline-flex min-h-9 items-center rounded-full border border-white/10 px-3 py-2 text-sm font-semibold text-cyan-300 transition hover:border-cyan-300/40 hover:text-cyan-100" href="/terminal">

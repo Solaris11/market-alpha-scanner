@@ -91,6 +91,7 @@ LARGE_CAP_SYMBOLS = {
     "LRCX",
     "KLAC",
     "MRVL",
+    "SNDK",
     "UBER",
     "ABNB",
     "MSTR",
@@ -304,7 +305,7 @@ AI_SYMBOLS = {
 
 QUANTUM_SYMBOLS = {"RGTI", "QBTS", "QUBT", "IONQ", "ARQQ", "IBM", "LITE", "COHR", "MKSI"}
 CRYPTO_SYMBOLS = {"MSTR", "COIN", "HOOD", "MARA", "RIOT", "CLSK", "HUT", "HIVE", "BTBT", "IREN", "WULF", "CORZ", "CIFR", "CAN", "IBIT", "BITB", "FBTC", "ARKB", "GBTC", "ETHA", "ETHE", "BITO", "BLOK", "BKCH", "BTC-USD", "ETH-USD"}
-SEMICONDUCTOR_SYMBOLS = {"NVDA", "AMD", "AVGO", "QCOM", "MU", "INTC", "ARM", "ASML", "TSM", "AMAT", "LRCX", "KLAC", "MRVL", "SMCI", "COHR", "MKSI", "ON", "NXPI", "ACLS", "AEHR", "CAMT", "SITM", "LSCC", "MTSI", "POWI", "RMBS", "NVMI", "SYNA", "SMH", "SOXX"}
+SEMICONDUCTOR_SYMBOLS = {"NVDA", "AMD", "AVGO", "QCOM", "MU", "INTC", "ARM", "ASML", "TSM", "AMAT", "LRCX", "KLAC", "MRVL", "SNDK", "SMCI", "COHR", "MKSI", "ON", "NXPI", "ACLS", "AEHR", "CAMT", "SITM", "LSCC", "MTSI", "POWI", "RMBS", "NVMI", "SYNA", "SMH", "SOXX"}
 CLOUD_SYMBOLS = {"MSFT", "AMZN", "GOOGL", "ORCL", "CRM", "ADBE", "SNOW", "DDOG", "MDB", "NOW", "NET", "HUBS", "TEAM", "DT", "GTLB", "ESTC", "SHOP", "SE", "MELI", "DASH"}
 CYBERSECURITY_SYMBOLS = {"PANW", "CRWD", "ZS", "NET", "TENB", "S"}
 DEFENSE_SYMBOLS = {"LMT", "NOC", "RTX", "GD", "HII", "LHX", "LDOS", "KTOS", "AVAV", "TXT", "HEI", "TDG", "CW", "BWXT", "MRCY", "BA", "GE", "HWM", "TDY", "SAIC", "CACI", "OSK", "AXON", "PLTR", "LOAR"}
@@ -312,8 +313,8 @@ SPACE_SYMBOLS = {"RKLB", "ASTS", "LUNR", "PL", "SPIR", "IRDM", "SATS", "GSAT", "
 ENERGY_SYMBOLS = {"XOM", "CVX", "COP", "SLB", "EOG", "MPC", "VLO", "OXY", "DVN", "HAL", "CEG", "OKLO", "SMR", "NNE", "BE", "FLNC", "ARRY", "RUN", "FSLR", "ENPH", "USO", "XLE"}
 BIOTECH_SYMBOLS = {"CRSP", "NTLA", "EDIT", "BEAM", "VRTX", "REGN", "MRNA", "BNTX", "GILD", "BIIB", "ALNY", "SRPT", "RARE", "TGTX", "EXEL", "VKTX", "NTRA", "DNA", "RXRX", "TEM", "TMDX", "IOVA", "AXSM", "HALO", "IMVT", "LEGN", "ARGX", "PCVX", "INCY", "IONS", "TWST", "DNLI", "BBIO", "ACLX", "VIR", "NVAX", "APLS", "MDGL", "RVMD", "FOLD", "JNJ", "LLY", "UNH", "MRK", "ABBV", "PFE", "TMO", "ISRG", "DHR", "SYK", "XLV"}
 CONSUMER_SYMBOLS = {"AMZN", "TSLA", "NFLX", "UBER", "ABNB", "WMT", "COST", "PG", "KO", "PEP", "MCD", "HD", "LOW", "NKE", "SBUX", "SHOP", "RBLX", "DASH", "DUOL", "TOST", "CELH", "ELF", "CAVA", "ONON", "GM", "F", "DKNG", "PINS", "SNAP", "RDDT", "MELI"}
-GROWTH_SYMBOLS = {"NVDA", "AMD", "TSLA", "SHOP", "NET", "DDOG", "CRWD", "ZS", "SNOW", "MDB", "UBER", "ABNB", "DASH", "RBLX", "DUOL", "TOST", "BILL", "AFRM", "UPST", "ROKU", "SE", "MELI", "HUBS", "TEAM", "TTD", "FROG", "APP", "HIMS", "CELH", "ELF", "CAVA", "ONON", "RIVN", "LCID", "DKNG", "PINS", "SNAP", "RDDT", "SOFI", "NU", "FOUR", "GLOB", "MNDY", "RGTI", "QBTS", "QUBT", "IONQ", "RKLB", "ASTS", "LUNR", "TEM", "SOUN", "PL"}
-MOMENTUM_SYMBOLS = {"HIMS", "APP", "PL", "LITE", "RKLB", "ASTS", "LUNR", "TEM", "SOUN", "IONQ", "RGTI", "QBTS", "QUBT", "CELH", "ELF", "CAVA", "TMDX", "FSLR", "ENPH", "WOLF", "ACLS", "AEHR", "CAMT", "SITM", "ON", "NXPI", "MP", "ALB", "PYPL", "DOCN", "ESTC", "TENB", "S", "IOT", "SMR", "OKLO", "NNE", "BE", "FLNC", "ARRY", "RUN", "NXT", "BLDR", "FIX", "ONTO", "LSCC", "MTSI", "POWI", "RMBS", "NVMI", "SYNA", "COHR"}
+GROWTH_SYMBOLS = {"NVDA", "AMD", "TSLA", "SHOP", "NET", "DDOG", "CRWD", "ZS", "SNOW", "MDB", "UBER", "ABNB", "DASH", "RBLX", "DUOL", "TOST", "BILL", "AFRM", "UPST", "ROKU", "SE", "MELI", "HUBS", "TEAM", "TTD", "FROG", "APP", "HIMS", "CELH", "ELF", "CAVA", "ONON", "RIVN", "LCID", "DKNG", "PINS", "SNAP", "RDDT", "SOFI", "NU", "FOUR", "GLOB", "MNDY", "RGTI", "QBTS", "QUBT", "IONQ", "RKLB", "ASTS", "LUNR", "TEM", "SOUN", "SNDK", "PL"}
+MOMENTUM_SYMBOLS = {"HIMS", "APP", "PL", "LITE", "SNDK", "RKLB", "ASTS", "LUNR", "TEM", "SOUN", "IONQ", "RGTI", "QBTS", "QUBT", "CELH", "ELF", "CAVA", "TMDX", "FSLR", "ENPH", "WOLF", "ACLS", "AEHR", "CAMT", "SITM", "ON", "NXPI", "MP", "ALB", "PYPL", "DOCN", "ESTC", "TENB", "S", "IOT", "SMR", "OKLO", "NNE", "BE", "FLNC", "ARRY", "RUN", "NXT", "BLDR", "FIX", "ONTO", "LSCC", "MTSI", "POWI", "RMBS", "NVMI", "SYNA", "COHR"}
 
 SYMBOL_CATEGORY_SETS: tuple[tuple[UniverseCategory, set[str]], ...] = (
     ("Mega Cap", MEGA_CAP_SYMBOLS),

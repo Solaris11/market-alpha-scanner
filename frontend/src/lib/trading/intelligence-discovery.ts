@@ -381,6 +381,13 @@ export function filterDiscoverySymbols(symbols: DiscoverySymbol[], state: Discov
   return rankDiscoverySymbols(filtered, state.sort, state.timeframe);
 }
 
+export function symbolCandidateFromDiscoveryQuery(query: string): string | null {
+  const candidate = query.trim().toUpperCase();
+  if (!candidate || candidate.length > 12) return null;
+  if (!/^[A-Z][A-Z0-9.-]*$/.test(candidate)) return null;
+  return candidate;
+}
+
 function matchesDiscoveryQuery(symbol: DiscoverySymbol, query: string): boolean {
   if (symbol.symbol.toLowerCase().includes(query)) return true;
   if (symbol.companyName && symbol.companyName.toLowerCase().includes(query)) return true;

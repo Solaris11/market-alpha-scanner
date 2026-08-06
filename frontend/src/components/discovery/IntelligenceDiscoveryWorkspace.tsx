@@ -35,6 +35,7 @@ import { symbolCardContextFromRow } from "@/lib/symbol/symbol-intelligence-card"
 import type { DiscoverySavedScan, DiscoverySavedScanPayload } from "@/lib/discovery-saved-scans";
 import {
   filterDiscoverySymbols,
+  symbolCandidateFromDiscoveryQuery,
   type DiscoveryCluster,
   type DiscoveryEvidenceFilter,
   type DiscoveryFilterState,
@@ -216,6 +217,7 @@ export function IntelligenceDiscoveryWorkspace({
 
   const state: DiscoveryFilterState = { assetType, evidence, filter, marketCap, query: deferredQuery, riskBand, sector, sort, timeframe, watchlistOnly };
   const filtered = useMemo(() => filterDiscoverySymbols(system.symbols, state), [assetType, deferredQuery, evidence, filter, marketCap, riskBand, sector, sort, system.symbols, timeframe, watchlistOnly]);
+  const fallbackSearchSymbol = useMemo(() => symbolCandidateFromDiscoveryQuery(deferredQuery), [deferredQuery]);
   const visibleLimit = useMemo(() => {
     if (density === "ultra") return mode === "overlay" ? 260 : 520;
     if (density === "dense") return mode === "overlay" ? 140 : 240;
@@ -249,6 +251,19 @@ export function IntelligenceDiscoveryWorkspace({
       sourceContext: symbolCardContextFromRow(discoverySymbolRecord(symbol), "discovery-scanner"),
     });
     trackAnalyticsEvent("scanner_usage", { action: "open_global_symbol_card", symbol: symbol.symbol }, { source: "discovery_scanner", symbol: symbol.symbol });
+  }, []);
+
+  const openFallbackSearchSymbolCard = useCallback((symbol: string): void => {
+    const normalized = symbolCandidateFromDiscoveryQuery(symbol);
+    if (!normalized) return;
+    openSymbolCard(normalized, {
+      sourceContext: symbolCardContextFromRow({
+        decision_reason: "No current validated scanner row matched the active filters. Opening an evidence-limited symbol card instead of hiding the ticker.",
+        final_decision: "RESEARCH ONLY",
+        symbol: normalized,
+      }, "discovery-search-fallback"),
+    });
+    trackAnalyticsEvent("scanner_usage", { action: "open_search_fallback_symbol_card", symbol: normalized }, { source: "discovery_search", symbol: normalized });
   }, []);
 
   function recordScannerWorkflow(id: string, startedAt: number): void {
@@ -895,6 +910,8 @@ export function IntelligenceDiscoveryWorkspace({
               onToggleFullscreen={() => runTimedScannerWorkflow("fullscreen-toggle", () => setScannerFullscreen((current) => !current))}
               onToggleShortlist={toggleShortlist}
               onToggleCompare={toggleCompare}
+              onOpenFallbackSymbol={openFallbackSearchSymbolCard}
+              fallbackSearchSymbol={fallbackSearchSymbol}
               resultCount={filtered.length}
               rangeSelectedSymbols={rangeSelectedSymbols}
               scannerColumnKeys={scannerColumnKeys}
@@ -1380,10 +1397,12 @@ function SymbolResultGrid({
   compareSymbols,
   density,
   expandedSymbols,
+  fallbackSearchSymbol,
   fullscreen,
   onCreateAlert,
   onOpen,
   onDensityChange,
+  onOpenFallbackSymbol,
   onSortChange,
   onToggleColumn,
   onToggleExpanded,
@@ -1404,10 +1423,12 @@ function SymbolResultGrid({
   compareSymbols: string[];
   density: ResultDensity;
   expandedSymbols: string[];
+  fallbackSearchSymbol: string | null;
   fullscreen: boolean;
   onCreateAlert: (symbol: DiscoverySymbol) => void;
   onOpen: (symbol: DiscoverySymbol) => void;
   onDensityChange: (density: ResultDensity) => void;
+  onOpenFallbackSymbol: (symbol: string) => void;
   onSortChange: (sort: DiscoverySortKey) => void;
   onToggleColumn: (column: DiscoveryScannerColumnKey) => void;
   onToggleExpanded: (symbol: string) => void;
@@ -1489,11 +1510,42 @@ function SymbolResultGrid({
           </div>
         )
       ) : (
-        <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/45 p-6 text-sm leading-6 text-slate-400">
-          No symbols match this exact search. Clear filters or switch to Full universe to broaden the scanner.
-        </div>
+        <EmptyScannerSearchState fallbackSearchSymbol={fallbackSearchSymbol} onOpenFallbackSymbol={onOpenFallbackSymbol} />
       )}
     </section>
+  );
+}
+
+function EmptyScannerSearchState({
+  fallbackSearchSymbol,
+  onOpenFallbackSymbol,
+}: {
+  fallbackSearchSymbol: string | null;
+  onOpenFallbackSymbol: (symbol: string) => void;
+}) {
+  if (fallbackSearchSymbol) {
+    return (
+      <div className="rounded-2xl border border-cyan-300/20 bg-cyan-300/[0.06] p-5 text-sm leading-6 text-slate-300" data-discovery-search-fallback="true">
+        <div className="text-[10px] font-black uppercase tracking-[0.22em] text-cyan-200">Symbol search fallback</div>
+        <h4 className="mt-2 text-lg font-black text-white">{fallbackSearchSymbol} is not in the current scanner result set.</h4>
+        <p className="mt-2 max-w-2xl">
+          The active scanner packet has no validated row for this ticker yet. Open the symbol intelligence card anyway; missing provider-backed fields will stay limited instead of being inferred.
+        </p>
+        <button
+          className="mt-4 rounded-2xl border border-cyan-300/35 bg-cyan-300/12 px-4 py-2 text-xs font-black uppercase tracking-[0.12em] text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-300/18"
+          onClick={() => onOpenFallbackSymbol(fallbackSearchSymbol)}
+          type="button"
+        >
+          Open {fallbackSearchSymbol} card
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-dashed border-white/10 bg-slate-950/45 p-6 text-sm leading-6 text-slate-400">
+      No symbols match this exact search. Clear filters or switch to Full universe to broaden the scanner.
+    </div>
   );
 }
 

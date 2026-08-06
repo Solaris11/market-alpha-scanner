@@ -29,6 +29,7 @@ REQUIRED_OPPORTUNITY_SYMBOLS: tuple[str, ...] = (
     "QUBT",
     "IONQ",
     "LITE",
+    "SNDK",
     "RKLB",
     "ASTS",
     "LUNR",
