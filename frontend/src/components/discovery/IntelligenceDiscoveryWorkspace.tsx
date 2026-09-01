@@ -220,6 +220,8 @@ export function IntelligenceDiscoveryWorkspace({
   const filtered = useMemo(() => filterDiscoverySymbols(system.symbols, state), [assetType, deferredQuery, evidence, filter, marketCap, riskBand, sector, sort, system.symbols, timeframe, watchlistOnly]);
   const searchPacketMatch = useMemo(() => (deferredQuery.trim() ? resolveDiscoverySymbolMatch(system.symbols, deferredQuery) : null), [deferredQuery, system.symbols]);
   const fallbackSearchSymbol = useMemo(() => symbolCandidateFromDiscoveryQuery(deferredQuery, system.symbols), [deferredQuery, system.symbols]);
+  const liveSearchPacketMatch = useMemo(() => (query.trim() ? resolveDiscoverySymbolMatch(system.symbols, query) : null), [query, system.symbols]);
+  const liveFallbackSearchSymbol = useMemo(() => symbolCandidateFromDiscoveryQuery(query, system.symbols), [query, system.symbols]);
   const visibleLimit = useMemo(() => {
     if (density === "ultra") return mode === "overlay" ? 260 : 520;
     if (density === "dense") return mode === "overlay" ? 140 : 240;
@@ -770,10 +772,14 @@ export function IntelligenceDiscoveryWorkspace({
   return (
     <section className={`tv-discovery-system ${mode === "overlay" ? "space-y-4" : "space-y-6"}`} data-discovery-proof-mode={proofMode} data-discovery-workspace="true">
       <DiscoveryHero
+        fallbackSearchSymbol={liveFallbackSearchSymbol}
         inputRef={searchInputRef}
         mode={mode}
+        onOpen={openDiscoverySymbolCard}
+        onOpenFallbackSymbol={openFallbackSearchSymbolCard}
         query={query}
         selectedFilter={selectedFilter}
+        searchPacketMatch={liveSearchPacketMatch}
         onSubmitSymbol={submitSymbolSearch}
         setQuery={updateQueryWithTiming}
         system={system}
@@ -818,30 +824,45 @@ export function IntelligenceDiscoveryWorkspace({
               </div>
 
               <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.25fr)_160px_160px_160px]">
-                <label className="relative block">
+                <form
+                  className="relative block"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    const input = event.currentTarget.querySelector<HTMLInputElement>("input");
+                    submitSymbolSearch(input?.value ?? query);
+                  }}
+                >
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cyan-200" />
                   <input
                     aria-label="Search discovery scanner by symbol, company, sector, setup, or risk context"
                     autoComplete="off"
-                    className="h-12 w-full rounded-2xl border border-cyan-300/20 bg-slate-950/70 pl-10 pr-3 text-sm font-semibold text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-200/60 focus:ring-2 focus:ring-cyan-300/15"
+                    className="h-12 w-full rounded-2xl border border-cyan-300/20 bg-slate-950/70 pl-10 pr-20 text-sm font-semibold text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-200/60 focus:ring-2 focus:ring-cyan-300/15"
                     data-discovery-secondary-search="true"
                     enterKeyHint="search"
                     inputMode="search"
                     onChange={(event) => updateQueryWithTiming(event.currentTarget.value)}
-                    onKeyDown={(event) => {
-                      if (event.key !== "Enter") return;
-                      event.preventDefault();
-                      submitSymbolSearch(event.currentTarget.value);
-                    }}
                     placeholder="Search symbol, company, sector, setup, risk context..."
-                    type="search"
+                    type="text"
                     value={query}
                   />
-                </label>
+                  <button
+                    aria-label="Open searched symbol card"
+                    className="absolute right-1.5 top-1/2 inline-flex h-9 -translate-y-1/2 items-center justify-center gap-1.5 rounded-xl border border-cyan-300/25 bg-cyan-300/12 px-3 text-[10px] font-black uppercase tracking-[0.1em] text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-300/18 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-slate-600"
+                    disabled={!liveSearchPacketMatch && !liveFallbackSearchSymbol}
+                    title="Open searched symbol card"
+                    type="submit"
+                  >
+                    <Search className="h-3.5 w-3.5" />
+                    <span>Open</span>
+                  </button>
+                </form>
                 <DiscoverySelect label="Sector" onChange={setSector} value={sector} values={sectors.map((value) => ({ key: value, label: value === "ALL" ? "All sectors" : value }))} />
                 <DiscoverySelect label="Sort" onChange={(value) => setSort(value as DiscoverySortKey)} value={sort} values={SORTS.map((item) => ({ key: item.key, label: item.label }))} />
                 <DiscoverySelect label="Timeframe" onChange={(value) => setTimeframe(value as DiscoveryTimeframe)} value={timeframe} values={TIMEFRAMES.map((value) => ({ key: value, label: value }))} />
               </div>
+              {query.trim() && (liveSearchPacketMatch || liveFallbackSearchSymbol) ? (
+                <SymbolSearchIntentResult className="mt-3" fallbackSearchSymbol={liveFallbackSearchSymbol} onOpen={openDiscoverySymbolCard} onOpenFallbackSymbol={openFallbackSearchSymbolCard} searchPacketMatch={liveSearchPacketMatch} />
+              ) : null}
 
               <div id="filters">
                 <ScannerPresetRail
@@ -974,22 +995,32 @@ export function IntelligenceDiscoveryWorkspace({
 }
 
 function DiscoveryHero({
+  fallbackSearchSymbol,
   inputRef,
   mode,
+  onOpen,
+  onOpenFallbackSymbol,
   onSubmitSymbol,
   query,
   selectedFilter,
+  searchPacketMatch,
   setQuery,
   system,
 }: {
+  fallbackSearchSymbol: string | null;
   inputRef: RefObject<HTMLInputElement | null>;
   mode: DiscoveryMode;
+  onOpen: (symbol: DiscoverySymbol) => void;
+  onOpenFallbackSymbol: (symbol: string) => void;
   onSubmitSymbol: (value: string) => void;
   query: string;
   selectedFilter?: DiscoveryQuickFilter;
+  searchPacketMatch: DiscoverySymbol | null;
   setQuery: (value: string) => void;
   system: IntelligenceDiscoverySystem;
 }) {
+  const hasSearchAction = Boolean(searchPacketMatch || fallbackSearchSymbol);
+
   return (
     <div className="tv-discovery-hero relative overflow-hidden rounded-[2rem] border border-cyan-300/18 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.22),transparent_35%),linear-gradient(135deg,rgba(2,6,23,0.96),rgba(15,23,42,0.82))] p-4 shadow-2xl shadow-cyan-950/20 sm:p-6">
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(34,211,238,0.08)_1px,transparent_1px),linear-gradient(180deg,rgba(34,211,238,0.05)_1px,transparent_1px)] bg-[size:38px_38px] opacity-35" />
@@ -1005,27 +1036,42 @@ function DiscoveryHero({
           </h1>
           <p className="mt-4 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">{humanizeInsightText(system.headline)} {humanizeInsightText(system.summary)}</p>
           <div className="mt-5 max-w-3xl">
-            <label className="relative block">
+            <form
+              className="relative block"
+              onSubmit={(event) => {
+                event.preventDefault();
+                const input = event.currentTarget.querySelector<HTMLInputElement>("input");
+                onSubmitSymbol(input?.value ?? query);
+              }}
+            >
               <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-cyan-200" />
               <input
                 aria-label="Search discovery scanner by symbol, company, sector, setup, or risk context"
                 autoComplete="off"
-                className="h-14 w-full rounded-2xl border border-cyan-300/25 bg-slate-950/72 pl-12 pr-4 text-base font-semibold text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-200/70 focus:ring-2 focus:ring-cyan-300/15"
+                className="h-14 w-full rounded-2xl border border-cyan-300/25 bg-slate-950/72 pl-12 pr-24 text-base font-semibold text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-200/70 focus:ring-2 focus:ring-cyan-300/15"
                 data-discovery-search-input="true"
                 enterKeyHint="search"
                 inputMode="search"
                 onChange={(event) => setQuery(event.currentTarget.value)}
-                onKeyDown={(event) => {
-                  if (event.key !== "Enter") return;
-                  event.preventDefault();
-                  onSubmitSymbol(event.currentTarget.value);
-                }}
                 placeholder="Search AMD, semis, macro-supported pullbacks, risk escalation..."
                 ref={inputRef}
-                type="search"
+                type="text"
                 value={query}
               />
-            </label>
+              <button
+                aria-label="Open searched symbol card"
+                className="absolute right-1.5 top-1/2 inline-flex h-11 -translate-y-1/2 items-center justify-center gap-2 rounded-xl border border-cyan-300/25 bg-cyan-300/12 px-3 text-[10px] font-black uppercase tracking-[0.1em] text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-300/18 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-slate-600 sm:px-4"
+                disabled={!hasSearchAction}
+                title="Open searched symbol card"
+                type="submit"
+              >
+                <Search className="h-4 w-4" />
+                <span>Open</span>
+              </button>
+            </form>
+            {query.trim() && hasSearchAction ? (
+              <SymbolSearchIntentResult className="mt-3" fallbackSearchSymbol={fallbackSearchSymbol} onOpen={onOpen} onOpenFallbackSymbol={onOpenFallbackSymbol} searchPacketMatch={searchPacketMatch} />
+            ) : null}
           </div>
         </div>
         <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
@@ -1558,11 +1604,13 @@ function SymbolResultGrid({
 }
 
 function SymbolSearchIntentResult({
+  className = "mb-3",
   fallbackSearchSymbol,
   onOpen,
   onOpenFallbackSymbol,
   searchPacketMatch,
 }: {
+  className?: string;
   fallbackSearchSymbol: string | null;
   onOpen: (symbol: DiscoverySymbol) => void;
   onOpenFallbackSymbol: (symbol: string) => void;
@@ -1570,7 +1618,7 @@ function SymbolSearchIntentResult({
 }) {
   if (searchPacketMatch) {
     return (
-      <div className="mb-3 flex flex-col gap-3 rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.06] p-3 text-sm text-slate-200 sm:flex-row sm:items-center sm:justify-between" data-discovery-search-intent="packet">
+      <div className={`${className} flex flex-col gap-3 rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.06] p-3 text-sm text-slate-200 sm:flex-row sm:items-center sm:justify-between`} data-discovery-search-intent="packet">
         <div className="min-w-0">
           <div className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-200">Validated symbol match</div>
           <div className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
@@ -1592,7 +1640,7 @@ function SymbolSearchIntentResult({
 
   if (!fallbackSearchSymbol) return null;
   return (
-    <div className="mb-3 flex flex-col gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-300/[0.06] p-3 text-sm text-slate-200 sm:flex-row sm:items-center sm:justify-between" data-discovery-search-intent="fallback">
+    <div className={`${className} flex flex-col gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-300/[0.06] p-3 text-sm text-slate-200 sm:flex-row sm:items-center sm:justify-between`} data-discovery-search-intent="fallback">
       <div className="min-w-0">
         <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Ticker card fallback</div>
         <div className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
