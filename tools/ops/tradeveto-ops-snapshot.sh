@@ -107,7 +107,7 @@ psql_q "SELECT count(*) FROM user_subscriptions WHERE status IN ('active','trial
 psql_q "
   SELECT coalesce(final_decision,'(null)') || '=' || count(*)
   FROM scanner_signals WHERE scan_run_id = $LATEST_RUN
-  GROUP BY 1 ORDER BY count(*) DESC
+  GROUP BY final_decision ORDER BY count(*) DESC
 " >"$WORK/db_decisions" 2>/dev/null || say "decision mix query failed"
 
 say "collecting backup state"
