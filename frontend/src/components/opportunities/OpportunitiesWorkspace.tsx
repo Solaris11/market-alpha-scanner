@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
@@ -59,7 +60,6 @@ import { cleanText, finiteNumber, formatMoney, formatNumber } from "@/lib/ui/for
 import { decisionLabel, humanizeInsightText, humanizeLabel } from "@/lib/ui/labels";
 import { WatchlistButton } from "@/components/watchlist-controls";
 import { DecisionBadge } from "@/components/terminal/DecisionBadge";
-import { MiniPriceContextChart } from "@/components/terminal/MiniPriceContextChart";
 import { ResponsiveAdvancedDetails } from "@/components/ui/ResponsiveAdvancedDetails";
 import {
   CinematicClusterMosaic,
@@ -80,6 +80,14 @@ import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { InstitutionalTrustStrip } from "@/components/terminal/InstitutionalTrustStrip";
 import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
 import { buildDistributionBarOption, buildDonutOption, hasDistributionData, type DistributionRow } from "@/lib/echarts-options";
+
+// Loaded on demand: this component pulls SymbolChart and the lightweight-charts
+// runtime, which would otherwise ship in the initial /opportunities client bundle
+// even though the chart renders below the fold for a single highlighted symbol.
+const MiniPriceContextChart = dynamic(
+  () => import("@/components/terminal/MiniPriceContextChart").then((mod) => mod.MiniPriceContextChart),
+  { ssr: false },
+);
 
 const DECISION_OPTIONS: DecisionFilter[] = ["ALL", "ENTER", "WAIT_PULLBACK", "WATCH", "AVOID", "EXIT"];
 const SORT_OPTIONS: { value: SortKey; label: string }[] = [
