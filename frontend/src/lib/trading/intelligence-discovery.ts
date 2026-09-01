@@ -364,9 +364,14 @@ export function filterDiscoverySymbols(symbols: DiscoverySymbol[], state: Discov
   const riskBand = state.riskBand ?? "ALL";
   const evidence = state.evidence ?? "ALL";
   const assetType = state.assetType ?? "ALL";
+  // An explicit ticker or company-name search is a direct request for one row.
+  // It is exempt from the active quick/advanced filters and is surfaced first,
+  // so typing a symbol never hides the symbol the user asked for.
+  const directMatch = query ? resolveDiscoverySymbolMatch(symbols, state.query) : null;
   const filtered: DiscoverySymbol[] = [];
 
   for (const symbol of symbols) {
+    if (directMatch && symbol.symbol === directMatch.symbol) continue;
     if (state.sector !== "ALL" && clean(symbol.sector) !== state.sector) continue;
     if (assetType !== "ALL" && clean(symbol.assetType, "Unknown") !== assetType) continue;
     if (state.watchlistOnly && !symbol.watchlisted) continue;
@@ -378,10 +383,59 @@ export function filterDiscoverySymbols(symbols: DiscoverySymbol[], state: Discov
     filtered.push(symbol);
   }
 
-  return rankDiscoverySymbols(filtered, state.sort, state.timeframe);
+  const ranked = rankDiscoverySymbols(filtered, state.sort, state.timeframe);
+  return directMatch ? [directMatch, ...ranked] : ranked;
 }
 
-export function symbolCandidateFromDiscoveryQuery(query: string): string | null {
+const DISCOVERY_QUOTE_SUFFIXES = ["-USD", "-USDT", "-USDC"] as const;
+const MIN_COMPANY_PREFIX_LENGTH = 3;
+
+/**
+ * Resolves a raw discovery search string to a validated row in the current
+ * scanner packet. Handles exact tickers, `.`/`-` share-class aliases, bare
+ * crypto bases (`BTC` -> `BTC-USD`), and company names (`Nvidia` -> `NVDA`).
+ * Returns null when the packet holds no row for the query.
+ */
+export function resolveDiscoverySymbolMatch(symbols: DiscoverySymbol[], query: string): DiscoverySymbol | null {
+  const token = query.trim().toUpperCase().replace(/\s+/g, " ");
+  if (!token) return null;
+
+  const bySymbol = new Map<string, DiscoverySymbol>();
+  for (const symbol of symbols) bySymbol.set(symbol.symbol.toUpperCase(), symbol);
+
+  const exact = bySymbol.get(token);
+  if (exact) return exact;
+
+  const aliased = token.includes(".")
+    ? bySymbol.get(token.replace(/\./g, "-"))
+    : token.includes("-")
+      ? bySymbol.get(token.replace(/-/g, "."))
+      : undefined;
+  if (aliased) return aliased;
+
+  if (!token.includes("-") && !token.includes(".")) {
+    for (const suffix of DISCOVERY_QUOTE_SUFFIXES) {
+      const quoted = bySymbol.get(`${token}${suffix}`);
+      if (quoted) return quoted;
+    }
+  }
+
+  const lowered = token.toLowerCase();
+  let prefixMatch: DiscoverySymbol | null = null;
+  for (const symbol of symbols) {
+    const name = symbol.companyName?.trim().toLowerCase();
+    if (!name) continue;
+    if (name === lowered) return symbol;
+    if (!prefixMatch && lowered.length >= MIN_COMPANY_PREFIX_LENGTH && name.startsWith(lowered)) prefixMatch = symbol;
+  }
+  return prefixMatch;
+}
+
+export function symbolCandidateFromDiscoveryQuery(query: string, symbols?: DiscoverySymbol[]): string | null {
+  if (symbols && symbols.length) {
+    const resolved = resolveDiscoverySymbolMatch(symbols, query);
+    if (resolved) return resolved.symbol;
+  }
   const candidate = query.trim().toUpperCase();
   if (!candidate || candidate.length > 12) return null;
   if (!/^[A-Z][A-Z0-9.-]*$/.test(candidate)) return null;

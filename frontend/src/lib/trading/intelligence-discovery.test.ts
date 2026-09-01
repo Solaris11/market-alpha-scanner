@@ -9,6 +9,7 @@ import {
   compactIntelligenceDiscoverySystem,
   filterDiscoverySymbols,
   matchesDiscoveryQuickFilter,
+  resolveDiscoverySymbolMatch,
   symbolCandidateFromDiscoveryQuery,
 } from "./intelligence-discovery";
 
@@ -108,6 +109,48 @@ describe("intelligence discovery system", () => {
     assert.deepEqual(weakest.map((symbol) => symbol.symbol), ["XOM"]);
     assert.equal(matchesDiscoveryQuickFilter(system.symbols.find((symbol) => symbol.symbol === "XOM")!, "top_gainers_1m"), false);
     assert.equal(matchesDiscoveryQuickFilter(system.symbols.find((symbol) => symbol.symbol === "XOM")!, "top_losers_1m"), true);
+  });
+
+  test("surfaces an explicitly searched ticker even when active filters would exclude it", () => {
+    const system = buildIntelligenceDiscoverySystem({
+      rows: [
+        opportunity("NVDA", "NVIDIA Corporation", "Technology", { confidence_score: 86, final_score: 86, return_1d: 1.2, return_1m: 15.1, risk_pressure_score: 40 }),
+        opportunity("XOM", "Exxon Mobil", "Energy", { confidence_score: 60, final_score: 60, fragility_score: 78, return_1d: -2.0, return_1m: -9.0, risk_pressure_score: 70 }),
+      ],
+    });
+
+    const underQuickFilter = filterDiscoverySymbols(system.symbols, {
+      filter: "top_losers_1m",
+      query: "NVDA",
+      sector: "ALL",
+      sort: "confidence",
+      timeframe: "1M",
+    });
+    const underSectorFilter = filterDiscoverySymbols(system.symbols, {
+      filter: "all",
+      query: "NVDA",
+      sector: "Energy",
+      sort: "confidence",
+      timeframe: "1M",
+    });
+
+    assert.equal(underQuickFilter[0]?.symbol, "NVDA");
+    assert.equal(underSectorFilter[0]?.symbol, "NVDA");
+  });
+
+  test("resolves company names, share-class aliases, and bare crypto bases to packet symbols", () => {
+    const system = buildIntelligenceDiscoverySystem({
+      rows: [
+        opportunity("NVDA", "NVIDIA Corporation", "Technology", { confidence_score: 80, final_score: 80 }),
+        opportunity("BTC-USD", "Bitcoin", "Crypto", { asset_type: "Crypto", confidence_score: 65, final_score: 65 }),
+      ],
+    });
+
+    assert.equal(resolveDiscoverySymbolMatch(system.symbols, "nvidia")?.symbol, "NVDA");
+    assert.equal(resolveDiscoverySymbolMatch(system.symbols, "btc")?.symbol, "BTC-USD");
+    assert.equal(resolveDiscoverySymbolMatch(system.symbols, "IREN"), null);
+    assert.equal(symbolCandidateFromDiscoveryQuery("Nvidia", system.symbols), "NVDA");
+    assert.equal(symbolCandidateFromDiscoveryQuery("IREN", system.symbols), "IREN");
   });
 
   test("normalizes ticker-only fallback searches without turning normal text into symbols", () => {

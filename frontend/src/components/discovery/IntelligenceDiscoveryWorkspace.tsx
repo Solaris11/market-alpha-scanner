@@ -35,6 +35,7 @@ import { symbolCardContextFromRow } from "@/lib/symbol/symbol-intelligence-card"
 import type { DiscoverySavedScan, DiscoverySavedScanPayload } from "@/lib/discovery-saved-scans";
 import {
   filterDiscoverySymbols,
+  resolveDiscoverySymbolMatch,
   symbolCandidateFromDiscoveryQuery,
   type DiscoveryCluster,
   type DiscoveryEvidenceFilter,
@@ -217,7 +218,8 @@ export function IntelligenceDiscoveryWorkspace({
 
   const state: DiscoveryFilterState = { assetType, evidence, filter, marketCap, query: deferredQuery, riskBand, sector, sort, timeframe, watchlistOnly };
   const filtered = useMemo(() => filterDiscoverySymbols(system.symbols, state), [assetType, deferredQuery, evidence, filter, marketCap, riskBand, sector, sort, system.symbols, timeframe, watchlistOnly]);
-  const fallbackSearchSymbol = useMemo(() => symbolCandidateFromDiscoveryQuery(deferredQuery), [deferredQuery]);
+  const searchPacketMatch = useMemo(() => (deferredQuery.trim() ? resolveDiscoverySymbolMatch(system.symbols, deferredQuery) : null), [deferredQuery, system.symbols]);
+  const fallbackSearchSymbol = useMemo(() => symbolCandidateFromDiscoveryQuery(deferredQuery, system.symbols), [deferredQuery, system.symbols]);
   const visibleLimit = useMemo(() => {
     if (density === "ultra") return mode === "overlay" ? 260 : 520;
     if (density === "dense") return mode === "overlay" ? 140 : 240;
@@ -265,6 +267,20 @@ export function IntelligenceDiscoveryWorkspace({
     });
     trackAnalyticsEvent("scanner_usage", { action: "open_search_fallback_symbol_card", symbol: normalized }, { source: "discovery_search", symbol: normalized });
   }, []);
+
+  // Enter on either discovery search box opens the requested ticker directly:
+  // a validated packet row when one exists, otherwise an evidence-limited card.
+  const submitSymbolSearch = useCallback((rawQuery: string): void => {
+    const trimmed = rawQuery.trim();
+    if (!trimmed) return;
+    const match = resolveDiscoverySymbolMatch(system.symbols, trimmed);
+    if (match) {
+      openDiscoverySymbolCard(match);
+      return;
+    }
+    const candidate = symbolCandidateFromDiscoveryQuery(trimmed, system.symbols);
+    if (candidate) openFallbackSearchSymbolCard(candidate);
+  }, [openDiscoverySymbolCard, openFallbackSearchSymbolCard, system.symbols]);
 
   function recordScannerWorkflow(id: string, startedAt: number): void {
     recordBrowserWorkflowMetric(`scanner:${id}`, startedAt);
@@ -348,6 +364,12 @@ export function IntelligenceDiscoveryWorkspace({
     });
     setRangeSelectedSymbols((current) => current.filter((symbol) => visibleSymbols.some((candidate) => candidate.symbol === symbol)));
   }, [visibleSymbols.length]);
+
+  useEffect(() => {
+    setActiveIndex(0);
+    rangeAnchorRef.current = 0;
+    setRangeSelectedSymbols([]);
+  }, [assetType, deferredQuery, evidence, filter, marketCap, riskBand, sector, sort, timeframe, watchlistOnly]);
 
   function toggleCompare(symbol: string): void {
     setCompareSymbols((current) => {
@@ -752,7 +774,8 @@ export function IntelligenceDiscoveryWorkspace({
         mode={mode}
         query={query}
         selectedFilter={selectedFilter}
-                setQuery={updateQueryWithTiming}
+        onSubmitSymbol={submitSymbolSearch}
+        setQuery={updateQueryWithTiming}
         system={system}
       />
 
@@ -805,6 +828,11 @@ export function IntelligenceDiscoveryWorkspace({
                     enterKeyHint="search"
                     inputMode="search"
                     onChange={(event) => updateQueryWithTiming(event.currentTarget.value)}
+                    onKeyDown={(event) => {
+                      if (event.key !== "Enter") return;
+                      event.preventDefault();
+                      submitSymbolSearch(event.currentTarget.value);
+                    }}
                     placeholder="Search symbol, company, sector, setup, risk context..."
                     type="search"
                     value={query}
@@ -915,6 +943,7 @@ export function IntelligenceDiscoveryWorkspace({
               resultCount={filtered.length}
               rangeSelectedSymbols={rangeSelectedSymbols}
               scannerColumnKeys={scannerColumnKeys}
+              searchPacketMatch={searchPacketMatch}
               shortlistedSymbols={shortlistSymbols}
               sort={sort}
               symbols={visibleSymbols}
@@ -947,6 +976,7 @@ export function IntelligenceDiscoveryWorkspace({
 function DiscoveryHero({
   inputRef,
   mode,
+  onSubmitSymbol,
   query,
   selectedFilter,
   setQuery,
@@ -954,6 +984,7 @@ function DiscoveryHero({
 }: {
   inputRef: RefObject<HTMLInputElement | null>;
   mode: DiscoveryMode;
+  onSubmitSymbol: (value: string) => void;
   query: string;
   selectedFilter?: DiscoveryQuickFilter;
   setQuery: (value: string) => void;
@@ -984,6 +1015,11 @@ function DiscoveryHero({
                 enterKeyHint="search"
                 inputMode="search"
                 onChange={(event) => setQuery(event.currentTarget.value)}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter") return;
+                  event.preventDefault();
+                  onSubmitSymbol(event.currentTarget.value);
+                }}
                 placeholder="Search AMD, semis, macro-supported pullbacks, risk escalation..."
                 ref={inputRef}
                 type="search"
@@ -1412,6 +1448,7 @@ function SymbolResultGrid({
   rangeSelectedSymbols,
   resultCount,
   scannerColumnKeys,
+  searchPacketMatch,
   shortlistedSymbols,
   sort,
   symbols,
@@ -1438,6 +1475,7 @@ function SymbolResultGrid({
   rangeSelectedSymbols: string[];
   resultCount: number;
   scannerColumnKeys: DiscoveryScannerColumnKey[];
+  searchPacketMatch: DiscoverySymbol | null;
   shortlistedSymbols: string[];
   sort: DiscoverySortKey;
   symbols: DiscoverySymbol[];
@@ -1499,6 +1537,9 @@ function SymbolResultGrid({
         </div>
       </div>
       <ColumnToggleRail onToggleColumn={onToggleColumn} visibleColumns={scannerColumnKeys} />
+      {searchPacketMatch || (symbols.length && fallbackSearchSymbol) ? (
+        <SymbolSearchIntentResult fallbackSearchSymbol={fallbackSearchSymbol} onOpen={onOpen} onOpenFallbackSymbol={onOpenFallbackSymbol} searchPacketMatch={searchPacketMatch} />
+      ) : null}
       {symbols.length ? (
         density === "speed" || density === "dense" || density === "ultra" ? (
           <RapidScannerTable activeSymbol={activeSymbol} alertingSymbol={alertingSymbol} compact={density === "dense" || density === "ultra"} expandedSymbols={expandedSymbols} rangeSelectedSymbols={rangeSelectedSymbols} compareSymbols={compareSymbols} onCreateAlert={onCreateAlert} onOpen={onOpen} onSortChange={onSortChange} onToggleCompare={onToggleCompare} onToggleExpanded={onToggleExpanded} onToggleShortlist={onToggleShortlist} shortlistedSymbols={shortlistedSymbols} sort={sort} symbols={symbols} timeframe={timeframe} ultra={density === "ultra"} visibleColumns={scannerColumnKeys} watchedSymbols={watchedSymbols} />
@@ -1513,6 +1554,61 @@ function SymbolResultGrid({
         <EmptyScannerSearchState fallbackSearchSymbol={fallbackSearchSymbol} onOpenFallbackSymbol={onOpenFallbackSymbol} />
       )}
     </section>
+  );
+}
+
+function SymbolSearchIntentResult({
+  fallbackSearchSymbol,
+  onOpen,
+  onOpenFallbackSymbol,
+  searchPacketMatch,
+}: {
+  fallbackSearchSymbol: string | null;
+  onOpen: (symbol: DiscoverySymbol) => void;
+  onOpenFallbackSymbol: (symbol: string) => void;
+  searchPacketMatch: DiscoverySymbol | null;
+}) {
+  if (searchPacketMatch) {
+    return (
+      <div className="mb-3 flex flex-col gap-3 rounded-2xl border border-emerald-300/20 bg-emerald-300/[0.06] p-3 text-sm text-slate-200 sm:flex-row sm:items-center sm:justify-between" data-discovery-search-intent="packet">
+        <div className="min-w-0">
+          <div className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-200">Validated symbol match</div>
+          <div className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="font-mono text-lg font-black text-white">{searchPacketMatch.symbol}</span>
+            <span className="truncate text-xs font-semibold text-slate-400">{searchPacketMatch.companyName ?? searchPacketMatch.sector ?? searchPacketMatch.setupType}</span>
+          </div>
+        </div>
+        <button
+          className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-2xl border border-emerald-300/35 bg-emerald-300/12 px-4 text-xs font-black uppercase tracking-[0.12em] text-emerald-100 transition hover:border-emerald-200/70 hover:bg-emerald-300/18"
+          onClick={() => onOpen(searchPacketMatch)}
+          type="button"
+        >
+          <ArrowRight className="h-4 w-4" />
+          Open card
+        </button>
+      </div>
+    );
+  }
+
+  if (!fallbackSearchSymbol) return null;
+  return (
+    <div className="mb-3 flex flex-col gap-3 rounded-2xl border border-cyan-300/20 bg-cyan-300/[0.06] p-3 text-sm text-slate-200 sm:flex-row sm:items-center sm:justify-between" data-discovery-search-intent="fallback">
+      <div className="min-w-0">
+        <div className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-200">Ticker card fallback</div>
+        <div className="mt-1 flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+          <span className="font-mono text-lg font-black text-white">{fallbackSearchSymbol}</span>
+          <span className="truncate text-xs font-semibold text-slate-400">No validated scanner row in this packet</span>
+        </div>
+      </div>
+      <button
+        className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-2xl border border-cyan-300/35 bg-cyan-300/12 px-4 text-xs font-black uppercase tracking-[0.12em] text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-300/18"
+        onClick={() => onOpenFallbackSymbol(fallbackSearchSymbol)}
+        type="button"
+      >
+        <ArrowRight className="h-4 w-4" />
+        Open card
+      </button>
+    </div>
   );
 }
 

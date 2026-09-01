@@ -38,6 +38,7 @@ type MarketMemoryCacheEntry = {
 
 const MARKET_MEMORY_SIGNAL_CACHE_TTL_MS = 90_000;
 const MARKET_MEMORY_SIGNAL_CACHE_LIMIT = 160;
+const SCANNER_SIGNAL_MEMORY_FALLBACK_ENABLED = process.env.TRADEVETO_MARKET_MEMORY_SCANNER_FALLBACK === "true";
 const signalMemoryCache = new Map<string, MarketMemoryCacheEntry>();
 
 export async function getMarketMemoryForSignal(row: RankingRow): Promise<MarketMemorySummary> {
@@ -68,42 +69,82 @@ async function getMarketMemoryCandidates(row: RankingRow): Promise<MarketMemoryC
   const bucket = scoreBucket(row.final_score);
   const result = await dbQuery<MarketMemorySnapshotRow>(
     `
+      WITH memory_input AS (
+        SELECT
+          $1::text AS symbol,
+          $2::text AS setup_type,
+          $3::text AS sector,
+          $4::text AS market_regime,
+          $5::text AS score_bucket,
+          COALESCE($6::timestamptz, now()) AS current_ts
+      )
       SELECT
-        symbol,
-        signal_ts,
-        setup_type,
-        sector,
-        market_regime,
-        final_decision AS decision,
-        final_score,
-        score_bucket,
-        signature,
-        outcome
-      FROM market_memory_snapshots
-      WHERE signal_ts < COALESCE($6::timestamptz, now())
-        AND (
-          symbol = $1
-          OR ($2::text IS NOT NULL AND setup_type = $2)
-          OR ($3::text IS NOT NULL AND sector = $3)
-          OR ($4::text IS NOT NULL AND market_regime = $4)
-          OR ($5::text IS NOT NULL AND score_bucket = $5)
+        candidate.symbol,
+        candidate.signal_ts,
+        candidate.setup_type,
+        candidate.sector,
+        candidate.market_regime,
+        candidate.decision,
+        candidate.final_score,
+        candidate.score_bucket,
+        candidate.signature,
+        candidate.outcome
+      FROM (
+        (
+          SELECT
+            0 AS match_rank,
+            m.symbol,
+            m.signal_ts,
+            m.setup_type,
+            m.sector,
+            m.market_regime,
+            m.final_decision AS decision,
+            m.final_score,
+            m.score_bucket,
+            m.signature,
+            m.outcome
+          FROM market_memory_snapshots m
+          JOIN memory_input input ON m.symbol = input.symbol
+          WHERE m.signal_ts < input.current_ts
+          ORDER BY m.signal_ts DESC
+          LIMIT 90
         )
-      ORDER BY
-        CASE
-          WHEN symbol = $1 THEN 0
-          WHEN $2::text IS NOT NULL AND setup_type = $2 THEN 1
-          WHEN $3::text IS NOT NULL AND sector = $3 THEN 2
-          WHEN $4::text IS NOT NULL AND market_regime = $4 THEN 3
-          ELSE 4
-        END,
-        signal_ts DESC
-      LIMIT 360
+        UNION ALL
+        (
+          SELECT
+            1 AS match_rank,
+            m.symbol,
+            m.signal_ts,
+            m.setup_type,
+            m.sector,
+            m.market_regime,
+            m.final_decision AS decision,
+            m.final_score,
+            m.score_bucket,
+            m.signature,
+            m.outcome
+          FROM market_memory_snapshots m
+          JOIN memory_input input ON m.setup_type = input.setup_type
+            AND m.market_regime = input.market_regime
+            AND m.score_bucket = input.score_bucket
+          WHERE input.setup_type IS NOT NULL
+            AND input.market_regime IS NOT NULL
+            AND input.score_bucket IS NOT NULL
+            AND m.signal_ts < input.current_ts
+          ORDER BY m.signal_ts DESC
+          LIMIT 150
+        )
+      ) candidate
+      ORDER BY candidate.match_rank ASC, candidate.signal_ts DESC
+      LIMIT 240
     `,
     [symbol, setupType, sector, marketRegime, bucket, currentTimestamp],
   );
   const snapshotCandidates = result.rows.map(snapshotToCandidate);
+  if (snapshotCandidates.length || !SCANNER_SIGNAL_MEMORY_FALLBACK_ENABLED) return dedupeCandidates(snapshotCandidates);
+
   const scannerCandidates = await getScannerSignalMemoryCandidates({ bucket, currentTimestamp, marketRegime, sector, setupType, symbol }).catch((): MarketMemoryCandidate[] => []);
-  return dedupeCandidates([...snapshotCandidates, ...scannerCandidates]);
+  return dedupeCandidates(scannerCandidates);
 }
 
 async function getScannerSignalMemoryCandidates(input: {
