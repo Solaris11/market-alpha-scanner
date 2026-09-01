@@ -70,7 +70,8 @@ grab containers     docker compose ps --format json
 
 say "collecting health"
 curl -fsS --max-time 15 "$BASE_URL/api/health"      -o "$WORK/health" 2>/dev/null || say "app health unreachable"
-curl -fsS --max-time 25 "$BASE_URL/api/health/deep" -o "$WORK/health_deep" 2>/dev/null || say "deep health non-200 (recorded)"
+# No -f here: a 503 body is exactly what we need to read, and -f discards it.
+curl -sS --max-time 25 "$BASE_URL/api/health/deep" -o "$WORK/health_deep" 2>/dev/null || say "deep health unreachable"
 curl -sS  --max-time 25 -o /dev/null -w '%{http_code}' "$BASE_URL/api/health/deep" >"$WORK/health_deep_code" 2>/dev/null
 
 say "timing routes"
@@ -100,9 +101,29 @@ psql_q "
     (SELECT round(extract(epoch FROM (now() - max(started_at)))/60) FROM scan_runs)
 " >"$WORK/db_scanner" 2>/dev/null || say "scanner query failed"
 
-psql_q "SELECT count(*) FROM users" >"$WORK/db_users" 2>/dev/null || say "users query failed"
-psql_q "SELECT count(*) FROM user_subscriptions WHERE status IN ('active','trialing')" \
-  >"$WORK/db_paid" 2>/dev/null || say "subscriptions query failed"
+# Probe accounts are excluded using the same definition the retention probe uses
+# (frontend/scripts/phase34-1-...): a raw count reported 33 users and 24 active
+# subscriptions when the real figures were 7 and 1, because 21 never-logged-in
+# probe accounts carry expired premium rows.
+REAL_USER="email NOT LIKE '%@tradeveto-probe.local' AND email NOT LIKE '%@example.com' AND email !~* '(test|dummy|demo|fake|sample|qa|staging)'"
+
+psql_q "SELECT count(*) FILTER (WHERE $REAL_USER), count(*) FROM users" \
+  >"$WORK/db_users" 2>/dev/null || say "users query failed"
+
+# Three different numbers get confused with each other here, so all three are
+# reported. Paying means a live Stripe subscription that has not expired;
+# manually granted premium has no stripe_subscription_id, and an 'active' row
+# whose period has ended grants nothing at all.
+psql_q "
+  SELECT
+    count(*) FILTER (WHERE s.current_period_end > now()
+                       AND s.stripe_subscription_id IS NOT NULL
+                       AND coalesce(s.stripe_mode,'live') = 'live'),
+    count(*) FILTER (WHERE s.current_period_end > now()),
+    count(*)
+  FROM user_subscriptions s JOIN users u ON u.id = s.user_id
+  WHERE s.status IN ('active','trialing') AND $REAL_USER
+" >"$WORK/db_paid" 2>/dev/null || say "subscriptions query failed"
 
 # The decision mix is the single most diagnostic scanner number: a run that is
 # entirely AVOID/EXIT means users are shown nothing actionable, whatever the
@@ -116,6 +137,10 @@ psql_q "
 say "collecting backup state"
 grab backup_pg      bash -c "ls -t /opt/backups/market-alpha/postgres/*.sql.gz 2>/dev/null | head -1"
 grab backup_scanner bash -c "ls -t /opt/backups/market-alpha/scanner/*.tar.gz  2>/dev/null | head -1"
+# Age matters independently of whether local and offsite agree: a backup job that
+# stopped weeks ago leaves the two copies perfectly in sync and completely stale.
+grab backup_pg_age_h      bash -c "f=\$(ls -t /opt/backups/market-alpha/postgres/*.sql.gz 2>/dev/null | head -1); [ -n \"\$f\" ] && echo \$(( ( \$(date +%s) - \$(stat -c %Y \"\$f\") ) / 3600 ))"
+grab backup_scanner_age_h bash -c "f=\$(ls -t /opt/backups/market-alpha/scanner/*.tar.gz 2>/dev/null | head -1); [ -n \"\$f\" ] && echo \$(( ( \$(date +%s) - \$(stat -c %Y \"\$f\") ) / 3600 ))"
 grab r2_pg          bash -c "rclone lsf r2:market-alpha-backups/postgres/ 2>/dev/null | sort | tail -1"
 grab r2_scanner     bash -c "rclone lsf r2:market-alpha-backups/scanner/  2>/dev/null | sort | tail -1"
 

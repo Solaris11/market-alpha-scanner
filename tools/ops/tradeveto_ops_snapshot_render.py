@@ -110,12 +110,26 @@ def parse_stats(raw: Optional[str]) -> List[Dict[str, str]]:
     return rows
 
 
-def backup_state(local: Optional[str], remote: Optional[str]) -> Dict[str, Any]:
+def backup_state(local: Optional[str], remote: Optional[str], age_hours: Optional[str]) -> Dict[str, Any]:
     local_name = Path(local).name if local else None
     return {
         "latestLocal": local_name,
         "latestOffsite": remote,
         "offsiteMatchesLocal": bool(local_name and remote and local_name == remote),
+        "ageHours": parse_int(age_hours),
+    }
+
+
+def _users_block(users_raw: Optional[str], paid_raw: Optional[str]) -> Dict[str, Optional[int]]:
+    """Real vs total, kept separate so a probe-inflated number is never the headline."""
+    users = parse_pipe_ints(users_raw, ["real", "total"])
+    paid = parse_pipe_ints(paid_raw, ["payingLive", "entitledUnexpired", "activeRows"])
+    return {
+        "realUsers": users["real"],
+        "totalUsers": users["total"],
+        "payingLiveStripe": paid["payingLive"],
+        "entitledUnexpired": paid["entitledUnexpired"],
+        "activeSubscriptionRows": paid["activeRows"],
     }
 
 
@@ -153,13 +167,10 @@ def build(work: Path) -> Dict[str, Any]:
             "decisionMix": decisions,
             "actionableRows": actionable,
         },
-        "users": {
-            "total": parse_int(read(work, "db_users")),
-            "activeSubscriptions": parse_int(read(work, "db_paid")),
-        },
+        "users": _users_block(read(work, "db_users"), read(work, "db_paid")),
         "backups": {
-            "postgres": backup_state(read(work, "backup_pg"), read(work, "r2_pg")),
-            "scanner": backup_state(read(work, "backup_scanner"), read(work, "r2_scanner")),
+            "postgres": backup_state(read(work, "backup_pg"), read(work, "r2_pg"), read(work, "backup_pg_age_h")),
+            "scanner": backup_state(read(work, "backup_scanner"), read(work, "r2_scanner"), read(work, "backup_scanner_age_h")),
         },
         "resources": {
             "containers": parse_stats(read(work, "docker_stats")),
@@ -181,8 +192,15 @@ def concerns(snapshot: Dict[str, Any]) -> List[str]:
 
     for name in ("postgres", "scanner"):
         state: Dict[str, Any] = snapshot["backups"][name]
-        if not state["offsiteMatchesLocal"]:
+        if state["latestLocal"] is None:
+            found.append(f"No local {name} backup found at all.")
+        elif not state["offsiteMatchesLocal"]:
             found.append(f"Offsite {name} backup does not match the newest local artifact.")
+        age = state["ageHours"]
+        # In sync but ancient is the failure mode a match-only check misses:
+        # a stopped backup job leaves both copies identical and both useless.
+        if isinstance(age, int) and age > 48:
+            found.append(f"Newest {name} backup is {age} hours old ({age // 24} days) - the backup job may have stopped.")
 
     age = snapshot["scanner"]["lastScanAgeMinutes"]
     if isinstance(age, int) and age > 180:
@@ -193,11 +211,13 @@ def concerns(snapshot: Dict[str, Any]) -> List[str]:
         found.append("Latest scan ranked zero symbols.")
 
     mix: Dict[str, int] = snapshot["scanner"]["decisionMix"]
-    if mix and snapshot["scanner"]["actionableRows"] == 0:
+    total_rows = sum(mix.values()) if mix else 0
+    actionable = snapshot["scanner"]["actionableRows"]
+    if mix and total_rows and actionable / total_rows < 0.02:
         shown = ", ".join(f"{name} {count}" for name, count in sorted(mix.items(), key=lambda kv: -kv[1]))
         found.append(
-            "Latest scan produced no ENTER or WAIT_PULLBACK rows - users see nothing "
-            f"actionable. Decision mix: {shown}."
+            f"Latest scan produced {actionable} actionable rows out of {total_rows} - "
+            f"users are shown effectively nothing to act on. Decision mix: {shown}."
         )
 
     for row in snapshot["routes"]:
@@ -242,12 +262,13 @@ def render_html(snapshot: Dict[str, Any], issues: List[str]) -> str:
     )
 
     backup_rows = "".join(
-        "<tr><td>{name}</td><td>{local}</td><td>{remote}</td><td class='n {cls}'>{state}</td></tr>".format(
+        "<tr><td>{name}</td><td>{local}</td><td>{remote}</td><td class='n'>{age}h</td><td class='n {cls}'>{state}</td></tr>".format(
             name=name,
             local=esc(snapshot["backups"][name]["latestLocal"]),
             remote=esc(snapshot["backups"][name]["latestOffsite"]),
             cls="" if snapshot["backups"][name]["offsiteMatchesLocal"] else "bad",
             state="in sync" if snapshot["backups"][name]["offsiteMatchesLocal"] else "STALE",
+            age=esc(snapshot["backups"][name]["ageHours"]),
         )
         for name in ("postgres", "scanner")
     )
@@ -297,8 +318,10 @@ tr:last-child td {{ border-bottom:0 }}
 
 <section><h2>Users and scanner</h2>
 <div class="kv">
-  <div><b>{esc(users['total'])}</b><small>users</small></div>
-  <div><b>{esc(users['activeSubscriptions'])}</b><small>paying</small></div>
+  <div><b>{esc(users['realUsers'])}</b><small>real users</small></div>
+  <div><b>{esc(users['payingLiveStripe'])}</b><small>paying (live stripe)</small></div>
+  <div><b>{esc(users['entitledUnexpired'])}</b><small>entitled incl. comped</small></div>
+  <div><b>{esc(users['totalUsers'])}</b><small>incl. probe</small></div>
   <div><b>{esc(scanner['rankedRows'])}</b><small>ranked rows</small></div>
   <div><b>{esc(scanner['distinctSymbols'])}</b><small>distinct symbols</small></div>
   <div><b>{esc(scanner['lastScanAgeMinutes'])}</b><small>scan age (min)</small></div>
@@ -308,7 +331,7 @@ tr:last-child td {{ border-bottom:0 }}
 </section>
 
 <section><h2>Backups</h2><div class="scroll"><table>
-<tr><th>Set</th><th>Newest local</th><th>Newest offsite</th><th>State</th></tr>
+<tr><th>Set</th><th>Newest local</th><th>Newest offsite</th><th>Age</th><th>State</th></tr>
 {backup_rows}
 </table></div></section>
 
