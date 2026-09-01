@@ -2,6 +2,8 @@
 set -uo pipefail
 
 BASE_URL="${TRADEVETO_OPS_BASE_URL:-https://tradeveto.com}"
+GREEN_CHECK_READY_TIMEOUT_SECONDS="${TRADEVETO_OPS_READY_TIMEOUT_SECONDS:-60}"
+GREEN_CHECK_READY_POLL_SECONDS="${TRADEVETO_OPS_READY_POLL_SECONDS:-2}"
 APP_DIR="${TRADEVETO_APP_DIR:-/opt/apps/market-alpha-scanner/app}"
 LOG_DIR="${TRADEVETO_LOG_DIR:-/var/log/market-alpha}"
 BACKUP_ROOT="${TRADEVETO_BACKUP_ROOT:-/opt/backups/market-alpha}"
@@ -363,7 +365,29 @@ check_log_secret_leakage() {
   fi
 }
 
+wait_for_app_ready() {
+  # A deploy restarts the frontend container, and Next.js needs a few seconds
+  # before it accepts requests. Without this wait the HTTP checks below race the
+  # boot and report 502s that are gone seconds later - a false alarm that trains
+  # operators to distrust this script. Observed ready time on 2026-09-01: 4s.
+  local waited=0
+  while (( waited < GREEN_CHECK_READY_TIMEOUT_SECONDS )); do
+    if curl -fsS -o /dev/null --max-time 3 "$(url_for_path /api/health)" 2>/dev/null; then
+      if (( waited > 0 )); then
+        log "App became ready after ${waited}s"
+      fi
+      return 0
+    fi
+    sleep "$GREEN_CHECK_READY_POLL_SECONDS"
+    waited=$(( waited + GREEN_CHECK_READY_POLL_SECONDS ))
+  done
+  warn "App health did not respond within ${GREEN_CHECK_READY_TIMEOUT_SECONDS}s; running checks anyway"
+  return 0
+}
+
 log "TradeVeto ops green check starting base_url=$BASE_URL app_dir=$APP_DIR"
+
+wait_for_app_ready
 
 check_http "Landing page" "/" "200"
 check_http "Pricing page" "/pricing" "200"
