@@ -27,8 +27,6 @@ BASE_URL="${TRADEVETO_OPS_BASE_URL:-https://tradeveto.com}"
 OUT_DIR="${TRADEVETO_SNAPSHOT_OUT_DIR:-$APP_DIR}"
 WITH_PROBES=0
 PG_SERVICE="${TRADEVETO_PG_SERVICE:-market-alpha-postgres}"
-PG_USER="${TRADEVETO_PG_USER:-postgres}"
-PG_DB="${TRADEVETO_PG_DB:-market_alpha}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -80,17 +78,37 @@ for r in / /pricing /terminal /discover /opportunities /symbol/AMD /market-memor
 done
 
 say "querying scanner + user state"
+# Credentials come from the container's own POSTGRES_USER/POSTGRES_DB, the same
+# way the other ops scripts do it. Hardcoding a user here silently breaks the
+# DB section on any deployment that does not use that exact role.
 psql_q() {
-  docker compose exec -T "$PG_SERVICE" psql -U "$PG_USER" -d "$PG_DB" -At -F '|' -c "$1" 2>/dev/null
+  local sql="$1"
+  docker compose exec -T "$PG_SERVICE" \
+    sh -lc 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -At -F "|" -c "$1"' -- "$sql" 2>/dev/null
 }
+# scan_runs.id is a UUID, so the latest run is found by started_at, not max(id).
+# Each group is a separate query: one failing table must not lose the others.
+LATEST_RUN="(SELECT id FROM scan_runs ORDER BY started_at DESC LIMIT 1)"
+
 psql_q "
   SELECT
-    (SELECT count(*) FROM scanner_signals WHERE scan_run_id = (SELECT max(id) FROM scan_runs)),
-    (SELECT count(DISTINCT symbol) FROM scanner_signals WHERE scan_run_id = (SELECT max(id) FROM scan_runs)),
-    (SELECT round(extract(epoch FROM (now() - max(started_at)))/60) FROM scan_runs),
-    (SELECT count(*) FROM users),
-    (SELECT count(*) FROM user_subscriptions WHERE status IN ('active','trialing'))
-" >"$WORK/db" 2>/dev/null || say "db query failed"
+    (SELECT count(*) FROM scanner_signals WHERE scan_run_id = $LATEST_RUN),
+    (SELECT count(DISTINCT symbol) FROM scanner_signals WHERE scan_run_id = $LATEST_RUN),
+    (SELECT round(extract(epoch FROM (now() - max(started_at)))/60) FROM scan_runs)
+" >"$WORK/db_scanner" 2>/dev/null || say "scanner query failed"
+
+psql_q "SELECT count(*) FROM users" >"$WORK/db_users" 2>/dev/null || say "users query failed"
+psql_q "SELECT count(*) FROM user_subscriptions WHERE status IN ('active','trialing')" \
+  >"$WORK/db_paid" 2>/dev/null || say "subscriptions query failed"
+
+# The decision mix is the single most diagnostic scanner number: a run that is
+# entirely AVOID/EXIT means users are shown nothing actionable, whatever the
+# ranking looks like.
+psql_q "
+  SELECT coalesce(final_decision,'(null)') || '=' || count(*)
+  FROM scanner_signals WHERE scan_run_id = $LATEST_RUN
+  GROUP BY 1 ORDER BY count(*) DESC
+" >"$WORK/db_decisions" 2>/dev/null || say "decision mix query failed"
 
 say "collecting backup state"
 grab backup_pg      bash -c "ls -t /opt/backups/market-alpha/postgres/*.sql.gz 2>/dev/null | head -1"

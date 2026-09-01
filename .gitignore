@@ -231,3 +231,6 @@ __pycache__/
 
 # linux
 *.swp
+calibration-*.csv
+ops-snapshot.json
+ops-snapshot.html

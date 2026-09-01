@@ -1565,6 +1565,10 @@ def generate_auto_calibration_recommendations(
 
 
 def generate_calibration_insights(summary_df: pd.DataFrame, forward_returns_df: pd.DataFrame, analysis_dir: Path) -> dict[str, object]:
+    # Declared once for the whole function: the empty and populated paths both
+    # assign it, and annotating in each is a redeclaration under strict mode.
+    # The wide value type stays explicit so each dict matches the return type.
+    payload: dict[str, object]
     analysis_dir.mkdir(parents=True, exist_ok=True)
     calibration_path = analysis_dir / "calibration_insights.csv"
     json_path = analysis_dir / "calibration_insights.json"
@@ -1572,7 +1576,7 @@ def generate_calibration_insights(summary_df: pd.DataFrame, forward_returns_df: 
     if summary_df.empty:
         calibration_df = pd.DataFrame(columns=CALIBRATION_COLUMNS)
         atomic_write_dataframe_csv(calibration_df, calibration_path, index=False)
-        payload: dict[str, object] = {
+        payload = {
             "generated_at": datetime.now(timezone.utc).isoformat(),
             "status": "not_ready",
             "message": "Analysis complete, but no completed forward-return observations exist yet.",
@@ -1626,7 +1630,7 @@ def generate_calibration_insights(summary_df: pd.DataFrame, forward_returns_df: 
     best_group = _insight_record(ranking_source.sort_values(["edge_score", "avg_return"], ascending=[False, False]).iloc[0]) if not ranking_source.empty else None
     worst_group = _insight_record(ranking_source.sort_values(["edge_score", "avg_return"], ascending=[True, True]).iloc[0]) if not ranking_source.empty else None
 
-    payload: dict[str, object] = {
+    payload = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "status": "ready",
         "forward_observations": int(len(forward_returns_df)),

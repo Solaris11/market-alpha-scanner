@@ -55,8 +55,7 @@ def parse_routes(raw: Optional[str]) -> List[Dict[str, Any]]:
     return rows
 
 
-def parse_db(raw: Optional[str]) -> Dict[str, Optional[int]]:
-    keys = ["rankedRows", "distinctSymbols", "lastScanAgeMinutes", "users", "activeSubscriptions"]
+def parse_pipe_ints(raw: Optional[str], keys: List[str]) -> Dict[str, Optional[int]]:
     values: Dict[str, Optional[int]] = {key: None for key in keys}
     if not raw:
         return values
@@ -72,6 +71,31 @@ def parse_db(raw: Optional[str]) -> Dict[str, Optional[int]]:
         except ValueError:
             values[key] = None
     return values
+
+
+def parse_int(raw: Optional[str]) -> Optional[int]:
+    if not raw:
+        return None
+    try:
+        return int(float(raw.strip()))
+    except ValueError:
+        return None
+
+
+def parse_decisions(raw: Optional[str]) -> Dict[str, int]:
+    """Parse 'AVOID=168' style rows into a decision mix."""
+    mix: Dict[str, int] = {}
+    if not raw:
+        return mix
+    for line in raw.splitlines():
+        if "=" not in line:
+            continue
+        name, _, count = line.rpartition("=")
+        try:
+            mix[name.strip()] = int(count.strip())
+        except ValueError:
+            continue
+    return mix
 
 
 def parse_stats(raw: Optional[str]) -> List[Dict[str, str]]:
@@ -98,7 +122,9 @@ def backup_state(local: Optional[str], remote: Optional[str]) -> Dict[str, Any]:
 def build(work: Path) -> Dict[str, Any]:
     deep_code = read(work, "health_deep_code")
     dirty = read(work, "deploy_dirty")
-    db = parse_db(read(work, "db"))
+    db = parse_pipe_ints(read(work, "db_scanner"), ["rankedRows", "distinctSymbols", "lastScanAgeMinutes"])
+    decisions = parse_decisions(read(work, "db_decisions"))
+    actionable = sum(count for name, count in decisions.items() if name in ("ENTER", "WAIT_PULLBACK"))
     routes = parse_routes(read(work, "routes"))
     slowest = max(routes, key=lambda row: float(row["totalSeconds"]), default=None)
 
@@ -124,10 +150,12 @@ def build(work: Path) -> Dict[str, Any]:
             "rankedRows": db["rankedRows"],
             "distinctSymbols": db["distinctSymbols"],
             "lastScanAgeMinutes": db["lastScanAgeMinutes"],
+            "decisionMix": decisions,
+            "actionableRows": actionable,
         },
         "users": {
-            "total": db["users"],
-            "activeSubscriptions": db["activeSubscriptions"],
+            "total": parse_int(read(work, "db_users")),
+            "activeSubscriptions": parse_int(read(work, "db_paid")),
         },
         "backups": {
             "postgres": backup_state(read(work, "backup_pg"), read(work, "r2_pg")),
@@ -163,6 +191,14 @@ def concerns(snapshot: Dict[str, Any]) -> List[str]:
     ranked = snapshot["scanner"]["rankedRows"]
     if isinstance(ranked, int) and ranked == 0:
         found.append("Latest scan ranked zero symbols.")
+
+    mix: Dict[str, int] = snapshot["scanner"]["decisionMix"]
+    if mix and snapshot["scanner"]["actionableRows"] == 0:
+        shown = ", ".join(f"{name} {count}" for name, count in sorted(mix.items(), key=lambda kv: -kv[1]))
+        found.append(
+            "Latest scan produced no ENTER or WAIT_PULLBACK rows - users see nothing "
+            f"actionable. Decision mix: {shown}."
+        )
 
     for row in snapshot["routes"]:
         if row["status"] != "200":
@@ -266,7 +302,9 @@ tr:last-child td {{ border-bottom:0 }}
   <div><b>{esc(scanner['rankedRows'])}</b><small>ranked rows</small></div>
   <div><b>{esc(scanner['distinctSymbols'])}</b><small>distinct symbols</small></div>
   <div><b>{esc(scanner['lastScanAgeMinutes'])}</b><small>scan age (min)</small></div>
+  <div><b class="{'bad' if scanner['actionableRows'] == 0 and scanner['decisionMix'] else ''}">{esc(scanner['actionableRows'])}</b><small>actionable rows</small></div>
 </div>
+<p class="sub" style="margin:12px 0 0">decision mix: {esc(', '.join(f"{k} {v}" for k, v in sorted(scanner['decisionMix'].items(), key=lambda kv: -kv[1])) or '-')}</p>
 </section>
 
 <section><h2>Backups</h2><div class="scroll"><table>
