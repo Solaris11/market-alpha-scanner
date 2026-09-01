@@ -8,7 +8,8 @@ import { DISCOVERY_OPEN_EVENT } from "@/components/discovery/DiscoveryCommandBut
 import { ResilienceStatusBanner } from "@/components/resilience/ResilienceStatusBanner";
 import { lockMobileBodyScroll } from "@/lib/client/mobile-scroll-lock";
 import { installMobileViewportCssVars } from "@/lib/client/mobile-viewport";
-import { buildLimitedIntelligenceDiscoverySystem, type IntelligenceDiscoverySystem } from "@/lib/trading/intelligence-discovery";
+import { buildLimitedIntelligenceDiscoverySystem } from "@/lib/trading/intelligence-discovery-limited";
+import type { IntelligenceDiscoverySystem } from "@/lib/trading/intelligence-discovery";
 
 type DiscoveryApiResponse = {
   limited?: boolean;

@@ -50,19 +50,26 @@ import {
   type CinematicHeatCell,
   type CinematicTimelineItem,
 } from "@/components/visual/CinematicIntelligencePanels";
+import dynamic from "next/dynamic";
 import { IconInsightRail, PosterGauge, ScoreFactorStrip, type ScoreFactor, type VisualTone } from "@/components/visual/MiniVisuals";
-import {
-  PosterFactorBars,
-  PosterHeatmapChart,
-  PosterMovementBars,
-  PosterRadialGauge,
-  PosterTrendChart,
-  type PosterFactor,
-  type PosterHeatCell,
-  type PosterVisualTone,
+import type {
+  PosterFactor,
+  PosterHeatCell,
+  PosterVisualTone,
 } from "@/components/visual/PosterDataVisuals";
 import { SymbolLogo } from "@/components/visual/SymbolLogo";
 import { trackAnalyticsEvent, trackFirstUsefulAction } from "@/lib/client/analytics";
+
+// Loaded on demand. PosterDataVisuals bundles three charting runtimes -
+// @visx (radial gauge), recharts (trend/movement/factor bars) and @nivo/heatmap -
+// so a static import puts all three in the initial /strategy-labs client bundle.
+// Every one of these renders below the fold in an analytics panel.
+const POSTER = () => import("@/components/visual/PosterDataVisuals");
+const PosterFactorBars = dynamic(() => POSTER().then((mod) => mod.PosterFactorBars), { ssr: false });
+const PosterHeatmapChart = dynamic(() => POSTER().then((mod) => mod.PosterHeatmapChart), { ssr: false });
+const PosterMovementBars = dynamic(() => POSTER().then((mod) => mod.PosterMovementBars), { ssr: false });
+const PosterRadialGauge = dynamic(() => POSTER().then((mod) => mod.PosterRadialGauge), { ssr: false });
+const PosterTrendChart = dynamic(() => POSTER().then((mod) => mod.PosterTrendChart), { ssr: false });
 
 const MODE_ORDER: SimulatedPortfolioMode[] = ["conservative", "balanced", "aggressive"];
 

@@ -1,3 +1,4 @@
+import { buildLimitedIntelligenceDiscoverySystem } from "./intelligence-discovery-limited";
 import type { OpportunityViewModel } from "./opportunity-view-model";
 import { formatHydrationSafeInteger } from "@/lib/ui/hydration-safe-formatters";
 import type { DiscoverySavedScan, DiscoverySavedScanDensity } from "@/lib/discovery-saved-scans";
@@ -220,28 +221,9 @@ const LARGE_UNIVERSE_PROOF_REAL_SYMBOLS = [
   "SNOW",
 ] as const;
 
-export function buildLimitedIntelligenceDiscoverySystem(message = "Discovery is limited until premium scanner data is available."): IntelligenceDiscoverySystem {
-  return {
-    comparePresets: [],
-    dataTimestamp: null,
-    discoveryScore: 0,
-    generatedAt: new Date().toISOString(),
-    headline: "Discovery requires validated scanner data",
-    limited: true,
-    macroClusters: [],
-    momentumClusters: [],
-    orbitNodes: [],
-    quickFilters: [],
-    riskClusters: [],
-    scannerPresets: [],
-    sectorHeatmap: [],
-    stories: [{ detail: message, key: "limited", metric: "Limited", symbols: [], title: "Limited evidence", tone: "amber" }],
-    summary: message,
-    symbols: [],
-    universeCount: 0,
-    watchlistCount: 0,
-  };
-}
+// Re-exported so existing callers keep working; the implementation lives in a
+// standalone module so the shared shell can import it without this whole file.
+export { buildLimitedIntelligenceDiscoverySystem };
 
 export function buildIntelligenceDiscoverySystem(input: BuildIntelligenceDiscoveryInput): IntelligenceDiscoverySystem {
   const watchlist = new Set((input.watchlistSymbols ?? []).map((symbol) => symbol.trim().toUpperCase()).filter(Boolean));
