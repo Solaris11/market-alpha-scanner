@@ -62,7 +62,10 @@ say "collecting deploy state"
 grab deploy_commit  git rev-parse --short HEAD
 grab deploy_subject git log -1 --format=%s
 grab deploy_date    git log -1 --format=%cI
-grab deploy_dirty   git status --porcelain
+# Untracked files are normal on this host (local logs, operator scripts kept
+# out of git). Only modified TRACKED files mean the running code may differ
+# from the recorded commit, and a warning that fires every run gets ignored.
+grab deploy_dirty   git status --porcelain --untracked-files=no
 grab containers     docker compose ps --format json
 
 say "collecting health"
