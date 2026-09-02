@@ -59,7 +59,7 @@ import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { buildExecutionTimingSystem } from "@/lib/trading/execution-intelligence";
 import { dailyActionBlocksTradeUi, getDailyAction, noTradeActionCopy } from "@/lib/trading/daily-action";
 import { buildLiveIntelligenceSystem } from "@/lib/trading/live-intelligence";
-import { buildOpportunitiesPageModel, stripShockEventPreconditions } from "@/lib/trading/opportunity-view-model";
+import { buildOpportunitiesPageModel, stripRawFields, stripShockEventPreconditions } from "@/lib/trading/opportunity-view-model";
 import { buildPortfolioIntelligenceSystem } from "@/lib/trading/portfolio-intelligence";
 import { buildPlatformMoatSystem } from "@/lib/trading/platform-moat";
 import { buildPredictiveIntelligenceSystem } from "@/lib/trading/predictive-intelligence";
@@ -263,7 +263,7 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
   // shock-event samples. The panel renders the finished system, so the samples
   // never have to be serialised.
   const executionTimingSystem = buildExecutionTimingSystem(opportunityModel.rows);
-  const clientRows = stripShockEventPreconditions(opportunityModel.rows);
+  const clientRows = stripRawFields(stripShockEventPreconditions(opportunityModel.rows));
 
   return (
     <TerminalShell>

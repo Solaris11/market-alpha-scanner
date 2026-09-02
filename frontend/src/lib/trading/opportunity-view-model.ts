@@ -1,4 +1,5 @@
 import { freshnessFromTimestamp, type DataFreshness } from "@/lib/data-health";
+import { CLIENT_READABLE_RAW_FIELD_SET } from "./raw-field-allowlist";
 import type { PerformanceData, RankingRow } from "@/lib/types";
 import { finiteNumber, firstNumber, formatMoney } from "@/lib/ui/formatters";
 import { humanizeInsightText, humanizeLabel } from "@/lib/ui/labels";
@@ -61,6 +62,33 @@ export type OpportunitiesPageModel = {
  * the result down; every other client consumer of shockEvents reads the array
  * length, eventDate or outcomeStatus, all of which this keeps intact.
  */
+/**
+ * Reduce each row's raw scanner record to the fields the browser actually reads.
+ *
+ * Measured on production: the raw block averages 11,618 bytes across 199 keys,
+ * and 129 of those keys -- 8,747 bytes, 75% of the block -- are never read by
+ * any module reachable from a client component. Across 349 rows that is 2.9 MB
+ * of a 16.8 MB flight payload, and it includes alpaca_request_id,
+ * provider_error, provider_latency_ms and data_provider_primary, which should
+ * not reach a browser at all.
+ *
+ * The allowlist is derived from the import graph rather than chosen by hand,
+ * and raw-field-allowlist.test.ts fails if a client-reachable read is missing
+ * from it. Apply this only at a serialisation boundary, after the server-side
+ * passes have read whatever they need from the full record.
+ */
+export function stripRawFields(rows: OpportunityViewModel[]): OpportunityViewModel[] {
+  return rows.map((row) => {
+    const raw = row.raw;
+    if (!raw || typeof raw !== "object") return row;
+    const kept: Record<string, unknown> = {};
+    for (const key of Object.keys(raw)) {
+      if (CLIENT_READABLE_RAW_FIELD_SET.has(key)) kept[key] = (raw as Record<string, unknown>)[key];
+    }
+    return { ...row, raw: kept } as OpportunityViewModel;
+  });
+}
+
 export function stripShockEventPreconditions(rows: OpportunityViewModel[]): OpportunityViewModel[] {
   return rows.map((row) => {
     const pattern = row.shockPattern;
