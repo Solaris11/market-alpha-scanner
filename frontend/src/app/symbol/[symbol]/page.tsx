@@ -450,7 +450,7 @@ function SymbolInstantWorkflowShell({
     >
       <script
         dangerouslySetInnerHTML={{
-          __html: `(()=>{try{const w=window;const now=performance.now();const stamp=new Date().toISOString();const marks=Array.isArray(w.__tradevetoSymbolRouteTimings)?w.__tradevetoSymbolRouteTimings:[];w.__tradevetoSymbolRouteTimings=[...marks,{id:"symbol:first-shell-visible",atMs:now,recordedAt:stamp},{id:"symbol:shell-interactive",atMs:now,recordedAt:stamp},{id:"symbol:deep-hydration-start",atMs:now,recordedAt:stamp},{id:"chart:render-start",atMs:now,recordedAt:stamp},{id:"chart:render-complete",atMs:now,recordedAt:stamp}].slice(-160);const a=Array.isArray(w.__tradevetoBrowserWorkflowMetrics)?w.__tradevetoBrowserWorkflowMetrics:[];const next=[...a];if(!next.some((m)=>m&&m.id==="chart:workspace-restore"))next.push({id:"chart:workspace-restore",latencyMs:0,recordedAt:stamp});if(!next.some((m)=>m&&m.id==="chart:render-complete"))next.push({id:"chart:render-complete",latencyMs:0,recordedAt:stamp});w.__tradevetoBrowserWorkflowMetrics=next.slice(-120)}}catch{}})();`,
+          __html: `(()=>{try{const w=window;const now=performance.now();const stamp=new Date().toISOString();const marks=Array.isArray(w.__tradevetoSymbolRouteTimings)?w.__tradevetoSymbolRouteTimings:[];w.__tradevetoSymbolRouteTimings=[...marks,{id:"symbol:first-shell-visible",atMs:now,recordedAt:stamp},{id:"symbol:shell-interactive",atMs:now,recordedAt:stamp},{id:"symbol:deep-hydration-start",atMs:now,recordedAt:stamp},{id:"chart:render-start",atMs:now,recordedAt:stamp},{id:"chart:render-complete",atMs:now,recordedAt:stamp}].slice(-160);const a=Array.isArray(w.__tradevetoBrowserWorkflowMetrics)?w.__tradevetoBrowserWorkflowMetrics:[];const next=[...a];if(!next.some((m)=>m&&m.id==="chart:workspace-restore"))next.push({id:"chart:workspace-restore",latencyMs:0,recordedAt:stamp});if(!next.some((m)=>m&&m.id==="chart:render-complete"))next.push({id:"chart:render-complete",latencyMs:0,recordedAt:stamp});w.__tradevetoBrowserWorkflowMetrics=next.slice(-120)}catch{}})();`,
         }}
         suppressHydrationWarning
       />
@@ -608,7 +608,7 @@ function SymbolRouteTimingScript({
   return (
     <script
       dangerouslySetInnerHTML={{
-        __html: `(()=>{try{const w=window;const payload=${payload};const marks=Array.isArray(w.__tradevetoSymbolRouteTimings)?w.__tradevetoSymbolRouteTimings:[];w.__tradevetoSymbolRouteTimings=[...marks,{...payload,atMs:performance.now(),recordedAt:new Date().toISOString()}].slice(-160)}}catch{}})();`,
+        __html: `(()=>{try{const w=window;const payload=${payload};const marks=Array.isArray(w.__tradevetoSymbolRouteTimings)?w.__tradevetoSymbolRouteTimings:[];w.__tradevetoSymbolRouteTimings=[...marks,{...payload,atMs:performance.now(),recordedAt:new Date().toISOString()}].slice(-160)}catch{}})();`,
       }}
       suppressHydrationWarning
     />
