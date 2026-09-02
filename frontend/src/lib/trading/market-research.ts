@@ -14,7 +14,14 @@ export type MarketCommandItem = {
   marketPressure: number | null;
   monthChangePct: number | null;
   pointCount: number;
-  row: RankingRow | null;
+  /**
+   * Only what the browser reads. This used to be the whole `RankingRow`: 305
+   * fields, ~11.4KB, on every macro proxy, and the client read exactly one of
+   * them. It also carried `alpaca_request_id`, `provider_error`,
+   * `provider_latency_ms` and `data_provider_primary` straight into the page
+   * source -- a second serialisation path that `stripRawFields` never saw.
+   */
+  eventContextSummary: string | null;
   symbol: string;
   tone: "amber" | "cyan" | "emerald" | "rose" | "violet";
   values: number[];
@@ -436,7 +443,7 @@ function buildMarketCommandItem(chart: MarketChartHubItem, row: RankingRow | nul
     marketPressure: numeric(row?.macro_pressure_score ?? row?.volatility_pressure ?? row?.event_risk_score),
     monthChangePct,
     pointCount: chart.chart.pointCount,
-    row,
+    eventContextSummary: text(row?.event_context_summary) ?? null,
     symbol: chart.symbol,
     tone: marketTone(monthChangePct, numeric(row?.macro_pressure_score ?? row?.event_risk_score)),
     values: valid.slice(-34).map((point) => point.close),

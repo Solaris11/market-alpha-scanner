@@ -73,6 +73,66 @@ test("buildMarketCommandModel restores cross-asset market command context from v
   assert.match(model.macroNews[0]?.relatedMacroContext ?? "", /Macro|alignment|limited/i);
 });
 
+/**
+ * Every bar item used to carry the whole scanner row into the page source.
+ *
+ * The browser reads one field off it, but the row it travelled in held 305 --
+ * including alpaca_request_id and the other provider plumbing that
+ * stripRawFields removes on the opportunity path. This is the second path, and
+ * it needs its own guard: if someone puts the row back to reach one more field,
+ * these fail rather than silently republishing request ids.
+ */
+test("bar items carry only the summary the client reads, never the scanner row", () => {
+  const rows: RankingRow[] = [
+    {
+      symbol: "QQQ",
+      alpaca_request_id: "req-aaaa,req-bbbb",
+      data_provider_primary: "yfinance",
+      data_timestamp: "2026-05-12T20:00:00.000Z",
+      event_context_summary: "Rate decision keeps growth proxies under pressure.",
+      event_risk_score: 80,
+      provider_error: "rate limited",
+      provider_latency_ms: 412,
+      sector: "Technology",
+      verified_event_recent_events: [verifiedEvent],
+    } as unknown as RankingRow,
+  ];
+
+  const model = buildMarketCommandModel({
+    charts: [chart("QQQ", [100, 101, 102]), chart("GLD", [200, 198, 197])],
+    generatedAt: "2026-05-12T20:00:00.000Z",
+    rows,
+  });
+
+  const matched = model.barItems.find((item) => item.symbol === "QQQ");
+  const unmatched = model.barItems.find((item) => item.symbol === "GLD");
+
+  // The one field the overlay renders still arrives.
+  assert.equal(matched?.eventContextSummary, "Rate decision keeps growth proxies under pressure.");
+  // A proxy with no scanner row is null, not undefined, and does not throw.
+  assert.equal(unmatched?.eventContextSummary, null);
+
+  // Nothing from the row may ride along.
+  const serialised = JSON.stringify(model.barItems);
+  for (const field of ["alpaca_request_id", "provider_error", "provider_latency_ms", "data_provider_primary", "data_timestamp", "verified_event_recent_events"]) {
+    assert.equal(serialised.includes(field), false, `${field} must not reach the client through barItems`);
+  }
+  assert.equal("row" in (matched ?? {}), false, "the raw scanner row must not be attached to a bar item");
+});
+
+test("dropping the row does not change the values built from it", () => {
+  const rows: RankingRow[] = [
+    { symbol: "QQQ", event_risk_score: 80, macro_pressure_score: 64, price: 102, return_1d: 1.2 } as unknown as RankingRow,
+  ];
+  const model = buildMarketCommandModel({ charts: [chart("QQQ", [100, 101, 102])], generatedAt: null, rows });
+  const item = model.barItems[0];
+  // These are all derived from the row on the server and must survive it.
+  assert.equal(item?.marketPressure, 64);
+  assert.equal(item?.currentPrice, 102);
+  assert.ok(item?.freshness);
+  assert.ok(item?.tone);
+});
+
 test("buildSymbolResearchModel exposes real research fields and limited-data states", () => {
   const row: RankingRow = {
     symbol: "AMD",

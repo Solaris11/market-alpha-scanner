@@ -182,7 +182,7 @@ function MarketDetailOverlay({ item, news, onClose }: { item: MarketCommandItem 
     return [
       item.macroRelevance,
       item.marketPressure === null ? "No direct pressure score is available for this proxy." : `Market pressure reads ${Math.round(item.marketPressure)}/100.`,
-      item.row?.event_context_summary ? String(item.row.event_context_summary) : "No verified event summary is available for this proxy.",
+      item.eventContextSummary ? item.eventContextSummary : "No verified event summary is available for this proxy.",
     ];
   }, [item]);
   if (!item) return null;
