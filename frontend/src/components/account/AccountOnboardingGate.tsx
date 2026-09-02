@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { useCurrentUser, type CurrentUser } from "@/hooks/useCurrentUser";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import { lockMobileBodyScroll } from "@/lib/client/mobile-scroll-lock";
@@ -41,17 +41,13 @@ const RISK_EXPERIENCE_HELP: Record<RiskExperienceLevel, { detail: string; nextSt
 type ProfileResponse = {
   authenticated?: boolean;
   error?: string;
-  profile?: {
-    onboardingCompleted: boolean;
-    riskExperienceLevel: string | null;
-    timezone: string | null;
-  };
+  profile?: CurrentUser;
 };
 
 export function AccountOnboardingGate() {
   const pathname = usePathname();
   const router = useRouter();
-  const { authenticated, loading, refresh, user } = useCurrentUser();
+  const { applyUser, authenticated, loading, user } = useCurrentUser();
   const [timezone, setTimezone] = useState("");
   const [riskExperienceLevel, setRiskExperienceLevel] = useState("");
   const [mounted, setMounted] = useState(false);
@@ -108,7 +104,11 @@ export function AccountOnboardingGate() {
         return;
       }
       trackAnalyticsEvent("onboarding_complete", { onboarding: "account_profile", riskExperienceLevel }, { source: "account_onboarding" });
-      await refresh();
+      // The write response is the authoritative row. Re-reading /api/auth/me
+      // here is what used to reopen this modal: the answer could come from the
+      // other frontend container, whose session-user cache still held the
+      // pre-save user for up to two minutes.
+      applyUser(payload.profile);
       router.push("/terminal?firstRun=1");
     } catch {
       setError("Unable to save onboarding.");

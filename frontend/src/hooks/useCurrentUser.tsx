@@ -59,6 +59,13 @@ type RegisterInput = {
 };
 
 type CurrentUserContextValue = {
+  /**
+   * Adopt a user object the caller already has from an authoritative response,
+   * without a round trip. Two frontend containers run behind the proxy and each
+   * keeps its own session-user cache, so a refresh right after a write can be
+   * answered by the process that has not seen the write yet.
+   */
+  applyUser: (next: CurrentUser) => void;
   authenticated: boolean;
   entitlement: CurrentUserEntitlement;
   loading: boolean;
@@ -84,6 +91,11 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [entitlement, setEntitlement] = useState<CurrentUserEntitlement>(ANONYMOUS_ENTITLEMENT);
   const [loading, setLoading] = useState(true);
+
+  const applyUser = useCallback((next: CurrentUser) => {
+    setUser(next);
+    setLoading(false);
+  }, []);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -126,6 +138,7 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo<CurrentUserContextValue>(() => ({
+    applyUser,
     authenticated: Boolean(user),
     entitlement,
     loading,
@@ -134,7 +147,7 @@ export function CurrentUserProvider({ children }: { children: ReactNode }) {
     refresh,
     register,
     user,
-  }), [entitlement, loading, login, logout, refresh, register, user]);
+  }), [applyUser, entitlement, loading, login, logout, refresh, register, user]);
 
   return <CurrentUserContext.Provider value={value}>{children}</CurrentUserContext.Provider>;
 }

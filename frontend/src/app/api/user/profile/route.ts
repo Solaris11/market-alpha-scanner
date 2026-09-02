@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import type { QueryResultRow } from "pg";
-import { getCurrentUser, userFromRow } from "@/lib/server/auth";
+import { getCurrentUser, invalidateSessionUserCacheForUser, userFromRow } from "@/lib/server/auth";
 import { dbQuery } from "@/lib/server/db";
 import { rateLimitRequest, requireCsrf, validateMutationRequest } from "@/lib/server/request-security";
 import { hasRequiredOnboardingFields, normalizeRiskExperienceLevel, normalizeTimezone } from "@/lib/security/onboarding-profile";
@@ -102,6 +102,10 @@ export async function PUT(request: Request) {
       `,
       [user.id, displayName, timezone, riskExperienceLevel, onboardingCompleted],
     );
+    // The row just changed; without this the session cache would keep serving
+    // the pre-update user and the onboarding gate would reopen on the next
+    // /api/auth/me.
+    invalidateSessionUserCacheForUser(user.id);
     return NextResponse.json({ authenticated: true, profile: userFromRow(result.rows[0]) });
   } catch (error) {
     console.warn("[profile] update failed", error instanceof Error ? error.message : error);

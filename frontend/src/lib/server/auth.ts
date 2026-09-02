@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { cookies } from "next/headers";
 import type { QueryResultRow } from "pg";
 import { hashSessionToken } from "@/lib/security/session-token";
+import { SessionUserCache } from "./session-user-cache";
 import { normalizeUserRole, type UserRole } from "@/lib/security/admin-policy";
 import { dbQuery } from "./db";
 
@@ -63,12 +64,11 @@ type UserWithPasswordRow = UserRow & {
   password_hash: string | null;
 };
 
-type SessionUserCacheEntry = {
-  expiresAtMs: number;
-  user: AuthUser | null;
-};
-
-const sessionUserCache = new Map<string, SessionUserCacheEntry>();
+const sessionUserCache = new SessionUserCache<AuthUser>({
+  maxEntries: SESSION_USER_CACHE_MAX,
+  negativeTtlMs: SESSION_USER_NEGATIVE_CACHE_TTL_MS,
+  positiveTtlMs: SESSION_USER_CACHE_TTL_MS,
+});
 const sessionUserInflight = new Map<string, Promise<AuthUser | null>>();
 
 const USER_SELECT = `
@@ -215,12 +215,15 @@ export async function getUserForSessionToken(token: string): Promise<AuthUser | 
   const inflight = sessionUserInflight.get(tokenHash);
   if (inflight) return cloneAuthUserOrNull(await inflight);
 
+  const epochAtLoadStart = sessionUserCache.epoch;
   const promise = loadUserForSessionTokenHash(tokenHash);
   sessionUserInflight.set(tokenHash, promise);
 
   try {
     const user = await promise;
-    writeCachedSessionUser(tokenHash, user);
+    // If the row changed while this query was in flight, caching the result
+    // would reinstate exactly the stale value the invalidation just removed.
+    writeCachedSessionUser(tokenHash, user, epochAtLoadStart);
     return cloneAuthUserOrNull(user);
   } finally {
     sessionUserInflight.delete(tokenHash);
@@ -289,6 +292,20 @@ export async function touchSessionActivity(token: string | undefined, request?: 
   ).catch(() => undefined);
 }
 
+/**
+ * Drop every cached session user for one account.
+ *
+ * getUserForSessionToken caches the joined user row for
+ * TRADEVETO_SESSION_USER_CACHE_TTL_MS (default 120s). Anything that writes to
+ * the users table has to call this, or /api/auth/me keeps serving the old row
+ * for up to two minutes. That is what made the onboarding gate loop: the save
+ * succeeded, the row was correct in Postgres, and the very next /api/auth/me
+ * still reported onboardingCompleted false, so the modal reopened.
+ */
+export function invalidateSessionUserCacheForUser(userId: string | null | undefined): void {
+  sessionUserCache.invalidateUser(userId);
+}
+
 export async function deleteSessionToken(token: string | undefined): Promise<void> {
   if (!token) return;
   const tokenHash = hashSessionToken(token);
@@ -348,34 +365,11 @@ function deviceLabelFromUserAgent(userAgent: string | null): string | null {
 }
 
 function readCachedSessionUser(tokenHash: string): AuthUser | null | undefined {
-  const cached = sessionUserCache.get(tokenHash);
-  if (!cached) return undefined;
-  if (cached.expiresAtMs <= Date.now()) {
-    sessionUserCache.delete(tokenHash);
-    return undefined;
-  }
-  return cached.user;
+  return sessionUserCache.read(tokenHash);
 }
 
-function writeCachedSessionUser(tokenHash: string, user: AuthUser | null): void {
-  trimSessionUserCache();
-  sessionUserCache.set(tokenHash, {
-    expiresAtMs: Date.now() + (user ? SESSION_USER_CACHE_TTL_MS : SESSION_USER_NEGATIVE_CACHE_TTL_MS),
-    user: cloneAuthUserOrNull(user),
-  });
-}
-
-function trimSessionUserCache(): void {
-  if (sessionUserCache.size < SESSION_USER_CACHE_MAX) return;
-  const now = Date.now();
-  for (const [key, value] of sessionUserCache) {
-    if (value.expiresAtMs <= now) sessionUserCache.delete(key);
-  }
-  while (sessionUserCache.size >= SESSION_USER_CACHE_MAX) {
-    const firstKey = sessionUserCache.keys().next().value;
-    if (typeof firstKey !== "string") return;
-    sessionUserCache.delete(firstKey);
-  }
+function writeCachedSessionUser(tokenHash: string, user: AuthUser | null, epochAtLoadStart?: number): void {
+  sessionUserCache.write(tokenHash, cloneAuthUserOrNull(user), epochAtLoadStart);
 }
 
 function cloneAuthUserOrNull(user: AuthUser | null): AuthUser | null {
