@@ -193,11 +193,14 @@ def concerns(snapshot: Dict[str, Any]) -> List[str]:
 
     for name in ("postgres", "scanner"):
         state: Dict[str, Any] = snapshot["backups"][name]
+        age = state["ageHours"]
         if state["latestLocal"] is None:
             found.append(f"No local {name} backup found at all.")
-        elif not state["offsiteMatchesLocal"]:
+        elif not state["offsiteMatchesLocal"] and not (isinstance(age, int) and age < 1):
+            # A backup uploaded within the last hour may still be in flight, and a
+            # multi-gigabyte artifact takes a while. Flagging that mismatch turns a
+            # normal in-progress upload into a false alarm every run.
             found.append(f"Offsite {name} backup does not match the newest local artifact.")
-        age = state["ageHours"]
         # In sync but ancient is the failure mode a match-only check misses:
         # a stopped backup job leaves both copies identical and both useless.
         if isinstance(age, int) and age > 48:
