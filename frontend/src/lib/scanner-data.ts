@@ -251,7 +251,10 @@ type DbJsonRow = QueryResultRow & {
 type DbMetricRow = QueryResultRow & {
   created_at?: string | Date;
   metrics: unknown;
-  total_count?: string | number | null;
+};
+
+type DbForwardCountRow = QueryResultRow & {
+  total_count: string | number | null;
 };
 
 type DbHistorySummaryRow = QueryResultRow & {
@@ -529,7 +532,7 @@ function dbCount(value: unknown): number | null {
 const getDbPerformanceData = cache(async (forwardTailRows?: number): Promise<Pick<PerformanceData, "summary" | "forwardReturns"> | null> => {
   try {
     const forwardLimit = forwardTailRows ? Math.max(1, forwardTailRows) : 100000;
-    const [summaryResult, forwardResult] = await Promise.all([
+    const [summaryResult, forwardResult, forwardCountResult] = await Promise.all([
       dbQuery<DbMetricRow>(
         `
           WITH latest_batch AS (
@@ -550,6 +553,12 @@ const getDbPerformanceData = cache(async (forwardTailRows?: number): Promise<Pic
             ps.metrics->>'group_value'
         `,
       ),
+      // No `count(*) OVER ()` here, deliberately. Postgres evaluates window
+      // functions before LIMIT, so putting the total on these rows forced every
+      // one of the 818k matching rows through a WindowAgg -- measured on prod at
+      // 3652ms with 1.3GB of temp spill, against 1154ms without it. The total is
+      // still needed (it feeds lineCount, which /paper shows as completed
+      // evidence samples), so it is asked for separately below.
       dbQuery<DbMetricRow>(
         `
           SELECT
@@ -565,8 +574,7 @@ const getDbPerformanceData = cache(async (forwardTailRows?: number): Promise<Pic
                 'created_at', created_at::text
               ) || COALESCE(metrics::jsonb, '{}'::jsonb)
             ) AS metrics,
-            created_at,
-            count(*) OVER () AS total_count
+            created_at
           FROM forward_returns
           WHERE return_pct IS NOT NULL
           ORDER BY signal_date DESC NULLS LAST, created_at DESC, symbol ASC, horizon ASC
@@ -574,10 +582,21 @@ const getDbPerformanceData = cache(async (forwardTailRows?: number): Promise<Pic
         `,
         [forwardLimit],
       ),
+      // Same WHERE clause as the query above, so the count describes exactly the
+      // same population. Measured on prod at 115ms.
+      dbQuery<DbForwardCountRow>(
+        `
+          SELECT count(*) AS total_count
+          FROM forward_returns
+          WHERE return_pct IS NOT NULL
+        `,
+      ).catch(() => null),
     ]);
 
     if (!summaryResult.rows.length && !forwardResult.rows.length) return null;
-    const totalForwardRows = dbCount(forwardResult.rows[0]?.total_count);
+    // A failed count must not cost us the rows: lineCount then falls back to
+    // what was actually fetched, exactly as it does for a CSV read.
+    const totalForwardRows = dbCount(forwardCountResult?.rows[0]?.total_count);
     return {
       summary: metricRowsToCsvFileData(summaryResult.rows),
       forwardReturns: metricRowsToCsvFileData([...forwardResult.rows].reverse(), totalForwardRows),
@@ -1404,6 +1423,14 @@ const getRecentDbHistoryRows = cache(async (hours: number, maxRuns: number, minR
               scan_ts >= now() - ($2::int * interval '1 hour')
               OR rn <= $3
             )
+          -- Redundant for correctness, load-bearing for the planner. The rn
+          -- bound already caps this at $1 rows and the OR only removes more, so
+          -- the LIMIT can never drop a qualifying run. Without it Postgres estimated
+          -- 6048 runs instead of 18 and chose a hash join fed by a sequential
+          -- scan of all 2.93M scanner_signals rows (790MB) to find 6.4k of them:
+          -- 405ms. With it the planner uses idx_scanner_signals_scan_run_id and
+          -- the same query runs in 7.6ms off 504 buffers.
+          LIMIT $1
         )
         SELECT
           ss.scan_run_id::text,
