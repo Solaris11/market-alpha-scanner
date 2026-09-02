@@ -65,11 +65,16 @@ json_string() {
   python3 -c 'import json, sys; print(json.dumps(sys.stdin.read()))'
 }
 
+# Hard ceiling per probe. Without it a single hung request blocks the whole
+# observation loop: the 2026-06-10 run lost ~15 minutes of samples to one
+# /api/health request that took 934s to first byte.
+PROBE_TIMEOUT_SECONDS="${PROBE_TIMEOUT_SECONDS:-30}"
+
 curl_timing_json() {
   local path="$1"
   local url="${BASE_URL%/}${path}"
   local timing
-  timing="$(curl -k -sS -o /dev/null -w '{"path":"%{url_effective}","status":%{http_code},"time_namelookup":%{time_namelookup},"time_connect":%{time_connect},"time_appconnect":%{time_appconnect},"time_starttransfer":%{time_starttransfer},"time_total":%{time_total}}' "$url" 2>/dev/null || true)"
+  timing="$(curl -k -sS --max-time "$PROBE_TIMEOUT_SECONDS" -o /dev/null -w '{"path":"%{url_effective}","status":"%{http_code}","time_namelookup":%{time_namelookup},"time_connect":%{time_connect},"time_appconnect":%{time_appconnect},"time_starttransfer":%{time_starttransfer},"time_total":%{time_total}}' "$url" 2>/dev/null || true)"
   if [[ -n "$timing" ]]; then
     printf "%s" "$timing"
   else
@@ -91,6 +96,7 @@ collect_sample() {
   local systemd_failed
   local timers
   local health
+  local health_body
   local deep
   local terminal
   local symbol
@@ -104,12 +110,14 @@ collect_sample() {
   systemd_failed="$(systemctl --failed --no-legend 2>/dev/null || true)"
   timers="$(systemctl list-timers --all --no-legend 2>/dev/null | grep -E 'scanner|market-alpha|tradeveto|backup' || true)"
   health="$(curl_timing_json /api/health)"
+  health_body="$(curl -k -sS --max-time "$PROBE_TIMEOUT_SECONDS" "${BASE_URL%/}/api/health" 2>/dev/null || true)"
   deep="$(curl_timing_json /api/health/deep)"
   terminal="$(curl_timing_json /terminal)"
   symbol="$(curl_timing_json /symbol/AMD)"
 
   DOCKER_STATS="$docker_stats" \
   DOCKER_PS="$docker_ps" \
+  HEALTH_BODY="$health_body" \
   SCANNER_PROCESSES="$scanner_processes" \
   RCLONE_PROCESSES="$rclone_processes" \
   SYSTEMD_FAILED="$systemd_failed" \
@@ -120,15 +128,57 @@ import os
 import sys
 
 timestamp, connections, health, deep, terminal, symbol = sys.argv[1:7]
+
+
+def probe(raw):
+    """Parse one curl timing blob without ever ending the observation run.
+
+    curl reports http_code 000 when a request fails to complete. Emitted bare
+    that is not valid JSON (leading zeros), which used to raise here and kill
+    the whole 24h run on the first transient probe failure.
+    """
+    try:
+        obj = json.loads(raw)
+    except (TypeError, ValueError):
+        return {"path": None, "status": 0, "parse_error": (raw or "")[:200]}
+    if not isinstance(obj, dict):
+        return {"path": None, "status": 0, "parse_error": (raw or "")[:200]}
+    status = obj.get("status")
+    if isinstance(status, str):
+        try:
+            obj["status"] = int(status, 10)
+        except ValueError:
+            obj["status"] = 0
+    return obj
+
+
+def process_snapshot(raw):
+    """Pull the process block out of the /api/health body, if present.
+
+    Carries event-loop delay and memory so a stalled sample can be attributed
+    to the process rather than guessed at. Older deployments do not emit it;
+    an empty dict is the correct answer then, never an exception.
+    """
+    try:
+        body = json.loads(raw)
+    except (TypeError, ValueError):
+        return {}
+    if not isinstance(body, dict):
+        return {}
+    snapshot = body.get("process")
+    return snapshot if isinstance(snapshot, dict) else {}
+
+
 payload = {
     "timestamp": timestamp,
     "open_connections": int(connections or "0"),
     "http_timings": [
-        json.loads(health),
-        json.loads(deep),
-        json.loads(terminal),
-        json.loads(symbol),
+        probe(health),
+        probe(deep),
+        probe(terminal),
+        probe(symbol),
     ],
+    "process": process_snapshot(os.environ.get("HEALTH_BODY", "")),
     "docker_stats_jsonl": os.environ.get("DOCKER_STATS", ""),
     "docker_ps_jsonl": os.environ.get("DOCKER_PS", ""),
     "scanner_processes": os.environ.get("SCANNER_PROCESSES", ""),
@@ -159,9 +209,20 @@ write_summary() {
 echo "TradeVeto stability observation started $(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$SUMMARY_FILE"
 echo "duration_seconds=$DURATION_SECONDS interval_seconds=$INTERVAL_SECONDS" >> "$SUMMARY_FILE"
 
+# Sample on a fixed grid rather than sleeping a flat interval after a
+# variable-length collection. The 2026-06-10 run drifted to 68.1s per sample
+# because collection takes 6-8s, so a "24h at 60s" run produced ~1268 samples
+# instead of 1440 and every downstream expectation was wrong. If a collection
+# overruns a tick the grid skips forward rather than falling permanently behind.
+NEXT_TICK="$START_EPOCH"
 while [[ "$(date +%s)" -lt "$END_EPOCH" ]]; do
   collect_sample
-  sleep "$INTERVAL_SECONDS"
+  NEXT_TICK=$((NEXT_TICK + INTERVAL_SECONDS))
+  NOW_EPOCH="$(date +%s)"
+  while [[ "$NEXT_TICK" -le "$NOW_EPOCH" ]]; do
+    NEXT_TICK=$((NEXT_TICK + INTERVAL_SECONDS))
+  done
+  sleep "$((NEXT_TICK - NOW_EPOCH))"
 done
 
 write_summary
