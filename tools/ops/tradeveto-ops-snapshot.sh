@@ -136,11 +136,16 @@ psql_q "
 
 say "collecting backup state"
 grab backup_pg      bash -c "ls -t /opt/backups/market-alpha/postgres/*.sql.gz 2>/dev/null | head -1"
-grab backup_scanner bash -c "ls -t /opt/backups/market-alpha/scanner/*.tar.gz  2>/dev/null | head -1"
+grab backup_scanner bash -c "ls -t /opt/backups/market-alpha/scanner_output/*.tar.gz  2>/dev/null | head -1"
 # Age matters independently of whether local and offsite agree: a backup job that
 # stopped weeks ago leaves the two copies perfectly in sync and completely stale.
 grab backup_pg_age_h      bash -c "f=\$(ls -t /opt/backups/market-alpha/postgres/*.sql.gz 2>/dev/null | head -1); [ -n \"\$f\" ] && echo \$(( ( \$(date +%s) - \$(stat -c %Y \"\$f\") ) / 3600 ))"
-grab backup_scanner_age_h bash -c "f=\$(ls -t /opt/backups/market-alpha/scanner/*.tar.gz 2>/dev/null | head -1); [ -n \"\$f\" ] && echo \$(( ( \$(date +%s) - \$(stat -c %Y \"\$f\") ) / 3600 ))"
+grab backup_scanner_age_h bash -c "f=\$(ls -t /opt/backups/market-alpha/scanner_output/*.tar.gz 2>/dev/null | head -1); [ -n \"\$f\" ] && echo \$(( ( \$(date +%s) - \$(stat -c %Y \"\$f\") ) / 3600 ))"
+# A backup mid-write is normal; a .tmp that has been sitting for hours means the
+# job died or something deleted it out from under itself. That exact failure ran
+# undetected for 14 days: the hourly lifecycle prune deleted the in-progress
+# .tmp every time the dump took longer than 17 minutes.
+grab backup_stale_tmp bash -c "find /opt/backups/market-alpha -maxdepth 2 -type f \\( -name '*.tmp' -o -name '*.partial' \\) -mmin +120 2>/dev/null | wc -l"
 grab r2_pg          bash -c "rclone lsf r2:market-alpha-backups/postgres/ 2>/dev/null | sort | tail -1"
 grab r2_scanner     bash -c "rclone lsf r2:market-alpha-backups/scanner/  2>/dev/null | sort | tail -1"
 

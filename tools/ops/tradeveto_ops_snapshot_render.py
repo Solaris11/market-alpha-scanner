@@ -171,6 +171,7 @@ def build(work: Path) -> Dict[str, Any]:
         "backups": {
             "postgres": backup_state(read(work, "backup_pg"), read(work, "r2_pg"), read(work, "backup_pg_age_h")),
             "scanner": backup_state(read(work, "backup_scanner"), read(work, "r2_scanner"), read(work, "backup_scanner_age_h")),
+            "staleTempFiles": parse_int(read(work, "backup_stale_tmp")),
         },
         "resources": {
             "containers": parse_stats(read(work, "docker_stats")),
@@ -201,6 +202,13 @@ def concerns(snapshot: Dict[str, Any]) -> List[str]:
         # a stopped backup job leaves both copies identical and both useless.
         if isinstance(age, int) and age > 48:
             found.append(f"Newest {name} backup is {age} hours old ({age // 24} days) - the backup job may have stopped.")
+
+    stale_tmp = snapshot["backups"].get("staleTempFiles")
+    if isinstance(stale_tmp, int) and stale_tmp > 0:
+        found.append(
+            f"{stale_tmp} backup .tmp file(s) older than 2 hours - a dump started and never "
+            "completed, or something removed it mid-write."
+        )
 
     age = snapshot["scanner"]["lastScanAgeMinutes"]
     if isinstance(age, int) and age > 180:
