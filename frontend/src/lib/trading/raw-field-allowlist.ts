@@ -176,3 +176,34 @@ export const CLIENT_READABLE_RAW_FIELDS: readonly string[] = [
 ] as const;
 
 export const CLIENT_READABLE_RAW_FIELD_SET: ReadonlySet<string> = new Set(CLIENT_READABLE_RAW_FIELDS);
+
+/**
+ * Provider plumbing and debug output that no client-reachable module reads.
+ *
+ * stripRawFields already removes these from the rows it processes, but a few
+ * single scanner rows reach client components by other props. Server code does
+ * read some of these (market-research, daily-market-command,
+ * verified-event-intelligence), so they cannot simply be dropped at load time
+ * -- only at a client boundary.
+ */
+export const PROVIDER_DEBUG_RAW_FIELDS: readonly string[] = [
+  "alpaca_request_id",
+  "data_provider_primary",
+  "data_timestamp",
+  "provider_error",
+  "provider_latency_ms",
+  "verified_event_recent_events",
+] as const;
+
+/** Remove provider plumbing from one scanner row before it crosses to a client component. */
+export function stripProviderDebugFields<T extends Record<string, unknown>>(row: T): T;
+export function stripProviderDebugFields<T extends Record<string, unknown>>(row: T | null): T | null;
+export function stripProviderDebugFields<T extends Record<string, unknown>>(row: T | null): T | null {
+  if (!row || typeof row !== "object") return row;
+  if (!PROVIDER_DEBUG_RAW_FIELDS.some((field) => field in row)) return row;
+  const kept: Record<string, unknown> = {};
+  for (const key of Object.keys(row)) {
+    if (!PROVIDER_DEBUG_RAW_FIELDS.includes(key)) kept[key] = row[key];
+  }
+  return kept as T;
+}

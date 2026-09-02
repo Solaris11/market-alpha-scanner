@@ -4,7 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, test } from "node:test";
 
-import { CLIENT_READABLE_RAW_FIELDS, CLIENT_READABLE_RAW_FIELD_SET } from "./raw-field-allowlist";
+import { CLIENT_READABLE_RAW_FIELDS, CLIENT_READABLE_RAW_FIELD_SET, PROVIDER_DEBUG_RAW_FIELDS, stripProviderDebugFields } from "./raw-field-allowlist";
 import { stripRawFields, type OpportunityViewModel } from "./opportunity-view-model";
 
 /**
@@ -197,5 +197,46 @@ describe("stripRawFields", () => {
   test("passes through a row with no raw record", () => {
     const bare = { symbol: "NVDA" } as unknown as OpportunityViewModel;
     assert.deepEqual(stripRawFields([bare]), [bare]);
+  });
+});
+
+describe("stripProviderDebugFields", () => {
+  const scannerRow = {
+    alpaca_request_id: "aaaa,bbbb",
+    data_provider_primary: "yfinance",
+    data_timestamp: "2026-09-02T00:00:00Z",
+    final_score: 71,
+    price: 118,
+    provider_error: "rate limited",
+    provider_latency_ms: 412,
+    symbol: "AMD",
+    verified_event_recent_events: [{ source_url: "https://example.test" }],
+  } as Record<string, unknown>;
+
+  test("removes every provider field and keeps the rest", () => {
+    const stripped = stripProviderDebugFields(scannerRow);
+    for (const field of PROVIDER_DEBUG_RAW_FIELDS) {
+      assert.equal(field in stripped, false, `${field} must not reach the client`);
+    }
+    assert.equal(stripped.symbol, "AMD");
+    assert.equal(stripped.final_score, 71);
+    assert.equal(stripped.price, 118);
+  });
+
+  test("does not mutate the row the server still uses", () => {
+    const before = JSON.stringify(scannerRow);
+    stripProviderDebugFields(scannerRow);
+    assert.equal(JSON.stringify(scannerRow), before);
+  });
+
+  test("returns the same object when there is nothing to remove", () => {
+    const clean = { price: 1, symbol: "NVDA" } as Record<string, unknown>;
+    assert.equal(stripProviderDebugFields(clean), clean);
+    assert.equal(stripProviderDebugFields(null), null);
+  });
+
+  test("no provider field is also on the client allowlist", () => {
+    const overlap = PROVIDER_DEBUG_RAW_FIELDS.filter((field) => CLIENT_READABLE_RAW_FIELD_SET.has(field));
+    assert.deepEqual(overlap, [], "a field cannot be both required by the client and provider-only");
   });
 });

@@ -55,11 +55,13 @@ import { readUserWatchlist } from "@/lib/server/user-watchlist";
 import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
 import { buildAdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
 import { buildAICognitionLayer } from "@/lib/trading/ai-cognition-layer";
+import { createRenderTimeline } from "@/lib/server/render-timeline";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { buildExecutionTimingSystem } from "@/lib/trading/execution-intelligence";
 import { dailyActionBlocksTradeUi, getDailyAction, noTradeActionCopy } from "@/lib/trading/daily-action";
 import { buildLiveIntelligenceSystem } from "@/lib/trading/live-intelligence";
 import { buildOpportunitiesPageModel, stripRawFields, stripShockEventPreconditions } from "@/lib/trading/opportunity-view-model";
+import { stripProviderDebugFields } from "@/lib/trading/raw-field-allowlist";
 import { buildPortfolioIntelligenceSystem } from "@/lib/trading/portfolio-intelligence";
 import { buildPlatformMoatSystem } from "@/lib/trading/platform-moat";
 import { buildPredictiveIntelligenceSystem } from "@/lib/trading/predictive-intelligence";
@@ -91,83 +93,88 @@ type TerminalEntitlement = Awaited<ReturnType<typeof getEntitlement>>;
  * access actually renders it.
  */
 export async function TerminalPremiumView({ entitlement }: { entitlement: TerminalEntitlement }) {
+  const timeline = createRenderTimeline("/terminal");
   const adapter = new ScannerDataAdapter();
+  const closePhase1 = timeline.phase("promiseAll1");
   const [snapshot, performance, scanSafety, watchlistSymbols, activeAlertMatches, personalizationProfile, workspacePreferences, paperData, marketChartHubData] = await Promise.all([
-    adapter.getTerminalSnapshot(),
-    getPerformanceData({ forwardTailRows: 1200 }).catch(() => null),
-    getCurrentScanSafety(),
-    entitlement.user?.id ? readUserWatchlist(entitlement.user.id).catch(() => []) : Promise.resolve([]),
-    getActiveAlertMatches(entitlement.user?.id ?? null).then((result) => result.matches).catch(() => []),
-    getPersonalizationProfileForUser(entitlement.user?.id ?? null).catch(() => null),
-    entitlement.user?.id ? readUserWorkspacePreferences(entitlement.user.id).catch(() => null) : Promise.resolve(null),
-    getPaperData({ userId: entitlement.user?.id ?? null }).catch(() => ({ account: null, configured: false, events: [], positions: [] })),
-    getMarketChartHubData(260).catch(() => []),
+    timeline.track("getTerminalSnapshot", adapter.getTerminalSnapshot()),
+    timeline.track("getPerformanceData", getPerformanceData({ forwardTailRows: 1200 }).catch(() => null)),
+    timeline.track("getCurrentScanSafety", getCurrentScanSafety()),
+    timeline.track("expr", entitlement.user?.id ? readUserWatchlist(entitlement.user.id).catch(() => []) : Promise.resolve([])),
+    timeline.track("getActiveAlertMatches", getActiveAlertMatches(entitlement.user?.id ?? null).then((result) => result.matches).catch(() => [])),
+    timeline.track("getPersonalizationProfileForUser", getPersonalizationProfileForUser(entitlement.user?.id ?? null).catch(() => null)),
+    timeline.track("expr", entitlement.user?.id ? readUserWorkspacePreferences(entitlement.user.id).catch(() => null) : Promise.resolve(null)),
+    timeline.track("getPaperData", getPaperData({ userId: entitlement.user?.id ?? null }).catch(() => ({ account: null, configured: false, events: [], positions: [] }))),
+    timeline.track("getMarketChartHubData", getMarketChartHubData(260).catch(() => [])),
   ]);
-  const edges = buildEdgeLookup(snapshot.signals, performance);
+  closePhase1();
+  const edges = timeline.sync("buildEdgeLookup", () => buildEdgeLookup(snapshot.signals, performance));
   const symbols = snapshot.signals.map((row) => row.symbol);
+  const closePhase2 = timeline.phase("promiseAll2");
   const [shockPatterns, narratives, workflowEvolution, intradayDriftRows] = await Promise.all([
-    getShockMovePatternMap(symbols).catch(() => new Map()),
-    getNarrativeMap(symbols).catch(() => new Map()),
-    getWorkflowEvolutionForUser(entitlement.user?.id ?? null, snapshot.signals, { surface: "terminal", watchlistSymbols }).catch(() => null),
-    getRecentIntradaySignalDriftSummary({ hours: 8, maxRuns: 18, minRuns: 2 }).catch(() => []),
+    timeline.track("getShockMovePatternMap", getShockMovePatternMap(symbols).catch(() => new Map())),
+    timeline.track("getNarrativeMap", getNarrativeMap(symbols).catch(() => new Map())),
+    timeline.track("getWorkflowEvolutionForUser", getWorkflowEvolutionForUser(entitlement.user?.id ?? null, snapshot.signals, { surface: "terminal", watchlistSymbols }).catch(() => null)),
+    timeline.track("getRecentIntradaySignalDriftSummary", getRecentIntradaySignalDriftSummary({ hours: 8, maxRuns: 18, minRuns: 2 }).catch(() => [])),
   ]);
-  const opportunityModel = buildOpportunitiesPageModel(snapshot.signals, performance, shockPatterns, narratives);
-  const intelligenceFeed = await loadIntelligenceFeedForUser(entitlement.user?.id ?? null, {
+  closePhase2();
+  const opportunityModel = timeline.sync("buildOpportunitiesPageModel", () => buildOpportunitiesPageModel(snapshot.signals, performance, shockPatterns, narratives));
+  const intelligenceFeed = await timeline.track("loadIntelligenceFeedForUser", loadIntelligenceFeedForUser(entitlement.user?.id ?? null, {
     activeAlertMatches,
     marketCondition: snapshot.marketRegime.label,
     rows: opportunityModel.rows,
     scanUpdatedAt: scanSafety.lastUpdated,
     watchlistSymbols,
     workflowEvolution,
-  });
-  const cognitionLayer = buildAICognitionLayer({
+  }));
+  const cognitionLayer = timeline.sync("buildAICognitionLayer", () => buildAICognitionLayer({
     marketCondition: snapshot.marketRegime.label,
     rows: opportunityModel.rows,
     scanUpdatedAt: scanSafety.lastUpdated,
     workflowEvolution,
-  });
-  const adaptiveLearning = buildAdaptiveLearningSystem({
+  }));
+  const adaptiveLearning = timeline.sync("buildAdaptiveLearningSystem", () => buildAdaptiveLearningSystem({
     forwardRows: performance?.forwardReturns.rows ?? [],
     observationCount: performance?.forwardReturns.rows.length ?? 0,
-  });
-  const strategyIntelligence = buildStrategyIntelligenceSystem({
+  }));
+  const strategyIntelligence = timeline.sync("buildStrategyIntelligenceSystem", () => buildStrategyIntelligenceSystem({
     forwardRows: performance?.forwardReturns.rows ?? [],
     opportunities: opportunityModel.rows,
     personalizationProfile,
-  });
-  const scenarioIntelligence = buildScenarioIntelligenceSystem({
+  }));
+  const scenarioIntelligence = timeline.sync("buildScenarioIntelligenceSystem", () => buildScenarioIntelligenceSystem({
     rows: opportunityModel.rows,
-  });
-  const regimeShiftSystem = buildRegimeShiftSystem({ rows: opportunityModel.rows, workflowEvolution });
-  const liveIntelligence = buildLiveIntelligenceSystem({
+  }));
+  const regimeShiftSystem = timeline.sync("buildRegimeShiftSystem", () => buildRegimeShiftSystem({ rows: opportunityModel.rows, workflowEvolution }));
+  const liveIntelligence = timeline.sync("buildLiveIntelligenceSystem", () => buildLiveIntelligenceSystem({
     driftRows: intradayDriftRows,
     refreshIntervalMs: 30_000,
     rows: opportunityModel.rows,
     streamMode: "snapshot",
-  });
-  const portfolioIntelligence = buildPortfolioIntelligenceSystem({
+  }));
+  const portfolioIntelligence = timeline.sync("buildPortfolioIntelligenceSystem", () => buildPortfolioIntelligenceSystem({
     accountValue: paperData.account?.total_account_value ?? null,
     opportunities: opportunityModel.rows,
     positions: paperData.positions,
     scenarioSystem: scenarioIntelligence,
-  });
-  const predictiveIntelligence = buildPredictiveIntelligenceSystem({
+  }));
+  const predictiveIntelligence = timeline.sync("buildPredictiveIntelligenceSystem", () => buildPredictiveIntelligenceSystem({
     generatedAt: scanSafety.lastUpdated ?? undefined,
     liveSystem: liveIntelligence,
     portfolioSystem: portfolioIntelligence,
     regimeSystem: regimeShiftSystem,
     rows: opportunityModel.rows,
     watchlistSymbols,
-  });
-  const platformMoat = buildPlatformMoatSystem({
+  }));
+  const platformMoat = timeline.sync("buildPlatformMoatSystem", () => buildPlatformMoatSystem({
     generatedAt: scanSafety.lastUpdated ?? undefined,
     personalizationProfile,
     predictiveSystem: predictiveIntelligence,
     rows: opportunityModel.rows,
     watchlistSymbols,
     workflowEvolution,
-  });
-  const intelligenceEcosystem = buildIntelligenceEcosystemSystem({
+  }));
+  const intelligenceEcosystem = timeline.sync("buildIntelligenceEcosystemSystem", () => buildIntelligenceEcosystemSystem({
     feedItems: intelligenceFeed.items,
     generatedAt: scanSafety.lastUpdated,
     marketCondition: snapshot.marketRegime.label,
@@ -177,8 +184,8 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
     scanUpdatedAt: scanSafety.lastUpdated,
     watchlistSymbols,
     workflowEvolution,
-  });
-  const livingIntelligenceProof = buildLivingIntelligenceProofSystem({
+  }));
+  const livingIntelligenceProof = timeline.sync("buildLivingIntelligenceProofSystem", () => buildLivingIntelligenceProofSystem({
     feedItems: intelligenceFeed.items,
     generatedAt: scanSafety.lastUpdated,
     liveSystem: liveIntelligence,
@@ -187,8 +194,8 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
     rows: opportunityModel.rows,
     watchlistSymbols,
     workflowEvolution,
-  });
-  const institutionalSuperplatform = buildInstitutionalSuperplatformSystem({
+  }));
+  const institutionalSuperplatform = timeline.sync("buildInstitutionalSuperplatformSystem", () => buildInstitutionalSuperplatformSystem({
     ecosystem: intelligenceEcosystem,
     feedItems: intelligenceFeed.items,
     generatedAt: scanSafety.lastUpdated,
@@ -200,35 +207,35 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
     watchlistSymbols,
     workflowEvolution,
     workspacePreferences,
-  });
-  const marketCommandModel = buildMarketCommandModel({
+  }));
+  const marketCommandModel = timeline.sync("buildMarketCommandModel", () => buildMarketCommandModel({
     charts: marketChartHubData,
     generatedAt: scanSafety.lastUpdated,
     rows: snapshot.signals,
-  });
-  const unifiedConsoleModel = buildUnifiedIntelligenceConsole({
+  }));
+  const unifiedConsoleModel = timeline.sync("buildUnifiedIntelligenceConsole", () => buildUnifiedIntelligenceConsole({
     marketCondition: snapshot.marketRegime.label,
     personalizationProfile,
     rows: opportunityModel.rows,
     watchlistSymbols,
     workflowEvolution,
-  });
-  const dailyMarketCommand = buildDailyMarketCommandModel({
+  }));
+  const dailyMarketCommand = timeline.sync("buildDailyMarketCommandModel", () => buildDailyMarketCommandModel({
     marketCommand: marketCommandModel,
     marketCondition: snapshot.marketRegime.label,
     rankedZones: unifiedConsoleModel.rankedZones,
     rows: opportunityModel.rows,
     watchlistSymbols,
     workflowEvolution,
-  });
-  const dailyDriverRetention = buildDailyDriverRetentionModel({
+  }));
+  const dailyDriverRetention = timeline.sync("buildDailyDriverRetentionModel", () => buildDailyDriverRetentionModel({
     marketCondition: snapshot.marketRegime.label,
     rows: opportunityModel.rows,
     watchlistSymbols,
     workflowEvolution,
     workspacePreferences,
-  });
-  const ecosystemContinuity = buildEcosystemContinuitySystem({
+  }));
+  const ecosystemContinuity = timeline.sync("buildEcosystemContinuitySystem", () => buildEcosystemContinuitySystem({
     feedItems: intelligenceFeed.items,
     generatedAt: scanSafety.lastUpdated,
     institutionalSuperplatform,
@@ -238,8 +245,8 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
     watchlistSymbols,
     workflowEvolution,
     workspacePreferences,
-  });
-  const automatedResearchAgents = buildAutomatedResearchAgentsSystem({
+  }));
+  const automatedResearchAgents = timeline.sync("buildAutomatedResearchAgentsSystem", () => buildAutomatedResearchAgentsSystem({
     liveSystem: liveIntelligence,
     portfolioSystem: portfolioIntelligence,
     regimeSystem: regimeShiftSystem,
@@ -247,7 +254,7 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
     scenarioSystem: scenarioIntelligence,
     watchlistSymbols,
     workflowEvolution,
-  });
+  }));
   const best = selectBestTradeNow(snapshot.signals, edges);
   const leader = best?.row ?? snapshot.topSignals[0] ?? snapshot.signals[0];
   const dailyAction = getDailyAction({ best, fallbackRow: leader, marketRegime: snapshot.marketRegime, scanSafety });
@@ -256,14 +263,18 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
   const avoidCount = snapshot.signals.filter((row) => String(row.final_decision ?? "").toUpperCase() === "AVOID").length;
   const actionBlocksTradeUi = dailyActionBlocksTradeUi(dailyAction);
   const noTradeCopy = noTradeActionCopy(dailyAction);
-  const decisionDistribution = buildDecisionDistribution(snapshot.signals);
-  const contextReasons = buildTodayActionReasons({ actionBlocksTradeUi, marketState: snapshot.marketRegime.label, scanSafetyStatus: scanSafety.status });
+  const decisionDistribution = timeline.sync("buildDecisionDistribution", () => buildDecisionDistribution(snapshot.signals));
+  const contextReasons = timeline.sync("buildTodayActionReasons", () => buildTodayActionReasons({ actionBlocksTradeUi, marketState: snapshot.marketRegime.label, scanSafetyStatus: scanSafety.status }));
 
   // Computed here, on the server, from the rows that still carry their raw
   // shock-event samples. The panel renders the finished system, so the samples
   // never have to be serialised.
-  const executionTimingSystem = buildExecutionTimingSystem(opportunityModel.rows);
-  const clientRows = stripRawFields(stripShockEventPreconditions(opportunityModel.rows));
+  const executionTimingSystem = timeline.sync("buildExecutionTimingSystem", () => buildExecutionTimingSystem(opportunityModel.rows));
+  const clientRows = timeline.sync("stripForClient", () => stripRawFields(stripShockEventPreconditions(opportunityModel.rows)),
+    (rows) => `${rows.length} rows`);
+  // leader is a raw scanner row and AICopilotPanel is a client component.
+  const copilotSignal = leader ? stripProviderDebugFields(leader) : null;
+  timeline.finish(`signals=${snapshot.signals.length} symbols=${symbols.length}`);
 
   return (
     <TerminalShell>
@@ -407,7 +418,7 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
             scanSafety={scanSafety}
             watchlistSymbols={watchlistSymbols}
           />
-          {leader ? <AICopilotPanel contextLocked={actionBlocksTradeUi} lockedReason={noTradeCopy.reason} signal={leader} /> : null}
+          {copilotSignal ? <AICopilotPanel contextLocked={actionBlocksTradeUi} lockedReason={noTradeCopy.reason} signal={copilotSignal} /> : null}
         </div>
       </div>
       <MarketOnboarding tradePlanHref={tradePlanHref} />
