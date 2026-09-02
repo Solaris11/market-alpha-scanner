@@ -21,6 +21,14 @@ export function getDbPool(): Pool | null {
       connectionTimeoutMillis: boundedPoolInteger(process.env.TRADEVETO_DB_POOL_CONNECT_TIMEOUT_MS, 2_000, 250, 30_000),
       idleTimeoutMillis: boundedPoolInteger(process.env.TRADEVETO_DB_POOL_IDLE_TIMEOUT_MS, 30_000, 1_000, 300_000),
       max: boundedPoolInteger(process.env.TRADEVETO_DB_POOL_MAX, 20, 4, 50),
+      // Without these a single slow query holds its pool connection forever.
+      // connectionTimeoutMillis only bounds *acquiring* a client, so a request
+      // that already holds one could wait unbounded -- which is what the
+      // 2026-06-10 observation saw as 89s /terminal renders ending in 502.
+      // query_timeout aborts client-side, statement_timeout server-side; both
+      // are set so neither side can outlive the other.
+      query_timeout: boundedPoolInteger(process.env.TRADEVETO_DB_QUERY_TIMEOUT_MS, 30_000, 1_000, 300_000),
+      statement_timeout: boundedPoolInteger(process.env.TRADEVETO_DB_STATEMENT_TIMEOUT_MS, 30_000, 1_000, 300_000),
     });
   }
   return globalPool.__marketAlphaDbPool;
