@@ -253,20 +253,30 @@ async function recentBackupEvents(): Promise<BackupEventSummary[]> {
   }));
 }
 
+// The backup root is an operational directory that grows without the app's
+// knowledge; an unbounded recursive stat() walk on the deep-health path is a
+// latent stall waiting for the day someone leaves 100k files there.
+const BACKUP_WALK_MAX_DEPTH = 4;
+const BACKUP_WALK_MAX_ENTRIES = 5_000;
+
 async function latestFileMtime(root: string): Promise<Date | null> {
   let latest: Date | null = null;
-  await walkFiles(root);
+  let visited = 0;
+  await walkFiles(root, 0);
   return latest;
 
-  async function walkFiles(directory: string): Promise<void> {
+  async function walkFiles(directory: string, depth: number): Promise<void> {
+    if (depth > BACKUP_WALK_MAX_DEPTH || visited >= BACKUP_WALK_MAX_ENTRIES) return;
     const entries = await readdir(directory, { withFileTypes: true });
     for (const entry of entries) {
+      if (visited >= BACKUP_WALK_MAX_ENTRIES) return;
       const fullPath = path.join(directory, entry.name);
       if (entry.isDirectory()) {
-        await walkFiles(fullPath);
+        await walkFiles(fullPath, depth + 1);
         continue;
       }
       if (!entry.isFile()) continue;
+      visited += 1;
       const fileStat = await stat(fullPath);
       if (!latest || fileStat.mtime > latest) latest = fileStat.mtime;
     }
