@@ -48,6 +48,33 @@ export type OpportunitiesPageModel = {
   rows: OpportunityViewModel[];
 };
 
+/**
+ * Drop the shock-event preconditions before rows cross to client components.
+ *
+ * Each ShockMoveEvent carries a ten-field preconditions object, and a pattern
+ * carries up to eighty events per symbol: 12,726 of them in the /terminal
+ * flight payload, 15.2 MB of an 18.3 MB document and the largest single cause
+ * of a 14s time to DOM interactive.
+ *
+ * Only execution-intelligence reads them, and only through entryTypeMatches.
+ * Callers must therefore compute ExecutionTimingSystem on the server and pass
+ * the result down; every other client consumer of shockEvents reads the array
+ * length, eventDate or outcomeStatus, all of which this keeps intact.
+ */
+export function stripShockEventPreconditions(rows: OpportunityViewModel[]): OpportunityViewModel[] {
+  return rows.map((row) => {
+    const pattern = row.shockPattern;
+    if (!pattern?.shockEvents.length) return row;
+    return {
+      ...row,
+      shockPattern: {
+        ...pattern,
+        shockEvents: pattern.shockEvents.map(({ preconditions: _dropped, ...event }) => event),
+      },
+    };
+  });
+}
+
 export function buildOpportunitiesPageModel(
   rows: RankingRow[],
   performance: PerformanceData | null,

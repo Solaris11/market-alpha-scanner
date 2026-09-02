@@ -63,6 +63,8 @@ test("shock move events use before-move preconditions instead of event-day spike
   const event = pattern.shockEvents.find((item) => item.return1d >= 5);
   assert.ok(event);
   assert.ok(event.volumeSpikeRatio !== null);
+  // The server always builds preconditions; only the client payload drops them.
+  assert.ok(event.preconditions, "buildShockMovePattern must attach preconditions");
   assert.ok(event.preconditions.volumeSpikeRatio !== null);
   assert.ok(event.volumeSpikeRatio > event.preconditions.volumeSpikeRatio);
 });

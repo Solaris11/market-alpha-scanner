@@ -14,23 +14,41 @@ import { formatNumber } from "@/lib/ui/formatters";
 import { GlassPanel } from "./ui/GlassPanel";
 import { SectionTitle } from "./ui/SectionTitle";
 
+/**
+ * Pass `system` (and `focusModel`) when the caller is a Server Component.
+ *
+ * The rows path recomputes here in the browser, which means every row has to
+ * arrive carrying its raw ShockMoveEvent samples -- including the preconditions
+ * blob that entryTypeMatches reads. On /terminal that was 15.2 MB of the flight
+ * payload. Handing the finished ExecutionTimingSystem down instead keeps the
+ * rendered values identical while the samples stay on the server.
+ */
 export function ExecutionIntelligencePanel({
   compact = false,
+  focusModel: providedFocusModel,
   focusSymbol,
   rows,
+  system: providedSystem,
 }: {
   compact?: boolean;
+  focusModel?: ExecutionIntelligence | null;
   focusSymbol?: string;
-  rows: OpportunityViewModel[];
+  rows?: OpportunityViewModel[];
+  system?: ExecutionTimingSystem;
 }) {
-  const system = useMemo(() => buildExecutionTimingSystem(rows), [rows]);
+  const system = useMemo(
+    () => providedSystem ?? buildExecutionTimingSystem(rows ?? []),
+    [providedSystem, rows],
+  );
   const focusModel = useMemo(() => {
-    if (!focusSymbol) return null;
+    if (providedFocusModel !== undefined) return providedFocusModel;
+    if (!focusSymbol || !rows) return null;
     const target = rows.find((row) => row.symbol.toUpperCase() === focusSymbol.toUpperCase());
     return target ? buildExecutionIntelligence(target) : null;
-  }, [focusSymbol, rows]);
+  }, [providedFocusModel, focusSymbol, rows]);
 
-  if (!rows.length) {
+  const hasRows = providedSystem ? providedSystem.rows.length > 0 : Boolean(rows?.length);
+  if (!hasRows) {
     return (
       <GlassPanel className="p-5">
         <SectionTitle eyebrow="Execution Intelligence" title="Timing Context Unavailable" meta="waiting for scanner rows" />

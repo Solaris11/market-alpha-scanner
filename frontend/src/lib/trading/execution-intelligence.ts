@@ -1,5 +1,5 @@
 import type { OpportunityViewModel } from "./opportunity-view-model";
-import type { ShockMoveEvent } from "./shock-move";
+import type { ShockMovePreconditions, ShockMoveEvent } from "./shock-move";
 import { buildSignalTradeLevels } from "./signal-lifecycle";
 import { cleanText, finiteNumber, firstNumber, formatMoney } from "@/lib/ui/formatters";
 import { humanizeLabel } from "@/lib/ui/labels";
@@ -324,7 +324,10 @@ function outcomeMetricFor(entryType: ExecutionEntryType, events: ShockMoveEvent[
 }
 
 function entryTypeMatches(entryType: ExecutionEntryType, event: ShockMoveEvent): boolean {
-  const pre = event.preconditions;
+  // Absent only if this event was serialised to a client without its
+  // preconditions; the entry-type split then falls back to the event's own
+  // top-level numbers, which is why /terminal computes this on the server.
+  const pre: Partial<ShockMovePreconditions> = event.preconditions ?? {};
   const gap = Math.abs(pre.gapPercent ?? event.gapPercent ?? 0);
   const volume = pre.volumeSpikeRatio ?? event.volumeSpikeRatio ?? 1;
   const closeVsMa20 = pre.closeVsMa20Pct ?? 0;

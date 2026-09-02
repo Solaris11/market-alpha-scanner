@@ -56,9 +56,10 @@ import { getWorkflowEvolutionForUser } from "@/lib/server/workflow-evolution";
 import { buildAdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
 import { buildAICognitionLayer } from "@/lib/trading/ai-cognition-layer";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
+import { buildExecutionTimingSystem } from "@/lib/trading/execution-intelligence";
 import { dailyActionBlocksTradeUi, getDailyAction, noTradeActionCopy } from "@/lib/trading/daily-action";
 import { buildLiveIntelligenceSystem } from "@/lib/trading/live-intelligence";
-import { buildOpportunitiesPageModel } from "@/lib/trading/opportunity-view-model";
+import { buildOpportunitiesPageModel, stripShockEventPreconditions } from "@/lib/trading/opportunity-view-model";
 import { buildPortfolioIntelligenceSystem } from "@/lib/trading/portfolio-intelligence";
 import { buildPlatformMoatSystem } from "@/lib/trading/platform-moat";
 import { buildPredictiveIntelligenceSystem } from "@/lib/trading/predictive-intelligence";
@@ -258,6 +259,12 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
   const decisionDistribution = buildDecisionDistribution(snapshot.signals);
   const contextReasons = buildTodayActionReasons({ actionBlocksTradeUi, marketState: snapshot.marketRegime.label, scanSafetyStatus: scanSafety.status });
 
+  // Computed here, on the server, from the rows that still carry their raw
+  // shock-event samples. The panel renders the finished system, so the samples
+  // never have to be serialised.
+  const executionTimingSystem = buildExecutionTimingSystem(opportunityModel.rows);
+  const clientRows = stripShockEventPreconditions(opportunityModel.rows);
+
   return (
     <TerminalShell>
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
@@ -281,7 +288,7 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
           <UnifiedIntelligenceConsole
             marketCondition={snapshot.marketRegime.label}
             personalizationProfile={personalizationProfile}
-            rows={opportunityModel.rows}
+            rows={clientRows}
             watchlistSymbols={watchlistSymbols}
             workspacePreferences={workspacePreferences}
             workflowEvolution={workflowEvolution}
@@ -300,7 +307,7 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
           <MarketChartHub charts={marketChartHubData} marketCondition={snapshot.marketRegime.label} updatedAt={scanSafety.lastUpdated} />
           <WorkspacePersonalizationPanel
             initialPreferences={workspacePreferences}
-            recentSymbols={uniqueTerminalSymbols([leader?.symbol, ...opportunityModel.rows.slice(0, 8).map((row) => row.symbol)])}
+            recentSymbols={uniqueTerminalSymbols([leader?.symbol, ...clientRows.slice(0, 8).map((row) => row.symbol)])}
             watchlistSymbols={watchlistSymbols}
           />
           <details className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
@@ -315,18 +322,18 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
               <TerminalMonitoringBrief
                 rows={snapshot.signals}
                 scanStatus={humanizeLabel(scanSafety.status)}
-                topWatchRows={opportunityModel.rows}
+                topWatchRows={clientRows}
               />
-              <IntradayRegimeDriftPanel compact driftRows={intradayDriftRows} rows={opportunityModel.rows} />
-              <RegimeShiftIntelligencePanel compact rows={opportunityModel.rows} workflowEvolution={workflowEvolution} />
+              <IntradayRegimeDriftPanel compact driftRows={intradayDriftRows} rows={clientRows} />
+              <RegimeShiftIntelligencePanel compact rows={clientRows} workflowEvolution={workflowEvolution} />
               <AdaptiveLearningInsightPanel compact system={adaptiveLearning} />
               <StrategyIntelligencePanel compact system={strategyIntelligence} />
               <ScenarioIntelligencePanel compact system={scenarioIntelligence} />
-              <ExecutionIntelligencePanel compact rows={opportunityModel.rows} />
+              <ExecutionIntelligencePanel compact system={executionTimingSystem} />
               {workflowEvolution ? <WorkflowEvolutionPanel summary={workflowEvolution} surface="terminal" /> : null}
-              <InstitutionalIntelligencePanel compact rows={opportunityModel.rows} />
-              <RiskTolerantOpportunityRadar compact initialProfile={personalizationProfile ?? undefined} marketCondition={snapshot.marketRegime.label} rows={opportunityModel.rows} />
-              <ShockMoveRadar compact rows={opportunityModel.rows} />
+              <InstitutionalIntelligencePanel compact rows={clientRows} />
+              <RiskTolerantOpportunityRadar compact initialProfile={personalizationProfile ?? undefined} marketCondition={snapshot.marketRegime.label} rows={clientRows} />
+              <ShockMoveRadar compact rows={clientRows} />
 
               <GlassPanel className="overflow-hidden p-5">
                 <div className="grid gap-5">
@@ -382,7 +389,7 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
               </div>
             </GlassPanel>
             {!actionBlocksTradeUi ? (
-              <MyWatchlistWidget rows={opportunityModel.rows} />
+              <MyWatchlistWidget rows={clientRows} />
             ) : (
               <GlassPanel className="p-5">
                 <SectionTitle eyebrow="Watchlist" title="Research Mode" />

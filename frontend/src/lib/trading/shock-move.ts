@@ -28,13 +28,20 @@ export type ShockMovePreconditions = {
 
 export type ShockMoveEvent = {
   atrNormalizedMove: number | null;
+  /**
+   * Present on the server, dropped before the event crosses to a client
+   * component on /terminal. It is by far the heaviest part of the flight
+   * payload -- 12,726 of these objects, 15.2 MB of an 18.3 MB document -- and
+   * the only consumer, execution-intelligence, now runs on the server there.
+   * Readers must treat it as optional rather than assume it survived.
+   */
   eventDate: string;
   gapPercent: number | null;
   maxAdverseExcursion5d: number | null;
   maxFavorableExcursion5d: number | null;
   moveType: ShockDirection;
   outcomeStatus: ShockOutcomeStatus;
-  preconditions: ShockMovePreconditions;
+  preconditions?: ShockMovePreconditions;
   return1d: number;
   return2d: number | null;
   return3d: number | null;
@@ -592,11 +599,11 @@ function sampleScore(count: number): number {
 function commonPreconditions(events: ShockMoveEvent[]): string[] {
   const conditions: string[] = [];
   if (!events.length) return ["No repeatable shock precondition cluster is available yet."];
-  if (rateValue(events.map((event) => (event.preconditions.volumeSpikeRatio ?? 0) >= 1.5)) >= 0.35) conditions.push("volume expansion frequently preceded shock events");
-  if (rateValue(events.map((event) => Math.abs(event.preconditions.returnZScore ?? 0) >= 2)) >= 0.3) conditions.push("return z-score pressure was already elevated before similar moves");
-  if (rateValue(events.map((event) => (event.preconditions.closeVsMa20Pct ?? 0) > 0)) >= 0.55) conditions.push("price was usually above the 20-day trend line");
-  if (rateValue(events.map((event) => (event.preconditions.gapPercent ?? 0) > 2)) >= 0.25) conditions.push("gap activity appeared in a meaningful subset of shock events");
-  if (rateValue(events.map((event) => (event.preconditions.realizedVolatility10d ?? 0) <= (event.preconditions.atrPercent ?? 0))) >= 0.35) conditions.push("volatility compression often appeared before expansion");
+  if (rateValue(events.map((event) => (event.preconditions?.volumeSpikeRatio ?? 0) >= 1.5)) >= 0.35) conditions.push("volume expansion frequently preceded shock events");
+  if (rateValue(events.map((event) => Math.abs(event.preconditions?.returnZScore ?? 0) >= 2)) >= 0.3) conditions.push("return z-score pressure was already elevated before similar moves");
+  if (rateValue(events.map((event) => (event.preconditions?.closeVsMa20Pct ?? 0) > 0)) >= 0.55) conditions.push("price was usually above the 20-day trend line");
+  if (rateValue(events.map((event) => (event.preconditions?.gapPercent ?? 0) > 2)) >= 0.25) conditions.push("gap activity appeared in a meaningful subset of shock events");
+  if (rateValue(events.map((event) => (event.preconditions?.realizedVolatility10d ?? 0) <= (event.preconditions?.atrPercent ?? 0))) >= 0.35) conditions.push("volatility compression often appeared before expansion");
   return conditions.length ? conditions.slice(0, 4) : ["Shock events were mixed; no single indicator dominated the preconditions."];
 }
 
@@ -605,9 +612,9 @@ function commonFailureConditions(events: ShockMoveEvent[]): string[] {
   const reversalEvents = events.filter((event) => reversalAfterShock(event) !== null && (reversalAfterShock(event) ?? 0) > 0);
   if (!events.length) return ["Failure pattern evidence is unavailable until more shock events accumulate."];
   if (reversalEvents.length / events.length >= 0.35) conditions.push("chasing after the shock often reversed within five sessions");
-  if (rateValue(events.map((event) => Math.abs(event.preconditions.gapPercent ?? 0) >= 4)) >= 0.25) conditions.push("large gaps increased do-not-chase risk");
+  if (rateValue(events.map((event) => Math.abs(event.preconditions?.gapPercent ?? 0) >= 4)) >= 0.25) conditions.push("large gaps increased do-not-chase risk");
   if (rateValue(events.map((event) => (event.maxAdverseExcursion5d ?? 0) <= -6)) >= 0.25) conditions.push("post-shock drawdowns were frequently sharp");
-  if (rateValue(events.map((event) => (event.preconditions.volumeSpikeRatio ?? 0) >= 3)) >= 0.2) conditions.push("extreme volume spikes sometimes marked exhaustion rather than clean follow-through");
+  if (rateValue(events.map((event) => (event.preconditions?.volumeSpikeRatio ?? 0) >= 3)) >= 0.2) conditions.push("extreme volume spikes sometimes marked exhaustion rather than clean follow-through");
   return conditions.length ? conditions.slice(0, 4) : ["Observed failures are mixed; downside must still be monitored because shock setups are high-volatility by design."];
 }
 
@@ -713,10 +720,10 @@ function currentSimilarityScore(latest: ComputedBar, events: ShockMoveEvent[]): 
   ];
   const scores = events.map((event) => {
     const vector = [
-      event.preconditions.atrPercent ?? 0,
-      event.preconditions.volumeSpikeRatio ?? 1,
-      event.preconditions.priorFiveDayReturnPct ?? 0,
-      event.preconditions.closeVsMa20Pct ?? 0,
+      event.preconditions?.atrPercent ?? 0,
+      event.preconditions?.volumeSpikeRatio ?? 1,
+      event.preconditions?.priorFiveDayReturnPct ?? 0,
+      event.preconditions?.closeVsMa20Pct ?? 0,
     ];
     const distance = vector.reduce((total, value, index) => total + Math.abs(value - latestVector[index]), 0);
     return clamp(100 - distance * 4);
