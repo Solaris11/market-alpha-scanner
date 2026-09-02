@@ -151,7 +151,14 @@ export default async function SymbolDetailPage({ params }: PageProps) {
         </Link>
       </div>
       {!row ? (
-        <EmptyState title="Symbol not found" message={`${symbol.toUpperCase()} is not available in the current scanner output.`} />
+        detail.history.length > 0 ? (
+          <SymbolEvidenceLimitedView priceSeries={detail.history} symbol={symbol.toUpperCase()} />
+        ) : (
+          <EmptyState
+            title="Symbol not covered"
+            message={`${symbol.toUpperCase()} is not in the current scanner output and no verified price history is available for it.`}
+          />
+        )
       ) : (
         <>
           <SymbolWorkspaceTracker symbol={row.symbol} />
@@ -478,6 +485,71 @@ function SymbolInstantWorkflowShell({
           <ShellMetric label="Score" value={score === null ? "Limited" : `${Math.round(score)}`} />
           <ShellMetric label="Freshness" value={dataFreshness.label} />
         </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * A symbol with verified price history but no row in the current scan.
+ *
+ * getSymbolDetail loads price history independently of the scanner ranking, so
+ * this page used to discard a perfectly renderable chart and show "Symbol not
+ * found" instead. Measured on production: 251 symbols have price history but no
+ * row in the latest scan, and every one of them dead-ended that way -- including
+ * every ticker the discovery fallback card offers a "Full chart" action for.
+ *
+ * The scanner row is what carries a decision, so nothing here claims one. This
+ * is price context only, labelled as such.
+ */
+function SymbolEvidenceLimitedView({
+  priceSeries,
+  symbol,
+}: {
+  priceSeries: Record<string, ScannerScalar>[];
+  symbol: string;
+}) {
+  const candles = rowsToFastShellCandles(priceSeries);
+  const latest = candles[candles.length - 1]?.close ?? null;
+  const first = candles[0]?.close ?? null;
+  const movePct = latest !== null && first !== null && first !== 0 ? ((latest - first) / first) * 100 : null;
+  const path = fastShellPath(candles, 1040, 300);
+  return (
+    <section
+      className="rounded-3xl border border-amber-300/20 bg-slate-950/70 p-5 shadow-2xl shadow-amber-950/10"
+      data-chart-symbol={symbol}
+      data-symbol-evidence-limited="true"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <div className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-300">Evidence limited</div>
+          <h1 className="mt-2 font-mono text-4xl font-black tracking-tight text-slate-50 sm:text-6xl">{symbol}</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">
+            No validated scanner row for {symbol} in the current scan, so there is no decision, score, or risk context to show. The chart below is verified provider price
+            history only. Research context, not financial advice.
+          </p>
+        </div>
+        <div className="grid gap-2 text-right">
+          <div className="font-mono text-2xl font-black text-slate-50">{latest === null ? "Limited" : shellMoney(latest)}</div>
+          <div className={movePct !== null && movePct >= 0 ? "text-sm font-bold text-emerald-200" : "text-sm font-bold text-rose-200"}>
+            {movePct === null ? "Move limited" : `${movePct >= 0 ? "+" : ""}${movePct.toFixed(2)}%`}
+          </div>
+        </div>
+      </div>
+      <div className="mt-5 h-[300px] overflow-hidden rounded-2xl border border-white/10 bg-black/25">
+        {path ? (
+          <svg aria-label={`${symbol} verified price history`} className="h-full w-full" preserveAspectRatio="none" role="img" viewBox="0 0 1040 300">
+            <path d={path.area} fill="rgba(251, 191, 36, 0.08)" />
+            <path d={path.line} fill="none" stroke="rgb(252, 211, 77)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+          </svg>
+        ) : (
+          <div className="grid h-full place-items-center px-4 text-center text-sm text-slate-400">Verified chart history is limited for this symbol. No synthetic candles are drawn.</div>
+        )}
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <ShellMetric label="Decision" value="Not available" />
+        <ShellMetric label="Scanner coverage" value="Not in current scan" />
+        <ShellMetric label="Price points" value={`${candles.length}`} />
       </div>
     </section>
   );
