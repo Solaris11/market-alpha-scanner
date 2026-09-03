@@ -100,7 +100,30 @@ Deploy runbook'u yalnızca `market-alpha-frontend` ve `market-alpha-frontend-hot
 
 ---
 
-# İşlem 2 — `forward_returns` kapsayıcı indeksi
+# İşlem 2 — `forward_returns` kapsayıcı indeksi — **UYGULANDI 2026-09-03 20:15 UTC**
+
+> **Durum: uygulandı ve ölçüldü.** Kullanıcı 2026-09-03'te açıkça yetkilendirdi ("düşük riskli ve kilitlemeyen indeks ise bakım penceresi uygunsa uygulayabilirsin"). Pencere uygundu: 18:00 yedeklemesi bitmiş, 21:30 tam taramasına 75 dakika vardı.
+>
+> | | Öncesi | Sonrası |
+> |---|---:|---:|
+> | Sorgu süresi | 1.091 ms | **8,5 ms** |
+> | Okunan blok | 103.274 | **818** |
+> | Plan | Parallel Seq Scan + top-N sort | **Index Scan** |
+> | `getPerformanceData` (render içinde) | 3.089 ms | **234 ms** |
+> | `/terminal` render toplam | 3.951 ms | **1.078 ms** |
+> | DOM interactive (sıcak) | 6.293 ms | **2.671 ms** |
+>
+> Geçersiz indeks kontrolü: `SELECT indexrelid::regclass FROM pg_index WHERE NOT indisvalid` → 0 satır. Container restart 0, health 200, ağ 4xx/5xx yok.
+>
+> **Boyut tahminim yanlıştı:** ~10–15 MB demiştim, gerçek **33 MB**. Tablo 876 MB olduğu için sorun değil ama tahmin ölçüm değildi.
+>
+> **Geri alma:** `docker compose exec -T market-alpha-postgres psql -U market_alpha -d market_alpha -c "DROP INDEX CONCURRENTLY IF EXISTS idx_forward_returns_signal_date_desc"` — röleye bu desen de eklendi.
+>
+> Alembic sürüm tablosu bu migration'ı uygulanmış saymıyor (runner kırık, aşağıda). Sonraki `alembic upgrade` aynı `CREATE INDEX ... IF NOT EXISTS`'i çalıştırıp zararsızca geçecek.
+
+---
+
+## Özgün öneri (kayıt için)
 
 ## Neden
 
