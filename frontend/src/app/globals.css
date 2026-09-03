@@ -772,6 +772,38 @@ a {
   touch-action: pan-y;
 }
 
+/*
+ * Horizontal scroll affordance.
+ *
+ * Applied to containers whose grid tracks are fixed (rem) and therefore wider
+ * than a phone viewport. Without it those containers were `overflow-hidden`,
+ * which clipped the right-hand columns silently -- no scrollbar, no hint that
+ * anything was missing. `overscroll-behavior-x: contain` stops a horizontal
+ * flick from triggering the browser's back-swipe gesture, and the always-drawn
+ * thumb gives the reader a visible cue on platforms that hide overlay
+ * scrollbars until they are used.
+ */
+.tv-scroll-x {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+  scrollbar-width: thin;
+  touch-action: pan-x pan-y;
+}
+
+.tv-scroll-x::-webkit-scrollbar {
+  height: 8px;
+}
+
+.tv-scroll-x::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+}
+
+.tv-scroll-x::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 .tv-mobile-fixed-viewport {
   height: var(--tv-visual-viewport-height, 100dvh);
   max-height: var(--tv-visual-viewport-height, 100dvh);

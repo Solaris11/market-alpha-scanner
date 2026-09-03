@@ -107,7 +107,7 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
             <span className="text-[11px] text-emerald-200/80">{plan.shortLabel}</span>
           </span>
         </span>
-        {compact ? <PlanBadge compact entitlement={entitlement} /> : null}
+        {compact ? <PlanBadge compact entitlement={entitlement} shrinkable /> : null}
       </button>
       {open && mounted
         ? createPortal(
@@ -140,10 +140,28 @@ export function AccountMenu({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function PlanBadge({ compact = false, entitlement }: { compact?: boolean; entitlement: CurrentUserEntitlement }) {
+/**
+ * `shrinkable` is for the compact header pill, where this badge is the only
+ * flex child that can give.
+ *
+ * At 375px the row is BrandMark + two 40px icon buttons + this button, and the
+ * button's other children are fixed: the 32px avatar is shrink-0 and the
+ * display name is hidden in compact mode. With the badge also shrink-0 the
+ * button had an unshrinkable min-content width and ran past the viewport, where
+ * `main { overflow-x: hidden }` clipped it rather than scrolling -- so it read
+ * as a broken layout instead of a wide one.
+ *
+ * Truncating rather than wrapping is deliberate: globals.css sets
+ * `word-break: normal` on span and button and a test pins that, so the label
+ * cannot break mid-word anyway.
+ */
+function PlanBadge({ compact = false, entitlement, shrinkable = false }: { compact?: boolean; entitlement: CurrentUserEntitlement; shrinkable?: boolean }) {
   const status = planStatus(entitlement);
   return (
-    <span className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 font-semibold ${compact ? "text-[10px]" : "text-[11px]"} ${status.className}`}>
+    <span
+      className={`inline-flex rounded-full border px-2 py-0.5 font-semibold ${shrinkable ? "min-w-0 truncate" : "shrink-0"} ${compact ? "text-[10px]" : "text-[11px]"} ${status.className}`}
+      title={status.label}
+    >
       {status.label}
     </span>
   );

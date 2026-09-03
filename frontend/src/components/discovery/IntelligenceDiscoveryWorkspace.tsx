@@ -834,7 +834,7 @@ export function IntelligenceDiscoveryWorkspace({
                 >
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cyan-200" />
                   <input
-                    aria-label="Search discovery scanner by symbol, company, sector, setup, or risk context"
+                    aria-label="Filter the visible scanner rows by symbol, company, sector, setup, or risk context"
                     autoComplete="off"
                     className="h-12 w-full rounded-2xl border border-cyan-300/20 bg-slate-950/70 pl-10 pr-20 text-sm font-semibold text-slate-100 outline-none transition placeholder:text-slate-600 focus:border-cyan-200/60 focus:ring-2 focus:ring-cyan-300/15"
                     data-discovery-secondary-search="true"
@@ -846,10 +846,10 @@ export function IntelligenceDiscoveryWorkspace({
                     value={query}
                   />
                   <button
-                    aria-label="Open searched symbol card"
+                    aria-label="Open the filtered symbol card"
                     className="absolute right-1.5 top-1/2 inline-flex h-9 -translate-y-1/2 items-center justify-center gap-1.5 rounded-xl border border-cyan-300/25 bg-cyan-300/12 px-3 text-[10px] font-black uppercase tracking-[0.1em] text-cyan-100 transition hover:border-cyan-200/70 hover:bg-cyan-300/18 disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-white/[0.03] disabled:text-slate-600"
                     disabled={!liveSearchPacketMatch && !liveFallbackSearchSymbol}
-                    title="Open searched symbol card"
+                    title="Open the filtered symbol card"
                     type="submit"
                   >
                     <Search className="h-3.5 w-3.5" />
@@ -928,7 +928,10 @@ export function IntelligenceDiscoveryWorkspace({
                     <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-300">Sector discovery map</div>
                     <h3 className="mt-1 text-xl font-black text-white">Where scanner attention is concentrated</h3>
                   </div>
-                  <Globe2 className="h-5 w-5 text-cyan-200" />
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="hidden text-[9px] font-black uppercase tracking-[0.12em] text-slate-500 sm:inline">Discovery score 0-100</span>
+                    <Globe2 className="h-5 w-5 text-cyan-200" />
+                  </div>
                 </div>
                 <PosterHeatmapChart cells={heatCells} emptyMessage="Sector heatmap activates when scanner rows include sector context." onCellSelect={(cell) => setSelectedCluster(system.sectorHeatmap.find((cluster) => cluster.label === cell.label) ?? null)} />
               </section>
@@ -1790,7 +1793,7 @@ function RapidScannerTable({
 
   return (
     <div
-      className="overflow-hidden rounded-3xl border border-white/10 bg-slate-950/48"
+      className="tv-scroll-x overflow-x-auto overflow-y-hidden rounded-3xl border border-white/10 bg-slate-950/48"
       data-discovery-scanner-table="true"
       data-scanner-rendered-rows={virtualWindow.rows.length}
       data-scanner-sort={sort}
@@ -2185,7 +2188,7 @@ function CompareMatrix({ rows }: { rows: DiscoverySymbol[] }) {
   ];
 
   return (
-    <div className="mt-4 overflow-hidden rounded-2xl border border-white/10 bg-slate-950/45">
+    <div className="tv-scroll-x mt-4 overflow-x-auto overflow-y-hidden rounded-2xl border border-white/10 bg-slate-950/45">
       <div className="grid border-b border-white/10 bg-white/[0.035] text-[10px] font-black uppercase tracking-[0.12em] text-slate-500" style={{ gridTemplateColumns: `8rem repeat(${rows.length}, minmax(4.25rem, 1fr))` }}>
         <div className="px-3 py-2">Metric</div>
         {rows.map((symbol) => <div className="px-3 py-2 font-mono text-slate-300" key={symbol.symbol}>{symbol.symbol}</div>)}

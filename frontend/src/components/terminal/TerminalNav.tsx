@@ -320,10 +320,10 @@ export function MobileTerminalNav() {
           <div className="truncate text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300/80">Decision Intelligence</div>
         </div>
         <DiscoveryCommandButton compact />
-        <span data-sensitive>
+        <span className="shrink-0" data-sensitive>
           <NotificationBell />
         </span>
-        <span data-sensitive>
+        <span className="min-w-0 shrink" data-sensitive>
           <AccountPill compact />
         </span>
       </div>

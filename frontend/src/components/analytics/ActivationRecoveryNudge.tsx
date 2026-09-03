@@ -87,7 +87,7 @@ export function ActivationRecoveryNudge() {
   return (
     <aside
       aria-label="Activation recovery prompt"
-      className="fixed bottom-[calc(env(safe-area-inset-bottom)+5.25rem)] left-3 right-3 z-[65] rounded-2xl border border-cyan-300/25 bg-slate-950/95 p-3 shadow-2xl shadow-black/45 ring-1 ring-white/10 backdrop-blur-xl md:bottom-5 md:left-auto md:right-5 md:w-[26rem]"
+      className="fixed bottom-[calc(var(--tv-mobile-nav-clearance)+0.5rem)] left-3 right-3 z-[65] rounded-2xl border border-cyan-300/25 bg-slate-950/95 p-3 shadow-2xl shadow-black/45 ring-1 ring-white/10 backdrop-blur-xl md:bottom-5 md:left-auto md:right-5 md:w-[26rem]"
     >
       <div className="flex items-start gap-3">
         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-cyan-300/25 bg-cyan-300/10 text-cyan-100">
