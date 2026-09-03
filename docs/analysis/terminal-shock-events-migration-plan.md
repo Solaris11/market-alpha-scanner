@@ -1,6 +1,6 @@
 # `shockEvents`'i client payload'ından düşürme planı (Stage 2–4)
 
-**Tarih:** 2026-09-03 · **Kod:** `04c62083` · **Durum:** plan — kod yazılmadı, deploy yok
+**Tarih:** 2026-09-03 · **Kod:** `04c62083` · **Durum:** Stage 0–3 uygulandı (branch `work/autonomous-after-b177`), **prod'a deploy edilmedi**. Planın nerede yanıldığı §8'de.
 
 **Yöntem:** `raw-field-allowlist.test.ts`'teki import-grafiği yürüyüşü yeniden çalıştırıldı (148 `"use client"` kökü, geçişli kapanış 247 modül, `import type` kenarları hariç), ardından her eşleşme **gerçek çağrı noktasına kadar** izlendi. Modül erişilebilirliği ile client'ta çalışma aynı şey değil; fark bu planın yarısını oluşturuyor.
 
@@ -128,3 +128,43 @@ Ek olarak `raw-field-allowlist.test.ts` desenli bir **envanter koruması**: clie
 - **Yerine geçen actionability prop'unun boyutu tahmin**: ~349 satır × 5 cümle ≈ 200–350 KB. Stage 2'de ölçülecek, varsayılmayacak.
 - **`timingValidation` prod'da her pattern'de var mı bilinmiyor.** Varsa `shockEvents.length` fallback'i pratikte ölü ve skaler sadece emniyet. `shock_move_patterns.metrics` içeriğine bakmadan söylenemez.
 - Ayrıca (payload değil, bundle): `RiskTolerantOpportunityRadar`, `risk-tolerant-opportunities.ts`'ten `riskRewardProfile` değer-import ediyor ve modülün tamamını — sunucuya ait `buildRiskTolerantOpportunityPacket` dahil — client bundle'ına çekiyor. Yardımcıyı yaprak modüle taşımak bunu düşürür.
+
+---
+
+## 8. Uygulama sonrası — planın nerede yanıldığı
+
+Bu bölüm plan uygulandıktan sonra eklendi. Yukarıdaki metin olduğu gibi bırakıldı; aşağısı ondan neyin farklı çıktığını söylüyor.
+
+### Stage 2 sigorta değil, onarımdı
+
+Plan Stage 2'yi "payload etkisi yok, saf sigorta" diye tarif ediyordu. Testi yazdığımda **kaldı** ve haklıydı.
+
+`stripShockEventPreconditions` 2026-09-02'de canlıya çıktı ve `/terminal` kesilmiş satırları doğrudan `ShockMoveRadar` ile `RiskTolerantOpportunityRadar`'a veriyordu; ikisi de `buildOpportunityActionability`'yi client'ta çağırıyordu. O gün `buildExecutionTimingSystem` tam bu yüzden sunucuya taşınmıştı — **ama bu iki tüketici atlanmıştı.**
+
+Ölçülen etki: yeterli şok geçmişi olan bir sembolde beş render edilen string'in üçü değişiyor.
+
+| Alan | Kesilmemiş | Kesilmiş (prod'da olan) |
+|---|---|---|
+| `earlyOrLate` | `Early; needs confirmation` | `Early` |
+| `actionContext` | "This needs more confirmation before it becomes clean…" | "This is early enough to monitor closely near \$111.17-\$116.22…" |
+| `whatToWaitFor` | "Look for relative-volume confirmation…" | "Watch for relative volume, market confirmation…" |
+
+WAIT-first bir üründe kaybolan şey tam olarak "confirmation" dili.
+
+**Neden görünmedi:** zayıf şok geçmişinde metin aynı çıkıyor. İlk yazdığım fixture 2 olay üretiyordu ve hiçbir fark göstermedi; kalibrasyon ancak 80 olaylı fixture'da devreye girdi. Yani "fark yok" sonucu fixture'ın bir özelliğiydi, kodun değil. **Bir negatif sonucu tek fixture'la kabul etmemek gerekiyormuş.**
+
+### `timingQuality` ayrı bir hikâye
+
+Preconditions kesildiğinde `actionability.timingQuality` de değişiyor. Bu alan yalnızca `OpportunitiesWorkspace` içinde render ediliyor, o da `/opportunities` rotasında ve **kesilmemiş** satırlarla. Yani orada bir regresyon yok — ama kalibrasyonun diziyi gerçekten tükettiğini kanıtlıyor.
+
+### Fazladan bulunan: `latestEvent.preconditions`
+
+Plan §4'te "bedava kazanç" diye geçmişti ve doğruydu: eski kesme fonksiyonu yalnızca `shockEvents` dizisini geziyordu, `latestEvent`'e hiç dokunmuyordu. Satır başına bir tam `preconditions` nesnesi (~102 KB) sessizce gitmeye devam ediyormuş. Stage 3'ün kesme fonksiyonu artık ikisini birden alıyor.
+
+### Tüketici listesi düzeltmesi doğru çıktı
+
+Derleyici, `shockEvents` opsiyonel yapıldığında tam olarak planın öngördüğü okuyucuları saydı: `evidence-maturity` dört yerde, `risk-tolerant-opportunities` bir yerde, `execution-intelligence` zaten `?? []` kullanıyordu. İkisi de `/symbol` ve API rotasında dolu dizi almaya devam ediyor.
+
+### Ölçülmeyen
+
+Payload kazancı **ölçülmedi**. Beklenen ~4,8 MB ama bu envanterden aritmetik, okuma değil. Ve geçen sefer payload dörtte bir düştüğünde DOM interactive kıpırdamamıştı — bu sefer de kıpırdamayabilir. Deploy sonrası ölçülecek.
