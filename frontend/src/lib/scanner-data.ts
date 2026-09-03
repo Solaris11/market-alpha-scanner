@@ -244,6 +244,20 @@ type DbHistoryRow = DbSignalRow & {
  * projected here as a scalar instead: 409kB of columns plus a handful of
  * ->> lookups.
  */
+/** coerceValue turns each of these into undefined, so `??` falls through. */
+const ACTION_IS_BLANK = "(ss.action IS NULL OR lower(btrim(ss.action)) IN ('', 'nan', 'none', 'null'))";
+
+/** coerceValue's blanks, plus the extra values displayName itself skips. */
+const NAME_IS_BLANK =
+  "(ss.company_name IS NULL OR lower(btrim(ss.company_name)) IN ('', 'nan', 'none', 'null', 'n/a', 'unknown')" +
+  " OR upper(btrim(ss.company_name)) = upper(ss.symbol))";
+
+/** The order actionForRow consults them in. */
+const ACTION_FALLBACK_FIELDS = ["recommended_action", "composite_action", "mid_action", "short_action", "long_action"] as const;
+
+/** NAME_FIELDS minus company_name, which is a column; the camelCase spellings are CSV-only. */
+const NAME_FALLBACK_FIELDS = ["long_name", "short_name", "display_name", "security_name", "name"] as const;
+
 type DbDriftRow = QueryResultRow & {
   action: string | null;
   company_name: string | null;
@@ -1590,18 +1604,16 @@ const getRecentDbDriftRows = cache(async (hours: number, maxRuns: number, minRun
           ss.setup_type,
           ss.created_at,
           br.completed_at,
-          -- actionForRow falls back through these when action is blank.
-          ss.payload->>'recommended_action' AS recommended_action,
-          ss.payload->>'composite_action' AS composite_action,
-          ss.payload->>'mid_action' AS mid_action,
-          ss.payload->>'short_action' AS short_action,
-          ss.payload->>'long_action' AS long_action,
-          -- displayName falls back through these when company_name is blank.
-          ss.payload->>'long_name' AS long_name,
-          ss.payload->>'short_name' AS short_name,
-          ss.payload->>'display_name' AS display_name,
-          ss.payload->>'security_name' AS security_name,
-          ss.payload->>'name' AS name
+          -- Guarded, and the guard is the whole point. Each payload->> lookup
+          -- is a separate detoast of the whole blob: ten of them measured
+          -- 1737ms and
+          -- 292k buffers on prod, worse than fetching the payload outright.
+          -- Behind a CASE they are only evaluated when the fallback is actually
+          -- reachable, which measured 8ms and 308 buffers. The conditions
+          -- mirror coerceValue and displayName exactly -- widen one there and
+          -- this stops matching.
+          ${ACTION_FALLBACK_FIELDS.map((field) => `CASE WHEN ${ACTION_IS_BLANK} THEN ss.payload->>'${field}' END AS ${field}`).join(",\n          ")},
+          ${NAME_FALLBACK_FIELDS.map((field) => `CASE WHEN ${NAME_IS_BLANK} THEN ss.payload->>'${field}' END AS ${field}`).join(",\n          ")}
         FROM scanner_signals ss
         JOIN bounded_runs br ON br.id = ss.scan_run_id
         ORDER BY br.scan_ts ASC, ss.rank_position ASC NULLS LAST, ss.symbol ASC

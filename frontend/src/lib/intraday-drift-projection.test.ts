@@ -64,33 +64,48 @@ function fullRow(signal: Signal) {
   };
 }
 
-/** Exactly what the SQL projection produces: the columns, plus `payload->>key`. */
+/**
+ * Exactly what the SQL projection produces.
+ *
+ * The payload lookups sit behind a CASE in the query -- ten unguarded ones
+ * detoast the blob ten times per row, 1737ms on prod against 8ms guarded -- so
+ * they resolve to NULL whenever the column they back is usable. Mirroring that
+ * here is what makes the comparison below mean anything: a fixture that always
+ * projected the payload would pass while production returned nulls.
+ */
 function leanRow(signal: Signal) {
-  const key = (name: string) => {
+  const blank = (value: string | null | undefined, extra: string[] = []) =>
+    value === null || value === undefined || ["", "nan", "none", "null", ...extra].includes(value.trim().toLowerCase());
+  const actionBlank = blank(signal.action);
+  const nameBlank = blank(signal.companyName, ["n/a", "unknown"]) || (signal.companyName ?? "").trim().toUpperCase() === signal.symbol.toUpperCase();
+  const key = (name: string, guard: boolean) => {
+    if (!guard) return null;
     const value = signal.payload[name];
     return value === undefined || value === null ? null : String(value);
   };
+  const actionKey = (name: string) => key(name, actionBlank);
+  const nameKey = (name: string) => key(name, nameBlank);
   return {
     action: signal.action ?? null,
     company_name: signal.companyName ?? null,
     completed_at: signal.ts,
-    composite_action: key("composite_action"),
+    composite_action: actionKey("composite_action"),
     created_at: signal.ts,
-    display_name: key("display_name"),
+    display_name: nameKey("display_name"),
     final_score: signal.finalScore,
-    long_action: key("long_action"),
-    long_name: key("long_name"),
-    mid_action: key("mid_action"),
-    name: key("name"),
+    long_action: actionKey("long_action"),
+    long_name: nameKey("long_name"),
+    mid_action: actionKey("mid_action"),
+    name: nameKey("name"),
     price: signal.price,
     rank_position: 1,
     rating: signal.rating ?? null,
-    recommended_action: key("recommended_action"),
+    recommended_action: actionKey("recommended_action"),
     scan_run_id: "run-1",
-    security_name: key("security_name"),
+    security_name: nameKey("security_name"),
     setup_type: signal.setupType ?? null,
-    short_action: key("short_action"),
-    short_name: key("short_name"),
+    short_action: actionKey("short_action"),
+    short_name: nameKey("short_name"),
     symbol: signal.symbol,
   };
 }
