@@ -234,6 +234,40 @@ type DbHistoryRow = DbSignalRow & {
   scan_run_id: string;
 };
 
+/**
+ * The columns the intraday drift summary actually needs.
+ *
+ * The full history row carries scanner_signals.payload, which is 36MB across
+ * the 18 runs /terminal asks for. jsonb is parsed by the driver, so that blob
+ * costs a JSON.parse per row for fields nothing on this path reads. Everything
+ * buildIntradaySignalDrift (and actionForRow, and displayName) can reach is
+ * projected here as a scalar instead: 409kB of columns plus a handful of
+ * ->> lookups.
+ */
+type DbDriftRow = QueryResultRow & {
+  action: string | null;
+  company_name: string | null;
+  completed_at: string | Date | null;
+  composite_action: string | null;
+  created_at: string | Date;
+  display_name: string | null;
+  final_score: string | number | null;
+  long_action: string | null;
+  long_name: string | null;
+  mid_action: string | null;
+  name: string | null;
+  price: string | number | null;
+  rank_position: string | number | null;
+  rating: string | null;
+  recommended_action: string | null;
+  scan_run_id: string;
+  security_name: string | null;
+  setup_type: string | null;
+  short_action: string | null;
+  short_name: string | null;
+  symbol: string;
+};
+
 type DbPriceRow = QueryResultRow & {
   close: string | number | null;
   high: string | number | null;
@@ -494,12 +528,7 @@ const getDbHistoryRows = cache(async (symbol?: string): Promise<SymbolHistoryRow
       `,
       params,
     );
-    return result.rows.map((row) => {
-      const ranking = dbSignalToRankingRow(row) as SymbolHistoryRow;
-      ranking.timestamp_utc = dbTimestamp(row.completed_at) ?? dbTimestamp(row.created_at) ?? "";
-      ranking.source_file = `db:${row.scan_run_id}`;
-      return ranking;
-    });
+    return result.rows.map(dbHistoryRowToHistoryRow);
   } catch {
     return null;
   }
@@ -523,6 +552,32 @@ function metricRowsToCsvFileData(rows: DbMetricRow[], totalCount?: number | null
   return data;
 }
 
+/**
+ * Sub-step timing for the one call that dominates the /terminal render.
+ *
+ * The route-level timeline measured getPerformanceData at 3103ms while the
+ * forward_returns query on its own measures 1154ms on prod. Rather than guess
+ * where the rest goes -- pool contention, cold cache, the JSON the driver
+ * parses, the CSV reads -- each step reports itself and the gap becomes a
+ * number. Names and durations only; nothing from a row is logged.
+ */
+const STEP_TIMING_ENABLED = process.env.TRADEVETO_RENDER_TIMING !== "false";
+
+function timedStep<T>(step: string, work: Promise<T>, into: string[]): Promise<T> {
+  if (!STEP_TIMING_ENABLED) return work;
+  const began = Date.now();
+  return work.then(
+    (value) => {
+      into.push(`${step}=${Date.now() - began}ms`);
+      return value;
+    },
+    (error) => {
+      into.push(`${step}=threw`);
+      throw error;
+    },
+  );
+}
+
 function dbCount(value: unknown): number | null {
   if (value === null || value === undefined || value === "") return null;
   const parsed = typeof value === "number" ? value : Number(value);
@@ -532,8 +587,10 @@ function dbCount(value: unknown): number | null {
 const getDbPerformanceData = cache(async (forwardTailRows?: number): Promise<Pick<PerformanceData, "summary" | "forwardReturns"> | null> => {
   try {
     const forwardLimit = forwardTailRows ? Math.max(1, forwardTailRows) : 100000;
+    const steps: string[] = [];
+    const perfBegan = Date.now();
     const [summaryResult, forwardResult, forwardCountResult] = await Promise.all([
-      dbQuery<DbMetricRow>(
+      timedStep("summaryQuery", dbQuery<DbMetricRow>(
         `
           WITH latest_batch AS (
             SELECT scan_run_id, max(created_at) AS created_at
@@ -552,14 +609,14 @@ const getDbPerformanceData = cache(async (forwardTailRows?: number): Promise<Pic
             ps.metrics->>'group_type',
             ps.metrics->>'group_value'
         `,
-      ),
+      ), steps),
       // No `count(*) OVER ()` here, deliberately. Postgres evaluates window
       // functions before LIMIT, so putting the total on these rows forced every
       // one of the 818k matching rows through a WindowAgg -- measured on prod at
       // 3652ms with 1.3GB of temp spill, against 1154ms without it. The total is
       // still needed (it feeds lineCount, which /paper shows as completed
       // evidence samples), so it is asked for separately below.
-      dbQuery<DbMetricRow>(
+      timedStep("forwardQuery", dbQuery<DbMetricRow>(
         `
           SELECT
             (
@@ -581,26 +638,32 @@ const getDbPerformanceData = cache(async (forwardTailRows?: number): Promise<Pic
           LIMIT $1
         `,
         [forwardLimit],
-      ),
+      ), steps),
       // Same WHERE clause as the query above, so the count describes exactly the
       // same population. Measured on prod at 115ms.
-      dbQuery<DbForwardCountRow>(
+      timedStep("countQuery", dbQuery<DbForwardCountRow>(
         `
           SELECT count(*) AS total_count
           FROM forward_returns
           WHERE return_pct IS NOT NULL
         `,
-      ).catch(() => null),
+      ).catch(() => null), steps),
     ]);
 
     if (!summaryResult.rows.length && !forwardResult.rows.length) return null;
     // A failed count must not cost us the rows: lineCount then falls back to
     // what was actually fetched, exactly as it does for a CSV read.
     const totalForwardRows = dbCount(forwardCountResult?.rows[0]?.total_count);
-    return {
+    const shapeBegan = Date.now();
+    const shaped = {
       summary: metricRowsToCsvFileData(summaryResult.rows),
       forwardReturns: metricRowsToCsvFileData([...forwardResult.rows].reverse(), totalForwardRows),
     };
+    if (STEP_TIMING_ENABLED) {
+      steps.push(`shapeRows=${Date.now() - shapeBegan}ms`);
+      console.info(`[perf-timing] getDbPerformanceData total=${Date.now() - perfBegan}ms forwardRows=${forwardResult.rows.length} summaryRows=${summaryResult.rows.length} | ${steps.join(" ")}`);
+    }
+    return shaped;
   } catch {
     return null;
   }
@@ -1334,7 +1397,7 @@ export async function getIntradaySignalDrift(): Promise<IntradayDriftRow[]> {
 }
 
 export async function getIntradaySignalDriftSummary(): Promise<IntradayDriftRow[]> {
-  const dbHistory = await getRecentDbHistoryRows(24, 18, 2);
+  const dbHistory = await getRecentDbDriftRows(24, 18, 2);
   if (dbHistory) return buildIntradaySignalDrift({ symbols: Array.from(new Set(dbHistory.map((row) => row.symbol))).sort(), rows: dbHistory });
 
   if (!allowScannerCsvFallback("intraday signal drift DB read unavailable")) return [];
@@ -1395,7 +1458,7 @@ export async function getRecentIntradaySignalDriftSummary(options: { hours?: num
   const hours = Math.max(1, Math.min(24, Math.trunc(options.hours ?? 8)));
   const maxRuns = Math.max(2, Math.min(32, Math.trunc(options.maxRuns ?? 18)));
   const minRuns = Math.max(1, Math.min(maxRuns, Math.trunc(options.minRuns ?? 2)));
-  const dbHistory = await getRecentDbHistoryRows(hours, maxRuns, minRuns);
+  const dbHistory = await getRecentDbDriftRows(hours, maxRuns, minRuns);
   if (dbHistory) return buildIntradaySignalDrift({ symbols: Array.from(new Set(dbHistory.map((row) => row.symbol))).sort(), rows: dbHistory });
   if (!allowScannerCsvFallback("recent intraday signal drift DB read unavailable")) return [];
   return getCsvIntradaySignalDriftSummary();
@@ -1468,16 +1531,120 @@ const getRecentDbHistoryRows = cache(async (hours: number, maxRuns: number, minR
       `,
       [maxRuns, hours, minRuns],
     );
-    return result.rows.map((row) => {
-      const ranking = dbSignalToRankingRow(row) as SymbolHistoryRow;
-      ranking.timestamp_utc = dbTimestamp(row.completed_at) ?? dbTimestamp(row.created_at) ?? "";
-      ranking.source_file = `db:${row.scan_run_id}`;
-      return ranking;
-    });
+    return result.rows.map(dbHistoryRowToHistoryRow);
   } catch {
     return null;
   }
 });
+
+/** The full mapping, payload and all. Exported so the lean one can be held to it. */
+export function dbHistoryRowToHistoryRow(row: DbHistoryRow): SymbolHistoryRow {
+  const ranking = dbSignalToRankingRow(row) as SymbolHistoryRow;
+  ranking.timestamp_utc = dbTimestamp(row.completed_at) ?? dbTimestamp(row.created_at) ?? "";
+  ranking.source_file = `db:${row.scan_run_id}`;
+  return ranking;
+}
+
+/**
+ * Same run selection as getRecentDbHistoryRows, without the payload blob.
+ *
+ * Kept as its own query rather than a flag on that one because the other
+ * caller -- getRecentScannerHistoryRows, which feeds provider source trust --
+ * genuinely reads arbitrary payload fields and must keep getting them.
+ */
+const getRecentDbDriftRows = cache(async (hours: number, maxRuns: number, minRuns: number): Promise<SymbolHistoryRow[] | null> => {
+  try {
+    const result = await dbQuery<DbDriftRow>(
+      `
+        WITH ranked_runs AS (
+          SELECT
+            id,
+            completed_at,
+            created_at,
+            COALESCE(completed_at, created_at) AS scan_ts,
+            row_number() OVER (ORDER BY completed_at DESC NULLS LAST, created_at DESC) AS rn
+          FROM scan_runs
+          WHERE status = 'success'
+        ),
+        bounded_runs AS (
+          SELECT *
+          FROM ranked_runs
+          WHERE rn <= $1
+            AND (
+              scan_ts >= now() - ($2::int * interval '1 hour')
+              OR rn <= $3
+            )
+          -- See getRecentDbHistoryRows: redundant for correctness, but it is
+          -- what stops the planner sequentially scanning scanner_signals.
+          LIMIT $1
+        )
+        SELECT
+          ss.scan_run_id::text,
+          ss.symbol,
+          ss.rank_position,
+          ss.company_name,
+          ss.price,
+          ss.rating,
+          ss.action,
+          ss.final_score,
+          ss.setup_type,
+          ss.created_at,
+          br.completed_at,
+          -- actionForRow falls back through these when action is blank.
+          ss.payload->>'recommended_action' AS recommended_action,
+          ss.payload->>'composite_action' AS composite_action,
+          ss.payload->>'mid_action' AS mid_action,
+          ss.payload->>'short_action' AS short_action,
+          ss.payload->>'long_action' AS long_action,
+          -- displayName falls back through these when company_name is blank.
+          ss.payload->>'long_name' AS long_name,
+          ss.payload->>'short_name' AS short_name,
+          ss.payload->>'display_name' AS display_name,
+          ss.payload->>'security_name' AS security_name,
+          ss.payload->>'name' AS name
+        FROM scanner_signals ss
+        JOIN bounded_runs br ON br.id = ss.scan_run_id
+        ORDER BY br.scan_ts ASC, ss.rank_position ASC NULLS LAST, ss.symbol ASC
+      `,
+      [maxRuns, hours, minRuns],
+    );
+    return result.rows.map(dbDriftRowToHistoryRow);
+  } catch {
+    return null;
+  }
+});
+
+export function dbDriftRowToHistoryRow(row: DbDriftRow): SymbolHistoryRow {
+  const completedAt = dbTimestamp(row.completed_at) ?? dbTimestamp(row.created_at);
+  const ranking = normalizeRankingRow(
+    {
+      action: row.action,
+      company_name: row.company_name,
+      composite_action: row.composite_action,
+      display_name: row.display_name,
+      final_score: row.final_score,
+      last_updated: completedAt,
+      last_updated_utc: completedAt,
+      long_action: row.long_action,
+      long_name: row.long_name,
+      mid_action: row.mid_action,
+      name: row.name,
+      price: row.price,
+      rank_position: row.rank_position,
+      rating: row.rating,
+      recommended_action: row.recommended_action,
+      security_name: row.security_name,
+      setup_type: row.setup_type,
+      short_action: row.short_action,
+      short_name: row.short_name,
+      symbol: row.symbol,
+    },
+    completedAt,
+  ) as SymbolHistoryRow;
+  ranking.timestamp_utc = completedAt ?? "";
+  ranking.source_file = `db:${row.scan_run_id}`;
+  return ranking;
+}
 
 export async function getRecentScannerHistoryRows(options: { hours?: number; maxRuns?: number; minRuns?: number } = {}): Promise<SymbolHistoryRow[]> {
   const hours = Math.max(1, Math.min(168, Math.trunc(options.hours ?? 72)));
@@ -1488,16 +1655,23 @@ export async function getRecentScannerHistoryRows(options: { hours?: number; max
 }
 
 export async function getPerformanceData(options: { forwardTailRows?: number } = {}): Promise<PerformanceData> {
-  const dbPerformance = await getDbPerformanceData(options.forwardTailRows);
+  const outerSteps: string[] = [];
+  const outerBegan = Date.now();
+  const dbPerformance = await timedStep("dbPerformance", getDbPerformanceData(options.forwardTailRows), outerSteps);
   if (dbPerformance) {
     const [lifecycle, lifecycleSummary, autoCalibration] = await Promise.all([
-      readScannerCsvWithState("analysis", "signal_lifecycle.csv"),
-      readScannerCsvWithState("analysis", "signal_lifecycle_summary.csv"),
-      readScannerCsvWithState("analysis", "auto_calibration_recommendations.csv"),
+      timedStep("csvLifecycle", readScannerCsvWithState("analysis", "signal_lifecycle.csv"), outerSteps),
+      timedStep("csvLifecycleSummary", readScannerCsvWithState("analysis", "signal_lifecycle_summary.csv"), outerSteps),
+      timedStep("csvAutoCalibration", readScannerCsvWithState("analysis", "auto_calibration_recommendations.csv"), outerSteps),
     ]);
+    const derivedBegan = Date.now();
     const lifecycleFallback = lifecycleRowsFromForwardReturns(dbPerformance.forwardReturns.rows);
     const lifecycleData = lifecycle.rows.length ? lifecycle : rowsToCsvFileData(lifecycleFallback);
     const lifecycleSummaryData = lifecycleSummary.rows.length ? lifecycleSummary : rowsToCsvFileData(lifecycleSummaryRows(lifecycleFallback));
+    if (STEP_TIMING_ENABLED) {
+      outerSteps.push(`deriveLifecycle=${Date.now() - derivedBegan}ms`);
+      console.info(`[perf-timing] getPerformanceData total=${Date.now() - outerBegan}ms tail=${options.forwardTailRows ?? "all"} | ${outerSteps.join(" ")}`);
+    }
     return { ...dbPerformance, lifecycle: lifecycleData, lifecycleSummary: lifecycleSummaryData, autoCalibration };
   }
 
