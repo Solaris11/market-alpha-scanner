@@ -215,37 +215,34 @@ git push origin main
 
 ---
 
-## 9. 24 saatlik gözlem nasıl devam ediyor
+## 9. 24 saatlik gözlem — SONUÇ
 
-Systemd geçici zamanlayıcısı olarak kuruldu — benim oturumumdan bağımsız çalışır:
+Koşu tamamlandı: **2026-09-02 18:00:01 → 2026-09-03 17:59:01 UTC**, systemd geçici birimi olarak, oturumdan bağımsız. Tam rapor: `docs/ops/phase-36-2-stability-24h-final.md`.
 
-```
-NEXT                        LEFT  UNIT                          ACTIVATES
-Wed 2026-09-02 17:59:54 UTC   9h  tradeveto-stability-24h.timer tradeveto-stability-24h.service
-```
+**1440 örnek, tam ızgara** (her saat tam 60, sürüklenme yok). **5.760 probe, 5.760'ı 200** — sıfır 5xx, sıfır gateway timeout, sıfır `status: 0`. Restart 0, `systemd --failed` 1440/1440 boş, DB timeout 0.
 
-- **Başlangıç:** 2026-09-02 17:59:54 UTC · **Bitiş:** 2026-09-03 17:59 UTC
-- **Aralık:** 60 sn · **Beklenen örnek: 1440** (kayma düzeltildiği için artık 1268 değil)
-- **Çıktı:** `docs/ops/artifacts/phase-36-0-stability/observation-24h/`
-- **Neden bu saat:** 21:30 UTC tam taramasını ve 05:18 / 06:00 UTC yedekleme pencerelerini kapsıyor. 2026-06-10 koşusu ikisini de kaçırmıştı — en yüksek yük anları hiç ölçülmemişti.
+Haziran tabanıyla karşılaştırma, **18:00–07:53 UTC müdahalesiz penceresi** üzerinden (07:59–08:14 arasında ölçümü kirleten kendi tanılama yüküm var — final raporun §11'i):
 
-İzleme:
-
-```bash
-sudo systemctl status tradeveto-stability-24h.service --no-pager
-wc -l /opt/apps/market-alpha-scanner/app/docs/ops/artifacts/phase-36-0-stability/observation-24h/samples.jsonl
-```
-
-Durdurma: `sudo systemctl stop tradeveto-stability-24h.service`
-
-Değerlendirme, Phase 36.0 raporunun §3'ündeki 15 maddelik eşik tablosuna göre yapılacak. Yeni eklenen iki kalem:
-
-| # | Metrik | Eşik |
+| | 2026-06-10 | Bu koşu (ana pencere) |
 |---|---|---|
-| 16 | `process.eventLoopDelay.maxMs` sıçraması | Bir örnekten diğerine 1000 ms üstü artış = event loop bloklanması doğrulandı. Sıçrama yokken uzun bir TTFB görülürse sebep süreç zamanlanmasıdır. |
-| 17 | `status: 0` (probe timeout) sayısı | Bilgi amaçlı. Herhangi biri, 30 sn'yi aşan gerçek bir olayı işaretler. |
+| Tamamlanma | 556 örnek (%43,8) | **1440 (%100)** |
+| Erişilebilirlik | %99,910 | **%100,000** |
+| `/terminal` p95 | 3,282 s | **0,608 s** |
+| ≥10 sn oranı | %2,0 | **%0,060** |
+| `/api/health` p95 | 1,871 s | **0,621 s** |
+| 502 | 2 | **0** |
 
----
+Haziran koşusunun hiç göremediği iki yük penceresi de kapsandı: 21:30 UTC tam taraması (360 probe, hepsi 200) ve gece yedeklemesi (480 probe, hepsi 200; `/terminal` p95 iki katına çıkmak yerine **yarıya indi** — 0,357 s / 0,687 s).
+
+**15 maddelik eşik tablosu: 12 GEÇTİ · 1 KALDI · 2 ÖLÇÜLEMEDİ.**
+
+Kalan madde **#8, frontend belleği**: RSS 631,7 MB → **1.122,8 MB** (+491 MB), eşik ≤+50 MiB idi. Eğri düz bir sızıntı değil — testere dişi, gerçek düşüşlerle — ama uç noktalar yükseliyor ve heap de tabana dönmüyor (347,7 → 686,1 MB). 24 saat, "tavana oturan mandal" ile "yavaş sızıntı" arasını ayırmaya yetmiyor. Aciliyet düşük (bellek sınırı yok, gecikmeye yansımadı) ama eşik açıkça aşıldı.
+
+Ölçülemeyen ikisi gözlemcinin eksiği: **#9 Postgres belleği** ve **#11 çalışan container sayısı** örneklenmiyor. Gözlemciye eklenmeli.
+
+**Phase 35.0c-3 blocker'ı: koşullu kapalı.** Erişilebilirlik ve gecikme boyutu kanıtlandı; bellek boyutu için 48–72 saatlik bir takip gözlemi açık kalıyor.
+
+Çıktı: `docs/ops/artifacts/phase-36-0-stability/observation-24h/samples.jsonl` (1440 satır).
 
 ## 10. Prod erişim kanıtı
 
