@@ -25,7 +25,7 @@ from scanner.perf import log_timing, timer_start
 from scanner.regime import write_market_regime
 from scanner.safety import atomic_write_dataframe_csv, check_data_freshness, ensure_action_column, scanner_run_lock, validate_ranking_schema
 from scanner.structure import write_market_structure
-from scanner.universe import UNIVERSE_SIZE_CHOICES, build_universe
+from scanner.universe import UNIVERSE_SIZE_CHOICES, build_universe, warn_missing_required_symbols
 
 DEFAULT_ANALYSIS_TIME_BUDGET_SECONDS = 900.0
 DEFAULT_ANALYSIS_MAX_SNAPSHOTS = 1800
@@ -195,6 +195,7 @@ def main() -> None:
         else:
             universe = build_universe(str(args.universe_size))
         print(f"[universe] selected {len(universe)} symbols")
+        warn_missing_required_symbols(universe)
 
         outdir = Path(args.outdir)
         outdir.mkdir(parents=True, exist_ok=True)

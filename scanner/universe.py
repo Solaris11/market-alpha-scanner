@@ -115,6 +115,33 @@ def source_category_counts(symbols: Sequence[str], path: Path = EXPANDED_UNIVERS
     return counts
 
 
+def warn_missing_required_symbols(universe: Sequence[str]) -> list[str]:
+    """Say something when a symbol we promised to cover is not in the scan.
+
+    SNDK was added to REQUIRED_OPPORTUNITY_SYMBOLS on 2026-08-06 and was absent
+    from every production scan for the four weeks that followed. Nothing was
+    wrong with the universe file or this code: production runs the scanner from
+    a container image built on 2026-06-10, and nobody rebuilds it, so the image
+    still carries the June universe. The symbol did not appear in the drop
+    reason ledger either -- it was never selected, so there was nothing to
+    account for -- and the only visible symptom was a user opening SNDK in the
+    app and being told it does not exist.
+
+    missing_required_symbols() already existed and was already tested. It was
+    simply never called. This calls it, on every run, and prints loudly enough
+    that the next stale deployment announces itself in the scan log on the first
+    run rather than a month later through a bug report.
+
+    It deliberately does not abort: a missing symbol is worth shouting about,
+    not worth losing a whole scan over.
+    """
+    missing = missing_required_symbols(universe)
+    if missing:
+        print(f"[universe] WARNING required symbols missing from this scan: {', '.join(missing)}")
+        print("[universe] the running code or its universe data may be older than the checkout")
+    return missing
+
+
 def missing_required_symbols(symbols: Sequence[str]) -> list[str]:
     available = set(dedupe_symbols(symbols))
     return [symbol for symbol in REQUIRED_OPPORTUNITY_SYMBOLS if symbol not in available]
