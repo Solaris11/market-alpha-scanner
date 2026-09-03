@@ -61,6 +61,7 @@ import { buildExecutionTimingSystem } from "@/lib/trading/execution-intelligence
 import { dailyActionBlocksTradeUi, getDailyAction, noTradeActionCopy } from "@/lib/trading/daily-action";
 import { buildLiveIntelligenceSystem } from "@/lib/trading/live-intelligence";
 import { buildOpportunitiesPageModel, stripRawFields, stripShockEventPreconditions } from "@/lib/trading/opportunity-view-model";
+import { buildTerminalActionabilityMap } from "@/lib/trading/terminal-actionability";
 import { stripProviderDebugFields } from "@/lib/trading/raw-field-allowlist";
 import { buildPortfolioIntelligenceSystem } from "@/lib/trading/portfolio-intelligence";
 import { buildPlatformMoatSystem } from "@/lib/trading/platform-moat";
@@ -270,6 +271,10 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
   // shock-event samples. The panel renders the finished system, so the samples
   // never have to be serialised.
   const executionTimingSystem = timeline.sync("buildExecutionTimingSystem", () => buildExecutionTimingSystem(opportunityModel.rows));
+  // Built from the unstripped rows, deliberately: the calibration behind these
+  // five strings reads every shock event. Once the radars take the card instead
+  // of the row, shockEvents can leave the payload.
+  const actionabilityMap = timeline.sync("buildTerminalActionability", () => buildTerminalActionabilityMap(opportunityModel.rows), (map) => `${Object.keys(map).length} symbols`);
   const clientRows = timeline.sync("stripForClient", () => stripRawFields(stripShockEventPreconditions(opportunityModel.rows)),
     (rows) => `${rows.length} rows`);
   // leader is a raw scanner row and AICopilotPanel is a client component.
@@ -343,8 +348,8 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
               <ExecutionIntelligencePanel compact system={executionTimingSystem} />
               {workflowEvolution ? <WorkflowEvolutionPanel summary={workflowEvolution} surface="terminal" /> : null}
               <InstitutionalIntelligencePanel compact rows={clientRows} />
-              <RiskTolerantOpportunityRadar compact initialProfile={personalizationProfile ?? undefined} marketCondition={snapshot.marketRegime.label} rows={clientRows} />
-              <ShockMoveRadar compact rows={clientRows} />
+              <RiskTolerantOpportunityRadar actionability={actionabilityMap} compact initialProfile={personalizationProfile ?? undefined} marketCondition={snapshot.marketRegime.label} rows={clientRows} />
+              <ShockMoveRadar actionability={actionabilityMap} compact rows={clientRows} />
 
               <GlassPanel className="overflow-hidden p-5">
                 <div className="grid gap-5">

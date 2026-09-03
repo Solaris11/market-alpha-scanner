@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { buildOpportunityActionability } from "@/lib/trading/opportunity-actionability";
+import { actionabilityCardFor, type TerminalActionabilityMap } from "@/lib/trading/terminal-actionability";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import { formatNumber } from "@/lib/ui/formatters";
 import { humanizeInsightText } from "@/lib/ui/labels";
@@ -10,7 +10,7 @@ import { DecisionBadge } from "@/components/terminal/DecisionBadge";
 import { GlassPanel } from "@/components/terminal/ui/GlassPanel";
 import { SectionTitle } from "@/components/terminal/ui/SectionTitle";
 
-export function ShockMoveRadar({ compact = false, rows }: { compact?: boolean; rows: OpportunityViewModel[] }) {
+export function ShockMoveRadar({ actionability, compact = false, rows }: { actionability?: TerminalActionabilityMap; compact?: boolean; rows: OpportunityViewModel[] }) {
   const candidates = useMemo(() => {
     return rows
       .filter((row) => row.shockPattern !== null)
@@ -39,7 +39,7 @@ export function ShockMoveRadar({ compact = false, rows }: { compact?: boolean; r
             if (!pattern) return null;
             const falsePositiveRiskScore = pattern.falsePositiveRiskScore ?? 50;
             const liquidityQualityScore = pattern.liquidityQualityScore ?? 58;
-            const actionability = buildOpportunityActionability(row);
+            const card = actionabilityCardFor(row, actionability);
             const primaryMetrics = [
               { label: "Opportunity", value: formatNumber(pattern.opportunityScore, 0) },
               { label: "Upside / Downside", value: formatNumber(pattern.asymmetryScore, 0) },
@@ -81,7 +81,7 @@ export function ShockMoveRadar({ compact = false, rows }: { compact?: boolean; r
                   <span className="font-semibold text-amber-100">{humanizeInsightText(pattern.chaseRiskLabel)}.</span> Research entry area: {humanizeInsightText(pattern.researchEntryZone)}. Historical exit area: {humanizeInsightText(pattern.historicalExitZone)}.
                 </div>
                 <div className="mt-2 rounded-xl border border-emerald-300/15 bg-emerald-400/[0.055] p-2 text-[11px] leading-4 text-slate-300">
-                  <span className="font-semibold text-emerald-100">{actionability.primaryActionLabel}:</span> {actionability.whatToWaitFor}
+                  <span className="font-semibold text-emerald-100">{card.primaryActionLabel}:</span> {card.whatToWaitFor}
                 </div>
                 {pattern.timingValidation ? (
                   <div className="mt-2 rounded-xl border border-emerald-300/15 bg-emerald-400/[0.045] p-2 text-[11px] leading-4 text-slate-300">
