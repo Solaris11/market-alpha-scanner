@@ -70,24 +70,24 @@ function pattern(bars: ShockMovePriceBar[], symbol: string) {
 describe("shockEventCount", () => {
   test("matches the array in buildShockMovePattern", () => {
     const built = pattern(heavilyShockedBars(), "AMD");
-    assert.equal(built.shockEventCount, built.shockEvents.length);
+    assert.equal(built.shockEventCount, (built.shockEvents ?? []).length);
   });
 
   test("matches the array in shockPatternFromDbRow", () => {
     const built = pattern(heavilyShockedBars(), "AMD");
     const restored = shockPatternFromDbRow({
       lookback_window: "1y",
-      shock_events: JSON.parse(JSON.stringify(built.shockEvents)),
+      shock_events: JSON.parse(JSON.stringify(built.shockEvents ?? [])),
       symbol: "AMD",
     });
     assert.ok(restored);
-    assert.equal(restored.shockEventCount, restored.shockEvents.length);
+    assert.equal(restored.shockEventCount, (restored.shockEvents ?? []).length);
     assert.equal(restored.shockEventCount, built.shockEventCount);
   });
 
   test("is zero, not absent, when a symbol has no shocks at all", () => {
     const quiet = pattern(quietBars(), "KO");
-    assert.equal(quiet.shockEvents.length, 0);
+    assert.equal((quiet.shockEvents ?? []).length, 0);
     assert.equal(quiet.shockEventCount, 0);
   });
 
@@ -124,7 +124,7 @@ describe("institutional trust reads the count, not the array", () => {
   // where the count is load-bearing.
   const restored = shockPatternFromDbRow({
     lookback_window: "1y",
-    shock_events: JSON.parse(JSON.stringify(pattern(heavilyShockedBars(), "AMD").shockEvents)),
+    shock_events: JSON.parse(JSON.stringify(pattern(heavilyShockedBars(), "AMD").shockEvents ?? [])),
     symbol: "AMD",
   });
   assert.ok(restored, "the DB fixture must restore a pattern");

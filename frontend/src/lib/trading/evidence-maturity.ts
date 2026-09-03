@@ -100,7 +100,7 @@ export function buildEvidenceMaturityFromSignal(
     row.market_memory_sample_size,
     memory?.evidence.sampleSize,
   ]);
-  const shockSample = shock ? shock.upsideShockCount + shock.downsideShockCount + shock.shockEvents.length : null;
+  const shockSample = shock ? shock.upsideShockCount + shock.downsideShockCount + (shock.shockEvents?.length ?? 0) : null;
   const evidenceSampleSize = explicitSample ?? shockSample ?? 0;
   const historicalDepthDays = firstFinite([
     row.historical_depth_days,
@@ -217,7 +217,7 @@ function limitationsFor(input: { calibrationDrift: number; evidenceSampleSize: n
 }
 
 function shockDepthDays(pattern: ShockMovePattern): number | null {
-  const timestamps = pattern.shockEvents.map((event) => Date.parse(event.eventDate)).filter(Number.isFinite);
+  const timestamps = (pattern.shockEvents ?? []).map((event) => Date.parse(event.eventDate)).filter(Number.isFinite);
   if (!timestamps.length) return null;
   const min = Math.min(...timestamps);
   const max = Math.max(...timestamps);
@@ -225,9 +225,9 @@ function shockDepthDays(pattern: ShockMovePattern): number | null {
 }
 
 function shockOutcomeCoverage(pattern: ShockMovePattern | null): number | null {
-  if (!pattern || !pattern.shockEvents.length) return null;
-  const completed = pattern.shockEvents.filter((event) => event.outcomeStatus === "complete").length;
-  return (completed / pattern.shockEvents.length) * 100;
+  if (!pattern || !(pattern.shockEvents?.length ?? 0)) return null;
+  const completed = (pattern.shockEvents ?? []).filter((event) => event.outcomeStatus === "complete").length;
+  return (completed / (pattern.shockEvents?.length ?? 0)) * 100;
 }
 
 function memoryAnalogQuality(memory: MarketMemorySummary | null): number | null {

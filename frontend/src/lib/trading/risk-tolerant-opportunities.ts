@@ -436,7 +436,8 @@ export function buildRiskTolerantOpportunityPacket(
       opportunityState: candidate.row.shockPattern?.opportunityState ?? null,
       reliabilityScore: candidate.row.shockPattern?.reliabilityScore ?? null,
       researchEntryZone: candidate.row.shockPattern?.researchEntryZone ?? null,
-      shockEventSampleSize: candidate.row.shockPattern?.shockEvents.length ?? null,
+      // The count rather than the array: same number, and it survives the strip.
+      shockEventSampleSize: candidate.row.shockPattern?.shockEventCount ?? null,
       twoSidedVolatilityScore: candidate.row.shockPattern?.twoSidedVolatilityScore ?? null,
       upsideShockScore: candidate.row.shockPattern?.upsideShockScore ?? null,
     },

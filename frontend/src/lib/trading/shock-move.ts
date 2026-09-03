@@ -126,7 +126,15 @@ export type ShockMovePattern = {
    * shockEvents is capped at 80. The three numbers diverge in both directions.
    */
   shockEventCount: number;
-  shockEvents: ShockMoveEvent[];
+  /**
+   * Optional because /terminal ships rows without it.
+   *
+   * Optional rather than an empty array on purpose: `[]` compiles everywhere
+   * and silently yields sampleSize 0 and null coverage, which is exactly the
+   * quiet degradation this refactor exists to avoid. Undefined makes the
+   * compiler point at every reader instead.
+   */
+  shockEvents?: ShockMoveEvent[];
   symbol: string;
   timingValidation?: ShockTimingValidation | null;
   twoSidedVolatilityScore: number;

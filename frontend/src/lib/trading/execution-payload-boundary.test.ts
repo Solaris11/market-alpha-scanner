@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
 import { buildExecutionIntelligence, buildExecutionTimingSystem } from "./execution-intelligence";
-import { stripShockEventPreconditions, type OpportunityViewModel } from "./opportunity-view-model";
+import { stripShockEventsForClient, type OpportunityViewModel } from "./opportunity-view-model";
 import { buildShockMovePattern, type ShockMovePriceBar } from "./shock-move";
 
 /**
@@ -63,7 +63,7 @@ function rowWithShockPattern(symbol: string): OpportunityViewModel {
 }
 
 const rows = ["AMD", "NVDA", "MU"].map(rowWithShockPattern);
-const stripped = stripShockEventPreconditions(rows);
+const stripped = stripShockEventsForClient(rows);
 // generatedAt defaults to now(); pin it so the two systems are comparable.
 const GENERATED_AT = "2026-09-02T00:00:00.000Z";
 
@@ -89,15 +89,13 @@ describe("execution payload boundary", () => {
       const after = row.shockPattern;
       assert.ok(before && after);
 
-      // risk-tolerant-opportunities and institutional-trust read the count.
-      assert.equal(after.shockEvents.length, before.shockEvents.length);
-      // risk-tolerant-opportunities reads latestEvent.eventDate.
-      assert.deepEqual(after.latestEvent, before.latestEvent);
-      // evidence-maturity reads eventDate and outcomeStatus per event.
-      assert.deepEqual(
-        after.shockEvents.map((event) => [event.eventDate, event.outcomeStatus]),
-        before.shockEvents.map((event) => [event.eventDate, event.outcomeStatus]),
-      );
+      // institutional-trust and risk-tolerant-opportunities read the count,
+      // which is now a field rather than the array's length.
+      assert.equal(after.shockEventCount, before.shockEventCount);
+      // risk-tolerant-opportunities reads latestEvent.eventDate, so the event
+      // itself survives -- everything on it except its preconditions.
+      assert.equal(after.latestEvent?.eventDate, before.latestEvent?.eventDate);
+      assert.equal(after.latestEvent?.outcomeStatus, before.latestEvent?.outcomeStatus);
       // every scored field on the pattern is untouched.
       const { latestEvent: _l1, shockEvents: _s1, ...beforeScores } = before;
       const { latestEvent: _l2, shockEvents: _s2, ...afterScores } = after;
@@ -105,19 +103,22 @@ describe("execution payload boundary", () => {
     }
   });
 
-  test("the strip removes preconditions and nothing else from an event", () => {
-    const before = rows[0].shockPattern?.shockEvents ?? [];
-    const after = stripped[0].shockPattern?.shockEvents ?? [];
-    assert.equal(after.length, before.length);
-    for (const [index, event] of after.entries()) {
-      assert.equal(event.preconditions, undefined, "preconditions must be gone");
-      const { preconditions: _dropped, ...rest } = before[index];
-      assert.deepEqual(event, rest, "no other field may change");
+  test("the array is gone, and so is the last precondition object with it", () => {
+    for (const [index, row] of stripped.entries()) {
+      const after = row.shockPattern;
+      const before = rows[index].shockPattern;
+      assert.ok(after && before);
+      assert.equal(after.shockEvents, undefined, "the array must not reach the client");
+      assert.ok(before.latestEvent?.preconditions, "the fixture must carry the preconditions the strip targets");
+      assert.equal(after.latestEvent?.preconditions, undefined, "latestEvent kept its own preconditions until now");
+      // Undefined, not empty. An empty array compiles everywhere and silently
+      // scores as zero samples; undefined makes the compiler name the readers.
+      assert.ok(!Array.isArray(after.shockEvents));
     }
   });
 
   test("rows outside the terminal keep their samples", () => {
-    const untouched = stripShockEventPreconditions([{ ...rows[0], shockPattern: null } as unknown as OpportunityViewModel]);
+    const untouched = stripShockEventsForClient([{ ...rows[0], shockPattern: null } as unknown as OpportunityViewModel]);
     assert.equal(untouched[0].shockPattern, null, "a row without a pattern passes through unchanged");
   });
 

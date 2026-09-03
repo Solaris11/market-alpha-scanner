@@ -60,7 +60,7 @@ test("shock move events use before-move preconditions instead of event-day spike
   const pattern = buildShockMovePattern({ bars: barsWithShock("up"), lookbackWindow: "1y", symbol: "DDOG" });
 
   assert.ok(pattern);
-  const event = pattern.shockEvents.find((item) => item.return1d >= 5);
+  const event = (pattern.shockEvents ?? []).find((item) => item.return1d >= 5);
   assert.ok(event);
   assert.ok(event.volumeSpikeRatio !== null);
   // The server always builds preconditions; only the client payload drops them.
@@ -75,7 +75,7 @@ test("shock move engine distinguishes downside and two-sided volatility risk", (
   assert.ok(pattern);
   assert.ok(pattern.downsideShockCount >= 2);
   assert.ok(pattern.downsideRiskScore > 40);
-  assert.ok(pattern.shockEvents.every((event) => event.return1d !== 0));
+  assert.ok((pattern.shockEvents ?? []).every((event) => event.return1d !== 0));
 });
 
 test("shock move engine penalizes low-liquidity noisy shock samples", () => {

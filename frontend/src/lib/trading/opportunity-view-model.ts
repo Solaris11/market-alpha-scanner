@@ -89,17 +89,25 @@ export function stripRawFields(rows: OpportunityViewModel[]): OpportunityViewMod
   });
 }
 
-export function stripShockEventPreconditions(rows: OpportunityViewModel[]): OpportunityViewModel[] {
+/**
+ * Drop the shock event history before rows are serialised to the browser.
+ *
+ * The array is 4.7 MB of the /terminal payload -- 28% of it -- and no client
+ * component reads its contents any more: institutional-trust takes
+ * shockEventCount, and the two radars take a server-computed actionability
+ * card. What remains on the pattern is the scores, the counts, and latestEvent.
+ *
+ * latestEvent is a sibling field, not part of the array, so it survives -- but
+ * its own preconditions object does not. That was 102 KB the earlier
+ * precondition strip never touched, because it walked shockEvents only.
+ */
+export function stripShockEventsForClient(rows: OpportunityViewModel[]): OpportunityViewModel[] {
   return rows.map((row) => {
     const pattern = row.shockPattern;
-    if (!pattern?.shockEvents.length) return row;
-    return {
-      ...row,
-      shockPattern: {
-        ...pattern,
-        shockEvents: pattern.shockEvents.map(({ preconditions: _dropped, ...event }) => event),
-      },
-    };
+    if (!pattern) return row;
+    const { shockEvents: _dropped, ...rest } = pattern;
+    const latestEvent = pattern.latestEvent ? (({ preconditions: _alsoDropped, ...event }) => event)(pattern.latestEvent) : pattern.latestEvent;
+    return { ...row, shockPattern: { ...rest, latestEvent } };
   });
 }
 

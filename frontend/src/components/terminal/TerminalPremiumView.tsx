@@ -60,7 +60,7 @@ import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
 import { buildExecutionTimingSystem } from "@/lib/trading/execution-intelligence";
 import { dailyActionBlocksTradeUi, getDailyAction, noTradeActionCopy } from "@/lib/trading/daily-action";
 import { buildLiveIntelligenceSystem } from "@/lib/trading/live-intelligence";
-import { buildOpportunitiesPageModel, stripRawFields, stripShockEventPreconditions } from "@/lib/trading/opportunity-view-model";
+import { buildOpportunitiesPageModel, stripRawFields, stripShockEventsForClient } from "@/lib/trading/opportunity-view-model";
 import { buildTerminalActionabilityMap } from "@/lib/trading/terminal-actionability";
 import { stripProviderDebugFields } from "@/lib/trading/raw-field-allowlist";
 import { buildPortfolioIntelligenceSystem } from "@/lib/trading/portfolio-intelligence";
@@ -275,7 +275,7 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
   // five strings reads every shock event. Once the radars take the card instead
   // of the row, shockEvents can leave the payload.
   const actionabilityMap = timeline.sync("buildTerminalActionability", () => buildTerminalActionabilityMap(opportunityModel.rows), (map) => `${Object.keys(map).length} symbols`);
-  const clientRows = timeline.sync("stripForClient", () => stripRawFields(stripShockEventPreconditions(opportunityModel.rows)),
+  const clientRows = timeline.sync("stripForClient", () => stripRawFields(stripShockEventsForClient(opportunityModel.rows)),
     (rows) => `${rows.length} rows`);
   // leader is a raw scanner row and AICopilotPanel is a client component.
   const copilotSignal = leader ? stripProviderDebugFields(leader) : null;

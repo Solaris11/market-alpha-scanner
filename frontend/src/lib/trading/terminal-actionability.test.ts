@@ -4,7 +4,7 @@ import { describe, test } from "node:test";
 import { buildOpportunityActionability } from "./opportunity-actionability";
 import { actionabilityCardFor, buildTerminalActionabilityMap } from "./terminal-actionability";
 import { buildShockMovePattern, type ShockMovePriceBar } from "./shock-move";
-import { stripShockEventPreconditions, type OpportunityViewModel } from "./opportunity-view-model";
+import { stripShockEventsForClient, type OpportunityViewModel } from "./opportunity-view-model";
 
 /**
  * Stage 2: the terminal computes actionability on the server.
@@ -86,7 +86,7 @@ const rows = SYMBOLS.map((symbol, index) => row(symbol, index));
 describe("terminal actionability map", () => {
   test("the fixture carries the shock events the map is built from", () => {
     for (const candidate of rows) {
-      assert.ok((candidate.shockPattern?.shockEvents.length ?? 0) > 0, `${candidate.symbol} must have shock events`);
+      assert.ok((candidate.shockPattern?.shockEvents?.length ?? 0) > 0, `${candidate.symbol} must have shock events`);
     }
   });
 
@@ -154,7 +154,7 @@ describe("terminal actionability map", () => {
    */
   test("stripped rows change the rendered guidance once a symbol has real shock history", () => {
     const heavy = row("AMD", -1);
-    const stripped = stripShockEventPreconditions([heavy])[0];
+    const stripped = stripShockEventsForClient([heavy])[0];
     assert.notDeepEqual(
       actionabilityCardFor(stripped),
       actionabilityCardFor(heavy),
@@ -164,7 +164,7 @@ describe("terminal actionability map", () => {
 
   test("the server map gives a stripped row the text the unstripped row would have produced", () => {
     const heavy = row("AMD", -1);
-    const stripped = stripShockEventPreconditions([heavy])[0];
+    const stripped = stripShockEventsForClient([heavy])[0];
     const map = buildTerminalActionabilityMap([heavy]);
     assert.deepEqual(actionabilityCardFor(stripped, map), actionabilityCardFor(heavy));
   });
@@ -172,7 +172,7 @@ describe("terminal actionability map", () => {
   // Why it stayed invisible: a thin history produces the same text either way.
   test("a thin shock history hides the difference, which is how this shipped unnoticed", () => {
     const light = row("NVDA", 1);
-    const stripped = stripShockEventPreconditions([light])[0];
+    const stripped = stripShockEventsForClient([light])[0];
     assert.deepEqual(actionabilityCardFor(stripped), actionabilityCardFor(light));
   });
 });
