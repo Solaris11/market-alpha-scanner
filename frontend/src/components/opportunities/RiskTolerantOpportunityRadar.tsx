@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRiskProfile } from "@/hooks/useRiskProfile";
 import { trackAnalyticsEvent } from "@/lib/client/analytics";
-import { buildOpportunityActionability } from "@/lib/trading/opportunity-actionability";
+import { actionabilityCardFor, type TerminalActionabilityMap } from "@/lib/trading/terminal-actionability";
 import type { OpportunityViewModel } from "@/lib/trading/opportunity-view-model";
 import {
   buildPersonalizedOpportunities,
@@ -47,6 +47,7 @@ const RISK_LEVELS: RiskLevel[] = ["low", "medium", "high"];
 const REWARD_LEVELS: RewardLevel[] = ["low", "medium", "high"];
 
 export function RiskTolerantOpportunityRadar({
+  actionability,
   compact = false,
   defaultRewardLevel = "high",
   defaultRiskLevel = "high",
@@ -54,6 +55,7 @@ export function RiskTolerantOpportunityRadar({
   marketCondition,
   rows,
 }: {
+  actionability?: TerminalActionabilityMap;
   compact?: boolean;
   defaultRewardLevel?: RewardLevel;
   defaultRiskLevel?: RiskLevel;
@@ -187,6 +189,7 @@ export function RiskTolerantOpportunityRadar({
         <div className={`mt-4 grid gap-3 ${compact ? "lg:grid-cols-1" : "lg:grid-cols-2 2xl:grid-cols-5"}`}>
           {displayCandidates.map((candidate) => (
             <RiskCandidateCard
+              actionability={actionability}
               candidate={candidate}
               key={candidate.candidate.symbol}
               onAnalyze={() => void runAnalysis(candidate.candidate.symbol)}
@@ -305,18 +308,20 @@ function SegmentedControl<T extends string>({ label, onChange, options, value }:
 }
 
 function RiskCandidateCard({
+  actionability,
   candidate,
   loading,
   onAnalyze,
   showAnalyze,
 }: {
+  actionability?: TerminalActionabilityMap;
   candidate: PersonalizedOpportunity;
   loading: boolean;
   onAnalyze: () => void;
   showAnalyze: boolean;
 }) {
   const base = candidate.candidate;
-  const actionability = buildOpportunityActionability(base.row);
+  const card = actionabilityCardFor(base.row, actionability);
   return (
     <article className={`min-w-0 rounded-2xl border p-4 ${candidate.profileFit === "aligned" ? "border-white/10 bg-white/[0.04]" : "border-amber-300/20 bg-amber-400/[0.055]"}`}>
       <div className="flex items-start justify-between gap-2">
@@ -343,9 +348,9 @@ function RiskCandidateCard({
         <span className="font-semibold text-amber-100">{humanizeInsightText(base.chaseRiskLabel)}.</span> {humanizeInsightText(candidate.personalizedWarning)}
       </div>
       <div className="mt-2 rounded-xl border border-emerald-300/15 bg-emerald-400/[0.055] p-2 text-[11px] leading-4 text-slate-300">
-        <div className="font-semibold text-emerald-100">{actionability.primaryActionLabel}: {actionability.earlyOrLate}</div>
-        <div className="mt-1">{humanizeInsightText(actionability.actionContext)}</div>
-        <div className="mt-1 text-slate-400"><span className="font-semibold text-slate-200">Breaks if:</span> {humanizeInsightText(actionability.invalidationExplanation)}</div>
+        <div className="font-semibold text-emerald-100">{card.primaryActionLabel}: {card.earlyOrLate}</div>
+        <div className="mt-1">{humanizeInsightText(card.actionContext)}</div>
+        <div className="mt-1 text-slate-400"><span className="font-semibold text-slate-200">Breaks if:</span> {humanizeInsightText(card.invalidationExplanation)}</div>
       </div>
       {candidate.profileConflict ? (
         <div className="mt-2 rounded-xl border border-amber-300/20 bg-amber-400/[0.06] p-2 text-[11px] leading-4 text-amber-100">
