@@ -216,6 +216,7 @@ scanner_output/
 scanner_output/
 scanner_output/cache/
 logs/
+frontend/log/
 *.log
 
 # env
