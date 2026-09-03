@@ -46,7 +46,7 @@ export function PricingActionCard({ children, className = "" }: PricingActionCar
               {checkout.premiumActive ? "Premium access is active. Manage billing in Stripe." : "Click this card or use the button to start the secure Stripe flow."}
             </p>
           </div>
-          <span className="inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-cyan-300 px-5 py-2.5 text-sm font-black text-slate-950 shadow-[0_0_32px_rgba(34,211,238,0.22)] transition group-hover:bg-cyan-200 sm:min-w-[178px]">
+          <span className="inline-flex min-h-11 w-full items-center justify-center whitespace-normal rounded-full bg-cyan-300 px-5 py-2.5 text-center text-sm font-black text-slate-950 shadow-[0_0_32px_rgba(34,211,238,0.22)] transition group-hover:bg-cyan-200 sm:w-auto sm:shrink-0 sm:whitespace-nowrap sm:min-w-[178px]">
             {actionLabel}
           </span>
         </div>

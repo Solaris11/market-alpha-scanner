@@ -162,7 +162,7 @@ export default async function AccountPage() {
         </div>
 
         <div className="grid gap-5 xl:grid-cols-2">
-          <AccountSection title="Trust Center">
+          <AccountSection icon={<ShieldCheck className="h-4 w-4" />} title="Trust Center">
             <div className="grid gap-3 sm:grid-cols-2">
               <TrustCenterItem
                 detail="Terms, Privacy Policy, Risk Disclosure, billing readiness, and email verification are evaluated before paid account operations."
@@ -191,7 +191,7 @@ export default async function AccountPage() {
             </div>
           </AccountSection>
 
-          <AccountSection title="Session and Device Management">
+          <AccountSection icon={<Smartphone className="h-4 w-4" />} title="Session and Device Management">
             <dl className="grid gap-3 sm:grid-cols-2">
               <InfoItem label="Active sessions" value={sessionOverview.activeCount.toLocaleString()} />
               <InfoItem label="Latest session" value={formatDate(sessionOverview.latestCreatedAt)} />
@@ -227,7 +227,7 @@ export default async function AccountPage() {
             </dl>
           </AccountSection>
 
-          <AccountSection title="Subscription">
+          <AccountSection icon={<CreditCard className="h-4 w-4" />} title="Subscription">
             <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
               <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Current plan</div>
               <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -258,7 +258,7 @@ export default async function AccountPage() {
         </div>
 
         <div className="grid gap-5 xl:grid-cols-3">
-          <AccountSection title="Security">
+          <AccountSection icon={<LockKeyhole className="h-4 w-4" />} title="Security">
             <PlaceholderItem title="Change password" text="Password changes will be managed from this page." />
             <div className="mt-3 first:mt-0 rounded-xl border border-white/10 bg-white/[0.03] px-3 py-3">
               <div className="text-sm font-semibold text-slate-100">Email verification</div>
@@ -275,7 +275,7 @@ export default async function AccountPage() {
             <PlaceholderItem title="Two-factor authentication" text="Two-factor authentication will be available before live broker integrations." />
           </AccountSection>
 
-          <AccountSection id="risk-profile" title="Risk Profile">
+          <AccountSection icon={<Settings2 className="h-4 w-4" />} id="risk-profile" title="Risk Profile">
             <dl className="grid gap-3">
               <InfoItem label="Max risk per trade" value={formatPercent(riskProfile.profile.maxRiskPerTradePercent)} />
               <InfoItem label="Max daily loss" value={riskProfile.profile.maxDailyLoss === null ? "Not set" : formatMoney(riskProfile.profile.maxDailyLoss)} />
@@ -329,7 +329,7 @@ export default async function AccountPage() {
           </AccountSection>
         </div>
 
-        <AccountSection id="decision-memory" title="Decision Memory">
+        <AccountSection icon={<Database className="h-4 w-4" />} id="decision-memory" title="Decision Memory">
           {decisionMemory ? (
             <div className="space-y-4">
               <div className="grid gap-4 lg:grid-cols-[0.75fr_1.25fr]">
@@ -572,10 +572,13 @@ function BillingTrustChecklist({ allowPromotionCodes, trialDays }: { allowPromot
   );
 }
 
-function AccountSection({ children, id, title }: { children: ReactNode; id?: string; title: string }) {
+function AccountSection({ children, icon, id, title }: { children: ReactNode; icon?: ReactNode; id?: string; title: string }) {
   return (
     <section className="visual-card poster-panel tv-card-motion scroll-mt-6 rounded-3xl border border-cyan-300/14 bg-slate-950/54 p-5 shadow-2xl shadow-black/20 backdrop-blur-xl" id={id}>
-      <h3 className="text-sm font-black uppercase tracking-[0.18em] text-cyan-200">{title}</h3>
+      <h3 className="flex items-center gap-2 text-sm font-black uppercase tracking-[0.18em] text-cyan-200">
+        {icon ? <span aria-hidden="true" className="text-cyan-300/80">{icon}</span> : null}
+        {title}
+      </h3>
       <div className="mt-4">{children}</div>
     </section>
   );

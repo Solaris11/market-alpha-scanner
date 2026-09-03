@@ -470,6 +470,7 @@ function SymbolInstantWorkflowShell({
         </div>
       </div>
       <div className="mt-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+        <div>
         <div className="h-[300px] overflow-hidden rounded-2xl border border-white/10 bg-black/25">
           {path ? (
             <svg aria-label={`${row.symbol} instant verified chart shell`} className="h-full w-full" preserveAspectRatio="none" role="img" viewBox="0 0 1040 300">
@@ -479,6 +480,8 @@ function SymbolInstantWorkflowShell({
           ) : (
             <div className="grid h-full place-items-center px-4 text-center text-sm text-slate-400">Verified chart history is limited for this symbol. No synthetic candles are drawn.</div>
           )}
+        </div>
+        <ShellChartAxis candles={candles} />
         </div>
         <div className="grid gap-3">
           <ShellMetric label="Decision" value={decision} />
@@ -546,6 +549,7 @@ function SymbolEvidenceLimitedView({
           <div className="grid h-full place-items-center px-4 text-center text-sm text-slate-400">Verified chart history is limited for this symbol. No synthetic candles are drawn.</div>
         )}
       </div>
+      <ShellChartAxis candles={candles} />
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <ShellMetric label="Decision" value="Not available" />
         <ShellMetric label="Scanner coverage" value="Not in current scan" />
@@ -559,7 +563,7 @@ function ShellMetric({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-4">
       <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">{label}</div>
-      <div className="mt-2 text-sm font-bold text-slate-100">{value}</div>
+      <div className="mt-2 text-lg font-black leading-tight text-slate-50">{value}</div>
     </div>
   );
 }
@@ -583,7 +587,7 @@ function SymbolRouteReadyStrip({
       <div className="min-w-0">
         <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-300">Symbol ready</div>
         <div className="mt-1 flex flex-wrap items-baseline gap-2">
-          <h1 className="font-mono text-2xl font-black leading-none text-slate-50">{row.symbol.toUpperCase()}</h1>
+          <h2 className="font-mono text-2xl font-black leading-none text-slate-50">{row.symbol.toUpperCase()}</h2>
           <span className="truncate text-xs font-semibold text-slate-400">{String(row.company_name ?? row.sector ?? "Scanner signal")}</span>
         </div>
       </div>
@@ -679,6 +683,31 @@ function fastShellPath(candles: FastShellCandle[], width: number, height: number
   const line = `M ${points.join(" L ")}`;
   const lastX = (closes.length - 1) * step;
   return { area: `${line} L ${lastX.toFixed(2)},${height} L 0,${height} Z`, line };
+}
+
+/**
+ * The minimum axis a price shell needs to be readable: where the window starts,
+ * what price band it spans, and where it ends. Every value comes from the same
+ * candles fastShellPath draws, so the caption and the line cannot drift apart.
+ */
+function ShellChartAxis({ candles }: { candles: FastShellCandle[] }) {
+  const closes = candles.map((candle) => candle.close).filter((value) => Number.isFinite(value));
+  if (closes.length < 2) return null;
+  return (
+    <div className="mt-2 flex items-center justify-between gap-2 px-1 font-mono text-[10px] font-black tracking-[0.06em] text-slate-500">
+      <span>{shellAxisDate(candles[0]?.time)}</span>
+      <span className="text-slate-400">{shellMoney(Math.min(...closes))} - {shellMoney(Math.max(...closes))}</span>
+      <span>{shellAxisDate(candles[candles.length - 1]?.time)}</span>
+    </div>
+  );
+}
+
+function shellAxisDate(value: string | undefined): string {
+  const text = String(value ?? "").trim();
+  if (!text) return "--";
+  const parsed = new Date(text);
+  if (Number.isNaN(parsed.getTime())) return text.slice(0, 10);
+  return parsed.toISOString().slice(0, 10);
 }
 
 function numericShellValue(value: ScannerScalar): number | null {

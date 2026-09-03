@@ -14,6 +14,16 @@ function clamp(value: number): number {
   return Math.max(0, Math.min(100, value));
 }
 
+/** Compact y-axis endpoints for the sparkline: enough precision to read, short enough to fit. */
+function formatAxisValue(value: number): string {
+  const magnitude = Math.abs(value);
+  if (!Number.isFinite(value)) return "--";
+  if (magnitude >= 1000) return `${(value / 1000).toFixed(1)}k`;
+  if (magnitude >= 100) return value.toFixed(0);
+  if (magnitude >= 1) return value.toFixed(1);
+  return value.toFixed(2);
+}
+
 function finiteNumber(value: number | null | undefined): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -125,6 +135,12 @@ export function MiniSparkline({
       ) : (
         <EmptyVisual className="h-20" message={emptyMessage} />
       )}
+      {data.length >= 2 ? (
+        <div className="mt-1.5 flex items-center justify-between font-mono text-[9px] font-black tracking-[0.08em] text-slate-600">
+          <span>lo {formatAxisValue(min)}</span>
+          <span>hi {formatAxisValue(max)}</span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -167,7 +183,10 @@ export function PosterGauge({
   return (
     <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-3 text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
       {value === null ? (
-        <EmptyVisual message="Limited evidence" />
+        <div>
+          <EmptyVisual message="Limited evidence" />
+          <div className="mt-2 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">{label}</div>
+        </div>
       ) : (
         <div className="mx-auto grid h-32 w-32 place-items-center rounded-full border border-white/10" style={{ background: `conic-gradient(${style.hex} ${value * 3.6}deg, rgba(148,163,184,0.13) 0deg)` }}>
           <div className="grid h-24 w-24 place-items-center rounded-full border border-white/10 bg-slate-950/95">

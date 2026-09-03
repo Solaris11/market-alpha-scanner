@@ -44,7 +44,7 @@ export default function PricingPage() {
         </div>
         <div className="mx-auto mt-8 grid max-w-5xl items-start gap-5 lg:grid-cols-[0.9fr_1.1fr]">
           <MarketingCard>
-            <div className="rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-cyan-100">Research Preview</div>
+            <div className="inline-flex w-fit max-w-full rounded-full border border-cyan-300/30 bg-cyan-300/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-cyan-100">Research Preview</div>
             <h2 className="mt-5 text-3xl font-semibold text-white">Research preview</h2>
             <p className="mt-4 text-sm leading-6 text-slate-400">Free and signed-in users can explore the WAIT-first workflow and understand how vetoes, confidence, readiness, and public intelligence pages work before upgrading.</p>
             <div className="mt-6">
@@ -52,7 +52,7 @@ export default function PricingPage() {
             </div>
           </MarketingCard>
           <PricingActionCard>
-            <div className="rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-black uppercase tracking-[0.22em] text-emerald-100">Founding Member Premium</div>
+            <div className="inline-flex w-fit max-w-full rounded-full border border-emerald-300/30 bg-emerald-300/10 px-3 py-1 text-xs font-black uppercase tracking-[0.18em] text-emerald-100">Founding Member Premium</div>
             <div className="mt-5 text-5xl font-black text-white">$20<span className="text-lg font-semibold text-slate-400">/month</span></div>
             <p className="mt-4 text-sm leading-6 text-slate-300">Premium unlocks full research context, ranked setups, alerts, simulations, replay context, and decision intelligence for founding members. Stripe shows trial, discount, renewal, and cancellation details before confirmation.</p>
             <ul className="mt-6 grid gap-2 text-sm text-slate-300 sm:grid-cols-2">
@@ -67,7 +67,7 @@ export default function PricingPage() {
             </div>
           </PricingActionCard>
         </div>
-        <div className="mx-auto mt-6 grid max-w-5xl gap-3 md:grid-cols-4">
+        <div className="mx-auto mt-6 grid max-w-5xl gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {billingTrust.map(([title, copy]) => (
             <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4" key={title}>
               <div className="text-[10px] font-black uppercase tracking-[0.18em] text-cyan-200">{title}</div>
@@ -77,7 +77,7 @@ export default function PricingPage() {
         </div>
         <div className="mx-auto mt-6 max-w-5xl rounded-3xl border border-amber-300/20 bg-amber-400/[0.06] p-5">
           <div className="text-[10px] font-black uppercase tracking-[0.24em] text-amber-200">Transparent limits</div>
-          <div className="mt-3 grid gap-2 text-sm leading-6 text-amber-50/90 md:grid-cols-4">
+          <div className="mt-3 grid gap-2 text-sm leading-6 text-amber-50/90 sm:grid-cols-2 xl:grid-cols-4">
             {limitations.map((item) => <p key={item}>{item}</p>)}
           </div>
         </div>

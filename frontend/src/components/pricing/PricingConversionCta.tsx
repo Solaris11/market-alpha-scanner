@@ -21,7 +21,7 @@ export function PricingConversionCta() {
           </p>
         </div>
         <button
-          className="inline-flex min-h-11 shrink-0 items-center justify-center whitespace-nowrap rounded-full bg-cyan-300 px-5 py-2.5 text-sm font-black text-slate-950 shadow-[0_0_32px_rgba(34,211,238,0.22)] transition hover:-translate-y-0.5 hover:bg-cyan-200 disabled:cursor-wait disabled:opacity-60 sm:min-w-[190px]"
+          className="inline-flex min-h-11 w-full items-center justify-center whitespace-normal rounded-full bg-cyan-300 px-5 py-2.5 text-center text-sm font-black text-slate-950 shadow-[0_0_32px_rgba(34,211,238,0.22)] transition hover:-translate-y-0.5 hover:bg-cyan-200 disabled:cursor-wait disabled:opacity-60 sm:w-auto sm:shrink-0 sm:whitespace-nowrap sm:min-w-[190px]"
           disabled={checkout.disabled}
           onClick={checkout.handlePrimaryClick}
           type="button"
