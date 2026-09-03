@@ -80,6 +80,7 @@ function shockPattern(overrides: Partial<ShockMovePattern> = {}): ShockMovePatte
     pullbackSuccessRate: 62,
     reliabilityScore: 70,
     researchEntryZone: "$101-$104",
+    shockEventCount: 0,
     shockEvents: [],
     symbol: "AMD",
     twoSidedVolatilityScore: 55,

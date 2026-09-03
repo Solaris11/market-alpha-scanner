@@ -115,6 +115,17 @@ export type ShockMovePattern = {
   pullbackSuccessRate: number | null;
   reliabilityScore: number;
   researchEntryZone: string;
+  /**
+   * shockEvents.length, carried separately so the array can be dropped from
+   * the /terminal payload without taking the count with it.
+   *
+   * Not derivable from upsideShockCount + downsideShockCount, which is the
+   * trap this field exists to avoid. Those two count only |return1d| >= 5,
+   * while detectShockEvents also admits two-sided events on a z-score, ATR or
+   * gap/volume rule; and they are computed over the uncapped event list while
+   * shockEvents is capped at 80. The three numbers diverge in both directions.
+   */
+  shockEventCount: number;
   shockEvents: ShockMoveEvent[];
   symbol: string;
   timingValidation?: ShockTimingValidation | null;
@@ -230,6 +241,9 @@ export function buildShockMovePattern(input: BuildShockMovePatternInput): ShockM
     timingValidation,
   });
 
+  // One slice, two fields, so the count cannot drift from the array it counts.
+  const cappedEvents = events.slice(-80);
+
   return {
     asymmetryScore: Math.round(calibratedAsymmetry),
     averageDrawdownAfterEntry: maeValues.length ? `${formatSignedPercent(mean(maeValues))} average five-day drawdown after similar shocks` : "Not enough completed shocks to estimate drawdown yet",
@@ -263,7 +277,8 @@ export function buildShockMovePattern(input: BuildShockMovePatternInput): ShockM
     pullbackSuccessRate,
     reliabilityScore: Math.round(calibratedReliability),
     researchEntryZone: zones.researchEntryZone,
-    shockEvents: events.slice(-80),
+    shockEventCount: cappedEvents.length,
+    shockEvents: cappedEvents,
     symbol: input.symbol.trim().toUpperCase(),
     timingValidation,
     twoSidedVolatilityScore: Math.round(twoSided),
@@ -276,6 +291,7 @@ export function shockPatternFromDbRow(row: Record<string, unknown>): ShockMovePa
   const symbol = textValue(row.symbol);
   const lookbackWindow = asLookbackWindow(row.lookback_window);
   if (!symbol || !lookbackWindow) return null;
+  const storedEvents = parseEvents(row.shock_events);
   return {
     asymmetryScore: numeric(row.asymmetry_score, 0),
     averageDrawdownAfterEntry: textValue(row.average_drawdown_after_entry) ?? "Not enough completed shocks to estimate drawdown yet",
@@ -309,7 +325,8 @@ export function shockPatternFromDbRow(row: Record<string, unknown>): ShockMovePa
     pullbackSuccessRate: optionalNumeric(row.pullback_success_rate),
     reliabilityScore: numeric(row.reliability_score, 0),
     researchEntryZone: textValue(row.research_entry_zone) ?? "Research entry zone unavailable",
-    shockEvents: parseEvents(row.shock_events),
+    shockEventCount: storedEvents.length,
+    shockEvents: storedEvents,
     symbol: symbol.toUpperCase(),
     timingValidation: parseTimingValidation(row.metrics),
     twoSidedVolatilityScore: numeric(row.two_sided_volatility_score, 0),

@@ -36,6 +36,7 @@ function shock(overrides: Partial<ShockMovePattern> = {}): ShockMovePattern {
     pullbackSuccessRate: 62,
     reliabilityScore: 68,
     researchEntryZone: "$100.00-$103.00",
+    shockEventCount: 0,
     shockEvents: [],
     symbol: "AMD",
     twoSidedVolatilityScore: 61,

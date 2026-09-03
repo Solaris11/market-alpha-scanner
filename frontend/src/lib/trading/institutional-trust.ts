@@ -52,7 +52,10 @@ export function buildOpportunityTrustModel(row: OpportunityViewModel, options: O
   const symbol = cleanSymbol(row.symbol);
   const evidenceQuality = row.evidence?.label ?? cleanText(row.raw.evidence_maturity, "Evidence not scored");
   const priceLabel = row.price === null ? "Data unavailable" : formatMoney(row.price);
-  const replaySamples = row.shockPattern?.timingValidation?.validationSampleSize ?? row.shockPattern?.shockEvents.length ?? null;
+  // The count, not the array. /terminal is moving to a payload that carries
+  // shockEventCount without shockEvents; reading .length here would silently
+  // become "no replay context" for every row the moment that lands.
+  const replaySamples = row.shockPattern?.timingValidation?.validationSampleSize ?? row.shockPattern?.shockEventCount ?? null;
   const replayLabel = replaySamples === null ? "No replay context" : `${replaySamples} replay sample${replaySamples === 1 ? "" : "s"}`;
   const evidenceScore = finiteNumber(row.evidence?.score);
   const limitations = uniqueText([
