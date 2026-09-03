@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { csrfFetch } from "@/lib/client/csrf-fetch";
 import {
@@ -48,6 +48,10 @@ export function useWorkspacePreferences(initialPreferences?: WorkspacePreference
   const [preferences, setPreferences] = useState<WorkspacePreferences>(() => normalizeWorkspacePreferences(initialPreferences ?? DEFAULT_WORKSPACE_PREFERENCES));
   const [accountPreferencesReadyUserId, setAccountPreferencesReadyUserId] = useState<string | null>(null);
   const [hydrated, setHydrated] = useState(false);
+  // The value the account row is already known to hold. Without it the load
+  // effect's setPreferences() re-triggers the save effect and every page load
+  // writes back the preferences it has just read.
+  const serverSyncedRef = useRef<string | null>(null);
 
   useEffect(() => {
     const localPreferences = readWorkspacePreferencesStorage();
@@ -72,6 +76,7 @@ export function useWorkspacePreferences(initialPreferences?: WorkspacePreference
   useEffect(() => {
     if (!hydrated || loading) return;
     if (!authenticated || !user) {
+      serverSyncedRef.current = null;
       setAccountPreferencesReadyUserId(null);
       setPreferences(readWorkspacePreferencesStorage());
       return;
@@ -79,17 +84,21 @@ export function useWorkspacePreferences(initialPreferences?: WorkspacePreference
 
     let cancelled = false;
     const userId = user.id;
+    serverSyncedRef.current = null;
     setAccountPreferencesReadyUserId(null);
 
     async function loadAccountWorkspacePreferences() {
       const localPreferences = readWorkspacePreferencesStorage();
       try {
-        const response = await fetch("/api/user/workspace-preferences", { cache: "no-store" });
-        const payload = (await response.json().catch(() => null)) as WorkspacePreferencesResponse | null;
-        if (!response.ok) throw new Error(payload?.error ?? "Failed to load workspace preferences.");
+        const payload = await requestAccountWorkspacePreferences(userId);
         const serverPreferences = normalizeWorkspacePreferences(payload?.preferences);
         const nextPreferences = mergeWorkspacePreferences(serverPreferences, localPreferences);
         if (!cancelled) {
+          // Only claim the account row is in sync when the merge changed
+          // nothing; a local override still has to be persisted once.
+          serverSyncedRef.current = serializePreferences(serverPreferences) === serializePreferences(nextPreferences)
+            ? serializePreferences(nextPreferences)
+            : null;
           setPreferences(nextPreferences);
           setAccountPreferencesReadyUserId(userId);
           writeWorkspacePreferencesStorage(nextPreferences);
@@ -109,8 +118,15 @@ export function useWorkspacePreferences(initialPreferences?: WorkspacePreference
     if (!hydrated || loading) return;
     writeWorkspacePreferencesStorage(preferences);
     if (authenticated && user && accountPreferencesReadyUserId === user.id) {
+      const serialized = serializePreferences(preferences);
+      // Nothing changed since the account row was read or last written, so a
+      // PUT here would only echo the value the server already holds.
+      if (serverSyncedRef.current === serialized) return undefined;
       const timeout = window.setTimeout(() => {
-        void saveWorkspacePreferences(preferences).catch(() => undefined);
+        serverSyncedRef.current = serialized;
+        void saveWorkspacePreferences(preferences).catch(() => {
+          if (serverSyncedRef.current === serialized) serverSyncedRef.current = null;
+        });
       }, 300);
       return () => window.clearTimeout(timeout);
     }
@@ -153,6 +169,37 @@ export function useWorkspacePreferences(initialPreferences?: WorkspacePreference
     hydrated,
     preferences,
   };
+}
+
+/**
+ * Three components on /terminal mount this hook independently
+ * (PersonalizedMobileQuickAccess, UnifiedIntelligenceConsole,
+ * WorkspacePersonalizationPanel), so without this every page load issued the
+ * same GET three times. Concurrent readers of the same account share one
+ * request; a later mount still gets a fresh read.
+ */
+let inFlightAccountPreferences: { promise: Promise<WorkspacePreferencesResponse | null>; userId: string } | null = null;
+
+function requestAccountWorkspacePreferences(userId: string): Promise<WorkspacePreferencesResponse | null> {
+  if (inFlightAccountPreferences && inFlightAccountPreferences.userId === userId) {
+    return inFlightAccountPreferences.promise;
+  }
+  const promise = (async () => {
+    const response = await fetch("/api/user/workspace-preferences", { cache: "no-store" });
+    const payload = (await response.json().catch(() => null)) as WorkspacePreferencesResponse | null;
+    if (!response.ok) throw new Error(payload?.error ?? "Failed to load workspace preferences.");
+    return payload;
+  })();
+  const entry = { promise, userId };
+  inFlightAccountPreferences = entry;
+  void promise.catch(() => undefined).finally(() => {
+    if (inFlightAccountPreferences === entry) inFlightAccountPreferences = null;
+  });
+  return promise;
+}
+
+function serializePreferences(preferences: WorkspacePreferences): string {
+  return JSON.stringify(normalizeWorkspacePreferences(preferences));
 }
 
 function readWorkspacePreferencesStorage(): WorkspacePreferences {

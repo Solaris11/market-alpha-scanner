@@ -18,9 +18,36 @@ type NotificationsResponse = {
 
 const NOTIFICATION_DRAWER_OPEN_EVENT = "tradeveto:notifications-open";
 
+/**
+ * The bell renders twice on the terminal shell — once in the desktop header and
+ * once in MobileTerminalNav — and both mount regardless of breakpoint, so
+ * without this every page load issued the same GET twice. Concurrent loads
+ * share one request; a later load still hits the network.
+ */
+let inFlightNotifications: { promise: Promise<NotificationsResponse>; userId: string } | null = null;
+
+function requestNotifications(userId: string): Promise<NotificationsResponse> {
+  // Keyed by user, not just presence. Sharing an in-flight response across a
+  // sign-out and sign-in would hand one account's notifications to another --
+  // a sub-second window, but not one worth leaving open.
+  if (inFlightNotifications && inFlightNotifications.userId === userId) return inFlightNotifications.promise;
+  const promise = (async () => {
+    const response = await fetch("/api/notifications", { cache: "no-store" });
+    const payload = (await response.json().catch(() => null)) as NotificationsResponse | null;
+    if (!response.ok || !payload?.ok) throw new Error("Notifications unavailable.");
+    return payload;
+  })();
+  const entry = { promise, userId };
+  inFlightNotifications = entry;
+  void promise.catch(() => undefined).finally(() => {
+    if (inFlightNotifications === entry) inFlightNotifications = null;
+  });
+  return promise;
+}
+
 export function NotificationBell() {
   const router = useRouter();
-  const { authenticated, loading } = useCurrentUser();
+  const { authenticated, loading, user } = useCurrentUser();
   const instanceId = useId();
   const menuId = useId();
   const titleId = useId();
@@ -41,16 +68,14 @@ export function NotificationBell() {
   }, []);
 
   const loadNotifications = useCallback(async () => {
-    if (!authenticated) {
+    if (!authenticated || !user) {
       setNotifications([]);
       setUnreadCount(0);
       return;
     }
     setFetching(true);
     try {
-      const response = await fetch("/api/notifications", { cache: "no-store" });
-      const payload = (await response.json().catch(() => null)) as NotificationsResponse | null;
-      if (!response.ok || !payload?.ok) throw new Error("Notifications unavailable.");
+      const payload = await requestNotifications(user.id);
       const loadedNotifications = payload.notifications ?? [];
       setNotifications(rankNotificationsForRetention(loadedNotifications));
       setUnreadCount(payload.unreadCount ?? 0);
@@ -62,7 +87,7 @@ export function NotificationBell() {
     } finally {
       setFetching(false);
     }
-  }, [authenticated]);
+  }, [authenticated, user]);
 
   useEffect(() => {
     if (!loading) void loadNotifications();

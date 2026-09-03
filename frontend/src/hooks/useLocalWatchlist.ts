@@ -42,13 +42,7 @@ export function useLocalWatchlist() {
 
       const localSymbols = readWatchlistStorage();
       try {
-        const response = await csrfFetch("/api/user/watchlist", {
-          body: JSON.stringify({ symbols: localSymbols }),
-          headers: { "Content-Type": "application/json" },
-          method: "POST",
-        });
-        const payload = (await response.json().catch(() => null)) as WatchlistResponse | null;
-        if (!response.ok) throw new Error(payload?.error ?? "Failed to sync watchlist.");
+        const payload = await requestWatchlistSync(user.id, localSymbols);
         const symbols = symbolsFromPayload(payload);
         writeWatchlistStorage(symbols);
         if (!cancelled) setWatchlist(symbols);
@@ -136,6 +130,39 @@ export function useLocalWatchlist() {
   }
 
   return { add, isWatched, remove, toggle, watchlist, watchlistSet };
+}
+
+/**
+ * Several components mount this hook independently on one page (on /terminal:
+ * ActivationRecoveryNudge from the root layout, FirstRunStarterCard, and the
+ * watchlist widget/buttons when the daily action leaves them visible), so
+ * without this the mount-time merge-sync POST fired once per mount. Concurrent
+ * syncs of the same account with the same body share one request.
+ */
+let inFlightWatchlistSync: { body: string; promise: Promise<WatchlistResponse | null> } | null = null;
+
+function requestWatchlistSync(userId: string, symbols: string[]): Promise<WatchlistResponse | null> {
+  const body = JSON.stringify({ symbols });
+  const key = `${userId}:${body}`;
+  if (inFlightWatchlistSync && inFlightWatchlistSync.body === key) {
+    return inFlightWatchlistSync.promise;
+  }
+  const promise = (async () => {
+    const response = await csrfFetch("/api/user/watchlist", {
+      body,
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+    const payload = (await response.json().catch(() => null)) as WatchlistResponse | null;
+    if (!response.ok) throw new Error(payload?.error ?? "Failed to sync watchlist.");
+    return payload;
+  })();
+  const entry = { body: key, promise };
+  inFlightWatchlistSync = entry;
+  void promise.catch(() => undefined).finally(() => {
+    if (inFlightWatchlistSync === entry) inFlightWatchlistSync = null;
+  });
+  return promise;
 }
 
 function symbolsFromPayload(payload: WatchlistResponse | null): string[] {
