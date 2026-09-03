@@ -1,6 +1,6 @@
 import { Pool, type QueryResultRow } from "pg";
 import { loadEnvFiles, safeErrorMessage } from "./monitoring-common";
-import { buildShockMovePattern, normalizeShockPriceBars, type ShockMovePattern, type ShockMovePriceBar, type ShockMoveWindow } from "../src/lib/trading/shock-move";
+import { buildShockMovePattern, normalizeShockPriceBars, type ShockMoveEvent, type ShockMovePattern, type ShockMovePriceBar, type ShockMoveWindow } from "../src/lib/trading/shock-move";
 
 type LatestSignalRow = QueryResultRow & {
   asset_type: string | null;
@@ -61,7 +61,7 @@ async function main(): Promise<void> {
       }
       const longest = patterns.find((pattern) => pattern.lookbackWindow === "5y") ?? patterns.find((pattern) => pattern.lookbackWindow === "3y") ?? patterns.find((pattern) => pattern.lookbackWindow === "1y") ?? null;
       if (longest) {
-        for (const event of longest.shockEvents) {
+        for (const event of longest.shockEvents ?? []) {
           await upsertEvent(pool, longest.symbol, event);
           eventsWritten += 1;
         }
@@ -181,7 +181,7 @@ async function upsertPattern(pool: Pool, pattern: ShockMovePattern, signal: Late
     shockReliabilityScore: pattern.timingValidation?.shockReliabilityScore ?? null,
     timingQualityScore: pattern.timingValidation?.timingQualityScore ?? null,
     timingValidation: pattern.timingValidation ?? null,
-    shockEventSampleSize: pattern.shockEvents.length,
+    shockEventSampleSize: pattern.shockEventCount,
   };
 
   await pool.query(
@@ -307,13 +307,13 @@ async function upsertPattern(pool: Pool, pattern: ShockMovePattern, signal: Late
       JSON.stringify(sectorMacroContext),
       JSON.stringify(verifiedEventContext),
       JSON.stringify(pattern.latestEvent),
-      JSON.stringify(pattern.shockEvents),
+      JSON.stringify(pattern.shockEvents ?? []),
       JSON.stringify(metrics),
     ],
   );
 }
 
-async function upsertEvent(pool: Pool, symbol: string, event: ShockMovePattern["shockEvents"][number]): Promise<void> {
+async function upsertEvent(pool: Pool, symbol: string, event: ShockMoveEvent): Promise<void> {
   await pool.query(
     `
       INSERT INTO shock_move_events (
