@@ -4,6 +4,43 @@ Written 2026-09-04. Everything below is verified except the build gate, which
 cannot run in this session. Read "Why you have to run this" first if you want
 the reason it is a runbook and not a completed deploy.
 
+## READ THIS FIRST: do not merge `work/autonomous-after-b177` as it stands on the remote
+
+You pushed both branches after the last session. Verified against the remote
+today:
+
+```
+b177dea8  refs/heads/main
+9d6013a0  refs/heads/work/autonomous-after-b177
+ffcd29b2  refs/heads/work/ux-polish
+```
+
+So the actionability fix is already on GitHub. Only `main` needs to move.
+
+**But the remote's copy of `work/autonomous-after-b177` contains Stage 3
+(`857af454`) without the fix for what Stage 3 breaks.** I found that tonight:
+Stage 3 removes `shockEvents`, and `evidence-maturity.ts` derives three
+rendered values by walking that array from three client components on
+`/terminal`. Stage 3 guarded them with `?? []`, which stops a crash and
+preserves nothing:
+
+| Rendered field | With array | After Stage 3 as pushed |
+|---|---:|---:|
+| `evidenceSampleSize` | 26 | 13 |
+| `historicalDepthDays` | 163 | 0 |
+| `outcomeCoverage` | 100% | 0% |
+| `score` | 79 | 29 |
+| `label` | Developing Evidence | **Limited Evidence** |
+
+The repair is `af8ebf24`, which is **local only** — I still cannot push.
+
+So: **merging the remote branch into `main` right now would trade one silent
+regression for another.** The safe move is `release/actionability-fix`, which
+is `main` plus the single actionability commit and nothing else. Full detail in
+`docs/ops/stage3-silent-regression-audit.md`.
+
+`work/ux-polish` on the remote is complete and carries no such hazard.
+
 ## Why you have to run this
 
 `main` cannot be advanced from this session. Three paths, all tested today:
@@ -114,6 +151,10 @@ npm --prefix frontend run lint
 **If the build fails, stop.** Nothing below should run.
 
 ### 2. Push
+
+`release/actionability-fix` is local, so it has to go up with `main`. The
+commit it carries is a cherry-pick of `98afc6c6`, which is already on the
+remote inside the other branch — same change, different hash.
 
 ```bash
 git switch main
@@ -233,11 +274,24 @@ commit on `main` separately if you want the checkout to match.
 
 In this order, each with its own build gate and its own verification pass:
 
-1. **`work/autonomous-after-b177`** — the remaining nine commits: Stage 3
-   payload reduction, the watchlist duplicate fix, the memory cache bound and
-   health instrumentation. Stage 3 is the one to watch, because it removes
-   4.7 MB from the payload and the actionability repair is what makes that
-   safe. Verify `htmlBytes` drops and the action lines *stay* varied.
+1. **`work/autonomous-after-b177`, local tip, not the remote's** — the
+   remaining commits: Stage 3 payload reduction, the watchlist duplicate fix,
+   the evidence-maturity repair, the memory cache bound and the health
+   instrumentation.
+
+   **Push the local tip first.** The remote is six commits behind and stops at
+   `9d6013a0`, which includes Stage 3 but not `af8ebf24`. Deploying the remote
+   tip ships the evidence downgrade in the table above.
+
+   ```bash
+   git switch work/autonomous-after-b177
+   npm --prefix frontend run build     # gate
+   git push origin work/autonomous-after-b177
+   ```
+
+   Then verify `htmlBytes` drops by roughly 4.8 MB, the action lines *stay*
+   varied, and the evidence cards still read Developing Evidence rather than a
+   page of Limited Evidence.
 2. **`work/ux-polish`** — three commits, no business logic. Its own report is
    `docs/ux/ux-polish-2026-09-03.md`, including the one change I could not
    measure.
