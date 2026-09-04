@@ -18,3 +18,4 @@
 2026-09-04T13:23:00Z	354MiB	157.5MiB	15 min in, after the post-deploy verification page loads
 2026-09-04T15:56:17Z	409.2MiB	158.7MiB	3h uptime, restarts=0; postgres 377.7MiB (first ever recorded). No /terminal renders in the log since 13:23, so +55MB spans the verification loads and has been flat since.
 2026-09-04T19:27:47Z	457MiB	148.6MiB	6h uptime, restarts=0; postgres 420.1MiB. Real traffic since 15:56 (new [render-timing] entries, total=1083-1109ms, signals 355->353 after a scan). +48MB over 3.5h with page loads in it.
+2026-09-04T23:16:50Z	570MiB	149.8MiB	10h uptime, restarts=0; postgres 428.1MiB. Closing sample of the window.
