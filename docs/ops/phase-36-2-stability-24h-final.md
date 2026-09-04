@@ -6,6 +6,32 @@
 
 ---
 
+> ### Item 8 (memory) ve iki UNMEASURABLE madde güncellendi — 2026-09-04
+>
+> **Item 8, bellek.** Bu rapor 24 saatin "tavana oturma" ile "yavaş sızıntı"yı
+> ayıramadığını söylüyor ve 48–72 saatlik pasif gözlem öneriyordu. O deney
+> yanlış deney olurdu: 2026-09-04'te ölçülen şey, boştayken **hiç** büyüme
+> olmadığı (7s11d boyunca 1.117 GiB sabit), ama 8 `/terminal` render'ının
+> +105 MB eklediği ve 7 dakika sonra da geri vermediği. Yani büyüme
+> **render sayısıyla** orantılı, zamanla değil; +491 MB ≈ 38 sayfa yüklemesi.
+>
+> Doğru takip deneyi pasif örnekleme değil, render sayısına bağlı olan:
+> `docs/ops/memory-follow-up-plan.md`.
+>
+> Bu raporun "urgency low" çerçevesi de bu ışıkta yeniden okunmalı — trafikle
+> ölçekleniyor.
+>
+> **Item 9 (Postgres memory) ve Item 11 (running container ≥ 6).** İkisi de
+> "observer'a eklenmeli" diye açık bırakılmıştı. `febd94e5` ile eklendi ve
+> sebep de kayda değer: veri zaten toplanıyordu — observer her örnekte
+> `docker ps` ve `docker stats` çalıştırıp ikisini de ham string olarak
+> saklıyordu. Eksik olan komut değil, o string'i alanlara ayıran satırlardı.
+> Artık her örnek `running_containers`, `running_container_names`,
+> `container_memory_mb` ve `postgres_memory_mb` taşıyor. Host'ta ek maliyet
+> yok.
+
+---
+
 ## 1. Tamamlanma — GEÇTİ
 
 **1440 örnek, tam.** 24 saatin her saati **tam 60 örnek**; ızgara sürüklenmesi yok, her örnek dakikanın `:01` saniyesinde. Erken sonlanma yok, `parse_error` 0, `systemd_failed` 1440/1440 boş.

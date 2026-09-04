@@ -5,6 +5,26 @@
 
 ---
 
+> ### Bu belgenin timing rakamları eskidi (not eklendi 2026-09-04)
+>
+> Buradaki 11.806 ms render ve 14.018.917 B HTML, `96b3dc6f` dönemine ait.
+> Aradan üç deploy ve `forward_returns` kapsayıcı indeksi geçti. Güncel prod
+> (`b177dea8`, 2026-09-04 ölçümü):
+>
+> | Ölçü | Bu belge | Şimdi |
+> |---|---:|---:|
+> | render total (sunucu) | 11.806 ms | 1.078 ms (`pending-prod-approvals.md` §2) |
+> | DOM interactive | ~13.500 ms | **2.771 ms** |
+> | HTML decoded | 14.018.917 B | **13.837.994 B** |
+>
+> Belgenin teşhisi (yavaşlık payload'da değil, iki sorguda) doğru çıktı ve
+> uygulandı. Rakamları tarihsel kayıt olarak okuyun, hedef olarak değil.
+>
+> Fix 3 (`MarketCommandItem.row` daraltma) bu belgede "yapılmadı" diyor —
+> `291d9ea3` ile yapıldı, sağlayıcı sızıntısı prod'da 0.
+
+---
+
 ## 1. Ölçülen zaman çizelgesi
 
 ```

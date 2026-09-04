@@ -4,6 +4,25 @@
 
 ---
 
+> ### Bu belgenin sayıları eskidi (not eklendi 2026-09-04)
+>
+> Buradaki ölçümler `3bb7f0a` tarihine ait ve **`forward_returns` kapsayıcı
+> indeksinden önce** alındı. Güncel prod (`b177dea8`) rakamları:
+>
+> | Ölçü | Bu belge | 2026-09-04 ölçümü |
+> |---|---:|---:|
+> | HTML decoded | 16.864 KB | **13.838 KB** |
+> | DOM interactive | 11.791 ms | **2.771 ms** |
+> | payload toplamı | 16.845 KB | 12.180 K karakter (flight) |
+>
+> Belgedeki byte tahminleri (Stage 5 ≈3,2 MB, Stage 2–4 ≈4,7 MB) **aritmetik,
+> ölçüm değil** — belgenin kendisi de bunu söylüyor. Yeni bir kazanç iddiasından
+> önce baseline yeniden alınmalı.
+>
+> §5'teki tüketici listesi de yanlıştı; aşağıda düzeltildi.
+
+---
+
 ## 1. Stage 1'in dürüst kaydı
 
 Fayda var, ama **dramatik değil** ve tahminimin bir kısmı yanlıştı.
@@ -101,17 +120,33 @@ Ayrıca sızmaması gereken/işe yaramayan diğer sağlayıcı alanları: `provi
 
 ---
 
-## 5. Stage 2–4 planı korunuyor
+## 5. Stage 2–4 planı — düzeltilmiş tüketici listesi
 
-`shockEvents` (4.744 KB, %28,2) client'tan tamamen düşürülebilmesi için üç tüketicinin sunucuya taşınması gerekiyor:
+> **Düzeltme (2026-09-04).** Bu bölümün ilk hali dört tüketicinin üçünde
+> yanlıştı ve migration planının §1'i bunu 2026-09-03'te tespit etmişti; bu,
+> planın Stage 4'ünde söz verilen düzeltme. Yanlışlığın yönü önemli: liste
+> **eksik** olduğu için Stage 3'e "hiçbir client tüketici kalmadı" denilerek
+> girildi, oysa `evidence-maturity` kalmıştı ve sessizce bozuldu (bkz.
+> `docs/ops/stage3-silent-regression-audit.md`).
 
-| Stage | Modül | Client'ta okuduğu |
-|---|---|---|
-| 2 | `risk-tolerant-opportunities` | `shockEvents.length`, `latestEvent.eventDate` |
-| 3 | `institutional-trust` | `shockEvents.length` |
-| 4 | `evidence-maturity` | olay başına `eventDate`, `outcomeStatus` |
+`shockEvents` (4.744 KB, %28,2) client'tan düşürülebilsin diye taşınması
+gereken tüketiciler, kodun kendisinden yeniden çıkarılmış hali:
 
-Üçü bitince dizi tamamen düşer. Her biri Stage 1'in desenini izler: sunucuda hesapla, sonucu prop olarak geçir, çıktının değişmediğini test et.
+| Modül | `/terminal`'de client'ta koşuyor mu? | Okuduğu | Durum |
+|---|---|---|---|
+| `opportunity-actionability` (iki radar) | **evet** | olay başına `preconditions`, excursion, return | `98afc6c6` — sunucuda hesaplanıyor |
+| `evidence-maturity` | **evet, üç bileşenden** | olay başına `eventDate`, `outcomeStatus`, dizi uzunluğu | `af8ebf24` — `shockEventCount`, `shockEventSpanDays`, `shockCompletedEventCount` |
+| `institutional-trust` | evet | dizi uzunluğu | `61366d3b` — `shockEventCount` |
+| `risk-tolerant-opportunities` | evet | dizi uzunluğu, `latestEvent.eventDate` | `857af454` — `shockEventCount` |
+| `execution-intelligence` | **hayır** | olay başına return/excursion | listede hiç yoktu; `/terminal` bu panele `rows` geçirmediği için client'ta çalışmıyor — ama bu üç çağrı yerinin özelliği, modülün değil |
+
+İlk listedeki "Stage 2/3/4" numaralandırması da gerçekleşen sırayı tutmuyor;
+uygulanan sıra yukarıdaki commit'lerde.
+
+Ders, plandaki numaralardan daha kalıcı: **tüketici listesi elle yazıldığı
+sürece eksik olabilir.** `?? []` ile korumak derlemeyi geçirir ve değeri
+korumaz; tek güvenilir test, deseni gerçekten uygulayıp iki çıktıyı
+karşılaştırmaktır (`evidence-maturity-strip.test.ts` bunu yapıyor).
 
 ---
 
