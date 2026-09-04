@@ -169,9 +169,93 @@ def process_snapshot(raw):
     return snapshot if isinstance(snapshot, dict) else {}
 
 
+def jsonl_entries(raw):
+    """Parse a `--format '{{json .}}'` blob into dicts, skipping anything odd.
+
+    Both docker blobs were already being collected and stored verbatim, which
+    is why the 24h observation had to report running-container count and
+    Postgres memory as UNMEASURABLE: the data was in the file, but only as an
+    opaque string the summary could not read. Parsing here changes nothing
+    about what is collected on the host -- no extra command, no extra cost --
+    it just makes the two fields addressable.
+    """
+    entries = []
+    for line in (raw or "").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            obj = json.loads(line)
+        except (TypeError, ValueError):
+            continue
+        if isinstance(obj, dict):
+            entries.append(obj)
+    return entries
+
+
+_MEM_UNITS = {"b": 1.0 / (1024 * 1024), "kib": 1.0 / 1024, "kb": 1.0 / 1024,
+              "mib": 1.0, "mb": 1.0, "gib": 1024.0, "gb": 1024.0, "tib": 1024.0 * 1024}
+
+
+def memory_mb(usage):
+    """'1.117GiB / 31.08GiB' -> 1143.8. Returns None rather than raising.
+
+    Only the used side is taken; the limit is the host total and is the same
+    for every container, so it carries no per-container information.
+    """
+    text = str(usage or "").split("/")[0].strip()
+    if not text:
+        return None
+    number, unit = "", ""
+    for char in text:
+        if char.isdigit() or char in ".,":
+            number += "." if char == "," else char
+        elif not char.isspace():
+            unit += char
+    try:
+        value = float(number)
+    except ValueError:
+        return None
+    scale = _MEM_UNITS.get(unit.lower())
+    if scale is None:
+        return None
+    return round(value * scale, 1)
+
+
+def container_memory(raw):
+    out = {}
+    for entry in jsonl_entries(raw):
+        name = entry.get("Name") or entry.get("Container")
+        if not name:
+            continue
+        mb = memory_mb(entry.get("MemUsage"))
+        if mb is not None:
+            out[str(name)] = mb
+    return out
+
+
+_ps_entries = jsonl_entries(os.environ.get("DOCKER_PS", ""))
+_memory_by_container = container_memory(os.environ.get("DOCKER_STATS", ""))
+# `docker ps` without -a lists running containers only, so the count is the
+# number of entries. Threshold 11 in the stability report is >= 6.
+_running_containers = len(_ps_entries)
+# Named rather than matched loosely: the compose project prefixes the service,
+# and a substring match on "postgres" would also catch a future pgbouncer or
+# postgres-exporter and silently report the wrong number.
+_postgres_memory_mb = next(
+    (mb for name, mb in _memory_by_container.items() if "postgres" in name.lower()),
+    None,
+)
+
 payload = {
     "timestamp": timestamp,
     "open_connections": int(connections or "0"),
+    "running_containers": _running_containers,
+    "running_container_names": sorted(
+        str(entry.get("Names") or entry.get("Name") or "") for entry in _ps_entries
+    ),
+    "container_memory_mb": _memory_by_container,
+    "postgres_memory_mb": _postgres_memory_mb,
     "http_timings": [
         probe(health),
         probe(deep),
