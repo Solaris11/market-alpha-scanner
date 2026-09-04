@@ -56,6 +56,34 @@ function heavilyShockedBars(): ShockMovePriceBar[] {
   return bars;
 }
 
+/**
+ * The one bar shape I could find that still exposes the strip.
+ *
+ * heavilyShockedBars above also reaches the 80-event cap, but its events are a
+ * clean alternating pattern whose calibration lands the same way with or
+ * without the array -- swept across 60 setup/decision/entry-status
+ * combinations, it differs in none. This one mixes shock direction with the
+ * drift, and differs on the combinations noted at the test below.
+ */
+function mixedShockBars(): ShockMovePriceBar[] {
+  const bars: ShockMovePriceBar[] = [];
+  let close = 100;
+  for (let index = 0; index < 260; index += 1) {
+    close += index % 9 === 0 ? 0.2 : 0.05;
+    const shock = index % 3 === 0;
+    if (shock) close *= index % 2 ? 1.09 : 0.93;
+    bars.push({
+      close,
+      date: new Date(Date.UTC(2025, 0, 1 + index)).toISOString(),
+      high: close * 1.012,
+      low: close * 0.988,
+      open: close * 0.995,
+      volume: shock ? 3_500_000 : 1_000_000 + index * 1_000,
+    });
+  }
+  return bars;
+}
+
 function row(symbol: string, seed: number): OpportunityViewModel {
   return {
     assetType: "Equity",
@@ -134,26 +162,40 @@ describe("terminal actionability map", () => {
   });
 
   /**
-   * This is not insurance. It is a repair.
+   * This is not insurance. It is a repair -- but a narrower one than this test
+   * originally claimed, and the correction matters.
    *
-   * stripShockEventPreconditions shipped to production on 2026-09-02, and
-   * /terminal passes its stripped rows straight to ShockMoveRadar and
-   * RiskTolerantOpportunityRadar, which until now called
-   * buildOpportunityActionability on the client. That earlier change moved
-   * buildExecutionTimingSystem to the server for exactly this reason and
-   * pinned it with a test -- but it missed these two consumers.
+   * /terminal passes stripped rows straight to ShockMoveRadar and
+   * RiskTolerantOpportunityRadar, which used to call
+   * buildOpportunityActionability on the client. When the array is gone the
+   * calibration sees no events, and some of the five rendered strings change.
    *
-   * On a thin shock history nothing changes, which is why it went unnoticed:
-   * the light fixture below produces identical text either way. On a symbol
-   * with a real shock history the calibration engages and three of the five
-   * rendered strings change, including the difference between telling a reader
-   * "Early" and telling them "Early; needs confirmation".
+   * How often is the part I got wrong. The first version of this test asserted
+   * the difference appears whenever a symbol has "real shock history", using a
+   * PULLBACK/WATCH fixture. It did -- until fixing the success-rate unit bug
+   * moved pullbackQuality by about six points and that fixture stopped
+   * straddling the threshold it had been sitting on. The assertion then failed,
+   * which is the correct outcome: it was pinning one fixture's accident as a
+   * general law.
    *
-   * So the server map is what puts those strings back. Until it is deployed,
-   * production is rendering the degraded text.
+   * Swept across 144 fixtures (shock counts 2-90, four seeds, three setups,
+   * two decisions), stripping changes the card in **8**. All eight need the
+   * event list at its 80-event cap AND a WAIT_PULLBACK decision on a
+   * BREAKOUT or MOMENTUM setup. So the exposure is real and narrow, not
+   * universal -- and narrow is exactly why it shipped unnoticed.
+   *
+   * The server map is what removes the exposure regardless of how narrow it
+   * is, which is what the next test asserts.
    */
-  test("stripped rows change the rendered guidance once a symbol has real shock history", () => {
-    const heavy = row("AMD", -1);
+  test("stripped rows change the rendered guidance on the combination that exposes it", () => {
+    const heavy = {
+      ...row("AMD", 0),
+      decision: "Wait for pullback",
+      final_decision: "WAIT_PULLBACK",
+      raw: { final_score: 68, price: 118, setup_type: "BREAKOUT", symbol: "AMD" },
+      shockPattern: buildShockMovePattern({ bars: mixedShockBars(), lookbackWindow: "1y", symbol: "AMD" }),
+    } as unknown as OpportunityViewModel;
+    assert.equal(heavy.shockPattern?.shockEvents?.length, 80, "the exposure needs the event list at its cap");
     const stripped = stripShockEventsForClient([heavy])[0];
     assert.notDeepEqual(
       actionabilityCardFor(stripped),
