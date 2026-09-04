@@ -188,7 +188,7 @@ export function PosterGauge({
           <div className="mt-2 text-[9px] font-black uppercase tracking-[0.12em] text-slate-500">{label}</div>
         </div>
       ) : (
-        <div className="mx-auto grid h-32 w-32 place-items-center rounded-full border border-white/10" style={{ background: `conic-gradient(${style.hex} ${value * 3.6}deg, rgba(148,163,184,0.13) 0deg)` }}>
+        <div className="mx-auto grid h-32 w-32 place-items-center rounded-full border border-white/10" style={{ background: `conic-gradient(${style.hex} ${value * 3.6}deg, rgba(148,163,184,0.13) 0deg)` }} title={`${label}: ${Math.round(value)} of 100`}>
           <div className="grid h-24 w-24 place-items-center rounded-full border border-white/10 bg-slate-950/95">
             <div>
               <div className={`font-mono text-3xl font-black ${style.text}`}>{Math.round(value)}</div>
@@ -197,6 +197,9 @@ export function PosterGauge({
           </div>
         </div>
       )}
+      {value === null ? null : (
+        <div className="mt-2 font-mono text-[9px] font-black tracking-[0.08em] text-slate-600">0 - 100 scale</div>
+      )}
     </div>
   );
 }
@@ -204,11 +207,13 @@ export function PosterGauge({
 export function MiniCandleStrip({
   className = "",
   emptyMessage = "No validated visual history yet.",
+  label = "Recent movement",
   tone = "cyan",
   values,
 }: {
   className?: string;
   emptyMessage?: string;
+  label?: string;
   tone?: VisualTone;
   values: Array<number | null | undefined>;
 }) {
@@ -217,24 +222,41 @@ export function MiniCandleStrip({
   const min = data.length ? Math.min(...data) : 0;
   const max = data.length ? Math.max(...data) : 100;
   const range = Math.max(1, max - min);
+  const first = data[0];
+  const last = data[data.length - 1];
+  const change = data.length >= 2 && first !== 0 ? ((last - first) / Math.abs(first)) * 100 : null;
   return (
     <div className={`poster-mini-chart rounded-2xl border border-white/10 bg-slate-950/45 p-3 ${className}`}>
       {data.length >= 2 ? (
-        <div className="flex h-24 items-end gap-1.5">
-          {data.map((value, index) => {
-            const previous = index === 0 ? value : data[index - 1] ?? value;
-            const positive = value >= previous;
-            const height = Math.max(12, ((value - min) / range) * 82 + 10);
-            return (
-              <div
-                aria-hidden="true"
-                className={`flex-1 rounded-t-md ${positive ? `bg-gradient-to-t ${style.fill}` : "bg-gradient-to-t from-rose-400 to-pink-300"}`}
-                key={`${index}:${value}`}
-                style={{ height }}
-              />
-            );
-          })}
-        </div>
+        <>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">{label}</div>
+            {change === null ? null : (
+              <div className={`font-mono text-[10px] font-black ${change >= 0 ? "text-emerald-200" : "text-rose-200"}`}>
+                {change >= 0 ? "+" : ""}{change.toFixed(1)}%
+              </div>
+            )}
+          </div>
+          <div className="flex h-24 items-end gap-1.5" role="img" aria-label={`${label}: ${data.length} points, ${formatAxisValue(min)} to ${formatAxisValue(max)}`}>
+            {data.map((value, index) => {
+              const previous = index === 0 ? value : data[index - 1] ?? value;
+              const positive = value >= previous;
+              const height = Math.max(12, ((value - min) / range) * 82 + 10);
+              return (
+                <div
+                  className={`tv-bar-hover flex-1 rounded-t-md ${positive ? `bg-gradient-to-t ${style.fill}` : "bg-gradient-to-t from-rose-400 to-pink-300"}`}
+                  key={`${index}:${value}`}
+                  style={{ height }}
+                  title={`${formatAxisValue(value)}${index === 0 ? "" : ` (${value >= previous ? "+" : ""}${formatAxisValue(value - previous)})`}`}
+                />
+              );
+            })}
+          </div>
+          <div className="mt-1.5 flex items-center justify-between font-mono text-[9px] font-black tracking-[0.08em] text-slate-600">
+            <span>lo {formatAxisValue(min)}</span>
+            <span>hi {formatAxisValue(max)}</span>
+          </div>
+        </>
       ) : (
         <EmptyVisual className="h-24" message={emptyMessage} />
       )}
@@ -279,7 +301,7 @@ export function ScoreFactorStrip({
     <div className={`rounded-2xl border border-white/10 bg-slate-950/35 p-3 ${className}`}>
       <div className="mb-2 flex items-center justify-between gap-2">
         <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">{label}</div>
-        <div className="text-[10px] font-bold text-slate-500">{data.length} drivers</div>
+        <div className="text-[10px] font-bold text-slate-500">{data.length} drivers &middot; 0-100</div>
       </div>
       <div className="grid gap-2">
         {data.map((factor) => {
@@ -287,12 +309,13 @@ export function ScoreFactorStrip({
           return (
             <div className="grid gap-1" key={`${factor.label}:${factor.value}`}>
               <div className="flex items-center justify-between gap-2">
-                <span className="truncate text-[10px] font-black uppercase tracking-[0.11em] text-slate-500">{factor.label}</span>
+                <span className="truncate text-[10px] font-black uppercase tracking-[0.11em] text-slate-500" title={factor.detail}>{factor.label}</span>
                 <span className={`font-mono text-[11px] font-black ${style.text}`}>{Math.round(factor.value)}</span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-white/[0.08]">
+              <div className="h-2 overflow-hidden rounded-full bg-white/[0.08]" title={factor.detail}>
                 <div className={`h-full rounded-full bg-gradient-to-r ${style.fill}`} style={{ width: `${factor.value}%` }} />
               </div>
+              {factor.detail ? <p className="text-[10px] leading-4 text-slate-500">{factor.detail}</p> : null}
             </div>
           );
         })}

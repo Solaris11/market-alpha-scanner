@@ -804,6 +804,26 @@ a {
   background: transparent;
 }
 
+/*
+ * Per-bar hover on the candle strip.
+ *
+ * The bars carry a title with their own value and the change from the bar
+ * before, which is the readout this chart never had. A hover state is what
+ * tells the reader the bars are interrogable at all -- without it the title
+ * is a secret. On the fast token (150ms) like every other control here, and
+ * on fine pointers only, so it does not fire as a sticky state on touch.
+ */
+@media (hover: hover) and (pointer: fine) {
+  .tv-bar-hover {
+    transition: filter var(--tv-motion-fast) var(--tv-ease-standard),
+      opacity var(--tv-motion-fast) var(--tv-ease-standard);
+  }
+
+  .tv-bar-hover:hover {
+    filter: brightness(1.35);
+  }
+}
+
 .tv-mobile-fixed-viewport {
   height: var(--tv-visual-viewport-height, 100dvh);
   max-height: var(--tv-visual-viewport-height, 100dvh);
@@ -1740,8 +1760,19 @@ html[data-tradeveto-suppress-feedback="true"] .tradeveto-beta-feedback-widget {
   .tv-skeleton,
   .tv-skeleton::after,
   .tradeveto-route-progress,
-  .visual-shimmer::after {
+  .visual-shimmer::after,
+  /*
+   * Tailwind's stock utility. It is not gated on reduced motion by the
+   * framework, and with no tailwind.config and no @theme block there is no
+   * other place to override it -- so a reader who asked the OS for less
+   * motion still got a pulsing loading state on /discover.
+   */
+  .animate-pulse {
     animation: none;
+  }
+
+  .tv-bar-hover {
+    transition: none;
   }
 
   .tv-atmosphere-light--primary,
