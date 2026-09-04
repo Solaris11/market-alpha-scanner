@@ -1,3 +1,15 @@
 # utc	frontend_mem	hot_api_mem	note
 2026-09-04T02:36:39Z	1.185GiB	143.2MiB	container up 8h04m, restarts=0, no mem limit
 2026-09-04T02:49:12Z	1.116GiB	144.5MiB	second sample, ~13 min later: memory fell, so not strictly monotonic
+2026-09-04T06:28:25Z	1.117GiB	212.8MiB	up 11h56m, restarts=0, prod HEAD b177dea — flat vs 02:49 (1.117GiB) over 3h39m
+2026-09-04T10:00:13Z	1.117GiB	214.3MiB	up 15h, restarts=0 — third identical reading; flat 7h11m at idle
+# --- controlled load experiment, 10:00-10:14 UTC, prod b177dea8, read-only, one test account ---
+2026-09-04T10:01:32Z	1.117GiB	158.2MiB	after 14 /api/discovery fetches (all cache hits, 57-71ms): no change
+2026-09-04T10:02:21Z	1.222GiB	216.6MiB	after 8 full /terminal renders (106MB HTML): +105MB
+2026-09-04T10:04:48Z	1.222GiB	-	2.5 min idle after load: not released
+2026-09-04T10:06:54Z	1.222GiB	-	5 min idle: not released
+2026-09-04T10:09:01Z	1.222GiB	-	7 min idle: not released
+# /api/health process readings around a second batch of 8 renders
+# 10:0x before batch2   heapUsed 740.9MB  rss 1264.9MB
+# 10:0x +4s after       heapUsed 812.5MB  rss 1276.7MB   (heap +71.6, rss +11.8)
+# 10:14:03 +5min idle   heapUsed 890.5MB  rss 1277.5MB   (heap +78 more while idle)

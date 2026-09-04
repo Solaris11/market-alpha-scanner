@@ -3,59 +3,89 @@
 Written 2026-09-04. The 24-hour stability observation recorded the frontend
 container growing **+491 MB against a +50 MiB budget**. This is the follow-up.
 
-## What the numbers actually say
+## What I measured, and where it contradicts what I wrote first
 
-Three samples over 20 minutes today, prod `b177dea8`, container up ~8h with
-`restarts=0`:
+I wrote the first version of this document from reading the code. Then I
+measured, and the measurement moved the answer. Both halves are below, because
+the correction is the useful part.
 
-| UTC | frontend | hot-api |
+### Idle is completely flat
+
+Three samples across 7h11m on prod `b177dea8`, container up 15h, `restarts=0`:
+
+| UTC | frontend |
+|---|---:|
+| 02:49:12 | 1.116 GiB |
+| 06:28:25 | 1.117 GiB |
+| 10:00:13 | 1.117 GiB |
+
+Nothing grows with wall-clock time. Whatever produced +491 MB needs traffic.
+
+### The controlled experiment
+
+Read-only, one already-authenticated test account, on production.
+
+**14 `/api/discovery` fetches** (both packet modes, 7 each). Every one a cache
+hit at 57–71 ms and identical byte counts. Memory afterwards: **1.117 GiB, no
+change.** So the discovery cache path costs nothing when it hits.
+
+**8 full `/terminal` renders**, 106 MB of HTML, ~2.9 s each. Memory afterwards:
+**1.222 GiB — plus 105 MB.** Roughly 13 MB retained per render, against a
+13.8 MB document. Still 1.222 GiB after 2.5, 5 and 7 minutes idle. Not
+released.
+
+**8 more renders**, watching `/api/health` rather than the container:
+
+| | heapUsed | rss |
 |---|---:|---:|
-| 02:36:39 | 1.185 GiB | 143.2 MiB |
-| 02:49:12 | 1.116 GiB | 144.5 MiB |
-| 02:49:03 (later poll) | 1.117 GiB | 147.2 MiB |
+| before | 740.9 MB | 1264.9 MB |
+| +4 s after | 812.5 MB | 1276.7 MB |
+| +5 min idle | **890.5 MB** | 1277.5 MB |
 
-**It went down.** Whatever is happening is not a straightforward monotonic
-leak — GC does release, and the container plateaus around 1.11–1.19 GiB at the
-current (very low) traffic level. Read the +491 MB as a rising high-water mark,
-not as 491 MB of permanently retained objects. Those need different fixes and I
-do not yet have the data to say which one this is.
+rss barely moved the second time because the arena was already grown. heapUsed
+rose 71.6 MB during the batch and a further 78 MB while idle afterwards — which
+is consistent with the discovery background refresh firing when the 10-minute
+TTL expired on the entries the load had just touched.
 
-Also worth knowing: **neither frontend container has a memory limit.**
-`docker inspect` reports `mem_limit=0` on both. On a 31 GB host there is no
-cgroup ceiling, so nothing forces GC pressure and nothing bounds the blast
-radius if it ever does run away.
+### What this establishes, and what it does not
 
-## What I found by reading
+**Established.** Growth is proportional to request volume, not to time. About
+13 MB is retained per `/terminal` render and is not returned over the following
+seven minutes. At that rate, +491 MB is roughly 38 page loads — which is an
+entirely ordinary day for this site.
 
-Every module-level cache in the frontend caps its entries and evicts the
-oldest — market memory at 160, decision replay, paper data, developer
-intelligence, saved scans, the discovery route's body and response caches.
-With one exception.
+**Not established.** Whether those bytes are live or garbage that has not been
+collected. Separating them needs a forced major GC, which needs `--expose-gc`,
+which is a deploy. `heapUsed` climbing *during idle* is suggestive of the
+background refresh allocating rather than of a pure leak, but that is a
+plausible reading, not a demonstrated one.
 
-`discoverySystemCache` in `src/lib/server/discovery-intelligence.ts`:
+### The claim I am withdrawing
 
-- keyed `user:<id>:<packetMode>`, so it grows with the number of distinct
-  accounts that have ever loaded discovery, **two entries each** (the client
-  fetches an initial packet then a full one, by design);
-- **no size cap and no sweep**. `expiresAt` and `staleUntil` govern freshness,
-  not residency, so nothing ever left the map;
-- its values are the largest in the process: each entry holds the resolved
-  system object graph *and* its serialization, and a serialized system is
-  megabytes of string — `/terminal`'s flight payload measures 12.2M characters
-  today;
-- the background refresh eagerly built **both** `serializedFull` and
-  `serializedInitial` on every refresh, so each entry also carried a
-  multi-megabyte string for a packet mode that key never serves.
+The first version of this document said `discoverySystemCache` entries hold
+"megabytes of string" and that 66 of them was the right order of magnitude for
++491 MB. **That was wrong, and I inferred it rather than measuring it.** The
+serialized discovery system measures **255 KB** for the full packet and 23 KB
+for the initial one — I read those off the responses. Sixty-six entries is
+therefore on the order of 20 MB, not hundreds. I had confused the size of the
+discovery system with the size of `/terminal`'s whole RSC payload, which is a
+different and much larger object.
 
-With 33 user rows on the database, the ceiling is roughly 66 entries of
-multi-megabyte values. That is the right order of magnitude for the observed
-number, which is why it is the leading hypothesis — but order-of-magnitude
-agreement is not proof, and I want to be clear that I have not demonstrated
-causation.
+The cache is still unbounded and still worth capping — an unbounded cache is a
+defect whatever its current size — but **it is not the explanation for
++491 MB**, and `f6d9e1ea` should not be sold as the memory fix.
 
-`f6d9e1ea` bounds it (cap 24, stale-first eviction, a pin for entries with a
-refresh in flight) and makes the serialization lazy again. Neither change
-alters what is computed; both only affect what is retained.
+### What this points at instead
+
+The cost scales with the size of the document being rendered. `/terminal`
+produces 13.8 MB per response and retains about 13 MB of it.
+
+That makes **Stage 3 the memory lever**, which nobody had connected to memory:
+it removes 4.7 MB of `shockEvents` from a 13.8 MB document, a 34% reduction in
+the thing that correlates with the cost. If the per-render retention is
+proportional to payload size, Stage 3 should cut it by about a third. That is a
+prediction, and the experiment above is repeatable, so it is testable rather
+than hopeful — **re-run exactly this experiment after Stage 3 deploys.**
 
 ## The instrumentation that will settle it
 
@@ -76,6 +106,10 @@ explanation, and it costs a `Map.size` read on a health poll.
 **Precondition:** `work/autonomous-after-b177` must be deployed, otherwise
 `/api/health` does not carry the new fields and the window measures nothing new.
 
+0. **Re-run the controlled experiment.** Baseline, 8 `/terminal` renders,
+   measure, wait 7 minutes, measure again. Compare the per-render retention
+   against the ~13 MB measured on `b177dea8`. This is the single most
+   informative reading in the whole plan and it takes four minutes.
 1. **Baseline at t=0.** Record `rss`, `heapTotal`, `heapUsed`, `external`, and
    each cache count immediately after the container starts. The container
    healthcheck already polls `/api/health` every 30s and the stability observer
@@ -84,8 +118,9 @@ explanation, and it costs a `Map.size` read on a health poll.
    pattern is the right vehicle; it already writes JSON lines and it already
    has a supervised transient-unit form on the relay's allowlist.
 3. **Read it as three questions, in order:**
-   - Does `discoverySystem` sit at its cap of 24? If it never reaches the cap,
-     the cache was never the ceiling and the hypothesis is dead.
+   - Does `discoverySystem` sit at its cap of 24? Given the measurement above
+     this is now the *least* likely explanation; the counter is there to close
+     it out rather than to confirm it.
    - Does `rss` still climb while cache counts are flat? Then it is outside the
      caches, and the next suspect is fragmentation from large-string churn.
    - Does `heapTotal − heapUsed` widen while `heapUsed` stays flat? That is

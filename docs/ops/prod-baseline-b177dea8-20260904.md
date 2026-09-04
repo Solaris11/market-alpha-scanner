@@ -120,3 +120,35 @@ market-alpha-frontend                        running  Up 8 hours (healthy)
 market-alpha-frontend-hot-api                running  Up 8 hours (healthy)
 market-alpha-scanner-market-alpha-postgres-1 running  Up 2 months (healthy)
 ```
+
+## Addendum, 10:00–10:14 UTC: a memory measurement that changed the diagnosis
+
+A read-only load experiment on this same deploy, as one already-authenticated
+test account.
+
+| Step | frontend memory |
+|---|---:|
+| idle, three samples across 7h11m | 1.116 / 1.117 / 1.117 GiB |
+| after 14 `/api/discovery` fetches, all cache hits | 1.117 GiB — unchanged |
+| after 8 full `/terminal` renders (106 MB of HTML) | **1.222 GiB — plus 105 MB** |
+| 2.5, 5 and 7 minutes idle afterwards | 1.222 GiB — not released |
+
+About 13 MB retained per render, against a 13.8 MB document. At that rate the
++491 MB the 24-hour observation recorded is roughly 38 page loads, which is an
+ordinary day here.
+
+This **withdraws** the explanation I committed a few hours earlier.
+`discoverySystemCache` being unbounded is real, but I had assumed its entries
+were megabytes each; measured, the serialized discovery system is 255 KB for
+the full packet and 23 KB for the initial one. Sixty-six entries is ~20 MB, not
+hundreds. Capping it is still right — an unbounded cache is a defect whatever
+its size — but it is not the cause.
+
+What the numbers point at instead is the per-render cost of the document
+itself, which makes **Stage 3 the memory lever**: it removes 4.7 MB of
+`shockEvents` from a 13.8 MB response, and if retention tracks payload size it
+should cut this by about a third. That is a prediction, and the experiment
+above is four minutes long and repeatable, so re-run it after Stage 3 deploys
+rather than taking my word for it.
+
+Full detail in `docs/ops/memory-follow-up-plan.md`.
