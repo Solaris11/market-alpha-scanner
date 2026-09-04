@@ -100,8 +100,18 @@ current deploy. This is the number to re-check after any deploy.
 | `/api/user/workspace-preferences` | 1 |
 
 `/api/user/watchlist` at 2 is the duplicate `345997e0` fixes; it should read 1
-after that commit ships. `/api/discovery` at 2 is a second duplicate that has
-not been investigated and is not covered by any commit on either branch.
+after that commit ships.
+
+`/api/discovery` at 2 is **not** a duplicate, and I am correcting my own first
+reading of it. `GlobalIntelligenceDiscovery` fetches the initial packet, then
+requests `?packet=full` only when the initial one is a strict subset of the
+universe. That is deliberate progressive loading and both responses are used.
+It should stay at 2.
+
+It is also the reason `discoverySystemCache` holds two entries per account
+rather than one -- the keys are `user:<id>:initial` and `user:<id>:full` -- which
+is the cache the memory work bounds. The two findings corroborate rather than
+conflict.
 
 ## Container state at capture
 
