@@ -18,7 +18,10 @@ function shock(overrides: Partial<ShockMovePattern> = {}): ShockMovePattern {
     averageReversal5d: -2.1,
     chaseRiskLabel: "Moderate chase risk",
     chaseRiskScore: 42,
-    chaseSuccessRate: 58,
+    // Fractions, because rate() and the shock_move_patterns columns are
+    // fractions. This fixture said 58 and 64 for a long time, which is the
+    // reason "chase success is limited at 0%" shipped and no test noticed.
+    chaseSuccessRate: 0.58,
     commonFailureConditions: ["failed follow-through after extended gaps"],
     commonPreconditions: ["volatility compression before expansion"],
     currentSimilarityScore: 68,
@@ -36,7 +39,7 @@ function shock(overrides: Partial<ShockMovePattern> = {}): ShockMovePattern {
     medianUpsideShock: 9.4,
     opportunityScore: 74,
     opportunityState: "High Volatility Watch",
-    pullbackSuccessRate: 64,
+    pullbackSuccessRate: 0.64,
     reliabilityScore: 70,
     researchEntryZone: "$100.00-$103.00",
     shockEvents: shockEvents(),

@@ -56,6 +56,33 @@ function heavilyShockedBars(): ShockMovePriceBar[] {
   return bars;
 }
 
+/**
+ * The bar shape that exposes the strip.
+ *
+ * A cleanly alternating shock pattern reaches the same 80-event cap but its
+ * calibration lands identically with or without the preconditions. This one
+ * mixes shock direction with the drift, and differs on 5 of 12
+ * setup/decision combinations.
+ */
+function mixedShockBars(): ShockMovePriceBar[] {
+  const bars: ShockMovePriceBar[] = [];
+  let close = 100;
+  for (let index = 0; index < 260; index += 1) {
+    close += index % 9 === 0 ? 0.2 : 0.05;
+    const shock = index % 3 === 0;
+    if (shock) close *= index % 2 ? 1.09 : 0.93;
+    bars.push({
+      close,
+      date: new Date(Date.UTC(2025, 0, 1 + index)).toISOString(),
+      high: close * 1.012,
+      low: close * 0.988,
+      open: close * 0.995,
+      volume: shock ? 3_500_000 : 1_000_000 + index * 1_000,
+    });
+  }
+  return bars;
+}
+
 function row(symbol: string, seed: number): OpportunityViewModel {
   return {
     assetType: "Equity",
@@ -152,8 +179,30 @@ describe("terminal actionability map", () => {
    * So the server map is what puts those strings back. Until it is deployed,
    * production is rendering the degraded text.
    */
-  test("stripped rows change the rendered guidance once a symbol has real shock history", () => {
-    const heavy = row("AMD", -1);
+  /**
+   * Assertion 6 from the plan, and the one I had to correct.
+   *
+   * The first version asserted this difference appears whenever a symbol has
+   * "real shock history", using the heavy fixture below. It did -- until
+   * fixing the success-rate unit bug moved pullbackQuality by about six
+   * points, that fixture stopped straddling the threshold it had been sitting
+   * on, and the assertion failed. Correctly: it was pinning one fixture's
+   * accident as a general law.
+   *
+   * Measured properly, the divergence needs the event list at its 80-event
+   * cap and a BREAKOUT, MOMENTUM or CONTINUATION setup -- 5 of 12
+   * setup/decision combinations on mixedShockBars, and none at all on a
+   * cleanly alternating shape. Real, and narrow. Narrow is why it shipped
+   * unnoticed, and why the server map is worth having anyway.
+   */
+  test("recomputing from stripped rows changes the guidance on the shapes that expose it", () => {
+    const heavy = {
+      ...row("AMD", 0),
+      raw: { final_score: 68, price: 118, setup_type: "BREAKOUT", symbol: "AMD" },
+      shockPattern: buildShockMovePattern({ bars: mixedShockBars(), lookbackWindow: "1y", symbol: "AMD" }),
+    } as unknown as OpportunityViewModel;
+    assert.equal(heavy.shockPattern?.shockEvents.length, 80, "the exposure needs the event list at its cap");
+
     const stripped = stripShockEventPreconditions([heavy])[0];
     assert.notDeepEqual(
       actionabilityCardFor(stripped),
@@ -163,7 +212,11 @@ describe("terminal actionability map", () => {
   });
 
   test("the server map gives a stripped row the text the unstripped row would have produced", () => {
-    const heavy = row("AMD", -1);
+    const heavy = {
+      ...row("AMD", 0),
+      raw: { final_score: 68, price: 118, setup_type: "BREAKOUT", symbol: "AMD" },
+      shockPattern: buildShockMovePattern({ bars: mixedShockBars(), lookbackWindow: "1y", symbol: "AMD" }),
+    } as unknown as OpportunityViewModel;
     const stripped = stripShockEventPreconditions([heavy])[0];
     const map = buildTerminalActionabilityMap([heavy]);
     assert.deepEqual(actionabilityCardFor(stripped, map), actionabilityCardFor(heavy));

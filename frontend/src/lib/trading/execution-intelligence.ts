@@ -470,10 +470,34 @@ function entryQuality(row: OpportunityViewModel, input: ExecutionInputs): number
   return Math.round(clamp(score));
 }
 
+/**
+ * shockPattern success rates are stored as fractions; everything in this file
+ * reads and prints percentages.
+ *
+ * `rate()` in shock-move.ts returns `matched / total`, the column holds the
+ * same (verified on prod: chase_success_rate spans 0-1 and
+ * pullback_success_rate 0-0.6 across all 1,134 stored patterns), and
+ * shock-move's own chaseRiskControl already writes `chaseSuccessRate * 100`.
+ * Four sites here did not, and the consequences were not cosmetic:
+ *
+ *   - Math.round(0.2667) is 0, so every card read "chase success is limited at
+ *     0%" while the real figure was 24-58%.
+ *   - `chaseSuccessRate < 45` is true for every possible fraction, so the
+ *     chase-risk warning fired on every symbol unconditionally.
+ *   - pullbackQuality weighted the fraction 0.20 against terms on 0-100,
+ *     costing roughly six points wherever a shock pattern exists.
+ *
+ * One named conversion at the boundary, so the unit is stated once instead of
+ * being remembered at four call sites.
+ */
+function successRatePercent(rate: number | null | undefined): number | null {
+  return typeof rate === "number" && Number.isFinite(rate) ? rate * 100 : null;
+}
+
 function pullbackQuality(row: OpportunityViewModel, input: ExecutionInputs): number {
   const pullbackSetup = /PULLBACK|RETEST|RECLAIM|CORRECTION|DIP/.test(input.setupType);
   const distance = input.entryDistancePct ?? 4;
-  const shockPullback = row.shockPattern?.pullbackSuccessRate ?? null;
+  const shockPullback = successRatePercent(row.shockPattern?.pullbackSuccessRate);
   const correctionConfidence = cleanText(row.raw.correction_confidence, "").toLowerCase();
   let score = weightedAverage([
     [100 - Math.abs(distance - 1.6) * 10, 0.26],
@@ -597,7 +621,8 @@ function reasonLines(row: OpportunityViewModel, input: ExecutionInputs, scores: 
   if (scores.pullbackQualityScore >= 68) lines.push("Pullback structure is the cleaner execution path in the current context.");
   if (scores.breakoutQualityScore >= 70) lines.push("Breakout evidence is supported by trend, volume, or shock-memory context.");
   if (scores.confirmationQualityScore >= 66) lines.push("Confirmation evidence is above the current universe baseline.");
-  if (row.shockPattern && row.shockPattern.pullbackSuccessRate !== null) lines.push(`Large-move history shows ${Math.round(row.shockPattern.pullbackSuccessRate)}% pullback-success context after comparable moves.`);
+  const pullbackPercent = successRatePercent(row.shockPattern?.pullbackSuccessRate);
+  if (pullbackPercent !== null) lines.push(`Large-move history shows ${Math.round(pullbackPercent)}% pullback-success context after comparable moves.`);
   if (input.macroAlignment >= 64) lines.push("Macro or sector context is not fighting the timing layer.");
   if (scores.timingQualityScore >= 70) lines.push("Timing quality is above the current execution threshold.");
   return lines.slice(0, 4);
@@ -608,8 +633,8 @@ function riskLines(row: OpportunityViewModel, input: ExecutionInputs, scores: { 
   if (scores.chaseRiskScore >= 68) lines.push("Chase risk is elevated; cleaner execution likely requires pullback or confirmation.");
   if (scores.volatilityExecutionRiskScore >= 66) lines.push("Volatility is unstable enough to reduce clean execution quality.");
   if ((input.entryDistancePct ?? 0) >= 5) lines.push("Price is extended from the preferred research entry context.");
-  const chaseSuccessRate = row.shockPattern?.chaseSuccessRate ?? null;
-  if (chaseSuccessRate !== null && chaseSuccessRate < 45) lines.push(`Historical chase success is limited at ${Math.round(chaseSuccessRate)}% in comparable shock samples.`);
+  const chaseSuccessPercent = successRatePercent(row.shockPattern?.chaseSuccessRate);
+  if (chaseSuccessPercent !== null && chaseSuccessPercent < 45) lines.push(`Historical chase success is limited at ${Math.round(chaseSuccessPercent)}% in comparable shock samples.`);
   if (row.fragility >= 70) lines.push("Structural fragility is elevated, so timing errors can matter more.");
   if (input.staleData) lines.push("Data freshness requires confirmation before execution context is trusted.");
   return lines.slice(0, 4);
@@ -624,8 +649,8 @@ function historicalExecutionContextFor(row: OpportunityViewModel): string[] {
     ];
   }
   const lines = [
-    pattern.pullbackSuccessRate === null ? "Pullback success sample is still limited." : `Comparable shocks historically favored pullback entries ${Math.round(pattern.pullbackSuccessRate)}% of the time.`,
-    pattern.chaseSuccessRate === null ? "Chase success sample is still limited." : `Chasing comparable shocks worked ${Math.round(pattern.chaseSuccessRate)}% of the time, so chase risk remains visible.`,
+    pattern.pullbackSuccessRate === null ? "Pullback success sample is still limited." : `Comparable shocks historically favored pullback entries ${Math.round(successRatePercent(pattern.pullbackSuccessRate) ?? 0)}% of the time.`,
+    pattern.chaseSuccessRate === null ? "Chase success sample is still limited." : `Chasing comparable shocks worked ${Math.round(successRatePercent(pattern.chaseSuccessRate) ?? 0)}% of the time, so chase risk remains visible.`,
     pattern.timingValidation?.summary ?? null,
     `Historical entry context: ${pattern.researchEntryZone}.`,
     `Historical exit context: ${pattern.historicalExitZone}.`,
