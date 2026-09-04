@@ -127,6 +127,19 @@ export type ShockMovePattern = {
    */
   shockEventCount: number;
   /**
+   * Completed events among shockEvents, and the calendar span the events cover,
+   * carried separately for exactly the reason shockEventCount is.
+   *
+   * evidence-maturity derives outcome coverage and historical depth by walking
+   * the array. On /terminal the array is gone, and `?? []` made those two
+   * degrade quietly to 0% coverage and 0 days -- which drops a card from
+   * "Developing Evidence" (score 79) to "Limited Evidence" (score 29). A guard
+   * that stops a crash is not the same as a guard that keeps the number.
+   */
+  shockCompletedEventCount: number;
+  /** Null when fewer than two events carry a parseable date. */
+  shockEventSpanDays: number | null;
+  /**
    * Optional because /terminal ships rows without it.
    *
    * Optional rather than an empty array on purpose: `[]` compiles everywhere
@@ -285,7 +298,9 @@ export function buildShockMovePattern(input: BuildShockMovePatternInput): ShockM
     pullbackSuccessRate,
     reliabilityScore: Math.round(calibratedReliability),
     researchEntryZone: zones.researchEntryZone,
+    shockCompletedEventCount: completedEventCount(cappedEvents),
     shockEventCount: cappedEvents.length,
+    shockEventSpanDays: eventSpanDays(cappedEvents),
     shockEvents: cappedEvents,
     symbol: input.symbol.trim().toUpperCase(),
     timingValidation,
@@ -293,6 +308,17 @@ export function buildShockMovePattern(input: BuildShockMovePatternInput): ShockM
     upsideShockCount: upsideEvents.length,
     upsideShockScore: Math.round(upsideScore),
   };
+}
+
+/** Both summaries are computed from the same array the count is, so none can drift. */
+function completedEventCount(events: ShockMoveEvent[]): number {
+  return events.filter((event) => event.outcomeStatus === "complete").length;
+}
+
+function eventSpanDays(events: ShockMoveEvent[]): number | null {
+  const timestamps = events.map((event) => Date.parse(event.eventDate)).filter(Number.isFinite);
+  if (timestamps.length < 2) return null;
+  return Math.round((Math.max(...timestamps) - Math.min(...timestamps)) / 86_400_000);
 }
 
 export function shockPatternFromDbRow(row: Record<string, unknown>): ShockMovePattern | null {
@@ -333,7 +359,9 @@ export function shockPatternFromDbRow(row: Record<string, unknown>): ShockMovePa
     pullbackSuccessRate: optionalNumeric(row.pullback_success_rate),
     reliabilityScore: numeric(row.reliability_score, 0),
     researchEntryZone: textValue(row.research_entry_zone) ?? "Research entry zone unavailable",
+    shockCompletedEventCount: completedEventCount(storedEvents),
     shockEventCount: storedEvents.length,
+    shockEventSpanDays: eventSpanDays(storedEvents),
     shockEvents: storedEvents,
     symbol: symbol.toUpperCase(),
     timingValidation: parseTimingValidation(row.metrics),

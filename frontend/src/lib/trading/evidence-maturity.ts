@@ -100,7 +100,9 @@ export function buildEvidenceMaturityFromSignal(
     row.market_memory_sample_size,
     memory?.evidence.sampleSize,
   ]);
-  const shockSample = shock ? shock.upsideShockCount + shock.downsideShockCount + (shock.shockEvents?.length ?? 0) : null;
+  // shockEventCount, not shockEvents.length: on /terminal the array is stripped
+  // and the length would silently contribute 0, halving the sample.
+  const shockSample = shock ? shock.upsideShockCount + shock.downsideShockCount + shock.shockEventCount : null;
   const evidenceSampleSize = explicitSample ?? shockSample ?? 0;
   const historicalDepthDays = firstFinite([
     row.historical_depth_days,
@@ -217,6 +219,9 @@ function limitationsFor(input: { calibrationDrift: number; evidenceSampleSize: n
 }
 
 function shockDepthDays(pattern: ShockMovePattern): number | null {
+  // Precomputed on the server so it survives the /terminal strip; the array is
+  // still the source when a caller built the pattern in-process.
+  if (pattern.shockEventSpanDays !== null && pattern.shockEventSpanDays !== undefined) return pattern.shockEventSpanDays;
   const timestamps = (pattern.shockEvents ?? []).map((event) => Date.parse(event.eventDate)).filter(Number.isFinite);
   if (!timestamps.length) return null;
   const min = Math.min(...timestamps);
@@ -225,9 +230,8 @@ function shockDepthDays(pattern: ShockMovePattern): number | null {
 }
 
 function shockOutcomeCoverage(pattern: ShockMovePattern | null): number | null {
-  if (!pattern || !(pattern.shockEvents?.length ?? 0)) return null;
-  const completed = (pattern.shockEvents ?? []).filter((event) => event.outcomeStatus === "complete").length;
-  return (completed / (pattern.shockEvents?.length ?? 0)) * 100;
+  if (!pattern || !pattern.shockEventCount) return null;
+  return (pattern.shockCompletedEventCount / pattern.shockEventCount) * 100;
 }
 
 function memoryAnalogQuality(memory: MarketMemorySummary | null): number | null {

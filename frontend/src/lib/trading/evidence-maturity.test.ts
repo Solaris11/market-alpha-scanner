@@ -34,7 +34,9 @@ function shockPattern(overrides: Partial<ShockMovePattern> = {}): ShockMovePatte
     pullbackSuccessRate: 62,
     reliabilityScore: 71,
     researchEntryZone: "$102-$105",
+    shockCompletedEventCount: 2,
     shockEventCount: 2,
+    shockEventSpanDays: null,
     shockEvents: [
       { atrNormalizedMove: 2.4, eventDate: "2025-01-02", gapPercent: 1.2, maxAdverseExcursion5d: -3.1, maxFavorableExcursion5d: 8.2, moveType: "upside", outcomeStatus: "complete", preconditions: defaultPreconditions(), return1d: 8.4, return2d: 2.2, return3d: 3.1, return5d: 5.4, return10d: 7.8, returnZScore: 2.6, volumeSpikeRatio: 1.9 },
       { atrNormalizedMove: 2.1, eventDate: "2026-01-02", gapPercent: 0.8, maxAdverseExcursion5d: -4.4, maxFavorableExcursion5d: 7.1, moveType: "upside", outcomeStatus: "partial", preconditions: defaultPreconditions(), return1d: 6.2, return2d: 1.1, return3d: 2.4, return5d: null, return10d: null, returnZScore: 2.2, volumeSpikeRatio: 1.7 },
