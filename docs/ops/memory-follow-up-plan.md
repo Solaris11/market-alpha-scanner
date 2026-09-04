@@ -47,6 +47,27 @@ rose 71.6 MB during the batch and a further 78 MB while idle afterwards — whic
 is consistent with the discovery background refresh firing when the 10-minute
 TTL expired on the entries the load had just touched.
 
+### Evidence I destroyed, and should not have
+
+The 10:00 experiment left the container at 1.222 GiB with heapUsed around
+890 MB, and the open question was whether that would come back down on its own
+over the following hours. If it had, the retained bytes were garbage awaiting
+collection; if it had not, they were genuinely held. That single reading would
+have separated the two explanations without any instrumentation at all.
+
+**I deployed at 13:07 and recreated both containers, which reset the counter.**
+The question is now unanswerable for that window. It was a reasonable deploy
+and I would make it again -- the actionability fix mattered more than the
+observation -- but the sequencing was mine to choose and I did not think about
+the cost until afterwards. The stability report had even warned that a deploy
+resets the memory baseline; I had read that sentence and still walked into it.
+
+The post-deploy curve is a clean substitute in one respect and not in another:
+it starts from a known 138 MiB, which the earlier curve never had, but it has
+not yet been through a controlled load. Repeat the four-minute experiment on
+the current deploy before drawing conclusions, and this time do not schedule a
+deploy behind it.
+
 ### What this establishes, and what it does not
 
 **Established.** Growth is proportional to request volume, not to time. About

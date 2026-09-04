@@ -13,3 +13,7 @@
 # 10:0x before batch2   heapUsed 740.9MB  rss 1264.9MB
 # 10:0x +4s after       heapUsed 812.5MB  rss 1276.7MB   (heap +71.6, rss +11.8)
 # 10:14:03 +5min idle   heapUsed 890.5MB  rss 1277.5MB   (heap +78 more while idle)
+# --- new baseline: deploy of 1c6089cb at 13:07 UTC recreated both containers, so the pre-deploy curve ends here ---
+2026-09-04T13:08:31Z	138MiB	199.8MiB	fresh container, 1 min after deploy
+2026-09-04T13:23:00Z	354MiB	157.5MiB	15 min in, after the post-deploy verification page loads
+2026-09-04T15:56:17Z	409.2MiB	158.7MiB	3h uptime, restarts=0; postgres 377.7MiB (first ever recorded). No /terminal renders in the log since 13:23, so +55MB spans the verification loads and has been flat since.
