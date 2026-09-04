@@ -4,6 +4,8 @@
 // bundle anyway, so the boundary is still enforced by the runtime.
 import { monitorEventLoopDelay, type IntervalHistogram } from "node:perf_hooks";
 
+import { readCacheSizes } from "./cache-registry";
+
 /**
  * Process-level stall detection.
  *
@@ -39,7 +41,18 @@ export type EventLoopDelaySnapshot = {
 };
 
 export type ProcessHealthSnapshot = {
+  /** Live entry count per registered module-level cache. */
+  caches: Record<string, number>;
   eventLoopDelay: EventLoopDelaySnapshot;
+  /** Bytes held outside the V8 heap: large strings and buffers land here. */
+  externalMb: number;
+  /**
+   * heapTotal minus heapUsed is the fragmentation signal. A process that keeps
+   * building multi-megabyte strings holds arenas it cannot return to the OS,
+   * which reads as growing rss with a flat heapUsed -- a different problem from
+   * a retained object graph, and the two need different fixes.
+   */
+  heapTotalMb: number;
   heapUsedMb: number;
   rssMb: number;
 };
@@ -71,7 +84,10 @@ export function readEventLoopDelay(): EventLoopDelaySnapshot {
 export function readProcessHealth(): ProcessHealthSnapshot {
   const memory = process.memoryUsage();
   return {
+    caches: readCacheSizes(),
     eventLoopDelay: readEventLoopDelay(),
+    externalMb: bytesToMb(memory.external),
+    heapTotalMb: bytesToMb(memory.heapTotal),
     heapUsedMb: bytesToMb(memory.heapUsed),
     rssMb: bytesToMb(memory.rss),
   };

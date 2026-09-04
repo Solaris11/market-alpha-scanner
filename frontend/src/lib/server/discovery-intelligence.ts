@@ -1,6 +1,7 @@
 import "server-only";
 
 import { getFullRanking, getPerformanceData } from "@/lib/scanner-data";
+import { pruneCache, registerCacheSize } from "@/lib/server/cache-registry";
 import { getNarrativeMap } from "@/lib/server/narrative-intelligence";
 import { getShockMovePatternMap } from "@/lib/server/shock-move-patterns";
 import { getCurrentScanSafety } from "@/lib/server/stale-data-safety";
@@ -59,7 +60,37 @@ const DISCOVERY_SYSTEM_CACHE_TTL_MS = 10 * 60_000;
 const DISCOVERY_SYSTEM_STALE_TTL_MS = 30 * 60_000;
 
 let discoveryBaseCache: DiscoveryBaseCache | null = null;
+
+/**
+ * Keyed `user:<id>:<packetMode>`, so it grows with the number of distinct
+ * accounts that have ever loaded discovery, two entries each.
+ *
+ * Every other cache in this codebase caps its entries and drops the oldest --
+ * market memory at 160, decision replay, paper data and the discovery route
+ * body cache all do it. This one did not, and its values are the largest in
+ * the process: an entry holds the resolved system object graph AND its
+ * serialization, and a serialized system is megabytes of string. `expiresAt`
+ * and `staleUntil` govern freshness, not residency, so nothing ever left the
+ * map. That is the shape of the +491 MB the 24-hour observation recorded.
+ *
+ * The cap is deliberately generous: the point is a ceiling, not a hit-rate
+ * change. Sweeping the entries that are past their stale window first means
+ * eviction almost never touches an entry anyone would have reused.
+ */
+const DISCOVERY_SYSTEM_CACHE_MAX_ENTRIES = 24;
 const discoverySystemCache = new Map<string, DiscoverySystemCache>();
+
+registerCacheSize("discoverySystem", () => discoverySystemCache.size);
+
+function pruneDiscoverySystemCache(): void {
+  pruneCache(discoverySystemCache, {
+    maxEntries: DISCOVERY_SYSTEM_CACHE_MAX_ENTRIES,
+    // A refresh in flight still references the entry, so evicting it frees
+    // nothing and only costs the next reader a rebuild.
+    pinned: (entry) => Boolean(entry.refreshing),
+    staleUntil: (entry) => entry.staleUntil,
+  });
+}
 
 export async function loadIntelligenceDiscoverySystem(userId: string | null): Promise<IntelligenceDiscoverySystem> {
   return (await loadIntelligenceDiscoverySystemWithMeta(userId)).system;
@@ -109,6 +140,7 @@ export async function loadIntelligenceDiscoverySystemWithMeta(userId: string | n
     value,
   };
   discoverySystemCache.set(cacheKey, cacheEntry);
+  pruneDiscoverySystemCache();
 
   try {
     const system = await value;
@@ -150,15 +182,18 @@ function refreshDiscoverySystemCache(cacheKey: string, userId: string | null): v
   refresh
     .then((system) => {
       const now = Date.now();
+      // Serialize lazily. This refresh is for one packet mode -- the key says
+      // which -- and building both here meant every refreshed entry carried a
+      // multi-megabyte string for a mode that key never serves.
+      // serializedDiscoverySystem fills the one that is asked for.
       discoverySystemCache.set(cacheKey, {
         expiresAt: now + DISCOVERY_SYSTEM_CACHE_TTL_MS,
         refreshedAt: now,
         resolved: system,
-        serializedFull: serializeDiscoverySystem(system),
-        serializedInitial: serializeDiscoverySystem(systemForPacketMode(system, "initial")),
         staleUntil: now + DISCOVERY_SYSTEM_STALE_TTL_MS,
         value: Promise.resolve(system),
       });
+      pruneDiscoverySystemCache();
     })
     .catch((error: unknown) => {
       cached.refreshing = undefined;

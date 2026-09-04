@@ -5,6 +5,7 @@ import path from "node:path";
 import { cache } from "react";
 import { parse } from "csv-parse/sync";
 import { freshnessFromTimestamp, normalizedTimestamp, unavailableFreshness } from "./data-health";
+import { registerCacheSize } from "./server/cache-registry";
 import { dbQuery } from "./server/db";
 import { getScannerSignalPriceHistoryPoints } from "./server/scanner-signal-price-history";
 import { applyCorrectionMapFields } from "./trading/correction-map";
@@ -1925,6 +1926,10 @@ const SYMBOL_DETAIL_CACHE_TTL_MS = 20 * 60_000;
 const SYMBOL_DETAIL_CACHE_STALE_MS = 60 * 60_000;
 const SYMBOL_DETAIL_CACHE_MAX = 240;
 const symbolDetailCache = new Map<string, SymbolDetailCacheEntry>();
+
+// Capped at 240 already; the counter is here so the health snapshot can say
+// whether a growing rss is this cache filling or something outside the caches.
+registerCacheSize("symbolDetail", () => symbolDetailCache.size);
 
 export async function getSymbolDetail(symbol: string, period = "all"): Promise<SymbolDetail> {
   const cleaned = cleanSymbolForDetail(symbol);
