@@ -14,6 +14,7 @@ from .artifacts import save_symbol_detail_outputs
 from .cache import CacheStats, read_symbol_cache, write_symbol_cache
 from .config import DEFAULT_NEWS_LIMIT, DOWNLOAD_PERIOD, MACRO_SYMBOLS, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE, TOP_N
 from .data_fetch import batch_download, fetch_info, fetch_recent_news_items, fetch_recent_news_score
+from .decision_funnel import apply_decision_funnel, funnel_summary
 from .diagnostics import apply_scoring_diagnostics
 from .drop_reasons import ScannerAccounting, write_scanner_accounting_report
 from .event_intelligence import apply_event_intelligence, load_verified_event_context, write_verified_event_context
@@ -473,6 +474,11 @@ def scan_symbols(
     df_rank = apply_scoring_diagnostics(df_rank)
     df_rank = apply_decision_safety_gates(df_rank)
     df_rank = apply_scoring_diagnostics(df_rank)
+    # Observation only, and deliberately last: this re-derives the gates above
+    # from the finished row to record which one blocked each symbol and by how
+    # much. It adds funnel_* columns and reads nothing the decision path writes
+    # afterwards, so it cannot influence a decision.
+    df_rank = apply_decision_funnel(df_rank)
     df_rank = df_rank.sort_values(by=["final_score", "technical_score", "macro_score"], ascending=[False, False, False]).reset_index(drop=True)
     for row in df_rank.to_dict(orient="records"):
         symbol = safe_str(row.get("symbol"), "").upper()
@@ -499,6 +505,27 @@ def scan_symbols(
     df_rank.attrs["market_regime"] = market_regime
     df_rank.attrs["market_structure"] = market_structure
     df_rank.attrs["scanner_accounting"] = accounting
+
+    # The decision funnel, one line per scan. Until now the only way to learn
+    # which gate turned 238,000 weekly rows into 128 ENTERs was to reconstruct
+    # it offline from the database.
+    decision_funnel = funnel_summary(df_rank)
+    df_rank.attrs["decision_funnel"] = decision_funnel
+    if decision_funnel.get("rows"):
+        gates = " ".join(f"{gate}={count}" for gate, count in decision_funnel["by_gate"].items())
+        agreement = decision_funnel.get("agreement") or {}
+        print(
+            f"[scanner] decision funnel: rows={decision_funnel['rows']} {gates}"
+            f" | observer_agreement={agreement.get('rate')}",
+            flush=True,
+        )
+        shortfalls = decision_funnel.get("median_shortfall") or {}
+        if shortfalls:
+            print(
+                "[scanner] median shortfall: "
+                + " ".join(f"{gate}={value}" for gate, value in shortfalls.items()),
+                flush=True,
+            )
 
     if outdir is not None:
         save_symbol_detail_outputs(ranked, price_map, info_cache, outdir)
