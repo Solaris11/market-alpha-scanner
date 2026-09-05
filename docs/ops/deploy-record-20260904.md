@@ -137,3 +137,52 @@ The running image is what serves, so the image retag alone restores behaviour.
 
 `release/success-rate-units` is the one to ship next: it is prod HEAD plus a
 single commit, and it is the change that puts real numbers on the cards.
+
+---
+
+# Second deploy — 2026-09-05 23:36 UTC
+
+| | |
+|---|---|
+| **Prod HEAD** | `80197b38` — *Fix the success rates that made every card read 0%* |
+| Previous HEAD | `1c6089cb` |
+| Prod checkout branch | `release/success-rate-units` (still not `origin/main`; `origin/main` remains an ancestor, so the documented pull stays a safe no-op) |
+| Rollback tag | `rollback-20260905a` → frontend `7858b178020d`, hot-api `7b076582c365` |
+| Build gate | **passed** — `✓ Compiled successfully in 10.0s`, `docker compose build` exit 0 |
+
+## Verification
+
+| Check | Result |
+|---|---|
+| Prod HEAD | `80197b38` |
+| Containers | both healthy, `restarts=0` |
+| Logs | clean — `✓ Ready in 131ms`, no errors |
+| `/api/health` | **200** |
+| Console errors | none |
+| Network 4xx/5xx | none |
+| `/terminal` as `perf-test@tradeveto.com` | opens, premium entitlement resolved |
+| Provider/debug leakage | **0** across all six keys |
+| **Chase success percentages** | **21%, 32%, 38%, 41%, 43%** — five distinct real values |
+| Historical context lines | "worked 29–56% of the time", "pullback entries 11–30%" |
+| Actionability confirmation language | preserved — still "Early; needs confirmation", no regression |
+
+Before this deploy every card read **0%** and the risk warning fired on every
+symbol unconditionally, because a 0–1 fraction was being rounded as a
+percentage and compared against a threshold of 45. The numbers on the terminal
+are now the numbers in the database.
+
+## Rollback
+
+```bash
+cd /opt/apps/market-alpha-scanner/app
+docker tag market-alpha-scanner-market-alpha-frontend:rollback-20260905a market-alpha-scanner-market-alpha-frontend:latest
+docker tag market-alpha-scanner-market-alpha-frontend-hot-api:rollback-20260905a market-alpha-scanner-market-alpha-frontend-hot-api:latest
+docker compose --env-file .env up -d --no-build market-alpha-frontend market-alpha-frontend-hot-api
+```
+
+## What this deploy also exposes
+
+All five cards still read "Watch only: Early; needs confirmation". That is not
+a defect in this change — it is the scanner's actual decision — and it is
+exactly the complaint that opens the next piece of work: too much WAIT/WATCH,
+not enough evidenced ENTER at the right time.
