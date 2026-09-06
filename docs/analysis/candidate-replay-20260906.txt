@@ -1,0 +1,139 @@
+scan rows=353  sample with price history=40  symbols=40
+
+--- live decisions on this sample ---
+final_decision
+EXIT     22
+AVOID    13
+WATCH     5
+
+--- candidate decisions on the same rows ---
+          EXIT  22
+         AVOID  13
+         WATCH  5
+enter_already_expanded=0  (0 by construction)
+
+--- pre-expansion coverage ---
+measurable=40/40  already_expanded=0
+score  min=14.5  p25=31.7  median=38.0  p75=46.5  max=75.1
+
+--- every row, live vs candidate ---
+NVDA     score=83.7   rr=0.26   setup=AVOID        entry=OVEREXTENDED qual=AVOID        pre=47.3 expanded=False
+         live=AVOID          candidate=AVOID
+         why: Risk/reward is 0.26 against a 1.20 minimum for a none setup.
+GNW      score=77.0   rr=0.67   setup=AVOID        entry=OVEREXTENDED qual=AVOID        pre=58.9 expanded=False
+         live=AVOID          candidate=AVOID
+         why: Risk/reward is 0.67 against a 1.20 minimum for a none setup.
+AAPL     score=75.7   rr=1.84   setup=AVOID        entry=NEAR ENTRY   qual=AVOID        pre=43.0 expanded=False
+         live=WATCH          candidate=WATCH
+         why: No setup is building yet: pre-expansion reads 43 against a 45 minimum.
+INCY     score=72.8   rr=0.78   setup=AVOID        entry=NEAR ENTRY   qual=AVOID        pre=41.1 expanded=False
+         live=AVOID          candidate=AVOID
+         why: Risk/reward is 0.78 against a 1.20 minimum for a none setup.
+TXNM     score=70.8   rr=1.26   setup=AVOID        entry=STOP RISK    qual=AVOID        pre=56.1 expanded=False
+         live=AVOID          candidate=AVOID
+         why: The quality model rates this poor on its own evidence.
+HAL      score=69.9   rr=0.98   setup=AVOID        entry=OVEREXTENDED qual=AVOID        pre=31.3 expanded=False
+         live=AVOID          candidate=AVOID
+         why: Risk/reward is 0.98 against a 1.20 minimum for a none setup.
+PFE      score=68.3   rr=0.49   setup=AVOID        entry=NEAR ENTRY   qual=AVOID        pre=38.4 expanded=False
+         live=AVOID          candidate=AVOID
+         why: Risk/reward is 0.49 against a 1.20 minimum for a none setup.
+AMZN     score=67.0   rr=2.61   setup=AVOID        entry=NEAR ENTRY   qual=LOW_EDGE     pre=34.3 expanded=False
+         live=WATCH          candidate=WATCH
+         why: No setup is building yet: pre-expansion reads 34 against a 45 minimum.
+ASB      score=65.6   rr=1.11   setup=AVOID        entry=NEAR ENTRY   qual=AVOID        pre=38.4 expanded=False
+         live=AVOID          candidate=AVOID
+         why: Risk/reward is 1.11 against a 1.20 minimum for a none setup.
+SBUX     score=64.1   rr=1.04   setup=AVOID        entry=BUY ZONE     qual=AVOID        pre=40.7 expanded=False
+         live=AVOID          candidate=AVOID
+         why: Risk/reward is 1.04 against a 1.20 minimum for a none setup.
+BTC-USD  score=62.8   rr=0.29   setup=AVOID        entry=OVEREXTENDED qual=AVOID        pre=50.2 expanded=False
+         live=AVOID          candidate=AVOID
+         why: Risk/reward is 0.29 against a 1.20 minimum for a none setup.
+MTB      score=61.4   rr=1.34   setup=AVOID        entry=BUY ZONE     qual=AVOID        pre=19.8 expanded=False
+         live=WATCH          candidate=WATCH
+         why: No setup is building yet: pre-expansion reads 20 against a 45 minimum.
+ESTC     score=60.3   rr=0.89   setup=AVOID        entry=OVEREXTENDED qual=AVOID        pre=24.7 expanded=False
+         live=AVOID          candidate=AVOID
+         why: Risk/reward is 0.89 against a 1.20 minimum for a none setup.
+CHD      score=59.4   rr=1.38   setup=AVOID        entry=NEAR ENTRY   qual=AVOID        pre=23.6 expanded=False
+         live=WATCH          candidate=WATCH
+         why: No setup is building yet: pre-expansion reads 24 against a 45 minimum.
+NOW      score=58.1   rr=0.48   setup=AVOID        entry=OVEREXTENDED qual=AVOID        pre=37.2 expanded=False
+         live=AVOID          candidate=AVOID
+         why: Risk/reward is 0.48 against a 1.20 minimum for a none setup.
+HBAN     score=56.4   rr=1.92   setup=AVOID        entry=NEAR ENTRY   qual=AVOID        pre=28.7 expanded=False
+         live=WATCH          candidate=WATCH
+         why: No setup is building yet: pre-expansion reads 29 against a 45 minimum.
+WAY      score=55.2   rr=0.87   setup=AVOID        entry=BUY ZONE     qual=AVOID        pre=43.4 expanded=False
+         live=AVOID          candidate=AVOID
+         why: Risk/reward is 0.87 against a 1.20 minimum for a none setup.
+NXPI     score=53.7   rr=7.66   setup=AVOID        entry=NEAR ENTRY   qual=AVOID        pre=47.2 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+CAT      score=52.9   rr=4.81   setup=AVOID        entry=NEAR ENTRY   qual=AVOID        pre=45.5 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+ETHE     score=52.0   rr=0.28   setup=AVOID        entry=OVEREXTENDED qual=AVOID        pre=41.4 expanded=False
+         live=AVOID          candidate=AVOID
+         why: Risk/reward is 0.28 against a 1.20 minimum for a none setup.
+CHDN     score=51.5   rr=2.06   setup=AVOID        entry=NEAR ENTRY   qual=AVOID        pre=24.1 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+OUT      score=50.4   rr=6.02   setup=AVOID        entry=STOP RISK    qual=AVOID        pre=35.4 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+PANW     score=49.1   rr=0.58   setup=AVOID        entry=NEAR ENTRY   qual=AVOID        pre=14.5 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+SMCI     score=47.2   rr=0.77   setup=AVOID        entry=OVEREXTENDED qual=AVOID        pre=64.8 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+GLOB     score=46.5   rr=0.56   setup=AVOID        entry=BUY ZONE     qual=AVOID        pre=56.4 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+AFRM     score=45.7   rr=1.82   setup=AVOID        entry=OVEREXTENDED qual=AVOID        pre=36.3 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+GLD      score=45.1   rr=1.64   setup=AVOID        entry=BUY ZONE     qual=AVOID        pre=36.0 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+ARM      score=43.4   rr=6.11   setup=AVOID        entry=NEAR ENTRY   qual=AVOID        pre=58.4 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+MDB      score=42.8   rr=2.23   setup=AVOID        entry=BUY ZONE     qual=AVOID        pre=18.5 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+HII      score=41.3   rr=5.78   setup=AVOID        entry=STOP RISK    qual=AVOID        pre=27.4 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+NKE      score=40.4   rr=4.93   setup=AVOID        entry=NEAR ENTRY   qual=AVOID        pre=33.2 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+CELH     score=39.0   rr=2.42   setup=AVOID        entry=BUY ZONE     qual=AVOID        pre=46.2 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+BIRK     score=37.5   rr=10.49  setup=AVOID        entry=BUY ZONE     qual=AVOID        pre=37.7 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+COIN     score=36.4   rr=0.42   setup=AVOID        entry=NEAR ENTRY   qual=AVOID        pre=37.3 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+DKNG     score=34.0   rr=2.25   setup=AVOID        entry=OVEREXTENDED qual=AVOID        pre=41.4 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+QURE     score=30.5   rr=0.38   setup=AVOID        entry=BUY ZONE     qual=AVOID        pre=75.1 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+WOLF     score=27.1   rr=6.56   setup=AVOID        entry=BUY ZONE     qual=AVOID        pre=31.1 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+IONS     score=23.6   rr=6.17   setup=AVOID        entry=NEAR ENTRY   qual=AVOID        pre=31.8 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+OKLO     score=18.3   rr=3.54   setup=AVOID        entry=OVEREXTENDED qual=AVOID        pre=36.2 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
+QBTS     score=11.7   rr=8.28   setup=AVOID        entry=NEAR ENTRY   qual=AVOID        pre=48.9 expanded=False
+         live=EXIT           candidate=EXIT
+         why: The trend model is on a sell signal, so there is nothing to enter.
