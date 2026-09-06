@@ -14,6 +14,7 @@ from .artifacts import save_symbol_detail_outputs
 from .cache import CacheStats, read_symbol_cache, write_symbol_cache
 from .config import DEFAULT_NEWS_LIMIT, DOWNLOAD_PERIOD, MACRO_SYMBOLS, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE, TOP_N
 from .data_fetch import batch_download, fetch_info, fetch_recent_news_items, fetch_recent_news_score
+from .candidate_decision import apply_candidate_decision, candidate_config, candidate_summary
 from .decision_funnel import apply_decision_funnel, funnel_summary
 from .pre_expansion import apply_pre_expansion
 from .shadow_decision import apply_shadow_decision, shadow_summary
@@ -491,6 +492,12 @@ def scan_symbols(
     # be compared on matured forward returns later. Writes shadow_* columns and
     # nothing else; the live rule is unchanged whatever the mode is set to.
     df_rank = apply_shadow_decision(df_rank)
+    # The candidate engine. Unlike the three above it *can* change
+    # final_decision -- but only when SCANNER_DECISION_MODE=candidate, which
+    # defaults to "current". Deploying this code is therefore not the rollout;
+    # setting that variable is, and it is meant to stay unset until the
+    # candidate_* columns have matured forward returns behind them.
+    df_rank = apply_candidate_decision(df_rank)
     df_rank = df_rank.sort_values(by=["final_score", "technical_score", "macro_score"], ascending=[False, False, False]).reset_index(drop=True)
     for row in df_rank.to_dict(orient="records"):
         symbol = safe_str(row.get("symbol"), "").upper()
@@ -545,6 +552,19 @@ def scan_symbols(
         print(
             f"[scanner] shadow rule={shadow['rule']} live_enter={shadow['live_enter']}"
             f" shadow_enter={shadow['shadow_enter']} differs={shadow['differs']}",
+            flush=True,
+        )
+
+    candidate = candidate_summary(df_rank)
+    df_rank.attrs["candidate_decision_summary"] = candidate
+    if candidate.get("rows"):
+        mode = candidate_config().mode
+        by_decision = " ".join(f"{name}={count}" for name, count in (candidate.get("by_decision") or {}).items())
+        print(
+            f"[scanner] candidate mode={mode} rows={candidate['rows']} {by_decision}"
+            # Should be 0 by construction. A non-zero value means the chase
+            # discriminator has a hole and the candidate must not be promoted.
+            f" | enter_already_expanded={candidate['enter_already_expanded']}",
             flush=True,
         )
 
