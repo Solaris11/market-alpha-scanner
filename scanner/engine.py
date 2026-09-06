@@ -15,6 +15,7 @@ from .cache import CacheStats, read_symbol_cache, write_symbol_cache
 from .config import DEFAULT_NEWS_LIMIT, DOWNLOAD_PERIOD, MACRO_SYMBOLS, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE, TOP_N
 from .data_fetch import batch_download, fetch_info, fetch_recent_news_items, fetch_recent_news_score
 from .decision_funnel import apply_decision_funnel, funnel_summary
+from .shadow_decision import apply_shadow_decision, shadow_summary
 from .diagnostics import apply_scoring_diagnostics
 from .drop_reasons import ScannerAccounting, write_scanner_accounting_report
 from .event_intelligence import apply_event_intelligence, load_verified_event_context, write_verified_event_context
@@ -479,6 +480,11 @@ def scan_symbols(
     # much. It adds funnel_* columns and reads nothing the decision path writes
     # afterwards, so it cannot influence a decision.
     df_rank = apply_decision_funnel(df_rank)
+    # Also observation only. Evaluates the alternative entry rule the holdout
+    # study proposed and records its answer beside the live one, so the two can
+    # be compared on matured forward returns later. Writes shadow_* columns and
+    # nothing else; the live rule is unchanged whatever the mode is set to.
+    df_rank = apply_shadow_decision(df_rank)
     df_rank = df_rank.sort_values(by=["final_score", "technical_score", "macro_score"], ascending=[False, False, False]).reset_index(drop=True)
     for row in df_rank.to_dict(orient="records"):
         symbol = safe_str(row.get("symbol"), "").upper()
@@ -526,6 +532,15 @@ def scan_symbols(
                 + " ".join(f"{gate}={value}" for gate, value in shortfalls.items()),
                 flush=True,
             )
+
+    shadow = shadow_summary(df_rank)
+    df_rank.attrs["shadow_decision_summary"] = shadow
+    if shadow.get("rows"):
+        print(
+            f"[scanner] shadow rule={shadow['rule']} live_enter={shadow['live_enter']}"
+            f" shadow_enter={shadow['shadow_enter']} differs={shadow['differs']}",
+            flush=True,
+        )
 
     if outdir is not None:
         save_symbol_detail_outputs(ranked, price_map, info_cache, outdir)
