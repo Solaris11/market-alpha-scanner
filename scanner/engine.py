@@ -15,6 +15,7 @@ from .cache import CacheStats, read_symbol_cache, write_symbol_cache
 from .config import DEFAULT_NEWS_LIMIT, DOWNLOAD_PERIOD, MACRO_SYMBOLS, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE, TOP_N
 from .data_fetch import batch_download, fetch_info, fetch_recent_news_items, fetch_recent_news_score
 from .decision_funnel import apply_decision_funnel, funnel_summary
+from .pre_expansion import apply_pre_expansion
 from .shadow_decision import apply_shadow_decision, shadow_summary
 from .diagnostics import apply_scoring_diagnostics
 from .drop_reasons import ScannerAccounting, write_scanner_accounting_report
@@ -479,6 +480,11 @@ def scan_symbols(
     # from the finished row to record which one blocked each symbol and by how
     # much. It adds funnel_* columns and reads nothing the decision path writes
     # afterwards, so it cannot influence a decision.
+    # Forward-looking setup detection, also observation only. Every existing
+    # expansion feature is backward-looking, so this is the first thing in the
+    # pipeline that can distinguish a base about to resolve from one that
+    # already has. It writes pre_expansion_* columns and gates nothing.
+    df_rank = apply_pre_expansion(df_rank, price_map)
     df_rank = apply_decision_funnel(df_rank)
     # Also observation only. Evaluates the alternative entry rule the holdout
     # study proposed and records its answer beside the live one, so the two can
