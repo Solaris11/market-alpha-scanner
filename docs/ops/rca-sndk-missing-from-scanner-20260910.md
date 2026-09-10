@@ -205,6 +205,65 @@ coherent read of a stock up 33× in twelve months, not a malfunction.
 `test_the_sndk_case_reproduced` ("the exact production state: everything present
 except SNDK").
 
+## Follow-up: the 21:30 full scan on the rebuilt image
+
+The rebuild moved the scanner three months of code in one step as an incident
+fix, and the fast scan does not exercise `--run-analysis`. This was the first
+full scan on the new image and it was watched deliberately.
+
+**2026-09-10 21:30:01 → 21:36:52 UTC. `Result=success`, `ExecMainStatus=0`,
+`NRestarts=0`. 411 s wall, 405.9 s by the scanner's own timer.**
+
+Image identity verified from the running container rather than its tag:
+
+```
+container_image=sha256:c4eb528ca7859333c1ebba5a1cfdc00a6b7971359a87b5bf1522e05534d9d96c
+```
+
+That is byte-identical to `:latest`, and `rollback-20260910a`
+(`sha256:c821887f…`, 2026-06-10) is untouched.
+
+| Check | Result |
+|---|---|
+| Universe | `[universe] selected 500 symbols` |
+| Required-symbols guard | **no WARNING line** — all 14 present, SNDK included |
+| Accounting | `selected=500 accounted=500 ranked=353 unknown=0` |
+| Ranked rows | 353, inside the 351–354 fast-scan band |
+| Decision spread | EXIT 214 · AVOID 92 · WATCH 40 · WAIT_PULLBACK 7 = 353 |
+| Errors / exceptions | none; no traceback |
+| Analysis phase | `forward_returns.csv` 1.3 MB + calibration outputs at 21:36; **5,371 `forward_returns` rows written to the database at 21:36:44** |
+| Timers after | fast-scan ran again at 21:40:07; full-scan next Fri 21:30; `run.lock` held by the live 21:40 run, not stale |
+
+SNDK left a trace in all three places it should:
+
+```
+scanner_drop_reasons.csv:118  117,SNDK,ranked,ranked and included in full_ranking.csv,395,...,alpaca,...,47.65
+full_ranking.csv:153          SNDK,Sandisk Corporation,EQUITY,Technology,Computer Hardware,1691.695,...
+scanner_signals               SNDK | AVOID | 47.65 | AVOID | OVEREXTENDED | AVOID | rr 3.09 | 1691.695 | 21:35:00
+```
+
+`/symbol/SNDK` now renders **Fresh** rather than the "Slightly stale" it showed
+at 14:07: $1,691.70, DECISION AVOID, Score 48 — matching the database row
+exactly. Over the day SNDK accumulated 31 signal rows and 260 price bars from a
+standing start of zero.
+
+Two observations that are not faults:
+
+- **Four symbols log provider warnings** — ACLX, APLS, FOLD and FDP return
+  "possibly delisted; no price data found" from Yahoo. These are warnings, not
+  exceptions, and they are accounted for in the drop-reason ledger rather than
+  vanishing. Worth a separate universe-hygiene pass; unrelated to this incident.
+- **SNDK still has 0 `forward_returns` rows.** Expected: forward returns need a
+  prior signal date and a maturation window, and SNDK's first signal is today.
+  It will populate from tomorrow.
+
+Housekeeping left behind: `runtime/scanner_output/dryrun-20260910{a,b,c}` are
+this investigation's isolated dry-run directories. They are inside the runtime
+output volume, contain no user data, and can be removed at any time.
+
+**The acceptance criteria are met on a real `--run-analysis` run, not only on
+the fast scan.**
+
 ## Rollback plan
 
 Single command, no data implications — the scanner-job image is stateless and
