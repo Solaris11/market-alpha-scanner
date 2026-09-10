@@ -32,9 +32,11 @@ import { SignalCard } from "@/components/terminal/SignalCard";
 import { SignalHeatmap } from "@/components/terminal/SignalHeatmap";
 import { StrategyIntelligencePanel } from "@/components/terminal/StrategyIntelligencePanel";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
+import { ActionTriageStrip } from "@/components/terminal/ActionTriageStrip";
 import { TerminalCommandBar } from "@/components/terminal/TerminalCommandBar";
 import { TerminalRightRail } from "@/components/terminal/TerminalRightRail";
 import { TerminalSection } from "@/components/terminal/TerminalSection";
+import { buildActionTriage } from "@/lib/terminal/action-triage";
 import { countTerminalDecisions } from "@/lib/terminal/command-bar-counts";
 import { UnifiedIntelligenceConsole } from "@/components/terminal/UnifiedIntelligenceConsole";
 import { WorkspacePersonalizationPanel } from "@/components/terminal/WorkspacePersonalizationPanel";
@@ -274,6 +276,10 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
   // and adding ENTER to it would change the percentages DailyActionCard already
   // renders from the same array. See lib/terminal/command-bar-counts.ts.
   const commandBarCounts = timeline.sync("countTerminalDecisions", () => countTerminalDecisions(snapshot.signals));
+  // Summary only -- the four existing ranked lists keep their rows. Buckets are
+  // the scanner's final_decision, ordering is its final_score; nothing is
+  // re-scored or re-decided here.
+  const actionTriage = timeline.sync("buildActionTriage", () => buildActionTriage(snapshot.signals));
 
   // Computed here, on the server, from the rows that still carry their raw
   // shock-event samples. The panel renders the finished system, so the samples
@@ -310,6 +316,7 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
             }}
           />
           <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
+          <ActionTriageStrip triage={actionTriage} />
           <DailyMarketCommandCenter model={dailyMarketCommand} />
           <GlobalMarketCommandCenter model={marketCommandModel} />
           <UnifiedIntelligenceConsole
