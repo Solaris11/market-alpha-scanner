@@ -1,5 +1,13 @@
 # Deploy runbook: closing the live actionability regression
 
+> **Scanner-job is not covered by this runbook and is not covered by a pull.**
+> Any change under `scanner/`, `investment_scanner_mvp.py`, `database.py`,
+> `requirements.txt` or `Dockerfile` needs an explicit image rebuild, because
+> `docker compose run` resolves whatever `:latest` already exists and never
+> builds. Skipping that step hid SNDK from every production scan for 35 days.
+> See `docs/ops/scanner-job-deploy-runbook.md` and
+> `docs/ops/rca-sndk-missing-from-scanner-20260910.md`.
+
 Written 2026-09-04. Everything below is verified except the build gate, which
 cannot run in this session. Read "Why you have to run this" first if you want
 the reason it is a runbook and not a completed deploy.

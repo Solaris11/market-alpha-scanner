@@ -102,6 +102,12 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        # Populated by the deploy runbook so the built image can say which
+        # commit it came from. Defaults keep a bare `docker compose build`
+        # working; the freshness check reports "unknown" rather than passing.
+        SCANNER_BUILD_COMMIT: ${SCANNER_BUILD_COMMIT:-unknown}
+        SCANNER_BUILD_TIME: ${SCANNER_BUILD_TIME:-unknown}
     restart: "no"
     cpus: "1.5"
     mem_limit: 4g
