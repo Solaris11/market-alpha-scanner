@@ -32,7 +32,9 @@ import { SignalCard } from "@/components/terminal/SignalCard";
 import { SignalHeatmap } from "@/components/terminal/SignalHeatmap";
 import { StrategyIntelligencePanel } from "@/components/terminal/StrategyIntelligencePanel";
 import { TerminalShell } from "@/components/terminal/TerminalShell";
+import { TerminalCommandBar } from "@/components/terminal/TerminalCommandBar";
 import { TerminalRightRail } from "@/components/terminal/TerminalRightRail";
+import { countTerminalDecisions } from "@/lib/terminal/command-bar-counts";
 import { UnifiedIntelligenceConsole } from "@/components/terminal/UnifiedIntelligenceConsole";
 import { WorkspacePersonalizationPanel } from "@/components/terminal/WorkspacePersonalizationPanel";
 import { WorkflowEvolutionPanel } from "@/components/terminal/WorkflowEvolutionPanel";
@@ -266,6 +268,11 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
   const noTradeCopy = noTradeActionCopy(dailyAction);
   const decisionDistribution = timeline.sync("buildDecisionDistribution", () => buildDecisionDistribution(snapshot.signals));
   const contextReasons = timeline.sync("buildTodayActionReasons", () => buildTodayActionReasons({ actionBlocksTradeUi, marketState: snapshot.marketRegime.label, scanSafetyStatus: scanSafety.status }));
+  // Counted separately from decisionDistribution on purpose. That helper omits
+  // ENTER entirely, so the page had no way to state whether an entry existed --
+  // and adding ENTER to it would change the percentages DailyActionCard already
+  // renders from the same array. See lib/terminal/command-bar-counts.ts.
+  const commandBarCounts = timeline.sync("countTerminalDecisions", () => countTerminalDecisions(snapshot.signals));
 
   // Computed here, on the server, from the rows that still carry their raw
   // shock-event samples. The panel renders the finished system, so the samples
@@ -285,11 +292,27 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
     <TerminalShell>
       <div className="grid gap-4 xl:grid-cols-[1fr_390px]">
         <div className="space-y-4">
+          {/* Status first, verdict second. Both were previously below four
+              full-height panels -- three of them retention and proof-of-value
+              narrative rather than market data -- so the answer to "is there an
+              ENTER right now" sat roughly 3,500 lines of component output down
+              the page. Nothing is removed here; the narrative panels simply
+              follow the decision instead of preceding it. */}
+          <TerminalCommandBar
+            marketState={snapshot.marketRegime.label}
+            dataStatus={humanizeLabel(scanSafety.status)}
+            counts={{
+              enter: commandBarCounts.enter,
+              watch: commandBarCounts.watch,
+              waitPullback: commandBarCounts.waitPullback,
+              alerts: activeAlertMatches.length,
+            }}
+          />
+          <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
           <DailyMarketCommandCenter model={dailyMarketCommand} />
           <DailyDriverRetentionPanel model={dailyDriverRetention} />
           <EcosystemContinuityPanel system={ecosystemContinuity} />
           <LivingIntelligenceProofPanel system={livingIntelligenceProof} />
-          <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
           <ShareIntelligenceAsset
             asset={{
               assetType: "ai_insight",
