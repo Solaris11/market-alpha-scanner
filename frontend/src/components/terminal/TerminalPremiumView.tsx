@@ -34,6 +34,7 @@ import { StrategyIntelligencePanel } from "@/components/terminal/StrategyIntelli
 import { TerminalShell } from "@/components/terminal/TerminalShell";
 import { TerminalCommandBar } from "@/components/terminal/TerminalCommandBar";
 import { TerminalRightRail } from "@/components/terminal/TerminalRightRail";
+import { TerminalSection } from "@/components/terminal/TerminalSection";
 import { countTerminalDecisions } from "@/lib/terminal/command-bar-counts";
 import { UnifiedIntelligenceConsole } from "@/components/terminal/UnifiedIntelligenceConsole";
 import { WorkspacePersonalizationPanel } from "@/components/terminal/WorkspacePersonalizationPanel";
@@ -310,19 +311,6 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
           />
           <DailyActionCard action={dailyAction} dataStatus={humanizeLabel(scanSafety.status)} decisionDistribution={decisionDistribution} marketState={snapshot.marketRegime.label} whyReasons={contextReasons} />
           <DailyMarketCommandCenter model={dailyMarketCommand} />
-          <DailyDriverRetentionPanel model={dailyDriverRetention} />
-          <EcosystemContinuityPanel system={ecosystemContinuity} />
-          <LivingIntelligenceProofPanel system={livingIntelligenceProof} />
-          <ShareIntelligenceAsset
-            asset={{
-              assetType: "ai_insight",
-              description: `${dailyAction.label} research context for today's market, generated from TradeVeto scanner, macro, risk, and replay intelligence. Research only; not financial advice.`,
-              path: "/terminal",
-              symbol: leader?.symbol ?? null,
-              title: `TradeVeto daily intelligence${leader?.symbol ? `: ${leader.symbol}` : ""}`,
-            }}
-          />
-          <GrowthReferralPanel compact />
           <GlobalMarketCommandCenter model={marketCommandModel} />
           <UnifiedIntelligenceConsole
             marketCondition={snapshot.marketRegime.label}
@@ -332,23 +320,57 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
             workspacePreferences={workspacePreferences}
             workflowEvolution={workflowEvolution}
           />
-          <IntelligenceEcosystemPanel system={intelligenceEcosystem} />
-          <InstitutionalSuperplatformPanel system={institutionalSuperplatform} />
           <PredictiveIntelligencePanel system={predictiveIntelligence} />
-          <PlatformMoatPanel system={platformMoat} />
-          <AICognitionLayerPanel model={cognitionLayer} />
-          <IntelligenceFeedNotificationPanel
-            brief={intelligenceFeed.brief}
-            initialPreferences={intelligenceFeed.preferences}
-            items={intelligenceFeed.items}
-            watchlistSymbols={watchlistSymbols}
-          />
           <MarketChartHub charts={marketChartHubData} marketCondition={snapshot.marketRegime.label} updatedAt={scanSafety.lastUpdated} />
-          <WorkspacePersonalizationPanel
-            initialPreferences={workspacePreferences}
-            recentSymbols={uniqueTerminalSymbols([leader?.symbol, ...clientRows.slice(0, 8).map((row) => row.symbol)])}
-            watchlistSymbols={watchlistSymbols}
-          />
+          {/* Research depth, one interaction away. These answer "why" rather
+              than "what now", so they start closed instead of competing with
+              the decision surfaces for the first screen. Every grounding
+              boundary and research-only disclosure travels inside its own
+              component, unchanged. */}
+          <TerminalSection
+            title="Deep research layers"
+            hint="Cognition timeline, ecosystem and institutional context"
+            meta="research"
+          >
+            <IntelligenceEcosystemPanel system={intelligenceEcosystem} />
+            <InstitutionalSuperplatformPanel system={institutionalSuperplatform} />
+            <AICognitionLayerPanel model={cognitionLayer} />
+          </TerminalSection>
+          {/* Product narrative, retention and personalization. Useful, and not
+              what a trader is here to decide from -- this group was previously
+              three of the four tallest panels above the verdict. Collapsed, not
+              removed: everything is one click away and in the same order. */}
+          <TerminalSection
+            title="Your workflow, personalization and growth"
+            hint="Habits, continuity, notifications, workspace and sharing"
+            meta="workflow"
+          >
+            <DailyDriverRetentionPanel model={dailyDriverRetention} />
+            <EcosystemContinuityPanel system={ecosystemContinuity} />
+            <LivingIntelligenceProofPanel system={livingIntelligenceProof} />
+            <IntelligenceFeedNotificationPanel
+              brief={intelligenceFeed.brief}
+              initialPreferences={intelligenceFeed.preferences}
+              items={intelligenceFeed.items}
+              watchlistSymbols={watchlistSymbols}
+            />
+            <WorkspacePersonalizationPanel
+              initialPreferences={workspacePreferences}
+              recentSymbols={uniqueTerminalSymbols([leader?.symbol, ...clientRows.slice(0, 8).map((row) => row.symbol)])}
+              watchlistSymbols={watchlistSymbols}
+            />
+            <PlatformMoatPanel system={platformMoat} />
+            <ShareIntelligenceAsset
+              asset={{
+                assetType: "ai_insight",
+                description: `${dailyAction.label} research context for today's market, generated from TradeVeto scanner, macro, risk, and replay intelligence. Research only; not financial advice.`,
+                path: "/terminal",
+                symbol: leader?.symbol ?? null,
+                title: `TradeVeto daily intelligence${leader?.symbol ? `: ${leader.symbol}` : ""}`,
+              }}
+            />
+            <GrowthReferralPanel compact />
+          </TerminalSection>
           <details className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
             <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-slate-100">
               <span>Advanced intelligence layers</span>
