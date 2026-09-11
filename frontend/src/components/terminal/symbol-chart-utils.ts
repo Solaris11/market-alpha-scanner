@@ -124,3 +124,49 @@ function normalizeDate(value: string) {
 function validLevel(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
 }
+
+
+// --- Volume (item 2) -------------------------------------------------------
+// Volume already rides in the price-history rows the server ships; the chart
+// simply dropped it. These surface it as a histogram + a reference average so a
+// trader can answer "is this move backed by real volume?" without any new
+// payload or library. Never fabricates a bar: a candle without finite volume is
+// skipped, not treated as zero.
+
+export type ChartVolumePoint = { time: Time; value: number; color: string };
+
+const VOLUME_UP = "rgba(38,166,154,0.5)";
+const VOLUME_DOWN = "rgba(239,83,80,0.5)";
+
+export function hasVolume(candles: ChartCandle[]): boolean {
+  return candles.some((candle) => typeof candle.volume === "number" && Number.isFinite(candle.volume) && candle.volume > 0);
+}
+
+export function toVolumeData(candles: ChartCandle[]): ChartVolumePoint[] {
+  const out: ChartVolumePoint[] = [];
+  for (const candle of candles) {
+    const volume = candle.volume;
+    if (typeof volume !== "number" || !Number.isFinite(volume) || volume <= 0) continue;
+    out.push({ color: candle.close >= candle.open ? VOLUME_UP : VOLUME_DOWN, time: candle.time as Time, value: volume });
+  }
+  return out;
+}
+
+// Rolling mean of volume over the last `period` candles that carry volume. The
+// reference line that turns raw bars into "above / below average" -- the actual
+// signal a trader reads for volume confirmation. Only emitted once enough real
+// bars exist, so it never implies confidence the data cannot support.
+export function volumeAverageLine(candles: ChartCandle[], period = 20): Array<{ time: Time; value: number }> {
+  const vols = candles
+    .filter((c) => typeof c.volume === "number" && Number.isFinite(c.volume) && (c.volume as number) > 0)
+    .map((c) => ({ time: c.time, value: c.volume as number }));
+  if (vols.length < period) return [];
+  const out: Array<{ time: Time; value: number }> = [];
+  let sum = 0;
+  for (let i = 0; i < vols.length; i += 1) {
+    sum += vols[i]!.value;
+    if (i >= period) sum -= vols[i - period]!.value;
+    if (i >= period - 1) out.push({ time: vols[i]!.time as Time, value: sum / period });
+  }
+  return out;
+}

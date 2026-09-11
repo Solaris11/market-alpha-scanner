@@ -682,7 +682,9 @@ function rowsToCandles(rows: Record<string, ScannerScalar>[]): ChartCandle[] {
       const low = numericValue(row.low ?? row.Low);
       const close = numericValue(row.close ?? row.Close);
       if (!time || open === null || high === null || low === null || close === null) return null;
-      return { close, high, low, open, time };
+      const volumeRaw = numericValue(row.volume ?? row.Volume);
+      const base = { close, high, low, open, time };
+      return volumeRaw !== null && volumeRaw >= 0 ? { ...base, volume: volumeRaw } : base;
     })
     .filter((candle): candle is ChartCandle => Boolean(candle));
 }

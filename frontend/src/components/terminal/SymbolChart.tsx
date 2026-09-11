@@ -8,6 +8,7 @@ import {
   CandlestickSeries,
   ColorType,
   CrosshairMode,
+  HistogramSeries,
   LineSeries,
   createChart,
   createSeriesMarkers,
@@ -17,6 +18,9 @@ import {
 import {
   addResearchContextLines,
   addTradeLevelLines,
+  hasVolume,
+  toVolumeData,
+  volumeAverageLine,
   buildResearchContextLevels,
   normalizeCandles,
   normalizeSignals,
@@ -88,6 +92,7 @@ export type ChartCandle = {
   high: number;
   low: number;
   close: number;
+  volume?: number;
 };
 
 export type ChartSignalMarkerType =
@@ -273,6 +278,7 @@ export function SymbolChart({
   const [uncontrolledPeriod, setUncontrolledPeriod] = useState<InteractiveChartPeriod>(defaultPeriod);
   const [resetToken, setResetToken] = useState(0);
   const [showResearchLevels, setShowResearchLevels] = useState(true);
+  const [showVolume, setShowVolume] = useState(true);
   const [uncontrolledOverlayFamilies, setUncontrolledOverlayFamilies] = useState<ChartOverlayFamily[]>(defaultOverlayFamilies);
   const [uncontrolledIndicators, setUncontrolledIndicators] = useState<ChartIndicatorId[]>(defaultIndicators);
   const [drawingTool, setDrawingTool] = useState<ChartDrawingTool>("inspect");
@@ -311,6 +317,8 @@ export function SymbolChart({
   const enabledIndicators = controlledIndicators ?? uncontrolledIndicators;
   const normalizedCandles = useMemo(() => normalizeCandles(chartPacket.candles), [chartPacket.candles]);
   const chartCandles = useMemo(() => filterCandlesByPeriod(normalizedCandles, period), [normalizedCandles, period]);
+  const volumeAvailable = useMemo(() => hasVolume(chartCandles), [chartCandles]);
+  const volumeVisible = showVolume && volumeAvailable;
   const chartSignals = useMemo(() => (
     showHistoricalSignals && signals?.length ? filterSignalsByCandles(normalizeSignals(signals), chartCandles) : []
   ), [chartCandles, showHistoricalSignals, signals]);
@@ -1044,6 +1052,35 @@ export function SymbolChart({
         latencyMs: Math.max(0, browserWorkflowNow() - seriesDataStartedAt),
         symbol: chartSymbol,
       });
+      if (volumeVisible) {
+        // Volume histogram pinned to the bottom ~18% via its own price scale,
+        // so it never overlaps or rescales the candles. Colored by candle
+        // direction; paired with a 20-bar average line so above/below-average
+        // volume is readable at a glance -- the actual confirmation signal.
+        const volumeData = toVolumeData(chartCandles);
+        if (volumeData.length) {
+          const volumeSeries = chart.addSeries(HistogramSeries, {
+            priceFormat: { type: "volume" },
+            priceLineVisible: false,
+            priceScaleId: "volume",
+            lastValueVisible: false,
+          });
+          volumeSeries.priceScale().applyOptions({ scaleMargins: { bottom: 0, top: 0.82 } });
+          volumeSeries.setData(volumeData);
+          const avg = volumeAverageLine(chartCandles);
+          if (avg.length) {
+            const volumeAvgSeries = chart.addSeries(LineSeries, {
+              color: "#eab308",
+              lastValueVisible: false,
+              lineWidth: 1,
+              priceLineVisible: false,
+              priceScaleId: "volume",
+              title: "Vol avg 20",
+            });
+            volumeAvgSeries.setData(avg);
+          }
+        }
+      }
       createSeriesMarkers(candleSeries, toSeriesMarkers(visibleChartSignals), { zOrder: "top" });
       if (showResearchLevelsToggle) {
         if (levelsVisible) addResearchContextLines(candleSeries, researchLevels);
@@ -1148,7 +1185,7 @@ export function SymbolChart({
       setFailed(true);
       return undefined;
     }
-  }, [canRenderChart, chartCandles, chartLevels, chartSymbol, crosshairSourceId, crosshairSyncGroup, indicatorSeries, levelsVisible, researchLevels, resetToken, showResearchLevelsToggle, visibleChartSignals]);
+  }, [canRenderChart, chartCandles, chartLevels, chartSymbol, crosshairSourceId, crosshairSyncGroup, indicatorSeries, levelsVisible, researchLevels, resetToken, showResearchLevelsToggle, visibleChartSignals, volumeVisible]);
 
   if (failed || (chartPacket.candles.length && !normalizedCandles.length)) {
     return <EmptyState title="Price chart unavailable" message="The latest price payload could not be validated for this symbol." />;
@@ -1375,6 +1412,15 @@ export function SymbolChart({
             {levelsVisible ? "Hide levels" : "Show levels"}
           </button>
           {levelsVisible ? <span className="rounded-full border border-white/10 bg-slate-950/70 px-2 py-1 text-[11px] text-slate-400">{researchLevels.length} context levels</span> : null}
+          <button
+            className={`rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] shadow-lg backdrop-blur-xl transition-colors ${volumeAvailable ? "border-white/10 bg-slate-950/80 text-slate-300 hover:border-cyan-300/40 hover:text-cyan-100" : "cursor-not-allowed border-white/5 bg-slate-950/50 text-slate-600"}`}
+            disabled={!volumeAvailable}
+            onClick={() => setShowVolume((value) => !value)}
+            title={volumeAvailable ? "Volume histogram with a 20-bar average, so you can see whether a move is backed by real volume." : "No validated volume for this symbol yet."}
+            type="button"
+          >
+            {!volumeAvailable ? "Volume n/a" : volumeVisible ? "Hide volume" : "Show volume"}
+          </button>
         </div>
       ) : null}
       {hasTradeLevels && (!showResearchLevelsToggle || levelsVisible) ? (
@@ -4158,7 +4204,9 @@ function rowsToChartCandles(rows: Record<string, ScannerScalar>[]): ChartCandle[
       const low = numericScalar(row.low ?? row.Low);
       const close = numericScalar(row.close ?? row.Close);
       if (!time || open === null || high === null || low === null || close === null) return null;
-      return { close, high, low, open, time };
+      const volumeRaw = numericScalar(row.volume ?? row.Volume);
+      const base = { close, high, low, open, time };
+      return volumeRaw !== null && volumeRaw >= 0 ? { ...base, volume: volumeRaw } : base;
     })
     .filter((candle): candle is ChartCandle => Boolean(candle));
 }
