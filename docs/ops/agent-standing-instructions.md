@@ -69,6 +69,35 @@ above, and put the verdict in the report.
 Runbooks: `docs/ops/scanner-job-deploy-runbook.md` for the scanner image,
 `docs/ux/terminal-ia-deploy-plan-20260911.md` for a worked frontend example.
 
+## Non-negotiable product principle for all P2 work — WHAT → WHERE → WHICH
+
+Every UX / algorithm / chart change is judged by whether it improves the
+trader's three questions. Build decision support, not indicator decoration. Do
+not add a chart visual unless it helps one of these; do not make the page
+prettier at the cost of slower decisions or worse performance.
+
+1. **WHAT — the correct decision.** Synthesize the evidence into a clear action:
+   ENTER / WAIT / WAIT_PULLBACK / EXIT / AVOID, with the condition attached
+   ("WAIT — buy only if price reclaims $506 with 5m/15m confirmation";
+   "ENTER — breakout confirmed, stop below $492, target $528"). Never leave the
+   user with raw indicators only.
+2. **WHERE — the correct price levels.** The most important output is not a
+   score, it is actionable levels: ideal entry / limit, entry zone,
+   invalidation, stop, target 1/2/3, support/resistance, breakout/retest.
+   Derived from the 1D→4H→1H→5m/15m workflow when data exists, from price
+   structure + volume + EMA/VWAP + momentum + S/R. On the chart the trader must
+   see *why* those levels were chosen.
+3. **WHICH — ranking / capital allocation.** Single-symbol analysis is not
+   enough: help decide where capital goes across candidates ("AMD 87, SNDK 81,
+   MSTR 74 — AMD is the best current risk/reward"). Symbol evidence should roll
+   up into opportunity ranking, and ranking should link back to chart evidence.
+
+## Model use during long runs
+
+Use the normal coding model for implementation, tests, deploy and smoke.
+Reserve Fable for a high-level architecture/product review checkpoint before a
+major decision — not for routine coding loops.
+
 ## Two habits worth keeping
 
 **Measure instead of asserting.** "The verdict is 33 screens down" was worth

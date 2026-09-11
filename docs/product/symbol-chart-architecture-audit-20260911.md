@@ -252,3 +252,41 @@ Keep everything **client-side from props** as today — no new client fetch on
 - Shared level lineage (`buildSignalTradeLevels`) keeping chart/hero/ticket
   numbers consistent.
 - Lazy architecture + fast instant shell + early decision-hero/chart placement.
+
+
+---
+
+## Phase 2 progress log (updated as units ship)
+
+Governing principle: **WHAT → WHERE → WHICH** (see standing instructions). Every
+unit below is judged by whether it improves the decision, the levels, or the
+ranking — not decoration.
+
+### Shipped to prod
+- **P2.1 #1 — R-target ladder** (commit `721f5951`, deployed). Draws T1/T2/T3
+  from `conservative_target` / `take_profit_high` / `aggressive_target_high`,
+  ascending-guard so degenerate rungs never draw. Frontend-only. Verified: OXY
+  T1=62.19/T2=66.83/T3=69.74, AMD T1-only. **WHERE.**
+- **P2.1 #2 — volume on the symbol chart** (commit `a7d86d59`, deployed).
+  Volume was already in the RSC payload (getSymbolPriceHistory returns it);
+  surfaced as a bottom-scale histogram + 20-bar average line, toggle, honest
+  disabled state when absent. **WHERE / WHAT** ("is this move backed by real
+  volume?").
+
+### Measured performance (prod, decoded doc size — the reliable regression signal)
+
+| Page | Baseline | After #1 (R-ladder) | After #2 (volume) |
+|---|---:|---:|---:|
+| /symbol/AMD | 345 KB | 346 KB | 346.0 KB |
+| /symbol/NVDA | 346 KB | ~346 KB | 346.8 KB |
+| /symbol/SNDK | 200 KB | ~200 KB | 200.3 KB |
+
+Decoded size flat across both units — volume added **zero** payload cost
+because it already shipped. No new long tasks; console shows only the
+pre-existing cosmetic 404s (manifest/sw/apple-touch-icon). Mobile 375px: no
+horizontal overflow; chart canvas fits. No regression.
+
+### Deferred / follow-ups
+- Fullscreen modal chart does not yet render volume (separate series setup) — next.
+- T2/T3 axis labels can lose contrast inside the breakout-zone band — polish (item 5).
+- Missing-volume disabled state verified by unit test, not a live no-volume symbol.
