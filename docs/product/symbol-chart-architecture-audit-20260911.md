@@ -290,3 +290,36 @@ horizontal overflow; chart canvas fits. No regression.
 - Fullscreen modal chart does not yet render volume (separate series setup) — next.
 - T2/T3 axis labels can lose contrast inside the breakout-zone band — polish (item 5).
 - Missing-volume disabled state verified by unit test, not a live no-volume symbol.
+
+---
+
+## Session update — 2026-09-11 (continuation)
+
+- **P2.1 item 2 polish — decisive WHERE labels + readable T2/T3** (commit
+  `10fc7ef0`, **local only, NOT yet pushed/deployed**). Entry line → "Ideal
+  entry", stop line → "Stop / invalidation", legend copy matched; T2/T3 axis
+  labels moved from washed-out light blues (#7dd3fc/#bae6fd) to saturated
+  #0ea5e9/#0284c7 so they stay legible inside the breakout-retest band. Labels
+  and colours only; ladder values and the ascending guard untouched. Closes the
+  "T2/T3 lose contrast" deferred follow-up. Verified locally on the owner's
+  machine: `tsc --noEmit` clean; ladder+volume+chart-utils unit tests **17/17**.
+- **Test hygiene** (commit `f17b0b26`) and **WHAT/WHERE/WHICH + progress log**
+  (commit `30dff812`) are committed locally and **were never pushed** — they are
+  the two commits this branch is ahead of `origin` by, plus `10fc7ef0`. Push
+  from a machine with GitHub access: `git push origin
+  work/terminal-ia-simplification` (branch is 3 ahead of origin).
+- Full implementation spec for **items 3–5** is in the project doc
+  `claude/symbol-chart-p2.1-items-3-5-spec-2026-09-11.md` (scanner persistence
+  path, exact file:line anchors, deploy classes, tests, perf guards).
+- **Environment note:** this continuation session ran after a container
+  reclaim. It had no push (GitHub egress blocked), no prod reach (ssh
+  unreachable), and no cloud toolchain (npm 403). All verification was done on
+  the owner's connected machine via the device bridge. Deploy of item 2 (and of
+  items 3–5) is therefore pending a session/host that can reach prod.
+
+### Deferred / follow-ups (updated)
+- Fullscreen modal chart volume: **still unverified** — modal charts via
+  `SymbolChartModal`/`ChartLayoutExplorer`, not a recursive `<SymbolChart>`;
+  needs a live fullscreen look at a symbol with volume.
+- Missing-volume disabled state: verified by unit test, not yet on a live
+  no-volume symbol.
