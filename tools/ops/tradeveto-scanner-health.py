@@ -49,9 +49,15 @@ DROP_REASONS = RUNTIME / "scanner_output" / "scanner_drop_reasons.csv"
 UNIVERSE_PY = APP_DIR / "scanner" / "universe.py"
 FRESHNESS = APP_DIR / "tools" / "ops" / "scanner-image-freshness.sh"
 
-STATE_FILE = Path("/var/lib/tradeveto-scanner-health/state.json")
-LOG_FILE = Path("/var/log/market-alpha/scanner-health.log")
-REPORT_FILE = Path("/var/log/market-alpha/scanner-health-state.json")
+# All three live under one sre-owned directory the installer creates. The
+# shared /var/log/market-alpha is root-owned (other tools there run as root),
+# and this monitor runs as sre under its timer -- writing there fails silently
+# and the report never lands. Keeping our own files together avoids the
+# cross-owner dependency entirely.
+STATE_DIR = Path(os.getenv("TRADEVETO_SCANNER_HEALTH_DIR", "/var/lib/tradeveto-scanner-health"))
+STATE_FILE = STATE_DIR / "state.json"
+LOG_FILE = STATE_DIR / "scanner-health.log"
+REPORT_FILE = STATE_DIR / "scanner-health-state.json"
 HOSTNAME = socket.gethostname()
 
 #: Never log, echo, or put in an alert body.
