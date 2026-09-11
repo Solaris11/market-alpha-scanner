@@ -1425,8 +1425,8 @@ export function SymbolChart({
       ) : null}
       {hasTradeLevels && (!showResearchLevelsToggle || levelsVisible) ? (
         <div className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 text-xs shadow-lg backdrop-blur-xl">
-          <div className="font-semibold text-amber-200">Entry zone context</div>
-          <div className="mt-1 font-semibold text-rose-200">Stop context</div>
+          <div className="font-semibold text-amber-200">Ideal entry &amp; zone</div>
+          <div className="mt-1 font-semibold text-rose-200">Stop / invalidation</div>
           <div className="mt-1 font-semibold text-sky-200">Target ladder (T1{chartLevels.target2 !== null ? " / T2" : ""}{chartLevels.target3 !== null ? " / T3" : ""})</div>
         </div>
       ) : null}

@@ -66,13 +66,14 @@ export function normalizeTradeLevels(levels?: ChartTradeLevels): NormalizedTrade
 }
 
 export function addTradeLevelLines(candleSeries: ISeriesApi<"Candlestick">, levels: NormalizedTradeLevels) {
-  addPriceLine(candleSeries, levels.entry, "#f59e0b", LineStyle.Dashed, "Entry zone");
-  addPriceLine(candleSeries, levels.stop, "#ef4444", LineStyle.Solid, "Stop");
-  // The R-target ladder. T1 solid; T2/T3 dashed and progressively lighter so a
-  // trader reads the primary target first and the stretch targets as context.
+  addPriceLine(candleSeries, levels.entry, "#f59e0b", LineStyle.Dashed, "Ideal entry");
+  addPriceLine(candleSeries, levels.stop, "#ef4444", LineStyle.Solid, "Stop / invalidation");
+  // The R-target ladder. T1 solid and brightest; T2/T3 dashed but still
+  // saturated so their axis-label chips stay readable inside the breakout-zone
+  // shaded band (the earlier light blues washed out there).
   addPriceLine(candleSeries, levels.target, "#38bdf8", LineStyle.Solid, "Target 1");
-  addPriceLine(candleSeries, levels.target2, "#7dd3fc", LineStyle.Dashed, "Target 2");
-  addPriceLine(candleSeries, levels.target3, "#bae6fd", LineStyle.Dashed, "Target 3");
+  addPriceLine(candleSeries, levels.target2, "#0ea5e9", LineStyle.Dashed, "Target 2");
+  addPriceLine(candleSeries, levels.target3, "#0284c7", LineStyle.Dashed, "Target 3");
 }
 
 export function addResearchContextLines(candleSeries: ISeriesApi<"Candlestick">, levels: ChartResearchLevel[]) {
