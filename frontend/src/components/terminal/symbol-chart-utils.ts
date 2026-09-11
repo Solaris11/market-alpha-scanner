@@ -60,13 +60,19 @@ export function normalizeTradeLevels(levels?: ChartTradeLevels): NormalizedTrade
     entryLow: entryLow !== null && entryHigh !== null ? Math.min(entryLow, entryHigh) : entryLow,
     stop: validLevel(levels?.stop),
     target: validLevel(levels?.target),
+    target2: validLevel(levels?.target2),
+    target3: validLevel(levels?.target3),
   };
 }
 
 export function addTradeLevelLines(candleSeries: ISeriesApi<"Candlestick">, levels: NormalizedTradeLevels) {
   addPriceLine(candleSeries, levels.entry, "#f59e0b", LineStyle.Dashed, "Entry zone");
   addPriceLine(candleSeries, levels.stop, "#ef4444", LineStyle.Solid, "Stop");
-  addPriceLine(candleSeries, levels.target, "#38bdf8", LineStyle.Solid, "Target");
+  // The R-target ladder. T1 solid; T2/T3 dashed and progressively lighter so a
+  // trader reads the primary target first and the stretch targets as context.
+  addPriceLine(candleSeries, levels.target, "#38bdf8", LineStyle.Solid, "Target 1");
+  addPriceLine(candleSeries, levels.target2, "#7dd3fc", LineStyle.Dashed, "Target 2");
+  addPriceLine(candleSeries, levels.target3, "#bae6fd", LineStyle.Dashed, "Target 3");
 }
 
 export function addResearchContextLines(candleSeries: ISeriesApi<"Candlestick">, levels: ChartResearchLevel[]) {

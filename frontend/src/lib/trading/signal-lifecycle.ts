@@ -15,6 +15,11 @@ export type SignalTradeLevels = {
   entryHigh: number | null;
   stop: number | null;
   target: number | null;
+  // The R-target ladder. target is T1 (conservative); target2/target3 are the
+  // balanced / aggressive rungs the scanner already emits. Only populated when
+  // strictly above the prior rung, so a degenerate ladder never draws.
+  target2: number | null;
+  target3: number | null;
 };
 
 export const SIGNAL_EXPIRY_DISTANCE_PCT = 0.05;
@@ -25,13 +30,36 @@ export function buildSignalTradeLevels(row: RankingRow): SignalTradeLevels {
   const entryLow = entryRange.low ?? entry;
   const entryHigh = entryRange.high ?? entry;
 
+  const target = firstNumber(row.conservative_target ?? row.take_profit_zone ?? row.take_profit_high ?? row.target_price);
+  const ladder = ascendingLadder(target, [
+    firstNumber(row.take_profit_high ?? row.balanced_target),
+    firstNumber(row.aggressive_target_high ?? row.aggressive_target),
+  ]);
+
   return {
     entry,
     entryLow,
     entryHigh,
     stop: firstNumber(row.stop_loss ?? row.invalidation_level),
-    target: firstNumber(row.conservative_target ?? row.take_profit_zone ?? row.take_profit_high ?? row.target_price),
+    target,
+    target2: ladder[0],
+    target3: ladder[1],
   };
+}
+
+// Keep only rungs strictly above the previous one, so Target 2/3 never draw
+// below or on top of Target 1 (which would read as noise on the chart).
+function ascendingLadder(base: number | null, rungs: Array<number | null>): [number | null, number | null] {
+  const out: [number | null, number | null] = [null, null];
+  let prev = base;
+  for (let i = 0; i < rungs.length && i < 2; i += 1) {
+    const value = rungs[i];
+    if (value !== null && Number.isFinite(value) && prev !== null && value > prev) {
+      out[i] = value;
+      prev = value;
+    }
+  }
+  return out;
 }
 
 export function computeSignalLifecycle(

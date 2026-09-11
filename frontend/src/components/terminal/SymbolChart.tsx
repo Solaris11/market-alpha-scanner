@@ -125,6 +125,8 @@ export type ChartTradeLevels = {
   entryHigh?: number | null;
   stop?: number | null;
   target?: number | null;
+  target2?: number | null;
+  target3?: number | null;
 };
 
 export type SymbolChartProps = {
@@ -314,7 +316,7 @@ export function SymbolChart({
   ), [chartCandles, showHistoricalSignals, signals]);
   const chartLevels = useMemo(() => normalizeTradeLevels(chartPacket.tradeLevels), [chartPacket.tradeLevels]);
   const researchLevels = useMemo(() => buildResearchContextLevels(chartCandles, chartLevels), [chartCandles, chartLevels]);
-  const hasTradeLevels = chartLevels.entry !== null || chartLevels.entryLow !== null || chartLevels.entryHigh !== null || chartLevels.stop !== null || chartLevels.target !== null;
+  const hasTradeLevels = chartLevels.entry !== null || chartLevels.entryLow !== null || chartLevels.entryHigh !== null || chartLevels.stop !== null || chartLevels.target !== null || chartLevels.target2 !== null || chartLevels.target3 !== null;
   const visibleChartSignals = useMemo(() => {
     const enabled = new Set(enabledOverlayFamilies);
     return chartSignals.filter((signal) => enabled.has(overlayFamilyForMarker(signal.type)));
@@ -1379,7 +1381,7 @@ export function SymbolChart({
         <div className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 text-xs shadow-lg backdrop-blur-xl">
           <div className="font-semibold text-amber-200">Entry zone context</div>
           <div className="mt-1 font-semibold text-rose-200">Stop context</div>
-          <div className="mt-1 font-semibold text-sky-200">Target context</div>
+          <div className="mt-1 font-semibold text-sky-200">Target ladder (T1{chartLevels.target2 !== null ? " / T2" : ""}{chartLevels.target3 !== null ? " / T3" : ""})</div>
         </div>
       ) : null}
     </div>
@@ -4283,7 +4285,7 @@ function tradeLevelSummary(levels?: ChartTradeLevels): { detail: string; value: 
       value: "Unavailable",
     };
   }
-  const count = [levels.entry, levels.entryLow, levels.entryHigh, levels.stop, levels.target]
+  const count = [levels.entry, levels.entryLow, levels.entryHigh, levels.stop, levels.target, levels.target2, levels.target3]
     .filter((value) => typeof value === "number" && Number.isFinite(value)).length;
   if (!count) {
     return {
