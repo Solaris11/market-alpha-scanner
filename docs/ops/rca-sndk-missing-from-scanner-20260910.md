@@ -1,6 +1,7 @@
 # RCA — SNDK absent from every production scan for 35 days
 
-**Severity** P0 · **Status** resolved and verified in production · **Author** autonomous session, 2026-09-10
+**Severity** P0 · **Status** CLOSED — resolved, verified on a full `--run-analysis`
+scan, and accepted by the owner 2026-09-11 · **Author** autonomous session
 
 ## Incident summary
 
@@ -284,11 +285,19 @@ counts (351 symbols persisted in the latest run).
 
 | # | Action | Status |
 |---|---|---|
-| 1 | `warn_missing_required_symbols()` runs on every scan and names any promised symbol absent from the universe | **Live** — shipped with the rebuild, verified by the dry run's silence |
-| 2 | Rebuild `market-alpha-scanner-job` as an explicit, mandatory step of every deploy | **Open** — runbook change below |
-| 3 | Log the image build stamp at scan start and warn when the image predates the checkout | **Open** — see "why it escaped": this control must live *outside* the image to be trustworthy |
+| 1 | `warn_missing_required_symbols()` runs on every scan and names any promised symbol absent from the universe | **Live** — shipped with the rebuild; verified twice by its silence, on the dry run and on the 21:30 full scan |
+| 2 | Rebuild `market-alpha-scanner-job` as an explicit, mandatory step of every deploy | **Documented** — `docs/ops/scanner-job-deploy-runbook.md`, plus a warning at the top of the actionability runbook. Not enforced by tooling |
+| 3 | Compare the image against the checkout from *outside* the image | **Written and tested, not wired** — `tools/ops/scanner-image-freshness.sh`. Run against the incident's real values it returns `STALE BY 88 days, status fail, exit 1`; against today's image, `status ok`. The `Dockerfile`/`compose.yaml` build stamp that makes the comparison commit-exact ships with it and is exercised by the next rebuild |
 | 4 | Monitor for the `[universe] WARNING` line and alert on it | **Open** |
 | 5 | Alert when a scan's universe size or required-symbol count changes unexpectedly | **Open** |
+| 6 | `ExecStartPre=-…/scanner-image-freshness.sh --warn-days 7` on both scan units, and a daily timer running it with `--fail-days 30` | **Open** — needs a privileged write to `/etc/systemd` that the read-only relay correctly refuses |
+
+**Honest summary of where the defence stands.** One guard is live and has now
+proven itself twice. A second, deliberately outside the image, exists and is
+tested but is wired to nothing — it will only run when somebody runs it. So a
+recurrence would today be *loud in the scan log* rather than silent, which is
+the important half; but nothing yet stops the image going stale, and nothing
+pages anyone if the warning fires at 03:00. Actions 4–6 are what close that.
 
 Action 3 deserves care. Putting a staleness check inside the image repeats the
 exact mistake this incident is about. The check belongs in the systemd unit or
