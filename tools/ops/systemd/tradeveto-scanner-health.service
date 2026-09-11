@@ -1,0 +1,12 @@
+[Unit]
+Description=TradeVeto scanner health monitor (stale image, missing required symbols, universe drift)
+Documentation=file:///opt/apps/market-alpha-scanner/app/docs/ops/rca-sndk-missing-from-scanner-20260910.md
+
+[Service]
+Type=oneshot
+User=sre
+WorkingDirectory=/opt/apps/market-alpha-scanner/app
+ExecStart=/opt/apps/market-alpha-scanner/app/tools/ops/tradeveto-scanner-health.py
+# A non-zero exit leaves the unit in "failed", so a missed or misconfigured
+# email still surfaces in `systemctl --failed`. The alert is the email; this is
+# the backstop for when the alert itself is broken.
