@@ -38,6 +38,21 @@ work is verified, ship it.
 - Take a rollback tag **before** any image build
 - No deploy without a passing build
 
+## When a rebuild is required (owner rule, 2026-09-11)
+
+- **Image inputs changed** (`frontend/`, `scanner/`, `investment_scanner_mvp.py`,
+  `database.py`, `requirements.txt`, `Dockerfile`, `compose.yaml`) → rebuild and
+  deploy are **mandatory**.
+- **Only docs or host-side ops scripts changed** (`docs/`, `tools/ops/`) →
+  rebuild is **not** required (it would produce a byte-identical image and
+  recreate containers for nothing).
+- **Either way**, prod pull, verification of the affected script/service, and a
+  prod smoke test are still mandatory.
+- **Every report states explicitly** whether image inputs changed.
+
+Decide by `git diff --name-only <old>..<new>` against the image-input paths
+above, and put the verdict in the report.
+
 ## The deploy shape that has worked
 
 1. Record production HEAD, branch and current image tags
