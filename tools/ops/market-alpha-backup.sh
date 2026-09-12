@@ -46,6 +46,8 @@ BACKUP_ENV_OVERRIDE_NAMES=(
   MARKET_ALPHA_BACKUP_R2_SYNC_BACKOFF_SECONDS
   MARKET_ALPHA_BACKUP_R2_MAX_CONCURRENCY
   MARKET_ALPHA_BACKUP_R2_MULTIPART_CHUNK_MB
+  MARKET_ALPHA_BACKUP_R2_CHUNK_MB
+  MARKET_ALPHA_BACKUP_R2_CHUNK_TRANSFERS
 )
 declare -A BACKUP_ENV_OVERRIDES=()
 
@@ -217,6 +219,8 @@ R2_SYNC_ATTEMPTS="${MARKET_ALPHA_BACKUP_R2_SYNC_ATTEMPTS:-1}"
 R2_SYNC_BACKOFF_SECONDS="${MARKET_ALPHA_BACKUP_R2_SYNC_BACKOFF_SECONDS:-45}"
 R2_MAX_CONCURRENCY="${MARKET_ALPHA_BACKUP_R2_MAX_CONCURRENCY:-4}"
 R2_MULTIPART_CHUNK_MB="${MARKET_ALPHA_BACKUP_R2_MULTIPART_CHUNK_MB:-64}"
+R2_CHUNK_MB="${MARKET_ALPHA_BACKUP_R2_CHUNK_MB:-32}"
+R2_CHUNK_TRANSFERS="${MARKET_ALPHA_BACKUP_R2_CHUNK_TRANSFERS:-24}"
 apply_operator_override_aliases
 
 if [[ -z "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE" ]]; then
@@ -343,6 +347,18 @@ find_r2_sync_script() {
     printf "%s" "$R2_SYNC_SCRIPT"
     return 0
   fi
+  if [[ -f "/opt/ops/tradeveto-r2-chunked-backup-sync.sh" ]]; then
+    printf "%s" "/opt/ops/tradeveto-r2-chunked-backup-sync.sh"
+    return 0
+  fi
+  if [[ -f "/opt/apps/market-alpha-scanner/app/tools/ops/tradeveto-r2-chunked-backup-sync.sh" ]]; then
+    printf "%s" "/opt/apps/market-alpha-scanner/app/tools/ops/tradeveto-r2-chunked-backup-sync.sh"
+    return 0
+  fi
+  if [[ -f "$(dirname "$0")/tradeveto-r2-chunked-backup-sync.sh" ]]; then
+    printf "%s" "$(dirname "$0")/tradeveto-r2-chunked-backup-sync.sh"
+    return 0
+  fi
   if [[ -f "/opt/ops/tradeveto-r2-current-backup-sync.py" ]]; then
     printf "%s" "/opt/ops/tradeveto-r2-current-backup-sync.py"
     return 0
@@ -361,17 +377,31 @@ find_r2_sync_script() {
 sync_current_artifacts_to_r2() {
   local script
   script="$(find_r2_sync_script)" || return 127
-  run_bounded_retry \
-    "$R2_SYNC_ATTEMPTS" \
-    "$R2_SYNC_BACKOFF_SECONDS" \
-    "$R2_SYNC_TIMEOUT_SECONDS" \
-    env \
-      TRADEVETO_R2_MAX_CONCURRENCY="$R2_MAX_CONCURRENCY" \
-      TRADEVETO_R2_MULTIPART_CHUNK_MB="$R2_MULTIPART_CHUNK_MB" \
-      python3 "$script" \
-      --remote "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE" \
-      --object "$PG_FILE" "postgres/$(basename "$PG_FILE")" \
-      --object "$SCANNER_FILE" "scanner_output/$(basename "$SCANNER_FILE")"
+  if [[ "$script" == *.sh ]]; then
+    run_bounded_retry \
+      "$R2_SYNC_ATTEMPTS" \
+      "$R2_SYNC_BACKOFF_SECONDS" \
+      "$R2_SYNC_TIMEOUT_SECONDS" \
+      env \
+        TRADEVETO_R2_CHUNK_MB="$R2_CHUNK_MB" \
+        TRADEVETO_R2_CHUNK_TRANSFERS="$R2_CHUNK_TRANSFERS" \
+        bash "$script" \
+        "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE" \
+        "$PG_FILE" "postgres" \
+        "$SCANNER_FILE" "scanner_output"
+  else
+    run_bounded_retry \
+      "$R2_SYNC_ATTEMPTS" \
+      "$R2_SYNC_BACKOFF_SECONDS" \
+      "$R2_SYNC_TIMEOUT_SECONDS" \
+      env \
+        TRADEVETO_R2_MAX_CONCURRENCY="$R2_MAX_CONCURRENCY" \
+        TRADEVETO_R2_MULTIPART_CHUNK_MB="$R2_MULTIPART_CHUNK_MB" \
+        python3 "$script" \
+        --remote "$MARKET_ALPHA_BACKUP_PRIMARY_REMOTE" \
+        --object "$PG_FILE" "postgres/$(basename "$PG_FILE")" \
+        --object "$SCANNER_FILE" "scanner_output/$(basename "$SCANNER_FILE")"
+  fi
 }
 
 install -d -o root -g sre -m 750 "$POSTGRES_DIR" "$SCANNER_DIR"
