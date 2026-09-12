@@ -15,6 +15,7 @@ import {
   type MouseEventParams,
   type Time,
 } from "lightweight-charts";
+import { evidenceFocusPlan, type EvidenceDimension } from "./chart-evidence-focus";
 import {
   addResearchContextLines,
   addTradeLevelLines,
@@ -155,6 +156,7 @@ export type SymbolChartProps = {
   showResearchLevelsToggle?: boolean;
   tradeLevels?: ChartTradeLevels;
   evidenceLevels?: ChartEvidenceLevels;
+  focusDimension?: EvidenceDimension | null;
   height?: number;
   dataSource?: string;
   defaultPeriod?: InteractiveChartPeriod;
@@ -255,6 +257,7 @@ export function SymbolChart({
   showResearchLevelsToggle = false,
   tradeLevels,
   evidenceLevels,
+  focusDimension = null,
   height = 360,
   dataSource = "validated price history",
   defaultPeriod = "6mo",
@@ -294,6 +297,7 @@ export function SymbolChart({
   const [showResearchLevels, setShowResearchLevels] = useState(true);
   const [showVolume, setShowVolume] = useState(true);
   const [showEvidence, setShowEvidence] = useState(false);
+  const [focusCaption, setFocusCaption] = useState<string | null>(null);
   const [uncontrolledOverlayFamilies, setUncontrolledOverlayFamilies] = useState<ChartOverlayFamily[]>(defaultOverlayFamilies);
   const [uncontrolledIndicators, setUncontrolledIndicators] = useState<ChartIndicatorId[]>(defaultIndicators);
   const [drawingTool, setDrawingTool] = useState<ChartDrawingTool>("inspect");
@@ -337,6 +341,16 @@ export function SymbolChart({
   const chartEvidence = useMemo(() => normalizeEvidenceLevels(evidenceLevels), [evidenceLevels]);
   const evidenceAvailable = useMemo(() => hasEvidenceLevels(chartEvidence), [chartEvidence]);
   const evidenceVisible = showEvidence && evidenceAvailable;
+  // P2.1 item 5: clicking a score dimension focuses the chart on that
+  // dimension's evidence (overlays already present), not an AI paragraph.
+  useEffect(() => {
+    if (!focusDimension) { setFocusCaption(null); return; }
+    const plan = evidenceFocusPlan(focusDimension);
+    setShowVolume(plan.volume);
+    setShowEvidence(plan.evidence);
+    if (plan.indicators.length) setUncontrolledIndicators((prev) => Array.from(new Set([...prev, ...plan.indicators])));
+    setFocusCaption(plan.caption);
+  }, [focusDimension]);
   const chartSignals = useMemo(() => (
     showHistoricalSignals && signals?.length ? filterSignalsByCandles(normalizeSignals(signals), chartCandles) : []
   ), [chartCandles, showHistoricalSignals, signals]);
@@ -1450,6 +1464,9 @@ export function SymbolChart({
             {!evidenceAvailable ? "Evidence n/a" : evidenceVisible ? "Hide evidence" : "Show evidence"}
           </button>
         </div>
+      ) : null}
+      {focusCaption ? (
+        <div className="pointer-events-none absolute left-4 top-4 z-10 max-w-[70%] rounded-xl border border-white/10 bg-slate-950/85 px-3 py-2 text-[11px] font-medium text-slate-200 shadow-lg backdrop-blur-xl">{focusCaption}</div>
       ) : null}
       {hasTradeLevels && (!showResearchLevelsToggle || levelsVisible) ? (
         <div className="pointer-events-none absolute bottom-4 right-4 z-10 rounded-2xl border border-white/10 bg-slate-950/75 px-4 py-3 text-xs shadow-lg backdrop-blur-xl">

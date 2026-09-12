@@ -30,6 +30,7 @@ import { buildSymbolKnowledgeGraphModel } from "@/lib/trading/symbol-knowledge-g
 import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution";
 import { buildSymbolResearchModel } from "@/lib/trading/market-research";
 import { buildSignalEvidenceLevels, buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
+import { EVIDENCE_DIMENSIONS, EVIDENCE_DIMENSION_LABEL, EVIDENCE_DIMENSION_SCORE_FIELD, type EvidenceDimension } from "./chart-evidence-focus";
 import type { IntradayDriftRow, RankingRow, ScannerScalar } from "@/lib/types";
 import type { ChartCandle, ChartSignalMarker, ChartTradeLevels } from "./SymbolChart";
 import { SymbolDecisionHero } from "./SymbolDecisionHero";
@@ -148,6 +149,7 @@ export function SymbolTerminalWorkspace({
   const [deepPanelsReady, setDeepPanelsReady] = useState(false);
   const tradeLevels = useMemo(() => buildSignalTradeLevels(row), [row]);
   const evidenceLevels = useMemo(() => buildSignalEvidenceLevels(row), [row]);
+  const [focusDimension, setFocusDimension] = useState<EvidenceDimension | null>(null);
   const lifecycle = useMemo(() => computeSignalLifecycle(row, tradeLevels), [row, tradeLevels]);
   const symbol = row.symbol.toUpperCase();
   const structuralQuality = useMemo(() => (
@@ -266,6 +268,29 @@ export function SymbolTerminalWorkspace({
           </button>
         </div>
         <div className="mt-5">
+          {canTrade ? (
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Focus evidence</span>
+              {EVIDENCE_DIMENSIONS.map((dim) => {
+                const score = numericValue(row[EVIDENCE_DIMENSION_SCORE_FIELD[dim]]);
+                const active = focusDimension === dim;
+                return (
+                  <button
+                    key={dim}
+                    type="button"
+                    onClick={() => setFocusDimension(active ? null : dim)}
+                    title="Show this dimension's evidence on the chart."
+                    className={`rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-[0.12em] transition-colors ${active ? "border-cyan-300/60 bg-cyan-500/15 text-cyan-100" : "border-white/10 bg-slate-950/70 text-slate-300 hover:border-cyan-300/40 hover:text-cyan-100"}`}
+                  >
+                    {EVIDENCE_DIMENSION_LABEL[dim]}{score !== null ? ` ${Math.round(score)}` : ""}
+                  </button>
+                );
+              })}
+              {focusDimension ? (
+                <button type="button" onClick={() => setFocusDimension(null)} className="rounded-full border border-white/10 bg-slate-950/70 px-3 py-1 text-[11px] font-semibold text-slate-400 transition-colors hover:text-slate-200">Clear</button>
+              ) : null}
+            </div>
+          ) : null}
           {chartReady ? (
             <SymbolChart
               candles={candles.length ? candles : undefined}
@@ -283,6 +308,7 @@ export function SymbolTerminalWorkspace({
               symbolSequence={contextRows.map((contextRow) => String(contextRow.symbol ?? ""))}
               tradeLevels={canTrade ? tradeLevels : undefined}
               evidenceLevels={canTrade ? evidenceLevels : undefined}
+              focusDimension={focusDimension}
             />
           ) : (
             <FastSymbolChartShell candles={candles} dataSource={usesScannerSignalPriceTrail ? "scanner signal price trail" : "scanner validated OHLC history"} symbol={symbol} />
