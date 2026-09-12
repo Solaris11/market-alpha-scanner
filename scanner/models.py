@@ -109,3 +109,6 @@ class RankedAsset:
     avwap_ytd: float = float("nan")
     avwap_swing: float = float("nan")
     supertrend_line: float = float("nan")
+    # --- P2.1 item 3: scanner-derived support/resistance evidence ---
+    recent_swing_low: float = float("nan")
+    recent_resistance: float = float("nan")

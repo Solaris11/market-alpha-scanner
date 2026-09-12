@@ -1022,6 +1022,10 @@ def derive_trade_plan(
         "trade_quality": trade_quality,
         "trade_quality_note": trade_quality_note,
         "target_warning": target_warning,
+        # P2.1 item 3: expose the scanner-derived swing support and recent
+        # resistance so the chart can draw verified S/R (additive).
+        "recent_swing_low": recent_swing_low,
+        "recent_resistance": high_3m,
     }
 
 

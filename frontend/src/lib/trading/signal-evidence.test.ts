@@ -26,8 +26,17 @@ test("returns null for missing/unparseable evidence, so nothing draws", () => {
   assert.equal(e.supertrend, null);
 });
 
-test("coerces string-numeric payload values (index-signature fields)", () => {
-  const e = buildSignalEvidenceLevels(base({ avwap_swing: "108.5", supertrend_line: "99.25" }));
+test("carries decimal evidence values through unchanged", () => {
+  const e = buildSignalEvidenceLevels(base({ avwap_swing: 108.5, supertrend_line: 99.25 }));
   assert.equal(e.avwapSwing, 108.5);
   assert.equal(e.supertrend, 99.25);
+});
+
+test("extracts verified support/resistance with fallbacks", () => {
+  const e = buildSignalEvidenceLevels(base({ recent_swing_low: 90, recent_resistance: 130 }));
+  assert.equal(e.support, 90);
+  assert.equal(e.resistance, 130);
+  const f = buildSignalEvidenceLevels(base({ swing_low: 88, resistance: 125 }));
+  assert.equal(f.support, 88);
+  assert.equal(f.resistance, 125);
 });

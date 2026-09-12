@@ -83,11 +83,13 @@ export function normalizeEvidenceLevels(levels?: ChartEvidenceLevels): Normalize
     avwapYtd: validLevel(levels?.avwapYtd),
     avwapSwing: validLevel(levels?.avwapSwing),
     supertrend: validLevel(levels?.supertrend),
+    support: validLevel(levels?.support),
+    resistance: validLevel(levels?.resistance),
   };
 }
 
 export function hasEvidenceLevels(levels: NormalizedEvidenceLevels): boolean {
-  return levels.avwapYtd !== null || levels.avwapSwing !== null || levels.supertrend !== null;
+  return levels.avwapYtd !== null || levels.avwapSwing !== null || levels.supertrend !== null || levels.support !== null || levels.resistance !== null;
 }
 
 // Persisted scanner decision-evidence, drawn in hues distinct from the trade
@@ -97,6 +99,10 @@ export function addEvidenceLevelLines(candleSeries: ISeriesApi<"Candlestick">, l
   addPriceLine(candleSeries, levels.avwapSwing, "#a855f7", LineStyle.Dotted, "AVWAP (swing)");
   addPriceLine(candleSeries, levels.avwapYtd, "#c084fc", LineStyle.Dotted, "AVWAP (YTD)");
   addPriceLine(candleSeries, levels.supertrend, "#14b8a6", LineStyle.Dashed, "SuperTrend stop");
+  // Verified scanner S/R (item 3): green support, orange resistance -- distinct
+  // from the amber entry / red stop / blue targets of the trade plan.
+  addPriceLine(candleSeries, levels.support, "#16a34a", LineStyle.Solid, "Support (swing)");
+  addPriceLine(candleSeries, levels.resistance, "#ea580c", LineStyle.Solid, "Resistance (recent)");
 }
 
 export function addResearchContextLines(candleSeries: ISeriesApi<"Candlestick">, levels: ChartResearchLevel[]) {

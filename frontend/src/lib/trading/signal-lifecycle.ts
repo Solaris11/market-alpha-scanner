@@ -52,6 +52,9 @@ export type SignalEvidenceLevels = {
   avwapYtd: number | null;
   avwapSwing: number | null;
   supertrend: number | null;
+  // P2.1 item 3: scanner-derived verified support/resistance.
+  support: number | null;
+  resistance: number | null;
 };
 
 // The AVWAP anchors and SuperTrend trailing stop the scanner already used to
@@ -62,6 +65,8 @@ export function buildSignalEvidenceLevels(row: RankingRow): SignalEvidenceLevels
     avwapYtd: firstNumber(row.avwap_ytd ?? row.avwap),
     avwapSwing: firstNumber(row.avwap_swing),
     supertrend: firstNumber(row.supertrend_line),
+    support: firstNumber(row.recent_swing_low ?? row.swing_low ?? row.support),
+    resistance: firstNumber(row.recent_resistance ?? row.resistance),
   };
 }
 

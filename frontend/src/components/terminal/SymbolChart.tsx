@@ -142,6 +142,8 @@ export type ChartEvidenceLevels = {
   avwapYtd?: number | null;
   avwapSwing?: number | null;
   supertrend?: number | null;
+  support?: number | null;
+  resistance?: number | null;
 };
 
 export type SymbolChartProps = {

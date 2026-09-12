@@ -43,12 +43,13 @@ def test_technical_scorecard_exposes_evidence_levels() -> None:
 
 def test_ranked_asset_field_defaults_are_additive() -> None:
     names = {f.name for f in fields(RankedAsset)}
-    for key in ("avwap_ytd", "avwap_swing", "supertrend_line"):
+    for key in ("avwap_ytd", "avwap_swing", "supertrend_line", "recent_swing_low", "recent_resistance"):
         assert key in names, f"RankedAsset missing {key}"
     # Append-only + defaulted: constructing without them must still work.
     a = RankedAsset(**{f.name: (0.0 if f.type == "float" else "") for f in fields(RankedAsset)
                        if f.default is f.default_factory})  # only required fields
     assert math.isnan(a.avwap_ytd) and math.isnan(a.supertrend_line)
+    assert math.isnan(a.recent_swing_low) and math.isnan(a.recent_resistance)
 
 
 def test_evidence_levels_round_trip_through_payload() -> None:

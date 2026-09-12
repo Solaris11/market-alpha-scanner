@@ -413,6 +413,10 @@ def scan_symbols(
                 avwap_ytd=technical["avwap_ytd"],
                 avwap_swing=technical["avwap_swing"],
                 supertrend_line=technical["supertrend_line"],
+                # P2.1 item 3: persist the swing support + recent resistance the
+                # scanner already derived for the trade plan.
+                recent_swing_low=safe_float(trade_plan["recent_swing_low"], np.nan),
+                recent_resistance=safe_float(trade_plan["recent_resistance"], np.nan),
             )
             apply_horizon_recommendations(asset, horizon_context)
             ranked.append(asset)
