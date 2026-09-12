@@ -1,5 +1,6 @@
 import { loadEnvFiles, monitoringBaseUrl, postMonitoringPayload, safeErrorMessage, statusFromHttp, type MonitoringStatus } from "./monitoring-common";
 import { sendExternalAlert } from "../src/lib/alerting/external-alerts";
+import { classifyDeepHealthSeverity } from "../src/lib/monitoring/deep-health-severity";
 
 type SyntheticCheck = {
   allowedStatuses: number[];
@@ -183,15 +184,10 @@ async function runCheck(check: SyntheticCheck): Promise<CheckResult> {
 }
 
 function validateDeepHealth(body: unknown): { message: string; status: MonitoringStatus } {
-  const payload = objectValue(body);
-  const db = objectValue(payload.db).status;
-  const scanner = objectValue(payload.scanner).status;
-  const backup = objectValue(payload.backup).status;
-  if (db !== "ok") return { message: "Deep health DB check failed.", status: "fail" };
-  if (scanner === "fail") return { message: "Deep health scanner check failed.", status: "fail" };
-  if (backup === "fail") return { message: "Deep health backup check failed.", status: "fail" };
-  if (scanner === "warn" || backup === "warn" || backup === "unknown") return { message: "Deep health is degraded.", status: "warn" };
-  return { message: "Deep health is ok.", status: "ok" };
+  // Delegates to the shared classifier so the synthetic and any other consumer
+  // agree, and so a genuinely "failed" backup is caught (was compared to the
+  // non-existent value "fail" and silently reported ok).
+  return classifyDeepHealthSeverity(body);
 }
 
 async function parseBody(response: Response): Promise<unknown> {
