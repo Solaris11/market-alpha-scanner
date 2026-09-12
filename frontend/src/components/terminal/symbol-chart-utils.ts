@@ -6,7 +6,7 @@ import {
   type Time,
 } from "lightweight-charts";
 import { buildResearchContextLevels as buildResearchLevels } from "@/lib/trading/research-levels";
-import type { ChartCandle, ChartSignalMarker, ChartTradeLevels } from "./SymbolChart";
+import type { ChartCandle, ChartEvidenceLevels, ChartSignalMarker, ChartTradeLevels } from "./SymbolChart";
 import { markerVisualPolicy } from "./symbol-chart-marker-policy";
 
 export type NormalizedTradeLevels = Required<ChartTradeLevels>;
@@ -74,6 +74,29 @@ export function addTradeLevelLines(candleSeries: ISeriesApi<"Candlestick">, leve
   addPriceLine(candleSeries, levels.target, "#38bdf8", LineStyle.Solid, "Target 1");
   addPriceLine(candleSeries, levels.target2, "#0ea5e9", LineStyle.Dashed, "Target 2");
   addPriceLine(candleSeries, levels.target3, "#0284c7", LineStyle.Dashed, "Target 3");
+}
+
+export type NormalizedEvidenceLevels = Required<ChartEvidenceLevels>;
+
+export function normalizeEvidenceLevels(levels?: ChartEvidenceLevels): NormalizedEvidenceLevels {
+  return {
+    avwapYtd: validLevel(levels?.avwapYtd),
+    avwapSwing: validLevel(levels?.avwapSwing),
+    supertrend: validLevel(levels?.supertrend),
+  };
+}
+
+export function hasEvidenceLevels(levels: NormalizedEvidenceLevels): boolean {
+  return levels.avwapYtd !== null || levels.avwapSwing !== null || levels.supertrend !== null;
+}
+
+// Persisted scanner decision-evidence, drawn in hues distinct from the trade
+// levels so "where the scan anchored" reads separately from "where to act".
+// AVWAP anchors dotted (context), SuperTrend dashed (a trailing stop level).
+export function addEvidenceLevelLines(candleSeries: ISeriesApi<"Candlestick">, levels: NormalizedEvidenceLevels) {
+  addPriceLine(candleSeries, levels.avwapSwing, "#a855f7", LineStyle.Dotted, "AVWAP (swing)");
+  addPriceLine(candleSeries, levels.avwapYtd, "#c084fc", LineStyle.Dotted, "AVWAP (YTD)");
+  addPriceLine(candleSeries, levels.supertrend, "#14b8a6", LineStyle.Dashed, "SuperTrend stop");
 }
 
 export function addResearchContextLines(candleSeries: ISeriesApi<"Candlestick">, levels: ChartResearchLevel[]) {

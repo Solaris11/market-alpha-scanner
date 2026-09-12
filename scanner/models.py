@@ -102,3 +102,10 @@ class RankedAsset:
     atr_pct: float
     annualized_volatility: float
     max_drawdown: float
+    # --- P2.1 item 4: AVWAP / SuperTrend decision-evidence levels ---
+    # Computed in scanner.scoring and previously used only to derive the
+    # setup/entry/invalidation, then discarded. Persisted additively so the
+    # chart can draw the anchor the setup is named after. Default NaN.
+    avwap_ytd: float = float("nan")
+    avwap_swing: float = float("nan")
+    supertrend_line: float = float("nan")

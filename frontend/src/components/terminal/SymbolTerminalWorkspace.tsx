@@ -29,7 +29,7 @@ import type { StrategyIntelligenceSystem } from "@/lib/trading/strategy-intellig
 import { buildSymbolKnowledgeGraphModel } from "@/lib/trading/symbol-knowledge-graph";
 import type { WorkflowEvolutionSummary } from "@/lib/trading/workflow-evolution";
 import { buildSymbolResearchModel } from "@/lib/trading/market-research";
-import { buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
+import { buildSignalEvidenceLevels, buildSignalTradeLevels, computeSignalLifecycle } from "@/lib/trading/signal-lifecycle";
 import type { IntradayDriftRow, RankingRow, ScannerScalar } from "@/lib/types";
 import type { ChartCandle, ChartSignalMarker, ChartTradeLevels } from "./SymbolChart";
 import { SymbolDecisionHero } from "./SymbolDecisionHero";
@@ -147,6 +147,7 @@ export function SymbolTerminalWorkspace({
   const [chartReady, setChartReady] = useState(false);
   const [deepPanelsReady, setDeepPanelsReady] = useState(false);
   const tradeLevels = useMemo(() => buildSignalTradeLevels(row), [row]);
+  const evidenceLevels = useMemo(() => buildSignalEvidenceLevels(row), [row]);
   const lifecycle = useMemo(() => computeSignalLifecycle(row, tradeLevels), [row, tradeLevels]);
   const symbol = row.symbol.toUpperCase();
   const structuralQuality = useMemo(() => (
@@ -281,6 +282,7 @@ export function SymbolTerminalWorkspace({
               initialHotPackets={prefetchedChartPackets}
               symbolSequence={contextRows.map((contextRow) => String(contextRow.symbol ?? ""))}
               tradeLevels={canTrade ? tradeLevels : undefined}
+              evidenceLevels={canTrade ? evidenceLevels : undefined}
             />
           ) : (
             <FastSymbolChartShell candles={candles} dataSource={usesScannerSignalPriceTrail ? "scanner signal price trail" : "scanner validated OHLC history"} symbol={symbol} />

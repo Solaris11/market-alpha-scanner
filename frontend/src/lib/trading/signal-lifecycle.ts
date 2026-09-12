@@ -47,6 +47,24 @@ export function buildSignalTradeLevels(row: RankingRow): SignalTradeLevels {
   };
 }
 
+export type SignalEvidenceLevels = {
+  // Scanner-computed decision-evidence anchors, persisted in P2.1 item 4.
+  avwapYtd: number | null;
+  avwapSwing: number | null;
+  supertrend: number | null;
+};
+
+// The AVWAP anchors and SuperTrend trailing stop the scanner already used to
+// name the setup and place the invalidation. Drawing the persisted values (not
+// a client recompute) keeps the chart identical to the scan.
+export function buildSignalEvidenceLevels(row: RankingRow): SignalEvidenceLevels {
+  return {
+    avwapYtd: firstNumber(row.avwap_ytd ?? row.avwap),
+    avwapSwing: firstNumber(row.avwap_swing),
+    supertrend: firstNumber(row.supertrend_line),
+  };
+}
+
 // Keep only rungs strictly above the previous one, so Target 2/3 never draw
 // below or on top of Target 1 (which would read as noise on the chart).
 function ascendingLadder(base: number | null, rungs: Array<number | null>): [number | null, number | null] {

@@ -71,6 +71,9 @@ export type RankingRow = {
   selection_reason?: string;
   technical_score?: number;
   avwap?: number;
+  avwap_ytd?: number;
+  avwap_swing?: number;
+  supertrend_line?: number;
   recent_swing_low?: number;
   swing_low?: number;
   recent_resistance?: number;

@@ -407,6 +407,12 @@ def scan_symbols(
                 atr_pct=atr_pct,
                 annualized_volatility=ann_vol,
                 max_drawdown=dd_pct,
+                # P2.1 item 4: persist the AVWAP/SuperTrend levels the scanner
+                # already computed (were used for setup/entry/invalidation, then
+                # dropped). scoring.py rounds/NaN-guards these.
+                avwap_ytd=technical["avwap_ytd"],
+                avwap_swing=technical["avwap_swing"],
+                supertrend_line=technical["supertrend_line"],
             )
             apply_horizon_recommendations(asset, horizon_context)
             ranked.append(asset)

@@ -18,6 +18,9 @@ import {
 import {
   addResearchContextLines,
   addTradeLevelLines,
+  addEvidenceLevelLines,
+  normalizeEvidenceLevels,
+  hasEvidenceLevels,
   hasVolume,
   toVolumeData,
   volumeAverageLine,
@@ -134,6 +137,13 @@ export type ChartTradeLevels = {
   target3?: number | null;
 };
 
+export type ChartEvidenceLevels = {
+  // Scanner-persisted decision evidence (P2.1 item 4).
+  avwapYtd?: number | null;
+  avwapSwing?: number | null;
+  supertrend?: number | null;
+};
+
 export type SymbolChartProps = {
   symbol: string;
   candles?: ChartCandle[];
@@ -142,6 +152,7 @@ export type SymbolChartProps = {
   showHeaderBadge?: boolean;
   showResearchLevelsToggle?: boolean;
   tradeLevels?: ChartTradeLevels;
+  evidenceLevels?: ChartEvidenceLevels;
   height?: number;
   dataSource?: string;
   defaultPeriod?: InteractiveChartPeriod;
@@ -241,6 +252,7 @@ export function SymbolChart({
   showHeaderBadge = true,
   showResearchLevelsToggle = false,
   tradeLevels,
+  evidenceLevels,
   height = 360,
   dataSource = "validated price history",
   defaultPeriod = "6mo",
@@ -279,6 +291,7 @@ export function SymbolChart({
   const [resetToken, setResetToken] = useState(0);
   const [showResearchLevels, setShowResearchLevels] = useState(true);
   const [showVolume, setShowVolume] = useState(true);
+  const [showEvidence, setShowEvidence] = useState(false);
   const [uncontrolledOverlayFamilies, setUncontrolledOverlayFamilies] = useState<ChartOverlayFamily[]>(defaultOverlayFamilies);
   const [uncontrolledIndicators, setUncontrolledIndicators] = useState<ChartIndicatorId[]>(defaultIndicators);
   const [drawingTool, setDrawingTool] = useState<ChartDrawingTool>("inspect");
@@ -319,6 +332,9 @@ export function SymbolChart({
   const chartCandles = useMemo(() => filterCandlesByPeriod(normalizedCandles, period), [normalizedCandles, period]);
   const volumeAvailable = useMemo(() => hasVolume(chartCandles), [chartCandles]);
   const volumeVisible = showVolume && volumeAvailable;
+  const chartEvidence = useMemo(() => normalizeEvidenceLevels(evidenceLevels), [evidenceLevels]);
+  const evidenceAvailable = useMemo(() => hasEvidenceLevels(chartEvidence), [chartEvidence]);
+  const evidenceVisible = showEvidence && evidenceAvailable;
   const chartSignals = useMemo(() => (
     showHistoricalSignals && signals?.length ? filterSignalsByCandles(normalizeSignals(signals), chartCandles) : []
   ), [chartCandles, showHistoricalSignals, signals]);
@@ -1087,6 +1103,7 @@ export function SymbolChart({
       } else {
         addTradeLevelLines(candleSeries, chartLevels);
       }
+      if (evidenceVisible) addEvidenceLevelLines(candleSeries, chartEvidence);
       const layoutFitStartedAt = browserWorkflowNow();
       chart.timeScale().fitContent();
       recordSymbolRouteTimingMark("chart:layout-fit-complete", {
@@ -1185,7 +1202,7 @@ export function SymbolChart({
       setFailed(true);
       return undefined;
     }
-  }, [canRenderChart, chartCandles, chartLevels, chartSymbol, crosshairSourceId, crosshairSyncGroup, indicatorSeries, levelsVisible, researchLevels, resetToken, showResearchLevelsToggle, visibleChartSignals, volumeVisible]);
+  }, [canRenderChart, chartCandles, chartLevels, chartSymbol, crosshairSourceId, crosshairSyncGroup, indicatorSeries, levelsVisible, researchLevels, resetToken, showResearchLevelsToggle, visibleChartSignals, volumeVisible, chartEvidence, evidenceVisible]);
 
   if (failed || (chartPacket.candles.length && !normalizedCandles.length)) {
     return <EmptyState title="Price chart unavailable" message="The latest price payload could not be validated for this symbol." />;
@@ -1420,6 +1437,15 @@ export function SymbolChart({
             type="button"
           >
             {!volumeAvailable ? "Volume n/a" : volumeVisible ? "Hide volume" : "Show volume"}
+          </button>
+          <button
+            className={`rounded-full border px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.12em] shadow-lg backdrop-blur-xl transition-colors ${evidenceAvailable ? "border-white/10 bg-slate-950/80 text-slate-300 hover:border-violet-300/40 hover:text-violet-100" : "cursor-not-allowed border-white/5 bg-slate-950/50 text-slate-600"}`}
+            disabled={!evidenceAvailable}
+            onClick={() => setShowEvidence((value) => !value)}
+            title={evidenceAvailable ? "AVWAP anchors and the SuperTrend stop the scanner used to place the setup, drawn on the chart." : "No AVWAP/SuperTrend evidence persisted for this symbol yet."}
+            type="button"
+          >
+            {!evidenceAvailable ? "Evidence n/a" : evidenceVisible ? "Hide evidence" : "Show evidence"}
           </button>
         </div>
       ) : null}
