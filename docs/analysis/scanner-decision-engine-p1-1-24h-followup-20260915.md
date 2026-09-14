@@ -39,6 +39,12 @@ market-calendar shadow veto list still contains a severe code).
 | 4bd97e56 | 09-14 15:46 | 354 | 0/10/31/104/209 | 299/54/1/0 | 0 | 0 | 146 | 146 | 3/0/51/91/209 | 4/22/62/57 | 9 | 26/26 | 32 | |
 | 86c03895 | 09-14 16:03 | 352 | 0/10/30/105/207 | 297/54/1/0 | 0 | 0 | 146 | 146 | 3/0/47/95/207 | 4/23/61/57 | 11 | 27/27 | 33 | |
 | 000fb2e1 | 09-14 16:16 | 352 | 0/10/32/104/206 | 295/57/0/0 | 0 | 0 | 143 | 143 | 3/0/54/89/206 | 4/19/67/56 | 11 | 23/23 | 33 | 16:30 check-in: mid-session relvol median 31.0 (partial-bar artefact live: overnight ~48), breakout median 1.2, numeric breakout triple 0 |
+| c17bf0d8 | 09-14 16:31 | 352 | 0/7/31/113/201 | 297/55/0/0 | 0 | 0 | 149 | 149 | 3/0/43/105/201 | 3/22/60/66 | 11 | 25/25 | 31 | |
+| 165d0380 | 09-14 16:46 | 352 | 0/7/32/115/198 | 296/56/0/0 | 0 | 0 | 151 | 151 | 3/0/45/106/198 | 3/24/62/65 | 10 | 27/27 | 31 | |
+| 510cecb4 | 09-14 17:01 | 352 | 0/9/39/107/197 | 295/56/1/0 | 0 | 0 | 157 | 157 | 2/0/47/106/197 | 2/26/68/59 | 8 | 28/28 | 29 | |
+| 9e504aff | 09-14 17:16 | 352 | 0/9/31/113/199 | 296/55/1/0 | 0 | 0 | 154 | 154 | 2/0/45/106/199 | 2/23/68/60 | 8 | 25/25 | 30 | |
+| d7cae37a | 09-14 17:32 | 352 | 0/9/30/112/201 | 296/55/1/0 | 0 | 0 | 154 | 154 | 2/0/42/107/201 | 2/25/63/61 | 7 | 27/27 | 31 | |
+| e140281c | 09-14 17:47 | 352 | 0/6/29/117/200 | 298/52/2/0 | 0 | 0 | 154 | 154 | 2/0/44/106/200 | 2/26/63/61 | 9 | 28/28 | 32 | 18:00 check-in: v2 ENTER = ARGX, KO (live says WAIT_PULLBACK for both); TMO/SAIC left the band intraday |
 
 (E=ENTER, W=WAIT_PULLBACK, Wa=WATCH, A=AVOID, X=EXIT.)
 
@@ -229,6 +235,7 @@ Documented in the 09-14 report §8. Nothing further.
 | 13:41 | 200 | 200 | 13:31 success 359 | fast-scan next 13:41:58; full-scan 21:30; scanner-health 06:19 | frontend/hot-api/postgres healthy, up 3h | after the operator reboot |
 | 15:01 | 200 (ttfb 0.18 s) | 200 (0.16 s) | 14:49 success 356 | fast-scan last 14:56:59 (running at check time); full-scan 21:30 | frontend/hot-api recreated 14:18 (healthy, 42 min), postgres up 5 h | backup completed 12:55 UTC via r2 (age 126 min at check) |
 | 16:31 | 200 | 200 | 16:16 success 359 | fast-scan on cadence (12 runs since 13:41, all success); full-scan 21:30 | frontend/hot-api recreated 15:11 (healthy), postgres healthy | 11 consecutive fresh runs; live ENTER 0 in all, v1 ENTER 3, v2 ENTER 3–4 / WAIT 15–23 |
+| 18:01 | 200 | 200 (backup event 12:55 r2 ok) | 17:47 success 352 | fast-scan on cadence (17 fresh runs since 13:41); full-scan 21:30 | RestartCount 0 on frontend/hot-api (recreated 16:36), postgres, caddy; load 1.7/1.1/0.7; frontend rss 409 MB, event-loop p99 11.5 ms | no anomalies |
 
 ## 9. Changes shipped in this window
 
