@@ -227,6 +227,7 @@ Documented in the 09-14 report §8. Nothing further.
 | `d94920e0` | `mcal_vetoes` / `mcal_severe_vetoes` / `mcal_data_quality_score` (observation); relay bundles `run_history`, `run_snapshot`, `candidate_actionable_sample`, `volume_by_hour`, `breakout_candidates_why` | scanner image rebuilt 13:47, tag `rollback-scanner-20260914-p11-step2` |
 | (relay only) | `replay_cohorts` bundle | self-reloaded worker |
 | `4774a1a1` | `candidate_v2_*` shadow columns (market-calendar freshness, class-not-verdict, balanced-target rr, no quality read); relay `candidate_v2_sample`, `candidate_v2_reasons`, v2 counts in `run_history` | scanner image rebuilt 13:54, tag `rollback-scanner-20260914-p11-step3`; 13:56 scan on it |
+| `fa00f4cb` | /terminal: `ExecutionTimingSystem.rows` no longer serialised (lever 2) | frontend rebuilt + recreated 14:18, tag `rollback-frontend-20260914-execrows`; PROD WEB 9,011 → 6,980 KB |
 | `65c4a7fc` | v2 class `UNCLASSIFIED` (the payload writer nulls the string "none"); `v2_where_full` in `run_history` | scanner image rebuilt 14:05, tag `rollback-scanner-20260914-p11-step4` |
 
 ## 10. Fill-in work — /terminal payload duplication audit (LOCAL, checkout of `bd16023a`)
@@ -274,3 +275,17 @@ universe (trim fields, not rows); the projection must not re-widen `raw`
 WAIT/AVOID copy. Lever 2's `rows: []` slice is the smallest measured unit to
 ship first; each step is its own commit → relay push → prod pull → frontend
 rebuild → PROD WEB + PROD HOST measurement.
+
+**Shipped (commit `fa00f4cb`, frontend deploy 14:18 UTC, rollback tag
+`rollback-frontend-20260914-execrows`, containers healthy at health[3]).**
+`stripExecutionTimingRowsForClient` drops `ExecutionTimingSystem.rows` at the
+/terminal boundary; `rowCount` keeps the no-rows state; buckets keep their
+references. LOCAL MAC: 12/12 execution tests, tsc clean. **PROD WEB (logged-in,
+`fetch('/terminal')`, two samples each): decoded document 9,011 KB → 6,980 KB
+(−2,031 KB, −22.5%)**, 2.0 s → 1.8–2.4 s (noise range), the Execution
+Intelligence panel renders the same content (356 symbols reviewed, five
+buckets populated, no "Timing Context Unavailable"). The remaining
+`timingQualityScore` occurrences (368) belong to the per-row timing-proof
+summaries inside the opportunity rows themselves — lever 1 territory. PROD
+HOST smoke after the recreate: all routes 200 (market-charts 401 = premium
+gate).
