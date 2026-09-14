@@ -8,9 +8,12 @@ code reading / unit / type / build only (never production evidence).
 Access note: the owner's real Mac reaches PROD HOST (Tailscale direct,
 `ssh sre@100.68.155.121` works). This session's automation tools cannot execute
 real-Mac shell commands directly (device VM is loopback-only; cloud shell has no
-ssh; GUI automation is click-only for terminals), so PROD HOST was collected via
-a read-only script run once by the owner (`.claude-prod-audit/run.sh` →
-`out.txt`, no secrets printed) and read back through the bridge.
+ssh; GUI automation is click-only for terminals), so PROD HOST was first collected via a
+read-only script run once by the owner (`.claude-prod-audit/run.sh` → `out.txt`),
+then — from 11:31 UTC — through the **guarded local command relay**
+(`tools/local/tradeveto-command-relay`, commit `bd5fcf7c`): allowlisted actions
+only, executed on the real Mac, results as JSON. All DB/git/smoke evidence below
+marked *relay* came through it.
 
 Scope audited: state after P2.1 chart work (items 2–5), SNDK P0, backup/deep-
 health fix, and the `/terminal` lazy-load slice (`fd9a82ef`).
@@ -47,7 +50,7 @@ Source: `.claude-prod-audit/out.txt`, two captures: 10:38:21Z (first pass) and
 | Tailscale | Mac `100.111.30.29` ↔ `onsre-node-01 100.68.155.121` **active, direct** |
 | host / user | `onsre-node-01` / `sre` |
 | app checkout | `/opt/apps/market-alpha-scanner/app` |
-| **prod git HEAD** | **`fd9a82e`** — "Lazy-load the terminal cross-asset chart hub" (2026-09-14 01:51 UTC) → branch deployed through `fd9a82ef` ✓ |
+| **prod git HEAD** | `fd9a82e` at the 10:38/10:52 captures; **`bd5fcf7` at 11:32 (relay)** — the relay commit on top of the two audit commits, in sync with `origin`. Untracked on prod: `log/`, `tools/ops/tradeveto-backup-lifecycle.sh`, `tools/ops/tradeveto-resource-watchdog.py` (ops scripts not yet committed) |
 | `docker compose ps` | `market-alpha-frontend` **Up 13m (healthy)**, `market-alpha-frontend-hot-api` **Up 13m (healthy)**, `postgres:16-alpine` **Up 13m (healthy)** |
 | restart counts | frontend **0**, hot-api **0**, postgres **0** — all `health=healthy` |
 | `market-alpha-fast-scan.timer` | last **10:26:44** (11 min before check), next 10:41:44 → ~15-min cadence, **fresh** |
@@ -57,18 +60,22 @@ Source: `.claude-prod-audit/out.txt`, two captures: 10:38:21Z (first pass) and
 | `tradeveto-resource-watchdog.timer` | every 5 min (last 10:51:57) ✓ |
 | **image freshness** | `market-alpha-frontend:latest` + `hot-api:latest` **built 2026-09-14T09:55:48Z** (the `fd9a82ef` deploy); `market-alpha-scanner-job:latest` **built 2026-09-14T01:10:53Z** (the items-3/4 scanner rebuild); rollback tags `rollback-20260914a` (09-12 16:30) and `rollback-20260914b` (09-14 01:19) present. **No stale image** — both images are from today |
 | external curl from prod → `/api/health` | **200 in 0.22 s** |
-| **DB — latest scan run** | `scan_runs`: **2026-09-14 10:46:13 UTC, status=success, symbols_scored=359** (read via `docker compose exec … psql` inside the postgres container) ✓ |
-| DB — decision / setup distributions (raw table) | first pass: `psql` not on host; second pass: only the first query ran because `docker compose exec -T` consumed the remote `bash -s` stdin (script since fixed with `</dev/null`). The distributions for this same run are confirmed from PROD WEB `/api/ranking` (§6), which serves this run's `scanner_signals` (356 of 359 scored rows) |
+| **DB — latest scan run** (relay `prod_db_read latest_scan`) | `scan_runs`: **11:31:18 UTC success, 359 scored**; previous runs 11:16, 11:01, 10:46, 10:31 — all success, 359 → 15-min cadence holding ✓ |
+| **DB — `final_decision` distribution** (relay, raw `scanner_signals`) | **AVOID 108 · EXIT 207 · WAIT_PULLBACK 1 · WATCH 40 · ENTER 0** ✓ |
+| **DB — `setup_type` distribution** (relay) | **AVOID 355 · PULLBACK 1** ✓ |
+| **DB — P2.1 evidence fields** (relay) | rows 356; `avwap_ytd` 356, `avwap_swing` 356, `supertrend_line` 356, `recent_swing_low` 356, `recent_resistance` 356 → **100%** ✓ |
+| **DB — SNDK** (relay) | present: `final_decision=EXIT`, `final_score=47.78`, `setup_type=AVOID` ✓ |
 
 Observation — the ~10:25 UTC stack-wide restart: at 10:53 all three containers
 (frontend, hot-api, **and postgres**) read "Up 28 minutes" while frontend/hot-api
 were *created* 56 min earlier (~09:57, the `fd9a82ef` recreate) and postgres was
 created 4 months ago. `RestartCount` is 0 on all three, which rules out a
 restart-policy/crash loop (those increment the counter), and the unchanged
-created-times rule out a recreate. That signature matches an operator
-`docker compose restart` (or a Docker-daemon/host restart) at ~10:25, ~30 min
-after the 09:55 image build. It is a brief availability window; the cause is
-not recorded in this capture — ops follow-up (P2-4), not dismissed.
+created-times rule out a recreate. Resolved at 11:32 (relay `prod_status`): **`uptime … up 1:07` → the host
+itself booted at ~10:25 UTC.** So this was a **host reboot**, not a compose
+restart; containers returned via their restart policy (RestartCount stays 0 on a
+boot). Cause is not recorded in anything the relay can read today (its log
+action tails the frontend container only) — ops follow-up (P2-4).
 
 ## 2. PROD WEB — performance (logged-in premium, in-app browser)
 
@@ -183,9 +190,10 @@ serves **356** → 3 rows not surfaced in the ranking; the per-reason breakdown
 lives only in `scan_runs.metadata.scanner_accounting` (no API exposes it) and
 the raw read did not execute this run (stdin bug, fixed) — see §8.
 
-SNDK: present in the served ranking and live on `/symbol/SNDK` ($1,632.99,
-EXIT, score 48) — PROD WEB. P2.1 evidence fields: 356/356 populated for this
-run — PROD WEB over the PROD-HOST-confirmed run.
+All of the above is now confirmed **directly from `scanner_signals` on PROD
+HOST** (relay `prod_db_read audit_summary`, run `1e53cc5a`, 11:31 UTC): ENTER 0,
+setup_type AVOID 355/356, evidence fields 356/356, SNDK present (EXIT, 47.78).
+PROD WEB `/api/ranking` matches it exactly.
 
 ## 7. Issue list
 
@@ -216,12 +224,13 @@ run — PROD WEB over the PROD-HOST-confirmed run.
   next fire skips the weekend, matching the weekday-only cron pattern
   (`30 22 * * 1-5`) used elsewhere on the host. Markets are closed; treat as
   intended. Residual: confirm the unit's `OnCalendar` is `Mon..Fri` (P3-7).
-- **P2-4 Stack-wide restart ~10:25 UTC — ops follow-up.** All three containers
-  restarted (postgres included); `RestartCount` 0 and unchanged created-times
-  point to an operator `docker compose restart` or a daemon/host restart, not a
-  crash. Not recorded in this capture: record the cause (deploy log / `journalctl
-  -u docker`, `last reboot`) and, if it was not operator-initiated, treat as an
-  incident to explain.
+- **P2-4 Host reboot ~10:25 UTC — cause unknown, ops follow-up.** `uptime`
+  proves the host booted at ~10:25 (not a compose restart). Containers recovered
+  healthy. Unknown whether operator-initiated; note the new untracked
+  `tools/ops/tradeveto-resource-watchdog.py` on prod (a watchdog timer fires
+  every 5 min) — verify it cannot trigger a reboot. Read `last -x reboot` and
+  `journalctl -b -1 -p warning` on the host; add a read-only
+  `prod_journal_recent` action to the relay so this is answerable next time.
 - **P2-5 Offsite backup trigger not identifiable.** Deep health proves
   `market-alpha-backup.sh` ran at 06:00 UTC and synced to R2 successfully, but
   the captured root crontab only schedules `/opt/ops/backup-postgres.sh` (03:05)
@@ -247,31 +256,27 @@ run — PROD WEB over the PROD-HOST-confirmed run.
 - P3-6 `.git` cruft from bridge sessions (temp objects, stale locks, drifted
   local `origin/` ref) — `git fetch && git gc --prune=now` on the real Mac.
 
-## 8. PROD HOST — DB/ops confirmation: closed
+## 8. PROD HOST — DB/ops confirmation: closed (relay)
 
-Second capture (10:52:57Z) closed the ops items: image build dates, the backup
-scheduler (cron), timers incl. the resource watchdog, and the latest scan run
-from the DB (`2026-09-14 10:46:13 UTC, success, 359 symbols`). The only defect
-was in my script: `docker compose exec -T … psql` read the remote `bash -s`
-stdin and swallowed the four follow-on queries (decision/setup distributions,
-signals-24h, runs-7d); only the first ran. Fixed (`</dev/null` on each exec).
+Closed directly against the production database through the guarded relay
+(`prod_db_read`), replacing the earlier API-based closure:
+- latest scan run — **PROD HOST DB** ✓ 11:31 UTC, success, 359 scored; 15-min
+  cadence intact (10:31 → 11:31, five consecutive successes)
+- decision distribution / ENTER count — **PROD HOST DB** ✓ ENTER **0**
+- setup_type distribution — **PROD HOST DB** ✓ AVOID 355 / PULLBACK 1
+- SNDK present — **PROD HOST DB** ✓ (EXIT, 47.78, setup AVOID)
+- P2.1 evidence fields populated — **PROD HOST DB** ✓ 356/356 on all five
+- drop-reason / accounting coverage — 359 scored vs 356 signal rows → 3 not
+  surfaced; the per-reason breakdown (`scan_runs.metadata.scanner_accounting`)
+  is not in the current `audit_summary` bundle — add it to the bundle (read-only)
+  rather than a manual run.
+- images / backup scheduler / timers — **PROD HOST** ✓ (§1)
+- the ~10:25 restart — **PROD HOST** ✓ identified as a host reboot; cause open (P2-4)
 
-Closure per item (labels explicit):
-- latest scan run — **PROD HOST DB** ✓ (10:46 UTC, success, 359 scored)
-- decision distribution / ENTER count — **PROD WEB** `/api/ranking` over this
-  same run: ENTER **0**, WATCH 40, WAIT_PULLBACK 1, EXIT 207, AVOID 108 (356 rows)
-- setup_type distribution — **PROD WEB**: "AVOID" 355 / "PULLBACK" 1
-- SNDK present — **PROD WEB** (ranking + `/symbol/SNDK` live)
-- P2.1 evidence fields populated — **PROD WEB**: 356/356
-- drop-reason / accounting coverage — **PROD HOST** 359 scored vs **PROD WEB**
-  356 served → 3 dropped; per-reason breakdown is DB-only (no API) and is the
-  single item the fixed script would add on a future run — not required to act
-  on P1-1.
-
-The raw-table distributions were therefore confirmed from the application's
-own read of the same run rather than from `psql` directly. The conclusion they
-support (P1-1: ENTER = 0, setup_type = AVOID on nearly every row) is not in
-doubt — it is also the documented behaviour of the live engine.
+Relay smoke after the docs-only pull (`prod_smoke`, curl from the host):
+`/api/health` 200 / 0.10 s · `/api/health/deep` 200 / 0.14 s · `/terminal` 200 /
+0.19 s TTFB. `git_push` → "Everything up-to-date"; `prod_pull` → `bd5fcf7` →
+`bd5fcf7`, "Already up to date".
 
 ## 9. UX — `/terminal` first screen vs WHAT / WHERE / WHICH
 
