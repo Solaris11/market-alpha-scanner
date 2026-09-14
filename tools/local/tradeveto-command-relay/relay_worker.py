@@ -237,7 +237,7 @@ set -euo pipefail
 cd /opt/apps/market-alpha-scanner/app
 printf %s {shlex.quote(encoded_sql)} | base64 -d | docker compose --env-file .env exec -T market-alpha-postgres sh -c 'psql -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -P pager=off'
 """
-    return [ssh_script(script, timeout=120)]
+    return [ssh_script(script, timeout=300)]
 
 
 def action_prod_logs_recent(repo: Path, args: dict[str, Any]) -> list[CommandResult]:
@@ -406,6 +406,116 @@ SELECT COALESCE(p->>'candidate_decision','NULL') AS cand, COALESCE(live,'NULL') 
        COALESCE(p->>'recommendation_quality','NULL') AS quality,
        (p->'candidate_reason_codes')::text AS reasons, count(*) AS rows
 FROM s GROUP BY 1,2,3,4 ORDER BY rows DESC LIMIT 25;
+""",
+    "stale_by_hour": r"""
+WITH s AS (
+  SELECT sr.created_at, ss.final_decision AS live, ss.payload AS p
+  FROM scanner_signals ss JOIN scan_runs sr ON sr.id=ss.scan_run_id
+  WHERE sr.created_at > now() - interval '7 days'
+)
+SELECT extract(hour FROM created_at AT TIME ZONE 'UTC')::int AS utc_hour,
+       count(*) AS rows,
+       round(100.0*count(*) FILTER (WHERE p->'vetoes' ? 'STALE_DATA')/count(*),1) AS stale_pct,
+       round(100.0*count(*) FILTER (WHERE p->'vetoes' ? 'LOW_CONFIDENCE_DATA')/count(*),1) AS lowconf_pct,
+       round(100.0*count(*) FILTER (WHERE p->>'setup_type'='AVOID')/count(*),1) AS setup_avoid_pct,
+       count(*) FILTER (WHERE live='ENTER') AS live_enter,
+       count(*) FILTER (WHERE p->>'candidate_decision'='ENTER') AS cand_enter,
+       count(*) FILTER (WHERE p->>'candidate_decision' IS NOT NULL) AS cand_rows,
+       round(percentile_cont(0.5) WITHIN GROUP (ORDER BY (p->>'data_age_minutes')::numeric) FILTER (WHERE p->>'data_age_minutes' ~ '^[0-9.]+$')::numeric/60,1) AS med_age_h
+FROM s GROUP BY 1 ORDER BY 1;
+""",
+    "stale_by_day": r"""
+WITH s AS (
+  SELECT sr.created_at, ss.final_decision AS live, ss.payload AS p
+  FROM scanner_signals ss JOIN scan_runs sr ON sr.id=ss.scan_run_id
+  WHERE sr.created_at > now() - interval '14 days'
+)
+SELECT date(created_at AT TIME ZONE 'UTC') AS day, to_char(created_at AT TIME ZONE 'UTC','Dy') AS dow,
+       count(*) AS rows,
+       round(100.0*count(*) FILTER (WHERE p->'vetoes' ? 'STALE_DATA')/count(*),1) AS stale_pct,
+       round(100.0*count(*) FILTER (WHERE p->>'setup_type'='AVOID')/count(*),1) AS setup_avoid_pct,
+       count(*) FILTER (WHERE live='ENTER') AS live_enter,
+       count(*) FILTER (WHERE p->>'candidate_decision'='ENTER') AS cand_enter,
+       count(*) FILTER (WHERE p->>'candidate_decision' IS NOT NULL) AS cand_rows,
+       string_agg(DISTINCT p->>'data_provider', ',') AS providers
+FROM s GROUP BY 1,2 ORDER BY 1;
+""",
+    "fresh_window_funnel": r"""
+WITH s AS (
+  SELECT ss.final_decision AS live, ss.payload AS p
+  FROM scanner_signals ss JOIN scan_runs sr ON sr.id=ss.scan_run_id
+  WHERE sr.created_at > now() - interval '7 days' AND NOT (ss.payload->'vetoes' ? 'STALE_DATA')
+)
+SELECT 'rows_not_stale' AS metric, count(*)::text AS value FROM s
+UNION ALL SELECT 'setup_type='||COALESCE(p->>'setup_type','NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'live='||COALESCE(live,'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'candidate='||COALESCE(p->>'candidate_decision','NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'blocking='||COALESCE(p->>'funnel_blocking_gate','NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'veto='||v, count(*)::text FROM s, jsonb_array_elements_text(CASE WHEN jsonb_typeof(p->'vetoes')='array' THEN p->'vetoes' ELSE '[]'::jsonb END) v GROUP BY 1
+UNION ALL SELECT 'confidence>=70', count(*) FILTER (WHERE p->>'confidence_score' ~ '^[0-9.]+$' AND (p->>'confidence_score')::numeric>=70)::text FROM s
+ORDER BY 1;
+""",
+    "fresh_cumulative_gates": r"""
+WITH s AS (
+  SELECT ss.final_decision AS live,
+         COALESCE(x.vetoes ? 'STOP_RISK', false) AS has_stop,
+         COALESCE(x.vetoes ? 'EXTREME_VOLATILITY', false) AS has_extreme,
+         CASE WHEN x.quality_score ~ '^[0-9.]+$' THEN x.quality_score::numeric END AS qs,
+         COALESCE(x.composite_action,'') AS act,
+         COALESCE(x.recommendation_quality,'') AS q,
+         COALESCE(x.entry_status,'') AS es,
+         COALESCE(x.setup_type,'') AS st,
+         CASE WHEN x.final_score ~ '^[0-9.]+$' THEN x.final_score::numeric END AS fs,
+         CASE WHEN x.confidence_score ~ '^[0-9.]+$' THEN x.confidence_score::numeric END AS cs,
+         CASE WHEN x.setup_strength ~ '^[0-9.]+$' THEN x.setup_strength::numeric END AS sst,
+         CASE WHEN x.risk_reward ~ '^-?[0-9.]+$' THEN x.risk_reward::numeric END AS rr,
+         CASE WHEN jsonb_typeof(x.vetoes)='array' THEN jsonb_array_length(x.vetoes) ELSE 0 END AS nveto
+  FROM scanner_signals ss JOIN scan_runs sr ON sr.id=ss.scan_run_id
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(composite_action text, recommendation_quality text, entry_status text, setup_type text, final_score text, confidence_score text, setup_strength text, risk_reward text, quality_score text, vetoes jsonb)
+  WHERE sr.created_at > now() - interval '7 days' AND NOT COALESCE(x.vetoes ? 'STALE_DATA', false)
+),
+
+g AS (
+  SELECT *,
+    (act NOT IN ('SELL','STRONG SELL')) AS g1_not_sell,
+    (q IN ('TRADE_READY','WAIT_PULLBACK')) AS g2_quality_ok,
+    (q = 'TRADE_READY') AS g3_trade_ready,
+    (act IN ('BUY','STRONG BUY')) AS g4_buy,
+    (es IN ('GOOD ENTRY','BUY ZONE','NEAR ENTRY')) AS g5_enterable,
+    (st <> 'AVOID') AS g6_setup_ok,
+    (sst IS NULL OR sst >= 64) AS g7_strength,
+    (nveto = 0) AS g8_no_veto,
+    (fs IS NULL OR fs >= 80) AS g9_score80,
+    (cs IS NULL OR cs >= 70) AS g10_conf70,
+    (fs IS NOT NULL AND fs BETWEEN 55 AND 70) AS band_55_70,
+    (rr IS NOT NULL AND rr >= 1.2) AS rr_ge_1_2
+  FROM s
+)
+SELECT 'A0 fresh rows' AS stage, count(*) AS n FROM g
+UNION ALL SELECT 'A1 action not SELL', count(*) FROM g WHERE g1_not_sell
+UNION ALL SELECT 'A2 +quality TRADE_READY|WAIT_PULLBACK', count(*) FROM g WHERE g1_not_sell AND g2_quality_ok
+UNION ALL SELECT 'A3 +quality TRADE_READY', count(*) FROM g WHERE g1_not_sell AND g3_trade_ready
+UNION ALL SELECT 'A4 +action BUY', count(*) FROM g WHERE g1_not_sell AND g3_trade_ready AND g4_buy
+UNION ALL SELECT 'A5 +entry enterable', count(*) FROM g WHERE g1_not_sell AND g3_trade_ready AND g4_buy AND g5_enterable
+UNION ALL SELECT 'A6 +setup_type != AVOID', count(*) FROM g WHERE g1_not_sell AND g3_trade_ready AND g4_buy AND g5_enterable AND g6_setup_ok
+UNION ALL SELECT 'A7 +setup_strength>=64', count(*) FROM g WHERE g1_not_sell AND g3_trade_ready AND g4_buy AND g5_enterable AND g6_setup_ok AND g7_strength
+UNION ALL SELECT 'A8 +no vetoes', count(*) FROM g WHERE g1_not_sell AND g3_trade_ready AND g4_buy AND g5_enterable AND g6_setup_ok AND g7_strength AND g8_no_veto
+UNION ALL SELECT 'A9 +score>=80', count(*) FROM g WHERE g1_not_sell AND g3_trade_ready AND g4_buy AND g5_enterable AND g6_setup_ok AND g7_strength AND g8_no_veto AND g9_score80
+UNION ALL SELECT 'A10 +confidence>=70', count(*) FROM g WHERE g1_not_sell AND g3_trade_ready AND g4_buy AND g5_enterable AND g6_setup_ok AND g7_strength AND g8_no_veto AND g9_score80 AND g10_conf70
+UNION ALL SELECT 'A11 live ENTER actual', count(*) FROM g WHERE live='ENTER'
+UNION ALL SELECT 'B1 setup != AVOID (alone)', count(*) FROM g WHERE g6_setup_ok
+UNION ALL SELECT 'B2 setup ok + not SELL', count(*) FROM g WHERE g6_setup_ok AND g1_not_sell
+UNION ALL SELECT 'B3 setup ok + not SELL + enterable', count(*) FROM g WHERE g6_setup_ok AND g1_not_sell AND g5_enterable
+UNION ALL SELECT 'B4 + no severe veto (rr>=1.2, no STOP/EXTREME)', count(*) FROM g WHERE g6_setup_ok AND g1_not_sell AND g5_enterable AND rr_ge_1_2 AND NOT has_stop AND NOT has_extreme
+UNION ALL SELECT 'B5 + confidence>=70', count(*) FROM g WHERE g6_setup_ok AND g1_not_sell AND g5_enterable AND rr_ge_1_2 AND NOT has_stop AND NOT has_extreme AND g10_conf70 AND cs IS NOT NULL
+UNION ALL SELECT 'B6 + score in 55-70 band', count(*) FROM g WHERE g6_setup_ok AND g1_not_sell AND g5_enterable AND rr_ge_1_2 AND NOT has_stop AND NOT has_extreme AND g10_conf70 AND cs IS NOT NULL AND band_55_70
+UNION ALL SELECT 'B7 + score>=80 instead', count(*) FROM g WHERE g6_setup_ok AND g1_not_sell AND g5_enterable AND rr_ge_1_2 AND NOT has_stop AND NOT has_extreme AND g10_conf70 AND cs IS NOT NULL AND fs >= 80
+UNION ALL SELECT 'C1 quality TRADE_READY (any)', count(*) FROM g WHERE g3_trade_ready
+UNION ALL SELECT 'C2 quality would be TRADE_READY without -25 (setup AVOID rows)', count(*) FROM g WHERE st='AVOID' AND qs + 25 >= 75
+UNION ALL SELECT 'C3 confidence>=70 (any)', count(*) FROM g WHERE cs >= 70
+UNION ALL SELECT 'C4 score>=80 (any)', count(*) FROM g WHERE fs >= 80
+UNION ALL SELECT 'C5 score 55-70 (any)', count(*) FROM g WHERE band_55_70
+ORDER BY 1;
 """,
     "candidate_enter_sample": r"""
 WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1)
