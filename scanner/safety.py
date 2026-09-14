@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -14,6 +15,15 @@ import pandas as pd
 RUN_LOCK_FILENAME = "run.lock"
 RUN_LOCK_ENV = "TRADEVETO_SCANNER_LOCK_PATH"
 LOCK_STALE_AFTER = timedelta(minutes=30)
+#: How long a FULL run waits for a fast run to release the lock before giving
+#: up. The 21:30 UTC full scan (analysis + forward_returns) was skipped on
+#: 2026-09-14 because the fast-scan timer, re-phased by a host reboot, held
+#: the lock at 21:26:58-21:32; a fast scan takes ~5 minutes, so ten minutes
+#: covers one full overlap with margin. Fast runs keep the old skip-at-once
+#: behaviour: the next one is fifteen minutes away.
+LOCK_WAIT_ENV = "TRADEVETO_SCANNER_LOCK_WAIT_SECONDS"
+FULL_RUN_LOCK_WAIT = timedelta(minutes=10)
+LOCK_POLL_INTERVAL = timedelta(seconds=15)
 DATA_STALE_AFTER = timedelta(minutes=60)
 REQUIRED_RANKING_COLUMNS = ("symbol", "price", "final_score", "rating", "action")
 
@@ -124,30 +134,51 @@ def scanner_lock_path(outdir: Path) -> Path:
     return outdir / RUN_LOCK_FILENAME
 
 
+def _lock_is_stale(lock_path: Path) -> bool:
+    payload = _read_lock(lock_path)
+    timestamp_text = str(payload.get("timestamp") or "")
+    try:
+        created_at = datetime.fromisoformat(timestamp_text.replace("Z", "+00:00"))
+    except ValueError:
+        created_at = None
+    if created_at is not None and created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    return created_at is None or utc_now() - created_at > LOCK_STALE_AFTER
+
+
+def lock_wait_seconds(default: timedelta = timedelta(0)) -> float:
+    """Seconds a run waits for a held lock. `TRADEVETO_SCANNER_LOCK_WAIT_SECONDS`
+    overrides the caller's default (0 = skip at once, as before)."""
+    raw = os.getenv(LOCK_WAIT_ENV)
+    if raw is None or not raw.strip():
+        return max(0.0, default.total_seconds())
+    try:
+        return max(0.0, float(raw))
+    except ValueError:
+        return max(0.0, default.total_seconds())
+
+
 @contextmanager
-def scanner_run_lock(outdir: Path) -> Iterator[bool]:
+def scanner_run_lock(outdir: Path, wait_seconds: float = 0.0, sleep=None) -> Iterator[bool]:
     outdir.mkdir(parents=True, exist_ok=True)
     lock_path = scanner_lock_path(outdir)
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     acquired = False
+    sleeper = sleep if sleep is not None else time.sleep
+    deadline = utc_now() + timedelta(seconds=wait_seconds)
 
-    if lock_path.exists():
-        payload = _read_lock(lock_path)
-        timestamp_text = str(payload.get("timestamp") or "")
-        try:
-            created_at = datetime.fromisoformat(timestamp_text.replace("Z", "+00:00"))
-        except ValueError:
-            created_at = None
-        if created_at is not None and created_at.tzinfo is None:
-            created_at = created_at.replace(tzinfo=timezone.utc)
-        is_stale = created_at is None or utc_now() - created_at > LOCK_STALE_AFTER
-        if is_stale:
+    while lock_path.exists():
+        if _lock_is_stale(lock_path):
             print("[scanner] stale lock removed")
             lock_path.unlink(missing_ok=True)
-        else:
+            break
+        remaining = (deadline - utc_now()).total_seconds()
+        if remaining <= 0:
             print("[scanner] another run in progress, skipping")
             yield False
             return
+        print(f"[scanner] another run in progress, waiting up to {remaining:.0f}s for the lock")
+        sleeper(min(LOCK_POLL_INTERVAL.total_seconds(), remaining))
 
     payload = {"timestamp": utc_now().isoformat(), "pid": os.getpid()}
     try:

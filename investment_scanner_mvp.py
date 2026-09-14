@@ -9,6 +9,7 @@ CLI orchestration and output flow.
 from __future__ import annotations
 
 import argparse
+from datetime import timedelta
 import os
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -23,7 +24,7 @@ from scanner.outputs import print_top_table, save_snapshot
 from scanner.paper_trading import run_paper_trading
 from scanner.perf import log_timing, timer_start
 from scanner.regime import write_market_regime
-from scanner.safety import atomic_write_dataframe_csv, check_data_freshness, ensure_action_column, scanner_run_lock, validate_ranking_schema
+from scanner.safety import FULL_RUN_LOCK_WAIT, atomic_write_dataframe_csv, check_data_freshness, ensure_action_column, lock_wait_seconds, scanner_run_lock, validate_ranking_schema
 from scanner.structure import write_market_structure
 from scanner.universe import UNIVERSE_SIZE_CHOICES, build_universe, warn_missing_required_symbols
 
@@ -200,7 +201,10 @@ def main() -> None:
         outdir = Path(args.outdir)
         outdir.mkdir(parents=True, exist_ok=True)
 
-        with scanner_run_lock(outdir) as lock_acquired:
+        # A FULL run (analysis + forward returns, once a day) waits for a fast
+        # run to finish instead of skipping the day; fast runs still skip.
+        wait_seconds = lock_wait_seconds(timedelta(0) if args.fast else FULL_RUN_LOCK_WAIT)
+        with scanner_run_lock(outdir, wait_seconds=wait_seconds) as lock_acquired:
             if not lock_acquired:
                 return
             run_with_lock(args, universe, outdir)

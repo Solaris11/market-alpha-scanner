@@ -226,6 +226,14 @@ def action_prod_fast_scan(repo: Path, args: dict[str, Any]) -> list[CommandResul
     return [ssh_script("sudo systemctl start market-alpha-fast-scan.service; systemctl show market-alpha-fast-scan.service -p Result -p ExecMainStatus -p ActiveState --no-pager", timeout=900)]
 
 
+def action_prod_full_scan(repo: Path, args: dict[str, Any]) -> list[CommandResult]:
+    """Start the daily FULL scan (analysis + forward_returns) out of schedule.
+    Same writes the 21:30 UTC timer performs; used when that run was skipped."""
+    if args.get("confirm") != "writes scanner scan_run and analysis rows":
+        raise RelayError('prod_full_scan requires args.confirm = "writes scanner scan_run and analysis rows"')
+    return [ssh_script("sudo systemctl start --no-block market-alpha-full-scan.service; sleep 5; systemctl show market-alpha-full-scan.service -p Result -p ExecMainStatus -p ActiveState --no-pager", timeout=120)]
+
+
 def action_prod_db_read(repo: Path, args: dict[str, Any]) -> list[CommandResult]:
     query_name = str(args.get("query") or "audit_summary")
     if query_name not in DB_QUERIES:
@@ -701,6 +709,17 @@ UNION ALL SELECT 'v1_vs_v2='||COALESCE(p->>'candidate_decision','NULL')||'->'||C
 UNION ALL SELECT 'live_vs_v2='||COALESCE(live,'NULL')||'->'||COALESCE(p->>'candidate_v2_decision','NULL'), count(*)::text FROM s GROUP BY 1
 ORDER BY 1;
 """,
+    "analysis_freshness": r"""
+SELECT 'forward_returns' AS tbl, date(created_at AT TIME ZONE 'UTC') AS day, count(*) AS rows, max(created_at) AS last_written
+FROM forward_returns WHERE created_at > now() - interval '10 days' GROUP BY 2
+UNION ALL
+SELECT 'performance_summary', date(created_at AT TIME ZONE 'UTC'), count(*), max(created_at)
+FROM performance_summary WHERE created_at > now() - interval '10 days' GROUP BY 2
+UNION ALL
+SELECT 'scan_runs(full>=450 symbols)', date(created_at AT TIME ZONE 'UTC'), count(*), max(created_at)
+FROM scan_runs WHERE created_at > now() - interval '10 days' AND COALESCE(symbols_scored,0) >= 450 GROUP BY 2
+ORDER BY 1, 2;
+""",
     "candidate_enter_sample": r"""
 WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1)
 SELECT symbol, final_decision AS live,
@@ -727,6 +746,7 @@ ACTIONS: dict[str, Callable[[Path, dict[str, Any]], list[CommandResult]]] = {
     "prod_db_read": action_prod_db_read,
     "prod_fast_scan": action_prod_fast_scan,
     "prod_frontend_deploy": action_prod_frontend_deploy,
+    "prod_full_scan": action_prod_full_scan,
     "prod_journal_recent": action_prod_journal_recent,
     "prod_logs_recent": action_prod_logs_recent,
     "prod_pull": action_prod_pull,
