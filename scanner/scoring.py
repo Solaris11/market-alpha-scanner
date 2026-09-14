@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from datetime import datetime, timezone
+
 import numpy as np
 import pandas as pd
 
@@ -242,6 +244,44 @@ def score_avwap(df: pd.DataFrame) -> tuple[float, float, float]:
             score -= 10
 
     return clamp_score(score), ytd_val, swing_val
+
+
+def last_bar_is_partial(df: pd.DataFrame, now: datetime | None = None) -> bool:
+    """True when the last daily bar is today's still-forming session bar.
+
+    Relative volume and the volume bonus inside the breakout score divide the
+    last bar's volume by a 20-day average of *complete* bars. During the
+    session that ratio is structurally low (median relative-volume score 23-35
+    on production intraday runs versus ~48 overnight), which is one of the two
+    reasons setup_type=BREAKOUT never fires. The completed-bar variants below
+    are observation only: they are persisted beside the live scores and gate
+    nothing.
+    """
+    if df is None or df.empty:
+        return False
+    current = now if now is not None else datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    stamp = pd.Timestamp(df.index[-1])
+    if stamp.tzinfo is None:
+        stamp = stamp.tz_localize(timezone.utc)
+    bar_date = stamp.tz_convert(timezone.utc).date()
+    today = current.astimezone(timezone.utc).date()
+    if bar_date != today:
+        return False
+    # A bar dated today is final once the US cash session has closed (21:00 UTC
+    # covers both DST states with margin); before that it is still forming.
+    return current.astimezone(timezone.utc).hour < 21
+
+
+def completed_bar_scores(df: pd.DataFrame, now: datetime | None = None) -> dict[str, float | bool]:
+    partial = last_bar_is_partial(df, now)
+    frame = df.iloc[:-1] if partial and len(df) > 1 else df
+    return {
+        "last_bar_partial": partial,
+        "relative_volume_score_completed": round(score_relative_volume(frame), 2),
+        "breakout_score_completed": round(score_breakout_quality(frame), 2),
+    }
 
 
 def technical_scorecard(df: pd.DataFrame) -> dict[str, float]:

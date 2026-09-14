@@ -44,6 +44,7 @@ from .scoring import (
     rating_from_score,
     score_macro_alignment,
     technical_scorecard,
+    completed_bar_scores,
 )
 from .setup_engine import apply_setup_decision_layer
 from .structure import compute_market_structure
@@ -273,6 +274,7 @@ def scan_symbols(
                 continue
 
             technical = technical_scorecard(df)
+            completed_bar = completed_bar_scores(df)
             fundamentals = fundamentals_scorecard(info, asset_type)
             macro_score, macro_sensitivity, macro_note = score_macro_alignment(symbol, asset_type, sector, macro_regime)
             ex_dividend_date = parse_dividend_date(info, "exDividendDate")
@@ -417,6 +419,9 @@ def scan_symbols(
                 # scanner already derived for the trade plan.
                 recent_swing_low=safe_float(trade_plan["recent_swing_low"], np.nan),
                 recent_resistance=safe_float(trade_plan["recent_resistance"], np.nan),
+                last_bar_partial=bool(completed_bar["last_bar_partial"]),
+                relative_volume_score_completed=safe_float(completed_bar["relative_volume_score_completed"], np.nan),
+                breakout_score_completed=safe_float(completed_bar["breakout_score_completed"], np.nan),
             )
             apply_horizon_recommendations(asset, horizon_context)
             ranked.append(asset)

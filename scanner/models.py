@@ -112,3 +112,10 @@ class RankedAsset:
     # --- P2.1 item 3: scanner-derived support/resistance evidence ---
     recent_swing_low: float = float("nan")
     recent_resistance: float = float("nan")
+    # --- P1-1 observation: volume features on the last *completed* bar ---
+    # The live relative_volume_score / breakout_score read the partial session
+    # bar intraday. These are persisted beside them so the partial-bar
+    # artefact can be measured per run; nothing reads them for a decision.
+    last_bar_partial: bool = False
+    relative_volume_score_completed: float = float("nan")
+    breakout_score_completed: float = float("nan")
