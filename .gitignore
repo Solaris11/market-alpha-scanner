@@ -235,3 +235,4 @@ __pycache__/
 calibration-*.csv
 ops-snapshot.json
 ops-snapshot.html
+.claude-prod-audit/
