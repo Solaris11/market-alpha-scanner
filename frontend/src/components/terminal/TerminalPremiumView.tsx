@@ -20,7 +20,7 @@ import { IntradayRegimeDriftPanel } from "@/components/terminal/IntradayRegimeDr
 import { IntelligenceFeedNotificationPanel } from "@/components/terminal/IntelligenceFeedNotificationPanel";
 import { LiveIntelligencePanel } from "@/components/terminal/LiveIntelligencePanel";
 import { MarketRegimeRadar } from "@/components/terminal/MarketRegimeRadar";
-import { MarketChartHub } from "@/components/terminal/MarketChartHub";
+import { LazyMarketChartHub } from "@/components/terminal/LazyMarketChartHub";
 import { MetricCard } from "@/components/terminal/MetricCard";
 import { MyWatchlistWidget } from "@/components/terminal/MyWatchlistWidget";
 import { PlatformMoatPanel } from "@/components/terminal/PlatformMoatPanel";
@@ -328,7 +328,7 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
             workflowEvolution={workflowEvolution}
           />
           <PredictiveIntelligencePanel system={predictiveIntelligence} />
-          <MarketChartHub charts={marketChartHubData} marketCondition={snapshot.marketRegime.label} updatedAt={scanSafety.lastUpdated} />
+          <LazyMarketChartHub marketCondition={snapshot.marketRegime.label} updatedAt={scanSafety.lastUpdated} />
           {/* Research depth, one interaction away. These answer "why" rather
               than "what now", so they start closed instead of competing with
               the decision surfaces for the first screen. Every grounding
