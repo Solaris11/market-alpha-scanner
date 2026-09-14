@@ -39,7 +39,8 @@ health fix, and the `/terminal` lazy-load slice (`fd9a82ef`).
 
 ## 1. PROD HOST — server state (authoritative)
 
-Source: `.claude-prod-audit/out.txt`, captured 2026-09-14T10:38:21Z.
+Source: `.claude-prod-audit/out.txt`, two captures: 10:38:21Z (first pass) and
+10:52:57Z (corrected script: images, scheduler, DB via `docker compose exec`).
 
 | check | result |
 |---|---|
@@ -52,15 +53,22 @@ Source: `.claude-prod-audit/out.txt`, captured 2026-09-14T10:38:21Z.
 | `market-alpha-fast-scan.timer` | last **10:26:44** (11 min before check), next 10:41:44 → ~15-min cadence, **fresh** |
 | `market-alpha-full-scan.timer` | last **Fri 2026-09-11 21:30:01**, next **Mon 21:30** → **no full scan Sat/Sun** (see P2-3) |
 | `tradeveto-scanner-health.timer` | last Mon 06:16, next Tue 06:19 → daily ✓ |
-| backup scheduler | **not visible** as a `tradeveto`/`market-alpha` systemd timer in this capture (only `dpkg-db-backup`); backup *did* run — see PROD WEB deep health (P2-5) |
+| backup scheduler | **cron, not a timer**: root crontab `5 3 * * * /opt/ops/backup-postgres.sh` (daily 03:05) and `0 3 * * * /opt/ops/backup-mysql.sh`; plus `30 22 * * 1-5 …/tradeveto-refresh-shock-patterns.sh` (weekdays). The **06:00 UTC `market-alpha-backup.sh` R2 offsite run** that deep health reports is *not* in the captured crontab or in any `tradeveto`/`market-alpha` timer — its trigger is still unidentified (P2-5) |
+| `tradeveto-resource-watchdog.timer` | every 5 min (last 10:51:57) ✓ |
+| **image freshness** | `market-alpha-frontend:latest` + `hot-api:latest` **built 2026-09-14T09:55:48Z** (the `fd9a82ef` deploy); `market-alpha-scanner-job:latest` **built 2026-09-14T01:10:53Z** (the items-3/4 scanner rebuild); rollback tags `rollback-20260914a` (09-12 16:30) and `rollback-20260914b` (09-14 01:19) present. **No stale image** — both images are from today |
 | external curl from prod → `/api/health` | **200 in 0.22 s** |
-| DB read-only queries | **not captured this run** — `psql: command not found` on the host (postgres runs in a container). Script corrected to `docker compose exec … psql`; **needs one re-run** (see §8) |
+| **DB — latest scan run** | `scan_runs`: **2026-09-14 10:46:13 UTC, status=success, symbols_scored=359** (read via `docker compose exec … psql` inside the postgres container) ✓ |
+| DB — decision / setup distributions (raw table) | first pass: `psql` not on host; second pass: only the first query ran because `docker compose exec -T` consumed the remote `bash -s` stdin (script since fixed with `</dev/null`). The distributions for this same run are confirmed from PROD WEB `/api/ranking` (§6), which serves this run's `scanner_signals` (356 of 359 scored rows) |
 
-Observation: frontend/hot-api were *created* 42 min before the check (the
-`fd9a82ef` deploy) and **all three containers — including postgres — were
-restarted ~13 min before the check (~10:25 UTC)**, i.e. a stack-wide restart.
-Restart counters are 0, so it was a controlled restart, not a crash loop, but it
-is a brief availability window — confirm it was intentional (P2-4).
+Observation — the ~10:25 UTC stack-wide restart: at 10:53 all three containers
+(frontend, hot-api, **and postgres**) read "Up 28 minutes" while frontend/hot-api
+were *created* 56 min earlier (~09:57, the `fd9a82ef` recreate) and postgres was
+created 4 months ago. `RestartCount` is 0 on all three, which rules out a
+restart-policy/crash loop (those increment the counter), and the unchanged
+created-times rule out a recreate. That signature matches an operator
+`docker compose restart` (or a Docker-daemon/host restart) at ~10:25, ~30 min
+after the 09:55 image build. It is a brief availability window; the cause is
+not recorded in this capture — ops follow-up (P2-4), not dismissed.
 
 ## 2. PROD WEB — performance (logged-in premium, in-app browser)
 
@@ -167,10 +175,17 @@ faulty engine. Today's 0/356 is that fault, live.
 
 Against the five concerns: too few ENTERs — **confirmed, extreme (0)**;
 WAIT_PULLBACK without level — **not present**; late expansion detection —
-**confirmed by design** (fault 4); stale image/universe — fast scan fresh, but
-**full scan has not run since Fri** (P2-3) and image freshness is pending the DB/
-image re-run; drop-reason coverage — `scanner_accounting` exists; coverage
-numbers pending the DB re-run (§8).
+**confirmed by design** (fault 4); stale image/universe — **no**: fast scan
+fresh (15-min timer), scanner-job image built today 01:10, frontend built today
+09:55 (PROD HOST); the full-scan timer's Fri→Mon gap is weekday-only scheduling
+(§7 P3-7); drop-reason coverage — PROD HOST: latest run scored **359**, PROD WEB
+serves **356** → 3 rows not surfaced in the ranking; the per-reason breakdown
+lives only in `scan_runs.metadata.scanner_accounting` (no API exposes it) and
+the raw read did not execute this run (stdin bug, fixed) — see §8.
+
+SNDK: present in the served ranking and live on `/symbol/SNDK` ($1,632.99,
+EXIT, score 48) — PROD WEB. P2.1 evidence fields: 356/356 populated for this
+run — PROD WEB over the PROD-HOST-confirmed run.
 
 ## 7. Issue list
 
@@ -195,17 +210,27 @@ numbers pending the DB re-run (§8).
   (355/356 = "AVOID"); resolved by P1-1's engine, but the persisted field should
   become the true shape (PULLBACK/BREAKOUT/CONTINUATION/mixed) regardless.
 - **P2-2 `/terminal` first-screen density** — see §9.
-- **P2-3 Full-scan cadence** — `market-alpha-full-scan.timer` last ran Fri
-  21:30, next Mon 21:30: either intentionally weekday-only or it missed the
-  weekend. The SNDK RCA established the full `--run-analysis` scan matters for
-  universe coverage; confirm the OnCalendar intent and whether a weekend gap is
-  acceptable.
-- **P2-4 Stack-wide restart ~10:25 UTC** (all three containers, incl. postgres,
-  "Up 13 minutes"; 0 restart counts) — confirm intentional; if not, find the
-  cause (host reboot / compose down-up).
-- **P2-5 Backup scheduler not visible as a systemd timer** in the capture
-  (deep health proves the backup ran at 06:57 UTC and succeeded) — confirm the
-  mechanism (cron vs a differently-named timer) so it is monitored explicitly.
+- **P2-3 → reclassified P3-7 (by design).** `market-alpha-full-scan.timer`:
+  last Fri 21:30:01, next **Mon** 21:30 — a daily timer that had failed Sat/Sun
+  would still show `next` on the following day and a failed unit; instead the
+  next fire skips the weekend, matching the weekday-only cron pattern
+  (`30 22 * * 1-5`) used elsewhere on the host. Markets are closed; treat as
+  intended. Residual: confirm the unit's `OnCalendar` is `Mon..Fri` (P3-7).
+- **P2-4 Stack-wide restart ~10:25 UTC — ops follow-up.** All three containers
+  restarted (postgres included); `RestartCount` 0 and unchanged created-times
+  point to an operator `docker compose restart` or a daemon/host restart, not a
+  crash. Not recorded in this capture: record the cause (deploy log / `journalctl
+  -u docker`, `last reboot`) and, if it was not operator-initiated, treat as an
+  incident to explain.
+- **P2-5 Offsite backup trigger not identifiable.** Deep health proves
+  `market-alpha-backup.sh` ran at 06:00 UTC and synced to R2 successfully, but
+  the captured root crontab only schedules `/opt/ops/backup-postgres.sh` (03:05)
+  and `/opt/ops/backup-mysql.sh` (03:00), and no `tradeveto`/`market-alpha`
+  timer is a backup. So there are at least two postgres backup paths (a generic
+  03:05 host backup and the 06:00 R2 offsite one) and the offsite trigger lives
+  somewhere not captured (another user's crontab or a differently-named timer).
+  Make it explicit and monitored; decide whether the 03:05 `backup-mysql.sh` is
+  legacy.
 - **P2-6 CSP `'unsafe-inline'`** (carried from 2026-09-11) — nonce-based CSP.
 
 **P3**
@@ -217,22 +242,36 @@ numbers pending the DB re-run (§8).
 - P3-4 Fullscreen modal chart parity (volume + evidence overlays).
 - P3-5 The "START HERE" onboarding card re-covers the chart region on the
   symbol page for this account (UX polish / dismiss persistence).
+- P3-7 Confirm `market-alpha-full-scan.timer` `OnCalendar` is weekday-only (see
+  P2-3 reclassification).
 - P3-6 `.git` cruft from bridge sessions (temp objects, stale locks, drifted
   local `origin/` ref) — `git fetch && git gc --prune=now` on the real Mac.
 
-## 8. PROD HOST — items pending one re-run of the corrected script
+## 8. PROD HOST — DB/ops confirmation: closed
 
-`psql` is not installed on the host (postgres is a container), so the DB block
-produced no data. `.claude-prod-audit/run.sh` now execs `psql` **inside the
-`market-alpha-postgres` container** (using the container's own `POSTGRES_USER`/
-`POSTGRES_DB`; nothing is echoed) and additionally captures image build dates
-and the backup scheduler. One re-run of the same command yields: latest
-`scan_runs` time/status/symbols_scored; `final_decision` and `setup_type`
-distributions straight from `scanner_signals`; signals in the last 24 h; runs and
-failures in the last 7 d; `docker compose images` + image `Created` timestamps;
-`systemctl list-timers` filtered to tradeveto/market-alpha + `crontab` backup
-entries. Until then the DB-level confirmation of §6 is **PROD WEB (API) evidence
-only**, and image freshness / drop-reason coverage are **pending**.
+Second capture (10:52:57Z) closed the ops items: image build dates, the backup
+scheduler (cron), timers incl. the resource watchdog, and the latest scan run
+from the DB (`2026-09-14 10:46:13 UTC, success, 359 symbols`). The only defect
+was in my script: `docker compose exec -T … psql` read the remote `bash -s`
+stdin and swallowed the four follow-on queries (decision/setup distributions,
+signals-24h, runs-7d); only the first ran. Fixed (`</dev/null` on each exec).
+
+Closure per item (labels explicit):
+- latest scan run — **PROD HOST DB** ✓ (10:46 UTC, success, 359 scored)
+- decision distribution / ENTER count — **PROD WEB** `/api/ranking` over this
+  same run: ENTER **0**, WATCH 40, WAIT_PULLBACK 1, EXIT 207, AVOID 108 (356 rows)
+- setup_type distribution — **PROD WEB**: "AVOID" 355 / "PULLBACK" 1
+- SNDK present — **PROD WEB** (ranking + `/symbol/SNDK` live)
+- P2.1 evidence fields populated — **PROD WEB**: 356/356
+- drop-reason / accounting coverage — **PROD HOST** 359 scored vs **PROD WEB**
+  356 served → 3 dropped; per-reason breakdown is DB-only (no API) and is the
+  single item the fixed script would add on a future run — not required to act
+  on P1-1.
+
+The raw-table distributions were therefore confirmed from the application's
+own read of the same run rather than from `psql` directly. The conclusion they
+support (P1-1: ENTER = 0, setup_type = AVOID on nearly every row) is not in
+doubt — it is also the documented behaviour of the live engine.
 
 ## 9. UX — `/terminal` first screen vs WHAT / WHERE / WHICH
 
