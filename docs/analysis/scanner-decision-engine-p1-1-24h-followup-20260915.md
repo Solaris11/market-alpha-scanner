@@ -131,6 +131,18 @@ it into AVOID before the breakout branch is reached. The balanced target
 breakout path is self-cancelling: the features that make `breakout_score ≥
 72` are the ones that make the nearest-resistance target worthless.
 
+### 4c. Completed-bar volume features, first live reading (run a319927c, 18:16 UTC)
+
+Deployed 18:04 UTC (commit `98abf7d3`, rollback tag
+`rollback-scanner-20260914-p11-step5`): `last_bar_partial`,
+`relative_volume_score_completed`, `breakout_score_completed` on
+`RankedAsset`, observation only. First run with the fields, mid-session:
+**352/352 rows flagged partial; relative-volume median 36.9 (live) vs 46.3
+(completed bar); 10 rows reach `breakout_score_completed ≥ 72` while
+`setup_type=BREAKOUT` stays 0.** The artefact is now measured per run rather
+than inferred from hourly aggregates; `run_history` carries `partial_bars`,
+`relvol_live`, `relvol_done`, `brk_done72`.
+
 ## 5. PROD HOST — replay on matured forward returns (`replay_cohorts`)
 
 Cohort = end-of-day canonical signal per symbol-day (the row `forward_returns`
@@ -245,6 +257,7 @@ Documented in the 09-14 report §8. Nothing further.
 | `d94920e0` | `mcal_vetoes` / `mcal_severe_vetoes` / `mcal_data_quality_score` (observation); relay bundles `run_history`, `run_snapshot`, `candidate_actionable_sample`, `volume_by_hour`, `breakout_candidates_why` | scanner image rebuilt 13:47, tag `rollback-scanner-20260914-p11-step2` |
 | (relay only) | `replay_cohorts` bundle | self-reloaded worker |
 | `4774a1a1` | `candidate_v2_*` shadow columns (market-calendar freshness, class-not-verdict, balanced-target rr, no quality read); relay `candidate_v2_sample`, `candidate_v2_reasons`, v2 counts in `run_history` | scanner image rebuilt 13:54, tag `rollback-scanner-20260914-p11-step3`; 13:56 scan on it |
+| `98abf7d3` | scanner: `last_bar_partial`, `relative_volume_score_completed`, `breakout_score_completed` (observation) | scanner image rebuilt 18:04, tag `rollback-scanner-20260914-p11-step5`; 18:11 scan on it |
 | `896fb390` | /terminal: shockPattern + timingValidation projection (lever 1, slice 2) | frontend rebuilt + recreated 16:35, tag `rollback-frontend-20260914-shockpattern`; PROD WEB 6,530 → 5,387 KB |
 | `e48fc392` | /terminal: narrative projection at the client boundary (lever 1, slice 1) | frontend rebuilt + recreated 15:11, tag `rollback-frontend-20260914-narrative`; PROD WEB 6,972 → 6,530 KB |
 | `fa00f4cb` | /terminal: `ExecutionTimingSystem.rows` no longer serialised (lever 2) | frontend rebuilt + recreated 14:18, tag `rollback-frontend-20260914-execrows`; PROD WEB 9,011 → 6,980 KB |
