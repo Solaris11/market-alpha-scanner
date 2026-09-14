@@ -24,11 +24,12 @@ row; `stale` = rows carrying the wall-clock `STALE_DATA` veto, `mkt_stale` =
 rows where `stale_by_market_calendar` is true, `mcal_severe` = rows whose
 market-calendar shadow veto list still contains a severe code).
 
-| run | at (UTC) | rows | live E/W/Wa/A/X | setup A/P/C/B | STALE | mkt_stale | other severe | cand E/W/Wa/A/X | cand WHERE-complete | conf≥70 | note |
-|---|---|---:|---|---|---:|---:|---:|---|---:|---:|---|
-| df085435 | 09-14 13:16 | 356 | 0/1/40/108/207 | 355/1/0/0 | 354 | 0 | 130 | 0/0/1/148/207 | 0 | 1 | pre-open, Friday bars |
-| 560cb56b | 09-14 13:31 | 356 | 0/3/39/108/206 | 343/13/0/0 | 291 | 0 | 130 | 0/0/12/138/206 | 0 | 7 | first partial bars arriving |
-| 4984a236 | 09-14 13:47 | 355 | 0/10/31/89/225 | 297/57/1/0 | **0** | 0 | 142 | 0/0/51/79/225 | 0 | 30 | **first fresh run** |
+| run | at (UTC) | rows | live E/W/Wa/A/X | setup A/P/C/B | STALE | mkt_stale | other severe | mcal severe | v1 E/W/Wa/A/X | v2 E/W/Wa/A | v2 band_ok | v2 WHERE-complete | conf≥70 | note |
+|---|---|---:|---|---|---:|---:|---:|---:|---|---|---:|---:|---:|---|
+| df085435 | 09-14 13:16 | 356 | 0/1/40/108/207 | 355/1/0/0 | 354 | 0 | 130 | — | 0/0/1/148/207 | — | — | — | 1 | pre-open, Friday bars |
+| 560cb56b | 09-14 13:31 | 356 | 0/3/39/108/206 | 343/13/0/0 | 291 | 0 | 130 | — | 0/0/12/138/206 | — | — | — | 7 | first partial bars arriving |
+| 4984a236 | 09-14 13:47 | 355 | 0/10/31/89/225 | 297/57/1/0 | **0** | 0 | 142 | — | 0/0/51/79/225 | — | — | — | 30 | **first fresh run** |
+| e761abcc | 09-14 14:02 | 355 | 0/14/29/92/220 | 292/62/1/0 | 0 | 0 | 139 | 139 | 1/0/53/81/220 | **3/20/62/50** | 6 | **23/23** | 27 | first run with `mcal_*` and `candidate_v2_*` |
 
 (E=ENTER, W=WAIT_PULLBACK, Wa=WATCH, A=AVOID, X=EXIT.)
 
@@ -156,6 +157,33 @@ Reading, within horizon:
 - Stale-flagged rows (M) are ordinary weekend/holiday EOD rows and perform
   like the baseline — the flag carries no risk information.
 
+## 5b. PROD HOST — candidate v2 shadow, first fresh reading (run e761abcc, 14:02 UTC)
+
+Deployed 14:05 UTC as `candidate_v2_*` (commits `4774a1a1`, `65c4a7fc`;
+rollback tags `…-p11-step3/4`). v1 vs v2 on the same 355 rows:
+EXIT→EXIT 220 (the SELL action is untouched), AVOID→AVOID 50, AVOID→WATCH 9,
+**AVOID→WAIT_PULLBACK 20, AVOID→ENTER 2**, ENTER→ENTER 1, WATCH→WATCH 53.
+Reason codes: RR_BALANCED_TARGET 31 (nearest-resistance target inside the 4%
+band), SEVERE_POOR_RISK_REWARD 34 (down from 77 live), SEVERE_STOP_RISK 16,
+SEVERE_EXTREME_VOLATILITY 2, LATE_ENTRY 15, ABOVE_ENTRY_BAND 5, NO_BUY_SIGNAL
+54, LOW_CONFIDENCE 5, NO_SETUP_FORMING 3, BREAKOUT_VOLUME_LIGHT 11.
+
+What a trader would have seen (`candidate_v2_sample`):
+
+| symbol | live | v1 | v2 | class | WHERE (zone / stop / target) | rr v1 → v2 | score | conf | why |
+|---|---|---|---|---|---|---|---:|---:|---|
+| SAIC | AVOID | AVOID | **ENTER** | BREAKOUT | 125.33–128.71 / 120.29 / 142.66 | 1.07 → 1.50 | 63.9 | 74.6 | in band, near entry, balanced target; volume light |
+| TMO | WATCH | ENTER | **ENTER** | PULLBACK | 602.83–610.16 / 586.18 / 636.76–642.43 | 1.11 | 62.2 | 74.5 | in band, buy zone, pre-expansion 55 |
+| KO | WAIT_PULLBACK | AVOID | **ENTER** | PULLBACK | 88.02–88.88 / 86.24 / 92.48 | 1.09 → 1.50 | 61.6 | 74.5 | in band, near entry |
+| XOM, DVN, CVX, XLE, MPC, SM | AVOID | AVOID | WAIT_PULLBACK | BREAKOUT | each with zone / stop / target | 0.06–0.40 → 1.50 | 75–82 | 50–58 | late entry (overextended) — the energy rally; "you are late, here is the zone" |
+| FANG, EOG, OXY, MUR, AAPL, PFG, V, IMO | AVOID | AVOID | WAIT_PULLBACK | PULLBACK | each with zone / stop / target | 0.07–0.67 → 1.50 | 72–80 | 47–68 | late entry or above band |
+
+Every v2 ENTER/WAIT row carries a zone, a stop and a target (23/23). The live
+engine said AVOID for 21 of these 23 and WATCH/WAIT for the other two, with
+no level a reader could act on. This is the WHAT/WHERE difference in one run;
+WHICH (ranking for capital) and whether these calls are *right* wait for the
+forward returns.
+
 ## 6. Candidate v2 — what the evidence says to build (shadow only)
 
 1. Freshness by market calendar (`mcal_*`, deployed) feeding the candidate's
@@ -198,3 +226,5 @@ Documented in the 09-14 report §8. Nothing further.
 | `079fa6fa` | `stale_by_market_calendar`, `missed_sessions` (observation) | scanner image rebuilt 12:46, tag `rollback-scanner-20260914-p11-step1`; 12:56 scan on new image |
 | `d94920e0` | `mcal_vetoes` / `mcal_severe_vetoes` / `mcal_data_quality_score` (observation); relay bundles `run_history`, `run_snapshot`, `candidate_actionable_sample`, `volume_by_hour`, `breakout_candidates_why` | scanner image rebuilt 13:47, tag `rollback-scanner-20260914-p11-step2` |
 | (relay only) | `replay_cohorts` bundle | self-reloaded worker |
+| `4774a1a1` | `candidate_v2_*` shadow columns (market-calendar freshness, class-not-verdict, balanced-target rr, no quality read); relay `candidate_v2_sample`, `candidate_v2_reasons`, v2 counts in `run_history` | scanner image rebuilt 13:54, tag `rollback-scanner-20260914-p11-step3`; 13:56 scan on it |
+| `65c4a7fc` | v2 class `UNCLASSIFIED` (the payload writer nulls the string "none"); `v2_where_full` in `run_history` | scanner image rebuilt 14:05, tag `rollback-scanner-20260914-p11-step4` |
