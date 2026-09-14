@@ -276,3 +276,62 @@ class ScannerDiagnosticsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class MarketCalendarFreshnessTests(unittest.TestCase):
+    """Observation-only: these fields gate nothing yet. They exist so the
+    calendar-clock STALE_DATA flag can be compared against a market-aware one
+    on production rows before either changes a decision."""
+
+    def test_friday_bar_is_fresh_all_weekend_and_monday_pre_open(self) -> None:
+        from scanner.diagnostics import _is_stale_by_market_calendar, missed_closed_sessions
+
+        friday_bar = "2026-09-11T00:00:00+00:00"
+        for now in (
+            datetime(2026, 9, 12, 12, 0, tzinfo=timezone.utc),   # Saturday noon
+            datetime(2026, 9, 13, 23, 0, tzinfo=timezone.utc),   # Sunday night
+            datetime(2026, 9, 14, 12, 1, tzinfo=timezone.utc),   # Monday pre-open (today's failing case)
+            datetime(2026, 9, 14, 20, 59, tzinfo=timezone.utc),  # Monday, session still open
+        ):
+            missed = missed_closed_sessions(friday_bar, now=now)
+            self.assertEqual(missed, 0, now)
+            self.assertFalse(_is_stale_by_market_calendar(friday_bar, missed, now=now), now)
+
+    def test_one_missed_close_is_tolerated_two_are_not(self) -> None:
+        from scanner.diagnostics import _is_stale_by_market_calendar, missed_closed_sessions
+
+        friday_bar = "2026-09-11T00:00:00+00:00"
+        tuesday_pre_open = datetime(2026, 9, 15, 12, 0, tzinfo=timezone.utc)
+        self.assertEqual(missed_closed_sessions(friday_bar, now=tuesday_pre_open), 1)  # Monday closed, e.g. a holiday
+        self.assertFalse(_is_stale_by_market_calendar(friday_bar, 1, now=tuesday_pre_open))
+        wednesday_pre_open = datetime(2026, 9, 16, 12, 0, tzinfo=timezone.utc)
+        self.assertEqual(missed_closed_sessions(friday_bar, now=wednesday_pre_open), 2)
+        self.assertTrue(_is_stale_by_market_calendar(friday_bar, 2, now=wednesday_pre_open))
+
+    def test_calendar_day_cap_catches_non_weekday_markets(self) -> None:
+        from scanner.diagnostics import _is_stale_by_market_calendar
+
+        old_bar = "2026-09-05T00:00:00+00:00"  # a Saturday bar, e.g. crypto
+        now = datetime(2026, 9, 11, 12, 0, tzinfo=timezone.utc)
+        self.assertTrue(_is_stale_by_market_calendar(old_bar, 1, now=now))
+
+    def test_unparseable_timestamp_is_not_flagged(self) -> None:
+        from scanner.diagnostics import _is_stale_by_market_calendar, missed_closed_sessions
+
+        self.assertIsNone(missed_closed_sessions("not a date"))
+        self.assertFalse(_is_stale_by_market_calendar("not a date", None))
+
+    def test_flags_are_persisted_and_gate_nothing(self) -> None:
+        row = _base_row()
+        row["data_timestamp"] = "2026-09-11T00:00:00+00:00"
+        frame = apply_scoring_diagnostics(pd.DataFrame([row]))
+        self.assertIn("stale_by_market_calendar", frame.columns)
+        self.assertIn("missed_sessions", frame.columns)
+        flags = data_quality_flags(row)
+        # The legacy calendar-clock flag still drives the veto list; the new
+        # flag is recorded beside it and changes neither vetoes nor the score.
+        vetoes = vetoes_for_row(row, flags)
+        self.assertEqual("STALE_DATA" in vetoes, bool(flags["stale_data"]))
+        stale_free = dict(flags)
+        stale_free["stale_by_market_calendar"] = not flags["stale_by_market_calendar"]
+        self.assertEqual(vetoes_for_row(row, stale_free), vetoes)

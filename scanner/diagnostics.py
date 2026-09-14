@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Final
 
 import numpy as np
@@ -27,6 +27,15 @@ CORE_NUMERIC_FIELDS: Final[tuple[str, ...]] = (
 )
 MIN_HISTORY_DAYS: Final[int] = 220
 STALE_DATA_HOURS: Final[float] = 36.0
+#: Market-calendar freshness (observation only -- gates nothing yet). A daily
+#: bar is "missing" for every weekday session that has already closed since
+#: the bar's date. One missed close is tolerated (the previous session's bar
+#: can lag the close, and a holiday counts as a close here because there is
+#: no exchange calendar dependency), two is a provider stall. A hard cap in
+#: calendar days catches anything the weekday count is blind to.
+MAX_MISSED_SESSIONS: Final[int] = 1
+MAX_CALENDAR_DAYS_ANY_MARKET: Final[float] = 5.0
+US_SESSION_CLOSE_UTC_HOUR: Final[int] = 21
 HIGH_VOLATILITY_ANNUALIZED: Final[float] = 0.70
 EXTREME_VOLATILITY_ANNUALIZED: Final[float] = 0.90
 HIGH_ATR_PCT: Final[float] = 7.0
@@ -53,6 +62,8 @@ def apply_scoring_diagnostics(df: pd.DataFrame) -> pd.DataFrame:
         "history_days": pd.Series([item["history_days"] for item in diagnostics], index=working.index, dtype="object"),
         "missing_fields": pd.Series([item["missing_fields"] for item in diagnostics], index=working.index, dtype="object"),
         "stale_data": pd.Series([item["stale_data"] for item in diagnostics], index=working.index),
+        "missed_sessions": pd.Series([item["missed_sessions"] for item in diagnostics], index=working.index, dtype="object"),
+        "stale_by_market_calendar": pd.Series([item["stale_by_market_calendar"] for item in diagnostics], index=working.index),
         "low_confidence_data": pd.Series([item["low_confidence_data"] for item in diagnostics], index=working.index),
         "provider_error": pd.Series([item["provider_error"] for item in diagnostics], index=working.index),
         "data_quality_score": pd.Series([item["data_quality_score"] for item in diagnostics], index=working.index),
@@ -81,6 +92,8 @@ def scoring_diagnostics_for_row(row: Mapping[str, object]) -> dict[str, object]:
         "history_days": data_quality["history_days"],
         "missing_fields": data_quality["missing_fields"],
         "stale_data": data_quality["stale_data"],
+        "missed_sessions": data_quality["missed_sessions"],
+        "stale_by_market_calendar": data_quality["stale_by_market_calendar"],
         "low_confidence_data": data_quality["low_confidence_data"],
         "provider_error": data_quality["provider_error"],
         "data_quality_score": data_quality["data_quality_score"],
@@ -127,6 +140,8 @@ def data_quality_flags(row: Mapping[str, object]) -> dict[str, object]:
     effective_history = history_days if history_days is not None else price_history_rows
     timestamp_text = _timestamp_text(row.get("data_timestamp"))
     stale_data = _is_stale_timestamp(row.get("data_timestamp"))
+    missed_sessions = missed_closed_sessions(row.get("data_timestamp"))
+    stale_by_market_calendar = _is_stale_by_market_calendar(row.get("data_timestamp"), missed_sessions)
     provider_error = safe_str(row.get("provider_error"), "")
     fallback_used = _boolish(row.get("data_provider_fallback_used"))
     provider_latency_ms = safe_float(row.get("provider_latency_ms"), np.nan)
@@ -157,6 +172,8 @@ def data_quality_flags(row: Mapping[str, object]) -> dict[str, object]:
         "history_days": effective_history,
         "missing_fields": missing_fields,
         "stale_data": stale_data,
+        "missed_sessions": missed_sessions,
+        "stale_by_market_calendar": stale_by_market_calendar,
         "low_confidence_data": low_confidence,
         "provider_error": provider_error,
         "data_quality_score": round(clamp_score(score), 2),
@@ -349,6 +366,54 @@ def _is_stale_timestamp(value: object) -> bool:
     now = datetime.now(timezone.utc)
     age_hours = (now - parsed.to_pydatetime()).total_seconds() / 3600.0
     return age_hours > STALE_DATA_HOURS
+
+
+def missed_closed_sessions(value: object, now: datetime | None = None) -> int | None:
+    """How many weekday sessions have *closed* since the bar's date without a
+    newer bar. 0 during the session the bar belongs to and on the following
+    weekend; 1 on the next weekday after its close until that day's bar
+    arrives. None when the timestamp cannot be parsed."""
+    parsed = parse_datetime_like(value)
+    if parsed is None:
+        return None
+    current = now if now is not None else datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    current = current.astimezone(timezone.utc)
+    bar = parsed.to_pydatetime()
+    if bar.tzinfo is None:
+        bar = bar.replace(tzinfo=timezone.utc)
+    bar_date = bar.astimezone(timezone.utc).date()
+    day = bar_date
+    missed = 0
+    while True:
+        day = day + timedelta(days=1)
+        if day > current.date():
+            break
+        if day.weekday() >= 5:
+            continue
+        close = datetime(day.year, day.month, day.day, US_SESSION_CLOSE_UTC_HOUR, tzinfo=timezone.utc)
+        if current >= close:
+            missed += 1
+    return missed
+
+
+def _is_stale_by_market_calendar(value: object, missed: int | None, now: datetime | None = None) -> bool:
+    if missed is None:
+        return False
+    if missed > MAX_MISSED_SESSIONS:
+        return True
+    parsed = parse_datetime_like(value)
+    if parsed is None:
+        return False
+    current = now if now is not None else datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    bar = parsed.to_pydatetime()
+    if bar.tzinfo is None:
+        bar = bar.replace(tzinfo=timezone.utc)
+    age_days = (current - bar).total_seconds() / 86400.0
+    return age_days > MAX_CALENDAR_DAYS_ANY_MARKET
 
 
 def _boolish(value: object) -> bool:
