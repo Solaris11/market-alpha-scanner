@@ -52,6 +52,9 @@ market-calendar shadow veto list still contains a severe code).
 | 5aa3055d | 09-14 19:02 | 352 | 0/11/27/116/198 | 297/55/0/0 | 0 | 0 | 146 | 146 | 1/1/43/109/198 | 1/22/67/64 | 7 | 23/23 | 33 | |
 | 91018e84 | 09-14 19:16 | 352 | 0/11/30/114/197 | 296/56/0/0 | 0 | 0 | 149 | 149 | 1/1/45/108/197 | 1/21/67/66 | 7 | 22/22 | 33 | |
 | cd3438ed | 09-14 19:31 | 352 | 0/9/29/117/197 | 297/54/1/0 | 0 | 0 | 149 | 149 | 2/1/44/108/197 | 2/24/66/63 | 9 | 26/26 | 31 | 19:45 check-in |
+| de24b41d | 09-14 19:47 | 352 | 0/11/25/122/194 | 299/52/1/0 | 0 | 0 | 149 | 149 | 2/1/45/110/194 | 2/26/70/60 | 7 | 28/28 | 34 | |
+| be770a12 | 09-14 20:01 | 352 | 0/13/27/117/195 | 301/51/0/0 | 0 | 0 | 147 | 147 | 1/0/44/112/195 | 2/22/69/64 | 7 | 24/24 | 36 | last in-session run; relvol live 47.2 vs completed 46.3 |
+| 95c7e981…149795b2 | 09-14 20:16 → 21:47 (7 runs) | 352 | 0/12/27/119/194 | 305/47/0/0 | 0 | 0 | 150 | 150 | 1/0/45/112/194 | 1/24/71–73/60–62 | 6 | 25/25 | 33–34 | post-close: rows static; `last_bar_partial` 352 → 196 (21:01, straddles the close) → 0; relvol live = completed = 51.5 |
 
 (E=ENTER, W=WAIT_PULLBACK, Wa=WATCH, A=AVOID, X=EXIT.)
 
@@ -160,6 +163,38 @@ the completed-bar number only as the session fills in. v2 ENTER/WAIT counts
 the volume score for its verdict; only the setup class and the
 BREAKOUT_VOLUME_LIGHT code do.
 
+### 4d. Post-close confirmation and an operational incident (21:50 UTC check-in)
+
+After the close the two volume numbers converge exactly: from the 21:16 run
+onward `last_bar_partial` is 0/352 and the live and completed-bar
+relative-volume medians are both **51.5** (the 21:01 run straddled the close:
+196 partial). Whole-day curve: 36.9 → 41.1 (session) → 47.2 (20:01) → 51.5
+(post-close) against a completed-bar value of 46.3 all session. The artefact
+is measured end to end.
+
+**Incident — the daily full scan was skipped.** PROD HOST journal: the 21:30
+UTC `market-alpha-full-scan` (500 symbols, analysis, `forward_returns`,
+`performance_summary`) exited after 3 s with `[scanner] another run in
+progress, skipping` because the fast-scan timer — re-phased by the 10:24
+reboot to :26:58 / :41:58 / :56:58 / :11:58 — held the run lock for its
+~5-minute run at 21:30. `analysis_freshness` (new read-only bundle)
+confirmed no `forward_returns` / `performance_summary` rows for 09-14 (last
+09-11 21:36). Friday's run had a different phase and was not hit.
+
+Fix (`8e5a287c`, scanner image rebuilt 21:54, tag
+`rollback-scanner-20260914-p11-step6`): `scanner_run_lock` gains a bounded
+wait (15 s polls); FULL runs wait up to 10 minutes
+(`TRADEVETO_SCANNER_LOCK_WAIT_SECONDS` overrides), fast runs still skip at
+once (7/7 safety tests). Recovery: the new confirm-gated relay action
+`prod_full_scan` started the full scan at 21:57:22; it logged "waiting up to
+600s for the lock" every 15 s behind the 21:56:58 fast run, **acquired the
+lock at 22:01:54, wrote 352 signals, then `performance_summary=235,
+forward_returns=5448` at 22:08:36** (analysis 93.9 s, total 672 s) and
+released the lock before the 22:11:58 fast scan. Tomorrow's 21:30 run will
+wait the same way instead of skipping. The timer phase itself is untouched
+(re-anchoring it is a systemd mutation outside the relay allowlist; with the
+wait in place it no longer matters).
+
 ## 5. PROD HOST — replay on matured forward returns (`replay_cohorts`)
 
 Cohort = end-of-day canonical signal per symbol-day (the row `forward_returns`
@@ -266,6 +301,7 @@ Documented in the 09-14 report §8. Nothing further.
 | 16:31 | 200 | 200 | 16:16 success 359 | fast-scan on cadence (12 runs since 13:41, all success); full-scan 21:30 | frontend/hot-api recreated 15:11 (healthy), postgres healthy | 11 consecutive fresh runs; live ENTER 0 in all, v1 ENTER 3, v2 ENTER 3–4 / WAIT 15–23 |
 | 18:01 | 200 | 200 (backup event 12:55 r2 ok) | 17:47 success 352 | fast-scan on cadence (17 fresh runs since 13:41); full-scan 21:30 | RestartCount 0 on frontend/hot-api (recreated 16:36), postgres, caddy; load 1.7/1.1/0.7; frontend rss 409 MB, event-loop p99 11.5 ms | no anomalies |
 | 19:46 | 200 | 200 | 19:31 success 352 | fast-scan on cadence (24 fresh runs since 13:41) | all healthy, load 0.7 | none |
+| 22:09 | 200 | 200 | 22:07 full scan success 352 + analysis (forward_returns 5448) | fast-scan on cadence; full-scan recovered manually after the lock skip | all healthy | full-scan lock collision (fixed, see §4d) |
 
 ## 9. Changes shipped in this window
 
@@ -275,6 +311,7 @@ Documented in the 09-14 report §8. Nothing further.
 | `d94920e0` | `mcal_vetoes` / `mcal_severe_vetoes` / `mcal_data_quality_score` (observation); relay bundles `run_history`, `run_snapshot`, `candidate_actionable_sample`, `volume_by_hour`, `breakout_candidates_why` | scanner image rebuilt 13:47, tag `rollback-scanner-20260914-p11-step2` |
 | (relay only) | `replay_cohorts` bundle | self-reloaded worker |
 | `4774a1a1` | `candidate_v2_*` shadow columns (market-calendar freshness, class-not-verdict, balanced-target rr, no quality read); relay `candidate_v2_sample`, `candidate_v2_reasons`, v2 counts in `run_history` | scanner image rebuilt 13:54, tag `rollback-scanner-20260914-p11-step3`; 13:56 scan on it |
+| `8e5a287c` | scanner: FULL runs wait ≤10 min for the run lock; relay `prod_full_scan` (confirm-gated) + `analysis_freshness` | scanner image rebuilt 21:54, tag `rollback-scanner-20260914-p11-step6`; verified live on the 21:57 full scan |
 | `98abf7d3` | scanner: `last_bar_partial`, `relative_volume_score_completed`, `breakout_score_completed` (observation) | scanner image rebuilt 18:04, tag `rollback-scanner-20260914-p11-step5`; 18:11 scan on it |
 | `896fb390` | /terminal: shockPattern + timingValidation projection (lever 1, slice 2) | frontend rebuilt + recreated 16:35, tag `rollback-frontend-20260914-shockpattern`; PROD WEB 6,530 → 5,387 KB |
 | `e48fc392` | /terminal: narrative projection at the client boundary (lever 1, slice 1) | frontend rebuilt + recreated 15:11, tag `rollback-frontend-20260914-narrative`; PROD WEB 6,972 → 6,530 KB |
