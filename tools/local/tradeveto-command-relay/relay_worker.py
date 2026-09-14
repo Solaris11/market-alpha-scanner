@@ -248,6 +248,7 @@ def action_prod_logs_recent(repo: Path, args: dict[str, Any]) -> list[CommandRes
         "fast-scan": "market-alpha-fast-scan.service",
         "full-scan": "market-alpha-full-scan.service",
         "backup": "market-alpha-backup.service",
+        "watchdog": "tradeveto-resource-watchdog.service",
     }
     if service not in mapping:
         raise RelayError(f"service not allowed: {service}")
@@ -257,6 +258,24 @@ def action_prod_logs_recent(repo: Path, args: dict[str, Any]) -> list[CommandRes
     else:
         script = f"docker logs --since 30m {shlex.quote(target)} 2>&1 | tail -200"
     return [ssh_script(script, timeout=60)]
+
+
+def action_prod_journal_recent(repo: Path, args: dict[str, Any]) -> list[CommandResult]:
+    """Read-only boot/reboot forensics: last reboots, previous-boot journal,
+    current-boot start, watchdog unit log, container StartedAt. No mutation."""
+    script = """
+set +e
+echo "== uptime =="; uptime
+echo "== last -x reboot/shutdown =="; last -x reboot shutdown 2>/dev/null | head -8
+echo "== previous boot: warning+ (last 80) =="; sudo journalctl -b -1 -p warning -n 80 --no-pager 2>&1 | tail -80
+echo "== previous boot: final 25 lines =="; sudo journalctl -b -1 -n 25 --no-pager 2>&1
+echo "== current boot: first 20 lines =="; sudo journalctl -b 0 --no-pager 2>&1 | head -20
+echo "== watchdog unit (last 60) =="; sudo journalctl -u tradeveto-resource-watchdog.service -n 60 --no-pager 2>&1
+echo "== watchdog timer =="; systemctl show tradeveto-resource-watchdog.timer -p LastTriggerUSec -p NextElapseUSecRealtime --no-pager 2>&1
+echo "== container StartedAt / RestartCount =="; for c in $(docker ps --format '{{.Names}}'); do printf "%s " "$c"; docker inspect -f '{{.State.StartedAt}} restarts={{.RestartCount}}' "$c" 2>/dev/null; done
+echo "== docker daemon start =="; sudo journalctl -u docker.service -b 0 -n 5 --no-pager 2>&1
+"""
+    return [ssh_script(script, timeout=120)]
 
 
 DB_QUERIES = {
@@ -295,6 +314,80 @@ SELECT 'sndk', COALESCE((SELECT row_to_json(x)::text FROM (
 """,
     "latest_scan": "SELECT id, created_at, completed_at, status, symbols_scored FROM scan_runs ORDER BY created_at DESC LIMIT 5;",
     "decision_distribution": "SELECT final_decision, count(*) FROM scanner_signals WHERE scan_run_id=(SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1) GROUP BY final_decision ORDER BY final_decision;",
+    # --- P1-1 shadow-engine evidence (read-only) ---
+    "shadow_comparison": r"""
+WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1),
+s AS (SELECT COALESCE(final_decision,'NULL') AS live, COALESCE(payload->>'candidate_decision','NULL') AS shadow
+      FROM scanner_signals ss JOIN lr ON lr.id=ss.scan_run_id)
+SELECT live, shadow, count(*) AS rows FROM s GROUP BY live, shadow ORDER BY live, shadow;
+""",
+    "shadow_summary": r"""
+WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1),
+s AS (SELECT final_decision AS live, payload->>'candidate_decision' AS shadow FROM scanner_signals ss JOIN lr ON lr.id=ss.scan_run_id)
+SELECT count(*) AS rows,
+       count(*) FILTER (WHERE live='ENTER') AS live_enter,
+       count(*) FILTER (WHERE shadow='ENTER') AS shadow_enter,
+       count(*) FILTER (WHERE shadow='WAIT_PULLBACK') AS shadow_wait_pullback,
+       count(*) FILTER (WHERE shadow='WATCH') AS shadow_watch,
+       count(*) FILTER (WHERE shadow='AVOID') AS shadow_avoid,
+       count(*) FILTER (WHERE shadow='EXIT') AS shadow_exit,
+       count(*) FILTER (WHERE shadow IS NULL) AS shadow_null,
+       count(*) FILTER (WHERE live=shadow) AS agree
+FROM s;
+""",
+    "funnel_blockers": r"""
+WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1)
+SELECT COALESCE(payload->>'funnel_blocking_gate','(none)') AS blocking_gate,
+       COALESCE(final_decision,'NULL') AS live,
+       count(*) AS rows
+FROM scanner_signals ss JOIN lr ON lr.id=ss.scan_run_id
+GROUP BY 1,2 ORDER BY rows DESC LIMIT 30;
+""",
+    "shadow_history_daily": r"""
+SELECT date(sr.created_at) AS day,
+       count(*) AS rows,
+       count(*) FILTER (WHERE ss.final_decision='ENTER') AS live_enter,
+       count(*) FILTER (WHERE ss.payload->>'candidate_decision'='ENTER') AS shadow_enter,
+       count(*) FILTER (WHERE ss.payload->>'candidate_decision' IS NOT NULL) AS shadow_populated
+FROM scanner_signals ss JOIN scan_runs sr ON sr.id=ss.scan_run_id
+WHERE sr.created_at > now() - interval '14 days'
+GROUP BY 1 ORDER BY 1;
+""",
+    "forward_returns_by_decision": r"""
+WITH j AS (
+  SELECT fr.horizon, fr.return_pct::numeric AS r,
+         COALESCE(ss.final_decision,'NULL') AS live,
+         COALESCE(ss.payload->>'candidate_decision','NULL') AS shadow
+  FROM forward_returns fr JOIN scanner_signals ss ON ss.id=fr.scanner_signal_id
+  WHERE fr.created_at > now() - interval '30 days' AND fr.return_pct IS NOT NULL
+)
+SELECT 'live' AS engine, live AS decision, horizon, count(*) AS n,
+       round(avg(r),3) AS avg_ret, round(percentile_cont(0.5) WITHIN GROUP (ORDER BY r)::numeric,3) AS med_ret,
+       round(100.0*count(*) FILTER (WHERE r>0)/count(*),1) AS win_pct
+FROM j GROUP BY live, horizon
+UNION ALL
+SELECT 'shadow', shadow, horizon, count(*),
+       round(avg(r),3), round(percentile_cont(0.5) WITHIN GROUP (ORDER BY r)::numeric,3),
+       round(100.0*count(*) FILTER (WHERE r>0)/count(*),1)
+FROM j GROUP BY shadow, horizon
+ORDER BY engine, decision, horizon;
+""",
+    "candidate_enter_sample": r"""
+WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1)
+SELECT symbol, final_decision AS live,
+       payload->>'funnel_blocking_gate' AS blocking_gate,
+       payload->>'candidate_setup_class' AS cand_setup,
+       payload->>'candidate_reason_codes' AS cand_reasons,
+       payload->>'candidate_entry_zone' AS cand_entry,
+       payload->>'candidate_stop_loss' AS cand_stop,
+       payload->>'candidate_target_zone' AS cand_target,
+       payload->>'candidate_risk_reward' AS cand_rr,
+       payload->>'final_score' AS score,
+       payload->>'setup_type' AS live_setup
+FROM scanner_signals ss JOIN lr ON lr.id=ss.scan_run_id
+WHERE payload->>'candidate_decision'='ENTER'
+ORDER BY (payload->>'final_score')::numeric DESC NULLS LAST LIMIT 15;
+""",
 }
 
 
@@ -305,6 +398,7 @@ ACTIONS: dict[str, Callable[[Path, dict[str, Any]], list[CommandResult]]] = {
     "prod_db_read": action_prod_db_read,
     "prod_fast_scan": action_prod_fast_scan,
     "prod_frontend_deploy": action_prod_frontend_deploy,
+    "prod_journal_recent": action_prod_journal_recent,
     "prod_logs_recent": action_prod_logs_recent,
     "prod_pull": action_prod_pull,
     "prod_scanner_build": action_prod_scanner_build,
@@ -395,11 +489,24 @@ def main() -> int:
         raise SystemExit(f"not a git repo: {repo}")
     if args.once:
         return 0 if run_once(repo) >= 0 else 1
+    # Self-reload: the action/query tables are loaded at import time, so a
+    # code change would otherwise be invisible until someone restarts the
+    # launchd agent. When this file's mtime changes we drain the queue once
+    # and exit 0; launchd (KeepAlive=true) relaunches us with the new code.
+    self_path = Path(__file__).resolve()
+    loaded_mtime = self_path.stat().st_mtime
+    print(f"[relay] worker started (source mtime {loaded_mtime:.0f})", flush=True)
     while True:
         try:
             run_once(repo)
         except Exception as exc:  # noqa: BLE001
             print(f"[relay] worker error: {exc}", file=sys.stderr, flush=True)
+        try:
+            if self_path.stat().st_mtime != loaded_mtime:
+                print("[relay] source changed; exiting for launchd relaunch", flush=True)
+                return 0
+        except OSError:
+            pass
         time.sleep(max(0.5, args.poll_seconds))
 
 

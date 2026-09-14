@@ -49,3 +49,23 @@ Allowed actions are listed by:
 ```bash
 tools/local/tradeveto-command-relay/submit_request.py list_actions
 ```
+
+## Reloading after a worker code change
+
+The action and query tables are loaded when the worker starts. The worker
+watches its own source file: when `relay_worker.py` changes on disk it
+finishes the current queue and exits 0, and launchd (`KeepAlive`) relaunches
+it with the new code within seconds. No manual step is needed **after** the
+first worker that carries this behaviour is running. A worker started from an
+older version of the file does not reload itself — restart it once with:
+
+```bash
+tools/local/tradeveto-command-relay/install_launch_agent.sh
+```
+
+Read-only additions in this version: `prod_journal_recent` (reboot/watchdog
+forensics), the `watchdog` service in `prod_logs_recent`, and the P1-1
+shadow-engine query bundles for `prod_db_read --query`:
+`shadow_comparison`, `shadow_summary`, `funnel_blockers`,
+`shadow_history_daily`, `forward_returns_by_decision`,
+`candidate_enter_sample`.
