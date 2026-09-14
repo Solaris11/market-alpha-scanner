@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, test } from "node:test";
 
-import { buildExecutionIntelligence, buildExecutionTimingSystem } from "./execution-intelligence";
+import { buildExecutionIntelligence, buildExecutionTimingSystem, stripExecutionTimingRowsForClient } from "./execution-intelligence";
 import { stripShockEventsForClient, type OpportunityViewModel } from "./opportunity-view-model";
 import { buildShockMovePattern, type ShockMovePriceBar } from "./shock-move";
 
@@ -120,6 +120,20 @@ describe("execution payload boundary", () => {
   test("rows outside the terminal keep their samples", () => {
     const untouched = stripShockEventsForClient([{ ...rows[0], shockPattern: null } as unknown as OpportunityViewModel]);
     assert.equal(untouched[0].shockPattern, null, "a row without a pattern passes through unchanged");
+  });
+
+  // The /terminal panel reads only the five buckets and the aggregates, so the
+  // per-row `rows` array (~349 full models on prod) never needs to cross the
+  // client boundary. Everything the panel renders must survive the strip.
+  test("stripping rows at the terminal boundary keeps every rendered field", () => {
+    const full = buildExecutionTimingSystem(rows, GENERATED_AT);
+    const forClient = stripExecutionTimingRowsForClient(full);
+    assert.equal(forClient.rows.length, 0);
+    assert.equal(forClient.rowCount, rows.length, "the no-rows state must still be decidable");
+    const { rows: _fullRows, ...fullRest } = full;
+    const { rows: _clientRows, ...clientRest } = forClient;
+    assert.deepEqual(clientRest, fullRest, "buckets, averages and summaries are byte-identical");
+    assert.ok(full.rows.length > 0, "the un-stripped system still carries rows for other callers");
   });
 
   // The guard rail. Recomputing on the client from stripped rows is exactly the

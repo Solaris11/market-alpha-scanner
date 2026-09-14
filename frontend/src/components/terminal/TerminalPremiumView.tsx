@@ -62,7 +62,7 @@ import { buildAdaptiveLearningSystem } from "@/lib/trading/adaptive-learning";
 import { buildAICognitionLayer } from "@/lib/trading/ai-cognition-layer";
 import { createRenderTimeline } from "@/lib/server/render-timeline";
 import { buildEdgeLookup, selectBestTradeNow } from "@/lib/trading/conviction";
-import { buildExecutionTimingSystem } from "@/lib/trading/execution-intelligence";
+import { buildExecutionTimingSystem, stripExecutionTimingRowsForClient } from "@/lib/trading/execution-intelligence";
 import { dailyActionBlocksTradeUi, getDailyAction, noTradeActionCopy } from "@/lib/trading/daily-action";
 import { buildLiveIntelligenceSystem } from "@/lib/trading/live-intelligence";
 import { buildOpportunitiesPageModel, stripRawFields, stripShockEventsForClient } from "@/lib/trading/opportunity-view-model";
@@ -397,7 +397,7 @@ export async function TerminalPremiumView({ entitlement }: { entitlement: Termin
               <AdaptiveLearningInsightPanel compact system={adaptiveLearning} />
               <StrategyIntelligencePanel compact system={strategyIntelligence} />
               <ScenarioIntelligencePanel compact system={scenarioIntelligence} />
-              <ExecutionIntelligencePanel compact system={executionTimingSystem} />
+              <ExecutionIntelligencePanel compact system={stripExecutionTimingRowsForClient(executionTimingSystem)} />
               {workflowEvolution ? <WorkflowEvolutionPanel summary={workflowEvolution} surface="terminal" /> : null}
               <InstitutionalIntelligencePanel compact rows={clientRows} />
               <RiskTolerantOpportunityRadar actionability={actionabilityMap} compact initialProfile={personalizationProfile ?? undefined} marketCondition={snapshot.marketRegime.label} rows={clientRows} />

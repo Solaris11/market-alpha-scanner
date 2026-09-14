@@ -102,10 +102,25 @@ export type ExecutionTimingSystem = {
   generatedAt: string;
   limitations: string[];
   pullbackCandidates: ExecutionIntelligence[];
+  /** How many rows the system was built from. Survives `stripExecutionTimingRowsForClient`. */
+  rowCount: number;
   rows: ExecutionIntelligence[];
   systemSummary: string;
   topTimingQuality: ExecutionIntelligence[];
 };
+
+/**
+ * The /terminal panel renders only the five pre-sliced buckets (<= 5 models
+ * each) plus the aggregate numbers; `rows` (one full ExecutionIntelligence per
+ * scanner row, ~349 on prod, each with six score objects, a calibration report
+ * and five string arrays) was still serialised into the RSC flight for it.
+ * Drop it at the client boundary. The buckets keep their own references, so
+ * every rendered value is byte-identical; `rowCount` keeps the "no rows yet"
+ * state honest.
+ */
+export function stripExecutionTimingRowsForClient(system: ExecutionTimingSystem): ExecutionTimingSystem {
+  return { ...system, rows: [] };
+}
 
 type ExecutionInputs = {
   atrPressure: number;
@@ -148,6 +163,7 @@ export function buildExecutionTimingSystem(rows: OpportunityViewModel[], generat
       "Historical execution context is probabilistic and sample-size dependent; it is not a guarantee of future behavior.",
     ],
     pullbackCandidates,
+    rowCount: models.length,
     rows: models.sort((left, right) => right.timingQualityScore - left.timingQualityScore),
     systemSummary: systemSummary({ averageChaseRisk, averageEntryQuality, averageTimingQuality, count: models.length }),
     topTimingQuality,

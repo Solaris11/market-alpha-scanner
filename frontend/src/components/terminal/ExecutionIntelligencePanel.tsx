@@ -47,7 +47,7 @@ export function ExecutionIntelligencePanel({
     return target ? buildExecutionIntelligence(target) : null;
   }, [providedFocusModel, focusSymbol, rows]);
 
-  const hasRows = providedSystem ? providedSystem.rows.length > 0 : Boolean(rows?.length);
+  const hasRows = providedSystem ? providedSystem.rowCount > 0 || providedSystem.rows.length > 0 : Boolean(rows?.length);
   if (!hasRows) {
     return (
       <GlassPanel className="p-5">
