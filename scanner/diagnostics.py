@@ -36,6 +36,10 @@ STALE_DATA_HOURS: Final[float] = 36.0
 MAX_MISSED_SESSIONS: Final[int] = 1
 MAX_CALENDAR_DAYS_ANY_MARKET: Final[float] = 5.0
 US_SESSION_CLOSE_UTC_HOUR: Final[int] = 21
+#: Mirrors engine.SEVERE_VETO_CODES without importing engine (circular).
+MCAL_SEVERE_VETOES: Final[frozenset[str]] = frozenset(
+    {"STALE_DATA", "LOW_CONFIDENCE_DATA", "PROVIDER_ERROR", "EXTREME_VOLATILITY", "POOR_RISK_REWARD", "STOP_RISK", "RISK_OFF_MARKET", "BEAR_MARKET"}
+)
 HIGH_VOLATILITY_ANNUALIZED: Final[float] = 0.70
 EXTREME_VOLATILITY_ANNUALIZED: Final[float] = 0.90
 HIGH_ATR_PCT: Final[float] = 7.0
@@ -64,6 +68,9 @@ def apply_scoring_diagnostics(df: pd.DataFrame) -> pd.DataFrame:
         "stale_data": pd.Series([item["stale_data"] for item in diagnostics], index=working.index),
         "missed_sessions": pd.Series([item["missed_sessions"] for item in diagnostics], index=working.index, dtype="object"),
         "stale_by_market_calendar": pd.Series([item["stale_by_market_calendar"] for item in diagnostics], index=working.index),
+        "mcal_vetoes": pd.Series([item["mcal_vetoes"] for item in diagnostics], index=working.index, dtype="object"),
+        "mcal_severe_vetoes": pd.Series([item["mcal_severe_vetoes"] for item in diagnostics], index=working.index, dtype="object"),
+        "mcal_data_quality_score": pd.Series([item["mcal_data_quality_score"] for item in diagnostics], index=working.index),
         "low_confidence_data": pd.Series([item["low_confidence_data"] for item in diagnostics], index=working.index),
         "provider_error": pd.Series([item["provider_error"] for item in diagnostics], index=working.index),
         "data_quality_score": pd.Series([item["data_quality_score"] for item in diagnostics], index=working.index),
@@ -75,6 +82,11 @@ def scoring_diagnostics_for_row(row: Mapping[str, object]) -> dict[str, object]:
     data_quality = data_quality_flags(row)
     factor_scores = factor_scores_for_row(row, data_quality_score=safe_float(data_quality["data_quality_score"], 0.0))
     vetoes = vetoes_for_row(row, data_quality)
+    # Observation only: the same veto list with the market-calendar freshness
+    # test in place of the 36-hour wall clock. Nothing downstream reads it.
+    mcal_quality = market_calendar_data_quality_flags(row, data_quality)
+    mcal_vetoes = vetoes_for_row(row, mcal_quality)
+    mcal_severe = [code for code in mcal_vetoes if code in MCAL_SEVERE_VETOES]
     reason_codes = decision_reason_codes_for_row(row, vetoes)
     confidence = confidence_score_for_row(row, factor_scores, vetoes)
     final_decision = safe_str(row.get("final_decision"), "").upper()
@@ -94,6 +106,9 @@ def scoring_diagnostics_for_row(row: Mapping[str, object]) -> dict[str, object]:
         "stale_data": data_quality["stale_data"],
         "missed_sessions": data_quality["missed_sessions"],
         "stale_by_market_calendar": data_quality["stale_by_market_calendar"],
+        "mcal_vetoes": mcal_vetoes,
+        "mcal_severe_vetoes": mcal_severe,
+        "mcal_data_quality_score": mcal_quality["data_quality_score"],
         "low_confidence_data": data_quality["low_confidence_data"],
         "provider_error": data_quality["provider_error"],
         "data_quality_score": data_quality["data_quality_score"],
@@ -178,6 +193,27 @@ def data_quality_flags(row: Mapping[str, object]) -> dict[str, object]:
         "provider_error": provider_error,
         "data_quality_score": round(clamp_score(score), 2),
     }
+
+
+def market_calendar_data_quality_flags(row: Mapping[str, object], data_quality: Mapping[str, object] | None = None) -> dict[str, object]:
+    """`data_quality_flags` with the market-calendar freshness test swapped in
+    for the wall clock. Recomputes the score (the -30 stale penalty follows
+    the calendar flag) and therefore `low_confidence_data`. Observation only:
+    the live veto list, confidence and decisions do not read this."""
+    base = dict(data_quality if data_quality is not None else data_quality_flags(row))
+    wall_clock_stale = bool(base.get("stale_data"))
+    calendar_stale = bool(base.get("stale_by_market_calendar"))
+    score = safe_float(base.get("data_quality_score"), 100.0)
+    if wall_clock_stale and not calendar_stale:
+        score += 30.0
+    elif calendar_stale and not wall_clock_stale:
+        score -= 30.0
+    score = round(clamp_score(score), 2)
+    shadow = dict(base)
+    shadow["stale_data"] = calendar_stale
+    shadow["data_quality_score"] = score
+    shadow["low_confidence_data"] = score < 70.0
+    return shadow
 
 
 def vetoes_for_row(row: Mapping[str, object], data_quality: Mapping[str, object] | None = None) -> list[str]:

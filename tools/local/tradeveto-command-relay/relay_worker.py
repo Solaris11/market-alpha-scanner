@@ -529,6 +529,107 @@ UNION ALL SELECT 'C4 score>=80 (any)', count(*) FROM g WHERE fs >= 80
 UNION ALL SELECT 'C5 score 55-70 (any)', count(*) FROM g WHERE band_55_70
 ORDER BY 1;
 """,
+    "run_history": r"""
+WITH runs AS (SELECT id, created_at, symbols_scored FROM scan_runs ORDER BY created_at DESC LIMIT 40),
+s AS (
+  SELECT sr.id AS run_id, sr.created_at, ss.final_decision AS live, x.*
+  FROM scanner_signals ss JOIN runs sr ON sr.id=ss.scan_run_id
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(setup_type text, candidate_decision text, candidate_entry_zone text, candidate_stop_loss text, candidate_target_zone text, candidate_confidence_penalty text, confidence_score text, stale_by_market_calendar text, vetoes jsonb, final_score text, risk_reward text, mcal_severe_vetoes jsonb)
+)
+SELECT left(run_id::text,8) AS run, to_char(created_at AT TIME ZONE 'UTC','MM-DD HH24:MI') AS at_utc, count(*) AS rows,
+       count(*) FILTER (WHERE live='ENTER') AS l_enter, count(*) FILTER (WHERE live='WAIT_PULLBACK') AS l_wait, count(*) FILTER (WHERE live='WATCH') AS l_watch,
+       count(*) FILTER (WHERE live='AVOID') AS l_avoid, count(*) FILTER (WHERE live='EXIT') AS l_exit,
+       count(*) FILTER (WHERE setup_type='AVOID') AS st_avoid, count(*) FILTER (WHERE setup_type='PULLBACK') AS st_pull, count(*) FILTER (WHERE setup_type='CONTINUATION') AS st_cont, count(*) FILTER (WHERE setup_type='BREAKOUT') AS st_brk,
+       count(*) FILTER (WHERE COALESCE(vetoes ? 'STALE_DATA',false)) AS stale, count(*) FILTER (WHERE lower(stale_by_market_calendar)='true') AS mkt_stale, count(*) FILTER (WHERE stale_by_market_calendar IS NOT NULL) AS mkt_n,
+       count(*) FILTER (WHERE COALESCE(vetoes ? 'STOP_RISK',false) OR COALESCE(vetoes ? 'EXTREME_VOLATILITY',false) OR COALESCE(vetoes ? 'POOR_RISK_REWARD',false) OR COALESCE(vetoes ? 'PROVIDER_ERROR',false)) AS other_severe,
+       count(*) FILTER (WHERE jsonb_typeof(mcal_severe_vetoes)='array' AND jsonb_array_length(mcal_severe_vetoes)>0) AS mcal_severe, count(*) FILTER (WHERE mcal_severe_vetoes IS NOT NULL) AS mcal_n,
+       count(*) FILTER (WHERE candidate_decision IS NOT NULL) AS c_n, count(*) FILTER (WHERE candidate_decision='ENTER') AS c_enter, count(*) FILTER (WHERE candidate_decision='WAIT_PULLBACK') AS c_wait,
+       count(*) FILTER (WHERE candidate_decision='WATCH') AS c_watch, count(*) FILTER (WHERE candidate_decision='AVOID') AS c_avoid, count(*) FILTER (WHERE candidate_decision='EXIT') AS c_exit,
+       count(*) FILTER (WHERE candidate_decision IN ('ENTER','WAIT_PULLBACK') AND COALESCE(candidate_entry_zone,'') NOT IN ('','-') AND COALESCE(candidate_stop_loss,'') NOT IN ('','-') AND COALESCE(candidate_target_zone,'') NOT IN ('','-')) AS c_where_full,
+       round(percentile_cont(0.5) WITHIN GROUP (ORDER BY (confidence_score::numeric - COALESCE(NULLIF(candidate_confidence_penalty,'')::numeric,0))) FILTER (WHERE confidence_score ~ '^[0-9.]+$')::numeric,1) AS c_conf_med,
+       count(*) FILTER (WHERE confidence_score ~ '^[0-9.]+$' AND confidence_score::numeric >= 70) AS conf70
+FROM s GROUP BY run_id, created_at ORDER BY created_at DESC;
+""",
+    "run_snapshot": r"""
+WITH lr AS (SELECT id, created_at, symbols_scored, status FROM scan_runs ORDER BY created_at DESC LIMIT 1),
+s AS (
+  SELECT ss.symbol, ss.final_decision AS live, x.*
+  FROM scanner_signals ss JOIN lr ON lr.id=ss.scan_run_id
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(setup_type text, setup_detail text, candidate_decision text, candidate_setup_class text, candidate_reason_codes jsonb, candidate_entry_zone text, candidate_stop_loss text, candidate_target_zone text, candidate_risk_reward text, candidate_confidence_penalty text, confidence_score text, stale_by_market_calendar text, missed_sessions text, vetoes jsonb, final_score text, risk_reward text, entry_status text, composite_action text, recommendation_quality text, breakout_score text, relative_volume_score text, momentum_score text, trend_score text, pre_expansion_score text, funnel_blocking_gate text)
+)
+SELECT 'run' AS k, left(id::text,8)||' '||to_char(created_at AT TIME ZONE 'UTC','YYYY-MM-DD HH24:MI:SS')||' status='||COALESCE(status,'')||' scored='||COALESCE(symbols_scored::text,'') AS v FROM lr
+UNION ALL SELECT 'live='||COALESCE(live,'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'candidate='||COALESCE(candidate_decision,'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'setup='||COALESCE(setup_type,'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'setup_detail='||COALESCE(setup_detail,'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'cand_setup_class='||COALESCE(candidate_setup_class,'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'blocking='||COALESCE(funnel_blocking_gate,'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'veto='||v, count(*)::text FROM s, jsonb_array_elements_text(CASE WHEN jsonb_typeof(vetoes)='array' THEN vetoes ELSE '[]'::jsonb END) v GROUP BY 1
+UNION ALL SELECT 'cand_reason='||v, count(*)::text FROM s, jsonb_array_elements_text(CASE WHEN jsonb_typeof(candidate_reason_codes)='array' THEN candidate_reason_codes ELSE '[]'::jsonb END) v GROUP BY 1
+UNION ALL SELECT 'mkt_stale='||COALESCE(lower(stale_by_market_calendar),'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'missed_sessions='||COALESCE(missed_sessions,'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'entry_status='||COALESCE(entry_status,'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'action='||COALESCE(composite_action,'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'quality='||COALESCE(recommendation_quality,'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'conf>=70', count(*) FILTER (WHERE confidence_score ~ '^[0-9.]+$' AND confidence_score::numeric>=70)::text FROM s
+UNION ALL SELECT 'conf_median', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY confidence_score::numeric) FILTER (WHERE confidence_score ~ '^[0-9.]+$')::numeric,1)::text FROM s
+UNION ALL SELECT 'breakout>=72', count(*) FILTER (WHERE breakout_score ~ '^[0-9.]+$' AND breakout_score::numeric>=72)::text FROM s
+UNION ALL SELECT 'breakout>=72 & vol>=65 & mom>=68', count(*) FILTER (WHERE breakout_score ~ '^[0-9.]+$' AND breakout_score::numeric>=72 AND relative_volume_score ~ '^[0-9.]+$' AND relative_volume_score::numeric>=65 AND momentum_score ~ '^[0-9.]+$' AND momentum_score::numeric>=68)::text FROM s
+UNION ALL SELECT 'breakout_median', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY breakout_score::numeric) FILTER (WHERE breakout_score ~ '^[0-9.]+$')::numeric,1)::text FROM s
+UNION ALL SELECT 'relvol_median', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY relative_volume_score::numeric) FILTER (WHERE relative_volume_score ~ '^[0-9.]+$')::numeric,1)::text FROM s
+UNION ALL SELECT 'pre_expansion>=45', count(*) FILTER (WHERE pre_expansion_score ~ '^[0-9.]+$' AND pre_expansion_score::numeric>=45)::text FROM s
+UNION ALL SELECT 'cand_where_full', count(*) FILTER (WHERE candidate_decision IN ('ENTER','WAIT_PULLBACK') AND COALESCE(candidate_entry_zone,'') NOT IN ('','-') AND COALESCE(candidate_stop_loss,'') NOT IN ('','-') AND COALESCE(candidate_target_zone,'') NOT IN ('','-'))::text FROM s
+UNION ALL SELECT 'cand_enter_or_wait', count(*) FILTER (WHERE candidate_decision IN ('ENTER','WAIT_PULLBACK'))::text FROM s
+ORDER BY 1;
+""",
+    "candidate_actionable_sample": r"""
+WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1)
+SELECT symbol, final_decision AS live, payload->>'candidate_decision' AS cand,
+       payload->>'candidate_setup_class' AS cls, (payload->'candidate_reason_codes')::text AS reasons,
+       payload->>'candidate_entry_zone' AS entry, payload->>'candidate_stop_loss' AS stop, payload->>'candidate_target_zone' AS target,
+       payload->>'candidate_risk_reward' AS rr, payload->>'final_score' AS score, payload->>'confidence_score' AS conf,
+       payload->>'entry_status' AS entry_status, payload->>'pre_expansion_score' AS pre, left(payload->>'candidate_why', 110) AS why
+FROM scanner_signals ss JOIN lr ON lr.id=ss.scan_run_id
+WHERE payload->>'candidate_decision' IN ('ENTER','WAIT_PULLBACK')
+ORDER BY (CASE WHEN payload->>'candidate_decision'='ENTER' THEN 0 ELSE 1 END), (payload->>'final_score')::numeric DESC NULLS LAST LIMIT 25;
+""",
+    "volume_by_hour": r"""
+WITH s AS (
+  SELECT sr.created_at, x.*
+  FROM scanner_signals ss JOIN scan_runs sr ON sr.id=ss.scan_run_id
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(breakout_score text, relative_volume_score text, momentum_score text, setup_type text, vetoes jsonb, asset_type text)
+  WHERE sr.created_at > now() - interval '7 days' AND NOT COALESCE(x.vetoes ? 'STALE_DATA', false) AND COALESCE(x.asset_type,'')='EQUITY'
+)
+SELECT extract(hour FROM created_at AT TIME ZONE 'UTC')::int AS utc_hour, count(*) AS rows,
+       round(percentile_cont(0.5) WITHIN GROUP (ORDER BY relative_volume_score::numeric) FILTER (WHERE relative_volume_score ~ '^[0-9.]+$')::numeric,1) AS relvol_med,
+       round(100.0*count(*) FILTER (WHERE relative_volume_score ~ '^[0-9.]+$' AND relative_volume_score::numeric>=65)/count(*),1) AS relvol65_pct,
+       round(percentile_cont(0.5) WITHIN GROUP (ORDER BY breakout_score::numeric) FILTER (WHERE breakout_score ~ '^[0-9.]+$')::numeric,1) AS brk_med,
+       round(100.0*count(*) FILTER (WHERE breakout_score ~ '^[0-9.]+$' AND breakout_score::numeric>=72)/count(*),1) AS brk72_pct,
+       count(*) FILTER (WHERE breakout_score ~ '^[0-9.]+$' AND breakout_score::numeric>=72 AND relative_volume_score ~ '^[0-9.]+$' AND relative_volume_score::numeric>=65 AND momentum_score ~ '^[0-9.]+$' AND momentum_score::numeric>=68) AS brk_vol_mom,
+       count(*) FILTER (WHERE setup_type='BREAKOUT') AS st_breakout
+FROM s GROUP BY 1 ORDER BY 1;
+""",
+    "breakout_candidates_why": r"""
+WITH s AS (
+  SELECT ss.symbol, sr.created_at, ss.final_decision AS live, x.*
+  FROM scanner_signals ss JOIN scan_runs sr ON sr.id=ss.scan_run_id
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(breakout_score text, relative_volume_score text, momentum_score text, setup_type text, setup_reason_codes jsonb, vetoes jsonb, entry_status text, current_rsi text, setup_detail text, final_score text, candidate_decision text, recommendation_quality text)
+  WHERE sr.created_at > now() - interval '7 days' AND NOT COALESCE(x.vetoes ? 'STALE_DATA', false)
+    AND x.breakout_score ~ '^[0-9.]+$' AND x.breakout_score::numeric>=72 AND x.relative_volume_score ~ '^[0-9.]+$' AND x.relative_volume_score::numeric>=65 AND x.momentum_score ~ '^[0-9.]+$' AND x.momentum_score::numeric>=68
+)
+SELECT 'rows' AS k, count(*)::text AS v FROM s
+UNION ALL SELECT 'distinct_symbols', count(DISTINCT symbol)::text FROM s
+UNION ALL SELECT 'setup='||COALESCE(setup_type,'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'reason='||v, count(*)::text FROM s, jsonb_array_elements_text(CASE WHEN jsonb_typeof(setup_reason_codes)='array' THEN setup_reason_codes ELSE '[]'::jsonb END) v GROUP BY 1
+UNION ALL SELECT 'veto='||v, count(*)::text FROM s, jsonb_array_elements_text(CASE WHEN jsonb_typeof(vetoes)='array' THEN vetoes ELSE '[]'::jsonb END) v GROUP BY 1
+UNION ALL SELECT 'entry_status='||COALESCE(entry_status,'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'rsi>=74', count(*) FILTER (WHERE current_rsi ~ '^[0-9.]+$' AND current_rsi::numeric>=74)::text FROM s
+UNION ALL SELECT 'live='||COALESCE(live,'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'candidate='||COALESCE(candidate_decision,'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'quality='||COALESCE(recommendation_quality,'NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'symbols', string_agg(DISTINCT symbol, ',') FROM s
+ORDER BY 1;
+""",
     "candidate_enter_sample": r"""
 WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1)
 SELECT symbol, final_decision AS live,
