@@ -267,8 +267,16 @@ def action_prod_journal_recent(repo: Path, args: dict[str, Any]) -> list[Command
 set +e
 echo "== uptime =="; uptime
 echo "== last -x reboot/shutdown =="; last -x reboot shutdown 2>/dev/null | head -8
-echo "== previous boot: warning+ (last 80) =="; sudo journalctl -b -1 -p warning -n 80 --no-pager 2>&1 | tail -80
+SINCE=$(date -d "$(uptime -s) 8 hours ago" '+%F %T' 2>/dev/null || date -d '1 day ago' '+%F %T')
+echo "== window: previous boot since $SINCE =="
+echo "== previous boot: warning+ excluding UFW noise (last 40) =="; sudo journalctl -b -1 -p warning --since "$SINCE" --no-pager 2>&1 | grep -v "UFW BLOCK" | tail -40
 echo "== previous boot: final 25 lines =="; sudo journalctl -b -1 -n 25 --no-pager 2>&1
+echo "== previous boot: who asked for the reboot (systemd-logind/unattended-upgrades/shutdown, last 30) =="; sudo journalctl -b -1 --since "$SINCE" --no-pager 2>&1 | grep -iE "unattended|reboot|shutdown|apt-daily|needrestart|logind|sudo:.*COMMAND|kernel: Linux version|watchdog" | grep -v "UFW BLOCK" | tail -30
+NEAR=$(date -d "$(uptime -s) 6 minutes ago" '+%F %T' 2>/dev/null || echo "$SINCE")
+echo "== 6 minutes before the reboot: sessions, sudo, reboot initiators (first 40) =="; sudo journalctl -b -1 --since "$NEAR" --no-pager 2>&1 | grep -iE "sudo:|reboot|power|polkit|unattended|session opened|Accepted publickey|systemd-logind" | grep -v "UFW BLOCK" | head -40
+echo "== unattended-upgrades log tail =="; sudo tail -25 /var/log/unattended-upgrades/unattended-upgrades.log 2>&1
+echo "== apt history tail =="; sudo tail -20 /var/log/apt/history.log 2>&1
+echo "== watchdog unit, previous boot (last 15) =="; sudo journalctl -b -1 -u tradeveto-resource-watchdog.service --since "$SINCE" -n 15 --no-pager 2>&1
 echo "== current boot: first 20 lines =="; sudo journalctl -b 0 --no-pager 2>&1 | head -20
 echo "== watchdog unit (last 60) =="; sudo journalctl -u tradeveto-resource-watchdog.service -n 60 --no-pager 2>&1
 echo "== watchdog timer =="; systemctl show tradeveto-resource-watchdog.timer -p LastTriggerUSec -p NextElapseUSecRealtime --no-pager 2>&1
