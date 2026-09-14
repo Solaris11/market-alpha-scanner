@@ -236,3 +236,4 @@ calibration-*.csv
 ops-snapshot.json
 ops-snapshot.html
 .claude-prod-audit/
+.agent-relay/
