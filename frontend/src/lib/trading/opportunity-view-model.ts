@@ -111,6 +111,37 @@ export function stripShockEventsForClient(rows: OpportunityViewModel[]): Opportu
   });
 }
 
+/**
+ * The narrative fields the /terminal client graph reads. Everything else on
+ * NarrativeIntelligence -- thirteen long prose strings and whatToWatch -- is
+ * only read by the /symbol NarrativeIntelligenceCard (which receives its own
+ * `narrative` prop) and by server-side research/copilot builders. Measured on
+ * production: 517 KB of the /terminal document for 111 narrated rows.
+ *
+ * terminal-narrative-projection.test.ts re-derives the read set from the
+ * components that take `rows={clientRows}` and fails if a read is missing here.
+ */
+export const TERMINAL_NARRATIVE_FIELDS = [
+  "generatedAt",
+  "moderatorSummary",
+  "narrativeDrift",
+  "narrativeSummary",
+  "pressureStory",
+  "source",
+  "symbol",
+  "unsupportedClaimsDetected",
+] as const;
+
+export function stripNarrativeForTerminal(rows: OpportunityViewModel[]): OpportunityViewModel[] {
+  return rows.map((row) => {
+    const narrative = row.narrative;
+    if (!narrative) return row;
+    const kept: Record<string, unknown> = {};
+    for (const key of TERMINAL_NARRATIVE_FIELDS) kept[key] = (narrative as unknown as Record<string, unknown>)[key];
+    return { ...row, narrative: kept as unknown as NarrativeIntelligence };
+  });
+}
+
 export function buildOpportunitiesPageModel(
   rows: RankingRow[],
   performance: PerformanceData | null,
