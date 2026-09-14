@@ -228,3 +228,49 @@ Documented in the 09-14 report §8. Nothing further.
 | (relay only) | `replay_cohorts` bundle | self-reloaded worker |
 | `4774a1a1` | `candidate_v2_*` shadow columns (market-calendar freshness, class-not-verdict, balanced-target rr, no quality read); relay `candidate_v2_sample`, `candidate_v2_reasons`, v2 counts in `run_history` | scanner image rebuilt 13:54, tag `rollback-scanner-20260914-p11-step3`; 13:56 scan on it |
 | `65c4a7fc` | v2 class `UNCLASSIFIED` (the payload writer nulls the string "none"); `v2_where_full` in `run_history` | scanner image rebuilt 14:05, tag `rollback-scanner-20260914-p11-step4` |
+
+## 10. Fill-in work — /terminal payload duplication audit (LOCAL, checkout of `bd16023a`)
+
+Read-only code audit of the ~9 MB `/terminal` RSC document (prior PROD WEB
+measurement: fragility ×3719, conviction ×1026, reason ×1875 field
+occurrences; the chart hub was ~1%). Rows come from `getFullRanking()` with no
+limit (~349 rows), each an `OpportunityViewModel` with 35 scalar fields plus
+`raw` (154 allow-listed scanner keys), `narrative` (22 prose strings),
+`evidence` (incl. `reasons[]`, `limitations[]`) and `shockPattern` (~30
+fields). Only *client* component props are serialized; the server-only
+panels (ActionTriageStrip, DailyActionCard, heatmap, radar, right rail) emit
+HTML.
+
+| prop / builder | rows carried | per-row payload | fold |
+|---|---|---|---|
+| `UnifiedIntelligenceConsole rows={clientRows}` (`TerminalPremiumView.tsx:322`) | all | whole view model incl. `raw`, `narrative`, `evidence`, `shockPattern` | **above** |
+| `ExecutionIntelligencePanel system={executionTimingSystem}` (`:287`, `execution-intelligence.ts:123`) | all, but the panel renders ≤20 from five pre-sliced buckets | 6 score objects + calibration arrays + 5 zone strings + 5 string arrays per row | below (`<details>`) |
+| `actionability={actionabilityMap}` (`:291`, `terminal-actionability.ts:52`) | all (by design: shockEvents are stripped) | 5 prose strings per symbol | below |
+| Intraday/RegimeShift/Institutional panels, both radars, watchlist (`:395–404, :460`) | same array reference → Flight dedupes to one copy | — | below |
+| DailyMarketCommandCenter / GlobalMarketCommandCenter | bounded (≤12 per list; 8 macro charts) | — | above |
+
+Duplication actually present: the same rows are re-derived into a second full
+per-row graph (`buildExecutionTimingSystem`) and a third
+(`buildTerminalActionabilityMap`); `buildUnifiedIntelligenceConsole` runs on
+the server *and* again in the browser; of `narrative`'s 22 strings only two are
+read on this page, of `evidence`'s 14 fields only `label`/`score`.
+
+Levers, by expected savings: (1) a single terminal-scoped row projection at
+the serialization boundary (narrow `raw`, `narrative` → 2 strings, `evidence`
+→ 3 fields, `shockPattern` → the rendered dozen), guarded by an import-graph
+test like `raw-field-allowlist.test.ts` — ~2–4 MB; (2) stop serializing
+`ExecutionTimingSystem.rows` (the panel only reads the buckets, which keep
+references to ≤20 models) and shrink the actionability map to the reachable
+set behind an on-demand route — ~0.8–1.2 MB, with the actionability contract
+(`terminal-actionability.ts` comment) respected by shipping the fetch first;
+(3) feed the console the server-built model instead of `rows`, then
+lazy-mount the six below-fold row consumers as `LazyMarketChartHub` does —
+the only above-fold full-row prop leaves the first document. Risks: console
+zone switching must be precomputed for every workspace preference; the
+watchlist must still resolve any saved symbol; radars need the full symbol
+universe (trim fields, not rows); the projection must not re-widen `raw`
+(previous leaks: `provider_error`, `alpaca_request_id`,
+`provider_latency_ms`) and must keep `dataFreshness` / stale fields for the
+WAIT/AVOID copy. Lever 2's `rows: []` slice is the smallest measured unit to
+ship first; each step is its own commit → relay push → prod pull → frontend
+rebuild → PROD WEB + PROD HOST measurement.
