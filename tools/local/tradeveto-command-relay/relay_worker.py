@@ -372,6 +372,41 @@ SELECT 'shadow', shadow, horizon, count(*),
 FROM j GROUP BY shadow, horizon
 ORDER BY engine, decision, horizon;
 """,
+    "upstream_drivers": r"""
+WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1),
+s AS (SELECT ss.final_decision AS live, ss.payload AS p FROM scanner_signals ss JOIN lr ON lr.id=ss.scan_run_id)
+SELECT 'composite_action' AS field, COALESCE(p->>'composite_action','NULL') AS value, count(*) FROM s GROUP BY 2
+UNION ALL SELECT 'recommendation_quality', COALESCE(p->>'recommendation_quality','NULL'), count(*) FROM s GROUP BY 2
+UNION ALL SELECT 'entry_status', COALESCE(p->>'entry_status','NULL'), count(*) FROM s GROUP BY 2
+UNION ALL SELECT 'market_regime', COALESCE(p->>'market_regime','NULL'), count(*) FROM s GROUP BY 2
+UNION ALL SELECT 'setup_type', COALESCE(p->>'setup_type','NULL'), count(*) FROM s GROUP BY 2
+UNION ALL SELECT 'risk_penalty_bucket', CASE WHEN (p->>'risk_penalty')::numeric>=24 THEN '>=24 (cap SELL)' WHEN (p->>'risk_penalty')::numeric>=18 THEN '18-24 (cap WAIT)' WHEN (p->>'risk_penalty')::numeric>=12 THEN '12-18' ELSE '<12' END, count(*) FROM s WHERE p->>'risk_penalty' ~ '^-?[0-9]+(\.[0-9]+)?$' GROUP BY 2
+UNION ALL SELECT 'final_score_bucket', CASE WHEN (p->>'final_score')::numeric>=80 THEN '>=80' WHEN (p->>'final_score')::numeric>=70 THEN '70-79' WHEN (p->>'final_score')::numeric>=60 THEN '60-69' WHEN (p->>'final_score')::numeric>=52 THEN '52-59' ELSE '<52' END, count(*) FROM s WHERE p->>'final_score' ~ '^-?[0-9]+(\.[0-9]+)?$' GROUP BY 2
+UNION ALL SELECT 'quality_score_bucket', CASE WHEN (p->>'quality_score')::numeric>=75 THEN '>=75 TRADE_READY' WHEN (p->>'quality_score')::numeric>=60 THEN '60-74 WAIT_PULLBACK' WHEN (p->>'quality_score')::numeric>=40 THEN '40-59 LOW_EDGE' ELSE '<40 AVOID' END, count(*) FROM s WHERE p->>'quality_score' ~ '^-?[0-9]+(\.[0-9]+)?$' GROUP BY 2
+UNION ALL SELECT 'quality_if_no_setup_penalty', CASE WHEN (p->>'quality_score')::numeric+25>=75 THEN '>=75 TRADE_READY' WHEN (p->>'quality_score')::numeric+25>=60 THEN '60-74 WAIT_PULLBACK' WHEN (p->>'quality_score')::numeric+25>=40 THEN '40-59 LOW_EDGE' ELSE '<40 AVOID' END, count(*) FROM s WHERE p->>'quality_score' ~ '^-?[0-9]+(\.[0-9]+)?$' AND p->>'setup_type'='AVOID' GROUP BY 2
+UNION ALL SELECT 'confidence_bucket', CASE WHEN (p->>'confidence_score')::numeric>=70 THEN '>=70' WHEN (p->>'confidence_score')::numeric>=50 THEN '50-69' ELSE '<50' END, count(*) FROM s WHERE p->>'confidence_score' ~ '^-?[0-9]+(\.[0-9]+)?$' GROUP BY 2
+UNION ALL SELECT 'trend_score_bucket', CASE WHEN (p->>'trend_score')::numeric>=72 THEN '>=72 (cont ok)' WHEN (p->>'trend_score')::numeric>=70 THEN '70-72 (pullback ok)' WHEN (p->>'trend_score')::numeric>=50 THEN '50-69' ELSE '<50' END, count(*) FROM s WHERE p->>'trend_score' ~ '^-?[0-9]+(\.[0-9]+)?$' GROUP BY 2
+ORDER BY 1, 3 DESC;
+""",
+    "code_frequencies": r"""
+WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1),
+s AS (SELECT ss.payload AS p FROM scanner_signals ss JOIN lr ON lr.id=ss.scan_run_id)
+SELECT 'vetoes' AS field, v AS code, count(*) FROM s, jsonb_array_elements_text(CASE WHEN jsonb_typeof(p->'vetoes')='array' THEN p->'vetoes' ELSE '[]'::jsonb END) v GROUP BY 2
+UNION ALL SELECT 'setup_reason_codes', v, count(*) FROM s, jsonb_array_elements_text(CASE WHEN jsonb_typeof(p->'setup_reason_codes')='array' THEN p->'setup_reason_codes' ELSE '[]'::jsonb END) v GROUP BY 2
+UNION ALL SELECT 'candidate_reason_codes', v, count(*) FROM s, jsonb_array_elements_text(CASE WHEN jsonb_typeof(p->'candidate_reason_codes')='array' THEN p->'candidate_reason_codes' ELSE '[]'::jsonb END) v GROUP BY 2
+UNION ALL SELECT 'candidate_decision', COALESCE(p->>'candidate_decision','NULL'), count(*) FROM s GROUP BY 2
+UNION ALL SELECT 'funnel_blocking_gate', COALESCE(p->>'funnel_blocking_gate','NULL'), count(*) FROM s GROUP BY 2
+UNION ALL SELECT 'pre_expansion_bucket', CASE WHEN p->>'pre_expansion_score' IS NULL OR p->>'pre_expansion_score' !~ '^-?[0-9]+(\.[0-9]+)?$' THEN 'NULL' WHEN (p->>'pre_expansion_score')::numeric>=45 THEN '>=45' ELSE '<45' END, count(*) FROM s GROUP BY 2
+ORDER BY 1, 3 DESC;
+""",
+    "candidate_avoid_reasons": r"""
+WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1),
+s AS (SELECT ss.final_decision AS live, ss.payload AS p FROM scanner_signals ss JOIN lr ON lr.id=ss.scan_run_id)
+SELECT COALESCE(p->>'candidate_decision','NULL') AS cand, COALESCE(live,'NULL') AS live,
+       COALESCE(p->>'recommendation_quality','NULL') AS quality,
+       (p->'candidate_reason_codes')::text AS reasons, count(*) AS rows
+FROM s GROUP BY 1,2,3,4 ORDER BY rows DESC LIMIT 25;
+""",
     "candidate_enter_sample": r"""
 WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1)
 SELECT symbol, final_decision AS live,
