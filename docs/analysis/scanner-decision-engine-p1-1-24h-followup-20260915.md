@@ -231,6 +231,7 @@ Documented in the 09-14 report §8. Nothing further.
 | `d94920e0` | `mcal_vetoes` / `mcal_severe_vetoes` / `mcal_data_quality_score` (observation); relay bundles `run_history`, `run_snapshot`, `candidate_actionable_sample`, `volume_by_hour`, `breakout_candidates_why` | scanner image rebuilt 13:47, tag `rollback-scanner-20260914-p11-step2` |
 | (relay only) | `replay_cohorts` bundle | self-reloaded worker |
 | `4774a1a1` | `candidate_v2_*` shadow columns (market-calendar freshness, class-not-verdict, balanced-target rr, no quality read); relay `candidate_v2_sample`, `candidate_v2_reasons`, v2 counts in `run_history` | scanner image rebuilt 13:54, tag `rollback-scanner-20260914-p11-step3`; 13:56 scan on it |
+| `e48fc392` | /terminal: narrative projection at the client boundary (lever 1, slice 1) | frontend rebuilt + recreated 15:11, tag `rollback-frontend-20260914-narrative`; PROD WEB 6,972 → 6,530 KB |
 | `fa00f4cb` | /terminal: `ExecutionTimingSystem.rows` no longer serialised (lever 2) | frontend rebuilt + recreated 14:18, tag `rollback-frontend-20260914-execrows`; PROD WEB 9,011 → 6,980 KB |
 | `65c4a7fc` | v2 class `UNCLASSIFIED` (the payload writer nulls the string "none"); `v2_where_full` in `run_history` | scanner image rebuilt 14:05, tag `rollback-scanner-20260914-p11-step4` |
 
@@ -293,3 +294,24 @@ buckets populated, no "Timing Context Unavailable"). The remaining
 summaries inside the opportunity rows themselves — lever 1 territory. PROD
 HOST smoke after the recreate: all routes 200 (market-charts 401 = premium
 gate).
+
+**Shipped (commit `e48fc392`, frontend deploy 15:11 UTC, rollback tag
+`rollback-frontend-20260914-narrative`).** PROD WEB attribution of the 6,972 KB
+document before this step: `shockPattern` blocks 1,716 KB (356 × 4.9 KB, of
+which `timingValidation` ~1.3 KB each), `raw` 1,160 KB (356 × 3.3 KB),
+`narrative` 517 KB (111 narrated rows × 4.8 KB), `evidence` 230 KB, the eight
+macro charts 305 KB, the actionability map 172 KB. Lever 1, first slice:
+`stripNarrativeForTerminal` keeps 8 of 22 narrative fields (the ones the
+`rows={clientRows}` consumers read: moderatorSummary, narrativeSummary,
+pressureStory, narrativeDrift + identity fields), guarded by
+`terminal-narrative-projection.test.ts`, which derives its roots from
+TerminalPremiumView's own `rows={clientRows}` props and walks the value-import
+graph (4/4; raw allowlist 13/13; tsc clean). **PROD WEB after: 6,972 → 6,530 KB
+(−442 KB); narrative blocks 517 → 106 KB; `narrativeDrift` still present on
+all 111 rows;** the Shock Move and Risk-Tolerant radars, the console and the
+watchlist render with content, no error banner. Next slices in the same
+pattern: `shockPattern` (25 of ~40 fields read; `timingValidation` 4 of ~15)
+and a terminal-scoped `raw` allowlist (104 of 154 keys, plus the 12 keys read
+through `rawField()` indirection that the name-based guard cannot see — those
+are stripped *today* and silently yield defaults; they should be added back
+before any further raw trimming).
