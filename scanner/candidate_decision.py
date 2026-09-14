@@ -333,6 +333,196 @@ def evaluate_candidate_decision(row: pd.Series, config: CandidateConfig | None =
     )
 
 
+# --- candidate v2 --------------------------------------------------------
+# Observation only, written beside the v1 candidate. Built from the P1-1
+# replay evidence (docs/analysis/scanner-decision-engine-p1-1-24h-followup-
+# 20260915.md §5): the band cohort beats baseline, the setup gate earns its
+# keep when it is a class rather than a verdict, the nearest-resistance
+# risk/reward removes rows that are not worse than baseline, and the
+# self-cancelled breakouts are the best cohort in the data. v2 therefore:
+#   1. takes freshness from the market-calendar shadow list (`mcal_severe_
+#      vetoes`) when present, so a Friday bar on Monday pre-open is not a
+#      severe veto;
+#   2. classifies the shape from the numeric scores, never from the verdict;
+#   3. lets the balanced 1.5R target stand in for a nearest-resistance target
+#      that sits inside the breakout band (within BREAKOUT_TARGET_BAND of
+#      price), keeping POOR_RISK_REWARD severe only when both fail;
+#   4. does not read `recommendation_quality` (it carries the -25 double count);
+#   5. keeps the SELL action, the entry-location, the pre-expansion and the
+#      band/confidence tests exactly as v1, and additionally records whether
+#      the row would have passed everything but the pre-expansion gate, so
+#      that gate can be judged on forward returns before it is trusted.
+BREAKOUT_TARGET_BAND: Final[float] = 0.04
+V2_BREAKOUT_MIN_VOLUME: Final[float] = 55.0
+
+CANDIDATE_V2_COLUMNS: Final[tuple[str, ...]] = (
+    "candidate_v2_decision",
+    "candidate_v2_setup_class",
+    "candidate_v2_reason_codes",
+    "candidate_v2_why",
+    "candidate_v2_risk_reward",
+    "candidate_v2_band_ok",
+)
+
+
+def _v2_setup_class(row: pd.Series) -> str:
+    """Shape from the factor scores. Overextension is a location, handled
+    later by the entry-status test, and never changes the class."""
+    trend = safe_float(row.get("trend_score"), np.nan)
+    momentum = safe_float(row.get("momentum_score"), np.nan)
+    breakout = safe_float(row.get("breakout_score"), np.nan)
+    avwap = safe_float(row.get("avwap_score"), np.nan)
+    detail = _normalized(row.get("setup_detail"))
+    if "BREAKOUT" in detail or (not np.isnan(breakout) and breakout >= 72.0):
+        return "BREAKOUT"
+    near_pullback = "PULLBACK" in detail or "AVWAP" in detail or (not np.isnan(avwap) and avwap >= 62.0)
+    if near_pullback and not np.isnan(trend) and trend >= 70.0:
+        return "PULLBACK"
+    if not np.isnan(trend) and trend >= 72.0 and not np.isnan(momentum) and momentum >= 58.0:
+        return "CONTINUATION"
+    return "NONE"
+
+
+def _v2_risk_reward(row: pd.Series, setup_class: str) -> tuple[float, str | None]:
+    """Nearest-resistance rr, unless that resistance sits inside the breakout
+    band above price, in which case the balanced (1.5R) target is the honest
+    number. Returns (rr, reason_code_or_None)."""
+    rr = safe_float(row.get("risk_reward"), np.nan)
+    balanced = safe_float(row.get("balanced_risk_reward_low"), np.nan)
+    price = safe_float(row.get("price"), np.nan)
+    target_low = safe_float(row.get("take_profit_low"), np.nan)
+    floor = MIN_RISK_REWARD.get(setup_class, 1.2)
+    if np.isnan(rr) or rr >= floor or np.isnan(balanced):
+        return rr, None
+    target_inside_band = (
+        not np.isnan(price) and price > 0 and not np.isnan(target_low) and target_low > price
+        and (target_low - price) / price <= BREAKOUT_TARGET_BAND
+    )
+    if (setup_class == "BREAKOUT" or target_inside_band) and balanced >= floor:
+        return balanced, "RR_BALANCED_TARGET"
+    return rr, None
+
+
+def _v2_severe_and_advisory(row: pd.Series) -> tuple[list[str], list[str], bool]:
+    """Severe/advisory split using the market-calendar shadow list when the
+    scan persisted one; otherwise the live list. The bool says which."""
+    live = _veto_list(row.get("vetoes"))
+    mcal = row.get("mcal_vetoes")
+    used_mcal = isinstance(mcal, (list, tuple))
+    source = list(mcal) if used_mcal else live
+    codes = [safe_str(code, "").upper() for code in source if safe_str(code, "")]
+    severe = [code for code in codes if code in SEVERE_VETOES]
+    advisory = [code for code in codes if code in ADVISORY_VETOES]
+    return severe, advisory, used_mcal
+
+
+def evaluate_candidate_v2(row: pd.Series, config: CandidateConfig | None = None) -> dict[str, object]:
+    settings = config if config is not None else candidate_config()
+    action = _normalized(_action_for_row(row))
+    entry_status = _normalized(row.get("entry_status"))
+    setup_class = _v2_setup_class(row)
+    severe, advisory, used_mcal = _v2_severe_and_advisory(row)
+    rr, rr_code = _v2_risk_reward(row, setup_class)
+    floor = MIN_RISK_REWARD.get(setup_class, 1.2)
+    # POOR_RISK_REWARD is the live engine's verdict on the nearest-resistance
+    # number. v2 re-derives it from its own rr, so drop the inherited code.
+    severe = [code for code in severe if code != "POOR_RISK_REWARD"]
+    if not np.isnan(rr) and rr < floor:
+        severe.append("POOR_RISK_REWARD")
+    score = safe_float(row.get("final_score"), np.nan)
+    confidence = safe_float(row.get("confidence_score"), np.nan)
+    penalty = 6.0 * len(advisory)
+    effective_confidence = confidence - penalty if not np.isnan(confidence) else confidence
+    pre_raw = row.get("pre_expansion_score")
+    pre_score = None if pre_raw is None or (isinstance(pre_raw, float) and np.isnan(pre_raw)) else safe_float(pre_raw, np.nan)
+    if pre_score is not None and np.isnan(pre_score):
+        pre_score = None
+    already_expanded = bool(row.get("pre_expansion_already_expanded", False))
+    has_zone = _has_suggested_entry(_wait_suggested_entry(row))
+
+    codes: list[str] = [f"ADVISORY_{code}" for code in advisory]
+    if used_mcal:
+        codes.append("FRESHNESS_MARKET_CALENDAR")
+    if rr_code:
+        codes.append(rr_code)
+    if setup_class == "BREAKOUT":
+        volume = safe_float(row.get("relative_volume_score"), np.nan)
+        if not np.isnan(volume) and volume < V2_BREAKOUT_MIN_VOLUME:
+            codes.append("BREAKOUT_VOLUME_LIGHT")
+
+    def out(decision: str, why: str, *extra: str, band_ok: bool = False) -> dict[str, object]:
+        return {
+            "candidate_v2_decision": decision,
+            "candidate_v2_setup_class": setup_class,
+            "candidate_v2_reason_codes": sorted(set(codes + list(extra))),
+            "candidate_v2_why": why,
+            "candidate_v2_risk_reward": rr,
+            "candidate_v2_band_ok": band_ok,
+        }
+
+    if action in SELL_ACTIONS:
+        return out("EXIT", "The trend model is on a sell signal, so there is nothing to enter.", "SELL_SIGNAL")
+    if severe:
+        return out("AVOID", f"Blocked on data or risk integrity: {', '.join(sorted(set(severe)))}.", "SEVERE_VETO", *[f"SEVERE_{c}" for c in sorted(set(severe))])
+    if already_expanded:
+        return out("WAIT_PULLBACK" if has_zone else "WATCH", "The move has already expanded; this is a chase from here.", "ALREADY_EXPANDED")
+    if action not in BUY_ACTIONS:
+        return out("WATCH", "The trend model is not on a buy signal yet.", "NO_BUY_SIGNAL")
+    if entry_status not in ENTER_ENTRY_STATUSES:
+        if entry_status in LATE_ENTRY_STATUSES and has_zone:
+            return out("WAIT_PULLBACK", f"Price has run past the entry ({entry_status.lower()}); the zone below is where it becomes tradable again.", "ENTRY_LOCATION", "LATE_ENTRY")
+        return out("WATCH", f"Price is not in an enterable location ({entry_status.lower() or 'unknown'}).", "ENTRY_LOCATION")
+    if np.isnan(score):
+        return out("WATCH", "No final score was produced for this row.", "NO_SCORE")
+    if score > settings.band_high:
+        return out("WAIT_PULLBACK" if has_zone else "WATCH", f"Score {score:.0f} is above the {settings.band_high:.0f} band; historically late rather than early.", "ABOVE_ENTRY_BAND")
+    if score < settings.band_low:
+        return out("WATCH", f"Score {score:.0f} is below the {settings.band_low:.0f} band; the evidence is not there yet.", "BELOW_ENTRY_BAND")
+    if not np.isnan(effective_confidence) and effective_confidence < 70.0:
+        return out("WATCH", f"Confidence is {effective_confidence:.0f} after advisory penalties, below the 70 needed to act.", "LOW_CONFIDENCE")
+    # Everything but the pre-expansion gate has passed.
+    if settings.require_pre_expansion and pre_score is None:
+        return out("WATCH", "Not enough price history to judge whether a move is building; abstaining.", "PRE_EXPANSION_UNAVAILABLE", band_ok=True)
+    if settings.require_pre_expansion and pre_score is not None and pre_score < MIN_PRE_EXPANSION:
+        return out("WATCH", f"No setup is building yet: pre-expansion reads {pre_score:.0f} against a {MIN_PRE_EXPANSION:.0f} minimum.", "NO_SETUP_FORMING", band_ok=True)
+    pre_text = f"pre-expansion {pre_score:.0f}" if pre_score is not None else "pre-expansion not required"
+    return out(
+        "ENTER",
+        f"A {setup_class.lower()} setup is building and price is in the entry zone: score {score:.0f} inside the "
+        f"{settings.band_low:.0f}-{settings.band_high:.0f} band, {pre_text}, risk/reward {rr:.2f}.",
+        "SETUP_FORMING",
+        "IN_ENTRY_BAND",
+        band_ok=True,
+    )
+
+
+def apply_candidate_v2(df_rank: pd.DataFrame, config: CandidateConfig | None = None) -> pd.DataFrame:
+    """Add `candidate_v2_*` columns. Never touches final_decision in any mode."""
+    if df_rank.empty:
+        return df_rank
+    settings = config if config is not None else candidate_config()
+    working = df_rank.copy()
+    results = [evaluate_candidate_v2(row, settings) for _, row in working.iterrows()]
+    for column in CANDIDATE_V2_COLUMNS:
+        working[column] = [item[column] for item in results]
+    return working
+
+
+def candidate_v2_summary(df_rank: pd.DataFrame) -> dict[str, object]:
+    if df_rank.empty or "candidate_v2_decision" not in df_rank.columns:
+        return {"rows": 0}
+    decisions = df_rank["candidate_v2_decision"].map(lambda value: safe_str(value, "").upper())
+    counts: dict[str, int] = {}
+    for value in decisions:
+        counts[value] = counts.get(value, 0) + 1
+    return {
+        "rows": int(len(df_rank)),
+        "by_decision": dict(sorted(counts.items(), key=lambda item: item[1], reverse=True)),
+        "enter": int((decisions == "ENTER").sum()),
+        "band_ok": int(df_rank["candidate_v2_band_ok"].astype(bool).sum()),
+    }
+
+
 CANDIDATE_COLUMNS: Final[tuple[str, ...]] = (
     "candidate_decision",
     "candidate_setup_class",

@@ -479,3 +479,95 @@ class SummaryTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class CandidateV2Tests(unittest.TestCase):
+    """v2 is observation only. Each test moves one thing the replay evidence
+    pointed at; the live columns are asserted untouched at the end."""
+
+    def _v2(self, **overrides: object) -> dict[str, object]:
+        from scanner.candidate_decision import evaluate_candidate_v2
+
+        return evaluate_candidate_v2(pd.Series(_row(**overrides)), CANDIDATE)
+
+    def test_clean_band_row_is_an_enter_in_both_engines(self) -> None:
+        self.assertEqual(_decide().decision, "ENTER")
+        self.assertEqual(self._v2()["candidate_v2_decision"], "ENTER")
+        self.assertTrue(self._v2()["candidate_v2_band_ok"])
+
+    def test_friday_bar_on_monday_pre_open_blocks_v1_but_not_v2_when_shadow_list_is_present(self) -> None:
+        # Live list carries the wall-clock STALE_DATA; the market-calendar shadow list does not.
+        row = dict(vetoes=["STALE_DATA", "LOW_CONFIDENCE_DATA"], mcal_vetoes=[])
+        self.assertEqual(_decide(**row).decision, "AVOID")
+        v2 = self._v2(**row)
+        self.assertEqual(v2["candidate_v2_decision"], "ENTER")
+        self.assertIn("FRESHNESS_MARKET_CALENDAR", v2["candidate_v2_reason_codes"])
+
+    def test_without_a_shadow_list_v2_falls_back_to_the_live_vetoes(self) -> None:
+        v2 = self._v2(vetoes=["STALE_DATA"])
+        self.assertEqual(v2["candidate_v2_decision"], "AVOID")
+        self.assertNotIn("FRESHNESS_MARKET_CALENDAR", v2["candidate_v2_reason_codes"])
+
+    def test_a_truly_stale_feed_is_still_severe_in_v2(self) -> None:
+        v2 = self._v2(vetoes=["STALE_DATA"], mcal_vetoes=["STALE_DATA", "LOW_CONFIDENCE_DATA"])
+        self.assertEqual(v2["candidate_v2_decision"], "AVOID")
+        self.assertIn("SEVERE_STALE_DATA", v2["candidate_v2_reason_codes"])
+
+    def test_setup_class_comes_from_scores_not_from_the_verdict(self) -> None:
+        # The live classifier wrote AVOID; the shape is still a pullback (trend 82, AVWAP context).
+        v2 = self._v2(setup_type="AVOID", setup_detail="mixed setup", avwap_score=70.0)
+        self.assertEqual(v2["candidate_v2_setup_class"], "PULLBACK")
+        v2 = self._v2(setup_type="AVOID", setup_detail="mixed setup", avwap_score=40.0, breakout_score=80.0)
+        self.assertEqual(v2["candidate_v2_setup_class"], "BREAKOUT")
+        v2 = self._v2(setup_type="AVOID", setup_detail="mixed setup", avwap_score=40.0, trend_score=60.0, breakout_score=10.0)
+        self.assertEqual(v2["candidate_v2_setup_class"], "NONE")
+
+    def test_overextension_is_a_location_not_a_class_change(self) -> None:
+        v2 = self._v2(entry_status="OVEREXTENDED", breakout_score=80.0)
+        self.assertEqual(v2["candidate_v2_setup_class"], "BREAKOUT")
+        self.assertEqual(v2["candidate_v2_decision"], "WAIT_PULLBACK")
+        self.assertIn("LATE_ENTRY", v2["candidate_v2_reason_codes"])
+
+    def test_nearest_resistance_inside_the_breakout_band_uses_the_balanced_target(self) -> None:
+        # Price 190, nearest resistance 192 (1.05% above) -> live rr 0.17 -> POOR_RISK_REWARD severe in v1.
+        row = dict(risk_reward=0.17, take_profit_low=192.0, balanced_risk_reward_low=1.5, vetoes=["POOR_RISK_REWARD"], breakout_score=80.0, setup_detail="breakout continuation")
+        self.assertEqual(_decide(**row).decision, "AVOID")
+        v2 = self._v2(**row)
+        self.assertEqual(v2["candidate_v2_decision"], "ENTER")
+        self.assertIn("RR_BALANCED_TARGET", v2["candidate_v2_reason_codes"])
+        self.assertAlmostEqual(float(v2["candidate_v2_risk_reward"]), 1.5)
+
+    def test_balanced_target_does_not_rescue_a_bad_stop(self) -> None:
+        # Balanced 1.5R target below the breakout floor (1.5) -> still severe.
+        v2 = self._v2(risk_reward=0.17, take_profit_low=192.0, balanced_risk_reward_low=1.2, vetoes=["POOR_RISK_REWARD"], breakout_score=80.0)
+        self.assertEqual(v2["candidate_v2_decision"], "AVOID")
+        self.assertIn("SEVERE_POOR_RISK_REWARD", v2["candidate_v2_reason_codes"])
+
+    def test_a_far_resistance_with_poor_rr_stays_poor(self) -> None:
+        # Resistance 12% above price is a real target; rr 0.5 against it is a real problem.
+        v2 = self._v2(risk_reward=0.5, take_profit_low=213.0, balanced_risk_reward_low=1.8, vetoes=["POOR_RISK_REWARD"])
+        self.assertEqual(v2["candidate_v2_decision"], "AVOID")
+
+    def test_v2_ignores_recommendation_quality(self) -> None:
+        self.assertEqual(_decide(recommendation_quality="AVOID").decision, "AVOID")
+        self.assertEqual(self._v2(recommendation_quality="AVOID")["candidate_v2_decision"], "ENTER")
+
+    def test_sell_action_and_pre_expansion_gates_are_unchanged(self) -> None:
+        self.assertEqual(self._v2(composite_action="SELL")["candidate_v2_decision"], "EXIT")
+        v2 = self._v2(pre_expansion_score=30.0)
+        self.assertEqual(v2["candidate_v2_decision"], "WATCH")
+        self.assertIn("NO_SETUP_FORMING", v2["candidate_v2_reason_codes"])
+        self.assertTrue(v2["candidate_v2_band_ok"])  # everything else passed; measurable later
+        self.assertFalse(self._v2(final_score=48.0)["candidate_v2_band_ok"])
+
+    def test_apply_v2_writes_only_its_own_columns(self) -> None:
+        from scanner.candidate_decision import CANDIDATE_V2_COLUMNS, apply_candidate_v2
+
+        frame = _engine_decisions([_row(), _row(symbol="MSFT", composite_action="SELL")])
+        before = frame.copy()
+        after = apply_candidate_v2(frame, CANDIDATE)
+        for column in before.columns:
+            pd.testing.assert_series_equal(before[column], after[column], check_names=False)
+        for column in CANDIDATE_V2_COLUMNS:
+            self.assertIn(column, after.columns)
+        self.assertEqual(list(after["candidate_v2_decision"]), ["ENTER", "EXIT"])

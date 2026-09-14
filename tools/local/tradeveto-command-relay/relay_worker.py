@@ -534,7 +534,7 @@ WITH runs AS (SELECT id, created_at, symbols_scored FROM scan_runs ORDER BY crea
 s AS (
   SELECT sr.id AS run_id, sr.created_at, ss.final_decision AS live, x.*
   FROM scanner_signals ss JOIN runs sr ON sr.id=ss.scan_run_id
-  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(setup_type text, candidate_decision text, candidate_entry_zone text, candidate_stop_loss text, candidate_target_zone text, candidate_confidence_penalty text, confidence_score text, stale_by_market_calendar text, vetoes jsonb, final_score text, risk_reward text, mcal_severe_vetoes jsonb)
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(setup_type text, candidate_decision text, candidate_entry_zone text, candidate_stop_loss text, candidate_target_zone text, candidate_confidence_penalty text, confidence_score text, stale_by_market_calendar text, vetoes jsonb, final_score text, risk_reward text, mcal_severe_vetoes jsonb, candidate_v2_decision text, candidate_v2_band_ok text)
 )
 SELECT left(run_id::text,8) AS run, to_char(created_at AT TIME ZONE 'UTC','MM-DD HH24:MI') AS at_utc, count(*) AS rows,
        count(*) FILTER (WHERE live='ENTER') AS l_enter, count(*) FILTER (WHERE live='WAIT_PULLBACK') AS l_wait, count(*) FILTER (WHERE live='WATCH') AS l_watch,
@@ -546,6 +546,7 @@ SELECT left(run_id::text,8) AS run, to_char(created_at AT TIME ZONE 'UTC','MM-DD
        count(*) FILTER (WHERE candidate_decision IS NOT NULL) AS c_n, count(*) FILTER (WHERE candidate_decision='ENTER') AS c_enter, count(*) FILTER (WHERE candidate_decision='WAIT_PULLBACK') AS c_wait,
        count(*) FILTER (WHERE candidate_decision='WATCH') AS c_watch, count(*) FILTER (WHERE candidate_decision='AVOID') AS c_avoid, count(*) FILTER (WHERE candidate_decision='EXIT') AS c_exit,
        count(*) FILTER (WHERE candidate_decision IN ('ENTER','WAIT_PULLBACK') AND COALESCE(candidate_entry_zone,'') NOT IN ('','-') AND COALESCE(candidate_stop_loss,'') NOT IN ('','-') AND COALESCE(candidate_target_zone,'') NOT IN ('','-')) AS c_where_full,
+       count(*) FILTER (WHERE candidate_v2_decision='ENTER') AS v2_enter, count(*) FILTER (WHERE candidate_v2_decision='WAIT_PULLBACK') AS v2_wait, count(*) FILTER (WHERE candidate_v2_decision='WATCH') AS v2_watch, count(*) FILTER (WHERE candidate_v2_decision='AVOID') AS v2_avoid, count(*) FILTER (WHERE lower(candidate_v2_band_ok)='true') AS v2_band_ok,
        round(percentile_cont(0.5) WITHIN GROUP (ORDER BY (confidence_score::numeric - COALESCE(NULLIF(candidate_confidence_penalty,'')::numeric,0))) FILTER (WHERE confidence_score ~ '^[0-9.]+$')::numeric,1) AS c_conf_med,
        count(*) FILTER (WHERE confidence_score ~ '^[0-9.]+$' AND confidence_score::numeric >= 70) AS conf70
 FROM s GROUP BY run_id, created_at ORDER BY created_at DESC;
@@ -673,6 +674,27 @@ SELECT cohort, horizon, count(*) AS n, count(DISTINCT signal_date) AS days,
        round((percentile_cont(0.1) WITHIN GROUP (ORDER BY r))::numeric*100,2) AS p10_pct,
        min(signal_date) AS from_date, max(signal_date) AS to_date
 FROM c GROUP BY cohort, horizon ORDER BY cohort, horizon;
+""",
+    "candidate_v2_sample": r"""
+WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1)
+SELECT symbol, final_decision AS live, payload->>'candidate_decision' AS v1, payload->>'candidate_v2_decision' AS v2,
+       payload->>'candidate_v2_setup_class' AS cls, (payload->'candidate_v2_reason_codes')::text AS reasons,
+       payload->>'candidate_v2_risk_reward' AS rr2, payload->>'risk_reward' AS rr1, payload->>'final_score' AS score,
+       payload->>'confidence_score' AS conf, payload->>'entry_status' AS entry, payload->>'pre_expansion_score' AS pre,
+       payload->>'buy_zone' AS zone, payload->>'stop_loss' AS stop, payload->>'take_profit_zone' AS target
+FROM scanner_signals ss JOIN lr ON lr.id=ss.scan_run_id
+WHERE payload->>'candidate_v2_decision' IN ('ENTER','WAIT_PULLBACK') OR lower(payload->>'candidate_v2_band_ok')='true'
+ORDER BY (CASE payload->>'candidate_v2_decision' WHEN 'ENTER' THEN 0 WHEN 'WAIT_PULLBACK' THEN 1 ELSE 2 END), (payload->>'final_score')::numeric DESC NULLS LAST LIMIT 30;
+""",
+    "candidate_v2_reasons": r"""
+WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1),
+s AS (SELECT ss.final_decision AS live, ss.payload AS p FROM scanner_signals ss JOIN lr ON lr.id=ss.scan_run_id)
+SELECT 'v2='||COALESCE(p->>'candidate_v2_decision','NULL') AS k, count(*)::text AS v FROM s GROUP BY 1
+UNION ALL SELECT 'v2_class='||COALESCE(p->>'candidate_v2_setup_class','NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'v2_reason='||v, count(*)::text FROM s, jsonb_array_elements_text(CASE WHEN jsonb_typeof(p->'candidate_v2_reason_codes')='array' THEN p->'candidate_v2_reason_codes' ELSE '[]'::jsonb END) v GROUP BY 1
+UNION ALL SELECT 'v1_vs_v2='||COALESCE(p->>'candidate_decision','NULL')||'->'||COALESCE(p->>'candidate_v2_decision','NULL'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'live_vs_v2='||COALESCE(live,'NULL')||'->'||COALESCE(p->>'candidate_v2_decision','NULL'), count(*)::text FROM s GROUP BY 1
+ORDER BY 1;
 """,
     "candidate_enter_sample": r"""
 WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1)
