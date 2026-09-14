@@ -30,6 +30,9 @@ market-calendar shadow veto list still contains a severe code).
 | 560cb56b | 09-14 13:31 | 356 | 0/3/39/108/206 | 343/13/0/0 | 291 | 0 | 130 | — | 0/0/12/138/206 | — | — | — | 7 | first partial bars arriving |
 | 4984a236 | 09-14 13:47 | 355 | 0/10/31/89/225 | 297/57/1/0 | **0** | 0 | 142 | — | 0/0/51/79/225 | — | — | — | 30 | **first fresh run** |
 | e761abcc | 09-14 14:02 | 355 | 0/14/29/92/220 | 292/62/1/0 | 0 | 0 | 139 | 139 | 1/0/53/81/220 | **3/20/62/50** | 6 | **23/23** | 27 | first run with `mcal_*` and `candidate_v2_*` |
+| 2c1b2412 | 09-14 14:17 | 356 | 0/12/27/97/220 | 295/59/2/0 | 0 | 0 | 139 | 139 | 1/0/47/88/220 | 2/20/58/56 | 7 | 22/22 | 28 | |
+| 81cd9582 | 09-14 14:32 | 356 | 0/12/28/93/223 | 301/54/1/0 | 0 | 0 | 140 | 140 | 2/0/48/83/223 | 4/19/59/51 | 8 | 23/23 | 27 | |
+| 2f48180a | 09-14 14:49 | 356 | 0/9/27/97/223 | 300/55/1/0 | 0 | 0 | 138 | 138 | 2/0/44/87/223 | 4/19/57/53 | 9 | 23/23 | 26 | 15:00 check-in: v2 ENTER = ARGX, SAIC, TMO, KO; live still 0 |
 
 (E=ENTER, W=WAIT_PULLBACK, Wa=WATCH, A=AVOID, X=EXIT.)
 
@@ -218,6 +221,7 @@ Documented in the 09-14 report §8. Nothing further.
 | time (UTC) | /api/health | /api/health/deep | latest scan | timers | containers | note |
 |---|---|---|---|---|---|---|
 | 13:41 | 200 | 200 | 13:31 success 359 | fast-scan next 13:41:58; full-scan 21:30; scanner-health 06:19 | frontend/hot-api/postgres healthy, up 3h | after the operator reboot |
+| 15:01 | 200 (ttfb 0.18 s) | 200 (0.16 s) | 14:49 success 356 | fast-scan last 14:56:59 (running at check time); full-scan 21:30 | frontend/hot-api recreated 14:18 (healthy, 42 min), postgres up 5 h | backup completed 12:55 UTC via r2 (age 126 min at check) |
 
 ## 9. Changes shipped in this window
 
