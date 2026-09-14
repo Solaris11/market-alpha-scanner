@@ -53,6 +53,43 @@ work is verified, ship it.
 Decide by `git diff --name-only <old>..<new>` against the image-input paths
 above, and put the verdict in the report.
 
+## Production access: the guarded command relay (owner rule, 2026-09-14)
+
+**"Push blocked / prod host unreachable" is no longer an acceptable outcome —
+try the relay first.** The owner's real Mac reaches PROD HOST over SSH; the
+agent's isolated shell does not, so `tools/local/tradeveto-command-relay`
+executes named, allowlisted actions on the real Mac and writes the result to
+`.agent-relay/results/<id>.json`. It is not a shell.
+
+Inside the device VM the repo is mounted at `$HOME/mnt/market-alpha-scanner`
+(the Mac path does not exist there), so always pass
+`--repo "$HOME/mnt/market-alpha-scanner" --wait`.
+
+Start every session with:
+```
+R="python3 tools/local/tradeveto-command-relay/submit_request.py"; REPO="$HOME/mnt/market-alpha-scanner"
+$R list_actions --repo "$REPO" --wait
+$R prod_ssh_probe --repo "$REPO" --wait
+$R prod_status --repo "$REPO" --wait
+```
+
+Standard flow: **commit → `git_push` → `prod_pull` → rebuild/deploy only if an
+image input changed (`prod_frontend_deploy` / `prod_scanner_build` + scan
+verification) → `prod_smoke --route /api/health --route /api/health/deep
+--route /terminal` → short report.** docs/ and local-only tools → no rebuild.
+Scanner/DB evidence comes from `prod_db_read --query audit_summary |
+latest_scan | decision_distribution`, never from local guesses.
+
+Environment labels are mandatory on every result: **PROD HOST** (relay/SSH —
+single source of truth for scanner, DB, docker, systemd, backup, health, curl
+perf), **PROD WEB** (in-app browser at https://tradeveto.com — UX, auth gates,
+frontend behaviour), **LOCAL MAC** (code reading, unit/typecheck/build prep
+only — never presented as production evidence).
+
+If a relay call fails, do not say "it doesn't work": report the result JSON
+path, the action name and the real error. A prod mutation that is not in the
+relay allowlist is a hard stop — propose adding it, don't improvise.
+
 ## The deploy shape that has worked
 
 1. Record production HEAD, branch and current image tags
