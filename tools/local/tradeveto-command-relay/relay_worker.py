@@ -630,6 +630,50 @@ UNION ALL SELECT 'quality='||COALESCE(recommendation_quality,'NULL'), count(*)::
 UNION ALL SELECT 'symbols', string_agg(DISTINCT symbol, ',') FROM s
 ORDER BY 1;
 """,
+    "replay_cohorts": r"""
+WITH j AS (
+  SELECT fr.horizon, fr.return_pct::numeric AS r, fr.signal_date, ss.final_decision AS live, x.*
+  FROM forward_returns fr JOIN scanner_signals ss ON ss.id=fr.scanner_signal_id
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(setup_type text, composite_action text, entry_status text, risk_reward text, balanced_risk_reward_low text, confidence_score text, final_score text, vetoes jsonb, breakout_score text, relative_volume_score text, momentum_score text, pre_expansion_score text, candidate_decision text)
+  WHERE fr.return_pct IS NOT NULL AND fr.horizon IN ('5D','10D','20D')
+),
+g AS (
+  SELECT *,
+    CASE WHEN final_score ~ '^[0-9.]+$' THEN final_score::numeric END AS fs,
+    CASE WHEN confidence_score ~ '^[0-9.]+$' THEN confidence_score::numeric END AS cs,
+    CASE WHEN risk_reward ~ '^-?[0-9.]+$' THEN risk_reward::numeric END AS rr,
+    CASE WHEN balanced_risk_reward_low ~ '^-?[0-9.]+$' THEN balanced_risk_reward_low::numeric END AS brr,
+    CASE WHEN pre_expansion_score ~ '^[0-9.]+$' THEN pre_expansion_score::numeric END AS pre,
+    COALESCE(vetoes ? 'STALE_DATA',false) AS stale,
+    (COALESCE(vetoes ? 'STOP_RISK',false) OR COALESCE(vetoes ? 'EXTREME_VOLATILITY',false) OR COALESCE(vetoes ? 'PROVIDER_ERROR',false)) AS hard_severe,
+    (composite_action NOT IN ('SELL','STRONG SELL')) AS not_sell,
+    (entry_status IN ('GOOD ENTRY','BUY ZONE','NEAR ENTRY')) AS enterable,
+    (setup_type <> 'AVOID') AS setup_ok,
+    (breakout_score ~ '^[0-9.]+$' AND breakout_score::numeric>=72 AND relative_volume_score ~ '^[0-9.]+$' AND relative_volume_score::numeric>=65 AND momentum_score ~ '^[0-9.]+$' AND momentum_score::numeric>=68) AS brk_numeric
+  FROM j
+),
+c AS (
+  SELECT 'A baseline (all matured)' AS cohort, * FROM g
+  UNION ALL SELECT 'B fresh only (no STALE_DATA)', * FROM g WHERE NOT stale
+  UNION ALL SELECT 'C live ENTER', * FROM g WHERE live='ENTER'
+  UNION ALL SELECT 'D live EXIT (score-to-action SELL)', * FROM g WHERE live='EXIT' AND NOT stale
+  UNION ALL SELECT 'E live AVOID', * FROM g WHERE live='AVOID' AND NOT stale
+  UNION ALL SELECT 'F band core: setup ok, not sell, enterable, rr>=1.2, no hard severe, conf>=70, 55<=score<=70', * FROM g WHERE NOT stale AND setup_ok AND not_sell AND enterable AND rr>=1.2 AND NOT hard_severe AND cs>=70 AND fs BETWEEN 55 AND 70
+  UNION ALL SELECT 'G band core but score>=80', * FROM g WHERE NOT stale AND setup_ok AND not_sell AND enterable AND rr>=1.2 AND NOT hard_severe AND cs>=70 AND fs>=80
+  UNION ALL SELECT 'H band core minus setup gate (setup AVOID allowed)', * FROM g WHERE NOT stale AND not_sell AND enterable AND rr>=1.2 AND NOT hard_severe AND cs>=70 AND fs BETWEEN 55 AND 70
+  UNION ALL SELECT 'I band core with balanced rr>=1.5 instead of nearest-resistance rr', * FROM g WHERE NOT stale AND setup_ok AND not_sell AND enterable AND brr>=1.5 AND NOT hard_severe AND cs>=70 AND fs BETWEEN 55 AND 70
+  UNION ALL SELECT 'J band core + pre_expansion>=45 (only rows with the field)', * FROM g WHERE NOT stale AND setup_ok AND not_sell AND enterable AND rr>=1.2 AND NOT hard_severe AND cs>=70 AND fs BETWEEN 55 AND 70 AND pre>=45
+  UNION ALL SELECT 'K breakout numeric triple (brk>=72,vol>=65,mom>=68), fresh', * FROM g WHERE NOT stale AND brk_numeric
+  UNION ALL SELECT 'L rr<1.0 (POOR_RISK_REWARD) but enterable, not sell, 55<=score<=70', * FROM g WHERE NOT stale AND rr<1.0 AND enterable AND not_sell AND fs BETWEEN 55 AND 70
+  UNION ALL SELECT 'M stale-flagged rows only', * FROM g WHERE stale
+)
+SELECT cohort, horizon, count(*) AS n, count(DISTINCT signal_date) AS days,
+       round(avg(r)*100,2) AS mean_pct, round((percentile_cont(0.5) WITHIN GROUP (ORDER BY r))::numeric*100,2) AS med_pct,
+       round(100.0*count(*) FILTER (WHERE r>0)/count(*),1) AS win_pct,
+       round((percentile_cont(0.1) WITHIN GROUP (ORDER BY r))::numeric*100,2) AS p10_pct,
+       min(signal_date) AS from_date, max(signal_date) AS to_date
+FROM c GROUP BY cohort, horizon ORDER BY cohort, horizon;
+""",
     "candidate_enter_sample": r"""
 WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1)
 SELECT symbol, final_decision AS live,

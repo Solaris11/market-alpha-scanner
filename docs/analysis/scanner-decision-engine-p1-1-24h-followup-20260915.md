@@ -1,0 +1,200 @@
+# P1-1 — 24-hour autonomous follow-up: fresh-market shadow window, STALE_DATA proof, BREAKOUT=0, replay evidence
+
+Window: 2026-09-14 13:41 UTC → 2026-09-15 ~13:40 UTC. Continues
+`scanner-decision-engine-p1-1-evidence-20260914.md` (the 09-14 report). Labels:
+**PROD HOST** (relay → prod box: Postgres, scan journal, docker/systemd),
+**PROD WEB** (in-app browser on tradeveto.com), **LOCAL MAC** (code, tests).
+`SCANNER_DECISION_MODE=current` throughout; nothing in this window changed a
+live decision.
+
+## 0. Running decision block (updated as the window progresses)
+
+| question | answer as of the last update |
+|---|---|
+| should `current` stay the live default? | **Yes.** No shadow ENTER has a matured forward return yet; the candidate as deployed produces 0 ENTER on fresh rows for reasons that are upstream of it (§3). |
+| how ready is the candidate? | **Not ready as a switch.** It is a cleaner decision stage on the same starved inputs; a v2 that fixes the inputs is specified in §6 and measured by replay in §5. |
+| is the stale gate a bug? | **Yes, proven per run** (§2): the 36-hour wall clock flags 99% of the universe on closed-market scans; the market-calendar test flags 0% on the same rows and both are now persisted side by side. |
+| what evidence is missing for a live rollout? | ≥10 trading days of fresh-window shadow ENTERs joined to matured 5D/10D returns for the *v2* rules (not the deployed candidate), plus the pre-expansion cohort, which has no matured rows yet (§5 J). |
+| next safe step | Ship candidate v2 rules as shadow columns (target-geometry rr, class-not-verdict setup, calendar freshness, SELL≠EXIT), keep `current`, re-run `replay_cohorts` and `run_history` daily. |
+
+## 1. PROD HOST — per-run monitoring log (fresh-market window)
+
+Source: relay `prod_db_read --query run_history` (one row per `scan_runs`
+row; `stale` = rows carrying the wall-clock `STALE_DATA` veto, `mkt_stale` =
+rows where `stale_by_market_calendar` is true, `mcal_severe` = rows whose
+market-calendar shadow veto list still contains a severe code).
+
+| run | at (UTC) | rows | live E/W/Wa/A/X | setup A/P/C/B | STALE | mkt_stale | other severe | cand E/W/Wa/A/X | cand WHERE-complete | conf≥70 | note |
+|---|---|---:|---|---|---:|---:|---:|---|---:|---:|---|
+| df085435 | 09-14 13:16 | 356 | 0/1/40/108/207 | 355/1/0/0 | 354 | 0 | 130 | 0/0/1/148/207 | 0 | 1 | pre-open, Friday bars |
+| 560cb56b | 09-14 13:31 | 356 | 0/3/39/108/206 | 343/13/0/0 | 291 | 0 | 130 | 0/0/12/138/206 | 0 | 7 | first partial bars arriving |
+| 4984a236 | 09-14 13:47 | 355 | 0/10/31/89/225 | 297/57/1/0 | **0** | 0 | 142 | 0/0/51/79/225 | 0 | 30 | **first fresh run** |
+
+(E=ENTER, W=WAIT_PULLBACK, Wa=WATCH, A=AVOID, X=EXIT.)
+
+Snapshot of the first fresh run (`run_snapshot`, 4984a236): composite_action
+STRONG SELL 136 / SELL 89 / WAIT-HOLD 85 / BUY 33 / STRONG BUY 12;
+recommendation_quality AVOID 306 / LOW_EDGE 25 / WAIT_PULLBACK 24 /
+TRADE_READY 0; entry_status BUY ZONE 102 / NEAR ENTRY 123 / OVEREXTENDED 91 /
+STOP RISK 39; vetoes POOR_RISK_REWARD 77, OVEREXTENDED_ENTRY 91,
+HIGH_VOLATILITY 51, STOP_RISK 39, EXTREME_VOLATILITY 31, STALE_DATA 0,
+LOW_CONFIDENCE_DATA 0; candidate reasons SELL_SIGNAL 225, SEVERE_VETO 75,
+NO_SETUP_FORMING 38, NO_BUY_SIGNAL 12, LOW_QUALITY 2, POOR_RISK_REWARD 2,
+LOW_CONFIDENCE 1; breakout_score ≥72: 12, with volume ≥65 and momentum ≥68:
+**0**; relative_volume median 43 → the open-hour partial bar (§4).
+
+## 2. PROD HOST — STALE_DATA is a wall clock: proven per run
+
+Deployed 12:46 UTC (commit `079fa6fa`, rollback tag
+`rollback-scanner-20260914-p11-step1`): `stale_by_market_calendar` and
+`missed_sessions`, observation only. Deployed 13:47 UTC (`d94920e0`, tag
+`rollback-scanner-20260914-p11-step2`): `mcal_vetoes`, `mcal_severe_vetoes`,
+`mcal_data_quality_score` — the live veto list re-run with the calendar test
+in place of the wall clock, nothing downstream reads them.
+
+| state | run(s) | wall-clock STALE_DATA | market-calendar stale | severe data vetoes forced |
+|---|---|---:|---:|---|
+| Monday pre-open, Friday bars (12:56–13:16 UTC) | d51736cb, df085435 | 354 / 356 | **0 / 356** | 354 STALE_DATA + 299 LOW_CONFIDENCE_DATA → setup AVOID 355, confidence < 50 on 353 |
+| open, partial bars arriving (13:26 UTC) | 560cb56b | 291 / 356 | 0 / 356 | 291 |
+| first fresh run (13:41 UTC) | 4984a236 | 0 / 355 | 0 / 355 | 0 |
+| Sunday 09-13 / Labor Day 09-07 (14-day table, 09-14 report §3) | ~34k rows/day | 99.4% | (field not yet deployed) | setup AVOID 99.6–100% |
+
+LOCAL MAC tests (`tests/test_scanner_diagnostics.py`, 30/30): Friday's bar is
+not stale by market calendar on Saturday, Sunday, Monday pre-open or during
+Monday's session; one missed close is tolerated (holiday), two are stale; a
+nine-day-old bar is stale by both tests; the wall-clock flag stays measurable;
+the live `vetoes` / `trade_permitted` columns are unchanged while `mcal_*`
+persist. Verdict: **bug** — the freshness test measures calendar hours, not
+market sessions, and it is wired into five downstream blocks (setup AVOID,
+data-quality −30 → LOW_CONFIDENCE_DATA, confidence −37, trade_permitted,
+candidate SEVERE_VETO). Live gate unchanged; shadow columns measure the fix.
+
+## 3. PROD HOST — gate-by-gate on fresh rows, and why the deployed candidate says 0 ENTER
+
+7-day fresh chain (09-14 report §4, reproduced live 23 = 23): SELL action
+57.7% → EXIT; `recommendation_quality` ≠ TRADE_READY removes 94% of the rest;
+`final_score ≥ 80` removes 97.5% of what is left (914 → 23). First fresh run
+today: SELL 63% (225/355), TRADE_READY 0/355.
+
+Candidate on the same fresh run: 225 EXIT (same SELL action), 75 AVOID on
+severe vetoes (POOR_RISK_REWARD 77 / STOP_RISK 39 / EXTREME_VOLATILITY 31,
+overlapping), 38 WATCH on `pre_expansion < 45`, 12 WATCH on action ≠ BUY,
+5 other. **Nothing reaches the 55–70 band test.** The candidate's own gates
+never get to act; the upstream verdicts decide.
+
+## 4. PROD HOST — why BREAKOUT is 0 of 132,972 fresh rows
+
+Two mechanisms, both measured.
+
+**(a) The partial-bar volume artefact.** `score_relative_volume` and the
+volume bonus inside `score_breakout_quality` divide the *current* bar's
+volume by the 20-day average. During the session the current bar is partial,
+so relative volume is structurally low until the close (`volume_by_hour`, 7
+days, fresh equity rows):
+
+| UTC hour | rows | relvol median | relvol ≥65 | breakout median | rows meeting brk≥72 ∧ vol≥65 ∧ mom≥68 | setup_type=BREAKOUT |
+|---:|---:|---:|---:|---:|---:|---:|
+| 00–11 (full bar) | ~5,200/h | 48.1–48.4 | 13.3–13.9% | 8.0 | 9–17 | **0** |
+| 14 | 6,048 | **22.7** | **1.1%** | 1.3 | 4 | 0 |
+| 16–18 | ~5,300/h | 29.1–34.7 | 1.5–3.4% | 1.1–2.5 | **0** | 0 |
+| 19 | 5,200 | 38.5 | 5.5% | 3.4 | 0 | 0 |
+| 20–23 (post-close) | ~5,200/h | 47.7–48.2 | 12.8–13.6% | 8.0 | 14–17 | **0** |
+
+**(b) The target-geometry veto.** Even when the numeric triple holds (412
+fresh rows, 5 symbols in 7 days: DVN, GNW, HPE, USO, XLE), all 412 are
+`setup_type=AVOID`, all 412 carry `POOR_RISK_REWARD` (severe), all 412 are
+`recommendation_quality=AVOID`, live AVOID 412/412
+(`breakout_candidates_why`). LOCAL MAC: `risk_reward` is
+`(take_profit_low − price) / risk`, and `take_profit_low` is the *nearest
+resistance above price × 1.005* among the 3M/6M/1Y highs and the prior
+20-day high. A breakout candidate is by definition within a few percent of
+those highs, so its "target" sits just above price, `risk_reward` collapses
+below 1.0, the severe veto fires, and `classify_setup`'s first branch turns
+it into AVOID before the breakout branch is reached. The balanced target
+(1.5–2R, persisted as `balanced_risk_reward_low`) is not consulted. So the
+breakout path is self-cancelling: the features that make `breakout_score ≥
+72` are the ones that make the nearest-resistance target worthless.
+
+## 5. PROD HOST — replay on matured forward returns (`replay_cohorts`)
+
+Cohort = end-of-day canonical signal per symbol-day (the row `forward_returns`
+links to), matured horizons only. **Confound:** windows differ by horizon —
+5D covers 2026-04-24 → 09-06, 10D → 07-23, 20D → 07-22 (a strong-market
+stretch); compare cohorts *within* a horizon, not across. `mean/med/p10` in
+percent, `win` = share > 0.
+
+| cohort | 5D n / mean / med / win / p10 | 10D n / mean / med / win / p10 | 20D n / mean / med / win / p10 |
+|---|---|---|---|
+| B fresh baseline | 118,082 / +0.20 / +0.02 / 50.2 / −6.54 | 82,325 / +0.71 / +0.37 / 52.9 / −8.94 | 26,193 / +2.81 / +0.79 / 57.0 / −8.06 |
+| C live ENTER | 123 / **−0.54** / −0.92 / **34.1** / −2.19 | 114 / +3.37 / +3.59 / 66.7 / −3.03 (2 days) | 76 / +3.62 / +4.53 / 65.8 / −5.84 (2 days) |
+| D live EXIT (SELL action) | 49,813 / −0.03 / −0.30 / 47.1 / −8.01 | 33,040 / +0.20 / +0.11 / 50.6 / **−11.55** | 7,852 / +0.78 / −0.03 / 49.8 / **−11.59** |
+| E live AVOID | 47,555 / +0.51 / +0.33 / 54.6 / −5.72 | 32,132 / +1.16 / +0.56 / 54.5 / −7.58 | 8,853 / +4.78 / +1.33 / 63.6 / −5.77 |
+| F band core (setup ok, not SELL, enterable, rr≥1.2, no STOP/EXTREME, conf≥70, 55≤score≤70) | 2,645 / +0.69 / +0.61 / 56.0 / −4.97 | 1,669 / +1.30 / +1.47 / 61.8 / −6.33 | 349 / +1.42 / +1.18 / 57.3 / −5.57 |
+| G band core but score ≥ 80 | 4 / −0.80 | — | — |
+| H band core minus the setup gate | 4,000 / +0.37 / +0.31 / 54.1 / −5.76 | 2,519 / +1.17 / +1.29 / 60.7 / −6.40 | 505 / +1.27 / +0.81 / 56.2 / −5.07 |
+| I band core with balanced rr ≥ 1.5 instead of nearest-resistance rr | 2,446 / **+0.77** / +0.78 / **58.3** / **−4.77** | 1,561 / **+1.39** / +1.39 / 61.1 / **−5.90** | 312 / **+2.16** / +1.97 / **62.5** / −5.67 |
+| J band core + pre_expansion ≥ 45 | 0 matured rows (field deployed 09-06; no overlap yet) | — | — |
+| K breakout numeric triple, fresh | 2,524 / **+1.86** / +1.11 / **64.2** / −7.60 | 1,829 / **+3.22** / +1.41 / 61.3 / −11.11 | 593 / **+14.92** / +10.97 / **82.8** / −2.67 |
+| L rr<1.0 (POOR_RISK_REWARD) but enterable, not SELL, 55–70 | 6,107 / +0.27 / +0.28 / 52.9 / −4.95 | 4,221 / +0.61 / +0.66 / 57.7 / −6.00 | 1,202 / +1.83 / +0.64 / 60.6 / −6.99 |
+| M wall-clock stale rows | 44,619 / +0.95 / +0.90 / 57.9 / −6.20 | 29,680 / +1.45 / +1.13 / 57.4 / −8.44 | 2,866 / +2.34 / +1.77 / 61.0 / −11.27 |
+
+Reading, within horizon:
+- The live `≥ 80` rule leaves **4** rows in the band-core cohort (G) and
+  its 123 real ENTERs lost money at 5D with a 34% hit rate. The band (F)
+  beats the fresh baseline at 5D and 10D on mean, median, hit rate and p10.
+- **The setup gate earns its keep** (H < F at every horizon): the fix is to
+  stop writing the verdict into the class, not to drop the gate.
+- **The nearest-resistance risk/reward is the wrong number** (I > F at every
+  horizon, L ≈ baseline): rows the severe `POOR_RISK_REWARD` veto removes are
+  not worse than baseline, and swapping in the balanced target improves every
+  metric of the band cohort.
+- **The self-cancelled breakouts (K) are the best cohort in the data** at all
+  three horizons, with a fatter 5D/10D tail (p10 −7.6 / −11.1) that argues
+  for the 1.5R stop discipline, not for the veto.
+- `EXIT` rows (D) have the worst tails but a 50% hit rate: the SELL action
+  is a "do not enter" signal, not an exit.
+- Stale-flagged rows (M) are ordinary weekend/holiday EOD rows and perform
+  like the baseline — the flag carries no risk information.
+
+## 6. Candidate v2 — what the evidence says to build (shadow only)
+
+1. Freshness by market calendar (`mcal_*`, deployed) feeding the candidate's
+   severe list instead of `STALE_DATA`.
+2. Setup class without a verdict: PULLBACK / BREAKOUT / CONTINUATION / NONE
+   from trend, momentum, breakout, volume, AVWAP; reason codes instead of
+   AVOID; `_is_overextended` becomes a *location* code (late entry), not a
+   class killer.
+3. Risk/reward from the balanced target when the nearest resistance is inside
+   the breakout band (≤ 4% above price): `POOR_RISK_REWARD` keeps its severity
+   only when the balanced 1.5R target is also unreachable.
+4. Volume features from the last *completed* bar during the session, the
+   partial bar only after the close (or scaled by session progress) — this
+   is upstream of both engines and would change live scores, so it is
+   measured first as `relvol_completed_bar` beside the live score.
+5. SELL action → `NO_ENTRY` for unheld symbols; `EXIT` reserved for held
+   positions.
+6. Band 55–70 with confidence ≥ 70 after advisory penalties, as now.
+
+Each of 1–5 is an observation column first; the v2 decision is written to
+`candidate_*` only after the columns have been read on prod for at least a
+day. Acceptance for any switch remains §6 of the 09-14 report.
+
+## 7. P2-4 — closed (no new finding)
+
+Operator `sudo reboot` at 10:24:22 UTC from an interactive SSH session; the
+watchdog was `ok/0 findings` before and after; containers restarted clean.
+Documented in the 09-14 report §8. Nothing further.
+
+## 8. Health checks (PROD HOST / PROD WEB)
+
+| time (UTC) | /api/health | /api/health/deep | latest scan | timers | containers | note |
+|---|---|---|---|---|---|---|
+| 13:41 | 200 | 200 | 13:31 success 359 | fast-scan next 13:41:58; full-scan 21:30; scanner-health 06:19 | frontend/hot-api/postgres healthy, up 3h | after the operator reboot |
+
+## 9. Changes shipped in this window
+
+| commit | what | deploy |
+|---|---|---|
+| `079fa6fa` | `stale_by_market_calendar`, `missed_sessions` (observation) | scanner image rebuilt 12:46, tag `rollback-scanner-20260914-p11-step1`; 12:56 scan on new image |
+| `d94920e0` | `mcal_vetoes` / `mcal_severe_vetoes` / `mcal_data_quality_score` (observation); relay bundles `run_history`, `run_snapshot`, `candidate_actionable_sample`, `volume_by_hour`, `breakout_candidates_why` | scanner image rebuilt 13:47, tag `rollback-scanner-20260914-p11-step2` |
+| (relay only) | `replay_cohorts` bundle | self-reloaded worker |
