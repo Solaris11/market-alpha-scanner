@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
-import { readFileSync, statSync } from "node:fs";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
 import { describe, test } from "node:test";
 
 import type { NarrativeIntelligence } from "./narrative-intelligence";
 import { TERMINAL_NARRATIVE_FIELDS, stripNarrativeForTerminal, type OpportunityViewModel } from "./opportunity-view-model";
+import { fieldReads, reachable, terminalRowConsumers } from "./terminal-client-graph.test-helper";
 
 /**
  * Same contract as raw-field-allowlist.test.ts, scoped to /terminal.
@@ -18,96 +16,9 @@ import { TERMINAL_NARRATIVE_FIELDS, stripNarrativeForTerminal, type OpportunityV
  * arriving undefined in production.
  */
 
-const SRC = resolve(dirname(fileURLToPath(import.meta.url)), "..", "..");
-const TERMINAL_VIEW = join(SRC, "components", "terminal", "TerminalPremiumView.tsx");
-
-const NON_FIELD_MEMBERS = new Set([
-  "concat", "endsWith", "entries", "every", "filter", "find", "forEach", "includes", "indexOf", "join", "keys",
-  "length", "map", "match", "push", "reduce", "replace", "slice", "some", "sort", "split", "startsWith",
-  "toLowerCase", "toString", "toUpperCase", "trim", "values",
-]);
-const VALUE_IMPORT = /^\s*import\s+(?!type\s)(?:([^;]*?)\s+from\s+)?["']([^"']+)["'];?/gm;
-const NARRATIVE_ACCESS = /\bnarrative\??\.([A-Za-z_][A-Za-z0-9_]*)/g;
-
-function read(path: string): string {
-  try {
-    return readFileSync(path, "utf8");
-  } catch {
-    return "";
-  }
-}
-
-function resolveImport(specifier: string, from: string): string | null {
-  let base: string;
-  if (specifier.startsWith("@/")) base = join(SRC, specifier.slice(2));
-  else if (specifier.startsWith(".")) base = resolve(dirname(from), specifier);
-  else return null;
-  for (const suffix of [".tsx", ".ts", "/index.tsx", "/index.ts"]) {
-    const candidate = `${base}${suffix}`;
-    try {
-      statSync(candidate);
-      return candidate;
-    } catch {
-      /* keep looking */
-    }
-  }
-  return null;
-}
-
-function valueImports(path: string): Map<string, string> {
-  const text = read(path);
-  const out = new Map<string, string>();
-  for (const [, names, specifier] of text.matchAll(VALUE_IMPORT)) {
-    const clause = (names ?? "").trim();
-    if (clause.startsWith("{") && clause.slice(1, -1).split(",").filter((part) => part.trim()).every((part) => part.trim().startsWith("type "))) continue;
-    const resolved = resolveImport(specifier, path);
-    if (resolved) out.set(clause, resolved);
-  }
-  return out;
-}
-
-/** Components rendered by TerminalPremiumView with `rows={clientRows}`. */
-function terminalRowConsumers(): string[] {
-  const view = read(TERMINAL_VIEW);
-  const names = new Set<string>();
-  for (const [, name] of view.matchAll(/<([A-Z][A-Za-z0-9]*)\b[^>]*?\brows=\{clientRows\}/g)) names.add(name);
-  const roots: string[] = [];
-  for (const [clause, path] of valueImports(TERMINAL_VIEW)) {
-    for (const name of names) {
-      if (new RegExp(`\\b${name}\\b`).test(clause)) roots.push(path);
-    }
-  }
-  return [...new Set(roots)];
-}
-
-function reachable(roots: string[]): string[] {
-  const seen = new Set<string>();
-  const stack = [...roots];
-  while (stack.length) {
-    const next = stack.pop();
-    if (!next || seen.has(next)) continue;
-    seen.add(next);
-    stack.push(...valueImports(next).values());
-  }
-  return [...seen];
-}
-
-function narrativeReads(paths: string[]): Map<string, string[]> {
-  const found = new Map<string, string[]>();
-  for (const path of paths) {
-    const text = read(path);
-    if (!text.includes("narrative")) continue;
-    for (const [, key] of text.matchAll(NARRATIVE_ACCESS)) {
-      if (NON_FIELD_MEMBERS.has(key)) continue;
-      found.set(key, [...(found.get(key) ?? []), path.replace(`${SRC}/`, "")]);
-    }
-  }
-  return found;
-}
-
 const roots = terminalRowConsumers();
 const graph = reachable(roots);
-const reads = narrativeReads(graph);
+const reads = fieldReads(graph, ["narrative"]).fields;
 const KEPT = new Set<string>(TERMINAL_NARRATIVE_FIELDS);
 
 describe("terminal narrative projection", () => {

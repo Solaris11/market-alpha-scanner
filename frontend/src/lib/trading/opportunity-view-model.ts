@@ -142,6 +142,74 @@ export function stripNarrativeForTerminal(rows: OpportunityViewModel[]): Opportu
   });
 }
 
+/**
+ * The ShockMovePattern fields the /terminal client graph reads (directly, or
+ * through the `shock` / `pattern` aliases the consumers use). The pattern is
+ * the largest per-row block left in the /terminal document -- 1,716 KB for
+ * 356 rows measured on production, of which `timingValidation` (with its
+ * replayStudies array) is most of each row. terminal-shock-pattern-
+ * projection.test.ts re-derives both read sets from the row consumers.
+ *
+ * chaseSuccessRate / pullbackSuccessRate / shockEvents are read only by the
+ * server-computed execution path; the first two are kept because they are a
+ * few bytes, shockEvents is already gone (stripShockEventsForClient).
+ */
+export const TERMINAL_SHOCK_PATTERN_FIELDS = [
+  "asymmetryScore",
+  "averageDrawdownAfterEntry",
+  "averageProfitPotential",
+  "chaseRiskLabel",
+  "chaseRiskScore",
+  "chaseSuccessRate",
+  "currentSimilarityScore",
+  "doNotChaseZone",
+  "downsideRiskScore",
+  "downsideShockCount",
+  "falsePositiveRiskScore",
+  "historicalExitZone",
+  "invalidationZone",
+  "lastUpdated",
+  "latestEvent",
+  "liquidityQualityScore",
+  "opportunityScore",
+  "opportunityState",
+  "pullbackSuccessRate",
+  "reliabilityScore",
+  "researchEntryZone",
+  "shockEventCount",
+  "timingValidation",
+  "twoSidedVolatilityScore",
+  "upsideShockCount",
+  "upsideShockScore",
+] as const;
+
+export const TERMINAL_TIMING_VALIDATION_FIELDS = [
+  "entryQualityScore",
+  "summary",
+  "timingQualityScore",
+  "validationSampleSize",
+] as const;
+
+export function stripShockPatternForTerminal(rows: OpportunityViewModel[]): OpportunityViewModel[] {
+  return rows.map((row) => {
+    const pattern = row.shockPattern;
+    if (!pattern) return row;
+    const source = pattern as unknown as Record<string, unknown>;
+    const kept: Record<string, unknown> = {};
+    for (const key of TERMINAL_SHOCK_PATTERN_FIELDS) {
+      if (key in source) kept[key] = source[key];
+    }
+    const timing = pattern.timingValidation;
+    if (timing) {
+      const timingSource = timing as unknown as Record<string, unknown>;
+      const keptTiming: Record<string, unknown> = {};
+      for (const key of TERMINAL_TIMING_VALIDATION_FIELDS) keptTiming[key] = timingSource[key];
+      kept.timingValidation = keptTiming;
+    }
+    return { ...row, shockPattern: kept as unknown as OpportunityViewModel["shockPattern"] };
+  });
+}
+
 export function buildOpportunitiesPageModel(
   rows: RankingRow[],
   performance: PerformanceData | null,
