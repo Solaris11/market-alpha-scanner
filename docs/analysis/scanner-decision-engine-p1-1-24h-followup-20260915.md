@@ -45,6 +45,13 @@ market-calendar shadow veto list still contains a severe code).
 | 9e504aff | 09-14 17:16 | 352 | 0/9/31/113/199 | 296/55/1/0 | 0 | 0 | 154 | 154 | 2/0/45/106/199 | 2/23/68/60 | 8 | 25/25 | 30 | |
 | d7cae37a | 09-14 17:32 | 352 | 0/9/30/112/201 | 296/55/1/0 | 0 | 0 | 154 | 154 | 2/0/42/107/201 | 2/25/63/61 | 7 | 27/27 | 31 | |
 | e140281c | 09-14 17:47 | 352 | 0/6/29/117/200 | 298/52/2/0 | 0 | 0 | 154 | 154 | 2/0/44/106/200 | 2/26/63/61 | 9 | 28/28 | 32 | 18:00 check-in: v2 ENTER = ARGX, KO (live says WAIT_PULLBACK for both); TMO/SAIC left the band intraday |
+| a5b194f1 | 09-14 18:01 | 352 | 0/13/27/112/200 | 294/56/2/0 | 0 | 0 | 153 | 153 | 2/0/42/108/200 | 2/24/62/64 | 7 | 26/26 | 33 | |
+| a319927c | 09-14 18:16 | 352 | 0/11/28/113/200 | 296/55/1/0 | 0 | 0 | 152 | 152 | 3/0/41/108/200 | 3/26/58/65 | 8 | 29/29 | 32 | first run with completed-bar fields |
+| 1d1af41d | 09-14 18:31 | 352 | 0/10/29/113/200 | 296/55/1/0 | 0 | 0 | 155 | 155 | 3/0/42/107/200 | 3/25/63/61 | 9 | 28/28 | 32 | |
+| 393f43de | 09-14 18:46 | 352 | 0/10/29/114/199 | 296/55/1/0 | 0 | 0 | 152 | 152 | 3/0/43/107/199 | 3/24/65/61 | 8 | 27/27 | 33 | |
+| 5aa3055d | 09-14 19:02 | 352 | 0/11/27/116/198 | 297/55/0/0 | 0 | 0 | 146 | 146 | 1/1/43/109/198 | 1/22/67/64 | 7 | 23/23 | 33 | |
+| 91018e84 | 09-14 19:16 | 352 | 0/11/30/114/197 | 296/56/0/0 | 0 | 0 | 149 | 149 | 1/1/45/108/197 | 1/21/67/66 | 7 | 22/22 | 33 | |
+| cd3438ed | 09-14 19:31 | 352 | 0/9/29/117/197 | 297/54/1/0 | 0 | 0 | 149 | 149 | 2/1/44/108/197 | 2/24/66/63 | 9 | 26/26 | 31 | 19:45 check-in |
 
 (E=ENTER, W=WAIT_PULLBACK, Wa=WATCH, A=AVOID, X=EXIT.)
 
@@ -142,6 +149,16 @@ Deployed 18:04 UTC (commit `98abf7d3`, rollback tag
 `setup_type=BREAKOUT` stays 0.** The artefact is now measured per run rather
 than inferred from hourly aggregates; `run_history` carries `partial_bars`,
 `relvol_live`, `relvol_done`, `brk_done72`.
+
+Late-session curve (six runs, 18:16 → 19:31 UTC, all 352 rows partial): live
+relative-volume median **36.9 → 37.7 → 38.4 → 39.3 → 40.4 → 41.1** while the
+completed-bar median stayed at **46.3** on every run (the completed history
+does not change during the session) and `breakout_score_completed ≥ 72` held
+at 10 rows. That is the artefact in one curve: the live number converges on
+the completed-bar number only as the session fills in. v2 ENTER/WAIT counts
+(1–3 / 21–26) did not drift with it, which is expected — v2 does not read
+the volume score for its verdict; only the setup class and the
+BREAKOUT_VOLUME_LIGHT code do.
 
 ## 5. PROD HOST — replay on matured forward returns (`replay_cohorts`)
 
@@ -248,6 +265,7 @@ Documented in the 09-14 report §8. Nothing further.
 | 15:01 | 200 (ttfb 0.18 s) | 200 (0.16 s) | 14:49 success 356 | fast-scan last 14:56:59 (running at check time); full-scan 21:30 | frontend/hot-api recreated 14:18 (healthy, 42 min), postgres up 5 h | backup completed 12:55 UTC via r2 (age 126 min at check) |
 | 16:31 | 200 | 200 | 16:16 success 359 | fast-scan on cadence (12 runs since 13:41, all success); full-scan 21:30 | frontend/hot-api recreated 15:11 (healthy), postgres healthy | 11 consecutive fresh runs; live ENTER 0 in all, v1 ENTER 3, v2 ENTER 3–4 / WAIT 15–23 |
 | 18:01 | 200 | 200 (backup event 12:55 r2 ok) | 17:47 success 352 | fast-scan on cadence (17 fresh runs since 13:41); full-scan 21:30 | RestartCount 0 on frontend/hot-api (recreated 16:36), postgres, caddy; load 1.7/1.1/0.7; frontend rss 409 MB, event-loop p99 11.5 ms | no anomalies |
+| 19:46 | 200 | 200 | 19:31 success 352 | fast-scan on cadence (24 fresh runs since 13:41) | all healthy, load 0.7 | none |
 
 ## 9. Changes shipped in this window
 
