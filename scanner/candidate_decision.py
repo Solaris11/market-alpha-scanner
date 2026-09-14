@@ -380,7 +380,9 @@ def _v2_setup_class(row: pd.Series) -> str:
         return "PULLBACK"
     if not np.isnan(trend) and trend >= 72.0 and not np.isnan(momentum) and momentum >= 58.0:
         return "CONTINUATION"
-    return "NONE"
+    # Not "NONE": database/writeback.to_database_jsonable treats the string
+    # "none" as a missing value and would persist it as null.
+    return "UNCLASSIFIED"
 
 
 def _v2_risk_reward(row: pd.Series, setup_class: str) -> tuple[float, str | None]:
@@ -391,7 +393,7 @@ def _v2_risk_reward(row: pd.Series, setup_class: str) -> tuple[float, str | None
     balanced = safe_float(row.get("balanced_risk_reward_low"), np.nan)
     price = safe_float(row.get("price"), np.nan)
     target_low = safe_float(row.get("take_profit_low"), np.nan)
-    floor = MIN_RISK_REWARD.get(setup_class, 1.2)
+    floor = MIN_RISK_REWARD.get(setup_class, MIN_RISK_REWARD["NONE"])
     if np.isnan(rr) or rr >= floor or np.isnan(balanced):
         return rr, None
     target_inside_band = (
@@ -423,7 +425,7 @@ def evaluate_candidate_v2(row: pd.Series, config: CandidateConfig | None = None)
     setup_class = _v2_setup_class(row)
     severe, advisory, used_mcal = _v2_severe_and_advisory(row)
     rr, rr_code = _v2_risk_reward(row, setup_class)
-    floor = MIN_RISK_REWARD.get(setup_class, 1.2)
+    floor = MIN_RISK_REWARD.get(setup_class, MIN_RISK_REWARD["NONE"])
     # POOR_RISK_REWARD is the live engine's verdict on the nearest-resistance
     # number. v2 re-derives it from its own rr, so drop the inherited code.
     severe = [code for code in severe if code != "POOR_RISK_REWARD"]

@@ -534,7 +534,7 @@ WITH runs AS (SELECT id, created_at, symbols_scored FROM scan_runs ORDER BY crea
 s AS (
   SELECT sr.id AS run_id, sr.created_at, ss.final_decision AS live, x.*
   FROM scanner_signals ss JOIN runs sr ON sr.id=ss.scan_run_id
-  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(setup_type text, candidate_decision text, candidate_entry_zone text, candidate_stop_loss text, candidate_target_zone text, candidate_confidence_penalty text, confidence_score text, stale_by_market_calendar text, vetoes jsonb, final_score text, risk_reward text, mcal_severe_vetoes jsonb, candidate_v2_decision text, candidate_v2_band_ok text)
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(setup_type text, candidate_decision text, candidate_entry_zone text, candidate_stop_loss text, candidate_target_zone text, candidate_confidence_penalty text, confidence_score text, stale_by_market_calendar text, vetoes jsonb, final_score text, risk_reward text, mcal_severe_vetoes jsonb, candidate_v2_decision text, candidate_v2_band_ok text, buy_zone text, stop_loss text, take_profit_zone text)
 )
 SELECT left(run_id::text,8) AS run, to_char(created_at AT TIME ZONE 'UTC','MM-DD HH24:MI') AS at_utc, count(*) AS rows,
        count(*) FILTER (WHERE live='ENTER') AS l_enter, count(*) FILTER (WHERE live='WAIT_PULLBACK') AS l_wait, count(*) FILTER (WHERE live='WATCH') AS l_watch,
@@ -547,6 +547,7 @@ SELECT left(run_id::text,8) AS run, to_char(created_at AT TIME ZONE 'UTC','MM-DD
        count(*) FILTER (WHERE candidate_decision='WATCH') AS c_watch, count(*) FILTER (WHERE candidate_decision='AVOID') AS c_avoid, count(*) FILTER (WHERE candidate_decision='EXIT') AS c_exit,
        count(*) FILTER (WHERE candidate_decision IN ('ENTER','WAIT_PULLBACK') AND COALESCE(candidate_entry_zone,'') NOT IN ('','-') AND COALESCE(candidate_stop_loss,'') NOT IN ('','-') AND COALESCE(candidate_target_zone,'') NOT IN ('','-')) AS c_where_full,
        count(*) FILTER (WHERE candidate_v2_decision='ENTER') AS v2_enter, count(*) FILTER (WHERE candidate_v2_decision='WAIT_PULLBACK') AS v2_wait, count(*) FILTER (WHERE candidate_v2_decision='WATCH') AS v2_watch, count(*) FILTER (WHERE candidate_v2_decision='AVOID') AS v2_avoid, count(*) FILTER (WHERE lower(candidate_v2_band_ok)='true') AS v2_band_ok,
+       count(*) FILTER (WHERE candidate_v2_decision IN ('ENTER','WAIT_PULLBACK') AND COALESCE(buy_zone,'') NOT IN ('','-','N/A') AND COALESCE(stop_loss,'') NOT IN ('','-','N/A') AND COALESCE(take_profit_zone,'') NOT IN ('','-','N/A')) AS v2_where_full,
        round(percentile_cont(0.5) WITHIN GROUP (ORDER BY (confidence_score::numeric - COALESCE(NULLIF(candidate_confidence_penalty,'')::numeric,0))) FILTER (WHERE confidence_score ~ '^[0-9.]+$')::numeric,1) AS c_conf_med,
        count(*) FILTER (WHERE confidence_score ~ '^[0-9.]+$' AND confidence_score::numeric >= 70) AS conf70
 FROM s GROUP BY run_id, created_at ORDER BY created_at DESC;

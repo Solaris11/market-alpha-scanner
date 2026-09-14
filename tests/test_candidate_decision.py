@@ -520,7 +520,16 @@ class CandidateV2Tests(unittest.TestCase):
         v2 = self._v2(setup_type="AVOID", setup_detail="mixed setup", avwap_score=40.0, breakout_score=80.0)
         self.assertEqual(v2["candidate_v2_setup_class"], "BREAKOUT")
         v2 = self._v2(setup_type="AVOID", setup_detail="mixed setup", avwap_score=40.0, trend_score=60.0, breakout_score=10.0)
-        self.assertEqual(v2["candidate_v2_setup_class"], "NONE")
+        self.assertEqual(v2["candidate_v2_setup_class"], "UNCLASSIFIED")
+
+    def test_unclassified_survives_payload_serialization(self) -> None:
+        try:
+            from database.writeback import to_database_jsonable
+        except Exception as exc:  # pragma: no cover - sqlalchemy absent on a dev box
+            self.skipTest(f"database layer unavailable here: {exc}")
+
+        self.assertEqual(to_database_jsonable("UNCLASSIFIED"), "UNCLASSIFIED")
+        self.assertIsNone(to_database_jsonable("NONE"))  # the reason v2 does not use NONE
 
     def test_overextension_is_a_location_not_a_class_change(self) -> None:
         v2 = self._v2(entry_status="OVEREXTENDED", breakout_score=80.0)
