@@ -238,6 +238,7 @@ Documented in the 09-14 report §8. Nothing further.
 | `d94920e0` | `mcal_vetoes` / `mcal_severe_vetoes` / `mcal_data_quality_score` (observation); relay bundles `run_history`, `run_snapshot`, `candidate_actionable_sample`, `volume_by_hour`, `breakout_candidates_why` | scanner image rebuilt 13:47, tag `rollback-scanner-20260914-p11-step2` |
 | (relay only) | `replay_cohorts` bundle | self-reloaded worker |
 | `4774a1a1` | `candidate_v2_*` shadow columns (market-calendar freshness, class-not-verdict, balanced-target rr, no quality read); relay `candidate_v2_sample`, `candidate_v2_reasons`, v2 counts in `run_history` | scanner image rebuilt 13:54, tag `rollback-scanner-20260914-p11-step3`; 13:56 scan on it |
+| `896fb390` | /terminal: shockPattern + timingValidation projection (lever 1, slice 2) | frontend rebuilt + recreated 16:35, tag `rollback-frontend-20260914-shockpattern`; PROD WEB 6,530 → 5,387 KB |
 | `e48fc392` | /terminal: narrative projection at the client boundary (lever 1, slice 1) | frontend rebuilt + recreated 15:11, tag `rollback-frontend-20260914-narrative`; PROD WEB 6,972 → 6,530 KB |
 | `fa00f4cb` | /terminal: `ExecutionTimingSystem.rows` no longer serialised (lever 2) | frontend rebuilt + recreated 14:18, tag `rollback-frontend-20260914-execrows`; PROD WEB 9,011 → 6,980 KB |
 | `65c4a7fc` | v2 class `UNCLASSIFIED` (the payload writer nulls the string "none"); `v2_where_full` in `run_history` | scanner image rebuilt 14:05, tag `rollback-scanner-20260914-p11-step4` |
@@ -322,3 +323,17 @@ and a terminal-scoped `raw` allowlist (104 of 154 keys, plus the 12 keys read
 through `rawField()` indirection that the name-based guard cannot see — those
 are stripped *today* and silently yield defaults; they should be added back
 before any further raw trimming).
+
+**Shipped (commit `896fb390`, frontend deploy 16:35 UTC, rollback tag
+`rollback-frontend-20260914-shockpattern`).** Lever 1, second slice:
+`stripShockPatternForTerminal` keeps the 26 pattern fields the row consumers
+read (via `row.shockPattern`, `shock` and `pattern` aliases) and projects
+`timingValidation` to its four read sub-fields (`replayStudies` and a dozen
+unread statistics go). The graph walker is now shared
+(`terminal-client-graph.test-helper.ts`) by the narrative and shock-pattern
+guards (29/29 across projection, allowlist and execution-boundary tests; tsc
+clean). **PROD WEB after: 6,530 → 5,387 KB (−1,143 KB); shockPattern blocks
+1,716 → 541 KB; `replayStudies` 0 occurrences.** Shock Move radar renders
+timing proof, similarity, reliability, false-alarm and volume-quality values;
+no NaN/undefined in the page text; PROD HOST smoke 200. **Cumulative today:
+9,011 → 5,387 KB (−40%)** in three isolated, measured commits.
