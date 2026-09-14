@@ -291,9 +291,21 @@ Out of scope, deliberately: editing the `≥ 80` floor in place (the holdout
 study argued against a threshold edit without shadow evidence, and nothing
 here contradicts it).
 
-## 7. Fresh-market shadow readings (appended as scans land)
+## 7. Fresh-market shadow readings (first three fresh runs, PROD HOST)
 
-_Pending: first fresh-window scan ~13:45 UTC._
+Continued in `scanner-decision-engine-p1-1-24h-followup-20260915.md` (per-run
+log, v2 shadow, replay). Headline: the first fresh run (4984a236, 13:47 UTC,
+355 rows, STALE_DATA 0) gave live `ENTER 0 / WAIT 10 / WATCH 31 / AVOID 89 /
+EXIT 225`, setup `AVOID 297 / PULLBACK 57 / CONTINUATION 1 / BREAKOUT 0`, and
+the deployed candidate `ENTER 0 / WATCH 51 / AVOID 79 / EXIT 225` — its 130
+non-EXIT rows fell to severe vetoes (75: POOR_RISK_REWARD / STOP_RISK /
+EXTREME_VOLATILITY), `pre_expansion < 45` (38), action ≠ BUY (12) and five
+others; nothing reached the band test. The next two runs (e761abcc 14:02,
+2c1b2412 14:17) were within a few rows of the same picture (v1 ENTER 1 each).
+Observation-only `mcal_*` and `candidate_v2_*` columns went live from the
+13:56 scan; on the same rows v2 said ENTER 3 / WAIT_PULLBACK 20 (14:02) and
+2 / 20 (14:17) with zone, stop and target on every one. The decision in §0
+stands: `current` stays live.
 
 ## 8. P2-4 — the 10:24 UTC host reboot (closed)
 
