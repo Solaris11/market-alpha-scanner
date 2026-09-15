@@ -58,6 +58,8 @@ market-calendar shadow veto list still contains a severe code).
 | b81d64fb | 09-14 23:47 | 352 | 0/13/27/118/194 | 304/48/0/0 | 0 | 0 | 149 | 149 | 1/0/46/111/194 | 1/24/72/61 | 6 | 25/25 | 35 | end-of-day canonical row for forward_returns; v2 ENTER = KO |
 | 47a69156 / … | 09-15 00:02, 00:16 | 352 | 0/6/14/87/245 → 0/…/258 | 327/25/0/0 | 0 | 0 | 139 | 139 | 0/0/31/76/245 | 0/19/52/36 | 1 | 19/19 | 22 → 18 | **midnight NaN-bar corruption (§4e)** |
 | (00:31) | 09-15 00:31 | 352 | 0/…/115/203 | — | 0 | 0 | — | — | — | 3/21/…/… | — | — | 39 | first run with the NaN-bar fix |
+| (00:47, 01:17) | 09-15 | 352 | 0/7/48/91/206 → 0/11/23/115/203 | — | **246 → 197** (wall-clock, Friday bar after the NaN drop) | 0 | — | — | — | 2/19 → 3/21 | — | — | 27 → 39 | NaN window, now reading as freshness |
+| (01:48 → 03:47, 5 runs) | 09-15 | 352 | 0/22/24/113/193 | — | 0 | 0 | — | — | — | **4/24** | — | — | **80** | Monday bar re-published; steady overnight state |
 
 (E=ENTER, W=WAIT_PULLBACK, Wa=WATCH, A=AVOID, X=EXIT.)
 
@@ -229,6 +231,20 @@ to are the *last* scan of the UTC day (23:47), which predates it, so the
 replay cohorts in §5 are not contaminated, but every overnight /terminal
 view was.
 
+**What the fix changes and what it cannot (04:00 UTC reading).** With the NaN
+row gone, the affected symbols' last valid bar was Friday's, so the 00:47 and
+01:17 runs showed the *wall-clock* `STALE_DATA` veto on 246 and 197 rows
+(`rows_without_close` 246 / 197), `mcal` stale on 0 — the honest reading
+("the provider has no valid Monday bar yet"), still routed through the
+36-hour clock into severe vetoes (EXIT 206 / AVOID 91 at 00:47). From 01:48
+yfinance had re-published the Monday bar: `rows_without_close` 0, STALE 0,
+and the runs settled at live `WAIT 22 / WATCH 24 / AVOID 113 / EXIT 193`,
+`trend_score = 0` on 50, conf ≥ 70 on **80** rows, v2 **ENTER 4 / WAIT 24**
+— unchanged across five consecutive runs to 03:47. So the NaN window is
+roughly 00:00–01:30 UTC nightly; the drop fix turns garbage indicators into
+a freshness veto, and only the market-calendar freshness test (§6 step 1)
+would make those ninety minutes read correctly.
+
 ## 5. PROD HOST — replay on matured forward returns (`replay_cohorts`)
 
 Cohort = end-of-day canonical signal per symbol-day (the row `forward_returns`
@@ -338,6 +354,7 @@ Documented in the 09-14 report §8. Nothing further.
 | 22:09 | 200 | 200 | 22:07 full scan success 352 + analysis (forward_returns 5448) | fast-scan on cadence; full-scan recovered manually after the lock skip | all healthy | full-scan lock collision (fixed, see §4d) |
 | 00:17 | 200 | 200 | 00:02/00:16 success 352 | fast-scan on cadence | all healthy, load 2.8 (full scan just ran) | **midnight NaN-bar corruption (fixed 00:23, see §4e)** |
 | 00:33 | — | — | 00:31 success 352, `rows_without_close`=1 on 197 yfinance symbols, trend_zero 47 | — | — | fix verified |
+| 04:00 | 200 | 200 | 03:47 success 352 (5 identical overnight runs since 01:48; STALE 0, nan_close 0) | fast-scan on cadence | all healthy, load 0.5 | replay_cohorts re-run: no drift (5D n +0.4%, F/I/K within 0.02 pts) |
 
 ## 9. Changes shipped in this window
 
