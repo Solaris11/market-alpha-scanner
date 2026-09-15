@@ -13,7 +13,7 @@ live decision.
 |---|---|
 | should `current` stay the live default? | **Yes.** `SCANNER_DECISION_MODE=current` throughout; nothing in this window changed a live *decision rule*. Two live *data-integrity* fixes shipped (the midnight NaN bar, the full-scan lock wait) — they correct inputs, not verdicts. |
 | how ready is the candidate? | **v1 (deployed candidate): not a switch candidate** — 0 ENTER on 40+ fresh runs; it inherits the SELL action, the severe-veto list and the −25 quality verdict. **v2 (shadow, `candidate_v2_*`): promising but unproven** — 1–4 ENTER and 15–26 WAIT_PULLBACK per fresh run, every one with zone/stop/target, and its rules are the ones the replay favours (§5: band, balanced-target rr, class-not-verdict). It has ~20 hours of fresh rows and **no matured forward returns of its own**. |
-| is the stale gate a bug? | **Yes, proven three ways.** (a) Wall-clock `STALE_DATA` 99.4% of rows on weekend/holiday/Monday-pre-open days, 3.4% on weekdays (§3 of the 09-14 report); (b) per run: 354/356 wall-clock vs **0/356** market-calendar on Monday pre-open with Friday bars (§2); (c) the 00:47/01:17 runs after the NaN fix: 246/197 wall-clock vs 0 market-calendar on a bar the provider had not re-published yet (§4e). The 12:20 UTC weekday pre-open reading will close the last case. |
+| is the stale gate a bug? | **Yes, proven four ways (weekday pre-open case closed 12:02 UTC 09-15: wall-clock 196/352, market-calendar 0/352, v1 candidate ENTER 1 → 0, v2 held).** (a) Wall-clock `STALE_DATA` 99.4% of rows on weekend/holiday/Monday-pre-open days, 3.4% on weekdays (§3 of the 09-14 report); (b) per run: 354/356 wall-clock vs **0/356** market-calendar on Monday pre-open with Friday bars (§2); (c) the 00:47/01:17 runs after the NaN fix: 246/197 wall-clock vs 0 market-calendar on a bar the provider had not re-published yet (§4e). The 12:20 UTC weekday pre-open reading will close the last case. |
 | what evidence is missing for a live rollout? | (1) v2 ENTER/WAIT rows joined to matured 5D/10D/20D `forward_returns` — first 5D maturities land ~09-21, 10D ~09-28; (2) the `pre_expansion ≥ 45` gate has **no** matured cohort at all (§5 J) — v2 records `band_ok` so its cost can be measured; (3) the volume artefact fix at the scoring layer (completed-bar features are persisted, not yet consumed); (4) a market-calendar freshness test in the live veto path (shadow `mcal_*` is persisted and correct). |
 | next safe step | Keep `current`. Promote, in this order and each as its own measured deploy: (1) market-calendar freshness into the live severe list (the `mcal_*` shadow is the implementation; expected effect: Monday/holiday/pre-open universes stop reading as 100% AVOID); (2) completed-bar volume features into `classify_setup`'s breakout branch and the risk/reward target-band rule into the live rr (both shadow-measured, replay-backed); (3) only then judge `SCANNER_DECISION_MODE=candidate` (v2 rules) against ≥10 trading days of its own matured forward returns, on a dry-run outdir first. |
 
@@ -89,13 +89,21 @@ in place of the wall clock, nothing downstream reads them.
 | open, partial bars arriving (13:26 UTC) | 560cb56b | 291 / 356 | 0 / 356 | 291 |
 | first fresh run (13:41 UTC) | 4984a236 | 0 / 355 | 0 / 355 | 0 |
 | Sunday 09-13 / Labor Day 09-07 (14-day table, 09-14 report §3) | ~34k rows/day | 99.4% | (field not yet deployed) | setup AVOID 99.6–100% |
+| **Tuesday pre-open, Monday bars cross 36 h (12:02 / 12:17 UTC, 09-15)** | 11:46 → 12:02 → 12:17 | **0 → 196 → 197 / 352** (the yfinance-served symbols; Alpaca bars carry a later timestamp) | **0 / 352** | setup AVOID 302 → 327; live WAIT 24 → 13, AVOID 111 → 122, conf ≥ 70 83 → 41; **v1 candidate ENTER 1 → 0, AVOID 110 → 130; v2 (market-calendar freshness) ENTER 4 → 3, WAIT 24 → 24, AVOID 60 → 61**; `mcal_severe` unchanged at 147 |
 
 LOCAL MAC tests (`tests/test_scanner_diagnostics.py`, 30/30): Friday's bar is
 not stale by market calendar on Saturday, Sunday, Monday pre-open or during
 Monday's session; one missed close is tolerated (holiday), two are stale; a
 nine-day-old bar is stale by both tests; the wall-clock flag stays measurable;
 the live `vetoes` / `trade_permitted` columns are unchanged while `mcal_*`
-persist. Verdict: **bug** — the freshness test measures calendar hours, not
+persist.
+
+The weekday case closed at 12:02 UTC on 09-15 exactly as predicted: with no
+new bar and no price change, the wall clock flagged 196 symbols the moment
+Monday's bar crossed 36 h, the market-calendar test flagged none (Tuesday's
+close had not happened, so nothing was missed), the deployed candidate lost
+its only ENTER and gained 20 AVOIDs, and v2 — which takes freshness from the
+`mcal_*` shadow list — kept 3 ENTER / 24 WAIT. Verdict: **bug** — the freshness test measures calendar hours, not
 market sessions, and it is wired into five downstream blocks (setup AVOID,
 data-quality −30 → LOW_CONFIDENCE_DATA, confidence −37, trade_permitted,
 candidate SEVERE_VETO). Live gate unchanged; shadow columns measure the fix.
@@ -354,6 +362,7 @@ Documented in the 09-14 report §8. Nothing further.
 | 22:09 | 200 | 200 | 22:07 full scan success 352 + analysis (forward_returns 5448) | fast-scan on cadence; full-scan recovered manually after the lock skip | all healthy | full-scan lock collision (fixed, see §4d) |
 | 00:17 | 200 | 200 | 00:02/00:16 success 352 | fast-scan on cadence | all healthy, load 2.8 (full scan just ran) | **midnight NaN-bar corruption (fixed 00:23, see §4e)** |
 | 00:33 | — | — | 00:31 success 352, `rows_without_close`=1 on 197 yfinance symbols, trend_zero 47 | — | — | fix verified |
+| 12:21 | 200 | 200 | 12:17 success 352 — **weekday pre-open stale test: wall-clock 197, market-calendar 0** | fast-scan on cadence | all healthy | expected, see §2 |
 | 09:31 | 200 | 200 | 09:17 success 352 (steady: live 0/22/26/111/193, v2 4/24, conf≥70 83) | fast-scan on cadence | all healthy, load 0.35 | none |
 | 06:46 | 200 | 200 | 06:31 success 352 (steady since 01:48: live 0/22/25/112/193, v2 4/24, conf≥70 79–82, STALE 0, NaN rows 0) | scanner-health timer ran 06:19 (next 09-16 06:16); fast-scan on cadence | all healthy, load 0.7, frontend rss 377 MB | R2 backup sync started 06:31 (in progress at check) |
 | 04:00 | 200 | 200 | 03:47 success 352 (5 identical overnight runs since 01:48; STALE 0, nan_close 0) | fast-scan on cadence | all healthy, load 0.5 | replay_cohorts re-run: no drift (5D n +0.4%, F/I/K within 0.02 pts) |
