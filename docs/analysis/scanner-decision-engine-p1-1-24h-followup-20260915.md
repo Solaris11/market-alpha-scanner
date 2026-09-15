@@ -354,6 +354,7 @@ Documented in the 09-14 report §8. Nothing further.
 | 22:09 | 200 | 200 | 22:07 full scan success 352 + analysis (forward_returns 5448) | fast-scan on cadence; full-scan recovered manually after the lock skip | all healthy | full-scan lock collision (fixed, see §4d) |
 | 00:17 | 200 | 200 | 00:02/00:16 success 352 | fast-scan on cadence | all healthy, load 2.8 (full scan just ran) | **midnight NaN-bar corruption (fixed 00:23, see §4e)** |
 | 00:33 | — | — | 00:31 success 352, `rows_without_close`=1 on 197 yfinance symbols, trend_zero 47 | — | — | fix verified |
+| 06:46 | 200 | 200 | 06:31 success 352 (steady since 01:48: live 0/22/25/112/193, v2 4/24, conf≥70 79–82, STALE 0, NaN rows 0) | scanner-health timer ran 06:19 (next 09-16 06:16); fast-scan on cadence | all healthy, load 0.7, frontend rss 377 MB | R2 backup sync started 06:31 (in progress at check) |
 | 04:00 | 200 | 200 | 03:47 success 352 (5 identical overnight runs since 01:48; STALE 0, nan_close 0) | fast-scan on cadence | all healthy, load 0.5 | replay_cohorts re-run: no drift (5D n +0.4%, F/I/K within 0.02 pts) |
 
 ## 9. Changes shipped in this window
