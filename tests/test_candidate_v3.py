@@ -145,6 +145,39 @@ class EnterPathTests(unittest.TestCase):
         self.assertIn("WHERE_INCOMPLETE", result["candidate_v3_reason_codes"])
 
 
+class LevelParsingTests(unittest.TestCase):
+    """Production writes ranges as "318.58-323.99" with no spaces. A signed
+    number pattern reads that hyphen as a minus and hands the entry zone a
+    negative top, which is exactly how the first v3 deploy produced zero
+    actionable rows on a live run."""
+
+    def test_hyphenated_range_parses_as_two_positive_levels(self) -> None:
+        result = evaluate_candidate_v3(_row(
+            price=321.0,
+            buy_zone="318.58-323.99",
+            stop_loss="307.69",
+            conservative_target="340.00",
+            balanced_target="363.56-374.74",
+            aggressive_target="390.00",
+        ))
+        self.assertEqual(result["candidate_v3_entry_low"], 318.58)
+        self.assertEqual(result["candidate_v3_entry_high"], 323.99)
+        self.assertEqual(result["candidate_v3_stop"], 307.69)
+        self.assertEqual(result["candidate_v3_target_2"], 363.56)
+        self.assertEqual(result["candidate_v3_decision"], "ENTER")
+
+    def test_currency_and_spacing_variants_parse(self) -> None:
+        for zone in ("$97.00 - $99.50", "97.00 to 99.50", "97.00-99.50"):
+            result = evaluate_candidate_v3(_row(buy_zone=zone))
+            self.assertEqual(result["candidate_v3_entry_low"], 97.0, zone)
+            self.assertEqual(result["candidate_v3_entry_high"], 99.5, zone)
+
+    def test_non_positive_levels_are_not_where_complete(self) -> None:
+        result = evaluate_candidate_v3(_row(buy_zone="0 - 0"))
+        self.assertEqual(result["candidate_v3_decision"], "WATCH")
+        self.assertIn("WHERE_INCOMPLETE", result["candidate_v3_reason_codes"])
+
+
 class WaitPullbackTests(unittest.TestCase):
     def test_overextended_good_setup_waits_instead_of_avoiding(self) -> None:
         result = evaluate_candidate_v3(_row(entry_status="OVEREXTENDED"))
@@ -173,13 +206,21 @@ class VetoSeverityTests(unittest.TestCase):
             self.assertIn(f"SEVERE_{code}", result["candidate_v3_reason_codes"], code)
 
     def test_advisory_vetoes_cost_confidence_and_do_not_block(self) -> None:
-        result = evaluate_candidate_v3(_row(confidence_score=85.0, vetoes=["HIGH_VOLATILITY", "OVEREXTENDED_ENTRY"]))
+        result = evaluate_candidate_v3(_row(confidence_score=85.0, vetoes=["HIGH_VOLATILITY", "OVEREXTENDED_ENTRY"]))  # noqa: E501
         self.assertEqual(result["candidate_v3_decision"], "ENTER")
         self.assertEqual(result["candidate_v3_confidence"], 77.0)
         self.assertIn("ADVISORY_HIGH_VOLATILITY", result["candidate_v3_reason_codes"])
 
-    def test_advisory_penalty_can_cost_an_entry(self) -> None:
+    def test_advisory_penalty_never_costs_an_entry(self) -> None:
+        # The replay grid measured raw confidence, so the gate reads the raw
+        # score; the advisory cost shows up in the reported number and in rank.
         result = evaluate_candidate_v3(_row(confidence_score=76.0, vetoes=["HIGH_VOLATILITY"]))
+        self.assertEqual(result["candidate_v3_decision"], "ENTER")
+        self.assertEqual(result["candidate_v3_confidence"], 72.0)
+        self.assertIn("ADVISORY_HIGH_VOLATILITY", result["candidate_v3_reason_codes"])
+
+    def test_raw_confidence_below_the_floor_still_watches(self) -> None:
+        result = evaluate_candidate_v3(_row(confidence_score=74.0, vetoes=["HIGH_VOLATILITY"]))
         self.assertEqual(result["candidate_v3_decision"], "WATCH")
         self.assertIn("LOW_CONFIDENCE", result["candidate_v3_reason_codes"])
 

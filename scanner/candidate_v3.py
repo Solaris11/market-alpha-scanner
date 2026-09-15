@@ -68,6 +68,9 @@ V3_SEVERE_VETOES: Final[frozenset[str]] = frozenset(
 )
 
 #: Confidence cost per advisory flag, and the most they can cost together.
+#: This moves the *reported* confidence and the capital ranking, never the
+#: entry gate: the replay grid that fixed the 75 threshold measured the raw
+#: score, so gating on a penalised one would claim evidence it does not have.
 V3_ADVISORY_PENALTY: Final[float] = 4.0
 V3_ADVISORY_PENALTY_CAP: Final[float] = 12.0
 
@@ -115,7 +118,10 @@ class V3Config:
 
 V3_DEFAULTS: Final[V3Config] = V3Config()
 
-_NUMBER_RE: Final[re.Pattern[str]] = re.compile(r"-?\d+(?:\.\d+)?")
+#: Unsigned on purpose. Level fields are ranges written as "318.58-323.99",
+#: and a signed pattern reads that hyphen as a minus, turning the top of the
+#: entry zone into a negative number.
+_NUMBER_RE: Final[re.Pattern[str]] = re.compile(r"\d+(?:\.\d+)?")
 
 
 def _numbers(value: object) -> list[float]:
@@ -222,7 +228,7 @@ def _where_complete(where: dict[str, float | None]) -> bool:
     targets = [value for key, value in where.items() if key.startswith("target_") and value is not None]
     if entry_low is None or entry_high is None or stop is None or not targets:
         return False
-    if stop >= entry_low:
+    if entry_low <= 0 or stop <= 0 or stop >= entry_low:
         return False
     return max(targets) > entry_high
 
@@ -349,7 +355,10 @@ def evaluate_candidate_v3(row: pd.Series, config: V3Config | None = None) -> dic
             )
         band_ok = not np.isnan(score) and settings.core_band_low <= score <= settings.core_band_high
         classified = setup_type != "UNCLASSIFIED"
-        confidence_ok = not np.isnan(effective) and effective >= settings.core_confidence_min
+        # The replay grid measured the raw confidence score, so that is what
+        # gates. Advisory flags cost reported confidence and ranking position,
+        # never the entry itself.
+        confidence_ok = not np.isnan(confidence) and confidence >= settings.core_confidence_min
         rr_ok = not np.isnan(rr) and rr >= settings.core_rr_min
         if band_ok and classified and confidence_ok and rr_ok:
             quality = _quality("CORE", effective, rr, row, settings)
@@ -357,7 +366,8 @@ def evaluate_candidate_v3(row: pd.Series, config: V3Config | None = None) -> dic
                 "ENTER",
                 f"A {setup_type.lower()} setup with price in the entry zone: score {score:.0f} inside the "
                 f"{settings.core_band_low:.0f}-{settings.core_band_high:.0f} evidence band, confidence "
-                f"{effective:.0f} after advisory penalties, risk/reward {rr:.2f} to the balanced target.",
+                f"{confidence:.0f}{'' if not advisory else f' ({effective:.0f} after advisory flags)'}, "
+                f"risk/reward {rr:.2f} to the balanced target.",
                 "BAND_CORE",
                 "IN_ENTRY_ZONE",
                 path="CORE",
