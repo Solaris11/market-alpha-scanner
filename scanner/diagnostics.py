@@ -68,6 +68,7 @@ def apply_scoring_diagnostics(df: pd.DataFrame) -> pd.DataFrame:
         "stale_data": pd.Series([item["stale_data"] for item in diagnostics], index=working.index),
         "missed_sessions": pd.Series([item["missed_sessions"] for item in diagnostics], index=working.index, dtype="object"),
         "stale_by_market_calendar": pd.Series([item["stale_by_market_calendar"] for item in diagnostics], index=working.index),
+        "stale_by_wall_clock": pd.Series([item["stale_by_wall_clock"] for item in diagnostics], index=working.index),
         "mcal_vetoes": pd.Series([item["mcal_vetoes"] for item in diagnostics], index=working.index, dtype="object"),
         "mcal_severe_vetoes": pd.Series([item["mcal_severe_vetoes"] for item in diagnostics], index=working.index, dtype="object"),
         "mcal_data_quality_score": pd.Series([item["mcal_data_quality_score"] for item in diagnostics], index=working.index),
@@ -106,6 +107,7 @@ def scoring_diagnostics_for_row(row: Mapping[str, object]) -> dict[str, object]:
         "stale_data": data_quality["stale_data"],
         "missed_sessions": data_quality["missed_sessions"],
         "stale_by_market_calendar": data_quality["stale_by_market_calendar"],
+        "stale_by_wall_clock": data_quality["stale_by_wall_clock"],
         "mcal_vetoes": mcal_vetoes,
         "mcal_severe_vetoes": mcal_severe,
         "mcal_data_quality_score": mcal_quality["data_quality_score"],
@@ -148,15 +150,20 @@ def factor_scores_for_row(row: Mapping[str, object], *, data_quality_score: floa
     return factor_scores
 
 
-def data_quality_flags(row: Mapping[str, object]) -> dict[str, object]:
+def data_quality_flags(row: Mapping[str, object], now: datetime | None = None) -> dict[str, object]:
     missing_fields = [field for field in CORE_NUMERIC_FIELDS if _is_missing_number(row.get(field))]
     history_days = _optional_int(row.get("history_days"))
     price_history_rows = _optional_int(row.get("price_history_rows"))
     effective_history = history_days if history_days is not None else price_history_rows
     timestamp_text = _timestamp_text(row.get("data_timestamp"))
-    stale_data = _is_stale_timestamp(row.get("data_timestamp"))
-    missed_sessions = missed_closed_sessions(row.get("data_timestamp"))
-    stale_by_market_calendar = _is_stale_by_market_calendar(row.get("data_timestamp"), missed_sessions)
+    # Freshness is judged against the market calendar: a symbol whose last bar is
+    # the previous completed session is fresh, even when the wall clock has moved
+    # more than 36 hours (weekend, holiday, pre-open). The wall-clock test is kept
+    # as `stale_by_wall_clock` for diagnostics only and no longer gates anything.
+    stale_by_wall_clock = _is_stale_timestamp(row.get("data_timestamp"), now=now)
+    missed_sessions = missed_closed_sessions(row.get("data_timestamp"), now=now)
+    stale_by_market_calendar = _is_stale_by_market_calendar(row.get("data_timestamp"), missed_sessions, now=now)
+    stale_data = stale_by_market_calendar
     provider_error = safe_str(row.get("provider_error"), "")
     fallback_used = _boolish(row.get("data_provider_fallback_used"))
     provider_latency_ms = safe_float(row.get("provider_latency_ms"), np.nan)
@@ -189,6 +196,7 @@ def data_quality_flags(row: Mapping[str, object]) -> dict[str, object]:
         "stale_data": stale_data,
         "missed_sessions": missed_sessions,
         "stale_by_market_calendar": stale_by_market_calendar,
+        "stale_by_wall_clock": stale_by_wall_clock,
         "low_confidence_data": low_confidence,
         "provider_error": provider_error,
         "data_quality_score": round(clamp_score(score), 2),
@@ -196,10 +204,10 @@ def data_quality_flags(row: Mapping[str, object]) -> dict[str, object]:
 
 
 def market_calendar_data_quality_flags(row: Mapping[str, object], data_quality: Mapping[str, object] | None = None) -> dict[str, object]:
-    """`data_quality_flags` with the market-calendar freshness test swapped in
-    for the wall clock. Recomputes the score (the -30 stale penalty follows
-    the calendar flag) and therefore `low_confidence_data`. Observation only:
-    the live veto list, confidence and decisions do not read this."""
+    """`data_quality_flags` with the market-calendar freshness test in place of
+    the wall clock. Since the live gate adopted the market calendar this mirrors
+    `data_quality_flags`; it is retained so the `mcal_*` observation columns keep
+    their meaning and so a regression between the two surfaces immediately."""
     base = dict(data_quality if data_quality is not None else data_quality_flags(row))
     wall_clock_stale = bool(base.get("stale_data"))
     calendar_stale = bool(base.get("stale_by_market_calendar"))
@@ -395,12 +403,20 @@ def _timestamp_text(value: object) -> str:
     return parsed.isoformat()
 
 
-def _is_stale_timestamp(value: object) -> bool:
+def _is_stale_timestamp(value: object, now: datetime | None = None) -> bool:
+    """Legacy wall-clock freshness test. Diagnostic only since the live gate
+    moved to the market calendar; kept so `stale_by_wall_clock` can be compared
+    against `stale_by_market_calendar` in production."""
     parsed = parse_datetime_like(value)
     if parsed is None:
         return False
-    now = datetime.now(timezone.utc)
-    age_hours = (now - parsed.to_pydatetime()).total_seconds() / 3600.0
+    current = now if now is not None else datetime.now(timezone.utc)
+    if current.tzinfo is None:
+        current = current.replace(tzinfo=timezone.utc)
+    bar = parsed.to_pydatetime()
+    if bar.tzinfo is None:
+        bar = bar.replace(tzinfo=timezone.utc)
+    age_hours = (current - bar).total_seconds() / 3600.0
     return age_hours > STALE_DATA_HOURS
 
 

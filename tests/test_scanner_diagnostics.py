@@ -74,7 +74,7 @@ class ScannerDiagnosticsTests(unittest.TestCase):
 
     def test_stale_data_penalty_and_reason_code(self) -> None:
         row = _base_row()
-        row["data_timestamp"] = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat()
+        row["data_timestamp"] = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
         flags = data_quality_flags(row)
         vetoes = vetoes_for_row(row, flags)
         self.assertTrue(flags["stale_data"])
@@ -321,78 +321,112 @@ class MarketCalendarFreshnessTests(unittest.TestCase):
         self.assertIsNone(missed_closed_sessions("not a date"))
         self.assertFalse(_is_stale_by_market_calendar("not a date", None))
 
-    def test_flags_are_persisted_and_gate_nothing(self) -> None:
+    def test_flags_are_persisted_beside_the_live_gate(self) -> None:
         row = _base_row()
         row["data_timestamp"] = "2026-09-11T00:00:00+00:00"
         frame = apply_scoring_diagnostics(pd.DataFrame([row]))
-        self.assertIn("stale_by_market_calendar", frame.columns)
-        self.assertIn("missed_sessions", frame.columns)
+        for column in ("stale_by_market_calendar", "missed_sessions", "stale_by_wall_clock"):
+            self.assertIn(column, frame.columns)
         flags = data_quality_flags(row)
-        # The legacy calendar-clock flag still drives the veto list; the new
-        # flag is recorded beside it and changes neither vetoes nor the score.
         vetoes = vetoes_for_row(row, flags)
+        # The live veto now follows the calendar flag, not the wall clock.
         self.assertEqual("STALE_DATA" in vetoes, bool(flags["stale_data"]))
-        stale_free = dict(flags)
-        stale_free["stale_by_market_calendar"] = not flags["stale_by_market_calendar"]
-        self.assertEqual(vetoes_for_row(row, stale_free), vetoes)
+        self.assertEqual(bool(flags["stale_data"]), bool(flags["stale_by_market_calendar"]))
 
 
-class MarketCalendarShadowVetoTests(unittest.TestCase):
-    """The mcal_* columns re-run the veto list with the market-calendar
-    freshness test. They must never touch the live list."""
+class LiveStaleGateUsesMarketCalendarTests(unittest.TestCase):
+    """The live STALE_DATA veto is decided by the market calendar. A weekend,
+    a holiday or a pre-open morning is not staleness; a provider that misses
+    more than one completed session, or a bar older than the calendar cap,
+    still is. The 36-hour wall clock survives only as a diagnostic field."""
 
-    def _monday_pre_open_row(self) -> dict[str, object]:
+    FRIDAY_BAR = "2026-09-11T00:00:00+00:00"
+
+    def _row_flags(self, timestamp: object, now: datetime) -> tuple[dict[str, object], dict[str, object]]:
         row = _base_row()
-        row["data_timestamp"] = "2026-09-11T00:00:00+00:00"  # Friday's bar
-        return row
+        row["data_timestamp"] = timestamp
+        return row, data_quality_flags(row, now=now)
 
-    def test_friday_bar_on_monday_pre_open_is_stale_by_wall_clock_only(self) -> None:
-        from scanner.diagnostics import market_calendar_data_quality_flags, missed_closed_sessions
-
-        row = self._monday_pre_open_row()
-        flags = data_quality_flags(row)
-        # Wall clock: Friday 00:00 is > 36h before any Monday. Calendar: 0 closes missed on Sat/Sun.
-        self.assertTrue(flags["stale_data"])
+    def test_friday_bar_on_monday_pre_open_is_not_stale(self) -> None:
+        now = datetime(2026, 9, 14, 12, 1, tzinfo=timezone.utc)  # Monday, before the open
+        row, flags = self._row_flags(self.FRIDAY_BAR, now)
+        self.assertTrue(flags["stale_by_wall_clock"])  # ~60h by the clock
+        self.assertFalse(flags["stale_data"])
         self.assertFalse(flags["stale_by_market_calendar"])
-        self.assertEqual(missed_closed_sessions(row["data_timestamp"], now=datetime(2026, 9, 14, 12, 1, tzinfo=timezone.utc)), 0)
-        live = vetoes_for_row(row, flags)
-        shadow = vetoes_for_row(row, market_calendar_data_quality_flags(row, flags))
-        self.assertIn("STALE_DATA", live)
-        self.assertIn("LOW_CONFIDENCE_DATA", live)
-        self.assertNotIn("STALE_DATA", shadow)
-        self.assertNotIn("LOW_CONFIDENCE_DATA", shadow)
-        # Everything that is not about freshness is identical in both lists.
-        self.assertEqual([c for c in live if c not in {"STALE_DATA", "LOW_CONFIDENCE_DATA"}], shadow)
+        self.assertEqual(flags["missed_sessions"], 0)
+        vetoes = vetoes_for_row(row, flags)
+        self.assertNotIn("STALE_DATA", vetoes)
+        self.assertNotIn("LOW_CONFIDENCE_DATA", vetoes)
+        # No 30-point staleness penalty: same score as the identical row with a bar from today.
+        _, fresh_flags = self._row_flags(now.isoformat(), now)
+        self.assertEqual(flags["data_quality_score"], fresh_flags["data_quality_score"])
 
-    def test_truly_missed_sessions_stay_stale_in_both(self) -> None:
-        from scanner.diagnostics import _is_stale_by_market_calendar, market_calendar_data_quality_flags
+    def test_weekend_is_not_stale(self) -> None:
+        for now in (
+            datetime(2026, 9, 12, 12, 0, tzinfo=timezone.utc),  # Saturday
+            datetime(2026, 9, 13, 23, 0, tzinfo=timezone.utc),  # Sunday night
+        ):
+            row, flags = self._row_flags(self.FRIDAY_BAR, now)
+            self.assertFalse(flags["stale_data"], now)
+            self.assertNotIn("STALE_DATA", vetoes_for_row(row, flags), now)
+
+    def test_single_closed_session_without_a_bar_is_tolerated(self) -> None:
+        # Tuesday pre-open with Friday's bar: Monday closed without a newer bar
+        # (holiday, or a provider that skipped one session). One is tolerated.
+        now = datetime(2026, 9, 15, 12, 0, tzinfo=timezone.utc)
+        row, flags = self._row_flags(self.FRIDAY_BAR, now)
+        self.assertEqual(flags["missed_sessions"], 1)
+        self.assertTrue(flags["stale_by_wall_clock"])
+        self.assertFalse(flags["stale_data"])
+        self.assertNotIn("STALE_DATA", vetoes_for_row(row, flags))
+
+    def test_two_missed_sessions_are_stale(self) -> None:
+        now = datetime(2026, 9, 16, 12, 0, tzinfo=timezone.utc)  # Wednesday pre-open
+        row, flags = self._row_flags(self.FRIDAY_BAR, now)
+        self.assertEqual(flags["missed_sessions"], 2)
+        self.assertTrue(flags["stale_data"])
+        self.assertIn("STALE_DATA", vetoes_for_row(row, flags))
+        self.assertLessEqual(float(flags["data_quality_score"]), 70.0)
+
+    def test_truly_old_bar_is_stale(self) -> None:
+        now = datetime(2026, 9, 15, 12, 0, tzinfo=timezone.utc)
+        row, flags = self._row_flags("2026-08-20T00:00:00+00:00", now)
+        self.assertTrue(flags["stale_by_wall_clock"])
+        self.assertTrue(flags["stale_data"])
+        self.assertIn("STALE_DATA", vetoes_for_row(row, flags))
+
+    def test_severe_veto_list_stays_clean_when_the_bar_is_current(self) -> None:
+        now = datetime(2026, 9, 15, 12, 0, tzinfo=timezone.utc)
+        row, flags = self._row_flags("2026-09-14T21:00:00+00:00", now)  # Monday's close
+        self.assertEqual(flags["missed_sessions"], 0)
+        self.assertFalse(flags["stale_data"])
+        self.assertFalse(flags["stale_by_wall_clock"])
+        self.assertEqual(vetoes_for_row(row, flags), [])
+
+    def test_wall_clock_flag_is_reported_but_gates_nothing(self) -> None:
+        from scanner.diagnostics import _is_stale_timestamp
 
         row = _base_row()
-        row["data_timestamp"] = (datetime.now(timezone.utc) - timedelta(days=9)).isoformat()
-        flags = data_quality_flags(row)
-        self.assertTrue(flags["stale_data"])
-        self.assertTrue(flags["stale_by_market_calendar"])
-        self.assertTrue(_is_stale_by_market_calendar(row["data_timestamp"], flags["missed_sessions"]))
-        shadow = vetoes_for_row(row, market_calendar_data_quality_flags(row, flags))
-        self.assertIn("STALE_DATA", shadow)
+        row["data_timestamp"] = self.FRIDAY_BAR
+        now = datetime(2026, 9, 14, 12, 1, tzinfo=timezone.utc)
+        flags = data_quality_flags(row, now=now)
+        self.assertEqual(flags["stale_by_wall_clock"], _is_stale_timestamp(self.FRIDAY_BAR, now=now))
+        wall_clock_stale = dict(flags)
+        wall_clock_stale["stale_by_wall_clock"] = True
+        self.assertEqual(vetoes_for_row(row, wall_clock_stale), vetoes_for_row(row, flags))
 
-    def test_shadow_score_moves_with_the_calendar_flag_only(self) -> None:
-        from scanner.diagnostics import market_calendar_data_quality_flags
-
-        row = self._monday_pre_open_row()
-        flags = data_quality_flags(row)
-        shadow = market_calendar_data_quality_flags(row, flags)
-        self.assertEqual(shadow["data_quality_score"], min(100.0, flags["data_quality_score"] + 30.0))
+    def test_persisted_columns_follow_the_calendar_gate(self) -> None:
         fresh = _base_row()
-        fresh_flags = data_quality_flags(fresh)
-        self.assertEqual(market_calendar_data_quality_flags(fresh, fresh_flags)["data_quality_score"], fresh_flags["data_quality_score"])
-
-    def test_live_columns_unchanged_and_shadow_columns_persisted(self) -> None:
-        row = self._monday_pre_open_row()
-        frame = apply_scoring_diagnostics(pd.DataFrame([row]))
-        record = frame.iloc[0]
-        self.assertIn("STALE_DATA", record["vetoes"])          # live list still wall-clock
-        self.assertNotIn("STALE_DATA", record["mcal_vetoes"])   # shadow list is calendar-aware
-        self.assertNotIn("STALE_DATA", record["mcal_severe_vetoes"])
-        self.assertFalse(bool(record["trade_permitted"]))       # live gate unchanged (veto list not empty)
-        self.assertGreater(float(record["mcal_data_quality_score"]), float(record["data_quality_score"]))
+        fresh["data_timestamp"] = datetime.now(timezone.utc).isoformat()
+        stale = _base_row()
+        stale["data_timestamp"] = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+        frame = apply_scoring_diagnostics(pd.DataFrame([fresh, stale]))
+        fresh_row, stale_row = frame.iloc[0], frame.iloc[1]
+        self.assertNotIn("STALE_DATA", fresh_row["vetoes"])
+        self.assertIn("STALE_DATA", stale_row["vetoes"])
+        # The mcal_* observation columns now mirror the live list; a divergence
+        # here means the live gate drifted away from the market calendar again.
+        self.assertEqual(list(stale_row["vetoes"]), list(stale_row["mcal_vetoes"]))
+        self.assertEqual(list(fresh_row["vetoes"]), list(fresh_row["mcal_vetoes"]))
+        self.assertEqual(float(stale_row["mcal_data_quality_score"]), float(stale_row["data_quality_score"]))
+        self.assertIn("stale_by_wall_clock", frame.columns)
