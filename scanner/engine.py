@@ -15,6 +15,7 @@ from .cache import CacheStats, read_symbol_cache, write_symbol_cache
 from .config import DEFAULT_NEWS_LIMIT, DOWNLOAD_PERIOD, MACRO_SYMBOLS, MIN_AVG_DOLLAR_VOL, MIN_MARKET_CAP, MIN_PRICE, TOP_N
 from .data_fetch import batch_download, fetch_info, fetch_recent_news_items, fetch_recent_news_score
 from .candidate_decision import apply_candidate_decision, apply_candidate_v2, candidate_config, candidate_summary, candidate_v2_summary
+from .candidate_v3 import apply_candidate_v3, candidate_v3_summary
 from .decision_funnel import apply_decision_funnel, funnel_summary
 from .pre_expansion import apply_pre_expansion
 from .shadow_decision import apply_shadow_decision, shadow_summary
@@ -516,6 +517,10 @@ def scan_symbols(
     # Candidate v2: observation only in every mode. Writes candidate_v2_*
     # columns from the replay evidence and never touches final_decision.
     df_rank = apply_candidate_v2(df_rank)
+    # Candidate v3: observation only in every mode. The actionability stage --
+    # two replay-backed ENTER paths, a real WAIT_PULLBACK, numeric WHERE levels
+    # and a capital ranking. Writes candidate_v3_* and nothing else.
+    df_rank = apply_candidate_v3(df_rank)
     df_rank = df_rank.sort_values(by=["final_score", "technical_score", "macro_score"], ascending=[False, False, False]).reset_index(drop=True)
     for row in df_rank.to_dict(orient="records"):
         symbol = safe_str(row.get("symbol"), "").upper()
@@ -592,6 +597,17 @@ def scan_symbols(
         by_decision = " ".join(f"{name}={count}" for name, count in (candidate_v2.get("by_decision") or {}).items())
         print(
             f"[scanner] candidate_v2 rows={candidate_v2['rows']} {by_decision} | band_ok={candidate_v2['band_ok']}",
+            flush=True,
+        )
+
+    candidate_v3 = candidate_v3_summary(df_rank)
+    df_rank.attrs["candidate_v3_summary"] = candidate_v3
+    if candidate_v3.get("rows"):
+        by_decision = " ".join(f"{name}={count}" for name, count in (candidate_v3.get("by_decision") or {}).items())
+        print(
+            f"[scanner] candidate_v3 rows={candidate_v3['rows']} {by_decision}"
+            f" | actionable={candidate_v3['actionable']} where_complete={candidate_v3['where_complete']}"
+            f" | enter_breakout={candidate_v3['enter_breakout']} enter_core={candidate_v3['enter_core']}",
             flush=True,
         )
 
