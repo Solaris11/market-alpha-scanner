@@ -7,15 +7,15 @@ Window: 2026-09-14 13:41 UTC → 2026-09-15 ~13:40 UTC. Continues
 `SCANNER_DECISION_MODE=current` throughout; nothing in this window changed a
 live decision.
 
-## 0. Running decision block (updated as the window progresses)
+## 0. Running decision block (updated 09:30 UTC 09-15; final wording after the 12:20 UTC pre-open test)
 
-| question | answer as of the last update |
+| question | answer |
 |---|---|
-| should `current` stay the live default? | **Yes.** No shadow ENTER has a matured forward return yet; the candidate as deployed produces 0 ENTER on fresh rows for reasons that are upstream of it (§3). |
-| how ready is the candidate? | **Not ready as a switch.** It is a cleaner decision stage on the same starved inputs; a v2 that fixes the inputs is specified in §6 and measured by replay in §5. |
-| is the stale gate a bug? | **Yes, proven per run** (§2): the 36-hour wall clock flags 99% of the universe on closed-market scans; the market-calendar test flags 0% on the same rows and both are now persisted side by side. |
-| what evidence is missing for a live rollout? | ≥10 trading days of fresh-window shadow ENTERs joined to matured 5D/10D returns for the *v2* rules (not the deployed candidate), plus the pre-expansion cohort, which has no matured rows yet (§5 J). |
-| next safe step | Ship candidate v2 rules as shadow columns (target-geometry rr, class-not-verdict setup, calendar freshness, SELL≠EXIT), keep `current`, re-run `replay_cohorts` and `run_history` daily. |
+| should `current` stay the live default? | **Yes.** `SCANNER_DECISION_MODE=current` throughout; nothing in this window changed a live *decision rule*. Two live *data-integrity* fixes shipped (the midnight NaN bar, the full-scan lock wait) — they correct inputs, not verdicts. |
+| how ready is the candidate? | **v1 (deployed candidate): not a switch candidate** — 0 ENTER on 40+ fresh runs; it inherits the SELL action, the severe-veto list and the −25 quality verdict. **v2 (shadow, `candidate_v2_*`): promising but unproven** — 1–4 ENTER and 15–26 WAIT_PULLBACK per fresh run, every one with zone/stop/target, and its rules are the ones the replay favours (§5: band, balanced-target rr, class-not-verdict). It has ~20 hours of fresh rows and **no matured forward returns of its own**. |
+| is the stale gate a bug? | **Yes, proven three ways.** (a) Wall-clock `STALE_DATA` 99.4% of rows on weekend/holiday/Monday-pre-open days, 3.4% on weekdays (§3 of the 09-14 report); (b) per run: 354/356 wall-clock vs **0/356** market-calendar on Monday pre-open with Friday bars (§2); (c) the 00:47/01:17 runs after the NaN fix: 246/197 wall-clock vs 0 market-calendar on a bar the provider had not re-published yet (§4e). The 12:20 UTC weekday pre-open reading will close the last case. |
+| what evidence is missing for a live rollout? | (1) v2 ENTER/WAIT rows joined to matured 5D/10D/20D `forward_returns` — first 5D maturities land ~09-21, 10D ~09-28; (2) the `pre_expansion ≥ 45` gate has **no** matured cohort at all (§5 J) — v2 records `band_ok` so its cost can be measured; (3) the volume artefact fix at the scoring layer (completed-bar features are persisted, not yet consumed); (4) a market-calendar freshness test in the live veto path (shadow `mcal_*` is persisted and correct). |
+| next safe step | Keep `current`. Promote, in this order and each as its own measured deploy: (1) market-calendar freshness into the live severe list (the `mcal_*` shadow is the implementation; expected effect: Monday/holiday/pre-open universes stop reading as 100% AVOID); (2) completed-bar volume features into `classify_setup`'s breakout branch and the risk/reward target-band rule into the live rr (both shadow-measured, replay-backed); (3) only then judge `SCANNER_DECISION_MODE=candidate` (v2 rules) against ≥10 trading days of its own matured forward returns, on a dry-run outdir first. |
 
 ## 1. PROD HOST — per-run monitoring log (fresh-market window)
 
@@ -354,6 +354,7 @@ Documented in the 09-14 report §8. Nothing further.
 | 22:09 | 200 | 200 | 22:07 full scan success 352 + analysis (forward_returns 5448) | fast-scan on cadence; full-scan recovered manually after the lock skip | all healthy | full-scan lock collision (fixed, see §4d) |
 | 00:17 | 200 | 200 | 00:02/00:16 success 352 | fast-scan on cadence | all healthy, load 2.8 (full scan just ran) | **midnight NaN-bar corruption (fixed 00:23, see §4e)** |
 | 00:33 | — | — | 00:31 success 352, `rows_without_close`=1 on 197 yfinance symbols, trend_zero 47 | — | — | fix verified |
+| 09:31 | 200 | 200 | 09:17 success 352 (steady: live 0/22/26/111/193, v2 4/24, conf≥70 83) | fast-scan on cadence | all healthy, load 0.35 | none |
 | 06:46 | 200 | 200 | 06:31 success 352 (steady since 01:48: live 0/22/25/112/193, v2 4/24, conf≥70 79–82, STALE 0, NaN rows 0) | scanner-health timer ran 06:19 (next 09-16 06:16); fast-scan on cadence | all healthy, load 0.7, frontend rss 377 MB | R2 backup sync started 06:31 (in progress at check) |
 | 04:00 | 200 | 200 | 03:47 success 352 (5 identical overnight runs since 01:48; STALE 0, nan_close 0) | fast-scan on cadence | all healthy, load 0.5 | replay_cohorts re-run: no drift (5D n +0.4%, F/I/K within 0.02 pts) |
 
