@@ -291,13 +291,13 @@ echo "== script: $SRC (thresholds + docker section) =="; grep -n "def thresholds
 def action_prod_scanner_job_watch(repo: Path, args: dict[str, Any]) -> list[CommandResult]:
     """Read-only memory sampler for the one-shot scanner-job container.
 
-    Polls cgroup memory (current/peak/anon/file/inactive_file) every 3s for ~165s so a
-    scan's end-phase high-water mark can be separated into anonymous RSS vs page cache.
+    Polls cgroup memory (current/peak/anon/file/inactive_file/slab) every 3s for ~160s so a
+    scan's end-phase high-water mark can be split into anonymous RSS vs page cache.
+    Values are raw bytes; limit is the container's memory.max.
     """
     script = """
 set +e
-LIMIT=4294967296
-DEADLINE=$(( $(date +%s) + 160 ))
+DEADLINE=$(( $(date +%s) + 158 ))
 CG=""
 while [ $(date +%s) -lt $DEADLINE ]; do
   if [ -z "$CG" ] || [ ! -d "$CG" ]; then
@@ -308,16 +308,9 @@ while [ $(date +%s) -lt $DEADLINE ]; do
     fi
   fi
   if [ -n "$CG" ] && [ -d "$CG" ]; then
-    cur=$(cat "$CG/memory.current" 2>/dev/null)
-    peak=$(cat "$CG/memory.peak" 2>/dev/null)
-    anon=$(awk '$1=="anon"{print $2; exit}' "$CG/memory.stat" 2>/dev/null)
-    file=$(awk '$1=="file"{print $2; exit}' "$CG/memory.stat" 2>/dev/null)
-    inact=$(awk '$1=="inactive_file"{print $2; exit}' "$CG/memory.stat" 2>/dev/null)
-    slab=$(awk '$1=="slab"{print $2; exit}' "$CG/memory.stat" 2>/dev/null)
-    echo "$(date -u +%H:%M:%S) cur=${cur:-0} peak=${peak:-0} anon=${anon:-0} file=${file:-0} inactive_file=${inact:-0} slab=${slab:-0}" \
-      | awk -v L=$LIMIT '{ split($2,a,"="); split($3,b,"="); split($4,c,"="); split($5,d,"="); split($6,e,"=");
-          printf "%s cur=%.0fMiB(%.2f%%) peak=%.0fMiB(%.2f%%) anon=%.0fMiB file=%.0fMiB inactive_file=%.0fMiB\n",
-          $1, a[2]/1048576, 100*a[2]/L, b[2]/1048576, 100*b[2]/L, c[2]/1048576, d[2]/1048576, e[2]/1048576 }'
+    printf '%s cur=%s peak=%s max=%s' "$(date -u +%H:%M:%S)" "$(cat "$CG/memory.current" 2>/dev/null)" "$(cat "$CG/memory.peak" 2>/dev/null)" "$(cat "$CG/memory.max" 2>/dev/null)"
+    awk '$1=="anon"||$1=="file"||$1=="inactive_file"||$1=="active_file"||$1=="slab"{printf " %s=%s", $1, $2}' "$CG/memory.stat" 2>/dev/null
+    echo ""
   else
     echo "$(date -u +%H:%M:%S) no-running-scanner-job"
   fi
@@ -325,7 +318,6 @@ while [ $(date +%s) -lt $DEADLINE ]; do
 done
 echo "== docker stats snapshot at end =="; docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' 2>&1
 echo "== scanner-job containers now =="; docker ps -a --filter name=market-alpha-scanner-job --format '{{.Names}} {{.Status}}' 2>&1
-echo "== scan services =="; systemctl list-timers 'market-alpha-*' --no-pager 2>&1 | head -10
 """
     return [ssh_script(script, timeout=210)]
 
@@ -518,6 +510,28 @@ SELECT COALESCE(p->>'candidate_decision','NULL') AS cand, COALESCE(live,'NULL') 
        COALESCE(p->>'recommendation_quality','NULL') AS quality,
        (p->'candidate_reason_codes')::text AS reasons, count(*) AS rows
 FROM s GROUP BY 1,2,3,4 ORDER BY rows DESC LIMIT 25;
+""",
+    "stale_flags_latest": r"""
+WITH r AS (
+  SELECT id, created_at FROM scan_runs ORDER BY created_at DESC LIMIT 6
+), s AS (
+  SELECT r.created_at, ss.payload AS p
+  FROM scanner_signals ss JOIN r ON r.id = ss.scan_run_id
+)
+SELECT to_char(created_at AT TIME ZONE 'UTC','MM-DD HH24:MI') AS run_at,
+       count(*) AS rows,
+       count(*) FILTER (WHERE p->'vetoes' ? 'STALE_DATA') AS veto_stale,
+       count(*) FILTER (WHERE lower(p->>'stale_data')='true') AS flag_stale,
+       count(*) FILTER (WHERE lower(p->>'stale_by_market_calendar')='true') AS mcal_stale,
+       count(*) FILTER (WHERE lower(p->>'stale_by_wall_clock')='true') AS wallclock_stale,
+       count(*) FILTER (WHERE p->>'stale_by_wall_clock' IS NOT NULL) AS wallclock_rows,
+       count(*) FILTER (WHERE (p->>'missed_sessions')::int = 0) AS missed_0,
+       count(*) FILTER (WHERE (p->>'missed_sessions')::int = 1) AS missed_1,
+       count(*) FILTER (WHERE (p->>'missed_sessions')::int > 1) AS missed_2plus,
+       count(*) FILTER (WHERE p->'vetoes' ? 'LOW_CONFIDENCE_DATA') AS lowconf,
+       count(*) FILTER (WHERE p->'mcal_vetoes' ? 'STALE_DATA') AS mcal_veto_stale,
+       round((percentile_cont(0.5) WITHIN GROUP (ORDER BY (p->>'data_quality_score')::numeric))::numeric,1) AS med_dq
+FROM s GROUP BY 1 ORDER BY 1 DESC;
 """,
     "stale_by_hour": r"""
 WITH s AS (
