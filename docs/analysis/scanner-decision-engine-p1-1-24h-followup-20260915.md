@@ -55,6 +55,9 @@ market-calendar shadow veto list still contains a severe code).
 | de24b41d | 09-14 19:47 | 352 | 0/11/25/122/194 | 299/52/1/0 | 0 | 0 | 149 | 149 | 2/1/45/110/194 | 2/26/70/60 | 7 | 28/28 | 34 | |
 | be770a12 | 09-14 20:01 | 352 | 0/13/27/117/195 | 301/51/0/0 | 0 | 0 | 147 | 147 | 1/0/44/112/195 | 2/22/69/64 | 7 | 24/24 | 36 | last in-session run; relvol live 47.2 vs completed 46.3 |
 | 95c7e981…149795b2 | 09-14 20:16 → 21:47 (7 runs) | 352 | 0/12/27/119/194 | 305/47/0/0 | 0 | 0 | 150 | 150 | 1/0/45/112/194 | 1/24/71–73/60–62 | 6 | 25/25 | 33–34 | post-close: rows static; `last_bar_partial` 352 → 196 (21:01, straddles the close) → 0; relvol live = completed = 51.5 |
+| b81d64fb | 09-14 23:47 | 352 | 0/13/27/118/194 | 304/48/0/0 | 0 | 0 | 149 | 149 | 1/0/46/111/194 | 1/24/72/61 | 6 | 25/25 | 35 | end-of-day canonical row for forward_returns; v2 ENTER = KO |
+| 47a69156 / … | 09-15 00:02, 00:16 | 352 | 0/6/14/87/245 → 0/…/258 | 327/25/0/0 | 0 | 0 | 139 | 139 | 0/0/31/76/245 | 0/19/52/36 | 1 | 19/19 | 22 → 18 | **midnight NaN-bar corruption (§4e)** |
+| (00:31) | 09-15 00:31 | 352 | 0/…/115/203 | — | 0 | 0 | — | — | — | 3/21/…/… | — | — | 39 | first run with the NaN-bar fix |
 
 (E=ENTER, W=WAIT_PULLBACK, Wa=WATCH, A=AVOID, X=EXIT.)
 
@@ -195,6 +198,37 @@ wait the same way instead of skipping. The timer phase itself is untouched
 (re-anchoring it is a systemd mutation outside the relay allowlist; with the
 wait in place it no longer matters).
 
+### 4e. Second incident — the midnight NaN bar (00:15 UTC check-in, fixed and verified)
+
+At 00:02 UTC, the first scan after the UTC date rolled, the live picture
+changed on unchanged prices: EXIT 194 → 245 (00:16: 258), AVOID 118 → 87,
+median technical 43.2 → 33.2, median `trend_score` 55 → 5, `trend_score = 0`
+on **148** symbols (50 the run before), v2 ENTER 1 → 0, conf ≥ 70 35 → 22.
+`run_compare` showed providers, regime, history rows (500) and
+`data_timestamp` (09-14) unchanged; `symbol_run_diff` on IOT showed the
+mechanism: `price` 42.91 → 38.38 (Friday's close), `return_1d` +11.8% →
+−0.16%, `atr_pct` and `avwap_ytd`/`avwap_swing` → null, `pre_expansion_bars`
+500 → 499, `breakout_score` 67.9 → 8, `action` BUY → SELL, live AVOID → EXIT.
+The just-finished 09-14 bar had come back from yfinance with **NaN OHLC and a
+set Volume**; `dropna(how="all")` kept it, so every indicator reading
+`close.iloc[-1]` saw NaN (trend structure → 0, momentum/RSI/MACD/ATR/AVWAP
+garbage) while the engine's `close.dropna()` price fell back a session.
+Alpaca-served symbols were unaffected.
+
+Fix (`3eb0ca73`, scanner image rebuilt 00:23, tag
+`rollback-scanner-20260915-p11-step7`): `drop_rows_without_close` at the
+yfinance provider boundary (both code paths), the dropped count persisted as
+`rows_without_close`, 10/10 provider tests (one pre-existing fixture fixed).
+**Verified on the 00:27 run (PROD HOST `nan_close_check`): 197 yfinance
+symbols had exactly one NaN-close row dropped, `avwap_ytd` null on 0 rows,
+`trend_score = 0` back to 47 (33 yfinance + 14 alpaca, the evening level),
+EXIT 258 → 203, conf ≥ 70 18 → 39, v2 ENTER 0 → 3.** This corruption has
+presumably been running every night from 00:00 UTC until yfinance
+re-publishes the bar — the end-of-day canonical rows `forward_returns` links
+to are the *last* scan of the UTC day (23:47), which predates it, so the
+replay cohorts in §5 are not contaminated, but every overnight /terminal
+view was.
+
 ## 5. PROD HOST — replay on matured forward returns (`replay_cohorts`)
 
 Cohort = end-of-day canonical signal per symbol-day (the row `forward_returns`
@@ -302,6 +336,8 @@ Documented in the 09-14 report §8. Nothing further.
 | 18:01 | 200 | 200 (backup event 12:55 r2 ok) | 17:47 success 352 | fast-scan on cadence (17 fresh runs since 13:41); full-scan 21:30 | RestartCount 0 on frontend/hot-api (recreated 16:36), postgres, caddy; load 1.7/1.1/0.7; frontend rss 409 MB, event-loop p99 11.5 ms | no anomalies |
 | 19:46 | 200 | 200 | 19:31 success 352 | fast-scan on cadence (24 fresh runs since 13:41) | all healthy, load 0.7 | none |
 | 22:09 | 200 | 200 | 22:07 full scan success 352 + analysis (forward_returns 5448) | fast-scan on cadence; full-scan recovered manually after the lock skip | all healthy | full-scan lock collision (fixed, see §4d) |
+| 00:17 | 200 | 200 | 00:02/00:16 success 352 | fast-scan on cadence | all healthy, load 2.8 (full scan just ran) | **midnight NaN-bar corruption (fixed 00:23, see §4e)** |
+| 00:33 | — | — | 00:31 success 352, `rows_without_close`=1 on 197 yfinance symbols, trend_zero 47 | — | — | fix verified |
 
 ## 9. Changes shipped in this window
 
@@ -311,6 +347,7 @@ Documented in the 09-14 report §8. Nothing further.
 | `d94920e0` | `mcal_vetoes` / `mcal_severe_vetoes` / `mcal_data_quality_score` (observation); relay bundles `run_history`, `run_snapshot`, `candidate_actionable_sample`, `volume_by_hour`, `breakout_candidates_why` | scanner image rebuilt 13:47, tag `rollback-scanner-20260914-p11-step2` |
 | (relay only) | `replay_cohorts` bundle | self-reloaded worker |
 | `4774a1a1` | `candidate_v2_*` shadow columns (market-calendar freshness, class-not-verdict, balanced-target rr, no quality read); relay `candidate_v2_sample`, `candidate_v2_reasons`, v2 counts in `run_history` | scanner image rebuilt 13:54, tag `rollback-scanner-20260914-p11-step3`; 13:56 scan on it |
+| `3eb0ca73` | market data: drop yfinance bars with NaN Close; `rows_without_close` persisted | scanner image rebuilt 00:23 (09-15), tag `rollback-scanner-20260915-p11-step7`; verified on the 00:27 run |
 | `8e5a287c` | scanner: FULL runs wait ≤10 min for the run lock; relay `prod_full_scan` (confirm-gated) + `analysis_freshness` | scanner image rebuilt 21:54, tag `rollback-scanner-20260914-p11-step6`; verified live on the 21:57 full scan |
 | `98abf7d3` | scanner: `last_bar_partial`, `relative_volume_score_completed`, `breakout_score_completed` (observation) | scanner image rebuilt 18:04, tag `rollback-scanner-20260914-p11-step5`; 18:11 scan on it |
 | `896fb390` | /terminal: shockPattern + timingValidation projection (lever 1, slice 2) | frontend rebuilt + recreated 16:35, tag `rollback-frontend-20260914-shockpattern`; PROD WEB 6,530 → 5,387 KB |

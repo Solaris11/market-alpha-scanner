@@ -562,7 +562,7 @@ SELECT left(run_id::text,8) AS run, to_char(created_at AT TIME ZONE 'UTC','MM-DD
        round(percentile_cont(0.5) WITHIN GROUP (ORDER BY relative_volume_score::numeric) FILTER (WHERE relative_volume_score ~ '^[0-9.]+$')::numeric,1) AS relvol_live,
        round(percentile_cont(0.5) WITHIN GROUP (ORDER BY relative_volume_score_completed::numeric) FILTER (WHERE relative_volume_score_completed ~ '^[0-9.]+$')::numeric,1) AS relvol_done,
        count(*) FILTER (WHERE breakout_score_completed ~ '^[0-9.]+$' AND breakout_score_completed::numeric>=72) AS brk_done72,
-       count(*) FILTER (WHERE rows_without_close ~ '^[0-9]+$' AND rows_without_close::int > 0) AS nan_close_rows,
+       count(*) FILTER (WHERE rows_without_close ~ '^[0-9.]+$' AND rows_without_close::numeric > 0) AS nan_close_rows,
        count(*) FILTER (WHERE trend_score ~ '^[0-9.]+$' AND trend_score::numeric = 0) AS trend_zero
 FROM s GROUP BY run_id, created_at ORDER BY created_at DESC;
 """,
@@ -779,6 +779,13 @@ FROM keys, a, b
 WHERE COALESCE(a.p->>k,'<null>') IS DISTINCT FROM COALESCE(b.p->>k,'<null>')
   AND k NOT LIKE 'candidate_%' AND k NOT LIKE 'funnel_%' AND k NOT LIKE 'shadow_%' AND k NOT LIKE '%reason%' AND k NOT LIKE '%narrative%' AND k NOT LIKE '%summary%' AND k NOT LIKE '%_note'
 ORDER BY k LIMIT 120;
+""",
+    "nan_close_check": r"""
+WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1)
+SELECT COALESCE(payload->>'rows_without_close','<absent>') AS rows_without_close, payload->>'data_provider' AS provider, count(*) AS n,
+       count(*) FILTER (WHERE (payload->>'trend_score')::numeric = 0) AS trend_zero,
+       count(*) FILTER (WHERE payload->>'avwap_ytd' IS NULL) AS avwap_null
+FROM scanner_signals ss JOIN lr ON lr.id=ss.scan_run_id GROUP BY 1,2 ORDER BY 3 DESC;
 """,
     "candidate_enter_sample": r"""
 WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1)
