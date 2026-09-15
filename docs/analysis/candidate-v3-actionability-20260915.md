@@ -263,3 +263,17 @@ v3 rows rather than reconstructed ones.
   constructed as a 1.5R level. It still discriminates (the ≥1.5 gate cuts the
   core cohort by 30%), but it should not be read as a per-symbol reward estimate;
   the target ladder is the honest reward statement.
+
+## 10. Run stability (PROD HOST, first hour)
+
+| run (UTC) | rows | ENTER | breakout / core | WAIT_PULLBACK | actionable | WHERE-complete | runtime |
+|---|---:|---:|---|---:|---:|---:|---:|
+| 15:32 (pre-fix image) | 352 | 0 | 0 / 0 | 0 | 0 | 0 | 344.0s |
+| 15:47 | 352 | 4 | 1 / 3 | 25 | 29 | 29/29 | 343.7s |
+| 16:02 | 352 | 6 | 0 / 6 | 24 | 30 | 30/30 | ~344s |
+
+ENTER holds between 1.1% and 1.7% of the universe, inside the 0.5-3.0% target,
+and the actionable total stays near 30. On the 16:02 run the target ladder is
+monotonic on every row (the two crossed ladders from 15:47 are gone), 24 of the
+30 actionable rows are AVOID in the live engine and 5 are WATCH. Energy is 13 of
+30 — the concentration note in §9 stands, and all 13 are waits.
