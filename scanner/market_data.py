@@ -338,7 +338,7 @@ class YFinanceProvider:
                 normalized = normalize_symbol_for_yfinance(symbol)
                 original = symbol.upper()
                 try:
-                    symbol_df = pd.DataFrame(raw_df[normalized]).dropna(how="all").copy()
+                    symbol_df = drop_rows_without_close(pd.DataFrame(raw_df[normalized]).dropna(how="all").copy())
                 except Exception:
                     errors[original] = "yfinance_missing_data"
                     continue
@@ -349,7 +349,7 @@ class YFinanceProvider:
                 metadata[original] = yfinance_metadata(latency_ms=latency_ms)
                 symbol_df.attrs["provider_metadata"] = metadata[original].to_dict()
         elif len(symbols) == 1:
-            single_df = raw_df.dropna(how="all").copy()
+            single_df = drop_rows_without_close(raw_df.dropna(how="all").copy())
             original = symbols[0].upper()
             if single_df.empty:
                 errors[original] = "yfinance_missing_data"
@@ -522,6 +522,33 @@ def status_to_reason(status_code: int) -> str:
     if 500 <= status_code <= 599:
         return "alpaca_server_error"
     return f"alpaca_http_{status_code}"
+
+
+def drop_rows_without_close(frame: pd.DataFrame) -> pd.DataFrame:
+    """Remove bars whose Close is NaN.
+
+    PROD HOST, 2026-09-15 00:02 UTC: right after the UTC date rolled, yfinance
+    returned the just-finished session's bar (dated 09-14) with a NaN Close for
+    ~150 symbols. `dropna(how="all")` kept the row because Volume was set, so
+    every indicator that reads `close.iloc[-1]` (trend structure, momentum,
+    breakout, AVWAP, ATR) saw NaN: trend scores collapsed 100 -> 0/5 on 148
+    symbols, EXIT rose 194 -> 245, avwap/atr persisted as null, while the
+    engine's own `close.dropna()` price fell back to the previous session. A
+    bar with no close is not a bar; dropping it keeps every series consistent
+    with the price the engine reports. Records how many rows were dropped in
+    `frame.attrs["rows_without_close"]` so the effect stays measurable.
+    """
+    if frame is None or frame.empty or "Close" not in frame.columns:
+        return frame
+    mask = frame["Close"].notna()
+    dropped = int((~mask).sum())
+    if dropped == 0:
+        frame.attrs["rows_without_close"] = 0
+        return frame
+    cleaned = frame.loc[mask].copy()
+    cleaned.attrs.update(frame.attrs)
+    cleaned.attrs["rows_without_close"] = dropped
+    return cleaned
 
 
 def yfinance_metadata(*, latency_ms: float) -> ProviderMetadata:

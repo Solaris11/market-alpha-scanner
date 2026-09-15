@@ -192,6 +192,7 @@ class MarketDataProviderTests(unittest.TestCase):
             "breakout_score": 65.0,
             "relative_volume_score": 65.0,
             "macro_score": 65.0,
+            "macro_alignment_score": 65.0,
             "risk_reward": 2.0,
             "atr_pct": 3.0,
             "annualized_volatility": 0.25,
@@ -236,3 +237,37 @@ class MarketDataProviderTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NaNCloseBarTests(unittest.TestCase):
+    """PROD HOST 2026-09-15 00:02 UTC: yfinance returned the finished session's
+    bar with a NaN Close; dropna(how="all") kept it and every last-bar indicator
+    read NaN. Rows without a close are dropped at the provider boundary."""
+
+    def test_yfinance_drops_rows_with_nan_close_and_records_the_count(self) -> None:
+        def fake_download(tickers: str, **kwargs: object) -> pd.DataFrame:
+            _ = kwargs
+            symbols = tickers.split()
+            index = pd.DatetimeIndex([pd.Timestamp("2026-09-11"), pd.Timestamp("2026-09-14")], name="Date")
+            columns = pd.MultiIndex.from_tuples((s, c) for s in symbols for c in ["Open", "High", "Low", "Close", "Adj Close", "Volume"])
+            rows = [[38.0, 39.0, 37.0, 38.38, 38.38, 1_000_000.0] * len(symbols), [float("nan")] * 5 * len(symbols)]
+            rows[1] = []
+            for _ in symbols:
+                rows[1].extend([float("nan"), float("nan"), float("nan"), float("nan"), float("nan"), 0.0])  # volume set, close NaN
+            return pd.DataFrame(rows, index=index, columns=columns)
+
+        with patch("scanner.market_data.yf.download", side_effect=fake_download):
+            response = YFinanceProvider().get_daily_bars_many(["IOT"], period="2y")
+        frame = response.frames["IOT"]
+        self.assertEqual(len(frame), 1)
+        self.assertEqual(str(frame.index[-1].date()), "2026-09-11")
+        self.assertEqual(frame.attrs["rows_without_close"], 1)
+        self.assertEqual(frame.attrs["provider_metadata"]["data_provider"], "yfinance")
+
+    def test_frames_without_nan_close_are_untouched(self) -> None:
+        from scanner.market_data import drop_rows_without_close
+
+        frame = pd.DataFrame({"Close": [1.0, 2.0], "Volume": [1.0, 1.0]}, index=pd.DatetimeIndex(["2026-09-11", "2026-09-14"]))
+        same = drop_rows_without_close(frame)
+        self.assertIs(same, frame)
+        self.assertEqual(frame.attrs["rows_without_close"], 0)

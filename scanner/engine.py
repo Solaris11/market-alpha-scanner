@@ -669,7 +669,16 @@ def attach_price_data_quality(df_rank: pd.DataFrame, price_map: dict[str, pd.Dat
     working["data_timestamp"] = [_price_data_timestamp(price_map, symbol) for symbol in symbols]
     working["data_age_minutes"] = [_price_data_age_minutes(price_map, symbol) for symbol in symbols]
     working["provider_error"] = [safe_str(item.get("provider_error"), "") for item in metadata]
+    working["rows_without_close"] = [_rows_without_close(price_map, symbol) for symbol in symbols]
     return working
+
+
+def _rows_without_close(price_map: dict[str, pd.DataFrame], symbol: str) -> int | None:
+    frame = price_map.get(symbol)
+    if frame is None:
+        return None
+    value = frame.attrs.get("rows_without_close")
+    return int(value) if isinstance(value, (int, float)) else None
 
 
 def _price_history_rows(price_map: dict[str, pd.DataFrame], symbol: str) -> int | None:

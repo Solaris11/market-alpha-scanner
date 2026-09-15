@@ -542,7 +542,7 @@ WITH runs AS (SELECT id, created_at, symbols_scored FROM scan_runs ORDER BY crea
 s AS (
   SELECT sr.id AS run_id, sr.created_at, ss.final_decision AS live, x.*
   FROM scanner_signals ss JOIN runs sr ON sr.id=ss.scan_run_id
-  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(setup_type text, candidate_decision text, candidate_entry_zone text, candidate_stop_loss text, candidate_target_zone text, candidate_confidence_penalty text, confidence_score text, stale_by_market_calendar text, vetoes jsonb, final_score text, risk_reward text, mcal_severe_vetoes jsonb, candidate_v2_decision text, candidate_v2_band_ok text, buy_zone text, stop_loss text, take_profit_zone text, relative_volume_score text, relative_volume_score_completed text, last_bar_partial text, breakout_score_completed text)
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(setup_type text, candidate_decision text, candidate_entry_zone text, candidate_stop_loss text, candidate_target_zone text, candidate_confidence_penalty text, confidence_score text, stale_by_market_calendar text, vetoes jsonb, final_score text, risk_reward text, mcal_severe_vetoes jsonb, candidate_v2_decision text, candidate_v2_band_ok text, buy_zone text, stop_loss text, take_profit_zone text, relative_volume_score text, relative_volume_score_completed text, last_bar_partial text, breakout_score_completed text, rows_without_close text, trend_score text)
 )
 SELECT left(run_id::text,8) AS run, to_char(created_at AT TIME ZONE 'UTC','MM-DD HH24:MI') AS at_utc, count(*) AS rows,
        count(*) FILTER (WHERE live='ENTER') AS l_enter, count(*) FILTER (WHERE live='WAIT_PULLBACK') AS l_wait, count(*) FILTER (WHERE live='WATCH') AS l_watch,
@@ -561,7 +561,9 @@ SELECT left(run_id::text,8) AS run, to_char(created_at AT TIME ZONE 'UTC','MM-DD
        count(*) FILTER (WHERE lower(last_bar_partial)='true') AS partial_bars,
        round(percentile_cont(0.5) WITHIN GROUP (ORDER BY relative_volume_score::numeric) FILTER (WHERE relative_volume_score ~ '^[0-9.]+$')::numeric,1) AS relvol_live,
        round(percentile_cont(0.5) WITHIN GROUP (ORDER BY relative_volume_score_completed::numeric) FILTER (WHERE relative_volume_score_completed ~ '^[0-9.]+$')::numeric,1) AS relvol_done,
-       count(*) FILTER (WHERE breakout_score_completed ~ '^[0-9.]+$' AND breakout_score_completed::numeric>=72) AS brk_done72
+       count(*) FILTER (WHERE breakout_score_completed ~ '^[0-9.]+$' AND breakout_score_completed::numeric>=72) AS brk_done72,
+       count(*) FILTER (WHERE rows_without_close ~ '^[0-9]+$' AND rows_without_close::int > 0) AS nan_close_rows,
+       count(*) FILTER (WHERE trend_score ~ '^[0-9.]+$' AND trend_score::numeric = 0) AS trend_zero
 FROM s GROUP BY run_id, created_at ORDER BY created_at DESC;
 """,
     "run_snapshot": r"""
@@ -719,6 +721,64 @@ UNION ALL
 SELECT 'scan_runs(full>=450 symbols)', date(created_at AT TIME ZONE 'UTC'), count(*), max(created_at)
 FROM scan_runs WHERE created_at > now() - interval '10 days' AND COALESCE(symbols_scored,0) >= 450 GROUP BY 2
 ORDER BY 1, 2;
+""",
+    "run_compare": r"""
+WITH runs AS (SELECT id, created_at, row_number() OVER (ORDER BY created_at DESC) AS rn FROM scan_runs ORDER BY created_at DESC LIMIT 4),
+s AS (
+  SELECT r.rn, ss.symbol, ss.final_decision AS live, x.*
+  FROM scanner_signals ss JOIN runs r ON r.id=ss.scan_run_id
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(composite_action text, recommendation_quality text, entry_status text, setup_type text, final_score text, confidence_score text, risk_penalty text, data_provider text, data_timestamp text, price text, market_regime text, vetoes jsonb, trend_score text, momentum_score text, relative_volume_score text, macro_score text, news_score text, technical_score text, short_score text, mid_score text, long_score text, history_days text, price_history_rows text, data_quality_score text)
+)
+SELECT 'rn'||rn||' action='||COALESCE(composite_action,'?') AS k, count(*)::text AS v FROM s GROUP BY 1
+UNION ALL SELECT 'rn'||rn||' live='||COALESCE(live,'?'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'rn'||r.rn||' run_at', to_char(r.created_at AT TIME ZONE 'UTC','MM-DD HH24:MI') FROM runs r
+UNION ALL SELECT 'rn'||rn||' med_hist_days_rows', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY history_days::numeric) FILTER (WHERE history_days ~ '^[0-9.]+$')::numeric,0)::text||'/'||round(percentile_cont(0.5) WITHIN GROUP (ORDER BY price_history_rows::numeric) FILTER (WHERE price_history_rows ~ '^[0-9.]+$')::numeric,0)::text FROM s GROUP BY rn
+UNION ALL SELECT 'rn'||rn||' rows_lt_220', count(*) FILTER (WHERE price_history_rows ~ '^[0-9.]+$' AND price_history_rows::numeric < 220)::text FROM s GROUP BY rn
+UNION ALL SELECT 'rn'||rn||' trend_zero', count(*) FILTER (WHERE trend_score ~ '^[0-9.]+$' AND trend_score::numeric = 0)::text FROM s GROUP BY rn
+UNION ALL SELECT 'rn'||rn||' med_dq', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY data_quality_score::numeric) FILTER (WHERE data_quality_score ~ '^[0-9.]+$')::numeric,1)::text FROM s GROUP BY rn
+UNION ALL SELECT 'rn'||rn||' med_short_mid_long', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY short_score::numeric) FILTER (WHERE short_score ~ '^[0-9.]+$')::numeric,1)::text||'/'||round(percentile_cont(0.5) WITHIN GROUP (ORDER BY mid_score::numeric) FILTER (WHERE mid_score ~ '^[0-9.]+$')::numeric,1)::text||'/'||round(percentile_cont(0.5) WITHIN GROUP (ORDER BY long_score::numeric) FILTER (WHERE long_score ~ '^[0-9.]+$')::numeric,1)::text FROM s GROUP BY rn
+UNION ALL SELECT 'rn'||rn||' regime='||COALESCE(market_regime,'?'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'rn'||rn||' provider='||COALESCE(data_provider,'?'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'rn'||rn||' data_ts='||COALESCE(left(data_timestamp,10),'?'), count(*)::text FROM s GROUP BY 1
+UNION ALL SELECT 'rn'||rn||' med_final_score', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY final_score::numeric) FILTER (WHERE final_score ~ '^[0-9.]+$')::numeric,1)::text FROM s GROUP BY rn
+UNION ALL SELECT 'rn'||rn||' med_confidence', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY confidence_score::numeric) FILTER (WHERE confidence_score ~ '^[0-9.]+$')::numeric,1)::text FROM s GROUP BY rn
+UNION ALL SELECT 'rn'||rn||' med_risk_penalty', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY risk_penalty::numeric) FILTER (WHERE risk_penalty ~ '^[0-9.]+$')::numeric,1)::text FROM s GROUP BY rn
+UNION ALL SELECT 'rn'||rn||' med_macro', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY macro_score::numeric) FILTER (WHERE macro_score ~ '^[0-9.]+$')::numeric,1)::text FROM s GROUP BY rn
+UNION ALL SELECT 'rn'||rn||' med_news', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY news_score::numeric) FILTER (WHERE news_score ~ '^[0-9.]+$')::numeric,1)::text FROM s GROUP BY rn
+UNION ALL SELECT 'rn'||rn||' med_technical', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY technical_score::numeric) FILTER (WHERE technical_score ~ '^[0-9.]+$')::numeric,1)::text FROM s GROUP BY rn
+UNION ALL SELECT 'rn'||rn||' med_trend', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY trend_score::numeric) FILTER (WHERE trend_score ~ '^[0-9.]+$')::numeric,1)::text FROM s GROUP BY rn
+UNION ALL SELECT 'rn'||rn||' med_relvol', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY relative_volume_score::numeric) FILTER (WHERE relative_volume_score ~ '^[0-9.]+$')::numeric,1)::text FROM s GROUP BY rn
+UNION ALL SELECT 'rn'||rn||' veto='||v, count(*)::text FROM s, jsonb_array_elements_text(CASE WHEN jsonb_typeof(vetoes)='array' THEN vetoes ELSE '[]'::jsonb END) v GROUP BY 1
+UNION ALL SELECT 'rn'||rn||' entry='||COALESCE(entry_status,'?'), count(*)::text FROM s GROUP BY 1
+ORDER BY 1;
+""",
+    "trend_flip_symbols": r"""
+WITH runs AS (SELECT id, created_at, row_number() OVER (ORDER BY created_at DESC) AS rn FROM scan_runs ORDER BY created_at DESC LIMIT 3),
+a AS (SELECT ss.symbol, ss.payload AS p FROM scanner_signals ss JOIN runs r ON r.id=ss.scan_run_id WHERE r.rn=1),
+b AS (SELECT ss.symbol, ss.payload AS p FROM scanner_signals ss JOIN runs r ON r.id=ss.scan_run_id WHERE r.rn=3)
+SELECT a.symbol, b.p->>'trend_score' AS trend_prev, a.p->>'trend_score' AS trend_now,
+       b.p->>'price' AS price_prev, a.p->>'price' AS price_now,
+       b.p->>'data_timestamp' AS ts_prev, a.p->>'data_timestamp' AS ts_now,
+       b.p->>'price_history_rows' AS rows_prev, a.p->>'price_history_rows' AS rows_now,
+       b.p->>'supertrend_line' AS st_prev, a.p->>'supertrend_line' AS st_now,
+       b.p->>'avwap_ytd' AS avwap_prev, a.p->>'avwap_ytd' AS avwap_now,
+       b.p->>'momentum_score' AS mom_prev, a.p->>'momentum_score' AS mom_now,
+       b.p->>'current_rsi' AS rsi_prev, a.p->>'current_rsi' AS rsi_now,
+       a.p->>'data_provider' AS provider
+FROM a JOIN b USING (symbol)
+WHERE (a.p->>'trend_score')::numeric < (b.p->>'trend_score')::numeric - 20
+ORDER BY (b.p->>'trend_score')::numeric - (a.p->>'trend_score')::numeric DESC LIMIT 12;
+""",
+    "symbol_run_diff": r"""
+WITH runs AS (SELECT id, created_at, row_number() OVER (ORDER BY created_at DESC) AS rn FROM scan_runs ORDER BY created_at DESC LIMIT 3),
+a AS (SELECT ss.payload AS p FROM scanner_signals ss JOIN runs r ON r.id=ss.scan_run_id WHERE r.rn=1 AND ss.symbol='IOT'),
+b AS (SELECT ss.payload AS p FROM scanner_signals ss JOIN runs r ON r.id=ss.scan_run_id WHERE r.rn=3 AND ss.symbol='IOT'),
+keys AS (SELECT DISTINCT k FROM (SELECT jsonb_object_keys(p) AS k FROM a UNION SELECT jsonb_object_keys(p) FROM b) x)
+SELECT k, left(COALESCE(b.p->>k,'<null>'),60) AS prev, left(COALESCE(a.p->>k,'<null>'),60) AS now
+FROM keys, a, b
+WHERE COALESCE(a.p->>k,'<null>') IS DISTINCT FROM COALESCE(b.p->>k,'<null>')
+  AND k NOT LIKE 'candidate_%' AND k NOT LIKE 'funnel_%' AND k NOT LIKE 'shadow_%' AND k NOT LIKE '%reason%' AND k NOT LIKE '%narrative%' AND k NOT LIKE '%summary%' AND k NOT LIKE '%_note'
+ORDER BY k LIMIT 120;
 """,
     "candidate_enter_sample": r"""
 WITH lr AS (SELECT id FROM scan_runs ORDER BY created_at DESC LIMIT 1)
