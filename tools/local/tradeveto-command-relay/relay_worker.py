@@ -234,6 +234,102 @@ def action_prod_full_scan(repo: Path, args: dict[str, Any]) -> list[CommandResul
     return [ssh_script("sudo systemctl start --no-block market-alpha-full-scan.service; sleep 5; systemctl show market-alpha-full-scan.service -p Result -p ExecMainStatus -p ActiveState --no-pager", timeout=120)]
 
 
+def action_prod_resource_snapshot(repo: Path, args: dict[str, Any]) -> list[CommandResult]:
+    """Read-only host + docker resource picture for alert triage: memory/swap,
+    live container stats, every scanner-job container (running or exited)
+    with exit code / OOMKilled / memory limit, the watchdog's recent
+    findings and the scan journal around a given UTC time. No env, no secrets."""
+    around = str(args.get("around") or "")
+    if around and not re.match(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$", around):
+        raise RelayError("around must look like 'YYYY-MM-DD HH:MM' (UTC)")
+    window = ""
+    if around:
+        window = f"--since {shlex.quote(around + ':00')} --until {shlex.quote(around[:-2] + '59:59')}"
+        # widen to the containing hour: HH:00 .. HH:59
+        window = f"--since {shlex.quote(around[:13] + ':00:00')} --until {shlex.quote(around[:13] + ':59:59')}"
+    script = f"""
+set +e
+echo "== host memory =="; free -m
+echo "== host swap/pressure =="; cat /proc/pressure/memory 2>/dev/null; grep -E 'SwapTotal|SwapFree|MemAvailable' /proc/meminfo
+echo "== docker stats (no-stream) =="; docker stats --no-stream --format 'table {{{{.Name}}}}\t{{{{.MemUsage}}}}\t{{{{.MemPerc}}}}\t{{{{.CPUPerc}}}}' 2>&1
+echo "== scanner-job containers (all states) =="; docker ps -a --filter name=market-alpha-scanner-job --format '{{{{.Names}}}}\t{{{{.Status}}}}\t{{{{.CreatedAt}}}}' 2>&1 | head -20
+echo "== scanner-job inspect =="; for c in $(docker ps -a --filter name=market-alpha-scanner-job --format '{{{{.Names}}}}' | head -10); do docker inspect -f '{{{{.Name}}}} status={{{{.State.Status}}}} exit={{{{.State.ExitCode}}}} oom={{{{.State.OOMKilled}}}} started={{{{.State.StartedAt}}}} finished={{{{.State.FinishedAt}}}} mem_limit={{{{.HostConfig.Memory}}}} memswap={{{{.HostConfig.MemorySwap}}}} restarts={{{{.RestartCount}}}}' "$c" 2>&1; done
+echo "== compose memory limits (scanner-job service) =="; cd /opt/apps/market-alpha-scanner/app && docker compose --env-file .env --profile scanner-job config 2>/dev/null | grep -nE 'scanner-job:|mem_limit|memory:|cpus:|deploy:|resources:' | head -12
+echo "== cgroup peak for running scanner-job =="; for c in $(docker ps --filter name=market-alpha-scanner-job --format '{{{{.ID}}}}'); do id=$(docker inspect -f '{{{{.Id}}}}' "$c"); for f in /sys/fs/cgroup/system.slice/docker-$id.scope/memory.peak /sys/fs/cgroup/system.slice/docker-$id.scope/memory.current /sys/fs/cgroup/system.slice/docker-$id.scope/memory.max; do [ -r "$f" ] && echo "$f=$(cat $f)"; done; done
+echo "== watchdog findings (last 40 lines mentioning critical/warn/ok) =="; sudo journalctl -u tradeveto-resource-watchdog.service -n 400 --no-pager 2>&1 | grep -E 'status=|finding|CRITICAL|WARN' | tail -40
+echo "== scan journal window {around or '(latest 120 lines)'} =="; sudo journalctl -u market-alpha-fast-scan.service -u market-alpha-full-scan.service {window} -n 120 --no-pager 2>&1 | grep -vE 'Failed download|quoteSummary' | tail -60
+echo "== kernel oom / memory messages (current boot) =="; sudo journalctl -k -b 0 --no-pager 2>&1 | grep -iE 'oom|out of memory|killed process' | tail -10
+"""
+    return [ssh_script(script, timeout=120)]
+
+
+def action_prod_docker_inspect_container(repo: Path, args: dict[str, Any]) -> list[CommandResult]:
+    """Read-only inspect of one container by exact name (no env/secrets)."""
+    name = str(args.get("container") or "")
+    if not LABEL_RE.match(name):
+        raise RelayError("container must be a plain container name")
+    script = f"""
+set +e
+docker inspect -f 'name={{{{.Name}}}} image={{{{.Config.Image}}}} status={{{{.State.Status}}}} exit={{{{.State.ExitCode}}}} oom={{{{.State.OOMKilled}}}} error={{{{.State.Error}}}} started={{{{.State.StartedAt}}}} finished={{{{.State.FinishedAt}}}} mem_limit={{{{.HostConfig.Memory}}}} memswap={{{{.HostConfig.MemorySwap}}}} restarts={{{{.RestartCount}}}}' {shlex.quote(name)} 2>&1
+echo "== logs tail (last 40, provider noise filtered) =="; docker logs --tail 200 {shlex.quote(name)} 2>&1 | grep -vE 'Failed download|quoteSummary' | tail -40
+"""
+    return [ssh_script(script, timeout=60)]
+
+
+def action_prod_watchdog_source(repo: Path, args: dict[str, Any]) -> list[CommandResult]:
+    """Read the (untracked) watchdog script and its unit from the box, read-only."""
+    script = """
+set +e
+echo "== unit =="; systemctl cat tradeveto-resource-watchdog.service --no-pager 2>&1 | grep -vE 'Environment=.*(KEY|TOKEN|SECRET|PASS)' | head -40
+echo "== timer =="; systemctl cat tradeveto-resource-watchdog.timer --no-pager 2>&1 | head -20
+SRC=/opt/ops/tradeveto-resource-watchdog.py; [ -r "$SRC" ] || SRC=/opt/apps/market-alpha-scanner/app/tools/ops/tradeveto-resource-watchdog.py
+echo "== script: $SRC (thresholds + docker section) =="; grep -n "def thresholds_from_env" -A 22 "$SRC" 2>&1 | head -30; grep -n "def docker_metrics" -A 70 "$SRC" 2>&1 | head -80; echo "== differs from repo copy? =="; diff -q "$SRC" /opt/apps/market-alpha-scanner/app/tools/ops/tradeveto-resource-watchdog.py 2>&1
+"""
+    return [ssh_script(script, timeout=60)]
+
+
+def action_prod_scanner_job_watch(repo: Path, args: dict[str, Any]) -> list[CommandResult]:
+    """Read-only memory sampler for the one-shot scanner-job container.
+
+    Polls cgroup memory (current/peak/anon/file/inactive_file) every 3s for ~165s so a
+    scan's end-phase high-water mark can be separated into anonymous RSS vs page cache.
+    """
+    script = """
+set +e
+LIMIT=4294967296
+DEADLINE=$(( $(date +%s) + 160 ))
+CG=""
+while [ $(date +%s) -lt $DEADLINE ]; do
+  if [ -z "$CG" ] || [ ! -d "$CG" ]; then
+    CID=$(docker ps --filter name=market-alpha-scanner-job --format '{{.ID}}' | head -1)
+    if [ -n "$CID" ]; then
+      FULL=$(docker inspect -f '{{.Id}}' "$CID" 2>/dev/null)
+      [ -n "$FULL" ] && CG=/sys/fs/cgroup/system.slice/docker-$FULL.scope
+    fi
+  fi
+  if [ -n "$CG" ] && [ -d "$CG" ]; then
+    cur=$(cat "$CG/memory.current" 2>/dev/null)
+    peak=$(cat "$CG/memory.peak" 2>/dev/null)
+    anon=$(awk '$1=="anon"{print $2; exit}' "$CG/memory.stat" 2>/dev/null)
+    file=$(awk '$1=="file"{print $2; exit}' "$CG/memory.stat" 2>/dev/null)
+    inact=$(awk '$1=="inactive_file"{print $2; exit}' "$CG/memory.stat" 2>/dev/null)
+    slab=$(awk '$1=="slab"{print $2; exit}' "$CG/memory.stat" 2>/dev/null)
+    echo "$(date -u +%H:%M:%S) cur=${cur:-0} peak=${peak:-0} anon=${anon:-0} file=${file:-0} inactive_file=${inact:-0} slab=${slab:-0}" \
+      | awk -v L=$LIMIT '{ split($2,a,"="); split($3,b,"="); split($4,c,"="); split($5,d,"="); split($6,e,"=");
+          printf "%s cur=%.0fMiB(%.2f%%) peak=%.0fMiB(%.2f%%) anon=%.0fMiB file=%.0fMiB inactive_file=%.0fMiB\n",
+          $1, a[2]/1048576, 100*a[2]/L, b[2]/1048576, 100*b[2]/L, c[2]/1048576, d[2]/1048576, e[2]/1048576 }'
+  else
+    echo "$(date -u +%H:%M:%S) no-running-scanner-job"
+  fi
+  sleep 3
+done
+echo "== docker stats snapshot at end =="; docker stats --no-stream --format 'table {{.Name}}\t{{.MemUsage}}\t{{.MemPerc}}' 2>&1
+echo "== scanner-job containers now =="; docker ps -a --filter name=market-alpha-scanner-job --format '{{.Names}} {{.Status}}' 2>&1
+echo "== scan services =="; systemctl list-timers 'market-alpha-*' --no-pager 2>&1 | head -10
+"""
+    return [ssh_script(script, timeout=210)]
+
+
 def action_prod_db_read(repo: Path, args: dict[str, Any]) -> list[CommandResult]:
     query_name = str(args.get("query") or "audit_summary")
     if query_name not in DB_QUERIES:
@@ -817,6 +913,10 @@ ACTIONS: dict[str, Callable[[Path, dict[str, Any]], list[CommandResult]]] = {
     "prod_journal_recent": action_prod_journal_recent,
     "prod_logs_recent": action_prod_logs_recent,
     "prod_pull": action_prod_pull,
+    "prod_resource_snapshot": action_prod_resource_snapshot,
+    "prod_docker_inspect_container": action_prod_docker_inspect_container,
+    "prod_watchdog_source": action_prod_watchdog_source,
+    "prod_scanner_job_watch": action_prod_scanner_job_watch,
     "prod_scanner_build": action_prod_scanner_build,
     "prod_smoke": action_prod_smoke,
     "prod_ssh_probe": action_prod_ssh_probe,

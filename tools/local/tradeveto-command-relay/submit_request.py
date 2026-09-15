@@ -25,6 +25,8 @@ def main() -> int:
     parser.add_argument("--route", action="append", dest="routes")
     parser.add_argument("--rollback-tag")
     parser.add_argument("--confirm")
+    parser.add_argument("--container")
+    parser.add_argument("--around", help="UTC 'YYYY-MM-DD HH:MM' for prod_resource_snapshot journal window")
     parser.add_argument("--reason", default="")
     parser.add_argument("--wait", action="store_true")
     parser.add_argument("--timeout", type=float, default=900.0)
@@ -51,6 +53,10 @@ def main() -> int:
         action_args["rollback_tag"] = args.rollback_tag
     if args.confirm:
         action_args["confirm"] = args.confirm
+    if args.container:
+        action_args["container"] = args.container
+    if args.around:
+        action_args["around"] = args.around
 
     request = {
         "action": args.action,
