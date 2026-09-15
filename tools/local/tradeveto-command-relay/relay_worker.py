@@ -20,7 +20,7 @@ import time
 import uuid
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Final
 
 
 DEFAULT_REPO = Path("/Users/hdtv/dev/market-alpha-scanner")
@@ -59,7 +59,7 @@ class CommandResult:
     stdout: str
 
 
-def run_command(command: list[str], *, cwd: Path | None = None, timeout: int = 300) -> CommandResult:
+def run_command(command: list[str], *, cwd: Path | None = None, timeout: int = 300, max_stdout: int = 60000) -> CommandResult:
     started = time.monotonic()
     proc = subprocess.run(
         command,
@@ -75,15 +75,22 @@ def run_command(command: list[str], *, cwd: Path | None = None, timeout: int = 3
         duration_ms=int((time.monotonic() - started) * 1000),
         exit_code=proc.returncode,
         stderr=proc.stderr[-20000:],
-        stdout=proc.stdout[-60000:],
+        stdout=proc.stdout[-max_stdout:],
     )
 
 
-def ssh_script(script: str, *, timeout: int = 300) -> CommandResult:
+def ssh_script(script: str, *, timeout: int = 300, max_stdout: int = 60000) -> CommandResult:
     return run_command(
         ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10", PROD_HOST, f"bash -lc {shlex.quote(script)}"],
         timeout=timeout,
+        max_stdout=max_stdout,
     )
+
+
+#: Read-only bundles whose whole point is a bulk row dump for offline analysis.
+#: Everything else stays on the small cap so a runaway query cannot fill the
+#: result queue.
+LARGE_OUTPUT_QUERIES: Final[frozenset[str]] = frozenset({"v3_dataset"})
 
 
 def require_branch(args: dict[str, Any], default: str = "work/terminal-ia-simplification") -> str:
@@ -333,7 +340,8 @@ set -euo pipefail
 cd /opt/apps/market-alpha-scanner/app
 printf %s {shlex.quote(encoded_sql)} | base64 -d | docker compose --env-file .env exec -T market-alpha-postgres sh -c 'psql -X -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -P pager=off'
 """
-    return [ssh_script(script, timeout=300)]
+    limit = 40_000_000 if query_name in LARGE_OUTPUT_QUERIES else 60000
+    return [ssh_script(script, timeout=300, max_stdout=limit)]
 
 
 def action_prod_logs_recent(repo: Path, args: dict[str, Any]) -> list[CommandResult]:
@@ -510,6 +518,146 @@ SELECT COALESCE(p->>'candidate_decision','NULL') AS cand, COALESCE(live,'NULL') 
        COALESCE(p->>'recommendation_quality','NULL') AS quality,
        (p->'candidate_reason_codes')::text AS reasons, count(*) AS rows
 FROM s GROUP BY 1,2,3,4 ORDER BY rows DESC LIMIT 25;
+""",
+    "v3_brk_funnel": r"""
+WITH r AS (SELECT id, created_at FROM scan_runs ORDER BY created_at DESC LIMIT 1),
+j AS (
+  SELECT x.* FROM scanner_signals ss JOIN r ON r.id=ss.scan_run_id
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(
+    symbol text, setup_detail text, composite_action text, entry_status text,
+    breakout_score text, breakout_score_completed text, relative_volume_score text,
+    relative_volume_score_completed text, momentum_score text, trend_score text, vetoes jsonb)
+), g AS (
+  SELECT *,
+    COALESCE(CASE WHEN breakout_score_completed ~ '^[0-9.]+$' THEN breakout_score_completed::numeric END,
+             CASE WHEN breakout_score ~ '^[0-9.]+$' THEN breakout_score::numeric END) AS brk,
+    COALESCE(CASE WHEN relative_volume_score_completed ~ '^[0-9.]+$' THEN relative_volume_score_completed::numeric END,
+             CASE WHEN relative_volume_score ~ '^[0-9.]+$' THEN relative_volume_score::numeric END) AS vol,
+    CASE WHEN momentum_score ~ '^[0-9.]+$' THEN momentum_score::numeric END AS mom,
+    (composite_action IN ('BUY','STRONG BUY')) AS buy,
+    (entry_status IN ('GOOD ENTRY','BUY ZONE','NEAR ENTRY')) AS enterable
+  FROM j
+)
+SELECT k, v FROM (
+  SELECT 1 AS o, 'rows' AS k, count(*)::text AS v FROM g
+  UNION ALL SELECT 2,'brk>=72', count(*)::text FROM g WHERE brk>=72
+  UNION ALL SELECT 3,'brk>=72 & mom>=68', count(*)::text FROM g WHERE brk>=72 AND mom>=68
+  UNION ALL SELECT 4,'brk>=72 & mom>=68 & vol>=65', count(*)::text FROM g WHERE brk>=72 AND mom>=68 AND vol>=65
+  UNION ALL SELECT 5,'brk>=72 & mom>=68 & vol>=55', count(*)::text FROM g WHERE brk>=72 AND mom>=68 AND vol>=55
+  UNION ALL SELECT 6,'brk>=72 & mom>=68 & buy', count(*)::text FROM g WHERE brk>=72 AND mom>=68 AND buy
+  UNION ALL SELECT 7,'brk>=72 & mom>=68 & buy & enterable', count(*)::text FROM g WHERE brk>=72 AND mom>=68 AND buy AND enterable
+  UNION ALL SELECT 8,'median vol (completed)', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY vol)::numeric,1)::text FROM g
+  UNION ALL SELECT 9,'median vol (live field)', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY CASE WHEN relative_volume_score ~ '^[0-9.]+$' THEN relative_volume_score::numeric END)::numeric,1)::text FROM g
+  UNION ALL SELECT 10,'p90 vol (completed)', round(percentile_cont(0.9) WITHIN GROUP (ORDER BY vol)::numeric,1)::text FROM g
+  UNION ALL SELECT 11,'max vol (completed)', max(vol)::text FROM g
+  UNION ALL SELECT 12,'vol>=65 rows', count(*)::text FROM g WHERE vol>=65
+  UNION ALL SELECT 13,'vol>=55 rows', count(*)::text FROM g WHERE vol>=55
+  UNION ALL SELECT 14,'median brk', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY brk)::numeric,1)::text FROM g
+  UNION ALL SELECT 15,'brk>=72 & vol>=55', count(*)::text FROM g WHERE brk>=72 AND vol>=55
+  UNION ALL SELECT 16,'median mom', round(percentile_cont(0.5) WITHIN GROUP (ORDER BY mom)::numeric,1)::text FROM g
+  UNION ALL SELECT 17,'completed field present', count(*)::text FROM g WHERE relative_volume_score_completed ~ '^[0-9.]+$'
+  UNION ALL SELECT 18,'completed <> live', count(*)::text FROM g WHERE relative_volume_score_completed ~ '^[0-9.]+$' AND relative_volume_score_completed <> relative_volume_score
+) t ORDER BY o;
+""",
+    "v3_preview": r"""
+WITH r AS (SELECT id, created_at FROM scan_runs ORDER BY created_at DESC LIMIT 4),
+j AS (
+  SELECT to_char(r.created_at AT TIME ZONE 'UTC','MM-DD HH24:MI') AS run_at, ss.final_decision AS live, x.*
+  FROM scanner_signals ss JOIN r ON r.id=ss.scan_run_id
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(
+    symbol text, setup_detail text, composite_action text, entry_status text,
+    final_score text, confidence_score text, risk_reward text, balanced_risk_reward_low text,
+    breakout_score text, breakout_score_completed text, relative_volume_score text,
+    relative_volume_score_completed text, last_bar_partial text, momentum_score text,
+    trend_score text, avwap_score text, pre_expansion_score text, vetoes jsonb,
+    buy_zone text, stop_loss text, balanced_target text, candidate_v2_decision text)
+), g AS (
+  SELECT *,
+    CASE WHEN final_score ~ '^[0-9.]+$' THEN final_score::numeric END AS fs,
+    CASE WHEN confidence_score ~ '^[0-9.]+$' THEN confidence_score::numeric END AS cs,
+    CASE WHEN balanced_risk_reward_low ~ '^-?[0-9.]+$' THEN balanced_risk_reward_low::numeric END AS brr,
+    CASE WHEN trend_score ~ '^[0-9.]+$' THEN trend_score::numeric END AS trend,
+    CASE WHEN momentum_score ~ '^[0-9.]+$' THEN momentum_score::numeric END AS mom,
+    CASE WHEN avwap_score ~ '^[0-9.]+$' THEN avwap_score::numeric END AS avwap,
+    COALESCE(CASE WHEN breakout_score_completed ~ '^[0-9.]+$' THEN breakout_score_completed::numeric END,
+             CASE WHEN breakout_score ~ '^[0-9.]+$' THEN breakout_score::numeric END) AS brk,
+    COALESCE(CASE WHEN relative_volume_score_completed ~ '^[0-9.]+$' THEN relative_volume_score_completed::numeric END,
+             CASE WHEN relative_volume_score ~ '^[0-9.]+$' THEN relative_volume_score::numeric END) AS vol,
+    CASE WHEN relative_volume_score ~ '^[0-9.]+$' THEN relative_volume_score::numeric END AS vol_live,
+    (composite_action NOT IN ('SELL','STRONG SELL')) AS not_sell,
+    (composite_action IN ('BUY','STRONG BUY')) AS buy,
+    (entry_status IN ('GOOD ENTRY','BUY ZONE','NEAR ENTRY')) AS enterable,
+    (entry_status IN ('OVEREXTENDED','WAIT PULLBACK')) AS late,
+    (COALESCE(jsonb_typeof(vetoes)='array' AND (vetoes ? 'STOP_RISK' OR vetoes ? 'EXTREME_VOLATILITY' OR vetoes ? 'PROVIDER_ERROR' OR vetoes ? 'STALE_DATA'),false)) AS hard_severe,
+    (buy_zone IS NOT NULL AND buy_zone <> '' AND stop_loss IS NOT NULL AND stop_loss <> '' AND balanced_target IS NOT NULL AND balanced_target <> '') AS where_ok
+  FROM j
+), c AS (
+  SELECT *,
+    (upper(coalesce(setup_detail,'')) LIKE '%BREAKOUT%' OR brk >= 72) AS cls_brk,
+    ((upper(coalesce(setup_detail,'')) LIKE '%PULLBACK%' OR upper(coalesce(setup_detail,'')) LIKE '%AVWAP%' OR avwap >= 62) AND trend >= 70) AS cls_pull,
+    (trend >= 72 AND mom >= 58) AS cls_cont
+  FROM g
+)
+SELECT run_at, count(*) AS rows,
+  count(*) FILTER (WHERE buy AND enterable AND NOT hard_severe AND cs>=75 AND fs BETWEEN 55 AND 70 AND brr>=1.5 AND (cls_brk OR cls_pull OR cls_cont) AND where_ok) AS v3_core,
+  count(*) FILTER (WHERE buy AND enterable AND NOT hard_severe AND brk>=72 AND vol>=65 AND mom>=68 AND where_ok) AS v3_brk,
+  count(*) FILTER (WHERE buy AND enterable AND NOT hard_severe AND brk>=72 AND vol_live>=65 AND mom>=68 AND where_ok) AS v3_brk_livevol,
+  count(*) FILTER (WHERE late AND buy AND NOT hard_severe AND (cls_brk OR cls_pull OR cls_cont) AND where_ok AND brr>=1.2) AS v3_wait,
+  count(*) FILTER (WHERE NOT not_sell) AS sell_rows,
+  count(*) FILTER (WHERE hard_severe) AS severe_rows,
+  count(*) FILTER (WHERE buy AND enterable) AS buy_enterable,
+  count(*) FILTER (WHERE where_ok) AS where_rows,
+  count(*) FILTER (WHERE last_bar_partial='true') AS partial_rows,
+  count(*) FILTER (WHERE candidate_v2_decision='ENTER') AS v2_enter
+FROM c GROUP BY 1 ORDER BY 1 DESC;
+""",
+    "v3_dataset": r"""
+\pset format unaligned
+\pset fieldsep '|'
+\pset footer off
+WITH fr AS (
+  SELECT scanner_signal_id,
+         min(signal_date) AS signal_date,
+         max(return_pct) FILTER (WHERE horizon='5D') AS r5,
+         max(return_pct) FILTER (WHERE horizon='10D') AS r10,
+         max(return_pct) FILTER (WHERE horizon='20D') AS r20
+  FROM forward_returns WHERE return_pct IS NOT NULL GROUP BY 1
+), j AS (
+  SELECT fr.signal_date, fr.r5, fr.r10, fr.r20, ss.final_decision AS live, x.*
+  FROM fr JOIN scanner_signals ss ON ss.id = fr.scanner_signal_id
+  CROSS JOIN LATERAL jsonb_to_record(ss.payload) AS x(
+    symbol text, sector text, asset_type text, setup_type text, setup_detail text,
+    composite_action text, entry_status text, final_score text, confidence_score text,
+    risk_reward text, balanced_risk_reward_low text, take_profit_low text, price text,
+    breakout_score text, relative_volume_score text, momentum_score text, trend_score text,
+    avwap_score text, pre_expansion_score text, pre_expansion_already_expanded text,
+    vetoes jsonb, buy_zone text, stop_loss text, balanced_target text, data_timestamp text)
+  WHERE fr.r5 IS NOT NULL
+), g AS (
+  SELECT *,
+    CASE WHEN final_score ~ '^[0-9.]+$' THEN final_score::numeric END AS fs,
+    CASE WHEN confidence_score ~ '^[0-9.]+$' THEN confidence_score::numeric END AS cs,
+    COALESCE(jsonb_typeof(vetoes)='array' AND vetoes ? 'STALE_DATA',false) AS stale
+  FROM j
+)
+SELECT signal_date, coalesce(left(data_timestamp,10),'') AS bar_date, stale, symbol, coalesce(sector,'') AS sector, coalesce(asset_type,'') AS asset_type,
+       coalesce(setup_type,'') AS setup_type, coalesce(setup_detail,'') AS setup_detail,
+       coalesce(composite_action,'') AS action, coalesce(entry_status,'') AS entry_status, live,
+       fs, cs,
+       coalesce(risk_reward,'') AS rr, coalesce(balanced_risk_reward_low,'') AS brr,
+       coalesce(take_profit_low,'') AS tp_low, coalesce(price,'') AS price,
+       coalesce(breakout_score,'') AS brk, coalesce(relative_volume_score,'') AS vol,
+       coalesce(momentum_score,'') AS mom, coalesce(trend_score,'') AS trend,
+       coalesce(avwap_score,'') AS avwap, coalesce(pre_expansion_score,'') AS pre,
+       coalesce(pre_expansion_already_expanded,'') AS expanded,
+       (buy_zone IS NOT NULL AND buy_zone <> '') AS has_zone,
+       (stop_loss IS NOT NULL AND stop_loss <> '') AS has_stop,
+       (balanced_target IS NOT NULL AND balanced_target <> '') AS has_target,
+       CASE WHEN jsonb_typeof(vetoes)='array' THEN array_to_string(ARRAY(SELECT jsonb_array_elements_text(vetoes)),',') ELSE '' END AS vetoes,
+       r5, r10, r20
+FROM g
+WHERE fs IS NOT NULL AND cs IS NOT NULL AND fs BETWEEN 40 AND 100
+  AND composite_action NOT IN ('SELL','STRONG SELL');
 """,
     "stale_flags_latest": r"""
 WITH r AS (
